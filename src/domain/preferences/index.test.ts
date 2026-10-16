@@ -105,7 +105,7 @@ describe("domain/preferences — Modos de Experiência (§3.10 / §3.11)", () =>
   describe("applyExperiencePreset", () => {
     it("aplica o preset dynamic preservando propriedades externas", () => {
       const initial = {
-        accent: "emerald",
+        accent: "gold",
         surfaceStyle: "flat",
         motionLevel: "reduced" as const,
         density: "compact" as const,
@@ -117,7 +117,7 @@ describe("domain/preferences — Modos de Experiência (§3.10 / §3.11)", () =>
 
       const result = applyExperiencePreset("dynamic", initial);
 
-      expect(result.accent).toBe("emerald");
+      expect(result.accent).toBe("gold");
       expect(result.surfaceStyle).toBe("flat");
       expect(result.motionLevel).toBe("fluid");
       expect(result.density).toBe("comfortable");

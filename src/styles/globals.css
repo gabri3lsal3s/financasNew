@@ -232,10 +232,7 @@
 
   html {
     scroll-behavior: smooth;
-    overflow-x: hidden;
-    max-width: 100vw;
-    overscroll-behavior: none;
-    overscroll-behavior-y: none;
+    overflow-x: clip;
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -246,10 +243,8 @@
     font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
-    max-width: 100vw;
-    overscroll-behavior: none;
-    overscroll-behavior-y: none;
+    min-height: 100vh;
+    min-height: 100dvh;
     -webkit-tap-highlight-color: transparent;
   }
 

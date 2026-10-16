@@ -50,7 +50,7 @@
 
 > **Regra de contraste (AA):** em Light, texto pequeno **não** usa `--primary` (3.0:1 — gráficos/fills) — usa `--primary-strong` (5.7:1). `--accent` (ouro) é decorativo/grande (glow, órbita); texto sobre ouro usa `--accent-foreground` (AA). Em Dark, `--primary` já é claro e o foreground escuro garante 8:1.
 
-> **Acentos personalizáveis (F11/F13):** o root aceita `data-accent="emerald|gold|rose|sapphire|violet|mono"` (teal é o padrão, sem atributo) — sobrescreve `--primary`/`--primary-strong`/`--ring` nos 3 temas, aplicado via `use-visual-customization` (persistido em `localStorage`). `mono` oferece a opção Monocromático Preto & Branco puro de alto contraste. Regra de contraste: o mesmo princípio acima vale por paleta (texto pequeno usa a variante *strong*).
+> **Acentos personalizáveis (F11/F13):** o root aceita `data-accent="gold|rose|sapphire|violet|mono"` (teal é o padrão, sem atributo) — sobrescreve `--primary`/`--primary-strong`/`--ring` nos 3 temas, aplicado via `use-visual-customization` (persistido em `localStorage`). `mono` oferece a opção Monocromático Preto & Branco puro de alto contraste. Regra de contraste: o mesmo princípio acima vale por paleta (texto pequeno usa a variante *strong*).
 
 ### 2.3 Semânticas financeiras
 
@@ -625,7 +625,7 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 - **Componentes:** `src/components/ui/toast.tsx`, `src/components/ui/toast-host.tsx`.
 - **Animação Bottom-Up Suave:** Entrada ascendente com spring elástico (`translateY(100%) scale(0.96) -> translateY(0) scale(1)` em `0.22s cubic-bezier(0.16, 1, 0.3, 1)`) e descida com fade na saída (`translateY(12px) scale(0.96)` em `0.15s ease-in`), com suporte nativo ao gesto de deslizar para baixo (`swipeDirection="down"`).
 - **Herança da Cor de Destaque Ativa (`data-accent`):**
-  - Variantes de sucesso (`success`) e informação (`info`) utilizam `border-primary/40` e badge de ícone em `bg-primary/15 text-primary-strong`, refletindo a paleta do usuário (Teal, Esmeralda, Ouro Âmbar, Safira Petróleo, Violeta Íris, Coral Rosé ou Mono) nos 3 temas (Claro, Escuro e OLED).
+  - Variantes de sucesso (`success`) e informação (`info`) utilizam `border-primary/40` e badge de ícone em `bg-primary/15 text-primary-strong`, refletindo a paleta do usuário (Teal, Ouro Âmbar, Safira Petróleo, Violeta Íris, Coral Rosé ou Mono) nos 3 temas (Claro, Escuro e OLED).
   - Variantes `default` (`border-border/90`), `warning` (`border-warning/40` + `bg-warning/15 text-warning-strong`) e `destructive` (`border-critical/40` + `bg-critical/15 text-critical-strong`) mantêm semântica estrita conforme DESIGN_SYSTEM §11.
 - **Anatomia Padronizada:**
   - Badge circular de ícone canônico `flex size-7 shrink-0 items-center justify-center rounded-full`, com ícone Lucide centralizado em `size-4` (`Check`, `Info`, `TriangleAlert`, `XCircle`).

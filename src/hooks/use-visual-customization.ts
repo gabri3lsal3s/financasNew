@@ -13,7 +13,7 @@ import {
   detectActivePreset,
 } from "@/domain/preferences";
 
-export type AccentTheme = "teal" | "emerald" | "gold" | "sapphire" | "violet" | "rose" | "mono";
+export type AccentTheme = "teal" | "gold" | "sapphire" | "violet" | "rose" | "mono";
 export type SurfaceStyle = "glass" | "flat";
 export type MotionLevel = "fluid" | "eco" | "reduced";
 export type DensityLevel = "comfortable" | "compact";
@@ -134,7 +134,7 @@ function readStoredConfig(userId?: string | null): VisualCustomization {
   try {
     const rawAccent = getUserStorageItem(STORAGE_KEYS.accent, userId) as AccentTheme | null;
     const accent: AccentTheme =
-      rawAccent && ["teal", "emerald", "gold", "sapphire", "violet", "rose", "mono"].includes(rawAccent)
+      rawAccent && ["teal", "gold", "sapphire", "violet", "rose", "mono"].includes(rawAccent)
         ? rawAccent
         : "teal";
 

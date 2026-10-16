@@ -288,21 +288,6 @@ html[data-theme="oled"] {
    Permite trocar a cor primária mantendo harmonia dos 3 temas.
    ================================================================ */
 
-/* --- Emerald (Esmeralda Fintech) --- */
-:root[data-accent="emerald"],
-html[data-theme="light"][data-accent="emerald"] {
-  /* primary 33% (F12): AA 3.32:1 não-texto (ring/progresso) sobre o fundo claro */
-  --primary: 160 84% 33%;
-  --primary-strong: 161 94% 24%;
-  --ring: 160 84% 33%;
-}
-html[data-theme="dark"][data-accent="emerald"],
-html[data-theme="oled"][data-accent="emerald"] {
-  --primary: 158 64% 52%;
-  --primary-strong: 158 64% 52%;
-  --ring: 158 64% 52%;
-}
-
 /* --- Gold (Ouro Âmbar) --- */
 :root[data-accent="gold"],
 html[data-theme="light"][data-accent="gold"] {

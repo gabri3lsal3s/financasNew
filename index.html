@@ -106,7 +106,7 @@
     </script>
     <style>
       /* ---- Base & Fundo Global — garante cor imediata antes do Tailwind ---- */
-      html, body {
+      html {
         margin: 0;
         padding: 0;
         background-color: #F4F7F9;
@@ -115,9 +115,16 @@
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        overflow-x: hidden;
-        overscroll-behavior: none;
-        overscroll-behavior-y: none;
+        overflow-x: clip;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        background-color: inherit;
+        color: inherit;
         -webkit-tap-highlight-color: transparent;
       }
 

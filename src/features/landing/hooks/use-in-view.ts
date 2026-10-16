@@ -75,9 +75,7 @@ export function useInView<T extends HTMLElement = HTMLDivElement>(
             }
           }
         } else {
-          // Se o elemento não está no viewport e o resetKey foi fornecido (ou triggerOnce=false),
-          // garante que o estado volte para false para reanimar na próxima descida.
-          if (!triggerOnce || resetKey !== undefined) {
+          if (!triggerOnce) {
             setIsInView(false);
           }
         }

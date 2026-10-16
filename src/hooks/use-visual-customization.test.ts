@@ -88,10 +88,10 @@ describe("useVisualCustomization (F11)", () => {
   });
 
   it("atualiza a cor de destaque (accent) e reflete no DOM", () => {
-    updateVisualCustomization({ accent: "emerald" });
+    updateVisualCustomization({ accent: "sapphire" });
     const config = getVisualCustomization();
-    expect(config.accent).toBe("emerald");
-    expect(document.documentElement.getAttribute("data-accent")).toBe("emerald");
+    expect(config.accent).toBe("sapphire");
+    expect(document.documentElement.getAttribute("data-accent")).toBe("sapphire");
 
     updateVisualCustomization({ accent: "mono" });
     expect(getVisualCustomization().accent).toBe("mono");

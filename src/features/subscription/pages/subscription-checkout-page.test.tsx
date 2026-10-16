@@ -114,4 +114,24 @@ describe("SubscriptionCheckoutPage Component", () => {
     const backBtn = screen.getByRole("button", { name: /Voltar/i });
     expect(backBtn).toBeInTheDocument();
   });
+
+  it("exibe validação em tempo real de CPF e detecção dinâmica de bandeira de cartão", async () => {
+    const user = userEvent.setup();
+    renderCheckout();
+
+    // 1. Testa validação de CPF em tempo real
+    const cpfInput = screen.getByPlaceholderText("000.000.000-00");
+    await user.type(cpfInput, "11144477735"); // CPF válido
+    expect(screen.getByText("CPF válido")).toBeInTheDocument();
+
+    // 2. Testa detecção dinâmica de bandeira de cartão
+    const cardInput = screen.getByPlaceholderText("0000 0000 0000 0000");
+    await user.type(cardInput, "4111222233334444");
+    expect(screen.getByText("Visa")).toBeInTheDocument();
+
+    await user.clear(cardInput);
+    await user.type(cardInput, "5500000000000000");
+    expect(screen.getByText("Mastercard")).toBeInTheDocument();
+  });
 });
+

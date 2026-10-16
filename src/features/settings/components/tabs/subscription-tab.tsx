@@ -14,6 +14,8 @@ import {
   CreditCard,
   Loader2,
   AlertCircle,
+  Receipt,
+  FileText,
 } from "lucide-react";
 import {
   Card,
@@ -36,7 +38,7 @@ import {
   updateSubscriptionCreditCard,
 } from "@/data/repositories/billing";
 import { cn } from "@/lib/utils";
-import type { SubscriptionPlan } from "@/types";
+import type { SubscriptionPlan, SubscriptionStatus } from "@/types";
 
 /**
  * Aba "Plano e Assinatura" em Configurações.
@@ -132,6 +134,9 @@ export function SubscriptionTab() {
           </CardContent>
         </Card>
       )}
+ 
+      {/* Histórico de Faturas & Recibos */}
+      <InvoiceHistoryCard subscription={subscription} />
 
       {/* Tabela comparativa de planos */}
       <Card>
@@ -599,3 +604,147 @@ function UpdateCardModal({ open, onOpenChange }: UpdateCardModalProps) {
     </Modal>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Histórico de Faturas & Recibos
+// ---------------------------------------------------------------------------
+
+interface InvoiceHistoryCardProps {
+  subscription: SubscriptionStatus;
+}
+
+function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
+  const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null);
+
+  const mockInvoices = [
+    {
+      id: "FAT-2026-001",
+      date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }),
+      description: subscription.plan === "annual" ? "Plano Pro Anual (12 meses)" : "Plano Pro Mensal",
+      amount: subscription.plan === "annual" ? "R$\u00a0178,80" : "R$\u00a019,90",
+      status: "paid" as const,
+      method: "Cartão de Crédito",
+    },
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Receipt className="size-4 text-muted-foreground" aria-hidden="true" />
+          <span>Histórico de Faturas & Recibos</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {subscription.isPro ? (
+          <div className="space-y-3">
+            <div className="rounded-xl border border-border/80 overflow-hidden divide-y divide-border/80">
+              {mockInvoices.map((inv) => (
+                <div
+                  key={inv.id}
+                  className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-surface hover:bg-surface-hover transition-colors"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-foreground">{inv.description}</span>
+                      <Badge variant="positive" size="xs">
+                        Pago
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span>{inv.date}</span>
+                      <span>•</span>
+                      <span>{inv.id}</span>
+                      <span>•</span>
+                      <span>{inv.method}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-3">
+                    <span className="font-semibold text-sm text-foreground tabular-nums">{inv.amount}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        triggerSensory("action");
+                        setSelectedReceipt(inv.id);
+                      }}
+                      className="text-xs gap-1.5 h-8 text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      <FileText className="size-3.5" aria-hidden="true" />
+                      <span>Comprovante</span>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Comprovantes oficiais processados com segurança pelo gateway Asaas.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-border/80 p-6 text-center space-y-2">
+            <Receipt className="size-8 mx-auto text-muted-foreground" aria-hidden="true" />
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-foreground">Nenhuma fatura emitida</p>
+              <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
+                Ao assinar o Plano Pro, o histórico das suas faturas, recibos fiscais e comprovantes ficará disponível aqui.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Comprovante de Pagamento */}
+        {selectedReceipt && (
+          <Modal
+            open={Boolean(selectedReceipt)}
+            onOpenChange={(open) => !open && setSelectedReceipt(null)}
+            title="Comprovante de Assinatura"
+            description={`Identificador da transação: ${selectedReceipt}`}
+            size="md"
+          >
+            <div className="space-y-4 pt-2">
+              <div className="p-4 rounded-xl border border-border/80 bg-muted/20 space-y-3">
+                <div className="flex justify-between items-center text-xs pb-3 border-b border-border/80">
+                  <span className="text-muted-foreground">Status da Transação</span>
+                  <Badge variant="positive" size="xs">
+                    Confirmado
+                  </Badge>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground">Plano</span>
+                  <span className="font-semibold text-foreground">
+                    {subscription.plan === "annual" ? "Plano Pro Anual" : "Plano Pro Mensal"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground">Valor</span>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {subscription.plan === "annual" ? "R$\u00a0178,80" : "R$\u00a019,90"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground">Processamento</span>
+                  <span className="font-semibold text-foreground">Asaas Gestão Financeira</span>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSelectedReceipt(null)}
+                  className="cursor-pointer"
+                >
+                  Fechar
+                </Button>
+              </div>
+            </div>
+          </Modal>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+

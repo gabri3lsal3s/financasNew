@@ -1,1 +1,1 @@
-export { SubscriptionCheckoutPage } from "./pages";
+export { SubscriptionCheckoutPage, SubscriptionSuccessPage } from "./pages";

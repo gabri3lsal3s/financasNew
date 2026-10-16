@@ -12,7 +12,7 @@ import {
   SuspendedAccountPage,
 } from "@/features/auth";
 import { LandingPage } from "@/features/landing";
-import { SubscriptionCheckoutPage } from "@/features/subscription";
+import { SubscriptionCheckoutPage, SubscriptionSuccessPage } from "@/features/subscription";
 import { useAuth } from "@/hooks/use-auth";
 import { useMinimumLoading } from "@/hooks/use-minimum-loading";
 import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
@@ -153,9 +153,11 @@ export function AppRouter() {
         <Route path="/criar-conta" element={<RegisterPage />} />
         <Route path="/recuperar-senha" element={<ForgotPasswordPage />} />
 
-        {/* Checkout de assinatura Pro — layout próprio (sem shell do app), redireciona para /entrar se não autenticado) */}
+        {/* Checkout de assinatura Pro — layout próprio (sem shell do app) */}
         <Route path="/assinatura" element={<SubscriptionCheckoutPage />} />
         <Route path="/assinar" element={<SubscriptionCheckoutPage />} />
+        <Route path="/assinatura/sucesso" element={<SubscriptionSuccessPage />} />
+        <Route path="/assinar/sucesso" element={<SubscriptionSuccessPage />} />
 
         {/* Telas de status da conta para usuários autenticados */}
         <Route element={<RequireAuth />}>

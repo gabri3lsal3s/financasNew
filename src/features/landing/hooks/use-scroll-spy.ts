@@ -60,15 +60,17 @@ export function useScrollSpy({
         const totalHeight =
           document.documentElement.scrollHeight - document.documentElement.clientHeight;
 
-        // 1. Progresso da rolagem (0 a 100)
-        const progress = totalHeight > 0 ? Math.min(100, Math.max(0, (scrollY / totalHeight) * 100)) : 0;
-        setScrollProgress(progress);
+        // 1. Progresso da rolagem em porcentagem inteira (0 a 100)
+        const progress = totalHeight > 0 ? Math.min(100, Math.max(0, Math.round((scrollY / totalHeight) * 100))) : 0;
+        setScrollProgress((prev) => (prev === progress ? prev : progress));
 
         // 2. Estado de rolagem do header
-        setIsScrolled(scrollY > scrolledThreshold);
+        const nextIsScrolled = scrollY > scrolledThreshold;
+        setIsScrolled((prev) => (prev === nextIsScrolled ? prev : nextIsScrolled));
 
         // 3. Estado de exibição do botão Voltar ao Topo
-        setShowBackToTop(scrollY > backToTopThreshold);
+        const nextShowBackToTop = scrollY > backToTopThreshold;
+        setShowBackToTop((prev) => (prev === nextShowBackToTop ? prev : nextShowBackToTop));
 
         // 4. Detecção de retorno inteligente ao topo para reativar efeitos
         if (scrollY > 250) {
@@ -92,7 +94,7 @@ export function useScrollSpy({
             }
           }
         }
-        setActiveSection(currentActive);
+        setActiveSection((prev) => (prev === currentActive ? prev : currentActive));
       });
     };
 

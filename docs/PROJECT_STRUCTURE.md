@@ -147,7 +147,8 @@
     │   ├── reminders/             #   Lembretes (central de notificações)
     │   ├── settings/              #   Configurações consolidadas em 3 pilares: Personalização (visual/experiência/interface/lembretes), Plano e Segurança (conta/2FA/backup)
     │   ├── admin/                 #   Painel Administrativo SaaS /admin (F43: 4 pilares consolidados — Visão Geral & KPIs SaaS, Gestão de Usuários, Convites & Allowlist, Sistema & Auditoria)
-    │   ├── subscription/          #   Fluxos de Assinatura & Checkout /subscription/checkout
+    │   ├── subscription/          #   Fluxos de Assinatura & Checkout (/assinatura, /assinar, /assinatura/sucesso)
+    │   │                          #     pages: subscription-checkout-page, subscription-success-page
     │   ├── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+F28+F35+F40+F72):
     │   │                          #     hub de 5 abas (Resumo / Proventos / Metas / Aporte / Relatórios & IR)
     │   │                          #     pages: resumo-tab, proventos-tab, targets-tab, aporte-tab, relatorios-tab, investments-page

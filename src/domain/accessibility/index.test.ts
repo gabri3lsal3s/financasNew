@@ -151,9 +151,8 @@ describe("contraste AA dos tokens (DESIGN_SYSTEM §2)", () => {
  *    sólidos (Stepper/DatePicker selecionados);
  * 3. `primary` sobre o fundo ≥ 3:1 — não-texto (ring de foco, progresso,
  *    seleção, checkmark).
- * Ajustes da F12: emerald light primary 160 84 33 (#0D9B6C), gold light
- * primary 42 73 40 (#B0841C) + strong 38 92 30 (#935F06), violet dark/oled
- * 258 92 72 (#9D76F9). O ouro decorativo (--accent #DDA726) é exceção
+ * Ajustes da F12: gold light primary 42 73 40 (#B0841C) + strong 38 92 30 (#935F06),
+ * violet dark/oled 258 92 72 (#9D76F9). O ouro decorativo (--accent #DDA726) é exceção
  * documentada (glow/órbitas) — não é requisito de texto (teste acima).
  */
 const ACCENTS = {
@@ -161,11 +160,6 @@ const ACCENTS = {
     light: { primary: "#2A9D90", strong: "#176E64" },
     dark: { primary: "#2BD4C0", strong: "#2BD4C0" },
     oled: { primary: "#2BD4C0", strong: "#2BD4C0" },
-  },
-  emerald: {
-    light: { primary: "#0D9B6C", strong: "#047752" },
-    dark: { primary: "#36D399", strong: "#36D399" },
-    oled: { primary: "#36D399", strong: "#36D399" },
   },
   gold: {
     light: { primary: "#B0841C", strong: "#935F06" },
@@ -201,7 +195,7 @@ const ACCENT_CONTEXT = {
   oled: { background: "#000000", foreground: "#022C22" },
 } as const;
 
-describe("contraste AA das 7 paletas de acento × 3 temas (F11 DoD — F12)", () => {
+describe("contraste AA das 6 paletas de acento × 3 temas (F11 DoD — F12)", () => {
   for (const [accent, themes] of Object.entries(ACCENTS)) {
     describe(`acento ${accent}`, () => {
       for (const [theme, colors] of Object.entries(themes)) {

@@ -5101,6 +5101,37 @@ flowchart TD
 - [x] Bateria completa de testes automatizados 100% verde.
 - [x] Typecheck (`tsc -b`) e lint (`npm run lint`) limpos sem erros.
 
+---
+
+### 💎 FASE 90 — Desbloqueio da Rolagem da Apresentação & Refinamento Visual do Fluxo de Pagamento
+
+> **Status:** ✅ Concluída (2026-10-16) — **Rolagem Nativa Fluida & Experiência de Checkout Unificada**: Eliminação da trava de rolagem no desktop causada por contenção duplicada de `overflow-x: hidden` e `overscroll` em `html` e `body`. Refinamento completo da experiência de checkout com cadastro integrado para novos visitantes, criação da página dedicada de Sucesso & Boas-Vindas (`/assinatura/sucesso`), histórico de faturas & recibos nas Configurações e modo demonstrativo resiliente para validação visual.
+>
+> **Objetivo:** Garantir navegação 100% fluida na apresentação pública e proporcionar uma jornada de conversão e pagamento fluida, sem atritos ou quebras de contexto.
+
+#### 1. Entregas Realizadas
+- **Correção da Rolagem no Desktop (`index.html`, `globals.css` e `landing`):**
+  - Substituição de `overflow-x: hidden` no `html` e `body` por contenção horizontal segura `overflow-x: clip` exclusivamente na raiz (`html`), restaurando a rolagem nativa de janela no desktop;
+  - Remoção de `overscroll-behavior: none` bloqueante e eliminação do padding dinâmico da raiz da Landing Page;
+  - Otimização do `useScrollSpy` com throttle funcional evitando re-renderizações desnecessárias por micro-pixels.
+- **Checkout Unificado com Cadastro Integrado (`subscription-checkout-page.tsx`):**
+  - Visitantes não logados realizam identificação/cadastro transparente no próprio checkout sem serem expulsos da página;
+  - Alternador direto entre Plano Pro Anual (25% OFF) e Mensal no resumo do checkout;
+  - Card PIX com QR Code, botão de cópia com feedback sensorial e botão de simulação para testes visuais locais.
+- **Nova Página de Sucesso & Boas-Vindas (`subscription-success-page.tsx`):**
+  - Rota dedicada `/assinatura/sucesso` com comprovante da assinatura, benefícios liberados e CTAs ergonômicos para acessar o painel ou ver as configurações.
+- **Histórico de Faturas & Recibos em Configurações (`subscription-tab.tsx`):**
+  - Visualização de faturas emitidas com comprovante detalhado e status de confirmação.
+
+**✅ DoD (Definition of Done da Fase 90):**
+- [x] Rolagem nativa e fluida no desktop e mobile em `/landing`, `/apresentacao` e `/planos`.
+- [x] Checkout com identificação integrada para visitantes novos e alternador de ciclo.
+- [x] Página de Sucesso `/assinatura/sucesso` implementada com testes unitários dedicados.
+- [x] Histórico de faturas adicionado à aba de assinatura em Configurações.
+- [x] Bateria de testes automatizados 100% verde (68 testes em landing, subscription e settings).
+- [x] Typecheck estrito (`tsc -b`) e lint (`npm run lint`) limpos sem erros.
+
+
 
 
 
