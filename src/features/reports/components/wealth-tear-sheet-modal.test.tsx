@@ -314,4 +314,29 @@ describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executi
       screen.queryByText("Comparativo Histórico de Rentabilidade & Patrimônio Mês a Mês"),
     ).not.toBeInTheDocument();
   });
+
+  it("renderiza a estrutura de portal de impressão A4 no body através do PrintSheet sem botões de tela", () => {
+    render(
+      <WealthTearSheetModal
+        open={true}
+        onOpenChange={vi.fn()}
+        rows={[]}
+        totalBRL={50000}
+        totalCostBRL={45000}
+        allocationAnalysis={mockAllocation}
+        concentrationRisk={mockConcentration}
+      />,
+    );
+
+
+    // O modal deve conter o botão de imprimir, mas os botões possuem print:hidden
+    const printBtn = screen.getByRole("button", { name: /Imprimir \/ Salvar PDF/i });
+    expect(printBtn).toBeInTheDocument();
+
+    // No body deve existir o contêiner .print-sheet renderizado pelo portal
+    const printSheetEl = document.body.querySelector(".print-sheet");
+    expect(printSheetEl).toBeInTheDocument();
+    expect(printSheetEl?.querySelector(".print-document")).toBeInTheDocument();
+  });
 });
+

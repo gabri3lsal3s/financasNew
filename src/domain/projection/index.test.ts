@@ -4,9 +4,11 @@ import {
   spendingPace,
   endOfMonthProjection,
   pendingProjection,
+  analyzeCashGap,
   PACE_MIN_DAY,
   PROJECTION_MIN_DAY,
 } from "./index";
+
 
 describe("gasto disponível diário (§3.8)", () => {
   it("mês atual: diário = max(0, líquido ÷ diasRestantes incluindo hoje)", () => {
@@ -236,3 +238,43 @@ describe("projeção de pendências (§3.8)", () => {
     });
   });
 });
+
+describe("projeção preditiva de descasamento temporal de caixa (analyzeCashGap)", () => {
+  it("detecta descasamento quando faturas de cartão vencem antes da receita esperada", () => {
+    const result = analyzeCashGap({
+      currentBalanceCents: 100_000, // R$ 1.000 em conta
+      today: "2026-08-01",
+      daysAhead: 15,
+      obligations: [
+        { id: "inv1", name: "Fatura Nubank", dueDate: "2026-08-05", amountCents: 150_000, kind: "invoice" },
+      ],
+      inflows: [
+        { id: "inf1", name: "Salário", expectedDate: "2026-08-10", amountCents: 500_000 },
+      ],
+    });
+
+    expect(result.isCashGapDetected).toBe(true);
+    expect(result.gapDate).toBe("2026-08-05");
+    expect(result.daysUntilGap).toBe(4);
+    expect(result.maxDeficitCents).toBe(50_000); // Faltam R$ 500
+    expect(result.causingObligations[0]?.name).toBe("Fatura Nubank");
+    expect(result.nextInflowDate).toBe("2026-08-10");
+  });
+
+  it("não acusa déficit quando o saldo em conta é suficiente para cobrir os vencimentos", () => {
+    const result = analyzeCashGap({
+      currentBalanceCents: 300_000,
+      today: "2026-08-01",
+      daysAhead: 10,
+      obligations: [
+        { id: "inv1", name: "Fatura Cartão", dueDate: "2026-08-05", amountCents: 100_000, kind: "invoice" },
+      ],
+      inflows: [],
+    });
+
+    expect(result.isCashGapDetected).toBe(false);
+    expect(result.gapDate).toBeNull();
+    expect(result.maxDeficitCents).toBe(0);
+  });
+});
+

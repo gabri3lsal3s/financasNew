@@ -105,6 +105,34 @@ describe("FinancialCloseReportModal (F42)", () => {
     expect(screen.getAllByText(/ponderado:/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/O valor principal exibido é o valor bruto nominal/i).length).toBeGreaterThan(0);
   });
+
+  it("renderiza o relatório em período anual com discriminação de faturas pagas e cascata contábil", () => {
+    const mockPaidInvoices = [
+      { cardName: "Nubank Ultravioleta", competenceMonth: "2026-07", amountCents: 150000, date: "2026-08-10" },
+      { cardName: "Itaú Personnalité", competenceMonth: "2026-08", amountCents: 250000, date: "2026-08-20" },
+    ];
+
+    render(
+      <FinancialCloseReportModal
+        open={true}
+        onOpenChange={vi.fn()}
+        periodLabel="Exercício de 2026"
+        dre={mockDRE}
+        categories={mockCategories}
+        paymentMethods={mockPaymentMethods}
+        paidInvoices={mockPaidInvoices}
+        expenseCount={50}
+        incomeCount={12}
+      />,
+    );
+
+    expect(screen.getAllByText("Exercício de 2026")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("FATURAS DE CARTÃO QUITADAS NO PERÍODO").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Nubank Ultravioleta").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Itaú Personnalité").length).toBeGreaterThan(0);
+
+  });
 });
+
 
 

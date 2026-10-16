@@ -474,16 +474,17 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 20: Refinamento de Relatórios, Projeções e Insights Analíticos
 
-### Tarefa 37: Auditoria dos Relatórios Financeiros, Dossiê Patrimonial A4 (Wealth Tear Sheet), Projeção e Blocos de Insights
-- **Status:** ⏳ Pendente
+### Tarefa 37: Auditoria dos Relatórios Financeiros, Dossiê Patrimonial A4 (Wealth Tear Sheet), Projeção e Blocos de Insights [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Entregar visualizações executivas de alta fidelidade para impressão/exportação, projeções financeiras realistas e cartões de insights acionáveis.
 - **Ações:**
-  1. **Relatório de Fechamento Mensal e Anual:** Verificar agrupamento de receitas, despesas por categoria, fluxo líquido e evolução patrimonial com gráficos adaptativos.
-  2. **Dossiê Patrimonial A4 (`WealthTearSheetModal`):** Otimizar o layout de impressão executiva para folhas A4 (CSS print, quebras de página controladas e ausência de elementos interativos no papel).
-  3. **Projeção Financeira Futura:** Validar a curva de projeção considerando médias históricas de gastos, receitas recorrentes e compras parceladas já contratadas.
-  4. **Blocos Desacoplados de Insights:** Harmonizar os blocos de inteligência (Gastos Fantasma, Burn Rate, Meta de Poupança e Alertas de Desvio) com ícones semânticos neutros e badges discretos.
-  5. **Testes Unitários:** Validar gerador de dossiê A4, cálculos de projeção e isolamento de insights.
+  1. **Relatório de Fechamento Mensal e Anual:** Verificar agrupamento de receitas, despesas por categoria, fluxo líquido e evolução patrimonial com gráficos adaptativos. (Concluído: `FinancialCloseReportModal` em `src/features/reports/components/financial-close-report-modal.tsx` estruturado com DRE Pessoal, cascata de destinação de renda `ReportWaterfallBar`, tabela de despesas por categoria, meios de pagamento e discriminação de faturas quitadas no período).
+  2. **Dossiê Patrimonial A4 (`WealthTearSheetModal`):** Otimizar o layout de impressão executiva para folhas A4 (CSS print, quebras de página controladas e ausência de elementos interativos no papel). (Concluído: `WealthTearSheetModal` e `ReportDocumentLayout` operando com portal de impressão `PrintSheet` via `@media print` no padrão `A4 portrait`, com margens de 10-12mm, quebras de página controladas `break-inside-avoid` e `break-before-page`, e ocultação estrita de todos os botões e elementos interativos do navegador com `print:hidden`).
+  3. **Projeção Financeira Futura:** Validar a curva de projeção considerando médias históricas de gastos, receitas recorrentes e compras parceladas já contratadas. (Concluído: motor `analyzeCashGap` em `src/domain/projection/cash-gap.ts` cruzando obrigações de faturas parceladas e pendências com entradas esperadas, e `ProjectionTab` exibindo gasto diário disponível, projeção de fechamento, burn rate diário e autonomia financeira / runway).
+  4. **Blocos Desacoplados de Insights:** Harmonizar os blocos de inteligência (Gastos Fantasma, Burn Rate, Meta de Poupança e Alertas de Desvio) com ícones semânticos neutros e badges discretos. (Concluído: `DiagnosticsTab` e `DiagnosticCard` em `src/features/insights/components/` padronizados com ícones neutros `text-muted-foreground`, badges `size="xs"`, cartões com elevação canônica `border-border/80 bg-surface shadow-xs`, e zero caixas decorativas avulsas ou emojis).
+  5. **Testes Unitários:** Validar gerador de dossiê A4, cálculos de projeção e isolamento de insights. (Concluído: testes adicionados em `wealth-tear-sheet-modal.test.tsx`, `financial-close-report-modal.test.tsx` e `src/domain/projection/index.test.ts` cobrindo o portal A4 `PrintSheet`, faturas pagas em exercício anual e detecção de descasamento preditivo de caixa; suíte completa de 19 arquivos e mais de 145 testes aprovada).
 - **Commit:** `refactor(reports): optimize financial close reports, a4 wealth sheet, and modular insights`
+
 
 ---
 
