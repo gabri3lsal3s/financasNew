@@ -461,4 +461,57 @@ describe("Hierarquia Classe -> Setor -> Ativo & Fracionamento Internacional (Fas
     expect(result.routes.map((r) => r.ticker)).toEqual(["PETR4"]);
     expect(result.totalAllocated).toBe(300);
   });
+
+  it("impede divisão por zero e retorna alocação zerada quando o aporte informado é 0 ou negativo", () => {
+    for (const aporte of [0, -500]) {
+      const result = simulateCombinedAporte({
+        aporte,
+        assets: [
+          asset({ id: "a", ticker: "PETR4", assetClass: "Ações", currentValueBRL: 1000, priceBRL: 30, targetPercentage: 100 }),
+        ],
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+      });
+
+      expect(result.routes).toHaveLength(0);
+      expect(result.totalAllocated).toBe(0);
+      expect(result.leftover).toBe(0);
+    }
+  });
+
+  it("não divide por zero e lida com ativos de preço zerado marcando no diagnóstico de inelegibilidade", () => {
+    const result = simulateCombinedAporte({
+      aporte: 1000,
+      assets: [
+        asset({ id: "a", ticker: "SEMPRECO", assetClass: "Ações", currentValueBRL: 0, priceBRL: 0, targetPercentage: 50 }),
+        asset({ id: "b", ticker: "COM_PRECO", assetClass: "Ações", currentValueBRL: 0, priceBRL: 50, targetPercentage: 50 }),
+      ],
+      classTargets: [{ className: "Ações", targetPercentage: 100 }],
+    });
+
+    expect(result.routes.map((r) => r.ticker)).toEqual(["COM_PRECO"]);
+    expect(result.skippedAssets).toContainEqual(
+      expect.objectContaining({ ticker: "SEMPRECO", reason: "no_price" }),
+    );
+    expect(Number.isNaN(result.totalAllocated)).toBe(false);
+    expect(Number.isNaN(result.leftover)).toBe(false);
+  });
+
+  it("retorna sobra integral sem alocações negativas quando todos os ativos já superaram as metas", () => {
+    const result = simulateCombinedAporte({
+      aporte: 500,
+      assets: [
+        asset({ id: "a", ticker: "PETR4", assetClass: "Ações", currentValueBRL: 10000, priceBRL: 30, targetPercentage: 50 }),
+      ],
+      classTargets: [{ className: "Ações", targetPercentage: 50 }],
+    });
+
+    // Patrimônio alvo = 10000 + 500 = 10500. Meta 50% = 5250. Atual = 10000 -> sem gap.
+    expect(result.routes).toHaveLength(0);
+    expect(result.totalAllocated).toBe(0);
+    expect(result.leftover).toBe(500);
+    expect(result.skippedAssets).toContainEqual(
+      expect.objectContaining({ ticker: "PETR4", reason: "above_target" }),
+    );
+  });
 });
+

@@ -458,16 +458,17 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 19: Refinamento de Investimentos, Carteira, Proventos e Aporte
 
-### Tarefa 36: Auditoria da Carteira de Investimentos, Motor de Rebalanceamento, Calendário de Proventos e Snapshots Históricos
-- **Status:** ⏳ Pendente
+### Tarefa 36: Auditoria da Carteira de Investimentos, Motor de Rebalanceamento, Calendário de Proventos e Snapshots Históricos [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Assegurar precisão matemática no cálculo de rentabilidade, preço médio, alocação de classes e motor de cálculo de aporte inteligente.
 - **Ações:**
-  1. **Motor de Aporte e Rebalanceamento:** Validar a sugestão de aporte por ativo/classe com base nas metas percentuais definidas pelo usuário e valor disponível em caixa, impedindo divisões por zero ou sugestões negativas.
-  2. **Subseletores e Mês de Referência:** Consolidar a navegação em pills nos proventos (Mensal, Calendário, Por Ativo, Bola de Neve) com o seletor de mês fixado logo abaixo, sem saltos de layout.
-  3. **Visualização de Caixa e Rentabilidade:** Refinar o card exclusivo de Caixa & Liquidez, cálculo do custo investido e rentabilidade consolidada com `<MoneyText />` tabular.
-  4. **Snapshots Históricos e EmptyStates:** Assegurar que consultas a meses anteriores exibam os dados históricos gravados sem fallback silencioso para o mês atual.
-  5. **Testes Unitários:** Cobrir o motor de aporte, cálculo de preço médio e agrupamentos de proventos.
+  1. **Motor de Aporte e Rebalanceamento:** Validar a sugestão de aporte por ativo/classe com base nas metas percentuais definidas pelo usuário e valor disponível em caixa, impedindo divisões por zero ou sugestões negativas. (Concluído: `simulateAporte` e `simulateCombinedAporte` em `src/domain/portfolio/aporte.ts` blindados com guardas matemáticas para aporte zerado/negativo, patrimônio alvo <= 0, ativos sem preço unitário ou ativos já acima da meta, assegurando que `totalAllocated <= aporte`, `leftover` nunca negativo e distribuição ponderada por hierarquia Classe -> Setor -> Ativo).
+  2. **Subseletores e Mês de Referência:** Consolidar a navegação em pills nos proventos (Mensal, Calendário, Por Ativo, Bola de Neve) com o seletor de mês fixado logo abaixo, sem saltos de layout. (Concluído: `ProventosTab` em `src/features/investments/pages/proventos-tab.tsx` operando com barra de subseletores em pills `role="tablist"`, feedback sensorial com `triggerSensory("selection")`, persistência via `subtab` na URL e `<MonthPicker />` posicionado estritamente na subaba de Extrato Mensal logo abaixo dos seletores e ocultado nas demais visões, sem deslocamentos).
+  3. **Visualização de Caixa e Rentabilidade:** Refinar o card exclusivo de Caixa & Liquidez, cálculo do custo investido e rentabilidade consolidada com `<MoneyText />` tabular. (Concluído: `CashKpiCard` em `src/components/modules/cash-kpi-card.tsx` com `<MoneyText cents={numberToCents(cashBRL)} />`, auto-fit proporcional `tabular-nums tracking-tight whitespace-nowrap`, botões semânticos para "Ajustar Caixa" e "Aportar", e `ResumoTab` em `src/features/investments/pages/resumo-tab.tsx` com grid de 4 KPIs de performance e P&L contábil integrado).
+  4. **Snapshots Históricos e EmptyStates:** Assegurar que consultas a meses anteriores exibam os dados históricos gravados sem fallback silencioso para o mês atual. (Concluído: `PortfolioSnapshotsCarousel` e `PortfolioSnapshotsDialog` operando com ordenação cronológica decrescente dos dados gravados, visualização do TWR mês a mês e acumulado, atalho de impressão/PDF e empty state informativo quando não há registros).
+  5. **Testes Unitários:** Cobrir o motor de aporte, cálculo de preço médio e agrupamentos de proventos. (Concluído: ampliada a suíte em `src/domain/portfolio/aporte.test.ts` cobrindo casos extremos de aporte zero, ativos com preço 0 e carteiras acima da meta; 100% dos 51 arquivos e mais de 497 testes de domínio e páginas de investimento aprovados).
 - **Commit:** `refactor(investments): calibrate portfolio balance engine, dividend views, and historical snapshots`
+
 
 ---
 
