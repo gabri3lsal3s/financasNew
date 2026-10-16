@@ -116,10 +116,10 @@ graph TD
     - **Barrels de Export (`index.ts`):** Garantir que todas as pastas de features, componentes e domínio possuam barrels `index.ts` com exports nomeados consistentes, sem default exports.
   - **Critério de Saída:** Estrutura de diretórios em `src/` 100% aderente ao diagrama canônico de `PROJECT_STRUCTURE.md`.
 
-- [ ] **PORTÃO DE QUALIDADE DA FASE 0:**
+- [x] **PORTÃO DE QUALIDADE DA FASE 0:**
   - `npm run typecheck` verde (0 erros).
   - `npm run lint` verde (0 erros e 0 avisos).
-  - `npm run test` verde em toda a suíte.
+  - `npm run test` verde em toda a suíte (336 arquivos / 2.557 testes).
   - Commit semântico: `chore(governance): clean project root, consolidate docs and align directory structure`
   - `git push`
 
