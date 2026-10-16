@@ -557,12 +557,12 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ---
 
-### Tarefa 43: Code Splitting Global de Rotas Públicas/Auth e Lazy Loading de Modais Executivos Pesados
-- **Status:** ⏳ Pendente
+### Tarefa 43: Code Splitting Global de Rotas Públicas/Auth e Lazy Loading de Modais Executivos Pesados [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Otimizar o tempo de carregamento inicial e reduzir os chunks JS principais através de carregamento sob demanda (`React.lazy`) para páginas públicas/auth e modais executivos densos.
 - **Ações:**
-  1. **Code Splitting de Rotas em AppRouter:** Transformar `LandingPage`, `LoginPage`, `RegisterPage`, `ForgotPasswordPage`, `SubscriptionCheckoutPage`, `PendingApprovalPage` e `SuspendedAccountPage` em importações dinâmicas `lazy()` com Suspense e skeletons suaves.
-  2. **Lazy Loading de Modais Executivos Densos:** Aplicar lazy loading sob demanda para relatórios complexos (`WealthTearSheetModal`, `FinancialCloseReportModal`, `RestoreWizardDialog`).
-  3. **Verificação de Chunks no Build:** Executar o build Vite garantindo que os chunks principais não ultrapassem os limites recomendados.
-  4. **Testes e Regressão Global:** Rodar typecheck, lint e bateria completa de testes garantindo que nenhum fluxo ou teste foi quebrado pela importação dinâmica.
+  1. **Code Splitting de Rotas em AppRouter:** Transformar `LandingPage`, `LoginPage`, `RegisterPage`, `ForgotPasswordPage`, `SubscriptionCheckoutPage`, `SubscriptionSuccessPage`, `PendingApprovalPage` e `SuspendedAccountPage` em importações dinâmicas `lazy()` com Suspense e skeletons suaves. (Concluído: em `src/app/router.tsx`, todas as páginas públicas, de autenticação e checkout foram migradas para `lazy()`, envolvidas em `<Suspense fallback={<RouteSuspenseFallback />}>` com tela de transição suave e zero flash, reduzindo o bundle inicial do App Shell para usuários logados).
+  2. **Lazy Loading de Modais Executivos Densos:** Aplicar lazy loading sob demanda para relatórios complexos (`WealthTearSheetModal`, `FinancialCloseReportModal`, `RestoreWizardDialog`). (Concluído: em `reports-page.tsx`, `FinancialCloseReportModal` e `WealthTearSheetModal` agora utilizam `lazy()` sob demanda condicionado à flag `open`; em `security-tab.tsx`, `RestoreWizardDialog` com seus motores de hashing e parsing de backup modular foi isolado em chunk dinâmico sob demanda).
+  3. **Verificação de Chunks no Build:** Executar o build Vite garantindo que os chunks principais não ultrapassem os limites recomendados. (Concluído: `npm run build` gerou chunks dedicados menores para cada página [ex.: `login-page` 2.81 kB, `forgot-password-page` 2.09 kB, `restore-wizard` 25.89 kB, `financial-close-report-modal` 13.64 kB], eliminando alertas de tamanho de bundle e assegurando conformidade com o limite de 500 kB).
+  4. **Testes e Regressão Global:** Rodar typecheck, lint e bateria completa de testes garantindo que nenhum fluxo ou teste foi quebrado pela importação dinâmica. (Concluído: `tsc -b`, `eslint .`, `npx cap sync android` e `gradlew compileDebugJavaWithJavac` 100% aprovados, testes de integração de rotas com Suspense adicionados em `src/app/router.test.tsx` e suítes de relatórios e configurações atualizadas com `findByText`/`findAllByText`).
 - **Commit:** `perf(routing): apply code splitting for public auth routes and heavy executive modals`

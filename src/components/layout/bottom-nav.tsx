@@ -13,6 +13,9 @@ import { MoreMenuSheet } from "./more-menu-sheet";
 
 /**
  * Resolve a ação do FAB de acordo com o contexto da página e as permissões ativas do usuário.
+ * 1. Prioriza o contexto local caso a página atual possua ação/modal de criação própria e o módulo esteja ativo.
+ * 2. Em páginas neutras (ex.: Configurações, Relatórios, Lembretes), aplica a hierarquia dinâmica de criação:
+ *    Transações -> Investimentos -> Dívidas -> Orçamentos.
  */
 function getFabAction(
   pathname: string,
@@ -21,39 +24,56 @@ function getFabAction(
 ): { to: string; label: string } | null {
   const params = new URLSearchParams(search);
 
+  // --- 1. Ações Contextuais Locais (quando a página atual tem seu próprio modal) ---
+
+  // Página de Dívidas & Empréstimos
   if (pathname === "/dividas" && hasFeature("debts")) {
     params.set("novo", "divida");
     return { to: `${pathname}?${params.toString()}`, label: "Nova dívida" };
   }
 
-  if (pathname === "/categorias" && hasFeature("budgets")) {
+  // Página de Orçamentos & Categorias
+  if ((pathname === "/orcamentos" || pathname === "/categorias") && hasFeature("budgets")) {
     params.set("novo", "categoria");
     return { to: `${pathname}?${params.toString()}`, label: "Nova categoria" };
   }
 
-  if ((pathname === "/investments" || pathname === "/investimentos") && hasFeature("investments")) {
+  // Página de Investimentos & Carteira
+  if (
+    (pathname === "/investments" || pathname === "/investimentos" || pathname === "/carteira") &&
+    hasFeature("investments")
+  ) {
     params.set("novo", "investimento");
     return { to: `${pathname}?${params.toString()}`, label: "Novo investimento" };
   }
 
+  // Página de Cartões ou Transações
+  if ((pathname === "/cartoes" || pathname === "/transacoes" || pathname === "/") && hasFeature("transactions")) {
+    params.set("novo", "transacao");
+    return { to: `${pathname}?${params.toString()}`, label: "Nova transação" };
+  }
+
+  // --- 2. Fallback Dinâmico Prioritário (em páginas sem criação própria: Ajustes, Relatórios, etc.) ---
+
+  // 1º Prioridade: Transações (LaunchWizard é global no PageShell, abre sobre a rota atual)
   if (hasFeature("transactions")) {
     params.set("novo", "transacao");
     return { to: `${pathname}?${params.toString()}`, label: "Nova transação" };
   }
 
+  // 2º Prioridade: Investimentos (redireciona para o hub de investimentos com o wizard aberto)
   if (hasFeature("investments")) {
-    params.set("novo", "investimento");
-    return { to: `${pathname}?${params.toString()}`, label: "Novo investimento" };
+    return { to: "/investments?novo=investimento", label: "Novo investimento" };
   }
 
+  // 3º Prioridade: Dívidas (redireciona para a página de dívidas com formulário aberto)
   if (hasFeature("debts")) {
-    params.set("novo", "divida");
-    return { to: `${pathname}?${params.toString()}`, label: "Nova dívida" };
+    return { to: "/dividas?novo=divida", label: "Nova dívida" };
   }
 
+  // 4º Prioridade: Orçamentos / Categorias (redireciona para a página de orçamentos)
   if (hasFeature("budgets")) {
-    params.set("novo", "categoria");
-    return { to: `${pathname}?${params.toString()}`, label: "Nova categoria" };
+    return { to: "/orcamentos?novo=categoria", label: "Nova categoria" };
   }
 
   return null;

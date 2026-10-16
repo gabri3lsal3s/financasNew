@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import {
   ShieldCheck,
   Lock,
@@ -22,7 +22,9 @@ import {
 import type { SelectOption } from "@/components/ui";
 import { ExportDataHub } from "@/components/modules";
 import type { ExportCsvKind, ExportRange } from "@/components/modules";
-import { RestoreWizardDialog } from "../restore-wizard";
+const RestoreWizardDialog = lazy(() =>
+  import("../restore-wizard").then((m) => ({ default: m.RestoreWizardDialog }))
+);
 import { useAuth } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { downloadCsv, downloadJson } from "@/services/export-actions";
@@ -526,10 +528,14 @@ export function SecurityTab() {
         }}
       />
 
-      <RestoreWizardDialog
-        open={restoreWizardOpen}
-        onOpenChange={setRestoreWizardOpen}
-      />
+      {restoreWizardOpen && (
+        <Suspense fallback={null}>
+          <RestoreWizardDialog
+            open={restoreWizardOpen}
+            onOpenChange={setRestoreWizardOpen}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

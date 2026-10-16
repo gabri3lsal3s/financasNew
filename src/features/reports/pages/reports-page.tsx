@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { useSearchParams } from "react-router";
 import { FileSpreadsheet, Landmark, Scale, TrendingUp } from "lucide-react";
 import { Button, ErrorState, Skeleton, Tabs, type TabItem } from "@/components/ui";
@@ -47,10 +47,8 @@ import { PortfolioDarfMonitor } from "@/features/investments/components";
 import {
   ConsolidatedWealthModal,
   DividendFreedomModal,
-  FinancialCloseReportModal,
   ReportDetailDialog,
   TaxFacilitatorModal,
-  WealthTearSheetModal,
   FinancialTab,
   InvestmentsTab,
   BalanceTab,
@@ -58,6 +56,18 @@ import {
   type AggregationTab,
 } from "../components";
 import type { Expense } from "@/types";
+
+const FinancialCloseReportModal = lazy(() =>
+  import("../components/financial-close-report-modal").then((m) => ({
+    default: m.FinancialCloseReportModal,
+  }))
+);
+
+const WealthTearSheetModal = lazy(() =>
+  import("../components/wealth-tear-sheet-modal").then((m) => ({
+    default: m.WealthTearSheetModal,
+  }))
+);
 import { numberToCents } from "@/domain/money";
 import type { ExcelWorkbookData } from "@/services/excel-export";
 
@@ -1047,81 +1057,89 @@ export function ReportsPage() {
       />
 
       {/* Modais de Dossiês de Consultoria */}
-      <FinancialCloseReportModal
-        open={financialReportOpen}
-        onOpenChange={setFinancialReportOpen}
-        periodLabel={periodLabel}
-        dre={financialDRE}
-        categories={byCategory.map((c) => ({
-          name: c.name,
-          brutoCents: c.brutoCents,
-          ponderadoCents: c.ponderadoCents,
-          totalCents: c.brutoCents,
-          pct: grossExpenseBrutoCents > 0 ? (c.brutoCents / grossExpenseBrutoCents) * 100 : 0,
-        }))}
-        paymentMethods={byMethod.map((m) => ({
-          method: m.method,
-          label: PAYMENT_METHOD_LABELS[m.method as keyof typeof PAYMENT_METHOD_LABELS] ?? m.method,
-          brutoCents: m.brutoCents,
-          ponderadoCents: m.ponderadoCents,
-          totalCents: m.brutoCents,
-          pct: grossExpenseBrutoCents > 0 ? (m.brutoCents / grossExpenseBrutoCents) * 100 : 0,
-        }))}
-        expenseCount={expenseEntries.length}
-        incomeCount={incomeEntries.length}
-        showWeightedNote={weightsEnabled}
-      />
+      {financialReportOpen && (
+        <Suspense fallback={null}>
+          <FinancialCloseReportModal
+            open={financialReportOpen}
+            onOpenChange={setFinancialReportOpen}
+            periodLabel={periodLabel}
+            dre={financialDRE}
+            categories={byCategory.map((c) => ({
+              name: c.name,
+              brutoCents: c.brutoCents,
+              ponderadoCents: c.ponderadoCents,
+              totalCents: c.brutoCents,
+              pct: grossExpenseBrutoCents > 0 ? (c.brutoCents / grossExpenseBrutoCents) * 100 : 0,
+            }))}
+            paymentMethods={byMethod.map((m) => ({
+              method: m.method,
+              label: PAYMENT_METHOD_LABELS[m.method as keyof typeof PAYMENT_METHOD_LABELS] ?? m.method,
+              brutoCents: m.brutoCents,
+              ponderadoCents: m.ponderadoCents,
+              totalCents: m.brutoCents,
+              pct: grossExpenseBrutoCents > 0 ? (m.brutoCents / grossExpenseBrutoCents) * 100 : 0,
+            }))}
+            expenseCount={expenseEntries.length}
+            incomeCount={incomeEntries.length}
+            showWeightedNote={weightsEnabled}
+          />
+        </Suspense>
+      )}
 
-      <WealthTearSheetModal
-        open={tearSheetOpen}
-        onOpenChange={setTearSheetOpen}
-        periodLabel={periodLabel}
-        rows={positionRows.map((r) => {
-          const yoc = r.totalCostBRL > 0 ? ((r.dividends ?? 0) / r.totalCostBRL) * 100 : 0;
-          return {
-            ticker: r.ticker,
-            name: r.ticker,
-            assetClass: r.assetClass ?? "outros",
-            sector: r.sector,
-            currency: r.currency ?? "BRL",
-            quantity: r.quantity,
-            averagePrice: r.averageCost,
-            currentPrice: r.priceQuote,
-            valueBRL: r.valueBRL,
-            totalCostBRL: r.totalCostBRL,
-            unrealizedPnlBRL: r.unrealizedPnl,
-            unrealizedPnlPct: r.unrealizedPct ?? 0,
-            totalReturnPnlBRL: r.totalReturnPnl,
-            totalReturnPct: r.totalReturnPct ?? (r.unrealizedPct ?? 0),
-            dividendsBRL: r.dividends ?? 0,
-            yearDividendsBRL: r.dividends ?? 0,
-            yocPct: yoc,
-            isCash: isCashAssetClass(r.assetClass),
-          };
-        })}
-        totalBRL={totalPatrimonyBRL}
-        totalCostBRL={totalInvestedCostBRL}
-        totalDividendsBRL={positionQuery.totalDividendsBRL}
-        totalReturnPnlBRL={positionQuery.totalReturnPnlBRL}
-        totalReturnPct={positionQuery.totalReturnPct}
-        unrealizedPnlBRL={positionQuery.unrealizedPnlBRL}
-        unrealizedPnlPct={positionQuery.unrealizedPct}
-        periodRedemptions={periodRedemptions}
-        cashBRL={cashBalanceBRL}
-        yearDividendsBRL={yearDividendsBRL}
-        monthSummary={periodFlowSummary}
-        allocationAnalysis={allocationAnalysis}
-        concentrationRisk={concentrationRisk}
-        portfolioIrr={positionQuery.portfolioIrr}
-        portfolioTwr={positionQuery.portfolioTwr}
-        monthlySeries={positionQuery.monthlySeries}
-        allTimeEconomicPnlBRL={positionQuery.allTimeEconomicPnlBRL}
-        realizedPnlBRL={positionQuery.realizedPnlBRL}
-        annualCdiRate={macroIndicatorsQuery.data?.annualCdiRate}
-        annualSelicRate={macroIndicatorsQuery.data?.annualSelicRate}
-        annualIpcaRate={macroIndicatorsQuery.data?.annualIpcaRate}
-        ibovPeriodReturnPct={macroIndicatorsQuery.data?.ibovPeriodReturnPct}
-      />
+      {tearSheetOpen && (
+        <Suspense fallback={null}>
+          <WealthTearSheetModal
+            open={tearSheetOpen}
+            onOpenChange={setTearSheetOpen}
+            periodLabel={periodLabel}
+            rows={positionRows.map((r) => {
+              const yoc = r.totalCostBRL > 0 ? ((r.dividends ?? 0) / r.totalCostBRL) * 100 : 0;
+              return {
+                ticker: r.ticker,
+                name: r.ticker,
+                assetClass: r.assetClass ?? "outros",
+                sector: r.sector,
+                currency: r.currency ?? "BRL",
+                quantity: r.quantity,
+                averagePrice: r.averageCost,
+                currentPrice: r.priceQuote,
+                valueBRL: r.valueBRL,
+                totalCostBRL: r.totalCostBRL,
+                unrealizedPnlBRL: r.unrealizedPnl,
+                unrealizedPnlPct: r.unrealizedPct ?? 0,
+                totalReturnPnlBRL: r.totalReturnPnl,
+                totalReturnPct: r.totalReturnPct ?? (r.unrealizedPct ?? 0),
+                dividendsBRL: r.dividends ?? 0,
+                yearDividendsBRL: r.dividends ?? 0,
+                yocPct: yoc,
+                isCash: isCashAssetClass(r.assetClass),
+              };
+            })}
+            totalBRL={totalPatrimonyBRL}
+            totalCostBRL={totalInvestedCostBRL}
+            totalDividendsBRL={positionQuery.totalDividendsBRL}
+            totalReturnPnlBRL={positionQuery.totalReturnPnlBRL}
+            totalReturnPct={positionQuery.totalReturnPct}
+            unrealizedPnlBRL={positionQuery.unrealizedPnlBRL}
+            unrealizedPnlPct={positionQuery.unrealizedPct}
+            periodRedemptions={periodRedemptions}
+            cashBRL={cashBalanceBRL}
+            yearDividendsBRL={yearDividendsBRL}
+            monthSummary={periodFlowSummary}
+            allocationAnalysis={allocationAnalysis}
+            concentrationRisk={concentrationRisk}
+            portfolioIrr={positionQuery.portfolioIrr}
+            portfolioTwr={positionQuery.portfolioTwr}
+            monthlySeries={positionQuery.monthlySeries}
+            allTimeEconomicPnlBRL={positionQuery.allTimeEconomicPnlBRL}
+            realizedPnlBRL={positionQuery.realizedPnlBRL}
+            annualCdiRate={macroIndicatorsQuery.data?.annualCdiRate}
+            annualSelicRate={macroIndicatorsQuery.data?.annualSelicRate}
+            annualIpcaRate={macroIndicatorsQuery.data?.annualIpcaRate}
+            ibovPeriodReturnPct={macroIndicatorsQuery.data?.ibovPeriodReturnPct}
+          />
+        </Suspense>
+      )}
 
       <DividendFreedomModal
         open={dividendFreedomOpen}

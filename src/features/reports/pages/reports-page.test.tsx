@@ -327,8 +327,8 @@ describe("ReportsPage (Central Unificada §F42)", () => {
     const openBtn = screen.getByRole("button", { name: /Visualizar & Imprimir Dossiê A4/i });
     await user.click(openBtn);
 
-    expect(screen.getAllByText("Relatório Executivo de Finanças Pessoais & DRE")[0]).toBeInTheDocument();
-    expect(screen.getAllByText("DRE Pessoal — Demonstração do Período")[0]).toBeInTheDocument();
+    expect((await screen.findAllByText("Relatório Executivo de Finanças Pessoais & DRE"))[0]).toBeInTheDocument();
+    expect((await screen.findAllByText("DRE Pessoal — Demonstração do Período"))[0]).toBeInTheDocument();
   });
 
   it("mantém a barra de controle de período visível ao navegar entre abas", async () => {

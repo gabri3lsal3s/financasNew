@@ -6,6 +6,7 @@ import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon, MonthPicker, ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
 import { HighlightRow } from "@/components/modules/highlight-row";
+import { useCreateDeepLink } from "@/hooks";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import {
   budgetLimitsByCategory,
@@ -56,7 +57,7 @@ export function BudgetsPage() {
   const [limitFor, setLimitFor] = useState<Category | null>(null);
   const [goalFor, setGoalFor] = useState<Category | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [categoryFormOpen, setCategoryFormOpen] = useState(false);
+  const { open: categoryFormOpen, setOpen: setCategoryFormOpen } = useCreateDeepLink("categoria");
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [reallocateOpen, setReallocateOpen] = useState(false);
   const [reallocateError, setReallocateError] = useState<string | null>(null);

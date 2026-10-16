@@ -134,8 +134,8 @@ describe("SecurityTab - Bloqueio do Aplicativo & Privacidade", () => {
 
     await user.click(openWizardBtn);
 
-    expect(screen.getByText("Assistente de Restauração de Backup")).toBeInTheDocument();
-    expect(screen.getByText("Validação")).toBeInTheDocument();
+    expect(await screen.findByText("Assistente de Restauração de Backup")).toBeInTheDocument();
+    expect(await screen.findByText("Validação")).toBeInTheDocument();
   });
 });
 

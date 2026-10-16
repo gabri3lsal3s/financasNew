@@ -5148,13 +5148,18 @@ flowchart TD
 - **Modelo Fail-Closed & Derivação do Overview:**
   - Fallback transitório de `useUserSubscription` configurado com `canWrite: false`, `isFullAccess: false` e `moduleAccess: {}`;
   - Derivação inteligente da `overview`: automaticamente suprimida caso o usuário não possua módulos financeiros ativos (`transactions`, `cards`, `debts`, `budgets`), direcionando-o diretamente à sua landing permitida (ex.: `/investments`).
+- **FAB Central Contextual com Fallback Dinâmico Prioritário (`BottomNav`):**
+  - Botão FAB central (`+`) preserva criação contextual quando a página possui modal (`/dividas`, `/orcamentos`, `/investments`, `/cartoes`, `/transacoes`);
+  - Em páginas neutras (ex.: `/configuracoes`, `/relatorios`, `/lembretes`), o FAB não fica inoperante: adota fallback dinâmico seguindo a hierarquia prioritária de módulos ativos (`transactions` -> `investments` -> `debts` -> `budgets`), direcionando com deep link (ex.: `/investments?novo=investimento` para usuário restrito a investimentos);
+  - Adicionado suporte nativo a deep link `?novo=categoria` no `BudgetsPage` (`/orcamentos`).
 
 **✅ DoD (Definition of Done da Fase 91):**
 - [x] Migration SQL 0046 criada e validada.
 - [x] Regra de Whitelist modular ativa no Postgres e no frontend TypeScript.
 - [x] Waterfall de carregamento eliminado com queries paralelas em `useUserAccess`.
 - [x] Fallback transitório fail-closed sem permissões prematuras de escrita.
-- [x] Testes unitários de Whitelist e controle de acesso 100% verdes (`use-user-access.test.tsx` e `use-permission.test.ts`).
+- [x] FAB central inteligente com ação contextual e fallback dinâmico por prioridade em páginas neutras.
+- [x] Testes unitários de Whitelist, controle de acesso e BottomNav 100% verdes (`use-user-access.test.tsx`, `use-permission.test.ts` e `bottom-nav.test.tsx`).
 - [x] Typecheck estrito (`tsc -b`) e lint (`npm run lint`) limpos sem erros.
 
 

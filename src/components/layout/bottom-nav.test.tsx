@@ -8,6 +8,8 @@ let mockSubscription = {
   canWrite: true,
 };
 
+let mockHasFeature: (key: string) => boolean = () => true;
+
 vi.mock("@/state", () => ({
   useUserSubscription: () => mockSubscription,
   useReminders: () => ({
@@ -22,7 +24,7 @@ vi.mock("@/state", () => ({
     status: "active",
     isAdmin: false,
     isSuperAdmin: false,
-    hasFeature: () => true,
+    hasFeature: (key: string) => mockHasFeature(key),
     isLoading: false,
   }),
 }));
@@ -98,6 +100,7 @@ describe("BottomNav Dinâmica & Adaptativa", () => {
 
   it("bloqueia navegação e abre diálogo de Upgrade ao clicar no FAB em modo somente-leitura", () => {
     mockSubscription = { isReadOnly: true, canWrite: false };
+    mockHasFeature = () => true;
     renderNav("/");
 
     const fab = screen.getByRole("link", { name: "Nova transação" });
@@ -106,5 +109,31 @@ describe("BottomNav Dinâmica & Adaptativa", () => {
     // O diálogo de upgrade deve abrir
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText(/Nova transação/i)).toBeInTheDocument();
+  });
+
+  it("FAB contextual em /orcamentos aponta para /orcamentos?novo=categoria", () => {
+    mockHasFeature = () => true;
+    renderNav("/orcamentos");
+    expect(screen.getByRole("link", { name: "Nova categoria" })).toHaveAttribute("href", "/orcamentos?novo=categoria");
+  });
+
+  it("FAB em página neutra (/configuracoes) adota fallback dinâmico para /investments?novo=investimento para usuário que só tem investimentos", () => {
+    mockSubscription = { isReadOnly: false, canWrite: true };
+    mockHasFeature = (key: string) => key === "investments";
+
+    renderNav("/configuracoes");
+
+    const fab = screen.getByRole("link", { name: "Novo investimento" });
+    expect(fab).toHaveAttribute("href", "/investments?novo=investimento");
+  });
+
+  it("FAB em página neutra (/relatorios) adota fallback dinâmico para Nova transação quando o usuário possui transações", () => {
+    mockSubscription = { isReadOnly: false, canWrite: true };
+    mockHasFeature = () => true;
+
+    renderNav("/relatorios");
+
+    const fab = screen.getByRole("link", { name: "Nova transação" });
+    expect(fab).toHaveAttribute("href", "/relatorios?novo=transacao");
   });
 });
