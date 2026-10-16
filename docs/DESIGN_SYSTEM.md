@@ -392,7 +392,7 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 ### 13.2 Modal & ResponsiveDialog (Diálogos Centrados & Bottom Sheets)
 - **Componentes:** `src/components/ui/modal.tsx` e `src/components/ui/responsive-dialog.tsx`.
 - **Mecânica Responsiva Dual-Mode:**
-  - **Mobile (< 768px):** Gaveta inferior (*Bottom Sheet*) ancorada acima da barra de navegação inferior (`bottom-[calc(4rem+env(safe-area-inset-bottom,0px))]`) com compensação de safe area, alça ergonômica (`h-1 w-10 bg-primary/30 hover:bg-primary/50`), bordas unificadas na cor de destaque ativa do tema (`border border-primary/25`) e fechamento por arrasto (*drag-to-close* com resistência elástica e velocity fling).
+  - **Mobile (< 768px):** Gaveta inferior (*Bottom Sheet*) ancorada na base da tela (`bottom-0`) com cantos superiores arredondados (`rounded-t-2xl`), compensação de safe area (`pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]`), altura adaptativa máxima (`max-h-[90dvh]`), alça ergonômica (`h-1 w-10 bg-primary/30 hover:bg-primary/50`), bordas unificadas na cor de destaque ativa do tema (`border border-primary/25`) e fechamento por arrasto (*drag-to-close* com resistência elástica e velocity fling). O overlay (`z-modal: 50`) cobre a tela por inteiro incluindo o menu inferior, eliminando frestas indesejadas na base e prevenindo colisões no topo.
   - **Tablet & Desktop (≥ 768px / `md:`):** Diálogo centralizado com backdrop blur suave (`bg-overlay backdrop-blur-sm`), bordas arredondadas `rounded-2xl` com acabamento `border border-primary/25` e dimensões proporcionais.
 - **Matriz Canônica de Larguras (`ModalSize`):**
   - `sm` (`md:max-w-md` / 448px): Alertas de exclusão, confirmações breves e modal de perfil compacto.

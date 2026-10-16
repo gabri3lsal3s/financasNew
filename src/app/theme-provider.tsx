@@ -104,8 +104,14 @@ export function useTheme(): ThemeContextValue {
 export function useSafeTheme(): Theme {
   const ctx = useContext(ThemeContext);
   if (ctx) return ctx.theme;
-  if (typeof document !== "undefined" && document.documentElement.classList.contains("dark")) {
-    return "dark";
+  if (typeof document !== "undefined") {
+    const dataTheme = document.documentElement.getAttribute("data-theme");
+    if (dataTheme === "light" || dataTheme === "dark" || dataTheme === "oled") {
+      return dataTheme;
+    }
+    if (typeof window !== "undefined" && window.matchMedia && !window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      return "light";
+    }
   }
   return "dark";
 }
