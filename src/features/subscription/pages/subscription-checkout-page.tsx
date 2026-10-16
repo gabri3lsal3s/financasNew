@@ -23,7 +23,7 @@ import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { BrandLogo } from "@/components/layout";
+import { BrandLogo, LoadingScreen } from "@/components/layout";
 import { useAuth, signInWithEmail, signUpWithEmail } from "@/hooks/use-auth";
 import { useUserSubscription, USER_SUBSCRIPTION_KEY } from "@/state";
 import { triggerSensory } from "@/services/sensory";
@@ -174,8 +174,10 @@ export function SubscriptionCheckoutPage() {
   // Se estiver no plano mensal, força o método para cartão de crédito
   const activeMethod = plan === "monthly" ? "credit_card" : method;
 
-  // Aguardar autenticação inicial
-  if (authLoading) return null;
+  // Aguardar autenticação inicial exibindo a tela de carregamento oficial
+  if (authLoading) {
+    return <LoadingScreen statusText="Iniciando ambiente seguro…" />;
+  }
 
   // Já é Pro (e não acabou de ativar via PIX) → redirecionar para o app
   if (session && subscription.isPro && !pixResult) {

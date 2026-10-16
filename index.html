@@ -173,14 +173,49 @@
         color: #FFFFFF;
       }
 
-      #app-splash-icon {
+      .app-splash-icon {
         width: 140px;
         height: 140px;
-        display: block;
+        display: none;
         animation: splash-pulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         user-select: none;
         -webkit-user-drag: none;
         filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.08));
+      }
+
+      /* Responsividade visual ao tema ativo (Claro vs Escuro/OLED) */
+      html[data-theme="light"] .app-splash-light {
+        display: block;
+      }
+      html[data-theme="light"] .app-splash-dark {
+        display: none;
+      }
+
+      html[data-theme="dark"] .app-splash-light,
+      html[data-theme="oled"] .app-splash-light {
+        display: none;
+      }
+      html[data-theme="dark"] .app-splash-dark,
+      html[data-theme="oled"] .app-splash-dark {
+        display: block;
+      }
+
+      /* Fallback com prefers-color-scheme antes de data-theme ser injetado */
+      @media (prefers-color-scheme: dark) {
+        html:not([data-theme="light"]) .app-splash-light {
+          display: none;
+        }
+        html:not([data-theme="light"]) .app-splash-dark {
+          display: block;
+        }
+      }
+      @media (prefers-color-scheme: light) {
+        html:not([data-theme="dark"]):not([data-theme="oled"]) .app-splash-light {
+          display: block;
+        }
+        html:not([data-theme="dark"]):not([data-theme="oled"]) .app-splash-dark {
+          display: none;
+        }
       }
 
       /* Keyframes */
@@ -191,12 +226,12 @@
 
       /* Redução de movimento */
       @media (prefers-reduced-motion: reduce) {
-        #app-splash-icon {
+        .app-splash-icon {
           animation: none;
         }
       }
 
-      html[data-motion="reduced"] #app-splash-icon {
+      html[data-motion="reduced"] .app-splash-icon {
         animation: none;
       }
 
@@ -211,16 +246,38 @@
     </style>
   </head>
   <body>
-    <!-- Splash screen inline inicial com fade suave (Web, PWA e Android WebView) -->
+    <!-- Splash screen inline inicial com fade suave e logo responsiva ao tema ativo -->
     <div id="app-splash" aria-hidden="true" role="presentation">
       <img
-        id="app-splash-icon"
-        src="/brand/logo.png"
+        id="app-splash-icon-light"
+        class="app-splash-icon app-splash-light"
+        src="/brand/logo-teal-light-192.png"
         alt=""
         width="140"
         height="140"
         decoding="async"
       />
+      <img
+        id="app-splash-icon-dark"
+        class="app-splash-icon app-splash-dark"
+        src="/brand/logo-teal-dark-192.png"
+        alt=""
+        width="140"
+        height="140"
+        decoding="async"
+      />
+      <script>
+        (function() {
+          try {
+            if (localStorage.getItem('last_applied_icon_tier') === 'PRO') {
+              var l = document.getElementById('app-splash-icon-light');
+              var d = document.getElementById('app-splash-icon-dark');
+              if (l) l.src = '/brand/logo-amber-light-192.png';
+              if (d) d.src = '/brand/logo-amber-dark-192.png';
+            }
+          } catch (e) {}
+        })();
+      </script>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
