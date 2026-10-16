@@ -17,7 +17,7 @@ export function LandingFooter() {
           <div className="grid grid-cols-1 gap-8 md:grid-cols-12 items-start">
             {/* Coluna 1: Marca & Compromisso */}
             <div className="flex flex-col gap-4 md:col-span-5">
-              <BrandLogo markClassName="size-8" wordmarkClassName="text-base sm:text-lg" />
+              <BrandLogo markClassName="size-8" showWordmark wordmarkClassName="text-base sm:text-lg" />
               <p className="text-xs sm:text-sm text-muted-foreground max-w-sm leading-relaxed">
                 A plataforma definitiva para controle financeiro pessoal, inteligência de aportes e rebalanceamento de carteira sem fórmulas frágeis.
               </p>
@@ -84,7 +84,7 @@ export function LandingFooter() {
           {/* Bottom bar */}
           <div className="mt-10 pt-6 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
             <div>
-              © {currentYear} Guia Financeiro. Todos os direitos reservados.
+              © {currentYear} Áxis • Guia Financeiro. Todos os direitos reservados.
             </div>
             <div className="flex items-center gap-1">
               <span>Desenvolvido com foco em precisão e liberdade</span>

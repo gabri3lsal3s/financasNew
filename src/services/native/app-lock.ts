@@ -1,6 +1,6 @@
 import { App } from "@capacitor/app";
 import { getUserStorageItem, setUserStorageItem } from "@/services/user-storage";
-import { authenticateWithBiometrics } from "./biometrics";
+import { isBiometricAuthInProgress, authenticateWithBiometrics } from "./biometrics";
 import { disablePrivacyShield, enablePrivacyShield } from "./privacy-shield";
 import { isNativePlatform } from "./platform";
 
@@ -12,7 +12,25 @@ const KEY_PRIVACY_SHIELD = "privacy_shield_enabled";
  * Lê se o bloqueio por biometria está ativado pelo usuário.
  */
 export function isBiometricLockEnabled(userId?: string | null): boolean {
-  return getUserStorageItem(KEY_BIOMETRIC_LOCK, userId) === "true";
+  const direct = getUserStorageItem(KEY_BIOMETRIC_LOCK, userId);
+  if (direct !== null) return direct === "true";
+
+  if (typeof window !== "undefined") {
+    try {
+      const activeVal = window.localStorage.getItem(`financas_active_${KEY_BIOMETRIC_LOCK}`);
+      if (activeVal !== null) return activeVal === "true";
+
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const k = window.localStorage.key(i);
+        if (k && k.startsWith("financas_") && k.endsWith(`_${KEY_BIOMETRIC_LOCK}`)) {
+          return window.localStorage.getItem(k) === "true";
+        }
+      }
+    } catch {
+      // no-op
+    }
+  }
+  return false;
 }
 
 /**
@@ -20,6 +38,13 @@ export function isBiometricLockEnabled(userId?: string | null): boolean {
  */
 export function setBiometricLockEnabled(enabled: boolean, userId?: string | null): void {
   setUserStorageItem(KEY_BIOMETRIC_LOCK, String(enabled), userId);
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(`financas_active_${KEY_BIOMETRIC_LOCK}`, String(enabled));
+    } catch {
+      // no-op
+    }
+  }
   notifyLockListeners();
 }
 
@@ -68,7 +93,8 @@ export function setPrivacyShieldEnabled(enabled: boolean, userId?: string | null
 
 // ---------- Estado Reativo de Bloqueio em Memória ----------
 
-let isLocked = false;
+// No cold start nativo, inicializa já travado se o usuário habilitou o bloqueio biométrico
+let isLocked = typeof window !== "undefined" && isNativePlatform() && isBiometricLockEnabled();
 const lockListeners = new Set<() => void>();
 
 function notifyLockListeners(): void {
@@ -84,6 +110,9 @@ export function isAppLocked(): boolean {
 export function setAppLocked(locked: boolean): void {
   if (isLocked === locked) return;
   isLocked = locked;
+  if (!locked) {
+    lastBackgroundTime = 0;
+  }
   notifyLockListeners();
 }
 
@@ -100,6 +129,7 @@ export function subscribeAppLock(listener: () => void): () => void {
 export async function unlockAppWithBiometrics(): Promise<boolean> {
   const result = await authenticateWithBiometrics("Desbloqueie o aplicativo para acessar seus dados");
   if (result.success) {
+    lastBackgroundTime = 0;
     setAppLocked(false);
     return true;
   }
@@ -112,6 +142,13 @@ let lastBackgroundTime = 0;
 let isListenerActive = false;
 
 /**
+ * Redefine o timestamp de início de segundo plano.
+ */
+export function resetAppLockBackgroundTimer(): void {
+  lastBackgroundTime = 0;
+}
+
+/**
  * Inicializa o monitoramento de ciclo de vida do app nativo.
  * Ao retornar do background após a tolerância configurada, bloqueia o app.
  */
@@ -121,22 +158,34 @@ export function initAppLockListener(): () => void {
     void enablePrivacyShield();
   }
 
+  // No cold start nativo, se a biometria estiver ativa, garante o bloqueio imediato
+  if (isNativePlatform() && isBiometricLockEnabled()) {
+    setAppLocked(true);
+  }
+
   if (!isNativePlatform() || isListenerActive) {
     return () => {};
   }
 
   isListenerActive = true;
   const listenerPromise = App.addListener("appStateChange", ({ isActive }) => {
+    // Se a autenticação biométrica nativa está em andamento (ou na janela de retorno),
+    // a alternância de foco da janela não representa uma saída real do aplicativo.
+    if (isBiometricAuthInProgress()) {
+      return;
+    }
+
     if (!isActive) {
       lastBackgroundTime = Date.now();
     } else {
-      if (isBiometricLockEnabled()) {
+      if (lastBackgroundTime > 0 && isBiometricLockEnabled()) {
         const timeoutMinutes = getBiometricLockTimeoutMinutes();
         const timeoutMs = timeoutMinutes * 60 * 1000;
         if (Date.now() - lastBackgroundTime >= timeoutMs) {
           setAppLocked(true);
         }
       }
+      lastBackgroundTime = 0;
     }
   });
 

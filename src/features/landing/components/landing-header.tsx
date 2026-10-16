@@ -56,7 +56,7 @@ export function LandingHeader() {
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-12">
         <Link to="/" className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg">
-          <BrandLogo markClassName="size-8" wordmarkClassName="text-base sm:text-lg" />
+          <BrandLogo markClassName="size-8" showWordmark wordmarkClassName="text-base sm:text-lg" />
         </Link>
 
         {/* Desktop Navigation com Pílulas de Foco Ativo */}

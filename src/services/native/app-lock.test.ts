@@ -103,4 +103,62 @@ describe("Gateway Nativo — App Lock & Biometria", () => {
     expect(App.addListener).toHaveBeenCalledWith("appStateChange", expect.any(Function));
     cleanup();
   });
+
+  it("ignora appStateChange se a autenticação biométrica estiver em andamento (anti-loop)", async () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+    let stateCallback: (state: { isActive: boolean }) => void = () => {};
+    vi.mocked(App.addListener).mockImplementation((_event, cb) => {
+      stateCallback = cb as unknown as (state: { isActive: boolean }) => void;
+      return Promise.resolve({ remove: vi.fn() } as unknown as { remove: () => Promise<void> });
+    });
+
+    setBiometricLockEnabled(true);
+    const cleanup = initAppLockListener();
+    setAppLocked(false);
+
+    // Simula biometria em andamento
+    vi.spyOn(biometricsModule, "isBiometricAuthInProgress").mockReturnValue(true);
+
+    stateCallback({ isActive: false });
+    stateCallback({ isActive: true });
+
+    expect(isAppLocked()).toBe(false);
+    cleanup();
+  });
+
+  it("bloqueia o aplicativo ao retornar do background após a tolerância expirada", async () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+    let stateCallback: (state: { isActive: boolean }) => void = () => {};
+    vi.mocked(App.addListener).mockImplementation((_event, cb) => {
+      stateCallback = cb as unknown as (state: { isActive: boolean }) => void;
+      return Promise.resolve({ remove: vi.fn() } as unknown as { remove: () => Promise<void> });
+    });
+
+    setBiometricLockEnabled(true);
+    setBiometricLockTimeoutMinutes(1);
+    vi.spyOn(biometricsModule, "isBiometricAuthInProgress").mockReturnValue(false);
+
+    const cleanup = initAppLockListener();
+
+    const now = 1000000;
+    vi.spyOn(Date, "now").mockReturnValue(now);
+    stateCallback({ isActive: false });
+
+    // 2 minutos depois (tolerância excedida)
+    vi.spyOn(Date, "now").mockReturnValue(now + 120_000);
+    stateCallback({ isActive: true });
+
+    expect(isAppLocked()).toBe(true);
+    cleanup();
+  });
+
+  it("bloqueia o aplicativo no cold start se a biometria estiver ativa em plataforma nativa", () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+    setBiometricLockEnabled(true);
+    setAppLocked(false);
+
+    const cleanup = initAppLockListener();
+    expect(isAppLocked()).toBe(true);
+    cleanup();
+  });
 });

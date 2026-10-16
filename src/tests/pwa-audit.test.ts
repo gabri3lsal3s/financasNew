@@ -61,7 +61,7 @@ describe("Auditoria PWA (instalabilidade)", () => {
     expect(html).toContain('rel="apple-touch-icon"');
     expect(html).toContain('name="apple-mobile-web-app-capable" content="yes"');
     expect(html).toContain('name="apple-mobile-web-app-status-bar-style" content="black-translucent"');
-    expect(html).toContain('name="apple-mobile-web-app-title" content="Guia Financeiro"');
+    expect(html).toContain('name="apple-mobile-web-app-title" content="Áxis • Guia Financeiro"');
   });
 
   it("Service Worker: autoUpdate com onNeedReload (toast, sem reload automático)", () => {

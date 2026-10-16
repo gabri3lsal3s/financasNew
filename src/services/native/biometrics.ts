@@ -60,6 +60,17 @@ export async function checkBiometricsAvailability(): Promise<BiometricAvailabili
   }
 }
 
+let isAuthenticating = false;
+let authGraceTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Indica se uma solicitação de autenticação biométrica do sistema está aberta ou
+ * acabou de fechar, prevenindo falsos disparos de eventos de background/appStateChange.
+ */
+export function isBiometricAuthInProgress(): boolean {
+  return isAuthenticating;
+}
+
 /**
  * Solicita autenticação biométrica (impressão digital ou face).
  * Em Web/PWA, opera como no-op seguro permitindo acesso transparente.
@@ -70,11 +81,17 @@ export async function authenticateWithBiometrics(
   const reasonText =
     typeof reasonOrOptions === "string"
       ? reasonOrOptions
-      : reasonOrOptions?.reason ?? "Confirme sua identidade para acessar o Guia Financeiro";
+      : reasonOrOptions?.reason ?? "Confirme sua identidade para acessar o Áxis • Guia Financeiro";
 
   if (!isNativePlatform()) {
     return { success: true };
   }
+
+  if (authGraceTimer !== null) {
+    clearTimeout(authGraceTimer);
+    authGraceTimer = null;
+  }
+  isAuthenticating = true;
 
   try {
     await BiometricAuth.authenticate({
@@ -88,5 +105,13 @@ export async function authenticateWithBiometrics(
       success: false,
       error: err instanceof Error ? err.message : "Falha na autenticação biométrica",
     };
+  } finally {
+    // Mantém a flag ativa por uma breve janela (800ms) para que os eventos
+    // onPause/onResume emitidos pelo SO ao fechar a BiometricPrompt nativa
+    // não sejam interpretados como ida e volta do app em segundo plano.
+    authGraceTimer = setTimeout(() => {
+      isAuthenticating = false;
+      authGraceTimer = null;
+    }, 800);
   }
 }

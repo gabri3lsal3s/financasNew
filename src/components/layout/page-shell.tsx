@@ -131,16 +131,17 @@ export function PageShell() {
         )}
       >
         {/* Header fluido com elevação dinâmica de rolagem (F7.3/F56 / DESIGN_SYSTEM §6 e §8).
-            Preserva a borda contínua conectada à Sidebar e eleva com sombra suave e blur. */}
+            Preserva a borda contínua conectada à Sidebar e eleva com sombra suave e blur.
+            pt-[env(safe-area-inset-top,0px)] garante afastamento perfeito da barra de status no mobile. */}
         <header
           className={cn(
-            "sticky top-0 z-sticky flex h-16 shrink-0 items-center border-b border-border transition-[background-color,backdrop-filter,box-shadow] duration-200 app-region-drag",
+            "sticky top-0 z-sticky flex shrink-0 items-center border-b border-border transition-[background-color,backdrop-filter,box-shadow] duration-200 app-region-drag pt-[env(safe-area-inset-top,0px)]",
             isScrolled
               ? "bg-surface/95 backdrop-blur-md shadow-xs"
               : "bg-surface/80 backdrop-blur-sm shadow-none",
           )}
         >
-          <div className="mx-auto flex w-full max-w-7xl items-center gap-1.5 px-3 sm:px-6 lg:px-8 app-region-no-drag">
+          <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-1.5 px-3 sm:px-6 lg:px-8 app-region-no-drag">
             {visual.headerButtons.logo && (
               <div className="flex items-center lg:hidden mr-1 shrink-0">
                 <LogoProfileButton />

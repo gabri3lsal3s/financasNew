@@ -93,7 +93,7 @@ export function LoginPage() {
           </p>
           <Link to="/apresentacao" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-2">
             <ArrowLeft className="size-3.5" aria-hidden="true" />
-            <span>Conhecer o Guia Financeiro & Planos</span>
+            <span>Conhecer o Áxis • Guia Financeiro & Planos</span>
           </Link>
         </div>
       </div>

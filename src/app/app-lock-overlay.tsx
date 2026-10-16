@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Lock, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui";
 import {
@@ -17,13 +17,17 @@ import { triggerSensory } from "@/services/sensory";
 export function AppLockOverlay() {
   const isLocked = useSyncExternalStore(subscribeAppLock, isAppLocked);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const isAuthenticatingRef = useRef(false);
 
   const handleUnlock = async () => {
+    if (isAuthenticatingRef.current) return;
+    isAuthenticatingRef.current = true;
     setIsAuthenticating(true);
     triggerSensory("action");
     try {
       await unlockAppWithBiometrics();
     } finally {
+      isAuthenticatingRef.current = false;
       setIsAuthenticating(false);
     }
   };
@@ -34,7 +38,7 @@ export function AppLockOverlay() {
 
     const timer = setTimeout(() => {
       void handleUnlock();
-    }, 100);
+    }, 150);
 
     return () => clearTimeout(timer);
   }, [isLocked]);
@@ -46,7 +50,7 @@ export function AppLockOverlay() {
       role="alertdialog"
       aria-modal="true"
       aria-label="Aplicativo Bloqueado"
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-md p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-md p-4 pt-[calc(1rem+env(safe-area-inset-top,0px))] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] animate-in fade-in duration-200"
     >
       <div className="w-full max-w-sm rounded-2xl border border-border/80 bg-surface p-6 sm:p-8 text-center shadow-lg">
         <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary-strong">
@@ -54,7 +58,7 @@ export function AppLockOverlay() {
         </div>
 
         <h2 className="text-lg font-bold tracking-tight text-foreground">
-          Guia Financeiro
+          Áxis • Guia Financeiro
         </h2>
         <p className="mt-1 text-sm font-semibold text-muted-foreground">
           Aplicativo Bloqueado

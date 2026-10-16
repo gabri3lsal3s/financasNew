@@ -35,7 +35,7 @@ export function ReportHeader({
   subtitle,
   periodLabel,
   generatedAt,
-  appName = "Guia Financeiro",
+  appName = "Áxis • Guia Financeiro",
   icon: Icon = Landmark,
   accountHolder,
   className,

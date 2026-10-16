@@ -210,3 +210,89 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
   3. Regeneração íntegra e harmonização do `package-lock.json` com `node >=22.0.0` e árvore transitiva completa via `npm install --package-lock-only`.
   4. Validação estrita do ciclo de build: `npm ci` limpo concluído com sucesso em 15s, typecheck estrito (`tsc -b`), linter (`eslint .`), suíte completa de testes automatizados e build de produção Vite (`vite build`) 100% aprovados.
 - **Commit:** `fix(build): resolve npm arborist edgesOut null crash and configure npmrc for ci`
+
+---
+
+## FASE 6: Refinamento Fino de Configurações e Polimento de Layout
+
+### Tarefa 18: Ajuste de Safe Area, Posicionamento e Bordas dos Pop-ups Mobile
+- **Objetivo:** Ancorar pop-ups/sheets acima da bottom navigation bar no mobile e padronizar bordas com a cor de destaque do tema ativo.
+- **Ações:**
+  1. Adicionar compensação de safe area inferior para que modais e sheets não sobreponham o menu mobile.
+  2. Unificar a cor e espessura das bordas de todos os modais para herdar as variáveis do tema e cor de destaque do usuário.
+- **Commit:** `fix(ui): elevate bottom sheets above mobile nav bar and unify modal border themes`
+
+---
+
+### Tarefa 19: Simplificação e Limpeza da Página de Configurações
+- **Objetivo:** Remover personalizações granulares desnecessárias, manter apenas predefinições e padronizar temas.
+- **Ações:**
+  1. Remover controles de ajustes finos de som/vibração, mantendo unicamente as 3 predefinições existentes.
+  2. Eliminar o estilo visual 3D elevado, conservando apenas os estilos Glassmorphism e Minimalista/Flat.
+  3. Remover o seletor de widgets do Dashboard e fixar a exibição permanente de todos os widgets.
+- **Commit:** `refactor(settings): streamline options to 3 presets, remove 3D theme, and fix all dashboard widgets visible`
+
+---
+
+### Tarefa 20: Padronização e Harmonização de Espaçamentos na Página de Cartões
+- **Objetivo:** Eliminar a compressão visual na página de Cartões padronizando gaps e paddings.
+- **Ações:**
+  1. Descomprimir o layout entre blocos de compras parceladas, compras à vista e cards de resumo.
+  2. Harmonizar o espaçamento dos estados vazios ("nenhuma informação") com a escala do Design System.
+- **Commit:** `style(cards): harmonize layout spacing across installments, cash purchases, and empty states`
+EOF
+
+---
+
+## FASE 7: Estabilidade Comercial e Otimização Nativa Android
+
+### Tarefa 21: Desbloqueio e Correção de Navegação na Landing Page, Vendas e Checkout
+- **Objetivo:** Resolver travamento de cliques, restaurar interatividade e botões de voltar na Landing Page, página de vendas e checkout de assinaturas.
+- **Ações:**
+  1. Eliminar overlays ou backdrops residuais com `pointer-events` ativo bloqueando cliques na área útil.
+  2. Adicionar botões explícitos de voltar e vincular ao histórico de navegação.
+  3. Garantir suporte a redirecionamentos, deep links de PIX e gateways de pagamento sem prender o usuário.
+- **Commit:** `fix(navigation): unblock user interaction and back navigation on landing, sales, and checkout pages`
+
+---
+
+### Tarefa 22: Otimização Global do Aplicativo para o Ambiente Android
+- **Objetivo:** Adaptar todas as páginas do app para viewport, safe areas, toques e teclado virtual do Android.
+- **Ações:**
+  1. Configurar safe areas (`env(safe-area-inset-*)`) para barra de status e navegação por gestos do Android.
+  2. Implementar `touch-action: manipulation`, prevenir recarregamento elástico da página e evitar compressão de layouts pelo teclado virtual.
+  3. Vincular o botão de voltar físico/gestual do Android para fechar modais e navegar pelo histórico.
+- **Commit:** `feat(android): optimize global layouts, safe areas, touch behaviors, and hardware back button`
+
+---
+
+## FASE 8: Harmonização de Ícones, Logotipo e Identidade Gráfica (PWA & Android)
+
+### Tarefa 23: Sistema Unificado de Ícones e Reatividade ao Tema
+- **Objetivo:** Padronizar proporções, espessura de traço e reatividade dos ícones à cor de destaque e temas claro/escuro.
+- **Ações:**
+  1. Fixar a escala de tamanhos de ícones e espessura única de traço (1.75px ou 2px) em todo o app.
+  2. Substituir classes de cores estáticas por variáveis de tema
+  3. Harmonizar o contraste e transparência dos containers/badges que envolvem ícones.
+- **Commit:** `style(icons): unify stroke weights, sizing scale, and dynamic theme reactivity`
+
+---
+
+### Tarefa 24: Harmonização do Logotipo, Identidade Gráfica e Splash Screens
+- **Objetivo:** Refinar componentes vetoriais de logotipo e telas de carregamento para máxima elegância e fidelidade visual.
+- **Ações:**
+  1. Criar componentes SVG modulares do logo (`LogoFull` e `LogoIcon`).
+  2. Tornar o glifo cromático do logo reativo à cor de destaque configurada pelo usuário.
+  3. Padronizar a Splash Screen e telas de transição de carregamento com fade suave.
+  4. As logos devem ser profissionais e padronizadas, sem serrilhados mantendo um alto nível de desing. 
+- **Commit:** `style(branding): harmonize vector logo components and splash screen transitions`
+
+---
+
+### Tarefa 25: Padronização de Ativos do PWA e Logos Adaptativos do Android
+- **Objetivo:** Implementar as logos adaptativas nativos do Android (com suporte ao Material You) e manifestos PWA completos.
+- **Ações:**
+  1. Atualizar o manifesto PWA com ícones regulares e `maskable` de 192px e 512px.
+  2. Configurar layers `ic_launcher_background` e `ic_launcher_foreground` para o ecossistema Android em todas as densidades (mdpi até xxxhdpi).
+  3. Habilitar suporte as logos temáticos do sistema (Themed Logos) sem serrilhados e com um nível de desing profisional.
+- **Commit:** `feat(branding): configure standard adaptive android icons and PWA maskable manifests`

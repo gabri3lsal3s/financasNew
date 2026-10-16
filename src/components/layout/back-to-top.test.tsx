@@ -25,7 +25,7 @@ describe("BackToTop (Layout)", () => {
     expect(container?.className).toContain("opacity-100");
     expect(container?.className).toContain("pointer-events-auto");
     expect(container?.className).toContain("z-page-floating");
-    expect(container?.className).toContain("bottom-20");
+    expect(container?.className).toContain("bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))]");
   });
 
   it("aciona scrollToTop com containerId correto ao clicar", async () => {

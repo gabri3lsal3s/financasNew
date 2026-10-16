@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "com.guiafinanceiro.app",
-  appName: "Guia Financeiro",
+  appName: "Áxis",
   webDir: "dist",
   server: {
     androidScheme: "https",
@@ -16,6 +16,9 @@ const config: CapacitorConfig = {
       showSpinner: false,
       splashFullScreen: true,
       splashImmersive: true,
+    },
+    StatusBar: {
+      overlaysWebView: true,
     },
   },
 };

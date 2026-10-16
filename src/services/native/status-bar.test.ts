@@ -7,6 +7,7 @@ vi.mock("@capacitor/status-bar", () => ({
   StatusBar: {
     setStyle: vi.fn(),
     setBackgroundColor: vi.fn(),
+    setOverlaysWebView: vi.fn(),
   },
   Style: {
     Dark: "DARK",

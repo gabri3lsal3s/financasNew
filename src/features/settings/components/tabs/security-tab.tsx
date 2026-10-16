@@ -32,6 +32,7 @@ import {
   authenticateWithBiometrics,
   isBiometricLockEnabled,
   setBiometricLockEnabled,
+  resetAppLockBackgroundTimer,
   getAppLockGraceMinutes,
   setAppLockGraceMinutes,
   isPrivacyShieldEnabled,
@@ -137,6 +138,7 @@ export function SecurityTab() {
         return;
       }
       setBiometricLockEnabled(true);
+      resetAppLockBackgroundTimer();
       setBioLockEnabled(true);
       pushToast({
         title: "Bloqueio biométrico ativado",

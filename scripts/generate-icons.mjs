@@ -363,4 +363,94 @@ if (existsSync(fullLockupPath)) {
   console.log(`✓ public/brand/logo-full.png (lockup horizontal com tipografia)`);
 }
 
-console.log("Todos os assets da marca e do PWA foram gerados com sucesso!");
+// 5. Gera ícones e Splash Screens do Android Nativo (`android/app/src/main/res/`)
+const androidResDir = join(root, "android", "app", "src", "main", "res");
+if (existsSync(androidResDir)) {
+  const mipmaps = [
+    { dir: "mipmap-mdpi", size: 48, fgSize: 108 },
+    { dir: "mipmap-hdpi", size: 72, fgSize: 162 },
+    { dir: "mipmap-xhdpi", size: 96, fgSize: 216 },
+    { dir: "mipmap-xxhdpi", size: 144, fgSize: 324 },
+    { dir: "mipmap-xxxhdpi", size: 192, fgSize: 432 },
+  ];
+
+  for (const { dir, size, fgSize } of mipmaps) {
+    const targetDir = join(androidResDir, dir);
+    mkdirSync(targetDir, { recursive: true });
+
+    // (a) ic_launcher.png (legacy icon com fundo branco e respiro balanceado: 0.74)
+    const legacyBuf = renderPwaWhiteIcon(size, 0.74);
+    writeFileSync(join(targetDir, "ic_launcher.png"), legacyBuf);
+
+    // (b) ic_launcher_round.png (legacy round icon com fundo branco e respiro balanceado: 0.74)
+    writeFileSync(join(targetDir, "ic_launcher_round.png"), legacyBuf);
+
+    // (c) ic_launcher_foreground.png (adaptive foreground transparente centralizado: scale 0.58)
+    // No Android Adaptive Icons (108dp canvas), o corte circular/squircle ocorre em 72dp (~66.6% do canvas).
+    // A escala 0.58 posiciona a logo ocupando ~87% da área visível segura, garantindo ~13% de respiro
+    // até a borda da máscara, sem comprimir o ícone e sem tocar as bordas.
+    const fgBuf = renderTransparentIcon(fgSize, 0.58);
+    writeFileSync(join(targetDir, "ic_launcher_foreground.png"), fgBuf);
+
+    console.log(`✓ android/res/${dir} (launcher ${size}x${size}, fg ${fgSize}x${fgSize})`);
+  }
+
+  // Remove o vetor padrão de foreground do Capacitor (robô/escudo azul) para que o Android
+  // utilize o @mipmap/ic_launcher_foreground real gerado a partir da marca.
+  const vectorFgPath = join(androidResDir, "drawable-v24", "ic_launcher_foreground.xml");
+  if (existsSync(vectorFgPath)) {
+    try {
+      const { unlinkSync } = await import("node:fs");
+      unlinkSync(vectorFgPath);
+      console.log(`✓ Removido vetor residual de foreground: ${vectorFgPath}`);
+    } catch {
+      // Ignora erro caso o arquivo já não exista ou esteja inacessível
+    }
+  }
+
+  // Splash Screens Android com a logo oficial centralizada
+  const splashDrawables = [
+    { dir: "drawable", w: 480, h: 800 },
+    { dir: "drawable-port-mdpi", w: 320, h: 480 },
+    { dir: "drawable-port-hdpi", w: 480, h: 800 },
+    { dir: "drawable-port-xhdpi", w: 720, h: 1280 },
+    { dir: "drawable-port-xxhdpi", w: 960, h: 1600 },
+    { dir: "drawable-port-xxxhdpi", w: 1280, h: 1920 },
+    { dir: "drawable-land-mdpi", w: 480, h: 320 },
+    { dir: "drawable-land-hdpi", w: 800, h: 480 },
+    { dir: "drawable-land-xhdpi", w: 1280, h: 720 },
+    { dir: "drawable-land-xxhdpi", w: 1600, h: 960 },
+    { dir: "drawable-land-xxxhdpi", w: 1920, h: 1280 },
+  ];
+
+  for (const { dir, w: sw, h: sh } of splashDrawables) {
+    const targetDir = join(androidResDir, dir);
+    mkdirSync(targetDir, { recursive: true });
+    const splashBuf = encodePngRgba(sw, sh, (px, py) => {
+      const minDim = Math.min(sw, sh);
+      const iconSize = Math.round(minDim * 0.40);
+      const offsetX = Math.round((sw - iconSize) / 2);
+      const offsetY = Math.round((sh - iconSize) / 2);
+
+      if (px >= offsetX && px < offsetX + iconSize && py >= offsetY && py < offsetY + iconSize) {
+        const normX = ((px - offsetX + 0.5) / iconSize - 0.5) / 0.90;
+        const normY = ((py - offsetY + 0.5) / iconSize - 0.5) / 0.90;
+        const [r, g, b, a] = sampleImage(normX, normY);
+        if (a > 0) {
+          const alphaNorm = a / 255;
+          return [
+            Math.round(r * alphaNorm + 244 * (1 - alphaNorm)),
+            Math.round(g * alphaNorm + 247 * (1 - alphaNorm)),
+            Math.round(b * alphaNorm + 249 * (1 - alphaNorm)),
+            255,
+          ];
+        }
+      }
+      return [244, 247, 249, 255]; // Fundo #F4F7F9
+    });
+    writeFileSync(join(targetDir, "splash.png"), splashBuf);
+    console.log(`✓ android/res/${dir}/splash.png (${sw}x${sh})`);
+  }
+}
+
+console.log("Todos os assets da marca, PWA e Android nativo foram gerados com sucesso!");

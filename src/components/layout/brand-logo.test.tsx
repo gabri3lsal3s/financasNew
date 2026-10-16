@@ -3,24 +3,25 @@ import { describe, expect, it } from "vitest";
 import { BrandLogo } from "./brand-logo";
 
 describe("BrandLogo (F10 — identidade oficial)", () => {
-  it("renderiza o símbolo com o wordmark 'Guia Financeiro'", () => {
+  it("renderiza apenas o símbolo por padrão com alt acessível 'AXIS'", () => {
     render(<BrandLogo />);
-    expect(screen.getByText("Guia Financeiro")).toBeInTheDocument();
+    expect(screen.queryByText("AXIS")).not.toBeInTheDocument();
+    const img = screen.getByAltText("AXIS");
+    expect(img).toBeInTheDocument();
+  });
+
+  it("com showWordmark=true exibe o símbolo e o wordmark 'AXIS'", () => {
+    render(<BrandLogo showWordmark />);
+    expect(screen.getByText("AXIS")).toBeInTheDocument();
     const img = document.querySelector("img");
     expect(img).not.toBeNull();
     expect(img).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("com showWordmark=false exibe apenas o símbolo com alt acessível", () => {
-    render(<BrandLogo showWordmark={false} />);
-    expect(screen.queryByText("Guia Financeiro")).not.toBeInTheDocument();
-    const img = screen.getByAltText("Guia Financeiro");
-    expect(img).toBeInTheDocument();
-  });
-
-  it("renderiza subtítulo quando showSubtitle=true", () => {
-    render(<BrandLogo showSubtitle />);
-    expect(screen.getByText("Organização & Economia")).toBeInTheDocument();
+  it("renderiza subtítulo 'Guia Financeiro' quando showWordmark e showSubtitle são true", () => {
+    render(<BrandLogo showWordmark showSubtitle />);
+    expect(screen.getByText("AXIS")).toBeInTheDocument();
+    expect(screen.getByText("Guia Financeiro")).toBeInTheDocument();
   });
 
   it("aceita classes extras no container e no símbolo", () => {

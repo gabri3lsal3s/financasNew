@@ -21,6 +21,7 @@ export async function syncStatusBarTheme(theme: AppTheme): Promise<void> {
   if (!config) return;
 
   try {
+    await StatusBar.setOverlaysWebView({ overlay: true });
     await StatusBar.setStyle({ style: config.style });
     await StatusBar.setBackgroundColor({ color: config.color });
   } catch {

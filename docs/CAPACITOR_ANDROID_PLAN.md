@@ -169,16 +169,17 @@ graph TD
 ### Fase 2: Ergonomia Nativa de SO (Invisível & Confortável) [Concluída]
 - [x] **Hardware Back Button:** Criar `src/services/native/back-button.ts` para fechar modais/gavetas ou recuar histórico (`navigate(-1)`).
 - [x] **Status Bar Dinâmica:** Criar `src/services/native/status-bar.ts` integrado ao `ThemeProvider` (sincroniza fundo e contraste de ícones nos temas Light, Dark e OLED).
+- [x] **Safe Area Inset Superior (Edge-to-Edge):** Compensação dinâmica via `pt-[env(safe-area-inset-top,0px)]` no `<header>` do `PageShell` e no topo da `Sidebar`, impedindo sobreposição entre a barra de status nativa do Android e a barra superior do aplicativo.
 - [x] **Gateway Sensorial (Haptics):** Integrar `@capacitor/haptics` no `src/services/haptics.ts` com resposta na calculadora flutuante.
 - [x] **Splash Screen Suave:** Integrar `@capacitor/splash-screen` à casca visual `#app-splash`.
-- **DoD:** O app no Android respeita o botão voltar sem fechar repentinamente; barra de status muda de cor dinamicamente com o tema.
+- **DoD:** O app no Android respeita o botão voltar sem fechar repentinamente; barra de status muda de cor dinamicamente com o tema sem sobrepor elementos visuais da interface.
 
 ### Fase 3: Segurança, Biometria & Privacy Shield [Concluída]
-- [x] **Biometria Adaptativa:** Criar `src/services/native/biometrics.ts` (Android usa sensor nativo; Web usa WebAuthn ou ignora).
-- [x] **App Lock com Tolerância:** Interceptar retorno do app (`appStateChange`) e exigir desbloqueio biométrico após $X$ minutos em segundo plano (configurável).
+- [x] **Biometria Adaptativa & Prevenção de Loop:** Criar `src/services/native/biometrics.ts` com rastreamento reativo de autenticação em andamento (`isBiometricAuthInProgress`) e janela de tolerância para ignorar eventos espúrios de `appStateChange` durante a exibição do diálogo nativo do sistema (`BiometricPrompt`).
+- [x] **App Lock com Tolerância:** Interceptar retorno do app (`appStateChange`) e exigir desbloqueio biométrico após $X$ minutos em segundo plano (configurável), com redefinição limpa do temporizador no destravamento.
 - [x] **Opção em Configurações:** Toggle discreto em `Configurações > Segurança > Desbloqueio por Biometria`.
 - [x] **Privacy Shield:** Ativar `FLAG_SECURE` na janela nativa para bloquear screenshots e visualização no alternador de apps recentes.
-- **DoD:** Ao alternar de app e retornar após o tempo limite, o app solicita digital/face e oculta dados confidenciais na visualização de tarefas recentes.
+- **DoD:** Ao alternar de app e retornar após o tempo limite, o app solicita digital/face e oculta dados confidenciais na visualização de tarefas recentes sem reentrâncias ou loops infinitos de autenticação.
 
 ### Fase 4: Agilidade Externa (Shortcuts no Launcher & Notificação Local) [Concluída]
 - [x] **Atalhos no Launcher:** Configurar `res/xml/shortcuts.xml` nativo com ações instantâneas:
