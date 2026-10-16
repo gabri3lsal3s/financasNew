@@ -36,6 +36,7 @@ import {
   type PixCheckoutResult,
 } from "@/data/repositories/billing";
 import { cn } from "@/lib/utils";
+import { resolveCheckoutBillingSchedule } from "@/domain/subscription";
 import type { SubscriptionPlan } from "@/types";
 
 type CheckoutPaymentMethod = "credit_card" | "pix";
@@ -80,6 +81,16 @@ export function SubscriptionCheckoutPage() {
   const metodoParam = searchParams.get("metodo");
   const plan: SubscriptionPlan = planoParam === "pro-mensal" ? "monthly" : "annual";
   const planInfo = PLAN_LABELS[plan];
+
+  // Cálculo transparente do cronograma de cobrança (trial residual vs cobrança imediata)
+  const billingSchedule = useMemo(() => {
+    return resolveCheckoutBillingSchedule({
+      plan,
+      currentTier: subscription?.tier,
+      trialDaysRemaining: subscription?.trialDaysRemaining,
+      hasAlreadyPaid: subscription?.isPro || subscription?.isLifetime,
+    });
+  }, [plan, subscription]);
 
   const [method, setMethod] = useState<CheckoutPaymentMethod>(
     metodoParam === "pix" && plan === "annual" ? "pix" : "credit_card",
@@ -322,6 +333,8 @@ export function SubscriptionCheckoutPage() {
               expiryYear: expYear || "28",
               ccv: cardCcv,
             },
+            trialDaysRemaining: billingSchedule.daysUntilFirstCharge,
+            firstBillingDate: billingSchedule.firstBillingDate.toISOString(),
           });
         } catch (gatewayErr: unknown) {
           // Modo de simulação visual resiliente se gateway offline no ambiente de dev
@@ -472,16 +485,28 @@ export function SubscriptionCheckoutPage() {
               </h1>
               <div className="mt-3 flex items-end gap-2">
                 <span className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground whitespace-nowrap tabular-nums">
-                  {planInfo.monthly}
+                  {billingSchedule.isDelayedByTrial ? "R$ 0,00" : planInfo.monthly}
                 </span>
+                {billingSchedule.isDelayedByTrial && (
+                  <span className="text-sm font-semibold text-positive-strong mb-1">
+                    hoje ({billingSchedule.daysUntilFirstCharge} dias de teste)
+                  </span>
+                )}
               </div>
-              {plan === "annual" && (
-                <p className="mt-1.5 text-sm text-muted-foreground">
-                  {planInfo.price} cobrados agora.{" "}
-                  <span className="font-semibold text-positive-strong">Economize R$&nbsp;60,00/ano.</span>
+
+              {billingSchedule.isDelayedByTrial ? (
+                <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  Primeira cobrança de <strong className="text-foreground">{planInfo.price}</strong> em{" "}
+                  <strong className="text-foreground">
+                    {billingSchedule.firstBillingDate.toLocaleDateString("pt-BR")}
+                  </strong>
+                  . Cancele antes dessa data com 1 clique para não ser cobrado.
+                </p>
+              ) : (
+                <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  {planInfo.price} cobrados no ato da confirmação. {planInfo.detail}
                 </p>
               )}
-              <p className="mt-1.5 text-xs text-muted-foreground">{planInfo.detail}</p>
             </div>
 
             {/* Benefícios */}
@@ -502,12 +527,13 @@ export function SubscriptionCheckoutPage() {
               </ul>
             </div>
 
-            {/* Garantia */}
+            {/* Garantia Legal e Proteção */}
             <div className="flex items-start gap-3 rounded-xl bg-muted/40 px-4 py-3 border border-border/60">
               <ShieldCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Garantia incondicional de 30 dias. Cancelamento a qualquer momento em 1 clique —
-                nenhum dado financeiro ou histórico é excluído.
+                {billingSchedule.isDelayedByTrial
+                  ? "Cancele a qualquer momento durante o período de teste sem nenhum custo. Após a efetivação da cobrança, você tem 7 dias de garantia incondicional de reembolso (Art. 49 CDC)."
+                  : "Garantia incondicional de reembolso de 7 dias após o pagamento (Art. 49 do CDC). Seus dados nunca são excluídos mesmo se cancelar."}
               </p>
             </div>
           </aside>
@@ -860,16 +886,23 @@ export function SubscriptionCheckoutPage() {
                 </span>
               </div>
               <div className="border-t border-border/80 pt-2 flex justify-between text-sm font-bold">
-                <span>Total a pagar</span>
-                <span className="whitespace-nowrap tabular-nums text-foreground">{planInfo.price}</span>
+                <span>{billingSchedule.isDelayedByTrial ? "Total cobrado hoje" : "Total a pagar"}</span>
+                <span className="whitespace-nowrap tabular-nums text-foreground">
+                  {billingSchedule.isDelayedByTrial ? "R$ 0,00" : planInfo.price}
+                </span>
               </div>
+              {billingSchedule.isDelayedByTrial && (
+                <p className="text-[11px] text-muted-foreground pt-1">
+                  Primeira fatura de {planInfo.price} agendada para {billingSchedule.firstBillingDate.toLocaleDateString("pt-BR")}.
+                </p>
+              )}
             </div>
 
             {/* Selos de segurança */}
             <div className="flex flex-wrap gap-x-4 gap-y-1.5">
               <SecuritySeal icon={Lock} label="SSL 256-bit" />
               <SecuritySeal icon={ShieldCheck} label="Dados protegidos" />
-              <SecuritySeal icon={CheckCircle2} label="Garantia 30 dias" />
+              <SecuritySeal icon={CheckCircle2} label="Garantia 7 dias (CDC)" />
             </div>
 
             {/* CTA Principal */}

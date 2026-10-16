@@ -92,7 +92,7 @@ export function HeroEditorial() {
           <div className="mt-7 sm:mt-9 flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-xs sm:text-sm text-muted-foreground">
             <div className="flex items-center gap-1.5 sm:gap-2">
               <ShieldCheck className="size-4 sm:size-4.5 text-positive-strong dark:text-positive" aria-hidden="true" />
-              <span>Garantia Incondicional de 30 Dias</span>
+              <span>30 Dias de Teste sem Compromisso</span>
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2">
               <Sparkles className="size-4 sm:size-4.5 text-primary" aria-hidden="true" />
@@ -100,7 +100,7 @@ export function HeroEditorial() {
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2">
               <TrendingUp className="size-4 sm:size-4.5 text-portfolio" aria-hidden="true" />
-              <span>Precisão em Centavos Exatos</span>
+              <span>Garantia Legal de 7 Dias (CDC)</span>
             </div>
           </div>
         </div>

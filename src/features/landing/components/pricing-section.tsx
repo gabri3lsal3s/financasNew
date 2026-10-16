@@ -207,7 +207,7 @@ export function PricingSection() {
                 </Link>
                 <div className="mt-2.5 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
                   <ShieldCheck className="size-3.5 text-positive-strong dark:text-positive" aria-hidden="true" />
-                  <span>30 dias de garantia incondicional</span>
+                  <span>30 dias de teste sem compromisso</span>
                 </div>
               </div>
             </Card>

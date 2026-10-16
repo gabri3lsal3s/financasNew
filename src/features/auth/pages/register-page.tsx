@@ -94,11 +94,11 @@ export function RegisterPage() {
                 <span>Prefere ir direto para o Plano Pro?</span>
               </div>
               <span className="text-[10px] font-semibold uppercase tracking-wider text-primary-strong bg-primary/10 px-2 py-0.5 rounded-full shrink-0">
-                30 Dias Garantidos
+                30 Dias de Teste
               </span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Tenha lançamentos ilimitados, rebalanceamento automático de carteira e relatórios executivos. Você pode criar sua conta diretamente na assinatura com garantia total.
+              Tenha lançamentos ilimitados, rebalanceamento automático de carteira e relatórios executivos. Comece agora sem cobrança hoje e cancele a qualquer momento.
             </p>
             <Link
               to="/assinatura?plano=pro-anual"
@@ -107,7 +107,7 @@ export function RegisterPage() {
                 "w-full justify-center gap-1.5 text-xs font-semibold shadow-xs",
               )}
             >
-              <span>Garantir Acesso Pro Agora</span>
+              <span>Começar no Plano Pro Agora</span>
               <ArrowRight className="size-3.5" aria-hidden="true" />
             </Link>
           </div>

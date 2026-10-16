@@ -15,6 +15,10 @@ export interface CheckoutCreditCardParams {
     addressNumber?: string;
   };
   phone?: string;
+  /** Dias residuais de trial gratuitos a postergar antes do primeiro débito (0 para cobrança imediata). */
+  trialDaysRemaining?: number;
+  /** Data prevista da primeira cobrança calculada no cliente (ISO string). */
+  firstBillingDate?: string;
 }
 
 export interface CheckoutPixParams {

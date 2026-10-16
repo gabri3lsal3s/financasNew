@@ -32,7 +32,7 @@ export function MobileCtaDock({ visible }: MobileCtaDockProps) {
             <span>Áxis • Guia Financeiro</span>
           </span>
           <span className="text-[11px] text-muted-foreground truncate">
-            {isLoggedIn ? "Acesse seu painel" : "30 dias de garantia · Cancele fácil"}
+            {isLoggedIn ? "Acesse seu painel" : "30 dias de teste · Cancele fácil"}
           </span>
         </div>
 

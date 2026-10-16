@@ -66,7 +66,7 @@ export function CtaBanner() {
 
             <div className="mt-5 sm:mt-6 flex items-center justify-center gap-1.5 sm:gap-2 text-xs text-muted-foreground">
               <ShieldCheck className="size-3.5 sm:size-4 text-positive-strong dark:text-positive" aria-hidden="true" />
-              <span>Garantia incondicional de 30 dias · Cancele quando quiser · Histórico preservado</span>
+              <span>30 dias de teste sem compromisso · Garantia legal de 7 dias (CDC) · Histórico preservado</span>
             </div>
           </div>
         </ScrollReveal>

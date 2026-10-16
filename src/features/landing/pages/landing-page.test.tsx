@@ -37,7 +37,7 @@ describe("LandingPage", () => {
     expect(
       screen.getByRole("heading", { name: /O controle financeiro que você queria/i }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText(/Garantia Incondicional/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/30 Dias de Teste sem Compromisso/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Caixa Real Disponível").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Ritmo Diário/i).length).toBeGreaterThan(0);
   });

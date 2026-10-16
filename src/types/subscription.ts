@@ -51,6 +51,12 @@ export type SubscriptionStatus = {
   /** Verdadeiro quando o trial expirou e o usuário não assinou (modo leitura). */
   isReadOnly: boolean;
 
+  /** Verdadeiro se o período de 30 dias de trial já foi expirado. */
+  isTrialExpired?: boolean;
+
+  /** Verdadeiro se o usuário já utilizou o benefício único de 30 dias de trial por conta. */
+  hasUsedTrial?: boolean;
+
   /** Verdadeiro quando o usuário possui permissão ativa para criar/editar registros. */
   canWrite: boolean;
 
