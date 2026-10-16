@@ -14,6 +14,7 @@ import {
   matchCategoryBySlug,
   type CanonicalCategorySlug,
 } from "@/domain/notifications";
+import { getBankAssistantPreferences } from "@/services/native";
 import {
   useActiveCreditCards,
   useCategories,
@@ -157,10 +158,14 @@ export function LaunchWizard({
       : undefined;
 
     // 2. Se não encontrou por target, mas temos descrição preenchida, infere deterministicamente
+    // se o usuário não tiver desabilitado a auto-categorização nas preferências
     if (!matchedCategory && state.description) {
-      const slug = inferCategoryKeyword(state.description);
-      if (slug) {
-        matchedCategory = matchCategoryBySlug(categoriesQuery.data, slug);
+      const prefs = getBankAssistantPreferences();
+      if (prefs.autoCategoryInferenceEnabled) {
+        const slug = inferCategoryKeyword(state.description);
+        if (slug) {
+          matchedCategory = matchCategoryBySlug(categoriesQuery.data, slug);
+        }
       }
     }
 

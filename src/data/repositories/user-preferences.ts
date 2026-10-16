@@ -77,6 +77,10 @@ export async function updateCustomSettings(patch: Partial<UserCustomSettings>): 
       ...(current?.custom_settings?.headerButtons ?? {}),
       ...(patch.headerButtons ?? {}),
     },
+    bankAssistant: {
+      ...(current?.custom_settings?.bankAssistant ?? {}),
+      ...(patch.bankAssistant ?? {}),
+    },
   };
 
   const input: DbUpdate<UserPreferences> = {

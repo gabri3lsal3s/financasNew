@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Palette,
   Check,
@@ -17,6 +17,7 @@ import {
   Calculator,
   Monitor,
   Eye,
+  CreditCard,
 } from "lucide-react";
 import {
   Card,
@@ -60,7 +61,12 @@ import {
   scheduleDailyReminder,
   cancelDailyReminder,
   requestNotificationPermissions,
+  useBankAssistantPreferences,
+  resetBankAssistantPreferences,
+  isNotificationListenerGranted,
+  requestNotificationListenerPermission,
 } from "@/services/native";
+import { HOMOLOGATED_BANKS } from "@/domain/notifications";
 
 const DAILY_REMINDER_TIME_OPTIONS: SelectOption[] = [
   { value: "19:00", label: "19:00 (Início da noite)" },
@@ -269,18 +275,152 @@ export function AppearanceTab() {
     }
   };
 
+  const { preferences: bankPrefs, updatePreferences: updateBankPrefs } = useBankAssistantPreferences();
+  const [listenerPermissionGranted, setListenerPermissionGranted] = useState(true);
+
+  useEffect(() => {
+    void isNotificationListenerGranted().then((granted) => {
+      setListenerPermissionGranted(granted);
+    });
+  }, []);
+
+  const handleTogglePassiveCapture = async (enabled: boolean) => {
+    triggerSensory("toggle");
+    updateBankPrefs({ passiveCaptureEnabled: enabled });
+    updateCustomSettingsMutation.mutate({
+      bankAssistant: { passiveCaptureEnabled: enabled },
+    });
+
+    if (enabled) {
+      const granted = await isNotificationListenerGranted();
+      setListenerPermissionGranted(granted);
+      if (!granted) {
+        pushToast({
+          title: "Permissão de leitura de notificações necessária",
+          description: "Habilite o acesso a notificações nas configurações do seu celular.",
+          variant: "warning",
+        });
+      } else {
+        pushToast({
+          title: "Captura de compras ativada",
+          description: "Notificações bancárias serão detectadas e convertidas em sugestões.",
+        });
+      }
+    } else {
+      pushToast({
+        title: "Captura de compras desativada",
+        description: "Nenhuma notificação bancária será processada.",
+      });
+    }
+  };
+
+  const handleRequestPermission = async () => {
+    triggerSensory("action");
+    await requestNotificationListenerPermission();
+    const granted = await isNotificationListenerGranted();
+    setListenerPermissionGranted(granted);
+  };
+
+  const handleToggleInteractiveNotifications = (enabled: boolean) => {
+    triggerSensory("toggle");
+    updateBankPrefs({ interactiveNotificationsEnabled: enabled });
+    updateCustomSettingsMutation.mutate({
+      bankAssistant: { interactiveNotificationsEnabled: enabled },
+    });
+    pushToast({
+      title: "Preferências salvas",
+      description: enabled
+        ? "Notificações com botões de ação rápida ativadas."
+        : "Notificações silenciosas ativadas (apenas card discreto na tela inicial).",
+    });
+  };
+
+  const handleToggleAutoInstallments = (enabled: boolean) => {
+    triggerSensory("toggle");
+    updateBankPrefs({ autoInstallmentsEnabled: enabled });
+    updateCustomSettingsMutation.mutate({
+      bankAssistant: { autoInstallmentsEnabled: enabled },
+    });
+    pushToast({
+      title: "Preferências salvas",
+      description: enabled
+        ? "Detecção e desmembramento automático de parcelas ativado."
+        : "Cálculo de parcelas desativado (compras tratadas como parcela única).",
+    });
+  };
+
+  const handleToggleAutoCategoryInference = (enabled: boolean) => {
+    triggerSensory("toggle");
+    updateBankPrefs({ autoCategoryInferenceEnabled: enabled });
+    updateCustomSettingsMutation.mutate({
+      bankAssistant: { autoCategoryInferenceEnabled: enabled },
+    });
+    pushToast({
+      title: "Preferências salvas",
+      description: enabled
+        ? "Inferência automática de categorias ativada."
+        : "Inferência desativada (seleção manual exigida).",
+    });
+  };
+
+  const handleToggleBank = (bankName: string, nextChecked: boolean) => {
+    triggerSensory("toggle");
+    const currentList = bankPrefs.monitoredBanks;
+    const nextList = nextChecked
+      ? [...new Set([...currentList, bankName])]
+      : currentList.filter((b) => b !== bankName);
+
+    updateBankPrefs({ monitoredBanks: nextList });
+    updateCustomSettingsMutation.mutate({
+      bankAssistant: { monitoredBanks: nextList },
+    });
+  };
+
+  const handleSelectAllBanks = () => {
+    triggerSensory("action");
+    const all = [...HOMOLOGATED_BANKS];
+    updateBankPrefs({ monitoredBanks: all });
+    updateCustomSettingsMutation.mutate({
+      bankAssistant: { monitoredBanks: all },
+    });
+    pushToast({
+      title: "Todos os bancos selecionados",
+      description: "Todos os 17 bancos homologados estão sendo monitorados.",
+    });
+  };
+
+  const handleDeselectAllBanks = () => {
+    triggerSensory("action");
+    updateBankPrefs({ monitoredBanks: [] });
+    updateCustomSettingsMutation.mutate({
+      bankAssistant: { monitoredBanks: [] },
+    });
+    pushToast({
+      title: "Todos os bancos desmarcados",
+      description: "Nenhum banco está selecionado para captura.",
+    });
+  };
+
   const handleResetDefaults = () => {
     triggerSensory("action");
     handleSelectPreset("dynamic");
     handleSelectTheme("system", "Automático");
     handleSelectAccent("teal", "Teal Vital (Oficial)");
     handleSelectSurfaceStyle("glass", "Glassmorphism");
+    resetBankAssistantPreferences();
     updateCustomSettingsMutation.mutate({
       headerButtons: {
         logo: true,
         calculatorButton: true,
         themeToggle: false,
         privacyToggle: false,
+      },
+      bankAssistant: {
+        passiveCaptureEnabled: true,
+        interactiveNotificationsEnabled: true,
+        autoInstallmentsEnabled: true,
+        autoCategoryInferenceEnabled: true,
+        monitoredBanks: [...HOMOLOGATED_BANKS],
       },
     });
     pushToast({
@@ -797,7 +937,249 @@ export function AppearanceTab() {
         </Card>
       )}
 
-      {/* --- CARD 5: REDEFINIÇÃO DE PADRÕES --- */}
+      {/* --- CARD 5: ASSISTENTE PASSIVO DE COMPRAS & BANCOS (Fase 14 — Tarefa 30) --- */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center justify-between gap-2 flex-wrap">
+            <span className="flex items-center gap-2 min-w-0">
+              <CreditCard className="size-4 text-muted-foreground" aria-hidden="true" />
+              <span>Assistente Passivo de Compras &amp; Bancos</span>
+            </span>
+            <Badge variant={bankPrefs.passiveCaptureEnabled ? "positive" : "muted"} size="xs">
+              {bankPrefs.passiveCaptureEnabled ? "Ativado" : "Desativado"}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Toggle Mestre */}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => handleTogglePassiveCapture(!bankPrefs.passiveCaptureEnabled)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleTogglePassiveCapture(!bankPrefs.passiveCaptureEnabled);
+              }
+            }}
+            className={cn(
+              "flex items-center justify-between p-3.5 rounded-xl border transition-colors cursor-pointer select-none",
+              bankPrefs.passiveCaptureEnabled
+                ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+                : "border-border bg-surface hover:bg-surface-hover",
+            )}
+          >
+            <div className="pr-4">
+              <div className="font-semibold text-sm text-foreground">
+                Captura Passiva de Notificações Bancárias
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Detecta compras no cartão, transferências e Pix recebidos/enviados e gera sugestões inteligentes no aplicativo.
+              </div>
+            </div>
+            <Checkbox
+              checked={bankPrefs.passiveCaptureEnabled}
+              onCheckedChange={handleTogglePassiveCapture}
+              aria-label="Habilitar Captura Passiva de Notificações"
+            />
+          </div>
+
+          {/* Alerta de permissão do Android se pendente */}
+          {bankPrefs.passiveCaptureEnabled && !listenerPermissionGranted && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 rounded-xl border border-warning/40 bg-warning/5 gap-3">
+              <div>
+                <div className="font-semibold text-xs text-foreground">
+                  Acesso a Notificações Pendente no Android
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Para detectar compras em segundo plano, conceda acesso ao leitor de notificações nas configurações do dispositivo.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRequestPermission}
+                className="shrink-0 text-xs gap-1.5"
+              >
+                <span>Habilitar no Android</span>
+              </Button>
+            </div>
+          )}
+
+          {/* Opções Detalhadas se o Toggle Mestre estiver ativo */}
+          {bankPrefs.passiveCaptureEnabled && (
+            <div className="space-y-3 pt-1">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {/* Toggle 1: Notificações Interativas */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleToggleInteractiveNotifications(!bankPrefs.interactiveNotificationsEnabled)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleToggleInteractiveNotifications(!bankPrefs.interactiveNotificationsEnabled);
+                    }
+                  }}
+                  className={cn(
+                    "flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer select-none",
+                    bankPrefs.interactiveNotificationsEnabled
+                      ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+                      : "border-border bg-surface hover:bg-surface-hover",
+                  )}
+                >
+                  <div className="pr-3">
+                    <div className="font-semibold text-xs text-foreground">
+                      Notificações com Ação Rápida
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">
+                      Exibe push rico no celular com botões Adicionar Rápido e Editar.
+                    </div>
+                  </div>
+                  <Checkbox
+                    checked={bankPrefs.interactiveNotificationsEnabled}
+                    onCheckedChange={handleToggleInteractiveNotifications}
+                    aria-label="Habilitar Notificações com Ação Rápida"
+                  />
+                </div>
+
+                {/* Toggle 2: Parcelamento Automático */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleToggleAutoInstallments(!bankPrefs.autoInstallmentsEnabled)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleToggleAutoInstallments(!bankPrefs.autoInstallmentsEnabled);
+                    }
+                  }}
+                  className={cn(
+                    "flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer select-none",
+                    bankPrefs.autoInstallmentsEnabled
+                      ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+                      : "border-border bg-surface hover:bg-surface-hover",
+                  )}
+                >
+                  <div className="pr-3">
+                    <div className="font-semibold text-xs text-foreground">
+                      Cálculo Automático de Parcelas
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">
+                      Identifica compras parceladas e divide os valores mensalmente.
+                    </div>
+                  </div>
+                  <Checkbox
+                    checked={bankPrefs.autoInstallmentsEnabled}
+                    onCheckedChange={handleToggleAutoInstallments}
+                    aria-label="Habilitar Cálculo Automático de Parcelas"
+                  />
+                </div>
+              </div>
+
+              {/* Toggle 3: Inferência de Categorias */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => handleToggleAutoCategoryInference(!bankPrefs.autoCategoryInferenceEnabled)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleToggleAutoCategoryInference(!bankPrefs.autoCategoryInferenceEnabled);
+                  }
+                }}
+                className={cn(
+                  "flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer select-none",
+                  bankPrefs.autoCategoryInferenceEnabled
+                    ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+                    : "border-border bg-surface hover:bg-surface-hover",
+                )}
+              >
+                <div className="pr-3">
+                  <div className="font-semibold text-xs text-foreground">
+                    Inferência Automática de Categorias
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Sugere categorias pelo estabelecimento (alimentação, mercado, transporte, farmácia).
+                  </div>
+                </div>
+                <Checkbox
+                  checked={bankPrefs.autoCategoryInferenceEnabled}
+                  onCheckedChange={handleToggleAutoCategoryInference}
+                  aria-label="Habilitar Inferência Automática de Categorias"
+                />
+              </div>
+
+              {/* Filtro de Bancos Homologados */}
+              <div className="pt-2 border-t border-border/80 space-y-2.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <div className="font-semibold text-xs text-foreground">
+                      Bancos e Carteiras Monitoradas ({bankPrefs.monitoredBanks.length}/{HOMOLOGATED_BANKS.length})
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Selecione quais instituições financeiras devem gerar sugestões de compras e Pix.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={handleSelectAllBanks}
+                      className="text-[11px] h-7 px-2"
+                    >
+                      Marcar todos
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={handleDeselectAllBanks}
+                      className="text-[11px] h-7 px-2 text-muted-foreground hover:text-foreground"
+                    >
+                      Desmarcar todos
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-1">
+                  {HOMOLOGATED_BANKS.map((bank) => {
+                    const isChecked = bankPrefs.monitoredBanks.includes(bank);
+                    return (
+                      <div
+                        key={bank}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleToggleBank(bank, !isChecked)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleToggleBank(bank, !isChecked);
+                          }
+                        }}
+                        className={cn(
+                          "flex items-center justify-between p-2.5 rounded-lg border text-xs transition-colors cursor-pointer select-none",
+                          isChecked
+                            ? "border-primary/40 bg-primary/5 hover:bg-primary/10 font-medium text-foreground"
+                            : "border-border bg-surface hover:bg-surface-hover text-muted-foreground",
+                        )}
+                      >
+                        <span className="truncate pr-1.5">{bank}</span>
+                        <Checkbox
+                          checked={isChecked}
+                          onCheckedChange={(checked) => handleToggleBank(bank, Boolean(checked))}
+                          aria-label={`Monitorar ${bank}`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* --- CARD 6: REDEFINIÇÃO DE PADRÕES --- */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">

@@ -12,3 +12,4 @@ export * from "./suggestions-store";
 export * from "./bank-listener";
 export * from "./app-icon";
 export * from "./interactive-notifications";
+export * from "./bank-assistant-preferences";

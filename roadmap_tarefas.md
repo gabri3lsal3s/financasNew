@@ -372,16 +372,16 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 14: Central de Governança & Controles de Ativação do Assistente Passivo nas Configurações
 
-### Tarefa 30: Painel de Controle e Preferências do Assistente Passivo em Configurações [Pendente]
-- **Status:** ⏳ Pendente
+### Tarefa 30: Painel de Controle e Preferências do Assistente Passivo em Configurações [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Criar seção de controles visuais e preferências granulares em Configurações > Personalização / Notificações (`AppearanceTab`), permitindo que o usuário ative ou desative cada recurso de forma independente.
 - **Ações:**
-  1. **Toggle Mestre de Captura Passiva:** Habilitar/desabilitar a escuta de notificações bancárias no Android (`isNotificationListenerGranted`, desativação segura sem polling).
-  2. **Toggle de Notificações Interativas no Celular:** Ativar/desativar o envio de push local rico do app com os botões `[➕ Adicionar Rápido]` e `[✏️ Editar]`. Se desativado, as compras detectadas continuam aparecendo apenas de forma silenciosa no card discreto `PendingSuggestionsCard` na Home.
-  3. **Toggle de Detecção Automática de Parcelas:** Permitir que o usuário opte por ligar/desligar o cálculo e desmembramento automático de parcelas em compras no cartão (se desligado, trata todo lançamento como parcela única do valor total).
-  4. **Toggle de Inferência Automática de Categorias:** Ligar/desligar a sugestão automática de categoria pelo nome do estabelecimento (se desligado, exige que o usuário sempre selecione manualmente).
-  5. **Filtro de Bancos Homologados:** Checkboxes ou lista de bancos ativos para o usuário escolher quais bancos deseja monitorar (ex.: monitorar apenas Nubank e Itaú, ignorando Inter).
-  6. **Persistência das Preferências:** Salvar as preferências com isolamento de usuário via `user-storage.ts` / Supabase `user_preferences`, com reatividade instantânea no aplicativo.
+  1. **Toggle Mestre de Captura Passiva:** (Concluído: implementado toggle geral de ativação/desativação da escuta de notificações com badge de status, feedback sensorial e verificação da permissão nativa `isNotificationListenerGranted`/`requestNotificationListenerPermission` no Android).
+  2. **Toggle de Notificações Interativas no Celular:** (Concluído: toggle independente para push rico local com botões [Adicionar Rápido] e [Editar]; quando desativado, o processamento ocorre silenciosamente e as compras aparecem apenas no card discreto da tela inicial).
+  3. **Toggle de Detecção Automática de Parcelas:** (Concluído: controle granular para ativar/desativar cálculo de parcelas, convertendo compras parceladas para parcela única de valor total quando desligado).
+  4. **Toggle de Inferência Automática de Categorias:** (Concluído: controle para ligar/desligar auto-categorização por estabelecimento, exigindo seleção manual quando desativado tanto no listener quanto no wizard).
+  5. **Filtro de Bancos Homologados:** (Concluído: matriz com os 17 bancos homologados em grid responsivo com seleção individual por checkbox e botões rápidos de Marcar todos e Desmarcar todos).
+  6. **Persistência das Preferências:** (Concluído: armazenamento com isolamento de usuário via `user-storage.ts`, sincronização com `user_preferences.custom_settings.bankAssistant` no Supabase e hook reativo `useBankAssistantPreferences` com 100% de testes verdes).
 - **Commit:** `feat(settings): add user preference toggles for bank notifications, quick-add, installments, and category inference`
 
 ### Tarefa 31: Correção do Crash Loop na Troca Dinâmica de Ícone (Cache Pro & Anti-Restart) 

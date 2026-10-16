@@ -54,6 +54,10 @@ export function useUpdateCustomSettings() {
                 ...(old.custom_settings?.headerButtons ?? {}),
                 ...(patch.headerButtons ?? {}),
               },
+              bankAssistant: {
+                ...(old.custom_settings?.bankAssistant ?? {}),
+                ...(patch.bankAssistant ?? {}),
+              },
             },
           };
         });

@@ -151,4 +151,115 @@ describe("bank-listener (Serviço de Notificações e Pix)", () => {
       expect(count).toBe(0);
     });
   });
+
+  describe("governança de preferências do usuário (Fase 14 — Tarefa 30)", () => {
+    it("não processa notificação quando captura passiva estiver desativada", async () => {
+      const prefsModule = await import("./bank-assistant-preferences");
+      vi.spyOn(prefsModule, "getBankAssistantPreferences").mockReturnValue({
+        passiveCaptureEnabled: false,
+        interactiveNotificationsEnabled: true,
+        autoInstallmentsEnabled: true,
+        autoCategoryInferenceEnabled: true,
+        monitoredBanks: ["Nubank"],
+      });
+
+      const addSpy = vi.spyOn(suggestionsStoreModule, "addPendingSuggestion");
+      const result = processBankNotification({
+        title: "Nubank",
+        text: "Compra de R$ 50,00 no cartão",
+        packageName: "com.nu.production",
+      });
+
+      expect(result).toBeNull();
+      expect(addSpy).not.toHaveBeenCalled();
+    });
+
+    it("ignora notificação de banco não selecionado na lista de bancos monitorados", async () => {
+      const prefsModule = await import("./bank-assistant-preferences");
+      vi.spyOn(prefsModule, "getBankAssistantPreferences").mockReturnValue({
+        passiveCaptureEnabled: true,
+        interactiveNotificationsEnabled: true,
+        autoInstallmentsEnabled: true,
+        autoCategoryInferenceEnabled: true,
+        monitoredBanks: ["Nubank", "Itaú"], // Inter não está incluído
+      });
+
+      const addSpy = vi.spyOn(suggestionsStoreModule, "addPendingSuggestion");
+      const result = processBankNotification({
+        title: "Inter",
+        text: "Compra aprovada de R$ 80,00 no cartão",
+        packageName: "br.com.intermedium",
+      });
+
+      expect(result).toBeNull();
+      expect(addSpy).not.toHaveBeenCalled();
+    });
+
+    it("reseta parcelas para 1x se autoInstallmentsEnabled for falso", async () => {
+      const prefsModule = await import("./bank-assistant-preferences");
+      vi.spyOn(prefsModule, "getBankAssistantPreferences").mockReturnValue({
+        passiveCaptureEnabled: true,
+        interactiveNotificationsEnabled: true,
+        autoInstallmentsEnabled: false, // Desligado
+        autoCategoryInferenceEnabled: true,
+        monitoredBanks: ["Nubank"],
+      });
+
+      const result = processBankNotification({
+        title: "Nubank",
+        text: "Compra de R$ 300,00 em 3x no cartão Nubank em Loja",
+        packageName: "com.nu.production",
+      });
+
+      expect(result).not.toBeNull();
+      expect(result?.installments).toBe(1);
+      expect(result?.currentInstallment).toBe(1);
+      expect(result?.installmentAmountCents).toBe(30000);
+    });
+
+    it("remove categorySlug se autoCategoryInferenceEnabled for falso", async () => {
+      const prefsModule = await import("./bank-assistant-preferences");
+      vi.spyOn(prefsModule, "getBankAssistantPreferences").mockReturnValue({
+        passiveCaptureEnabled: true,
+        interactiveNotificationsEnabled: true,
+        autoInstallmentsEnabled: true,
+        autoCategoryInferenceEnabled: false, // Desligado
+        monitoredBanks: ["Nubank"],
+      });
+
+      const result = processBankNotification({
+        title: "Nubank",
+        text: "Compra de R$ 30,00 em Padaria Estrela",
+        packageName: "com.nu.production",
+      });
+
+      expect(result).not.toBeNull();
+      expect(result?.categorySlug).toBeUndefined();
+    });
+
+    it("salva na store mas não envia push interativo se interactiveNotificationsEnabled for falso", async () => {
+      const prefsModule = await import("./bank-assistant-preferences");
+      const notifModule = await import("./interactive-notifications");
+      const scheduleSpy = vi.spyOn(notifModule, "scheduleInteractiveBankNotification");
+      const addSpy = vi.spyOn(suggestionsStoreModule, "addPendingSuggestion");
+
+      vi.spyOn(prefsModule, "getBankAssistantPreferences").mockReturnValue({
+        passiveCaptureEnabled: true,
+        interactiveNotificationsEnabled: false, // Push desativado
+        autoInstallmentsEnabled: true,
+        autoCategoryInferenceEnabled: true,
+        monitoredBanks: ["Nubank"],
+      });
+
+      const result = processBankNotification({
+        title: "Nubank",
+        text: "Compra de R$ 25,00 em Drogaria São Paulo",
+        packageName: "com.nu.production",
+      });
+
+      expect(result).not.toBeNull();
+      expect(addSpy).toHaveBeenCalledWith(result);
+      expect(scheduleSpy).not.toHaveBeenCalled();
+    });
+  });
 });

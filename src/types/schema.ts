@@ -232,6 +232,13 @@ export type UserCustomSettings = {
     themeToggle?: boolean;
     privacyToggle?: boolean;
   };
+  bankAssistant?: {
+    passiveCaptureEnabled?: boolean;
+    interactiveNotificationsEnabled?: boolean;
+    autoInstallmentsEnabled?: boolean;
+    autoCategoryInferenceEnabled?: boolean;
+    monitoredBanks?: string[];
+  };
 };
 
 export type UserPreferences = {

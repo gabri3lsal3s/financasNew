@@ -2,12 +2,15 @@ import { registerPlugin, type PluginListenerHandle } from "@capacitor/core";
 import {
   parseBankNotification,
   parsePixShareText,
+  resolveBankName,
+  isBankMonitored,
   type BankNotificationPayload,
   type ParsedBankTransaction,
 } from "@/domain/notifications";
 import { isNativePlatform } from "./platform";
 import { addPendingSuggestion } from "./suggestions-store";
 import { scheduleInteractiveBankNotification } from "./interactive-notifications";
+import { getBankAssistantPreferences } from "./bank-assistant-preferences";
 
 export interface BankNotificationPluginInterface {
   isPermissionGranted(): Promise<{ granted: boolean }>;
@@ -46,16 +49,45 @@ export const BankNotificationPlugin = registerPlugin<BankNotificationPluginInter
 let isInitialized = false;
 
 /**
- * Processa uma notificação bancária recebida:
- * Se reconhecer uma transação com valor válido, adiciona à fila de sugestões pendentes.
+ * Processa uma notificação bancária recebida respeitando as preferências do usuário:
+ * - Filtra por bancos monitorados e toggle mestre de captura
+ * - Aplica toggles de detecção de parcelas e inferência de categorias
+ * - Dispara push interativo apenas se o toggle correspondente estiver ativo
  */
 export function processBankNotification(
   payload: BankNotificationPayload,
 ): ParsedBankTransaction | null {
+  const prefs = getBankAssistantPreferences();
+  if (!prefs.passiveCaptureEnabled) {
+    return null;
+  }
+
+  const bankName = resolveBankName(payload.packageName, payload.title, payload.text);
+  if (!isBankMonitored(bankName, prefs)) {
+    return null;
+  }
+
   const parsed = parseBankNotification(payload);
   if (parsed) {
+    // Se o usuário desativou cálculo automático de parcelas, normaliza para parcela única
+    if (!prefs.autoInstallmentsEnabled && (parsed.installments || 1) > 1) {
+      parsed.installments = 1;
+      parsed.currentInstallment = 1;
+      parsed.installmentAmountCents = parsed.amountCents;
+    }
+
+    // Se o usuário desativou inferência de categorias, remove o slug inferido
+    if (!prefs.autoCategoryInferenceEnabled) {
+      delete parsed.categorySlug;
+    }
+
     addPendingSuggestion(parsed);
-    void scheduleInteractiveBankNotification(parsed);
+
+    // Notificação interativa rica (com botões Adicionar Rápido e Editar)
+    // Se desativada, não envia push no celular (fica apenas no card discreto da Home)
+    if (prefs.interactiveNotificationsEnabled) {
+      void scheduleInteractiveBankNotification(parsed);
+    }
   }
   return parsed;
 }
@@ -63,13 +95,25 @@ export function processBankNotification(
 /**
  * Processa um texto compartilhado via Android Share Target (comprovante Pix):
  * Se reconhecer valor válido, adiciona à fila de sugestões pendentes
- * e emite notificação local para confirmação rápida.
+ * e emite notificação local para confirmação rápida caso habilitado.
  */
 export function processPixShare(text: string): ParsedBankTransaction | null {
+  const prefs = getBankAssistantPreferences();
+  if (!prefs.passiveCaptureEnabled) {
+    return null;
+  }
+
   const parsed = parsePixShareText(text);
   if (parsed) {
+    if (!prefs.autoCategoryInferenceEnabled) {
+      delete parsed.categorySlug;
+    }
+
     addPendingSuggestion(parsed);
-    void scheduleInteractiveBankNotification(parsed);
+
+    if (prefs.interactiveNotificationsEnabled) {
+      void scheduleInteractiveBankNotification(parsed);
+    }
   }
   return parsed;
 }
