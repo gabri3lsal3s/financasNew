@@ -273,12 +273,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 8: Harmonização de Ícones, Logotipo e Identidade Gráfica (PWA & Android)
 
-### Tarefa 23: Sistema Unificado de Ícones e Reatividade ao Tema
+### Tarefa 23: Sistema Unificado de Ícones e Reatividade ao Tema [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Padronizar proporções, espessura de traço e reatividade dos ícones à cor de destaque e temas claro/escuro.
 - **Ações:**
-  1. Fixar a escala de tamanhos de ícones e espessura única de traço (1.75px ou 2px) em todo o app.
-  2. Substituir classes de cores estáticas por variáveis de tema
-  3. Harmonizar o contraste e transparência dos containers/badges que envolvem ícones.
+  1. Fixar a escala de tamanhos de ícones e espessura única de traço (1.75px ou 2px) em todo o app. (Concluído: definida a espessura unificada `--icon-stroke-width: 1.85px;` em `tokens.css` para temas Light, Dark e OLED; injetada a regra global em `globals.css` para `svg.lucide, .lucide { stroke-width: var(--icon-stroke-width, 1.85px); flex-shrink: 0; }` padronizando todos os ícones Lucide da aplicação sem distorção via `flex-shrink: 0`; e estabelecida a escala utilitária canônica `.icon-xs` [12px], `.icon-sm` [14px], `.icon-md` [16px], `.icon-lg` [20px], `.icon-xl` [24px] e `.icon-2xl` [32px] em `@layer utilities`).
+  2. Substituir classes de cores estáticas por variáveis de tema. (Concluído: eliminadas todas as classes estáticas de cores Tailwind [emerald-500, indigo-500, sky-500, violet-500, amber-500, slate-500] em `position-types.ts` e `position-table.tsx` em favor dos tokens semânticos `bg-cat-2`, `bg-cat-5`, `bg-cat-1`, `bg-cat-7`, `bg-warning` e `bg-portfolio`; substituídas cores estáticas em `notifications-button.tsx` por `bg-critical`, `bg-warning-strong` e `bg-primary`; e convertidas as barras de progresso e legendas de `hero-editorial.tsx` e `product-narratives.tsx` para tokens de categoria e semânticas financeiras).
+  3. Harmonizar o contraste e transparência dos containers/badges que envolvem ícones. (Concluído: criadas as classes utilitárias semânticas `.icon-box-primary`, `.icon-box-positive`, `.icon-box-negative`, `.icon-box-warning`, `.icon-box-critical`, `.icon-box-portfolio`, `.icon-box-neutral` e `.icon-box-accent` em `globals.css` com 10% de opacidade de fundo, cor de texto de alto contraste e bordas sutis `border border-.../20`; harmonizados os containers de ícones em `investments-showcase.tsx`, `legal-dialog.tsx` e `install-app-button.tsx`, garantindo contraste impecável nos temas Claro, Escuro e OLED; e adicionada suíte completa de testes unitários em `icon-system.test.ts` e `notifications-button.test.tsx`).
 - **Commit:** `style(icons): unify stroke weights, sizing scale, and dynamic theme reactivity`
 
 ---

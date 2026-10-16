@@ -68,7 +68,7 @@ export function InvestmentsShowcase() {
             >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-portfolio/10 text-portfolio">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-portfolio/10 border border-portfolio/20 text-portfolio">
                     <PieChart className="size-5" aria-hidden="true" />
                   </div>
                   <Badge variant="portfolio" size="xs">
@@ -105,7 +105,7 @@ export function InvestmentsShowcase() {
             >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-warning/10 text-warning-strong dark:text-warning">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-warning/10 border border-warning/20 text-warning-strong dark:text-warning">
                     <ShieldAlert className="size-5" aria-hidden="true" />
                   </div>
                   <Badge variant="warning" size="xs">
@@ -142,7 +142,7 @@ export function InvestmentsShowcase() {
             >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-positive/10 text-positive-strong dark:text-positive">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-positive/10 border border-positive/20 text-positive-strong dark:text-positive">
                     <Receipt className="size-5" aria-hidden="true" />
                   </div>
                   <Badge variant="positive" size="xs">
@@ -179,7 +179,7 @@ export function InvestmentsShowcase() {
             >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary-strong">
                     <FileSpreadsheet className="size-5" aria-hidden="true" />
                   </div>
                   <Badge variant="default" size="xs">
@@ -220,7 +220,7 @@ export function InvestmentsShowcase() {
             >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-portfolio/10 text-portfolio">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-portfolio/10 border border-portfolio/20 text-portfolio">
                     <Scale className="size-5" aria-hidden="true" />
                   </div>
                   <Badge variant="portfolio" size="xs">
@@ -257,7 +257,7 @@ export function InvestmentsShowcase() {
             >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-positive/10 text-positive-strong dark:text-positive">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-positive/10 border border-positive/20 text-positive-strong dark:text-positive">
                     <ArrowUpRight className="size-5" aria-hidden="true" />
                   </div>
                   <Badge variant="positive" size="xs">

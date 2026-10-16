@@ -72,6 +72,7 @@
   --color-overlay: hsl(var(--overlay));
   --color-scrollbar-thumb: hsl(var(--scrollbar-thumb));
   --color-scrollbar-track: hsl(var(--scrollbar-track));
+  --icon-stroke-width: var(--icon-stroke-width);
 
   /* Escala centralizada e padronizada de Z-Index */
   --z-base: var(--z-base);
@@ -270,6 +271,13 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Unificação global de espessura de traço e renderização de ícones Lucide (Tarefa 23) */
+  svg.lucide,
+  .lucide {
+    stroke-width: var(--icon-stroke-width, 1.85px);
+    flex-shrink: 0;
+  }
+
   /* Seleção com a cor da marca */
   ::selection {
     background-color: hsl(var(--primary) / 0.20);
@@ -354,6 +362,78 @@
   }
   .bottom-safe {
     bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* ================================================================
+     SISTEMA UNIFICADO DE ÍCONES E CONTAINERS (DESIGN SYSTEM §11 & §13)
+     ================================================================ */
+
+  /* Escala Padronizada de Tamanhos de Ícones */
+  .icon-xs {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+  .icon-sm {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+  .icon-md {
+    width: 1rem;
+    height: 1rem;
+  }
+  .icon-lg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+  .icon-xl {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+  .icon-2xl {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  /* Containers Harmonizados para Ícones (Icon Boxes) com Reatividade ao Tema */
+  .icon-box-primary {
+    background-color: hsl(var(--primary) / 0.10);
+    color: hsl(var(--primary-strong));
+    border: 1px solid hsl(var(--primary) / 0.20);
+  }
+  .icon-box-positive {
+    background-color: hsl(var(--positive) / 0.10);
+    color: hsl(var(--positive-strong));
+    border: 1px solid hsl(var(--positive) / 0.20);
+  }
+  .icon-box-negative {
+    background-color: hsl(var(--negative) / 0.10);
+    color: hsl(var(--negative-strong));
+    border: 1px solid hsl(var(--negative) / 0.20);
+  }
+  .icon-box-warning {
+    background-color: hsl(var(--warning) / 0.10);
+    color: hsl(var(--warning-strong));
+    border: 1px solid hsl(var(--warning) / 0.20);
+  }
+  .icon-box-critical {
+    background-color: hsl(var(--critical) / 0.10);
+    color: hsl(var(--critical-strong));
+    border: 1px solid hsl(var(--critical) / 0.20);
+  }
+  .icon-box-portfolio {
+    background-color: hsl(var(--portfolio) / 0.10);
+    color: hsl(var(--portfolio));
+    border: 1px solid hsl(var(--portfolio) / 0.20);
+  }
+  .icon-box-neutral {
+    background-color: hsl(var(--surface-hover));
+    color: hsl(var(--muted-foreground));
+    border: 1px solid hsl(var(--border) / 0.80);
+  }
+  .icon-box-accent {
+    background-color: hsl(var(--accent) / 0.15);
+    color: hsl(var(--accent-foreground));
+    border: 1px solid hsl(var(--accent) / 0.25);
   }
 
   /* Números tabulares: alinhamento perfeito em tabelas e listas */

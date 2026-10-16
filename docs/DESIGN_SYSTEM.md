@@ -583,3 +583,33 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
   - Estados vazios de seção de fatura (sem despesas ou sem pagamentos) utilizam `EmptyState` com paddings calibrados (`py-10 sm:py-12` e `py-8 sm:py-10`).
   - Sub-blocos vazios (*sem parceladas* ou *sem compras à vista* em faturas que possuem despesas no outro grupo) utilizam contêiner sutil padronizado com borda tracejada (`rounded-xl border border-dashed border-border/80 bg-surface/50 py-5 px-4 text-center text-xs text-muted-foreground`), garantindo ritmo e harmonia visual sem poluição.
 
+### 14.23 Sistema Unificado de Ícones, Espessura de Traço e Containers Reativos (Fase 8 — Tarefa 23)
+- **Espessura Única de Traço:** `--icon-stroke-width: 1.85px;` definida nos tokens centrais (`src/styles/tokens.css`) e propagada automaticamente em cascata no CSS global para qualquer ícone da biblioteca `lucide-react`:
+  ```css
+  svg.lucide,
+  .lucide {
+    stroke-width: var(--icon-stroke-width, 1.85px);
+    flex-shrink: 0;
+  }
+  ```
+  Garante traço consistente, refinado e livre de variações ad-hoc em todos os navegadores, resoluções e densidades de pixel (high-DPI / retina).
+- **Escala Canônica de Tamanhos:**
+  - `.icon-xs` (12px / `size-3`): micro-indicadores em tabelas, breadcrumbs e badges compactos;
+  - `.icon-sm` (14px / `size-3.5`): navegação em abas, botões compactos, chips de filtro e decorators de input;
+  - `.icon-md` (16px / `size-4` — Padrão oficial): botões de ação, itens de menu, títulos de seções e campos de formulário;
+  - `.icon-lg` (20px / `size-5`): navegação primária da barra inferior/sidebar e cabeçalhos de lista;
+  - `.icon-xl` (24px / `size-6`): empty states, cabeçalhos de modais e destaque executivo;
+  - `.icon-2xl` (32px / `size-8`): heróis de landing page, banners informativos e marcos do sistema.
+- **Containers de Ícones Harmonizados (`.icon-box-*`):**
+  - Contêineres de destaque visual utilizam classes semânticas com fundo calibrado (10%), cor de texto AA e borda de delimitação suave (20%), assegurando contraste impecável nos temas Light, Dark e OLED:
+    - `.icon-box-primary`: `bg-primary/10 text-primary-strong border border-primary/20` (interações e ações);
+    - `.icon-box-positive`: `bg-positive/10 text-positive-strong border border-positive/20` (receitas e conformidade);
+    - `.icon-box-negative`: `bg-negative/10 text-negative-strong border border-negative/20` (despesas e débitos);
+    - `.icon-box-warning`: `bg-warning/10 text-warning-strong border border-warning/20` (atenção, limites e alertas fiscais);
+    - `.icon-box-critical`: `bg-critical/10 text-critical-strong border border-critical/20` (atrasos e bloqueios);
+    - `.icon-box-portfolio`: `bg-portfolio/10 text-portfolio border border-portfolio/20` (investimentos e alocação);
+    - `.icon-box-neutral`: `bg-surface-hover text-muted-foreground border border-border/80` (apoio e informativo);
+    - `.icon-box-accent`: `bg-accent/15 text-accent-foreground border border-accent/25` (destaque executivo e dourado).
+- **Proibição de Cores Estáticas:** É expressamente proibido usar classes de cores hard-coded do Tailwind (`bg-emerald-500`, `text-indigo-600`, `bg-amber-500`, etc.) em ícones ou badges de domínio, utilizando unicamente a escala de categorias (`cat-1..10`) ou semânticas financeiras.
+
+

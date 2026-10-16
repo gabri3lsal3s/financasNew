@@ -95,28 +95,28 @@ export function getAssetClassMeta(className: string | null): AssetClassMeta {
   if (norm.includes("ação") || norm.includes("acoes") || norm.includes("ações")) {
     return {
       label: className ?? "Ações",
-      badgeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+      badgeClass: "bg-cat-2/10 text-cat-2 border-cat-2/25",
       icon: TrendingUp,
     };
   }
   if (norm.includes("fii")) {
     return {
       label: className ?? "FIIs",
-      badgeClass: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+      badgeClass: "bg-cat-5/10 text-cat-5 border-cat-5/25",
       icon: Building2,
     };
   }
   if (norm.includes("internacional") || norm.includes("global") || norm.includes("exterior")) {
     return {
       label: className ?? "Internacional",
-      badgeClass: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
+      badgeClass: "bg-cat-1/10 text-cat-1 border-cat-1/25",
       icon: Globe,
     };
   }
   if (norm.includes("etf")) {
     return {
       label: className ?? "ETFs",
-      badgeClass: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
+      badgeClass: "bg-cat-7/10 text-cat-7 border-cat-7/25",
       icon: Layers,
     };
   }
@@ -132,20 +132,20 @@ export function getAssetClassMeta(className: string | null): AssetClassMeta {
   ) {
     return {
       label: className ?? "Renda Fixa",
-      badgeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+      badgeClass: "bg-warning/10 text-warning-strong border-warning/25",
       icon: Landmark,
     };
   }
   if (norm.includes("caixa") || norm.includes("cash") || norm.includes("moeda")) {
     return {
       label: className ?? "Caixa",
-      badgeClass: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20",
+      badgeClass: "bg-portfolio/10 text-portfolio border-portfolio/25",
       icon: Wallet,
     };
   }
   return {
     label: className || "Outros",
-    badgeClass: "bg-surface-hover/80 text-muted-foreground border-border/40",
+    badgeClass: "bg-surface-hover/80 text-muted-foreground border-border/80",
     icon: Coins,
   };
 }

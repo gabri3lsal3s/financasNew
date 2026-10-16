@@ -120,7 +120,7 @@ export function ProductNarratives() {
                   R$ 2.480,50
                 </span>
                 <div className="mt-2.5 sm:mt-3.5 h-2 w-full rounded-full bg-muted/60 overflow-hidden">
-                  <div className="h-full rounded-full bg-amber-500" style={{ width: "16.5%" }} />
+                  <div className="h-full rounded-full bg-warning-strong" style={{ width: "16.5%" }} />
                 </div>
                 <span className="text-xs text-muted-foreground mt-1.5 block">
                   16.5% do limite total comprometido
@@ -243,7 +243,7 @@ export function ProductNarratives() {
                     <span className="font-bold text-portfolio shrink-0">Aportar R$ 1.400 (70%)</span>
                   </div>
                   <div className="h-2 sm:h-2.5 w-full rounded-full bg-muted/60 overflow-hidden">
-                    <div className="h-full rounded-full bg-emerald-500" style={{ width: "70%" }} />
+                    <div className="h-full rounded-full bg-positive" style={{ width: "70%" }} />
                   </div>
                 </div>
 
@@ -253,7 +253,7 @@ export function ProductNarratives() {
                     <span className="font-bold text-portfolio shrink-0">Aportar R$ 600 (30%)</span>
                   </div>
                   <div className="h-2 sm:h-2.5 w-full rounded-full bg-muted/60 overflow-hidden">
-                    <div className="h-full rounded-full bg-purple-500" style={{ width: "30%" }} />
+                    <div className="h-full rounded-full bg-cat-5" style={{ width: "30%" }} />
                   </div>
                 </div>
               </div>

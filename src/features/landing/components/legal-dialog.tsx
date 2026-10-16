@@ -27,7 +27,7 @@ export function LegalDialog({ open, onOpenChange }: LegalDialogProps) {
       <div className="flex flex-col gap-4 text-sm leading-relaxed text-muted-foreground">
         {/* Pilar 1: Isolamento de Dados & RLS */}
         <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface/60 p-4">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary-strong">
             <Lock className="size-4.5" aria-hidden="true" />
           </div>
           <div>
@@ -42,7 +42,7 @@ export function LegalDialog({ open, onOpenChange }: LegalDialogProps) {
 
         {/* Pilar 2: Zero Venda de Dados e Sem Anúncios */}
         <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface/60 p-4">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-positive/10 text-positive-strong dark:text-positive">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-positive/10 border border-positive/20 text-positive-strong dark:text-positive">
             <ShieldCheck className="size-4.5" aria-hidden="true" />
           </div>
           <div>
@@ -57,7 +57,7 @@ export function LegalDialog({ open, onOpenChange }: LegalDialogProps) {
 
         {/* Pilar 3: Portabilidade e Exportação */}
         <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface/60 p-4">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 text-portfolio">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
             <Database className="size-4.5" aria-hidden="true" />
           </div>
           <div>
@@ -72,7 +72,7 @@ export function LegalDialog({ open, onOpenChange }: LegalDialogProps) {
 
         {/* Pilar 4: Termos de Uso e Cancelamento */}
         <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface/60 p-4">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-warning/10 text-warning-strong dark:text-warning">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-warning/10 border border-warning/20 text-warning-strong dark:text-warning">
             <FileText className="size-4.5" aria-hidden="true" />
           </div>
           <div>

@@ -85,6 +85,9 @@ html[data-theme="light"] {
   --ring: 173 58% 39%;
   --ring-offset: 204 29% 97%;
 
+  /* Ícones Lucide — Espessura única de traço (unificada em 1.85px) */
+  --icon-stroke-width: 1.85px;
+
   /* Escala centralizada e padronizada de Z-Index (dropdowns < tooltips < bottom bar < modais < toasts) */
   --z-base: 10;
   --z-sticky: 20;
@@ -158,6 +161,8 @@ html[data-theme="dark"] {
 
   --ring: 173 66% 50%;
   --ring-offset: 206 49% 9%;
+
+  --icon-stroke-width: 1.85px;
 }
 
 /* ----------------------------------------------------------------
@@ -214,6 +219,8 @@ html[data-theme="oled"] {
 
   --ring: 173 66% 50%;
   --ring-offset: 0 0% 0%;
+
+  --icon-stroke-width: 1.85px;
 }
 
 /* ----------------------------------------------------------------
@@ -272,6 +279,7 @@ html[data-theme="oled"] {
     --portfolio: 198 93% 60%;
     --ring: 173 66% 50%;
     --ring-offset: 206 49% 9%;
+    --icon-stroke-width: 1.85px;
   }
 }
 

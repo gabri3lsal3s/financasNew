@@ -99,4 +99,51 @@ describe("NotificationsButton", () => {
     expect(screen.getByRole("button", { name: "Notificações: 1 pendências" })).toBeInTheDocument();
     expect(screen.getByText("1")).toBeInTheDocument();
   });
+
+  it("aplica classes de tema corretas (bg-critical para urgente, bg-warning-strong para hoje, bg-primary padrão)", () => {
+    // 1. Urgente (atrasadas)
+    mockUseReminders.mockReturnValue({
+      items: [],
+      totalCount: 2,
+      overdueCount: 1,
+      dueTodayCount: 0,
+      isLoading: false,
+    });
+    const { rerender } = render(
+      <MemoryRouter>
+        <NotificationsButton />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("2")).toHaveClass("bg-critical");
+
+    // 2. Vencendo hoje
+    mockUseReminders.mockReturnValue({
+      items: [],
+      totalCount: 2,
+      overdueCount: 0,
+      dueTodayCount: 1,
+      isLoading: false,
+    });
+    rerender(
+      <MemoryRouter>
+        <NotificationsButton />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("2")).toHaveClass("bg-warning-strong");
+
+    // 3. Normal / informativa
+    mockUseReminders.mockReturnValue({
+      items: [],
+      totalCount: 2,
+      overdueCount: 0,
+      dueTodayCount: 0,
+      isLoading: false,
+    });
+    rerender(
+      <MemoryRouter>
+        <NotificationsButton />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("2")).toHaveClass("bg-primary", "text-primary-foreground");
+  });
 });

@@ -154,19 +154,19 @@ export function HeroEditorial() {
                 <span className="font-mono text-muted-foreground">R$ 3.820 de R$ 5.500 (69% utilizado)</span>
               </div>
               <div className="w-full h-3 sm:h-4 rounded-full overflow-hidden bg-muted/60 p-0.5 flex gap-1 border border-border/50">
-                <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: "35%" }} />
-                <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: "20%" }} />
-                <div className="h-full rounded-full bg-amber-500 transition-all" style={{ width: "14%" }} />
+                <div className="h-full rounded-full bg-cat-2 transition-all" style={{ width: "35%" }} />
+                <div className="h-full rounded-full bg-cat-1 transition-all" style={{ width: "20%" }} />
+                <div className="h-full rounded-full bg-cat-3 transition-all" style={{ width: "14%" }} />
               </div>
               <div className="mt-3 sm:mt-4 flex flex-wrap gap-3 sm:gap-5 text-xs sm:text-sm text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5 sm:gap-2">
-                  <span className="size-2 sm:size-2.5 rounded-full bg-emerald-500" /> Moradia (R$ 1.925)
+                  <span className="size-2 sm:size-2.5 rounded-full bg-cat-2" /> Moradia (R$ 1.925)
                 </span>
                 <span className="inline-flex items-center gap-1.5 sm:gap-2">
-                  <span className="size-2 sm:size-2.5 rounded-full bg-blue-500" /> Alimentação (R$ 1.100)
+                  <span className="size-2 sm:size-2.5 rounded-full bg-cat-1" /> Alimentação (R$ 1.100)
                 </span>
                 <span className="inline-flex items-center gap-1.5 sm:gap-2">
-                  <span className="size-2 sm:size-2.5 rounded-full bg-amber-500" /> Transporte (R$ 770)
+                  <span className="size-2 sm:size-2.5 rounded-full bg-cat-3" /> Transporte (R$ 770)
                 </span>
               </div>
             </div>

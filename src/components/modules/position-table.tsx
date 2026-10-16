@@ -5,17 +5,10 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
-  Building2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Coins,
-  Globe,
-  Landmark,
-  Layers,
   Search,
-  TrendingUp,
-  Wallet,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +18,7 @@ import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { calculateYieldOnCost } from "@/domain/portfolio";
 import type { AssetPricingMode, PriceSource } from "@/domain/portfolio";
+import { getAssetClassMeta } from "@/components/modules/portfolio/position-types";
 import { isFixedIncomeClass } from "@/domain/portfolio/valuation";
 import { formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -124,72 +118,6 @@ const PRICE_SOURCE_LABEL: Record<PriceSource, { label: string; title: string }> 
 
 const formatQuantity = (quantity: number): string =>
   Number.isInteger(quantity) ? String(quantity) : quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
-
-export interface AssetClassMeta {
-  label: string;
-  badgeClass: string;
-  icon: typeof TrendingUp;
-}
-
-function getAssetClassMeta(className: string | null): AssetClassMeta {
-  const norm = (className ?? "").trim().toLowerCase();
-  if (norm.includes("ação") || norm.includes("acoes") || norm.includes("ações")) {
-    return {
-      label: className ?? "Ações",
-      badgeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-      icon: TrendingUp,
-    };
-  }
-  if (norm.includes("fii")) {
-    return {
-      label: className ?? "FIIs",
-      badgeClass: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
-      icon: Building2,
-    };
-  }
-  if (norm.includes("internacional") || norm.includes("global") || norm.includes("exterior")) {
-    return {
-      label: className ?? "Internacional",
-      badgeClass: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
-      icon: Globe,
-    };
-  }
-  if (norm.includes("etf")) {
-    return {
-      label: className ?? "ETFs",
-      badgeClass: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
-      icon: Layers,
-    };
-  }
-  if (
-    norm.includes("renda fixa") ||
-    norm.includes("cdb") ||
-    norm.includes("tesouro") ||
-    norm.includes("lci") ||
-    norm.includes("lca") ||
-    norm.includes("cri") ||
-    norm.includes("cra") ||
-    norm.includes("debenture")
-  ) {
-    return {
-      label: className ?? "Renda Fixa",
-      badgeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-      icon: Landmark,
-    };
-  }
-  if (norm.includes("caixa") || norm.includes("cash") || norm.includes("moeda")) {
-    return {
-      label: className ?? "Caixa",
-      badgeClass: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20",
-      icon: Wallet,
-    };
-  }
-  return {
-    label: className || "Outros",
-    badgeClass: "bg-surface-hover/80 text-muted-foreground border-border/40",
-    icon: Coins,
-  };
-}
 
 interface ClassGroup {
   className: string;
