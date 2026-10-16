@@ -14,13 +14,13 @@ export interface MobileCtaDockProps {
  * Surge suavemente após o usuário rolar além do Hero e oferece acesso direto ao teste gratuito.
  */
 export function MobileCtaDock({ visible }: MobileCtaDockProps) {
-  const { trialUrl, isLoggedIn } = useLandingCta();
+  const { proUrl, isLoggedIn } = useLandingCta();
 
   if (!visible) return null;
 
   return (
     <aside
-      aria-label="Ação rápida de cadastro"
+      aria-label="Ação rápida de assinatura"
       className={cn(
         "fixed bottom-0 left-0 right-0 z-30 sm:hidden border-t border-border/80 bg-background/90 backdrop-blur-md px-4 py-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] shadow-lg transition-all duration-300 animate-fade-slide-in",
       )}
@@ -32,18 +32,18 @@ export function MobileCtaDock({ visible }: MobileCtaDockProps) {
             <span>Áxis • Guia Financeiro</span>
           </span>
           <span className="text-[11px] text-muted-foreground truncate">
-            {isLoggedIn ? "Acesse seu painel" : "30 dias grátis · Sem cartão"}
+            {isLoggedIn ? "Acesse seu painel" : "30 dias de garantia · Cancele fácil"}
           </span>
         </div>
 
         <Link
-          to={trialUrl}
+          to={isLoggedIn ? "/" : proUrl("pro-anual")}
           className={cn(
             buttonVariants({ size: "sm" }),
             "shadow-xs shrink-0 font-semibold inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs",
           )}
         >
-          <span>{isLoggedIn ? "Acessar" : "Testar Grátis"}</span>
+          <span>{isLoggedIn ? "Acessar" : "Assinar Pro"}</span>
           <ArrowRight className="size-3.5" aria-hidden="true" />
         </Link>
       </div>

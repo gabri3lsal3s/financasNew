@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
-import { ArrowLeft, Check, Circle, Eye, EyeOff } from "lucide-react";
-import { Alert, Button, Input, Turnstile } from "@/components/ui";
+import { ArrowLeft, ArrowRight, Check, Circle, Eye, EyeOff, Sparkles } from "lucide-react";
+import { Alert, Button, Input, Turnstile, buttonVariants } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { useAuth, signUpWithEmail } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/services/errors";
@@ -85,6 +85,33 @@ export function RegisterPage() {
         {confirmationSent ? (
           <Alert variant="success">Verifique seu e-mail para confirmar o cadastro antes de entrar.</Alert>
         ) : null}
+
+        {!planoParam && (
+          <div className="rounded-xl border border-primary/40 bg-gradient-to-br from-primary/10 via-surface to-surface p-3.5 shadow-xs flex flex-col gap-2.5">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                <Sparkles className="size-3.5 text-primary shrink-0" aria-hidden="true" />
+                <span>Prefere ir direto para o Plano Pro?</span>
+              </div>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-primary-strong bg-primary/10 px-2 py-0.5 rounded-full shrink-0">
+                30 Dias Garantidos
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Tenha lançamentos ilimitados, rebalanceamento automático de carteira e relatórios executivos. Você pode criar sua conta diretamente na assinatura com garantia total.
+            </p>
+            <Link
+              to="/assinatura?plano=pro-anual"
+              className={cn(
+                buttonVariants({ size: "sm" }),
+                "w-full justify-center gap-1.5 text-xs font-semibold shadow-xs",
+              )}
+            >
+              <span>Garantir Acesso Pro Agora</span>
+              <ArrowRight className="size-3.5" aria-hidden="true" />
+            </Link>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
           <div className="flex flex-col gap-1.5">

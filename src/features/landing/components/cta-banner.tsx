@@ -4,7 +4,7 @@ import { useLandingCta } from "@/features/landing/hooks";
 import { ScrollReveal } from "./scroll-reveal";
 
 export function CtaBanner() {
-  const { trialUrl, isLoggedIn } = useLandingCta();
+  const { proUrl, freeRegisterUrl, isLoggedIn } = useLandingCta();
 
   return (
     <section className="py-14 md:py-32 relative overflow-hidden bg-surface/40 border-y border-border/70">
@@ -37,7 +37,7 @@ export function CtaBanner() {
 
             <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
-                to={trialUrl}
+                to={isLoggedIn ? "/" : proUrl("pro-anual")}
                 className="group relative overflow-hidden w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl text-sm sm:text-base font-bold bg-primary text-primary-foreground hover:bg-primary-strong shadow-lg hover:shadow-xl inline-flex items-center justify-center gap-2 transition-all duration-150 active:scale-95"
               >
                 {/* Shimmer Sweep Effect */}
@@ -46,15 +46,27 @@ export function CtaBanner() {
                   aria-hidden="true"
                 />
                 <span className="relative z-10 flex items-center gap-2">
-                  {isLoggedIn ? "Acessar Meu Painel Agora" : "Criar Conta Gratuita Agora"}
+                  {isLoggedIn ? "Acessar Meu Painel Agora" : "Assinar Plano Pro Agora"}
                   <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                 </span>
               </Link>
             </div>
 
+            {!isLoggedIn && (
+              <div className="mt-4 flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                <span>Quer experimentar primeiro?</span>
+                <Link
+                  to={freeRegisterUrl}
+                  className="font-medium text-foreground underline underline-offset-4 hover:text-primary transition-colors"
+                >
+                  Crie sua conta gratuita por 30 dias sem cartão
+                </Link>
+              </div>
+            )}
+
             <div className="mt-5 sm:mt-6 flex items-center justify-center gap-1.5 sm:gap-2 text-xs text-muted-foreground">
               <ShieldCheck className="size-3.5 sm:size-4 text-positive-strong dark:text-positive" aria-hidden="true" />
-              <span>30 dias de teste completo · Sem cartão de crédito · Histórico preservado</span>
+              <span>Garantia incondicional de 30 dias · Cancele quando quiser · Histórico preservado</span>
             </div>
           </div>
         </ScrollReveal>

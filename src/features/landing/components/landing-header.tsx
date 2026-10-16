@@ -205,9 +205,15 @@ export function LandingHeader() {
               </Link>
               <Link
                 to="/cadastro"
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "font-medium")}
+              >
+                Criar conta grátis
+              </Link>
+              <Link
+                to="/assinatura?plano=pro-anual"
                 className={cn(buttonVariants({ size: "sm" }), "shadow-sm inline-flex items-center gap-1.5")}
               >
-                Começar grátis
+                Assinar Pro
                 <ArrowRight className="size-3.5" aria-hidden="true" />
               </Link>
             </>
@@ -348,18 +354,26 @@ export function LandingHeader() {
               ) : (
                 <>
                   <Link
-                    to="/entrar"
-                    className={cn(buttonVariants({ variant: "outline" }), "w-full justify-center")}
+                    to="/assinatura?plano=pro-anual"
+                    className={cn(buttonVariants(), "w-full justify-center gap-1.5 shadow-sm")}
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    Entrar na minha conta
+                    <span>Assinar Plano Pro</span>
+                    <ArrowRight className="size-4" aria-hidden="true" />
                   </Link>
                   <Link
                     to="/cadastro"
-                    className={cn(buttonVariants(), "w-full justify-center")}
+                    className={cn(buttonVariants({ variant: "outline" }), "w-full justify-center")}
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    Criar conta gratuita
+                    Criar conta gratuita (30 dias)
+                  </Link>
+                  <Link
+                    to="/entrar"
+                    className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-center text-xs text-muted-foreground")}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Já tenho conta • Entrar
                   </Link>
                 </>
               )}

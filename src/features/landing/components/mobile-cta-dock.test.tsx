@@ -21,6 +21,6 @@ describe("MobileCtaDock", () => {
     );
 
     expect(screen.getByText("Áxis • Guia Financeiro")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Testar Grátis/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Assinar Pro/i })).toBeInTheDocument();
   });
 });

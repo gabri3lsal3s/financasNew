@@ -15,19 +15,25 @@ export function useLandingCta() {
   const isLoggedIn = !loading && Boolean(session);
 
   /**
-   * URL do CTA de trial gratuito ("Experimentar 30 Dias Grátis", "Criar Conta Gratuita").
-   * Usuário logado vai direto ao app; sem sessão vai para o cadastro.
+   * URL do fluxo secundário de cadastro gratuito (sem cartão).
+   * Usuário logado vai direto ao app; sem sessão vai para o formulário de cadastro gratuito.
    */
-  const trialUrl = isLoggedIn ? "/" : "/cadastro";
+  const freeRegisterUrl = isLoggedIn ? "/" : "/cadastro";
+  const trialUrl = freeRegisterUrl;
 
   /**
-   * URL do CTA de assinatura Pro.
-   * Usuário logado vai direto ao checkout; sem sessão passa pelo cadastro
-   * para criar conta antes de pagar.
+   * URL do fluxo principal guiado de assinatura Pro.
+   * Leva diretamente ao checkout de assinatura (/assinatura?plano=...),
+   * onde visitantes sem sessão criam a conta de forma integrada no próprio pagamento.
    */
   function proUrl(plan: "pro-anual" | "pro-mensal" = "pro-anual"): string {
-    return isLoggedIn ? `/assinatura?plano=${plan}` : `/cadastro?plano=${plan}`;
+    return `/assinatura?plano=${plan}`;
   }
 
-  return { trialUrl, proUrl, isLoggedIn };
+  /**
+   * CTA principal padrão da Landing Page (fluxo guiado de assinatura Pro).
+   */
+  const primaryCtaUrl = isLoggedIn ? "/" : proUrl("pro-anual");
+
+  return { trialUrl, freeRegisterUrl, proUrl, primaryCtaUrl, isLoggedIn };
 }
