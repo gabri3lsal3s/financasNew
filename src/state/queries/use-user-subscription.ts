@@ -20,7 +20,6 @@ export function useUserSubscription(): SubscriptionStatus {
   const { data: subData } = useQuery({
     queryKey: USER_SUBSCRIPTION_KEY,
     queryFn: getMySubscription,
-    enabled: Boolean(profile?.id),
     staleTime: 1000 * 60 * 5, // 5 minutos (Realtime cuida de invalidações ativas)
   });
 
@@ -52,8 +51,10 @@ function buildFallbackStatus(tier: SubscriptionTier, createdAt: string | null): 
     tier === "read_only" || (tier === "trial" && trialDaysRemaining !== null && trialDaysRemaining <= 0);
   const isPro = tier === "pro_monthly" || tier === "pro_annual";
   const isLifetime = tier === "lifetime";
-  const isFullAccess = isTrial || isPro || isLifetime;
-  const canWrite = isFullAccess;
+  // Fail-closed durante o fallback de carregamento: permissões de escrita e acesso total
+  // só devem ser liberadas após a confirmação dos dados reais pelo backend (§D15).
+  const isFullAccess = false;
+  const canWrite = false;
 
   const plan: SubscriptionPlan | null =
     tier === "pro_monthly" ? "monthly" : tier === "pro_annual" ? "annual" : null;
@@ -71,6 +72,7 @@ function buildFallbackStatus(tier: SubscriptionTier, createdAt: string | null): 
     isLifetime,
     isReadOnly,
     canWrite,
+    moduleAccess: {},
   };
 }
 

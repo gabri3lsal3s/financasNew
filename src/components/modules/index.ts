@@ -100,4 +100,8 @@ export { TrialEndingBanner } from "./subscription/trial-ending-banner";
 export type { TrialEndingBannerProps } from "./subscription/trial-ending-banner";
 export { PendingSuggestionsCard } from "./pending-suggestions-card";
 export type { PendingSuggestionsCardProps } from "./pending-suggestions-card";
+export { InstallAppButton } from "./install-app-button";
+export type { InstallAppButtonProps } from "./install-app-button";
+export { IosPwaInstallDialog } from "./ios-pwa-install-dialog";
+export type { IosPwaInstallDialogProps } from "./ios-pwa-install-dialog";
 

@@ -29,9 +29,44 @@ function systemTheme(): Theme {
 
 function readPreference(userId?: string | null): ThemePreference {
   const stored = getUserStorageItem(STORAGE_KEY, userId);
-  return stored === "light" || stored === "dark" || stored === "oled" || stored === "system"
-    ? stored
-    : "system";
+  if (stored === "light" || stored === "dark" || stored === "oled" || stored === "system") {
+    return stored;
+  }
+
+  // Se a conta ainda não possui preferência gravada, herda a preferência ativa da sessão (evita que o tema mude ao fazer login)
+  if (typeof window !== "undefined") {
+    try {
+      const activeStored =
+        window.localStorage.getItem(`financas_active_${STORAGE_KEY}`) ||
+        window.localStorage.getItem(`financas_guest_${STORAGE_KEY}`);
+      if (
+        activeStored === "light" ||
+        activeStored === "dark" ||
+        activeStored === "oled" ||
+        activeStored === "system"
+      ) {
+        if (userId) {
+          setUserStorageItem(STORAGE_KEY, activeStored, userId);
+        }
+        return activeStored;
+      }
+    } catch {
+      // no-op
+    }
+  }
+
+  // Fallback seguro: se o documento HTML já possui tema ativo no DOM, preserva-o
+  if (typeof document !== "undefined") {
+    const domTheme = document.documentElement.getAttribute("data-theme");
+    if (domTheme === "light" || domTheme === "dark" || domTheme === "oled") {
+      if (userId) {
+        setUserStorageItem(STORAGE_KEY, domTheme, userId);
+      }
+      return domTheme;
+    }
+  }
+
+  return "system";
 }
 
 const THEME_COLORS: Record<Theme, string> = {

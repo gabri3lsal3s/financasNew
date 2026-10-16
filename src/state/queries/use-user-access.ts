@@ -154,7 +154,6 @@ export function useUserAccess(): UserAccessResult {
   const subscriptionQuery = useQuery({
     queryKey: USER_SUBSCRIPTION_KEY,
     queryFn: getMySubscription,
-    enabled: Boolean(profile?.id),
     staleTime: 1000 * 60 * 5,
     retry: 1,
   });
@@ -178,24 +177,41 @@ export function useUserAccess(): UserAccessResult {
       return false;
     }
 
-    // 3. Verifica override modular específico na assinatura (user_module_permissions)
+    // 3. Regra de proteção da Overview: o painel inicial é um dashboard consolidado do core financeiro.
+    // Se overview estiver explicitada no moduleAccess, respeita-a. Caso contrário, deriva do core financeiro.
     const moduleAccess = subscription?.moduleAccess;
-    if (moduleAccess && moduleAccess[featureKey] !== undefined) {
-      return moduleAccess[featureKey] !== "none";
+    if (featureKey === "overview") {
+      if (moduleAccess) {
+        if (moduleAccess.overview !== undefined) {
+          return moduleAccess.overview !== "none";
+        }
+        const hasAnyCoreFinance =
+          (moduleAccess.transactions ?? "none") !== "none" ||
+          (moduleAccess.cards ?? "none") !== "none" ||
+          (moduleAccess.debts ?? "none") !== "none" ||
+          (moduleAccess.budgets ?? "none") !== "none";
+        return hasAnyCoreFinance;
+      }
+      return features.overview !== false;
     }
 
-    // 4. Regra de proteção da Overview: se o usuário tiver bloqueio ('none')
-    // em todos os módulos financeiros primários (transações, cartões, dívidas e orçamentos),
-    // a visão geral financeira (overview) é automaticamente suprimida.
-    if (featureKey === "overview" && moduleAccess) {
-      const hasAnyCoreFinance =
-        moduleAccess.transactions !== "none" ||
-        moduleAccess.cards !== "none" ||
-        moduleAccess.debts !== "none" ||
-        moduleAccess.budgets !== "none";
-      if (!hasAnyCoreFinance) {
+    // 4. Verifica modelo Whitelist Modular na assinatura (user_module_permissions)
+    if (moduleAccess) {
+      const hasAnyOverride = Object.keys(moduleAccess).length > 0;
+      if (hasAnyOverride) {
+        if (moduleAccess[featureKey] !== undefined) {
+          return moduleAccess[featureKey] !== "none";
+        }
+        // Whitelist: se o usuário possui política de restrição modular (overrides),
+        // qualquer módulo não explicitamente concedido torna-se bloqueado ('none').
         return false;
       }
+    }
+
+    // 5. Fail-Closed durante carregamento: se subscription ainda não carregou,
+    // não libera módulos prematuramente
+    if (!subscription && (subscriptionQuery.isLoading || profileQuery.isLoading)) {
+      return false;
     }
 
     if (features[featureKey] === undefined) {
@@ -216,7 +232,7 @@ export function useUserAccess(): UserAccessResult {
   const isLoading =
     profileQuery.isLoading ||
     featuresQuery.isLoading ||
-    (Boolean(profile?.id) && subscriptionQuery.isLoading);
+    subscriptionQuery.isLoading;
   const error =
     (profileQuery.error as Error | null) ??
     (featuresQuery.error as Error | null) ??

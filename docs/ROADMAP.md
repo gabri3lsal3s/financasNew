@@ -5131,6 +5131,33 @@ flowchart TD
 - [x] Bateria de testes automatizados 100% verde (68 testes em landing, subscription e settings).
 - [x] Typecheck estrito (`tsc -b`) e lint (`npm run lint`) limpos sem erros.
 
+---
+
+### 🛡️ FASE 91 — Blindagem de Acesso Modular, Whitelist Estrita & Resolução Concorrente de Boot
+
+> **Status:** ✅ Concluída (2026-10-16) — **Eliminação de Vazamento Modular & Whitelist no Boot**: Resolução do vazamento transitório de acesso onde usuários com restrições modulares (ex.: acesso restrito a Investimentos) recebiam acesso a todos os módulos na inicialização inicial do app. Implementação de modelo Whitelist estrito em `get_user_module_access` no Postgres (Migration 0046) e em `hasFeature`/`usePermission`, eliminação do waterfall de queries com execução paralela imediata de `getMySubscription`, e adoção de política de fallback fail-closed.
+>
+> **Objetivo:** Garantir que usuários com acesso modular restrito nunca vejam, acessem ou recebam dados de módulos não concedidos, seja no primeiro carregamento (boot a frio/login) ou em navegações internas, eliminando flashes do Dashboard ou abas restritas no Sidebar/BottomNav.
+
+#### 1. Entregas Realizadas
+- **Migration SQL 0046 (`0046_modular_access_whitelist_hardening.sql`):**
+  - Atualização de `public.get_user_module_access`: caso o usuário possua qualquer override ativo em `user_module_permissions`, módulos não concedidos explicitamente passam a retornar `'none'::public.access_level` (Whitelist estrita);
+- **Eliminação de Waterfalls em `useUserAccess` & `useUserSubscription`:**
+  - Remoção da trava `enabled: Boolean(profile?.id)`, disparando `getMySubscription` em paralelo imediato via sessão Supabase (`auth.uid()`);
+  - Blindagem do boolean `isLoading` garantindo retenção segura do `<LoadingScreen />` até que todas as permissões reais estejam resolvidas;
+- **Modelo Fail-Closed & Derivação do Overview:**
+  - Fallback transitório de `useUserSubscription` configurado com `canWrite: false`, `isFullAccess: false` e `moduleAccess: {}`;
+  - Derivação inteligente da `overview`: automaticamente suprimida caso o usuário não possua módulos financeiros ativos (`transactions`, `cards`, `debts`, `budgets`), direcionando-o diretamente à sua landing permitida (ex.: `/investments`).
+
+**✅ DoD (Definition of Done da Fase 91):**
+- [x] Migration SQL 0046 criada e validada.
+- [x] Regra de Whitelist modular ativa no Postgres e no frontend TypeScript.
+- [x] Waterfall de carregamento eliminado com queries paralelas em `useUserAccess`.
+- [x] Fallback transitório fail-closed sem permissões prematuras de escrita.
+- [x] Testes unitários de Whitelist e controle de acesso 100% verdes (`use-user-access.test.tsx` e `use-permission.test.ts`).
+- [x] Typecheck estrito (`tsc -b`) e lint (`npm run lint`) limpos sem erros.
+
+
 
 
 

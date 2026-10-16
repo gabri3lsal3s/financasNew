@@ -64,6 +64,21 @@ export function usePermission(moduleKey: SystemFeatureKey | string): PermissionR
       };
     }
 
+    // Whitelist: se o usuário possui política de restrição modular (overrides),
+    // qualquer módulo não explicitamente concedido torna-se bloqueado ('none').
+    const hasAnyOverride = Boolean(
+      subscription.moduleAccess && Object.keys(subscription.moduleAccess).length > 0,
+    );
+    if (hasAnyOverride) {
+      return {
+        canRead: false,
+        canWrite: false,
+        isHidden: true,
+        accessLevel: "none",
+        isReadOnlyMode: false,
+      };
+    }
+
     // 4. Fallback pelo status global da assinatura
     const canWrite = subscription.canWrite;
     return {

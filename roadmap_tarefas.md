@@ -545,14 +545,14 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ---
 
-### Tarefa 42: Experiência PWA Avançada, Guia de Instalação no iOS/Safari e Atalho nas Configurações
-- **Status:** ⏳ Pendente
+### Tarefa 42: Experiência PWA Avançada, Guia de Instalação no iOS/Safari e Atalho nas Configurações [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Adicionar detecção de iOS/Safari com modal ilustrado passo a passo de instalação ("Compartilhar > Adicionar à Tela de Início") e disponibilizar botão de instalação também na aba de Configurações do app.
 - **Ações:**
-  1. **Detecção Inteligente de Safari iOS:** Implementar utilitário e hook para identificar dispositivos Apple iOS executando fora do modo standalone.
-  2. **Modal Guiado de Instalação no iOS:** Criar `IosPwaInstallDialog` (`src/components/modules/ios-pwa-install-dialog.tsx`) com instruções visuais claras passo a passo.
-  3. **Atalho de Instalação em Configurações:** Integrar o gatilho de instalação do aplicativo na aba de Aparência/Configurações (`AppearanceTab`), permitindo que o usuário instale o PWA tanto no menu "Mais" quanto nas configurações.
-  4. **Testes Unitários:** Cobrir a detecção de dispositivo e o fluxo de abertura do guia de instalação PWA.
+  1. **Detecção Inteligente de Safari iOS:** Implementar utilitário e hook para identificar dispositivos Apple iOS executando fora do modo standalone. (Concluído: implementados `isIOS()`, `getIsIOSInstallCandidate()`, `getPWAInstallSnapshot()` e `refreshPWAInstallState()` em `src/app/pwa.ts`, cobrindo tanto iPhone/iPod quanto iPads modernos com arquitetura MacIntel e touchscreen capacitivo, integrados via `useSyncExternalStore` no hook `usePWAInstall()`).
+  2. **Modal Guiado de Instalação no iOS:** Criar `IosPwaInstallDialog` (`src/components/modules/ios-pwa-install-dialog.tsx`) com instruções visuais claras passo a passo. (Concluído: implementado diálogo canônico responsivo `size="md"` com os 3 passos ilustrados [Compartilhar, Adicionar à Tela de Início, Confirmar], ícones Lucide padronizados, zero emojis, anatomia do Design System e card de benefícios).
+  3. **Atalho de Instalação em Configurações:** Integrar o gatilho de instalação do aplicativo na aba de Aparência/Configurações (`AppearanceTab`), permitindo que o usuário instale o PWA tanto no menu "Mais" quanto nas configurações. (Concluído: `InstallAppButton` enriquecido com suporte a variantes `banner`, `card` e `button`, acoplando o modal do iOS e integrado em `AppearanceTab` em `src/features/settings/components/tabs/appearance-tab.tsx` com visualização adaptativa de disponibilidade/instalação).
+  4. **Testes Unitários:** Cobrir a detecção de dispositivo e o fluxo de abertura do guia de instalação PWA. (Concluído: criados testes em `src/components/modules/ios-pwa-install-dialog.test.tsx`, expandida a suíte em `src/tests/pwa.test.tsx` com cenários de iPhone/iPad e variante card, e adicionada validação de PWA em `src/features/settings/components/tabs/appearance-tab.test.tsx` com 100% dos testes aprovados).
 - **Commit:** `feat(pwa): add ios safari install guidance dialog and settings install shortcut`
 
 ---

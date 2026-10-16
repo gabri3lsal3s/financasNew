@@ -86,4 +86,24 @@ describe("usePermission hook", () => {
     expect(result.current.isReadOnlyMode).toBe(true);
     expect(result.current.accessLevel).toBe("read");
   });
+
+  it("deve bloquear módulo não concedido quando usuário possui política de restrição modular (Whitelist)", () => {
+    vi.mocked(useUserAccess).mockReturnValue({
+      hasFeature: vi.fn().mockReturnValue(false),
+      isAdmin: false,
+    } as never);
+
+    vi.mocked(useUserSubscription).mockReturnValue({
+      canWrite: true,
+      moduleAccess: {
+        investments: "write",
+      },
+    } as never);
+
+    const { result } = renderHook(() => usePermission("debts"));
+    expect(result.current.canRead).toBe(false);
+    expect(result.current.canWrite).toBe(false);
+    expect(result.current.isHidden).toBe(true);
+    expect(result.current.accessLevel).toBe("none");
+  });
 });

@@ -124,10 +124,9 @@ describe("useUserAccess hook", () => {
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
+      expect(result.current.hasFeature("transactions")).toBe(true);
+      expect(result.current.hasFeature("overview")).toBe(true);
     });
-
-    expect(result.current.hasFeature("transactions")).toBe(true);
-    expect(result.current.hasFeature("overview")).toBe(true);
   });
 
   it("superadmin e admin têm acesso irrestrito independente de moduleAccess", async () => {
@@ -181,5 +180,46 @@ describe("useUserAccess hook", () => {
     });
 
     expect(result.current.hasFeature("investments")).toBe(false);
+  });
+
+  it("aplica regra de Whitelist quando o usuário só tem investimentos (módulos não listados são bloqueados)", async () => {
+    vi.mocked(accessRepo.getMyProfile).mockResolvedValue(mockProfile);
+    vi.mocked(accessRepo.getMyFeatures).mockResolvedValue({
+      transactions: true,
+      cards: true,
+      debts: true,
+      budgets: true,
+      investments: true,
+      overview: true,
+    });
+    // Usuário possui apenas 'investments' no moduleAccess (restrição modular ativa)
+    vi.mocked(subscriptionsRepo.getMySubscription).mockResolvedValue({
+      tier: "lifetime",
+      canWrite: true,
+      isFullAccess: true,
+      moduleAccess: {
+        investments: "write",
+      },
+    } as unknown as SubscriptionStatus);
+
+    const { result } = renderHook(() => useUserAccess(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    // Módulo explicitamente concedido
+    expect(result.current.hasFeature("investments")).toBe(true);
+
+    // Módulos não concedidos devem ser BLOQUEADOS por Whitelist
+    expect(result.current.hasFeature("transactions")).toBe(false);
+    expect(result.current.hasFeature("cards")).toBe(false);
+    expect(result.current.hasFeature("debts")).toBe(false);
+    expect(result.current.hasFeature("budgets")).toBe(false);
+
+    // Overview derivada também deve ser suprimida
+    expect(result.current.hasFeature("overview")).toBe(false);
   });
 });

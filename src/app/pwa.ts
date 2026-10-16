@@ -81,6 +81,29 @@ function isStandalone(): boolean {
   return window.matchMedia("(display-mode: standalone)").matches || nav.standalone === true;
 }
 
+export function isIOS(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  const isIOSPlatform = /iPad|iPhone|iPod/i.test(ua);
+  const isIPadOS = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+  return isIOSPlatform || isIPadOS;
+}
+
+export function isStandaloneMode(): boolean {
+  return isStandalone();
+}
+
+/**
+ * Retorna se o dispositivo é um candidato à instalação PWA no ecossistema iOS/Safari.
+ * No iOS, o navegador não dispara `beforeinstallprompt`, exigindo o fluxo manual
+ * guiado de "Compartilhar > Adicionar à Tela de Início".
+ */
+export function getIsIOSInstallCandidate(): boolean {
+  if (isNativePlatform()) return false;
+  if (isStandalone()) return false;
+  return isIOS();
+}
+
 /** Assina mudanças em "pode instalar" (evento recebido / instalado). */
 export function subscribePWAInstall(listener: () => void): () => void {
   installListeners.add(listener);
@@ -91,7 +114,40 @@ export function subscribePWAInstall(listener: () => void): () => void {
 
 export function getCanInstallPWA(): boolean {
   if (isNativePlatform()) return false;
-  return deferredInstallPrompt !== null && !isStandalone();
+  if (isStandalone()) return false;
+  return deferredInstallPrompt !== null || isIOS();
+}
+
+export interface PWAInstallSnapshot {
+  canInstall: boolean;
+  isNativePromptAvailable: boolean;
+  isIOS: boolean;
+  isInstalled: boolean;
+}
+
+function computeInstallSnapshot(): PWAInstallSnapshot {
+  const installed = isStandalone();
+  const nativePlatform = isNativePlatform();
+  const isIOSDevice = isIOS();
+  const iosCandidate = !nativePlatform && !installed && isIOSDevice;
+  const nativePrompt = !nativePlatform && !installed && deferredInstallPrompt !== null;
+
+  return {
+    canInstall: nativePrompt || iosCandidate,
+    isNativePromptAvailable: nativePrompt,
+    isIOS: iosCandidate,
+    isInstalled: installed,
+  };
+}
+
+let cachedInstallSnapshot: PWAInstallSnapshot = computeInstallSnapshot();
+
+/**
+ * Snapshot estável para useSyncExternalStore. Retorna a mesma referência em
+ * renders consecutivos até que ocorra um evento de instalação (beforeinstallprompt, appinstalled).
+ */
+export function getPWAInstallSnapshot(): PWAInstallSnapshot {
+  return cachedInstallSnapshot;
 }
 
 /** Dispara o prompt nativo de instalação (uma única vez por evento). */
@@ -99,12 +155,21 @@ export async function promptPWAInstall(): Promise<void> {
   const promptEvent = deferredInstallPrompt;
   if (!promptEvent) return;
   deferredInstallPrompt = null;
-  installListeners.forEach((listener) => listener());
+  notifyInstallChange();
   await promptEvent.prompt();
   await promptEvent.userChoice;
 }
 
+/**
+ * Força a reavaliação do snapshot de instalação PWA e notifica os listeners.
+ * Útil para sincronização pós-bootstrap ou em testes que emulam alternância de dispositivos.
+ */
+export function refreshPWAInstallState(): void {
+  notifyInstallChange();
+}
+
 function notifyInstallChange(): void {
+  cachedInstallSnapshot = computeInstallSnapshot();
   installListeners.forEach((listener) => listener());
 }
 

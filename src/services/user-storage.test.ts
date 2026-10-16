@@ -81,4 +81,23 @@ describe("user-storage", () => {
     // Chave com namespace de usuário não é apagada
     expect(window.localStorage.getItem("financas_user-keep_theme")).toBe("oled");
   });
+
+  it("preserva tema e preferências visuais ativas na transição de visitante para usuário autenticado", () => {
+    // Visitante na apresentação define o tema Claro e acento Ouro
+    setActiveUserId(null);
+    setUserStorageItem("theme", "light");
+    setUserStorageItem("accent_theme", "gold");
+
+    expect(getUserStorageItem("theme")).toBe("light");
+    expect(getUserStorageItem("accent_theme")).toBe("gold");
+
+    // Visitante cria conta ou faz login no checkout
+    setActiveUserId("user-new-checkout");
+
+    // O novo usuário deve herdar imediatamente o tema e acento ativos
+    expect(getUserStorageItem("theme")).toBe("light");
+    expect(getUserStorageItem("accent_theme")).toBe("gold");
+    expect(window.localStorage.getItem("financas_user-new-checkout_theme")).toBe("light");
+    expect(window.localStorage.getItem("financas_user-new-checkout_accent_theme")).toBe("gold");
+  });
 });

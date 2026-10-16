@@ -65,7 +65,9 @@ import {
   resetBankAssistantPreferences,
   isNotificationListenerGranted,
   requestNotificationListenerPermission,
+  isNativePlatform,
 } from "@/services/native";
+import { InstallAppButton } from "@/components/modules";
 import { HOMOLOGATED_BANKS } from "@/domain/notifications";
 
 const DAILY_REMINDER_TIME_OPTIONS: SelectOption[] = [
@@ -1178,7 +1180,12 @@ export function AppearanceTab() {
         </CardContent>
       </Card>
 
-      {/* --- CARD 6: REDEFINIÇÃO DE PADRÕES --- */}
+      {/* --- CARD 6: INSTALAÇÃO DO APLICATIVO (PWA) --- */}
+      {!isNativePlatform() && (
+        <InstallAppButton variant="card" />
+      )}
+
+      {/* --- CARD 7: REDEFINIÇÃO DE PADRÕES --- */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">

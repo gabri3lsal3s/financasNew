@@ -153,4 +153,25 @@ describe("AppearanceTab - Lembretes e Assistente Bancário (Fase 14 — Tarefa 3
       expect(prefs.monitoredBanks).not.toContain("Nubank");
     });
   });
+
+  describe("Instalação do Aplicativo (PWA) em Configurações", () => {
+    it("renderiza o card de instalação PWA quando o navegador está em ambiente web e recebe evento", async () => {
+      const { registerPWA } = await import("@/app/pwa");
+      registerPWA();
+
+      const event = new Event("beforeinstallprompt");
+      Object.assign(event, {
+        prompt: vi.fn().mockResolvedValue(undefined),
+        userChoice: Promise.resolve({ outcome: "accepted", platform: "web" }),
+      });
+      window.dispatchEvent(event);
+
+      renderAppearanceTab();
+
+      expect(await screen.findByText("Aplicativo Web Instalável (PWA)")).toBeInTheDocument();
+      expect(screen.getByText("Disponível")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Instalar app" })).toBeInTheDocument();
+    });
+  });
 });
+

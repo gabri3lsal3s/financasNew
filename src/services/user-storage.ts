@@ -13,7 +13,30 @@ export function getActiveUserId(): string | null {
 
 export function setActiveUserId(userId: string | null): void {
   if (activeUserId !== userId) {
+    const prevUserId = activeUserId;
     activeUserId = userId;
+
+    // Se estiver transitando de visitante (null) para um usuário autenticado (userId):
+    // Herda as preferências visuais ativas (tema, acento, superfície, movimento)
+    // para que a interface não sofra alterações bruscas de tema ou cor durante login/checkout.
+    if (!prevUserId && userId && typeof window !== "undefined") {
+      try {
+        SYNCED_BOOT_KEYS.forEach((key) => {
+          const userKey = `financas_${userId}_${key}`;
+          if (window.localStorage.getItem(userKey) === null) {
+            const activeVal =
+              window.localStorage.getItem(`financas_active_${key}`) ||
+              window.localStorage.getItem(`financas_guest_${key}`);
+            if (activeVal !== null) {
+              window.localStorage.setItem(userKey, activeVal);
+            }
+          }
+        });
+      } catch {
+        // no-op
+      }
+    }
+
     userListeners.forEach((listener) => listener(activeUserId));
   }
 }
@@ -97,10 +120,6 @@ export function sanitizeLegacyStorage(): void {
     "financas_number_ticker_enabled",
     "financas_dashboard_widgets",
     "financas_header_buttons",
-    "financas_guest_theme",
-    "financas_guest_density",
-    "financas_guest_sidebar_collapsed",
-    "financas_guest_accent",
   ];
 
   for (const key of legacyKeys) {

@@ -1,7 +1,8 @@
 # 📱 PWA_GUIDELINES.md — Requisitos de Progressive Web App
 
-> **Status:** v1.4 — O app é um **PWA moderno** (instalável em mobile/desktop).
+> **Status:** v1.5 — O app é um **PWA moderno** (instalável em mobile/desktop).
 > **F5.6 & F83 implementados:** prompt de instalação (`beforeinstallprompt`), atualização automática com toast, auditoria automatizada de instalabilidade, estratégia Stale-While-Revalidate para imagens estáticas com expiração de 30 dias e monitoramento reativo de conectividade (`useNetworkStatus`).
+> **v1.5 (2026-10-16):** **(1) Experiência PWA Avançada no iOS Safari** — detecção de dispositivos Apple iOS (`isIOS`) e abertura do modal guiado `IosPwaInstallDialog` com passo a passo ilustrado ("Compartilhar > Adicionar à Tela de Início"); **(2) Atalho Unificado de Instalação nas Configurações** — `InstallAppButton` operando em variantes `banner` (menu "Mais") e `card` (aba de Personalização/Aparência em `AppearanceTab`); **(3) Snapshot Estável Reativo** — `usePWAInstall()` alimentado por snapshot memoizado compatível com React Compiler via `useSyncExternalStore`.
 > **v1.4 (2026-09-02):** **(1) RuntimeCaching Stale-While-Revalidate para Imagens Estáticas** — no `vite.config.ts`, cache otimizado com limite de 60 entradas e expiração de 30 dias para PNG, JPG, SVG, WEBP e ICO; **(2) Monitoramento Reativo de Conectividade** — serviço `src/services/network-status.ts` e hook `useNetworkStatus()` via `useSyncExternalStore`; **(3) Auditoria Automatizada Estendida** — `pwa-audit.test.ts` validando presença da casca offline e das regras do Workbox.
 > **v1.3 (2026-08-17):** **(1) HTML Splash Screen Minimalista em Fundo Branco** — `<div id="app-splash">` inline no `index.html` e no manifest com fundo branco sólido (`#FFFFFF`), ícone centralizado de 144px sem texto, animação de pulso sutil; some instantaneamente via `#root:not(:empty)`; **(2) Sincronização Dinâmica da Barra de Título** — sincronização em tempo real de `<meta name="theme-color">` no bootstrap (`index.html`) e no `ThemeProvider`, com suporte a `.app-region-drag` e `.app-region-no-drag` no header do `PageShell`; **(3) Estratégia Híbrida de Ícones PWA** — ícones `purpose: "any"` transparentes (desktop, iOS e launchers modernos) e ícones `purpose: "maskable"` com fundo branco (`#FFFFFF`, safe zone 80%) para dispositivos com recorte adaptativo; **(4) `offline.html` redesenhado** — Inter, ícone 96px, botão discreto no tom do design system, suporte aos 3 temas, fade-in.
 > **Regra-mestra:** o app é **100% Online First** nos dados — o Service Worker **jamais cacheia dados de negócio ou respostas de API**. O PWA garante apenas o **carregamento instantâneo do App Shell** (casca visual) e de assets estáticos.
@@ -198,25 +199,28 @@ Referência completa (ajustar nomes à marca final):
 
 ---
 
-## 6. INSTALAÇÃO E CICLO DE VIDA (IMPLEMENTADO — F5.6)
+## 6. INSTALAÇÃO E CICLO DE VIDA (IMPLEMENTADO — F5.6 & FASE 23 TAREFA 42)
 
 **Critérios de instalação (Chrome):** HTTPS (localhost ok) · manifest com `name`/`short_name`/ícones 192+512 · SW com `fetch` handler · app aberto 2+ vezes com intervalo.
+**Critérios de instalação (iOS / Safari):** Safari no iOS/iPadOS · fora do modo standalone · exibição guiada de "Compartilhar > Adicionar à Tela de Início".
 
 **Fluxo implementado:**
 
 1. **Registro do SW (`src/app/pwa.ts`):** `registerSW({ immediate: true, onNeedReload, onRegisterError })` — `registerType: 'autoUpdate'` (o SW gerado no build tem `skipWaiting` + `clientsClaim`).
 2. **Atualização automática com toast:** com `autoUpdate`, quando um SW novo ativa, o plugin chamaria `onNeedReload` e recarregaria a página; **interceptamos** com o callback e notificamos a store externa (`notifyPWAUpdate`/`consumePWAUpdate`). O `PWAUpdateToast` (global, montado no `Toaster` em `app/providers.tsx`) anuncia "Nova versão disponível" com a ação **"Atualizar"** (reload explícito — o usuário decide, sem perda de estado) ou pode fechar (o anúncio é consumido; uma nova versão re-anuncia). O toast usa `duration: Infinity` (não some sozinho até o usuário agir).
-3. **Instalação (`beforeinstallprompt`):** o `pwa.ts` escuta o evento (com `preventDefault()`, exigência do Chromium), guarda o prompt e notifica a store (`subscribePWAInstall`/`getCanInstallPWA`). O hook `usePWAInstall` (useSyncExternalStore) alimenta o **`InstallAppButton`** no menu "Mais" — **nunca popup intrusivo** (regra: após interação, em menu/rodapé).
-4. Ao clicar → `prompt()` → `userChoice` → o evento é de uso único (o botão some). O listener de `appinstalled` também oculta o botão, e `isStandalone()` (`display-mode: standalone` / `navigator.standalone` do iOS) impede o botão quando o app já roda instalado.
-5. **Splash/iOS:** meta tags no `index.html` (theme-color por tema, `apple-mobile-web-app-*`, apple-touch-icon, `viewport-fit=cover` para safe areas) + manifest com `theme_color` por `media` — auditados por teste (`tests/pwa-audit.test.ts`).
+3. **Instalação no Chromium (`beforeinstallprompt`):** o `pwa.ts` escuta o evento (com `preventDefault()`, exigência do Chromium), guarda o prompt e notifica a store (`subscribePWAInstall`/`getPWAInstallSnapshot`). O hook `usePWAInstall` (useSyncExternalStore) alimenta o **`InstallAppButton`** — **nunca popup intrusivo** (regra: após interação, no menu "Mais" ou na aba de Configurações).
+4. **Instalação no iOS Safari (`IosPwaInstallDialog`):** como o Safari no iOS não suporta `beforeinstallprompt`, utilitários em `src/app/pwa.ts` (`isIOS()`, `getIsIOSInstallCandidate()`) detectam iPhones e iPads fora do modo standalone. Ao clicar em "Como instalar no iOS", o diálogo canônico `IosPwaInstallDialog` (`src/components/modules/ios-pwa-install-dialog.tsx`) exibe as 3 etapas ilustradas com ícones padronizados (sem emojis).
+5. **Atalhos Unificados no App:** o `InstallAppButton` está disponível no menu "Mais" (`variant="banner"`) e na aba de Configurações/Personalização (`variant="card"` em `AppearanceTab`). Em ambientes instalados (standalone) ou app nativo (Capacitor), oculta-se ou exibe o badge de confirmação ("Instalado").
+6. **Splash/iOS:** meta tags no `index.html` (theme-color por tema, `apple-mobile-web-app-*`, apple-touch-icon, `viewport-fit=cover` para safe areas) + manifest com `theme_color` por `media` — auditados por teste (`tests/pwa-audit.test.ts`).
 
 **Do & Don't:**
-- ✅ Prompt de instalação após interação do usuário (nunca no primeiro acesso; botão no menu).
+- ✅ Prompt de instalação após interação do usuário (nunca no primeiro acesso; botão no menu ou card em configurações).
+- ✅ Guia ilustrado passo a passo no iOS Safari com ícones do Design System e zero emojis.
 - ✅ Toast de atualização não-blocking e sem reload automático (o usuário decide).
 - ❌ Nunca interceptar navegação para cachear telas com dados (viola Online First).
 - ❌ Nunca `cache-first` para endpoints dinâmicos.
 
-**Arquivos:** `src/app/pwa.ts` (registro + stores) · `src/hooks/use-pwa-install.ts` · `src/components/modules/pwa-update-toast.tsx` · `src/components/modules/install-app-button.tsx` · `src/components/ui/toast.tsx` (prop `action` + Toaster corrigido) · testes em `src/tests/pwa.test.tsx` e `src/tests/pwa-audit.test.ts`.
+**Arquivos:** `src/app/pwa.ts` (registro + stores) · `src/hooks/use-pwa-install.ts` · `src/components/modules/pwa-update-toast.tsx` · `src/components/modules/install-app-button.tsx` · `src/components/modules/ios-pwa-install-dialog.tsx` · `src/features/settings/components/tabs/appearance-tab.tsx` · `src/components/ui/toast.tsx` · testes em `src/tests/pwa.test.tsx`, `src/components/modules/ios-pwa-install-dialog.test.tsx` e `src/tests/pwa-audit.test.ts`.
 
 ---
 
