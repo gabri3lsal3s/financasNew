@@ -505,13 +505,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 22: Homologação Integrada, Suíte de Regressão, Build Web e Geração de APK
 
-### Tarefa 39: Certificação Global de Produção, Bateria Completa de Testes, Build Web PWA e Compilação dos APKs Android Release/Debug
-- **Status:** ⏳ Pendente
+### Tarefa 39: Certificação Global de Produção, Bateria Completa de Testes, Build Web PWA e Compilação dos APKs Android Release/Debug [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Realizar a verificação final exaustiva de todo o ecossistema (Web/PWA e Android nativo), certificando prontidão para produção e distribuição comercial.
 - **Ações:**
-  1. **Auditoria de Conformidade com AGENTS.md:** Validar zero emojis em produção, zero controles nativos nos formulários, conformidade estrita de tokens e links de documentação.
-  2. **Typecheck e Linter Estritos:** Executar `npm run typecheck` (`tsc -b`) e `npm run lint` (`eslint .`), garantindo 0 erros e 0 warnings.
-  3. **Bateria Completa de Testes Automatizados:** Rodar a suíte inteira de mais de 320 arquivos de teste via Vitest, alcançando 100% de testes verdes.
-  4. **Build de Produção PWA:** Executar `npm run build` gerando assets otimizados com service workers e manifest válidos.
-  5. **Compilação e Assinatura dos APKs Android:** Executar `npm run build:apk` via script idempotente gerando os binários `guia-financeiro-debug.apk` e `guia-financeiro-release.apk` (assinado) em `dist-apk/` com hashes SHA-256 de integridade.
+  1. **Auditoria de Conformidade com AGENTS.md:** Validar zero emojis em produção, zero controles nativos nos formulários, conformidade estrita de tokens e links de documentação. (Concluído: auditoria rigorosa com a regra ESLint `local/no-decorative-unicode` validada em todo o código de produção `src/`, zero controles nativos, zero emojis e tokens semânticos íntegros).
+  2. **Typecheck e Linter Estritos:** Executar `npm run typecheck` (`tsc -b`) e `npm run lint` (`eslint .`), garantindo 0 erros e 0 warnings. (Concluído: typecheck do TypeScript `tsc -b` e ESLint executados sem nenhum erro e sem nenhum warning).
+  3. **Bateria Completa de Testes Automatizados:** Rodar a suíte inteira de mais de 320 arquivos de teste via Vitest, alcançando 100% de testes verdes. (Concluído: bateria de regressão global com 329 arquivos de teste e 2.531 testes executados e 100% aprovados com 0 falhas).
+  4. **Build de Produção PWA:** Executar `npm run build` gerando assets otimizados com service workers e manifest válidos. (Concluído: bundle Vite de produção compilado com sucesso, chunks otimizados com tree-shaking, precache de 120 entradas e service worker PWA gerado em `dist/sw.js`).
+  5. **Compilação e Assinatura dos APKs Android:** Executar `npm run build:apk` via script idempotente gerando os binários `guia-financeiro-debug.apk` e `guia-financeiro-release.apk` (assinado) em `dist-apk/` com hashes SHA-256 de integridade. (Concluído: build nativo Gradle com JDK 21 compilado com sucesso gerando os binários `dist-apk/guia-financeiro-debug.apk` [12M, SHA-256 `a8975be6baa2ccdab1c583e4e6c0b753021982cff31ec3cdf3b257bfeeaf2074`] e `dist-apk/guia-financeiro-release.apk` [11M, SHA-256 `5bc039a0a8976d47bbac60b19e596707fe909e064a8456a65385447379f787ab`]).
 - **Commit:** `chore(release): complete global regression audit, pwa build, and android apk generation`
