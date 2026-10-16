@@ -939,8 +939,9 @@ export function AppearanceTab() {
       )}
 
       {/* --- CARD 5: ASSISTENTE PASSIVO DE COMPRAS & BANCOS (Fase 14 — Tarefa 30) --- */}
-      <Card>
-        <CardHeader>
+      {isNativePlatform() && (
+        <Card>
+          <CardHeader>
           <CardTitle className="text-base flex items-center justify-between gap-2 flex-wrap">
             <span className="flex items-center gap-2 min-w-0">
               <CreditCard className="size-4 text-muted-foreground" aria-hidden="true" />
@@ -1179,6 +1180,7 @@ export function AppearanceTab() {
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* --- CARD 6: INSTALAÇÃO DO APLICATIVO (PWA) --- */}
       {!isNativePlatform() && (

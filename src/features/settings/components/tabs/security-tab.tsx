@@ -39,6 +39,7 @@ import {
   setAppLockGraceMinutes,
   isPrivacyShieldEnabled,
   setPrivacyShieldEnabled,
+  isNativePlatform,
 } from "@/services/native";
 import { todayLocalIso } from "@/lib/date";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS } from "@/lib/labels";
@@ -118,6 +119,11 @@ export function SecurityTab() {
   const [bioLockEnabled, setBioLockEnabled] = useState(() => isBiometricLockEnabled());
   const [graceMinutes, setGraceMinutes] = useState(() => String(getAppLockGraceMinutes()));
   const [privacyEnabled, setPrivacyEnabled] = useState(() => isPrivacyShieldEnabled());
+
+  const isNative = isNativePlatform();
+  const showBiometrics = isNative || Boolean(biometricsAvailable);
+  const showPrivacyShield = isNative;
+  const showAppLockCard = showBiometrics || showPrivacyShield;
 
   useEffect(() => {
     checkBiometricsAvailability().then((res) => {
@@ -368,83 +374,91 @@ export function SecurityTab() {
       </Card>
 
       {/* Card 2: Bloqueio do Aplicativo & Privacidade */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <Fingerprint className="size-4 text-muted-foreground" aria-hidden="true" />
-              <span>Bloqueio do Aplicativo &amp; Privacidade</span>
-            </span>
-            {biometricsAvailable ? (
-              <Badge variant="positive" size="xs">
-                {biometryType === "face"
-                  ? "Reconhecimento Facial"
-                  : biometryType === "iris"
-                    ? "Leitor de Íris"
-                    : "Sensor Biométrico Ativo"}
-              </Badge>
-            ) : biometricsAvailable === false ? (
-              <Badge variant="muted" size="xs">
-                Biometria Indisponível
-              </Badge>
-            ) : null}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-4 rounded-xl border border-border/80 bg-surface shadow-xs p-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-0.5">
-                <span className="text-sm font-semibold text-foreground">
-                  Exigir biometria ao retornar
-                </span>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Bloqueia o acesso às suas informações financeiras quando você alternar de aplicativo ou minimizar a tela.
-                </p>
-              </div>
-              <Checkbox
-                id="toggle-biometrics"
-                aria-label="Exigir biometria ao retornar ao aplicativo"
-                checked={bioLockEnabled}
-                onCheckedChange={handleToggleBiometrics}
-              />
-            </div>
-
-            {bioLockEnabled ? (
-              <div className="pt-3 border-t border-border/60 space-y-2">
-                <span className="text-xs font-semibold text-foreground">
-                  Tolerância para bloqueio
-                </span>
-                <Select
-                  value={graceMinutes}
-                  onValueChange={handleGraceMinutesChange}
-                  options={APP_LOCK_GRACE_OPTIONS}
-                  ariaLabel="Selecione o tempo de tolerância para bloqueio"
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Define quanto tempo o app pode permanecer em segundo plano antes de exigir nova validação biométrica.
-                </p>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="flex items-start justify-between gap-4 rounded-xl border border-border/80 bg-surface shadow-xs p-4">
-            <div className="space-y-0.5">
-              <span className="text-sm font-semibold text-foreground">
-                Escudo de Privacidade (Privacy Shield)
+      {showAppLockCard && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Fingerprint className="size-4 text-muted-foreground" aria-hidden="true" />
+                <span>Bloqueio do Aplicativo &amp; Privacidade</span>
               </span>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Oculta saldos e dados na tela de aplicativos recentes do sistema e bloqueia capturas de tela.
-              </p>
-            </div>
-            <Checkbox
-              id="toggle-privacy-shield"
-              aria-label="Ativar escudo de privacidade contra capturas e visualização recente"
-              checked={privacyEnabled}
-              onCheckedChange={handleTogglePrivacyShield}
-            />
-          </div>
-        </CardContent>
-      </Card>
+              {showBiometrics ? (
+                biometricsAvailable ? (
+                  <Badge variant="positive" size="xs">
+                    {biometryType === "face"
+                      ? "Reconhecimento Facial"
+                      : biometryType === "iris"
+                        ? "Leitor de Íris"
+                        : "Sensor Biométrico Ativo"}
+                  </Badge>
+                ) : biometricsAvailable === false ? (
+                  <Badge variant="muted" size="xs">
+                    Biometria Indisponível
+                  </Badge>
+                ) : null
+              ) : null}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {showBiometrics && (
+              <div className="space-y-4 rounded-xl border border-border/80 bg-surface shadow-xs p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <span className="text-sm font-semibold text-foreground">
+                      Exigir biometria ao retornar
+                    </span>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Bloqueia o acesso às suas informações financeiras quando você alternar de aplicativo ou minimizar a tela.
+                    </p>
+                  </div>
+                  <Checkbox
+                    id="toggle-biometrics"
+                    aria-label="Exigir biometria ao retornar ao aplicativo"
+                    checked={bioLockEnabled}
+                    onCheckedChange={handleToggleBiometrics}
+                  />
+                </div>
+
+                {bioLockEnabled ? (
+                  <div className="pt-3 border-t border-border/60 space-y-2">
+                    <span className="text-xs font-semibold text-foreground">
+                      Tolerância para bloqueio
+                    </span>
+                    <Select
+                      value={graceMinutes}
+                      onValueChange={handleGraceMinutesChange}
+                      options={APP_LOCK_GRACE_OPTIONS}
+                      ariaLabel="Selecione o tempo de tolerância para bloqueio"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Define quanto tempo o app pode permanecer em segundo plano antes de exigir nova validação biométrica.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {showPrivacyShield && (
+              <div className="flex items-start justify-between gap-4 rounded-xl border border-border/80 bg-surface shadow-xs p-4">
+                <div className="space-y-0.5">
+                  <span className="text-sm font-semibold text-foreground">
+                    Escudo de Privacidade (Privacy Shield)
+                  </span>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Oculta saldos e dados na tela de aplicativos recentes do sistema e bloqueia capturas de tela.
+                  </p>
+                </div>
+                <Checkbox
+                  id="toggle-privacy-shield"
+                  aria-label="Ativar escudo de privacidade contra capturas e visualização recente"
+                  checked={privacyEnabled}
+                  onCheckedChange={handleTogglePrivacyShield}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Card 3: Gestão de Dados & Backup */}
       <Card>

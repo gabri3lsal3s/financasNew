@@ -37,6 +37,7 @@ vi.mock("@/services/native", async () => {
     requestNotificationPermissions: vi.fn().mockResolvedValue({ granted: true }),
     isNotificationListenerGranted: vi.fn().mockResolvedValue(true),
     requestNotificationListenerPermission: vi.fn().mockResolvedValue(true),
+    isNativePlatform: vi.fn().mockReturnValue(true),
   };
 });
 
@@ -60,6 +61,7 @@ describe("AppearanceTab - Lembretes e Assistente Bancário (Fase 14 — Tarefa 3
     localStorage.clear();
     nativeServices.resetBankAssistantPreferences();
     vi.clearAllMocks();
+    vi.mocked(nativeServices.isNativePlatform).mockReturnValue(true);
   });
 
   describe("Lembrete de Fechamento Diário", () => {
@@ -154,8 +156,22 @@ describe("AppearanceTab - Lembretes e Assistente Bancário (Fase 14 — Tarefa 3
     });
   });
 
+  describe("Ambiente Web / PWA (Ocultação de Recursos Nativos - Tarefa 1.1)", () => {
+    it("não renderiza o card nem opções do Assistente Passivo de Compras & Bancos na Web/PWA", () => {
+      vi.mocked(nativeServices.isNativePlatform).mockReturnValue(false);
+      renderAppearanceTab();
+
+      expect(screen.queryByText("Assistente Passivo de Compras & Bancos")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("checkbox", { name: "Habilitar Captura Passiva de Notificações" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("checkbox", { name: "Monitorar Nubank" })).not.toBeInTheDocument();
+    });
+  });
+
   describe("Instalação do Aplicativo (PWA) em Configurações", () => {
     it("renderiza o card de instalação PWA quando o navegador está em ambiente web e recebe evento", async () => {
+      vi.mocked(nativeServices.isNativePlatform).mockReturnValue(false);
       const { registerPWA } = await import("@/app/pwa");
       registerPWA();
 

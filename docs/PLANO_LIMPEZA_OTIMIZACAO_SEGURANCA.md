@@ -128,7 +128,7 @@ graph TD
 ### FASE 1: Reformulação, Desinchaço & Otimização da Página de Configurações (Ajustes Profissionais)
 > **Objetivo:** Transformar a página de configurações em uma central limpa, profissional e intuitiva, ocultando recursos inválidos no PWA, reorganizando abas e adicionando a opção de ocultação de centavos no Dashboard.
 
-- [ ] **Tarefa 1.1 — Ocultação Condicional Estrita de Recursos Exclusivos Android no PWA**
+- [x] **Tarefa 1.1 — Ocultação Condicional Estrita de Recursos Exclusivos Android no PWA**
   - **Ação:** Utilizar `isNativePlatform()` de `@/services/native`:
     - **Assistente Passivo de Compras & Notificações Bancárias:** Ocultar completamente o card e seus 8 toggles de bancos no ambiente Web/PWA, exibindo-o estritamente no runtime nativo do Android;
     - **Escudo de Privacidade (Privacy Shield / `FLAG_SECURE`):** Ocultar a opção no Web/PWA onde a flag de janela não tem suporte nem efeito;

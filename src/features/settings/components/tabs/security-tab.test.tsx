@@ -47,6 +47,7 @@ vi.mock("@/services/native", async () => {
     setAppLockGraceMinutes: vi.fn(),
     isPrivacyShieldEnabled: vi.fn().mockReturnValue(false),
     setPrivacyShieldEnabled: vi.fn().mockResolvedValue(undefined),
+    isNativePlatform: vi.fn().mockReturnValue(true),
   };
 });
 
@@ -64,6 +65,12 @@ function renderSecurityTab() {
 describe("SecurityTab - Bloqueio do Aplicativo & Privacidade", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(nativeServices.isNativePlatform).mockReturnValue(true);
+    vi.mocked(nativeServices.checkBiometricsAvailability).mockResolvedValue({
+      isAvailable: true,
+      biometryType: "fingerprint",
+      deviceIsSecure: true,
+    });
   });
 
   it("renderiza o card de Bloqueio do Aplicativo & Privacidade e badge de status", async () => {
@@ -137,5 +144,42 @@ describe("SecurityTab - Bloqueio do Aplicativo & Privacidade", () => {
     expect(await screen.findByText("Assistente de Restauração de Backup")).toBeInTheDocument();
     expect(await screen.findByText("Validação")).toBeInTheDocument();
   });
+
+  describe("Ambiente Web / PWA (Ocultação de Recursos Nativos - Tarefa 1.1)", () => {
+    it("não renderiza o card de Bloqueio do Aplicativo nem o Escudo de Privacidade na Web sem biometria", async () => {
+      vi.mocked(nativeServices.isNativePlatform).mockReturnValue(false);
+      vi.mocked(nativeServices.checkBiometricsAvailability).mockResolvedValue({
+        isAvailable: false,
+        biometryType: "none",
+        deviceIsSecure: false,
+      });
+
+      renderSecurityTab();
+
+      // Aguarda qualquer tick e confirma que opções nativas inoperantes estão ocultas
+      expect(screen.queryByText("Bloqueio do Aplicativo & Privacidade")).not.toBeInTheDocument();
+      expect(screen.queryByText("Exigir biometria ao retornar")).not.toBeInTheDocument();
+      expect(screen.queryByText("Escudo de Privacidade (Privacy Shield)")).not.toBeInTheDocument();
+    });
+
+    it("renderiza apenas biometria se houver suporte a autenticação de dispositivo na Web, mas nunca o Escudo de Privacidade", async () => {
+      vi.mocked(nativeServices.isNativePlatform).mockReturnValue(false);
+      vi.mocked(nativeServices.checkBiometricsAvailability).mockResolvedValue({
+        isAvailable: true,
+        biometryType: "fingerprint",
+        deviceIsSecure: true,
+      });
+
+      renderSecurityTab();
+
+      // Aguarda resolução da biometria
+      expect(await screen.findByText("Bloqueio do Aplicativo & Privacidade")).toBeInTheDocument();
+      expect(screen.getByText("Exigir biometria ao retornar")).toBeInTheDocument();
+
+      // Escudo de privacidade (FLAG_SECURE) NUNCA deve ser exibido em Web/PWA
+      expect(screen.queryByText("Escudo de Privacidade (Privacy Shield)")).not.toBeInTheDocument();
+    });
+  });
 });
+
 
