@@ -515,3 +515,54 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
   4. **Build de Produção PWA:** Executar `npm run build` gerando assets otimizados com service workers e manifest válidos. (Concluído: bundle Vite de produção compilado com sucesso, chunks otimizados com tree-shaking, precache de 120 entradas e service worker PWA gerado em `dist/sw.js`).
   5. **Compilação e Assinatura dos APKs Android:** Executar `npm run build:apk` via script idempotente gerando os binários `guia-financeiro-debug.apk` e `guia-financeiro-release.apk` (assinado) em `dist-apk/` com hashes SHA-256 de integridade. (Concluído: build nativo Gradle com JDK 21 compilado com sucesso gerando os binários `dist-apk/guia-financeiro-debug.apk` [12M, SHA-256 `a8975be6baa2ccdab1c583e4e6c0b753021982cff31ec3cdf3b257bfeeaf2074`] e `dist-apk/guia-financeiro-release.apk` [11M, SHA-256 `5bc039a0a8976d47bbac60b19e596707fe909e064a8456a65385447379f787ab`]).
 - **Commit:** `chore(release): complete global regression audit, pwa build, and android apk generation`
+
+---
+
+## FASE 23: Refinamento Global Avançado: Conectividade, Telas de Borda, PWA iOS e Code Splitting
+
+### Tarefa 40: Banner Global de Conectividade Offline/Online, Indicador de Rede e Sincronização Automática [Concluída]
+- **Status:** ✅ Concluída
+- **Objetivo:** Integrar o hook `useNetworkStatus()` ao layout global (`PageShell`) através de um banner sutil fixado abaixo do cabeçalho, com indicador visual de status de rede, auto-dismiss ao reconectar e revalidação automática das queries do TanStack Query.
+- **Ações:**
+  1. **Componente de Status de Rede:** Criar `<NetworkStatusBanner />` em `src/components/layout/network-status-banner.tsx` com estados `offline` (faixa suave com ícone `WifiOff`, mensagem de segurança sobre sincronização e botão sutil de retry) e `online` (toast/faixa rápida com ícone `Wifi` e auto-dismiss em 3 segundos). (Concluído: implementado `<NetworkStatusBanner />` em `src/components/layout/network-status-banner.tsx` com banner offline não obstrutivo [ícone `WifiOff`, mensagem de proteção de dados e botão sutil de reconexão manual] e faixa de conexão restabelecida [ícone `Wifi`] com auto-dismiss em 3,5s).
+  2. **Integração no PageShell:** Posicionar o banner logo abaixo do header sticky em `src/components/layout/page-shell.tsx`, garantindo que não obstrua conteúdo ou elementos da tela. (Concluído: posicionado logo abaixo do `<header>` sticky e antes do container `<main>` em `src/components/layout/page-shell.tsx`, garantindo visibilidade imediata sem deslocamentos abruptos de layout ou sobreposição de controles).
+  3. **Ressincronização Atômica das Queries:** Ao detectar transição de `offline` para `online`, disparar `queryClient.invalidateQueries()` para atualizar automaticamente os dados de transações, orçamentos e relatórios sem recarregar a página. (Concluído: `queryClient.invalidateQueries()` disparado automaticamente ao detectar a transição de offline para online via `subscribeNetworkStatus`, garantindo atualização instantânea de orçamentos, faturas e lançamentos).
+  4. **Acessibilidade & Zero Emojis:** Utilizar `role="status"`, `aria-live="polite"`, textos estritamente em pt-BR e ícones Lucide padronizados. (Concluído: implementado com `role="status"`, `aria-live="polite"`, ícones Lucide padronizados, zero emojis e conformidade estrita com o Design System).
+  5. **Testes Unitários:** Cobrir a detecção de queda/retomada de conexão, disparo de invalidação de queries e presença no `PageShell`. (Concluído: suíte completa com 4 testes unitários dedicados em `network-status-banner.test.tsx` e teste de integração no `page-shell.test.tsx`, cobrindo transições de rede, auto-dismiss e disparo de invalidação).
+- **Commit:** `feat(network): implement global offline/online status banner and automatic query resync`
+
+---
+
+### Tarefa 41: Refinamento e Validação em Tempo Real das Telas de Borda (Auth, Categorias e Checkout Pro)
+- **Status:** ⏳ Pendente
+- **Objetivo:** Implementar validação em tempo real com regras visuais, máscaras automáticas, checklist de requisitos de senha e anatomia canônica de formulários em Login, Cadastro, Recuperação de Senha, Categorias e Checkout de Assinatura.
+- **Ações:**
+  1. **Checklist e Força de Senha no Cadastro:** Adicionar feedback visual de requisitos de senha (mínimo 8 caracteres, letra maiúscula, número e caractere especial) com badges de status em `RegisterPage`.
+  2. **Validação e Máscaras em Tempo Real no Checkout:** Refinar campos de CPF (`formatCPF`), número de cartão, validade e CVV em `SubscriptionCheckoutPage` com feedback sonoro/tátil e prevenção de submissão inválida.
+  3. **Harmonização de Formulários e Modais de Categoria:** Alinhar `CategoryFormDialog` e `DeleteCategoryDialog` com a anatomia canônica de labels (`text-xs font-semibold`), helper text (`text-[11px]`) e prevenção de categorias órfãs.
+  4. **Testes Unitários:** Validar os novos checklists, máscaras e comportamento dos formulários de borda.
+- **Commit:** `refactor(auth-checkout): polish edge screens with real-time validation, masks, and canonical form anatomy`
+
+---
+
+### Tarefa 42: Experiência PWA Avançada, Guia de Instalação no iOS/Safari e Atalho nas Configurações
+- **Status:** ⏳ Pendente
+- **Objetivo:** Adicionar detecção de iOS/Safari com modal ilustrado passo a passo de instalação ("Compartilhar > Adicionar à Tela de Início") e disponibilizar botão de instalação também na aba de Configurações do app.
+- **Ações:**
+  1. **Detecção Inteligente de Safari iOS:** Implementar utilitário e hook para identificar dispositivos Apple iOS executando fora do modo standalone.
+  2. **Modal Guiado de Instalação no iOS:** Criar `IosPwaInstallDialog` (`src/components/modules/ios-pwa-install-dialog.tsx`) com instruções visuais claras passo a passo.
+  3. **Atalho de Instalação em Configurações:** Integrar o gatilho de instalação do aplicativo na aba de Aparência/Configurações (`AppearanceTab`), permitindo que o usuário instale o PWA tanto no menu "Mais" quanto nas configurações.
+  4. **Testes Unitários:** Cobrir a detecção de dispositivo e o fluxo de abertura do guia de instalação PWA.
+- **Commit:** `feat(pwa): add ios safari install guidance dialog and settings install shortcut`
+
+---
+
+### Tarefa 43: Code Splitting Global de Rotas Públicas/Auth e Lazy Loading de Modais Executivos Pesados
+- **Status:** ⏳ Pendente
+- **Objetivo:** Otimizar o tempo de carregamento inicial e reduzir os chunks JS principais através de carregamento sob demanda (`React.lazy`) para páginas públicas/auth e modais executivos densos.
+- **Ações:**
+  1. **Code Splitting de Rotas em AppRouter:** Transformar `LandingPage`, `LoginPage`, `RegisterPage`, `ForgotPasswordPage`, `SubscriptionCheckoutPage`, `PendingApprovalPage` e `SuspendedAccountPage` em importações dinâmicas `lazy()` com Suspense e skeletons suaves.
+  2. **Lazy Loading de Modais Executivos Densos:** Aplicar lazy loading sob demanda para relatórios complexos (`WealthTearSheetModal`, `FinancialCloseReportModal`, `RestoreWizardDialog`).
+  3. **Verificação de Chunks no Build:** Executar o build Vite garantindo que os chunks principais não ultrapassem os limites recomendados.
+  4. **Testes e Regressão Global:** Rodar typecheck, lint e bateria completa de testes garantindo que nenhum fluxo ou teste foi quebrado pela importação dinâmica.
+- **Commit:** `perf(routing): apply code splitting for public auth routes and heavy executive modals`

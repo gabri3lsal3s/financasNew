@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PageShell } from "./page-shell";
+import { resetNetworkStatusForTesting } from "@/services/network-status";
 
 import { getUserStorageKey } from "@/services/user-storage";
 
@@ -81,6 +82,7 @@ function contentWrapper() {
 
 beforeEach(() => {
   window.localStorage.clear();
+  resetNetworkStatusForTesting(true);
 });
 
 describe("PageShell (F7.2/F7.3)", () => {
@@ -139,6 +141,20 @@ describe("PageShell (F7.2/F7.3)", () => {
     const { container } = renderShell();
     const mainContainer = container.querySelector("#main-content > div");
     expect(mainContainer?.className).toContain("pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))]");
+  });
+
+  it("renderiza o NetworkStatusBanner quando a conexão com a internet é perdida", () => {
+    renderShell();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new Event("offline"));
+    });
+
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Você está sem conexão com a internet/i),
+    ).toBeInTheDocument();
   });
 });
 

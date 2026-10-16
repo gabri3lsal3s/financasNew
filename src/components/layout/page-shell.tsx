@@ -7,6 +7,7 @@ import { CalculatorButton } from "@/components/layout/calculator-button";
 import { GlobalSearch } from "@/components/layout/global-search";
 import { LogoProfileButton } from "@/components/layout/logo-profile-button";
 import { NotificationsButton } from "@/components/layout/notifications-button";
+import { NetworkStatusBanner } from "@/components/layout/network-status-banner";
 import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -169,6 +170,7 @@ export function PageShell() {
             {showPrivacy && <PrivacyToggle />}
           </div>
         </header>
+        <NetworkStatusBanner />
         <main id="main-content" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-none min-h-0 w-full">
           <div className="mx-auto w-full max-w-7xl px-3 sm:px-6 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] lg:pb-10 pt-4 sm:pt-6 lg:px-8 min-w-0">
             {/* Transição de rota (F8): 150ms, respeita prefers-reduced-motion (globals). */}

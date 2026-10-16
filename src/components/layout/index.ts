@@ -28,5 +28,7 @@ export type { LogoProfileButtonProps } from "./logo-profile-button";
 export { ThemeToggle } from "./theme-toggle";
 export { BackToTop } from "./back-to-top";
 export type { BackToTopProps } from "./back-to-top";
+export { NetworkStatusBanner } from "./network-status-banner";
+export type { NetworkStatusBannerProps } from "./network-status-banner";
 
 
