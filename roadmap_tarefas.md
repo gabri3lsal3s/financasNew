@@ -300,25 +300,15 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 9: Motor Puro de Domínio — Parsing Avançado, Detecção de Parcelas e Blacklist Semântica
 
-### Tarefa 25: Inteligência de Parsing no Domínio, Detecção de Parcelas e Blacklist Semântica [Pendente]
-- **Status:** ⏳ Pendente
+### Tarefa 25: Inteligência de Parsing no Domínio, Detecção de Parcelas e Blacklist Semântica [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Refinar o motor puro de parsing (`src/domain/notifications/bank-parser.ts`), implementando detecção e cálculo de compras parceladas, blacklist semântica de falsos positivos (faturas fechadas, pagamentos de fatura, limite, recusas e propagandas), extrator avançado de comerciantes e dicionário expandido de receitas.
 - **Ações:**
-  1. **Detecção e Cálculo de Parcelas:**
-     - Identificar formatos com valor total e parcelas (`"Compra de R$ 300,00 em 3x"`) setando `amountCents: 30000` e `installments: 3`.
-     - Identificar formatos com valor da parcela (`"em 3x de R$ 50,00"`) calculando o total (`3 * 50 = R$ 150,00`) e setando `amountCents: 15000` e `installments: 3`.
-     - Tratar parcelas isoladas de controle mensal (`"Parcela 2/10 de R$ 45,00"`).
-  2. **Blacklist Semântica Anti-Falsos Positivos:**
-     - Descartar notificações de faturas fechadas (`fatura fechou`, `fechamento da fatura`), pagamentos de fatura confirmados (`pagamento da fatura recebido`), recusas/não autorizadas (`recusada`, `saldo insuficiente`), ofertas de crédito/aumento de limite (`limite aumentou`, `empréstimo pré-aprovado`), tokens 2FA e agendamentos futuros.
-  3. **Extrator Multibanco de Estabelecimentos e Limpeza:**
-     - Reconhecer comerciantes com preposições contraídas `"no"` e `"na"` além de `"em"`, `"para"` e `"de"`.
-     - Tratar padrões com travessão e vírgulas dos cartões Itaú, Bradesco, Banco do Brasil e Santander.
-     - Sanitizar prefixos de maquininhas/adquirentes (`PAG*`, `MP*`, `IFOOD*`, `UBER *TRIP HELP`, cidades/estados).
-  4. **Expansão de Rendas e Meios de Pagamento:**
-     - Suportar salários, reembolsos, estornos, devoluções Pix e transferências (TED/DOC).
-     - Alinhar com `PAYMENT_METHODS` adicionando suporte a `"transfer"` e detecção de boletos.
-  5. **Testes Unitários:**
-     - Criar suíte abrangente em `bank-parser.test.ts` cobrindo casos positivos dos 10 maiores bancos e casos negativos estritos de falsos positivos.
+  1. **Detecção e Cálculo de Parcelas:** (Concluído: implementada a função pura `extractInstallmentInfo` suportando formatos com total informado `"Compra de R$ 300,00 em 3x"` com `amountCents: 30000`, `installments: 3` e `installmentAmountCents: 10000`; formatos com valor da parcela `"em 3x de R$ 50,00"` calculando o total `amountCents: 15000` e `installments: 3`; e parcelas isoladas de controle mensal `"Parcela 2/10 de R$ 45,00"` com `currentInstallment: 2`, `installments: 10`, `amountCents: 4500` e `installmentAmountCents: 4500`).
+  2. **Blacklist Semântica Anti-Falsos Positivos:** (Concluído: criada função `isBlacklistedNotification` com expressões regulares descartando imediatamente faturas fechadas/abertas/resumos, pagamentos de fatura confirmados para evitar duplicidade de despesas, recusas/transações não autorizadas, ofertas de crédito e empréstimo pré-aprovado, aumento de limite, tokens 2FA e agendamentos futuros).
+  3. **Extrator Multibanco de Estabelecimentos e Limpeza:** (Concluído: implementada `cleanMerchantName` higienizando prefixos de adquirentes `PAG*`, `MP*`, `STONE*`, `CIELO*`, `GETNET*`, normalizando Uber e iFood, sufixos de cidades/estados como `SAO PAULO BR` e resíduos de cartão `final 1234`; refinada `extractMerchantOrRecipient` com suporte a preposições contraídas `"no"`, `"na"`, `"em"`, `"para"`, `"de"`, `"pela"` com negative lookahead evitando capturar valores monetários, além dos formatos com travessão e vírgulas dos cartões Itaú, Bradesco, Banco do Brasil e Santander).
+  4. **Expansão de Rendas e Meios de Pagamento:** (Concluído: adicionado suporte a salários, folha de pagamento, reembolsos, estornos no cartão, devoluções Pix, TED e DOC recebidos, dividendos/proventos e depósitos; alinhado com `PAYMENT_METHODS` adicionando suporte a `"transfer"` [TED/DOC], detecção de boletos como `"other"`, além de débito, crédito e Pix; atualizados `page-shell.tsx` e `pending-suggestions-card.tsx` para passar `parcelas` e exibir o badge `Nx` nas sugestões).
+  5. **Testes Unitários:** (Concluído: bateria completa de 36 testes unitários em `bank-parser.test.ts` cobrindo casos reais de bancos brasileiros, detecção e cálculo de parcelas, blacklist semântica de falsos positivos e sanitização de comerciantes 100% verde).
 - **Commit:** `feat(notifications): add installment parsing, semantic blacklist, and multibank merchant extraction`
 
 ---
@@ -408,3 +398,12 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
   5. **Filtro de Bancos Homologados:** Checkboxes ou lista de bancos ativos para o usuário escolher quais bancos deseja monitorar (ex.: monitorar apenas Nubank e Itaú, ignorando Inter).
   6. **Persistência das Preferências:** Salvar as preferências com isolamento de usuário via `user-storage.ts` / Supabase `user_preferences`, com reatividade instantânea no aplicativo.
 - **Commit:** `feat(settings): add user preference toggles for bank notifications, quick-add, installments, and category inference`
+
+### Tarefa 31: Correção do Crash Loop na Troca Dinâmica de Ícone (Cache Pro & Anti-Restart) 
+- Objetivo: Impedir que o app feche sozinho em loop ao alterar o ícone do launcher para a versão Pro. 
+- Ações: 
+  1. Armazenar em cache local (last_applied_icon_tier) o estado do último ícone configurado ("FREE" ou "PRO"). 
+  2. Implementar delta check na inicialização: acionar a troca de ícone nativo unicamente se o status do usuário mudou em relação ao cache. 
+  3. Adicionar a flag PackageManager.DONT_KILL_APP na chamada nativa do Android para minimizar encerramentos abruptos. 
+  4. Garantir que os logos internos da aplicação leiam o cache na montagem imediata, evitando piscadas ou atrasos visuais. 
+- Commit: fix(launcher): prevent crash loop on dynamic icon switch using cached tier delta checks 

@@ -201,15 +201,15 @@ graph TD
 - **DoD:** Notificação bancária ou compartilhamento Pix gera sugestão automática discreta; com 1 toque o formulário abre pronto para salvar.
 
 ### Fase 5.1: Refinamento, Detecção de Parcelas & Ação "Adicionar Rápido" sem Abrir o App (Fase 89 do Roadmap)
-- [ ] **Detecção de Compras Parceladas:** Identificação de parcelamento (`3x de R$ 50` ou `R$ 300 em 3x`) com cálculo do valor total e divisão de parcelas mensais no domínio.
+- [x] **Detecção de Compras Parceladas:** Identificação de parcelamento (`3x de R$ 50` ou `R$ 300 em 3x`) com cálculo do valor total e divisão de parcelas mensais no domínio (`bank-parser.ts`).
 - [ ] **Notificação Interativa Rica no Android:** O próprio app dispara notificação local contendo valor, estabelecimento, banco, categoria e os botões nativos `[➕ Adicionar Rápido]` e `[✏️ Editar]`.
 - [ ] **Ação "Adicionar Rápido" em Segundo Plano:** Gravação direta no Supabase via worker nativo autenticado com cartão e categoria inferidos (com fallback seguro para cartão principal e 'Outros').
 - [ ] **Feedback Dinâmico & Desfazer:** Notificação se atualiza para `✅ Salvo com sucesso` com botão temporário de `Desfazer` antes de fechar.
 - [ ] **Resiliência Online First:** Tratamento de ausência de rede com aviso ao usuário e preservação na fila de sugestões.
-- [ ] **Blacklist de Falsos Positivos:** Rejeição estrita de faturas fechadas, pagamentos de fatura, ofertas de crédito, limites pré-aprovados, recusas e tokens 2FA.
+- [x] **Blacklist de Falsos Positivos:** Rejeição estrita de faturas fechadas, pagamentos de fatura, ofertas de crédito, limites pré-aprovados, recusas e tokens 2FA (`isBlacklistedNotification`).
 - [ ] **Buffer Offline em Background:** Buffer circular em `SharedPreferences` no Android para notificações recebidas com o app fechado e esvaziamento automático via `flushPendingNotifications`.
-- [ ] **Extrator Multibanco de Merchants:** Captura com preposições "no", "na", delimitadores de travessão do Itaú/Bradesco e vírgulas do Banco do Brasil com sanitização de adquirentes (`PAG*`, `MP*`, etc.).
-- [ ] **Expansão de Bancos:** Adição de BTG Pactual, PicPay, PagBank, Neon, Next, XP, Nomad e Wise.
+- [x] **Extrator Multibanco de Merchants:** Captura com preposições "no", "na", delimitadores de travessão do Itaú/Bradesco e vírgulas do Banco do Brasil com sanitização de adquirentes (`PAG*`, `MP*`, etc.) e limpeza de ruídos.
+- [x] **Expansão de Bancos no Domínio:** Suporte e resolução de BTG Pactual, PicPay, PagBank, Neon, Next, XP, Nomad e Wise além dos grandes bancos tradicionais.
 - [ ] **Auto-Categorização e TTL:** Inferência de categoria por palavras-chave com pré-seleção no `LaunchWizard` e auto-expiração de 7 dias.
 - [ ] **Painel de Preferências do Usuário:** Toggles independentes em Configurações > Notificações para ligar/desligar captura passiva, notificações interativas, cálculo de parcelas, inferência de categorias e seleção de bancos.
 - **DoD:** Registro em 1 toque sem abrir o app funcional, zero falsos positivos de faturas/limites, parcelas calculadas com precisão, controles de usuário ativos e 100% de testes verdes.

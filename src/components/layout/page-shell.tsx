@@ -48,6 +48,7 @@ export function PageShell() {
   const descParam = searchParams.get("descricao") || undefined;
   const dataParam = searchParams.get("data") || undefined;
   const formaParam = (searchParams.get("forma") as PaymentMethod) || undefined;
+  const parcelasParam = searchParams.get("parcelas");
   const sugIdParam = searchParams.get("sug_id") || undefined;
 
   const initialValues = useMemo(() => {
@@ -61,8 +62,14 @@ export function PageShell() {
     if (descParam) vals.description = descParam;
     if (dataParam) vals.date = dataParam;
     if (formaParam) vals.paymentMethod = formaParam;
+    if (parcelasParam) {
+      const parsedParcelas = parseInt(parcelasParam, 10);
+      if (Number.isFinite(parsedParcelas) && parsedParcelas >= 1 && parsedParcelas <= 60) {
+        vals.installments = parsedParcelas;
+      }
+    }
     return Object.keys(vals).length > 0 ? vals : undefined;
-  }, [valorParam, descParam, dataParam, formaParam]);
+  }, [valorParam, descParam, dataParam, formaParam, parcelasParam]);
 
   const handleWizardOpenChange = (next: boolean) => {
     setLocalWizardOpen(next);
@@ -79,6 +86,7 @@ export function PageShell() {
             updated.delete("descricao");
             updated.delete("data");
             updated.delete("forma");
+            updated.delete("parcelas");
             updated.delete("sug_id");
             return updated;
           },

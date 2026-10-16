@@ -27,7 +27,15 @@ export function PendingSuggestionsCard({
     return null;
   }
 
-  const handleConfirm = (id: string, type: string, cents: number, desc: string, date: string, method?: string) => {
+  const handleConfirm = (
+    id: string,
+    type: string,
+    cents: number,
+    desc: string,
+    date: string,
+    method?: string,
+    installments?: number,
+  ) => {
     onSuggestionHandled?.(id);
     const params = new URLSearchParams({
       novo: type,
@@ -37,6 +45,9 @@ export function PendingSuggestionsCard({
       forma: method || "pix",
       sug_id: id,
     });
+    if (installments && installments > 1) {
+      params.set("parcelas", String(installments));
+    }
     navigate(`/?${params.toString()}`);
   };
 
@@ -102,8 +113,17 @@ export function PendingSuggestionsCard({
                         ? "Débito"
                         : sug.paymentMethod === "pix"
                           ? "Pix"
-                          : "Outro"}
+                          : sug.paymentMethod === "transfer"
+                            ? "TED/DOC"
+                            : "Outro"}
                   </span>
+                )}
+                {sug.installments && sug.installments > 1 && (
+                  <Badge variant="muted" size="xs">
+                    {sug.currentInstallment
+                      ? `${sug.currentInstallment}/${sug.installments}x`
+                      : `${sug.installments}x`}
+                  </Badge>
                 )}
                 <span className="text-[11px] text-muted-foreground">
                   {formatDateBR(sug.date)}
@@ -148,6 +168,7 @@ export function PendingSuggestionsCard({
                     sug.description,
                     sug.date,
                     sug.paymentMethod,
+                    sug.installments,
                   )
                 }
                 className="h-8 gap-1.5 text-xs font-medium"
