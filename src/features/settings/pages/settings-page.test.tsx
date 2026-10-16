@@ -142,16 +142,17 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     cleanup();
   });
 
-  it("renderiza o cabeçalho e os 3 pilares consolidados de navegação", () => {
+  it("renderiza o cabeçalho e os 4 pilares consolidados de navegação", () => {
     renderSettings();
 
     expect(screen.getByRole("heading", { level: 1, name: "Configurações" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Personalização" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Plano" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Aparência" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Notificações" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Segurança" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Plano" })).toBeInTheDocument();
   });
 
-  it("permite alternar entre os Modos de Experiência na aba Personalização", async () => {
+  it("permite alternar entre os Modos de Experiência na aba Aparência", async () => {
     const user = userEvent.setup();
     renderSettings();
 
@@ -176,9 +177,12 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     );
   });
 
-  it("permite configurar Lembretes integrados na aba Personalização", async () => {
+  it("permite configurar Lembretes integrados na aba Notificações", async () => {
     const user = userEvent.setup();
     renderSettings();
+
+    const notifTab = screen.getByRole("tab", { name: "Notificações" });
+    await user.click(notifTab);
 
     expect(screen.getByText("Lembretes & Notificações")).toBeInTheDocument();
     expect(screen.getByText("Antecedência para Faturas de Cartão")).toBeInTheDocument();
@@ -192,7 +196,7 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     expect(mockUpdateReminderPreferences).toHaveBeenCalledWith({ remindersEnabled: false });
   });
 
-  it("permite configurar Atalhos do Header em Personalização e não exibe seletor de widgets", async () => {
+  it("permite configurar Atalhos do Header em Aparência e não exibe seletor de widgets", async () => {
     const user = userEvent.setup();
     renderSettings();
 
@@ -268,18 +272,23 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     expect(screen.queryByText("Autenticação em Duas Etapas (2FA / TOTP)")).not.toBeInTheDocument();
   });
 
-  it("ativa a aba de Personalização quando acessado via ?tab=aparencia", () => {
+  it("ativa a aba de Aparência quando acessado via ?tab=aparencia", () => {
     renderSettings(["/configuracoes?tab=aparencia"]);
     expect(screen.getByText("Modo de Experiência do Aplicativo")).toBeInTheDocument();
   });
 
-  it("ativa a aba de Personalização quando acessado via ?tab=widgets", () => {
+  it("ativa a aba de Aparência quando acessado via ?tab=widgets", () => {
     renderSettings(["/configuracoes?tab=widgets"]);
     expect(screen.getByText("Interface & Composição")).toBeInTheDocument();
   });
 
-  it("ativa a aba de Personalização quando acessado via ?tab=lembretes", () => {
+  it("ativa a aba de Notificações quando acessado via ?tab=lembretes", () => {
     renderSettings(["/configuracoes?tab=lembretes"]);
+    expect(screen.getByText("Lembretes & Notificações")).toBeInTheDocument();
+  });
+
+  it("ativa a aba de Notificações quando acessado via ?tab=notificacoes", () => {
+    renderSettings(["/configuracoes?tab=notificacoes"]);
     expect(screen.getByText("Lembretes & Notificações")).toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
   Palette,
+  Bell,
   ShieldCheck,
   Zap,
   RefreshCw,
@@ -9,6 +10,7 @@ import {
 import { Button, Tabs } from "@/components/ui";
 import {
   AppearanceTab,
+  NotificationsTab,
   SecurityTab,
   SubscriptionTab,
 } from "../components/tabs";
@@ -22,14 +24,15 @@ import { cn } from "@/lib/utils";
  * de rota (tab, subtab ou aliases comuns de deep-link).
  */
 function resolveSettingsTab(param: string | null): string {
-  if (!param) return "personalizacao";
+  if (!param) return "appearance";
   const p = param.toLowerCase().trim();
   if (
     [
-      "personalizacao",
-      "personalização",
+      "appearance",
       "aparencia",
       "aparência",
+      "personalizacao",
+      "personalização",
       "tema",
       "visual",
       "customizacao",
@@ -46,20 +49,28 @@ function resolveSettingsTab(param: string | null): string {
       "widgets",
       "interface",
       "dashboard",
-      "lembretes",
+    ].includes(p)
+  ) {
+    return "appearance";
+  }
+  if (
+    [
+      "notifications",
       "notificacoes",
       "notificações",
       "notificacao",
       "notificação",
+      "lembretes",
+      "lembrete",
+      "bancos",
+      "assistente",
     ].includes(p)
   ) {
-    return "personalizacao";
-  }
-  if (["plano", "assinatura", "subscription", "upgrade"].includes(p)) {
-    return "plano";
+    return "notifications";
   }
   if (
     [
+      "security",
       "seguranca",
       "segurança",
       "perfil",
@@ -73,9 +84,12 @@ function resolveSettingsTab(param: string | null): string {
       "importar",
     ].includes(p)
   ) {
-    return "seguranca";
+    return "security";
   }
-  return "personalizacao";
+  if (["subscription", "plano", "assinatura", "upgrade"].includes(p)) {
+    return "subscription";
+  }
+  return "appearance";
 }
 
 export function SettingsPage() {
@@ -114,22 +128,28 @@ export function SettingsPage() {
   const tabItems = useMemo(
     () => [
       {
-        value: "personalizacao",
-        label: "Personalização",
+        value: "appearance",
+        label: "Aparência",
         icon: <Palette className="size-4" />,
         content: <AppearanceTab />,
       },
       {
-        value: "plano",
-        label: "Plano",
-        icon: <Zap className="size-4" />,
-        content: <SubscriptionTab />,
+        value: "notifications",
+        label: "Notificações",
+        icon: <Bell className="size-4" />,
+        content: <NotificationsTab />,
       },
       {
-        value: "seguranca",
+        value: "security",
         label: "Segurança",
         icon: <ShieldCheck className="size-4" />,
         content: <SecurityTab />,
+      },
+      {
+        value: "subscription",
+        label: "Plano",
+        icon: <Zap className="size-4" />,
+        content: <SubscriptionTab />,
       },
     ],
     [],

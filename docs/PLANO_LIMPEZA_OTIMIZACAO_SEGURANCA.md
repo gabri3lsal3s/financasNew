@@ -135,7 +135,7 @@ graph TD
     - **Biometria / App Lock:** Exibir no ambiente Web somente quando houver suporte a autenticação de dispositivo ou ocultar graciosamente se não for nativo.
   - **Critério de Saída:** Zero opções inúteis ou inoperantes renderizadas para usuários no navegador/PWA.
 
-- [ ] **Tarefa 1.2 — Reestruturação da Navegação em 4 Abas Especializadas**
+- [x] **Tarefa 1.2 — Reestruturação da Navegação em 4 Abas Especializadas**
   - **Ação:** Reorganizar a `SettingsPage` para distribuir as opções em 4 abas coesas:
     1. **Aparência & Identidade Visual (`appearance`):** Tema (Claro, Escuro, OLED, Automático), Cor de Destaque Oficial/Variantes, Modo de Centavos no Dashboard e Visibilidade Padrão de Saldos;
     2. **Notificações & Automações (`notifications`):** Lembretes de Vencimento de Contas, Lembrete Diário no Dispositivo e, se Android, Assistente Bancário de Compras;
