@@ -202,10 +202,10 @@ graph TD
 
 ### Fase 5.1: Refinamento, Detecção de Parcelas & Ação "Adicionar Rápido" sem Abrir o App (Fase 89 do Roadmap)
 - [x] **Detecção de Compras Parceladas:** Identificação de parcelamento (`3x de R$ 50` ou `R$ 300 em 3x`) com cálculo do valor total e divisão de parcelas mensais no domínio (`bank-parser.ts`).
-- [ ] **Notificação Interativa Rica no Android:** O próprio app dispara notificação local contendo valor, estabelecimento, banco, categoria e os botões nativos `[➕ Adicionar Rápido]` e `[✏️ Editar]`.
-- [ ] **Ação "Adicionar Rápido" em Segundo Plano:** Gravação direta no Supabase via worker nativo autenticado com cartão e categoria inferidos (com fallback seguro para cartão principal e 'Outros').
-- [ ] **Feedback Dinâmico & Desfazer:** Notificação se atualiza para `✅ Salvo com sucesso` com botão temporário de `Desfazer` antes de fechar.
-- [ ] **Resiliência Online First:** Tratamento de ausência de rede com aviso ao usuário e preservação na fila de sugestões.
+- [x] **Notificação Interativa Rica no Android:** O próprio app dispara notificação local contendo valor, estabelecimento, banco, categoria e os botões nativos `[Adicionar Rápido]` e `[Editar]`.
+- [x] **Ação "Adicionar Rápido" em Segundo Plano:** Gravação direta no Supabase via worker nativo autenticado com cartão e categoria inferidos (com fallback seguro para cartão principal e 'Outros').
+- [x] **Feedback Dinâmico & Desfazer:** Notificação se atualiza para "Lançamento registrado" com botão temporário de `[Desfazer]` antes de fechar.
+- [x] **Resiliência Online First:** Tratamento de ausência de rede com aviso ao usuário e preservação na fila de sugestões.
 - [x] **Blacklist de Falsos Positivos:** Rejeição estrita de faturas fechadas, pagamentos de fatura, ofertas de crédito, limites pré-aprovados, recusas e tokens 2FA (`isBlacklistedNotification`).
 - [ ] **Buffer Offline em Background:** Buffer circular em `SharedPreferences` no Android para notificações recebidas com o app fechado e esvaziamento automático via `flushPendingNotifications`.
 - [x] **Extrator Multibanco de Merchants:** Captura com preposições "no", "na", delimitadores de travessão do Itaú/Bradesco e vírgulas do Banco do Brasil com sanitização de adquirentes (`PAG*`, `MP*`, etc.) e limpeza de ruídos.

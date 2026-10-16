@@ -1,6 +1,13 @@
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { getUserStorageItem, setUserStorageItem } from "@/services/user-storage";
 import { isNativePlatform } from "./platform";
+import {
+  ACTION_EDIT,
+  ACTION_QUICK_ADD,
+  ACTION_UNDO,
+  quickAddTransaction,
+  undoQuickAddTransaction,
+} from "./interactive-notifications";
 
 export const DAILY_REMINDER_NOTIFICATION_ID = 2026;
 export const DAILY_REMINDER_CHANNEL_ID = "daily_reminders";
@@ -192,11 +199,78 @@ export function initNotificationActionListener(
     "localNotificationActionPerformed",
     (notificationAction) => {
       const actionId = notificationAction.actionId;
-      if (actionId === ACTION_ADD_INCOME) {
+      const notification = notificationAction.notification;
+      const extra = notification?.extra as Record<string, unknown> | undefined;
+
+      if (actionId === ACTION_QUICK_ADD) {
+        if (extra?.suggestion) {
+          void quickAddTransaction(extra.suggestion as never);
+        }
+      } else if (actionId === ACTION_EDIT) {
+        if (extra?.suggestion) {
+          const sug = extra.suggestion as {
+            type: string;
+            amountCents: number;
+            description: string;
+            date: string;
+            paymentMethod?: string;
+            installments?: number;
+            id: string;
+          };
+          const params = new URLSearchParams({
+            novo: sug.type,
+            valor: String(sug.amountCents),
+            descricao: sug.description,
+            data: sug.date,
+            forma: sug.paymentMethod || "pix",
+            sug_id: sug.id,
+          });
+          if (sug.installments && sug.installments > 1) {
+            params.set("parcelas", String(sug.installments));
+          }
+          onNavigate(`/?${params.toString()}`);
+        } else {
+          onNavigate("/transacoes?novo=despesa");
+        }
+      } else if (actionId === ACTION_UNDO) {
+        if (extra?.createdId && extra?.type && extra?.suggestion) {
+          void undoQuickAddTransaction(
+            String(extra.createdId),
+            extra.type as "expense" | "income",
+            extra.suggestion as never,
+          );
+        }
+      } else if (actionId === ACTION_ADD_INCOME) {
         onNavigate("/transacoes?novo=receita");
-      } else {
-        // Ação de despesa ou toque no corpo da notificação (tap padrão)
+      } else if (actionId === ACTION_ADD_EXPENSE) {
         onNavigate("/transacoes?novo=despesa");
+      } else {
+        // Toque no corpo da notificação (tap padrão)
+        if (extra?.suggestion) {
+          const sug = extra.suggestion as {
+            type: string;
+            amountCents: number;
+            description: string;
+            date: string;
+            paymentMethod?: string;
+            installments?: number;
+            id: string;
+          };
+          const params = new URLSearchParams({
+            novo: sug.type,
+            valor: String(sug.amountCents),
+            descricao: sug.description,
+            data: sug.date,
+            forma: sug.paymentMethod || "pix",
+            sug_id: sug.id,
+          });
+          if (sug.installments && sug.installments > 1) {
+            params.set("parcelas", String(sug.installments));
+          }
+          onNavigate(`/?${params.toString()}`);
+        } else {
+          onNavigate("/transacoes?novo=despesa");
+        }
       }
     },
   );

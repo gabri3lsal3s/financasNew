@@ -7,6 +7,7 @@ import {
 } from "@/domain/notifications";
 import { isNativePlatform } from "./platform";
 import { addPendingSuggestion } from "./suggestions-store";
+import { scheduleInteractiveBankNotification } from "./interactive-notifications";
 
 export interface BankNotificationPluginInterface {
   isPermissionGranted(): Promise<{ granted: boolean }>;
@@ -50,18 +51,21 @@ export function processBankNotification(
   const parsed = parseBankNotification(payload);
   if (parsed) {
     addPendingSuggestion(parsed);
+    void scheduleInteractiveBankNotification(parsed);
   }
   return parsed;
 }
 
 /**
  * Processa um texto compartilhado via Android Share Target (comprovante Pix):
- * Se reconhecer valor válido, adiciona à fila de sugestões pendentes.
+ * Se reconhecer valor válido, adiciona à fila de sugestões pendentes
+ * e emite notificação local para confirmação rápida.
  */
 export function processPixShare(text: string): ParsedBankTransaction | null {
   const parsed = parsePixShareText(text);
   if (parsed) {
     addPendingSuggestion(parsed);
+    void scheduleInteractiveBankNotification(parsed);
   }
   return parsed;
 }

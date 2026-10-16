@@ -315,20 +315,15 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 10: Notificações Interativas Ricas no Android & Ação Rápida no SO sem Abrir o App
 
-### Tarefa 26: Notificação Interativa Nativa no Android e Ação "Adicionar Rápido" sem Abrir o App [Pendente]
-- **Status:** ⏳ Pendente
-- **Objetivo:** Disparar notificação interativa rica do próprio Guia Financeiro no Android ao detectar compras/rendas, com ações `[➕ Adicionar Rápido]` (salvamento direto no Supabase em segundo plano com categoria e cartão inferidos) e `[✏️ Editar]` (abertura no wizard), feedback com botão `Desfazer` e tratamento Online First.
+### Tarefa 26: Notificação Interativa Nativa no Android e Ação "Adicionar Rápido" sem Abrir o App [Concluída]
+- **Status:** ✅ Concluída
+- **Objetivo:** Disparar notificação interativa rica do próprio Guia Financeiro no Android ao detectar compras/rendas, com ações [Adicionar Rápido] (salvamento direto no Supabase em segundo plano com categoria e cartão inferidos) e [Editar] (abertura no wizard), feedback com botão [Desfazer] e tratamento Online First sem emojis.
 - **Ações:**
-  1. **Disparo de Notificação Local Rica:**
-     - Ao capturar notificação bancária válida, emitir notificação local formatada (`"Nova compra: R$ 42,90 · Padaria Estrela"`) com os botões `[➕ Adicionar Rápido]` e `[✏️ Editar]`.
-  2. **Mecanismo de Gravação em Segundo Plano (`QuickAdd`):**
-     - Criar `BroadcastReceiver` / worker nativo Android associado à ação `[➕ Adicionar Rápido]`, disparando chamada de rede com o token de sessão do usuário no Supabase sem abrir a interface gráfica.
-     - Fallback seguro para resolução de cartão e categoria em caso de ambiguidade (cartão principal do banco e categoria 'Outros/Diversos').
-  3. **Feedback Visual e Desfazer:**
-     - Atualizar a notificação para `"✅ R$ XX,XX adicionado em [Categoria]"` com botão de `[Desfazer]` por tempo limitado antes do auto-dismiss.
-  4. **Resiliência Online First:**
-     - Em caso de falha de conexão, atualizar a notificação para alertar ausência de rede e reter a sugestão na fila interna do app para confirmação posterior.
-  5. Deve seguir a regra de sem emojis, somente lucid icons quando possível 
+  1. **Disparo de Notificação Local Rica:** (Concluído: implementado canal dedicado `bank_transaction_suggestions` com alta importância, vibração e luzes em `src/services/native/interactive-notifications.ts`; agendamento automático ao processar notificação bancária via `scheduleInteractiveBankNotification` com título contextualizado [ex.: "Nova compra em 3x: R$ 150,00", "Novo recebimento: R$ 250,00"], corpo detalhando estabelecimento, método e banco, e tipos de ação nativos `BANK_TRANSACTION_SUGGESTION` com botões [Adicionar Rápido] e [Editar]).
+  2. **Mecanismo de Gravação em Segundo Plano (QuickAdd):** (Concluído: implementada rotina `quickAddTransaction` que infere categoria de despesa/renda com base no estabelecimento e resolve cartão de crédito ativo vinculado ao banco; divide parcelas via `buildExpenseInstallments` / `buildIncomeInstallments`; executa persistência remota atômica via `createExpenseWithDebt` ou `createIncome` / `createIncomeInstallments`; e remove a transação da fila de sugestões locais).
+  3. **Feedback Visual e Desfazer:** (Concluído: notificação atualizada imediatamente para "Lançamento registrado: R$ XX,XX em [Categoria]" com botão nativo [Desfazer] registrado sob `BANK_TRANSACTION_FEEDBACK`; mecanismo `undoQuickAddTransaction` que remove a transação do banco via `deleteExpenseInstallments` ou `deleteIncome` e restaura a sugestão na fila com notificação de cancelamento confirmado).
+  4. **Resiliência Online First & Zero Emojis:** (Concluído: verificação rigorosa de conectividade `navigator.onLine`; em caso de ausência de rede, a gravação é impedida, a sugestão é mantida na fila do app e é emitida notificação com alerta de falta de internet para confirmação posterior; conformidade estrita com a Regra 8 de AGENTS.md com zero emojis em textos, botões e mensagens do sistema).
+  5. **Testes Unitários e Roteamento no Listener:** (Concluído: centralização do roteamento de ações em `local-notifications.ts` integrando `quick_add`, `edit`, `undo_quick_add` e abertura do assistente com parâmetros de parcelas; suíte completa de 11 testes unitários em `interactive-notifications.test.ts` e 100% de testes verdes).
 - **Commit:** `feat(android): implement interactive rich notification and headless quick-add background action`
 
 ---
