@@ -53,14 +53,17 @@
 ├── public/                        # Assets estáticos servidos na raiz (não processados)
 │   ├── favicon.ico / favicon.svg  # Multi-resolução (16, 32, 48) e SVG transparente
 │   ├── brand/                     # Assets oficiais da marca (logo.png, logo-128, favicon-32, favicon.svg, logo-full)
+│   ├── offline.html               # Fallback offline (raiz)
+│   ├── _headers                   # Políticas de cache e segurança Cloudflare Pages
 │   └── pwa/                       # Artefatos PWA — ver PWA_GUIDELINES.md
 │       ├── manifest.webmanifest
 │       ├── icons/                 # icon-192, icon-512 (transparente), maskable-192/512 (safe zone), apple-touch-icon-180
 │       ├── screenshots/           # 1280x800 (desktop) + 720x1280 (mobile)
-│       └── offline.html           # Fallback offline (App Shell mínimo)
+│       └── offline.html           # Fallback offline (PWA)
 │
 ├── android/                       # Projeto nativo Android (Capacitor Bridge, plugins e manifest)
 │   ├── app/                       #   Código nativo Java (MainActivity, BankNotificationListenerService, plugins)
+│   │   └── src/main/res/xml/      #   network_security_config.xml, shortcuts.xml, file_paths.xml
 │   └── build.gradle               #   Gradle configuration (signingConfigs de release, SDK 36)
 │
 ├── dist-apk/                      # Artefatos compilados de distribuição do Android (debug e release assinados)
@@ -165,23 +168,24 @@
     │                              #     com simulador FIRE interativo, showcase, pricing, FAQ, scroll-reveal, scroll-spy e back-to-top
     │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
-    │   ├── admin/                 #   F43: RBAC, hierarquia de papéis, resolução de Feature Flags e validação de convites
+    │   ├── validation/            #   validação pura e defensiva com Zod: sanitization.ts (XSS/control chars/money limits), password.ts, cpf.ts
+    │   ├── admin/                 #   F43: RBAC, hierarquia de papéis, resolução de Feature Flags, schemas.ts e validação de convites
     │   ├── navigation/            #   F43: Resolução dinâmica de slots BottomNav e rota de fallback (landing route)
     │   ├── onboarding/             #   checklist/progresso do primeiro uso (F5.4)
     │   ├── notifications/         #   Fase 5 Android: parsing puro de notificações bancárias e comprovantes Pix em centavos
     │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing e totais brutos/ponderados (totals.ts)
     │   ├── competence/            #   resolveBillCompetence, clampDay, overrides
-    │   ├── debts/                 #   status derivado (overdue/due_today/due_soon/…) + penalty (mora/multa/desconto) e resumo consolidado
+    │   ├── debts/                 #   status derivado + penalty (mora/multa/desconto), schemas.ts (Zod) e resumo consolidado
     │   ├── expenses/              #   resolução dos modos de exclusão de despesa
     │   │                          #     (single/all/subsequent — resolveExpenseDeleteIds,
     │   │                          #     espelha o RPC p/ atualizações otimistas F30)
-    │   ├── cards/                 #   saldo/status de fatura + refinancing (parcelamento sem double-counting)
+    │   ├── cards/                 #   saldo/status de fatura, schemas.ts (Zod) + refinancing (parcelamento sem double-counting)
     │   ├── charges/               #   agregação por natureza (regular/juros/multas/impostos/taxas) e Dinheiro Queimado
     │   ├── loans/                 #   cronogramas Price/SAC, saldo devedor, amortização extraordinária a valor presente e progresso do contrato
     │   ├── recurrences/           #   F32: geração de ocorrências por frequência
     │   │                          #     (monthly/weekly/quarterly/yearly, fim por data ou
     │   │                          #     por contagem) + modos de exclusão em grupo
-    │   ├── budgets/               #   regras por categoria (CATEGORY_RULES), status/limites
+    │   ├── budgets/               #   regras por categoria (CATEGORY_RULES), status/limites e schemas.ts (Zod)
     │   ├── overview/              #   computeOverview (KPIs), percentChange, buildDailyFlow
     │   ├── reports/               #   peso de relatório (base × weight), detailed-close.ts (fechamento),
     │   │                          #     allocation-gaps.ts, concentration-risk.ts, consolidated-balance.ts,

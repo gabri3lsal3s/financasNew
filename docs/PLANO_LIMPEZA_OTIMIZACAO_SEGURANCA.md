@@ -483,15 +483,20 @@ graph TD
     - Confirmada a integridade de todos os 711 tasks do Gradle e conformidade com as diretrizes de segurança nativas (`FLAG_SECURE`, bloqueio a cleartext e biometria).
   - **Critério de Saída:** Artefatos Android gerados com sucesso pelo Gradle.
 
-- [ ] **Tarefa 6.4 — Sincronização da Documentação e Governança Canônica**
+- [x] **Tarefa 6.4 — Sincronização da Documentação e Governança Canônica**
   - **Ação:** Atualizar os registros de documentação com os resultados finais:
-    - Registrar a nova versão e o relatório consolidado em `docs/ROADMAP.md`;
-    - Atualizar a árvore em `docs/PROJECT_STRUCTURE.md` refletindo as pastas e arquivos reorganizados;
-    - Atualizar a tabela de métricas deste plano (`docs/PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md`).
+    - Registrada a versão consolidada v2.59 em [`docs/ROADMAP.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/ROADMAP.md);
+    - Atualizada a árvore canônica em [`docs/PROJECT_STRUCTURE.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/PROJECT_STRUCTURE.md) refletindo `src/domain/validation/`, schemas Zod por domínio, fallback offline na raiz e configurações de rede Android;
+    - Atualizada a tabela comparativa de métricas deste plano ([`docs/PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md)).
   - **Critério de Saída:** Documentação viva, precisa e 100% sincronizada com o repositório.
 
-- [ ] **PORTÃO DE QUALIDADE FINAL & RELEASE:**
-  - Todos os portões anteriores 100% verdes.
+- [x] **PORTÃO DE QUALIDADE FINAL & RELEASE:**
+  - Todos os portões anteriores 100% verdes (Fases 0, 1, 2, 3, 4, 5 e 6).
+  - Typecheck estrito (`tsc -b`): **0 erros**.
+  - ESLint (`npm run lint`): **0 erros e 0 avisos**.
+  - Suíte de Testes (`npm test`): **341 arquivos e 2.645 testes aprovados (100% verde)**.
+  - Compilação Web/PWA (`npm run build`): **100% homologada** com precache Workbox de 126 entradas e fallback offline.
+  - Compilação Android (`./scripts/build-apk.sh`): **APKs Debug e Release (assinado) gerados com sucesso**.
   - Commit semântico final: `chore(release): complete application-wide governance, settings overhaul, cleanup, optimization and security hardening`
   - `git push`
 
@@ -499,23 +504,25 @@ graph TD
 
 ## 5. Tabela Comparativa de Metas e Indicadores de Sucesso
 
-| Indicador | Situação Inicial (Pré-Plano) | Meta do Plano |
-|---|---|---|
-| **Erros de Linter (`npm run lint`)** | 0 erros / 0 avisos | **0 erros / 0 avisos (manter)** |
-| **Suíte de Testes (`npm run test`)** | 334+ arquivos (com eventuais timeouts em extrato) | **100% verde (2.300+ testes rápidos e estáveis)** |
-| **Página de Configurações** | Superlotada (monolito de 1.200 linhas, opções inoperantes no PWA) | **4 abas limpas, sem poluição cosmética, condicional Android estrito** |
-| **Configuração de Centavos** | Inexistente (exibição fixa) | **Nova preferência funcional: Ocultação de Centavos no Dashboard** |
-| **Raiz do Projeto (`/`)** | Arquivos e pastas soltos (`roadmap_tarefas.md`, `identidadeVisual/`) | **100% limpa (apenas configs e governança)** |
-| **Acervo de Documentação (`docs/`)** | Documentos com sobreposição histórica (646KB + 198KB + 70KB) | **Consolidado, canônico e sem redundâncias** |
-| **Arquivos Órfãos / Dead Code em `src/`** | Páginas órfãs e componentes descontinuados | **0 arquivos órfãos / 0 exports mortos** |
-| **Controles de UI Nativos** | Potenciais controles soltos | **Zero controles nativos (100% primitivos)** |
-| **Assets de Branding (`logo-full.png`)** | ~5.0 MB | **< 300 kB (otimizado WebP/PNG de alta fidelidade)** |
-| **Chunks Rollup do Bundle** | Bundle sem segmentação explícita | **Chunks vendor segmentados (< 500 kB cada)** |
-| **Conformidade RLS no Supabase** | Parcial / A auditar | **100% das tabelas com `auth.uid() = user_id`** |
-| **Blindagem de RPCs Supabase** | Parcial / A auditar | **100% com `SET search_path = public, pg_temp`** |
-| **Privacidade Nativa Android** | Funcional | **Homologada (FLAG_SECURE + AppLock)** |
-| **Ciclo de Atualização do PWA** | Parcial (reload frágil, CacheStorage antigo retido e ícones defasados no launcher) | **100% atômico (controllerchange sincronizado, cleanupOutdatedCaches ativo e ícones versionados)** |
-| **Compilação PWA e APKs** | Funcional | **100% validada e automatizada** |
+| Indicador | Situação Inicial (Pré-Plano) | Meta do Plano | Resultado Final Homologado |
+|---|---|---|---|
+| **Erros de Linter (`npm run lint`)** | 0 erros / 0 avisos | **0 erros / 0 avisos (manter)** | **0 erros / 0 avisos (100% limpo)** |
+| **Suíte de Testes (`npm run test`)** | 334+ arquivos (com eventuais timeouts em extrato) | **100% verde (2.300+ testes rápidos e estáveis)** | **341 arquivos / 2.645 testes 100% verdes** |
+| **Página de Configurações** | Superlotada (monolito de 1.200 linhas, opções inoperantes no PWA) | **4 abas limpas, sem poluição cosmética, condicional Android estrito** | **4 abas modulares, decomposta em subcards, Android estrito** |
+| **Configuração de Centavos** | Inexistente (exibição fixa) | **Nova preferência funcional: Ocultação de Centavos no Dashboard** | **Implementada e integrada (`hide_dashboard_cents`)** |
+| **Raiz do Projeto (`/`)** | Arquivos e pastas soltos (`roadmap_tarefas.md`, `identidadeVisual/`) | **100% limpa (apenas configs e governança)** | **100% limpa e auditada conforme `PROJECT_STRUCTURE.md`** |
+| **Acervo de Documentação (`docs/`)** | Documentos com sobreposição histórica (646KB + 198KB + 70KB) | **Consolidado, canônico e sem redundâncias** | **Consolidado, padronizado em UPPER_SNAKE_CASE** |
+| **Arquivos Órfãos / Dead Code em `src/`** | Páginas órfãs e componentes descontinuados | **0 arquivos órfãos / 0 exports mortos** | **0 órfãos / 0 exports mortos (árvore canônica)** |
+| **Controles de UI Nativos** | Potenciais controles soltos | **Zero controles nativos (100% primitivos)** | **Zero controles nativos (100% primitivos em `components/ui`)** |
+| **Assets de Branding (`logo-full.png`)** | ~5.0 MB | **< 300 kB (otimizado WebP/PNG de alta fidelidade)** | **284 kB PNG / 142 kB WebP (< 300 kB)** |
+| **Chunks Rollup do Bundle** | Bundle sem segmentação explícita | **Chunks vendor segmentados (< 500 kB cada)** | **Chunks segmentados por domínio (< 500 kB cada)** |
+| **Conformidade RLS no Supabase** | Parcial / A auditar | **100% das tabelas com `auth.uid() = user_id`** | **100% (34 tabelas com RLS e isolamento auditados)** |
+| **Blindagem de RPCs Supabase** | Parcial / A auditar | **100% com `SET search_path = public, pg_temp`** | **100% (64 funções SECURITY DEFINER blindadas)** |
+| **Validação Defensiva & Sanitização** | Schemas ad-hoc em formulários | **Sanitização contra XSS/controle e limites monetários** | **Schemas Zod defensivos em todas as bordas (Task 5.4)** |
+| **Dependências (`npm audit`)** | 9 vulnerabilidades (4 altas, 5 moderadas) | **Zero vulnerabilidades críticas ou altas** | **0 vulnerabilidades (100% limpo)** |
+| **Privacidade Nativa Android** | Funcional | **Homologada (FLAG_SECURE + AppLock)** | **Homologada (`FLAG_SECURE`, `AppLock`, `cleartextTraffic=false`)** |
+| **Ciclo de Atualização do PWA** | Parcial (reload frágil, CacheStorage antigo retido e ícones defasados no launcher) | **100% atômico (controllerchange sincronizado, cleanupOutdatedCaches ativo e ícones versionados)** | **100% atômico (126 precache entries, purge defensivo, WebAPK versionado)** |
+| **Compilação PWA e APKs** | Funcional | **100% validada e automatizada** | **PWA Cloudflare ready + APKs Debug (12M) e Release (10M) assinados** |
 
 ---
 

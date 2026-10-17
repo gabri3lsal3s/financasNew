@@ -1,5 +1,35 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.59** registra a **Conclusão Integral do Plano de Limpeza, Otimização Arquitetural & Fortalecimento de Segurança (Fases 0 a 6)** (2026-10-17):
+> - **(1) Reformulação e Desinchaço da Central de Configurações**:
+>   - Reorganização em 4 abas especializadas: *Aparência & Identidade Visual*, *Notificações & Automações*, *Segurança & Gestão de Dados*, *Plano & Assinatura*;
+>   - Decomposição do arquivo monolítico em componentes desacoplados (`src/features/settings/components/tabs/`);
+>   - Ocultação condicional estrita de recursos exclusivos Android (Assistente Passivo, Privacy Shield, Biometria) no ambiente Web/PWA;
+>   - Nova preferência funcional: **Ocultação Dinâmica de Centavos no Dashboard** (`hide_dashboard_cents`);
+> - **(2) Limpeza de Raiz e Otimização Extrema de Assets**:
+>   - Remoção de pastas e arquivos órfãos/redundantes na raiz e em `src/`;
+>   - Otimização do lockup da marca (`logo-full.png` e `logo-full.webp`) de ~5.0 MB para < 300 kB;
+>   - Remoção de fontes não utilizadas e limpeza de dead code;
+> - **(3) Design System Estrito, Zero Emojis e Acessibilidade**:
+>   - Eliminação de 100% dos controles HTML nativos em favor de primitivos padronizados (`components/ui`);
+>   - Regra ESLint `local/no-decorative-unicode` garantindo zero emojis em toda a base de produção;
+>   - Acessibilidade WCAG 2.1 AA auditada sem violações em 100% das telas (`axe-core`);
+> - **(4) Performance, Renderização e Ciclo de Vida PWA**:
+>   - Segmentação de chunks Rollup com code-splitting por domínio (< 500 kB);
+>   - Invalidação atômica de cache no Workbox (`cleanupOutdatedCaches: true`), transição de versão sincronizada via `controllerchange` e ícones versionados para WebAPK Android;
+>   - Centralização e eliminação de double-haptics sensoriais;
+> - **(5) Fortalecimento e Blindagem de Segurança**:
+>   - Auditoria de 100% das 34 tabelas com RLS estrito (`auth.uid() = user_id`);
+>   - Blindagem de 100% das 64 funções RPC SECURITY DEFINER com `SET search_path = public, pg_temp` e validação de sessão;
+>   - Auditoria do bundle client atestando zero vazamento de credenciais privadas;
+>   - Sanitização contra HTML/XSS e bounds monetários seguros com Zod em todas as bordas;
+>   - Bloqueio explícito a tráfego HTTP inseguro (`usesCleartextTraffic=false` e `network_security_config.xml`);
+>   - Mitigação de vulnerabilidades com `npm audit`: **0 vulnerabilidades**;
+> - **(6) Homologação e Compilação dos APKs**:
+>   - 341 arquivos de teste / 2.645 testes automatizados **100% aprovados**;
+>   - Build de produção PWA homologado com fallback offline (`offline.html`);
+>   - APKs Android compilados com sucesso via Gradle (`guia-financeiro-debug.apk` 12 MB e `guia-financeiro-release.apk` 10 MB assinado).
+> 
 > **v2.58** registra a **Automação de Build, Geração de APKs Assinados & Conclusão Integral do Plano Android (Fase 6)** (2026-10-15):
 > - **(1) Chave Criptográfica de Release (`release-key.keystore`)**:
 >   - Geração automatizada via `keytool` com algoritmo RSA 2048 bits e validade estendida;
