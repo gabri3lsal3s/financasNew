@@ -45,7 +45,37 @@ describe("getErrorMessage — gateway de erros (ESPECIFICAÇÃO §1.7)", () => {
     expect(err.message).toBe("Valor da despesa deve ser maior que zero");
   });
 
+  it("neutraliza vazamento de esquema/SQL técnico e retorna mensagem segura", () => {
+    const technicalErrors = [
+      'relation "expenses" does not exist',
+      'syntax error at or near "FROM"',
+      'column "secret_token" does not exist',
+      'null value in column "id" of relation "profiles"',
+      "deadlock detected on relation cards",
+      "PostgREST error: connection refused",
+    ];
+
+    for (const msg of technicalErrors) {
+      const err = classifyError({ message: msg });
+      expect(err.kind).toBe("unknown");
+      expect(err.message).toBe("Algo deu errado. Tente novamente em instantes.");
+      expect(err.message).not.toContain("relation");
+      expect(err.message).not.toContain("column");
+      expect(err.message).not.toContain("syntax error");
+    }
+  });
+
+  it("sanitiza tags HTML em mensagens de erro para prevenir XSS", () => {
+    const err = classifyError({
+      message: 'Acesso negado: <script>alert("xss")</script>usuário sem permissão',
+    });
+    expect(err.kind).toBe("permission");
+    expect(err.message).not.toContain("<script>");
+    expect(err.message).toContain('Acesso negado: alert("xss")usuário sem permissão');
+  });
+
   it("cai em mensagem genérica para erros desconhecidos", () => {
     expect(getErrorMessage(null)).toContain("Algo deu errado");
   });
 });
+

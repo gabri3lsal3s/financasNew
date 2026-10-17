@@ -384,6 +384,65 @@ describe("Fase 5.2 — Blindagem de RPCs & Sanitização de Search Path (Migrati
   });
 });
 
+describe("Fase 5.2 — Hardening Integral de RPCs e Permissões Modulares (Migration 0049)", () => {
+  const migration49 = readFileSync(
+    resolve(root, "supabase/migrations/20260101000049_rpc_write_permission_and_active_user_hardening.sql"),
+    "utf8",
+  );
+
+  const writeRpcList = [
+    { name: "create_card_payment", module: "cards" },
+    { name: "update_credit_card", module: "cards" },
+    { name: "delete_credit_card", module: "cards" },
+    { name: "delete_card_payment", module: "cards" },
+    { name: "recalculate_bill_competences", module: "cards" },
+    { name: "pay_debt", module: "debts" },
+    { name: "receive_debt", module: "debts" },
+    { name: "early_amortize_loan", module: "debts" },
+    { name: "create_loan_contract", module: "debts" },
+    { name: "settle_integrated_receivable", module: "debts" },
+    { name: "delete_category_migrate", module: "transactions" },
+    { name: "set_budget_limit", module: "budgets" },
+    { name: "set_batch_budget_limits", module: "budgets" },
+    { name: "set_income_goal", module: "budgets" },
+    { name: "reallocate_budget", module: "budgets" },
+    { name: "create_refund", module: "transactions" },
+    { name: "delete_expense_installments", module: "transactions" },
+    { name: "update_expense_installments_group", module: "transactions" },
+    { name: "create_income_installments", module: "transactions" },
+    { name: "update_income_installments_group", module: "transactions" },
+    { name: "delete_income_installments", module: "transactions" },
+    { name: "create_recurrence", module: "reminders" },
+    { name: "update_recurrence_occurrences", module: "reminders" },
+    { name: "delete_recurrence_occurrences", module: "reminders" },
+    { name: "materialize_recurrences", module: "transactions" },
+    { name: "set_allocation_targets", module: "investments" },
+    { name: "set_group_target", module: "investments" },
+    { name: "remove_group_target", module: "investments" },
+  ];
+
+  it("100% das RPCs de mutação de usuário em 0049 validam is_current_user_active() e can_current_user_write_module()", () => {
+    for (const item of writeRpcList) {
+      const fnRegex = new RegExp(
+        `create or replace function public\\.${item.name}[\\s\\S]*?is_current_user_active\\(\\)[\\s\\S]*?can_current_user_write_module\\('${item.module}'\\)`,
+        "i",
+      );
+      expect(
+        fnRegex.test(migration49),
+        `RPC ${item.name} não valida is_current_user_active() ou can_current_user_write_module('${item.module}') em migration 0049`,
+      ).toBe(true);
+    }
+  });
+
+  it("todas as 28 RPCs revogam acesso de public e concedem a authenticated", () => {
+    for (const item of writeRpcList) {
+      expect(migration49).toMatch(new RegExp(`grant execute on function public\\.${item.name}\\b`, "i"));
+      expect(migration49).toMatch(new RegExp(`revoke all on function public\\.${item.name}\\b`, "i"));
+    }
+  });
+});
+
+
 describe("Fase 5.3 — Auditoria do Bundle Client contra Vazamento de Segredos", () => {
   const ALLOWED_CLIENT_ENV_VARS = new Set([
     "VITE_SUPABASE_URL",

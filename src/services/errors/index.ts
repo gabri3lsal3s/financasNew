@@ -7,6 +7,8 @@
  *   - preserva o erro original para debug.
  */
 
+import { sanitizeString } from "@/domain/validation";
+
 export type ErrorKind =
   | "rate-limit"
   | "email-not-confirmed"
@@ -70,6 +72,14 @@ const isNetworkError = (error: unknown): boolean => {
   return /failed to fetch|networkerror|load failed|network request failed|fetch failed/i.test(msg);
 };
 
+
+/**
+ * Padrões de mensagens técnicas internas (Postgres, Node, JS runtime) que
+ * NUNCA devem vazar detalhes de esquema/SQL para o usuário final.
+ */
+const TECHNICAL_LEAK_REGEX =
+  /(?:relation\s+"[^"]+"\s+does\s+not\s+exist|column\s+"[^"]+"\s+does\s+not\s+exist|syntax\s+error\s+at\s+or\s+near|function\s+[^ ]+\s+does\s+not\s+exist|operator\s+does\s+not\s+exist|null\s+value\s+in\s+column|deadlock\s+detected|could\s+not\s+connect|connection\s+refused|at\s+[a-zA-Z0-9_.]+\s+\([^)]+\)|postgrest)/i;
+
 /** Classifica o erro cru em uma categoria conhecida. */
 export function classifyError(error: unknown): ClassifiedError {
   if (isNetworkError(error)) {
@@ -108,17 +118,23 @@ export function classifyError(error: unknown): ClassifiedError {
     /row-level security|insufficient privilege|permissão negada|acesso negado/i.test(message)
   ) {
     const isCustomPtBr = /acesso negado|permissão/i.test(message);
+    const cleanMsg = isCustomPtBr ? sanitizeString(message) : MESSAGES.permission;
     return {
       kind: "permission",
-      message: isCustomPtBr ? message : MESSAGES.permission,
+      message: cleanMsg,
       raw: error,
     };
   }
 
+  // Se a mensagem contém vazamento técnico de banco ou runtime, protege o usuário com a mensagem genérica segura.
+  if (TECHNICAL_LEAK_REGEX.test(message)) {
+    return { kind: "unknown", message: MESSAGES.unknown, raw: error };
+  }
+
   // Mensagens de negócio lançadas pelos RPCs (raise exception) já chegam em
-  // pt-BR — repassar a mensagem original quando não há categoria conhecida.
+  // pt-BR — repassar a mensagem sanitizada quando não há categoria conhecida.
   if (typeof message === "string" && message.length > 0) {
-    return { kind: "unknown", message, raw: error };
+    return { kind: "unknown", message: sanitizeString(message), raw: error };
   }
   return { kind: "unknown", message: MESSAGES.unknown, raw: error };
 }

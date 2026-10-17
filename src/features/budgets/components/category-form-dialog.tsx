@@ -3,7 +3,7 @@ import { Trash2 } from "lucide-react";
 import { Alert, Button, ColorPicker, IconPicker, Input, Modal, ModalFooter, RadioGroup } from "@/components/ui";
 import type { IconPickerOption } from "@/components/ui";
 import { CATEGORY_ICON_MAP } from "@/components/modules/category-icons";
-import { suggestCategory } from "@/domain/budgets";
+import { categoryFormSchema, suggestCategory } from "@/domain/budgets";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { useCreateCategory, useUpdateCategory } from "@/state";
@@ -65,18 +65,35 @@ function CategoryFormContent({
 
   const handleSubmit = async () => {
     setError(null);
+    const rawForm = {
+      name,
+      type,
+      icon: icon || null,
+      color: color || null,
+    };
+    const parsed = categoryFormSchema.safeParse(rawForm);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Dados da categoria inválidos.");
+      return;
+    }
+
     try {
       if (category) {
         await updateCategory.mutateAsync({
           id: category.id,
           input: {
-            name: name.trim(),
-            icon: icon || null,
-            color: color || null,
+            name: parsed.data.name,
+            icon: parsed.data.icon ?? null,
+            color: parsed.data.color ?? null,
           },
         });
       } else {
-        await createCategory.mutateAsync({ type, name: name.trim(), icon: icon || null, color: color || null });
+        await createCategory.mutateAsync({
+          type: parsed.data.type,
+          name: parsed.data.name,
+          icon: parsed.data.icon ?? null,
+          color: parsed.data.color ?? null,
+        });
       }
       triggerSensory("success");
       onClose();

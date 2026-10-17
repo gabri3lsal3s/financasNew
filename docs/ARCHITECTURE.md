@@ -312,6 +312,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 | D16 — Gateway de Acesso Unificado & Whitelist Modular na Inicialização | Integração direta do `getMySubscription` em paralelo no hook de roteamento `useUserAccess` (sem waterfalls), modelo estrito de Whitelist em `get_user_module_access` no Postgres (Migration 0046) e em `hasFeature`/`usePermission`, bloqueando módulos não concedidos e garantindo carregamento fail-closed sem vazamento de rotas ou flashes | Blindagem completa de rotas, eliminação de vazamento de módulos restritos e consistência reativa no boot da aplicação |
 | D17 — Code Splitting Global & Lazy Loading de Modais Executivos | `src/app/router.tsx` com `lazy()` em todas as rotas públicas, de autenticação e checkout de assinatura com fallback suave; `lazy()` sob demanda para relatórios complexos (`WealthTearSheetModal`, `FinancialCloseReportModal`) e assistente de restauração (`RestoreWizardDialog`) | Bundles iniciais enxutos (< 500 kB), eliminação de payloads ociosos no boot e carregamento assíncrono transparente |
 | D18 — Parametrização de Chaves por Usuário e Fail-Closed no Cold Start | Chaves de query parametrizadas no formato `[...KEY, userId]`, guarda `enabled: Boolean(userId)` impedindo chamadas com `auth.uid()` nulo, invalidação atômica em `SIGNED_IN` no `AuthQuerySync` e `hasFeature` estritamente Fail-Closed (retornando `false` sem assinatura/autenticação confirmada) | Eliminação definitiva de vazamento de módulos restritos no boot, ausência de cache de dados anônimos e transição suave sem flashes visuais |
+| D19 — Segurança Integral, RLS Multi-Tenant e Privacidade Mobile | 100% das 34 tabelas com RLS ativo por auth.uid(), 28 RPCs transacionais blindadas com search_path = public, pg_temp, is_current_user_active() e can_current_user_write_module() (Migration 0049), audit_events estritamente imutável, sanitização de borda Zod, neutralização de vazamento SQL no gateway de erros, Android FLAG_SECURE nativo e redaction automático de PII (CPF, cartões, senhas) no cliente Sentry | Defesa em profundidade estrita e proteção integral de dados sensíveis |
 
 ---
 
@@ -323,4 +324,32 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 - ~~Notificações~~ — **RESOLVIDA**: in-app centralizado (`/lembretes`).
 - ~~Observabilidade/erros~~ — **RESOLVIDA**: **Sentry** (F6.3) — SDK `@sentry/react` com **dynamic import** env-gated por `VITE_SENTRY_DSN` (no-op sem DSN; Web Vitals LCP/INP/CLS via `browserTracingIntegration`; `reportError`/`setObservabilityUser` em `services/observability`).
 - ~~Monetização & Modelo SaaS~~ — **RESOLVIDA**: **Arquitetura SaaS Modular** (Fase 76) — Trial gratuito de 30 dias sem cartão, modo somente-leitura preservado pós-período sem paywall bloqueante, planos Pro Mensal (R$ 19,90) e Pro Anual (R$ 14,90/mês), e controle granular de permissões modulares no painel administrativo.
+
+---
+
+## 12. GOVERNANÇA DE SEGURANÇA INTEGRAL, RLS E PRIVACIDADE (FASE 5)
+
+A governança de segurança do aplicativo segue o princípio de **Defesa em Profundidade** (*Defense in Depth*) e **Isolamento Lógico Estrito Multi-Tenant** fundamentado na identidade criptográfica do Supabase Auth (`auth.uid()`).
+
+### 12.1 Matriz de RLS e Multi-Tenancy (34 Tabelas)
+1. **Cobertura Universal:** 100% das 34 tabelas do banco de dados possuem `ALTER TABLE ... ENABLE ROW LEVEL SECURITY;`.
+2. **Propriedade e Isolamento:** Todas as tabelas de domínio (`expenses`, `incomes`, `credit_cards`, `debts`, `budgets`, `portfolio_assets`, `portfolio_transactions`, `recurrences`, etc.) filtram exclusivamente por `auth.uid() = user_id`.
+3. **Imutabilidade de Trilha de Auditoria (D2):** A tabela `audit_events` possui apenas políticas de `INSERT` e `SELECT` para o usuário proprietário e administradores. Mutações (`UPDATE`) e exclusões (`DELETE`) são terminantemente bloqueadas via RLS no banco.
+4. **Catálogo Público de Planos e Features:** A tabela `plans` e a tabela `system_features` permitem leitura aos usuários autenticados, enquanto mutações são restritas à verificação `is_admin()`.
+
+### 12.2 Hardening de Procedimentos Armazenados (RPCs)
+1. **Fixação de Search Path:** 100% das funções com `SECURITY DEFINER` possuem explicitamente a cláusula `SET search_path = public, pg_temp;`, neutralizando ataques de injeção de schema via tabelas temporárias.
+2. **Validação de Conta Ativa:** Toda função transacional de escrita valida se o chamador possui conta com status ativo (`public.is_current_user_active()`), rejeitando operações de contas suspensas ou pendentes.
+3. **Controle de Escrita Modular SaaS:** A partir da Migration `0049_rpc_write_permission_and_active_user_hardening.sql`, todas as 28 RPCs de mutação de usuário validam a concessão de escrita no respectivo módulo via `public.can_current_user_write_module(p_module_key)`, garantindo que usuários com assinatura expirada ou módulos não concedidos no modo Whitelist operem estritamente em modo Somente-Leitura.
+4. **Revogação de Acesso Público:** Todas as RPCs transacionais revogam permissões de execução do papel `public` (`REVOKE ALL ON FUNCTION ... FROM public;`) e concedem estritamente ao papel `authenticated`.
+
+### 12.3 Sanitização de Borda e Prevenção de Injeção / XSS
+1. **Sanitização de Strings Livres:** O helper puro `sanitizeString` ([`src/domain/validation/sanitization.ts`](../src/domain/validation/sanitization.ts)) remove caracteres nulos (`\u0000`), caracteres de controle C1 perigosos e tags HTML/XML (`<[^>]*>`), eliminando vetores de XSS armazenado.
+2. **Schemas Zod Defensivos:** Formulários e mutações utilizam `cleanTextSchema` e `moneyCentsSchema`/`moneyAmountSchema` que impõem limites rígidos de caracteres e tetos monetários contra overflow aritmético (`MAX_MONEY_CENTS = 99_999_999_99`).
+3. **Neutralização de Vazamento de Esquema no Gateway de Erros:** O gateway central de erros ([`src/services/errors/index.ts`](../src/services/errors/index.ts)) intercepta mensagens técnicas do PostgreSQL (ex.: `relation does not exist`, `column does not exist`, `syntax error`), convertendo-as na mensagem segura padrão `"Algo deu errado. Tente novamente em instantes."` e sanitizando quaisquer tags HTML das mensagens de retorno.
+
+### 12.4 Privacidade em Clientes Móveis e Telemetria Segura
+1. **Android FLAG_SECURE (Privacy Shield):** O serviço nativo [`src/services/native/privacy-shield.ts`](../src/services/native/privacy-shield.ts) ativa `WindowManager.LayoutParams.FLAG_SECURE` na janela principal, impedindo gravação e captura de tela no dispositivo e ocultando os saldos confidenciais no alternador de tarefas em segundo plano.
+2. **Redaction Automático de PII no Sentry:** O cliente de observabilidade [`src/services/observability.ts`](../src/services/observability.ts) aplica sanitização recursiva (`scrubSensitiveData`) e gancho `beforeSend`, redigindo chaves confidenciais (`password`, `senha`, `secret`, `token`, `account_number`) e mascarando padrões de CPF (`[REDACTED_CPF]`) e cartões de crédito (`[REDACTED_CARD]`) antes de transmitir qualquer evento à telemetria.
+
 

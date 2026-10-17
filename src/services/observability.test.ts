@@ -63,6 +63,78 @@ describe("services/observability (F6.3 — Sentry)", () => {
     expect(captureExceptionMock).toHaveBeenCalledWith(error, { extra: { screen: "transacoes" } });
   });
 
+  it("reportError higieniza campos sensíveis no contexto (CPF, cartão, senhas)", async () => {
+    vi.stubEnv("VITE_SENTRY_DSN", "https://exemplo@ingest.sentry.io/1");
+    const obs = await import("@/services/observability");
+    const error = new Error("erro com dados sensíveis");
+    await obs.reportError(error, {
+      password: "minha_senha_super_secreta",
+      cpf: "123.456.789-00",
+      notes: "Cliente com cartão 4111 2222 3333 4444 e token Bearer abcdef1234567890abcdef123456",
+      normalField: "valor permitido",
+    });
+    expect(captureExceptionMock).toHaveBeenCalledWith(error, {
+      extra: {
+        password: "[REDACTED]",
+        cpf: "[REDACTED]",
+        notes: "Cliente com cartão [REDACTED_CARD] e token Bearer [REDACTED_TOKEN]",
+        normalField: "valor permitido",
+      },
+    });
+  });
+
+  it("scrubSensitiveData higieniza recursivamente arrays e objetos aninhados", async () => {
+    const { scrubSensitiveData } = await import("@/services/observability");
+    const payload = {
+      user: {
+        cpf: "12345678900",
+        secret: "super-key",
+        tags: ["123.456.789-00", "5555 4444 3333 2222"],
+      },
+      token: "secret-bearer",
+      safe: "tudo certo",
+    };
+    const scrubbed = scrubSensitiveData(payload);
+    expect(scrubbed).toEqual({
+      user: {
+        cpf: "[REDACTED]",
+        secret: "[REDACTED]",
+        tags: ["[REDACTED_CPF]", "[REDACTED_CARD]"],
+      },
+      token: "[REDACTED]",
+      safe: "tudo certo",
+    });
+  });
+
+  it("beforeSend do Sentry higieniza extras, breadcrumbs e mensagem de eventos", async () => {
+    vi.stubEnv("VITE_SENTRY_DSN", "https://exemplo@ingest.sentry.io/1");
+    const obs = await import("@/services/observability");
+    await obs.initObservability();
+    const initCall = initMock.mock.calls[0]?.[0];
+    expect(initCall).toBeDefined();
+    expect(typeof initCall.beforeSend).toBe("function");
+
+    const rawEvent = {
+      message: "Falha ao processar 123.456.789-00",
+      extra: { password: "123", account_number: "9999-9" },
+      breadcrumbs: [
+        { message: "Tentou pagar com 4111 2222 3333 4444", data: { token: "abc" } },
+      ],
+    };
+    const scrubbedEvent = initCall.beforeSend(rawEvent);
+    expect(scrubbedEvent.message).toBe("Falha ao processar [REDACTED_CPF]");
+    expect(scrubbedEvent.extra).toEqual({
+      password: "[REDACTED]",
+      account_number: "[REDACTED]",
+    });
+    expect(scrubbedEvent.breadcrumbs).toEqual([
+      {
+        message: "Tentou pagar com [REDACTED_CARD]",
+        data: { token: "[REDACTED]" },
+      },
+    ]);
+  });
+
   it("setObservabilityUser correlaciona o usuário e limpa com null", async () => {
     vi.stubEnv("VITE_SENTRY_DSN", "https://exemplo@ingest.sentry.io/1");
     const obs = await import("@/services/observability");
@@ -72,3 +144,4 @@ describe("services/observability (F6.3 — Sentry)", () => {
     expect(setUserMock).toHaveBeenLastCalledWith(null);
   });
 });
+

@@ -61,3 +61,18 @@ export const batchBudgetLimitsInputSchema = z.object({
 });
 
 export type BatchBudgetLimitsInput = z.infer<typeof batchBudgetLimitsInputSchema>;
+
+/**
+ * Schema Zod para criação e edição de Categorias:
+ * - Sanitiza nome, ícone e cor;
+ * - Previne injeção HTML/XSS no cadastro de categorias.
+ */
+export const categoryFormSchema = z.object({
+  name: cleanTextSchema(60, { min: 1, requiredMessage: "Informe o nome da categoria." }),
+  type: z.enum(["expense", "income"]),
+  icon: cleanTextSchema(50).nullable().optional(),
+  color: cleanTextSchema(30).nullable().optional(),
+});
+
+export type CategoryFormInput = z.infer<typeof categoryFormSchema>;
+

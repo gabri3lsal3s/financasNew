@@ -236,12 +236,12 @@ flowchart TD
 
 ### FASE 5 — Segurança Integral, RLS e Privacidade de Dados
 
-- [ ] **5.1 Planejamento Técnico de Segurança:**
+- [x] **5.1 Planejamento Técnico de Segurança:**
   - Mapear a matriz de RLS de todas as 34 tabelas do Supabase.
   - Revisar todas as funções RPC com `SECURITY DEFINER` e cláusulas `SET search_path = public, pg_temp`.
   - Mapear pontos de entrada de dados suscetíveis a XSS/Injection.
   - Definir diretrizes de privacidade de dados financeiros em clientes móveis (Android FLAG_SECURE e mascaramento).
-- [ ] **5.2 Implementação das Blindagens de Segurança:**
+- [x] **5.2 Implementação das Blindagens de Segurança:**
   - **Supabase & RLS:**
     - Auditar se 100% das tabelas possuem `ALTER TABLE ... ENABLE ROW LEVEL SECURITY;`.
     - Garantir que as políticas de `SELECT`, `INSERT`, `UPDATE` e `DELETE` validem estritamente `auth.uid() = user_id`.
@@ -252,15 +252,15 @@ flowchart TD
   - **Privacidade Mobile & Observabilidade:**
     - Garantir acionamento do `FLAG_SECURE` nativo no Android para impedir captura de tela e gravação em segundo plano de saldos e transações bancárias.
     - Auditar o cliente Sentry/Observabilidade para garantir que dados sensíveis (CPF, cartões, senhas, e-mails de clientes restritos) jamais sejam transmitidos nos logs de telemetria.
-- [ ] **5.3 Verificação de Erros:**
+- [x] **5.3 Verificação de Erros:**
   - Executar `npm run typecheck` e `npm run lint`.
-- [ ] **5.4 Correção de Erros:**
+- [x] **5.4 Correção de Erros:**
   - Corrigir eventuais falhas de permissão ou sanitização.
-- [ ] **5.5 Testes Automatizados de Segurança:**
+- [x] **5.5 Testes Automatizados de Segurança:**
   - Executar testes de validação defensiva em `src/domain/validation/` e testes de sanitização em `src/services/errors.test.ts`.
-- [ ] **5.6 Atualização da Documentação:**
+- [x] **5.6 Atualização da Documentação:**
   - Atualizar relatórios de auditoria e governança em `docs/ARCHITECTURE.md`.
-- [ ] **Portão de Verificação 5 (Quality Gate 5):**
+- [x] **Portão de Verificação 5 (Quality Gate 5):**
   - Commit semântico: `security: enforce strict rls isolation, rpc search-path hardening and mobile privacy protection` e `git push`.
 
 ---
