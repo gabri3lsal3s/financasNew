@@ -2,13 +2,19 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { ShieldCheck } from "lucide-react";
 import { BrandLogo } from "@/components/layout";
-import { LegalDialog } from "./legal-dialog";
+import { LegalDialog, type LegalTab } from "./legal-dialog";
 import { useLandingCta } from "@/features/landing/hooks";
 
 export function LandingFooter() {
   const currentYear = new Date().getFullYear();
   const [legalOpen, setLegalOpen] = useState(false);
+  const [legalTab, setLegalTab] = useState<LegalTab>("terms");
   const { trialUrl, isLoggedIn } = useLandingCta();
+
+  const handleOpenLegal = (tab: LegalTab) => {
+    setLegalTab(tab);
+    setLegalOpen(true);
+  };
 
   return (
     <>
@@ -65,14 +71,14 @@ export function LandingFooter() {
               <div className="flex flex-wrap gap-4 mt-2">
                 <button
                   type="button"
-                  onClick={() => setLegalOpen(true)}
+                  onClick={() => handleOpenLegal("terms")}
                   className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors cursor-pointer"
                 >
                   Termos de Serviço
                 </button>
                 <button
                   type="button"
-                  onClick={() => setLegalOpen(true)}
+                  onClick={() => handleOpenLegal("privacy")}
                   className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors cursor-pointer"
                 >
                   Privacidade (LGPD)
@@ -94,7 +100,11 @@ export function LandingFooter() {
       </footer>
 
       {/* Diálogo Unificado de Termos e LGPD */}
-      <LegalDialog open={legalOpen} onOpenChange={setLegalOpen} />
+      <LegalDialog
+        open={legalOpen}
+        onOpenChange={setLegalOpen}
+        defaultTab={legalTab}
+      />
     </>
   );
 }

@@ -7,6 +7,7 @@ export { InvestmentsShowcase } from "./investments-showcase";
 export { LandingFooter } from "./landing-footer";
 export { LandingHeader } from "./landing-header";
 export { LegalDialog } from "./legal-dialog";
+export type { LegalDialogProps, LegalTab } from "./legal-dialog";
 export { MinimalWealthSimulator } from "./minimal-wealth-simulator";
 export { MobileCtaDock } from "./mobile-cta-dock";
 export { PricingSection } from "./pricing-section";

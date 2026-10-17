@@ -7,13 +7,15 @@ import { registerPWA } from "@/app/pwa";
 import { initObservability } from "@/services/observability";
 import { initOrientationLock } from "@/services/orientation-lock";
 import { initVisualCustomization } from "@/hooks/use-visual-customization";
-import { hideNativeSplashScreen, initHardwareBackButton } from "@/services/native";
+import { hideNativeSplashScreen, initHardwareBackButton, initSafeAreaInsets } from "@/services/native";
 
 // Aplica preferências visuais (acento, superfície, movimento) imediatamente
 initVisualCustomization();
 registerPWA();
 // Escuta o botão voltar físico do Android respeitando modais e navegação
 initHardwareBackButton();
+// Inicializa compensação de safe area insets (status bar e gestos no Android)
+initSafeAreaInsets();
 // Bloqueio de orientação mobile (portrait only) — manifest + Screen Orientation API
 initOrientationLock();
 // Observabilidade (Sentry) — no-op sem VITE_SENTRY_DSN (dev/testes).

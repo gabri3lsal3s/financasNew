@@ -88,7 +88,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
     >
       <div
         className={cn(
-          "flex shrink-0 items-center border-b border-border overflow-hidden pt-[env(safe-area-inset-top,0px)]",
+          "flex shrink-0 items-center border-b border-border overflow-hidden pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]",
           expanded ? "px-4" : "justify-center px-2",
         )}
       >

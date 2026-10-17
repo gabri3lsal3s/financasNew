@@ -2,9 +2,18 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useUserAccess } from "./use-user-access";
+import {
+  useUserAccess,
+  USER_ACCESS_KEY,
+  USER_FEATURES_KEY,
+  USER_SUBSCRIPTION_KEY,
+  userAccessQueryKey,
+  userFeaturesQueryKey,
+  userSubscriptionQueryKey,
+} from "./use-user-access";
 import * as accessRepo from "@/data/repositories/access";
 import * as subscriptionsRepo from "@/data/repositories/subscriptions";
+import { setActiveUserId } from "@/services/user-storage";
 import type { Profile, SubscriptionStatus } from "@/types";
 
 vi.mock("@/data/client", () => ({
@@ -54,6 +63,7 @@ function createWrapper() {
 describe("useUserAccess hook", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setActiveUserId("user-1");
   });
 
   it("bloqueia funcionalidades quando o módulo possui access_level = none na assinatura", async () => {
@@ -220,6 +230,94 @@ describe("useUserAccess hook", () => {
     expect(result.current.hasFeature("budgets")).toBe(false);
 
     // Overview derivada também deve ser suprimida
+    expect(result.current.hasFeature("overview")).toBe(false);
+  });
+
+  it("aplica Fail-Closed imediato no cold start quando o activeUserId for nulo", async () => {
+    setActiveUserId(null);
+
+    const { result } = renderHook(() => useUserAccess(), {
+      wrapper: createWrapper(),
+    });
+
+    // Sem usuário ativo: queries desabilitadas e Fail-Closed rigoroso
+    expect(result.current.profile).toBeNull();
+    expect(result.current.hasFeature("overview")).toBe(false);
+    expect(result.current.hasFeature("transactions")).toBe(false);
+    expect(result.current.hasFeature("investments")).toBe(false);
+    expect(accessRepo.getMyProfile).not.toHaveBeenCalled();
+    expect(subscriptionsRepo.getMySubscription).not.toHaveBeenCalled();
+  });
+
+  it("aplica Fail-Closed para usuário comum quando a assinatura for nula", async () => {
+    vi.mocked(accessRepo.getMyProfile).mockResolvedValue(mockProfile);
+    vi.mocked(accessRepo.getMyFeatures).mockResolvedValue({
+      transactions: true,
+      investments: true,
+    });
+    vi.mocked(subscriptionsRepo.getMySubscription).mockResolvedValue(null);
+
+    const { result } = renderHook(() => useUserAccess(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    // Com subscription = null e usuário não-admin, Fail-Closed bloqueia todos os acessos
+    expect(result.current.hasFeature("overview")).toBe(false);
+    expect(result.current.hasFeature("transactions")).toBe(false);
+    expect(result.current.hasFeature("investments")).toBe(false);
+  });
+
+  it("isolar chaves de query no formato [...KEY, userId]", () => {
+    expect(userAccessQueryKey("user-123")).toEqual(["user_access", "user-123"]);
+    expect(userFeaturesQueryKey("user-123")).toEqual(["user_features", "user-123"]);
+    expect(userSubscriptionQueryKey("user-123")).toEqual(["user_subscription", "user-123"]);
+    expect(userSubscriptionQueryKey(null)).toEqual(["user_subscription", null]);
+    expect(USER_ACCESS_KEY).toEqual(["user_access"]);
+    expect(USER_FEATURES_KEY).toEqual(["user_features"]);
+    expect(USER_SUBSCRIPTION_KEY).toEqual(["user_subscription"]);
+  });
+
+  it("reestabelece acesso ao alternar de cold start (null) para sessão autenticada com usuário restrito", async () => {
+    // 1. Inicia em cold start sem usuário
+    setActiveUserId(null);
+
+    const { result, rerender } = renderHook(() => useUserAccess(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.profile).toBeNull();
+    expect(result.current.hasFeature("investments")).toBe(false);
+
+    // 2. Simula resolução da autenticação (login / restauração de token)
+    vi.mocked(accessRepo.getMyProfile).mockResolvedValue(mockProfile);
+    vi.mocked(accessRepo.getMyFeatures).mockResolvedValue({
+      investments: true,
+      transactions: true,
+    });
+    vi.mocked(subscriptionsRepo.getMySubscription).mockResolvedValue({
+      tier: "pro_monthly",
+      canWrite: true,
+      isFullAccess: false,
+      moduleAccess: {
+        investments: "write",
+      },
+    } as unknown as SubscriptionStatus);
+
+    setActiveUserId("user-1");
+    rerender();
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.profile?.id).toBe("user-1");
+    });
+
+    // 3. Após resolver, módulo concedido funciona e core financeiro continua bloqueado por Whitelist
+    expect(result.current.hasFeature("investments")).toBe(true);
+    expect(result.current.hasFeature("transactions")).toBe(false);
     expect(result.current.hasFeature("overview")).toBe(false);
   });
 });

@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useLocation } from "react-router";
 import { ArrowLeft } from "lucide-react";
-import { Alert, Button, Input, Turnstile } from "@/components/ui";
+import { Alert, Button, Input, PasswordInput, Turnstile } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { useAuth, signInWithEmail } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/services/errors";
@@ -76,9 +76,8 @@ export function LoginPage() {
             <label htmlFor="login-password" className="text-xs font-semibold text-foreground">
               Senha
             </label>
-            <Input
+            <PasswordInput
               id="login-password"
-              type="password"
               autoComplete="current-password"
               required
               value={password}

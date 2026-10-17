@@ -193,7 +193,7 @@ describe("ModalFooter (Fase 68)", () => {
     const footer = screen.getByText("Salvar").parentElement;
     expect(footer).toBeInTheDocument();
     expect(footer).toHaveClass("flex-col-reverse", "sm:flex-row", "sm:justify-end", "border-primary/20");
-    expect(footer?.className).toContain("pb-[max(0.75rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))]");
+    expect(footer?.className).toContain("pb-[max(0.75rem,calc(max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px))+0.5rem))]");
   });
 });
 

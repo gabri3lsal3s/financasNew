@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
-import { ArrowLeft, ArrowRight, Check, Circle, Eye, EyeOff, Sparkles } from "lucide-react";
-import { Alert, Button, Input, Turnstile, buttonVariants } from "@/components/ui";
+import { ArrowLeft, ArrowRight, Check, Circle, Sparkles } from "lucide-react";
+import { Alert, Button, Input, PasswordInput, Turnstile, buttonVariants } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { useAuth, signUpWithEmail } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/services/errors";
@@ -16,7 +16,6 @@ export function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [inviteCode, setInviteCode] = useState(
     searchParams.get("convite") || searchParams.get("invite") || "",
   );
@@ -155,30 +154,15 @@ export function RegisterPage() {
                 </span>
               )}
             </div>
-            <div className="relative">
-              <Input
-                id="register-password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="new-password"
-                required
-                minLength={8}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Mínimo de 8 caracteres"
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  triggerSensory("selection");
-                  setShowPassword((prev) => !prev);
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                aria-label={showPassword ? "Ocultar senha" : "Ver senha"}
-              >
-                {showPassword ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
-              </button>
-            </div>
+            <PasswordInput
+              id="register-password"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Mínimo de 8 caracteres"
+            />
 
             {/* Checklist dinâmico de requisitos de senha */}
             {password.length > 0 && (

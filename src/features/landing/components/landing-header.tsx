@@ -79,7 +79,7 @@ export function LandingHeader() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 w-full transition-all duration-300 pt-[env(safe-area-inset-top,0px)]",
+        "sticky top-0 z-40 w-full transition-all duration-300 pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]",
         isScrolled
           ? "border-b border-border/80 bg-background/85 backdrop-blur-md shadow-xs"
           : "border-b border-border/30 bg-background/60 backdrop-blur-xs",
@@ -249,7 +249,7 @@ export function LandingHeader() {
       {/* Backdrop do Menu Mobile */}
       {mobileMenuOpen ? (
         <div
-          className="fixed inset-0 top-16 bg-background/75 backdrop-blur-xs z-30 sm:hidden animate-fade-in cursor-pointer"
+          className="fixed inset-0 top-[calc(4rem+max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] bg-background/75 backdrop-blur-xs z-30 sm:hidden animate-fade-in cursor-pointer"
           onClick={() => setMobileMenuOpen(false)}
           onTouchStart={() => setMobileMenuOpen(false)}
           aria-hidden="true"

@@ -167,4 +167,18 @@ describe("Tabs", () => {
     expect(onParentChange).toHaveBeenCalledWith("parent-2");
     expect(onChildChange).not.toHaveBeenCalled();
   });
+
+  it("com forceMount=true, preserva abas inativas no DOM", () => {
+    render(
+      <Tabs
+        value="gastos"
+        onValueChange={vi.fn()}
+        items={items}
+        forceMount
+      />,
+    );
+
+    expect(screen.getByText("Conteúdo de gastos")).toBeInTheDocument();
+    expect(screen.getByText("Conteúdo de rendas")).toBeInTheDocument();
+  });
 });

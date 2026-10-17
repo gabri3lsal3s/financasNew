@@ -2,10 +2,10 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getMySubscription } from "@/data/repositories/subscriptions";
 import { getCachedIconTier } from "@/services/native/app-icon";
-import { useUserAccess, USER_SUBSCRIPTION_KEY } from "./use-user-access";
+import { useUserAccess, USER_SUBSCRIPTION_KEY, userSubscriptionQueryKey } from "./use-user-access";
 import type { SubscriptionStatus, SubscriptionTier, SubscriptionPlan } from "@/types";
 
-export { USER_SUBSCRIPTION_KEY };
+export { USER_SUBSCRIPTION_KEY, userSubscriptionQueryKey };
 
 /**
  * Hook de estado central da assinatura do usuário.
@@ -18,8 +18,9 @@ export function useUserSubscription(): SubscriptionStatus {
   const { profile } = useUserAccess();
 
   const { data: subData } = useQuery({
-    queryKey: USER_SUBSCRIPTION_KEY,
+    queryKey: userSubscriptionQueryKey(profile?.id ?? null),
     queryFn: getMySubscription,
+    enabled: Boolean(profile?.id),
     staleTime: 1000 * 60 * 5, // 5 minutos (Realtime cuida de invalidações ativas)
   });
 

@@ -310,7 +310,7 @@
 | Diretório | Responsabilidade | O que NUNCA colocar | Exemplo de arquivo |
 |---|---|---|---|
 | `src/app/` | Bootstrap: providers, roteamento, registro PWA | Lógica de negócio, marcação visual extensa | `routes.tsx`, `redirect-to-investments.tsx`, `pwa.ts` |
-| `src/components/ui/` | Primitivos atômicos **agnósticos de domínio** | Regra financeira, fetch, formatação de moeda | `button.tsx`, `modal.tsx`, `money-input.tsx`, `percent-input.tsx` |
+| `src/components/ui/` | Primitivos atômicos **agnósticos de domínio** | Regra financeira, fetch, formatação de moeda | `button.tsx`, `modal.tsx`, `money-input.tsx`, `percent-input.tsx`, `password-input.tsx` |
 | `src/components/modules/` | Componentes de **domínio financeiro** reutilizáveis | Fetch, lógica de cálculo (recebe props prontas) | `debt-status-badge.tsx` |
 | `src/components/layout/` | Estrutura de página (sidebar/tabs/header) | Conteúdo de tela | `sidebar.tsx` |
 | `src/features/` | Telas + orquestração por área funcional | Cálculo de negócio, chamada direta a `data/` | `transactions/` |
@@ -401,4 +401,4 @@ src/features/transactions/
 4. **Sem duplicação de UI:** componente reutilizado em 2+ lugares é extraído (ver `AGENTS.md` §4).
 5. **Barrels:** toda pasta com `index.ts` e exports nomeados (sem `export default`).
 6. **Cores/fontes/raios/sombras** sempre via tokens (`src/styles/tokens.css`) — nunca hex/fonte hard-coded em componente.
-7. **Zero elementos nativos de controle** (DESIGN_SYSTEM §13): select, checkbox, radio, date, file, range, `alert/confirm/prompt` e `<dialog>` são substituídos por primitivos próprios em `components/ui/` seguindo a identidade. Inputs de texto só via `Input`/`MoneyInput`/`Textarea`.
+7. **Zero elementos nativos de controle** (DESIGN_SYSTEM §13): select, checkbox, radio, date, file, range, `alert/confirm/prompt` e `<dialog>` são substituídos por primitivos próprios em `components/ui/` seguindo a identidade. Inputs de texto só via `Input`/`PasswordInput`/`MoneyInput`/`Textarea`.

@@ -26,6 +26,11 @@ export interface TabsProps {
    * teclado Radix (a11y). Desabilitado em telas com formulários densos.
    */
   swipeable?: boolean;
+  /**
+   * Força a montagem do conteúdo de todas as abas no DOM (ocultando abas inativas via CSS).
+   * Útil para preservação de estado em formulários, SEO e checagens no DOM.
+   */
+  forceMount?: boolean;
 }
 
 /** Tabs próprias do app (Radix) — acessível, com teclado e micro-interação (F11). */
@@ -37,6 +42,7 @@ export function Tabs({
   fullWidth,
   className,
   swipeable = false,
+  forceMount = false,
 }: TabsProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const currentIndex = Math.max(0, items.findIndex((item) => item.value === value));
@@ -139,7 +145,11 @@ export function Tabs({
           <TabsPrimitive.Content
             key={item.value}
             value={item.value}
-            className="outline-none focus-visible:ring-2 focus-visible:ring-ring animate-route-in"
+            forceMount={forceMount ? true : undefined}
+            className={cn(
+              "outline-none focus-visible:ring-2 focus-visible:ring-ring animate-route-in",
+              forceMount && "data-[state=inactive]:hidden",
+            )}
           >
             {item.content}
           </TabsPrimitive.Content>

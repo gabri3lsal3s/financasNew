@@ -1,15 +1,20 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabase } from "@/data/client";
 import { getMyFeatures, getMyProfile } from "@/data/repositories/access";
 import { getMySubscription } from "@/data/repositories/subscriptions";
+import { getActiveUserId, setActiveUserId, subscribeActiveUserId } from "@/services/user-storage";
 import type { Profile, SystemFeatureKey, UserRole, UserStatus } from "@/types";
 
 export const USER_ACCESS_KEY = ["user_access"] as const;
 export const USER_FEATURES_KEY = ["user_features"] as const;
 export const USER_SUBSCRIPTION_KEY = ["user_subscription"] as const;
+
+export const userAccessQueryKey = (userId: string | null) => [...USER_ACCESS_KEY, userId] as const;
+export const userFeaturesQueryKey = (userId: string | null) => [...USER_FEATURES_KEY, userId] as const;
+export const userSubscriptionQueryKey = (userId: string | null) => [...USER_SUBSCRIPTION_KEY, userId] as const;
 
 let activeChannel: RealtimeChannel | null = null;
 let activeUserId: string | null = null;
@@ -128,20 +133,95 @@ export interface UserAccessResult {
 /**
  * Hook central de controle de acesso, status da conta, feature flags e permissões modulares (§F43).
  * Sincroniza em tempo real via canais Postgres Changes do Supabase com gerenciamento singleton.
+ * Opera sob política estrita de Fail-Closed e isolamento de cache parametrizado por userId.
  */
-export function useUserAccess(): UserAccessResult {
+export function useUserAccess(targetUserId?: string): UserAccessResult {
   const queryClient = useQueryClient();
 
+  const [sessionUserId, setSessionUserId] = useState<string | null>(() => {
+    return targetUserId ?? getActiveUserId() ?? null;
+  });
+
+  useEffect(() => {
+    if (targetUserId) {
+      return;
+    }
+
+    // Sincroniza com as alterações de usuário ativo no storage
+    const unsubscribeStorage = subscribeActiveUserId((uid) => {
+      setSessionUserId(uid);
+    });
+
+    let supabase: ReturnType<typeof getSupabase>;
+    try {
+      supabase = getSupabase();
+    } catch {
+      return unsubscribeStorage;
+    }
+
+    if (!supabase?.auth) return unsubscribeStorage;
+
+    let active = true;
+
+    // Resolução inicial em cold start
+    if (typeof supabase.auth.getSession === "function") {
+      void supabase.auth
+        .getSession()
+        .then(({ data }) => {
+          if (!active) return;
+          const uid = data?.session?.user?.id ?? null;
+          if (uid) {
+            setActiveUserId(uid);
+            setSessionUserId(uid);
+          }
+        })
+        .catch(() => {
+          // Fallback silencioso
+        });
+    }
+
+    // Monitoramento contínuo da sessão Supabase
+    let unsubscribeAuth: (() => void) | undefined;
+    if (typeof supabase.auth.onAuthStateChange === "function") {
+      const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!active) return;
+        const uid = session?.user?.id ?? null;
+        setActiveUserId(uid);
+        setSessionUserId(uid);
+      });
+      unsubscribeAuth = () => authListener?.subscription?.unsubscribe();
+    }
+
+    return () => {
+      active = false;
+      unsubscribeStorage();
+      unsubscribeAuth?.();
+    };
+  }, [targetUserId]);
+
+  const activeUserId = targetUserId ?? sessionUserId ?? getActiveUserId() ?? null;
+  const isAuthResolved = Boolean(activeUserId);
+
   const profileQuery = useQuery({
-    queryKey: USER_ACCESS_KEY,
+    queryKey: userAccessQueryKey(activeUserId),
     queryFn: getMyProfile,
+    enabled: isAuthResolved,
     staleTime: 1000 * 60 * 5, // 5 minutos
     retry: 1,
   });
 
   const featuresQuery = useQuery({
-    queryKey: USER_FEATURES_KEY,
+    queryKey: userFeaturesQueryKey(activeUserId),
     queryFn: getMyFeatures,
+    enabled: isAuthResolved,
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
+
+  const subscriptionQuery = useQuery({
+    queryKey: userSubscriptionQueryKey(activeUserId),
+    queryFn: getMySubscription,
+    enabled: isAuthResolved,
     staleTime: 1000 * 60 * 5,
     retry: 1,
   });
@@ -150,14 +230,6 @@ export function useUserAccess(): UserAccessResult {
   const role: UserRole = profile?.role ?? "user";
   const status: UserStatus = profile?.status ?? "active"; // Fallback permissivo para sessões existentes até refetch
   const features: Record<string, boolean> = featuresQuery.data ?? {};
-
-  const subscriptionQuery = useQuery({
-    queryKey: USER_SUBSCRIPTION_KEY,
-    queryFn: getMySubscription,
-    staleTime: 1000 * 60 * 5,
-    retry: 1,
-  });
-
   const subscription = subscriptionQuery.data ?? null;
 
   const isPendingApproval = status === "pending_approval";
@@ -168,6 +240,11 @@ export function useUserAccess(): UserAccessResult {
   const isSuperAdmin = role === "superadmin";
   const isAdmin = isSuperAdmin || role === "admin";
 
+  const isLoading =
+    isAuthResolved
+      ? profileQuery.isLoading || featuresQuery.isLoading || subscriptionQuery.isLoading
+      : false;
+
   const hasFeature = (featureKey: SystemFeatureKey | string): boolean => {
     // 1. SuperAdmin e Admin têm acesso irrestrito a todas as funcionalidades
     if (isAdmin) return true;
@@ -177,9 +254,20 @@ export function useUserAccess(): UserAccessResult {
       return false;
     }
 
-    // 3. Regra de proteção da Overview: o painel inicial é um dashboard consolidado do core financeiro.
+    // 3. Fail-Closed durante inicialização ou ausência de autenticação
+    if (!isAuthResolved || isLoading) {
+      return false;
+    }
+
+    // 4. Se a assinatura for nula para usuário não-admin, Fail-Closed imediato
+    if (!subscription) {
+      return false;
+    }
+
+    const moduleAccess = subscription.moduleAccess;
+
+    // 5. Regra de proteção da Visão Geral (Overview):
     // Se overview estiver explicitada no moduleAccess, respeita-a. Caso contrário, deriva do core financeiro.
-    const moduleAccess = subscription?.moduleAccess;
     if (featureKey === "overview") {
       if (moduleAccess) {
         if (moduleAccess.overview !== undefined) {
@@ -195,7 +283,7 @@ export function useUserAccess(): UserAccessResult {
       return features.overview !== false;
     }
 
-    // 4. Verifica modelo Whitelist Modular na assinatura (user_module_permissions)
+    // 6. Verifica modelo Whitelist Modular na assinatura (user_module_permissions)
     if (moduleAccess) {
       const hasAnyOverride = Object.keys(moduleAccess).length > 0;
       if (hasAnyOverride) {
@@ -208,31 +296,23 @@ export function useUserAccess(): UserAccessResult {
       }
     }
 
-    // 5. Fail-Closed durante carregamento: se subscription ainda não carregou,
-    // não libera módulos prematuramente
-    if (!subscription && (subscriptionQuery.isLoading || profileQuery.isLoading)) {
-      return false;
-    }
-
+    // 7. Fallback seguro para planos sem overrides (features flags gerais)
     if (features[featureKey] === undefined) {
-      return true; // Fallback ativo se não listado
+      return true; // Fallback ativo se não listado em kill-switch
     }
     return Boolean(features[featureKey]);
   };
 
   // Canal Realtime para atualizações imediatas de status e permissões
   useEffect(() => {
-    if (!profile?.id) return;
-    const unsubscribe = subscribeUserAccessRealtime(profile.id, queryClient);
+    const channelUserId = activeUserId ?? profile?.id;
+    if (!channelUserId) return;
+    const unsubscribe = subscribeUserAccessRealtime(channelUserId, queryClient);
     return () => {
       unsubscribe();
     };
-  }, [profile?.id, queryClient]);
+  }, [activeUserId, profile?.id, queryClient]);
 
-  const isLoading =
-    profileQuery.isLoading ||
-    featuresQuery.isLoading ||
-    subscriptionQuery.isLoading;
   const error =
     (profileQuery.error as Error | null) ??
     (featuresQuery.error as Error | null) ??

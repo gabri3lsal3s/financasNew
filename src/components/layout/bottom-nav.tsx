@@ -185,7 +185,7 @@ export function BottomNav() {
       <MoreMenuSheet open={moreSheetOpen} onOpenChange={setMoreSheetOpen} />
       {upgradeModal}
       <nav
-        className="fixed inset-x-0 bottom-0 z-bottom-nav border-t border-border bg-surface/90 backdrop-blur pb-[env(safe-area-inset-bottom,0px)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-bottom-nav border-t border-border bg-surface/90 backdrop-blur pb-[max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px))] lg:hidden"
         aria-label="Navegação principal"
       >
         {create ? (

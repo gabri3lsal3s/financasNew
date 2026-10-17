@@ -2,6 +2,8 @@ export { Button } from "./button";
 export { buttonVariants } from "./button-variants";
 export type { ButtonProps } from "./button";
 export { Input } from "./input";
+export { PasswordInput } from "./password-input";
+export type { PasswordInputProps } from "./password-input";
 export { MoneyInput } from "./money-input";
 export type { MoneyInputProps } from "./money-input";
 export { PercentInput } from "./percent-input";

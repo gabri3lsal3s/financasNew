@@ -20,6 +20,7 @@ describe("AppProviders & AuthQuerySync", () => {
     const mockUnsubscribe = vi.fn();
     const mockSupabase = {
       auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
         onAuthStateChange: vi.fn((cb: (event: string, session: unknown) => void) => {
           capturedCallback = cb;
           return { data: { subscription: { unsubscribe: mockUnsubscribe } } };

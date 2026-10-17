@@ -51,4 +51,25 @@ describe("RequireFeature Guard", () => {
 
     expect(screen.getByText("Carteira de Investimentos")).toBeInTheDocument();
   });
+
+  it("mantém LoadingScreen visível e não renderiza conteúdo privado enquanto isLoading for true", () => {
+    mockUseUserAccess.mockReturnValue({
+      isLoading: true,
+      isAdmin: false,
+      hasFeature: vi.fn(() => false),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/investments"]}>
+        <Routes>
+          <Route element={<RequireFeature featureKey="investments" />}>
+            <Route path="/investments" element={<div>Carteira de Investimentos</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText("Carteira de Investimentos")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeInTheDocument();
+  });
 });

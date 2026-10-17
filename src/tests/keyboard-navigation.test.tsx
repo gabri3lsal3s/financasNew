@@ -169,6 +169,9 @@ describe("Navegação por teclado — telas P0 (F5.3 DoD)", () => {
     expect(screen.getByLabelText("Senha")).toHaveFocus();
 
     await user.tab();
+    expect(screen.getByRole("button", { name: "Ver senha" })).toHaveFocus();
+
+    await user.tab();
     expect(screen.getByRole("button", { name: "Entrar" })).toHaveFocus();
   });
 

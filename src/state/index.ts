@@ -122,7 +122,15 @@ export { useGlobalSearchEntries } from "./queries/use-search";
 export { usePredictionHistory } from "./queries/use-prediction-history";
 export { useOnboardingCounts } from "./queries/use-onboarding";
 
-export { useUserAccess, USER_ACCESS_KEY, USER_FEATURES_KEY } from "./queries/use-user-access";
+export {
+  useUserAccess,
+  USER_ACCESS_KEY,
+  USER_FEATURES_KEY,
+  USER_SUBSCRIPTION_KEY,
+  userAccessQueryKey,
+  userFeaturesQueryKey,
+  userSubscriptionQueryKey,
+} from "./queries/use-user-access";
 export type { UserAccessResult } from "./queries/use-user-access";
 
 export {
@@ -178,7 +186,7 @@ export { useExportData, EXPORT_DATA_QUERY_KEY } from "./queries/use-export-data"
 export { useRestoreBackup } from "./mutations/use-restore-backup";
 export { useLoadDemoData, useClearDemoData } from "./mutations/use-demo-data";
 
-export { useUserSubscription, USER_SUBSCRIPTION_KEY } from "./queries/use-user-subscription";
+export { useUserSubscription } from "./queries/use-user-subscription";
 export { SubscriptionProvider, useIsPro } from "./subscription-context";
 export { usePermission, type PermissionResult } from "./queries/use-permission";
 export type { SubscriptionStatus } from "@/types";

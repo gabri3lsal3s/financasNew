@@ -22,6 +22,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Badge } from "@/components/ui/badge";
 import { BrandLogo, LoadingScreen, ThemeToggle } from "@/components/layout";
 import { useAuth, signInWithEmail, signUpWithEmail } from "@/hooks/use-auth";
@@ -592,8 +593,7 @@ export function SubscriptionCheckoutPage() {
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-foreground">Senha</label>
-                  <Input
-                    type="password"
+                  <PasswordInput
                     placeholder="Mínimo 6 caracteres"
                     value={authPassword}
                     onChange={(e) => setAuthPassword(e.target.value)}

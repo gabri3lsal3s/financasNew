@@ -121,7 +121,36 @@ describe("LandingPage", () => {
       screen.getByText("Termos de Serviço & Privacidade (LGPD)"),
     ).toBeInTheDocument();
     expect(
+      screen.getByText(/Transparência, Teste Gratuito e Cancelamento/i),
+    ).toBeInTheDocument();
+    expect(
       screen.getByText(/Isolamento Criptográfico e Row Level Security/i),
+    ).toBeInTheDocument();
+
+    const fecharButton = screen.getByRole("button", { name: "Entendido" });
+    await user.click(fecharButton);
+  });
+
+  it("permite abrir o modal diretamente na aba de Privacidade (LGPD) e alternar abas", async () => {
+    const user = userEvent.setup();
+    renderLanding();
+
+    const privacyButton = screen.getByRole("button", { name: "Privacidade (LGPD)" });
+    await user.click(privacyButton);
+
+    expect(
+      screen.getByText("Termos de Serviço & Privacidade (LGPD)"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Privacidade Absoluta e Conformidade com a LGPD/i),
+    ).toBeInTheDocument();
+
+    // Alterna para Termos de Serviço dentro do modal
+    const termosTab = screen.getByRole("tab", { name: "Termos de Serviço" });
+    await user.click(termosTab);
+
+    expect(
+      screen.getByText(/Transparência, Teste Gratuito e Cancelamento/i),
     ).toBeInTheDocument();
 
     const fecharButton = screen.getByRole("button", { name: "Entendido" });

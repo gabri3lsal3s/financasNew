@@ -15,12 +15,20 @@ import { SubscriptionProvider, useIsPro } from "@/state/subscription-context";
 import { AppLockOverlay } from "@/app/app-lock-overlay";
 import { initAppLockListener } from "@/services/native";
 
+import {
+  USER_ACCESS_KEY,
+  USER_FEATURES_KEY,
+  USER_SUBSCRIPTION_KEY,
+} from "@/state";
+
 /**
  * Sincroniza o ciclo de vida do TanStack Query e das stores locais
  * com a sessão de autenticação do Supabase.
  * Ao deslogar (`SIGNED_OUT`) ou na troca de usuário (`userId` distinto),
  * invoca `resetAppState` cancelando requisições, limpando cache e restaurando
  * os padrões de fábrica no DOM e na memória.
+ * No login (`SIGNED_IN`) ou identificação de novo usuário ativo, invalida queries
+ * de controle de acesso para garantir dados frescos e atualizados.
  */
 function AuthQuerySync({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -43,6 +51,12 @@ function AuthQuerySync({ children }: { children: ReactNode }) {
         (activeUserIdRef.current !== null && activeUserIdRef.current !== newUserId)
       ) {
         resetAppState(queryClient, newUserId);
+      } else if (event === "SIGNED_IN" || (newUserId && activeUserIdRef.current !== newUserId)) {
+        // Ao autenticar ou inicializar com usuário ativo, invalida queries de acesso/permissão
+        // garantindo que dados frescos e autenticados sejam carregados imediatamente
+        void queryClient.invalidateQueries({ queryKey: USER_ACCESS_KEY });
+        void queryClient.invalidateQueries({ queryKey: USER_FEATURES_KEY });
+        void queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
       }
 
       activeUserIdRef.current = newUserId;

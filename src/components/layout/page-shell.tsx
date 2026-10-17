@@ -151,10 +151,10 @@ export function PageShell() {
       >
         {/* Header fluido com elevação dinâmica de rolagem (F7.3/F56 / DESIGN_SYSTEM §6 e §8).
             Preserva a borda contínua conectada à Sidebar e eleva com sombra suave e blur.
-            pt-[env(safe-area-inset-top,0px)] garante afastamento perfeito da barra de status no mobile. */}
+            pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))] garante afastamento perfeito da barra de status no mobile. */}
         <header
           className={cn(
-            "sticky top-0 z-sticky flex shrink-0 items-center border-b border-border transition-[background-color,backdrop-filter,box-shadow] duration-200 app-region-drag pt-[env(safe-area-inset-top,0px)]",
+            "sticky top-0 z-sticky flex shrink-0 items-center border-b border-border transition-[background-color,backdrop-filter,box-shadow] duration-200 app-region-drag pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]",
             isScrolled
               ? "bg-surface/95 backdrop-blur-md shadow-xs"
               : "bg-surface/80 backdrop-blur-sm shadow-none",
