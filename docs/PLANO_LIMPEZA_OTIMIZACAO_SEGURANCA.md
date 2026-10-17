@@ -435,17 +435,21 @@ graph TD
       - Adicionada suíte de testes em [`security-audit.test.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/tests/security-audit.test.ts) validando a presença de `usesCleartextTraffic="false"`, `networkSecurityConfig`, `cleartextTrafficPermitted="false"`, dependências nativas e integração do `AppLockOverlay`.
   - **Critério de Saída:** Camada nativa em conformidade com os mais altos padrões de segurança para apps financeiros.
 
-- [ ] **Tarefa 5.6 — Auditoria e Mitigação de Vulnerabilidades de Dependências**
-  - **Ação:** Executar `npm audit` e analisar relatórios de vulnerabilidades conhecidas (CVEs).
-  - **Correção:** Atualizar pacotes de forma segura e pontual, sem quebras de compatibilidade.
-  - **Critério de Saída:** Relatório de dependências limpo, sem vulnerabilidades de severidade crítica ou alta.
+- [x] **Tarefa 5.6 — Auditoria e Mitigação de Vulnerabilidades de Dependências**
+  - **Ação:** Executar `npm audit` e analisar relatórios de vulnerabilidades conhecidas (CVEs):
+    - Realizado scan inicial identificando 9 vulnerabilidades (4 de alta severidade e 5 moderadas: `brace-expansion`, `fast-uri`, `source-map-js`, `undici`, `@vitest/mocker` e `uuid`);
+    - Executado `npm audit fix` para resolução de dependências transitivas e mitigação de todas as vulnerabilidades de alta severidade sem alterações com quebra;
+    - Adicionado bloco de `overrides` em [`package.json`](file:///home/gabrielsales/meus_apps/financasnew/package.json) fixando `"uuid": "^11.1.1"` para o pacote `xcode` (utilizado por `@capacitor/cli`), resolvendo a vulnerabilidade de buffer bounds check (GHSA-w5hq-g745-h8pq) sem necessidade de downgrade destrutivo do CLI do Capacitor;
+    - Validada a execução e sincronização do `@capacitor/cli` (`npm run cap:sync`) comprovando compatibilidade integral;
+    - Executado novo scan `npm audit` confirmando **0 vulnerabilidades** em toda a árvore de dependências.
+  - **Critério de Saída:** Relatório de dependências limpo, sem vulnerabilidades de severidade crítica ou alta (0 vulnerabilidades no total).
 
-- [ ] **PORTÃO DE QUALIDADE DA FASE 5:**
-  - `npm run typecheck` verde.
-  - `npm run lint` verde.
-  - `npm run test` verde.
-  - `npm run build` verde.
-  - Commit semântico: `security: harden supabase rls and rpc search paths, sanitize inputs and verify android privacy`
+- [x] **PORTÃO DE QUALIDADE DA FASE 5:**
+  - `npm run typecheck` verde (0 erros).
+  - `npm run lint` verde (0 erros e 0 avisos).
+  - `npm run test` verde em toda a suíte (341 arquivos / 2.645 testes).
+  - `npm run build` verde (distribuição e precache PWA compilados com sucesso).
+  - Commit semântico: `security: audit and patch dependencies, resolve cves and complete phase 5 gate`
   - `git push`
 
 ---
