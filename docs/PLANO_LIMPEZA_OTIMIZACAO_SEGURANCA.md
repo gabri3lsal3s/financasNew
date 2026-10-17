@@ -474,10 +474,13 @@ graph TD
     - Testes automatizados em `pwa-audit.test.ts` (10/10) e `pwa.test.tsx` (10/10) aprovados sem falhas.
   - **Critério de Saída:** Build de produção PWA homologado e pronto para deploy no Cloudflare Pages.
 
-- [ ] **Tarefa 6.3 — Sincronização e Compilação dos APKs Nativos Android**
+- [x] **Tarefa 6.3 — Sincronização e Compilação dos APKs Nativos Android**
   - **Ação:** Executar `npx cap sync android` e `./scripts/build-apk.sh`:
-    - Compilar `guia-financeiro-debug.apk` e `guia-financeiro-release.apk` (assinado);
-    - Checar hashes de integridade SHA-256.
+    - Sincronizados assets web (`dist/`) e plugins nativos via Capacitor no projeto Android;
+    - Executado o Gradle Wrapper (`./gradlew clean assembleDebug assembleRelease`) com JDK 21 LTS e Android SDK;
+    - Gerado `dist-apk/guia-financeiro-debug.apk` (12 MB) com hash SHA-256: `81f8edbe41e3cee3bd267979c2c30e77d944fbb8074e7f5f628234e337bec699`;
+    - Gerado `dist-apk/guia-financeiro-release.apk` (10 MB, assinado com keystore RSA-2048) com hash SHA-256: `97386196c73b9405536473ee698299f960e137528a4ee7324d97d4de6fed3674`;
+    - Confirmada a integridade de todos os 711 tasks do Gradle e conformidade com as diretrizes de segurança nativas (`FLAG_SECURE`, bloqueio a cleartext e biometria).
   - **Critério de Saída:** Artefatos Android gerados com sucesso pelo Gradle.
 
 - [ ] **Tarefa 6.4 — Sincronização da Documentação e Governança Canônica**
