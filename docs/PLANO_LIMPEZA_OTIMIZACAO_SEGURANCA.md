@@ -457,9 +457,12 @@ graph TD
 ### FASE 6: Homologação Integral, Regressão, Documentação Final & Release
 > **Objetivo:** Executar o ciclo completo de testes e homologação cruzada, sincronizar a documentação viva e emitir a versão estável e otimizada.
 
-- [ ] **Tarefa 6.1 — Bateria Completa de Testes Automatizados & Acessibilidade**
-  - **Ação:** Executar a suíte integral de testes unitários, testes de integração e auditoria de acessibilidade (`src/tests/accessibility-audit.test.tsx`).
-  - **Critério de Saída:** 100% dos 334+ arquivos de teste aprovados sem falhas nem avisos.
+- [x] **Tarefa 6.1 — Bateria Completa de Testes Automatizados & Acessibilidade**
+  - **Ação:** Executar a suíte integral de testes unitários, testes de integração e auditoria de acessibilidade (`src/tests/accessibility-audit.test.tsx`):
+    - Executada a suíte de acessibilidade automatizada com motor axe-core (`accessibility-audit.test.tsx`, `keyboard-navigation.test.tsx` e `axe-sanity.test.tsx`), confirmando 0 violações de WCAG 2.1 AA em todas as páginas, diálogos e componentes;
+    - Executada a bateria completa de testes de raiz (`src/tests/`) cobrindo fidelidade arquitetural, governança de ícones sem emojis, ciclo de vida PWA, motor de cotações e auditoria de segurança;
+    - Executada a suíte integral de testes automatizados do repositório (`npm test`): **341 arquivos de teste e 2.645 testes aprovados com 100% de sucesso**.
+  - **Critério de Saída:** 100% dos 341 arquivos de teste aprovados sem falhas nem avisos (2.645 testes verdes).
 
 - [ ] **Tarefa 6.2 — Homologação de Compilação Web e PWA**
   - **Ação:** Executar `npm run build` e validar a integridade dos artefatos em `dist/`:
