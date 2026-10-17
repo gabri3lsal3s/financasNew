@@ -424,7 +424,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
               hint={
                 <span
                   className={cn(
-                    "inline-flex items-center gap-1 font-mono text-[11px] font-medium truncate max-w-full",
+                    "inline-flex items-center gap-1 font-mono text-[11px] font-medium whitespace-nowrap tabular-nums max-w-full",
                     totalReturnPnlBRL > 0
                       ? "text-positive-strong"
                       : totalReturnPnlBRL < 0
@@ -465,7 +465,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
               tone={(position.allTimeEconomicPnlBRL ?? totalReturnPnlBRL) >= 0 ? "positive" : "negative"}
               hint={
                 <span
-                  className="text-[11px] font-mono text-muted-foreground truncate"
+                  className="text-[11px] font-mono text-muted-foreground whitespace-nowrap tabular-nums"
                   title={`P&L Histórico Total: ${formatCentsAsBRL(numberToCents(position.allTimeEconomicPnlBRL ?? totalReturnPnlBRL))} | Passado Realizado: ${formatCentsAsBRL(numberToCents(position.realizedPnlBRL ?? 0))} | Aberto: ${formatCentsAsBRL(numberToCents(totalReturnPnlBRL))} | Proventos Totais: ${formatCentsAsBRL(numberToCents(position.totalDividendsBRL ?? 0))}`}
                 >
                   P&L Total ({(position.realizedPnlBRL ?? 0) >= 0 ? "+" : ""}{formatCentsAsBRL(numberToCents(position.realizedPnlBRL ?? 0))} pass.)

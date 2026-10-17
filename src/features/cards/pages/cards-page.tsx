@@ -538,7 +538,7 @@ export function CardsPage() {
                 cents={summary?.previstoBrutoCents ?? 0}
                 hint={
                   summary && summary.previstoBrutoCents !== summary.previstoPonderadoCents ? (
-                    <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] truncate">
+                    <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] whitespace-nowrap tabular-nums">
                       <span className="hidden sm:inline">Ponderada:</span>
                       <span className="sm:hidden">Pond:</span>
                       <MoneyText cents={summary.previstoPonderadoCents} tone="default" className="text-[11px] tabular-nums" />
@@ -551,7 +551,7 @@ export function CardsPage() {
                 cents={summary?.pagoCents ?? 0}
                 hint={
                   summary && summary.estornoCents > 0 ? (
-                    <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] truncate">
+                    <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] whitespace-nowrap tabular-nums">
                       <span>Estornos:</span>
                       <MoneyText cents={summary.estornoCents} tone="positive" className="text-[11px] tabular-nums" />
                     </span>
@@ -564,7 +564,7 @@ export function CardsPage() {
                 tone={summary && summary.saldoBrutoCents > 0 ? "negative" : "positive"}
                 hint={
                   summary && summary.saldoBrutoCents !== summary.saldoPonderadoCents ? (
-                    <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] truncate">
+                    <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] whitespace-nowrap tabular-nums">
                       <span className="hidden sm:inline">Ponderado:</span>
                       <span className="sm:hidden">Pond:</span>
                       <MoneyText cents={summary.saldoPonderadoCents} tone="default" className="text-[11px] tabular-nums" />

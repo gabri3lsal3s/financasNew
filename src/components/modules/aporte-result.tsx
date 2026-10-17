@@ -779,7 +779,7 @@ export function AporteResult({
                             <MoneyText
                               cents={numberToCents(eff?.effectiveAllocatedBRL ?? row.allocatedBRL)}
                               tone="portfolio"
-                              className="text-sm font-bold truncate"
+                              className="text-sm font-bold"
                             />
                             <div className="flex items-center gap-1.5 pt-0.5">
                               <label htmlFor={`mobile-qty-${row.assetId}`} className="text-[10px] text-muted-foreground">
@@ -800,7 +800,7 @@ export function AporteResult({
                                 className="h-6 w-16 px-1 text-right font-mono text-xs"
                               />
                             </div>
-                            <span className="text-[10px] text-muted-foreground font-mono truncate">
+                            <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap tabular-nums">
                               @ R$ {row.priceBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               {eff?.isQuantityCustom ? ` (sug: ${formatQuantity(row.quantity)})` : ""}
                             </span>
@@ -810,12 +810,12 @@ export function AporteResult({
                             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                               Atual ➔ Alvo
                             </span>
-                            <div className="flex items-center gap-1 font-mono text-xs truncate">
+                            <div className="flex items-center gap-1 font-mono text-xs whitespace-nowrap tabular-nums">
                               <span className="text-muted-foreground">
                                 <MoneyText cents={numberToCents(row.currentValueBRL)} tone="default" />
                               </span>
                             </div>
-                            <span className="text-[10px] font-medium text-foreground font-mono truncate">
+                            <span className="text-[10px] font-medium text-foreground font-mono whitespace-nowrap tabular-nums">
                               Alvo: <MoneyText cents={numberToCents(row.targetValueBRL)} tone="default" />
                             </span>
                           </div>

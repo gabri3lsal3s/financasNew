@@ -659,7 +659,7 @@ export function InitialPocketCostDialog({
                           {row.label}
                         </span>
                         {row.grossBalance !== undefined ? (
-                          <span className="text-[11px] font-mono text-muted-foreground truncate hidden md:inline-flex items-center gap-1">
+                          <span className="text-[11px] font-mono text-muted-foreground whitespace-nowrap tabular-nums hidden md:inline-flex items-center gap-1">
                             <span>· Saldo:</span>
                             <MoneyText cents={numberToCents(row.grossBalance)} tone="default" />
                           </span>

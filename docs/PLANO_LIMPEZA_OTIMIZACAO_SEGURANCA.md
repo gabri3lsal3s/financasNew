@@ -216,11 +216,12 @@ graph TD
     - Eliminadas 100% das classes manuais ad-hoc em badges (`text-[9px]`, `text-[9.5px]`, `text-[10px]`, `text-[11px]`, `py-0`), adotando as variantes padronizadas `<Badge size="xs" | "sm" | "md" />` (§4 item 14 de `AGENTS.md`).
   - **Critério de Saída:** 100% dos diálogos do sistema com anatomia, largura e responsividade padronizadas.
 
-- [ ] **Tarefa 3.2 — Padronização de Valores Monetários e Erradicação de `truncate`**
-  - **Ação:** Auditar exibições de moeda em cards, listas e extratos (§11 de `AGENTS.md`):
-    - Proibição absoluta de `truncate` em valores financeiros;
-    - Assegurar o uso de `<MoneyText />` ou tipografia tabular adaptativa (`tabular-nums tracking-tight whitespace-nowrap`);
-    - Centralizar formatações em `src/domain/money.ts` e `src/services/formatters.ts`.
+- [x] **Tarefa 3.2 — Padronização de Valores Monetários e Erradicação de `truncate`**
+  - **Ação:** Auditadas todas as exibições de moeda em cards, listas, tabelas e extratos conforme §4 item 11 de `AGENTS.md`:
+    - Erradicado 100% do uso direto de `truncate` sobre elementos que renderizam valores monetários ou contadores primários em `src/components/` e `src/features/`;
+    - Incorporado `whitespace-nowrap` nativamente ao primitivo `<MoneyText />` (tanto na variante animada quanto estática), garantindo imunidade a quebras de linha em qualquer resolução de tela;
+    - Substituído `truncate` pela tipografia tabular adaptativa canônica (`tabular-nums tracking-tight whitespace-nowrap` ou `whitespace-nowrap tabular-nums`) em transações, cartões, projeções, resultados de aportes, resumos de carteira, ficha de ativos e métricas de contadores do painel administrativo;
+    - Preservadas as formatações canônicas de `src/domain/money.ts` e `src/services/masks/money.ts`.
   - **Critério de Saída:** Valores monetários legíveis em qualquer largura de tela sem truncamentos indevidos.
 
 - [ ] **Tarefa 3.3 — Conformidade com a Regra de Zero Controles Nativos**

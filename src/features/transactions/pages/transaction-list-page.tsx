@@ -271,7 +271,7 @@ export function TransactionListPage() {
           tone="positive"
           hint={
             incomesTotalCents !== incomesWeightedCents ? (
-              <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] truncate">
+              <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] whitespace-nowrap tabular-nums">
                 <span className="hidden sm:inline">Ponderada:</span>
                 <span className="sm:hidden">Pond:</span>
                 <MoneyText cents={incomesWeightedCents} tone="default" className="text-[11px] tabular-nums" />
@@ -285,7 +285,7 @@ export function TransactionListPage() {
           tone="negative"
           hint={
             expensesTotalCents !== expensesWeightedCents ? (
-              <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] truncate">
+              <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] whitespace-nowrap tabular-nums">
                 <span className="hidden sm:inline">Ponderada:</span>
                 <span className="sm:hidden">Pond:</span>
                 <MoneyText cents={expensesWeightedCents} tone="default" className="text-[11px] tabular-nums" />
@@ -299,7 +299,7 @@ export function TransactionListPage() {
           tone={balanceCents >= 0 ? "positive" : "negative"}
           hint={
             balanceCents !== balanceWeightedCents ? (
-              <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] truncate">
+              <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] whitespace-nowrap tabular-nums">
                 <span className="hidden sm:inline">Ponderado:</span>
                 <span className="sm:hidden">Pond:</span>
                 <MoneyText cents={balanceWeightedCents} tone="default" className="text-[11px] tabular-nums" />

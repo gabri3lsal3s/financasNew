@@ -67,7 +67,7 @@ export function OverviewTab() {
           {metricsQuery.isLoading ? (
             <Skeleton className="h-8 w-20" />
           ) : (
-            <div className="tabular-nums truncate text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            <div className="tabular-nums whitespace-nowrap text-xl font-bold tracking-tight text-foreground sm:text-2xl">
               <NumberTicker value={metrics?.total_users ?? 0} />
             </div>
           )}
@@ -82,7 +82,7 @@ export function OverviewTab() {
           {metricsQuery.isLoading ? (
             <Skeleton className="h-8 w-20" />
           ) : (
-            <div className="tabular-nums truncate text-xl font-bold tracking-tight text-positive-strong sm:text-2xl">
+            <div className="tabular-nums whitespace-nowrap text-xl font-bold tracking-tight text-positive-strong sm:text-2xl">
               <NumberTicker value={metrics?.active_users ?? 0} />
             </div>
           )}
@@ -97,7 +97,7 @@ export function OverviewTab() {
           {metricsQuery.isLoading ? (
             <Skeleton className="h-8 w-20" />
           ) : (
-            <div className="tabular-nums truncate text-xl font-bold tracking-tight text-warning-strong sm:text-2xl">
+            <div className="tabular-nums whitespace-nowrap text-xl font-bold tracking-tight text-warning-strong sm:text-2xl">
               <NumberTicker value={metrics?.pending_users ?? 0} />
             </div>
           )}
@@ -112,7 +112,7 @@ export function OverviewTab() {
           {metricsQuery.isLoading ? (
             <Skeleton className="h-8 w-20" />
           ) : (
-            <div className="tabular-nums truncate text-xl font-bold tracking-tight text-critical-strong sm:text-2xl">
+            <div className="tabular-nums whitespace-nowrap text-xl font-bold tracking-tight text-critical-strong sm:text-2xl">
               <NumberTicker value={metrics?.suspended_users ?? 0} />
             </div>
           )}
@@ -127,7 +127,7 @@ export function OverviewTab() {
           {metricsQuery.isLoading ? (
             <Skeleton className="h-8 w-20" />
           ) : (
-            <div className="tabular-nums truncate text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            <div className="tabular-nums whitespace-nowrap text-xl font-bold tracking-tight text-foreground sm:text-2xl">
               <NumberTicker value={metrics?.total_invites ?? 0} />
             </div>
           )}
@@ -142,7 +142,7 @@ export function OverviewTab() {
           {metricsQuery.isLoading ? (
             <Skeleton className="h-8 w-20" />
           ) : (
-            <div className="tabular-nums truncate text-xl font-bold tracking-tight text-positive-strong sm:text-2xl">
+            <div className="tabular-nums whitespace-nowrap text-xl font-bold tracking-tight text-positive-strong sm:text-2xl">
               <NumberTicker value={metrics?.used_invites ?? 0} />
             </div>
           )}

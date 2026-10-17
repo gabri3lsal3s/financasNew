@@ -112,7 +112,7 @@ export function MoneyText({
 
   if (animated) {
     return (
-      <span className={cn("num", variantClass[variant], toneClass[resolvedTone], className)} {...props}>
+      <span className={cn("num whitespace-nowrap", variantClass[variant], toneClass[resolvedTone], className)} {...props}>
         {prefix}
         <NumberTicker
           value={Math.abs(cents)}
@@ -125,7 +125,7 @@ export function MoneyText({
   }
 
   return (
-    <span className={cn("num", variantClass[variant], toneClass[resolvedTone], className)} {...props}>
+    <span className={cn("num whitespace-nowrap", variantClass[variant], toneClass[resolvedTone], className)} {...props}>
       {`${prefix}${formatCentsAsCurrency(Math.abs(cents), currency, { hideCents: shouldHideCents })}`}
     </span>
   );

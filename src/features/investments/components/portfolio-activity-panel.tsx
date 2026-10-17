@@ -524,7 +524,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                   {/* Linha 2 no Mobile / Lado Direito no Desktop: Quantidade/Preço à esquerda e Ações à direita */}
                   <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto pl-10.5 sm:pl-0 pt-0.5 sm:pt-0">
                     {/* Quantidade e Preço Unitário com respiro */}
-                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono truncate">
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono min-w-0">
                       {item.quantity && item.quantity > 0 && item.price && item.price > 0 ? (
                         <span className="whitespace-nowrap">
                           {item.quantity} un @ <MoneyText cents={numberToCents(item.price)} currency={itemCurrency} tone="default" />

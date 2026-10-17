@@ -346,7 +346,7 @@ export function AssetDetailSheet({
                 <span className="font-mono text-sm sm:text-base font-bold text-foreground whitespace-nowrap tabular-nums">
                   <MoneyText cents={numberToCents(redeemedAmount)} />
                 </span>
-                <span className="text-[10px] text-muted-foreground font-mono truncate">
+                <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap tabular-nums">
                   {totalDividendsNative > 0 ? (isUSD ? `+ $ ${totalDividendsNative.toFixed(2)} proventos` : `+ R$ ${totalDividendsNative.toFixed(2)} proventos`) : "Crédito em caixa"}
                 </span>
               </div>
@@ -391,7 +391,7 @@ export function AssetDetailSheet({
                 <span className="font-mono text-sm sm:text-base font-bold text-foreground whitespace-nowrap tabular-nums">
                   <MoneyText cents={numberToCents(isTotalValue ? totalCost : averageCost)} currency={isTotalValue ? "BRL" : currentAsset.currency} />
                 </span>
-                <span className="text-[10px] text-muted-foreground font-mono truncate">
+                <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap tabular-nums">
                   {isTotalValue ? "Aporte inicial" : <>Custo: <MoneyText cents={numberToCents(totalCost)} currency="BRL" /></>}
                 </span>
               </div>
@@ -470,14 +470,14 @@ export function AssetDetailSheet({
                     {yieldOnCostPct.toFixed(2)}%
                   </span>
                   {accumulatedDividendsNative > 0 ? (
-                    <div className="flex flex-col gap-0.5 min-w-0 overflow-hidden">
-                      <span className="text-[10px] text-muted-foreground font-mono truncate">
+                    <div className="flex flex-col gap-0.5 min-w-0 overflow-x-auto no-scrollbar">
+                      <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap tabular-nums">
                         Extrato: <MoneyText cents={numberToCents(periodicDividendsNative)} currency={currentAsset.currency} />
                       </span>
-                      <span className="text-[10px] text-muted-foreground font-mono truncate">
+                      <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap tabular-nums">
                         Acumulados: <MoneyText cents={numberToCents(accumulatedDividendsNative)} currency={currentAsset.currency} />
                       </span>
-                      <span className="text-[10px] text-muted-foreground font-mono font-semibold truncate">
+                      <span className="text-[10px] text-muted-foreground font-mono font-semibold whitespace-nowrap tabular-nums">
                         Total: <MoneyText cents={numberToCents(totalDividendsNative)} currency={currentAsset.currency} />
                         {isUSD && totalDividendsNative > 0 ? (
                           <span className="font-normal text-muted-foreground ml-1">
@@ -487,7 +487,7 @@ export function AssetDetailSheet({
                       </span>
                     </div>
                   ) : (
-                    <span className="text-[10px] text-muted-foreground font-mono truncate">
+                    <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap tabular-nums">
                       Proventos: <MoneyText cents={numberToCents(totalDividendsNative)} currency={currentAsset.currency} />
                       {isUSD && totalDividendsNative > 0 ? (
                         <span className="font-normal text-muted-foreground ml-1">
