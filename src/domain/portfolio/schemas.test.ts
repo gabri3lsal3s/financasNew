@@ -221,4 +221,33 @@ describe("schemas — Módulo de Investimentos (Fase 41)", () => {
       ).toThrow();
     });
   });
+
+  describe("defensive validation — Sanitização e Limites de Overflow", () => {
+    it("sanitiza tags HTML e caracteres de controle em notas e setor", () => {
+      const parsed = newAssetSchema.parse({
+        ticker: "WEGE3",
+        asset_class: "<b>Ações</b>",
+        sector: "<script>alert(1)</script>Indústria\u0000",
+        quantity: 10,
+        average_price: 45.2,
+        notes: "<p>Comprado no <i>rompimento</i></p>",
+      });
+
+      expect(parsed.asset_class).toBe("Ações");
+      expect(parsed.sector).toBe("alert(1)Indústria");
+      expect(parsed.notes).toBe("Comprado no rompimento");
+    });
+
+    it("rejeita valores monetários que excedem MAX_MONEY_AMOUNT", () => {
+      expect(() =>
+        newAssetSchema.parse({
+          ticker: "WEGE3",
+          asset_class: "Ações",
+          quantity: 10,
+          average_price: 10 ** 12,
+        }),
+      ).toThrow();
+    });
+  });
 });
+

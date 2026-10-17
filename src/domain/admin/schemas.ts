@@ -1,9 +1,11 @@
 import { z } from "zod";
 import { SUBSCRIPTION_TIERS } from "@/types";
+import { cleanTextSchema } from "@/domain/validation";
 
 export const createModularInviteSchema = z.object({
   code: z
     .string()
+    .trim()
     .min(3, "O código deve ter pelo menos 3 caracteres.")
     .max(50, "O código não pode ultrapassar 50 caracteres.")
     .regex(/^[A-Za-z0-9_-]+$/, "Código contém caracteres inválidos."),
@@ -11,8 +13,8 @@ export const createModularInviteSchema = z.object({
   custom_trial_days: z.number().int().positive("Número de dias deve ser positivo.").nullable().optional(),
   max_uses: z.number().int().positive("Limite de usos deve ser pelo menos 1.").default(1),
   expires_at: z.string().datetime().nullable().optional(),
-  target_email: z.string().email("E-mail inválido.").nullable().optional().or(z.literal("")),
-  notes: z.string().max(500, "Notas não podem ultrapassar 500 caracteres.").nullable().optional(),
+  target_email: z.string().trim().email("E-mail inválido.").nullable().optional().or(z.literal("")),
+  notes: cleanTextSchema(500).nullable().optional(),
   module_grants: z.record(z.string(), z.enum(["none", "read", "write", "admin"])).default({}),
 });
 

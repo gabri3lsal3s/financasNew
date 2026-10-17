@@ -289,4 +289,5 @@ export type {
   ProportionalCategoryOutput,
   ProportionalBudgetResult,
 } from "./proportional";
+export * from "./schemas";
 

@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { parcelar, toISODate } from "@/domain/money";
 import { resolveBillCompetence } from "@/domain/competence";
+import { cleanTextSchema, moneyCentsSchema } from "@/domain/validation";
 import type { RecurrenceFrequency, RecurrenceRule } from "@/domain/recurrences";
 import type { DebtType, InstallmentInput, PaymentMethod, ReceiveType } from "@/types";
 
@@ -128,7 +129,7 @@ export function effectiveReportWeight(state: LaunchState): number {
 
 export const step1ValueSchema = z.object({
   type: z.enum(["expense", "income"]),
-  valueCents: z.number().int().positive("O valor deve ser maior que zero."),
+  valueCents: moneyCentsSchema(),
   installments: z
     .number()
     .int()
@@ -137,7 +138,7 @@ export const step1ValueSchema = z.object({
 });
 
 export const step2CategorySchema = z.object({
-  categoryId: z.string().trim().min(1, "Selecione uma categoria."),
+  categoryId: cleanTextSchema(50, { min: 1, requiredMessage: "Selecione uma categoria." }),
 });
 
 export const step3DetailsSchema = z
@@ -147,19 +148,19 @@ export const step3DetailsSchema = z
     paymentMethod: z.enum(["cash", "debit", "credit_card", "pix", "transfer", "other"]),
     cardId: z.string().nullable(),
     receiveType: z.enum(["cash", "pix", "transfer", "other"]),
-    description: z.string(),
+    description: cleanTextSchema(255).default(""),
     reportWeight: z.number(),
-    reportCustomAmountCents: z.number().int(),
+    reportCustomAmountCents: moneyCentsSchema({ allowZero: true }),
     debtEnabled: z.boolean(),
     debtType: z.enum(["payable", "receivable"]),
-    debtAmountCents: z.number().int(),
+    debtAmountCents: moneyCentsSchema({ allowZero: true }),
     debtDueDate: z.string(),
     recurring: z.boolean(),
     recurrenceFrequency: z.enum(["weekly", "monthly", "quarterly", "yearly"]),
     recurrenceEndMode: z.enum(["date", "count"]),
     recurrenceEndDate: z.string(),
     recurrenceCount: z.number().int(),
-    valueCents: z.number().int(),
+    valueCents: moneyCentsSchema({ allowZero: true }),
   })
   .superRefine((data, ctx) => {
     if (data.type === "expense" && data.paymentMethod === "credit_card" && (!data.cardId || data.cardId.trim() === "")) {
@@ -207,19 +208,19 @@ export const launchStateSchema = z
   .object({
     step: z.number().int().min(1).max(4),
     type: z.enum(["expense", "income"]),
-    valueCents: z.number().int().positive("O valor deve ser maior que zero."),
+    valueCents: moneyCentsSchema(),
     installments: z.number().int().min(1).max(60),
-    categoryId: z.string().trim().min(1, "Selecione uma categoria."),
+    categoryId: cleanTextSchema(50, { min: 1, requiredMessage: "Selecione uma categoria." }),
     date: z.string().min(1, "Informe a data do lançamento."),
     paymentMethod: z.enum(["cash", "debit", "credit_card", "pix", "transfer", "other"]),
     cardId: z.string().nullable(),
     receiveType: z.enum(["cash", "pix", "transfer", "other"]),
-    description: z.string(),
+    description: cleanTextSchema(255).default(""),
     reportWeight: z.number(),
-    reportCustomAmountCents: z.number().int(),
+    reportCustomAmountCents: moneyCentsSchema({ allowZero: true }),
     debtEnabled: z.boolean(),
     debtType: z.enum(["payable", "receivable"]),
-    debtAmountCents: z.number().int(),
+    debtAmountCents: moneyCentsSchema({ allowZero: true }),
     debtDueDate: z.string(),
     recurring: z.boolean(),
     recurrenceFrequency: z.enum(["weekly", "monthly", "quarterly", "yearly"]),

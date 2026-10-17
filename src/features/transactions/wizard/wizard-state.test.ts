@@ -327,5 +327,30 @@ describe("Validação Zod dos Passos do Wizard (D10 / Fase 17)", () => {
     expect(step3Result.success).toBe(false);
     expect(step3Result.error).toBe("Selecione o cartão de crédito.");
   });
+
+  it("sanitiza strings de descrição removendo tags HTML e caracteres de controle", () => {
+    const rawState = {
+      ...defaultLaunchState(),
+      valueCents: 15000,
+      categoryId: "cat-123",
+      description: "  <script>alert(1)</script>Compra <b>Padaria</b>\u0000  ",
+    };
+    const parsed = step3DetailsSchema.safeParse(rawState);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.description).toBe("alert(1)Compra Padaria");
+    }
+  });
+
+  it("rejeita valores monetários que ultrapassam o limite seguro contra overflow", () => {
+    const overflowState = {
+      type: "expense" as const,
+      valueCents: 10 ** 14,
+      installments: 1,
+    };
+    const parsed = step1ValueSchema.safeParse(overflowState);
+    expect(parsed.success).toBe(false);
+  });
 });
+
 

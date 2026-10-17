@@ -37,4 +37,17 @@ describe("admin Zod schemas", () => {
     const parsed = adminSetSubscriptionSchema.safeParse(valid);
     expect(parsed.success).toBe(true);
   });
+
+  it("deve sanitizar tags HTML e caracteres de controle nas notas do convite", () => {
+    const withHtml = {
+      code: "VIP-SECURE",
+      notes: "<b>Concessão</b> <script>alert(1)</script>especial\u0000",
+    };
+
+    const parsed = createModularInviteSchema.safeParse(withHtml);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.notes).toBe("Concessão alert(1)especial");
+    }
+  });
 });

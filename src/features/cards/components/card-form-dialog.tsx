@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Alert, Button, Checkbox, ColorPicker, ConfirmDialog, Input, Modal, ModalFooter, MoneyInput, MoneyText, NumberStepper } from "@/components/ui";
+import { creditCardFormSchema } from "@/domain/cards";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateCard, useDeleteCard, useUpdateCard } from "@/state";
 import type { CreditCard, CreditCardForm } from "@/types";
@@ -41,8 +42,8 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
 
   const handleSubmit = async () => {
     setError(null);
-    const form: CreditCardForm = {
-      name: name.trim(),
+    const rawForm = {
+      name,
       brand: brand.trim() || null,
       credit_limit: limitCents > 0 ? limitCents / 100 : null,
       closing_day: closingDay,
@@ -50,6 +51,12 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
       color: color.trim() || null,
       is_active: isActive,
     };
+    const parsed = creditCardFormSchema.safeParse(rawForm);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Dados do cartão inválidos");
+      return;
+    }
+    const form: CreditCardForm = parsed.data;
     try {
       if (card) {
         await updateCard.mutateAsync({ id: card.id, input: form });

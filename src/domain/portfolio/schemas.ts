@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { cleanTextSchema, MAX_MONEY_AMOUNT, sanitizeString } from "@/domain/validation";
 
 /**
  * Regex para validação de tickers de ativos:
@@ -12,8 +13,7 @@ const TICKER_REGEX = /^[A-Z0-9.\-+=/%\s]{1,60}$/;
 /** Schema para sanitização e validação de ticker de ativo. */
 export const assetTickerSchema = z
   .string()
-  .trim()
-  .transform((val) => val.toUpperCase())
+  .transform((val) => sanitizeString(val).toUpperCase())
   .pipe(
     z
       .string()
@@ -22,19 +22,27 @@ export const assetTickerSchema = z
       .regex(TICKER_REGEX, "Formato de código inválido (use letras maiúsculas, números, espaços ou caracteres permitidos)"),
   );
 
-const assetClassSchema = z
-  .string()
-  .trim()
-  .min(1, "Selecione ou informe a classe do ativo")
-  .max(50, "A classe deve ter no máximo 50 caracteres");
+const assetClassSchema = cleanTextSchema(50, { min: 1, requiredMessage: "Selecione ou informe a classe do ativo" });
 
 const assetSectorSchema = z
   .string()
-  .trim()
-  .max(100, "O setor deve ter no máximo 100 caracteres")
   .nullable()
   .optional()
-  .transform((val) => (val && val.trim().length > 0 ? val.trim() : null));
+  .transform((val) => {
+    if (!val) return null;
+    const clean = sanitizeString(val);
+    return clean.length > 0 ? clean.slice(0, 100) : null;
+  });
+
+const notesSchema = z
+  .string()
+  .nullable()
+  .optional()
+  .transform((val) => {
+    if (!val) return null;
+    const clean = sanitizeString(val);
+    return clean.length > 0 ? clean.slice(0, 500) : null;
+  });
 
 const assetCurrencySchema = z.enum(["BRL", "USD"] as const, {
   message: "Moeda inválida (escolha BRL ou USD)",
@@ -95,7 +103,8 @@ export const newAssetSchema = z.object({
     .min(0, "A quantidade não pode ser negativa"),
   average_price: z
     .number({ message: "Informe um preço médio válido" })
-    .min(0, "O preço médio não pode ser negativo"),
+    .min(0, "O preço médio não pode ser negativo")
+    .max(MAX_MONEY_AMOUNT, "O preço médio não pode ultrapassar o limite monetário permitido"),
   target_percentage: z
     .number({ message: "Informe um percentual válido" })
     .min(0, "A meta não pode ser inferior a 0%")
@@ -106,20 +115,17 @@ export const newAssetSchema = z.object({
   accumulated_dividends: z
     .number({ message: "Informe um valor válido para proventos acumulados" })
     .min(0, "O valor de proventos acumulados não pode ser negativo")
+    .max(MAX_MONEY_AMOUNT, "O valor de proventos acumulados ultrapassa o limite monetário permitido")
     .default(0),
   /** Dividendo mensal estimado por cota para alimentar a Bola de Neve (Cenário B). */
   estimated_monthly_dividend_per_share: z
     .number({ message: "Informe um valor válido para o dividendo estimado por cota" })
     .min(0, "O dividendo estimado por cota não pode ser negativo")
+    .max(MAX_MONEY_AMOUNT, "O dividendo estimado por cota ultrapassa o limite monetário permitido")
     .default(0),
   /** Metadados opcionais de títulos de renda fixa privada / parametrizada (Fase 63/72). */
   fixed_income_metadata: fixedIncomeMetadataSchema.nullable().optional(),
-  notes: z
-    .string()
-    .max(500, "As notas devem ter no máximo 500 caracteres")
-    .nullable()
-    .optional()
-    .transform((val) => (val && val.trim().length > 0 ? val.trim() : null)),
+  notes: notesSchema,
 });
 
 export type NewAssetInput = z.infer<typeof newAssetSchema>;
@@ -149,20 +155,17 @@ export const quickTransactionSchema = z
       .min(0, "A quantidade não pode ser negativa"),
     price: z
       .number({ message: "Informe um preço válido" })
-      .min(0, "O preço não pode ser negativo"),
+      .min(0, "O preço não pode ser negativo")
+      .max(MAX_MONEY_AMOUNT, "O preço ultrapassa o limite monetário permitido"),
     total: z
       .number({ message: "Informe o valor total" })
-      .min(0, "O total não pode ser negativo"),
+      .min(0, "O total não pode ser negativo")
+      .max(MAX_MONEY_AMOUNT, "O total ultrapassa o limite monetário permitido"),
     /** Opcional: registrar saída/entrada no Caixa da carteira (ativo 1:1). */
     syncCash: z.boolean().default(false),
     /** Opcional: registrar como aporte financeiro em portfolio_contributions (para compras). */
     recordContribution: z.boolean().default(true),
-    notes: z
-      .string()
-      .max(500, "As notas devem ter no máximo 500 caracteres")
-      .nullable()
-      .optional()
-      .transform((val) => (val && val.trim().length > 0 ? val.trim() : null)),
+    notes: notesSchema,
   })
   .refine(
     (data) => {
@@ -201,25 +204,23 @@ export const assetMetadataSchema = z.object({
   average_price: z
     .number({ message: "Informe um preço médio válido" })
     .min(0, "O preço médio não pode ser negativo")
+    .max(MAX_MONEY_AMOUNT, "O preço médio ultrapassa o limite monetário permitido")
     .optional(),
   /** Proventos históricos acumulados anteriores ao extrato periódico. Alimenta YoC e Bola de Neve. */
   accumulated_dividends: z
     .number({ message: "Informe um valor válido para proventos acumulados" })
     .min(0, "O valor de proventos acumulados não pode ser negativo")
+    .max(MAX_MONEY_AMOUNT, "O valor de proventos acumulados ultrapassa o limite monetário permitido")
     .default(0),
   /** Dividendo mensal estimado por cota para alimentar a Bola de Neve (Cenário B). */
   estimated_monthly_dividend_per_share: z
     .number({ message: "Informe um valor válido para o dividendo estimado por cota" })
     .min(0, "O dividendo estimado por cota não pode ser negativo")
+    .max(MAX_MONEY_AMOUNT, "O dividendo estimado por cota ultrapassa o limite monetário permitido")
     .default(0),
   /** Metadados opcionais de títulos de renda fixa privada / parametrizada (Fase 63/72). */
   fixed_income_metadata: fixedIncomeMetadataSchema.nullable().optional(),
-  notes: z
-    .string()
-    .max(500, "As notas devem ter no máximo 500 caracteres")
-    .nullable()
-    .optional()
-    .transform((val) => (val && val.trim().length > 0 ? val.trim() : null)),
+  notes: notesSchema,
 });
 
 export type AssetMetadataInput = z.infer<typeof assetMetadataSchema>;

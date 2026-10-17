@@ -395,10 +395,27 @@ graph TD
     - Expandida a suíte de testes em `src/tests/security-audit.test.ts` com verificações automatizadas de regressão cobrindo o código fonte de `src/`, a lista autorizada de `import.meta.env`, a ausência de `process.env` e o scan de segurança nos chunks de `dist/`.
   - **Critério de Saída:** Zero segredos confidenciais expostos no código client-side.
 
-- [ ] **Tarefa 5.4 — Sanitização de Inputs e Validação Defensiva com Zod**
+- [x] **Tarefa 5.4 — Sanitização de Inputs e Validação Defensiva com Zod**
   - **Ação:** Auditar schemas Zod em mutations e formulários:
-    - Validar sanitização estrita de strings (prevenção de injeção de HTML/XSS e caracteres de controle);
-    - Validar limites em centavos para evitar overflows em cálculos monetários.
+    - Criado módulo central de sanitização e validação defensiva em `src/domain/validation/sanitization.ts`:
+      - Função pura `sanitizeString` para higienização estrita de textos: remoção de null bytes (`\u0000`), caracteres de controle perigosos (`\u0001-\u0008`, `\u000B`, `\u000C`, `\u000E-\u001F`, `\u007F-\u009F`), remoção de tags HTML/XML para prevenir XSS armazenado, e `trim()` de espaços em branco;
+      - Schema `cleanTextSchema(maxLength, options)` com validação de limites de tamanho mínimo e máximo;
+      - Schema `moneyCentsSchema(options)` com teto defensivo `MAX_MONEY_CENTS = 99_999_999_99` (R$ 999.999.999,99) contra overflow em inteiros de centavos;
+      - Schema `moneyAmountSchema(options)` com teto defensivo `MAX_MONEY_AMOUNT = 999_999_999.99` e restrição a 2 casas decimais, alinhado à precisão `numeric(12,2)` do PostgreSQL;
+    - Blindagem do Wizard de Lançamentos de Transações (`src/features/transactions/wizard/wizard-state.ts`):
+      - `step1ValueSchema`: teto monetário em centavos e parcelamento estrito (1 a 60);
+      - `step2CategorySchema` e `step3DetailsSchema`: descrição sanitizada contra HTML/XSS, valores de lembrete e dívida vinculada protegidos contra overflow;
+      - `launchStateSchema`: validação e sanitização integral de todos os campos antes da submissão;
+    - Blindagem dos Schemas do Módulo de Investimentos (`src/domain/portfolio/schemas.ts`):
+      - `assetTickerSchema`: sanitização e normalização estrita de tickers (B3, Cripto, Renda Fixa, Internacional);
+      - Schemas de ativos, ordens rápidas e metadados com tetos monetários contra overflow em preços, totais e dividendos;
+      - Sanitização e limitação de observações (`notesSchema`);
+    - Blindagem dos Schemas de Administração (`src/domain/admin/schemas.ts`): sanitização de notas de convites modulares;
+    - Criação de Schemas de Validação de Borda para Cartões, Orçamentos e Dívidas:
+      - `src/domain/cards/schemas.ts`: `creditCardFormSchema` (com integração direta em `CardFormDialog`) e `cardPaymentInputSchema`;
+      - `src/domain/budgets/schemas.ts`: `budgetLimitInputSchema` e `batchBudgetLimitsInputSchema`;
+      - `src/domain/debts/schemas.ts`: `debtInputSchema` e `debtSettlementSchema`;
+    - Suíte de testes dedicada cobrindo sanitização de HTML/XSS, controle de caracteres e rejeição de overflows monetários (`sanitization.test.ts`, `wizard-state.test.ts`, `schemas.test.ts` de cartões, orçamentos, dívidas, investimentos e admin).
   - **Critério de Saída:** Validação defensiva completa em todas as bordas de entrada de dados.
 
 - [ ] **Tarefa 5.5 — Fortalecimento Nativo Android & Privacidade de Sessão**
