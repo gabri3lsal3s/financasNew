@@ -97,9 +97,9 @@
     │   ├── ui/                    # PRIMITIVOS genéricos (sem domínio): button (+ button-variants), input,
     │   │   │                      #   numeric-input (integração bidirecional c/ calculadora decimal livre),
     │   │   │                      #   card, badge, modal, responsive-dialog (F55 — drawer mobile + modal desktop),
-    │   │   │                      #   tabs, skeleton, empty-state, virtual-list (F5.5), toast, toast-host (F30),
+    │   │   │                      #   tabs, skeleton, empty-state, toast, toast-host (F30),
     │   │   │                      #   print-sheet, number-ticker, sparkline (F8), color-picker,
-    │   │   │                      #   icon-picker, live-pulse-beacon (F11), tooltip (F25), popover,
+    │   │   │                      #   icon-picker, live-pulse-beacon (F11), popover,
     │   │   │                      #   number-stepper-input, error-state (v1.25 — Alert + "Tentar novamente")…
     │   │   └── index.ts
     │   ├── modules/               # Componentes de DOMÍNIO reutilizáveis: stat-card (F56 — auto-fit 7+ dígitos),
@@ -117,7 +117,7 @@
     │   │   │                      #   pending-suggestions-card (card discreto de transações capturadas do assistente passivo),
     │   │   │                      #   prediction-suggestions (F21 — autopreenchimento preditivo),
     │   │   │                      #   export-data-hub (F22), monthly-close-print-view (F22),
-    │   │   │                      #   emergency-fund-gauge + fire-projection-chart + planning-section (F24),
+    │   │   │                      #   fire-projection-chart + planning-section (F24),
     │   │   │                      #   aporte-result (F4/F31 — checklist interativo de aportes),
     │   │   │                      #   cash-kpi-card (card exclusivo de saldo em Caixa & Liquidez com variantes banner e card),
     │   │   │                      #   reports/ (report-document-layout, report-header, report-footer, report-kpi-grid,
@@ -196,7 +196,6 @@
     │   ├── preferences/           #   F11: Modos de Experiência (presets, detecção, metadados)
     │   ├── projection/            #   gasto disponível, ritmo, fim de mês, pendências
     │   ├── search/                #   busca global: normalização, scoring, bônus de recência
-    │   ├── virtualization/        #   janela de renderização de listas (F5.5)
     │   ├── calculator/            #   motor puro de operações e divisão de parcelas (F9)
     │   ├── predictions/           #   predição de entrada (F21): similaridade de descrição,
     │   │                          #     inferência de categoria/forma/cartão e habituais

@@ -170,11 +170,12 @@ graph TD
 ### FASE 2: Purga de Código Morto, Arquivos Órfãos & Desinchaço de Dependências
 > **Objetivo:** Eliminar arquivos sem referência, exports não consumidos e dependências fantasmas sem afetar nenhuma funcionalidade.
 
-- [ ] **Tarefa 2.1 — Remoção de Arquivos Mortos e Componentes Abandonados**
+- [x] **Tarefa 2.1 — Remoção de Arquivos Mortos e Componentes Abandonados**
   - **Ação:** Cruzar o relatório de diagnóstico da Fase 0 com a árvore de imports:
-    - Remover componentes visuais, diálogos ou hooks descartados que não são importados direta ou dinamicamente por nenhuma tela ou teste ativo;
-    - Eliminar arquivos de teste obsoletos de funcionalidades descontinuadas.
-  - **Trava de Segurança:** Verificar se o arquivo não é referenciado em lazy imports, manifestos PWA, atalhos nativos ou scripts operacionais.
+    - Removidos 10 arquivos órfãos / código morto: `emergency-fund-gauge.tsx` (+teste), `feature-gate.tsx` (+teste), `tooltip.tsx` (+teste), `virtual-list.tsx` (+teste) e `domain/virtualization/index.ts` (+teste);
+    - Conectado barrel canônico `subscription/index.ts` em `components/modules/index.ts`;
+    - Atualizado `docs/PROJECT_STRUCTURE.md` removendo as referências a arquivos excluídos.
+  - **Trava de Segurança:** Verificado que nenhum arquivo excluído possuía referências em lazy imports, rotas, manifestos PWA, atalhos nativos ou scripts operacionais.
   - **Critério de Saída:** Exclusão cirúrgica de todos os arquivos órfãos confirmados.
 
 - [ ] **Tarefa 2.2 — Purga de Exports Públicos Não Utilizados**
