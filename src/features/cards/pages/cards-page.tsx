@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { lazy, Suspense, useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Download, FileUp, Plus, Printer, Repeat, Trash2, Undo2, WalletCards, Zap } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, MoneyText, Skeleton } from "@/components/ui";
@@ -46,9 +46,14 @@ import {
 } from "@/state";
 import { CardFormDialog } from "@/features/cards/components/card-form-dialog";
 import { PaymentDialog } from "@/features/cards/components/payment-dialog";
-import { StatementImportDialog } from "@/features/cards/components/statement-import-dialog";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import type { CardPayment, CreditCard, Expense } from "@/types";
+
+const StatementImportDialog = lazy(() =>
+  import("@/features/cards/components/statement-import-dialog").then((m) => ({
+    default: m.StatementImportDialog,
+  })),
+);
 import { cn } from "@/lib/utils";
 
 type PaymentMode = "payment" | "refund" | null;
@@ -858,12 +863,16 @@ export function CardsPage() {
         />
       ) : null}
 
-      <StatementImportDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        card={selectedCard}
-        competenceMonth={effectiveMonth}
-      />
+      {importOpen && (
+        <Suspense fallback={null}>
+          <StatementImportDialog
+            open={importOpen}
+            onOpenChange={setImportOpen}
+            card={selectedCard}
+            competenceMonth={effectiveMonth}
+          />
+        </Suspense>
+      )}
 
       <ExpenseDetailDialog
         expense={selectedExpense}

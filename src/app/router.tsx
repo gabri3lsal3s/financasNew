@@ -2,8 +2,11 @@ import { lazy, Suspense, useEffect } from "react";
 import { Navigate, Outlet, BrowserRouter, Route, Routes, useLocation, useNavigate } from "react-router";
 import { appRoutes } from "@/app/routes";
 import { LoadingScreen, PageShell } from "@/components/layout";
-import { FloatingCalculator } from "@/components/modules/floating-calculator";
 import { RequireActiveAccount, RequireAdmin, RequireFeature } from "@/components/routing";
+
+const FloatingCalculator = lazy(() =>
+  import("@/components/modules/floating-calculator").then((m) => ({ default: m.FloatingCalculator })),
+);
 import { useAuth } from "@/hooks/use-auth";
 import { useMinimumLoading } from "@/hooks/use-minimum-loading";
 import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
@@ -143,7 +146,9 @@ function RequireAuth() {
   return (
     <div key={session.user.id} className="contents">
       {/* Utilitários globais (F9): disponíveis em todas as telas autenticadas */}
-      <FloatingCalculator />
+      <Suspense fallback={null}>
+        <FloatingCalculator />
+      </Suspense>
       <Outlet />
     </div>
   );

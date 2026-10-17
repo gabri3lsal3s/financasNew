@@ -270,11 +270,18 @@ graph TD
     - Expandido `src/tests/pwa-audit.test.ts` com validações automáticas de integridade vetorial e teto de tamanho para assets estáticos.
   - **Critério de Saída:** Redução de múltiplos megabytes nos assets estáticos servidos pelo app.
 
-- [ ] **Tarefa 4.2 — Code-Splitting Fino e Lazy Loading de Rotas Secundárias**
+- [x] **Tarefa 4.2 — Code-Splitting Fino e Lazy Loading de Rotas Secundárias**
   - **Ação:** Auditar `src/app/router.tsx` e o grafo de dependências do Vite:
-    - Garantir lazy loading via `React.lazy` para rotas secundárias ou pesadas (Relatórios analíticos, Painel Admin, Assistentes de importação de extrato, Telas de Checkout SaaS);
-    - Configurar prefetch inteligente em idle para rotas de alta frequência.
-  - **Critério de Saída:** Redução drástica do tamanho do chunk inicial `index.js`.
+    - Isolados em chunks dedicados sob demanda (`React.lazy` + `Suspense`) os assistentes e overlays de importação/criação pesados:
+      - `BankStatementImportDialog` em `TransactionListPage` (redução de 46.60 kB para 22.57 kB no chunk da página, -51.5%);
+      - `StatementImportDialog` em `CardsPage` (redução de 61.71 kB para 38.17 kB no chunk da página, -38.1%);
+      - `LaunchWizard` em `PageShell` (redução de 429.47 kB para 369.37 kB no chunk de layout presente em todas as rotas, -60.1 kB);
+      - `FloatingCalculator` em `AppRouter` (isolado em chunk próprio sob demanda de 10.57 kB);
+      - Redução no chunk compartilhado de estado (`state.js`) de 291.37 kB para 137.55 kB (-52.8%);
+      - Redução do chunk inicial `index.js` de 220.03 kB para 209.74 kB (-10.3 kB);
+    - Calibrado `useRoutePrefetch` em `src/hooks/use-route-prefetch.ts` com proteção de rede (ignora prefetch silenciosamente quando offline ou em modo `saveData`);
+    - Expandidos `src/app/router.test.tsx` e `src/components/layout/page-shell.test.tsx` com validação de resolução assíncrona de rotas/overlays lazy.
+  - **Critério de Saída:** Redução drástica do tamanho do chunk inicial `index.js` e das páginas primárias do app.
 
 - [ ] **Tarefa 4.3 — Calibração do Rollup e Vendor Chunks no Vite**
   - **Ação:** Configurar `manualChunks` em `vite.config.ts`:

@@ -16,6 +16,18 @@ function adjacentPaths(current: string): string[] {
   return neighbors.filter((path): path is string => Boolean(path));
 }
 
+interface NetworkConnection {
+  saveData?: boolean;
+}
+
+function shouldSkipPrefetch(): boolean {
+  if (typeof navigator === "undefined") return true;
+  if (typeof navigator.onLine === "boolean" && !navigator.onLine) return true;
+  const conn = (navigator as unknown as { connection?: NetworkConnection }).connection;
+  if (conn?.saveData) return true;
+  return false;
+}
+
 /**
  * Pre-fetching de rotas vizinhas (F23, entrega 3).
  *
@@ -29,7 +41,10 @@ export function useRoutePrefetch(): void {
   const location = useLocation();
 
   useEffect(() => {
+    if (shouldSkipPrefetch()) return;
+
     const schedule = (): void => {
+      if (shouldSkipPrefetch()) return;
       const paths = [...new Set([...PRIMARY_PATHS, ...adjacentPaths(location.pathname)])].filter(
         (path) => path !== location.pathname,
       );

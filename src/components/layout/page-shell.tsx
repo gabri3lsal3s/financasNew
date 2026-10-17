@@ -1,4 +1,4 @@
-import { Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { Outlet, useLocation, useSearchParams } from "react-router";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "@/components/layout/bottom-nav";
@@ -12,8 +12,11 @@ import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Skeleton } from "@/components/ui";
-import { LaunchWizard } from "@/features/transactions";
 import type { LaunchState } from "@/features/transactions/wizard/wizard-state";
+
+const LaunchWizard = lazy(() =>
+  import("@/features/transactions").then((m) => ({ default: m.LaunchWizard }))
+);
 import { useContainerScroll } from "@/hooks";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
@@ -126,13 +129,17 @@ export function PageShell() {
   return (
     <div className="h-dvh flex flex-col overflow-hidden text-foreground">
       {/* Wizard contextual em overlay (preserva rota ativa e contexto em qualquer página) */}
-      <LaunchWizard
-        key={`${initialType}-${wizardOpen ? "open" : "closed"}-${sugIdParam ?? ""}`}
-        open={wizardOpen}
-        initialType={initialType}
-        initialValues={initialValues}
-        onOpenChange={handleWizardOpenChange}
-      />
+      {wizardOpen && (
+        <Suspense fallback={null}>
+          <LaunchWizard
+            key={`${initialType}-${wizardOpen ? "open" : "closed"}-${sugIdParam ?? ""}`}
+            open={wizardOpen}
+            initialType={initialType}
+            initialValues={initialValues}
+            onOpenChange={handleWizardOpenChange}
+          />
+        </Suspense>
+      )}
       {/* Estado da sidebar vive aqui (fonte única) e a margem acompanha em tempo real. */}
       <Sidebar isCollapsed={isCollapsed} onToggle={toggle} />
       {/* Margem acompanha o estado da sidebar (F7.2): lg:pl-64 expandida ↔ lg:pl-20 compacta. */}

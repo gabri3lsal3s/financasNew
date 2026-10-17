@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { ArrowLeftRight, Calendar, Download, FileSpreadsheet, Plus, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,8 +23,13 @@ import { buildUnifiedFeedItems, groupFeedByDay, type FeedFilter } from "@/domain
 import { serializeUnifiedTransactionsCsv, type ExportUnifiedTransactionRow } from "@/domain/export";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import { IncomeDetailDialog } from "@/features/transactions/components/income-detail-dialog";
-import { BankStatementImportDialog } from "@/features/transactions/components/bank-statement-import-dialog";
 import type { Category, Expense, Income } from "@/types";
+
+const BankStatementImportDialog = lazy(() =>
+  import("@/features/transactions/components/bank-statement-import-dialog").then((m) => ({
+    default: m.BankStatementImportDialog,
+  })),
+);
 
 
 function ExpenseRow({
@@ -493,11 +498,15 @@ export function TransactionListPage() {
         }}
       />
 
-      <BankStatementImportDialog
-        open={isImportOpen}
-        onOpenChange={setIsImportOpen}
-        competenceMonth={month}
-      />
+      {isImportOpen && (
+        <Suspense fallback={null}>
+          <BankStatementImportDialog
+            open={isImportOpen}
+            onOpenChange={setIsImportOpen}
+            competenceMonth={month}
+          />
+        </Suspense>
+      )}
 
       <UpgradeDialog
         open={upgradeOpen}

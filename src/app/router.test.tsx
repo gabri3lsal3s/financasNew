@@ -48,4 +48,21 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
 
     expect(await screen.findByRole("heading", { name: /Recuperar Senha/i })).toBeInTheDocument();
   });
+
+  it("renderiza a rota pública /apresentacao (LandingPage) com lazy loading", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/apresentacao");
+    render(<AppRouter />);
+
+    expect(await screen.findByRole("button", { name: "Recursos" })).toBeInTheDocument();
+  });
 });

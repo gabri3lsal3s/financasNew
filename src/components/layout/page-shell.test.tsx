@@ -123,10 +123,10 @@ describe("PageShell (F7.2/F7.3)", () => {
     expect(window.localStorage.getItem(STORAGE_KEY)).toBe("0");
   });
 
-  it("renderiza o LaunchWizard overlay quando ?novo=transacao está presente", () => {
+  it("renderiza o LaunchWizard overlay quando ?novo=transacao está presente", async () => {
     renderShell(["/?novo=transacao"]);
 
-    expect(screen.getByTestId("launch-wizard-overlay")).toBeInTheDocument();
+    expect(await screen.findByTestId("launch-wizard-overlay")).toBeInTheDocument();
     expect(screen.getByTestId("page-content")).toBeInTheDocument();
   });
 
