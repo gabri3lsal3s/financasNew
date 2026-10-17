@@ -8,7 +8,7 @@
 /**
  * Descompacta as entradas de um arquivo ZIP (.xlsx) em memória.
  */
-export async function parseZipEntries(buffer: ArrayBuffer): Promise<Map<string, string>> {
+async function parseZipEntries(buffer: ArrayBuffer): Promise<Map<string, string>> {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
   const entries = new Map<string, string>();

@@ -1,4 +1,3 @@
-import { z } from "zod";
 
 /**
  * Representação normalizada de uma transação extraída do extrato/fatura.
@@ -195,24 +194,4 @@ export interface BankReconciliationResult {
   unmatchedExistingIncomes: ExistingIncomeForReconciliation[];
 }
 
-/** Schema Zod para validação da transação de extrato. */
-export const statementTransactionSchema = z.object({
-  id: z.string(),
-  index: z.number().int().nonnegative(),
-  occurrenceIndex: z.number().int().nonnegative(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data deve estar no formato YYYY-MM-DD"),
-  rawDescription: z.string(),
-  cleanDescription: z.string(),
-  amountCents: z.number().int().positive("Valor deve ser estritamente positivo"),
-  isRefund: z.boolean(),
-  isPayment: z.boolean(),
-  installment: z
-    .object({
-      current: z.number().int().min(1).max(60),
-      total: z.number().int().min(2).max(60),
-    })
-    .optional(),
-  statementHash: z.string().min(8),
-  fitid: z.string().optional(),
-});
 

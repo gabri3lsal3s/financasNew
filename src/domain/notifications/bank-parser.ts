@@ -33,7 +33,7 @@ export interface InstallmentInfo {
   totalAmountCents?: number;
 }
 
-export const BANK_PACKAGE_MAP: Record<string, string> = {
+const BANK_PACKAGE_MAP: Record<string, string> = {
   // Principais fintechs e bancos digitais
   "com.nu.production": "Nubank",
   "br.com.intermedium": "Inter",

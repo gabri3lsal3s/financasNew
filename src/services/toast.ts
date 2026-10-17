@@ -39,8 +39,6 @@ function emit(): void {
   for (const listener of listeners) listener(snapshot);
 }
 
-/** Quantidade máxima de toasts simultâneos visíveis na tela (evita empilhamento). */
-export const MAX_CONCURRENT_TOASTS = 1;
 
 /** Dispara um toast global (substitui o anterior para evitar empilhamento). */
 export function pushToast(request: ToastRequest): number {

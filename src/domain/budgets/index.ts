@@ -85,13 +85,6 @@ export function suggestLimitCents(monthlyIncomeCents: number, limitPercent: numb
 
 export type BudgetStatus = "ok" | "attention" | "high" | "critical" | "exceeded";
 
-export const BUDGET_STATUS_LABELS: Record<BudgetStatus, string> = {
-  ok: "Dentro do limite",
-  attention: "Atenção (≥85%)",
-  high: "Alta (≥90%)",
-  critical: "Crítica (≥95%)",
-  exceeded: "Excedida",
-};
 
 /** Faixa de atenção pelo percentual de uso (0–100+). */
 export function budgetStatus(usedCents: number, limitCents: number): BudgetStatus {

@@ -25,10 +25,6 @@ export interface BillingScheduleResult {
  */
 export const STANDARD_TRIAL_DAYS = 30;
 
-/**
- * Prazo legal de arrependimento e reembolso incondicional após cobrança (CDC Art. 49).
- */
-export const CDC_REFUND_GUARANTEE_DAYS = 7;
 
 /**
  * Preços canônicos em centavos.

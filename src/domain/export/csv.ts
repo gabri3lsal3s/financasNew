@@ -14,7 +14,7 @@ const CSV_DELIMITER = ";";
  * Previne execução de comandos em planilhas iniciados por '=', '+', '-', '@', '\t', '\r' ou '|'.
  * Trata espaços em branco antes de fórmulas maliciosas e preserva números legítimos com sinal.
  */
-export function sanitizeFormulaInjection(value: string): string {
+function sanitizeFormulaInjection(value: string): string {
   if (/^[\t\r]/.test(value)) {
     return `'${value}`;
   }

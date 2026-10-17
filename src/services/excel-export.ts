@@ -101,7 +101,7 @@ export interface ExcelWorkbookData {
   classTargets?: readonly ExcelClassTargetRow[];
 }
 
-export function sanitizeSpreadsheetText(value: string | number | null | undefined): string {
+function sanitizeSpreadsheetText(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return "";
   const str = String(value);
   if (/^[-=+@\t\r]/.test(str)) {

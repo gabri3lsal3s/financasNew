@@ -284,7 +284,7 @@ export const CURATED_TICKERS_CATALOG: readonly CatalogTickerItem[] = [
 /**
  * Normaliza uma string de texto removendo acentos (NFD) e pontuação para busca fonética/tokenizada.
  */
-export function normalizeSearchToken(str: string): string {
+function normalizeSearchToken(str: string): string {
   return str
     .toUpperCase()
     .normalize("NFD")
@@ -723,46 +723,4 @@ export function buildAporteSuggestions(
     }));
 }
 
-/**
- * Retorna os ativos que possuem metas definidas, ordenados pela lógica hierárquica
- * (classe mais defasada -> maior gap de aporte), no formato TickerSearchResult.
- * Usado na lista "recomendados" do wizard quando não há busca ativa.
- */
-export function buildTopSuggestionResults(
-  assets: readonly PortfolioAsset[],
-  assetRows: readonly {
-    assetId: string;
-    ticker: string;
-    valueBRL: number;
-    pct: number;
-    assetClass?: string | null;
-    sector?: string | null;
-  }[],
-  targets: readonly { asset_id: string; target_percentage: number }[],
-  totalPortfolioBRL: number,
-  limit = 5,
-  classTargets?: readonly { name: string; target_percentage: number }[],
-  sectorTargets?: readonly { className: string; sectorName: string; target_percentage: number }[],
-): TickerSearchResult[] {
-  const hasTargets = targets.length > 0 || (classTargets && classTargets.length > 0) || (sectorTargets && sectorTargets.length > 0);
-  if (!hasTargets) return [];
-
-  const suggestions = buildAporteSuggestions(assets, assetRows, targets, totalPortfolioBRL, limit, classTargets, sectorTargets);
-
-  return suggestions.map((item) => {
-    const asset = assets.find((a) => a.id === item.assetId);
-    const catalogMatch = CURATED_TICKERS_CATALOG.find((c) => c.ticker === item.ticker);
-    return {
-      ticker: item.ticker,
-      name: catalogMatch?.name ?? asset?.notes ?? item.ticker,
-      assetClass: item.assetClass,
-      sector: item.sector ?? asset?.sector ?? catalogMatch?.sector,
-      currency: asset?.currency ?? catalogMatch?.currency ?? "BRL",
-      isExisting: true,
-      existingAssetId: item.assetId,
-      currentQuantity: asset?.quantity,
-      currentAveragePrice: asset?.average_price,
-    };
-  });
-}
 

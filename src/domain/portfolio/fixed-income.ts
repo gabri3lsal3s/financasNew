@@ -19,7 +19,7 @@ import { todayISO } from "@/domain/debts";
  * Tabela oficial de alíquotas regressivas de IOF (Decreto 6.306/2007).
  * Índice 1 a 29 representa o dia corrido do resgate. Dia 30 em diante é 0%.
  */
-export const IOF_TABLE_PERCENT = [
+const IOF_TABLE_PERCENT = [
   0,  // Dia 0
   96, // Dia 1
   93, // Dia 2

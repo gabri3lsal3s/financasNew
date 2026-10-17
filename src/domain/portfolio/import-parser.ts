@@ -187,7 +187,7 @@ export function identifyTransactionType(text: string): PortfolioTransactionType 
 }
 
 /** Tickers de 1 letra conhecidos do mercado americano (NYSE / Nasdaq). */
-export const KNOWN_SINGLE_LETTER_US_TICKERS = new Set([
+const KNOWN_SINGLE_LETTER_US_TICKERS = new Set([
   "O", // Realty Income
   "T", // AT&T
   "C", // Citigroup
@@ -233,7 +233,7 @@ const PORTFOLIO_HEADER_KEYWORDS = [
 /**
  * Identifica se uma linha é cabeçalho de relatório de investimentos ou ruído de extrato.
  */
-export function isPortfolioNoiseOrHeader(line: string): boolean {
+function isPortfolioNoiseOrHeader(line: string): boolean {
   if (!line) return true;
   const trimmed = line.trim();
   if (/^[-–—=_*.#\s]{3,}$/.test(trimmed)) return true;
@@ -348,7 +348,7 @@ export interface ExtractedInvestmentValues {
  * Desambigua de forma inteligente a Quantidade, o Preço Unitário e o Valor Total
  * a partir de marcadores léxicos e coerência matemática (quantidade * preço = total).
  */
-export function extractInvestmentValues(text: string, isFixedIncome = false): ExtractedInvestmentValues {
+function extractInvestmentValues(text: string, isFixedIncome = false): ExtractedInvestmentValues {
   // 1. Procura quantidade explícita (ex: "100 ações", "50 cotas", "10 un", "qtd: 20", "100x")
   let explicitQty: number | null = null;
   const qtyPatterns = [

@@ -9,7 +9,7 @@
  * Função de hash determinística rápida (DJB2 / Murmur híbrido de 64 bits em hex)
  * que roda de forma 100% síncrona em qualquer ambiente (Node/Vitest/Browser).
  */
-export function generateDeterministicHash(input: string): string {
+function generateDeterministicHash(input: string): string {
   let h1 = 0xdeadbeef ^ 0;
   let h2 = 0x41c6ce57 ^ 0;
 

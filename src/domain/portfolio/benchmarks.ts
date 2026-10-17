@@ -66,7 +66,7 @@ export function compoundAnnualRateToPeriod(annualRatePct: number, months: number
 /**
  * Compara a rentabilidade da carteira contra uma taxa de benchmark.
  */
-export function compareWithBenchmark(
+function compareWithBenchmark(
   key: BenchmarkComparisonItem["key"],
   name: string,
   description: string,

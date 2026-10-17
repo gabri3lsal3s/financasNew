@@ -7,7 +7,7 @@ import { z } from "zod";
  * • Renda Fixa / Caixa / Tesouro: TESOURO SELIC 2029, CDB INTER 110% CDI, LCI, LCA, IPCA+, CAIXA
  * • Internacional / EUA: 1 a 6 letras (ex.: AAPL, MSFT, IVV, VOO, BRK.B, BF.B)
  */
-export const TICKER_REGEX = /^[A-Z0-9.\-+=/%\s]{1,60}$/;
+const TICKER_REGEX = /^[A-Z0-9.\-+=/%\s]{1,60}$/;
 
 /** Schema para sanitização e validação de ticker de ativo. */
 export const assetTickerSchema = z
@@ -22,13 +22,13 @@ export const assetTickerSchema = z
       .regex(TICKER_REGEX, "Formato de código inválido (use letras maiúsculas, números, espaços ou caracteres permitidos)"),
   );
 
-export const assetClassSchema = z
+const assetClassSchema = z
   .string()
   .trim()
   .min(1, "Selecione ou informe a classe do ativo")
   .max(50, "A classe deve ter no máximo 50 caracteres");
 
-export const assetSectorSchema = z
+const assetSectorSchema = z
   .string()
   .trim()
   .max(100, "O setor deve ter no máximo 100 caracteres")
@@ -36,11 +36,11 @@ export const assetSectorSchema = z
   .optional()
   .transform((val) => (val && val.trim().length > 0 ? val.trim() : null));
 
-export const assetCurrencySchema = z.enum(["BRL", "USD"] as const, {
+const assetCurrencySchema = z.enum(["BRL", "USD"] as const, {
   message: "Moeda inválida (escolha BRL ou USD)",
 });
 
-export const fixedIncomeRateTypeSchema = z.enum(["cdi", "selic", "pre", "ipca"] as const, {
+const fixedIncomeRateTypeSchema = z.enum(["cdi", "selic", "pre", "ipca"] as const, {
   message: "Indexador inválido (escolha CDI, Selic, Pré ou IPCA)",
 });
 
@@ -125,7 +125,7 @@ export const newAssetSchema = z.object({
 export type NewAssetInput = z.infer<typeof newAssetSchema>;
 
 /** Tipos suportados na Ordem / Movimentação Rápida. */
-export const quickTransactionTypeSchema = z.enum([
+const quickTransactionTypeSchema = z.enum([
   "buy",
   "sell",
   "dividend",

@@ -53,7 +53,7 @@ export const EDGE_INSET_PX = 12;
 export const AXIS_DOMINANCE_RATIO = 1.25;
 
 /** Ângulo padrão de tolerância horizontal (cone de ±42° em torno do eixo X). */
-export const DEFAULT_HORIZONTAL_DEGREES = 42;
+const DEFAULT_HORIZONTAL_DEGREES = 42;
 
 /**
  * O toque começou na zona de exclusão de borda (edge inset)?

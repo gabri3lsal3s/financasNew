@@ -52,7 +52,7 @@ export interface KnownServiceDef {
 }
 
 /** Serviços de assinatura conhecidos (nome normalizado → tier e segmento). */
-export const KNOWN_SERVICES: Record<string, KnownServiceDef> = {
+const KNOWN_SERVICES: Record<string, KnownServiceDef> = {
   // Streaming e Entretenimento (can_cut)
   netflix: { tier: "can_cut", segment: "streaming" },
   spotify: { tier: "can_cut", segment: "streaming" },

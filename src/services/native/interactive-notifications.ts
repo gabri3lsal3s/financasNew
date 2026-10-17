@@ -379,7 +379,7 @@ export async function undoQuickAddTransaction(
 /**
  * Emite notificação de feedback de sucesso com botão [Desfazer].
  */
-export async function notifyQuickAddSuccess(
+async function notifyQuickAddSuccess(
   suggestion: ParsedBankTransaction,
   createdId: string,
   categoryName: string,
@@ -421,7 +421,7 @@ export async function notifyQuickAddSuccess(
 /**
  * Emite notificação de alerta informando falta de conexão à internet.
  */
-export async function notifyOfflineFailure(suggestion: ParsedBankTransaction): Promise<void> {
+async function notifyOfflineFailure(suggestion: ParsedBankTransaction): Promise<void> {
   if (!isNativePlatform()) return;
 
   const notifId = hashString(suggestion.id);
@@ -446,7 +446,7 @@ export async function notifyOfflineFailure(suggestion: ParsedBankTransaction): P
 /**
  * Emite notificação de erro caso ocorra falha na chamada de gravação.
  */
-export async function notifyQuickAddError(
+async function notifyQuickAddError(
   suggestion: ParsedBankTransaction,
   errorMessage: string,
 ): Promise<void> {

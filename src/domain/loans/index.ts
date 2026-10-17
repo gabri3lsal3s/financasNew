@@ -50,7 +50,7 @@ export const AMORTIZATION_SYSTEM_LABELS: Record<AmortizationSystem, string> = {
 };
 
 /** Adiciona N meses a uma data YYYY-MM-DD. */
-export function addMonthsToDate(dateIso: string, monthsToAdd: number): string {
+function addMonthsToDate(dateIso: string, monthsToAdd: number): string {
   const [yStr, mStr, dStr] = dateIso.split("-");
   const y = Number(yStr);
   const m = Number(mStr);

@@ -99,7 +99,7 @@ export function getNationalHolidays(year: number): Set<string> {
 /**
  * Extrai componentes de ano, mês e dia no formato local seguro.
  */
-export function parseDateParts(dateStr: string): { year: number; month: number; day: number } {
+function parseDateParts(dateStr: string): { year: number; month: number; day: number } {
   const parts = dateStr.slice(0, 10).split("-").map(Number);
   const year = parts[0] ?? new Date().getFullYear();
   const month = parts[1] ?? 1;

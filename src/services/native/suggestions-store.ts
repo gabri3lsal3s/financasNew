@@ -10,7 +10,7 @@ const STORAGE_KEY = "pending_suggestions";
 const MAX_SUGGESTIONS = 20;
 
 /** TTL de 7 dias para expiração automática de notificações bancárias na fila. */
-export const SUGGESTION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const SUGGESTION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 let memorySuggestions: ParsedBankTransaction[] = [];
 let isLoaded = false;
@@ -26,7 +26,7 @@ function notify(): void {
  * Gera chave composta para identificação unívoca anti-duplicação:
  * `bankName + amountCents + date + merchant`
  */
-export function getSuggestionCompositeKey(s: ParsedBankTransaction): string {
+function getSuggestionCompositeKey(s: ParsedBankTransaction): string {
   const bank = (s.bankName || "").toLowerCase().trim();
   const cents = s.amountCents;
   const date = (s.date || "").trim();
@@ -37,7 +37,7 @@ export function getSuggestionCompositeKey(s: ParsedBankTransaction): string {
 /**
  * Determina se uma sugestão já atingiu a janela de expiração (TTL de 7 dias).
  */
-export function isSuggestionExpired(
+function isSuggestionExpired(
   suggestion: ParsedBankTransaction,
   now = Date.now(),
 ): boolean {

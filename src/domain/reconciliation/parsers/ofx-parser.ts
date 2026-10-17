@@ -6,7 +6,7 @@ import { generateStatementHash } from "../hash";
 /**
  * Desescapa entidades XML/SGML e remove artefatos de tags em strings OFX.
  */
-export function unescapeOfxString(str: string): string {
+function unescapeOfxString(str: string): string {
   if (!str) return "";
   return str
     .replace(/&amp;/g, "&")
@@ -21,7 +21,7 @@ export function unescapeOfxString(str: string): string {
 /**
  * Normaliza datas do formato OFX (`YYYYMMDD` ou `YYYYMMDDHHMMSS[...]`) para `YYYY-MM-DD`.
  */
-export function normalizeOfxDate(rawDate: string): string | null {
+function normalizeOfxDate(rawDate: string): string | null {
   const match = /^(\d{4})(\d{2})(\d{2})/.exec(rawDate.trim());
   if (match && match[1] && match[2] && match[3]) {
     return `${match[1]}-${match[2]}-${match[3]}`;

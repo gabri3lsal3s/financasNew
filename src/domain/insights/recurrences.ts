@@ -133,7 +133,7 @@ export function estimateNextDueDate(
 /**
  * Tolerância relativa à MEDIANA (robusta a outliers e à ordem dos meses).
  */
-export function valuesWithinToleranceOfMedian(values: readonly number[], tolerance: number): boolean {
+function valuesWithinToleranceOfMedian(values: readonly number[], tolerance: number): boolean {
   if (values.length < 2) return false;
   const median = medianOf(values);
   if (median <= 0) return false;
@@ -141,7 +141,7 @@ export function valuesWithinToleranceOfMedian(values: readonly number[], toleran
 }
 
 /** Meses distintos de um conjunto de ocorrências. */
-export function monthsWith(values: readonly string[]): number {
+function monthsWith(values: readonly string[]): number {
   return new Set(values).size;
 }
 

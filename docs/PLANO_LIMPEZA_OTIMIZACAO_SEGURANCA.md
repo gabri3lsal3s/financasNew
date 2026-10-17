@@ -178,10 +178,12 @@ graph TD
   - **Trava de Segurança:** Verificado que nenhum arquivo excluído possuía referências em lazy imports, rotas, manifestos PWA, atalhos nativos ou scripts operacionais.
   - **Critério de Saída:** Exclusão cirúrgica de todos os arquivos órfãos confirmados.
 
-- [ ] **Tarefa 2.2 — Purga de Exports Públicos Não Utilizados**
+- [x] **Tarefa 2.2 — Purga de Exports Públicos Não Utilizados**
   - **Ação:** Limpar funções, constantes e tipos exportados que nunca são consumidos fora de seu arquivo em `src/domain/`, `src/services/`, `src/types/` e `src/components/`:
-    - Tornar locais (remover `export`) ou deletar funções e constantes sem utilidade;
-    - Preservar tipos de banco gerados em `src/types/database.ts` e contratos de RPC.
+    - Removidos exports e tornadas locais funções auxiliares e constantes em `domain/export/csv`, `domain/gestures/swipe`, `domain/insights/recurrences`, `domain/insights/subscriptions`, `domain/loans`, `domain/notifications/bank-parser`, `domain/portfolio/benchmarks`, `domain/portfolio/business-days`, `domain/portfolio/fixed-income`, `domain/portfolio/import-parser`, `domain/portfolio/schemas`, `domain/portfolio/tickers-catalog`, `domain/portfolio/xlsx-parser`, `domain/reconciliation/hash`, `domain/reconciliation/parsers/*`, `domain/search`, `services/excel-export`, `services/native/interactive-notifications`, `services/native/suggestions-store` e `services/toast`;
+    - Deletadas constantes/funções totalmente sem utilidade: `BUDGET_STATUS_LABELS`, `buildTopSuggestionResults`, `CDC_REFUND_GUARANTEE_DAYS` e `statementTransactionSchema` (com eliminação de import de zod não utilizado em `reconciliation/types.ts`);
+    - Removidos exports de 15 tuplas constantes de runtime em `src/types/schema.ts` preservando seus contratos e tipos TypeScript de união;
+    - Preservados tipos de banco gerados em `src/types/database.ts` e contratos de RPC.
   - **Critério de Saída:** Árvore de exports limpa, com superfície de API interna reduzida e coesa.
 
 - [ ] **Tarefa 2.3 — Auditoria e Desinchaço de Pacotes (`package.json`)**

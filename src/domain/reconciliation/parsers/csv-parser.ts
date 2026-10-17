@@ -3,7 +3,7 @@ import type { RawParsedRow } from "../types";
 /**
  * Detecta o delimitador do CSV por contagem de ocorrências consistentes nas primeiras linhas.
  */
-export function detectDelimiter(text: string): string {
+function detectDelimiter(text: string): string {
   const cleanText = text.replace(/^[\uFEFF\uFFFE]/, "");
   const lines = cleanText
     .split(/\r?\n/)
@@ -49,7 +49,7 @@ export function detectDelimiter(text: string): string {
 /**
  * Divide uma linha de CSV em células respeitando aspas duplas.
  */
-export function parseCsvLine(line: string, delimiter: string): string[] {
+function parseCsvLine(line: string, delimiter: string): string[] {
   const cells: string[] = [];
   let current = "";
   let insideQuotes = false;

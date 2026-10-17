@@ -293,7 +293,7 @@ function isHeaderCells(cells: string[]): boolean {
 /**
  * Tenta analisar uma linha única de texto livre em linguagem natural.
  */
-export function parseNaturalLanguageLine(
+function parseNaturalLanguageLine(
   line: string,
   defaultYear = new Date().getFullYear(),
 ): { date: string; description: string; amount: string } | null {

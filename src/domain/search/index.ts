@@ -125,7 +125,7 @@ export function recencyBonus(monthsAgo: number): number {
 }
 
 /** Score multi-token: verifica se todos os tokens da query estão presentes no conjunto de textos. */
-export function multiTokenMatchScore(tokens: readonly string[], haystacks: readonly string[]): number {
+function multiTokenMatchScore(tokens: readonly string[], haystacks: readonly string[]): number {
   if (tokens.length <= 1) return 0;
   const normalizedHaystacks = haystacks.map(normalizeSearch);
   const allTokensMatch = tokens.every((token) =>
