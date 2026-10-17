@@ -2,7 +2,6 @@ import { ChevronDown, ChevronUp, EyeOff, Repeat } from "lucide-react";
 import { Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { InsightList } from "@/components/modules";
-import { triggerSensory } from "@/services/sensory";
 import { SERVICE_SEGMENT_LABELS } from "@/domain/insights";
 import { RECURRENCE_LEVEL_LABELS } from "@/lib/labels";
 import type { RecurrenceOccurrence } from "@/domain/insights/recurrences";
@@ -131,7 +130,6 @@ export function RecurrencesTab({
             variant="ghost"
             size="sm"
             onClick={() => {
-              triggerSensory("selection");
               setShowIgnored((prev) => !prev);
             }}
             className="flex items-center justify-between gap-2 self-start text-xs text-muted-foreground hover:text-foreground"

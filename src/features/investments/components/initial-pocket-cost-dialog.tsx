@@ -181,7 +181,6 @@ export function InitialPocketCostDialog({
     setNewDate("2024-02-26");
     setNewNotes("");
     setFormError(null);
-    triggerSensory("selection");
   };
 
   const handleSubmitManual = async (e: React.FormEvent) => {

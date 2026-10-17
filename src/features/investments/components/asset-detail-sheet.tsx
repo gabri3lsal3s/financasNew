@@ -238,7 +238,6 @@ export function AssetDetailSheet({
                 variant="outline"
                 onClick={() =>
                   guardAction(() => {
-                    triggerSensory("action");
                     onAction?.("buy", currentAsset);
                   }, "Registrar Aporte")
                 }
@@ -254,7 +253,6 @@ export function AssetDetailSheet({
                   variant="outline"
                   onClick={() =>
                     guardAction(() => {
-                      triggerSensory("action");
                       onAction?.("sell", currentAsset);
                     }, "Registrar Resgate")
                   }
@@ -271,7 +269,6 @@ export function AssetDetailSheet({
                   variant="outline"
                   onClick={() =>
                     guardAction(() => {
-                      triggerSensory("action");
                       setCalibrateOpen(true);
                     }, "Calibrar Renda Fixa")
                   }
@@ -289,7 +286,6 @@ export function AssetDetailSheet({
                   variant="outline"
                   onClick={() =>
                     guardAction(() => {
-                      triggerSensory("action");
                       onAction?.("dividend", currentAsset);
                     }, "Lançar Proventos")
                   }
@@ -305,7 +301,6 @@ export function AssetDetailSheet({
                 variant="ghost"
                 onClick={() =>
                   guardAction(() => {
-                    triggerSensory("action");
                     setEditOpen(true);
                   }, "Editar Ativo")
                 }
@@ -514,7 +509,6 @@ export function AssetDetailSheet({
                   variant="ghost"
                   size="xs"
                   onClick={() => {
-                    triggerSensory("action");
                     setTxToEdit(null);
                     setCreateTxOpen(true);
                   }}
@@ -582,7 +576,6 @@ export function AssetDetailSheet({
                             size="sm"
                             onClick={() =>
                               guardAction(() => {
-                                triggerSensory("action");
                                 setTxToEdit(tx);
                               }, "Editar Operação de Investimento")
                             }
@@ -598,7 +591,6 @@ export function AssetDetailSheet({
                             size="sm"
                             onClick={() =>
                               guardAction(() => {
-                                triggerSensory("action");
                                 setTxToDelete(tx);
                               }, "Excluir Operação de Investimento")
                             }
@@ -625,7 +617,6 @@ export function AssetDetailSheet({
               size="sm"
               onClick={() =>
                 guardAction(() => {
-                  triggerSensory("action");
                   setDeleteConfirmOpen(true);
                 }, "Excluir Ativo da Carteira")
               }

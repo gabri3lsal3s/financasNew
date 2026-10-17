@@ -68,7 +68,6 @@ import {
   useCategories,
   useCreditCards,
 } from "@/state";
-import { triggerSensory } from "@/services/sensory";
 
 interface BackupExpenseItem {
   date: string;
@@ -191,7 +190,6 @@ export function SecurityTab() {
   const creditCardsQuery = useCreditCards();
 
   const handleLogout = async () => {
-    triggerSensory("action");
     await signOut();
   };
 

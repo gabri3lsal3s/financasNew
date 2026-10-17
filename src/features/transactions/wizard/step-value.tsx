@@ -63,7 +63,6 @@ export function StepValue({ state, onTypeChange, onValueChange, onInstallmentsCh
       <Tabs
         value={state.type}
         onValueChange={(value) => {
-          triggerSensory("selection");
           onTypeChange(value as EntryType);
         }}
         items={[

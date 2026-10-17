@@ -198,10 +198,7 @@ export function StatementReconcileStep({
                   variant="ghost"
                   size="sm"
                   className="h-7 text-xs text-warning-strong hover:bg-warning-subtle/20 cursor-pointer"
-                  onClick={() => {
-                    triggerSensory("action");
-                    onUncheckDuplicates();
-                  }}
+                  onClick={onUncheckDuplicates}
                 >
                   Desmarcar duplicatas
                 </Button>
@@ -240,7 +237,6 @@ export function StatementReconcileStep({
           <Tabs
             value={filter}
             onValueChange={(val) => {
-              triggerSensory("selection");
               setFilter(val as FilterTab);
             }}
             items={tabsList}
@@ -266,7 +262,6 @@ export function StatementReconcileStep({
               size="sm"
               className="shrink-0 text-xs cursor-pointer"
               onClick={() => {
-                triggerSensory("action");
                 onToggleAll(!allFilteredSelected);
               }}
             >
@@ -355,7 +350,6 @@ export function StatementReconcileStep({
                     <Checkbox
                       checked={item.selected}
                       onCheckedChange={() => {
-                        triggerSensory("selection");
                         onToggleItem(tx.id);
                       }}
                       aria-label={`Selecionar ${tx.cleanDescription}`}
@@ -462,7 +456,6 @@ export function StatementReconcileStep({
                         size="sm"
                         className="size-7 p-0 cursor-pointer text-muted-foreground hover:text-critical-strong"
                         onClick={() => {
-                          triggerSensory("action");
                           onRemoveItem(tx.id);
                         }}
                         aria-label={`Remover ${tx.cleanDescription} da importação`}

@@ -15,7 +15,6 @@ export function PrivacyToggle() {
   // em globals.css) é aplicada pelo PRÓPRIO store (use-privacy-mask), não aqui.
 
   const handleToggle = () => {
-    triggerSensory("toggle");
     togglePrivacyMask();
   };
 
@@ -43,6 +42,7 @@ export function PrivacyToggle() {
       type="button"
       variant="ghost"
       size="icon"
+      sensoryIntent="toggle"
       aria-label={label}
       title={label}
       aria-pressed={masked}

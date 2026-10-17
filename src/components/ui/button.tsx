@@ -3,7 +3,7 @@ import type { ButtonHTMLAttributes, MouseEvent } from "react";
 import type { VariantProps } from "class-variance-authority";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { triggerSensory } from "@/services/sensory";
+import { triggerSensory, type SensoryIntent } from "@/services/sensory";
 import { getVisualCustomization } from "@/hooks/use-visual-customization";
 import { buttonVariants } from "./button-variants";
 
@@ -19,10 +19,22 @@ export interface ButtonProps
     VariantProps<typeof buttonVariants> {
   loading?: boolean;
   disableRipple?: boolean;
+  sensoryIntent?: SensoryIntent | false;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { className, variant, size, loading = false, disableRipple = false, disabled, children, onClick, ...props },
+  {
+    className,
+    variant,
+    size,
+    loading = false,
+    disableRipple = false,
+    sensoryIntent,
+    disabled,
+    children,
+    onClick,
+    ...props
+  },
   ref,
 ) {
   const [ripples, setRipples] = useState<Ripple[]>([]);
@@ -30,8 +42,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
     if (disabled || loading) return;
 
-    // Feedback sensorial centralizado
-    triggerSensory(variant === "destructive" ? "destructive" : "action");
+    // Feedback sensorial centralizado (permite intenção customizada ou desativação explícita)
+    if (sensoryIntent !== false) {
+      triggerSensory(sensoryIntent ?? (variant === "destructive" ? "destructive" : "action"));
+    }
     const visual = getVisualCustomization();
 
     // Efeito ripple dinâmico no ponto do clique (F11: só no nível "fluid";

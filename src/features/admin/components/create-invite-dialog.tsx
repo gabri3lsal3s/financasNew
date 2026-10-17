@@ -38,7 +38,6 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
   const [moduleGrants, setModuleGrants] = useState<Record<string, ModuleAccessLevel>>({});
 
   const handleGenerateNew = () => {
-    triggerSensory("action");
     setCode(generateInviteCode());
   };
 
@@ -90,7 +89,6 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
   const handleCopyCode = async () => {
     try {
       await navigator.clipboard.writeText(code);
-      triggerSensory("action");
       pushToast({
         title: "Código copiado",
         description: "O código do convite foi copiado para a área de transferência.",

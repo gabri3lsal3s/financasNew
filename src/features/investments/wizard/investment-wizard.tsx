@@ -155,7 +155,6 @@ function InvestmentWizardContent({
   const handleNext = () => {
     if (!canProceed(state)) return;
     setError(null);
-    triggerSensory("selection");
 
     // No modo select, ao avançar vai para o step 2 do modo correspondente
     if (state.mode === "select") {
@@ -172,7 +171,6 @@ function InvestmentWizardContent({
 
   const handleBack = () => {
     setError(null);
-    triggerSensory("selection");
 
     if (state.mode !== "new_asset" && state.mode !== "select" && state.step === 2 && !initialAsset) {
       setState((prev) => ({ ...prev, mode: "select", step: 1 }));

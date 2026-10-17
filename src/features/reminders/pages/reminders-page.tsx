@@ -7,7 +7,6 @@ import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { addDaysISO, todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
-import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 import {
   useMarkAllRemindersAsRead,
@@ -149,7 +148,6 @@ export function RemindersPage() {
               variant={subFilter === "all" ? "default" : "outline"}
               size="sm"
               onClick={() => {
-                triggerSensory("action");
                 setSubFilter("all");
               }}
               className="text-xs h-7 px-2.5"
@@ -162,7 +160,6 @@ export function RemindersPage() {
                 variant={subFilter === "overdue" ? "destructive" : "outline"}
                 size="sm"
                 onClick={() => {
-                  triggerSensory("action");
                   setSubFilter("overdue");
                 }}
                 className={cn(
@@ -179,7 +176,6 @@ export function RemindersPage() {
                 variant={subFilter === "bills" ? "default" : "outline"}
                 size="sm"
                 onClick={() => {
-                  triggerSensory("action");
                   setSubFilter("bills");
                 }}
                 className="text-xs h-7 px-2.5"
@@ -193,7 +189,6 @@ export function RemindersPage() {
                 variant={subFilter === "debts" ? "default" : "outline"}
                 size="sm"
                 onClick={() => {
-                  triggerSensory("action");
                   setSubFilter("debts");
                 }}
                 className="text-xs h-7 px-2.5"
@@ -334,7 +329,6 @@ export function RemindersPage() {
         <Tabs
           value={mainTab}
           onValueChange={(val) => {
-            triggerSensory("selection");
             setMainTabOverride(val as MainTab);
             setSubFilter("all");
           }}

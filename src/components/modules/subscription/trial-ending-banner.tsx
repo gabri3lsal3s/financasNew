@@ -2,7 +2,6 @@ import { useNavigate } from "react-router";
 import { Clock, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 
 export interface TrialEndingBannerProps {
@@ -28,7 +27,6 @@ export function TrialEndingBanner({
   const navigate = useNavigate();
 
   const handleActivate = () => {
-    triggerSensory("selection");
     if (onActivatePro) {
       onActivatePro();
     } else {

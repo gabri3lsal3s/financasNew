@@ -5,7 +5,6 @@ import { Button, buttonVariants } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { ReportTable } from "@/components/modules";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
-import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 import {
   WEEKDAY_LABELS,
@@ -136,8 +135,8 @@ export function FinancialTab({
               type="button"
               variant={aggregationTab === "category" ? "default" : "outline"}
               size="sm"
+              sensoryIntent="selection"
               onClick={() => {
-                triggerSensory("selection");
                 setAggregationTab("category");
               }}
               className="px-2 sm:px-3 text-xs justify-center"
@@ -148,8 +147,8 @@ export function FinancialTab({
               type="button"
               variant={aggregationTab === "method" ? "default" : "outline"}
               size="sm"
+              sensoryIntent="selection"
               onClick={() => {
-                triggerSensory("selection");
                 setAggregationTab("method");
               }}
               className="px-2 sm:px-3 text-xs justify-center"
@@ -160,8 +159,8 @@ export function FinancialTab({
               type="button"
               variant={aggregationTab === "weekday" ? "default" : "outline"}
               size="sm"
+              sensoryIntent="selection"
               onClick={() => {
-                triggerSensory("selection");
                 setAggregationTab("weekday");
               }}
               className="px-2 sm:px-3 text-xs justify-center"
@@ -251,7 +250,6 @@ export function FinancialTab({
         </div>
         <Link
           to="/insights"
-          onClick={() => triggerSensory("action")}
           className={cn(buttonVariants({ variant: "outline", size: "sm" }), "text-xs shrink-0 self-start sm:self-auto gap-1.5")}
         >
           <span>Abrir Insights</span>

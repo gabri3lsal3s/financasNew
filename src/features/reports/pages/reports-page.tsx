@@ -20,7 +20,6 @@ import { isCashAssetClass } from "@/domain/portfolio";
 import { addDaysISO, todayISO } from "@/domain/debts";
 import { currentMonth, currentYear, monthRange, shiftMonth, yearRange } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
-import { triggerSensory } from "@/services/sensory";
 import {
 
   useAllocationTargets,
@@ -118,7 +117,6 @@ export function ReportsPage() {
     : defaultTab;
 
   const handleTabChange = (val: string) => {
-    triggerSensory("selection");
     const nextTab = val as MainTab;
     setSelectedTab(nextTab);
     setSearchParams((prev) => {
@@ -998,8 +996,8 @@ export function ReportsPage() {
               type="button"
               variant={mode === "month" ? "default" : "outline"}
               size="sm"
+              sensoryIntent="selection"
               onClick={() => {
-                triggerSensory("selection");
                 setMode("month");
               }}
               className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
@@ -1010,8 +1008,8 @@ export function ReportsPage() {
               type="button"
               variant={mode === "year" ? "default" : "outline"}
               size="sm"
+              sensoryIntent="selection"
               onClick={() => {
-                triggerSensory("selection");
                 setMode("year");
               }}
               className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
@@ -1022,8 +1020,8 @@ export function ReportsPage() {
               type="button"
               variant={mode === "custom" ? "default" : "outline"}
               size="sm"
+              sensoryIntent="selection"
               onClick={() => {
-                triggerSensory("selection");
                 setMode("custom");
               }}
               className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"

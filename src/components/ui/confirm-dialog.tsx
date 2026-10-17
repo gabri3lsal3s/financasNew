@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Modal, ModalFooter } from "@/components/ui/modal";
-import { triggerSensory } from "@/services/sensory";
 
 export interface ConfirmDialogProps {
   open: boolean;
@@ -41,11 +40,8 @@ export function ConfirmDialog({
           type="button"
           variant={variant === "destructive" ? "destructive" : "default"}
           disabled={confirmPending}
-          onClick={() => {
-            // Confirmações de mutação com feedback sensorial calibrado
-            triggerSensory(variant === "destructive" ? "destructive" : "success");
-            onConfirm();
-          }}
+          sensoryIntent={variant === "destructive" ? "destructive" : "success"}
+          onClick={onConfirm}
         >
           {confirmLabel}
         </Button>

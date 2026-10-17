@@ -136,7 +136,6 @@ export function SubscriptionCheckoutPage() {
 
   // Navegação de retorno segura vinculada ao histórico ou fallback aos planos
   const handleBack = () => {
-    triggerSensory("action");
     if (window.history.length > 1) {
       navigate(-1);
     } else {
@@ -220,7 +219,6 @@ export function SubscriptionCheckoutPage() {
     try {
       await navigator.clipboard.writeText(pixResult.copyPasteKey);
       setCopiedPix(true);
-      triggerSensory("selection");
       pushToast({
         title: "Chave Copia e Cola copiada",
         description: "Cole no aplicativo do seu banco para concluir o pagamento.",
@@ -237,7 +235,6 @@ export function SubscriptionCheckoutPage() {
   };
 
   const handleSimulatePixConfirmation = () => {
-    triggerSensory("success");
     pushToast({
       title: "Pagamento PIX confirmado!",
       description: "Ambiente de validação visual: assinatura Pro ativada com sucesso.",
@@ -802,6 +799,7 @@ export function SubscriptionCheckoutPage() {
                   type="button"
                   variant="default"
                   size="sm"
+                  sensoryIntent="success"
                   onClick={handleSimulatePixConfirmation}
                   className="w-full gap-1.5 text-xs font-semibold cursor-pointer shadow-xs bg-positive-strong hover:bg-positive-strong/90 text-white"
                 >
@@ -816,7 +814,6 @@ export function SubscriptionCheckoutPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      triggerSensory("selection");
                       setPixResult(null);
                       setMethod("credit_card");
                     }}
@@ -832,7 +829,6 @@ export function SubscriptionCheckoutPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        triggerSensory("action");
                         setPixResult(null);
                         navigate("/planos");
                       }}
@@ -847,7 +843,6 @@ export function SubscriptionCheckoutPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        triggerSensory("action");
                         navigate("/");
                       }}
                       className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"

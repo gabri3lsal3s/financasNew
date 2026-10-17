@@ -118,14 +118,12 @@ export function RestoreWizardDialog({
 
   const handleGoToStep2 = () => {
     if (!state.parsedPayload) return;
-    triggerSensory("action");
     setState((prev) => ({ ...prev, step: 2, error: null }));
   };
 
   const handleGoToStep3 = async () => {
     if (state.selectedModules.size === 0 || !state.parsedPayload) return;
 
-    triggerSensory("action");
     setFetchingExisting(true);
     setState((prev) => ({ ...prev, error: null }));
 
@@ -162,7 +160,6 @@ export function RestoreWizardDialog({
 
   const handleGoToStep4 = () => {
     if (!state.parsedPayload) return;
-    triggerSensory("action");
 
     const { summary } = applyDeduplicationStrategy({
       backupData: state.parsedPayload.data,
@@ -181,7 +178,6 @@ export function RestoreWizardDialog({
 
   const handleExecuteRestore = async () => {
     if (!state.parsedPayload) return;
-    triggerSensory("action");
     setState((prev) => ({ ...prev, isRestoring: true, error: null }));
 
     try {

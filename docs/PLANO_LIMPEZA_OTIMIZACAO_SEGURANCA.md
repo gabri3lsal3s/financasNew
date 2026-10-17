@@ -312,12 +312,17 @@ graph TD
       - Alinhado `useLoans` (`src/state/queries/use-loans.ts`) com `staleTime: STALE_TIMES.transactional` (30 s), prevenindo disparos de rede desnecessários durante navegação rápida entre abas.
   - **Critério de Saída:** Interações e rolagens a 60fps constantes sem gargalos de re-renderização na thread principal.
 
-- [ ] **Tarefa 4.5 — Auditoria de Feedback Sensorial e Eliminação de Double-Haptics**
-  - **Ação:** Auditar chamadas de feedback tátil e sonoro (§17 de `AGENTS.md`):
-    - Garantir que todos os disparos ocorram exclusivamente pelo Gateway Central (`src/services/sensory.ts`);
-    - Confirmar ausência de chamadas manuais a `triggerHaptic` dentro de handlers `onClick` de botões;
-    - Garantir silêncio tátil/auditivo durante digitação em `MoneyInput` e rolagens.
-  - **Critério de Saída:** Experiência tátil fluida, sem disparos duplicados e energeticamente eficiente.
+- [x] **Tarefa 4.5 — Auditoria de Feedback Sensorial e Eliminação de Double-Haptics**
+  - **Ação:** Auditadas chamadas de feedback tátil e sonoro conforme §17 de `AGENTS.md`:
+    - Garantido que 100% dos disparos táteis e auditivos passem exclusivamente pelo Gateway Central (`src/services/sensory.ts` / `triggerSensory`);
+    - Confirmada a ausência total de chamadas manuais a `triggerHaptic` dentro de handlers `onClick` de botões em todo o projeto;
+    - Eliminados disparos sensoriais duplicados (*double-haptic* e *double-sound*):
+      - Como o primitivo `<Button />` (`src/components/ui/button.tsx`) dispara sensorial automaticamente no clique, foram removidas chamadas redundantes a `triggerSensory` dentro de callbacks `onClick` em mais de 30 componentes (incluindo diálogos de confirmação, banners de assinatura, wizards de investimento e restauração, telas de relatórios, cartões, despesas e painel administrativo);
+      - Adicionada prop tipada `sensoryIntent?: SensoryIntent | false` ao `<Button />`, permitindo personalizar a intenção tátil (`success`, `destructive`, `selection`, `toggle`) ou silenciar explicitamente (`sensoryIntent={false}`) diretamente no botão sem duplicar chamadas em handlers `onClick`;
+      - Removidos disparos redundantes de `triggerSensory` em componentes que já consom primitivos que encapsulam resposta tátil internamente (`Tabs`, `Checkbox`, `RadioGroup`, `Select`);
+      - Criada suíte dedicada de testes unitários para `ConfirmDialog` (`src/components/ui/confirm-dialog.test.tsx`) e expandidos testes de `Button` (`src/components/ui/button.test.tsx`) cobrindo as variantes de `sensoryIntent`;
+    - Verificado silêncio tátil/auditivo rigoroso durante digitação em `MoneyInput`, `Input`, `Textarea` e rolagens de página (scroll passivo).
+  - **Critério de Saída:** Experiência tátil fluida, sem disparos duplicados, energeticamente eficiente e 100% em conformidade com o Gateway Sensorial.
 
 - [ ] **Tarefa 4.6 — Ciclo de Vida Atômico do PWA, Invalidação Integral de Cache & Sincronização de Ícones**
   - **Contexto e Diagnóstico Técnico:**

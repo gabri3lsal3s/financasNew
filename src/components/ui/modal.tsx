@@ -212,7 +212,6 @@ export function Modal({
                   title="Calculadora"
                   className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                   onClick={() => {
-                    triggerSensory("action");
                     setCalculatorOpen(true);
                   }}
                 >

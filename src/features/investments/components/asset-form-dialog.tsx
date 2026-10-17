@@ -240,7 +240,6 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
     setNewLotQtyStr("");
     setNewLotPriceCents(0);
     setShowLotCalculator(false);
-    triggerSensory("selection");
   };
 
   // Cálculo de venda em tempo real

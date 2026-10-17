@@ -189,7 +189,6 @@ export function NotificationsTab() {
   };
 
   const handleRequestPermission = async () => {
-    triggerSensory("action");
     await requestNotificationListenerPermission();
     const granted = await isNotificationListenerGranted();
     setListenerPermissionGranted(granted);
@@ -251,7 +250,6 @@ export function NotificationsTab() {
   };
 
   const handleSelectAllBanks = () => {
-    triggerSensory("action");
     const all = [...HOMOLOGATED_BANKS];
     updateBankPrefs({ monitoredBanks: all });
     updateCustomSettingsMutation.mutate({
@@ -264,7 +262,6 @@ export function NotificationsTab() {
   };
 
   const handleDeselectAllBanks = () => {
-    triggerSensory("action");
     updateBankPrefs({ monitoredBanks: [] });
     updateCustomSettingsMutation.mutate({
       bankAssistant: { monitoredBanks: [] },

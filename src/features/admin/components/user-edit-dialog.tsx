@@ -138,7 +138,6 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
   };
 
   const handleSetModulePermission = async (moduleKey: string, accessLevel: ModuleAccessLevel) => {
-    triggerSensory("action");
     await setModulePermissionMutation.mutateAsync({
       userId: user.id,
       moduleKey,
@@ -147,7 +146,6 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
   };
 
   const handleRemoveModulePermission = async (moduleKey: string) => {
-    triggerSensory("action");
     await removeModulePermissionMutation.mutateAsync({
       userId: user.id,
       moduleKey,

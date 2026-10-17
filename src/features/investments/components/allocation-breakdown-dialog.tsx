@@ -80,7 +80,6 @@ export function AllocationBreakdownDialog({
   };
 
   const handleGoToTargets = () => {
-    triggerSensory("selection");
     onOpenChange(false);
     onNavigateToTargets?.();
   };

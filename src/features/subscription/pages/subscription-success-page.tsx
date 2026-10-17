@@ -215,7 +215,6 @@ export function SubscriptionSuccessPage() {
           <Link to="/" className="w-full">
             <Button
               className="w-full py-6 text-base font-semibold shadow-md gap-2 cursor-pointer"
-              onClick={() => triggerSensory("action")}
             >
               <span>Acessar Painel Financeiro</span>
               <ArrowRight className="size-4" aria-hidden="true" />

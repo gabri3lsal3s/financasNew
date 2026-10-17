@@ -6,7 +6,6 @@ import {
   subscribeAppLock,
   unlockAppWithBiometrics,
 } from "@/services/native";
-import { triggerSensory } from "@/services/sensory";
 
 /**
  * Escudo de bloqueio do aplicativo (App Lock).
@@ -23,7 +22,6 @@ export function AppLockOverlay() {
     if (isAuthenticatingRef.current) return;
     isAuthenticatingRef.current = true;
     setIsAuthenticating(true);
-    triggerSensory("action");
     try {
       await unlockAppWithBiometrics();
     } finally {

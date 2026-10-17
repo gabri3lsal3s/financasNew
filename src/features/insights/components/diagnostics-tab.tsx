@@ -11,7 +11,6 @@ import {
   Zap,
 } from "lucide-react";
 import { Alert, Badge, Button } from "@/components/ui";
-import { triggerSensory } from "@/services/sensory";
 import { SAVINGS_HEALTH_LABELS, WEEKEND_RATIO_LIMIT, type SavingsHealth } from "@/domain/insights";
 import { DiagnosticCard } from "./diagnostic-card";
 
@@ -85,7 +84,6 @@ export function DiagnosticsTab({
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  triggerSensory("selection");
                   setExpandedWarnings((prev) => !prev);
                 }}
                 className="self-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mt-0.5"

@@ -668,7 +668,6 @@ function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        triggerSensory("action");
                         setSelectedReceipt(inv.id);
                       }}
                       className="text-xs gap-1.5 h-8 text-muted-foreground hover:text-foreground cursor-pointer"

@@ -25,7 +25,7 @@ export function BackToTop({
   className,
 }: BackToTopProps) {
   const handleClick = () => {
-    scrollToTop({ containerId, sensoryFeedback: true });
+    scrollToTop({ containerId });
   };
 
   return (

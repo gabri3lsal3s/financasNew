@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router";
 import { BookOpen, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 
 export interface ReadOnlyBannerProps {
@@ -21,7 +20,6 @@ export function ReadOnlyBanner({ className, onActivatePro }: ReadOnlyBannerProps
   const navigate = useNavigate();
 
   const handleActivate = () => {
-    triggerSensory("selection");
     if (onActivatePro) {
       onActivatePro();
     } else {

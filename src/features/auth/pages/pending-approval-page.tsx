@@ -13,7 +13,6 @@ export function PendingApprovalPage() {
 
   const handleCheck = async () => {
     setChecking(true);
-    triggerSensory("action");
     try {
       await refetch();
       if (isActive) {

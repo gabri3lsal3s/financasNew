@@ -58,7 +58,6 @@ function DeleteCategoryContent({ category, siblings, usage, onClose }: DeleteCat
             <Select
               value={migrateTo}
               onValueChange={(val) => {
-                triggerSensory("selection");
                 setMigrateTo(val);
               }}
               options={siblings.map((sibling) => ({ value: sibling.id, label: sibling.name }))}

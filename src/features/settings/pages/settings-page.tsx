@@ -15,7 +15,6 @@ import {
   SubscriptionTab,
 } from "../components/tabs";
 import { forceAppUpdate } from "@/app/pwa";
-import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { cn } from "@/lib/utils";
 
@@ -111,7 +110,6 @@ export function SettingsPage() {
   };
 
   const handleForceUpdate = async () => {
-    triggerSensory("action");
     setIsUpdating(true);
     pushToast({
       title: "Atualizando aplicativo...",

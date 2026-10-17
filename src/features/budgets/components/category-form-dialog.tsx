@@ -4,8 +4,8 @@ import { Alert, Button, ColorPicker, IconPicker, Input, Modal, ModalFooter, Radi
 import type { IconPickerOption } from "@/components/ui";
 import { CATEGORY_ICON_MAP } from "@/components/modules/category-icons";
 import { suggestCategory } from "@/domain/budgets";
-import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
+import { triggerSensory } from "@/services/sensory";
 import { useCreateCategory, useUpdateCategory } from "@/state";
 import { DeleteCategoryDialog } from "@/features/budgets/components/delete-category-dialog";
 import type { Category, CategoryType } from "@/types";
@@ -102,7 +102,6 @@ function CategoryFormContent({
         <RadioGroup
           value={type}
           onValueChange={(value) => {
-            triggerSensory("selection");
             setType(value as CategoryType);
           }}
           name="category-type"
@@ -162,10 +161,7 @@ function CategoryFormContent({
             type="button"
             variant="ghost"
             className="sm:mr-auto text-negative hover:bg-negative/10 hover:text-negative"
-            onClick={() => {
-              triggerSensory("action");
-              onOpenDelete?.();
-            }}
+            onClick={onOpenDelete}
           >
             <Trash2 className="size-4" aria-hidden="true" />
             Excluir
