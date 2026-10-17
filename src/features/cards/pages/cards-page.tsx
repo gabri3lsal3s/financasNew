@@ -158,10 +158,16 @@ export function CardsPage() {
   const loading = cardsQuery.isLoading || (cardId !== null && (expensesQuery.isLoading || paymentsQuery.isLoading));
   const error = cardsQuery.error ?? expensesQuery.error ?? paymentsQuery.error ?? categoriesQuery.error ?? (actionError ? new Error(actionError) : null);
 
-  const categoryById = new Map((categoriesQuery.data ?? []).map((c) => [c.id, c]));
+  const categoryById = useMemo(
+    () => new Map((categoriesQuery.data ?? []).map((c) => [c.id, c])),
+    [categoriesQuery.data],
+  );
 
   // Derivação pura (domain/cards): resumos por competência + seleção automática de mês.
-  const summaries = buildCompetenceSummaries(expensesQuery.data ?? [], paymentsQuery.data ?? []);
+  const summaries = useMemo(
+    () => buildCompetenceSummaries(expensesQuery.data ?? [], paymentsQuery.data ?? []),
+    [expensesQuery.data, paymentsQuery.data],
+  );
   const effectiveMonth =
     paramMonth ??
     month ??
@@ -184,12 +190,21 @@ export function CardsPage() {
     setMonth(m);
   };
 
-  const competenceExpenses = (expensesQuery.data ?? []).filter((e) => e.bill_competence === effectiveMonth);
-  const competencePayments = (paymentsQuery.data ?? []).filter((p) => p.competence_month === effectiveMonth);
+  const competenceExpenses = useMemo(
+    () => (expensesQuery.data ?? []).filter((e) => e.bill_competence === effectiveMonth),
+    [expensesQuery.data, effectiveMonth],
+  );
+  const competencePayments = useMemo(
+    () => (paymentsQuery.data ?? []).filter((p) => p.competence_month === effectiveMonth),
+    [paymentsQuery.data, effectiveMonth],
+  );
 
   // Fatura separada: parceladas (herdadas de meses anteriores) × à vista
   // (gastos do mês), cada grupo ordenado por data — motor puro em domain/cards.
-  const { installments, regular } = partitionInvoiceExpenses(competenceExpenses);
+  const { installments, regular } = useMemo(
+    () => partitionInvoiceExpenses(competenceExpenses),
+    [competenceExpenses],
+  );
 
   /** Linha de despesa da fatura (mesmo layout para os dois grupos). */
   const renderInvoiceRow = (expense: Expense) => {

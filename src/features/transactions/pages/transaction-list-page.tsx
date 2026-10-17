@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router";
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { ArrowLeftRight, Calendar, Download, FileSpreadsheet, Plus, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -132,10 +132,10 @@ export function TransactionListPage() {
     [categoriesQuery.data],
   );
 
-  const incomesTotalCents = sumGrossCents(incomesQuery.data ?? []);
-  const expensesTotalCents = sumGrossCents(expensesQuery.data ?? []);
-  const incomesWeightedCents = sumWeightedCents(incomesQuery.data ?? []);
-  const expensesWeightedCents = sumWeightedCents(expensesQuery.data ?? []);
+  const incomesTotalCents = useMemo(() => sumGrossCents(incomesQuery.data ?? []), [incomesQuery.data]);
+  const expensesTotalCents = useMemo(() => sumGrossCents(expensesQuery.data ?? []), [expensesQuery.data]);
+  const incomesWeightedCents = useMemo(() => sumWeightedCents(incomesQuery.data ?? []), [incomesQuery.data]);
+  const expensesWeightedCents = useMemo(() => sumWeightedCents(expensesQuery.data ?? []), [expensesQuery.data]);
   const balanceCents = incomesTotalCents - expensesTotalCents;
   const balanceWeightedCents = incomesWeightedCents - expensesWeightedCents;
 
@@ -162,13 +162,17 @@ export function TransactionListPage() {
   const isSearching = searchQuery.trim().length > 0;
 
   // Frequência por template (Fase 32) — subtítulo "Mensal", "Semanal", etc.
-  const frequencyById = new Map(
-    (recurrencesQuery.data ?? []).map((recurrence) => [recurrence.id, recurrence.frequency]),
+  const frequencyById = useMemo(
+    () => new Map((recurrencesQuery.data ?? []).map((recurrence) => [recurrence.id, recurrence.frequency])),
+    [recurrencesQuery.data],
   );
-  const recurrenceLabel = (recurrenceId: string | null | undefined): string | undefined => {
-    const frequency = recurrenceId ? frequencyById.get(recurrenceId) : undefined;
-    return frequency ? RECURRENCE_FREQUENCY_LABELS[frequency] : undefined;
-  };
+  const recurrenceLabel = useCallback(
+    (recurrenceId: string | null | undefined): string | undefined => {
+      const frequency = recurrenceId ? frequencyById.get(recurrenceId) : undefined;
+      return frequency ? RECURRENCE_FREQUENCY_LABELS[frequency] : undefined;
+    },
+    [frequencyById],
+  );
 
   const { setOpen: setWizardOpen } = useCreateDeepLink("transacao");
   const permission = usePermission("transactions");

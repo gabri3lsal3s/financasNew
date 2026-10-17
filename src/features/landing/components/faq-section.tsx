@@ -74,7 +74,7 @@ export function FaqSection() {
             const isOpen = openIndex === index;
             return (
               <Card
-                key={index}
+                key={faq.question}
                 variant="flat"
                 className={`border transition-all duration-200 rounded-xl sm:rounded-2xl ${
                   isOpen ? "border-primary/40 bg-surface/90 shadow-sm" : "border-border/70 bg-surface/50 hover:border-border"

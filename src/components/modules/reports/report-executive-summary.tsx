@@ -35,8 +35,8 @@ export function ReportExecutiveSummary({
 
       {/* Grade Horizontal de Métricas */}
       <div className="grid grid-cols-2 sm:grid-cols-4 print:grid-cols-4 gap-3.5 sm:gap-4 print:gap-4 py-0.5">
-        {items.map((item, idx) => (
-          <div key={idx} className="flex flex-col gap-0.5">
+        {items.map((item) => (
+          <div key={item.label} className="flex flex-col gap-0.5">
             <span className="text-[10px] uppercase font-bold tracking-tight text-muted-foreground">
               {item.label}
             </span>

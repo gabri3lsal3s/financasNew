@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   useAllPortfolioTransactions,
   usePortfolioAssets,
@@ -159,8 +159,9 @@ export function usePortfolioPosition(): PortfolioPosition {
   const transactionsQuery = useAllPortfolioTransactions();
   const upsertSnapshot = useUpsertPortfolioSnapshot();
 
-  const prices = pricesQuery.data ?? [];
-  const usdRate = usdRateFromPrices(prices);
+  const computed = useMemo(() => {
+    const prices = pricesQuery.data ?? [];
+    const usdRate = usdRateFromPrices(prices);
   const priceByTicker = new Map(prices.map((p) => [p.ticker.trim().toUpperCase(), p]));
   const annualCdiRate = macroQuery.data?.annualCdiRate;
   const today = todayISO();
@@ -581,7 +582,50 @@ export function usePortfolioPosition(): PortfolioPosition {
     contributions: rawContributionsForSeries,
     initialAccumulatedDividends,
     limit: 0,
-  });
+    });
+
+    return {
+      rows,
+      totalBRL,
+      totalCostBRL,
+      cashBRL,
+      consolidatedReturn,
+      netInjectedCapitalBRL,
+      netPocketGainBRL,
+      portfolioIrr,
+      portfolioTwr,
+      hasMarcoZeroContribution,
+      monthlySeries,
+      allMonthlySeries,
+      contributionBRL,
+    };
+  }, [
+    assetsQuery.data,
+    pricesQuery.data,
+    macroQuery.data,
+    contributionsQuery.data,
+    dividendsQuery.data,
+    snapshotsQuery.data,
+    transactionsQuery.data,
+  ]);
+
+  const {
+    rows,
+    totalBRL,
+    totalCostBRL,
+    cashBRL,
+    consolidatedReturn,
+    netInjectedCapitalBRL,
+    netPocketGainBRL,
+    portfolioIrr,
+    portfolioTwr,
+    hasMarcoZeroContribution,
+    monthlySeries,
+    allMonthlySeries,
+    contributionBRL,
+  } = computed;
+
+  const thisMonth = currentMonth();
 
   // Atualiza snapshot do mês corrente em background quando há dados carregados
   const lastUpdatedMonth = useRef<string | null>(null);
@@ -605,6 +649,22 @@ export function usePortfolioPosition(): PortfolioPosition {
     }
   }, [assetsQuery.data, assetsQuery.isLoading, pricesQuery.isLoading, thisMonth, totalBRL, totalCostBRL, cashBRL, upsertSnapshot]);
 
+  const refetch = useCallback(() => {
+    void assetsQuery.refetch();
+    void pricesQuery.refetch();
+    void macroQuery.refetch();
+    void contributionsQuery.refetch();
+    void dividendsQuery.refetch();
+    void snapshotsQuery.refetch();
+  }, [
+    assetsQuery,
+    pricesQuery,
+    macroQuery,
+    contributionsQuery,
+    dividendsQuery,
+    snapshotsQuery,
+  ]);
+
   return {
     rows,
     totalBRL,
@@ -627,13 +687,6 @@ export function usePortfolioPosition(): PortfolioPosition {
     monthlyContributionCents: Math.round(contributionBRL * 100),
     isLoading: assetsQuery.isLoading || pricesQuery.isLoading,
     error: assetsQuery.error ?? pricesQuery.error,
-    refetch: () => {
-      void assetsQuery.refetch();
-      void pricesQuery.refetch();
-      void macroQuery.refetch();
-      void contributionsQuery.refetch();
-      void dividendsQuery.refetch();
-      void snapshotsQuery.refetch();
-    },
+    refetch,
   };
 }

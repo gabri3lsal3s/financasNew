@@ -79,7 +79,7 @@ export function OverviewPage() {
 
   const prevMonth = shiftMonth(month, -1);
   const startRange = shiftMonth(month, -5);
-  const rangeMonths = Array.from({ length: 6 }, (_, i) => shiftMonth(startRange, i));
+  const rangeMonths = useMemo(() => Array.from({ length: 6 }, (_, i) => shiftMonth(startRange, i)), [startRange]);
   const rangeStart = `${startRange}-01`;
   const rangeEnd = `${shiftMonth(month, 1)}-01`;
   const today = todayISO();
@@ -134,114 +134,192 @@ export function OverviewPage() {
     (isCurrentMonth ? realCashData.error : null);
 
   // Computação pura dos totais do mês (§3.6). Padrão do app: BRUTO como métrica principal, informando ponderado quando houver.
-  const incomeCents = sumWeightedCents(incomesQuery.data ?? []);
-  const expenseCents = sumWeightedCents(expensesQuery.data ?? []);
-  const grossIncomeCents = sumGrossCents(incomesQuery.data ?? []);
-  const grossExpenseCents = sumGrossCents(expensesQuery.data ?? []);
-  const prevGrossIncomeCents = sumGrossCents(prevIncomesQuery.data ?? []);
-  const prevGrossExpenseCents = sumGrossCents(prevExpensesQuery.data ?? []);
+  const {
+    incomeCents,
+    expenseCents,
+    grossIncomeCents,
+    grossExpenseCents,
+    investmentCents,
+    investmentSpark,
+    totals,
+    prevTotals,
+    incomeSpark,
+    expenseSpark,
+    balanceSpark,
+  } = useMemo(() => {
+    const incCents = sumWeightedCents(incomesQuery.data ?? []);
+    const expCents = sumWeightedCents(expensesQuery.data ?? []);
+    const grossIncCents = sumGrossCents(incomesQuery.data ?? []);
+    const grossExpCents = sumGrossCents(expensesQuery.data ?? []);
+    const prevGrossIncCents = sumGrossCents(prevIncomesQuery.data ?? []);
+    const prevGrossExpCents = sumGrossCents(prevExpensesQuery.data ?? []);
 
-  // Investimentos/Aportes no mês a partir de portfolio_contributions
-  const contributions = contributionsQuery.data ?? [];
-  const investmentCents = contributionsInMonthCents(contributions, month);
-  const prevInvestmentCents = contributionsInMonthCents(contributions, prevMonth);
-  const investmentSpark = contributionsMonthlySeries(contributions, rangeMonths);
+    const contribs = contributionsQuery.data ?? [];
+    const invCents = contributionsInMonthCents(contribs, month);
+    const prevInvCents = contributionsInMonthCents(contribs, prevMonth);
+    const invSpark = contributionsMonthlySeries(contribs, rangeMonths);
 
-  const totals = computeOverview(grossIncomeCents, grossExpenseCents, investmentCents);
-  const prevTotals = computeOverview(prevGrossIncomeCents, prevGrossExpenseCents, prevInvestmentCents);
+    const tot = computeOverview(grossIncCents, grossExpCents, invCents);
+    const prevTot = computeOverview(prevGrossIncCents, prevGrossExpCents, prevInvCents);
 
-  // Sparklines com a série dos últimos 6 meses (bruto).
-  const incomeSpark = rangeMonths.map((m) =>
-    sumGrossCents((incomesRangeQuery.data ?? []).filter((i) => i.date.startsWith(m))),
-  );
-  const expenseSpark = rangeMonths.map((m) =>
-    sumGrossCents((expensesRangeQuery.data ?? []).filter((e) => e.date.startsWith(m))),
-  );
-  const balanceSpark = rangeMonths.map((_, idx) => (incomeSpark[idx] ?? 0) - (expenseSpark[idx] ?? 0));
+    const incSpark = rangeMonths.map((m) =>
+      sumGrossCents((incomesRangeQuery.data ?? []).filter((i) => i.date.startsWith(m))),
+    );
+    const expSpark = rangeMonths.map((m) =>
+      sumGrossCents((expensesRangeQuery.data ?? []).filter((e) => e.date.startsWith(m))),
+    );
+    const balSpark = rangeMonths.map((_, idx) => (incSpark[idx] ?? 0) - (expSpark[idx] ?? 0));
+
+    return {
+      incomeCents: incCents,
+      expenseCents: expCents,
+      grossIncomeCents: grossIncCents,
+      grossExpenseCents: grossExpCents,
+      prevGrossIncomeCents: prevGrossIncCents,
+      prevGrossExpenseCents: prevGrossExpCents,
+      investmentCents: invCents,
+      prevInvestmentCents: prevInvCents,
+      investmentSpark: invSpark,
+      totals: tot,
+      prevTotals: prevTot,
+      incomeSpark: incSpark,
+      expenseSpark: expSpark,
+      balanceSpark: balSpark,
+    };
+  }, [
+    incomesQuery.data,
+    expensesQuery.data,
+    prevIncomesQuery.data,
+    prevExpensesQuery.data,
+    contributionsQuery.data,
+    month,
+    prevMonth,
+    rangeMonths,
+    incomesRangeQuery.data,
+    expensesRangeQuery.data,
+  ]);
 
   // Resumo de contas e faturas.
-  const { receivablePendingCents: receivablePending, payablePendingCents: payablePending } =
-    calculateDebtsSummary(debtsQuery.data ?? [], { beforeDueDateExclusive: rangeEnd });
-  const openInvoices = openInvoicesTotal(cardExpensesQuery.data ?? [], cardPaymentsQuery.data ?? [], today);
-  const accountsBalance = accountsNet(receivablePending, payablePending, openInvoices);
-
+  const { receivablePending, payablePending, openInvoices, accountsBalance } = useMemo(() => {
+    const { receivablePendingCents, payablePendingCents } =
+      calculateDebtsSummary(debtsQuery.data ?? [], { beforeDueDateExclusive: rangeEnd });
+    const invoices = openInvoicesTotal(cardExpensesQuery.data ?? [], cardPaymentsQuery.data ?? [], today);
+    const balance = accountsNet(receivablePendingCents, payablePendingCents, invoices);
+    return {
+      receivablePending: receivablePendingCents,
+      payablePending: payablePendingCents,
+      openInvoices: invoices,
+      accountsBalance: balance,
+    };
+  }, [debtsQuery.data, rangeEnd, cardExpensesQuery.data, cardPaymentsQuery.data, today]);
 
   // Fluxo diário (barras empilhadas) + curva de saldo acumulado.
-  const dailyItems = [
-    ...(incomesQuery.data ?? []).map((i) => ({ date: i.date, kind: "income" as const, amountCents: numberToCents(i.value) })),
-    ...(expensesQuery.data ?? []).map((e) => ({ date: e.date, kind: "expense" as const, amountCents: numberToCents(e.value) })),
-    ...contributions
-      .filter((c) => c.date.startsWith(month))
-      .map((c) => ({ date: c.date, kind: "investment" as const, amountCents: numberToCents(c.amount) })),
-  ];
-  const dailyFlow = buildDailyFlow(month, dailyItems);
+  const dailyFlow = useMemo(() => {
+    const contribs = contributionsQuery.data ?? [];
+    const dailyItems = [
+      ...(incomesQuery.data ?? []).map((i) => ({ date: i.date, kind: "income" as const, amountCents: numberToCents(i.value) })),
+      ...(expensesQuery.data ?? []).map((e) => ({ date: e.date, kind: "expense" as const, amountCents: numberToCents(e.value) })),
+      ...contribs
+        .filter((c) => c.date.startsWith(month))
+        .map((c) => ({ date: c.date, kind: "investment" as const, amountCents: numberToCents(c.amount) })),
+    ];
+    return buildDailyFlow(month, dailyItems);
+  }, [incomesQuery.data, expensesQuery.data, contributionsQuery.data, month]);
 
   // Orçamentos compactos (§3.6): barra segmentada consolidada e diagnóstico executivo.
   // Métrica principal: gasto efetivo ponderado (alinhado com Orçamentos e Categorias).
-  const budgets = budgetsQuery.data ?? [];
-  const limitsByCategory = budgetLimitsByCategory(budgets);
-  const spentWeightedByCategory = spentByCategoryMap(expensesQuery.data ?? []);
-  const spentGrossByCategory = spentGrossByCategoryMap(expensesQuery.data ?? []);
-  const budgetRows = (expenseCategories.data ?? [])
-    .map((category) => {
-      const spentWeightedCents = spentWeightedByCategory.get(category.id) ?? 0;
-      const limitCents = resolveEffectiveLimit(limitsByCategory.get(category.id) ?? [], month);
-      return {
-        category,
-        limitCents,
-        spentCents: spentWeightedCents,
-        remainingCents: limitCents - spentWeightedCents,
-        percent: limitCents > 0 ? (spentWeightedCents / limitCents) * 100 : 0,
-        inherited: isInheritedLimit(limitsByCategory.get(category.id) ?? [], month),
-      };
-    })
-    .filter((row) => row.limitCents > 0);
-  const totalLimitsCents = budgetRows.reduce((acc, row) => acc + row.limitCents, 0);
-  const totalRemainingCents = totalLimitsCents - expenseCents;
-  const globalPercent = totalLimitsCents > 0 ? (expenseCents / totalLimitsCents) * 100 : 0;
+  const {
+    limitsByCategory,
+    spentWeightedByCategory,
+    spentGrossByCategory,
+    budgetRows,
+    otherBudgetRows,
+    totalLimitsCents,
+    totalRemainingCents,
+    globalPercent,
+    budgetSegments,
+  } = useMemo(() => {
+    const budgets = budgetsQuery.data ?? [];
+    const limits = budgetLimitsByCategory(budgets);
+    const spentWeighted = spentByCategoryMap(expensesQuery.data ?? []);
+    const spentGross = spentGrossByCategoryMap(expensesQuery.data ?? []);
+    const rows = (expenseCategories.data ?? [])
+      .map((category) => {
+        const spentWeightedCents = spentWeighted.get(category.id) ?? 0;
+        const limitCents = resolveEffectiveLimit(limits.get(category.id) ?? [], month);
+        return {
+          category,
+          limitCents,
+          spentCents: spentWeightedCents,
+          remainingCents: limitCents - spentWeightedCents,
+          percent: limitCents > 0 ? (spentWeightedCents / limitCents) * 100 : 0,
+          inherited: isInheritedLimit(limits.get(category.id) ?? [], month),
+        };
+      })
+      .filter((row) => row.limitCents > 0);
+    const totalLimits = rows.reduce((acc, row) => acc + row.limitCents, 0);
+    const totalRemaining = totalLimits - expenseCents;
+    const gPercent = totalLimits > 0 ? (expenseCents / totalLimits) * 100 : 0;
 
-  // Segmentos da Barra Única:
-  const segmentBaseCents = Math.max(1, totalLimitsCents, expenseCents);
-  const activeBudgetSpentRows = [...budgetRows]
-    .filter((r) => r.spentCents > 0)
-    .sort((a, b) => b.spentCents - a.spentCents);
-  const topBudgetSegments = activeBudgetSpentRows.slice(0, 4);
-  const otherBudgetRows = activeBudgetSpentRows.slice(4);
-  const otherBudgetSpentCents = otherBudgetRows.reduce((acc, r) => acc + r.spentCents, 0);
-  const budgetSegments = [
-    ...topBudgetSegments.map((row) => ({
-      id: row.category.id,
-      label: row.category.name,
-      color: row.category.color ?? undefined,
-      spentCents: row.spentCents,
-      percent: (row.spentCents / segmentBaseCents) * 100,
-    })),
-    ...(otherBudgetSpentCents > 0
-      ? [
-          {
-            id: "others",
-            label: "Outros",
-            color: "#64748b",
-            spentCents: otherBudgetSpentCents,
-            percent: (otherBudgetSpentCents / segmentBaseCents) * 100,
-          },
-        ]
-      : []),
-  ];
+    // Segmentos da Barra Única:
+    const segmentBaseCents = Math.max(1, totalLimits, expenseCents);
+    const activeBudgetSpentRows = [...rows]
+      .filter((r) => r.spentCents > 0)
+      .sort((a, b) => b.spentCents - a.spentCents);
+    const topBudgetSegments = activeBudgetSpentRows.slice(0, 4);
+    const otherBudgetRows = activeBudgetSpentRows.slice(4);
+    const otherBudgetSpentCents = otherBudgetRows.reduce((acc, r) => acc + r.spentCents, 0);
+    const segments = [
+      ...topBudgetSegments.map((row) => ({
+        id: row.category.id,
+        label: row.category.name,
+        color: row.category.color ?? undefined,
+        spentCents: row.spentCents,
+        percent: (row.spentCents / segmentBaseCents) * 100,
+      })),
+      ...(otherBudgetSpentCents > 0
+        ? [
+            {
+              id: "others",
+              label: "Outros",
+              color: "#64748b",
+              spentCents: otherBudgetSpentCents,
+              percent: (otherBudgetSpentCents / segmentBaseCents) * 100,
+            },
+          ]
+        : []),
+    ];
+
+    return {
+      limitsByCategory: limits,
+      spentWeightedByCategory: spentWeighted,
+      spentGrossByCategory: spentGross,
+      budgetRows: rows,
+      otherBudgetRows,
+      totalLimitsCents: totalLimits,
+      totalRemainingCents: totalRemaining,
+      globalPercent: gPercent,
+      budgetSegments: segments,
+    };
+  }, [budgetsQuery.data, expensesQuery.data, expenseCategories.data, month, expenseCents]);
 
   // Donut de categorias: principais despesas do mês (bruto) com suporte a clique.
-  const donutSlices = (expenseCategories.data ?? [])
-    .map((category) => ({
-      key: category.id,
-      label: category.name,
-      valueCents: spentGrossByCategory.get(category.id) ?? 0,
-      icon: category.icon,
-      color: category.color,
-      onClick: () => setSelectedCategoryId(category.id),
-    }))
-    .filter((slice) => slice.valueCents > 0)
-    .sort((a, b) => b.valueCents - a.valueCents)
-    .slice(0, 5);
+  const donutSlices = useMemo(
+    () =>
+      (expenseCategories.data ?? [])
+        .map((category) => ({
+          key: category.id,
+          label: category.name,
+          valueCents: spentGrossByCategory.get(category.id) ?? 0,
+          icon: category.icon,
+          color: category.color,
+          onClick: () => setSelectedCategoryId(category.id),
+        }))
+        .filter((slice) => slice.valueCents > 0)
+        .sort((a, b) => b.valueCents - a.valueCents)
+        .slice(0, 5),
+    [expenseCategories.data, spentGrossByCategory],
+  );
 
   // Detalhes da Categoria Selecionada para o Diálogo de Raio-X
   const prevSpentWeightedByCategory = spentByCategoryMap(prevExpensesQuery.data ?? []);
@@ -261,111 +339,141 @@ export function OverviewPage() {
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const dayOfMonth = now.getDate();
 
-  const pace = isCurrentMonth
-    ? spendingPace({
-        spentCents: grossExpenseCents,
-        monthlyBudgetCents: Math.max(1, grossIncomeCents),
-        dayOfMonth,
-        daysInMonth,
-      })
-    : { active: false, spentPercent: 0, elapsedPercent: 0, gapPoints: 0, ahead: false };
+  const pace = useMemo(
+    () =>
+      isCurrentMonth
+        ? spendingPace({
+            spentCents: grossExpenseCents,
+            monthlyBudgetCents: Math.max(1, grossIncomeCents),
+            dayOfMonth,
+            daysInMonth,
+          })
+        : { active: false, spentPercent: 0, elapsedPercent: 0, gapPoints: 0, ahead: false },
+    [isCurrentMonth, grossExpenseCents, grossIncomeCents, dayOfMonth, daysInMonth],
+  );
 
-  const daily = isCurrentMonth
-    ? dailyBudget({
-        phase: "current",
-        incomesCents: grossIncomeCents,
-        investmentsCents: investmentCents,
-        expensesCents: grossExpenseCents,
-        dayOfMonth,
-        daysInMonth,
-      })
-    : { dailyCents: null, monthlyNetCents: 0, daysRemaining: null };
+  const daily = useMemo(
+    () =>
+      isCurrentMonth
+        ? dailyBudget({
+            phase: "current",
+            incomesCents: grossIncomeCents,
+            investmentsCents: investmentCents,
+            expensesCents: grossExpenseCents,
+            dayOfMonth,
+            daysInMonth,
+          })
+        : { dailyCents: null, monthlyNetCents: 0, daysRemaining: null },
+    [isCurrentMonth, grossIncomeCents, investmentCents, grossExpenseCents, dayOfMonth, daysInMonth],
+  );
 
-  const projection = isCurrentMonth
-    ? endOfMonthProjection({
-        phase: "current",
-        incomesCents: grossIncomeCents,
-        investmentsCents: investmentCents,
-        expensesCents: grossExpenseCents,
-        dayOfMonth,
-        daysInMonth,
-      })
-    : { projectedExpensesCents: null, surplusCents: null, onTrack: null, burnRateCents: null };
+  const projection = useMemo(
+    () =>
+      isCurrentMonth
+        ? endOfMonthProjection({
+            phase: "current",
+            incomesCents: grossIncomeCents,
+            investmentsCents: investmentCents,
+            expensesCents: grossExpenseCents,
+            dayOfMonth,
+            daysInMonth,
+          })
+        : { projectedExpensesCents: null, surplusCents: null, onTrack: null, burnRateCents: null },
+    [isCurrentMonth, grossIncomeCents, investmentCents, grossExpenseCents, dayOfMonth, daysInMonth],
+  );
 
   const showPaceAlert =
     isCurrentMonth &&
     pace.active &&
     (pace.ahead || projection.onTrack === false || (projection.surplusCents !== null && projection.surplusCents < 0));
 
-  const surplusCapacity = calculateSurplusCapacity({
-    incomeCents: totals.incomeCents,
-    expenseCents: totals.expenseCents,
-    openInvoicesCents: realCashData.safeToSpend.committedObligationsCents,
-    contributionsAlreadyMadeCents: totals.investmentCents,
-    safeToSpendCents: realCashData.safeToSpend.safeToSpendCents,
-  });
-
-  const cashGapResult = analyzeCashGap({
-    currentBalanceCents: realCashData.cashBalance.currentBalanceCents,
-    today,
-    obligations: [
-      ...(cardsQuery.data ?? []).flatMap((card) => {
-        const cardExpenses = (cardExpensesQuery.data ?? []).filter(
-          (e) => e.card_id === card.id && e.bill_competence === month,
-        );
-        const cardPayments = (cardPaymentsQuery.data ?? []).filter(
-          (p) => p.card_id === card.id && p.competence_month === month,
-        );
-        // O valor da fatura do cartão é pago pelo montante BRUTO nominal integral
-        const expTotal = cardExpenses.reduce(
-          (acc, e) => acc + Math.round(e.value * 100),
-          0,
-        );
-        const payTotal = cardPayments.reduce((acc, p) => acc + Math.round(p.amount * 100), 0);
-        const balance = Math.max(0, expTotal - payTotal);
-        if (balance <= 0) return [];
-        const nominalDueDate = invoiceDueDate(month, card.due_day);
-        // Fatura vencida em aberto no mês tem exigibilidade imediata (today)
-        const dueDate = nominalDueDate < today ? today : nominalDueDate;
-        return [
-          {
-            id: `invoice-${card.id}-${month}`,
-            name: `Fatura ${card.name}`,
-            dueDate,
-            amountCents: balance,
-            kind: "invoice" as const,
-          },
-        ];
+  const surplusCapacity = useMemo(
+    () =>
+      calculateSurplusCapacity({
+        incomeCents: totals.incomeCents,
+        expenseCents: totals.expenseCents,
+        openInvoicesCents: realCashData.safeToSpend.committedObligationsCents,
+        contributionsAlreadyMadeCents: totals.investmentCents,
+        safeToSpendCents: realCashData.safeToSpend.safeToSpendCents,
       }),
-      ...(debtsQuery.data ?? [])
-        .filter((d) => d.type === "payable" && !d.paid_at && d.due_date && d.due_date < rangeEnd)
-        .map((d) => ({
-          id: `debt-${d.id}`,
-          name: d.name,
-          dueDate: d.due_date < today ? today : d.due_date,
-          amountCents: numberToCents(d.amount),
-          kind: "debt" as const,
-        })),
+    [totals, realCashData.safeToSpend],
+  );
+
+  const cashGapResult = useMemo(
+    () =>
+      analyzeCashGap({
+        currentBalanceCents: realCashData.cashBalance.currentBalanceCents,
+        today,
+        obligations: [
+          ...(cardsQuery.data ?? []).flatMap((card) => {
+            const cardExpenses = (cardExpensesQuery.data ?? []).filter(
+              (e) => e.card_id === card.id && e.bill_competence === month,
+            );
+            const cardPayments = (cardPaymentsQuery.data ?? []).filter(
+              (p) => p.card_id === card.id && p.competence_month === month,
+            );
+            // O valor da fatura do cartão é pago pelo montante BRUTO nominal integral
+            const expTotal = cardExpenses.reduce(
+              (acc, e) => acc + Math.round(e.value * 100),
+              0,
+            );
+            const payTotal = cardPayments.reduce((acc, p) => acc + Math.round(p.amount * 100), 0);
+            const balance = Math.max(0, expTotal - payTotal);
+            if (balance <= 0) return [];
+            const nominalDueDate = invoiceDueDate(month, card.due_day);
+            // Fatura vencida em aberto no mês tem exigibilidade imediata (today)
+            const dueDate = nominalDueDate < today ? today : nominalDueDate;
+            return [
+              {
+                id: `invoice-${card.id}-${month}`,
+                name: `Fatura ${card.name}`,
+                dueDate,
+                amountCents: balance,
+                kind: "invoice" as const,
+              },
+            ];
+          }),
+          ...(debtsQuery.data ?? [])
+            .filter((d) => d.type === "payable" && !d.paid_at && d.due_date && d.due_date < rangeEnd)
+            .map((d) => ({
+              id: `debt-${d.id}`,
+              name: d.name,
+              dueDate: d.due_date < today ? today : d.due_date,
+              amountCents: numberToCents(d.amount),
+              kind: "debt" as const,
+            })),
+        ],
+        inflows: [
+          ...(debtsQuery.data ?? [])
+            .filter((d) => d.type === "receivable" && !d.paid_at && d.due_date && d.due_date >= today)
+            .map((d) => ({
+              id: `recv-${d.id}`,
+              name: d.name,
+              expectedDate: d.due_date,
+              amountCents: numberToCents(d.amount),
+            })),
+          ...(incomesQuery.data ?? [])
+            .filter((i) => i.date >= today)
+            .map((i) => ({
+              id: `income-${i.id}`,
+              name: "Renda prevista",
+              expectedDate: i.date,
+              amountCents: Math.round(i.value * 100),
+            })),
+        ],
+      }),
+    [
+      realCashData.cashBalance.currentBalanceCents,
+      today,
+      cardsQuery.data,
+      cardExpensesQuery.data,
+      cardPaymentsQuery.data,
+      month,
+      debtsQuery.data,
+      rangeEnd,
+      incomesQuery.data,
     ],
-    inflows: [
-      ...(debtsQuery.data ?? [])
-        .filter((d) => d.type === "receivable" && !d.paid_at && d.due_date && d.due_date >= today)
-        .map((d) => ({
-          id: `recv-${d.id}`,
-          name: d.name,
-          expectedDate: d.due_date,
-          amountCents: numberToCents(d.amount),
-        })),
-      ...(incomesQuery.data ?? [])
-        .filter((i) => i.date >= today)
-        .map((i) => ({
-          id: `income-${i.id}`,
-          name: "Renda prevista",
-          expectedDate: i.date,
-          amountCents: Math.round(i.value * 100),
-        })),
-    ],
-  });
+  );
 
   const alertItems: (DashboardAlertItem | null | undefined | false)[] = [
     isCurrentMonth && cashGapResult.isCashGapDetected && {

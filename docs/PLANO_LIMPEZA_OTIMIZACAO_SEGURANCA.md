@@ -295,12 +295,22 @@ graph TD
     - Otimizada a retenção de cache HTTP e Service Worker PWA (127 entries, 5.904 KiB), garantindo que atualizações de telas ou regras de negócio não invalidem chunks de bibliotecas de terceiros no cliente.
   - **Critério de Saída:** Eliminação completa de avisos de chunk > 500 kB no Rollup e retenção ótima de cache HTTP/PWA.
 
-- [ ] **Tarefa 4.4 — Otimização de Renderização e Reatividade (React 19)**
-  - **Ação:** Auditar listas volumosas e componentes com cálculos frequentes:
-    - Aplicar memoização (`useMemo`, `useCallback`) em ordenações, filtros de extrato e gráficos analíticos;
-    - Garantir chaves estáveis (`key={id}`) em todas as iterações (evitando `index` como chave);
-    - Ajustar `staleTime` no TanStack Query para evitar re-fetches desnecessários em navegação rápida entre abas.
-  - **Critério de Saída:** Interações e rolagens a 60fps em dispositivos de baixo e médio desempenho.
+- [x] **Tarefa 4.4 — Otimização de Renderização e Reatividade (React 19)**
+  - **Ação:** Auditadas listas volumosas e componentes com cálculos e re-renderizações frequentes:
+    - Aplicada memoização estratégica (`useMemo`, `useCallback`) em agregadores pesados e gráficos:
+      - `usePortfolioPosition` (`src/state/queries/use-portfolio-position.ts`): memoizados 100% dos cálculos contábeis do ledger, conversão cambial, simulação de CDI/taxas prefixadas, cálculo de TIR (XIRR individual e consolidado), séries mensais e retorno ponderado, além de estabilizar a função `refetch` com `useCallback`;
+      - `OverviewPage` (`src/features/overview/pages/overview-page.tsx`): memoizados totais e sparklines semestrais, curva de fluxo de caixa diário (`buildDailyFlow`), partição e segmentos da barra única de orçamentos, fatias do donut de despesas, diagnósticos de ritmo de gastos (`spendingPace`), orçamento diário (`dailyBudget`), projeção de fechamento (`endOfMonthProjection`), capacidade de aporte (`calculateSurplusCapacity`) e motor de liquidez (`analyzeCashGap`);
+      - `TransactionListPage` (`src/features/transactions/pages/transaction-list-page.tsx`): memoizados somatórios brutos e ponderados de receitas/despesas, mapa de frequências de recorrência e callback `recurrenceLabel`;
+      - `CardsPage` (`src/features/cards/pages/cards-page.tsx`): memoizados `categoryById`, mapa de resumos por competência (`buildCompetenceSummaries`) e partição de faturas entre gastos à vista e parcelados herdados;
+      - `DebtsPage` (`src/features/debts/pages/debts-page.tsx`): memoizadas referências de dívidas e financiamentos, listas particionadas e sumário consolidado de pendências (`calculateDebtsSummary`);
+    - Erradicadas chaves ad-hoc baseadas em índice em iterações de UI:
+      - `ReportExecutiveSummary`: chave estável `key={item.label}`;
+      - `FaqSection`: chave estável `key={faq.question}`;
+      - `ExperiencePresetsCard`: chave estável `key={h}`;
+      - `StepValidation` (assistente de restauração): chave estável `key={msg}`;
+    - Ajustado `staleTime` no TanStack Query:
+      - Alinhado `useLoans` (`src/state/queries/use-loans.ts`) com `staleTime: STALE_TIMES.transactional` (30 s), prevenindo disparos de rede desnecessários durante navegação rápida entre abas.
+  - **Critério de Saída:** Interações e rolagens a 60fps constantes sem gargalos de re-renderização na thread principal.
 
 - [ ] **Tarefa 4.5 — Auditoria de Feedback Sensorial e Eliminação de Double-Haptics**
   - **Ação:** Auditar chamadas de feedback tátil e sonoro (§17 de `AGENTS.md`):

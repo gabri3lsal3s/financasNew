@@ -91,8 +91,8 @@ export function StepValidation({
                 <span>O arquivo não atende aos requisitos de integridade:</span>
               </div>
               <ul className="list-disc pl-5 space-y-1 text-xs">
-                {errorMessages.map((msg, i) => (
-                  <li key={i}>{msg}</li>
+                {errorMessages.map((msg) => (
+                  <li key={msg}>{msg}</li>
                 ))}
               </ul>
             </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { ArrowDownLeft, ArrowUpRight, Calendar, Check, ChevronDown, ChevronUp, Coins, Download, HandCoins, Landmark, Plus } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
@@ -200,12 +200,12 @@ export function DebtsPage() {
     setSettling(debt);
   };
 
-  const debts = debtsQuery.data ?? [];
-  const loans = loansQuery.data ?? [];
-  const payableDebts = debts.filter((d) => d.type === "payable");
-  const receivableDebts = debts.filter((d) => d.type === "receivable");
+  const debts = useMemo(() => debtsQuery.data ?? [], [debtsQuery.data]);
+  const loans = useMemo(() => loansQuery.data ?? [], [loansQuery.data]);
+  const payableDebts = useMemo(() => debts.filter((d) => d.type === "payable"), [debts]);
+  const receivableDebts = useMemo(() => debts.filter((d) => d.type === "receivable"), [debts]);
 
-  const debtsSummary = calculateDebtsSummary(debts);
+  const debtsSummary = useMemo(() => calculateDebtsSummary(debts), [debts]);
   const { payablePendingCents, receivablePendingCents, netPendingCents } = debtsSummary;
 
 
