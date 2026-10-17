@@ -86,7 +86,7 @@ function LimitDialogContent({
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="limit-amount" className="text-sm font-medium">
+        <label htmlFor="limit-amount" className="text-xs font-semibold text-foreground">
           Limite mensal
         </label>
         <MoneyInput id="limit-amount" cents={cents} onCentsChange={setCents} aria-label="Limite mensal da categoria" />
@@ -96,7 +96,7 @@ function LimitDialogContent({
         <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface p-3 text-sm">
           <div>
             <p className="font-medium text-foreground">Sugestão ({rule.limitPercent}% da renda)</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground">
               Com base na renda de <MoneyText cents={monthlyIncomeCents} tone="default" className="privacy-mask text-xs" /> deste mês.
             </p>
           </div>

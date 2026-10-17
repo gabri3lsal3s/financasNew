@@ -81,7 +81,7 @@ export function AssetSplitDialog({ open, onOpenChange, asset }: AssetSplitDialog
           </div>
 
           <div className="flex items-center gap-3">
-            <label className="flex-1 flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            <label className="flex-1 flex flex-col gap-1.5 text-xs font-semibold text-foreground">
               De (cada)
               <NumericInput
                 value={ratioFromStr}
@@ -92,7 +92,7 @@ export function AssetSplitDialog({ open, onOpenChange, asset }: AssetSplitDialog
               />
             </label>
             <span className="text-sm font-semibold text-muted-foreground pt-5">para</span>
-            <label className="flex-1 flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            <label className="flex-1 flex flex-col gap-1.5 text-xs font-semibold text-foreground">
               Virou (passa a ter)
               <NumericInput
                 value={ratioToStr}

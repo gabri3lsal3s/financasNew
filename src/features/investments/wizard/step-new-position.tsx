@@ -63,7 +63,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
       {/* Seletor de Moeda (Apenas para BDRs e Internacional) */}
       {needsCurrencyField && (
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-xs font-semibold text-foreground">
             Moeda de Negociação
           </span>
           <Select
@@ -77,7 +77,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
       {/* Setor / Segmento para Renda Variável (Opcional) */}
       {!isCash && !isFixedIncome && !isCrypto && (
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="wizard-new-sector" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <label htmlFor="wizard-new-sector" className="text-xs font-semibold text-foreground">
             Setor / Segmento <span className="text-muted-foreground/70 font-normal">(opcional)</span>
           </label>
           <Input
@@ -113,7 +113,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
         <div className="rounded-xl border border-border/80 bg-surface/60 p-4 flex flex-col gap-3">
           <span className="text-xs font-semibold text-foreground">Saldo Inicial em Caixa</span>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="wizard-new-cash" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <label htmlFor="wizard-new-cash" className="text-xs font-semibold text-foreground">
               Saldo em Conta (R$)
             </label>
             <MoneyInput
@@ -135,7 +135,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="wizard-new-initial-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <label htmlFor="wizard-new-initial-price" className="text-xs font-semibold text-foreground">
                 Valor Aplicado ({state.currency})
               </label>
               <MoneyInput
@@ -155,7 +155,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="wizard-new-current-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <label htmlFor="wizard-new-current-price" className="text-xs font-semibold text-foreground">
                 Saldo Atual ({state.currency})
               </label>
               <MoneyInput
@@ -176,7 +176,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="wizard-new-qty" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <label htmlFor="wizard-new-qty" className="text-xs font-semibold text-foreground">
                 Quantidade Inicial de Cotas
               </label>
               <NumericInput
@@ -190,7 +190,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="wizard-new-avgprice" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <label htmlFor="wizard-new-avgprice" className="text-xs font-semibold text-foreground">
                 Preço Médio por Cota ({state.currency})
               </label>
               <MoneyInput
@@ -300,7 +300,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="wizard-accumulated-dividends"
-                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                className="text-xs font-semibold text-foreground"
               >
                 Total Acumulado Recebido ({state.currency})
               </label>
@@ -317,7 +317,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="wizard-estimated-div-per-share"
-                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                className="text-xs font-semibold text-foreground"
               >
                 Dividendo Estimado / Cota / Mês ({state.currency})
               </label>
@@ -346,7 +346,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
       ) : (
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
-            <label htmlFor="wizard-new-notes" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <label htmlFor="wizard-new-notes" className="text-xs font-semibold text-foreground">
               Anotações / Descrição <span className="text-muted-foreground/70 font-normal">(opcional)</span>
             </label>
             <button

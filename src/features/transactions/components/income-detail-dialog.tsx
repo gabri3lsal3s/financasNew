@@ -161,7 +161,7 @@ function IncomeEditForm({
       {formError ? <Alert variant="error">{formError}</Alert> : null}
 
       {grouped ? (
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
           Aplicar a
           <Select
             value={scope}
@@ -170,7 +170,7 @@ function IncomeEditForm({
             ariaLabel="Escopo da edição"
           />
           {grouped && !isRecurring && scope !== "single" ? (
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-[11px] text-muted-foreground font-normal">
               O valor é editado por lançamento para preservar o total do parcelamento. Para mudar o total, exclua e refaça.
             </span>
           ) : null}
@@ -178,7 +178,7 @@ function IncomeEditForm({
       ) : null}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground sm:col-span-2">
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground sm:col-span-2">
           Descrição
           <Input
             value={description}
@@ -188,7 +188,7 @@ function IncomeEditForm({
           />
         </label>
 
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
           Valor
           <MoneyInput
             cents={valueCents}
@@ -198,7 +198,7 @@ function IncomeEditForm({
           />
         </label>
 
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
           Data
           <DatePicker
             value={date}
@@ -207,7 +207,7 @@ function IncomeEditForm({
           />
         </label>
 
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
           Categoria
           <Select
             value={categoryId}
@@ -218,7 +218,7 @@ function IncomeEditForm({
           />
         </label>
 
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
           Forma de recebimento
           <Select
             value={receiveType}

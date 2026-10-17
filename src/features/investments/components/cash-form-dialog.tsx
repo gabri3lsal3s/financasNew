@@ -169,7 +169,7 @@ function CashFormContent({ asset = null, onClose }: CashFormContentProps) {
         </div>
 
         {/* Campo de Saldo Disponível */}
-        <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
           Saldo Disponível em Caixa (R$)
           <MoneyInput
             cents={balanceCents}
@@ -179,8 +179,8 @@ function CashFormContent({ asset = null, onClose }: CashFormContentProps) {
         </label>
 
         {/* Campo de Observações */}
-        <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
-          Anotações (opcional)
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
+          Anotações <span className="font-normal text-muted-foreground">(opcional)</span>
           <Input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}

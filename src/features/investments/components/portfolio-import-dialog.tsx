@@ -555,7 +555,7 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                       <div className="space-y-1">
-                        <label className="text-[11px] font-medium text-foreground">Código / Ticker</label>
+                        <label className="text-xs font-semibold text-foreground">Código / Ticker</label>
                         <Input
                           value={row.ticker}
                           onChange={(e) => updateParsedRow(idx, { ticker: e.target.value.toUpperCase().trim() })}
@@ -564,7 +564,7 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[11px] font-medium text-foreground">Data</label>
+                        <label className="text-xs font-semibold text-foreground">Data</label>
                         <DatePicker
                           value={row.date}
                           onValueChange={(date) => updateParsedRow(idx, { date })}
@@ -572,9 +572,8 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
                         />
                       </div>
 
-
                       <div className="space-y-1">
-                        <label className="text-[11px] font-medium text-foreground">Tipo de Operação</label>
+                        <label className="text-xs font-semibold text-foreground">Tipo de Operação</label>
                         <Select
                           value={row.type}
                           onValueChange={(val) => updateParsedRow(idx, { type: val as PortfolioTransactionType })}
@@ -583,7 +582,7 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[11px] font-medium text-foreground">Classe do Ativo</label>
+                        <label className="text-xs font-semibold text-foreground">Classe do Ativo</label>
                         <Select
                           value={row.assetClass ?? "Ações"}
                           onValueChange={(val) => updateParsedRow(idx, { assetClass: val })}
@@ -594,7 +593,7 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       <div className="space-y-1">
-                        <label className="text-[11px] font-medium text-foreground">Quantidade / Cotas</label>
+                        <label className="text-xs font-semibold text-foreground">Quantidade / Cotas</label>
                         <Input
                           type="number"
                           step="any"
@@ -605,7 +604,7 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[11px] font-medium text-foreground">
+                        <label className="text-xs font-semibold text-foreground">
                           {isPositionMode ? "Preço Médio (R$)" : "Preço Unitário (R$)"}
                         </label>
                         <Input
@@ -618,7 +617,7 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[11px] font-medium text-foreground">Valor Total (R$)</label>
+                        <label className="text-xs font-semibold text-foreground">Valor Total (R$)</label>
                         <Input
                           type="number"
                           step="any"

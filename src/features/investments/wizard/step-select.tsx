@@ -82,7 +82,7 @@ export function StepSelect({
     <div className="flex flex-col gap-5">
       {/* Campo de Busca */}
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="wizard-ticker-search" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <label htmlFor="wizard-ticker-search" className="text-xs font-semibold text-foreground">
           Buscar ou digitar ativo
         </label>
         <div className="relative">

@@ -117,7 +117,7 @@ function TransactionFormContent({ asset, transaction = null, onClose }: Transact
         }}
         className="mt-4 flex flex-col gap-3.5"
       >
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
           Tipo de operação
           <Select
             value={type}
@@ -126,14 +126,14 @@ function TransactionFormContent({ asset, transaction = null, onClose }: Transact
             ariaLabel="Tipo de operação"
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
           Data
           <DatePicker value={date} onValueChange={setDate} ariaLabel="Data da transação" />
         </label>
 
         {withQtyPrice ? (
           <>
-            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
               Quantidade
               <NumberStepperInput
                 value={quantity}
@@ -144,7 +144,7 @@ function TransactionFormContent({ asset, transaction = null, onClose }: Transact
                 ariaLabel="Quantidade"
               />
             </label>
-            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
               Preço unitário ({asset.currency})
               <NumberStepperInput
                 value={price}
@@ -162,7 +162,7 @@ function TransactionFormContent({ asset, transaction = null, onClose }: Transact
         ) : null}
 
         {withAmount ? (
-          <label htmlFor="transaction-dividend-amount" className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          <label htmlFor="transaction-dividend-amount" className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
             Valor do provento ({asset.currency})
             <MoneyInput
               id="transaction-dividend-amount"
@@ -176,7 +176,7 @@ function TransactionFormContent({ asset, transaction = null, onClose }: Transact
         ) : null}
 
         {withFactor ? (
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
             Fator ({type === "split" ? "2 = 2:1 (dobra cotas)" : "2 = 1:2 (reduz cotas)"})
             <NumberStepperInput
               value={quantity}

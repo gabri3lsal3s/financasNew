@@ -172,7 +172,7 @@ export function ColorPicker({
             </div>
 
             <div className="flex flex-col gap-1">
-              <label htmlFor="color-picker-hex" className="text-xs font-medium text-muted-foreground">
+              <label htmlFor="color-picker-hex" className="text-xs font-semibold text-foreground">
                 Cor personalizada
               </label>
               <div className="flex items-center gap-2">

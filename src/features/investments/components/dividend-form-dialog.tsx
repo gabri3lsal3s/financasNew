@@ -250,7 +250,7 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
         {inputMode === "per_share" ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="dividend-pershare" className="text-xs font-semibold text-primary">
+              <label htmlFor="dividend-pershare" className="text-xs font-semibold text-foreground">
                 Valor por Cota ({assetCurrency})
               </label>
               <MoneyInput

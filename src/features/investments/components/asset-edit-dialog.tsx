@@ -283,7 +283,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
 
       {/* Ticker */}
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="edit-asset-ticker" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <label htmlFor="edit-asset-ticker" className="text-xs font-semibold text-foreground">
           Código do Ativo (Ticker)
         </label>
         <Input
@@ -298,7 +298,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
       {/* Classe + Moeda (Moeda só para BDRs / Internacional) */}
       <div className={cn("grid grid-cols-1 gap-4", needsCurrencyField ? "sm:grid-cols-2" : "sm:grid-cols-1")}>
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-xs font-semibold text-foreground">
             Classe de Ativo
           </span>
           <Select
@@ -310,7 +310,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
 
         {needsCurrencyField && (
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="text-xs font-semibold text-foreground">
               Moeda
             </span>
             <Select
@@ -326,13 +326,13 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
       {!isCash && (
         <div className="flex flex-col gap-1.5">
           {!isSectorChipsOnly && (
-            <label htmlFor="edit-asset-sector" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <label htmlFor="edit-asset-sector" className="text-xs font-semibold text-foreground">
               {sectorLabel}
             </label>
           )}
           {isSectorChipsOnly ? (
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="text-xs font-semibold text-foreground">
                 {sectorLabel}
               </span>
               <p className="text-[11px] text-muted-foreground">Selecione o tipo de rendimento:</p>
@@ -374,7 +374,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
             <span className="text-xs font-semibold text-foreground">Saldo Disponível em Caixa</span>
             <Badge variant="muted" size="sm">1:1</Badge>
           </div>
-          <label htmlFor="edit-asset-cash" className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          <label htmlFor="edit-asset-cash" className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
             Saldo Atual (R$)
             <NumericInput
               id="edit-asset-cash"
@@ -403,7 +403,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="edit-asset-initial-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <label htmlFor="edit-asset-initial-price" className="text-xs font-semibold text-foreground">
                 {isClosed ? "Custo Histórico Original / Total Aplicado" : "Preço Inicial / Valor Aplicado"} ({currency})
               </label>
               <MoneyInput
@@ -419,14 +419,14 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
                 aria-label="Preço inicial investido"
               />
               {isClosed && (
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[11px] text-muted-foreground">
                   Valor originalmente investido (utilizado para calcular o resultado final realizado).
                 </span>
               )}
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="edit-asset-current-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <label htmlFor="edit-asset-current-price" className="text-xs font-semibold text-foreground">
                 {isClosed ? "Custódia Atual (Posição Liquidada)" : "Preço Atual / Saldo Final"} ({currency})
               </label>
               <MoneyInput
@@ -474,7 +474,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="edit-asset-qty" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <label htmlFor="edit-asset-qty" className="text-xs font-semibold text-foreground">
                 Quantidade Atual (Cotas / Unidades)
               </label>
               <NumericInput
@@ -488,7 +488,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="edit-asset-avgprice" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <label htmlFor="edit-asset-avgprice" className="text-xs font-semibold text-foreground">
                 Preço Médio por Cota ({currency})
               </label>
               <MoneyInput
@@ -535,7 +535,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
 
       {/* Anotações */}
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="edit-asset-notes" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <label htmlFor="edit-asset-notes" className="text-xs font-semibold text-foreground">
           Anotações / Descrição
         </label>
         <Input
@@ -611,7 +611,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="edit-accumulated-dividends"
-                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                className="text-xs font-semibold text-foreground"
               >
                 Total Acumulado Recebido ({currency})
               </label>
@@ -628,7 +628,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="edit-estimated-div-per-share"
-                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                className="text-xs font-semibold text-foreground"
               >
                 Estimativa Mensal / Cota ({currency})
               </label>

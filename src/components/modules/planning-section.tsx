@@ -129,15 +129,15 @@ export function PlanningSection({ balanceCents, monthlyExpensesCents, className 
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 min-w-0">
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
             Aporte mensal
             <MoneyInput cents={effectiveContribution} onCentsChange={setContributionCents} size="sm" aria-label="Aporte mensal" />
           </label>
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
             Despesa mensal
             <MoneyInput cents={effectiveExpenses} onCentsChange={setExpensesCents} size="sm" aria-label="Despesa mensal" />
           </label>
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
             Retorno real % a.a.
             <NumericInput
               value={returnPct}
@@ -191,7 +191,7 @@ export function PlanningSection({ balanceCents, monthlyExpensesCents, className 
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground sm:w-64 shrink-0">
+          <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground sm:w-64 shrink-0">
             Economia mensal simulada
             <MoneyInput
               cents={habitSavingsCents ?? 0}

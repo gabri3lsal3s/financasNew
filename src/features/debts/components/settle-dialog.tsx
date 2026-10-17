@@ -105,7 +105,7 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
             resultado final se quiser.
           </p>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="settle-result" className="text-sm font-medium">
+            <label htmlFor="settle-result" className="text-xs font-semibold text-foreground">
               Despesa passa a contar como
             </label>
             <MoneyInput
@@ -124,7 +124,7 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
           {!isReceivable ? (
             <div className="rounded-md border border-border/70 p-3 bg-muted/20 flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <span className="text-xs font-semibold text-foreground">
                   Acréscimos e Descontos
                 </span>
                 <Button
@@ -140,7 +140,7 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
               {showPenalties ? (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                   <div className="flex flex-col gap-1">
-                    <label htmlFor="fine-cents" className="text-xs text-muted-foreground">
+                    <label htmlFor="fine-cents" className="text-xs font-semibold text-foreground">
                       Multa por atraso
                     </label>
                     <MoneyInput
@@ -152,7 +152,7 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label htmlFor="interest-cents" className="text-xs text-muted-foreground">
+                    <label htmlFor="interest-cents" className="text-xs font-semibold text-foreground">
                       Juros / Mora
                     </label>
                     <MoneyInput
@@ -164,7 +164,7 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label htmlFor="discount-cents" className="text-xs text-muted-foreground">
+                    <label htmlFor="discount-cents" className="text-xs font-semibold text-foreground">
                       Desconto
                     </label>
                     <MoneyInput

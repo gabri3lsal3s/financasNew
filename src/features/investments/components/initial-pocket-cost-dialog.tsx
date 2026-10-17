@@ -777,7 +777,7 @@ export function InitialPocketCostDialog({
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
                 {/* Campo Data */}
                 <div className="sm:col-span-4 flex flex-col gap-1">
-                  <label className="text-[11px] font-semibold text-foreground">
+                  <label className="text-xs font-semibold text-foreground">
                     Data <span className="text-destructive">*</span>
                   </label>
                   <DatePicker
@@ -791,7 +791,7 @@ export function InitialPocketCostDialog({
 
                 {/* Campo Valor */}
                 <div className="sm:col-span-4 flex flex-col gap-1">
-                  <label className="text-[11px] font-semibold text-foreground">
+                  <label className="text-xs font-semibold text-foreground">
                     {entryType === "resgate" ? "Valor Retirado" : "Valor Aportado"}{" "}
                     <span className="text-destructive">*</span>
                   </label>
@@ -806,7 +806,7 @@ export function InitialPocketCostDialog({
                 {/* Campo Saldo Bruto (Opcional - para TWR) */}
                 <div className="sm:col-span-4 flex flex-col gap-1">
                   <label
-                    className="text-[11px] font-semibold text-foreground"
+                    className="text-xs font-semibold text-foreground"
                     title="Se informado, salva o snapshot patrimonial do mês para calcular a rentabilidade TWR e a evolução histórica."
                   >
                     Saldo Bruto <span className="text-muted-foreground font-normal">(p/ TWR)</span>
@@ -822,7 +822,7 @@ export function InitialPocketCostDialog({
                 {/* Campo Rentabilidade do Mês (% a.m.) */}
                 <div className="sm:col-span-4 flex flex-col gap-1">
                   <label
-                    className="text-[11px] font-semibold text-foreground"
+                    className="text-xs font-semibold text-foreground"
                     title="Rentabilidade mensal divulgada no extrato da corretora (ex: 1,24 ou -0,46)."
                   >
                     Rentabilidade % <span className="text-muted-foreground font-normal">(a.m., opcional)</span>
@@ -836,7 +836,7 @@ export function InitialPocketCostDialog({
 
                 {/* Campo Descrição */}
                 <div className="sm:col-span-8 flex flex-col gap-1">
-                  <label className="text-[11px] font-semibold text-foreground">
+                  <label className="text-xs font-semibold text-foreground">
                     Descrição <span className="text-muted-foreground font-normal">(opcional)</span>
                   </label>
                   <Input
@@ -1029,7 +1029,7 @@ export function InitialPocketCostDialog({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl border border-border/80 bg-surface">
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-semibold text-foreground">
+                <label className="text-xs font-semibold text-foreground">
                   Data de Início da Carteira
                 </label>
                 <DatePicker
@@ -1042,7 +1042,7 @@ export function InitialPocketCostDialog({
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-semibold text-foreground">
+                <label className="text-xs font-semibold text-foreground">
                   Capital Total Desembolsado do Bolso
                 </label>
                 <MoneyInput

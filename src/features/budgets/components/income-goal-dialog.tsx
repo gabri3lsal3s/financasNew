@@ -73,7 +73,7 @@ function IncomeGoalDialogContent({
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="goal-amount" className="text-sm font-medium">
+        <label htmlFor="goal-amount" className="text-xs font-semibold text-foreground">
           Expectativa de renda mensal
         </label>
         <MoneyInput
@@ -83,7 +83,7 @@ function IncomeGoalDialogContent({
           aria-label="Expectativa de renda mensal da categoria"
           placeholder="Ex.: R$ 5.000,00"
         />
-        <p className="text-xs text-muted-foreground">
+        <p className="text-[11px] text-muted-foreground">
           Define quanto você planeja receber nesta categoria em {month}.
         </p>
       </div>

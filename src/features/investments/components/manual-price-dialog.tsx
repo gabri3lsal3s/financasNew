@@ -102,7 +102,7 @@ function ManualPriceContent({ asset, onClose }: ManualPriceContentProps) {
         </Badge>
       </div>
 
-      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+      <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
         Preço unitário manual ({asset.currency})
         <NumberStepperInput
           value={priceInput}

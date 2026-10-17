@@ -31,6 +31,10 @@ Este plano mestre define a estratégia unificada e executável para a reorganiza
 5. **Higiene e Desduplicação Estrita (DRY):** Erradicação de marcações repetidas, layouts de rodapé divergentes, classes de micro-padding manuais e duplicidade de lógicas de cálculo ou formatação.
 6. **Auditoria e Blindagem de Segurança Multicamada:** 100% das tabelas protegidas com RLS estrito (`auth.uid() = user_id`), RPCs com `SET search_path = public`, proteção contra XSS via Zod, blindagem de tela nativa no Android (`FLAG_SECURE`) e ausência de chaves de serviço no bundle do cliente.
 7. **Zero Efeitos Colaterais & Portões de Qualidade Inegociáveis:** Cada tarefa gera seu commit atômico validado. Cada fase exige o Quality Gate Global (typecheck estrito, lint sem avisos, 100% dos testes verdes e build de produção bem-sucedido) antes de qualquer push.
+8. **Ciclo de Vida PWA Atômico & Invalidação Determinística de Cache:**
+   - Atualizações de versão do Web/PWA devem ser estritamente atômicas: o acionamento de "Atualizar" deve assegurar que o novo Service Worker assuma o controle total dos clientes (`skipWaiting` + `clientsClaim`) antes do reload, impedindo telas zumbis ou colisão de chunks mistos;
+   - O `CacheStorage` obsoleto deve ser purgado integralmente (`cleanupOutdatedCaches: true` do Workbox + rotina de limpeza de caches legados);
+   - Ícones do Web App Manifest e tags de splash/favicon devem possuir versionamento determinístico ou cache-busting, garantindo que o launcher móvel (Android WebAPK) e abas de desktop sincronizem visualmente novos designs de marca sem reter imagens obsoletas.
 
 ---
 
@@ -70,7 +74,7 @@ graph TD
 +---------------------------------------------------------------------------------------------------+
 | FASE 3: Desduplicação (DRY), Reuso de Componentes & Padronização de Domínio                      |
 +---------------------------------------------------------------------------------------------------+
-| FASE 4: Otimização de Performance, Bundle, Assets & Renderização                                  |
+| FASE 4: Otimização de Performance, Bundle, Assets, Ciclo PWA & Renderização                      |
 +---------------------------------------------------------------------------------------------------+
 | FASE 5: Auditoria e Fortalecimento de Segurança, RLS & Privacidade                                |
 +---------------------------------------------------------------------------------------------------+
@@ -224,12 +228,12 @@ graph TD
     - Preservadas as formatações canônicas de `src/domain/money.ts` e `src/services/masks/money.ts`.
   - **Critério de Saída:** Valores monetários legíveis em qualquer largura de tela sem truncamentos indevidos.
 
-- [ ] **Tarefa 3.3 — Conformidade com a Regra de Zero Controles Nativos**
-  - **Ação:** Verificar conformidade com §7 de `AGENTS.md`:
-    - Garantir que nenhum `<select>`, `<input type="date">` ou `<input type="checkbox">` nativo seja renderizado solto nas páginas;
-    - Todos os controles devem utilizar os primitivos encapsulados (`Select`, `DatePicker`, `Checkbox`, `RadioGroup`, `MoneyInput`, `Input`, `Textarea`);
-    - Padronizar anatomia de labels (`text-xs font-semibold text-foreground`) e helper texts (`text-[11px] text-muted-foreground`).
-  - **Critério de Saída:** Zero elementos nativos de controle soltos em toda a interface.
+- [x] **Tarefa 3.3 — Conformidade com a Regra de Zero Controles Nativos**
+  - **Ação:** Verificada a conformidade estrita com §4 item 7 e item 15 de `AGENTS.md`:
+    - Confirmada a inexistência de `<select>`, `<input type="date">`, `<input type="checkbox">`, `<dialog>`, `<details>` ou chamadas imperativas nativas (`alert()`, `confirm()`, `prompt()`) soltas na interface de usuário (todos utilizam os primitivos encapsulados de `components/ui/`);
+    - Padronizada a anatomia canônica de labels de formulários e diálogos em 26 arquivos (`text-xs font-semibold text-foreground`), eliminando variações arbitrárias como `text-sm font-medium`, `text-[11px] font-medium`, `text-primary`, e `text-xs font-semibold uppercase tracking-wider text-muted-foreground`;
+    - Harmonizados os textos auxiliares e descritivos em diálogos para o helper text canônico (`text-[11px] text-muted-foreground`) com indicador `(opcional)` padronizado.
+  - **Critério de Saída:** Zero elementos nativos de controle soltos em toda a interface e 100% dos formulários alinhados à anatomia canônica.
 
 - [ ] **Tarefa 3.4 — Centralização de Cálculos Financeiros em Funções Puras (`src/domain/`)**
   - **Ação:** Mapear regras de negócio, somatórios e filtros temporais dispersos em componentes ou hooks:
@@ -247,8 +251,8 @@ graph TD
 
 ---
 
-### FASE 4: Otimização de Performance, Bundle, Assets & Renderização
-> **Objetivo:** Acelerar o carregamento inicial da aplicação, otimizar a distribuição de chunks do Vite, compactar assets e garantir 60fps constantes nas interações.
+### FASE 4: Otimização de Performance, Bundle, Assets, Ciclo PWA & Renderização
+> **Objetivo:** Acelerar o carregamento inicial da aplicação, otimizar a distribuição de chunks do Vite, compactar assets, blindar o ciclo de vida atômico e a invalidação de cache do PWA e garantir 60fps constantes nas interações.
 
 - [ ] **Tarefa 4.1 — Otimização e Compressão de Assets Estáticos**
   - **Ação:** Auditar a pasta `public/` e imagens de branding:
@@ -285,12 +289,40 @@ graph TD
     - Garantir silêncio tátil/auditivo durante digitação em `MoneyInput` e rolagens.
   - **Critério de Saída:** Experiência tátil fluida, sem disparos duplicados e energeticamente eficiente.
 
+- [ ] **Tarefa 4.6 — Ciclo de Vida Atômico do PWA, Invalidação Integral de Cache & Sincronização de Ícones**
+  - **Contexto e Diagnóstico Técnico:**
+    - Ao publicar novas versões, usuários enfrentam falhas críticas de atualização: (1) apenas parte do conteúdo interno é atualizada devido a reloads prematuros (`window.location.reload()`) sem sincronização com a ativação do novo Service Worker; (2) o Service Worker e o cache de assets não são completamente invalidados devido à ausência de `cleanupOutdatedCaches: true` no Workbox e à regra permissiva de 30 dias em `static-images` (`StaleWhileRevalidate`); (3) o ícone do app instalado no Android (WebAPK) e na tela inicial não reflete o novo design por falta de versionamento/cache-busting nas URLs dos ícones do `manifest.webmanifest`.
+  - **Ação 1: Invalidação e Limpeza Integral de Cache (Workbox & CacheStorage):**
+    - Habilitar `cleanupOutdatedCaches: true` na configuração do Workbox em `vite.config.ts`, garantindo a exclusão automática de precaches de builds anteriores no momento em que o novo SW assume o controle;
+    - Isolar ícones PWA e assets oficiais de marca (`/pwa/icons/*`, `/brand/*`) do runtimeCaching permissivo de 30 dias de imagens estáticas, aplicando estratégia cache-first estritamente versionada ou revalidação de rede imediata;
+    - Implementar rotina de purga explícita em `src/app/pwa.ts` para varrer e remover caches legados via `caches.delete()` durante a transição de versão.
+  - **Ação 2: Fluxo de Atualização Atômico e Sincronizado (Zero Mismatch de Chunks):**
+    - Conectar o retorno da função `registerSW` (`updateSW(true)`) diretamente ao callback de atualização do app;
+    - Refatorar a ação "Atualizar" de `src/components/modules/pwa-update-toast.tsx` e `forceAppUpdate()` em `src/app/pwa.ts` para abandonar o reload cego:
+      1. Disparar `{ type: "SKIP_WAITING" }` para a registration ativa do Service Worker;
+      2. Escutar e aguardar o evento `controllerchange` em `navigator.serviceWorker` (com timeout defensivo de 4 segundos);
+      3. Exibir estado de transição visual limpo ("Atualizando para a nova versão...");
+      4. Executar `window.location.reload()` somente após a confirmação de que o novo Service Worker assumiu o controle total dos clientes (`clientsClaim`).
+  - **Ação 3: Sincronização de Ícones do Launcher e WebAPK Móvel:**
+    - Implementar versionamento determinístico com query params nas URLs dos ícones em `public/pwa/manifest.webmanifest` (ex.: `/pwa/icons/icon-192.png?v=...`, `maskable-512.png?v=...`) e tags correspondentes em `index.html` (`apple-touch-icon`, `favicon`);
+    - Garantir que alterações nos assets de marca modifiquem os bytes do `manifest.webmanifest` (atualizando versão/metadados), forçando o Chromium/Android a identificar a alteração de manifesto e disparar a atualização do WebAPK com os novos ícones na gaveta de apps/tela inicial;
+    - Sincronizar o script `scripts/generate-icons.mjs` com a regra de saída versionada.
+  - **Ação 4: Configuração de Cabeçalhos HTTP de Borda (`_headers` Cloudflare Pages):**
+    - Configurar/auditar `public/_headers` (Cloudflare Pages) com políticas estritas de cache:
+      - `sw.js` e scripts de registro: `Cache-Control: public, max-age=0, must-revalidate` (proibido cachear Service Worker);
+      - `manifest.webmanifest`: `Cache-Control: public, max-age=0, must-revalidate`;
+      - `index.html`: `Cache-Control: public, max-age=0, must-revalidate`;
+      - Chunks com hash `/assets/*-[hash].*`: `Cache-Control: public, max-age=31536000, immutable`.
+  - **Ação 5: Testes Automatizados de Regressão PWA:**
+    - Expandir `src/tests/pwa.test.tsx` e `src/tests/pwa-audit.test.ts` para validar o fluxo de `controllerchange`, a presença de `cleanupOutdatedCaches` e a integridade dos parâmetros de versão nos ícones do manifesto.
+  - **Critério de Saída:** Atualização do PWA 100% atômica e limpa, zero chunks órfãos ou telas mistas após clique em "Atualizar", limpeza completa do CacheStorage obsoleto, headers HTTP de borda calibrados e atualização confirmada do ícone na tela inicial e gaveta de apps móvel.
+
 - [ ] **PORTÃO DE QUALIDADE DA FASE 4:**
   - `npm run typecheck` verde.
   - `npm run lint` verde.
-  - `npm run test` verde.
-  - `npm run build` verde (verificação dos tamanhos dos chunks compilados).
-  - Commit semântico: `perf: compress branding assets, optimize vendor chunking and refine react rendering`
+  - `npm run test` verde (incluindo testes do ciclo PWA e auditoria de cache).
+  - `npm run build` verde (verificação dos tamanhos dos chunks compilados e Service Worker com cleanup).
+  - Commit semântico: `perf: compress branding assets, optimize vendor chunking, refine react rendering and enforce atomic pwa lifecycle`
   - `git push`
 
 ---
@@ -395,6 +427,7 @@ graph TD
 | **Conformidade RLS no Supabase** | Parcial / A auditar | **100% das tabelas com `auth.uid() = user_id`** |
 | **Blindagem de RPCs Supabase** | Parcial / A auditar | **100% com `SET search_path = public, pg_temp`** |
 | **Privacidade Nativa Android** | Funcional | **Homologada (FLAG_SECURE + AppLock)** |
+| **Ciclo de Atualização do PWA** | Parcial (reload frágil, CacheStorage antigo retido e ícones defasados no launcher) | **100% atômico (controllerchange sincronizado, cleanupOutdatedCaches ativo e ícones versionados)** |
 | **Compilação PWA e APKs** | Funcional | **100% validada e automatizada** |
 
 ---

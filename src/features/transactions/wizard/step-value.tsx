@@ -73,7 +73,7 @@ export function StepValue({ state, onTypeChange, onValueChange, onInstallmentsCh
       />
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="wizard-value" className="text-sm font-medium">
+        <label htmlFor="wizard-value" className="text-xs font-semibold text-foreground">
           Valor
         </label>
         <MoneyInput

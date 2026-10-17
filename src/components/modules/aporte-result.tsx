@@ -782,7 +782,7 @@ export function AporteResult({
                               className="text-sm font-bold"
                             />
                             <div className="flex items-center gap-1.5 pt-0.5">
-                              <label htmlFor={`mobile-qty-${row.assetId}`} className="text-[10px] text-muted-foreground">
+                              <label htmlFor={`mobile-qty-${row.assetId}`} className="text-xs font-semibold text-foreground">
                                 Cotas:
                               </label>
                               <Input

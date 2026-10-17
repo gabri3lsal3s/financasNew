@@ -103,7 +103,7 @@ function BillRefinanceContent({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="refinance-initial" className="text-sm font-medium">
+          <label htmlFor="refinance-initial" className="text-xs font-semibold text-foreground">
             Entrada / Pagamento hoje
           </label>
           <MoneyInput
@@ -115,7 +115,7 @@ function BillRefinanceContent({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="refinance-installments" className="text-sm font-medium">
+          <label htmlFor="refinance-installments" className="text-xs font-semibold text-foreground">
             Número de parcelas
           </label>
           <Select
@@ -139,7 +139,7 @@ function BillRefinanceContent({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="refinance-rate" className="text-sm font-medium">
+          <label htmlFor="refinance-rate" className="text-xs font-semibold text-foreground">
             Taxa de juros (% a.m.)
           </label>
           <Input

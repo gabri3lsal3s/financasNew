@@ -15,7 +15,7 @@ export function Textarea({ className, label, error, id, ...props }: TextareaProp
   return (
     <div className="flex flex-col gap-1.5 w-full">
       {label ? (
-        <label htmlFor={inputId} className="text-xs font-medium text-foreground">
+        <label htmlFor={inputId} className="text-xs font-semibold text-foreground">
           {label}
         </label>
       ) : null}

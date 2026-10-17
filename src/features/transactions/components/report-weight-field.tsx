@@ -31,7 +31,7 @@ export function ReportWeightField({
 }: ReportWeightFieldProps) {
   return (
     <div className="flex flex-col gap-2">
-      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+      <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
         Peso no relatório
         <Select
           value={mode}
@@ -43,14 +43,14 @@ export function ReportWeightField({
 
       {mode === "custom" ? (
         <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-surface-raised p-3">
-          <span className="text-xs font-medium text-foreground">{customLabel}</span>
+          <span className="text-xs font-semibold text-foreground">{customLabel}</span>
           <MoneyInput
             cents={customAmountCents}
             onCentsChange={onCustomAmountChange}
             aria-label={ariaLabelCustom}
           />
           {valueCents > 0 ? (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-[11px] text-muted-foreground">
               Equivale a {Math.round((customAmountCents / valueCents) * 100)}% do valor total ({formatCentsAsBRL(valueCents)}).
             </span>
           ) : null}

@@ -93,7 +93,7 @@ export function EarlyAmortizationDialog({ loan, debts, open, onOpenChange }: Ear
         {error ? <Alert variant="error">{error}</Alert> : null}
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="amortize-budget" className="text-sm font-medium">
+          <label htmlFor="amortize-budget" className="text-xs font-semibold text-foreground">
             Valor disponível para amortizar
           </label>
           <MoneyInput

@@ -279,7 +279,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
       ) : (
         <>
           <section aria-label="Parâmetros da simulação" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground w-full min-w-0">
+            <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground w-full min-w-0">
               Valor do aporte
               <MoneyInput
                 cents={aporteCents}

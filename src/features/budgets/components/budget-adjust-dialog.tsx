@@ -173,7 +173,7 @@ function BudgetAdjustDialogContent({
         <div className="flex flex-col gap-2.5">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <div className="flex-1 flex flex-col gap-1">
-              <label htmlFor="adjust-percent-input" className="text-xs font-medium text-muted-foreground">
+              <label htmlFor="adjust-percent-input" className="text-xs font-semibold text-foreground">
                 Variação percentual (%)
               </label>
               <div className="relative">
@@ -217,7 +217,7 @@ function BudgetAdjustDialogContent({
         </div>
       ) : (
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="adjust-target-amount" className="text-xs font-medium text-muted-foreground">
+          <label htmlFor="adjust-target-amount" className="text-xs font-semibold text-foreground">
             Novo valor total pretendido para o mês
           </label>
           <MoneyInput
