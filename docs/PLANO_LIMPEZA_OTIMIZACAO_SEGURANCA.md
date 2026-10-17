@@ -186,20 +186,21 @@ graph TD
     - Preservados tipos de banco gerados em `src/types/database.ts` e contratos de RPC.
   - **Critério de Saída:** Árvore de exports limpa, com superfície de API interna reduzida e coesa.
 
-- [ ] **Tarefa 2.3 — Auditoria e Desinchaço de Pacotes (`package.json`)**
+- [x] **Tarefa 2.3 — Auditoria e Desinchaço de Pacotes (`package.json`)**
   - **Ação:** Auditar `dependencies` e `devDependencies`:
-    - Identificar pacotes não importados em código nem chamados em scripts de build/teste;
-    - Remover pacotes desnecessários via `npm uninstall`;
-    - Atualizar `package-lock.json` de forma limpa e reproduzível.
-  - **Trava de Segurança:** Garantir a permanência de plugins nativos do Capacitor essenciais para a compilação do Android.
+    - Auditados todos os 29 pacotes de `dependencies` e 27 pacotes de `devDependencies`;
+    - Confirmado consumo direto de todas as 29 dependências de produção (8 primitivos Radix em `components/ui/`, 9 pacotes do ecossistema Capacitor/Android, 12 bibliotecas essenciais de UI/estado/banco);
+    - Confirmada conformidade estrita das 27 devDependencies (ferramentas de teste, types, ESLint, Prettier, Tailwind v4, Vite e PWA);
+    - Executado `npm prune` sem qualquer dependência órfã ou pacote fantasma no `node_modules` / `package-lock.json`.
+  - **Trava de Segurança:** Garantida a permanência intacta de todos os plugins nativos do Capacitor essenciais para a compilação do Android (`@aparajita/capacitor-biometric-auth`, `@capacitor-community/privacy-screen`, `@capacitor/*`).
   - **Critério de Saída:** `package.json` sem bibliotecas não utilizadas e com dependências essenciais íntegras.
 
-- [ ] **PORTÃO DE QUALIDADE DA FASE 2:**
-  - `npm run typecheck` verde.
-  - `npm run lint` verde.
-  - `npm run test` verde.
-  - `npm run build` verde.
-  - Commit semântico: `chore(cleanup): prune dead files, unused exports and unreferenced dependencies`
+- [x] **PORTÃO DE QUALIDADE DA FASE 2:**
+  - `npm run typecheck` verde (0 erros).
+  - `npm run lint` verde (0 erros, 0 avisos).
+  - `npm run test` verde (333/333 arquivos de teste, 2.556/2.556 testes aprovados).
+  - `npm run build` verde (bundle Vite + PWA service worker gerados perfeitamente).
+  - Commit semântico: `chore(cleanup): prune dead files, unused exports and audit dependencies (task 2.3)`
   - `git push`
 
 ---
