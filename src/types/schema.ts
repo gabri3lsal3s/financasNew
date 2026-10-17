@@ -239,6 +239,7 @@ export type UserCustomSettings = {
     autoCategoryInferenceEnabled?: boolean;
     monitoredBanks?: string[];
   };
+  hideDashboardCents?: boolean;
 };
 
 export type UserPreferences = {

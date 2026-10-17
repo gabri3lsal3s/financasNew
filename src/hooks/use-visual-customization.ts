@@ -47,6 +47,7 @@ export interface VisualCustomization {
   numberTickerEnabled: boolean;
   dashboardWidgets: DashboardWidgetsConfig;
   headerButtons: HeaderButtonsConfig;
+  hideDashboardCents: boolean;
 }
 
 const STORAGE_KEYS = {
@@ -61,6 +62,7 @@ const STORAGE_KEYS = {
   numberTickerEnabled: "number_ticker_enabled",
   dashboardWidgets: "dashboard_widgets",
   headerButtons: "header_buttons",
+  hideDashboardCents: "hide_dashboard_cents",
 } as const;
 
 export const DEFAULT_HEADER_BUTTONS: HeaderButtonsConfig = {
@@ -91,6 +93,7 @@ export const DEFAULT_CONFIG: VisualCustomization = {
   numberTickerEnabled: true,
   dashboardWidgets: DEFAULT_WIDGETS,
   headerButtons: DEFAULT_HEADER_BUTTONS,
+  hideDashboardCents: false,
 };
 
 const listeners = new Set<() => void>();
@@ -216,6 +219,9 @@ function readStoredConfig(userId?: string | null): VisualCustomization {
             disabledSensoryIntents,
           });
 
+    const rawHideCents = getUserStorageItem(STORAGE_KEYS.hideDashboardCents, userId);
+    const hideDashboardCents = rawHideCents === "true";
+
     return {
       experiencePreset,
       accent,
@@ -228,6 +234,7 @@ function readStoredConfig(userId?: string | null): VisualCustomization {
       numberTickerEnabled,
       dashboardWidgets,
       headerButtons,
+      hideDashboardCents,
     };
   } catch {
     return DEFAULT_CONFIG;
@@ -356,6 +363,16 @@ export function updateVisualCustomization(
         userId,
       );
     }
+    if (
+      partial.hideDashboardCents !== undefined ||
+      next.hideDashboardCents !== currentConfig.hideDashboardCents
+    ) {
+      setUserStorageItem(
+        STORAGE_KEYS.hideDashboardCents,
+        String(next.hideDashboardCents),
+        userId,
+      );
+    }
   } catch {
     // storage fallback
   }
@@ -400,6 +417,9 @@ export function syncVisualWithCloud(
       ...DEFAULT_HEADER_BUTTONS,
       ...customSettings.headerButtons,
     };
+  }
+  if (customSettings.hideDashboardCents !== undefined) {
+    partial.hideDashboardCents = customSettings.hideDashboardCents;
   }
 
   updateVisualCustomization(partial, userId);
@@ -451,6 +471,8 @@ export function useVisualCustomization() {
       updateVisualCustomization({
         headerButtons: { ...config.headerButtons, [button]: visible },
       }),
+    setHideDashboardCents: (hideDashboardCents: boolean) =>
+      updateVisualCustomization({ hideDashboardCents }),
     resetToDefaults: () => updateVisualCustomization(DEFAULT_CONFIG),
   };
 }

@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SubscriptionStatus } from "@/types";
 import * as nativeModule from "@/services/native";
+import { updateVisualCustomization, resetVisualCustomization } from "@/hooks/use-visual-customization";
 import { OverviewPage } from "./overview-page";
 
 const testQueryClient = new QueryClient({
@@ -199,6 +200,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
+    resetVisualCustomization(null);
     navigateMock.mockReset();
     portfolioContributionsMock = [];
     realCashBalanceMock = {
@@ -540,6 +542,13 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     incomesMock.data = () => [{ id: "i_huge", value: 2500000, report_weight: 1, date: "2026-08-05" }]; // R$ 2.500.000,00
     render(<OverviewPage />);
     expect(screen.getByText("R$ 2.500.000,00")).toBeInTheDocument();
+  });
+
+  it("renderiza valores sem centavos no dashboard quando hideDashboardCents for ativado", () => {
+    updateVisualCustomization({ hideDashboardCents: true });
+    render(<OverviewPage />);
+    // Saldo disponível em conta de 450000 (R$ 4.500,00) deve ser exibido como R$ 4.500
+    expect(screen.getByText("R$ 4.500")).toBeInTheDocument();
   });
 });
 

@@ -20,4 +20,12 @@ describe("formatCentsAsBRL (máscara de moeda pt-BR)", () => {
     expect(formatCentsAsCurrency(43048, "USD")).toBe("US$\u00a0430,48");
     expect(formatCentsAsCurrency(162010, "USD")).toBe("US$\u00a01.620,10");
   });
+
+  it("formata sem centavos quando hideCents for true", () => {
+    expect(formatCentsAsBRL(150000, { hideCents: true })).toBe("R$\u00a01.500");
+    expect(formatCentsAsBRL(125000, { hideCents: true })).toBe("R$\u00a01.250");
+    expect(formatCentsAsBRL(1500, { hideCents: true })).toBe("R$\u00a015");
+    expect(formatCentsAsBRL(0, { hideCents: true })).toBe("R$\u00a00");
+    expect(formatCentsAsCurrency(43048, "USD", { hideCents: true })).toBe("US$\u00a0430");
+  });
 });

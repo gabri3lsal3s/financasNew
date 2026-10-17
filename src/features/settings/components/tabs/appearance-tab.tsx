@@ -73,6 +73,21 @@ export function AppearanceTab() {
     });
   };
 
+  const handleToggleHideDashboardCents = (enabled: boolean) => {
+    triggerSensory("toggle");
+    visual.setHideDashboardCents(enabled);
+    updateCustomSettingsMutation.mutate({
+      hideDashboardCents: enabled,
+    });
+    pushToast({
+      title: "Preferências salvas",
+      description: enabled
+        ? "Valores do Dashboard serão exibidos sem centavos."
+        : "Valores do Dashboard serão exibidos com centavos completos.",
+      duration: 2200,
+    });
+  };
+
   const handleToggleHeaderButton = (
     key: keyof HeaderButtonsConfig,
     label: string,
@@ -97,7 +112,9 @@ export function AppearanceTab() {
     handleSelectPreset("dynamic");
     handleSelectTheme("system", "Automático");
     handleSelectAccent("teal", "Teal Vital (Oficial)");
+    visual.setHideDashboardCents(false);
     updateCustomSettingsMutation.mutate({
+      hideDashboardCents: false,
       headerButtons: {
         logo: true,
         calculatorButton: true,
@@ -126,6 +143,8 @@ export function AppearanceTab() {
         onSelectTheme={handleSelectTheme}
         accent={visual.accent}
         onSelectAccent={handleSelectAccent}
+        hideDashboardCents={visual.hideDashboardCents}
+        onToggleHideDashboardCents={handleToggleHideDashboardCents}
       />
 
       {/* --- CARD 3: INTERFACE, HEADER & COMPOSIÇÃO --- */}

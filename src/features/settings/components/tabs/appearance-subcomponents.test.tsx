@@ -53,10 +53,11 @@ describe("Appearance Subcomponents (Fase 1 — Tarefa 1.3)", () => {
   });
 
   describe("VisualIdentityCard", () => {
-    it("permite selecionar tema e cor de destaque", async () => {
+    it("permite selecionar tema, cor de destaque e alternar ocultação de centavos", async () => {
       const user = userEvent.setup();
       const onSelectTheme = vi.fn();
       const onSelectAccent = vi.fn();
+      const onToggleHideCents = vi.fn();
 
       render(
         <VisualIdentityCard
@@ -64,11 +65,15 @@ describe("Appearance Subcomponents (Fase 1 — Tarefa 1.3)", () => {
           onSelectTheme={onSelectTheme}
           accent="teal"
           onSelectAccent={onSelectAccent}
+          hideDashboardCents={false}
+          onToggleHideDashboardCents={onToggleHideCents}
         />,
       );
 
       expect(screen.getByText("Tema da Interface")).toBeInTheDocument();
       expect(screen.getByText("Cor de Destaque (Accent)")).toBeInTheDocument();
+      expect(screen.getByText("Valores e Moeda")).toBeInTheDocument();
+      expect(screen.getByText("Ocultar centavos na Visão Geral")).toBeInTheDocument();
       expect(screen.queryByText(/Estilo de Superfícies/i)).not.toBeInTheDocument();
 
       const lightOption = screen.getByRole("button", { name: /^Claro/i });
@@ -78,6 +83,11 @@ describe("Appearance Subcomponents (Fase 1 — Tarefa 1.3)", () => {
       const goldOption = screen.getByRole("button", { name: /^Ouro Âmbar/i });
       await user.click(goldOption);
       expect(onSelectAccent).toHaveBeenCalledWith("gold", "Ouro Âmbar");
+
+      const hideCentsCheckbox = screen.getByRole("checkbox", { name: "Ocultar centavos na Visão Geral" });
+      expect(hideCentsCheckbox).not.toBeChecked();
+      await user.click(hideCentsCheckbox);
+      expect(onToggleHideCents).toHaveBeenCalledWith(true);
     });
   });
 

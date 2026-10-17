@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Activity, ChevronRight, DollarSign, Inbox, PieChart, PiggyBank, Plus, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react";
-import { Badge, Button, EmptyState, ErrorState, MoneyText, NumberTicker, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
+import { Badge, Button, DashboardCentsProvider, EmptyState, ErrorState, MoneyText, NumberTicker, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
 import {
   CategoryDonut,
   DailyFlowChart,
@@ -59,6 +59,7 @@ import {
   useUserSubscription,
 } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
+import { useVisualCustomization } from "@/hooks";
 import { CashCheckpointDialog } from "@/components/modules/cash-checkpoint-dialog";
 import { cn } from "@/lib/utils";
 import { CategoryBreakdownDialog, OtherBudgetsDialog } from "../components";
@@ -74,6 +75,7 @@ export function OverviewPage() {
   const subscription = useUserSubscription();
   const [checkpointOpen, setCheckpointOpen] = useState(false);
   const { guardAction, upgradeModal } = useMutationGuard();
+  const visual = useVisualCustomization();
 
   const prevMonth = shiftMonth(month, -1);
   const startRange = shiftMonth(month, -5);
@@ -409,10 +411,11 @@ export function OverviewPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-6 w-full min-w-0">
-      {/* F12 — sem header visual: o app mostra direto o seletor de mês.
-          Título mantido apenas para leitores de tela (ordem de heading). */}
-      <h1 className="sr-only">Visão Geral</h1>
+    <DashboardCentsProvider hideCents={visual.hideDashboardCents}>
+      <div className="flex flex-col gap-6 w-full min-w-0">
+        {/* F12 — sem header visual: o app mostra direto o seletor de mês.
+            Título mantido apenas para leitores de tela (ordem de heading). */}
+        <h1 className="sr-only">Visão Geral</h1>
 
       <MonthPicker value={month} onValueChange={setMonth} />
 
@@ -833,6 +836,7 @@ export function OverviewPage() {
           {upgradeModal}
         </>
       )}
-    </div>
+      </div>
+    </DashboardCentsProvider>
   );
 }

@@ -5,6 +5,7 @@ import {
   Sun,
   Smartphone,
   Sliders,
+  Coins,
 } from "lucide-react";
 import {
   Card,
@@ -12,6 +13,7 @@ import {
   CardTitle,
   CardContent,
   LivePulseBeacon,
+  Checkbox,
 } from "@/components/ui";
 import type { ThemePreference } from "@/app/theme-provider";
 import type { AccentTheme } from "@/hooks/use-visual-customization";
@@ -38,6 +40,8 @@ export interface VisualIdentityCardProps {
   onSelectTheme: (id: ThemePreference, label: string) => void;
   accent: AccentTheme;
   onSelectAccent: (id: AccentTheme, label: string) => void;
+  hideDashboardCents: boolean;
+  onToggleHideDashboardCents: (enabled: boolean) => void;
 }
 
 export function VisualIdentityCard({
@@ -45,6 +49,8 @@ export function VisualIdentityCard({
   onSelectTheme,
   accent,
   onSelectAccent,
+  hideDashboardCents,
+  onToggleHideDashboardCents,
 }: VisualIdentityCardProps) {
   return (
     <Card>
@@ -125,6 +131,46 @@ export function VisualIdentityCard({
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* Modo de Exibição de Valores no Dashboard */}
+        <div className="space-y-2.5 pt-2 border-t border-border/60">
+          <div className="text-xs font-semibold text-foreground flex items-center gap-2">
+            <Coins className="size-3.5 text-muted-foreground" aria-hidden="true" />
+            <span>Valores e Moeda</span>
+          </div>
+
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => onToggleHideDashboardCents(!hideDashboardCents)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onToggleHideDashboardCents(!hideDashboardCents);
+              }
+            }}
+            className={cn(
+              "flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer select-none",
+              hideDashboardCents
+                ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+                : "border-border bg-surface hover:bg-surface-hover",
+            )}
+          >
+            <div className="pr-2 min-w-0">
+              <div className="font-semibold text-xs text-foreground">
+                Ocultar centavos na Visão Geral
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                Exibe valores compactos sem centavos no Dashboard (ex: R$ 1.250 em vez de R$ 1.250,00)
+              </div>
+            </div>
+            <Checkbox
+              checked={hideDashboardCents}
+              onCheckedChange={(checked) => onToggleHideDashboardCents(Boolean(checked))}
+              aria-label="Ocultar centavos na Visão Geral"
+            />
           </div>
         </div>
       </CardContent>

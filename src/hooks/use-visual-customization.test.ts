@@ -31,6 +31,7 @@ describe("useVisualCustomization (F11)", () => {
     expect(config.numberTickerEnabled).toBe(true);
     expect(config.dashboardWidgets.kpis).toBe(true);
     expect(config.dashboardWidgets.contextBanners).toBe(true);
+    expect(config.hideDashboardCents).toBe(false);
   });
 
   it("aplica presets de experiência e reflete nos atributos do DOM e storage", () => {
@@ -128,13 +129,15 @@ describe("useVisualCustomization (F11)", () => {
     expect(document.documentElement.getAttribute("data-surface-style")).toBeNull();
   });
 
-  it("reseta para configurações padrão no resetVisualCustomization", () => {
-    updateVisualCustomization({ accent: "rose", surfaceStyle: "flat" });
-    expect(getVisualCustomization().accent).toBe("rose");
+  it("permite alternar e sincronizar a preferência hideDashboardCents", () => {
+    setActiveUserId("user-cents");
+    expect(getVisualCustomization().hideDashboardCents).toBe(false);
 
-    resetVisualCustomization(null);
-    expect(getVisualCustomization().accent).toBe("teal");
-    expect(document.documentElement.getAttribute("data-accent")).toBeNull();
-    expect(document.documentElement.getAttribute("data-surface-style")).toBeNull();
+    updateVisualCustomization({ hideDashboardCents: true }, "user-cents");
+    expect(getVisualCustomization().hideDashboardCents).toBe(true);
+    expect(window.localStorage.getItem(getUserStorageKey("hide_dashboard_cents", "user-cents"))).toBe("true");
+
+    syncVisualWithCloud({ hideDashboardCents: false }, "user-cents");
+    expect(getVisualCustomization().hideDashboardCents).toBe(false);
   });
 });

@@ -1,8 +1,32 @@
-import type { HTMLAttributes } from "react";
+import { createContext, useContext, type HTMLAttributes, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { formatCentsAsCurrency } from "@/services/masks";
 import type { AssetCurrency } from "@/types";
 import { NumberTicker } from "./number-ticker";
+
+const DashboardCentsContext = createContext<boolean>(false);
+
+export interface DashboardCentsProviderProps {
+  hideCents: boolean;
+  children: ReactNode;
+}
+
+/**
+ * Provedor de contexto para ocultação de centavos no Dashboard.
+ * Permite que cards e KPIs da Visão Geral herdem a preferência sem prop-drilling.
+ */
+export function DashboardCentsProvider({ hideCents, children }: DashboardCentsProviderProps) {
+  return (
+    <DashboardCentsContext.Provider value={hideCents}>
+      {children}
+    </DashboardCentsContext.Provider>
+  );
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function useDashboardCents(): boolean {
+  return useContext(DashboardCentsContext);
+}
 
 /**
  * MoneyText — primitivo de valor monetário (F12, hierarquia tipográfica).
@@ -32,6 +56,11 @@ export interface MoneyTextProps extends Omit<HTMLAttributes<HTMLSpanElement>, "c
   sign?: "auto" | "explicit" | "none";
   /** Quando true, anima a contagem numérica suavemente via NumberTicker (respeita reduced motion e toggle global). */
   animated?: boolean;
+  /**
+   * Se true, oculta a fração de centavos (ex: "R$ 1.250").
+   * Quando omitido, herda automaticamente do DashboardCentsProvider.
+   */
+  hideCents?: boolean;
 }
 
 const variantClass: Record<NonNullable<MoneyTextProps["variant"]>, string> = {
@@ -71,9 +100,13 @@ export function MoneyText({
   tone = "auto",
   sign = "auto",
   animated = false,
+  hideCents,
   className,
   ...props
 }: MoneyTextProps) {
+  const contextHideCents = useDashboardCents();
+  const shouldHideCents = hideCents !== undefined ? hideCents : contextHideCents;
+
   const resolvedTone = resolveTone(tone, cents);
   const prefix = signPrefix(sign, cents);
 
@@ -83,7 +116,9 @@ export function MoneyText({
         {prefix}
         <NumberTicker
           value={Math.abs(cents)}
-          format={(absVal) => formatCentsAsCurrency(Math.round(absVal), currency)}
+          format={(absVal) =>
+            formatCentsAsCurrency(Math.round(absVal), currency, { hideCents: shouldHideCents })
+          }
         />
       </span>
     );
@@ -91,8 +126,7 @@ export function MoneyText({
 
   return (
     <span className={cn("num", variantClass[variant], toneClass[resolvedTone], className)} {...props}>
-      {`${prefix}${formatCentsAsCurrency(Math.abs(cents), currency)}`}
+      {`${prefix}${formatCentsAsCurrency(Math.abs(cents), currency, { hideCents: shouldHideCents })}`}
     </span>
   );
 }
-

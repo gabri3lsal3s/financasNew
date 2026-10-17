@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { MoneyText } from "./money-text";
+import { MoneyText, DashboardCentsProvider } from "./money-text";
 
 describe("MoneyText (F12 — hierarquia tipográfica de valores)", () => {
   it("formata centavos em BRL com a classe .num (mono + tabular)", () => {
@@ -77,5 +77,28 @@ describe("MoneyText (F12 — hierarquia tipográfica de valores)", () => {
     const el = container.firstChild as HTMLElement;
     expect(el).toHaveClass("num");
     expect(el.textContent).toBe("R$\u00a02.500,00");
+  });
+
+  it("permite ocultar centavos via prop explícita hideCents", () => {
+    const { container } = render(<MoneyText cents={150000} hideCents />);
+    const el = container.firstChild as HTMLElement;
+    expect(el.textContent).toBe("R$\u00a01.500");
+  });
+
+  it("herda ocultação de centavos do DashboardCentsProvider", () => {
+    const { container, rerender } = render(
+      <DashboardCentsProvider hideCents={true}>
+        <MoneyText cents={125000} />
+      </DashboardCentsProvider>,
+    );
+    expect(container.firstChild?.textContent).toBe("R$\u00a01.250");
+
+    // Prop explícita hideCents={false} sobrescreve o provider
+    rerender(
+      <DashboardCentsProvider hideCents={true}>
+        <MoneyText cents={125000} hideCents={false} />
+      </DashboardCentsProvider>,
+    );
+    expect(container.firstChild?.textContent).toBe("R$\u00a01.250,00");
   });
 });

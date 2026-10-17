@@ -105,6 +105,19 @@ describe("AppearanceTab - Aparência & Identidade Visual (Fase 1 — Tarefa 1.3)
     });
   });
 
+  it("permite alternar a ocultação de centavos no dashboard", async () => {
+    const user = userEvent.setup();
+    renderAppearanceTab();
+
+    const hideCentsCheckbox = screen.getByRole("checkbox", { name: "Ocultar centavos na Visão Geral" });
+    expect(hideCentsCheckbox).not.toBeChecked();
+
+    await user.click(hideCentsCheckbox);
+    expect(mockMutate).toHaveBeenCalledWith({
+      hideDashboardCents: true,
+    });
+  });
+
   it("permite redefinir padrões de fábrica para visual e interface", async () => {
     const user = userEvent.setup();
     renderAppearanceTab();

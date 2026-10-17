@@ -150,19 +150,19 @@ graph TD
     - Decompor o arquivo monolítico `appearance-tab.tsx` (1.200 linhas) em componentes menores e desacoplados dentro de `src/features/settings/components/tabs/`.
   - **Critério de Saída:** Código limpo, componentizado, com peso reduzido e facilidade de manutenção.
 
-- [ ] **Tarefa 1.4 — Implementação da Configuração de Ocultação Dinâmica de Centavos no Dashboard**
+- [x] **Tarefa 1.4 — Implementação da Configuração de Ocultação Dinâmica de Centavos no Dashboard**
   - **Ação:** Criar a preferência do usuário `hide_dashboard_cents` em `useVisualCustomization` e persistência:
     - Permitir que o usuário opte por exibir valores monetários no Dashboard de forma compacta (ex.: `R$ 1.250` em vez de `R$ 1.250,00`);
     - Integrar de forma limpa ao `<MoneyText />` ou formatadores de cards de resumo financeiro;
     - Colocalizar teste unitário para garantir zero efeitos colaterais nos cálculos internos em centavos.
   - **Critério de Saída:** Nova preferência funcional, elegante e integrada ao design system.
 
-- [ ] **PORTÃO DE QUALIDADE DA FASE 1:**
+- [x] **PORTÃO DE QUALIDADE DA FASE 1:**
   - `npm run typecheck` verde.
   - `npm run lint` verde.
   - `npm run test` verde (incluindo testes de configurações e preferências).
   - `npm run build` verde.
-  - Commit semântico: `feat(settings): restructure into 4 specialized tabs, add platform conditions and dashboard cents toggle`
+  - Commit semântico: `feat(settings): add hide dashboard cents toggle and complete phase 1 quality gate (task 1.4)`
   - `git push`
 
 ---
