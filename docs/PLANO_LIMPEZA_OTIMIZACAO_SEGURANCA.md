@@ -418,11 +418,21 @@ graph TD
     - Suíte de testes dedicada cobrindo sanitização de HTML/XSS, controle de caracteres e rejeição de overflows monetários (`sanitization.test.ts`, `wizard-state.test.ts`, `schemas.test.ts` de cartões, orçamentos, dívidas, investimentos e admin).
   - **Critério de Saída:** Validação defensiva completa em todas as bordas de entrada de dados.
 
-- [ ] **Tarefa 5.5 — Fortalecimento Nativo Android & Privacidade de Sessão**
+- [x] **Tarefa 5.5 — Fortalecimento Nativo Android & Privacidade de Sessão**
   - **Ação:** Auditar proteções nativas no Capacitor:
-    - Validar o `PrivacyShield` (`FLAG_SECURE`) impedindo capturas de tela e ocultando dados sensíveis no gerenciador de tarefas recentes do Android;
-    - Verificar o bloqueio automático de tela (`AppLock`) por inatividade com biometria adaptativa;
-    - Confirmar em `AndroidManifest.xml` o bloqueio a tráfego HTTP inseguro (`cleartextTraffic`).
+    - **Bloqueio de Tráfego HTTP Inseguro (`cleartextTraffic`):**
+      - Configurado explicitamente `android:usesCleartextTraffic="false"` e `android:networkSecurityConfig="@xml/network_security_config"` no `<application>` do [`AndroidManifest.xml`](file:///home/gabrielsales/meus_apps/financasnew/android/app/src/main/AndroidManifest.xml);
+      - Criado arquivo de configuração de segurança de rede [`network_security_config.xml`](file:///home/gabrielsales/meus_apps/financasnew/android/app/src/main/res/xml/network_security_config.xml) impondo `cleartextTrafficPermitted="false"` com âncoras de confiança restritas a certificados do sistema;
+      - Sincronizado o runtime nativo via `npm run cap:sync` (`cap sync android`), atualizando plugins e assets;
+    - **Escudo de Privacidade (`PrivacyShield` / `FLAG_SECURE`):**
+      - Auditado [`privacy-shield.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/services/native/privacy-shield.ts) utilizando `@capacitor-community/privacy-screen` para aplicar `FLAG_SECURE` no Android, impedindo capturas de tela/gravação e ocultando dados financeiros confidenciais nas miniaturas do gerenciador de tarefas recentes;
+      - Integrado ao ciclo de vida e inicialização em [`app-lock.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/services/native/app-lock.ts) (`initAppLockListener`);
+    - **Bloqueio Automático de Tela por Inatividade (`AppLock`) & Biometria:**
+      - Auditado o monitoramento de ciclo de vida (`App.addListener('appStateChange')`) com temporizador de tolerância configurável (padrão 1 minuto) e bloqueio automático imediato no cold start;
+      - Validado o desacoplamento de eventos transitórios via `isBiometricAuthInProgress()` em [`biometrics.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/services/native/biometrics.ts), evitando falsos bloqueios durante a exibição do `BiometricPrompt`;
+      - Confirmada a renderização global do [`AppLockOverlay`](file:///home/gabrielsales/meus_apps/financasnew/src/app/app-lock-overlay.tsx) no topo da árvore de providers em [`providers.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/app/providers.tsx);
+    - **Auditoria Automatizada de Regressão:**
+      - Adicionada suíte de testes em [`security-audit.test.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/tests/security-audit.test.ts) validando a presença de `usesCleartextTraffic="false"`, `networkSecurityConfig`, `cleartextTrafficPermitted="false"`, dependências nativas e integração do `AppLockOverlay`.
   - **Critério de Saída:** Camada nativa em conformidade com os mais altos padrões de segurança para apps financeiros.
 
 - [ ] **Tarefa 5.6 — Auditoria e Mitigação de Vulnerabilidades de Dependências**

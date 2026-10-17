@@ -485,6 +485,43 @@ describe("Fase 5.3 — Auditoria do Bundle Client contra Vazamento de Segredos",
   });
 });
 
+describe("Tarefa 5.5 — Fortalecimento Nativo Android & Privacidade de Sessão", () => {
+  it("AndroidManifest.xml bloqueia explicitamente tráfego HTTP inseguro (usesCleartextTraffic=false)", () => {
+    const manifestPath = resolve(root, "android/app/src/main/AndroidManifest.xml");
+    expect(existsSync(manifestPath)).toBe(true);
+    const content = readFileSync(manifestPath, "utf8");
+
+    expect(content).toMatch(/android:usesCleartextTraffic=["']false["']/);
+    expect(content).toMatch(/android:networkSecurityConfig=["']@xml\/network_security_config["']/);
+  });
+
+  it("network_security_config.xml existe e proíbe cleartextTrafficPermitted", () => {
+    const netConfigPath = resolve(root, "android/app/src/main/res/xml/network_security_config.xml");
+    expect(existsSync(netConfigPath)).toBe(true);
+    const content = readFileSync(netConfigPath, "utf8");
+
+    expect(content).toMatch(/cleartextTrafficPermitted=["']false["']/);
+  });
+
+  it("módulos de PrivacyShield (FLAG_SECURE) e AppLock com Biometria estão devidamente configurados", () => {
+    const pkgJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
+    expect(pkgJson.dependencies["@capacitor-community/privacy-screen"]).toBeDefined();
+    expect(pkgJson.dependencies["@aparajita/capacitor-biometric-auth"]).toBeDefined();
+
+    const privacyShieldTs = readFileSync(resolve(root, "src/services/native/privacy-shield.ts"), "utf8");
+    expect(privacyShieldTs).toContain("PrivacyScreen.enable()");
+    expect(privacyShieldTs).toContain("PrivacyScreen.disable()");
+
+    const appLockTs = readFileSync(resolve(root, "src/services/native/app-lock.ts"), "utf8");
+    expect(appLockTs).toContain("enablePrivacyShield()");
+    expect(appLockTs).toContain("initAppLockListener");
+
+    const providersTs = readFileSync(resolve(root, "src/app/providers.tsx"), "utf8");
+    expect(providersTs).toContain("<AppLockOverlay />");
+    expect(providersTs).toContain("initAppLockListener()");
+  });
+});
+
 
 
 
