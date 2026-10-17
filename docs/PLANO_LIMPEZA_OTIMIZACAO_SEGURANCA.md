@@ -260,10 +260,14 @@ graph TD
 ### FASE 4: Otimização de Performance, Bundle, Assets, Ciclo PWA & Renderização
 > **Objetivo:** Acelerar o carregamento inicial da aplicação, otimizar a distribuição de chunks do Vite, compactar assets, blindar o ciclo de vida atômico e a invalidação de cache do PWA e garantir 60fps constantes nas interações.
 
-- [ ] **Tarefa 4.1 — Otimização e Compressão de Assets Estáticos**
+- [x] **Tarefa 4.1 — Otimização e Compressão de Assets Estáticos**
   - **Ação:** Auditar a pasta `public/` e imagens de branding:
-    - Comprimir `public/brand/logo-full.png` (~5.0 MB) para formato moderno WebP/PNG de alta fidelidade (< 300 KB);
-    - Auditar ícones PWA e favicons em `public/pwa/` para garantir compressão máxima sem perda de nitidez visual.
+    - Comprimido `public/brand/logo-full.png` (~5.0 MB original) para formato moderno PNG otimizado de 29 KB e gerado `logo-full.webp` de 10.7 KB (< 300 KB exigido);
+    - Substituído `public/favicon.svg` de raster base64 pesado (132 KB) para vetor SVG puro e escalável de 3.5 KB (-97.3% de payload no ícone principal);
+    - Sincronizado `scripts/generate-icons.mjs` para preservar o SVG vetorial oficial sem gerar strings raster embutidas;
+    - Executada compressão com zlib nível 9, re-encoding WebP (quality 90, method 6) e conversão de ícones mascaráveis opacos para 24-bit RGB em 55 arquivos em `public/brand/` e `public/pwa/icons/`;
+    - Reduzido o precache do Service Worker Workbox de 6.116 KiB para 5.899 KiB (-217 KiB no cache offline inicial);
+    - Expandido `src/tests/pwa-audit.test.ts` com validações automáticas de integridade vetorial e teto de tamanho para assets estáticos.
   - **Critério de Saída:** Redução de múltiplos megabytes nos assets estáticos servidos pelo app.
 
 - [ ] **Tarefa 4.2 — Code-Splitting Fino e Lazy Loading de Rotas Secundárias**

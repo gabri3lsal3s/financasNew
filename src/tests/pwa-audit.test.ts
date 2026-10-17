@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -48,6 +48,18 @@ describe("Auditoria PWA (instalabilidade)", () => {
 
     expect(existsSync(resolve(root, "public/favicon.svg"))).toBe(true);
     expect(existsSync(resolve(root, "public/favicon.ico"))).toBe(true);
+
+    // Auditoria de assets estáticos (Tarefa 4.1): vetor puro sem raster embutido
+    const svgFavicon = readFileSync(resolve(root, "public/favicon.svg"), "utf8");
+    expect(svgFavicon).not.toContain("data:image/png;base64");
+    expect(svgFavicon).toContain("<svg");
+    expect(statSync(resolve(root, "public/favicon.svg")).size).toBeLessThan(10 * 1024);
+
+    // Lockup da marca em formatos modernos leves (< 300 KB)
+    expect(existsSync(resolve(root, "public/brand/logo-full.png"))).toBe(true);
+    expect(existsSync(resolve(root, "public/brand/logo-full.webp"))).toBe(true);
+    expect(statSync(resolve(root, "public/brand/logo-full.png")).size).toBeLessThan(300 * 1024);
+    expect(statSync(resolve(root, "public/brand/logo-full.webp")).size).toBeLessThan(300 * 1024);
   });
 
   it("index.html tem meta tags PWA/iOS e viewport com safe areas", () => {

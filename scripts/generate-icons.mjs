@@ -377,14 +377,15 @@ writeFileSync(join(root, "public", "favicon.ico"), icoBuf);
 console.log(`✓ public/favicon.ico (multi-res 16, 32, 48 transparente)`);
 
 // Favicon SVG (mantém o vetor puro SVG de alta fidelidade sem serrilhados)
-if (!existsSync(join(root, "public", "favicon.svg"))) {
-  const logo512Buf = renderTransparentIcon(512, 0.96);
-  const logo512Base64 = logo512Buf.toString("base64");
-  const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
-    <image href="data:image/png;base64,${logo512Base64}" width="512" height="512" />
-  </svg>\n`;
-  writeFileSync(join(root, "public", "favicon.svg"), svgContent, "utf8");
-  writeFileSync(join(brandDir, "favicon.svg"), svgContent, "utf8");
+const brandFaviconPath = join(brandDir, "favicon.svg");
+const publicFaviconPath = join(root, "public", "favicon.svg");
+
+if (existsSync(brandFaviconPath)) {
+  const svgContent = readFileSync(brandFaviconPath, "utf8");
+  writeFileSync(publicFaviconPath, svgContent, "utf8");
+} else if (existsSync(publicFaviconPath)) {
+  const svgContent = readFileSync(publicFaviconPath, "utf8");
+  writeFileSync(brandFaviconPath, svgContent, "utf8");
 }
 console.log(`✓ public/favicon.svg & public/brand/favicon.svg (vetor SVG oficial)`);
 
