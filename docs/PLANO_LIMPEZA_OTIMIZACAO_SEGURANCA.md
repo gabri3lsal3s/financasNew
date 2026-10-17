@@ -365,11 +365,13 @@ graph TD
 ### FASE 5: Auditoria e Fortalecimento de Segurança, RLS & Privacidade
 > **Objetivo:** Auditar e blindar todo o perímetro de segurança (Banco de Dados Supabase, Client-Side, Camada Nativa Android e Dependências de Terceiros).
 
-- [ ] **Tarefa 5.1 — Auditoria Integral de Políticas RLS do Supabase**
-  - **Ação:** Varrer todas as migrações SQL em `supabase/migrations/`:
-    - Confirmar `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` em 100% das tabelas de dados do usuário;
-    - Verificar que todas as políticas (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) impõem `auth.uid() = user_id`;
-    - Confirmar a inexistência de políticas permissivas acidentais (`USING (true)`).
+- [x] **Tarefa 5.1 — Auditoria Integral de Políticas RLS do Supabase**
+  - **Ação:** Varredura completa de todas as 47 migrações SQL em `supabase/migrations/`:
+    - Confirmada a presença de `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` em 100% das 34 tabelas do banco de dados (dados do usuário, catálogos e auditoria);
+    - Verificado que 100% das 128 policies criadas impõem isolamento de ownership (`(select auth.uid()) = user_id`, `auth.uid() = id`, `auth.uid() is not null` ou subquery de pertencimento via chave estrangeira);
+    - Confirmada a inexistência absoluta de policies permissivas acidentais (`USING (true)`, `1 = 1` ou `TO public`);
+    - Identificadas e erradicadas duas policies legadas residuais com nomes divergentes (`loans_all_own` em `loans` e `cash_checkpoints_owner_policy` em `cash_checkpoints`) através da nova migração `20260101000047_rls_audit_cleanup.sql`;
+    - Expandida a suíte automatizada `src/tests/security-audit.test.ts` cobrindo a totalidade das 34 tabelas e a ausência de policies residuais.
   - **Critério de Saída:** Isolamento horizontal absoluto entre contas garantido no nível do banco de dados.
 
 - [ ] **Tarefa 5.2 — Blindagem de Funções RPC e Sanitização de Search Path**

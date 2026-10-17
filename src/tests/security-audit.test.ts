@@ -32,15 +32,62 @@ function statements(): string[] {
 }
 
 describe("F6.2 — RLS: cobertura total (D4 — multiusuário isolado)", () => {
-  it("toda tabela criada nas migrations tem RLS habilitado", () => {
-    const created = [...ALL_SQL.matchAll(/create table public\.(\w+)/g)].map((m) => m[1]);
-    expect(created.length).toBeGreaterThanOrEqual(19);
+  it("toda tabela criada nas migrations tem RLS habilitado (34 tabelas)", () => {
+    const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
+      .map((m) => m[1]?.toLowerCase())
+      .filter((name): name is string => Boolean(name));
+    const created = Array.from(new Set(createdMatches));
+    expect(created.length).toBe(34);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
-        new RegExp(`alter table public\\.${table} enable row level security`, "i"),
+        new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
         `tabela ${table} sem RLS`,
       );
     }
+  });
+
+  it("100% das 34 tabelas possuem policies ativas e nenhuma possui policies residuais", () => {
+    const files = readdirSync(resolve(root, "supabase/migrations")).filter((f) => f.endsWith(".sql")).sort();
+    const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
+      .map((m) => m[1]?.toLowerCase())
+      .filter((name): name is string => Boolean(name));
+    const tables = new Set(createdMatches);
+    const activePolicies: Map<string, Map<string, string>> = new Map();
+    for (const t of tables) activePolicies.set(t, new Map());
+
+    for (const file of files) {
+      const content = readFileSync(resolve(root, "supabase/migrations", file), "utf8");
+      const stmts = content.split(";").map((s) => s.trim()).filter(Boolean);
+      for (const s of stmts) {
+        const dropMatches = [...s.matchAll(/drop\s+policy\s+(?:if\s+exists\s+)?"?([^"\s;]+)"?\s+on\s+public\.([a-zA-Z0-9_]+)/gi)];
+        for (const dm of dropMatches) {
+          const pName = dm[1]?.replace(/"/g, "");
+          const tbl = dm[2]?.toLowerCase();
+          if (pName && tbl) {
+            activePolicies.get(tbl)?.delete(pName);
+          }
+        }
+
+        const createMatches = [...s.matchAll(/create\s+policy\s+"([^"]+)"\s+on\s+public\.([a-zA-Z0-9_]+)\s+([^;]+)/gi)];
+        for (const cm of createMatches) {
+          const pName = cm[1];
+          const tbl = cm[2]?.toLowerCase();
+          const rest = cm[3] ?? "";
+          if (pName && tbl) {
+            activePolicies.get(tbl)?.set(pName, rest);
+          }
+        }
+      }
+    }
+
+    for (const table of tables) {
+      const polMap = activePolicies.get(table);
+      expect(polMap && polMap.size > 0).toBe(true);
+    }
+
+    // Garante que policies residuais foram erradicadas
+    expect(activePolicies.get("loans")?.has("loans_all_own")).toBe(false);
+    expect(activePolicies.get("cash_checkpoints")?.has("cash_checkpoints_owner_policy")).toBe(false);
   });
 
   it("nenhuma policy permite leitura/escrita cross-user (toda policy referencia auth.uid())", () => {
