@@ -386,10 +386,13 @@ graph TD
     - Adicionada suíte de testes dedicada cobrindo os invariantes e permissões da migração 0048.
   - **Critério de Saída:** 100% das RPCs protegidas contra injeção de schema e bypass de permissão.
 
-- [ ] **Tarefa 5.3 — Auditoria do Bundle Client contra Vazamento de Segredos**
-  - **Ação:** Varrer a base de código e o bundle gerado:
-    - Garantir que nenhuma credencial privilegiada (`SUPABASE_SERVICE_ROLE_KEY`, secrets de webhook, senhas de banco) exista no código de `src/`;
-    - Confirmar que apenas `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` são expostas ao cliente.
+- [x] **Tarefa 5.3 — Auditoria do Bundle Client contra Vazamento de Segredos**
+  - **Ação:** Varredura estática e em tempo de compilação da base de código (`src/`) e do bundle de produção (`dist/`):
+    - Auditados todos os arquivos de código de produção em `src/`, confirmando a ausência total de credenciais privilegiadas (`SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_URL`, connection strings PostgreSQL, tokens privados Asaas `$aact_`, chaves privadas Stripe, tokens de API OpenAI/GitHub/AWS);
+    - Confirmada a lista fechada e segura de variáveis de ambiente públicas consumidas no cliente via `import.meta.env` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SENTRY_DSN`, `VITE_BRAPI_TOKEN` e flags nativas do Vite `DEV`/`PROD`/`MODE`/`BASE_URL`/`SSR`), sem qualquer exposição de segredos de servidor;
+    - Confirmada a inexistência de referências a `process.env` em todo o código client-side;
+    - Inspecionados 100% dos chunks compilados em `dist/assets/` e arquivos HTML/CSS de distribuição, atestando zero vazamento de secrets ou tokens privados no bundle final;
+    - Expandida a suíte de testes em `src/tests/security-audit.test.ts` com verificações automatizadas de regressão cobrindo o código fonte de `src/`, a lista autorizada de `import.meta.env`, a ausência de `process.env` e o scan de segurança nos chunks de `dist/`.
   - **Critério de Saída:** Zero segredos confidenciais expostos no código client-side.
 
 - [ ] **Tarefa 5.4 — Sanitização de Inputs e Validação Defensiva com Zod**

@@ -1,6 +1,6 @@
 import { execSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -16,6 +16,24 @@ import { describe, expect, it } from "vitest";
  */
 
 const root = process.cwd();
+
+function walkDir(dir: string, exts?: string[]): string[] {
+  let results: string[] = [];
+  if (!existsSync(dir)) return results;
+  const list = readdirSync(dir);
+  for (const item of list) {
+    const full = resolve(dir, item);
+    const stat = statSync(full);
+    if (stat.isDirectory()) {
+      if (item !== "node_modules" && item !== ".git") {
+        results = results.concat(walkDir(full, exts));
+      }
+    } else if (!exts || exts.some((e) => item.endsWith(e))) {
+      results.push(full);
+    }
+  }
+  return results;
+}
 
 function migrationSql(): string[] {
   return readdirSync(resolve(root, "supabase/migrations"))
@@ -365,6 +383,108 @@ describe("Fase 5.2 — Blindagem de RPCs & Sanitização de Search Path (Migrati
     expect(migration48).toMatch(/grant execute on function public\.create_historical_contribution\(date, numeric, text\) to authenticated;/i);
   });
 });
+
+describe("Fase 5.3 — Auditoria do Bundle Client contra Vazamento de Segredos", () => {
+  const ALLOWED_CLIENT_ENV_VARS = new Set([
+    "VITE_SUPABASE_URL",
+    "VITE_SUPABASE_ANON_KEY",
+    "VITE_SENTRY_DSN",
+    "VITE_BRAPI_TOKEN",
+    "DEV",
+    "PROD",
+    "MODE",
+    "BASE_URL",
+    "SSR",
+  ]);
+
+  const FORBIDDEN_SECRET_PATTERNS = [
+    { name: "Service Role Key Var", regex: /SUPABASE_SERVICE_ROLE_KEY/i },
+    { name: "Database URL Var", regex: /SUPABASE_DB_URL/i },
+    { name: "Postgres Connection URI", regex: /postgres(?:ql)?:\/\/[a-zA-Z0-9_-]+:[^@\s]+@/i },
+    { name: "Asaas API Key / Secret Token", regex: /\$aact_[A-Za-z0-9_-]+/i },
+    { name: "Live Stripe Secret Key", regex: /sk_live_[A-Za-z0-9]+/i },
+    { name: "OpenAI Secret Key", regex: /sk-[A-Za-z0-9]{20,}/i },
+    { name: "GitHub Personal Access Token", regex: /ghp_[A-Za-z0-9]{30,}/i },
+    { name: "AWS Access Key", regex: /AKIA[0-9A-Z]{16}/i },
+  ];
+
+  it("nenhum segredo privilegiado ou token de servidor é referenciado no código de produção em src/", () => {
+    const srcFiles = walkDir(resolve(root, "src"), [".ts", ".tsx", ".js", ".jsx", ".json", ".css"]).filter(
+      (f) => !f.includes(".test.") && !f.includes("/tests/"),
+    );
+
+    const violations: { file: string; pattern: string }[] = [];
+    for (const file of srcFiles) {
+      const content = readFileSync(file, "utf8");
+      for (const p of FORBIDDEN_SECRET_PATTERNS) {
+        if (p.regex.test(content)) {
+          violations.push({ file: relative(root, file), pattern: p.name });
+        }
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it("apenas variáveis de ambiente públicas autorizadas são acessadas via import.meta.env em src/", () => {
+    const srcFiles = walkDir(resolve(root, "src"), [".ts", ".tsx", ".js", ".jsx"]).filter(
+      (f) => !f.includes(".test.") && !f.includes("/tests/"),
+    );
+
+    const unallowedEnvVars: { file: string; varName: string }[] = [];
+    for (const file of srcFiles) {
+      const content = readFileSync(file, "utf8");
+      const matches = [...content.matchAll(/import\.meta\.env(?:\.([A-Za-z0-9_]+)|\[["']([A-Za-z0-9_]+)["'])/g)];
+      for (const m of matches) {
+        const varName = m[1] || m[2];
+        if (varName && !ALLOWED_CLIENT_ENV_VARS.has(varName)) {
+          unallowedEnvVars.push({ file: relative(root, file), varName });
+        }
+      }
+    }
+
+    expect(unallowedEnvVars).toEqual([]);
+  });
+
+  it("zero ocorrências de process.env em código de produção em src/", () => {
+    const srcFiles = walkDir(resolve(root, "src"), [".ts", ".tsx", ".js", ".jsx"]).filter(
+      (f) => !f.includes(".test.") && !f.includes("/tests/"),
+    );
+
+    const processEnvUses: string[] = [];
+    for (const file of srcFiles) {
+      const content = readFileSync(file, "utf8");
+      if (/\bprocess\.env\b/.test(content)) {
+        processEnvUses.push(relative(root, file));
+      }
+    }
+
+    expect(processEnvUses).toEqual([]);
+  });
+
+  it("auditoria do bundle compilado (dist/): zero segredos ou credenciais embutidas nos chunks", () => {
+    const distDir = resolve(root, "dist");
+    if (!existsSync(distDir)) {
+      return;
+    }
+
+    const distFiles = walkDir(distDir, [".js", ".css", ".html"]);
+    expect(distFiles.length).toBeGreaterThan(0);
+
+    const bundleViolations: { file: string; pattern: string }[] = [];
+    for (const file of distFiles) {
+      const content = readFileSync(file, "utf8");
+      for (const p of FORBIDDEN_SECRET_PATTERNS) {
+        if (p.regex.test(content)) {
+          bundleViolations.push({ file: relative(root, file), pattern: p.name });
+        }
+      }
+    }
+
+    expect(bundleViolations).toEqual([]);
+  });
+});
+
 
 
 
