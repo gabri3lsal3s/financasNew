@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronUp } from "lucide-react";
 import { numberToCents, parseDecimalNumber } from "@/domain/money";
-import { Alert, Badge, Button, Checkbox, Input, Modal, MoneyInput, MoneyText, NumericInput, Select } from "@/components/ui";
+import { Alert, Badge, Button, Checkbox, Input, Modal, ModalFooter, MoneyInput, MoneyText, NumericInput, Select } from "@/components/ui";
 import { isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
 import { assetMetadataSchema } from "@/domain/portfolio/schemas";
 import { DEFAULT_SECTORS_BY_CLASS, inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
@@ -372,7 +372,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
         <div className="rounded-xl border border-border/80 bg-surface-hover/20 p-3.5 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-foreground">Saldo Disponível em Caixa</span>
-            <Badge variant="muted" className="text-[11px]">1:1</Badge>
+            <Badge variant="muted" size="sm">1:1</Badge>
           </div>
           <label htmlFor="edit-asset-cash" className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
             Saldo Atual (R$)
@@ -396,7 +396,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
                   ? "Posição de Custódia (Tesouro Direto)"
                   : "Posição de Custódia (Renda Fixa)"}
             </span>
-            <Badge variant={isClosed ? "muted" : "default"} className="text-[11px]">
+            <Badge variant={isClosed ? "muted" : "default"} size="sm">
               {isClosed ? "Liquidada" : "Valor Completo"}
             </Badge>
           </div>
@@ -645,7 +645,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
         </div>
       )}
 
-      <div className="flex items-center justify-end gap-2 pt-4 border-t border-border/80">
+      <ModalFooter>
         <Button
           type="button"
           variant="outline"
@@ -660,7 +660,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
         >
           {updateAsset.isPending ? "Salvando..." : "Salvar Alterações"}
         </Button>
-      </div>
+      </ModalFooter>
     </form>
   );
 }

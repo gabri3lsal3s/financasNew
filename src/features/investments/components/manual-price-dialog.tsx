@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { Alert, Badge, Button, Modal, NumberStepperInput } from "@/components/ui";
+import { Alert, Badge, Button, Modal, ModalFooter, NumberStepperInput } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents, parseDecimalNumber } from "@/domain/money";
 import type { PriceSource } from "@/domain/portfolio";
@@ -116,7 +116,7 @@ function ManualPriceContent({ asset, onClose }: ManualPriceContentProps) {
 
       {error ? <Alert variant="error">{error}</Alert> : null}
 
-      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-between gap-2.5 pt-4 mt-2 border-t border-border/80">
+      <ModalFooter className="sm:justify-between">
         {asset.source === "manual" ? (
           <Button
             type="button"
@@ -140,7 +140,7 @@ function ManualPriceContent({ asset, onClose }: ManualPriceContentProps) {
             {pending ? "Salvando…" : "Salvar preço"}
           </Button>
         </div>
-      </div>
+      </ModalFooter>
     </form>
   );
 }

@@ -843,7 +843,7 @@ export function WealthTearSheetModal({
               </p>
             </div>
             <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
-              <Badge variant="muted" size="xs" className="text-[9.5px] font-medium text-muted-foreground">
+              <Badge variant="muted" size="xs" className="font-medium text-muted-foreground">
                 Recomendado para: Comparação com CDI e Ibovespa
               </Badge>
             </div>
@@ -881,7 +881,7 @@ export function WealthTearSheetModal({
               </p>
             </div>
             <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
-              <Badge variant="muted" size="xs" className="text-[9.5px] font-medium text-muted-foreground">
+              <Badge variant="muted" size="xs" className="font-medium text-muted-foreground">
                 Recomendado para: Eficiência do timing de aportes
               </Badge>
             </div>
@@ -919,7 +919,7 @@ export function WealthTearSheetModal({
               </p>
             </div>
             <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
-              <Badge variant="muted" size="xs" className="text-[9.5px] font-medium text-muted-foreground">
+              <Badge variant="muted" size="xs" className="font-medium text-muted-foreground">
                 Recomendado para: Posições em custódia ativa
               </Badge>
             </div>
@@ -953,7 +953,7 @@ export function WealthTearSheetModal({
               </p>
             </div>
             <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
-              <Badge variant="muted" size="xs" className="text-[9.5px] font-medium text-muted-foreground">
+              <Badge variant="muted" size="xs" className="font-medium text-muted-foreground">
                 Recomendado para: Dimensão financeira total e caixa
               </Badge>
             </div>

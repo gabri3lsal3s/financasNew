@@ -1,5 +1,5 @@
 import { ShieldAlert, ShieldCheck } from "lucide-react";
-import { Alert, Badge, Button, Checkbox, DatePicker, MoneyInput, NumericInput } from "@/components/ui";
+import { Alert, Badge, Button, Checkbox, DatePicker, ModalFooter, MoneyInput, NumericInput } from "@/components/ui";
 import { todayISO } from "@/domain/debts";
 import type { PortfolioAsset } from "@/types";
 import type { sellAssetPosition } from "@/domain/portfolio";
@@ -188,7 +188,7 @@ export function AssetSellTab({
 
       {error ? <Alert variant="error">{error}</Alert> : null}
 
-      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 border-t border-border/80">
+      <ModalFooter>
         <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
           Cancelar
         </Button>
@@ -200,7 +200,7 @@ export function AssetSellTab({
         >
           {pending ? "Processando…" : "Confirmar Venda / Resgate"}
         </Button>
-      </div>
+      </ModalFooter>
     </form>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Copy, KeyRound, Plus, Sparkles } from "lucide-react";
-import { Button, Checkbox, DatePicker, Input, Modal, Select } from "@/components/ui";
+import { Button, Checkbox, DatePicker, Input, Modal, ModalFooter, Select } from "@/components/ui";
 import { generateInviteCode } from "@/domain/admin";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
@@ -312,7 +312,7 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
         </div>
 
         {/* Ações */}
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 border-t border-border/80 mt-2">
+        <ModalFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             Cancelar
           </Button>
@@ -320,7 +320,7 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
             <Plus className="size-4" aria-hidden="true" />
             {createInviteMutation.isPending ? "Criando…" : "Salvar Convite"}
           </Button>
-        </div>
+        </ModalFooter>
 
       </form>
     </Modal>

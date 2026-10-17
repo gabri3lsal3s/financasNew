@@ -15,6 +15,7 @@ export interface ResponsiveDialogProps {
   headerActions?: ReactNode;
   className?: string;
   contentClassName?: string;
+  footerClassName?: string;
 }
 
 /**
@@ -38,6 +39,7 @@ export function ResponsiveDialog({
   headerActions,
   className,
   contentClassName,
+  footerClassName,
 }: ResponsiveDialogProps) {
   return (
     <Modal
@@ -53,7 +55,7 @@ export function ResponsiveDialog({
     >
       <div className={cn("flex flex-col gap-3.5 mt-4", contentClassName)}>
         <div className="flex-1 min-w-0">{children}</div>
-        {footer ? <ModalFooter>{footer}</ModalFooter> : null}
+        {footer ? <ModalFooter className={footerClassName}>{footer}</ModalFooter> : null}
       </div>
     </Modal>
   );

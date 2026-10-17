@@ -14,6 +14,7 @@ import {
   Button,
   ConfirmDialog,
   Modal,
+  ModalFooter,
   Skeleton,
 } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
@@ -617,7 +618,7 @@ export function AssetDetailSheet({
           </div>
 
           {/* Rodapé: Exclusão do Ativo da Carteira */}
-          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-t border-border/80 pt-4 gap-2">
+          <ModalFooter className="sm:justify-between">
             <Button
               type="button"
               variant="outline"
@@ -628,7 +629,7 @@ export function AssetDetailSheet({
                   setDeleteConfirmOpen(true);
                 }, "Excluir Ativo da Carteira")
               }
-              className="text-xs text-negative-strong hover:bg-negative-surface/40 cursor-pointer"
+              className="text-xs text-negative-strong hover:bg-negative-surface/40"
             >
               <Trash2 className="size-3.5 mr-1" aria-hidden="true" />
               Excluir Ativo da Carteira
@@ -642,7 +643,7 @@ export function AssetDetailSheet({
             >
               Fechar
             </Button>
-          </div>
+          </ModalFooter>
         </div>
       </Modal>
 

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Alert, Button, Input, Modal, MoneyInput, Tabs } from "@/components/ui";
+import { Alert, Button, Input, Modal, ModalFooter, MoneyInput, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules";
 import {
@@ -279,7 +279,7 @@ function BudgetAdjustDialogContent({
         )}
       </div>
 
-      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
+      <ModalFooter>
         <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>
           Cancelar
         </Button>
@@ -290,7 +290,7 @@ function BudgetAdjustDialogContent({
         >
           {isPending ? "Aplicando…" : "Aplicar ajuste"}
         </Button>
-      </div>
+      </ModalFooter>
     </div>
   );
 }

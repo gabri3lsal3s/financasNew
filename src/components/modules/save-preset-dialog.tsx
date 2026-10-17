@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BookmarkPlus, Layers, PieChart } from "lucide-react";
-import { Modal } from "@/components/ui/modal";
+import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
@@ -98,7 +98,7 @@ function SavePresetForm({
         </div>
       </div>
 
-      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 border-t border-border/80 mt-2">
+      <ModalFooter>
         <Button
           type="button"
           variant="outline"
@@ -115,7 +115,7 @@ function SavePresetForm({
           <BookmarkPlus className="size-4" aria-hidden="true" />
           {saving ? "Salvando..." : "Salvar Cenário"}
         </Button>
-      </div>
+      </ModalFooter>
     </form>
   );
 }

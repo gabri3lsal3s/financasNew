@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
-import { Alert, Button, ColorPicker, IconPicker, Input, Modal, RadioGroup } from "@/components/ui";
+import { Alert, Button, ColorPicker, IconPicker, Input, Modal, ModalFooter, RadioGroup } from "@/components/ui";
 import type { IconPickerOption } from "@/components/ui";
 import { CATEGORY_ICON_MAP } from "@/components/modules/category-icons";
 import { suggestCategory } from "@/domain/budgets";
@@ -156,7 +156,7 @@ function CategoryFormContent({
         </div>
       </div>
 
-      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5 pt-4 mt-2 border-t border-border/80 sm:justify-end">
+      <ModalFooter className="sm:justify-end">
         {category && siblings !== undefined ? (
           <Button
             type="button"
@@ -177,7 +177,7 @@ function CategoryFormContent({
         <Button type="submit" disabled={name.trim() === "" || pending}>
           {pending ? "Salvando…" : category ? "Salvar alterações" : "Criar categoria"}
         </Button>
-      </div>
+      </ModalFooter>
     </form>
   );
 }

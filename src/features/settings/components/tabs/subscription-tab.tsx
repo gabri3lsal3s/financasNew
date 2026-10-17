@@ -26,6 +26,7 @@ import {
   Badge,
   Input,
   Modal,
+  ModalFooter,
   ConfirmDialog,
 } from "@/components/ui";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
@@ -575,7 +576,7 @@ function UpdateCardModal({ open, onOpenChange }: UpdateCardModalProps) {
           </div>
         </div>
 
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end pt-2">
+        <ModalFooter>
           <Button
             type="button"
             variant="ghost"
@@ -599,7 +600,7 @@ function UpdateCardModal({ open, onOpenChange }: UpdateCardModalProps) {
               "Salvar Novo Cartão"
             )}
           </Button>
-        </div>
+        </ModalFooter>
       </div>
     </Modal>
   );
@@ -730,16 +731,15 @@ function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
                 </div>
               </div>
 
-              <div className="flex justify-end pt-2">
+              <ModalFooter>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setSelectedReceipt(null)}
-                  className="cursor-pointer"
                 >
                   Fechar
                 </Button>
-              </div>
+              </ModalFooter>
             </div>
           </Modal>
         )}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, ConfirmDialog, Modal, Stepper } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, Modal, ModalFooter, Stepper } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { getAssetPricingMode, isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
@@ -495,7 +495,7 @@ function InvestmentWizardContent({
         onOpenChange={(next) => (!next ? requestClose() : onOpenChange?.(true))}
         title={getModalTitle()}
         description="Lance compras, vendas, proventos, splits ou cadastre novos ativos com atualização em tempo real."
-        size="lg"
+        size="xl"
         showCalculator
       >
         <div className="flex flex-col gap-6 pt-2">
@@ -626,7 +626,7 @@ function InvestmentWizardContent({
           )}
 
           {/* Rodapé de Navegação do Wizard */}
-          <div className="flex items-center justify-between border-t border-border/80 pt-4">
+          <ModalFooter className="sm:justify-between">
             <div>
               {state.mode !== "select" && (state.step > 1 || !initialAsset) && (
                 <Button
@@ -635,13 +635,14 @@ function InvestmentWizardContent({
                   size="sm"
                   onClick={handleBack}
                   disabled={isPending}
+                  className="w-full sm:w-auto"
                 >
                   Voltar
                 </Button>
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5">
               <Button
                 type="button"
                 variant="ghost"
@@ -674,7 +675,7 @@ function InvestmentWizardContent({
                 </Button>
               )}
             </div>
-          </div>
+          </ModalFooter>
         </div>
       </Modal>
 

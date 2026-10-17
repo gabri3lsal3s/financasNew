@@ -42,16 +42,14 @@ export function IosPwaInstallDialog({ open, onOpenChange }: IosPwaInstallDialogP
       description="Adicione o aplicativo à tela de início para desfrutar da experiência em tela cheia e acesso instantâneo."
       size="md"
       footer={
-        <div className="flex w-full items-center justify-end">
-          <Button
-            type="button"
-            variant="default"
-            onClick={() => onOpenChange(false)}
-            className="w-full sm:w-auto"
-          >
-            Entendi
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="default"
+          onClick={() => onOpenChange(false)}
+          className="w-full sm:w-auto"
+        >
+          Entendi
+        </Button>
       }
     >
       <div className="space-y-4 py-1">

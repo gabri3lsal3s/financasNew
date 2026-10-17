@@ -107,7 +107,7 @@ export function PortfolioDarfMonitor({
           <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-3.5 shadow-xs">
             <div className="flex items-center justify-between border-b border-border/40 pb-2">
               <strong className="text-xs font-semibold text-foreground">Ações & ETFs</strong>
-              <Badge variant={darf.isStockExempt ? "positive" : "warning"} className="text-[10px]">
+              <Badge variant={darf.isStockExempt ? "positive" : "warning"} size="xs">
                 {darf.isStockExempt ? "Isento" : "Tributável (15%)"}
               </Badge>
             </div>
@@ -131,7 +131,7 @@ export function PortfolioDarfMonitor({
           <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-3.5 shadow-xs">
             <div className="flex items-center justify-between border-b border-border/40 pb-2">
               <strong className="text-xs font-semibold text-foreground">Fundos Imobiliários (FIIs)</strong>
-              <Badge variant="muted" className="text-[10px]">
+              <Badge variant="muted" size="xs">
                 Alíquota 20%
               </Badge>
             </div>

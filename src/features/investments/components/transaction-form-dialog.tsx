@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, ConfirmDialog, Modal, MoneyInput, MoneyText, NumberStepperInput, Select } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, Modal, ModalFooter, MoneyInput, MoneyText, NumberStepperInput, Select } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
@@ -191,7 +191,7 @@ function TransactionFormContent({ asset, transaction = null, onClose }: Transact
 
         {error ? <Alert variant="error">{error}</Alert> : null}
 
-        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-between gap-2.5 pt-4 mt-2 border-t border-border/80">
+        <ModalFooter className="sm:justify-between">
           {isEdit ? (
             <Button type="button" variant="ghost" onClick={() => setConfirmDelete(true)} disabled={pending}>
               Excluir lançamento
@@ -207,7 +207,7 @@ function TransactionFormContent({ asset, transaction = null, onClose }: Transact
               {pending ? "Salvando…" : isEdit ? "Salvar" : "Registrar"}
             </Button>
           </div>
-        </div>
+        </ModalFooter>
       </form>
 
       <ConfirmDialog

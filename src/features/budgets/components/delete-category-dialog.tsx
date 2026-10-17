@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, Modal, Select, Skeleton } from "@/components/ui";
+import { Alert, Button, Modal, ModalFooter, Select, Skeleton } from "@/components/ui";
 import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
 import { useDeleteCategory } from "@/state";
@@ -71,7 +71,7 @@ function DeleteCategoryContent({ category, siblings, usage, onClose }: DeleteCat
         <p className="text-sm text-muted-foreground">Esta categoria não tem lançamentos — pode ser excluída diretamente.</p>
       )}
 
-      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
+      <ModalFooter>
         <Button type="button" variant="ghost" onClick={onClose}>
           Cancelar
         </Button>
@@ -83,7 +83,7 @@ function DeleteCategoryContent({ category, siblings, usage, onClose }: DeleteCat
         >
           {deleteCategory.isPending ? "Excluindo…" : "Excluir categoria"}
         </Button>
-      </div>
+      </ModalFooter>
     </div>
   );
 }
@@ -95,7 +95,7 @@ export function DeleteCategoryDialog({ category, siblings, usage, open, onOpenCh
       open={open}
       onOpenChange={onOpenChange}
       title={`Excluir ${category.name}?`}
-      size="md"
+      size="sm"
     >
       {open ? (
         <DeleteCategoryContent

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, Modal, MoneyInput, Select, Skeleton } from "@/components/ui";
+import { Alert, Button, Modal, ModalFooter, MoneyInput, Select, Skeleton } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { sensory } from "@/services/sensory";
 import { formatCentsAsBRL } from "@/services/masks";
@@ -152,7 +152,7 @@ export function EarlyAmortizationDialog({ loan, debts, open, onOpenChange }: Ear
           </div>
         )}
 
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
+        <ModalFooter>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
@@ -162,7 +162,7 @@ export function EarlyAmortizationDialog({ loan, debts, open, onOpenChange }: Ear
           >
             {pending ? "Processando…" : "Confirmar amortização"}
           </Button>
-        </div>
+        </ModalFooter>
       </form>
     </Modal>
   );

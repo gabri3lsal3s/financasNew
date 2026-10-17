@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, Input, Modal, MoneyInput, Select, Skeleton } from "@/components/ui";
+import { Alert, Button, Input, Modal, ModalFooter, MoneyInput, Select, Skeleton } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { sensory } from "@/services/sensory";
 import { formatCentsAsBRL } from "@/services/masks";
@@ -188,14 +188,14 @@ function BillRefinanceContent({
         </div>
       ) : null}
 
-      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
+      <ModalFooter>
         <Button type="button" variant="ghost" onClick={onClose}>
           Cancelar
         </Button>
         <Button type="submit" disabled={pending || !categoryId || balanceToFinance <= 0}>
           {pending ? "Processando…" : "Confirmar parcelamento"}
         </Button>
-      </div>
+      </ModalFooter>
     </form>
   );
 }

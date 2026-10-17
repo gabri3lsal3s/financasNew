@@ -10,7 +10,7 @@ import {
   Landmark,
   TrendingUp,
 } from "lucide-react";
-import { Modal } from "@/components/ui/modal";
+import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -186,7 +186,7 @@ export function UpgradeDialog({
       </div>
 
       {/* Rodapé de ações */}
-      <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <ModalFooter>
         <Button
           type="button"
           variant="ghost"
@@ -204,7 +204,7 @@ export function UpgradeDialog({
           <Sparkles className="size-4" aria-hidden="true" />
           Continuar para Pagamento Seguro
         </Button>
-      </div>
+      </ModalFooter>
     </Modal>
   );
 }

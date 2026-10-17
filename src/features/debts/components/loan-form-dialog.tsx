@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, DatePicker, Input, Modal, MoneyInput, NumberStepperInput, Select } from "@/components/ui";
+import { Alert, Button, DatePicker, Input, Modal, ModalFooter, MoneyInput, NumberStepperInput, Select } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { sensory } from "@/services/sensory";
 import { formatCentsAsBRL } from "@/services/masks";
@@ -197,14 +197,14 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
           </div>
         ) : null}
 
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
+        <ModalFooter>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button type="submit" disabled={pending || !name.trim() || principalCents <= 0}>
             {pending ? "Criando contrato…" : "Salvar contrato"}
           </Button>
-        </div>
+        </ModalFooter>
       </form>
     </Modal>
   );

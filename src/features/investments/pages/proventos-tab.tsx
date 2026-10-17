@@ -407,7 +407,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
         <div className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border">
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-medium text-muted-foreground">Recebido em {monthLabel(month)}</span>
-            <Badge variant={extract.length > 0 ? "positive" : "muted"} className="text-[10px]">
+            <Badge variant={extract.length > 0 ? "positive" : "muted"} size="xs">
               {extract.length} {extract.length === 1 ? "provento" : "proventos"}
             </Badge>
           </div>
@@ -462,7 +462,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
             <Coins className="size-4 text-muted-foreground" aria-hidden="true" />
             <h2 className="text-sm font-semibold text-foreground">Extrato do mês</h2>
           </div>
-          <Badge variant="muted" className="text-[11px]">
+          <Badge variant="muted" size="sm">
             {monthLabel(month)}
           </Badge>
         </div>
@@ -488,7 +488,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
                     <div className="flex items-center gap-2">
                       <span className="truncate text-sm font-bold font-mono text-foreground">{ticker}</span>
                       {asset?.asset_class && (
-                        <Badge variant="muted" className="text-[10px] px-1.5 py-0 font-medium">
+                        <Badge variant="muted" size="xs" className="font-medium">
                           {asset.asset_class}
                         </Badge>
                       )}
@@ -538,7 +538,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
         <div className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs">
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-medium text-muted-foreground">Total em {year}</span>
-            <Badge variant="muted" className="text-[10px]">Ano {year}</Badge>
+            <Badge variant="muted" size="xs">Ano {year}</Badge>
           </div>
           <p className="num mt-2 text-2xl font-bold tracking-tight text-foreground">
             <MoneyText cents={numberToCents(yearTotal)} tone="positive" animated />
@@ -675,7 +675,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
             <h2 className="text-sm font-semibold text-foreground">Proventos por Ativo</h2>
             <p className="text-xs text-muted-foreground">Consolidação de proventos iniciais anteriores ao cadastro e lançamentos no app.</p>
           </div>
-          <Badge variant="muted" className="text-[11px]">
+          <Badge variant="muted" size="sm">
             {assetsWithDividends.length} {assetsWithDividends.length === 1 ? "ativo" : "ativos"}
           </Badge>
         </div>
@@ -695,7 +695,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="font-bold text-foreground text-sm font-mono">{asset.ticker}</span>
                       {asset.asset_class && (
-                        <Badge variant="muted" className="text-[10px] px-1.5 py-0 font-medium">
+                        <Badge variant="muted" size="xs" className="font-medium">
                           {asset.asset_class}
                         </Badge>
                       )}
@@ -866,12 +866,12 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {dividendSource === "manual_estimate" && (
-                      <Badge variant="muted" className="text-[10px] px-1.5 py-0">
+                      <Badge variant="muted" size="xs">
                         Estimado
                       </Badge>
                     )}
                     {progress.isSnowballActive ? (
-                      <Badge variant="positive" className="text-[10px] px-1.5 py-0">
+                      <Badge variant="positive" size="xs">
                         Bola de Neve Ativa
                       </Badge>
                     ) : (

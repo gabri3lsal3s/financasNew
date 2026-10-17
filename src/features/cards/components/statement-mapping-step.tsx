@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowRight, RotateCcw } from "lucide-react";
-import { Button, Checkbox, Select } from "@/components/ui";
+import { Button, Checkbox, ModalFooter, Select } from "@/components/ui";
 import type { ColumnMapping, RawParsedRow } from "@/domain/reconciliation";
 
 interface StatementMappingStepProps {
@@ -106,7 +106,7 @@ export function StatementMappingStep({
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-border/40">
+      <ModalFooter className="sm:justify-between">
         <Checkbox
           checked={hasHeader}
           onCheckedChange={setHasHeader}
@@ -132,7 +132,7 @@ export function StatementMappingStep({
             <ArrowRight className="size-4" aria-hidden />
           </Button>
         </div>
-      </div>
+      </ModalFooter>
     </div>
   );
 }

@@ -111,8 +111,9 @@ export function AllocationBreakdownDialog({
           )}
         </div>
       }
+      footerClassName="sm:justify-between"
       footer={
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between w-full gap-2.5">
+        <>
           <Button
             type="button"
             variant="outline"
@@ -134,7 +135,7 @@ export function AllocationBreakdownDialog({
               <span>Ajustar metas de alocação</span>
             </Button>
           ) : null}
-        </div>
+        </>
       }
     >
       <div className="flex flex-col gap-4 py-1">

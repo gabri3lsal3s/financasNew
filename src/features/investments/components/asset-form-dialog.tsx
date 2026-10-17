@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowDownLeft, Calculator, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
-import { Alert, Badge, Button, Checkbox, ConfirmDialog, Input, Modal, MoneyInput, MoneyText, NumericInput, Select } from "@/components/ui";
+import { Alert, Badge, Button, Checkbox, ConfirmDialog, Input, Modal, ModalFooter, MoneyInput, MoneyText, NumericInput, Select } from "@/components/ui";
 
 
 import { numberToCents, parseDecimalNumber } from "@/domain/money";
@@ -817,7 +817,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
 
           {error ? <Alert variant="error">{error}</Alert> : null}
 
-          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-4 border-t border-border/80">
+          <ModalFooter className="sm:justify-between">
             {isEdit ? (
               <Button
                 type="button"
@@ -839,7 +839,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
                 {pending ? "Salvando…" : isEdit ? "Salvar alterações" : "Adicionar à carteira"}
               </Button>
             </div>
-          </div>
+          </ModalFooter>
         </form>
       )}
 

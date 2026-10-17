@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/ui/modal";
+import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Stepper } from "@/components/ui/stepper";
 import {
   analyzeBackupDuplicates,
@@ -286,7 +286,7 @@ export function RestoreWizardDialog({
         )}
 
         {/* Rodapé unificado de ações do Wizard */}
-        <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-2.5 pt-4 border-t border-border/80">
+        <ModalFooter className="sm:justify-between">
           <div>
             {!state.isDone && (
               <Button
@@ -391,7 +391,7 @@ export function RestoreWizardDialog({
               </Button>
             )}
           </div>
-        </div>
+        </ModalFooter>
       </div>
     </Modal>
   );

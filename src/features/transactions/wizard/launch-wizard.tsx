@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Modal } from "@/components/ui/modal";
+import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Stepper } from "@/components/ui/stepper";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
@@ -414,7 +414,7 @@ export function LaunchWizard({
           }}
         />
 
-        <footer className="mt-auto flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-between gap-2.5 border-t border-border/80 pt-4 mt-2">
+        <ModalFooter className="mt-auto sm:justify-between">
           <Button type="button" variant="ghost" disabled={state.step === 1 || pending} onClick={() => goTo(state.step - 1)}>
             Voltar
           </Button>
@@ -427,7 +427,7 @@ export function LaunchWizard({
               Continuar
             </Button>
           )}
-        </footer>
+        </ModalFooter>
       </div>
     </Modal>
   );

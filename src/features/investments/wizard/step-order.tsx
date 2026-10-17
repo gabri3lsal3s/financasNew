@@ -83,16 +83,16 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="font-mono text-base font-bold text-foreground">{state.ticker}</span>
-            <Badge variant="muted" className="text-[10px]">
+            <Badge variant="muted" size="xs">
               {state.assetClass}
             </Badge>
             {isTotalValue && (
-              <Badge variant="muted" className="text-[10px]">
+              <Badge variant="muted" size="xs">
                 Valor Completo
               </Badge>
             )}
             {fiInfo?.isMatured && (
-              <Badge variant="critical" className="text-[10px]">
+              <Badge variant="critical" size="xs">
                 Vencido
               </Badge>
             )}
@@ -450,7 +450,7 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                 <span className="text-muted-foreground">Saldo aplicado residual:</span>
                 <span className="font-mono font-bold text-xs text-foreground">
                   {preview.newQuantity === 0 ? (
-                    <Badge variant="muted" className="text-[10px]">Posição Encerrada</Badge>
+                    <Badge variant="muted" size="xs">Posição Encerrada</Badge>
                   ) : (
                     <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} />
                   )}

@@ -7,7 +7,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Dropzone } from "@/components/ui/dropzone";
 import { Input } from "@/components/ui/input";
 
-import { Modal } from "@/components/ui/modal";
+import { Modal, ModalFooter } from "@/components/ui/modal";
 import { MoneyText } from "@/components/ui/money-text";
 import { Select } from "@/components/ui/select";
 import { Tabs } from "@/components/ui/tabs";
@@ -647,16 +647,16 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-xs text-foreground font-mono">{row.ticker}</span>
-                        <Badge variant={op.variant} className="text-[10px]">
+                        <Badge variant={op.variant} size="xs">
                           {op.label}
                         </Badge>
                         {isNewAsset && (
-                          <Badge variant="portfolio" className="text-[10px]">
+                          <Badge variant="portfolio" size="xs">
                             Novo ativo
                           </Badge>
                         )}
                         {row.assetClass && (
-                          <Badge variant="muted" className="text-[10px]">
+                          <Badge variant="muted" size="xs">
                             {row.assetClass}
                           </Badge>
                         )}
@@ -709,7 +709,7 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
             })}
           </div>
 
-          <div className="flex items-center justify-between pt-3 border-t border-border/60">
+          <ModalFooter className="sm:justify-between">
             <Button
               type="button"
               variant="outline"
@@ -730,7 +730,7 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
               <Check aria-hidden="true" className="size-3.5" />
               {isProcessing ? "Importando..." : `Confirmar importação (${selectedIndices.size})`}
             </Button>
-          </div>
+          </ModalFooter>
         </div>
       )}
     </Modal>

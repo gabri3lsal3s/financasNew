@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Calendar, Check, Info } from "lucide-react";
-import { Modal } from "@/components/ui/modal";
+import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -97,7 +97,7 @@ function CashCheckpointForm({
         />
       </div>
 
-      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 border-t border-border/80 mt-2">
+      <ModalFooter>
         <Button
           type="button"
           variant="outline"
@@ -115,7 +115,7 @@ function CashCheckpointForm({
           <Check className="size-4" aria-hidden="true" />
           {isPending ? "Salvando..." : "Salvar Saldo Real"}
         </Button>
-      </div>
+      </ModalFooter>
     </form>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, Modal, MoneyInput, RadioGroup, Select, Skeleton } from "@/components/ui";
+import { Alert, Button, Modal, ModalFooter, MoneyInput, RadioGroup, Select, Skeleton } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { sensory } from "@/services/sensory";
 import { formatCentsAsBRL } from "@/services/masks";
@@ -237,7 +237,7 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
         </>
       )}
 
-      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
+      <ModalFooter>
         <Button type="button" variant="ghost" onClick={onClose}>
           Cancelar
         </Button>
@@ -247,7 +247,7 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
         >
           {pending ? "Quitando…" : "Confirmar quitação"}
         </Button>
-      </div>
+      </ModalFooter>
     </form>
   );
 }

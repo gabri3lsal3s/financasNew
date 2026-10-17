@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowRight, FileSpreadsheet, History, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ModalFooter } from "@/components/ui/modal";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select } from "@/components/ui/select";
 import { Tabs } from "@/components/ui/tabs";
@@ -70,7 +71,7 @@ export function PortfolioMappingStep({
     }
     if (roles.length === 0) return null;
     return (
-      <Badge variant="portfolio" className="text-[9px] px-1.5 py-0 uppercase font-mono tracking-tight shrink-0">
+      <Badge variant="portfolio" size="xs" className="uppercase font-mono tracking-tight shrink-0">
         {roles.join(" + ")}
       </Badge>
     );
@@ -248,7 +249,7 @@ export function PortfolioMappingStep({
         </label>
       </div>
 
-      <div className="flex items-center justify-between pt-3 border-t border-border/60">
+      <ModalFooter className="sm:justify-between">
         <Button type="button" variant="outline" size="sm" onClick={onBack} className="gap-1.5">
           <RotateCcw aria-hidden="true" className="size-3.5" />
           Voltar
@@ -257,7 +258,7 @@ export function PortfolioMappingStep({
           Avançar para conferência
           <ArrowRight aria-hidden="true" className="size-3.5" />
         </Button>
-      </div>
+      </ModalFooter>
     </div>
   );
 }

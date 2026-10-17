@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Edit2 } from "lucide-react";
-import { Alert, Button, Modal, MoneyInput } from "@/components/ui";
+import { Alert, Button, Modal, ModalFooter, MoneyInput } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { suggestCategory, suggestLimitCents } from "@/domain/budgets";
 import { getErrorMessage } from "@/services/errors";
@@ -129,7 +129,7 @@ function LimitDialogContent({
         </div>
       ) : null}
 
-      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-between gap-2.5 pt-4 mt-2 border-t border-border/80">
+      <ModalFooter className="sm:justify-between">
         {!inherited && currentLimitCents > 0 ? (
           <Button type="button" variant="ghost" className="text-critical hover:text-critical" onClick={() => void handleRemove()}>
             Remover limite
@@ -145,7 +145,7 @@ function LimitDialogContent({
             {pending ? "Salvando…" : "Salvar limite"}
           </Button>
         </div>
-      </div>
+      </ModalFooter>
     </form>
   );
 }

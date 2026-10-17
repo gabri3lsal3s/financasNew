@@ -154,11 +154,11 @@ export function StepSelect({
                         <div className="flex flex-col gap-0.5 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-mono text-sm font-bold text-foreground">{asset.ticker}</span>
-                            <Badge variant="default" className="text-[10px] py-0 px-1.5">
+                            <Badge variant="default" size="xs">
                               Na carteira
                             </Badge>
                             {isSelected && (
-                              <Badge variant="default" className="text-[10px] py-0 px-1.5 gap-1 bg-primary text-primary-foreground">
+                              <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground">
                                 <Check className="size-3" aria-hidden="true" />
                                 Selecionado
                               </Badge>
@@ -212,11 +212,11 @@ export function StepSelect({
                       <div className="flex flex-col gap-0.5 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-sm font-bold text-foreground">{asset.ticker}</span>
-                          <Badge variant="default" className="text-[10px] py-0 px-1.5">
+                          <Badge variant="default" size="xs">
                             Na carteira
                           </Badge>
                           {isSelected && (
-                            <Badge variant="default" className="text-[10px] py-0 px-1.5 gap-1 bg-primary text-primary-foreground">
+                            <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground">
                               <Check className="size-3" aria-hidden="true" />
                               Selecionado
                             </Badge>
@@ -292,9 +292,9 @@ export function StepSelect({
                     <div className="flex flex-col gap-0.5 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-sm font-bold text-foreground">{item.ticker}</span>
-                        <Badge variant="default" className="text-[10px] py-0 px-1.5">Na carteira</Badge>
+                        <Badge variant="default" size="xs">Na carteira</Badge>
                         {isSelected && (
-                          <Badge variant="default" className="text-[10px] py-0 px-1.5 gap-1 bg-primary text-primary-foreground">
+                          <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground">
                             <Check className="size-3" aria-hidden="true" />
                             Selecionado
                           </Badge>
@@ -376,11 +376,11 @@ export function StepSelect({
                   <div className="flex flex-col gap-0.5 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-sm font-bold text-foreground">{res.ticker}</span>
-                      <Badge variant={res.isExisting ? "default" : "muted"} className="text-[10px] py-0 px-1.5">
+                      <Badge variant={res.isExisting ? "default" : "muted"} size="xs">
                         {res.isExisting ? "Na carteira" : res.assetClass}
                       </Badge>
                       {isSelected && (
-                        <Badge variant="default" className="text-[10px] py-0 px-1.5 gap-1 bg-primary text-primary-foreground">
+                        <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground">
                           <Check className="size-3" aria-hidden="true" />
                           Selecionado
                         </Badge>

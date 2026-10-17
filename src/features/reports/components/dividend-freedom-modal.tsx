@@ -7,6 +7,7 @@ import {
   ReportDividendSparkline,
   ReportFooter,
 } from "@/components/modules";
+import { Badge } from "@/components/ui/badge";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { sanitizeReportText, type FreedomAnalysisResult } from "@/domain/reports";
@@ -195,17 +196,14 @@ export function DividendFreedomModal({
                       {sb.newSharesPerMonth.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {sb.newSharesPerMonth === 1 ? "cota" : "cotas"}
                     </td>
                     <td className="py-1.5 px-3 text-center">
-                      <span
-                        className={`inline-flex rounded-md px-2 py-0.5 text-[9px] font-bold ${
-                          sb.isSnowballReached
-                            ? "bg-positive/10 text-positive-strong border border-positive/20"
-                            : "bg-muted/40 text-muted-foreground border border-border"
-                        }`}
+                      <Badge
+                        variant={sb.isSnowballReached ? "positive" : "muted"}
+                        size="xs"
                       >
                         {sb.isSnowballReached
                           ? "Bola de Neve Ativa"
                           : `${Math.ceil(sb.monthsToBuyOneShare)} mês(es) p/ 1 cota`}
-                      </span>
+                      </Badge>
                     </td>
                   </tr>
                 ))}

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import type { FormEvent } from "react";
 import { Check, Crown, RotateCcw, Shield, Sparkles, UserCheck, X } from "lucide-react";
-import { Badge, Button, Input, Modal, Select } from "@/components/ui";
+import { Badge, Button, Input, Modal, ModalFooter, Select } from "@/components/ui";
 import {
   ROLE_LABELS,
   STATUS_LABELS,
@@ -442,7 +442,7 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
         </div>
 
         {/* Rodapé */}
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 border-t border-border/80 mt-2">
+        <ModalFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             Fechar
           </Button>
@@ -455,7 +455,7 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
             <UserCheck className="size-4" aria-hidden="true" />
             Salvar Status &amp; Cargo
           </Button>
-        </div>
+        </ModalFooter>
 
       </form>
     </Modal>

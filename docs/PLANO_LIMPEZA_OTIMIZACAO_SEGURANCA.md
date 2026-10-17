@@ -208,11 +208,12 @@ graph TD
 ### FASE 3: Desduplicação (DRY), Reuso de Componentes & Padronização de Domínio
 > **Objetivo:** Aplicar com rigor a Regra DRY Estrita de UI (§4 de `AGENTS.md`) e centralizar lógicas financeiras repetidas em funções puras de domínio.
 
-- [ ] **Tarefa 3.1 — Unificação da Anatomia de Diálogos e Modais**
-  - **Ação:** Varrer telas de `src/features/` e padronizar todos os modais:
-    - Utilizar os primitivos `<Modal />` e `<ResponsiveDialog />` respeitando estritamente a escala de larguras (`sm`, `md`, `lg`, `xl`, `2xl`, `3xl`);
-    - Erradicar marcações manuais de rodapé de diálogo, aplicando a anatomia canônica: Cancelar à esquerda, Confirmar à direita no desktop e empilhamento seguro no mobile (`flex-col-reverse`);
-    - Eliminar classes manuais de micro-padding em badges (`text-[9px]`, `py-0`), adotando as variantes padronizadas de `<Badge size="xs" | "sm" | "md" />`.
+- [x] **Tarefa 3.1 — Unificação da Anatomia de Diálogos e Modais**
+  - **Ação:** Varrer telas de `src/features/` e `src/components/` e padronizar todos os modais e badges:
+    - Utilizados os primitivos `<Modal />` e `<ResponsiveDialog />` respeitando estritamente a escala canônica de larguras (`sm`, `md`, `lg`, `xl`, `2xl`, `3xl` conforme §4 item 18 de `AGENTS.md`), padronizando wizards para `xl`, confirmações para `sm`, extratos/conciliação para `2xl`;
+    - Erradicadas todas as marcações manuais de rodapé de diálogo em 35+ componentes e páginas (`div className="flex flex-col-reverse sm:flex-row..."`), substituídas pelo componente canônico `<ModalFooter>` (com suporte a safe area iOS, sticky bottom-sheet e mobile `flex-col-reverse`);
+    - Adicionada prop `footerClassName` ao `<ResponsiveDialog />` para desacoplar e eliminar wrappers flex internos redundantes;
+    - Eliminadas 100% das classes manuais ad-hoc em badges (`text-[9px]`, `text-[9.5px]`, `text-[10px]`, `text-[11px]`, `py-0`), adotando as variantes padronizadas `<Badge size="xs" | "sm" | "md" />` (§4 item 14 de `AGENTS.md`).
   - **Critério de Saída:** 100% dos diálogos do sistema com anatomia, largura e responsividade padronizadas.
 
 - [ ] **Tarefa 3.2 — Padronização de Valores Monetários e Erradicação de `truncate`**

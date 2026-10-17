@@ -309,17 +309,12 @@ export function InvestmentsTab({
                                 )}
                               </td>
                               <td className="py-2 px-3 text-center">
-                                <span
-                                  className={`inline-flex rounded-md px-1.5 py-0.5 text-[9px] font-semibold ${
-                                    sNode.status === "deficit"
-                                      ? "bg-primary/10 text-primary-strong border border-primary/20"
-                                      : sNode.status === "surplus"
-                                        ? "bg-surface-hover text-muted-foreground border border-border"
-                                        : "bg-positive/10 text-positive-strong border border-positive/20"
-                                  }`}
+                                <Badge
+                                  variant={sNode.status === "deficit" ? "default" : sNode.status === "surplus" ? "muted" : "positive"}
+                                  size="xs"
                                 >
                                   {sNode.status === "deficit" ? "Aportar" : sNode.status === "surplus" ? "Na Meta" : "Equilibrado"}
-                                </span>
+                                </Badge>
                               </td>
                             </tr>
 

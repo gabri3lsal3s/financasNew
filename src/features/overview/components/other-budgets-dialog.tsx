@@ -60,18 +60,16 @@ export function OtherBudgetsDialog({
         </span>
       }
       footer={
-        <div className="flex items-center justify-between w-full gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleNavigateToBudgets}
-            className="w-full sm:w-auto gap-1.5 text-xs font-medium cursor-pointer"
-          >
-            <Target className="size-3.5 text-muted-foreground" aria-hidden="true" />
-            <span>Ver todos os orçamentos</span>
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleNavigateToBudgets}
+          className="w-full sm:w-auto gap-1.5 text-xs font-medium"
+        >
+          <Target className="size-3.5 text-muted-foreground" aria-hidden="true" />
+          <span>Ver todos os orçamentos</span>
+        </Button>
       }
     >
       <div className="flex flex-col gap-4">

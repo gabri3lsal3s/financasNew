@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Divide, Sparkles } from "lucide-react";
-import { Alert, Button, NumericInput, Modal } from "@/components/ui";
+import { Alert, Button, NumericInput, Modal, ModalFooter } from "@/components/ui";
 import { splitAssetPosition } from "@/domain/portfolio";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
@@ -158,14 +158,14 @@ export function AssetSplitDialog({ open, onOpenChange, asset }: AssetSplitDialog
           </div>
         </div>
 
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
+        <ModalFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button type="button" onClick={handleApplySplit} disabled={updateAsset.isPending}>
             {updateAsset.isPending ? "Aplicando…" : `Confirmar ${operationLabel}`}
           </Button>
-        </div>
+        </ModalFooter>
       </div>
     </Modal>
   );

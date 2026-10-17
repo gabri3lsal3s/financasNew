@@ -58,7 +58,7 @@ export function TransactionListDialog({ open, onOpenChange, asset }: Transaction
       >
         <div className="mt-4 flex flex-col gap-4">
           <div className="flex items-center justify-between gap-2">
-            <Badge variant="muted" className="text-[11px]">
+            <Badge variant="muted" size="sm">
               {transactions.length} {transactions.length === 1 ? "lançamento" : "lançamentos"}
             </Badge>
             {asset ? (

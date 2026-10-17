@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, DatePicker, Input, Modal, MoneyInput, MoneyText } from "@/components/ui";
+import { Alert, Button, DatePicker, Input, Modal, ModalFooter, MoneyInput, MoneyText } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { toISODate } from "@/domain/money";
 import { useCreateCardPayment, useCreateRefund } from "@/state";
@@ -146,14 +146,14 @@ function PaymentDialogContent({
         </div>
       ) : null}
 
-      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
+      <ModalFooter>
         <Button type="button" variant="ghost" onClick={onClose}>
           Cancelar
         </Button>
         <Button type="submit" disabled={cents <= 0 || pending}>
           {pending ? "Salvando…" : isRefund ? "Confirmar estorno" : "Confirmar pagamento"}
         </Button>
-      </div>
+      </ModalFooter>
     </form>
   );
 }

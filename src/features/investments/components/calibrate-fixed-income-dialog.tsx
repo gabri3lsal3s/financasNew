@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, DatePicker, Modal, MoneyInput } from "@/components/ui";
+import { Alert, Button, DatePicker, Modal, ModalFooter, MoneyInput } from "@/components/ui";
 import { todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
@@ -130,7 +130,7 @@ export function CalibrateFixedIncomeDialog({
           />
         </div>
 
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 border-t border-border/80">
+        <ModalFooter>
           <Button
             type="button"
             variant="outline"
@@ -143,7 +143,7 @@ export function CalibrateFixedIncomeDialog({
           <Button type="submit" disabled={updateAsset.isPending} className="w-full sm:w-auto">
             {updateAsset.isPending ? "Calibrando..." : "Confirmar Calibração"}
           </Button>
-        </div>
+        </ModalFooter>
       </form>
     </Modal>
   );

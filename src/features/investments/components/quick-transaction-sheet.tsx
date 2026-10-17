@@ -7,6 +7,7 @@ import {
   DatePicker,
   Input,
   Modal,
+  ModalFooter,
   MoneyInput,
   NumericInput,
   Select,
@@ -856,7 +857,7 @@ export function QuickTransactionSheet({
           </div>
         )}
 
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 border-t border-border/80">
+        <ModalFooter>
           <Button
             type="button"
             variant="outline"
@@ -873,7 +874,7 @@ export function QuickTransactionSheet({
           >
             {recordOrder.isPending ? "Processando..." : "Confirmar Operação"}
           </Button>
-        </div>
+        </ModalFooter>
       </form>
     </Modal>
   );

@@ -119,7 +119,7 @@ export function PortfolioTaxReport({
                             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2">
                               <div className="flex items-center gap-2">
                                 <strong className="font-mono text-sm font-bold text-foreground">{item.ticker}</strong>
-                                <Badge variant="muted" className="text-[10px]">
+                                <Badge variant="muted" size="xs">
                                   Grupo {item.groupCode} · Código {item.itemCode}
                                 </Badge>
                               </div>

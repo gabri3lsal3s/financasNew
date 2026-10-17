@@ -143,7 +143,7 @@ export function PortfolioStatementDialog({ open, onOpenChange, onNewTransaction 
           </div>
 
           <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
-            <Badge variant="muted" className="text-[11px]">
+            <Badge variant="muted" size="sm">
               {filteredTransactions.length} {filteredTransactions.length === 1 ? "lançamento encontrado" : "lançamentos encontrados"}
             </Badge>
             {onNewTransaction ? (

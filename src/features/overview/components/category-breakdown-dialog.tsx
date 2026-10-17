@@ -76,14 +76,15 @@ export function CategoryBreakdownDialog({
           <CategoryIcon icon={category.icon} color={category.color} className="size-5 shrink-0" />
         </div>
       }
+      footerClassName="sm:justify-between"
       footer={
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between w-full gap-2.5">
+        <>
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={handleNavigateToTransactions}
-            className="w-full sm:w-auto gap-1.5 text-xs font-medium cursor-pointer"
+            className="w-full sm:w-auto gap-1.5 text-xs font-medium"
           >
             <span>Ver no extrato</span>
             <ArrowUpRight className="size-3.5 text-muted-foreground" aria-hidden="true" />
@@ -92,12 +93,12 @@ export function CategoryBreakdownDialog({
             type="button"
             size="sm"
             onClick={handleNavigateToBudgets}
-            className="w-full sm:w-auto gap-1.5 text-xs font-medium cursor-pointer"
+            className="w-full sm:w-auto gap-1.5 text-xs font-medium"
           >
             <Target className="size-3.5" aria-hidden="true" />
             <span>{limitCents > 0 ? "Ajustar limite" : "Definir orçamento"}</span>
           </Button>
-        </div>
+        </>
       }
     >
       <div className="flex flex-col gap-4">

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Trash2, Wallet } from "lucide-react";
-import { Alert, Button, ConfirmDialog, Input, Modal, MoneyInput } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, Input, Modal, ModalFooter, MoneyInput } from "@/components/ui";
 import { todayISO } from "@/domain/debts";
 import { numberToCents } from "@/domain/money";
 import { isCashAssetClass } from "@/domain/portfolio";
@@ -191,7 +191,7 @@ function CashFormContent({ asset = null, onClose }: CashFormContentProps) {
         </label>
 
         {/* Rodapé de Ações */}
-        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-between gap-2.5 pt-4 border-t border-border/80 mt-2">
+        <ModalFooter className="sm:justify-between">
           {isEdit ? (
             <Button
               type="button"
@@ -226,7 +226,7 @@ function CashFormContent({ asset = null, onClose }: CashFormContentProps) {
               {pending ? "Salvando…" : isEdit ? "Atualizar saldo" : "Cadastrar caixa"}
             </Button>
           </div>
-        </div>
+        </ModalFooter>
       </form>
 
       {/* Confirmação de exclusão */}

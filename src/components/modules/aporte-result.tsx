@@ -735,7 +735,7 @@ export function AporteResult({
                                   {row.ticker}
                                 </span>
                                 {row.assetClass ? (
-                                  <Badge variant="muted" className="text-[10px] shrink-0 font-medium">
+                                  <Badge variant="muted" size="xs" className="shrink-0 font-medium">
                                     {row.assetClass}
                                   </Badge>
                                 ) : null}

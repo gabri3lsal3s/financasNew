@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Alert, Button, Checkbox, Input, Modal, MoneyInput, MoneyText, NumericInput, Select } from "@/components/ui";
+import { Alert, Button, Checkbox, Input, Modal, ModalFooter, MoneyInput, MoneyText, NumericInput, Select } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MonthPicker } from "@/components/modules";
 import { todayISO } from "@/domain/debts";
@@ -315,14 +315,14 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
           />
         </div>
 
-        <div className="mt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 border-t border-border/80 pt-4">
+        <ModalFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             Cancelar
           </Button>
           <Button type="submit" disabled={recordOrder.isPending || amountCents <= 0} className="w-full sm:w-auto">
             {recordOrder.isPending ? "Salvando..." : "Salvar Provento"}
           </Button>
-        </div>
+        </ModalFooter>
       </form>
     </Modal>
   );

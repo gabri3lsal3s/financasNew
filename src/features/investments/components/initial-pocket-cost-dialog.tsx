@@ -13,7 +13,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { Badge, Button, Checkbox, EmptyState, Input, Modal, MoneyInput, Tabs, Textarea } from "@/components/ui";
+import { Badge, Button, Checkbox, EmptyState, Input, Modal, ModalFooter, MoneyInput, Tabs, Textarea } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MoneyText } from "@/components/ui/money-text";
 import {
@@ -896,7 +896,7 @@ export function InitialPocketCostDialog({
                     Marcos Registrados ({historicalContributions.length})
                   </span>
                   {snapshotsQuery.data && snapshotsQuery.data.length > 0 && (
-                    <Badge variant="muted" size="xs" className="font-normal text-[11px] text-muted-foreground">
+                    <Badge variant="muted" size="xs" className="font-normal text-muted-foreground">
                       {snapshotsQuery.data.length} snapshots (TWR)
                     </Badge>
                   )}
@@ -1073,7 +1073,7 @@ export function InitialPocketCostDialog({
         ) : null}
 
         {/* Rodapé Canônico */}
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
+        <ModalFooter>
           <Button
             type="button"
             variant="outline"
@@ -1082,7 +1082,7 @@ export function InitialPocketCostDialog({
           >
             Concluir
           </Button>
-        </div>
+        </ModalFooter>
       </div>
     </Modal>
   );

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Edit2 } from "lucide-react";
-import { Alert, Button, Modal, MoneyInput } from "@/components/ui";
+import { Alert, Button, Modal, ModalFooter, MoneyInput } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { useRemoveIncomeGoal, useSetIncomeGoal } from "@/state";
 import type { Category } from "@/types";
@@ -106,7 +106,7 @@ function IncomeGoalDialogContent({
         </div>
       ) : null}
 
-      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-between gap-2.5 pt-4 mt-2 border-t border-border/80">
+      <ModalFooter className="sm:justify-between">
         {currentExpectedCents > 0 ? (
           <Button
             type="button"
@@ -127,7 +127,7 @@ function IncomeGoalDialogContent({
             {pending ? "Salvando…" : "Salvar meta"}
           </Button>
         </div>
-      </div>
+      </ModalFooter>
     </form>
   );
 }

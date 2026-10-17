@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
-import { Alert, Button, Checkbox, ColorPicker, ConfirmDialog, Input, Modal, MoneyInput, MoneyText, NumberStepper } from "@/components/ui";
+import { Alert, Button, Checkbox, ColorPicker, ConfirmDialog, Input, Modal, ModalFooter, MoneyInput, MoneyText, NumberStepper } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateCard, useDeleteCard, useUpdateCard } from "@/state";
 import type { CreditCard, CreditCardForm } from "@/types";
@@ -266,7 +266,7 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
           </div>
         </div>
 
-        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-between gap-2.5 pt-4 border-t border-border/80 mt-2">
+        <ModalFooter className="sm:justify-between">
           {card ? (
             <Button
               type="button"
@@ -293,7 +293,7 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
               {pending ? "Salvando…" : card ? "Salvar alterações" : "Criar cartão"}
             </Button>
           </div>
-        </div>
+        </ModalFooter>
       </form>
 
       {card ? (

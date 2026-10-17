@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, RotateCcw, Trash2 } from "lucide-react";
-import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, MoneyInput, RadioGroup } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, ModalFooter, MoneyInput, RadioGroup } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateDebt, useUpdateDebt } from "@/state";
 import type { Debt, DebtType } from "@/types";
@@ -134,7 +134,7 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
         )
       ) : null}
 
-      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5 pt-4 mt-2 border-t border-border/80">
+      <ModalFooter className="sm:justify-between">
         {debt && onDelete ? (
           <Button
             type="button"
@@ -154,7 +154,7 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
             {pending ? "Salvando…" : debt ? "Salvar alterações" : "Criar dívida"}
           </Button>
         </div>
-      </div>
+      </ModalFooter>
 
       {debt && onDelete ? (
         <ConfirmDialog

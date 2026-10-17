@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Copy, Pencil, Share2, Trash2 } from "lucide-react";
-import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, MoneyInput, Select } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, ModalFooter, MoneyInput, Select } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { formatCentsAsBRL } from "@/services/masks";
@@ -370,7 +370,7 @@ function ExpenseEditForm({
         ariaLabelCustom="Valor considerado no relatório"
       />
 
-      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
+      <ModalFooter>
         <Button
           type="button"
           variant="outline"
@@ -384,7 +384,7 @@ function ExpenseEditForm({
         >
           {isPending ? "Salvando…" : "Salvar alterações"}
         </Button>
-      </div>
+      </ModalFooter>
     </form>
   );
 }

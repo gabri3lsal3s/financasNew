@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, Input, Modal, Select } from "@/components/ui";
+import { Alert, Button, Input, Modal, ModalFooter, Select } from "@/components/ui";
 import { LOAN_TYPE_LABELS } from "@/domain/loans";
 import { getErrorMessage } from "@/services/errors";
 import { useUpdateLoan } from "@/state";
@@ -82,7 +82,7 @@ function LoanEditForm({ loan, onClose }: LoanEditFormProps) {
         />
       </div>
 
-      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
+      <ModalFooter>
         <Button
           type="button"
           variant="outline"
@@ -94,7 +94,7 @@ function LoanEditForm({ loan, onClose }: LoanEditFormProps) {
         <Button type="submit" disabled={updateLoan.isPending}>
           {updateLoan.isPending ? "Salvando..." : "Salvar Alterações"}
         </Button>
-      </div>
+      </ModalFooter>
     </form>
   );
 }
