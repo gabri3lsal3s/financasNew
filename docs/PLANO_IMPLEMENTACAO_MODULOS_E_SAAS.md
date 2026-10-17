@@ -148,26 +148,26 @@ flowchart TD
 
 ### FASE 2 — Demanda 2: Transparência e Whitelist Visual no Painel Administrativo
 
-- [ ] **2.1 Planejamento Técnico:**
+- [x] **2.1 Planejamento Técnico:**
   - Analisar renderização de status modulares em `src/features/admin/components/user-edit-dialog.tsx`.
   - Definir detecção do modo Whitelist (`hasAnyModuleOverride`): se o usuário possui qualquer permissão granular, os demais módulos operam bloqueados pelo backend.
   - Planejar botões de ação rápida: *"Apenas Investimentos"* e *"Restaurar Padrão do Plano"*.
-- [ ] **2.2 Implementação:**
+- [x] **2.2 Implementação:**
   - Em `src/features/admin/components/user-edit-dialog.tsx`:
     - Detectar se o usuário possui overrides ativos.
     - Para módulos sem override explícito em modo Whitelist, renderizar o badge `"Bloqueado (Whitelist)"` com variante `critical` em vez de `"Padrão do Plano"`.
     - Adicionar card de aviso contextual sobre a vigência da política Whitelist.
     - Adicionar atalhos de configuração rápida em 1 clique.
     - Garantir invalidação imediata das queries administrativas de permissão modular do usuário editado.
-- [ ] **2.3 Verificação de Erros:**
+- [x] **2.3 Verificação de Erros:**
   - Executar `npm run typecheck` e `npm run lint`.
-- [ ] **2.4 Correção de Erros:**
+- [x] **2.4 Correção de Erros:**
   - Sanar qualquer advertência ou inconsistência.
-- [ ] **2.5 Testes Automatizados:**
+- [x] **2.5 Testes Automatizados:**
   - Atualizar `src/features/admin/components/user-edit-dialog.test.tsx` com os cenários de Whitelist visual e botões de ação rápida.
-- [ ] **2.6 Atualização da Documentação:**
+- [x] **2.6 Atualização da Documentação:**
   - Atualizar `docs/PROJETO_SAAS.md` com as diretrizes do painel administrativo.
-- [ ] **Portão de Verificação 2 (Quality Gate 2):**
+- [x] **Portão de Verificação 2 (Quality Gate 2):**
   - Commit semântico: `feat(admin): highlight modular whitelist mode and add quick assignment actions in user dialog` e `git push`.
 
 ---

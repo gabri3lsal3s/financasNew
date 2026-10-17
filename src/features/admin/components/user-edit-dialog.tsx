@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import type { FormEvent } from "react";
-import { Check, Crown, RotateCcw, Shield, Sparkles, UserCheck, X } from "lucide-react";
+import { Check, Crown, RotateCcw, Shield, ShieldAlert, Sparkles, TrendingUp, UserCheck, X } from "lucide-react";
 import { Badge, Button, Input, Modal, ModalFooter, Select } from "@/components/ui";
 import {
   ROLE_LABELS,
@@ -72,13 +72,20 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
   const effectivePlanId = overridePlanId ?? subscriptionQuery.data?.plan_id ?? "free";
   const effectiveSubStatus = overrideSubStatus ?? subscriptionQuery.data?.status ?? "active";
 
+  const userModulePermissions = useMemo(
+    () => modulePermissionsQuery.data ?? [],
+    [modulePermissionsQuery.data],
+  );
+  const hasAnyModuleOverride = userModulePermissions.length > 0;
+  const [isQuickActionPending, setIsQuickActionPending] = useState(false);
+
   const modulePermissionsMap = useMemo(() => {
     const map = new Map<string, UserModulePermission>();
-    for (const p of modulePermissionsQuery.data ?? []) {
+    for (const p of userModulePermissions) {
       map.set(p.module_key, p);
     }
     return map;
-  }, [modulePermissionsQuery.data]);
+  }, [userModulePermissions]);
 
   if (!user) return null;
 
@@ -150,6 +157,68 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
       userId: user.id,
       moduleKey,
     });
+  };
+
+  const handleQuickOnlyInvestments = async () => {
+    if (!user) return;
+    setIsQuickActionPending(true);
+    try {
+      await setModulePermissionMutation.mutateAsync({
+        userId: user.id,
+        moduleKey: "investments",
+        accessLevel: "write",
+      });
+
+      const otherOverrides = userModulePermissions.filter(
+        (p) => p.module_key !== "investments",
+      );
+
+      if (otherOverrides.length > 0) {
+        await Promise.all(
+          otherOverrides.map((p) =>
+            removeModulePermissionMutation.mutateAsync({
+              userId: user.id,
+              moduleKey: p.module_key,
+            }),
+          ),
+        );
+      }
+
+      triggerSensory("success");
+      pushToast({
+        title: "Acesso rápido configurado",
+        description: `Usuário ${user.name || user.email} configurado com acesso exclusivo a Investimentos.`,
+      });
+    } catch {
+      triggerSensory("destructive");
+    } finally {
+      setIsQuickActionPending(false);
+    }
+  };
+
+  const handleQuickRestorePlanDefaults = async () => {
+    if (!user || userModulePermissions.length === 0) return;
+    setIsQuickActionPending(true);
+    try {
+      await Promise.all(
+        userModulePermissions.map((p) =>
+          removeModulePermissionMutation.mutateAsync({
+            userId: user.id,
+            moduleKey: p.module_key,
+          }),
+        ),
+      );
+
+      triggerSensory("success");
+      pushToast({
+        title: "Padrão do plano restaurado",
+        description: `Todas as permissões modulares de ${user.name || user.email} foram restauradas ao plano base.`,
+      });
+    } catch {
+      triggerSensory("destructive");
+    } finally {
+      setIsQuickActionPending(false);
+    }
   };
 
   return (
@@ -257,15 +326,71 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
         </div>
 
         {/* Permissões Modulares Granulares */}
-        <div className="flex flex-col gap-2 pt-2 border-t border-border">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-xs font-semibold text-foreground">
-              Permissões Modulares Granulares
-            </span>
-            <span className="text-[11px] text-muted-foreground">
-              Permite conceder ou restringir acesso por módulo (ex: Vitalício com apenas Investimentos ou Bloqueio de Cartões).
-            </span>
+        <div className="flex flex-col gap-2.5 pt-2 border-t border-border">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs font-semibold text-foreground">
+                Permissões Modulares Granulares
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                Permite conceder ou restringir acesso por módulo (ex: Vitalício com apenas Investimentos ou Bloqueio de Cartões).
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleQuickOnlyInvestments}
+                disabled={
+                  isQuickActionPending ||
+                  setModulePermissionMutation.isPending ||
+                  removeModulePermissionMutation.isPending
+                }
+                className="gap-1.5 text-xs h-7 px-2.5 text-portfolio-strong border-portfolio/30 hover:bg-portfolio/10"
+                title="Configurar acesso exclusivo a Investimentos e bloquear demais módulos via Whitelist"
+              >
+                <TrendingUp className="size-3.5" aria-hidden="true" />
+                <span>Apenas Investimentos</span>
+              </Button>
+
+              {hasAnyModuleOverride && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleQuickRestorePlanDefaults}
+                  disabled={
+                    isQuickActionPending ||
+                    setModulePermissionMutation.isPending ||
+                    removeModulePermissionMutation.isPending
+                  }
+                  className="gap-1.5 text-xs h-7 px-2.5 text-muted-foreground hover:text-foreground"
+                  title="Remover todos os overrides e restaurar o padrão do plano base"
+                >
+                  <RotateCcw className="size-3.5" aria-hidden="true" />
+                  <span>Restaurar Padrão do Plano</span>
+                </Button>
+              )}
+            </div>
           </div>
+
+          {/* Card de Aviso Contextual sobre a Política Whitelist */}
+          {hasAnyModuleOverride && (
+            <div className="flex items-start gap-2.5 p-3 rounded-xl border border-warning/30 bg-warning/5 text-xs text-foreground">
+              <ShieldAlert className="size-4 text-warning-strong shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="flex flex-col gap-0.5">
+                <span className="font-semibold text-warning-strong">
+                  Modo Whitelist Ativo (Licença Restrita)
+                </span>
+                <span className="text-[11px] text-muted-foreground leading-relaxed">
+                  Este usuário possui permissões modulares personalizadas. Pela política de segurança Whitelist do backend,
+                  todos os módulos sem concessão explícita abaixo operam bloqueados pelo sistema, independentemente do plano base.
+                </span>
+              </div>
+            </div>
+          )}
 
           <div className="flex flex-col gap-2 pt-1">
             {AVAILABLE_MODULES.map((mod) => {
@@ -293,6 +418,10 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
                           size="xs"
                         >
                           Override: {currentLevel === "write" || currentLevel === "admin" ? "Acesso Total" : currentLevel === "read" ? "Somente Leitura" : "Bloqueado"}
+                        </Badge>
+                      ) : hasAnyModuleOverride ? (
+                        <Badge variant="critical" size="xs">
+                          Bloqueado (Whitelist)
                         </Badge>
                       ) : (
                         <Badge variant="muted" size="xs">

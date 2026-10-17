@@ -24,6 +24,7 @@ import {
   ADMIN_USER_OVERRIDES_KEY,
   ADMIN_USER_SUBSCRIPTION_KEY,
 } from "../queries/use-admin";
+import { userAccessQueryKey, userFeaturesQueryKey } from "../queries/use-user-access";
 
 import { pushToast } from "@/services/toast";
 import { getErrorMessage } from "@/services/errors";
@@ -258,6 +259,8 @@ export function useAdminSetUserModulePermission() {
     }) => adminSetUserModulePermission(params),
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({ queryKey: [...ADMIN_USER_MODULE_PERMISSIONS_KEY, variables.userId] });
+      void queryClient.invalidateQueries({ queryKey: userAccessQueryKey(variables.userId) });
+      void queryClient.invalidateQueries({ queryKey: userFeaturesQueryKey(variables.userId) });
       void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
       pushToast({
         title: "Permissão de módulo salva",
@@ -285,6 +288,8 @@ export function useAdminRemoveUserModulePermission() {
     }) => adminRemoveUserModulePermission(params),
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({ queryKey: [...ADMIN_USER_MODULE_PERMISSIONS_KEY, variables.userId] });
+      void queryClient.invalidateQueries({ queryKey: userAccessQueryKey(variables.userId) });
+      void queryClient.invalidateQueries({ queryKey: userFeaturesQueryKey(variables.userId) });
       void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
       pushToast({
         title: "Permissão restaurada",

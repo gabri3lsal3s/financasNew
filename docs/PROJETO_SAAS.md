@@ -104,3 +104,34 @@ O modelo de contratação está 100% blindado em conformidade com o **Código de
 4. **Checkout Transparente Multimodal:**
    - Suporte a **PIX Instantâneo** com QR Code e chave copia-e-cola gerados dinamicamente;
    - Suporte a **Cartão de Crédito** com validação de bandeira em tempo real (Visa, Mastercard, Elo, Amex, Hipercard) e criptografia ponta a ponta.
+
+---
+
+## 8. GOVERNANÇA ADMINISTRATIVA, LICENCIAMENTO MODULAR & WHITELIST DE ACESSO
+
+Para além dos planos canônicos (Trial, Pro Mensal, Pro Anual e Vitalício VIP), a plataforma conta com um motor flexível de **Licenciamento Modular Granular**, gerenciado exclusivamente por administradores e superadministradores através do Painel Administrativo (`src/features/admin/components/user-edit-dialog.tsx`).
+
+### 8.1 Princípio de Segurança Whitelist Estrita
+O acesso modular é regido pelo princípio de **Whitelist Estrita**:
+1. **Modo Padrão do Plano:** Quando o usuário não possui registros personalizados na tabela `user_module_permissions`, o acesso a todos os módulos é governado exclusivamente pelas regras de seu plano base e status de assinatura.
+2. **Modo Whitelist Ativo:** A partir do momento em que o administrador concede qualquer override explícito (ex.: acesso total ao módulo de Investimentos), o backend ativa o modo Whitelist para a conta.
+3. **Bloqueio Automático por Omissão:** Em modo Whitelist, qualquer módulo não concedido expressamente na tabela opera **sumariamente bloqueado**, independentemente de o usuário possuir um plano ativo (como Trial ou Vitalício).
+
+### 8.2 Transparência Visual no Diálogo de Gestão de Usuário
+Para eliminar ambiguidades e evitar que o administrador suponha falsamente que um usuário com licença modular ainda tem acesso a módulos não configurados:
+- **Card Contextual de Whitelist:** Exibição de alerta visual em destaque (`ShieldAlert`) indicando que o modo Whitelist está ativo e que módulos omitidos estão bloqueados por padrão.
+- **Badges Semânticos:**
+  - Módulos com override explícito exibem seu nível configurado (`Override: Acesso Total`, `Override: Somente Leitura` ou `Override: Bloqueado`).
+  - Módulos sem override em modo Whitelist exibem o badge explícito `Bloqueado (Whitelist)` com variante `critical`.
+  - Módulos em contas sob o regime padrão exibem `Padrão do Plano` com variante `muted`.
+
+### 8.3 Ações Rápidas de Configuração em 1 Clique
+Para acelerar o atendimento operacional e reduzir a propensão a erros de configuração manual:
+- **"Apenas Investimentos":** Configura em uma única operação a atribuição de acesso total a Investimentos (`investments: write`) e limpa overrides residuais dos outros módulos, deixando o usuário sob a licença de carteira isolada.
+- **"Restaurar Padrão do Plano":** Remove em lote todos os overrides de módulo do usuário, desativando o modo Whitelist e restabelecendo os acessos canônicos de seu plano base.
+
+### 8.4 Invalidação Atômica de Cache e Tempo Real
+Qualquer modificação de permissão modular via `useAdminSetUserModulePermission` ou `useAdminRemoveUserModulePermission` invalida atipicamente em lote:
+- As chaves de auditoria e listagem administrativa (`ADMIN_USER_MODULE_PERMISSIONS_KEY`, `ADMIN_AUDIT_KEY`);
+- As chaves de controle de acesso do próprio usuário (`userAccessQueryKey(userId)`, `userFeaturesQueryKey(userId)`), propagando a alteração imediatamente em sessões ativas sem necessidade de logout.
+
