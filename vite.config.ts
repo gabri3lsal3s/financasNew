@@ -43,6 +43,64 @@ export default defineConfig({
   ],
   build: {
     modulePreload: false,
+    chunkSizeWarningLimit: 500,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          const normalizedId = id.replace(/\\/g, "/");
+          if (!normalizedId.includes("/node_modules/")) {
+            return;
+          }
+
+          // Sentry isolado em chunk próprio para não inflar vendor-react
+          if (normalizedId.includes("/node_modules/@sentry/")) {
+            return "vendor-sentry";
+          }
+
+          // Core do React, React DOM, Scheduler e Roteador oficial
+          if (
+            normalizedId.includes("/node_modules/react/") ||
+            normalizedId.includes("/node_modules/react-dom/") ||
+            normalizedId.includes("/node_modules/react-router/") ||
+            normalizedId.includes("/node_modules/@remix-run/router/") ||
+            normalizedId.includes("/node_modules/scheduler/")
+          ) {
+            return "vendor-react";
+          }
+
+          // Componentes de UI, primitivos Radix, ícones e utilitários de classes
+          if (
+            normalizedId.includes("/node_modules/@radix-ui/") ||
+            normalizedId.includes("/node_modules/lucide-react/") ||
+            normalizedId.includes("/node_modules/cmdk/") ||
+            normalizedId.includes("/node_modules/react-day-picker/") ||
+            normalizedId.includes("/node_modules/class-variance-authority/") ||
+            normalizedId.includes("/node_modules/clsx/") ||
+            normalizedId.includes("/node_modules/tailwind-merge/")
+          ) {
+            return "vendor-ui";
+          }
+
+          // Backend, cliente Supabase e TanStack Query
+          if (
+            normalizedId.includes("/node_modules/@supabase/") ||
+            normalizedId.includes("/node_modules/@tanstack/react-query/") ||
+            normalizedId.includes("/node_modules/@tanstack/query-core/")
+          ) {
+            return "vendor-backend";
+          }
+
+          // Capacitor e plugins de hardware/dispositivo nativo
+          if (
+            normalizedId.includes("/node_modules/@capacitor/") ||
+            normalizedId.includes("/node_modules/@capacitor-community/") ||
+            normalizedId.includes("/node_modules/@aparajita/capacitor-biometric-auth/")
+          ) {
+            return "vendor-native";
+          }
+        },
+      },
+    },
   },
   resolve: {
     alias: {

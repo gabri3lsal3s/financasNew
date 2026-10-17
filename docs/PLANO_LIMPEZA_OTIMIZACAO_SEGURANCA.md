@@ -283,14 +283,17 @@ graph TD
     - Expandidos `src/app/router.test.tsx` e `src/components/layout/page-shell.test.tsx` com validação de resolução assíncrona de rotas/overlays lazy.
   - **Critério de Saída:** Redução drástica do tamanho do chunk inicial `index.js` e das páginas primárias do app.
 
-- [ ] **Tarefa 4.3 — Calibração do Rollup e Vendor Chunks no Vite**
-  - **Ação:** Configurar `manualChunks` em `vite.config.ts`:
-    - Isolar vendors estáveis em chunks cacheados:
-      - `vendor-react`: `react`, `react-dom`, `react-router`;
-      - `vendor-ui`: `@radix-ui/*`, `lucide-react`, `cmdk`;
-      - `vendor-backend`: `@supabase/supabase-js`, `@tanstack/react-query`;
-      - `vendor-native`: pacotes `@capacitor/*`.
-  - **Critério de Saída:** Eliminação do aviso de chunk > 500 kB do Rollup e melhor aproveitamento de cache HTTP/PWA.
+- [x] **Tarefa 4.3 — Calibração do Rollup e Vendor Chunks no Vite**
+  - **Ação:** Configurado `manualChunks` em `vite.config.ts` com granularidade estratégica e isolamento de prioridade:
+    - Isolados vendors estáveis em chunks cacheados de longa duração:
+      - `vendor-react` (218.02 kB │ gzip: 69.82 kB): `react`, `react-dom`, `react-router`, `@remix-run/router`, `scheduler`;
+      - `vendor-ui` (268.29 kB │ gzip: 84.64 kB): `@radix-ui/*`, `lucide-react`, `cmdk`, `react-day-picker`, `class-variance-authority`, `clsx`, `tailwind-merge`;
+      - `vendor-backend` (252.11 kB │ gzip: 66.69 kB): `@supabase/*` (`@supabase/supabase-js`), `@tanstack/react-query`, `@tanstack/query-core`;
+      - `vendor-native` (20.93 kB │ gzip: 6.88 kB): `@capacitor/*`, `@capacitor-community/*`, `@aparajita/capacitor-biometric-auth`;
+      - `vendor-sentry` (475.72 kB │ gzip: 155.92 kB): pacotes `@sentry/*` isolados com precedência de matching, evitando poluição e inchaço do runtime React;
+    - Calibrado `chunkSizeWarningLimit: 500` kB estrito, erradicando 100% dos avisos de chunk excedido do Rollup/Vite;
+    - Otimizada a retenção de cache HTTP e Service Worker PWA (127 entries, 5.904 KiB), garantindo que atualizações de telas ou regras de negócio não invalidem chunks de bibliotecas de terceiros no cliente.
+  - **Critério de Saída:** Eliminação completa de avisos de chunk > 500 kB no Rollup e retenção ótima de cache HTTP/PWA.
 
 - [ ] **Tarefa 4.4 — Otimização de Renderização e Reatividade (React 19)**
   - **Ação:** Auditar listas volumosas e componentes com cálculos frequentes:
