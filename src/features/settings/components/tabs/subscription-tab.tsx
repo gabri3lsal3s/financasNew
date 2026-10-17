@@ -39,7 +39,86 @@ import {
   updateSubscriptionCreditCard,
 } from "@/data/repositories/billing";
 import { cn } from "@/lib/utils";
-import type { SubscriptionPlan, SubscriptionStatus } from "@/types";
+import type { ModuleAccessLevel, SubscriptionPlan, SubscriptionStatus } from "@/types";
+
+const AVAILABLE_MODULES = [
+  { key: "overview", label: "Painel Início (Visão Geral)", desc: "Dashboard consolidado, KPIs e fluxo financeiro" },
+  { key: "transactions", label: "Transações & Extrato", desc: "Receitas, despesas e lançamentos" },
+  { key: "cards", label: "Cartões de Crédito", desc: "Faturas, limites e carteira" },
+  { key: "debts", label: "Dívidas & Empréstimos", desc: "Contas a pagar, receber e contratos" },
+  { key: "budgets", label: "Orçamentos & Metas", desc: "Limites de gastos e metas de renda" },
+  { key: "investments", label: "Investimentos & Carteira", desc: "Posição, proventos e rebalanceamento" },
+  { key: "reports", label: "Relatórios Executivos", desc: "DRE, balanço e informes fiscais" },
+  { key: "insights", label: "Inteligência & Insights", desc: "Diagnósticos e recomendações" },
+  { key: "reminders", label: "Central de Lembretes", desc: "Vencimentos e avisos de contas" },
+] as const;
+
+interface ModularLicenseCardProps {
+  moduleAccess: Record<string, ModuleAccessLevel> | undefined;
+}
+
+function ModularLicenseCard({ moduleAccess }: ModularLicenseCardProps) {
+  if (!moduleAccess || Object.keys(moduleAccess).length === 0) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <CardTitle className="text-base flex items-center gap-2">
+            <ShieldCheck className="size-4 text-portfolio" aria-hidden="true" />
+            <span>Licença Modular Personalizada</span>
+          </CardTitle>
+          <Badge variant="portfolio" size="xs">
+            Whitelist Ativa
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Sua conta possui permissões modulares configuradas individualmente pela administração da plataforma.
+          Pela política de segurança Whitelist, os acessos concedidos operam conforme especificado abaixo e quaisquer outros módulos permanecem bloqueados.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+          {AVAILABLE_MODULES.map((mod) => {
+            const level = moduleAccess[mod.key];
+            const isGranted = level === "write" || level === "admin";
+            const isReadOnly = level === "read";
+
+            return (
+              <div
+                key={mod.key}
+                className={cn(
+                  "flex flex-col justify-between gap-2 p-3 rounded-xl border text-xs transition-colors",
+                  isGranted
+                    ? "border-positive/30 bg-positive/5"
+                    : isReadOnly
+                      ? "border-warning/30 bg-warning/5"
+                      : "border-border/80 bg-surface-hover/30 opacity-70",
+                )}
+              >
+                <div className="flex flex-col gap-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                    <span className="font-semibold text-foreground truncate">{mod.label}</span>
+                    <Badge
+                      variant={isGranted ? "positive" : isReadOnly ? "warning" : "critical"}
+                      size="xs"
+                    >
+                      {isGranted ? "Acesso Total" : isReadOnly ? "Somente Leitura" : "Bloqueado"}
+                    </Badge>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground line-clamp-2">{mod.desc}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 /**
  * Aba "Plano e Assinatura" em Configurações.
@@ -103,6 +182,9 @@ export function SubscriptionTab() {
           <StatusBlock subscription={subscription} onUpgrade={() => setUpgradeOpen(true)} />
         </CardContent>
       </Card>
+
+      {/* Licença Modular Personalizada (Whitelist) */}
+      <ModularLicenseCard moduleAccess={subscription.moduleAccess} />
 
       {/* Forma de Pagamento e Troca de Cartão — apenas para assinantes Pro */}
       {subscription.isPro && (

@@ -119,7 +119,7 @@ describe("ToastHost (bus de toasts imperativos)", () => {
 
     const viewport = container.querySelector("ol");
     expect(viewport).toHaveClass("pointer-events-none");
-    expect(viewport).toHaveClass("bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]");
+    expect(viewport).toHaveClass("bottom-[calc(4.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))]");
     expect(viewport).toHaveClass("left-1/2");
     expect(viewport).toHaveClass("sm:left-auto");
     expect(viewport).toHaveClass("sm:right-6");

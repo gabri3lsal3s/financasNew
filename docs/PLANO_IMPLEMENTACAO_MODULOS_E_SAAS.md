@@ -174,26 +174,26 @@ flowchart TD
 
 ### FASE 3 — Demanda 3: Feedback Modular, Convites & Safe Area Mobile
 
-- [ ] **3.1 Planejamento Técnico:**
+- [x] **3.1 Planejamento Técnico:**
   - Mapear feedbacks de licença especial em `subscription-tab.tsx`.
   - Desenhar alerta de Whitelist em `create-invite-dialog.tsx`.
   - Revisar ajustes pendentes de Safe Area mobile no Android (`var(--safe-area-top)` e `var(--safe-area-bottom)`).
-- [ ] **3.2 Implementação:**
+- [x] **3.2 Implementação:**
   - Em `src/features/settings/components/tabs/subscription-tab.tsx`:
     - Adicionar card explicativo de *"Licença Modular Personalizada"* listando os módulos ativos do usuário.
   - Em `src/features/admin/components/create-invite-dialog.tsx`:
     - Exibir alerta ao administrador informando que personalizar módulos ativará a restrição estrita de Whitelist.
   - Em `src/components/layout/bottom-nav.tsx`, `page-shell.tsx`, `sidebar.tsx`:
     - Consolidar a compensação robusta de Safe Area mobile (`max(env(...), var(...))`) para afastar o cabeçalho e rodapé da barra de status e de gestos.
-- [ ] **3.3 Verificação de Erros:**
+- [x] **3.3 Verificação de Erros:**
   - Executar `npm run typecheck` e `npm run lint`.
-- [ ] **3.4 Correção de Erros:**
+- [x] **3.4 Correção de Erros:**
   - Ajustar alinhamentos visuais e estilos responsivos.
-- [ ] **3.5 Testes Automatizados:**
+- [x] **3.5 Testes Automatizados:**
   - Rodar suíte de testes de layout e formulários: `bottom-nav.test.tsx`, `sidebar.test.tsx`, `subscription-tab.test.tsx`, `create-invite-dialog.test.tsx`.
-- [ ] **3.6 Atualização da Documentação:**
+- [x] **3.6 Atualização da Documentação:**
   - Atualizar `docs/PWA_GUIDELINES.md` e `docs/CAPACITOR_ANDROID_PLAN.md`.
-- [ ] **Portão de Verificação 3 (Quality Gate 3):**
+- [x] **Portão de Verificação 3 (Quality Gate 3):**
   - Commit semântico: `feat(subscription): add modular license feedback, invite whitelist guidance and mobile safe-area insets` e `git push`.
 
 ---

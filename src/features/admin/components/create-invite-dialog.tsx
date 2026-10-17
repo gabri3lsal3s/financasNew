@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Copy, KeyRound, Plus, Sparkles } from "lucide-react";
+import { Copy, KeyRound, Plus, ShieldAlert, Sparkles } from "lucide-react";
 import { Button, Checkbox, DatePicker, Input, Modal, ModalFooter, Select } from "@/components/ui";
 import { generateInviteCode } from "@/domain/admin";
 import { triggerSensory } from "@/services/sensory";
@@ -204,7 +204,19 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
           </span>
 
           {customizeModules && (
-            <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-border/80 pl-1">
+            <div className="flex flex-col gap-2.5 mt-2 pt-2 border-t border-border/80 pl-1">
+              <div className="flex items-start gap-2.5 p-3 rounded-xl border border-warning/30 bg-warning/5 text-xs text-foreground">
+                <ShieldAlert className="size-4 text-warning-strong shrink-0 mt-0.5" aria-hidden="true" />
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-semibold text-warning-strong">
+                    Atenção: Modo Whitelist será Ativado no Resgate
+                  </span>
+                  <span className="text-[11px] text-muted-foreground leading-relaxed">
+                    Personalizar permissões modulares neste convite aplicará a política restrita de Whitelist à conta que o resgatar: módulos omitidos ou marcados como Bloqueados permanecerão inacessíveis, independentemente do plano atribuído.
+                  </span>
+                </div>
+              </div>
+
               {AVAILABLE_MODULES.map((mod) => {
                 const currentLevel = moduleGrants[mod.key] ?? "write";
                 return (

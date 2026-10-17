@@ -81,7 +81,7 @@ export function SubscriptionSuccessPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       {/* Header unificado alinhado com PageShell e Landing Page */}
-      <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/85 backdrop-blur-md shadow-xs pt-[env(safe-area-inset-top,0px)]">
+      <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/85 backdrop-blur-md shadow-xs pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-12">
           <BrandLogo
             isPro={true}

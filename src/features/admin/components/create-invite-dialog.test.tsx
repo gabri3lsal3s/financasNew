@@ -31,16 +31,25 @@ describe("CreateInviteDialog", () => {
     expect(screen.getByRole("button", { name: /Salvar Convite/i })).toBeInTheDocument();
   });
 
-  it("permite habilitar e configurar permissões modulares customizadas", async () => {
+  it("permite habilitar e configurar permissões modulares customizadas e exibe o alerta de Whitelist", async () => {
     const user = userEvent.setup();
     render(<CreateInviteDialog open={true} onOpenChange={vi.fn()} />);
+
+    // Alerta de Whitelist não deve estar visível inicialmente
+    expect(screen.queryByText(/Atenção: Modo Whitelist será Ativado no Resgate/i)).not.toBeInTheDocument();
 
     const checkbox = screen.getByLabelText(/Configurar Permissões Modulares Específicas/i);
     expect(checkbox).toBeInTheDocument();
     await user.click(checkbox);
 
+    // Alerta deve ser renderizado
+    expect(screen.getByText(/Atenção: Modo Whitelist será Ativado no Resgate/i)).toBeInTheDocument();
     expect(screen.getByText("Transações & Lançamentos")).toBeInTheDocument();
     expect(screen.getByText("Investimentos & Carteira")).toBeInTheDocument();
+
+    // Ao desmarcar, alerta deve sumir
+    await user.click(checkbox);
+    expect(screen.queryByText(/Atenção: Modo Whitelist será Ativado no Resgate/i)).not.toBeInTheDocument();
   });
 
   it("submete o convite com parâmetros corretos", async () => {

@@ -399,7 +399,7 @@ export function SubscriptionCheckoutPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       {/* Header unificado alinhado com PageShell e Landing Page */}
-      <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/85 backdrop-blur-md shadow-xs pt-[env(safe-area-inset-top,0px)]">
+      <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/85 backdrop-blur-md shadow-xs pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="flex items-center gap-3">
             <Button
@@ -429,7 +429,7 @@ export function SubscriptionCheckoutPage() {
       </header>
 
       {/* Corpo com largura canônica max-w-7xl */}
-      <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 pt-6 sm:pt-8 pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))] sm:py-12">
+      <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 pt-6 sm:pt-8 pb-[calc(2.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] sm:py-12">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-12 items-start">
 
           {/* Coluna esquerda — Resumo do plano + seletor + benefícios (5 colunas desktop, sticky) */}

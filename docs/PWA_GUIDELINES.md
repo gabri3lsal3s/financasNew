@@ -1,7 +1,8 @@
 # 📱 PWA_GUIDELINES.md — Requisitos de Progressive Web App
 
-> **Status:** v1.6 — O app é um **PWA moderno** (instalável em mobile/desktop).
+> **Status:** v1.7 — O app é um **PWA moderno** (instalável em mobile/desktop).
 > **F5.6 & F83 implementados:** prompt de instalação (`beforeinstallprompt`), atualização automática com toast, auditoria automatizada de instalabilidade, estratégia Stale-While-Revalidate para imagens estáticas com expiração de 30 dias e monitoramento reativo de conectividade (`useNetworkStatus`).
+> **v1.7 (2026-10-17):** **(1) Compensação Robusta de Safe Area Mobile Híbrida** — padronização da fórmula `max(env(safe-area-inset-*), var(--safe-area-*))` em `PageShell`, `BottomNav`, `BackToTop`, `ToastHost` e fluxos de assinatura, eliminando colisões com a barra de status e barra de navegação gestual mesmo sob WebViews com insets zerados; **(2) Transparência de Licença Modular e Whitelist** — card de status de licença modular nas Configurações (`SubscriptionTab`) e orientação preventiva na emissão de convites administrativos.
 > **v1.6 (2026-10-17):** **(1) Ciclo de Vida Atômico e Invalidação Integral de Cache** — ativação de `cleanupOutdatedCaches: true` no Workbox (`vite.config.ts`), isolamento de assets de marca (`pwa-brand-assets` com estratégia NetworkFirst e fallback offline) e rotina defensiva `purgeLegacyCaches()` em `src/app/pwa.ts`; **(2) Transição de Versão Sincronizada (Zero Mismatch)** — fluxo `applyPWAUpdate()` com disparo `{ type: "SKIP_WAITING" }`, sincronização com `controllerchange` em `navigator.serviceWorker` (com timeout defensivo de 4 segundos) e toast visual com transição atômica; **(3) Versionamento de Ícones para WebAPK Android** — query params determinísticos (`?v=2`) nas URLs dos ícones em `manifest.webmanifest` e `index.html`, sincronizados via `scripts/generate-icons.mjs`; **(4) Políticas Estritas de Borda** — cabeçalhos `_headers` calibrados para Cloudflare Pages (Service Worker e manifests com `max-age=0, must-revalidate`; chunks `/assets/*` com `immutable`).
 > **v1.5 (2026-10-16):** **(1) Experiência PWA Avançada no iOS Safari** — detecção de dispositivos Apple iOS (`isIOS`) e abertura do modal guiado `IosPwaInstallDialog` com passo a passo ilustrado ("Compartilhar > Adicionar à Tela de Início"); **(2) Atalho Unificado de Instalação nas Configurações** — `InstallAppButton` operando em variantes `banner` (menu "Mais") e `card` (aba de Personalização/Aparência em `AppearanceTab`); **(3) Snapshot Estável Reativo** — `usePWAInstall()` alimentado por snapshot memoizado compatível com React Compiler via `useSyncExternalStore`.
 > **v1.4 (2026-09-02):** **(1) RuntimeCaching Stale-While-Revalidate para Imagens Estáticas** — no `vite.config.ts`, cache otimizado com limite de 60 entradas e expiração de 30 dias para PNG, JPG, SVG, WEBP e ICO; **(2) Monitoramento Reativo de Conectividade** — serviço `src/services/network-status.ts` e hook `useNetworkStatus()` via `useSyncExternalStore`; **(3) Auditoria Automatizada Estendida** — `pwa-audit.test.ts` validando presença da casca offline e das regras do Workbox.
@@ -178,7 +179,30 @@ Referência completa (ajustar nomes à marca final):
 - O `#root` recebe `padding-top: env(titlebar-area-height, 33px)` para o conteúdo não ficar obscurecido pela barra.
 - A `<div>` tem `display: none` por padrão; só aparece dentro de `@media (display-mode: window-controls-overlay)`.
 
-**Para ver o efeito:** desinstale e reinstale o PWA (o manifest atualizado é lido na reinstalação). Chrome → menu `⋮` → "Instalar Guia Financeiro".
+**Para ver o efeito:** desinstale e reinstale o PWA (o manifest atualizado é lido na reinstalação). Chrome -> menu -> "Instalar Guia Financeiro".
+
+---
+
+## 4.2 COMPENSAÇÃO ROBUSTA DE SAFE AREAS E STATUS BAR (EDGE-TO-EDGE MOBILE)
+
+> Aplicável tanto no PWA standalone (iOS Safari e Android WebAPK) quanto no aplicativo empacotado via Capacitor Android.
+
+**Desafio técnico:** Em smartphones com recortes de tela (notch, câmera frontal perfurada) e barras de gestos nativas no rodapé, o uso ingênuo de `env(safe-area-inset-top)` ou `env(safe-area-inset-bottom)` pode falhar em determinados WebViews Android ou modos PWA específicos, avaliando para `0px` e provocando colisões e sobreposições indesejadas de botões flutuantes ou cabeçalhos com os controles do sistema operacional.
+
+**Padrão Arquitetural de Compensação Híbrida:**
+1. **Injeção de Fallback Dinâmico:** O serviço de status bar (`src/services/native/status-bar.ts`) testa os insets em runtime via elemento de prova no DOM. Se `env(safe-area-inset-top)` reportar `0px` em ambiente nativo/mobile, injeta variáveis CSS na raiz (`documentElement`):
+   - `--safe-area-top: 32px` (altura mínima segura para a barra de status);
+   - `--safe-area-bottom: 16px` (altura mínima segura para a barra de gestos inferior).
+2. **Fórmula Canônica CSS:** Todos os contêineres estruturais e elementos flutuantes utilizam a composição matemática com `max()`:
+   - **Cabeçalho:** `calc(3.5rem + max(env(safe-area-inset-top, 0px), var(--safe-area-top, 0px)))`
+   - **Rodapé / Barra de Abas:** `calc(4rem + max(env(safe-area-inset-bottom, 0px), var(--safe-area-bottom, 0px)))`
+   - **Elementos Flutuantes (`BackToTop`, `ToastHost`):** `bottom: calc(5.25rem + max(env(safe-area-inset-bottom, 0px), var(--safe-area-bottom, 0px)))`
+3. **Componentes Padronizados:**
+   - `<PageShell />`: cabeçalho superior e padding-top do conteúdo;
+   - `<BottomNav />`: barra de navegação inferior mobile com espaçamento extra para o indicador gestual;
+   - `<BackToTop />`: botão flutuante de rolagem posicionado acima da barra inferior e dos gestos;
+   - `<ToastHost />` / `Toast`: notificações toast posicionadas com folga segura para não cobrir a barra de navegação;
+   - `SubscriptionCheckoutPage` e `SubscriptionSuccessPage`: cabeçalhos e rodapés de fluxos de assinatura.
 
 ---
 

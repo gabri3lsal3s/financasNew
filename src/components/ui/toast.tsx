@@ -114,7 +114,7 @@ export function Toaster({ children, ...props }: ComponentProps<typeof ToastPrimi
   return (
     <ToastPrimitive.Provider duration={3000} swipeDirection="down" {...props}>
       {children}
-      <ToastPrimitive.Viewport className="fixed z-toast flex flex-col gap-2 outline-none pointer-events-none bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-1/2 -translate-x-1/2 w-[calc(100vw-2rem)] max-w-sm px-0 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-6 sm:w-full sm:max-w-sm" />
+      <ToastPrimitive.Viewport className="fixed z-toast flex flex-col gap-2 outline-none pointer-events-none bottom-[calc(4.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] left-1/2 -translate-x-1/2 w-[calc(100vw-2rem)] max-w-sm px-0 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-6 sm:w-full sm:max-w-sm" />
     </ToastPrimitive.Provider>
   );
 }

@@ -70,6 +70,7 @@ O app permanece com visual limpo, concentrando as adições nativas em **4 Pilar
 
 1. **Ergonomia Invisível de SO (Zero poluição na tela):**
    - **Status Bar Dinâmica:** Pinta a barra superior do celular no tom exato do tema ativo (Light `#F4F7F9`, Dark `#0C1923`, OLED `#000000`) com ícones de contraste correto.
+   - **Compensação Robusta de Safe Areas:** Fórmula híbrida `max(env(safe-area-inset-*), var(--safe-area-*))` protegendo o app contra sobreposições em aparelhos com notch/câmera perfurada e barra de navegação por gestos do Android.
    - **Hardware Back Button:** O botão voltar do celular funciona de maneira natural (fecha gavetas/modais primeiro; se não houver modal, recua a página; se estiver na raiz, minimiza).
    - **Haptics Suave:** Vibração sutil e refinada nas teclas da calculadora flutuante (`ImpactStyle.Light`), sem acionar duplos disparos.
 
@@ -169,7 +170,7 @@ graph TD
 ### Fase 2: Ergonomia Nativa de SO (Invisível & Confortável) [Concluída]
 - [x] **Hardware Back Button:** Criar `src/services/native/back-button.ts` para fechar modais/gavetas ou recuar histórico (`navigate(-1)`), com descarte prioritário do overlay mais recente no topo (LIFO), controle do menu mobile e blindagem sob `AppLock`.
 - [x] **Status Bar Dinâmica:** Criar `src/services/native/status-bar.ts` integrado ao `ThemeProvider` (sincroniza fundo e contraste de ícones nos temas Light, Dark e OLED).
-- [x] **Safe Area Insets (Edge-to-Edge & Gestos):** Compensação dinâmica via `pt-[env(safe-area-inset-top,0px)]`, `pb-[env(safe-area-inset-bottom,0px)]` e utilitários `.p-safe` no `<header>` do `PageShell`, `Sidebar`, `LandingHeader`, `SubscriptionCheckoutPage`, `AuthShell` e `BottomNav`, impedindo sobreposição entre a barra de status/gestos nativos do Android e elementos visuais do app.
+- [x] **Safe Area Insets (Edge-to-Edge & Gestos):** Compensação dinâmica e robusta via `max(env(safe-area-inset-top, 0px), var(--safe-area-top, 0px))` no topo e `max(env(safe-area-inset-bottom, 0px), var(--safe-area-bottom, 0px))` na base. Em `src/services/native/status-bar.ts`, teste em runtime injeta `--safe-area-top: 32px` e `--safe-area-bottom: 16px` quando o WebView Android falhar em popular os insets. Aplicado em `<PageShell />`, `<BottomNav />`, `<BackToTop />`, `<ToastHost />`, `<Sidebar />`, `LandingHeader`, `SubscriptionCheckoutPage` e `SubscriptionSuccessPage`, impedindo sobreposições entre a barra de status/gestos nativos do Android e elementos visuais do app.
 - [x] **Touch Action & Viewport:** Aplicação de `touch-action: manipulation`, `-webkit-tap-highlight-color: transparent`, `overscroll-behavior-y: none` e `interactive-widget=resizes-content` evitando compressão de layout pelo teclado virtual e eliminando o delay tátil de 300ms.
 - [x] **Gateway Sensorial (Haptics):** Integrar `@capacitor/haptics` no `src/services/haptics.ts` com resposta na calculadora flutuante.
 - [x] **Splash Screen Suave:** Integrar `@capacitor/splash-screen` à casca visual `#app-splash`.

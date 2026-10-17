@@ -33,7 +33,7 @@ export function BackToTop({
       className={cn(
         "fixed z-page-floating transition-all duration-300",
         bottomNavOffset
-          ? "bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:bottom-8 right-4 md:right-8"
+          ? "bottom-[calc(5.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] md:bottom-8 right-4 md:right-8"
           : "bottom-6 md:bottom-8 right-4 md:right-8",
         visible
           ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"

@@ -140,7 +140,7 @@ describe("PageShell (F7.2/F7.3)", () => {
   it("aplica compensação de safe area inferior e desobstrução da BottomNav no container principal", () => {
     const { container } = renderShell();
     const mainContainer = container.querySelector("#main-content > div");
-    expect(mainContainer?.className).toContain("pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))]");
+    expect(mainContainer?.className).toContain("pb-[calc(6.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))]");
   });
 
   it("renderiza o NetworkStatusBanner quando a conexão com a internet é perdida", () => {
