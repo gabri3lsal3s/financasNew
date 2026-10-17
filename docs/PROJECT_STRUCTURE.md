@@ -151,7 +151,7 @@
     │   ├── reminders/             #   Lembretes (central de notificações)
     │   ├── settings/              #   Configurações consolidadas em 4 abas especializadas: Aparência & Identidade Visual, Notificações & Automações, Segurança & Gestão de Dados, Plano & Assinatura
     │   │                          #     components/tabs/ (appearance-tab, notifications-tab, security-tab, subscription-tab, subcards F1.3)
-    │   ├── admin/                 #   Painel Administrativo SaaS /admin (F43: 4 pilares consolidados — Visão Geral & KPIs SaaS, Gestão de Usuários, Convites & Allowlist, Sistema & Auditoria)
+    │   ├── admin/                 #   Painel Administrativo SaaS /admin (F43: 4 pilares consolidados — Visão Geral & KPIs SaaS, Gestão de Usuários, Convites & Allowlist, Sistema & Auditoria, whitelist-quick-actions.tsx)
     │   ├── subscription/          #   Fluxos de Assinatura & Checkout (/assinatura, /assinar, /assinatura/sucesso)
     │   │                          #     pages: subscription-checkout-page, subscription-success-page
     │   ├── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+F28+F35+F40+F72):
@@ -223,7 +223,7 @@
     │   │                          #   import-parser.ts (F35: sniffer de CSV e Quick-Paste),
     │   │                          #   xlsx-parser.ts (parser puro de planilhas Excel .xlsx/.xls),
     │   │                          #   statement-parser.ts (parser inteligente de extratos de bancos/corretoras, cálculo de deltas e deduplicação)
-    │   └── subscription/          #   Regras puras de planos, trial 30 dias (trial.ts), precificação, CDC 7 dias e estorno pró-rata (plans.ts)
+    │   └── subscription/          #   Regras puras de planos, trial 30 dias (trial.ts), precificação, CDC 7 dias, estorno pró-rata (plans.ts) e adaptadores agnósticos de faturamento SaaS (billing.ts)
     │
 
     ├── data/                      # INTEGRAÇÃO REMOTA

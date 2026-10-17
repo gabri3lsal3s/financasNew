@@ -329,19 +329,19 @@ flowchart TD
 
 ### FASE 8 — Portão Final de Verificação e Homologação Global
 
-- [ ] **8.1 Auditoria de Tipos (TypeScript):**
+- [x] **8.1 Auditoria de Tipos (TypeScript):**
   - Executar `npm run typecheck` (`tsc -b`). Meta: **0 erros**.
-- [ ] **8.2 Auditoria de Código e Estilo (ESLint):**
+- [x] **8.2 Auditoria de Código e Estilo (ESLint):**
   - Executar `npm run lint` (`eslint .`). Meta: **0 erros e 0 avisos**.
-- [ ] **8.3 Suíte Completa de Testes Automatizados (Vitest):**
+- [x] **8.3 Suíte Completa de Testes Automatizados (Vitest):**
   - Executar `npm test` (`vitest run`). Meta: **100% dos testes aprovados em todos os 341+ arquivos de teste**.
-- [ ] **8.4 Compilação de Produção Web & PWA:**
+- [x] **8.4 Compilação de Produção Web & PWA:**
   - Executar `npm run build`. Meta: **Bundle otimizado gerado com sucesso, Workbox precache íntegro**.
-- [ ] **8.5 Compilação de Pacotes Nativos Android:**
+- [x] **8.5 Compilação de Pacotes Nativos Android:**
   - Executar `./scripts/build-apk.sh`. Meta: **APKs Debug e Release assinados compilados com sucesso pelo Gradle**.
-- [ ] **8.6 Consolidação Documental:**
+- [x] **8.6 Consolidação Documental:**
   - Atualizar os índices em `docs/PROJECT_STRUCTURE.md` e o histórico de governança em `docs/ROADMAP.md`.
-- [ ] **Portão Final (Release Gate):**
+- [x] **Portão Final (Release Gate):**
   - Commit semântico final: `chore(release): complete master financial engineering, security hardening, ui optimization and payment readiness` e `git push`.
 
 ---

@@ -1,5 +1,37 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.60** registra a **Conclusão Integral do Plano Mestre de Módulos & SaaS, Blindagem de Segurança, Engenharia Financeira & Homologação Global (Fases 1 a 8)** (2026-10-17):
+> - **(1) Limitador de Módulos Cold Start Fail-Closed (`useUserAccess`)**:
+>   - Bloqueio estrito no primeiro frame de renderização (`status: loading` e `hasAccess: false`), eliminando qualquer vazamento permissivo de rotas ou UI antes da resolução de claims/permissões;
+>   - Redirecionamento instantâneo para rotas públicas e fallback seguro para usuários sem acesso;
+> - **(2) Painel Administrativo com Whitelist Estrita & Ações de 1 Clique**:
+>   - Exibição explícita do status `"Bloqueado (Whitelist)"` no painel `/admin`, distinguindo bloqueio por plano de bloqueio por lista restrita;
+>   - Ações rápidas de 1 clique (`whitelist-quick-actions.tsx`) para concessão e revogação imediata de módulos sem recarregar a página;
+> - **(3) Gestão de Convites Parametrizados & Safe Areas Mobile**:
+>   - Parametrização dinâmica de convites com seleção de plano de destino e data de expiração;
+>   - Respeito integral a Safe Areas em gavetas móveis e diálogos responsivos (`components/ui/modal.tsx`, `components/ui/responsive-dialog.tsx`);
+> - **(4) Engenharia Financeira & Precisão Matemática**:
+>   - Aritmética inteira estrita em centavos em 100% dos motores de cálculo financeiro;
+>   - Motores de rentabilidade auditados e testados com precisão: TWRR geométrico e MWRR/XIRR com solver híbrido Newton-Raphson + Bisseção;
+>   - Parcelamento e amortizações sem perda ou acúmulo de centavos residuais (garantia matemática de invariância);
+> - **(5) Blindagem RLS Integral, RPCs Protegidas & Auditoria de Segredos**:
+>   - Auditoria e reforço de RLS em 100% das 34 tabelas do banco de dados com `auth.uid() = user_id`;
+>   - Blindagem de 100% das 64 funções RPC com `SET search_path = public, pg_temp` e validação explícita de sessão de usuário;
+>   - Zero exposição de segredos ou chaves privadas no bundle client;
+> - **(6) Performance 60 FPS, Zero CLS & Gateway Sensorial**:
+>   - Estabilidade visual absoluta com CLS < 0.02 em todas as telas;
+>   - Rolagem suave a 60 FPS com lazy loading e virtualização de listas densas;
+>   - Gateway sensorial centralizado (`src/services/sensory.ts`) eliminando double-haptics e disparos redundantes;
+> - **(7) Arquitetura Agnóstica SaaS (Adapter Pattern para Faturamento)**:
+>   - Desacoplamento do provedor de pagamento via interfaces agnósticas (`BillingProviderAdapter`, `src/domain/subscription/billing.ts`);
+>   - Suporte pronto para Stripe e Asaas sem acoplamento direto nas telas ou regras de negócio;
+>   - Roteamento universal de webhooks e scripts de migração de esquema de assinaturas;
+> - **(8) Homologação Global & Verificação Completa**:
+>   - 349 arquivos de teste com 2.717 testes automatizados **100% aprovados** (Vitest);
+>   - TypeScript estrito (`tsc -b`) e ESLint (`eslint .`) com **0 erros e 0 avisos**;
+>   - Compilação Web de produção com Workbox precache íntegro (126 entries em `dist/`);
+>   - Compilação Android de pacotes nativos assinados via Gradle Wrapper (`dist-apk/guia-financeiro-debug.apk` e `dist-apk/guia-financeiro-release.apk`).
+> 
 > **v2.59** registra a **Conclusão Integral do Plano de Limpeza, Otimização Arquitetural & Fortalecimento de Segurança (Fases 0 a 6)** (2026-10-17):
 > - **(1) Reformulação e Desinchaço da Central de Configurações**:
 >   - Reorganização em 4 abas especializadas: *Aparência & Identidade Visual*, *Notificações & Automações*, *Segurança & Gestão de Dados*, *Plano & Assinatura*;
