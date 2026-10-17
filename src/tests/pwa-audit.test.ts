@@ -122,9 +122,25 @@ describe("Auditoria PWA (instalabilidade)", () => {
     expect(headers).toContain("max-age=31536000, immutable");
   });
 
-  it("Página de contingência offline.html existe em public/pwa/", () => {
+  it("Página de contingência offline.html existe em public/pwa/ e public/", () => {
     expect(existsSync(resolve(root, "public/pwa/offline.html"))).toBe(true);
+    expect(existsSync(resolve(root, "public/offline.html"))).toBe(true);
     const offlineHtml = readFileSync(resolve(root, "public/pwa/offline.html"), "utf8");
     expect(offlineHtml).toContain("Sem conexão");
+  });
+
+  it("dist contém artefatos homologados para deploy (sw.js, manifest, offline.html, workbox)", () => {
+    const distPath = resolve(root, "dist");
+    if (!existsSync(distPath)) return;
+
+    expect(existsSync(resolve(distPath, "index.html"))).toBe(true);
+    expect(existsSync(resolve(distPath, "sw.js"))).toBe(true);
+    expect(existsSync(resolve(distPath, "offline.html"))).toBe(true);
+    expect(existsSync(resolve(distPath, "pwa/offline.html"))).toBe(true);
+    expect(existsSync(resolve(distPath, "pwa/manifest.webmanifest"))).toBe(true);
+    expect(existsSync(resolve(distPath, "_headers"))).toBe(true);
+
+    const swContent = readFileSync(resolve(distPath, "sw.js"), "utf8");
+    expect(swContent).toContain("workbox");
   });
 });

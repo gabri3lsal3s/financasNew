@@ -464,10 +464,14 @@ graph TD
     - Executada a suíte integral de testes automatizados do repositório (`npm test`): **341 arquivos de teste e 2.645 testes aprovados com 100% de sucesso**.
   - **Critério de Saída:** 100% dos 341 arquivos de teste aprovados sem falhas nem avisos (2.645 testes verdes).
 
-- [ ] **Tarefa 6.2 — Homologação de Compilação Web e PWA**
+- [x] **Tarefa 6.2 — Homologação de Compilação Web e PWA**
   - **Ação:** Executar `npm run build` e validar a integridade dos artefatos em `dist/`:
-    - Validar manifesto PWA e Service Worker gerados pelo `vite-plugin-pwa`;
-    - Confirmar funcionamento do fallback offline (`offline.html`).
+    - Compilado bundle de produção via Vite (`vite build`) e TypeScript estrito (`tsc -b`);
+    - Gerados e homologados os artefatos PWA pelo `vite-plugin-pwa` (Workbox v1.3.0): Service Worker (`dist/sw.js`), runtime Workbox (`dist/workbox-*.js`) com precache atômico de 126 entradas e `cleanupOutdatedCaches: true`;
+    - Validado o manifesto PWA em `dist/pwa/manifest.webmanifest` com ícones versionados para WebAPK Android e safe areas;
+    - Validado o fallback offline `dist/offline.html` e `dist/pwa/offline.html` estilizado com suporte a temas e retry;
+    - Confirmada a conformidade de cabeçalhos de borda `dist/_headers` para cache imutável de assets (`/assets/*`) e revalidação imediata do App Shell e Service Worker;
+    - Testes automatizados em `pwa-audit.test.ts` (10/10) e `pwa.test.tsx` (10/10) aprovados sem falhas.
   - **Critério de Saída:** Build de produção PWA homologado e pronto para deploy no Cloudflare Pages.
 
 - [ ] **Tarefa 6.3 — Sincronização e Compilação dos APKs Nativos Android**
