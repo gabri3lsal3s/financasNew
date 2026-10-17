@@ -503,4 +503,20 @@ if (existsSync(androidResDir)) {
   }
 }
 
+// 6. Sincroniza o manifest.webmanifest com as URLs versionadas dos ícones (?v=2)
+const manifestPath = join(root, "public", "pwa", "manifest.webmanifest");
+if (existsSync(manifestPath)) {
+  const manifestRaw = readFileSync(manifestPath, "utf8");
+  const manifest = JSON.parse(manifestRaw);
+  if (Array.isArray(manifest.icons)) {
+    const iconVersion = "v=2";
+    manifest.icons = manifest.icons.map((icon) => {
+      const baseUrl = icon.src.split("?")[0];
+      return { ...icon, src: `${baseUrl}?${iconVersion}` };
+    });
+    writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n", "utf8");
+    console.log(`✓ public/pwa/manifest.webmanifest sincronizado com ícones versionados (${iconVersion})`);
+  }
+}
+
 console.log("Todos os assets da marca, PWA e Android nativo foram gerados com sucesso!");

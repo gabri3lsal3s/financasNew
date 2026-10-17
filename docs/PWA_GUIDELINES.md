@@ -1,7 +1,8 @@
 # 📱 PWA_GUIDELINES.md — Requisitos de Progressive Web App
 
-> **Status:** v1.5 — O app é um **PWA moderno** (instalável em mobile/desktop).
+> **Status:** v1.6 — O app é um **PWA moderno** (instalável em mobile/desktop).
 > **F5.6 & F83 implementados:** prompt de instalação (`beforeinstallprompt`), atualização automática com toast, auditoria automatizada de instalabilidade, estratégia Stale-While-Revalidate para imagens estáticas com expiração de 30 dias e monitoramento reativo de conectividade (`useNetworkStatus`).
+> **v1.6 (2026-10-17):** **(1) Ciclo de Vida Atômico e Invalidação Integral de Cache** — ativação de `cleanupOutdatedCaches: true` no Workbox (`vite.config.ts`), isolamento de assets de marca (`pwa-brand-assets` com estratégia NetworkFirst e fallback offline) e rotina defensiva `purgeLegacyCaches()` em `src/app/pwa.ts`; **(2) Transição de Versão Sincronizada (Zero Mismatch)** — fluxo `applyPWAUpdate()` com disparo `{ type: "SKIP_WAITING" }`, sincronização com `controllerchange` em `navigator.serviceWorker` (com timeout defensivo de 4 segundos) e toast visual com transição atômica; **(3) Versionamento de Ícones para WebAPK Android** — query params determinísticos (`?v=2`) nas URLs dos ícones em `manifest.webmanifest` e `index.html`, sincronizados via `scripts/generate-icons.mjs`; **(4) Políticas Estritas de Borda** — cabeçalhos `_headers` calibrados para Cloudflare Pages (Service Worker e manifests com `max-age=0, must-revalidate`; chunks `/assets/*` com `immutable`).
 > **v1.5 (2026-10-16):** **(1) Experiência PWA Avançada no iOS Safari** — detecção de dispositivos Apple iOS (`isIOS`) e abertura do modal guiado `IosPwaInstallDialog` com passo a passo ilustrado ("Compartilhar > Adicionar à Tela de Início"); **(2) Atalho Unificado de Instalação nas Configurações** — `InstallAppButton` operando em variantes `banner` (menu "Mais") e `card` (aba de Personalização/Aparência em `AppearanceTab`); **(3) Snapshot Estável Reativo** — `usePWAInstall()` alimentado por snapshot memoizado compatível com React Compiler via `useSyncExternalStore`.
 > **v1.4 (2026-09-02):** **(1) RuntimeCaching Stale-While-Revalidate para Imagens Estáticas** — no `vite.config.ts`, cache otimizado com limite de 60 entradas e expiração de 30 dias para PNG, JPG, SVG, WEBP e ICO; **(2) Monitoramento Reativo de Conectividade** — serviço `src/services/network-status.ts` e hook `useNetworkStatus()` via `useSyncExternalStore`; **(3) Auditoria Automatizada Estendida** — `pwa-audit.test.ts` validando presença da casca offline e das regras do Workbox.
 > **v1.3 (2026-08-17):** **(1) HTML Splash Screen Minimalista em Fundo Branco** — `<div id="app-splash">` inline no `index.html` e no manifest com fundo branco sólido (`#FFFFFF`), ícone centralizado de 144px sem texto, animação de pulso sutil; some instantaneamente via `#root:not(:empty)`; **(2) Sincronização Dinâmica da Barra de Título** — sincronização em tempo real de `<meta name="theme-color">` no bootstrap (`index.html`) e no `ThemeProvider`, com suporte a `.app-region-drag` e `.app-region-no-drag` no header do `PageShell`; **(3) Estratégia Híbrida de Ícones PWA** — ícones `purpose: "any"` transparentes (desktop, iOS e launchers modernos) e ícones `purpose: "maskable"` com fundo branco (`#FFFFFF`, safe zone 80%) para dispositivos com recorte adaptativo; **(4) `offline.html` redesenhado** — Inter, ícone 96px, botão discreto no tom do design system, suporte aos 3 temas, fade-in.
@@ -187,9 +188,9 @@ Referência completa (ajustar nomes à marca final):
 
 | Recurso | Estratégia | Justificativa |
 |---|---|---|
-| App Shell (HTML + JS/CSS do build, com hash) | **Precache** (cache-first, imutáveis) | Carregamento instantâneo da casca visual |
-| Fontes (Google Fonts) e imagens estáticas | **Stale-while-revalidate** (cache 1 ano) | Rápido e sempre atualizável |
-| Ícones PWA | **Cache-first** | Assets imutáveis |
+| App Shell (HTML + JS/CSS do build, com hash) | **Precache** (cache-first, imutáveis) | Carregamento instantâneo da casca visual (`cleanupOutdatedCaches: true`) |
+| Fontes (Google Fonts) e imagens estáticas | **Stale-while-revalidate** (cache 1 ano / 30 dias) | Rápido e sempre atualizável |
+| Ícones PWA e assets de marca (`/pwa/icons/*`, `/brand/*`) | **NetworkFirst** (`pwa-brand-assets`, timeout 3s) | Revalidação de rede imediata com fallback para cache offline |
 | **API (Supabase, RPC, cotações)** | **Network only** — fora do SW | Online First: dados sempre da nuvem; erro explícito + retry manual |
 | Navegação (rotas client-side) | `navigateFallback: /index.html` (App Shell precached) | Refresh/deep-links sempre carregam a casca; offline tratado na própria UI |
 
@@ -199,15 +200,20 @@ Referência completa (ajustar nomes à marca final):
 
 ---
 
-## 6. INSTALAÇÃO E CICLO DE VIDA (IMPLEMENTADO — F5.6 & FASE 23 TAREFA 42)
+## 6. INSTALAÇÃO E CICLO DE VIDA (IMPLEMENTADO — F5.6 & TAREFA 4.6)
 
-**Critérios de instalação (Chrome):** HTTPS (localhost ok) · manifest com `name`/`short_name`/ícones 192+512 · SW com `fetch` handler · app aberto 2+ vezes com intervalo.
+**Critérios de instalação (Chrome):** HTTPS (localhost ok) · manifest com `name`/`short_name`/ícones 192+512 versionados (`?v=2`) · SW com `fetch` handler · app aberto 2+ vezes com intervalo.
 **Critérios de instalação (iOS / Safari):** Safari no iOS/iPadOS · fora do modo standalone · exibição guiada de "Compartilhar > Adicionar à Tela de Início".
 
 **Fluxo implementado:**
 
-1. **Registro do SW (`src/app/pwa.ts`):** `registerSW({ immediate: true, onNeedReload, onRegisterError })` — `registerType: 'autoUpdate'` (o SW gerado no build tem `skipWaiting` + `clientsClaim`).
-2. **Atualização automática com toast:** com `autoUpdate`, quando um SW novo ativa, o plugin chamaria `onNeedReload` e recarregaria a página; **interceptamos** com o callback e notificamos a store externa (`notifyPWAUpdate`/`consumePWAUpdate`). O `PWAUpdateToast` (global, montado no `Toaster` em `app/providers.tsx`) anuncia "Nova versão disponível" com a ação **"Atualizar"** (reload explícito — o usuário decide, sem perda de estado) ou pode fechar (o anúncio é consumido; uma nova versão re-anuncia). O toast usa `duration: Infinity` (não some sozinho até o usuário agir).
+1. **Registro do SW (`src/app/pwa.ts`):** `registerSW({ immediate: true, onNeedReload, onRegisterError })` — o callback de atualização retornado (`updateSW(true)`) é preservado no módulo.
+2. **Atualização Atômica Sincronizada com Toast:** quando um novo Service Worker é detectado, a store externa é notificada via `notifyPWAUpdate()`. O `PWAUpdateToast` exibe "Nova versão disponível". Ao clicar em **"Atualizar"**, executa-se o fluxo atômico `applyPWAUpdate()`:
+   - Dispara `{ type: "SKIP_WAITING" }` para a registration ativa;
+   - Escuta e aguarda o evento `controllerchange` em `navigator.serviceWorker` (com timeout defensivo de 4 segundos via `waitForControllerChange(4000)`);
+   - Transita visualmente para o estado "Atualizando para a nova versão..." (desabilitando cliques adicionais);
+   - Executa purga explícita de caches obsoletos (`purgeLegacyCaches()`);
+   - Dispara `window.location.reload()` somente após confirmação de que o novo SW assumiu o controle de todos os clientes ativos (`clientsClaim`).
 3. **Instalação no Chromium (`beforeinstallprompt`):** o `pwa.ts` escuta o evento (com `preventDefault()`, exigência do Chromium), guarda o prompt e notifica a store (`subscribePWAInstall`/`getPWAInstallSnapshot`). O hook `usePWAInstall` (useSyncExternalStore) alimenta o **`InstallAppButton`** — **nunca popup intrusivo** (regra: após interação, no menu "Mais" ou na aba de Configurações).
 4. **Instalação no iOS Safari (`IosPwaInstallDialog`):** como o Safari no iOS não suporta `beforeinstallprompt`, utilitários em `src/app/pwa.ts` (`isIOS()`, `getIsIOSInstallCandidate()`) detectam iPhones e iPads fora do modo standalone. Ao clicar em "Como instalar no iOS", o diálogo canônico `IosPwaInstallDialog` (`src/components/modules/ios-pwa-install-dialog.tsx`) exibe as 3 etapas ilustradas com ícones padronizados (sem emojis).
 5. **Atalhos Unificados no App:** o `InstallAppButton` está disponível no menu "Mais" (`variant="banner"`) e na aba de Configurações/Personalização (`variant="card"` em `AppearanceTab`). Em ambientes instalados (standalone) ou app nativo (Capacitor), oculta-se ou exibe o badge de confirmação ("Instalado").

@@ -14,8 +14,10 @@ import { isNativePlatform } from "@/services/native";
 
 const updateListeners = new Set<() => void>();
 let updateAvailable = false;
+let isUpdating = false;
+let updateSWFn: ((reloadPage?: boolean) => Promise<void>) | null = null;
 
-/** Assina mudanças no estado "nova versão disponível". */
+/** Assina mudanças no estado "nova versão disponível" ou "atualização em andamento". */
 export function subscribePWAUpdate(listener: () => void): () => void {
   updateListeners.add(listener);
   return () => {
@@ -25,6 +27,10 @@ export function subscribePWAUpdate(listener: () => void): () => void {
 
 export function getPWAUpdateAvailable(): boolean {
   return updateAvailable;
+}
+
+export function getIsPWAUpdating(): boolean {
+  return isUpdating;
 }
 
 /** Marca a nova versão como disponível e notifica a UI (chamado pelo SW). */
@@ -40,8 +46,108 @@ export function consumePWAUpdate(): void {
 }
 
 /**
+ * Aguarda o novo Service Worker assumir o controle dos clientes ativos (clientsClaim / controllerchange).
+ * Possui timeout defensivo de 4 segundos para evitar travamentos em plataformas com suporte parcial.
+ */
+export function waitForControllerChange(timeoutMs = 4000): Promise<void> {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
+    return Promise.resolve();
+  }
+
+  return new Promise<void>((resolve) => {
+    let resolved = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const onControllerChange = () => {
+      if (!resolved) {
+        resolved = true;
+        if (timer) clearTimeout(timer);
+        navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+        resolve();
+      }
+    };
+
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+
+    timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+        resolve();
+      }
+    }, timeoutMs);
+  });
+}
+
+/**
+ * Remove caches legados e versões obsoletas do CacheStorage durante atualizações.
+ */
+export async function purgeLegacyCaches(): Promise<void> {
+  if (typeof window === "undefined" || !("caches" in window)) return;
+  try {
+    const keys = await window.caches.keys();
+    const cachesToPurge = keys.filter((key) => {
+      return (
+        key.includes("workbox-precache") ||
+        key.includes("static-images") ||
+        key.includes("pwa-brand-assets")
+      );
+    });
+    await Promise.all(cachesToPurge.map((key) => window.caches.delete(key)));
+  } catch {
+    // Silencioso se o CacheStorage estiver inacessível
+  }
+}
+
+/**
+ * Executa a atualização atômica e sincronizada do PWA:
+ * 1. Invoca o callback retornado pelo registerSW (updateSW(true)) e envia SKIP_WAITING para a registration ativa;
+ * 2. Escuta e aguarda o evento `controllerchange` em `navigator.serviceWorker` (com timeout defensivo de 4s);
+ * 3. Varrer e remove caches legados via `purgeLegacyCaches()`;
+ * 4. Recarrega a aplicação (`window.location.reload()`) somente após confirmação do controle.
+ */
+export async function applyPWAUpdate(): Promise<void> {
+  if (typeof window === "undefined") return;
+
+  if (isUpdating) return;
+  isUpdating = true;
+  updateListeners.forEach((listener) => listener());
+
+  try {
+    if (updateSWFn) {
+      try {
+        await updateSWFn(true);
+      } catch {
+        // Fallback para postMessage direto se o wrapper falhar
+      }
+    }
+
+    if (!isNativePlatform() && "serviceWorker" in navigator) {
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          if (reg.waiting) {
+            reg.waiting.postMessage({ type: "SKIP_WAITING" });
+          }
+        }
+      } catch {
+        // Ignora falha de comunicação com Service Worker
+      }
+
+      await waitForControllerChange(4000);
+    }
+
+    await purgeLegacyCaches();
+  } catch {
+    // Prossegue com o recarregamento mesmo em caso de erro inesperado
+  } finally {
+    window.location.reload();
+  }
+}
+
+/**
  * Força a busca por atualizações do Service Worker e recarrega a aplicação
- * com os assets mais recentes do PWA.
+ * com os assets mais recentes do PWA de forma atômica e sincronizada.
  */
 export async function forceAppUpdate(): Promise<void> {
   if (typeof window === "undefined") return;
@@ -51,16 +157,13 @@ export async function forceAppUpdate(): Promise<void> {
       const registrations = await navigator.serviceWorker.getRegistrations();
       for (const reg of registrations) {
         await reg.update();
-        if (reg.waiting) {
-          reg.waiting.postMessage({ type: "SKIP_WAITING" });
-        }
       }
     } catch {
       // Ignora falha de verificação no Service Worker
     }
   }
 
-  window.location.reload();
+  await applyPWAUpdate();
 }
 
 // ---------- Instalação (beforeinstallprompt) ----------
@@ -179,7 +282,7 @@ export function registerPWA(): void {
     return;
   }
 
-  registerSW({
+  updateSWFn = registerSW({
     immediate: true,
     onNeedReload: notifyPWAUpdate,
     onRegisterError: () => {
@@ -198,3 +301,15 @@ export function registerPWA(): void {
     notifyInstallChange();
   });
 }
+
+/** Apenas para uso em testes unitários automatizados. */
+export function _setUpdateSWFnForTesting(fn: ((reloadPage?: boolean) => Promise<void>) | null): void {
+  updateSWFn = fn;
+}
+
+export function _resetPWAStateForTesting(): void {
+  updateAvailable = false;
+  isUpdating = false;
+  updateSWFn = null;
+}
+

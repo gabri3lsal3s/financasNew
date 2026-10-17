@@ -8,7 +8,22 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
 /sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/registerSW.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/workbox-*.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/manifest.webmanifest
+  Cache-Control: public, max-age=0, must-revalidate
+
+/pwa/manifest.webmanifest
   Cache-Control: public, max-age=0, must-revalidate
 
 /pwa/*
@@ -16,3 +31,4 @@
 
 /offline.html
   Cache-Control: public, max-age=0, must-revalidate
+

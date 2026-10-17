@@ -1,7 +1,16 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { notifyPWAUpdate, refreshPWAInstallState, registerPWA } from "@/app/pwa";
+import {
+  applyPWAUpdate,
+  notifyPWAUpdate,
+  purgeLegacyCaches,
+  refreshPWAInstallState,
+  registerPWA,
+  waitForControllerChange,
+  _resetPWAStateForTesting,
+  _setUpdateSWFnForTesting,
+} from "@/app/pwa";
 import { InstallAppButton } from "@/components/modules/install-app-button";
 import { PWAUpdateToast } from "@/components/modules/pwa-update-toast";
 import { Toaster } from "@/components/ui/toast";
@@ -51,6 +60,10 @@ describe("PWA — instalação (beforeinstallprompt)", () => {
 });
 
 describe("PWA — atualização automática (autoUpdate → toast)", () => {
+  afterEach(() => {
+    _resetPWAStateForTesting();
+  });
+
   it("anuncia nova versão, consome no fechar e recarrega ao clicar em Atualizar", async () => {
     const user = userEvent.setup();
     const reload = vi.fn();
@@ -80,6 +93,115 @@ describe("PWA — atualização automática (autoUpdate → toast)", () => {
     // "Atualizar" recarrega a página (ação explícita do usuário).
     await user.click(screen.getByRole("button", { name: "Atualizar" }));
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("exibe estado transitório 'Atualizando para a nova versão...' ao iniciar atualização", async () => {
+    const reload = vi.fn();
+    Object.defineProperty(window, "location", {
+      value: { ...window.location, reload },
+      configurable: true,
+      writable: true,
+    });
+
+    render(
+      <Toaster>
+        <PWAUpdateToast />
+      </Toaster>,
+    );
+
+    notifyPWAUpdate();
+    const button = await screen.findByRole("button", { name: "Atualizar" });
+    const user = userEvent.setup();
+    await user.click(button);
+
+    // Durante o fluxo de atualização atômico, o título muda para o estado de transição
+    expect(await screen.findByText("Atualizando para a nova versão...")).toBeInTheDocument();
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("applyPWAUpdate envia SKIP_WAITING para o Service Worker waiting e invoca reload", async () => {
+    const reload = vi.fn();
+    Object.defineProperty(window, "location", {
+      value: { ...window.location, reload },
+      configurable: true,
+      writable: true,
+    });
+
+    const postMessage = vi.fn();
+    const mockReg = { waiting: { postMessage } };
+    const getRegistrations = vi.fn().mockResolvedValue([mockReg]);
+    const addEventListener = vi.fn((event, handler) => {
+      if (event === "controllerchange") {
+        setTimeout(handler, 10);
+      }
+    });
+    const removeEventListener = vi.fn();
+
+    Object.defineProperty(navigator, "serviceWorker", {
+      value: { getRegistrations, addEventListener, removeEventListener },
+      configurable: true,
+      writable: true,
+    });
+
+    const mockUpdateSW = vi.fn().mockResolvedValue(undefined);
+    _setUpdateSWFnForTesting(mockUpdateSW);
+
+    await applyPWAUpdate();
+
+    expect(mockUpdateSW).toHaveBeenCalledWith(true);
+    expect(postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("waitForControllerChange resolve por evento controllerchange e por timeout defensivo", async () => {
+    const listeners: Record<string, () => void> = {};
+    const addEventListener = vi.fn((event: string, handler: () => void) => {
+      listeners[event] = handler;
+    });
+    const removeEventListener = vi.fn();
+
+    Object.defineProperty(navigator, "serviceWorker", {
+      value: { addEventListener, removeEventListener },
+      configurable: true,
+      writable: true,
+    });
+
+    // 1. Resolve imediatamente com o evento controllerchange
+    const eventPromise = waitForControllerChange(5000);
+    listeners.controllerchange?.();
+    await expect(eventPromise).resolves.toBeUndefined();
+    expect(removeEventListener).toHaveBeenCalledWith("controllerchange", expect.any(Function));
+
+    // 2. Resolve por timeout defensivo caso o evento não dispare
+    const timeoutPromise = waitForControllerChange(20);
+    await expect(timeoutPromise).resolves.toBeUndefined();
+  });
+
+  it("purgeLegacyCaches remove apenas caches legados do Workbox e assets estáticos", async () => {
+    const deletedKeys: string[] = [];
+    Object.defineProperty(window, "caches", {
+      value: {
+        keys: vi.fn().mockResolvedValue([
+          "workbox-precache-v2-xyz",
+          "static-images",
+          "pwa-brand-assets",
+          "app-user-offline-store",
+        ]),
+        delete: vi.fn().mockImplementation((key: string) => {
+          deletedKeys.push(key);
+          return Promise.resolve(true);
+        }),
+      },
+      configurable: true,
+      writable: true,
+    });
+
+    await purgeLegacyCaches();
+
+    expect(deletedKeys).toContain("workbox-precache-v2-xyz");
+    expect(deletedKeys).toContain("static-images");
+    expect(deletedKeys).toContain("pwa-brand-assets");
+    expect(deletedKeys).not.toContain("app-user-offline-store");
   });
 });
 

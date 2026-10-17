@@ -87,11 +87,39 @@ describe("Auditoria PWA (instalabilidade)", () => {
     expect(pwa).toContain("appinstalled");
   });
 
-  it("Service Worker: configuração Workbox possui runtimeCaching para imagens estáticas", () => {
+  it("manifest possui ícones versionados determinísticos (?v=) para WebAPK", () => {
+    const manifest = JSON.parse(readFileSync(resolve(root, "public/pwa/manifest.webmanifest"), "utf8"));
+    expect(manifest.icons.every((icon: { src: string }) => icon.src.includes("?v="))).toBe(true);
+  });
+
+  it("Service Worker: configuração Workbox possui cleanupOutdatedCaches e isolamento de brand assets", () => {
     const viteConfig = readFileSync(resolve(root, "vite.config.ts"), "utf8");
 
+    expect(viteConfig).toContain("cleanupOutdatedCaches: true");
+    expect(viteConfig).toContain("pwa-brand-assets");
+    expect(viteConfig).toContain("NetworkFirst");
     expect(viteConfig).toContain("static-images");
     expect(viteConfig).toContain("StaleWhileRevalidate");
+  });
+
+  it("Service Worker: fluxo atômico com controllerchange e purga de cache em pwa.ts", () => {
+    const pwa = readFileSync(resolve(root, "src/app/pwa.ts"), "utf8");
+
+    expect(pwa).toContain("applyPWAUpdate");
+    expect(pwa).toContain("waitForControllerChange");
+    expect(pwa).toContain("controllerchange");
+    expect(pwa).toContain("purgeLegacyCaches");
+  });
+
+  it("cabeçalhos HTTP de borda (_headers) configuram políticas estritas de cache", () => {
+    const headers = readFileSync(resolve(root, "public/_headers"), "utf8");
+
+    expect(headers).toContain("/sw.js");
+    expect(headers).toContain("/index.html");
+    expect(headers).toContain("/pwa/manifest.webmanifest");
+    expect(headers).toContain("max-age=0, must-revalidate");
+    expect(headers).toContain("/assets/*");
+    expect(headers).toContain("max-age=31536000, immutable");
   });
 
   it("Página de contingência offline.html existe em public/pwa/", () => {

@@ -12,6 +12,7 @@ export default defineConfig({
       registerType: "autoUpdate",
       manifest: false, // manifest próprio em public/pwa/manifest.webmanifest (PWA_GUIDELINES)
       workbox: {
+        cleanupOutdatedCaches: true,
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
         // logo-full.png (lockup da marca, ~5 MB) é asset estático fora do runtime:
         // fica fora do precache para não estourar o limite do Workbox (2 MiB).
@@ -27,6 +28,16 @@ export default defineConfig({
             options: {
               cacheName: "google-fonts",
               expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+            },
+          },
+          // Ícones PWA e assets de marca oficiais: isolados com revalidação de rede imediata (NetworkFirst)
+          {
+            urlPattern: /\/(?:pwa\/icons|brand)\/.*\.(?:png|webp|svg|ico)$/i,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "pwa-brand-assets",
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 * 7 },
             },
           },
           {

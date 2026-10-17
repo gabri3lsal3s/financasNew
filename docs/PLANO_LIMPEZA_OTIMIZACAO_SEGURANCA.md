@@ -324,40 +324,40 @@ graph TD
     - Verificado silêncio tátil/auditivo rigoroso durante digitação em `MoneyInput`, `Input`, `Textarea` e rolagens de página (scroll passivo).
   - **Critério de Saída:** Experiência tátil fluida, sem disparos duplicados, energeticamente eficiente e 100% em conformidade com o Gateway Sensorial.
 
-- [ ] **Tarefa 4.6 — Ciclo de Vida Atômico do PWA, Invalidação Integral de Cache & Sincronização de Ícones**
+- [x] **Tarefa 4.6 — Ciclo de Vida Atômico do PWA, Invalidação Integral de Cache & Sincronização de Ícones**
   - **Contexto e Diagnóstico Técnico:**
-    - Ao publicar novas versões, usuários enfrentam falhas críticas de atualização: (1) apenas parte do conteúdo interno é atualizada devido a reloads prematuros (`window.location.reload()`) sem sincronização com a ativação do novo Service Worker; (2) o Service Worker e o cache de assets não são completamente invalidados devido à ausência de `cleanupOutdatedCaches: true` no Workbox e à regra permissiva de 30 dias em `static-images` (`StaleWhileRevalidate`); (3) o ícone do app instalado no Android (WebAPK) e na tela inicial não reflete o novo design por falta de versionamento/cache-busting nas URLs dos ícones do `manifest.webmanifest`.
+    - Ao publicar novas versões, usuários enfrentavam falhas de atualização por reloads prematuros sem sincronização com a ativação do novo Service Worker, ausência de cleanup de precache anterior no Workbox e URLs de ícones não versionadas no manifesto WebAPK.
   - **Ação 1: Invalidação e Limpeza Integral de Cache (Workbox & CacheStorage):**
-    - Habilitar `cleanupOutdatedCaches: true` na configuração do Workbox em `vite.config.ts`, garantindo a exclusão automática de precaches de builds anteriores no momento em que o novo SW assume o controle;
-    - Isolar ícones PWA e assets oficiais de marca (`/pwa/icons/*`, `/brand/*`) do runtimeCaching permissivo de 30 dias de imagens estáticas, aplicando estratégia cache-first estritamente versionada ou revalidação de rede imediata;
-    - Implementar rotina de purga explícita em `src/app/pwa.ts` para varrer e remover caches legados via `caches.delete()` durante a transição de versão.
+    - Habilitado `cleanupOutdatedCaches: true` na configuração do Workbox em `vite.config.ts`, garantindo exclusão automática de precaches de builds anteriores no momento em que o novo SW assume o controle;
+    - Isolados ícones PWA e assets de marca (`/pwa/icons/*`, `/brand/*`) na rota dedicada `pwa-brand-assets` com estratégia `NetworkFirst` (timeout de 3s e fallback offline), eliminando a retenção permissiva de 30 dias de imagens genéricas;
+    - Implementada rotina `purgeLegacyCaches()` em `src/app/pwa.ts` para varrer e remover caches legados de imagens e precaches obsoletos via `caches.delete()` durante a atualização.
   - **Ação 2: Fluxo de Atualização Atômico e Sincronizado (Zero Mismatch de Chunks):**
-    - Conectar o retorno da função `registerSW` (`updateSW(true)`) diretamente ao callback de atualização do app;
-    - Refatorar a ação "Atualizar" de `src/components/modules/pwa-update-toast.tsx` e `forceAppUpdate()` em `src/app/pwa.ts` para abandonar o reload cego:
-      1. Disparar `{ type: "SKIP_WAITING" }` para a registration ativa do Service Worker;
-      2. Escutar e aguardar o evento `controllerchange` em `navigator.serviceWorker` (com timeout defensivo de 4 segundos);
-      3. Exibir estado de transição visual limpo ("Atualizando para a nova versão...");
-      4. Executar `window.location.reload()` somente após a confirmação de que o novo Service Worker assumiu o controle total dos clientes (`clientsClaim`).
+    - Preservado o callback de retorno de `registerSW` (`updateSW(true)`) no módulo `src/app/pwa.ts`;
+    - Refatorada a ação "Atualizar" de `src/components/modules/pwa-update-toast.tsx` e `forceAppUpdate()` em `src/app/pwa.ts` para o fluxo atômico `applyPWAUpdate()`:
+      1. Dispara `{ type: "SKIP_WAITING" }` para a registration ativa do Service Worker;
+      2. Escuta e aguarda o evento `controllerchange` em `navigator.serviceWorker` (com timeout defensivo de 4 segundos via `waitForControllerChange(4000)`);
+      3. Exibe estado de transição visual limpo ("Atualizando para a nova versão...") desabilitando interações repetidas;
+      4. Executa `purgeLegacyCaches()` e `window.location.reload()` somente após confirmação do controle de clientes (`clientsClaim`).
   - **Ação 3: Sincronização de Ícones do Launcher e WebAPK Móvel:**
-    - Implementar versionamento determinístico com query params nas URLs dos ícones em `public/pwa/manifest.webmanifest` (ex.: `/pwa/icons/icon-192.png?v=...`, `maskable-512.png?v=...`) e tags correspondentes em `index.html` (`apple-touch-icon`, `favicon`);
-    - Garantir que alterações nos assets de marca modifiquem os bytes do `manifest.webmanifest` (atualizando versão/metadados), forçando o Chromium/Android a identificar a alteração de manifesto e disparar a atualização do WebAPK com os novos ícones na gaveta de apps/tela inicial;
-    - Sincronizar o script `scripts/generate-icons.mjs` com a regra de saída versionada.
+    - Implementado versionamento determinístico com query params (`?v=2`) nas URLs dos ícones em `public/pwa/manifest.webmanifest` e tags de favicon/apple-touch-icon/manifest em `index.html`;
+    - Sincronizado o script `scripts/generate-icons.mjs` para atualizar automaticamente as URLs versionadas no manifesto ao gerar novos ícones;
+    - Alteração dos bytes do `manifest.webmanifest` força o Chromium/Android a atualizar o WebAPK com os novos ícones na tela inicial e gaveta de aplicativos.
   - **Ação 4: Configuração de Cabeçalhos HTTP de Borda (`_headers` Cloudflare Pages):**
-    - Configurar/auditar `public/_headers` (Cloudflare Pages) com políticas estritas de cache:
-      - `sw.js` e scripts de registro: `Cache-Control: public, max-age=0, must-revalidate` (proibido cachear Service Worker);
-      - `manifest.webmanifest`: `Cache-Control: public, max-age=0, must-revalidate`;
-      - `index.html`: `Cache-Control: public, max-age=0, must-revalidate`;
-      - Chunks com hash `/assets/*-[hash].*`: `Cache-Control: public, max-age=31536000, immutable`.
+    - Calibrado `public/_headers` com políticas estritas de cache:
+      - `sw.js`, `registerSW.js`, `workbox-*.js`: `Cache-Control: public, max-age=0, must-revalidate` (proibido cachear Service Worker);
+      - `index.html` e `/`: `Cache-Control: public, max-age=0, must-revalidate`;
+      - `manifest.webmanifest` e `/pwa/manifest.webmanifest`: `Cache-Control: public, max-age=0, must-revalidate`;
+      - Chunks com hash `/assets/*`: `Cache-Control: public, max-age=31536000, immutable`.
   - **Ação 5: Testes Automatizados de Regressão PWA:**
-    - Expandir `src/tests/pwa.test.tsx` e `src/tests/pwa-audit.test.ts` para validar o fluxo de `controllerchange`, a presença de `cleanupOutdatedCaches` e a integridade dos parâmetros de versão nos ícones do manifesto.
+    - Expandidos `src/tests/pwa.test.tsx` e `src/tests/pwa-audit.test.ts` validando o fluxo de `controllerchange`, `waitForControllerChange` (evento e timeout), `purgeLegacyCaches`, `applyPWAUpdate`, transição no toast, `cleanupOutdatedCaches: true`, cabeçalhos Cloudflare e versão determinística dos ícones no manifesto.
   - **Critério de Saída:** Atualização do PWA 100% atômica e limpa, zero chunks órfãos ou telas mistas após clique em "Atualizar", limpeza completa do CacheStorage obsoleto, headers HTTP de borda calibrados e atualização confirmada do ícone na tela inicial e gaveta de apps móvel.
 
-- [ ] **PORTÃO DE QUALIDADE DA FASE 4:**
-  - `npm run typecheck` verde.
-  - `npm run lint` verde.
-  - `npm run test` verde (incluindo testes do ciclo PWA e auditoria de cache).
+- [x] **PORTÃO DE QUALIDADE DA FASE 4:**
+  - `npm run typecheck` verde (0 erros).
+  - `npm run lint` verde (0 erros, 0 avisos).
+  - `npm run test` verde (337/337 arquivos de teste, 2.593/2.593 testes aprovados).
   - `npm run build` verde (verificação dos tamanhos dos chunks compilados e Service Worker com cleanup).
-  - Commit semântico: `perf: compress branding assets, optimize vendor chunking, refine react rendering and enforce atomic pwa lifecycle`
+  - Commit semântico: `perf(pwa): atomic lifecycle, cache invalidation and icon sync (task 4.6)`
   - `git push`
 
 ---

@@ -1,6 +1,8 @@
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import {
+  applyPWAUpdate,
   consumePWAUpdate,
+  getIsPWAUpdating,
   getPWAUpdateAvailable,
   subscribePWAUpdate,
 } from "@/app/pwa";
@@ -9,25 +11,37 @@ import { Toast } from "@/components/ui/toast";
 /**
  * Toast global de atualização PWA (PWA_GUIDELINES §6): quando o Service Worker
  * autoUpdate ativa uma nova versão, avisa sem recarregar a página sozinho —
- * o usuário decide ("Atualizar" recarrega) ou fecha.
+ * o usuário decide ("Atualizar" executa atualização atômica sincronizada) ou fecha.
  *
- * `open` deriva direto da store externa: fechar consome o anúncio (flag → false)
- * e um novo anúncio reabre o toast — sem estado local que o bloqueie.
+ * Durante o processo, exibe estado visual limpo ("Atualizando para a nova versão...").
  */
 export function PWAUpdateToast() {
   const available = useSyncExternalStore(subscribePWAUpdate, getPWAUpdateAvailable, () => false);
+  const globalUpdating = useSyncExternalStore(subscribePWAUpdate, getIsPWAUpdating, () => false);
+  const [localUpdating, setLocalUpdating] = useState(false);
+
+  const updating = globalUpdating || localUpdating;
+
+  const handleUpdate = async () => {
+    setLocalUpdating(true);
+    await applyPWAUpdate();
+  };
 
   return (
     <Toast
-      open={available}
+      open={available || updating}
       onOpenChange={(next) => {
-        if (!next) consumePWAUpdate();
+        if (!next && !updating) consumePWAUpdate();
       }}
-      title="Nova versão disponível"
-      description="Atualize para usar a versão mais recente do app."
+      title={updating ? "Atualizando para a nova versão..." : "Nova versão disponível"}
+      description={
+        updating
+          ? "Sincronizando recursos e finalizando atualização..."
+          : "Atualize para usar a versão mais recente do app."
+      }
       variant="info"
       duration={Infinity}
-      action={{ label: "Atualizar", onClick: () => window.location.reload() }}
+      action={updating ? undefined : { label: "Atualizar", onClick: handleUpdate }}
     />
   );
 }
