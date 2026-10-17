@@ -631,5 +631,61 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
   - Badge circular de ícone canônico `flex size-7 shrink-0 items-center justify-center rounded-full`, com ícone Lucide centralizado em `size-4` (`Check`, `Info`, `TriangleAlert`, `XCircle`).
   - Botão de fechar (X) em contêiner circular `size-7 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors`.
 
+### 14.25 Diretrizes de Fluidez 60 FPS, Paginação Progressiva e Redução de Nós DOM
+- **Componentes e Telas de Alta Densidade:** `src/features/transactions/pages/transaction-list-page.tsx`, `src/features/investments/pages/resumo-tab.tsx`.
+- **Frame Budget de 16,6ms em Rolagem (Fling Scroll):**
+  - Todas as telas de alta densidade devem sustentar 60 FPS estáveis mesmo sob rápida rolagem contínua no mobile.
+  - É proibido instanciar centenas de nós DOM simultâneos no carregamento inicial de extratos ou históricos volumosos.
+- **Paginação Progressiva em Chunks de 50 Itens:**
+  - O extrato unificado de transações adota particionamento progressivo com limite inicial de 50 registros (`TRANSACTIONS_PAGE_SIZE = 50`).
+  - Quando o feed filtrado possuir mais de 50 registros, renderiza-se um botão de expansão acessível com Accessible Name e ícone direcionador (`ChevronDown`):
+    ```tsx
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => setVisibleCount((prev) => prev + TRANSACTIONS_PAGE_SIZE)}
+      className="cursor-pointer gap-1.5 text-xs font-medium text-foreground hover:bg-surface-hover"
+      aria-label={`Carregar mais lançamentos. ${filteredFeedItems.length - effectiveVisibleCount} lançamentos restantes`}
+    >
+      <span>Carregar mais lançamentos ({filteredFeedItems.length - effectiveVisibleCount} restantes)</span>
+      <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
+    </Button>
+    ```
+  - **Ajuste de Estado durante a Renderização (Zero Cascading Renders):** A redefinição de página ao alterar mês, abas de filtro ou busca textual ocorre diretamente na renderização (`if (currentFilterKey !== prevFilterKey)`), eliminando efeitos colaterais e renderizações em cascata (`react-hooks/set-state-in-effect`).
+  - **Deep Links Preservados:** Caso haja parâmetro de busca profunda (`highlightId`), a quantidade de itens visíveis expande automaticamente para abranger o item alvo (`effectiveVisibleCount`), garantindo scroll imediato e foco no elemento sem quebrar a paginação.
+- **Memoização Estrita de Seletores Computados:**
+  - Agrupamentos analíticos de carteira (`classSlices`, `sectorSlices`, `assetSlices`, `concentration`, `allocationDrift`) devem ser memorizados com `useMemo` e `useCallback`, impedindo que loops de agrupamento rodem desnecessariamente em atualizações cosméticas de componentes pais.
+
+### 14.26 Arquitetura de Estabilidade Visual e Zero CLS (Cumulative Layout Shift)
+- **Componentes:** `src/components/ui/skeleton.tsx` (`SkeletonChart`, `SkeletonKpi`, `SkeletonTable`, `SkeletonHeroCard`).
+- **Meta Canônica de CLS:** Cumulativo de deslocamento de layout menor que **0,05** em carregamentos assíncronos e transições de tela.
+- **Espelhamento Estrutural dos Skeletons:**
+  - `SkeletonChart`: Contêiner estruturado espelhando o card real montado (`min-h-[260px] sm:min-h-[290px]`, `border-border/80 bg-surface shadow-xs`), com esqueleto de cabeçalho (ícone + título + badge), corpo de gráfico proporcional (`h-40 sm:h-48`) e rodapé descritivo.
+  - `SkeletonKpi`: Altura mínima rígida (`min-h-[92px] sm:min-h-[104px]`) e espaçamento idêntico ao `KpiCard` ativo.
+  - `SkeletonTable`: Cabeçalho delimitado e linhas compostas por avatar/ícone circular, barras de texto duplo e valor numérico alinhado à direita.
+- **Reserva de Altura Mínima nos Contêineres de Gráficos:**
+  - Contêineres de gráficos do Recharts e SVG (`DailyFlowChart`, `CategoryDonut`) devem declarar `min-h-[240px]` a `min-h-[300px]` no wrapper, impedindo que a chegada de dados assíncronos empurre o conteúdo abaixo na página.
+
+### 14.27 Gateway Sensorial, Microinterações Táteis (Haptics) e Hook useSensory
+- **Componentes e Serviços:** `src/services/sensory.ts`, `src/hooks/use-sensory.ts`, `src/components/ui/button.tsx`, `src/components/ui/tabs.tsx`.
+- **Governança Sensorial Estrita (Regra 17 do AGENTS.md):**
+  - Todo feedback tátil (vibração) e sonoro deve trafegar exclusivamente pelo **Gateway Central Sensorial** (`triggerSensory`), que respeita as preferências globais do usuário (`hapticEnabled`, `soundEnabled`, `disabledSensoryIntents`) e o nível de movimento (`motionLevel`).
+  - **Zero Duplos Disparos (*Double-Haptics*):** Como o primitivo `<Button />` já despacha internamente `triggerSensory(sensoryIntent ?? (variant === 'destructive' ? 'destructive' : 'action'))`, é expressamente proibido disparar vibração tátil dentro de handlers `onClick` de botões.
+  - **Proibições:** É estritamente proibido emitir feedback tátil/sonoro durante a digitação em inputs (`MoneyInput`, `Input`, `Textarea`), em rolagem passiva ou no hover de desktop.
+- **Hook `useSensory`:**
+  - Fornece métodos ergonômicos e referencialmente estáveis para componentes interativos que não utilizam `<Button />` diretamente (tais como abas customizadas, seletores de calendário, carrosséis e gestos de swipe):
+    ```typescript
+    const sensory = useSensory();
+    // sensory.selection(), sensory.action(), sensory.toggle(), sensory.success(), sensory.warning(), sensory.destructive(), sensory.error()
+    ```
+- **Matriz de Intenções Semânticas Sensoriais:**
+  - `selection`: Alternância de abas (`Tabs`), troca de mês (`MonthPicker`), seleção de fatia de gráfico (`CategoryDonut`). Haptic: `light` (10ms) | Som: `click`.
+  - `action`: Clique em FAB contextual, abertura de modal ou disparo de comando. Haptic: `light` (10ms) | Som: `click`.
+  - `toggle`: Alternância de switches, checkboxes ou modos de exibição. Haptic: `light` (10ms) | Som: `pop`.
+  - `success`: Confirmação de lançamento, conciliação bancária ou salvamento com êxito. Haptic: `success` (15ms-50ms-15ms) | Som: `success`.
+  - `destructive`: Exclusão de transação, cancelamento de contrato ou remoção de ativo. Haptic: `destructive` (40ms-60ms-40ms) | Som: `delete`.
+  - `warning` / `error`: Alertas de teto orçamentário estourado ou falha de validação. Haptic: `warning` / `error` | Som: `warning` / `error`.
+
+
 
 

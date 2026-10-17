@@ -16,21 +16,21 @@ describe("Skeleton por contexto (F12 — polimento)", () => {
     expect(container.querySelectorAll("[aria-hidden='true'] .animate-shimmer")).toHaveLength(3 * 4);
   });
 
-  it("SkeletonKpi renderiza no formato de card KPI", () => {
+  it("SkeletonKpi renderiza no formato canônico de card KPI com Zero CLS", () => {
     const { container } = render(<SkeletonKpi />);
     const card = container.firstChild as HTMLElement;
-    expect(card).toHaveClass("rounded-xl", "border-border", "bg-surface");
+    expect(card).toHaveClass("rounded-2xl", "bg-surface", "shadow-xs");
     expect(card.querySelectorAll(".animate-shimmer")).toHaveLength(3);
   });
 
-  it("SkeletonChart e SkeletonTable renderizam nos formatos esperados", () => {
-    const { container } = render(
-      <>
-        <SkeletonChart />
-        <SkeletonTable rows={4} />
-      </>,
-    );
-    // Chart: 1 bloco alto; Table: 1 cabeçalho + 4 linhas.
-    expect(container.querySelectorAll(".animate-shimmer")).toHaveLength(1 + 1 + 4);
+  it("SkeletonChart e SkeletonTable renderizam nos formatos estruturados de Zero CLS", () => {
+    const { container: chartContainer } = render(<SkeletonChart />);
+    expect(chartContainer.querySelector("[aria-hidden='true']")).toHaveClass("rounded-2xl", "bg-surface");
+    expect(chartContainer.querySelectorAll(".animate-shimmer")).toHaveLength(6);
+
+    const { container: tableContainer } = render(<SkeletonTable rows={4} />);
+    expect(tableContainer.querySelector("[aria-hidden='true']")).toHaveClass("rounded-2xl", "bg-surface");
+    // Table: 2 blocos no cabeçalho + 4 linhas (4 subelementos cada) = 18 blocos
+    expect(tableContainer.querySelectorAll(".animate-shimmer")).toHaveLength(2 + 4 * 4);
   });
 });

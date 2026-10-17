@@ -267,10 +267,10 @@ flowchart TD
 
 ### FASE 6 — Performance, Fluidez 60 FPS e UX Profissional
 
-- [ ] **6.1 Planejamento Técnico de Performance:**
+- [x] **6.1 Planejamento Técnico de Performance:**
   - Mapear gargalos de renderização em telas densas (Extrato com muitas transações, Hub de Investimentos com dezenas de ativos e cotações, Relatórios com gráficos dinâmicos).
   - Estabelecer metas: 60 FPS em scroll, zero CLS (Cumulative Layout Shift) e tempo de resposta tátil < 100ms.
-- [ ] **6.2 Implementação de Otimizações:**
+- [x] **6.2 Implementação de Otimizações:**
   - **Virtualização e Paginação:**
     - Otimizar renderização do extrato e de tabelas longas para impedir acúmulo excessivo de nós no DOM.
   - **Estabilidade Visual (Zero CLS):**
@@ -279,15 +279,15 @@ flowchart TD
     - Padronizar vibração tátil nativa (`triggerSensory('selection')`, `'success'`, `'destructive'`) em ações chave (confirmar transação, alternar abas, acionar FAB).
   - **Optimistic UI com Rollback Seguro:**
     - Garantir que mutações de criação/edição rápida apliquem atualização otimista instantânea na UI, desfazendo suavemente caso a rede falhe com notificação de toast explicativa.
-- [ ] **6.3 Verificação de Erros:**
+- [x] **6.3 Verificação de Erros:**
   - Executar `npm run typecheck` e `npm run lint`.
-- [ ] **6.4 Correção de Erros:**
+- [x] **6.4 Correção de Erros:**
   - Ajustar eventuais imperfeições de layout ou animação.
-- [ ] **6.5 Testes Automatizados:**
+- [x] **6.5 Testes Automatizados:**
   - Rodar suíte de testes de componentes de UI e hooks de interação (`use-sensory`, `use-mutation-guard`).
-- [ ] **6.6 Atualização da Documentação:**
+- [x] **6.6 Atualização da Documentação:**
   - Atualizar `docs/DESIGN_SYSTEM.md` com os padrões de microinterações e diretrizes de fluidez.
-- [ ] **Portão de Verificação 6 (Quality Gate 6):**
+- [x] **Portão de Verificação 6 (Quality Gate 6):**
   - Commit semântico: `perf(ui): optimize render performance, streamline 60fps scrolling and refine haptic feedback` e `git push`.
 
 ---

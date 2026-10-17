@@ -1,6 +1,6 @@
 import { useNavigate, useSearchParams } from "react-router";
 import { lazy, Suspense, useCallback, useMemo, useState } from "react";
-import { ArrowLeftRight, Calendar, Download, FileSpreadsheet, Plus, Search, X } from "lucide-react";
+import { ArrowLeftRight, Calendar, ChevronDown, Download, FileSpreadsheet, Plus, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,6 +91,8 @@ function IncomeRow({
   );
 }
 
+const TRANSACTIONS_PAGE_SIZE = 50;
+
 export function TransactionListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
@@ -142,6 +144,15 @@ export function TransactionListPage() {
 
   const [filter, setFilter] = useState<FeedFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(TRANSACTIONS_PAGE_SIZE);
+  const [prevFilterKey, setPrevFilterKey] = useState(() => `${month}-${filter}-${searchQuery}`);
+
+  // Redefine a paginação durante a renderização se os filtros mudarem (React: adjusting state during render)
+  const currentFilterKey = `${month}-${filter}-${searchQuery}`;
+  if (currentFilterKey !== prevFilterKey) {
+    setPrevFilterKey(currentFilterKey);
+    setVisibleCount(TRANSACTIONS_PAGE_SIZE);
+  }
 
   const feedItems = useMemo(
     () => buildUnifiedFeedItems(expensesQuery.data ?? [], incomesQuery.data ?? [], filter),
@@ -158,7 +169,26 @@ export function TransactionListPage() {
     });
   }, [feedItems, searchQuery, categoryById]);
 
-  const feedGroups = useMemo(() => groupFeedByDay(filteredFeedItems), [filteredFeedItems]);
+  // Se houver alvo de highlight via deep-link além da primeira página, expande a visualização efetiva
+  const highlightIndex = useMemo(() => {
+    if (!highlightId) return -1;
+    return filteredFeedItems.findIndex((it) => it.id === highlightId);
+  }, [highlightId, filteredFeedItems]);
+
+  const effectiveVisibleCount = useMemo(() => {
+    if (highlightIndex >= 0 && highlightIndex >= visibleCount) {
+      return Math.ceil((highlightIndex + 1) / TRANSACTIONS_PAGE_SIZE) * TRANSACTIONS_PAGE_SIZE;
+    }
+    return visibleCount;
+  }, [highlightIndex, visibleCount]);
+
+  const visibleFeedItems = useMemo(
+    () => filteredFeedItems.slice(0, effectiveVisibleCount),
+    [filteredFeedItems, effectiveVisibleCount],
+  );
+
+  const feedGroups = useMemo(() => groupFeedByDay(visibleFeedItems), [visibleFeedItems]);
+  const hasMore = filteredFeedItems.length > effectiveVisibleCount;
   const isSearching = searchQuery.trim().length > 0;
 
   // Frequência por template (Fase 32) — subtítulo "Mensal", "Semanal", etc.
@@ -479,6 +509,24 @@ export function TransactionListPage() {
               </div>
             </section>
           ))}
+
+          {hasMore ? (
+            <div className="flex flex-col items-center justify-center pt-2 pb-4 gap-2 border-t border-border/40 mt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setVisibleCount((prev) => prev + TRANSACTIONS_PAGE_SIZE)}
+                className="cursor-pointer gap-1.5 text-xs font-medium text-foreground hover:bg-surface-hover"
+                aria-label={`Carregar mais lançamentos. ${filteredFeedItems.length - effectiveVisibleCount} lançamentos restantes`}
+              >
+                <span>Carregar mais lançamentos ({filteredFeedItems.length - effectiveVisibleCount} restantes)</span>
+                <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              </Button>
+              <span className="text-[11px] text-muted-foreground font-mono">
+                Exibindo {effectiveVisibleCount} de {filteredFeedItems.length} lançamentos
+              </span>
+            </div>
+          ) : null}
         </div>
       )}
 

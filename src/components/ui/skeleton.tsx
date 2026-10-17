@@ -38,29 +38,76 @@ export function SkeletonList({ rows = 3, className }: { rows?: number; className
   );
 }
 
-/** Esqueleto de card de KPI (rótulo + valor) — formato dos KPIs da Visão Geral. */
+/** Esqueleto de card de KPI (rótulo + valor) — formato dos KPIs da Visão Geral (Zero CLS). */
 export function SkeletonKpi({ className }: { className?: string }) {
   return (
-    <div className={cn("flex flex-col gap-3 rounded-xl border border-border bg-surface p-4", className)} aria-hidden="true">
-      <Skeleton className="h-3 w-1/2" />
-      <Skeleton className="h-6 w-3/4" />
+    <div
+      className={cn(
+        "flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-4 lg:p-5 shadow-xs h-full min-h-[92px] sm:min-h-[104px]",
+        className,
+      )}
+      aria-hidden="true"
+    >
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-3 w-1/2" />
+        <Skeleton className="h-6 w-3/4" />
+      </div>
       <Skeleton className="h-3 w-2/5" />
     </div>
   );
 }
 
-/** Esqueleto de gráfico — bloco alto no formato dos charts (fluxo, donut, relatórios). */
+/** Esqueleto de gráfico — card estruturado no formato real dos charts (fluxo, donut, relatórios) para Zero CLS. */
 export function SkeletonChart({ className }: { className?: string }) {
-  return <Skeleton className={cn("h-48 w-full rounded-xl", className)} />;
+  return (
+    <div
+      className={cn(
+        "flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-5 shadow-xs min-h-[260px] sm:min-h-[290px] w-full",
+        className,
+      )}
+      aria-hidden="true"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Skeleton className="size-4 rounded" />
+          <Skeleton className="h-4 w-32 rounded" />
+        </div>
+        <Skeleton className="h-4 w-16 rounded" />
+      </div>
+      <Skeleton className="h-40 sm:h-48 w-full rounded-xl" />
+      <div className="flex items-center justify-between gap-2 pt-1">
+        <Skeleton className="h-3 w-20 rounded" />
+        <Skeleton className="h-3 w-24 rounded" />
+      </div>
+    </div>
+  );
 }
 
-/** Esqueleto de tabela (linhas de cabeçalho + corpo) — formato das tabelas de dados. */
+/** Esqueleto de tabela (linhas de cabeçalho + corpo) — formato das tabelas de dados (Zero CLS). */
 export function SkeletonTable({ rows = 5, className }: { rows?: number; className?: string }) {
   return (
-    <div className={cn("flex flex-col gap-2", className)} aria-hidden="true">
-      <Skeleton className="h-4 w-full" />
+    <div
+      className={cn(
+        "flex flex-col gap-2.5 rounded-2xl border border-border/80 bg-surface p-4 shadow-xs",
+        className,
+      )}
+      aria-hidden="true"
+    >
+      <div className="flex items-center justify-between pb-2 border-b border-border/40">
+        <Skeleton className="h-4 w-32 rounded" />
+        <Skeleton className="h-4 w-16 rounded" />
+      </div>
       {Array.from({ length: rows }).map((_, index) => (
-        <Skeleton key={index} className="h-10 w-full rounded-lg" />
+        <div key={index} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0">
+          <div className="flex items-center gap-2.5">
+            <Skeleton className="size-8 rounded-lg shrink-0" />
+            <div className="flex flex-col gap-1.5">
+              <Skeleton className="h-3.5 w-24 sm:w-36" />
+              <Skeleton className="h-3 w-16 sm:w-24" />
+            </div>
+          </div>
+          <Skeleton className="h-4 w-20" />
+        </div>
       ))}
     </div>
   );

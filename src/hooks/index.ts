@@ -22,3 +22,4 @@ export { useMutationGuard, type UseMutationGuardOptions, type UseMutationGuardRe
 export { useDynamicFavicon } from "./use-dynamic-favicon";
 export { useDynamicAppIcon } from "./use-dynamic-app-icon";
 export { useIsPro } from "./use-is-pro";
+export { useSensory, type SensoryDispatcher } from "./use-sensory";

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import {
   Activity,
@@ -90,6 +90,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const [wizardInitialMode, setWizardInitialMode] = useState<WizardMode>("select");
   const [snapshotsDialogOpen, setSnapshotsDialogOpen] = useState(false);
   const [executiveReportOpen, setExecutiveReportOpen] = useState(false);
+  const [cashDialogOpen, setCashDialogOpen] = useState(false);
   const [quickTxAsset, setQuickTxAsset] = useState<PortfolioAsset | null>(null);
   const [quickTxType, setQuickTxType] = useState<PortfolioTransactionType>("buy");
 
@@ -113,13 +114,13 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
     }
   };
 
-  const handleOpenCash = () => {
+  const handleOpenCash = useCallback(() => {
     if (onOpenCash) {
       onOpenCash();
     } else {
       setCashDialogOpen(true);
     }
-  };
+  }, [onOpenCash]);
 
   const [searchParams] = useSearchParams();
   const { highlightId } = useHighlightTarget("q");
@@ -129,7 +130,6 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const [dismissedHighlight, setDismissedHighlight] = useState(false);
   const [assetEditing, setAssetEditing] = useState<PortfolioAsset | null>(null);
 
-  const [cashDialogOpen, setCashDialogOpen] = useState(false);
   const [explainModalOpen, setExplainModalOpen] = useState(false);
   const [initialCostDialogOpen, setInitialCostDialogOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
@@ -150,7 +150,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
     pricingMode?: string;
   } | null>(null);
   const rows = position.rows;
-  const investmentRows = rows.filter((r) => !r.isCash);
+  const investmentRows = useMemo(() => rows.filter((r) => !r.isCash), [rows]);
   const cashAsset = (assetsQuery.data ?? []).find(
     (a) => isCashAssetClass(a.asset_class) || a.ticker.toUpperCase() === "CAIXA",
   );
@@ -194,8 +194,8 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const assetById = (assetId: string): PortfolioAsset | undefined =>
     (assetsQuery.data ?? []).find((a) => a.id === assetId);
 
-  const openDetail = (assetId: string) => {
-    const asset = assetById(assetId);
+  const openDetail = useCallback((assetId: string) => {
+    const asset = (assetsQuery.data ?? []).find((a) => a.id === assetId);
     if (asset) {
       if (isCashAssetClass(asset.asset_class) || asset.ticker.toUpperCase() === "CAIXA") {
         handleOpenCash();
@@ -204,7 +204,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         setDismissedHighlight(false);
       }
     }
-  };
+  }, [assetsQuery.data, handleOpenCash]);
 
   const openEdit = (assetId: string) => {
     const asset = assetById(assetId);
@@ -224,60 +224,71 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
 
   const month = currentMonth();
 
-  // Agrupamento por classe de ativos
-  const classMap = new Map<string, number>();
-  for (const row of rows) {
-    const label = row.assetClass?.trim() || (row.isCash ? "Caixa" : "Sem classe");
-    const cents = Math.round(row.valueBRL * 100);
-    classMap.set(label, (classMap.get(label) ?? 0) + cents);
-  }
-  const classSlices = Array.from(classMap.entries())
-    .map(([label, valueCents]) => ({
-      key: label,
-      label,
-      valueCents,
-      subtitle: `${rows.filter((r) => (r.assetClass?.trim() || (r.isCash ? "Caixa" : "Sem classe")) === label).length} ativo(s)`,
-      onClick: () => setBreakdownGroup({ type: "class", name: label }),
-    }))
-    .filter((s) => s.valueCents > 0)
-    .sort((a, b) => b.valueCents - a.valueCents);
+  // Agrupamento por classe de ativos (memorizado para 60 FPS)
+  const classSlices = useMemo(() => {
+    const classMap = new Map<string, number>();
+    for (const row of rows) {
+      const label = row.assetClass?.trim() || (row.isCash ? "Caixa" : "Sem classe");
+      const cents = Math.round(row.valueBRL * 100);
+      classMap.set(label, (classMap.get(label) ?? 0) + cents);
+    }
+    return Array.from(classMap.entries())
+      .map(([label, valueCents]) => ({
+        key: label,
+        label,
+        valueCents,
+        subtitle: `${rows.filter((r) => (r.assetClass?.trim() || (r.isCash ? "Caixa" : "Sem classe")) === label).length} ativo(s)`,
+        onClick: () => setBreakdownGroup({ type: "class", name: label }),
+      }))
+      .filter((s) => s.valueCents > 0)
+      .sort((a, b) => b.valueCents - a.valueCents);
+  }, [rows, setBreakdownGroup]);
 
-  // Agrupamento por setor / segmento
-  const sectorMap = new Map<string, number>();
-  for (const row of rows) {
-    const label = row.sector?.trim() || inferSectorFromTicker(row.ticker, row.assetClass);
-    const cents = Math.round(row.valueBRL * 100);
-    sectorMap.set(label, (sectorMap.get(label) ?? 0) + cents);
-  }
-  const sectorSlices = Array.from(sectorMap.entries())
-    .map(([label, valueCents]) => ({
-      key: label,
-      label,
-      valueCents,
-      subtitle: `${rows.filter((r) => (r.sector?.trim() || inferSectorFromTicker(r.ticker, r.assetClass)) === label).length} ativo(s)`,
-      onClick: () => setBreakdownGroup({ type: "sector", name: label }),
-    }))
-    .filter((s) => s.valueCents > 0)
-    .sort((a, b) => b.valueCents - a.valueCents);
+  // Agrupamento por setor / segmento (memorizado para 60 FPS)
+  const sectorSlices = useMemo(() => {
+    const sectorMap = new Map<string, number>();
+    for (const row of rows) {
+      const label = row.sector?.trim() || inferSectorFromTicker(row.ticker, row.assetClass);
+      const cents = Math.round(row.valueBRL * 100);
+      sectorMap.set(label, (sectorMap.get(label) ?? 0) + cents);
+    }
+    return Array.from(sectorMap.entries())
+      .map(([label, valueCents]) => ({
+        key: label,
+        label,
+        valueCents,
+        subtitle: `${rows.filter((r) => (r.sector?.trim() || inferSectorFromTicker(r.ticker, r.assetClass)) === label).length} ativo(s)`,
+        onClick: () => setBreakdownGroup({ type: "sector", name: label }),
+      }))
+      .filter((s) => s.valueCents > 0)
+      .sort((a, b) => b.valueCents - a.valueCents);
+  }, [rows, setBreakdownGroup]);
 
-  // Fatias individuais de cada ativo com clique interativo para ver detalhes
-  const assetSlices = rows
-    .filter((row) => row.valueBRL > 0)
-    .sort((a, b) => b.valueBRL - a.valueBRL)
-    .map((row) => ({
-      key: row.assetId,
-      label: row.ticker,
-      valueCents: Math.round(row.valueBRL * 100),
-      subtitle: row.sector ?? row.assetClass ?? (row.isCash ? "Caixa" : "Sem classe"),
-      onClick: () => openDetail(row.assetId),
-    }));
+  // Fatias individuais de cada ativo com clique interativo para ver detalhes (memorizado para 60 FPS)
+  const assetSlices = useMemo(
+    () =>
+      rows
+        .filter((row) => row.valueBRL > 0)
+        .sort((a, b) => b.valueBRL - a.valueBRL)
+        .map((row) => ({
+          key: row.assetId,
+          label: row.ticker,
+          valueCents: Math.round(row.valueBRL * 100),
+          subtitle: row.sector ?? row.assetClass ?? (row.isCash ? "Caixa" : "Sem classe"),
+          onClick: () => openDetail(row.assetId),
+        })),
+    [rows, openDetail],
+  );
 
-  const activeSlices =
-    allocationMode === "sector"
-      ? sectorSlices
-      : allocationMode === "asset"
-        ? assetSlices
-        : classSlices;
+  const activeSlices = useMemo(
+    () =>
+      allocationMode === "sector"
+        ? sectorSlices
+        : allocationMode === "asset"
+          ? assetSlices
+          : classSlices,
+    [allocationMode, sectorSlices, assetSlices, classSlices],
+  );
 
   const series = position.monthlySeries ?? [];
   const allSeries = position.allMonthlySeries ?? series;
@@ -289,33 +300,46 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const unrealizedPnlBRL = position.unrealizedPnlBRL ?? 0;
   const capitalGainPct = position.unrealizedPct ?? null;
 
-  // Termômetro de Concentração
-  const concentration = calculatePortfolioConcentration(
-    investmentRows.map((r) => ({
-      assetId: r.assetId,
-      ticker: r.ticker,
-      valueBRL: r.valueBRL,
-    })),
+  // Termômetro de Concentração (memorizado para 60 FPS)
+  const concentration = useMemo(
+    () =>
+      calculatePortfolioConcentration(
+        investmentRows.map((r) => ({
+          assetId: r.assetId,
+          ticker: r.ticker,
+          valueBRL: r.valueBRL,
+        })),
+      ),
+    [investmentRows],
   );
 
   const targetsQuery = useAllocationTargets();
-  const targets = targetsQuery.data ?? [];
+  const rawTargets = targetsQuery.data;
+  const targets = useMemo(() => rawTargets ?? [], [rawTargets]);
 
-  const driftItems = targets.map((t) => {
-    const row = position.rows.find((r) => r.assetId === t.asset_id);
-    const valCents = Math.round((row?.valueBRL ?? 0) * 100);
-    return {
-      id: t.id,
-      name: row?.ticker ?? t.asset_id,
-      currentValueCents: valCents,
-      targetPercent: Number(t.target_percentage),
-    };
-  });
+  const driftItems = useMemo(
+    () =>
+      targets.map((t) => {
+        const row = position.rows.find((r) => r.assetId === t.asset_id);
+        const valCents = Math.round((row?.valueBRL ?? 0) * 100);
+        return {
+          id: t.id,
+          name: row?.ticker ?? t.asset_id,
+          currentValueCents: valCents,
+          targetPercent: Number(t.target_percentage),
+        };
+      }),
+    [targets, position.rows],
+  );
 
-  const allocationDrift = calculateAllocationDrift({
-    totalPortfolioCents: Math.round(position.totalBRL * 100),
-    items: driftItems,
-  });
+  const allocationDrift = useMemo(
+    () =>
+      calculateAllocationDrift({
+        totalPortfolioCents: Math.round(position.totalBRL * 100),
+        items: driftItems,
+      }),
+    [position.totalBRL, driftItems],
+  );
 
   // ---------------------------------------------------------------------------
   // Métricas da TIR / Fluxo do Bolso (XIRR)
