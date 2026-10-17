@@ -136,35 +136,79 @@ describe("F6.2 — audit_events imutável (D2)", () => {
   });
 });
 
+interface ActiveFunctionDef {
+  cleanName: string;
+  file: string;
+  isSecDef: boolean;
+  searchPath: string | null;
+  body: string;
+}
+
+function getActiveFunctions(): Map<string, ActiveFunctionDef> {
+  const files = readdirSync(resolve(root, "supabase/migrations")).filter((f) => f.endsWith(".sql")).sort();
+  const activeFunctions = new Map<string, ActiveFunctionDef>();
+
+  for (const file of files) {
+    const content = readFileSync(resolve(root, "supabase/migrations", file), "utf8");
+    const parts = content.split(/create\s+(?:or\s+replace\s+)?function\s+/i);
+    for (let i = 1; i < parts.length; i++) {
+      const chunk = parts[i];
+      if (!chunk) continue;
+      const match = chunk.match(/^([a-zA-Z0-9_.]+)\s*\(([^)]*)\)/);
+      if (!match) continue;
+      const rawName = match[1]?.toLowerCase() ?? "";
+      const cleanName = rawName.startsWith("public.") ? rawName.slice(7) : rawName;
+      const endMatch = chunk.match(/\$\$\s*;\s*/);
+      const body =
+        endMatch && typeof endMatch.index === "number"
+          ? chunk.slice(0, endMatch.index + endMatch[0].length)
+          : chunk;
+      const isSecDef = /security\s+definer/i.test(body);
+      const spMatch = body.match(/set\s+search_path\s*=\s*([^;\n]+)/i);
+      const searchPath = spMatch ? (spMatch[1]?.trim() ?? null) : null;
+      activeFunctions.set(cleanName, {
+        cleanName,
+        file,
+        isSecDef,
+        searchPath,
+        body,
+      });
+    }
+  }
+
+  return activeFunctions;
+}
+
 describe("F6.2 — RPCs transacionais endurecidos (D1)", () => {
-  it("toda function com security definer também fixa o search_path", () => {
-    const functions = ALL_SQL.split(/create (?:or replace )?function/).slice(1);
-    expect(functions.length).toBeGreaterThan(0);
-    for (const fn of functions) {
-      if (/security definer/i.test(fn)) {
-        expect(fn).toMatch(
-          /set search_path\s*=\s*public,\s*pg_temp/i,
-          "RPC security definer sem search_path fixo (risco de hijack)",
-        );
-      }
+  it("100% das functions ativas com security definer fixam search_path = public, pg_temp", () => {
+    const activeFunctions = getActiveFunctions();
+    expect(activeFunctions.size).toBeGreaterThanOrEqual(60);
+
+    const secDefFunctions = Array.from(activeFunctions.values()).filter((fn) => fn.isSecDef);
+    expect(secDefFunctions.length).toBeGreaterThanOrEqual(60);
+
+    for (const fn of secDefFunctions) {
+      expect(fn.searchPath).not.toBeNull();
+      expect(
+        /public\s*,\s*pg_temp/i.test(fn.searchPath ?? ""),
+        `RPC ${fn.cleanName} em ${fn.file} é SECURITY DEFINER mas não possui "set search_path = public, pg_temp" (atual: "${fn.searchPath}")`,
+      ).toBe(true);
     }
   });
 
-  it("toda escrita composta valida o dono (auth.uid()) no corpo — exceto triggers", () => {
-    // Exceção: triggers (returns trigger) não comparam auth.uid() — o dono é
-    // definido pelo evento que os dispara (handle_new_user no signup cria a
-    // linha do próprio usuário; check_allocation_total valida a soma do lote).
-    const functions = ALL_SQL.split(/create (?:or replace )?function/).slice(1);
-    for (const fn of functions) {
-      const body = fn.split(/\$\$;/)[0] ?? fn;
-      if (/security definer/i.test(body) && /\b(insert\s+into|update\s+|delete\s+from)\b/i.test(body)) {
-        if (/returns trigger/i.test(body)) continue;
-        if (/is_admin\(\)|is_superadmin\(\)/i.test(body)) continue;
-        expect(body).toMatch(/auth\.uid\(\)/i, "escrita sem ownership (auth.uid()) no RPC");
+  it("toda escrita composta ativa valida o dono (auth.uid()) no corpo — exceto triggers", () => {
+    const activeFunctions = getActiveFunctions();
+    for (const fn of activeFunctions.values()) {
+      if (fn.isSecDef && /\b(insert\s+into|update\s+|delete\s+from)\b/i.test(fn.body)) {
+        if (/returns\s+trigger/i.test(fn.body)) continue;
+        if (/is_admin\(\)|is_superadmin\(\)/i.test(fn.body)) continue;
+        expect(
+          /auth\.uid\(\)/i.test(fn.body),
+          `escrita sem ownership (auth.uid()) no RPC ${fn.cleanName} em ${fn.file}`,
+        ).toBe(true);
       }
     }
   });
-
 });
 
 function getTrackedFiles(): string[] {
@@ -289,5 +333,38 @@ describe("F51 — Hardening de Segurança (Migrations 0037 e 0038)", () => {
     expect(migration38).toMatch(/create or replace function public\.set_budget_limit[\s\S]+is_current_user_active\(\)/i);
   });
 });
+
+describe("Fase 5.2 — Blindagem de RPCs & Sanitização de Search Path (Migration 0048)", () => {
+  const migration48 = readFileSync(
+    resolve(root, "supabase/migrations/20260101000048_rpc_search_path_and_security_hardening.sql"),
+    "utf8",
+  );
+
+  it("upsert_marco_zero fixa search_path = public, pg_temp e valida permissões de investimento", () => {
+    expect(migration48).toMatch(/create or replace function public\.upsert_marco_zero/i);
+    expect(migration48).toMatch(/upsert_marco_zero[\s\S]*?security definer[\s\S]*?set search_path = public, pg_temp/i);
+    expect(migration48).toMatch(/upsert_marco_zero[\s\S]*?auth\.uid\(\)[\s\S]*?v_user_id is null/i);
+    expect(migration48).toMatch(/upsert_marco_zero[\s\S]*?is_current_user_active\(\)/i);
+    expect(migration48).toMatch(/upsert_marco_zero[\s\S]*?can_current_user_write_module\('investments'\)/i);
+    expect(migration48).toMatch(/upsert_marco_zero[\s\S]*?p_amount <= 0/i);
+  });
+
+  it("create_historical_contribution fixa search_path = public, pg_temp e valida permissões de investimento", () => {
+    expect(migration48).toMatch(/create or replace function public\.create_historical_contribution/i);
+    expect(migration48).toMatch(/create_historical_contribution[\s\S]*?security definer[\s\S]*?set search_path = public, pg_temp/i);
+    expect(migration48).toMatch(/create_historical_contribution[\s\S]*?auth\.uid\(\)[\s\S]*?v_user_id is null/i);
+    expect(migration48).toMatch(/create_historical_contribution[\s\S]*?is_current_user_active\(\)/i);
+    expect(migration48).toMatch(/create_historical_contribution[\s\S]*?can_current_user_write_module\('investments'\)/i);
+    expect(migration48).toMatch(/create_historical_contribution[\s\S]*?p_amount <= 0/i);
+  });
+
+  it("ambas as RPCs revogam execução pública e concedem apenas a authenticated", () => {
+    expect(migration48).toMatch(/revoke all on function public\.upsert_marco_zero\(date, numeric, text\) from public;/i);
+    expect(migration48).toMatch(/grant execute on function public\.upsert_marco_zero\(date, numeric, text\) to authenticated;/i);
+    expect(migration48).toMatch(/revoke all on function public\.create_historical_contribution\(date, numeric, text\) from public;/i);
+    expect(migration48).toMatch(/grant execute on function public\.create_historical_contribution\(date, numeric, text\) to authenticated;/i);
+  });
+});
+
 
 

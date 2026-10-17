@@ -374,10 +374,16 @@ graph TD
     - Expandida a suíte automatizada `src/tests/security-audit.test.ts` cobrindo a totalidade das 34 tabelas e a ausência de policies residuais.
   - **Critério de Saída:** Isolamento horizontal absoluto entre contas garantido no nível do banco de dados.
 
-- [ ] **Tarefa 5.2 — Blindagem de Funções RPC e Sanitização de Search Path**
-  - **Ação:** Inspecionar todas as funções SQL `SECURITY DEFINER`:
-    - Assegurar a presença obrigatória de `SET search_path = public, pg_temp` em todas as RPCs transacionais para blindar contra vulnerabilidades de *search path hijacking*;
-    - Verificar a validação de sessão e `auth.uid()` no corpo de cada função.
+- [x] **Tarefa 5.2 — Blindagem de Funções RPC e Sanitização de Search Path**
+  - **Ação:** Inspecionadas todas as 66 funções SQL ativas em `supabase/migrations/`:
+    - Confirmado que 64 funções são `SECURITY DEFINER` e 2 são `SECURITY INVOKER` (helpers e triggers sem elevação de privilégios);
+    - Identificado que 62 das 64 funções já continham `SET search_path = public, pg_temp`, mas duas funções adicionadas nas migrações 0043 e 0044 (`public.upsert_marco_zero` e `public.create_historical_contribution`) mantinham `SET search_path = public` sem `pg_temp`, além de carecerem de checagens do status de usuário ativo e de autorização modular SaaS;
+    - Criada a migração `supabase/migrations/20260101000048_rpc_search_path_and_security_hardening.sql`:
+      - Redefinida `public.upsert_marco_zero` fixando `SET search_path = public, pg_temp`, validando autenticação de sessão (`auth.uid()`), status de usuário ativo (`public.is_current_user_active()`), permissão de escrita no módulo (`public.can_current_user_write_module('investments')`) e valor estritamente positivo (`p_amount > 0`);
+      - Redefinida `public.create_historical_contribution` fixando `SET search_path = public, pg_temp`, validando sessão, status de conta ativa, permissão de escrita em investimentos e valor estritamente positivo;
+      - Revogados acessos de `PUBLIC` e concedida permissão estrita a `authenticated` em ambas as funções;
+    - Aprimorado o parser de auditoria em `src/tests/security-audit.test.ts` (`getActiveFunctions()`) para mapear recursivamente a definição ativa mais recente de cada função, garantindo que 100% (64/64) das funções `SECURITY DEFINER` possuam `SET search_path = public, pg_temp` e que 100% das RPCs mutadoras validem `auth.uid()`;
+    - Adicionada suíte de testes dedicada cobrindo os invariantes e permissões da migração 0048.
   - **Critério de Saída:** 100% das RPCs protegidas contra injeção de schema e bypass de permissão.
 
 - [ ] **Tarefa 5.3 — Auditoria do Bundle Client contra Vazamento de Segredos**
