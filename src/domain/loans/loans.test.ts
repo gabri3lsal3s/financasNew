@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateEarlyAmortization, calculateLoanSchedule } from "./index";
+import { calculateEarlyAmortization, calculateLoanProgress, calculateLoanSchedule } from "./index";
 
 describe("calculateLoanSchedule", () => {
   it("calcula cronograma Price com parcelas fixas", () => {
@@ -61,3 +61,29 @@ describe("calculateEarlyAmortization", () => {
     expect(res.totalPresentValuePaidCents).toBeLessThan(res.totalOriginalAmountCents);
   });
 });
+
+describe("calculateLoanProgress", () => {
+  it("calculates progress and pending amount for loan contract debts", () => {
+    const debts = [
+      { amount: 250, paid_at: "2026-01-10" },
+      { amount: 250, paid_at: "2026-02-10" },
+      { amount: 250, paid_at: null },
+      { amount: 250, paid_at: null },
+    ];
+
+    const result = calculateLoanProgress(debts, 4);
+    expect(result.paidCount).toBe(2);
+    expect(result.totalCount).toBe(4);
+    expect(result.progressPercent).toBe(50);
+    expect(result.pendingAmountCents).toBe(50000);
+  });
+
+  it("handles empty debts using fallback installments", () => {
+    const result = calculateLoanProgress([], 12);
+    expect(result.paidCount).toBe(0);
+    expect(result.totalCount).toBe(12);
+    expect(result.progressPercent).toBe(0);
+    expect(result.pendingAmountCents).toBe(0);
+  });
+});
+

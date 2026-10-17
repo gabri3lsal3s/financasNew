@@ -39,6 +39,24 @@ export function incomeConcentration(incomeBySourceCents: readonly number[]): Inc
   return { topSharePercent: share, alert: share > 60 };
 }
 
+export interface WeekdayTotalItem {
+  ponderadoCents: number;
+}
+
+/**
+ * Calcula a média diária de gastos em dias úteis (5 dias) e fins de semana (2 dias).
+ */
+export function calculateWeekdayWeekendDailyAverages(
+  weekdayTotals: readonly WeekdayTotalItem[],
+): { weekdayDailyCents: number; weekendDailyCents: number } {
+  const weekdayDailyCents = weekdayTotals.slice(0, 5).reduce((acc, w) => acc + w.ponderadoCents, 0) / 5;
+  const weekendDailyCents = weekdayTotals.slice(5).reduce((acc, w) => acc + w.ponderadoCents, 0) / 2;
+  return {
+    weekdayDailyCents,
+    weekendDailyCents,
+  };
+}
+
 /**
  * Gastos de fim de semana: ratio fim de semana/dia útil > 1.5 → alerta.
  * Os valores devem ser por DIA (média diária) para comparação justa.
@@ -49,6 +67,7 @@ export function weekendSpendingRatio(weekdayDailyCents: number, weekendDailyCent
 }
 
 export const WEEKEND_RATIO_LIMIT = 1.5;
+
 
 /** Tendência vs mês anterior é significativa quando variação > 15%. */
 export function isSignificantTrend(currentCents: number, previousCents: number, thresholdPercent = 15): boolean {

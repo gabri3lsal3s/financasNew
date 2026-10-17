@@ -13,11 +13,13 @@ import {
   incomeGoalStatus,
   INCOME_GOAL_LABELS,
   isInheritedLimit,
+  realizedByCategoryMap,
   reallocationSuggestion,
   resolveEffectiveLimit,
   spentByCategoryMap,
 } from "@/domain/budgets";
-import { numberToCents } from "@/domain/money";
+import { numberToCents, sumWeightedCents } from "@/domain/money";
+
 import { currentMonth } from "@/lib/date";
 import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsBRL } from "@/services/masks";
@@ -80,14 +82,12 @@ export function BudgetsPage() {
   // Limites agrupados por categoria: cada uma herda APENAS do próprio histórico.
   const limitsByCategory = budgetLimitsByCategory(budgets);
 
-  const totalExpensesCents = (expensesQuery.data ?? []).reduce((acc, e) => acc + numberToCents(e.value * e.report_weight), 0);
-  const totalIncomesCents = (incomesQuery.data ?? []).reduce((acc, i) => acc + numberToCents(i.value * i.report_weight), 0);
+  const totalExpensesCents = sumWeightedCents(expensesQuery.data ?? []);
+  const totalIncomesCents = sumWeightedCents(incomesQuery.data ?? []);
 
   const spentByCategory = spentByCategoryMap(expensesQuery.data ?? []);
-  const realizedByCategory = new Map<string, number>();
-  for (const income of incomesQuery.data ?? []) {
-    realizedByCategory.set(income.category_id, (realizedByCategory.get(income.category_id) ?? 0) + numberToCents(income.value * income.report_weight));
-  }
+  const realizedByCategory = realizedByCategoryMap(incomesQuery.data ?? []);
+
 
   const categories = expenseCategories.data ?? [];
   const allCategories = allCategoriesQuery.data ?? [];

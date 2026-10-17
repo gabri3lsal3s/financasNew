@@ -262,6 +262,24 @@ export function spentGrossByCategoryMap(
   return spent;
 }
 
+/**
+ * Soma as receitas realizadas ponderadas (peso de relatório) por categoria — fonte única
+ * da agregação usada em Budgets e Insights.
+ */
+export function realizedByCategoryMap(
+  incomes: readonly { category_id: string; value: number; report_weight: number }[],
+): Map<string, number> {
+  const realized = new Map<string, number>();
+  for (const income of incomes) {
+    realized.set(
+      income.category_id,
+      (realized.get(income.category_id) ?? 0) + numberToCents(income.value * income.report_weight),
+    );
+  }
+  return realized;
+}
+
+
 export {
   redistributeProportionalBudget,
   redistributeProportionalBudgetByPercent,

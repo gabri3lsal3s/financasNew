@@ -254,3 +254,45 @@ export function calculateEarlyAmortization(
     totalDiscountCents,
   };
 }
+
+export interface LoanDebtItem {
+  paid_at: string | null;
+  amount: number;
+}
+
+export interface LoanProgressResult {
+  paidCount: number;
+  totalCount: number;
+  progressPercent: number;
+  pendingAmountCents: number;
+}
+
+/**
+ * Calcula o progresso de quitação e o saldo pendente de parcelas de um contrato de empréstimo.
+ */
+export function calculateLoanProgress(
+  contractDebts: readonly LoanDebtItem[],
+  fallbackTotalInstallments: number,
+): LoanProgressResult {
+  let paidCount = 0;
+  let pendingAmountCents = 0;
+
+  for (const debt of contractDebts) {
+    if (debt.paid_at !== null) {
+      paidCount++;
+    } else {
+      pendingAmountCents += Math.round(debt.amount * 100);
+    }
+  }
+
+  const totalCount = contractDebts.length || Math.max(0, fallbackTotalInstallments);
+  const progressPercent = totalCount > 0 ? Math.round((paidCount / totalCount) * 100) : 0;
+
+  return {
+    paidCount,
+    totalCount,
+    progressPercent,
+    pendingAmountCents,
+  };
+}
+

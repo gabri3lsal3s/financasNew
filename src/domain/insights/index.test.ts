@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { applyFeedback, classifySubscription, confidenceScore, criticalAlerts, detectRecurrences, historyBonus, incomeConcentration, isSignificantTrend, partitionFeedback, savingsHealth, varianceOf, weekendSpendingRatio } from "./index";
+import {
+  applyFeedback,
+
+  calculateRecurringTotals,
+  calculateWeekdayWeekendDailyAverages,
+  classifySubscription,
+  confidenceScore,
+  criticalAlerts,
+  detectRecurrences,
+  historyBonus,
+  incomeConcentration,
+  isSignificantTrend,
+  partitionFeedback,
+  savingsHealth,
+  varianceOf,
+  weekendSpendingRatio,
+} from "./index";
+
 import type { CriticalAlertInput } from "./alerts";
 
 const expense = (overrides: Partial<{ id: string; description: string | null; date: string; month: string; valueCents: number; categoryId: string; categoryIcon: string | null; installmentGroupId: string | null }>) => ({
@@ -359,4 +376,37 @@ describe("diagnósticos (§3.7.6)", () => {
     expect(isSignificantTrend(120000, 100000)).toBe(true);
     expect(isSignificantTrend(110000, 100000)).toBe(false);
   });
+
+  it("calcula médias diárias de dia útil e fim de semana", () => {
+    const totals = [
+      { ponderadoCents: 5000 },
+      { ponderadoCents: 5000 },
+      { ponderadoCents: 5000 },
+      { ponderadoCents: 5000 },
+      { ponderadoCents: 5000 },
+      { ponderadoCents: 10000 },
+      { ponderadoCents: 10000 },
+    ];
+    const { weekdayDailyCents, weekendDailyCents } = calculateWeekdayWeekendDailyAverages(totals);
+    expect(weekdayDailyCents).toBe(5000);
+    expect(weekendDailyCents).toBe(10000);
+  });
 });
+
+describe("calculateRecurringTotals", () => {
+  it("calculates recurring and potential cuts totals correctly", () => {
+    const active = [
+      { averageCents: 5000, tier: "can_cut" as const, savingsIfCutCents: 3000 },
+      { averageCents: 4000, tier: "discretionary" as const },
+      { averageCents: 2000, tier: "can_cut" as const }, // no savingsIfCutCents, defaults to averageCents
+    ];
+
+
+    const result = calculateRecurringTotals(active);
+    expect(result.totalRecurringCents).toBe(11000);
+    expect(result.totalAnnualRecurringCents).toBe(132000);
+    expect(result.canCutRecurringCents).toBe(5000); // 3000 + 2000
+    expect(result.canCutAnnualCents).toBe(60000);
+  });
+});
+

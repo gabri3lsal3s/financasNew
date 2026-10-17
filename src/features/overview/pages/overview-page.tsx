@@ -30,7 +30,7 @@ import {
   spentGrossByCategoryMap,
 } from "@/domain/budgets";
 import { invoiceDueDate } from "@/domain/cards";
-import { todayISO } from "@/domain/debts";
+import { calculateDebtsSummary, todayISO } from "@/domain/debts";
 import { analyzeCashGap, dailyBudget, endOfMonthProjection, spendingPace } from "@/domain/projection";
 import {
   accountsNet,
@@ -39,7 +39,9 @@ import {
   computeOverview,
   openInvoicesTotal,
 } from "@/domain/overview";
-import { numberToCents } from "@/domain/money";
+import { numberToCents, sumGrossCents, sumWeightedCents } from "@/domain/money";
+import { contributionsInMonthCents, contributionsMonthlySeries } from "@/domain/portfolio";
+
 import { currentMonth, monthLabel, shiftMonth } from "@/lib/date";
 import { formatPercent } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
@@ -64,10 +66,8 @@ import { CashCheckpointDialog } from "@/components/modules/cash-checkpoint-dialo
 import { cn } from "@/lib/utils";
 import { CategoryBreakdownDialog, OtherBudgetsDialog } from "../components";
 
-const weightedSum = (items: readonly { value: number; report_weight: number }[]) =>
-  items.reduce((acc, item) => acc + numberToCents(item.value * item.report_weight), 0);
-
 export function OverviewPage() {
+
   const [month, setMonth] = useState(currentMonth);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [isOthersBudgetOpen, setIsOthersBudgetOpen] = useState(false);
@@ -134,46 +134,37 @@ export function OverviewPage() {
     (isCurrentMonth ? realCashData.error : null);
 
   // Computação pura dos totais do mês (§3.6). Padrão do app: BRUTO como métrica principal, informando ponderado quando houver.
-  const incomeCents = weightedSum(incomesQuery.data ?? []);
-  const expenseCents = weightedSum(expensesQuery.data ?? []);
-  const grossIncomeCents = (incomesQuery.data ?? []).reduce((acc, i) => acc + Math.round(i.value * 100), 0);
-  const grossExpenseCents = (expensesQuery.data ?? []).reduce((acc, e) => acc + Math.round(e.value * 100), 0);
-  const prevGrossIncomeCents = (prevIncomesQuery.data ?? []).reduce((acc, i) => acc + Math.round(i.value * 100), 0);
-  const prevGrossExpenseCents = (prevExpensesQuery.data ?? []).reduce((acc, e) => acc + Math.round(e.value * 100), 0);
+  const incomeCents = sumWeightedCents(incomesQuery.data ?? []);
+  const expenseCents = sumWeightedCents(expensesQuery.data ?? []);
+  const grossIncomeCents = sumGrossCents(incomesQuery.data ?? []);
+  const grossExpenseCents = sumGrossCents(expensesQuery.data ?? []);
+  const prevGrossIncomeCents = sumGrossCents(prevIncomesQuery.data ?? []);
+  const prevGrossExpenseCents = sumGrossCents(prevExpensesQuery.data ?? []);
 
   // Investimentos/Aportes no mês a partir de portfolio_contributions
   const contributions = contributionsQuery.data ?? [];
-  const computeMonthInvestments = (targetMonth: string) =>
-    contributions
-      .filter((c) => c.date.startsWith(targetMonth))
-      .reduce((acc, c) => acc + numberToCents(c.amount), 0);
-
-  const investmentCents = Math.max(0, computeMonthInvestments(month));
-  const prevInvestmentCents = Math.max(0, computeMonthInvestments(prevMonth));
-  const investmentSpark = rangeMonths.map((m) => Math.max(0, computeMonthInvestments(m)));
+  const investmentCents = contributionsInMonthCents(contributions, month);
+  const prevInvestmentCents = contributionsInMonthCents(contributions, prevMonth);
+  const investmentSpark = contributionsMonthlySeries(contributions, rangeMonths);
 
   const totals = computeOverview(grossIncomeCents, grossExpenseCents, investmentCents);
   const prevTotals = computeOverview(prevGrossIncomeCents, prevGrossExpenseCents, prevInvestmentCents);
 
   // Sparklines com a série dos últimos 6 meses (bruto).
   const incomeSpark = rangeMonths.map((m) =>
-    (incomesRangeQuery.data ?? []).filter((i) => i.date.startsWith(m)).reduce((acc, i) => acc + Math.round(i.value * 100), 0),
+    sumGrossCents((incomesRangeQuery.data ?? []).filter((i) => i.date.startsWith(m))),
   );
   const expenseSpark = rangeMonths.map((m) =>
-    (expensesRangeQuery.data ?? []).filter((e) => e.date.startsWith(m)).reduce((acc, e) => acc + Math.round(e.value * 100), 0),
+    sumGrossCents((expensesRangeQuery.data ?? []).filter((e) => e.date.startsWith(m))),
   );
   const balanceSpark = rangeMonths.map((_, idx) => (incomeSpark[idx] ?? 0) - (expenseSpark[idx] ?? 0));
 
   // Resumo de contas e faturas.
-  const debts = debtsQuery.data ?? [];
-  const receivablePending = debts
-    .filter((d) => d.type === "receivable" && d.paid_at === null && d.due_date < rangeEnd)
-    .reduce((acc, d) => acc + numberToCents(d.amount), 0);
-  const payablePending = debts
-    .filter((d) => d.type === "payable" && d.paid_at === null && d.due_date < rangeEnd)
-    .reduce((acc, d) => acc + numberToCents(d.amount), 0);
+  const { receivablePendingCents: receivablePending, payablePendingCents: payablePending } =
+    calculateDebtsSummary(debtsQuery.data ?? [], { beforeDueDateExclusive: rangeEnd });
   const openInvoices = openInvoicesTotal(cardExpensesQuery.data ?? [], cardPaymentsQuery.data ?? [], today);
   const accountsBalance = accountsNet(receivablePending, payablePending, openInvoices);
+
 
   // Fluxo diário (barras empilhadas) + curva de saldo acumulado.
   const dailyItems = [

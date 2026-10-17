@@ -7,6 +7,7 @@ import {
   incomeGoalStatus,
   isInheritedLimit,
   progressTone,
+  realizedByCategoryMap,
   reallocationSuggestion,
   resolveEffectiveLimit,
   spentByCategoryMap,
@@ -14,6 +15,7 @@ import {
   suggestCategory,
   suggestLimitCents,
 } from "./index";
+
 
 describe("suggestCategory (§3.5.1 — sugestão inteligente por nome)", () => {
   it("infere ícone/cor/% por palavra-chave", () => {
@@ -184,7 +186,18 @@ describe("budgetLimitsByCategory / spentByCategoryMap (F19 — helpers compartil
     expect(spent.get("a")).toBe(20000); // 12.000 + 8.000
     expect(spent.get("b")).toBe(5000);
   });
+
+  it("soma as receitas realizadas ponderadas por categoria", () => {
+    const realized = realizedByCategoryMap([
+      { category_id: "salario", value: 5000, report_weight: 1 },
+      { category_id: "freela", value: 2000, report_weight: 0.5 },
+      { category_id: "salario", value: 1000, report_weight: 1 },
+    ]);
+    expect(realized.get("salario")).toBe(600000); // 5000 + 1000 = 6000 BRL = 600000 cents
+    expect(realized.get("freela")).toBe(100000); // 2000 * 0.5 = 1000 BRL = 100000 cents
+  });
 });
+
 
 describe("incomeGoalStatus (§3.5.3 — metas de renda)", () => {
   it("déficit quando realizado < esperado", () => {

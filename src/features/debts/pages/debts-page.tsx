@@ -4,8 +4,9 @@ import { ArrowDownLeft, ArrowUpRight, Calendar, Check, ChevronDown, ChevronUp, C
 import { Badge, Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { DebtStatusBadge, HighlightRow, ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
-import { debtStatus, todayISO } from "@/domain/debts";
+import { calculateDebtsSummary, debtStatus, todayISO } from "@/domain/debts";
 import { numberToCents } from "@/domain/money";
+
 import { serializeDebtsCsv, type ExportDebtRow } from "@/domain/export";
 import { currentMonth, formatDateBR, monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
@@ -204,13 +205,9 @@ export function DebtsPage() {
   const payableDebts = debts.filter((d) => d.type === "payable");
   const receivableDebts = debts.filter((d) => d.type === "receivable");
 
-  const payablePendingCents = debts
-    .filter((d) => d.type === "payable" && !d.paid_at)
-    .reduce((sum, d) => sum + numberToCents(d.amount), 0);
-  const receivablePendingCents = debts
-    .filter((d) => d.type === "receivable" && !d.paid_at)
-    .reduce((sum, d) => sum + numberToCents(d.amount), 0);
-  const netPendingCents = receivablePendingCents - payablePendingCents;
+  const debtsSummary = calculateDebtsSummary(debts);
+  const { payablePendingCents, receivablePendingCents, netPendingCents } = debtsSummary;
+
 
   const error = debtsQuery.error || loansQuery.error;
   const today = todayISO();

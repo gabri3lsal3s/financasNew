@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { addDaysISO, debtStatus, todayISO } from "./index";
+import { addDaysISO, calculateDebtsSummary, debtStatus, todayISO } from "./index";
+
 
 const TODAY = "2026-08-13";
 
@@ -32,3 +33,44 @@ describe("debtStatus (§3.4 — status derivado, nunca armazenado)", () => {
     expect(todayISO()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
+
+describe("calculateDebtsSummary", () => {
+  it("returns zeros for empty debt list", () => {
+    const result = calculateDebtsSummary([]);
+    expect(result).toEqual({
+      payablePendingCents: 0,
+      receivablePendingCents: 0,
+      netPendingCents: 0,
+      paidCount: 0,
+      pendingCount: 0,
+    });
+  });
+
+  it("calculates pending payable and receivable debts in cents", () => {
+    const debts = [
+      { type: "payable" as const, amount: 150.5, paid_at: null },
+      { type: "payable" as const, amount: 50, paid_at: "2026-08-10" }, // paid, ignored in pending
+      { type: "receivable" as const, amount: 300, paid_at: null },
+      { type: "receivable" as const, amount: 100, paid_at: "2026-08-01" }, // paid, ignored in pending
+    ];
+
+    const result = calculateDebtsSummary(debts);
+    expect(result.payablePendingCents).toBe(15050);
+    expect(result.receivablePendingCents).toBe(30000);
+    expect(result.netPendingCents).toBe(14950);
+    expect(result.paidCount).toBe(2);
+    expect(result.pendingCount).toBe(2);
+  });
+
+  it("respects beforeDueDateExclusive option", () => {
+    const debts = [
+      { type: "payable" as const, amount: 100, paid_at: null, due_date: "2026-08-15" },
+      { type: "payable" as const, amount: 200, paid_at: null, due_date: "2026-09-01" },
+    ];
+
+    const result = calculateDebtsSummary(debts, { beforeDueDateExclusive: "2026-09-01" });
+    expect(result.payablePendingCents).toBe(10000);
+    expect(result.pendingCount).toBe(1);
+  });
+});
+

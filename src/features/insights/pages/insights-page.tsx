@@ -9,6 +9,8 @@ import { criticalAlerts } from "@/domain/insights/alerts";
 import { detectRecurrences, type ExpenseLike } from "@/domain/insights/recurrences";
 import { partitionFeedback, type FeedbackDecision, type FeedbackMap } from "@/domain/insights/feedback";
 import {
+  calculateRecurringTotals,
+  calculateWeekdayWeekendDailyAverages,
   ESSENTIAL_CATEGORY_ICONS,
   incomeConcentration,
   isSignificantTrend,
@@ -26,10 +28,11 @@ import {
   type BudgetUsage,
 } from "@/domain/savings";
 import { dailyBudget, endOfMonthProjection, pendingProjection, spendingPace } from "@/domain/projection";
-import { budgetLimitsByCategory, budgetStatus, resolveEffectiveLimit, spentByCategoryMap } from "@/domain/budgets";
+import { budgetLimitsByCategory, budgetStatus, realizedByCategoryMap, resolveEffectiveLimit, spentByCategoryMap } from "@/domain/budgets";
 import { computeOverview } from "@/domain/overview";
 import { aggregateByWeekday } from "@/domain/reports";
-import { numberToCents } from "@/domain/money";
+import { numberToCents, sumWeightedCents } from "@/domain/money";
+
 import { currentMonth, monthLabel, shiftMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import {
@@ -138,13 +141,11 @@ export function InsightsPage({
     feedbackQuery.error ??
     position.error;
 
-  const weightedSum = (items: readonly { value: number; report_weight: number }[]) =>
-    items.reduce((acc, item) => acc + numberToCents(item.value * item.report_weight), 0);
-
   // KPIs do mês com peso de relatório + investimentos reais (F19 — entrega 6)
   const investmentsCents = position.monthlyContributionCents;
-  const totals = computeOverview(weightedSum(incomesQuery.data ?? []), weightedSum(month0.data ?? []), investmentsCents);
+  const totals = computeOverview(sumWeightedCents(incomesQuery.data ?? []), sumWeightedCents(month0.data ?? []), investmentsCents);
   const { incomeCents, expenseCents, balanceCents, savingsRatePercent: savingsRateRaw } = totals;
+
   const savingsRate = savingsRateRaw ?? 0;
   const burnRate = incomeCents > 0 ? (expenseCents / incomeCents) * 100 : 0;
 
@@ -210,12 +211,13 @@ export function InsightsPage({
   const feedbackMap: FeedbackMap = (feedbackQuery.data ?? {}) as Record<string, FeedbackDecision>;
   const { active: activeOccurrences, ignored: ignoredOccurrences } = partitionFeedback(occurrences, feedbackMap);
 
-  const totalRecurringCents = activeOccurrences.reduce((acc, o) => acc + o.averageCents, 0);
-  const totalAnnualRecurringCents = totalRecurringCents * 12;
-  const canCutRecurringCents = activeOccurrences
-    .filter((o) => o.tier === "can_cut")
-    .reduce((acc, o) => acc + (o.savingsIfCutCents ?? o.averageCents), 0);
-  const canCutAnnualCents = canCutRecurringCents * 12;
+  const {
+    totalRecurringCents,
+    totalAnnualRecurringCents,
+    canCutRecurringCents,
+    canCutAnnualCents,
+  } = calculateRecurringTotals(activeOccurrences);
+
 
   // Projeção diária
   const daily = dailyBudget({
@@ -265,10 +267,7 @@ export function InsightsPage({
   const limitSuggestions = buildLimitSuggestions(usages, incomeCents);
 
   // Diagnósticos
-  const incomeByCategory = new Map<string, number>();
-  for (const income of incomesQuery.data ?? []) {
-    incomeByCategory.set(income.category_id, (incomeByCategory.get(income.category_id) ?? 0) + numberToCents(income.value * income.report_weight));
-  }
+  const incomeByCategory = realizedByCategoryMap(incomesQuery.data ?? []);
   const concentration = incomeConcentration([...incomeByCategory.values()]);
   const health = savingsHealth(savingsRate);
   const weekdayTotals = aggregateByWeekday(
@@ -282,14 +281,15 @@ export function InsightsPage({
       weight: e.report_weight,
     })),
   );
-  const weekdayDaily = weekdayTotals.slice(0, 5).reduce((acc, w) => acc + w.ponderadoCents, 0) / 5;
-  const weekendDaily = weekdayTotals.slice(5).reduce((acc, w) => acc + w.ponderadoCents, 0) / 2;
+  const { weekdayDailyCents: weekdayDaily, weekendDailyCents: weekendDaily } =
+    calculateWeekdayWeekendDailyAverages(weekdayTotals);
   const weekendRatio = weekendSpendingRatio(weekdayDaily, weekendDaily);
   const weekendComparable = weekdayDaily > 0;
 
-  const prevExpenseCents = weightedSum(month1.data ?? []);
+  const prevExpenseCents = sumWeightedCents(month1.data ?? []);
   const trendSignificant = isSignificantTrend(expenseCents, prevExpenseCents);
   const trendPercent = prevExpenseCents > 0 ? ((expenseCents - prevExpenseCents) / prevExpenseCents) * 100 : 0;
+
 
   const handleFeedback = (occurrenceKey: string, decision: FeedbackDecision | null) => {
     setFeedback.mutate({ occurrenceKey, decision });

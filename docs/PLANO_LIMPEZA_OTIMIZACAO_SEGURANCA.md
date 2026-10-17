@@ -235,19 +235,25 @@ graph TD
     - Harmonizados os textos auxiliares e descritivos em diálogos para o helper text canônico (`text-[11px] text-muted-foreground`) com indicador `(opcional)` padronizado.
   - **Critério de Saída:** Zero elementos nativos de controle soltos em toda a interface e 100% dos formulários alinhados à anatomia canônica.
 
-- [ ] **Tarefa 3.4 — Centralização de Cálculos Financeiros em Funções Puras (`src/domain/`)**
+- [x] **Tarefa 3.4 — Centralização de Cálculos Financeiros em Funções Puras (`src/domain/`)**
   - **Ação:** Mapear regras de negócio, somatórios e filtros temporais dispersos em componentes ou hooks:
-    - Extrair para funções puras dentro de `src/domain/` com valores monetários em centavos inteiros;
-    - Colocalizar testes unitários (`*.test.ts`) para cada função de domínio extraída.
+    - Extraídas funções puras de totalização transacional (`sumGrossCents`, `sumWeightedCents`) em `src/domain/money/totals.ts` (+ testes), eliminando `reduce` duplicados em transações, orçamentos, insights e visão geral;
+    - Criado agregador puro de pendências e dívidas `calculateDebtsSummary` em `src/domain/debts/` (+ testes), eliminando filtragens e reduções em telas;
+    - Extraído motor de progresso e saldo pendente de contratos de empréstimo `calculateLoanProgress` em `src/domain/loans/` (+ testes), limpando `LoanCard`;
+    - Criado módulo puro de aportes `src/domain/portfolio/contributions.ts` (`sumContributionsCents`, `contributionsInMonthCents`, `contributionsMonthlySeries` + testes), unificando cálculos entre Overview e painéis de aportes;
+    - Centralizados cálculos de proventos em `src/domain/portfolio/dividends.ts` (`topDividendPayer`, `bestDividendMonth`, `calculatePortfolioAverageYoC`, `calculateTotalCostBRL` + testes), desacoplando a aba de proventos e o facilitador fiscal;
+    - Centralizados cálculos de insights em `src/domain/insights/` (`calculateRecurringTotals`, `calculateWeekdayWeekendDailyAverages` + testes) e mapa de receitas em `src/domain/budgets/` (`realizedByCategoryMap` + testes);
+    - Extraído simulador determinístico de alocação de classes e renda passiva `simulateStrategyAporte` em `src/domain/portfolio/simulation.ts` (+ testes), retirando 70 linhas de matemática financeira de dentro do componente da landing page.
   - **Critério de Saída:** Componentes de apresentação puramente visuais, sem regras de cálculo embutidas.
 
-- [ ] **PORTÃO DE QUALIDADE DA FASE 3:**
-  - `npm run typecheck` verde.
-  - `npm run lint` verde.
-  - `npm run test` verde.
-  - `npm run build` verde.
+- [x] **PORTÃO DE QUALIDADE DA FASE 3:**
+  - `npm run typecheck` verde (0 erros).
+  - `npm run lint` verde (0 erros, 0 avisos).
+  - `npm run test` verde (336/336 arquivos de teste, 2.584/2.584 testes aprovados).
+  - `npm run build` verde (bundle Vite + PWA service worker gerados em 1.30s).
   - Commit semântico: `refactor(dry): harmonize dialogs, enforce MoneyText, eliminate native controls and centralize domain calculations`
   - `git push`
+
 
 ---
 

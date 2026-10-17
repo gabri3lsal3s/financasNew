@@ -8,6 +8,8 @@
  * Motor puro — testável isoladamente.
  */
 
+import { numberToCents } from "@/domain/money";
+
 export type DebtStatus = "paid" | "overdue" | "due_today" | "due_soon" | "pending";
 
 /** Hoje em ISO local (YYYY-MM-DD) — injetável nos testes. */
@@ -53,4 +55,65 @@ export const DEBT_STATUS_LABELS: Record<DebtStatus, string> = {
   pending: "Pendente",
 };
 
+export interface DebtAggregateItem {
+  type: "payable" | "receivable";
+  amount: number;
+  paid_at: string | null;
+  due_date?: string | null;
+}
+
+export interface DebtsSummary {
+  payablePendingCents: number;
+  receivablePendingCents: number;
+  netPendingCents: number;
+  paidCount: number;
+  pendingCount: number;
+}
+
+/**
+ * Agrega os totais e status de pendências a pagar e a receber em centavos inteiros.
+ * Suporta filtro opcional de data limite exclusiva (`beforeDueDateExclusive`).
+ */
+export function calculateDebtsSummary(
+  debts: readonly DebtAggregateItem[],
+  options?: { beforeDueDateExclusive?: string },
+): DebtsSummary {
+  let payablePendingCents = 0;
+  let receivablePendingCents = 0;
+  let paidCount = 0;
+  let pendingCount = 0;
+
+  for (const debt of debts) {
+    if (debt.paid_at !== null) {
+      paidCount++;
+      continue;
+    }
+
+    if (
+      options?.beforeDueDateExclusive &&
+      debt.due_date &&
+      debt.due_date >= options.beforeDueDateExclusive
+    ) {
+      continue;
+    }
+
+    pendingCount++;
+    const cents = numberToCents(debt.amount);
+    if (debt.type === "payable") {
+      payablePendingCents += cents;
+    } else {
+      receivablePendingCents += cents;
+    }
+  }
+
+  return {
+    payablePendingCents,
+    receivablePendingCents,
+    netPendingCents: receivablePendingCents - payablePendingCents,
+    paidCount,
+    pendingCount,
+  };
+}
+
 export * from "./penalty";
+

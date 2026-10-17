@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
+  bestDividendMonth,
+  calculatePortfolioAverageYoC,
+  calculateTotalCostBRL,
   dividendExtractForMonth,
   dividendsByYear,
   dividendsInMonth,
   isDividendType,
   resolveDividendDate,
   resolveDividendNote,
+  topDividendPayer,
 } from "./dividends";
+
 
 
 const txs = [
@@ -110,5 +115,66 @@ describe("dividends — motor puro de proventos (F18)", () => {
       expect(resolveDividendNote("monthly", "", "fii_yield")).toBe("[MENSAL] FII_YIELD");
     });
   });
+
+  describe("topDividendPayer", () => {
+    it("returns null for empty items", () => {
+      expect(topDividendPayer([])).toBeNull();
+    });
+
+    it("identifies top payer aggregating items with the same ticker", () => {
+      const items = [
+        { ticker: "PETR4", amount: 100 },
+        { ticker: "ITUB4", amount: 150 },
+        { ticker: "PETR4", amount: 80 },
+      ];
+      expect(topDividendPayer(items)).toEqual({
+        ticker: "PETR4",
+        amount: 180,
+      });
+    });
+  });
+
+  describe("bestDividendMonth", () => {
+    it("returns null for empty or all-zero series", () => {
+      expect(bestDividendMonth([])).toBeNull();
+      expect(bestDividendMonth([{ month: "2026-01", total: 0 }])).toBeNull();
+    });
+
+    it("returns month with highest total", () => {
+      const series = [
+        { month: "2026-01", total: 100 },
+        { month: "2026-02", total: 450 },
+        { month: "2026-03", total: 200 },
+      ];
+      expect(bestDividendMonth(series)).toEqual({ month: "2026-02", total: 450 });
+    });
+  });
+
+  describe("calculatePortfolioAverageYoC", () => {
+    it("returns 0 for empty or invalid yoc list", () => {
+      expect(calculatePortfolioAverageYoC([])).toBe(0);
+      expect(calculatePortfolioAverageYoC([0, -1])).toBe(0);
+    });
+
+    it("calculates average of valid positive YoC values rounded to 1 decimal place", () => {
+      expect(calculatePortfolioAverageYoC([8.5, 9.2, 10.1])).toBe(9.3);
+    });
+  });
+
+  describe("calculateTotalCostBRL", () => {
+    it("returns 0 for empty asset list", () => {
+      expect(calculateTotalCostBRL([])).toBe(0);
+    });
+
+    it("calculates total cost accurately", () => {
+      const assets = [
+        { quantity: 10, average_price: 25.5 },
+        { quantity: 100, average_price: 10.2 },
+      ];
+      // 10 * 25.5 = 255; 100 * 10.2 = 1020; sum = 1275
+      expect(calculateTotalCostBRL(assets)).toBe(1275);
+    });
+  });
 });
+
 

@@ -146,3 +146,69 @@ export function resolveDividendNote(
   }
   return base;
 }
+
+export interface DividendPayerItem {
+  ticker?: string | null;
+  amount: number;
+}
+
+/**
+ * Identifica o maior pagador de proventos em uma lista de proventos.
+ */
+export function topDividendPayer(
+  items: readonly DividendPayerItem[],
+): { ticker: string; amount: number } | null {
+  if (items.length === 0) return null;
+  const payerMap = new Map<string, number>();
+  for (const item of items) {
+    const ticker = item.ticker ?? "Ativo";
+    payerMap.set(ticker, (payerMap.get(ticker) ?? 0) + item.amount);
+  }
+  let topTicker = "";
+  let topAmount = 0;
+  for (const [ticker, amount] of payerMap.entries()) {
+    if (amount > topAmount) {
+      topAmount = amount;
+      topTicker = ticker;
+    }
+  }
+  return topAmount > 0 ? { ticker: topTicker, amount: Math.round(topAmount * 100) / 100 } : null;
+}
+
+/**
+ * Identifica o mês com maior volume de proventos em uma série anual.
+ */
+export function bestDividendMonth(
+  series: readonly MonthDividendSummary[],
+): MonthDividendSummary | null {
+  const monthsWithValues = series.filter((m) => m.total > 0);
+  const first = monthsWithValues[0];
+  if (!first) return null;
+  return monthsWithValues.reduce((best, cur) => (cur.total > best.total ? cur : best), first);
+}
+
+/**
+ * Calcula a média de Yield on Cost da carteira (ponderada por ativos que possuem YoC positivo).
+ */
+export function calculatePortfolioAverageYoC(yocs: readonly number[]): number {
+  const valid = yocs.filter((y) => Number.isFinite(y) && y > 0);
+  if (valid.length === 0) return 0;
+  const sum = valid.reduce((acc, y) => acc + y, 0);
+  return Math.round((sum / valid.length) * 10) / 10;
+}
+
+/**
+ * Calcula o custo total de aquisição de uma lista de ativos (em reais).
+ */
+export function calculateTotalCostBRL(
+  assets: readonly { quantity: number; average_price: number }[],
+): number {
+  let total = 0;
+  for (const asset of assets) {
+    if (asset.quantity > 0 && asset.average_price > 0) {
+      total += asset.quantity * asset.average_price;
+    }
+  }
+  return Math.round(total * 100) / 100;
+}
+

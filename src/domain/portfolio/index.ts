@@ -302,8 +302,23 @@ export type {
   PortfolioMonthlySeriesPoint,
   WeightedAveragePriceResult,
 } from "./summary";
-export { dividendExtractForMonth, dividendsByYear, dividendsInMonth, isDividendType } from "./dividends";
-export type { DividendEntry, DividendTransaction, MonthDividendSummary } from "./dividends";
+export {
+  bestDividendMonth,
+  calculatePortfolioAverageYoC,
+  calculateTotalCostBRL,
+  dividendExtractForMonth,
+  dividendsByYear,
+  dividendsInMonth,
+  isDividendType,
+  topDividendPayer,
+} from "./dividends";
+export type {
+  DividendEntry,
+  DividendPayerItem,
+  DividendTransaction,
+  MonthDividendSummary,
+} from "./dividends";
+
 export {
   calculateAssetAllocationDelta,
   calculateSectorEffectiveTargetPct,
@@ -436,3 +451,7 @@ export * from "./twr";
 export * from "./risk-metrics";
 export * from "./benchmarks";
 export * from "./statement-parser";
+export * from "./contributions";
+export * from "./simulation";
+
+

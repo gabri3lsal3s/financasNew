@@ -8,6 +8,8 @@ import { useLandingCta, useAnimatedNumber } from "@/features/landing/hooks";
 import { ScrollReveal } from "@/features/landing/components/scroll-reveal";
 import { FireProjectionCurve } from "./fire-projection-curve";
 import { triggerSensory } from "@/services/sensory";
+import { simulateStrategyAporte } from "@/domain/portfolio";
+
 
 type StrategyKey = "dividendos" | "multimercado" | "crescimento";
 
@@ -76,82 +78,30 @@ export function MinimalWealthSimulator() {
 
   const currentStrategy = STRATEGIES[strategy];
 
-  // Cálculo do Rebalanceamento Determinístico
+  // Cálculo do Rebalanceamento Determinístico via motor puro de domínio
   const rebalanceData = useMemo(() => {
-    // 1. Valores atuais de cada classe antes do aporte
-    const currentValues = currentStrategy.classes.map((cls) => ({
-      ...cls,
-      currentValue: patrimonyBase * cls.currentProportion,
-    }));
-
-    // 2. Novo patrimônio total após o aporte
-    const newTotalPatrimony = patrimonyBase + aporteAmount;
-
-    // 3. Valor ideal de cada classe com base na meta percentual
-    const idealValues = currentValues.map((cls) => ({
-      ...cls,
-      targetValue: newTotalPatrimony * (cls.targetPercent / 100),
-    }));
-
-    // 4. Déficit de cada classe (quanto falta para atingir o alvo ideal)
-    const deficits = idealValues.map((cls) => ({
-      ...cls,
-      deficit: Math.max(0, cls.targetValue - cls.currentValue),
-    }));
-
-    const totalDeficit = deficits.reduce((sum, cls) => sum + cls.deficit, 0);
-
-    // 5. Distribuição proporcional do aporte entre as classes deficitárias
-    const allocations = deficits.map((cls) => {
-      let allocated = 0;
-      if (totalDeficit > 0 && cls.deficit > 0) {
-        allocated = Math.round((cls.deficit / totalDeficit) * aporteAmount);
-      }
-      const finalValue = cls.currentValue + allocated;
-      const currentPct = Math.round((cls.currentValue / patrimonyBase) * 100);
-      const finalPct = Math.round((finalValue / newTotalPatrimony) * 100);
-
-      return {
-        ...cls,
-        allocatedAmount: allocated,
-        finalValue,
-        currentPct,
-        finalPct,
-        isReceivingAporte: allocated > 0,
-      };
+    const simulation = simulateStrategyAporte({
+      patrimonyBase,
+      aporteAmount,
+      classes: currentStrategy.classes,
     });
 
-    // Ajuste de resíduo de centavos/arredondamento no maior aporte
-    const allocatedSum = allocations.reduce((sum, a) => sum + a.allocatedAmount, 0);
-    const diff = aporteAmount - allocatedSum;
-    if (diff !== 0) {
-      const highest = allocations.reduce((prev, curr) => (curr.allocatedAmount > prev.allocatedAmount ? curr : prev));
-      highest.allocatedAmount += diff;
-      highest.finalValue += diff;
-    }
-
     // Fatias para o AllocationDonut oficial
-    const donutSlices: AllocationSlice[] = allocations.map((cls) => ({
+    const donutSlices: AllocationSlice[] = simulation.allocations.map((cls) => ({
       key: cls.key,
       label: cls.name,
       valueCents: Math.round(cls.finalValue * 100),
       subtitle: `Meta: ${cls.targetPercent}% · Atual: ${cls.finalPct}%`,
     }));
 
-    // Estimativa de renda passiva mensal pós-aporte
-    const annualDividends = allocations.reduce(
-      (sum, cls) => sum + cls.finalValue * cls.yieldRate,
-      0,
-    );
-    const monthlyPassive = Math.round(annualDividends / 12);
-
     return {
-      newTotalPatrimony,
-      allocations,
+      newTotalPatrimony: simulation.newTotalPatrimony,
+      allocations: simulation.allocations,
       donutSlices,
-      monthlyPassive,
+      monthlyPassive: simulation.monthlyPassive,
     };
   }, [currentStrategy, patrimonyBase, aporteAmount]);
+
 
   const animatedMonthlyPassive = useAnimatedNumber(rebalanceData.monthlyPassive, { duration: 300 });
 

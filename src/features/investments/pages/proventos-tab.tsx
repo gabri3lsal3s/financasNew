@@ -15,6 +15,11 @@ import { MonthPicker, SnowballActionCard } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import {
+  bestDividendMonth,
+  calculatePortfolioAverageYoC,
+  topDividendPayer,
+} from "@/domain/portfolio";
+import {
   calculateSnowballProgress,
   calculateYieldOnCostTotal,
   detectReinvestmentOpportunities,
@@ -22,6 +27,7 @@ import {
   type ReinvestmentOpportunity,
 } from "@/domain/portfolio/snowball";
 import { isCashAssetClass } from "@/domain/portfolio/valuation";
+
 import { currentMonth, formatDateBR, monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
@@ -154,23 +160,17 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
   }, [extract, assetById]);
 
   const topPayerOfMonth = useMemo(() => {
-    if (extract.length === 0) return null;
-    const payerMap = new Map<string, number>();
-    for (const d of extract) {
-      const asset = d.asset_id ? assetById.get(d.asset_id) : null;
-      const ticker = asset?.ticker ?? d.ticker ?? "Ativo";
-      payerMap.set(ticker, (payerMap.get(ticker) ?? 0) + getDividendAmountBRL(d));
-    }
-    let topTicker = "";
-    let topAmount = 0;
-    for (const [ticker, amount] of payerMap.entries()) {
-      if (amount > topAmount) {
-        topAmount = amount;
-        topTicker = ticker;
-      }
-    }
-    return topAmount > 0 ? { ticker: topTicker, amount: topAmount } : null;
+    return topDividendPayer(
+      extract.map((d) => {
+        const asset = d.asset_id ? assetById.get(d.asset_id) : null;
+        return {
+          ticker: asset?.ticker ?? d.ticker ?? "Ativo",
+          amount: getDividendAmountBRL(d),
+        };
+      }),
+    );
   }, [extract, assetById, getDividendAmountBRL]);
+
 
   // 2. Visão Anual
   const allMonthsOfYear = useMemo(
@@ -204,11 +204,9 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
   );
 
   const bestMonthOfYear = useMemo(() => {
-    const monthsWithValues = yearly.filter((m) => m.total > 0);
-    const first = monthsWithValues[0];
-    if (!first) return null;
-    return monthsWithValues.reduce((best, cur) => (cur.total > best.total ? cur : best), first);
+    return bestDividendMonth(yearly);
   }, [yearly]);
+
 
   // 3. Visão Por Ativo & YoC
   const historicalTotal = useMemo(
@@ -261,11 +259,9 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
   );
 
   const portfolioAverageYoC = useMemo(() => {
-    const validYocs = assetsWithDividends.filter((a) => a.yoc > 0);
-    if (validYocs.length === 0) return 0;
-    const sum = validYocs.reduce((acc, a) => acc + a.yoc, 0);
-    return Math.round((sum / validYocs.length) * 10) / 10;
+    return calculatePortfolioAverageYoC(assetsWithDividends.map((a) => a.yoc));
   }, [assetsWithDividends]);
+
 
   // 4. Visão Bola de Neve
   const snowballItems = useMemo(

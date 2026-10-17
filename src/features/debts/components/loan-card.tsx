@@ -2,9 +2,9 @@ import { useState } from "react";
 import { CalendarDays, Edit2, Trash2 } from "lucide-react";
 import { Badge, Button, ConfirmDialog } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
-import { AMORTIZATION_SYSTEM_LABELS, LOAN_TYPE_LABELS } from "@/domain/loans";
-import { numberToCents } from "@/domain/money";
+import { AMORTIZATION_SYSTEM_LABELS, LOAN_TYPE_LABELS, calculateLoanProgress } from "@/domain/loans";
 import { useDeleteLoan } from "@/state";
+
 import { EarlyAmortizationDialog } from "./early-amortization-dialog";
 import { LoanEditDialog } from "./loan-edit-dialog";
 import { LoanScheduleDialog } from "./loan-schedule-dialog";
@@ -23,13 +23,11 @@ export function LoanCard({ loan, debts }: LoanCardProps) {
   const deleteLoan = useDeleteLoan();
 
   const contractDebts = debts.filter((d) => d.installment_group_id === loan.installment_group_id);
-  const paidCount = contractDebts.filter((d) => d.paid_at !== null).length;
-  const totalCount = contractDebts.length || loan.total_installments;
-  const progressPercent = totalCount > 0 ? Math.round((paidCount / totalCount) * 100) : 0;
+  const { paidCount, totalCount, progressPercent, pendingAmountCents } = calculateLoanProgress(
+    contractDebts,
+    loan.total_installments,
+  );
 
-  const pendingAmount = contractDebts
-    .filter((d) => d.paid_at === null)
-    .reduce((acc, d) => acc + d.amount, 0);
 
   const handleConfirmDelete = async () => {
     await deleteLoan.mutateAsync(loan.id);
@@ -98,8 +96,9 @@ export function LoanCard({ loan, debts }: LoanCardProps) {
           <div className="min-w-0">
             <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Saldo a pagar</span>
             <div className="text-base font-bold text-foreground">
-              <MoneyText cents={numberToCents(pendingAmount)} variant="value" />
+              <MoneyText cents={pendingAmountCents} variant="value" />
             </div>
+
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
@@ -113,8 +112,9 @@ export function LoanCard({ loan, debts }: LoanCardProps) {
               <CalendarDays className="size-3.5" aria-hidden="true" />
               <span>Cronograma</span>
             </Button>
-            {pendingAmount > 0 ? (
+            {pendingAmountCents > 0 ? (
               <Button
+
                 type="button"
                 variant="outline"
                 size="sm"

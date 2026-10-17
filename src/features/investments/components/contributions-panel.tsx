@@ -10,7 +10,10 @@ import {
 import { MonthPicker } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
+import { sumContributionsCents } from "@/domain/portfolio";
 import { currentMonth, formatDateBR } from "@/lib/date";
+
+
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
@@ -60,7 +63,8 @@ export function ContributionsPanel({ defaultMonth }: ContributionsPanelProps) {
     });
 
   const filtered = contributions.filter((c) => c.date.startsWith(month));
-  const monthTotalCents = filtered.reduce((acc, c) => acc + numberToCents(c.amount), 0);
+  const monthTotalCents = sumContributionsCents(filtered);
+
 
   const handleDeleteContribution = async () => {
     if (!contributionToDelete) return;

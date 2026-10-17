@@ -8,8 +8,9 @@ import {
 import { Alert, Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import { isCashAssetClass, getBensDireitosClassification } from "@/domain/portfolio";
+import { isCashAssetClass, getBensDireitosClassification, calculateTotalCostBRL } from "@/domain/portfolio";
 import { sanitizeReportText } from "@/domain/reports";
+
 import type { PortfolioAsset, PortfolioDividend } from "@/types";
 
 export interface TaxFacilitatorModalProps {
@@ -44,9 +45,10 @@ export function TaxFacilitatorModal({
   );
 
   const totalCostAllAssetsBRL = useMemo(
-    () => nonCashAssets.reduce((acc, a) => acc + a.quantity * a.average_price, 0),
+    () => calculateTotalCostBRL(nonCashAssets),
     [nonCashAssets],
   );
+
 
   // Rendimentos isentos calculados por ativo no ano-base
   const rendimentosPorAtivo = useMemo(() => {

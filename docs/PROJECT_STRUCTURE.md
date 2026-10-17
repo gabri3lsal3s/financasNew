@@ -169,15 +169,15 @@
     │   ├── navigation/            #   F43: Resolução dinâmica de slots BottomNav e rota de fallback (landing route)
     │   ├── onboarding/             #   checklist/progresso do primeiro uso (F5.4)
     │   ├── notifications/         #   Fase 5 Android: parsing puro de notificações bancárias e comprovantes Pix em centavos
-    │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing
+    │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing e totais brutos/ponderados (totals.ts)
     │   ├── competence/            #   resolveBillCompetence, clampDay, overrides
-    │   ├── debts/                 #   status derivado (overdue/due_today/due_soon/…) + penalty (mora/multa/desconto)
+    │   ├── debts/                 #   status derivado (overdue/due_today/due_soon/…) + penalty (mora/multa/desconto) e resumo consolidado
     │   ├── expenses/              #   resolução dos modos de exclusão de despesa
     │   │                          #     (single/all/subsequent — resolveExpenseDeleteIds,
     │   │                          #     espelha o RPC p/ atualizações otimistas F30)
     │   ├── cards/                 #   saldo/status de fatura + refinancing (parcelamento sem double-counting)
     │   ├── charges/               #   agregação por natureza (regular/juros/multas/impostos/taxas) e Dinheiro Queimado
-    │   ├── loans/                 #   cronogramas Price/SAC, saldo devedor e amortização extraordinária a valor presente
+    │   ├── loans/                 #   cronogramas Price/SAC, saldo devedor, amortização extraordinária a valor presente e progresso do contrato
     │   ├── recurrences/           #   F32: geração de ocorrências por frequência
     │   │                          #     (monthly/weekly/quarterly/yearly, fim por data ou
     │   │                          #     por contagem) + modos de exclusão em grupo
@@ -209,6 +209,8 @@
     │   ├── reconciliation/        #   F30: conciliação de faturas (parsers CSV/OFX/Texto,
     │   │                          #     type-sniffer, hashing ordinal, scoring 0-100)
     │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
+    │                              #   contributions.ts (agregação pura de aportes em centavos),
+    │                              #   simulation.ts (simulação de rebalanceamento por classes e renda passiva),
     │                              #   irr.ts (motor puro de TIR / Money-Weighted Return / XIRR com solver híbrido Newton-Raphson + Bisseção),
     │                              #   twr.ts (motor puro de TWR / Time-Weighted Return / cotização ANBIMA / CVM e encadeamento geométrico),
     │                              #   operations.ts (vendas, splits, adição com posição inicial e reconciliação do ledger),
@@ -217,6 +219,7 @@
     │                              #   xlsx-parser.ts (parser puro de planilhas Excel .xlsx/.xls),
     │                              #   statement-parser.ts (parser inteligente de extratos de bancos/corretoras, cálculo de deltas e deduplicação)
     │
+
     ├── data/                      # INTEGRAÇÃO REMOTA
     │   ├── client.ts              #   Cliente Supabase único (env centralizado)
     │   ├── query.ts               #   QueryResult<T> — contrato base data\|error

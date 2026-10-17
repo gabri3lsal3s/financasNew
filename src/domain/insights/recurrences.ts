@@ -68,11 +68,43 @@ export interface RecurrenceOccurrence {
   duplicateChargesThisMonth?: number;
 }
 
+export interface RecurringTotalsResult {
+  totalRecurringCents: number;
+  totalAnnualRecurringCents: number;
+  canCutRecurringCents: number;
+  canCutAnnualCents: number;
+}
+
+/**
+ * Calcula os totais recorrentes mensais e anuais, bem como a economia potencial de corte (tier "can_cut").
+ */
+export function calculateRecurringTotals(
+  activeOccurrences: readonly { averageCents: number; tier?: CutTier; savingsIfCutCents?: number }[],
+): RecurringTotalsResult {
+  let totalRecurringCents = 0;
+  let canCutRecurringCents = 0;
+
+  for (const o of activeOccurrences) {
+    totalRecurringCents += o.averageCents;
+    if (o.tier === "can_cut") {
+      canCutRecurringCents += o.savingsIfCutCents ?? o.averageCents;
+    }
+  }
+
+  return {
+    totalRecurringCents,
+    totalAnnualRecurringCents: totalRecurringCents * 12,
+    canCutRecurringCents,
+    canCutAnnualCents: canCutRecurringCents * 12,
+  };
+}
+
 const RECURRING_TOLERANCE = 0.5; // ±50% (recurring)
 const SIMILAR_TOLERANCE = 0.3; // ±30% (similar)
 
 /** Calcula a mediana de um conjunto de valores. */
 export function medianOf(values: readonly number[]): number {
+
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
   const mid = sorted.length >> 1;

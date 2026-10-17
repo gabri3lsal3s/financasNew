@@ -18,6 +18,7 @@ import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useCategories, useCreditCards, useExpenses, useIncomes, usePermission, useRecurrences } from "@/state";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS, RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
+import { sumGrossCents, sumWeightedCents } from "@/domain/money";
 import { buildUnifiedFeedItems, groupFeedByDay, type FeedFilter } from "@/domain/expenses";
 import { serializeUnifiedTransactionsCsv, type ExportUnifiedTransactionRow } from "@/domain/export";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
@@ -25,9 +26,6 @@ import { IncomeDetailDialog } from "@/features/transactions/components/income-de
 import { BankStatementImportDialog } from "@/features/transactions/components/bank-statement-import-dialog";
 import type { Category, Expense, Income } from "@/types";
 
-function sumCents(items: readonly { value: number }[]): number {
-  return items.reduce((acc, item) => acc + Math.round(item.value * 100), 0);
-}
 
 function ExpenseRow({
   expense,
@@ -129,18 +127,13 @@ export function TransactionListPage() {
     [categoriesQuery.data],
   );
 
-  const incomesTotalCents = sumCents(incomesQuery.data ?? []);
-  const expensesTotalCents = sumCents(expensesQuery.data ?? []);
-  const incomesWeightedCents = (incomesQuery.data ?? []).reduce(
-    (acc, i) => acc + Math.round(i.value * i.report_weight * 100),
-    0,
-  );
-  const expensesWeightedCents = (expensesQuery.data ?? []).reduce(
-    (acc, e) => acc + Math.round(e.value * e.report_weight * 100),
-    0,
-  );
+  const incomesTotalCents = sumGrossCents(incomesQuery.data ?? []);
+  const expensesTotalCents = sumGrossCents(expensesQuery.data ?? []);
+  const incomesWeightedCents = sumWeightedCents(incomesQuery.data ?? []);
+  const expensesWeightedCents = sumWeightedCents(expensesQuery.data ?? []);
   const balanceCents = incomesTotalCents - expensesTotalCents;
   const balanceWeightedCents = incomesWeightedCents - expensesWeightedCents;
+
 
   const [filter, setFilter] = useState<FeedFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
