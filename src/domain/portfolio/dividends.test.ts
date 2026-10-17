@@ -174,6 +174,15 @@ describe("dividends — motor puro de proventos (F18)", () => {
       // 10 * 25.5 = 255; 100 * 10.2 = 1020; sum = 1275
       expect(calculateTotalCostBRL(assets)).toBe(1275);
     });
+
+    it("arredonda somas de múltiplos proventos com centavos quebrados exatamente", () => {
+      const dividendTxs = [
+        { type: "dividend", date: "2026-05-10", total: 10.05 },
+        { type: "jcp", date: "2026-05-12", total: 20.07 },
+        { type: "fii_yield", date: "2026-05-15", total: 30.08 },
+      ];
+      expect(dividendsInMonth(dividendTxs, "2026-05")).toBe(60.2); // 10.05 + 20.07 + 30.08 = 60.20
+    });
   });
 });
 

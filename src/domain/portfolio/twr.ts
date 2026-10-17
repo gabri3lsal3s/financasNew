@@ -80,7 +80,8 @@ export function compoundMonthlyRates(monthlyRatesPct: readonly number[]): number
     compound *= 1 + rate / 100;
   }
 
-  return Math.round((compound - 1) * 10000) / 100;
+  const result = Math.round((compound - 1) * 10000) / 100;
+  return Math.max(-100, result);
 }
 
 /**

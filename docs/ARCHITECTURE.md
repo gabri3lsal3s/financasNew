@@ -69,7 +69,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 - `components/*` → importam `services/` (formatação), `components/`, `lib/`, `types/`. **Nunca** `data/` nem `state/` (módulos recebem props e não tocam dados).
 - `state/` → importa `data/`, `domain/` (derivados), `types/`.
 - `data/` → importa `domain/` (validação), `types/`, `services/errors`.
-- `domain/` → **nenhuma dependência** além de `lib/` (constantes) e `types/`.
+- `domain/` → **nenhuma dependência** além de `lib/` (constantes) e `types/`. Fórmulas e invariantes seguem estritamente `docs/FINANCIAL_MATH_SPEC.md`.
 - `services/` → apresentação (formatação) e integrações (erros); não conhece o domínio financeiro.
 
 ---
@@ -84,6 +84,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 ├── docs/                          # UPPER_SNAKE_CASE.md (ver PROJECT_STRUCTURE.md §7)
 │   ├── ARCHITECTURE.md            # Camadas, dependências, convenções
 │   ├── DESIGN_SYSTEM.md           # Identidade visual e design tokens
+│   ├── FINANCIAL_MATH_SPEC.md     # Especificação canônica de engenharia e precisão matemática
 │   ├── PROJECT_STRUCTURE.md       # Árvore de pastas e onde criar arquivos
 │   ├── PWA_GUIDELINES.md          # Requisitos PWA (manifest, SW, instalação)
 │   └── ROADMAP.md                 # Roadmap executável com DoD por fase

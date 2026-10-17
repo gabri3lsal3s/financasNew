@@ -58,4 +58,25 @@ describe("parcelar — plano com datas mensais", () => {
     const cruza = parcelar(1000, 2, new Date(2026, 11, 10));
     expect(cruza.map((p) => p.date)).toEqual(["2026-12-10", "2027-01-10"]);
   });
+
+  it("estresse de 60 parcelas com resto distribui sem perder centavos (invariante exata)", () => {
+    // R$ 1.000,00 (100.000 centavos) ÷ 60 parcelas = 1666 centavos base, resto 40 centavos
+    const plano = parcelar(100000, 60, new Date(2026, 0, 1));
+    expect(plano).toHaveLength(60);
+    // As primeiras 40 parcelas devem ter 1667 centavos (R$ 16,67)
+    expect(plano.slice(0, 40).every((p) => p.valueCents === 1667)).toBe(true);
+    // As últimas 20 parcelas devem ter 1666 centavos (R$ 16,66)
+    expect(plano.slice(40).every((p) => p.valueCents === 1666)).toBe(true);
+    // Soma exata invariante
+    expect(somaCents(plano.map((p) => p.valueCents))).toBe(100000);
+  });
+
+  it("estresse de valor mínimo indivisível: R$ 0,05 em 12 parcelas", () => {
+    // 5 centavos ÷ 12 parcelas -> 5 parcelas de 1 centavo e 7 parcelas de 0 centavos
+    const plano = parcelar(5, 12, new Date(2026, 0, 1));
+    expect(plano).toHaveLength(12);
+    expect(plano.slice(0, 5).every((p) => p.valueCents === 1)).toBe(true);
+    expect(plano.slice(5).every((p) => p.valueCents === 0)).toBe(true);
+    expect(somaCents(plano.map((p) => p.valueCents))).toBe(5);
+  });
 });

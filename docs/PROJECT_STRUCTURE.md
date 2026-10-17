@@ -40,6 +40,7 @@
 │   ├── DATA_MIGRATION_GUIDE.md    # Guia de migração e batimento de dados legados
 │   ├── DEPLOYMENT.md              # Guia de deploy (Cloudflare Pages + Supabase) e env vars
 │   ├── DESIGN_SYSTEM.md           # Identidade visual e design tokens
+│   ├── FINANCIAL_MATH_SPEC.md     # Especificação canônica de engenharia e precisão matemática
 │   ├── PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md # Plano mestre de governança, limpeza e segurança
 │   ├── PROJECT_STRUCTURE.md       # Este documento
 │   ├── PROJETO_SAAS.md            # Modelo de precificação SaaS, 30 dias de trial e conformidade CDC

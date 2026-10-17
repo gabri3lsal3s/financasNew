@@ -79,4 +79,23 @@ describe("buildDetailedClose (F22 evolução — fechamento detalhado do períod
   it("retorna lista vazia sem despesas", () => {
     expect(buildDetailedClose([], resolvers)).toEqual([]);
   });
+
+  it("garante a invariante hierárquica centavo a centavo entre entradas, dias e categorias", () => {
+    const expenses = [
+      expense({ id: "1", categoryId: "c1", date: "2026-08-10", valueCents: 1234 }),
+      expense({ id: "2", categoryId: "c1", date: "2026-08-10", valueCents: 5678 }),
+      expense({ id: "3", categoryId: "c1", date: "2026-08-12", valueCents: 9012 }),
+      expense({ id: "4", categoryId: "c2", date: "2026-08-12", valueCents: 3456 }),
+    ];
+
+    const categories = buildDetailedClose(expenses, resolvers);
+    for (const cat of categories) {
+      const sumDays = cat.days.reduce((acc, d) => acc + d.totalCents, 0);
+      expect(cat.totalCents).toBe(sumDays);
+      for (const day of cat.days) {
+        const sumEntries = day.entries.reduce((acc, e) => acc + e.valueCents, 0);
+        expect(day.totalCents).toBe(sumEntries);
+      }
+    }
+  });
 });

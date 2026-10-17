@@ -274,5 +274,20 @@ describe("calculateNetInjectedCapital & calculateNetPocketGain", () => {
     expect(resMultiple.annualizedRatePct).toBeGreaterThan(6.0);
     expect(resMultiple.annualizedRatePct).toBeLessThan(7.5);
   });
+
+  it("calcula XIRR estavelmente com resgate intermediário do bolso", () => {
+    // 01/01/2026: Aporte 10.000
+    // 01/07/2026: Resgate parcial 2.000
+    // 01/01/2027: Saldo final 9.500 (total líquido devolvido: 11.500 sobre 10.000 = +15%)
+    const flows: CashFlow[] = [
+      { date: "2026-01-01", amount: -10000 },
+      { date: "2026-07-01", amount: 2000 },
+      { date: "2027-01-01", amount: 9500 },
+    ];
+    const res = calculateXIRR(flows);
+    expect(res.status).toBe("ok");
+    expect(res.annualizedRatePct).toBeGreaterThan(14.0);
+    expect(res.annualizedRatePct).toBeLessThan(18.0);
+  });
 });
 

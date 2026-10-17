@@ -469,5 +469,24 @@ describe("domain/portfolio/valuation (§1.6 D5 + §3.11.2)", () => {
       expect(inferCurrencyFromTicker("TESOURO-SELIC")).toBe("BRL");
     });
   });
+
+  describe("positionPnl — precisão monetária sem resíduos", () => {
+    it("calcula PnL não realizado e retorno total com frações decimais exatas", () => {
+      // Valor de mercado = 1000.10, Custo = 800.05, Proventos = 50.02
+      const pnl = positionPnl(1000.1, 800.05, 50.02);
+      expect(pnl.unrealizedPnl).toBe(200.05); // 1000.10 - 800.05
+      expect(pnl.unrealizedPct).toBe(25); // (200.05 / 800.05) * 100 = 25%
+      expect(pnl.totalDividends).toBe(50.02);
+      expect(pnl.totalReturnPnl).toBe(250.07); // 200.05 + 50.02
+      expect(pnl.totalReturnPct).toBe(31.26); // (250.07 / 800.05) * 100
+    });
+
+    it("posição sem custo retorna percentuais nulos", () => {
+      const pnl = positionPnl(500, 0, 10);
+      expect(pnl.unrealizedPnl).toBe(500);
+      expect(pnl.unrealizedPct).toBeNull();
+      expect(pnl.totalReturnPct).toBeNull();
+    });
+  });
 });
 

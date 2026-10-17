@@ -117,6 +117,18 @@ describe("computeLedger (§3.11.2 — reconciliação)", () => {
     expect(result.averageCost).toBe(0);
   });
 
+  it("liquidação total (100% vendida) com dízima periódica zera estritamente o custo total sem resíduos IEEE 754", () => {
+    // 3 cotas por 100 BRL no total -> PM = 33.333333333333336
+    const result = computeLedger([
+      tx({ type: "buy", date: "2026-01-10", quantity: 3, price: 33.33333333, total: 100 }),
+      tx({ type: "sell", date: "2026-02-10", quantity: 3, price: 40, total: 120 }),
+    ]);
+    expect(result.quantity).toBe(0);
+    expect(result.totalCost).toBe(0);
+    expect(result.averageCost).toBe(0);
+    expect(result.cash).toBe(20); // -100 + 120
+  });
+
   it("ledger vazio → posição zerada", () => {
     expect(computeLedger([])).toEqual({ quantity: 0, averageCost: 0, totalCost: 0, dividends: 0, cash: 0 });
   });

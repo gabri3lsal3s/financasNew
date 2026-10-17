@@ -29,14 +29,18 @@ export function sumGrossCents(items: readonly TransactionValueItem[]): number {
 /**
  * Soma o valor ponderado de itens transacionais em centavos inteiros (peso de relatório 0 a 1).
  * Itens sem report_weight têm peso unitário padrão (1).
+ * Evita multiplicação flutuante supérflua quando o peso é unitário (1).
  */
 export function sumWeightedCents(items: readonly TransactionWeightedItem[]): number {
   let sum = 0;
   for (const item of items) {
-    const weight = typeof item.report_weight === "number" && Number.isFinite(item.report_weight)
-      ? Math.max(0, item.report_weight)
-      : 1;
-    sum += numberToCents(item.value * weight);
+    const rawWeight = item.report_weight;
+    if (rawWeight === undefined || rawWeight === null || rawWeight === 1) {
+      sum += numberToCents(item.value);
+    } else {
+      const weight = Number.isFinite(rawWeight) ? Math.max(0, rawWeight) : 1;
+      sum += numberToCents(item.value * weight);
+    }
   }
-  return sum;
+  return Math.round(sum);
 }

@@ -68,11 +68,19 @@ export function applyOperation(
     case "sell": {
       // Venda reduz proporcionalmente o custo: usa o custo médio atual.
       const newQuantity = Math.max(0, position.quantity - tx.quantity);
+      if (newQuantity <= 0) {
+        return {
+          quantity: 0,
+          averageCost: 0,
+          totalCost: 0,
+          dividends: position.dividends,
+        };
+      }
       const costSold = position.averageCost * tx.quantity;
       const newTotalCost = Math.max(0, position.totalCost - costSold);
       return {
         quantity: newQuantity,
-        averageCost: newQuantity > 0 ? newTotalCost / newQuantity : 0,
+        averageCost: newTotalCost / newQuantity,
         totalCost: newTotalCost,
         dividends: position.dividends,
       };

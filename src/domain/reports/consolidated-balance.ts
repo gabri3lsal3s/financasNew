@@ -49,6 +49,10 @@ export interface ConsolidatedBalanceSheetResult {
   dre: PersonalDRE;
 }
 
+function round2(value: number): number {
+  return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
+}
+
 function divideSafe(numerator: number, denominator: number, fallback = 0): number {
   if (!denominator || isNaN(denominator) || !isFinite(denominator) || denominator <= 0) {
     return fallback;
@@ -62,8 +66,8 @@ export function computeConsolidatedBalanceSheet(input: ConsolidatedBalanceInput)
   const totalCostBRL = Math.max(0, input.investmentsTotalCostBRL);
   const cashBalanceBRL = Math.max(0, input.cashBalanceBRL);
 
-  const unrealizedPnlBRL = totalInvestmentsBRL - totalCostBRL;
-  const unrealizedPnlPct = totalCostBRL > 0 ? (unrealizedPnlBRL / totalCostBRL) * 100 : 0;
+  const unrealizedPnlBRL = round2(totalInvestmentsBRL - totalCostBRL);
+  const unrealizedPnlPct = totalCostBRL > 0 ? round2((unrealizedPnlBRL / totalCostBRL) * 100) : 0;
 
   let receivablesBRL = 0;
   let totalLiabilitiesBRL = 0;
@@ -71,24 +75,24 @@ export function computeConsolidatedBalanceSheet(input: ConsolidatedBalanceInput)
   for (const debt of input.debts) {
     const val = Math.max(0, debt.remainingAmountBRL);
     if (debt.type === "receivable") {
-      receivablesBRL += val;
+      receivablesBRL = round2(receivablesBRL + val);
     } else {
-      totalLiabilitiesBRL += val;
+      totalLiabilitiesBRL = round2(totalLiabilitiesBRL + val);
     }
   }
 
-  const totalAssetsBRL = totalInvestmentsBRL + cashBalanceBRL + receivablesBRL;
-  const netWorthBRL = totalAssetsBRL - totalLiabilitiesBRL;
+  const totalAssetsBRL = round2(totalInvestmentsBRL + cashBalanceBRL + receivablesBRL);
+  const netWorthBRL = round2(totalAssetsBRL - totalLiabilitiesBRL);
 
-  const debtToAssetRatioPct = divideSafe(totalLiabilitiesBRL, totalAssetsBRL) * 100;
+  const debtToAssetRatioPct = round2(divideSafe(totalLiabilitiesBRL, totalAssetsBRL) * 100);
 
   // DRE Pessoal
   const grossIncomeBRL = Math.max(0, input.monthlyIncomesBRL);
   const totalExpensesBRL = Math.max(0, input.monthlyExpensesBRL);
-  const operationalSavingsBRL = grossIncomeBRL - totalExpensesBRL;
-  const savingsRatePct = grossIncomeBRL > 0 ? divideSafe(operationalSavingsBRL, grossIncomeBRL) * 100 : 0;
+  const operationalSavingsBRL = round2(grossIncomeBRL - totalExpensesBRL);
+  const savingsRatePct = grossIncomeBRL > 0 ? round2(divideSafe(operationalSavingsBRL, grossIncomeBRL) * 100) : 0;
   const investedAporteBRL = Math.max(0, input.monthlyContributionsBRL);
-  const netCashFlowBRL = operationalSavingsBRL - investedAporteBRL;
+  const netCashFlowBRL = round2(operationalSavingsBRL - investedAporteBRL);
 
   return {
     totalInvestmentsBRL,

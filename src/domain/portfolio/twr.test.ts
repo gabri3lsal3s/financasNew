@@ -56,6 +56,12 @@ describe("TWR — Time-Weighted Return (Padrão CVM/ANBIMA)", () => {
       // +10% e depois -10% = -1% (1.1 * 0.9 = 0.99)
       expect(compoundMonthlyRates([10, -10])).toBe(-1);
     });
+
+    it("respeita o piso teórico de -100% contra aproximações de ponto flutuante", () => {
+      expect(compoundMonthlyRates([-100])).toBe(-100);
+      expect(compoundMonthlyRates([-50, -60])).toBe(-80);
+      expect(compoundMonthlyRates([-100, -10])).toBe(-100);
+    });
   });
 
   describe("annualizeRateFromMonths", () => {

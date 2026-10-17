@@ -918,8 +918,8 @@ export function simulateAporte(opts: {
     }
   }
 
-  const totalAllocated = round2(routes.reduce((acc, r) => acc + r.allocatedBRL, 0));
-  const leftover = round2(aporte - totalAllocated);
+  const totalAllocated = Math.min(aporte, round2(routes.reduce((acc, r) => acc + r.allocatedBRL, 0)));
+  const leftover = Math.max(0, round2(aporte - totalAllocated));
 
   return {
     mode: opts.mode,

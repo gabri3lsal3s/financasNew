@@ -48,5 +48,22 @@ describe("domain/money/totals", () => {
       ];
       expect(sumWeightedCents(items)).toBe(6000);
     });
+
+    it("prevents classic IEEE 754 floating point inaccuracies", () => {
+      // 0.1 + 0.2 em JS puro resulta em 0.30000000000000004
+      const items = [
+        { value: 0.1 },
+        { value: 0.2 },
+      ];
+      expect(sumWeightedCents(items)).toBe(30);
+      expect(sumGrossCents(items)).toBe(30);
+
+      // Valores com dizima em divisao ponderada
+      const weightedItems = [
+        { value: 10.05, report_weight: 0.33 }, // 3.3165 -> 3.32 -> 332 cents
+        { value: 10.05, report_weight: 0.67 }, // 6.7335 -> 6.73 -> 673 cents
+      ];
+      expect(sumWeightedCents(weightedItems)).toBe(1005); // 332 + 673 = 1005 centavos
+    });
   });
 });

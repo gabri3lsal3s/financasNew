@@ -200,14 +200,14 @@ flowchart TD
 
 ### FASE 4 — Precisão Matemática e Engenharia de Cálculos Financeiros
 
-- [ ] **4.1 Planejamento Técnico da Auditoria de Cálculos:**
+- [x] **4.1 Planejamento Técnico da Auditoria de Cálculos:**
   - Mapear todas as funções matemáticas críticas em `src/domain/`:
     - `src/domain/money/` (arredondamento, parcelamentos, totais).
     - `src/domain/portfolio/` (preço médio, rentabilidade TWRR/MWRR, proventos/dividendos, rebalanceamento, marcação a mercado).
     - `src/domain/cards/` e `src/domain/debts/` (competência de faturas, juros, amortização).
     - `src/domain/reports/` (DRE, balanço patrimonial, taxa de poupança).
   - Definir padrões estritos contra imprecisão de ponto flutuante IEEE 754 (operações com inteiros em centavos ou arredondamento simétrico meio-para-cima padronizado).
-- [ ] **4.2 Implementação e Refinamento Matemático:**
+- [x] **4.2 Implementação e Refinamento Matemático:**
   - **Aritmética Monetária:** Garantir que somatórios e divisões de parcelas utilizem distribuição de centavos exata (sem perda de R$ 0,01 no totalizador).
   - **Carteira & Investimentos:**
     - Auditar cálculo do Preço Médio Ponderado incluindo taxas/corretagens em compras sucessivas e vendas parciais.
@@ -218,18 +218,18 @@ flowchart TD
     - Auditar corte de fatura (`billCompetence`), limites utilizados vs disponíveis e impacto de estornos parciais.
   - **DRE & Fluxo de Caixa:**
     - Blindar a neutralidade de transferências entre contas e pagamentos de cartão de crédito para impedir duplicação artificial de receitas ou despesas.
-- [ ] **4.3 Verificação de Erros:**
+- [x] **4.3 Verificação de Erros:**
   - Executar `npm run typecheck` e `npm run lint`.
-- [ ] **4.4 Correção de Erros:**
+- [x] **4.4 Correção de Erros:**
   - Sanar distorções em testes matemáticos de borda.
-- [ ] **4.5 Testes Automatizados Extensivos:**
+- [x] **4.5 Testes Automatizados Extensivos:**
   - Executar e enriquecer a suíte de testes de domínio:
     - `src/domain/money/totals.test.ts`, `parcelar.test.ts`.
     - `src/domain/portfolio/valuation.test.ts`, `twr.test.ts`, `irr.test.ts`, `aporte.test.ts`, `dividends.test.ts`.
     - `src/domain/reports/detailed-close.test.ts`, `consolidated-balance.test.ts`.
-- [ ] **4.6 Atualização da Documentação:**
+- [x] **4.6 Atualização da Documentação:**
   - Criar ou atualizar guia com as especificações matemáticas em `docs/DESIGN_SYSTEM.md` ou documento técnico dedicado.
-- [ ] **Portão de Verificação 4 (Quality Gate 4):**
+- [x] **Portão de Verificação 4 (Quality Gate 4):**
   - Commit semântico: `test(domain): audit financial calculation engine, ensure float precision and validate portfolio metrics` e `git push`.
 
 ---

@@ -53,4 +53,26 @@ describe("computeConsolidatedBalanceSheet", () => {
     expect(result.debtToAssetRatioPct).toBe(0);
     expect(result.dre.savingsRatePct).toBe(0);
   });
+
+  it("elimina resíduos infinitesimais de ponto flutuante IEEE 754 em subtrações e somas decimais", () => {
+    // 1000.1 - 800.05 em JS puro resulta em 200.04999999999995
+    const result = computeConsolidatedBalanceSheet({
+      investmentsMarketValueBRL: 1000.1,
+      investmentsTotalCostBRL: 800.05,
+      cashBalanceBRL: 0.1,
+      debts: [
+        { id: "1", type: "receivable", remainingAmountBRL: 0.2, description: "Recebível" },
+        { id: "2", type: "payable", remainingAmountBRL: 100.05, description: "Dívida" },
+      ],
+      monthlyIncomesBRL: 500.1,
+      monthlyExpensesBRL: 300.05,
+      monthlyContributionsBRL: 100.02,
+    });
+
+    expect(result.unrealizedPnlBRL).toBe(200.05); // sem dízima
+    expect(result.totalAssetsBRL).toBe(1000.4); // 1000.1 + 0.1 + 0.2
+    expect(result.netWorthBRL).toBe(900.35); // 1000.4 - 100.05
+    expect(result.dre.operationalSavingsBRL).toBe(200.05); // 500.1 - 300.05
+    expect(result.dre.netCashFlowBRL).toBe(100.03); // 200.05 - 100.02
+  });
 });
