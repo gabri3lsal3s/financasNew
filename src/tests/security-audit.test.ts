@@ -447,6 +447,7 @@ describe("Fase 5.3 — Auditoria do Bundle Client contra Vazamento de Segredos",
   const ALLOWED_CLIENT_ENV_VARS = new Set([
     "VITE_SUPABASE_URL",
     "VITE_SUPABASE_ANON_KEY",
+    "VITE_DEFAULT_BILLING_PROVIDER",
     "VITE_SENTRY_DSN",
     "VITE_BRAPI_TOKEN",
     "DEV",

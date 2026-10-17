@@ -33,6 +33,7 @@ import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog"
 import { useUserSubscription } from "@/state";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
+import { getErrorMessage } from "@/services/errors";
 import { formatCardNumber, formatCardExpiry } from "@/services/masks";
 import {
   cancelSubscription,
@@ -157,7 +158,7 @@ export function SubscriptionTab() {
       setCancelOpen(false);
     } catch (err: unknown) {
       triggerSensory("destructive");
-      const msg = err instanceof Error ? err.message : "Falha ao registrar cancelamento no Asaas.";
+      const msg = getErrorMessage(err);
       pushToast({
         title: "Erro no cancelamento",
         description: msg,

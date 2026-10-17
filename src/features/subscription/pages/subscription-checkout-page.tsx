@@ -37,7 +37,7 @@ import {
   type PixCheckoutResult,
 } from "@/data/repositories/billing";
 import { cn } from "@/lib/utils";
-import { resolveCheckoutBillingSchedule } from "@/domain/subscription";
+import { resolveCheckoutBillingSchedule, PLAN_CONFIGS } from "@/domain/subscription";
 import type { SubscriptionPlan } from "@/types";
 
 type CheckoutPaymentMethod = "credit_card" | "pix";
@@ -47,18 +47,18 @@ const PLAN_LABELS: Record<
   { label: string; price: string; monthly: string; detail: string; badge: string | null }
 > = {
   monthly: {
-    label: "Plano Pro Mensal",
+    label: PLAN_CONFIGS.monthly.title,
     price: "R$\u00a019,90",
     monthly: "R$\u00a019,90/mês",
-    detail: "Cobrado mensalmente. Cancelamento a qualquer momento em 1 clique.",
-    badge: null,
+    detail: PLAN_CONFIGS.monthly.description,
+    badge: PLAN_CONFIGS.monthly.badge,
   },
   annual: {
-    label: "Plano Pro Anual",
+    label: PLAN_CONFIGS.annual.title,
     price: "R$\u00a0178,80",
     monthly: "R$\u00a014,90/mês",
-    detail: "Cobrado anualmente. Você economiza R$\u00a060,00 em relação ao mensal.",
-    badge: "25% OFF",
+    detail: PLAN_CONFIGS.annual.description,
+    badge: PLAN_CONFIGS.annual.badge,
   },
 };
 
@@ -316,14 +316,18 @@ export function SubscriptionCheckoutPage() {
         }
       }
 
-      // 5. Processamento do Checkout (Cartão ou PIX)
+      // 5. Processamento do Checkout (Cartão, PIX ou Sessão Hospedada)
       if (activeMethod === "credit_card") {
         const [expMonth, expYear] = cardExpiry.split("/");
         try {
-          await createCheckoutSession({
+          const res = await createCheckoutSession({
             plan,
             method: "credit_card",
-            cpf: cleanCPF(cpf),
+            customer: {
+              name: (holderName.trim() || authName.trim() || session?.user?.user_metadata?.name || "Cliente").toUpperCase(),
+              email: authEmail.trim() || session?.user?.email || "",
+              cpf: cleanCPF(cpf),
+            },
             card: {
               holderName: holderName.trim().toUpperCase(),
               number: cardNumber.replace(/\D/g, ""),
@@ -334,6 +338,12 @@ export function SubscriptionCheckoutPage() {
             trialDaysRemaining: billingSchedule.daysUntilFirstCharge,
             firstBillingDate: billingSchedule.firstBillingDate.toISOString(),
           });
+
+          // Suporte a sessões de checkout hospedadas/redirecionadas (como Stripe Checkout / 3DS)
+          if (res && res.method === "hosted_session" && "checkoutUrl" in res) {
+            window.location.href = res.checkoutUrl;
+            return;
+          }
         } catch (gatewayErr: unknown) {
           // Modo de simulação visual resiliente se gateway offline no ambiente de dev
           if (import.meta.env.DEV) {
@@ -356,7 +366,11 @@ export function SubscriptionCheckoutPage() {
           const res = await createCheckoutSession({
             plan: "annual",
             method: "pix",
-            cpf: cleanCPF(cpf),
+            customer: {
+              name: (authName.trim() || session?.user?.user_metadata?.name || "Cliente").toUpperCase(),
+              email: authEmail.trim() || session?.user?.email || "",
+              cpf: cleanCPF(cpf),
+            },
           });
 
           if (res.method === "pix") {
@@ -373,6 +387,7 @@ export function SubscriptionCheckoutPage() {
           const mockPix: PixCheckoutResult = {
             ok: true,
             method: "pix",
+            provider: "asaas",
             paymentId: "pay_simulated_" + Date.now(),
             qrCodeBase64: "",
             copyPasteKey: "00020126580014br.gov.bcb.pix0136123e4567-e89b-12d3-a456-4266141740005204000053039865406178.805802BR5913GUIA_FINANC6009SAO_PAULO62070503***6304ABCD",
@@ -911,7 +926,7 @@ export function SubscriptionCheckoutPage() {
                 {isPending ? (
                   <>
                     <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-                    Processando com Asaas...
+                    Processando com gateway seguro...
                   </>
                 ) : activeMethod === "pix" ? (
                   <>

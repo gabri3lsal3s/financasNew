@@ -13,6 +13,7 @@
  * O contrato de domínio é `number` — a conversão acontece na camada `data/`.
  */
 import type { SubscriptionTier, SubscriptionStatus, ModuleAccessLevel } from "./subscription";
+import type { BillingProviderName } from "./billing";
 
 export const PAYMENT_METHODS = ["cash", "debit", "credit_card", "pix", "transfer", "other"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
@@ -147,6 +148,10 @@ export type UserSubscription = {
   trial_ends_at?: string | null;
   current_period_end?: string | null;
   cancel_at_period_end: boolean;
+  payment_provider?: BillingProviderName;
+  provider_customer_id?: string | null;
+  provider_subscription_id?: string | null;
+  provider_payment_id?: string | null;
   asaas_customer_id?: string | null;
   asaas_subscription_id?: string | null;
   asaas_payment_id?: string | null;

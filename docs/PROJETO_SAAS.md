@@ -135,3 +135,70 @@ Qualquer modificação de permissão modular via `useAdminSetUserModulePermissio
 - As chaves de auditoria e listagem administrativa (`ADMIN_USER_MODULE_PERMISSIONS_KEY`, `ADMIN_AUDIT_KEY`);
 - As chaves de controle de acesso do próprio usuário (`userAccessQueryKey(userId)`, `userFeaturesQueryKey(userId)`), propagando a alteração imediatamente em sessões ativas sem necessidade de logout.
 
+---
+
+## 9. ARQUITETURA AGNÓSTICA DE PAGAMENTOS (ADAPTER PATTERN: STRIPE & ASAAS READY)
+
+A plataforma opera sob o padrão arquitetural **Adapter Pattern (Provedor Agnóstico)**, garantindo que a interface com o usuário, as rotinas de domínio financeiro e as tabelas de banco de dados não possuam acoplamento rígido a nenhuma instituição ou gateway de pagamento proprietário.
+
+### 9.1 Provedores Homologados e Especialidades
+
+1. **Asaas (Operações Domésticas / Brasil):**
+   - **PIX Instantâneo Dinâmico:** Geração de QR Code e chave Copia e Cola em tempo real via Edge Function;
+   - **Cartão de Crédito Transparente:** Tokenização de cartão com validação de bandeiras locais (Elo, Hipercard) e internacionais (Visa, Mastercard, Amex);
+   - **Cobrança Diferida (Trial Residual):** Agendamento transparente do primeiro débito para a data exata de término dos 30 dias de trial (`firstBillingDate`).
+
+2. **Stripe (Operações Globais / Multi-Moeda & Hosted Checkout):**
+   - **Stripe Checkout Sessions:** Redirecionamento seguro para sessões hospedadas com suporte a 3D Secure (3DS);
+   - **Stripe Customer Portal:** Portal de autoatendimento nativo para atualização de dados de faturamento, faturas fiscais e cancelamento autônomo;
+   - **Cartões Internacionais:** Processamento multi-moeda e conversão automática.
+
+### 9.2 Contrato Canônico `BillingProviderAdapter` (`src/types/billing.ts`)
+
+Todos os adaptadores implementam a interface canônica `BillingProviderAdapter`:
+
+```typescript
+export interface BillingProviderAdapter {
+  readonly providerName: BillingProviderName; // "stripe" | "asaas" | "manual"
+  createCheckoutSession(params: CreateCheckoutParams): Promise<CheckoutSessionResult>;
+  cancelSubscription(params?: CancelSubscriptionParams): Promise<void>;
+  updatePaymentMethod(params: UpdatePaymentParams): Promise<void>;
+  getBillingPortalUrl?(customerId: string, returnUrl?: string): Promise<string>;
+}
+```
+
+Os resultados de checkout utilizam contratos discriminados fortemente tipados:
+- `PixCheckoutResult`: `method: "pix"`, contendo QR Code base64, chave Copia e Cola e expiração;
+- `DirectCreditCardResult`: `method: "credit_card"`, contendo confirmação direta de ativação;
+- `HostedSessionResult`: `method: "hosted_session"`, contendo `checkoutUrl` e `sessionId` para redirecionamento.
+
+### 9.3 Resolução Dinâmica de Provedor (`src/data/repositories/billing.ts`)
+
+O despachante `getBillingAdapter(provider?: BillingProviderName)` resolve o adaptador ativo:
+1. Prioriza o provedor solicitado explicitamente no parâmetro da chamada;
+2. Caso omitido, resolve a variável pública de ambiente `VITE_DEFAULT_BILLING_PROVIDER` (`"asaas"` por padrão, ou `"stripe"`);
+3. Garante que qualquer rota ou componente de checkout invoque o contrato genérico sem conhecer detalhes de transporte de rede do gateway.
+
+### 9.4 Normalização Universal de Webhooks
+
+Para unificar a ingestão assíncrona de eventos de cobrança, a plataforma normaliza todos os webhooks externos em 4 macroeventos canônicos universais:
+
+| Evento Canônico Universal | Evento Asaas | Evento Stripe | Ação no Sistema |
+|---|---|---|---|
+| `subscription.created` | `SUBSCRIPTION_CREATED` | `customer.subscription.created` | Registra e vincula identificadores da assinatura. |
+| `invoice.paid` | `PAYMENT_RECEIVED` / `PAYMENT_CONFIRMED` | `invoice.paid` / `checkout.session.completed` | Ativa status `active`, atualiza tier e renova período. |
+| `invoice.payment_failed` | `PAYMENT_OVERDUE` | `invoice.payment_failed` | Altera status para `past_due` e alerta o usuário. |
+| `subscription.canceled` | `SUBSCRIPTION_DELETED` | `customer.subscription.deleted` | Efetiva cancelamento e transiciona para `read_only_expired`. |
+
+Todos os eventos normalizados convergem no contrato universal `NormalizedWebhookEvent` e são processados de forma idempotente no Postgres via RPC transacional.
+
+### 9.5 Transição Suave e Retrocompatível do Esquema (Postgres)
+
+A modelagem de dados da tabela `public.user_subscriptions` foi migrada para campos agnósticos:
+- `payment_provider`: Identificador do provedor (`'stripe'`, `'asaas'`, `'manual'`);
+- `provider_customer_id`: ID do cliente no gateway ativo;
+- `provider_subscription_id`: ID da assinatura no gateway ativo;
+- `provider_payment_id`: ID do pagamento/cobrança pontual.
+
+As colunas legadas (`asaas_customer_id`, `asaas_subscription_id`, `asaas_payment_id`) são preservadas com retrocompatibilidade garantida, assegurando operação contínua e sem quebra de integrações legadas.
+

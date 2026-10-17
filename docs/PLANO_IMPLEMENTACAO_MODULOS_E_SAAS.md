@@ -294,7 +294,7 @@ flowchart TD
 
 ### FASE 7 — Arquitetura Agnóstica SaaS (Stripe ou Asaas Ready)
 
-- [ ] **7.1 Planejamento da Abstração de Pagamentos:**
+- [x] **7.1 Planejamento da Abstração de Pagamentos:**
   - Projetar a interface canônica `BillingProviderAdapter` totalmente desacoplada de provedores específicos:
     ```typescript
     interface BillingProviderAdapter {
@@ -307,22 +307,22 @@ flowchart TD
     ```
   - Mapear a transição suave de esquema para que o banco armazene: `payment_provider`, `provider_customer_id`, `provider_subscription_id`.
   - Normalizar eventos de Webhooks em contratos agnósticos universais (`subscription.created`, `invoice.paid`, `invoice.payment_failed`, `subscription.canceled`).
-- [ ] **7.2 Implementação da Camada de Abstração:**
+- [x] **7.2 Implementação da Camada de Abstração:**
   - Em `src/data/repositories/billing.ts`:
     - Refatorar endpoints para interagir com o contrato genérico de billing da API.
   - Em `src/features/subscription/pages/subscription-checkout-page.tsx`:
     - Tornar o formulário de checkout agnóstico: preparado tanto para embedded elements (como Stripe Elements) quanto para checkout direto via tokenização/cartão ou PIX (Asaas).
   - Em `src/domain/subscription/`:
     - Centralizar as regras de plano (preços, ciclos de cobrança mensal/anual, regras de pró-rata de trial).
-- [ ] **7.3 Verificação de Erros:**
+- [x] **7.3 Verificação de Erros:**
   - Executar `npm run typecheck` e `npm run lint`.
-- [ ] **7.4 Correção de Erros:**
+- [x] **7.4 Correção de Erros:**
   - Sanar qualquer incompatibilidade de contrato.
-- [ ] **7.5 Testes Automatizados:**
+- [x] **7.5 Testes Automatizados:**
   - Executar testes de billing e checkout: `subscription-checkout-page.test.tsx`, `billing.test.ts`.
-- [ ] **7.6 Atualização da Documentação:**
+- [x] **7.6 Atualização da Documentação:**
   - Atualizar `docs/PROJETO_SAAS.md` documentando o Adapter Pattern e os requisitos de integração para Stripe e Asaas.
-- [ ] **Portão de Verificação 7 (Quality Gate 7):**
+- [x] **Portão de Verificação 7 (Quality Gate 7):**
   - Commit semântico: `feat(billing): decouple saas payment architecture via provider-agnostic billing adapter` e `git push`.
 
 ---

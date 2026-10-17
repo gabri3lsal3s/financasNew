@@ -133,5 +133,52 @@ describe("SubscriptionCheckoutPage Component", () => {
     await user.type(cardInput, "5500000000000000");
     expect(screen.getByText("Mastercard")).toBeInTheDocument();
   });
+
+  it("redireciona para checkoutUrl quando o gateway retorna hosted_session (Stripe Checkout)", async () => {
+    const originalLocation = window.location;
+    const mockLocation = { ...originalLocation, href: "" };
+    Object.defineProperty(window, "location", {
+      value: mockLocation,
+      writable: true,
+      configurable: true,
+    });
+
+    createCheckoutSessionMock.mockResolvedValueOnce({
+      ok: true,
+      method: "hosted_session",
+      provider: "stripe",
+      checkoutUrl: "https://checkout.stripe.com/c/pay/cs_test_session_456",
+      sessionId: "cs_test_session_456",
+    });
+
+    const user = userEvent.setup();
+    renderCheckout("/assinatura?plano=pro-anual");
+
+    const cpfInput = screen.getByPlaceholderText("000.000.000-00");
+    await user.type(cpfInput, "11144477735");
+
+    const nameInput = screen.getByPlaceholderText("Nome como impresso no cartão");
+    await user.type(nameInput, "CLIENTE STRIPE");
+
+    const cardInput = screen.getByPlaceholderText("0000 0000 0000 0000");
+    await user.type(cardInput, "4242424242424242");
+
+    const expiryInput = screen.getByPlaceholderText("MM/AA");
+    await user.type(expiryInput, "12/28");
+
+    const cvvInput = screen.getByPlaceholderText("123");
+    await user.type(cvvInput, "123");
+
+    const submitBtn = screen.getByRole("button", { name: /Confirmar Assinatura Pro/i });
+    await user.click(submitBtn);
+
+    expect(mockLocation.href).toBe("https://checkout.stripe.com/c/pay/cs_test_session_456");
+
+    Object.defineProperty(window, "location", {
+      value: originalLocation,
+      writable: true,
+      configurable: true,
+    });
+  });
 });
 

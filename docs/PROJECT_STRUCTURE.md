@@ -213,16 +213,17 @@
     │   │                          #     fundo de emergência (index.ts)
     │   ├── reconciliation/        #   F30: conciliação de faturas (parsers CSV/OFX/Texto,
     │   │                          #     type-sniffer, hashing ordinal, scoring 0-100)
-    │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
-    │                              #   contributions.ts (agregação pura de aportes em centavos),
-    │                              #   simulation.ts (simulação de rebalanceamento por classes e renda passiva),
-    │                              #   irr.ts (motor puro de TIR / Money-Weighted Return / XIRR com solver híbrido Newton-Raphson + Bisseção),
-    │                              #   twr.ts (motor puro de TWR / Time-Weighted Return / cotização ANBIMA / CVM e encadeamento geométrico),
-    │                              #   operations.ts (vendas, splits, adição com posição inicial e reconciliação do ledger),
-    │                              #   summary.ts (F17: rentabilidade, alocação),
-    │                              #   import-parser.ts (F35: sniffer de CSV e Quick-Paste),
-    │                              #   xlsx-parser.ts (parser puro de planilhas Excel .xlsx/.xls),
-    │                              #   statement-parser.ts (parser inteligente de extratos de bancos/corretoras, cálculo de deltas e deduplicação)
+    │   ├── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
+    │   │                          #   contributions.ts (agregação pura de aportes em centavos),
+    │   │                          #   simulation.ts (simulação de rebalanceamento por classes e renda passiva),
+    │   │                          #   irr.ts (motor puro de TIR / Money-Weighted Return / XIRR com solver híbrido Newton-Raphson + Bisseção),
+    │   │                          #   twr.ts (motor puro de TWR / Time-Weighted Return / cotização ANBIMA / CVM e encadeamento geométrico),
+    │   │                          #   operations.ts (vendas, splits, adição com posição inicial e reconciliação do ledger),
+    │   │                          #   summary.ts (F17: rentabilidade, alocação),
+    │   │                          #   import-parser.ts (F35: sniffer de CSV e Quick-Paste),
+    │   │                          #   xlsx-parser.ts (parser puro de planilhas Excel .xlsx/.xls),
+    │   │                          #   statement-parser.ts (parser inteligente de extratos de bancos/corretoras, cálculo de deltas e deduplicação)
+    │   └── subscription/          #   Regras puras de planos, trial 30 dias (trial.ts), precificação, CDC 7 dias e estorno pró-rata (plans.ts)
     │
 
     ├── data/                      # INTEGRAÇÃO REMOTA
@@ -232,6 +233,8 @@
     │   ├── session.ts             #   currentUserId() — usuário autenticado (RLS auth.uid())
     │   ├── repositories/          #   expenses.ts, incomes.ts, cards.ts, debts.ts,
     │   │                          #   budgets.ts, portfolio.ts, categories.ts,
+    │   │                          #   billing.ts (adaptadores agnósticos Stripe/Asaas, checkout e portal de faturamento),
+    │   │                          #   subscriptions.ts (status SaaS, planos e gestão administrativa de permissões modulares),
     │   │                          #   export.ts (F22: fetchAllUserData + restoreBackup),
     │   │                          #   onboarding.ts (contagens do primeiro uso),
     │   │                          #   profiles.ts (auto-cura de perfis órfãos),
@@ -292,7 +295,7 @@
     │   └── utils.ts               #   cn() (clsx + tailwind-merge)
     │   # APP_START_DATE, faixas 85/90/95 → src/types/schema.ts (contrato de domínio)
     │
-    ├── types/                     # Contratos de domínio TS (Receita, Despesa, Cartão…)
+    ├── types/                     # Contratos de domínio TS (schema.ts, database.ts, subscription.ts, billing.ts)
     ├── styles/                    # Design tokens (única fonte)
     │   ├── tokens.css             #   light / dark / oled
     │   └── globals.css            #   @theme (Tailwind v4) + base + .num/.display

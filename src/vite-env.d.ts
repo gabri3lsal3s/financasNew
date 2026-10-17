@@ -6,6 +6,8 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string;
   /** Chave pública anônima (anon key) do Supabase. */
   readonly VITE_SUPABASE_ANON_KEY?: string;
+  /** Provedor de faturamento padrão ativo ("asaas" ou "stripe"). */
+  readonly VITE_DEFAULT_BILLING_PROVIDER?: string;
 }
 
 interface ImportMeta {
