@@ -330,14 +330,14 @@ graph TD
   - **Ação 1: Invalidação e Limpeza Integral de Cache (Workbox & CacheStorage):**
     - Habilitado `cleanupOutdatedCaches: true` na configuração do Workbox em `vite.config.ts`, garantindo exclusão automática de precaches de builds anteriores no momento em que o novo SW assume o controle;
     - Isolados ícones PWA e assets de marca (`/pwa/icons/*`, `/brand/*`) na rota dedicada `pwa-brand-assets` com estratégia `NetworkFirst` (timeout de 3s e fallback offline), eliminando a retenção permissiva de 30 dias de imagens genéricas;
-    - Implementada rotina `purgeLegacyCaches()` em `src/app/pwa.ts` para varrer e remover caches legados de imagens e precaches obsoletos via `caches.delete()` durante a atualização.
+    - Implementada rotina `purgeLegacyCaches()` em `src/app/pwa.ts` para varrer e remover caches legados de imagens e runtime obsoletos via `caches.delete()` durante a atualização, preservando categoricamente o `workbox-precache` para garantir o App Shell no reload.
   - **Ação 2: Fluxo de Atualização Atômico e Sincronizado (Zero Mismatch de Chunks):**
     - Preservado o callback de retorno de `registerSW` (`updateSW(true)`) no módulo `src/app/pwa.ts`;
     - Refatorada a ação "Atualizar" de `src/components/modules/pwa-update-toast.tsx` e `forceAppUpdate()` em `src/app/pwa.ts` para o fluxo atômico `applyPWAUpdate()`:
       1. Dispara `{ type: "SKIP_WAITING" }` para a registration ativa do Service Worker;
-      2. Escuta e aguarda o evento `controllerchange` em `navigator.serviceWorker` (com timeout defensivo de 4 segundos via `waitForControllerChange(4000)`);
+      2. Escuta e aguarda o evento `controllerchange` em `navigator.serviceWorker` (com timeout defensivo de 4 segundos via `waitForControllerChange(4000)` quando há worker pendente);
       3. Exibe estado de transição visual limpo ("Atualizando para a nova versão...") desabilitando interações repetidas;
-      4. Executa `purgeLegacyCaches()` e `window.location.reload()` somente após confirmação do controle de clientes (`clientsClaim`).
+      4. Executa `purgeLegacyCaches()` e `window.location.reload()` mantendo intacto o precache do App Shell.
   - **Ação 3: Sincronização de Ícones do Launcher e WebAPK Móvel:**
     - Implementado versionamento determinístico com query params (`?v=2`) nas URLs dos ícones em `public/pwa/manifest.webmanifest` e tags de favicon/apple-touch-icon/manifest em `index.html`;
     - Sincronizado o script `scripts/generate-icons.mjs` para atualizar automaticamente as URLs versionadas no manifesto ao gerar novos ícones;
