@@ -177,7 +177,7 @@ describe("PWA — atualização automática (autoUpdate → toast)", () => {
     await expect(timeoutPromise).resolves.toBeUndefined();
   });
 
-  it("purgeLegacyCaches remove apenas caches legados do Workbox e assets estáticos", async () => {
+  it("purgeLegacyCaches preserva o workbox-precache e purga caches estáticos dinâmicos", async () => {
     const deletedKeys: string[] = [];
     Object.defineProperty(window, "caches", {
       value: {
@@ -198,7 +198,7 @@ describe("PWA — atualização automática (autoUpdate → toast)", () => {
 
     await purgeLegacyCaches();
 
-    expect(deletedKeys).toContain("workbox-precache-v2-xyz");
+    expect(deletedKeys).not.toContain("workbox-precache-v2-xyz");
     expect(deletedKeys).toContain("static-images");
     expect(deletedKeys).toContain("pwa-brand-assets");
     expect(deletedKeys).not.toContain("app-user-offline-store");

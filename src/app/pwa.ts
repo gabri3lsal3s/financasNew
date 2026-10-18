@@ -80,15 +80,20 @@ export function waitForControllerChange(timeoutMs = 4000): Promise<void> {
 }
 
 /**
- * Remove caches legados e versões obsoletas do CacheStorage durante atualizações.
+ * Remove caches de runtime obsoletos (imagens e assets estáticos dinâmicos) durante atualizações.
+ * O cache de precache do Workbox (workbox-precache) é estritamente preservado para garantir
+ * que a navegação do App Shell (/index.html) e rotas internas permaneçam funcionais após o reload.
+ * O Workbox já gerencia sua própria purga de revisões antigas via cleanupOutdatedCaches: true.
  */
 export async function purgeLegacyCaches(): Promise<void> {
   if (typeof window === "undefined" || !("caches" in window)) return;
   try {
     const keys = await window.caches.keys();
     const cachesToPurge = keys.filter((key) => {
+      // Nunca purgar workbox-precache pelo cliente: isso quebra o NavigationRoute (/index.html) no reload
+      if (key.includes("workbox-precache")) return false;
+
       return (
-        key.includes("workbox-precache") ||
         key.includes("static-images") ||
         key.includes("pwa-brand-assets")
       );
@@ -102,9 +107,9 @@ export async function purgeLegacyCaches(): Promise<void> {
 /**
  * Executa a atualização atômica e sincronizada do PWA:
  * 1. Invoca o callback retornado pelo registerSW (updateSW(true)) e envia SKIP_WAITING para a registration ativa;
- * 2. Escuta e aguarda o evento `controllerchange` em `navigator.serviceWorker` (com timeout defensivo de 4s);
- * 3. Varrer e remove caches legados via `purgeLegacyCaches()`;
- * 4. Recarrega a aplicação (`window.location.reload()`) somente após confirmação do controle.
+ * 2. Escuta e aguarda o evento `controllerchange` em `navigator.serviceWorker` (apenas se houver worker pendente);
+ * 3. Varrer e remove caches dinâmicos legados via `purgeLegacyCaches()`;
+ * 4. Recarrega a aplicação (`window.location.reload()`) de forma segura mantendo a integridade do App Shell.
  */
 export async function applyPWAUpdate(): Promise<void> {
   if (typeof window === "undefined") return;
@@ -123,18 +128,24 @@ export async function applyPWAUpdate(): Promise<void> {
     }
 
     if (!isNativePlatform() && "serviceWorker" in navigator) {
+      let hasPendingWorker = false;
       try {
         const registrations = await navigator.serviceWorker.getRegistrations();
         for (const reg of registrations) {
           if (reg.waiting) {
+            hasPendingWorker = true;
             reg.waiting.postMessage({ type: "SKIP_WAITING" });
+          } else if (reg.installing) {
+            hasPendingWorker = true;
           }
         }
       } catch {
         // Ignora falha de comunicação com Service Worker
       }
 
-      await waitForControllerChange(4000);
+      if (hasPendingWorker) {
+        await waitForControllerChange(4000);
+      }
     }
 
     await purgeLegacyCaches();
