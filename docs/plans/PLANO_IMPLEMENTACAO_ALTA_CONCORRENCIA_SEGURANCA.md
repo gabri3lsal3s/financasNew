@@ -267,13 +267,14 @@ Ao término de cada fase, é **obrigatória** a passagem pelos dois portões de 
   - **Verificação Final:** `npm run typecheck && npm run lint`.
   - **Commit Atômico:** `perf(db): add composite index on portfolio_transactions (user_id, asset_id, date desc) (task 3.3)`.
 
-- [ ] **Tarefa 3.4 — Expansão da Suíte de Testes de Auditoria de Banco de Dados**
+- [x] **Tarefa 3.4 — Expansão da Suíte de Testes de Auditoria de Banco de Dados**
   - **Revisão do Plano:** Analisar `src/tests/security-audit.test.ts`.
   - **Implementação:**
-    - Expandir `security-audit.test.ts` para verificar a migração 0049, garantindo que:
-      - 100% das 34 tabelas continuam com RLS habilitado;
-      - Zero policies com `auth.uid() = user_id` sem parênteses escalares;
-      - 100% das RPCs mantêm `SET search_path = public, pg_temp`.
+    - Expandir `security-audit.test.ts` para verificar as migrações 0049 a 0052, garantindo que:
+      - 100% das 34 tabelas continuam com RLS habilitado e sem qualquer instrução `disable row level security`;
+      - Zero policies com `auth.uid() = user_id` ou `auth.uid() = id` sem parênteses escalares;
+      - 100% das 65+ functions SECURITY DEFINER mantêm `SET search_path = public, pg_temp`;
+      - Avaliação fail-closed para acessos não autenticados.
   - **Testagem & Testes:** `npx vitest run src/tests/security-audit.test.ts`.
   - **Atualização de Documentação:** N/A.
   - **Verificação Final:** `npm run typecheck && npm run lint`.

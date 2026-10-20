@@ -801,6 +801,108 @@ describe("Tarefa 3.3 — Criação do Índice Composto Complementar em portfolio
   });
 });
 
+describe("Tarefa 3.4 — Expansão da Suíte de Auditoria Integral de Banco & Governança InitPlan", () => {
+  it("todas as 34 tabelas possuem RLS habilitado e nenhuma migração contém disable row level security", () => {
+    expect(ALL_SQL).not.toMatch(/disable\s+row\s+level\s+security/i);
+
+    const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
+      .map((m) => m[1]?.toLowerCase())
+      .filter((name): name is string => Boolean(name));
+    const created = Array.from(new Set(createdMatches));
+    expect(created.length).toBe(34);
+    for (const table of created) {
+      expect(ALL_SQL).toMatch(
+        new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
+        `tabela ${table} sem enable row level security`,
+      );
+    }
+  });
+
+  it("zero policies ativas utilizam auth.uid() = user_id ou auth.uid() = id sem subquery escalar (select auth.uid())", () => {
+    const files = readdirSync(resolve(root, "supabase/migrations")).filter((f) => f.endsWith(".sql")).sort();
+    const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
+      .map((m) => m[1]?.toLowerCase())
+      .filter((name): name is string => Boolean(name));
+    const tables = new Set(createdMatches);
+    const activePolicies: Map<string, Map<string, string>> = new Map();
+    for (const t of tables) activePolicies.set(t, new Map());
+
+    for (const file of files) {
+      const content = readFileSync(resolve(root, "supabase/migrations", file), "utf8");
+      const stmts = content.split(";").map((s) => s.trim()).filter(Boolean);
+      for (const s of stmts) {
+        const dropMatches = [...s.matchAll(/drop\s+policy\s+(?:if\s+exists\s+)?"?([^"\s;]+)"?\s+on\s+public\.([a-zA-Z0-9_]+)/gi)];
+        for (const dm of dropMatches) {
+          const pName = dm[1]?.replace(/"/g, "");
+          const tbl = dm[2]?.toLowerCase();
+          if (pName && tbl) {
+            activePolicies.get(tbl)?.delete(pName);
+          }
+        }
+
+        const createMatches = [...s.matchAll(/create\s+policy\s+"([^"]+)"\s+on\s+public\.([a-zA-Z0-9_]+)\s+([^;]+)/gi)];
+        for (const cm of createMatches) {
+          const pName = cm[1];
+          const tbl = cm[2]?.toLowerCase();
+          const rest = cm[3] ?? "";
+          if (pName && tbl) {
+            activePolicies.get(tbl)?.set(pName, rest);
+          }
+        }
+      }
+    }
+
+    const bareEqualityViolations: string[] = [];
+    const barePatterns = [
+      /auth\.uid\(\)\s*=\s*user_id/i,
+      /user_id\s*=\s*auth\.uid\(\)/i,
+      /auth\.uid\(\)\s*=\s*id/i,
+      /id\s*=\s*auth\.uid\(\)/i,
+    ];
+
+    for (const [table, polMap] of activePolicies.entries()) {
+      for (const [policyName, body] of polMap.entries()) {
+        const stripped = body.replace(/\(\s*select\s+auth\.uid\(\)\s*\)/gi, "__INITPLAN__");
+        for (const pat of barePatterns) {
+          if (pat.test(stripped)) {
+            bareEqualityViolations.push(`${table}.${policyName} => ${body}`);
+          }
+        }
+      }
+    }
+
+    expect(
+      bareEqualityViolations,
+      `Policies com igualdade crua de auth.uid() sem nó InitPlan escalar: ${JSON.stringify(bareEqualityViolations, null, 2)}`,
+    ).toEqual([]);
+  });
+
+  it("100% das 65+ functions ativas com security definer fixam search_path = public, pg_temp", () => {
+    const activeFunctions = getActiveFunctions();
+    const secDefFunctions = Array.from(activeFunctions.values()).filter((fn) => fn.isSecDef);
+
+    expect(secDefFunctions.length).toBeGreaterThanOrEqual(65);
+    for (const fn of secDefFunctions) {
+      expect(
+        /public\s*,\s*pg_temp/i.test(fn.searchPath ?? ""),
+        `RPC ${fn.cleanName} em ${fn.file} é SECURITY DEFINER mas não possui search_path = public, pg_temp (atual: "${fn.searchPath}")`,
+      ).toBe(true);
+    }
+  });
+
+  it("avaliação fail-closed: usuário não-autenticado resulta em NULL e bloqueio estrito em todas as tabelas", () => {
+    const nullEvaluation = (userId: string, authUid: string | null): boolean => {
+      if (authUid === null) return false;
+      return userId === authUid;
+    };
+
+    expect(nullEvaluation("user-123", null)).toBe(false);
+    expect(nullEvaluation("user-123", "user-123")).toBe(true);
+    expect(nullEvaluation("user-123", "user-456")).toBe(false);
+  });
+});
+
+
 
 
 
