@@ -215,6 +215,15 @@ graph TD
 - [x] **Painel de Preferências do Usuário:** Toggles independentes em Configurações > Notificações para ligar/desligar captura passiva, notificações interativas, cálculo de parcelas, inferência de categorias e seleção de bancos.
 - **DoD:** Registro em 1 toque sem abrir o app funcional, zero falsos positivos de faturas/limites, parcelas calculadas com precisão, controles de usuário ativos e 100% de testes verdes.
 
+### Fase 5.2: Detecção Real de Apps Instalados no Celular, Bloqueio Nativo Estrito & Fluxo "Conferir e Salvar"
+- [x] **Zero Falsos Positivos (Gatilho Nativo Estrito):** Remoção de captura ampla por `hasFinancialKeyword` de apps não bancários (SMS, WhatsApp, spam de promoções como Calçados Tobias) em `BankNotificationListenerService.java`.
+- [x] **Consulta de Apps Bancários Instalados:** Declaração de `<queries>` no `AndroidManifest.xml` e método nativo `getInstalledBankingApps` em `BankNotificationPlugin.java` para detectar quais aplicativos bancários homologados realmente existem no dispositivo do usuário.
+- [x] **Sincronização Nativa de Pacotes Autorizados:** O plugin sincroniza os pacotes bancários autorizados pelo usuário diretamente para o `SharedPreferences` do serviço Android em background (`syncMonitoredPackages`).
+- [x] **Validação Semântica Estrita de Transações:** Exigência de sinais inequívocos de transação financeira executada em `bank-parser.ts` (`hasValidTransactionSignal`) e eliminação do fallback permissivo de banco genérico (`resolveBankName` retorna `null` para apps desconhecidos).
+- [x] **Fluxo Imediato de Notificação & Conferir e Salvar:** O app emite notificação rica com botão `[Conferir e Salvar]`; ao tocar, navega diretamente com os parâmetros da transação preenchidos para validação e salvamento em 1 toque no wizard/modal.
+- [x] **Paridade e Suporte Completo a Despesas e Rendas:** Suporte explícito a `novo=expense` e `novo=income` em `page-shell.tsx`, distinção visual clara com badges em `PendingSuggestionsCard` e pré-seleção correta do tipo e categorias no wizard.
+- **DoD:** Apenas apps bancários reais autorizados e instalados no aparelho geram sugestões; zero falsos positivos; clique na notificação abre conferência pré-preenchida para salvar.
+
 ### Fase 6: Automação de Build & Distribuição do APK
 - [x] **Chave Criptográfica de Release:** Keystore de assinatura gerado via `keytool` com RSA 2048 bits (`release-key.keystore`) e configurado em `android/app/build.gradle`.
 - [x] **Script de Automação de 1 Comando:** Criado `scripts/build-apk.sh` (e comando npm `npm run build:apk`) que compila o bundle web Vite, sincroniza com Capacitor e constrói Debug e Release via Gradle.

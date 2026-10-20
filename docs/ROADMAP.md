@@ -1,5 +1,20 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.61** registra a **Conclusão da Especialização do Assistente Passivo de Bancos, Detecção de Apps Instalados e Fluxo de Conferência (Fase 5.2)** (2026-10-20):
+> - **(1) Eliminação Total de Falsos Positivos**:
+>   - Remoção do gatilho permissivo de palavras-chave financeiras (`hasFinancialKeyword`) em `BankNotificationListenerService.java`, restringindo o listener nativo estritamente a pacotes de aplicativos bancários homologados e autorizados;
+>   - Eliminação de qualquer fallback permissivo genérico (`resolveBankName` retorna `null` para apps não homologados) e exigência de sinais claros de transação financeira executada (`hasValidTransactionSignal`);
+> - **(2) Detecção Real de Aplicativos Bancários Instalados**:
+>   - Declaração de consultas `<queries>` de 27+ pacotes bancários no `AndroidManifest.xml` (suporte integral a Android 11+ / API 30+);
+>   - Métodos nativos `getInstalledBankingApps` e `syncMonitoredPackages` no `BankNotificationPlugin.java` para detectar apps instalados e sincronizar a lista de pacotes autorizados diretamente no `SharedPreferences` do serviço nativo;
+>   - Botão rápido "Apenas instalados" e etiquetas de confirmação na aba Notificações & Automações em Configurações;
+> - **(3) Fluxo Imediato de Notificação & "Conferir e Salvar"**:
+>   - Notificações nativas interativas atualizadas para título "Transação detectada" / "Renda detectada" com ação de 1 toque `[Conferir e Salvar]`;
+>   - Paridade completa entre despesas e rendas (`novo=expense` e `novo=income`) com abertura garantida do wizard de transação pré-preenchido;
+> - **(4) Homologação Global**:
+>   - 349 arquivos de teste com 2.726 testes automatizados **100% aprovados** (Vitest);
+>   - TypeScript estrito (`tsc -b`) e ESLint (`eslint .`) com **0 erros e 0 avisos**.
+>
 > **v2.60** registra a **Conclusão Integral do Plano Mestre de Módulos & SaaS, Blindagem de Segurança, Engenharia Financeira & Homologação Global (Fases 1 a 8)** (2026-10-17):
 > - **(1) Limitador de Módulos Cold Start Fail-Closed (`useUserAccess`)**:
 >   - Bloqueio estrito no primeiro frame de renderização (`status: loading` e `hasAccess: false`), eliminando qualquer vazamento permissivo de rotas ou UI antes da resolução de claims/permissões;

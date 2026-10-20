@@ -4,6 +4,8 @@ const mockPlugin = vi.hoisted(() => ({
   isPermissionGranted: vi.fn(),
   requestPermission: vi.fn(),
   flushPendingNotifications: vi.fn(),
+  getInstalledBankingApps: vi.fn().mockResolvedValue({ apps: [], installedBankNames: [] }),
+  syncMonitoredPackages: vi.fn().mockResolvedValue({ success: true, count: 0 }),
   addListener: vi.fn(),
 }));
 
