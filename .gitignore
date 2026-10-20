@@ -29,6 +29,7 @@ android/app/*.jks
 public/releases/*.apk
 public/*.apk
 android/.gradle/
+android/.kotlin/
 android/build/
 android/app/build/
 android/capacitor-cordova-android-plugins/build/
