@@ -13,7 +13,8 @@ import { useDynamicFavicon } from "@/hooks/use-dynamic-favicon";
 import { useDynamicAppIcon } from "@/hooks/use-dynamic-app-icon";
 import { SubscriptionProvider, useIsPro } from "@/state/subscription-context";
 import { AppLockOverlay } from "@/app/app-lock-overlay";
-import { initAppLockListener, setPrivacyShieldEnabled } from "@/services/native";
+import { initAppLockListener, setPrivacyShieldEnabled, syncDueReminderNotifications } from "@/services/native";
+import { useReminders } from "@/state";
 
 import {
   USER_ACCESS_KEY,
@@ -96,6 +97,22 @@ function DynamicBrandSync() {
 }
 
 /**
+ * Sincroniza e despacha lembretes de contas e faturas para o sistema operacional
+ * (Android via LocalNotifications ou PWA via Web Notification API) quando autorizado.
+ */
+function RemindersNotificationSync() {
+  const { allItems, preferences } = useReminders();
+
+  useEffect(() => {
+    if (preferences.enabled && allItems.length > 0) {
+      void syncDueReminderNotifications(allItems);
+    }
+  }, [preferences.enabled, allItems]);
+
+  return null;
+}
+
+/**
  * Providers globais. A política de retry materializa a regra Online First
  * (docs/ARCHITECTURE.md §5.1): leituras com retry limitado; mutações NUNCA
  * com retry automático (evita dupla submissão — o botão fica em isPending).
@@ -122,6 +139,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
         <CloudPreferencesSync>
           <SubscriptionProvider>
             <DynamicBrandSync />
+            <RemindersNotificationSync />
             <ThemeProvider>
               <Toaster>
                 {/* Toast global de nova versão PWA (autoUpdate) — PWA_GUIDELINES §6 */}

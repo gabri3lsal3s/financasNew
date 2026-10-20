@@ -23,10 +23,13 @@ import { cn } from "@/lib/utils";
 import {
   isDailyReminderEnabled,
   setDailyReminderEnabled,
+  isDueNotificationsEnabled,
+  setDueNotificationsEnabled,
   getDailyReminderTime,
   setDailyReminderTime,
   scheduleDailyReminder,
   cancelDailyReminder,
+  checkNotificationPermissions,
   requestNotificationPermissions,
   useBankAssistantPreferences,
   isNotificationListenerGranted,
@@ -94,6 +97,44 @@ export function NotificationsTab() {
 
   const [dailyReminderActive, setDailyReminderActive] = useState(() => isDailyReminderEnabled());
   const [dailyReminderTime, setDailyReminderTimeState] = useState(() => getDailyReminderTime());
+  const [dueNotificationsActive, setDueNotificationsActive] = useState(() => isDueNotificationsEnabled());
+  const [devicePermissionGranted, setDevicePermissionGranted] = useState(false);
+
+  useEffect(() => {
+    void checkNotificationPermissions().then((res) => {
+      setDevicePermissionGranted(res.granted);
+    });
+  }, []);
+
+  const handleToggleDueNotifications = async (enabled: boolean) => {
+    triggerSensory("toggle");
+    if (enabled) {
+      const perm = await requestNotificationPermissions();
+      setDevicePermissionGranted(perm.granted);
+      if (!perm.granted) {
+        pushToast({
+          title: "Permissão de notificação necessária",
+          description: "Habilite as notificações no navegador ou nas configurações do seu celular para receber alertas de contas.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setDueNotificationsEnabled(true);
+      setDueNotificationsActive(true);
+      pushToast({
+        title: "Notificações de contas ativadas",
+        description: "Você receberá alertas no dispositivo sobre faturas e dívidas próximas do vencimento.",
+        variant: "success",
+      });
+    } else {
+      setDueNotificationsEnabled(false);
+      setDueNotificationsActive(false);
+      pushToast({
+        title: "Notificações de contas desativadas",
+        variant: "default",
+      });
+    }
+  };
 
   const handleToggleDailyReminder = async (enabled: boolean) => {
     if (enabled) {
@@ -408,6 +449,30 @@ export function NotificationsTab() {
                 )}
               </div>
             )}
+
+            {/* Notificações no Dispositivo para Contas a Vencer */}
+            <div className="pt-3.5 border-t border-border/80 space-y-3">
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/80 bg-surface shadow-xs">
+                <div className="pr-4 space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm text-foreground">
+                      Notificações de Contas no Dispositivo
+                    </span>
+                    <Badge variant={devicePermissionGranted ? "positive" : "muted"} size="xs">
+                      {devicePermissionGranted ? "Permitido" : "Não autorizado"}
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground leading-relaxed">
+                    Emite alertas no celular ou navegador quando houver faturas ou dívidas vencendo hoje ou atrasadas.
+                  </div>
+                </div>
+                <Checkbox
+                  checked={dueNotificationsActive}
+                  onCheckedChange={handleToggleDueNotifications}
+                  aria-label="Habilitar Notificações de Contas no Dispositivo"
+                />
+              </div>
+            </div>
 
             {/* Lembrete de Fechamento Diário (Notificação no Celular / Dispositivo) */}
             <div className="pt-3.5 border-t border-border/80 space-y-3">

@@ -1,5 +1,16 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.62** registra o **Sistema Unificado de Notificações de Vencimento, Fechamento e Sugestões (Android Nativo & PWA)** (2026-10-20):
+> - **(1) Notificações no Dispositivo para Faturas e Dívidas (Contas a Vencer / Vencidas)**:
+>   - Implementação de `syncDueReminderNotifications` e canal nativo `due_reminders` no Android com alta relevância (`importance: 4`, vibração e som);
+>   - Suporte unificado via `dispatchLocalOrWebNotification` compatível tanto com Capacitor LocalNotifications quanto com a Web Notification API e Service Worker (`registration.showNotification`) no PWA;
+>   - Deep links e redirecionamento direto para a fatura ou dívida pendente ao tocar na notificação;
+> - **(2) Observador Global de Lembretes no Ciclo de Vida**:
+>   - `RemindersNotificationSync` integrado no `AppProviders`, executando a sincronização com base nas preferências salvas pelo usuário (`isDueNotificationsEnabled`, `reminder_days_before_bill`, `reminder_days_before_debt`);
+>   - Controle explícito de consentimento e status de autorização do sistema ("Permitido" / "Não autorizado") na Central de Configurações;
+> - **(3) Conformidade Estrita e Zero Emojis**:
+>   - Textos de alertas limpos, informativos e sem emojis ou caracteres decorativos em conformidade total com o Design System.
+>
 > **v2.61** registra a **Conclusão da Especialização do Assistente Passivo de Bancos, Detecção de Apps Instalados e Fluxo de Conferência (Fase 5.2)** (2026-10-20):
 > - **(1) Eliminação Total de Falsos Positivos**:
 >   - Remoção do gatilho permissivo de palavras-chave financeiras (`hasFinancialKeyword`) em `BankNotificationListenerService.java`, restringindo o listener nativo estritamente a pacotes de aplicativos bancários homologados e autorizados;

@@ -177,5 +177,70 @@ describe("local-notifications service", () => {
       await cleanup();
       expect(mockRemove).toHaveBeenCalled();
     });
+
+    it("direciona para rota personalizada se extra.url for fornecida", async () => {
+      vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+      let capturedCallback: ((action: { actionId: string; notification?: { extra?: Record<string, unknown> } }) => void) | undefined;
+      const mockRemove = vi.fn();
+
+      (LocalNotifications.addListener as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+        (event: string, callback: (action: { actionId: string; notification?: { extra?: Record<string, unknown> } }) => void) => {
+          if (event === "localNotificationActionPerformed") {
+            capturedCallback = callback;
+          }
+          return Promise.resolve({ remove: mockRemove });
+        },
+      );
+
+      const onNavigate = vi.fn();
+      const cleanup = initNotificationActionListener(onNavigate);
+
+      capturedCallback?.({ actionId: "tap", notification: { extra: { url: "/cartoes?card=c1" } } });
+      expect(onNavigate).toHaveBeenCalledWith("/cartoes?card=c1");
+
+      await cleanup();
+    });
+  });
+
+  describe("dispatchLocalOrWebNotification e syncDueReminderNotifications", () => {
+    it("emite notificação para faturas e dívidas pendentes quando autorizado", async () => {
+      vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+      (LocalNotifications.checkPermissions as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+        display: "granted",
+      });
+      (LocalNotifications.createChannel as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (LocalNotifications.schedule as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ notifications: [] });
+
+      const { syncDueReminderNotifications, setDueNotificationsEnabled } = await import("./local-notifications");
+      setDueNotificationsEnabled(true, "u1");
+
+      const count = await syncDueReminderNotifications(
+        [
+          {
+            key: "bill:c1:2026-10",
+            kind: "bill",
+            title: "Fatura Nubank · 2026-10",
+            dueDate: "2026-10-20",
+            amountCents: 150000,
+            status: "due_today",
+            link: { path: "/cartoes", params: { card: "c1" } },
+          },
+          {
+            key: "debt:d1",
+            kind: "debt",
+            title: "Empréstimo Carro",
+            dueDate: "2026-10-18",
+            amountCents: 80000,
+            status: "overdue",
+            link: { path: "/dividas" },
+          },
+        ],
+        "u1",
+        true,
+      );
+
+      expect(count).toBe(2);
+      expect(LocalNotifications.schedule).toHaveBeenCalledTimes(2);
+    });
   });
 });
