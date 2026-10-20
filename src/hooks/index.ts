@@ -3,6 +3,7 @@ export type { AuthState, SignUpResult } from "./use-auth";
 export { useAutoPortfolioSnapshot } from "./use-auto-portfolio-snapshot";
 export { useCreateDeepLink } from "./use-create-deep-link";
 export { useCurrencyInput } from "./use-currency-input";
+export { useDebounce } from "./use-debounce";
 export { useFeatureFlag } from "./use-feature-flag";
 export { useHighlightTarget } from "./use-highlight-target";
 export { useMinimumLoading } from "./use-minimum-loading";

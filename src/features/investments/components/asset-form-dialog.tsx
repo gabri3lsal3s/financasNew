@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArrowDownLeft, Calculator, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowDownLeft, Calculator, ChevronDown, ChevronUp, Loader2, Sparkles } from "lucide-react";
 import { Alert, Badge, Button, Checkbox, ConfirmDialog, Input, Modal, ModalFooter, MoneyInput, MoneyText, NumericInput, Select } from "@/components/ui";
 
 
@@ -11,9 +11,12 @@ import {
   inferSectorFromTicker,
   isCashAssetClass,
   isFixedIncomeClass,
+  isPrivateFixedIncomeTicker,
   isTesouroAsset,
   sellAssetPosition,
 } from "@/domain/portfolio";
+import { fetchOnlineQuote } from "@/services/quotes";
+import { useDebounce } from "@/hooks";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
@@ -253,21 +256,126 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
     assetClass: asset?.asset_class,
   });
 
+  const debouncedTicker = useDebounce(ticker, 500);
+  const [quoteState, setQuoteState] = useState<{
+    ticker: string;
+    quote: { price: number; currency: AssetCurrency } | null;
+    isLoading: boolean;
+  }>({ ticker: "", quote: null, isLoading: false });
+  const isSubmittingRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const clean = debouncedTicker.trim().toUpperCase();
+
+    // Ativos de caixa, renda fixa privada ou tickers muito curtos não consultam cotação externa
+    if (isCash || clean.length < 2 || clean === "CAIXA" || isPrivateFixedIncomeTicker(clean)) {
+      return;
+    }
+
+    // Se já buscou esse mesmo ticker ou se for o ticker original do ativo em edição, ignora
+    if (isEdit && asset?.ticker.trim().toUpperCase() === clean) {
+      return;
+    }
+
+    let isMounted = true;
+
+    // Dispara a busca assíncrona com indicador de carregamento
+    void Promise.resolve().then(() => {
+      if (!isMounted) return;
+      setQuoteState((prev) => (prev.ticker === clean ? prev : { ticker: clean, quote: null, isLoading: true }));
+
+      return fetchOnlineQuote(clean)
+        .then((quote) => {
+          if (!isMounted) return;
+          if (quote && quote.price > 0) {
+            setQuoteState({
+              ticker: clean,
+              quote: {
+                price: quote.price,
+                currency: (quote.currency as AssetCurrency) ?? "BRL",
+              },
+              isLoading: false,
+            });
+
+            // Preenche automaticamente o preço médio / inicial caso ainda esteja zerado
+            setAveragePriceCents((prev) => (!isEdit && prev === 0 && !isTotalValueMode ? numberToCents(quote.price) : prev));
+            setInitialPriceCents((prev) => (!isEdit && isTotalValueMode && prev === 0 ? numberToCents(quote.price) : prev));
+            setCurrentPriceCents((prev) => (!isEdit && isTotalValueMode && prev === 0 ? numberToCents(quote.price) : prev));
+            if (quote.currency === "USD") {
+              setCurrency((prev) => (prev !== "USD" ? "USD" : prev));
+            }
+          } else {
+            setQuoteState({ ticker: clean, quote: null, isLoading: false });
+          }
+        })
+        .catch(() => {
+          if (isMounted) {
+            setQuoteState({ ticker: clean, quote: null, isLoading: false });
+          }
+        });
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [debouncedTicker, isCash, isEdit, asset?.ticker, isTotalValueMode]);
+
+  const cleanTicker = debouncedTicker.trim().toUpperCase();
+  const isEligibleForQuote =
+    !isCash &&
+    cleanTicker.length >= 2 &&
+    cleanTicker !== "CAIXA" &&
+    !isPrivateFixedIncomeTicker(cleanTicker) &&
+    !(isEdit && asset?.ticker.trim().toUpperCase() === cleanTicker);
+
+  const isFetchingQuote = isEligibleForQuote && quoteState.ticker === cleanTicker && quoteState.isLoading;
+  const onlineQuote = isEligibleForQuote && quoteState.ticker === cleanTicker ? quoteState.quote : null;
+
+  const NAVIGATION_KEYS = new Set([
+    "ArrowUp",
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowRight",
+    "Home",
+    "End",
+    "PageUp",
+    "PageDown",
+    "Tab",
+    "Escape",
+    "Shift",
+    "Control",
+    "Alt",
+    "Meta",
+    "CapsLock",
+  ]);
+
+  const handleTickerKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (NAVIGATION_KEYS.has(event.key)) {
+      // Teclas de navegação puras não alteram o texto nem disparam requisições
+      return;
+    }
+  };
+
   const existingCashAsset = (allAssetsQuery.data ?? []).find(
     (a) => (isCashAssetClass(a.asset_class) || a.ticker.toUpperCase() === "CAIXA") && a.id !== asset?.id,
   );
 
   const normalizedTicker = ticker.trim() === "" && isCash ? "CAIXA" : ticker.trim().toUpperCase();
-  const canSubmit = normalizedTicker.length > 0 && !pending;
+  const canSubmit = normalizedTicker.length > 0 && !pending && !isSubmitting;
 
   const submit = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit || isSubmittingRef.current || isSubmitting) return;
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
     setError(null);
 
     // Validação estrita de unicidade do Caixa: só é permitido 1 ativo de caixa na carteira
     if (!isEdit && (isCash || normalizedTicker === "CAIXA") && existingCashAsset) {
       setError("Já existe um ativo de Caixa cadastrado na carteira. Utilize o card de Saldo em Caixa no início da página para gerenciar o valor.");
       triggerSensory("error");
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
       return;
     }
 
@@ -366,15 +474,22 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
   const handleConfirmSell = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!asset || parsedSellQty <= 0 || parsedSellPrice <= 0) {
-      setError("Informe a quantidade e o preço de venda.");
+    if (!asset || parsedSellQty <= 0 || parsedSellPrice <= 0 || isSubmittingRef.current || isSubmitting) {
+      if (!asset || parsedSellQty <= 0 || parsedSellPrice <= 0) {
+        setError("Informe a quantidade e o preço de venda.");
+      }
       return;
     }
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
     setError(null);
     try {
       // 1. Atualiza a posição do ativo com a quantidade remanescente e PM inalterado
@@ -410,11 +525,16 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
   const confirmDeleteAsset = async () => {
-    if (!asset) return;
+    if (!asset || isSubmittingRef.current || isSubmitting) return;
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
     setError(null);
     try {
       await deleteAsset.mutateAsync(asset.id);
@@ -424,6 +544,9 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
     } catch (err) {
       setConfirmDelete(false);
       setError(getErrorMessage(err));
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -488,23 +611,44 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            if (canSubmit) {
+            if (canSubmit && !isSubmittingRef.current && !isSubmitting) {
               void submit();
             }
           }}
           className="mt-4 flex flex-col gap-4"
         >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
-              {isCash ? "Nome / Identificador do Caixa (opcional)" : "Ticker / Código do Ativo"}
+            <div className="flex flex-col gap-1">
+              <label htmlFor="asset-ticker-input" className="text-xs font-semibold text-foreground">
+                {isCash ? "Nome / Identificador do Caixa (opcional)" : "Ticker / Código do Ativo"}
+              </label>
               <Input
+                id="asset-ticker-input"
                 value={ticker}
                 onChange={(event) => handleTickerChange(event.target.value)}
+                onKeyDown={handleTickerKeyDown}
                 placeholder={isCash ? "CAIXA (padrão)" : "PETR4, MXRF11, CDB Banco Inter, Tesouro Selic…"}
                 maxLength={40}
                 aria-label={isCash ? "Nome do Caixa" : "Ticker do ativo"}
               />
-            </label>
+              {isFetchingQuote && (
+                <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground pt-0.5">
+                  <Loader2 className="size-3 animate-spin text-muted-foreground" aria-hidden="true" />
+                  Buscando cotação online…
+                </span>
+              )}
+              {onlineQuote && !isFetchingQuote && (
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground pt-0.5">
+                  <Sparkles className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
+                  <span>Cotação recente:</span>
+                  <MoneyText
+                    cents={numberToCents(onlineQuote.price)}
+                    currency={onlineQuote.currency}
+                    className="font-semibold text-foreground"
+                  />
+                </div>
+              )}
+            </div>
 
             <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
               Classe
@@ -834,8 +978,8 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
               <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
                 Cancelar
               </Button>
-              <Button type="submit" disabled={!canSubmit} className="w-full sm:w-auto">
-                {pending ? "Salvando…" : isEdit ? "Salvar alterações" : "Adicionar à carteira"}
+              <Button type="submit" disabled={!canSubmit || pending || isSubmitting} className="w-full sm:w-auto">
+                {pending || isSubmitting ? "Salvando…" : isEdit ? "Salvar alterações" : "Adicionar à carteira"}
               </Button>
             </div>
           </ModalFooter>

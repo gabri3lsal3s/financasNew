@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Alert, Button, ConfirmDialog, Modal, ModalFooter, Stepper } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
@@ -124,6 +124,8 @@ function InvestmentWizardContent({
 
   const [error, setError] = useState<string | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
+  const isSubmittingRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isDirty =
     state.ticker !== "" ||
@@ -186,6 +188,9 @@ function InvestmentWizardContent({
   };
 
   const handleSubmit = async () => {
+    if (isPending || isSubmittingRef.current || isSubmitting) return;
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
     setError(null);
     try {
       if (state.mode === "buy" || state.mode === "existing_aporte") {
@@ -400,6 +405,9 @@ function InvestmentWizardContent({
       handleClose();
     } catch (err) {
       setError(getErrorMessage(err));
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -528,9 +536,9 @@ function InvestmentWizardContent({
                   type="button"
                   size="sm"
                   onClick={handleSubmit}
-                  disabled={!canProceed(state) || isPending}
+                  disabled={!canProceed(state) || isPending || isSubmitting}
                 >
-                  {isPending ? "Gravando..." : "Confirmar Operação"}
+                  {isPending || isSubmitting ? "Gravando..." : "Confirmar Operação"}
                 </Button>
               ) : (
                 <Button

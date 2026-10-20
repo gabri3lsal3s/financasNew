@@ -180,7 +180,7 @@ Ao término de cada fase, é **obrigatória** a passagem pelos dois portões de 
   - **Verificação Final:** `npm run typecheck && npm run lint`.
   - **Commit Atômico:** `perf(quotes): prioritize database asset_prices table with resilient fallback (task 2.2)`.
 
-- [ ] **Tarefa 2.3 — Debounce e Proteção contra Disparos Repetidos no Cadastro de Ativos**
+- [x] **Tarefa 2.3 — Debounce e Proteção contra Disparos Repetidos no Cadastro de Ativos**
   - **Revisão do Plano:** Analisar o modal de criação de ativo e input de ticker em `src/features/investments/`.
   - **Implementação:**
     - Aplicar debounce de 500ms na busca de preço online do ticker recém-digitado;

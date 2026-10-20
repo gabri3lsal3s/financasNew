@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ChevronUp } from "lucide-react";
 import { numberToCents, parseDecimalNumber } from "@/domain/money";
 import { Alert, Badge, Button, Checkbox, Input, Modal, ModalFooter, MoneyInput, MoneyText, NumericInput, Select } from "@/components/ui";
@@ -49,6 +49,8 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
   const updateAsset = useUpdatePortfolioAsset();
   const pricesQuery = useAssetPrices();
   const setManualPrice = useSetManualPrice();
+  const isSubmittingRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [ticker, setTicker] = useState(asset.ticker);
   const [assetClass, setAssetClass] = useState(asset.asset_class ?? "Ações");
@@ -181,6 +183,9 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (updateAsset.isPending || setManualPrice.isPending || isSubmittingRef.current || isSubmitting) return;
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
     setError(null);
 
     const parsedQuantity = parseDecimalNumber(quantityStr);
@@ -240,6 +245,8 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
 
     if (!validation.success) {
       setError(validation.error.issues[0]?.message ?? "Dados inválidos");
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
       return;
     }
 
@@ -274,6 +281,9 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -656,9 +666,9 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
         </Button>
         <Button
           type="submit"
-          disabled={updateAsset.isPending}
+          disabled={updateAsset.isPending || setManualPrice.isPending || isSubmitting}
         >
-          {updateAsset.isPending ? "Salvando..." : "Salvar Alterações"}
+          {updateAsset.isPending || isSubmitting ? "Salvando..." : "Salvar Alterações"}
         </Button>
       </ModalFooter>
     </form>

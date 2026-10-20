@@ -9,9 +9,13 @@ const createAssetMock = vi.fn();
 const updateAssetMock = vi.fn();
 const deleteAssetMock = vi.fn();
 const setManualPriceMock = vi.fn();
+const fetchOnlineQuoteMock = vi.fn();
 const usePortfolioAssetsMock = vi.fn(() => ({ data: [] as PortfolioAsset[], isLoading: false, isError: false, error: null }));
 
 vi.mock("@/services/sensory", () => ({ triggerSensory: vi.fn() }));
+vi.mock("@/services/quotes", () => ({
+  fetchOnlineQuote: (...args: unknown[]) => fetchOnlineQuoteMock(...args),
+}));
 
 vi.mock("@/state", () => ({
   useCreatePortfolioAsset: () => ({ mutateAsync: createAssetMock, isPending: false }),
@@ -41,6 +45,8 @@ describe("AssetFormDialog — feedback de escrita (F15 e F36)", () => {
     updateAssetMock.mockReset();
     deleteAssetMock.mockReset();
     setManualPriceMock.mockReset();
+    fetchOnlineQuoteMock.mockReset();
+    fetchOnlineQuoteMock.mockResolvedValue(null);
     vi.mocked(triggerSensory).mockClear();
   });
 
@@ -246,5 +252,73 @@ describe("AssetFormDialog — feedback de escrita (F15 e F36)", () => {
 
     expect(screen.getByText(/Já existe um ativo de Caixa cadastrado na carteira/i)).toBeInTheDocument();
     expect(createAssetMock).not.toHaveBeenCalled();
+  });
+
+  it("aplica debounce de 500ms na busca de cotação online e exibe o preview do preço", async () => {
+    fetchOnlineQuoteMock.mockResolvedValue({
+      ticker: "PETR4",
+      price: 38.5,
+      currency: "BRL",
+    });
+
+    const user = userEvent.setup();
+    render(<AssetFormDialog open={true} onOpenChange={vi.fn()} />);
+
+    const input = screen.getByLabelText("Ticker do ativo");
+    await user.type(input, "petr4");
+
+    // Imediatamente após digitar, a busca não deve ter sido disparada ainda (aguardando 500ms)
+    expect(fetchOnlineQuoteMock).not.toHaveBeenCalled();
+
+    // Aguarda o término do debounce (500ms) e resolução da promise
+    await vi.waitFor(() => {
+      expect(fetchOnlineQuoteMock).toHaveBeenCalledWith("PETR4");
+    });
+
+    // Preview de cotação online é exibido
+    await vi.waitFor(() => {
+      expect(screen.getByText(/Cotação recente:/i)).toBeInTheDocument();
+      expect(screen.getByText(/38,50/i)).toBeInTheDocument();
+    });
+  });
+
+  it("não dispara busca de cotação para teclas de navegação ou tickers de renda fixa privada", async () => {
+    const user = userEvent.setup();
+    render(<AssetFormDialog open={true} onOpenChange={vi.fn()} />);
+
+    const input = screen.getByLabelText("Ticker do ativo");
+    await user.type(input, "CDB-BANCO-INTER");
+
+    // Aguarda 600ms
+    await new Promise((r) => setTimeout(r, 600));
+
+    // Renda fixa privada é ignorada pelo motor
+    expect(fetchOnlineQuoteMock).not.toHaveBeenCalled();
+
+    // Teclas de navegação puras no input não disparam chamadas
+    await user.keyboard("{ArrowLeft}{ArrowRight}{Home}{End}");
+    await new Promise((r) => setTimeout(r, 600));
+    expect(fetchOnlineQuoteMock).not.toHaveBeenCalled();
+  });
+
+  it("impede requisições duplicadas em múltiplos cliques rápidos no botão salvar", async () => {
+    // Simula um atraso na criação para verificar o bloqueio de cliques concorrentes
+    createAssetMock.mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve({ id: "a1" }), 150)));
+
+    const user = userEvent.setup();
+    render(<AssetFormDialog open={true} onOpenChange={vi.fn()} />);
+
+    await user.type(screen.getByLabelText("Ticker do ativo"), "PETR4");
+    const submitBtn = screen.getByRole("button", { name: "Adicionar à carteira" });
+
+    // Dispara múltiplos cliques quase simultâneos
+    await Promise.all([
+      user.click(submitBtn),
+      user.click(submitBtn),
+      user.click(submitBtn),
+    ]);
+
+    // Apenas 1 requisição deve ter sido disparada
+    expect(createAssetMock).toHaveBeenCalledTimes(1);
   });
 });
