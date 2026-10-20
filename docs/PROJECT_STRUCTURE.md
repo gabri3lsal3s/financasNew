@@ -117,7 +117,7 @@
     │   │   │                      #   notifications-popover, install-app-button,
     │   │   │                      #   category-donut, interactive-target-donut, daily-flow-chart (F8),
     │   │   │                      #   floating-calculator, calculator-keypad (F9),
-    │   │   │                      #   credit-card-3d + credit-card-wallet (F13),
+    │   │   │                      #   credit-card-3d + credit-card-wallet + credit-card-gradient (F13),
     │   │   │                      #   delta-hint (F14), highlight-row, projection-line, pace-alert-banner,
     │   │   │                      #   dashboard-alerts-carousel (carrossel inteligente de alertas do dashboard),
     │   │   │                      #   pending-suggestions-card (card discreto de transações capturadas do assistente passivo),

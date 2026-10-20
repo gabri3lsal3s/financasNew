@@ -1,5 +1,19 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.65** registra a **Remoção de Elementos Decorativos Espúrios em Cartões e Otimização Visual / Ergonômica do Formulário de Edição (CardFormDialog)** (2026-10-20):
+> - **(1) Eliminação do Quadrado Amarelo Espúrio**:
+>   - Remoção definitiva do bloco rígido `bg-amber-400/80` que simulava chip sem acabamento e causava ruído estético severo na pré-visualização de cartões em edição;
+>   - Substituição por indicador minimalista e padronizado de aproximação (`Radio` com rotação 90° / Contactless NFC) à esquerda e badge condicional de status inativo (`Inativo`).
+> - **(2) Harmonização e Profundidade da Pré-visualização**:
+>   - Extração e unificação de `getCardGradient` e `CardBrandBadge` em `@/components/modules`, reaproveitando os padrões de gradiente translúcido com profundidade e logos estilizados (*Visa*, *Mastercard*, *Elo*, *Amex*, *Nubank*, *Inter*);
+>   - Adição de simulação elegante de numeração mascarada (`•••• •••• •••• 1234`), datas em badges translúcidos com blur e limite total via `<MoneyText />`;
+>   - Contenção responsiva da largura do cartão no mobile (`max-w-[340px]`), prevenindo ocupação desproporcional da viewport vertical;
+>   - Inclusão de dica informativa de inteligência financeira indicando o melhor dia para compras com base no fechamento.
+> - **(3) Ergonomia e Agilidade no Formulário de Edição**:
+>   - Chips de seleção rápida de bandeiras em 1 clique (*Visa*, *Mastercard*, *Elo*, *Amex*);
+>   - Swatches de cores pré-definidas para os principais bancos e paletas do mercado (Bronze Nomad, Roxo Nubank, Laranja Inter, Azul Itaú, Vermelho Santander, Petróleo, Grafite e Verde Esmeralda) mantendo o `ColorPicker` integral acessível;
+>   - Fixação em sticky da pré-visualização no desktop para feedback em tempo real durante a rolagem do formulário.
+>
 > **v2.64** registra a **Arquitetura do Tripé de Plataformas (Web, PWA e Android Pro) & Atualizações Automatizadas de APK sem Reinstalação** (2026-10-20):
 > - **(1) Eliminação Definitiva da Necessidade de Desinstalar o APK**:
 >   - Padronização da Keystore canônica permanente (`android/app/release-key.keystore`) com assinatura RSA 2048 bits fixa;
