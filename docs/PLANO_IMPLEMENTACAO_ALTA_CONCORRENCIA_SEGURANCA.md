@@ -253,10 +253,10 @@ Ao término de cada fase, é **obrigatória** a passagem pelos dois portões de 
   - **Verificação Final:** `npm run typecheck && npm run lint`.
   - **Commit Atômico:** `perf(db): encapsulate SaaS modular checks in scalar subqueries (task 3.2)`.
 
-- [ ] **Tarefa 3.3 — Criação do Índice Composto Complementar em `portfolio_transactions`**
+- [x] **Tarefa 3.3 — Criação do Índice Composto Complementar em `portfolio_transactions`**
   - **Revisão do Plano:** Inspecionar as consultas da ficha detalhada de ativos em `src/data/repositories/portfolio.ts`.
   - **Implementação:**
-    - Na migração 0049, adicionar:
+    - Na migração `supabase/migrations/20260101000052_portfolio_transactions_composite_index.sql`, adicionar:
       ```sql
       create index if not exists idx_portfolio_tx_user_asset_date
         on public.portfolio_transactions (user_id, asset_id, date desc);

@@ -155,6 +155,12 @@ where user_id is null
 order by updated_at desc;
 ```
 
+### 4.5 Índices Compostos Cobridores e Alta Concorrência
+
+Para sustentar alta concorrência de leitura e múltiplos usuários simultâneos consultando carteira e movimentações:
+- **`idx_portfolio_tx_user_asset_date`** (`public.portfolio_transactions (user_id, asset_id, date desc)`):
+  Criado na Migration `0052_portfolio_transactions_composite_index.sql`. Otimiza a listagem de movimentações e ficha detalhada de ativos (`listPortfolioTransactions`), combinando o predicado multi-tenant `user_id = (select auth.uid())`, o filtro de ativo `asset_id` e a ordenação `date desc` em um único Index Scan direto, eliminando sequential scans e etapas de ordenação em memória.
+
 ---
 
 ## 5. ESTRUTURA DE CONFIGURAÇÃO ESTÁTICA (`public/`)

@@ -786,6 +786,22 @@ describe("Tarefa 3.2 — Encapsulamento Escalar das Checagens Modulares SaaS (Mi
   });
 });
 
+describe("Tarefa 3.3 — Criação do Índice Composto Complementar em portfolio_transactions (Migration 0052)", () => {
+  it("migration 0052 existe e cria o índice composto cobridor idx_portfolio_tx_user_asset_date", () => {
+    const migration52 = readFileSync(
+      resolve(root, "supabase/migrations/20260101000052_portfolio_transactions_composite_index.sql"),
+      "utf8",
+    );
+    expect(migration52).toMatch(/create\s+index\s+(?:if\s+not\s+exists\s+)?idx_portfolio_tx_user_asset_date/i);
+    expect(migration52).toMatch(/on\s+public\.portfolio_transactions\s*\(\s*user_id\s*,\s*asset_id\s*,\s*date\s+desc\s*\)/i);
+  });
+
+  it("o índice idx_portfolio_tx_user_asset_date está presente no conjunto consolidado de migrations", () => {
+    expect(ALL_SQL).toMatch(/idx_portfolio_tx_user_asset_date/i);
+  });
+});
+
+
 
 
 
