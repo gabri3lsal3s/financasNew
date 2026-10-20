@@ -20,6 +20,7 @@ export interface InstalledBankApp {
   packageName: string;
   bankName: string;
   isInstalled: boolean;
+  category?: "bank" | "wallet" | "broker";
 }
 
 export interface BankNotificationPluginInterface {
@@ -126,7 +127,11 @@ export function processPixShare(text: string): ParsedBankTransaction | null {
     return null;
   }
 
-  const parsed = parsePixShareText(text);
+  let parsed = parsePixShareText(text);
+  if (!parsed) {
+    parsed = parseBankNotification({ title: "", text });
+  }
+
   if (parsed) {
     if (!prefs.autoCategoryInferenceEnabled) {
       delete parsed.categorySlug;

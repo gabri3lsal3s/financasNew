@@ -12,7 +12,8 @@ export type CanonicalCategorySlug =
   | "lazer"
   | "assinaturas"
   | "compras"
-  | "salario";
+  | "salario"
+  | "investimentos";
 
 interface KeywordGroup {
   slug: CanonicalCategorySlug;
@@ -266,6 +267,28 @@ const KEYWORD_GROUPS: KeywordGroup[] = [
       "credito salario",
     ],
   },
+  {
+    slug: "investimentos",
+    terms: [
+      "investimento",
+      "investimentos",
+      "aporte",
+      "aplicacao",
+      "proventos",
+      "dividendos",
+      "jcp",
+      "tesouro direto",
+      "renda fixa",
+      "cdb",
+      "cripto",
+      "bitcoin",
+      "ethereum",
+      "binance",
+      "corretagem",
+      "fundo de investimento",
+      "titulos publicos",
+    ],
+  },
 ];
 
 const FLATTENED_KEYWORDS: Array<{ term: string; slug: CanonicalCategorySlug }> = KEYWORD_GROUPS.flatMap(
@@ -314,6 +337,16 @@ export function matchCategoryBySlug<T extends { id: string; name: string; icon?:
     assinaturas: ["assinaturas", "assinatura", "serviços", "servicos", "recorrentes"],
     compras: ["compras", "vestuário", "vestuario", "eletrônicos", "pessoal"],
     salario: ["salário", "salario", "remuneração", "remuneracao", "renda", "receita"],
+    investimentos: [
+      "investimentos",
+      "investimento",
+      "aplicações",
+      "aplicacoes",
+      "ações",
+      "acoes",
+      "bolsa",
+      "cripto",
+    ],
   };
 
   const targetNames = slugNameMap[slug] || [];

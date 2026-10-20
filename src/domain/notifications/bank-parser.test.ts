@@ -1,13 +1,27 @@
 import { describe, expect, it } from "vitest";
 import {
+  areMerchantsCompatible,
   cleanMerchantName,
+  DEDUPLICATION_WINDOW_MS,
+  detectCurrency,
   detectPaymentMethod,
+  detectTransactionNature,
   detectTransactionType,
+  extractCardBrand,
+  extractCardLastDigits,
   extractCentsFromText,
   extractInstallmentInfo,
+  extractInvestmentAsset,
+  extractIssuerBank,
   extractMerchantOrRecipient,
+  extractNomadExchangeMetadata,
   isBlacklistedNotification,
+  isCardBrand,
+  isDigitalWallet,
+  isWithinTemporalWindow,
+  mergeWalletWithBank,
   parseBankNotification,
+  type ParsedBankTransaction,
   parsePixShareText,
   resolveBankName,
 } from "./bank-parser";
@@ -59,7 +73,6 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
       expect(isBlacklistedNotification("Você tem um empréstimo pré-aprovado de R$ 10.000,00", "Inter")).toBe(true);
       expect(isBlacklistedNotification("Dinheiro extra disponível na sua conta", "C6 Bank")).toBe(true);
       expect(isBlacklistedNotification("Aproveite a oferta e ganhe cashback", "PicPay")).toBe(true);
-      expect(isBlacklistedNotification("Investimento realizado em CDB 100% CDI", "Banco")).toBe(true);
     });
 
     it("rejeita tokens, códigos de segurança e 2FA", () => {
@@ -74,10 +87,13 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
       expect(isBlacklistedNotification("Agendamento confirmado para amanhã", "Inter")).toBe(true);
     });
 
-    it("permite notificações legítimas de compras e rendas", () => {
+    it("permite notificações legítimas de compras, rendas e investimentos", () => {
       expect(isBlacklistedNotification("Compra de R$ 42,90 em Padaria Estrela aprovada", "Nubank")).toBe(false);
       expect(isBlacklistedNotification("Você recebeu um Pix de R$ 150,00 de Marcos Silva", "Inter")).toBe(false);
       expect(isBlacklistedNotification("Salário creditado de R$ 4.500,00", "Itaú")).toBe(false);
+      expect(isBlacklistedNotification("Investimento realizado em CDB 100% CDI", "Banco")).toBe(false);
+      expect(isBlacklistedNotification("Aplicação realizada com sucesso: R$ 10.000,00 no Fundo BTG", "BTG Investimentos")).toBe(false);
+      expect(isBlacklistedNotification("Ordem de compra de BTC executada: R$ 250,00", "Binance")).toBe(false);
     });
   });
 
@@ -393,6 +409,832 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
       expect(resolveBankName("com.whatsapp")).toBeNull();
       expect(resolveBankName("com.google.android.apps.messaging")).toBeNull();
       expect(resolveBankName(undefined, "Calçados Tobias", "Promoção de calçados")).toBeNull();
+    });
+  });
+
+  describe("extractCardLastDigits (Detecção de Dígitos Finais do Cartão)", () => {
+    it("extrai 4 dígitos com padrão final 1234", () => {
+      expect(
+        extractCardLastDigits(
+          "Compra de R$ 45,90 em Starbucks com Cartão Nubank final 1234",
+        ),
+      ).toBe("1234");
+      expect(
+        extractCardLastDigits(
+          "Pagamento aprovado: R$ 42,00 em Posto Ipiranga com cartão final 7890",
+        ),
+      ).toBe("7890");
+    });
+
+    it("extrai 4 dígitos com marcadores de pontuação e máscaras", () => {
+      expect(extractCardLastDigits("Compra no cartão final: 5678 aprovada")).toBe("5678");
+      expect(extractCardLastDigits("Cartão final 9999 aprovado")).toBe("9999");
+      expect(extractCardLastDigits("Cartão terminado em 4321")).toBe("4321");
+      expect(extractCardLastDigits("Cartão final n. 6543")).toBe("6543");
+    });
+
+    it("não confunde valores monetários de 4 dígitos com número de cartão", () => {
+      expect(extractCardLastDigits("Transferência Pix de R$ 1.234,00 realizada")).toBeUndefined();
+      expect(extractCardLastDigits("Compra de R$ 2500,50 no supermercado")).toBeUndefined();
+    });
+
+    it("retorna undefined quando não há menção a dígitos de cartão", () => {
+      expect(extractCardLastDigits("Pagamento aprovado: R$ 85,50 em Outback Steakhouse")).toBeUndefined();
+      expect(extractCardLastDigits("Pix de R$ 100,00 realizado com sucesso")).toBeUndefined();
+    });
+  });
+
+  describe("extractIssuerBank (Detecção de Banco Emissor para Carteiras Digitais)", () => {
+    it("extrai o banco emissor associado ao cartão na notificação de carteira", () => {
+      expect(
+        extractIssuerBank(
+          "Compra de R$ 45,90 em Starbucks com Cartão Nubank final 1234",
+        ),
+      ).toBe("Nubank");
+
+      expect(
+        extractIssuerBank(
+          "Pagamento aprovado de R$ 100,00 no Cartão Itaú final 5678",
+        ),
+      ).toBe("Itaú");
+
+      expect(
+        extractIssuerBank(
+          "Compra com Cartão Bradesco final 4321",
+        ),
+      ).toBe("Bradesco");
+
+      expect(
+        extractIssuerBank(
+          "Compra com Cartão Santander final 6543",
+        ),
+      ).toBe("Santander");
+
+      expect(
+        extractIssuerBank(
+          "Compra de R$ 25,00 no Cartão Inter final 1111",
+        ),
+      ).toBe("Inter");
+
+      expect(
+        extractIssuerBank(
+          "Compra no cartão C6 Bank final 2222",
+        ),
+      ).toBe("C6 Bank");
+    });
+
+    it("retorna undefined quando a notificação de carteira não especifica o banco emissor", () => {
+      expect(
+        extractIssuerBank("Pagamento aprovado: R$ 85,50 em Outback Steakhouse"),
+      ).toBeUndefined();
+
+      expect(
+        extractIssuerBank("Compra de R$ 30,00 no cartão final 1234"),
+      ).toBeUndefined();
+    });
+  });
+
+  describe("Carteiras Digitais (Google Wallet / Samsung Pay)", () => {
+    it("processa notificação do Google Pay com banco emissor e dígitos de cartão", () => {
+      const parsed = parseBankNotification({
+        packageName: "com.google.android.apps.walletnfcrel",
+        title: "Google Pay",
+        text: "Compra de R$ 45,90 em Starbucks com Cartão Nubank final 1234",
+      });
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.bankName).toBe("Carteira Google");
+      expect(parsed?.amountCents).toBe(4590);
+      expect(parsed?.merchant).toBe("Starbucks");
+      expect(parsed?.issuerBank).toBe("Nubank");
+      expect(parsed?.cardLastDigits).toBe("1234");
+      expect(parsed?.paymentMethod).toBe("credit_card");
+      expect(parsed?.type).toBe("expense");
+    });
+
+    it("processa notificação do Google Pay sem packageName mas com prefixo no título", () => {
+      const parsed = parseBankNotification({
+        title: "Google Pay",
+        text: "R$ 35,00 em Livraria Cultura com Cartão Bradesco final 4321",
+      });
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.bankName).toBe("Carteira Google");
+      expect(parsed?.amountCents).toBe(3500);
+      expect(parsed?.merchant).toBe("Livraria Cultura");
+      expect(parsed?.issuerBank).toBe("Bradesco");
+      expect(parsed?.cardLastDigits).toBe("4321");
+      expect(parsed?.paymentMethod).toBe("credit_card");
+    });
+
+    it("processa notificação do Samsung Pay com estabelecimento e sem banco emissor", () => {
+      const parsed = parseBankNotification({
+        packageName: "com.samsung.android.spay",
+        title: "Samsung Pay",
+        text: "Pagamento aprovado: R$ 85,50 em Outback Steakhouse",
+      });
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.bankName).toBe("Samsung Pay");
+      expect(parsed?.amountCents).toBe(8550);
+      expect(parsed?.merchant).toBe("Outback Steakhouse");
+      expect(parsed?.issuerBank).toBeUndefined();
+      expect(parsed?.cardLastDigits).toBeUndefined();
+      expect(parsed?.paymentMethod).toBe("credit_card");
+    });
+
+    it("processa notificação do Samsung Pay com banco emissor e cartão", () => {
+      const parsed = parseBankNotification({
+        packageName: "com.samsung.android.raja.spay",
+        title: "Samsung Pay",
+        text: "Compra de R$ 99,00 aprovada em Zara com Cartão Santander final 6543",
+      });
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.bankName).toBe("Samsung Pay");
+      expect(parsed?.amountCents).toBe(9900);
+      expect(parsed?.merchant).toBe("Zara");
+      expect(parsed?.issuerBank).toBe("Santander");
+      expect(parsed?.cardLastDigits).toBe("6543");
+      expect(parsed?.paymentMethod).toBe("credit_card");
+    });
+
+    it("processa notificação de Samsung Pay com cartão Itaú em posto de combustível", () => {
+      const parsed = parseBankNotification({
+        packageName: "com.samsung.android.spay",
+        title: "Pagamento aprovado",
+        text: "Pagamento aprovado: R$ 42,00 em Posto Ipiranga com cartão Itaú final 7890",
+      });
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.bankName).toBe("Samsung Pay");
+      expect(parsed?.amountCents).toBe(4200);
+      expect(parsed?.merchant).toBe("Posto Ipiranga");
+      expect(parsed?.issuerBank).toBe("Itaú");
+      expect(parsed?.cardLastDigits).toBe("7890");
+    });
+
+    it("processa padrão canônico do Google Pay: 'Compra de R$ XX,XX em Estabelecimento Y com Cartão Banco Z final 1234'", () => {
+      const parsed = parseBankNotification({
+        packageName: "com.google.android.apps.walletnfcrel",
+        title: "Google Pay",
+        text: "Compra de R$ 42,90 em Padaria Estrela com Cartão Nubank final 1234",
+      });
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.bankName).toBe("Carteira Google");
+      expect(parsed?.amountCents).toBe(4290);
+      expect(parsed?.merchant).toBe("Padaria Estrela");
+      expect(parsed?.issuerBank).toBe("Nubank");
+      expect(parsed?.cardLastDigits).toBe("1234");
+      expect(parsed?.paymentMethod).toBe("credit_card");
+    });
+
+    it("processa padrão canônico do Samsung Pay: 'Pagamento aprovado: R$ XX,XX em Estabelecimento Y'", () => {
+      const parsed = parseBankNotification({
+        packageName: "com.samsung.android.spay",
+        title: "Samsung Pay",
+        text: "Pagamento aprovado: R$ 150,00 em Droga Raia",
+      });
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.bankName).toBe("Samsung Pay");
+      expect(parsed?.amountCents).toBe(15000);
+      expect(parsed?.merchant).toBe("Droga Raia");
+      expect(parsed?.issuerBank).toBeUndefined();
+      expect(parsed?.cardLastDigits).toBeUndefined();
+      expect(parsed?.paymentMethod).toBe("credit_card");
+    });
+
+    it("extrai bandeira Mastercard em compra aprovada no Google Pay", () => {
+      const parsed = parseBankNotification({
+        packageName: "com.google.android.apps.walletnfcrel",
+        title: "Google Pay",
+        text: "Compra aprovada de R$ 120,00 em Mercado Livre com Mastercard final 9999",
+      });
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.bankName).toBe("Carteira Google");
+      expect(parsed?.amountCents).toBe(12000);
+      expect(parsed?.merchant).toBe("Mercado Livre");
+      expect(parsed?.issuerBank).toBe("Mastercard");
+      expect(parsed?.cardLastDigits).toBe("9999");
+      expect(parsed?.paymentMethod).toBe("credit_card");
+    });
+
+    it("processa notificação resumida GPay com final de cartão", () => {
+      const parsed = parseBankNotification({
+        title: "GPay",
+        text: "GPay: R$ 35,50 em Starbucks final 4321",
+      });
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.bankName).toBe("Carteira Google");
+      expect(parsed?.amountCents).toBe(3550);
+      expect(parsed?.merchant).toBe("Starbucks");
+      expect(parsed?.cardLastDigits).toBe("4321");
+      expect(parsed?.issuerBank).toBeUndefined();
+      expect(parsed?.paymentMethod).toBe("credit_card");
+    });
+
+    it("detecta pagamento em débito explicitado em notificação de Carteira Google", () => {
+      const parsed = parseBankNotification({
+        packageName: "com.google.android.apps.walletnfcrel",
+        title: "Carteira Google",
+        text: "Compra no débito de R$ 30,00 em Padaria Central com Cartão Inter final 5555",
+      });
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.bankName).toBe("Carteira Google");
+      expect(parsed?.amountCents).toBe(3000);
+      expect(parsed?.merchant).toBe("Padaria Central");
+      expect(parsed?.issuerBank).toBe("Inter");
+      expect(parsed?.cardLastDigits).toBe("5555");
+      expect(parsed?.paymentMethod).toBe("debit");
+    });
+
+    it("processa Samsung Pay com estabelecimento Pão de Açúcar e final de cartão", () => {
+      const parsed = parseBankNotification({
+        packageName: "com.samsung.android.spay",
+        title: "Samsung Pay",
+        text: "Samsung Pay: R$ 52,00 em Supermercado Pão de Açúcar final 1234",
+      });
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.bankName).toBe("Samsung Pay");
+      expect(parsed?.amountCents).toBe(5200);
+      expect(parsed?.merchant).toBe("Supermercado Pão de Açúcar");
+      expect(parsed?.cardLastDigits).toBe("1234");
+      expect(parsed?.issuerBank).toBeUndefined();
+      expect(parsed?.paymentMethod).toBe("credit_card");
+    });
+
+    it("processa notificação com cartão e banco citados antes do estabelecimento", () => {
+      const parsed = parseBankNotification({
+        packageName: "com.samsung.android.spay",
+        title: "Pagamento aprovado",
+        text: "Pagamento aprovado no Cartão Bradesco final 2222: R$ 80,00 em Posto Shell",
+      });
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.bankName).toBe("Samsung Pay");
+      expect(parsed?.amountCents).toBe(8000);
+      expect(parsed?.merchant).toBe("Posto Shell");
+      expect(parsed?.issuerBank).toBe("Bradesco");
+      expect(parsed?.cardLastDigits).toBe("2222");
+      expect(parsed?.paymentMethod).toBe("credit_card");
+    });
+
+    it("processa notificação do Samsung Wallet com cartão Caixa e cinema", () => {
+      const parsed = parseBankNotification({
+        title: "Samsung Wallet",
+        text: "Pagamento de R$ 60,00 aprovado no Cartão Caixa final 4444 em Cinema Cinemark",
+      });
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.bankName).toBe("Samsung Pay");
+      expect(parsed?.amountCents).toBe(6000);
+      expect(parsed?.merchant).toBe("Cinema Cinemark");
+      expect(parsed?.issuerBank).toBe("Caixa");
+      expect(parsed?.cardLastDigits).toBe("4444");
+      expect(parsed?.paymentMethod).toBe("credit_card");
+    });
+
+    it("processa notificação com traço separando cartão e valor", () => {
+      const parsed = parseBankNotification({
+        packageName: "com.samsung.android.spay",
+        title: "Samsung Pay",
+        text: "Samsung Pay: Cartão Inter final 3333 - R$ 45,00 em Restaurante Silva",
+      });
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.bankName).toBe("Samsung Pay");
+      expect(parsed?.amountCents).toBe(4500);
+      expect(parsed?.merchant).toBe("Restaurante Silva");
+      expect(parsed?.issuerBank).toBe("Inter");
+      expect(parsed?.cardLastDigits).toBe("3333");
+      expect(parsed?.paymentMethod).toBe("credit_card");
+    });
+  });
+
+  describe("Corretoras, Cripto & Contas Globais (Binance, Rico, Nomad, BTG Investimentos) (Fase 2 — Tarefa 2.2)", () => {
+    describe("Auxiliares de Câmbio, Moeda e Ativos", () => {
+      it("detectCurrency identifica USD e BRL corretamente", () => {
+        expect(detectCurrency("Compra de US$ 45,00 na Apple")).toBe("USD");
+        expect(detectCurrency("Pagamento de USD 10,00 aprovado")).toBe("USD");
+        expect(detectCurrency("Câmbio de R$ 5.000,00 para US$ 980,00")).toBe("BRL");
+        expect(detectCurrency("Compra de R$ 42,90")).toBe("BRL");
+      });
+
+      it("extractNomadExchangeMetadata extrai cotação, IOF e montante em moeda estrangeira", () => {
+        const meta1 = extractNomadExchangeMetadata(
+          "Câmbio concluído: você converteu R$ 5.000,00 para US$ 980,40 (Cotação: R$ 5,02 | IOF: R$ 55,00)",
+        );
+        expect(meta1.currency).toBe("BRL");
+        expect(meta1.exchangeRate).toBe(5.02);
+        expect(meta1.iofCents).toBe(5500);
+        expect(meta1.foreignAmountCents).toBe(98040);
+
+        const meta2 = extractNomadExchangeMetadata(
+          "Conversão realizada: R$ 1.500,00 em US$ 290,00. Cotação comercial 5,10, IOF R$ 16,50",
+        );
+        expect(meta2.currency).toBe("BRL");
+        expect(meta2.exchangeRate).toBe(5.1);
+        expect(meta2.iofCents).toBe(1650);
+        expect(meta2.foreignAmountCents).toBe(29000);
+      });
+
+      it("extractInvestmentAsset extrai tickers B3, criptoativos e fundos", () => {
+        expect(extractInvestmentAsset("Você recebeu proventos de R$ 142,50 de HGLG11")).toBe("HGLG11");
+        expect(extractInvestmentAsset("Dividendos recebidos: R$ 85,20 de PETR4")).toBe("PETR4");
+        expect(extractInvestmentAsset("Sua ordem de compra de BTC foi executada")).toBe("BTC");
+        expect(extractInvestmentAsset("Ordem de venda executada: R$ 450,00 em USDT")).toBe("USDT");
+        expect(
+          extractInvestmentAsset("Aplicação realizada com sucesso: R$ 10.000,00 no Fundo BTG Pactual Tesouro Selic"),
+        ).toBe("BTG Pactual Tesouro Selic");
+        expect(
+          extractInvestmentAsset("Investimento realizado: R$ 5.000,00 em CDB BTG Pactual 110% CDI"),
+        ).toBe("BTG Pactual 110% CDI");
+      });
+
+      it("detectTransactionNature classifica proventos, trades, resgates e aportes", () => {
+        expect(detectTransactionNature("Você recebeu dividendos de R$ 50,00", "XP", "XP Investimentos")).toEqual({
+          nature: "investment",
+          subtype: "dividend",
+        });
+        expect(detectTransactionNature("Sua ordem de compra de BTC foi executada", "Binance", "Binance")).toEqual({
+          nature: "investment",
+          subtype: "trade",
+        });
+        expect(detectTransactionNature("Liquidação de título creditada", "BTG", "BTG Investimentos")).toEqual({
+          nature: "investment",
+          subtype: "redemption",
+        });
+        expect(detectTransactionNature("Depósito de R$ 500,00 recebido via Pix", "Binance", "Binance")).toEqual({
+          nature: "investment",
+          subtype: "contribution",
+        });
+        expect(detectTransactionNature("Compra aprovada de US$ 45,00 na Apple", "Nomad", "Nomad")).toEqual({
+          nature: "expense",
+        });
+      });
+    });
+
+    describe("Binance (com.binance.dev)", () => {
+      it("parseia depósito BRL via Pix com natureza de investimento e aporte", () => {
+        const parsed = parseBankNotification({
+          packageName: "com.binance.dev",
+          title: "Binance",
+          text: "Depósito de R$ 500,00 recebido com sucesso via Pix",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Binance");
+        expect(parsed?.amountCents).toBe(50000);
+        expect(parsed?.type).toBe("income");
+        expect(parsed?.nature).toBe("investment");
+        expect(parsed?.investmentSubtype).toBe("contribution");
+        expect(parsed?.paymentMethod).toBe("pix");
+        expect(parsed?.description).toBe("Depósito via Pix (Binance)");
+        expect(parsed?.categorySlug).toBe("investimentos");
+      });
+
+      it("parseia ordem de compra Spot de BTC com extração de ticker", () => {
+        const parsed = parseBankNotification({
+          packageName: "com.binance.dev",
+          title: "Ordem executada",
+          text: "Sua ordem de compra de BTC foi executada: R$ 250,00",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Binance");
+        expect(parsed?.amountCents).toBe(25000);
+        expect(parsed?.type).toBe("expense");
+        expect(parsed?.nature).toBe("investment");
+        expect(parsed?.investmentSubtype).toBe("trade");
+        expect(parsed?.assetTicker).toBe("BTC");
+        expect(parsed?.description).toBe("Compra Spot BTC (Binance)");
+        expect(parsed?.categorySlug).toBe("investimentos");
+      });
+
+      it("parseia ordem de venda Spot de ETH com entrada de receita/caixa", () => {
+        const parsed = parseBankNotification({
+          title: "Binance",
+          text: "Sua ordem de venda de ETH foi executada: R$ 800,00",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Binance");
+        expect(parsed?.amountCents).toBe(80000);
+        expect(parsed?.type).toBe("income");
+        expect(parsed?.nature).toBe("investment");
+        expect(parsed?.investmentSubtype).toBe("trade");
+        expect(parsed?.assetTicker).toBe("ETH");
+        expect(parsed?.description).toBe("Venda Spot ETH (Binance)");
+        expect(parsed?.categorySlug).toBe("investimentos");
+      });
+
+      it("parseia transferência de cripto confirmada em SOL", () => {
+        const parsed = parseBankNotification({
+          title: "Binance",
+          text: "Transferência de cripto confirmada: R$ 300,00 em SOL",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Binance");
+        expect(parsed?.amountCents).toBe(30000);
+        expect(parsed?.nature).toBe("investment");
+        expect(parsed?.assetTicker).toBe("SOL");
+      });
+    });
+
+    describe("Rico & XP (br.com.rico / com.xpinc.investments)", () => {
+      it("parseia recebimento de proventos e dividendos com ticker de FII (HGLG11)", () => {
+        const parsed = parseBankNotification({
+          packageName: "br.com.rico",
+          title: "Proventos recebidos",
+          text: "Você recebeu proventos de R$ 142,50 de HGLG11",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Rico");
+        expect(parsed?.amountCents).toBe(14250);
+        expect(parsed?.type).toBe("income");
+        expect(parsed?.nature).toBe("investment");
+        expect(parsed?.investmentSubtype).toBe("dividend");
+        expect(parsed?.assetTicker).toBe("HGLG11");
+        expect(parsed?.description).toBe("Dividendos HGLG11 (Rico)");
+        expect(parsed?.categorySlug).toBe("investimentos");
+      });
+
+      it("parseia recebimento de JCP na Rico com ticker de ação (ITUB4)", () => {
+        const parsed = parseBankNotification({
+          title: "Rico",
+          text: "JCP creditado: R$ 45,00 de ITUB4",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Rico");
+        expect(parsed?.amountCents).toBe(4500);
+        expect(parsed?.type).toBe("income");
+        expect(parsed?.nature).toBe("investment");
+        expect(parsed?.investmentSubtype).toBe("dividend");
+        expect(parsed?.assetTicker).toBe("ITUB4");
+        expect(parsed?.description).toBe("Dividendos ITUB4 (Rico)");
+      });
+
+      it("parseia aporte para investimento na Rico", () => {
+        const parsed = parseBankNotification({
+          title: "Rico",
+          text: "Depósito de R$ 2.000,00 recebido para investimentos na Rico",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Rico");
+        expect(parsed?.amountCents).toBe(200000);
+        expect(parsed?.type).toBe("income");
+        expect(parsed?.nature).toBe("investment");
+        expect(parsed?.investmentSubtype).toBe("contribution");
+        expect(parsed?.description).toBe("Aporte para Investimento (Rico)");
+      });
+
+      it("parseia nota de corretagem de compra de ação na Rico (WEGE3)", () => {
+        const parsed = parseBankNotification({
+          packageName: "br.com.rico.investimentos",
+          title: "Nota de corretagem",
+          text: "Nota de corretagem disponível: Compra de 100 WEGE3 por R$ 3.800,00",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Rico");
+        expect(parsed?.amountCents).toBe(380000);
+        expect(parsed?.type).toBe("expense");
+        expect(parsed?.nature).toBe("investment");
+        expect(parsed?.investmentSubtype).toBe("trade");
+        expect(parsed?.assetTicker).toBe("WEGE3");
+        expect(parsed?.description).toBe("Compra Spot WEGE3 (Rico)");
+      });
+
+      it("parseia ordem de venda executada na XP Investimentos (VALE3)", () => {
+        const parsed = parseBankNotification({
+          packageName: "com.xpinc.investments",
+          title: "XP Investimentos",
+          text: "Ordem de venda executada: R$ 2.300,00 em VALE3",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("XP Investimentos");
+        expect(parsed?.amountCents).toBe(230000);
+        expect(parsed?.type).toBe("income");
+        expect(parsed?.nature).toBe("investment");
+        expect(parsed?.investmentSubtype).toBe("trade");
+        expect(parsed?.assetTicker).toBe("VALE3");
+        expect(parsed?.description).toBe("Venda Spot VALE3 (XP Investimentos)");
+      });
+    });
+
+    describe("Nomad (com.nomadfinancial.app)", () => {
+      it("parseia conversão cambial USD -> BRL com cotação e IOF detectados", () => {
+        const parsed = parseBankNotification({
+          packageName: "com.nomadfinancial.app",
+          title: "Nomad",
+          text: "Câmbio concluído: você converteu R$ 5.000,00 para US$ 980,40 (Cotação: R$ 5,02 | IOF: R$ 55,00)",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Nomad");
+        expect(parsed?.amountCents).toBe(500000);
+        expect(parsed?.currency).toBe("BRL");
+        expect(parsed?.exchangeRate).toBe(5.02);
+        expect(parsed?.iofCents).toBe(5500);
+        expect(parsed?.nature).toBe("investment");
+        expect(parsed?.investmentSubtype).toBe("contribution");
+        expect(parsed?.type).toBe("expense");
+        expect(parsed?.description).toBe("Câmbio USD (Nomad)");
+        expect(parsed?.categorySlug).toBe("investimentos");
+      });
+
+      it("parseia conversão cambial alternativa com formato comercial de taxa", () => {
+        const parsed = parseBankNotification({
+          title: "Nomad",
+          text: "Conversão realizada: R$ 1.500,00 em US$ 290,00. Cotação comercial 5,10, IOF R$ 16,50",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Nomad");
+        expect(parsed?.amountCents).toBe(150000);
+        expect(parsed?.exchangeRate).toBe(5.1);
+        expect(parsed?.iofCents).toBe(1650);
+        expect(parsed?.nature).toBe("investment");
+        expect(parsed?.investmentSubtype).toBe("contribution");
+      });
+
+      it("parseia compra no débito internacional Nomad com Apple Store em dólares", () => {
+        const parsed = parseBankNotification({
+          packageName: "com.nomadfinancial.app",
+          title: "Nomad",
+          text: "Compra aprovada de US$ 45,00 na Apple Store com seu cartão Nomad final 1234",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Nomad");
+        expect(parsed?.amountCents).toBe(4500);
+        expect(parsed?.currency).toBe("USD");
+        expect(parsed?.type).toBe("expense");
+        expect(parsed?.nature).toBe("expense");
+        expect(parsed?.paymentMethod).toBe("debit");
+        expect(parsed?.merchant).toBe("Apple Store");
+        expect(parsed?.cardLastDigits).toBe("1234");
+        expect(parsed?.description).toBe("Apple Store");
+      });
+
+      it("parseia compra no débito em dólares com Starbucks Miami", () => {
+        const parsed = parseBankNotification({
+          packageName: "com.nomadfinancial.app",
+          title: "Compra no débito",
+          text: "Compra aprovada no débito: US$ 12,50 em Starbucks Miami",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Nomad");
+        expect(parsed?.amountCents).toBe(1250);
+        expect(parsed?.currency).toBe("USD");
+        expect(parsed?.merchant).toBe("Starbucks Miami");
+        expect(parsed?.paymentMethod).toBe("debit");
+      });
+    });
+
+    describe("BTG Investimentos (com.btgpactual.investimentos)", () => {
+      it("parseia aporte em fundo de investimento Tesouro Selic", () => {
+        const parsed = parseBankNotification({
+          packageName: "com.btgpactual.investimentos",
+          title: "Aplicação realizada",
+          text: "Aplicação realizada com sucesso: R$ 10.000,00 no Fundo BTG Pactual Tesouro Selic",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("BTG Investimentos");
+        expect(parsed?.amountCents).toBe(1000000);
+        expect(parsed?.type).toBe("expense");
+        expect(parsed?.nature).toBe("investment");
+        expect(parsed?.investmentSubtype).toBe("contribution");
+        expect(parsed?.assetTicker).toBe("BTG Pactual Tesouro Selic");
+        expect(parsed?.description).toBe("Aplicação BTG Pactual Tesouro Selic");
+        expect(parsed?.categorySlug).toBe("investimentos");
+      });
+
+      it("parseia investimento em CDB com rentabilidade CDI", () => {
+        const parsed = parseBankNotification({
+          title: "BTG Investimentos",
+          text: "Investimento realizado: R$ 5.000,00 em CDB BTG Pactual 110% CDI",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("BTG Investimentos");
+        expect(parsed?.amountCents).toBe(500000);
+        expect(parsed?.type).toBe("expense");
+        expect(parsed?.nature).toBe("investment");
+        expect(parsed?.investmentSubtype).toBe("contribution");
+        expect(parsed?.assetTicker).toBe("BTG Pactual 110% CDI");
+      });
+
+      it("parseia liquidação de título com entrada de recursos na conta", () => {
+        const parsed = parseBankNotification({
+          packageName: "com.btgpactual.investimentos",
+          title: "Liquidação de título",
+          text: "Liquidação de título: R$ 12.450,00 creditado na sua conta BTG",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("BTG Investimentos");
+        expect(parsed?.amountCents).toBe(1245000);
+        expect(parsed?.type).toBe("income");
+        expect(parsed?.nature).toBe("investment");
+        expect(parsed?.investmentSubtype).toBe("redemption");
+        expect(parsed?.description).toBe("Liquidação de Título (BTG Investimentos)");
+        expect(parsed?.categorySlug).toBe("investimentos");
+      });
+
+      it("parseia resgate confirmado de fundo de investimento", () => {
+        const parsed = parseBankNotification({
+          title: "BTG Investimentos",
+          text: "Resgate confirmado de R$ 4.000,00 do Fundo BTG Pactual",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("BTG Investimentos");
+        expect(parsed?.amountCents).toBe(400000);
+        expect(parsed?.type).toBe("income");
+        expect(parsed?.nature).toBe("investment");
+        expect(parsed?.investmentSubtype).toBe("redemption");
+      });
+    });
+  });
+
+  describe("Fusão Temporal, Deduplicação e Bandeiras de Cartão (§2.4)", () => {
+    describe("extractCardBrand & isCardBrand", () => {
+      it("extrai bandeiras Mastercard, Visa, Elo, Amex e Hipercard", () => {
+        expect(extractCardBrand("Compra com Mastercard final 1234")).toBe("Mastercard");
+        expect(extractCardBrand("Pagamento via Cartão Visa aprovado")).toBe("Visa");
+        expect(extractCardBrand("Transação no Elo final 4444")).toBe("Elo");
+        expect(extractCardBrand("Compra no American Express final 3333")).toBe("American Express");
+        expect(extractCardBrand("Uso do Amex aprovado")).toBe("American Express");
+        expect(extractCardBrand("Hipercard compra aprovada")).toBe("Hipercard");
+        expect(extractCardBrand("Compra comum sem bandeira")).toBeUndefined();
+      });
+
+      it("valida identificadores de bandeiras com isCardBrand", () => {
+        expect(isCardBrand("Mastercard")).toBe(true);
+        expect(isCardBrand("visa")).toBe(true);
+        expect(isCardBrand("elo")).toBe(true);
+        expect(isCardBrand("American Express")).toBe(true);
+        expect(isCardBrand("amex")).toBe(true);
+        expect(isCardBrand("Hipercard")).toBe(true);
+        expect(isCardBrand("Nubank")).toBe(false);
+        expect(isCardBrand("Itaú")).toBe(false);
+        expect(isCardBrand(undefined)).toBe(false);
+      });
+    });
+
+    describe("isDigitalWallet", () => {
+      it("identifica carteiras digitais proxy NFC", () => {
+        expect(isDigitalWallet("Carteira Google")).toBe(true);
+        expect(isDigitalWallet("Google Pay")).toBe(true);
+        expect(isDigitalWallet("Google Wallet")).toBe(true);
+        expect(isDigitalWallet("Samsung Pay")).toBe(true);
+        expect(isDigitalWallet("Samsung Wallet")).toBe(true);
+        expect(isDigitalWallet("Nubank")).toBe(false);
+        expect(isDigitalWallet("Itaú")).toBe(false);
+        expect(isDigitalWallet("Banco Inter")).toBe(false);
+        expect(isDigitalWallet(undefined)).toBe(false);
+      });
+    });
+
+    describe("areMerchantsCompatible", () => {
+      const base: ParsedBankTransaction = {
+        id: "sug_base",
+        bankName: "Nubank",
+        nature: "expense",
+        type: "expense",
+        amountCents: 5000,
+        description: "Padaria Estrela",
+        merchant: "Padaria Estrela",
+        date: "2026-10-20",
+        rawText: "texto",
+        timestamp: Date.now(),
+      };
+
+      it("considera compatíveis estabelecimentos com match exato ou substring", () => {
+        expect(
+          areMerchantsCompatible(base, {
+            ...base,
+            merchant: "PADARIA ESTRELA LTDA",
+          }),
+        ).toBe(true);
+
+        expect(
+          areMerchantsCompatible(base, {
+            ...base,
+            merchant: "Padaria Estrela",
+          }),
+        ).toBe(true);
+      });
+
+      it("distingue comércios diferentes mesmo com prefixos comerciais idênticos", () => {
+        expect(
+          areMerchantsCompatible(base, {
+            ...base,
+            merchant: "Padaria Central",
+          }),
+        ).toBe(false);
+
+        expect(
+          areMerchantsCompatible(
+            { ...base, merchant: "Posto Shell" },
+            { ...base, merchant: "Posto Ipiranga" },
+          ),
+        ).toBe(false);
+      });
+
+      it("compara merchant contra description quando um deles não tiver merchant explícito", () => {
+        expect(
+          areMerchantsCompatible(base, {
+            ...base,
+            merchant: undefined,
+            description: "Compra na Padaria Estrela aprovada",
+          }),
+        ).toBe(true);
+      });
+    });
+
+    describe("isWithinTemporalWindow", () => {
+      const t0 = 1729000000000;
+      const txA: ParsedBankTransaction = {
+        id: "a",
+        bankName: "Google Pay",
+        nature: "expense",
+        type: "expense",
+        amountCents: 1000,
+        description: "Teste",
+        date: "2026-10-20",
+        rawText: "raw",
+        timestamp: t0,
+      };
+
+      it("valida constante de tolerância de 5 minutos", () => {
+        expect(DEDUPLICATION_WINDOW_MS).toBe(300_000);
+      });
+
+      it("retorna true dentro de 5 minutos e false após 5 minutos", () => {
+        expect(isWithinTemporalWindow(txA, { ...txA, timestamp: t0 + 500 })).toBe(true);
+        expect(isWithinTemporalWindow(txA, { ...txA, timestamp: t0 + 4 * 60 * 1000 })).toBe(true);
+        expect(isWithinTemporalWindow(txA, { ...txA, timestamp: t0 + 5 * 60 * 1000 })).toBe(true);
+        expect(isWithinTemporalWindow(txA, { ...txA, timestamp: t0 + 5 * 60 * 1000 + 1 })).toBe(false);
+        expect(isWithinTemporalWindow(txA, { ...txA, timestamp: t0 + 6 * 60 * 1000 })).toBe(false);
+      });
+    });
+
+    describe("mergeWalletWithBank", () => {
+      it("funde sugestão da carteira com a do banco oficial preservando bandeira e dígitos", () => {
+        const wallet: ParsedBankTransaction = {
+          id: "sug_wallet",
+          bankName: "Carteira Google",
+          nature: "expense",
+          type: "expense",
+          amountCents: 4500,
+          description: "Padaria Estrela",
+          merchant: "Padaria Estrela",
+          cardBrand: "Mastercard",
+          cardLastDigits: "1234",
+          issuerBank: "Nubank",
+          date: "2026-10-20",
+          paymentMethod: "credit_card",
+          rawText: "Compra de R$ 45,00 em Padaria Estrela com Cartão Nubank final 1234",
+          timestamp: 1000,
+        };
+
+        const bank: ParsedBankTransaction = {
+          id: "sug_bank",
+          bankName: "Nubank",
+          nature: "expense",
+          type: "expense",
+          amountCents: 4500,
+          description: "Compra aprovada em Padaria Estrela",
+          merchant: "Padaria Estrela",
+          date: "2026-10-20",
+          paymentMethod: "credit_card",
+          rawText: "Compra de R$ 45,00 aprovada no Nubank em Padaria Estrela",
+          timestamp: 1500,
+        };
+
+        const merged = mergeWalletWithBank(wallet, bank);
+
+        expect(merged.bankName).toBe("Nubank");
+        expect(merged.cardBrand).toBe("Mastercard");
+        expect(merged.cardLastDigits).toBe("1234");
+        expect(merged.amountCents).toBe(4500);
+        expect(merged.merchant).toBe("Padaria Estrela");
+      });
     });
   });
 });

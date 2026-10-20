@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import { ClipboardPaste } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Stepper } from "@/components/ui/stepper";
+import { PasteReceiptDialog } from "@/components/modules/paste-receipt-dialog";
 import { getErrorMessage } from "@/services/errors";
+import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { buildDescriptionSuggestions, buildHabitualEntries, dayOfMonth } from "@/domain/predictions";
 import { todayISO } from "@/domain/debts";
@@ -13,6 +16,7 @@ import {
   inferCategoryKeyword,
   matchCategoryBySlug,
   type CanonicalCategorySlug,
+  type ParsedBankTransaction,
 } from "@/domain/notifications";
 import { getBankAssistantPreferences } from "@/services/native";
 import {
@@ -71,6 +75,7 @@ export function LaunchWizard({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
 
   // Dados preenchidos no fluxo (valor/categoria/descrição) — fechar com o
   // formulário em andamento pede confirmação (anti-perda acidental).
@@ -285,6 +290,42 @@ export function LaunchWizard({
     }
   };
 
+  const handlePasteParsed = (parsed: ParsedBankTransaction) => {
+    setState((prev) => {
+      const next = { ...prev };
+      next.type = parsed.type;
+      next.valueCents = parsed.amountCents;
+      if (parsed.description) next.description = parsed.description;
+      if (parsed.date) next.date = parsed.date;
+      if (parsed.paymentMethod) next.paymentMethod = parsed.paymentMethod;
+      if (parsed.installments && parsed.installments > 1) {
+        next.installments = parsed.installments;
+      }
+      if (parsed.categorySlug && categoriesQuery.data) {
+        const found = categoriesQuery.data.find(
+          (c) =>
+            c.name.toLowerCase().includes(parsed.categorySlug!.toLowerCase()) ||
+            parsed.categorySlug!.toLowerCase().includes(c.name.toLowerCase()),
+        );
+        if (found) next.categoryId = found.id;
+      }
+      if (parsed.paymentMethod === "credit_card" && cardsQuery.data) {
+        const matchingCard = cardsQuery.data.find((card) =>
+          card.name.toLowerCase().includes(parsed.bankName.toLowerCase()),
+        );
+        if (matchingCard) next.cardId = matchingCard.id;
+      }
+      return next;
+    });
+
+    triggerSensory("success");
+    pushToast({
+      title: "Dados preenchidos",
+      description: `${parsed.description} preenchido no formulário de lançamento.`,
+      variant: "success",
+    });
+  };
+
   const isLastStep = state.step === WIZARD_STEPS.length;
 
   return (
@@ -298,6 +339,19 @@ export function LaunchWizard({
       title="Novo lançamento"
       size="xl"
       showCalculator
+      headerActions={
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          onClick={() => setPasteOpen(true)}
+          className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1 px-2 cursor-pointer"
+          aria-label="Colar comprovante"
+        >
+          <ClipboardPaste className="size-3.5" aria-hidden="true" />
+          <span className="hidden sm:inline">Colar comprovante</span>
+        </Button>
+      }
       footer={
         <ModalFooter className="mt-0 pt-0 border-t-0 sm:justify-between">
           <Button
@@ -441,6 +495,12 @@ export function LaunchWizard({
             setConfirmClose(false);
             handleClose();
           }}
+        />
+
+        <PasteReceiptDialog
+          open={pasteOpen}
+          onOpenChange={setPasteOpen}
+          onParsed={handlePasteParsed}
         />
       </div>
     </Modal>

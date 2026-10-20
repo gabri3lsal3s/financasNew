@@ -137,6 +137,32 @@ vi.mock("@/state", () => ({
     isError: false,
     error: null,
   }),
+  useActiveCreditCards: () => ({
+    data: cardsMock.filter((c) => c.is_active),
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
+  useCreateExpense: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useDeleteExpense: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useCreateIncome: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useCreateIncomeInstallments: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useDeleteIncome: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useBudgets: () => ({
     data: [
       { category_id: "c1", month: "2026-08", limit: 2000 },
@@ -501,12 +527,14 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       {
         id: "sug_test_1",
         bankName: "Nubank",
+        nature: "expense",
         type: "expense",
         amountCents: 8900,
         description: "Restaurante Bom Sabor",
         date: "2026-10-15",
         paymentMethod: "credit_card",
         rawText: "Compra de R$ 89,00 aprovada",
+        timestamp: 1729000000000,
       },
     ]);
 
@@ -514,7 +542,8 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
 
     expect(screen.getByText("Transações Detectadas")).toBeInTheDocument();
     expect(screen.getByText("Restaurante Bom Sabor")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Conferir e Salvar/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Salvar rápido/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Revisar/i })).toBeInTheDocument();
   });
 
   it("renderiza os skeletons estruturais harmoniosos durante o carregamento de dados", () => {

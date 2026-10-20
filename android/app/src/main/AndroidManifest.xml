@@ -80,6 +80,18 @@
             </intent-filter>
         </service>
 
+        <!-- Quick Settings Tile para Lançar Despesa da Barra de Status (§4.3) -->
+        <service
+            android:name=".QuickExpenseTileService"
+            android:icon="@drawable/ic_tile_expense"
+            android:label="@string/shortcut_new_expense"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -98,21 +110,12 @@
 
     <!-- Declaração de pacotes bancários para consulta de apps instalados (Android 11+) -->
     <queries>
+        <!-- Bancos Tradicionais & Digitais -->
         <package android:name="com.nu.production" />
         <package android:name="br.com.intermedium" />
         <package android:name="com.c6bank.app" />
-        <package android:name="com.mercadopago.wallet" />
-        <package android:name="com.picpay" />
-        <package android:name="br.com.uol.ps" />
-        <package android:name="br.com.uol.ps.myaccount" />
         <package android:name="br.com.neon" />
         <package android:name="br.com.bradesco.next" />
-        <package android:name="com.btg.pactual.banking" />
-        <package android:name="com.btgpactual.investimentos" />
-        <package android:name="br.com.xp.carteira" />
-        <package android:name="com.xpinc.investments" />
-        <package android:name="com.nomadfinancial.app" />
-        <package android:name="com.transferwise.android" />
         <package android:name="com.itau" />
         <package android:name="com.itau.personnalite" />
         <package android:name="com.bradesco" />
@@ -121,6 +124,28 @@
         <package android:name="br.gov.caixa.tem" />
         <package android:name="br.com.gabba.Caixa" />
         <package android:name="br.com.bb.android" />
+
+        <!-- Carteiras Digitais & Pagamentos -->
+        <package android:name="com.google.android.apps.walletnfcrel" />
+        <package android:name="com.samsung.android.spay" />
+        <package android:name="com.samsung.android.raja.spay" />
+        <package android:name="com.mercadopago.wallet" />
+        <package android:name="com.picpay" />
+        <package android:name="br.com.uol.ps" />
+        <package android:name="br.com.uol.ps.myaccount" />
+
+        <!-- Investimentos, Cripto & Contas Globais -->
+        <package android:name="com.btg.pactual.banking" />
+        <package android:name="com.btgpactual.investimentos" />
+        <package android:name="br.com.xp.carteira" />
+        <package android:name="com.xpinc.investments" />
+        <package android:name="br.com.rico" />
+        <package android:name="br.com.rico.investimentos" />
+        <package android:name="com.binance.dev" />
+        <package android:name="com.nomadfinancial.app" />
+        <package android:name="com.transferwise.android" />
+
+        <!-- Cooperativas, Adquirentes & Outros -->
         <package android:name="br.com.sicoob.net" />
         <package android:name="br.com.sicredi.mobile" />
         <package android:name="br.com.safra.mobile" />

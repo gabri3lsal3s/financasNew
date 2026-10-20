@@ -97,4 +97,6 @@ export { InstallAppButton } from "./install-app-button";
 export type { InstallAppButtonProps } from "./install-app-button";
 export { IosPwaInstallDialog } from "./ios-pwa-install-dialog";
 export type { IosPwaInstallDialogProps } from "./ios-pwa-install-dialog";
+export { PasteReceiptDialog } from "./paste-receipt-dialog";
+export type { PasteReceiptDialogProps } from "./paste-receipt-dialog";
 

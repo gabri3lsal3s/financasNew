@@ -56,6 +56,11 @@ const SuspendedAccountPage = lazy(() =>
     default: m.SuspendedAccountPage,
   })),
 );
+const ShareTargetPage = lazy(() =>
+  import("@/features/transactions/pages/share-target-page").then((m) => ({
+    default: m.ShareTargetPage,
+  })),
+);
 
 function RouteSuspenseFallback() {
   return (
@@ -221,6 +226,7 @@ export function AppRouter() {
               <Route path="/carteira" element={<Navigate to="/investments" replace />} />
 
               <Route element={<PageShell />}>
+                <Route path="/share-target" element={<ShareTargetPage />} />
                 {appRoutes
                   .filter((r) => r.path !== "/admin")
                   .map((route) => {

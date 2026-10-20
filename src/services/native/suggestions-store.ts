@@ -1,5 +1,13 @@
 import { useSyncExternalStore } from "react";
-import type { ParsedBankTransaction } from "@/domain/notifications";
+import {
+  areMerchantsCompatible,
+  DEDUPLICATION_WINDOW_MS,
+  isCardBrand,
+  isDigitalWallet,
+  isWithinTemporalWindow,
+  mergeWalletWithBank,
+  type ParsedBankTransaction,
+} from "@/domain/notifications";
 import {
   getUserStorageItem,
   setUserStorageItem,
@@ -148,7 +156,62 @@ export function addPendingSuggestion(suggestion: ParsedBankTransaction): void {
 
   if (exists) return;
 
-  // Adiciona ao topo e limita ao máximo configurado
+  // 2. Motor de Fusão Temporal e Deduplicação Inteligente (Janela de tolerância de 5 minutos)
+  const incomingIsWallet = isDigitalWallet(suggestion.bankName);
+
+  for (let i = 0; i < memorySuggestions.length; i++) {
+    const existing = memorySuggestions[i]!;
+
+    // Tolerância temporal de 5 minutos (300.000 ms) e valor rigorosamente idêntico (+- 0 centavos)
+    const isSameAmount = existing.amountCents === suggestion.amountCents;
+    const isSameWindow = isWithinTemporalWindow(existing, suggestion, DEDUPLICATION_WINDOW_MS);
+
+    if (isSameAmount && isSameWindow && areMerchantsCompatible(existing, suggestion)) {
+      const existingIsWallet = isDigitalWallet(existing.bankName);
+
+      // CASO A: A notificação da Carteira Digital chegou primeiro e dentro de 5 min chega a do Banco Oficial
+      // -> Fazer o merge: atribuir a transação ao banco oficial e manter a bandeira e dígitos do cartão
+      if (existingIsWallet && !incomingIsWallet) {
+        const merged = mergeWalletWithBank(existing, suggestion);
+        memorySuggestions[i] = merged;
+        saveToStorage();
+        notify();
+        return;
+      }
+
+      // CASO B: A notificação do Banco Oficial chegou primeiro e dentro de 5 min chega a da Carteira Digital
+      // -> Rejeitar a notificação subsequente da carteira como duplicata (e enriquecer bandeira/dígitos se faltavam)
+      if (!existingIsWallet && incomingIsWallet) {
+        let enriched = false;
+        if (!existing.cardBrand && (suggestion.cardBrand || isCardBrand(suggestion.issuerBank))) {
+          existing.cardBrand =
+            suggestion.cardBrand ||
+            (isCardBrand(suggestion.issuerBank) ? suggestion.issuerBank : undefined);
+          enriched = true;
+        }
+        if (!existing.cardLastDigits && suggestion.cardLastDigits) {
+          existing.cardLastDigits = suggestion.cardLastDigits;
+          enriched = true;
+        }
+        if (enriched) {
+          saveToStorage();
+          notify();
+        }
+        return; // Rejeitada como duplicata
+      }
+
+      // CASO C: Ambas são do mesmo banco emissor ou ambas são de carteiras digitais dentro da janela de 5 min
+      // -> Rejeitar como duplicata
+      if (
+        existing.bankName.toLowerCase() === suggestion.bankName.toLowerCase() ||
+        (existingIsWallet && incomingIsWallet)
+      ) {
+        return;
+      }
+    }
+  }
+
+  // 3. Adiciona ao topo e limita ao máximo configurado
   memorySuggestions = [suggestion, ...memorySuggestions].slice(0, MAX_SUGGESTIONS);
   saveToStorage();
   notify();
@@ -187,3 +250,12 @@ export function usePendingSuggestions(): ParsedBankTransaction[] {
     getPendingSuggestions,
   );
 }
+
+export {
+  areMerchantsCompatible,
+  DEDUPLICATION_WINDOW_MS,
+  isCardBrand,
+  isDigitalWallet,
+  isWithinTemporalWindow,
+  mergeWalletWithBank,
+};

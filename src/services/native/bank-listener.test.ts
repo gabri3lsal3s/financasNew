@@ -18,6 +18,8 @@ vi.mock("@capacitor/core", async (importOriginal) => {
 });
 
 import * as platformModule from "./platform";
+import * as prefsModule from "./bank-assistant-preferences";
+import { DEFAULT_BANK_ASSISTANT_PREFERENCES, HOMOLOGATED_BANKS } from "@/domain/notifications";
 import {
   flushPendingBankNotifications,
   initBankNotificationListener,
@@ -31,6 +33,10 @@ import * as suggestionsStoreModule from "./suggestions-store";
 describe("bank-listener (Serviço de Notificações e Pix)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(prefsModule, "getBankAssistantPreferences").mockReturnValue({
+      ...DEFAULT_BANK_ASSISTANT_PREFERENCES,
+      monitoredBanks: [...HOMOLOGATED_BANKS],
+    });
   });
 
   it("processa notificação bancária válida e salva na store", () => {
@@ -67,6 +73,16 @@ describe("bank-listener (Serviço de Notificações e Pix)", () => {
 
     expect(result).not.toBeNull();
     expect(result?.amountCents).toBe(9000);
+    expect(addSpy).toHaveBeenCalledWith(result);
+  });
+
+  it("processa texto de notificação de compra compartilhado via fallback e salva na store", () => {
+    const addSpy = vi.spyOn(suggestionsStoreModule, "addPendingSuggestion");
+
+    const result = processPixShare("Compra de R$ 45,90 aprovada no Nubank em Padaria Estrela");
+
+    expect(result).not.toBeNull();
+    expect(result?.amountCents).toBe(4590);
     expect(addSpy).toHaveBeenCalledWith(result);
   });
 
@@ -271,6 +287,32 @@ describe("bank-listener (Serviço de Notificações e Pix)", () => {
       const result = await getInstalledBankingApps();
       expect(Array.isArray(result.apps)).toBe(true);
       expect(Array.isArray(result.installedBankNames)).toBe(true);
+    });
+
+    it("retorna metadados enriquecidos com categoria ao consultar apps nativos", async () => {
+      vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+      mockPlugin.getInstalledBankingApps.mockResolvedValueOnce({
+        apps: [
+          { packageName: "com.nu.production", bankName: "Nubank", isInstalled: true, category: "bank" },
+          { packageName: "com.google.android.apps.walletnfcrel", bankName: "Carteira Google", isInstalled: true, category: "wallet" },
+          { packageName: "br.com.rico", bankName: "Rico", isInstalled: true, category: "broker" },
+        ],
+        installedBankNames: ["Nubank", "Carteira Google", "Rico"],
+      });
+
+      const { getInstalledBankingApps } = await import("./bank-listener");
+      const result = await getInstalledBankingApps();
+
+      expect(result.apps).toHaveLength(3);
+      expect(result.apps[0]).toEqual({
+        packageName: "com.nu.production",
+        bankName: "Nubank",
+        isInstalled: true,
+        category: "bank",
+      });
+      expect(result.apps[1]?.category).toBe("wallet");
+      expect(result.apps[2]?.category).toBe("broker");
+      expect(result.installedBankNames).toEqual(["Nubank", "Carteira Google", "Rico"]);
     });
 
     it("sincroniza lista de bancos monitorados com pacotes nativos", async () => {

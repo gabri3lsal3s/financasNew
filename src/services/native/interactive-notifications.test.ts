@@ -146,6 +146,7 @@ describe("interactive-notifications service", () => {
       const sampleTx: ParsedBankTransaction = {
         id: "sug_1",
         bankName: "Nubank",
+        nature: "expense",
         type: "expense",
         amountCents: 15000,
         description: "Tok&Stok",
@@ -154,6 +155,7 @@ describe("interactive-notifications service", () => {
         installments: 3,
         installmentAmountCents: 5000,
         rawText: "Compra de R$ 150,00 em 3x na Tok&Stok",
+        timestamp: 1729000000000,
       };
 
       const notifId = await scheduleInteractiveBankNotification(sampleTx);
@@ -179,12 +181,14 @@ describe("interactive-notifications service", () => {
       const sampleIncome: ParsedBankTransaction = {
         id: "sug_2",
         bankName: "Inter",
+        nature: "income",
         type: "income",
         amountCents: 25000,
         description: "Marcos Silva",
         date: "2026-10-16",
         paymentMethod: "pix",
         rawText: "Pix recebido de R$ 250,00",
+        timestamp: 1729000001000,
       };
 
       const notifId = await scheduleInteractiveBankNotification(sampleIncome);
@@ -205,12 +209,14 @@ describe("interactive-notifications service", () => {
     const sampleExpense: ParsedBankTransaction = {
       id: "sug_exp_1",
       bankName: "Nubank",
+      nature: "expense",
       type: "expense",
       amountCents: 4290,
       description: "Padaria Estrela",
       date: "2026-10-16",
       paymentMethod: "credit_card",
       rawText: "Compra de R$ 42,90 na Padaria Estrela",
+      timestamp: 1729000000000,
     };
 
     const mockCategories: Category[] = [

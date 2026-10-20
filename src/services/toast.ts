@@ -11,7 +11,7 @@
  * app; inspirado no `services/haptics.ts` (no-op seguro em qualquer ambiente).
  */
 
-import type { ToastVariant } from "@/components/ui/toast";
+import type { ToastAction, ToastVariant } from "@/components/ui/toast";
 
 export interface ToastRequest {
   title: string;
@@ -19,12 +19,15 @@ export interface ToastRequest {
   variant?: ToastVariant;
   /** Duração em ms (padrão do Toast: 4000). */
   duration?: number;
+  /** Ação acionável do toast (ex.: botão "Desfazer"). */
+  action?: ToastAction;
 }
 
 export interface ToastItem extends Required<Pick<ToastRequest, "title" | "variant">> {
   id: number;
   description?: string;
   duration: number;
+  action?: ToastAction;
 }
 
 type ToastListener = (items: ToastItem[]) => void;
@@ -49,6 +52,7 @@ export function pushToast(request: ToastRequest): number {
     description: request.description,
     variant: request.variant ?? "default",
     duration: request.duration ?? 3000,
+    action: request.action,
   };
   // Mantém no máximo MAX_CONCURRENT_TOASTS — descarta os anteriores
   items = [item];

@@ -63,7 +63,7 @@
 │       └── offline.html           # Fallback offline (PWA)
 │
 ├── android/                       # Projeto nativo Android (Capacitor Bridge, plugins e manifest)
-│   ├── app/                       #   Código nativo Java (MainActivity, BankNotificationListenerService, plugins)
+│   ├── app/                       #   Código nativo Java (MainActivity, BankNotificationListenerService, BankNotificationPlugin, QuickExpenseTileService)
 │   │   └── src/main/res/xml/      #   network_security_config.xml, shortcuts.xml, file_paths.xml
 │   └── build.gradle               #   Gradle configuration (signingConfigs de release, SDK 36)
 │
@@ -119,6 +119,7 @@
     │   │   │                      #   delta-hint (F14), highlight-row, projection-line, pace-alert-banner,
     │   │   │                      #   dashboard-alerts-carousel (carrossel inteligente de alertas do dashboard),
     │   │   │                      #   pending-suggestions-card (card discreto de transações capturadas do assistente passivo),
+    │   │   │                      #   paste-receipt-dialog (modal universal de colagem de comprovantes e notificações bancárias),
     │   │   │                      #   prediction-suggestions (F21 — autopreenchimento preditivo),
     │   │   │                      #   export-data-hub (F22), monthly-close-print-view (F22),
     │   │   │                      #   fire-projection-chart + planning-section (F24),
@@ -343,7 +344,8 @@ src/features/transactions/
 ├── routes.ts                   # Rotas da feature (lazy-loaded)
 ├── pages/                      # Views finas — apenas composição + contratos de estado
 │   ├── transaction-list-page.tsx
-│   └── transaction-detail-page.tsx
+│   ├── transaction-detail-page.tsx
+│   └── share-target-page.tsx       # Manipulador de rota do Web Share Target PWA (/share-target)
 ├── components/                 # Componentes exclusivos da feature (se houver)
 │   └── month-summary.tsx
 ├── wizard/                     # Fluxo guiado de lançamento (D10)

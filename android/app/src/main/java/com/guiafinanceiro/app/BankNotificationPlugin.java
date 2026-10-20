@@ -27,36 +27,59 @@ public class BankNotificationPlugin extends Plugin {
 
     private static BankNotificationPlugin instance;
 
-    private static final Map<String, String> BANK_PACKAGES = new LinkedHashMap<>();
+    static class BankAppInfo {
+        final String bankName;
+        final String category; // "bank", "wallet", "broker"
+
+        BankAppInfo(String bankName, String category) {
+            this.bankName = bankName;
+            this.category = category;
+        }
+    }
+
+    private static final Map<String, BankAppInfo> BANK_PACKAGES = new LinkedHashMap<>();
     static {
-        BANK_PACKAGES.put("com.nu.production", "Nubank");
-        BANK_PACKAGES.put("br.com.intermedium", "Inter");
-        BANK_PACKAGES.put("com.c6bank.app", "C6 Bank");
-        BANK_PACKAGES.put("com.mercadopago.wallet", "Mercado Pago");
-        BANK_PACKAGES.put("com.picpay", "PicPay");
-        BANK_PACKAGES.put("br.com.uol.ps", "PagBank");
-        BANK_PACKAGES.put("br.com.uol.ps.myaccount", "PagBank");
-        BANK_PACKAGES.put("br.com.neon", "Neon");
-        BANK_PACKAGES.put("br.com.bradesco.next", "Next");
-        BANK_PACKAGES.put("com.btg.pactual.banking", "BTG Pactual");
-        BANK_PACKAGES.put("com.btgpactual.investimentos", "BTG Pactual");
-        BANK_PACKAGES.put("br.com.xp.carteira", "XP Investimentos");
-        BANK_PACKAGES.put("com.xpinc.investments", "XP Investimentos");
-        BANK_PACKAGES.put("com.nomadfinancial.app", "Nomad");
-        BANK_PACKAGES.put("com.transferwise.android", "Wise");
-        BANK_PACKAGES.put("com.itau", "Itaú");
-        BANK_PACKAGES.put("com.itau.personnalite", "Itaú Personnalité");
-        BANK_PACKAGES.put("com.bradesco", "Bradesco");
-        BANK_PACKAGES.put("com.santander.app", "Santander");
-        BANK_PACKAGES.put("br.com.santander.way", "Santander");
-        BANK_PACKAGES.put("br.gov.caixa.tem", "Caixa");
-        BANK_PACKAGES.put("br.com.gabba.Caixa", "Caixa");
-        BANK_PACKAGES.put("br.com.bb.android", "Banco do Brasil");
-        BANK_PACKAGES.put("br.com.sicoob.net", "Sicoob");
-        BANK_PACKAGES.put("br.com.sicredi.mobile", "Sicredi");
-        BANK_PACKAGES.put("br.com.safra.mobile", "Banco Safra");
-        BANK_PACKAGES.put("br.com.stone.ton", "Ton");
-        BANK_PACKAGES.put("co.stone.stone", "Stone");
+        // Bancos Tradicionais & Digitais
+        BANK_PACKAGES.put("com.nu.production", new BankAppInfo("Nubank", "bank"));
+        BANK_PACKAGES.put("br.com.intermedium", new BankAppInfo("Inter", "bank"));
+        BANK_PACKAGES.put("com.c6bank.app", new BankAppInfo("C6 Bank", "bank"));
+        BANK_PACKAGES.put("br.com.neon", new BankAppInfo("Neon", "bank"));
+        BANK_PACKAGES.put("br.com.bradesco.next", new BankAppInfo("Next", "bank"));
+        BANK_PACKAGES.put("com.itau", new BankAppInfo("Itaú", "bank"));
+        BANK_PACKAGES.put("com.itau.personnalite", new BankAppInfo("Itaú Personnalité", "bank"));
+        BANK_PACKAGES.put("com.bradesco", new BankAppInfo("Bradesco", "bank"));
+        BANK_PACKAGES.put("com.santander.app", new BankAppInfo("Santander", "bank"));
+        BANK_PACKAGES.put("br.com.santander.way", new BankAppInfo("Santander", "bank"));
+        BANK_PACKAGES.put("br.gov.caixa.tem", new BankAppInfo("Caixa", "bank"));
+        BANK_PACKAGES.put("br.com.gabba.Caixa", new BankAppInfo("Caixa", "bank"));
+        BANK_PACKAGES.put("br.com.bb.android", new BankAppInfo("Banco do Brasil", "bank"));
+
+        // Carteiras Digitais & Pagamentos
+        BANK_PACKAGES.put("com.google.android.apps.walletnfcrel", new BankAppInfo("Carteira Google", "wallet"));
+        BANK_PACKAGES.put("com.samsung.android.spay", new BankAppInfo("Samsung Pay", "wallet"));
+        BANK_PACKAGES.put("com.samsung.android.raja.spay", new BankAppInfo("Samsung Pay", "wallet"));
+        BANK_PACKAGES.put("com.mercadopago.wallet", new BankAppInfo("Mercado Pago", "wallet"));
+        BANK_PACKAGES.put("com.picpay", new BankAppInfo("PicPay", "wallet"));
+        BANK_PACKAGES.put("br.com.uol.ps", new BankAppInfo("PagBank", "wallet"));
+        BANK_PACKAGES.put("br.com.uol.ps.myaccount", new BankAppInfo("PagBank", "wallet"));
+
+        // Investimentos, Cripto & Contas Globais
+        BANK_PACKAGES.put("com.btg.pactual.banking", new BankAppInfo("BTG Pactual", "bank"));
+        BANK_PACKAGES.put("com.btgpactual.investimentos", new BankAppInfo("BTG Investimentos", "broker"));
+        BANK_PACKAGES.put("br.com.xp.carteira", new BankAppInfo("XP Investimentos", "broker"));
+        BANK_PACKAGES.put("com.xpinc.investments", new BankAppInfo("XP Investimentos", "broker"));
+        BANK_PACKAGES.put("br.com.rico", new BankAppInfo("Rico", "broker"));
+        BANK_PACKAGES.put("br.com.rico.investimentos", new BankAppInfo("Rico", "broker"));
+        BANK_PACKAGES.put("com.binance.dev", new BankAppInfo("Binance", "broker"));
+        BANK_PACKAGES.put("com.nomadfinancial.app", new BankAppInfo("Nomad", "broker"));
+        BANK_PACKAGES.put("com.transferwise.android", new BankAppInfo("Wise", "broker"));
+
+        // Cooperativas, Adquirentes & Outros
+        BANK_PACKAGES.put("br.com.sicoob.net", new BankAppInfo("Sicoob", "bank"));
+        BANK_PACKAGES.put("br.com.sicredi.mobile", new BankAppInfo("Sicredi", "bank"));
+        BANK_PACKAGES.put("br.com.safra.mobile", new BankAppInfo("Banco Safra", "bank"));
+        BANK_PACKAGES.put("br.com.stone.ton", new BankAppInfo("Ton", "bank"));
+        BANK_PACKAGES.put("co.stone.stone", new BankAppInfo("Stone", "bank"));
     }
 
     @Override
@@ -69,35 +92,58 @@ public class BankNotificationPlugin extends Plugin {
         return instance;
     }
 
+    /**
+     * Checagem defensiva de presenca do pacote com fallback para getLaunchIntentForPackage.
+     * Evita falsos negativos no Android 11+ (API 30+) causados por restricoes de visibilidade.
+     */
+    private boolean isPackageInstalled(PackageManager pm, String packageName) {
+        if (pm == null || packageName == null || packageName.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            pm.getPackageInfo(packageName, 0);
+            return true;
+        } catch (PackageManager.NameNotFoundException ignored) {
+            try {
+                return pm.getLaunchIntentForPackage(packageName) != null;
+            } catch (Exception e) {
+                return false;
+            }
+        } catch (Exception ignored) {
+            try {
+                return pm.getLaunchIntentForPackage(packageName) != null;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+    }
+
     @PluginMethod
     public void getInstalledBankingApps(PluginCall call) {
         Context context = getContext();
-        PackageManager pm = context.getPackageManager();
+        PackageManager pm = context != null ? context.getPackageManager() : null;
         JSArray apps = new JSArray();
         JSArray installedBankNames = new JSArray();
         Set<String> seenBanks = new HashSet<>();
 
-        for (Map.Entry<String, String> entry : BANK_PACKAGES.entrySet()) {
-            String pkg = entry.getKey();
-            String bankName = entry.getValue();
-            boolean isInstalled = false;
-            try {
-                pm.getPackageInfo(pkg, 0);
-                isInstalled = true;
-            } catch (PackageManager.NameNotFoundException ignored) {
-                isInstalled = false;
-            }
+        if (pm != null) {
+            for (Map.Entry<String, BankAppInfo> entry : BANK_PACKAGES.entrySet()) {
+                String pkg = entry.getKey();
+                BankAppInfo info = entry.getValue();
+                boolean isInstalled = isPackageInstalled(pm, pkg);
 
-            if (isInstalled) {
-                JSObject item = new JSObject();
-                item.put("packageName", pkg);
-                item.put("bankName", bankName);
-                item.put("isInstalled", true);
-                apps.put(item);
+                if (isInstalled) {
+                    JSObject item = new JSObject();
+                    item.put("packageName", pkg);
+                    item.put("bankName", info.bankName);
+                    item.put("category", info.category);
+                    item.put("isInstalled", true);
+                    apps.put(item);
 
-                if (!seenBanks.contains(bankName)) {
-                    seenBanks.add(bankName);
-                    installedBankNames.put(bankName);
+                    if (!seenBanks.contains(info.bankName)) {
+                        seenBanks.add(info.bankName);
+                        installedBankNames.put(info.bankName);
+                    }
                 }
             }
         }

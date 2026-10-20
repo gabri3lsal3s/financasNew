@@ -1,5 +1,23 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.63** registra o **Assistente Passivo de Gastos — Ecossistema Híbrido Android Nativo & PWA Completo** (2026-10-20):
+> - **(1) Robustez no Android Nativo & Quick Settings Tile**:
+>   - Foreground Watchdog, permissão de exclusão de otimização de bateria e canal silencioso de foreground para resiliência contínua;
+>   - Deep links diretos com abertura contextualizada do modal de lançamento (`/transacoes?novo=despesa` ou `novo=receita`);
+>   - `QuickExpenseTileService` nativo (Android 14+ / API 34 compatível) integrado à barra de configurações rápidas do sistema.
+> - **(2) Motor Puro de Parsing para 20+ Instituições & Fusão Temporal**:
+>   - Suporte expandido a corretoras de investimentos (BTG Investimentos, XP, Rico), cripto (Binance) e contas globais (Nomad, Wise);
+>   - Tipagem expandida com `ParsedTransactionNature` (`expense`, `income`, `investment`), `investmentSubtype` (`contribution`, `redemption`, `yield`) e `assetTicker`;
+>   - Motor de fusão temporal e deduplicação fuzzy (janela de 120s) entre notificações de carteiras digitais (Google Wallet / Samsung Pay) e cartões bancários emissores.
+> - **(3) Redesenho UX/UI & Ações Rápidas de 1-Clique**:
+>   - Botão de ação rápida de 1-clique com proteção offline (`navigator.onLine`), salvamento transacional direto e reversão com 1-toque ("Desfazer");
+>   - Roteamento inteligente de investimentos direcionando aportes/proventos diretamente para o Hub de Investimentos (`/investimentos?tab=aporte`);
+>   - Redesenho completo da aba Notificações & Automações com visualização limpa, busca e filtros por categoria de banco/corretora.
+> - **(4) Ecossistema Web/PWA & Qualidade de Produção**:
+>   - Web Share Target (`share_target` em `manifest.webmanifest`) recebendo comprovantes Pix diretamente de apps bancários para `/share-target`;
+>   - Diálogo universal `PasteReceiptDialog` para colagem rápida de notificações e comprovantes na Web/PWA;
+>   - Compilação Android (`assembleDebug` e `assembleRelease`) e build web (`npm run build`) 100% íntegros.
+>
 > **v2.62** registra o **Sistema Unificado de Notificações de Vencimento, Fechamento e Sugestões (Android Nativo & PWA)** (2026-10-20):
 > - **(1) Notificações no Dispositivo para Faturas e Dívidas (Contas a Vencer / Vencidas)**:
 >   - Implementação de `syncDueReminderNotifications` e canal nativo `due_reminders` no Android com alta relevância (`importance: 4`, vibração e som);
@@ -972,6 +990,7 @@
 | **F87** | Responsividade da Tabela de Resgates & Saneamento Visual dos Donuts | Scroll horizontal responsivo e limpeza visual de cards de alocação | UI & Relatórios |
 | **F88** | Padronização Visual de Resgates & Rentabilidade com Dedução de IR | Alinhamento de bordas, rentabilidade líquida e tabela regressiva de IR | Fiscal & Relatórios |
 | **F89** | Refinamento, Precisão & Buffer Offline do Assistente Passivo de Notificações | Eliminação de falsos positivos, buffer Android em segundo plano e auto-categorização | Nativo Android & Assistente |
+| **F90** | Assistente Passivo Híbrido, Ecossistema Android & Web Share Target PWA | Quick Settings Tile, 20+ instituições/corretoras, fusão temporal, Web Share Target e ações de 1 clique | Nativo & PWA |
 
 
 

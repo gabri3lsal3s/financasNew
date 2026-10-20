@@ -27,6 +27,7 @@ function ToastHostItem({ item, onDismiss }: { item: HostToast; onDismiss: () => 
       description={item.description}
       variant={item.variant}
       duration={item.duration}
+      action={item.action}
     />
   );
 }

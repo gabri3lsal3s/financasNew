@@ -17,24 +17,12 @@ public class BankNotificationListenerService extends NotificationListenerService
     private static final int MAX_BUFFER_SIZE = 30;
 
     public static final Set<String> DEFAULT_MONITORED_PACKAGES = new HashSet<>(Arrays.asList(
-        // Fintechs e carteiras digitais
+        // Bancos Tradicionais & Digitais
         "com.nu.production",
         "br.com.intermedium",
         "com.c6bank.app",
-        "com.mercadopago.wallet",
-        "com.picpay",
-        "br.com.uol.ps",
-        "br.com.uol.ps.myaccount",
         "br.com.neon",
         "br.com.bradesco.next",
-        "com.btg.pactual.banking",
-        "com.btgpactual.investimentos",
-        "br.com.xp.carteira",
-        "com.xpinc.investments",
-        "com.nomadfinancial.app",
-        "com.transferwise.android",
-
-        // Grandes bancos tradicionais e cooperativas
         "com.itau",
         "com.itau.personnalite",
         "com.bradesco",
@@ -43,6 +31,28 @@ public class BankNotificationListenerService extends NotificationListenerService
         "br.gov.caixa.tem",
         "br.com.gabba.Caixa",
         "br.com.bb.android",
+
+        // Carteiras Digitais & Pagamentos
+        "com.google.android.apps.walletnfcrel",
+        "com.samsung.android.spay",
+        "com.samsung.android.raja.spay",
+        "com.mercadopago.wallet",
+        "com.picpay",
+        "br.com.uol.ps",
+        "br.com.uol.ps.myaccount",
+
+        // Investimentos, Cripto & Contas Globais
+        "com.btg.pactual.banking",
+        "com.btgpactual.investimentos",
+        "br.com.xp.carteira",
+        "com.xpinc.investments",
+        "br.com.rico",
+        "br.com.rico.investimentos",
+        "com.binance.dev",
+        "com.nomadfinancial.app",
+        "com.transferwise.android",
+
+        // Cooperativas, Adquirentes & Outros
         "br.com.sicoob.net",
         "br.com.sicredi.mobile",
         "br.com.safra.mobile",
@@ -94,16 +104,7 @@ public class BankNotificationListenerService extends NotificationListenerService
         String title = titleChar != null ? titleChar.toString() : "";
         String text = bigTextChar != null ? bigTextChar.toString() : (textChar != null ? textChar.toString() : "");
 
-        String lowerText = text.toLowerCase();
-        String lowerTitle = title.toLowerCase();
-        boolean hasFinancialSignal = text.contains("R$") ||
-            lowerText.contains("pix") || lowerTitle.contains("pix") ||
-            lowerText.contains("compra") || lowerTitle.contains("compra") ||
-            lowerText.contains("pago") || lowerText.contains("pagamento") ||
-            lowerText.contains("recebeu") || lowerText.contains("recebimento") ||
-            lowerText.contains("transferência") || lowerText.contains("transferencia");
-
-        if (!hasFinancialSignal) {
+        if (!hasFinancialSignal(text, title)) {
             return;
         }
 
@@ -143,5 +144,45 @@ public class BankNotificationListenerService extends NotificationListenerService
         } catch (Exception e) {
             android.util.Log.e("BankNotification", "Erro ao salvar notificacao offline no buffer", e);
         }
+    }
+
+    /**
+     * Valida heuristicamente se a notificação possui sinal financeiro relevante
+     * (compras, pagamentos, transferências, Pix, proventos, depósitos ou ordens de investimento).
+     */
+    static boolean hasFinancialSignal(String text, String title) {
+        if (text == null) text = "";
+        if (title == null) title = "";
+
+        if (text.contains("R$") || text.contains("US$") || text.contains("USD") ||
+            title.contains("R$") || title.contains("US$") || title.contains("USD")) {
+            return true;
+        }
+
+        String lowerText = text.toLowerCase();
+        String lowerTitle = title.toLowerCase();
+
+        String[] signals = new String[] {
+            "pix",
+            "compra",
+            "pago", "pagamento",
+            "recebeu", "recebimento",
+            "transferência", "transferencia",
+            "depósito", "deposito",
+            "ordem",
+            "executada", "executado",
+            "cripto", "crypto",
+            "dividendo", "dividendos",
+            "rendimento", "rendimentos",
+            "investimento", "investimentos"
+        };
+
+        for (String signal : signals) {
+            if (lowerText.contains(signal) || lowerTitle.contains(signal)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

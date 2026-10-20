@@ -313,6 +313,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 | D17 — Code Splitting Global & Lazy Loading de Modais Executivos | `src/app/router.tsx` com `lazy()` em todas as rotas públicas, de autenticação e checkout de assinatura com fallback suave; `lazy()` sob demanda para relatórios complexos (`WealthTearSheetModal`, `FinancialCloseReportModal`) e assistente de restauração (`RestoreWizardDialog`) | Bundles iniciais enxutos (< 500 kB), eliminação de payloads ociosos no boot e carregamento assíncrono transparente |
 | D18 — Parametrização de Chaves por Usuário e Fail-Closed no Cold Start | Chaves de query parametrizadas no formato `[...KEY, userId]`, guarda `enabled: Boolean(userId)` impedindo chamadas com `auth.uid()` nulo, invalidação atômica em `SIGNED_IN` no `AuthQuerySync` e `hasFeature` estritamente Fail-Closed (retornando `false` sem assinatura/autenticação confirmada) | Eliminação definitiva de vazamento de módulos restritos no boot, ausência de cache de dados anônimos e transição suave sem flashes visuais |
 | D19 — Segurança Integral, RLS Multi-Tenant e Privacidade Mobile | 100% das 34 tabelas com RLS ativo por auth.uid(), 28 RPCs transacionais blindadas com search_path = public, pg_temp, is_current_user_active() e can_current_user_write_module() (Migration 0049), audit_events estritamente imutável, sanitização de borda Zod, neutralização de vazamento SQL no gateway de erros, Android FLAG_SECURE nativo e redaction automático de PII (CPF, cartões, senhas) no cliente Sentry | Defesa em profundidade estrita e proteção integral de dados sensíveis |
+| D20 — Assistente Passivo Híbrido & Notificações Bancárias | Arquitetura híbrida Android + PWA: `BankNotificationListenerService` nativo (Android), `QuickExpenseTileService` (Quick Settings Tile), `useSuggestionsStore` com fusão temporal e deduplicação fuzzy, Web Share Target (`/share-target`) no manifest PWA, diálogo de fallback universal (`PasteReceiptDialog`) e motor puro de parsing em centavos (`bank-parser.ts`, `category-inference.ts`, `preferences.ts`) | Captura passiva e sem fricção de gastos bancários, Pix, cartões e aportes em corretoras |
 
 ---
 
@@ -354,5 +355,51 @@ A governança de segurança do aplicativo segue o princípio de **Defesa em Prof
    - **Persistência na Nuvem:** A preferência é armazenada e sincronizada via Supabase na coluna `user_preferences.custom_settings.privacyShieldEnabled`.
    - **Resiliência no Cold Start:** No dispositivo, o valor é espelhado em `financas_active_privacy_shield_enabled` no `localStorage`, garantindo que no boot nativo (antes da resolução da sessão de autenticação) `syncPrivacyShield()` despache ativamente `enablePrivacyShield()` ou `disablePrivacyShield()`, sem reter bloqueios indevidos de tela caso o usuário tenha desabilitado o escudo.
 2. **Redaction Automático de PII no Sentry:** O cliente de observabilidade [`src/services/observability.ts`](../src/services/observability.ts) aplica sanitização recursiva (`scrubSensitiveData`) e gancho `beforeSend`, redigindo chaves confidenciais (`password`, `senha`, `secret`, `token`, `account_number`) e mascarando padrões de CPF (`[REDACTED_CPF]`) e cartões de crédito (`[REDACTED_CARD]`) antes de transmitir qualquer evento à telemetria.
+
+---
+
+## 13. ARQUITETURA DO ASSISTENTE PASSIVO HÍBRIDO & NOTIFICAÇÕES (D20)
+
+O Assistente Passivo opera em modelo híbrido entre o cliente Android nativo e o PWA instalado:
+
+### 13.1 Camada Nativa Android (`android/app/src/main/java/com/guiafinanceiro/app/`)
+1. **`BankNotificationListenerService.java`**:
+   - Herda de `NotificationListenerService`;
+   - Monitora notificações de bancos e corretoras autorizados pelo usuário;
+   - Aplica filtros rigorosos anti-spam e anti-publicidade (`hasValidTransactionSignal`);
+   - Armazena transações capturadas em buffer de segundo plano em `SharedPreferences` quando o app está fechado;
+   - Despacha notificações interativas com ação rápida `"Conferir e Salvar"` (`novo=expense` ou `novo=income`).
+2. **`BankNotificationPlugin.java`**:
+   - Expõe ao frontend os métodos Capacitor para verificação de permissão, leitura e esvaziamento do buffer de background e sincronização dos pacotes monitorados selecionados pelo usuário.
+3. **`QuickExpenseTileService.java`**:
+   - `TileService` da barra de configurações rápidas do Android;
+   - Exibe bloco `"Lançar Despesa"`;
+   - Ao ser acionado, desbloqueia a tela e redireciona diretamente para a tela de transações com wizard de despesa aberto (`/transacoes?novo=despesa`).
+
+### 13.2 Camada Web e PWA (`src/features/transactions/pages/`, `src/components/modules/`)
+1. **Web Share Target (`/share-target` — `ShareTargetPage`)**:
+   - Declarado no `manifest.webmanifest`;
+   - Recebe compartilhamento de texto direto de apps bancários (comprovantes Pix);
+   - Analisa via `bank-parser.ts`, adiciona como sugestão e redireciona à tela inicial.
+2. **Área Universal de Colar Comprovante (`PasteReceiptDialog`)**:
+   - Interface acessível para desktop e iOS colarem comprovantes ou alertas SMS/notificações copiados da área de transferência;
+   - Converte instantaneamente em sugestão estruturada.
+
+### 13.3 Camada de Domínio Puro (`src/domain/notifications/`)
+1. **`bank-parser.ts`**:
+   - Parser puro em TypeScript sem dependências externas;
+   - Suporte a 20+ instituições: bancos digitais, tradicionais, carteiras digitais, corretoras (BTG, XP, Rico), cripto (Binance) e contas globais (Nomad, Wise);
+   - Aritmética inteira estrita em centavos (`amountCents`);
+   - Detecção de natureza (despesa, receita, investimento/aporte/resgate).
+2. **`category-inference.ts`**:
+   - Mapeamento determinístico de estabelecimentos e palavras-chave para categorias canônicas do sistema.
+3. **`preferences.ts`**:
+   - Modelagem de preferências de notificações, deduplicação temporal e persistência segura.
+
+### 13.4 Gestão de Estado & Deduplicação (`src/services/native/suggestions-store.ts`)
+- Store reativa de sugestões pendentes;
+- **Fusão temporal e deduplicação fuzzy**: janelas de 120 segundos para unificar notificações de carteiras (Google Wallet/Samsung Pay) com as notificações emitidas pelo app emissor do cartão bancário, evitando lançamentos duplicados de uma mesma compra física;
+- Ações rápidas de 1-clique para aceitar e persistir via RPCs transacionais do Supabase ou editar no modal de transações.
+
 
 

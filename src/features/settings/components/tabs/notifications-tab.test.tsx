@@ -37,6 +37,9 @@ vi.mock("@/services/native", async () => {
     requestNotificationPermissions: vi.fn().mockResolvedValue({ granted: true }),
     isNotificationListenerGranted: vi.fn().mockResolvedValue(true),
     requestNotificationListenerPermission: vi.fn().mockResolvedValue(true),
+    getInstalledBankingApps: vi
+      .fn()
+      .mockResolvedValue({ installedBankNames: [], installedPackages: [], apps: [] }),
     isNativePlatform: vi.fn().mockReturnValue(true),
   };
 });
@@ -125,9 +128,15 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
       expect(prefs.interactiveNotificationsEnabled).toBe(false);
     });
 
-    it("permite desmarcar todos os bancos e marcar todos novamente", async () => {
+    it("permite desmarcar todos os bancos e marcar todos novamente através do catálogo", async () => {
       const user = userEvent.setup();
       renderNotificationsTab();
+
+      // Abre o acordeão do catálogo completo
+      const catalogAccordion = screen.getByRole("button", {
+        name: /Explorar catálogo completo/i,
+      });
+      await user.click(catalogAccordion);
 
       const deselectAllBtn = screen.getByRole("button", { name: "Desmarcar todos" });
       await user.click(deselectAllBtn);
@@ -139,20 +148,89 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
       await user.click(selectAllBtn);
 
       prefs = nativeServices.getBankAssistantPreferences();
-      expect(prefs.monitoredBanks.length).toBe(17);
+      expect(prefs.monitoredBanks.length).toBe(27);
     });
 
-    it("permite alternar o monitoramento de um banco individual", async () => {
+    it("permite alternar o monitoramento de um banco individual pelo catálogo", async () => {
       const user = userEvent.setup();
       renderNotificationsTab();
 
+      // Abre o acordeão do catálogo
+      const catalogAccordion = screen.getByRole("button", {
+        name: /Explorar catálogo completo/i,
+      });
+      await user.click(catalogAccordion);
+
       const nubankCheckbox = screen.getByRole("checkbox", { name: "Monitorar Nubank" });
-      expect(nubankCheckbox).toBeChecked();
+      expect(nubankCheckbox).not.toBeChecked();
 
       await user.click(nubankCheckbox);
 
-      const prefs = nativeServices.getBankAssistantPreferences();
+      let prefs = nativeServices.getBankAssistantPreferences();
+      expect(prefs.monitoredBanks).toContain("Nubank");
+
+      await user.click(nubankCheckbox);
+
+      prefs = nativeServices.getBankAssistantPreferences();
       expect(prefs.monitoredBanks).not.toContain("Nubank");
+    });
+
+    it("exibe mensagem amigável quando nenhum app bancário é detectado no aparelho", () => {
+      renderNotificationsTab();
+      expect(
+        screen.getByText(
+          "Nenhum aplicativo bancário suportado detectado automaticamente no dispositivo",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Explore o catálogo completo abaixo para ativar manualmente as instituições que você utiliza.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("filtra instituições financeiras em tempo real pela busca instantânea do catálogo", async () => {
+      const user = userEvent.setup();
+      renderNotificationsTab();
+
+      const catalogAccordion = screen.getByRole("button", {
+        name: /Explorar catálogo completo/i,
+      });
+      await user.click(catalogAccordion);
+
+      expect(screen.getByText(/Bancos Digitais e Tradicionais/i)).toBeInTheDocument();
+      expect(screen.getByText(/Carteiras de Pagamento/i)).toBeInTheDocument();
+      expect(screen.getByText(/Corretoras e Cripto/i)).toBeInTheDocument();
+
+      const searchInput = screen.getByLabelText("Buscar no catálogo de instituições financeiras");
+      await user.type(searchInput, "Binance");
+
+      // Corretora Binance deve estar presente, enquanto grupos sem match somem
+      expect(screen.getByRole("checkbox", { name: "Monitorar Binance" })).toBeInTheDocument();
+      expect(screen.queryByRole("checkbox", { name: "Monitorar Nubank" })).not.toBeInTheDocument();
+    });
+
+    it("renderiza aplicativos detectados na seção superior e permite monitorar todos os instalados", async () => {
+      vi.mocked(nativeServices.getInstalledBankingApps).mockResolvedValue({
+        installedBankNames: ["Nubank", "Inter"],
+        apps: [],
+      });
+
+      const user = userEvent.setup();
+      renderNotificationsTab();
+
+      // Aguarda detecção assíncrona
+      const nubankInstalled = await screen.findByRole("checkbox", { name: "Monitorar Nubank" });
+      expect(nubankInstalled).toBeInTheDocument();
+      expect(screen.getByRole("checkbox", { name: "Monitorar Inter" })).toBeInTheDocument();
+
+      const monitorAllInstalledBtn = screen.getByRole("button", {
+        name: "Monitorar todos os instalados",
+      });
+      await user.click(monitorAllInstalledBtn);
+
+      const prefs = nativeServices.getBankAssistantPreferences();
+      expect(prefs.monitoredBanks).toEqual(["Nubank", "Inter"]);
     });
   });
 

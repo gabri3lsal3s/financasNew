@@ -77,13 +77,22 @@ Referência completa (ajustar nomes à marca final):
   "shortcuts": [
     { "name": "Lançar despesa", "url": "/transacoes?novo=despesa" },
     { "name": "Visão geral", "url": "/" }
-  ]
+  ],
+  "share_target": {
+    "action": "/share-target",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }
 ```
 
 **Campos obrigatórios:** `name`, `short_name`, `start_url`, `display: standalone`, `background_color`, `theme_color`, `icons` (192 + 512 com `purpose: any` e `purpose: maskable`), `description`.
 
-**Campos recomendados:** `id`, `scope`, `orientation: portrait` (respeita o padrão vertical e o bloqueio de rotação do dispositivo móvel), `lang: pt-BR`, `categories`, `shortcuts` (atalhos de ações frequentes — lançamento rápido, D10).
+**Campos recomendados:** `id`, `scope`, `orientation: portrait` (respeita o padrão vertical e o bloqueio de rotação do dispositivo móvel), `lang: pt-BR`, `categories`, `shortcuts` (atalhos de ações frequentes — lançamento rápido, D10), `share_target` (recebimento de texto de comprovantes Pix e notificações bancárias compartilhadas do sistema para rota `/share-target`).
 
 **Bloqueio estrito de orientação (portrait only):**
 1. **Manifest** — `orientation: portrait` + `display: standalone` (PWA instalado: o sistema respeita a trava e não rotaciona);
@@ -255,7 +264,41 @@ Referência completa (ajustar nomes à marca final):
 
 ---
 
-## 7. CHECKLIST DE ACEITE (PWA)
+## 7. WEB SHARE TARGET & ENTRADA UNIVERSAL DE COMPROVANTES (Fase 4 do Assistente Passivo)
+
+Com o objetivo de oferecer paridade de experiência entre o ambiente nativo Android e a web instalada (PWA), implementou-se a recepção passiva e manual de lançamentos:
+
+1. **Declaração do Web Share Target (`manifest.webmanifest`):**
+   ```json
+   "share_target": {
+     "action": "/share-target",
+     "method": "GET",
+     "params": {
+       "title": "title",
+       "text": "text",
+       "url": "url"
+     }
+   }
+   ```
+   Permite que o PWA figure no menu nativo de compartilhamento do sistema operacional móvel ("Compartilhar..." em apps de bancos).
+
+2. **Manipulador de Rota (`/share-target` — `ShareTargetPage`):**
+   - Intercepta os parâmetros enviados pelo sistema (`title`, `text`, `url`);
+   - Processa o conteúdo através de `processPixShare(combinedText)` utilizando o motor puro `bank-parser.ts`;
+   - Ao extrair a transação, insere automaticamente como sugestão pendente via `useSuggestionsStore` e emite toast de sucesso;
+   - Redireciona imediatamente para a tela inicial (`/`), onde a sugestão aparece com botão de 1-clique para efetivação;
+   - Caso o texto não seja reconhecido, emite toast orientativo e redireciona suavemente sem quebrar o fluxo.
+
+3. **Área Universal de Colar Comprovante / Notificação (`PasteReceiptDialog`):**
+   - Fallback de alta conveniência para navegadores desktop, iOS ou usuários que preferem copiar e colar o texto da notificação ou comprovante Pix;
+   - Acessível na tela inicial (`PendingSuggestionsCard`) e no assistente de lançamentos (`LaunchWizard`);
+   - Processa o texto instantaneamente em memória, inferindo banco, valor em centavos, categoria e meio de pagamento.
+
+**Arquivos:** `public/pwa/manifest.webmanifest` · `src/features/transactions/pages/share-target-page.tsx` · `src/components/modules/paste-receipt-dialog.tsx` · `src/domain/notifications/bank-parser.ts` · testes em `src/features/transactions/pages/share-target-page.test.tsx` e `src/components/modules/paste-receipt-dialog.test.tsx`.
+
+---
+
+## 8. CHECKLIST DE ACEITE (PWA)
 
 **Auditoria automatizada (CI — `src/tests/pwa-audit.test.ts`):** manifest válido (campos + ícones 192/512/maskable) · ícones em disco · meta tags PWA/iOS + safe areas · fluxo do SW (autoUpdate + onNeedReload + beforeinstallprompt).
 
