@@ -52,10 +52,17 @@ export function ResponsiveDialog({
       showCalculator={showCalculator}
       headerActions={headerActions}
       className={className}
+      contentClassName={contentClassName}
+      footer={
+        footer ? (
+          <ModalFooter className={cn("mt-0 pt-0 border-t-0", footerClassName)}>
+            {footer}
+          </ModalFooter>
+        ) : undefined
+      }
     >
-      <div className={cn("flex flex-col gap-3.5 mt-4", contentClassName)}>
+      <div className="flex flex-col gap-3.5">
         <div className="flex-1 min-w-0">{children}</div>
-        {footer ? <ModalFooter className={footerClassName}>{footer}</ModalFooter> : null}
       </div>
     </Modal>
   );

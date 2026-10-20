@@ -298,6 +298,35 @@ export function LaunchWizard({
       title="Novo lançamento"
       size="xl"
       showCalculator
+      footer={
+        <ModalFooter className="mt-0 pt-0 border-t-0 sm:justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={state.step === 1 || pending}
+            onClick={() => goTo(state.step - 1)}
+          >
+            Voltar
+          </Button>
+          {isLastStep ? (
+            <Button
+              type="button"
+              disabled={!canProceed(state) || pending}
+              onClick={() => void handleSubmit()}
+            >
+              {pending ? "Confirmando…" : "Confirmar lançamento"}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              disabled={!canProceed(state)}
+              onClick={() => goTo(state.step + 1)}
+            >
+              Continuar
+            </Button>
+          )}
+        </ModalFooter>
+      }
     >
       <div className="flex flex-col gap-6 pt-2">
         <Stepper steps={[...WIZARD_STEPS]} current={state.step} />
@@ -413,21 +442,6 @@ export function LaunchWizard({
             handleClose();
           }}
         />
-
-        <ModalFooter className="mt-auto sm:justify-between">
-          <Button type="button" variant="ghost" disabled={state.step === 1 || pending} onClick={() => goTo(state.step - 1)}>
-            Voltar
-          </Button>
-          {isLastStep ? (
-            <Button type="button" disabled={!canProceed(state) || pending} onClick={() => void handleSubmit()}>
-              {pending ? "Confirmando…" : "Confirmar lançamento"}
-            </Button>
-          ) : (
-            <Button type="button" disabled={!canProceed(state)} onClick={() => goTo(state.step + 1)}>
-              Continuar
-            </Button>
-          )}
-        </ModalFooter>
       </div>
     </Modal>
   );

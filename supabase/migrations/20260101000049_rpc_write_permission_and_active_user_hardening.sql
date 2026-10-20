@@ -26,7 +26,6 @@ declare
   v_user_id uuid := auth.uid();
   v_payment_id uuid;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -94,7 +93,6 @@ declare
   v_user_id uuid := auth.uid();
   v_old public.credit_cards%rowtype;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -161,7 +159,6 @@ as $$
 declare
   v_user_id uuid := auth.uid();
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -202,7 +199,6 @@ declare
   v_payment public.card_payments%rowtype;
   v_income_deleted integer;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -256,7 +252,6 @@ declare
   v_user_id uuid := auth.uid();
   v_updated integer;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -304,6 +299,10 @@ grant execute on function public.recalculate_bill_competences to authenticated;
 -- ----------------------------------------------------------------
 -- RPC: pay_debt (Módulo: debts)
 -- ----------------------------------------------------------------
+-- Descarta a assinatura legada de 3 argumentos se ainda existir no schema,
+-- eliminando ambiguidade e garantindo que apenas a versão com hardening seja executada.
+drop function if exists public.pay_debt(uuid, boolean, uuid);
+
 create or replace function public.pay_debt(
   p_debt_id uuid,
   p_create_expense boolean,
@@ -327,7 +326,6 @@ declare
   v_interest numeric(12, 2) := coalesce(p_interest_amount, 0);
   v_discount numeric(12, 2) := coalesce(p_discount_amount, 0);
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -405,8 +403,8 @@ begin
 end;
 $$;
 
-revoke all on function public.pay_debt from public;
-grant execute on function public.pay_debt to authenticated;
+revoke all on function public.pay_debt(uuid, boolean, uuid, numeric, numeric, numeric, numeric) from public;
+grant execute on function public.pay_debt(uuid, boolean, uuid, numeric, numeric, numeric, numeric) to authenticated;
 
 -- ----------------------------------------------------------------
 -- RPC: receive_debt (Módulo: debts)
@@ -426,7 +424,6 @@ declare
   v_debt public.debts%rowtype;
   v_income_id uuid;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -504,7 +501,6 @@ declare
   v_expense_id uuid;
   v_updated_count integer := 0;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -606,7 +602,6 @@ declare
   v_group_id uuid := gen_random_uuid();
   v_item jsonb;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -679,7 +674,6 @@ declare
   v_user_id uuid := auth.uid();
   v_debt public.debts%rowtype;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -745,7 +739,6 @@ declare
   v_user_id uuid := auth.uid();
   v_cat public.categories%rowtype;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -808,7 +801,6 @@ as $$
 declare
   v_user_id uuid := auth.uid();
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -862,7 +854,6 @@ declare
   v_category_id uuid;
   v_limit numeric;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -936,7 +927,6 @@ as $$
 declare
   v_user_id uuid := auth.uid();
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -991,7 +981,6 @@ declare
   v_from_limit numeric := 0;
   v_to_limit numeric := 0;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -1098,7 +1087,6 @@ declare
   v_refund_category uuid;
   v_payment_id uuid;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -1169,7 +1157,6 @@ declare
   v_expense public.expenses%rowtype;
   v_deleted integer := 0;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -1260,7 +1247,6 @@ declare
   v_payment_method text;
   v_card_id uuid;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -1388,7 +1374,6 @@ declare
   v_income_id uuid;
   v_first_id uuid;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -1493,7 +1478,6 @@ declare
   v_category_id uuid;
   v_value numeric;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -1583,7 +1567,6 @@ declare
   v_income public.incomes%rowtype;
   v_deleted integer := 0;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -1665,7 +1648,6 @@ declare
   v_cat_type text;
   v_recurrence_id uuid;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -1774,7 +1756,6 @@ declare
   v_payment_method text;
   v_card_id uuid;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -1938,7 +1919,6 @@ declare
   v_recurrence public.recurrences%rowtype;
   v_remaining integer;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -2060,7 +2040,6 @@ declare
   v_expense_count integer := 0;
   v_income_count integer := 0;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -2208,7 +2187,6 @@ declare
   v_item jsonb;
   v_asset_id uuid;
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -2282,7 +2260,6 @@ as $$
 declare
   v_user uuid := auth.uid();
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';
@@ -2330,7 +2307,6 @@ as $$
 declare
   v_user uuid := auth.uid();
 begin
-  
 
   if not public.is_current_user_active() then
     raise exception 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.';

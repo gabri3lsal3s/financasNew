@@ -402,9 +402,10 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
   - `xl` (`md:max-w-4xl` / 896px): Assistentes guiados (wizards), cadastros densos de ativos, cartões com preview virtual 3D e contratos de empréstimo.
   - `2xl` (`md:max-w-5xl lg:max-w-6xl` / 1024px–1152px): Fichas de ativos, extratos, conciliação e importação de faturas/extratos bancários.
   - `3xl` (`md:max-w-7xl` / 1280px): Relatórios executivos e auditorias completas.
-- **Diretriz de Anatomia Interna:**
+- **Diretriz de Anatomia Interna & Shell Tripartite Flexbox:**
+  - **Estrutura Tripartite Estanque:** O diálogo adota contêiner `flex flex-col overflow-hidden` com cabeçalho fixo (`shrink-0`), corpo rolável dedicado (`flex-1 min-h-0 overflow-y-auto overscroll-contain`) e rodapé canônico fixo (`shrink-0 border-t border-border/80 bg-surface`), garantindo que o corpo rolável termine estritamente acima do rodapé — **zero sobreposição (*zero overlay*)**, prevenindo que campos do formulário fiquem ocultos sob o rodapé ao rolar ou quando o teclado virtual abre no mobile.
   - Formulários densos utilizam **grid responsivo de 2 colunas** (`grid grid-cols-1 sm:grid-cols-2 gap-3.5`) para campos emparelhados (Data + Forma de Pagamento, Quantidade + Preço, etc.), prevenindo rolagem excessiva no desktop.
-  - O rodapé utiliza `<ModalFooter />` com layout adaptativo (`flex-col-reverse sm:flex-row sm:justify-end`).
+  - O rodapé utiliza `<ModalFooter />` com layout adaptativo (`flex-col-reverse sm:flex-row sm:justify-end w-full`), botões em largura total confortável no mobile (`[&_button]:w-full`) e largura mínima padronizada no desktop (`[&_button]:sm:min-w-[110px]`). Ações destrutivas (ex.: Excluir) alinham-se à esquerda (`sm:mr-auto`), enquanto Cancelar e Confirmar alinham-se à direita. Em assistentes (wizards), a ação secundária de retorno ("Voltar") adota botão estruturado (`variant="outline"`).
 
 ---
 

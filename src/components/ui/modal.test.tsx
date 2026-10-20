@@ -180,8 +180,8 @@ describe("ConfirmDialog", () => {
   });
 });
 
-describe("ModalFooter (Fase 68)", () => {
-  it("renderiza o rodapé responsivo com layout empilhado seguro no mobile e horizontal no desktop", () => {
+describe("ModalFooter e Slot de Footer", () => {
+  it("renderiza o rodapé responsivo com layout empilhado seguro no mobile, horizontal no desktop e botões padronizados", () => {
     render(
       <Modal open onOpenChange={vi.fn()} title="Teste">
         <ModalFooter>
@@ -192,8 +192,28 @@ describe("ModalFooter (Fase 68)", () => {
     );
     const footer = screen.getByText("Salvar").parentElement;
     expect(footer).toBeInTheDocument();
-    expect(footer).toHaveClass("flex-col-reverse", "sm:flex-row", "sm:justify-end", "border-primary/20");
-    expect(footer?.className).toContain("pb-[max(0.75rem,calc(max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px))+0.5rem))]");
+    expect(footer).toHaveClass("flex-col-reverse", "sm:flex-row", "sm:justify-end", "border-border/80", "w-full");
+    expect(footer?.className).toContain("[&_button]:w-full");
+    expect(footer?.className).toContain("[&_button]:sm:min-w-[110px]");
+  });
+
+  it("renderiza o slot footer canônico no Modal fora do corpo rolável com safe area", () => {
+    render(
+      <Modal
+        open
+        onOpenChange={vi.fn()}
+        title="Teste com Pinned Footer"
+        footer={<button type="button">Ação Fixa</button>}
+      >
+        <p>Conteúdo do corpo</p>
+      </Modal>,
+    );
+    const actionBtn = screen.getByRole("button", { name: "Ação Fixa" });
+    expect(actionBtn).toBeInTheDocument();
+    const footerSlot = actionBtn.parentElement;
+    expect(footerSlot?.className).toContain("shrink-0");
+    expect(footerSlot?.className).toContain("border-t");
+    expect(footerSlot?.className).toContain("pb-[max(0.75rem,calc(max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px))+0.5rem))]");
   });
 });
 

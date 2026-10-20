@@ -289,7 +289,7 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
             <div />
           )}
 
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancelar
             </Button>

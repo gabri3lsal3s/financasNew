@@ -27,7 +27,11 @@ export interface ModalProps {
   title: string;
   description?: string;
   children?: ReactNode;
+  /** Rodapé canônico fixado na base do modal, fora do corpo de rolagem (sem sobreposição). */
+  footer?: ReactNode;
   className?: string;
+  /** Classes extras aplicadas ao corpo rolável do modal. */
+  contentClassName?: string;
   /** Largura máxima no desktop (default "md" = 32rem / 512px). Evite `max-w-*` no className: a variante `md:` da base vence a classe solta na cascata. */
   size?: ModalSize;
   /** Sobe o z-index acima de outros modais (ex.: calculadora sobre formulários). */
@@ -67,7 +71,9 @@ export function Modal({
   title,
   description,
   children,
+  footer,
   className,
+  contentClassName,
   size = "md",
   elevated = false,
   showCalculator = false,
@@ -77,6 +83,7 @@ export function Modal({
   const displayCalculator = showCalculator && !elevated;
 
   const contentRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     startY: number;
     lastY: number;
@@ -92,8 +99,8 @@ export function Modal({
       setDragY(0);
       dragRef.current = null;
     } else {
-      if (contentRef.current) {
-        contentRef.current.scrollTop = 0;
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = 0;
       }
     }
     onOpenChange(next);
@@ -105,8 +112,8 @@ export function Modal({
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse") return;
-    const el = contentRef.current;
-    if (!el || el.scrollTop > 0) return;
+    const el = scrollRef.current;
+    if (el && el.scrollTop > 0) return;
     const target = event.target as HTMLElement;
     if (target.closest(INTERACTIVE_SELECTOR)) return;
     dragRef.current = {
@@ -179,61 +186,84 @@ export function Modal({
           onCloseAutoFocus={(e) => e.preventDefault()}
           style={{ transform: dragY > 0 ? `translateY(${dragY}px)` : undefined }}
           className={cn(
-            // Mobile (base): bottom sheet ancorado na base da tela (bottom-0) com cantos superiores arredondados, compensação de safe area e alça; md+: diálogo centralizado com margens adequadas e animação.
-            "fixed inset-x-0 bottom-0 w-full max-h-[calc(90dvh-max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] overflow-y-auto rounded-t-2xl border border-primary/25 bg-surface p-4 sm:p-6 pb-[calc(1.25rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] shadow-xl focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background animate-sheet-in",
-            "md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:w-[calc(100vw-2rem)] md:max-h-[calc(100dvh-3rem)] md:rounded-2xl md:pb-6 md:-translate-x-1/2 md:-translate-y-1/2 md:animate-none md:data-[state=open]:animate-in md:data-[state=closed]:animate-out md:data-[state=closed]:fade-out-0 md:data-[state=open]:fade-in-0 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95 md:duration-200",
+            // Mobile (base): bottom sheet ancorado na base da tela (bottom-0) com cantos superiores arredondados e shell flexível; md+: diálogo centralizado com margens adequadas e animação.
+            "fixed inset-x-0 bottom-0 w-full max-h-[calc(90dvh-max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] flex flex-col overflow-hidden rounded-t-2xl border border-primary/25 bg-surface shadow-xl focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background animate-sheet-in",
+            "md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:w-[calc(100vw-2rem)] md:max-h-[calc(100dvh-3rem)] md:rounded-2xl md:-translate-x-1/2 md:-translate-y-1/2 md:animate-none md:data-[state=open]:animate-in md:data-[state=closed]:animate-out md:data-[state=closed]:fade-out-0 md:data-[state=open]:fade-in-0 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95 md:duration-200",
             SIZE_MAX_W[size],
             z,
             className,
           )}
         >
-          {/* Alça do bottom sheet (F25) — visível apenas no mobile com micro-interação. */}
-          <div
-            aria-hidden="true"
-            className="mx-auto mb-4 h-1 w-10 shrink-0 rounded-full bg-primary/30 hover:bg-primary/50 transition-colors md:hidden"
-          />
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <DialogPrimitive.Title className="font-display text-lg font-bold text-foreground tracking-tight">
-                {title}
-              </DialogPrimitive.Title>
-              {description ? (
-                <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground leading-relaxed">
-                  {description}
-                </DialogPrimitive.Description>
-              ) : null}
-            </div>
-            <div className="flex shrink-0 items-center gap-1.5">
-              {headerActions}
-              {displayCalculator ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Abrir calculadora"
-                  title="Calculadora"
-                  className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                  onClick={() => {
-                    setCalculatorOpen(true);
-                  }}
-                >
-                  <Calculator aria-hidden="true" />
-                </Button>
-              ) : null}
-              <DialogPrimitive.Close asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Fechar"
-                  className="text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors"
-                >
-                  <X aria-hidden="true" />
-                </Button>
-              </DialogPrimitive.Close>
+          {/* Cabeçalho fixo (não rola) com alça e ações contextuais */}
+          <div className="shrink-0 p-4 sm:p-6 pb-2 sm:pb-3">
+            {/* Alça do bottom sheet (F25) — visível apenas no mobile com micro-interação. */}
+            <div
+              aria-hidden="true"
+              className="mx-auto mb-4 h-1 w-10 shrink-0 rounded-full bg-primary/30 hover:bg-primary/50 transition-colors md:hidden"
+            />
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <DialogPrimitive.Title className="font-display text-lg font-bold text-foreground tracking-tight">
+                  {title}
+                </DialogPrimitive.Title>
+                {description ? (
+                  <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground leading-relaxed">
+                    {description}
+                  </DialogPrimitive.Description>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {headerActions}
+                {displayCalculator ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Abrir calculadora"
+                    title="Calculadora"
+                    className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                    onClick={() => {
+                      setCalculatorOpen(true);
+                    }}
+                  >
+                    <Calculator aria-hidden="true" />
+                  </Button>
+                ) : null}
+                <DialogPrimitive.Close asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Fechar"
+                    className="text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors"
+                  >
+                    <X aria-hidden="true" />
+                  </Button>
+                </DialogPrimitive.Close>
+              </div>
             </div>
           </div>
-          {children}
+
+          {/* Corpo rolável isolado (o conteúdo rola aqui dentro e NUNCA é sobreposto pelo rodapé) */}
+          <div
+            ref={scrollRef}
+            className={cn(
+              "flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-6 py-2",
+              footer
+                ? "pb-3 sm:pb-4"
+                : "pb-[calc(1.25rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] sm:pb-6",
+              contentClassName,
+            )}
+          >
+            {children}
+          </div>
+
+          {/* Rodapé Pinned Canônico (quando passado via prop footer) */}
+          {footer ? (
+            <div className="shrink-0 border-t border-border/80 bg-surface px-4 py-3 sm:px-6 sm:py-4 pb-[max(0.75rem,calc(max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px))+0.5rem))] sm:pb-4">
+              {footer}
+            </div>
+          ) : null}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
@@ -249,7 +279,8 @@ export function ModalFooter({ children, className }: ModalFooterProps) {
   return (
     <div
       className={cn(
-        "flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-4 border-t border-primary/20 sticky bottom-0 bg-surface z-10 -mx-4 sm:-mx-6 px-4 sm:px-6 -mb-2 pb-[max(0.75rem,calc(max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px))+0.5rem))] sm:pb-3",
+        "flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-6 border-t border-border/80 w-full",
+        "[&_button]:w-full [&_button]:sm:w-auto [&_button]:sm:min-w-[110px]",
         className,
       )}
     >

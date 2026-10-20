@@ -30,22 +30,30 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   return (
-    <Modal open={open} onOpenChange={onOpenChange} title={title} description={description} size="sm">
-      {children ? <div className="mt-3">{children}</div> : null}
-      <ModalFooter className="mt-6">
-        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-          {cancelLabel}
-        </Button>
-        <Button
-          type="button"
-          variant={variant === "destructive" ? "destructive" : "default"}
-          disabled={confirmPending}
-          sensoryIntent={variant === "destructive" ? "destructive" : "success"}
-          onClick={onConfirm}
-        >
-          {confirmLabel}
-        </Button>
-      </ModalFooter>
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      description={description}
+      size="sm"
+      footer={
+        <ModalFooter className="mt-0 pt-0 border-t-0">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            {cancelLabel}
+          </Button>
+          <Button
+            type="button"
+            variant={variant === "destructive" ? "destructive" : "default"}
+            disabled={confirmPending}
+            sensoryIntent={variant === "destructive" ? "destructive" : "success"}
+            onClick={onConfirm}
+          >
+            {confirmLabel}
+          </Button>
+        </ModalFooter>
+      }
+    >
+      {children ? <div className="py-2">{children}</div> : null}
     </Modal>
   );
 }

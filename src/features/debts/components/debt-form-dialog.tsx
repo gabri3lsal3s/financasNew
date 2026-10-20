@@ -146,7 +146,7 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
             Excluir
           </Button>
         ) : null}
-        <div className="flex items-center justify-end gap-2 sm:ml-auto">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto sm:ml-auto">
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancelar
           </Button>

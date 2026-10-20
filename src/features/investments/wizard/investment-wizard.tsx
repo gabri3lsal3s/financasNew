@@ -495,6 +495,58 @@ function InvestmentWizardContent({
         description="Lance compras, vendas, proventos, splits ou cadastre novos ativos com atualização em tempo real."
         size="xl"
         showCalculator
+        footer={
+          <ModalFooter className="mt-0 pt-0 border-t-0 sm:justify-between">
+            <div>
+              {state.mode !== "select" && (state.step > 1 || !initialAsset) && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBack}
+                  disabled={isPending}
+                  className="w-full sm:w-auto"
+                >
+                  Voltar
+                </Button>
+              )}
+            </div>
+
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={requestClose}
+                disabled={isPending}
+              >
+                Cancelar
+              </Button>
+
+              {isLastStep ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSubmit}
+                  disabled={!canProceed(state) || isPending}
+                >
+                  {isPending ? "Gravando..." : "Confirmar Operação"}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleNext}
+                  disabled={!canProceed(state) || isPending}
+                >
+                  {(state.mode === "select" || state.step === 1) && state.ticker
+                    ? `Continuar com ${state.ticker}`
+                    : "Continuar"}
+                </Button>
+              )}
+            </div>
+          </ModalFooter>
+        }
       >
         <div className="flex flex-col gap-6 pt-2">
           {/* Stepper com passos contextuais */}
@@ -622,58 +674,6 @@ function InvestmentWizardContent({
               usdRate={position.rows.find((r) => r.usdRate)?.usdRate ?? 5.25}
             />
           )}
-
-          {/* Rodapé de Navegação do Wizard */}
-          <ModalFooter className="sm:justify-between">
-            <div>
-              {state.mode !== "select" && (state.step > 1 || !initialAsset) && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBack}
-                  disabled={isPending}
-                  className="w-full sm:w-auto"
-                >
-                  Voltar
-                </Button>
-              )}
-            </div>
-
-            <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={requestClose}
-                disabled={isPending}
-              >
-                Cancelar
-              </Button>
-
-              {isLastStep ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleSubmit}
-                  disabled={!canProceed(state) || isPending}
-                >
-                  {isPending ? "Gravando..." : "Confirmar Operação"}
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleNext}
-                  disabled={!canProceed(state) || isPending}
-                >
-                  {(state.mode === "select" || state.step === 1) && state.ticker
-                    ? `Continuar com ${state.ticker}`
-                    : "Continuar"}
-                </Button>
-              )}
-            </div>
-          </ModalFooter>
         </div>
       </Modal>
 
