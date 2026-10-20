@@ -5,4 +5,5 @@ export * from "./hash";
 export * from "./parsers";
 export * from "./scorer";
 export * from "./bank-reconciliation";
+export * from "./chunking";
 

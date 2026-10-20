@@ -11,6 +11,7 @@ import {
   ModalFooter,
   MoneyInput,
   MoneyText,
+  Progress,
   Select,
   Tabs,
 } from "@/components/ui";
@@ -18,6 +19,14 @@ import { triggerSensory } from "@/services/sensory";
 import { todayISO } from "@/domain/debts";
 import type { Category } from "@/types";
 import type { BankTransactionItem, BankTransactionKind } from "@/domain/reconciliation";
+
+export interface StatementImportProgress {
+  currentChunk: number;
+  totalChunks: number;
+  percent: number;
+  processedItems: number;
+  totalItems: number;
+}
 
 interface BankStatementReconcileStepProps {
   items: BankTransactionItem[];
@@ -50,6 +59,7 @@ interface BankStatementReconcileStepProps {
   onBack: () => void;
   onConfirm: () => void;
   isPending: boolean;
+  importProgress?: StatementImportProgress | null;
 }
 
 type FilterTab = "all" | "expenses" | "incomes" | "new" | "matched" | "duplicates";
@@ -82,6 +92,7 @@ export function BankStatementReconcileStep({
   onBack,
   onConfirm,
   isPending,
+  importProgress,
 }: BankStatementReconcileStepProps) {
   const [filter, setFilter] = useState<FilterTab>("all");
 
@@ -240,6 +251,7 @@ export function BankStatementReconcileStep({
               type="button"
               variant="outline"
               size="sm"
+              disabled={isPending}
               className="text-xs h-8 cursor-pointer gap-1"
               onClick={handleOpenAddManual}
             >
@@ -251,6 +263,7 @@ export function BankStatementReconcileStep({
             type="button"
             variant="ghost"
             size="sm"
+            disabled={isPending}
             className="shrink-0 text-xs cursor-pointer"
             onClick={() => {
               onToggleAll(!allFilteredSelected);
@@ -446,6 +459,25 @@ export function BankStatementReconcileStep({
         )}
       </div>
 
+      {/* Barra de progresso para importação em lotes */}
+      {importProgress && importProgress.totalChunks > 1 && (
+        <div
+          role="region"
+          aria-label="Progresso da importação em lotes"
+          className="space-y-1.5 rounded-lg border border-border/80 bg-surface p-3 shadow-xs animate-in fade-in duration-200"
+        >
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-medium text-foreground">
+              Importando lote {importProgress.currentChunk} de {importProgress.totalChunks}...
+            </span>
+            <span className="font-semibold text-muted-foreground tabular-nums">
+              {importProgress.processedItems}/{importProgress.totalItems} ({importProgress.percent}%)
+            </span>
+          </div>
+          <Progress value={importProgress.percent} tone="portfolio" size="md" />
+        </div>
+      )}
+
       {/* Rodapé e Ações */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-border/40">
         <p className="text-xs text-muted-foreground min-w-0">
@@ -479,7 +511,11 @@ export function BankStatementReconcileStep({
             className="gap-1.5"
           >
             {isPending ? (
-              "Importando..."
+              importProgress && importProgress.totalChunks > 1 ? (
+                `Importando (${importProgress.percent}%)...`
+              ) : (
+                "Importando..."
+              )
             ) : (
               <>
                 <Check className="size-3.5" aria-hidden />

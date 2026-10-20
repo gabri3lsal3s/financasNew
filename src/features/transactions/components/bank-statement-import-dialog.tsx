@@ -2,7 +2,9 @@ import { useMemo, useState } from "react";
 import { AlertCircle } from "lucide-react";
 import { Alert, Modal } from "@/components/ui";
 import {
+  STATEMENT_IMPORT_CHUNK_SIZE,
   buildTransactionsFromRows,
+  chunkBankStatementBatch,
   generateStatementHash,
   parseStatementInput,
   reconcileBankTransactions,
@@ -28,7 +30,7 @@ import { pushToast } from "@/services/toast";
 import type { Expense, Income } from "@/types";
 import { BankStatementUploadStep } from "./bank-statement-upload-step";
 import { BankStatementMappingStep } from "./bank-statement-mapping-step";
-import { BankStatementReconcileStep } from "./bank-statement-reconcile-step";
+import { BankStatementReconcileStep, type StatementImportProgress } from "./bank-statement-reconcile-step";
 
 interface BankStatementImportDialogProps {
   open: boolean;
@@ -79,6 +81,7 @@ function BankStatementImportContent({ competenceMonth, onClose }: BankStatementI
   const [parsedRows, setParsedRows] = useState<RawParsedRow[]>([]);
   const [columnMapping, setColumnMapping] = useState<ColumnMapping | null>(null);
   const [reconciledItems, setReconciledItems] = useState<BankTransactionItem[]>([]);
+  const [importProgress, setImportProgress] = useState<StatementImportProgress | null>(null);
 
   const categoriesQuery = useCategories("expense");
   const incomeCategoriesQuery = useCategories("income");
@@ -369,25 +372,72 @@ function BankStatementImportContent({ competenceMonth, onClose }: BankStatementI
         statement_hash: it.transaction.statementHash,
       }));
 
+    const chunks = chunkBankStatementBatch(
+      expensesPayload,
+      incomesPayload,
+      STATEMENT_IMPORT_CHUNK_SIZE,
+    );
+
+    const totalItems = expensesPayload.length + incomesPayload.length;
+    let totalExpensesInserted = 0;
+    let totalIncomesInserted = 0;
+    let processedItems = 0;
+    let currentChunkIndex = 0;
+
     try {
-      const result = await importMutation.mutateAsync({
-        expenses: expensesPayload,
-        incomes: incomesPayload,
+      setImportProgress({
+        currentChunk: 1,
+        totalChunks: chunks.length,
+        percent: 0,
+        processedItems: 0,
+        totalItems,
       });
+
+      for (const [i, chunk] of chunks.entries()) {
+        currentChunkIndex = i;
+        const result = await importMutation.mutateAsync({
+          expenses: chunk.expenses,
+          incomes: chunk.incomes,
+        });
+
+        totalExpensesInserted += result.expenses_inserted;
+        totalIncomesInserted += result.incomes_inserted;
+
+        processedItems += chunk.expenses.length + chunk.incomes.length;
+        const percent = Math.round((processedItems / totalItems) * 100);
+
+        setImportProgress({
+          currentChunk: Math.min(i + 2, chunks.length),
+          totalChunks: chunks.length,
+          percent,
+          processedItems,
+          totalItems,
+        });
+      }
 
       triggerSensory("success");
 
-      const totalInserted = result.expenses_inserted + result.incomes_inserted;
+      const totalInserted = totalExpensesInserted + totalIncomesInserted;
       pushToast({
         title: "Extrato importado com sucesso!",
-        description: `${totalInserted} lançamentos adicionados (${result.expenses_inserted} despesas e ${result.incomes_inserted} receitas).`,
+        description: `${totalInserted} lançamentos adicionados (${totalExpensesInserted} despesas e ${totalIncomesInserted} receitas).`,
         variant: "success",
       });
 
       onClose();
     } catch (err) {
       triggerSensory("error");
-      setError(getErrorMessage(err));
+      const baseMessage = getErrorMessage(err);
+      const insertedSoFar = totalExpensesInserted + totalIncomesInserted;
+      if (insertedSoFar > 0) {
+        setError(
+          `Importação interrompida no lote ${currentChunkIndex + 1} de ${chunks.length}. ${insertedSoFar} itens foram gravados com sucesso. Detalhe do erro: ${baseMessage}`,
+        );
+      } else {
+        setError(baseMessage);
+      }
+    } finally {
+      setImportProgress(null);
     }
   };
 
@@ -432,7 +482,8 @@ function BankStatementImportContent({ competenceMonth, onClose }: BankStatementI
           onUncheckDuplicates={handleUncheckDuplicates}
           onBack={() => setStep(parsedRows.length > 0 ? "mapping" : "upload")}
           onConfirm={handleFinalImport}
-          isPending={importMutation.isPending}
+          isPending={importMutation.isPending || importProgress !== null}
+          importProgress={importProgress}
         />
       )}
     </div>

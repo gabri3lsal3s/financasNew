@@ -300,7 +300,7 @@ Ao término de cada fase, é **obrigatória** a passagem pelos dois portões de 
 ### FASE 4: Otimização de Processamento em Lote, Extratos & Proteção contra DoS de Payloads
 > **Objetivo:** Blindar o servidor e a thread do navegador contra travamentos causados por uploads de extratos bancários massivos (OFX/CSV) e buscas pesadas sem cancelamento.
 
-- [ ] **Tarefa 4.1 — Calibração de Teto Rígido de Chunks de Importação de Extratos Bancários**
+- [x] **Tarefa 4.1 — Calibração de Teto Rígido de Chunks de Importação de Extratos Bancários**
   - **Revisão do Plano:** Inspecionar `BankStatementImportDialog` (`src/features/transactions/`) e a chamada a `import_bank_transactions`.
   - **Implementação:**
     - Implementar chunking automático de envio no frontend: caso o extrato contenha mais de 250 transações, enviar em lotes sequenciais de 250 itens por chamada RPC;
