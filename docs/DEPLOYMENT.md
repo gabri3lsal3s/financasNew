@@ -135,5 +135,15 @@ Com a keystore canônica permanente e `versionCode` incremental, qualquer nova v
 adb install -r dist-apk/guia-financeiro-release.apk
 ```
 
+### 6.3 Publicação Automatizada no Cloudflare R2 (Egress Grátis)
+
+Com as credenciais do Cloudflare R2 configuradas no `.env` local (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`), o envio para o bucket é 100% automatizado:
+
+```bash
+# Upload direto do APK para o Cloudflare R2
+npm run upload:apk
+```
+
 > Para o guia operacional detalhado, backup de chaves e resolução de dúvidas de usuários, consulte [`docs/NATIVE_DISTRIBUTION_GUIDE.md`](./NATIVE_DISTRIBUTION_GUIDE.md).
+
 
