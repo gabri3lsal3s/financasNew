@@ -5,6 +5,7 @@ import { resetPrivacyMask } from "@/hooks/use-privacy-mask";
 import { resetEnsuredProfiles } from "@/hooks/use-auth";
 import { setObservabilityUser } from "@/services/observability";
 import { setAppLocked, resetAppLockBackgroundTimer } from "@/services/native/app-lock";
+import { setCachedIconTier } from "@/services/native/app-icon";
 
 /**
  * Rotina centralizada de limpeza e reset do estado da aplicação.
@@ -19,10 +20,11 @@ export function resetAppState(queryClient?: QueryClient, nextUserId: string | nu
     queryClient.clear();
   }
 
-  // 2.1 Reseta o bloqueio biométrico ao encerrar sessão
+  // 2.1 Reseta o bloqueio biométrico e o ícone de abertura ao encerrar sessão
   if (nextUserId === null) {
     setAppLocked(false);
     resetAppLockBackgroundTimer();
+    setCachedIconTier("FREE");
     if (typeof window !== "undefined") {
       try {
         window.localStorage.removeItem("financas_active_biometric_lock_enabled");

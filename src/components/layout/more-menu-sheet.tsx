@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 import { Link } from "react-router";
+import { Smartphone } from "lucide-react";
 import { navGroups, filterNavItems, navItems } from "@/components/layout/nav-items";
 import { resolveBottomNavSlots } from "@/domain/navigation";
 import { InstallAppButton } from "@/components/modules/install-app-button";
+import { isAndroidDevice, isNativePlatform } from "@/services/native/platform";
 import { useReminders, useUserAccess } from "@/state";
 import { cn } from "@/lib/utils";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
@@ -82,8 +84,30 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
           </section>
         ))}
 
-        <div className="pt-2">
+        <div className="pt-2 space-y-2">
           <InstallAppButton />
+
+          {!isNativePlatform() && isAndroidDevice() && (
+            <Link
+              to="/configuracoes?tab=devices"
+              onClick={() => onOpenChange(false)}
+              className="flex w-full items-center justify-between rounded-xl border border-primary/20 bg-primary/5 p-3.5 text-left transition-colors hover:bg-primary/10"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary-strong">
+                  <Smartphone className="size-4" aria-hidden="true" />
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-foreground">
+                    Baixar App Android Pro (APK)
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Leitura automática de comprovantes Pix e cartões
+                  </p>
+                </div>
+              </div>
+            </Link>
+          )}
         </div>
       </div>
     </ResponsiveDialog>

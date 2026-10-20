@@ -9,6 +9,13 @@ export function isNativePlatform(): boolean {
 }
 
 /**
+ * Retorna se a aplicação está rodando no navegador / ambiente Web (não-nativo).
+ */
+export function isWebPlatform(): boolean {
+  return !Capacitor.isNativePlatform();
+}
+
+/**
  * Retorna o nome da plataforma ativa ("android", "ios", "web").
  */
 export function getPlatform(): "android" | "ios" | "web" {
@@ -34,8 +41,15 @@ export function isIOSNative(): boolean {
 }
 
 /**
- * Verifica se a plataforma ativa é Web / PWA.
+ * Verifica se o dispositivo do usuário é Android (seja no navegador, PWA ou nativo).
  */
-export function isWebPlatform(): boolean {
-  return !Capacitor.isNativePlatform();
+export function isAndroidDevice(): boolean {
+  if (Capacitor.getPlatform() === "android") {
+    return true;
+  }
+  if (typeof navigator !== "undefined") {
+    const ua = navigator.userAgent || "";
+    return /Android/i.test(ua);
+  }
+  return false;
 }

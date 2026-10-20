@@ -16,6 +16,11 @@
 >   - Nova história de produto destacando o Assistente Bancário em Tempo Real e perguntas frequentes expandidas no `FaqSection`.
 > - **(5) Documentação Canônica**:
 >   - Criação do guia completo `docs/NATIVE_DISTRIBUTION_GUIDE.md` com instruções de segurança da keystore, hospedagem Cloudflare R2 / Supabase Storage e modelos de atendimento ao usuário.
+> - **(6) Divulgação Balanceada e Não-Poluída do APK Pro para Usuários Web/PWA**:
+>   - Domínio `src/domain/native/apk-promo.ts` e hook `useApkPromo` com persistência em `localStorage` e mecanismo anti-spam de dispensa por 7 dias;
+>   - Card `AndroidProBanner` integrado organicamente ao carrossel de alertas do Dashboard (`DashboardAlertsCarousel`), segmentado exclusivamente para dispositivos Android não-nativos;
+>   - Vitrine informativa do Assistente Bancário na aba de Notificações (`NotificationsTab`) quando acessado via Web/PWA, substituindo a omissão por um convite elegante com botão de download;
+>   - Atalho de download no menu inferior mobile (`MoreMenuSheet`).
 >
 > **v2.63** registra o **Assistente Passivo de Gastos — Ecossistema Híbrido Android Nativo & PWA Completo** (2026-10-20):
 > - **(1) Robustez no Android Nativo & Quick Settings Tile**:

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import {
   Bell,
   Building2,
@@ -9,6 +10,8 @@ import {
   Smartphone,
   TrendingUp,
   Wallet,
+  Download,
+  Zap,
 } from "lucide-react";
 import {
   Badge,
@@ -94,6 +97,7 @@ function getCategoryLabel(category: InstitutionCategory): string {
  * 3. Assistente Passivo de Compras & Notificações Bancárias (Android nativo)
  */
 export function NotificationsTab() {
+  const navigate = useNavigate();
   const { hasFeature } = useUserAccess();
   const preferencesQuery = useUserPreferences();
   const updateReminderPreferencesMutation = useUpdateReminderPreferences();
@@ -606,8 +610,8 @@ export function NotificationsTab() {
         </Card>
       )}
 
-      {/* --- CARD 2: ASSISTENTE PASSIVO DE COMPRAS & BANCOS (Android nativo) --- */}
-      {isNativePlatform() && (
+      {/* --- CARD 2: ASSISTENTE PASSIVO DE COMPRAS & BANCOS (Android nativo vs Vitrine Web/PWA) --- */}
+      {isNativePlatform() ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center justify-between gap-2 flex-wrap">
@@ -982,6 +986,52 @@ export function NotificationsTab() {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      ) : (
+        /* Vitrine Informativa do Assistente Bancário para Web / PWA */
+        <Card className="border-border/80 bg-surface shadow-xs">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center justify-between gap-2 flex-wrap">
+              <span className="flex items-center gap-2 min-w-0">
+                <CreditCard className="size-4 text-muted-foreground" aria-hidden="true" />
+                <span>Assistente Passivo de Compras &amp; Bancos</span>
+              </span>
+              <Badge variant="default" size="xs">
+                Exclusivo no App Android
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/10 via-surface to-surface p-4 sm:p-5 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+                    <Zap className="size-3.5" aria-hidden="true" />
+                    <span>Automação em Segundo Plano</span>
+                  </div>
+                  <h4 className="text-sm font-semibold text-foreground">
+                    Leitura Automática de Comprovantes Pix e Notificações de Cartão
+                  </h4>
+                  <p className="text-xs text-muted-foreground max-w-xl leading-relaxed">
+                    Disponível através do Aplicativo Android Pro. Ele escuta notificações de mais de 20 bancos (Nubank, Itaú, Inter, etc.) e sugere o lançamento imediatamente com um único toque, com 100% de privacidade local no celular.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    onClick={() => navigate("/configuracoes?tab=devices")}
+                    className="gap-2 text-xs"
+                  >
+                    <Download className="size-3.5" aria-hidden="true" />
+                    <span>Baixar App Pro</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}

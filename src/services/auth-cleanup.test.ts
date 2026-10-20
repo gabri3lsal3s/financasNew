@@ -4,6 +4,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { setPrivacyMasked, getPrivacyMasked } from "@/hooks/use-privacy-mask";
 import { updateVisualCustomization, getVisualCustomization } from "@/hooks/use-visual-customization";
 import { getActiveUserId, setActiveUserId, setUserStorageItem } from "@/services/user-storage";
+import { getCachedIconTier, setCachedIconTier } from "@/services/native/app-icon";
 
 describe("auth-cleanup", () => {
   beforeEach(() => {
@@ -22,6 +23,9 @@ describe("auth-cleanup", () => {
     expect(document.documentElement.dataset.privacy).toBe("masked");
     expect(getPrivacyMasked()).toBe(true);
 
+    setCachedIconTier("PRO");
+    expect(getCachedIconTier()).toBe("PRO");
+
     updateVisualCustomization({ accent: "rose", surfaceStyle: "flat", motionLevel: "reduced" });
     expect(document.documentElement.getAttribute("data-accent")).toBe("rose");
     expect(document.documentElement.getAttribute("data-surface-style")).toBe("flat");
@@ -34,8 +38,9 @@ describe("auth-cleanup", () => {
     expect(cancelSpy).toHaveBeenCalled();
     expect(clearSpy).toHaveBeenCalled();
 
-    // 2. Active User resetado
+    // 2. Active User resetado e tier de ícone revertido para FREE
     expect(getActiveUserId()).toBeNull();
+    expect(getCachedIconTier()).toBe("FREE");
 
     // 3. Privacy Mask resetado
     expect(getPrivacyMasked()).toBe(false);

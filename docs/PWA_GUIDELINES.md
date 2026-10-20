@@ -1,7 +1,8 @@
 # 📱 PWA_GUIDELINES.md — Requisitos de Progressive Web App
 
-> **Status:** v1.8 — O app é um **PWA moderno** (instalável em mobile/desktop).
+> **Status:** v1.9 — O app é um **PWA moderno** (instalável em mobile/desktop).
 > **F5.6 & F83 implementados:** prompt de instalação (`beforeinstallprompt`), atualização automática com toast, auditoria automatizada de instalabilidade, estratégia Stale-While-Revalidate para imagens estáticas com expiração de 30 dias e monitoramento reativo de conectividade (`useNetworkStatus`).
+> **v1.9 (2026-10-20):** **(1) Calibração Visual da Abertura PWA (WebAPK Android)** — padronização do campo `name: "Áxis • Guia Financeiro"` e `background_color: "#0C1923"` no manifesto, eliminando quebras desajeitadas de duas linhas sob a logo e o efeito de clarão branco (*flashbang*); **(2) Escala Proporcional da Logo no Splash HTML** — substituição das dimensões estáticas de 140px por auto-fit responsivo `clamp(84px, 22vw, 116px)` com proporção 1:1 e pulso suave; **(3) Variância de Tier e Reversão Automática no Logout** — alternância instantânea entre a logo oficial Teal Petróleo (Gratuito/Trial) e a logo Âmbar (PRO), com reversão garantida para `"FREE"` em `resetAppState` ao encerrar a sessão.
 > **v1.8 (2026-10-17):** **(1) Proteção Estrita do App Shell na Atualização PWA** — calibração da rotina `purgeLegacyCaches()` em `src/app/pwa.ts` para preservar categoricamente o `workbox-precache`, eliminando falhas de navegação (erro `ERR_FAILED` em rotas secundárias como `/cartoes`) no reload pós-atualização e delegando a limpeza de revisões antigas ao `cleanupOutdatedCaches: true` nativo do Workbox; **(2) Despacho Imediato de Recarregamento** — `applyPWAUpdate()` evita timeouts defensivos desnecessários quando o novo Service Worker já assumiu o controle dos clientes ativos.
 > **v1.7 (2026-10-17):** **(1) Compensação Robusta de Safe Area Mobile Híbrida** — padronização da fórmula `max(env(safe-area-inset-*), var(--safe-area-*))` em `PageShell`, `BottomNav`, `BackToTop`, `ToastHost` e fluxos de assinatura, eliminando colisões com a barra de status e barra de navegação gestual mesmo sob WebViews com insets zerados; **(2) Transparência de Licença Modular e Whitelist** — card de status de licença modular nas Configurações (`SubscriptionTab`) e orientação preventiva na emissão de convites administrativos.
 > **v1.6 (2026-10-17):** **(1) Ciclo de Vida Atômico e Invalidação Integral de Cache** — ativação de `cleanupOutdatedCaches: true` no Workbox (`vite.config.ts`), isolamento de assets de marca (`pwa-brand-assets` com estratégia NetworkFirst e fallback offline) e rotina defensiva `purgeLegacyCaches()` em `src/app/pwa.ts`; **(2) Transição de Versão Sincronizada (Zero Mismatch)** — fluxo `applyPWAUpdate()` com disparo `{ type: "SKIP_WAITING" }`, sincronização com `controllerchange` em `navigator.serviceWorker` (com timeout defensivo de 4 segundos) e toast visual com transição atômica; **(3) Versionamento de Ícones para WebAPK Android** — query params determinísticos (`?v=2`) nas URLs dos ícones em `manifest.webmanifest` e `index.html`, sincronizados via `scripts/generate-icons.mjs`; **(4) Políticas Estritas de Borda** — cabeçalhos `_headers` calibrados para Cloudflare Pages (Service Worker e manifests com `max-age=0, must-revalidate`; chunks `/assets/*` com `immutable`).
@@ -54,15 +55,15 @@ Referência completa (ajustar nomes à marca final):
 ```json
 {
   "id": "/",
-  "name": "Guia Financeiro — Gestão Financeira Pessoal",
-  "short_name": "Guia Financeiro",
+  "name": "Áxis • Guia Financeiro",
+  "short_name": "Áxis",
   "description": "Gestão de gastos, orçamentos, relatórios, insights e rebalanceamento de carteira.",
   "lang": "pt-BR",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#FFFFFF",
+  "background_color": "#0C1923",
   "theme_color": [
     { "color": "#F4F7F9", "media": "(prefers-color-scheme: light)" },
     { "color": "#0C1923", "media": "(prefers-color-scheme: dark)" }
@@ -153,7 +154,7 @@ Referência completa (ajustar nomes à marca final):
 **Splash screens:**
 - **Prevenção de Forced Dark Quebrado:** `<meta name="color-scheme" content="light dark" />` e CSS `color-scheme: light/dark` sinalizam aos motores de Auto Dark Mode (Chromium/Samsung Internet/Brave) que o app possui seus próprios temas nativos, desativando a inversão algorítmica destrutiva. O tema escuro padrão do sistema/forced-dark resolve para **OLED** (`#000000`).
 - **Android:** o splash é automático (ícone + `background_color` do manifest) — `background_color: #0C1923` (Abissal) minimiza o flash ao abrir em tema escuro; em light, o HTML splash cobre o fundo imediatamente.
-- **HTML Splash Screen (`index.html`):** a `<div id="app-splash">` renderiza imediatamente dentro do `#root` antes do React montar, exibindo o ícone do app em 144px com animação pulse sutil. O fundo sincroniza imediatamente ao tema ativo do usuário (`light` #F4F7F9, `dark` #0C1923, `oled` #000000) recuperado síncronamente do storage. Some automaticamente via CSS `#root:not(:empty) #app-splash { opacity: 0 }` assim que o React monta qualquer conteúdo. Animações desativadas em `prefers-reduced-motion: reduce` e `data-motion="reduced"`/`"eco"`.
+- **HTML Splash Screen (`index.html`):** a `<div id="app-splash">` renderiza imediatamente dentro do `#root` antes do React montar, exibindo o ícone do app em proporção fluida `clamp(84px, 22vw, 116px)` com animação pulse sutil, alternando instantaneamente entre a logo Teal Petróleo (Gratuito/Trial) e Âmbar (PRO) com base no cache `last_applied_icon_tier`. O fundo sincroniza imediatamente ao tema ativo do usuário (`light` #F4F7F9, `dark` #0C1923, `oled` #000000) recuperado síncronamente do storage. Some automaticamente via CSS `#root:not(:empty) #app-splash { opacity: 0 }` assim que o React monta qualquer conteúdo. Animações desativadas em `prefers-reduced-motion: reduce` e `data-motion="reduced"`/`"eco"`.
 - **iOS:** `apple-touch-startup-image` (tamanhos por device — opcional); sem isso, o iOS compõe da `apple-touch-icon` + fundo. Validar em device real.
 - `viewport-fit=cover` garante respeito às "safe areas" (notch) no modo standalone.
 

@@ -1,6 +1,6 @@
 {
   "id": "/",
-  "name": "Áxis • Guia Financeiro — Gestão Financeira Pessoal",
+  "name": "Áxis • Guia Financeiro",
   "short_name": "Áxis",
   "description": "Gestão de gastos, orçamentos, relatórios, insights e rebalanceamento de carteira.",
   "lang": "pt-BR",
@@ -9,7 +9,7 @@
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
   "orientation": "portrait",
-  "background_color": "#FFFFFF",
+  "background_color": "#0C1923",
   "theme_color": "#0C1923",
   "categories": ["finance", "productivity"],
   "icons": [

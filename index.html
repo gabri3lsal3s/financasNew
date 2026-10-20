@@ -174,8 +174,9 @@
       }
 
       .app-splash-icon {
-        width: 140px;
-        height: 140px;
+        width: clamp(84px, 22vw, 116px);
+        height: auto;
+        aspect-ratio: 1 / 1;
         display: none;
         animation: splash-pulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         user-select: none;
@@ -253,8 +254,8 @@
         class="app-splash-icon app-splash-light"
         src="/brand/logo-teal-light-192.png"
         alt=""
-        width="140"
-        height="140"
+        width="116"
+        height="116"
         decoding="async"
       />
       <img
@@ -262,18 +263,22 @@
         class="app-splash-icon app-splash-dark"
         src="/brand/logo-teal-dark-192.png"
         alt=""
-        width="140"
-        height="140"
+        width="116"
+        height="116"
         decoding="async"
       />
       <script>
         (function() {
           try {
-            if (localStorage.getItem('last_applied_icon_tier') === 'PRO') {
-              var l = document.getElementById('app-splash-icon-light');
-              var d = document.getElementById('app-splash-icon-dark');
+            var isPro = localStorage.getItem('last_applied_icon_tier') === 'PRO';
+            var l = document.getElementById('app-splash-icon-light');
+            var d = document.getElementById('app-splash-icon-dark');
+            if (isPro) {
               if (l) l.src = '/brand/logo-amber-light-192.png';
               if (d) d.src = '/brand/logo-amber-dark-192.png';
+            } else {
+              if (l) l.src = '/brand/logo-teal-light-192.png';
+              if (d) d.src = '/brand/logo-teal-dark-192.png';
             }
           } catch (e) {}
         })();

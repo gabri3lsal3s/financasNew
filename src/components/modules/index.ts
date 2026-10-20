@@ -99,4 +99,6 @@ export { IosPwaInstallDialog } from "./ios-pwa-install-dialog";
 export type { IosPwaInstallDialogProps } from "./ios-pwa-install-dialog";
 export { PasteReceiptDialog } from "./paste-receipt-dialog";
 export type { PasteReceiptDialogProps } from "./paste-receipt-dialog";
+export { AndroidProBanner } from "./android-pro-banner";
+export type { AndroidProBannerProps } from "./android-pro-banner";
 

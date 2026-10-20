@@ -19,6 +19,7 @@ import {
   ReadOnlyBanner,
   TrialEndingBanner,
   PendingSuggestionsCard,
+  AndroidProBanner,
 } from "@/components/modules";
 import { isOnboardingComplete, type OnboardingCounts } from "@/domain/onboarding";
 import { isDemoItem } from "@/services/demo-data";
@@ -61,12 +62,13 @@ import {
   useUserSubscription,
 } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
-import { useVisualCustomization } from "@/hooks";
+import { useVisualCustomization, useApkPromo } from "@/hooks";
 import { CashCheckpointDialog } from "@/components/modules/cash-checkpoint-dialog";
 import { cn } from "@/lib/utils";
 import { CategoryBreakdownDialog, OtherBudgetsDialog } from "../components";
 
 export function OverviewPage() {
+  const { showPromo: showApkPromo, dismiss: dismissApkPromo } = useApkPromo();
 
   const [month, setMonth] = useState(currentMonth);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -507,6 +509,11 @@ export function OverviewPage() {
         priority: 2,
         content: <TrialEndingBanner daysRemaining={subscription.trialDaysRemaining} />,
       },
+    showApkPromo && {
+      id: "android-pro-banner",
+      priority: 5,
+      content: <AndroidProBanner onDismiss={() => dismissApkPromo(7)} />,
+    },
   ];
 
   return (
