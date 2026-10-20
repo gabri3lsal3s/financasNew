@@ -18,7 +18,7 @@ export function useExpenses(month: string, options?: { enabled?: boolean }) {
 export function useExpensesByRange(start: string, end: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [...expensesKey, "range", start, end],
-    queryFn: () => listExpensesByRange(start, end),
+    queryFn: ({ signal }) => listExpensesByRange(start, end, { signal }),
     enabled: options?.enabled ?? true,
     staleTime: STALE_TIMES.transactional,
   });

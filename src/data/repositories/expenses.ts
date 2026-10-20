@@ -41,18 +41,36 @@ export async function listExpensesByMonth(month: string): Promise<Expense[]> {
   return (data ?? []).map(mapExpense);
 }
 
+export interface RangeQueryOptions {
+  signal?: AbortSignal;
+}
+
 /** Despesas num período custom [start, end) — relatórios custom (≤ 366 dias). */
-export async function listExpensesByRange(start: string, end: string): Promise<Expense[]> {
+export async function listExpensesByRange(
+  start: string,
+  end: string,
+  options?: RangeQueryOptions,
+): Promise<Expense[]> {
+  if (options?.signal?.aborted) {
+    throw new DOMException("The user aborted a request.", "AbortError");
+  }
   await materializeRecurrencesForRange(start, end, "expense");
-  const { data, error } = await resolveQuery<Expense[]>(
-    getSupabase()
-      .from("expenses")
-      .select("*")
-      .gte("date", start)
-      .lt("date", end)
-      .order("date", { ascending: true }),
-  );
+  let query = getSupabase()
+    .from("expenses")
+    .select("*")
+    .gte("date", start)
+    .lt("date", end)
+    .order("date", { ascending: true });
+
+  if (options?.signal) {
+    query = query.abortSignal(options.signal);
+  }
+
+  const { data, error } = await resolveQuery<Expense[]>(query);
   if (error) {
+    if (options?.signal?.aborted || error.message?.includes("AbortError")) {
+      throw new DOMException("The user aborted a request.", "AbortError");
+    }
     const classified = classifyError(error);
     throw new AppError(classified.kind, classified.message, error);
   }

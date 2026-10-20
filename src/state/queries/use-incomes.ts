@@ -8,7 +8,7 @@ export const incomesKey = ["incomes"] as const;
 export function useIncomesByRange(start: string, end: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [...incomesKey, "range", start, end],
-    queryFn: () => listIncomesByRange(start, end),
+    queryFn: ({ signal }) => listIncomesByRange(start, end, { signal }),
     enabled: options?.enabled ?? true,
     staleTime: STALE_TIMES.transactional,
   });

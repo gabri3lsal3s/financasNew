@@ -12,7 +12,11 @@ import type { DbInsert, DbUpdate, Income } from "@/types";
  */
 
 function mapIncome(row: Income): Income {
-  return { ...row, value: Number(row.value) };
+  return {
+    ...row,
+    value: Number(row.value),
+    report_weight: row.report_weight !== undefined && row.report_weight !== null ? Number(row.report_weight) : 1.0,
+  };
 }
 
 export async function listIncomesByMonth(month: string): Promise<Income[]> {
@@ -37,18 +41,36 @@ export async function listIncomesByMonth(month: string): Promise<Income[]> {
   return (data ?? []).map(mapIncome);
 }
 
+export interface RangeQueryOptions {
+  signal?: AbortSignal;
+}
+
 /** Rendas num período custom [start, end) — relatórios custom (≤ 366 dias). */
-export async function listIncomesByRange(start: string, end: string): Promise<Income[]> {
+export async function listIncomesByRange(
+  start: string,
+  end: string,
+  options?: RangeQueryOptions,
+): Promise<Income[]> {
+  if (options?.signal?.aborted) {
+    throw new DOMException("The user aborted a request.", "AbortError");
+  }
   await materializeRecurrencesForRange(start, end, "income");
-  const { data, error } = await resolveQuery<Income[]>(
-    getSupabase()
-      .from("incomes")
-      .select("*")
-      .gte("date", start)
-      .lt("date", end)
-      .order("date", { ascending: true }),
-  );
+  let query = getSupabase()
+    .from("incomes")
+    .select("*")
+    .gte("date", start)
+    .lt("date", end)
+    .order("date", { ascending: true });
+
+  if (options?.signal) {
+    query = query.abortSignal(options.signal);
+  }
+
+  const { data, error } = await resolveQuery<Income[]>(query);
   if (error) {
+    if (options?.signal?.aborted || error.message?.includes("AbortError")) {
+      throw new DOMException("The user aborted a request.", "AbortError");
+    }
     const classified = classifyError(error);
     throw new AppError(classified.kind, classified.message, error);
   }

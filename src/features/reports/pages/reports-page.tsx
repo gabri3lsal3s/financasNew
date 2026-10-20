@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { useSearchParams } from "react-router";
 import { FileSpreadsheet, Landmark, Scale, TrendingUp } from "lucide-react";
+import { useDebounce } from "@/hooks";
 import { Button, ErrorState, Skeleton, Tabs, type TabItem } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MonthPicker, YearPicker } from "@/components/modules";
@@ -133,6 +134,8 @@ export function ReportsPage() {
   const [aggregationTab, setAggregationTab] = useState<AggregationTab>("category");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  const debouncedCustomStart = useDebounce(customStart, 350);
+  const debouncedCustomEnd = useDebounce(customEnd, 350);
   const [detailModal, setDetailModal] = useState<{
     title: string;
     expenses: Expense[];
@@ -152,10 +155,10 @@ export function ReportsPage() {
       ? monthRange(month)
       : mode === "year"
         ? yearRange(year)
-        : { start: customStart, end: customEnd ? addDaysISO(customEnd, 1) : "" };
+        : { start: debouncedCustomStart, end: debouncedCustomEnd ? addDaysISO(debouncedCustomEnd, 1) : "" };
   const customValid =
     mode !== "custom" ||
-    (customStart !== "" && customEnd !== "" && validateCustomPeriod(customStart, customEnd).ok);
+    (debouncedCustomStart !== "" && debouncedCustomEnd !== "" && validateCustomPeriod(debouncedCustomStart, debouncedCustomEnd).ok);
 
   const isYear = mode === "year";
   const isCustom = mode === "custom";
@@ -189,12 +192,12 @@ export function ReportsPage() {
       if (mode === "year") {
         return dateStr.startsWith(String(year));
       }
-      if (mode === "custom" && customValid && customStart && customEnd) {
-        return dateStr >= customStart && dateStr <= customEnd;
+      if (mode === "custom" && customValid && debouncedCustomStart && debouncedCustomEnd) {
+        return dateStr >= debouncedCustomStart && dateStr <= debouncedCustomEnd;
       }
       return true;
     },
-    [mode, month, year, customValid, customStart, customEnd],
+    [mode, month, year, customValid, debouncedCustomStart, debouncedCustomEnd],
   );
 
   // Queries de Finanças — condicionadas a hasFinanceFeatures
@@ -314,9 +317,9 @@ export function ReportsPage() {
   const selectedYearNum = useMemo(() => {
     if (mode === "year") return year;
     if (mode === "month") return parseInt(month.slice(0, 4), 10) || new Date().getFullYear();
-    if (customStart) return parseInt(customStart.slice(0, 4), 10) || new Date().getFullYear();
+    if (debouncedCustomStart) return parseInt(debouncedCustomStart.slice(0, 4), 10) || new Date().getFullYear();
     return new Date().getFullYear();
-  }, [mode, year, month, customStart]);
+  }, [mode, year, month, debouncedCustomStart]);
 
   const yearDividendsBRL = useMemo(() => {
     const tableDivs = dividends
@@ -404,22 +407,22 @@ export function ReportsPage() {
         .sort((a, b) => b.month.localeCompare(a.month));
       return yearSnaps[0] ?? null;
     }
-    if (mode === "custom" && customEnd) {
-      const customEndMonth = customEnd.slice(0, 7);
+    if (mode === "custom" && debouncedCustomEnd) {
+      const customEndMonth = debouncedCustomEnd.slice(0, 7);
       const inRangeSnaps = snapshots
         .filter((s) => s.month <= customEndMonth)
         .sort((a, b) => b.month.localeCompare(a.month));
       return inRangeSnaps[0] ?? null;
     }
     return null;
-  }, [snapshots, mode, month, year, customEnd]);
+  }, [snapshots, mode, month, year, debouncedCustomEnd]);
 
   const isCurrentPeriod = useMemo(() => {
     if (mode === "month") return month === currentMonth();
     if (mode === "year") return year === currentYear();
-    if (mode === "custom") return !!customEnd && customEnd >= todayISO();
+    if (mode === "custom") return !!debouncedCustomEnd && debouncedCustomEnd >= todayISO();
     return true;
-  }, [mode, month, year, customEnd]);
+  }, [mode, month, year, debouncedCustomEnd]);
 
   const periodPatrimonyBRL = useMemo(() => {
     if (isCurrentPeriod) {
@@ -476,8 +479,8 @@ export function ReportsPage() {
       mode,
       month,
       year,
-      startDate: customValid ? customStart : undefined,
-      endDate: customValid ? customEnd : undefined,
+      startDate: customValid ? debouncedCustomStart : undefined,
+      endDate: customValid ? debouncedCustomEnd : undefined,
       usdRate,
     });
   }, [
@@ -487,8 +490,8 @@ export function ReportsPage() {
     month,
     year,
     customValid,
-    customStart,
-    customEnd,
+    debouncedCustomStart,
+    debouncedCustomEnd,
     usdRate,
   ]);
 
@@ -634,7 +637,7 @@ export function ReportsPage() {
       .filter((c) => {
         if (mode === "month") return c.date.startsWith(month);
         if (mode === "year") return c.date.startsWith(String(year));
-        if (customValid && customStart && customEnd) return c.date >= customStart && c.date <= customEnd;
+        if (customValid && debouncedCustomStart && debouncedCustomEnd) return c.date >= debouncedCustomStart && c.date <= debouncedCustomEnd;
         return c.date.startsWith(month);
       })
       .reduce((acc, c) => acc + c.amount, 0);
@@ -655,7 +658,7 @@ export function ReportsPage() {
       monthlyExpensesBRL: curMonthExpenseBRL,
       monthlyContributionsBRL: curMonthContrib,
     });
-  }, [totalPatrimonyBRL, totalInvestedCostBRL, cashBalanceBRL, debts, currentIncomeCents, currentExpenseCents, contributions, mode, month, year, customValid, customStart, customEnd]);
+  }, [totalPatrimonyBRL, totalInvestedCostBRL, cashBalanceBRL, debts, currentIncomeCents, currentExpenseCents, contributions, mode, month, year, customValid, debouncedCustomStart, debouncedCustomEnd]);
 
   const financialDRE = useMemo(() => {
     const grossIncomeCents = currentIncomeCents;
@@ -668,8 +671,8 @@ export function ReportsPage() {
       .filter((c) => {
         if (mode === "month") return c.date.startsWith(month);
         if (mode === "year") return c.date.startsWith(String(year));
-        if (customValid && customStart && customEnd)
-          return c.date >= customStart && c.date <= customEnd;
+        if (customValid && debouncedCustomStart && debouncedCustomEnd)
+          return c.date >= debouncedCustomStart && c.date <= debouncedCustomEnd;
         return c.date.startsWith(month);
       })
       .reduce((acc, c) => acc + c.amount, 0);
@@ -698,8 +701,8 @@ export function ReportsPage() {
     month,
     year,
     customValid,
-    customStart,
-    customEnd,
+    debouncedCustomStart,
+    debouncedCustomEnd,
     incomes,
     expenses,
   ]);

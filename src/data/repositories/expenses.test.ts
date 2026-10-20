@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { listAllExpenses, listExpensesByMonth } from "./expenses";
+import { listAllExpenses, listExpensesByMonth, listExpensesByRange } from "./expenses";
 
 interface Builder {
   select: ReturnType<typeof vi.fn>;
@@ -7,6 +7,7 @@ interface Builder {
   gte: ReturnType<typeof vi.fn>;
   lt: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
+  abortSignal: ReturnType<typeof vi.fn>;
   then: (onFulfilled: (value: unknown) => unknown) => Promise<unknown>;
 }
 
@@ -17,6 +18,7 @@ function makeBuilder(result: unknown): Builder {
     gte: vi.fn(),
     lt: vi.fn(),
     order: vi.fn(),
+    abortSignal: vi.fn(),
     then: (onFulfilled: (value: unknown) => unknown) => Promise.resolve(result).then(onFulfilled),
   } as Builder;
   // Encadeamento: cada método retorna o próprio builder.
@@ -25,6 +27,7 @@ function makeBuilder(result: unknown): Builder {
   builder.gte.mockReturnValue(builder);
   builder.lt.mockReturnValue(builder);
   builder.order.mockReturnValue(builder);
+  builder.abortSignal.mockReturnValue(builder);
   return builder;
 }
 
@@ -117,5 +120,34 @@ describe("listExpensesByMonth (repository — conversão de borda)", () => {
     const expenses = await listAllExpenses();
     expect(builder.gte).not.toHaveBeenCalled();
     expect(expenses[0]).toMatchObject({ value: 100, date: "2026-01-10" });
+  });
+
+  describe("listExpensesByRange (AbortController & Cancelamento)", () => {
+    it("passa o signal para o builder via abortSignal", async () => {
+      const ac = new AbortController();
+      await listExpensesByRange("2026-01-01", "2026-02-01", { signal: ac.signal });
+      expect(builder.abortSignal).toHaveBeenCalledWith(ac.signal);
+      expect(builder.gte).toHaveBeenCalledWith("date", "2026-01-01");
+      expect(builder.lt).toHaveBeenCalledWith("date", "2026-02-01");
+    });
+
+    it("rejeita com AbortError imediatamente se o signal já estiver abortado", async () => {
+      const ac = new AbortController();
+      ac.abort();
+      await expect(
+        listExpensesByRange("2026-01-01", "2026-02-01", { signal: ac.signal }),
+      ).rejects.toThrow("aborted");
+      expect(builder.select).not.toHaveBeenCalled();
+    });
+
+    it("propaga AbortError se a requisição do Supabase retornar erro de abort", async () => {
+      const ac = new AbortController();
+      builder = makeBuilder({
+        data: null,
+        error: { message: "AbortError: This operation was aborted", code: "" },
+      });
+      const promise = listExpensesByRange("2026-01-01", "2026-02-01", { signal: ac.signal });
+      await expect(promise).rejects.toThrow("aborted");
+    });
   });
 });

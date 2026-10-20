@@ -320,7 +320,7 @@ Ao término de cada fase, é **obrigatória** a passagem pelos dois portões de 
   - **Verificação Final:** `npm run typecheck && npm run lint`.
   - **Commit Atômico:** `perf(cards): batch card statement imports in 250-item chunks (task 4.2)`.
 
-- [ ] **Tarefa 4.3 — Cancelamento com AbortController e Debounce em Consultas de Relatórios**
+- [x] **Tarefa 4.3 — Cancelamento com AbortController e Debounce em Consultas de Relatórios**
   - **Revisão do Plano:** Inspecionar `listExpensesByRange` e `listIncomesByRange` em `src/data/repositories/` e os hooks de relatórios.
   - **Implementação:**
     - Assegurar que consultas de relatórios por período customizado utilizem o `signal` do TanStack Query (`signal: AbortSignal`) passado para a requisição do Supabase, cancelando requisições anteriores se o usuário mudar a data rapidamente;
