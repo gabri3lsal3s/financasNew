@@ -698,6 +698,95 @@ describe("Tarefa 3.1 — Otimização de RLS Subplan Caching (InitPlan) (Migrati
   });
 });
 
+describe("Tarefa 3.2 — Encapsulamento Escalar das Checagens Modulares SaaS (Migration 0051)", () => {
+  it("migration 0051 existe, define can_current_user_read_module e can_current_user_write_module com security definer e search_path", () => {
+    const migration51 = readFileSync(
+      resolve(root, "supabase/migrations/20260101000051_encapsulate_saas_modular_checks_scalar.sql"),
+      "utf8",
+    );
+    expect(migration51).toMatch(/create or replace function public\.can_current_user_read_module/i);
+    expect(migration51).toMatch(/can_current_user_read_module[\s\S]*?security definer[\s\S]*?set search_path = public, pg_temp/i);
+    expect(migration51).toMatch(/revoke all on function public\.can_current_user_read_module\(text\) from public;/i);
+    expect(migration51).toMatch(/grant execute on function public\.can_current_user_read_module\(text\) to authenticated;/i);
+  });
+
+  it("100% das checagens de is_current_user_active, can_current_user_read_module, can_current_user_write_module e is_admin nas policies ativas utilizam nós escalares (select ...)", () => {
+    const files = readdirSync(resolve(root, "supabase/migrations")).filter((f) => f.endsWith(".sql")).sort();
+    const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
+      .map((m) => m[1]?.toLowerCase())
+      .filter((name): name is string => Boolean(name));
+    const tables = new Set(createdMatches);
+    const activePolicies: Map<string, Map<string, string>> = new Map();
+    for (const t of tables) activePolicies.set(t, new Map());
+
+    for (const file of files) {
+      const content = readFileSync(resolve(root, "supabase/migrations", file), "utf8");
+      const stmts = content.split(";").map((s) => s.trim()).filter(Boolean);
+      for (const s of stmts) {
+        const dropMatches = [...s.matchAll(/drop\s+policy\s+(?:if\s+exists\s+)?"?([^"\s;]+)"?\s+on\s+public\.([a-zA-Z0-9_]+)/gi)];
+        for (const dm of dropMatches) {
+          const pName = dm[1]?.replace(/"/g, "");
+          const tbl = dm[2]?.toLowerCase();
+          if (pName && tbl) {
+            activePolicies.get(tbl)?.delete(pName);
+          }
+        }
+
+        const createMatches = [...s.matchAll(/create\s+policy\s+"([^"]+)"\s+on\s+public\.([a-zA-Z0-9_]+)\s+([^;]+)/gi)];
+        for (const cm of createMatches) {
+          const pName = cm[1];
+          const tbl = cm[2]?.toLowerCase();
+          const rest = cm[3] ?? "";
+          if (pName && tbl) {
+            activePolicies.get(tbl)?.set(pName, rest);
+          }
+        }
+      }
+    }
+
+    const rawActiveUserPolicies: string[] = [];
+    const rawReadModulePolicies: string[] = [];
+    const rawWriteModulePolicies: string[] = [];
+    const rawAdminPolicies: string[] = [];
+
+    for (const [table, polMap] of activePolicies.entries()) {
+      for (const [policyName, body] of polMap.entries()) {
+        const identifier = `${table}.${policyName}`;
+
+        if (/is_current_user_active\(\)/i.test(body)) {
+          if (!/\(\s*select\s+public\.is_current_user_active\(\)\s*\)/i.test(body)) {
+            rawActiveUserPolicies.push(identifier);
+          }
+        }
+
+        if (/can_current_user_read_module/i.test(body)) {
+          if (!/\(\s*select\s+public\.can_current_user_read_module\([^)]+\)\s*\)/i.test(body)) {
+            rawReadModulePolicies.push(identifier);
+          }
+        }
+
+        if (/can_current_user_write_module/i.test(body)) {
+          if (!/\(\s*select\s+public\.can_current_user_write_module\([^)]+\)\s*\)/i.test(body)) {
+            rawWriteModulePolicies.push(identifier);
+          }
+        }
+
+        if (/is_admin\(\)/i.test(body)) {
+          if (!/\(\s*select\s+public\.is_admin\(\)\s*\)/i.test(body)) {
+            rawAdminPolicies.push(identifier);
+          }
+        }
+      }
+    }
+
+    expect(rawActiveUserPolicies, "Policies com is_current_user_active() não encapsulado em subquery").toEqual([]);
+    expect(rawReadModulePolicies, "Policies com can_current_user_read_module(...) não encapsulado em subquery").toEqual([]);
+    expect(rawWriteModulePolicies, "Policies com can_current_user_write_module(...) não encapsulado em subquery").toEqual([]);
+    expect(rawAdminPolicies, "Policies com is_admin() não encapsulado em subquery").toEqual([]);
+  });
+});
+
+
 
 
 

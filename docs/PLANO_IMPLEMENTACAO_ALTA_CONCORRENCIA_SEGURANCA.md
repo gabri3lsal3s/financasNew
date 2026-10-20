@@ -236,10 +236,10 @@ Ao término de cada fase, é **obrigatória** a passagem pelos dois portões de 
   - **Verificação Final:** `npm run typecheck && npm run lint`.
   - **Commit Atômico:** `perf(db): normalize RLS policies to use scalar subplans for InitPlan optimization (task 3.1)`.
 
-- [ ] **Tarefa 3.2 — Encapsulamento Escalar das Checagens Modulares SaaS**
+- [x] **Tarefa 3.2 — Encapsulamento Escalar das Checagens Modulares SaaS**
   - **Revisão do Plano:** Inspecionar as policies criadas na migração 0041/0046 que invocam `is_current_user_active()` e `can_current_user_read_module()`.
   - **Implementação:**
-    - Na mesma migração 0049, encapsular as chamadas de funções de autorização em nós escalares:
+    - Na migração `supabase/migrations/20260101000051_encapsulate_saas_modular_checks_scalar.sql`, criar a função de leitura `public.can_current_user_read_module(p_module_key text)` e encapsular as chamadas de funções de autorização em nós escalares:
       ```sql
       using (
         (select auth.uid()) = user_id
