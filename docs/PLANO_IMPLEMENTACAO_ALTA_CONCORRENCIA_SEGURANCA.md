@@ -170,7 +170,7 @@ Ao término de cada fase, é **obrigatória** a passagem pelos dois portões de 
   - **Verificação Final:** `npm run typecheck && npm run lint`.
   - **Commit Atômico:** `fix(quotes): remove concurrent client-side brapi requests on portfolio load (task 2.1)`.
 
-- [ ] **Tarefa 2.2 — Priorização Estrita da Tabela `asset_prices` e Fallback Offline**
+- [x] **Tarefa 2.2 — Priorização Estrita da Tabela `asset_prices` e Fallback Offline**
   - **Revisão do Plano:** Inspecionar `listAssetPrices` e `consolidateAssetPrices` em `src/data/repositories/asset-prices.ts`.
   - **Implementação:**
     - Garantir que `listAssetPrices()` utilize o índice cobridor existente `idx_portfolio_assets_user_covering` e leia apenas da tabela `asset_prices`.

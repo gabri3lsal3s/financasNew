@@ -49,9 +49,17 @@ function makeBuilder(result: unknown): Builder {
 }
 
 let builder: Builder;
+let assetBuilder: Builder | null = null;
 
 vi.mock("@/data/client", () => ({
-  getSupabase: () => ({ from: () => builder }),
+  getSupabase: () => ({
+    from: (table: string) => {
+      if (table === "portfolio_assets" && assetBuilder) {
+        return assetBuilder;
+      }
+      return builder;
+    },
+  }),
 }));
 
 vi.mock("@/data/session", () => ({
@@ -63,6 +71,7 @@ describe("asset-prices repository (Fase 4 — valoração §1.6)", () => {
     lastInsertInput = null;
     lastDeleteCalls = [];
     lastInCalls = [];
+    assetBuilder = null;
   });
 
   it("listAssetPrices busca cache global + overrides do usuário", async () => {
@@ -150,6 +159,68 @@ describe("asset-prices repository (Fase 4 — valoração §1.6)", () => {
   it("propaga erro classificado quando a leitura falha", async () => {
     builder = makeBuilder({ data: null, error: { message: "network down", code: "NETWORK_ERROR" } });
     await expect(listAssetPrices()).rejects.toThrow();
+  });
+
+  it("utiliza fallback seguro de preço médio para ticker não encontrado na tabela asset_prices", async () => {
+    builder = makeBuilder({
+      data: [{ ticker: "AAPL", price: "200", currency: "USD", source: "api", manual_price: null }],
+    });
+    assetBuilder = makeBuilder({
+      data: [
+        { ticker: "AAPL", currency: "USD", average_price: 150, asset_class: "Internacional" },
+        { ticker: "WEGE3", currency: "BRL", average_price: 38.5, asset_class: "Ações" },
+      ],
+    });
+
+    const rows = await listAssetPrices();
+    expect(rows).toHaveLength(2);
+
+    const aapl = rows.find((r) => r.ticker === "AAPL");
+    const wege3 = rows.find((r) => r.ticker === "WEGE3");
+
+    expect(aapl).toMatchObject({ ticker: "AAPL", price: 200, currency: "USD", source: "api" });
+    expect(wege3).toMatchObject({ ticker: "WEGE3", price: 38.5, currency: "BRL", source: "fallback" });
+  });
+
+  it("não lança exceção e ativa fallback offline quando asset_prices estiver vazia", async () => {
+    builder = makeBuilder({ data: [] });
+    assetBuilder = makeBuilder({
+      data: [
+        { ticker: "VALE3", currency: "BRL", average_price: 62.0, asset_class: "Ações" },
+        { ticker: "CAIXA", currency: "BRL", average_price: 0, asset_class: "Caixa" },
+      ],
+    });
+
+    const rows = await listAssetPrices();
+    expect(rows).toHaveLength(2);
+
+    const vale3 = rows.find((r) => r.ticker === "VALE3");
+    const caixa = rows.find((r) => r.ticker === "CAIXA");
+
+    expect(vale3).toMatchObject({ ticker: "VALE3", price: 62.0, source: "fallback" });
+    expect(caixa).toMatchObject({ ticker: "CAIXA", price: 1, source: "fallback" });
+  });
+
+  it("degrada graciosamente para fallback offline quando asset_prices sofre erro de rede", async () => {
+    builder = makeBuilder({ data: null, error: { message: "Failed to fetch", code: "NETWORK_ERROR" } });
+    assetBuilder = makeBuilder({
+      data: [{ ticker: "PETR4", currency: "BRL", average_price: 41.5, asset_class: "Ações" }],
+    });
+
+    const rows = await listAssetPrices();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ ticker: "PETR4", price: 41.5, source: "fallback" });
+  });
+
+  it("aceita knownAssets em memória evitando consulta redundante ao banco", async () => {
+    builder = makeBuilder({ data: [] });
+
+    const rows = await listAssetPrices([
+      { ticker: "BBDC4", currency: "BRL", average_price: 14.5, asset_class: "Ações" },
+    ]);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ ticker: "BBDC4", price: 14.5, source: "fallback" });
   });
 });
 

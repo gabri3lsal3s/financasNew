@@ -2,7 +2,11 @@ import { getSupabase } from "@/data/client";
 import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
 import { AppError, classifyError } from "@/services/errors";
-import { inferCurrencyFromTicker } from "@/domain/portfolio";
+import {
+  fallbackPriceFor,
+  inferCurrencyFromTicker,
+  isCashAssetClass,
+} from "@/domain/portfolio";
 import type { AssetCurrency } from "@/types";
 
 /**
@@ -16,7 +20,7 @@ export type ManualPriceInput = {
   price: number;
 };
 
-/** Preço de mercado de um ativo: cache global + override manual do usuário. */
+/** Preço de mercado de um ativo: cache global + override manual do usuário + fallback offline. */
 export interface AssetPriceRow {
   ticker: string;
   price: number;
@@ -24,6 +28,12 @@ export interface AssetPriceRow {
   source: "api" | "fallback" | "manual";
   manual_price: number | null;
 }
+
+const SOURCE_PRIORITY: Record<AssetPriceRow["source"], number> = {
+  manual: 3,
+  api: 2,
+  fallback: 1,
+};
 
 function mapRow(row: {
   ticker: string;
@@ -42,9 +52,43 @@ function mapRow(row: {
 }
 
 /**
+ * Constrói linhas de fallback resiliente a partir de ativos conhecidos da custódia.
+ * Utiliza o preço médio do ativo ou o valor nominal estático sem lançar exceções.
+ */
+function buildFallbackRows(
+  assets: Array<{
+    ticker: string;
+    currency?: AssetCurrency;
+    average_price?: number | string | null;
+    asset_class?: string | null;
+  }>,
+): AssetPriceRow[] {
+  return assets
+    .filter((a) => a.ticker && a.ticker.trim().length > 0)
+    .map((a) => {
+      const normalizedTicker = a.ticker.trim().toUpperCase();
+      const avg = Number(a.average_price ?? 0);
+      const isCash = isCashAssetClass(a.asset_class) || normalizedTicker === "CAIXA";
+      const currency = a.currency ?? inferCurrencyFromTicker(normalizedTicker);
+      const nominal = isCash ? 1 : fallbackPriceFor(currency);
+      const price = avg > 0 ? avg : nominal;
+
+      return {
+        ticker: normalizedTicker,
+        price,
+        currency,
+        source: "fallback" as const,
+        manual_price: null,
+      };
+    });
+}
+
+/**
  * Consolida as linhas de preços por ticker:
- * 1. Linhas manuais do usuário (`source === 'manual'`) prevalecem sobre cache global (`source === 'api'`);
- * 2. Se a cotação global falhar ou vier zerada, o override manual do usuário nunca é sobrescrito.
+ * 1. Linhas manuais do usuário (`source === 'manual'`) prevalecem sobre cache global (`source === 'api'`) e fallback;
+ * 2. Cotação de API positiva (`price > 0`) prevalece sobre fallback estático;
+ * 3. Se a cotação da API falhar ou vier zerada, o fallback positivo (preço médio ou nominal) é mantido;
+ * 4. O override manual do usuário nunca é sobrescrito.
  */
 export function consolidateAssetPrices(rows: AssetPriceRow[]): AssetPriceRow[] {
   const map = new Map<string, AssetPriceRow>();
@@ -54,44 +98,113 @@ export function consolidateAssetPrices(rows: AssetPriceRow[]): AssetPriceRow[] {
     if (!existing) {
       map.set(key, {
         ...row,
-        manual_price: row.source === "manual" ? (row.manual_price ?? (row.price > 0 ? row.price : null)) : row.manual_price,
+        manual_price:
+          row.source === "manual"
+            ? (row.manual_price ?? (row.price > 0 ? row.price : null))
+            : row.manual_price,
       });
       continue;
     }
 
+    const rowPriority = SOURCE_PRIORITY[row.source] ?? 0;
+    const existingPriority = SOURCE_PRIORITY[existing.source] ?? 0;
+
+    // 1. Manual tem prioridade absoluta
     if (row.source === "manual") {
       map.set(key, {
         ...row,
         manual_price: row.manual_price ?? (row.price > 0 ? row.price : null),
       });
-    } else if (existing.source !== "manual") {
+      continue;
+    }
+    if (existing.source === "manual") {
+      continue;
+    }
+
+    // 2. Se a nova linha tem maior prioridade (ex: api sobre fallback)
+    if (rowPriority > existingPriority) {
+      if (row.price > 0 || existing.price <= 0) {
+        map.set(key, row);
+      }
+      continue;
+    }
+
+    // 3. Se a linha existente tem maior prioridade (ex: api sobre fallback)
+    if (existingPriority > rowPriority) {
+      // Se a cotação existente de API estiver zerada/inválida, permite fallback com preço positivo
       if (existing.price <= 0 && row.price > 0) {
         map.set(key, row);
       }
+      continue;
+    }
+
+    // 4. Mesma prioridade (ex: api com api, ou fallback com fallback)
+    if (existing.price <= 0 && row.price > 0) {
+      map.set(key, row);
     }
   }
-  return Array.from(map.values());
+  return Array.from(map.values()).sort((a, b) => a.ticker.localeCompare(b.ticker));
 }
 
 /**
- * Lista os preços relevantes para o usuário: cache global (user_id NULL)
- * e overrides manuais do próprio usuário. A resolução do pipeline
- * (manual → api → fallback) acontece no domínio (`domain/portfolio`).
+ * Lista os preços relevantes para o usuário:
+ * 1. Prioridade estrita da tabela `asset_prices`: cache global (user_id NULL) e overrides do usuário;
+ * 2. Fallback offline resiliente: se a tabela `asset_prices` estiver vazia para um ticker
+ *    ou houver falha de rede/offline, utiliza os ativos da custódia do usuário
+ *    (via índice cobridor `idx_portfolio_assets_user_covering`) com preço médio ou valor nominal.
+ * Nunca lança exceção bloqueante se houver ativos ou possibilidade de degradação graciosa.
  */
-export async function listAssetPrices(): Promise<AssetPriceRow[]> {
+export async function listAssetPrices(
+  knownAssets?: Array<{
+    ticker: string;
+    currency?: AssetCurrency;
+    average_price?: number | string | null;
+    asset_class?: string | null;
+  }>,
+): Promise<AssetPriceRow[]> {
   const user_id = await currentUserId();
-  const { data, error } = await resolveQuery<AssetPriceRow[]>(
+
+  // 1. Prioridade estrita: leitura da tabela asset_prices
+  const pricePromise = resolveQuery<AssetPriceRow[]>(
     getSupabase()
       .from("asset_prices")
       .select("ticker, price, currency, source, manual_price")
       .or(`user_id.is.null,user_id.eq.${user_id}`),
   );
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
+
+  // 2. Busca ativos da custódia em portfolio_assets aproveitando idx_portfolio_assets_user_covering
+  const assetPromise = knownAssets
+    ? Promise.resolve({ data: knownAssets, error: null })
+    : resolveQuery<
+        Array<{
+          ticker: string;
+          currency: AssetCurrency;
+          average_price: number | string | null;
+          asset_class: string | null;
+        }>
+      >(
+        getSupabase()
+          .from("portfolio_assets")
+          .select("ticker, currency, average_price, asset_class")
+          .eq("user_id", user_id),
+      );
+
+  const [priceRes, assetRes] = await Promise.all([pricePromise, assetPromise]);
+
+  // Se a tabela asset_prices falhou (ex: offline ou erro de rede)
+  if (priceRes.error) {
+    if (assetRes.data && assetRes.data.length > 0) {
+      const fallbackRows = buildFallbackRows(assetRes.data);
+      return consolidateAssetPrices(fallbackRows);
+    }
+    const classified = classifyError(priceRes.error);
+    throw new AppError(classified.kind, classified.message, priceRes.error);
   }
-  const mapped = (data ?? []).map(mapRow);
-  return consolidateAssetPrices(mapped);
+
+  const mappedPrices = (priceRes.data ?? []).map(mapRow);
+  const fallbackRows = buildFallbackRows(assetRes.data ?? []);
+
+  return consolidateAssetPrices([...fallbackRows, ...mappedPrices]);
 }
 
 /**

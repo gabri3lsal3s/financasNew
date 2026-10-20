@@ -4,6 +4,7 @@ import { formatCentsAsBRL } from "@/services/masks";
 import { bestPurchaseDay, cardLimitUsage } from "@/domain/cards";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { cn } from "@/lib/utils";
+import { getCardGradient } from "./credit-card-gradient";
 import type { CreditCard } from "@/types";
 
 export interface CreditCard3DProps {
@@ -64,21 +65,9 @@ function EmvChip({ className }: { className?: string }) {
 }
 
 /**
- * Gera gradiente suave com base na cor do cartão.
- */
-function getCardGradient(colorHex?: string | null): string {
-  if (!colorHex || colorHex.trim() === "") {
-    return "linear-gradient(135deg, #162432 0%, #0F172A 100%)";
-  }
-
-  const hex = colorHex.trim();
-  return `linear-gradient(135deg, ${hex}EE 0%, ${hex}99 40%, #090e15 100%)`;
-}
-
-/**
  * Renderiza a marca/bandeira com acabamento minimalista.
  */
-function CardBrandBadge({ brand, name }: { brand?: string | null; name: string }) {
+export function CardBrandBadge({ brand, name }: { brand?: string | null; name: string }) {
   const brandName = (brand || name || "").toLowerCase();
 
   if (brandName.includes("visa")) {
@@ -105,6 +94,14 @@ function CardBrandBadge({ brand, name }: { brand?: string | null; name: string }
         <span className="text-rose-500">l</span>
         <span className="text-sky-400">o</span>
       </div>
+    );
+  }
+
+  if (brandName.includes("amex") || brandName.includes("american")) {
+    return (
+      <span className="font-sans font-bold text-xs tracking-wider text-sky-200 border border-sky-300/40 px-1.5 py-0.5 rounded">
+        AMEX
+      </span>
     );
   }
 
