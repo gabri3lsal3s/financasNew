@@ -632,6 +632,73 @@ describe("Tarefa 1.4 — Regressão Automatizada de Headers de Segurança e Cach
   });
 });
 
+describe("Tarefa 3.1 — Otimização de RLS Subplan Caching (InitPlan) (Migration 0050)", () => {
+  it("migration 0050 existe e documenta a otimização de nós InitPlan pelo PostgreSQL planner", () => {
+    const migration50 = readFileSync(
+      resolve(root, "supabase/migrations/20260101000050_rls_subplan_caching_performance.sql"),
+      "utf8",
+    );
+    expect(migration50).toMatch(/InitPlan/i);
+    expect(migration50).toMatch(/\(select auth\.uid\(\)\)/);
+  });
+
+  it("100% das policies ativas no banco utilizam (select auth.uid()) para caching escalar de subplan", () => {
+    const files = readdirSync(resolve(root, "supabase/migrations")).filter((f) => f.endsWith(".sql")).sort();
+    const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
+      .map((m) => m[1]?.toLowerCase())
+      .filter((name): name is string => Boolean(name));
+    const tables = new Set(createdMatches);
+    const activePolicies: Map<string, Map<string, string>> = new Map();
+    for (const t of tables) activePolicies.set(t, new Map());
+
+    for (const file of files) {
+      const content = readFileSync(resolve(root, "supabase/migrations", file), "utf8");
+      const stmts = content.split(";").map((s) => s.trim()).filter(Boolean);
+      for (const s of stmts) {
+        const dropMatches = [...s.matchAll(/drop\s+policy\s+(?:if\s+exists\s+)?"?([^"\s;]+)"?\s+on\s+public\.([a-zA-Z0-9_]+)/gi)];
+        for (const dm of dropMatches) {
+          const pName = dm[1]?.replace(/"/g, "");
+          const tbl = dm[2]?.toLowerCase();
+          if (pName && tbl) {
+            activePolicies.get(tbl)?.delete(pName);
+          }
+        }
+
+        const createMatches = [...s.matchAll(/create\s+policy\s+"([^"]+)"\s+on\s+public\.([a-zA-Z0-9_]+)\s+([^;]+)/gi)];
+        for (const cm of createMatches) {
+          const pName = cm[1];
+          const tbl = cm[2]?.toLowerCase();
+          const rest = cm[3] ?? "";
+          if (pName && tbl) {
+            activePolicies.get(tbl)?.set(pName, rest);
+          }
+        }
+      }
+    }
+
+    let totalActivePolicies = 0;
+    const nonInitPlanPolicies: { table: string; policy: string; body: string }[] = [];
+
+    for (const [table, polMap] of activePolicies.entries()) {
+      for (const [policyName, body] of polMap.entries()) {
+        totalActivePolicies++;
+        // Substitui todas as ocorrências de (select auth.uid()) para verificar se sobra algum auth.uid() cru
+        const stripped = body.replace(/\(\s*select\s+auth\.uid\(\)\s*\)/gi, "__INITPLAN__");
+        if (/auth\.uid\(\)/i.test(stripped)) {
+          nonInitPlanPolicies.push({ table, policy: policyName, body });
+        }
+      }
+    }
+
+    expect(totalActivePolicies).toBeGreaterThanOrEqual(90);
+    expect(
+      nonInitPlanPolicies,
+      `Policies que ainda utilizam auth.uid() volátil sem subquery escalar (select auth.uid()): ${JSON.stringify(nonInitPlanPolicies, null, 2)}`,
+    ).toEqual([]);
+  });
+});
+
+
 
 
 

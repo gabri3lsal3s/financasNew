@@ -220,11 +220,11 @@ Ao término de cada fase, é **obrigatória** a passagem pelos dois portões de 
 ### FASE 3: Otimização de Banco de Dados Supabase — RLS Subplan Caching & Encapsulamento Modular
 > **Objetivo:** Otimizar as políticas RLS para utilizar nós `InitPlan` no PostgreSQL (`(select auth.uid())`), cortando em até 90% o tempo de CPU do banco de dados sob centenas de consultas simultâneas.
 
-- [ ] **Tarefa 3.1 — Criação da Migration SQL de Normalização de RLS (`InitPlan`)**
+- [x] **Tarefa 3.1 — Criação da Migration SQL de Normalização de RLS (`InitPlan`)**
   - **Revisão do Plano:** Varrer migrações SQL mapeando todas as policies que ainda possuem `auth.uid() = user_id` ou `auth.uid() = id` direto.
   - **Implementação:**
-    - Criar `supabase/migrations/20260101000049_rls_subplan_caching_performance.sql`;
-    - Redefinir as policies de leitura e escrita das tabelas centrais (`expenses`, `incomes`, `categories`, `credit_cards`, `debts`, `budgets`, `portfolio_assets`, `portfolio_transactions`, `portfolio_contributions`, `portfolio_snapshots`, `loans`, `cash_checkpoints`, `user_preferences`) substituindo predicados voláteis por subqueries escalares:
+    - Criar `supabase/migrations/20260101000050_rls_subplan_caching_performance.sql` (sequencial a 0049);
+    - Redefinir as policies de leitura e escrita das tabelas centrais (`expenses`, `incomes`, `categories`, `credit_cards`, `debts`, `budgets`, `portfolio_assets`, `portfolio_transactions`, `portfolio_contributions`, `portfolio_snapshots`, `loans`, `cash_checkpoints`, `user_preferences`, `profiles`, `asset_prices`, etc.) substituindo predicados voláteis por subqueries escalares:
       ```sql
       -- Padrão de Alta Performance:
       using ((select auth.uid()) = user_id)
