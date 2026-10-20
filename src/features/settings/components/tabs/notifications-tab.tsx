@@ -31,6 +31,7 @@ import {
   useBankAssistantPreferences,
   isNotificationListenerGranted,
   requestNotificationListenerPermission,
+  getInstalledBankingApps,
   isNativePlatform,
 } from "@/services/native";
 import { HOMOLOGATED_BANKS } from "@/domain/notifications";
@@ -149,11 +150,15 @@ export function NotificationsTab() {
 
   const { preferences: bankPrefs, updatePreferences: updateBankPrefs } = useBankAssistantPreferences();
   const [listenerPermissionGranted, setListenerPermissionGranted] = useState(true);
+  const [installedBanks, setInstalledBanks] = useState<string[]>([]);
 
   useEffect(() => {
     if (isNativePlatform()) {
       void isNotificationListenerGranted().then((granted) => {
         setListenerPermissionGranted(granted);
+      });
+      void getInstalledBankingApps().then((res) => {
+        setInstalledBanks(res.installedBankNames);
       });
     }
   }, []);
@@ -269,6 +274,19 @@ export function NotificationsTab() {
     pushToast({
       title: "Todos os bancos desmarcados",
       description: "Nenhum banco está selecionado para captura.",
+    });
+  };
+
+  const handleSelectOnlyInstalledBanks = () => {
+    if (installedBanks.length === 0) return;
+    updateBankPrefs({ monitoredBanks: installedBanks });
+    updateCustomSettingsMutation.mutate({
+      bankAssistant: { monitoredBanks: installedBanks },
+    });
+    pushToast({
+      title: "Bancos instalados selecionados",
+      description: `${installedBanks.length} aplicativo(s) bancário(s) detectado(s) no dispositivo estão sendo monitorados.`,
+      variant: "success",
     });
   };
 
@@ -615,7 +633,17 @@ export function NotificationsTab() {
                         Selecione quais instituições financeiras devem gerar sugestões de compras e Pix.
                       </p>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {installedBanks.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={handleSelectOnlyInstalledBanks}
+                          className="text-[11px] h-7 px-2 text-primary hover:text-primary-hover font-medium"
+                        >
+                          Apenas instalados ({installedBanks.length})
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="xs"
@@ -638,6 +666,7 @@ export function NotificationsTab() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-1">
                     {HOMOLOGATED_BANKS.map((bank) => {
                       const isChecked = bankPrefs.monitoredBanks.includes(bank);
+                      const isInstalled = installedBanks.includes(bank);
                       return (
                         <div
                           key={bank}
@@ -657,7 +686,14 @@ export function NotificationsTab() {
                               : "border-border bg-surface hover:bg-surface-hover text-muted-foreground",
                           )}
                         >
-                          <span className="truncate pr-1.5">{bank}</span>
+                          <div className="flex items-center gap-1.5 min-w-0 pr-1.5">
+                            <span className="truncate">{bank}</span>
+                            {isInstalled && (
+                              <Badge variant="positive" size="xs">
+                                Instalado
+                              </Badge>
+                            )}
+                          </div>
                           <Checkbox
                             checked={isChecked}
                             onCheckedChange={(checked) => handleToggleBank(bank, Boolean(checked))}

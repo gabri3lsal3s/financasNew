@@ -368,4 +368,31 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
       expect(parsePixShareText(fakeReceipt)).toBeNull();
     });
   });
+
+  describe("Anti-falsos positivos estritos (caso Calçados Tobias & apps não homologados)", () => {
+    it("rejeita notificações de apps desconhecidos sem banco homologado", () => {
+      const parsed = parseBankNotification({
+        packageName: "com.whatsapp",
+        title: "Mensagem de Contato",
+        text: "Paguei R$ 55,80 na Calçados Tobias BLTDA",
+      });
+      expect(parsed).toBeNull();
+    });
+
+    it("rejeita notificações promocionais ou de pedidos sem prova de transação aprovada", () => {
+      const parsed = parseBankNotification({
+        packageName: "com.nu.production",
+        title: "Nubank",
+        text: "Seu pedido 5580 na Calçados Tobias BLTDA foi enviado para transporte",
+      });
+      expect(parsed).toBeNull();
+    });
+
+    it("retorna null em resolveBankName para pacotes não bancários", () => {
+      expect(resolveBankName("com.loja.calcados")).toBeNull();
+      expect(resolveBankName("com.whatsapp")).toBeNull();
+      expect(resolveBankName("com.google.android.apps.messaging")).toBeNull();
+      expect(resolveBankName(undefined, "Calçados Tobias", "Promoção de calçados")).toBeNull();
+    });
+  });
 });

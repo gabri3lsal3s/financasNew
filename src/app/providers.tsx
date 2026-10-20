@@ -13,7 +13,7 @@ import { useDynamicFavicon } from "@/hooks/use-dynamic-favicon";
 import { useDynamicAppIcon } from "@/hooks/use-dynamic-app-icon";
 import { SubscriptionProvider, useIsPro } from "@/state/subscription-context";
 import { AppLockOverlay } from "@/app/app-lock-overlay";
-import { initAppLockListener } from "@/services/native";
+import { initAppLockListener, setPrivacyShieldEnabled } from "@/services/native";
 
 import {
   USER_ACCESS_KEY,
@@ -79,6 +79,9 @@ function CloudPreferencesSync({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (preferences?.custom_settings) {
       syncVisualWithCloud(preferences.custom_settings);
+      if (preferences.custom_settings.privacyShieldEnabled !== undefined) {
+        setPrivacyShieldEnabled(preferences.custom_settings.privacyShieldEnabled);
+      }
     }
   }, [preferences?.custom_settings]);
 

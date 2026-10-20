@@ -164,4 +164,19 @@ describe("suggestions-store (Fila de Sugestões Nativas)", () => {
     addPendingSuggestion(recentSample);
     expect(getPendingSuggestions()).toEqual([recentSample]);
   });
+
+  it("rejeita sugestões com banco genérico Banco ou banco ausente", () => {
+    const invalidBankSample: ParsedBankTransaction = {
+      id: "sug_invalid_bank",
+      bankName: "Banco",
+      type: "expense",
+      amountCents: 5580,
+      description: "calçados Tobias BLTDA",
+      date: "2026-10-16",
+      rawText: "5580 calçados Tobias BLTDA",
+    };
+
+    addPendingSuggestion(invalidBankSample);
+    expect(getPendingSuggestions()).toEqual([]);
+  });
 });

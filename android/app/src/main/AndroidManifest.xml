@@ -95,4 +95,36 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Declaração de pacotes bancários para consulta de apps instalados (Android 11+) -->
+    <queries>
+        <package android:name="com.nu.production" />
+        <package android:name="br.com.intermedium" />
+        <package android:name="com.c6bank.app" />
+        <package android:name="com.mercadopago.wallet" />
+        <package android:name="com.picpay" />
+        <package android:name="br.com.uol.ps" />
+        <package android:name="br.com.uol.ps.myaccount" />
+        <package android:name="br.com.neon" />
+        <package android:name="br.com.bradesco.next" />
+        <package android:name="com.btg.pactual.banking" />
+        <package android:name="com.btgpactual.investimentos" />
+        <package android:name="br.com.xp.carteira" />
+        <package android:name="com.xpinc.investments" />
+        <package android:name="com.nomadfinancial.app" />
+        <package android:name="com.transferwise.android" />
+        <package android:name="com.itau" />
+        <package android:name="com.itau.personnalite" />
+        <package android:name="com.bradesco" />
+        <package android:name="com.santander.app" />
+        <package android:name="br.com.santander.way" />
+        <package android:name="br.gov.caixa.tem" />
+        <package android:name="br.com.gabba.Caixa" />
+        <package android:name="br.com.bb.android" />
+        <package android:name="br.com.sicoob.net" />
+        <package android:name="br.com.sicredi.mobile" />
+        <package android:name="br.com.safra.mobile" />
+        <package android:name="br.com.stone.ton" />
+        <package android:name="co.stone.stone" />
+    </queries>
 </manifest>

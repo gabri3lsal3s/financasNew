@@ -262,4 +262,19 @@ describe("bank-listener (Serviço de Notificações e Pix)", () => {
       expect(scheduleSpy).not.toHaveBeenCalled();
     });
   });
+
+  describe("descoberta de apps instalados e sincronização nativa", () => {
+    it("consulta apps bancários instalados através do plugin nativo", async () => {
+      const { getInstalledBankingApps } = await import("./bank-listener");
+      const result = await getInstalledBankingApps();
+      expect(Array.isArray(result.apps)).toBe(true);
+      expect(Array.isArray(result.installedBankNames)).toBe(true);
+    });
+
+    it("sincroniza lista de bancos monitorados com pacotes nativos", async () => {
+      const { syncMonitoredBanksWithNative } = await import("./bank-listener");
+      const success = await syncMonitoredBanksWithNative(["Nubank", "Itaú"]);
+      expect(success).toBe(true);
+    });
+  });
 });

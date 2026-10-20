@@ -13,9 +13,10 @@ public class BankNotificationListenerService extends NotificationListenerService
 
     public static final String PREFS_NAME = "bank_notifications_prefs";
     public static final String KEY_BUFFER = "pending_notifications_buffer";
+    public static final String KEY_ALLOWED_PACKAGES = "allowed_bank_packages";
     private static final int MAX_BUFFER_SIZE = 30;
 
-    private static final Set<String> MONITORED_BANK_PACKAGES = new HashSet<>(Arrays.asList(
+    public static final Set<String> DEFAULT_MONITORED_PACKAGES = new HashSet<>(Arrays.asList(
         // Fintechs e carteiras digitais
         "com.nu.production",
         "br.com.intermedium",
@@ -33,7 +34,7 @@ public class BankNotificationListenerService extends NotificationListenerService
         "com.nomadfinancial.app",
         "com.transferwise.android",
 
-        // Grandes bancos tradicionais
+        // Grandes bancos tradicionais e cooperativas
         "com.itau",
         "com.itau.personnalite",
         "com.bradesco",
@@ -41,8 +42,29 @@ public class BankNotificationListenerService extends NotificationListenerService
         "br.com.santander.way",
         "br.gov.caixa.tem",
         "br.com.gabba.Caixa",
-        "br.com.bb.android"
+        "br.com.bb.android",
+        "br.com.sicoob.net",
+        "br.com.sicredi.mobile",
+        "br.com.safra.mobile",
+        "br.com.stone.ton",
+        "co.stone.stone"
     ));
+
+    /**
+     * Retorna o conjunto de pacotes bancários autorizados pelo usuário.
+     * Se ainda não houver preferência salva, adota os pacotes padrão homologados.
+     */
+    public Set<String> getAllowedPackages() {
+        try {
+            android.content.SharedPreferences prefs = getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE);
+            Set<String> saved = prefs.getStringSet(KEY_ALLOWED_PACKAGES, null);
+            if (saved != null && !saved.isEmpty()) {
+                return saved;
+            }
+        } catch (Exception ignored) {
+        }
+        return DEFAULT_MONITORED_PACKAGES;
+    }
 
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
@@ -50,6 +72,14 @@ public class BankNotificationListenerService extends NotificationListenerService
 
         String packageName = sbn.getPackageName();
         if (packageName == null) return;
+
+        // REGRA DE OURO ANTI-FALSOS POSITIVOS:
+        // Apenas pacotes de aplicativos bancários explicitamente autorizados são processados.
+        // Qualquer app não bancário (WhatsApp, SMS, Shopee, lojas, etc.) é descartado de imediato.
+        Set<String> allowedPackages = getAllowedPackages();
+        if (!allowedPackages.contains(packageName)) {
+            return;
+        }
 
         Notification notification = sbn.getNotification();
         if (notification == null) return;
@@ -64,12 +94,16 @@ public class BankNotificationListenerService extends NotificationListenerService
         String title = titleChar != null ? titleChar.toString() : "";
         String text = bigTextChar != null ? bigTextChar.toString() : (textChar != null ? textChar.toString() : "");
 
-        boolean isBankPackage = MONITORED_BANK_PACKAGES.contains(packageName);
         String lowerText = text.toLowerCase();
         String lowerTitle = title.toLowerCase();
-        boolean hasFinancialKeyword = text.contains("R$") || lowerText.contains("pix") || lowerTitle.contains("pix");
+        boolean hasFinancialSignal = text.contains("R$") ||
+            lowerText.contains("pix") || lowerTitle.contains("pix") ||
+            lowerText.contains("compra") || lowerTitle.contains("compra") ||
+            lowerText.contains("pago") || lowerText.contains("pagamento") ||
+            lowerText.contains("recebeu") || lowerText.contains("recebimento") ||
+            lowerText.contains("transferência") || lowerText.contains("transferencia");
 
-        if (!isBankPackage && !hasFinancialKeyword) {
+        if (!hasFinancialSignal) {
             return;
         }
 

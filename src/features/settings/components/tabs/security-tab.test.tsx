@@ -17,6 +17,8 @@ vi.mock("@/hooks/use-sign-out", () => ({
   }),
 }));
 
+const mockUpdateCustomSettings = vi.fn();
+
 vi.mock("@/state", () => ({
   usePortfolioPosition: () => ({ rows: [] }),
   useExportData: () => ({ refetch: vi.fn() }),
@@ -29,6 +31,8 @@ vi.mock("@/state", () => ({
   }),
   useCategories: () => ({ data: [] }),
   useCreditCards: () => ({ data: [] }),
+  useUserPreferences: () => ({ data: { custom_settings: { privacyShieldEnabled: false } } }),
+  useUpdateCustomSettings: () => ({ mutate: mockUpdateCustomSettings }),
 }));
 
 vi.mock("@/services/native", async () => {
@@ -100,7 +104,7 @@ describe("SecurityTab - Bloqueio do Aplicativo & Privacidade", () => {
     expect(nativeServices.setBiometricLockEnabled).toHaveBeenCalledWith(true);
   });
 
-  it("permite alternar o Escudo de Privacidade", async () => {
+  it("permite alternar o Escudo de Privacidade e sincronizar na nuvem", async () => {
     const user = userEvent.setup();
     renderSecurityTab();
 
@@ -112,6 +116,7 @@ describe("SecurityTab - Bloqueio do Aplicativo & Privacidade", () => {
     await user.click(privacyCheckbox);
 
     expect(nativeServices.setPrivacyShieldEnabled).toHaveBeenCalledWith(true);
+    expect(mockUpdateCustomSettings).toHaveBeenCalledWith({ privacyShieldEnabled: true });
   });
 
   it("permite alterar o tempo de tolerância para bloqueio quando a biometria está ativada", async () => {

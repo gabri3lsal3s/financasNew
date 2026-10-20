@@ -67,6 +67,8 @@ import {
   useUserAccess,
   useCategories,
   useCreditCards,
+  useUserPreferences,
+  useUpdateCustomSettings,
 } from "@/state";
 
 interface BackupExpenseItem {
@@ -111,13 +113,22 @@ export function SecurityTab() {
   const { user } = useAuth();
   const userAccess = useUserAccess();
   const { signOut } = useSignOut();
+  const userPreferencesQuery = useUserPreferences();
+  const updateCustomSettingsMutation = useUpdateCustomSettings();
 
   // Estados de segurança nativa / app lock
   const [biometricsAvailable, setBiometricsAvailable] = useState<boolean | null>(null);
   const [biometryType, setBiometryType] = useState<string>("none");
   const [bioLockEnabled, setBioLockEnabled] = useState(() => isBiometricLockEnabled());
   const [graceMinutes, setGraceMinutes] = useState(() => String(getAppLockGraceMinutes()));
-  const [privacyEnabled, setPrivacyEnabled] = useState(() => isPrivacyShieldEnabled());
+  const [localPrivacyOverride, setLocalPrivacyOverride] = useState<boolean | null>(null);
+  const cloudPrivacyShield = userPreferencesQuery.data?.custom_settings?.privacyShieldEnabled;
+  const privacyEnabled =
+    localPrivacyOverride !== null
+      ? localPrivacyOverride
+      : cloudPrivacyShield !== undefined
+        ? cloudPrivacyShield
+        : isPrivacyShieldEnabled();
 
   const isNative = isNativePlatform();
   const showBiometrics = isNative || Boolean(biometricsAvailable);
@@ -168,8 +179,9 @@ export function SecurityTab() {
   };
 
   const handleTogglePrivacyShield = async (enabled: boolean) => {
+    setLocalPrivacyOverride(enabled);
     await setPrivacyShieldEnabled(enabled);
-    setPrivacyEnabled(enabled);
+    updateCustomSettingsMutation.mutate({ privacyShieldEnabled: enabled });
     pushToast({
       title: enabled ? "Escudo de privacidade ativado" : "Escudo de privacidade desativado",
       description: enabled

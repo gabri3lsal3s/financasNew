@@ -71,24 +71,60 @@ export const setAppLockGraceMinutes = setBiometricLockTimeoutMinutes;
 
 /**
  * Lê se o Privacy Shield (FLAG_SECURE) está ativado. No nativo, padrão é true.
+ * Suporta cold start quando o activeUserId ainda não foi resolvido lendo a chave ativa espelhada.
  */
 export function isPrivacyShieldEnabled(userId?: string | null): boolean {
-  const val = getUserStorageItem(KEY_PRIVACY_SHIELD, userId);
-  if (val === null) return isNativePlatform();
-  return val === "true";
+  const direct = getUserStorageItem(KEY_PRIVACY_SHIELD, userId);
+  if (direct !== null) return direct === "true";
+
+  if (typeof window !== "undefined") {
+    try {
+      const activeVal = window.localStorage.getItem(`financas_active_${KEY_PRIVACY_SHIELD}`);
+      if (activeVal !== null) return activeVal === "true";
+
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const k = window.localStorage.key(i);
+        if (k && k.startsWith("financas_") && k.endsWith(`_${KEY_PRIVACY_SHIELD}`)) {
+          return window.localStorage.getItem(k) === "true";
+        }
+      }
+    } catch {
+      // no-op
+    }
+  }
+  return isNativePlatform();
 }
 
 /**
- * Define e sincroniza o Privacy Shield.
+ * Define e sincroniza o Privacy Shield com armazenamento local e chave ativa espelhada.
  */
 export function setPrivacyShieldEnabled(enabled: boolean, userId?: string | null): void {
   setUserStorageItem(KEY_PRIVACY_SHIELD, String(enabled), userId);
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(`financas_active_${KEY_PRIVACY_SHIELD}`, String(enabled));
+    } catch {
+      // no-op
+    }
+  }
   if (enabled) {
     void enablePrivacyShield();
   } else {
     void disablePrivacyShield();
   }
   notifyLockListeners();
+}
+
+/**
+ * Sincroniza o Privacy Shield nativo com base na preferência salva.
+ * Garante que tanto a ativação quanto a desativação sejam despachadas para o container nativo.
+ */
+export function syncPrivacyShield(userId?: string | null): void {
+  if (isPrivacyShieldEnabled(userId)) {
+    void enablePrivacyShield();
+  } else {
+    void disablePrivacyShield();
+  }
 }
 
 // ---------- Estado Reativo de Bloqueio em Memória ----------
@@ -153,10 +189,8 @@ export function resetAppLockBackgroundTimer(): void {
  * Ao retornar do background após a tolerância configurada, bloqueia o app.
  */
 export function initAppLockListener(): () => void {
-  // Sincroniza o Privacy Shield na inicialização
-  if (isPrivacyShieldEnabled()) {
-    void enablePrivacyShield();
-  }
+  // Sincroniza o Privacy Shield na inicialização (ativa ou desativa ativamente)
+  syncPrivacyShield();
 
   // No cold start nativo, se a biometria estiver ativa, garante o bloqueio imediato
   if (isNativePlatform() && isBiometricLockEnabled()) {
@@ -191,6 +225,6 @@ export function initAppLockListener(): () => void {
 
   return () => {
     isListenerActive = false;
-    void listenerPromise.then((handle) => handle.remove());
+    void listenerPromise?.then?.((handle) => handle?.remove?.());
   };
 }

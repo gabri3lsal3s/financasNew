@@ -114,12 +114,12 @@ export async function setupInteractiveNotificationActions(): Promise<void> {
           id: BANK_SUGGESTION_ACTION_TYPE_ID,
           actions: [
             {
-              id: ACTION_QUICK_ADD,
-              title: "Adicionar Rápido",
+              id: ACTION_EDIT,
+              title: "Conferir e Salvar",
             },
             {
-              id: ACTION_EDIT,
-              title: "Editar",
+              id: ACTION_QUICK_ADD,
+              title: "Adicionar Rápido",
             },
           ],
         },
@@ -140,7 +140,7 @@ export async function setupInteractiveNotificationActions(): Promise<void> {
 }
 
 /**
- * Emite uma notificação local interativa rica com botões [Adicionar Rápido] e [Editar].
+ * Emite uma notificação local interativa rica com botões [Conferir e Salvar] e [Adicionar Rápido].
  */
 export async function scheduleInteractiveBankNotification(
   transaction: ParsedBankTransaction,
@@ -154,11 +154,11 @@ export async function scheduleInteractiveBankNotification(
 
     let title = "";
     if (transaction.installments && transaction.installments > 1) {
-      title = `Nova compra em ${transaction.installments}x: ${formatCurrencyBRL(transaction.amountCents)}`;
+      title = `Transação detectada (${transaction.installments}x): ${formatCurrencyBRL(transaction.amountCents)}`;
     } else if (transaction.type === "income") {
-      title = `Novo recebimento: ${formatCurrencyBRL(transaction.amountCents)}`;
+      title = `Renda detectada: ${formatCurrencyBRL(transaction.amountCents)}`;
     } else {
-      title = `Nova compra: ${formatCurrencyBRL(transaction.amountCents)}`;
+      title = `Transação detectada: ${formatCurrencyBRL(transaction.amountCents)}`;
     }
 
     const body = `${transaction.description} · ${transaction.bankName} (${formatMethodLabel(transaction.paymentMethod)})`;

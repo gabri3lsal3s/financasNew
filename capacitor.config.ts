@@ -20,6 +20,9 @@ const config: CapacitorConfig = {
     StatusBar: {
       overlaysWebView: true,
     },
+    PrivacyScreen: {
+      enable: false,
+    },
   },
 };
 

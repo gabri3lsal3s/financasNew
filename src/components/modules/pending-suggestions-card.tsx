@@ -109,6 +109,9 @@ export function PendingSuggestionsCard({
           >
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant={sug.type === "income" ? "positive" : "muted"} size="xs">
+                  {sug.type === "income" ? "Renda" : "Despesa"}
+                </Badge>
                 <Badge variant="muted" size="xs">
                   {sug.bankName}
                 </Badge>

@@ -10,6 +10,7 @@ import {
   setBiometricLockEnabled,
   setBiometricLockTimeoutMinutes,
   setPrivacyShieldEnabled,
+  syncPrivacyShield,
   subscribeAppLock,
   unlockAppWithBiometrics,
 } from "./app-lock";
@@ -41,18 +42,47 @@ describe("Gateway Nativo — App Lock & Biometria", () => {
     expect(getBiometricLockTimeoutMinutes()).toBe(5);
   });
 
-  it("gerencia preferência do Privacy Shield", () => {
+  it("gerencia preferência do Privacy Shield e espelho ativo", () => {
     vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
     const enableSpy = vi.spyOn(privacyShieldModule, "enablePrivacyShield").mockResolvedValue(undefined);
     const disableSpy = vi.spyOn(privacyShieldModule, "disablePrivacyShield").mockResolvedValue(undefined);
 
     setPrivacyShieldEnabled(true);
     expect(isPrivacyShieldEnabled()).toBe(true);
+    expect(localStorage.getItem("financas_active_privacy_shield_enabled")).toBe("true");
     expect(enableSpy).toHaveBeenCalled();
 
     setPrivacyShieldEnabled(false);
     expect(isPrivacyShieldEnabled()).toBe(false);
+    expect(localStorage.getItem("financas_active_privacy_shield_enabled")).toBe("false");
     expect(disableSpy).toHaveBeenCalled();
+  });
+
+  it("sincroniza o Privacy Shield chamando enable ou disable explicitamente", () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+    const enableSpy = vi.spyOn(privacyShieldModule, "enablePrivacyShield").mockResolvedValue(undefined);
+    const disableSpy = vi.spyOn(privacyShieldModule, "disablePrivacyShield").mockResolvedValue(undefined);
+
+    localStorage.setItem("financas_active_privacy_shield_enabled", "true");
+    syncPrivacyShield();
+    expect(enableSpy).toHaveBeenCalledTimes(1);
+    expect(disableSpy).not.toHaveBeenCalled();
+
+    localStorage.setItem("financas_active_privacy_shield_enabled", "false");
+    syncPrivacyShield();
+    expect(disableSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("no cold start com preferência desativada, initAppLockListener desativa explicitamente o escudo nativo", () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+    const disableSpy = vi.spyOn(privacyShieldModule, "disablePrivacyShield").mockResolvedValue(undefined);
+
+    // Simula cold start onde o usuário havia desabilitado o escudo anteriormente
+    localStorage.setItem("financas_active_privacy_shield_enabled", "false");
+
+    const cleanup = initAppLockListener();
+    expect(disableSpy).toHaveBeenCalledTimes(1);
+    cleanup();
   });
 
   it("gerencia estado de bloqueio reativo com subscribeAppLock", () => {

@@ -90,6 +90,40 @@ export function normalizeBankPreferences(raw?: unknown): BankAssistantPreference
   };
 }
 
+export const BANK_NAME_TO_PACKAGES: Record<string, string[]> = {
+  Nubank: ["com.nu.production"],
+  Inter: ["br.com.intermedium"],
+  "C6 Bank": ["com.c6bank.app"],
+  "Mercado Pago": ["com.mercadopago.wallet"],
+  PicPay: ["com.picpay"],
+  PagBank: ["br.com.uol.ps", "br.com.uol.ps.myaccount"],
+  Neon: ["br.com.neon"],
+  Next: ["br.com.bradesco.next"],
+  "BTG Pactual": ["com.btg.pactual.banking", "com.btgpactual.investimentos"],
+  "XP Investimentos": ["br.com.xp.carteira", "com.xpinc.investments"],
+  Nomad: ["com.nomadfinancial.app"],
+  Wise: ["com.transferwise.android"],
+  Itaú: ["com.itau", "com.itau.personnalite"],
+  Bradesco: ["com.bradesco"],
+  Santander: ["com.santander.app", "br.com.santander.way"],
+  Caixa: ["br.gov.caixa.tem", "br.com.gabba.Caixa"],
+  "Banco do Brasil": ["br.com.bb.android"],
+};
+
+/**
+ * Retorna todos os pacotes Android associados aos bancos monitorados selecionados.
+ */
+export function getPackagesForMonitoredBanks(monitoredBanks: string[]): string[] {
+  const packages: string[] = [];
+  for (const bank of monitoredBanks) {
+    const pkgs = BANK_NAME_TO_PACKAGES[bank];
+    if (pkgs) {
+      packages.push(...pkgs);
+    }
+  }
+  return packages;
+}
+
 /**
  * Verifica se um banco específico está habilitado para monitoramento nas preferências.
  */
@@ -102,9 +136,9 @@ export function isBankMonitored(
 
   const cleanTarget = bankName.toLowerCase().trim();
 
-  // Se o banco for genérico "Banco" ou desconhecido, só monitora se nenhum banco tiver sido desmarcado
-  if (cleanTarget === "banco") {
-    return preferences.monitoredBanks.length === HOMOLOGATED_BANKS.length;
+  // "Banco" genérico é estritamente rejeitado para evitar falsos positivos de apps desconhecidos
+  if (cleanTarget === "banco" || cleanTarget === "") {
+    return false;
   }
 
   return preferences.monitoredBanks.some(

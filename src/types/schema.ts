@@ -245,6 +245,7 @@ export type UserCustomSettings = {
     monitoredBanks?: string[];
   };
   hideDashboardCents?: boolean;
+  privacyShieldEnabled?: boolean;
 };
 
 export type UserPreferences = {

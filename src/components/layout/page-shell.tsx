@@ -41,12 +41,17 @@ export function PageShell() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Suporte aos atalhos rápidos nativos e de launcher (?novo=despesa, ?novo=receita, ?novo=transacao)
+  // Suporte aos atalhos rápidos nativos, sugestões de bancos e launcher (?novo=despesa, ?novo=receita, ?novo=transacao, ?novo=expense, ?novo=income)
   const novoParam = searchParams.get("novo");
-  const isShortcutNew = novoParam === "transacao" || novoParam === "despesa" || novoParam === "receita";
+  const isShortcutNew =
+    novoParam === "transacao" ||
+    novoParam === "despesa" ||
+    novoParam === "receita" ||
+    novoParam === "expense" ||
+    novoParam === "income";
   const [localWizardOpen, setLocalWizardOpen] = useState(false);
   const wizardOpen = isShortcutNew || localWizardOpen;
-  const initialType = novoParam === "receita" ? "income" : "expense";
+  const initialType = novoParam === "receita" || novoParam === "income" ? "income" : "expense";
 
   const valorParam = searchParams.get("valor");
   const descParam = searchParams.get("descricao") || undefined;

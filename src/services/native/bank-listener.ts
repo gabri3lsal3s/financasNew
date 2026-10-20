@@ -4,18 +4,35 @@ import {
   parsePixShareText,
   resolveBankName,
   isBankMonitored,
+  getPackagesForMonitoredBanks,
   type BankNotificationPayload,
   type ParsedBankTransaction,
 } from "@/domain/notifications";
 import { isNativePlatform } from "./platform";
 import { addPendingSuggestion } from "./suggestions-store";
 import { scheduleInteractiveBankNotification } from "./interactive-notifications";
-import { getBankAssistantPreferences } from "./bank-assistant-preferences";
+import {
+  getBankAssistantPreferences,
+  subscribeBankAssistantPreferences,
+} from "./bank-assistant-preferences";
+
+export interface InstalledBankApp {
+  packageName: string;
+  bankName: string;
+  isInstalled: boolean;
+}
 
 export interface BankNotificationPluginInterface {
   isPermissionGranted(): Promise<{ granted: boolean }>;
   requestPermission(): Promise<{ granted: boolean }>;
   flushPendingNotifications(): Promise<{ notifications: BankNotificationPayload[] }>;
+  getInstalledBankingApps(): Promise<{
+    apps: InstalledBankApp[];
+    installedBankNames: string[];
+  }>;
+  syncMonitoredPackages(options: {
+    packages: string[];
+  }): Promise<{ success: boolean; count: number }>;
   addListener(
     eventName: "bankNotificationReceived",
     listenerFunc: (payload: BankNotificationPayload) => void,
@@ -38,6 +55,12 @@ export const BankNotificationPlugin = registerPlugin<BankNotificationPluginInter
       },
       async flushPendingNotifications() {
         return { notifications: [] };
+      },
+      async getInstalledBankingApps() {
+        return { apps: [], installedBankNames: [] };
+      },
+      async syncMonitoredPackages() {
+        return { success: true, count: 0 };
       },
       async addListener() {
         return { remove: async () => {} };
@@ -63,7 +86,7 @@ export function processBankNotification(
   }
 
   const bankName = resolveBankName(payload.packageName, payload.title, payload.text);
-  if (!isBankMonitored(bankName, prefs)) {
+  if (!bankName || !isBankMonitored(bankName, prefs)) {
     return null;
   }
 
@@ -163,6 +186,41 @@ export async function flushPendingBankNotifications(): Promise<number> {
 }
 
 /**
+ * Consulta a lista de aplicativos bancários homologados instalados no dispositivo móvel do usuário.
+ */
+export async function getInstalledBankingApps(): Promise<{
+  apps: InstalledBankApp[];
+  installedBankNames: string[];
+}> {
+  if (!isNativePlatform()) {
+    return { apps: [], installedBankNames: [] };
+  }
+  try {
+    const result = await BankNotificationPlugin.getInstalledBankingApps();
+    return {
+      apps: result?.apps || [],
+      installedBankNames: result?.installedBankNames || [],
+    };
+  } catch {
+    return { apps: [], installedBankNames: [] };
+  }
+}
+
+/**
+ * Sincroniza a lista de bancos monitorados do usuário diretamente com o serviço nativo Android.
+ */
+export async function syncMonitoredBanksWithNative(monitoredBanks: string[]): Promise<boolean> {
+  if (!isNativePlatform()) return true;
+  try {
+    const packages = getPackagesForMonitoredBanks(monitoredBanks);
+    const result = await BankNotificationPlugin.syncMonitoredPackages({ packages });
+    return Boolean(result?.success);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Inicializa a escuta de eventos nativos de compras e Pix compartilhados.
  * Retorna uma função de desinscrição para limpeza.
  */
@@ -172,6 +230,15 @@ export function initBankNotificationListener(): () => Promise<void> {
   }
 
   isInitialized = true;
+
+  // Sincroniza imediatamente os pacotes autorizados nas preferências com o serviço nativo
+  const prefs = getBankAssistantPreferences();
+  void syncMonitoredBanksWithNative(prefs.monitoredBanks);
+
+  // Inscreve ouvinte para sincronizar pacotes quando o usuário altera as preferências
+  const unsubPrefs = subscribeBankAssistantPreferences((nextPrefs) => {
+    void syncMonitoredBanksWithNative(nextPrefs.monitoredBanks);
+  });
 
   // Esvazia imediatamente o buffer de notificações capturadas em segundo plano
   void flushPendingBankNotifications();
@@ -194,6 +261,7 @@ export function initBankNotificationListener(): () => Promise<void> {
 
   return async () => {
     isInitialized = false;
+    unsubPrefs();
     try {
       const [h1, h2] = await Promise.all([notifHandlePromise, shareHandlePromise]);
       await Promise.all([h1?.remove?.(), h2?.remove?.()]);

@@ -84,6 +84,9 @@ function loadFromStorage(): void {
           typeof item.amountCents === "number" &&
           typeof item.description === "string" &&
           typeof item.date === "string" &&
+          typeof item.bankName === "string" &&
+          item.bankName.trim().toLowerCase() !== "banco" &&
+          item.bankName.trim() !== "" &&
           !isSuggestionExpired(item, now),
       );
     } else {
@@ -124,6 +127,11 @@ export function getPendingSuggestions(): ParsedBankTransaction[] {
 export function addPendingSuggestion(suggestion: ParsedBankTransaction): void {
   ensureLoaded();
   purgeExpiredSuggestions();
+
+  // Rejeita sugestões com banco genérico, inválido ou ausente
+  if (!suggestion.bankName || suggestion.bankName.trim().toLowerCase() === "banco") {
+    return;
+  }
 
   // Não adiciona sugestões que já estejam expiradas
   if (isSuggestionExpired(suggestion)) return;

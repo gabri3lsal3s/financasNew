@@ -260,8 +260,10 @@ export function initNotificationActionListener(
             date: string;
             paymentMethod?: string;
             installments?: number;
+            categorySlug?: string;
             id: string;
           };
+          const inferredSlug = sug.categorySlug || inferCategoryKeyword(sug.description);
           const params = new URLSearchParams({
             novo: sug.type,
             valor: String(sug.amountCents),
@@ -270,6 +272,9 @@ export function initNotificationActionListener(
             forma: sug.paymentMethod || "pix",
             sug_id: sug.id,
           });
+          if (inferredSlug) {
+            params.set("categoria", inferredSlug);
+          }
           if (sug.installments && sug.installments > 1) {
             params.set("parcelas", String(sug.installments));
           }

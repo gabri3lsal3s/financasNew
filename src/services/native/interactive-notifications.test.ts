@@ -128,8 +128,8 @@ describe("interactive-notifications service", () => {
           expect.objectContaining({
             id: BANK_SUGGESTION_ACTION_TYPE_ID,
             actions: [
+              expect.objectContaining({ id: ACTION_EDIT, title: "Conferir e Salvar" }),
               expect.objectContaining({ id: ACTION_QUICK_ADD, title: "Adicionar Rápido" }),
-              expect.objectContaining({ id: ACTION_EDIT, title: "Editar" }),
             ],
           }),
           expect.objectContaining({
@@ -163,7 +163,7 @@ describe("interactive-notifications service", () => {
         notifications: [
           expect.objectContaining({
             id: notifId,
-            title: "Nova compra em 3x: R$ 150,00",
+            title: "Transação detectada (3x): R$ 150,00",
             body: "Tok&Stok · Nubank (Cartão de Crédito)",
             channelId: BANK_SUGGESTION_CHANNEL_ID,
             actionTypeId: BANK_SUGGESTION_ACTION_TYPE_ID,
@@ -193,7 +193,7 @@ describe("interactive-notifications service", () => {
       expect(LocalNotifications.schedule).toHaveBeenCalledWith({
         notifications: [
           expect.objectContaining({
-            title: "Novo recebimento: R$ 250,00",
+            title: "Renda detectada: R$ 250,00",
             body: "Marcos Silva · Inter (Pix)",
           }),
         ],

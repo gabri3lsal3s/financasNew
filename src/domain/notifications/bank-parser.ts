@@ -245,7 +245,11 @@ export function extractInstallmentInfo(
 /**
  * Identifica o nome do banco através do packageName ou do título/texto da notificação.
  */
-export function resolveBankName(packageName?: string, title?: string, text?: string): string {
+export function resolveBankName(
+  packageName?: string,
+  title?: string,
+  text?: string,
+): string | null {
   if (packageName && BANK_PACKAGE_MAP[packageName]) {
     return BANK_PACKAGE_MAP[packageName];
   }
@@ -295,7 +299,56 @@ export function resolveBankName(packageName?: string, title?: string, text?: str
     return "Banco do Brasil";
   }
 
-  return "Banco";
+  return null;
+}
+
+/**
+ * Verifica se a notificação possui sinal explícito de movimentação financeira real
+ * (compra aprovada, pix enviado/recebido, salário, transferência, etc.).
+ * Elimina falsos positivos de cupons, propagandas, pedidos ou mensagens de texto.
+ */
+export function hasValidTransactionSignal(text?: string, title?: string): boolean {
+  const combined = `${title || ""} ${text || ""}`.toLowerCase();
+
+  const signals = [
+    "compra",
+    "aprovada",
+    "aprovado",
+    "pago",
+    "pagou",
+    "pagamento",
+    "enviou",
+    "enviado",
+    "enviada",
+    "realizado",
+    "realizada",
+    "você recebeu",
+    "voce recebeu",
+    "recebido",
+    "recebida",
+    "recebimento",
+    "depósito",
+    "deposito",
+    "salário",
+    "salario",
+    "devolução",
+    "devolucao",
+    "reembolso",
+    "estorno",
+    "transferência",
+    "transferencia",
+    "proventos",
+    "rendimentos",
+    "dividendos",
+    "débito",
+    "debito",
+    "crédito",
+    "credito",
+    "saque",
+    "tarifa",
+  ];
+
+  return signals.some((signal) => combined.includes(signal));
 }
 
 /**
@@ -560,7 +613,18 @@ export function parseBankNotification(
     return null;
   }
 
-  // 2. Extração de informações monetárias e parcelas
+  // 2. Validação estrita de identificação de banco homologado (Zero tolerância a apps desconhecidos)
+  const bankName = resolveBankName(payload.packageName, payload.title, payload.text);
+  if (!bankName) {
+    return null;
+  }
+
+  // 3. Validação estrita de evidência de transação financeira real (Anti-promoções e anti-chats)
+  if (!hasValidTransactionSignal(payload.text, payload.title)) {
+    return null;
+  }
+
+  // 4. Extração de informações monetárias e parcelas
   const rawCents = extractCentsFromText(combinedText);
   const installmentInfo = extractInstallmentInfo(combinedText, rawCents);
 
@@ -568,7 +632,6 @@ export function parseBankNotification(
   const cents = installmentInfo?.totalAmountCents ?? rawCents;
   if (!cents) return null;
 
-  const bankName = resolveBankName(payload.packageName, payload.title, payload.text);
   const type = detectTransactionType(payload.text, payload.title);
   const paymentMethod = detectPaymentMethod(payload.text, payload.title);
   const merchant = extractMerchantOrRecipient(payload.text);
@@ -623,7 +686,7 @@ export function parsePixShareText(rawText: string): ParsedBankTransaction | null
   if (!cents) return null;
 
   const isIncome = detectTransactionType(rawText, "");
-  const bankName = resolveBankName(undefined, undefined, rawText);
+  const bankName = resolveBankName(undefined, undefined, rawText) || "Pix";
 
   // Extrai nome do destinatário / recebedor em comprovantes típicos
   const recipientMatch =
