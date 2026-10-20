@@ -2,7 +2,9 @@ import { useMemo, useState } from "react";
 import { AlertCircle } from "lucide-react";
 import { Alert, Modal } from "@/components/ui";
 import {
+  STATEMENT_IMPORT_CHUNK_SIZE,
   buildTransactionsFromRows,
+  chunkArray,
   generateStatementHash,
   parseStatementInput,
   reconcileStatementTransactions,
@@ -20,7 +22,7 @@ import { pushToast } from "@/services/toast";
 import type { CreditCard, Expense } from "@/types";
 import { StatementUploadStep } from "./statement-upload-step";
 import { StatementMappingStep } from "./statement-mapping-step";
-import { StatementReconcileStep } from "./statement-reconcile-step";
+import { StatementReconcileStep, type StatementImportProgress } from "./statement-reconcile-step";
 
 interface StatementImportDialogProps {
   open: boolean;
@@ -76,6 +78,7 @@ function StatementImportContent({ card, competenceMonth, onClose }: StatementImp
   const [columnMapping, setColumnMapping] = useState<ColumnMapping | null>(null);
   const [reconciledItems, setReconciledItems] = useState<ReconciliationItem[]>([]);
   const [unmatchedAppExpenses, setUnmatchedAppExpenses] = useState<ExistingExpenseForReconciliation[]>([]);
+  const [importProgress, setImportProgress] = useState<StatementImportProgress | null>(null);
 
   const categoriesQuery = useCategories("expense");
   const expensesQuery = useCardExpenses(card.id);
@@ -305,36 +308,78 @@ function StatementImportContent({ card, competenceMonth, onClose }: StatementImp
     if (toImport.length === 0) return;
 
     setError(null);
-    try {
-      const payload = toImport.map((it) => ({
-        date: it.transaction.date,
-        value: it.transaction.amountCents / 100,
-        category_id: it.selectedCategoryId,
-        description: it.transaction.cleanDescription,
-        installments_total: it.transaction.installment?.total ?? 1,
-        installment_number: it.transaction.installment?.current ?? 1,
-        report_weight: 1.0,
-        statement_hash: it.transaction.statementHash,
-      }));
+    const payload = toImport.map((it) => ({
+      date: it.transaction.date,
+      value: it.transaction.amountCents / 100,
+      category_id: it.selectedCategoryId,
+      description: it.transaction.cleanDescription,
+      installments_total: it.transaction.installment?.total ?? 1,
+      installment_number: it.transaction.installment?.current ?? 1,
+      report_weight: 1.0,
+      statement_hash: it.transaction.statementHash,
+    }));
 
-      const result = await importMutation.mutateAsync({
-        cardId: card.id,
-        competenceMonth,
-        expenses: payload,
+    const chunks = chunkArray(payload, STATEMENT_IMPORT_CHUNK_SIZE);
+    const totalItems = payload.length;
+    let totalInserted = 0;
+    let totalSkipped = 0;
+    let processedItems = 0;
+    let currentChunkIndex = 0;
+
+    try {
+      setImportProgress({
+        currentChunk: 1,
+        totalChunks: chunks.length,
+        percent: 0,
+        processedItems: 0,
+        totalItems,
       });
+
+      for (const [i, chunk] of chunks.entries()) {
+        currentChunkIndex = i;
+        const result = await importMutation.mutateAsync({
+          cardId: card.id,
+          competenceMonth,
+          expenses: chunk,
+        });
+
+        totalInserted += result.inserted_count;
+        totalSkipped += result.skipped_count;
+
+        processedItems += chunk.length;
+        const percent = Math.round((processedItems / totalItems) * 100);
+
+        setImportProgress({
+          currentChunk: Math.min(i + 2, chunks.length),
+          totalChunks: chunks.length,
+          percent,
+          processedItems,
+          totalItems,
+        });
+      }
 
       triggerSensory("success");
 
       pushToast({
         variant: "default",
-        title: `Fatura importada com sucesso: ${result.inserted_count} ${
-          result.inserted_count === 1 ? "lançamento criado" : "lançamentos criados"
-        }${result.skipped_count > 0 ? ` (${result.skipped_count} duplicatas ignoradas)` : ""}.`,
+        title: `Fatura importada com sucesso: ${totalInserted} ${
+          totalInserted === 1 ? "lançamento criado" : "lançamentos criados"
+        }${totalSkipped > 0 ? ` (${totalSkipped} duplicatas ignoradas)` : ""}.`,
       });
 
       onClose();
     } catch (err) {
-      setError(getErrorMessage(err));
+      triggerSensory("error");
+      const baseMessage = getErrorMessage(err);
+      if (totalInserted > 0) {
+        setError(
+          `Importação interrompida no lote ${currentChunkIndex + 1} de ${chunks.length}. ${totalInserted} lançamentos foram salvos com sucesso. Detalhe do erro: ${baseMessage}`,
+        );
+      } else {
+        setError(baseMessage);
+      }
+    } finally {
+      setImportProgress(null);
     }
   };
 
@@ -372,7 +417,8 @@ function StatementImportContent({ card, competenceMonth, onClose }: StatementImp
           onUncheckDuplicates={handleUncheckDuplicates}
           onBack={() => setStep(parsedRows.length > 0 ? "mapping" : "upload")}
           onConfirm={handleConfirmImport}
-          isPending={importMutation.isPending}
+          isPending={importMutation.isPending || importProgress !== null}
+          importProgress={importProgress}
         />
       ) : null}
     </div>

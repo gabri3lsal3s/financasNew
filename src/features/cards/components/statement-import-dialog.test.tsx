@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { StatementImportDialog } from "./statement-import-dialog";
@@ -356,5 +356,83 @@ describe("StatementImportDialog", () => {
 
     expect(screen.getByText(/1 potencial duplicidade detectada nesta fatura/i)).toBeInTheDocument();
     expect(screen.getByText(/Duplicata no Arquivo/i)).toBeInTheDocument();
+  });
+
+  it("particiona extratos de fatura massivos (> 250 itens) em lotes sequenciais de até 250 itens e exibe barra de progresso", async () => {
+    const user = userEvent.setup();
+    mutateAsyncMock.mockClear();
+
+    let resolveFirstBatch!: (value: unknown) => void;
+    const firstBatchPromise = new Promise((resolve) => {
+      resolveFirstBatch = resolve;
+    });
+
+    mutateAsyncMock
+      .mockImplementationOnce(() => firstBatchPromise)
+      .mockResolvedValueOnce({
+        success: true,
+        inserted_count: 20,
+        skipped_count: 0,
+      });
+
+    const onOpenChangeMock = vi.fn();
+
+    render(
+      <StatementImportDialog
+        open={true}
+        onOpenChange={onOpenChangeMock}
+        card={mockCard}
+        competenceMonth="2026-08"
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: /Colar Extrato/i }));
+
+    // Gera 270 linhas de despesas
+    const lines: string[] = [];
+    for (let i = 1; i <= 270; i++) {
+      lines.push(`10/08/2026\tCompra Fatura ${i}\t15,00`);
+    }
+
+    const textarea = screen.getByPlaceholderText(/Cole aqui as linhas/i);
+    fireEvent.change(textarea, { target: { value: lines.join("\n") } });
+
+    await user.click(screen.getByRole("button", { name: /Processar Texto/i }));
+    await user.click(screen.getByRole("button", { name: /Avançar para Conferência/i }));
+
+    const importBtn = screen.getByRole("button", { name: /Importar 270 Lançamentos/i });
+    expect(importBtn).toBeInTheDocument();
+
+    // Dispara a importação em lotes
+    await user.click(importBtn);
+
+    // Durante o primeiro lote: barra de progresso deve estar ativa
+    expect(
+      screen.getByRole("region", { name: /Progresso da importação em lotes/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Importando lote 1 de 2.../i)).toBeInTheDocument();
+    expect(screen.getByText(/0\/270 \(0%\)/i)).toBeInTheDocument();
+
+    // Desbloqueia o primeiro lote (250 itens)
+    resolveFirstBatch({
+      success: true,
+      inserted_count: 250,
+      skipped_count: 0,
+    });
+
+    // Aguarda conclusão do segundo lote e fechamento
+    await screen.findByRole("button", { name: /Importar/i }).catch(() => null);
+
+    // Valida que o RPC foi chamado exatamente 2 vezes
+    expect(mutateAsyncMock).toHaveBeenCalledTimes(2);
+
+    // Lote 1: exatamente 250 despesas
+    expect(mutateAsyncMock.mock.calls[0]![0].expenses).toHaveLength(250);
+    expect(mutateAsyncMock.mock.calls[0]![0].cardId).toBe(mockCard.id);
+    expect(mutateAsyncMock.mock.calls[0]![0].competenceMonth).toBe("2026-08");
+
+    // Lote 2: exatamente 20 despesas
+    expect(mutateAsyncMock.mock.calls[1]![0].expenses).toHaveLength(20);
+    expect(mutateAsyncMock.mock.calls[1]![0].cardId).toBe(mockCard.id);
   });
 });

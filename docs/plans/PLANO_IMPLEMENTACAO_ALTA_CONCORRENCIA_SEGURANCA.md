@@ -311,7 +311,7 @@ Ao término de cada fase, é **obrigatória** a passagem pelos dois portões de 
   - **Verificação Final:** `npm run typecheck && npm run lint`.
   - **Commit Atômico:** `perf(transactions): batch statement imports in 250-item chunks (task 4.1)`.
 
-- [ ] **Tarefa 4.2 — Teto de Importação e Particionamento de Faturas de Cartões**
+- [x] **Tarefa 4.2 — Teto de Importação e Particionamento de Faturas de Cartões**
   - **Revisão do Plano:** Inspecionar `StatementImportDialog` (`src/features/cards/`) e `import_statement_expenses`.
   - **Implementação:**
     - Aplicar a mesma lógica de partição em chunks de até 250 itens na conciliação e importação de faturas de cartão de crédito.
