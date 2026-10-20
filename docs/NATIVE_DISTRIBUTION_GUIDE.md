@@ -139,6 +139,10 @@ Ao disponibilizar o APK fora da Play Store, alguns usuários leigos podem ter d�
 > 2. *Toque em **Bateria** e selecione **Sem restrições** (ou 'Não otimizar');*
 > 3. *Em celulares Xiaomi/Poco: ative também a opção **Início Automático**."*
 
+### Dúvida 4: "Vou precisar conceder todas as permissões e fazer login novamente quando o app atualizar?"
+> **Resposta sugerida:**  
+> *"Não! Como o aplicativo é atualizado por cima (in-place) com a mesma assinatura digital criptográfica, o Android preserva integralmente todos os seus dados locais, sessão ativa de login e permissões já concedidas (acesso a notificações bancárias, lembretes de faturas e segundo plano). Tudo continua funcionando imediatamente sem precisar reconfigurar."*
+
 ---
 
 ## 7. CHECKLIST ANTES DE LANÇAR UMA NOVA VERSÃO
