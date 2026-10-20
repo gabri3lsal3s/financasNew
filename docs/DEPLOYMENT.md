@@ -72,7 +72,92 @@
 
 ---
 
-## 4. ESTRUTURA DE CONFIGURAÇÃO ESTÁTICA (`public/`)
+## 4. OPERAÇÕES DE BANCO & CRON DE COTAÇÕES
+
+Para garantir que a aplicação opere sob **alta concorrência sem risco de HTTP 429 (Rate Limit)** em provedores de cotação (Brapi, Yahoo Finance, AwesomeAPI), a arquitetura adota o modelo **100% Server-Side Cache**:
+- Os navegadores dos clientes **nunca** realizam chamadas em lote para APIs externas durante o fluxo normal de uso; consomem exclusivamente a tabela consolidada `public.asset_prices` (`user_id is null`).
+- O cache global de cotações é alimentado periodicamente pela Edge Function `quotes` agendada no banco de dados via `pg_cron` e `pg_net`.
+
+### 4.1 Auditoria de Quotas e Dimensionamento Operacional
+
+| Serviço | Free Tier / Limite de Quota | Consumo com Cron Agendado | Margem de Segurança |
+|---|---|---|---|
+| **Supabase Edge Functions** | 500.000 invocações / mês | ~120 a ~180 invocações / mês | **> 99,9% livre** |
+| **Brapi (B3)** | Quota gratuita por minuto / dia | 4 a 6 chamadas em lote / dia | **Sem estouro de taxa** |
+| **Yahoo Finance / AwesomeAPI** | Rate limits para chamadas massivas | Centralizado na Edge Function | **Zero bloqueio por IP do cliente** |
+| **PostgreSQL (`pg_cron`)** | Extensão nativa gerenciada | 1 job agendado em segundo plano | **Impacto imperceptível em CPU** |
+
+### 4.2 Habilitação de Extensões Obrigatórias no Supabase
+
+Antes de ativar o agendamento, certifique-se de que as extensões `pg_cron` e `pg_net` estão habilitadas no banco de dados:
+
+1. Acesse o **Supabase Dashboard** → **Database** → **Extensions**.
+2. Pesquise e ative as extensões:
+   - **`pg_cron`**: Agendador de tarefas periódicas baseado em cron no PostgreSQL.
+   - **`pg_net`**: Cliente de rede assíncrono para chamadas HTTP a partir de triggers ou jobs do banco.
+3. *Ou execute diretamente no SQL Editor:*
+   ```sql
+   create extension if not exists pg_cron;
+   create extension if not exists pg_net;
+   ```
+
+### 4.3 Ativação do Cron de Cotações (`quotes-cron.sql`)
+
+O script operacional [`supabase/quotes-cron.sql`](../supabase/quotes-cron.sql) efetua o agendamento idempotente e o hardening de segurança das tabelas do schema `cron`.
+
+#### Opção A — Automatizada via CLI (Recomendada):
+Gera o SQL com as credenciais reais do seu arquivo `.env`:
+```bash
+npm run quotes:cron
+```
+Copie a saída gerada no terminal, cole no **SQL Editor** do Supabase Dashboard e clique em **Run**.
+
+#### Opção B — Manual no SQL Editor:
+Abra o arquivo [`supabase/quotes-cron.sql`](../supabase/quotes-cron.sql), substitua os parâmetros:
+- `<CRON_SCHEDULE>`: Expressão cron de frequência (ver opções recomendadas abaixo).
+- `<FUNCTION_URL>`: URL da sua Edge Function (ex.: `https://<PROJECT_REF>.supabase.co/functions/v1/quotes`).
+- `<SERVICE_ROLE_KEY>`: Chave secreta de serviço do Supabase (**Settings → API → service_role**; *nunca use a anon key*).
+
+#### Expressões Cron Recomendadas:
+- **`0 11,14,17,20 * * 1-5` (Pregão B3 em Dias Úteis — Recomendada):**
+  Dispara às 11h, 14h, 17h e 20h UTC de segunda a sexta-feira. Cobre a abertura, o decorrer do pregão, o fechamento da B3 e o pós-mercado, economizando 100% das chamadas em finais de semana e madrugadas.
+- **`0 */6 * * *` (A cada 6 horas — 24/7):**
+  Dispara 4 vezes ao dia (00h, 06h, 12h, 18h UTC), todos os dias da semana. Recomendado se houver monitoramento contínuo de Criptoativos.
+- **`0 */4 * * 1-5` (A cada 4 horas em Dias Úteis):**
+  Dispara a cada 4 horas de segunda a sexta-feira.
+
+### 4.4 Monitoramento e Auditoria de Execução
+
+Após rodar o script no SQL Editor, utilize as seguintes queries para verificar a saúde do agendamento:
+
+```sql
+-- 1. Verificar se o job está ativo:
+select jobid, jobname, schedule, active from cron.job order by jobid;
+
+-- 2. Auditar histórico de execuções recentes, status e código de resposta HTTP:
+select
+  r.runid,
+  r.jobid,
+  j.jobname,
+  r.status,
+  r.return_message,
+  r.start_time,
+  r.end_time
+from cron.job_run_details r
+join cron.job j on j.jobid = r.jobid
+order by r.start_time desc
+limit 10;
+
+-- 3. Inspecionar o cache global consolidado de cotações:
+select ticker, price, currency, updated_at
+from public.asset_prices
+where user_id is null
+order by updated_at desc;
+```
+
+---
+
+## 5. ESTRUTURA DE CONFIGURAÇÃO ESTÁTICA (`public/`)
 
 - **`public/_headers`**:
   Configura cabeçalhos de segurança (`nosniff`, `DENY`, `XSS`, `Referrer-Policy`) e regras de cache imutável para a pasta `/assets/` e revalidação de Service Worker (`sw.js`).
@@ -82,7 +167,7 @@
 
 ---
 
-## 5. COMANDOS ÚTEIS (LOCAL)
+## 6. COMANDOS ÚTEIS (LOCAL)
 
 ```bash
 npm install          # instala dependências
@@ -95,15 +180,16 @@ npm run test         # vitest — 2313 testes (320 arquivos) 100% verde
 npm run build        # tsc -b && vite build (gera dist/ + Service Worker)
 npm run preview      # serve dist/ localmente (testa o build de produção)
 npm run build:apk    # compila os APKs Debug e Release (assinado) para dist-apk/
+npm run quotes:cron  # gera o script SQL preenchido para o pg_cron do Supabase
 ```
 
 ---
 
-## 6. COMPILAÇÃO & DISTRIBUIÇÃO DO APLICATIVO ANDROID (APK)
+## 7. COMPILAÇÃO & DISTRIBUIÇÃO DO APLICATIVO ANDROID (APK)
 
 O projeto suporta compilação automatizada de APKs nativos via Capacitor e Gradle com **In-App Updater** e assinatura determinística permanente:
 
-### 6.1 Compilação Automatizada
+### 7.1 Compilação Automatizada
 
 ```bash
 # Compilação padrão (incremento determinístico de versão e geração de version.json)
@@ -126,7 +212,7 @@ O script executa automaticamente:
    - `dist-apk/axis-pro.apk` (cópia canônica de distribuição)
    - `dist-apk/version.json` (manifesto sincronizado com `public/releases/version.json`).
 
-### 6.2 Instalação e Atualização In-Place
+### 7.2 Instalação e Atualização In-Place
 
 Com a keystore canônica permanente e `versionCode` incremental, qualquer nova versão instala por cima **sem necessidade de desinstalar**:
 
@@ -135,7 +221,7 @@ Com a keystore canônica permanente e `versionCode` incremental, qualquer nova v
 adb install -r dist-apk/guia-financeiro-release.apk
 ```
 
-### 6.3 Publicação Automatizada no Cloudflare R2 (Egress Grátis)
+### 7.3 Publicação Automatizada no Cloudflare R2 (Egress Grátis)
 
 Com as credenciais do Cloudflare R2 configuradas no `.env` local (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`), o envio para o bucket é 100% automatizado:
 

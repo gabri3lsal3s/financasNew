@@ -85,13 +85,14 @@ function cron() {
 revoke all on schema cron from public, anon, authenticated;
 revoke all on all tables in schema cron from public, anon, authenticated;
 
--- 2) Remove agendamento anterior, se existir (idempotente).
-select cron.unschedule('quotes-6h')
-where exists (select 1 from cron.job where jobname = 'quotes-6h');
+-- 2) Remove agendamentos anteriores, se existirem (idempotente).
+select cron.unschedule(jobname)
+from cron.job
+where jobname in ('quotes-cron', 'quotes-6h');
 
--- 3) Agenda a atualização (${schedule}).
+-- 3) Agenda a atualização periódica (${schedule}).
 select cron.schedule(
-  'quotes-6h',
+  'quotes-cron',
   '${schedule}',
   $cron$
     select net.http_post(
@@ -105,7 +106,17 @@ select cron.schedule(
   $cron$
 );
 
--- 3) Verificação: select jobid, jobname, schedule, active from cron.job order by jobid;
+-- ============================================================================
+-- 4. DIAGNÓSTICO E AUDITORIA OPERACIONAL
+-- ============================================================================
+-- Listar jobs ativos:
+-- select jobid, jobname, schedule, active from cron.job order by jobid;
+
+-- Histórico de execuções recentes:
+-- select r.runid, j.jobname, r.status, r.return_message, r.start_time, r.end_time
+-- from cron.job_run_details r
+-- join cron.job j on j.jobid = r.jobid
+-- order by r.start_time desc limit 10;
 `;
   console.log(sql);
 }

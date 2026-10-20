@@ -190,7 +190,7 @@ Ao término de cada fase, é **obrigatória** a passagem pelos dois portões de 
   - **Verificação Final:** `npm run typecheck && npm run lint`.
   - **Commit Atômico:** `perf(investments): debounce online ticker lookup in asset form (task 2.3)`.
 
-- [ ] **Tarefa 2.4 — Auditoria de Quotas e Documentação Operacional do Cron de Cotações**
+- [x] **Tarefa 2.4 — Auditoria de Quotas e Documentação Operacional do Cron de Cotações**
   - **Revisão do Plano:** Revisar `supabase/quotes-cron.sql` e a Edge Function `supabase/functions/quotes/`.
   - **Implementação:**
     - Garantir que o script operacional `supabase/quotes-cron.sql` possua instruções claras de agendamento (a cada 4 ou 6 horas em dias úteis) para manter o cache global atualizado sem exceder cotas gratuitas.
