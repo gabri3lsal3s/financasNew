@@ -7,8 +7,10 @@ android {
         applicationId "com.guiafinanceiro.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        def appVersionCode = (System.getenv("APP_VERSION_CODE") ?: project.findProperty("versionCode") ?: "1").toInteger()
+        def appVersionName = System.getenv("APP_VERSION_NAME") ?: project.findProperty("versionName") ?: "1.0.0"
+        versionCode appVersionCode
+        versionName appVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -22,9 +24,9 @@ android {
             def keystoreFile = file(keystorePath)
             if (keystoreFile.exists()) {
                 storeFile keystoreFile
-                storePassword System.getenv("KEYSTORE_PASSWORD") ?: "guiafinanceiro123"
+                storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""
                 keyAlias System.getenv("KEY_ALIAS") ?: "guiafinanceiro"
-                keyPassword System.getenv("KEY_PASSWORD") ?: "guiafinanceiro123"
+                keyPassword System.getenv("KEY_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
             }
         }
     }

@@ -3,6 +3,7 @@ import { useLocation } from "react-router";
 import { LandingHeader } from "@/features/landing/components/landing-header";
 import { HeroEditorial } from "@/features/landing/components/hero-editorial";
 import { ProductNarratives } from "@/features/landing/components/product-narratives";
+import { PlatformComparison } from "@/features/landing/components/platform-comparison";
 import { InvestmentsShowcase } from "@/features/landing/components/investments-showcase";
 import { MinimalWealthSimulator } from "@/features/landing/components/minimal-wealth-simulator";
 import { PricingSection } from "@/features/landing/components/pricing-section";
@@ -54,6 +55,7 @@ export function LandingPage() {
         <main id="conteudo-principal" className="flex-1">
           <HeroEditorial />
           <ProductNarratives />
+          <PlatformComparison />
           <InvestmentsShowcase />
           <MinimalWealthSimulator />
           <PricingSection />

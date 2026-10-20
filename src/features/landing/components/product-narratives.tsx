@@ -4,6 +4,8 @@ import {
   Zap,
   CheckCircle2,
   Calendar,
+  Smartphone,
+  Bell,
 } from "lucide-react";
 import { Badge, Card } from "@/components/ui";
 import { ScrollReveal } from "@/features/landing/components/scroll-reveal";
@@ -267,6 +269,98 @@ export function ProductNarratives() {
                 <Badge variant="warning" size="xs" className="font-mono shrink-0 self-start sm:self-auto">
                   Faltam 14 dias
                 </Badge>
+              </div>
+            </Card>
+          </ScrollReveal>
+        </div>
+
+        {/* História 4: Assistente Bancário em Tempo Real & Automação Mobile */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-16 xl:gap-20 items-center">
+          {/* Texto Explicativo (Esquerda) */}
+          <ScrollReveal delay={50} className="lg:col-span-6 space-y-4 sm:space-y-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-primary">
+              <Smartphone className="size-3.5 sm:size-4" aria-hidden="true" />
+              <span>Automação sem Esforço</span>
+            </div>
+
+            <h3 className="font-display text-xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-snug">
+              Compras e Pix registrados no momento em que acontecem
+            </h3>
+
+            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
+              O principal motivo para alguém desistir de controlar as finanças é a fricção de ter que lembrar e anotar manualmente cada gasto do dia.
+            </p>
+
+            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
+              Com o <strong>Assistente Bancário Inteligente</strong>, o aplicativo detecta em segundo plano as notificações de compras de cartões e transferências Pix emitidas pelo seu banco. Uma sugestão discreta aparece na tela com o valor, a categoria prevista e a conta bancária já selecionados — basta 1 toque para aprovar.
+            </p>
+
+            <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
+                <span>Reconhecimento instantâneo de compras de cartão e transferências Pix</span>
+              </div>
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
+                <span>Zero senhas compartilhadas e sem conexão bancária vulnerável</span>
+              </div>
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
+                <span>Aprovação direta em 1 toque pela notificação ou pelo app</span>
+              </div>
+            </div>
+          </ScrollReveal>
+
+          {/* Visual Demonstrativo (Direita) */}
+          <ScrollReveal delay={150} className="lg:col-span-6">
+            <Card className="border-border/80 bg-surface/90 shadow-xl p-4.5 sm:p-8 md:p-10 space-y-4 sm:space-y-6 rounded-2xl sm:rounded-3xl">
+              <div className="flex justify-between items-center border-b border-border/50 pb-3 sm:pb-4">
+                <div className="flex items-center gap-2">
+                  <Bell className="size-4 text-primary" aria-hidden="true" />
+                  <span className="text-xs sm:text-sm font-bold text-foreground">Captura de Notificação Bancária</span>
+                </div>
+                <Badge variant="positive" size="xs" className="font-mono">
+                  Detectado em Tempo Real
+                </Badge>
+              </div>
+
+              {/* Simulação de Notificação do Banco */}
+              <div className="p-3.5 sm:p-4 rounded-xl bg-background/60 border border-border/70 space-y-1.5">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">Notificação Bancária</span>
+                  <span>Agora mesmo</span>
+                </div>
+                <p className="text-xs sm:text-sm font-mono text-foreground font-medium">
+                  Compra aprovada no valor de R$ 42,90 em Padaria e Confeitaria Bella
+                </p>
+              </div>
+
+              {/* Sugestão Gerada pelo Áxis */}
+              <div className="p-4 rounded-xl sm:rounded-2xl bg-primary/10 border border-primary/30 space-y-3">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-semibold text-primary-strong">Sugestão Pronta para Aprovação:</span>
+                  <Badge variant="default" size="xs">
+                    Classificação 98%
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                  <div className="p-2 rounded-lg bg-surface/80 border border-border/50">
+                    <span className="text-muted-foreground block text-[10px]">Valor</span>
+                    <span className="font-bold text-negative">R$ 42,90</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-surface/80 border border-border/50">
+                    <span className="text-muted-foreground block text-[10px]">Categoria</span>
+                    <span className="font-bold text-foreground truncate block">Alimentação</span>
+                  </div>
+                </div>
+
+                <div className="pt-1 flex justify-end">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-semibold text-xs shadow-xs">
+                    <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                    <span>Aprovar Despesa (1 Toque)</span>
+                  </div>
+                </div>
               </div>
             </Card>
           </ScrollReveal>

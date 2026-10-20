@@ -88,7 +88,7 @@ function ThemedChevron({ orientation = "left", className, ...props }: ChevronPro
  * (Dom a Sáb) cabem sempre na largura disponível, sem overflow horizontal no
  * mobile. Dia selecionado com fundo sólido em gradiente sutil da cor primária
  * ativa do tema + texto de alto contraste; dia atual (today) com ponto
- * indicador; disabled/outside com opacidade reduzida; foco visível `ring-2`.
+ * indicador; disabled/outside com opacidade reduzida; foco visível `ring-1`.
  */
 function ThemedDayButton({ modifiers, className, ...props }: DayButtonProps) {
   return (
@@ -96,7 +96,7 @@ function ThemedDayButton({ modifiers, className, ...props }: DayButtonProps) {
       type="button"
       {...props}
       className={cn(
-        "mx-auto flex aspect-square w-full max-w-9 items-center justify-center rounded-full text-sm font-medium text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer",
+        "mx-auto flex aspect-square w-full max-w-9 items-center justify-center rounded-full text-sm font-medium text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer",
         modifiers.selected &&
           "bg-gradient-to-b from-primary to-primary/90 font-semibold text-primary-foreground shadow-sm hover:from-primary hover:to-primary",
         modifiers.today &&
@@ -157,11 +157,11 @@ export function DatePicker({
     day: cn(base.day, "p-0 text-center"),
     button_previous: cn(
       base.button_previous,
-      "absolute left-1 top-1 z-10 flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer",
+      "absolute left-1 top-1 z-10 flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer",
     ),
     button_next: cn(
       base.button_next,
-      "absolute right-1 top-1 z-10 flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer",
+      "absolute right-1 top-1 z-10 flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer",
     ),
     chevron: cn(base.chevron, "size-4"),
     outside: cn(base.outside, "text-muted-foreground opacity-50"),
@@ -202,7 +202,7 @@ export function DatePicker({
             setDisplayedMonth(new Date(displayedMonth.getFullYear() - 1, displayedMonth.getMonth(), 1));
           }}
           aria-label="Ano anterior"
-          className="flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
         >
           <ChevronLeft className="size-4" aria-hidden="true" />
         </button>
@@ -214,7 +214,7 @@ export function DatePicker({
             setViewMode("years");
           }}
           aria-label={`Mudar bloco de anos, atualmente ${displayedMonth.getFullYear()}`}
-          className="group inline-flex items-center gap-1.5 rounded-lg px-3 py-1 font-display text-sm font-bold text-foreground transition-colors hover:bg-primary/15 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+          className="group inline-flex items-center gap-1.5 rounded-lg px-3 py-1 font-display text-sm font-bold text-foreground transition-colors hover:bg-primary/15 hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
         >
           <span>{displayedMonth.getFullYear()}</span>
           <ChevronDown className="size-3.5 text-muted-foreground transition-transform group-hover:text-primary" aria-hidden="true" />
@@ -227,7 +227,7 @@ export function DatePicker({
             setDisplayedMonth(new Date(displayedMonth.getFullYear() + 1, displayedMonth.getMonth(), 1));
           }}
           aria-label="Próximo ano"
-          className="flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
         >
           <ChevronRight className="size-4" aria-hidden="true" />
         </button>
@@ -255,7 +255,7 @@ export function DatePicker({
               }}
               aria-label={`${MONTH_FULL_NAMES[monthIndex]} de ${displayedMonth.getFullYear()}`}
               className={cn(
-                "flex h-11 items-center justify-center rounded-xl text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer",
+                "flex h-11 items-center justify-center rounded-xl text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer",
                 isSelected
                   ? "bg-gradient-to-b from-primary to-primary/90 font-semibold text-primary-foreground shadow-sm hover:from-primary hover:to-primary"
                   : isCurrentMonth
@@ -283,7 +283,7 @@ export function DatePicker({
             setDisplayedMonth(new Date(displayedMonth.getFullYear() - 10, displayedMonth.getMonth(), 1));
           }}
           aria-label="Bloco de anos anterior"
-          className="flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
         >
           <ChevronLeft className="size-4" aria-hidden="true" />
         </button>
@@ -299,7 +299,7 @@ export function DatePicker({
             setDisplayedMonth(new Date(displayedMonth.getFullYear() + 10, displayedMonth.getMonth(), 1));
           }}
           aria-label="Próximo bloco de anos"
-          className="flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
         >
           <ChevronRight className="size-4" aria-hidden="true" />
         </button>
@@ -322,7 +322,7 @@ export function DatePicker({
               }}
               aria-label={`Ano ${year}`}
               className={cn(
-                "flex h-11 items-center justify-center rounded-xl text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer",
+                "flex h-11 items-center justify-center rounded-xl text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer",
                 isSelected
                   ? "bg-gradient-to-b from-primary to-primary/90 font-semibold text-primary-foreground shadow-sm hover:from-primary hover:to-primary"
                   : isCurrentYear
@@ -354,7 +354,7 @@ export function DatePicker({
             setViewMode("months");
           }}
           aria-label="Selecionar mês e ano"
-          className="group inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-display text-sm font-semibold text-foreground transition-colors hover:bg-primary/15 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+          className="group inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-display text-sm font-semibold text-foreground transition-colors hover:bg-primary/15 hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
         >
           <span className="capitalize">{children}</span>
           <ChevronDown className="size-3.5 text-muted-foreground transition-transform group-hover:text-primary" aria-hidden="true" />
@@ -370,7 +370,7 @@ export function DatePicker({
           type="button"
           aria-label={ariaLabel}
           className={cn(
-            "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-surface px-4 text-base text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-surface px-4 text-base text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
             !value && "text-muted-foreground",
             className,
           )}
@@ -438,7 +438,7 @@ export function DatePicker({
                   triggerSensory("selection");
                   setViewMode("days");
                 }}
-                className="rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+                className="rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
               >
                 Voltar aos dias
               </button>
@@ -449,14 +449,14 @@ export function DatePicker({
               <button
                 type="button"
                 onClick={() => handleShortcut(getYesterdayISO())}
-                className="rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+                className="rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
               >
                 Ontem
               </button>
               <button
                 type="button"
                 onClick={() => handleShortcut(getTodayISO())}
-                className="rounded-md bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+                className="rounded-md bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
               >
                 Hoje
               </button>

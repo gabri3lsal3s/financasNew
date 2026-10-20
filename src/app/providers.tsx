@@ -114,15 +114,23 @@ function RemindersNotificationSync() {
 
 /**
  * Providers globais. A política de retry materializa a regra Online First
- * (docs/ARCHITECTURE.md §5.1): leituras com retry limitado; mutações NUNCA
- * com retry automático (evita dupla submissão — o botão fica em isPending).
+ * (docs/ARCHITECTURE.md §5.1): leituras com retry limitado (1 tentativa com backoff);
+ * mutações NUNCA com retry automático (evita dupla submissão — o botão fica em isPending).
+ * Calibração anti-storm (alta concorrência): refetchOnWindowFocus desabilitado,
+ * refetchOnReconnect "always", staleTime padrão de 60s e gcTime de 10 minutos.
  */
 export function AppProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
-          queries: { retry: 2, staleTime: 30_000 },
+          queries: {
+            refetchOnWindowFocus: false,
+            refetchOnReconnect: "always",
+            staleTime: 60_000,
+            gcTime: 600_000,
+            retry: 1,
+          },
           mutations: { retry: false },
         },
       }),

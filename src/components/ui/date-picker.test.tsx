@@ -191,7 +191,7 @@ describe("DatePicker", () => {
     // O botão do dia selecionado recebe o gradiente primário de alto contraste.
     expect(button).toHaveClass("bg-gradient-to-b", "from-primary", "text-primary-foreground");
     // Foco visível padronizado no dia (teclado/touch).
-    expect(button).toHaveClass("focus-visible:ring-2", "focus-visible:ring-ring");
+    expect(button).toHaveClass("focus-visible:ring-1", "focus-visible:ring-ring");
   });
 
   it("fecha o popover automaticamente após selecionar um dia", async () => {

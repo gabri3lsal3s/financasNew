@@ -13,7 +13,7 @@ const cardVariants = cva(
         flat: "border border-border/80 bg-surface shadow-none",
         elevated: "border border-border/80 bg-surface shadow-md hover:shadow-lg hover:-translate-y-0.5",
         interactive:
-          "border border-border/80 bg-surface shadow-xs hover:shadow-sm hover:border-primary/40 hover:-translate-y-0.5 cursor-pointer active:scale-[0.99]",
+          "border border-border/80 bg-surface shadow-xs hover:shadow-sm hover:border-primary/40 hover:-translate-y-0.5 cursor-pointer active:scale-[0.98] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
       },
     },
     defaultVariants: {

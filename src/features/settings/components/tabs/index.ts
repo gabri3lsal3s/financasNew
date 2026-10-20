@@ -7,3 +7,4 @@ export { ResetDefaultsCard } from "./reset-defaults-card";
 export { NotificationsTab } from "./notifications-tab";
 export { SecurityTab } from "./security-tab";
 export { SubscriptionTab } from "./subscription-tab";
+export { AppInstallationTab } from "./app-installation-tab";

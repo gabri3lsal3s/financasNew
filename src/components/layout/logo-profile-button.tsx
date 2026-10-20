@@ -114,8 +114,8 @@ export function LogoProfileButton({
           setOpen(true);
         }}
         className={cn(
-          "flex items-center justify-center rounded-lg transition-all duration-150 active:scale-95 cursor-pointer",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "flex items-center justify-center rounded-lg transition-all duration-150 active:scale-[0.98] cursor-pointer",
+          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
           "hover:opacity-85",
           className,
         )}

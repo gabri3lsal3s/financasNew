@@ -60,7 +60,7 @@ export function IconPicker({
           type="button"
           aria-label={ariaLabel}
           className={cn(
-            "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-surface px-3 text-base text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-surface px-3 text-base text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
             !value && "text-muted-foreground",
             className,
           )}
@@ -114,7 +114,7 @@ export function IconPicker({
                         onValueChange(option.value);
                       }}
                       className={cn(
-                        "flex aspect-square items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        "flex aspect-square items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                         isSelected && "bg-primary/10 text-primary-strong ring-1 ring-ring",
                       )}
                     >

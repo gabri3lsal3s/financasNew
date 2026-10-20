@@ -291,4 +291,15 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     renderSettings(["/configuracoes?tab=notificacoes"]);
     expect(screen.getByText("Lembretes & Notificações")).toBeInTheDocument();
   });
+
+  it("permite acessar a aba Dispositivos & App e exibe status de plataforma", () => {
+    renderSettings(["/configuracoes?tab=devices"]);
+    expect(screen.getByText("Plataforma em Uso")).toBeInTheDocument();
+    expect(screen.getByText("O Tripé de Plataformas do Áxis")).toBeInTheDocument();
+  });
+
+  it("ativa a aba Dispositivos quando acessado via ?tab=dispositivos ou ?tab=app", () => {
+    renderSettings(["/configuracoes?tab=dispositivos"]);
+    expect(screen.getByText("Plataforma em Uso")).toBeInTheDocument();
+  });
 });

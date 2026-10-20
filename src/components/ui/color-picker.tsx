@@ -94,7 +94,7 @@ export function ColorPicker({
           type="button"
           aria-label={ariaLabel}
           className={cn(
-            "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-surface px-3 text-base text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-surface px-3 text-base text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
             !value && "text-muted-foreground",
             className,
           )}
@@ -158,8 +158,8 @@ export function ColorPicker({
                       onValueChange(swatch);
                     }}
                     className={cn(
-                      "flex size-7 items-center justify-center rounded-full border border-border/80 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      selected && "ring-2 ring-ring ring-offset-1 ring-offset-surface",
+                      "flex size-7 items-center justify-center rounded-full border border-border/80 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                      selected && "ring-1 ring-ring ring-offset-1 ring-offset-surface",
                     )}
                     style={{ backgroundColor: swatch }}
                   >
@@ -196,7 +196,7 @@ export function ColorPicker({
                       setDraft("");
                       onValueChange("");
                     }}
-                    className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   >
                     <X className="size-4" aria-hidden="true" />
                   </button>

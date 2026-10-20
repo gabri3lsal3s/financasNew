@@ -1,5 +1,22 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.64** registra a **Arquitetura do Tripé de Plataformas (Web, PWA e Android Pro) & Atualizações Automatizadas de APK sem Reinstalação** (2026-10-20):
+> - **(1) Eliminação Definitiva da Necessidade de Desinstalar o APK**:
+>   - Padronização da Keystore canônica permanente (`android/app/release-key.keystore`) com assinatura RSA 2048 bits fixa;
+>   - Dinamização de `versionCode` no `build.gradle` e incremento automático via `scripts/build-apk.sh` prevenindo erros de instalação por cima (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`);
+>   - Inclusão da permissão `REQUEST_INSTALL_PACKAGES` e paths de FileProvider para acionamento transparente do instalador nativo.
+> - **(2) Motor de In-App Updater & Validação Criptográfica**:
+>   - Serviço `src/services/native/update-checker.ts` e hook `useAppUpdate()` com verificação de manifesto `version.json`;
+>   - Plugin nativo `AppUpdatePlugin.java` para download via `DownloadManager` e disparo direto do instalador do sistema com validação prévia de integridade SHA-256.
+> - **(3) Central de Dispositivos e Instalação nas Configurações**:
+>   - Aba dedicada `AppInstallationTab` em Configurações (`/configuracoes?tab=devices`) com detecção de plataforma em uso;
+>   - Status de versão e botão "Verificar atualizações" no Android Nativo, e card promocional do App Pro com download de APK, QR Code e tutorial visual de instalação no Web/PWA.
+> - **(4) Comunicação Comercial & Narrativa do Tripé na Landing Page**:
+>   - Seção e tabela comparativa visual `PlatformComparison` detalhando o tripé (Web Desktop, Mobile PWA e Android Pro);
+>   - Nova história de produto destacando o Assistente Bancário em Tempo Real e perguntas frequentes expandidas no `FaqSection`.
+> - **(5) Documentação Canônica**:
+>   - Criação do guia completo `docs/NATIVE_DISTRIBUTION_GUIDE.md` com instruções de segurança da keystore, hospedagem Cloudflare R2 / Supabase Storage e modelos de atendimento ao usuário.
+>
 > **v2.63** registra o **Assistente Passivo de Gastos — Ecossistema Híbrido Android Nativo & PWA Completo** (2026-10-20):
 > - **(1) Robustez no Android Nativo & Quick Settings Tile**:
 >   - Foreground Watchdog, permissão de exclusão de otimização de bateria e canal silencioso de foreground para resiliência contínua;
@@ -5269,35 +5286,33 @@ flowchart TD
 - [x] Testes unitários de Whitelist, controle de acesso e BottomNav 100% verdes (`use-user-access.test.tsx`, `use-permission.test.ts` e `bottom-nav.test.tsx`).
 - [x] Typecheck estrito (`tsc -b`) e lint (`npm run lint`) limpos sem erros.
 
+---
 
+### ⚡ FASE 92 — Diagnóstico Mestre de Segurança, Velocidade e Escala Concorrente (1k–10k DAU)
 
+> **Status:** ✅ Concluída (2026-10-20) — **Diagnóstico Canônico de Segurança, Performance e Concorrência**: Mapeamento 360° em 4 pilares técnicos (PostgreSQL/Supabase, APIs/Cotações externas, Frontend/TanStack Query, e Segurança Multitenant/CSP) para suportar com folga de 1.000 a 10.000 DAU com centenas de acessos simultâneos no tier padrão com custo zero adicional.
+>
+> **Objetivo:** Identificar e documentar de forma prescritiva todos os gargalos de concorrência, riscos de rate limit (Brapi/HTTP 429), tempestades de requisições no cliente (*refetch storms*) e re-avaliações de RLS no banco, estabelecendo a matriz de soluções imediatas ("Quick Wins de Custo Zero") e homologação de escala para todas as 11 áreas funcionais do sistema.
 
+#### 1. Entregas Realizadas
+- **Documento Mestre Canônico (`docs/DIAGNOSTICO_SEGURANCA_PERFORMANCE_ESCALA.md`):**
+  - Sumário Executivo & Score de Prontidão Técnica (Health Score 78.5/100 atual com projeção de 97.5/100 pós-Quick Wins);
+  - Modelo de carga quantitativo: 1k–10k DAU, picos de 200–800 acessos simultâneos em viradas de mês e notificações push;
+  - Diagnóstico aprofundado dos 4 pilares:
+    1. *Banco de Dados & Supabase:* Subplan Caching de RLS `(select auth.uid())` vs re-avaliação volátil por linha; encapsulamento de autorizações SaaS `is_current_user_active()` e `can_current_user_read_module()`; cobertura de índices cobridores compostos e garantia do pooler Supavisor em Transaction Mode;
+    2. *APIs Externas & Quotas:* Mitigação do risco crítico de HTTP 429 da Brapi.dev com eliminação de requisições concorrentes no browser e transição para arquitetura 100% server-side cache via Edge Function/Cron; teto de 300 transações por chunk em extratos;
+    3. *Frontend, Cache & Tráfego:* Calibração do TanStack Query para erradicar *refetch storms* via `refetchOnWindowFocus: false`, `staleTime: 60s` e `gcTime: 10min`; debounce de buscas; preservação do cache imutável de 1 ano no Cloudflare Pages;
+    4. *Segurança Multitenant & Headers:* Matriz de isolamento RLS cross-tenant; especificação de Content-Security-Policy (CSP) estrita em `public/_headers`; proteção contra brute force no Supabase Auth;
+  - Auditoria individual das 11 áreas do sistema (Overview, Transações, Cartões, Orçamentos, Dívidas/Empréstimos, Investimentos, Relatórios, Notificações/Lembretes, Assinatura/SaaS, Painel Admin, Configurações);
+  - Matriz de Riscos & Priorização de Impacto (R1 a R5);
+  - Plano de Ação em 3 fases com destaque para Quick Wins de Custo Zero.
+- **Governança & Rastreabilidade:**
+  - Registro de `docs/DIAGNOSTICO_SEGURANCA_PERFORMANCE_ESCALA.md` em `docs/PROJECT_STRUCTURE.md` (§3 Árvore e §6 Matriz).
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+**✅ DoD (Definition of Done da Fase 92):**
+- [x] Documento canônico `docs/DIAGNOSTICO_SEGURANCA_PERFORMANCE_ESCALA.md` criado e revisado.
+- [x] Mapeamento integral dos 4 pilares técnicos com referências a linhas de código e migrações SQL.
+- [x] Auditoria de concorrência e velocidade estendida a todas as 11 áreas funcionais do app.
+- [x] Matriz de Riscos e Plano de Ação Faseado de Quick Wins de Custo Zero definido.
+- [x] Governança de documentação atualizada em `docs/PROJECT_STRUCTURE.md` e `docs/ROADMAP.md`.
 

@@ -29,7 +29,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           type={showPassword ? "text" : "password"}
           disabled={disabled}
           className={cn(
-            "flex h-10 w-full rounded-md border border-input bg-surface px-4 py-2 text-base text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            "flex h-10 w-full rounded-md border border-input bg-surface px-4 py-2 text-base text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
             allowToggleVisibility && "pr-10",
             className,
           )}
@@ -43,7 +43,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
               triggerSensory("selection");
               setShowPassword((prev) => !prev);
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 p-0.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 p-0.5 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             aria-label={showPassword ? "Ocultar senha" : "Ver senha"}
             title={showPassword ? "Ocultar senha" : "Ver senha"}
           >

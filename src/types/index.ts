@@ -11,3 +11,4 @@ export type {
   ModuleAccessLevel,
 } from "./subscription";
 export * from "./billing";
+export * from "./app-update";

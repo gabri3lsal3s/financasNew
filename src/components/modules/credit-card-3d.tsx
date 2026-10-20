@@ -216,7 +216,7 @@ export function CreditCard3D({
           "relative aspect-[1.586] w-full rounded-2xl p-4 sm:p-5 text-white overflow-hidden cursor-pointer",
           "border border-white/15 backdrop-blur-xl transition-all duration-300",
           "flex flex-col justify-between",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
           !card.is_active && "opacity-70 grayscale-[25%]",
         )}
       >

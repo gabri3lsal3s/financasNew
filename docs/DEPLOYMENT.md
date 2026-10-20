@@ -19,6 +19,10 @@
 ```
 
 - **Frontend:** Cloudflare Pages — Git Integration nativa via Webhooks (sem GitHub Actions). Roteamento SPA configurado via `public/_redirects` e segurança/cache via `public/_headers`.
+- **Segurança de Borda e Headers HTTP (`public/_headers`):**
+  - **Content-Security-Policy (CSP):** política estrita que restringe a execução de scripts e conexões a origens homologadas (`default-src 'self'`, `script-src 'self' 'wasm-unsafe-eval'`, `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`, `img-src 'self' data: blob: https://*.supabase.co`, `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://brapi.dev`, `font-src 'self' data: https://fonts.gstatic.com`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`);
+  - **Defesa em Profundidade:** `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`;
+  - **Estratégia de Cache de Borda:** assets estáticos versionados (`/assets/*`) com cache imutável de 1 ano (`max-age=31536000, immutable`), e artefatos dinâmicos de ciclo de vida (`/index.html`, `/sw.js`, `/pwa/*`) com validação imediata (`max-age=0, must-revalidate`).
 - **Backend:** Supabase — migrations em `supabase/migrations/` (0001–0010: schema, RLS, RPCs, overrides, metas, metas de alocação, backfill de perfis, restauração de backup F22).
 - **Auth:** Supabase Auth (email/senha) + trigger `handle_new_user` (cria `profiles` e `user_preferences` automaticamente).
 - **Cotações:** tabela `asset_prices` com cache global (`user_id NULL`) + override manual do usuário. O cache global é escrito pela **edge function `quotes`** (implementada em `supabase/functions/quotes/`).
@@ -97,37 +101,39 @@ npm run build:apk    # compila os APKs Debug e Release (assinado) para dist-apk/
 
 ## 6. COMPILAÇÃO & DISTRIBUIÇÃO DO APLICATIVO ANDROID (APK)
 
-O projeto suporta compilação automatizada de APKs nativos via Capacitor e Gradle:
+O projeto suporta compilação automatizada de APKs nativos via Capacitor e Gradle com **In-App Updater** e assinatura determinística permanente:
 
-### 6.1 Compilação em 1 Comando
-
-Para compilar os APKs de Debug e Release:
+### 6.1 Compilação Automatizada
 
 ```bash
+# Compilação padrão (incremento determinístico de versão e geração de version.json)
 npm run build:apk
-# ou diretamente:
-./scripts/build-apk.sh
+
+# Ou com versão específica:
+APP_VERSION_NAME="1.1.0" APP_VERSION_CODE="2" ./scripts/build-apk.sh
 ```
 
 O script executa automaticamente:
 1. Exportação do ambiente JDK 21 LTS e Android SDK Command-line Tools;
-2. Geração da chave criptográfica RSA 2048 bits (`release-key.keystore`), caso não exista;
+2. Validação da chave criptográfica RSA 2048 bits permanente (`release-key.keystore`);
 3. Compilação de produção do Web App Vite (`npm run build`);
 4. Sincronização dos assets e plugins nativos com Capacitor (`npx cap sync android`);
 5. Compilação dos APKs pelo Gradle Wrapper (`clean assembleDebug assembleRelease`);
-6. Organização e cópia dos artefatos finais para `dist-apk/`:
+6. Cálculo de integridade SHA-256 e geração do manifesto `public/releases/version.json`;
+7. Organização dos artefatos finais em `dist-apk/`:
    - `dist-apk/guia-financeiro-debug.apk`
-   - `dist-apk/guia-financeiro-release.apk` (assinado para distribuição).
+   - `dist-apk/guia-financeiro-release.apk` (assinado para distribuição)
+   - `dist-apk/axis-pro.apk` (cópia canônica de distribuição)
+   - `dist-apk/version.json` (manifesto sincronizado com `public/releases/version.json`).
 
-### 6.2 Instalação no Aparelho Real
+### 6.2 Instalação e Atualização In-Place
 
-Com o celular conectado via cabo USB (com Depuração USB ativada) ou WiFi:
+Com a keystore canônica permanente e `versionCode` incremental, qualquer nova versão instala por cima **sem necessidade de desinstalar**:
 
 ```bash
-# Instalar versão de Release
+# Instalar ou atualizar versão de Release
 adb install -r dist-apk/guia-financeiro-release.apk
-
-# Ou instalar versão Debug
-adb install -r dist-apk/guia-financeiro-debug.apk
 ```
+
+> Para o guia operacional detalhado, backup de chaves e resolução de dúvidas de usuários, consulte [`docs/NATIVE_DISTRIBUTION_GUIDE.md`](./NATIVE_DISTRIBUTION_GUIDE.md).
 

@@ -122,7 +122,7 @@ export function MoneyInput({
       spellCheck={false}
       placeholder={placeholder ?? (currencyProp === "USD" ? "US$ 0,00" : "R$ 0,00")}
       className={cn(
-        "w-full rounded-md border border-input bg-surface font-mono tabular-nums text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+        "w-full rounded-md border border-input bg-surface font-mono tabular-nums text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
         "privacy-mask", // máscara global (globals.css): blur apenas com data-privacy=masked
         sizeClasses[size],
         showCalculatorAction && "pr-10",

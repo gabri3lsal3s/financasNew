@@ -138,7 +138,7 @@ export function NumberStepperInput({
   const atMax = max !== undefined && (Number.isFinite(current) ? current : 0) >= max;
 
   const stepButtonClass =
-    "flex size-9 shrink-0 items-center justify-center rounded-md border border-input bg-surface text-foreground shadow-sm transition-colors select-none hover:bg-surface-hover active:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40";
+    "flex size-9 shrink-0 items-center justify-center rounded-md border border-input bg-surface text-foreground shadow-sm transition-colors select-none hover:bg-surface-hover active:bg-primary/15 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
     <div
@@ -187,7 +187,7 @@ export function NumberStepperInput({
           }
         }}
         className={cn(
-          "h-10 min-w-0 flex-1 rounded-md border border-input bg-surface px-2 text-center font-mono text-base tabular-nums text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          "h-10 min-w-0 flex-1 rounded-md border border-input bg-surface px-2 text-center font-mono text-base tabular-nums text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
           // Estado visual do long-press nos botões.
           holding && "select-none",
         )}

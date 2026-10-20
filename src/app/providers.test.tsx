@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { AppProviders } from "./providers";
 import * as clientModule from "@/data/client";
 
@@ -12,6 +13,30 @@ describe("AppProviders & AuthQuerySync", () => {
     );
 
     expect(screen.getByTestId("child-element")).toBeInTheDocument();
+  });
+
+  it("configura QueryClient com calibração anti-storm para alta concorrência (Tarefa 1.1)", () => {
+    let capturedOptions: ReturnType<QueryClient["getDefaultOptions"]> | undefined;
+
+    function TestConsumer() {
+      const client = useQueryClient();
+      capturedOptions = client.getDefaultOptions();
+      return <div data-testid="consumer">OK</div>;
+    }
+
+    render(
+      <AppProviders>
+        <TestConsumer />
+      </AppProviders>,
+    );
+
+    expect(screen.getByTestId("consumer")).toBeInTheDocument();
+    expect(capturedOptions?.queries?.refetchOnWindowFocus).toBe(false);
+    expect(capturedOptions?.queries?.refetchOnReconnect).toBe("always");
+    expect(capturedOptions?.queries?.staleTime).toBe(60_000);
+    expect(capturedOptions?.queries?.gcTime).toBe(600_000);
+    expect(capturedOptions?.queries?.retry).toBe(1);
+    expect(capturedOptions?.mutations?.retry).toBe(false);
   });
 
   it("escuta onAuthStateChange e limpa cache no SIGNED_OUT", async () => {

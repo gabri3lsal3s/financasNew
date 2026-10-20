@@ -6,6 +6,7 @@ import {
   ShieldCheck,
   Zap,
   RefreshCw,
+  Smartphone,
 } from "lucide-react";
 import { Button, Tabs } from "@/components/ui";
 import {
@@ -13,6 +14,7 @@ import {
   NotificationsTab,
   SecurityTab,
   SubscriptionTab,
+  AppInstallationTab,
 } from "../components/tabs";
 import { forceAppUpdate } from "@/app/pwa";
 import { pushToast } from "@/services/toast";
@@ -88,6 +90,22 @@ function resolveSettingsTab(param: string | null): string {
   if (["subscription", "plano", "assinatura", "upgrade"].includes(p)) {
     return "subscription";
   }
+  if (
+    [
+      "devices",
+      "dispositivos",
+      "app",
+      "aplicativo",
+      "instalacao",
+      "instalação",
+      "apk",
+      "download",
+      "versao",
+      "versão",
+    ].includes(p)
+  ) {
+    return "devices";
+  }
   return "appearance";
 }
 
@@ -148,6 +166,12 @@ export function SettingsPage() {
         label: "Plano",
         icon: <Zap className="size-4" />,
         content: <SubscriptionTab />,
+      },
+      {
+        value: "devices",
+        label: "Dispositivos & App",
+        icon: <Smartphone className="size-4" />,
+        content: <AppInstallationTab />,
       },
     ],
     [],

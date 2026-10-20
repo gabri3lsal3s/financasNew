@@ -40,7 +40,9 @@
 │   ├── DATA_MIGRATION_GUIDE.md    # Guia de migração e batimento de dados legados
 │   ├── DEPLOYMENT.md              # Guia de deploy (Cloudflare Pages + Supabase) e env vars
 │   ├── DESIGN_SYSTEM.md           # Identidade visual e design tokens
+│   ├── DIAGNOSTICO_SEGURANCA_PERFORMANCE_ESCALA.md # Diagnóstico de concorrência, velocidade e blindagem (1k-10k DAU)
 │   ├── FINANCIAL_MATH_SPEC.md     # Especificação canônica de engenharia e precisão matemática
+│   ├── PLANO_IMPLEMENTACAO_ALTA_CONCORRENCIA_SEGURANCA.md # Plano de implementação de escala (1k-10k DAU) e blindagem
 │   ├── PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md # Plano mestre de governança, limpeza e segurança
 │   ├── PROJECT_STRUCTURE.md       # Este documento
 │   ├── PROJETO_SAAS.md            # Modelo de precificação SaaS, 30 dias de trial e conformidade CDC
@@ -150,8 +152,8 @@
     │   ├── insights/              #   Insights, radar de vencimentos RF (F72), projeção e corte
     │   │                          #     components/ (diagnostic-card, diagnostics-tab, recurrences-tab, projection-tab F61)
     │   ├── reminders/             #   Lembretes (central de notificações)
-    │   ├── settings/              #   Configurações consolidadas em 4 abas especializadas: Aparência & Identidade Visual, Notificações & Automações, Segurança & Gestão de Dados, Plano & Assinatura
-    │   │                          #     components/tabs/ (appearance-tab, notifications-tab, security-tab, subscription-tab, subcards F1.3)
+    │   ├── settings/              #   Configurações consolidadas em 5 abas especializadas: Aparência & Identidade Visual, Notificações & Automações, Segurança & Gestão de Dados, Plano & Assinatura, Dispositivos & App (App Pro)
+    │   │                          #     components/tabs/ (appearance-tab, notifications-tab, security-tab, subscription-tab, app-installation-tab, subcards F1.3)
     │   ├── admin/                 #   Painel Administrativo SaaS /admin (F43: 4 pilares consolidados — Visão Geral & KPIs SaaS, Gestão de Usuários, Convites & Allowlist, Sistema & Auditoria, whitelist-quick-actions.tsx)
     │   ├── subscription/          #   Fluxos de Assinatura & Checkout (/assinatura, /assinar, /assinatura/sucesso)
     │   │                          #     pages: subscription-checkout-page, subscription-success-page
@@ -167,7 +169,7 @@
     │   │                          #       initial-pocket-cost-dialog (calibração do Marco Zero) com barrels components/index.ts e index.ts
     │   │
     │   └── landing/               #   Landing Page pública de apresentação & planos (/apresentacao, /precos, /landing)
-    │                              #     com simulador FIRE interativo, showcase, pricing, FAQ, scroll-reveal, scroll-spy e back-to-top
+    │                              #     com simulador FIRE interativo, showcase, platform-comparison (Tripé Web, PWA e Android Pro), pricing, FAQ, scroll-reveal, scroll-spy e back-to-top
     │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
     │   ├── validation/            #   validação pura e defensiva com Zod: sanitization.ts (XSS/control chars/money limits), password.ts, cpf.ts
@@ -255,7 +257,7 @@
     │   │                          #     rollback e updaters das listas em cache)
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (use-auth,
-    │                              #   use-highlight-target, use-pwa-install,
+    │                              #   use-highlight-target, use-pwa-install, use-app-update (In-App Updater),
     │                              #   use-network-status (F83 — detecção pub/sub via useSyncExternalStore),
     │                              #   use-sidebar-state, use-sign-out (logout unificado),
     │                              #   use-privacy-mask, use-visual-customization (F11),
@@ -266,7 +268,8 @@
     ├── services/                  # Apresentação + integrações
     │   ├── native/                #   Gateway nativo (Capacitor/Android): platform, back-button,
     │   │                          #     status-bar, haptics, splash-screen, biometrics, privacy-shield, app-lock,
-    │   │                          #     deep-links, local-notifications, suggestions-store, bank-listener, app-icon
+    │   │                          #     deep-links, local-notifications, suggestions-store, bank-listener, app-icon,
+    │   │                          #     update-checker, update-schema
     │   ├── masks/                 #   máscaras de apresentação (moeda, percentual pt-BR)
     │   │                          #   — barrel index.ts (fonte única DRY: formatCentsAsBRL,
     │   │                          #     formatPercent)

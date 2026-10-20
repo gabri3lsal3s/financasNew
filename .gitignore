@@ -17,11 +17,17 @@ coverage
 *.tsbuildinfo
 node_modules/.tmp
 
-# Android APK builds & keystores
+# Android APK builds & keystores (NUNCA COMMITAR)
 dist-apk/
+*.apk
+*.aab
 *.keystore
 *.jks
 android/app/release-key.keystore
+android/app/*.keystore
+android/app/*.jks
+public/releases/*.apk
+public/*.apk
 android/.gradle/
 android/build/
 android/app/build/

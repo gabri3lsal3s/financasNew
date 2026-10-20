@@ -183,14 +183,14 @@ $$\text{dropdowns (20)} < \text{tooltips (25)} < \text{bottom bar (30)} < \text{
 |---|---|
 | **Default** | `surface` + borda `border` + `shadow-sm` |
 | **Hover** | `surface-hover`; transição 150ms; sem mudança de layout |
-| **Active/pressed** | `surface-active`; botões com `scale(0.99)` |
-| **Focus-visible** | Anel `ring` 2px + offset 2px (sempre visível — a11y) |
+| **Active/pressed** | `surface-active`; botões, abas e cards com press canônico `scale(0.98)` (`active:scale-[0.98]`) |
+| **Focus-visible** | **Inputs/Formulários:** borda primária + anel sutil (`border-primary ring-1 ring-primary/20`, sem offset). **Botões/Ações:** anel fino colado (`ring-1 ring-ring`, sem offset). **Fallback global:** `outline: 1.5px` suave com offset 1px |
 | **Disabled** | Opacidade 50%, `cursor: not-allowed`, sem sombra, sem hover |
-| **Erro** | Borda `critical-strong` + anel `critical/25`; mensagem via gateway (`getErrorMessage`) |
+| **Erro** | Borda `critical-strong` + micro-anel `critical/20`; mensagem via gateway (`getErrorMessage`) |
 | **Sucesso** | Texto/ícone `positive-strong`; toast de confirmação |
 | **Selecionado** | Fill `primary/12` + borda `primary/40` (ex.: categoria ativa, aba) |
 | **Loading** | **Skeleton** (`muted` com shimmer) — proibido spinner genérico em tela cheia |
-| **Microinterações** | Transições 150ms em `transition-colors`/`transition-transform`; botões com **press `scale(0.98)`** (`active:scale-[0.98]`); `prefers-reduced-motion: reduce` desativa animações (F5.2) |
+| **Microinterações** | Transições 150ms em `transition-colors`/`transition-transform`; feedback tátil e escala unificada em **`active:scale-[0.98]`**; `prefers-reduced-motion: reduce` desativa animações (F5.2) |
 
 **Botões — estilo discreto (pós-F10):** sem fundo sólido. As variantes com cor (`default`/`destructive`/`positive`) usam **borda de cor + texto colorido** (`border-primary-strong/40 text-primary-strong`, `border-critical/50 text-critical-strong`, etc.) com hover de tinta suave (`bg-primary/10`, `bg-critical/10`) e **sem sombra**; `secondary` usa tinta 15% (`bg-secondary/15`); `ghost`/`outline` permanecem neutros. FABs (BottomNav, calculadora flutuante) seguem o mesmo princípio: círculo `background/95` + borda teal + ícone teal. Texto/borda sempre com contraste AA nos 3 temas.
 

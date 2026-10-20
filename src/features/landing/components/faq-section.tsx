@@ -42,7 +42,17 @@ const faqs: FaqItem[] = [
   {
     question: "O aplicativo funciona no celular como um app nativo?",
     answer:
-      "Sim. O Guia Financeiro foi construído como um PWA (Progressive Web App) moderno. Você pode instalá-lo diretamente na tela inicial do seu iPhone ou Android, funcionando de forma ultra-rápida, com suporte tátil e sem ocupar espaço desnecessário.",
+      "Sim. O Áxis opera em dois formatos complementares no celular: como PWA (Progressive Web App) ultraleve para iPhone e Android, que você adiciona à tela inicial em 1 clique sem ocupar espaço de memória; e como Aplicativo Android Pro (.apk), que adiciona o Assistente Bancário Inteligente para capturar comprovantes de cartão e Pix em tempo real.",
+  },
+  {
+    question: "Por que o Aplicativo Android Pro é baixado pelo site e não pela Google Play Store?",
+    answer:
+      "Distribuir diretamente pelo nosso servidor seguro nos permite duas vantagens fundamentais: repassar a economia das taxas abusivas de 30% das lojas para o valor da sua assinatura e oferecer o Assistente Bancário de notificações em tempo real com privacidade absoluta. O APK é assinado criptograficamente e recebe atualizações automáticas diretamente dentro do aplicativo, sem precisar reinstalar.",
+  },
+  {
+    question: "Tenho iPhone, consigo utilizar normalmente?",
+    answer:
+      "Sim, perfeitamente. No iPhone, você utiliza a versão PWA moderna (adicionada à tela inicial pelo Safari). Você terá acesso a 100% dos motores de cálculo, orçamentos, investimentos FIRE e relatórios executivos. Apenas a leitura automática em segundo plano de notificações de outros bancos fica restrita ao Android, devido a limitações de arquitetura impostas pela Apple no iOS.",
   },
 ];
 

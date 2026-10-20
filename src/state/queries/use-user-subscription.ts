@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getMySubscription } from "@/data/repositories/subscriptions";
 import { getCachedIconTier } from "@/services/native/app-icon";
+import { STALE_TIMES, STATIC_GC_TIME } from "@/state/cache-policy";
 import { useUserAccess, USER_SUBSCRIPTION_KEY, userSubscriptionQueryKey } from "./use-user-access";
 import type { SubscriptionStatus, SubscriptionTier, SubscriptionPlan } from "@/types";
 
@@ -21,7 +22,8 @@ export function useUserSubscription(): SubscriptionStatus {
     queryKey: userSubscriptionQueryKey(profile?.id ?? null),
     queryFn: getMySubscription,
     enabled: Boolean(profile?.id),
-    staleTime: 1000 * 60 * 5, // 5 minutos (Realtime cuida de invalidações ativas)
+    staleTime: STALE_TIMES.static, // 5 minutos (300_000 ms)
+    gcTime: STATIC_GC_TIME,
   });
 
   return useMemo((): SubscriptionStatus => {

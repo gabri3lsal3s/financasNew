@@ -324,23 +324,14 @@ export async function syncQuotesForAssets(
 
   const tickerList = [...tickersToFetch];
 
-  // 1) Tenta primeiro a Edge Function (servidor com acesso direto ao Yahoo)
+  // 1) Sincroniza via Edge Function (servidor com acesso direto e cache do banco)
   const edgeQuotes = await fetchViaEdgeFunction(tickerList);
-  const returnedTickers = new Set(edgeQuotes.map((q) => q.ticker.toUpperCase()));
-
-  // 2) Identifica tickers que a Edge Function NÃO conseguiu obter (ex.: tickers de 1 letra como O ou falhas transitórias)
-  const missingTickers = tickerList.filter((t) => !returnedTickers.has(t));
   const successfulQuotes: ParsedQuote[] = [...edgeQuotes];
 
-  // 3) Se algum ticker faltou na Edge Function, busca pelo fallback em cascata do cliente
-  if (missingTickers.length > 0) {
-    const fallbackResults = await Promise.allSettled(missingTickers.map((t) => fetchOnlineQuote(t)));
-    for (const res of fallbackResults) {
-      if (res.status === "fulfilled" && res.value !== null && res.value.price > 0) {
-        successfulQuotes.push(res.value);
-      }
-    }
-  }
+  // Desacoplamento de Chamadas Client-Side Concorrentes (Tarefa 2.1 — Plano de Alta Concorrência):
+  // Eliminado o disparo massivo `missingTickers.map((t) => fetchOnlineQuote(t))` no cliente.
+  // Ativos não retornados pela Edge Function mantêm o último preço conhecido da tabela `asset_prices`
+  // ou status "Aguardando cotação", protegendo o ecossistema contra tempestades de requisições e HTTP 429.
 
   if (successfulQuotes.length > 0) {
     try {

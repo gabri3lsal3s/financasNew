@@ -430,10 +430,10 @@ export function AporteResult({
             onClick={() => toggleTicker(row.ticker)}
             aria-label={isDone ? `Marcar ${row.ticker} como pendente` : `Marcar ${row.ticker} como executado`}
             className={cn(
-              "inline-flex items-center gap-1 rounded-pill px-2.5 py-1 text-xs font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer",
+              "inline-flex items-center gap-1 rounded-pill px-2.5 py-1 text-xs font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer",
               isDone
                 ? "border border-positive/30 bg-positive/10 text-positive-strong animate-spring-pop"
-                : "border border-border bg-surface text-muted-foreground hover:border-primary/40 hover:text-foreground active:scale-95",
+                : "border border-border bg-surface text-muted-foreground hover:border-primary/40 hover:text-foreground active:scale-[0.98]",
             )}
           >
             {isDone ? (
@@ -753,10 +753,10 @@ export function AporteResult({
                             onClick={() => toggleTicker(row.ticker)}
                             aria-label={isDone ? `Marcar ${row.ticker} como pendente` : `Marcar ${row.ticker} como executado`}
                             className={cn(
-                              "inline-flex items-center justify-center gap-1 rounded-pill px-3 py-1 text-xs font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer shrink-0",
+                              "inline-flex items-center justify-center gap-1 rounded-pill px-3 py-1 text-xs font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shrink-0",
                               isDone
                                 ? "border border-positive/30 bg-positive/10 text-positive-strong animate-spring-pop"
-                                : "border border-border bg-surface text-muted-foreground hover:border-primary/40 hover:text-foreground active:scale-95",
+                                : "border border-border bg-surface text-muted-foreground hover:border-primary/40 hover:text-foreground active:scale-[0.98]",
                             )}
                           >
                             {isDone ? (

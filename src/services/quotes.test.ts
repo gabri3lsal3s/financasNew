@@ -3,6 +3,15 @@ import { clearBcbCache, fetchBcbIndicator, fetchOnlineQuote, syncQuoteForTicker,
 
 const mockSetAssetPrice = vi.fn();
 const mockSetAssetPricesBatch = vi.fn();
+const mockInvoke = vi.fn();
+
+vi.mock("@/data/client", () => ({
+  getSupabase: () => ({
+    functions: {
+      invoke: (...args: unknown[]) => mockInvoke(...args),
+    },
+  }),
+}));
 
 vi.mock("@/data/repositories/asset-prices", () => ({
   setAssetPriceFromApi: (ticker: string, price: number, currency: string) =>
@@ -57,14 +66,15 @@ describe("quotes service", () => {
     vi.unstubAllGlobals();
   });
 
-  it("syncQuotesForAssets sincroniza ativos elegíveis e ignora caixa", async () => {
-    const globalFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        results: [{ symbol: "BOVA11", currency: "BRL", regularMarketPrice: 120.0 }],
-      }),
+  it("syncQuotesForAssets sincroniza ativos elegíveis via Edge Function e ignora caixa", async () => {
+    mockInvoke.mockResolvedValueOnce({
+      data: {
+        quotes: [
+          { ticker: "BOVA11", price: 120.0, currency: "BRL" },
+        ],
+      },
+      error: null,
     });
-    vi.stubGlobal("fetch", globalFetch);
 
     const updated = await syncQuotesForAssets([
       { ticker: "BOVA11", asset_class: "ETF" },
@@ -73,10 +83,32 @@ describe("quotes service", () => {
     ]);
 
     expect(updated).toBe(1);
+    expect(mockInvoke).toHaveBeenCalledTimes(1);
     expect(mockSetAssetPricesBatch).toHaveBeenCalledTimes(1);
     expect(mockSetAssetPricesBatch).toHaveBeenCalledWith([
       { ticker: "BOVA11", price: 120.0, currency: "BRL" },
     ]);
+  });
+
+  it("syncQuotesForAssets não dispara requisições externas concorrentes pelo cliente para ativos faltantes (Tarefa 2.1)", async () => {
+    // Edge function falha ou não encontra o ativo
+    mockInvoke.mockResolvedValueOnce({
+      data: { quotes: [] },
+      error: null,
+    });
+
+    const globalFetch = vi.fn();
+    vi.stubGlobal("fetch", globalFetch);
+
+    const updated = await syncQuotesForAssets([
+      { ticker: "PETR4", asset_class: "Ações" },
+      { ticker: "VALE3", asset_class: "Ações" },
+    ]);
+
+    // Não deve disparar fetch externo a partir do cliente
+    expect(globalFetch).not.toHaveBeenCalled();
+    expect(updated).toBe(0);
+    expect(mockSetAssetPricesBatch).not.toHaveBeenCalled();
 
     vi.unstubAllGlobals();
   });

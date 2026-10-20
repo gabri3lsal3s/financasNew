@@ -280,8 +280,8 @@
 
   /* Foco visível padronizado (a11y) */
   :focus-visible {
-    outline: 2px solid hsl(var(--ring));
-    outline-offset: 2px;
+    outline: 1.5px solid hsl(var(--ring) / 0.6);
+    outline-offset: 1px;
   }
 
   /* Scrollbars ocultas (pós-F10): a barra visual quebrava o layout de algumas

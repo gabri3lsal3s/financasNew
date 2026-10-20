@@ -23,3 +23,4 @@ export { useDynamicFavicon } from "./use-dynamic-favicon";
 export { useDynamicAppIcon } from "./use-dynamic-app-icon";
 export { useIsPro } from "./use-is-pro";
 export { useSensory, type SensoryDispatcher } from "./use-sensory";
+export { useAppUpdate, type UseAppUpdateOptions, type UseAppUpdateReturn } from "./use-app-update";

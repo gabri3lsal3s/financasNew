@@ -152,7 +152,7 @@ export function CreditCardWallet({
             type="button"
             onClick={handlePrev}
             aria-label="Cartão anterior"
-            className="shrink-0 flex size-8 sm:size-9 items-center justify-center rounded-full bg-surface border border-border text-muted-foreground hover:text-foreground hover:bg-surface-hover shadow-xs transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="shrink-0 flex size-8 sm:size-9 items-center justify-center rounded-full bg-surface border border-border text-muted-foreground hover:text-foreground hover:bg-surface-hover shadow-xs transition-transform hover:scale-105 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <ChevronLeft className="size-4 sm:size-5" aria-hidden="true" />
           </button>
@@ -192,7 +192,7 @@ export function CreditCardWallet({
             type="button"
             onClick={handleNext}
             aria-label="Próximo cartão"
-            className="shrink-0 flex size-8 sm:size-9 items-center justify-center rounded-full bg-surface border border-border text-muted-foreground hover:text-foreground hover:bg-surface-hover shadow-xs transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="shrink-0 flex size-8 sm:size-9 items-center justify-center rounded-full bg-surface border border-border text-muted-foreground hover:text-foreground hover:bg-surface-hover shadow-xs transition-transform hover:scale-105 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <ChevronRight className="size-4 sm:size-5" aria-hidden="true" />
           </button>
@@ -216,7 +216,7 @@ export function CreditCardWallet({
                   onSelectCard(card.id);
                 }}
                 className={cn(
-                  "h-1.5 rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                  "h-1.5 rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
                   card.id === currentCard?.id
                     ? "w-5 bg-primary"
                     : "w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/50",
@@ -240,7 +240,7 @@ export function CreditCardWallet({
                   aria-pressed={isSelected}
                   className={cn(
                     "flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium border transition-all duration-200",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
                     isSelected
                       ? "border-primary/60 bg-primary/10 text-primary-strong font-semibold shadow-xs"
                       : "border-border/60 bg-surface/80 text-muted-foreground hover:bg-surface hover:text-foreground",

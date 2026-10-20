@@ -6,6 +6,7 @@ import { getSupabase } from "@/data/client";
 import { getMyFeatures, getMyProfile } from "@/data/repositories/access";
 import { getMySubscription } from "@/data/repositories/subscriptions";
 import { getActiveUserId, setActiveUserId, subscribeActiveUserId } from "@/services/user-storage";
+import { STALE_TIMES, STATIC_GC_TIME } from "@/state/cache-policy";
 import type { Profile, SystemFeatureKey, UserRole, UserStatus } from "@/types";
 
 export const USER_ACCESS_KEY = ["user_access"] as const;
@@ -206,7 +207,8 @@ export function useUserAccess(targetUserId?: string): UserAccessResult {
     queryKey: userAccessQueryKey(activeUserId),
     queryFn: getMyProfile,
     enabled: isAuthResolved,
-    staleTime: 1000 * 60 * 5, // 5 minutos
+    staleTime: STALE_TIMES.static, // 5 minutos (300_000 ms)
+    gcTime: STATIC_GC_TIME,
     retry: 1,
   });
 
@@ -214,7 +216,8 @@ export function useUserAccess(targetUserId?: string): UserAccessResult {
     queryKey: userFeaturesQueryKey(activeUserId),
     queryFn: getMyFeatures,
     enabled: isAuthResolved,
-    staleTime: 1000 * 60 * 5,
+    staleTime: STALE_TIMES.static, // 5 minutos (300_000 ms)
+    gcTime: STATIC_GC_TIME,
     retry: 1,
   });
 
@@ -222,7 +225,8 @@ export function useUserAccess(targetUserId?: string): UserAccessResult {
     queryKey: userSubscriptionQueryKey(activeUserId),
     queryFn: getMySubscription,
     enabled: isAuthResolved,
-    staleTime: 1000 * 60 * 5,
+    staleTime: STALE_TIMES.static, // 5 minutos (300_000 ms)
+    gcTime: STATIC_GC_TIME,
     retry: 1,
   });
 

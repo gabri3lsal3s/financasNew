@@ -582,6 +582,56 @@ describe("Tarefa 5.5 — Fortalecimento Nativo Android & Privacidade de Sessão"
   });
 });
 
+describe("Tarefa 1.4 — Regressão Automatizada de Headers de Segurança e Cache em public/_headers", () => {
+  const headersPath = resolve(root, "public/_headers");
+
+  it("public/_headers existe e contém diretiva estrita de Content-Security-Policy", () => {
+    expect(existsSync(headersPath)).toBe(true);
+    const content = readFileSync(headersPath, "utf8");
+
+    expect(content).toContain("Content-Security-Policy:");
+    const cspMatch = content.match(/Content-Security-Policy:\s*([^\r\n]+)/);
+    expect(cspMatch).not.toBeNull();
+    const csp = cspMatch?.[1] ?? "";
+
+    // Valida diretivas obrigatórias de contenção
+    expect(csp).toContain("default-src 'self'");
+    expect(csp).toContain("object-src 'none'");
+    expect(csp).toContain("base-uri 'self'");
+    expect(csp).toContain("form-action 'self'");
+  });
+
+  it("não possui wildcards permissivos (*) em script-src ou connect-src", () => {
+    const content = readFileSync(headersPath, "utf8");
+    const cspMatch = content.match(/Content-Security-Policy:\s*([^\r\n]+)/);
+    const csp = cspMatch?.[1] ?? "";
+
+    const scriptMatch = csp.match(/script-src\s+([^;]+)/);
+    const scriptSrc = scriptMatch?.[1] ?? "";
+    expect(scriptSrc.split(/\s+/)).not.toContain("*");
+
+    const connectMatch = csp.match(/connect-src\s+([^;]+)/);
+    const connectSrc = connectMatch?.[1] ?? "";
+    expect(connectSrc.split(/\s+/)).not.toContain("*");
+  });
+
+  it("bloqueia clickjacking e framing via frame-ancestors e X-Frame-Options", () => {
+    const content = readFileSync(headersPath, "utf8");
+    expect(content).toContain("frame-ancestors 'none'");
+    expect(content).toContain("X-Frame-Options: DENY");
+  });
+
+  it("configura políticas determinísticas de cache para assets estáticos e artefatos voláteis", () => {
+    const content = readFileSync(headersPath, "utf8");
+    expect(content).toContain("/assets/*");
+    expect(content).toContain("max-age=31536000, immutable");
+
+    expect(content).toContain("/index.html");
+    expect(content).toContain("/sw.js");
+    expect(content).toContain("max-age=0, must-revalidate");
+  });
+});
+
 
 
 

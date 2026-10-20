@@ -15,9 +15,16 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 | Estado | TanStack Query (server state) + hooks/contexto | Contratos `data \| loading \| error \| CRUD \| refresh` |
 | Dados | Supabase (Postgres + RLS + Auth) | Fonte única da verdade; RPCs transacionais |
 | Integração externa | Yahoo Finance (via proxy/cache em servidor) | Cotações para valoração da carteira |
-| PWA | vite-plugin-pwa (manifest + service worker) | App Shell com carregamento instantâneo; dados seguem Online First — SW nunca cacheia dados (ver `PWA_GUIDELINES.md`) |
+| PWA | vite-plugin-pwa (manifest + service worker) | App Shell com carregamento instantâneo; universal para iOS e web móvel |
+| Android Nativo (Pro) | Capacitor 8+ · Java/Gradle · Keystore RSA 2048 | Automação em tempo real (Leitor Bancário), Biometria física e In-App Updater (ver `NATIVE_DISTRIBUTION_GUIDE.md`) |
 
 ---
+
+### 1.1 O Tripé de Plataformas Áxis
+O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma conta:
+1. **Web Desktop:** Experiência panorâmica com relatórios executivos, FIRE e conciliação bancária;
+2. **Mobile PWA:** Acesso leve e instantâneo no iPhone (iOS Safari) e Android sem ocupar armazenamento;
+3. **Android App Pro:** Aplicativo nativo com escuta passiva de notificações bancárias (Pix e compras em tempo real) e atualizações automáticas in-place sem desinstalação.
 
 ## 2. PRINCÍPIOS ARQUITETURAIS
 
@@ -197,7 +204,16 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 - **Derivados nunca são cacheados como estado**: KPIs, séries e insights são funções puras de `domain/` aplicadas sobre a query base (fonte única).
 - **Cotações (dados lentos)**: `staleTime` alto + *stale-while-revalidate*; a UI sempre lê do cache servidor (`asset_prices`), nunca da API externa em tempo de request.
 - **Invalidação dirigida após mutações** (ex.: criar despesa invalida `['expenses']`, `['budgets']`, `['overview']`).
-- **Política de retry (Online First):** leituras com retry automático **limitado** (2 tentativas com backoff curto) + `staleTime` por domínio; **mutações nunca têm retry automático** — estado `isPending` desabilita o botão e previne dupla submissão; falha de rede exige ação explícita do usuário ("Tentar novamente").
+- **Política de retry e Calibração Global Anti-Storm (Online First & Alta Concorrência):**
+  - `refetchOnWindowFocus: false`: erradica tempestades de requisições (*refetch storms*) ao alternar abas, janelas móveis ou retornar ao app;
+  - `refetchOnReconnect: "always"`: revalidação garantida ao restabelecer a conexão de rede;
+  - `staleTime: 60_000`: 1 minuto de frescor padrão global para dados transacionais;
+  - `gcTime: 600_000`: 10 minutos de retenção de cache inativo em memória;
+  - `retry: 1`: leituras com 1 tentativa com backoff curto, prevenindo acúmulo de requisições lentas em redes instáveis;
+  - **Mutações NUNCA têm retry automático** (`mutations.retry: false`) — o estado `isPending` desabilita o botão e previne dupla submissão; falha de rede exige ação explícita do usuário ("Tentar novamente").
+- **Calibração de Stale Time Estendido para Dados Cadastrais e Estáticos (5 minutos / 300.000 ms):**
+  - Queries de baixa frequência de alteração (`useCategories`, `useUserPreferences`, `useBudgets`, `useUserAccess`, `useUserSubscription`) utilizam explicitamente `staleTime: STALE_TIMES.static` (300.000 ms) e `gcTime: STATIC_GC_TIME` (1.800.000 ms / 30 min);
+  - Assegura imunidade contra re-execuções desnecessárias em navegações internas, mantendo invalidação atômica e imediata após mutações locais (`queryClient.invalidateQueries`) e canais Supabase Realtime.
 
 ### 5.2 Escritas — RPCs transacionais (D1)
 
@@ -256,7 +272,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 - `services/format`: moeda (`Intl.NumberFormat` pt-BR), datas (timezone local — nunca `toISOString` em ranges de mês), percentuais.
 - `services/masks`: máscaras de input monetário (`inputMode=numeric`), datas.
 - `services/errors`: **gateway único** `getErrorMessage` com mensagens pt-BR; casos especiais: rate limit, e-mail não confirmado, sessão expirada, rede indisponível.
-- Cotações: **edge function `supabase/functions/quotes/`** (F1.7, Deno — fetch em cascata Yahoo → Brapi/AwesomeAPI + upsert do cache global `asset_prices` com `source 'api'`; motor puro testado em `_shared/quotes-core.ts`) + fallback estático + **preço manual** (D5, override do usuário consolidado com precedência estrita sobre cache) + guardrail de spike > 50%/dia. A UI nunca chama a API externa — sempre lê o cache do servidor.
+- Cotações e Arquitetura Server-Side (D5 & Alta Concorrência): **edge function `supabase/functions/quotes/`** (F1.7, Deno — fetch em cascata Yahoo → Brapi/AwesomeAPI + upsert do cache global `asset_prices` com `source 'api'`; motor puro testado em `_shared/quotes-core.ts`) + fallback estático + **preço manual** (D5, override do usuário consolidado com precedência estrita sobre cache) + guardrail de spike > 50%/dia. **Desacoplamento client-side estrito (Fase 2):** a UI e a rotina `syncQuotesForAssets` operam exclusivamente via cache do banco (`asset_prices`) e Edge Function centralizada, eliminando disparos concorrentes do navegador para APIs externas (Brapi/Yahoo). Tickers sem cotação imediata preservam o último preço registrado ou exibem status de espera, prevenindo erros de rate limit (HTTP 429).
 
 ---
 
