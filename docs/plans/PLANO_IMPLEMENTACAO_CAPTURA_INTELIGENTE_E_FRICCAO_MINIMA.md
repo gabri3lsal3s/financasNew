@@ -123,7 +123,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Criar fixtures de testes em `src/domain/notifications/bank-parser.test.ts` com comprovantes reais de Nubank, Inter, Itaú, Santander, Bradesco, C6 e Mercado Pago.
   - *Commit:* `feat(domain): aprimorar parser de comprovantes bancarios para pix e agendamentos`
 
-- [ ] **Tarefa 1.5 — Deduplicação Cruzada (Comprovante $\leftrightarrow$ Notificação Push):**
+- [x] **Tarefa 1.5 — Deduplicação Cruzada (Comprovante $\leftrightarrow$ Notificação Push):**
   - Em `src/services/native/suggestions-store.ts`, registrar janela temporal de 10 minutos para transações originadas de comprovantes.
   - Se uma notificação push do mesmo valor e estabelecimento chegar posteriormente, descartar silenciosamente sem gerar card duplicado.
   - *Teste & Verificação:* Teste unitário em `suggestions-store.test.ts` simulando chegada de push 45s após compartilhamento de comprovante.
