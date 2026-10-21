@@ -187,18 +187,25 @@ export function resolveAssetPrecision(asset: Pick<AporteAssetInput, "assetClass"
     return 8;
   }
 
-  // 2. Internacional / USD -> 4 casas
+  // 2. Mercado Nacional B3 (BRL) -> Estritamente cotas inteiras (0 casas)
+  // Ativos cotados em BRL (ações, FIIs, ETFs B3, BDRs) na B3 não aceitam frações
+  if (asset.currency === "BRL") {
+    return 0;
+  }
+
+  // 3. Internacional / Moeda Estrangeira (USD) -> 4 casas
   if (
     asset.currency === "USD" ||
     normalizedClass.includes("internacional") ||
     normalizedClass.includes("global") ||
+    normalizedClass.includes("exterior") ||
     normalizedClass.includes("stock") ||
     normalizedClass.includes("reit")
   ) {
     return 4;
   }
 
-  // 3. Mercado Nacional B3 -> Cotas inteiras (0 casas)
+  // 4. Mercado Nacional B3 -> Cotas inteiras (0 casas)
   return 0;
 }
 
@@ -632,7 +639,7 @@ export function simulateAporte(opts: {
           quantity: newQty,
           allocatedBRL: round2(existing.allocatedBRL + alloc),
         });
-        remainingBudget = round2(remainingBudget - alloc);
+        remainingBudget = Math.max(0, round2(remainingBudget - alloc));
       }
     }
 
@@ -666,6 +673,18 @@ export function simulateAporte(opts: {
           addAlloc = round2(addQty * m.priceBRL);
         }
 
+        if (addAlloc > remainingBudget) {
+          addAlloc = remainingBudget;
+          if (precision > 0) {
+            const multiplier = Math.pow(10, precision);
+            addQty = Math.floor((addAlloc / m.priceBRL) * multiplier) / multiplier;
+            addAlloc = round2(addQty * m.priceBRL);
+          } else {
+            addQty = Math.floor(addAlloc / m.priceBRL);
+            addAlloc = round2(addQty * m.priceBRL);
+          }
+        }
+
         if (addAlloc > 0 && addQty > 0) {
           const existing = allocatedMap.get(m.id) ?? { quantity: 0, allocatedBRL: 0 };
           const newQty = precision > 0 ? Math.round((existing.quantity + addQty) * Math.pow(10, precision)) / Math.pow(10, precision) : existing.quantity + addQty;
@@ -673,7 +692,7 @@ export function simulateAporte(opts: {
             quantity: newQty,
             allocatedBRL: round2(existing.allocatedBRL + addAlloc),
           });
-          remainingBudget = round2(remainingBudget - addAlloc);
+          remainingBudget = Math.max(0, round2(remainingBudget - addAlloc));
         }
       }
     }
@@ -726,7 +745,7 @@ export function simulateAporte(opts: {
         const allocated = allocateBudgetToMembers(sectorMembers, sectorBudget);
 
         actualClassAllocated = round2(actualClassAllocated + allocated);
-        classRemainingBudget = round2(classRemainingBudget - allocated);
+        classRemainingBudget = Math.max(0, round2(classRemainingBudget - allocated));
 
         sectorSummaries.push({
           className: classMacro.className,
@@ -750,7 +769,7 @@ export function simulateAporte(opts: {
 
           if (allocated > 0) {
             actualClassAllocated = round2(actualClassAllocated + allocated);
-            classRemainingBudget = round2(classRemainingBudget - allocated);
+            classRemainingBudget = Math.max(0, round2(classRemainingBudget - allocated));
 
             const sSummary = sectorSummaries.find((s) => s.className === classMacro.className && s.sectorName === sectorMacro.sectorName);
             if (sSummary) {
@@ -767,7 +786,7 @@ export function simulateAporte(opts: {
       actualClassAllocated = round2(actualClassAllocated + allocated);
     }
 
-    globalRemainingPool = round2(globalRemainingPool - actualClassAllocated);
+    globalRemainingPool = Math.max(0, round2(globalRemainingPool - actualClassAllocated));
 
     classSummaries.push({
       className: classMacro.className,
@@ -788,7 +807,7 @@ export function simulateAporte(opts: {
       const allocated = allocateBudgetToMembers(classMembers, globalRemainingPool);
 
       if (allocated > 0) {
-        globalRemainingPool = round2(globalRemainingPool - allocated);
+        globalRemainingPool = Math.max(0, round2(globalRemainingPool - allocated));
 
         const cSummary = classSummaries.find((cs) => cs.className === classMacro.className);
         if (cSummary) {
@@ -916,6 +935,17 @@ export function simulateAporte(opts: {
         });
       }
     }
+  }
+
+  // Sincroniza os totais reais alocados em classSummaries e sectorSummaries com as rotas finais
+  for (const cs of classSummaries) {
+    const classRoutes = routes.filter((r) => r.assetClass === cs.className);
+    cs.actualAllocatedBRL = round2(classRoutes.reduce((acc, r) => acc + r.allocatedBRL, 0));
+  }
+
+  for (const ss of sectorSummaries) {
+    const sectorRoutes = routes.filter((r) => r.assetClass === ss.className && r.sector === ss.sectorName);
+    ss.actualAllocatedBRL = round2(sectorRoutes.reduce((acc, r) => acc + r.allocatedBRL, 0));
   }
 
   const totalAllocated = Math.min(aporte, round2(routes.reduce((acc, r) => acc + r.allocatedBRL, 0)));

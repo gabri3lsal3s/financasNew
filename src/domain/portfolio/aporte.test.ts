@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  isFractionalAsset,
+  resolveAssetPrecision,
   simulateCombinedAporte,
   simulateRebalanceAporte,
   simulateSmartAporte,
   type AporteAssetInput,
+  type ClassTargetInput,
+  type SectorTargetInput,
 } from "./aporte";
 
 const asset = (overrides: Partial<AporteAssetInput> & Pick<AporteAssetInput, "id" | "ticker">): AporteAssetInput => ({
@@ -512,6 +516,392 @@ describe("Hierarquia Classe -> Setor -> Ativo & Fracionamento Internacional (Fas
     expect(result.skippedAssets).toContainEqual(
       expect.objectContaining({ ticker: "PETR4", reason: "above_target" }),
     );
+  });
+});
+
+describe("Auditoria de Invariantes & Teste de Estresse Multi-Nível (Classe -> Setor -> Ativo)", () => {
+  describe("Precisão fracionária adaptativa (resolveAssetPrecision & isFractionalAsset)", () => {
+    it("garante cotas estritamente inteiras (0 casas) para qualquer ativo B3 cotado em BRL", () => {
+      // Ações com classe "Ações", "Acoes" ou "Stocks" cotadas em BRL
+      expect(resolveAssetPrecision({ ticker: "PETR4", assetClass: "Ações", currency: "BRL" })).toBe(0);
+      expect(resolveAssetPrecision({ ticker: "VALE3", assetClass: "Stocks", currency: "BRL" })).toBe(0);
+      expect(resolveAssetPrecision({ ticker: "ITUB4", assetClass: "Ações Nacionais", currency: "BRL" })).toBe(0);
+
+      // FIIs na B3
+      expect(resolveAssetPrecision({ ticker: "HGLG11", assetClass: "FIIs", currency: "BRL" })).toBe(0);
+      expect(resolveAssetPrecision({ ticker: "MXRF11", assetClass: "Fundos Imobiliários", currency: "BRL" })).toBe(0);
+
+      // ETFs B3 em BRL
+      expect(resolveAssetPrecision({ ticker: "BOVA11", assetClass: "ETFs", currency: "BRL" })).toBe(0);
+      expect(resolveAssetPrecision({ ticker: "IVVB11", assetClass: "ETFs", currency: "BRL" })).toBe(0);
+
+      // BDRs na B3 em BRL
+      expect(resolveAssetPrecision({ ticker: "AAPL34", assetClass: "BDRs", currency: "BRL" })).toBe(0);
+
+      expect(isFractionalAsset("Ações", "PETR4", undefined, "BRL")).toBe(false);
+      expect(isFractionalAsset("ETFs", "BOVA11", undefined, "BRL")).toBe(false);
+      expect(isFractionalAsset("BDRs", "AAPL34", undefined, "BRL")).toBe(false);
+    });
+
+    it("garante compras fracionárias de até 4 casas decimais para ativos internacionais cotados em USD", () => {
+      expect(resolveAssetPrecision({ ticker: "VOO", assetClass: "Internacional", currency: "USD" })).toBe(4);
+      expect(resolveAssetPrecision({ ticker: "AAPL", assetClass: "Stocks", currency: "USD" })).toBe(4);
+      expect(resolveAssetPrecision({ ticker: "MSFT", assetClass: "Global Equities", currency: "USD" })).toBe(4);
+      expect(resolveAssetPrecision({ ticker: "O", assetClass: "REITs", currency: "USD" })).toBe(4);
+
+      expect(isFractionalAsset("Internacional", "VOO", undefined, "USD")).toBe(true);
+      expect(isFractionalAsset("Stocks", "AAPL", undefined, "USD")).toBe(true);
+    });
+
+    it("garante alta precisão (8 casas decimais) para criptoativos em qualquer moeda", () => {
+      expect(resolveAssetPrecision({ ticker: "BTC", assetClass: "Cripto", currency: "BRL" })).toBe(8);
+      expect(resolveAssetPrecision({ ticker: "ETH", assetClass: "Criptoativos", currency: "USD" })).toBe(8);
+      expect(resolveAssetPrecision({ ticker: "SOL", assetClass: "Cryptos", currency: "BRL" })).toBe(8);
+      expect(resolveAssetPrecision({ ticker: "USDT", assetClass: "Stablecoins", currency: "USD" })).toBe(8);
+
+      expect(isFractionalAsset("Cripto", "BTC", undefined, "BRL")).toBe(true);
+    });
+
+    it("respeita overrides manuais de fracionamento (isFractional explicit)", () => {
+      // Forçar fracionamento em ativo B3 via override
+      expect(resolveAssetPrecision({ ticker: "PETR4", assetClass: "Ações", currency: "BRL", isFractional: true })).toBe(4);
+      // Forçar cotas inteiras em ativo USD via override
+      expect(resolveAssetPrecision({ ticker: "VOO", assetClass: "Internacional", currency: "USD", isFractional: false })).toBe(0);
+      // Forçar cotas inteiras em cripto via override
+      expect(resolveAssetPrecision({ ticker: "BTC", assetClass: "Cripto", currency: "BRL", isFractional: false })).toBe(0);
+    });
+  });
+
+  describe("Estresse com carteira massiva multi-setorial (50 ativos nos 3 modos)", () => {
+    // Montagem de carteira sintética com 50 ativos distribuídos em 4 classes e 9 setores
+    const createMassivePortfolio = () => {
+      const assets: AporteAssetInput[] = [];
+
+      // 1. Ações B3 (20 ativos em 4 setores, cotas inteiras)
+      const acoesSectors = [
+        { sector: "Financeiro / Bancos", tickers: ["ITUB4", "BBDC4", "BBAS3", "SANB11", "BPAC11"] },
+        { sector: "Energia Elétrica", tickers: ["TAEE11", "EGIE3", "CPLE6", "ALUP11", "EQTL3"] },
+        { sector: "Commodities / Materiais", tickers: ["VALE3", "PETR4", "CSNA3", "GGBR4", "SUZB3"] },
+        { sector: "Consumo e Varejo", tickers: ["LREN3", "MGLU3", "ABEV3", "RADL3", "RENT3"] },
+      ];
+      for (const group of acoesSectors) {
+        for (let i = 0; i < group.tickers.length; i++) {
+          const ticker = group.tickers[i]!;
+          assets.push(
+            asset({
+              id: `acao_${ticker}`,
+              ticker,
+              assetClass: "Ações",
+              sector: group.sector,
+              currency: "BRL",
+              currentValueBRL: 500 + i * 200,
+              priceBRL: 20 + i * 15,
+              targetPercentage: 2, // 20 ativos x 2% = 40% de meta individual
+            }),
+          );
+        }
+      }
+
+      // 2. FIIs B3 (15 ativos em 3 setores, cotas inteiras)
+      const fiiSectors = [
+        { sector: "Imobiliário / Logística", tickers: ["HGLG11", "BTLG11", "XPLG11", "VILG11", "LVBI11"] },
+        { sector: "Imobiliário / Papel e CRI", tickers: ["KNCR11", "KNIP11", "MXRF11", "CPTS11", "RBRR11"] },
+        { sector: "Imobiliário / Shoppings", tickers: ["XPML11", "VISC11", "HSML11", "MALL11", "HGBS11"] },
+      ];
+      for (const group of fiiSectors) {
+        for (let i = 0; i < group.tickers.length; i++) {
+          const ticker = group.tickers[i]!;
+          assets.push(
+            asset({
+              id: `fii_${ticker}`,
+              ticker,
+              assetClass: "FIIs",
+              sector: group.sector,
+              currency: "BRL",
+              currentValueBRL: 400 + i * 150,
+              priceBRL: 80 + i * 10,
+              targetPercentage: 1.66,
+            }),
+          );
+        }
+      }
+
+      // 3. Internacional USD (10 ativos em 2 setores, 4 casas decimais)
+      const intSectors = [
+        { sector: "Tecnologia & Software", tickers: ["AAPL", "MSFT", "GOOGL", "NVDA", "AMZN"] },
+        { sector: "Mercado Amplo US", tickers: ["VOO", "VTI", "QQQ", "SCHD", "VT"] },
+      ];
+      for (const group of intSectors) {
+        for (let i = 0; i < group.tickers.length; i++) {
+          const ticker = group.tickers[i]!;
+          assets.push(
+            asset({
+              id: `int_${ticker}`,
+              ticker,
+              assetClass: "Internacional",
+              sector: group.sector,
+              currency: "USD",
+              currentValueBRL: 300 + i * 100,
+              priceBRL: 150 + i * 50,
+              targetPercentage: 2.5,
+            }),
+          );
+        }
+      }
+
+      // 4. Criptoativos (5 ativos, 8 casas decimais)
+      const cryptos = [
+        { ticker: "BTC", price: 350_000, current: 2000 },
+        { ticker: "ETH", price: 18_000, current: 1000 },
+        { ticker: "SOL", price: 900, current: 300 },
+        { ticker: "ADA", price: 3.5, current: 100 },
+        { ticker: "DOT", price: 35, current: 100 },
+      ];
+      for (const c of cryptos) {
+        assets.push(
+          asset({
+            id: `crypto_${c.ticker}`,
+            ticker: c.ticker,
+            assetClass: "Cripto",
+            sector: "Criptoativos",
+            currency: "BRL",
+            currentValueBRL: c.current,
+            priceBRL: c.price,
+            targetPercentage: 2,
+          }),
+        );
+      }
+
+      return assets;
+    };
+
+    const classTargets: ClassTargetInput[] = [
+      { className: "Ações", targetPercentage: 40 },
+      { className: "FIIs", targetPercentage: 25 },
+      { className: "Internacional", targetPercentage: 25 },
+      { className: "Cripto", targetPercentage: 10 },
+    ];
+
+    const sectorTargets: SectorTargetInput[] = [
+      // Setores de Ações (soma 100% de Ações)
+      { className: "Ações", sectorName: "Financeiro / Bancos", targetPercentage: 35 },
+      { className: "Ações", sectorName: "Energia Elétrica", targetPercentage: 30 },
+      { className: "Ações", sectorName: "Commodities / Materiais", targetPercentage: 20 },
+      { className: "Ações", sectorName: "Consumo e Varejo", targetPercentage: 15 },
+      // Setores de FIIs (soma 100% de FIIs)
+      { className: "FIIs", sectorName: "Imobiliário / Logística", targetPercentage: 40 },
+      { className: "FIIs", sectorName: "Imobiliário / Papel e CRI", targetPercentage: 35 },
+      { className: "FIIs", sectorName: "Imobiliário / Shoppings", targetPercentage: 25 },
+      // Setores de Internacional (soma 100% de Internacional)
+      { className: "Internacional", sectorName: "Tecnologia & Software", targetPercentage: 50 },
+      { className: "Internacional", sectorName: "Mercado Amplo US", targetPercentage: 50 },
+    ];
+
+    it("respeita rigorosamente todas as invariantes no modo combinado (both)", () => {
+      const assets = createMassivePortfolio();
+      const aporte = 25_000;
+
+      const result = simulateCombinedAporte({
+        aporte,
+        assets,
+        classTargets,
+        sectorTargets,
+      });
+
+      // 1. Invariante da Conservação de Capital
+      expect(result.totalAllocated).toBeLessThanOrEqual(aporte);
+      expect(result.leftover).toBeGreaterThanOrEqual(0);
+      expect(Math.round((result.totalAllocated + result.leftover) * 100) / 100).toBe(aporte);
+
+      // 2. Integridade de Cotas por Tipo de Ativo
+      for (const route of result.routes) {
+        expect(route.allocatedBRL).toBeGreaterThan(0);
+        expect(route.quantity).toBeGreaterThan(0);
+        expect(Number.isNaN(route.allocatedBRL)).toBe(false);
+        expect(Number.isNaN(route.quantity)).toBe(false);
+
+        if (route.assetClass === "Ações" || route.assetClass === "FIIs") {
+          // B3: cotas estritamente inteiras
+          expect(Number.isInteger(route.quantity)).toBe(true);
+          expect(route.quantity).toBeGreaterThanOrEqual(1);
+        } else if (route.assetClass === "Internacional") {
+          // USD: até 4 casas decimais
+          const decimals = (route.quantity.toString().split(".")[1] ?? "").length;
+          expect(decimals).toBeLessThanOrEqual(4);
+        } else if (route.assetClass === "Cripto") {
+          // Cripto: até 8 casas decimais
+          const decimals = (route.quantity.toString().split(".")[1] ?? "").length;
+          expect(decimals).toBeLessThanOrEqual(8);
+        }
+
+        // Alocação não excede o gap com tolerância de arredondamento de 1 cota/centavo
+        expect(route.allocatedBRL).toBeLessThanOrEqual(route.gapBRL + 0.05);
+      }
+
+      // 3. Coerência do somatório das rotas com o totalAllocated
+      const sumRoutesAllocated = Math.round(result.routes.reduce((acc, r) => acc + r.allocatedBRL, 0) * 100) / 100;
+      expect(result.totalAllocated).toBe(sumRoutesAllocated);
+
+      // 4. Coerência dos sumários de classe
+      const sumClassAllocated = Math.round(result.classSummaries.reduce((acc, c) => acc + c.actualAllocatedBRL, 0) * 100) / 100;
+      expect(sumClassAllocated).toBe(result.totalAllocated);
+    });
+
+    it("respeita rigorosamente todas as invariantes no modo por ativo (asset / smart)", () => {
+      const assets = createMassivePortfolio();
+      const aporte = 15_000;
+
+      const result = simulateSmartAporte({
+        aporte,
+        assets,
+      });
+
+      expect(result.mode).toBe("asset");
+      expect(result.totalAllocated).toBeLessThanOrEqual(aporte);
+      expect(result.leftover).toBeGreaterThanOrEqual(0);
+      expect(Math.round((result.totalAllocated + result.leftover) * 100) / 100).toBe(aporte);
+
+      for (const route of result.routes) {
+        if (route.assetClass === "Ações" || route.assetClass === "FIIs") {
+          expect(Number.isInteger(route.quantity)).toBe(true);
+        }
+      }
+    });
+
+    it("respeita rigorosamente todas as invariantes no modo por classe (class / rebalance)", () => {
+      const assets = createMassivePortfolio();
+      const aporte = 20_000;
+
+      const result = simulateRebalanceAporte({
+        aporte,
+        assets,
+        classTargets,
+        sectorTargets,
+      });
+
+      expect(result.mode).toBe("class");
+      expect(result.totalAllocated).toBeLessThanOrEqual(aporte);
+      expect(result.leftover).toBeGreaterThanOrEqual(0);
+      expect(Math.round((result.totalAllocated + result.leftover) * 100) / 100).toBe(aporte);
+
+      for (const route of result.routes) {
+        if (route.assetClass === "Ações" || route.assetClass === "FIIs") {
+          expect(Number.isInteger(route.quantity)).toBe(true);
+        }
+      }
+    });
+
+    it("resiste a estresse com aporte massivo (R$ 10.000.000,00) preenchendo todos os gaps sem alocação negativa", () => {
+      const assets = createMassivePortfolio();
+      const aporteGigante = 10_000_000;
+
+      const result = simulateCombinedAporte({
+        aporte: aporteGigante,
+        assets,
+        classTargets,
+        sectorTargets,
+      });
+
+      expect(result.totalAllocated).toBeLessThanOrEqual(aporteGigante);
+      expect(result.leftover).toBeGreaterThan(0);
+      expect(Math.round((result.totalAllocated + result.leftover) * 100) / 100).toBe(aporteGigante);
+      expect(Number.isNaN(result.totalAllocated)).toBe(false);
+      expect(Number.isNaN(result.leftover)).toBe(false);
+    });
+
+    it("resiste a estresse com aporte minúsculo (R$ 1,00) que não compra 1 cota B3", () => {
+      const assets = createMassivePortfolio();
+      const aporteMicro = 1.0;
+
+      const result = simulateCombinedAporte({
+        aporte: aporteMicro,
+        assets,
+        classTargets,
+        sectorTargets,
+      });
+
+      expect(result.totalAllocated).toBeLessThanOrEqual(aporteMicro);
+      expect(result.leftover).toBeGreaterThanOrEqual(0);
+      expect(Math.round((result.totalAllocated + result.leftover) * 100) / 100).toBe(aporteMicro);
+
+      // Nenhuma cota B3 pode ser sugerida (todas custam > R$ 20)
+      for (const route of result.routes) {
+        if (route.assetClass === "Ações" || route.assetClass === "FIIs") {
+          expect(route.quantity).toBe(0);
+        }
+      }
+    });
+
+    it("suporta carteira com patrimônio inicial zero (todos os ativos com saldo zero)", () => {
+      const assets = [
+        asset({ id: "1", ticker: "PETR4", assetClass: "Ações", currentValueBRL: 0, priceBRL: 30, targetPercentage: 40 }),
+        asset({ id: "2", ticker: "HGLG11", assetClass: "FIIs", currentValueBRL: 0, priceBRL: 100, targetPercentage: 30 }),
+        asset({ id: "3", ticker: "VOO", assetClass: "Internacional", currency: "USD", currentValueBRL: 0, priceBRL: 2500, targetPercentage: 30 }),
+      ];
+
+      const result = simulateCombinedAporte({
+        aporte: 10_000,
+        assets,
+        classTargets: [
+          { className: "Ações", targetPercentage: 40 },
+          { className: "FIIs", targetPercentage: 30 },
+          { className: "Internacional", targetPercentage: 30 },
+        ],
+      });
+
+      expect(result.totalAllocated).toBeLessThanOrEqual(10_000);
+      expect(result.routes.length).toBeGreaterThanOrEqual(2);
+      expect(result.leftover).toBeGreaterThanOrEqual(0);
+
+      // PETR4 e HGLG11 devem ter cotas inteiras
+      const petr = result.routes.find((r) => r.ticker === "PETR4");
+      const hglg = result.routes.find((r) => r.ticker === "HGLG11");
+      const voo = result.routes.find((r) => r.ticker === "VOO");
+
+      if (petr) expect(Number.isInteger(petr.quantity)).toBe(true);
+      if (hglg) expect(Number.isInteger(hglg.quantity)).toBe(true);
+      if (voo) expect(voo.quantity).toBeGreaterThan(0);
+    });
+
+    it("executa transbordamento de sobra de setor caro para outro setor mais acessível da mesma classe", () => {
+      const assets = [
+        // Setor 1: Ativo caro (preço R$ 800) em setor com meta 30% da classe (orçado em R$ 300)
+        asset({ id: "caro", ticker: "CARO3", assetClass: "Ações", sector: "Setor Caro", currentValueBRL: 0, priceBRL: 800 }),
+        // Setor 2: Ativos com gap suficiente para absorver a verba do setor e o transbordamento
+        asset({ id: "barato1", ticker: "BARATO1", assetClass: "Ações", sector: "Setor Barato", currentValueBRL: 0, priceBRL: 25, targetPercentage: 50 }),
+        asset({ id: "barato2", ticker: "BARATO2", assetClass: "Ações", sector: "Setor Barato", currentValueBRL: 0, priceBRL: 20, targetPercentage: 50 }),
+      ];
+
+      // Aporte de R$ 1.000:
+      // Setor Caro orçado em R$ 300 -> não compra 1 cota de R$ 800 (sobra R$ 300)
+      // A sobra de R$ 300 transborda no Pass 2 para o Setor Barato, que tem R$ 800 de gap (400 + 400)
+      // Setor Barato absorve seu orçamento inicial (R$ 700) + a sobra transbordada (R$ 300) = R$ 1.000
+      const result = simulateCombinedAporte({
+        aporte: 1000,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+        sectorTargets: [
+          { className: "Ações", sectorName: "Setor Caro", targetPercentage: 30 },
+          { className: "Ações", sectorName: "Setor Barato", targetPercentage: 70 },
+        ],
+      });
+
+      const b1 = result.routes.find((r) => r.ticker === "BARATO1");
+      const b2 = result.routes.find((r) => r.ticker === "BARATO2");
+      const caro = result.routes.find((r) => r.ticker === "CARO3");
+
+      // Caro não comprou nada por preço exceder o orçamento
+      expect(caro).toBeUndefined();
+      expect(result.skippedAssets).toContainEqual(
+        expect.objectContaining({ ticker: "CARO3", reason: "price_exceeds_budget" }),
+      );
+
+      // Baratos absorveram o orçamento inicial do setor (700) + a sobra transbordada do setor caro (300) = 1000
+      expect(b1).toBeDefined();
+      expect(b2).toBeDefined();
+      expect(result.totalAllocated).toBe(1000);
+      expect(result.leftover).toBe(0);
+    });
   });
 });
 

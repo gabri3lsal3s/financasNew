@@ -168,7 +168,7 @@ graph TD
   - *Commit:* `fix(portfolio): use normalized class helpers in sellAssetPosition`
 - [x] **Tarefa 5.2:** Corrigir apuração de DARF mensal (`calculateMonthlyDarf` em `src/domain/portfolio/tax.ts`), restringindo a isenção de R$ 20.000,00 estritamente para ações comuns B3 e segregando ativos internacionais (Lei 14.754/2023).
   - *Commit:* `fix(tax): restrict 20k exemption strictly to local common stocks and exclude ETFs`
-- [ ] **Tarefa 5.3:** Auditar motor de aportes (`src/domain/portfolio/aporte.ts`) nos 3 modos e integridade das cotas B3 vs USD/Cripto.
+- [x] **Tarefa 5.3:** Auditar motor de aportes (`src/domain/portfolio/aporte.ts`) nos 3 modos e integridade das cotas B3 vs USD/Cripto.
   - *Commit:* `test(portfolio): stress-test aporte invariants with multi-level sector hierarchy`
 - [ ] **Tarefa 5.4:** Auditar cálculo de Yield on Cost na moeda nativa USD antes da conversão cambial consolidada.
   - *Commit:* `test(portfolio): verify YoC calculation purity in native USD currency`
