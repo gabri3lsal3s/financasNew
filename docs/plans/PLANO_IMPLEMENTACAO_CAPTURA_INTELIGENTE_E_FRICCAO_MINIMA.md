@@ -51,6 +51,13 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 | **F14**| Agrupamento falho por sufixos de datas no nome ("Aluguel Jan", "Internet 01/26") | Sanitização canônica de sufixos temporais via regex antes do agrupamento por chave estável. |
 | **F15**| Recorrência detectada fica estática sem virar agendamento formal | Ponte de conversão em 1 clique ("Fixar como Recorrência Formal") gerando projeção no calendário. |
 | **F16**| Aprendizado unilateral e descompassado entre módulos | Loop de aprendizado contínuo: edições de transações ensinam o motor de despesas, rendas e aportes. |
+| **F17**| Falsos alertas de duplicidade em compras frequentes do dia a dia (Uber, iFood) | Restringir duplicidade a assinaturas de valor fixo ou compras de mesmo valor no mesmo dia/hora. |
+| **F18**| Deformação do dia de vencimento para contas no fim do mês (`Math.min(typicalDay, 28)`) | Respeitar dias reais do mês (29, 30 e 31), restringindo a 28/29 exclusivamente em fevereiro. |
+| **F19**| Alarme falso de "Reajuste" em contas de consumo com variação sazonal (luz/água) | Diferenciar reajuste contratual em planos fixos de variação sazonal de consumo em concessionárias. |
+| **F20**| Falha no alerta de Burn Rate quando a renda do mês é zero ou pendente | Tratar caso de `incomeCents === 0` com alerta dedicado de despesas acumuladas sem receita. |
+| **F21**| Inobservância de despesas periódicas não-mensais (anuais ou semanais) | Detector estendido de periodicidade (IPVA, seguros anuais e serviços semanais frequentes). |
+| **F22**| Desconexão entre assinaturas e cartões de crédito | Mapeamento de cartão de origem, projetando impacto de assinaturas na fatura em aberto. |
+| **F23**| Descarte binário sem memória de motivo ("Ignorar" cego) | Micro-opções de 1 toque no descarte (*"Já cancelei"*, *"É pontual"*, *"Não é assinatura"*). |
 
 ---
 
@@ -105,7 +112,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Simular cold start enviando intent de texto/imagem via ADB e verificar persistência do buffer até a chamada do JavaScript.
   - *Commit:* `fix(android): blindar ciclo de vida e buffer de comprovante compartilhado`
 
-- [ ] **Tarefa 1.4 — Motor de Domínio de Parsing com Triagem de Agendamentos (`bank-parser.ts`):**
+- [x] **Tarefa 1.4 — Motor de Domínio de Parsing com Triagem de Agendamentos (`bank-parser.ts`):**
   - Aprimorar `parsePixShareText` para extrair com alta tolerância:
     - *Tipo:* Despesa (`expense`) vs. Renda (`income`).
     - *Status:* Efetivado vs. Agendado (detectando termos de liquidação futura para não distorcer saldo atual).
@@ -376,7 +383,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 
 ### FASE 7: MOTOR DE INSIGHTS APRIMORADO, RECORRÊNCIAS & APRENDIZADO CONTÍNUO (FEEDBACK LOOP MULTIDOMÍNIO)
 
-**Objetivo:** Transformar a detecção de recorrências e assinaturas em uma ferramenta analítica de precisão cirúrgica (eliminando ruídos e categorias genéricas), oferecer auditoria transparente das cobranças e fechar o loop de aprendizado contínuo: cada interação do usuário (edição de despesa, confirmação de renda, aporte ou rejeição de insight) ensina o motor a calibrar sugestões com máxima fidelidade.
+**Objetivo:** Transformar o motor de insights e recorrências em uma ferramenta analítica de precisão cirúrgica e fricção zero: eliminando falsos positivos e ruídos conceituais, garantindo auditoria transparente das cobranças históricas com drill-down, convertendo insights em agendamentos formais com 1 toque e fechando o loop de aprendizado contínuo onde cada interação em despesas, rendas e investimentos refina automaticamente as sugestões futuras.
 
 #### Tarefas da Fase 7:
 - [ ] **Tarefa 7.1 — Higiene Conceitual e Expurgamento do Nível `similar`:**
@@ -400,9 +407,19 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes cobrindo despesas com meses no nome e identificação de concessionárias públicas.
   - *Commit:* `feat(domain/insights): implementar sanitizacao temporal e catalogo de concessionarias brasileiras`
 
-- [ ] **Tarefa 7.3 — Modal de Auditoria e Drill-Down de Transações na Aba de Recorrências:**
+- [ ] **Tarefa 7.3 — Correção de Calendário de Vencimentos & Blindagem Antirruído de Alertas (F17–F20):**
+  - Em `src/domain/insights/recurrences.ts`:
+    - Corrigir `estimateNextDueDate`: remover a trava rígida `Math.min(typicalDay, 28)`; calcular a data limite baseada no total real de dias do mês de destino (`29`, `30` ou `31`), limitando a 28/29 exclusivamente em fevereiro.
+    - Ajustar a regra de duplicidade (`duplicateChargesThisMonth`): restringir o alerta estritamente a assinaturas do catálogo com valor fixo ou a despesas com o **mesmo valor exato no mesmo dia e na mesma hora/minuto** (evitando alertar corridas de Uber ou refeições de iFood no mesmo mês).
+    - Diferenciar reajuste contratual em planos fixos de variação sazonal de consumo em concessionárias (rotulando como *"Variação de consumo"* quando for energia/água/gás).
+  - Em `src/domain/insights/alerts.ts`:
+    - Tratar o caso de `incomeCents === 0` com `expenseCents > 0`: disparar alerta crítico de consumo sem renda registrada no período, eliminando o falso negativo de burn rate zerado.
+  - *Teste & Verificação:* Testes cobrindo contas vencendo no dia 31, múltiplas corridas de Uber no mês e despesas com renda zero.
+  - *Commit:* `fix(domain/insights): blindar regras de vencimentos duplicidades e burn rate com renda zero`
+
+- [ ] **Tarefa 7.4 — Modal de Auditoria e Drill-Down de Transações na Aba de Recorrências:**
   - Em `src/components/modules/insight-list.tsx` e `recurrences-tab.tsx`:
-    - Permitir clique em qualquer linha da lista de recorrências para abrir gaveta/modal de detalhes (`<Modal size="lg" />`).
+    - Permitir clique em qualquer linha da lista de recorrências para abrir modal de detalhes (`<Modal size="lg" />` respeitando AGENTS.md §18).
     - Exibir o histórico cronológico de lançamentos que compõem aquela recorrência: data, valor monetário, conta/cartão de origem e botão de atalho para editar a despesa.
     - Para alertas críticos, aplicar destaque visual contextual:
       - **Cobrança Duplicada:** realçar as 2 cobranças ocorridas no mesmo mês para auditoria imediata.
@@ -410,7 +427,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes de renderização com React Testing Library validando abertura do modal, exibição do histórico e acessibilidade.
   - *Commit:* `feat(insights): adicionar modal de drill-down com historico de cobrancas de recorrencias`
 
-- [ ] **Tarefa 7.4 — Ponte de Conversão de "Insight Detectado" em "Recorrência Formal" (Fase 32):**
+- [ ] **Tarefa 7.5 — Ponte de Conversão de "Insight Detectado" em "Recorrência Formal" (Fase 32):**
   - No card de recorrência confirmada e no modal de detalhes, adicionar ação proativa: *"Fixar como Recorrência Formal"*.
   - Ao clicar, abrir diálogo de agendamento formal com dados pré-preenchidos:
     - Descrição amigável limpa.
@@ -421,7 +438,15 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Teste de fluxo completo simulando clique em conversão, envio do payload ao RPC e atualização de cache.
   - *Commit:* `feat(insights): permitir converter ocorrencia detectada em recorrencia formal`
 
-- [ ] **Tarefa 7.5 — Motor de Aprendizado Contínuo Multidomínio (Feedback Loop Despesas, Rendas e Aportes):**
+- [ ] **Tarefa 7.6 — Radar de Assinaturas por Cartão de Crédito e Impacto na Fatura (F22):**
+  - Mapear a forma de pagamento/cartão de crédito habitual (`card_id`) associado a cada assinatura ou despesa recorrente.
+  - Na tela de Cartões e na aba de Recorrências, exibir bloco informativo do impacto na fatura em aberto:
+    - *"Você possui R$ X em assinaturas previstas para este cartão antes do fechamento da fatura"*.
+    - Alerta preventivo se o total de assinaturas projetadas superar o limite disponível restante do cartão.
+  - *Teste & Verificação:* Testes em `cards-page.test.tsx` e `recurrences-tab.test.tsx` com cenários de fatura aberta e limite comprometido.
+  - *Commit:* `feat(insights): correlacionar assinaturas ao cartao de credito e impacto na fatura`
+
+- [ ] **Tarefa 7.7 — Loop de Aprendizado Contínuo Multidomínio (Despesas, Rendas e Aportes):**
   - **Eixo 1 — Despesas & Estabelecimentos:**
     - Toda vez que o usuário alterar uma categoria ou descrição no extrato, em notificações ou no wizard, registrar o par `(merchant, category)` e `(rawName, friendlyName)` no `MerchantLearningEngine`.
     - Disparar re-avaliação imediata de insights pendentes na sessão.
@@ -431,12 +456,26 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - **Eixo 3 — Aportes & Rebalanceamento de Carteira:**
     - O motor aprende o padrão temporal entre a entrada da renda principal e os aportes em corretoras (ex.: NuInvest, XP, BTG, Inter).
     - Se a poupança do mês estiver positiva e o usuário ainda não tiver realizado o aporte mensal da meta, sugerir ação de 1 clique: *"Você poupou R$ X neste mês. Deseja realizar o aporte planejado para rebalancear sua carteira?"*, navegando com o valor pré-preenchido para a tela de Aporte.
-  - **Eixo 4 — Calibração por Rejeição (Anti-Insistência):**
-    - Ao marcar *"Não é assinatura"* ou descartar um insight, gravar penalidade permanente para aquele identificador em `insight_feedback`, silenciando sugestões similares e evitando repetição de palpites errados.
-  - *Teste & Verificação:* Testes unitários do motor cobrindo o loop de feedback nos 3 domínios (despesas, rendas e investimentos) e anti-insistência.
+  - *Teste & Verificação:* Testes unitários do motor cobrindo o loop de feedback nos 3 domínios (despesas, rendas e investimentos).
   - *Commit:* `feat(insights): unificar loop de aprendizado continuo para despesas rendas e aportes`
 
-- [ ] **Tarefa 7.6 — Filtros Rápidos, Badges de Status e Taxa de Comprometimento de Renda Fixa:**
+- [ ] **Tarefa 7.8 — Micro-Feedback Qualificado e Anti-Insistência no Descarte (F23):**
+  - Ao clicar em dispensar/ignorar uma ocorrência na lista ou na Home, abrir popover sutil de 1 toque com opções qualificadas:
+    - `[Já cancelei]` ➔ silencia ocorrência, celebra a economia anual gerada e atualiza o card de potencial de corte.
+    - `[É despesa pontual]` ➔ silencia apenas para o ciclo corrente sem penalizar o classificador.
+    - `[Não é assinatura]` ➔ rebaixa de imediato a probabilidade daquele fornecedor virar recorrência no motor.
+  - Evitar repetições inoportunas de insights rejeitados (penalidade gravada em `insight_feedback`).
+  - *Teste & Verificação:* Teste de interação validando gravação dos motivos e atualização da lista em tempo real.
+  - *Commit:* `feat(insights): implementar micro-feedback qualificado no descarte de recorrencias`
+
+- [ ] **Tarefa 7.9 — Detector Estendido de Periodicidade (Anual e Semanal - F21):**
+  - Expandir a janela analítica para identificar compromissos anuais e sazonais frequentes (IPVA, IPTU, Seguro do Carro, Anuidade de Cartão):
+    - Alerta preventivo com 30 dias de antecedência: *"No ano passado você pagou R$ X de IPVA em Janeiro. Deseja provisionar este valor?"*.
+  - Detectar compromissos com cadência semanal (terapia, diarista, feira) e apresentar o custo mensal consolidado correspondente.
+  - *Teste & Verificação:* Testes cobrindo detecção de transações espaçadas por 365 dias e frequência semanal.
+  - *Commit:* `feat(domain/insights): adicionar detector estendido para contas anuais e semanais`
+
+- [ ] **Tarefa 7.10 — KPIs Estratégicos e Abas Fluidas de Navegação:**
   - Em `recurrences-tab.tsx`:
     - Adicionar no card de resumo a métrica:
       $$\text{Taxa de Comprometimento Fixo} = \frac{\text{Total Mensal Recorrente}}{\text{Renda Mensal Total}} \times 100$$
@@ -452,12 +491,15 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 #### PORTÃO DE QUALIDADE 7 (Quality Gate 7 / DoD Final Consolidado):
 1. Expurgamento de `similar` validado em todos os testes unitários de `src/domain/insights/` (100% verde).
 2. Sanitização de sufixos de datas e reconhecimento de concessionárias testados com fixtures reais.
-3. Modal de drill-down de transações funcionando com design system canônico (zero emojis, classes de elevação e tokens corretos).
-4. Conversão de insight em recorrência formal executando sem erros de schema ou RPC.
-5. Loop de aprendizado contínuo nos 3 pilares (despesas, rendas e aportes) validado sem vazamento de estado.
-6. Suíte completa de testes (`npm run test`) 100% verde.
-7. `npm run typecheck` e `npm run lint` sem qualquer advertência ou erro.
-8. **Ação Obrigatória:** Executar `git push origin` com a entrega consolidada.
+3. Correção de vencimentos (29/30/31) e blindagem contra falsos alertas de duplicidade comprovados.
+4. Modal de drill-down de transações funcionando com design system canônico (zero emojis, classes de elevação e tokens corretos).
+5. Conversão de insight em recorrência formal executando sem erros de schema ou RPC.
+6. Correlação de assinaturas com cartões de crédito e faturas aberta testada.
+7. Loop de aprendizado contínuo nos 3 pilares (despesas, rendas e aportes) validado sem vazamento de estado.
+8. Micro-feedback de descarte gravando motivos e comemorando economias de assinaturas canceladas.
+9. Suíte completa de testes (`npm run test`) 100% verde.
+10. `npm run typecheck` e `npm run lint` sem qualquer advertência ou erro.
+11. **Ação Obrigatória:** Executar `git push origin` com a entrega consolidada.
 
 ---
 
@@ -474,8 +516,11 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 | **Gastos Vampiros & Anomalias** | Cobrança duplicada gera alerta imediato na Home com economia anual calculada | Teste unitário e renderização no `SmartAdvisorCard` |
 | **Purificação de Recorrências** | Nível `similar` removido; totais de custos fixos 100% puros e sem categorias genéricas | Teste unitário em `src/domain/insights/index.test.ts` |
 | **Sanitização de Sufixos Temporais** | "Condomínio Jan" e "Condomínio Fev" agrupados na mesma recorrência sem quebras | Teste unitário em `shared.test.ts` e `recurrences.test.ts` |
+| **Vencimentos e Duplicidade Estrita** | Datas 29, 30 e 31 preservadas; compras de Uber/iFood não geram falsos alertas de duplicidade | Teste unitário em `recurrences.test.ts` |
 | **Drill-Down e Conversão Formal** | Clique na recorrência exibe extrato das cobranças e botão converte em recorrência formal | Testes de integração em `recurrences-tab.test.tsx` |
+| **Radar de Cartões de Crédito** | Assinaturas associadas aos cartões projetam impacto na fatura em aberto | Teste em `cards-page.test.tsx` e `recurrences-tab.test.tsx` |
 | **Aprendizado Cruzado Multidomínio** | Edições de despesas, rendas e aportes refinam regras e sugestões proativas | Teste do `useSmartAdvisorInsights` e `MerchantLearningEngine` |
+| **Micro-Feedback Qualificado** | Opções de descarte (*"Já cancelei"*, *"É pontual"*) calam falsos positivos e celebram economia | Teste de feedback em `insight-feedback.test.ts` |
 | **Comunicação e Onboarding** | Landing Page e modal de boas-vindas explicam a hierarquia com clareza e zero emojis | Verificação visual e teste em `onboarding-card.test.tsx` |
 | **Governança de Código** | Zero emojis, TypeScript estrito, DRY respeitado e commits por tarefa | `npm run typecheck && npm run lint && npm run test` |
 

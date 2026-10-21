@@ -31,6 +31,13 @@ export interface ParsedBankTransaction {
   installmentAmountCents?: number;
   issuerBank?: string;
   isRefund?: boolean;
+  status?: "completed" | "scheduled";
+  isScheduled?: boolean;
+  scheduledFor?: string;
+  txId?: string;
+  taxId?: string;
+  payerName?: string;
+  recipientName?: string;
 }
 
 
@@ -640,7 +647,7 @@ export function resolveBankName(
   }
 
   // 2. Título identifica explicitamente banco tradicional ou fintech
-  if (titleLower.includes("nubank") || titleLower.includes("roxinho")) return "Nubank";
+  if (titleLower.includes("nubank") || titleLower.includes("roxinho") || titleLower.includes("nu pagamentos")) return "Nubank";
   if (
     titleLower.includes("itau") ||
     titleLower.includes("itaú") ||
@@ -711,7 +718,7 @@ export function resolveBankName(
   }
 
   // 4. Fallback procurando bancos no texto combinado
-  if (combined.includes("nubank") || combined.includes("roxinho")) return "Nubank";
+  if (combined.includes("nubank") || combined.includes("roxinho") || combined.includes("nu pagamentos")) return "Nubank";
   if (
     combined.includes("itau") ||
     combined.includes("itaú") ||
@@ -1526,12 +1533,141 @@ export function parseBankNotification(
 }
 
 /**
+ * Blacklist semântica específica para comprovantes compartilhados.
+ * Descarta recusas, falhas, cancelamentos, 2FA e propagandas,
+ * mas preserva agendamentos legítimos de pagamentos.
+ */
+export function isBlacklistedReceipt(rawText: string): boolean {
+  if (!rawText) return true;
+
+  // Rejeita falhas, recusas, cancelamentos e tentativas não autorizadas
+  const failureRegex =
+    /\b(?:recusad[ao]|n[ãa]o\s+autorizad[ao]|bloquead[ao]|cancelad[ao]|transa[çc][ãa]o\s+cancelada|saldo\s+insuficiente|limite\s+insuficiente|falha\s+no\s+pagamento)\b/i;
+  if (failureRegex.test(rawText)) return true;
+
+  // Rejeita códigos de verificação / 2FA / tokens
+  const authRegex =
+    /\b(?:c[óo]digo\s+de\s+seguran[çc]a|token|c[óo]digo\s+2fa|autoriza[çc][ãa]o\s+de\s+acesso)\b/i;
+  if (authRegex.test(rawText)) return true;
+
+  // Rejeita ofertas e crédito pré-aprovado
+  const marketingRegex =
+    /\b(?:empr[ée]stimo\s+pr[ée]-aprovado|dinheiro\s+extra\s+dispon[íi]vel)\b/i;
+  if (marketingRegex.test(rawText)) return true;
+
+  return false;
+}
+
+/**
+ * Detecta se o comprovante se refere a um pagamento Pix agendado para liquidação futura.
+ */
+export function isScheduledTransaction(text: string): boolean {
+  if (!text) return false;
+  return /\b(?:agendad[ao]|agendamento|programad[ao]|data\s+do\s+d[ée]bito|data\s+de\s+liquida[çc][ãa]o|data\s+para\s+pagamento|pagamento\s+agendado|situa[çc][ãa]o:\s*agendad[ao])\b/i.test(
+    text,
+  );
+}
+
+/**
+ * Determina se o comprovante Pix corresponde a uma entrada (renda/recebido) ou saída (despesa/enviado).
+ */
+export function detectPixTransactionNature(rawText: string): "expense" | "income" {
+  const lower = rawText.toLowerCase();
+
+  // Termos inequívocos de recebimento de Pix
+  const incomeRegex =
+    /\b(?:pix\s+recebido|recebemos\s+um\s+pix|voc[êe]\s+recebeu|transfer[êe]ncia\s+recebida|quem\s+te\s+enviou|recebido\s+por|valor\s+creditado)\b/i;
+  // Termos inequívocos de envio de Pix
+  const expenseRegex =
+    /\b(?:pix\s+enviado|voc[êe]\s+transferiu|voc[êe]\s+pagou|pago\s+para|para:|destinat[áa]rio:|benefici[áa]rio:|favorecido:|dados\s+do\s+recebedor|comprovante\s+de\s+pagamento|comprovante\s+de\s+agendamento)\b/i;
+
+  if (incomeRegex.test(lower) && !expenseRegex.test(lower)) {
+    return "income";
+  }
+
+  // Se ambos os blocos estiverem presentes (ex: comprovante com dados do pagador e do recebedor):
+  if (/\b(?:pix\s+recebido|transfer[êe]ncia\s+recebida|quem\s+te\s+enviou)\b/i.test(lower)) {
+    return "income";
+  }
+
+  return "expense";
+}
+
+/**
+ * Extrai data contida no comprovante bancário (formato DD/MM/AAAA ou DD-MM-AAAA)
+ * retornando a data no padrão ISO (YYYY-MM-DD). Se for agendado, prioriza a data de liquidação futura.
+ */
+export function extractDateFromReceipt(
+  text: string,
+  isScheduled: boolean,
+): { date: string; scheduledFor?: string } {
+  if (isScheduled) {
+    const scheduledMatch =
+      /(?:data\s+do\s+d[ée]bito|data\s+do\s+pagamento|data\s+de\s+liquida[çc][ãa]o|data\s+programada|agendad[ao]\s+para|para\s+o\s+dia|data\s+de\s+pagamento):\s*(\d{2})[/.-](\d{2})[/.-](\d{4})/i.exec(
+        text,
+      );
+    if (scheduledMatch && scheduledMatch[1] && scheduledMatch[2] && scheduledMatch[3]) {
+      const iso = `${scheduledMatch[3]}-${scheduledMatch[2]}-${scheduledMatch[1]}`;
+      return { date: iso, scheduledFor: iso };
+    }
+  }
+
+  const labeledMatch =
+    /(?:data\s+e\s+hora|data\/hora|data\s+da\s+opera[çc][ãa]o|data\s+da\s+transa[çc][ãa]o|realizada\s+em|data|opera[çc][ãa]o\s+realizada\s+em):\s*(\d{2})[/.-](\d{2})[/.-](\d{4})/i.exec(
+      text,
+    );
+  if (labeledMatch && labeledMatch[1] && labeledMatch[2] && labeledMatch[3]) {
+    const iso = `${labeledMatch[3]}-${labeledMatch[2]}-${labeledMatch[1]}`;
+    return { date: iso, scheduledFor: isScheduled ? iso : undefined };
+  }
+
+  const genericMatch = /\b(\d{2})[/.-](\d{2})[/.-](\d{4})\b/.exec(text);
+  if (genericMatch && genericMatch[1] && genericMatch[2] && genericMatch[3]) {
+    const iso = `${genericMatch[3]}-${genericMatch[2]}-${genericMatch[1]}`;
+    return { date: iso, scheduledFor: isScheduled ? iso : undefined };
+  }
+
+  const today = toISODate(new Date());
+  return { date: today, scheduledFor: isScheduled ? today : undefined };
+}
+
+/**
+ * Extrai CNPJ ou CPF do comprovante bancário (formato com pontuação ou dígitos limpos).
+ */
+export function extractTaxId(text: string): string | undefined {
+  if (!text) return undefined;
+
+  // 1. CNPJ explícito: XX.XXX.XXX/XXXX-XX ou 14 dígitos após token CNPJ
+  const cnpjMatch =
+    /(?:CNPJ|CPF\/CNPJ):\s*([0-9]{2}\.[0-9]{3}\.[0-9]{3}\/[0-9]{4}-[0-9]{2}|[0-9]{14})\b/i.exec(
+      text,
+    );
+  if (cnpjMatch && cnpjMatch[1]) {
+    return cnpjMatch[1].replace(/[^\d]/g, "");
+  }
+
+  // 2. CPF explícito: XXX.XXX.XXX-XX ou mascarado ***.XXX.XXX-**
+  const cpfMatch =
+    /(?:CPF|CPF\/CNPJ):\s*([0-9*]{3}\.[0-9*]{3}\.[0-9*]{3}-[0-9*]{2}|[0-9]{11})\b/i.exec(
+      text,
+    );
+  if (cpfMatch && cpfMatch[1]) {
+    return cpfMatch[1].trim();
+  }
+
+  return undefined;
+}
+
+/**
  * Faz o parsing de um texto compartilhado de comprovante Pix (Android Share Target).
+ * Extrai tipo, status (efetivado vs agendado), valor em centavos, favorecido/pagador,
+ * CNPJ/CPF, instituição financeira e identificadores com alta tolerância a múltiplos bancos.
  */
 export function parsePixShareText(rawText: string): ParsedBankTransaction | null {
   if (!rawText || typeof rawText !== "string") return null;
 
-  if (isBlacklistedNotification(rawText)) return null;
+  // Descarta se pertencer à blacklist de comprovantes inválidos (falhas, 2FA, spam)
+  if (isBlacklistedReceipt(rawText)) return null;
 
   // Tenta decodificar código Pix Copia e Cola padrão EMVCo BR Code
   if (rawText.includes("000201")) {
@@ -1542,40 +1678,107 @@ export function parsePixShareText(rawText: string): ParsedBankTransaction | null
   const cents = extractCentsFromText(rawText);
   if (!cents) return null;
 
-  const isIncome = detectTransactionType(rawText, "");
+  const isIncome = detectPixTransactionNature(rawText);
   const isRefund = isRefundTransaction(rawText);
-  const bankName = resolveBankName(undefined, undefined, rawText) || "Pix";
+  const isScheduled = isScheduledTransaction(rawText);
+  const status = isScheduled ? "scheduled" : "completed";
+  const { date: txDate, scheduledFor } = extractDateFromReceipt(rawText, isScheduled);
 
-  // Extrai nome do destinatário / recebedor em comprovantes típicos
+  // Resolução da instituição bancária emissora: prioriza cabeçalho do comprovante e canal/instituição de origem
+  const headerLines = rawText.split(/[\r\n]+/).slice(0, 4).join(" ");
+  let bankName = resolveBankName(undefined, undefined, headerLines);
+
+  if (!bankName) {
+    const originMatch =
+      /(?:Institui[çc][ãa]o\s+de\s+Origem|Institui[çc][ãa]o\s+do\s+Pagador|Canal(?:\s*:\s*Aplicativo)?|Banco\s+emissor)\s*[:=]?\s*([^\n\r]+)/i.exec(
+        rawText,
+      );
+    if (originMatch && originMatch[1]) {
+      bankName = resolveBankName(undefined, undefined, originMatch[1]);
+    }
+  }
+
+  if (!bankName) {
+    bankName = resolveBankName(undefined, undefined, rawText) || "Pix";
+  }
+
+  // 1. Extração do favorecido / recebedor em comprovantes
   const recipientMatch =
-    /(?:Para|Destinatário|Nome do recebedor|Pago para|Beneficiário):\s*([^\n\r,]+)/i.exec(rawText);
-  const rawRecipient =
-    recipientMatch && recipientMatch[1]
-      ? recipientMatch[1].trim()
-      : extractMerchantOrRecipient(rawText);
-  const recipient = cleanMerchantName(rawRecipient);
+    /(?:Dados\s+(?:do\s+Recebedor|de\s+quem\s+recebeu)[\s\S]*?(?:Nome|Raz[ãa]o\s+Social):\s*([^\n\r,]+)|(?:Para|Destinat[áa]rio|Nome\s+do\s+recebedor|Pago\s+para|Benefici[áa]rio|Favorecido|Quem\s+recebeu|Destino):\s*([^\n\r,]+))/i.exec(
+      rawText,
+    );
+  const rawRecipient = recipientMatch
+    ? (recipientMatch[1] || recipientMatch[2] || "").trim()
+    : "";
 
-  const description = recipient
-    ? `Pix: ${recipient}`
-    : isIncome === "income"
-      ? `Pix Recebido (${bankName})`
+  // 2. Extração do pagador / remetente
+  const payerMatch =
+    /(?:Dados\s+(?:do\s+Pagador|de\s+quem\s+pagou)[\s\S]*?(?:Nome|Raz[ãa]o\s+Social):\s*([^\n\r,]+)|(?:Quem\s+te\s+enviou|Pagador|De|Origem|Nome\s+do\s+pagador|Remetente):\s*([^\n\r,]+))/i.exec(
+      rawText,
+    );
+  const rawPayer = payerMatch
+    ? (payerMatch[1] || payerMatch[2] || "").trim()
+    : "";
+
+  const recipient = cleanMerchantName(
+    rawRecipient || (isIncome === "expense" ? extractMerchantOrRecipient(rawText) : ""),
+  );
+  const payer = cleanMerchantName(
+    rawPayer || (isIncome === "income" ? extractMerchantOrRecipient(rawText) : ""),
+  );
+
+  const primaryParty = isIncome === "income" ? payer || recipient : recipient || payer;
+  const taxId = extractTaxId(rawText);
+
+  // Extração de ID da transação ou EndToEndId para deduplicação determinística
+  const txIdMatch =
+    /(?:ID(?:\s+da\s+(?:transa[çc][ãa]o|opera[çc][ãa]o))?|EndToEndId|C[óo]digo\s+da\s+opera[çc][ãa]o|Autentica[çc][ãa]o(?:\s+mec[âa]nica)?):\s*([A-Za-z0-9.-]{6,50})\b/i.exec(
+      rawText,
+    ) || /\b(E[0-9]{8}[0-9]{4}[0-9]{4}[A-Za-z0-9]{5,20})\b/.exec(rawText);
+  const txId = txIdMatch && txIdMatch[1] ? txIdMatch[1].trim() : undefined;
+
+  const id = txId
+    ? `pix_${txId.replace(/[^A-Za-z0-9]/g, "")}`
+    : `pix_${Date.now()}_${cents}_${Math.random().toString(36).slice(2, 7)}`;
+
+  let description: string;
+  if (isScheduled) {
+    description = recipient
+      ? `Pix Agendado: ${recipient}`
+      : `Pix Agendado (${bankName})`;
+  } else if (isIncome === "income") {
+    description = payer
+      ? `Pix Recebido: ${payer}`
+      : recipient
+        ? `Pix Recebido: ${recipient}`
+        : `Pix Recebido (${bankName})`;
+  } else {
+    description = recipient
+      ? `Pix: ${recipient}`
       : `Pix Enviado (${bankName})`;
+  }
 
-  const id = `pix_${Date.now()}_${cents}_${Math.random().toString(36).slice(2, 7)}`;
-  const inferredSlug = inferCategoryKeyword(recipient || description);
+  const inferredSlug = inferCategoryKeyword(recipient || payer || description);
 
   return {
     id,
     bankName,
     nature: isIncome,
     type: isIncome,
+    status,
+    isScheduled: isScheduled || undefined,
+    scheduledFor,
     amountCents: cents,
     currency: "BRL",
     description,
-    merchant: recipient || undefined,
+    merchant: primaryParty || undefined,
+    recipientName: recipient || undefined,
+    payerName: payer || undefined,
+    taxId,
+    txId,
     timestamp: Date.now(),
     categorySlug: inferredSlug,
-    date: toISODate(new Date()),
+    date: txDate,
     paymentMethod: "pix",
     rawText,
     isRefund: isRefund || undefined,

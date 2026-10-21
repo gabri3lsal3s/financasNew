@@ -406,6 +406,205 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
       const parsed = parsePixShareText(refundText);
       expect(parsed?.isRefund).toBe(true);
     });
+
+    it("parseia comprovante real do Nubank com CNPJ e EndToEndId determinístico", () => {
+      const receipt = `
+        Comprovante de transferência Pix
+        Valor: R$ 45,00
+        Data e Hora: 21/10/2026 - 14:32:10
+        Origem: Gabriel Sales
+        Instituição: NU PAGAMENTOS S.A.
+        Destino: Padaria e Confeitaria Central Ltda
+        CNPJ: 12.345.678/0001-90
+        Instituição: BANCO ITAU UNIBANCO S.A.
+        ID da Transação: E18236120202610211732abcdef12345
+      `;
+      const parsed = parsePixShareText(receipt);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.amountCents).toBe(4500);
+      expect(parsed?.bankName).toBe("Nubank");
+      expect(parsed?.type).toBe("expense");
+      expect(parsed?.status).toBe("completed");
+      expect(parsed?.merchant).toBe("Padaria e Confeitaria Central Ltda");
+      expect(parsed?.taxId).toBe("12345678000190");
+      expect(parsed?.txId).toBe("E18236120202610211732abcdef12345");
+      expect(parsed?.id).toBe("pix_E18236120202610211732abcdef12345");
+      expect(parsed?.date).toBe("2026-10-21");
+    });
+
+    it("parseia comprovante real do Banco Inter com blocos estruturados", () => {
+      const receipt = `
+        COMPROVANTE DE PAGAMENTO PIX
+        Data/Hora da Operação: 21/10/2026 10:15:30
+        Valor: R$ 89,90
+        Dados do Pagador:
+        Nome: Gabriel Sales
+        CPF: ***.789.012-**
+        Instituição: BANCO INTER S.A.
+        Dados do Recebedor:
+        Nome: Supermercados BH S.A.
+        CNPJ: 01.234.567/0001-89
+        ID da Transação: E00416968202610211315abcdef
+      `;
+      const parsed = parsePixShareText(receipt);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.amountCents).toBe(8990);
+      expect(parsed?.bankName).toBe("Inter");
+      expect(parsed?.type).toBe("expense");
+      expect(parsed?.status).toBe("completed");
+      expect(parsed?.merchant).toBe("Supermercados BH S.A");
+      expect(parsed?.taxId).toBe("01234567000189");
+      expect(parsed?.txId).toBe("E00416968202610211315abcdef");
+      expect(parsed?.date).toBe("2026-10-21");
+    });
+
+    it("parseia comprovante real do Itaú", () => {
+      const receipt = `
+        Comprovante de Pagamento - Pix - Itaú
+        Operação realizada em 21/10/2026 às 11:42
+        Valor: R$ 130,00
+        Quem pagou: Gabriel Sales
+        Quem recebeu: Posto Ipiranga Auto Ltda
+        CNPJ: 45.678.901/0001-23
+        Instituição: BANCO SANTANDER (BRASIL) S.A.
+        ID da transação: E60701190202610211442abcdef
+      `;
+      const parsed = parsePixShareText(receipt);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.amountCents).toBe(13000);
+      expect(parsed?.bankName).toBe("Itaú");
+      expect(parsed?.type).toBe("expense");
+      expect(parsed?.merchant).toBe("Posto Ipiranga Auto Ltda");
+      expect(parsed?.taxId).toBe("45678901000123");
+      expect(parsed?.txId).toBe("E60701190202610211442abcdef");
+      expect(parsed?.date).toBe("2026-10-21");
+    });
+
+    it("parseia comprovante real do Santander", () => {
+      const receipt = `
+        Comprovante de Transferência PIX - Santander
+        Data/Hora: 21/10/2026 - 09:20:15
+        Valor: R$ 75,50
+        Dados de quem recebeu:
+        Nome / Razão Social: Restaurante Sabor de Minas EIRELI
+        CPF/CNPJ: 33.444.555/0001-66
+        Instituição: BANCO C6 S.A.
+        Dados de quem pagou:
+        Nome: Gabriel Sales
+        Código da Operação: 2026102109201500000000
+      `;
+      const parsed = parsePixShareText(receipt);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.amountCents).toBe(7550);
+      expect(parsed?.bankName).toBe("Santander");
+      expect(parsed?.merchant).toBe("Restaurante Sabor de Minas EIRELI");
+      expect(parsed?.taxId).toBe("33444555000166");
+      expect(parsed?.txId).toBe("2026102109201500000000");
+    });
+
+    it("parseia comprovante real do Bradesco", () => {
+      const receipt = `
+        Comprovante de Transação Bancária - Pix - Bradesco
+        Data: 21/10/2026 - 16:05:00
+        Valor da transferência: R$ 210,00
+        Favorecido: Drogaria Sao Paulo S.A.
+        CNPJ: 61.412.110/0001-55
+        Instituição: BANCO DO BRASIL S.A.
+        Pagador: Gabriel Sales
+        Autenticação: 8877665544332211
+      `;
+      const parsed = parsePixShareText(receipt);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.amountCents).toBe(21000);
+      expect(parsed?.bankName).toBe("Bradesco");
+      expect(parsed?.merchant).toBe("Drogaria Sao Paulo S.A");
+      expect(parsed?.taxId).toBe("61412110000155");
+      expect(parsed?.txId).toBe("8877665544332211");
+    });
+
+    it("parseia comprovante real do C6 Bank", () => {
+      const receipt = `
+        Comprovante Pix
+        Valor: R$ 55,20
+        Data: 21/10/2026 - 18:30:00
+        Status: Concluído
+        Para: Uber do Brasil Tecnologia Ltda
+        CNPJ: 17.895.646/0001-87
+        De: Gabriel Sales
+        Banco: BANCO C6 S.A.
+        ID da transação: E31872495202610212130abcdef
+      `;
+      const parsed = parsePixShareText(receipt);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.amountCents).toBe(5520);
+      expect(parsed?.bankName).toBe("C6 Bank");
+      expect(parsed?.merchant).toBe("Uber");
+      expect(parsed?.taxId).toBe("17895646000187");
+      expect(parsed?.txId).toBe("E31872495202610212130abcdef");
+    });
+
+    it("parseia comprovante real do Mercado Pago", () => {
+      const receipt = `
+        Comprovante de transferência Pix
+        Você transferiu R$ 32,00
+        Data: 21/10/2026 às 12:00
+        Para: Lanchonete Bom Café
+        CNPJ: 22.333.444/0001-55
+        Instituição: MERCADO PAGO IP LTDA
+        Código da operação: 1234567890
+      `;
+      const parsed = parsePixShareText(receipt);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.amountCents).toBe(3200);
+      expect(parsed?.bankName).toBe("Mercado Pago");
+      expect(parsed?.merchant).toBe("Lanchonete Bom Café");
+      expect(parsed?.taxId).toBe("22333444000155");
+      expect(parsed?.txId).toBe("1234567890");
+    });
+
+    it("identifica corretamente agendamento Pix com data futura e status scheduled", () => {
+      const scheduledReceipt = `
+        Comprovante de Agendamento Pix
+        Situação: Agendado
+        Data do pagamento: 28/10/2026
+        Valor: R$ 350,00
+        Beneficiário: Imobiliária Alvorada Ltda
+        CNPJ: 11.222.333/0001-44
+        Instituição: ITAÚ UNIBANCO S.A.
+        Pagador: Gabriel Sales
+      `;
+      const parsed = parsePixShareText(scheduledReceipt);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.status).toBe("scheduled");
+      expect(parsed?.isScheduled).toBe(true);
+      expect(parsed?.scheduledFor).toBe("2026-10-28");
+      expect(parsed?.date).toBe("2026-10-28");
+      expect(parsed?.amountCents).toBe(35000);
+      expect(parsed?.type).toBe("expense");
+      expect(parsed?.merchant).toBe("Imobiliária Alvorada Ltda");
+      expect(parsed?.description).toBe("Pix Agendado: Imobiliária Alvorada Ltda");
+    });
+
+    it("identifica Pix recebido como renda/income e extrai pagador e CNPJ", () => {
+      const incomeReceipt = `
+        Comprovante de Pix Recebido
+        Valor: R$ 1.500,00
+        Data: 21/10/2026 às 15:00
+        Quem te enviou: Mariana Alves Consultoria ME
+        CNPJ: 99.888.777/0001-66
+        Instituição de Origem: BANCO INTER S.A.
+        Recebido por: Gabriel Sales
+      `;
+      const parsed = parsePixShareText(incomeReceipt);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.nature).toBe("income");
+      expect(parsed?.type).toBe("income");
+      expect(parsed?.amountCents).toBe(150000);
+      expect(parsed?.payerName).toBe("Mariana Alves Consultoria ME");
+      expect(parsed?.merchant).toBe("Mariana Alves Consultoria ME");
+      expect(parsed?.description).toBe("Pix Recebido: Mariana Alves Consultoria ME");
+      expect(parsed?.taxId).toBe("99888777000166");
+    });
   });
 
   describe("isRefundTransaction (Detecção de Estornos e Reversões)", () => {
