@@ -411,7 +411,7 @@ Ao término de cada fase, é **obrigatória** a passagem pelos dois portões de 
 ### FASE 6: Consolidação Documental, Checklist de Prontidão de Produção & Relatório Executivo Final
 > **Objetivo:** Atualizar todos os manuais técnicos do projeto, formalizar o fechamento da fase e emitir o relatório executivo final comprovando a prontidão da aplicação para escala comercial.
 
-- [ ] **Tarefa 6.1 — Atualização dos Documentos de Governança Técnica**
+- [x] **Tarefa 6.1 — Atualização dos Documentos de Governança Técnica**
   - **Revisão do Plano:** Mapear documentos afetados (`docs/ARCHITECTURE.md`, `docs/PROJECT_STRUCTURE.md`, `docs/DEPLOYMENT.md`, `docs/ROADMAP.md`).
   - **Implementação:**
     - `docs/ARCHITECTURE.md`: Registrar a calibração do TanStack Query, a política de subplans RLS no banco e a centralização de cotações em servidor;

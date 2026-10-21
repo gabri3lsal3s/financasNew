@@ -221,7 +221,9 @@
     │   │                          #     projeção anual determinística e faixas do
     │   │                          #     fundo de emergência (index.ts)
     │   ├── reconciliation/        #   F30: conciliação de faturas (parsers CSV/OFX/Texto,
-    │   │                          #     type-sniffer, hashing ordinal, scoring 0-100)
+    │   │                          #     type-sniffer, hashing ordinal, scoring 0-100),
+    │   │                          #     chunking.ts (teto rígido de 250 itens por lote e chunkArray),
+    │   │                          #     chunking.test.ts, stress.test.ts (estresse com 2.000 linhas)
     │   ├── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
     │   │                          #   contributions.ts (agregação pura de aportes em centavos),
     │   │                          #   simulation.ts (simulação de rebalanceamento por classes e renda passiva),
@@ -253,7 +255,9 @@
     ├── state/                     # CONTRATOS DE ESTADO para a UI
     │   ├── cache-policy.ts        #   F23: STALE_TIMES/gcTime por tipo de dado
     │   │                          #     (estático 5 min, analítico, cotações, transacional)
-    │   ├── queries/               #   useExpenses({month}), useInvoices(cardId), useMacroIndicators (CDI/Selic BCB)…
+    │   ├── queries/               #   useExpenses({month}), useInvoices(cardId), useMacroIndicators (CDI/Selic BCB),
+    │   │                          #     use-range-queries.test.tsx (cancelamento cooperativo via AbortSignal),
+    │   │                          #     concurrent-queries.test.tsx (estabilidade sob alta concorrência)…
     │   └── mutations/             #   useCreateExpense(), useDeleteInstallment()…
     │                              #     (use-expense-mutations, use-card-mutations,
     │                              #      use-budget-mutations, use-debt-mutations,
@@ -314,7 +318,7 @@
                                    #     db/schema/domain), axe-sanity + keyboard-navigation
                                    #     (a11y), accessibility-audit (contraste AA via
                                    #     domain/accessibility), pwa + pwa-audit, security-audit,
-                                   #     cross-tenant-penetration (Fase 5.1),
+                                   #     cross-tenant-penetration (37 testes de penetração e IDOR — Fase 5.1),
                                    #     quotes-core (edge de cotações), setup.ts
 ```
 

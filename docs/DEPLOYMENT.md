@@ -45,13 +45,29 @@
 ### 3.1 Supabase: criar o projeto e aplicar o schema
 
 1. Crie o projeto em [supabase.com/dashboard](https://supabase.com/dashboard) (anote `Project URL` e `anon key` em **Settings → API**).
-2. Aplique as migrations **na ordem** (0001 → 0010).
+2. Aplique as migrations **na ordem** (0001 → 0052).
 3. **Auth — configurar URLs de redirect** (Settings → Auth → URL Configuration):
    - `Site URL`: `https://<SEU-DOMINIO-CLOUDFLARE>` (ex.: `https://financasnew.pages.dev` ou domínio próprio)
    - `Redirect URLs`: adicionar `https://<SEU-DOMINIO-CLOUDFLARE>/**`
    - O arquivo `supabase/config.toml` já contém a wildcard `"https://*.pages.dev"`.
 
-### 3.2 Cloudflare Pages: importar e configurar o projeto
+### 3.2 Supabase Auth: Checklist de Rate Limits & Proteção contra Força Bruta
+
+Para assegurar a prontidão para campanhas de aquisição e tráfego massivo (1k a 10k DAU), configure as proteções de autenticação em **Authentication → Rate Limits** e **Security**:
+
+1. **Proteção contra Força Bruta (Brute-Force & Credential Stuffing):**
+   - Ative o limite de tentativas de login por IP e por conta de usuário no painel;
+   - Recomenda-se tolerância padrão de até 30 requisições de autenticação por minuto por IP;
+   - Configure lockout temporário automático após múltiplas tentativas consecutivas de senha incorreta.
+2. **Quotas de Envio de E-mails (Sign-up, Magic Links e Reset de Senha):**
+   - O serviço de e-mail embutido padrão do Supabase possui cota restrita de **30 e-mails por hora** no plano Free;
+   - **Para Produção em Escala:** É **obrigatório** configurar um provedor SMTP customizado (Custom SMTP) em **Authentication → SMTP Settings** (ex.: Resend, SendGrid, Amazon SES ou Postmark). Isso desativa o teto restritivo de 30 e-mails/hora e garante entregabilidade imediata com autenticação SPF/DKIM/DMARC no seu domínio.
+3. **Teto de Cadastros e Criação de Contas:**
+   - Limite a criação de novas contas para até 30 sign-ups por hora por endereço IP para evitar ataques de esgotamento de banco ou geração artificial de usuários.
+4. **Prevenção de Abuso de Recuperação de Senha:**
+   - Limite as requisições de redefinição de senha (`password recovery`) para no máximo 3 a 5 envios por hora por endereço de e-mail.
+
+### 3.3 Cloudflare Pages: importar e configurar o projeto
 
 1. Acesse [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → **Create application** → **Pages** → **Connect to Git**.
 2. Selecione o repositório `financasNew` e a branch `main`.
@@ -163,13 +179,42 @@ Para sustentar alta concorrência de leitura e múltiplos usuários simultâneos
 
 ---
 
-## 5. ESTRUTURA DE CONFIGURAÇÃO ESTÁTICA (`public/`)
+## 5. ESTRUTURA DE CONFIGURAÇÃO ESTÁTICA & SEGURANÇA DE BORDA (`public/`)
 
-- **`public/_headers`**:
-  Configura cabeçalhos de segurança (`nosniff`, `DENY`, `XSS`, `Referrer-Policy`) e regras de cache imutável para a pasta `/assets/` e revalidação de Service Worker (`sw.js`).
+### 5.1 Cabeçalhos HTTP e Defesa em Profundidade (`public/_headers`)
 
-- **SPA Fallback Nativo**:
-  O Cloudflare Pages redireciona automaticamente rotas não encontradas para o `dist/index.html` (SPA fallback nativo para Vite/React), dispensando o arquivo `_redirects`.
+O arquivo `public/_headers` implementa uma arquitetura de segurança de borda em conformidade com as melhores práticas OWASP e padrões bancários:
+
+1. **Content-Security-Policy (CSP) Estrita:**
+   - **Zero Wildcards Permissivos:** Proibido o uso de `*` em `script-src` ou `connect-src`. Apenas origens homologadas e necessárias para o funcionamento do ecossistema são permitidas:
+     - `default-src 'self'`: Restringe qualquer recurso não especificado à mesma origem do app;
+     - `script-src 'self' 'wasm-unsafe-eval'`: Execução exclusiva de bundles locais e WebAssembly (necessário para bibliotecas de cálculo e compilação client-side);
+     - `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`: Folhas de estilo locais e tipografia do Google Fonts;
+     - `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://brapi.dev https://*.r2.dev`: Conexões REST e WebSockets do Supabase, telemetria Sentry, cotações e distribuição de releases no Cloudflare R2;
+     - `font-src 'self' data: https://fonts.gstatic.com`: Fontes estáticas locais e remotas;
+     - `img-src 'self' data: blob: https://*.supabase.co`: Imagens locais, avatars, dados base64 e storage do Supabase;
+     - `object-src 'none'`: Desativa completamente Flash, Java Applets e plugins herdados;
+     - `base-uri 'self'` e `form-action 'self'`: Impede ataques de manipulação de base URL e submissões de formulário externas não-autorizadas.
+2. **Prevenção Completa de Clickjacking:**
+   - `X-Frame-Options: DENY` e CSP `frame-ancestors 'none'` combinados impedem categoricamente que a aplicação seja embutida dentro de `<iframe>` ou `<frame>` em domínios de terceiros, neutralizando ataques de sobreposição de interface.
+3. **Outros Cabeçalhos de Proteção:**
+   - `X-Content-Type-Options: nosniff`: Força o navegador a respeitar o MIME-type declarado pelo servidor;
+   - `X-XSS-Protection: 1; mode=block`: Bloqueia a renderização em navegadores legados caso um ataque XSS refletido seja detectado;
+   - `Referrer-Policy: strict-origin-when-cross-origin`: Omite caminhos internos e parâmetros de rota ao transicionar para domínios externos;
+   - `Permissions-Policy: camera=(), microphone=(), geolocation=()`: Desativa sensores físicos sensíveis no ambiente web.
+
+### 5.2 Estratégia de Cache de Borda (Edge Caching)
+
+- **Assets Estáticos Imutáveis (`/assets/*`):**
+  - `Cache-Control: public, max-age=31536000, immutable` (1 ano);
+  - Como o Vite gera hashes criptográficos únicos no nome de cada chunk JavaScript e CSS (`assets/index-[hash].js`), esses arquivos podem ser cacheados indefinidamente na CDN da Cloudflare e no disco do usuário sem risco de desatualização.
+- **Artefatos Dinâmicos de Ciclo de Vida (`/index.html`, `/sw.js`, `/pwa/*`, `manifest.webmanifest`, `version.json`):**
+  - `Cache-Control: public, max-age=0, must-revalidate`;
+  - Obriga o navegador a sempre validar o ETag/frescor na borda antes de servir o conteúdo, garantindo que novos deploys e atualizações do Service Worker sejam propagados imediatamente a todos os usuários ativos.
+
+### 5.3 Roteamento SPA Fallback Nativo
+
+- O Cloudflare Pages redireciona automaticamente qualquer rota não encontrada para o `dist/index.html` (SPA fallback nativo para Vite/React), dispensando configurações frágeis em `_redirects`.
 
 ---
 

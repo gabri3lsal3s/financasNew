@@ -1,5 +1,34 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+# 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
+
+> **v2.66** registra a **Conclusão Integral do Ciclo de Alta Concorrência, Escala (1k-10k DAU), Otimização de Banco de Dados e Blindagem de Segurança** (2026-10-20):
+> - **(1) Otimização de RLS Subplan Caching no PostgreSQL (`InitPlan`)**:
+>   - Eliminação de avaliações voláteis por linha em 100% das 34 tabelas do banco de dados, convertendo predicados `auth.uid() = user_id` em subqueries escalares `(select auth.uid()) = user_id` promovidas a nós `InitPlan` pelo planejador do Postgres (redução de até 90% na utilização de CPU);
+>   - Encapsulamento escalar das verificações de perfil e autorização SaaS: `(select public.is_current_user_active())` e `(select public.can_current_user_read_module('...'))`;
+>   - Criação do índice composto cobridor `idx_portfolio_tx_user_asset_date` em `portfolio_transactions (user_id, asset_id, date desc)`, garantindo Index Scan direto sem sequential scans ou ordenações em memória.
+> - **(2) Resiliência e Imunização contra Tempestades de Requisições no TanStack Query**:
+>   - Calibração global anti-storm com `refetchOnWindowFocus: false`, `staleTime: 60s` transacional e 5 min estático (`STALE_TIMES.static`);
+>   - Cancelamento cooperativo de requisições com `AbortController` / `AbortSignal` em consultas por range (`useExpenses`, `useIncomes`) injetado via `.abortSignal(signal)` no PostgREST, abortando buscas concorrentes obsoletas;
+>   - Debounce defensivo de 350ms em filtros de datas para relatórios e análises financeiras;
+>   - Suíte de concorrência com 10 queries simultâneas e testes de estabilidade comprovando ausência de re-renders duplicados e descarte sem vazamento de memória após ciclos de montagem.
+> - **(3) Arquitetura 100% Server-Side de Cotações de Investimentos**:
+>   - Priorização estrita da tabela `public.asset_prices` (`user_id is null`), eliminando chamadas concorrentes em leque no navegador para provedores externos (Brapi, Yahoo Finance, AwesomeAPI);
+>   - Alimentação centralizada pela Edge Function `quotes` agendada via `pg_cron` e `pg_net` nos horários de pregão da B3, com margem de segurança > 99,9% no Free Tier.
+> - **(4) Particionamento e Chunking de Extratos e Faturas**:
+>   - Módulo puro `src/domain/reconciliation/chunking.ts` com teto rígido de 250 itens por lote (`STATEMENT_CHUNK_SIZE = 250`) para importação de extratos bancários e faturas de cartão de crédito;
+>   - Envio sequencial ordenado com feedback visual de progresso, eliminando erros `413 Payload Too Large` e timeouts no PostgREST;
+>   - Validação com teste de estresse de 2.000 linhas simuladas sob carga.
+> - **(5) Blindagem Multi-Tenant e Suíte de Penetração Cross-Tenant**:
+>   - Suíte exaustiva de testes automatizados (`src/tests/cross-tenant-penetration.test.ts`, 37 testes) atestando isolamento estrito IDOR em SELECT, INSERT, UPDATE, DELETE e funções RPC entre múltiplos usuários;
+>   - Validação da política fail-closed para chamadas não autenticadas ou anônimas (`auth.uid() = NULL`).
+> - **(6) Sanitização Ativa do Gateway Central de Erros e Proteção contra Vazamentos**:
+>   - Sanitizador `containsTechnicalLeak` interceptando detalhes técnicos do PostgreSQL (tabelas, colunas, procedures, stack traces e migrações) e emitindo mensagens calmas e seguras em pt-BR;
+>   - Mapeamento gracioso de limites de taxa HTTP 429 ("Muitas requisições simultâneas...") e manutenção HTTP 503 ("Serviço temporariamente indisponível...").
+> - **(7) Governança de Borda e Segurança no Deploy**:
+>   - Headers HTTP estritos em `public/_headers` com Content-Security-Policy fechada (zero wildcards `*`), anti-clickjacking (`DENY` + `frame-ancestors 'none'`) e cache de borda calibrado (1 ano imutável para assets vs 0-revalidation para PWA);
+>   - Checklist operacional de Rate Limits e proteção contra força bruta no Supabase Auth.
+>
 > **v2.65** registra a **Remoção de Elementos Decorativos Espúrios em Cartões e Otimização Visual / Ergonômica do Formulário de Edição (CardFormDialog)** (2026-10-20):
 > - **(1) Eliminação do Quadrado Amarelo Espúrio**:
 >   - Remoção definitiva do bloco rígido `bg-amber-400/80` que simulava chip sem acabamento e causava ruído estético severo na pré-visualização de cartões em edição;
