@@ -249,11 +249,13 @@ describe("useUserAccess hook", () => {
     expect(subscriptionsRepo.getMySubscription).not.toHaveBeenCalled();
   });
 
-  it("aplica Fail-Closed para usuário comum quando a assinatura for nula", async () => {
+  it("utiliza fallback seguro de features quando a assinatura for nula ou sem overrides", async () => {
     vi.mocked(accessRepo.getMyProfile).mockResolvedValue(mockProfile);
     vi.mocked(accessRepo.getMyFeatures).mockResolvedValue({
       transactions: true,
       investments: true,
+      overview: true,
+      cards: false,
     });
     vi.mocked(subscriptionsRepo.getMySubscription).mockResolvedValue(null);
 
@@ -265,10 +267,11 @@ describe("useUserAccess hook", () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    // Com subscription = null e usuário não-admin, Fail-Closed bloqueia todos os acessos
-    expect(result.current.hasFeature("overview")).toBe(false);
-    expect(result.current.hasFeature("transactions")).toBe(false);
-    expect(result.current.hasFeature("investments")).toBe(false);
+    // Com subscription = null, honra as feature flags gerais sem travar em fail-closed indevido
+    expect(result.current.hasFeature("overview")).toBe(true);
+    expect(result.current.hasFeature("transactions")).toBe(true);
+    expect(result.current.hasFeature("investments")).toBe(true);
+    expect(result.current.hasFeature("cards")).toBe(false);
   });
 
   it("isolar chaves de query no formato [...KEY, userId]", () => {

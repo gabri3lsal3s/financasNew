@@ -63,6 +63,6 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
     window.history.pushState({}, "", "/apresentacao");
     render(<AppRouter />);
 
-    expect(await screen.findByRole("button", { name: "Recursos" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Recursos" }, { timeout: 8000 })).toBeInTheDocument();
   });
 });

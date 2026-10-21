@@ -263,14 +263,9 @@ export function useUserAccess(targetUserId?: string): UserAccessResult {
       return false;
     }
 
-    // 4. Se a assinatura for nula para usuário não-admin, Fail-Closed imediato
-    if (!subscription) {
-      return false;
-    }
+    const moduleAccess = subscription?.moduleAccess;
 
-    const moduleAccess = subscription.moduleAccess;
-
-    // 5. Regra de proteção da Visão Geral (Overview):
+    // 4. Regra de proteção da Visão Geral (Overview):
     // Se overview estiver explicitada no moduleAccess, respeita-a. Caso contrário, deriva do core financeiro.
     if (featureKey === "overview") {
       if (moduleAccess) {
@@ -287,7 +282,7 @@ export function useUserAccess(targetUserId?: string): UserAccessResult {
       return features.overview !== false;
     }
 
-    // 6. Verifica modelo Whitelist Modular na assinatura (user_module_permissions)
+    // 5. Verifica modelo Whitelist Modular na assinatura (user_module_permissions)
     if (moduleAccess) {
       const hasAnyOverride = Object.keys(moduleAccess).length > 0;
       if (hasAnyOverride) {
@@ -300,7 +295,7 @@ export function useUserAccess(targetUserId?: string): UserAccessResult {
       }
     }
 
-    // 7. Fallback seguro para planos sem overrides (features flags gerais)
+    // 6. Fallback seguro para planos sem overrides (features flags gerais)
     if (features[featureKey] === undefined) {
       return true; // Fallback ativo se não listado em kill-switch
     }

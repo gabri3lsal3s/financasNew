@@ -77,4 +77,48 @@ describe("LoginPage - Autenticação e Visibilidade de Senha", () => {
       "MinhaSenha123!",
     );
   });
+
+  it("redireciona para / e ignora /configuracoes quando logado com rota de retorno para configuracoes", () => {
+    vi.mocked(authHook.useAuth).mockReturnValue({
+      session: { user: { id: "user-1" } } as never,
+      user: { id: "user-1" } as never,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+    });
+
+    const { container } = render(
+      <MemoryRouter initialEntries={[{ pathname: "/entrar", state: { from: { pathname: "/configuracoes" } } }]}>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    // Quando logado, LoginPage emite <Navigate to="/" replace />
+    // Como MemoryRouter processa a navegação, a tela de login não exibe campos
+    expect(screen.queryByLabelText("E-mail")).not.toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("preserva rota de destino segura (ex: /transacoes) ao autenticar com sucesso", () => {
+    vi.mocked(authHook.useAuth).mockReturnValue({
+      session: { user: { id: "user-1" } } as never,
+      user: { id: "user-1" } as never,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+    });
+
+    const { container } = render(
+      <MemoryRouter initialEntries={[{ pathname: "/entrar", state: { from: { pathname: "/transacoes" } } }]}>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByLabelText("E-mail")).not.toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
+  });
 });

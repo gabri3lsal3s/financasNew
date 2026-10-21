@@ -120,7 +120,8 @@ function RequireAuth() {
 
   if (isDataLoading || isTransitioning || !session?.user) {
     if (!isDataLoading && !session?.user && !isTransitioning) {
-      return <Navigate to="/entrar" replace state={{ from: location }} />;
+      const isSettingsOrMais = location.pathname.startsWith("/configuracoes") || location.pathname === "/mais";
+      return <Navigate to="/entrar" replace state={isSettingsOrMais ? undefined : { from: location }} />;
     }
 
     let targetProgress: number;

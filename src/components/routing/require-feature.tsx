@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from "react-router";
 import { LoadingScreen } from "@/components/layout";
 import { resolveLandingPath } from "@/domain/navigation";
+import { useAuth } from "@/hooks/use-auth";
 import { useUserAccess } from "@/state";
 import type { SystemFeatureKey } from "@/types";
 
@@ -14,7 +15,8 @@ export interface RequireFeatureProps {
  * Se desabilitada, redireciona de forma inteligente para a primeira rota permitida.
  */
 export function RequireFeature({ featureKey, redirectTo }: RequireFeatureProps) {
-  const { hasFeature, isAdmin, isLoading } = useUserAccess();
+  const { session } = useAuth();
+  const { hasFeature, isAdmin, isLoading } = useUserAccess(session?.user?.id);
 
   if (isLoading) {
     return <LoadingScreen />;

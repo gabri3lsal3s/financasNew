@@ -1,5 +1,17 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.69** registra a **Blindagem Definitiva de Roteamento Pós-Login & Correção de Assinatura Volátil no Supabase** (2026-10-21):
+> - **(1) Sanitização Estrita do Destino Pós-Login (`login-page.tsx` e `router.tsx`)**:
+>   - Eliminação da retenção de `/configuracoes` pós-login: `from` agora sanitiza e descarta rotas que apontem para configurações (`/configuracoes*`), menu "Mais" (`/mais`) ou telas de autenticação (`/entrar`, `/cadastro`), direcionando sempre para a Home (`/`) ou o primeiro módulo disponível;
+>   - `RequireAuth` ignora `/configuracoes` e `/mais` ao armazenar a rota de origem (`state.from`), prevenindo que um logout a partir de Configurações aprisione a próxima sessão nessa tela.
+> - **(2) Correção da RPC `public.get_my_subscription()` no PostgreSQL (Migration 0053)**:
+>   - Declaração da RPC como `VOLATILE` (ao invés de `STABLE`), permitindo a execução segura de `INSERT ... ON CONFLICT DO NOTHING` para auto-provisionamento de assinaturas trial sem disparar a exceção PostgreSQL `0A000: cannot execute INSERT in a read-only transaction`;
+>   - Fallback defensivo em memória caso o registro físico não exista, eliminando falhas 400/500 e retornos de erro da RPC.
+> - **(3) Alinhamento de Acesso e Resolução de Features (`useUserAccess.ts` & `RequireFeature.tsx`)**:
+>   - Remoção do fail-closed prematuro `if (!subscription) return false;`: usuários sem restrições modulares personalizadas herdam as features gerais ativas do sistema (`features[featureKey] !== false`);
+>   - Repasse direto de `session?.user?.id` para `useUserAccess` em `RequireFeature`, eliminando corridas de storage;
+>   - 100% dos testes unitários verdes em `login-page.test.tsx`, `require-feature.test.tsx`, `use-user-access.test.tsx`, `nav-resolver.test.ts` e `router.test.tsx`.
+>
 > **v2.68** registra a **Correção da Rota Inicial do App (Home vs. Primeira Rota Disponível) & Blindagem de Cold Start** (2026-10-21):
 > - **(1) Eliminação da Condição de Corrida no Cold Boot (`user-storage.ts` & `useUserAccess.ts`)**:
 >   - Persistência síncrona de `activeUserId` em `localStorage` (`financas_active_user_id`) no bootstrap da aplicação, permitindo que `getActiveUserId()` retorne o ID do usuário imediatamente no render inicial após recarregamento da página, reabertura de PWA ou lançamento nativo do app;

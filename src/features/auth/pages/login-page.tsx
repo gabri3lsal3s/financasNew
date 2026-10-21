@@ -21,10 +21,21 @@ export function LoginPage() {
   if (metodoParam) checkoutQuery.set("metodo", metodoParam);
 
   const fallbackFrom = planoParam ? `/assinatura?${checkoutQuery.toString()}` : "/";
-  const from =
+  const rawFrom =
     (location.state as { from?: { pathname?: string; search?: string } } | null)?.from
       ? `${(location.state as { from: { pathname?: string; search?: string } }).from.pathname ?? "/"}${(location.state as { from: { pathname?: string; search?: string } }).from.search ?? ""}`
       : fallbackFrom;
+
+  // Sanitização rigorosa: login nunca deve conduzir para configurações ou telas de autenticação
+  const isSettingsOrAuth =
+    rawFrom.startsWith("/configuracoes") ||
+    rawFrom.startsWith("/entrar") ||
+    rawFrom.startsWith("/cadastro") ||
+    rawFrom.startsWith("/criar-conta") ||
+    rawFrom.startsWith("/recuperar-senha") ||
+    rawFrom === "/mais";
+
+  const from = isSettingsOrAuth ? fallbackFrom : rawFrom;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
