@@ -34,6 +34,7 @@ export function PortfolioDarfMonitor({
       const asset = assetMap.get(t.asset_id);
       const ticker = asset?.ticker ?? "Ativo";
       const assetClass = asset?.asset_class ?? null;
+      const currency = asset?.currency ?? "BRL";
       const averagePrice = asset?.average_price ?? t.price;
       const costAmountCents = Math.round(t.quantity * averagePrice * 100);
       const saleAmountCents = Math.round(t.total * 100);
@@ -42,6 +43,7 @@ export function PortfolioDarfMonitor({
       return {
         ticker,
         assetClass,
+        currency,
         saleAmountCents,
         costAmountCents,
         profitCents,
@@ -93,8 +95,8 @@ export function PortfolioDarfMonitor({
               <p className="text-[11px] text-muted-foreground">
                 {monthSales.length === 0
                   ? "Nenhuma operação de venda realizada neste mês."
-                  : darf.isStockExempt
-                    ? "Vendas de ações dentro do limite de isenção de R$ 20.000/mês."
+                  : darf.isStockExempt && darf.etfTaxDueCents === 0 && darf.fiiTaxDueCents === 0
+                    ? "Vendas de ações dentro do limite de isenção de R$ 20.000/mês e sem outros tributos devidos."
                     : "Sem lucro líquido tributável no período."}
               </p>
             </div>
@@ -104,11 +106,11 @@ export function PortfolioDarfMonitor({
         {/* Resumo por Categoria */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {/* Bloco de Ações */}
-          <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-3.5 shadow-xs">
+          <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs">
             <div className="flex items-center justify-between border-b border-border/40 pb-2">
-              <strong className="text-xs font-semibold text-foreground">Ações & ETFs</strong>
+              <strong className="text-xs font-semibold text-foreground">Ações B3</strong>
               <Badge variant={darf.isStockExempt ? "positive" : "warning"} size="xs">
-                {darf.isStockExempt ? "Isento" : "Tributável (15%)"}
+                {darf.isStockExempt ? "Isento (≤ 20k)" : "Tributável (15%)"}
               </Badge>
             </div>
             <div className="flex flex-col gap-1.5 text-xs">
@@ -128,7 +130,7 @@ export function PortfolioDarfMonitor({
           </div>
 
           {/* Bloco de FIIs */}
-          <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-3.5 shadow-xs">
+          <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs">
             <div className="flex items-center justify-between border-b border-border/40 pb-2">
               <strong className="text-xs font-semibold text-foreground">Fundos Imobiliários (FIIs)</strong>
               <Badge variant="muted" size="xs">
@@ -150,6 +152,58 @@ export function PortfolioDarfMonitor({
               </div>
             </div>
           </div>
+
+          {/* Bloco de ETFs & BDRs (quando houver vendas) */}
+          {darf.etfSalesVolumeCents > 0 && (
+            <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs">
+              <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                <strong className="text-xs font-semibold text-foreground">ETFs & BDRs B3</strong>
+                <Badge variant="warning" size="xs">
+                  Sem Isenção (15%)
+                </Badge>
+              </div>
+              <div className="flex flex-col gap-1.5 text-xs">
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>Volume de Vendas:</span>
+                  <MoneyText cents={darf.etfSalesVolumeCents} tone="default" />
+                </div>
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>Lucro Bruto:</span>
+                  <MoneyText cents={darf.etfGrossProfitCents} tone="auto" />
+                </div>
+                <div className="flex items-center justify-between font-medium pt-1 border-t border-border/30">
+                  <span className="text-foreground">Imposto Devido:</span>
+                  <MoneyText cents={darf.etfTaxDueCents} tone={darf.etfTaxDueCents > 0 ? "negative" : "default"} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Bloco de Ativos no Exterior (quando houver vendas) */}
+          {darf.foreignSalesVolumeCents > 0 && (
+            <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs">
+              <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                <strong className="text-xs font-semibold text-foreground">Exterior (Lei 14.754/2023)</strong>
+                <Badge variant="portfolio" size="xs">
+                  IRPF Anual DAA
+                </Badge>
+              </div>
+              <div className="flex flex-col gap-1.5 text-xs">
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>Volume de Vendas:</span>
+                  <MoneyText cents={darf.foreignSalesVolumeCents} tone="default" />
+                </div>
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>Ganho de Capital:</span>
+                  <MoneyText cents={darf.foreignGrossProfitCents} tone="auto" />
+                </div>
+                <div className="flex items-center justify-between font-medium pt-1 border-t border-border/30">
+                  <span className="text-foreground">DARF Mensal:</span>
+                  <span className="text-muted-foreground text-xs">Isento no mês (DAA)</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </Modal>

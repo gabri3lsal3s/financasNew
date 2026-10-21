@@ -442,13 +442,26 @@ export {
   classifyAnnualDividendsReport,
   generateAnnualBensDireitosReport,
   getBensDireitosClassification,
+  isBdrAsset,
+  isEtfAsset,
+  isFiiAsset,
+  isForeignAsset,
+  KNOWN_B3_ETFS,
+  KNOWN_STOCK_UNITS,
+  STOCK_MONTHLY_EXEMPTION_LIMIT_CENTS,
+  STOCK_TAX_RATE,
+  FII_TAX_RATE,
+  ETF_TAX_RATE,
+  MINIMUM_DARF_EMISSION_CENTS,
 } from "./tax";
 export type {
   AnnualBensDireitosReport,
   AnnualDividendsTaxReport,
   DividendTaxItem,
   MonthlyDarfInput,
+  MonthlyDarfPreviousLosses,
   MonthlyDarfResult,
+  MonthlyDarfSaleItem,
   TaxAssetItem,
 } from "./tax";
 export * from "./schemas";

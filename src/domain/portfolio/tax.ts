@@ -6,6 +6,14 @@
 import { formatCentsAsBRL } from "@/services/masks";
 import { sanitizeReportText } from "@/domain/reports/sanitize-text";
 import type { PortfolioAsset, PortfolioDividend } from "@/types";
+import {
+  inferCurrencyFromTicker,
+  isCashAssetClass,
+  isFiiClass,
+  isFixedIncomeClass,
+  isTesouroAsset,
+  normalizeClassName,
+} from "./valuation";
 
 export interface TaxAssetItem {
   assetId: string;
@@ -257,57 +265,191 @@ export function classifyAnnualDividendsReport(
   };
 }
 
+export interface MonthlyDarfSaleItem {
+  ticker: string;
+  assetClass: string | null;
+  currency?: string | null;
+  saleAmountCents: number;
+  costAmountCents: number;
+  profitCents: number;
+}
+
+export interface MonthlyDarfPreviousLosses {
+  stockCents?: number;
+  fiiCents?: number;
+  etfCents?: number;
+}
+
 export interface MonthlyDarfInput {
   month: string;
   /** Operações de venda realizadas no mês. */
-  sales: {
-    ticker: string;
-    assetClass: string | null;
-    saleAmountCents: number;
-    costAmountCents: number;
-    profitCents: number;
-  }[];
+  sales: MonthlyDarfSaleItem[];
   /** Prejuízos acumulados de meses anteriores a compensar (em centavos). */
-  previousLosses?: {
-    stockCents?: number;
-    fiiCents?: number;
-  };
+  previousLosses?: MonthlyDarfPreviousLosses;
 }
 
 export interface MonthlyDarfResult {
   month: string;
+  /** Volume de vendas de ações ordinárias/preferenciais locais B3 no mês (centavos). */
   stockSalesVolumeCents: number;
+  /** Indica se as vendas de ações no mês ficaram dentro do limite de isenção de R$ 20.000,00. */
   isStockExempt: boolean;
   stockGrossProfitCents: number;
   stockCompensatedLossCents: number;
   stockTaxableProfitCents: number;
   stockTaxDueCents: number;
+  /** Volume de vendas de FIIs/FIAGROs no mês (centavos). */
   fiiSalesVolumeCents: number;
   fiiGrossProfitCents: number;
   fiiCompensatedLossCents: number;
   fiiTaxableProfitCents: number;
   fiiTaxDueCents: number;
+  /** Volume de vendas de ETFs e BDRs no mês (centavos, sem isenção de 20k). */
+  etfSalesVolumeCents: number;
+  etfGrossProfitCents: number;
+  etfCompensatedLossCents: number;
+  etfTaxableProfitCents: number;
+  etfTaxDueCents: number;
+  /** Volume de vendas de ativos internacionais no exterior (segregados pela Lei 14.754/2023 - IRPF Anual). */
+  foreignSalesVolumeCents: number;
+  foreignGrossProfitCents: number;
+  /** Valor total de imposto a recolher via DARF 6015 (centavos). */
   totalTaxDueCents: number;
+  /** true se totalTaxDueCents >= R$ 10,00 (DARF mínimo para emissão). */
   shouldPayDarf: boolean;
   remainingAccumulatedLossCents: {
     stockCents: number;
     fiiCents: number;
+    etfCents: number;
   };
 }
 
-const STOCK_MONTHLY_EXEMPTION_LIMIT_CENTS = 20_000 * 100; // R$ 20.000,00
-const STOCK_TAX_RATE = 0.15; // 15%
-const FII_TAX_RATE = 0.20; // 20%
-const MINIMUM_DARF_EMISSION_CENTS = 10 * 100; // R$ 10,00
+export const STOCK_MONTHLY_EXEMPTION_LIMIT_CENTS = 20_000 * 100; // R$ 20.000,00
+export const STOCK_TAX_RATE = 0.15; // 15%
+export const FII_TAX_RATE = 0.20; // 20%
+export const ETF_TAX_RATE = 0.15; // 15%
+export const MINIMUM_DARF_EMISSION_CENTS = 10 * 100; // R$ 10,00
+
+/**
+ * Principais ETFs negociados na B3 (sem isenção de R$ 20.000,00).
+ */
+export const KNOWN_B3_ETFS = new Set([
+  "BOVA11", "SMAL11", "IVVB11", "SPXI11", "HASH11", "GOLD11", "NASD11",
+  "BDEF11", "BRAX11", "DIVO11", "PIBB11", "XINA11", "ACWI11", "EURP11",
+  "MATB11", "FIND11", "GOVE11", "ISUS11", "ECOO11", "GENB11", "BBSD11",
+  "SMAC11", "TECB11", "DNAI11", "USTK11", "WRLD11", "BITH11", "ETHE11",
+  "QETH11", "QBTC11", "DEFI11", "CRPT11", "WEB311", "NFTS11", "BDIV11",
+  "NSDV11", "SHOT11", "BOVV11", "BOVX11", "IBOB11", "SMALL11", "SPXB11",
+]);
+
+/**
+ * Identifica se o ativo é um BDR (Brazilian Depositary Receipt) negociado na B3.
+ * BDRs não possuem isenção de R$ 20.000,00 e são tributados a 15% via DARF 6015.
+ */
+export function isBdrAsset(ticker: string, assetClass?: string | null): boolean {
+  const upperTicker = ticker.trim().toUpperCase();
+  if (/^[A-Z]{4}(34|35|39)$/.test(upperTicker)) {
+    return true;
+  }
+  const normClass = normalizeClassName(assetClass ?? "");
+  return normClass === "bdr" || normClass === "bdrs" || normClass.includes("bdr");
+}
+
+/**
+ * Identifica se o ativo é um Fundo de Índice (ETF).
+ * ETFs não possuem a isenção dos R$ 20.000,00 e são tributados a 15% sobre o ganho líquido.
+ */
+export function isEtfAsset(ticker: string, assetClass?: string | null): boolean {
+  const upperTicker = ticker.trim().toUpperCase();
+  if (KNOWN_B3_ETFS.has(upperTicker)) {
+    return true;
+  }
+  const normClass = normalizeClassName(assetClass ?? "");
+  if (normClass.includes("etf") || normClass.includes("indice") || normClass.includes("index")) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Identifica se o ativo é custodiado no exterior / cotado em moeda estrangeira (USD)
+ * sujeito ao regime da Lei 14.754/2023 (tributação unificada de 15% na DAA anual, sem DARF mensal 6015).
+ */
+export function isForeignAsset(
+  ticker: string,
+  assetClass?: string | null,
+  currency?: string | null,
+): boolean {
+  const normCurrency = (currency ?? "").trim().toUpperCase();
+  if (normCurrency === "USD") return true;
+
+  const upperTicker = ticker.trim().toUpperCase();
+  // BDRs negociados na B3 são locais BRL e não ativos estrangeiros diretos
+  if (isBdrAsset(upperTicker, assetClass)) return false;
+
+  // Se a moeda não foi forçada como BRL e o ticker tem padrão internacional (1 a 5 letras puras)
+  if (normCurrency !== "BRL" && inferCurrencyFromTicker(upperTicker) === "USD") {
+    return true;
+  }
+
+  const normClass = normalizeClassName(assetClass ?? "");
+  if (
+    normClass.includes("internacional") ||
+    normClass.includes("exterior") ||
+    normClass.includes("offshore") ||
+    normClass.includes("global")
+  ) {
+    if (upperTicker.endsWith("11") || upperTicker.match(/^[A-Z]{4}(34|35|39)$/)) {
+      return false;
+    }
+    return true;
+  }
+
+  return false;
+}
+
+/** Units de ações locais B3 (compostas por ON + PN) que mantêm isenção de R$ 20.000,00. */
+export const KNOWN_STOCK_UNITS = new Set([
+  "KLBN11", "SANB11", "TAEE11", "BPAC11", "SAPR11", "ALUP11", "TIET11", "ENGI11", "SULA11", "CPLE11",
+]);
+
+/**
+ * Identifica se o ativo é um FII, FIAGRO ou FI-Infra negociado na B3 (tributado a 20%).
+ */
+export function isFiiAsset(ticker: string, assetClass?: string | null): boolean {
+  if (isFiiClass(assetClass)) return true;
+  const normClass = normalizeClassName(assetClass ?? "");
+  if (
+    normClass.includes("fii") ||
+    normClass.includes("imobili") ||
+    normClass.includes("fiagro") ||
+    normClass.includes("fi-infra")
+  ) {
+    return true;
+  }
+  const upperTicker = ticker.trim().toUpperCase();
+  if (
+    upperTicker.endsWith("11") &&
+    !KNOWN_B3_ETFS.has(upperTicker) &&
+    !KNOWN_STOCK_UNITS.has(upperTicker) &&
+    !isBdrAsset(upperTicker, assetClass)
+  ) {
+    return true;
+  }
+  return false;
+}
 
 /**
  * Apuração mensal de impostos sobre ganhos líquidos de renda variável (DARF).
+ * Segrega estritamente ações comuns B3 (isenção 20k), FIIs (20%), ETFs/BDRs (15% sem isenção)
+ * e ativos no exterior (Lei 14.754/2023 - DAA anual, sem DARF 6015 mensal).
  */
 export function calculateMonthlyDarf(input: MonthlyDarfInput): MonthlyDarfResult {
   const { month, sales, previousLosses = {} } = input;
 
   let initialStockLoss = Math.max(0, previousLosses.stockCents ?? 0);
   let initialFiiLoss = Math.max(0, previousLosses.fiiCents ?? 0);
+  let initialEtfLoss = Math.max(0, previousLosses.etfCents ?? 0);
 
   let stockSalesVolumeCents = 0;
   let stockGrossProfitCents = 0;
@@ -317,16 +459,45 @@ export function calculateMonthlyDarf(input: MonthlyDarfInput): MonthlyDarfResult
   let fiiGrossProfitCents = 0;
   let fiiNewLossCents = 0;
 
-  for (const s of sales) {
-    const normClass = (s.assetClass ?? "").toLowerCase();
-    const isFii = normClass.includes("fii") || normClass.includes("imobili");
+  let etfSalesVolumeCents = 0;
+  let etfGrossProfitCents = 0;
+  let etfNewLossCents = 0;
 
-    if (isFii) {
+  let foreignSalesVolumeCents = 0;
+  let foreignGrossProfitCents = 0;
+
+  for (const s of sales) {
+    if (
+      isFixedIncomeClass(s.assetClass) ||
+      isCashAssetClass(s.assetClass) ||
+      isTesouroAsset(s.ticker, s.assetClass)
+    ) {
+      continue;
+    }
+
+    const isForeign = isForeignAsset(s.ticker, s.assetClass, s.currency);
+    const isFii = !isForeign && isFiiAsset(s.ticker, s.assetClass);
+    const isEtfOrBdr =
+      !isForeign && !isFii && (isEtfAsset(s.ticker, s.assetClass) || isBdrAsset(s.ticker, s.assetClass));
+
+    if (isForeign) {
+      foreignSalesVolumeCents += s.saleAmountCents;
+      if (s.profitCents > 0) {
+        foreignGrossProfitCents += s.profitCents;
+      }
+    } else if (isFii) {
       fiiSalesVolumeCents += s.saleAmountCents;
       if (s.profitCents > 0) {
         fiiGrossProfitCents += s.profitCents;
       } else {
         fiiNewLossCents += Math.abs(s.profitCents);
+      }
+    } else if (isEtfOrBdr) {
+      etfSalesVolumeCents += s.saleAmountCents;
+      if (s.profitCents > 0) {
+        etfGrossProfitCents += s.profitCents;
+      } else {
+        etfNewLossCents += Math.abs(s.profitCents);
       }
     } else {
       stockSalesVolumeCents += s.saleAmountCents;
@@ -338,9 +509,8 @@ export function calculateMonthlyDarf(input: MonthlyDarfInput): MonthlyDarfResult
     }
   }
 
-  // Isenção de ações: volume de vendas no mês <= R$ 20.000
+  // 1. Ações Locais B3: isenção de R$ 20.000/mês
   const isStockExempt = stockSalesVolumeCents <= STOCK_MONTHLY_EXEMPTION_LIMIT_CENTS;
-
   let stockTaxableProfitCents = 0;
   let stockCompensatedLossCents = 0;
 
@@ -349,11 +519,9 @@ export function calculateMonthlyDarf(input: MonthlyDarfInput): MonthlyDarfResult
     stockTaxableProfitCents = stockGrossProfitCents - stockCompensatedLossCents;
     initialStockLoss -= stockCompensatedLossCents;
   }
-
-  // Atualiza prejuízo acumulado de ações
   initialStockLoss += stockNewLossCents;
 
-  // FIIs: sem isenção de 20k, tributação de 20%
+  // 2. FIIs B3: sem isenção de 20k, tributação de 20%
   let fiiTaxableProfitCents = 0;
   let fiiCompensatedLossCents = 0;
 
@@ -362,12 +530,24 @@ export function calculateMonthlyDarf(input: MonthlyDarfInput): MonthlyDarfResult
     fiiTaxableProfitCents = fiiGrossProfitCents - fiiCompensatedLossCents;
     initialFiiLoss -= fiiCompensatedLossCents;
   }
-
   initialFiiLoss += fiiNewLossCents;
+
+  // 3. ETFs & BDRs B3: sem isenção de 20k, tributação de 15%
+  let etfTaxableProfitCents = 0;
+  let etfCompensatedLossCents = 0;
+
+  if (etfGrossProfitCents > 0) {
+    etfCompensatedLossCents = Math.min(etfGrossProfitCents, initialEtfLoss);
+    etfTaxableProfitCents = etfGrossProfitCents - etfCompensatedLossCents;
+    initialEtfLoss -= etfCompensatedLossCents;
+  }
+  initialEtfLoss += etfNewLossCents;
 
   const stockTaxDueCents = Math.round(stockTaxableProfitCents * STOCK_TAX_RATE);
   const fiiTaxDueCents = Math.round(fiiTaxableProfitCents * FII_TAX_RATE);
-  const totalTaxDueCents = stockTaxDueCents + fiiTaxDueCents;
+  const etfTaxDueCents = Math.round(etfTaxableProfitCents * ETF_TAX_RATE);
+
+  const totalTaxDueCents = stockTaxDueCents + fiiTaxDueCents + etfTaxDueCents;
   const shouldPayDarf = totalTaxDueCents >= MINIMUM_DARF_EMISSION_CENTS;
 
   return {
@@ -383,11 +563,19 @@ export function calculateMonthlyDarf(input: MonthlyDarfInput): MonthlyDarfResult
     fiiCompensatedLossCents,
     fiiTaxableProfitCents,
     fiiTaxDueCents,
+    etfSalesVolumeCents,
+    etfGrossProfitCents,
+    etfCompensatedLossCents,
+    etfTaxableProfitCents,
+    etfTaxDueCents,
+    foreignSalesVolumeCents,
+    foreignGrossProfitCents,
     totalTaxDueCents,
     shouldPayDarf,
     remainingAccumulatedLossCents: {
       stockCents: initialStockLoss,
       fiiCents: initialFiiLoss,
+      etfCents: initialEtfLoss,
     },
   };
 }
