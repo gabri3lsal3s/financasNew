@@ -10,7 +10,8 @@
  */
 
 import { addDaysISO, todayISO } from "@/domain/debts";
-import { clampDay } from "@/domain/competence";
+import { clampDay, resolveBillCompetence } from "@/domain/competence";
+import { addMonthsClamped, splitCents, toISODate } from "@/domain/money/parcelar";
 import { APP_START_DATE } from "@/types";
 
 /** Saldo aberto de uma fatura (previsto − pago − estorno − creditoAnterior, nunca negativo). */
@@ -303,6 +304,60 @@ export function daysUntilDue(competenceMonth: string, dueDay: number, today: str
   const todayTime = new Date(`${today}T00:00:00Z`).getTime();
   const msPerDay = 1000 * 60 * 60 * 24;
   return Math.round((dueTime - todayTime) / msPerDay);
+}
+
+export interface CardInstallmentItem {
+  /** Número da parcela (1..count, 1-based). */
+  installmentNumber: number;
+  /** Total de parcelas (1..60). */
+  installmentsTotal: number;
+  /** Valor da parcela em centavos (inteiro). */
+  valueCents: number;
+  /** Data da parcela em formato ISO local (YYYY-MM-DD). */
+  date: string;
+  /** Snapshot da competência de fatura (YYYY-MM), se closingDay for informado. */
+  billCompetence: string | null;
+}
+
+export interface DivideIntoInstallmentsInput {
+  /** Valor total da compra em centavos (inteiro >= 0). */
+  totalCents: number;
+  /** Quantidade de parcelas (1..60). */
+  count: number;
+  /** Data da primeira parcela (YYYY-MM-DD). */
+  startDate: string;
+  /** Dia de fechamento da fatura do cartão (1..31), opcional. */
+  closingDay?: number | null;
+}
+
+/**
+ * Divide uma compra parcelada de cartão em N parcelas com conservação estrita de centavos.
+ * A soma de `valueCents` de todas as parcelas é matematicamente garantida
+ * idêntica a `totalCents`, distribuindo o resto nas primeiras parcelas (§3.2.2 / D12).
+ * Cada parcela calcula sua data mensal (clamped) e o snapshot da competência de fatura (bill_competence).
+ */
+export function divideIntoInstallments(input: DivideIntoInstallmentsInput): CardInstallmentItem[] {
+  const { totalCents, count, startDate, closingDay } = input;
+  const values = splitCents(totalCents, count);
+  const [yearStr, monthStr, dayStr] = startDate.split("-");
+  const baseYear = Number(yearStr);
+  const baseMonth = (Number(monthStr) || 1) - 1;
+  const baseDay = Number(dayStr) || 1;
+  const baseDate = new Date(baseYear, baseMonth, baseDay);
+
+  return values.map((valueCents, index) => {
+    const installmentDateObj = addMonthsClamped(baseDate, index);
+    const dateStr = toISODate(installmentDateObj);
+    const billCompetence = closingDay != null ? resolveBillCompetence(dateStr, closingDay) : null;
+
+    return {
+      installmentNumber: index + 1,
+      installmentsTotal: count,
+      valueCents,
+      date: dateStr,
+      billCompetence,
+    };
+  });
 }
 
 export * from "./refinancing";

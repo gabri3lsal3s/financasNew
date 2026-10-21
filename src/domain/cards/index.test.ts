@@ -5,6 +5,7 @@ import {
   buildCompetenceSummaries,
   cardLimitUsage,
   daysUntilDue,
+  divideIntoInstallments,
   invoiceBalance,
   invoiceStatus,
   partitionInvoiceExpenses,
@@ -385,6 +386,183 @@ describe("daysUntilDue", () => {
   it("retorna negativo quando a fatura está vencida", () => {
     // Vencimento dia 10, hoje dia 13 -> -3 dias
     expect(daysUntilDue("2026-08", 10, "2026-08-13")).toBe(-3);
+  });
+});
+
+describe("divideIntoInstallments — conservação estrita de centavos (§3.2.2 / D12)", () => {
+  it("divide R$ 100 em 3 parcelas distribuindo o resto nas primeiras com soma exata", () => {
+    const items = divideIntoInstallments({
+      totalCents: 10000,
+      count: 3,
+      startDate: "2026-08-15",
+      closingDay: 10,
+    });
+
+    expect(items).toHaveLength(3);
+    expect(items[0]).toEqual({
+      installmentNumber: 1,
+      installmentsTotal: 3,
+      valueCents: 3334,
+      date: "2026-08-15",
+      billCompetence: "2026-09", // Compra 15 >= 10 -> fatura setembro
+    });
+    expect(items[1]).toEqual({
+      installmentNumber: 2,
+      installmentsTotal: 3,
+      valueCents: 3333,
+      date: "2026-09-15",
+      billCompetence: "2026-10",
+    });
+    expect(items[2]).toEqual({
+      installmentNumber: 3,
+      installmentsTotal: 3,
+      valueCents: 3333,
+      date: "2026-10-15",
+      billCompetence: "2026-11",
+    });
+
+    const sum = items.reduce((acc, curr) => acc + curr.valueCents, 0);
+    expect(sum).toBe(10000);
+  });
+
+  it("conserva a soma de centavos estritamente idêntica para qualquer quantidade de parcelas de 1 a 60", () => {
+    const testAmountCents = 123457; // R$ 1.234,57
+
+    for (let count = 1; count <= 60; count++) {
+      const items = divideIntoInstallments({
+        totalCents: testAmountCents,
+        count,
+        startDate: "2026-05-10",
+      });
+
+      expect(items).toHaveLength(count);
+
+      const sum = items.reduce((acc, curr) => acc + curr.valueCents, 0);
+      expect(sum).toBe(testAmountCents);
+
+      // Invariante de distribuição homogênea: a maior e a menor parcela diferem em no máximo 1 centavo
+      const maxVal = Math.max(...items.map((i) => i.valueCents));
+      const minVal = Math.min(...items.map((i) => i.valueCents));
+      expect(maxVal - minVal).toBeLessThanOrEqual(1);
+
+      // Numeração sequencial 1-based
+      items.forEach((item, idx) => {
+        expect(item.installmentNumber).toBe(idx + 1);
+        expect(item.installmentsTotal).toBe(count);
+      });
+    }
+  });
+
+  it("distribui centavos residuais em compras de baixo valor (5 centavos em 12x)", () => {
+    const items = divideIntoInstallments({
+      totalCents: 5,
+      count: 12,
+      startDate: "2026-01-01",
+    });
+
+    expect(items).toHaveLength(12);
+    const sum = items.reduce((acc, curr) => acc + curr.valueCents, 0);
+    expect(sum).toBe(5);
+
+    // 5 primeiras recebem 1 centavo, 7 últimas recebem 0
+    expect(items.slice(0, 5).every((i) => i.valueCents === 1)).toBe(true);
+    expect(items.slice(5).every((i) => i.valueCents === 0)).toBe(true);
+  });
+
+  it("conserva centavos com precisão para compras de valor elevado em 60x", () => {
+    const items = divideIntoInstallments({
+      totalCents: 99999999, // R$ 999.999,99
+      count: 60,
+      startDate: "2026-01-01",
+    });
+
+    expect(items).toHaveLength(60);
+    const sum = items.reduce((acc, curr) => acc + curr.valueCents, 0);
+    expect(sum).toBe(99999999);
+  });
+
+  it("calcula snapshot de competência antes e depois do closing day", () => {
+    // Compra antes do closing day (05 < 10) -> fatura do mesmo mês
+    const beforeClosing = divideIntoInstallments({
+      totalCents: 6000,
+      count: 2,
+      startDate: "2026-08-05",
+      closingDay: 10,
+    });
+    expect(beforeClosing[0]?.billCompetence).toBe("2026-08");
+    expect(beforeClosing[1]?.billCompetence).toBe("2026-09");
+
+    // Compra a partir do closing day (10 >= 10) -> fatura do mês seguinte
+    const onClosing = divideIntoInstallments({
+      totalCents: 6000,
+      count: 2,
+      startDate: "2026-08-10",
+      closingDay: 10,
+    });
+    expect(onClosing[0]?.billCompetence).toBe("2026-09");
+    expect(onClosing[1]?.billCompetence).toBe("2026-10");
+
+    // Sem closingDay informado -> billCompetence é null
+    const noClosing = divideIntoInstallments({
+      totalCents: 6000,
+      count: 2,
+      startDate: "2026-08-10",
+      closingDay: null,
+    });
+    expect(noClosing.every((i) => i.billCompetence === null)).toBe(true);
+  });
+
+  it("aplica clamping em finais de mês (31 de janeiro em 4 meses)", () => {
+    const items = divideIntoInstallments({
+      totalCents: 4000,
+      count: 4,
+      startDate: "2026-01-31",
+    });
+
+    expect(items.map((i) => i.date)).toEqual([
+      "2026-01-31",
+      "2026-02-28", // clamped para o último dia de fevereiro (ano comum)
+      "2026-03-31",
+      "2026-04-30", // clamped para 30 em abril
+    ]);
+  });
+
+  it("lança erro em entradas inválidas ou fora das invariantes", () => {
+    // Menos de 1 parcela
+    expect(() =>
+      divideIntoInstallments({
+        totalCents: 1000,
+        count: 0,
+        startDate: "2026-01-01",
+      }),
+    ).toThrow();
+
+    // Mais de 60 parcelas
+    expect(() =>
+      divideIntoInstallments({
+        totalCents: 1000,
+        count: 61,
+        startDate: "2026-01-01",
+      }),
+    ).toThrow();
+
+    // Total negativo
+    expect(() =>
+      divideIntoInstallments({
+        totalCents: -50,
+        count: 2,
+        startDate: "2026-01-01",
+      }),
+    ).toThrow();
+
+    // Total não inteiro
+    expect(() =>
+      divideIntoInstallments({
+        totalCents: 100.5,
+        count: 2,
+        startDate: "2026-01-01",
+      }),
+    ).toThrow();
   });
 });
 

@@ -5,7 +5,7 @@
  */
 import { z } from "zod";
 import { parcelar, toISODate } from "@/domain/money";
-import { resolveBillCompetence } from "@/domain/competence";
+import { divideIntoInstallments } from "@/domain/cards";
 import { cleanTextSchema, moneyCentsSchema } from "@/domain/validation";
 import type { RecurrenceFrequency, RecurrenceRule } from "@/domain/recurrences";
 import type { DebtType, InstallmentInput, PaymentMethod, ReceiveType } from "@/types";
@@ -330,6 +330,7 @@ export function recurrenceRuleFromLaunchState(state: LaunchState, id = "preview"
 /**
  * Parcelas calculadas no cliente (D12): valor exato em centavos, uma por mês,
  * com competência de fatura (snapshot) quando o cartão informa closing day.
+ * Reutiliza divideIntoInstallments do domínio de cartões (DRY).
  */
 export function buildExpenseInstallments(params: {
   totalCents: number;
@@ -337,11 +338,10 @@ export function buildExpenseInstallments(params: {
   startDate: string;
   closingDay?: number | null;
 }): InstallmentInput[] {
-  const plano = parcelar(params.totalCents, params.count, parseISO(params.startDate));
-  return plano.map((parcela) => ({
-    date: parcela.date,
-    value: parcela.valueCents / 100,
-    billCompetence:
-      params.closingDay != null ? resolveBillCompetence(parseISO(parcela.date), params.closingDay) : null,
+  const items = divideIntoInstallments(params);
+  return items.map((item) => ({
+    date: item.date,
+    value: item.valueCents / 100,
+    billCompetence: item.billCompetence,
   }));
 }
