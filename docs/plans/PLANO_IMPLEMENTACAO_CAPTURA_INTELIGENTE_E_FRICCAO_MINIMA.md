@@ -169,7 +169,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes cobrindo dezenas de formatos sujos de adquirentes e cartões.
   - *Commit:* `feat(domain): implementar limpeza de adquirentes e catalogo base de marcas brasileiras`
 
-- [ ] **Tarefa 2.3 — Pipeline de Resolução Hierárquica em 3 Camadas:**
+- [x] **Tarefa 2.3 — Pipeline de Resolução Hierárquica em 3 Camadas:**
   - Implementar função pura `resolveMerchantIdentity(params)`:
     - *1ª Camada (Chave de Ouro):* Busca por CNPJ/CPF limpo (precisão 100%).
     - *2ª Camada (Memória Adaptativa):* Busca por correspondência exata ou fuzzy nos aliases de aprendizado do usuário.

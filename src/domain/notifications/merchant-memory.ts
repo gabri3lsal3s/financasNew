@@ -9,6 +9,7 @@
 
 import { normalizeMerchantText } from "./bank-parser";
 import type { CanonicalCategorySlug } from "./category-inference";
+import { cleanAcquirerPrefixes } from "./merchant-catalog";
 
 export interface MerchantCategoryMapping {
   [normalizedMerchant: string]: string; // slug ou categoryId
@@ -203,10 +204,19 @@ export function findLearnedMerchant(
 
   // 2. Busca por nome amigável idêntico ou em aliases cadastrados
   const targetMerchant = normalizeMerchantText(query.merchant);
+  const cleanTarget = normalizeMerchantText(cleanAcquirerPrefixes(query.merchant || ""));
   if (targetMerchant) {
     const matchByMerchant = records.find((r) => {
-      if (normalizeMerchantText(r.friendlyName) === targetMerchant) return true;
-      return r.rawAliases.some((alias) => normalizeMerchantText(alias) === targetMerchant);
+      const normFriendly = normalizeMerchantText(r.friendlyName);
+      if (normFriendly === targetMerchant) return true;
+      if (cleanTarget && normFriendly === cleanTarget) return true;
+
+      return r.rawAliases.some((alias) => {
+        const normAlias = normalizeMerchantText(alias);
+        if (normAlias === targetMerchant) return true;
+        const cleanAlias = normalizeMerchantText(cleanAcquirerPrefixes(alias));
+        return Boolean(cleanAlias && cleanTarget && cleanAlias === cleanTarget);
+      });
     });
     if (matchByMerchant) return matchByMerchant;
   }
@@ -214,10 +224,14 @@ export function findLearnedMerchant(
   // 3. Busca por contenção de alias dentro do texto bruto da notificação/comprovante
   if (query.rawText) {
     const normRaw = query.rawText.toLowerCase();
+    const cleanRaw = normalizeMerchantText(query.rawText);
     const matchByRaw = records.find((r) => {
       return r.rawAliases.some((alias) => {
         const normAlias = alias.toLowerCase().trim();
-        return normAlias.length >= 3 && normRaw.includes(normAlias);
+        const cleanAlias = normalizeMerchantText(cleanAcquirerPrefixes(alias));
+        if (normAlias.length >= 3 && normRaw.includes(normAlias)) return true;
+        if (cleanAlias.length >= 3 && cleanRaw.includes(cleanAlias)) return true;
+        return false;
       });
     });
     if (matchByRaw) return matchByRaw;
