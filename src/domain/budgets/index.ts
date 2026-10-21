@@ -324,11 +324,16 @@ export function budgetLimitsByCategory(
  * da agregação usada em Overview/Budgets/Insights.
  */
 export function spentByCategoryMap(
-  expenses: readonly { category_id: string; value: number; report_weight: number }[],
+  expenses: readonly { category_id: string; value: number; report_weight?: number | null }[],
 ): Map<string, number> {
   const spent = new Map<string, number>();
   for (const expense of expenses) {
-    spent.set(expense.category_id, (spent.get(expense.category_id) ?? 0) + numberToCents(expense.value * expense.report_weight));
+    const rawWeight = expense.report_weight;
+    const cents =
+      rawWeight === undefined || rawWeight === null || rawWeight === 1
+        ? numberToCents(expense.value)
+        : Math.round(numberToCents(expense.value) * (Number.isFinite(rawWeight) ? Math.max(0, rawWeight) : 1));
+    spent.set(expense.category_id, (spent.get(expense.category_id) ?? 0) + cents);
   }
   return spent;
 }
@@ -351,13 +356,18 @@ export function spentGrossByCategoryMap(
  * da agregação usada em Budgets e Insights.
  */
 export function realizedByCategoryMap(
-  incomes: readonly { category_id: string; value: number; report_weight: number }[],
+  incomes: readonly { category_id: string; value: number; report_weight?: number | null }[],
 ): Map<string, number> {
   const realized = new Map<string, number>();
   for (const income of incomes) {
+    const rawWeight = income.report_weight;
+    const cents =
+      rawWeight === undefined || rawWeight === null || rawWeight === 1
+        ? numberToCents(income.value)
+        : Math.round(numberToCents(income.value) * (Number.isFinite(rawWeight) ? Math.max(0, rawWeight) : 1));
     realized.set(
       income.category_id,
-      (realized.get(income.category_id) ?? 0) + numberToCents(income.value * income.report_weight),
+      (realized.get(income.category_id) ?? 0) + cents,
     );
   }
   return realized;

@@ -23,6 +23,11 @@ const baseCategories = [
   { id: "i1", name: "Salário", icon: "salario", color: null, type: "income" },
 ];
 
+let mockExpenses = [
+  { id: "e1", category_id: "c1", value: 1200, report_weight: 1 },
+  { id: "e2", category_id: "c2", value: 100, report_weight: 1 },
+];
+
 vi.mock("@/state", () => ({
   usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
   useBudgets: () => ({
@@ -64,10 +69,7 @@ vi.mock("@/state", () => ({
   useUpdateCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useExpenses: () => ({
-    data: [
-      { id: "e1", category_id: "c1", value: 1200, report_weight: 1 },
-      { id: "e2", category_id: "c2", value: 100, report_weight: 1 },
-    ],
+    data: mockExpenses,
     isLoading: false,
     isError: false,
     error: null,
@@ -92,6 +94,10 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
+    mockExpenses = [
+      { id: "e1", category_id: "c1", value: 1200, report_weight: 1 },
+      { id: "e2", category_id: "c2", value: 100, report_weight: 1 },
+    ];
   });
 
   afterEach(() => {
@@ -218,6 +224,51 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
 
     await user.click(adjustBtn);
     expect(screen.getByRole("heading", { name: "Ajustar Orçamento" })).toBeInTheDocument();
+  });
+
+  it("exibe os seletores de métrica Gasto Pessoal e Total da Casa com Popover informativo", async () => {
+    const user = userEvent.setup();
+    renderBudgetsPage();
+
+    const personalBtn = screen.getByRole("button", { name: "Gasto Pessoal" });
+    const householdBtn = screen.getByRole("button", { name: "Total da Casa" });
+    const infoBtn = screen.getByRole("button", { name: "Informações sobre os modos de visualização" });
+
+    expect(personalBtn).toBeInTheDocument();
+    expect(householdBtn).toBeInTheDocument();
+    expect(infoBtn).toBeInTheDocument();
+
+    await user.click(infoBtn);
+    expect(screen.getByText("Modos de Visualização do Orçamento")).toBeInTheDocument();
+    expect(screen.getByText(/Gasto Pessoal \(Ponderado\):/)).toBeInTheDocument();
+    expect(screen.getByText(/Total da Casa \/ Família \(Bruto\):/)).toBeInTheDocument();
+  });
+
+  it("alterna entre Gasto Pessoal (ponderado) e Total da Casa (bruto) atualizando os valores e badges", async () => {
+    // Configura despesa de Moradia com rateio 50% (R$ 600 pessoal vs R$ 1.200 total da casa)
+    mockExpenses = [
+      { id: "e1", category_id: "c1", value: 1200, report_weight: 0.5 },
+      { id: "e2", category_id: "c2", value: 100, report_weight: 1 },
+    ];
+
+    const user = userEvent.setup();
+    renderBudgetsPage();
+
+    // No modo padrão (Gasto Pessoal): Total gasto = 600 + 100 = 700
+    expect(screen.getByText("R$ 700,00")).toBeInTheDocument();
+    expect(screen.getByText("Pessoal")).toBeInTheDocument();
+    // Exibe badge informando o total da casa para a categoria Moradia
+    expect(screen.getByText(/Total da casa:/)).toBeInTheDocument();
+
+    // Alterna para Total da Casa
+    const householdBtn = screen.getByRole("button", { name: "Total da Casa" });
+    await user.click(householdBtn);
+
+    // No modo Total da Casa: Total gasto = 1200 + 100 = 1300
+    expect(screen.getByText("R$ 1.300,00")).toBeInTheDocument();
+    expect(screen.getByText("Total Casa")).toBeInTheDocument();
+    // Exibe badge informando a sua parte pessoal para Moradia
+    expect(screen.getByText(/Sua parte:/)).toBeInTheDocument();
   });
 });
 

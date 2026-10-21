@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { ArrowRight, Edit3, PiggyBank, Plus, SlidersHorizontal, Sparkles, Target, TrendingDown, TrendingUp } from "lucide-react";
-import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
+import { ArrowRight, Edit3, HelpCircle, Info, PiggyBank, Plus, SlidersHorizontal, Sparkles, Target, TrendingDown, TrendingUp, User, Users } from "lucide-react";
+import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Popover, PopoverContent, PopoverTrigger, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon, MonthPicker, ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
@@ -17,8 +17,9 @@ import {
   reallocationSuggestion,
   resolveEffectiveLimit,
   spentByCategoryMap,
+  spentGrossByCategoryMap,
 } from "@/domain/budgets";
-import { numberToCents, sumWeightedCents } from "@/domain/money";
+import { numberToCents, sumGrossCents, sumWeightedCents } from "@/domain/money";
 
 import { currentMonth } from "@/lib/date";
 import { triggerSensory } from "@/services/sensory";
@@ -63,6 +64,7 @@ export function BudgetsPage() {
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [reallocateOpen, setReallocateOpen] = useState(false);
   const [reallocateError, setReallocateError] = useState<string | null>(null);
+  const [spendMetric, setSpendMetric] = useState<"personal" | "household">("personal");
 
   const budgetsQuery = useBudgets();
   const goalsQuery = useIncomeGoals();
@@ -82,12 +84,14 @@ export function BudgetsPage() {
   // Limites agrupados por categoria: cada uma herda APENAS do próprio histórico.
   const limitsByCategory = budgetLimitsByCategory(budgets);
 
-  const totalExpensesCents = sumWeightedCents(expensesQuery.data ?? []);
+  const totalExpensesWeightedCents = sumWeightedCents(expensesQuery.data ?? []);
+  const totalExpensesGrossCents = sumGrossCents(expensesQuery.data ?? []);
+  const totalExpensesCents = spendMetric === "personal" ? totalExpensesWeightedCents : totalExpensesGrossCents;
   const totalIncomesCents = sumWeightedCents(incomesQuery.data ?? []);
 
-  const spentByCategory = spentByCategoryMap(expensesQuery.data ?? []);
+  const spentWeightedByCategory = spentByCategoryMap(expensesQuery.data ?? []);
+  const spentGrossByCategory = spentGrossByCategoryMap(expensesQuery.data ?? []);
   const realizedByCategory = realizedByCategoryMap(incomesQuery.data ?? []);
-
 
   const categories = expenseCategories.data ?? [];
   const allCategories = allCategoriesQuery.data ?? [];
@@ -98,10 +102,16 @@ export function BudgetsPage() {
   // Categorias de despesa com limite ou gasto
   const allExpenseRows = categories.map((category) => {
     const ownHistory = limitsByCategory.get(category.id) ?? [];
+    const spentWeighted = spentWeightedByCategory.get(category.id) ?? 0;
+    const spentGross = spentGrossByCategory.get(category.id) ?? 0;
+    const effectiveSpentCents = spendMetric === "personal" ? spentWeighted : spentGross;
     return {
       category,
       limitCents: resolveEffectiveLimit(ownHistory, month),
-      spentCents: spentByCategory.get(category.id) ?? 0,
+      spentCents: effectiveSpentCents,
+      spentWeightedCents: spentWeighted,
+      spentGrossCents: spentGross,
+      hasSplitDifference: spentGross !== spentWeighted,
       inherited: isInheritedLimit(ownHistory, month),
     };
   });
@@ -226,13 +236,91 @@ export function BudgetsPage() {
 
   const renderLimitsContent = () => (
     <div className="flex flex-col gap-6">
-      <MonthPicker value={month} onValueChange={setMonth} />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="w-full sm:max-w-xs">
+          <MonthPicker value={month} onValueChange={setMonth} />
+        </div>
+
+        {/* Alternância de Métrica: Gasto Pessoal vs Total da Casa */}
+        <div className="flex items-center gap-1 self-start sm:self-auto rounded-xl border border-border/80 bg-surface/80 p-1 shadow-2xs">
+          <Button
+            type="button"
+            size="sm"
+            variant={spendMetric === "personal" ? "default" : "ghost"}
+            onClick={() => setSpendMetric("personal")}
+            className="text-xs h-7 px-2.5 gap-1.5"
+            aria-pressed={spendMetric === "personal"}
+            title="Considera apenas a sua participação pessoal efetiva nas compras (com rateios e reembolsos)"
+          >
+            <User className="size-3.5" aria-hidden="true" />
+            <span>Gasto Pessoal</span>
+          </Button>
+
+          <Button
+            type="button"
+            size="sm"
+            variant={spendMetric === "household" ? "default" : "ghost"}
+            onClick={() => setSpendMetric("household")}
+            className="text-xs h-7 px-2.5 gap-1.5"
+            aria-pressed={spendMetric === "household"}
+            title="Considera o valor bruto total nominal das compras (100% de cada despesa, sem rateios)"
+          >
+            <Users className="size-3.5" aria-hidden="true" />
+            <span>Total da Casa</span>
+          </Button>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-7 text-muted-foreground hover:text-foreground"
+                aria-label="Informações sobre os modos de visualização"
+                title="Informações sobre os modos de visualização"
+              >
+                <HelpCircle className="size-3.5" aria-hidden="true" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 text-xs">
+              <div className="flex flex-col gap-2">
+                <p className="font-semibold text-foreground">Modos de Visualização do Orçamento</p>
+                <div className="flex flex-col gap-1.5 text-muted-foreground text-[11px] leading-relaxed">
+                  <p>
+                    <strong className="text-foreground font-medium">Gasto Pessoal (Ponderado):</strong> Considera exclusivamente a sua cota ou responsabilidade pessoal nos gastos compartilhados (despesas com taxa de rateio menor que 100% ou reembolsos). Ideal para o controle do seu consumo individual.
+                  </p>
+                  <p>
+                    <strong className="text-foreground font-medium">Total da Casa / Família (Bruto):</strong> Considera 100% do valor nominal de cada compra, mesmo quando rateada com terceiros. Ideal para o controle do orçamento global familiar da residência.
+                  </p>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
 
       {/* Resumo do Orçamento Geral (§3.5.2) — Régua de 3 Métricas */}
       <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
           <div className="min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">Total Gasto</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">Total Gasto</p>
+              <Badge variant="muted" size="xs" className="font-normal text-[10px] py-0 px-1">
+                {spendMetric === "personal" ? "Pessoal" : "Total Casa"}
+              </Badge>
+              {totalExpensesGrossCents !== totalExpensesWeightedCents && (
+                <span
+                  className="text-muted-foreground/80 hover:text-foreground cursor-help"
+                  title={
+                    spendMetric === "personal"
+                      ? `Total nominal bruto da casa: ${formatCentsAsBRL(totalExpensesGrossCents)}`
+                      : `Sua parte proporcional pessoal: ${formatCentsAsBRL(totalExpensesWeightedCents)}`
+                  }
+                >
+                  <Info className="size-3 inline" aria-hidden="true" />
+                </span>
+              )}
+            </div>
             <MoneyText
               cents={totalExpensesCents}
               tone="default"
@@ -265,7 +353,7 @@ export function BudgetsPage() {
         {totalLimitsCents > 0 && (
           <div className="mt-3.5 pt-3 border-t border-border/50">
             <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-              <span>Consumo Geral do Teto</span>
+              <span>Consumo Geral do Teto ({spendMetric === "personal" ? "Pessoal" : "Total Casa"})</span>
               <span className="font-semibold text-foreground tabular-nums">
                 {Math.round((totalExpensesCents / totalLimitsCents) * 100)}%
               </span>
@@ -379,13 +467,31 @@ export function BudgetsPage() {
                     >
                       <CategoryIcon icon={row.category.icon} color={row.category.color} />
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0 flex-wrap">
                           <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
                             {row.category.name}
                           </p>
                           {row.inherited ? (
                             <Badge variant="muted" size="xs">
                               herdado
+                            </Badge>
+                          ) : null}
+                          {row.hasSplitDifference ? (
+                            <Badge
+                              variant="muted"
+                              size="xs"
+                              className="text-muted-foreground font-normal"
+                              title={
+                                spendMetric === "personal"
+                                  ? `Gasto total nominal da casa: ${formatCentsAsBRL(row.spentGrossCents)}`
+                                  : `Sua parte proporcional pessoal: ${formatCentsAsBRL(row.spentWeightedCents)}`
+                              }
+                            >
+                              {spendMetric === "personal" ? (
+                                <span>Total da casa: <MoneyText cents={row.spentGrossCents} tone="default" /></span>
+                              ) : (
+                                <span>Sua parte: <MoneyText cents={row.spentWeightedCents} tone="default" /></span>
+                              )}
                             </Badge>
                           ) : null}
                         </div>
