@@ -11,7 +11,6 @@ import {
   DemoModeBanner,
   KpiCard,
   MonthPicker,
-  OnboardingCard,
   PaceAlertBanner,
   RealCashHeroCard,
   SurplusAporteBanner,
@@ -22,7 +21,6 @@ import {
   AutoRegisteredBanner,
   AndroidProBanner,
 } from "@/components/modules";
-import { isOnboardingComplete, type OnboardingCounts } from "@/domain/onboarding";
 import { isDemoItem } from "@/services/demo-data";
 import {
   budgetLimitsByCategory,
@@ -42,12 +40,13 @@ import {
 import {
   accountsNet,
   buildDailyFlow,
+  buildDailyCumulativeSeries,
   calculateSurplusCapacity,
   computeOverview,
   openInvoicesTotal,
 } from "@/domain/overview";
 import { numberToCents, sumGrossCents, sumWeightedCents } from "@/domain/money";
-import { contributionsInMonthCents, contributionsMonthlySeries } from "@/domain/portfolio";
+import { contributionsInMonthCents } from "@/domain/portfolio";
 
 import { currentMonth, monthLabel, shiftMonth } from "@/lib/date";
 import { formatPercent } from "@/services/masks";
@@ -60,9 +59,7 @@ import {
   useCreditCards,
   useDebts,
   useExpenses,
-  useExpensesByRange,
   useIncomes,
-  useIncomesByRange,
   usePortfolioContributions,
   useRealCashBalance,
   useUserSubscription,
@@ -86,9 +83,6 @@ export function OverviewPage() {
   const visual = useVisualCustomization();
 
   const prevMonth = shiftMonth(month, -1);
-  const startRange = shiftMonth(month, -5);
-  const rangeMonths = useMemo(() => Array.from({ length: 6 }, (_, i) => shiftMonth(startRange, i)), [startRange]);
-  const rangeStart = `${startRange}-01`;
   const rangeEnd = `${shiftMonth(month, 1)}-01`;
   const today = todayISO();
   const isCurrentMonth = month === currentMonth();
@@ -99,13 +93,9 @@ export function OverviewPage() {
   const prevIncomesQuery = useIncomes(prevMonth);
   const prevExpensesQuery = useExpenses(prevMonth);
 
-  const incomesRangeQuery = useIncomesByRange(rangeStart, rangeEnd);
-  const expensesRangeQuery = useExpensesByRange(rangeStart, rangeEnd);
-
   const cardsQuery = useCreditCards();
   const budgetsQuery = useBudgets();
   const expenseCategories = useCategories("expense");
-  const incomeCategories = useCategories("income");
   const debtsQuery = useDebts();
   const cardExpensesQuery = useAllCardExpenses();
   const cardPaymentsQuery = useAllCardPayments();
@@ -119,16 +109,6 @@ export function OverviewPage() {
     const hasDemoCards = (cardsQuery.data ?? []).some((c) => isDemoItem(c.name));
     return hasDemoExpenses || hasDemoIncomes || hasDemoCards;
   }, [expensesQuery.data, incomesQuery.data, cardsQuery.data]);
-
-  // Contagens para o checklist de Onboarding de primeiro uso
-  const onboardingCounts: OnboardingCounts = useMemo(() => ({
-    expenseCategories: (expenseCategories.data ?? []).filter((c) => !c.is_reserved).length,
-    incomeCategories: (incomeCategories.data ?? []).filter((c) => !c.is_reserved).length,
-    cards: (cardsQuery.data ?? []).length,
-    transactions: (incomesQuery.data ?? []).length + (expensesQuery.data ?? []).length,
-  }), [expenseCategories.data, incomeCategories.data, cardsQuery.data, incomesQuery.data, expensesQuery.data]);
-
-  const showOnboarding = !isOnboardingComplete(onboardingCounts);
 
   // Isolamento de erros críticos (§Fase 4): a tela só bloqueia se o fluxo financeiro base falhar
   const loading =
@@ -148,12 +128,8 @@ export function OverviewPage() {
     grossIncomeCents,
     grossExpenseCents,
     investmentCents,
-    investmentSpark,
     totals,
     prevTotals,
-    incomeSpark,
-    expenseSpark,
-    balanceSpark,
   } = useMemo(() => {
     const incCents = sumWeightedCents(incomesQuery.data ?? []);
     const expCents = sumWeightedCents(expensesQuery.data ?? []);
@@ -165,18 +141,9 @@ export function OverviewPage() {
     const contribs = contributionsQuery.data ?? [];
     const invCents = contributionsInMonthCents(contribs, month);
     const prevInvCents = contributionsInMonthCents(contribs, prevMonth);
-    const invSpark = contributionsMonthlySeries(contribs, rangeMonths);
 
     const tot = computeOverview(grossIncCents, grossExpCents, invCents);
     const prevTot = computeOverview(prevGrossIncCents, prevGrossExpCents, prevInvCents);
-
-    const incSpark = rangeMonths.map((m) =>
-      sumGrossCents((incomesRangeQuery.data ?? []).filter((i) => i.date.startsWith(m))),
-    );
-    const expSpark = rangeMonths.map((m) =>
-      sumGrossCents((expensesRangeQuery.data ?? []).filter((e) => e.date.startsWith(m))),
-    );
-    const balSpark = rangeMonths.map((_, idx) => (incSpark[idx] ?? 0) - (expSpark[idx] ?? 0));
 
     return {
       incomeCents: incCents,
@@ -187,12 +154,8 @@ export function OverviewPage() {
       prevGrossExpenseCents: prevGrossExpCents,
       investmentCents: invCents,
       prevInvestmentCents: prevInvCents,
-      investmentSpark: invSpark,
       totals: tot,
       prevTotals: prevTot,
-      incomeSpark: incSpark,
-      expenseSpark: expSpark,
-      balanceSpark: balSpark,
     };
   }, [
     incomesQuery.data,
@@ -202,9 +165,6 @@ export function OverviewPage() {
     contributionsQuery.data,
     month,
     prevMonth,
-    rangeMonths,
-    incomesRangeQuery.data,
-    expensesRangeQuery.data,
   ]);
 
   // Resumo de contas e faturas.
@@ -233,6 +193,9 @@ export function OverviewPage() {
     ];
     return buildDailyFlow(month, dailyItems);
   }, [incomesQuery.data, expensesQuery.data, contributionsQuery.data, month]);
+
+  // Séries acumuladas diárias para os sparklines dos KPIs (evolução do mês atual).
+  const dailySeries = useMemo(() => buildDailyCumulativeSeries(dailyFlow), [dailyFlow]);
 
   // Orçamentos compactos (§3.6): barra segmentada consolidada e diagnóstico executivo.
   // Métrica principal: gasto efetivo ponderado (alinhado com Orçamentos e Categorias).
@@ -547,10 +510,6 @@ export function OverviewPage() {
 
           {subscription.isReadOnly && <ReadOnlyBanner />}
 
-          {showOnboarding && !hasDemoData && (
-            <OnboardingCard counts={onboardingCounts} />
-          )}
-
           {isCurrentMonth ? (
             <RealCashHeroCard
               realCashData={realCashData}
@@ -577,7 +536,7 @@ export function OverviewPage() {
                     ) : null}
                   </div>
                 }
-                spark={incomeSpark}
+                spark={dailySeries.incomeSeries}
               />
               <KpiCard
                 label="Despesas"
@@ -596,14 +555,14 @@ export function OverviewPage() {
                     ) : null}
                   </div>
                 }
-                spark={expenseSpark}
+                spark={dailySeries.expenseSeries}
               />
               <KpiCard
                 label="Investimentos"
                 cents={totals.investmentCents}
                 tone="portfolio"
                 icon={<TrendingUp className="size-4" aria-hidden="true" />}
-                spark={investmentSpark}
+                spark={dailySeries.investmentSeries}
               />
               <KpiCard
                 label={
@@ -615,7 +574,7 @@ export function OverviewPage() {
                 cents={totals.operatingBalanceCents}
                 tone={totals.operatingBalanceCents >= 0 ? "positive" : "negative"}
                 icon={<DollarSign className="size-4" aria-hidden="true" />}
-                spark={balanceSpark}
+                spark={dailySeries.balanceSeries}
               />
             </div>
 

@@ -226,12 +226,12 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     expect(screen.getByRole("heading", { name: "Ajustar Orçamento" })).toBeInTheDocument();
   });
 
-  it("exibe os seletores de métrica Gasto Pessoal e Total da Casa com Popover informativo", async () => {
+  it("exibe os seletores de métrica Minha Parte e Total Bruto com Popover informativo", async () => {
     const user = userEvent.setup();
     renderBudgetsPage();
 
-    const personalBtn = screen.getByRole("button", { name: "Gasto Pessoal" });
-    const householdBtn = screen.getByRole("button", { name: "Total da Casa" });
+    const personalBtn = screen.getByRole("button", { name: "Minha Parte" });
+    const householdBtn = screen.getByRole("button", { name: "Total Bruto" });
     const infoBtn = screen.getByRole("button", { name: "Informações sobre os modos de visualização" });
 
     expect(personalBtn).toBeInTheDocument();
@@ -240,12 +240,12 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
 
     await user.click(infoBtn);
     expect(screen.getByText("Modos de Visualização do Orçamento")).toBeInTheDocument();
-    expect(screen.getByText(/Gasto Pessoal \(Ponderado\):/)).toBeInTheDocument();
-    expect(screen.getByText(/Total da Casa \/ Família \(Bruto\):/)).toBeInTheDocument();
+    expect(screen.getByText(/Minha Parte \(Ponderado\):/)).toBeInTheDocument();
+    expect(screen.getByText(/Total Bruto \(Nominal\):/)).toBeInTheDocument();
   });
 
-  it("alterna entre Gasto Pessoal (ponderado) e Total da Casa (bruto) atualizando os valores e badges", async () => {
-    // Configura despesa de Moradia com rateio 50% (R$ 600 pessoal vs R$ 1.200 total da casa)
+  it("alterna entre Minha Parte (ponderado) e Total Bruto (bruto) atualizando os valores e badges", async () => {
+    // Configura despesa de Moradia com rateio 50% (R$ 600 pessoal vs R$ 1.200 total bruto)
     mockExpenses = [
       { id: "e1", category_id: "c1", value: 1200, report_weight: 0.5 },
       { id: "e2", category_id: "c2", value: 100, report_weight: 1 },
@@ -254,19 +254,21 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     const user = userEvent.setup();
     renderBudgetsPage();
 
-    // No modo padrão (Gasto Pessoal): Total gasto = 600 + 100 = 700
+    // No modo padrão (Minha Parte): Total gasto = 600 + 100 = 700
     expect(screen.getByText("R$ 700,00")).toBeInTheDocument();
-    expect(screen.getByText("Pessoal")).toBeInTheDocument();
-    // Exibe badge informando o total da casa para a categoria Moradia
-    expect(screen.getByText(/Total da casa:/)).toBeInTheDocument();
+    // "Minha Parte" aparece no botão ativo E no badge do KPI
+    expect(screen.getAllByText("Minha Parte").length).toBeGreaterThanOrEqual(1);
+    // Exibe badge informando o total bruto para a categoria Moradia
+    expect(screen.getByText(/Total bruto:/)).toBeInTheDocument();
 
-    // Alterna para Total da Casa
-    const householdBtn = screen.getByRole("button", { name: "Total da Casa" });
+    // Alterna para Total Bruto
+    const householdBtn = screen.getByRole("button", { name: "Total Bruto" });
     await user.click(householdBtn);
 
-    // No modo Total da Casa: Total gasto = 1200 + 100 = 1300
+    // No modo Total Bruto: Total gasto = 1200 + 100 = 1300
     expect(screen.getByText("R$ 1.300,00")).toBeInTheDocument();
-    expect(screen.getByText("Total Casa")).toBeInTheDocument();
+    // "Total Bruto" aparece no botão ativo E no badge do KPI
+    expect(screen.getAllByText("Total Bruto").length).toBeGreaterThanOrEqual(1);
     // Exibe badge informando a sua parte pessoal para Moradia
     expect(screen.getByText(/Sua parte:/)).toBeInTheDocument();
   });

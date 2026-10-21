@@ -202,6 +202,7 @@ export function InsightsPage({
         month: shiftMonth(month, -index),
         valueCents: numberToCents(e.value * e.report_weight),
         categoryId: e.category_id,
+        categoryName: categoryById.get(e.category_id)?.name ?? null,
         categoryIcon: categoryById.get(e.category_id)?.icon ?? null,
         installmentGroupId: e.installment_group_id,
         recurrenceId: e.recurrence_id,

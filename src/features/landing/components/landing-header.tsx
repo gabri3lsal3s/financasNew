@@ -87,26 +87,6 @@ export function LandingHeader() {
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-12">
         <div className="flex items-center gap-2 sm:gap-3">
-          {isSubpage ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                if (window.history.length > 1) {
-                  navigate(-1);
-                } else {
-                  navigate(homeUrl);
-                }
-              }}
-              aria-label="Voltar para a página anterior"
-              className="gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer -ml-2 sm:ml-0"
-            >
-              <ArrowLeft className="size-3.5" aria-hidden="true" />
-              <span>Voltar</span>
-            </Button>
-          ) : null}
-
           <Link to={homeUrl} className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg">
             <BrandLogo markClassName="size-8" showWordmark wordmarkClassName="text-base sm:text-lg" />
           </Link>
@@ -190,7 +170,25 @@ export function LandingHeader() {
             </Button>
           )}
           <ThemeToggle />
-          {isLoggedIn ? (
+          {isSubpage ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (window.history.length > 1) {
+                  navigate(-1);
+                } else {
+                  navigate(homeUrl);
+                }
+              }}
+              aria-label="Voltar para a página anterior"
+              className="gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              <ArrowLeft className="size-3.5" aria-hidden="true" />
+              <span>Voltar</span>
+            </Button>
+          ) : isLoggedIn ? (
             <Link
               to="/"
               className={cn(buttonVariants({ size: "sm" }), "shadow-sm inline-flex items-center gap-1.5")}
@@ -205,16 +203,9 @@ export function LandingHeader() {
               </Link>
               <Link
                 to="/cadastro"
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "font-medium")}
+                className={cn(buttonVariants({ size: "sm" }), "shadow-sm font-medium")}
               >
                 Criar conta grátis
-              </Link>
-              <Link
-                to="/assinatura?plano=pro-anual"
-                className={cn(buttonVariants({ size: "sm" }), "shadow-sm inline-flex items-center gap-1.5")}
-              >
-                Assinar Pro
-                <ArrowRight className="size-3.5" aria-hidden="true" />
               </Link>
             </>
           )}
@@ -354,16 +345,8 @@ export function LandingHeader() {
               ) : (
                 <>
                   <Link
-                    to="/assinatura?plano=pro-anual"
-                    className={cn(buttonVariants(), "w-full justify-center gap-1.5 shadow-sm")}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <span>Assinar Plano Pro</span>
-                    <ArrowRight className="size-4" aria-hidden="true" />
-                  </Link>
-                  <Link
                     to="/cadastro"
-                    className={cn(buttonVariants({ variant: "outline" }), "w-full justify-center")}
+                    className={cn(buttonVariants(), "w-full justify-center gap-1.5 shadow-sm")}
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Criar conta gratuita (30 dias)

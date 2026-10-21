@@ -5,6 +5,7 @@ import { useDebounce } from "@/hooks";
 import { Button, ErrorState, Skeleton, Tabs, type TabItem } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MonthPicker, YearPicker } from "@/components/modules";
+import { cn } from "@/lib/utils";
 import {
   aggregateByCategory,
   aggregateByPaymentMethod,
@@ -994,56 +995,78 @@ export function ReportsPage() {
         </div>
       </header>
 
-      {/* Seletor Global de Período — Compartilhado por todas as abas */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-3.5 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
-          <div className="grid grid-cols-3 sm:flex items-center gap-1.5 w-full sm:w-auto">
-            <Button
-              type="button"
-              variant={mode === "month" ? "default" : "outline"}
-              size="sm"
-              sensoryIntent="selection"
-              onClick={() => {
-                setMode("month");
-              }}
-              className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
-            >
-              Mensal
-            </Button>
-            <Button
-              type="button"
-              variant={mode === "year" ? "default" : "outline"}
-              size="sm"
-              sensoryIntent="selection"
-              onClick={() => {
-                setMode("year");
-              }}
-              className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
-            >
-              Anual
-            </Button>
-            <Button
-              type="button"
-              variant={mode === "custom" ? "default" : "outline"}
-              size="sm"
-              sensoryIntent="selection"
-              onClick={() => {
-                setMode("custom");
-              }}
-              className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
-            >
-              Personalizado
-            </Button>
-          </div>
+      {/* Controles de Período — Separados e Padronizados com o Restante do App */}
+      <div className="flex flex-col gap-4 w-full">
+        {/* Barra de Periodicidade em Pills (Padrão Insights & Sub-abas) */}
+        <div
+          role="group"
+          aria-label="Periodicidade do relatório"
+          className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth pb-0.5 -mx-1 px-1"
+        >
+          <Button
+            type="button"
+            variant={mode === "month" ? "default" : "outline"}
+            size="sm"
+            sensoryIntent="selection"
+            aria-pressed={mode === "month"}
+            onClick={() => {
+              setMode("month");
+            }}
+            className={cn(
+              "shrink-0 gap-1.5 text-xs h-8 px-3.5 rounded-pill transition-all cursor-pointer",
+              mode === "month"
+                ? "shadow-xs font-semibold"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            Mensal
+          </Button>
+          <Button
+            type="button"
+            variant={mode === "year" ? "default" : "outline"}
+            size="sm"
+            sensoryIntent="selection"
+            aria-pressed={mode === "year"}
+            onClick={() => {
+              setMode("year");
+            }}
+            className={cn(
+              "shrink-0 gap-1.5 text-xs h-8 px-3.5 rounded-pill transition-all cursor-pointer",
+              mode === "year"
+                ? "shadow-xs font-semibold"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            Anual
+          </Button>
+          <Button
+            type="button"
+            variant={mode === "custom" ? "default" : "outline"}
+            size="sm"
+            sensoryIntent="selection"
+            aria-pressed={mode === "custom"}
+            onClick={() => {
+              setMode("custom");
+            }}
+            className={cn(
+              "shrink-0 gap-1.5 text-xs h-8 px-3.5 rounded-pill transition-all cursor-pointer",
+              mode === "custom"
+                ? "shadow-xs font-semibold"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            Personalizado
+          </Button>
         </div>
 
-        <div className="flex items-center justify-center sm:justify-end w-full sm:w-auto">
+        {/* Seletor Temporal Padronizado (MonthPicker / YearPicker / Range) */}
+        <div className="flex items-center justify-center w-full min-w-0">
           {mode === "month" ? (
-            <MonthPicker value={month} onValueChange={setMonth} className="w-full sm:w-auto" />
+            <MonthPicker value={month} onValueChange={setMonth} />
           ) : mode === "year" ? (
-            <YearPicker value={year} onValueChange={setYear} className="w-full sm:w-auto" />
+            <YearPicker value={year} onValueChange={setYear} />
           ) : (
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 w-full py-1">
               <DatePicker value={customStart} onValueChange={setCustomStart} placeholder="Início" className="w-full sm:w-auto" />
               <span className="text-xs text-muted-foreground text-center">até</span>
               <DatePicker value={customEnd} onValueChange={setCustomEnd} placeholder="Fim" className="w-full sm:w-auto" />

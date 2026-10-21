@@ -107,6 +107,37 @@ describe("DailyFlowChart (F8)", () => {
     expect(screen.getByText("Sem movimentações registradas neste período")).toBeInTheDocument();
   });
 
+  it("renderiza empty state calmo quando o mês só possui dias zerados", () => {
+    const zeroDays = [
+      { day: "2026-08-01", dayOfMonth: 1, incomeCents: 0, expenseCents: 0, investmentCents: 0, maxCents: 0 },
+      { day: "2026-08-02", dayOfMonth: 2, incomeCents: 0, expenseCents: 0, investmentCents: 0, maxCents: 0 },
+    ];
+    render(<DailyFlowChart days={zeroDays} />);
+    expect(screen.getByTestId("daily-flow-empty")).toBeInTheDocument();
+  });
+
+  it("renderiza somente a curva de receita quando não há despesas nem investimentos", () => {
+    const incomeOnlyDays = [
+      { day: "2026-08-01", dayOfMonth: 1, incomeCents: 10000, expenseCents: 0, investmentCents: 0, maxCents: 10000 },
+      { day: "2026-08-02", dayOfMonth: 2, incomeCents: 20000, expenseCents: 0, investmentCents: 0, maxCents: 20000 },
+    ];
+    const { container } = render(<DailyFlowChart days={incomeOnlyDays} />);
+    expect(container.querySelector(".stroke-positive-strong")).not.toBeNull();
+    expect(container.querySelector(".stroke-negative-strong")).toBeNull();
+    expect(container.querySelector(".stroke-portfolio")).toBeNull();
+  });
+
+  it("renderiza somente a curva de despesa quando não há receitas nem investimentos", () => {
+    const expenseOnlyDays = [
+      { day: "2026-08-01", dayOfMonth: 1, incomeCents: 0, expenseCents: 5000, investmentCents: 0, maxCents: 5000 },
+      { day: "2026-08-02", dayOfMonth: 2, incomeCents: 0, expenseCents: 8000, investmentCents: 0, maxCents: 8000 },
+    ];
+    const { container } = render(<DailyFlowChart days={expenseOnlyDays} />);
+    expect(container.querySelector(".stroke-positive-strong")).toBeNull();
+    expect(container.querySelector(".stroke-negative-strong")).not.toBeNull();
+    expect(container.querySelector(".stroke-portfolio")).toBeNull();
+  });
+
   it("aplica clamp no posicionamento horizontal do tooltip próximo aos extremos", () => {
     const { container } = render(<DailyFlowChart days={days} />);
     const chart = container.firstChild as HTMLElement;

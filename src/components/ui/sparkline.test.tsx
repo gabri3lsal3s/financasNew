@@ -16,6 +16,20 @@ describe("Sparkline (F8)", () => {
     expect(container.querySelector("svg")).toBeNull();
   });
 
+  it("não renderiza nada quando todos os valores da série forem zero", () => {
+    const { container } = render(<Sparkline data={[0, 0, 0, 0, 0, 0]} />);
+    expect(container.querySelector("svg")).toBeNull();
+  });
+
+  it("posiciona linha no topo para série constante positiva com folga de 2px", () => {
+    const { container } = render(<Sparkline data={[100, 100, 100]} height={40} />);
+    const polyline = container.querySelector("polyline");
+    expect(polyline).not.toBeNull();
+    const points = polyline?.getAttribute("points") ?? "";
+    // Com height=40 e y = 40 - 2 - (1 * 36) = 2.0
+    expect(points).toContain(",2.0");
+  });
+
   it("preenche a área sob a linha quando filled", () => {
     const { container } = render(<Sparkline data={[10, 20]} filled />);
     const polygon = container.querySelector("polygon");

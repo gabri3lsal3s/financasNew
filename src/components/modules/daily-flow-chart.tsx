@@ -75,32 +75,35 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
   const incomeValues = useMemo(() => days.map((day) => day.incomeCents), [days]);
   const expenseValues = useMemo(() => days.map((day) => day.expenseCents), [days]);
   const investmentValues = useMemo(() => days.map((day) => day.investmentCents), [days]);
+  const hasIncomes = useMemo(() => days.some((day) => day.incomeCents > 0), [days]);
+  const hasExpenses = useMemo(() => days.some((day) => day.expenseCents > 0), [days]);
   const hasInvestments = useMemo(() => days.some((day) => day.investmentCents > 0), [days]);
+  const hasAnyData = hasIncomes || hasExpenses || hasInvestments;
 
   const globalMax = useMemo(() => {
-    const allValues = [
-      ...incomeValues,
-      ...expenseValues,
+    const activeValues = [
+      ...(hasIncomes ? incomeValues : []),
+      ...(hasExpenses ? expenseValues : []),
       ...(hasInvestments ? investmentValues : []),
     ];
-    return Math.max(...allValues, 0);
-  }, [incomeValues, expenseValues, investmentValues, hasInvestments]);
+    return Math.max(...activeValues, 0);
+  }, [incomeValues, expenseValues, investmentValues, hasIncomes, hasExpenses, hasInvestments]);
 
   const incomePointList = useMemo(
-    () => toLinePointList(incomeValues, LINE_WIDTH, LINE_HEIGHT, globalMax),
-    [incomeValues, globalMax],
+    () => (hasIncomes ? toLinePointList(incomeValues, LINE_WIDTH, LINE_HEIGHT, globalMax) : []),
+    [incomeValues, globalMax, hasIncomes],
   );
   const expensePointList = useMemo(
-    () => toLinePointList(expenseValues, LINE_WIDTH, LINE_HEIGHT, globalMax),
-    [expenseValues, globalMax],
+    () => (hasExpenses ? toLinePointList(expenseValues, LINE_WIDTH, LINE_HEIGHT, globalMax) : []),
+    [expenseValues, globalMax, hasExpenses],
   );
   const investmentPointList = useMemo(
     () => (hasInvestments ? toLinePointList(investmentValues, LINE_WIDTH, LINE_HEIGHT, globalMax) : []),
     [hasInvestments, investmentValues, globalMax],
   );
 
-  const incomePath = useMemo(() => toSmoothPath(incomePointList), [incomePointList]);
-  const expensePath = useMemo(() => toSmoothPath(expensePointList), [expensePointList]);
+  const incomePath = useMemo(() => (hasIncomes ? toSmoothPath(incomePointList) : ""), [incomePointList, hasIncomes]);
+  const expensePath = useMemo(() => (hasExpenses ? toSmoothPath(expensePointList) : ""), [expensePointList, hasExpenses]);
   const investmentPath = useMemo(
     () => (hasInvestments ? toSmoothPath(investmentPointList) : ""),
     [hasInvestments, investmentPointList],
@@ -116,16 +119,16 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
   };
 
   const scrubDay = scrubIndex !== null ? days[scrubIndex] : undefined;
-  const scrubIncome = scrubIndex !== null ? incomePointList[scrubIndex] : undefined;
-  const scrubExpense = scrubIndex !== null ? expensePointList[scrubIndex] : undefined;
+  const scrubIncome = scrubIndex !== null && hasIncomes ? incomePointList[scrubIndex] : undefined;
+  const scrubExpense = scrubIndex !== null && hasExpenses ? expensePointList[scrubIndex] : undefined;
   const scrubInvestment = scrubIndex !== null && hasInvestments ? investmentPointList[scrubIndex] : undefined;
   const scrubLeft = scrubIndex !== null ? `${(scrubIndex / Math.max(1, days.length - 1)) * 100}%` : undefined;
 
-  const lastIncome = incomePointList.length > 0 ? incomePointList[incomePointList.length - 1] : undefined;
-  const lastExpense = expensePointList.length > 0 ? expensePointList[expensePointList.length - 1] : undefined;
+  const lastIncome = hasIncomes && incomePointList.length > 0 ? incomePointList[incomePointList.length - 1] : undefined;
+  const lastExpense = hasExpenses && expensePointList.length > 0 ? expensePointList[expensePointList.length - 1] : undefined;
   const lastInvestment = hasInvestments && investmentPointList.length > 0 ? investmentPointList[investmentPointList.length - 1] : undefined;
 
-  if (days.length === 0) {
+  if (days.length === 0 || !hasAnyData) {
     return (
       <div
         className={cn("flex h-44 w-full items-center justify-center text-xs text-muted-foreground", className)}
@@ -153,24 +156,28 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
           <line x1="0" y1={LINE_HEIGHT - PAD} x2={LINE_WIDTH} y2={LINE_HEIGHT - PAD} stroke="currentColor" strokeDasharray="2 4" className="text-border/30" strokeWidth={1} />
 
           {/* Curvas suaves e arredondadas sem sombras */}
-          <path
-            d={incomePath}
-            fill="none"
-            vectorEffect="non-scaling-stroke"
-            strokeWidth={2.4}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="stroke-positive-strong"
-          />
-          <path
-            d={expensePath}
-            fill="none"
-            vectorEffect="non-scaling-stroke"
-            strokeWidth={2.4}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="stroke-negative-strong"
-          />
+          {hasIncomes ? (
+            <path
+              d={incomePath}
+              fill="none"
+              vectorEffect="non-scaling-stroke"
+              strokeWidth={2.4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="stroke-positive-strong"
+            />
+          ) : null}
+          {hasExpenses ? (
+            <path
+              d={expensePath}
+              fill="none"
+              vectorEffect="non-scaling-stroke"
+              strokeWidth={2.4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="stroke-negative-strong"
+            />
+          ) : null}
           {hasInvestments ? (
             <path
               d={investmentPath}

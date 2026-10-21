@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   accountsNet,
+  buildDailyCumulativeSeries,
   buildDailyFlow,
   computeOverview,
   monthlySeries,
@@ -139,6 +140,37 @@ describe("monthlySeries (F8 — sparklines dos KPIs)", () => {
       1,
     );
     expect(series[0]?.expenseCents).toBe(0);
+  });
+});
+
+describe("buildDailyCumulativeSeries (§3.6 — sparklines dos KPIs)", () => {
+  it("acumula receitas, despesas, investimentos e saldo dia a dia", () => {
+    const days = [
+      { day: "2026-08-01", dayOfMonth: 1, incomeCents: 10000, expenseCents: 3000, investmentCents: 2000, maxCents: 15000 },
+      { day: "2026-08-02", dayOfMonth: 2, incomeCents: 0, expenseCents: 2000, investmentCents: 0, maxCents: 15000 },
+      { day: "2026-08-03", dayOfMonth: 3, incomeCents: 5000, expenseCents: 1000, investmentCents: 1000, maxCents: 15000 },
+    ];
+
+    const result = buildDailyCumulativeSeries(days);
+
+    expect(result.incomeSeries).toEqual([10000, 10000, 15000]);
+    expect(result.expenseSeries).toEqual([3000, 5000, 6000]);
+    expect(result.investmentSeries).toEqual([2000, 2000, 3000]);
+    expect(result.balanceSeries).toEqual([7000, 5000, 9000]);
+  });
+
+  it("retorna arrays de zeros quando todos os dias estão zerados", () => {
+    const days = [
+      { day: "2026-08-01", dayOfMonth: 1, incomeCents: 0, expenseCents: 0, investmentCents: 0, maxCents: 0 },
+      { day: "2026-08-02", dayOfMonth: 2, incomeCents: 0, expenseCents: 0, investmentCents: 0, maxCents: 0 },
+    ];
+
+    const result = buildDailyCumulativeSeries(days);
+
+    expect(result.incomeSeries).toEqual([0, 0]);
+    expect(result.expenseSeries).toEqual([0, 0]);
+    expect(result.investmentSeries).toEqual([0, 0]);
+    expect(result.balanceSeries).toEqual([0, 0]);
   });
 });
 

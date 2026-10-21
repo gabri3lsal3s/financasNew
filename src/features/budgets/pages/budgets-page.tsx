@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { useNavigate, useSearchParams } from "react-router";
 import { ArrowRight, Edit3, HelpCircle, Info, PiggyBank, Plus, SlidersHorizontal, Sparkles, Target, TrendingDown, TrendingUp, User, Users } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Popover, PopoverContent, PopoverTrigger, Skeleton, Tabs } from "@/components/ui";
@@ -236,46 +237,58 @@ export function BudgetsPage() {
 
   const renderLimitsContent = () => (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="w-full sm:max-w-xs">
-          <MonthPicker value={month} onValueChange={setMonth} />
-        </div>
+      {/* Linha do seletor de mês — full-width, padrão das outras páginas */}
+      <MonthPicker value={month} onValueChange={setMonth} />
 
-        {/* Alternância de Métrica: Gasto Pessoal vs Total da Casa */}
-        <div className="flex items-center gap-1 self-start sm:self-auto rounded-xl border border-border/80 bg-surface/80 p-1 shadow-2xs">
+      {/* Linha de controles: descrição + alternador de métrica */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground sm:text-sm">
+          Acompanhe os gastos por categoria e defina o teto mensal.
+        </p>
+
+        {/* Alternância de Métrica estilo pills (padrão Insights) */}
+        <div role="group" aria-label="Modo de cálculo dos gastos" className="flex items-center gap-1.5 self-start sm:self-auto">
           <Button
             type="button"
             size="sm"
-            variant={spendMetric === "personal" ? "default" : "ghost"}
+            variant={spendMetric === "personal" ? "default" : "outline"}
             onClick={() => setSpendMetric("personal")}
-            className="text-xs h-7 px-2.5 gap-1.5"
+            className={cn(
+              "shrink-0 gap-1.5 text-xs h-8 px-3 rounded-xl transition-all",
+              spendMetric === "personal" ? "shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground",
+            )}
             aria-pressed={spendMetric === "personal"}
             title="Considera apenas a sua participação pessoal efetiva nas compras (com rateios e reembolsos)"
+            sensoryIntent="selection"
           >
             <User className="size-3.5" aria-hidden="true" />
-            <span>Gasto Pessoal</span>
+            <span>Minha Parte</span>
           </Button>
 
           <Button
             type="button"
             size="sm"
-            variant={spendMetric === "household" ? "default" : "ghost"}
+            variant={spendMetric === "household" ? "default" : "outline"}
             onClick={() => setSpendMetric("household")}
-            className="text-xs h-7 px-2.5 gap-1.5"
+            className={cn(
+              "shrink-0 gap-1.5 text-xs h-8 px-3 rounded-xl transition-all",
+              spendMetric === "household" ? "shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground",
+            )}
             aria-pressed={spendMetric === "household"}
             title="Considera o valor bruto total nominal das compras (100% de cada despesa, sem rateios)"
+            sensoryIntent="selection"
           >
             <Users className="size-3.5" aria-hidden="true" />
-            <span>Total da Casa</span>
+            <span>Total Bruto</span>
           </Button>
 
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="icon"
-                className="size-7 text-muted-foreground hover:text-foreground"
+                className="size-8 rounded-xl text-muted-foreground hover:text-foreground"
                 aria-label="Informações sobre os modos de visualização"
                 title="Informações sobre os modos de visualização"
               >
@@ -287,10 +300,10 @@ export function BudgetsPage() {
                 <p className="font-semibold text-foreground">Modos de Visualização do Orçamento</p>
                 <div className="flex flex-col gap-1.5 text-muted-foreground text-[11px] leading-relaxed">
                   <p>
-                    <strong className="text-foreground font-medium">Gasto Pessoal (Ponderado):</strong> Considera exclusivamente a sua cota ou responsabilidade pessoal nos gastos compartilhados (despesas com taxa de rateio menor que 100% ou reembolsos). Ideal para o controle do seu consumo individual.
+                    <strong className="text-foreground font-medium">Minha Parte (Ponderado):</strong> Considera exclusivamente a sua cota ou responsabilidade pessoal nos gastos compartilhados (despesas com taxa de rateio menor que 100% ou reembolsos). Ideal para o controle do seu consumo individual.
                   </p>
                   <p>
-                    <strong className="text-foreground font-medium">Total da Casa / Família (Bruto):</strong> Considera 100% do valor nominal de cada compra, mesmo quando rateada com terceiros. Ideal para o controle do orçamento global familiar da residência.
+                    <strong className="text-foreground font-medium">Total Bruto (Nominal):</strong> Considera 100% do valor nominal de cada compra, mesmo quando rateada com terceiros. Ideal para o controle do orçamento global de todas as despesas.
                   </p>
                 </div>
               </div>
@@ -305,16 +318,16 @@ export function BudgetsPage() {
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">Total Gasto</p>
-              <Badge variant="muted" size="xs" className="font-normal text-[10px] py-0 px-1">
-                {spendMetric === "personal" ? "Pessoal" : "Total Casa"}
+              <Badge variant="muted" size="xs">
+                {spendMetric === "personal" ? "Minha Parte" : "Total Bruto"}
               </Badge>
               {totalExpensesGrossCents !== totalExpensesWeightedCents && (
                 <span
                   className="text-muted-foreground/80 hover:text-foreground cursor-help"
                   title={
                     spendMetric === "personal"
-                      ? `Total nominal bruto da casa: ${formatCentsAsBRL(totalExpensesGrossCents)}`
-                      : `Sua parte proporcional pessoal: ${formatCentsAsBRL(totalExpensesWeightedCents)}`
+                      ? `Total nominal bruto das despesas: ${formatCentsAsBRL(totalExpensesGrossCents)}`
+                      : `Sua parte proporcional líquida: ${formatCentsAsBRL(totalExpensesWeightedCents)}`
                   }
                 >
                   <Info className="size-3 inline" aria-hidden="true" />
@@ -353,7 +366,7 @@ export function BudgetsPage() {
         {totalLimitsCents > 0 && (
           <div className="mt-3.5 pt-3 border-t border-border/50">
             <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-              <span>Consumo Geral do Teto ({spendMetric === "personal" ? "Pessoal" : "Total Casa"})</span>
+              <span>Consumo Geral do Teto ({spendMetric === "personal" ? "Minha Parte" : "Total Bruto"})</span>
               <span className="font-semibold text-foreground tabular-nums">
                 {Math.round((totalExpensesCents / totalLimitsCents) * 100)}%
               </span>
@@ -373,6 +386,7 @@ export function BudgetsPage() {
           </div>
         )}
       </div>
+
 
       {/* Recomendação de realocação inteligente (§3.5.2) */}
       {suggestion && fromCategory && toCategory ? (
@@ -483,12 +497,12 @@ export function BudgetsPage() {
                               className="text-muted-foreground font-normal"
                               title={
                                 spendMetric === "personal"
-                                  ? `Gasto total nominal da casa: ${formatCentsAsBRL(row.spentGrossCents)}`
-                                  : `Sua parte proporcional pessoal: ${formatCentsAsBRL(row.spentWeightedCents)}`
+                                  ? `Total bruto das despesas: ${formatCentsAsBRL(row.spentGrossCents)}`
+                                  : `Sua parte proporcional: ${formatCentsAsBRL(row.spentWeightedCents)}`
                               }
                             >
                               {spendMetric === "personal" ? (
-                                <span>Total da casa: <MoneyText cents={row.spentGrossCents} tone="default" /></span>
+                                <span>Total bruto: <MoneyText cents={row.spentGrossCents} tone="default" /></span>
                               ) : (
                                 <span>Sua parte: <MoneyText cents={row.spentWeightedCents} tone="default" /></span>
                               )}
@@ -558,7 +572,9 @@ export function BudgetsPage() {
   );
 
   const renderGoalsContent = () => (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
+      <MonthPicker value={month} onValueChange={setMonth} />
+
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground sm:text-sm">
           Defina a expectativa mensal por categoria de renda para comparar com os recebimentos realizados.

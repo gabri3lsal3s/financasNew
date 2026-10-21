@@ -104,6 +104,7 @@ describe("user-preferences repository", () => {
         dashboardWidgets: {},
         headerButtons: {},
         bankAssistant: {},
+        merchantLearning: {},
       },
     });
   });

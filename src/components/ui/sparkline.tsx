@@ -18,11 +18,21 @@ export interface SparklineProps {
 const DEFAULT_STROKE = "stroke-primary";
 const DEFAULT_FILL = "fill-primary/15";
 
-/** Converte a série em pontos SVG (escala automática com folga de 2px). */
+/** Converte a série em pontos SVG (escala automática com folga de 2px).
+ *  Retorna "" se todos os valores forem zero (sem SVG renderizado).
+ *  A escala é sempre ancorada em zero: valores positivos ficam acima da linha base.
+ */
 function toPoints(data: readonly number[], width: number, height: number): string {
   if (data.length === 0) return "";
-  const min = Math.min(...data);
-  const max = Math.max(...data);
+  // Série completamente zerada → não renderiza nada
+  if (data.every((v) => v === 0)) return "";
+
+  const rawMin = Math.min(...data);
+  const rawMax = Math.max(...data);
+  // Ancora a escala em zero para que valores positivos não flutuem
+  const min = Math.min(0, rawMin);
+  const max = Math.max(0, rawMax);
+  // Série constante positiva → coloca linha no topo (máxima visibilidade)
   const range = max - min || 1;
   const step = data.length > 1 ? width / (data.length - 1) : width;
   return data

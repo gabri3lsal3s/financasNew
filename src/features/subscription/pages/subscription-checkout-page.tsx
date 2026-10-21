@@ -417,18 +417,6 @@ export function SubscriptionCheckoutPage() {
       <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/85 backdrop-blur-md shadow-xs pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="flex items-center gap-3">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleBack}
-              aria-label="Voltar para a página anterior"
-              className="gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer -ml-2 sm:ml-0"
-            >
-              <ArrowLeft className="size-3.5" aria-hidden="true" />
-              <span>Voltar</span>
-            </Button>
-            <div className="h-5 w-px bg-border/80 hidden sm:block" aria-hidden="true" />
             <BrandLogo
               isPro={true}
               showWordmark
@@ -439,6 +427,17 @@ export function SubscriptionCheckoutPage() {
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleBack}
+              aria-label="Voltar para a página anterior"
+              className="gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              <ArrowLeft className="size-3.5" aria-hidden="true" />
+              <span>Voltar</span>
+            </Button>
           </div>
         </div>
       </header>

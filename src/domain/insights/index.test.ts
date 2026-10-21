@@ -19,13 +19,26 @@ import {
 
 import type { CriticalAlertInput } from "./alerts";
 
-const expense = (overrides: Partial<{ id: string; description: string | null; date: string; month: string; valueCents: number; categoryId: string; categoryIcon: string | null; installmentGroupId: string | null }>) => ({
+const expense = (
+  overrides: Partial<{
+    id: string;
+    description: string | null;
+    date: string;
+    month: string;
+    valueCents: number;
+    categoryId: string;
+    categoryName: string | null;
+    categoryIcon: string | null;
+    installmentGroupId: string | null;
+  }>,
+) => ({
   id: overrides.id ?? "x",
   description: overrides.description ?? null,
   date: overrides.date,
   month: overrides.month ?? "2026-08",
   valueCents: overrides.valueCents ?? 1000,
   categoryId: overrides.categoryId ?? "cat",
+  categoryName: overrides.categoryName ?? null,
   categoryIcon: overrides.categoryIcon ?? null,
   installmentGroupId: overrides.installmentGroupId ?? null,
 });
@@ -118,6 +131,20 @@ describe("assinaturas (§3.7.2 — 3 sinais + tiers)", () => {
     expect(classifySubscription({ name: "Spotify", categoryIcon: null, monthlyValuesCents: [1990, 2000, 2050] })?.confidence).toBe(0.8);
     // Valor fora da tolerância derruba o sinal de estabilidade (só resta o nome → 0.60).
     expect(classifySubscription({ name: "Spotify", categoryIcon: null, monthlyValuesCents: [1990, 3000] })?.signs.stableValue).toBe(false);
+  });
+
+  it("reconhece categoria de assinatura personalizada mesmo com ícone nulo", () => {
+    expect(
+      classifySubscription({
+        name: "Minha Assinatura Xpto",
+        categoryName: "Mensalidades e Serviços",
+        categoryIcon: null,
+        monthlyValuesCents: [5000, 5000],
+      }),
+    ).toMatchObject({
+      confidence: 0.8,
+      tier: "discretionary",
+    });
   });
 });
 
@@ -251,6 +278,30 @@ describe("recorrências (§3.7.3 — 3 níveis)", () => {
     const occurrences = detectRecurrences([
       expense({ id: "s1", description: "Mercado", month: "2026-07", valueCents: 20000, categoryId: "mercado", categoryIcon: "mercado" }),
       expense({ id: "s2", description: "Mercado", month: "2026-08", valueCents: 21000, categoryId: "mercado", categoryIcon: "mercado" }),
+    ]);
+    expect(occurrences.some((o) => o.level === "similar")).toBe(false);
+  });
+
+  it("exclui categorias agregadoras personalizadas do nível similar pelo nome", () => {
+    const occurrences = detectRecurrences([
+      expense({
+        id: "s1",
+        description: "Compras Diversas",
+        month: "2026-07",
+        valueCents: 20000,
+        categoryId: "custom_mercado",
+        categoryName: "Supermercado Compre Bem",
+        categoryIcon: null,
+      }),
+      expense({
+        id: "s2",
+        description: "Compras Diversas",
+        month: "2026-08",
+        valueCents: 21000,
+        categoryId: "custom_mercado",
+        categoryName: "Supermercado Compre Bem",
+        categoryIcon: null,
+      }),
     ]);
     expect(occurrences.some((o) => o.level === "similar")).toBe(false);
   });

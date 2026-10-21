@@ -19,5 +19,7 @@ export {
   weekendSpendingRatio,
 } from "./diagnostics";
 export type { IncomeConcentration, SavingsHealth, WeekdayTotalItem } from "./diagnostics";
+export { resolveCategorySemantics, findBestMatchingCategory } from "./category-semantics";
+export type { CategorySemantics, CategoryNature } from "./category-semantics";
 
 

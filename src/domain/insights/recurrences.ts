@@ -14,6 +14,7 @@
 import { confidenceScore, varianceOf, type RecurrenceKind } from "./confidence";
 import { classifySubscription, segmentOf, type CutTier, type ServiceSegment } from "./subscriptions";
 import { ESSENTIAL_CATEGORY_ICONS, normalizeText } from "./shared";
+import { resolveCategorySemantics } from "./category-semantics";
 
 export interface ExpenseLike {
   id: string;
@@ -24,6 +25,8 @@ export interface ExpenseLike {
   date?: string;
   valueCents: number;
   categoryId: string;
+  /** Nome legível da categoria (ex.: "Supermercado Compre Bem", "Mensalidades"). */
+  categoryName?: string | null;
   /** Nome do ícone da categoria (para sinais de assinatura). */
   categoryIcon?: string | null;
   installmentGroupId?: string | null;
@@ -276,6 +279,7 @@ export function detectRecurrences(
     // no catálogo OU categoria de assinatura são sinais fortes).
     const subscription = classifySubscription({
       name: first.description ?? "",
+      categoryName: first.categoryName,
       categoryIcon: categoryIcons[0],
       monthlyValuesCents: monthlyTotals,
     });
@@ -315,7 +319,7 @@ export function detectRecurrences(
     if (stable && months.length >= 2) {
       const variance = varianceOf(monthlyTotals);
       const confidence = confidenceScore({ base: 0.7, monthsHistory: months.length, kind: "recurring", variance });
-      const segment = segmentOf(first.description ?? "", categoryIcons[0]);
+      const segment = segmentOf(first.description ?? "", categoryIcons[0], first.categoryName);
       occurrences.push({
         key: `recurring:${key}`,
         name: first.description ?? key,
@@ -339,6 +343,9 @@ export function detectRecurrences(
   // similar: mesma categoria, totais mensais ±30%, sem categorias agregadoras.
   for (const [categoryId, group] of byCategory) {
     const categoryIcon = group[0]?.categoryIcon;
+    const categoryName = group[0]?.categoryName;
+    const sem = resolveCategorySemantics({ name: categoryName, icon: categoryIcon });
+    if (sem.isAggregator) continue;
     if (categoryIcon && ESSENTIAL_CATEGORY_ICONS.has(categoryIcon)) continue;
     if (seen.has(categoryId)) continue;
 

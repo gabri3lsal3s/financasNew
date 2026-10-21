@@ -164,6 +164,47 @@ export function buildDailyFlow(
 }
 
 // ---------------------------------------------------------------------------
+// Série acumulada diária (sparklines dos KPIs — evolução do mês atual)
+// ---------------------------------------------------------------------------
+
+/** Arrays paralelos com a evolução acumulada dia a dia do mês. */
+export interface DailySeriesAccumulator {
+  /** Receitas acumuladas dia a dia (centavos). */
+  incomeSeries: readonly number[];
+  /** Despesas acumuladas dia a dia (centavos). */
+  expenseSeries: readonly number[];
+  /** Investimentos acumulados dia a dia (centavos). */
+  investmentSeries: readonly number[];
+  /** Saldo acumulado dia a dia = receitas − despesas (centavos). */
+  balanceSeries: readonly number[];
+}
+
+/**
+ * Acumula o fluxo diário (output de buildDailyFlow) em séries paralelas
+ * para os micro-sparklines dos KPIs da Visão Geral (F8).
+ * Mês zerado → todos os arrays são preenchidos com zeros (Sparkline não renderiza).
+ */
+export function buildDailyCumulativeSeries(days: readonly DailyFlowItem[]): DailySeriesAccumulator {
+  let accIncome = 0;
+  let accExpense = 0;
+  let accInvestment = 0;
+  const incomeSeries: number[] = [];
+  const expenseSeries: number[] = [];
+  const investmentSeries: number[] = [];
+  const balanceSeries: number[] = [];
+  for (const day of days) {
+    accIncome += day.incomeCents;
+    accExpense += day.expenseCents;
+    accInvestment += day.investmentCents;
+    incomeSeries.push(accIncome);
+    expenseSeries.push(accExpense);
+    investmentSeries.push(accInvestment);
+    balanceSeries.push(accIncome - accExpense);
+  }
+  return { incomeSeries, expenseSeries, investmentSeries, balanceSeries };
+}
+
+// ---------------------------------------------------------------------------
 // Série mensal (micro-sparklines dos KPIs — F8) e curva de saldo acumulado
 // ---------------------------------------------------------------------------
 

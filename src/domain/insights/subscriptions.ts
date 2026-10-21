@@ -24,6 +24,8 @@ export const SERVICE_SEGMENT_LABELS: Record<ServiceSegment, string> = {
 export interface SubscriptionCandidate {
   /** Nome da despesa (para casar com o catálogo). */
   name: string;
+  /** Nome da categoria (ex.: "Mensalidades", "Streaming"). */
+  categoryName?: string | null;
   /** Nome do ícone/normalizado da categoria (ex.: "assinaturas", "lazer"). */
   categoryIcon?: string | null;
   /** Valores mensais (centavos) — para o sinal de estabilidade. */
@@ -44,7 +46,8 @@ export interface SubscriptionClassification {
 /** Tolerância do sinal de valor exato (default ±5%). */
 const VALUE_TOLERANCE = 0.05;
 
-import { ESSENTIAL_CATEGORY_ICONS, matchesServiceKey, valuesWithinTolerance } from "./shared";
+import { matchesServiceKey, valuesWithinTolerance } from "./shared";
+import { resolveCategorySemantics } from "./category-semantics";
 
 export interface KnownServiceDef {
   tier: CutTier;
@@ -158,9 +161,6 @@ const KNOWN_SERVICES: Record<string, KnownServiceDef> = {
   bradescosaude: { tier: "essential", segment: "health" },
 };
 
-/** Categorias que indicam assinatura. */
-const SUBSCRIPTION_CATEGORIES = new Set(["assinaturas", "streaming", "musica", "software"]);
-
 /** Sinal 1 — nome conhecido no catálogo de serviços (com correspondência segura por token). */
 function isKnownService(name: string): boolean {
   for (const key of Object.keys(KNOWN_SERVICES)) {
@@ -169,9 +169,9 @@ function isKnownService(name: string): boolean {
   return false;
 }
 
-/** Sinal 2 — categoria de assinatura. */
-function isSubscriptionCategory(categoryIcon: string | null | undefined): boolean {
-  return categoryIcon != null && SUBSCRIPTION_CATEGORIES.has(categoryIcon);
+/** Sinal 2 — categoria de assinatura (por ícone ou nome personalizado). */
+function isSubscriptionCategory(categoryName?: string | null, categoryIcon?: string | null): boolean {
+  return resolveCategorySemantics({ name: categoryName, icon: categoryIcon }).isSubscriptionCategory;
 }
 
 /** Sinal 3 — valores estáveis entre meses (tolerância ±5%). */
@@ -180,24 +180,29 @@ function hasStableValue(monthlyValuesCents: readonly number[], tolerance = VALUE
 }
 
 /** Segmento do serviço a partir do catálogo ou categoria. */
-export function segmentOf(name: string, categoryIcon?: string | null): ServiceSegment {
+export function segmentOf(
+  name: string,
+  categoryIcon?: string | null,
+  categoryName?: string | null,
+): ServiceSegment {
   for (const [key, def] of Object.entries(KNOWN_SERVICES)) {
     if (matchesServiceKey(name, key)) return def.segment;
   }
-  if (categoryIcon === "streaming" || categoryIcon === "musica") return "streaming";
-  if (categoryIcon === "saude") return "health";
-  if (categoryIcon === "transporte") return "mobility";
-  if (categoryIcon === "software") return "cloud_ai";
+  const semantics = resolveCategorySemantics({ name: categoryName, icon: categoryIcon });
+  if (semantics.segment !== "other") return semantics.segment;
   return "other";
 }
 
 /** Tier a partir do catálogo (com fallback por categoria). */
-function tierOf(name: string, categoryIcon: string | null | undefined): CutTier {
+function tierOf(
+  name: string,
+  categoryIcon?: string | null,
+  categoryName?: string | null,
+): CutTier {
   for (const [key, def] of Object.entries(KNOWN_SERVICES)) {
     if (matchesServiceKey(name, key)) return def.tier;
   }
-  if (categoryIcon && ESSENTIAL_CATEGORY_ICONS.has(categoryIcon)) return "essential";
-  return "discretionary";
+  return resolveCategorySemantics({ name: categoryName, icon: categoryIcon }).tier;
 }
 
 /**
@@ -206,7 +211,7 @@ function tierOf(name: string, categoryIcon: string | null | undefined): CutTier 
  */
 export function classifySubscription(candidate: SubscriptionCandidate): SubscriptionClassification | null {
   const knownName = isKnownService(candidate.name);
-  const subscriptionCategory = isSubscriptionCategory(candidate.categoryIcon);
+  const subscriptionCategory = isSubscriptionCategory(candidate.categoryName, candidate.categoryIcon);
   const stableValue = hasStableValue(candidate.monthlyValuesCents);
   const signs = { knownName, subscriptionCategory, stableValue };
 
@@ -225,8 +230,8 @@ export function classifySubscription(candidate: SubscriptionCandidate): Subscrip
 
   return {
     confidence: Math.min(0.98, Math.max(0.4, confidence)),
-    tier: tierOf(candidate.name, candidate.categoryIcon),
-    segment: segmentOf(candidate.name, candidate.categoryIcon),
+    tier: tierOf(candidate.name, candidate.categoryIcon, candidate.categoryName),
+    segment: segmentOf(candidate.name, candidate.categoryIcon, candidate.categoryName),
     savingsIfCutCents: averageCents,
     signs,
   };

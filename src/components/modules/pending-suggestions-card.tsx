@@ -36,6 +36,7 @@ import {
   type MerchantCategoryMapping,
   type ParsedBankTransaction,
 } from "@/domain/notifications";
+import { findBestMatchingCategory } from "@/domain/insights";
 import { buildExpenseInstallments, buildIncomeInstallments } from "@/features/transactions/wizard/wizard-state";
 import type { Category, ReceiveType } from "@/types";
 
@@ -68,23 +69,13 @@ function resolveCategoryForSuggestion(
     }
   }
   if (sug.categorySlug) {
-    const slugLower = sug.categorySlug.toLowerCase();
-
-    const found = categories.find(
-      (c) =>
-        c.name.toLowerCase().includes(slugLower) ||
-        slugLower.includes(c.name.toLowerCase()),
-    );
-    if (found) return found;
+    const match = findBestMatchingCategory(categories, sug.categorySlug);
+    if (match) return match;
   }
   const inferredSlug = inferCategoryKeyword(sug.description || sug.merchant || "");
   if (inferredSlug) {
-    const found = categories.find(
-      (c) =>
-        c.name.toLowerCase().includes(inferredSlug.toLowerCase()) ||
-        inferredSlug.toLowerCase().includes(c.name.toLowerCase()),
-    );
-    if (found) return found;
+    const match = findBestMatchingCategory(categories, inferredSlug);
+    if (match) return match;
   }
   return (
     categories.find(
