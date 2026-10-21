@@ -16,6 +16,7 @@ import {
   filterPeriodRedemptions,
   buildAllocationDonutSegments,
   validateCustomPeriod,
+  weightedCents,
 } from "@/domain/reports";
 import { isCashAssetClass } from "@/domain/portfolio";
 import { addDaysISO, todayISO } from "@/domain/debts";
@@ -617,11 +618,11 @@ export function ReportsPage() {
     grossIncomeBrutoCents > 0 ? (grossSavingsBrutoCents / grossIncomeBrutoCents) * 100 : null;
 
   const currentExpenseCents = useMemo(
-    () => expenseEntries.reduce((acc, e) => acc + e.baseCents * e.weight, 0),
+    () => expenseEntries.reduce((acc, e) => acc + weightedCents(e.baseCents, e.weight), 0),
     [expenseEntries],
   );
   const currentIncomeCents = useMemo(
-    () => incomeEntries.reduce((acc, e) => acc + e.baseCents * e.weight, 0),
+    () => incomeEntries.reduce((acc, e) => acc + weightedCents(e.baseCents, e.weight), 0),
     [incomeEntries],
   );
 

@@ -419,6 +419,12 @@ describe("ReportsPage (Central Unificada §F42)", () => {
 
     mockSnapshots = [];
   });
+
+  it("utiliza a função canônica weightedCents para totalizar despesas e receitas sem resíduo fracionário de ponto flutuante", () => {
+    renderReports();
+    expect(screen.getByText("Despesas Totais")).toBeInTheDocument();
+    expect(screen.getAllByText(/1\.750,00/).length).toBeGreaterThan(0);
+  });
 });
 
 

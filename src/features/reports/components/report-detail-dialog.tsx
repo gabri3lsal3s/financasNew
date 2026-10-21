@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { TransactionRow } from "@/components/modules/transaction-row";
 import { formatCentsAsBRL } from "@/services/masks";
 import { shareText } from "@/services/export-actions";
+import { weightedCents } from "@/domain/reports";
 import type { Category, Expense } from "@/types";
 
 export interface ReportDetailDialogProps {
@@ -34,7 +35,7 @@ export function ReportDetailDialog({
 
   const totalBrutoCents = expenses.reduce((acc, e) => acc + Math.round(e.value * 100), 0);
   const totalPonderadoCents = expenses.reduce(
-    (acc, e) => acc + Math.round(e.value * e.report_weight * 100),
+    (acc, e) => acc + weightedCents(Math.round(e.value * 100), e.report_weight),
     0,
   );
   const hasDualMetrics = totalBrutoCents !== totalPonderadoCents;
