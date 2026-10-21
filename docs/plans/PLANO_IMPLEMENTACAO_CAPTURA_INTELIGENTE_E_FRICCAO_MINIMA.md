@@ -88,7 +88,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Inspecionar o `AndroidManifest.xml` e compilar projeto Android para validar sintaxe de intent-filter.
   - *Commit:* `feat(android): adicionar intent-filter para compartilhamento de imagem e pdf`
 
-- [ ] **Tarefa 1.2 — Integração do Google ML Kit Thin (<800 KB) no Android:**
+- [x] **Tarefa 1.2 — Integração do Google ML Kit Thin (<800 KB) no Android:**
   - Declarar a dependência `com.google.android.gms:play-services-mlkit-text-recognition:19.0.1` em `android/app/build.gradle`.
   - Criar o utilitário nativo `ReceiptOcrHelper.java` que decodifica imagens a partir de URIs e converte páginas de PDFs em Bitmap via `PdfRenderer` nativo (suportando até 2 páginas com autenticação mecânica) para leitura no OCR.
   - *Teste & Verificação:* Teste de compilação do Gradle (`./gradlew assembleDebug`) verificando acréscimo de peso inferior a 1 MB no APK.
