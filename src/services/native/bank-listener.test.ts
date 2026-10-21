@@ -6,6 +6,7 @@ const mockPlugin = vi.hoisted(() => ({
   flushPendingNotifications: vi.fn(),
   getInstalledBankingApps: vi.fn().mockResolvedValue({ apps: [], installedBankNames: [] }),
   syncMonitoredPackages: vi.fn().mockResolvedValue({ success: true, count: 0 }),
+  getPendingShare: vi.fn().mockResolvedValue({ text: null }),
   addListener: vi.fn(),
 }));
 
@@ -123,6 +124,26 @@ describe("bank-listener (Serviço de Notificações e Pix)", () => {
 
     await cleanup();
     expect(removeFn).toHaveBeenCalled();
+  });
+
+  it("consome e processa comprovante retido no buffer nativo de cold start via getPendingShare", async () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+    const addSpy = vi.spyOn(suggestionsStoreModule, "addPendingSuggestion");
+    mockPlugin.getPendingShare.mockResolvedValue({
+      text: "Comprovante Pix Nubank\nValor: R$ 42,50\nPara: Mercado Central\nData: 21/10/2026",
+    });
+
+    const cleanup = initBankNotificationListener();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(mockPlugin.getPendingShare).toHaveBeenCalled();
+    expect(addSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amountCents: 4250,
+      }),
+    );
+
+    await cleanup();
   });
 
   describe("flushPendingBankNotifications", () => {

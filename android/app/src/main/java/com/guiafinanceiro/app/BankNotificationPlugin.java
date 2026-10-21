@@ -26,6 +26,15 @@ import java.util.Set;
 public class BankNotificationPlugin extends Plugin {
 
     private static BankNotificationPlugin instance;
+    private static String pendingSharePayload;
+
+    public static synchronized void setPendingShare(String payload) {
+        pendingSharePayload = payload;
+    }
+
+    public static synchronized String getPendingSharePayload() {
+        return pendingSharePayload;
+    }
 
     static class BankAppInfo {
         final String bankName;
@@ -240,6 +249,18 @@ public class BankNotificationPlugin extends Plugin {
         }
 
         ret.put("notifications", items);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void getPendingShare(PluginCall call) {
+        JSObject ret = new JSObject();
+        String text;
+        synchronized (BankNotificationPlugin.class) {
+            text = pendingSharePayload;
+            pendingSharePayload = null; // Buffer consumido atomicamente
+        }
+        ret.put("text", text);
         call.resolve(ret);
     }
 

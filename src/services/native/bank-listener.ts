@@ -34,6 +34,7 @@ export interface BankNotificationPluginInterface {
   syncMonitoredPackages(options: {
     packages: string[];
   }): Promise<{ success: boolean; count: number }>;
+  getPendingShare(): Promise<{ text?: string | null }>;
   addListener(
     eventName: "bankNotificationReceived",
     listenerFunc: (payload: BankNotificationPayload) => void,
@@ -62,6 +63,9 @@ export const BankNotificationPlugin = registerPlugin<BankNotificationPluginInter
       },
       async syncMonitoredPackages() {
         return { success: true, count: 0 };
+      },
+      async getPendingShare() {
+        return { text: null };
       },
       async addListener() {
         return { remove: async () => {} };
@@ -247,6 +251,17 @@ export function initBankNotificationListener(): () => Promise<void> {
 
   // Esvazia imediatamente o buffer de notificações capturadas em segundo plano
   void flushPendingBankNotifications();
+
+  // Consome qualquer comprovante retido no buffer nativo de Cold Start
+  void BankNotificationPlugin.getPendingShare()
+    .then((payload) => {
+      if (payload?.text && payload.text.trim().length > 0) {
+        processPixShare(payload.text);
+      }
+    })
+    .catch(() => {
+      // no-op em ambientes web ou falha defensiva
+    });
 
   const notifHandlePromise = BankNotificationPlugin.addListener(
     "bankNotificationReceived",

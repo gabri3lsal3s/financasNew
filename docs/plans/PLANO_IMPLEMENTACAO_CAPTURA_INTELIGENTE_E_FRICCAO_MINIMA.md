@@ -47,33 +47,38 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 | **F10**| Fadiga de Alertas na Home (Banner Blindness) | Dismiss cirúrgico por sugestão individual (30 dias de silêncio), máximo 1 card/dia e invisibilidade quando regular. |
 | **F11**| Permissão de Notificação não ativada no primeiro uso | Passo guiado amigável no Onboarding para ativação do ouvinte nativo com garantia de privacidade local. |
 | **F12**| Risco de comunicação editorial irreal na Landing Page | Foco estrito nos recursos reais construídos (Caixa Real, Notificações, Comprovantes, Metas de Aporte). |
+| **F13**| Inflação do "Total Mensal Recorrente" por gastos de categorias (`similar`) | Expurgar nível `similar` das recorrências; manter foco 100% em assinaturas e contas fixas reais. |
+| **F14**| Agrupamento falho por sufixos de datas no nome ("Aluguel Jan", "Internet 01/26") | Sanitização canônica de sufixos temporais via regex antes do agrupamento por chave estável. |
+| **F15**| Recorrência detectada fica estática sem virar agendamento formal | Ponte de conversão em 1 clique ("Fixar como Recorrência Formal") gerando projeção no calendário. |
+| **F16**| Aprendizado unilateral e descompassado entre módulos | Loop de aprendizado contínuo: edições de transações ensinam o motor de despesas, rendas e aportes. |
 
 ---
 
-## 3. ROTEIRO DE EXECUÇÃO DETALHADO EM 6 FASES
+## 3. ROTEIRO DE EXECUÇÃO DETALHADO EM 7 FASES
 
 ```
-┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                          FLUXO DE EXECUÇÃO EM 6 FASES MODULARES & INTEGRADAS                           │
-└────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-                                                    │
-    ┌───────────────────┬───────────────────────────┼───────────────────────────┬───────────────────┐
-    ▼                   ▼                           ▼                           ▼                   ▼
- [FASE 1]            [FASE 2]                    [FASE 3]                    [FASE 4]            [FASE 5]
- Compartilhamento    Motor Semântico de          Lançamento Rápido em        Motor de Insights   Card Inteligente
- de Comprovantes     Estabelecimentos            1 Tela (3 segundos)         Bidirecional &      na Home &
- (PDF/Imagem/Texto)  (CNPJ/Nome/Categoria)       no LaunchWizard             Gastos Vampiros     Feedback de 1 Toque
-    │                   │                           │                           │                   │
-    ▼                   ▼                           ▼                           ▼                   ▼
-[Quality Gate 1]    [Quality Gate 2]            [Quality Gate 3]            [Quality Gate 4]    [Quality Gate 5]
-                                                                                                    │
-                                                                                                    ▼
-                                                                                                 [FASE 6]
-                                                                                                 Apresentação Realista
-                                                                                                 & Onboarding Guiado
-                                                                                                    │
-                                                                                                    ▼
-                                                                                                [Quality Gate 6]
+┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                  FLUXO DE EXECUÇÃO EM 7 FASES MODULARES & INTEGRADAS                                  │
+└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+                                                           │
+    ┌───────────────────┬───────────────────────────┬──────┴────────────────────┬───────────────────┬───────────────────┐
+    ▼                   ▼                           ▼                           ▼                   ▼                   ▼
+ [FASE 1]            [FASE 2]                    [FASE 3]                    [FASE 4]            [FASE 5]            [FASE 6]
+ Compartilhamento    Motor Semântico de          Lançamento Rápido em        Motor de Insights   Card Inteligente    Apresentação Realista
+ de Comprovantes     Estabelecimentos            1 Tela (3 segundos)         Bidirecional &      na Home &           & Onboarding Guiado
+ (PDF/Imagem/Texto)  (CNPJ/Nome/Categoria)       no LaunchWizard             Gastos Vampiros     Feedback de 1 Toque (Landing Page)
+    │                   │                           │                           │                   │                   │
+    ▼                   ▼                           ▼                           ▼                   ▼                   ▼
+[Quality Gate 1]    [Quality Gate 2]            [Quality Gate 3]            [Quality Gate 4]    [Quality Gate 5]    [Quality Gate 6]
+                                                                                                                        │
+                                                                                                                        ▼
+                                                                                                                     [FASE 7]
+                                                                                                                     Motor de Insights
+                                                                                                                     Aprimorado &
+                                                                                                                     Aprendizado Contínuo
+                                                                                                                        │
+                                                                                                                        ▼
+                                                                                                                    [Quality Gate 7]
 ```
 
 ---
@@ -94,7 +99,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Teste de compilação do Gradle (`./gradlew assembleDebug`) verificando acréscimo de peso inferior a 1 MB no APK.
   - *Commit:* `feat(android): integrar extrator nativo de texto via ML Kit e PdfRenderer`
 
-- [ ] **Tarefa 1.3 — Buffer Anti-Perda em Cold/Warm Start (`BankNotificationPlugin`):**
+- [x] **Tarefa 1.3 — Buffer Anti-Perda em Cold/Warm Start (`BankNotificationPlugin`):**
   - Implementar retenção estática de payload pendente (`pendingSharePayload`) em `BankNotificationPlugin.java` e método `@PluginMethod public void getPendingShare(PluginCall call)`.
   - Em `MainActivity.java`, interceptar intents de `ACTION_SEND` em `onCreate` e `onNewIntent`, gravando os bytes em cache temporário seguro (`getCacheDir()`) para evitar `SecurityException`.
   - *Teste & Verificação:* Simular cold start enviando intent de texto/imagem via ADB e verificar persistência do buffer até a chamada do JavaScript.
@@ -358,7 +363,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Teste de renderização, persistência do dismiss no localStorage e navegação por teclado.
   - *Commit:* `feat(modules): criar modal interativo de boas-vindas com hierarquia de captura`
 
-#### PORTÃO DE QUALIDADE 6 (Quality Gate 6 / DoD Final de Release):
+#### PORTÃO DE QUALIDADE 6 (Quality Gate 6):
 1. Landing page e componentes de onboarding 100% responsivos e fluidos (mobile e desktop).
 2. Regra de zero emojis estritamente verificada em todas as novas cópias editoriais.
 3. Comunicação 100% honesta e congruente com as regras do `ESPECIFICACAO_TECNICA.md` (sem vaporware).
@@ -366,6 +371,93 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 5. `npm run typecheck` sem qualquer erro.
 6. `npm run lint` 100% aprovado.
 7. **Ação Obrigatória:** Executar `git push origin` com a release consolidada.
+
+---
+
+### FASE 7: MOTOR DE INSIGHTS APRIMORADO, RECORRÊNCIAS & APRENDIZADO CONTÍNUO (FEEDBACK LOOP MULTIDOMÍNIO)
+
+**Objetivo:** Transformar a detecção de recorrências e assinaturas em uma ferramenta analítica de precisão cirúrgica (eliminando ruídos e categorias genéricas), oferecer auditoria transparente das cobranças e fechar o loop de aprendizado contínuo: cada interação do usuário (edição de despesa, confirmação de renda, aporte ou rejeição de insight) ensina o motor a calibrar sugestões com máxima fidelidade.
+
+#### Tarefas da Fase 7:
+- [ ] **Tarefa 7.1 — Higiene Conceitual e Expurgamento do Nível `similar`:**
+  - Em `src/domain/insights/recurrences.ts`:
+    - Eliminar o agrupamento estático por categoria (`level: "similar"` / `"Gastos similares na categoria"`), que gerava ruído e cards vazios sem utilidade real.
+    - Atualizar a função pura `calculateRecurringTotals` para somar exclusivamente assinaturas reais (`subscription`) e contas com fornecedores repetidos (`recurring`), garantindo que o **Total mensal recorrente** e o **Total anual projetado** reflitam 100% de custos fixos reais, sem inflar com despesas variáveis do dia a dia.
+  - *Teste & Verificação:* Atualizar `src/domain/insights/index.test.ts` e `recurrences.test.ts`, garantindo que despesas corriqueiras de uma mesma categoria não sejam somadas aos totais de custos fixos.
+  - *Commit:* `refactor(domain/insights): remover nivel similar e purificar calculo de totais recorrentes`
+
+- [ ] **Tarefa 7.2 — Normalização Robusta com Sanitização de Sufixos Temporais & Concessionárias Brasileiras:**
+  - Em `src/domain/insights/shared.ts`:
+    - Criar função pura `stripTemporalSuffixes(text: string): string` com regex para remover sufixos/prefixos de mês e ano (`jan`, `fev`, `mar`, `01/26`, `2026`, `ref 08`, `competencia 09`, `parcela x/y`).
+    - Agrupar ocorrências pelo nome base higienizado, permitindo que lançamentos como *"Condomínio Jan"* e *"Condomínio Fev"* sejam devidamente identificados como a mesma recorrência.
+  - Em `src/domain/insights/subscriptions.ts`:
+    - Expandir `KNOWN_SERVICES` com as principais concessionárias de serviços essenciais brasileiras:
+      - Energia: Enel, CPFL, Cemig, Copel, Neoenergia, Light, Equatorial.
+      - Água/Saneamento: Sabesp, Copasa, Sanepar, Corsan, Embasa, Cedae.
+      - Gás: Comgás, Naturgy.
+    - Configurar tais serviços com `tier: "essential"` e `segment: "telecom"` (ou `"utilities"`).
+    - Unificar despesas que compartilham a mesma `serviceKey` (ex.: *"Netflix Brasil"* e *"Netflix Com"* agrupados sob a mesma chave canônica).
+  - *Teste & Verificação:* Testes cobrindo despesas com meses no nome e identificação de concessionárias públicas.
+  - *Commit:* `feat(domain/insights): implementar sanitizacao temporal e catalogo de concessionarias brasileiras`
+
+- [ ] **Tarefa 7.3 — Modal de Auditoria e Drill-Down de Transações na Aba de Recorrências:**
+  - Em `src/components/modules/insight-list.tsx` e `recurrences-tab.tsx`:
+    - Permitir clique em qualquer linha da lista de recorrências para abrir gaveta/modal de detalhes (`<Modal size="lg" />`).
+    - Exibir o histórico cronológico de lançamentos que compõem aquela recorrência: data, valor monetário, conta/cartão de origem e botão de atalho para editar a despesa.
+    - Para alertas críticos, aplicar destaque visual contextual:
+      - **Cobrança Duplicada:** realçar as 2 cobranças ocorridas no mesmo mês para auditoria imediata.
+      - **Reajuste Detectado:** gráfico ou comparativo lado a lado do valor histórico anterior vs. valor mais recente com a variação percentual.
+  - *Teste & Verificação:* Testes de renderização com React Testing Library validando abertura do modal, exibição do histórico e acessibilidade.
+  - *Commit:* `feat(insights): adicionar modal de drill-down com historico de cobrancas de recorrencias`
+
+- [ ] **Tarefa 7.4 — Ponte de Conversão de "Insight Detectado" em "Recorrência Formal" (Fase 32):**
+  - No card de recorrência confirmada e no modal de detalhes, adicionar ação proativa: *"Fixar como Recorrência Formal"*.
+  - Ao clicar, abrir diálogo de agendamento formal com dados pré-preenchidos:
+    - Descrição amigável limpa.
+    - Valor médio sugerido (com opção de editar).
+    - Categoria inferida.
+    - Dia do mês para lembrete/lançamento automático (baseado no `typicalDayOfMonth` calculado pelo motor).
+  - Ao salvar via RPC transacional, marcar a ocorrência como aprendida/convertida para que o motor não a re-sugira como uma detecção pendente.
+  - *Teste & Verificação:* Teste de fluxo completo simulando clique em conversão, envio do payload ao RPC e atualização de cache.
+  - *Commit:* `feat(insights): permitir converter ocorrencia detectada em recorrencia formal`
+
+- [ ] **Tarefa 7.5 — Motor de Aprendizado Contínuo Multidomínio (Feedback Loop Despesas, Rendas e Aportes):**
+  - **Eixo 1 — Despesas & Estabelecimentos:**
+    - Toda vez que o usuário alterar uma categoria ou descrição no extrato, em notificações ou no wizard, registrar o par `(merchant, category)` e `(rawName, friendlyName)` no `MerchantLearningEngine`.
+    - Disparar re-avaliação imediata de insights pendentes na sessão.
+  - **Eixo 2 — Rendas & Fluxo de Caixa:**
+    - Ao confirmar ou editar recebimentos habituais (salário CLT, clientes recorrentes, aluguéis recebidos), o motor aprende o dia do mês e a dispersão típica.
+    - Se no mês corrente passar da data habitual sem entrada correspondente, o `SmartAdvisorCard` gera alerta discreto: *"Renda de [Fonte] prevista para o dia X ainda não foi identificada no mês"*.
+  - **Eixo 3 — Aportes & Rebalanceamento de Carteira:**
+    - O motor aprende o padrão temporal entre a entrada da renda principal e os aportes em corretoras (ex.: NuInvest, XP, BTG, Inter).
+    - Se a poupança do mês estiver positiva e o usuário ainda não tiver realizado o aporte mensal da meta, sugerir ação de 1 clique: *"Você poupou R$ X neste mês. Deseja realizar o aporte planejado para rebalancear sua carteira?"*, navegando com o valor pré-preenchido para a tela de Aporte.
+  - **Eixo 4 — Calibração por Rejeição (Anti-Insistência):**
+    - Ao marcar *"Não é assinatura"* ou descartar um insight, gravar penalidade permanente para aquele identificador em `insight_feedback`, silenciando sugestões similares e evitando repetição de palpites errados.
+  - *Teste & Verificação:* Testes unitários do motor cobrindo o loop de feedback nos 3 domínios (despesas, rendas e investimentos) e anti-insistência.
+  - *Commit:* `feat(insights): unificar loop de aprendizado continuo para despesas rendas e aportes`
+
+- [ ] **Tarefa 7.6 — Filtros Rápidos, Badges de Status e Taxa de Comprometimento de Renda Fixa:**
+  - Em `recurrences-tab.tsx`:
+    - Adicionar no card de resumo a métrica:
+      $$\text{Taxa de Comprometimento Fixo} = \frac{\text{Total Mensal Recorrente}}{\text{Renda Mensal Total}} \times 100$$
+      exibindo com clareza a fatia da renda comprometida antes do início do mês.
+    - Implementar seletor de filtros com abas fluidas (`Tabs` com scroll horizontal desobstruído conforme AGENTS.md §9):
+      - `Todas`
+      - `Assinaturas` (streaming, nuvem/IA, clubes)
+      - `Contas Fixas` (energia, água, condomínio, internet, saúde)
+      - `Com Alertas` (reajustes, duplicidades, pendências no mês)
+  - *Teste & Verificação:* Testes de renderização com diferentes proporções de renda e filtragem por aba.
+  - *Commit:* `feat(insights): adicionar kpi de comprometimento de renda e filtros em recorrencias`
+
+#### PORTÃO DE QUALIDADE 7 (Quality Gate 7 / DoD Final Consolidado):
+1. Expurgamento de `similar` validado em todos os testes unitários de `src/domain/insights/` (100% verde).
+2. Sanitização de sufixos de datas e reconhecimento de concessionárias testados com fixtures reais.
+3. Modal de drill-down de transações funcionando com design system canônico (zero emojis, classes de elevação e tokens corretos).
+4. Conversão de insight em recorrência formal executando sem erros de schema ou RPC.
+5. Loop de aprendizado contínuo nos 3 pilares (despesas, rendas e aportes) validado sem vazamento de estado.
+6. Suíte completa de testes (`npm run test`) 100% verde.
+7. `npm run typecheck` e `npm run lint` sem qualquer advertência ou erro.
+8. **Ação Obrigatória:** Executar `git push origin` com a entrega consolidada.
 
 ---
 
@@ -380,5 +472,10 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 | **Lançamento Rápido** | Cadastro de despesa concluído em $\le 3$ segundos na tela única | Interação manual e teste com `StepQuick` |
 | **Detecção de Salário/Renda** | Renda prevista surge na data típica e é confirmada em 1 clique | Teste unitário em `recurrences.test.ts` |
 | **Gastos Vampiros & Anomalias** | Cobrança duplicada gera alerta imediato na Home com economia anual calculada | Teste unitário e renderização no `SmartAdvisorCard` |
+| **Purificação de Recorrências** | Nível `similar` removido; totais de custos fixos 100% puros e sem categorias genéricas | Teste unitário em `src/domain/insights/index.test.ts` |
+| **Sanitização de Sufixos Temporais** | "Condomínio Jan" e "Condomínio Fev" agrupados na mesma recorrência sem quebras | Teste unitário em `shared.test.ts` e `recurrences.test.ts` |
+| **Drill-Down e Conversão Formal** | Clique na recorrência exibe extrato das cobranças e botão converte em recorrência formal | Testes de integração em `recurrences-tab.test.tsx` |
+| **Aprendizado Cruzado Multidomínio** | Edições de despesas, rendas e aportes refinam regras e sugestões proativas | Teste do `useSmartAdvisorInsights` e `MerchantLearningEngine` |
 | **Comunicação e Onboarding** | Landing Page e modal de boas-vindas explicam a hierarquia com clareza e zero emojis | Verificação visual e teste em `onboarding-card.test.tsx` |
 | **Governança de Código** | Zero emojis, TypeScript estrito, DRY respeitado e commits por tarefa | `npm run typecheck && npm run lint && npm run test` |
+
