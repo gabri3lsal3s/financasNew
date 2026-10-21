@@ -8,6 +8,7 @@ import { PWAUpdateToast } from "@/components/modules/pwa-update-toast";
 import { NativeUpdateToast } from "@/components/modules/native-update-toast";
 import { getSupabase } from "@/data/client";
 import { resetAppState } from "@/services/auth-cleanup";
+import { syncMerchantLearningFromCloud } from "@/services/merchant-learning";
 import { useUserPreferences } from "@/state/queries/use-user-preferences";
 import { syncVisualWithCloud } from "@/hooks/use-visual-customization";
 import { useDynamicFavicon } from "@/hooks/use-dynamic-favicon";
@@ -83,6 +84,9 @@ function CloudPreferencesSync({ children }: { children: ReactNode }) {
       syncVisualWithCloud(preferences.custom_settings);
       if (preferences.custom_settings.privacyShieldEnabled !== undefined) {
         setPrivacyShieldEnabled(preferences.custom_settings.privacyShieldEnabled);
+      }
+      if (preferences.custom_settings.merchantLearning) {
+        syncMerchantLearningFromCloud(preferences.custom_settings.merchantLearning);
       }
     }
   }, [preferences?.custom_settings]);

@@ -178,7 +178,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes unitários cobrindo os 3 níveis da hierarquia.
   - *Commit:* `feat(domain): implementar pipeline de resolucao hierarquica de estabelecimentos`
 
-- [ ] **Tarefa 2.4 — Hook Global e Sincronização em Todo o Aplicativo:**
+- [x] **Tarefa 2.4 — Hook Global e Sincronização em Todo o Aplicativo:**
   - Criar serviço/hook `useMerchantLearning()` conectando a memória rápida no cliente (tempo de resposta < 2 ms) com persistência multi-dispositivo no Supabase.
   - Integrar a auto-atualização do aprendizado: sempre que o usuário salvar ou editar uma transação alterando a descrição ou categoria, o motor grava a nova regra automaticamente em segundo plano.
   - *Teste & Verificação:* Testes de hook e simulação de concorrência com React Testing Library.

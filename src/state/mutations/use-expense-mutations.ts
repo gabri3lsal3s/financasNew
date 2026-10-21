@@ -7,6 +7,7 @@ import { incomesKey } from "@/state/queries/use-incomes";
 import { cardExpensesKey } from "@/state/queries/use-card-payments";
 import { resolveExpenseDeleteIds } from "@/domain/expenses";
 import { getErrorMessage } from "@/services/errors";
+import { autoLearnExpenseCategory } from "@/services/merchant-learning";
 import { pushToast } from "@/services/toast";
 import {
   applyExpenseUpdate,
@@ -54,7 +55,12 @@ export function useCreateExpense() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (params: CreateExpenseWithDebtParams) => createExpenseWithDebt(params),
-    onSuccess: () => invalidateFinanceAggregates(queryClient),
+    onSuccess: (_data, variables) => {
+      invalidateFinanceAggregates(queryClient);
+      if (variables.description && variables.categoryId) {
+        autoLearnExpenseCategory(variables.description, variables.categoryId);
+      }
+    },
   });
 }
 
@@ -130,7 +136,12 @@ export function useUpdateExpenseGrouped() {
         variant: "destructive",
       });
     },
-    onSettled: () => invalidateFinanceAggregates(queryClient),
+    onSettled: (_data, _error, variables) => {
+      invalidateFinanceAggregates(queryClient);
+      if (variables?.fields.description && variables?.fields.category_id) {
+        autoLearnExpenseCategory(variables.fields.description, variables.fields.category_id);
+      }
+    },
   });
 }
 
@@ -154,7 +165,12 @@ export function useUpdateExpense() {
         variant: "destructive",
       });
     },
-    onSettled: () => invalidateFinanceAggregates(queryClient),
+    onSettled: (_data, _error, variables) => {
+      invalidateFinanceAggregates(queryClient);
+      if (variables?.input.description && variables?.input.category_id) {
+        autoLearnExpenseCategory(variables.input.description, variables.input.category_id);
+      }
+    },
   });
 }
 

@@ -244,6 +244,7 @@ export type UserCustomSettings = {
     autoCategoryInferenceEnabled?: boolean;
     monitoredBanks?: string[];
   };
+  merchantLearning?: Record<string, unknown>;
   hideDashboardCents?: boolean;
   privacyShieldEnabled?: boolean;
 };

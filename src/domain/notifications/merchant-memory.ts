@@ -150,8 +150,10 @@ export function recordMerchantLearning(
   const normalizedFriendly = normalizeMerchantText(params.friendlyName);
   if (!normalizedFriendly && !cleanTax) return existingMemory;
 
-  // Chave canônica primária: prioriza o taxId limpo, ou o friendlyName normalizado
-  const key = cleanTax ? `tax_${cleanTax}` : `name_${normalizedFriendly}`;
+  // Chave canônica primária: prioriza o taxId limpo, ou o friendlyName normalizado com underscores
+  const key = cleanTax
+    ? `tax_${cleanTax}`
+    : `name_${normalizedFriendly.replace(/\s+/g, "_")}`;
   const existing = existingMemory[key];
 
   // Agrega e normaliza aliases sem duplicatas
@@ -248,7 +250,8 @@ export function forgetMerchantLearning(
   existingMemory: MerchantLearningMemory = {},
 ): MerchantLearningMemory {
   const cleanTax = cleanTaxId(identifier);
-  const primaryKey = cleanTax ? `tax_${cleanTax}` : `name_${normalizeMerchantText(identifier)}`;
+  const normalized = normalizeMerchantText(identifier).replace(/\s+/g, "_");
+  const primaryKey = cleanTax ? `tax_${cleanTax}` : `name_${normalized}`;
 
   if (primaryKey in existingMemory) {
     const next = { ...existingMemory };

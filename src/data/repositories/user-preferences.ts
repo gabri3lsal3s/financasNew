@@ -81,6 +81,10 @@ export async function updateCustomSettings(patch: Partial<UserCustomSettings>): 
       ...(current?.custom_settings?.bankAssistant ?? {}),
       ...(patch.bankAssistant ?? {}),
     },
+    merchantLearning: {
+      ...(current?.custom_settings?.merchantLearning ?? {}),
+      ...(patch.merchantLearning ?? {}),
+    },
   };
 
   const input: DbUpdate<UserPreferences> = {
