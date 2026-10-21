@@ -95,7 +95,10 @@ export function calculateLoanSchedule(input: LoanScheduleInput): LoanScheduleRes
     const amortRemainder = pv % n;
 
     for (let i = 1; i <= n; i++) {
-      const amortization = baseAmortization + (i <= amortRemainder ? 1 : 0);
+      let amortization = baseAmortization + (i <= amortRemainder ? 1 : 0);
+      if (i === n || amortization > balance) {
+        amortization = balance;
+      }
       const interest = Math.round(balance * rate);
       const installmentTotal = amortization + interest;
       balance = Math.max(0, balance - amortization);
@@ -146,8 +149,8 @@ export function calculateLoanSchedule(input: LoanScheduleInput): LoanScheduleRes
     for (let i = 1; i <= n; i++) {
       const interest = Math.round(balance * rate);
       let principal = Math.max(0, pmt - interest);
-      if (i === n) {
-        principal = balance; // Ajuste na última parcela para zerar saldo
+      if (i === n || principal > balance) {
+        principal = balance; // Ajuste na última parcela para zerar saldo exatamente
       }
       const actualPmt = principal + interest;
       balance = Math.max(0, balance - principal);
