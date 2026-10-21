@@ -374,8 +374,8 @@ export function CategoryDonut({
               : undefined
           }
           className={cn(
-            "absolute inset-[10%] flex flex-col items-center justify-center text-center p-2 rounded-full transition-all select-none overflow-hidden",
-            activeSelectedKey ? "cursor-pointer group hover:bg-surface-hover/40 ring-1 ring-border/50" : "pointer-events-none",
+            "absolute inset-[10%] flex flex-col items-center justify-center text-center p-2 rounded-full transition-all select-none overflow-hidden focus-visible:outline-none",
+            activeSelectedKey ? "cursor-pointer group hover:bg-surface-hover/30" : "pointer-events-none",
           )}
           aria-label={activeDisplayItem ? `${activeDisplayItem.label}: ${activeDisplayPercent.toFixed(1)}%` : "Total geral"}
         >

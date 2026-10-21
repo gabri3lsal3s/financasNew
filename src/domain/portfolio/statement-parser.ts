@@ -290,6 +290,17 @@ export function parseBrokerStatement(rawText: string): StatementParseResult {
       suggestedNotes += ` [Rent: ${formattedRate}%]`;
     }
 
+    // Detecção contextual de ativo/ticker ou proventos no texto original da linha
+    const tickerMatch = /\b([A-Z]{4}(?:3|4|11|34)|BTC|ETH|SOL)\b/i.exec(item.rawLine);
+    const proventoMatch = /\b(?:dividendo|dividendos|jcp|rendimento|rendimentos)\b/i.exec(item.rawLine);
+    if (tickerMatch && tickerMatch[1]) {
+      suggestedNotes += ` [${tickerMatch[1].toUpperCase()}]`;
+    }
+    if (proventoMatch) {
+      suggestedNotes += ` (Provento)`;
+    }
+
+
     rows.push({
       rawLine: item.rawLine,
       date: item.date,

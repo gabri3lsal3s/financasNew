@@ -1,6 +1,7 @@
 import { toISODate } from "@/domain/money";
 import type { PaymentMethod } from "@/types/schema";
 import { inferCategoryKeyword } from "./category-inference";
+import { parsePixEMVPayload } from "./pix-emv-parser";
 
 export type TransactionNature = "expense" | "income" | "investment";
 export type InvestmentSubtype = "contribution" | "dividend" | "trade" | "redemption";
@@ -29,7 +30,9 @@ export interface ParsedBankTransaction {
   currentInstallment?: number;
   installmentAmountCents?: number;
   issuerBank?: string;
+  isRefund?: boolean;
 }
+
 
 export interface BankNotificationPayload {
   title: string;
@@ -925,8 +928,19 @@ export function detectTransactionType(text: string, title: string): "expense" | 
 }
 
 /**
+ * Detecta se a transação corresponde a um estorno, cancelamento ou devolução.
+ */
+export function isRefundTransaction(text: string, title?: string): boolean {
+  const combined = `${title || ""} ${text}`.toLowerCase();
+  return /\b(?:estorno|reembolso|devolu[çc][ãa]o\s+pix|pix\s+devolvido|valor\s+estornado|compra\s+cancelada)\b/i.test(
+    combined,
+  );
+}
+
+/**
  * Detecta o meio de pagamento provável da notificação, alinhado com PAYMENT_METHODS.
  */
+
 export function detectPaymentMethod(text: string, title: string): PaymentMethod {
   const combined = `${title} ${text}`.toLowerCase();
 
@@ -1262,6 +1276,19 @@ export function cleanMerchantName(rawName: string): string {
     "",
   );
 
+  // Remoção de prefixos operacionais bancários
+  cleaned = cleaned.replace(
+    /^(?:COMPRA\s+(?:APROVADA|NO\s+D[EÉ]BITO|NO\s+CR[EÉ]DITO|A\s+VISTA|PARCELADA)|PAGTO\s+(?:ELETRON\s+)?COBRANCA|TRANSFER[EÊ]NCIA\s+PIX(?:\s+PARA)?|ENVIO\s+PIX|PIX\s+TRANSF|PAGAMENTO\s+(?:DE\s+)?T[IÍ]TULO|D[EÉ]BITO\s+(?:ELO|VISA|MASTER))\s*[-:]?\s*/i,
+    "",
+  );
+
+  // Remoção de identificadores de terminais POS/NSU/DOC
+  cleaned = cleaned.replace(/\b(?:POS|TERM|TERM\.|NSU|DOC|AUT|AUT\.)\s*[:.-]?\s*\d{3,10}\b/gi, "");
+
+  // Remoção de datas ou horas embutidas (ex.: 12/03 ou 14:30)
+  cleaned = cleaned.replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g, "");
+  cleaned = cleaned.replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, "");
+
   // Remoção de sufixos de geolocalização como " SAO PAULO BR", " RIO DE JANEI BRA", etc.
   cleaned = cleaned.replace(/\s+[A-ZÀ-ÿ\s]{2,20}\s+(?:BR|BRA)$/i, "");
 
@@ -1276,10 +1303,11 @@ export function cleanMerchantName(rawName: string): string {
   );
   cleaned = cleaned.replace(/[,.-]?\s*(?:cart[aã]o\s*)?final\s*[:.-]?\s*\d{4}\b.*$/i, "");
 
-  // Remoção de pontuações soltas nas bordas
-  cleaned = cleaned.replace(/^[\s,.:;/-]+|[\s,.:;/-]+$/g, "").trim();
+  // Remoção de pontuações soltas nas bordas e espaços múltiplos
+  cleaned = cleaned.replace(/^[\s,.:;/-]+|[\s,.:;/-]+$/g, "").replace(/\s{2,}/g, " ").trim();
 
   return cleaned;
+
 }
 
 /**
@@ -1493,6 +1521,7 @@ export function parseBankNotification(
     cardLastDigits,
     cardBrand,
     issuerBank,
+    isRefund: isRefundTransaction(combinedText, payload.title) || undefined,
   };
 }
 
@@ -1504,10 +1533,17 @@ export function parsePixShareText(rawText: string): ParsedBankTransaction | null
 
   if (isBlacklistedNotification(rawText)) return null;
 
+  // Tenta decodificar código Pix Copia e Cola padrão EMVCo BR Code
+  if (rawText.includes("000201")) {
+    const emvParsed = parsePixEMVPayload(rawText);
+    if (emvParsed) return emvParsed;
+  }
+
   const cents = extractCentsFromText(rawText);
   if (!cents) return null;
 
   const isIncome = detectTransactionType(rawText, "");
+  const isRefund = isRefundTransaction(rawText);
   const bankName = resolveBankName(undefined, undefined, rawText) || "Pix";
 
   // Extrai nome do destinatário / recebedor em comprovantes típicos
@@ -1542,5 +1578,7 @@ export function parsePixShareText(rawText: string): ParsedBankTransaction | null
     date: toISODate(new Date()),
     paymentMethod: "pix",
     rawText,
+    isRefund: isRefund || undefined,
   };
 }
+

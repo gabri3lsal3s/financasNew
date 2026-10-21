@@ -14,11 +14,17 @@ import { buildDescriptionSuggestions, buildHabitualEntries, dayOfMonth } from "@
 import { todayISO } from "@/domain/debts";
 import {
   inferCategoryKeyword,
+  lookupMerchantCategory,
   matchCategoryBySlug,
   type CanonicalCategorySlug,
   type ParsedBankTransaction,
 } from "@/domain/notifications";
-import { getBankAssistantPreferences } from "@/services/native";
+import {
+  getBankAssistantPreferences,
+  storeMerchantCategory,
+  useMerchantCategoryMapping,
+} from "@/services/native";
+
 import {
   useActiveCreditCards,
   useCategories,
@@ -76,8 +82,10 @@ export function LaunchWizard({
   const [pending, setPending] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(false);
+  const merchantMemory = useMerchantCategoryMapping();
 
   // Dados preenchidos no fluxo (valor/categoria/descrição) — fechar com o
+
   // formulário em andamento pede confirmação (anti-perda acidental).
   const isDirty = state.valueCents > 0 || state.categoryId !== "" || state.description.trim() !== "";
 
@@ -275,6 +283,10 @@ export function LaunchWizard({
         await createIncome.mutateAsync(input);
       }
 
+      if (state.description && state.categoryId) {
+        storeMerchantCategory(state.description, state.categoryId);
+      }
+
       triggerSensory("success");
       setState(defaultLaunchState(initialType));
       setPending(false);
@@ -301,7 +313,26 @@ export function LaunchWizard({
       if (parsed.installments && parsed.installments > 1) {
         next.installments = parsed.installments;
       }
-      if (parsed.categorySlug && categoriesQuery.data) {
+      // 1. Prioriza categoria memorizada do estabelecimento
+      let categoryMatched = false;
+      if (parsed.merchant && categoriesQuery.data) {
+        const memorized = lookupMerchantCategory(parsed.merchant, merchantMemory);
+        if (memorized) {
+          const found = categoriesQuery.data.find(
+            (c) =>
+              c.id === memorized ||
+              c.icon === memorized ||
+              c.name.toLowerCase() === memorized.toLowerCase() ||
+              c.name.toLowerCase().includes(memorized.toLowerCase()),
+          );
+          if (found) {
+            next.categoryId = found.id;
+            categoryMatched = true;
+          }
+        }
+      }
+      // 2. Fallback para slug inferido por palavras-chave
+      if (!categoryMatched && parsed.categorySlug && categoriesQuery.data) {
         const found = categoriesQuery.data.find(
           (c) =>
             c.name.toLowerCase().includes(parsed.categorySlug!.toLowerCase()) ||
@@ -319,6 +350,7 @@ export function LaunchWizard({
     });
 
     triggerSensory("success");
+
     pushToast({
       title: "Dados preenchidos",
       description: `${parsed.description} preenchido no formulário de lançamento.`,

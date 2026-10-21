@@ -12,6 +12,8 @@ import {
   addPendingSuggestion,
   clearPendingSuggestions,
   dismissPendingSuggestion,
+  storeMerchantCategory,
+  useMerchantCategoryMapping,
   usePendingSuggestions,
 } from "@/services/native";
 import {
@@ -28,7 +30,12 @@ import { pushToast } from "@/services/toast";
 import { formatCentsAsCurrency } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
 import { cn } from "@/lib/utils";
-import { inferCategoryKeyword, type ParsedBankTransaction } from "@/domain/notifications";
+import {
+  inferCategoryKeyword,
+  lookupMerchantCategory,
+  type MerchantCategoryMapping,
+  type ParsedBankTransaction,
+} from "@/domain/notifications";
 import { buildExpenseInstallments, buildIncomeInstallments } from "@/features/transactions/wizard/wizard-state";
 import type { Category, ReceiveType } from "@/types";
 
@@ -41,13 +48,28 @@ function resolveCategoryForSuggestion(
   sug: ParsedBankTransaction,
   categories: Category[],
   selectedId?: string,
+  merchantMemory?: MerchantCategoryMapping,
 ): Category | undefined {
   if (selectedId) {
     const found = categories.find((c) => c.id === selectedId);
     if (found) return found;
   }
+  // 1. Memória adaptativa aprendida de estabelecimentos
+  if (sug.merchant && merchantMemory) {
+    const memorized = lookupMerchantCategory(sug.merchant, merchantMemory);
+    if (memorized) {
+      const found = categories.find(
+        (c) =>
+          c.id === memorized ||
+          c.icon === memorized ||
+          c.name.toLowerCase().includes(memorized.toLowerCase()),
+      );
+      if (found) return found;
+    }
+  }
   if (sug.categorySlug) {
     const slugLower = sug.categorySlug.toLowerCase();
+
     const found = categories.find(
       (c) =>
         c.name.toLowerCase().includes(slugLower) ||
@@ -94,10 +116,12 @@ export function PendingSuggestionsCard({
   const [selectedCategories, setSelectedCategories] = useState<Record<string, string>>({});
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
   const [pasteOpen, setPasteOpen] = useState(false);
+  const merchantMemory = useMerchantCategoryMapping();
 
   if (suggestions.length === 0) {
     return null;
   }
+
 
   const handleReview = (sug: ParsedBankTransaction, categoryId?: string) => {
     onSuggestionHandled?.(sug.id);
@@ -237,8 +261,13 @@ export function PendingSuggestionsCard({
         }
       }
 
+      if (sug.merchant && categoryId) {
+        storeMerchantCategory(sug.merchant, categoryId);
+      }
+
       const formattedAmount = formatCentsAsCurrency(sug.amountCents);
       const typeLabel = sug.type === "income" ? "Renda" : "Despesa";
+
 
       pushToast({
         title: `${typeLabel} de ${formattedAmount} salva em ${categoryName}`,
@@ -357,6 +386,7 @@ export function PendingSuggestionsCard({
             sug,
             availableCategories,
             selectedCategories[sug.id],
+            merchantMemory,
           );
 
           return (
@@ -366,7 +396,11 @@ export function PendingSuggestionsCard({
             >
               <div className="flex flex-col gap-1 min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  {sug.nature === "investment" ? (
+                  {sug.isRefund ? (
+                    <Badge variant="warning" size="xs">
+                      Estorno
+                    </Badge>
+                  ) : sug.nature === "investment" ? (
                     <Badge variant="portfolio" size="xs">
                       {sug.investmentSubtype === "dividend" ? "Provento" : "Investimento"}
                     </Badge>
@@ -375,6 +409,7 @@ export function PendingSuggestionsCard({
                       {sug.type === "income" ? "Renda" : "Despesa"}
                     </Badge>
                   )}
+
 
                   <Badge variant="muted" size="xs">
                     {sug.bankName}

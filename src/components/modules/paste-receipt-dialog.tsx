@@ -9,11 +9,16 @@ import {
 } from "@/components/ui";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import {
+  lookupMerchantCategory,
   parseBankNotification,
   parsePixShareText,
   type ParsedBankTransaction,
 } from "@/domain/notifications";
-import { addPendingSuggestion, processPixShare } from "@/services/native";
+import {
+  addPendingSuggestion,
+  processPixShare,
+  useMerchantCategoryMapping,
+} from "@/services/native";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsCurrency } from "@/services/masks";
@@ -39,12 +44,24 @@ export function PasteReceiptDialog({
 }: PasteReceiptDialogProps) {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const merchantMemory = useMerchantCategoryMapping();
 
   // Derivação em tempo real de parsing para pré-visualização instantânea
   const trimmed = text.trim();
-  const parsedPreview: ParsedBankTransaction | null = trimmed
+  const rawPreview: ParsedBankTransaction | null = trimmed
     ? parsePixShareText(trimmed) || parseBankNotification({ title: "", text: trimmed })
     : null;
+
+  // Aplica memorização aprendida de categoria caso disponível
+  const parsedPreview: ParsedBankTransaction | null = rawPreview
+    ? {
+        ...rawPreview,
+        categorySlug:
+          lookupMerchantCategory(rawPreview.merchant, merchantMemory) ||
+          rawPreview.categorySlug,
+      }
+    : null;
+
 
   const handlePasteFromClipboard = async () => {
     try {
@@ -177,22 +194,29 @@ export function PasteReceiptDialog({
           >
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-1.5">
-                <Badge
-                  variant={
-                    parsedPreview.nature === "investment"
-                      ? "portfolio"
+                {parsedPreview.isRefund ? (
+                  <Badge variant="warning" size="xs">
+                    Estorno
+                  </Badge>
+                ) : (
+                  <Badge
+                    variant={
+                      parsedPreview.nature === "investment"
+                        ? "portfolio"
+                        : parsedPreview.type === "income"
+                          ? "positive"
+                          : "muted"
+                    }
+                    size="xs"
+                  >
+                    {parsedPreview.nature === "investment"
+                      ? "Investimento"
                       : parsedPreview.type === "income"
-                        ? "positive"
-                        : "muted"
-                  }
-                  size="xs"
-                >
-                  {parsedPreview.nature === "investment"
-                    ? "Investimento"
-                    : parsedPreview.type === "income"
-                      ? "Renda"
-                      : "Despesa"}
-                </Badge>
+                        ? "Renda"
+                        : "Despesa"}
+                  </Badge>
+                )}
+
 
                 <Badge variant="muted" size="xs">
                   {parsedPreview.bankName}

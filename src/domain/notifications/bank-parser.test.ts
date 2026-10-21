@@ -18,6 +18,7 @@ import {
   isBlacklistedNotification,
   isCardBrand,
   isDigitalWallet,
+  isRefundTransaction,
   isWithinTemporalWindow,
   mergeWalletWithBank,
   parseBankNotification,
@@ -25,6 +26,7 @@ import {
   parsePixShareText,
   resolveBankName,
 } from "./bank-parser";
+
 
 describe("bank-parser (Domínio de Notificações Bancárias)", () => {
   describe("extractCentsFromText", () => {
@@ -157,7 +159,13 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
       expect(cleanMerchantName("POSTO IPIRANGA, cartao final 1234")).toBe("POSTO IPIRANGA");
       expect(cleanMerchantName("LOJA XYZ - final 5678")).toBe("LOJA XYZ");
     });
+
+    it("limpa prefixos operacionais bancários e terminais POS", () => {
+      expect(cleanMerchantName("COMPRA APROVADA - Padaria Estrela POS 12345")).toBe("Padaria Estrela");
+      expect(cleanMerchantName("PAGTO ELETRON COBRANCA MERCADO CENTRAL 14/05")).toBe("MERCADO CENTRAL");
+    });
   });
+
 
   describe("extractMerchantOrRecipient (Extrator Multibanco)", () => {
     it("extrai estabelecimentos com preposições contraídas ('no', 'na', 'em')", () => {
@@ -383,7 +391,33 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
       const fakeReceipt = "Comprovante Pix cancelado e transação recusada de R$ 50,00";
       expect(parsePixShareText(fakeReceipt)).toBeNull();
     });
+
+    it("decodifica código Pix Copia e Cola EMVCo compartilhado", () => {
+      const payload = "00020126360014br.gov.bcb.pix0114+5511999999999520400005303986540550.005802BR5915PADARIA ESTRELA6009SAO PAULO6304ABCD";
+      const parsed = parsePixShareText(payload);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.amountCents).toBe(5000);
+      expect(parsed?.merchant).toBe("PADARIA ESTRELA");
+      expect(parsed?.description).toBe("Pix: PADARIA ESTRELA");
+    });
+
+    it("identifica transação como estorno/reembolso quando aplicável", () => {
+      const refundText = "Comprovante de Devolução Pix: Valor R$ 40,00 Pago para: Padaria Estrela";
+      const parsed = parsePixShareText(refundText);
+      expect(parsed?.isRefund).toBe(true);
+    });
   });
+
+  describe("isRefundTransaction (Detecção de Estornos e Reversões)", () => {
+    it("detecta termos de estorno, reembolso e devolução", () => {
+      expect(isRefundTransaction("Estorno de R$ 50,00 aprovado no cartão Nubank")).toBe(true);
+      expect(isRefundTransaction("Reembolso recebido no valor de R$ 30,00")).toBe(true);
+      expect(isRefundTransaction("Devolução Pix no valor de R$ 10,00")).toBe(true);
+      expect(isRefundTransaction("Compra cancelada de R$ 90,00")).toBe(true);
+      expect(isRefundTransaction("Compra de R$ 45,00 aprovada na padaria")).toBe(false);
+    });
+  });
+
 
   describe("Anti-falsos positivos estritos (caso Calçados Tobias & apps não homologados)", () => {
     it("rejeita notificações de apps desconhecidos sem banco homologado", () => {
