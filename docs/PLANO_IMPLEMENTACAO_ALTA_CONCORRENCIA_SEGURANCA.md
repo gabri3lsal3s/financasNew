@@ -330,7 +330,7 @@ Ao término de cada fase, é **obrigatória** a passagem pelos dois portões de 
   - **Verificação Final:** `npm run typecheck && npm run lint`.
   - **Commit Atômico:** `perf(reports): add AbortController signal and debounced date range filtering (task 4.3)`.
 
-- [ ] **Tarefa 4.4 — Teste de Estresse de Parsing de Extratos (Simulação de 2.000 Linhas)**
+- [x] **Tarefa 4.4 — Teste de Estresse de Parsing de Extratos (Simulação de 2.000 Linhas)**
   - **Revisão do Plano:** Inspecionar `src/domain/reconciliation/` e os parsers de OFX/CSV.
   - **Implementação:**
     - Criar teste automatizado com payload simulado de extrato bancário com 2.000 transações;
