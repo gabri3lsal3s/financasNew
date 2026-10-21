@@ -31,6 +31,7 @@ export const AppUpdatePlugin = registerPlugin<AppUpdatePluginInterface>("AppUpda
   },
 });
 
+export const REMOTE_MANIFEST_URL = "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/version.json";
 export const DEFAULT_MANIFEST_PATH = "/releases/version.json";
 
 export interface CheckUpdateOptions {
@@ -42,7 +43,8 @@ export interface CheckUpdateOptions {
  * Consulta o manifesto de versão remoto e compara com o app instalado.
  */
 export async function checkAppUpdate(options?: CheckUpdateOptions): Promise<AppUpdateCheckResult> {
-  const url = options?.manifestUrl || DEFAULT_MANIFEST_PATH;
+  const defaultUrl = isNativePlatform() ? REMOTE_MANIFEST_URL : DEFAULT_MANIFEST_PATH;
+  const url = options?.manifestUrl || defaultUrl;
 
   let currentVersion = "1.0.0";
   let currentVersionCode = 1;

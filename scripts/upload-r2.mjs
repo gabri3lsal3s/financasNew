@@ -120,12 +120,29 @@ async function upload() {
   await s3.send(aliasCommand);
   console.log("  [OK] axis-pro.apk atualizado com sucesso!");
 
+  // Envia o manifesto version.json para viabilizar consultas remotas
+  const versionPath = join(root, "public", "releases", "version.json");
+  if (existsSync(versionPath)) {
+    console.log("-> Enviando manifesto version.json...");
+    const versionBuffer = readFileSync(versionPath);
+    const versionCommand = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: "version.json",
+      Body: versionBuffer,
+      ContentType: "application/json",
+      CacheControl: "no-cache, no-store, must-revalidate",
+    });
+    await s3.send(versionCommand);
+    console.log("  [OK] version.json enviado com sucesso!");
+  }
+
   console.log("\n==========================================================");
   console.log("  Upload para o Cloudflare R2 concluído com sucesso!      ");
   console.log("==========================================================");
   console.log("URLs públicas para download direto:");
   console.log(`  https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk`);
   console.log(`  https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/axis-pro.apk`);
+  console.log(`  https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/version.json`);
   console.log("==========================================================\n");
 }
 

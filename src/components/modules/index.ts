@@ -104,4 +104,5 @@ export { PasteReceiptDialog } from "./paste-receipt-dialog";
 export type { PasteReceiptDialogProps } from "./paste-receipt-dialog";
 export { AndroidProBanner } from "./android-pro-banner";
 export type { AndroidProBannerProps } from "./android-pro-banner";
+export { NativeUpdateToast } from "./native-update-toast";
 
