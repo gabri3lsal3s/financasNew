@@ -13,7 +13,9 @@ export type CanonicalCategorySlug =
   | "assinaturas"
   | "compras"
   | "salario"
-  | "investimentos";
+  | "investimentos"
+  | "moradia"
+  | "educacao";
 
 interface KeywordGroup {
   slug: CanonicalCategorySlug;
@@ -289,6 +291,41 @@ const KEYWORD_GROUPS: KeywordGroup[] = [
       "titulos publicos",
     ],
   },
+  {
+    slug: "moradia",
+    terms: [
+      "enel",
+      "sabesp",
+      "copasa",
+      "sanepar",
+      "cemig",
+      "cpfl",
+      "light servicos",
+      "comgas",
+      "equatorial",
+      "neoenergia",
+      "aluguel",
+      "condominio",
+      "iptu",
+      "energia eletrica",
+      "saneamento",
+    ],
+  },
+  {
+    slug: "educacao",
+    terms: [
+      "escola",
+      "colegio",
+      "faculdade",
+      "universidade",
+      "mensalidade escolar",
+      "curso",
+      "pos graduacao",
+      "udemy",
+      "alura",
+      "coursera",
+    ],
+  },
 ];
 
 const FLATTENED_KEYWORDS: Array<{ term: string; slug: CanonicalCategorySlug }> = KEYWORD_GROUPS.flatMap(
@@ -346,6 +383,32 @@ export function matchCategoryBySlug<T extends { id: string; name: string; icon?:
       "acoes",
       "bolsa",
       "cripto",
+    ],
+    moradia: [
+      "moradia",
+      "habitação",
+      "habitacao",
+      "aluguel",
+      "condomínio",
+      "condominio",
+      "luz",
+      "água",
+      "agua",
+      "energia",
+      "gás",
+      "gas",
+      "iptu",
+      "contas residenciais",
+    ],
+    educacao: [
+      "educação",
+      "educacao",
+      "escola",
+      "faculdade",
+      "universidade",
+      "curso",
+      "estudos",
+      "mensalidade",
     ],
   };
 

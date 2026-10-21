@@ -163,7 +163,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes unitários em `merchant-memory.test.ts` cobrindo extração de CNPJs formatados e desformatados.
   - *Commit:* `feat(domain): expandir merchant memory para aprendizado de nomes amigaveis e cnpjs`
 
-- [ ] **Tarefa 2.2 — Removedor de Prefixos de Adquirentes e Catálogo Base:**
+- [x] **Tarefa 2.2 — Removedor de Prefixos de Adquirentes e Catálogo Base:**
   - Criar função pura `cleanAcquirerPrefixes(text: string): string` que elimina ruídos como `PAG*`, `MP*`, `STONE*`, `CIELO*`, `REDE*`, `IFOOD *`, `UBER *TRIP`.
   - Embarcar dicionário canônico com as 100 marcas e redes mais frequentes no Brasil (mercados, farmácias, postos, streamings e concessoes de serviços públicos).
   - *Teste & Verificação:* Testes cobrindo dezenas de formatos sujos de adquirentes e cartões.

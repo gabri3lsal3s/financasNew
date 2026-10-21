@@ -1,6 +1,7 @@
 import { toISODate } from "@/domain/money";
 import type { PaymentMethod } from "@/types/schema";
 import { inferCategoryKeyword } from "./category-inference";
+import { cleanAcquirerPrefixes } from "./merchant-catalog";
 import { parsePixEMVPayload } from "./pix-emv-parser";
 
 export type TransactionNature = "expense" | "income" | "investment";
@@ -1259,63 +1260,7 @@ function isValidCandidate(candidate: string): boolean {
  * sufixos de geolocalização e resíduos de dados de cartão.
  */
 export function cleanMerchantName(rawName: string): string {
-  if (!rawName) return "";
-  let cleaned = rawName.trim();
-
-  // Tratamento específico de corridas Uber
-  if (/^UBER(?:\s*\*TRIP(?:\s*HELP)?|\s*\*EATS|\s*\*PENDING|\s*\*|\s+)/i.test(cleaned)) {
-    return "Uber";
-  }
-
-  // Tratamento de pedidos iFood
-  if (/^IFOOD(?:\s*\*PEDIDO|\s*\*ENTREGA|\s*\*|\s+)/i.test(cleaned)) {
-    const after = cleaned.replace(/^IFOOD(?:\s*\*PEDIDO|\s*\*ENTREGA|\s*\*|\s+)\s*/i, "").trim();
-    return after.length >= 2 ? after : "iFood";
-  }
-
-  // Tratamento de Mercado Pago / Mercado Livre
-  if (/^MP\s*\*\s*MERCADOLIVRE|^MERCADOLIVRE/i.test(cleaned)) {
-    return "Mercado Livre";
-  }
-
-  // Remoção de prefixos de maquininhas/adquirentes
-  cleaned = cleaned.replace(
-    /^(?:PAG\s*\*|PAGSEGURO\s*\*|MP\s*\*|MERCADOPAGO\s*\*|STONE\s*\*|CIELO\s*\*|GETNET\s*\*|SUMUP\s*\*|REDECARD\s*\*|REDE\s*\*|99APP\s*\*|99\s*\*)\s*/i,
-    "",
-  );
-
-  // Remoção de prefixos operacionais bancários
-  cleaned = cleaned.replace(
-    /^(?:COMPRA\s+(?:APROVADA|NO\s+D[EÉ]BITO|NO\s+CR[EÉ]DITO|A\s+VISTA|PARCELADA)|PAGTO\s+(?:ELETRON\s+)?COBRANCA|TRANSFER[EÊ]NCIA\s+PIX(?:\s+PARA)?|ENVIO\s+PIX|PIX\s+TRANSF|PAGAMENTO\s+(?:DE\s+)?T[IÍ]TULO|D[EÉ]BITO\s+(?:ELO|VISA|MASTER))\s*[-:]?\s*/i,
-    "",
-  );
-
-  // Remoção de identificadores de terminais POS/NSU/DOC
-  cleaned = cleaned.replace(/\b(?:POS|TERM|TERM\.|NSU|DOC|AUT|AUT\.)\s*[:.-]?\s*\d{3,10}\b/gi, "");
-
-  // Remoção de datas ou horas embutidas (ex.: 12/03 ou 14:30)
-  cleaned = cleaned.replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g, "");
-  cleaned = cleaned.replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, "");
-
-  // Remoção de sufixos de geolocalização como " SAO PAULO BR", " RIO DE JANEI BRA", etc.
-  cleaned = cleaned.replace(/\s+[A-ZÀ-ÿ\s]{2,20}\s+(?:BR|BRA)$/i, "");
-
-  // Remoção de resíduos de carteiras e cartões (" com Cartão Nubank final 1234", " no cartão final 1234", etc.)
-  cleaned = cleaned.replace(
-    /\s+(?:com|usando|no|na|pelo|pela|via)\s+(?:o\s+|a\s+)?cart[ãa]o\b.*$/i,
-    "",
-  );
-  cleaned = cleaned.replace(
-    /\s+(?:com|usando|no|na|pelo|pela|via)\s+(?:nubank|ita[úu]|bradesco|santander|inter|c6(?:\s+bank)?|caixa|bb|banco\s+do\s+brasil|ourocard|btg|xp|rico|neon|next|nomad|wise|pagbank|picpay|safra|sicredi|sicoob|mastercard|visa|elo|amex|american\s+express|hipercard)\b.*$/i,
-    "",
-  );
-  cleaned = cleaned.replace(/[,.-]?\s*(?:cart[aã]o\s*)?final\s*[:.-]?\s*\d{4}\b.*$/i, "");
-
-  // Remoção de pontuações soltas nas bordas e espaços múltiplos
-  cleaned = cleaned.replace(/^[\s,.:;/-]+|[\s,.:;/-]+$/g, "").replace(/\s{2,}/g, " ").trim();
-
-  return cleaned;
-
+  return cleanAcquirerPrefixes(rawName);
 }
 
 /**
