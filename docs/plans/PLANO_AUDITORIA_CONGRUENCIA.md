@@ -151,7 +151,7 @@ graph TD
 ---
 
 ### Fase 4: Orçamentos, Metas e Projeções Financeiras
-- [ ] **Tarefa 4.1:** Distinguir limite 0 explícito de ausência de limite no mês anterior em `src/domain/budgets/` (evitando herança indesejada quando o usuário intencionalmente zerou a categoria).
+- [x] **Tarefa 4.1:** Distinguir limite 0 explícito de ausência de limite no mês anterior em `src/domain/budgets/` (evitando herança indesejada quando o usuário intencionalmente zerou a categoria).
   - *Commit:* `fix(budgets): distinguish explicit zero limit from inherited budget limits`
 - [ ] **Tarefa 4.2:** Disponibilizar alternância clara na tela de Orçamentos (`budgets-page.tsx`) entre visualização por **Gasto Pessoal (Ponderado)** e **Gasto Total da Família/Casa (Bruto)**, exibindo tooltips informativos.
   - *Commit:* `feat(budgets): support dual metric view for personal vs total household budget spend`

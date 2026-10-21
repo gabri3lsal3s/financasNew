@@ -120,22 +120,106 @@ export function globalUsedPercent(expensesCents: number, totalLimitsCents: numbe
 // Herança de limite (§3.5.2) — fallback para exibição/alerta
 // ---------------------------------------------------------------------------
 
-/** Limite efetivo de um mês: definido, senão o mais recente ANTERIOR (nunca futuro). */
-export function resolveEffectiveLimit(
-  limits: readonly { month: string; limitCents: number }[],
-  month: string,
-): number {
-  const own = limits.find((l) => l.month === month);
-  if (own) return own.limitCents;
-  const previous = limits
-    .filter((l) => l.month < month)
-    .sort((a, b) => (a.month < b.month ? 1 : -1));
-  return previous[0]?.limitCents ?? 0;
+export type BudgetLimitType = "explicit" | "inherited" | "none";
+
+export interface ResolvedBudgetLimit {
+  limitCents: number;
+  type: BudgetLimitType;
+  /** Se o limite é zero explícito definido pelo usuário no próprio mês */
+  isExplicitZero: boolean;
+  /** Se o limite veio herdado de um mês anterior */
+  isInherited: boolean;
+  /** Se a categoria possui limite ativo (próprio ou herdado, inclusive limite 0) */
+  hasLimit: boolean;
 }
 
-/** Indica se o limite efetivo veio de herança (não definido no mês). */
-export function isInheritedLimit(limits: readonly { month: string }[], month: string): boolean {
-  return !limits.some((l) => l.month === month);
+/**
+ * Resolve detalhadamente a vigência e a origem do limite orçamentário.
+ * Diferencia explicitamente:
+ * 1. Limite explícito no mês atual (inclusive zero explícito `limitCents === 0`);
+ * 2. Ausência de limite no mês atual que herda o limite do mês anterior mais recente;
+ * 3. Ausência total de limites cadastrados (nem atual nem anterior).
+ */
+export function resolveBudgetLimitDetails(
+  limits: readonly { month: string; limitCents?: number | null }[],
+  month: string,
+): ResolvedBudgetLimit {
+  const own = limits.find((l) => l.month === month);
+  const hasOwnDefined = own !== undefined && own.limitCents !== null && own.limitCents !== undefined;
+
+  if (hasOwnDefined) {
+    const limitCents = own.limitCents ?? 0;
+    return {
+      limitCents,
+      type: "explicit",
+      isExplicitZero: limitCents === 0,
+      isInherited: false,
+      hasLimit: true,
+    };
+  }
+
+  const previous = limits
+    .filter((l) => l.month < month && l.limitCents !== null && l.limitCents !== undefined)
+    .sort((a, b) => (a.month < b.month ? 1 : -1));
+
+  const prevEntry = previous[0];
+  if (prevEntry !== undefined && prevEntry.limitCents !== null && prevEntry.limitCents !== undefined) {
+    const limitCents = prevEntry.limitCents;
+    return {
+      limitCents,
+      type: "inherited",
+      isExplicitZero: false,
+      isInherited: true,
+      hasLimit: true,
+    };
+  }
+
+  return {
+    limitCents: 0,
+    type: "none",
+    isExplicitZero: false,
+    isInherited: false,
+    hasLimit: false,
+  };
+}
+
+/** Limite efetivo de um mês: definido (inclusive 0 explícito), senão o mais recente ANTERIOR (nunca futuro). */
+export function resolveEffectiveLimit(
+  limits: readonly { month: string; limitCents?: number | null }[],
+  month: string,
+): number {
+  return resolveBudgetLimitDetails(limits, month).limitCents;
+}
+
+/**
+ * Indica se o limite efetivo veio de herança:
+ * Retorna true se e somente se o mês atual NÃO possui limite próprio definido
+ * E existe um limite anterior válido que foi herdado.
+ */
+export function isInheritedLimit(
+  limits: readonly { month: string; limitCents?: number | null }[],
+  month: string,
+): boolean {
+  const own = limits.find((l) => l.month === month);
+  const hasOwnDefined = own !== undefined && own.limitCents !== null && own.limitCents !== undefined;
+  if (hasOwnDefined) {
+    return false;
+  }
+  return limits.some(
+    (l) => l.month < month && l.limitCents !== null,
+  );
+}
+
+/**
+ * Verifica se a categoria possui um limite zero explícito definido no mês
+ * (intencionalmente zerada, em oposição a ausência de limite).
+ */
+export function isExplicitZeroLimit(
+  limits: readonly { month: string; limitCents?: number | null }[],
+  month: string,
+): boolean {
+  const own = limits.find((l) => l.month === month);
+  return own !== undefined && own.limitCents === 0;
 }
 
 // ---------------------------------------------------------------------------

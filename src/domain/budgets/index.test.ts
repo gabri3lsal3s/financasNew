@@ -5,10 +5,12 @@ import {
   exceededCents,
   globalUsedPercent,
   incomeGoalStatus,
+  isExplicitZeroLimit,
   isInheritedLimit,
   progressTone,
   realizedByCategoryMap,
   reallocationSuggestion,
+  resolveBudgetLimitDetails,
   resolveEffectiveLimit,
   spentByCategoryMap,
   spentGrossByCategoryMap,
@@ -114,6 +116,64 @@ describe("herança de limite (§3.5.2)", () => {
   it("isInheritedLimit marca herança", () => {
     expect(isInheritedLimit(limits, "2026-07")).toBe(true);
     expect(isInheritedLimit(limits, "2026-08")).toBe(false);
+  });
+
+  it("distingue zero explícito de ausência de limite no próprio mês", () => {
+    const limitsWithExplicitZero = [
+      { month: "2026-06", limitCents: 100000 },
+      { month: "2026-07", limitCents: 0 }, // Categoria deliberadamente zerada
+    ];
+
+    // No mês com zero explícito, não herda o valor de junho
+    expect(resolveEffectiveLimit(limitsWithExplicitZero, "2026-07")).toBe(0);
+    expect(isInheritedLimit(limitsWithExplicitZero, "2026-07")).toBe(false);
+    expect(isExplicitZeroLimit(limitsWithExplicitZero, "2026-07")).toBe(true);
+
+    const details = resolveBudgetLimitDetails(limitsWithExplicitZero, "2026-07");
+    expect(details).toEqual({
+      limitCents: 0,
+      type: "explicit",
+      isExplicitZero: true,
+      isInherited: false,
+      hasLimit: true,
+    });
+  });
+
+  it("não herda valor anterior obsoleto quando o mês imediatamente anterior foi zerado explicitamente", () => {
+    const history = [
+      { month: "2026-05", limitCents: 80000 },
+      { month: "2026-06", limitCents: 0 }, // Categoria intencionalmente zerada em junho
+    ];
+
+    // Julho não tem registro, herda o limite mais recente (junho: 0), não o de maio (80.000)
+    expect(resolveEffectiveLimit(history, "2026-07")).toBe(0);
+    expect(isInheritedLimit(history, "2026-07")).toBe(true);
+
+    const details = resolveBudgetLimitDetails(history, "2026-07");
+    expect(details.limitCents).toBe(0);
+    expect(details.isInherited).toBe(true);
+    expect(details.type).toBe("inherited");
+  });
+
+  it("herda do mês anterior válido quando o mês atual possui ausência explícita (null)", () => {
+    const historyWithNull = [
+      { month: "2026-06", limitCents: 100000 },
+      { month: "2026-07", limitCents: null },
+    ];
+
+    expect(resolveEffectiveLimit(historyWithNull, "2026-07")).toBe(100000);
+    expect(isInheritedLimit(historyWithNull, "2026-07")).toBe(true);
+  });
+
+  it("identifica corretamente ausência total de limites (type = none, isInherited = false)", () => {
+    expect(isInheritedLimit([], "2026-07")).toBe(false);
+    expect(resolveBudgetLimitDetails([], "2026-07")).toEqual({
+      limitCents: 0,
+      type: "none",
+      isExplicitZero: false,
+      isInherited: false,
+      hasLimit: false,
+    });
   });
 });
 
