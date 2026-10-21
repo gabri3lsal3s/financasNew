@@ -138,7 +138,7 @@ O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma
     │   ├── cards/                 #   saldo de fatura, status da fatura
     │   ├── budgets/               #   regras por categoria, status/limites
     │   ├── overview/              #   computeOverview (KPIs), percentChange, buildDailyFlow
-    │   ├── reports/               #   peso de relatório + detailed-close (fechamento detalhado)
+    │   ├── reports/               #   peso de relatório (weightedCents), detailed-close, Balanço Patrimonial 360° e DRE Pessoal
     │   ├── insights/              #   alertas, assinaturas, recorrências, confiança
     │   ├── savings/               #   F27: desafios de economia (média típica, corte discricionário)
     │   ├── reminders/             #   agregação de lembretes (conta/dívida) e preferências

@@ -1,7 +1,36 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-# 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
-
+> **v2.67** registra a **Conclusão Integral do Plano Mestre de Auditoria & Congruência Contábil, Regras de Negócio e Precisão Financeira** (Fases 0 a 6 do `PLANO_AUDITORIA_CONGRUENCIA.md`) (2026-10-21):
+> - **(1) Transações, Liquidez e Governança Estrita de Pesos / Rateio de Contas**:
+>   - Preservação exata de centavos inteiros via `weightedCents(baseCents, weight) = Math.round(baseCents * weight)` e `sumWeightedCents`, eliminando resíduos de ponto flutuante IEEE 754;
+>   - Parsing de competências ISO `YYYY-MM-DD` imune a fusos horários (`resolveBillCompetence`);
+>   - Badge visual de rateio no `TransactionRow` (`X% rateio` ou `0% reembolso`) com rotulagem explícita nos formulários de lançamento e edição;
+>   - Prevenção de duplicidade contábil em `mergePaidDebts` filtrando despesas vinculadas (`expense_id`).
+> - **(2) Cartões de Crédito, Faturas e Parcelamentos**:
+>   - Crédito transitório por excesso de pagamento de fatura (`carryoverCredit`) com transferência automática para abater a competência seguinte;
+>   - Invariante de conservação estrita de centavos em parcelamentos (`divideIntoInstallments`);
+>   - Valor do boleto e quitação bancária com base prioritária no saldo bruto nominal (100%), mantendo a métrica ponderada para fins analíticos;
+>   - Congruência entre estornos de fatura e receitas criadas na categoria reservada "Estorno".
+> - **(3) Dívidas, Financiamentos e Amortizações**:
+>   - Amortização extraordinária com desconto a valor presente CDC (`calculateEarlyAmortization`), prevenindo desconto indevido de mês cheio em parcelas do mesmo mês de amortização;
+>   - Zeramento exato do saldo devedor remanescente na parcela final $N$ nos sistemas Price e SAC;
+>   - Tolerância zero de juros de mora e multa no dia do vencimento.
+> - **(4) Orçamentos, Metas e Projeções**:
+>   - Distinção entre ausência de limite (herda do mês anterior) e limite zero explícito (`0,00`, trava sem herança);
+>   - Dupla métrica na UI de Orçamentos: alternância entre Gasto Pessoal (Ponderado) e Gasto Total da Casa (Bruto);
+>   - Alinhamento de desembolso futuro de faturas de cartão pela data de vencimento (`invoiceDueDate`) e não pela data de compra;
+>   - Arredondamento em múltiplos de R$ 10 na realocação automática de orçamentos.
+> - **(5) Investimentos, Custódia e Tributação**:
+>   - Normalização canônica de classes de ativos em vendas parciais (`sellAssetPosition`) via helpers puros;
+>   - Apuração de DARF mensal (`calculateMonthlyDarf`): isenção de R$ 20.000,00 restrita estritamente a ações comuns locais na B3, tributação de ativos USD pela Lei 14.754/2023 (15% anual sem isenção de 20k), ETFs (15%) e FIIs/FIAGRO (20%);
+>   - Yield on Cost (YoC) apurado na moeda nativa USD antes da conversão cambial consolidada;
+>   - Validação do motor de aporte nos 3 modos e integridade das cotas.
+> - **(6) Relatórios Executivos, DRE e Fechamento Consolidado**:
+>   - Substituição de cálculos flutuantes manuais em `reports-page.tsx` pela função canônica `weightedCents`;
+>   - Congruência patrimonial auditada: $\text{AtivosTotais} = \text{round2}(\text{Investimentos} + \text{Caixa} + \text{Recebíveis})$ e $\text{PassivosTotais} = \text{round2}(\text{DívidasPayable} + \text{FaturasCartão})$, garantindo $\text{PatrimônioLíquidoReal} = \text{round2}(\text{AtivosTotais} - \text{PassivosTotais})$;
+>   - Resiliência contra passivo a descoberto (Patrimônio Líquido Real negativo) e sanitização contra valores não-finitos (`NaN`, `Infinity`);
+>   - Suíte completa do Vitest verde (364 arquivos de teste).
+>
 > **v2.66** registra a **Conclusão Integral do Ciclo de Alta Concorrência, Escala (1k-10k DAU), Otimização de Banco de Dados e Blindagem de Segurança** (2026-10-20):
 > - **(1) Otimização de RLS Subplan Caching no PostgreSQL (`InitPlan`)**:
 >   - Eliminação de avaliações voláteis por linha em 100% das 34 tabelas do banco de dados, convertendo predicados `auth.uid() = user_id` em subqueries escalares `(select auth.uid()) = user_id` promovidas a nós `InitPlan` pelo planejador do Postgres (redução de até 90% na utilização de CPU);

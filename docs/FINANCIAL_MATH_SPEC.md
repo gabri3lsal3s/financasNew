@@ -38,11 +38,13 @@ $$\text{parcela}_i = \begin{cases} \text{base} + 1, & \text{se } i < \text{resto
 - Parcela 3: R$ 33,33 (3.333 centavos);
 - **Soma:** R$ 100,00 (10.000 centavos) — exatidão absoluta.
 
-### 2.2. Somatórios Ponderados (`totals.ts`)
+### 2.2. Somatórios Ponderados e Rateio de Contas (`weightedCents` / `totals.ts`)
 
-Para relatórios com ponderação de despesas (`report_weight` de 0 a 1):
-- Itens com peso unitário (1 ou nulo) utilizam conversão direta `numberToCents(item.value)`, evitando multiplicações por floats;
-- Itens ponderados utilizam arredondamento simétrico `numberToCents(item.value * weight)` com retorno cravado em inteiro.
+Para relatórios com ponderação de despesas e receitas (`report_weight` de 0 a 1):
+- A conversão de base inteira em centavos ocorre **antes** de qualquer multiplicação ponderada:
+  $$\text{weightedCents}(\text{baseCents}, \text{weight}) = \text{round}(\text{baseCents} \times \text{weight})$$
+- Itens com peso unitário (`weight === 1`) utilizam conversão direta sem multiplicação por floats;
+- **Regra de Ouro Contábil:** O valor Bruto Nominal (100%) é sempre a métrica financeira primária de caixa (extratos, boletos, faturas e dívidas); o valor ponderado é estritamente analítico para despesas pessoais e orçamento.
 
 ---
 
@@ -73,6 +75,23 @@ $$\text{se } \text{Qtd}_{\text{remanescente}} \le 0 \implies \text{Qtd} = 0, \qu
 
 - **Proventos (Dividendos, JCP, Rendimentos FII):** Acumulam em linha separada e **nunca alteram o custo total ou o preço médio da posição**.
 - **Desdobramentos (Splits):** Multiplicam a quantidade de cotas pelo fator $F > 0$, preservando estritamente o custo total:
+  $$\text{Qtd}_{\text{nova}} = \text{Qtd} \times F, \quad \text{PreçoMédio}_{\text{novo}} = \frac{\text{CustoTotal}}{\text{Qtd}_{\text{nova}}}$$
+
+### 3.4. Apuração de DARF Mensal e Isenções Fiscais (`tax.ts`)
+
+- **Isenção de R$ 20.000,00:** Restrita **estritamente a ações comuns locais negociadas na B3** (volume bruto de alienação no mês $\le \text{R\$}~20.000,00$).
+- **Ativos Internacionais em Dólar (Lei 14.754/2023):** Alíquota geral de 15% anual sobre o ganho de capital líquido em moeda nacional, **sem direito à isenção de R$ 20k da B3**.
+- **ETFs Nacionais e BDRs:** Alíquota de 15% sobre o ganho de capital líquido sem faixa de isenção.
+- **Fundos Imobiliários (FIIs) e FIAGRO:** Alíquota de 20% sobre o ganho de capital líquido sem faixa de isenção.
+- **Compensação de Prejuízos:** Prejuízos acumulados passados só compensam ganhos líquidos de ativos da mesma espécie tributária.
+
+### 3.5. Yield on Cost (YoC) em Moeda Nativa
+
+Para ativos denominados em moeda estrangeira (`currency: "USD"`), o Yield on Cost é calculado estritamente na moeda nativa antes da conversão cambial:
+
+$$\text{YoC}_{\text{USD}} = \left( \frac{\text{ProventosTotais}_{\text{USD}}}{\text{CustoTotal}_{\text{USD}}} \right) \times 100$$
+
+Isso impede que desvalorizações ou valorizações conjunturais da taxa PTAX (USD/BRL) distorçam a eficiência dos dividendos pagos pelas empresas investidas frente ao capital originalmente aportado.
   $$\text{Qtd}_{\text{nova}} = \text{Qtd} \times F, \quad \text{PreçoMédio}_{\text{novo}} = \frac{\text{CustoTotal}}{\text{Qtd}_{\text{nova}}}$$
 
 ---
@@ -121,11 +140,13 @@ O motor de sugestão de aportes distribui a verba nova informada sem gerar orden
 
 ## 6. FATURAS, CARTÕES E DÍVIDAS (`src/domain/cards/` e `src/domain/debts/`)
 
-### 6.1. Competência e Saldo de Fatura
+### 6.1. Competência e Saldo de Fatura com Créditos Acumulados
 
-- O saldo aberto é determinado por:
-  $$\text{SaldoAbertoCents} = \max(0, \text{PrevistoCents} - \text{PagoCents} - \text{EstornoCents})$$
-- Pagamentos superiores ao previsto e estornos acumulados nunca geram saldo negativo.
+- O saldo aberto por competência considera pagamentos, estornos e créditos remanescentes do mês anterior:
+  $$\text{SaldoAbertoCents} = \max(0, \text{PrevistoCents} - \text{PagoCents} - \text{EstornoCents} - \text{CréditoAnteriorCents})$$
+- **Crédito Transferível de Fatura (`carryoverCredit`):** Pagamentos superiores ao saldo previsto geram crédito acumulado transferível para a competência seguinte:
+  $$\text{NovoCréditoCents} = \max(0, \text{PagoCents} + \text{EstornoCents} + \text{CréditoAnteriorCents} - \text{PrevistoCents})$$
+- Pagamentos e estornos nunca geram saldo aberto negativo em qualquer competência.
 
 ### 6.2. Juros de Mora e Multa Contratual
 
@@ -136,6 +157,14 @@ Para dívidas em atraso com $D$ dias corridos decorridos após o vencimento:
   $$\text{JurosCents} = \text{round}\left( \text{PrincipalCents} \times \frac{\text{TaxaMensal}}{30 \times 100} \times D \right)$$
 - Quitação total:
   $$\text{TotalQuitaçãoCents} = \max(0, \text{PrincipalCents} + \text{MultaCents} + \text{JurosCents} - \text{DescontoCents})$$
+- **Tolerância Zero no Dia do Vencimento:** Quando $\text{DataPagamento} \le \text{DataVencimento}$, juros e multa são estritamente nulos ($D = 0$).
+
+### 6.3. Amortização Extraordinária e Sistemas SAC/Price (`loans/`)
+
+- **Amortização com Desconto a Valor Presente (CDC art. 52 § 2º):** O desconto proporcional de juros futuros aplica-se estritamente às parcelas vincendas ($monthsAhead \ge 1$):
+  $$\text{ValorPresente} = \frac{\text{ValorNominalParcela}}{(1 + i)^{monthsAhead}}$$
+  Parcelas com vencimento no mesmo mês de referência da amortização ($monthsAhead = 0$) não recebem desconto indevido de mês cheio.
+- **Zeramento Exato na Parcela Final $N$:** As tabelas SAC e Price garantem que o saldo devedor remanescente na última parcela seja rigorosamente cravado em zero, absorvendo resíduos de dízimas na amortização final.
 
 ---
 
@@ -143,9 +172,20 @@ Para dívidas em atraso com $D$ dias corridos decorridos após o vencimento:
 
 O fechamento de balanço e demonstração de resultados aplica a sanitização determinística `round2` em todas as métricas:
 
-$$\text{AtivosTotais} = \text{round2}(\text{Investimentos} + \text{Caixa} + \text{ContasAReceber})$$
-$$\text{PatrimônioLíquido} = \text{round2}(\text{AtivosTotais} - \text{PassivosTotais})$$
+### 7.1. Ativos Totais e Segregação de Passivos
+
+$$\text{AtivosTotais} = \text{round2}(\text{InvestimentosCustódia} + \text{CaixaLiquidez} + \text{ContasAReceber})$$
+$$\text{PassivosTotais} = \text{round2}(\text{DívidasPayable} + \text{FaturasCartãoAberto})$$
+$$\text{PatrimônioLíquidoReal} = \text{round2}(\text{AtivosTotais} - \text{PassivosTotais})$$
+$$\text{GrauAlavancagemPct} = \text{round2}\left( \frac{\text{PassivosTotais}}{\text{AtivosTotais}} \times 100 \right)$$
+
+- **Passivo a Descoberto:** Quando $\text{PassivosTotais} > \text{AtivosTotais}$, o Patrimônio Líquido assume valor negativo e a alavancagem supera 100% de forma matematicamente congruente, sem mascaramentos.
+- **Proteção Numérica:** Valores não-finitos (`NaN`, `Infinity`, números negativos acidentais) são normalizados com segurança (`Math.max(0, ...)` e `Number.isFinite`), blindando os relatórios contra corrupção matemática.
+
+### 7.2. Demonstração do Resultado Pessoal (DRE)
+
 $$\text{PoupançaOperacional} = \text{round2}(\text{ReceitaBruta} - \text{DespesasOperacionais})$$
-$$\text{TaxaPoupança} = \text{round2}\left( \frac{\text{PoupançaOperacional}}{\text{ReceitaBruta}} \times 100 \right)$$
+$$\text{TaxaPoupançaPct} = \text{round2}\left( \frac{\text{PoupançaOperacional}}{\text{ReceitaBruta}} \times 100 \right)$$
+$$\text{VariaçãoFinalCaixa} = \text{round2}(\text{PoupançaOperacional} - \text{AportesInvestimentos})$$
 
 **Neutralidade Contábil:** Transferências entre contas correntes do próprio usuário e pagamentos de fatura de cartão de crédito não são contabilizados como novas despesas na DRE operacional (o gasto no cartão já foi registrado na competência de compra), impedindo duplicação no fluxo de caixa.

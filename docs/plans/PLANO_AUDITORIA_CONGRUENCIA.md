@@ -177,10 +177,10 @@ graph TD
 ---
 
 ### Fase 6: Relatórios Executivos, DRE e Fechamento Consolidado
-- [ ] **Tarefa 6.1:** Substituir cálculos manuais flutuantes em `reports-page.tsx` (linhas 617-622) pela função canônica `weightedCents` de `src/domain/reports`.
+- [x] **Tarefa 6.1:** Substituir cálculos manuais flutuantes em `reports-page.tsx` (linhas 617-622) pela função canônica `weightedCents` de `src/domain/reports`.
   - *Commit:* `fix(reports): use weightedCents in reports-page to avoid floating-point drift`
-- [ ] **Tarefa 6.2:** Auditar fórmulas patrimoniais de DRE e Balanço Consolidado em `domain/reports/`, garantindo congruência entre Ativo Total (Investimentos a Mercado + Caixa) e Passivo Total (Dívidas + Faturas).
+- [x] **Tarefa 6.2:** Auditar fórmulas patrimoniais de DRE e Balanço Consolidado em `domain/reports/`, garantindo congruência entre Ativo Total (Investimentos a Mercado + Caixa) e Passivo Total (Dívidas + Faturas).
   - *Commit:* `test(reports): verify balance sheet net worth formula across all liability classes`
-- [ ] **Tarefa 6.3:** Sincronizar e atualizar a documentação oficial em `docs/` e `ESPECIFICACAO_TECNICA.md` com as regras e convenções auditadas.
+- [x] **Tarefa 6.3:** Sincronizar e atualizar a documentação oficial em `docs/` e `ESPECIFICACAO_TECNICA.md` com as regras e convenções auditadas.
   - *Commit:* `docs: update ESPECIFICACAO_TECNICA and audit documentation`
-- 🏁 **Quality Gate 6 (Final):** Suíte completa do Vitest verde (364 arquivos), TypeScript sem erros (`tsc --noEmit`), ESLint limpo (`npm run lint`); git push final.
+- 🏁 **Quality Gate 6 (Final):** Suíte completa do Vitest verde (375 arquivos, 3102 testes), TypeScript sem erros (`tsc -b`), ESLint limpo (`npm run lint`); git push final. (Concluído)

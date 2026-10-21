@@ -204,9 +204,11 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 #### 3.2.6 Valor Real vs. Valor no Relatório (Rateio e Ponderação)
 
 - **Entrada no lançamento:** opções rápidas em porcentagem (100%, 75%, 50%, 25%, 0%) e opção **"Personalizado"** com entrada direta do **valor gasto real em reais (R$)** considerado no relatório. O sistema converte e persiste a fração normalizada (0–1).
-- **Listas e Linhas de Transação:** quando uma despesa/receita possui `report_weight < 1`, o componente `TransactionRow` exibe o valor real/nominal em destaque com a indicação secundária `Relat.: R$ X,XX`.
+- **Cálculo de Centavos Inteiros com Ponderação (`weightedCents`):** a apuração do valor ponderado opera estritamente na base inteira em centavos antes de qualquer agregação (`weightedCents(baseCents, weight) = Math.round(baseCents * weight)`), prevenindo resíduos e dízimas de ponto flutuante IEEE 754.
+- **Regra de Ouro Contábil:** o valor **Bruto Nominal (100%)** é sempre a métrica primária em todas as obrigações financeiras (Extratos, Boletos de Fatura, Liquidação de Dívidas). O valor ponderado é métrica de consulta analítica.
+- **Listas e Linhas de Transação:** quando uma despesa/receita possui `report_weight < 1`, o componente `TransactionRow` exibe o valor real/nominal em destaque com badge visual claro de rateio (ex.: `50% rateio` ou `0% reembolso`) e tooltip explicativo da diferença entre valor total e participação pessoal.
 - **KPIs da tela de Transações:** os cards de topo (`Receitas`, `Despesas`, `Saldo do mês`) exibem o valor nominal/bruto total em destaque e, quando houver transações rateadas, exibem o hint secundário `Sua cota: R$ X,XX`.
-- **Detalhamento e Edição (`ExpenseDetailDialog`):** exibe o valor nominal e o valor no relatório correspondente tanto no cabeçalho quanto na lista de metadados, e permite editar o peso e o valor considerado no relatório.
+- **Detalhamento e Edição (`ExpenseDetailDialog`):** exibe o valor nominal e o valor no relatório correspondente tanto no cabeçalho quanto na lista de metadados, e permite editar o peso e o valor considerado no relatório com rotulagem clara: *"Sua Participação / Rateio"*.
 - **Cartões e Relatórios:** totalização e gráficos segregam e exibem simultaneamente os valores nominais brutos e os valores ponderados.
 
 #### 3.2.7 Operações em grupo (parcelas e recorrências — Fase 32)
@@ -244,7 +246,8 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 - **Estorno gera renda automática** (RPC `create_refund`, D1): cria receita na categoria reservada **"Estorno"**, vinculada por nota `[REFUND]{id da renda}` — somente-leitura (§3.1); valor no relatório limitado a 0–valor do estorno.
 - Pagamento de fatura: CRUD com competência; total pago abate o previsto.
 - **Seleção do mês de fatura:** mês atual se tiver pendências; senão varre **para trás** (até APP_START_DATE) pelo mês mais recente com pendências; se nenhum, tenta o mês seguinte; por fim, mês atual. Deep-links (`?card=` / `?month=`) sobrepõem.
-- **Saldo aberto** = `max(0, previsto − pago − estorno)` (por competência; pagamentos e estornos abatem a obrigação da fatura; pagamentos ou créditos a maior nunca geram saldo negativo), exibido com saldo bruto e saldo ponderado.
+- **Saldo aberto e créditos acumulados:** `saldoAberto = max(0, previsto − pago − estorno − creditoAnterior)`. Pagamentos a maior (`pago > previsto`) geram **crédito transferível (`carryoverCredit`)** que abate automaticamente o saldo aberto da fatura da competência imediatamente posterior. Pagamentos ou créditos nunca geram saldo negativo.
+- **Conservação estrita de centavos em parcelamentos (`divideIntoInstallments`):** compras parceladas dividem o valor total em centavos inteiros com resto distribuído nas parcelas iniciais, garantindo a invariante $\sum \text{parcelas} = \text{total original}$.
 - **Lembrete de fatura:** alerta com saldo aberto, `overdue` (vencida) ou `near_due` (janela configurável, default 3 dias antes do vencimento).
 
 ### 3.4 Dívidas / Contas a Pagar e Receber
@@ -256,6 +259,8 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 - **Recebimento integrado** (RPC `settle_integrated_receivable`): recebível vinculado a despesa reduz **automaticamente o valor da despesa no relatório** (resultado editável pelo usuário).
 - **Ordenação:** `due_date` ascendente.
 - **Encargos por atraso (multa e mora CDC):** tolerância zero de encargos no dia do vencimento (`paymentDate === dueDate`); após o vencimento, multa padrão de 2% (CDC art. 52 § 1º) e juros de mora de 1% ao mês pro rata die (Código Civil art. 406 / CTN art. 161 § 1º), com suporte a overrides manuais e desconto concedido em centavos inteiros.
+- **Amortização extraordinária com desconto a valor presente CDC (`calculateEarlyAmortization`):** desconto proporcional de juros futuros para parcelas vincendas ($monthsAhead \ge 1$). Parcelas com vencimento no mês corrente da amortização ($monthsAhead = 0$) não recebem desconto integral de mês cheio indevido.
+- **Zeramento exato de amortizações SAC e Price:** simulações de financiamentos garantem zeramento exato do saldo devedor remanescente na última parcela ($N$), eliminando resíduos de arredondamento.
 - **Efeitos em totais:** dívidas **pagas** entram nos totais do período (recebíveis → rendas; pagáveis → despesas) pelo **mês do vencimento**; **pendentes** alimentam a projeção de pendências (§3.9); totais de Contas consideram apenas pendentes com vencimento no mês selecionado.
 - **Exclusão vinculada:** herda os modos `single | all | subsequent` do grupo de parcelas (via RPC de exclusão, D1).
 - **Lembrete:** janela configurável (dias antes) + `overdue`.
@@ -271,7 +276,8 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 #### 3.5.2 Orçamentos (despesas)
 
 - **Limite mensal por categoria:** valor por `(categoria, mês)`, upsert; limpar o campo remove o limite.
-- **Herança de limite:** sem limite no mês atual, herda o do mês anterior (fallback de exibição/alerta).
+- **Herança de limite vs. Limite zero explícito:** sem limite cadastrado no mês atual, herda o do mês anterior (fallback de exibição/alerta). Caso o usuário cadastre explicitamente `0,00`, o sistema trava o teto da categoria em zero e não herda valores anteriores.
+- **Dupla métrica de visualização:** alternância direta na UI entre **Gasto Pessoal (Ponderado)** e **Gasto Total da Família/Casa (Bruto)** com tooltips informativos do percentual de consumo.
 - **Faixas de atenção:** ≥ 85% → Atenção; ≥ 90% → Alta; ≥ 95% → Crítica; > 100% → **Excedida** (alerta com valor excedido).
 - **KPIs:** total de limites do mês, % global usado (`min(100, despesas ÷ (totalLimites || rendas))`), cor de progresso (≥85% vermelho, ≥70% amarelo, senão verde).
 - **Sugestão de limite** por % da renda (regra de nome: moradia ≤ 30%, alimentação ≤ 15%, transporte ≤ 10%…).
@@ -285,6 +291,12 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 ### 3.6 Visão Consolidada (Dia / Mês / Ano)
 
 - **Hierarquia de Apresentação em Relatórios:** em todas as visões, dossiês e tabelas onde métricas ponderadas forem relevantes, o valor principal e de maior destaque visual é **sempre o valor bruto nominal (100%)**, enquanto o valor ponderado é apresentado como **dado de consulta analítica** (coluna ou sub-linha dedicada), garantindo transparência contábil de face e comparabilidade de dados.
+- **Balanço Patrimonial 360° e Congruência Patrimonial:**
+  - $\text{AtivosTotais} = \text{round2}(\text{Investimentos em Custódia} + \text{Caixa/Liquidez} + \text{Contas a Receber})$;
+  - $\text{PassivosTotais} = \text{round2}(\text{Dívidas e Empréstimos a Pagar} + \text{Faturas de Cartão em Aberto})$;
+  - $\text{PatrimônioLíquidoReal} = \text{round2}(\text{AtivosTotais} - \text{PassivosTotais})$, admitindo passivo a descoberto (saldo patrimonial líquido negativo) sem distorções;
+  - $\text{Grau de Alavancagem} = \text{round2}\left( \frac{\text{PassivosTotais}}{\text{AtivosTotais}} \times 100 \right)$;
+  - **DRE Pessoal Integrada:** $\text{Poupança Operacional} = \text{Receita Bruta} - \text{Despesas Operacionais}$; $\text{Variação Final de Caixa} = \text{Poupança Operacional} - \text{Aportes Realizados}$.
 - **KPIs fundamentais** (com peso de relatório para consulta analítica): `totalRendas`, `totalDespesas`, `totalInvestimentos` (aportes líquidos do mês), `saldo`, `savingsRate = saldo ÷ rendas`.
 - `saldo = rendas − despesas − investimentos`.
 - **Saldo líquido de Contas** = total a receber (pendentes do mês) − total a pagar (pendentes do mês) − total de faturas em aberto.
@@ -421,6 +433,12 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
   - Deduplicação inteligente (`deduplicateStatementRows`): na importação incremental, preserva meses já cadastrados e adiciona somente marcos inéditos.
 - **Aportes Mensais (`portfolio_contributions`):** registros independentes de aportes financeiros integrados aos fluxos de caixa da Overview e dos Insights (sempre em BRL).
 - **Proventos (`portfolio_dividends`):** lançamentos desacoplados para extrato mensal e calendário anual, integrados ao Retorno Total e YoC (convertidos para BRL no consolidado quando o ativo for USD).
+- **Yield on Cost (YoC) em Moeda Nativa USD:** para ativos internacionais em USD, o percentual de YoC é apurado na moeda nativa ($\text{YoC} = (\text{Proventos USD} / \text{Custo Total USD}) \times 100$) antes da conversão cambial consolidada, prevenindo distorções provocadas por oscilações na taxa de câmbio PTAX/USD-BRL entre as datas de aporte e recebimento de proventos.
+- **Normalização de Classes em Desinvestimento (`sellAssetPosition`):** o processamento de ordens de venda utiliza `normalizeClassName` e funções auxiliares canônicas (`isStockClass`, `isFiiClass`, `isFixedIncomeClass`), garantindo que sinônimos de classes (ex.: "Ações", "Ações Nacionais", "FII") sigam regras homogêneas de custódia e tributação.
+- **Apuração de DARF Mensal e Isenções Fiscais (`calculateMonthlyDarf`):**
+  - A isenção de R$ 20.000,00 de alienação no mês é restrita **estritamente a ações comuns locais negociadas na B3**.
+  - Ativos internacionais em USD (ações globais, REITs, ETFs) são tributados conforme a **Lei 14.754/2023** (alíquota geral de 15% anual sem isenção de R$ 20k da B3).
+  - ETFs nacionais e BDRs: alíquota de 15% sobre ganho líquido sem isenção de R$ 20k; Fundos Imobiliários (FIIs) e FIAGRO: alíquota de 20% sem faixa de isenção.
 - **Preço Médio Ponderado em Novos Lotes (`calculateWeightedAveragePrice`):**
   - $\text{Novo PM} = \frac{(\text{Qtd Atual} \times \text{PM Atual}) + (\text{Qtd Nova} \times \text{Preço Novo})}{\text{Qtd Atual} + \text{Qtd Nova}}$
 - **Tratamento de Multi-Moeda (Ativos USD vs BRL):**
