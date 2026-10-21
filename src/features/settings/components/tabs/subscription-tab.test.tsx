@@ -88,7 +88,6 @@ describe("SubscriptionTab", () => {
 
     // Card de licença modular DEVE aparecer
     expect(screen.getByRole("heading", { name: /Licença Modular Personalizada/i })).toBeInTheDocument();
-    expect(screen.getByText("Whitelist Ativa")).toBeInTheDocument();
 
     // Verifica badges dos módulos concedidos e bloqueados
     expect(screen.getByText("Investimentos & Carteira")).toBeInTheDocument();

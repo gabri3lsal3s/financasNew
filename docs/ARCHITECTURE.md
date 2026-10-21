@@ -241,7 +241,7 @@ O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma
 
 ### 5.3 Estado de UI, autenticação e ciclo de vida de cache
 
-- **Sessão:** contexto do Supabase Auth (AuthProvider / `useAuth`).
+- **Sessão & Singleton de Autenticação (`useAuth`):** gerenciado por um padrão Singleton reativo em memória (`globalSession`, `globalUser`, `globalLoading`) sincronizado via `supabase.auth.onAuthStateChange` e broadcast reativo para todos os componentes inscritos. A persistência de `activeUserId` em `localStorage` é blindada contra limpezas no cold reload, ocorrendo wipe apenas quando o carregamento é concluído com sessão confirmadamente nula (`!loading && !session`).
 - **Ciclo de Vida Autenticado de Queries & Blindagem de Cold Start (`useUserAccess` & `useUserSubscription`):**
   - **Chaves de query parametrizadas por `userId`:** todas as consultas de perfil, features e assinatura utilizam chaves com namespace de usuário (`userAccessQueryKey(userId) = ["user_access", userId]`, `userFeaturesQueryKey(userId) = ["user_features", userId]` e `userSubscriptionQueryKey(userId) = ["user_subscription", userId]`). Isso impede vazamento e retenção indevida de dados entre sessões distintas no TanStack Query.
   - **Guarda `enabled: Boolean(userId)`:** requisições a `getMyProfile`, `getMyFeatures` e `getMySubscription` permanecem suspensas até que a sessão ativa seja confirmada (via `supabase.auth.getSession()` ou `subscribeActiveUserId`), eliminando chamadas prematuras anônimas com `auth.uid() = NULL` no instante zero do boot.

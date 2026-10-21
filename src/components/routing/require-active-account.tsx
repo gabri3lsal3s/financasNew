@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from "react-router";
 import { LoadingScreen } from "@/components/layout";
+import { useAuth } from "@/hooks/use-auth";
 import { useUserAccess } from "@/state";
 
 /**
@@ -8,9 +9,10 @@ import { useUserAccess } from "@/state";
  * contas 'suspended' ou 'banned' para a tela de bloqueio.
  */
 export function RequireActiveAccount() {
-  const { isPendingApproval, isSuspended, isBanned, isLoading } = useUserAccess();
+  const { session, loading: authLoading } = useAuth();
+  const { isPendingApproval, isSuspended, isBanned, isLoading } = useUserAccess(session?.user?.id);
 
-  if (isLoading) {
+  if (authLoading || isLoading || !session?.user) {
     return <LoadingScreen />;
   }
 

@@ -15,10 +15,10 @@ export interface RequireFeatureProps {
  * Se desabilitada, redireciona de forma inteligente para a primeira rota permitida.
  */
 export function RequireFeature({ featureKey, redirectTo }: RequireFeatureProps) {
-  const { session } = useAuth();
+  const { session, loading: authLoading } = useAuth();
   const { hasFeature, isAdmin, isLoading } = useUserAccess(session?.user?.id);
 
-  if (isLoading) {
+  if (authLoading || isLoading || !session?.user) {
     return <LoadingScreen />;
   }
 

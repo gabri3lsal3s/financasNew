@@ -1,5 +1,15 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.70** registra a **Arquitetura Singleton de Autenticação (`useAuth`) & Blindagem contra Redirecionamento Indevido no Recarregamento de Página (F5)** (2026-10-21):
+> - **(1) Singleton de Autenticação em Memória (`use-auth.ts`)**:
+>   - Eliminação da fragmentação de instâncias de `useAuth`: sessões e usuários agora compartilham um estado reativo único em memória (`globalSession`, `globalUser`, `globalLoading`) sincronizado via `onAuthStateChange` e broadcast para todos os inscritos;
+>   - Imunização contra wipe acidental do `localStorage`: `setActiveUserId(null)` e a limpeza de `financas_active_user_id` só ocorrem se `loading === false` e `session === null`, impedindo que o estado transitório de inicialização do Supabase Auth apague o identificador do usuário ativo durante o reload da página;
+> - **(2) Blindagem de Guards de Rota (`RequireFeature.tsx` & `RequireActiveAccount.tsx`)**:
+>   - Bloqueio estrito de reavaliação de rotas e redirecionamento prematuro: enquanto a autenticação estiver carregando (`authLoading || isLoading || !session?.user`), os guards renderizam o `LoadingScreen` ao invés de acionar `<Navigate to={resolveLandingPath(...)} />`;
+>   - Prevenção do falso fail-closed em que permissões modulares eram avaliadas como `false` durante o cold reload antes da resolução da sessão.
+> - **(3) Conformidade Estrita de Testes e Tipos**:
+>   - 100% dos testes unitários e de integração verdes em `require-feature.test.tsx`, `require-active-account.test.tsx`, `use-user-access.test.tsx`, `login-page.test.tsx` e `bank-parser.test.ts`.
+>
 > **v2.69** registra a **Blindagem Definitiva de Roteamento Pós-Login & Correção de Assinatura Volátil no Supabase** (2026-10-21):
 > - **(1) Sanitização Estrita do Destino Pós-Login (`login-page.tsx` e `router.tsx`)**:
 >   - Eliminação da retenção de `/configuracoes` pós-login: `from` agora sanitiza e descarta rotas que apontem para configurações (`/configuracoes*`), menu "Mais" (`/mais`) ou telas de autenticação (`/entrar`, `/cadastro`), direcionando sempre para a Home (`/`) ou o primeiro módulo disponível;

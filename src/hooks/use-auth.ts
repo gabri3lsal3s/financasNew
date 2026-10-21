@@ -35,115 +35,138 @@ export interface AuthState {
 }
 
 
-type AuthInit = { supabase: ReturnType<typeof getSupabase> } | { configError: string };
-
 export function resetEnsuredProfiles(): void {
   ensuredProfiles.clear();
 }
 
+let globalSession: Session | null = null;
+let globalUser: User | null = null;
+let globalLoading = true;
+let globalConfigError: string | null = null;
+let isGlobalAuthInitialized = false;
+const authSubscribers = new Set<(state: AuthStateSnapshot) => void>();
+
+interface AuthStateSnapshot {
+  session: Session | null;
+  user: User | null;
+  loading: boolean;
+  configError: string | null;
+}
+
+function updateGlobalAuthState(partial: Partial<AuthStateSnapshot>): void {
+  if (partial.session !== undefined) globalSession = partial.session;
+  if (partial.user !== undefined) globalUser = partial.user;
+  if (partial.loading !== undefined) globalLoading = partial.loading;
+  if (partial.configError !== undefined) globalConfigError = partial.configError;
+
+  const current: AuthStateSnapshot = {
+    session: globalSession,
+    user: globalUser,
+    loading: globalLoading,
+    configError: globalConfigError,
+  };
+
+  authSubscribers.forEach((subscriber) => subscriber(current));
+}
+
 /**
  * Sessão do usuário — fonte única para guards de rota e telas de auth.
- * O cliente é inicializado de forma lazy (env validado fora do effect);
- * a assinatura `onAuthStateChange` acontece uma única vez (Online First).
+ * Opera como singleton reativo compartilhado em memória para que todos os
+ * componentes montados na árvore acessem a sessão ativa imediatamente.
  */
 export function useAuth(): AuthState {
-  const [init] = useState<AuthInit>(() => {
+  const [snapshot, setSnapshot] = useState<AuthStateSnapshot>(() => {
+    let configError: string | null = null;
     try {
-      return { supabase: getSupabase() };
+      getSupabase();
     } catch (err) {
-      return { configError: getErrorMessage(err) };
+      configError = getErrorMessage(err);
+      globalConfigError = configError;
+      globalLoading = false;
     }
+
+    return {
+      session: globalSession,
+      user: globalUser,
+      loading: configError ? false : globalLoading,
+      configError: configError ?? globalConfigError,
+    };
   });
 
-  const [state, setState] = useState<AuthState>(() =>
-    "supabase" in init
-      ? {
-          session: null,
-          user: null,
-          loading: true,
-          configError: null,
-          signIn: signInWithEmail,
-          signUp: signUpWithEmail,
-          resetPassword: resetPasswordForEmail,
-        }
-      : {
-          session: null,
-          user: null,
-          loading: false,
-          configError: init.configError,
-          signIn: signInWithEmail,
-          signUp: signUpWithEmail,
-          resetPassword: resetPasswordForEmail,
-        },
-  );
-
-
-  // Correlaciona erros ao usuário no Sentry (no-op sem DSN) — F6.3 e sincroniza storage.
   useEffect(() => {
-    const uid = state.user?.id ?? null;
-    setActiveUserId(uid);
-    void setObservabilityUser(state.user ? { id: state.user.id, email: state.user.email } : null);
-  }, [state.user]);
+    authSubscribers.add(setSnapshot);
+    return () => {
+      authSubscribers.delete(setSnapshot);
+    };
+  }, []);
 
-  // Auto-cura do perfil (F11): conta órfã sem linha em `profiles` faz TODAS
-  // as escritas falharem na FK user_id → profiles ("Dados inválidos").
-  // Disparo único por usuário, assíncrono e sem estado de UI.
+  // Inicialização única da sessão do Supabase Auth
   useEffect(() => {
-    const user = state.user;
+    let supabase: ReturnType<typeof getSupabase>;
+    try {
+      supabase = getSupabase();
+    } catch (err) {
+      updateGlobalAuthState({ configError: getErrorMessage(err), loading: false });
+      return;
+    }
+
+    if (isGlobalAuthInitialized) return;
+    isGlobalAuthInitialized = true;
+
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        const session = data?.session ?? null;
+        const user = session?.user ?? null;
+        const uid = user?.id ?? null;
+        if (uid) setActiveUserId(uid);
+        updateGlobalAuthState({ session, user, loading: false, configError: null });
+      })
+      .catch((err) => {
+        updateGlobalAuthState({ session: null, user: null, loading: false, configError: getErrorMessage(err) });
+      });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user ?? null;
+      const uid = user?.id ?? null;
+      if (uid) {
+        setActiveUserId(uid);
+      } else {
+        setActiveUserId(null);
+      }
+      updateGlobalAuthState({ session, user, loading: false, configError: null });
+    });
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+      isGlobalAuthInitialized = false;
+    };
+  }, []);
+
+  // Sincroniza observabilidade apenas após a resolução da autenticação (F6.3)
+  useEffect(() => {
+    if (snapshot.loading) return;
+    const uid = snapshot.user?.id ?? null;
+    if (uid) {
+      setActiveUserId(uid);
+    }
+    void setObservabilityUser(snapshot.user ? { id: snapshot.user.id, email: snapshot.user.email } : null);
+  }, [snapshot.user, snapshot.loading]);
+
+  // Auto-cura do perfil (F11): conta órfã sem linha em `profiles`
+  useEffect(() => {
+    const user = snapshot.user;
     if (!user || ensuredProfiles.has(user.id)) return;
     ensuredProfiles.add(user.id);
     void ensureOwnProfile(user.id, user.email, user.user_metadata?.name).catch((err) => {
       void reportError(err, { source: "ensureOwnProfile" });
     });
-  }, [state.user]);
+  }, [snapshot.user]);
 
-  useEffect(() => {
-    if (!("supabase" in init)) return;
-    let active = true;
-
-    void init.supabase.auth
-      .getSession()
-      .then(({ data }) => {
-        if (!active) return;
-        const uid = data.session?.user?.id ?? null;
-        setActiveUserId(uid);
-        setState((prev) => ({
-          ...prev,
-          session: data.session,
-          user: data.session?.user ?? null,
-          loading: false,
-          configError: null,
-        }));
-      })
-      .catch((err) => {
-        if (!active) return;
-        setState((prev) => ({
-          ...prev,
-          session: null,
-          user: null,
-          loading: false,
-          configError: getErrorMessage(err),
-        }));
-      });
-
-    const { data: subscription } = init.supabase.auth.onAuthStateChange((_event, session) => {
-      if (!active) return;
-      const uid = session?.user?.id ?? null;
-      setActiveUserId(uid);
-      setState((prev) => ({
-        ...prev,
-        session,
-        user: session?.user ?? null,
-        loading: false,
-        configError: null,
-      }));
-    });
-
-    return () => {
-      active = false;
-      subscription.subscription.unsubscribe();
-    };
-  }, [init]);
-
-  return state;
+  return {
+    ...snapshot,
+    signIn: signInWithEmail,
+    signUp: signUpWithEmail,
+    resetPassword: resetPasswordForEmail,
+  };
 }

@@ -66,15 +66,10 @@ function ModularLicenseCard({ moduleAccess }: ModularLicenseCardProps) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <CardTitle className="text-base flex items-center gap-2">
-            <ShieldCheck className="size-4 text-portfolio" aria-hidden="true" />
-            <span>Licença Modular Personalizada</span>
-          </CardTitle>
-          <Badge variant="portfolio" size="xs">
-            Whitelist Ativa
-          </Badge>
-        </div>
+        <CardTitle className="text-base flex items-center gap-2">
+          <ShieldCheck className="size-4 text-portfolio" aria-hidden="true" />
+          <span>Licença Modular Personalizada</span>
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground leading-relaxed">

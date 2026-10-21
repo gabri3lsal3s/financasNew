@@ -17,6 +17,148 @@ import {
 const STORAGE_KEY = "pending_suggestions";
 const MAX_SUGGESTIONS = 20;
 
+/** Janela temporal de 10 minutos (600.000 ms) para deduplicação cruzada entre comprovantes compartilhados e notificações push atrasadas. */
+export const RECEIPT_DEDUPLICATION_WINDOW_MS = 10 * 60 * 1000;
+
+export interface ReceiptDeduplicationRecord {
+  amountCents: number;
+  date: string;
+  merchant?: string;
+  taxId?: string;
+  txId?: string;
+  timestamp: number;
+  rawText?: string;
+  transaction?: ParsedBankTransaction;
+}
+
+let recentReceipts: ReceiptDeduplicationRecord[] = [];
+
+export function clearRecentReceipts(): void {
+  recentReceipts = [];
+}
+
+export function getRecentReceipts(): ReceiptDeduplicationRecord[] {
+  return [...recentReceipts];
+}
+
+function purgeRecentReceipts(now = Date.now()): void {
+  recentReceipts = recentReceipts.filter(
+    (r) => Math.abs(now - r.timestamp) <= RECEIPT_DEDUPLICATION_WINDOW_MS,
+  );
+}
+
+export function registerReceiptDeduplication(receipt: ParsedBankTransaction): void {
+  purgeRecentReceipts();
+  const timestamp = receipt.timestamp || Date.now();
+  const alreadyRegistered = recentReceipts.some(
+    (r) =>
+      r.amountCents === receipt.amountCents &&
+      Math.abs(r.timestamp - timestamp) <= RECEIPT_DEDUPLICATION_WINDOW_MS &&
+      (r.txId === receipt.txId || r.merchant === (receipt.merchant || receipt.description)),
+  );
+  if (alreadyRegistered) return;
+
+  recentReceipts.push({
+    amountCents: receipt.amountCents,
+    date: receipt.date,
+    merchant: receipt.merchant || receipt.description,
+    taxId: receipt.taxId,
+    txId: receipt.txId,
+    timestamp,
+    rawText: receipt.rawText,
+    transaction: receipt,
+  });
+}
+
+/**
+ * Avalia se uma notificação push colide com um comprovante já registrado dentro da janela de 10 minutos.
+ */
+export function isPushDuplicateOfReceipt(
+  push: ParsedBankTransaction,
+  now = Date.now(),
+): boolean {
+  purgeRecentReceipts(now);
+
+  // 1. Checa no registro em memória de comprovantes recentes
+  for (const record of recentReceipts) {
+    if (record.amountCents !== push.amountCents) continue;
+
+    const dummyReceiptTx: ParsedBankTransaction = record.transaction ?? {
+      id: "receipt_record",
+      bankName: "Comprovante",
+      nature: push.nature,
+      type: push.type,
+      amountCents: record.amountCents,
+      description: record.merchant || "",
+      merchant: record.merchant,
+      date: record.date,
+      rawText: record.rawText || "",
+      timestamp: record.timestamp,
+      taxId: record.taxId,
+      txId: record.txId,
+      source: "receipt",
+    };
+
+    if (!isWithinTemporalWindow(dummyReceiptTx, push, RECEIPT_DEDUPLICATION_WINDOW_MS)) {
+      continue;
+    }
+
+    if (push.txId && record.txId && push.txId === record.txId) {
+      return true;
+    }
+
+    if (push.taxId && record.taxId && push.taxId === record.taxId) {
+      return true;
+    }
+
+    if (areMerchantsCompatible(dummyReceiptTx, push)) {
+      return true;
+    }
+
+    if (record.merchant && push.rawText) {
+      const normPushRaw = push.rawText.toLowerCase();
+      const normMerchant = record.merchant.toLowerCase();
+      if (normPushRaw.includes(normMerchant)) {
+        return true;
+      }
+    }
+  }
+
+  // 2. Checa em memorySuggestions caso haja um comprovante ativo persistido
+  for (const item of memorySuggestions) {
+    const itemIsReceipt = item.source === "receipt" || item.id.startsWith("pix_");
+    if (!itemIsReceipt) continue;
+
+    if (item.amountCents !== push.amountCents) continue;
+
+    if (!isWithinTemporalWindow(item, push, RECEIPT_DEDUPLICATION_WINDOW_MS)) {
+      continue;
+    }
+
+    if (push.txId && item.txId && push.txId === item.txId) {
+      return true;
+    }
+
+    if (push.taxId && item.taxId && push.taxId === item.taxId) {
+      return true;
+    }
+
+    if (areMerchantsCompatible(item, push)) {
+      return true;
+    }
+
+    if (item.merchant && push.rawText) {
+      const normPushRaw = push.rawText.toLowerCase();
+      const normMerchant = item.merchant.toLowerCase();
+      if (normPushRaw.includes(normMerchant)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 /** TTL de 7 dias para expiração automática de notificações bancárias na fila. */
 const SUGGESTION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -32,14 +174,15 @@ function notify(): void {
 
 /**
  * Gera chave composta para identificação unívoca anti-duplicação:
- * `bankName + amountCents + date + merchant`
+ * `source + bankName + amountCents + date + merchant`
  */
 function getSuggestionCompositeKey(s: ParsedBankTransaction): string {
+  const source = s.source || (s.id.startsWith("pix_") ? "receipt" : "notification");
   const bank = (s.bankName || "").toLowerCase().trim();
   const cents = s.amountCents;
   const date = (s.date || "").trim();
   const merchant = (s.merchant || s.description || "").toLowerCase().trim();
-  return `${bank}_${cents}_${date}_${merchant}`;
+  return `${source}_${bank}_${cents}_${date}_${merchant}`;
 }
 
 /**
@@ -144,13 +287,55 @@ export function addPendingSuggestion(suggestion: ParsedBankTransaction): void {
   // Não adiciona sugestões que já estejam expiradas
   if (isSuggestionExpired(suggestion)) return;
 
+  const isReceipt = suggestion.source === "receipt" || suggestion.id.startsWith("pix_");
+
+  if (isReceipt) {
+    registerReceiptDeduplication(suggestion);
+
+    // Se já existia uma notificação push prévia para esta mesma transação na lista,
+    // substitui a notificação pelo comprovante mais rico
+    const existingPushIndex = memorySuggestions.findIndex((existing) => {
+      if (existing.source === "receipt" || existing.id.startsWith("pix_")) return false;
+      const isSameAmount = existing.amountCents === suggestion.amountCents;
+      const isSameWindow = isWithinTemporalWindow(existing, suggestion, RECEIPT_DEDUPLICATION_WINDOW_MS);
+      return (
+        isSameAmount &&
+        isSameWindow &&
+        (areMerchantsCompatible(existing, suggestion) ||
+          (Boolean(existing.taxId) && Boolean(suggestion.taxId) && existing.taxId === suggestion.taxId) ||
+          (Boolean(existing.txId) && Boolean(suggestion.txId) && existing.txId === suggestion.txId))
+      );
+    });
+
+    if (existingPushIndex !== -1) {
+      memorySuggestions[existingPushIndex] = suggestion;
+      saveToStorage();
+      notify();
+      return;
+    }
+  } else {
+    // É uma notificação push: descarta silenciosamente se colidir com comprovante recente
+    if (isPushDuplicateOfReceipt(suggestion)) {
+      return;
+    }
+  }
+
   const targetCompositeKey = getSuggestionCompositeKey(suggestion);
 
   // Deduplicação: ID, rawText idêntico ou mesma chave composta (bank + cents + date + merchant)
   const exists = memorySuggestions.some((s) => {
     if (s.id === suggestion.id) return true;
     if (s.rawText && suggestion.rawText && s.rawText === suggestion.rawText) return true;
-    if (getSuggestionCompositeKey(s) === targetCompositeKey) return true;
+    if (getSuggestionCompositeKey(s) === targetCompositeKey) {
+      if (
+        typeof s.timestamp === "number" &&
+        typeof suggestion.timestamp === "number" &&
+        Math.abs(s.timestamp - suggestion.timestamp) > RECEIPT_DEDUPLICATION_WINDOW_MS
+      ) {
+        return false;
+      }
+      return true;
+    }
     return false;
   });
 
@@ -229,6 +414,7 @@ export function dismissPendingSuggestion(id: string): void {
 
 export function clearPendingSuggestions(): void {
   ensureLoaded();
+  clearRecentReceipts();
   if (memorySuggestions.length > 0) {
     memorySuggestions = [];
     saveToStorage();

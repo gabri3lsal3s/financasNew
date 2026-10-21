@@ -4,8 +4,13 @@ import { setActiveUserId } from "@/services/user-storage";
 import {
   addPendingSuggestion,
   clearPendingSuggestions,
+  clearRecentReceipts,
   dismissPendingSuggestion,
   getPendingSuggestions,
+  getRecentReceipts,
+  isPushDuplicateOfReceipt,
+  RECEIPT_DEDUPLICATION_WINDOW_MS,
+  registerReceiptDeduplication,
   subscribePendingSuggestions,
 } from "./suggestions-store";
 
@@ -568,6 +573,257 @@ describe("suggestions-store (Fila de Sugestões Nativas)", () => {
         expect(matched?.cardBrand).toBe("Mastercard");
         expect(matched?.cardLastDigits).toBe(`000${i}`);
       }
+    });
+  });
+
+  describe("Deduplicação Cruzada (Comprovante vs Notificação Push)", () => {
+    const baseTime = Date.now();
+
+    it("exporta a constante canônica de janela temporal de 10 minutos", () => {
+      expect(RECEIPT_DEDUPLICATION_WINDOW_MS).toBe(10 * 60 * 1000);
+    });
+
+    it("descarta silenciosamente notificação push que colide com comprovante compartilhado 45s antes (mesmo valor e estabelecimento)", () => {
+      const receipt: ParsedBankTransaction = {
+        id: "pix_1729524000_abc1",
+        bankName: "Nubank",
+        nature: "expense",
+        type: "expense",
+        amountCents: 4500,
+        description: "Pagamento Pix para Padaria Estrela",
+        merchant: "Padaria Estrela",
+        date: "2026-10-21",
+        paymentMethod: "pix",
+        taxId: "12.345.678/0001-90",
+        rawText: "Comprovante de Transferência Pix - Nubank. Valor: R$ 45,00. Favorecido: Padaria Estrela",
+        timestamp: baseTime,
+        source: "receipt",
+      };
+
+      const push45sLater: ParsedBankTransaction = {
+        id: "push_nubank_123",
+        bankName: "Nubank",
+        nature: "expense",
+        type: "expense",
+        amountCents: 4500,
+        description: "Transferência Pix realizada",
+        merchant: "Padaria Estrela",
+        date: "2026-10-21",
+        paymentMethod: "pix",
+        rawText: "Você realizou uma transferência Pix de R$ 45,00 para Padaria Estrela",
+        timestamp: baseTime + 45 * 1000,
+        source: "notification",
+      };
+
+      // 1. Usuário compartilha comprovante via intent de compartilhamento
+      addPendingSuggestion(receipt);
+      expect(getPendingSuggestions().length).toBe(1);
+      expect(getPendingSuggestions()[0]!.id).toBe(receipt.id);
+
+      // 2. 45 segundos depois, o SO dispara a notificação push bancária atrasada
+      addPendingSuggestion(push45sLater);
+
+      // 3. A notificação push deve ser descartada silenciosamente sem gerar card duplicado
+      const current = getPendingSuggestions();
+      expect(current.length).toBe(1);
+      expect(current[0]!.id).toBe(receipt.id);
+      expect(current[0]!.source).toBe("receipt");
+      expect(current[0]!.taxId).toBe("12.345.678/0001-90");
+    });
+
+    it("descarta notificação push com variação comercial do estabelecimento dentro da janela de 10 minutos (ex.: 'Padaria Estrela Ltda' vs 'Padaria Estrela')", () => {
+      const receipt: ParsedBankTransaction = {
+        id: "pix_1729524000_abc2",
+        bankName: "Nubank",
+        nature: "expense",
+        type: "expense",
+        amountCents: 8500,
+        description: "Transferência para Padaria Estrela Ltda",
+        merchant: "Padaria Estrela Ltda",
+        date: "2026-10-21",
+        paymentMethod: "pix",
+        rawText: "Comprovante Pix: R$ 85,00 para Padaria Estrela Ltda",
+        timestamp: baseTime,
+        source: "receipt",
+      };
+
+      const push3MinLater: ParsedBankTransaction = {
+        id: "push_nubank_456",
+        bankName: "Nubank",
+        nature: "expense",
+        type: "expense",
+        amountCents: 8500,
+        description: "Compra aprovada no Nubank",
+        merchant: "Padaria Estrela",
+        date: "2026-10-21",
+        rawText: "Compra de R$ 85,00 em Padaria Estrela",
+        timestamp: baseTime + 3 * 60 * 1000, // 3 minutos depois
+        source: "notification",
+      };
+
+      addPendingSuggestion(receipt);
+      addPendingSuggestion(push3MinLater);
+
+      expect(getPendingSuggestions().length).toBe(1);
+      expect(getPendingSuggestions()[0]!.id).toBe(receipt.id);
+    });
+
+    it("permite notificação push se ultrapassar a janela de 10 minutos (ex.: 11 minutos após)", () => {
+      const receipt: ParsedBankTransaction = {
+        id: "pix_1729524000_abc3",
+        bankName: "Nubank",
+        nature: "expense",
+        type: "expense",
+        amountCents: 4500,
+        description: "Pagamento Pix",
+        merchant: "Padaria Estrela",
+        date: "2026-10-21",
+        paymentMethod: "pix",
+        rawText: "Comprovante de R$ 45,00 para Padaria Estrela",
+        timestamp: baseTime,
+        source: "receipt",
+      };
+
+      const push11MinLater: ParsedBankTransaction = {
+        id: "push_nubank_789",
+        bankName: "Nubank",
+        nature: "expense",
+        type: "expense",
+        amountCents: 4500,
+        description: "Pix enviado",
+        merchant: "Padaria Estrela",
+        date: "2026-10-21",
+        paymentMethod: "pix",
+        rawText: "Você enviou um Pix de R$ 45,00 para Padaria Estrela",
+        timestamp: baseTime + 11 * 60 * 1000, // 11 minutos depois (> 10 min)
+        source: "notification",
+      };
+
+      addPendingSuggestion(receipt);
+      addPendingSuggestion(push11MinLater);
+
+      expect(getPendingSuggestions().length).toBe(2);
+    });
+
+    it("permite notificação push com valor diferente no mesmo estabelecimento", () => {
+      const receipt: ParsedBankTransaction = {
+        id: "pix_1729524000_abc4",
+        bankName: "Nubank",
+        nature: "expense",
+        type: "expense",
+        amountCents: 4500,
+        description: "Pagamento Pix",
+        merchant: "Padaria Estrela",
+        date: "2026-10-21",
+        timestamp: baseTime,
+        source: "receipt",
+        rawText: "Comprovante de R$ 45,00",
+      };
+
+      const pushDifferentAmount: ParsedBankTransaction = {
+        id: "push_nubank_diff_amt",
+        bankName: "Nubank",
+        nature: "expense",
+        type: "expense",
+        amountCents: 6000, // R$ 60,00 vs R$ 45,00
+        description: "Pix enviado",
+        merchant: "Padaria Estrela",
+        date: "2026-10-21",
+        timestamp: baseTime + 45 * 1000,
+        source: "notification",
+        rawText: "Você enviou R$ 60,00 para Padaria Estrela",
+      };
+
+      addPendingSuggestion(receipt);
+      addPendingSuggestion(pushDifferentAmount);
+
+      expect(getPendingSuggestions().length).toBe(2);
+    });
+
+    it("substitui notificação push prévia se comprovante compartilhado mais rico chegar 45s depois", () => {
+      const pushEarly: ParsedBankTransaction = {
+        id: "push_inter_early",
+        bankName: "Inter",
+        nature: "expense",
+        type: "expense",
+        amountCents: 12000,
+        description: "Compra aprovada",
+        merchant: "Supermercado Alfa",
+        date: "2026-10-21",
+        timestamp: baseTime,
+        source: "notification",
+        rawText: "Compra de R$ 120,00 aprovada no Inter em Supermercado Alfa",
+      };
+
+      const richerReceipt: ParsedBankTransaction = {
+        id: "pix_inter_richer",
+        bankName: "Inter",
+        nature: "expense",
+        type: "expense",
+        amountCents: 12000,
+        description: "Pagamento Pix para Supermercado Alfa Ltda",
+        merchant: "Supermercado Alfa Ltda",
+        taxId: "98.765.432/0001-11",
+        txId: "E00416968202610211234567890",
+        date: "2026-10-21",
+        paymentMethod: "pix",
+        timestamp: baseTime + 45 * 1000,
+        source: "receipt",
+        rawText: "Comprovante de Transferência Pix - Inter. Valor: R$ 120,00. CNPJ: 98.765.432/0001-11",
+      };
+
+      addPendingSuggestion(pushEarly);
+      expect(getPendingSuggestions().length).toBe(1);
+      expect(getPendingSuggestions()[0]!.id).toBe("push_inter_early");
+
+      // Comprovante compartilhado 45s depois atualiza e enriquece o card
+      addPendingSuggestion(richerReceipt);
+      expect(getPendingSuggestions().length).toBe(1);
+      expect(getPendingSuggestions()[0]!.id).toBe("pix_inter_richer");
+      expect(getPendingSuggestions()[0]!.taxId).toBe("98.765.432/0001-11");
+      expect(getPendingSuggestions()[0]!.txId).toBe("E00416968202610211234567890");
+      expect(getPendingSuggestions()[0]!.source).toBe("receipt");
+    });
+
+    it("isPushDuplicateOfReceipt e clearRecentReceipts operam conforme especificado", () => {
+      clearRecentReceipts();
+      expect(getRecentReceipts()).toEqual([]);
+
+      const receiptTx: ParsedBankTransaction = {
+        id: "pix_test_rec",
+        bankName: "Itaú",
+        nature: "expense",
+        type: "expense",
+        amountCents: 7500,
+        description: "Posto Ipiranga",
+        merchant: "Posto Ipiranga",
+        date: "2026-10-21",
+        timestamp: baseTime,
+        source: "receipt",
+        rawText: "Comprovante Posto Ipiranga R$ 75,00",
+      };
+
+      registerReceiptDeduplication(receiptTx);
+      expect(getRecentReceipts().length).toBe(1);
+
+      const matchingPush: ParsedBankTransaction = {
+        id: "push_test",
+        bankName: "Itaú",
+        nature: "expense",
+        type: "expense",
+        amountCents: 7500,
+        description: "Compra aprovada",
+        merchant: "Posto Ipiranga",
+        date: "2026-10-21",
+        timestamp: baseTime + 60 * 1000,
+        source: "notification",
+        rawText: "Compra de R$ 75,00 no Posto Ipiranga",
+      };
+
+      expect(isPushDuplicateOfReceipt(matchingPush, baseTime + 60 * 1000)).toBe(true);
+
+      clearRecentReceipts();
+      expect(getRecentReceipts()).toEqual([]);
     });
   });
 });

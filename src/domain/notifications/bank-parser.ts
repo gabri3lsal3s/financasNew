@@ -38,6 +38,7 @@ export interface ParsedBankTransaction {
   taxId?: string;
   payerName?: string;
   recipientName?: string;
+  source?: "receipt" | "notification";
 }
 
 
@@ -1529,6 +1530,7 @@ export function parseBankNotification(
     cardBrand,
     issuerBank,
     isRefund: isRefundTransaction(combinedText, payload.title) || undefined,
+    source: "notification",
   };
 }
 
@@ -1782,6 +1784,7 @@ export function parsePixShareText(rawText: string): ParsedBankTransaction | null
     paymentMethod: "pix",
     rawText,
     isRefund: isRefund || undefined,
+    source: "receipt",
   };
 }
 

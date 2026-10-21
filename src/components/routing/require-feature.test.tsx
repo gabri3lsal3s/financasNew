@@ -1,15 +1,28 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RequireFeature } from "./require-feature";
 
 const mockUseUserAccess = vi.fn();
+const mockUseAuth = vi.fn();
 
 vi.mock("@/state", () => ({
   useUserAccess: () => mockUseUserAccess(),
 }));
 
+vi.mock("@/hooks/use-auth", () => ({
+  useAuth: () => mockUseAuth(),
+}));
+
 describe("RequireFeature Guard", () => {
+  beforeEach(() => {
+    mockUseAuth.mockReturnValue({
+      session: { user: { id: "user-123" } },
+      user: { id: "user-123" },
+      loading: false,
+      configError: null,
+    });
+  });
   it("redireciona para o destino quando a feature flag estiver desabilitada", () => {
     mockUseUserAccess.mockReturnValue({
       isLoading: false,
