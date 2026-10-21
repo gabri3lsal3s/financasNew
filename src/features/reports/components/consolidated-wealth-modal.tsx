@@ -160,15 +160,28 @@ export function ConsolidatedWealthModal({
           <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
             <div className="flex items-center gap-1.5 text-xs font-bold text-negative-strong">
               <ArrowDownRight className="size-3.5" aria-hidden="true" />
-              <span>PASSIVOS (DÍVIDAS &amp; FINANCIAMENTOS)</span>
+              <span>PASSIVOS (DÍVIDAS &amp; FATURAS)</span>
             </div>
             <MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="font-bold text-xs" />
           </div>
           <div className="flex flex-col gap-1.5 text-xs">
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Saldo Devedor Total:</span>
-              <MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="num font-mono font-bold" />
-            </div>
+            {balanceSheet.creditCardInvoicesBRL > 0 ? (
+              <>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Empréstimos &amp; Financiamentos:</span>
+                  <MoneyText cents={numberToCents(balanceSheet.debtsPayableBRL)} className="num font-mono font-bold text-foreground" />
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Faturas de Cartão em Aberto:</span>
+                  <MoneyText cents={numberToCents(balanceSheet.creditCardInvoicesBRL)} className="num font-mono font-bold text-foreground" />
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Saldo Devedor Total:</span>
+                <MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="num font-mono font-bold" />
+              </div>
+            )}
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Comprometimento de Patrimônio:</span>
               <span className="num font-mono font-bold text-foreground">
