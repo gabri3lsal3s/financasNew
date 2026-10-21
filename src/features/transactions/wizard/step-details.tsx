@@ -192,22 +192,27 @@ export function StepDetails({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium">Peso no relatório</span>
+        <span className="text-sm font-medium">Sua Participação / Rateio</span>
         <Select
           value={isPresetWeight(state.reportWeight) ? String(state.reportWeight) : "custom"}
           onValueChange={(value) =>
             onReportWeightChange(value === "custom" ? CUSTOM_WEIGHT_VALUE : Number(value))
           }
           options={REPORT_WEIGHT_OPTIONS}
-          ariaLabel="Peso no relatório"
+          ariaLabel="Sua Participação / Rateio"
         />
+        {effectiveReportWeight(state) < 1 ? (
+          <div className="rounded-md border border-border/80 bg-surface px-2.5 py-2 text-[11px] text-muted-foreground">
+            <span className="font-medium text-foreground">Aviso de Rateio:</span> O valor bancário cobrado permanece 100% ({formatCentsAsBRL(state.valueCents)}). Nos relatórios entrará apenas a sua cota.
+          </div>
+        ) : null}
         {!isPresetWeight(state.reportWeight) ? (
           <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-surface-raised p-3">
-            <span className="text-xs font-medium text-foreground">Valor gasto real considerado no relatório</span>
+            <span className="text-xs font-medium text-foreground">Sua cota considerada no relatório</span>
             <MoneyInput
               cents={state.reportCustomAmountCents}
               onCentsChange={onReportCustomAmountChange}
-              aria-label="Valor considerado no relatório"
+              aria-label="Sua cota considerada no relatório"
             />
             {state.valueCents > 0 ? (
               <span className="text-xs text-muted-foreground">

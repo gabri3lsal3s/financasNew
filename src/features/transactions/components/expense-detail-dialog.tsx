@@ -366,8 +366,8 @@ function ExpenseEditForm({
         }}
         customAmountCents={reportCustomAmountCents}
         onCustomAmountChange={setReportCustomAmountCents}
-        customLabel="Valor gasto real considerado no relatório"
-        ariaLabelCustom="Valor considerado no relatório"
+        customLabel="Sua cota considerada no relatório"
+        ariaLabelCustom="Sua cota considerada no relatório"
       />
 
       <ModalFooter>

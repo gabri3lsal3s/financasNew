@@ -11,14 +11,14 @@ export interface ReportWeightFieldProps {
   /** Valor considerado no relatório (centavos) — modo custom. */
   customAmountCents: number;
   onCustomAmountChange: (cents: number) => void;
-  /** Rótulo do bloco custom (ex.: "Valor gasto real considerado no relatório"). */
-  customLabel: string;
+  /** Rótulo do bloco custom (ex.: "Sua cota considerada no relatório"). */
+  customLabel?: string;
   ariaLabelCustom?: string;
 }
 
 /**
- * Peso no relatório (DRY — usado nos diálogos de despesa e receita):
- * presets 100/75/50/25/0% + modo personalizado com valor em reais.
+ * Campo de participação / rateio no relatório (DRY — usado nos diálogos de despesa e receita):
+ * Presets 100/75/50/25/0% + modo personalizado em reais com aviso explícito de que o valor bancário cobrado permanece 100%.
  */
 export function ReportWeightField({
   valueCents,
@@ -26,20 +26,34 @@ export function ReportWeightField({
   onModeChange,
   customAmountCents,
   onCustomAmountChange,
-  customLabel,
+  customLabel = "Sua cota considerada no relatório",
   ariaLabelCustom = "Valor considerado no relatório",
 }: ReportWeightFieldProps) {
+  const isSplit = mode !== "1";
+  const effectiveCents =
+    mode === "custom"
+      ? customAmountCents
+      : Number.isFinite(Number(mode))
+        ? Math.round(valueCents * Number(mode))
+        : valueCents;
+
   return (
     <div className="flex flex-col gap-2">
       <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-        Peso no relatório
+        Sua Participação / Rateio
         <Select
           value={mode}
           onValueChange={onModeChange}
           options={REPORT_WEIGHT_OPTIONS}
-          ariaLabel="Peso no relatório"
+          ariaLabel="Sua Participação / Rateio"
         />
       </label>
+
+      {isSplit ? (
+        <div className="rounded-md border border-border/80 bg-surface px-2.5 py-2 text-[11px] text-muted-foreground">
+          <span className="font-medium text-foreground">Aviso de Rateio:</span> O valor bancário cobrado permanece 100% ({formatCentsAsBRL(valueCents)}). Nos relatórios e metas entrará apenas a sua cota de {formatCentsAsBRL(effectiveCents)}.
+        </div>
+      ) : null}
 
       {mode === "custom" ? (
         <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-surface-raised p-3">
@@ -51,7 +65,7 @@ export function ReportWeightField({
           />
           {valueCents > 0 ? (
             <span className="text-[11px] text-muted-foreground">
-              Equivale a {Math.round((customAmountCents / valueCents) * 100)}% do valor total ({formatCentsAsBRL(valueCents)}).
+              Equivale a {Math.round((customAmountCents / valueCents) * 100)}% do valor total cobrado ({formatCentsAsBRL(valueCents)}).
             </span>
           ) : null}
         </div>

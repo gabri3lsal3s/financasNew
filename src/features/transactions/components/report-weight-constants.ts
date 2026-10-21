@@ -2,7 +2,7 @@
 export const REPORT_WEIGHT_PRESETS = [1, 0.75, 0.5, 0.25, 0];
 
 export const REPORT_WEIGHT_OPTIONS = [
-  { value: "1", label: "100% (conta integralmente)" },
+  { value: "1", label: "100% (integral — sem rateio)" },
   { value: "0.75", label: "75%" },
   { value: "0.5", label: "50%" },
   { value: "0.25", label: "25%" },

@@ -240,8 +240,8 @@ function IncomeEditForm({
         }}
         customAmountCents={reportCustomAmountCents}
         onCustomAmountChange={setReportCustomAmountCents}
-        customLabel="Valor recebido real considerado no relatório"
-        ariaLabelCustom="Valor considerado no relatório"
+        customLabel="Sua cota considerada no relatório"
+        ariaLabelCustom="Sua cota considerada no relatório"
       />
 
       <ModalFooter>

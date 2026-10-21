@@ -148,9 +148,9 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
     // Passo 3 — escolhe "Personalizado (definir valor em R$)…" e digita 56250 (R$ 562,50 = 37,5% de R$ 1.500,00)
-    await user.click(screen.getByRole("combobox", { name: "Peso no relatório" }));
+    await user.click(screen.getByRole("combobox", { name: /Sua Participação \/ Rateio|Peso no relatório/i }));
     await user.click(screen.getByRole("option", { name: /personalizado/i }));
-    const customInput = screen.getByRole("textbox", { name: "Valor considerado no relatório" });
+    const customInput = screen.getByRole("textbox", { name: /Sua cota considerada no relatório|Valor considerado no relatório/i });
     await user.clear(customInput);
     await user.type(customInput, "56250");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
@@ -181,9 +181,9 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     expect(screen.getByRole("combobox", { name: "Forma de pagamento" })).toHaveTextContent("Transferência");
 
     // Passo 3 — altera peso no relatório para 50%
-    await user.click(screen.getByRole("combobox", { name: "Peso no relatório" }));
+    await user.click(screen.getByRole("combobox", { name: /Sua Participação \/ Rateio|Peso no relatório/i }));
     await user.click(screen.getByRole("option", { name: "50%" }));
-    expect(screen.getByRole("combobox", { name: "Peso no relatório" })).toHaveTextContent("50%");
+    expect(screen.getByRole("combobox", { name: /Sua Participação \/ Rateio|Peso no relatório/i })).toHaveTextContent("50%");
 
     // Avança para o Passo 4 e confirma
     await user.click(screen.getByRole("button", { name: "Continuar" }));

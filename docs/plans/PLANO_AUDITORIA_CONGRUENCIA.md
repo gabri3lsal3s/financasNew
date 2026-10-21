@@ -118,7 +118,7 @@ graph TD
   - *Commit:* `fix(competence): support ISO date strings directly in resolveBillCompetence`
 - [x] **Tarefa 1.3:** Implementar badge visual claro de rateio no componente `TransactionRow` (`src/components/modules/transaction-row.tsx`) quando `reportWeight < 1` (ex: badge `50% rateio` ou `0% reembolso`), com helper explicativo do valor bruto vs ponderado.
   - *Commit:* `feat(ui): add visual split badge and explanatory labels in TransactionRow`
-- [ ] **Tarefa 1.4:** Atualizar os diálogos de detalhamento e lançamento (`ReportWeightField`) para substituir rótulos vagos por terminologia clara: *"Sua Participação / Rateio"* com aviso explícito de que o valor bancário cobrado permanece 100%.
+- [x] **Tarefa 1.4:** Atualizar os diálogos de detalhamento e lançamento (`ReportWeightField`) para substituir rótulos vagos por terminologia clara: *"Sua Participação / Rateio"* com aviso explícito de que o valor bancário cobrado permanece 100%.
   - *Commit:* `refactor(transactions): clarify split weight terminology in transaction dialogs`
 - [ ] **Tarefa 1.5:** Atualizar `mergePaidDebts` para filtrar registros com `expense_id` e evitar duplicidades contábeis.
   - *Commit:* `fix(reports): prevent double counting of linked expenses in mergePaidDebts`

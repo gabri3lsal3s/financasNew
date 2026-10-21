@@ -158,7 +158,7 @@ describe("ExpenseDetailDialog", () => {
     await user.click(screen.getByRole("button", { name: /editar/i }));
 
     // Abre o seletor de pesos (dentro do modal) e escolhe o preset 75%
-    await user.click(screen.getByRole("combobox", { name: "Peso no relatório" }));
+    await user.click(screen.getByRole("combobox", { name: /Sua Participação \/ Rateio|Peso no relatório/i }));
     await user.click(screen.getByRole("option", { name: "75%" }));
 
     await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
@@ -243,11 +243,11 @@ describe("ExpenseDetailDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /editar/i }));
 
-    await user.click(screen.getByRole("combobox", { name: "Peso no relatório" }));
+    await user.click(screen.getByRole("combobox", { name: /Sua Participação \/ Rateio|Peso no relatório/i }));
     await user.click(screen.getByRole("option", { name: /personalizado/i }));
 
     // baseExpense.value = 120,50 → R$ 45,00 = 4500 centavos
-    const customInput = screen.getByRole("textbox", { name: "Valor considerado no relatório" });
+    const customInput = screen.getByRole("textbox", { name: /Sua cota considerada no relatório|Valor considerado no relatório/i });
     await user.clear(customInput);
     await user.type(customInput, "4500");
 
