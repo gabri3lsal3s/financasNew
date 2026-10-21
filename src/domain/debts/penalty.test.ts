@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { calculateDaysOverdue, calculateOverdueDebtCharges } from "./penalty";
+import {
+  calculateDaysOverdue,
+  calculateOverdueDebtCharges,
+  CDC_STANDARD_FINE_PERCENT,
+  CDC_STANDARD_MONTHLY_INTEREST_PERCENT,
+} from "./penalty";
 
 describe("calculateDaysOverdue", () => {
   it("retorna 0 se a data de pagamento for anterior ou igual ao vencimento", () => {
@@ -11,9 +16,62 @@ describe("calculateDaysOverdue", () => {
     expect(calculateDaysOverdue("2026-03-10", "2026-03-15")).toBe(5);
     expect(calculateDaysOverdue("2026-02-25", "2026-03-05")).toBe(8);
   });
+
+  it("normaliza timestamps ISO com hora para análise estrita de data sem drift", () => {
+    expect(calculateDaysOverdue("2026-03-10", "2026-03-10T23:59:59.999Z")).toBe(0);
+    expect(calculateDaysOverdue("2026-03-10T12:00:00Z", "2026-03-11T08:30:00Z")).toBe(1);
+  });
 });
 
 describe("calculateOverdueDebtCharges", () => {
+  it("formaliza tolerância zero de encargos quando pago no exato dia do vencimento", () => {
+    const res = calculateOverdueDebtCharges({
+      amountCents: 50000, // R$ 500,00
+      dueDate: "2026-03-20",
+      paymentDate: "2026-03-20", // Exato dia do vencimento
+      finePercent: CDC_STANDARD_FINE_PERCENT, // 2%
+      monthlyInterestPercent: CDC_STANDARD_MONTHLY_INTEREST_PERCENT, // 1%
+    });
+
+    expect(res.daysOverdue).toBe(0);
+    expect(res.fineCents).toBe(0);
+    expect(res.interestCents).toBe(0);
+    expect(res.discountCents).toBe(0);
+    expect(res.totalPaidCents).toBe(50000);
+  });
+
+  it("formaliza fronteira exata: dia anterior (0), dia do vencimento (0) e dia posterior (1 dia de atraso com multa + mora)", () => {
+    const baseInput = {
+      amountCents: 100000, // R$ 1.000,00
+      dueDate: "2026-03-15",
+      finePercent: CDC_STANDARD_FINE_PERCENT,
+      monthlyInterestPercent: CDC_STANDARD_MONTHLY_INTEREST_PERCENT,
+    };
+
+    // 1. Dia anterior
+    const before = calculateOverdueDebtCharges({ ...baseInput, paymentDate: "2026-03-14" });
+    expect(before.daysOverdue).toBe(0);
+    expect(before.fineCents).toBe(0);
+    expect(before.interestCents).toBe(0);
+    expect(before.totalPaidCents).toBe(100000);
+
+    // 2. Dia do vencimento
+    const onDue = calculateOverdueDebtCharges({ ...baseInput, paymentDate: "2026-03-15" });
+    expect(onDue.daysOverdue).toBe(0);
+    expect(onDue.fineCents).toBe(0);
+    expect(onDue.interestCents).toBe(0);
+    expect(onDue.totalPaidCents).toBe(100000);
+
+    // 3. Dia seguinte (1 dia de atraso)
+    const after = calculateOverdueDebtCharges({ ...baseInput, paymentDate: "2026-03-16" });
+    expect(after.daysOverdue).toBe(1);
+    // Multa CDC 2% de 100000 = 2000 centavos (R$ 20,00)
+    expect(after.fineCents).toBe(2000);
+    // Mora pro rata die de 1% / 30 * 1 dia: 100000 * (1 / 3000) * 1 = 33.33 -> 33 centavos (R$ 0,33)
+    expect(after.interestCents).toBe(33);
+    expect(after.totalPaidCents).toBe(102033);
+  });
+
   it("calcula multa padrão de 2% e mora diária para conta atrasada", () => {
     const res = calculateOverdueDebtCharges({
       amountCents: 10000, // R$ 100,00

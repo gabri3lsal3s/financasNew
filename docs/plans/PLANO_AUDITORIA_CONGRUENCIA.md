@@ -144,9 +144,9 @@ graph TD
   - *Commit:* `fix(loans): prevent unearned monthly interest discount on current month installments`
 - [x] **Tarefa 3.2:** Auditar amortizações Price e SAC para zeramento exato do saldo em centavos na parcela final $N$.
   - *Commit:* `test(loans): enforce exact zero remaining balance on final installment in SAC and Price`
-- [ ] **Tarefa 3.3:** Auditar cálculo de encargos por atraso (multa e mora CDC) em `src/domain/debts/penalty.ts`, formalizando tolerância de atraso 0 no dia do vencimento.
+- [x] **Tarefa 3.3:** Auditar cálculo de encargos por atraso (multa e mora CDC) em `src/domain/debts/penalty.ts`, formalizando tolerância de atraso 0 no dia do vencimento.
   - *Commit:* `test(debts): confirm exact penalty and interest boundaries on due date`
-- 🏁 **Quality Gate 3:** Vitest em `domain/loans`, `domain/debts`; `tsc --noEmit`; `npm run lint`; git push da Fase 3.
+- 🏁 **Quality Gate 3:** Vitest em `domain/loans`, `domain/debts`; `tsc --noEmit`; `npm run lint`; git push da Fase 3. (Concluído)
 
 ---
 

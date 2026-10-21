@@ -1,5 +1,11 @@
 import { todayISO } from "./index";
 
+/** Limite máximo de multa por mora sob o Código de Defesa do Consumidor (CDC art. 52 § 1º): 2%. */
+export const CDC_STANDARD_FINE_PERCENT = 2;
+
+/** Taxa padrão legal de juros moratórios (Código Civil art. 406 / CTN art. 161 § 1º): 1% ao mês (~0,033% ao dia). */
+export const CDC_STANDARD_MONTHLY_INTEREST_PERCENT = 1;
+
 /**
  * Motor puro de cálculo de encargos por atraso (mora, multa e desconto) em dívidas.
  *
@@ -32,10 +38,12 @@ export interface OverdueDebtCalculationResult {
   totalPaidCents: number;
 }
 
-/** Calcula dias de atraso entre dueDate e paymentDate (YYYY-MM-DD em UTC). */
+/** Calcula dias de atraso entre dueDate e paymentDate (YYYY-MM-DD em UTC com tolerância zero no vencimento). */
 export function calculateDaysOverdue(dueDate: string, paymentDate: string): number {
-  const [dy, dm, dd] = dueDate.split("-").map(Number);
-  const [py, pm, pd] = paymentDate.split("-").map(Number);
+  const cleanDue = dueDate.split("T")[0] ?? "";
+  const cleanPay = paymentDate.split("T")[0] ?? "";
+  const [dy, dm, dd] = cleanDue.split("-").map(Number);
+  const [py, pm, pd] = cleanPay.split("-").map(Number);
   const dueUtc = Date.UTC(dy ?? 0, (dm ?? 1) - 1, dd ?? 1);
   const payUtc = Date.UTC(py ?? 0, (pm ?? 1) - 1, pd ?? 1);
   const diffMs = payUtc - dueUtc;

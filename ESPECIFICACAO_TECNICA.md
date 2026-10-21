@@ -255,6 +255,7 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 - **Quitação a receber** (RPC `receive_debt`): **"Receber e Criar Renda"** ou **"Apenas Receber"**.
 - **Recebimento integrado** (RPC `settle_integrated_receivable`): recebível vinculado a despesa reduz **automaticamente o valor da despesa no relatório** (resultado editável pelo usuário).
 - **Ordenação:** `due_date` ascendente.
+- **Encargos por atraso (multa e mora CDC):** tolerância zero de encargos no dia do vencimento (`paymentDate === dueDate`); após o vencimento, multa padrão de 2% (CDC art. 52 § 1º) e juros de mora de 1% ao mês pro rata die (Código Civil art. 406 / CTN art. 161 § 1º), com suporte a overrides manuais e desconto concedido em centavos inteiros.
 - **Efeitos em totais:** dívidas **pagas** entram nos totais do período (recebíveis → rendas; pagáveis → despesas) pelo **mês do vencimento**; **pendentes** alimentam a projeção de pendências (§3.9); totais de Contas consideram apenas pendentes com vencimento no mês selecionado.
 - **Exclusão vinculada:** herda os modos `single | all | subsequent` do grupo de parcelas (via RPC de exclusão, D1).
 - **Lembrete:** janela configurável (dias antes) + `overdue`.
