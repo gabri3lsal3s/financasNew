@@ -1,7 +1,7 @@
 # PLANO DE IMPLEMENTAÇÃO — CAPTURA INTELIGENTE DE COMPROVANTES, MODO RÁPIDO & ASSISTENTE PROATIVO
 
 > **Documento Canônico de Arquitetura e Engenharia**  
-> **Status:** Aprovado para Execução (Planejamento Concluído)  
+> **Status:** Aprovado e Blindado (Pronto para Execução)  
 > **Módulos Afetados:** `android/`, `src/domain/notifications/`, `src/domain/insights/`, `src/features/transactions/wizard/`, `src/features/overview/`, `src/components/modules/`, `docs/`  
 > **Governança:** Custo Zero de Infraestrutura (Google ML Kit Thin on-device) · Zero Inchaço de APK (<800 KB) · Zero Emojis · TypeScript Estrito · Commit por Tarefa e Push por Fase  
 > **Data:** Outubro de 2026 · **Ambiente:** Android Nativo (Capacitor) & Web PWA  
@@ -12,22 +12,22 @@
 
 O objetivo deste plano é eliminar o atrito de registro financeiro (despesas, rendas e investimentos), permitindo que o usuário capture transações no momento em que elas ocorrem (mesmo quando o banco não emite notificação push), realize lançamentos manuais em menos de 3 segundos e conte com um assistente inteligente na tela inicial que aprende com seus hábitos financeiros.
 
-A análise profunda da arquitetura atual revelou **4 fragilidades críticas** que impediam essa visão:
+A auditoria exaustiva de código e cenários reais identificou **10 fragilidades críticas** que foram tratadas e blindadas na arquitetura deste plano:
 
-### 1.1 Diagnóstico Técnico das Fragilidades
+### 1.1 Matriz de Fragilidades e Soluções de Engenharia
 
-1. **Restrição de Formato no Compartilhamento (`AndroidManifest.xml`):**
-   - *Causa:* O aplicativo declarava exclusivamente `<data android:mimeType="text/plain" />`.
-   - *Impacto:* Quase todos os bancos brasileiros (Nubank, Inter, Itaú, Santander, Bradesco, C6) exportam comprovantes no formato **Imagem (PNG/JPG)** ou **PDF**. O aplicativo não aparecia no menu de compartilhamento do sistema operacional para esses formatos.
-2. **Perda de Dados em Inicialização a Frio (Cold Start):**
-   - *Causa:* Se o aplicativo estivesse fechado e o usuário compartilhasse um comprovante, a `MainActivity` em Java recebia o Intent e disparava o evento nativo antes que a camada Web/React tivesse carregado e anexado os ouvintes de evento no JavaScript.
-   - *Impacto:* O comprovante compartilhado era descartado silenciosamente.
-3. **Fricção Ergonômica no Assistente de Lançamento (`LaunchWizard`):**
-   - *Causa:* Todo lançamento manual exigia percorrer 4 etapas consecutivas (Valor ➔ Categoria ➔ Detalhes ➔ Revisão).
-   - *Impacto:* Cansaço mental para transações corriqueiras de balcão (café, padaria, estacionamento, Pix rápido).
-4. **Motor de Insights Passivo e Escondido (`domain/insights/`):**
-   - *Causa:* O motor de detecção de recorrências e assinaturas existia apenas dentro de uma sub-aba da página de Insights e lia exclusivamente despesas.
-   - *Impacto:* O usuário não visualizava cobranças duplicadas ou reajustes silenciosos a tempo, e rendas habituais previsíveis (como Salário) não contavam com reconhecimento automático.
+| # | Fragilidade Identificada | Risco Técnico no Mundo Real | Solução de Engenharia Blindada |
+|---|---|---|---|
+| **F1** | App não aparece no menu "Compartilhar" do banco | `AndroidManifest.xml` declarava apenas `text/plain`. Bancos exportam **Imagem (PNG/JPG)** ou **PDF**. | Declarar `text/plain`, `image/*` e `application/pdf` nas tags `<intent-filter>` de `MainActivity`. |
+| **F2** | Perda de dados em Cold Start | Se o app estiver fechado e receber compartilhamento, a Activity emite evento antes do React anexar ouvintes no JS. | Buffer estático de retenção (`pendingSharePayload`) no plugin nativo, consumido no carregamento do React. |
+| **F3** | Erro de permissão de arquivo (`SecurityException`) | URIs de outros bancos (`content://...`) expiram se não consumidas imediatamente pela Activity. | Cópia imediata dos bytes recebidos para o cache temporário seguro do app (`context.getCacheDir()`). |
+| **F4** | Inchaço de APK por OCR ou custos de nuvem | APIs de nuvem geram custos recorrentes; modelos OCR offline grandes pesam 30 MB. | **Google ML Kit Text Recognition** versão thin (<800 KB, unbundled via Google Play Services) + `PdfRenderer` nativo. Custo = R$ 0,00 e 100% offline. |
+| **F5** | Colisão entre Comprovante e Push atrasada | O usuário compartilha o comprovante e, 40s depois, a push do banco chega, duplicando a despesa. | **Deduplicação Cruzada com Janela de 10 minutos** por assinatura hash `(amountCents + date + merchant/chavePix)`. |
+| **F6** | Pix Agendado lançado como despesa paga | Comprovantes de agendamento têm liquidação futura; lançar como despesa de hoje distorce saldos. | Detecção semântica de termos de agendamento em `bank-parser.ts`, lançando como despesa pendente/agendada. |
+| **F7** | Razão Social ilegível ("Arcos Dourados...") | Comprovantes trazem CNPJ/Razão Social burocrática em vez do Nome Fantasia conhecido pelo usuário. | Dicionário de normalização de grandes redes + aprendizado de apelidos (`merchant-memory.ts`). |
+| **F8** | Rendas Variáveis de Autônomos ignoradas | Se o motor exigir dia e valor exato, autônomos e freelancers nunca recebem sugestões de receita. | **Classificação Dual:** Renda Fixa/CLT (valor pré-preenchido) vs. Renda de Cliente Recorrente (valor aberto para digitação). |
+| **F9** | Falso positivo de "Cobrança Duplicada" | Compras reais de mesmo valor no mesmo mês (ex.: dois almoços de R$ 40) sendo marcadas como erro. | Duplicidade restrita a **assinaturas de valor fixo** ou compras de balcão com **mesmo valor na mesma hora/minuto**. |
+| **F10** | Fadiga de Alertas na Home (Banner Blindness) | Cards diários em excesso cansam o usuário e poluem a interface inicial. | **Política de Discrição:** Máximo 1 card/dia, dismiss com silenciamento de 30 dias e invisibilidade total quando o mês estiver regular. |
 
 ---
 
@@ -68,9 +68,9 @@ Commit + Push       Commit + Push                           Commit + Push       
 
 ### FASE 1: RECEPÇÃO E IDENTIFICAÇÃO DE COMPROVANTES (SHARE INTENT NATIVO)
 
-**Objetivo:** Permitir que o usuário toque em "Compartilhar comprovante" no banco, selecione o Guia Financeiro e o aplicativo identifique e cadastre a transação instantaneamente, permitindo edição imediata.
+**Objetivo:** Permitir que o usuário toque em "Compartilhar comprovante" no banco, selecione o Guia Financeiro e o aplicativo identifique e cadastre a transação instantaneamente, permitindo edição imediata e blindando contra duplicatas de push.
 
-#### Tarefas:
+#### Tarefas da Fase 1:
 - [ ] **Tarefa 1.1 — Suporte a Múltiplos Formatos no `AndroidManifest.xml`:**
   - Adicionar suporte aos tipos MIME `image/*` e `application/pdf` no filtro de Intent da `MainActivity`.
   - *Teste & Verificação:* Inspecionar o `AndroidManifest.xml` e compilar projeto Android para validar sintaxe de intent-filter.
@@ -78,7 +78,7 @@ Commit + Push       Commit + Push                           Commit + Push       
 
 - [ ] **Tarefa 1.2 — Integração do Google ML Kit Thin (<800 KB) no Android:**
   - Declarar a dependência `com.google.android.gms:play-services-mlkit-text-recognition:19.0.1` em `android/app/build.gradle`.
-  - Criar o utilitário nativo `ReceiptOcrHelper.java` que decodifica imagens a partir de URIs e converte a primeira página de PDFs em Bitmap via `PdfRenderer` nativo para leitura no OCR.
+  - Criar o utilitário nativo `ReceiptOcrHelper.java` que decodifica imagens a partir de URIs e converte páginas de PDFs em Bitmap via `PdfRenderer` nativo (suportando até 2 páginas com autenticação mecânica) para leitura no OCR.
   - *Teste & Verificação:* Teste de compilação do Gradle (`./gradlew assembleDebug`) verificando acréscimo de peso inferior a 1 MB no APK.
   - *Commit:* `feat(android): integrar extrator nativo de texto via ML Kit e PdfRenderer`
 
@@ -88,17 +88,24 @@ Commit + Push       Commit + Push                           Commit + Push       
   - *Teste & Verificação:* Simular cold start enviando intent de texto/imagem via ADB e verificar persistência do buffer até a chamada do JavaScript.
   - *Commit:* `fix(android): blindar ciclo de vida e buffer de comprovante compartilhado`
 
-- [ ] **Tarefa 1.4 — Motor de Domínio de Parsing de Comprovantes (`bank-parser.ts`):**
+- [ ] **Tarefa 1.4 — Motor de Domínio de Parsing com Triagem de Agendamentos (`bank-parser.ts`):**
   - Aprimorar `parsePixShareText` para extrair com alta tolerância:
     - *Tipo:* Despesa (`expense`) vs. Renda (`income`).
+    - *Status:* Efetivado vs. Agendado (detectando termos de liquidação futura para não distorcer saldo atual).
     - *Valor:* centavos com precisão estrita.
-    - *Favorecido / Pagador:* nomes de pessoas e razões sociais limpas.
+    - *Favorecido / Pagador:* nomes de pessoas e razões sociais com limpeza semântica.
     - *Instituição:* banco emissor.
     - *Data e Identificador:* para prevenção de lançamentos duplicados.
   - *Teste & Verificação:* Criar fixtures de testes em `src/domain/notifications/bank-parser.test.ts` com comprovantes reais de Nubank, Inter, Itaú, Santander, Bradesco, C6 e Mercado Pago.
-  - *Commit:* `feat(domain): aprimorar parser de comprovantes bancarios para pix e rendas`
+  - *Commit:* `feat(domain): aprimorar parser de comprovantes bancarios para pix e agendamentos`
 
-- [ ] **Tarefa 1.5 — UX de Auto-Cadastro com Janela de Edição e Desfazer:**
+- [ ] **Tarefa 1.5 — Deduplicação Cruzada (Comprovante $\leftrightarrow$ Notificação Push):**
+  - Em `src/services/native/suggestions-store.ts`, registrar janela temporal de 10 minutos para transações originadas de comprovantes.
+  - Se uma notificação push do mesmo valor e estabelecimento chegar posteriormente, descartar silenciosamente sem gerar card duplicado.
+  - *Teste & Verificação:* Teste unitário em `suggestions-store.test.ts` simulando chegada de push 45s após compartilhamento de comprovante.
+  - *Commit:* `feat(native): implementar deduplicacao cruzada entre comprovantes e push`
+
+- [ ] **Tarefa 1.6 — UX de Auto-Cadastro com Janela de Edição e Desfazer:**
   - Atualizar `src/features/transactions/pages/share-target-page.tsx` para processar comprovantes recebidos do plugin nativo:
     - Efetivar o cadastro imediato via RPC transacional com os dados identificados.
     - Redirecionar para a Home exibindo Toast e Banner persistente: *"Pix de R$ 45,00 para Padaria Silva cadastrado! [Editar Lançamento] [Desfazer (5s)]"*.
@@ -107,11 +114,12 @@ Commit + Push       Commit + Push                           Commit + Push       
   - *Commit:* `feat(transactions): implementar fluxo de auto-cadastro com edicao imediata`
 
 #### PORTÃO DE QUALIDADE 1 (Quality Gate 1):
-1. Suíte de testes do parser (`src/domain/notifications/`) 100% verde com fixtures de comprovantes.
+1. Suíte de testes do parser (`src/domain/notifications/`) 100% verde com fixtures de comprovantes reais e agendamentos.
 2. Compilação do módulo Android concluída sem advertências de segurança de URI.
-3. Typecheck estrito (`npx tsc --noEmit`) sem erros.
-4. Linter (`npm run lint`) 100% limpo sem violações de emojis ou tipos.
-5. **Ação Obrigatória:** Executar `git push origin` com os commits da Fase 1.
+3. Teste de deduplicação comprovante $\leftrightarrow$ push aprovado.
+4. Typecheck estrito (`npx tsc --noEmit`) sem erros.
+5. Linter (`npm run lint`) 100% limpo sem violações de emojis ou tipos.
+6. **Ação Obrigatória:** Executar `git push origin` com os commits da Fase 1.
 
 ---
 
@@ -119,14 +127,14 @@ Commit + Push       Commit + Push                           Commit + Push       
 
 **Objetivo:** Permitir que o usuário realize lançamentos manuais ou Pix em menos de 3 segundos, substituindo o fluxo de 4 telas por uma tela única e ágil.
 
-#### Tarefas:
+#### Tarefas da Fase 2:
 - [ ] **Tarefa 2.1 — Componente `StepQuick` em Tela Única:**
   - Criar `src/features/transactions/wizard/step-quick.tsx` contendo:
     - Abas Tipo (Despesa / Renda).
     - Campo de Valor em destaque (`MoneyInput`).
     - Grade Compacta de Categorias frequentes (ícones e rótulos selecionáveis em 1 toque).
     - Seletor rápido de Forma de Pagamento (Pix, Cartão de Crédito com dropdown de cartões, Débito, Dinheiro).
-    - Campo de Descrição simplificado com chips de habituais.
+    - Campo de Descrição simplificado com chips de habituais e normalização de razão social para nome fantasia.
     - Botão *"Mais opções (parcelas, fixo, data retroativa)"* para alternar para o modo guiado.
   - *Teste & Verificação:* Testes de renderização e acessibilidade com React Testing Library.
   - *Commit:* `feat(transactions): criar componente StepQuick para lancamento em tela unica`
@@ -165,15 +173,16 @@ Commit + Push       Commit + Push                           Commit + Push       
 
 ### FASE 3: MOTOR DE INSIGHTS BIDIRECIONAL & GASTOS VAMPIROS
 
-**Objetivo:** Aprimorar o motor em `src/domain/insights/` para detectar rendas previsíveis, alertar sobre cobranças duplicadas, reajustes de preços e calcular o peso orçamentário de gastos recorrentes.
+**Objetivo:** Aprimorar o motor em `src/domain/insights/` para detectar rendas previsíveis (fixas e de clientes recorrentes), alertar sobre cobranças duplicadas sem falsos positivos e calcular o peso orçamentário de gastos recorrentes.
 
-#### Tarefas:
-- [ ] **Tarefa 3.1 — Suporte a Rendas (`IncomeLike`) em `domain/insights/recurrences.ts`:**
-  - Generalizar a interface e o algoritmo de agrupamento para processar tanto despesas quanto receitas históricas dos últimos 3 a 6 meses.
-  - Implementar inferência de dia típico (`calculateTypicalDay`) e valor mediano para receitas periódicas (Salário, aluguéis recebidos, pró-labore).
-  - Identificar a condição `missingThisMonth` para receitas previstas no mês corrente.
-  - *Teste & Verificação:* Testes unitários em `recurrences.test.ts` com cenários de salários em dias variáveis e múltiplos empregos.
-  - *Commit:* `feat(domain/insights): adicionar deteccao inteligente de rendas habituais`
+#### Tarefas da Fase 3:
+- [ ] **Tarefa 3.1 — Suporte a Rendas (`IncomeLike`) com Classificação Dual:**
+  - Generalizar o algoritmo para processar receitas históricas dos últimos 3 a 6 meses.
+  - **Perfil 1 — Renda Fixa/CLT:** Dia típico fixo ($\pm 2$ dias) e valor estável ($\pm 10\%$). Sugere confirmação em 1 toque com valor preenchido.
+  - **Perfil 2 — Renda Recorrente de Cliente Frequente (Freelancer):** Mesma fonte/cliente habitual, frequência mensal, valor flutuante. Sugere card com campo de valor aberto para digitação imediata.
+  - Detectar a condição `missingThisMonth` para receitas previstas no mês corrente.
+  - *Teste & Verificação:* Testes unitários em `recurrences.test.ts` com cenários de salários CLT e múltiplos clientes freelancers.
+  - *Commit:* `feat(domain/insights): adicionar deteccao dual de rendas fixas e variaveis`
 
 - [ ] **Tarefa 3.2 — Identificador de "Gastos Vampiros" e Alto Impacto Orçamentário:**
   - Implementar função pura `evaluateBudgetImpact(occurrence, monthlyIncomeCents, categoryBudgetCents)`:
@@ -182,12 +191,11 @@ Commit + Push       Commit + Push                           Commit + Push       
   - *Teste & Verificação:* Testes cobrindo thresholds matemáticos e cálculos de projeção anual.
   - *Commit:* `feat(domain/insights): implementar calculo de impacto orcamentario e gastos vampiros`
 
-- [ ] **Tarefa 3.3 — Detecção Robusta de Anomalias Financeiras:**
-  - Refinar detecção de cobranças duplicadas no mesmo mês (`duplicateChargesThisMonth >= 2`).
-  - Refinar detecção de reajustes silenciosos de preços (`priceAdjustment >= 10%`).
-  - Sinalizar contas essenciais pendentes com proximidade de vencimento.
-  - *Teste & Verificação:* Testes de anomalias cobrindo variações de centavos e múltiplos lançamentos no mesmo dia.
-  - *Commit:* `feat(domain/insights): refinar deteccao de cobrancas duplicadas e reajustes`
+- [ ] **Tarefa 3.3 — Filtro Estrito Antirruído para Cobranças Duplicadas e Reajustes:**
+  - Regra de Duplicidade: Sinalizar cobrança duplicada exclusivamente se for **serviço de assinatura de valor fixo** OU se forem compras com **mesmo valor exato no mesmo dia e na mesma hora/minuto**.
+  - Regra de Reajuste: Diferenciar reajustes inflacionários (10%–30%) de mudanças de plano (>50%).
+  - *Teste & Verificação:* Testes garantindo que compras corriqueiras de mesmo valor em dias diferentes NÃO disparem falsos alertas de duplicidade.
+  - *Commit:* `feat(domain/insights): aplicar regras estritas antirruido para cobrancas duplicadas`
 
 - [ ] **Tarefa 3.4 — Sincronização dos Testes do Módulo de Insights:**
   - Executar e atualizar a suíte completa de `src/domain/insights/index.test.ts` e `recurrences.test.ts`.
@@ -197,7 +205,7 @@ Commit + Push       Commit + Push                           Commit + Push       
 
 #### PORTÃO DE QUALIDADE 3 (Quality Gate 3):
 1. 100% dos testes do motor de insights aprovados no Vitest.
-2. Invariantes de cálculo matemático validadas.
+2. Invariantes de cálculo matemático validadas (zero falsos positivos de duplicidade).
 3. Pureza de domínio garantida (sem efeitos colaterais ou dependências externas).
 4. Typecheck (`npx tsc --noEmit`) e Linter (`npm run lint`) 100% limpos.
 5. **Ação Obrigatória:** Executar `git push origin` com os commits da Fase 3.
@@ -206,18 +214,19 @@ Commit + Push       Commit + Push                           Commit + Push       
 
 ### FASE 4: ASSISTENTE PROATIVO NA HOME & APRENDIZADO ATIVO
 
-**Objetivo:** Levar os insights para a Visão Geral em um microcard com ações de 1 toque, permitindo confirmar rendas e ensinar o motor a calibrar sua precisão.
+**Objetivo:** Levar os insights para a Visão Geral em um microcard com ações de 1 toque, política de discrição antirruído, permitindo confirmar rendas e ensinar o motor a calibrar sua precisão.
 
-#### Tarefas:
-- [ ] **Tarefa 4.1 — Hook Unificado `useSmartAdvisorInsights`:**
-  - Criar `src/features/overview/hooks/use-smart-advisor-insights.ts` cruzando despesas, rendas, orçamentos e feedback do usuário.
-  - Classificar e retornar a recomendação de maior relevância no momento:
+#### Tarefas da Fase 4:
+- [ ] **Tarefa 4.1 — Hook Unificado `useSmartAdvisorInsights` com Política de Cooldown:**
+  - Criar `src/features/overview/hooks/use-smart-advisor-insights.ts` cruzando despesas, rendas, orçamentos, feedback do usuário e histórico de dismiss.
+  - **Matriz de Prioridade:**
     1. *Crítica:* Cobrança duplicada ou conta esquecida com risco de juros.
     2. *Entrada:* Renda habitual prevista pronta para confirmação em 1 clique.
     3. *Economia:* Oportunidade de corte de assinatura ou reajuste de preço.
     4. *Calibração:* Pergunta simples para ensinar o motor.
-  - *Teste & Verificação:* Testes de hook simulando cenários e validando a ordenação por relevância.
-  - *Commit:* `feat(overview): criar hook unificado de insights proativos para a home`
+  - **Regra de Discrição:** Limite estrito de no máximo 1 insight por dia; se dispensado, silenciar aquele tema por 30 dias; se o mês estiver regular, card fica 100% oculto.
+  - *Teste & Verificação:* Testes de hook simulando cooldown, dismiss e ordenação por criticidade.
+  - *Commit:* `feat(overview): criar hook de insights proativos com politica de cooldown e discricao`
 
 - [ ] **Tarefa 4.2 — Componente `SmartAdvisorCard` na Home:**
   - Criar `src/components/modules/smart-advisor-card.tsx` respeitando as regras do Design System:
@@ -226,8 +235,9 @@ Commit + Push       Commit + Push                           Commit + Push       
     - Zero emojis.
     - Botão de ação de 1 toque para confirmar renda com Toast de reversão.
     - Botões de feedback de aprendizado: `[Sim, monitorar]` / `[Não, foi pontual]`.
+    - Botão sutil de dispensar (`[Dispensar por 30 dias]`).
   - *Teste & Verificação:* Testes de renderização nos 4 estados e disparo sensorial (`triggerSensory`).
-  - *Commit:* `feat(modules): criar componente SmartAdvisorCard para a tela inicial`
+  - *Commit:* `feat(modules): criar componente SmartAdvisorCard com acoes de 1 toque e dismiss`
 
 - [ ] **Tarefa 4.3 — Persistência do Feedback do Usuário:**
   - Conectar as respostas de calibração à tabela `insight_feedback` via Supabase/RPC, garantindo que o motor recalcule imediatamente e elimine falsos positivos para aquele usuário.
@@ -259,6 +269,7 @@ Commit + Push       Commit + Push                           Commit + Push       
 | Teste | Critério de Aceitação | Comando / Verificação |
 |---|---|---|
 | **Compartilhamento de Comprovante** | App surge no menu nativo, processa imagem/PDF sem custo e cadastra com opção de edição | Teste de Intent via ADB e banco real |
+| **Deduplicação Comprovante $\leftrightarrow$ Push** | Notificação que chega 45s após o comprovante é descartada sem duplicar lançamento | Teste unitário em `suggestions-store.test.ts` |
 | **Lançamento Rápido** | Cadastro de despesa concluído em $\le 3$ segundos na tela única | Interação manual e teste com `StepQuick` |
 | **Detecção de Salário/Renda** | Renda prevista surge na data típica e é confirmada em 1 clique | Teste unitário em `recurrences.test.ts` |
 | **Gastos Vampiros & Anomalias** | Cobrança duplicada gera alerta imediato na Home com economia anual calculada | Teste unitário e renderização no `SmartAdvisorCard` |
