@@ -2,10 +2,7 @@ import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { useSearchParams } from "react-router";
 import { FileSpreadsheet, Landmark, Scale, TrendingUp } from "lucide-react";
 import { useDebounce } from "@/hooks";
-import { Button, ErrorState, Skeleton, Tabs, type TabItem } from "@/components/ui";
-import { DatePicker } from "@/components/ui/date-picker";
-import { MonthPicker, YearPicker } from "@/components/modules";
-import { cn } from "@/lib/utils";
+import { ErrorState, Skeleton, Tabs, type TabItem } from "@/components/ui";
 import {
   aggregateByCategory,
   aggregateByPaymentMethod,
@@ -347,10 +344,6 @@ export function ReportsPage() {
     () => dividends.filter((d) => isDateInPeriod(d.date)),
     [dividends, isDateInPeriod],
   );
-  const periodContributions = useMemo(
-    () => contributions.filter((c) => isDateInPeriod(c.date)),
-    [contributions, isDateInPeriod],
-  );
 
   const periodBuysBRL = useMemo(
     () =>
@@ -446,29 +439,6 @@ export function ReportsPage() {
     return 0;
   }, [isCurrentPeriod, positionQuery.totalCostBRL, selectedSnapshot]);
 
-  const hasDataForPeriod = useMemo(() => {
-    if (isCurrentPeriod) {
-      return (positionQuery.totalBRL ?? 0) > 0 || assets.length > 0;
-    }
-    const hasSnapshot = selectedSnapshot !== null;
-    const hasTx = periodTransactions.length > 0;
-    const hasDiv = periodDividendsList.length > 0;
-    const hasContrib = periodContributions.length > 0;
-    return hasSnapshot || hasTx || hasDiv || hasContrib;
-  }, [
-    isCurrentPeriod,
-    positionQuery.totalBRL,
-    assets.length,
-    selectedSnapshot,
-    periodTransactions.length,
-    periodDividendsList.length,
-    periodContributions.length,
-  ]);
-
-  const handleResetToCurrentMonth = useCallback(() => {
-    setMode("month");
-    setMonth(currentMonth());
-  }, []);
 
   const totalPatrimonyBRL = periodPatrimonyBRL;
   const cashBalanceBRL = positionQuery.cashBRL ?? 0;
@@ -895,6 +865,16 @@ export function ReportsPage() {
             icon: <Landmark className="size-4" aria-hidden="true" />,
             content: (
               <FinancialTab
+                mode={mode}
+                setMode={setMode}
+                month={month}
+                setMonth={setMonth}
+                year={year}
+                setYear={setYear}
+                customStart={customStart}
+                setCustomStart={setCustomStart}
+                customEnd={customEnd}
+                setCustomEnd={setCustomEnd}
                 grossIncomeBrutoCents={grossIncomeBrutoCents}
                 grossExpenseBrutoCents={grossExpenseBrutoCents}
                 grossSavingsBrutoCents={grossSavingsBrutoCents}
@@ -924,10 +904,9 @@ export function ReportsPage() {
             icon: <TrendingUp className="size-4" aria-hidden="true" />,
             content: (
               <InvestmentsTab
-                totalPatrimonyBRL={totalPatrimonyBRL}
-                hasDataForPeriod={hasDataForPeriod}
-                periodLabel={periodLabel}
-                onResetToCurrentMonth={handleResetToCurrentMonth}
+                totalPatrimonyBRL={positionQuery.totalBRL ?? 0}
+                hasDataForPeriod={true}
+                periodLabel="Posição Atual"
                 allocationAnalysis={allocationAnalysis}
                 concentrationRisk={concentrationRisk}
                 classSegments={investmentDonutData.classSegments}
@@ -994,86 +973,6 @@ export function ReportsPage() {
           </p>
         </div>
       </header>
-
-      {/* Controles de Período — Separados e Padronizados com o Restante do App */}
-      <div className="flex flex-col gap-4 w-full">
-        {/* Barra de Periodicidade em Pills (Padrão Insights & Sub-abas) */}
-        <div
-          role="group"
-          aria-label="Periodicidade do relatório"
-          className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth pb-0.5 -mx-1 px-1"
-        >
-          <Button
-            type="button"
-            variant={mode === "month" ? "default" : "outline"}
-            size="sm"
-            sensoryIntent="selection"
-            aria-pressed={mode === "month"}
-            onClick={() => {
-              setMode("month");
-            }}
-            className={cn(
-              "shrink-0 gap-1.5 text-xs h-8 px-3.5 rounded-pill transition-all cursor-pointer",
-              mode === "month"
-                ? "shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            Mensal
-          </Button>
-          <Button
-            type="button"
-            variant={mode === "year" ? "default" : "outline"}
-            size="sm"
-            sensoryIntent="selection"
-            aria-pressed={mode === "year"}
-            onClick={() => {
-              setMode("year");
-            }}
-            className={cn(
-              "shrink-0 gap-1.5 text-xs h-8 px-3.5 rounded-pill transition-all cursor-pointer",
-              mode === "year"
-                ? "shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            Anual
-          </Button>
-          <Button
-            type="button"
-            variant={mode === "custom" ? "default" : "outline"}
-            size="sm"
-            sensoryIntent="selection"
-            aria-pressed={mode === "custom"}
-            onClick={() => {
-              setMode("custom");
-            }}
-            className={cn(
-              "shrink-0 gap-1.5 text-xs h-8 px-3.5 rounded-pill transition-all cursor-pointer",
-              mode === "custom"
-                ? "shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            Personalizado
-          </Button>
-        </div>
-
-        {/* Seletor Temporal Padronizado (MonthPicker / YearPicker / Range) */}
-        <div className="flex items-center justify-center w-full min-w-0">
-          {mode === "month" ? (
-            <MonthPicker value={month} onValueChange={setMonth} />
-          ) : mode === "year" ? (
-            <YearPicker value={year} onValueChange={setYear} />
-          ) : (
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 w-full py-1">
-              <DatePicker value={customStart} onValueChange={setCustomStart} placeholder="Início" className="w-full sm:w-auto" />
-              <span className="text-xs text-muted-foreground text-center">até</span>
-              <DatePicker value={customEnd} onValueChange={setCustomEnd} placeholder="Fim" className="w-full sm:w-auto" />
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* Navegação Principal em Tabs com suporte a gestos swipe e acessibilidade */}
       <Tabs

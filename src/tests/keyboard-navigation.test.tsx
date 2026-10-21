@@ -7,7 +7,9 @@ import { DebtsPage } from "@/features/debts/pages/debts-page";
 import { TransactionListPage } from "@/features/transactions/pages/transaction-list-page";
 
 vi.mock("react-router", () => ({
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
+  Link: ({ children, to, ...rest }: { children: React.ReactNode; to: string; [key: string]: unknown }) => (
+    <a href={to} {...rest}>{children}</a>
+  ),
   useSearchParams: () => [new URLSearchParams(), vi.fn()],
   useNavigate: () => vi.fn(),
   Navigate: () => null,

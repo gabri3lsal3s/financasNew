@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
-import { currentMonth, shiftMonth } from "@/lib/date";
 import { ReportsPage } from "./reports-page";
 
 function renderReports(initialEntry = "/relatorios") {
@@ -331,20 +330,25 @@ describe("ReportsPage (Central Unificada §F42)", () => {
     expect((await screen.findAllByText("DRE Pessoal — Demonstração do Período"))[0]).toBeInTheDocument();
   });
 
-  it("mantém a barra de controle de período visível ao navegar entre abas", async () => {
+  it("exibe a barra de controle de período exclusivamente na subpágina de Finanças & DRE", async () => {
     const user = userEvent.setup();
     renderReports();
 
+    // Na aba padrão Finanças & DRE, controles de período estão presentes
     expect(screen.getByRole("button", { name: "Mensal" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Anual" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Personalizado" })).toBeInTheDocument();
 
-    // Muda para Investimentos
+    // Muda para Investimentos: controles de período de DRE não são exibidos
     await user.click(screen.getByRole("tab", { name: /Investimentos & Carteira/i }));
-    expect(screen.getByRole("button", { name: "Mensal" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mensal" })).not.toBeInTheDocument();
 
-    // Muda para Balanço
+    // Muda para Balanço: controles de período de DRE não são exibidos
     await user.click(screen.getByRole("tab", { name: /Balanço & Liberdade/i }));
+    expect(screen.queryByRole("button", { name: "Mensal" })).not.toBeInTheDocument();
+
+    // Retorna para Finanças: controles voltam a estar presentes
+    await user.click(screen.getByRole("tab", { name: /Finanças & DRE/i }));
     expect(screen.getByRole("button", { name: "Mensal" })).toBeInTheDocument();
   });
 
@@ -369,55 +373,21 @@ describe("ReportsPage (Central Unificada §F42)", () => {
     expect(screen.getAllByText(/ponderado:/i).length).toBeGreaterThan(0);
   });
 
-  it("exibe empty state informativo na aba de investimentos quando selecionado um mês anterior sem dados", async () => {
+  it("mantém a exibição da posição patrimonial consolidada viva na aba de investimentos independente da navegação em finanças", async () => {
     const user = userEvent.setup();
     mockSnapshots = [];
     renderReports();
 
-    // Navega para aba Investimentos
-    await user.click(screen.getByRole("tab", { name: /Investimentos & Carteira/i }));
-
-    // No mês atual, com ativos cadastrados, exibe o resumo patrimonial normalmente
-    expect(screen.getByText("Patrimônio Consolidado")).toBeInTheDocument();
-
-    // Clica para voltar ao mês anterior
+    // Clica para voltar ao mês anterior na aba Finanças
     const prevMonthButton = screen.getByRole("button", { name: "Mês anterior" });
     await user.click(prevMonthButton);
-
-    // Deve exibir o EmptyState informativo sem fallback involuntário para a custódia do mês corrente
-    expect(screen.getByText(/Nenhum dado patrimonial para/i)).toBeInTheDocument();
-    expect(screen.queryByText("Patrimônio Consolidado")).not.toBeInTheDocument();
-
-    // Clica em 'Ver mês atual' para restabelecer
-    const resetBtn = screen.getByRole("button", { name: /Ver mês atual/i });
-    await user.click(resetBtn);
-
-    // Retorna ao mês atual
-    expect(screen.getByText("Patrimônio Consolidado")).toBeInTheDocument();
-  });
-
-  it("recupera o snapshot histórico de carteira quando disponível para a competência selecionada", async () => {
-    const user = userEvent.setup();
-    const prevMonthKey = shiftMonth(currentMonth(), -1);
-    mockSnapshots = [
-      { id: "snap-hist", month: prevMonthKey, total_value: 45000, total_cost: 40000 },
-    ];
-
-    renderReports();
 
     // Navega para aba Investimentos
     await user.click(screen.getByRole("tab", { name: /Investimentos & Carteira/i }));
 
-    // Clica para voltar ao mês anterior
-    const prevMonthButton = screen.getByRole("button", { name: "Mês anterior" });
-    await user.click(prevMonthButton);
-
-    // Não deve exibir empty state, mas sim o valor do snapshot histórico (R$ 45.000,00)
-    expect(screen.queryByText(/Nenhum dado patrimonial para/i)).not.toBeInTheDocument();
+    // Deve exibir o Patrimônio Consolidado da carteira viva atual de forma estável
     expect(screen.getByText("Patrimônio Consolidado")).toBeInTheDocument();
-    expect(screen.getAllByText(/45\.000/)[0]).toBeInTheDocument();
-
-    mockSnapshots = [];
+    expect(screen.getAllByText(/80\.000/)[0]).toBeInTheDocument();
   });
 
   it("utiliza a função canônica weightedCents para totalizar despesas e receitas sem resíduo fracionário de ponto flutuante", () => {

@@ -2,8 +2,9 @@ import { type Dispatch, type SetStateAction } from "react";
 import { Link } from "react-router";
 import { ArrowRight, Landmark, Printer, Sparkles } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui";
+import { DatePicker } from "@/components/ui/date-picker";
 import { MoneyText } from "@/components/ui/money-text";
-import { ReportTable } from "@/components/modules";
+import { MonthPicker, YearPicker, ReportTable } from "@/components/modules";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import {
@@ -15,9 +16,20 @@ import {
 } from "@/domain/reports";
 import type { Expense } from "@/types";
 
+export type PeriodMode = "month" | "year" | "custom";
 export type AggregationTab = "category" | "method" | "weekday";
 
 export interface FinancialTabProps {
+  mode: PeriodMode;
+  setMode: Dispatch<SetStateAction<PeriodMode>>;
+  month: string;
+  setMonth: (month: string) => void;
+  year: number;
+  setYear: (year: number) => void;
+  customStart: string;
+  setCustomStart: (start: string) => void;
+  customEnd: string;
+  setCustomEnd: (end: string) => void;
   grossIncomeBrutoCents: number;
   grossExpenseBrutoCents: number;
   grossSavingsBrutoCents: number;
@@ -40,6 +52,16 @@ export interface FinancialTabProps {
  * de agregação por categoria, forma de pagamento e dia da semana.
  */
 export function FinancialTab({
+  mode,
+  setMode,
+  month,
+  setMonth,
+  year,
+  setYear,
+  customStart,
+  setCustomStart,
+  customEnd,
+  setCustomEnd,
   grossIncomeBrutoCents,
   grossExpenseBrutoCents,
   grossSavingsBrutoCents,
@@ -58,6 +80,81 @@ export function FinancialTab({
 }: FinancialTabProps) {
   return (
     <div className="flex flex-col gap-6">
+      {/* Linha do seletor de data — full-width, padrão das outras páginas */}
+      {mode === "month" ? (
+        <MonthPicker value={month} onValueChange={setMonth} />
+      ) : mode === "year" ? (
+        <YearPicker value={year} onValueChange={setYear} />
+      ) : (
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 w-full py-1">
+          <DatePicker value={customStart} onValueChange={setCustomStart} placeholder="Início" className="w-full sm:w-auto" />
+          <span className="text-xs text-muted-foreground text-center">até</span>
+          <DatePicker value={customEnd} onValueChange={setCustomEnd} placeholder="Fim" className="w-full sm:w-auto" />
+        </div>
+      )}
+
+      {/* Linha de controles: descrição + alternador de periodicidade em pills (padrão Orçamentos) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground sm:text-sm">
+          Acompanhe o fluxo de caixa, DRE pessoal e taxas de poupança da competência.
+        </p>
+
+        {/* Alternância de Periodicidade estilo pills (padrão Orçamentos) */}
+        <div
+          role="group"
+          aria-label="Periodicidade do relatório"
+          className="flex items-center gap-1.5 self-start sm:self-auto overflow-x-auto no-scrollbar scroll-smooth"
+        >
+          <Button
+            type="button"
+            size="sm"
+            variant={mode === "month" ? "default" : "outline"}
+            onClick={() => setMode("month")}
+            className={cn(
+              "shrink-0 gap-1.5 text-xs h-8 px-3.5 rounded-pill transition-all",
+              mode === "month"
+                ? "shadow-xs font-semibold"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            aria-pressed={mode === "month"}
+            sensoryIntent="selection"
+          >
+            <span>Mensal</span>
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={mode === "year" ? "default" : "outline"}
+            onClick={() => setMode("year")}
+            className={cn(
+              "shrink-0 gap-1.5 text-xs h-8 px-3.5 rounded-pill transition-all",
+              mode === "year"
+                ? "shadow-xs font-semibold"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            aria-pressed={mode === "year"}
+            sensoryIntent="selection"
+          >
+            <span>Anual</span>
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={mode === "custom" ? "default" : "outline"}
+            onClick={() => setMode("custom")}
+            className={cn(
+              "shrink-0 gap-1.5 text-xs h-8 px-3.5 rounded-pill transition-all",
+              mode === "custom"
+                ? "shadow-xs font-semibold"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            aria-pressed={mode === "custom"}
+            sensoryIntent="selection"
+          >
+            <span>Personalizado</span>
+          </Button>
+        </div>
+      </div>
       {/* Card Dossiê Executivo A4 de Finanças & DRE */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
         <div className="flex flex-col gap-1 min-w-0 flex-1">

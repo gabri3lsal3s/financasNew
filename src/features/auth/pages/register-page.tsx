@@ -12,74 +12,60 @@ import { BrandLogo } from "@/components/layout";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
-// Painel lateral institucional (desktop ≥ lg)
+// Painel lateral de marketing (desktop ≥ lg)
 // ---------------------------------------------------------------------------
 const REGISTER_FEATURES = [
-  {
-    icon: Layers,
-    title: "Organização centralizada",
-    desc: "Receitas, despesas e cartões em um fluxo unificado",
-  },
-  {
-    icon: PieChart,
-    title: "Orçamentos e Metas",
-    desc: "Limites inteligentes por categoria e rebalanceamento",
-  },
-  {
-    icon: Shield,
-    title: "Privacidade estrita",
-    desc: "Isolamento criptográfico com RLS e dados protegidos",
-  },
+  { icon: Layers, label: "Receitas, despesas e cartões em um só lugar" },
+  { icon: PieChart, label: "Orçamentos, metas e rebalanceamento de carteira" },
+  { icon: Shield, label: "Dados criptografados e protegidos (RLS)" },
 ] as const;
 
 function RegisterSideHero({ planoParam }: { planoParam: string | null }) {
   return (
     <>
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-6">
         <BrandLogo
-          markClassName="size-9"
-          wordmarkClassName="text-white font-display text-xl tracking-wider"
-          subtitleClassName="text-slate-300 text-[10px] tracking-widest uppercase font-medium"
+          themeMode="dark"
+          variant="white"
+          markClassName="size-11 drop-shadow-sm"
+          wordmarkClassName="text-white text-xl font-bold tracking-wider"
+          subtitleClassName="text-teal-300/90 text-[10px] font-semibold tracking-widest"
           showWordmark
           showSubtitle
         />
 
-        <div className="flex flex-col gap-2">
-          <h2 className="font-display text-2xl font-bold text-white tracking-tight leading-snug">
-            {planoParam ? "Ative o Plano Pro" : "Comece gratuitamente"}
-          </h2>
+        <div className="flex flex-col gap-2 mt-2">
+          <p className="text-lg font-semibold tracking-tight text-white leading-snug">
+            {planoParam
+              ? "Crie sua conta para ativar o Plano Pro."
+              : "Controle total das suas finanças em minutos."}
+          </p>
           <p className="text-sm text-slate-300 leading-relaxed">
             {planoParam
-              ? "Crie sua conta para concluir a assinatura do Plano Pro."
-              : "Tenha clareza, previsibilidade e tranquilidade financeira a partir de hoje."}
+              ? "Após o cadastro, você será conduzido para concluir a assinatura."
+              : "Comece com 30 dias de acesso Pro completo, sem cartão de crédito."}
           </p>
         </div>
 
-        <ul className="flex flex-col gap-4">
-          {REGISTER_FEATURES.map(({ icon: Icon, title, desc }) => (
-            <li key={title} className="flex items-start gap-3.5">
-              <div className="size-8 rounded-lg bg-white/10 border border-white/10 flex items-center justify-center shrink-0 text-primary mt-0.5 shadow-xs">
-                <Icon className="size-4" aria-hidden="true" />
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-xs font-semibold text-white">{title}</span>
-                <span className="text-xs text-slate-300/80 leading-relaxed">{desc}</span>
-              </div>
+        <ul className="flex flex-col gap-3 mt-1">
+          {REGISTER_FEATURES.map(({ icon: Icon, label }) => (
+            <li key={label} className="flex items-center gap-3 text-sm text-slate-200">
+              <span className="flex size-7 items-center justify-center rounded-lg bg-teal-500/15 border border-teal-500/25 shrink-0 text-teal-300">
+                <Icon className="size-3.5" aria-hidden="true" />
+              </span>
+              <span className="leading-snug">{label}</span>
             </li>
           ))}
         </ul>
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4 flex flex-col gap-1.5 backdrop-blur-xs shadow-xs">
-        <div className="flex items-center gap-2">
-          <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">
-            Período de Avaliação
-          </p>
-        </div>
-        <p className="text-sm font-bold text-white">30 dias Pro sem custo</p>
+      <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-4.5 backdrop-blur-xs flex flex-col gap-1.5 shadow-xs">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-teal-300 bg-teal-500/15 border border-teal-500/20 px-2 py-0.5 rounded-full w-fit">
+          Período de Avaliação
+        </span>
+        <p className="text-sm font-bold text-white mt-0.5">30 dias Pro sem custo</p>
         <p className="text-xs text-slate-300 leading-relaxed">
-          Sem cartão de crédito no cadastro. Cancele quando quiser.
+          Cancele quando quiser. Sem cobranças surpresa e sem cartão.
         </p>
       </div>
     </>
@@ -195,7 +181,7 @@ export function RegisterPage() {
 
         {/* Banner Pro — apenas mobile (lg+ vê o painel lateral) */}
         {!planoParam && (
-          <div className="flex lg:hidden rounded-xl border border-primary/40 bg-primary/5 p-3 items-center gap-3">
+          <div className="flex lg:hidden rounded-xl border border-primary/40 bg-primary/5 p-3.5 items-center gap-3">
             <div className="flex flex-col gap-0.5 min-w-0">
               <p className="text-xs font-semibold text-foreground">30 dias Pro grátis</p>
               <p className="text-[11px] text-muted-foreground">Sem cartão de crédito</p>
@@ -215,7 +201,7 @@ export function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
           {/* Nome + E-mail em grid responsivo */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="register-name" className="text-xs font-semibold text-foreground">
                 Nome
@@ -227,6 +213,7 @@ export function RegisterPage() {
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="Como quer ser chamado"
+                className="h-10 text-sm rounded-xl"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -241,6 +228,7 @@ export function RegisterPage() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="voce@exemplo.com"
+                className="h-10 text-sm rounded-xl"
               />
             </div>
           </div>
@@ -276,11 +264,12 @@ export function RegisterPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Mínimo de 8 caracteres"
+              className="h-10 text-sm rounded-xl"
             />
 
             {password.length > 0 && (
-              <div className="mt-1 flex flex-col gap-1.5 rounded-xl border border-border/80 bg-surface/50 p-2.5 text-xs text-muted-foreground animate-in fade-in-50">
-                <div className="grid grid-cols-3 gap-1 mb-1">
+              <div className="mt-1 flex flex-col gap-2 rounded-xl border border-border/80 bg-muted/30 p-3 text-xs text-muted-foreground animate-in fade-in-50">
+                <div className="grid grid-cols-3 gap-1.5 mb-0.5">
                   <div
                     className={cn(
                       "h-1 rounded-full transition-colors",
@@ -310,7 +299,7 @@ export function RegisterPage() {
                     )}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-1 text-[11px]">
+                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
                   {[
                     { met: requirements.minLength, label: "Mínimo 8 caracteres" },
                     { met: requirements.hasUppercase, label: "Letra maiúscula (A-Z)" },
@@ -347,7 +336,7 @@ export function RegisterPage() {
               >
                 Código de Convite
               </label>
-              <span className="text-[11px] text-muted-foreground">(opcional)</span>
+              <span className="text-[11px] text-muted-foreground font-normal">(opcional)</span>
             </div>
             <Input
               id="register-invite"
@@ -355,32 +344,34 @@ export function RegisterPage() {
               value={inviteCode}
               onChange={(event) => setInviteCode(event.target.value.toUpperCase())}
               placeholder="Ex: GF-XXXX-XXXX"
-              className="font-mono uppercase text-xs"
+              className="h-10 text-xs font-mono uppercase rounded-xl"
             />
           </div>
 
-          <Turnstile />
+          <Turnstile className="my-0.5" />
 
           <Button
             type="submit"
-            size="lg"
-            className="w-full font-semibold bg-primary text-primary-foreground hover:bg-primary-strong shadow-xs transition-colors"
             disabled={pending || Boolean(configError)}
+            className="h-10 text-sm font-semibold rounded-xl bg-primary-strong hover:bg-primary text-primary-foreground shadow-xs transition-colors"
           >
             {pending ? "Criando conta…" : "Criar conta"}
           </Button>
         </form>
 
-        <div className="flex flex-col items-center gap-2 pt-1 text-sm">
+        <div className="mt-2 pt-4 border-t border-border/70 flex flex-col items-center gap-2 text-xs sm:text-sm">
           <p className="text-muted-foreground">
             Já tem conta?{" "}
-            <Link to="/entrar" className="font-semibold text-primary-strong hover:underline underline-offset-4">
+            <Link
+              to="/entrar"
+              className="text-primary-strong font-semibold hover:text-primary hover:underline transition-colors"
+            >
               Entrar
             </Link>
           </p>
           <Link
             to="/apresentacao"
-            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors pt-1"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-0.5"
           >
             <ArrowLeft className="size-3.5" aria-hidden="true" />
             <span>Conhecer o ÁXIS Finance e Planos</span>
