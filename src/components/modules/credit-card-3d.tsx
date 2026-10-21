@@ -255,7 +255,7 @@ export function CreditCard3D({
             <span className="font-mono text-base sm:text-lg font-bold text-white drop-shadow-xs">
               <NumberTicker value={usedLimitCents} format={formatCentsAsBRL} />
             </span>
-            {usedLimitPonderadoCents !== undefined && (
+            {usedLimitPonderadoCents !== undefined && usedLimitPonderadoCents !== usedLimitCents && (
               <div className="flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded bg-black/35 border border-white/10">
                 <span className="text-[9px] uppercase tracking-wider text-white/70">Ponderada:</span>
                 <span className="font-mono text-[11px] font-semibold text-white">

@@ -87,7 +87,7 @@ function PaymentDialogContent({
       {!isRefund && openBalanceCents > 0 && (
         <div className="flex items-center justify-between text-xs text-muted-foreground -mb-1">
           <span>
-            Total pendente:{" "}
+            Total pendente (boleto):{" "}
             <span className="font-semibold text-foreground">
               <MoneyText cents={openBalanceCents} tone="default" />
             </span>
@@ -102,7 +102,7 @@ function PaymentDialogContent({
             </button>
           ) : (
             <span className="text-[11px] text-muted-foreground/80 font-medium">
-              Valor integral pré-preenchido
+              Valor nominal (100%) pré-preenchido
             </span>
           )}
         </div>

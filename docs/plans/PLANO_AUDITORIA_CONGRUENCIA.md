@@ -131,7 +131,7 @@ graph TD
   - *Commit:* `feat(cards): handle overpayment credits in successive invoice competences`
 - [x] **Tarefa 2.2:** Validar a invariante da conservação estrita de centavos em parcelamentos de cartão (`divideIntoInstallments`), assegurando que a soma das parcelas seja idêntica ao valor da compra.
   - *Commit:* `test(cards): verify strict cents conservation across installment divisions`
-- [ ] **Tarefa 2.3:** Auditar a apresentação da fatura de cartão para garantir que o **Valor do Boleto / Total a Pagar** exibido com destaque seja sempre o valor **Bruto Nominal (100%)**, com a métrica ponderada exibida como consulta analítica.
+- [x] **Tarefa 2.3:** Auditar a apresentação da fatura de cartão para garantir que o **Valor do Boleto / Total a Pagar** exibido com destaque seja sempre o valor **Bruto Nominal (100%)**, com a métrica ponderada exibida como consulta analítica.
   - *Commit:* `fix(cards): guarantee gross nominal invoice total as primary payment metric`
 - [ ] **Tarefa 2.4:** Validar congruência entre estornos de fatura e receitas criadas na categoria "Estorno".
   - *Commit:* `test(cards): assert refund balance congruence across invoice and income records`

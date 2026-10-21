@@ -36,7 +36,8 @@ describe("PaymentDialog — Preenchimento automático e tratamento de faturas", 
 
     const input = screen.getByRole("textbox", { name: "Valor do pagamento" });
     expect(input).toHaveValue("R$\u00a0189,50");
-    expect(screen.getByText("Valor integral pré-preenchido")).toBeInTheDocument();
+    expect(screen.getByText("Valor nominal (100%) pré-preenchido")).toBeInTheDocument();
+    expect(screen.getByText(/Total pendente \(boleto\):/i)).toBeInTheDocument();
   });
 
   it("permite registrar o pagamento do valor integral diretamente sem redigitar", async () => {

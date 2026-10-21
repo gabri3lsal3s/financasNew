@@ -435,4 +435,35 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     expect(screen.getByText("Notebook 10x")).toBeInTheDocument();
     expect(screen.getByText("2/10")).toBeInTheDocument();
   });
+
+  it("garante o valor bruto nominal (100%) como métrica primária e exibe a ponderada como consulta analítica", () => {
+    // Despesa compartilhada: R$ 200,00 nominal com peso 50% (R$ 100,00 ponderado)
+    stateMocks.expenses = [
+      {
+        id: "e-split",
+        description: "Restaurante Compartilhado",
+        date: "2026-08-05",
+        value: 200,
+        report_weight: 0.5,
+        bill_competence: "2026-08",
+        installments_total: 1,
+        installment_number: 1,
+      },
+    ];
+    stateMocks.payments = [];
+
+    render(<CardsPage />);
+
+    // Métrica primária destacada (Fatura Total Bruto): R$ 200,00
+    expect(screen.getAllByText("Fatura Total (Bruto)").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("R$ 200,00").length).toBeGreaterThan(0);
+
+    // Métrica analítica secundária: "Ponderada: R$ 100,00" e "Ponderado: R$ 100,00"
+    expect(screen.getByText("Ponderada:")).toBeInTheDocument();
+    expect(screen.getByText("Ponderado:")).toBeInTheDocument();
+    expect(screen.getAllByText("R$ 100,00").length).toBeGreaterThan(0);
+
+    // Saldo aberto a pagar no banco: R$ 200,00 (100% nominal do boleto)
+    expect(screen.getByText("Saldo aberto (Bruto)")).toBeInTheDocument();
+  });
 });
