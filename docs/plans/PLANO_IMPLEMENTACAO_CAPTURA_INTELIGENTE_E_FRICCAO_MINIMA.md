@@ -2,7 +2,7 @@
 
 > **Documento Canônico de Arquitetura e Engenharia**  
 > **Status:** Aprovado e Blindado (Pronto para Execução)  
-> **Módulos Afetados:** `android/`, `src/domain/notifications/`, `src/domain/insights/`, `src/features/transactions/wizard/`, `src/features/overview/`, `src/components/modules/`, `docs/`  
+> **Módulos Afetados:** `android/`, `src/domain/notifications/`, `src/domain/insights/`, `src/features/transactions/wizard/`, `src/features/overview/`, `src/features/landing/`, `src/components/modules/`, `docs/`  
 > **Governança:** Custo Zero de Infraestrutura (Google ML Kit Thin on-device) · Zero Inchaço de APK (<800 KB) · Zero Emojis · TypeScript Estrito · Commit por Tarefa e Push por Fase  
 > **Data:** Outubro de 2026 · **Ambiente:** Android Nativo (Capacitor) & Web PWA  
 
@@ -10,7 +10,7 @@
 
 ## 1. SUMÁRIO EXECUTIVO & DIAGNÓSTICO DE FRAGILIDADES
 
-O objetivo deste plano é eliminar o atrito de registro financeiro (despesas, rendas e investimentos), permitindo que o usuário capture transações no momento em que elas ocorrem (mesmo quando o banco não emite notificação push), conte com um motor inteligente que reconhece CNPJs, razões sociais e estabelecimentos em todo o aplicativo, realize lançamentos manuais em menos de 3 segundos e conte com um assistente financeiro proativo na tela inicial que aprende com seus hábitos.
+O objetivo deste plano é eliminar o atrito de registro financeiro (despesas, rendas e investimentos), permitindo que o usuário capture transações no momento em que elas ocorrem (mesmo quando o banco não emite notificação push), conte com um motor inteligente que reconhece CNPJs, razões sociais e estabelecimentos em todo o aplicativo, realize lançamentos manuais em menos de 3 segundos, conte com um assistente financeiro proativo na tela inicial e entenda todo esse valor logo no primeiro contato na página de apresentação e no onboarding.
 
 A auditoria exaustiva de código e cenários reais identificou **10 fragilidades críticas** que foram tratadas e blindadas na arquitetura deste plano:
 
@@ -45,23 +45,30 @@ Toda a implementação deve respeitar rigorosamente os seguintes pilares:
 
 ---
 
-## 3. ROTEIRO DE EXECUÇÃO DETALHADO EM 5 FASES
+## 3. ROTEIRO DE EXECUÇÃO DETALHADO EM 6 FASES
 
 ```
-┌────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                       FLUXO DE EXECUÇÃO EM 5 FASES MODULARES & INTEGRADAS                      │
-└────────────────────────────────────────────────────────────────────────────────────────────────┘
-                                                │
-    ┌───────────────────┬───────────────────────┼───────────────────────┬───────────────────┐
-    ▼                   ▼                       ▼                       ▼                   ▼
- [FASE 1]            [FASE 2]                [FASE 3]                [FASE 4]            [FASE 5]
- Compartilhamento    Motor Semântico de      Lançamento Rápido em    Motor de Insights   Card Inteligente
- de Comprovantes     Estabelecimentos        1 Tela (3 segundos)     Bidirecional &      na Home &
- (PDF/Imagem/Texto)  (CNPJ/Nome/Categoria)   no LaunchWizard         Gastos Vampiros     Feedback de 1 Toque
-    │                   │                       │                       │                   │
-    ▼                   ▼                       ▼                       ▼                   ▼
-[Quality Gate 1]    [Quality Gate 2]        [Quality Gate 3]        [Quality Gate 4]    [Quality Gate 5]
-Commit + Push       Commit + Push           Commit + Push           Commit + Push       Commit + Push
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                          FLUXO DE EXECUÇÃO EM 6 FASES MODULARES & INTEGRADAS                           │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+                                                    │
+    ┌───────────────────┬───────────────────────────┼───────────────────────────┬───────────────────┐
+    ▼                   ▼                           ▼                           ▼                   ▼
+ [FASE 1]            [FASE 2]                    [FASE 3]                    [FASE 4]            [FASE 5]
+ Compartilhamento    Motor Semântico de          Lançamento Rápido em        Motor de Insights   Card Inteligente
+ de Comprovantes     Estabelecimentos            1 Tela (3 segundos)         Bidirecional &      na Home &
+ (PDF/Imagem/Texto)  (CNPJ/Nome/Categoria)       no LaunchWizard             Gastos Vampiros     Feedback de 1 Toque
+    │                   │                           │                           │                   │
+    ▼                   ▼                           ▼                           ▼                   ▼
+[Quality Gate 1]    [Quality Gate 2]            [Quality Gate 3]            [Quality Gate 4]    [Quality Gate 5]
+                                                                                                    │
+                                                                                                    ▼
+                                                                                                 [FASE 6]
+                                                                                                 Apresentação Editorial
+                                                                                                 & Onboarding de Valor
+                                                                                                    │
+                                                                                                    ▼
+                                                                                                [Quality Gate 6]
 ```
 
 ---
@@ -300,13 +307,57 @@ Commit + Push       Commit + Push           Commit + Push           Commit + Pus
   - *Teste & Verificação:* Revisão de congruência da documentação técnica.
   - *Commit:* `docs: registrar arquitetura de captura de comprovantes e assistente proativo`
 
-#### PORTÃO DE QUALIDADE 5 (Quality Gate 5 / DoD Final):
-1. Suíte completa de testes de regressão do projeto (`npm run test`) 100% verde.
+#### PORTÃO DE QUALIDADE 5 (Quality Gate 5):
+1. Suíte de testes do motor e componentes da Home 100% aprovada.
 2. Typecheck estrito (`npx tsc --noEmit`) sem erros.
-3. Linter (`npm run lint`) 100% aprovado sem violação da regra de emojis.
+3. Linter (`npm run lint`) 100% limpo sem violações de emojis.
 4. Verificação de compatibilidade mobile e desktop.
-5. Documentos canônicos sincronizados.
-6. **Ação Obrigatória:** Executar `git push origin` com a entrega consolidada.
+5. **Ação Obrigatória:** Executar `git push origin` com os commits da Fase 5.
+
+---
+
+### FASE 6: APRESENTAÇÃO EDITORIAL & ONBOARDING DO RECURSO (LANDING PAGE & WELCOME FLOW)
+
+**Objetivo:** Destacar a captura inteligente de comprovantes, o motor de aprendizado semântico de CNPJs e o assistente proativo na página de apresentação (Landing Page) e no onboarding inicial, comunicando claramente essa funcionalidade-chave para o usuário logo no primeiro contato.
+
+#### Tarefas da Fase 6:
+- [ ] **Tarefa 6.1 — Destaque na Landing Page (`ProductNarratives.tsx`):**
+  - Adicionar o bloco de narrativa editorial "Zero Fricção: Compartilhamento Direto de Comprovantes & Inteligência Semântica":
+    - Explicar visualmente o fluxo: *Fez um Pix no banco? Toque em Compartilhar para o Guia Financeiro*.
+    - Demonstrar a conversão de Razão Social/CNPJ burocrático em Nome Fantasia amigável com categoria automática.
+    - Ilustrar o Assistente Proativo de Insights da Home (detecção de cobranças duplicadas e confirmação de salário em 1 toque).
+  - *Teste & Verificação:* Renderização responsiva da Landing Page em desktop e smartphone, com verificação de contraste de cores e acessibilidade.
+  - *Commit:* `feat(landing): adicionar narrativa de captura de comprovantes e inteligencia semantica`
+
+- [ ] **Tarefa 6.2 — Atualização da Tabela de Comparação de Plataformas (`PlatformComparison.tsx`):**
+  - Inserir na tabela comparativa os diferenciais exclusivos do aplicativo:
+    - *Captura por Compartilhamento de Comprovante (PDF/Imagem/Texto com OCR local gratuito)*.
+    - *Reconhecimento e Aprendizado Semântico de CNPJ e Nomes Fantasia*.
+    - *Lançamento Rápido em 3 segundos (tela única)*.
+    - *Assistente Proativo de Insights na Home com Ações de 1 Toque*.
+  - *Teste & Verificação:* Testes visuais da tabela em telas pequenas (<400px) e largas.
+  - *Commit:* `feat(landing): destacar recursos de captura e motor semantico na comparacao de plataformas`
+
+- [ ] **Tarefa 6.3 — Chamamento Inicial no Onboarding (`OnboardingCard.tsx`):**
+  - Adicionar o novo passo interativo de onboarding: *"Experimente compartilhar seu primeiro comprovante Pix"*, com link e dica prática de como usar o menu de compartilhamento do banco ou colar um comprovante de teste.
+  - *Teste & Verificação:* Testes unitários em `onboarding-card.test.tsx` cobrindo o novo passo e o cálculo percentual de progresso.
+  - *Commit:* `feat(onboarding): adicionar passo de compartilhamento de comprovante no setup inicial`
+
+- [ ] **Tarefa 6.4 — Modal Interativo de Boas-Vindas ("A Mágica da Captura Sem Fricção"):**
+  - Criar componente leve `src/components/modules/welcome-feature-modal.tsx` exibido uma única vez para novos usuários (ou acessível via botão "Como funciona?" nas configurações):
+    - *Slide 1:* Compartilhe qualquer comprovante do banco (PDF/Imagem/Texto).
+    - *Slide 2:* O motor aprende seus CNPJs e comerciantes habituais.
+    - *Slide 3:* Alertas inteligentes e confirmação de salário em 1 clique na Home.
+  - *Teste & Verificação:* Teste de renderização, persistência do dismiss no localStorage e navegação por teclado.
+  - *Commit:* `feat(modules): criar modal interativo de boas-vindas sobre a captura sem friccao`
+
+#### PORTÃO DE QUALIDADE 6 (Quality Gate 6 / DoD Final de Release):
+1. Landing page e componentes de onboarding 100% responsivos e fluidos (mobile e desktop).
+2. Regra de zero emojis estritamente verificada em todas as novas cópias editoriais.
+3. Suíte completa de testes do repositório (`npm run test`) 100% verde.
+4. `npm run typecheck` sem qualquer erro.
+5. `npm run lint` 100% aprovado.
+6. **Ação Obrigatória:** Executar `git push origin` com a release consolidada.
 
 ---
 
@@ -320,4 +371,5 @@ Commit + Push       Commit + Push           Commit + Push           Commit + Pus
 | **Lançamento Rápido** | Cadastro de despesa concluído em $\le 3$ segundos na tela única | Interação manual e teste com `StepQuick` |
 | **Detecção de Salário/Renda** | Renda prevista surge na data típica e é confirmada em 1 clique | Teste unitário em `recurrences.test.ts` |
 | **Gastos Vampiros & Anomalias** | Cobrança duplicada gera alerta imediato na Home com economia anual calculada | Teste unitário e renderização no `SmartAdvisorCard` |
+| **Comunicação e Onboarding** | Landing Page e modal de boas-vindas explicam o fluxo com clareza e zero emojis | Verificação visual e teste em `onboarding-card.test.tsx` |
 | **Governança de Código** | Zero emojis, TypeScript estrito, DRY respeitado e commits por tarefa | `npm run typecheck && npm run lint && npm run test` |
