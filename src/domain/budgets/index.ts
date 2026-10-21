@@ -226,6 +226,32 @@ export function isExplicitZeroLimit(
 // Realocação automática (§3.5.2)
 // ---------------------------------------------------------------------------
 
+/** Múltiplo mínimo e piso de realocação de orçamentos: R$ 10,00 (1.000 centavos) — ESPECIFICAÇÃO §3.5.2. */
+export const REALLOCATION_MIN_CENTS = 1000;
+
+/**
+ * Arredonda um valor em centavos para o múltiplo inferior de R$ 10 (1.000 centavos).
+ * Valores menores que o piso de R$ 10 retornam 0.
+ */
+export function roundToReallocationMultiple(cents: number): number {
+  if (cents < REALLOCATION_MIN_CENTS) return 0;
+  return Math.floor(cents / REALLOCATION_MIN_CENTS) * REALLOCATION_MIN_CENTS;
+}
+
+/**
+ * Valida se um valor de realocação respeita estritamente as regras de negócio (§3.5.2):
+ *   • Número inteiro estrito (centavos);
+ *   • Maior ou igual a R$ 10 (1.000 centavos);
+ *   • Múltiplo exato de R$ 10 (resto zero na divisão por 1.000 centavos).
+ */
+export function isValidReallocationAmount(amountCents: number): boolean {
+  return (
+    Number.isInteger(amountCents) &&
+    amountCents >= REALLOCATION_MIN_CENTS &&
+    amountCents % REALLOCATION_MIN_CENTS === 0
+  );
+}
+
 export interface BudgetRow {
   categoryId: string;
   /** Limite efetivo do mês (com herança). */
@@ -254,7 +280,7 @@ export function reallocationSuggestion(rows: readonly BudgetRow[]): Reallocation
     .sort((a, b) => b.excessCents - a.excessCents);
   const slack = rows
     .map((row) => ({ ...row, slackCents: Math.max(0, row.limitCents - row.spentCents) }))
-    .filter((row) => row.slackCents >= 1000) // folga mínima de R$ 10
+    .filter((row) => row.slackCents >= REALLOCATION_MIN_CENTS) // folga mínima de R$ 10
     .sort((a, b) => b.slackCents - a.slackCents);
 
   const overspentCat = overspent[0];
@@ -263,8 +289,8 @@ export function reallocationSuggestion(rows: readonly BudgetRow[]): Reallocation
 
   const transfer = Math.min(overspentCat.excessCents, slackCat.slackCents);
   // Arredonda para baixo ao múltiplo de R$ 10 (mínimo R$ 10).
-  const rounded = Math.floor(transfer / 1000) * 1000;
-  if (rounded < 1000) return null;
+  const rounded = roundToReallocationMultiple(transfer);
+  if (rounded < REALLOCATION_MIN_CENTS) return null;
 
   // Origem: categoria com folga/sobra; Destino: categoria com excesso/estouro.
   return { fromCategoryId: slackCat.categoryId, toCategoryId: overspentCat.categoryId, amountCents: rounded };

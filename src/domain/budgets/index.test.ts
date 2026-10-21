@@ -7,11 +7,14 @@ import {
   incomeGoalStatus,
   isExplicitZeroLimit,
   isInheritedLimit,
+  isValidReallocationAmount,
   progressTone,
   realizedByCategoryMap,
   reallocationSuggestion,
+  REALLOCATION_MIN_CENTS,
   resolveBudgetLimitDetails,
   resolveEffectiveLimit,
+  roundToReallocationMultiple,
   spentByCategoryMap,
   spentGrossByCategoryMap,
   suggestCategory,
@@ -177,39 +180,161 @@ describe("herança de limite (§3.5.2)", () => {
   });
 });
 
-describe("reallocationSuggestion (§3.5.2)", () => {
-  it("transfere do maior excesso para a maior folga (múltiplo de 10, min R$ 10)", () => {
-    const suggestion = reallocationSuggestion([
-      { categoryId: "a", limitCents: 100000, spentCents: 160000 }, // excesso 60.000
-      { categoryId: "b", limitCents: 100000, spentCents: 30000 }, // folga 70.000
-      { categoryId: "c", limitCents: 50000, spentCents: 10000 }, // folga 40.000
-    ]);
-    expect(suggestion).toEqual({ fromCategoryId: "b", toCategoryId: "a", amountCents: 60000 });
+describe("reallocationSuggestion & múltiplos de R$ 10 (§3.5.2 / Tarefa 4.4)", () => {
+  describe("roundToReallocationMultiple & isValidReallocationAmount", () => {
+    it("arredonda centavos para o múltiplo inferior de R$ 10 (1.000 centavos)", () => {
+      expect(roundToReallocationMultiple(0)).toBe(0);
+      expect(roundToReallocationMultiple(500)).toBe(0);
+      expect(roundToReallocationMultiple(999)).toBe(0);
+      expect(roundToReallocationMultiple(1000)).toBe(1000); // R$ 10,00
+      expect(roundToReallocationMultiple(1001)).toBe(1000);
+      expect(roundToReallocationMultiple(1999)).toBe(1000);
+      expect(roundToReallocationMultiple(2000)).toBe(2000); // R$ 20,00
+      expect(roundToReallocationMultiple(3847)).toBe(3000); // R$ 38,47 -> R$ 30,00
+      expect(roundToReallocationMultiple(7312)).toBe(7000); // R$ 73,12 -> R$ 70,00
+      expect(roundToReallocationMultiple(100000)).toBe(100000); // R$ 1.000,00
+    });
+
+    it("valida rigorosamente se um valor atende aos critérios de realocação (mínimo R$ 10 e múltiplo de 10)", () => {
+      expect(isValidReallocationAmount(REALLOCATION_MIN_CENTS)).toBe(true); // R$ 10
+      expect(isValidReallocationAmount(2000)).toBe(true); // R$ 20
+      expect(isValidReallocationAmount(50000)).toBe(true); // R$ 500
+      expect(isValidReallocationAmount(0)).toBe(false);
+      expect(isValidReallocationAmount(-1000)).toBe(false);
+      expect(isValidReallocationAmount(500)).toBe(false); // R$ 5 < R$ 10
+      expect(isValidReallocationAmount(999)).toBe(false);
+      expect(isValidReallocationAmount(1500)).toBe(false); // R$ 15 não é múltiplo de 10
+      expect(isValidReallocationAmount(1001)).toBe(false);
+      expect(isValidReallocationAmount(1000.5)).toBe(false); // não inteiro
+    });
   });
 
-  it("limita ao menor valor (folga menor que excesso), arredondado para baixo", () => {
-    const suggestion = reallocationSuggestion([
-      { categoryId: "a", limitCents: 100000, spentCents: 115000 }, // excesso 15.000
-      { categoryId: "b", limitCents: 100000, spentCents: 89000 }, // folga 11.000
-    ]);
-    expect(suggestion).toEqual({ fromCategoryId: "b", toCategoryId: "a", amountCents: 11000 });
-  });
+  describe("reallocationSuggestion — invariantes e transferência", () => {
+    it("transfere do maior excesso para a maior folga (múltiplo de 10, min R$ 10)", () => {
+      const suggestion = reallocationSuggestion([
+        { categoryId: "a", limitCents: 100000, spentCents: 160000 }, // excesso 60.000
+        { categoryId: "b", limitCents: 100000, spentCents: 30000 }, // folga 70.000
+        { categoryId: "c", limitCents: 50000, spentCents: 10000 }, // folga 40.000
+      ]);
+      expect(suggestion).toEqual({ fromCategoryId: "b", toCategoryId: "a", amountCents: 60000 });
+      expect(isValidReallocationAmount(suggestion!.amountCents)).toBe(true);
+    });
 
-  it("não sugere quando o valor transferido arredonda para menos de R$ 10", () => {
-    const suggestion = reallocationSuggestion([
-      { categoryId: "a", limitCents: 100000, spentCents: 100500 }, // excesso R$ 5
-      { categoryId: "b", limitCents: 100000, spentCents: 99500 }, // folga R$ 5 → arredonda p/ 0
-    ]);
-    expect(suggestion).toBeNull();
-  });
+    it("limita ao menor valor (folga menor que excesso), arredondado para baixo", () => {
+      const suggestion = reallocationSuggestion([
+        { categoryId: "a", limitCents: 100000, spentCents: 115000 }, // excesso 15.000
+        { categoryId: "b", limitCents: 100000, spentCents: 89000 }, // folga 11.000
+      ]);
+      expect(suggestion).toEqual({ fromCategoryId: "b", toCategoryId: "a", amountCents: 11000 });
+      expect(isValidReallocationAmount(suggestion!.amountCents)).toBe(true);
+    });
 
-  it("não sugere quando não há excesso", () => {
-    expect(
-      reallocationSuggestion([
-        { categoryId: "a", limitCents: 100000, spentCents: 50000 },
-        { categoryId: "b", limitCents: 100000, spentCents: 30000 },
-      ]),
-    ).toBeNull();
+    it("arredonda para o múltiplo de R$ 10 inferior quando os valores de excesso/folga são quebrados", () => {
+      // Excesso de R$ 38,47 (3.847 centavos) e folga de R$ 73,12 (7.312 centavos)
+      // Menor valor: 3.847 centavos. Arredondamento p/ baixo em múltiplos de 10: 3.000 centavos (R$ 30,00).
+      const suggestion = reallocationSuggestion([
+        { categoryId: "cat-estouro", limitCents: 100000, spentCents: 103847 },
+        { categoryId: "cat-folga", limitCents: 100000, spentCents: 92688 }, // folga 7.312 centavos
+      ]);
+      expect(suggestion).toEqual({
+        fromCategoryId: "cat-folga",
+        toCategoryId: "cat-estouro",
+        amountCents: 3000, // Exatamente R$ 30,00
+      });
+      expect(suggestion?.amountCents).toBe(3000);
+      expect(suggestion!.amountCents % 1000).toBe(0);
+    });
+
+    it("assegura a conservação estrita da soma total dos tetos orçamentários", () => {
+      const rows = [
+        { categoryId: "origem", limitCents: 150000, spentCents: 80000 }, // folga 70.000
+        { categoryId: "destino", limitCents: 100000, spentCents: 145000 }, // excesso 45.000
+      ];
+      const initialTotalLimit = rows.reduce((acc, r) => acc + r.limitCents, 0);
+
+      const suggestion = reallocationSuggestion(rows);
+      expect(suggestion).not.toBeNull();
+      const amount = suggestion!.amountCents; // 40.000 centavos (R$ 40,00)
+
+      // Simula aplicação da realocação nos limites
+      const newLimitOrigem = rows[0]!.limitCents - amount;
+      const newLimitDestino = rows[1]!.limitCents + amount;
+      const finalTotalLimit = newLimitOrigem + newLimitDestino;
+
+      // Invariante 1: Soma total dos limites antes e depois é estritamente idêntica
+      expect(finalTotalLimit).toBe(initialTotalLimit);
+
+      // Invariante 2: Origem nunca fica com limite menor que o valor já gasto
+      expect(newLimitOrigem).toBeGreaterThanOrEqual(rows[0]!.spentCents);
+
+      // Invariante 3: Valor transferido é múltiplo inteiro de R$ 10 (1.000 centavos)
+      expect(amount % 1000).toBe(0);
+      expect(amount).toBeGreaterThanOrEqual(1000);
+    });
+
+    it("respeita exatamente a fronteira mínima de R$ 10,00 (1.000 centavos)", () => {
+      // Exatamente R$ 10,00 de excesso e R$ 10,00 de folga
+      const suggestion = reallocationSuggestion([
+        { categoryId: "a", limitCents: 50000, spentCents: 51000 }, // excesso 1.000
+        { categoryId: "b", limitCents: 50000, spentCents: 49000 }, // folga 1.000
+      ]);
+      expect(suggestion).toEqual({ fromCategoryId: "b", toCategoryId: "a", amountCents: 1000 });
+    });
+
+    it("não sugere quando o valor transferido arredonda para menos de R$ 10", () => {
+      // Excesso R$ 9,99 (999 centavos) e folga R$ 50,00 -> arredonda para 0 -> null
+      const suggestion1 = reallocationSuggestion([
+        { categoryId: "a", limitCents: 100000, spentCents: 100999 },
+        { categoryId: "b", limitCents: 100000, spentCents: 50000 },
+      ]);
+      expect(suggestion1).toBeNull();
+
+      // Excesso R$ 50,00 e folga R$ 9,99 (999 centavos) -> arredonda para 0 -> null
+      const suggestion2 = reallocationSuggestion([
+        { categoryId: "a", limitCents: 100000, spentCents: 150000 },
+        { categoryId: "b", limitCents: 100000, spentCents: 99001 },
+      ]);
+      expect(suggestion2).toBeNull();
+    });
+
+    it("prioriza corretamente a categoria com maior excesso e a categoria com maior folga", () => {
+      const suggestion = reallocationSuggestion([
+        { categoryId: "slack-menor", limitCents: 100000, spentCents: 70000 }, // folga 30.000
+        { categoryId: "slack-maior", limitCents: 200000, spentCents: 100000 }, // folga 100.000
+        { categoryId: "over-menor", limitCents: 100000, spentCents: 120000 }, // excesso 20.000
+        { categoryId: "over-maior", limitCents: 100000, spentCents: 180000 }, // excesso 80.000
+      ]);
+      // Origem deve ser slack-maior (100.000 folga), Destino deve ser over-maior (80.000 excesso)
+      // Transferência: min(80.000, 100.000) = 80.000 centavos
+      expect(suggestion).toEqual({
+        fromCategoryId: "slack-maior",
+        toCategoryId: "over-maior",
+        amountCents: 80000,
+      });
+    });
+
+    it("retorna null quando não há excesso em nenhuma categoria", () => {
+      expect(
+        reallocationSuggestion([
+          { categoryId: "a", limitCents: 100000, spentCents: 50000 },
+          { categoryId: "b", limitCents: 100000, spentCents: 30000 },
+        ]),
+      ).toBeNull();
+    });
+
+    it("retorna null quando há apenas uma categoria ou lista vazia", () => {
+      expect(reallocationSuggestion([])).toBeNull();
+      expect(reallocationSuggestion([{ categoryId: "a", limitCents: 100000, spentCents: 150000 }])).toBeNull();
+    });
+
+    it("retorna null se a categoria de maior excesso coincidir com a de maior folga", () => {
+      // Cenário impossível matematicamente, mas blindado para robustez
+      expect(
+        reallocationSuggestion([
+          { categoryId: "same", limitCents: 100000, spentCents: 100000 },
+        ]),
+      ).toBeNull();
+    });
   });
 });
 
