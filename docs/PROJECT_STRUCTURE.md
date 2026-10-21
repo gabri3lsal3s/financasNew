@@ -48,8 +48,8 @@
 │   ├── RELEASE.md                 # Checklist de release e homologação
 │   ├── ROADMAP.md                 # Fases de execução consolidadas e Definition of Done
 │   ├── plans/                     # Planos de implementação ativos e pendentes
-│   │   ├── PLANO_IMPLEMENTACAO_ALTA_CONCORRENCIA_SEGURANCA.md # [EM ANDAMENTO] Escala 1k-10k DAU e blindagem
-│   │   ├── PLANO_AUDITORIA_CONGRUENCIA.md # [PENDENTE] Auditoria de regras e integridade matemática
+│   │   ├── PLANO_IMPLEMENTACAO_ALTA_CONCORRENCIA_SEGURANCA.md # [CONCLUÍDO] Escala 1k-10k DAU e blindagem
+│   │   ├── PLANO_AUDITORIA_CONGRUENCIA.md # [NOVO / EM ANDAMENTO] Auditoria de regras e integridade matemática
 │   │   └── completed/             # Histórico de planos executados com sucesso (100% concluídos)
 │   │       ├── CAPACITOR_ANDROID_PLAN.md
 │   │       ├── PLANO_IMPLEMENTACAO_ASSISTENTE_PASSIVO.md
@@ -182,7 +182,8 @@
     │   ├── admin/                 #   F43: RBAC, hierarquia de papéis, resolução de Feature Flags, schemas.ts e validação de convites
     │   ├── navigation/            #   F43: Resolução dinâmica de slots BottomNav e rota de fallback (landing route)
     │   ├── onboarding/             #   checklist/progresso do primeiro uso (F5.4)
-    │   ├── notifications/         #   Fase 5 Android: parsing puro de notificações bancárias e comprovantes Pix em centavos
+    │   ├── notifications/         #   Fase 5 Android: parsing puro de notificações bancárias, comprovantes Pix em centavos,
+    │   │                          #     merchant-memory.ts (aprendizado de estabelecimentos), pix-emv-parser.ts (decodificação de BR Code)
     │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing e totais brutos/ponderados (totals.ts)
     │   ├── competence/            #   resolveBillCompetence, clampDay, overrides
     │   ├── debts/                 #   status derivado + penalty (mora/multa/desconto), schemas.ts (Zod) e resumo consolidado
@@ -222,6 +223,7 @@
     │   │                          #     fundo de emergência (index.ts)
     │   ├── reconciliation/        #   F30: conciliação de faturas (parsers CSV/OFX/Texto,
     │   │                          #     type-sniffer, hashing ordinal, scoring 0-100),
+    │   │                          #     clean.ts (sanitização de descrições e remoção de ruídos bancários),
     │   │                          #     chunking.ts (teto rígido de 250 itens por lote e chunkArray),
     │   │                          #     chunking.test.ts, stress.test.ts (estresse com 2.000 linhas)
     │   ├── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
