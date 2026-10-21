@@ -89,16 +89,16 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       <div
         className={cn(
           "flex shrink-0 items-center border-b border-border overflow-hidden pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]",
-          expanded ? "px-4" : "justify-center px-2",
+          expanded ? "px-4" : "justify-center px-2.5",
         )}
       >
-        <div className="flex h-16 w-full items-center">
+        <div className={cn("flex h-16 w-full items-center", !expanded && "justify-center")}>
           <LogoProfileButton
             showWordmark={expanded}
             markClassName="size-8 shrink-0"
             className={cn(
-              "rounded-xl hover:bg-surface-hover/80 p-2 transition-colors text-left",
-              expanded ? "w-full justify-start gap-2.5" : "justify-center",
+              "rounded-lg hover:bg-surface-hover/80 p-2 transition-colors",
+              expanded ? "w-full justify-start gap-2.5 text-left" : "w-full justify-center",
             )}
           />
         </div>

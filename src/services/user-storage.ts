@@ -61,6 +61,22 @@ export function setActiveUserId(userId: string | null): void {
       }
     }
 
+    // Se estiver deslogando (prevUserId para null):
+    // Preserva as preferências visuais no estado guest/active para manter continuidade na tela de login
+    if (prevUserId && !userId && typeof window !== "undefined") {
+      try {
+        SYNCED_BOOT_KEYS.forEach((key) => {
+          const userVal = window.localStorage.getItem(`financas_${prevUserId}_${key}`);
+          if (userVal !== null) {
+            window.localStorage.setItem(`financas_guest_${key}`, userVal);
+            window.localStorage.setItem(`financas_active_${key}`, userVal);
+          }
+        });
+      } catch {
+        // no-op
+      }
+    }
+
     userListeners.forEach((listener) => listener(activeUserId));
   }
 }
@@ -91,9 +107,12 @@ export function getUserStorageItem(key: string, userId?: string | null): string 
     const value = window.localStorage.getItem(fullKey);
     if (value !== null) return value;
 
-    // Se estiver sem usuário ativo e a chave for de bootstrap visual, usa o espelho ativo
+    // Se estiver sem usuário ativo e a chave for de bootstrap visual, usa o espelho ativo do dispositivo
     if ((userId === undefined || userId === null) && !activeUserId && SYNCED_BOOT_KEYS.includes(key)) {
-      return window.localStorage.getItem(`financas_active_${key}`);
+      return (
+        window.localStorage.getItem(`financas_active_${key}`) ||
+        window.localStorage.getItem(`financas_guest_${key}`)
+      );
     }
     return null;
   } catch {

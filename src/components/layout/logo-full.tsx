@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useIsPro } from "@/hooks/use-is-pro";
 import { LogoIcon } from "./logo-icon";
 import type { LogoIconProps } from "./logo-icon";
 
@@ -80,6 +81,7 @@ export function LogoFull({
   onClick,
   "aria-label": ariaLabel,
 }: LogoFullProps) {
+  const isProActive = useIsPro(isPro);
   const preset = SIZE_PRESETS[size];
   const isVertical = orientation === "vertical";
 
@@ -88,7 +90,7 @@ export function LogoFull({
       onClick={onClick}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
-      aria-label={ariaLabel ?? "ÁXIS • Finance"}
+      aria-label={ariaLabel ?? (isProActive ? "ÁXIS PRO • Finance" : "ÁXIS • Finance")}
       className={cn(
         "inline-flex select-none min-w-0 transition-opacity",
         isVertical
@@ -100,7 +102,7 @@ export function LogoFull({
     >
       <LogoIcon
         className={cn(preset.mark, markClassName)}
-        isPro={isPro}
+        isPro={isProActive}
         themeMode={themeMode}
         accentReactive={accentReactive}
         variant={variant}
@@ -112,15 +114,25 @@ export function LogoFull({
           isVertical ? "items-center" : "justify-center",
         )}
       >
-        <span
-          className={cn(
-            "font-display leading-tight text-foreground whitespace-nowrap tracking-wide",
-            preset.wordmark,
-            wordmarkClassName,
-          )}
-        >
-          ÁXIS
-        </span>
+        <div className="inline-flex items-center gap-1.5">
+          <span
+            className={cn(
+              "font-display leading-tight text-foreground whitespace-nowrap tracking-wide",
+              preset.wordmark,
+              wordmarkClassName,
+            )}
+          >
+            ÁXIS
+          </span>
+          {isProActive ? (
+            <span
+              className="inline-flex items-center rounded bg-amber-500/15 px-1 py-0.2 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 border border-amber-500/30 leading-none select-none"
+              title="Plano Pro ativo"
+            >
+              PRO
+            </span>
+          ) : null}
+        </div>
         {showSubtitle ? (
           <span
             className={cn(

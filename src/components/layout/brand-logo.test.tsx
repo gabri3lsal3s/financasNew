@@ -128,4 +128,14 @@ describe("LogoFull — Lockup Corporativo Completo", () => {
     const { container: xl } = render(<LogoFull size="xl" />);
     expect(xl.querySelector(".size-14")).toBeInTheDocument();
   });
+
+  it("renderiza o micro-badge 'PRO' quando isPro={true}", () => {
+    render(<LogoFull isPro={true} />);
+    expect(screen.getByText("PRO")).toBeInTheDocument();
+  });
+
+  it("não renderiza o micro-badge 'PRO' quando isPro={false}", () => {
+    render(<LogoFull isPro={false} />);
+    expect(screen.queryByText("PRO")).toBeNull();
+  });
 });

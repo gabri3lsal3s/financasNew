@@ -179,11 +179,6 @@ export function CardsPage() {
   const prevMonth = shiftMonth(currMonth, -1);
   const nextMonth = shiftMonth(currMonth, 1);
 
-  const getMonthStatus = (m: string) => {
-    if (!selectedCard) return "closed";
-    const sum = summaries.find((s) => s.month === m);
-    return invoiceStatus(m, selectedCard.due_day, sum?.saldoCents ?? 0);
-  };
 
   const handleSelectQuickMonth = (m: string) => {
     triggerSensory("selection");
@@ -489,67 +484,103 @@ export function CardsPage() {
               SEÇÃO 2: SELETOR DE MÊS, STATUS DA FATURA E KPIS
              ========================================================================= */}
           <div className="flex flex-col gap-4 sm:gap-5">
-            {/* Seletor rápido de faturas (Anterior, Atual, Próxima) + Navegador */}
-            <div className="flex flex-col gap-2.5 sm:gap-3">
-              <div className="grid grid-cols-3 gap-2.5 sm:gap-3" role="tablist" aria-label="Seletor rápido de faturas">
-                <button
+            {/* Seletor de mês full-width (padrão Orçamentos e Relatórios) */}
+            <MonthPicker value={effectiveMonth} onValueChange={setMonth} />
+
+            {/* Linha de controles: atalhos de competência (pills) + ações de fatura */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              {/* Atalhos rápidos em pills (Anterior, Atual, Próxima) */}
+              <div role="group" aria-label="Seletor rápido de faturas" className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                <Button
                   type="button"
-                  role="tab"
-                  aria-selected={effectiveMonth === prevMonth}
+                  size="sm"
+                  variant={effectiveMonth === prevMonth ? "default" : "outline"}
                   onClick={() => handleSelectQuickMonth(prevMonth)}
                   className={cn(
-                    "flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-xl border transition-all text-center",
-                    effectiveMonth === prevMonth
-                      ? "bg-surface-hover border-primary/50 shadow-xs ring-1 ring-primary/30"
-                      : "bg-surface border-border hover:bg-surface-hover/60 text-muted-foreground",
+                    "shrink-0 gap-1.5 text-xs h-8 px-3 rounded-xl transition-all",
+                    effectiveMonth === prevMonth ? "shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground",
                   )}
+                  aria-pressed={effectiveMonth === prevMonth}
+                  sensoryIntent="selection"
                 >
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Anterior</span>
-                  <span className="text-xs sm:text-sm font-semibold text-foreground capitalize mt-0.5">{monthLabel(prevMonth).split(" ")[0]}</span>
-                  <div className="mt-1">
-                    <InvoiceStatusBadge status={getMonthStatus(prevMonth)} size="xs" />
-                  </div>
-                </button>
-                <button
+                  <span>Anterior</span>
+                  <span className="text-[11px] opacity-75 capitalize">({monthLabel(prevMonth).split(" ")[0]})</span>
+                </Button>
+                <Button
                   type="button"
-                  role="tab"
-                  aria-selected={effectiveMonth === currMonth}
+                  size="sm"
+                  variant={effectiveMonth === currMonth ? "default" : "outline"}
                   onClick={() => handleSelectQuickMonth(currMonth)}
                   className={cn(
-                    "flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-xl border transition-all text-center",
-                    effectiveMonth === currMonth
-                      ? "bg-surface-hover border-primary/50 shadow-xs ring-1 ring-primary/30"
-                      : "bg-surface border-border hover:bg-surface-hover/60 text-muted-foreground",
+                    "shrink-0 gap-1.5 text-xs h-8 px-3 rounded-xl transition-all",
+                    effectiveMonth === currMonth ? "shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground",
                   )}
+                  aria-pressed={effectiveMonth === currMonth}
+                  sensoryIntent="selection"
                 >
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Atual</span>
-                  <span className="text-xs sm:text-sm font-semibold text-foreground capitalize mt-0.5">{monthLabel(currMonth).split(" ")[0]}</span>
-                  <div className="mt-1">
-                    <InvoiceStatusBadge status={getMonthStatus(currMonth)} size="xs" />
-                  </div>
-                </button>
-                <button
+                  <span>Atual</span>
+                  <span className="text-[11px] opacity-75 capitalize">({monthLabel(currMonth).split(" ")[0]})</span>
+                </Button>
+                <Button
                   type="button"
-                  role="tab"
-                  aria-selected={effectiveMonth === nextMonth}
+                  size="sm"
+                  variant={effectiveMonth === nextMonth ? "default" : "outline"}
                   onClick={() => handleSelectQuickMonth(nextMonth)}
                   className={cn(
-                    "flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-xl border transition-all text-center",
-                    effectiveMonth === nextMonth
-                      ? "bg-surface-hover border-primary/50 shadow-xs ring-1 ring-primary/30"
-                      : "bg-surface border-border hover:bg-surface-hover/60 text-muted-foreground",
+                    "shrink-0 gap-1.5 text-xs h-8 px-3 rounded-xl transition-all",
+                    effectiveMonth === nextMonth ? "shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground",
                   )}
+                  aria-pressed={effectiveMonth === nextMonth}
+                  sensoryIntent="selection"
                 >
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Próxima</span>
-                  <span className="text-xs sm:text-sm font-semibold text-foreground capitalize mt-0.5">{monthLabel(nextMonth).split(" ")[0]}</span>
-                  <div className="mt-1">
-                    <InvoiceStatusBadge status={getMonthStatus(nextMonth)} size="xs" />
-                  </div>
-                </button>
+                  <span>Próxima</span>
+                  <span className="text-[11px] opacity-75 capitalize">({monthLabel(nextMonth).split(" ")[0]})</span>
+                </Button>
               </div>
 
-              <MonthPicker value={effectiveMonth} onValueChange={setMonth} />
+              {/* Ações principais da fatura */}
+              {selectedCard ? (
+                <div className="flex items-center gap-2 self-start sm:self-auto w-full sm:w-auto">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleOpenPayment("refund")}
+                    className="gap-1.5 flex-1 sm:flex-none justify-center text-xs h-8"
+                  >
+                    <Undo2 className="size-3.5" aria-hidden="true" />
+                    Estorno
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleOpenPayment("payment")}
+                    className="gap-1.5 flex-1 sm:flex-none justify-center text-xs h-8 shadow-xs"
+                  >
+                    Registrar pagamento
+                  </Button>
+                </div>
+              ) : null}
             </div>
+
+            {/* Linha discreta de status da fatura e limite disponível */}
+            {selectedCard ? (
+              <div className="flex flex-wrap items-center justify-between gap-2.5 px-0.5 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Status da fatura:</span>
+                  <InvoiceStatusBadge status={invStatus} size="sm" />
+                </div>
+                {selectedCard.credit_limit !== null && selectedCard.credit_limit !== undefined && selectedCard.credit_limit > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <span>Limite disponível:</span>
+                    <span className="font-semibold text-foreground">
+                      <MoneyText
+                        cents={Math.max(0, Math.round(selectedCard.credit_limit * 100) - (summary?.saldoBrutoCents ?? 0))}
+                        tone="default"
+                      />
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : null}
 
             {/* KPIs da fatura com visão dupla (Bruto vs. Ponderado) */}
             <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
@@ -611,45 +642,6 @@ export function CardsPage() {
                 }
               />
             </div>
-
-            {selectedCard ? (
-              <div className="flex flex-wrap items-center justify-between gap-3.5 p-4 sm:p-5 rounded-2xl bg-surface border border-border/80 shadow-xs">
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground font-medium">Status da fatura:</span>
-                    <InvoiceStatusBadge status={invStatus} />
-                  </div>
-                  {selectedCard.credit_limit !== null && selectedCard.credit_limit !== undefined && selectedCard.credit_limit > 0 && (
-                    <>
-                      <span className="text-muted-foreground/40 hidden sm:inline">·</span>
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <span>Limite disponível:</span>
-                        <span className="font-semibold text-foreground">
-                          <MoneyText
-                            cents={Math.max(0, Math.round(selectedCard.credit_limit * 100) - (summary?.saldoBrutoCents ?? 0))}
-                            tone="default"
-                          />
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <Button variant="outline" size="sm" onClick={() => handleOpenPayment("refund")} className="gap-1.5 flex-1 sm:flex-none justify-center">
-                    <Undo2 className="size-3.5" aria-hidden="true" />
-                    Estorno
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => handleOpenPayment("payment")}
-                    className="gap-1.5 flex-1 sm:flex-none justify-center"
-                  >
-                    Registrar pagamento
-                  </Button>
-                </div>
-              </div>
-            ) : null}
           </div>
 
           {/* =========================================================================

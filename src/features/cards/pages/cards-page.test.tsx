@@ -466,4 +466,27 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     // Saldo aberto a pagar no banco: R$ 200,00 (100% nominal do boleto)
     expect(screen.getByText("Saldo aberto (Bruto)")).toBeInTheDocument();
   });
+
+  it("permite alternar rapidamente entre faturas usando os pills de competência", async () => {
+    const user = userEvent.setup();
+    render(<CardsPage />);
+
+    const anteriorBtn = screen.getByRole("button", { name: /^anterior/i });
+    const atualBtn = screen.getByRole("button", { name: /^atual/i });
+    const proximaBtn = screen.getByRole("button", { name: /^próxima/i });
+
+    expect(anteriorBtn).toBeInTheDocument();
+    expect(atualBtn).toBeInTheDocument();
+    expect(proximaBtn).toBeInTheDocument();
+
+    await user.click(proximaBtn);
+    expect(proximaBtn).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(anteriorBtn);
+    expect(anteriorBtn).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(atualBtn);
+    expect(atualBtn).toHaveAttribute("aria-pressed", "true");
+  });
 });
+

@@ -25,22 +25,18 @@ function RegisterSideHero({ planoParam }: { planoParam: string | null }) {
     <>
       <div className="flex flex-col gap-6">
         <BrandLogo
-          themeMode="dark"
-          variant="white"
-          markClassName="size-11 drop-shadow-sm"
-          wordmarkClassName="text-white text-xl font-bold tracking-wider"
-          subtitleClassName="text-teal-300/90 text-[10px] font-semibold tracking-widest"
+          markClassName="size-11 drop-shadow-xs"
           showWordmark
           showSubtitle
         />
 
         <div className="flex flex-col gap-2 mt-2">
-          <p className="text-lg font-semibold tracking-tight text-white leading-snug">
+          <p className="text-lg font-semibold tracking-tight text-foreground leading-snug">
             {planoParam
               ? "Crie sua conta para ativar o Plano Pro."
               : "Controle total das suas finanças em minutos."}
           </p>
-          <p className="text-sm text-slate-300 leading-relaxed">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             {planoParam
               ? "Após o cadastro, você será conduzido para concluir a assinatura."
               : "Comece com 30 dias de acesso Pro completo, sem cartão de crédito."}
@@ -49,8 +45,8 @@ function RegisterSideHero({ planoParam }: { planoParam: string | null }) {
 
         <ul className="flex flex-col gap-3 mt-1">
           {REGISTER_FEATURES.map(({ icon: Icon, label }) => (
-            <li key={label} className="flex items-center gap-3 text-sm text-slate-200">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-teal-500/15 border border-teal-500/25 shrink-0 text-teal-300">
+            <li key={label} className="flex items-center gap-3 text-sm text-foreground/90">
+              <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 shrink-0 text-primary-strong">
                 <Icon className="size-3.5" aria-hidden="true" />
               </span>
               <span className="leading-snug">{label}</span>
@@ -59,12 +55,12 @@ function RegisterSideHero({ planoParam }: { planoParam: string | null }) {
         </ul>
       </div>
 
-      <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-4.5 backdrop-blur-xs flex flex-col gap-1.5 shadow-xs">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-teal-300 bg-teal-500/15 border border-teal-500/20 px-2 py-0.5 rounded-full w-fit">
+      <div className="rounded-2xl bg-surface border border-border/80 p-4.5 shadow-2xs flex flex-col gap-1.5">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-primary-strong bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full w-fit">
           Período de Avaliação
         </span>
-        <p className="text-sm font-bold text-white mt-0.5">30 dias Pro sem custo</p>
-        <p className="text-xs text-slate-300 leading-relaxed">
+        <p className="text-sm font-bold text-foreground mt-0.5">30 dias Pro sem custo</p>
+        <p className="text-xs text-muted-foreground leading-relaxed">
           Cancele quando quiser. Sem cobranças surpresa e sem cartão.
         </p>
       </div>

@@ -68,7 +68,7 @@ const STORAGE_KEYS = {
 export const DEFAULT_HEADER_BUTTONS: HeaderButtonsConfig = {
   logo: true,
   calculatorButton: true,
-  themeToggle: false,
+  themeToggle: true,
   privacyToggle: false,
 };
 
