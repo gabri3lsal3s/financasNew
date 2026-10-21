@@ -152,7 +152,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 **Objetivo:** Criar um motor inteligente e consistente em todo o aplicativo que correlaciona CNPJs, razões sociais, nomes de maquininhas (`PAG*`, `MP*`, `STONE*`) com a descrição amigável (Nome Fantasia) e categoria escolhida pelo usuário.
 
 #### Tarefas da Fase 2:
-- [ ] **Tarefa 2.1 — Modelo de Dados e Domínio Puro do Aprendizado Semântico:**
+- [x] **Tarefa 2.1 — Modelo de Dados e Domínio Puro do Aprendizado Semântico:**
   - Em `src/domain/notifications/merchant-memory.ts`, expandir a interface para `MerchantLearningRecord`:
     - `friendlyName: string` (ex.: "McDonald's", "Padaria do Zé")
     - `categorySlug: string` (ex.: "alimentacao", "mercado")

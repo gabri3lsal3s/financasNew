@@ -1,7 +1,8 @@
 /**
- * Memória adaptativa e pura de categorização por estabelecimento (Merchant Memory).
+ * Memória adaptativa e pura de categorização e identidade de estabelecimentos (Merchant Memory & Learning).
  * Permite ao sistema aprender com o histórico de categorização do usuário,
- * priorizando o hábito pessoal sobre palavras-chave genéricas.
+ * correlacionando CNPJs, CPFs, razões sociais e variações de adquirentes
+ * com o nome fantasia amigável e a categoria habitual.
  *
  * Função 100% pura: sem dependências de UI, React ou banco de dados.
  */
@@ -14,6 +15,121 @@ export interface MerchantCategoryMapping {
 }
 
 /**
+ * Registro semântico aprendido de estabelecimento (§2.1).
+ */
+export interface MerchantLearningRecord {
+  /** Nome amigável / fantasia exibido ao usuário (ex.: "McDonald's", "Padaria do Zé"). */
+  friendlyName: string;
+  /** Slug canônico ou ID da categoria (ex.: "alimentacao", "mercado"). */
+  categorySlug: string;
+  /** Dígitos limpos do CNPJ (14 dígitos) ou CPF (11 dígitos) para correspondência unívoca. */
+  cnpjOrCpf?: string;
+  /** Lista de variações brutas/termos de identificação (ex.: ["arcos dourados", "pag*mcdonalds", "mc donalds"]). */
+  rawAliases: string[];
+  /** Contador de vezes que esta regra foi aplicada ou confirmada pelo usuário. */
+  usageCount: number;
+  /** Timestamp ISO da última utilização/atualização (ex.: "2026-10-21T17:47:00.000Z"). */
+  lastUsedAt: string;
+}
+
+export interface MerchantLearningMemory {
+  [key: string]: MerchantLearningRecord;
+}
+
+export interface RecordMerchantLearningParams {
+  friendlyName: string;
+  categorySlug: string;
+  cnpjOrCpf?: string;
+  alias?: string;
+  rawAliases?: string[];
+}
+
+export interface FindLearnedMerchantQuery {
+  taxId?: string;
+  merchant?: string;
+  rawText?: string;
+}
+
+/**
+ * Limpa e valida CPF (11 dígitos) ou CNPJ (14 dígitos), retornando apenas os dígitos.
+ * Retorna `undefined` se a quantidade de dígitos for diferente de 11 ou 14.
+ */
+export function cleanTaxId(taxId?: string | null): string | undefined {
+  if (!taxId) return undefined;
+  const digits = taxId.replace(/\D/g, "");
+  if (digits.length === 11 || digits.length === 14) {
+    return digits;
+  }
+  return undefined;
+}
+
+/**
+ * Formata um CPF (000.000.000-00) ou CNPJ (00.000.000/0000-00) limpo para exibição.
+ */
+export function formatTaxId(taxId?: string | null): string | undefined {
+  const digits = cleanTaxId(taxId);
+  if (!digits) return undefined;
+  if (digits.length === 14) {
+    return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+  }
+  return digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+}
+
+/**
+ * Extrai e normaliza um CNPJ ou CPF presente em textos bancários, extratos ou comprovantes.
+ * Suporta formatos pontuados e desformatados precedidos por marcadores semânticos.
+ * Retorna a sequência limpa de dígitos ou `undefined`.
+ */
+export function extractTaxIdFromText(text?: string | null): string | undefined {
+  if (!text) return undefined;
+
+  // 1. CNPJ formatado no padrão clássico: 00.000.000/0000-00
+  const formattedCnpjMatch = text.match(/\b(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})\b/);
+  if (formattedCnpjMatch?.[1]) {
+    const cleaned = cleanTaxId(formattedCnpjMatch[1]);
+    if (cleaned) return cleaned;
+  }
+
+  // 2. CPF formatado no padrão clássico: 000.000.000-00
+  const formattedCpfMatch = text.match(/\b(\d{3}\.\d{3}\.\d{3}-\d{2})\b/);
+  if (formattedCpfMatch?.[1]) {
+    const cleaned = cleanTaxId(formattedCpfMatch[1]);
+    if (cleaned) return cleaned;
+  }
+
+  // 3. CNPJ desformatado precedido por marcador semântico
+  // Ex.: "CNPJ: 12345678000190", "CNPJ/CPF 12345678000190", "Chave Pix CNPJ: 12345678000190"
+  const unformattedCnpjMatch = text.match(
+    /(?:cnpj|cadastro\s+nacional(?:\s+da\s+pessoa\s+jur[ií]dica)?|chave(?:\s+pix)?(?:\s*:\s*cnpj)?)[\s:.-]*(\d{14})\b/i,
+  );
+  if (unformattedCnpjMatch?.[1]) {
+    const cleaned = cleanTaxId(unformattedCnpjMatch[1]);
+    if (cleaned) return cleaned;
+  }
+
+  // 4. CPF desformatado precedido por marcador semântico
+  // Ex.: "CPF: 12345678901", "Chave Pix CPF 12345678901", "Documento: 12345678901"
+  const unformattedCpfMatch = text.match(
+    /(?:cpf|cadastro\s+de\s+pessoas?\s+f[ií]sicas?|chave(?:\s+pix)?(?:\s*:\s*cpf)?)[\s:.-]*(\d{11})\b/i,
+  );
+  if (unformattedCpfMatch?.[1]) {
+    const cleaned = cleanTaxId(unformattedCpfMatch[1]);
+    if (cleaned) return cleaned;
+  }
+
+  // 5. Marcador genérico de documento/taxId seguido por 14 ou 11 dígitos
+  const genericDocMatch = text.match(
+    /(?:doc(?:umento)?|identificador|favorecido\s+doc)[\s:.-]*(\d{14}|\d{11})\b/i,
+  );
+  if (genericDocMatch?.[1]) {
+    const cleaned = cleanTaxId(genericDocMatch[1]);
+    if (cleaned) return cleaned;
+  }
+
+  return undefined;
+}
+
+/**
  * Normaliza o nome do estabelecimento para ser usado como chave determinística na memória.
  */
 export function toMerchantMemoryKey(merchant: string): string {
@@ -21,7 +137,132 @@ export function toMerchantMemoryKey(merchant: string): string {
 }
 
 /**
- * Tenta resolver a categoria de um estabelecimento a partir do dicionário de memória do usuário.
+ * Adiciona ou atualiza um registro semântico na memória de aprendizado de forma imutável.
+ * Se o registro já existir por CNPJ/CPF ou nome, consolida os aliases e incrementa o uso.
+ */
+export function recordMerchantLearning(
+  params: RecordMerchantLearningParams,
+  existingMemory: MerchantLearningMemory = {},
+  now = new Date().toISOString(),
+): MerchantLearningMemory {
+  const cleanTax = cleanTaxId(params.cnpjOrCpf);
+  const normalizedFriendly = normalizeMerchantText(params.friendlyName);
+  if (!normalizedFriendly && !cleanTax) return existingMemory;
+
+  // Chave canônica primária: prioriza o taxId limpo, ou o friendlyName normalizado
+  const key = cleanTax ? `tax_${cleanTax}` : `name_${normalizedFriendly}`;
+  const existing = existingMemory[key];
+
+  // Agrega e normaliza aliases sem duplicatas
+  const aliasesSet = new Set<string>();
+  if (existing?.rawAliases) {
+    for (const a of existing.rawAliases) aliasesSet.add(a.toLowerCase().trim());
+  }
+  if (params.rawAliases) {
+    for (const a of params.rawAliases) aliasesSet.add(a.toLowerCase().trim());
+  }
+  if (params.alias) {
+    aliasesSet.add(params.alias.toLowerCase().trim());
+  }
+  if (params.friendlyName) {
+    aliasesSet.add(params.friendlyName.toLowerCase().trim());
+  }
+  const cleanAliases = Array.from(aliasesSet).filter(Boolean);
+
+  const updatedRecord: MerchantLearningRecord = {
+    friendlyName: params.friendlyName.trim() || existing?.friendlyName || normalizedFriendly,
+    categorySlug: params.categorySlug,
+    cnpjOrCpf: cleanTax || existing?.cnpjOrCpf,
+    rawAliases: cleanAliases.length > 0 ? cleanAliases : [params.friendlyName.toLowerCase().trim()],
+    usageCount: (existing?.usageCount ?? 0) + 1,
+    lastUsedAt: now,
+  };
+
+  return {
+    ...existingMemory,
+    [key]: updatedRecord,
+  };
+}
+
+/**
+ * Busca um estabelecimento na memória aprendida por CNPJ/CPF (1ª camada) ou aliases/nome (2ª camada).
+ */
+export function findLearnedMerchant(
+  query: FindLearnedMerchantQuery,
+  memory: MerchantLearningMemory = {},
+): MerchantLearningRecord | undefined {
+  const records = Object.values(memory);
+  if (records.length === 0) return undefined;
+
+  // 1. Chave de Ouro: Busca por CNPJ / CPF (precisão 100%)
+  const cleanTax = cleanTaxId(query.taxId) || extractTaxIdFromText(query.rawText);
+  if (cleanTax) {
+    const matchByTax = records.find((r) => r.cnpjOrCpf && r.cnpjOrCpf === cleanTax);
+    if (matchByTax) return matchByTax;
+  }
+
+  // 2. Busca por nome amigável idêntico ou em aliases cadastrados
+  const targetMerchant = normalizeMerchantText(query.merchant);
+  if (targetMerchant) {
+    const matchByMerchant = records.find((r) => {
+      if (normalizeMerchantText(r.friendlyName) === targetMerchant) return true;
+      return r.rawAliases.some((alias) => normalizeMerchantText(alias) === targetMerchant);
+    });
+    if (matchByMerchant) return matchByMerchant;
+  }
+
+  // 3. Busca por contenção de alias dentro do texto bruto da notificação/comprovante
+  if (query.rawText) {
+    const normRaw = query.rawText.toLowerCase();
+    const matchByRaw = records.find((r) => {
+      return r.rawAliases.some((alias) => {
+        const normAlias = alias.toLowerCase().trim();
+        return normAlias.length >= 3 && normRaw.includes(normAlias);
+      });
+    });
+    if (matchByRaw) return matchByRaw;
+  }
+
+  return undefined;
+}
+
+/**
+ * Remove um registro semântico da memória aprendida de forma imutável.
+ */
+export function forgetMerchantLearning(
+  identifier: string,
+  existingMemory: MerchantLearningMemory = {},
+): MerchantLearningMemory {
+  const cleanTax = cleanTaxId(identifier);
+  const primaryKey = cleanTax ? `tax_${cleanTax}` : `name_${normalizeMerchantText(identifier)}`;
+
+  if (primaryKey in existingMemory) {
+    const next = { ...existingMemory };
+    delete next[primaryKey];
+    return next;
+  }
+
+  // Busca secundária por CNPJ ou nome em todo o dicionário
+  const foundKey = Object.keys(existingMemory).find((k) => {
+    const rec = existingMemory[k];
+    if (!rec) return false;
+    return (
+      rec.cnpjOrCpf === cleanTax ||
+      normalizeMerchantText(rec.friendlyName) === normalizeMerchantText(identifier)
+    );
+  });
+
+  if (foundKey) {
+    const next = { ...existingMemory };
+    delete next[foundKey];
+    return next;
+  }
+
+  return existingMemory;
+}
+
+/**
+ * Tenta resolver a categoria de um estabelecimento a partir do dicionário simples de memória do usuário.
  * Retorna o identificador memorizado ou `undefined` se não houver registro prévio.
  */
 export function lookupMerchantCategory(
@@ -36,7 +277,7 @@ export function lookupMerchantCategory(
 }
 
 /**
- * Adiciona ou atualiza uma associação estabelecimento -> categoria de forma imutável.
+ * Adiciona ou atualiza uma associação simples estabelecimento -> categoria de forma imutável.
  */
 export function recordMerchantCategoryMemory(
   merchant: string,
@@ -53,7 +294,7 @@ export function recordMerchantCategoryMemory(
 }
 
 /**
- * Remove uma associação da memória de forma imutável.
+ * Remove uma associação simples da memória de forma imutável.
  */
 export function forgetMerchantCategoryMemory(
   merchant: string,
