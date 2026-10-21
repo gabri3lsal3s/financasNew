@@ -902,6 +902,22 @@ describe("Tarefa 3.4 — Expansão da Suíte de Auditoria Integral de Banco & Go
   });
 });
 
+describe("Tarefa 5.1 — Suíte de Penetração Cross-Tenant & RLS Isolation", () => {
+  it("arquivo src/tests/cross-tenant-penetration.test.ts existe e contém suíte completa de penetração", () => {
+    const suitePath = resolve(root, "src/tests/cross-tenant-penetration.test.ts");
+    expect(existsSync(suitePath)).toBe(true);
+    const content = readFileSync(suitePath, "utf8");
+    expect(content).toContain("USER_A");
+    expect(content).toContain("USER_B");
+    expect(content).toContain("Leitura Cross-Tenant (SELECT / IDOR)");
+    expect(content).toContain("Injeção Cross-Tenant (INSERT)");
+    expect(content).toContain("Modificação Cross-Tenant (UPDATE)");
+    expect(content).toContain("Exclusão Cross-Tenant (DELETE)");
+    expect(content).toContain("Invocação de RPCs Transacionais Cross-Tenant");
+  });
+});
+
+
 
 
 

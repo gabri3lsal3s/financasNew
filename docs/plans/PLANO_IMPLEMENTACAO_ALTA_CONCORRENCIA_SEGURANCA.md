@@ -360,7 +360,7 @@ Ao término de cada fase, é **obrigatória** a passagem pelos dois portões de 
 ### FASE 5: Homologação Multitenant, Testes de Penetração RLS Cross-Tenant & Stress Testing Simulado
 > **Objetivo:** Realizar bateria completa de testes de segurança defensiva, simulando ataques de vazamento horizontal entre contas e estresse de concorrência.
 
-- [ ] **Tarefa 5.1 — Suíte Automatizada de Penetração Cross-Tenant**
+- [x] **Tarefa 5.1 — Suíte Automatizada de Penetração Cross-Tenant**
   - **Revisão do Plano:** Analisar `src/tests/security-audit.test.ts`.
   - **Implementação:**
     - Adicionar suíte de testes de penetração simulando Usuário A (`user_id_1`) e Usuário B (`user_id_2`);

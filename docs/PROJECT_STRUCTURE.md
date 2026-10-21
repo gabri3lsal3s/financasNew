@@ -40,18 +40,24 @@
 │   ├── DATA_MIGRATION_GUIDE.md    # Guia de migração e batimento de dados legados
 │   ├── DEPLOYMENT.md              # Guia de deploy (Cloudflare Pages + Supabase) e env vars
 │   ├── DESIGN_SYSTEM.md           # Identidade visual e design tokens
-│   ├── DIAGNOSTICO_SEGURANCA_PERFORMANCE_ESCALA.md # Diagnóstico de concorrência, velocidade e blindagem (1k-10k DAU)
 │   ├── FINANCIAL_MATH_SPEC.md     # Especificação canônica de engenharia e precisão matemática
-│   ├── PLANO_IMPLEMENTACAO_ALTA_CONCORRENCIA_SEGURANCA.md # Plano de implementação de escala (1k-10k DAU) e blindagem
-│   ├── PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md # Plano mestre de governança, limpeza e segurança
+│   ├── NATIVE_DISTRIBUTION_GUIDE.md # Guia de distribuição Android, keystore e in-app updater
 │   ├── PROJECT_STRUCTURE.md       # Este documento
 │   ├── PROJETO_SAAS.md            # Modelo de precificação SaaS, 30 dias de trial e conformidade CDC
 │   ├── PWA_GUIDELINES.md          # Requisitos PWA (manifest, SW, instalação)
 │   ├── RELEASE.md                 # Checklist de release e homologação
 │   ├── ROADMAP.md                 # Fases de execução consolidadas e Definition of Done
-│   └── SECURITY_AUDIT/            # Artefatos da Auditoria de Segurança SAST
-│       ├── generate_report.py     #   Script gerador do relatório em PDF (ReportLab/Matplotlib)
-│       └── relatorio-auditoria-seguranca.pdf # Relatório executivo oficial de auditoria
+│   ├── plans/                     # Planos de implementação ativos e pendentes
+│   │   ├── PLANO_IMPLEMENTACAO_ALTA_CONCORRENCIA_SEGURANCA.md # [EM ANDAMENTO] Escala 1k-10k DAU e blindagem
+│   │   ├── PLANO_AUDITORIA_CONGRUENCIA.md # [PENDENTE] Auditoria de regras e integridade matemática
+│   │   └── completed/             # Histórico de planos executados com sucesso (100% concluídos)
+│   │       ├── CAPACITOR_ANDROID_PLAN.md
+│   │       ├── PLANO_IMPLEMENTACAO_ASSISTENTE_PASSIVO.md
+│   │       ├── PLANO_IMPLEMENTACAO_MODULOS_E_SAAS.md
+│   │       └── PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md
+│   ├── diagnostics/               # Diagnósticos técnicos e relatórios de avaliação arquitetural
+│   │   └── DIAGNOSTICO_SEGURANCA_PERFORMANCE_ESCALA.md # Diagnóstico de concorrência, velocidade e blindagem
+│   └── reports/                   # Relatórios de auditoria, logs de orquestrador e homologação (.gitkeep)
 │
 ├── public/                        # Assets estáticos servidos na raiz (não processados)
 │   ├── favicon.ico / favicon.svg  # Multi-resolução (16, 32, 48) e SVG transparente
@@ -308,6 +314,7 @@
                                    #     db/schema/domain), axe-sanity + keyboard-navigation
                                    #     (a11y), accessibility-audit (contraste AA via
                                    #     domain/accessibility), pwa + pwa-audit, security-audit,
+                                   #     cross-tenant-penetration (Fase 5.1),
                                    #     quotes-core (edge de cotações), setup.ts
 ```
 
