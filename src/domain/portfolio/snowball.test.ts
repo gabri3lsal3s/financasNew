@@ -90,6 +90,65 @@ describe("domain/portfolio/snowball — Efeito Bola de Neve, YoC e Concentraçã
       expect(calculateYieldOnCostTotal(0, 0, 5000)).toBe(0);
       expect(calculateYieldOnCostTotal(300, 200, 0)).toBe(0);
     });
+
+    describe("Auditoria de Pureza Cambial do Yield on Cost na Moeda Nativa (USD vs BRL)", () => {
+      it("calcula YoC puro na moeda nativa USD para ativos internacionais (ex.: AAPL, VOO) antes da conversão cambial", () => {
+        // Ativo em USD: 10 cotas adquiridas pelo custo médio de $ 250,00 USD -> Custo total = $ 2.500,00 USD
+        const totalCostUSD = 2500.0;
+        // Proventos recebidos na moeda nativa USD: histórico de $ 125,00 + periódico de $ 125,00 = $ 250,00 USD
+        const historicalUSD = 125.0;
+        const periodicUSD = 125.0;
+
+        // YoC calculado na moeda nativa USD
+        const yocNativeUSD = calculateYieldOnCostTotal(historicalUSD, periodicUSD, totalCostUSD);
+        expect(yocNativeUSD).toBe(10.0);
+
+        // Se fosse convertido com taxas de câmbio históricas discrepantes:
+        // Custo na data da compra (dólar a R$ 4,80) -> R$ 12.000,00 BRL
+        // Proventos na data do recebimento (dólar a R$ 5,60) -> R$ 1.400,00 BRL
+        const costBRLHistorical = totalCostUSD * 4.8;
+        const divsBRLHistorical = (historicalUSD + periodicUSD) * 5.6;
+        const yocDistortedByFX = (divsBRLHistorical / costBRLHistorical) * 100;
+
+        // O cálculo em BRL sofreria distorção cambial espúria (11.67% em vez dos 10.0% reais)
+        expect(yocDistortedByFX).toBeCloseTo(11.666, 2);
+        // O YoC puro nativo em USD garante a métrica fiel aos proventos reais pagos pela empresa (10.0%)
+        expect(yocNativeUSD).toBe(10.0);
+      });
+
+      it("garante imunidade a variações do câmbio no Yield on Cost", () => {
+        const costUSD = 1000.0;
+        const divsUSD = 75.0; // YoC nativo = 7.5%
+
+        const yocUSD = calculateYieldOnCost(divsUSD, costUSD);
+        expect(yocUSD).toBe(7.5);
+
+        // O percentual do YoC independe de a cotação do dólar estar a R$ 4,00, R$ 5,25 ou R$ 6,00
+        for (const usdRate of [4.0, 5.25, 6.0, 7.5]) {
+          const costBRL = costUSD * usdRate;
+          const divsBRL = divsUSD * usdRate;
+          const yocWithFixedRate = calculateYieldOnCost(divsBRL, costBRL);
+          expect(yocWithFixedRate).toBe(yocUSD);
+        }
+      });
+
+      it("calcula YoC com precisão para frações monetárias em ativos em USD", () => {
+        // Custo total: $ 1.234,56 USD, Proventos totais: $ 61,728 USD -> 5.0%
+        const yoc = calculateYieldOnCostTotal(30.864, 30.864, 1234.56);
+        expect(yoc).toBe(5.0);
+      });
+
+      it("assegura paridade conceitual entre ativos locais B3 (BRL) e internacionais (USD)", () => {
+        // Ativo B3 (ex.: ITUB4): custo R$ 10.000, proventos R$ 800 -> 8.0%
+        const yocB3 = calculateYieldOnCostTotal(500, 300, 10000);
+        // Ativo Internacional (ex.: SCHD): custo $ 5.000, proventos $ 400 -> 8.0%
+        const yocUS = calculateYieldOnCostTotal(250, 150, 5000);
+
+        expect(yocB3).toBe(8.0);
+        expect(yocUS).toBe(8.0);
+        expect(yocB3).toBe(yocUS);
+      });
+    });
   });
 
   describe("resolveMonthlyDividendPerShare", () => {

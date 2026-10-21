@@ -40,6 +40,7 @@ export interface PositionRow {
   totalCostBRL?: number;
   averageCostBRL?: number;
   dividends?: number;
+  dividendsNative?: number;
   priceQuote?: number;
   priceBRL: number;
   usdRate?: number;
@@ -803,8 +804,10 @@ export function PositionTable({
           return <span className="num text-sm text-muted-foreground">—</span>;
         }
         const tone = effectivePct >= 0 ? "positive" : "negative";
-        const yoc = (row.dividends && row.dividends > 0)
-          ? calculateYieldOnCost(row.dividends, row.totalCostBRL ?? row.totalCost ?? 0)
+        const effectiveDividends = row.currency === "USD" ? (row.dividendsNative ?? row.dividends) : row.dividends;
+        const effectiveCost = row.currency === "USD" ? (row.totalCost ?? row.totalCostBRL) : (row.totalCostBRL ?? row.totalCost);
+        const yoc = (effectiveDividends && effectiveDividends > 0 && effectiveCost && effectiveCost > 0)
+          ? calculateYieldOnCost(effectiveDividends, effectiveCost)
           : 0;
 
         return (
@@ -868,8 +871,10 @@ export function PositionTable({
         : effectivePct >= 0
           ? "text-positive-strong"
           : "text-negative-strong";
-    const yoc = (row.dividends && row.dividends > 0)
-      ? calculateYieldOnCost(row.dividends, row.totalCostBRL ?? row.totalCost ?? 0)
+    const effectiveDividends = row.currency === "USD" ? (row.dividendsNative ?? row.dividends) : row.dividends;
+    const effectiveCost = row.currency === "USD" ? (row.totalCost ?? row.totalCostBRL) : (row.totalCostBRL ?? row.totalCost);
+    const yoc = (effectiveDividends && effectiveDividends > 0 && effectiveCost && effectiveCost > 0)
+      ? calculateYieldOnCost(effectiveDividends, effectiveCost)
       : 0;
     const isClickable = Boolean(handleOpen);
 

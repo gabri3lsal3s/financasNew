@@ -305,4 +305,40 @@ describe("PositionTable (F17 — ordenação por coluna e agrupamento por classe
 
     expect(screen.getAllByText("Zerada").length).toBeGreaterThanOrEqual(1);
   });
+
+  it("exibe YoC calculado na moeda nativa USD sem distorção cambial", async () => {
+    const user = userEvent.setup();
+    const usdRow: PositionRow = {
+      assetId: "usd1",
+      ticker: "AAPL",
+      assetClass: "Internacional",
+      currency: "USD",
+      quantity: 10,
+      averageCost: 100, // $100 USD
+      totalCost: 1000, // $1.000 USD de custo nativo
+      totalCostBRL: 5000, // R$ 5.000 BRL
+      priceQuote: 150,
+      priceBRL: 750,
+      usdRate: 5.0,
+      source: "api",
+      valueBRL: 7500,
+      pct: 100,
+      unrealizedPnl: 2500,
+      unrealizedPct: 50,
+      totalReturnPnl: 3000,
+      totalReturnPct: 60,
+      dividends: 500, // R$ 500 BRL
+      dividendsNative: 100, // $100 USD -> YoC nativo = (100 / 1000) * 100 = 10.0%
+      isCash: false,
+    };
+
+    render(<PositionTable rows={[usdRow]} />);
+
+    const intGroups = screen.getAllByRole("button", { name: /Classe Internacional/i });
+    await user.click(intGroups[0]!);
+
+    // YoC 10.0% deve ser exibido tanto na versão desktop quanto mobile
+    const yocBadges = screen.getAllByText(/YoC 10\.0%/i);
+    expect(yocBadges.length).toBeGreaterThanOrEqual(1);
+  });
 });

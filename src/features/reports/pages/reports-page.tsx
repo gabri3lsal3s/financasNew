@@ -732,7 +732,9 @@ export function ReportsPage() {
       positions: positionRows
         .filter((r) => !r.isCash && r.quantity > 0)
         .map((r) => {
-          const yoc = r.totalCostBRL > 0 ? (r.dividends / r.totalCostBRL) * 100 : 0;
+          const effectiveDivs = r.currency === "USD" ? (r.dividendsNative ?? (r.usdRate && r.usdRate > 0 ? r.dividends / r.usdRate : r.dividends)) : r.dividends;
+          const effectiveCost = r.currency === "USD" ? (r.totalCost ?? (r.usdRate && r.usdRate > 0 && r.totalCostBRL ? r.totalCostBRL / r.usdRate : r.totalCostBRL)) : r.totalCostBRL;
+          const yoc = effectiveCost > 0 && effectiveDivs > 0 ? (effectiveDivs / effectiveCost) * 100 : 0;
           return {
             ticker: r.ticker,
             name: r.ticker,
@@ -1094,7 +1096,9 @@ export function ReportsPage() {
             onOpenChange={setTearSheetOpen}
             periodLabel={periodLabel}
             rows={positionRows.map((r) => {
-              const yoc = r.totalCostBRL > 0 ? ((r.dividends ?? 0) / r.totalCostBRL) * 100 : 0;
+              const effectiveDivs = r.currency === "USD" ? (r.dividendsNative ?? (r.usdRate && r.usdRate > 0 ? (r.dividends ?? 0) / r.usdRate : (r.dividends ?? 0))) : (r.dividends ?? 0);
+              const effectiveCost = r.currency === "USD" ? (r.totalCost ?? (r.usdRate && r.usdRate > 0 && r.totalCostBRL ? r.totalCostBRL / r.usdRate : r.totalCostBRL)) : r.totalCostBRL;
+              const yoc = effectiveCost > 0 && effectiveDivs > 0 ? (effectiveDivs / effectiveCost) * 100 : 0;
               return {
                 ticker: r.ticker,
                 name: r.ticker,

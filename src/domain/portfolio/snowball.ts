@@ -58,8 +58,12 @@ export function calculateSnowballProgress(input: SnowballProgressInput): Snowbal
 }
 
 /**
- * Calcula o Yield on Cost (YoC) histórico acumulado:
+ * Calcula o Yield on Cost (YoC) histórico acumulado na moeda nativa do ativo:
  * Percentual que o total de proventos recebidos representa sobre o custo total investido.
+ * Deve ser calculado na mesma moeda (moeda nativa do ativo) antes de qualquer conversão cambial.
+ *
+ * @param totalDividends Total de proventos na moeda nativa (USD para ativos internacionais, BRL para B3)
+ * @param totalCost Custo total de aquisição na moeda nativa (USD para ativos internacionais, BRL para B3)
  * @deprecated Prefira `calculateYieldOnCostTotal` que incorpora proventos acumulados históricos.
  */
 export function calculateYieldOnCost(totalDividends: number, totalCost: number): number {
@@ -69,9 +73,13 @@ export function calculateYieldOnCost(totalDividends: number, totalCost: number):
 }
 
 /**
- * YoC total: soma dos proventos acumulados históricos (`accumulated_dividends` do ativo)
+ * YoC total na moeda nativa do ativo: soma dos proventos acumulados históricos (`accumulated_dividends` do ativo)
  * com os proventos do extrato periódico (`portfolio_dividends`).
- * Usa essa função em vez de `calculateYieldOnCost` quando o ativo possui acumulados históricos.
+ * Deve ser calculado na mesma moeda (moeda nativa do ativo) antes de qualquer conversão cambial.
+ *
+ * @param accumulatedDividends Proventos históricos na moeda nativa (USD ou BRL)
+ * @param periodicDividends Proventos periódicos na moeda nativa (USD ou BRL)
+ * @param totalCost Custo total de aquisição na moeda nativa (USD ou BRL)
  */
 export function calculateYieldOnCostTotal(
   accumulatedDividends: number,

@@ -22,6 +22,7 @@ export interface PositionRow {
   totalCostBRL?: number;
   averageCostBRL?: number;
   dividends?: number;
+  dividendsNative?: number;
   priceQuote?: number;
   priceBRL: number;
   usdRate?: number;
