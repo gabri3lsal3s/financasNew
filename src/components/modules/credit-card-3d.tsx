@@ -34,7 +34,7 @@ function EmvChip({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "relative w-10 h-7 sm:w-11 sm:h-8 rounded-md bg-gradient-to-br from-[#E8CF72] via-[#FFF3CA] to-[#BFA145] p-[1px] shadow-[0_1px_3px_rgba(0,0,0,0.35),inset_0_1px_1px_rgba(255,255,255,0.7)] border border-[#A68832]/70 overflow-hidden shrink-0",
+        "relative w-8 h-5.5 sm:w-10 sm:h-7 rounded-md bg-gradient-to-br from-[#E8CF72] via-[#FFF3CA] to-[#BFA145] p-[1px] shadow-[0_1px_3px_rgba(0,0,0,0.35),inset_0_1px_1px_rgba(255,255,255,0.7)] border border-[#A68832]/70 overflow-hidden shrink-0",
         className,
       )}
       aria-label="Chip EMV"
@@ -210,7 +210,7 @@ export function CreditCard3D({
             : "transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease-out",
         }}
         className={cn(
-          "relative aspect-[1.586] w-full rounded-2xl p-4 sm:p-5 text-white overflow-hidden cursor-pointer",
+          "relative aspect-[1.586] w-full rounded-2xl p-3.5 sm:p-5 text-white overflow-hidden cursor-pointer",
           "border border-white/15 backdrop-blur-xl transition-all duration-300",
           "flex flex-col justify-between",
           "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
@@ -226,12 +226,12 @@ export function CreditCard3D({
 
         {/* Linha 1: Topo — Nome do Cartão + Bandeira */}
         <div className="relative z-10 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-base sm:text-lg font-semibold tracking-tight text-white drop-shadow-sm truncate max-w-[220px]">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm sm:text-base md:text-lg font-semibold tracking-tight text-white drop-shadow-sm truncate max-w-[180px] sm:max-w-[220px]">
               {card.name}
             </span>
             {!card.is_active && (
-              <span className="text-[10px] uppercase font-medium text-amber-300/90 px-1.5 py-0.5 rounded-full bg-black/40 border border-amber-400/30">
+              <span className="text-[10px] uppercase font-medium text-amber-300/90 px-1.5 py-0.5 rounded-full bg-black/40 border border-amber-400/30 shrink-0">
                 Inativo
               </span>
             )}
@@ -241,24 +241,24 @@ export function CreditCard3D({
         </div>
 
         {/* Linha 2: Meio — Chip EMV Vector, Contactless e Fatura Atual */}
-        <div className="relative z-10 my-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
+        <div className="relative z-10 my-auto flex items-center justify-between gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             <EmvChip />
-            <Radio className="size-4 rotate-90 text-white/70" aria-label="Aproximação" />
+            <Radio className="size-3.5 sm:size-4 rotate-90 text-white/70 shrink-0" aria-label="Aproximação" />
           </div>
 
           {/* Fatura Atual (Bruto + Ponderada) */}
-          <div className="flex flex-col items-end text-right">
-            <span className="text-[10px] uppercase font-medium tracking-wider text-white/70">
+          <div className="flex flex-col items-end text-right min-w-0">
+            <span className="text-[9px] sm:text-[10px] uppercase font-medium tracking-wider text-white/70 whitespace-nowrap">
               Fatura Total (Bruto)
             </span>
-            <span className="font-mono text-base sm:text-lg font-bold text-white drop-shadow-xs">
+            <span className="font-mono text-sm sm:text-base md:text-lg font-bold text-white drop-shadow-xs whitespace-nowrap tabular-nums tracking-tight">
               <NumberTicker value={usedLimitCents} format={formatCentsAsBRL} />
             </span>
             {usedLimitPonderadoCents !== undefined && usedLimitPonderadoCents !== usedLimitCents && (
-              <div className="flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded bg-black/35 border border-white/10">
-                <span className="text-[9px] uppercase tracking-wider text-white/70">Ponderada:</span>
-                <span className="font-mono text-[11px] font-semibold text-white">
+              <div className="flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded bg-black/40 border border-white/10 max-w-full">
+                <span className="text-[8.5px] sm:text-[9px] uppercase tracking-wider text-white/70 shrink-0">Ponderada:</span>
+                <span className="font-mono text-[10px] sm:text-[11px] font-semibold text-white whitespace-nowrap tabular-nums">
                   <NumberTicker value={usedLimitPonderadoCents} format={formatCentsAsBRL} />
                 </span>
               </div>
@@ -267,8 +267,8 @@ export function CreditCard3D({
         </div>
 
         {/* Linha 3: Rodapé — Ciclo de Datas e Limite Total */}
-        <div className="relative z-10 flex items-center justify-between gap-2 pt-2 border-t border-white/10 text-[10px] sm:text-xs text-white/80 font-mono">
-          <div className="flex items-center gap-1.5 sm:gap-2.5 truncate">
+        <div className="relative z-10 flex items-center justify-between gap-1.5 sm:gap-2 pt-2 border-t border-white/10 text-[9.5px] sm:text-xs text-white/80 font-mono">
+          <div className="flex items-center gap-1 sm:gap-2 whitespace-nowrap shrink-0">
             <span>Melhor dia: {bestDay}</span>
             <span className="text-white/40">·</span>
             <span>Fech.: {card.closing_day}</span>
@@ -277,17 +277,17 @@ export function CreditCard3D({
           </div>
 
           {limit.totalLimitCents !== null && (
-            <div className="shrink-0 text-right flex items-center gap-1 sm:gap-1.5">
+            <div className="shrink-0 text-right flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
               <span>
                 <span className="text-white/70">Disp.: </span>
-                <strong className="text-white font-semibold">
+                <strong className="text-white font-semibold tabular-nums">
                   {formatCentsAsBRL(limit.availableLimitCents ?? 0)}
                 </strong>
               </span>
-              <span className="text-white/40 hidden sm:inline">/</span>
-              <span className="hidden sm:inline">
+              <span className="text-white/40 hidden md:inline">/</span>
+              <span className="hidden md:inline">
                 <span className="text-white/70">Total: </span>
-                <span className="text-white/90">{formatCentsAsBRL(limit.totalLimitCents)}</span>
+                <span className="text-white/90 tabular-nums">{formatCentsAsBRL(limit.totalLimitCents)}</span>
               </span>
             </div>
           )}

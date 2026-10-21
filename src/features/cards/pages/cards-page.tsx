@@ -179,6 +179,11 @@ export function CardsPage() {
   const prevMonth = shiftMonth(currMonth, -1);
   const nextMonth = shiftMonth(currMonth, 1);
 
+  const getMonthStatus = (m: string) => {
+    if (!selectedCard) return "closed";
+    const sum = summaries.find((s) => s.month === m);
+    return invoiceStatus(m, selectedCard.due_day, sum?.saldoCents ?? 0);
+  };
 
   const handleSelectQuickMonth = (m: string) => {
     triggerSensory("selection");
@@ -464,7 +469,7 @@ export function CardsPage() {
           <section
             aria-label="Carteira de Cartões"
             className={cn(
-              "flex flex-col items-center justify-center p-4 sm:p-6 rounded-2xl bg-surface border border-border/80 shadow-xs transition-all",
+              "flex flex-col items-center justify-center p-3 sm:p-6 rounded-2xl bg-surface border border-border/80 shadow-xs transition-all",
               selectedCard && isHighlighted(selectedCard.id) && "ring-2 ring-primary",
             )}
           >
@@ -487,10 +492,68 @@ export function CardsPage() {
             {/* Seletor de mês full-width (padrão Orçamentos e Relatórios) */}
             <MonthPicker value={effectiveMonth} onValueChange={setMonth} />
 
-            {/* Linha de controles: atalhos de competência (pills) + ações de fatura */}
+            {/* Linha de controles: atalhos de competência (cards no mobile, pills no desktop) + ações de fatura */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              {/* Atalhos rápidos em pills (Anterior, Atual, Próxima) */}
-              <div role="group" aria-label="Seletor rápido de faturas" className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              {/* Seletor rápido de faturas em cards (exclusivo para mobile — layout da versão anterior) */}
+              <div className="grid grid-cols-3 gap-2 sm:hidden w-full" role="tablist" aria-label="Seletor rápido de faturas">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={effectiveMonth === prevMonth}
+                  onClick={() => handleSelectQuickMonth(prevMonth)}
+                  className={cn(
+                    "flex flex-col items-center justify-center p-2 rounded-xl border transition-all text-center",
+                    effectiveMonth === prevMonth
+                      ? "bg-surface-hover border-primary/50 shadow-xs ring-1 ring-primary/30"
+                      : "bg-surface border-border hover:bg-surface-hover/60 text-muted-foreground",
+                  )}
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Anterior</span>
+                  <span className="text-xs font-semibold text-foreground capitalize mt-0.5">{monthLabel(prevMonth).split(" ")[0]}</span>
+                  <div className="mt-1">
+                    <InvoiceStatusBadge status={getMonthStatus(prevMonth)} size="xs" />
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={effectiveMonth === currMonth}
+                  onClick={() => handleSelectQuickMonth(currMonth)}
+                  className={cn(
+                    "flex flex-col items-center justify-center p-2 rounded-xl border transition-all text-center",
+                    effectiveMonth === currMonth
+                      ? "bg-surface-hover border-primary/50 shadow-xs ring-1 ring-primary/30"
+                      : "bg-surface border-border hover:bg-surface-hover/60 text-muted-foreground",
+                  )}
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Atual</span>
+                  <span className="text-xs font-semibold text-foreground capitalize mt-0.5">{monthLabel(currMonth).split(" ")[0]}</span>
+                  <div className="mt-1">
+                    <InvoiceStatusBadge status={getMonthStatus(currMonth)} size="xs" />
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={effectiveMonth === nextMonth}
+                  onClick={() => handleSelectQuickMonth(nextMonth)}
+                  className={cn(
+                    "flex flex-col items-center justify-center p-2 rounded-xl border transition-all text-center",
+                    effectiveMonth === nextMonth
+                      ? "bg-surface-hover border-primary/50 shadow-xs ring-1 ring-primary/30"
+                      : "bg-surface border-border hover:bg-surface-hover/60 text-muted-foreground",
+                  )}
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Próxima</span>
+                  <span className="text-xs font-semibold text-foreground capitalize mt-0.5">{monthLabel(nextMonth).split(" ")[0]}</span>
+                  <div className="mt-1">
+                    <InvoiceStatusBadge status={getMonthStatus(nextMonth)} size="xs" />
+                  </div>
+                </button>
+              </div>
+
+              {/* Atalhos rápidos em pills (Anterior, Atual, Próxima) — exclusivo para desktop */}
+              <div role="group" aria-label="Seletor rápido de faturas" className="hidden sm:flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                 <Button
                   type="button"
                   size="sm"

@@ -43,6 +43,8 @@ export function CreditCardWallet({
 }: CreditCardWalletProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [direction, setDirection] = useState<"next" | "prev" | null>(null);
+  const prevCardIdRef = useRef<string | null>(selectedCardId);
 
   const selectedIndex = Math.max(
     0,
@@ -50,11 +52,23 @@ export function CreditCardWallet({
   );
   const currentCard = cards[selectedIndex] ?? cards[0] ?? null;
 
+  useEffect(() => {
+    if (selectedCardId && prevCardIdRef.current && selectedCardId !== prevCardIdRef.current) {
+      const prevIdx = cards.findIndex((c) => c.id === prevCardIdRef.current);
+      const currIdx = cards.findIndex((c) => c.id === selectedCardId);
+      if (prevIdx !== -1 && currIdx !== -1) {
+        setDirection(currIdx > prevIdx ? "next" : "prev");
+      }
+    }
+    prevCardIdRef.current = selectedCardId;
+  }, [selectedCardId, cards]);
+
   const handlePrev = () => {
     if (cards.length <= 1) return;
     const nextIdx = (selectedIndex - 1 + cards.length) % cards.length;
     const nextCard = cards[nextIdx];
     if (nextCard) {
+      setDirection("prev");
       triggerSensory("selection");
       onSelectCard(nextCard.id);
     }
@@ -65,6 +79,7 @@ export function CreditCardWallet({
     const nextIdx = (selectedIndex + 1) % cards.length;
     const nextCard = cards[nextIdx];
     if (nextCard) {
+      setDirection("next");
       triggerSensory("selection");
       onSelectCard(nextCard.id);
     }
@@ -144,28 +159,35 @@ export function CreditCardWallet({
         )}
       </div>
 
-      {/* Palco 3D do Cartão com navegação externa nas laterais (sem sobreposição) */}
-      <div className="flex items-center justify-between sm:justify-center gap-2 sm:gap-4 w-full max-w-[540px] px-1">
-        {/* Botão Anterior externo */}
+      {/* Palco 3D do Cartão com navegação externa em telas maiores */}
+      <div className="flex items-center justify-center sm:gap-3 md:gap-4 w-full max-w-[540px]">
+        {/* Botão Anterior externo (visível em tablets e desktop) */}
         {cards.length > 1 && (
           <button
             type="button"
             onClick={handlePrev}
             aria-label="Cartão anterior"
-            className="shrink-0 flex size-8 sm:size-9 items-center justify-center rounded-full bg-surface border border-border text-muted-foreground hover:text-foreground hover:bg-surface-hover shadow-xs transition-transform hover:scale-105 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="hidden sm:flex shrink-0 size-8 sm:size-9 items-center justify-center rounded-full bg-surface border border-border text-muted-foreground hover:text-foreground hover:bg-surface-hover shadow-xs transition-transform hover:scale-105 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <ChevronLeft className="size-4 sm:size-5" aria-hidden="true" />
           </button>
         )}
 
-        {/* Cartão 3D renderizado em destaque */}
+        {/* Cartão 3D renderizado em destaque (largura total no mobile) */}
         {currentCard && (() => {
           const limitEntry = usedLimitMap[currentCard.id];
           const usedLimitCents = typeof limitEntry === "object" ? limitEntry.brutoCents : (limitEntry ?? 0);
           const usedLimitPonderadoCents = typeof limitEntry === "object" ? limitEntry.ponderadoCents : undefined;
 
           return (
-            <div className="flex-1 min-w-0 max-w-[360px] sm:max-w-[420px] flex justify-center transform transition-all duration-300">
+            <div
+              key={currentCard.id}
+              className={cn(
+                "w-full flex-1 min-w-0 max-w-[390px] sm:max-w-[420px] flex justify-center transform transition-all duration-300",
+                direction === "next" && "animate-card-slide-left",
+                direction === "prev" && "animate-card-slide-right",
+              )}
+            >
               <CreditCard3D
                 card={currentCard}
                 usedLimitCents={usedLimitCents}
@@ -186,76 +208,54 @@ export function CreditCardWallet({
           );
         })()}
 
-        {/* Botão Próximo externo */}
+        {/* Botão Próximo externo (visível em tablets e desktop) */}
         {cards.length > 1 && (
           <button
             type="button"
             onClick={handleNext}
             aria-label="Próximo cartão"
-            className="shrink-0 flex size-8 sm:size-9 items-center justify-center rounded-full bg-surface border border-border text-muted-foreground hover:text-foreground hover:bg-surface-hover shadow-xs transition-transform hover:scale-105 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="hidden sm:flex shrink-0 size-8 sm:size-9 items-center justify-center rounded-full bg-surface border border-border text-muted-foreground hover:text-foreground hover:bg-surface-hover shadow-xs transition-transform hover:scale-105 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <ChevronRight className="size-4 sm:size-5" aria-hidden="true" />
           </button>
         )}
       </div>
 
-      {/* Seletor rápido de cartões com chips e indicadores de paginação (Dots) */}
+      {/* Seletor rápido de cartões com chips horizontais por nome */}
       {cards.length > 1 && (
-        <div className="flex flex-col items-center gap-2 w-full max-w-[390px] sm:max-w-[420px]">
-          {/* Indicadores em Dot */}
-          <div className="flex items-center justify-center gap-1.5" role="tablist" aria-label="Navegação entre cartões">
-            {cards.map((card) => (
+        <div className="flex flex-wrap items-center justify-center gap-1.5 w-full max-w-[390px] sm:max-w-[420px] px-1 pt-0.5">
+          {cards.map((card) => {
+            const isSelected = card.id === currentCard?.id;
+            return (
               <button
                 key={card.id}
                 type="button"
-                role="tab"
-                aria-selected={card.id === currentCard?.id}
-                aria-label={`Ir para cartão ${card.name}`}
                 onClick={() => {
-                  triggerSensory("selection");
-                  onSelectCard(card.id);
-                }}
-                className={cn(
-                  "h-1.5 rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
-                  card.id === currentCard?.id
-                    ? "w-5 bg-primary"
-                    : "w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/50",
-                )}
-              />
-            ))}
-          </div>
-
-          {/* Chips horizontais dos cartões para seleção rápida por nome */}
-          <div className="flex flex-wrap items-center justify-center gap-1.5 px-2">
-            {cards.map((card) => {
-              const isSelected = card.id === currentCard?.id;
-              return (
-                <button
-                  key={card.id}
-                  type="button"
-                  onClick={() => {
+                  const targetIndex = cards.findIndex((c) => c.id === card.id);
+                  if (targetIndex !== selectedIndex) {
+                    setDirection(targetIndex > selectedIndex ? "next" : "prev");
                     triggerSensory("selection");
                     onSelectCard(card.id);
-                  }}
-                  aria-pressed={isSelected}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium border transition-all duration-200",
-                    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
-                    isSelected
-                      ? "border-primary/60 bg-primary/10 text-primary-strong font-semibold shadow-xs"
-                      : "border-border/60 bg-surface/80 text-muted-foreground hover:bg-surface hover:text-foreground",
-                  )}
-                >
-                  <span
-                    className="size-1.5 rounded-full shadow-xs"
-                    style={{ backgroundColor: card.color || "var(--primary)" }}
-                    aria-hidden="true"
-                  />
-                  <span>{card.name}</span>
-                </button>
-              );
-            })}
-          </div>
+                  }
+                }}
+                aria-pressed={isSelected}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border transition-all duration-200",
+                  "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                  isSelected
+                    ? "border-primary/60 bg-primary/10 text-primary-strong font-semibold shadow-xs"
+                    : "border-border/60 bg-surface/80 text-muted-foreground hover:bg-surface hover:text-foreground",
+                )}
+              >
+                <span
+                  className="size-1.5 rounded-full shadow-xs shrink-0"
+                  style={{ backgroundColor: card.color || "var(--primary)" }}
+                  aria-hidden="true"
+                />
+                <span className="truncate max-w-[130px]">{card.name}</span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

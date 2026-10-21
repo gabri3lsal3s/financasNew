@@ -685,7 +685,24 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
   - `toggle`: Alternância de switches, checkboxes ou modos de exibição. Haptic: `light` (10ms) | Som: `pop`.
   - `success`: Confirmação de lançamento, conciliação bancária ou salvamento com êxito. Haptic: `success` (15ms-50ms-15ms) | Som: `success`.
   - `destructive`: Exclusão de transação, cancelamento de contrato ou remoção de ativo. Haptic: `destructive` (40ms-60ms-40ms) | Som: `delete`.
-  - `warning` / `error`: Alertas de teto orçamentário estourado ou falha de validação. Haptic: `warning` / `error` | Som: `warning` / `error`.
+### 14.28 Carteira de Cartões 3D Mobile-First e Animação Direcional de Transição (CreditCardWallet)
+- **Componentes:** `src/components/modules/credit-card-wallet.tsx`, `src/components/modules/credit-card-3d.tsx`.
+- **Arquitetura Mobile-First sem Esmagamento:**
+  - Ocultação responsiva de setas laterais em telas móveis (`hidden sm:flex`), liberando 100% da largura útil (`w-full max-w-[390px] sm:max-w-[420px]`) e eliminando o estrangulamento horizontal que forçava cortes de dados.
+  - Navegação nativa via gesto touch de arrasto lateral (`onTouchStart`/`onTouchEnd`) e seleção direta por chips de cartões com cor de emissor (`card.color`).
+  - Remoção de controles redundantes (dots de paginação eliminados em favor de chips interativos táteis).
+- **Animações Direcionais de Transição (CSS Puro / Zero Libs Extras):**
+  - Tokens Tailwind v4 `--animate-card-slide-left` e `--animate-card-slide-right` em `globals.css` com timing canônico `0.28s cubic-bezier(0.16, 1, 0.3, 1)`.
+  - Ao avançar para o próximo cartão (swipe para esquerda, clique na seta direita ou chip de índice maior): `animate-card-slide-left` (deslocamento sutil `translateX(24px) scale(0.97)` para a posição de repouso).
+  - Ao retroceder para o cartão anterior: `animate-card-slide-right` (deslocamento sutil `translateX(-24px) scale(0.97)`).
+  - Respeito universal à acessibilidade e governança de movimento: supressão imediata (`animation-duration: 0.01ms`) sob `prefers-reduced-motion: reduce` e `html[data-motion="reduced"]`.
+- **Tipografia Adaptativa e Regra nº 11 (Zero Reticências em Valores Monetários):**
+  - Métrica de Fatura Total com tipografia responsiva (`text-sm sm:text-base md:text-lg tabular-nums tracking-tight whitespace-nowrap`), garantindo leitura clara de centavos e múltiplos dígitos sem truncamento.
+  - Chip EMV e contactless em escala proporcional compacta (`w-8 h-5.5 sm:w-10 sm:h-7`).
+  - Rodapé com datas de melhor compra, fechamento e vencimento completas sem truncamento, e limite disponível em destaque.
+- **Seletor Rápido de Faturas Adaptativo (Cards no Mobile vs. Pills no Desktop):**
+  - Em telas móveis (`< sm`), as 3 competências de fatura (*Anterior*, *Atual*, *Próxima*) renderizam em grade de 3 colunas compactas (`grid grid-cols-3 gap-2`) com rótulo uppercase (`ANTERIOR`, `ATUAL`, `PRÓXIMA`), mês abreviado (`Set.`, `Out.`, `Nov.`) e badge de status (`InvoiceStatusBadge` com `size="xs"`), garantindo affordance tátil clara.
+  - No desktop (`>= sm`), preserva-se o layout horizontal compacto em pills (`role="group"`) alinhado às ações de fatura.
 
 
 
