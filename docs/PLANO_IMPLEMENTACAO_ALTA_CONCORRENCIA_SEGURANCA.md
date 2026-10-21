@@ -370,7 +370,7 @@ Ao término de cada fase, é **obrigatória** a passagem pelos dois portões de 
   - **Verificação Final:** `npm run typecheck && npm run lint`.
   - **Commit Atômico:** `test(security): implement automated cross-tenant penetration test suite (task 5.1)`.
 
-- [ ] **Tarefa 5.2 — Blindagem do Gateway Central de Erros contra Vazamento de Detalhes Internos**
+- [x] **Tarefa 5.2 — Blindagem do Gateway Central de Erros contra Vazamento de Detalhes Internos**
   - **Revisão do Plano:** Inspecionar `src/services/errors.ts`.
   - **Implementação:**
     - Garantir que mensagens de erro exibidas ao usuário final nunca exponham nomes de colunas, stack traces, nomes de procedures internas ou detalhes de SQL;

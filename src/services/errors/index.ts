@@ -11,6 +11,7 @@ import { sanitizeString } from "@/domain/validation";
 
 export type ErrorKind =
   | "rate-limit"
+  | "service-unavailable"
   | "email-not-confirmed"
   | "invalid-credentials"
   | "session-expired"
@@ -42,7 +43,8 @@ export class AppError extends Error {
 }
 
 const MESSAGES: Record<ErrorKind, string> = {
-  "rate-limit": "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
+  "rate-limit": "Muitas requisições simultâneas. Aguarde alguns instantes e tente novamente.",
+  "service-unavailable": "Serviço temporariamente indisponível para manutenção. Aguarde alguns instantes e tente novamente.",
   "email-not-confirmed": "E-mail ainda não confirmado. Verifique sua caixa de entrada.",
   "invalid-credentials": "E-mail ou senha incorretos.",
   "session-expired": "Sua sessão expirou. Entre novamente para continuar.",
@@ -66,19 +68,74 @@ function hasMessage(error: unknown): error is { message?: string } {
   return typeof error === "object" && error !== null && "message" in error;
 }
 
+function hasDetails(error: unknown): error is { details?: string } {
+  return typeof error === "object" && error !== null && "details" in error;
+}
+
+function hasHint(error: unknown): error is { hint?: string } {
+  return typeof error === "object" && error !== null && "hint" in error;
+}
+
 const isNetworkError = (error: unknown): boolean => {
   if (!hasMessage(error)) return false;
   const msg = error.message ?? "";
   return /failed to fetch|networkerror|load failed|network request failed|fetch failed/i.test(msg);
 };
 
-
 /**
- * Padrões de mensagens técnicas internas (Postgres, Node, JS runtime) que
- * NUNCA devem vazar detalhes de esquema/SQL para o usuário final.
+ * Padrões de mensagens técnicas internas (Postgres, Node, JS runtime, PostgREST) que
+ * NUNCA devem vazar detalhes de esquema, SQL, nomes de colunas, procedures ou stack traces para o usuário final.
  */
-const TECHNICAL_LEAK_REGEX =
-  /(?:relation\s+"[^"]+"\s+does\s+not\s+exist|column\s+"[^"]+"\s+does\s+not\s+exist|syntax\s+error\s+at\s+or\s+near|function\s+[^ ]+\s+does\s+not\s+exist|operator\s+does\s+not\s+exist|null\s+value\s+in\s+column|deadlock\s+detected|could\s+not\s+connect|connection\s+refused|at\s+[a-zA-Z0-9_.]+\s+\([^)]+\)|postgrest)/i;
+const TECHNICAL_LEAK_PATTERNS = [
+  // Nomes de colunas, tabelas, relations e constraints
+  /relation\s+["']?[a-zA-Z0-9_.]+["']?/i,
+  /column\s+["']?[a-zA-Z0-9_.]+["']?/i,
+  /table\s+["']?[a-zA-Z0-9_.]+["']?/i,
+  /constraint\s+["']?[a-zA-Z0-9_.]+["']?/i,
+  /syntax\s+error\s+at\s+or\s+near/i,
+  /operator\s+does\s+not\s+exist/i,
+  /null\s+value\s+in\s+column/i,
+  /violates\s+(?:not-null|check|unique|foreign\s+key)\s+constraint/i,
+  /invalid\s+input\s+syntax\s+for/i,
+  /key\s*\([^)]*\)\s*=(?:\s*\([^)]*\))?\s*(?:already\s+exists|is\s+still\s+referenced)/i,
+  /deadlock\s+detected/i,
+  /lock\s+not\s+available/i,
+  /could\s+not\s+connect/i,
+  /connection\s+refused/i,
+  /connection\s+to\s+server\s+was\s+lost/i,
+  /query\s+canceled/i,
+  /statement\s+timeout/i,
+  /postgrest/i,
+  /\bpgrst\d+/i,
+  /\bsqlstate\b/i,
+  /\bplpgsql\b/i,
+  /\bsearch_path\b/i,
+  /\bpg_temp\b/i,
+  /\bpg_catalog\b/i,
+  /\binformation_schema\b/i,
+  /\bSELECT\s+.*?\s+FROM\b/i,
+  /\bINSERT\s+INTO\b/i,
+  /\bUPDATE\s+.*?\s+SET\b/i,
+  /\bDELETE\s+FROM\b/i,
+
+  // Nomes de procedures, funções e RPCs internas
+  /function\s+["']?[a-zA-Z0-9_.]+["']?\s*(?:does\s+not\s+exist|\(.*?\))/i,
+  /procedure\s+["']?[a-zA-Z0-9_.]+["']?/i,
+  /public\.[a-zA-Z0-9_]+\s*\(/i,
+  /\brpc\s+[a-zA-Z0-9_]+/i,
+
+  // Stack traces e Erros de Runtime JS/Node
+  /\bat\s+(?:async\s+)?[a-zA-Z0-9_.<>$]+\s+\([^)]+:\d+:\d+\)/i,
+  /\bat\s+(?:node:|file:\/\/|\/|[a-zA-Z]:\\)/i,
+  /\b(?:TypeError|ReferenceError|RangeError|SyntaxError|URIError|EvalError):\s+/i,
+  /cannot\s+read\s+propert(?:y|ies)\s+of\s+(?:undefined|null)/i,
+  /(?:node_modules|src\/|supabase\/functions\/)/i,
+];
+
+function containsTechnicalLeak(text: string): boolean {
+  if (!text || typeof text !== "string") return false;
+  return TECHNICAL_LEAK_PATTERNS.some((pattern) => pattern.test(text));
+}
 
 /** Classifica o erro cru em uma categoria conhecida. */
 export function classifyError(error: unknown): ClassifiedError {
@@ -89,9 +146,19 @@ export function classifyError(error: unknown): ClassifiedError {
   const status = hasStatus(error) ? Number(error.status) : undefined;
   const code = hasCode(error) ? (error.code ?? "").toLowerCase() : "";
   const message = hasMessage(error) ? (error.message ?? "") : "";
+  const details = hasDetails(error) && typeof error.details === "string" ? error.details : "";
+  const hint = hasHint(error) && typeof error.hint === "string" ? error.hint : "";
 
-  if (status === 429 || code.includes("rate_limit") || /rate limit/i.test(message)) {
+  if (status === 429 || code.includes("rate_limit") || /rate limit|too many requests/i.test(message)) {
     return { kind: "rate-limit", message: MESSAGES["rate-limit"], raw: error };
+  }
+  if (
+    status === 503 ||
+    code === "503" ||
+    code.includes("service_unavailable") ||
+    /service unavailable|503|manutenção/i.test(message)
+  ) {
+    return { kind: "service-unavailable", message: MESSAGES["service-unavailable"], raw: error };
   }
   if (status === 422 || code.includes("email_not_confirmed") || /email not confirmed/i.test(message)) {
     return { kind: "email-not-confirmed", message: MESSAGES["email-not-confirmed"], raw: error };
@@ -118,7 +185,7 @@ export function classifyError(error: unknown): ClassifiedError {
     /row-level security|insufficient privilege|permissão negada|acesso negado/i.test(message)
   ) {
     const isCustomPtBr = /acesso negado|permissão/i.test(message);
-    const cleanMsg = isCustomPtBr ? sanitizeString(message) : MESSAGES.permission;
+    const cleanMsg = isCustomPtBr && !containsTechnicalLeak(message) ? sanitizeString(message) : MESSAGES.permission;
     return {
       kind: "permission",
       message: cleanMsg,
@@ -126,8 +193,8 @@ export function classifyError(error: unknown): ClassifiedError {
     };
   }
 
-  // Se a mensagem contém vazamento técnico de banco ou runtime, protege o usuário com a mensagem genérica segura.
-  if (TECHNICAL_LEAK_REGEX.test(message)) {
+  // Se a mensagem contém vazamento técnico de banco, SQL, procedures, colunas ou runtime, protege o usuário com a mensagem genérica segura.
+  if (containsTechnicalLeak(message) || containsTechnicalLeak(details) || containsTechnicalLeak(hint)) {
     return { kind: "unknown", message: MESSAGES.unknown, raw: error };
   }
 

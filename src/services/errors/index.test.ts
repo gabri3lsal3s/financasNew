@@ -3,8 +3,15 @@ import { classifyError, getErrorMessage } from "./index";
 
 describe("getErrorMessage — gateway de erros (ESPECIFICAÇÃO §1.7)", () => {
   it("classifica rate limit (429 / code)", () => {
-    expect(getErrorMessage({ status: 429 })).toContain("Aguarde alguns minutos");
+    expect(getErrorMessage({ status: 429 })).toBe("Muitas requisições simultâneas. Aguarde alguns instantes e tente novamente.");
     expect(classifyError({ code: "over_request_rate_limit" }).kind).toBe("rate-limit");
+  });
+
+  it("classifica serviço indisponível (503 / manutenção)", () => {
+    expect(getErrorMessage({ status: 503 })).toBe(
+      "Serviço temporariamente indisponível para manutenção. Aguarde alguns instantes e tente novamente.",
+    );
+    expect(classifyError({ code: "503" }).kind).toBe("service-unavailable");
   });
 
   it("classifica e-mail não confirmado", () => {
