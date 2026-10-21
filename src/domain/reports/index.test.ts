@@ -176,6 +176,24 @@ describe("mergePaidDebts (§4.3)", () => {
     expect(merged.expenseCents).toBe(150_000);
     expect(merged.balanceCents).toBe(100_000);
   });
+
+  it("ignora dívidas vinculadas a uma despesa (com expense_id) para evitar duplicidades contábeis", () => {
+    const merged = mergePaidDebts(
+      300_000,
+      150_000,
+      0,
+      [
+        { kind: "payable", valueCents: 50_000, expense_id: "expense-uuid-123" }, // deve ser ignorado
+        { kind: "payable", valueCents: 20_000, expense_id: null }, // deve somar
+        { kind: "receivable", valueCents: 10_000 }, // deve somar
+      ],
+    );
+    // Rendas: 300_000 + 10_000 = 310_000
+    expect(merged.incomeCents).toBe(310_000);
+    // Despesas: 150_000 + 20_000 (ignora os 50_000 pois já estão em baseExpenseCents) = 170_000
+    expect(merged.expenseCents).toBe(170_000);
+    expect(merged.balanceCents).toBe(140_000);
+  });
 });
 
 describe("validateCustomPeriod (§3.6 — máx. 366 dias)", () => {

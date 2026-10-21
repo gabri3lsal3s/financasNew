@@ -120,9 +120,9 @@ graph TD
   - *Commit:* `feat(ui): add visual split badge and explanatory labels in TransactionRow`
 - [x] **Tarefa 1.4:** Atualizar os diálogos de detalhamento e lançamento (`ReportWeightField`) para substituir rótulos vagos por terminologia clara: *"Sua Participação / Rateio"* com aviso explícito de que o valor bancário cobrado permanece 100%.
   - *Commit:* `refactor(transactions): clarify split weight terminology in transaction dialogs`
-- [ ] **Tarefa 1.5:** Atualizar `mergePaidDebts` para filtrar registros com `expense_id` e evitar duplicidades contábeis.
+- [x] **Tarefa 1.5:** Atualizar `mergePaidDebts` para filtrar registros com `expense_id` e evitar duplicidades contábeis.
   - *Commit:* `fix(reports): prevent double counting of linked expenses in mergePaidDebts`
-- 🏁 **Quality Gate 1:** Vitest em `domain/money`, `domain/competence`, `domain/expenses`, `components/modules`; `tsc --noEmit`; `npm run lint`; git push da Fase 1.
+- 🏁 **Quality Gate 1:** Vitest em `domain/money`, `domain/competence`, `domain/expenses`, `components/modules`; `tsc --noEmit`; `npm run lint`; git push da Fase 1. (Concluído)
 
 ---
 

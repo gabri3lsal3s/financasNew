@@ -173,6 +173,11 @@ export interface PaidDebt {
   kind: "payable" | "receivable";
   /** Valor pago/quítado em centavos (entra no relatório do período). */
   valueCents: number;
+  /**
+   * Vínculo opcional com registro de despesa gerado na quitação (ex: pay_debt).
+   * Se preenchido, a despesa já consta em baseExpenseCents e não deve ser duplicada.
+   */
+  expense_id?: string | null;
 }
 
 export interface MergedTotals {
@@ -213,6 +218,10 @@ export function mergePaidDebts(
   let expenseBruto = options?.expenseBrutoCents ?? baseExpenseCents;
 
   for (const debt of paidDebts) {
+    if (debt.expense_id) {
+      continue;
+    }
+
     if (debt.kind === "receivable") {
       incomePonderado += debt.valueCents;
       incomeBruto += debt.valueCents;
