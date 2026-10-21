@@ -381,7 +381,7 @@ Ao término de cada fase, é **obrigatória** a passagem pelos dois portões de 
   - **Verificação Final:** `npm run typecheck && npm run lint`.
   - **Commit Atômico:** `security(errors): sanitize error messages and handle 429/503 rate limits gracefully (task 5.2)`.
 
-- [ ] **Tarefa 5.3 — Simulação de Concorrência de Queries no TanStack Query**
+- [x] **Tarefa 5.3 — Simulação de Concorrência de Queries no TanStack Query**
   - **Revisão do Plano:** Avaliar re-renderizações simultâneas em cenários de múltiplos eventos de rede.
   - **Implementação:**
     - Criar teste automatizado simulando resolução concorrente de 10 queries simultâneas no `QueryClient`;
