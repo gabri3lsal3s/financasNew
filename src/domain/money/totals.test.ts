@@ -60,10 +60,23 @@ describe("domain/money/totals", () => {
 
       // Valores com dizima em divisao ponderada
       const weightedItems = [
-        { value: 10.05, report_weight: 0.33 }, // 3.3165 -> 3.32 -> 332 cents
-        { value: 10.05, report_weight: 0.67 }, // 6.7335 -> 6.73 -> 673 cents
+        { value: 10.05, report_weight: 0.33 }, // 1005 * 0.33 = 331.65 -> 332 cents
+        { value: 10.05, report_weight: 0.67 }, // 1005 * 0.67 = 673.35 -> 673 cents
       ];
       expect(sumWeightedCents(weightedItems)).toBe(1005); // 332 + 673 = 1005 centavos
+    });
+
+    it("preserva centavos exatos calculando a base inteira antes da ponderacao", () => {
+      // 19.99 = 1999 centavos * 0.5 = 999.5 -> arredonda para 1000 centavos
+      const items = [{ value: 19.99, report_weight: 0.5 }];
+      expect(sumWeightedCents(items)).toBe(1000);
+
+      // Soma de rateio 50% de valor impar conserva total esperado
+      const splitPair = [
+        { value: 25.01, report_weight: 0.5 }, // 2501 * 0.5 = 1250.5 -> 1251 cents
+        { value: 25.01, report_weight: 0.5 }, // 2501 * 0.5 = 1250.5 -> 1251 cents
+      ];
+      expect(sumWeightedCents(splitPair)).toBe(2502);
     });
   });
 });

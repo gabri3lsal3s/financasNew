@@ -112,7 +112,7 @@ graph TD
 ---
 
 ### Fase 1: Transações, Liquidez e Auditoria de Pesos (Com Peso vs Sem Peso)
-- [ ] **Tarefa 1.1:** Refatorar `sumWeightedCents` em `src/domain/money/totals.ts` para preservação exata de centavos inteiros via `Math.round(numberToCents(item.value) * weight)`.
+- [x] **Tarefa 1.1:** Refatorar `sumWeightedCents` em `src/domain/money/totals.ts` para preservação exata de centavos inteiros via `Math.round(numberToCents(item.value) * weight)`.
   - *Commit:* `fix(domain): compute weighted cents with integer base in sumWeightedCents`
 - [ ] **Tarefa 1.2:** Adaptar `resolveBillCompetence` em `src/domain/competence/index.ts` para receber string ISO `YYYY-MM-DD` com parsing imune a fusos horários.
   - *Commit:* `fix(competence): support ISO date strings directly in resolveBillCompetence`
