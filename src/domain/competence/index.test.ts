@@ -15,21 +15,35 @@ describe("clampDay", () => {
 describe("resolveBillCompetence (§3.3.2)", () => {
   it("dia da compra < closing → fatura do mês atual", () => {
     expect(resolveBillCompetence(new Date(2026, 3, 5), 10)).toBe("2026-04");
+    expect(resolveBillCompetence("2026-04-05", 10)).toBe("2026-04");
   });
 
   it("dia da compra ≥ closing → fatura do mês seguinte", () => {
     expect(resolveBillCompetence(new Date(2026, 3, 10), 10)).toBe("2026-05");
     expect(resolveBillCompetence(new Date(2026, 3, 25), 10)).toBe("2026-05");
+    expect(resolveBillCompetence("2026-04-10", 10)).toBe("2026-05");
+    expect(resolveBillCompetence("2026-04-25", 10)).toBe("2026-05");
   });
 
   it("cruza o ano (compra em dezembro após closing → janeiro)", () => {
     expect(resolveBillCompetence(new Date(2026, 11, 20), 10)).toBe("2027-01");
+    expect(resolveBillCompetence("2026-12-20", 10)).toBe("2027-01");
   });
 
   it("usa o clamp no mês da compra (closing 31 em abril → 30)", () => {
     // 30/04 ≥ 30 → maio; 29/04 < 30 → abril
     expect(resolveBillCompetence(new Date(2026, 3, 30), 31)).toBe("2026-05");
     expect(resolveBillCompetence(new Date(2026, 3, 29), 31)).toBe("2026-04");
+    expect(resolveBillCompetence("2026-04-30", 31)).toBe("2026-05");
+    expect(resolveBillCompetence("2026-04-29", 31)).toBe("2026-04");
+  });
+
+  it("é imune a desvios de fuso horário ao receber string ISO YYYY-MM-DD", () => {
+    // Mesmo em fuso negativo onde new Date('YYYY-MM-DD') recuaria 1 dia em UTC,
+    // a extração direta do padrão ISO preserva exatamente o dia 10
+    expect(resolveBillCompetence("2026-04-10", 10)).toBe("2026-05");
+    expect(resolveBillCompetence("2026-04-09", 10)).toBe("2026-04");
+    expect(resolveBillCompetence("2026-04-10T00:00:00.000Z", 10)).toBe("2026-05");
   });
 });
 
@@ -39,10 +53,12 @@ describe("resolveBillCompetenceWithOverrides (D3)", () => {
   it("override prevalece sobre o padrão", () => {
     // Com padrão 10: 07/04 → abril; com override 5: 07/04 ≥ 5 → maio.
     expect(resolveBillCompetenceWithOverrides(new Date(2026, 3, 7), 10, overrides)).toBe("2026-05");
+    expect(resolveBillCompetenceWithOverrides("2026-04-07", 10, overrides)).toBe("2026-05");
   });
 
   it("sem override do mês, usa o padrão", () => {
     expect(resolveBillCompetenceWithOverrides(new Date(2026, 5, 7), 10, overrides)).toBe("2026-06");
+    expect(resolveBillCompetenceWithOverrides("2026-06-07", 10, overrides)).toBe("2026-06");
   });
 });
 

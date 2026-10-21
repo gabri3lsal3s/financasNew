@@ -22,9 +22,25 @@ export interface CompetenceOverride {
 
 const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
 
-/** YYYY-MM de uma data. */
-function monthKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+/** YYYY-MM de uma data ou string ISO. */
+function parseDateParts(date: Date | string): { year: number; month: number; day: number } {
+  if (typeof date === "string") {
+    const match = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      return {
+        year: Number(match[1]),
+        month: Number(match[2]) - 1,
+        day: Number(match[3]),
+      };
+    }
+    const d = new Date(date);
+    return { year: d.getFullYear(), month: d.getMonth(), day: d.getDate() };
+  }
+  return { year: date.getFullYear(), month: date.getMonth(), day: date.getDate() };
+}
+
+function formatMonthKey(year: number, month: number): string {
+  return `${year}-${String(month + 1).padStart(2, "0")}`;
 }
 
 /** Limita o dia ao último dia do mês (year, month 0-based). */
@@ -35,25 +51,33 @@ export function clampDay(day: number, year: number, month: number): number {
 
 /**
  * Competência da fatura para uma compra: YYYY-MM do mês da fatura.
+ * Aceita objeto Date nativo ou string ISO "YYYY-MM-DD" com parsing imune a fusos horários.
  * `closingDay` é clampado ao mês da compra (ex.: 31 em abril → 30).
  */
-export function resolveBillCompetence(purchaseDate: Date, closingDay: number): string {
-  const year = purchaseDate.getFullYear();
-  const month = purchaseDate.getMonth();
-  const day = purchaseDate.getDate();
+export function resolveBillCompetence(purchaseDate: Date | string, closingDay: number): string {
+  const { year, month, day } = parseDateParts(purchaseDate);
   const boundary = clampDay(closingDay, year, month);
 
-  const competence = day >= boundary ? new Date(year, month + 1, 1) : new Date(year, month, 1);
-  return monthKey(competence);
+  let targetYear = year;
+  let targetMonth = month;
+  if (day >= boundary) {
+    targetMonth += 1;
+    if (targetMonth > 11) {
+      targetMonth = 0;
+      targetYear += 1;
+    }
+  }
+  return formatMonthKey(targetYear, targetMonth);
 }
 
 /** Mesmo cálculo considerando overrides do mês da compra (prevalecem sobre o padrão). */
 export function resolveBillCompetenceWithOverrides(
-  purchaseDate: Date,
+  purchaseDate: Date | string,
   defaultClosingDay: number,
   overrides: CompetenceOverride[],
 ): string {
-  const key = monthKey(purchaseDate);
+  const { year, month } = parseDateParts(purchaseDate);
+  const key = formatMonthKey(year, month);
   const override = overrides.find((item) => item.month === key);
   return resolveBillCompetence(purchaseDate, override?.closingDay ?? defaultClosingDay);
 }
