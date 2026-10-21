@@ -266,6 +266,9 @@ describe("F6.2 — segredos e ambiente", () => {
       const value = line.split("=")[1]?.trim() ?? "";
       expect(value === "" || value.startsWith("#")).toBe(true);
     }
+    // Garante que APK_DOWNLOAD_URL e variáveis de release Android estão presentes e higienizadas
+    expect(example).toMatch(/^APK_DOWNLOAD_URL=\s*(?:#.*)?$/m);
+    expect(example).not.toContain("pub-8b490da0649647f0a70d2eff96bd39e0");
   });
 });
 

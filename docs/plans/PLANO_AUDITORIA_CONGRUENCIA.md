@@ -105,9 +105,9 @@ graph TD
 ### Fase 0: Saneamento da Suíte de Testes e CI
 - [x] **Tarefa 0.1:** Corrigir `src/features/settings/components/tabs/notifications-tab.test.tsx` envolvendo a renderização em `<MemoryRouter>`.
   - *Commit:* `test(settings): wrap notifications tab in MemoryRouter for router context`
-- [ ] **Tarefa 0.2:** Corrigir `src/tests/security-audit.test.ts` e `.env.example` para suportar `APK_DOWNLOAD_URL` higienizado.
+- [x] **Tarefa 0.2:** Corrigir `src/tests/security-audit.test.ts` e `.env.example` para suportar `APK_DOWNLOAD_URL` higienizado.
   - *Commit:* `fix(ci): sanitize APK_DOWNLOAD_URL placeholder in .env.example`
-- 🏁 **Quality Gate 0:** Suíte de segurança e settings 100% verdes; `tsc --noEmit` ok.
+- 🏁 **Quality Gate 0:** Suíte de segurança e settings 100% verdes; `tsc --noEmit` ok. (Concluído)
 
 ---
 
