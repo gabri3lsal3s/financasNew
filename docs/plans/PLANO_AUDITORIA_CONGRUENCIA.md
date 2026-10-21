@@ -164,7 +164,7 @@ graph TD
 ---
 
 ### Fase 5: Investimentos, Custódia e Rebalanceamento
-- [ ] **Tarefa 5.1:** Normalizar classes de ativos em `sellAssetPosition` (`src/domain/portfolio/operations.ts`) usando `normalizeClassName` e helpers canônicos (`isStockClass`, `isFiiClass`, `isFixedIncomeClass`).
+- [x] **Tarefa 5.1:** Normalizar classes de ativos em `sellAssetPosition` (`src/domain/portfolio/operations.ts`) usando `normalizeClassName` e helpers canônicos (`isStockClass`, `isFiiClass`, `isFixedIncomeClass`).
   - *Commit:* `fix(portfolio): use normalized class helpers in sellAssetPosition`
 - [ ] **Tarefa 5.2:** Corrigir apuração de DARF mensal (`calculateMonthlyDarf` em `src/domain/portfolio/tax.ts`), restringindo a isenção de R$ 20.000,00 estritamente para ações comuns B3 e segregando ativos internacionais (Lei 14.754/2023).
   - *Commit:* `fix(tax): restrict 20k exemption strictly to local common stocks and exclude ETFs`

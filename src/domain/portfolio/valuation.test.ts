@@ -7,7 +7,9 @@ import {
   getAssetPricingMode,
   inferCurrencyFromTicker,
   isCashAssetClass,
+  isFiiClass,
   isFixedIncomeClass,
+  isStockClass,
   isTesouroAsset,
   normalizeClassName,
   positionPnl,
@@ -124,6 +126,47 @@ describe("domain/portfolio/valuation (§1.6 D5 + §3.11.2)", () => {
       expect(normalizeClassName("Ações")).toBe("acoes");
       expect(normalizeClassName("  FIIs ")).toBe("fiis");
       expect(normalizeClassName("Fundos Imobiliários")).toBe("fundos imobiliarios");
+    });
+
+    it("reconhece classes de Ações (isStockClass) imune a caixa, acentos e composições", () => {
+      expect(isStockClass("Ações")).toBe(true);
+      expect(isStockClass("Ações Nacionais")).toBe(true);
+      expect(isStockClass("Ações B3")).toBe(true);
+      expect(isStockClass("Ações Brasil")).toBe(true);
+      expect(isStockClass("Stocks")).toBe(true);
+      expect(isStockClass("Equities")).toBe(true);
+      expect(isStockClass("Ação")).toBe(true);
+      expect(isStockClass("FIIs")).toBe(false);
+      expect(isStockClass("Renda Fixa")).toBe(false);
+      expect(isStockClass(null)).toBe(false);
+    });
+
+    it("reconhece classes de FIIs (isFiiClass) imune a caixa, acentos e composições", () => {
+      expect(isFiiClass("FIIs")).toBe(true);
+      expect(isFiiClass("FII")).toBe(true);
+      expect(isFiiClass("FIIs de Tijolo")).toBe(true);
+      expect(isFiiClass("FIIs de Papel")).toBe(true);
+      expect(isFiiClass("Fundos Imobiliários")).toBe(true);
+      expect(isFiiClass("REITs")).toBe(true);
+      expect(isFiiClass("Ações")).toBe(false);
+      expect(isFiiClass(null)).toBe(false);
+    });
+
+    it("reconhece classes de Renda Fixa (isFixedIncomeClass) imune a caixa, acentos e composições", () => {
+      expect(isFixedIncomeClass("Renda Fixa")).toBe(true);
+      expect(isFixedIncomeClass("Renda Fixa Pós-Fixada")).toBe(true);
+      expect(isFixedIncomeClass("CDB")).toBe(true);
+      expect(isFixedIncomeClass("CDB Banco Inter")).toBe(true);
+      expect(isFixedIncomeClass("LCI")).toBe(true);
+      expect(isFixedIncomeClass("LCA")).toBe(true);
+      expect(isFixedIncomeClass("CRI")).toBe(true);
+      expect(isFixedIncomeClass("CRA")).toBe(true);
+      expect(isFixedIncomeClass("Tesouro")).toBe(true);
+      expect(isFixedIncomeClass("Tesouro Direto")).toBe(true);
+      expect(isFixedIncomeClass("Tesouro Selic 2029")).toBe(true);
+      expect(isFixedIncomeClass("Debêntures")).toBe(true);
+      expect(isFixedIncomeClass("Ações")).toBe(false);
+      expect(isFixedIncomeClass(null)).toBe(false);
     });
   });
 

@@ -129,6 +129,68 @@ describe("domain/portfolio/operations — Vendas e Desinvestimentos", () => {
     expect(resultLci.taxInfo.estimatedTaxPayable).toBe(0);
     expect(resultLci.netCreditAmount).toBe(11500); // 100% creditado no caixa
   });
+
+  it("reconhece classes compostas de Ações (ex.: 'Ações Nacionais', 'Ações B3', 'Stocks') aplicando a regra de isenção de 20k", () => {
+    const resAcoesNacionais = sellAssetPosition({
+      currentQuantity: 100,
+      currentAveragePrice: 20,
+      sellQuantity: 50,
+      sellPrice: 30, // R$ 1.500
+      assetClass: "Ações Nacionais",
+      monthlyAccumulatedStockSales: 5000,
+    });
+
+    expect(resAcoesNacionais.taxInfo.isStock).toBe(true);
+    expect(resAcoesNacionais.taxInfo.isTaxExempt).toBe(true);
+    expect(resAcoesNacionais.taxInfo.estimatedTaxPayable).toBe(0);
+
+    const resAcoesB3 = sellAssetPosition({
+      currentQuantity: 1000,
+      currentAveragePrice: 10,
+      sellQuantity: 800,
+      sellPrice: 30, // R$ 24.000 (> 20k)
+      assetClass: "Ações B3",
+      monthlyAccumulatedStockSales: 0,
+    });
+
+    expect(resAcoesB3.taxInfo.isStock).toBe(true);
+    expect(resAcoesB3.taxInfo.isTaxExempt).toBe(false);
+    expect(resAcoesB3.taxInfo.taxRate).toBe(0.15);
+    expect(resAcoesB3.taxInfo.estimatedTaxPayable).toBe(2400); // 15% de (24.000 - 8.000 = 16.000)
+  });
+
+  it("reconhece classes compostas de FIIs (ex.: 'FIIs de Tijolo', 'Fundos Imobiliários') aplicando a alíquota de 20%", () => {
+    const resFiiTijolo = sellAssetPosition({
+      currentQuantity: 100,
+      currentAveragePrice: 100,
+      sellQuantity: 50,
+      sellPrice: 120, // R$ 6.000, lucro R$ 1.000
+      assetClass: "FIIs de Tijolo",
+      monthlyAccumulatedStockSales: 0,
+    });
+
+    expect(resFiiTijolo.taxInfo.isFii).toBe(true);
+    expect(resFiiTijolo.taxInfo.isTaxExempt).toBe(false);
+    expect(resFiiTijolo.taxInfo.taxRate).toBe(0.20);
+    expect(resFiiTijolo.taxInfo.estimatedTaxPayable).toBe(200); // 20% de 1.000
+  });
+
+  it("reconhece classes compostas de Renda Fixa (ex.: 'CDB Pós-Fixado', 'Tesouro IPCA+', 'Renda Fixa Pré') aplicando tabela regressiva", () => {
+    const resCdb = sellAssetPosition({
+      currentQuantity: 1,
+      currentAveragePrice: 5000,
+      sellQuantity: 1,
+      sellPrice: 6000, // lucro R$ 1.000
+      assetClass: "CDB Pós-Fixado Banco Inter",
+      calendarDays: 800, // > 720 dias -> 15.0%
+      isTaxExemptFixedIncome: false,
+    });
+
+    expect(resCdb.taxInfo.isFixedIncome).toBe(true);
+    expect(resCdb.taxInfo.taxRate).toBe(0.15);
+    expect(resCdb.taxInfo.estimatedTaxPayable).toBe(150);
+    expect(resCdb.netCreditAmount).toBe(5850);
+  });
 });
 
 describe("domain/portfolio/operations — Splits (Desdobramento e Grupamento)", () => {

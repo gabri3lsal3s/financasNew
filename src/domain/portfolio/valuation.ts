@@ -123,6 +123,22 @@ const FIXED_INCOME_CLASS_ALIASES = new Set([
   "tesouro",
   "titulos",
 ]);
+const STOCK_CLASS_ALIASES = new Set([
+  "acoes",
+  "acao",
+  "stock",
+  "stocks",
+  "equity",
+  "equities",
+]);
+const FII_CLASS_ALIASES = new Set([
+  "fii",
+  "fiis",
+  "fundo imobiliario",
+  "fundos imobiliarios",
+  "reit",
+  "reits",
+]);
 
 /**
  * Ativo de caixa/reserva (§3.11.2): valor 1:1 (quantidade = valor).
@@ -134,12 +150,54 @@ export function isCashAssetClass(assetClass: string | null | undefined): boolean
 }
 
 /**
+ * Identifica se a classe de ativo refere-se a Ações (Stocks).
+ * Utiliza normalização imune a acentos e caixa alta/baixa, aceitando variações como
+ * "Ações", "Ações Nacionais", "Ações Brasil", "Ações B3", "Stocks", etc.
+ */
+export function isStockClass(assetClass: string | null | undefined): boolean {
+  if (!assetClass) return false;
+  const norm = normalizeClassName(assetClass);
+  return (
+    STOCK_CLASS_ALIASES.has(norm) ||
+    norm.includes("acao") ||
+    norm.includes("acoes") ||
+    norm.includes("stock")
+  );
+}
+
+/**
+ * Identifica se a classe de ativo refere-se a FIIs (Fundos Imobiliários) ou REITs.
+ * Aceita variações como "FIIs", "FII", "FIIs de Tijolo", "Fundo Imobiliário", "REITs", etc.
+ */
+export function isFiiClass(assetClass: string | null | undefined): boolean {
+  if (!assetClass) return false;
+  const norm = normalizeClassName(assetClass);
+  return (
+    FII_CLASS_ALIASES.has(norm) ||
+    norm.includes("fii") ||
+    norm.includes("imobiliari") ||
+    norm.includes("reit")
+  );
+}
+
+/**
  * Ativo de Renda Fixa: CDB, LCI, LCA, CRI, CRA, Debêntures, Tesouro, etc.
  */
 export function isFixedIncomeClass(assetClass: string | null | undefined): boolean {
   if (!assetClass) return false;
   const norm = normalizeClassName(assetClass);
-  return FIXED_INCOME_CLASS_ALIASES.has(norm) || norm.includes("renda fixa") || norm.includes("tesouro");
+  return (
+    FIXED_INCOME_CLASS_ALIASES.has(norm) ||
+    norm.includes("renda fixa") ||
+    norm.includes("rendafixa") ||
+    norm.includes("tesouro") ||
+    norm.includes("cdb") ||
+    norm.includes("lci") ||
+    norm.includes("lca") ||
+    norm.includes("cri") ||
+    norm.includes("cra") ||
+    norm.includes("debenture")
+  );
 }
 
 /**

@@ -11,6 +11,7 @@
  */
 
 import { getFixedIncomeTaxRatePct } from "./fixed-income";
+import { isFixedIncomeClass, isFiiClass, isStockClass } from "./valuation";
 
 export const MONTHLY_STOCK_TAX_EXEMPTION_LIMIT_BRL = 20_000.0;
 export const FII_CAPITAL_GAIN_TAX_RATE = 0.2; // 20% sobre o ganho líquido em FIIs
@@ -67,10 +68,9 @@ export function sellAssetPosition(input: SellAssetInput): SellAssetResult {
   const realizedPnl = Math.round((grossAmount - costOfSoldQuantity) * 100) / 100;
   const realizedPnlPct = costOfSoldQuantity > 0 ? (realizedPnl / costOfSoldQuantity) * 100 : 0;
 
-  const rawClass = (input.assetClass ?? "").trim().toLowerCase();
-  const isStock = rawClass === "ações" || rawClass === "acoes" || rawClass === "ação" || rawClass === "acao" || rawClass === "stock" || rawClass === "stocks";
-  const isFii = rawClass === "fiis" || rawClass === "fii" || rawClass === "fundo imobiliário" || rawClass === "fundos imobiliários";
-  const isFixedIncome = rawClass === "renda fixa" || rawClass === "rendafixa" || rawClass === "rf" || rawClass === "cdb" || rawClass === "lci" || rawClass === "lca" || rawClass === "cri" || rawClass === "cra" || rawClass === "tesouro";
+  const isStock = isStockClass(input.assetClass);
+  const isFii = isFiiClass(input.assetClass);
+  const isFixedIncome = isFixedIncomeClass(input.assetClass);
 
   const monthlyAccumulatedStockSales = Math.max(0, input.monthlyAccumulatedStockSales ?? 0);
   const accumulatedSalesAfter = Math.round((monthlyAccumulatedStockSales + (isStock ? grossAmount : 0)) * 100) / 100;
