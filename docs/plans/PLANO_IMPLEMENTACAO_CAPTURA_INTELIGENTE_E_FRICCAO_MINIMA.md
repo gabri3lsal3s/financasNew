@@ -83,7 +83,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 **Objetivo:** Permitir que o usuário toque em "Compartilhar comprovante" no banco, selecione o Guia Financeiro e o aplicativo identifique e cadastre a transação instantaneamente, permitindo edição imediata e blindando contra duplicatas de push.
 
 #### Tarefas da Fase 1:
-- [ ] **Tarefa 1.1 — Suporte a Múltiplos Formatos no `AndroidManifest.xml`:**
+- [x] **Tarefa 1.1 — Suporte a Múltiplos Formatos no `AndroidManifest.xml`:**
   - Adicionar suporte aos tipos MIME `image/*` e `application/pdf` no filtro de Intent da `MainActivity`.
   - *Teste & Verificação:* Inspecionar o `AndroidManifest.xml` e compilar projeto Android para validar sintaxe de intent-filter.
   - *Commit:* `feat(android): adicionar intent-filter para compartilhamento de imagem e pdf`

@@ -26,11 +26,13 @@
                 <data android:scheme="https" android:host="com.guiafinanceiro.app" />
             </intent-filter>
 
-            <!-- Android Share Target para comprovantes Pix e textos bancários -->
+            <!-- Android Share Target para comprovantes Pix, imagens e PDFs bancários -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
+                <data android:mimeType="image/*" />
+                <data android:mimeType="application/pdf" />
             </intent-filter>
 
             <meta-data
