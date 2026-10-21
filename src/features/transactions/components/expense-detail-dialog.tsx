@@ -34,6 +34,7 @@ export interface ExpenseDetailDialogProps {
   expense: Expense | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialEditing?: boolean;
 }
 
 const MODE_OPTIONS = [
@@ -390,8 +391,21 @@ function ExpenseEditForm({
 }
 
 /** Detalhe da despesa + edição completa com troca de categoria + exclusão em 3 modos. */
-export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDetailDialogProps) {
-  const [isEditing, setIsEditing] = useState(false);
+export function ExpenseDetailDialog({
+  expense,
+  open,
+  onOpenChange,
+  initialEditing = false,
+}: ExpenseDetailDialogProps) {
+  const [isEditing, setIsEditing] = useState(initialEditing);
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setIsEditing(initialEditing);
+    }
+  }
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [mode, setMode] = useState<InstallmentDeleteMode>("single");
   const [editScope, setEditScope] = useState<InstallmentDeleteMode>("single");

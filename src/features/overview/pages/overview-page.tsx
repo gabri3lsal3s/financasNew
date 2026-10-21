@@ -19,6 +19,7 @@ import {
   ReadOnlyBanner,
   TrialEndingBanner,
   PendingSuggestionsCard,
+  AutoRegisteredBanner,
   AndroidProBanner,
 } from "@/components/modules";
 import { isOnboardingComplete, type OnboardingCounts } from "@/domain/onboarding";
@@ -508,6 +509,8 @@ export function OverviewPage() {
         <h1 className="sr-only">Visão Geral</h1>
 
       <MonthPicker value={month} onValueChange={setMonth} />
+
+      <AutoRegisteredBanner />
 
       <PendingSuggestionsCard />
 

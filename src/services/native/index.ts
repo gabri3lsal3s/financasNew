@@ -16,4 +16,5 @@ export * from "./bank-assistant-preferences";
 export * from "./update-schema";
 export * from "./update-checker";
 export * from "./merchant-storage";
+export * from "./auto-register-banner";
 

@@ -55,6 +55,7 @@ export interface IncomeDetailDialogProps {
   income: Income | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialEditing?: boolean;
 }
 
 interface IncomeEditFormProps {
@@ -268,8 +269,21 @@ function IncomeEditForm({
  * (source_ref, ex.: estorno [REFUND]) são somente-leitura (§3.1) — sem
  * ações de edição/exclusão.
  */
-export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailDialogProps) {
-  const [isEditing, setIsEditing] = useState(false);
+export function IncomeDetailDialog({
+  income,
+  open,
+  onOpenChange,
+  initialEditing = false,
+}: IncomeDetailDialogProps) {
+  const [isEditing, setIsEditing] = useState(initialEditing);
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setIsEditing(initialEditing);
+    }
+  }
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [mode, setMode] = useState<InstallmentDeleteMode>("single");
   const [editScope, setEditScope] = useState<InstallmentDeleteMode>("single");

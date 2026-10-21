@@ -1,20 +1,24 @@
 import { useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Skeleton } from "@/components/ui/skeleton";
-import { processPixShare } from "@/services/native";
+import {
+  autoRegisterReceipt,
+  BankNotificationPlugin,
+  processPixShare,
+} from "@/services/native";
+import { parseBankNotification, parsePixShareText } from "@/domain/notifications";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
-import { formatCentsAsCurrency } from "@/services/masks";
 
 /**
- * ShareTargetPage — Rota de recepção do Web Share Target PWA (/share-target).
+ * ShareTargetPage — Rota de recepção do Web Share Target PWA e intents nativos (/share-target).
  *
  * Recebe texto compartilhado de comprovantes Pix e notificações bancárias
- * enviados através do menu de compartilhamento do sistema (Android/iOS/Desktop).
+ * enviados através do menu de compartilhamento do sistema (Android/iOS/Desktop)
+ * ou do buffer de Cold Start do plugin nativo.
  *
- * Processa os parâmetros ?title=...&text=...&url=... através do motor determinístico
- * de parsing (processPixShare), enfileira na lista de sugestões pendentes e
- * redireciona o usuário para a Visão Geral com feedback sensorial e Toast.
+ * Efetiva o auto-cadastro imediato via RPC transacional, exibe Toast e Banner
+ * persistente com opção de edição e reversão (Desfazer), e redireciona para a Home.
  */
 export function ShareTargetPage() {
   const navigate = useNavigate();
@@ -25,47 +29,65 @@ export function ShareTargetPage() {
     if (hasProcessedRef.current) return;
     hasProcessedRef.current = true;
 
-    const title = searchParams.get("title") || "";
-    const text = searchParams.get("text") || "";
-    const url = searchParams.get("url") || "";
+    async function handleShare(): Promise<void> {
+      const title = searchParams.get("title") || "";
+      const text = searchParams.get("text") || "";
+      const url = searchParams.get("url") || "";
 
-    // Concatena os campos enviados pelo compartilhamento do sistema
-    const rawContent = [text, title, url].filter(Boolean).join("\n").trim();
+      let rawContent = [text, title, url].filter(Boolean).join("\n").trim();
 
-    if (!rawContent) {
-      navigate("/", { replace: true });
-      return;
-    }
+      // Se nenhum dado veio via query params, tenta consumir o buffer nativo do Android
+      if (!rawContent) {
+        try {
+          const nativePayload = await BankNotificationPlugin.getPendingShare();
+          if (nativePayload?.text && nativePayload.text.trim().length > 0) {
+            rawContent = nativePayload.text.trim();
+          }
+        } catch {
+          // ambiente web ou fallback silencioso
+        }
+      }
 
-    try {
-      const parsed = processPixShare(rawContent);
+      if (!rawContent) {
+        navigate("/", { replace: true });
+        return;
+      }
 
-      if (parsed) {
-        triggerSensory("success");
-        const formatted = formatCentsAsCurrency(parsed.amountCents);
-        pushToast({
-          title: "Comprovante Pix detectado",
-          description: `${parsed.description} no valor de ${formatted} pronto para confirmação.`,
-          variant: "success",
-        });
-      } else {
+      try {
+        let parsed = null;
+        try {
+          parsed = processPixShare(rawContent);
+        } catch {
+          parsed = null;
+        }
+
+        if (!parsed) {
+          parsed = parsePixShareText(rawContent) || parseBankNotification({ title: "", text: rawContent });
+        }
+
+        if (parsed) {
+          await autoRegisterReceipt(parsed);
+        } else {
+          triggerSensory("warning");
+          pushToast({
+            title: "Comprovante não identificado",
+            description: "Não foi possível extrair automaticamente os dados do comprovante compartilhado.",
+            variant: "destructive",
+          });
+        }
+      } catch {
         triggerSensory("warning");
         pushToast({
-          title: "Comprovante não identificado",
-          description: "Não foi possível extrair automaticamente os dados do comprovante compartilhado.",
+          title: "Erro ao processar comprovante",
+          description: "Ocorreu uma falha ao tentar ler o texto do comprovante.",
           variant: "destructive",
         });
       }
-    } catch {
-      triggerSensory("warning");
-      pushToast({
-        title: "Erro ao processar comprovante",
-        description: "Ocorreu uma falha ao tentar ler o texto do comprovante.",
-        variant: "destructive",
-      });
+
+      navigate("/", { replace: true });
     }
 
-    navigate("/", { replace: true });
+    void handleShare();
   }, [navigate, searchParams]);
 
   return (

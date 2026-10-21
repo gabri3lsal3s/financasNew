@@ -129,7 +129,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Teste unitário em `suggestions-store.test.ts` simulando chegada de push 45s após compartilhamento de comprovante.
   - *Commit:* `feat(native): implementar deduplicacao cruzada entre comprovantes e push`
 
-- [ ] **Tarefa 1.6 — UX de Auto-Cadastro com Janela de Edição e Desfazer:**
+- [x] **Tarefa 1.6 — UX de Auto-Cadastro com Janela de Edição e Desfazer:**
   - Atualizar `src/features/transactions/pages/share-target-page.tsx` para processar comprovantes recebidos do plugin nativo:
     - Efetivar o cadastro imediato via RPC transacional com os dados identificados.
     - Redirecionar para a Home exibindo Toast e Banner persistente: *"Pix de R$ 45,00 para Padaria Silva cadastrado! [Editar Lançamento] [Desfazer (5s)]"*.
