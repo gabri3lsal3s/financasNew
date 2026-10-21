@@ -360,5 +360,132 @@ export function divideIntoInstallments(input: DivideIntoInstallmentsInput): Card
   });
 }
 
+export interface CardRefundRecord {
+  id: string;
+  card_id: string;
+  competence_month: string;
+  amount: number;
+  date: string;
+  is_refund?: boolean;
+}
+
+export interface RefundIncomeRecord {
+  id?: string;
+  value: number;
+  date: string;
+  source_ref: string | null;
+  category_name?: string;
+}
+
+export interface RefundCongruenceResult {
+  isCongruent: boolean;
+  totalRefundsCents: number;
+  totalIncomesCents: number;
+  differenceCents: number;
+  orphanedRefunds: string[];
+  orphanedIncomes: string[];
+  mismatchedAmounts: Array<{
+    paymentId: string;
+    paymentAmountCents: number;
+    incomeValueCents: number;
+  }>;
+}
+
+/**
+ * Valida a congruência estrita entre estornos de fatura de cartão e receitas
+ * automáticas registradas na categoria "Estorno" (ESPECIFICAÇÃO §3.3.3 / D1).
+ *
+ * Invariantes verificadas:
+ * 1. Cada estorno no cartão (amount < 0 ou is_refund: true) deve possuir exatamente
+ *    uma receita com source_ref [REFUND]{payment_id}.
+ * 2. O valor nominal em centavos da receita deve ser estritamente igual ao valor do estorno.
+ * 3. A soma total de estornos da fatura coincide centavo por centavo com as receitas de estorno.
+ * 4. Nenhuma receita [REFUND] órfã deve existir sem seu respectivo estorno no cartão.
+ */
+export function assertRefundCongruence(
+  payments: readonly CardRefundRecord[],
+  incomes: readonly RefundIncomeRecord[],
+): RefundCongruenceResult {
+  const refunds = payments.filter((p) => p.is_refund === true || p.amount < 0);
+  const refundIncomes = incomes.filter((inc) => inc.source_ref?.startsWith("[REFUND]"));
+
+  let totalRefundsCents = 0;
+  for (const r of refunds) {
+    totalRefundsCents += Math.round(Math.abs(r.amount) * 100);
+  }
+
+  let totalIncomesCents = 0;
+  for (const inc of refundIncomes) {
+    totalIncomesCents += Math.round(inc.value * 100);
+  }
+
+  const orphanedRefunds: string[] = [];
+  const orphanedIncomes: string[] = [];
+  const mismatchedAmounts: Array<{
+    paymentId: string;
+    paymentAmountCents: number;
+    incomeValueCents: number;
+  }> = [];
+
+  const incomeByPaymentId = new Map<string, RefundIncomeRecord>();
+  for (const inc of refundIncomes) {
+    if (inc.source_ref) {
+      const paymentId = inc.source_ref.replace("[REFUND]", "");
+      incomeByPaymentId.set(paymentId, inc);
+    }
+  }
+
+  const matchedIncomeKeys = new Set<string>();
+
+  for (const refund of refunds) {
+    const matchedIncome = incomeByPaymentId.get(refund.id);
+    if (!matchedIncome) {
+      orphanedRefunds.push(refund.id);
+      continue;
+    }
+
+    const incKey = matchedIncome.id ?? matchedIncome.source_ref ?? refund.id;
+    matchedIncomeKeys.add(incKey);
+
+    const refundCents = Math.round(Math.abs(refund.amount) * 100);
+    const incomeCents = Math.round(matchedIncome.value * 100);
+
+    if (refundCents !== incomeCents) {
+      mismatchedAmounts.push({
+        paymentId: refund.id,
+        paymentAmountCents: refundCents,
+        incomeValueCents: incomeCents,
+      });
+    }
+  }
+
+  for (const inc of refundIncomes) {
+    const incKey = inc.id ?? inc.source_ref ?? "";
+    if (!matchedIncomeKeys.has(incKey)) {
+      const paymentId = inc.source_ref ? inc.source_ref.replace("[REFUND]", "") : "";
+      if (!refunds.some((r) => r.id === paymentId)) {
+        orphanedIncomes.push(incKey);
+      }
+    }
+  }
+
+  const differenceCents = Math.abs(totalRefundsCents - totalIncomesCents);
+  const isCongruent =
+    differenceCents === 0 &&
+    orphanedRefunds.length === 0 &&
+    orphanedIncomes.length === 0 &&
+    mismatchedAmounts.length === 0;
+
+  return {
+    isCongruent,
+    totalRefundsCents,
+    totalIncomesCents,
+    differenceCents,
+    orphanedRefunds,
+    orphanedIncomes,
+    mismatchedAmounts,
+  };
+}
+
 export * from "./refinancing";
 export * from "./schemas";

@@ -133,9 +133,9 @@ graph TD
   - *Commit:* `test(cards): verify strict cents conservation across installment divisions`
 - [x] **Tarefa 2.3:** Auditar a apresentação da fatura de cartão para garantir que o **Valor do Boleto / Total a Pagar** exibido com destaque seja sempre o valor **Bruto Nominal (100%)**, com a métrica ponderada exibida como consulta analítica.
   - *Commit:* `fix(cards): guarantee gross nominal invoice total as primary payment metric`
-- [ ] **Tarefa 2.4:** Validar congruência entre estornos de fatura e receitas criadas na categoria "Estorno".
+- [x] **Tarefa 2.4:** Validar congruência entre estornos de fatura e receitas criadas na categoria "Estorno".
   - *Commit:* `test(cards): assert refund balance congruence across invoice and income records`
-- 🏁 **Quality Gate 2:** Vitest em `domain/cards` e componentes de cartões; `tsc --noEmit`; `npm run lint`; git push da Fase 2.
+- 🏁 **Quality Gate 2:** Vitest em `domain/cards` e componentes de cartões; `tsc --noEmit`; `npm run lint`; git push da Fase 2. (Concluído)
 
 ---
 
