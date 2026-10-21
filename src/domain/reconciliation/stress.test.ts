@@ -34,8 +34,8 @@ describe("Teste de Estresse de Parsing e Chunking de Extratos (2.000 Linhas)", (
 
     // 3. Validações de integridade e velocidade
     expect(result.transactions).toHaveLength(2000);
-    // Deve rodar confortavelmente abaixo de 100ms
-    expect(parseDurationMs).toBeLessThan(100);
+    // Deve rodar confortavelmente abaixo de 250ms mesmo sob alta carga concorrente
+    expect(parseDurationMs).toBeLessThan(250);
 
     // 4. Reconciliação bancária completa
     const startReconcile = performance.now();

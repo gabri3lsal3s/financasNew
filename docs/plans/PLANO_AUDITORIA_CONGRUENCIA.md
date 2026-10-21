@@ -127,7 +127,7 @@ graph TD
 ---
 
 ### Fase 2: Cartões de Crédito, Faturas e Parcelamentos
-- [ ] **Tarefa 2.1:** Implementar mecanismo de crédito de fatura por excesso de pagamento (`pago > previsto`) em `src/domain/cards/index.ts`, permitindo que créditos transbordem para abater a competência posterior.
+- [x] **Tarefa 2.1:** Implementar mecanismo de crédito de fatura por excesso de pagamento (`pago > previsto`) em `src/domain/cards/index.ts`, permitindo que créditos transbordem para abater a competência posterior.
   - *Commit:* `feat(cards): handle overpayment credits in successive invoice competences`
 - [ ] **Tarefa 2.2:** Validar a invariante da conservação estrita de centavos em parcelamentos de cartão (`divideIntoInstallments`), assegurando que a soma das parcelas seja idêntica ao valor da compra.
   - *Commit:* `test(cards): verify strict cents conservation across installment divisions`

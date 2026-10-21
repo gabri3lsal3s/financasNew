@@ -13,9 +13,14 @@ import { addDaysISO, todayISO } from "@/domain/debts";
 import { clampDay } from "@/domain/competence";
 import { APP_START_DATE } from "@/types";
 
-/** Saldo aberto de uma fatura (previsto − pago − estorno, nunca negativo). */
-export function invoiceBalance(previstoCents: number, pagoCents: number, estornoCents = 0): number {
-  return Math.max(0, previstoCents - pagoCents - estornoCents);
+/** Saldo aberto de uma fatura (previsto − pago − estorno − creditoAnterior, nunca negativo). */
+export function invoiceBalance(
+  previstoCents: number,
+  pagoCents: number,
+  estornoCents = 0,
+  creditoAnteriorCents = 0,
+): number {
+  return Math.max(0, previstoCents - pagoCents - estornoCents - creditoAnteriorCents);
 }
 
 export type InvoiceStatus = "closed" | "open" | "near_due" | "overdue";
@@ -84,17 +89,23 @@ export interface CompetenceSummary {
   pagoCents: number;
   /** Soma dos estornos (valores absolutos, centavos). */
   estornoCents: number;
-  /** Saldo aberto bruto = max(0, previstoBruto − pago − estorno) (centavos). */
+  /** Crédito herdado de excesso de pagamentos/estornos de competências anteriores (centavos). */
+  creditoAnteriorCents: number;
+  /** Crédito restante após abater esta competência, que transborda para a seguinte (centavos). */
+  creditoRestanteCents: number;
+  /** Saldo aberto bruto = max(0, previstoBruto − pago − estorno − creditoAnterior) (centavos). */
   saldoBrutoCents: number;
-  /** Saldo aberto ponderado = max(0, previstoPonderado − pago − estorno) (centavos). */
+  /** Saldo aberto ponderado = max(0, previstoPonderado − pago − estorno − creditoAnterior) (centavos). */
   saldoPonderadoCents: number;
-  /** Saldo aberto = max(0, previsto − pago − estorno) (alias compatível, centavos). */
+  /** Saldo aberto = max(0, previsto − pago − estorno − creditoAnterior) (alias compatível, centavos). */
   saldoCents: number;
 }
 
 /**
  * Resumos por competência a partir das despesas do cartão (com peso aplicado
  * e base_amount preservado) e dos pagamentos/estornos — ESPECIFICAÇÃO §3.3.3.
+ * Pagamentos ou estornos a maior (pago + estorno > previsto) geram créditos
+ * que transbordam para abater a fatura da competência posterior.
  * Motor puro: nenhuma consulta, apenas derivação exibível.
  */
 export function buildCompetenceSummaries(
@@ -111,8 +122,15 @@ export function buildCompetenceSummaries(
   }
   for (const payment of payments) months.add(payment.competence_month);
 
+  if (months.size === 0) return [];
+
+  // Ordena cronologicamente crescente para propagar créditos de excesso de pagamento
+  const sortedMonths = Array.from(months).sort((a, b) => a.localeCompare(b));
+
+  let carryoverCredit = 0;
   const summaries: CompetenceSummary[] = [];
-  for (const month of months) {
+
+  for (const month of sortedMonths) {
     const monthExpenses = expenses.filter((e) => e.bill_competence === month);
     const previstoBruto = monthExpenses.reduce((acc, e) => acc + Math.round(e.value * 100), 0);
     const previstoPonderado = monthExpenses.reduce((acc, e) => acc + Math.round(e.value * e.report_weight * 100), 0);
@@ -123,6 +141,15 @@ export function buildCompetenceSummaries(
       .filter((p) => p.competence_month === month && p.amount < 0)
       .reduce((acc, p) => acc + Math.round(-p.amount * 100), 0);
 
+    const creditoAnterior = carryoverCredit;
+    const totalDisponivel = pago + estorno + creditoAnterior;
+
+    const saldoBruto = invoiceBalance(previstoBruto, pago, estorno, creditoAnterior);
+    const saldoPonderado = invoiceBalance(previstoPonderado, pago, estorno, creditoAnterior);
+
+    // Excesso de pagamento bancário transborda como crédito para a competência seguinte
+    carryoverCredit = Math.max(0, totalDisponivel - previstoBruto);
+
     summaries.push({
       month,
       previstoBrutoCents: previstoBruto,
@@ -130,11 +157,37 @@ export function buildCompetenceSummaries(
       previstoCents: previstoBruto,
       pagoCents: pago,
       estornoCents: estorno,
-      saldoBrutoCents: invoiceBalance(previstoBruto, pago, estorno),
-      saldoPonderadoCents: invoiceBalance(previstoPonderado, pago, estorno),
-      saldoCents: invoiceBalance(previstoBruto, pago, estorno),
+      creditoAnteriorCents: creditoAnterior,
+      creditoRestanteCents: carryoverCredit,
+      saldoBrutoCents: saldoBruto,
+      saldoPonderadoCents: saldoPonderado,
+      saldoCents: saldoBruto,
     });
   }
+
+  // Se ainda houver crédito não absorvido após a última competência, cria a competência seguinte
+  if (carryoverCredit > 0 && sortedMonths.length > 0) {
+    const lastMonth = sortedMonths[sortedMonths.length - 1];
+    if (lastMonth) {
+      const nextMonth = shiftMonth(lastMonth, 1);
+      if (!months.has(nextMonth)) {
+        summaries.push({
+          month: nextMonth,
+          previstoBrutoCents: 0,
+          previstoPonderadoCents: 0,
+          previstoCents: 0,
+          pagoCents: 0,
+          estornoCents: 0,
+          creditoAnteriorCents: carryoverCredit,
+          creditoRestanteCents: carryoverCredit,
+          saldoBrutoCents: 0,
+          saldoPonderadoCents: 0,
+          saldoCents: 0,
+        });
+      }
+    }
+  }
+
   return summaries.sort((a, b) => (a.month < b.month ? 1 : -1));
 }
 

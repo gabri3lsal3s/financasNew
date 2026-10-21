@@ -570,10 +570,22 @@ export function CardsPage() {
                 label="Pago"
                 cents={summary?.pagoCents ?? 0}
                 hint={
-                  summary && summary.estornoCents > 0 ? (
-                    <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] whitespace-nowrap tabular-nums">
-                      <span>Estornos:</span>
-                      <MoneyText cents={summary.estornoCents} tone="positive" className="text-[11px] tabular-nums" />
+                  summary && (summary.estornoCents > 0 || summary.creditoAnteriorCents > 0) ? (
+                    <span className="inline-flex items-center gap-1.5 font-medium text-foreground text-[11px] whitespace-nowrap tabular-nums">
+                      {summary.creditoAnteriorCents > 0 && (
+                        <span>
+                          <span className="hidden sm:inline">Crédito anterior:</span>
+                          <span className="sm:hidden">Créd. ant:</span>{" "}
+                          <MoneyText cents={summary.creditoAnteriorCents} tone="positive" className="text-[11px] tabular-nums" />
+                        </span>
+                      )}
+                      {summary.creditoAnteriorCents > 0 && summary.estornoCents > 0 && <span>·</span>}
+                      {summary.estornoCents > 0 && (
+                        <span>
+                          <span>Estornos:</span>{" "}
+                          <MoneyText cents={summary.estornoCents} tone="positive" className="text-[11px] tabular-nums" />
+                        </span>
+                      )}
                     </span>
                   ) : undefined
                 }
@@ -583,7 +595,13 @@ export function CardsPage() {
                 cents={summary?.saldoBrutoCents ?? 0}
                 tone={summary && summary.saldoBrutoCents > 0 ? "negative" : "positive"}
                 hint={
-                  summary && summary.saldoBrutoCents !== summary.saldoPonderadoCents ? (
+                  summary && summary.creditoRestanteCents > 0 ? (
+                    <span className="inline-flex items-center gap-1 font-medium text-positive-strong text-[11px] whitespace-nowrap tabular-nums">
+                      <span className="hidden sm:inline">Crédito p/ fatura seguinte:</span>
+                      <span className="sm:hidden">Créd. seguinte:</span>
+                      <MoneyText cents={summary.creditoRestanteCents} tone="positive" className="text-[11px] tabular-nums" />
+                    </span>
+                  ) : summary && summary.saldoBrutoCents !== summary.saldoPonderadoCents ? (
                     <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] whitespace-nowrap tabular-nums">
                       <span className="hidden sm:inline">Ponderado:</span>
                       <span className="sm:hidden">Pond:</span>

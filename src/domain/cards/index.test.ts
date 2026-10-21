@@ -30,6 +30,12 @@ describe("invoiceBalance (§3.3.3)", () => {
     expect(invoiceBalance(100000, 30000, 20000)).toBe(50000);
     expect(invoiceBalance(100000, 0, 40000)).toBe(60000);
   });
+
+  it("abate creditoAnteriorCents herdado de competências anteriores", () => {
+    expect(invoiceBalance(100000, 30000, 20000, 10000)).toBe(40000);
+    expect(invoiceBalance(100000, 0, 0, 120000)).toBe(0);
+    expect(invoiceBalance(50000, 20000, 0, 40000)).toBe(0);
+  });
 });
 
 describe("invoiceStatus", () => {
@@ -110,13 +116,126 @@ describe("buildCompetenceSummaries (§3.3.3)", () => {
       [{ bill_competence: "2026-08", value: 100, report_weight: 1 }],
       [{ competence_month: "2026-08", amount: 150 }],
     );
-    expect(summaries[0]?.saldoCents).toBe(0);
+    expect(summaries.find((s) => s.month === "2026-08")?.saldoCents).toBe(0);
 
     const summariesOverRefund = buildCompetenceSummaries(
       [{ bill_competence: "2026-08", value: 50, report_weight: 1 }],
       [{ competence_month: "2026-08", amount: -80 }],
     );
-    expect(summariesOverRefund[0]?.saldoCents).toBe(0);
+    expect(summariesOverRefund.find((s) => s.month === "2026-08")?.saldoCents).toBe(0);
+  });
+
+  it("transborda crédito de pagamento a maior para abater a fatura da competência posterior", () => {
+    const summaries = buildCompetenceSummaries(
+      [
+        { bill_competence: "2026-08", value: 100, report_weight: 1 }, // R$ 100
+        { bill_competence: "2026-09", value: 80, report_weight: 1 }, // R$ 80
+      ],
+      [{ competence_month: "2026-08", amount: 150 }], // Pagou R$ 150 em 2026-08 (excesso de R$ 50)
+    );
+
+    const august = summaries.find((s) => s.month === "2026-08");
+    const september = summaries.find((s) => s.month === "2026-09");
+
+    expect(august?.creditoAnteriorCents).toBe(0);
+    expect(august?.creditoRestanteCents).toBe(5000); // R$ 50 que transborda
+    expect(august?.saldoBrutoCents).toBe(0);
+
+    expect(september?.creditoAnteriorCents).toBe(5000); // R$ 50 herdado
+    expect(september?.creditoRestanteCents).toBe(0);
+    expect(september?.saldoBrutoCents).toBe(3000); // R$ 80 - R$ 50 = R$ 30
+    expect(september?.saldoPonderadoCents).toBe(3000);
+    expect(september?.saldoCents).toBe(3000);
+  });
+
+  it("transborda crédito em cascata por múltiplos meses até exaustão", () => {
+    const summaries = buildCompetenceSummaries(
+      [
+        { bill_competence: "2026-01", value: 100, report_weight: 1 }, // R$ 100
+        { bill_competence: "2026-02", value: 60, report_weight: 1 }, // R$ 60
+        { bill_competence: "2026-03", value: 50, report_weight: 1 }, // R$ 50
+        { bill_competence: "2026-04", value: 100, report_weight: 1 }, // R$ 100
+      ],
+      [{ competence_month: "2026-01", amount: 250 }], // Excesso de R$ 150
+    );
+
+    const jan = summaries.find((s) => s.month === "2026-01");
+    const feb = summaries.find((s) => s.month === "2026-02");
+    const mar = summaries.find((s) => s.month === "2026-03");
+    const apr = summaries.find((s) => s.month === "2026-04");
+
+    expect(jan?.saldoBrutoCents).toBe(0);
+    expect(jan?.creditoRestanteCents).toBe(15000); // R$ 150
+
+    expect(feb?.creditoAnteriorCents).toBe(15000);
+    expect(feb?.saldoBrutoCents).toBe(0);
+    expect(feb?.creditoRestanteCents).toBe(9000); // 150 - 60 = 90
+
+    expect(mar?.creditoAnteriorCents).toBe(9000);
+    expect(mar?.saldoBrutoCents).toBe(0);
+    expect(mar?.creditoRestanteCents).toBe(4000); // 90 - 50 = 40
+
+    expect(apr?.creditoAnteriorCents).toBe(4000);
+    expect(apr?.saldoBrutoCents).toBe(6000); // 100 - 40 = 60
+    expect(apr?.creditoRestanteCents).toBe(0);
+  });
+
+  it("transborda crédito de estorno superior às despesas para o mês seguinte", () => {
+    const summaries = buildCompetenceSummaries(
+      [
+        { bill_competence: "2026-08", value: 50, report_weight: 1 },
+        { bill_competence: "2026-09", value: 70, report_weight: 1 },
+      ],
+      [{ competence_month: "2026-08", amount: -80 }], // Estorno de R$ 80 sobre fatura de R$ 50
+    );
+
+    const august = summaries.find((s) => s.month === "2026-08");
+    const september = summaries.find((s) => s.month === "2026-09");
+
+    expect(august?.saldoBrutoCents).toBe(0);
+    expect(august?.creditoRestanteCents).toBe(3000); // R$ 30
+
+    expect(september?.creditoAnteriorCents).toBe(3000);
+    expect(september?.saldoBrutoCents).toBe(4000); // 70 - 30 = 40
+    expect(september?.creditoRestanteCents).toBe(0);
+  });
+
+  it("abate saldo ponderado proporcionalmente ao crédito bancário acumulado", () => {
+    const summaries = buildCompetenceSummaries(
+      [
+        { bill_competence: "2026-08", value: 100, report_weight: 0.5 }, // R$ 100 bruto, R$ 50 ponderado
+        { bill_competence: "2026-09", value: 80, report_weight: 0.5 }, // R$ 80 bruto, R$ 40 ponderado
+      ],
+      [{ competence_month: "2026-08", amount: 120 }], // Pagou R$ 120 (excesso bancário R$ 20)
+    );
+
+    const august = summaries.find((s) => s.month === "2026-08");
+    const september = summaries.find((s) => s.month === "2026-09");
+
+    expect(august?.saldoBrutoCents).toBe(0);
+    expect(august?.saldoPonderadoCents).toBe(0);
+    expect(august?.creditoRestanteCents).toBe(2000); // R$ 20
+
+    expect(september?.creditoAnteriorCents).toBe(2000);
+    expect(september?.saldoBrutoCents).toBe(6000); // 80 - 20 = 60
+    expect(september?.saldoPonderadoCents).toBe(2000); // 40 - 20 = 20
+  });
+
+  it("sintetiza a competência seguinte quando há sobra de crédito após a última fatura", () => {
+    const summaries = buildCompetenceSummaries(
+      [{ bill_competence: "2026-08", value: 100, report_weight: 1 }],
+      [{ competence_month: "2026-08", amount: 150 }],
+    );
+
+    expect(summaries.map((s) => s.month)).toEqual(["2026-09", "2026-08"]);
+    const september = summaries.find((s) => s.month === "2026-09");
+    expect(september).toMatchObject({
+      previstoBrutoCents: 0,
+      pagoCents: 0,
+      creditoAnteriorCents: 5000,
+      creditoRestanteCents: 5000,
+      saldoBrutoCents: 0,
+    });
   });
 
   it("despesas sem competência não entram em nenhuma fatura", () => {
