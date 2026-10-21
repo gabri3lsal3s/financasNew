@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { MoneyText, type MoneyTextProps } from "@/components/ui/money-text";
 import { usePrivacyMask } from "@/hooks/use-privacy-mask";
@@ -62,6 +63,23 @@ export function TransactionRow({
     effectiveWeightedCents !== undefined &&
     Math.abs(effectiveWeightedCents) !== Math.abs(amountCents);
 
+  const effectiveWeight =
+    reportWeight !== undefined && reportWeight !== null
+      ? reportWeight
+      : weightedAmountCents !== undefined && amountCents !== 0
+        ? Math.abs(weightedAmountCents) / Math.abs(amountCents)
+        : undefined;
+
+  const hasSplitWeight =
+    effectiveWeight !== undefined && effectiveWeight >= 0 && effectiveWeight < 1;
+
+  const splitLabel =
+    hasSplitWeight && effectiveWeight !== undefined
+      ? Math.round(effectiveWeight * 100) === 0
+        ? "0% reembolso"
+        : `${Math.round(effectiveWeight * 100)}% rateio`
+      : null;
+
   const content = (
     <div
       className={cn(
@@ -76,7 +94,23 @@ export function TransactionRow({
         <CategoryIcon icon={icon} color={iconColor} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-foreground">{title}</p>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <p className="truncate text-sm font-medium text-foreground">{title}</p>
+          {hasSplitWeight && splitLabel ? (
+            <Badge
+              variant="muted"
+              size="xs"
+              className="shrink-0 font-medium"
+              title={
+                Math.round((effectiveWeight ?? 0) * 100) === 0
+                  ? "Despesa 100% reembolsada/estornada (R$ 0 no relatório)"
+                  : `Rateio ativo: ${Math.round((effectiveWeight ?? 0) * 100)}% da despesa entra no relatório`
+              }
+            >
+              {splitLabel}
+            </Badge>
+          ) : null}
+        </div>
         {(subtitle || date) && (
           <p className="truncate text-xs text-muted-foreground">{[date, subtitle].filter(Boolean).join(" · ")}</p>
         )}
@@ -94,7 +128,7 @@ export function TransactionRow({
         {hasDifferentWeight && effectiveWeightedCents !== undefined ? (
           <span
             className="text-[11px] text-muted-foreground font-mono inline-flex items-center gap-1"
-            title="Valor considerado no relatório"
+            title="Valor nominal bruto cobrado integralmente; no relatório é considerado apenas o valor ponderado."
           >
             <span>Relat.:</span>
             <MoneyText cents={effectiveWeightedCents} tone="default" className="text-[11px] text-muted-foreground" />
