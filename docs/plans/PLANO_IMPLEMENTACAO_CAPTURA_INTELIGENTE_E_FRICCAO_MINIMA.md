@@ -1,47 +1,52 @@
-# PLANO DE IMPLEMENTAÇÃO — CAPTURA INTELIGENTE DE COMPROVANTES, MODO RÁPIDO & ASSISTENTE PROATIVO
+# PLANO DE IMPLEMENTAÇÃO — ECOSSISTEMA DE CAPTURA INTELIGENTE, MOTOR SEMÂNTICO & ASSISTENTE PROATIVO
 
 > **Documento Canônico de Arquitetura e Engenharia**  
-> **Status:** Aprovado e Blindado (Pronto para Execução)  
+> **Status:** Revisão Final Aprovada e Blindada (Pronto para Execução)  
 > **Módulos Afetados:** `android/`, `src/domain/notifications/`, `src/domain/insights/`, `src/features/transactions/wizard/`, `src/features/overview/`, `src/features/landing/`, `src/components/modules/`, `docs/`  
 > **Governança:** Custo Zero de Infraestrutura (Google ML Kit Thin on-device) · Zero Inchaço de APK (<800 KB) · Zero Emojis · TypeScript Estrito · Commit por Tarefa e Push por Fase  
 > **Data:** Outubro de 2026 · **Ambiente:** Android Nativo (Capacitor) & Web PWA  
 
 ---
 
-## 1. SUMÁRIO EXECUTIVO & DIAGNÓSTICO DE FRAGILIDADES
+## 1. SUMÁRIO EXECUTIVO & ARQUITETURA DE VALOR
 
-O objetivo deste plano é eliminar o atrito de registro financeiro (despesas, rendas e investimentos), permitindo que o usuário capture transações no momento em que elas ocorrem (mesmo quando o banco não emite notificação push), conte com um motor inteligente que reconhece CNPJs, razões sociais e estabelecimentos em todo o aplicativo, realize lançamentos manuais em menos de 3 segundos, conte com um assistente financeiro proativo na tela inicial e entenda todo esse valor logo no primeiro contato na página de apresentação e no onboarding.
+Este plano estabelece a infraestrutura definitiva para que o registro financeiro ocorra com o **mínimo esforço cognitivo e fricção zero**:
 
-A auditoria exaustiva de código e cenários reais identificou **10 fragilidades críticas** que foram tratadas e blindadas na arquitetura deste plano:
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                        HIERARQUIA DE CAPTURA DO ECOSSISTEMA                            │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+                                            │
+        ┌───────────────────────────────────┼───────────────────────────────────┐
+        ▼                                   ▼                                   ▼
+[CAMINHO 1: PRINCIPAL]              [CAMINHO 2: CONTINGÊNCIA]           [CAMINHO 3: MANUAL ÁGIL]
+Leitura Passiva de                  Captura Inteligente de              Lançamento Rápido em
+Notificações Bancárias              Comprovante Compartilhado           1 Tela (LaunchWizard)
+- 100% automático em 2º plano       - Fallback para quando o banco      - < 3 segundos de digitação
+- Dispara quando o banco notifica     não notifica saída (ex.: Pix)     - Autocompletar semântico
+                                    - Toque em "Compartilhar" no banco  - Atalhos no ícone do Android
+```
 
-### 1.1 Matriz de Fragilidades e Soluções de Engenharia
-
-| # | Fragilidade Identificada | Risco Técnico no Mundo Real | Solução de Engenharia Blindada |
-|---|---|---|---|
-| **F1** | App não aparece no menu "Compartilhar" do banco | `AndroidManifest.xml` declarava apenas `text/plain`. Bancos exportam **Imagem (PNG/JPG)** ou **PDF**. | Declarar `text/plain`, `image/*` e `application/pdf` nas tags `<intent-filter>` de `MainActivity`. |
-| **F2** | Perda de dados em Cold Start | Se o app estiver fechado e receber compartilhamento, a Activity emite evento antes do React anexar ouvintes no JS. | Buffer estático de retenção (`pendingSharePayload`) no plugin nativo, consumido no carregamento do React. |
-| **F3** | Erro de permissão de arquivo (`SecurityException`) | URIs de outros bancos (`content://...`) expiram se não consumidas imediatamente pela Activity. | Cópia imediata dos bytes recebidos para o cache temporário seguro do app (`context.getCacheDir()`). |
-| **F4** | Inchaço de APK por OCR ou custos de nuvem | APIs de nuvem geram custos recorrentes; modelos OCR offline grandes pesam 30 MB. | **Google ML Kit Text Recognition** versão thin (<800 KB, unbundled via Google Play Services) + `PdfRenderer` nativo (até 2 páginas). Custo = R$ 0,00 e 100% offline. |
-| **F5** | Colisão entre Comprovante e Push atrasada | O usuário compartilha o comprovante e, 40s depois, a push do banco chega, duplicando a despesa. | **Deduplicação Cruzada com Janela de 10 minutos** por assinatura hash `(amountCents + date + merchant/chavePix)`. |
-| **F6** | Pix Agendado lançado como despesa paga | Comprovantes de agendamento têm liquidação futura; lançar como despesa de hoje distorce saldos. | Detecção semântica de termos de agendamento em `bank-parser.ts`, lançando como despesa pendente/agendada. |
-| **F7** | Nomes burocráticos / Prefixos de Maquininhas | Comprovantes e notificações trazem `PAG*`, `MP*`, `STONE*` ou Razões Sociais em vez do Nome Fantasia. | **Motor Unificado de Aprendizado Semântico (`MerchantLearningEngine`)** com busca por CNPJ, remoção de prefixos e dicionário adaptativo em todo o app. |
-| **F8** | Rendas Variáveis de Autônomos ignoradas | Se o motor exigir dia e valor exato, autônomos e freelancers nunca recebem sugestões de receita. | **Classificação Dual:** Renda Fixa/CLT (valor pré-preenchido) vs. Renda de Cliente Recorrente (valor aberto para digitação rápida). |
-| **F9** | Falso positivo de "Cobrança Duplicada" | Compras reais de mesmo valor no mesmo mês (ex.: dois almoços de R$ 40) sendo marcadas como erro. | Duplicidade restrita a **assinaturas de valor fixo** ou compras de balcão com **mesmo valor na mesma hora/minuto**. |
-| **F10** | Fadiga de Alertas na Home (Banner Blindness) | Cards diários em excesso cansam o usuário e poluem a interface inicial. | **Política de Discrição:** Dismiss cirúrgico por sugestão individual com silenciamento de 30 dias, limite de 1 card/dia e invisibilidade total quando regular. |
+Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`MerchantLearningEngine`)** que reconhece CNPJs e estabelecimentos em todo o app, e culminando no **Assistente Proativo na Home (`SmartAdvisorCard`)**, com comunicação editorial 100% realista (sem promessas de recursos inexistentes).
 
 ---
 
-## 2. DIRETRIZES TÉCNICAS E REGRAS DE GOVERNANÇA
+## 2. AUDITORIA FINAL DE FRAGILIDADES & SALVAGUARDAS
 
-Toda a implementação deve respeitar rigorosamente os seguintes pilares:
-
-- **Custo Zero & Privacidade Total:** Processamento de imagens e PDFs via **Google ML Kit Text Recognition** versão thin (`play-services-mlkit-text-recognition` < 800 KB) associado ao `PdfRenderer` nativo do Android. Zero APIs pagas, zero tráfego de comprovantes para servidores externos e funcionamento 100% offline.
-- **Funções Puras no Domínio:** Todo cálculo matemático de recorrência, dia típico, tolerância, normalização semântica e impacto orçamentário vive em `src/domain/` sem nenhuma dependência de UI, banco de dados ou Supabase, acompanhado de testes unitários no Vitest.
-- **Zero Emojis no Produto:** Proibição de emojis em textos, alertas, toasts e badges, utilizando exclusivamente ícones padronizados `lucide-react` com `aria-hidden`.
-- **Governança de Git:**
-  - **Commit semântico obrigatório por tarefa concluída** (com verificação e testes aprovados).
-  - **Portão de Qualidade (Quality Gate) inegociável** ao final de cada fase.
-  - **Git push para o repositório remoto** executado imediatamente após a aprovação de cada fase.
+| # | Fragilidade Analisada | Solução de Engenharia Blindada |
+|---|---|---|
+| **F1** | Banco não exporta texto puro no compartilhamento | Suporte a `image/*` e `application/pdf` no `AndroidManifest.xml`. |
+| **F2** | Perda de comprovante se o app estiver fechado (Cold Start) | Buffer de retenção nativo (`pendingSharePayload`) no plugin Java, consumido na montagem do React. |
+| **F3** | Erro de permissão em URIs bancárias (`content://...`) | Cópia imediata dos bytes recebidos para o cache seguro do app (`context.getCacheDir()`). |
+| **F4** | Inchaço de APK ou custos com APIs de IA na nuvem | **Google ML Kit Text Recognition** thin (<800 KB) + `PdfRenderer` nativo (até 2 páginas). R$ 0,00 e 100% offline. |
+| **F5** | Colisão entre Comprovante e Notificação Push atrasada | **Deduplicação Cruzada com Janela de 10 min** por assinatura hash `(amountCents + date + merchant/chavePix)`. |
+| **F6** | Pix Agendado lançado como despesa paga de hoje | Triagem semântica em `bank-parser.ts`, lançando como despesa pendente/agendada para data futura. |
+| **F7** | Nomes burocráticos (`PAG*`, Razões Sociais, CNPJ bruto) | **Motor Semântico Unificado** com busca por CNPJ limpo, limpeza de adquirentes e memória de apelidos. |
+| **F8** | Rendas Variáveis de Autônomos ignoradas | **Classificação Dual:** Renda Fixa/CLT (valor pré-preenchido) vs. Renda de Cliente Recorrente (valor aberto). |
+| **F9** | Falsos positivos de "Cobrança Duplicada" | Duplicidade restrita a **assinaturas de valor fixo** ou compras de mesmo valor **no mesmo dia e hora/minuto**. |
+| **F10**| Fadiga de Alertas na Home (Banner Blindness) | Dismiss cirúrgico por sugestão individual (30 dias de silêncio), máximo 1 card/dia e invisibilidade quando regular. |
+| **F11**| Permissão de Notificação não ativada no primeiro uso | Passo guiado amigável no Onboarding para ativação do ouvinte nativo com garantia de privacidade local. |
+| **F12**| Risco de comunicação editorial irreal na Landing Page | Foco estrito nos recursos reais construídos (Caixa Real, Notificações, Comprovantes, Metas de Aporte). |
 
 ---
 
@@ -64,8 +69,8 @@ Toda a implementação deve respeitar rigorosamente os seguintes pilares:
                                                                                                     │
                                                                                                     ▼
                                                                                                  [FASE 6]
-                                                                                                 Apresentação Editorial
-                                                                                                 & Onboarding de Valor
+                                                                                                 Apresentação Realista
+                                                                                                 & Onboarding Guiado
                                                                                                     │
                                                                                                     ▼
                                                                                                 [Quality Gate 6]
@@ -316,48 +321,51 @@ Toda a implementação deve respeitar rigorosamente os seguintes pilares:
 
 ---
 
-### FASE 6: APRESENTAÇÃO EDITORIAL & ONBOARDING DO RECURSO (LANDING PAGE & WELCOME FLOW)
+### FASE 6: APRESENTAÇÃO REALISTA & ONBOARDING GUIADO (LANDING PAGE & FIRST RUN)
 
-**Objetivo:** Destacar a captura inteligente de comprovantes, o motor de aprendizado semântico de CNPJs e o assistente proativo na página de apresentação (Landing Page) e no onboarding inicial, comunicando claramente essa funcionalidade-chave para o usuário logo no primeiro contato.
+**Objetivo:** Comunicar com clareza a hierarquia de captura (Leitura Passiva de Notificações como caminho principal + Compartilhamento de Comprovantes como fallback inteligente), guiando o usuário no setup de permissões sem promessas de recursos inexistentes.
 
 #### Tarefas da Fase 6:
-- [ ] **Tarefa 6.1 — Destaque na Landing Page (`ProductNarratives.tsx`):**
-  - Adicionar o bloco de narrativa editorial "Zero Fricção: Compartilhamento Direto de Comprovantes & Inteligência Semântica":
-    - Explicar visualmente o fluxo: *Fez um Pix no banco? Toque em Compartilhar para o Guia Financeiro*.
-    - Demonstrar a conversão de Razão Social/CNPJ burocrático em Nome Fantasia amigável com categoria automática.
-    - Ilustrar o Assistente Proativo de Insights da Home (detecção de cobranças duplicadas e confirmação de salário em 1 toque).
-  - *Teste & Verificação:* Renderização responsiva da Landing Page em desktop e smartphone, com verificação de contraste de cores e acessibilidade.
-  - *Commit:* `feat(landing): adicionar narrativa de captura de comprovantes e inteligencia semantica`
+- [ ] **Tarefa 6.1 — Destaque Narrativo na Landing Page (`ProductNarratives.tsx`):**
+  - Adicionar o bloco de narrativa editorial "Captura Invisível com Inteligência Local":
+    - **Caminho 1 (Estrela):** Leitura automática de notificações bancárias locais em segundo plano (100% privado, sem senhas).
+    - **Caminho 2 (Garantia):** Compartilhamento direto de comprovante do banco para o app quando o banco não notificar.
+    - **Mágica Semântica:** Como o app aprende os CNPJs e comerciantes que você frequenta.
+  - *Teste & Verificação:* Teste de renderização responsiva da Landing Page com verificação de contraste de cores e acessibilidade.
+  - *Commit:* `feat(landing): adicionar narrativa de captura automatica e contingencia de comprovantes`
 
 - [ ] **Tarefa 6.2 — Atualização da Tabela de Comparação de Plataformas (`PlatformComparison.tsx`):**
-  - Inserir na tabela comparativa os diferenciais exclusivos do aplicativo:
-    - *Captura por Compartilhamento de Comprovante (PDF/Imagem/Texto com OCR local gratuito)*.
-    - *Reconhecimento e Aprendizado Semântico de CNPJ e Nomes Fantasia*.
+  - Atualizar a tabela destacando fatos 100% reais:
+    - *Identificação de Notificações Locais (Zero senhas bancárias entregues a terceiros)*.
+    - *Captura Inteligente de Comprovantes (PDF/Imagem/Texto com OCR local gratuito)*.
+    - *Aprendizado Semântico de CNPJ e Nomes Fantasia*.
     - *Lançamento Rápido em 3 segundos (tela única)*.
-    - *Assistente Proativo de Insights na Home com Ações de 1 Toque*.
   - *Teste & Verificação:* Testes visuais da tabela em telas pequenas (<400px) e largas.
-  - *Commit:* `feat(landing): destacar recursos de captura e motor semantico na comparacao de plataformas`
+  - *Commit:* `feat(landing): alinhar comparacao de plataformas aos diferenciais reais de captura`
 
-- [ ] **Tarefa 6.3 — Chamamento Inicial no Onboarding (`OnboardingCard.tsx`):**
-  - Adicionar o novo passo interativo de onboarding: *"Experimente compartilhar seu primeiro comprovante Pix"*, com link e dica prática de como usar o menu de compartilhamento do banco ou colar um comprovante de teste.
+- [ ] **Tarefa 6.3 — Setup Guiado de Permissões no Onboarding (`OnboardingCard.tsx`):**
+  - Inserir no checklist de setup inicial da Home:
+    - *"Ativar Leitor Automático de Notificações"* com link direto para a tela de configurações do sistema Android (`Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS`).
+    - Dica educativa de contingência: *"Seu banco não notificou uma transferência? Basta tocar em Compartilhar Comprovante para o Guia Financeiro"*.
   - *Teste & Verificação:* Testes unitários em `onboarding-card.test.tsx` cobrindo o novo passo e o cálculo percentual de progresso.
-  - *Commit:* `feat(onboarding): adicionar passo de compartilhamento de comprovante no setup inicial`
+  - *Commit:* `feat(onboarding): adicionar passo de ativacao de notificacoes e dica de comprovante`
 
 - [ ] **Tarefa 6.4 — Modal Interativo de Boas-Vindas ("A Mágica da Captura Sem Fricção"):**
-  - Criar componente leve `src/components/modules/welcome-feature-modal.tsx` exibido uma única vez para novos usuários (ou acessível via botão "Como funciona?" nas configurações):
-    - *Slide 1:* Compartilhe qualquer comprovante do banco (PDF/Imagem/Texto).
-    - *Slide 2:* O motor aprende seus CNPJs e comerciantes habituais.
-    - *Slide 3:* Alertas inteligentes e confirmação de salário em 1 clique na Home.
+  - Criar componente leve `src/components/modules/welcome-feature-modal.tsx` exibido no primeiro login:
+    - *Slide 1:* Notificações Automáticas — o app lê compras de cartões e Pix sem você precisar abrir o aplicativo.
+    - *Slide 2:* Contingência de Comprovantes — compartilhe PDFs, imagens ou textos de qualquer banco se o push falhar.
+    - *Slide 3:* O motor aprende seus CNPJs e estabelecimentos favoritos para nunca mais te pedir para redigitar.
   - *Teste & Verificação:* Teste de renderização, persistência do dismiss no localStorage e navegação por teclado.
-  - *Commit:* `feat(modules): criar modal interativo de boas-vindas sobre a captura sem friccao`
+  - *Commit:* `feat(modules): criar modal interativo de boas-vindas com hierarquia de captura`
 
 #### PORTÃO DE QUALIDADE 6 (Quality Gate 6 / DoD Final de Release):
 1. Landing page e componentes de onboarding 100% responsivos e fluidos (mobile e desktop).
 2. Regra de zero emojis estritamente verificada em todas as novas cópias editoriais.
-3. Suíte completa de testes do repositório (`npm run test`) 100% verde.
-4. `npm run typecheck` sem qualquer erro.
-5. `npm run lint` 100% aprovado.
-6. **Ação Obrigatória:** Executar `git push origin` com a release consolidada.
+3. Comunicação 100% honesta e congruente com as regras do `ESPECIFICACAO_TECNICA.md` (sem vaporware).
+4. Suíte completa de testes do repositório (`npm run test`) 100% verde.
+5. `npm run typecheck` sem qualquer erro.
+6. `npm run lint` 100% aprovado.
+7. **Ação Obrigatória:** Executar `git push origin` com a release consolidada.
 
 ---
 
@@ -365,11 +373,12 @@ Toda a implementação deve respeitar rigorosamente os seguintes pilares:
 
 | Teste | Critério de Aceitação | Comando / Verificação |
 |---|---|---|
+| **Identificação Passiva de Push** | Notificação de banco homologado é lida em 2º plano e vira sugestão | Teste de notificação simulada em background |
 | **Compartilhamento de Comprovante** | App surge no menu nativo, processa imagem/PDF sem custo e cadastra com opção de edição | Teste de Intent via ADB e banco real |
 | **Aprendizado de CNPJ e Nome Fantasia** | CNPJ burocrático vira nome amigável ("Arcos Dourados" ➔ "McDonald's") em comprovantes e push | Teste unitário em `merchant-memory.test.ts` |
 | **Deduplicação Comprovante $\leftrightarrow$ Push** | Notificação que chega 45s após o comprovante é descartada sem duplicar lançamento | Teste unitário em `suggestions-store.test.ts` |
 | **Lançamento Rápido** | Cadastro de despesa concluído em $\le 3$ segundos na tela única | Interação manual e teste com `StepQuick` |
 | **Detecção de Salário/Renda** | Renda prevista surge na data típica e é confirmada em 1 clique | Teste unitário em `recurrences.test.ts` |
 | **Gastos Vampiros & Anomalias** | Cobrança duplicada gera alerta imediato na Home com economia anual calculada | Teste unitário e renderização no `SmartAdvisorCard` |
-| **Comunicação e Onboarding** | Landing Page e modal de boas-vindas explicam o fluxo com clareza e zero emojis | Verificação visual e teste em `onboarding-card.test.tsx` |
+| **Comunicação e Onboarding** | Landing Page e modal de boas-vindas explicam a hierarquia com clareza e zero emojis | Verificação visual e teste em `onboarding-card.test.tsx` |
 | **Governança de Código** | Zero emojis, TypeScript estrito, DRY respeitado e commits por tarefa | `npm run typecheck && npm run lint && npm run test` |
