@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NotificationsTab } from "./notifications-tab";
 import * as nativeServices from "@/services/native";
@@ -49,9 +50,11 @@ function renderNotificationsTab() {
     defaultOptions: { queries: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={queryClient}>
-      <NotificationsTab />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <NotificationsTab />
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -239,11 +242,12 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
       vi.mocked(nativeServices.isNativePlatform).mockReturnValue(false);
       renderNotificationsTab();
 
-      expect(screen.queryByText("Assistente Passivo de Compras & Bancos")).not.toBeInTheDocument();
+      expect(screen.getByText("Exclusivo no App Android")).toBeInTheDocument();
       expect(
         screen.queryByRole("checkbox", { name: "Habilitar Captura Passiva de Notificações" }),
       ).not.toBeInTheDocument();
       expect(screen.queryByRole("checkbox", { name: "Monitorar Nubank" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Baixar App Pro/i })).toBeInTheDocument();
     });
   });
 });

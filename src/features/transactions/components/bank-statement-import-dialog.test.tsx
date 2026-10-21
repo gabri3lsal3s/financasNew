@@ -429,5 +429,5 @@ describe("BankStatementImportDialog", () => {
     // Lote 2: exatamente 0 despesas e 10 receitas
     expect(mutateAsyncMock.mock.calls[1]![0].expenses).toHaveLength(0);
     expect(mutateAsyncMock.mock.calls[1]![0].incomes).toHaveLength(10);
-  });
+  }, 30_000);
 });

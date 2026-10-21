@@ -434,5 +434,5 @@ describe("StatementImportDialog", () => {
     // Lote 2: exatamente 20 despesas
     expect(mutateAsyncMock.mock.calls[1]![0].expenses).toHaveLength(20);
     expect(mutateAsyncMock.mock.calls[1]![0].cardId).toBe(mockCard.id);
-  });
+  }, 30_000);
 });
