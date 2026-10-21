@@ -5,6 +5,8 @@ import {
   endOfMonthProjection,
   pendingProjection,
   analyzeCashGap,
+  projectCardInvoiceObligations,
+  projectInstallmentCashFlows,
   PACE_MIN_DAY,
   PROJECTION_MIN_DAY,
 } from "./index";
@@ -275,6 +277,32 @@ describe("projeção preditiva de descasamento temporal de caixa (analyzeCashGap
     expect(result.isCashGapDetected).toBe(false);
     expect(result.gapDate).toBeNull();
     expect(result.maxDeficitCents).toBe(0);
+  });
+
+  it("alinha desembolsos de fatura e parcelamentos com invoiceDueDate via index re-exports", () => {
+    const obligations = projectCardInvoiceObligations({
+      cards: [{ id: "c1", name: "Nubank", due_day: 15, closing_day: 5 }],
+      expenses: [
+        { id: "e1", card_id: "c1", date: "2026-08-20", value: 200, bill_competence: "2026-09" },
+      ],
+      payments: [],
+      today: "2026-08-25",
+    });
+
+    expect(obligations).toHaveLength(1);
+    expect(obligations[0]?.dueDate).toBe("2026-09-15");
+    expect(obligations[0]?.dueDate).not.toBe("2026-08-20");
+
+    const installments = projectInstallmentCashFlows({
+      card: { id: "c1", name: "Nubank", due_day: 15 },
+      installments: [
+        { installmentNumber: 1, totalInstallments: 2, amountCents: 10000, billCompetence: "2026-09", purchaseDate: "2026-08-20" },
+        { installmentNumber: 2, totalInstallments: 2, amountCents: 10000, billCompetence: "2026-10", purchaseDate: "2026-08-20" },
+      ],
+    });
+
+    expect(installments[0]?.disbursementDate).toBe("2026-09-15");
+    expect(installments[1]?.disbursementDate).toBe("2026-10-15");
   });
 });
 

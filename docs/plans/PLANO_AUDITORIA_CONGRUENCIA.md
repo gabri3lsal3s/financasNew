@@ -155,7 +155,7 @@ graph TD
   - *Commit:* `fix(budgets): distinguish explicit zero limit from inherited budget limits`
 - [x] **Tarefa 4.2:** Disponibilizar alternância clara na tela de Orçamentos (`budgets-page.tsx`) entre visualização por **Gasto Pessoal (Ponderado)** e **Gasto Total da Família/Casa (Bruto)**, exibindo tooltips informativos.
   - *Commit:* `feat(budgets): support dual metric view for personal vs total household budget spend`
-- [ ] **Tarefa 4.3:** Alinhar datas de desembolso futuro de faturas de cartão no motor de projeção de saldo (`domain/projection/`), usando a data de vencimento da fatura (`invoiceDueDate`) e não a data da compra.
+- [x] **Tarefa 4.3:** Alinhar datas de desembolso futuro de faturas de cartão no motor de projeção de saldo (`domain/projection/`), usando a data de vencimento da fatura (`invoiceDueDate`) e não a data da compra.
   - *Commit:* `fix(projection): align credit card installment cash flows with invoice due dates`
 - [ ] **Tarefa 4.4:** Validar regras de arredondamento em múltiplos de R$ 10 na realocação de orçamentos.
   - *Commit:* `test(budgets): validate budget reallocation constraints and multiple of 10 rounding`

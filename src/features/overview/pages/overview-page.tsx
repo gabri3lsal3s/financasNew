@@ -30,9 +30,14 @@ import {
   spentByCategoryMap,
   spentGrossByCategoryMap,
 } from "@/domain/budgets";
-import { invoiceDueDate } from "@/domain/cards";
 import { calculateDebtsSummary, todayISO } from "@/domain/debts";
-import { analyzeCashGap, dailyBudget, endOfMonthProjection, spendingPace } from "@/domain/projection";
+import {
+  analyzeCashGap,
+  dailyBudget,
+  endOfMonthProjection,
+  projectCardInvoiceObligations,
+  spendingPace,
+} from "@/domain/projection";
 import {
   accountsNet,
   buildDailyFlow,
@@ -407,33 +412,12 @@ export function OverviewPage() {
         currentBalanceCents: realCashData.cashBalance.currentBalanceCents,
         today,
         obligations: [
-          ...(cardsQuery.data ?? []).flatMap((card) => {
-            const cardExpenses = (cardExpensesQuery.data ?? []).filter(
-              (e) => e.card_id === card.id && e.bill_competence === month,
-            );
-            const cardPayments = (cardPaymentsQuery.data ?? []).filter(
-              (p) => p.card_id === card.id && p.competence_month === month,
-            );
-            // O valor da fatura do cartão é pago pelo montante BRUTO nominal integral
-            const expTotal = cardExpenses.reduce(
-              (acc, e) => acc + Math.round(e.value * 100),
-              0,
-            );
-            const payTotal = cardPayments.reduce((acc, p) => acc + Math.round(p.amount * 100), 0);
-            const balance = Math.max(0, expTotal - payTotal);
-            if (balance <= 0) return [];
-            const nominalDueDate = invoiceDueDate(month, card.due_day);
-            // Fatura vencida em aberto no mês tem exigibilidade imediata (today)
-            const dueDate = nominalDueDate < today ? today : nominalDueDate;
-            return [
-              {
-                id: `invoice-${card.id}-${month}`,
-                name: `Fatura ${card.name}`,
-                dueDate,
-                amountCents: balance,
-                kind: "invoice" as const,
-              },
-            ];
+          ...projectCardInvoiceObligations({
+            cards: cardsQuery.data ?? [],
+            expenses: cardExpensesQuery.data ?? [],
+            payments: cardPaymentsQuery.data ?? [],
+            today,
+            currentMonth: month,
           }),
           ...(debtsQuery.data ?? [])
             .filter((d) => d.type === "payable" && !d.paid_at && d.due_date && d.due_date < rangeEnd)
