@@ -4,17 +4,41 @@
  * impedindo vazamento de preferências ou configurações entre contas no mesmo navegador.
  */
 
-let activeUserId: string | null = null;
+const ACTIVE_USER_ID_STORAGE_KEY = "financas_active_user_id";
+
+function getInitialActiveUserId(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(ACTIVE_USER_ID_STORAGE_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+let activeUserId: string | null = getInitialActiveUserId();
 const userListeners = new Set<(userId: string | null) => void>();
 
 export function getActiveUserId(): string | null {
-  return activeUserId;
+  if (activeUserId) return activeUserId;
+  return getInitialActiveUserId();
 }
 
 export function setActiveUserId(userId: string | null): void {
   if (activeUserId !== userId) {
     const prevUserId = activeUserId;
     activeUserId = userId;
+
+    if (typeof window !== "undefined") {
+      try {
+        if (userId) {
+          window.localStorage.setItem(ACTIVE_USER_ID_STORAGE_KEY, userId);
+        } else {
+          window.localStorage.removeItem(ACTIVE_USER_ID_STORAGE_KEY);
+        }
+      } catch {
+        // no-op
+      }
+    }
 
     // Se estiver transitando de visitante (null) para um usuário autenticado (userId):
     // Herda as preferências visuais ativas (tema, acento, superfície, movimento)

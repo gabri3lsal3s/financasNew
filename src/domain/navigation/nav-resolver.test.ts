@@ -59,20 +59,40 @@ describe("navigation domain resolver", () => {
 
 
   it("deve resolver a rota inicial landing correta para cada perfil de permissões", () => {
-    // 1. Perfil completo com overview
+    // 1. Perfil completo com overview (Home)
     expect(resolveLandingPath(() => true)).toBe("/");
 
-    // 2. Sem overview, com transações
+    // 2. Sem overview, com transações -> primeira disponível é /transacoes
     expect(
       resolveLandingPath((key) => key !== "overview"),
     ).toBe("/transacoes");
 
-    // 3. Modo consultoria pura (apenas investments e reports)
+    // 3. Sem overview e sem transações, com cartões -> primeira disponível é /cartoes
+    expect(
+      resolveLandingPath((key) => key === "cards" || key === "investments"),
+    ).toBe("/cartoes");
+
+    // 4. Modo consultoria pura (apenas investments e reports) -> primeira disponível é /investments
     expect(
       resolveLandingPath((key) => key === "investments" || key === "reports"),
     ).toBe("/investments");
 
-    // 4. Sem nenhuma feature de finanças -> fallback para configurações
-    expect(resolveLandingPath(() => false)).toBe("/configuracoes");
+    // 5. Apenas dívidas -> primeira disponível é /dividas
+    expect(
+      resolveLandingPath((key) => key === "debts"),
+    ).toBe("/dividas");
+
+    // 6. Apenas lembretes -> primeira disponível é /lembretes
+    expect(
+      resolveLandingPath((key) => key === "reminders"),
+    ).toBe("/lembretes");
+
+    // 7. Apenas admin (sem features de conteúdo) -> primeira disponível é /admin
+    expect(
+      resolveLandingPath(() => false, true),
+    ).toBe("/admin");
+
+    // 8. Sem nenhuma feature de finanças e não admin -> fallback para configurações
+    expect(resolveLandingPath(() => false, false)).toBe("/configuracoes");
   });
 });

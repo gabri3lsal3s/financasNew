@@ -72,4 +72,54 @@ describe("RequireFeature Guard", () => {
     expect(screen.queryByText("Carteira de Investimentos")).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toBeInTheDocument();
   });
+
+  it("redireciona na rota raiz '/' para a primeira página disponível quando overview (Home) estiver desabilitada", () => {
+    // Cenário: Usuário modular com acesso apenas a investimentos
+    mockUseUserAccess.mockReturnValue({
+      isLoading: false,
+      isAdmin: false,
+      hasFeature: vi.fn((key: string) => key === "investments"),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <Routes>
+          <Route element={<RequireFeature featureKey="overview" />}>
+            <Route path="/" element={<div>Painel Início</div>} />
+          </Route>
+          <Route path="/investments" element={<div>Carteira de Investimentos</div>} />
+          <Route path="/transacoes" element={<div>Extrato de Transações</div>} />
+          <Route path="/configuracoes" element={<div>Configurações</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText("Painel Início")).not.toBeInTheDocument();
+    expect(screen.getByText("Carteira de Investimentos")).toBeInTheDocument();
+  });
+
+  it("redireciona na rota raiz '/' para transações quando overview estiver desabilitada mas transações estiver ativa", () => {
+    // Cenário: Usuário com extrato/transações ativo, mas sem visão geral
+    mockUseUserAccess.mockReturnValue({
+      isLoading: false,
+      isAdmin: false,
+      hasFeature: vi.fn((key: string) => key === "transactions" || key === "investments"),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <Routes>
+          <Route element={<RequireFeature featureKey="overview" />}>
+            <Route path="/" element={<div>Painel Início</div>} />
+          </Route>
+          <Route path="/transacoes" element={<div>Extrato de Transações</div>} />
+          <Route path="/investments" element={<div>Carteira de Investimentos</div>} />
+          <Route path="/configuracoes" element={<div>Configurações</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText("Painel Início")).not.toBeInTheDocument();
+    expect(screen.getByText("Extrato de Transações")).toBeInTheDocument();
+  });
 });

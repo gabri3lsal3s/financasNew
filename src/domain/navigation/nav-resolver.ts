@@ -77,6 +77,11 @@ export function resolveBottomNavSlots<T extends NavItemConfig>(
 
 /**
  * Determina a rota inicial padrão mais segura e relevante de acordo com as permissões ativas.
+ * Prioridade:
+ * 1. "/" (Início / Visão Geral) — se o usuário possuir a feature overview ativa;
+ * 2. Próxima rota funcional disponível na ordem canônica (/transacoes, /cartoes, /investments, /dividas, /orcamentos, /relatorios, /insights, /lembretes);
+ * 3. "/admin" (se for administrador sem módulos comuns);
+ * 4. "/configuracoes" (fallback seguro exclusivo para quando nenhum módulo de conteúdo estiver habilitado).
  */
 export function resolveLandingPath(
   hasFeature: (featureKey: string) => boolean,

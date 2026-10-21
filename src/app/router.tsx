@@ -94,7 +94,7 @@ const ROUTE_FEATURE_MAP: Record<string, string> = {
  */
 function RequireAuth() {
   const { session, loading: authLoading, configError } = useAuth();
-  const userAccess = useUserAccess();
+  const userAccess = useUserAccess(session?.user?.id);
   const location = useLocation();
 
   // F23 — pre-fetching discreto dos chunks das rotas vizinhas (idle).
@@ -102,7 +102,8 @@ function RequireAuth() {
 
   // O carregamento inicial só termina quando tanto a autenticação quanto os dados de perfil/permissões estiverem prontos
   const hasUser = Boolean(session?.user);
-  const isDataLoading = authLoading || (hasUser && userAccess.isLoading);
+  const isAccessPending = hasUser && !userAccess.profile && !userAccess.error;
+  const isDataLoading = authLoading || (hasUser && (userAccess.isLoading || isAccessPending));
 
   // Previne micro-flashes mantendo a tela de transição visível de forma estável e fluida (650ms)
   const { isShowing: isTransitioning, isClosing } = useMinimumLoading(isDataLoading, 650);

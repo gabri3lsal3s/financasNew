@@ -1,5 +1,16 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.68** registra a **Correção da Rota Inicial do App (Home vs. Primeira Rota Disponível) & Blindagem de Cold Start** (2026-10-21):
+> - **(1) Eliminação da Condição de Corrida no Cold Boot (`user-storage.ts` & `useUserAccess.ts`)**:
+>   - Persistência síncrona de `activeUserId` em `localStorage` (`financas_active_user_id`) no bootstrap da aplicação, permitindo que `getActiveUserId()` retorne o ID do usuário imediatamente no render inicial após recarregamento da página, reabertura de PWA ou lançamento nativo do app;
+>   - Repasse direto de `session?.user?.id` para `useUserAccess(session?.user?.id)` dentro de `RequireAuth`;
+>   - Bloqueio da renderização de `<Outlet />` via `isDataLoading` enquanto os dados de perfil e permissões do usuário logado não estiverem completamente resolvidos (`isAccessPending`), impedindo que guards de rota filhos (`RequireFeature`) avaliem regras com perfil vazio.
+> - **(2) Resolução Determinística da Primeira Rota Disponível (`resolveLandingPath`)**:
+>   - Priorização automática da Home / Início (`/`) para contas com a feature `overview` ativa;
+>   - Para contas com restrição modular (sem visão geral), roteamento automático e imediato para a primeira página disponível segundo a hierarquia canônica (`/transacoes`, `/cartoes`, `/investments`, `/dividas`, `/orcamentos`, `/relatorios`, `/insights`, `/lembretes` ou `/admin`);
+>   - Redirecionamento para `/configuracoes` restrito estritamente a contas sem nenhum módulo funcional nem privilégios administrativos;
+>   - Testes unitários de cobertura no domínio de navegação e em `RequireFeature`.
+>
 > **v2.67** registra a **Conclusão Integral do Plano Mestre de Auditoria & Congruência Contábil, Regras de Negócio e Precisão Financeira** (Fases 0 a 6 do `PLANO_AUDITORIA_CONGRUENCIA.md`) (2026-10-21):
 > - **(1) Transações, Liquidez e Governança Estrita de Pesos / Rateio de Contas**:
 >   - Preservação exata de centavos inteiros via `weightedCents(baseCents, weight) = Math.round(baseCents * weight)` e `sumWeightedCents`, eliminando resíduos de ponto flutuante IEEE 754;
