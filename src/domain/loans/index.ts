@@ -227,11 +227,11 @@ export function calculateEarlyAmortization(
   for (const item of sorted) {
     const [dueY, dueM] = item.dueDate.split("-").map(Number);
     const dueTotalMonths = (dueY ?? 0) * 12 + ((dueM ?? 1) - 1);
-    const monthsAhead = Math.max(1, dueTotalMonths - refTotalMonths);
+    const monthsAhead = Math.max(0, dueTotalMonths - refTotalMonths);
 
     // Valor presente: VP = VF / (1 + i)^t
     let presentValue = item.amountCents;
-    if (rate > 0) {
+    if (rate > 0 && monthsAhead > 0) {
       presentValue = Math.round(item.amountCents / Math.pow(1 + rate, monthsAhead));
     }
 

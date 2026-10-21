@@ -60,6 +60,66 @@ describe("calculateEarlyAmortization", () => {
     expect(res.totalDiscountCents).toBeGreaterThan(0);
     expect(res.totalPresentValuePaidCents).toBeLessThan(res.totalOriginalAmountCents);
   });
+
+  it("não aplica desconto indevido de juros em parcelas vencendo no mesmo mês de referência", () => {
+    const remaining = [
+      { id: "p1", installmentNumber: 1, amountCents: 100000, dueDate: "2026-03-25" },
+    ];
+
+    const res = calculateEarlyAmortization(
+      remaining,
+      2.5, // 2,5% a.m.
+      100000,
+      "2026-03-05"
+    );
+
+    expect(res.eliminatedInstallmentIds).toEqual(["p1"]);
+    expect(res.totalOriginalAmountCents).toBe(100000);
+    expect(res.totalPresentValuePaidCents).toBe(100000);
+    expect(res.totalDiscountCents).toBe(0);
+  });
+
+  it("não aplica desconto para parcelas já vencidas em mês anterior ao de referência", () => {
+    const remaining = [
+      { id: "p_past", installmentNumber: 1, amountCents: 100000, dueDate: "2026-02-15" },
+    ];
+
+    const res = calculateEarlyAmortization(
+      remaining,
+      3,
+      100000,
+      "2026-03-10"
+    );
+
+    expect(res.eliminatedInstallmentIds).toEqual(["p_past"]);
+    expect(res.totalPresentValuePaidCents).toBe(100000);
+    expect(res.totalDiscountCents).toBe(0);
+  });
+
+  it("calcula desconto exato para parcelas futuras preservando valor nominal da parcela do mês corrente", () => {
+    const remaining = [
+      { id: "p_current", installmentNumber: 1, amountCents: 100000, dueDate: "2026-03-15" },
+      { id: "p_future", installmentNumber: 2, amountCents: 100000, dueDate: "2026-04-15" },
+    ];
+
+    // Orçamento suficiente para pagar as duas parcelas
+    const res = calculateEarlyAmortization(
+      remaining,
+      2, // 2% a.m.
+      200000,
+      "2026-03-01"
+    );
+
+    // Prioriza eliminar de trás pra frente: p_future depois p_current
+    expect(res.eliminatedInstallmentIds).toEqual(["p_future", "p_current"]);
+    expect(res.totalOriginalAmountCents).toBe(200000);
+    // p_future (1 mês à frente): 100000 / 1.02 = 98039
+    // p_current (mesmo mês): 100000 / 1.00 = 100000
+    // Total PV = 198039
+    // Desconto total = 200000 - 198039 = 1961
+    expect(res.totalPresentValuePaidCents).toBe(198039);
+    expect(res.totalDiscountCents).toBe(1961);
+  });
 });
 
 describe("calculateLoanProgress", () => {

@@ -140,7 +140,7 @@ graph TD
 ---
 
 ### Fase 3: Dívidas, Financiamentos e Amortizações
-- [ ] **Tarefa 3.1:** Corrigir desconto em amortização extraordinária (`calculateEarlyAmortization`) em `src/domain/loans/index.ts`, para que parcelas vencendo no mesmo mês de referência não recebam desconto indevido de 1 mês cheio de juros.
+- [x] **Tarefa 3.1:** Corrigir desconto em amortização extraordinária (`calculateEarlyAmortization`) em `src/domain/loans/index.ts`, para que parcelas vencendo no mesmo mês de referência não recebam desconto indevido de 1 mês cheio de juros.
   - *Commit:* `fix(loans): prevent unearned monthly interest discount on current month installments`
 - [ ] **Tarefa 3.2:** Auditar amortizações Price e SAC para zeramento exato do saldo em centavos na parcela final $N$.
   - *Commit:* `test(loans): enforce exact zero remaining balance on final installment in SAC and Price`
