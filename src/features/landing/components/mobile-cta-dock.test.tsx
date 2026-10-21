@@ -20,7 +20,7 @@ describe("MobileCtaDock", () => {
       </BrowserRouter>,
     );
 
-    expect(screen.getByText("Áxis • Guia Financeiro")).toBeInTheDocument();
+    expect(screen.getByText("ÁXIS Finance")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Assinar Pro/i })).toBeInTheDocument();
   });
 });

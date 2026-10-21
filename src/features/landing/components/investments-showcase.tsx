@@ -155,7 +155,7 @@ export function InvestmentsShowcase() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Monitoramento do limite mensal de isenção de R$ 20.000 em vendas de ações e apuração precisa de lucros/prejuízos tributáveis em FIIs e operações comuns para a declaração anual.
+                  Facilitador de IRPF com cópia em 1 clique da discriminação oficial de Bens e Direitos (com CNPJ e custo médio) para o programa da Receita, além do monitoramento da isenção de R$ 20.000 em ações e apuração de DARF de FIIs.
                 </p>
                 <div className="rounded-lg border border-border/60 bg-muted/20 p-2.5 text-xs font-mono">
                   <div className="flex justify-between text-muted-foreground">
@@ -192,7 +192,7 @@ export function InvestmentsShowcase() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Gere com 1 clique cadernos executivos completos em Excel com fórmulas dinâmicas: Resumo Patrimonial, Custódia de Ativos, Histórico de Proventos, DRE Pessoal e Dívidas.
+                  Gere com 1 clique cadernos executivos completos em Excel estruturado (.xlsx compatível com Sheets e Calc): Resumo Patrimonial, Custódia de Ativos, Histórico de Proventos, DRE Pessoal e Dívidas.
                 </p>
                 <div className="flex flex-wrap gap-1.5 pt-1 text-[11px] text-muted-foreground">
                   <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/30 px-2 py-0.5 font-medium">

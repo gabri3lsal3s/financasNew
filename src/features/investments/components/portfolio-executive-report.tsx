@@ -46,7 +46,7 @@ export function PortfolioExecutiveReport({
   totalReturnPnlBRL,
   allTimeEconomicPnlBRL,
   periodLabel = "Posição Atual Consolidada",
-  appName = "Guia Financeiro",
+  appName = "ÁXIS Finance",
   accountHolder,
 }: PortfolioExecutiveReportProps) {
   const investmentRows = useMemo(() => rows.filter((r) => !r.isCash), [rows]);
@@ -190,7 +190,7 @@ export function PortfolioExecutiveReport({
         {/* Rodapé */}
         <ReportFooter
           accountHolder={accountHolder}
-          disclaimer="Documento estritamente confidencial gerado pelo titular da conta via Guia Financeiro. As informações refletem a posição de custódia e cotações na data de emissão."
+          disclaimer="Documento estritamente confidencial gerado pelo titular da conta via ÁXIS Finance. As informações refletem a posição de custódia e cotações na data de emissão."
         />
       </div>
     </ReportDocumentLayout>

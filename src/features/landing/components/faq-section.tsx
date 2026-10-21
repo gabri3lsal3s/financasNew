@@ -52,7 +52,7 @@ const faqs: FaqItem[] = [
   {
     question: "Tenho iPhone, consigo utilizar normalmente?",
     answer:
-      "Sim, perfeitamente. No iPhone, você utiliza a versão PWA moderna (adicionada à tela inicial pelo Safari). Você terá acesso a 100% dos motores de cálculo, orçamentos, investimentos FIRE e relatórios executivos. Apenas a leitura automática em segundo plano de notificações de outros bancos fica restrita ao Android, devido a limitações de arquitetura impostas pela Apple no iOS.",
+      "Sim, perfeitamente. No iPhone, você utiliza a versão PWA moderna (adicionada à tela inicial pelo Safari). Você terá acesso a 100% dos motores de cálculo, orçamentos, investimentos FIRE e relatórios executivos. Para registrar transações em segundos sem digitação manual, o ÁXIS conta com o Leitor Inteligente de Pix e Comprovantes: basta copiar o código Pix Copia e Cola ou o texto do comprovante do seu banco e colar no app para aprovar em 1 toque. Apenas a leitura passiva em segundo plano de notificações de outros apps fica restrita ao Android Pro, devido a limitações de arquitetura do iOS da Apple.",
   },
 ];
 

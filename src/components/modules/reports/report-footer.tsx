@@ -30,7 +30,7 @@ function generateReportAuthId(accountHolder?: string): string {
  * alinhamento editorial limpo no final de cada folha impressa.
  */
 export function ReportFooter({
-  disclaimer = "Documento estritamente confidencial emitido pelo titular da conta via Áxis • Guia Financeiro. As informações refletem a posição consolidada na data de emissão.",
+  disclaimer = "Documento estritamente confidencial emitido pelo titular da conta via ÁXIS Finance. As informações refletem a posição consolidada na data de emissão.",
   accountHolder,
   documentId,
   className,
@@ -54,7 +54,7 @@ export function ReportFooter({
       </div>
 
       <div className="flex flex-col items-start sm:items-end text-left sm:text-right shrink-0">
-        <span className="font-semibold text-foreground/80">Áxis • Guia Financeiro</span>
+        <span className="font-semibold text-foreground/80">ÁXIS Finance</span>
         <span className="num font-mono text-[9px] text-muted-foreground/70">
           ID: {authCode}
         </span>

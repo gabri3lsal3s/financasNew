@@ -29,7 +29,7 @@ export function MobileCtaDock({ visible }: MobileCtaDockProps) {
         <div className="flex flex-col min-w-0">
           <span className="text-xs font-bold text-foreground truncate flex items-center gap-1">
             <Sparkles className="size-3 text-primary shrink-0" aria-hidden="true" />
-            <span>Áxis • Guia Financeiro</span>
+            <span>ÁXIS Finance</span>
           </span>
           <span className="text-[11px] text-muted-foreground truncate">
             {isLoggedIn ? "Acesse seu painel" : "30 dias de teste · Cancele fácil"}

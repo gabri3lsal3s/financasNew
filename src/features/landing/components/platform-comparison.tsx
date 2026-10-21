@@ -35,6 +35,24 @@ const features: PlatformFeature[] = [
     androidPro: true,
   },
   {
+    name: "Leitor de Pix Copia e Cola (BR Code) e Comprovantes",
+    web: true,
+    pwa: true,
+    androidPro: true,
+  },
+  {
+    name: "Privacy Shield (Ocultar valores da tela em 1 clique)",
+    web: true,
+    pwa: true,
+    androidPro: true,
+  },
+  {
+    name: "Facilitador de IRPF com cópia de Bens e Direitos",
+    web: true,
+    pwa: true,
+    androidPro: true,
+  },
+  {
     name: "Instalação instantânea na tela inicial sem lojas",
     web: false,
     pwa: true,
@@ -47,13 +65,13 @@ const features: PlatformFeature[] = [
     androidPro: "Via PWA",
   },
   {
-    name: "Biometria física nativa e Privacy Shield",
-    web: false,
+    name: "Biometria física nativa (Digital / FaceID)",
+    web: "PIN local",
     pwa: "PIN local",
     androidPro: true,
   },
   {
-    name: "Assistente Bancário Inteligente (captura de Pix e cartões)",
+    name: "Assistente Bancário Passivo (captura em segundo plano)",
     web: false,
     pwa: false,
     androidPro: true,
@@ -144,15 +162,15 @@ export function PlatformComparison() {
                 <div className="pt-2 space-y-2 text-xs text-muted-foreground">
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>Fixa na tela inicial em 1 clique sem precisar baixar megabytes</span>
+                    <span>Fixa na tela inicial em 1 clique sem consumir armazenamento</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>Compatibilidade perfeita com iPhone (Safari) e navegadores móveis</span>
+                    <span>Leitor Inteligente de Pix Copia e Cola e comprovantes por colagem rápida</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>Carregamento instantâneo do App Shell mesmo com conexão instável</span>
+                    <span>Compatibilidade perfeita com iPhone (Safari), PIN local e Privacy Shield</span>
                   </div>
                 </div>
               </div>

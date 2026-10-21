@@ -29,18 +29,18 @@ export function HeroEditorial() {
           {/* Badge de Destaque */}
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-semibold text-primary transition-all duration-200">
             <Sparkles className="size-3.5 sm:size-4" aria-hidden="true" />
-            <span>Engenharia Financeira & Inteligência de Aportes</span>
+            <span>Engenharia Financeira · O Eixo Central da sua Operação</span>
           </div>
 
           {/* Headline Principal Editorial Ampliada */}
           <h1 className="mt-5 sm:mt-8 max-w-4xl font-display text-3xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-foreground leading-[1.15] md:leading-[1.1]">
-            O controle financeiro que você queria.{" "}
-            <span className="text-primary-strong">A inteligência de investimentos</span> que você precisa.
+            Suas finanças em constante rotação.{" "}
+            <span className="text-primary-strong">Seu patrimônio em torno de um eixo seguro.</span>
           </h1>
 
           {/* Subtítulo Rico e Persuasivo com Tipografia Editorial */}
           <p className="mt-4 sm:mt-6 max-w-3xl text-sm sm:text-lg lg:text-xl text-muted-foreground leading-relaxed font-normal">
-            Elimine planilhas manuais frágeis e faturas de cartão surpresas. Uma plataforma Online First de alta precisão que calcula seu caixa real, controla parcelamentos futuros em centavos e rebalanceia seu patrimônio com rigor matemático.
+            Elimine a fragilidade de planilhas e o atrito de faturas surpresas. Uma plataforma Online First de alta precisão que calcula seu caixa real, projeta parcelamentos futuros e mantém sua carteira calibrada por rigor matemático.
           </p>
 
           {/* CTAs de Conversão com Shimmer Reflexivo e Altura Confortável */}
@@ -115,7 +115,7 @@ export function HeroEditorial() {
                 <div className="size-2.5 sm:size-3.5 rounded-full bg-warning/70" />
                 <div className="size-2.5 sm:size-3.5 rounded-full bg-positive/70" />
                 <span className="ml-2 sm:ml-3 text-xs sm:text-sm font-mono text-muted-foreground hidden sm:inline">
-                  guia-financeiro.app / visao-geral
+                  axis.finance / dashboard
                 </span>
               </div>
               <Badge variant="default" size="xs" className="font-mono border border-primary/30">

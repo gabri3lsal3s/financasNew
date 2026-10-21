@@ -32,7 +32,7 @@ export function TaxFacilitatorModal({
   onOpenChange,
   assets,
   dividends,
-  appName = "Guia Financeiro",
+  appName = "ÁXIS Finance",
   accountHolder,
 }: TaxFacilitatorModalProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -327,7 +327,7 @@ export function TaxFacilitatorModal({
       {/* 5. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
-        disclaimer="Documento auxiliar e orientativo gerado pelo Guia Financeiro. A verificação final e a entrega da Declaração de Ajuste Anual cabem exclusivamente ao contribuinte."
+        disclaimer="Documento auxiliar e orientativo gerado pelo ÁXIS Finance. A verificação final e a entrega da Declaração de Ajuste Anual cabem exclusivamente ao contribuinte."
       />
     </ReportDocumentLayout>
   );

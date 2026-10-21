@@ -20,10 +20,10 @@ export function ProductNarratives() {
             Engenharia Financeira com Clareza Absoluta
           </span>
           <h2 className="mt-3 sm:mt-4 font-display text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
-            Projetado para transformar o modo como você cuida do seu patrimônio
+            Três eixos coordenados para sustentação e expansão do seu patrimônio
           </h2>
           <p className="mt-4 sm:mt-5 text-sm sm:text-lg lg:text-xl text-muted-foreground leading-relaxed">
-            Sem fórmulas frágeis de planilhas e sem relatórios opacos. Uma experiência construída para dar a você controle em tempo real, previsibilidade de meses futuros e disciplina de investimentos.
+            Sem fórmulas frágeis de planilhas e sem relatórios opacos. Uma arquitetura concebida para fornecer estabilidade imediata de caixa, horizonte seguro de compromissos futuros e disciplina matemática de investimentos.
           </p>
         </ScrollReveal>
 
@@ -33,7 +33,7 @@ export function ProductNarratives() {
           <ScrollReveal delay={50} className="lg:col-span-6 space-y-4 sm:space-y-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-primary">
               <Zap className="size-3.5 sm:size-4" aria-hidden="true" />
-              <span>Controle do Dinheiro Livre</span>
+              <span>Eixo 1 · Liquidez & Caixa Real</span>
             </div>
 
             <h3 className="font-display text-xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-snug">
@@ -45,7 +45,7 @@ export function ProductNarratives() {
             </p>
 
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              O Guia Financeiro calcula o seu <strong>Caixa Real Seguro (Safe-to-Spend)</strong>: desconta dívidas pendentes, faturas abertas e provisões, traduzindo seu dinheiro restante em um <strong>Ritmo Diário (Daily Budget)</strong> em R$/dia. Você sabe exatamente quanto pode gastar hoje sem estourar o orçamento do mês.
+              O ÁXIS calcula o seu <strong>Caixa Real Seguro (Safe-to-Spend)</strong>: desconta dívidas pendentes, faturas abertas e provisões, traduzindo seu dinheiro restante em um <strong>Ritmo Diário (Daily Budget)</strong> em R$/dia. Você sabe exatamente quanto pode gastar hoje sem estourar o orçamento do mês.
             </p>
 
             <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
@@ -156,7 +156,7 @@ export function ProductNarratives() {
           <ScrollReveal delay={50} className="lg:col-span-6 space-y-4 sm:space-y-6 order-1 lg:order-2">
             <div className="inline-flex items-center gap-2 rounded-full border border-warning/40 bg-warning/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-warning-strong dark:text-warning">
               <CreditCard className="size-3.5 sm:size-4" aria-hidden="true" />
-              <span>Gestão de Cartões & Parcelamentos</span>
+              <span>Eixo 2 · Linha Temporal & Cartões</span>
             </div>
 
             <h3 className="font-display text-xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-snug">
@@ -194,7 +194,7 @@ export function ProductNarratives() {
           <ScrollReveal delay={50} className="lg:col-span-6 space-y-4 sm:space-y-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-portfolio/30 bg-portfolio/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-portfolio">
               <PieChart className="size-3.5 sm:size-4" aria-hidden="true" />
-              <span>Rebalanceamento & Inteligência Fiscal</span>
+              <span>Eixo 3 · Vetor Patrimonial & Aportes</span>
             </div>
 
             <h3 className="font-display text-xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-snug">
@@ -274,13 +274,13 @@ export function ProductNarratives() {
           </ScrollReveal>
         </div>
 
-        {/* História 4: Assistente Bancário em Tempo Real & Automação Mobile */}
+        {/* Motor de Entrada: Automação Inteligente de Despesas & Pix */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-16 xl:gap-20 items-center">
           {/* Texto Explicativo (Esquerda) */}
           <ScrollReveal delay={50} className="lg:col-span-6 space-y-4 sm:space-y-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-primary">
               <Smartphone className="size-3.5 sm:size-4" aria-hidden="true" />
-              <span>Automação sem Esforço</span>
+              <span>Alimentação dos Três Eixos · Automação sem Fricção</span>
             </div>
 
             <h3 className="font-display text-xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-snug">
@@ -292,21 +292,21 @@ export function ProductNarratives() {
             </p>
 
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              Com o <strong>Assistente Bancário Inteligente</strong>, o aplicativo detecta em segundo plano as notificações de compras de cartões e transferências Pix emitidas pelo seu banco. Uma sugestão discreta aparece na tela com o valor, a categoria prevista e a conta bancária já selecionados — basta 1 toque para aprovar.
+              O ÁXIS elimina a digitação manual em qualquer plataforma: no <strong>Android Pro</strong>, o Assistente Bancário detecta em segundo plano as notificações de compras de cartões e transferências Pix emitidas pelo seu banco, com aprovação em 1 toque. No <strong>iPhone (iOS) e Web</strong>, conte com o <strong>Leitor Inteligente de Pix Copia e Cola (BR Code) e Comprovantes</strong>: basta colar o texto para preencher valor, categoria e beneficiário instantaneamente.
             </p>
 
             <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
               <div className="flex items-center gap-2.5 sm:gap-3">
                 <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Reconhecimento instantâneo de compras de cartão e transferências Pix</span>
+                <span>Detecção passiva no Android Pro e Leitor Inteligente de Pix/Comprovantes no iOS e Web</span>
               </div>
               <div className="flex items-center gap-2.5 sm:gap-3">
                 <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Zero senhas compartilhadas e sem conexão bancária vulnerável</span>
+                <span>Memória de Estabelecimentos: categorização determinística que aprende com seus hábitos</span>
               </div>
               <div className="flex items-center gap-2.5 sm:gap-3">
                 <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Aprovação direta em 1 toque pela notificação ou pelo app</span>
+                <span>Zero senhas compartilhadas e sem conexões bancárias vulneráveis</span>
               </div>
             </div>
           </ScrollReveal>
@@ -317,21 +317,21 @@ export function ProductNarratives() {
               <div className="flex justify-between items-center border-b border-border/50 pb-3 sm:pb-4">
                 <div className="flex items-center gap-2">
                   <Bell className="size-4 text-primary" aria-hidden="true" />
-                  <span className="text-xs sm:text-sm font-bold text-foreground">Captura de Notificação Bancária</span>
+                  <span className="text-xs sm:text-sm font-bold text-foreground">Captura de Notificação & Pix</span>
                 </div>
                 <Badge variant="positive" size="xs" className="font-mono">
-                  Detectado em Tempo Real
+                  Tempo Real ou Copia e Cola
                 </Badge>
               </div>
 
-              {/* Simulação de Notificação do Banco */}
+              {/* Simulação de Notificação do Banco ou Pix */}
               <div className="p-3.5 sm:p-4 rounded-xl bg-background/60 border border-border/70 space-y-1.5">
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground">Notificação Bancária</span>
+                  <span className="font-semibold text-foreground">Notificação Bancária ou Código Pix</span>
                   <span>Agora mesmo</span>
                 </div>
                 <p className="text-xs sm:text-sm font-mono text-foreground font-medium">
-                  Compra aprovada no valor de R$ 42,90 em Padaria e Confeitaria Bella
+                  Compra aprovada ou Pix no valor de R$ 42,90 em Padaria e Confeitaria Bella
                 </p>
               </div>
 
@@ -340,7 +340,7 @@ export function ProductNarratives() {
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-semibold text-primary-strong">Sugestão Pronta para Aprovação:</span>
                   <Badge variant="default" size="xs">
-                    Classificação 98%
+                    Classificação 98% · Memória Ativa
                   </Badge>
                 </div>
 

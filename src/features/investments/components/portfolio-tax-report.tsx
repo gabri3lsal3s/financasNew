@@ -354,7 +354,7 @@ export function PortfolioTaxReport({
 
         {/* Rodapé Institucional */}
         <ReportFooter
-          disclaimer="Documento gerado automaticamente para suporte ao preenchimento da Declaração de Ajuste Anual do IRPF. Os valores refletem os registros de custódia e proventos mantidos no Guia Financeiro."
+          disclaimer="Documento gerado automaticamente para suporte ao preenchimento da Declaração de Ajuste Anual do IRPF. Os valores refletem os registros de custódia e proventos mantidos no ÁXIS Finance."
         />
       </div>
     </ReportDocumentLayout>

@@ -35,7 +35,7 @@ describe("LandingPage", () => {
   it("renderiza a seção Hero Editorial com headline e métricas de caixa real", () => {
     renderLanding();
     expect(
-      screen.getByRole("heading", { name: /O controle financeiro que você queria/i }),
+      screen.getByRole("heading", { name: /Suas finanças em constante rotação/i }),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/30 Dias de Teste sem Compromisso/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Caixa Real Disponível").length).toBeGreaterThan(0);
@@ -46,8 +46,11 @@ describe("LandingPage", () => {
     renderLanding();
 
     expect(
-      screen.getByRole("heading", { name: /Projetado para transformar o modo como você cuida do seu patrimônio/i }),
+      screen.getByRole("heading", { name: /Três eixos coordenados para sustentação e expansão do seu patrimônio/i }),
     ).toBeInTheDocument();
+    expect(screen.getByText(/Eixo 1 · Liquidez & Caixa Real/i)).toBeInTheDocument();
+    expect(screen.getByText(/Eixo 2 · Linha Temporal & Cartões/i)).toBeInTheDocument();
+    expect(screen.getByText(/Eixo 3 · Vetor Patrimonial & Aportes/i)).toBeInTheDocument();
     expect(screen.getByText(/O fim da ilusão de saldo e da ansiedade de fim de mês/i)).toBeInTheDocument();
     expect(screen.getByText(/Nunca mais seja pego de surpresa por parcelas esquecidas/i)).toBeInTheDocument();
     expect(screen.getByText(/Alocação matemática de aportes e blindagem contra impostos/i)).toBeInTheDocument();

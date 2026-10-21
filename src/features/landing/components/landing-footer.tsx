@@ -90,7 +90,7 @@ export function LandingFooter() {
           {/* Bottom bar */}
           <div className="mt-10 pt-6 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
             <div>
-              © {currentYear} Áxis • Guia Financeiro. Todos os direitos reservados.
+              © {currentYear} ÁXIS Finance. Todos os direitos reservados.
             </div>
             <div className="flex items-center gap-1">
               <span>Desenvolvido com foco em precisão e liberdade</span>

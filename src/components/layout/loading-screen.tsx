@@ -29,7 +29,7 @@ const DEFAULT_STAGES = [
 ];
 
 /**
- * Tela de carregamento oficial otimizada — "Guia Financeiro".
+ * Tela de carregamento oficial otimizada — "ÁXIS Finance".
  * Apresenta somente a logo com brilho orbital sutil e barra de progresso
  * responsiva com avanço dinâmico e log em tempo real das etapas em execução.
  *
