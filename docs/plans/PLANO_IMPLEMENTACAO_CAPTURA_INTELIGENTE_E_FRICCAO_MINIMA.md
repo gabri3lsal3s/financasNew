@@ -407,7 +407,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes cobrindo despesas com meses no nome e identificação de concessionárias públicas.
   - *Commit:* `feat(domain/insights): implementar sanitizacao temporal e catalogo de concessionarias brasileiras`
 
-- [ ] **Tarefa 7.3 — Correção de Calendário de Vencimentos & Blindagem Antirruído de Alertas (F17–F20):**
+- [x] **Tarefa 7.3 — Correção de Calendário de Vencimentos & Blindagem Antirruído de Alertas (F17–F20):**
   - Em `src/domain/insights/recurrences.ts`:
     - Corrigir `estimateNextDueDate`: remover a trava rígida `Math.min(typicalDay, 28)`; calcular a data limite baseada no total real de dias do mês de destino (`29`, `30` ou `31`), limitando a 28/29 exclusivamente em fevereiro.
     - Ajustar a regra de duplicidade (`duplicateChargesThisMonth`): restringir o alerta estritamente a assinaturas do catálogo com valor fixo ou a despesas com o **mesmo valor exato no mesmo dia e na mesma hora/minuto** (evitando alertar corridas de Uber ou refeições de iFood no mesmo mês).
