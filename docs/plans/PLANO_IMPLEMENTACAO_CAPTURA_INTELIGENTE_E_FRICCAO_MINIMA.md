@@ -362,7 +362,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes unitários em `onboarding-card.test.tsx` cobrindo o novo passo e o cálculo percentual de progresso.
   - *Commit:* `feat(onboarding): adicionar passo de ativacao de notificacoes e dica de comprovante`
 
-- [ ] **Tarefa 6.4 — Modal Interativo de Boas-Vindas ("A Mágica da Captura Sem Fricção"):**
+- [x] **Tarefa 6.4 — Modal Interativo de Boas-Vindas ("A Mágica da Captura Sem Fricção"):**
   - Criar componente leve `src/components/modules/welcome-feature-modal.tsx` exibido no primeiro login:
     - *Slide 1:* Notificações Automáticas — o app lê compras de cartões e Pix sem você precisar abrir o aplicativo.
     - *Slide 2:* Contingência de Comprovantes — compartilhe PDFs, imagens ou textos de qualquer banco se o push falhar.
