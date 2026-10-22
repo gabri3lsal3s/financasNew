@@ -64,6 +64,7 @@ export function PageShell() {
   const dataParam = searchParams.get("data") || undefined;
   const formaParam =
     (searchParams.get("forma") as PaymentMethod) || (novoParam === "pix" ? "pix" : undefined);
+  const cartaoParam = searchParams.get("cartao") || undefined;
   const parcelasParam = searchParams.get("parcelas");
   const categoriaParam = searchParams.get("categoria") || undefined;
   const sugIdParam = searchParams.get("sug_id") || undefined;
@@ -79,6 +80,10 @@ export function PageShell() {
     if (descParam) vals.description = descParam;
     if (dataParam) vals.date = dataParam;
     if (formaParam) vals.paymentMethod = formaParam;
+    if (cartaoParam) {
+      vals.cardId = cartaoParam;
+      vals.paymentMethod = "credit_card";
+    }
     if (categoriaParam) vals.categoryId = categoriaParam;
     if (parcelasParam) {
       const parsedParcelas = parseInt(parcelasParam, 10);
@@ -87,7 +92,7 @@ export function PageShell() {
       }
     }
     return Object.keys(vals).length > 0 ? vals : undefined;
-  }, [valorParam, descParam, dataParam, formaParam, categoriaParam, parcelasParam]);
+  }, [valorParam, descParam, dataParam, formaParam, cartaoParam, categoriaParam, parcelasParam]);
 
   const handleWizardOpenChange = (next: boolean) => {
     setLocalWizardOpen(next);
@@ -105,6 +110,7 @@ export function PageShell() {
             updated.delete("descricao");
             updated.delete("data");
             updated.delete("forma");
+            updated.delete("cartao");
             updated.delete("categoria");
             updated.delete("parcelas");
             updated.delete("sug_id");

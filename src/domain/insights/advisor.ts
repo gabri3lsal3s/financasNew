@@ -15,7 +15,7 @@ export type SmartAdvisorCategory = "critical" | "income" | "savings" | "calibrat
 
 export interface SmartAdvisorAction {
   label: string;
-  kind: "confirm_income" | "open_income" | "cut_subscription" | "confirm_recurrence" | "ignore_recurrence" | "dismiss";
+  kind: "confirm_income" | "open_income" | "register_expense" | "cut_subscription" | "confirm_recurrence" | "ignore_recurrence" | "dismiss";
   payload?: Record<string, unknown>;
 }
 
@@ -98,6 +98,12 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
 
     // 1.2 Conta esquecida com risco de juros/atraso
     if (occ.missingThisMonth && (occ.tier === "essential" || occ.level === "subscription")) {
+      const expectedDue =
+        occ.nextDueDate ??
+        (occ.typicalDayOfMonth
+          ? `${todayISO.slice(0, 7)}-${String(occ.typicalDayOfMonth).padStart(2, "0")}`
+          : todayISO);
+
       candidates.push({
         id: `missing_expense:${occ.key}`,
         themeKey: `missing_expense:${occ.key}`,
@@ -108,8 +114,16 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
         iconName: "alert-triangle",
         primaryAction: {
           label: "Registrar pagamento",
-          kind: "open_income",
-          payload: { key: occ.key, name: occ.name, valueCents: occ.averageCents },
+          kind: "register_expense",
+          payload: {
+            key: occ.key,
+            name: occ.name,
+            valueCents: occ.averageCents,
+            categoryId: occ.categoryId,
+            date: expectedDue,
+            forma: occ.paymentMethod ?? (occ.cardId ? "credit_card" : "pix"),
+            cardId: occ.cardId,
+          },
         },
         secondaryAction: {
           label: "Dispensar por 30 dias",
@@ -117,7 +131,8 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
         },
         metadata: {
           valueCents: occ.averageCents,
-          expectedDate: occ.nextDueDate,
+          expectedDate: expectedDue,
+          categoryId: occ.categoryId,
         },
       });
     }
@@ -288,28 +303,32 @@ export interface FilterAndRankAdvisorInsightsOptions {
   lastDismissedDay?: string;
   currentDayISO?: string;
   nowMs?: number;
+  /**
+   * Se true (padrão: true), insights de prioridade 1 (Críticos) permanecem elegíveis
+   * mesmo se o dia estiver marcado como dispensado para itens regulares.
+   */
+  allowCriticalOnDismissedDay?: boolean;
 }
 
 /**
- * Aplica os filtros de discrição, cooldown de 30 dias por tema e limite diário (1 insight por dia),
- * retornando o insight mais relevante ou null se tudo estiver regular/silenciado.
+ * Retorna todos os insights elegíveis ordenados estritamente pela Matriz de Prioridade
+ * e desempate por valor financeiro, respeitando cooldown de 30 dias e discrição diária.
  */
-export function filterAndRankAdvisorInsights(
+export function filterAndRankAllAdvisorInsights(
   insights: readonly SmartAdvisorInsight[],
   options: FilterAndRankAdvisorInsightsOptions = {},
-): SmartAdvisorInsight | null {
+): SmartAdvisorInsight[] {
   const {
     dismissals = {},
     lastDismissedDay,
     currentDayISO,
     nowMs = Date.now(),
+    allowCriticalOnDismissedDay = true,
   } = options;
 
-  // Regra de Discrição: Limite estrito de no máximo 1 insight por dia.
-  // Se o usuário já dispensou um insight hoje, silenciar o card pelo restante do dia.
-  if (currentDayISO && lastDismissedDay && currentDayISO === lastDismissedDay) {
-    return null;
-  }
+  const isDismissedToday = Boolean(
+    currentDayISO && lastDismissedDay && currentDayISO === lastDismissedDay,
+  );
 
   // Filtra temas em cooldown de 30 dias
   const eligible = insights.filter((insight) => {
@@ -317,15 +336,25 @@ export function filterAndRankAdvisorInsights(
     if (dismissedUntil != null && dismissedUntil > nowMs) {
       return false;
     }
+
+    // Regra de discrição: se já dispensado hoje, apenas alertas críticos (prioridade 1)
+    // permanecem ativos (quando allowCriticalOnDismissedDay === true).
+    if (isDismissedToday) {
+      if (allowCriticalOnDismissedDay && insight.priority === 1) {
+        return true;
+      }
+      return false;
+    }
+
     return true;
   });
 
   if (eligible.length === 0) {
-    return null;
+    return [];
   }
 
   // Ordena estritamente por prioridade canônica (1 -> 2 -> 3 -> 4)
-  const sorted = [...eligible].sort((a, b) => {
+  return [...eligible].sort((a, b) => {
     if (a.priority !== b.priority) {
       return a.priority - b.priority;
     }
@@ -334,6 +363,17 @@ export function filterAndRankAdvisorInsights(
     const valB = b.metadata?.annualSavingsCents ?? b.metadata?.valueCents ?? 0;
     return valB - valA;
   });
-
-  return sorted[0] ?? null;
 }
+
+/**
+ * Aplica os filtros de discrição, cooldown de 30 dias por tema e limite diário,
+ * retornando o insight mais relevante ou null se tudo estiver regular/silenciado.
+ */
+export function filterAndRankAdvisorInsights(
+  insights: readonly SmartAdvisorInsight[],
+  options: FilterAndRankAdvisorInsightsOptions = {},
+): SmartAdvisorInsight | null {
+  const all = filterAndRankAllAdvisorInsights(insights, options);
+  return all[0] ?? null;
+}
+

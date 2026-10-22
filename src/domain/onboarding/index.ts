@@ -66,6 +66,46 @@ export function onboardingProgress(counts: OnboardingCounts): OnboardingProgress
   return { done: steps.filter((step) => step.done).length, total: steps.length };
 }
 
+/**
+ * Passos centrais do checklist (excluindo o passo opcional de notificações nativas,
+ * que depende de permissão de plataforma Android e não deve bloquear o fluxo principal).
+ */
+const CORE_STEP_IDS: readonly OnboardingStepId[] = [
+  "expense-category",
+  "income-category",
+  "card",
+  "first-transaction",
+] as const;
+
+/** Retorna apenas os passos principais (sem bank-notifications). */
+export function coreOnboardingSteps(counts: OnboardingCounts): OnboardingStep[] {
+  return onboardingSteps(counts).filter((s) => CORE_STEP_IDS.includes(s.id as (typeof CORE_STEP_IDS)[number]));
+}
+
+/** Progresso considerando apenas os passos principais (4 no total). */
+export function coreOnboardingProgress(counts: OnboardingCounts): OnboardingProgress {
+  const steps = coreOnboardingSteps(counts);
+  return { done: steps.filter((s) => s.done).length, total: steps.length };
+}
+
+/**
+ * Usuário ativo: já registrou lançamentos suficientes (>= 3) ou adicionou ao menos 1 cartão.
+ * Um usuário ativo não precisa mais do banner de configuração na home ou no fluxo inicial.
+ */
+export function isUserActive(counts: OnboardingCounts): boolean {
+  return counts.transactions >= 3 || counts.cards >= 1;
+}
+
+/**
+ * Controla a exibição do banner de onboarding na home.
+ * Oculta automaticamente quando o usuário está ativo (smart dismiss),
+ * ou quando todos os passos principais foram concluídos.
+ */
+export function shouldShowOnboardingBanner(counts: OnboardingCounts): boolean {
+  if (isUserActive(counts)) return false;
+  return coreOnboardingSteps(counts).some((s) => !s.done);
+}
+
 /** Setup completo quando todos os passos do checklist foram concluídos. */
 export function isOnboardingComplete(counts: OnboardingCounts): boolean {
   return onboardingSteps(counts).every((step) => step.done);

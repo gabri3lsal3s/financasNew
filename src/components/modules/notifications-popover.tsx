@@ -12,7 +12,7 @@ import {
 } from "@/components/ui";
 import { useOnboardingCounts, useReminders, useSetReminderState, useMarkAllRemindersAsRead } from "@/state";
 import { useOnboardingDismissed } from "@/hooks";
-import { isOnboardingComplete, onboardingProgress } from "@/domain/onboarding";
+import { shouldShowOnboardingBanner, coreOnboardingProgress } from "@/domain/onboarding";
 import type { ReminderItem, ReminderStatus } from "@/domain/reminders";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
@@ -46,8 +46,8 @@ export function NotificationsPopover({ children, open, onOpenChange }: Notificat
   const markAllMutation = useMarkAllRemindersAsRead();
 
   const showOnboarding =
-    !isDismissed && onboardingQuery?.data ? !isOnboardingComplete(onboardingQuery.data) : false;
-  const onboardingProg = onboardingQuery?.data ? onboardingProgress(onboardingQuery.data) : { done: 0, total: 5 };
+    !isDismissed && onboardingQuery?.data ? shouldShowOnboardingBanner(onboardingQuery.data) : false;
+  const onboardingProg = onboardingQuery?.data ? coreOnboardingProgress(onboardingQuery.data) : { done: 0, total: 4 };
 
   const effectiveTotalCount = totalCount + (showOnboarding ? 1 : 0);
 

@@ -481,8 +481,16 @@ O Assistente Passivo opera em modelo híbrido entre o cliente Android nativo e o
   2. *Entrada (Prioridade 2):* Confirmação de renda habitual do mês em 1 toque com Toast de reversão ("Desfazer").
   3. *Economia (Prioridade 3):* Oportunidade de corte de assinatura ou reajuste identificado.
   4. *Calibração (Prioridade 4):* Pergunta de aprendizado ativo para treinar o motor (`[Sim, monitorar]` ou `[Não, foi pontual]`).
-- **Política Estrita de Cooldown e Discrição**:
-  - Limite de no máximo 1 insight por dia para evitar fadiga visual.
+- **Fila Sequencial & Navegação 1 de N**:
+  - Exibe no máximo 1 card por vez na Home para preservar o foco e a limpeza visual, mas suporta navegação sequencial (`< 1 de N >`) com botões táteis acessíveis quando há múltiplas pendências no período.
+  - Ao dispensar (`dismiss`) ou resolver (`confirmIncome`, `confirmRecurrence`, `ignoreRecurrence`) uma sugestão, apenas aquele tema entra em cooldown e o card avança imediatamente para a próxima sugestão da fila.
+  - O card se fecha e marca o dia como silenciado apenas ao dispensar/concluir a última sugestão restante da fila.
+  - Alertas Críticos (Prioridade 1) nunca são suprimidos por silenciamento diário de itens regulares leves.
+- **Ações Diretas & Pré-Preenchimento Sem Fricção**:
+  - *Registrar Pagamento:* Abre o `LaunchWizard` em modo rápido imediatamente sobre a rota atual com todos os dados pré-preenchidos (`descricao`, `valor`, `categoria`, `data` típica e `cartao`/forma habitual).
+  - *Registrar Renda Variável:* Abre o `LaunchWizard` com tipo receita pré-configurado com a descrição, categoria e data esperada.
+  - *Rever Assinatura / Ver Cobranças:* Navega diretamente para `/insights?aba=recurrences&item=...`, abrindo automaticamente o modal de auditoria daquela recorrência específica (`RecurrenceAuditModal`).
+- **Política de Cooldown e Discrição**:
   - Cooldown de 30 dias para qualquer tema dispensado (`dismiss`).
   - Totalmente invisível se o mês estiver equilibrado e sem pendências.
 

@@ -11,9 +11,18 @@ const mockHookDismiss = vi.fn();
 const mockHookConfirmIncome = vi.fn();
 const mockHookConfirmRecurrence = vi.fn();
 const mockHookIgnoreRecurrence = vi.fn();
+const mockHookNext = vi.fn();
+const mockHookPrev = vi.fn();
+const mockHookGoTo = vi.fn();
 
 let mockHookReturn: {
   insight: SmartAdvisorInsight | null;
+  insights: SmartAdvisorInsight[];
+  currentIndex: number;
+  totalCount: number;
+  nextInsight: typeof mockHookNext;
+  prevInsight: typeof mockHookPrev;
+  goToInsight: typeof mockHookGoTo;
   allCandidates: SmartAdvisorInsight[];
   isLoading: boolean;
   isError: boolean;
@@ -25,6 +34,12 @@ let mockHookReturn: {
   refetch: () => Promise<void>;
 } = {
   insight: null,
+  insights: [],
+  currentIndex: 0,
+  totalCount: 0,
+  nextInsight: mockHookNext,
+  prevInsight: mockHookPrev,
+  goToInsight: mockHookGoTo,
   allCandidates: [],
   isLoading: false,
   isError: false,
@@ -53,6 +68,12 @@ describe("SmartAdvisorCard", () => {
     vi.clearAllMocks();
     mockHookReturn = {
       insight: null,
+      insights: [],
+      currentIndex: 0,
+      totalCount: 0,
+      nextInsight: mockHookNext,
+      prevInsight: mockHookPrev,
+      goToInsight: mockHookGoTo,
       allCandidates: [],
       isLoading: false,
       isError: false,
@@ -241,14 +262,61 @@ describe("SmartAdvisorCard", () => {
       expect(triggerSensoryMock).toHaveBeenCalledWith("action");
     });
 
-    it("ao clicar em ação de navegação (Rever assinatura), navega para /insights?aba=recurrences", () => {
+    it("ao clicar em ação de navegação (Rever assinatura), navega para /insights?aba=recurrences com item selecionado", () => {
       render(<SmartAdvisorCard insight={savingsInsight} />);
 
       const actionBtn = screen.getByRole("button", { name: /Rever assinatura/i });
       fireEvent.click(actionBtn);
 
-      expect(mockNavigate).toHaveBeenCalledWith("/insights?aba=recurrences");
+      expect(mockNavigate).toHaveBeenCalledWith("/insights?aba=recurrences&item=streaming-antigo");
       expect(triggerSensoryMock).toHaveBeenCalledWith("selection");
+    });
+
+    it("ao clicar em Registrar pagamento, abre modal LaunchWizard pré-preenchido via query params", () => {
+      const missingExpenseInsight: SmartAdvisorInsight = {
+        id: "missing_expense:youtube",
+        themeKey: "missing_expense:youtube",
+        priority: 1,
+        category: "critical",
+        title: "Conta pendente no mês",
+        description: "YouTube Premium costuma ser cobrada por volta do dia 10 e ainda não foi identificada no mês.",
+        iconName: "alert-triangle",
+        primaryAction: {
+          label: "Registrar pagamento",
+          kind: "register_expense",
+          payload: {
+            name: "YouTube Premium",
+            valueCents: 3990,
+            categoryId: "cat-stream",
+            date: "2026-10-10",
+            cardId: "card-nubank",
+          },
+        },
+      };
+
+      render(<SmartAdvisorCard insight={missingExpenseInsight} />);
+
+      const actionBtn = screen.getByRole("button", { name: /Registrar pagamento/i });
+      fireEvent.click(actionBtn);
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.stringContaining("novo=despesa"),
+      );
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.stringContaining("valor=3990"),
+      );
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.stringContaining("descricao=YouTube+Premium"),
+      );
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.stringContaining("categoria=cat-stream"),
+      );
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.stringContaining("data=2026-10-10"),
+      );
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.stringContaining("cartao=card-nubank"),
+      );
     });
 
     it("quando renderizado sem props, consome insight do hook e executa hook.dismiss", () => {
@@ -260,6 +328,83 @@ describe("SmartAdvisorCard", () => {
       fireEvent.click(dismissBtn);
 
       expect(mockHookDismiss).toHaveBeenCalledWith("dup:netflix");
+    });
+
+    it("não renderiza quando o mês informado for diferente do mês atual (histórico)", () => {
+      mockHookReturn.insight = criticalInsight;
+      const { container } = render(
+        <SmartAdvisorCard month="2020-01" insight={criticalInsight} />,
+      );
+
+      expect(container).toBeEmptyDOMElement();
+      expect(screen.queryByText("Cobrança duplicada detectada")).not.toBeInTheDocument();
+    });
+
+    it("renderiza normalmente quando o mês informado for igual ao mês atual", () => {
+      mockHookReturn.insight = criticalInsight;
+      render(
+        <SmartAdvisorCard month={new Date().toISOString().slice(0, 7)} insight={criticalInsight} />,
+      );
+
+      expect(screen.getByText("Cobrança duplicada detectada")).toBeInTheDocument();
+    });
+
+    it("não renderiza controles de navegação quando há apenas 1 insight (totalCount <= 1)", () => {
+      render(
+        <SmartAdvisorCard
+          insight={criticalInsight}
+          currentIndex={0}
+          totalCount={1}
+        />,
+      );
+
+      expect(screen.queryByLabelText("Sugestão anterior")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Próxima sugestão")).not.toBeInTheDocument();
+      expect(screen.queryByText(/1 de 1/i)).not.toBeInTheDocument();
+    });
+
+    it("renderiza controles de navegação e indicador '1 de 3' quando totalCount > 1", () => {
+      const handleNext = vi.fn();
+      const handlePrev = vi.fn();
+
+      render(
+        <SmartAdvisorCard
+          insight={criticalInsight}
+          currentIndex={0}
+          totalCount={3}
+          onNext={handleNext}
+          onPrev={handlePrev}
+        />,
+      );
+
+      expect(screen.getByText("1 de 3")).toBeInTheDocument();
+      const prevBtn = screen.getByLabelText("Sugestão anterior");
+      const nextBtn = screen.getByLabelText("Próxima sugestão");
+
+      fireEvent.click(nextBtn);
+      expect(handleNext).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(prevBtn);
+      expect(handlePrev).toHaveBeenCalledTimes(1);
+    });
+
+    it("chama hook.nextInsight e hook.prevInsight quando não injetados callbacks controlados", () => {
+      mockHookReturn.insight = criticalInsight;
+      mockHookReturn.totalCount = 2;
+      mockHookReturn.currentIndex = 0;
+
+      render(<SmartAdvisorCard />);
+
+      expect(screen.getByText("1 de 2")).toBeInTheDocument();
+      const nextBtn = screen.getByLabelText("Próxima sugestão");
+      fireEvent.click(nextBtn);
+
+      expect(mockHookNext).toHaveBeenCalledTimes(1);
+
+      const prevBtn = screen.getByLabelText("Sugestão anterior");
+      fireEvent.click(prevBtn);
+
+      expect(mockHookPrev).toHaveBeenCalledTimes(1);
     });
   });
 });

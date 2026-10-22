@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { NotificationsPopover } from "@/components/modules/notifications-popover";
 import { useOnboardingCounts, useReminders } from "@/state";
 import { useOnboardingDismissed } from "@/hooks";
-import { isOnboardingComplete } from "@/domain/onboarding";
+import { shouldShowOnboardingBanner } from "@/domain/onboarding";
 import { cn } from "@/lib/utils";
 
 /**
@@ -18,7 +18,7 @@ export function NotificationsButton() {
   const { isDismissed } = useOnboardingDismissed();
 
   const showOnboarding =
-    !isDismissed && onboardingQuery?.data ? !isOnboardingComplete(onboardingQuery.data) : false;
+    !isDismissed && onboardingQuery?.data ? shouldShowOnboardingBanner(onboardingQuery.data) : false;
 
   const effectiveTotalCount = totalCount + (showOnboarding ? 1 : 0);
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronUp, CreditCard } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, CreditCard, EyeOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
@@ -9,9 +9,11 @@ import type { CardSubscriptionImpact } from "@/domain/insights";
 export interface CardSubscriptionRadarProps {
   impact: CardSubscriptionImpact;
   className?: string;
+  /** Ação de ensino/descarte direto: permite ao usuário cortar ou desconsiderar uma previsão da fatura. */
+  onIgnoreItem?: (itemKey: string) => void;
 }
 
-export function CardSubscriptionRadar({ impact, className }: CardSubscriptionRadarProps) {
+export function CardSubscriptionRadar({ impact, className, onIgnoreItem }: CardSubscriptionRadarProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   if (impact.totalProjectedCents <= 0) {

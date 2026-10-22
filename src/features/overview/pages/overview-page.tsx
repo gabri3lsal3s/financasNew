@@ -22,11 +22,11 @@ import {
   AndroidProBanner,
   SmartAdvisorCard,
   QuickAporteCard,
-  OnboardingCard,
+  OnboardingBanner,
   WelcomeFeatureModal,
 } from "@/components/modules";
 import { isDemoItem } from "@/services/demo-data";
-import { isOnboardingComplete } from "@/domain/onboarding";
+import { shouldShowOnboardingBanner } from "@/domain/onboarding";
 import {
   budgetLimitsByCategory,
   isInheritedLimit,
@@ -109,7 +109,7 @@ export function OverviewPage() {
 
   const showOnboarding =
     !isOnboardingDismissed && onboardingQuery?.data
-      ? !isOnboardingComplete(onboardingQuery.data)
+      ? shouldShowOnboardingBanner(onboardingQuery.data)
       : false;
 
   // Detecção de dados de demonstração ([Exemplo]) para banner informativo
@@ -506,10 +506,10 @@ export function OverviewPage() {
 
           <DashboardAlertsCarousel items={alertItems} />
 
-          <SmartAdvisorCard />
+          {isCurrentMonth ? <SmartAdvisorCard month={month} /> : null}
 
           {showOnboarding && !hasDemoData && onboardingQuery?.data ? (
-            <OnboardingCard counts={onboardingQuery.data} onDismiss={dismissOnboarding} />
+            <OnboardingBanner counts={onboardingQuery.data} onDismiss={dismissOnboarding} />
           ) : null}
 
           {subscription.isReadOnly && <ReadOnlyBanner />}

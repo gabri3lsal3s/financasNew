@@ -19,6 +19,7 @@ import {
   type ServiceSegment,
 } from "./subscriptions";
 import { normalizeText, stripTemporalSuffixes } from "./shared";
+import { shiftMonth } from "@/domain/cards";
 import type { Expense } from "@/types";
 
 export interface ExpenseLike {
@@ -230,6 +231,8 @@ export function detectDuplicateChargesInMonth(
   return maxDuplicateCount >= 2 ? maxDuplicateCount : undefined;
 }
 
+export type RecurrenceLifecycle = "active" | "lapsed";
+
 export interface RecurrenceOccurrence {
   /** Chave estável para aprendizado/feedback (nome normalizado). */
   key: string;
@@ -237,6 +240,10 @@ export interface RecurrenceOccurrence {
   level: RecurrenceKind;
   /** Segmento do serviço (streaming, fitness, cloud_ai, etc.). */
   segment?: ServiceSegment;
+  /** Ciclo de vida da recorrência: active (recente) ou lapsed (cessada há >= 2 ciclos). */
+  lifecycle?: RecurrenceLifecycle;
+  /** Mês mais recente em que houve cobrança (YYYY-MM). */
+  latestMonthCharged?: string;
   /** Meses com ocorrência. */
   months: string[];
   /** Valor médio mensal (centavos). */
@@ -411,6 +418,7 @@ export function calculateRecurringTotals(
     tier?: CutTier;
     savingsIfCutCents?: number;
     level?: string;
+    lifecycle?: RecurrenceLifecycle;
   }[],
 ): RecurringTotalsResult {
   let totalRecurringCents = 0;
@@ -419,6 +427,7 @@ export function calculateRecurringTotals(
   for (const o of activeOccurrences) {
     if (o.level === "similar") continue;
     if (o.level != null && o.level !== "subscription" && o.level !== "recurring") continue;
+    if (o.lifecycle === "lapsed") continue;
 
     totalRecurringCents += o.averageCents;
     if (o.tier === "can_cut") {
@@ -458,29 +467,34 @@ export function calculateTypicalDay(dates: readonly (string | undefined)[]): num
 
 /**
  * Estima a próxima data de cobrança e a contagem de dias restantes.
+ * Identifica também o ciclo de vida da recorrência (active vs lapsed).
  */
 export function estimateNextDueDate(
   typicalDay: number,
   latestMonthCharged: string,
   todayISO?: string,
-): { nextDueDate?: string; daysUntilNextDue?: number; missingThisMonth?: boolean } {
-  if (!todayISO || todayISO.length < 10) return {};
+): { nextDueDate?: string; daysUntilNextDue?: number; missingThisMonth?: boolean; lifecycle?: RecurrenceLifecycle } {
+  if (!todayISO || todayISO.length < 10) return { lifecycle: "active" };
   const currentMonth = todayISO.slice(0, 7);
   const currentDay = parseInt(todayISO.slice(8, 10), 10);
+
+  // Se a última cobrança ocorreu antes do mês imediatamente anterior (M-1),
+  // a despesa cessou/parou há 2+ meses (lapsed/churned).
+  // Não projeta cobrança futura no mês atual nem gera falso alerta de pendência.
+  const prevMonth = shiftMonth(currentMonth, -1);
+  if (latestMonthCharged && latestMonthCharged < prevMonth) {
+    return {
+      lifecycle: "lapsed",
+      missingThisMonth: false,
+    };
+  }
 
   let targetYearMonth = currentMonth;
   const alreadyChargedThisMonth = latestMonthCharged >= currentMonth;
 
   if (alreadyChargedThisMonth) {
     // Já cobrada neste mês -> próxima cobrança é no mês seguinte
-    const [yearStr, monthStr] = currentMonth.split("-");
-    let y = parseInt(yearStr!, 10);
-    let m = parseInt(monthStr!, 10) + 1;
-    if (m > 12) {
-      m = 1;
-      y += 1;
-    }
-    targetYearMonth = `${y}-${String(m).padStart(2, "0")}`;
+    targetYearMonth = shiftMonth(currentMonth, 1);
   }
 
   const [targetYearStr, targetMonthStr] = targetYearMonth.split("-");
@@ -498,7 +512,7 @@ export function estimateNextDueDate(
   // Considera ausente/pendente se não foi cobrada neste mês e o dia típico já passou
   const missingThisMonth = !alreadyChargedThisMonth && currentDay > typicalDay;
 
-  return { nextDueDate, daysUntilNextDue, missingThisMonth };
+  return { nextDueDate, daysUntilNextDue, missingThisMonth, lifecycle: "active" };
 }
 
 /**
@@ -583,7 +597,7 @@ export function detectRecurrences(
     // Previsão temporal de próximo vencimento e dia típico
     const dates = group.map((e) => e.date).filter(Boolean);
     const typicalDayOfMonth = calculateTypicalDay(dates);
-    const { nextDueDate, daysUntilNextDue, missingThisMonth } = estimateNextDueDate(
+    const { nextDueDate, daysUntilNextDue, missingThisMonth, lifecycle } = estimateNextDueDate(
       typicalDayOfMonth,
       latestMonth ?? "",
       todayISO,
@@ -684,6 +698,8 @@ export function detectRecurrences(
         name: cleanDisplayName,
         level: "subscription",
         segment: subscription.segment,
+        lifecycle,
+        latestMonthCharged: latestMonth,
         months,
         averageCents: averageMonthlyCents,
         confidence,
@@ -716,6 +732,8 @@ export function detectRecurrences(
         name: cleanDisplayName,
         level: "recurring",
         segment,
+        lifecycle,
+        latestMonthCharged: latestMonth,
         months,
         averageCents: averageMonthlyCents,
         confidence,
@@ -870,9 +888,15 @@ export function detectIncomeRecurrences(
     if (todayISO && todayISO.length >= 10) {
       const currentMonth = todayISO.slice(0, 7);
       const currentDay = parseInt(todayISO.slice(8, 10), 10);
+      const prevMonth = shiftMonth(currentMonth, -1);
       const alreadyReceivedThisMonth = latestMonth === currentMonth;
 
-      if (alreadyReceivedThisMonth) {
+      if (latestMonth < prevMonth) {
+        // Receita cessou há 2+ meses (lapsed) -> não projeta no mês corrente
+        expectedDate = undefined;
+        daysUntilExpected = undefined;
+        missingThisMonth = false;
+      } else if (alreadyReceivedThisMonth) {
         // Já recebido neste mês -> previsão para o mês seguinte
         const { nextDueDate, daysUntilNextDue } = estimateNextDueDate(
           typicalDayOfMonth,

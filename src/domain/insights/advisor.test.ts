@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   filterAndRankAdvisorInsights,
+  filterAndRankAllAdvisorInsights,
   generateSmartAdvisorInsights,
   type SmartAdvisorInsight,
 } from "./advisor";
@@ -80,6 +81,14 @@ describe("generateSmartAdvisorInsights", () => {
     expect(insights[0]?.priority).toBe(1);
     expect(insights[0]?.category).toBe("critical");
     expect(insights[0]?.title).toBe("Conta pendente no mês");
+    expect(insights[0]?.primaryAction?.kind).toBe("register_expense");
+    expect(insights[0]?.primaryAction?.payload).toEqual(
+      expect.objectContaining({
+        name: "Energia Elétrica",
+        valueCents: 5590,
+        date: "2026-10-10",
+      }),
+    );
   });
 
   it("gera insight de prioridade 2 (Entrada) para salário CLT pronto para confirmação em 1 toque", () => {
@@ -271,14 +280,37 @@ describe("filterAndRankAdvisorInsights", () => {
     expect(result).toBeNull();
   });
 
-  it("respeita o limite estrito de 1 insight por dia (retorna null se dispensado hoje)", () => {
-    const result = filterAndRankAdvisorInsights([insightCrit, insightIncome], {
+  it("respeita o limite de dispensa diária para itens regulares (retorna null se dispensado hoje)", () => {
+    const result = filterAndRankAdvisorInsights([insightSavings, insightIncome], {
       currentDayISO: "2026-10-22",
       lastDismissedDay: "2026-10-22",
     });
 
     expect(result).toBeNull();
   });
+
+  it("permite que insight crítico de prioridade 1 apareça mesmo se o dia estiver silenciado para itens regulares", () => {
+    const result = filterAndRankAdvisorInsights([insightCrit, insightIncome], {
+      currentDayISO: "2026-10-22",
+      lastDismissedDay: "2026-10-22",
+    });
+
+    expect(result).toEqual(insightCrit);
+  });
+
+  it("retorna lista completa ordenada de todos os insights elegíveis em filterAndRankAllAdvisorInsights", () => {
+    const all = filterAndRankAllAdvisorInsights([
+      insightCalib,
+      insightSavings,
+      insightIncome,
+      insightCrit,
+    ]);
+
+    expect(all).toHaveLength(4);
+    expect(all.map((i) => i.priority)).toEqual([1, 2, 3, 4]);
+    expect(all[0]?.id).toBe("dup:netflix");
+  });
+
 
   it("exibe insight se a dispensa anterior tiver ocorrido em outro dia", () => {
     const result = filterAndRankAdvisorInsights([insightIncome], {

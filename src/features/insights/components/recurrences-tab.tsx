@@ -24,6 +24,8 @@ export interface RecurrencesTabProps {
   setShowIgnored: (val: boolean | ((prev: boolean) => boolean)) => void;
   onFeedback: (occurrenceKey: string, decision: FeedbackDecision | null) => void;
   cards?: CreditCard[];
+  /** Chave da ocorrência a ser aberta inicialmente para auditoria (ex.: vindo de atalho da Home) */
+  initialSelectedKey?: string;
 }
 
 export function RecurrencesTab({
@@ -38,6 +40,7 @@ export function RecurrencesTab({
   setShowIgnored,
   onFeedback,
   cards: cardsProp,
+  initialSelectedKey,
 }: RecurrencesTabProps) {
   const cardsQuery = useCreditCards();
 
@@ -48,7 +51,9 @@ export function RecurrencesTab({
     return impacts.filter((impact) => impact.totalProjectedCents > 0);
   }, [cardsProp, cardsQuery.data, activeOccurrences]);
 
-  const [selectedOccurrenceKey, setSelectedOccurrenceKey] = useState<string | null>(null);
+  const [selectedOccurrenceKey, setSelectedOccurrenceKey] = useState<string | null>(
+    () => initialSelectedKey ?? null,
+  );
   const [convertingOccurrence, setConvertingOccurrence] = useState<RecurrenceOccurrence | null>(null);
 
   const selectedOccurrence = useMemo(() => {

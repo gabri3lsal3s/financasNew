@@ -107,11 +107,11 @@ describe("NotificationsPopover", () => {
 
     await user.click(screen.getByRole("button", { name: "Sininho" }));
     expect(screen.getByText("Configuração inicial")).toBeInTheDocument();
-    expect(screen.getByText("1/5 passos")).toBeInTheDocument();
+    expect(screen.getByText("1/4 passos")).toBeInTheDocument();
 
     const dismissBtn = screen.getByRole("button", { name: /Ignorar configuração inicial/i });
     await user.click(dismissBtn);
 
-    expect(screen.queryByText("1/5 passos")).not.toBeInTheDocument();
+    expect(screen.queryByText("1/4 passos")).not.toBeInTheDocument();
   });
 });

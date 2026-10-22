@@ -445,6 +445,7 @@ export function InsightsPage({
       setShowIgnored={setShowIgnored}
       onFeedback={handleFeedback}
       cards={cardsQuery.data ?? []}
+      initialSelectedKey={searchParams?.get("item") || undefined}
     />
   );
 

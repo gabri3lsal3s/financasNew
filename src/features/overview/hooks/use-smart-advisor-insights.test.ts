@@ -490,4 +490,124 @@ describe("useSmartAdvisorInsights", () => {
       expect(stored).toContain("income:consultoria dev");
     });
   });
+
+  describe("Fila Sequencial e Navegação 1 de N", () => {
+    const multiExpenses: ExpenseLike[] = [
+      // Netflix duplicada (Prioridade 1)
+      {
+        id: "e1",
+        description: "Netflix",
+        valueCents: 5590,
+        month: "2026-10",
+        date: "2026-10-05",
+        categoryId: "cat-stream",
+      },
+      {
+        id: "e2",
+        description: "Netflix",
+        valueCents: 5590,
+        month: "2026-10",
+        date: "2026-10-18",
+        categoryId: "cat-stream",
+      },
+      {
+        id: "e3",
+        description: "Netflix",
+        valueCents: 5590,
+        month: "2026-09",
+        date: "2026-09-05",
+        categoryId: "cat-stream",
+      },
+    ];
+
+    const multiIncomes: IncomeLike[] = [
+      // Salário fixo (Prioridade 2)
+      {
+        id: "i1",
+        description: "Salário ACME",
+        valueCents: 750000,
+        month: "2026-09",
+        date: "2026-09-22",
+        categoryId: "cat-sal",
+      },
+      {
+        id: "i2",
+        description: "Salário ACME",
+        valueCents: 750000,
+        month: "2026-08",
+        date: "2026-08-22",
+        categoryId: "cat-sal",
+      },
+    ];
+
+    it("expõe múltiplos insights elegíveis com totalCount e insights ordenados", () => {
+      const { result } = renderHook(() =>
+        useSmartAdvisorInsights({
+          expenses: multiExpenses,
+          incomes: multiIncomes,
+          todayISO: TODAY,
+          nowMs: NOW_MS,
+        }),
+      );
+
+      expect(result.current.totalCount).toBeGreaterThanOrEqual(2);
+      expect(result.current.insights).toHaveLength(result.current.totalCount);
+      expect(result.current.currentIndex).toBe(0);
+      expect(result.current.insight?.priority).toBe(1);
+    });
+
+    it("permite navegar entre as sugestões com nextInsight e prevInsight", () => {
+      const { result } = renderHook(() =>
+        useSmartAdvisorInsights({
+          expenses: multiExpenses,
+          incomes: multiIncomes,
+          todayISO: TODAY,
+          nowMs: NOW_MS,
+        }),
+      );
+
+      expect(result.current.currentIndex).toBe(0);
+      const firstInsight = result.current.insight;
+
+      act(() => {
+        result.current.nextInsight();
+      });
+
+      expect(result.current.currentIndex).toBe(1);
+      expect(result.current.insight?.id).not.toBe(firstInsight?.id);
+
+      act(() => {
+        result.current.prevInsight();
+      });
+
+      expect(result.current.currentIndex).toBe(0);
+      expect(result.current.insight?.id).toBe(firstInsight?.id);
+    });
+
+    it("ao dispensar com múltiplos insights na fila, avança para o próximo sem fechar o card pelo dia", () => {
+      const { result } = renderHook(() =>
+        useSmartAdvisorInsights({
+          expenses: multiExpenses,
+          incomes: multiIncomes,
+          todayISO: TODAY,
+          nowMs: NOW_MS,
+        }),
+      );
+
+      const initialCount = result.current.totalCount;
+      expect(initialCount).toBeGreaterThanOrEqual(2);
+      const firstId = result.current.insight?.id;
+
+      act(() => {
+        result.current.dismiss();
+      });
+
+      // O card NÃO sumiu: o próximo item assumiu a tela
+      expect(result.current.insight).not.toBeNull();
+      expect(result.current.insight?.id).not.toBe(firstId);
+      expect(result.current.totalCount).toBe(initialCount - 1);
+      // Não marca o dia como silenciado pois ainda há itens na fila
+      expect(localStorage.getItem(SMART_ADVISOR_LAST_DISMISSED_DAY_KEY)).toBeNull();
+    });
+  });
 });

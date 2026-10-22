@@ -36,6 +36,8 @@ export { HighlightRow } from "./highlight-row";
 export type { HighlightRowProps } from "./highlight-row";
 export { OnboardingCard } from "./onboarding-card";
 export type { OnboardingCardProps } from "./onboarding-card";
+export { OnboardingBanner } from "./onboarding-banner";
+export type { OnboardingBannerProps } from "./onboarding-banner";
 export { DemoModeBanner } from "./demo-mode-banner";
 export type { DemoModeBannerProps } from "./demo-mode-banner";
 export { CategoryDonut } from "./category-donut";

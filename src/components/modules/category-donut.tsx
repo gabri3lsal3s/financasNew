@@ -294,19 +294,19 @@ export function CategoryDonut({
 
   const layoutClass =
     layout === "vertical"
-      ? "flex-col items-center gap-4 sm:gap-6"
+      ? "flex-col items-center gap-4 sm:gap-5"
       : layout === "horizontal"
-        ? "flex-row items-center gap-5 sm:gap-6"
+        ? "flex-row items-center gap-4 sm:gap-5"
         : layout === "side-by-side"
-          ? "flex-col items-center gap-5 lg:flex-row lg:items-center lg:gap-6"
-          : "flex-col items-center gap-6 md:flex-row md:items-center lg:gap-8";
+          ? "flex-col items-center gap-4 lg:flex-row lg:items-center lg:gap-5"
+          : "flex-col items-center gap-4 sm:gap-5 md:flex-row md:items-center lg:gap-6";
 
   const svgSizeClass =
     donutSize === "sm"
-      ? "size-36 sm:size-40 md:size-44"
+      ? "size-32 sm:size-36 md:size-40"
       : donutSize === "lg"
-        ? "size-44 sm:size-48 md:size-52 lg:size-56 xl:size-60"
-        : "size-40 sm:size-44 md:size-48 lg:size-52";
+        ? "size-44 sm:size-48 md:size-52"
+        : "size-36 sm:size-40 md:size-44 lg:size-44 xl:size-48";
 
   return (
     <div
@@ -436,13 +436,10 @@ export function CategoryDonut({
         </div>
       </div>
 
-      {/* Lista de fatias com legendas detalhadas em 2 colunas no desktop quando houver múltiplos itens */}
+      {/* Lista de fatias com legendas detalhadas em coluna única fluida e legível */}
       <ul
         className={cn(
-          "w-full min-w-0",
-          slices.length > 4
-            ? "grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2"
-            : "flex flex-col space-y-1.5 sm:space-y-2",
+          "w-full min-w-0 flex flex-col space-y-1.5 sm:space-y-2 overflow-hidden",
           listClassName,
         )}
       >
@@ -485,7 +482,7 @@ export function CategoryDonut({
                       )}
                     />
                   )}
-                  <div className="min-w-0 flex-1 flex flex-col">
+                  <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
                     <span
                       className={cn(
                         "truncate font-semibold transition-colors",
@@ -505,7 +502,7 @@ export function CategoryDonut({
                   <MoneyText
                     cents={slice.valueCents}
                     tone="default"
-                    className="privacy-mask min-w-[4.5rem] text-right text-xs font-semibold shrink-0 tabular-nums"
+                    className="privacy-mask text-right text-xs font-semibold shrink-0 tabular-nums whitespace-nowrap"
                   />
                 </div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/40 dark:bg-border/60" aria-hidden="true">

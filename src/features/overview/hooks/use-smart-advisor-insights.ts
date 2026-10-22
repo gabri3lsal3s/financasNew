@@ -12,7 +12,7 @@ import type { FeedbackMap } from "@/domain/insights/feedback";
 import { normalizeText } from "@/domain/insights/shared";
 import {
   DEFAULT_DISMISS_DAYS,
-  filterAndRankAdvisorInsights,
+  filterAndRankAllAdvisorInsights,
   generateSmartAdvisorInsights,
   SMART_ADVISOR_DISMISSALS_KEY,
   SMART_ADVISOR_LAST_DISMISSED_DAY_KEY,
@@ -130,8 +130,20 @@ export interface UseSmartAdvisorInsightsOptions {
 }
 
 export interface UseSmartAdvisorInsightsResult {
-  /** Insight priorizado a ser exibido no card da Home, ou null se dispensado/regular. */
+  /** Insight priorizado atualmente selecionado na fila, ou null se não houver. */
   insight: SmartAdvisorInsight | null;
+  /** Lista ordenada de todos os insights elegíveis no momento (sem cooldown). */
+  insights: SmartAdvisorInsight[];
+  /** Índice da sugestão ativa na fila (0 a totalCount - 1). */
+  currentIndex: number;
+  /** Total de sugestões ativas na fila. */
+  totalCount: number;
+  /** Avança para a próxima sugestão da fila. */
+  nextInsight: () => void;
+  /** Retorna à sugestão anterior da fila. */
+  prevInsight: () => void;
+  /** Seleciona uma sugestão específica pelo índice. */
+  goToInsight: (index: number) => void;
   /** Todos os candidatos gerados antes do ranqueamento e filtros de discrição. */
   allCandidates: SmartAdvisorInsight[];
   /** Indica se os dados necessários estão sendo carregados. */
@@ -140,7 +152,7 @@ export interface UseSmartAdvisorInsightsResult {
   isError: boolean;
   /** Erro disparado por alguma das consultas, se houver. */
   error: unknown;
-  /** Dispensa o insight atual ou um tema específico por N dias (padrão 30) e silencia hoje. */
+  /** Dispensa o insight atual ou um tema específico por N dias (padrão 30). */
   dismiss: (themeKey?: string, days?: number) => void;
   /** Confirma o monitoramento contínuo de uma recorrência (ensina o motor). */
   confirmRecurrence: (occurrenceKey: string) => Promise<void>;
@@ -315,8 +327,10 @@ export function useSmartAdvisorInsights(
     return (feedbackQuery.data ?? {}) as FeedbackMap;
   }, [options.feedbackMap, feedbackQuery.data]);
 
+  const [currentIndex, setCurrentIndex] = useState(0);
+
   // Candidatos e ranqueamento
-  const { allCandidates, rankedInsight } = useMemo(() => {
+  const { allCandidates, eligibleInsights } = useMemo(() => {
     const occurrences = detectRecurrences(allExpenses, {
       todayISO: todayISOStr,
       monthlyIncomeCents,
@@ -334,14 +348,14 @@ export function useSmartAdvisorInsights(
       todayISO: todayISOStr,
     });
 
-    const ranked = filterAndRankAdvisorInsights(candidates, {
+    const eligible = filterAndRankAllAdvisorInsights(candidates, {
       dismissals: effectiveDismissals,
       lastDismissedDay: effectiveLastDismissedDay ?? undefined,
       currentDayISO: todayISOStr,
       nowMs,
     });
 
-    return { allCandidates: candidates, rankedInsight: ranked };
+    return { allCandidates: candidates, eligibleInsights: eligible };
   }, [
     allExpenses,
     allIncomes,
@@ -354,21 +368,57 @@ export function useSmartAdvisorInsights(
     nowMs,
   ]);
 
-  // Ação de dispensa com cooldown
+  const totalCount = eligibleInsights.length;
+  const safeIndex = totalCount > 0 ? Math.min(currentIndex, totalCount - 1) : 0;
+  const activeInsight = eligibleInsights[safeIndex] ?? null;
+
+  const nextInsight = useCallback(() => {
+    if (totalCount <= 1) return;
+    setCurrentIndex((prev) => (prev + 1) % totalCount);
+    triggerSensory("selection");
+  }, [totalCount]);
+
+  const prevInsight = useCallback(() => {
+    if (totalCount <= 1) return;
+    setCurrentIndex((prev) => (prev - 1 + totalCount) % totalCount);
+    triggerSensory("selection");
+  }, [totalCount]);
+
+  const goToInsight = useCallback(
+    (index: number) => {
+      if (totalCount === 0) return;
+      const clamped = Math.max(0, Math.min(index, totalCount - 1));
+      setCurrentIndex(clamped);
+      triggerSensory("selection");
+    },
+    [totalCount],
+  );
+
+  // Ação de dispensa com cooldown e avanço sequencial
   const dismiss = useCallback(
     (themeKey?: string, days = DEFAULT_DISMISS_DAYS) => {
-      const effectiveDay = todayISOStr;
-      const keyToDismiss = themeKey ?? rankedInsight?.themeKey;
+      const keyToDismiss = themeKey ?? activeInsight?.themeKey;
+      const isLastRemaining =
+        eligibleInsights.length <= 1 ||
+        (keyToDismiss != null &&
+          eligibleInsights.length === 1 &&
+          eligibleInsights[0]?.themeKey === keyToDismiss);
+
+      const effectiveDay = isLastRemaining ? todayISOStr : null;
 
       if (localDismissals !== undefined || localLastDismissedDay !== undefined) {
-        setLocalLastDismissedDay(effectiveDay);
+        if (effectiveDay) {
+          setLocalLastDismissedDay(effectiveDay);
+        }
         if (keyToDismiss) {
           const expiry = nowMs + days * 24 * 60 * 60 * 1000;
           setLocalDismissals((prev) => ({ ...(prev ?? {}), [keyToDismiss]: expiry }));
         }
       } else {
         initStorageIfNeeded();
-        memoryLastDismissedDay = effectiveDay;
+        if (effectiveDay) {
+          memoryLastDismissedDay = effectiveDay;
+        }
         if (keyToDismiss) {
           const expiry = nowMs + days * 24 * 60 * 60 * 1000;
           memoryDismissals = {
@@ -379,7 +429,9 @@ export function useSmartAdvisorInsights(
 
         if (typeof window !== "undefined" && window.localStorage) {
           try {
-            window.localStorage.setItem(SMART_ADVISOR_LAST_DISMISSED_DAY_KEY, effectiveDay);
+            if (effectiveDay) {
+              window.localStorage.setItem(SMART_ADVISOR_LAST_DISMISSED_DAY_KEY, effectiveDay);
+            }
             if (keyToDismiss) {
               window.localStorage.setItem(
                 SMART_ADVISOR_DISMISSALS_KEY,
@@ -393,9 +445,10 @@ export function useSmartAdvisorInsights(
         notifySubscribers();
       }
 
+      setCurrentIndex((prev) => (prev > 0 ? prev - 1 : 0));
       triggerSensory("action");
     },
-    [todayISOStr, rankedInsight?.themeKey, localDismissals, localLastDismissedDay, nowMs],
+    [todayISOStr, activeInsight?.themeKey, eligibleInsights, localDismissals, localLastDismissedDay, nowMs],
   );
 
   // Confirmação de recorrência (calibração)
@@ -449,7 +502,7 @@ export function useSmartAdvisorInsights(
         source_ref: null,
       });
 
-      const keyToDismiss = rankedInsight?.themeKey ?? `income:${normalizeText(payload.name)}`;
+      const keyToDismiss = activeInsight?.themeKey ?? `income:${normalizeText(payload.name)}`;
       dismiss(keyToDismiss, DEFAULT_DISMISS_DAYS);
       triggerSensory("success");
       pushToast({
@@ -470,7 +523,7 @@ export function useSmartAdvisorInsights(
         },
       });
     },
-    [createIncomeMutation, deleteIncomeMutation, todayISOStr, rankedInsight?.themeKey, dismiss],
+    [createIncomeMutation, deleteIncomeMutation, todayISOStr, activeInsight?.themeKey, dismiss],
   );
 
   const isLoading =
@@ -544,7 +597,13 @@ export function useSmartAdvisorInsights(
   ]);
 
   return {
-    insight: rankedInsight,
+    insight: activeInsight,
+    insights: eligibleInsights,
+    currentIndex: safeIndex,
+    totalCount,
+    nextInsight,
+    prevInsight,
+    goToInsight,
     allCandidates,
     isLoading,
     isError,

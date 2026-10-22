@@ -588,7 +588,8 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(navigateMock).toHaveBeenCalledWith("/investments?tab=aporte&valor=150000");
   });
 
-  it("renderiza OnboardingCard na Home quando o checklist inicial estiver incompleto (Fase 6 — Tarefa 6.3)", () => {
+  it("renderiza OnboardingBanner na Home quando checklist estiver incompleto e abre modal ao clicar Continuar", async () => {
+    const user = userEvent.setup();
     onboardingCountsMock = {
       expenseCategories: 1,
       incomeCategories: 0,
@@ -598,12 +599,27 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     };
     render(<OverviewPage />);
     expect(screen.getByText("Configure sua conta")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Continuar/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Continuar/i }));
     expect(screen.getByText("Ativar Leitor Automático de Notificações")).toBeInTheDocument();
     expect(
       screen.getByText(
         "Seu banco não notificou uma transferência? Basta tocar em Compartilhar Comprovante para o Guia Financeiro.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("não renderiza OnboardingBanner quando o usuário já for ativo (smart dismiss)", () => {
+    onboardingCountsMock = {
+      expenseCategories: 1,
+      incomeCategories: 0,
+      cards: 1,
+      transactions: 0,
+      notificationsEnabled: false,
+    };
+    render(<OverviewPage />);
+    expect(screen.queryByText("Configure sua conta")).not.toBeInTheDocument();
   });
 
   it("renderiza WelcomeFeatureModal na Home no primeiro acesso do usuário (Fase 6 — Tarefa 6.4)", () => {

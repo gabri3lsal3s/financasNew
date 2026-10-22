@@ -10,6 +10,8 @@
 
 import { clampDay } from "@/domain/competence";
 import { formatBRL, type RecurrenceOccurrence } from "./recurrences";
+import { findMatchingServiceKey } from "./subscriptions";
+import { normalizeText, stripTemporalSuffixes } from "./shared";
 
 export interface CardForImpact {
   id: string;
@@ -26,6 +28,8 @@ export interface CardSubscriptionImpactOptions {
   availableLimitCents?: number | null;
   /** Total de gastos já lançados na fatura aberta em centavos (usado se availableLimitCents não for informado). */
   currentInvoiceSpentCents?: number;
+  /** Despesas já lançadas no cartão/fatura atual para supressão de duplicidades e canibalização por parcelamento. */
+  existingCardExpenses?: readonly { description?: string | null; installmentGroupId?: string | null }[];
 }
 
 export interface ProjectedSubscriptionItem {
@@ -98,6 +102,12 @@ export function getNextInvoiceClosingDate(closingDay: number, referenceDateISO: 
   return toISODateString(targetYear, targetMonth, clampedDay);
 }
 
+function extractServiceKey(description: string): string {
+  const trimmed = description.trim();
+  const matched = findMatchingServiceKey(trimmed);
+  return matched ?? normalizeText(stripTemporalSuffixes(trimmed));
+}
+
 /**
  * Avalia se uma assinatura / recorrência tem cobrança prevista antes da data de fechamento da fatura.
  */
@@ -107,6 +117,11 @@ export function isSubscriptionDueBeforeClosing(
   referenceDateISO: string,
   cardClosingDay: number,
 ): boolean {
+  // Se a recorrência estiver descontinuada/encerrada (lapsed), nunca projeta na fatura
+  if (occurrence.lifecycle === "lapsed") {
+    return false;
+  }
+
   // Se possuir data estimada calculada pelo motor:
   if (occurrence.nextDueDate) {
     if (occurrence.nextDueDate >= referenceDateISO && occurrence.nextDueDate <= closingDateISO) {
@@ -151,16 +166,36 @@ export function calculateCardSubscriptionImpact(
   const msPerDay = 1000 * 60 * 60 * 24;
   const daysUntilClosing = Math.max(0, Math.round((closingTime - todayTime) / msPerDay));
 
-  // Filtra ocorrências associadas a este cartão (subscriptions e recurring)
+  // Filtra ocorrências associadas a este cartão (subscriptions e recurring) que não estejam descontinuadas
   const cardOccurrences = occurrences.filter(
     (o) => (o.cardId === card.id || (o.paymentMethod === "credit_card" && o.cardId === card.id)) &&
-      (o.level === "subscription" || o.level === "recurring"),
+      (o.level === "subscription" || o.level === "recurring") &&
+      o.lifecycle !== "lapsed",
   );
+
+  // Mapeia serviços já faturados/lançados na fatura aberta (ex.: parcelamentos ou compras avulsas já existentes)
+  const billedServiceKeys = new Set<string>();
+  if (options.existingCardExpenses && options.existingCardExpenses.length > 0) {
+    for (const exp of options.existingCardExpenses) {
+      const raw = (exp.description ?? "").trim();
+      if (raw) {
+        billedServiceKeys.add(extractServiceKey(raw));
+      }
+    }
+  }
 
   const items: ProjectedSubscriptionItem[] = [];
   let totalProjectedCents = 0;
 
   for (const occ of cardOccurrences) {
+    // Se este serviço já foi faturado nesta fatura (ex.: parcela 8/12 da Vivo Easy já lançada),
+    // suprime a projeção fantasma para evitar cobrança duplicada.
+    const occKey = occ.key.replace(/^(sub|recurring):/, "");
+    const occNameKey = extractServiceKey(occ.name);
+    if (billedServiceKeys.has(occKey) || billedServiceKeys.has(occNameKey)) {
+      continue;
+    }
+
     if (isSubscriptionDueBeforeClosing(occ, nextClosingDate, todayISO, card.closing_day)) {
       const amountCents = occ.averageCents;
       totalProjectedCents += amountCents;

@@ -4,8 +4,8 @@ import {
   AlertTriangle,
   ArrowDownLeft,
   Check,
+  ChevronLeft,
   ChevronRight,
-  ExternalLink,
   HelpCircle,
   TrendingDown,
   X,
@@ -13,16 +13,38 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { currentMonth } from "@/lib/date";
 import { useSmartAdvisorInsights } from "@/features/overview/hooks";
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
 
 export interface SmartAdvisorCardProps {
   className?: string;
   /**
+   * Mês de referência YYYY-MM.
+   * Se omitido, assume o mês corrente. Se fornecido e for diferente do mês atual, o card não se renderiza.
+   */
+  month?: string;
+  /**
    * Insight específico a ser renderizado (modo controlado para testes ou composição).
    * Se omitido, o componente consome diretamente do hook useSmartAdvisorInsights().
    */
   insight?: SmartAdvisorInsight | null;
+  /**
+   * Índice do insight exibido (modo controlado).
+   */
+  currentIndex?: number;
+  /**
+   * Total de insights disponíveis na fila (modo controlado).
+   */
+  totalCount?: number;
+  /**
+   * Callback ao avançar para a próxima sugestão.
+   */
+  onNext?: () => void;
+  /**
+   * Callback ao retornar para a sugestão anterior.
+   */
+  onPrev?: () => void;
   /**
    * Callback ao dispensar o card.
    */
@@ -51,29 +73,54 @@ export interface SmartAdvisorCardProps {
  *
  * Apresenta recomendações contextuais de alta prioridade, confirmação de rendas
  * habituais em 1 clique e perguntas de aprendizado ativo para calibrar o motor.
- * Respeita a regra de discrição (100% oculto se o mês estiver regular ou se dispensado).
+ * Respeita a regra de discrição (100% oculto se o mês estiver regular, dispensado ou fora do mês vigente).
  */
 export function SmartAdvisorCard({
   className,
+  month,
   insight: controlledInsight,
+  currentIndex: controlledCurrentIndex,
+  totalCount: controlledTotalCount,
+  onNext,
+  onPrev,
   onDismiss,
   onConfirmRecurrence,
   onIgnoreRecurrence,
   onConfirmIncome,
 }: SmartAdvisorCardProps) {
   const navigate = useNavigate();
+  const isCurrentMonth = month ? month === currentMonth() : true;
 
-  // Hook interno (utilizado se não houver insight controlado injetado)
+  // Hook interno (utilizado se não houver insight controlado injetado e estiver no mês atual)
   const hook = useSmartAdvisorInsights({
-    enabled: controlledInsight === undefined,
+    month,
+    enabled: controlledInsight === undefined && isCurrentMonth,
   });
 
   const activeInsight = controlledInsight !== undefined ? controlledInsight : hook.insight;
+  const currentIndex = controlledCurrentIndex ?? hook.currentIndex;
+  const totalCount = controlledTotalCount ?? hook.totalCount;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!activeInsight) {
+  if (!isCurrentMonth || !activeInsight) {
     return null;
   }
+
+  const handleNext = () => {
+    if (onNext) {
+      onNext();
+    } else {
+      hook.nextInsight();
+    }
+  };
+
+  const handlePrev = () => {
+    if (onPrev) {
+      onPrev();
+    } else {
+      hook.prevInsight();
+    }
+  };
 
   const handleDismiss = () => {
     if (onDismiss) {
@@ -144,22 +191,68 @@ export function SmartAdvisorCard({
   };
 
   const handleActionClick = () => {
-    if (activeInsight.category === "savings" || activeInsight.primaryAction?.kind === "cut_subscription") {
-      navigate?.("/insights?aba=recurrences");
+    // 1. Registro pré-preenchido de despesa pendente -> abre LaunchWizard modal
+    if (
+      activeInsight.primaryAction?.kind === "register_expense" ||
+      (activeInsight.category === "critical" && !activeInsight.id.startsWith("dup:"))
+    ) {
+      const p = activeInsight.primaryAction?.payload as
+        | {
+            name?: string;
+            valueCents?: number;
+            categoryId?: string;
+            date?: string;
+            forma?: string;
+            cardId?: string;
+          }
+        | undefined;
+
+      const params = new URLSearchParams(window.location.search);
+      params.set("novo", "despesa");
+      params.set("modo", "rapido");
+      if (p?.valueCents) params.set("valor", String(p.valueCents));
+      if (p?.name) params.set("descricao", p.name);
+      if (p?.categoryId) params.set("categoria", p.categoryId);
+      if (p?.date) params.set("data", p.date);
+      if (p?.forma) params.set("forma", p.forma);
+      if (p?.cardId) params.set("cartao", p.cardId);
+
+      navigate?.(`?${params.toString()}`);
       return;
     }
 
-    if (activeInsight.category === "critical") {
-      if (activeInsight.id.startsWith("dup:")) {
-        navigate?.("/insights?aba=recurrences");
-      } else {
-        navigate?.("/transactions");
-      }
-      return;
-    }
-
+    // 2. Registro pré-preenchido de renda variável habitual -> abre LaunchWizard modal
     if (activeInsight.category === "income" && activeInsight.primaryAction?.kind === "open_income") {
-      navigate?.("/transactions?tipo=receita");
+      const p = activeInsight.primaryAction?.payload as
+        | {
+            name?: string;
+            categoryId?: string;
+            date?: string;
+            valueCents?: number;
+          }
+        | undefined;
+
+      const params = new URLSearchParams(window.location.search);
+      params.set("novo", "receita");
+      params.set("modo", "rapido");
+      if (p?.name) params.set("descricao", p.name);
+      if (p?.categoryId) params.set("categoria", p.categoryId);
+      if (p?.date) params.set("data", p.date);
+      if (p?.valueCents) params.set("valor", String(p.valueCents));
+
+      navigate?.(`?${params.toString()}`);
+      return;
+    }
+
+    // 3. Rever assinatura ou cobrança duplicada -> foca o item na aba de recorrências
+    if (
+      activeInsight.category === "savings" ||
+      activeInsight.primaryAction?.kind === "cut_subscription" ||
+      activeInsight.id.startsWith("dup:")
+    ) {
+      const p = activeInsight.primaryAction?.payload as { key?: string } | undefined;
+      const itemKey = p?.key ?? activeInsight.themeKey.replace(/^(dup:|savings:|price_adj:)/, "");
+      navigate?.(`/insights?aba=recurrences&item=${encodeURIComponent(itemKey)}`);
       return;
     }
   };
@@ -218,17 +311,48 @@ export function SmartAdvisorCard({
           </h3>
         </div>
 
-        {/* Botão sutil de dispensar por 30 dias */}
-        <Button
-          variant="ghost"
-          size="sm"
-          sensoryIntent="action"
-          onClick={handleDismiss}
-          className="text-xs text-muted-foreground hover:text-foreground h-7 px-2 shrink-0 self-end sm:self-auto gap-1"
-        >
-          <X className="size-3.5" aria-hidden="true" />
-          <span>Dispensar por 30 dias</span>
-        </Button>
+        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+          {/* Navegação compacta 1 de N quando houver mais de uma sugestão */}
+          {totalCount > 1 && (
+            <div className="flex items-center rounded-md border border-border/80 bg-surface-hover/50 px-1 py-0.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Sugestão anterior"
+                sensoryIntent="selection"
+                onClick={handlePrev}
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+              >
+                <ChevronLeft className="size-3.5" aria-hidden="true" />
+              </Button>
+              <span className="text-[11px] font-medium text-muted-foreground tabular-nums px-1.5 select-none whitespace-nowrap">
+                {currentIndex + 1} de {totalCount}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Próxima sugestão"
+                sensoryIntent="selection"
+                onClick={handleNext}
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+              >
+                <ChevronRight className="size-3.5" aria-hidden="true" />
+              </Button>
+            </div>
+          )}
+
+          {/* Botão sutil de dispensar por 30 dias */}
+          <Button
+            variant="ghost"
+            size="sm"
+            sensoryIntent="action"
+            onClick={handleDismiss}
+            className="text-xs text-muted-foreground hover:text-foreground h-7 px-2 shrink-0 gap-1"
+          >
+            <X className="size-3.5" aria-hidden="true" />
+            <span>Dispensar por 30 dias</span>
+          </Button>
+        </div>
       </div>
 
       {/* Descrição contextual */}
@@ -284,11 +408,7 @@ export function SmartAdvisorCard({
             className="gap-1.5 text-xs h-8"
           >
             <span>{activeInsight.primaryAction.label}</span>
-            {activeInsight.primaryAction.kind === "open_income" ? (
-              <ExternalLink className="size-3.5" aria-hidden="true" />
-            ) : (
-              <ChevronRight className="size-3.5" aria-hidden="true" />
-            )}
+            <ChevronRight className="size-3.5" aria-hidden="true" />
           </Button>
         ) : null}
       </div>
