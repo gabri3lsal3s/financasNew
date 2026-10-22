@@ -244,12 +244,7 @@ export function StepQuick({
       </div>
 
       {/* 4. Grade Compacta de Categorias em 1 Toque */}
-      <div
-        className={cn(
-          "flex flex-col gap-1.5 rounded-xl transition-colors",
-          isCategoryUnconfirmed && "p-2 border border-warning-border bg-warning/5 ring-1 ring-warning-border/40",
-        )}
-      >
+      <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-foreground">Categoria</span>

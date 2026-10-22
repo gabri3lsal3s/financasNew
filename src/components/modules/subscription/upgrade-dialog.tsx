@@ -87,7 +87,7 @@ export function UpgradeDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={context ?? "Ativar Plano Pro"}
-      description="Acesso completo e ilimitado ao ÁXIS Pro."
+      description="Acesso completo e ilimitado ao Áxis Pro."
       size="xl"
     >
       {/* Alternador de periodicidade */}

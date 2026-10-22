@@ -7,7 +7,7 @@ export interface LogoFullProps {
   className?: string;
   /** Classes adicionais para o símbolo / ícone */
   markClassName?: string;
-  /** Classes adicionais para a tipografia "ÁXIS" */
+  /** Classes adicionais para a tipografia "Áxis" */
   wordmarkClassName?: string;
   /** Classes adicionais para o subtítulo */
   subtitleClassName?: string;
@@ -61,7 +61,7 @@ const SIZE_PRESETS = {
 } as const;
 
 /**
- * LogoFull — Componente oficial de lockup completo da marca ÁXIS Finance.
+ * LogoFull — Componente oficial de lockup completo da marca Áxis Finance.
  * Combina o símbolo orbital oficial com o wordmark corporativo e subtítulo,
  * permitindo orientação horizontal e vertical e alternância Pro/Free e Dark/Light.
  */
@@ -90,7 +90,7 @@ export function LogoFull({
       onClick={onClick}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
-      aria-label={ariaLabel ?? (isProActive ? "ÁXIS PRO • Finance" : "ÁXIS • Finance")}
+      aria-label={ariaLabel ?? (isProActive ? "Áxis PRO • Finance" : "Áxis • Finance")}
       className={cn(
         "inline-flex select-none min-w-0 transition-opacity",
         isVertical
@@ -122,7 +122,7 @@ export function LogoFull({
               wordmarkClassName,
             )}
           >
-            ÁXIS
+            Áxis
           </span>
           {isProActive ? (
             <span

@@ -83,7 +83,7 @@ export function FinancialCloseReportModal({
   open,
   onOpenChange,
   periodLabel,
-  appName = "ÁXIS Finance",
+  appName = "Áxis Finance",
   accountHolder,
   dre,
   categories,

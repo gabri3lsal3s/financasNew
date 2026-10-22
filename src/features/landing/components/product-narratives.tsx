@@ -48,7 +48,7 @@ export function ProductNarratives() {
             </p>
 
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              O ÁXIS calcula o seu <strong>Caixa Real Seguro (Safe-to-Spend)</strong>: desconta dívidas pendentes, faturas abertas e provisões, traduzindo seu dinheiro restante em um <strong>Ritmo Diário (Daily Budget)</strong> em R$/dia. Você sabe exatamente quanto pode gastar hoje sem estourar o orçamento do mês.
+              O Áxis calcula o seu <strong>Caixa Real Seguro (Safe-to-Spend)</strong>: desconta dívidas pendentes, faturas abertas e provisões, traduzindo seu dinheiro restante em um <strong>Ritmo Diário (Daily Budget)</strong> em R$/dia. Você sabe exatamente quanto pode gastar hoje sem estourar o orçamento do mês.
             </p>
 
             <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
@@ -295,7 +295,7 @@ export function ProductNarratives() {
             </p>
 
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              Em vez de conexões bancárias frágeis que exigem suas senhas ou quebram a cada atualização, o ÁXIS opera com duas vias integradas de captura local e um motor semântico adaptativo:
+              Em vez de conexões bancárias frágeis que exigem suas senhas ou quebram a cada atualização, o Áxis opera com duas vias integradas de captura local e um motor semântico adaptativo:
             </p>
 
             {/* Três Pilares da Hierarquia de Captura */}

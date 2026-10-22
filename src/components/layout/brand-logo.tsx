@@ -10,7 +10,7 @@ export { LogoFull } from "./logo-full";
 
 export interface BrandLogoProps {
   className?: string;
-  /** Exibe o wordmark "ÁXIS" ao lado do símbolo (padrão: false). */
+  /** Exibe o wordmark "Áxis" ao lado do símbolo (padrão: false). */
   showWordmark?: boolean;
   /** Exibe subtítulo "Finance" abaixo do wordmark (padrão: false). */
   showSubtitle?: boolean;
@@ -18,7 +18,7 @@ export interface BrandLogoProps {
   subtitleText?: string;
   /** Tamanho e classes do símbolo (padrão: size-8). */
   markClassName?: string;
-  /** Classes adicionais para o texto "ÁXIS". */
+  /** Classes adicionais para o texto "Áxis". */
   wordmarkClassName?: string;
   /** Classes adicionais para o subtítulo. */
   subtitleClassName?: string;
@@ -35,7 +35,7 @@ export interface BrandLogoProps {
 }
 
 /**
- * BrandLogo — Ponto único de entrada para a identidade oficial da marca ÁXIS Finance.
+ * BrandLogo — Ponto único de entrada para a identidade oficial da marca Áxis Finance.
  * Utiliza o motor gráfico de alta resolução (LogoIcon e LogoFull), garantindo
  * zero serrilhados em qualquer densidade de pixels, máxima nitidez e reatividade
  * automática ao modo Pro (Âmbar/Dourado) e tema Claro/Escuro.
@@ -92,7 +92,7 @@ export function BrandLogo({
         themeMode={themeMode}
         accentReactive={accentReactive}
         variant={variant}
-        title="AXIS"
+        title="Áxis"
         aria-hidden={false}
       />
     </span>

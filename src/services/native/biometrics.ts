@@ -81,7 +81,7 @@ export async function authenticateWithBiometrics(
   const reasonText =
     typeof reasonOrOptions === "string"
       ? reasonOrOptions
-      : reasonOrOptions?.reason ?? "Confirme sua identidade para acessar o ÁXIS Finance";
+      : reasonOrOptions?.reason ?? "Confirme sua identidade para acessar o Áxis Finance";
 
   if (!isNativePlatform()) {
     return { success: true };

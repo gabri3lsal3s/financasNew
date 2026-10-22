@@ -225,11 +225,16 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Atualizar `launch-wizard.test.tsx` validando preenchimento e salvamento direto no modo rápido.
   - *Commit:* `feat(transactions): integrar modo rapido ao LaunchWizard com alternancia suave`
 
-- [x] **Tarefa 3.3 — Botão "Colar Comprovante / Pix" com 1 Toque:**
-  - Inserir botão de prancheta destacado no cabeçalho do `LaunchWizard`.
-  - Ao clicar, lê a área de transferência com consentimento explícito do usuário, analisa via `parsePixShareText` e preenche valor, categoria e favorecido automaticamente.
-  - *Teste & Verificação:* Teste simulando conteúdo no clipboard e verificando auto-preenchimento dos campos.
-  - *Commit:* `feat(transactions): adicionar acao de colar comprovante no cabecalho do wizard`
+- [x] **Tarefa 3.3 — Botão "Anexar Comprovante (PDF/Imagem/Foto)" com 1 Toque & Captura Passiva:**
+  - Inserir botão de anexo com ícone clipe no cabeçalho do `LaunchWizard`.
+  - Ao clicar, abre o `AttachReceiptDialog` permitindo enviar comprovante bancário (PDF digital ou imagem) ou tirar foto com a câmera no mobile, extraindo texto via OCR (Google ML Kit thin) e preenchendo automaticamente o formulário do Wizard Rápido.
+  - Comprovantes anexados pelo usuário no Wizard alimentam diretamente o formulário sem poluir a lista de sugestões da Home e sem disparar notificações push duplicadas.
+  - Notificações bancárias operam de forma 100% passiva em segundo plano (`BankNotificationListenerService`):
+    - Emissão de push nativo interativo com botões `[Confirmar]` (cadastro silencioso) e `[Conferir]` (abre o Wizard Rápido pré-preenchido).
+    - Exibição de valor monetário no título (`"Pix recebido · R$ 10,00"`) e estilo `Notification.BigTextStyle` para exibição íntegra dos detalhes em qualquer gaveta de notificações do Android.
+    - Preservação de rota com desbloqueio biométrico (`setPendingRouteAfterUnlock`): navega determinística e imediatamente para o Wizard Rápido após o sucesso da digital.
+  - *Teste & Verificação:* Teste de parsing e preenchimento de campos via `attach-receipt-dialog.test.tsx` e `bank-listener.test.ts`.
+  - *Commit:* `feat(transactions): integrar anexo de comprovantes ao wizard e captura passiva de notificacoes`
 
 - [x] **Tarefa 3.4 — Deep Links e Atalhos no Android (`shortcuts.xml`):**
   - Mapear parâmetros de URL no `PageShell.tsx`:

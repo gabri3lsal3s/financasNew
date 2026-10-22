@@ -139,7 +139,7 @@ export function WealthTearSheetModal({
   annualIpcaRate,
   ibovPeriodReturnPct,
   periodLabel = "Posição Atual Consolidada",
-  appName = "ÁXIS Finance",
+  appName = "Áxis Finance",
   accountHolder,
 }: WealthTearSheetModalProps) {
   // Custódia Ativa: exclui ativos de caixa e posições totalmente encerradas (quantity <= 0)

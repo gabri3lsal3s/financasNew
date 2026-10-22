@@ -75,10 +75,12 @@ export function AttachReceiptDialog({
         return;
       }
 
-      // Processa com o motor semântico
-      let parsed = processPixShare(trimmed);
+      // Processa com o motor semântico sem poluir a lista de sugestões da Home
+      let parsed = processPixShare(trimmed, { skipSuggestion: true });
       if (!parsed) {
-        parsed = parsePixShareText(trimmed) || parseBankNotification({ title: "", text: trimmed });
+        parsed =
+          parsePixShareText(trimmed) ||
+          parseBankNotification({ title: "", text: trimmed });
       }
 
       if (parsed) {

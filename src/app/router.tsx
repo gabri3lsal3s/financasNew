@@ -12,9 +12,13 @@ import { useMinimumLoading } from "@/hooks/use-minimum-loading";
 import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
 import { useUserAccess } from "@/state";
 import {
+  getPendingRouteAfterUnlock,
   initBankNotificationListener,
   initDeepLinkListener,
   initNotificationActionListener,
+  isAppLocked,
+  setPendingRouteAfterUnlock,
+  subscribeAppLock,
 } from "@/services/native";
 
 /**
@@ -169,22 +173,33 @@ function NativeIntegrationsHandler() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const cleanupDeepLinks = initDeepLinkListener((path) => {
-      navigate(path);
-    });
+    const handleNativeNavigation = (route: string) => {
+      if (isAppLocked()) {
+        setPendingRouteAfterUnlock(route);
+      } else {
+        navigate(route);
+      }
+    };
 
-    const cleanupNotifications = initNotificationActionListener((path) => {
-      navigate(path);
-    });
+    const cleanupDeepLinks = initDeepLinkListener(handleNativeNavigation);
+    const cleanupNotifications = initNotificationActionListener(handleNativeNavigation);
+    const cleanupBankNotifications = initBankNotificationListener(handleNativeNavigation);
 
-    const cleanupBankNotifications = initBankNotificationListener((route) => {
-      navigate(route);
+    const cleanupAppLock = subscribeAppLock(() => {
+      if (!isAppLocked()) {
+        const pending = getPendingRouteAfterUnlock();
+        if (pending) {
+          setPendingRouteAfterUnlock(null);
+          navigate(pending);
+        }
+      }
     });
 
     return () => {
       void cleanupDeepLinks();
       void cleanupNotifications();
       void cleanupBankNotifications();
+      cleanupAppLock();
     };
   }, [navigate]);
 

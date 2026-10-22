@@ -154,6 +154,16 @@ export function subscribeAppLock(listener: () => void): () => void {
   };
 }
 
+let pendingRouteAfterUnlock: string | null = null;
+
+export function setPendingRouteAfterUnlock(route: string | null): void {
+  pendingRouteAfterUnlock = route;
+}
+
+export function getPendingRouteAfterUnlock(): string | null {
+  return pendingRouteAfterUnlock;
+}
+
 /**
  * Tenta desbloquear o app solicitando biometria ao usuário.
  */

@@ -11,7 +11,7 @@ export interface ReportHeaderProps {
   periodLabel?: string;
   /** Data e hora de geração formatada (padrão: data atual DD/MM/AAAA). */
   generatedAt?: string;
-  /** Nome institucional da aplicação (padrão: "ÁXIS Finance"). */
+  /** Nome institucional da aplicação (padrão: "Áxis Finance"). */
   appName?: string;
   /** Ícone temático da seção (padrão: Landmark). */
   icon?: LucideIcon;
@@ -35,7 +35,7 @@ export function ReportHeader({
   subtitle,
   periodLabel,
   generatedAt,
-  appName = "ÁXIS Finance",
+  appName = "Áxis Finance",
   icon: Icon = Landmark,
   accountHolder,
   className,

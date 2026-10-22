@@ -154,7 +154,10 @@ export function processBankNotification(
  * Se reconhecer valor válido, adiciona à fila de sugestões pendentes
  * e emite notificação local para confirmação rápida caso habilitado.
  */
-export function processPixShare(text: string): ParsedBankTransaction | null {
+export function processPixShare(
+  text: string,
+  options?: { skipSuggestion?: boolean },
+): ParsedBankTransaction | null {
   const prefs = getBankAssistantPreferences();
   if (!prefs.passiveCaptureEnabled) {
     return null;
@@ -170,10 +173,12 @@ export function processPixShare(text: string): ParsedBankTransaction | null {
       delete parsed.categorySlug;
     }
 
-    addPendingSuggestion(parsed);
+    if (!options?.skipSuggestion) {
+      addPendingSuggestion(parsed);
 
-    if (prefs.interactiveNotificationsEnabled) {
-      void scheduleInteractiveBankNotification(parsed);
+      if (prefs.interactiveNotificationsEnabled) {
+        void scheduleInteractiveBankNotification(parsed);
+      }
     }
   }
   return parsed;
@@ -324,11 +329,48 @@ export function initBankNotificationListener(onNavigate?: (route: string) => voi
   // Esvazia transações confirmadas em segundo plano
   void flushConfirmedBankTransactions();
 
+  const handleSharePayload = (text: string) => {
+    if (!text || !text.trim()) return;
+    const trimmed = text.trim();
+    if (onNavigate) {
+      const parsed = processPixShare(trimmed, { skipSuggestion: true });
+      if (parsed) {
+        onNavigate(buildReviewRoute(parsed));
+      }
+    } else {
+      processPixShare(trimmed);
+    }
+  };
+
+  const handleReviewPayload = (rawPayload: unknown) => {
+    if (!rawPayload || !onNavigate) return;
+    try {
+      const obj = typeof rawPayload === "string" ? JSON.parse(rawPayload) : rawPayload;
+      if (obj && typeof obj === "object") {
+        const payloadObj = obj as { title?: string; text?: string; packageName?: string };
+        const title = payloadObj.title || "";
+        const text = payloadObj.text || "";
+        const packageName = payloadObj.packageName;
+
+        const parsed =
+          parseBankNotification({ title, text, packageName }) ||
+          parsePixShareText(text || title) ||
+          (title ? parseBankNotification({ title: "", text: title, packageName }) : null);
+
+        if (parsed) {
+          onNavigate(buildReviewRoute(parsed));
+        }
+      }
+    } catch {
+      // no-op
+    }
+  };
+
   // Consome qualquer comprovante retido no buffer nativo de Cold Start
   void BankNotificationPlugin.getPendingShare()
     .then((payload) => {
       if (payload?.text && payload.text.trim().length > 0) {
-        processPixShare(payload.text);
+        handleSharePayload(payload.text);
       }
     })
     .catch(() => {
@@ -339,17 +381,7 @@ export function initBankNotificationListener(onNavigate?: (route: string) => voi
   void BankNotificationPlugin.getPendingReviewTransaction()
     .then((res) => {
       if (res?.payload) {
-        try {
-          const obj = typeof res.payload === "string" ? JSON.parse(res.payload) : res.payload;
-          if (obj.text) {
-            const parsed = parseBankNotification(obj);
-            if (parsed && onNavigate) {
-              onNavigate(buildReviewRoute(parsed));
-            }
-          }
-        } catch {
-          // no-op
-        }
+        handleReviewPayload(res.payload);
       }
     })
     .catch(() => {
@@ -367,7 +399,7 @@ export function initBankNotificationListener(onNavigate?: (route: string) => voi
     "shareTextReceived",
     (payload) => {
       if (payload?.text) {
-        processPixShare(payload.text);
+        handleSharePayload(payload.text);
       }
     },
   );
@@ -376,17 +408,7 @@ export function initBankNotificationListener(onNavigate?: (route: string) => voi
     "openReviewTransaction",
     (payload) => {
       if (payload?.payload) {
-        try {
-          const obj = typeof payload.payload === "string" ? JSON.parse(payload.payload) : payload.payload;
-          if (obj.text) {
-            const parsed = parseBankNotification(obj);
-            if (parsed && onNavigate) {
-              onNavigate(buildReviewRoute(parsed));
-            }
-          }
-        } catch {
-          // no-op
-        }
+        handleReviewPayload(payload.payload);
       }
     },
   );

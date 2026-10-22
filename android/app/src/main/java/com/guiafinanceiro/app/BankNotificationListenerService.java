@@ -16,6 +16,8 @@ import android.util.Log;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class BankNotificationListenerService extends NotificationListenerService {
 
@@ -24,6 +26,10 @@ public class BankNotificationListenerService extends NotificationListenerService
     public static final String KEY_ALLOWED_PACKAGES = "allowed_bank_packages";
     public static final String CHANNEL_ID = "bank_transaction_suggestions";
     private static final int MAX_BUFFER_SIZE = 30;
+
+    private static final Pattern AMOUNT_PATTERN = Pattern.compile(
+        "(?:R\\$\\s*|US\\$\\s*|USD\\s*)(\\d{1,3}(?:\\.\\d{3})*,\\d{2}|\\d+(?:,\\d{2})?)"
+    );
 
     public static final Set<String> DEFAULT_MONITORED_PACKAGES = new HashSet<>(Arrays.asList(
         // Bancos Tradicionais & Digitais
@@ -107,11 +113,42 @@ public class BankNotificationListenerService extends NotificationListenerService
         if (extras == null) return;
 
         CharSequence titleChar = extras.getCharSequence(Notification.EXTRA_TITLE);
-        CharSequence textChar = extras.getCharSequence(Notification.EXTRA_TEXT);
-        CharSequence bigTextChar = extras.getCharSequence(Notification.EXTRA_BIG_TEXT);
+        if (titleChar == null || titleChar.toString().trim().isEmpty()) {
+            titleChar = extras.getCharSequence(Notification.EXTRA_TITLE_BIG);
+        }
 
-        String title = titleChar != null ? titleChar.toString() : "";
-        String text = bigTextChar != null ? bigTextChar.toString() : (textChar != null ? textChar.toString() : "");
+        CharSequence textChar = extras.getCharSequence(Notification.EXTRA_BIG_TEXT);
+        if (textChar == null || textChar.toString().trim().isEmpty()) {
+            textChar = extras.getCharSequence(Notification.EXTRA_TEXT);
+        }
+        if (textChar == null || textChar.toString().trim().isEmpty()) {
+            textChar = extras.getCharSequence(Notification.EXTRA_SUB_TEXT);
+        }
+        if (textChar == null || textChar.toString().trim().isEmpty()) {
+            textChar = extras.getCharSequence(Notification.EXTRA_INFO_TEXT);
+        }
+        if (textChar == null || textChar.toString().trim().isEmpty()) {
+            textChar = extras.getCharSequence(Notification.EXTRA_SUMMARY_TEXT);
+        }
+        if (textChar == null || textChar.toString().trim().isEmpty()) {
+            CharSequence[] lines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES);
+            if (lines != null && lines.length > 0) {
+                StringBuilder sb = new StringBuilder();
+                for (CharSequence line : lines) {
+                    if (line != null && line.length() > 0) {
+                        if (sb.length() > 0) sb.append(" ");
+                        sb.append(line);
+                    }
+                }
+                textChar = sb.toString();
+            }
+        }
+        if ((textChar == null || textChar.toString().trim().isEmpty()) && notification.tickerText != null) {
+            textChar = notification.tickerText;
+        }
+
+        String title = titleChar != null ? titleChar.toString().trim() : "";
+        String text = textChar != null ? textChar.toString().trim() : "";
 
         if (!hasFinancialSignal(text, title)) {
             return;
@@ -128,6 +165,18 @@ public class BankNotificationListenerService extends NotificationListenerService
         } else {
             saveToOfflineBuffer(packageName, title, text, timestamp);
         }
+    }
+
+    /**
+     * Extrai valor monetário presente no título ou texto da notificação (ex: "R$ 10,00").
+     */
+    static String extractAmountText(String title, String text) {
+        String combined = (title != null ? title : "") + " " + (text != null ? text : "");
+        Matcher m = AMOUNT_PATTERN.matcher(combined);
+        if (m.find()) {
+            return m.group(0).trim();
+        }
+        return null;
     }
 
     /**
@@ -194,10 +243,23 @@ public class BankNotificationListenerService extends NotificationListenerService
                 builder = new Notification.Builder(this);
             }
 
-            String notifTitle = title != null && !title.trim().isEmpty() ? title : "Transação detectada";
+            String amountFormatted = extractAmountText(title, text);
+            String notifTitle = title != null && !title.trim().isEmpty() ? title.trim() : "Transação detectada";
+            if (amountFormatted != null && !notifTitle.contains(amountFormatted)) {
+                notifTitle = notifTitle + " · " + amountFormatted;
+            }
+
+            String notifBody = (text != null && !text.trim().isEmpty())
+                    ? text.trim()
+                    : (amountFormatted != null ? ("Valor detectado: " + amountFormatted) : "Toque em Conferir para revisar ou Confirmar para adicionar.");
+
+            Notification.BigTextStyle bigStyle = new Notification.BigTextStyle()
+                    .setBigContentTitle(notifTitle)
+                    .bigText(notifBody);
 
             builder.setContentTitle(notifTitle)
-                    .setContentText(text)
+                    .setContentText(notifBody)
+                    .setStyle(bigStyle)
                     .setSmallIcon(R.mipmap.ic_launcher)
                     .setContentIntent(reviewPending)
                     .setAutoCancel(true)

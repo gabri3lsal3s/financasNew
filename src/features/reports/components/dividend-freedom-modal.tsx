@@ -42,7 +42,7 @@ export function DividendFreedomModal({
   assets,
   usdRate = 5.25,
   periodLabel = "Exercício Anual",
-  appName = "ÁXIS Finance",
+  appName = "Áxis Finance",
   accountHolder,
 }: DividendFreedomModalProps) {
   const currentYear = new Date().getFullYear();

@@ -32,7 +32,7 @@ export interface LogoIconProps extends React.HTMLAttributes<HTMLElement> {
 }
 
 /**
- * LogoIcon — Símbolo oficial da marca ÁXIS ("A" orbital com monograma estilizado).
+ * LogoIcon — Símbolo oficial da marca Áxis ("A" orbital com monograma estilizado).
  * Renderiza a arte gráfica em alta definição com canal alfa transparente (sem fundo),
  * comutando dinamicamente entre o tema Âmbar (Pro) e Teal (Gratuito) e entre
  * modos Claro e Escuro com máxima nitidez em displays de alta densidade (Retina).
@@ -44,7 +44,7 @@ export function LogoIcon({
   themeMode = "auto",
   variant = "default",
   accentReactive: _ignored,
-  title = "AXIS",
+  title = "Áxis",
   "aria-hidden": ariaHidden,
   ...props
 }: LogoIconProps) {

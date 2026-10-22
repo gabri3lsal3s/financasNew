@@ -166,7 +166,7 @@ export async function scheduleDailyReminder(options?: {
       notifications: [
         {
           id: DAILY_REMINDER_NOTIFICATION_ID,
-          title: "Fechamento Diário — ÁXIS Finance",
+          title: "Fechamento Diário — Áxis Finance",
           body: "Registre suas movimentações de hoje para manter seus saldos e orçamentos em dia.",
           channelId: DAILY_REMINDER_CHANNEL_ID,
           actionTypeId: DAILY_REMINDER_ACTION_TYPE_ID,

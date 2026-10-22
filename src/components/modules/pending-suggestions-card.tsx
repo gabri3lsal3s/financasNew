@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { ArrowUpRight, Check, ChevronDown, Paperclip, Receipt, Trash2, TrendingUp, X, Zap } from "lucide-react";
+import { ArrowUpRight, Check, ChevronDown, Receipt, Trash2, TrendingUp, X, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CategoryIcon } from "@/components/modules/category-icon";
-import { AttachReceiptDialog } from "./attach-receipt-dialog";
 import { formatDateBR } from "@/lib/date";
 import {
   addPendingSuggestion,
@@ -107,7 +106,6 @@ export function PendingSuggestionsCard({
 
   const [selectedCategories, setSelectedCategories] = useState<Record<string, string>>({});
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
-  const [pasteOpen, setPasteOpen] = useState(false);
   const merchantMemory = useMerchantCategoryMapping();
 
   if (suggestions.length === 0) {
@@ -347,20 +345,8 @@ export function PendingSuggestionsCard({
           </Badge>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            onClick={() => setPasteOpen(true)}
-            className="text-xs text-muted-foreground hover:text-foreground hover:bg-surface-hover cursor-pointer gap-1"
-            aria-label="Anexar comprovante"
-          >
-            <Paperclip className="size-3.5" aria-hidden="true" />
-            <span>Anexar comprovante</span>
-          </Button>
-
-          {suggestions.length >= 2 && (
+        {suggestions.length >= 2 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
             <Button
               type="button"
               variant="ghost"
@@ -372,8 +358,8 @@ export function PendingSuggestionsCard({
               <Trash2 className="size-3.5 mr-1" aria-hidden="true" />
               <span>Descartar todas</span>
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-2.5 divide-y divide-border/40">
@@ -605,8 +591,6 @@ export function PendingSuggestionsCard({
           );
         })}
       </div>
-
-      <AttachReceiptDialog open={pasteOpen} onOpenChange={setPasteOpen} />
     </div>
   );
 }

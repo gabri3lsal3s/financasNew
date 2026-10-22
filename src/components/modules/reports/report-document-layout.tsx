@@ -23,7 +23,7 @@ export interface ReportDocumentLayoutProps {
 }
 
 /**
- * Contêiner Mestre Editorial para Relatórios e PDFs do ÁXIS Finance.
+ * Contêiner Mestre Editorial para Relatórios e PDFs do Áxis Finance.
  *
  * Garante padrão DRY e visual executivo em 100% dos relatórios do sistema:
  * - Modo Tela: Modal unificado com barra superior de ações no cabeçalho nativo ("Imprimir / Salvar PDF", ações extras e fechar único);
