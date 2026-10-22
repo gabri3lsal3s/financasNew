@@ -16,6 +16,8 @@ import {
   inferCategoryKeyword,
   lookupMerchantCategory,
   matchCategoryBySlug,
+  parseBankNotification,
+  parsePixShareText,
   type CanonicalCategorySlug,
   type ParsedBankTransaction,
 } from "@/domain/notifications";
@@ -357,14 +359,39 @@ export function LaunchWizard({
           }
         }
       }
-      // 2. Fallback para slug inferido por palavras-chave
+      // 2. Fallback para slug inferido por palavras-chave ou catalog
       if (!categoryMatched && parsed.categorySlug && categoriesQuery.data) {
-        const found = categoriesQuery.data.find(
-          (c) =>
-            c.name.toLowerCase().includes(parsed.categorySlug!.toLowerCase()) ||
-            parsed.categorySlug!.toLowerCase().includes(c.name.toLowerCase()),
+        const matched = matchCategoryBySlug(
+          categoriesQuery.data,
+          parsed.categorySlug as CanonicalCategorySlug,
         );
-        if (found) next.categoryId = found.id;
+        if (matched) {
+          next.categoryId = matched.id;
+          categoryMatched = true;
+        } else {
+          const found = categoriesQuery.data.find(
+            (c) =>
+              c.name.toLowerCase().includes(parsed.categorySlug!.toLowerCase()) ||
+              parsed.categorySlug!.toLowerCase().includes(c.name.toLowerCase()),
+          );
+          if (found) {
+            next.categoryId = found.id;
+            categoryMatched = true;
+          }
+        }
+      }
+      // 3. Inferência determinística adicional a partir do texto do comprovante
+      if (!categoryMatched && categoriesQuery.data) {
+        const textToInfer = parsed.description || parsed.merchant || "";
+        if (textToInfer) {
+          const slug = inferCategoryKeyword(textToInfer);
+          if (slug) {
+            const matched = matchCategoryBySlug(categoriesQuery.data, slug);
+            if (matched) {
+              next.categoryId = matched.id;
+            }
+          }
+        }
       }
       if (parsed.paymentMethod === "credit_card" && cardsQuery.data) {
         const matchingCard = cardsQuery.data.find((card) =>
@@ -382,6 +409,30 @@ export function LaunchWizard({
       description: `${parsed.description} preenchido no formulário de lançamento.`,
       variant: "success",
     });
+  };
+
+  /**
+   * Leitura de 1 Toque da Área de Transferência (Clipboard) — Fase 3, Tarefa 3.3.
+   * Lê a área de transferência com consentimento explícito do usuário, analisa via
+   * `parsePixShareText` e preenche valor, categoria e favorecido automaticamente.
+   */
+  const handlePasteClipboard = async () => {
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.readText) {
+        const clipText = await navigator.clipboard.readText();
+        const trimmed = clipText?.trim();
+        if (trimmed) {
+          const parsed = parsePixShareText(trimmed) || parseBankNotification({ title: "", text: trimmed });
+          if (parsed) {
+            handlePasteParsed(parsed);
+            return;
+          }
+        }
+      }
+    } catch {
+      // Leitura negada ou não suportada: abre o diálogo para colagem manual
+    }
+    setPasteOpen(true);
   };
 
   const isLastStep = state.step === WIZARD_STEPS.length;
@@ -418,13 +469,13 @@ export function LaunchWizard({
           ) : null}
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="xs"
-            onClick={() => setPasteOpen(true)}
-            className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1 px-2 cursor-pointer"
+            onClick={() => void handlePasteClipboard()}
+            className="h-7 text-xs border-border/80 bg-surface-raised hover:bg-surface-hover text-foreground gap-1.5 px-2.5 font-medium shadow-xs cursor-pointer"
             aria-label="Colar comprovante"
           >
-            <ClipboardPaste className="size-3.5" aria-hidden="true" />
+            <ClipboardPaste className="size-3.5 text-foreground" aria-hidden="true" />
             <span className="hidden sm:inline">Colar comprovante</span>
           </Button>
         </div>

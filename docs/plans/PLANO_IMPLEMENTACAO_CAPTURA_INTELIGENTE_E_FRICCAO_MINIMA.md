@@ -215,7 +215,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Atualizar `launch-wizard.test.tsx` validando preenchimento e salvamento direto no modo rápido.
   - *Commit:* `feat(transactions): integrar modo rapido ao LaunchWizard com alternancia suave`
 
-- [ ] **Tarefa 3.3 — Botão "Colar Comprovante / Pix" com 1 Toque:**
+- [x] **Tarefa 3.3 — Botão "Colar Comprovante / Pix" com 1 Toque:**
   - Inserir botão de prancheta destacado no cabeçalho do `LaunchWizard`.
   - Ao clicar, lê a área de transferência com consentimento explícito do usuário, analisa via `parsePixShareText` e preenche valor, categoria e favorecido automaticamente.
   - *Teste & Verificação:* Teste simulando conteúdo no clipboard e verificando auto-preenchimento dos campos.

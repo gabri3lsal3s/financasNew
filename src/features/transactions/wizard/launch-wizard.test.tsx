@@ -517,4 +517,62 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
       expect(onSuccess).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("Botão Colar Comprovante / Pix com 1 Toque (Fase 3, Tarefa 3.3)", () => {
+    it("lê a área de transferência com 1 toque, analisa via parsePixShareText e preenche valor, categoria e favorecido", async () => {
+      const user = userEvent.setup();
+      const samplePixReceipt = `
+        Comprovante de Pagamento Pix - Nubank
+        Valor: R$ 85,50
+        Beneficiário: Padaria Estrela
+        Data: 21/10/2026
+      `;
+
+      const readTextMock = vi.fn().mockResolvedValue(samplePixReceipt);
+      Object.defineProperty(navigator, "clipboard", {
+        value: { readText: readTextMock },
+        configurable: true,
+        writable: true,
+      });
+
+      render(<LaunchWizard initialMode="quick" />);
+
+      const pasteBtn = screen.getByRole("button", { name: "Colar comprovante" });
+      await user.click(pasteBtn);
+
+      expect(readTextMock).toHaveBeenCalledTimes(1);
+
+      // Verifica preenchimento automático do valor (R$ 85,50)
+      const valueInput = screen.getByRole("textbox", { name: "Valor do lançamento" }) as HTMLInputElement;
+      expect(valueInput.value.replace(/\u00a0/g, " ")).toBe("R$ 85,50");
+
+      // Verifica preenchimento automático da descrição / favorecido
+      const descInput = screen.getByPlaceholderText(/Ex: Padaria do Zé/i) as HTMLInputElement;
+      expect(descInput.value).toContain("Padaria Estrela");
+
+      // Botão Salvar Transação deve estar habilitado pela inferência de categoria (Padaria -> Alimentação)
+      const saveBtn = screen.getByRole("button", { name: "Salvar Transação" });
+      expect(saveBtn).toBeEnabled();
+    });
+
+    it("abre o diálogo manual de colar comprovante como fallback caso a leitura direta falhe ou seja negada", async () => {
+      const user = userEvent.setup();
+      const readTextMock = vi.fn().mockRejectedValue(new Error("NotAllowedError: Permission denied"));
+      Object.defineProperty(navigator, "clipboard", {
+        value: { readText: readTextMock },
+        configurable: true,
+        writable: true,
+      });
+
+      render(<LaunchWizard initialMode="quick" />);
+
+      const pasteBtn = screen.getByRole("button", { name: "Colar comprovante" });
+      await user.click(pasteBtn);
+
+      expect(readTextMock).toHaveBeenCalledTimes(1);
+
+      // Deve abrir o diálogo manual de colagem (fallback)
+      expect(await screen.findByText("Colar Comprovante ou Notificação")).toBeInTheDocument();
+    });
+  });
 });
