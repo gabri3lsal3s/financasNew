@@ -386,7 +386,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 **Objetivo:** Transformar o motor de insights e recorrências em uma ferramenta analítica de precisão cirúrgica e fricção zero: eliminando falsos positivos e ruídos conceituais, garantindo auditoria transparente das cobranças históricas com drill-down, convertendo insights em agendamentos formais com 1 toque e fechando o loop de aprendizado contínuo onde cada interação em despesas, rendas e investimentos refina automaticamente as sugestões futuras.
 
 #### Tarefas da Fase 7:
-- [ ] **Tarefa 7.1 — Higiene Conceitual e Expurgamento do Nível `similar`:**
+- [x] **Tarefa 7.1 — Higiene Conceitual e Expurgamento do Nível `similar`:**
   - Em `src/domain/insights/recurrences.ts`:
     - Eliminar o agrupamento estático por categoria (`level: "similar"` / `"Gastos similares na categoria"`), que gerava ruído e cards vazios sem utilidade real.
     - Atualizar a função pura `calculateRecurringTotals` para somar exclusivamente assinaturas reais (`subscription`) e contas com fornecedores repetidos (`recurring`), garantindo que o **Total mensal recorrente** e o **Total anual projetado** reflitam 100% de custos fixos reais, sem inflar com despesas variáveis do dia a dia.
