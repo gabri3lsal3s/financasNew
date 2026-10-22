@@ -4,6 +4,7 @@ import {
   matchesServiceKey,
   normalizeServiceKey,
   normalizeText,
+  stripTemporalSuffixes,
   tokenizeText,
   valuesWithinTolerance,
 } from "./shared";
@@ -77,5 +78,43 @@ describe("tokenizeText e matchesServiceKey — prevenção de falsos positivos",
     expect(matchesServiceKey("Apple iCloud", "icloud")).toBe(true);
   });
 });
+
+describe("stripTemporalSuffixes — sanitização de sufixos e referências temporais", () => {
+  it("remove meses isolados ou abreviados ao final ou meio", () => {
+    expect(stripTemporalSuffixes("Condomínio Jan")).toBe("Condomínio");
+    expect(stripTemporalSuffixes("Condomínio Fev")).toBe("Condomínio");
+    expect(stripTemporalSuffixes("Condomínio Março")).toBe("Condomínio");
+    expect(stripTemporalSuffixes("Aluguel Dezembro")).toBe("Aluguel");
+    expect(stripTemporalSuffixes("Plano Claro Nov")).toBe("Plano Claro");
+  });
+
+  it("remove referências e competências (ref, comp)", () => {
+    expect(stripTemporalSuffixes("Sabesp ref 08")).toBe("Sabesp");
+    expect(stripTemporalSuffixes("Sabesp ref. 08/26")).toBe("Sabesp");
+    expect(stripTemporalSuffixes("Copasa competencia 09")).toBe("Copasa");
+    expect(stripTemporalSuffixes("Enel comp. 09/2026")).toBe("Enel");
+    expect(stripTemporalSuffixes("Sanepar ref jan")).toBe("Sanepar");
+  });
+
+  it("remove parcelas explícitas ou frações numéricas", () => {
+    expect(stripTemporalSuffixes("Curso de Inglês parcela 1/12")).toBe("Curso de Inglês");
+    expect(stripTemporalSuffixes("Seguro Auto parc. 3 de 10")).toBe("Seguro Auto");
+    expect(stripTemporalSuffixes("Escola 02/10")).toBe("Escola");
+  });
+
+  it("remove datas numéricas MM/AA, MM/AAAA e anos isolados", () => {
+    expect(stripTemporalSuffixes("Aluguel 01/26")).toBe("Aluguel");
+    expect(stripTemporalSuffixes("Internet 08/2026")).toBe("Internet");
+    expect(stripTemporalSuffixes("Condomínio 2026")).toBe("Condomínio");
+    expect(stripTemporalSuffixes("Enel SP - 08/2026")).toBe("Enel SP");
+  });
+
+  it("preserva o texto se for exclusivamente a menção temporal (fallback de segurança)", () => {
+    expect(stripTemporalSuffixes("2026")).toBe("2026");
+    expect(stripTemporalSuffixes("Janeiro")).toBe("Janeiro");
+    expect(stripTemporalSuffixes("")).toBe("");
+  });
+});
+
 
 

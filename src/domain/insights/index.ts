@@ -1,6 +1,6 @@
 export { criticalAlerts } from "./alerts";
 export type { InsightAlert, AlertSeverity, CriticalAlertInput } from "./alerts";
-export { classifySubscription, segmentOf, SERVICE_SEGMENT_LABELS } from "./subscriptions";
+export { classifySubscription, findMatchingServiceKey, segmentOf, SERVICE_SEGMENT_LABELS } from "./subscriptions";
 export type { CutTier, ServiceSegment, SubscriptionCandidate, SubscriptionClassification } from "./subscriptions";
 export {
   detectRecurrences,
@@ -15,7 +15,7 @@ export {
   VAMPIRE_INCOME_IMPACT_THRESHOLD_PERCENT,
   VAMPIRE_CATEGORY_BUDGET_IMPACT_THRESHOLD_PERCENT,
 } from "./recurrences";
-export { ESSENTIAL_CATEGORY_ICONS } from "./shared";
+export { ESSENTIAL_CATEGORY_ICONS, stripTemporalSuffixes } from "./shared";
 export type {
   ExpenseLike,
   IncomeLike,

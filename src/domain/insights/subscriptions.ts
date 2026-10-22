@@ -9,7 +9,7 @@
  */
 
 export type CutTier = "essential" | "discretionary" | "can_cut";
-export type ServiceSegment = "streaming" | "fitness" | "cloud_ai" | "telecom" | "mobility" | "health" | "other";
+export type ServiceSegment = "streaming" | "fitness" | "cloud_ai" | "telecom" | "mobility" | "health" | "utilities" | "other";
 
 export const SERVICE_SEGMENT_LABELS: Record<ServiceSegment, string> = {
   streaming: "Streaming",
@@ -18,6 +18,7 @@ export const SERVICE_SEGMENT_LABELS: Record<ServiceSegment, string> = {
   telecom: "Telecom",
   mobility: "Mobilidade",
   health: "Saúde",
+  utilities: "Serviços Públicos",
   other: "Outros",
 };
 
@@ -46,7 +47,7 @@ export interface SubscriptionClassification {
 /** Tolerância do sinal de valor exato (default ±5%). */
 const VALUE_TOLERANCE = 0.05;
 
-import { matchesServiceKey, valuesWithinTolerance } from "./shared";
+import { matchesServiceKey, stripTemporalSuffixes, valuesWithinTolerance } from "./shared";
 import { resolveCategorySemantics } from "./category-semantics";
 
 export interface KnownServiceDef {
@@ -159,14 +160,64 @@ const KNOWN_SERVICES: Record<string, KnownServiceDef> = {
   hapvida: { tier: "essential", segment: "health" },
   notredame: { tier: "essential", segment: "health" },
   bradescosaude: { tier: "essential", segment: "health" },
+
+  // Concessionárias de Serviços Essenciais Brasileiras (tier: essential, segment: utilities)
+  // Energia Elétrica
+  enel: { tier: "essential", segment: "utilities" },
+  cpfl: { tier: "essential", segment: "utilities" },
+  cemig: { tier: "essential", segment: "utilities" },
+  copel: { tier: "essential", segment: "utilities" },
+  neoenergia: { tier: "essential", segment: "utilities" },
+  light: { tier: "essential", segment: "utilities" },
+  equatorial: { tier: "essential", segment: "utilities" },
+  energisa: { tier: "essential", segment: "utilities" },
+  eletropaulo: { tier: "essential", segment: "utilities" },
+  edp: { tier: "essential", segment: "utilities" },
+  ceee: { tier: "essential", segment: "utilities" },
+  coelba: { tier: "essential", segment: "utilities" },
+
+  // Água e Saneamento
+  sabesp: { tier: "essential", segment: "utilities" },
+  copasa: { tier: "essential", segment: "utilities" },
+  sanepar: { tier: "essential", segment: "utilities" },
+  corsan: { tier: "essential", segment: "utilities" },
+  embasa: { tier: "essential", segment: "utilities" },
+  cedae: { tier: "essential", segment: "utilities" },
+  caesb: { tier: "essential", segment: "utilities" },
+  cagece: { tier: "essential", segment: "utilities" },
+  compesa: { tier: "essential", segment: "utilities" },
+  saneaqua: { tier: "essential", segment: "utilities" },
+  deso: { tier: "essential", segment: "utilities" },
+  aguasdorio: { tier: "essential", segment: "utilities" },
+  iguasa: { tier: "essential", segment: "utilities" },
+
+  // Gás Canalizado
+  comgas: { tier: "essential", segment: "utilities" },
+  naturgy: { tier: "essential", segment: "utilities" },
+  gasmig: { tier: "essential", segment: "utilities" },
+  sulgas: { tier: "essential", segment: "utilities" },
+  copergas: { tier: "essential", segment: "utilities" },
+  bahiagas: { tier: "essential", segment: "utilities" },
 };
+
+/**
+ * Retorna a chave canônica do catálogo que corresponde à descrição informada,
+ * ou null caso a despesa não pertença a um serviço conhecido.
+ * Útil para unificar repetições com nomes variantes (ex.: "Netflix Brasil" e "Netflix Com").
+ */
+export function findMatchingServiceKey(name: string): string | null {
+  const cleanName = stripTemporalSuffixes(name);
+  for (const key of Object.keys(KNOWN_SERVICES)) {
+    if (matchesServiceKey(cleanName, key)) {
+      return key;
+    }
+  }
+  return null;
+}
 
 /** Sinal 1 — nome conhecido no catálogo de serviços (com correspondência segura por token). */
 function isKnownService(name: string): boolean {
-  for (const key of Object.keys(KNOWN_SERVICES)) {
-    if (matchesServiceKey(name, key)) return true;
-  }
-  return false;
+  return findMatchingServiceKey(name) !== null;
 }
 
 /** Sinal 2 — categoria de assinatura (por ícone ou nome personalizado). */
@@ -185,8 +236,9 @@ export function segmentOf(
   categoryIcon?: string | null,
   categoryName?: string | null,
 ): ServiceSegment {
+  const cleanName = stripTemporalSuffixes(name);
   for (const [key, def] of Object.entries(KNOWN_SERVICES)) {
-    if (matchesServiceKey(name, key)) return def.segment;
+    if (matchesServiceKey(cleanName, key)) return def.segment;
   }
   const semantics = resolveCategorySemantics({ name: categoryName, icon: categoryIcon });
   if (semantics.segment !== "other") return semantics.segment;
@@ -199,8 +251,9 @@ function tierOf(
   categoryIcon?: string | null,
   categoryName?: string | null,
 ): CutTier {
+  const cleanName = stripTemporalSuffixes(name);
   for (const [key, def] of Object.entries(KNOWN_SERVICES)) {
-    if (matchesServiceKey(name, key)) return def.tier;
+    if (matchesServiceKey(cleanName, key)) return def.tier;
   }
   return resolveCategorySemantics({ name: categoryName, icon: categoryIcon }).tier;
 }

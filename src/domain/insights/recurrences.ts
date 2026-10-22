@@ -11,8 +11,14 @@
  */
 
 import { confidenceScore, varianceOf, type RecurrenceKind } from "./confidence";
-import { classifySubscription, segmentOf, type CutTier, type ServiceSegment } from "./subscriptions";
-import { normalizeText } from "./shared";
+import {
+  classifySubscription,
+  findMatchingServiceKey,
+  segmentOf,
+  type CutTier,
+  type ServiceSegment,
+} from "./subscriptions";
+import { normalizeText, stripTemporalSuffixes } from "./shared";
 
 export interface ExpenseLike {
   id: string;
@@ -489,9 +495,12 @@ export function detectRecurrences(
   const active = expenses.filter((e) => e.installmentGroupId == null && e.recurrenceId == null);
 
   // Agrupa por descrição normalizada (níveis subscription/recurring).
+  // Higieniza sufixos temporais e unifica despesas que compartilham o mesmo serviço conhecido.
   const byName = new Map<string, ExpenseLike[]>();
   for (const expense of active) {
-    const key = normalizeText(expense.description ?? expense.id);
+    const rawDesc = (expense.description ?? expense.id).trim();
+    const matchedService = findMatchingServiceKey(rawDesc);
+    const key = matchedService ?? normalizeText(stripTemporalSuffixes(rawDesc));
     const list = byName.get(key) ?? [];
     list.push(expense);
     byName.set(key, list);
@@ -504,6 +513,9 @@ export function detectRecurrences(
     if (group.length < 2) continue;
     const first = group[0] ?? group[1];
     if (!first) continue;
+
+    const rawFirstDesc = (first.description ?? "").trim();
+    const cleanDisplayName = stripTemporalSuffixes(rawFirstDesc) || rawFirstDesc || key;
 
     // Agregação mensal real: agrupa despesas por mês.
     const monthMap = new Map<string, ExpenseLike[]>();
@@ -551,7 +563,7 @@ export function detectRecurrences(
     // subscription: usa a árvore de decisão de assinaturas (nome conhecido
     // no catálogo OU categoria de assinatura são sinais fortes).
     const subscription = classifySubscription({
-      name: first.description ?? "",
+      name: cleanDisplayName,
       categoryName: first.categoryName,
       categoryIcon: categoryIcons[0],
       monthlyValuesCents: monthlyTotals,
@@ -574,7 +586,7 @@ export function detectRecurrences(
       });
       occurrences.push({
         key: `sub:${key}`,
-        name: first.description ?? key,
+        name: cleanDisplayName,
         level: "subscription",
         segment: subscription.segment,
         months,
@@ -599,10 +611,10 @@ export function detectRecurrences(
     if (stable && months.length >= 2) {
       const variance = varianceOf(monthlyTotals);
       const confidence = confidenceScore({ base: 0.7, monthsHistory: months.length, kind: "recurring", variance });
-      const segment = segmentOf(first.description ?? "", categoryIcons[0], first.categoryName);
+      const segment = segmentOf(cleanDisplayName, categoryIcons[0], first.categoryName);
       occurrences.push({
         key: `recurring:${key}`,
-        name: first.description ?? key,
+        name: cleanDisplayName,
         level: "recurring",
         segment,
         months,
@@ -663,7 +675,7 @@ export function detectIncomeRecurrences(
   const byName = new Map<string, IncomeLike[]>();
   for (const income of active) {
     const rawName = (income.description || "").trim();
-    const key = normalizeText(rawName || income.id);
+    const key = normalizeText(stripTemporalSuffixes(rawName) || rawName || income.id);
     if (!key) continue;
     const list = byName.get(key) ?? [];
     list.push(income);
@@ -778,9 +790,12 @@ export function detectIncomeRecurrences(
       }
     }
 
+    const rawFirstDesc = (first.description || "").trim();
+    const cleanDisplayName = stripTemporalSuffixes(rawFirstDesc) || rawFirstDesc || key;
+
     occurrences.push({
       key: `income:${profile}:${key}`,
-      name: first.description?.trim() || key,
+      name: cleanDisplayName,
       profile,
       suggestedAction,
       months,

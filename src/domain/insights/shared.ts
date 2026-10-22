@@ -43,6 +43,56 @@ export function normalizeServiceKey(name: string): string {
 }
 
 /**
+ * Remove sufixos e prefixos temporais (meses, anos, referências, competências, parcelas)
+ * de descrições de despesas, permitindo que repetições como "Condomínio Jan" e
+ * "Condomínio Fev" compartilhem o mesmo nome base higienizado.
+ */
+export function stripTemporalSuffixes(text: string): string {
+  if (!text || !text.trim()) return "";
+
+  let cleaned = text;
+
+  // 1. Competência / Referência (ex: "ref. 08/26", "ref 08", "competencia 09", "comp. janeiro/2026")
+  cleaned = cleaned.replace(
+    /\b(?:ref(?:erencia)?|comp(?:etencia)?)\.?\s*(?:de\s+)?(?:\d{1,2}(?:[/-]\d{2,4})?|[a-zà-ú]{3,9}(?:[/-]\d{2,4})?)\b/gi,
+    " ",
+  );
+
+  // 2. Parcelas explícitas (ex: "parcela 1/12", "parc. 2 de 10", "parc 01/06")
+  cleaned = cleaned.replace(/\bparc(?:ela)?\.?\s*\d+\s*(?:\/|de)\s*\d+\b/gi, " ");
+
+  // 3. Meses combinados com ano (ex: "jan/26", "janeiro/2026", "fev 2026", "mar-26", "março/26")
+  const monthNames =
+    "jan(?:eiro)?|fev(?:ereiro)?|mar(?:[cç]o)?|abr(?:il)?|mai(?:o)?|jun(?:ho)?|jul(?:ho)?|ago(?:sto)?|set(?:embro)?|out(?:ubro)?|nov(?:embro)?|dez(?:embro)?";
+  const monthYearRegex = new RegExp(`\\b(?:${monthNames})[\\s/-]+(?:20)?\\d{2}\\b`, "gi");
+  cleaned = cleaned.replace(monthYearRegex, " ");
+
+  // 4. Formatos de data numérica como MM/AA, MM/AAAA, AAAA/MM (ex: "01/26", "12/2026", "2026/01")
+  cleaned = cleaned.replace(/\b(?:0?[1-9]|1[0-2])[/-](?:20)?\d{2}\b/g, " ");
+  cleaned = cleaned.replace(/\b20\d{2}[/-](?:0?[1-9]|1[0-2])\b/g, " ");
+
+  // 5. Frações que parecem parcelas no fim ou isoladas (ex: " 1/12", " 02/10")
+  cleaned = cleaned.replace(/\b\d{1,2}\/\d{1,2}\b/g, " ");
+
+  // 6. Meses isolados (ex: "Condomínio Jan", "Aluguel Março", "Plano Fev")
+  const isolatedMonthRegex = new RegExp(`\\b(?:${monthNames})\\b`, "gi");
+  cleaned = cleaned.replace(isolatedMonthRegex, " ");
+
+  // 7. Anos isolados de 4 dígitos entre 2000 e 2099 (ex: "2025", "2026")
+  cleaned = cleaned.replace(/\b20\d{2}\b/g, " ");
+
+  // 8. Limpar pontuações e delimitadores residuais soltos (- / . : , ; #)
+  cleaned = cleaned
+    .replace(/[\s\-_/.:,;|#]+$/g, "")
+    .replace(/^[\s\-_/.:,;|#]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Fallback: se apagou tudo (ex: o usuário só digitou "2026" ou "Jan"), preserva o original aparado
+  return cleaned || text.trim();
+}
+
+/**
  * Divide o texto normalizado em tokens alfanuméricos (palavras).
  */
 export function tokenizeText(name: string): string[] {

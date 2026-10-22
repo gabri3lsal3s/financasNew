@@ -319,6 +319,17 @@ export function resolveCategorySemantics(category: {
     normName.includes("celular")
   ) {
     segment = "telecom";
+  } else if (
+    icon === "luz" ||
+    icon === "agua" ||
+    icon === "gas" ||
+    normName.includes("energia") ||
+    normName.includes("luz") ||
+    normName.includes("agua") ||
+    normName.includes("saneamento") ||
+    normName.includes("gas")
+  ) {
+    segment = "utilities";
   }
 
   // 8. Canonical Slug de inferência

@@ -14,6 +14,7 @@ import {
   type ExpenseLike,
   type IncomeLike,
 } from "./recurrences";
+import { normalizeText } from "./shared";
 
 describe("domain/insights/recurrences — Detecção Dual de Rendas (Fase 4, Tarefa 4.1)", () => {
   describe("calculateTypicalDay e estimateNextDueDate para Rendas", () => {
@@ -746,6 +747,98 @@ describe("domain/insights/recurrences — Detecção Dual de Rendas (Fase 4, Tar
       // Economia de corte: apenas os 3500 da assinatura can_cut (ignora 8000 do similar)
       expect(totals.canCutRecurringCents).toBe(3500);
       expect(totals.canCutAnnualCents).toBe(3500 * 12);
+    });
+  });
+
+  describe("Sanitização Temporal & Concessionárias Brasileiras (Fase 7 — Tarefa 7.2)", () => {
+    it("agrupa despesas com meses, referências e competências no nome", () => {
+      const expenses: ExpenseLike[] = [
+        { id: "c1", description: "Condomínio Jan", month: "2026-01", valueCents: 85000, categoryId: "moradia" },
+        { id: "c2", description: "Condomínio Fev", month: "2026-02", valueCents: 85000, categoryId: "moradia" },
+        { id: "c3", description: "Condomínio Março", month: "2026-03", valueCents: 85000, categoryId: "moradia" },
+      ];
+
+      const detected = detectRecurrences(expenses);
+      expect(detected).toHaveLength(1);
+      const cond = detected[0];
+      expect(cond?.name).toBe("Condomínio");
+      expect(cond?.averageCents).toBe(85000);
+      expect(cond?.months).toEqual(["2026-01", "2026-02", "2026-03"]);
+    });
+
+    it("agrupa despesas com datas no formato MM/AA e MM/AAAA", () => {
+      const expenses: ExpenseLike[] = [
+        { id: "a1", description: "Aluguel 01/26", month: "2026-01", valueCents: 200000, categoryId: "moradia" },
+        { id: "a2", description: "Aluguel 02/26", month: "2026-02", valueCents: 200000, categoryId: "moradia" },
+      ];
+
+      const detected = detectRecurrences(expenses);
+      expect(detected).toHaveLength(1);
+      expect(detected[0]?.name).toBe("Aluguel");
+      expect(detected[0]?.averageCents).toBe(200000);
+    });
+
+    it("unifica despesas que compartilham a mesma serviceKey (ex.: Netflix Brasil e Netflix Com)", () => {
+      const expenses: ExpenseLike[] = [
+        { id: "n1", description: "Netflix Brasil", month: "2026-01", valueCents: 5590, categoryId: "lazer" },
+        { id: "n2", description: "Netflix Com", month: "2026-02", valueCents: 5590, categoryId: "lazer" },
+      ];
+
+      const detected = detectRecurrences(expenses);
+      expect(detected).toHaveLength(1);
+      const sub = detected[0];
+      expect(sub?.level).toBe("subscription");
+      expect(sub?.segment).toBe("streaming");
+      expect(sub?.tier).toBe("can_cut");
+      expect(sub?.averageCents).toBe(5590);
+    });
+
+    it("identifica concessionárias públicas de energia, água e gás com tier essential e segment utilities", () => {
+      const expenses: ExpenseLike[] = [
+        // Energia
+        { id: "e1", description: "Enel SP - 01/2026", month: "2026-01", valueCents: 18000, categoryId: "moradia" },
+        { id: "e2", description: "Enel SP - 02/2026", month: "2026-02", valueCents: 21000, categoryId: "moradia" },
+        // Água
+        { id: "s1", description: "Sabesp ref 01", month: "2026-01", valueCents: 9500, categoryId: "moradia" },
+        { id: "s2", description: "Sabesp ref 02", month: "2026-02", valueCents: 9800, categoryId: "moradia" },
+        // Gás
+        { id: "g1", description: "Comgás comp 01/26", month: "2026-01", valueCents: 6200, categoryId: "moradia" },
+        { id: "g2", description: "Comgás comp 02/26", month: "2026-02", valueCents: 6400, categoryId: "moradia" },
+      ];
+
+      const detected = detectRecurrences(expenses);
+      expect(detected.length).toBeGreaterThanOrEqual(3);
+
+      const enel = detected.find((d) => d.name.toLowerCase().includes("enel"));
+      expect(enel).toBeDefined();
+      expect(enel?.tier).toBe("essential");
+      expect(enel?.segment).toBe("utilities");
+      expect(enel?.name).toBe("Enel SP");
+
+      const sabesp = detected.find((d) => normalizeText(d.name).includes("sabesp"));
+      expect(sabesp).toBeDefined();
+      expect(sabesp?.tier).toBe("essential");
+      expect(sabesp?.segment).toBe("utilities");
+      expect(sabesp?.name).toBe("Sabesp");
+
+      const comgas = detected.find((d) => normalizeText(d.name).includes("comgas"));
+      expect(comgas).toBeDefined();
+      expect(comgas?.tier).toBe("essential");
+      expect(comgas?.segment).toBe("utilities");
+      expect(comgas?.name).toBe("Comgás");
+    });
+
+    it("sanitiza menções temporais em receitas recorrentes (detectIncomeRecurrences)", () => {
+      const incomes: IncomeLike[] = [
+        { id: "i1", description: "Salário Jan", month: "2026-01", valueCents: 600000, categoryId: "salario" },
+        { id: "i2", description: "Salário Fev", month: "2026-02", valueCents: 600000, categoryId: "salario" },
+        { id: "i3", description: "Salário Março", month: "2026-03", valueCents: 600000, categoryId: "salario" },
+      ];
+
+      const detected = detectIncomeRecurrences(incomes);
+      expect(detected).toHaveLength(1);
+      expect(detected[0]?.name).toBe("Salário");
+      expect(detected[0]?.averageCents).toBe(600000);
     });
   });
 });
