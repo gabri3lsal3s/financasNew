@@ -5493,4 +5493,38 @@ flowchart TD
 - **Testes e Validação:**
   - 100% dos testes unitários e de integração verdes em `diagnostics.ts`, `insights-page.tsx`, `use-user-preferences.test.tsx` e `keyboard-navigation.test.tsx`.
 
+---
+
+### Fase 95 — Captura Inteligente de Comprovantes, Motor Semântico & Assistente Proativo (Home & Insights)
+
+> **Objetivo:** Estabelecer a infraestrutura de fricção mínima para entrada de dados financeiros e inteligência proativa: compartilhamento direto de comprovantes nativos (PDF e Imagem com OCR local privado), motor semântico adaptativo de estabelecimentos, lançamento rápido em tela única (`StepQuick`), motor de insights bidirecional com detecção de rendas habituais e gastos vampiros, e assistente proativo na Home com ações de 1 toque e aprendizado ativo persistido.
+
+#### 1. Entregas Realizadas
+- **Captura Universal de Comprovantes & OCR Local Privado:**
+  - Configuração de Intent Filters no Android para `application/pdf` e `image/*` via `ACTION_SEND`;
+  - Rota de compartilhamento `/compartilhar-comprovante` (`ShareReceiptPage`) integrada à API Web Share Target e Capacitor;
+  - Processador OCR local com Tesseract.js (`ocr-receipt-parser.ts`) e parser determinístico de comprovantes Pix (`pix-receipt-parser.ts`), sem tráfego de dados sensíveis para servidores externos;
+  - Modal `PasteReceiptDialog` com colagem direta de texto ou imagem da área de transferência.
+- **Motor Semântico de Estabelecimentos (`MerchantLearningEngine`):**
+  - Engenharia pura em `services/merchant-learning.ts`: normalização fonética, eliminação de ruídos bancários (POS/adquirentes e sufixos societários) e indexação em `localStorage` com casamento fuzzy;
+  - Auto-preenchimento preditivo de categoria, razão social e forma de pagamento nos formulários de transação.
+- **Modo de Lançamento Rápido em 1 Tela (`StepQuick`):**
+  - Componente de tela única `StepQuick` em `features/transactions/wizard/step-quick.tsx`;
+  - Alternância suave entre modo rápido e guiado no `LaunchWizard` (`initialMode="quick" | "guided"`);
+  - Botão de colagem de Pix com 1 toque no cabeçalho do wizard;
+  - Deep links e atalhos rápidos nativos do Android em `shortcuts.xml` (`?novo=pix`, `?modo=rapido`).
+- **Motor de Insights Bidirecional & Gastos Vampiros:**
+  - Generalização do motor para processar rendas históricas (`IncomeLike`), detectando receitas fixas e de clientes recorrentes com tolerância para fins de semana e feriados;
+  - Identificação de "Gastos Vampiros" (`vampireScore`) e cálculo do impacto orçamentário relativo sobre o teto de gastos;
+  - Filtro antirruído com tolerância temporal de 1 a 3 dias úteis para supressão rigorosa de falsos positivos de duplicidade.
+- **Assistente Proativo na Home (`SmartAdvisorCard`) & Aprendizado Ativo:**
+  - Hook unificado `useSmartAdvisorInsights` com matriz de 4 prioridades canônicas (Crítica, Entrada, Economia, Calibração) e política rígida de discrição (máximo 1 insight/dia, 30 dias de cooldown para dismissals);
+  - Componente `SmartAdvisorCard` na Home com confirmação de renda em 1 clique (toast de reversão), feedback de calibração (`Sim, monitorar` / `Não, foi pontual`) e dispensar;
+  - Persistência otimista na tabela `insight_feedback` via `useSetFeedback` com rollback automático e invalidação de agregados;
+  - Bloco de Investimentos do mês na Home (`QuickAporteCard`) com atalho rápido de aporte direcionado para a calculadora de rebalanceamento hierárquico em lote (`/investments?tab=aporte&valor=...`).
+- **Testes e Validação:**
+  - Suíte de 150+ testes aprovados cobrindo `advisor.test.ts`, `recurrences.test.ts`, `merchant-learning.test.tsx`, `use-smart-advisor-insights.test.ts`, `smart-advisor-card.test.tsx`, `quick-aporte-card.test.tsx` e `use-insight-feedback.test.tsx`;
+  - 100% verde em typecheck estrito (`tsc -b`) e linting (`eslint .`).
+
+
 

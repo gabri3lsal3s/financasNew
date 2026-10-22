@@ -319,7 +319,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Teste de navegação e pré-carregamento do valor na `AporteTab`.
   - *Commit:* `feat(overview): adicionar acao rapida de aporte mensal direcionado`
 
-- [ ] **Tarefa 5.5 — Atualização da Documentação Canônica em `docs/`:**
+- [x] **Tarefa 5.5 — Atualização da Documentação Canônica em `docs/`:**
   - Atualizar `docs/ARCHITECTURE.md`, `docs/PROJECT_STRUCTURE.md` e `docs/ROADMAP.md` documentando os novos fluxos de captura nativa e motor proativo.
   - *Teste & Verificação:* Revisão de congruência da documentação técnica.
   - *Commit:* `docs: registrar arquitetura de captura de comprovantes e assistente proativo`

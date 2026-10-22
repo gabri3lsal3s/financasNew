@@ -440,5 +440,58 @@ O Assistente Passivo opera em modelo híbrido entre o cliente Android nativo e o
 - **Fusão temporal e deduplicação fuzzy**: janelas de 120 segundos para unificar notificações de carteiras (Google Wallet/Samsung Pay) com as notificações emitidas pelo app emissor do cartão bancário, evitando lançamentos duplicados de uma mesma compra física;
 - Ações rápidas de 1-clique para aceitar e persistir via RPCs transacionais do Supabase ou editar no modal de transações.
 
+---
+
+## 14. ARQUITETURA DE CAPTURA UNIVERSAL DE COMPROVANTES & MOTOR SEMÂNTICO (F1–F3)
+
+### 14.1 Compartilhamento Nativo de Arquivos & OCR Local
+1. **Intent Filter Nativo Android (`android/app/src/main/AndroidManifest.xml`)**:
+   - Mapeia `ACTION_SEND` para tipos MIME `application/pdf` e `image/*`.
+   - Permite que o usuário utilize a função "Compartilhar" do aplicativo do banco diretamente para o Guia Financeiro.
+2. **Recepção e Processamento (`/compartilhar-comprovante` — `ShareReceiptPage`)**:
+   - Lê arquivos e imagens nativos via Capacitor File/Blob API ou Web Share Target.
+   - Extrai texto localmente utilizando motor OCR baseado em Tesseract.js (`ocr-receipt-parser.ts`) sem enviar imagens a servidores de terceiros (100% privado).
+3. **Parsing de Comprovantes Pix (`pix-receipt-parser.ts`)**:
+   - Identifica padrões canônicos de comprovantes de transferência (valor em centavos, data da operação, favorecido, pagador, instituição bancária e chave Pix).
+   - Converte diretamente em sugestão de transação ou pré-popula o wizard de lançamento.
+
+### 14.2 Motor Semântico de Estabelecimentos (`MerchantLearningEngine`)
+- **Normalização e Tokenização Fonética (`src/services/merchant-learning.ts`)**:
+  - Remove sufixos operacionais corporativos (LTDA, S/A, ME, EPP) e códigos de POS/máquinas de cartão ("PAG*", "MP*", "SUMUP*").
+  - Indexa comerciantes conhecidos com aprendizado adaptativo local em `localStorage` isolado por usuário.
+- **Predição Instantânea e Fricção Mínima**:
+  - Sugere automaticamente categoria, nome fantasia formatado e método de pagamento mais frequente ao digitar os primeiros caracteres na descrição.
+  - Alimenta o lançamento rápido em tela única (`StepQuick` no `LaunchWizard`).
+
+---
+
+## 15. ASSISTENTE PROATIVO NA HOME & APRENDIZADO ATIVO (F4–F5)
+
+### 15.1 Motor de Insights Bidirecional (`src/domain/insights/`)
+1. **Classificação Dual de Rendas (`IncomeLike`)**:
+   - Identifica rendas previsíveis (fixas e rendas recorrentes de clientes habituais) analisando o histórico dos últimos 3 a 6 meses com tolerância temporal para fins de semana e feriados (1 a 3 dias úteis).
+2. **Gastos Vampiros & Impacto Orçamentário**:
+   - Mapeia micro-assinaturas e cobranças recorrentes (`vampireScore`), calculando o peso percentual relativo sobre o orçamento total da categoria ou receitas líquidas.
+3. **Filtro Estrito Antirruído**:
+   - Supressão de cobranças duplicadas falsas por meio de comparação estrita de valores em centavos, descrição normalizada e janela temporal de verificação.
+
+### 15.2 Assistente Proativo (`SmartAdvisorCard` & `useSmartAdvisorInsights`)
+- **Matriz de Prioridade Canônica**:
+  1. *Crítica (Prioridade 1):* Cobrança duplicada identificada ou anomalia orçamentária imediata.
+  2. *Entrada (Prioridade 2):* Confirmação de renda habitual do mês em 1 toque com Toast de reversão ("Desfazer").
+  3. *Economia (Prioridade 3):* Oportunidade de corte de assinatura ou reajuste identificado.
+  4. *Calibração (Prioridade 4):* Pergunta de aprendizado ativo para treinar o motor (`[Sim, monitorar]` ou `[Não, foi pontual]`).
+- **Política Estrita de Cooldown e Discrição**:
+  - Limite de no máximo 1 insight por dia para evitar fadiga visual.
+  - Cooldown de 30 dias para qualquer tema dispensado (`dismiss`).
+  - Totalmente invisível se o mês estiver equilibrado e sem pendências.
+
+### 15.3 Persistência Otimista do Aprendizado (`useSetFeedback`)
+- O feedback do usuário é gravado na tabela `insight_feedback` (`occurrence_key` e `decision`), com atualização otimista imediata no cache TanStack Query (`onMutate`) para eliminar falsos positivos sem latência, e rollback automático (`onError`) em falhas de rede.
+
+### 15.4 Aporte Mensal Direcionado na Home (`QuickAporteCard`)
+- Card dedicado na Visão Geral que consolida aportes executados no período e permite informar o valor do próximo aporte, navegando diretamente para a calculadora de rebalanceamento hierárquico em lote (`/investments?tab=aporte&valor=...`).
+
+
 
 

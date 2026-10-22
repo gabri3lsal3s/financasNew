@@ -128,6 +128,8 @@
     │   │   │                      #   credit-card-3d + credit-card-wallet + credit-card-gradient (F13),
     │   │   │                      #   delta-hint (F14), highlight-row, projection-line, pace-alert-banner,
     │   │   │                      #   dashboard-alerts-carousel (carrossel inteligente de alertas do dashboard),
+    │   │   │                      #   smart-advisor-card (assistente proativo de insights com confirmação de renda em 1 toque),
+    │   │   │                      #   quick-aporte-card (bloco de aporte rápido direcionado na Home com rebalanceamento em lote),
     │   │   │                      #   pending-suggestions-card (card discreto de transações capturadas do assistente passivo),
     │   │   │                      #   paste-receipt-dialog (modal universal de colagem de comprovantes e notificações bancárias),
     │   │   │                      #   prediction-suggestions (F21 — autopreenchimento preditivo),
@@ -149,9 +151,10 @@
     │       └── index.ts           #   barrel (AGENTS.md §7 — importações externas via @/components/layout)
     │
     ├── features/                  # ÁREAS funcionais — padrão interno em §5
-    │   ├── overview/              #   Visão Geral (KPIs com sparkline, fluxo com scrubbing, donut F8, layout compacto de orçamentos)
-    │   │                          #     components/ (category-breakdown-dialog, other-budgets-dialog)
+    │   ├── overview/              #   Visão Geral (KPIs com sparkline, fluxo com scrubbing, donut F8, layout compacto de orçamentos, QuickAporteCard)
+    │   │                          #     components/ (category-breakdown-dialog, other-budgets-dialog), hooks/ (use-smart-advisor-insights.ts)
     │   ├── transactions/          #   Transações (swipe-to-action F8) + wizard de lançamento + reconciliação de extratos
+    │   │                          #     pages/ (share-receipt-page.tsx), wizard/ (step-quick.tsx — lançamento rápido em 1 tela)
     │   ├── cards/                 #   Cartões (faturas, pagamentos, estornos, refinanciamento)
     │   ├── debts/                 #   Dívidas (status, quitação com juros/multa/desconto, empréstimos Price/SAC, loan-schedule-dialog, loan-edit-dialog F72)
     │   ├── budgets/               #   Orçamentos (limites, realocação)
@@ -185,7 +188,7 @@
     │   ├── navigation/            #   F43: Resolução dinâmica de slots BottomNav e rota de fallback (landing route)
     │   ├── onboarding/             #   checklist/progresso do primeiro uso (F5.4)
     │   ├── notifications/         #   Fase 5 Android: parsing puro de notificações bancárias, comprovantes Pix em centavos,
-    │   │                          #     merchant-memory.ts (aprendizado de estabelecimentos), pix-emv-parser.ts (decodificação de BR Code)
+    │   │                          #     pix-receipt-parser.ts (extração de comprovantes Pix), merchant-memory.ts, pix-emv-parser.ts
     │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing e totais brutos/ponderados (totals.ts)
     │   ├── competence/            #   resolveBillCompetence, clampDay, overrides
     │   ├── debts/                 #   status derivado + penalty (mora/multa/desconto), schemas.ts (Zod) e resumo consolidado
@@ -204,7 +207,7 @@
     │   │                          #     allocation-gaps.ts, concentration-risk.ts, consolidated-balance.ts,
     │   │                          #     freedom-index.ts, period-redemptions.ts (F80: resgates da competência),
     │   │                          #     allocation-donuts.ts (F84: distribuição donut classes e setores)
-    │   ├── insights/              #   alertas, assinaturas, recorrências, confiança
+    │   ├── insights/              #   advisor.ts (SmartAdvisor proativo e cooldown), recurrences.ts (rendas habituais, classificação dual e gastos vampiros), alertas, assinaturas, feedback.ts
     │   ├── savings/               #   F27: desafios de economia (média mensal típica, corte
     │   │                          #     discricionário 10/20/30% — typicalMonthlySpendCents)
     │   ├── reminders/             #   agregação de lembretes (conta/dívida) e preferências
@@ -258,6 +261,7 @@
     │   ├── cache-policy.ts        #   F23: STALE_TIMES/gcTime por tipo de dado
     │   │                          #     (estático 5 min, analítico, cotações, transacional)
     │   ├── queries/               #   useExpenses({month}), useInvoices(cardId), useMacroIndicators (CDI/Selic BCB),
+    │   │                          #     use-insight-feedback.ts (aprendizado do usuário com persistência e atualização otimista),
     │   │                          #     use-range-queries.test.tsx (cancelamento cooperativo via AbortSignal),
     │   │                          #     concurrent-queries.test.tsx (estabilidade sob alta concorrência)…
     │   └── mutations/             #   useCreateExpense(), useDeleteInstallment()…
@@ -281,7 +285,8 @@
     │   ├── native/                #   Gateway nativo (Capacitor/Android): platform, back-button,
     │   │                          #     status-bar, haptics, splash-screen, biometrics, privacy-shield, app-lock,
     │   │                          #     deep-links, local-notifications, suggestions-store, bank-listener, app-icon,
-    │   │                          #     update-checker, update-schema
+    │   │                          #     update-checker, update-schema, ocr-receipt-parser (OCR local com Tesseract.js)
+    │   ├── merchant-learning.ts   #   Motor semântico de estabelecimentos (normalização fonética, predição e aprendizado)
     │   ├── masks/                 #   máscaras de apresentação (moeda, percentual pt-BR, CPF)
     │   │                          #   — barrel index.ts (fonte única DRY: formatCentsAsBRL,
     │   │                          #     formatPercent)
