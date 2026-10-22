@@ -123,7 +123,11 @@ export function RecurrencesTab({
           </div>
           <div className="flex flex-col gap-3">
             {cardImpacts.map((impact) => (
-              <CardSubscriptionRadar key={impact.cardId} impact={impact} />
+              <CardSubscriptionRadar
+                key={impact.cardId}
+                impact={impact}
+                onIgnoreItem={(key) => onFeedback(key, "ignore")}
+              />
             ))}
           </div>
         </section>

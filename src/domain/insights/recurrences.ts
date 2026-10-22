@@ -891,7 +891,7 @@ export function detectIncomeRecurrences(
       const prevMonth = shiftMonth(currentMonth, -1);
       const alreadyReceivedThisMonth = latestMonth === currentMonth;
 
-      if (latestMonth < prevMonth) {
+      if (!latestMonth || latestMonth < prevMonth) {
         // Receita cessou há 2+ meses (lapsed) -> não projeta no mês corrente
         expectedDate = undefined;
         daysUntilExpected = undefined;

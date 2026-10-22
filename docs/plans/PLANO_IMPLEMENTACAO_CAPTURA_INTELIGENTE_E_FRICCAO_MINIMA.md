@@ -58,14 +58,21 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 | **F21**| Inobservância de despesas periódicas não-mensais (anuais ou semanais) | Detector estendido de periodicidade (IPVA, seguros anuais e serviços semanais frequentes). |
 | **F22**| Desconexão entre assinaturas e cartões de crédito | Mapeamento de cartão de origem, projetando impacto de assinaturas na fatura em aberto. |
 | **F23**| Descarte binário sem memória de motivo ("Ignorar" cego) | Micro-opções de 1 toque no descarte (*"Já cancelei"*, *"É pontual"*, *"Não é assinatura"*). |
+| **F24**| Gargalo de visualização unitária no Assistente (1 sugestão/dia oculta outras prioridades no mesmo dia) | Fila sequencial ordenada por criticidade com navegação acessível `< 1 de N >` e avanço dinâmico no descarte. |
+| **F25**| Supressão indevida de alertas críticos após dispensa de sugestões de baixa prioridade | Regra de criticidade não-suprimível (`allowCriticalOnDismissedDay`), mantendo anomalias e faturas vencendo sempre visíveis. |
+| **F26**| Fricção na ação do card exigindo redigitação dos dados sugeridos | Redirecionamento direto com pré-preenchimento integral do `LaunchWizard` (modo rápido) e abertura imediata do `RecurrenceAuditModal` via URL params. |
+| **F27**| Falta de ação expressa de 1 toque para despesas fixas e assinaturas habituais já identificadas | Confirmação expressa em 1 clique direto no card com toast de reversão de 5 segundos (*"Desfazer"*). |
+| **F28**| Desconexão contextual entre o compromisso sugerido e a saúde da fatura/limite do cartão | Contextualização em tempo real de impacto na fatura em aberto e limite disponível no rodapé do card. |
+| **F29**| Alertas do assistente confinados exclusivamente à página Home | Integração bidirecional do assistente com a central de notificações (`NotificationsPopover`) do cabeçalho global. |
+| **F30**| Impossibilidade de auditar e desfazer descartes ou micro-feedbacks de aprendizado | Painel de gestão e auditoria de memória do assistente em `/insights` com revogação em 1 clique. |
 
 ---
 
-## 3. ROTEIRO DE EXECUÇÃO DETALHADO EM 7 FASES
+## 3. ROTEIRO DE EXECUÇÃO DETALHADO EM 8 FASES
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                  FLUXO DE EXECUÇÃO EM 7 FASES MODULARES & INTEGRADAS                                  │
+│                                  FLUXO DE EXECUÇÃO EM 8 FASES MODULARES & INTEGRADAS                                  │
 └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
                                                            │
     ┌───────────────────┬───────────────────────────┬──────┴────────────────────┬───────────────────┬───────────────────┐
@@ -78,14 +85,17 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
     ▼                   ▼                           ▼                           ▼                   ▼                   ▼
 [Quality Gate 1]    [Quality Gate 2]            [Quality Gate 3]            [Quality Gate 4]    [Quality Gate 5]    [Quality Gate 6]
                                                                                                                         │
-                                                                                                                        ▼
-                                                                                                                     [FASE 7]
-                                                                                                                     Motor de Insights
-                                                                                                                     Aprimorado &
-                                                                                                                     Aprendizado Contínuo
-                                                                                                                        │
-                                                                                                                        ▼
-                                                                                                                    [Quality Gate 7]
+                                                    ┌───────────────────────────────────────────────────────────────────┘
+                                                    │
+                                                    ├───────────────────────────────────┐
+                                                    ▼                                   ▼
+                                                 [FASE 7]                            [FASE 8]
+                                                 Motor de Insights                   Evolução do SmartAdvisor:
+                                                 Aprimorado &                        Ações 1-Toque, Fatura &
+                                                 Aprendizado Contínuo                Gestão de Aprendizado
+                                                    │                                   │
+                                                    ▼                                   ▼
+                                                [Quality Gate 7]                    [Quality Gate 8]
 ```
 
 ---
@@ -503,6 +513,90 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 
 ---
 
+### FASE 8: EVOLUÇÃO DO ASSISTENTE PROATIVO — AÇÕES DE 1 TOQUE, CONTEXTO DE FATURA & GESTÃO DE APRENDIZADO
+
+**Objetivo:** Elevar o `SmartAdvisorCard` de um card informativo isolado a um assistente financeiro proativo, inteligente e dinâmico: organizando múltiplos insights simultâneos em fila sequencial paginada por criticidade, garantindo a permanência de alertas críticos, permitindo registro imediato com formulários 100% pré-preenchidos ou confirmações expressas de 1 toque, contextualizando compromissos com o impacto real no limite e fechamento da fatura de cartão, conectando os alertas críticos à central global de notificações e dando transparência ao aprendizado com painel de auditoria e revogação de descartes em `/insights`.
+
+#### Tarefas da Fase 8:
+- [x] **Tarefa 8.1 — Fila Sequencial Paginada `< 1 de N >` & Regra de Não-Supressão Crítica (F24, F25):**
+  - Em `src/domain/insights/advisor.ts`:
+    - Implementar a função pura `filterAndRankAllAdvisorInsights(candidates, options)` retornando todos os insights elegíveis ordenados estritamente pela hierarquia canônica de prioridade (1 Crítico -> 2 Vencimento do Dia -> 3 Anomalia/Reajuste -> 4 Oportunidade).
+    - Implementar a regra de negócio `allowCriticalOnDismissedDay`: alertas de prioridade 1 (cobranças duplicadas, despesas críticas sem receita, faturas em risco) permanecem sempre visíveis e nunca são silenciados por dispensas de itens não-críticos efetuadas no mesmo dia.
+    - Expandir `AdvisorAction` para tipagem estrita com `register_expense` e dados completos (`name`, `valueCents`, `categoryId`, `date`, `forma`, `cardId`).
+  - Em `src/features/overview/hooks/use-smart-advisor-insights.ts`:
+    - Expor os seletores de paginação da fila: `insights`, `currentIndex`, `totalCount`, `nextInsight`, `prevInsight`, `goToInsight`.
+    - Implementar descarte sequencial: ao dispensar um item, gravar cooldown de 30 dias apenas para a chave temática daquele insight específico e avançar imediatamente para o próximo item elegível da fila; somente fechar o card no dia se o item dispensado era o último remanescente.
+  - Em `src/components/modules/smart-advisor-card.tsx`:
+    - Renderizar paginação compacta e acessível no cabeçalho do card: controles `< 1 de N >` com botões `size="icon"` (`ChevronLeft`, `ChevronRight`), números tabulares (`tabular-nums`) e feedback tátil sutil único (`triggerSensory("selection")`).
+  - *Teste & Verificação:* Testes unitários em `advisor.test.ts`, teste do hook `use-smart-advisor-insights.test.ts` e testes de renderização e navegação em `smart-advisor-card.test.tsx`.
+  - *Commit:* `feat(advisor): implementar navegacao em fila sequencial e nao supressao critica no assistente`
+
+- [x] **Tarefa 8.2 — Redirecionamento Direto com Abertura e Pré-Preenchimento Integral (F26):**
+  - Em `src/components/modules/smart-advisor-card.tsx`:
+    - Configurar a ação *"Registrar pagamento"* para navegar para a tela com query params completos (`?novo=despesa&modo=rapido&valor=...&descricao=...&categoria=...&data=...&cartao=...`).
+    - Configurar a ação *"Informar valor"* para receitas variáveis abrindo diretamente o assistente rápido (`?novo=receita&modo=rapido`).
+    - Configurar as ações *"Rever assinatura"* e duplicidades para navegar com deep link parametrizado (`/insights?aba=recurrences&item=[occurrenceKey]`), abrindo o modal de auditoria na chegada.
+  - Em `src/components/layout/page-shell.tsx`:
+    - Capturar o parâmetro `cartao` da URL na abertura do `LaunchWizard`, pré-selecionando o cartão de crédito e a forma de pagamento correspondente (`credit_card`).
+  - Em `src/features/insights/pages/insights-page.tsx` e `recurrences-tab.tsx`:
+    - Capturar o parâmetro `item` da URL e disparar a abertura automática do `RecurrenceAuditModal` focado na ocorrência solicitada.
+  - *Teste & Verificação:* Teste de navegação e pré-carregamento no `page-shell.test.tsx`, `smart-advisor-card.test.tsx` e `recurrences-tab.test.tsx`.
+  - *Commit:* `feat(advisor): redirecionar acoes do assistente com pre-preenchimento total do wizard e modal de recorrencia`
+
+- [ ] **Tarefa 8.3 — Confirmação Expressa de Despesa Fixa em 1 Toque com Toast de Reversão (F27):**
+  - Para compromissos fixos e assinaturas de alta previsibilidade com conta/cartão já conhecidos e valor constante (ex.: streaming, academia, internet), oferecer no `SmartAdvisorCard` o botão de ação rápida primária *"Confirmar pagamento"*.
+  - Ao clicar:
+    - Gravar a transação instantaneamente via RPC (`create_expense_atomic`), sem a fricção de abrir o diálogo ou formulário do wizard.
+    - Disparar feedback sensorial suave de sucesso (`triggerSensory("success")` via AGENTS.md §17).
+    - Exibir toast com contagem regressiva de 5 segundos contendo o botão de ação *"Desfazer"*, revertendo a transação de forma limpa caso tenha sido acionada por engano.
+    - Avançar automaticamente a fila do assistente para o próximo insight disponível.
+  - *Teste & Verificação:* Teste de integração do componente simulando clique direto, chamada do RPC, exibição do toast e cancelamento na reversão.
+  - *Commit:* `feat(advisor): implementar confirmacao expressa de 1 toque com toast de reversao`
+
+- [ ] **Tarefa 8.4 — Contextualização de Impacto de Fatura e Limite Disponível no Card (F28):**
+  - Enriquecer o `SmartAdvisorCard` para despesas e assinaturas mapeadas a cartões de crédito com uma linha contextual no rodapé:
+    - Exibir: *"Previsto na fatura [Nome do Cartão] • Limite restante: R$ X • Fecha em Y dias"*.
+    - Em caso de comprometimento severo ($\ge 90\%$ do limite ou valor da conta excedendo o limite disponível), aplicar destaque semântico preventivo em tom de alerta (`text-warning-strong` ou `text-critical-strong`), orientando o usuário antes da cobrança ser recusada pelo emissor.
+  - *Teste & Verificação:* Testes cobrindo cartões com limite baixo, fatura próxima ao fechamento e exibição de valores tabulares sem truncamento (AGENTS.md §11).
+  - *Commit:* `feat(advisor): contextualizar impacto na fatura e limite disponivel no card do assistente`
+
+- [ ] **Tarefa 8.5 — Integração com a Central Global de Notificações (`NotificationsPopover` - F29):**
+  - Conectar os insights proativos de prioridade 1 (críticos) e 2 (vencimento do dia) do `useSmartAdvisorInsights` ao `NotificationsPopover` no cabeçalho do `PageShell`.
+  - Exibir contador no badge do sino quando houver anomalias não resolvidas ou contas vencendo hoje, tornando os alertas do assistente visíveis e acionáveis a partir de qualquer tela do aplicativo (Transações, Relatórios, Metas, Carteira).
+  - Permitir executar o redirecionamento com pré-preenchimento ou dispensa diretamente do popover de notificações.
+  - *Teste & Verificação:* Testes unitários e de componente em `page-shell.test.tsx` e `notifications-popover.test.tsx`.
+  - *Commit:* `feat(layout): integrar alertas criticos do smart advisor a central de notificacoes`
+
+- [ ] **Tarefa 8.6 — Painel de Gestão e Auditoria de Memória do Assistente em `/insights` (F30):**
+  - Na aba de Recorrências (`/insights?aba=recurrences`), introduzir seção recolhível/gerenciável *"Memória de Aprendizado do Assistente"*:
+    - Listar itens atualmente sob cooldown de descarte (ex.: *"Netflix — descartado temporariamente até DD/MM"*).
+    - Listar decisões de micro-feedback registradas (*"Já cancelei"*, *"É pontual"*, *"Não é assinatura"*).
+    - Disponibilizar botão de 1 clique *"Reativar monitoramento"* para cada item, limpando a restrição e reintroduzindo a assinatura no fluxo de detecção.
+  - *Teste & Verificação:* Teste no `recurrences-tab.test.tsx` validando listagem de itens memorizados, clique em reativar e atualização reativa do cache.
+  - *Commit:* `feat(insights): adicionar painel de auditoria e revogacao de memoria do assistente`
+
+- [ ] **Tarefa 8.7 — Microinterações, Animações e Transições Suaves na Fila Sequencial:**
+  - Aplicar animações sutis (`motion-safe:animate-in fade-in-50 duration-150`) ao transitar entre itens da fila `< 1 de N >` ou ao dispensar/concluir uma sugestão.
+  - Manter alturas mínimas estáveis para evitar *Cumulative Layout Shift* (CLS) no topo da Home.
+  - Garantir governança sensorial estrita (AGENTS.md §17): zero duplos cliques haptics e zero vibrações em desktops.
+  - *Teste & Verificação:* Verificação visual e testes de transição respeitando acessibilidade (`prefers-reduced-motion`).
+  - *Commit:* `feat(advisor): adicionar transicoes suaves e microinteracoes na navegacao da fila`
+
+#### PORTÃO DE QUALIDADE 8 (Quality Gate 8 / DoD de Evolução do Assistente Proativo):
+1. Fila sequencial `< 1 de N >` navegável com teclado, toque e leitor de tela, sem sobreposições ou quebras visuais.
+2. Não-supressão de alertas críticos comprovada em testes automatizados com múltiplos descartes no mesmo dia.
+3. Redirecionamento direto com pré-preenchimento total do wizard e modal de auditoria 100% testado.
+4. Ação de confirmação expressa em 1 toque com toast de reversão de 5 segundos funcionando atomicamente.
+5. Contextualização de fatura e limite operando com precisão de centavos e conformidade com AGENTS.md §11 (zero reticências).
+6. Central de notificações integrada refletindo a fila crítica do assistente em todas as telas.
+7. Painel de auditoria de memória em `/insights` permitindo revogar descartes e reativar monitoramento.
+8. Zero emojis em toda a implementação e documentação (AGENTS.md §8).
+9. Suíte completa de testes (`npm run test`) 100% verde.
+10. `npm run typecheck` e `npm run lint` sem qualquer advertência ou erro.
+11. **Ação Obrigatória:** Executar `git push origin` com a entrega consolidada.
+
+---
+
 ## 4. MATRIZ DE VERIFICAÇÃO E TESTES FINAIS
 
 | Teste | Critério de Aceitação | Comando / Verificação |
@@ -522,5 +616,12 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 | **Aprendizado Cruzado Multidomínio** | Edições de despesas, rendas e aportes refinam regras e sugestões proativas | Teste do `useSmartAdvisorInsights` e `MerchantLearningEngine` |
 | **Micro-Feedback Qualificado** | Opções de descarte (*"Já cancelei"*, *"É pontual"*) calam falsos positivos e celebram economia | Teste de feedback em `insight-feedback.test.ts` |
 | **Comunicação e Onboarding** | Landing Page e modal de boas-vindas explicam a hierarquia com clareza e zero emojis | Verificação visual e teste em `onboarding-card.test.tsx` |
+| **Navegação em Fila do Assistente** | Fila sequencial `< 1 de N >` ordena por criticidade e avança ao dispensar | Teste unitário em `advisor.test.ts` e `smart-advisor-card.test.tsx` |
+| **Não-Supressão Crítica** | Alertas críticos (duplicidades, contas hoje) nunca somem após dispensas | Teste unitário em `advisor.test.ts` |
+| **Pré-Preenchimento e Redirecionamento Direto** | Clique no card abre wizard/modal com valores, datas, cartões e categorias pré-carregados | Testes de integração em `page-shell.test.tsx` e `recurrences-tab.test.tsx` |
+| **Confirmação Expressa de 1 Toque** | Despesa fixa confirmada em 1 clique com toast de reversão de 5s | Teste de integração do card com reversão |
+| **Contextualização de Fatura e Limite** | Impacto de fatura e limite restante contextualizados sem truncamento monetário | Teste unitário e de renderização no `SmartAdvisorCard` |
+| **Central de Notificações Unificada** | Alertas críticos do assistente surgem no sino do cabeçalho em todas as páginas | Teste de integração em `page-shell.test.tsx` |
+| **Gestão e Auditoria de Memória** | Aba de recorrências lista itens silenciados e permite reativar monitoramento em 1 clique | Teste em `recurrences-tab.test.tsx` |
 | **Governança de Código** | Zero emojis, TypeScript estrito, DRY respeitado e commits por tarefa | `npm run typecheck && npm run lint && npm run test` |
 

@@ -118,7 +118,22 @@ export function CardSubscriptionRadar({ impact, className, onIgnoreItem }: CardS
                       </span>
                     ) : null}
                   </div>
-                  <MoneyText cents={item.amountCents} tone="default" className="font-medium shrink-0" />
+                  <div className="flex items-center gap-2 shrink-0">
+                    <MoneyText cents={item.amountCents} tone="default" className="font-medium" />
+                    {onIgnoreItem ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-6 text-muted-foreground hover:text-foreground"
+                        title="Já cortei ou desconsiderar nesta fatura"
+                        aria-label={`Já cortei ou desconsiderar ${item.name}`}
+                        onClick={() => onIgnoreItem(item.key)}
+                      >
+                        <EyeOff className="size-3.5" aria-hidden="true" />
+                      </Button>
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </ul>

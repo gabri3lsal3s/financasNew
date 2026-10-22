@@ -25,11 +25,11 @@ import {
   shiftMonth,
 } from "@/domain/cards";
 import { currentMonth, monthLabel } from "@/lib/date";
-import { serializeCardInvoiceCsv } from "@/domain/export";
-import type { ExportCardInvoiceRow } from "@/domain/export";
+import { serializeCardInvoiceCsv, type ExportCardInvoiceRow } from "@/domain/export";
 import { todayISO } from "@/domain/debts";
 import { detectRecurrences, type ExpenseLike } from "@/domain/insights/recurrences";
 import { calculateCardSubscriptionImpact } from "@/domain/insights/card-radar";
+import { partitionFeedback } from "@/domain/insights/feedback";
 import type { CardInvoiceExpenseRow, CardInvoicePaymentRow } from "@/components/modules";
 import { numberToCents } from "@/domain/money";
 import { downloadCsv } from "@/services/export-actions";
@@ -45,7 +45,9 @@ import {
   useCategories,
   useCreditCards,
   useDeleteCardPayment,
+  useFeedback,
   usePermission,
+  useSetFeedback,
   useUpdateCard,
 } from "@/state";
 import { CardFormDialog } from "@/features/cards/components/card-form-dialog";
@@ -76,6 +78,8 @@ export function CardsPage() {
   const deleteCardPaymentMutation = useDeleteCardPayment();
   const allCardExpensesQuery = useAllCardExpenses();
   const allCardPaymentsQuery = useAllCardPayments();
+  const feedbackQuery = useFeedback();
+  const setFeedbackMutation = useSetFeedback();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const cards = useMemo(() => cardsQuery.data ?? [], [cardsQuery.data]);
@@ -380,11 +384,13 @@ export function CardsPage() {
 
     const todayISOStr = todayISO();
     const detected = detectRecurrences(cardExpenseLikes, { todayISO: todayISOStr });
-    return calculateCardSubscriptionImpact(selectedCard, detected, {
+    const feedbackMap = feedbackQuery.data ?? {};
+    const { active } = partitionFeedback(detected, feedbackMap);
+    return calculateCardSubscriptionImpact(selectedCard, active, {
       todayISO: todayISOStr,
       availableLimitCents,
     });
-  }, [selectedCard, allExpenses, categoryById, currentInvoiceSaldoBrutoCents]);
+  }, [selectedCard, allExpenses, categoryById, currentInvoiceSaldoBrutoCents, feedbackQuery.data]);
 
   const permission = usePermission("cards");
   const navigate = useNavigate();
@@ -749,7 +755,10 @@ export function CardsPage() {
 
             {/* Bloco Informativo de Impacto de Assinaturas na Fatura em Aberto (F22 / Tarefa 7.6) */}
             {cardSubscriptionImpact && cardSubscriptionImpact.totalProjectedCents > 0 ? (
-              <CardSubscriptionRadar impact={cardSubscriptionImpact} />
+              <CardSubscriptionRadar
+                impact={cardSubscriptionImpact}
+                onIgnoreItem={(key) => setFeedbackMutation.mutate({ occurrenceKey: key, decision: "ignore" })}
+              />
             ) : null}
           </div>
 
