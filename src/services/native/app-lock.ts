@@ -70,8 +70,9 @@ export const getAppLockGraceMinutes = getBiometricLockTimeoutMinutes;
 export const setAppLockGraceMinutes = setBiometricLockTimeoutMinutes;
 
 /**
- * Lê se o Privacy Shield (FLAG_SECURE) está ativado. No nativo, padrão é true.
- * Suporta cold start quando o activeUserId ainda não foi resolvido lendo a chave ativa espelhada.
+ * Lê se o Privacy Shield (FLAG_SECURE) está ativado.
+ * Padrão: false (desativado por padrão para viabilizar capturas de tela e comprovantes).
+ * Ativado exclusivamente quando o usuário ligar a opção nas configurações de segurança.
  */
 export function isPrivacyShieldEnabled(userId?: string | null): boolean {
   const direct = getUserStorageItem(KEY_PRIVACY_SHIELD, userId);
@@ -81,18 +82,11 @@ export function isPrivacyShieldEnabled(userId?: string | null): boolean {
     try {
       const activeVal = window.localStorage.getItem(`financas_active_${KEY_PRIVACY_SHIELD}`);
       if (activeVal !== null) return activeVal === "true";
-
-      for (let i = 0; i < window.localStorage.length; i++) {
-        const k = window.localStorage.key(i);
-        if (k && k.startsWith("financas_") && k.endsWith(`_${KEY_PRIVACY_SHIELD}`)) {
-          return window.localStorage.getItem(k) === "true";
-        }
-      }
     } catch {
       // no-op
     }
   }
-  return isNativePlatform();
+  return false;
 }
 
 /**
@@ -103,6 +97,7 @@ export function setPrivacyShieldEnabled(enabled: boolean, userId?: string | null
   if (typeof window !== "undefined") {
     try {
       window.localStorage.setItem(`financas_active_${KEY_PRIVACY_SHIELD}`, String(enabled));
+      window.localStorage.setItem(`financas_guest_${KEY_PRIVACY_SHIELD}`, String(enabled));
     } catch {
       // no-op
     }

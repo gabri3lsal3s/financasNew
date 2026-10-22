@@ -121,6 +121,11 @@ export function SecurityTab() {
   const [biometryType, setBiometryType] = useState<string>("none");
   const [bioLockEnabled, setBioLockEnabled] = useState(() => isBiometricLockEnabled());
   const [graceMinutes, setGraceMinutes] = useState(() => String(getAppLockGraceMinutes()));
+  const isNative = isNativePlatform();
+  const showBiometrics = isNative || Boolean(biometricsAvailable);
+  const showPrivacyShield = isNative;
+  const showAppLockCard = showBiometrics || showPrivacyShield;
+
   const [localPrivacyOverride, setLocalPrivacyOverride] = useState<boolean | null>(null);
   const cloudPrivacyShield = userPreferencesQuery.data?.custom_settings?.privacyShieldEnabled;
   const privacyEnabled =
@@ -129,11 +134,6 @@ export function SecurityTab() {
       : cloudPrivacyShield !== undefined
         ? cloudPrivacyShield
         : isPrivacyShieldEnabled();
-
-  const isNative = isNativePlatform();
-  const showBiometrics = isNative || Boolean(biometricsAvailable);
-  const showPrivacyShield = isNative;
-  const showAppLockCard = showBiometrics || showPrivacyShield;
 
   useEffect(() => {
     checkBiometricsAvailability().then((res) => {
@@ -178,18 +178,19 @@ export function SecurityTab() {
     setAppLockGraceMinutes(Number(val));
   };
 
-  const handleTogglePrivacyShield = async (enabled: boolean) => {
+  const handleTogglePrivacyShield = (enabled: boolean) => {
     setLocalPrivacyOverride(enabled);
-    await setPrivacyShieldEnabled(enabled);
+    setPrivacyShieldEnabled(enabled);
     updateCustomSettingsMutation.mutate({ privacyShieldEnabled: enabled });
     pushToast({
       title: enabled ? "Escudo de privacidade ativado" : "Escudo de privacidade desativado",
       description: enabled
         ? "Capturas de tela e miniaturas no alternador de tarefas foram bloqueadas."
-        : "Capturas de tela foram reabilitadas.",
+        : "Capturas de tela foram liberadas com sucesso.",
       variant: "default",
     });
   };
+
 
   const portfolioPosition = usePortfolioPosition();
   const exportDataQuery = useExportData({ enabled: false });

@@ -1,5 +1,5 @@
 import { App } from "@capacitor/app";
-import { registerPlugin } from "@capacitor/core";
+import { CapacitorHttp, registerPlugin } from "@capacitor/core";
 import { isNativePlatform } from "./platform";
 import { AppVersionManifestSchema } from "./update-schema";
 import type { AppUpdateCheckResult, AppVersionManifest } from "@/types/app-update";
@@ -60,23 +60,64 @@ export async function checkAppUpdate(options?: CheckUpdateOptions): Promise<AppU
   }
 
   try {
-    const res = await fetch(url, {
-      cache: "no-store",
-      headers: { "Cache-Control": "no-cache" },
-    });
+    let rawData: unknown;
+    let statusCode = 200;
 
-    if (!res.ok) {
+    if (isNativePlatform()) {
+      try {
+        const response = await CapacitorHttp.get({
+          url,
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+          },
+        });
+        statusCode = response.status;
+        rawData = response.data;
+      } catch {
+        // Fallback para fetch web caso ocorra falha de inicialização no plugin nativo
+        const res = await fetch(url, {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache" },
+        });
+        statusCode = res.status;
+        rawData = await res.json();
+      }
+    } else {
+      const res = await fetch(url, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
+      statusCode = res.status;
+      rawData = await res.json();
+    }
+
+    if (statusCode < 200 || statusCode >= 300) {
       return {
         hasUpdate: false,
         isMandatory: false,
         currentVersion,
         currentVersionCode,
-        error: `Servidor de atualizações retornou código ${res.status}`,
+        error: `Servidor de atualizações retornou código ${statusCode}`,
       };
     }
 
-    const data = await res.json();
-    const parseResult = AppVersionManifestSchema.safeParse(data);
+    let parsedData = rawData;
+    if (typeof rawData === "string") {
+      try {
+        parsedData = JSON.parse(rawData);
+      } catch {
+        return {
+          hasUpdate: false,
+          isMandatory: false,
+          currentVersion,
+          currentVersionCode,
+          error: "Manifesto de atualização com formato inválido.",
+        };
+      }
+    }
+
+    const parseResult = AppVersionManifestSchema.safeParse(parsedData);
 
     if (!parseResult.success) {
       return {

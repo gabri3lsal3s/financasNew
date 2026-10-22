@@ -18,7 +18,7 @@
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, PutBucketCorsCommand } from "@aws-sdk/client-s3";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -119,6 +119,31 @@ async function upload() {
   });
   await s3.send(aliasCommand);
   console.log("  [OK] axis-pro.apk atualizado com sucesso!");
+
+  // Garante que o bucket tenha regras de CORS públicas para que tanto o app nativo quanto a web
+  // consigam consultar o version.json e baixar os APKs sem bloqueios de navegador.
+  console.log("-> Configurando regras de CORS no bucket Cloudflare R2...");
+  try {
+    await s3.send(
+      new PutBucketCorsCommand({
+        Bucket: bucketName,
+        CORSConfiguration: {
+          CORSRules: [
+            {
+              AllowedHeaders: ["*"],
+              AllowedMethods: ["GET", "HEAD"],
+              AllowedOrigins: ["*"],
+              ExposeHeaders: ["ETag"],
+              MaxAgeSeconds: 3600,
+            },
+          ],
+        },
+      })
+    );
+    console.log("  [OK] Regras de CORS (AllowedOrigins: *) aplicadas com sucesso!");
+  } catch (corsErr) {
+    console.warn("  [AVISO] Nao foi possivel configurar CORS automaticamente:", corsErr.message);
+  }
 
   // Envia o manifesto version.json para viabilizar consultas remotas
   const versionPath = join(root, "public", "releases", "version.json");

@@ -106,8 +106,10 @@ O arquivo [public/releases/version.json](file:///home/gabrielsales/meus_apps/fin
 ## 5. HOSPEDAGEM E INFRAESTRUTURA (CLOUDFLARE + SUPABASE)
 
 ### 5.1 Cloudflare Pages + R2 (Combinação Recomendada para Escala)
-- **Manifesto (`version.json`):** Vive na pasta `public/releases/version.json`. É servido pelo **Cloudflare Pages** com latência global ultrabaixa (< 20ms) e cache inteligente.
-- **Binário APK (`axis-pro.apk`):** Hospedado no **Cloudflare R2** com domínio customizado (ex: `dl.guiafinanceiro.app/axis-pro.apk`).
+- **Manifesto (`version.json`):** Vive na pasta `public/releases/version.json` e também é enviado ao bucket R2 via `npm run upload:apk`.
+- **Regras de CORS no R2:** Para que o WebView do app Android nativo (origem `https://localhost`) e o navegador Web consigam consultar `version.json` sem bloqueio ("Failed to fetch"), o script `scripts/upload-r2.mjs` aplica automaticamente regras de CORS no bucket R2 (`AllowedOrigins: ["*"]`, `AllowedMethods: ["GET", "HEAD"]`).
+- **CapacitorHttp Nativo:** A verificação de atualização no app nativo utiliza `CapacitorHttp.get` (OkHttp nativo do Android), contornando restrições de sandbox de WebView com fallback automático para `fetch`.
+- **Binário APK (`axis-pro.apk`):** Hospedado no **Cloudflare R2** com domínio público ou customizado.
   - **Vantagem Absoluta:** O Cloudflare R2 possui **Zero Egress Fees** (tráfego de download 100% gratuito e ilimitado). 100.000 usuários baixando o app de 30MB custam R$ 0,00.
 
 ### 5.2 Supabase Storage (Alternativa Imediata)

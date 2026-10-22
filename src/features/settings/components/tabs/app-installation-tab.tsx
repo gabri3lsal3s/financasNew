@@ -45,7 +45,13 @@ export function AppInstallationTab() {
         description: `A versão ${res.latestVersion} está disponível para atualização.`,
         variant: "info",
       });
-    } else if (!res.error) {
+    } else if (res.error) {
+      pushToast({
+        title: "Falha na verificação",
+        description: res.error,
+        variant: "destructive",
+      });
+    } else {
       pushToast({
         title: "Aplicativo atualizado",
         description: "Você já está na versão mais recente disponível.",
@@ -188,7 +194,7 @@ export function AppInstallationTab() {
                 </div>
               )}
 
-              {!hasUpdate && !isChecking && (
+              {!hasUpdate && !isChecking && !error && (
                 <div className="flex items-center gap-2 text-xs text-positive">
                   <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
                   <span>Seu aplicativo Android está atualizado com a versão mais recente.</span>
@@ -196,9 +202,22 @@ export function AppInstallationTab() {
               )}
 
               {error && (
-                <div className="flex items-center gap-2 text-xs text-destructive">
-                  <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-                  <span>{error}</span>
+                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3.5 space-y-2.5">
+                  <div className="flex items-center gap-2 text-xs text-destructive font-medium">
+                    <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+                    <span>Não foi possível verificar atualizações: {error}</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleManualCheck}
+                    disabled={isChecking}
+                    className="text-xs cursor-pointer gap-1.5 border-border/80 bg-surface"
+                  >
+                    <RefreshCw className={cn("size-3 text-muted-foreground", isChecking && "animate-spin text-primary")} aria-hidden="true" />
+                    <span>Tentar novamente</span>
+                  </Button>
                 </div>
               )}
             </div>

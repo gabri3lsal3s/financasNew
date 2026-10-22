@@ -389,9 +389,10 @@ A governança de segurança do aplicativo segue o princípio de **Defesa em Prof
 
 ### 12.4 Privacidade em Clientes Móveis e Telemetria Segura
 1. **Android FLAG_SECURE (Privacy Shield) & Ciclo de Vida Resiliente:** O serviço nativo [`src/services/native/privacy-shield.ts`](../src/services/native/privacy-shield.ts) e o gateway [`src/services/native/app-lock.ts`](../src/services/native/app-lock.ts) gerenciam a flag `WindowManager.LayoutParams.FLAG_SECURE` na janela Android.
+   - **Padrão Desativado (Opt-in Seguro):** Para permitir que os usuários tirem prints de seus comprovantes Pix e gráficos normalmente, o Privacy Shield vem desativado por padrão (`false`).
    - **Controle Explícito do Container:** O plugin `@capacitor-community/privacy-screen` é configurado com `enable: false` em `capacitor.config.ts`, permitindo que o ciclo de vida JavaScript controle determinísticamente a aplicação ou remoção do `FLAG_SECURE`.
-   - **Persistência na Nuvem:** A preferência é armazenada e sincronizada via Supabase na coluna `user_preferences.custom_settings.privacyShieldEnabled`.
-   - **Resiliência no Cold Start:** No dispositivo, o valor é espelhado em `financas_active_privacy_shield_enabled` no `localStorage`, garantindo que no boot nativo (antes da resolução da sessão de autenticação) `syncPrivacyShield()` despache ativamente `enablePrivacyShield()` ou `disablePrivacyShield()`, sem reter bloqueios indevidos de tela caso o usuário tenha desabilitado o escudo.
+   - **Remoção Ativa de Flags:** Ao desativar o escudo, `disablePrivacyShield()` executa `window.clearFlags(FLAG_SECURE)` imediatamente no Android e atualiza tanto o espelho local quanto a nuvem (`user_preferences.custom_settings.privacyShieldEnabled`).
+   - **Resiliência no Cold Start:** No dispositivo, o valor é espelhado em `financas_active_privacy_shield_enabled` no `localStorage`. No boot nativo, `syncPrivacyShield()` despacha ativamente `enablePrivacyShield()` ou `disablePrivacyShield()`, sem reter bloqueios indevidos de tela caso o usuário tenha desabilitado o escudo.
 2. **Redaction Automático de PII no Sentry:** O cliente de observabilidade [`src/services/observability.ts`](../src/services/observability.ts) aplica sanitização recursiva (`scrubSensitiveData`) e gancho `beforeSend`, redigindo chaves confidenciais (`password`, `senha`, `secret`, `token`, `account_number`) e mascarando padrões de CPF (`[REDACTED_CPF]`) e cartões de crédito (`[REDACTED_CARD]`) antes de transmitir qualquer evento à telemetria.
 
 ---

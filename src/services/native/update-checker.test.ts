@@ -7,11 +7,16 @@ const mockAppUpdatePlugin = vi.hoisted(() => ({
   downloadAndInstall: vi.fn().mockResolvedValue({ downloadId: 123, status: "downloading" }),
 }));
 
+const mockCapacitorHttp = vi.hoisted(() => ({
+  get: vi.fn(),
+}));
+
 vi.mock("@capacitor/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@capacitor/core")>();
   return {
     ...actual,
     registerPlugin: () => mockAppUpdatePlugin,
+    CapacitorHttp: mockCapacitorHttp,
   };
 });
 
@@ -154,5 +159,52 @@ describe("update-checker service", () => {
         sha256: "hash123",
       })
     );
+  });
+
+  it("utiliza CapacitorHttp.get nativo quando em plataforma nativa", async () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+    mockCapacitorHttp.get.mockResolvedValueOnce({
+      status: 200,
+      data: {
+        version: "1.2.0",
+        versionCode: 3,
+        releaseDate: "2026-10-21T00:00:00Z",
+        apkUrl: "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/axis-pro.apk",
+        changelog: ["Atualizacao nativa"],
+      },
+    });
+
+    const result = await checkAppUpdate();
+
+    expect(mockCapacitorHttp.get).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: expect.stringContaining("pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev"),
+      })
+    );
+    expect(result.hasUpdate).toBe(true);
+    expect(result.latestVersion).toBe("1.2.0");
+    expect(result.latestVersionCode).toBe(3);
+  });
+
+  it("faz fallback para fetch caso CapacitorHttp falhe em plataforma nativa", async () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+    mockCapacitorHttp.get.mockRejectedValueOnce(new Error("Plugin nativo indisponivel"));
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        version: "1.2.0",
+        versionCode: 3,
+        releaseDate: "2026-10-21T00:00:00Z",
+        apkUrl: "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/axis-pro.apk",
+        changelog: [],
+      }),
+    });
+
+    const result = await checkAppUpdate();
+
+    expect(result.hasUpdate).toBe(true);
+    expect(global.fetch).toHaveBeenCalled();
   });
 });

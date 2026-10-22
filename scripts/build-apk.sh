@@ -156,7 +156,7 @@ if [ -f "${RELEASE_FILE}" ]; then
   "version": "${APP_VERSION_NAME}",
   "versionCode": ${APP_VERSION_CODE},
   "releaseDate": "${RELEASE_DATE}",
-  "minSupportedVersion": "1.0.0",
+  "minSupportedVersion": "${APP_VERSION_NAME}",
   "apkUrl": "${APK_DOWNLOAD_LINK}",
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
