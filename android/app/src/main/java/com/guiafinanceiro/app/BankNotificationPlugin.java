@@ -27,6 +27,7 @@ public class BankNotificationPlugin extends Plugin {
 
     private static BankNotificationPlugin instance;
     private static String pendingSharePayload;
+    private static String pendingReviewPayload;
 
     public static synchronized void setPendingShare(String payload) {
         pendingSharePayload = payload;
@@ -34,6 +35,14 @@ public class BankNotificationPlugin extends Plugin {
 
     public static synchronized String getPendingSharePayload() {
         return pendingSharePayload;
+    }
+
+    public static synchronized void setPendingReview(String payload) {
+        pendingReviewPayload = payload;
+    }
+
+    public static synchronized String getPendingReviewPayload() {
+        return pendingReviewPayload;
     }
 
     static class BankAppInfo {
@@ -253,6 +262,39 @@ public class BankNotificationPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void flushConfirmedTransactions(PluginCall call) {
+        JSObject ret = new JSObject();
+        JSArray items = new JSArray();
+
+        try {
+            Context context = getContext();
+            SharedPreferences prefs = context.getSharedPreferences(
+                    BankNotificationListenerService.PREFS_NAME,
+                    Context.MODE_PRIVATE
+            );
+            String bufferJson = prefs.getString(BankNotificationActionReceiver.KEY_CONFIRMED_BUFFER, "[]");
+
+            prefs.edit().remove(BankNotificationActionReceiver.KEY_CONFIRMED_BUFFER).apply();
+
+            JSONArray array = new JSONArray(bufferJson);
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject obj = array.getJSONObject(i);
+                JSObject item = new JSObject();
+                item.put("packageName", obj.optString("packageName"));
+                item.put("title", obj.optString("title"));
+                item.put("text", obj.optString("text"));
+                item.put("timestamp", obj.optLong("timestamp"));
+                items.put(item);
+            }
+        } catch (Exception e) {
+            android.util.Log.e("BankNotificationPlugin", "Erro ao descarregar buffer de transacoes confirmadas", e);
+        }
+
+        ret.put("transactions", items);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
     public void getPendingShare(PluginCall call) {
         JSObject ret = new JSObject();
         String text;
@@ -262,6 +304,75 @@ public class BankNotificationPlugin extends Plugin {
         }
         ret.put("text", text);
         call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void getPendingReviewTransaction(PluginCall call) {
+        JSObject ret = new JSObject();
+        String payload;
+        synchronized (BankNotificationPlugin.class) {
+            payload = pendingReviewPayload;
+            pendingReviewPayload = null;
+        }
+        ret.put("payload", payload);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void extractTextFromReceipt(PluginCall call) {
+        String base64Data = call.getString("base64Data");
+        String mimeType = call.getString("mimeType", "image/jpeg");
+        if (base64Data == null || base64Data.trim().isEmpty()) {
+            call.reject("Dados do arquivo ausentes");
+            return;
+        }
+
+        Context context = getContext();
+        if (context == null) {
+            call.reject("Contexto indisponivel");
+            return;
+        }
+
+        new Thread(() -> {
+            java.io.File tempFile = null;
+            try {
+                byte[] bytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT);
+                String ext = (mimeType != null && mimeType.contains("pdf")) ? ".pdf" : ".jpg";
+                tempFile = new java.io.File(context.getCacheDir(), "receipt_ocr_" + System.currentTimeMillis() + ext);
+                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile)) {
+                    fos.write(bytes);
+                    fos.flush();
+                }
+
+                final java.io.File fileRef = tempFile;
+                android.net.Uri localUri = android.net.Uri.fromFile(fileRef);
+
+                ReceiptOcrHelper.extractTextFromUri(context, localUri, mimeType, new ReceiptOcrHelper.OcrCallback() {
+                    @Override
+                    public void onSuccess(String recognizedText) {
+                        try {
+                            JSObject ret = new JSObject();
+                            ret.put("text", recognizedText != null ? recognizedText : "");
+                            call.resolve(ret);
+                        } finally {
+                            if (fileRef.exists()) fileRef.delete();
+                        }
+                    }
+
+                    @Override
+                    public void onError(Exception error) {
+                        try {
+                            call.reject("Erro no OCR do comprovante: " + error.getMessage());
+                        } finally {
+                            if (fileRef.exists()) fileRef.delete();
+                        }
+                    }
+                });
+            } catch (Exception e) {
+                if (tempFile != null && tempFile.exists()) tempFile.delete();
+                call.reject("Falha ao processar arquivo: " + e.getMessage());
+            }
+        }).start();
     }
 
     public void onNotificationReceived(String packageName, String title, String text, long timestamp) {
@@ -277,6 +388,30 @@ public class BankNotificationPlugin extends Plugin {
         JSObject data = new JSObject();
         data.put("text", text);
         notifyListeners("shareTextReceived", data);
+    }
+
+    public void onOpenReviewTransaction(String payload) {
+        JSObject data = new JSObject();
+        data.put("payload", payload);
+        notifyListeners("openReviewTransaction", data);
+    }
+
+    public void onTransactionConfirmed(String packageName, String title, String text, long timestamp) {
+        JSObject data = new JSObject();
+        data.put("packageName", packageName);
+        data.put("title", title);
+        data.put("text", text);
+        data.put("timestamp", timestamp);
+        notifyListeners("bankTransactionConfirmed", data);
+    }
+
+    public void onTransactionUndone(String packageName, String title, String text, long timestamp) {
+        JSObject data = new JSObject();
+        data.put("packageName", packageName);
+        data.put("title", title);
+        data.put("text", text);
+        data.put("timestamp", timestamp);
+        notifyListeners("bankTransactionUndone", data);
     }
 
     private static boolean isNotificationServiceEnabled(Context context) {

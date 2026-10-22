@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { ArrowUpRight, Check, ChevronDown, ClipboardPaste, Receipt, Trash2, TrendingUp, X, Zap } from "lucide-react";
+import { ArrowUpRight, Check, ChevronDown, Paperclip, Receipt, Trash2, TrendingUp, X, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CategoryIcon } from "@/components/modules/category-icon";
-import { PasteReceiptDialog } from "./paste-receipt-dialog";
+import { AttachReceiptDialog } from "./attach-receipt-dialog";
 import { formatDateBR } from "@/lib/date";
 import {
   addPendingSuggestion,
@@ -353,11 +353,11 @@ export function PendingSuggestionsCard({
             variant="ghost"
             size="xs"
             onClick={() => setPasteOpen(true)}
-            className="text-xs text-muted-foreground hover:text-foreground hover:bg-surface-hover cursor-pointer"
-            aria-label="Colar comprovante Pix ou notificação"
+            className="text-xs text-muted-foreground hover:text-foreground hover:bg-surface-hover cursor-pointer gap-1"
+            aria-label="Anexar comprovante"
           >
-            <ClipboardPaste className="size-3.5 mr-1" aria-hidden="true" />
-            <span>Colar comprovante</span>
+            <Paperclip className="size-3.5" aria-hidden="true" />
+            <span>Anexar comprovante</span>
           </Button>
 
           {suggestions.length >= 2 && (
@@ -606,7 +606,7 @@ export function PendingSuggestionsCard({
         })}
       </div>
 
-      <PasteReceiptDialog open={pasteOpen} onOpenChange={setPasteOpen} />
+      <AttachReceiptDialog open={pasteOpen} onOpenChange={setPasteOpen} />
     </div>
   );
 }

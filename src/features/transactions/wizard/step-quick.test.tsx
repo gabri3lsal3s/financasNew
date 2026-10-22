@@ -153,6 +153,31 @@ describe("StepQuick (Lançamento Rápido em Tela Única)", () => {
     expect(defaultProps.onSwitchToGuided).toHaveBeenCalledTimes(1);
   });
 
+  it("exibe seletor de parcelas e aciona onInstallmentsChange ao alterar", () => {
+    const onInstallmentsChange = vi.fn();
+    render(
+      <StepQuick
+        {...defaultProps}
+        state={{ ...defaultProps.state, paymentMethod: "credit_card", installments: 1, valueCents: 30000 }}
+        onInstallmentsChange={onInstallmentsChange}
+      />,
+    );
+
+    expect(screen.getByText("Parcelas")).toBeDefined();
+    expect(screen.getByRole("combobox", { name: "Número de parcelas" })).toBeDefined();
+  });
+
+  it("destaca a seção de categoria quando isCategoryUnconfirmed for verdadeiro", () => {
+    render(
+      <StepQuick
+        {...defaultProps}
+        isCategoryUnconfirmed={true}
+      />,
+    );
+
+    expect(screen.getByText("Confirmar categoria")).toBeDefined();
+  });
+
   it("submete no Enter caso o valor seja maior que zero", () => {
     render(<StepQuick {...defaultProps} state={{ ...defaultProps.state, valueCents: 1500 }} />);
 

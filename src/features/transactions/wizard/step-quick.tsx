@@ -23,6 +23,7 @@ import {
 } from "@/domain/notifications";
 import { useMerchantLearning } from "@/services/merchant-learning";
 import { triggerSensory } from "@/services/sensory";
+import { formatCentsAsCurrency } from "@/services/masks";
 import { cn } from "@/lib/utils";
 import type { Category, PaymentMethod, ReceiveType } from "@/types";
 import type { EntryType, LaunchState } from "./wizard-state";
@@ -34,6 +35,8 @@ export interface StepQuickProps {
   onCategoryChange: (categoryId: string) => void;
   onPaymentMethodChange: (method: PaymentMethod) => void;
   onCardChange: (cardId: string) => void;
+  onInstallmentsChange?: (installments: number) => void;
+  isCategoryUnconfirmed?: boolean;
   onReceiveTypeChange: (type: ReceiveType) => void;
   onDescriptionChange: (description: string) => void;
   onSwitchToGuided: () => void;
@@ -71,6 +74,8 @@ export function StepQuick({
   onCategoryChange,
   onPaymentMethodChange,
   onCardChange,
+  onInstallmentsChange,
+  isCategoryUnconfirmed = false,
   onReceiveTypeChange,
   onDescriptionChange,
   onSwitchToGuided,
@@ -83,6 +88,19 @@ export function StepQuick({
   const isExpense = state.type === "expense";
   const { memory } = useMerchantLearning();
   const [descriptionFocused, setDescriptionFocused] = useState(false);
+
+  // Opções de parcelamento calculadas dinamicamente com base no valor atual
+  const installmentOptions = useMemo(() => {
+    const list = [];
+    for (let i = 1; i <= 12; i++) {
+      const label =
+        i === 1
+          ? `1x (à vista)${state.valueCents > 0 ? ` · ${formatCentsAsCurrency(state.valueCents)}` : ""}`
+          : `${i}x${state.valueCents > 0 ? ` de ${formatCentsAsCurrency(Math.round(state.valueCents / i))}` : ""}`;
+      list.push({ value: String(i), label });
+    }
+    return list;
+  }, [state.valueCents]);
 
   // Sugestões de autocompletar inteligente pelo MerchantLearningEngine (aprendizado do usuário + catálogo canônico)
   const suggestions = useMemo<AutoCompleteSuggestion[]>(() => {
@@ -226,9 +244,21 @@ export function StepQuick({
       </div>
 
       {/* 4. Grade Compacta de Categorias em 1 Toque */}
-      <div className="flex flex-col gap-1.5">
+      <div
+        className={cn(
+          "flex flex-col gap-1.5 rounded-xl transition-colors",
+          isCategoryUnconfirmed && "p-2 border border-warning-border bg-warning/5 ring-1 ring-warning-border/40",
+        )}
+      >
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-foreground">Categoria</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-foreground">Categoria</span>
+            {isCategoryUnconfirmed && (
+              <Badge variant="warning" size="xs">
+                Confirmar categoria
+              </Badge>
+            )}
+          </div>
           <span className="text-[11px] text-muted-foreground">Toque para selecionar</span>
         </div>
 
@@ -305,24 +335,43 @@ export function StepQuick({
               })}
             </div>
 
-            {/* Dropdown de Cartões quando Cartão de Crédito estiver selecionado */}
-            {state.paymentMethod === "credit_card" && (
-              <div className="flex flex-col gap-1 pt-1">
-                <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
-                  <CreditCard className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                  Cartão de Crédito
-                </span>
-                <Select
-                  ariaLabel="Selecione o cartão de crédito"
-                  value={state.cardId ?? ""}
-                  onValueChange={(val) => onCardChange(val)}
-                  disabled={cardsLoading}
-                  options={(cards ?? []).map((card) => ({
-                    value: card.id,
-                    label: card.name,
-                  }))}
-                  placeholder={cardsLoading ? "Carregando cartões..." : "Selecione o cartão"}
-                />
+            {/* Opções de Cartão e Parcelamento */}
+            {(state.paymentMethod === "credit_card" || (state.installments ?? 1) > 1) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                {state.paymentMethod === "credit_card" && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
+                      <CreditCard className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                      Cartão de Crédito
+                    </span>
+                    <Select
+                      ariaLabel="Selecione o cartão de crédito"
+                      value={state.cardId ?? ""}
+                      onValueChange={(val) => onCardChange(val)}
+                      disabled={cardsLoading}
+                      options={(cards ?? []).map((card) => ({
+                        value: card.id,
+                        label: card.name,
+                      }))}
+                      placeholder={cardsLoading ? "Carregando cartões..." : "Selecione o cartão"}
+                    />
+                  </div>
+                )}
+
+                {onInstallmentsChange && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
+                      Parcelas
+                    </span>
+                    <Select
+                      ariaLabel="Número de parcelas"
+                      value={String(state.installments || 1)}
+                      onValueChange={(val) => onInstallmentsChange(Number(val) || 1)}
+                      options={installmentOptions}
+                      placeholder="Selecione as parcelas"
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -10,9 +10,8 @@ const mockCategory1: Category = {
   icon: "graduation-cap",
   color: "#3b82f6",
   is_active: true,
+  is_reserved: false,
   type: "expense",
-  created_at: "2026-01-01T00:00:00Z",
-  updated_at: "2026-01-01T00:00:00Z",
 };
 
 const mockCategory2: Category = {
@@ -22,9 +21,8 @@ const mockCategory2: Category = {
   icon: "shirt",
   color: "#ec4899",
   is_active: true,
+  is_reserved: false,
   type: "expense",
-  created_at: "2026-01-01T00:00:00Z",
-  updated_at: "2026-01-01T00:00:00Z",
 };
 
 describe("OtherCategoriesDialog", () => {

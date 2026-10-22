@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { ClipboardPaste, Zap } from "lucide-react";
+import { Paperclip, Zap } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Stepper } from "@/components/ui/stepper";
-import { PasteReceiptDialog } from "@/components/modules/paste-receipt-dialog";
+import { AttachReceiptDialog } from "@/components/modules/attach-receipt-dialog";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
@@ -16,8 +16,6 @@ import {
   inferCategoryKeyword,
   lookupMerchantCategory,
   matchCategoryBySlug,
-  parseBankNotification,
-  parsePixShareText,
   type CanonicalCategorySlug,
   type ParsedBankTransaction,
 } from "@/domain/notifications";
@@ -88,7 +86,8 @@ export function LaunchWizard({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
-  const [pasteOpen, setPasteOpen] = useState(false);
+  const [attachOpen, setAttachOpen] = useState(false);
+  const [isCategoryUnconfirmed, setIsCategoryUnconfirmed] = useState(false);
   const merchantMemory = useMerchantCategoryMapping();
 
   // Transição suave para o modo guiado sem perda de dados
@@ -330,7 +329,10 @@ export function LaunchWizard({
     }
   };
 
-  const handlePasteParsed = (parsed: ParsedBankTransaction) => {
+  const handleReceiptParsed = (parsed: ParsedBankTransaction) => {
+    setMode("quick");
+    let isMemorized = false;
+
     setState((prev) => {
       const next = { ...prev };
       next.type = parsed.type;
@@ -356,6 +358,7 @@ export function LaunchWizard({
           if (found) {
             next.categoryId = found.id;
             categoryMatched = true;
+            isMemorized = true;
           }
         }
       }
@@ -402,37 +405,16 @@ export function LaunchWizard({
       return next;
     });
 
+    // Se a categoria foi memorizada, não requer confirmação; caso contrário, destaca para conferência
+    setIsCategoryUnconfirmed(!isMemorized);
+
     triggerSensory("success");
 
     pushToast({
-      title: "Dados preenchidos",
-      description: `${parsed.description} preenchido no formulário de lançamento.`,
+      title: "Comprovante reconhecido",
+      description: `${parsed.description} preenchido no Wizard Rápido para conferência.`,
       variant: "success",
     });
-  };
-
-  /**
-   * Leitura de 1 Toque da Área de Transferência (Clipboard) — Fase 3, Tarefa 3.3.
-   * Lê a área de transferência com consentimento explícito do usuário, analisa via
-   * `parsePixShareText` e preenche valor, categoria e favorecido automaticamente.
-   */
-  const handlePasteClipboard = async () => {
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard?.readText) {
-        const clipText = await navigator.clipboard.readText();
-        const trimmed = clipText?.trim();
-        if (trimmed) {
-          const parsed = parsePixShareText(trimmed) || parseBankNotification({ title: "", text: trimmed });
-          if (parsed) {
-            handlePasteParsed(parsed);
-            return;
-          }
-        }
-      }
-    } catch {
-      // Leitura negada ou não suportada: abre o diálogo para colagem manual
-    }
-    setPasteOpen(true);
   };
 
   const isLastStep = state.step === WIZARD_STEPS.length;
@@ -471,12 +453,12 @@ export function LaunchWizard({
             type="button"
             variant="outline"
             size="xs"
-            onClick={() => void handlePasteClipboard()}
+            onClick={() => setAttachOpen(true)}
             className="h-7 text-xs border-border/80 bg-surface-raised hover:bg-surface-hover text-foreground gap-1.5 px-2.5 font-medium shadow-xs cursor-pointer"
-            aria-label="Colar comprovante"
+            aria-label="Anexar comprovante"
           >
-            <ClipboardPaste className="size-3.5 text-foreground" aria-hidden="true" />
-            <span className="hidden sm:inline">Colar comprovante</span>
+            <Paperclip className="size-3.5 text-foreground" aria-hidden="true" />
+            <span className="hidden sm:inline">Anexar comprovante</span>
           </Button>
         </div>
       }
@@ -546,12 +528,17 @@ export function LaunchWizard({
               set("recurrenceEndDate", "");
             }}
             onValueChange={(cents) => set("valueCents", cents)}
-            onCategoryChange={(categoryId) => set("categoryId", categoryId)}
+            onCategoryChange={(categoryId) => {
+              set("categoryId", categoryId);
+              setIsCategoryUnconfirmed(false);
+            }}
             onPaymentMethodChange={(method: PaymentMethod) => {
               set("paymentMethod", method);
               if (method !== "credit_card") set("cardId", null);
             }}
             onCardChange={(cardId) => set("cardId", cardId)}
+            onInstallmentsChange={(count) => set("installments", count)}
+            isCategoryUnconfirmed={isCategoryUnconfirmed}
             onReceiveTypeChange={(receiveType: ReceiveType) => set("receiveType", receiveType)}
             onDescriptionChange={(description) => set("description", description)}
             onSwitchToGuided={handleSwitchToGuided}
@@ -681,10 +668,10 @@ export function LaunchWizard({
           }}
         />
 
-        <PasteReceiptDialog
-          open={pasteOpen}
-          onOpenChange={setPasteOpen}
-          onParsed={handlePasteParsed}
+        <AttachReceiptDialog
+          open={attachOpen}
+          onOpenChange={setAttachOpen}
+          onParsed={handleReceiptParsed}
         />
       </div>
     </Modal>

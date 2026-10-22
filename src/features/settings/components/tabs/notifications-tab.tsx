@@ -56,6 +56,7 @@ import {
   HOMOLOGATED_INSTITUTIONS,
   type HomologatedInstitution,
   type InstitutionCategory,
+  type UnknownCategoryStrategy,
 } from "@/domain/notifications";
 
 const DAILY_REMINDER_TIME_OPTIONS: SelectOption[] = [
@@ -781,6 +782,36 @@ export function NotificationsTab() {
                     checked={bankPrefs.autoCategoryInferenceEnabled}
                     onCheckedChange={handleToggleAutoCategoryInference}
                     aria-label="Habilitar Inferência Automática de Categorias"
+                  />
+                </div>
+
+                {/* Seletor: Ação para Categoria Desconhecida */}
+                <div className="p-3.5 rounded-xl border border-border/80 bg-surface shadow-xs space-y-2">
+                  <div>
+                    <span className="text-xs font-semibold text-foreground">
+                      Quando o estabelecimento for novo (categoria desconhecida)
+                    </span>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Define o comportamento ao confirmar pela notificação bancária no celular quando o app ainda não aprendeu o estabelecimento.
+                    </p>
+                  </div>
+                  <Select
+                    value={bankPrefs.unknownCategoryHandling}
+                    onValueChange={(val) => {
+                      const next = val as UnknownCategoryStrategy;
+                      updateBankPrefs({ unknownCategoryHandling: next });
+                    }}
+                    options={[
+                      {
+                        value: "assign_generic_and_prompt",
+                        label: "Atribuir à categoria genérica e pedir confirmação na Home",
+                      },
+                      {
+                        value: "open_quick_wizard",
+                        label: "Sempre abrir o Wizard Rápido para escolher a categoria",
+                      },
+                    ]}
+                    ariaLabel="Ação para categoria desconhecida"
                   />
                 </div>
 

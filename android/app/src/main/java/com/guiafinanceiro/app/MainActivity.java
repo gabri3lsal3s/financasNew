@@ -16,6 +16,7 @@ import java.io.OutputStream;
 public class MainActivity extends BridgeActivity {
 
     private static final String TAG = "MainActivity";
+    public static final String ACTION_REVIEW_TRANSACTION = "com.guiafinanceiro.app.ACTION_REVIEW_TRANSACTION";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -37,6 +38,25 @@ public class MainActivity extends BridgeActivity {
         if (intent == null) return;
         String action = intent.getAction();
         String type = intent.getType();
+
+        if (ACTION_REVIEW_TRANSACTION.equals(action)) {
+            try {
+                org.json.JSONObject obj = new org.json.JSONObject();
+                obj.put("packageName", intent.getStringExtra("packageName"));
+                obj.put("title", intent.getStringExtra("title"));
+                obj.put("text", intent.getStringExtra("text"));
+                obj.put("timestamp", intent.getLongExtra("timestamp", System.currentTimeMillis()));
+                String payload = obj.toString();
+                BankNotificationPlugin.setPendingReview(payload);
+                BankNotificationPlugin plugin = BankNotificationPlugin.getInstance();
+                if (plugin != null) {
+                    plugin.onOpenReviewTransaction(payload);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Erro ao processar intent de revisao", e);
+            }
+            return;
+        }
 
         if (Intent.ACTION_SEND.equals(action) && type != null) {
             if (type.startsWith("text/")) {

@@ -12,6 +12,7 @@ import { createExpenseWithDebt, createIncomeInstallments, deleteExpenseInstallme
 import { createIncome, deleteIncome } from "@/data/repositories/incomes";
 import { buildExpenseInstallments, buildIncomeInstallments } from "@/features/transactions/wizard/wizard-state";
 import { getErrorMessage } from "@/services/errors";
+import { getBankAssistantPreferences } from "./bank-assistant-preferences";
 import type { Category, ReceiveType } from "@/types";
 
 export const BANK_SUGGESTION_CHANNEL_ID = "bank_transaction_suggestions";
@@ -220,6 +221,14 @@ export async function quickAddTransaction(suggestion: ParsedBankTransaction): Pr
     const categories = await listCategories(suggestion.type).catch(() => []);
     let targetCategory = findMatchingCategory(categories, suggestion.description);
     if (!targetCategory && categories.length > 0) {
+      const prefs = getBankAssistantPreferences();
+      if (prefs.unknownCategoryHandling === "open_quick_wizard") {
+        return {
+          success: false,
+          type: suggestion.type,
+          error: "Categoria desconhecida. Abrindo para conferência no Wizard Rápido.",
+        };
+      }
       targetCategory =
         categories.find(
           (c) =>

@@ -17,4 +17,4 @@ export * from "./update-schema";
 export * from "./update-checker";
 export * from "./merchant-storage";
 export * from "./auto-register-banner";
-
+export * from "./receipt-extractor";

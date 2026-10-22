@@ -177,7 +177,9 @@ function NativeIntegrationsHandler() {
       navigate(path);
     });
 
-    const cleanupBankNotifications = initBankNotificationListener();
+    const cleanupBankNotifications = initBankNotificationListener((route) => {
+      navigate(route);
+    });
 
     return () => {
       void cleanupDeepLinks();

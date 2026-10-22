@@ -7,7 +7,10 @@ const mockPlugin = vi.hoisted(() => ({
   getInstalledBankingApps: vi.fn().mockResolvedValue({ apps: [], installedBankNames: [] }),
   syncMonitoredPackages: vi.fn().mockResolvedValue({ success: true, count: 0 }),
   getPendingShare: vi.fn().mockResolvedValue({ text: null }),
-  addListener: vi.fn(),
+  extractTextFromReceipt: vi.fn().mockResolvedValue({ text: "" }),
+  getPendingReviewTransaction: vi.fn().mockResolvedValue({ payload: null }),
+  flushConfirmedTransactions: vi.fn().mockResolvedValue({ transactions: [] }),
+  addListener: vi.fn().mockResolvedValue({ remove: vi.fn() }),
 }));
 
 vi.mock("@capacitor/core", async (importOriginal) => {
@@ -199,6 +202,7 @@ describe("bank-listener (Serviço de Notificações e Pix)", () => {
         interactiveNotificationsEnabled: true,
         autoInstallmentsEnabled: true,
         autoCategoryInferenceEnabled: true,
+        unknownCategoryHandling: "assign_generic_and_prompt",
         monitoredBanks: ["Nubank"],
       });
 
@@ -220,6 +224,7 @@ describe("bank-listener (Serviço de Notificações e Pix)", () => {
         interactiveNotificationsEnabled: true,
         autoInstallmentsEnabled: true,
         autoCategoryInferenceEnabled: true,
+        unknownCategoryHandling: "assign_generic_and_prompt",
         monitoredBanks: ["Nubank", "Itaú"], // Inter não está incluído
       });
 
@@ -241,6 +246,7 @@ describe("bank-listener (Serviço de Notificações e Pix)", () => {
         interactiveNotificationsEnabled: true,
         autoInstallmentsEnabled: false, // Desligado
         autoCategoryInferenceEnabled: true,
+        unknownCategoryHandling: "assign_generic_and_prompt",
         monitoredBanks: ["Nubank"],
       });
 
@@ -263,6 +269,7 @@ describe("bank-listener (Serviço de Notificações e Pix)", () => {
         interactiveNotificationsEnabled: true,
         autoInstallmentsEnabled: true,
         autoCategoryInferenceEnabled: false, // Desligado
+        unknownCategoryHandling: "assign_generic_and_prompt",
         monitoredBanks: ["Nubank"],
       });
 
@@ -287,6 +294,7 @@ describe("bank-listener (Serviço de Notificações e Pix)", () => {
         interactiveNotificationsEnabled: false, // Push desativado
         autoInstallmentsEnabled: true,
         autoCategoryInferenceEnabled: true,
+        unknownCategoryHandling: "assign_generic_and_prompt",
         monitoredBanks: ["Nubank"],
       });
 
@@ -342,4 +350,53 @@ describe("bank-listener (Serviço de Notificações e Pix)", () => {
       expect(success).toBe(true);
     });
   });
+
+  describe("conferência e confirmação em segundo plano", () => {
+    it("constrói rota correta de conferência para o Wizard Rápido", async () => {
+      const { buildReviewRoute } = await import("./bank-listener");
+      const route = buildReviewRoute({
+        id: "test-1",
+        bankName: "Nubank",
+        nature: "expense",
+        type: "expense",
+        amountCents: 4990,
+        description: "Supermercado Extra",
+        date: "2026-10-22",
+        paymentMethod: "credit_card",
+        cardLastDigits: "1234",
+        installments: 3,
+        rawText: "Compra de R$ 49,90",
+        timestamp: Date.now(),
+      });
+
+      expect(route).toContain("/transacoes?");
+      expect(route).toContain("novo=expense");
+      expect(route).toContain("modo=rapido");
+      expect(route).toContain("valor=4990");
+      expect(route).toContain("descricao=Supermercado+Extra");
+      expect(route).toContain("data=2026-10-22");
+      expect(route).toContain("forma=credit_card");
+      expect(route).toContain("cartao=1234");
+      expect(route).toContain("parcelas=3");
+    });
+
+    it("descarrega transações confirmadas em segundo plano", async () => {
+      vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+      mockPlugin.flushConfirmedTransactions.mockResolvedValueOnce({
+        transactions: [
+          {
+            packageName: "com.nu.production",
+            title: "Nubank",
+            text: "Compra de R$ 25,00 no cartão de crédito aprovada",
+            timestamp: 1729000000000,
+          },
+        ],
+      });
+
+      const { flushConfirmedBankTransactions } = await import("./bank-listener");
+      const count = await flushConfirmedBankTransactions();
+      expect(count).toBe(1);
+    });
+  });
 });
+

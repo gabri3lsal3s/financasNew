@@ -265,6 +265,8 @@ export const HOMOLOGATED_BANKS = [
 
 export type HomologatedBankName = (typeof HOMOLOGATED_BANKS)[number];
 
+export type UnknownCategoryStrategy = "assign_generic_and_prompt" | "open_quick_wizard";
+
 export interface BankAssistantPreferences {
   /** Habilita ou desabilita a captura passiva geral de notificações de bancos */
   passiveCaptureEnabled: boolean;
@@ -274,6 +276,8 @@ export interface BankAssistantPreferences {
   autoInstallmentsEnabled: boolean;
   /** Infere deterministicamente a categoria pelo nome do estabelecimento */
   autoCategoryInferenceEnabled: boolean;
+  /** Comportamento quando a categoria do estabelecimento for desconhecida ao confirmar */
+  unknownCategoryHandling: UnknownCategoryStrategy;
   /** Lista de nomes de bancos ativos para monitoramento */
   monitoredBanks: string[];
 }
@@ -283,6 +287,7 @@ export const DEFAULT_BANK_ASSISTANT_PREFERENCES: BankAssistantPreferences = {
   interactiveNotificationsEnabled: true,
   autoInstallmentsEnabled: true,
   autoCategoryInferenceEnabled: true,
+  unknownCategoryHandling: "assign_generic_and_prompt",
   monitoredBanks: [],
 };
 
@@ -316,6 +321,11 @@ export function normalizeBankPreferences(raw?: unknown): BankAssistantPreference
       ? record.autoCategoryInferenceEnabled
       : DEFAULT_BANK_ASSISTANT_PREFERENCES.autoCategoryInferenceEnabled;
 
+  const unknownCategoryHandling: UnknownCategoryStrategy =
+    record.unknownCategoryHandling === "open_quick_wizard"
+      ? "open_quick_wizard"
+      : "assign_generic_and_prompt";
+
   let monitoredBanks: string[] = [...DEFAULT_BANK_ASSISTANT_PREFERENCES.monitoredBanks];
   if (Array.isArray(record.monitoredBanks)) {
     const validSet = new Set<string>(HOMOLOGATED_BANKS);
@@ -331,6 +341,7 @@ export function normalizeBankPreferences(raw?: unknown): BankAssistantPreference
     interactiveNotificationsEnabled,
     autoInstallmentsEnabled,
     autoCategoryInferenceEnabled,
+    unknownCategoryHandling,
     monitoredBanks,
   };
 }

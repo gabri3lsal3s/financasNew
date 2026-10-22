@@ -82,6 +82,16 @@
             </intent-filter>
         </service>
 
+        <!-- Receiver para ações de Confirmar e Desfazer das notificações interativas -->
+        <receiver
+            android:name=".BankNotificationActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.guiafinanceiro.app.ACTION_CONFIRM_TRANSACTION" />
+                <action android:name="com.guiafinanceiro.app.ACTION_UNDO_TRANSACTION" />
+            </intent-filter>
+        </receiver>
+
         <!-- Quick Settings Tile para Lançar Despesa da Barra de Status (§4.3) -->
         <service
             android:name=".QuickExpenseTileService"
