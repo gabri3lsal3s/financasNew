@@ -3,9 +3,18 @@ import { ChevronDown, ChevronUp, CreditCard as CreditCardIcon, EyeOff, Repeat } 
 import { Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CardSubscriptionRadar, InsightList } from "@/components/modules";
-import { calculateAllCardsSubscriptionImpact, SERVICE_SEGMENT_LABELS } from "@/domain/insights";
+import {
+  calculateAllCardsSubscriptionImpact,
+  getDismissReason,
+  SERVICE_SEGMENT_LABELS,
+  type QualifiedDismissReason,
+} from "@/domain/insights";
 import { RECURRENCE_LEVEL_LABELS } from "@/lib/labels";
 import { useCreditCards } from "@/state";
+import { cn } from "@/lib/utils";
+import { pushToast } from "@/services/toast";
+import { triggerSensory } from "@/services/sensory";
+import { formatCentsAsBRL } from "@/services/masks/money";
 import { RecurrenceAuditModal } from "./recurrence-audit-modal";
 import { ConvertRecurrenceDialog } from "./convert-recurrence-dialog";
 import type { RecurrenceOccurrence } from "@/domain/insights/recurrences";
@@ -56,6 +65,44 @@ export function RecurrencesTab({
   );
   const [convertingOccurrence, setConvertingOccurrence] = useState<RecurrenceOccurrence | null>(null);
 
+  const cancelledAnnualSavingsCents = useMemo(() => {
+    return ignoredOccurrences
+      .filter((o) => feedbackMap[o.key] === "already_cancelled")
+      .reduce((sum, o) => sum + o.averageCents * 12, 0);
+  }, [ignoredOccurrences, feedbackMap]);
+
+  const handleIgnoreWithReason = (key: string, reason: QualifiedDismissReason) => {
+    onFeedback(key, reason);
+
+    if (reason === "already_cancelled") {
+      const occ = activeOccurrences.find((o) => o.key === key);
+      const annualSavings = (occ?.averageCents ?? 0) * 12;
+      triggerSensory("success");
+      pushToast({
+        title: "Assinatura cancelada celebrada",
+        description:
+          annualSavings > 0
+            ? `Economia projetada de ${formatCentsAsBRL(annualSavings)}/ano conquistada com sucesso.`
+            : "Assinatura removida dos custos fixos ativos.",
+        variant: "success",
+      });
+    } else if (reason === "not_subscription") {
+      triggerSensory("action");
+      pushToast({
+        title: "Despesa reclassificada",
+        description: "Probabilidade de recorrência deste fornecedor rebaixada no motor.",
+        variant: "info",
+      });
+    } else {
+      triggerSensory("action");
+      pushToast({
+        title: "Despesa pontual silenciada",
+        description: "Item silenciado apenas para este ciclo.",
+        variant: "default",
+      });
+    }
+  };
+
   const selectedOccurrence = useMemo(() => {
     if (!selectedOccurrenceKey) return null;
     return (
@@ -82,7 +129,14 @@ export function RecurrencesTab({
     <div className="flex flex-col gap-4">
       {/* Card de Resumo de Recorrências */}
       <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6 w-full">
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-4 sm:gap-6 w-full",
+            cancelledAnnualSavingsCents > 0
+              ? "sm:grid-cols-2 lg:grid-cols-4"
+              : "sm:grid-cols-3",
+          )}
+        >
           <div>
             <span className="text-xs font-medium text-muted-foreground">Total mensal recorrente</span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
@@ -106,6 +160,18 @@ export function RecurrencesTab({
               </div>
               <p className="text-xs font-medium text-positive-strong mt-0.5">
                 +<MoneyText cents={canCutAnnualCents} tone="positive" /> ao ano
+              </p>
+            </div>
+          ) : null}
+          {cancelledAnnualSavingsCents > 0 ? (
+            <div>
+              <span className="text-xs font-medium text-positive-strong">Economia celebrada (canceladas)</span>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <MoneyText cents={cancelledAnnualSavingsCents} tone="positive" animated className="text-xl sm:text-2xl font-bold" />
+                <span className="text-xs text-muted-foreground">/ano</span>
+              </div>
+              <p className="text-xs font-medium text-positive-strong mt-0.5">
+                Conquistada com sucesso
               </p>
             </div>
           ) : null}
@@ -187,6 +253,7 @@ export function RecurrencesTab({
           })}
           feedback={feedbackMap}
           onIgnore={(key) => onFeedback(key, "ignore")}
+          onIgnoreWithReason={handleIgnoreWithReason}
           onConfirm={(key) => onFeedback(key, "confirm")}
           onRestore={(key) => onFeedback(key, null)}
           onItemClick={(key) => setSelectedOccurrenceKey(key)}
@@ -231,6 +298,7 @@ export function RecurrencesTab({
                   subtitle: `${RECURRENCE_LEVEL_LABELS[o.level]} · ${o.months.length} mês(es)`,
                   confidence: o.confidence,
                   amountCents: o.averageCents,
+                  dismissReason: getDismissReason(feedbackMap[o.key]),
                   icon: <Repeat className="size-4" aria-hidden="true" />,
                 }))}
                 feedback={feedbackMap}

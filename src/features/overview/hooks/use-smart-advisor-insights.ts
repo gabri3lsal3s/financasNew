@@ -8,7 +8,7 @@ import {
   type ExpenseLike,
   type IncomeLike,
 } from "@/domain/insights/recurrences";
-import type { FeedbackMap } from "@/domain/insights/feedback";
+import type { FeedbackMap, QualifiedDismissReason } from "@/domain/insights/feedback";
 import { normalizeText } from "@/domain/insights/shared";
 import {
   DEFAULT_DISMISS_DAYS,
@@ -163,8 +163,8 @@ export interface UseSmartAdvisorInsightsResult {
   dismiss: (themeKey?: string, days?: number) => void;
   /** Confirma o monitoramento contínuo de uma recorrência (ensina o motor). */
   confirmRecurrence: (occurrenceKey: string) => Promise<void>;
-  /** Ignora uma despesa recorrente pontual (ensina o motor). */
-  ignoreRecurrence: (occurrenceKey: string) => Promise<void>;
+  /** Ignora uma despesa com motivo qualificado (ensina o motor) (§F23). */
+  ignoreRecurrence: (occurrenceKey: string, reason?: QualifiedDismissReason | "ignore") => Promise<void>;
   /** Confirma recebimento de renda em 1 clique e cria a entrada correspondente. */
   confirmIncome: (payload: {
     name: string;
@@ -497,18 +497,42 @@ export function useSmartAdvisorInsights(
     [setFeedbackMutation],
   );
 
-  // Ignorar recorrência (calibração)
+  // Ignorar recorrência (calibração e micro-feedback qualificado §F23)
   const ignoreRecurrence = useCallback(
-    async (occurrenceKey: string) => {
+    async (occurrenceKey: string, reason: QualifiedDismissReason | "ignore" = "ignore") => {
       await setFeedbackMutation.mutateAsync({
         occurrenceKey,
-        decision: "ignore",
+        decision: reason,
       });
-      triggerSensory("action");
-      pushToast({
-        title: "Gasto ignorado",
-        description: "Esta despesa não será mais sugerida como recorrente.",
-      });
+
+      if (reason === "already_cancelled") {
+        triggerSensory("success");
+        pushToast({
+          title: "Assinatura cancelada celebrada",
+          description: "Economia celebrada e removida dos custos fixos ativos.",
+          variant: "success",
+        });
+      } else if (reason === "not_subscription") {
+        triggerSensory("action");
+        pushToast({
+          title: "Despesa reclassificada",
+          description: "Probabilidade de recorrência deste fornecedor rebaixada no motor.",
+          variant: "info",
+        });
+      } else if (reason === "one_off") {
+        triggerSensory("action");
+        pushToast({
+          title: "Despesa pontual silenciada",
+          description: "Esta despesa foi silenciada neste ciclo.",
+          variant: "default",
+        });
+      } else {
+        triggerSensory("action");
+        pushToast({
+          title: "Gasto ignorado",
+          description: "Esta despesa não será mais sugerida como recorrente.",
+        });
+      }
     },
     [setFeedbackMutation],
   );

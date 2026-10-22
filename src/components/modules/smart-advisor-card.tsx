@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils";
 import { currentMonth } from "@/lib/date";
 import { useSmartAdvisorInsights } from "@/features/overview/hooks";
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
+import type { QualifiedDismissReason } from "@/domain/insights/feedback";
+import { QualifiedDismissPopover } from "./qualified-dismiss-popover";
 
 export interface SmartAdvisorCardProps {
   className?: string;
@@ -55,9 +57,9 @@ export interface SmartAdvisorCardProps {
    */
   onConfirmRecurrence?: (occurrenceKey: string) => void | Promise<void>;
   /**
-   * Callback ao ignorar uma despesa na calibração.
+   * Callback ao ignorar uma despesa na calibração com motivo qualificado (§F23).
    */
-  onIgnoreRecurrence?: (occurrenceKey: string) => void | Promise<void>;
+  onIgnoreRecurrence?: (occurrenceKey: string, reason?: QualifiedDismissReason) => void | Promise<void>;
   /**
    * Callback ao confirmar entrada de renda em 1 clique.
    */
@@ -173,7 +175,7 @@ export function SmartAdvisorCard({
     }
   };
 
-  const handleIgnoreRecurrence = async () => {
+  const handleIgnoreRecurrence = async (reason: QualifiedDismissReason = "one_off") => {
     const payload = activeInsight.secondaryAction?.payload as { key?: string } | undefined;
     const occurrenceKey =
       payload?.key ?? activeInsight.themeKey.replace(/^calib:/, "");
@@ -181,9 +183,26 @@ export function SmartAdvisorCard({
     try {
       setIsSubmitting(true);
       if (onIgnoreRecurrence) {
-        await onIgnoreRecurrence(occurrenceKey);
+        await onIgnoreRecurrence(occurrenceKey, reason);
       } else {
-        await hook.ignoreRecurrence(occurrenceKey);
+        await hook.ignoreRecurrence(occurrenceKey, reason);
+        hook.dismiss(activeInsight.themeKey);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleIgnoreSavingsSubscription = async (
+    occurrenceKey: string,
+    reason: QualifiedDismissReason,
+  ) => {
+    try {
+      setIsSubmitting(true);
+      if (onIgnoreRecurrence) {
+        await onIgnoreRecurrence(occurrenceKey, reason);
+      } else {
+        await hook.ignoreRecurrence(occurrenceKey, reason);
         hook.dismiss(activeInsight.themeKey);
       }
     } finally {
@@ -401,17 +420,60 @@ export function SmartAdvisorCard({
               <Check className="size-3.5" aria-hidden="true" />
               <span>Sim, monitorar</span>
             </Button>
+            <QualifiedDismissPopover
+              occurrenceName={activeInsight.title}
+              averageCents={activeInsight.metadata?.valueCents}
+              onSelectReason={(reason) => void handleIgnoreRecurrence(reason)}
+            >
+              <Button
+                size="sm"
+                variant="ghost"
+                sensoryIntent="action"
+                disabled={isSubmitting}
+                className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X className="size-3.5" aria-hidden="true" />
+                <span>Não, foi pontual</span>
+              </Button>
+            </QualifiedDismissPopover>
+          </>
+        ) : activeInsight.category === "savings" && activeInsight.primaryAction?.kind === "cut_subscription" ? (
+          <>
             <Button
               size="sm"
-              variant="ghost"
-              sensoryIntent="action"
-              onClick={() => void handleIgnoreRecurrence()}
+              variant="default"
+              sensoryIntent="selection"
+              onClick={handleActionClick}
               disabled={isSubmitting}
-              className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer"
+              className="gap-1.5 text-xs h-8 cursor-pointer"
             >
-              <X className="size-3.5" aria-hidden="true" />
-              <span>Não, foi pontual</span>
+              <span>{activeInsight.primaryAction.label}</span>
+              <ChevronRight className="size-3.5" aria-hidden="true" />
             </Button>
+            <QualifiedDismissPopover
+              occurrenceName={
+                (activeInsight.primaryAction?.payload?.name as string | undefined) ??
+                activeInsight.title
+              }
+              averageCents={activeInsight.metadata?.valueCents}
+              onSelectReason={(reason) => {
+                const key =
+                  (activeInsight.primaryAction?.payload?.key as string | undefined) ??
+                  activeInsight.themeKey.replace(/^(savings:|price_adj:)/, "");
+                void handleIgnoreSavingsSubscription(key, reason);
+              }}
+            >
+              <Button
+                size="sm"
+                variant="ghost"
+                sensoryIntent="action"
+                disabled={isSubmitting}
+                className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X className="size-3.5" aria-hidden="true" />
+                <span>Dispensar</span>
+              </Button>
+            </QualifiedDismissPopover>
           </>
         ) : activeInsight.category === "income" && activeInsight.primaryAction?.kind === "confirm_income" ? (
           <Button

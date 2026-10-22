@@ -1,48 +1,125 @@
 /**
- * Aprendizado do usuário — ESPECIFICAÇÃO §3.7.4.
+ * Aprendizado do usuário — ESPECIFICAÇÃO §3.7.4 & F23.
  *
- * O usuário pode ignorar / confirmar / restaurar cada ocorrência. A
- * ocorrência ignorada deixa de contar; confirmada é mantida (marcada).
- * O `occurrence_key` é a chave estável persistida em `insight_feedback`
- * (schema: user_id + occurrence_key + decision, unique por usuário).
+ * O usuário pode confirmar uma ocorrência como gasto fixo, ou descartá-la
+ * através de micro-feedbacks qualificados de 1 toque:
+ *   - "already_cancelled": Já cancelei (celebra economia anual, remove dos fixos)
+ *   - "one_off": É despesa pontual (silencia no ciclo corrente sem penalizar o motor)
+ *   - "not_subscription": Não é assinatura (rebaixa a probabilidade no classificador)
+ *   - "ignore": Descarte genérico legado
+ *
+ * O `occurrence_key` é a chave estável persistida em `insight_feedback`.
  */
 
-export type FeedbackDecision = "ignore" | "confirm";
+export type QualifiedDismissReason = "already_cancelled" | "one_off" | "not_subscription";
+
+export type FeedbackDecision = "ignore" | "confirm" | QualifiedDismissReason;
 
 export type FeedbackMap = Record<string, FeedbackDecision>;
 
-/** Aplica o feedback: ignoradas saem da lista; confirmadas ganham flag. */
+export interface QualifiedDismissOption {
+  reason: QualifiedDismissReason;
+  label: string;
+  description: string;
+  badgeLabel: string;
+}
+
+export const QUALIFIED_DISMISS_OPTIONS: readonly QualifiedDismissOption[] = [
+  {
+    reason: "already_cancelled",
+    label: "Já cancelei",
+    description: "Celebra a economia anual e remove dos custos fixos ativos.",
+    badgeLabel: "Cancelada",
+  },
+  {
+    reason: "one_off",
+    label: "É despesa pontual",
+    description: "Silencia apenas no ciclo atual sem penalizar o classificador.",
+    badgeLabel: "Pontual",
+  },
+  {
+    reason: "not_subscription",
+    label: "Não é assinatura",
+    description: "Rebaixa de imediato a probabilidade de virar recorrência.",
+    badgeLabel: "Não é assinatura",
+  },
+];
+
+/**
+ * Avalia se uma decisão de feedback representa descarte ou silenciamento da ocorrência.
+ */
+export function isOccurrenceIgnored(decision?: FeedbackDecision | null): boolean {
+  if (!decision) return false;
+  return (
+    decision === "ignore" ||
+    decision === "already_cancelled" ||
+    decision === "one_off" ||
+    decision === "not_subscription"
+  );
+}
+
+/**
+ * Retorna o motivo qualificado de descarte associado a uma decisão, se houver.
+ */
+export function getDismissReason(decision?: FeedbackDecision | null): QualifiedDismissReason | undefined {
+  if (
+    decision === "already_cancelled" ||
+    decision === "one_off" ||
+    decision === "not_subscription"
+  ) {
+    return decision;
+  }
+  return undefined;
+}
+
+export type FeedbackOccurrenceItem<T> = T & {
+  ignored: boolean;
+  confirmed: boolean;
+  dismissReason?: QualifiedDismissReason;
+};
+
+/** Aplica o feedback: ocorrências descartadas saem da lista ativa; confirmadas ganham flag. */
 export function applyFeedback<T extends { key: string }>(
   occurrences: readonly T[],
   feedback: FeedbackMap,
-): (T & { ignored: boolean; confirmed: boolean })[] {
+): FeedbackOccurrenceItem<T>[] {
   return occurrences
-    .filter((occurrence) => feedback[occurrence.key] !== "ignore")
+    .filter((occurrence) => !isOccurrenceIgnored(feedback[occurrence.key]))
     .map((occurrence) => ({
       ...occurrence,
       ignored: false,
       confirmed: feedback[occurrence.key] === "confirm",
+      dismissReason: getDismissReason(feedback[occurrence.key]),
     }));
 }
 
 /**
- * Particiona as ocorrências entre ativas (não ignoradas) e ignoradas,
- * permitindo exibi-las separadamente na interface (seção colapsável).
+ * Particiona as ocorrências entre ativas (não ignoradas) e ignoradas/descartadas,
+ * permitindo exibi-las separadamente na interface com o motivo do descarte.
  */
 export function partitionFeedback<T extends { key: string }>(
   occurrences: readonly T[],
   feedback: FeedbackMap,
 ): {
-  active: (T & { ignored: boolean; confirmed: boolean })[];
-  ignored: (T & { ignored: boolean; confirmed: boolean })[];
+  active: FeedbackOccurrenceItem<T>[];
+  ignored: FeedbackOccurrenceItem<T>[];
 } {
-  const active: (T & { ignored: boolean; confirmed: boolean })[] = [];
-  const ignored: (T & { ignored: boolean; confirmed: boolean })[] = [];
+  const active: FeedbackOccurrenceItem<T>[] = [];
+  const ignored: FeedbackOccurrenceItem<T>[] = [];
 
   for (const occurrence of occurrences) {
-    const isIgnored = feedback[occurrence.key] === "ignore";
-    const isConfirmed = feedback[occurrence.key] === "confirm";
-    const item = { ...occurrence, ignored: isIgnored, confirmed: isConfirmed };
+    const decision = feedback[occurrence.key];
+    const isIgnored = isOccurrenceIgnored(decision);
+    const isConfirmed = decision === "confirm";
+    const dismissReason = getDismissReason(decision);
+
+    const item: FeedbackOccurrenceItem<T> = {
+      ...occurrence,
+      ignored: isIgnored,
+      confirmed: isConfirmed,
+      dismissReason,
+    };
+
     if (isIgnored) {
       ignored.push(item);
     } else {

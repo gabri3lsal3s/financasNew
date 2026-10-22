@@ -516,6 +516,56 @@ describe("useSmartAdvisorInsights", () => {
       );
     });
 
+    it("ignoreRecurrence suporta motivo qualificado already_cancelled com sensory success e toast de comemoração", async () => {
+      const { result } = renderHook(() =>
+        useSmartAdvisorInsights({
+          expenses: [],
+          todayISO: TODAY,
+          nowMs: NOW_MS,
+        }),
+      );
+
+      await act(async () => {
+        await result.current.ignoreRecurrence("netflix", "already_cancelled");
+      });
+
+      expect(mutateFeedbackMock).toHaveBeenCalledWith({
+        occurrenceKey: "netflix",
+        decision: "already_cancelled",
+      });
+      expect(triggerSensoryMock).toHaveBeenCalledWith("success");
+      expect(pushToastMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Assinatura cancelada celebrada",
+        }),
+      );
+    });
+
+    it("ignoreRecurrence suporta motivo qualificado not_subscription reclassificando o fornecedor", async () => {
+      const { result } = renderHook(() =>
+        useSmartAdvisorInsights({
+          expenses: [],
+          todayISO: TODAY,
+          nowMs: NOW_MS,
+        }),
+      );
+
+      await act(async () => {
+        await result.current.ignoreRecurrence("uber", "not_subscription");
+      });
+
+      expect(mutateFeedbackMock).toHaveBeenCalledWith({
+        occurrenceKey: "uber",
+        decision: "not_subscription",
+      });
+      expect(triggerSensoryMock).toHaveBeenCalledWith("action");
+      expect(pushToastMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Despesa reclassificada",
+        }),
+      );
+    });
+
     it("confirmIncome cria a renda com o valor em reais e silencia o tema por 30 dias", async () => {
       const { result } = renderHook(() =>
         useSmartAdvisorInsights({

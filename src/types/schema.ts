@@ -48,7 +48,13 @@ export type PortfolioTransactionType = (typeof PORTFOLIO_TX_TYPES)[number];
 export const ASSET_SOURCES = ["api", "fallback", "manual"] as const;
 export type AssetSource = (typeof ASSET_SOURCES)[number];
 
-export const INSIGHT_DECISIONS = ["ignore", "confirm"] as const;
+export const INSIGHT_DECISIONS = [
+  "ignore",
+  "confirm",
+  "already_cancelled",
+  "one_off",
+  "not_subscription",
+] as const;
 export type InsightDecision = (typeof INSIGHT_DECISIONS)[number];
 
 export const THEME_PREFERENCES = ["light", "dark", "oled", "system"] as const;

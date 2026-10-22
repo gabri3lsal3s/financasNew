@@ -4,6 +4,13 @@ import { Badge } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsBRL } from "@/services/masks/money";
+import {
+  isOccurrenceIgnored,
+  getDismissReason,
+  type FeedbackDecision,
+  type QualifiedDismissReason,
+} from "@/domain/insights";
+import { QualifiedDismissPopover } from "./qualified-dismiss-popover";
 
 export interface InsightListItemBadge {
   label: string;
@@ -26,13 +33,17 @@ export interface InsightListItemData {
   /** Valor monetário à direita (ex.: economia mensal). */
   amountCents?: number;
   icon?: ReactNode;
+  /** Motivo qualificado do descarte (§F23). */
+  dismissReason?: QualifiedDismissReason;
 }
 
 export interface InsightListProps {
   items: readonly InsightListItemData[];
-  /** Estado de feedback por chave (ignore/confirm). */
-  feedback?: Record<string, "ignore" | "confirm">;
+  /** Estado de feedback por chave (ignore/confirm ou motivos qualificados). */
+  feedback?: Record<string, FeedbackDecision>;
   onIgnore?: (key: string) => void;
+  /** Callback para descarte com micro-feedback qualificado (§F23). */
+  onIgnoreWithReason?: (key: string, reason: QualifiedDismissReason) => void;
   onConfirm?: (key: string) => void;
   onRestore?: (key: string) => void;
   /** Callback ao clicar na linha da ocorrência (drill-down e auditoria). */
@@ -53,6 +64,7 @@ export function InsightList({
   items,
   feedback = {},
   onIgnore,
+  onIgnoreWithReason,
   onConfirm,
   onRestore,
   onItemClick,
@@ -69,7 +81,8 @@ export function InsightList({
       {items.map((item) => {
         const state = feedback[item.key];
         const confirmed = state === "confirm";
-        const ignored = state === "ignore";
+        const ignored = isOccurrenceIgnored(state);
+        const reason = item.dismissReason ?? getDismissReason(state);
         const isClickable = Boolean(onItemClick);
 
         return (
@@ -115,7 +128,26 @@ export function InsightList({
                     <Badge key={b.label} variant={b.tone ?? "default"} className="shrink-0">{b.label}</Badge>
                   ))}
                   {item.tag ? <Badge variant={item.tagTone ?? "default"} className="shrink-0">{item.tag}</Badge> : null}
-                  {ignored ? <Badge variant="muted" className="shrink-0">Ignorada</Badge> : null}
+                  {ignored ? (
+                    <Badge
+                      variant={
+                        reason === "already_cancelled"
+                          ? "positive"
+                          : reason === "not_subscription"
+                            ? "warning"
+                            : "muted"
+                      }
+                      className="shrink-0"
+                    >
+                      {reason === "already_cancelled"
+                        ? "Cancelada"
+                        : reason === "not_subscription"
+                          ? "Não é assinatura"
+                          : reason === "one_off"
+                            ? "Pontual"
+                            : "Ignorada"}
+                    </Badge>
+                  ) : null}
                 </div>
                 {item.subtitle ? <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p> : null}
                 {item.confidence !== undefined ? (
@@ -207,19 +239,26 @@ export function InsightList({
                   role="group"
                   aria-label={`Ações para ${item.title}`}
                 >
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      triggerSensory("action");
-                      onIgnore?.(item.key);
+                  <QualifiedDismissPopover
+                    occurrenceName={item.title}
+                    averageCents={item.amountCents}
+                    onSelectReason={(reason) => {
+                      if (onIgnoreWithReason) {
+                        onIgnoreWithReason(item.key, reason);
+                      } else {
+                        onIgnore?.(item.key);
+                      }
                     }}
-                    className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all duration-200 hover:bg-negative/10 hover:text-negative-strong active:scale-95 sm:size-8"
-                    aria-label={`Ignorar ${item.title}`}
-                    title={`Ignorar ${item.title}`}
                   >
-                    <X className="size-3.5 sm:size-4" aria-hidden="true" />
-                  </button>
+                    <button
+                      type="button"
+                      className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all duration-200 hover:bg-negative/10 hover:text-negative-strong active:scale-95 sm:size-8"
+                      aria-label={`Ignorar ${item.title}`}
+                      title={`Ignorar ${item.title}`}
+                    >
+                      <X className="size-3.5 sm:size-4" aria-hidden="true" />
+                    </button>
+                  </QualifiedDismissPopover>
                   <span className="h-3.5 w-px bg-border/60" aria-hidden="true" />
                   <button
                     type="button"

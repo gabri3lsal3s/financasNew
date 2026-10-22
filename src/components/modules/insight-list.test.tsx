@@ -54,7 +54,70 @@ describe("InsightList", () => {
     expect(handleConfirm).toHaveBeenCalledWith("sub:spotify");
 
     fireEvent.click(ignoreBtn);
+    const pontualOption = screen.getByText("É despesa pontual");
+    fireEvent.click(pontualOption);
     expect(handleIgnore).toHaveBeenCalledWith("sub:spotify");
+  });
+
+  it("aciona onIgnoreWithReason com o motivo selecionado no popover", () => {
+    const handleIgnoreWithReason = vi.fn();
+
+    render(
+      <InsightList
+        items={[
+          {
+            key: "sub:netflix",
+            title: "Netflix",
+            amountCents: 3990,
+          },
+        ]}
+        onIgnoreWithReason={handleIgnoreWithReason}
+      />,
+    );
+
+    const ignoreBtn = screen.getByRole("button", { name: "Ignorar Netflix" });
+    fireEvent.click(ignoreBtn);
+
+    const cancelOption = screen.getByText("Já cancelei");
+    fireEvent.click(cancelOption);
+
+    expect(handleIgnoreWithReason).toHaveBeenCalledWith("sub:netflix", "already_cancelled");
+  });
+
+  it("exibe badge semântico com base no motivo qualificado do descarte", () => {
+    render(
+      <InsightList
+        items={[
+          {
+            key: "sub:gym",
+            title: "Academia",
+            amountCents: 12000,
+            dismissReason: "already_cancelled",
+          },
+          {
+            key: "sub:uber",
+            title: "Uber",
+            amountCents: 5000,
+            dismissReason: "not_subscription",
+          },
+          {
+            key: "sub:steam",
+            title: "Steam",
+            amountCents: 4500,
+            dismissReason: "one_off",
+          },
+        ]}
+        feedback={{
+          "sub:gym": "already_cancelled",
+          "sub:uber": "not_subscription",
+          "sub:steam": "one_off",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Cancelada")).toBeInTheDocument();
+    expect(screen.getByText("Não é assinatura")).toBeInTheDocument();
+    expect(screen.getByText("Pontual")).toBeInTheDocument();
   });
 
   it("exibe cápsula de confirmada e permite desmarcar acionando onRestore", () => {

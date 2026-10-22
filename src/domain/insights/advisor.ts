@@ -7,7 +7,7 @@
  *   3. Aplicar filtros antirruído de discrição (limite estrito de 1 insight por dia e cooldown de 30 dias por tema).
  */
 
-import type { FeedbackMap } from "./feedback";
+import { isOccurrenceIgnored, type FeedbackMap } from "./feedback";
 import type { ExpenseLike, RecurrenceOccurrence, RecurringIncomeOccurrence } from "./recurrences";
 import { formatBRL } from "./recurrences";
 import { learnBrokerAportePattern } from "./aporte-learning";
@@ -89,6 +89,10 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
   // 1. PRIORIDADE 1: CRÍTICA
   // 1.1 Cobranças duplicadas no mês
   for (const occ of occurrences) {
+    if (isOccurrenceIgnored(feedbackMap[`dup:${occ.key}`]) || isOccurrenceIgnored(feedbackMap[occ.key])) {
+      continue;
+    }
+
     if (occ.duplicateChargesThisMonth && occ.duplicateChargesThisMonth >= 2) {
       candidates.push({
         id: `dup:${occ.key}`,
@@ -115,7 +119,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
     }
 
     // 1.2 Conta esquecida com risco de juros/atraso
-    if (occ.missingThisMonth && (occ.tier === "essential" || occ.level === "subscription")) {
+    if (occ.missingThisMonth && (occ.tier === "essential" || occ.level === "subscription") && !isOccurrenceIgnored(feedbackMap[occ.key])) {
       const expectedDue =
         occ.nextDueDate ??
         (occ.typicalDayOfMonth
@@ -247,7 +251,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
       plannedAporteCents > 0 &&
       (currentMonthAportesCents ?? 0) < plannedAporteCents;
 
-    if ((!alreadyAported || aporteUnderTarget) && feedbackMap["aporte:rebalance"] !== "ignore") {
+    if ((!alreadyAported || aporteUnderTarget) && !isOccurrenceIgnored(feedbackMap["aporte:rebalance"])) {
       const suggestedValueCents =
         plannedAporteCents || brokerPattern?.averageAporteCents || savingsSurplusCents;
 
@@ -279,7 +283,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
   }
 
   for (const occ of occurrences) {
-    if (feedbackMap[occ.key] === "ignore") continue;
+    if (isOccurrenceIgnored(feedbackMap[occ.key])) continue;
     if (candidates.some((c) => c.themeKey.includes(occ.key))) continue;
 
     // 3.1 Reajuste de preço detectado

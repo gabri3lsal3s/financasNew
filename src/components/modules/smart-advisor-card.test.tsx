@@ -273,7 +273,7 @@ describe("SmartAdvisorCard", () => {
       expect(triggerSensoryMock).toHaveBeenCalledWith("success");
     });
 
-    it("ao clicar em Não, foi pontual, executa onIgnoreRecurrence e dispara sensory action", async () => {
+    it("ao clicar em Não, foi pontual e selecionar no popover, executa onIgnoreRecurrence e dispara sensory action", async () => {
       const onIgnoreRecurrenceMock = vi.fn().mockResolvedValue({});
       render(
         <SmartAdvisorCard
@@ -285,7 +285,48 @@ describe("SmartAdvisorCard", () => {
       const naoBtn = screen.getByRole("button", { name: /Não, foi pontual/i });
       fireEvent.click(naoBtn);
 
-      expect(onIgnoreRecurrenceMock).toHaveBeenCalledWith("academia");
+      const pontualOption = screen.getByText("É despesa pontual");
+      fireEvent.click(pontualOption);
+
+      expect(onIgnoreRecurrenceMock).toHaveBeenCalledWith("academia", "one_off");
+      expect(triggerSensoryMock).toHaveBeenCalledWith("action");
+    });
+
+    it("ao selecionar 'Já cancelei' na calibração, executa onIgnoreRecurrence com already_cancelled e dispara sensory success", async () => {
+      const onIgnoreRecurrenceMock = vi.fn().mockResolvedValue({});
+      render(
+        <SmartAdvisorCard
+          insight={calibrationInsight}
+          onIgnoreRecurrence={onIgnoreRecurrenceMock}
+        />,
+      );
+
+      const naoBtn = screen.getByRole("button", { name: /Não, foi pontual/i });
+      fireEvent.click(naoBtn);
+
+      const cancelOption = screen.getByText("Já cancelei");
+      fireEvent.click(cancelOption);
+
+      expect(onIgnoreRecurrenceMock).toHaveBeenCalledWith("academia", "already_cancelled");
+      expect(triggerSensoryMock).toHaveBeenCalledWith("success");
+    });
+
+    it("ao dispensar oportunidade de economia (savings), permite micro-feedback qualificado", async () => {
+      const onIgnoreRecurrenceMock = vi.fn().mockResolvedValue({});
+      render(
+        <SmartAdvisorCard
+          insight={savingsInsight}
+          onIgnoreRecurrence={onIgnoreRecurrenceMock}
+        />,
+      );
+
+      const dispensarBtn = screen.getByRole("button", { name: /^Dispensar$/i });
+      fireEvent.click(dispensarBtn);
+
+      const notSubOption = screen.getByText("Não é assinatura");
+      fireEvent.click(notSubOption);
+
+      expect(onIgnoreRecurrenceMock).toHaveBeenCalledWith("streaming-antigo", "not_subscription");
       expect(triggerSensoryMock).toHaveBeenCalledWith("action");
     });
 

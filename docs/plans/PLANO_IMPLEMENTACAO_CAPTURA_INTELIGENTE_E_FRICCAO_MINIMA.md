@@ -477,7 +477,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes unitários do motor cobrindo o loop de feedback nos 3 domínios (despesas, rendas e investimentos).
   - *Commit:* `feat(insights): unificar loop de aprendizado continuo para despesas rendas e aportes`
 
-- [ ] **Tarefa 7.8 — Micro-Feedback Qualificado e Anti-Insistência no Descarte (F23):**
+- [x] **Tarefa 7.8 — Micro-Feedback Qualificado e Anti-Insistência no Descarte (F23):**
   - Ao clicar em dispensar/ignorar uma ocorrência na lista ou na Home, abrir popover sutil de 1 toque com opções qualificadas:
     - `[Já cancelei]` ➔ silencia ocorrência, celebra a economia anual gerada e atualiza o card de potencial de corte.
     - `[É despesa pontual]` ➔ silencia apenas para o ciclo corrente sem penalizar o classificador.

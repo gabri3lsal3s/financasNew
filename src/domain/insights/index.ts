@@ -33,8 +33,8 @@ export type {
 } from "./recurrences";
 export { confidenceScore, historyBonus, varianceOf } from "./confidence";
 export type { ConfidenceParams, RecurrenceKind } from "./confidence";
-export { applyFeedback, partitionFeedback } from "./feedback";
-export type { FeedbackDecision, FeedbackMap } from "./feedback";
+export { applyFeedback, partitionFeedback, isOccurrenceIgnored, getDismissReason, QUALIFIED_DISMISS_OPTIONS } from "./feedback";
+export type { FeedbackDecision, FeedbackMap, QualifiedDismissReason, QualifiedDismissOption, FeedbackOccurrenceItem } from "./feedback";
 export {
   ESSENTIAL_STATUS_LABELS,
   SAVINGS_HEALTH_LABELS,

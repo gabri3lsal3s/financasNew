@@ -19,6 +19,7 @@ import {
   type ServiceSegment,
 } from "./subscriptions";
 import { normalizeText, stripTemporalSuffixes } from "./shared";
+import type { FeedbackMap } from "./feedback";
 import { shiftMonth } from "@/domain/cards";
 import type { Expense } from "@/types";
 
@@ -531,6 +532,8 @@ export interface DetectRecurrencesOptions {
   monthlyIncomeCents?: number;
   /** Orçamento por categoria (categoryId -> centavos) para avaliação de impacto orçamentário. */
   categoryBudgets?: Record<string, number> | Map<string, number>;
+  /** Mapa de feedback/aprendizado do usuário para calibração e anti-insistência (§F23). */
+  feedbackMap?: FeedbackMap;
 }
 
 /**
@@ -687,14 +690,23 @@ export function detectRecurrences(
 
     if (subscription !== null && months.length >= 2) {
       const variance = varianceOf(monthlyTotals);
-      const confidence = confidenceScore({
+      const subKey = `sub:${key}`;
+      const isSubPenalized =
+        options.feedbackMap?.[subKey] === "not_subscription" ||
+        options.feedbackMap?.[key] === "not_subscription";
+
+      const rawConfidence = confidenceScore({
         base: subscription.confidence,
         monthsHistory: months.length,
         kind: "subscription",
         variance,
       });
+      const confidence = isSubPenalized
+        ? Number(Math.max(0.05, rawConfidence * 0.2).toFixed(2))
+        : rawConfidence;
+
       occurrences.push({
-        key: `sub:${key}`,
+        key: subKey,
         name: cleanDisplayName,
         level: "subscription",
         segment: subscription.segment,
@@ -725,10 +737,19 @@ export function detectRecurrences(
     const stable = valuesWithinToleranceOfMedian(monthlyTotals, RECURRING_TOLERANCE);
     if (stable && months.length >= 2) {
       const variance = varianceOf(monthlyTotals);
-      const confidence = confidenceScore({ base: 0.7, monthsHistory: months.length, kind: "recurring", variance });
+      const recurringKey = `recurring:${key}`;
+      const isRecPenalized =
+        options.feedbackMap?.[recurringKey] === "not_subscription" ||
+        options.feedbackMap?.[key] === "not_subscription";
+
+      const rawConfidence = confidenceScore({ base: 0.7, monthsHistory: months.length, kind: "recurring", variance });
+      const confidence = isRecPenalized
+        ? Number(Math.max(0.05, rawConfidence * 0.2).toFixed(2))
+        : rawConfidence;
+
       const segment = segmentOf(cleanDisplayName, categoryIcons[0], first.categoryName);
       occurrences.push({
-        key: `recurring:${key}`,
+        key: recurringKey,
         name: cleanDisplayName,
         level: "recurring",
         segment,

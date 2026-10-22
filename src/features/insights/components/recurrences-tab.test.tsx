@@ -311,4 +311,53 @@ describe("RecurrencesTab", () => {
     expect(screen.getByText("Alerta de Limite Comprometido")).toBeInTheDocument();
     expect(screen.getByText(/supera o limite disponível/i)).toBeInTheDocument();
   });
+
+  it("permite micro-feedback qualificado 'Já cancelei' celebrando a economia gerada", async () => {
+    const user = userEvent.setup();
+    const onFeedbackMock = vi.fn();
+
+    render(
+      <RecurrencesTab
+        totalRecurringCents={2190}
+        totalAnnualRecurringCents={26280}
+        canCutRecurringCents={2190}
+        canCutAnnualCents={26280}
+        activeOccurrences={mockOccurrences}
+        ignoredOccurrences={[]}
+        feedbackMap={{}}
+        showIgnored={false}
+        setShowIgnored={vi.fn()}
+        onFeedback={onFeedbackMock}
+      />,
+    );
+
+    const ignoreBtn = screen.getByRole("button", { name: "Ignorar Spotify" });
+    await user.click(ignoreBtn);
+
+    const cancelOption = screen.getByText("Já cancelei");
+    await user.click(cancelOption);
+
+    expect(onFeedbackMock).toHaveBeenCalledWith("sub:spotify", "already_cancelled");
+  });
+
+  it("exibe métrica de economia celebrada no card de resumo para assinaturas já canceladas", () => {
+    render(
+      <RecurrencesTab
+        totalRecurringCents={0}
+        totalAnnualRecurringCents={0}
+        canCutRecurringCents={0}
+        canCutAnnualCents={0}
+        activeOccurrences={[]}
+        ignoredOccurrences={mockOccurrences}
+        feedbackMap={{ "sub:spotify": "already_cancelled" }}
+        showIgnored={false}
+        setShowIgnored={vi.fn()}
+        onFeedback={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Economia celebrada (canceladas)")).toBeInTheDocument();
+    expect(screen.getByText("Conquistada com sucesso")).toBeInTheDocument();
+    expect(screen.getByText("R$ 262,80")).toBeInTheDocument();
+  });
 });
