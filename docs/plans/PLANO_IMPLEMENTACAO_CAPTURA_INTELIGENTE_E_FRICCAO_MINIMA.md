@@ -314,7 +314,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes de integração da mutation de feedback.
   - *Commit:* `feat(insights): persistir feedback de aprendizado ativo do usuario`
 
-- [ ] **Tarefa 5.4 — Atalho Rápido de Aporte do Mês na Home:**
+- [x] **Tarefa 5.4 — Atalho Rápido de Aporte do Mês na Home:**
   - No bloco de Investimentos da Home, adicionar campo rápido para informar o valor do aporte e navegar diretamente para a aba de execução em lote do rebalanceamento (`/investments?tab=aporte&valor=...`).
   - *Teste & Verificação:* Teste de navegação e pré-carregamento do valor na `AporteTab`.
   - *Commit:* `feat(overview): adicionar acao rapida de aporte mensal direcionado`

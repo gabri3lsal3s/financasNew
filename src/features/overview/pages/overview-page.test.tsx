@@ -554,6 +554,24 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     // Saldo disponível em conta de 450000 (R$ 4.500,00) deve ser exibido como R$ 4.500
     expect(screen.getByText("R$ 4.500")).toBeInTheDocument();
   });
+
+  it("renderiza o bloco de Investimentos do mês com campo rápido de aporte e navega para /investments?tab=aporte&valor=... (Fase 5 — Tarefa 5.4)", async () => {
+    const user = userEvent.setup();
+    render(<OverviewPage />);
+
+    expect(screen.getByText("Investimentos do mês")).toBeInTheDocument();
+    const input = screen.getByLabelText("Valor do aporte planejado");
+    expect(input).toBeInTheDocument();
+
+    await user.click(input);
+    await user.type(input, "150000");
+
+    const rebalanceButton = screen.getByRole("button", { name: /Calcular Rebalanceamento/i });
+    await user.click(rebalanceButton);
+
+    expect(navigateMock).toHaveBeenCalledWith("/investments?tab=aporte&valor=150000");
+  });
 });
+
 
 

@@ -21,6 +21,7 @@ import {
   AutoRegisteredBanner,
   AndroidProBanner,
   SmartAdvisorCard,
+  QuickAporteCard,
 } from "@/components/modules";
 import { isDemoItem } from "@/services/demo-data";
 import {
@@ -742,6 +743,16 @@ export function OverviewPage() {
               </div>
             )}
           </section>
+
+          {/* Bloco de Investimentos do Mês & Aporte Direcionado (Fase 5 — Tarefa 5.4) */}
+          <QuickAporteCard
+            currentMonthAporteCents={totals.investmentCents}
+            suggestedAporteCents={
+              surplusCapacity.hasSurplus && isCurrentMonth
+                ? surplusCapacity.suggestedAporteCents
+                : 0
+            }
+          />
 
           {/* Diálogo Raio-X de Categoria (Responsivo / BottomSheet no mobile / Modal no desktop) */}
           <CategoryBreakdownDialog
