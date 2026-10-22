@@ -198,7 +198,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 **Objetivo:** Permitir que o usuário realize lançamentos manuais ou Pix em menos de 3 segundos, integrando o aprendizado semântico de comerciantes em tempo real.
 
 #### Tarefas da Fase 3:
-- [ ] **Tarefa 3.1 — Componente `StepQuick` em Tela Única:**
+- [x] **Tarefa 3.1 — Componente `StepQuick` em Tela Única:**
   - Criar `src/features/transactions/wizard/step-quick.tsx` contendo:
     - Abas Tipo (Despesa / Renda).
     - Campo de Valor em destaque (`MoneyInput`).

@@ -134,7 +134,10 @@ export function MoneyInput({
         const next = currency.handleChange(event);
         onCentsChange?.(next);
       }}
-      onKeyDown={currency.handleKeyDown}
+      onKeyDown={(event) => {
+        currency.handleKeyDown(event);
+        rest.onKeyDown?.(event);
+      }}
       onFocus={(event) => {
         // Campo em uso recebe o foco e se torna o alvo ativo preferencial.
         registerCalculatorTarget(calculatorTarget);
