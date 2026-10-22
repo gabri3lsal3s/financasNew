@@ -261,7 +261,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes cobrindo thresholds matemáticos e cálculos de projeção anual.
   - *Commit:* `feat(domain/insights): implementar calculo de impacto orcamentario e gastos vampiros`
 
-- [ ] **Tarefa 4.3 — Filtro Estrito Antirruído para Cobranças Duplicadas e Reajustes:**
+- [x] **Tarefa 4.3 — Filtro Estrito Antirruído para Cobranças Duplicadas e Reajustes:**
   - Regra de Duplicidade: Sinalizar cobrança duplicada exclusivamente se for **serviço de assinatura de valor fixo** OU se forem compras com **mesmo valor exato no mesmo dia e na mesma hora/minuto**.
   - Regra de Reajuste: Diferenciar reajustes inflacionários (10%–30%) de mudanças de plano (>50%).
   - *Teste & Verificação:* Testes garantindo que compras corriqueiras de mesmo valor em dias diferentes NÃO disparem falsos alertas de duplicidade.

@@ -21,8 +21,10 @@ export interface ExpenseLike {
   description: string | null;
   /** YYYY-MM */
   month: string;
-  /** YYYY-MM-DD (opcional — para cálculo do dia típico de cobrança). */
+  /** YYYY-MM-DD ou YYYY-MM-DDTHH:mm:ss (opcional — para cálculo do dia típico de cobrança e duplicidade). */
   date?: string;
+  /** Horário opcional (HH:mm ou ISO completo). */
+  time?: string;
   valueCents: number;
   categoryId: string;
   /** Nome legível da categoria (ex.: "Supermercado Compre Bem", "Mensalidades"). */
@@ -89,10 +91,112 @@ export interface DetectIncomeRecurrencesOptions {
   historyMonthsLimit?: number;
 }
 
+export type PriceAdjustmentKind = "inflationary" | "plan_change";
+
 export interface PriceAdjustment {
   oldCents: number;
   newCents: number;
   percentIncrease: number;
+  /** Tipo de reajuste: inflacionário (10%–30%) ou mudança de plano (>50%). */
+  kind: PriceAdjustmentKind;
+  /** Sinaliza se o reajuste é inflacionário (10%–30%). */
+  isInflationary: boolean;
+  /** Sinaliza se o reajuste é mudança de plano (>50%). */
+  isPlanChange: boolean;
+  /** Rótulo editorial canônico (ex.: "Reajuste inflacionário" ou "Mudança de plano"). */
+  label: string;
+}
+
+/**
+ * Classifica a natureza do reajuste de preço (Fase 4, Tarefa 4.3).
+ *   • Inflacionário: aumento típico de 10% a 30% (reajuste anual / inflação).
+ *   • Mudança de plano: aumento expressivo >= 50% (ex.: upgrade de plano / adição de dependentes).
+ */
+export function classifyPriceAdjustment(
+  oldCents: number,
+  newCents: number,
+): PriceAdjustment | null {
+  if (oldCents <= 0 || newCents <= oldCents) return null;
+
+  const increaseRatio = (newCents - oldCents) / oldCents;
+  const percentIncrease = Math.round(increaseRatio * 100);
+
+  if (percentIncrease < 10) return null;
+
+  const isPlanChange = percentIncrease >= 50;
+  const isInflationary = percentIncrease >= 10 && percentIncrease <= 30;
+  const kind: PriceAdjustmentKind = isPlanChange ? "plan_change" : "inflationary";
+  const label = isPlanChange ? "Mudança de plano" : "Reajuste inflacionário";
+
+  return {
+    oldCents,
+    newCents,
+    percentIncrease,
+    kind,
+    isInflationary,
+    isPlanChange,
+    label,
+  };
+}
+
+/**
+ * Detecta cobranças duplicadas em um mês segundo as regras estritas antirruído (Fase 4, Tarefa 4.3).
+ *
+ * Regras:
+ *   1. Serviço de assinatura de valor fixo: qualquer ocorrência com >= 2 cobranças no mesmo mês
+ *      com valores estáveis (típico de assinatura mensal cobrada em duplicidade).
+ *   2. Compras em geral: apenas compras com mesmo valor exato no mesmo dia e na mesma hora/minuto.
+ *      Compras corriqueiras (como Uber, iFood, mercado) em dias ou horários distintos NUNCA
+ *      são sinalizadas como duplicadas.
+ */
+export function detectDuplicateChargesInMonth(
+  expensesInMonth: readonly ExpenseLike[],
+  isFixedValueSubscription: boolean,
+): number | undefined {
+  if (expensesInMonth.length < 2) return undefined;
+
+  // Regra 1: Serviço de assinatura de valor fixo
+  if (isFixedValueSubscription) {
+    const values = expensesInMonth.map((e) => e.valueCents);
+    const median = medianOf(values);
+    if (median > 0) {
+      const stableCharges = expensesInMonth.filter(
+        (e) => Math.abs(e.valueCents - median) / median <= 0.10,
+      );
+      if (stableCharges.length >= 2) {
+        return stableCharges.length;
+      }
+    }
+    return undefined;
+  }
+
+  // Regra 2: Compras em geral — mesmo valor exato no mesmo dia e na mesma hora/minuto
+  const duplicateGroups = new Map<string, ExpenseLike[]>();
+
+  for (const exp of expensesInMonth) {
+    if (!exp.date) continue;
+    const dateOnly = exp.date.slice(0, 10);
+    let timeKey = "";
+    if (exp.time && exp.time.length >= 5) {
+      timeKey = exp.time.slice(0, 5);
+    } else if (exp.date.includes("T") && exp.date.length >= 16) {
+      timeKey = exp.date.slice(11, 16);
+    }
+
+    const key = `${dateOnly}|${timeKey}|${exp.valueCents}`;
+    const group = duplicateGroups.get(key) ?? [];
+    group.push(exp);
+    duplicateGroups.set(key, group);
+  }
+
+  let maxDuplicateCount = 0;
+  for (const group of duplicateGroups.values()) {
+    if (group.length >= 2 && group.length > maxDuplicateCount) {
+      maxDuplicateCount = group.length;
+    }
+  }
+
+  return maxDuplicateCount >= 2 ? maxDuplicateCount : undefined;
 }
 
 export interface RecurrenceOccurrence {
@@ -426,10 +530,9 @@ export function detectRecurrences(
     const averageMonthlyCents = Math.round(monthlyTotals.reduce((acc, v) => acc + v, 0) / monthlyTotals.length);
     const categoryIcons = [...new Set(group.map((e) => e.categoryIcon))];
 
-    // Diagnóstico de cobranças duplicadas no mês mais recente.
+    // Diagnóstico de cobranças duplicadas e reajustes no mês mais recente (Fase 4, Tarefa 4.3).
     const latestMonth = months[months.length - 1];
     const latestExpenses = latestMonth ? (monthMap.get(latestMonth) ?? []) : [];
-    const duplicateChargesThisMonth = latestExpenses.length > 1 ? latestExpenses.length : undefined;
 
     // Previsão temporal de próximo vencimento e dia típico
     const dates = group.map((e) => e.date).filter(Boolean);
@@ -440,21 +543,14 @@ export function detectRecurrences(
       todayISO,
     );
 
-    // Diagnóstico de reajuste de preço (aumento >= 10% vs mediana histórica anterior).
+    // Diagnóstico de reajuste de preço com diferenciação inflacionária vs mudança de plano.
     let priceAdjustment: PriceAdjustment | null = null;
     if (monthlyTotals.length >= 2) {
       const previousTotals = monthlyTotals.slice(0, -1);
       const prevMedian = medianOf(previousTotals);
       const latestTotal = monthlyTotals[monthlyTotals.length - 1] ?? 0;
       if (prevMedian > 0 && latestTotal > prevMedian) {
-        const increaseRatio = (latestTotal - prevMedian) / prevMedian;
-        if (increaseRatio >= 0.1) {
-          priceAdjustment = {
-            oldCents: prevMedian,
-            newCents: latestTotal,
-            percentIncrease: Math.round(increaseRatio * 100),
-          };
-        }
+        priceAdjustment = classifyPriceAdjustment(prevMedian, latestTotal);
       }
     }
 
@@ -466,6 +562,13 @@ export function detectRecurrences(
       categoryIcon: categoryIcons[0],
       monthlyValuesCents: monthlyTotals,
     });
+
+    // Regra estrita antirruído de duplicidade (Fase 4, Tarefa 4.3)
+    const isSubscription = subscription !== null;
+    const duplicateChargesThisMonth = detectDuplicateChargesInMonth(
+      latestExpenses,
+      isSubscription,
+    );
 
     if (subscription !== null && months.length >= 2) {
       const variance = varianceOf(monthlyTotals);

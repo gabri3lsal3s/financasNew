@@ -203,7 +203,8 @@ describe("recorrências (§3.7.3 — 3 níveis)", () => {
     const rec = occurrences.find((o) => o.name === "Uber Viagem");
     expect(rec).toBeDefined();
     expect(rec?.averageCents).toBe(5000);
-    expect(rec?.duplicateChargesThisMonth).toBe(3);
+    // Compras corriqueiras de Uber em momentos distintos não disparam falso alerta de duplicidade (Fase 4, Tarefa 4.3)
+    expect(rec?.duplicateChargesThisMonth).toBeUndefined();
   });
 
   it("detecta reajuste de preço (aumento >= 10% vs histórico)", () => {

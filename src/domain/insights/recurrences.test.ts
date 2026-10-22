@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateTypicalDay,
+  classifyPriceAdjustment,
+  detectDuplicateChargesInMonth,
   detectIncomeRecurrences,
   detectRecurrences,
   estimateNextDueDate,
@@ -539,6 +541,179 @@ describe("domain/insights/recurrences — Detecção Dual de Rendas (Fase 4, Tar
         expect(spotify?.budgetImpact?.categoryBudgetSharePercent).toBeCloseTo(69.8, 1);
         expect(spotify?.budgetImpact?.highCategoryBudgetImpact).toBe(true);
         expect(spotify?.budgetImpact?.hasHighBudgetImpact).toBe(true);
+      });
+    });
+  });
+
+  describe("Filtro Estrito Antirruído para Cobranças Duplicadas e Reajustes (Fase 4, Tarefa 4.3)", () => {
+    describe("Regra de Duplicidade Antirruído", () => {
+      it("NÃO sinaliza duplicidade para compras corriqueiras de mesmo valor em dias diferentes (Uber/iFood)", () => {
+        // Exemplo: 3 corridas de Uber de R$ 20,00 nos dias 05, 12 e 20 de julho
+        const uberTrips: ExpenseLike[] = [
+          { id: "u1", description: "Uber Viagem", month: "2026-06", date: "2026-06-10", valueCents: 2000, categoryId: "transporte" },
+          { id: "u2", description: "Uber Viagem", month: "2026-06", date: "2026-06-25", valueCents: 2000, categoryId: "transporte" },
+          { id: "u3", description: "Uber Viagem", month: "2026-07", date: "2026-07-05", valueCents: 2000, categoryId: "transporte" },
+          { id: "u4", description: "Uber Viagem", month: "2026-07", date: "2026-07-12", valueCents: 2000, categoryId: "transporte" },
+          { id: "u5", description: "Uber Viagem", month: "2026-07", date: "2026-07-20", valueCents: 2000, categoryId: "transporte" },
+        ];
+
+        const occurrences = detectRecurrences(uberTrips);
+        const uber = occurrences.find((o) => o.name === "Uber Viagem");
+
+        expect(uber).toBeDefined();
+        // Em dias diferentes NÃO é cobrança duplicada — é uso legítimo do serviço!
+        expect(uber?.duplicateChargesThisMonth).toBeUndefined();
+      });
+
+      it("NÃO sinaliza duplicidade para compras no mesmo dia em horários diferentes", () => {
+        // Duas corridas de Uber no mesmo dia: uma pela manhã (08:15) e outra à noite (18:45)
+        const expenses: ExpenseLike[] = [
+          { id: "e1", description: "Uber", month: "2026-07", date: "2026-07-10", time: "08:15", valueCents: 2500, categoryId: "transporte" },
+          { id: "e2", description: "Uber", month: "2026-07", date: "2026-07-10", time: "18:45", valueCents: 2500, categoryId: "transporte" },
+        ];
+
+        const count = detectDuplicateChargesInMonth(expenses, false);
+        expect(count).toBeUndefined();
+      });
+
+      it("SINALIZA duplicidade para compras de mesmo valor exato no mesmo dia e na mesma hora/minuto", () => {
+        // Exemplo: transação duplicada na maquininha às 14:32:00
+        const expenses: ExpenseLike[] = [
+          { id: "d1", description: "Cafeteria Central", month: "2026-07", date: "2026-07-10", time: "14:32", valueCents: 1850, categoryId: "restaurante" },
+          { id: "d2", description: "Cafeteria Central", month: "2026-07", date: "2026-07-10", time: "14:32", valueCents: 1850, categoryId: "restaurante" },
+        ];
+
+        const count = detectDuplicateChargesInMonth(expenses, false);
+        expect(count).toBe(2);
+      });
+
+      it("SINALIZA duplicidade para compras com mesmo valor e data idêntica via string ISO", () => {
+        const expenses: ExpenseLike[] = [
+          { id: "d1", description: "Farmácia Saúde", month: "2026-07", date: "2026-07-15T10:15:30", valueCents: 4200, categoryId: "saude" },
+          { id: "d2", description: "Farmácia Saúde", month: "2026-07", date: "2026-07-15T10:15:45", valueCents: 4200, categoryId: "saude" },
+        ];
+
+        // Mesmo minuto (10:15)
+        const count = detectDuplicateChargesInMonth(expenses, false);
+        expect(count).toBe(2);
+      });
+
+      it("SINALIZA duplicidade para compras com mesmo valor na mesma data quando não há timestamp de horário", () => {
+        const expenses: ExpenseLike[] = [
+          { id: "d1", description: "Livraria Cultura", month: "2026-07", date: "2026-07-22", valueCents: 8990, categoryId: "livros" },
+          { id: "d2", description: "Livraria Cultura", month: "2026-07", date: "2026-07-22", valueCents: 8990, categoryId: "livros" },
+        ];
+
+        const count = detectDuplicateChargesInMonth(expenses, false);
+        expect(count).toBe(2);
+      });
+
+      it("SINALIZA cobrança duplicada para serviços de assinatura de valor fixo mesmo em dias diferentes", () => {
+        // Netflix cobrada dia 05 e depois cobrada novamente dia 20 de julho (erro de cobrança dupla no mês)
+        const netflixCharges: ExpenseLike[] = [
+          { id: "n1", description: "Netflix", month: "2026-06", date: "2026-06-05", valueCents: 3990, categoryId: "streaming", categoryName: "Streaming", categoryIcon: "tv" },
+          { id: "n2", description: "Netflix", month: "2026-07", date: "2026-07-05", valueCents: 3990, categoryId: "streaming", categoryName: "Streaming", categoryIcon: "tv" },
+          { id: "n3", description: "Netflix", month: "2026-07", date: "2026-07-20", valueCents: 3990, categoryId: "streaming", categoryName: "Streaming", categoryIcon: "tv" },
+        ];
+
+        const occurrences = detectRecurrences(netflixCharges);
+        const sub = occurrences.find((o) => o.name === "Netflix");
+
+        expect(sub).toBeDefined();
+        expect(sub?.level).toBe("subscription");
+        expect(sub?.duplicateChargesThisMonth).toBe(2);
+      });
+
+      it("NÃO sinaliza duplicidade em assinaturas se os valores forem completamente diferentes (mudança de plano)", () => {
+        // Usuário pagou R$ 21,90 e depois R$ 55,90 em julho devido a upgrade
+        const netflixCharges: ExpenseLike[] = [
+          { id: "n1", description: "Netflix", month: "2026-06", date: "2026-06-05", valueCents: 2190, categoryId: "streaming", categoryName: "Streaming", categoryIcon: "tv" },
+          { id: "n2", description: "Netflix", month: "2026-07", date: "2026-07-05", valueCents: 2190, categoryId: "streaming", categoryName: "Streaming", categoryIcon: "tv" },
+          { id: "n3", description: "Netflix", month: "2026-07", date: "2026-07-20", valueCents: 5590, categoryId: "streaming", categoryName: "Streaming", categoryIcon: "tv" },
+        ];
+
+        const occurrences = detectRecurrences(netflixCharges);
+        const sub = occurrences.find((o) => o.name === "Netflix");
+
+        expect(sub).toBeDefined();
+        // Não é duplicidade de valor fixo, pois 21,90 e 55,90 diferem em >10% da mediana
+        expect(sub?.duplicateChargesThisMonth).toBeUndefined();
+      });
+    });
+
+    describe("Regra de Reajuste: Diferenciação Inflacionária vs Mudança de Plano", () => {
+      it("classifica reajuste inflacionário (10% a 30%) com rótulo canônico", () => {
+        // Aumento de 15% (R$ 100,00 -> R$ 115,00)
+        const adj15 = classifyPriceAdjustment(10000, 11500);
+        expect(adj15).toBeDefined();
+        expect(adj15?.percentIncrease).toBe(15);
+        expect(adj15?.kind).toBe("inflationary");
+        expect(adj15?.isInflationary).toBe(true);
+        expect(adj15?.isPlanChange).toBe(false);
+        expect(adj15?.label).toBe("Reajuste inflacionário");
+
+        // Aumento de 30% (limite superior inflacionário)
+        const adj30 = classifyPriceAdjustment(10000, 13000);
+        expect(adj30?.kind).toBe("inflationary");
+        expect(adj30?.isInflationary).toBe(true);
+        expect(adj30?.isPlanChange).toBe(false);
+      });
+
+      it("classifica mudança de plano (>= 50%) com rótulo canônico", () => {
+        // Aumento de 50% (R$ 20,00 -> R$ 30,00)
+        const adj50 = classifyPriceAdjustment(2000, 3000);
+        expect(adj50).toBeDefined();
+        expect(adj50?.percentIncrease).toBe(50);
+        expect(adj50?.kind).toBe("plan_change");
+        expect(adj50?.isPlanChange).toBe(true);
+        expect(adj50?.isInflationary).toBe(false);
+        expect(adj50?.label).toBe("Mudança de plano");
+
+        // Aumento de 80% (upgrade expressivo)
+        const adj80 = classifyPriceAdjustment(5000, 9000);
+        expect(adj80?.kind).toBe("plan_change");
+        expect(adj80?.isPlanChange).toBe(true);
+        expect(adj80?.isInflationary).toBe(false);
+        expect(adj80?.label).toBe("Mudança de plano");
+      });
+
+      it("integra classificação de reajuste diretamente no detectRecurrences", () => {
+        // Spotify aumentando de R$ 19,90 para R$ 24,90 (+25% -> inflacionário)
+        const occurrences = detectRecurrences([
+          { id: "s1", description: "Spotify", month: "2026-06", valueCents: 1990, categoryId: "streaming" },
+          { id: "s2", description: "Spotify", month: "2026-07", valueCents: 1990, categoryId: "streaming" },
+          { id: "s3", description: "Spotify", month: "2026-08", valueCents: 2490, categoryId: "streaming" }, // +25%
+        ]);
+
+        const spotify = occurrences.find((o) => o.name === "Spotify");
+        expect(spotify?.priceAdjustment).toBeDefined();
+        expect(spotify?.priceAdjustment?.percentIncrease).toBe(25);
+        expect(spotify?.priceAdjustment?.kind).toBe("inflationary");
+        expect(spotify?.priceAdjustment?.isInflationary).toBe(true);
+        expect(spotify?.priceAdjustment?.label).toBe("Reajuste inflacionário");
+      });
+
+      it("integra mudança de plano no detectRecurrences quando aumento é >= 50%", () => {
+        // Academia de R$ 99,00 para R$ 169,00 (+71% -> mudança de plano)
+        const occurrences = detectRecurrences([
+          { id: "g1", description: "Smart Fit", month: "2026-06", valueCents: 9900, categoryId: "fitness" },
+          { id: "g2", description: "Smart Fit", month: "2026-07", valueCents: 9900, categoryId: "fitness" },
+          { id: "g3", description: "Smart Fit", month: "2026-08", valueCents: 16900, categoryId: "fitness" }, // +71%
+        ]);
+
+        const gym = occurrences.find((o) => o.name === "Smart Fit");
+        expect(gym?.priceAdjustment).toBeDefined();
+        expect(gym?.priceAdjustment?.percentIncrease).toBe(71);
+        expect(gym?.priceAdjustment?.kind).toBe("plan_change");
+        expect(gym?.priceAdjustment?.isPlanChange).toBe(true);
+        expect(gym?.priceAdjustment?.label).toBe("Mudança de plano");
+      });
+
+      it("ignora aumentos abaixo de 10% ou reduções de preço", () => {
+        expect(classifyPriceAdjustment(10000, 10500)).toBeNull(); // +5%
+        expect(classifyPriceAdjustment(10000, 10900)).toBeNull(); // +9%
+        expect(classifyPriceAdjustment(10000, 9000)).toBeNull(); // -10%
+        expect(classifyPriceAdjustment(0, 5000)).toBeNull();
       });
     });
   });
