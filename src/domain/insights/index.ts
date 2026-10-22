@@ -8,6 +8,10 @@ export {
   calculateTypicalDay,
   estimateNextDueDate,
   calculateRecurringTotals,
+  evaluateBudgetImpact,
+  formatBRL,
+  VAMPIRE_INCOME_IMPACT_THRESHOLD_PERCENT,
+  VAMPIRE_CATEGORY_BUDGET_IMPACT_THRESHOLD_PERCENT,
 } from "./recurrences";
 export { ESSENTIAL_CATEGORY_ICONS } from "./shared";
 export type {
@@ -21,6 +25,8 @@ export type {
   RecurrenceOccurrence,
   DetectRecurrencesOptions,
   RecurringTotalsResult,
+  BudgetImpactOccurrence,
+  BudgetImpactEvaluation,
 } from "./recurrences";
 export { confidenceScore, historyBonus, varianceOf } from "./confidence";
 export type { ConfidenceParams, RecurrenceKind } from "./confidence";

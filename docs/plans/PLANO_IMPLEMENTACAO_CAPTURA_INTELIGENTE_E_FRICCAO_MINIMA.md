@@ -254,7 +254,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes unitários em `recurrences.test.ts` com cenários de salários CLT e múltiplos clientes freelancers.
   - *Commit:* `feat(domain/insights): adicionar deteccao dual de rendas fixas e variaveis`
 
-- [ ] **Tarefa 4.2 — Identificador de "Gastos Vampiros" e Alto Impacto Orçamentário:**
+- [x] **Tarefa 4.2 — Identificador de "Gastos Vampiros" e Alto Impacto Orçamentário:**
   - Implementar função pura `evaluateBudgetImpact(occurrence, monthlyIncomeCents, categoryBudgetCents)`:
     - Sinalizar recorrências que comprometem $\ge 15\%$ da renda mensal ou $\ge 30\%$ do orçamento da categoria.
     - Calcular o custo projetado anual (ex.: *"Essa assinatura custa R$ 1.080,00 por ano"*).

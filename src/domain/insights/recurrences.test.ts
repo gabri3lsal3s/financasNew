@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   calculateTypicalDay,
   detectIncomeRecurrences,
+  detectRecurrences,
   estimateNextDueDate,
+  evaluateBudgetImpact,
+  formatBRL,
+  VAMPIRE_CATEGORY_BUDGET_IMPACT_THRESHOLD_PERCENT,
+  VAMPIRE_INCOME_IMPACT_THRESHOLD_PERCENT,
+  type ExpenseLike,
   type IncomeLike,
 } from "./recurrences";
 
@@ -291,6 +297,249 @@ describe("domain/insights/recurrences — Detecção Dual de Rendas (Fase 4, Tar
 
       const detected = detectIncomeRecurrences(incomes);
       expect(detected).toHaveLength(0);
+    });
+  });
+
+  describe("evaluateBudgetImpact e Gastos Vampiros (Fase 4, Tarefa 4.2)", () => {
+    describe("Cálculo do Custo Projetado Anual", () => {
+      it("calcula o custo projetado anual (ex.: 'Essa assinatura custa R$ 1.080,00 por ano' para R$ 90,00/mês)", () => {
+        const evaluation = evaluateBudgetImpact({
+          name: "Clube de Assinatura",
+          averageCents: 9000, // R$ 90,00
+        });
+
+        expect(evaluation.annualCostCents).toBe(108000); // 90 * 12 = 1.080,00
+        expect(evaluation.annualCostFormatted).toBe("R$ 1.080,00");
+        expect(evaluation.annualCostMessage).toBe("Essa assinatura custa R$ 1.080,00 por ano");
+      });
+
+      it("calcula valores com centavos fracionados (ex.: R$ 29,90/mês -> R$ 358,80/ano)", () => {
+        const evaluation = evaluateBudgetImpact({
+          name: "Streaming Premium",
+          averageCents: 2990, // R$ 29,90
+        });
+
+        expect(evaluation.annualCostCents).toBe(35880);
+        expect(evaluation.annualCostFormatted).toBe("R$ 358,80");
+        expect(evaluation.annualCostMessage).toBe("Essa assinatura custa R$ 358,80 por ano");
+      });
+
+      it("trata valores nulos ou negativos com segurança", () => {
+        const evaluation = evaluateBudgetImpact({
+          name: "Serviço Inativo",
+          averageCents: 0,
+        });
+
+        expect(evaluation.annualCostCents).toBe(0);
+        expect(evaluation.annualCostFormatted).toBe("R$ 0,00");
+        expect(evaluation.annualCostMessage).toBe("Essa assinatura custa R$ 0,00 por ano");
+        expect(evaluation.isVampire).toBe(false);
+      });
+    });
+
+    describe("Threshold de Renda Mensal (>= 15%)", () => {
+      it("sinaliza highIncomeImpact quando compromete exatamente ou mais de 15% da renda mensal", () => {
+        // R$ 1.500,00 de R$ 10.000,00 = exatamente 15.00%
+        const exactly15 = evaluateBudgetImpact(
+          { name: "Plano de Saúde", averageCents: 150000 },
+          1000000,
+        );
+
+        expect(exactly15.incomeSharePercent).toBe(15);
+        expect(exactly15.highIncomeImpact).toBe(true);
+        expect(exactly15.hasHighBudgetImpact).toBe(true);
+        expect(exactly15.recommendationMessage).toBe("Compromete 15% da sua renda mensal.");
+      });
+
+      it("não sinaliza quando compromete menos de 15% da renda", () => {
+        // R$ 1.490,00 de R$ 10.000,00 = 14.90%
+        const under15 = evaluateBudgetImpact(
+          { name: "Seguro Auto", averageCents: 149000 },
+          1000000,
+        );
+
+        expect(under15.incomeSharePercent).toBe(14.9);
+        expect(under15.highIncomeImpact).toBe(false);
+      });
+
+      it("exporta a constante de threshold canônica de renda (15%)", () => {
+        expect(VAMPIRE_INCOME_IMPACT_THRESHOLD_PERCENT).toBe(15);
+      });
+    });
+
+    describe("Threshold de Orçamento da Categoria (>= 30%)", () => {
+      it("sinaliza highCategoryBudgetImpact quando compromete exatamente ou mais de 30% do orçamento da categoria", () => {
+        // R$ 300,00 de R$ 1.000,00 = exatamente 30.00%
+        const exactly30 = evaluateBudgetImpact(
+          { name: "Academia", averageCents: 30000 },
+          undefined,
+          100000,
+        );
+
+        expect(exactly30.categoryBudgetSharePercent).toBe(30);
+        expect(exactly30.highCategoryBudgetImpact).toBe(true);
+        expect(exactly30.hasHighBudgetImpact).toBe(true);
+        expect(exactly30.recommendationMessage).toBe("Compromete 30% do orçamento da categoria.");
+      });
+
+      it("não sinaliza quando compromete menos de 30% do orçamento da categoria", () => {
+        // R$ 290,00 de R$ 1.000,00 = 29.00%
+        const under30 = evaluateBudgetImpact(
+          { name: "Suplementos", averageCents: 29000 },
+          undefined,
+          100000,
+        );
+
+        expect(under30.categoryBudgetSharePercent).toBe(29);
+        expect(under30.highCategoryBudgetImpact).toBe(false);
+      });
+
+      it("exporta a constante de threshold canônica de categoria (30%)", () => {
+        expect(VAMPIRE_CATEGORY_BUDGET_IMPACT_THRESHOLD_PERCENT).toBe(30);
+      });
+    });
+
+    describe("Impacto Conjunto e Mensagem de Recomendação", () => {
+      it("gera mensagem combinada quando compromete simultaneamente a renda e o orçamento da categoria", () => {
+        const dualImpact = evaluateBudgetImpact(
+          { name: "Mensalidade Escolar", averageCents: 180000 }, // R$ 1.800,00
+          1000000, // Renda: R$ 10.000,00 (18%)
+          300000, // Categoria Educação: R$ 3.000,00 (60%)
+        );
+
+        expect(dualImpact.highIncomeImpact).toBe(true);
+        expect(dualImpact.highCategoryBudgetImpact).toBe(true);
+        expect(dualImpact.hasHighBudgetImpact).toBe(true);
+        expect(dualImpact.recommendationMessage).toBe(
+          "Compromete 18% da sua renda e 60% do orçamento da categoria.",
+        );
+      });
+    });
+
+    describe("Identificação de Gastos Vampiros (isVampire)", () => {
+      it("classifica assinaturas com potencial de corte ('can_cut') como gasto vampiro, mesmo com baixo impacto individual", () => {
+        // Assinatura de R$ 19,90 em uma renda de R$ 10.000 (0.20% da renda)
+        const streaming = evaluateBudgetImpact(
+          {
+            name: "Serviço Esquecido",
+            averageCents: 1990,
+            tier: "can_cut",
+          },
+          1000000,
+          50000,
+        );
+
+        expect(streaming.hasHighBudgetImpact).toBe(false);
+        expect(streaming.isVampire).toBe(true);
+        expect(streaming.recommendationMessage).toBe(
+          "Assinatura com potencial de corte. Economia projetada de R$ 238,80 por ano.",
+        );
+      });
+
+      it("classifica gastos discricionários ('discretionary') como gasto vampiro", () => {
+        const discSub = evaluateBudgetImpact({
+          name: "Revista Online",
+          averageCents: 4500,
+          tier: "discretionary",
+        });
+
+        expect(discSub.isVampire).toBe(true);
+        expect(discSub.recommendationMessage).toBe("Gasto discricionário sugerido para revisão.");
+      });
+
+      it("NÃO classifica despesas essenciais ('essential') como gasto vampiro, mesmo com alto impacto orçamentário", () => {
+        // Aluguel comprometendo 35% da renda
+        const rent = evaluateBudgetImpact(
+          {
+            name: "Aluguel",
+            averageCents: 350000, // R$ 3.500,00
+            tier: "essential",
+          },
+          1000000, // R$ 10.000,00
+        );
+
+        expect(rent.highIncomeImpact).toBe(true);
+        expect(rent.hasHighBudgetImpact).toBe(true);
+        expect(rent.isVampire).toBe(false); // Gasto essencial nunca é vampiro
+      });
+
+      it("classifica despesas sem tier mas com alto impacto como gasto vampiro", () => {
+        const highSpend = evaluateBudgetImpact(
+          {
+            name: "Compras Frequentes Delivery",
+            averageCents: 160000, // 16% da renda
+          },
+          1000000,
+        );
+
+        expect(highSpend.highIncomeImpact).toBe(true);
+        expect(highSpend.isVampire).toBe(true);
+      });
+
+      it("não classifica despesas corriqueiras de baixo impacto como gasto vampiro", () => {
+        const normalSpend = evaluateBudgetImpact(
+          {
+            name: "Padaria",
+            averageCents: 8000, // R$ 80,00
+          },
+          1000000, // R$ 10.000,00
+          100000, // R$ 1.000,00
+        );
+
+        expect(normalSpend.hasHighBudgetImpact).toBe(false);
+        expect(normalSpend.isVampire).toBe(false);
+        expect(normalSpend.recommendationMessage).toBeUndefined();
+      });
+    });
+
+    describe("formatBRL", () => {
+      it("formata centavos no padrão monetário BRL puro", () => {
+        expect(formatBRL(108000)).toBe("R$ 1.080,00");
+        expect(formatBRL(35880)).toBe("R$ 358,80");
+        expect(formatBRL(99)).toBe("R$ 0,99");
+        expect(formatBRL(0)).toBe("R$ 0,00");
+        expect(formatBRL(-500)).toBe("R$ 0,00");
+      });
+    });
+
+    describe("Integração com detectRecurrences", () => {
+      it("anexa avaliação de budgetImpact quando opções de renda ou orçamento são fornecidas", () => {
+        const expenses: ExpenseLike[] = [
+          {
+            id: "e1",
+            description: "Spotify Premium",
+            month: "2026-08",
+            date: "2026-08-10",
+            valueCents: 3490,
+            categoryId: "cat-streaming",
+            categoryName: "Streaming",
+            categoryIcon: "music",
+          },
+          {
+            id: "e2",
+            description: "Spotify Premium",
+            month: "2026-09",
+            date: "2026-09-10",
+            valueCents: 3490,
+            categoryId: "cat-streaming",
+            categoryName: "Streaming",
+            categoryIcon: "music",
+          },
+        ];
+
+        const occurrences = detectRecurrences(expenses, {
+          monthlyIncomeCents: 500000, // R$ 5.000,00
+          categoryBudgets: { "cat-streaming": 5000 }, // R$ 50,00
+        });
+
+        const spotify = occurrences.find((o) => o.level === "subscription");
+        expect(spotify).toBeDefined();
+        expect(spotify?.budgetImpact).toBeDefined();
+        expect(spotify?.budgetImpact?.annualCostCents).toBe(41880);
+        expect(spotify?.budgetImpact?.categoryBudgetSharePercent).toBeCloseTo(69.8, 1);
+        expect(spotify?.budgetImpact?.highCategoryBudgetImpact).toBe(true);
+        expect(spotify?.budgetImpact?.hasHighBudgetImpact).toBe(true);
+      });
     });
   });
 });
