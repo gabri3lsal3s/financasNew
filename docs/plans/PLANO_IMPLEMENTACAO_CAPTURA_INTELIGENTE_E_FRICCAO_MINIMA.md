@@ -393,7 +393,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Atualizar `src/domain/insights/index.test.ts` e `recurrences.test.ts`, garantindo que despesas corriqueiras de uma mesma categoria não sejam somadas aos totais de custos fixos.
   - *Commit:* `refactor(domain/insights): remover nivel similar e purificar calculo de totais recorrentes`
 
-- [ ] **Tarefa 7.2 — Normalização Robusta com Sanitização de Sufixos Temporais & Concessionárias Brasileiras:**
+- [x] **Tarefa 7.2 — Normalização Robusta com Sanitização de Sufixos Temporais & Concessionárias Brasileiras:**
   - Em `src/domain/insights/shared.ts`:
     - Criar função pura `stripTemporalSuffixes(text: string): string` com regex para remover sufixos/prefixos de mês e ano (`jan`, `fev`, `mar`, `01/26`, `2026`, `ref 08`, `competencia 09`, `parcela x/y`).
     - Agrupar ocorrências pelo nome base higienizado, permitindo que lançamentos como *"Condomínio Jan"* e *"Condomínio Fev"* sejam devidamente identificados como a mesma recorrência.
