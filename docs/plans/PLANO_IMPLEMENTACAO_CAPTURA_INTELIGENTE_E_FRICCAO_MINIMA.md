@@ -209,7 +209,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes de renderização e acessibilidade com React Testing Library.
   - *Commit:* `feat(transactions): criar componente StepQuick com integracao semantica`
 
-- [ ] **Tarefa 3.2 — Integração do Modo Rápido no `LaunchWizard`:**
+- [x] **Tarefa 3.2 — Integração do Modo Rápido no `LaunchWizard`:**
   - Atualizar `launch-wizard.tsx` para suportar `initialMode="quick" | "guided"` e transição sem perda de dados entre modos.
   - Conectar botão de rodapé *"Salvar Transação"* diretamente ao `handleSubmit()`.
   - *Teste & Verificação:* Atualizar `launch-wizard.test.tsx` validando preenchimento e salvamento direto no modo rápido.

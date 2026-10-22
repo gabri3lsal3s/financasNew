@@ -379,4 +379,142 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     expect(await screen.findByText("Forma de pagamento")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Padaria Bella Vista")).toBeInTheDocument();
   });
+
+  describe("Modo Rápido no LaunchWizard (Fase 3, Tarefa 3.2)", () => {
+    it("renderiza no modo rápido quando initialMode='quick', omitindo o Stepper e exibindo StepQuick", () => {
+      render(<LaunchWizard initialMode="quick" />);
+
+      // Não exibe o Stepper de 4 passos
+      expect(screen.queryByText("Revisão")).not.toBeInTheDocument();
+
+      // Exibe elementos do StepQuick
+      expect(screen.getByRole("tab", { name: "Despesa" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Renda" })).toBeInTheDocument();
+      expect(screen.getByRole("textbox", { name: "Valor do lançamento" })).toBeInTheDocument();
+
+      // Botão de rodapé "Salvar Transação" deve estar presente e desabilitado sem dados
+      const saveBtn = screen.getByRole("button", { name: "Salvar Transação" });
+      expect(saveBtn).toBeInTheDocument();
+      expect(saveBtn).toBeDisabled();
+
+      // Botão "Cancelar"
+      expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
+    });
+
+    it("permite preencher e salvar transação diretamente no modo rápido via botão de rodapé", async () => {
+      const user = userEvent.setup();
+      const onOpenChange = vi.fn();
+      const onSuccess = vi.fn();
+
+      render(
+        <LaunchWizard
+          initialMode="quick"
+          onOpenChange={onOpenChange}
+          onSuccess={onSuccess}
+        />,
+      );
+
+      // Preenche o valor (R$ 35,00)
+      const valueInput = screen.getByRole("textbox", { name: "Valor do lançamento" });
+      await user.type(valueInput, "3500");
+
+      // Seleciona a categoria Alimentação
+      const catBtn = screen.getByRole("button", { name: /alimentação/i });
+      await user.click(catBtn);
+
+      // Botão Salvar Transação deve estar habilitado
+      const saveBtn = screen.getByRole("button", { name: "Salvar Transação" });
+      expect(saveBtn).toBeEnabled();
+
+      await user.click(saveBtn);
+
+      expect(createExpenseMock).toHaveBeenCalledTimes(1);
+      const params = createExpenseMock.mock.calls[0]?.[0];
+      expect(params.value).toBe(35);
+      expect(params.categoryId).toBe("c1");
+      expect(params.paymentMethod).toBe("pix");
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it("permite transição suave do modo rápido para o modo guiado sem perda de dados ao clicar em Mais opções", async () => {
+      const user = userEvent.setup();
+      const onOpenChange = vi.fn();
+      const onSuccess = vi.fn();
+
+      render(
+        <LaunchWizard
+          initialMode="quick"
+          onOpenChange={onOpenChange}
+          onSuccess={onSuccess}
+        />,
+      );
+
+      // Digita valor R$ 120,00 e seleciona Alimentação
+      await user.type(screen.getByRole("textbox", { name: "Valor do lançamento" }), "12000");
+      await user.click(screen.getByRole("button", { name: /alimentação/i }));
+
+      // Clica em Mais opções para alternar para o modo guiado
+      const moreOptionsBtn = screen.getByRole("button", { name: /mais opções/i });
+      await user.click(moreOptionsBtn);
+
+      // Agora o Stepper deve estar visível e no Passo 3 (Detalhes)
+      expect(screen.getByText("Detalhes")).toBeInTheDocument();
+      expect(screen.getByText("Forma de pagamento")).toBeInTheDocument();
+
+      // Avança para o Passo 4 (Revisão)
+      await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+      // Valor preservado na Revisão (R$ 120,00)
+      expect(screen.getByText("R$ 120,00")).toBeInTheDocument();
+
+      // Confirma o lançamento
+      await user.click(screen.getByRole("button", { name: "Confirmar lançamento" }));
+
+      expect(createExpenseMock).toHaveBeenCalledTimes(1);
+      const params = createExpenseMock.mock.calls[0]?.[0];
+      expect(params.value).toBe(120);
+      expect(params.categoryId).toBe("c1");
+    });
+
+    it("permite alternar entre o modo guiado e o modo rápido pelo botão no cabeçalho", async () => {
+      const user = userEvent.setup();
+      render(<LaunchWizard initialMode="guided" />);
+
+      // No modo guiado, botão Modo rápido está presente no cabeçalho
+      const quickModeBtn = screen.getByRole("button", { name: "Alternar para modo rápido" });
+      expect(quickModeBtn).toBeInTheDocument();
+
+      await user.click(quickModeBtn);
+
+      // Alternou para modo rápido
+      expect(screen.getByRole("button", { name: "Salvar Transação" })).toBeInTheDocument();
+      expect(screen.queryByText("Revisão")).not.toBeInTheDocument();
+    });
+
+    it("salva automaticamente ao pressionar Enter no campo de valor quando válido", async () => {
+      const user = userEvent.setup();
+      const onOpenChange = vi.fn();
+      const onSuccess = vi.fn();
+
+      render(
+        <LaunchWizard
+          initialMode="quick"
+          onOpenChange={onOpenChange}
+          onSuccess={onSuccess}
+        />,
+      );
+
+      // Seleciona categoria primeiro
+      await user.click(screen.getByRole("button", { name: /alimentação/i }));
+
+      // Digita valor e pressiona Enter
+      const valueInput = screen.getByRole("textbox", { name: "Valor do lançamento" });
+      await user.type(valueInput, "4500{Enter}");
+
+      expect(createExpenseMock).toHaveBeenCalledTimes(1);
+      expect(createExpenseMock.mock.calls[0]?.[0].value).toBe(45);
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+    });
+  });
 });
