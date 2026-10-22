@@ -3,6 +3,7 @@ package com.guiafinanceiro.app;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.provider.Settings;
 import android.text.TextUtils;
