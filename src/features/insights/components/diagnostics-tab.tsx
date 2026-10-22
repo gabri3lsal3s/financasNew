@@ -5,13 +5,19 @@ import {
   ChevronUp,
   Flame,
   PiggyBank,
+  ShieldCheck,
   TrendingDown,
   TrendingUp,
   Wallet,
-  Zap,
 } from "lucide-react";
 import { Alert, Badge, Button } from "@/components/ui";
-import { SAVINGS_HEALTH_LABELS, WEEKEND_RATIO_LIMIT, type SavingsHealth } from "@/domain/insights";
+import {
+  ESSENTIAL_STATUS_LABELS,
+  SAVINGS_HEALTH_LABELS,
+  WEEKEND_RATIO_LIMIT,
+  type EssentialSpendingResult,
+  type SavingsHealth,
+} from "@/domain/insights";
 import { DiagnosticCard } from "./diagnostic-card";
 
 export interface WarningItem {
@@ -32,6 +38,8 @@ export interface DiagnosticsTabProps {
   weekendRatio: number;
   trendSignificant: boolean;
   trendPercent: number;
+  overspentBudgets?: number;
+  essentialSpending?: EssentialSpendingResult;
 }
 
 export function DiagnosticsTab({
@@ -40,12 +48,13 @@ export function DiagnosticsTab({
   setExpandedWarnings,
   health,
   savingsRate,
-  burnRate,
   concentration,
   weekendComparable,
   weekendRatio,
   trendSignificant,
   trendPercent,
+  overspentBudgets = 0,
+  essentialSpending,
 }: DiagnosticsTabProps) {
   return (
     <div className="flex flex-col gap-6 min-w-0">
@@ -105,41 +114,49 @@ export function DiagnosticsTab({
         )}
       </section>
 
-      {/* Bloco 2: Diagnóstico Financeiro (Grid 3x2 equilibrado) */}
+      {/* Bloco 2: Diagnóstico Financeiro */}
       <section aria-label="Diagnóstico financeiro" className="flex flex-col gap-3">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Diagnóstico de Hábitos & Indicadores
         </h2>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 min-w-0">
+          {/* Card 1: Saúde da Poupança & Taxa unificadas */}
           <DiagnosticCard
             icon={<PiggyBank className="size-4" aria-hidden="true" />}
             label="Saúde da poupança"
-            value={SAVINGS_HEALTH_LABELS[health]}
+            value={`${savingsRate.toFixed(1)}%`}
             subtitle="Capacidade de poupar"
             tone={health === "forte" || health === "saudavel" ? "positive" : health === "moderado" ? "neutral" : "negative"}
+            badge={
+              <Badge
+                variant={health === "forte" || health === "saudavel" ? "positive" : health === "moderado" ? "warning" : "critical"}
+                size="xs"
+              >
+                {SAVINGS_HEALTH_LABELS[health]}
+              </Badge>
+            }
           />
-          <DiagnosticCard
-            icon={<Zap className="size-4" aria-hidden="true" />}
-            label="Taxa de poupança"
-            value={`${savingsRate.toFixed(1)}%`}
-            subtitle="Meta ideal: 20%+"
-            tone={savingsRate >= 20 ? "positive" : savingsRate >= 0 ? "neutral" : "negative"}
-          />
+
+          {/* Card 2: Orçamentos em Risco / Estourados */}
           <DiagnosticCard
             icon={<Flame className="size-4" aria-hidden="true" />}
-            label="Taxa de consumo"
-            value={`${burnRate.toFixed(0)}%`}
-            subtitle="Despesas / Renda"
-            tone={burnRate > 85 ? "negative" : burnRate > 70 ? "neutral" : "positive"}
+            label="Orçamentos estourados"
+            value={overspentBudgets === 0 ? "Em dia" : `${overspentBudgets} ${overspentBudgets === 1 ? "estouro" : "estouros"}`}
+            subtitle={overspentBudgets === 0 ? "Todas categorias no teto" : "Excederam o limite"}
+            tone={overspentBudgets === 0 ? "positive" : "negative"}
           />
+
+          {/* Card 3: Concentração de renda */}
           <DiagnosticCard
             icon={<Wallet className="size-4" aria-hidden="true" />}
             label="Concentração de renda"
             value={`${concentration.topSharePercent.toFixed(0)}%`}
-            subtitle="Na principal fonte"
-            tone={concentration.alert ? "negative" : "positive"}
+            subtitle={concentration.alert ? "Alta dependência" : "Fonte principal"}
+            tone={concentration.alert ? "negative" : "neutral"}
           />
+
+          {/* Card 4: Gastos no fim de semana */}
           <DiagnosticCard
             icon={<Calendar className="size-4" aria-hidden="true" />}
             label="Gastos fim de semana"
@@ -147,6 +164,41 @@ export function DiagnosticsTab({
             subtitle="vs. dias úteis"
             tone={weekendComparable ? (weekendRatio > WEEKEND_RATIO_LIMIT ? "negative" : "positive") : "neutral"}
           />
+
+          {/* Card 5: Comprometimento Essencial (Regra 50/30/20) */}
+          <DiagnosticCard
+            icon={<ShieldCheck className="size-4" aria-hidden="true" />}
+            label="Gastos essenciais"
+            value={essentialSpending ? `${essentialSpending.ratioPercent.toFixed(0)}%` : "—"}
+            subtitle="Teto ideal: até 50%"
+            tone={
+              essentialSpending
+                ? essentialSpending.status === "adequado"
+                  ? "positive"
+                  : essentialSpending.status === "moderado"
+                    ? "neutral"
+                    : "negative"
+                : "neutral"
+            }
+            badge={
+              essentialSpending ? (
+                <Badge
+                  variant={
+                    essentialSpending.status === "adequado"
+                      ? "positive"
+                      : essentialSpending.status === "moderado"
+                        ? "warning"
+                        : "critical"
+                  }
+                  size="xs"
+                >
+                  {ESSENTIAL_STATUS_LABELS[essentialSpending.status]}
+                </Badge>
+              ) : null
+            }
+          />
+
+          {/* Card 6: Tendência histórica de gastos */}
           <DiagnosticCard
             icon={trendPercent >= 0 ? <TrendingUp className="size-4" aria-hidden="true" /> : <TrendingDown className="size-4" aria-hidden="true" />}
             label="Tendência de gastos"

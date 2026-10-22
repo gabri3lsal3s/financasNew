@@ -222,13 +222,13 @@ export function MinimalWealthSimulator() {
               </div>
             </div>
 
-            {/* Grid Principal: Gráfico (Donut ou Curva FIRE) na Esquerda + Direcionamento na Direita */}
+            {/* Grid Principal: Gráfico (Donut ou Curva Patrimonial) na Esquerda + Direcionamento na Direita */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-center">
-              {/* Coluna 1: Donut ou Curva FIRE em Abas */}
+              {/* Coluna 1: Donut ou Curva Patrimonial em Abas */}
               <div className="lg:col-span-6 flex flex-col items-center justify-center p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-background/50 border border-border/60">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full mb-3 sm:mb-4 gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    {activeTab === "alocacao" ? "Composição da Carteira" : "Projeção FIRE"}
+                    {activeTab === "alocacao" ? "Composição da Carteira" : "Projeção Patrimonial"}
                   </span>
                   <div className="flex items-center gap-2 self-start sm:self-auto">
                     <div className="inline-flex rounded-lg border border-border/80 bg-muted/40 p-0.5" role="tablist" aria-label="Modo de visualização gráfica">
@@ -264,7 +264,7 @@ export function MinimalWealthSimulator() {
                             : "text-muted-foreground hover:text-foreground",
                         )}
                       >
-                        Curva FIRE
+                        Curva Patrimonial
                       </button>
                     </div>
                     <Badge variant="positive" size="xs" className="font-mono">

@@ -302,7 +302,7 @@ export function RemindersPage() {
               </Badge>
             )}
           </div>
-          <p className="text-xs text-muted-foreground sm:text-sm">
+          <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
             Faturas e compromissos que precisam da sua atenção
           </p>
         </div>

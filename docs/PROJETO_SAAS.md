@@ -54,7 +54,7 @@ A gestão financeira pessoal opera em ciclos mensais (recebimento de salário, p
 | **Rebalanceamento Ativo de Aportes** | Liberado | **Bloqueado para novos cálculos** | **Ativo** |
 | **Radar Fiscal de IR & DARF** | Liberado | **Bloqueado para novas apurações** | **Ativo** |
 | **Exportação Excel (.xlsx com 5 abas)** | Liberado | **Bloqueado** | **Ilimitado (.xlsx)** |
-| **Simulador FIRE & Projeção** | Liberado | **Bloqueado** | **Ativo** |
+| **Simulador de Projeção Patrimonial & Reserva** | Liberado | **Bloqueado** | **Ativo** |
 
 ---
 

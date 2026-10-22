@@ -6,14 +6,18 @@ export interface DiagnosticCardProps {
   value: string;
   subtitle?: string;
   tone?: "positive" | "negative" | "neutral";
+  badge?: React.ReactNode;
 }
 
 
-export function DiagnosticCard({ icon, label, value, subtitle, tone }: DiagnosticCardProps) {
+export function DiagnosticCard({ icon, label, value, subtitle, tone, badge }: DiagnosticCardProps) {
   return (
     <div className="flex flex-col justify-between gap-2 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 min-w-0 shadow-xs">
       <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-xs font-medium text-muted-foreground">{label}</span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="truncate text-xs font-medium text-muted-foreground">{label}</span>
+          {badge}
+        </div>
         {icon ? <span className="shrink-0 text-muted-foreground">{icon}</span> : null}
       </div>
       <div className="flex flex-col gap-0.5">

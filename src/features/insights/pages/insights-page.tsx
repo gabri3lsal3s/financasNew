@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Activity, Calendar, Flame, LineChart, Repeat } from "lucide-react";
+import { Activity, Calendar, LineChart, Repeat } from "lucide-react";
 import { Button, ErrorState, Skeleton } from "@/components/ui";
-import { PlanningSection } from "@/components/modules";
 import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 import { criticalAlerts } from "@/domain/insights/alerts";
@@ -11,27 +10,26 @@ import { partitionFeedback, type FeedbackDecision, type FeedbackMap } from "@/do
 import {
   calculateRecurringTotals,
   calculateWeekdayWeekendDailyAverages,
+  essentialSpendingRatio,
   ESSENTIAL_CATEGORY_ICONS,
   incomeConcentration,
   isSignificantTrend,
   savingsHealth,
   weekendSpendingRatio,
-  WEEKEND_RATIO_LIMIT,
 } from "@/domain/insights";
 import {
   buildChallengeOptions,
-  buildLimitSuggestions,
   discretionaryChallenge,
   pickTopChallenges,
   typicalMonthlySpendCents,
   type CategorySpend,
-  type BudgetUsage,
 } from "@/domain/savings";
 import { dailyBudget, endOfMonthProjection, pendingProjection, spendingPace } from "@/domain/projection";
 import { budgetLimitsByCategory, budgetStatus, realizedByCategoryMap, resolveEffectiveLimit, spentByCategoryMap } from "@/domain/budgets";
 import { computeOverview } from "@/domain/overview";
 import { aggregateByWeekday } from "@/domain/reports";
-import { numberToCents, sumWeightedCents } from "@/domain/money";
+import { isCashAssetClass } from "@/domain/portfolio";
+import { numberToCents, sumGrossCents } from "@/domain/money";
 
 import { currentMonth, monthLabel, shiftMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
@@ -43,13 +41,14 @@ import {
   useFeedback,
   useIncomes,
   usePortfolioPosition,
+  useRealCashBalance,
   useSetFeedback,
 } from "@/state";
 import { DiagnosticsTab, ProjectionTab, RecurrencesTab, type WarningItem } from "../components";
 
-export type InsightFilter = "diagnostics" | "recurrences" | "occurrences" | "projection" | "planning" | "all";
+export type InsightFilter = "diagnostics" | "recurrences" | "occurrences" | "projection" | "all";
 
-type ActiveTab = "diagnostics" | "recurrences" | "projection" | "planning";
+type ActiveTab = "diagnostics" | "recurrences" | "projection";
 
 interface FilterItem {
   value: ActiveTab;
@@ -61,7 +60,6 @@ const FILTER_ITEMS: FilterItem[] = [
   { value: "diagnostics", label: "Diagnósticos", icon: <Activity className="size-3.5" aria-hidden="true" /> },
   { value: "recurrences", label: "Recorrências", icon: <Repeat className="size-3.5" aria-hidden="true" /> },
   { value: "projection", label: "Projeção", icon: <LineChart className="size-3.5" aria-hidden="true" /> },
-  { value: "planning", label: "Planejamento FIRE", icon: <Flame className="size-3.5" aria-hidden="true" /> },
 ];
 
 /**
@@ -93,8 +91,7 @@ export function InsightsPage({
   const rawTab = searchParams?.get("aba");
   const resolveTab = (val: string | null | undefined): ActiveTab => {
     if (val === "recurrences" || val === "occurrences") return "recurrences";
-    if (val === "projection") return "projection";
-    if (val === "planning") return "planning";
+    if (val === "projection" || val === "planning") return "projection";
     return "diagnostics";
   };
 
@@ -116,6 +113,7 @@ export function InsightsPage({
   const feedbackQuery = useFeedback();
   const setFeedback = useSetFeedback();
   const position = usePortfolioPosition();
+  const realCashQuery = useRealCashBalance();
 
   const loading =
     month0.isLoading ||
@@ -127,7 +125,8 @@ export function InsightsPage({
     categoriesQuery.isLoading ||
     debtsQuery.isLoading ||
     feedbackQuery.isLoading ||
-    position.isLoading;
+    position.isLoading ||
+    realCashQuery.isLoading;
 
   const error =
     month0.error ??
@@ -139,22 +138,37 @@ export function InsightsPage({
     categoriesQuery.error ??
     debtsQuery.error ??
     feedbackQuery.error ??
-    position.error;
+    position.error ??
+    realCashQuery.error;
 
-  // KPIs do mês com peso de relatório + investimentos reais (F19 — entrega 6)
+  // KPIs do mês: realidade de caixa bruto (entradas e saídas reais) + investimentos reais
   const investmentsCents = position.monthlyContributionCents;
-  const totals = computeOverview(sumWeightedCents(incomesQuery.data ?? []), sumWeightedCents(month0.data ?? []), investmentsCents);
+  const grossIncomeCents = sumGrossCents(incomesQuery.data ?? []);
+  const grossExpenseCents = sumGrossCents(month0.data ?? []);
+  const totals = computeOverview(grossIncomeCents, grossExpenseCents, investmentsCents);
   const { incomeCents, expenseCents, balanceCents, savingsRatePercent: savingsRateRaw } = totals;
+
+  const pastMonthlyExpenses = [month1, month2, month3]
+    .map((m) => sumGrossCents(m.data ?? []))
+    .filter((v) => v > 0);
+  const averagePastExpensesCents = pastMonthlyExpenses.length > 0
+    ? Math.round(pastMonthlyExpenses.reduce((a, b) => a + b, 0) / pastMonthlyExpenses.length)
+    : 0;
 
   const savingsRate = savingsRateRaw ?? 0;
   const burnRate = incomeCents > 0 ? (expenseCents / incomeCents) * 100 : 0;
 
   // Ritmo de gastos: acumulado ÷ esperado (1 = no trilho).
+  // Suavização da base de orçamento: se as receitas ainda não caíram no mês corrente (incomeCents < despesas passadas),
+  // utiliza a média histórica de despesas como teto de referência para não disparar falso alarme prematuro.
   const now = new Date();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const dayOfMonth = now.getDate();
   const todayISOStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const pace = spendingPace({ spentCents: expenseCents, monthlyBudgetCents: Math.max(1, incomeCents), dayOfMonth, daysInMonth });
+  const effectiveMonthlyBudgetCents = incomeCents > 0
+    ? Math.max(incomeCents, averagePastExpensesCents)
+    : Math.max(1, averagePastExpensesCents);
+  const pace = spendingPace({ spentCents: expenseCents, monthlyBudgetCents: effectiveMonthlyBudgetCents, dayOfMonth, daysInMonth });
   const paceRatio = pace.active ? 1 + pace.gapPoints / 100 : 1;
 
   // Orçamentos estourados no mês (com herança) — helpers compartilhados (F19).
@@ -255,22 +269,31 @@ export function InsightsPage({
   const discretionary = discretionaryChallenge(categorySpends, incomeCents);
   const showDiscretionary = discretionary !== null && discretionary.categoryCount >= 2;
 
-  const usages: BudgetUsage[] = (categoriesQuery.data ?? [])
-    .filter((c) => c.type === "expense")
-    .map((c) => ({
-      categoryId: c.id,
-      name: c.name,
-      icon: c.icon,
-      limitCents: resolveEffectiveLimit(limitsByCategory.get(c.id) ?? [], month),
-      spentCents: spentByCategory.get(c.id) ?? 0,
-    }))
-    .filter((u) => u.limitCents > 0);
-  const limitSuggestions = buildLimitSuggestions(usages, incomeCents);
-
   // Diagnósticos
-  const incomeByCategory = realizedByCategoryMap(incomesQuery.data ?? []);
-  const concentration = incomeConcentration([...incomeByCategory.values()]);
+  const incomeEntries = incomesQuery.data ?? [];
+  const incomeByCategory = realizedByCategoryMap(incomeEntries);
+  // Se houver apenas 1 fonte e ela for a única cadastrada, não gerar alerta punitivo
+  const isSingleSalarySource = incomeEntries.length === 1;
+  const concentration = incomeConcentration([...incomeByCategory.values()], { isSingleSalarySource });
   const health = savingsHealth(savingsRate);
+
+  // Contagem calibrada de dias decorridos de cada tipo no mês atual até hoje
+  let elapsedWeekdaysCount = 0;
+  let elapsedWeekendDaysCount = 0;
+  const [yearStr, monthNumStr] = month.split("-");
+  const yr = Number(yearStr ?? now.getFullYear());
+  const mo = Number(monthNumStr ?? now.getMonth() + 1) - 1;
+  const limitDay = month === currentMonth() ? Math.min(dayOfMonth, daysInMonth) : daysInMonth;
+
+  for (let d = 1; d <= limitDay; d++) {
+    const dayOfWeek = new Date(yr, mo, d).getDay(); // 0 = Dom, 6 = Sáb
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      elapsedWeekendDaysCount++;
+    } else {
+      elapsedWeekdaysCount++;
+    }
+  }
+
   const weekdayTotals = aggregateByWeekday(
     (month0.data ?? []).map((e) => ({
       id: e.id,
@@ -283,20 +306,32 @@ export function InsightsPage({
     })),
   );
   const { weekdayDailyCents: weekdayDaily, weekendDailyCents: weekendDaily } =
-    calculateWeekdayWeekendDailyAverages(weekdayTotals);
+    calculateWeekdayWeekendDailyAverages(weekdayTotals, {
+      elapsedWeekdaysCount: Math.max(1, elapsedWeekdaysCount),
+      elapsedWeekendDaysCount: Math.max(1, elapsedWeekendDaysCount),
+    });
   const weekendRatio = weekendSpendingRatio(weekdayDaily, weekendDaily);
   const weekendComparable = weekdayDaily > 0;
 
-  const prevExpenseCents = sumWeightedCents(month1.data ?? []);
+  const prevExpenseCents = sumGrossCents(month1.data ?? []);
   const trendSignificant = isSignificantTrend(expenseCents, prevExpenseCents);
   const trendPercent = prevExpenseCents > 0 ? ((expenseCents - prevExpenseCents) / prevExpenseCents) * 100 : 0;
 
+  // Comprometimento Essencial (Regra 50/30/20) baseado no total bruto real
+  const essentialExpensesCents = (month0.data ?? [])
+    .filter((e) => {
+      const cat = categoryById.get(e.category_id);
+      return cat?.icon != null && ESSENTIAL_CATEGORY_ICONS.has(cat.icon);
+    })
+    .reduce((acc, e) => acc + numberToCents(e.value), 0);
+  const essentialSpending = essentialSpendingRatio(essentialExpensesCents, expenseCents);
 
   const handleFeedback = (occurrenceKey: string, decision: FeedbackDecision | null) => {
     setFeedback.mutate({ occurrenceKey, decision });
   };
 
   const warnings: WarningItem[] = [
+    // Alertas críticos e acionáveis (saldo negativo, ritmo, estouros de limite, déficit projetado, etc.)
     ...alerts.map((a) => ({
       id: a.id,
       variant:
@@ -307,37 +342,6 @@ export function InsightsPage({
             : ("warning" as const),
       message: `${a.title}: ${a.description}`,
     })),
-    ...(concentration.alert
-      ? [
-          {
-            id: "concentration",
-            variant: "warning" as const,
-            message:
-              "Concentração de renda: uma única fonte representa mais de 60% da sua renda — diversifique suas fontes para maior segurança.",
-          },
-        ]
-      : []),
-    ...(weekendComparable && weekendRatio > WEEKEND_RATIO_LIMIT
-      ? [
-          {
-            id: "weekend",
-            variant: "warning" as const,
-            message: `Gastos no fim de semana: seus gastos de fim de semana estão ${weekendRatio.toFixed(1)}× maiores que os de dias úteis.`,
-          },
-        ]
-      : []),
-    ...(trendSignificant
-      ? [
-          {
-            id: "trend",
-            variant: trendPercent > 0 ? ("warning" as const) : ("success" as const),
-            message:
-              trendPercent > 0
-                ? `Tendência de alta: gastos ${trendPercent.toFixed(1)}% acima do mês anterior.`
-                : `Tendência de redução: gastos ${Math.abs(trendPercent).toFixed(1)}% abaixo do mês anterior.`,
-          },
-        ]
-      : []),
     // Radar de Vencimentos & Inteligência Fiscal de Renda Fixa (Fase 63/72)
     ...(position.rows ?? [])
       .filter((r) => r.isMatured)
@@ -372,7 +376,22 @@ export function InsightsPage({
       })),
   ];
 
-  const runwayMonths = expenseCents > 0 ? Math.max(0, balanceCents) / expenseCents : null;
+  // Reserva de Emergência e Autonomia Financeira
+  const portfolioCashCents = (position.rows ?? [])
+    .filter((r) => r.isCash || isCashAssetClass(r.assetClass))
+    .reduce((acc, r) => acc + Math.round((r.valueBRL ?? 0) * 100), 0);
+  const realCashCents = Math.max(0, realCashQuery.cashBalance?.currentBalanceCents ?? 0);
+  const detectedReserveCents = (realCashCents + portfolioCashCents) > 0
+    ? (realCashCents + portfolioCashCents)
+    : Math.max(0, balanceCents);
+
+  const baselineMonthlyExpensesCents = averagePastExpensesCents > 0
+    ? averagePastExpensesCents
+    : (projection.projectedExpensesCents ?? expenseCents);
+
+  const runwayMonths = baselineMonthlyExpensesCents > 0
+    ? detectedReserveCents / baselineMonthlyExpensesCents
+    : null;
 
   const handleFilterChange = (nextFilter: ActiveTab) => {
     triggerSensory("selection");
@@ -400,6 +419,8 @@ export function InsightsPage({
       weekendRatio={weekendRatio}
       trendSignificant={trendSignificant}
       trendPercent={trendPercent}
+      overspentBudgets={overspentBudgets}
+      essentialSpending={essentialSpending}
     />
   );
 
@@ -431,17 +452,13 @@ export function InsightsPage({
       challenges={challenges}
       showDiscretionary={showDiscretionary}
       discretionary={discretionary}
-      limitSuggestions={limitSuggestions}
       balanceCents={balanceCents}
       monthlyExpensesCents={expenseCents}
       runwayMonths={runwayMonths}
-    />
-  );
-
-  const planningContent = (
-    <PlanningSection
-      balanceCents={balanceCents}
-      monthlyExpensesCents={expenseCents}
+      liquidReserveCents={detectedReserveCents}
+      baselineMonthlyExpensesCents={baselineMonthlyExpensesCents}
+      monthlySavingsVelocityCents={Math.max(0, balanceCents)}
+      referenceMonth={month}
     />
   );
 
@@ -453,7 +470,7 @@ export function InsightsPage({
             <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
               Insights & Inteligência
             </h1>
-            <p className="text-xs text-muted-foreground sm:text-sm">
+            <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
               Diagnósticos preditivos, radar de recorrências, oportunidades de economia e saúde financeira
             </p>
           </div>
@@ -517,7 +534,6 @@ export function InsightsPage({
           {filter === "diagnostics" && diagnosticsContent}
           {filter === "recurrences" && recurrencesContent}
           {filter === "projection" && projectionContent}
-          {filter === "planning" && planningContent}
         </div>
       )}
     </div>

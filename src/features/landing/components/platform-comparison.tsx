@@ -29,7 +29,7 @@ const features: PlatformFeature[] = [
     androidPro: true,
   },
   {
-    name: "Simulador de Independência Financeira (FIRE)",
+    name: "Simulador de Projeção Patrimonial",
     web: true,
     pwa: true,
     androidPro: true,
@@ -130,7 +130,7 @@ export function PlatformComparison() {
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>Simulações interativas de independência financeira (FIRE)</span>
+                    <span>Simulações interativas de projeção patrimonial</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />

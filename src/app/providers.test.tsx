@@ -74,4 +74,58 @@ describe("AppProviders & AuthQuerySync", () => {
       expect(screen.getByTestId("app-root")).toBeInTheDocument();
     });
   });
+
+  it("limpa e invalida o cache ao transicionar de visitante para usuário autenticado", async () => {
+    let capturedCallback: ((event: string, session: unknown) => void) | undefined;
+    let queryClientInstance: QueryClient | undefined;
+
+    function TestCaptureClient() {
+      queryClientInstance = useQueryClient();
+      return <div data-testid="capture-client">Captured</div>;
+    }
+
+    const mockChannel = {
+      on: vi.fn().mockReturnThis(),
+      subscribe: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }),
+    };
+
+    const mockSupabase = {
+      channel: vi.fn().mockReturnValue(mockChannel),
+      removeChannel: vi.fn().mockResolvedValue(undefined),
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
+        onAuthStateChange: vi.fn((cb: (event: string, session: unknown) => void) => {
+          capturedCallback = cb;
+          return { data: { subscription: { unsubscribe: vi.fn() } } };
+        }),
+      },
+    };
+
+    vi.spyOn(clientModule, "getSupabase").mockReturnValue(
+      mockSupabase as unknown as ReturnType<typeof clientModule.getSupabase>,
+    );
+
+    render(
+      <AppProviders>
+        <TestCaptureClient />
+      </AppProviders>,
+    );
+
+    expect(screen.getByTestId("capture-client")).toBeInTheDocument();
+    expect(queryClientInstance).toBeDefined();
+
+    // Popula o cache simulando dado retornado no estado anônimo
+    queryClientInstance!.setQueryData(["credit_cards"], []);
+    expect(queryClientInstance!.getQueryData(["credit_cards"])).toEqual([]);
+
+    // Simula disparo do evento com novo usuário logado
+    if (typeof capturedCallback === "function") {
+      capturedCallback("SIGNED_IN", { user: { id: "user-new-123" } });
+    }
+
+    await waitFor(() => {
+      // O cache foi purgado pelo resetAppState/clear no login
+      expect(queryClientInstance!.getQueryData(["credit_cards"])).toBeUndefined();
+    });
+  });
 });

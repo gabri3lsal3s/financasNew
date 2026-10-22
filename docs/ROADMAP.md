@@ -1,5 +1,31 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.72** registra a **Calibração de Precisão em Diagnósticos, Eliminação de Redundâncias e Congruência do Fluxo de Caixa Real** (2026-10-21):
+> - **(1) Congruência com o Fluxo de Caixa Real nos Diagnósticos**:
+>   - Resolução da divergência de taxas de poupança positivas em períodos de déficit operacional: `InsightsPage` agora adota estritamente saídas brutas (`sumGrossCents`) ao invés de ponderações de relatórios fiscais (`sumWeightedCents`), garantindo que o usuário nunca receba diagnósticos de "Poupança saudável" enquanto seu caixa estiver deficitário;
+>   - Calibração da métrica de gastos essenciais com base no fluxo de caixa real e alinhamento à regra 50/30/20.
+> - **(2) Calibração dos Motores de Diagnóstico (`domain/insights/diagnostics.ts`)**:
+>   - Proporção semana vs. fim de semana: agora calcula a razão baseada nos dias úteis e de fim de semana efetivamente decorridos até a data (`elapsedWeekdaysCount` e `elapsedWeekendDaysCount`), impedindo distorções nos primeiros dias do mês;
+>   - Concentração de renda: suporte a perfil assalariado único (`isSingleSalarySource`), evitando alertas punitivos irreais;
+>   - Gastos essenciais: nova função pura `essentialSpendingRatio` avaliando a proporção frente às despesas totais com badges semânticos (*Equilibrado*, *Atenção*, *Elevado*).
+> - **(3) Eliminação de Redundâncias na UI de Diagnósticos (`DiagnosticsTab`)**:
+>   - Consolidação de avisos: remoção de mensagens textuais que duplicavam os indicadores dos cards;
+>   - Grid harmonioso 3×2 (6 cards) no desktop e empilhamento seguro no mobile: Saúde da poupança, Orçamentos estourados, Concentração de renda, Gastos fim de semana, Gastos essenciais e Tendência de gastos.
+>
+> **v2.71** registra a **Remoção do Planejamento FIRE & Correção Integral do Termômetro da Reserva de Emergência** (2026-10-21):
+> - **(1) Eliminação do Conceito e Jargões FIRE**:
+>   - Expurgo definitivo da dogmática e jargões do método FIRE (*Financial Independence, Retire Early*, Regra dos 4% e horizonte de 40 anos) da aplicação e da landing page;
+>   - Remoção dos módulos obsoletos `src/domain/fire/`, `FireProjectionChart` e `PlanningSection`;
+>   - Atualização da Landing Page pública: conversão da aba e curva para **"Projeção Patrimonial"**, remoção da menção a FIRE no FAQ e na matriz de recursos da plataforma.
+> - **(2) Correção Profunda dos Cálculos da Reserva de Emergência (`domain/projection/emergency-fund.ts`)**:
+>   - Resolução da falha conceitual que tratava o superávit pontual de 30 dias (`balanceCents`) como o capital acumulado total da reserva: agora utiliza o **Saldo em Caixa Real** (`useRealCashBalance`) somado aos **Ativos de Classe Caixa/Reserva na Carteira** (`isCash || isCashAssetClass`), com fallback seguro;
+>   - Despesa de referência baseada na **média real dos últimos meses fechados** ou no fechamento projetado, impedindo que meses recém-iniciados com poucos gastos gerem metas distorcidas;
+>   - Cálculo preciso dos marcos de 3 meses (Básico), 6 meses (Adequado) e 12 meses (Confortável), com previsão temporal baseada na capacidade real de poupança.
+> - **(3) Criação do `EmergencyThermometer` & Nova Estrutura de 3 Abas em `InsightsPage`**:
+>   - Novo módulo presentacional `EmergencyThermometer` em `components/modules/` estilizado com tokens canônicos, barra de progresso, badges de saúde e gaveta opcional para ajuste de premissas com botão de restaurar;
+>   - Redução da navegação de `InsightsPage` de 4 para 3 abas objetivas: **Diagnósticos**, **Recorrências** e **Projeção**;
+>   - Integração da Reserva de Emergência diretamente dentro de `ProjectionTab`, alinhada à Autonomia Financeira (Runway).
+>
 > **v2.70** registra a **Arquitetura Singleton de Autenticação (`useAuth`) & Blindagem contra Redirecionamento Indevido no Recarregamento de Página (F5)** (2026-10-21):
 > - **(1) Singleton de Autenticação em Memória (`use-auth.ts`)**:
 >   - Eliminação da fragmentação de instâncias de `useAuth`: sessões e usuários agora compartilham um estado reativo único em memória (`globalSession`, `globalUser`, `globalLoading`) sincronizado via `onAuthStateChange` e broadcast para todos os inscritos;
@@ -5427,4 +5453,44 @@ flowchart TD
 - [x] Auditoria de concorrência e velocidade estendida a todas as 11 áreas funcionais do app.
 - [x] Matriz de Riscos e Plano de Ação Faseado de Quick Wins de Custo Zero definido.
 - [x] Governança de documentação atualizada em `docs/PROJECT_STRUCTURE.md` e `docs/ROADMAP.md`.
+
+---
+
+### Fase 93 — Otimização de Layout da Visão Geral (Home) & Integração de Recebíveis no Card Hero
+
+> **Objetivo:** Eliminar redundâncias cognitivas e atritos visuais na Visão Geral (Home), removendo os cards isolados de "Saldo líquido de contas" e "Taxa de poupança", expandindo o card de "Orçamentos do mês" para largura total e integrando a métrica condicional de valores a receber pendentes no `RealCashHeroCard`.
+
+#### 1. Entregas Realizadas
+- **Remoção de Cards Redundantes na Home:**
+  - Remoção do card "Saldo líquido de contas" (projeção isolada de contas a pagar/receber e faturas que colidia conceitualmente com o Saldo Disponível em Conta e o Saldo Livre Real);
+  - Remoção do card "Taxa de poupança" da Home (métrica analítica derivada que já é expressa no card de Resultado do Mês nos KPIs e preservada nas telas dedicadas de Insights/Diagnóstico e Fechamento Mensal);
+  - Limpeza de imports e cálculos não utilizados em `OverviewPage` (`accountsBalance`, `accountsNet`, `calculateDebtsSummary`).
+- **Expansão do Card de Orçamentos do Mês:**
+  - Card de "Orçamentos do mês" promovido para largura total (100%), permitindo leitura confortável da barra segmentada multi-categoria e suas legendas.
+- **Integração de Recebíveis no Card Hero (`RealCashHeroCard`):**
+  - Adição condicional da métrica "A receber previsto" no rodapé de projeção do `RealCashHeroCard` via `safeToSpend.receivablePendingCents`;
+  - Exibição dinâmica: 2 colunas quando não houver valores a receber (`receivablePendingCents === 0`) e 3 colunas responsivas quando houver valores pendentes no ciclo (`receivablePendingCents > 0`), mantendo o design limpo.
+- **Testes e Validação:**
+  - Testes unitários atualizados em `overview-page.test.tsx` e `real-cash-hero-card.test.tsx`;
+  - Suíte completa de testes e checagem de tipos estrita aprovados.
+
+---
+
+### Fase 94 — Calibração de Precisão em Diagnósticos & Congruência do Fluxo de Caixa Real
+
+> **Objetivo:** Garantir fidelidade matemática estrita e congruência conceitual na aba de Diagnósticos (`DiagnosticsTab`) e Projeção (`ProjectionTab`), alinhando o cálculo de poupança e gastos essenciais ao fluxo de caixa bruto real (ao invés de ponderações de relatórios), calibrando proporções por dias úteis decorridos e eliminando redundâncias visuais.
+
+#### 1. Entregas Realizadas
+- **Alinhamento ao Fluxo de Caixa Bruto Real:**
+  - `InsightsPage` agora alimenta diagnósticos e metas utilizando `sumGrossCents` (entradas e saídas reais), impedindo congratulações falsas de poupança em cenários de déficit de caixa.
+- **Calibração do Motor de Diagnóstico (`domain/insights/diagnostics.ts`):**
+  - Métrica de semana vs. fim de semana calibrada com base nos dias úteis e de fim de semana decorridos no mês até a data atual;
+  - Concentração de renda com suporte a perfil de renda única formal (`isSingleSalarySource`);
+  - Nova função pura `essentialSpendingRatio` avaliando a proporção de despesas essenciais (regra 50/30/20).
+- **Consolidação Visual da Aba de Diagnósticos (`DiagnosticsTab`):**
+  - Eliminação de alertas textuais redundantes com os dados exibidos nos cards;
+  - Grid de 6 cards padronizados (3×2 desktop) sem elementos soltos ou caracteres decorativos.
+- **Testes e Validação:**
+  - 100% dos testes unitários e de integração verdes em `diagnostics.ts`, `insights-page.tsx`, `use-user-preferences.test.tsx` e `keyboard-navigation.test.tsx`.
+
 

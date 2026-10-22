@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Landmark, Scale, ShieldCheck, ArrowDownRight } from "lucide-react";
+import { Landmark, Scale, ShieldCheck, ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,7 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
 
   const latestCheckpoint = cashBalance.latestCheckpoint;
   const hasCheckpoint = latestCheckpoint !== null;
+  const hasReceivables = (safeToSpend.receivablePendingCents ?? 0) > 0;
 
   return (
     <>
@@ -90,7 +91,12 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
         </div>
 
         {/* Linha de Projeção Safe-to-Spend */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 rounded-xl bg-surface-hover/50 border border-border/60 p-2.5 sm:p-3 text-xs">
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-2.5 rounded-xl bg-surface-hover/50 border border-border/60 p-2.5 sm:p-3 text-xs",
+            hasReceivables ? "sm:grid-cols-3" : "sm:grid-cols-2",
+          )}
+        >
           <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0">
             <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
               <ArrowDownRight className="size-3.5 shrink-0 text-negative" aria-hidden="true" />
@@ -104,6 +110,22 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
               className="font-medium shrink-0"
             />
           </div>
+
+          {hasReceivables && (
+            <div className="flex items-center justify-between sm:justify-center gap-2 pt-1.5 sm:pt-0 border-t border-border/40 sm:border-t-0 min-w-0">
+              <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
+                <ArrowUpRight className="size-3.5 shrink-0 text-positive" aria-hidden="true" />
+                <span className="truncate hidden sm:inline">A receber previsto:</span>
+                <span className="truncate sm:hidden">A receber:</span>
+              </div>
+              <MoneyText
+                cents={safeToSpend.receivablePendingCents}
+                tone="positive"
+                animated
+                className="font-medium shrink-0"
+              />
+            </div>
+          )}
 
           <div className="flex items-center justify-between sm:justify-end gap-2 pt-1.5 sm:pt-0 border-t border-border/40 sm:border-t-0 min-w-0">
             <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">

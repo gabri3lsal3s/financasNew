@@ -128,7 +128,7 @@ export function LandingHeader() {
                 : "text-muted-foreground hover:text-foreground hover:bg-surface-hover/60",
             )}
           >
-            Simulador FIRE
+            Simulador Patrimonial
           </button>
           <button
             type="button"
@@ -307,7 +307,7 @@ export function LandingHeader() {
                   : "text-foreground hover:text-primary",
               )}
             >
-              Simulador FIRE
+              Simulador Patrimonial
             </button>
             <button
               type="button"

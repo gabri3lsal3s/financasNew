@@ -30,9 +30,9 @@ const faqs: FaqItem[] = [
       "Sim. Utilizamos isolamento criptográfico por usuário (Row Level Security no PostgreSQL). Nenhuma informação sua é vendida a terceiros, compartilhada com bancos ou utilizada para anúncios. Você também pode exportar todos os seus dados em Excel ou fazer backup a qualquer momento.",
   },
   {
-    question: "O que é o método de independência financeira FIRE?",
+    question: "Como funciona a projeção de patrimônio e liberdade financeira?",
     answer:
-      "FIRE significa 'Financial Independence, Retire Early' (Independência Financeira, Aposentadoria Antecipada). O aplicativo utiliza fórmulas determinísticas baseadas na sua taxa de poupança mensal e na consagrada Regra dos 4% para calcular o patrimônio necessário para que os rendimentos paguem todas as suas despesas vitalícias.",
+      "O aplicativo utiliza fórmulas determinísticas de juros compostos baseadas na sua taxa de poupança mensal e nos seus aportes reais na carteira de investimentos para estimar o crescimento do seu patrimônio ao longo dos anos e projetar sua autonomia financeira.",
   },
   {
     question: "Posso cancelar minha assinatura quando quiser?",
@@ -52,7 +52,7 @@ const faqs: FaqItem[] = [
   {
     question: "Tenho iPhone, consigo utilizar normalmente?",
     answer:
-      "Sim, perfeitamente. No iPhone, você utiliza a versão PWA moderna (adicionada à tela inicial pelo Safari). Você terá acesso a 100% dos motores de cálculo, orçamentos, investimentos FIRE e relatórios executivos. Para registrar transações em segundos sem digitação manual, o ÁXIS conta com o Leitor Inteligente de Pix e Comprovantes: basta copiar o código Pix Copia e Cola ou o texto do comprovante do seu banco e colar no app para aprovar em 1 toque. Apenas a leitura passiva em segundo plano de notificações de outros apps fica restrita ao Android Pro, devido a limitações de arquitetura do iOS da Apple.",
+      "Sim, perfeitamente. No iPhone, você utiliza a versão PWA moderna (adicionada à tela inicial pelo Safari). Você terá acesso a 100% dos motores de cálculo, orçamentos, carteira de investimentos e relatórios executivos. Para registrar transações em segundos sem digitação manual, o ÁXIS conta com o Leitor Inteligente de Pix e Comprovantes: basta copiar o código Pix Copia e Cola ou o texto do comprovante do seu banco e colar no app para aprovar em 1 toque. Apenas a leitura passiva em segundo plano de notificações de outros apps fica restrita ao Android Pro, devido a limitações de arquitetura do iOS da Apple.",
   },
 ];
 

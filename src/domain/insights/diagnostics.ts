@@ -30,27 +30,53 @@ export interface IncomeConcentration {
   alert: boolean;
 }
 
-/** Concentração de renda: alerta quando 1 fonte > 60% da renda. */
-export function incomeConcentration(incomeBySourceCents: readonly number[]): IncomeConcentration {
+export interface IncomeConcentrationOptions {
+  /** Indica se todas as rendas provêm de uma única fonte salarial/CLT estável conhecida. */
+  isSingleSalarySource?: boolean;
+}
+
+/** Concentração de renda: alerta quando 1 fonte > 60% da renda (a menos que seja apenas salário único declarado e o usuário seja assalariado). */
+export function incomeConcentration(
+  incomeBySourceCents: readonly number[],
+  options?: IncomeConcentrationOptions,
+): IncomeConcentration {
   const total = incomeBySourceCents.reduce((acc, v) => acc + v, 0);
   if (total <= 0) return { topSharePercent: 0, alert: false };
   const top = Math.max(...incomeBySourceCents);
   const share = (top / total) * 100;
-  return { topSharePercent: share, alert: share > 60 };
+  // Se houver apenas 1 fonte e for salário estável/única renda, não alarmar como risco desproporcional
+  const shouldAlert = share > 60 && !options?.isSingleSalarySource;
+  return { topSharePercent: share, alert: shouldAlert };
 }
 
 export interface WeekdayTotalItem {
   ponderadoCents: number;
 }
 
+export interface WeekdayAverageOptions {
+  /** Quantidade real de dias úteis decorridos no mês (default: 5 se nulo/omitido). */
+  elapsedWeekdaysCount?: number;
+  /** Quantidade real de dias de fim de semana decorridos no mês (default: 2 se nulo/omitido). */
+  elapsedWeekendDaysCount?: number;
+}
+
 /**
- * Calcula a média diária de gastos em dias úteis (5 dias) e fins de semana (2 dias).
+ * Calcula a média diária de gastos em dias úteis e fins de semana.
+ * Permite calibrar pela quantidade real de dias decorridos de cada tipo no mês.
  */
 export function calculateWeekdayWeekendDailyAverages(
   weekdayTotals: readonly WeekdayTotalItem[],
+  options?: WeekdayAverageOptions,
 ): { weekdayDailyCents: number; weekendDailyCents: number } {
-  const weekdayDailyCents = weekdayTotals.slice(0, 5).reduce((acc, w) => acc + w.ponderadoCents, 0) / 5;
-  const weekendDailyCents = weekdayTotals.slice(5).reduce((acc, w) => acc + w.ponderadoCents, 0) / 2;
+  const weekdayDays = Math.max(1, options?.elapsedWeekdaysCount ?? 5);
+  const weekendDays = Math.max(1, options?.elapsedWeekendDaysCount ?? 2);
+
+  const weekdaySum = weekdayTotals.slice(0, 5).reduce((acc, w) => acc + w.ponderadoCents, 0);
+  const weekendSum = weekdayTotals.slice(5).reduce((acc, w) => acc + w.ponderadoCents, 0);
+
+  const weekdayDailyCents = weekdaySum / weekdayDays;
+  const weekendDailyCents = weekendSum / weekendDays;
+
   return {
     weekdayDailyCents,
     weekendDailyCents,
@@ -68,6 +94,47 @@ export function weekendSpendingRatio(weekdayDailyCents: number, weekendDailyCent
 
 export const WEEKEND_RATIO_LIMIT = 1.5;
 
+
+/**
+ * Comprometimento Essencial: calcula a fração de gastos em categorias essenciais vs. total de despesas.
+ * Recomendação financeira clássica (Regra 50/30/20): gastos essenciais até 50% da renda/despesas.
+ */
+export interface EssentialSpendingResult {
+  essentialCents: number;
+  totalCents: number;
+  ratioPercent: number;
+  status: "adequado" | "moderado" | "elevado";
+}
+
+export function essentialSpendingRatio(
+  essentialCents: number,
+  totalCents: number,
+): EssentialSpendingResult {
+  if (totalCents <= 0) {
+    return {
+      essentialCents: 0,
+      totalCents: 0,
+      ratioPercent: 0,
+      status: "adequado",
+    };
+  }
+  const ratioPercent = Math.min(100, Math.max(0, (essentialCents / totalCents) * 100));
+  const status: "adequado" | "moderado" | "elevado" =
+    ratioPercent <= 50 ? "adequado" : ratioPercent <= 70 ? "moderado" : "elevado";
+
+  return {
+    essentialCents,
+    totalCents,
+    ratioPercent,
+    status,
+  };
+}
+
+export const ESSENTIAL_STATUS_LABELS: Record<"adequado" | "moderado" | "elevado", string> = {
+  adequado: "Equilibrado",
+  moderado: "Atenção",
+  elevado: "Elevado",
+};
 
 /** Tendência vs mês anterior é significativa quando variação > 15%. */
 export function isSignificantTrend(currentCents: number, previousCents: number, thresholdPercent = 15): boolean {

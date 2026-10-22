@@ -94,7 +94,7 @@ export function AdminPage() {
           <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
             Painel Administrativo
           </h1>
-          <p className="text-xs text-muted-foreground sm:text-sm">
+          <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
             Gestão de usuários, aprovação de contas, convites de acesso e governança da plataforma
           </p>
         </div>

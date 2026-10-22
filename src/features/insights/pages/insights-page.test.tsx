@@ -65,6 +65,13 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  useRealCashBalance: () => ({
+    cashBalance: { currentBalanceCents: 1_200_000 },
+    safeToSpend: { safeToSpendCents: 1_200_000 },
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
 }));
 
 describe("InsightsPage (motor de insights §3.7)", () => {
@@ -84,10 +91,10 @@ describe("InsightsPage (motor de insights §3.7)", () => {
   it("renderiza as abas de cards analíticos isolados com 'Diagnósticos' como inicial", () => {
     render(<InsightsPage />);
     const tabs = screen.getAllByRole("tab");
+    expect(tabs).toHaveLength(3);
     expect(tabs[0]).toHaveAccessibleName("Diagnósticos");
     expect(tabs[1]).toHaveAccessibleName("Recorrências");
     expect(tabs[2]).toHaveAccessibleName("Projeção");
-    expect(tabs[3]).toHaveAccessibleName("Planejamento FIRE");
     // Na visão inicial de Diagnósticos, os diagnósticos e alertas estão presentes.
     expect(screen.getByText("Saúde da poupança")).toBeInTheDocument();
     expect(screen.getByText("Tendência de gastos")).toBeInTheDocument();
@@ -128,7 +135,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
     render(<InsightsPage />);
     await user.click(screen.getByRole("tab", { name: "Projeção" }));
     expect(screen.getByText("Projeção de gastos")).toBeInTheDocument();
-    expect(screen.getByText("Autonomia Financeira (Runway)")).toBeInTheDocument();
+    expect(screen.getByText("Reserva de Emergência & Autonomia")).toBeInTheDocument();
     expect(screen.getByText("Pendências do período")).toBeInTheDocument();
   });
 
@@ -194,12 +201,12 @@ describe("InsightsPage (motor de insights §3.7)", () => {
     expect(screen.getByText(/Saldo negativo:/)).toBeInTheDocument();
   });
 
-  it("renderiza a aba Planejamento FIRE com simulador e termometro de reserva", async () => {
+  it("renderiza a aba Projeção com fechamento, runway e termometro de reserva", async () => {
     const user = userEvent.setup();
     render(<InsightsPage />);
-    await user.click(screen.getByRole("tab", { name: /Planejamento FIRE/i }));
-    expect(screen.getByText("Termômetro da Reserva de Emergência")).toBeInTheDocument();
-    expect(screen.getByText("Independência financeira (FIRE)")).toBeInTheDocument();
-    expect(screen.getByText("O Impacto do Hábito na Aposentadoria")).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: /Projeção/i }));
+    expect(screen.getByText("Reserva de Emergência & Autonomia")).toBeInTheDocument();
+    expect(screen.getByText("Autonomia estimada")).toBeInTheDocument();
+    expect(screen.getByText("Pendências do período")).toBeInTheDocument();
   });
 });

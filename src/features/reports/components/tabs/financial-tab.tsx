@@ -95,7 +95,7 @@ export function FinancialTab({
 
       {/* Linha de controles: descrição + alternador de periodicidade em pills (padrão Orçamentos) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <p className="text-xs text-muted-foreground sm:text-sm">
+        <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
           Acompanhe o fluxo de caixa, DRE pessoal e taxas de poupança da competência.
         </p>
 

@@ -22,7 +22,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 
 ### 1.1 O Tripé de Plataformas Áxis
 O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma conta:
-1. **Web Desktop:** Experiência panorâmica com relatórios executivos, FIRE e conciliação bancária;
+1. **Web Desktop:** Experiência panorâmica com relatórios executivos, projeção patrimonial e conciliação bancária;
 2. **Mobile PWA:** Acesso leve e instantâneo no iPhone (iOS Safari) e Android sem ocupar armazenamento;
 3. **Android App Pro:** Aplicativo nativo com escuta passiva de notificações bancárias (Pix e compras em tempo real) e atualizações automáticas in-place sem desinstalação.
 
@@ -127,7 +127,7 @@ O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma
     │   ├── reminders/             #   Lembretes (central de notificações)
     │   ├── settings/              #   Configurações (preferências, perfil)
     │   ├── investments/           #   Investimentos (Hub 5 abas: Resumo, Proventos, Metas, Aporte, Relatórios & IR)
-    │   └── landing/               #   Landing page pública e simulador FIRE
+    │   └── landing/               #   Landing page pública e simulador patrimonial
     │
     ├── domain/                    # ⭐ MOTORES DE CÁLCULO PUROS (testáveis, sem deps)
     │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing
@@ -143,14 +143,13 @@ O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma
     │   ├── savings/               #   F27: desafios de economia (média típica, corte discricionário)
     │   ├── reminders/             #   agregação de lembretes (conta/dívida) e preferências
     │   ├── accessibility/         #   F15: contraste AA (relativeLuminance/contrastRatio)
-    │   ├── projection/            #   gasto disponível, ritmo, fim de mês, pendências
+    │   ├── projection/            #   gasto disponível, ritmo, fim de mês, pendências, reserva de emergência
     │   ├── search/                #   busca global: normalização, scoring, bônus de recência
     │   ├── gestures/              #   F20: swipe (axis-lock, thresholds); overscroll removido (F26, 2026-08-16)
     │   ├── export/                #   F22: CSV pt-BR + backup versionado com Zod
     │   ├── charges/               #   agregação de natureza (juros, multas, impostos, taxas)
     │   ├── loans/                 #   sistemas de amortização (Price/SAC), saldo devedor e valor presente
     │   ├── cards/                 #   faturas, fechamento e refinanciamento sem double-counting
-    │   ├── fire/                  #   F24: regra dos 4%, projeção e faixas de emergência
     │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
     │                              #   proventos/YoC (snowball), apuração fiscal/DARF/IRPF (tax),
     │                              #   formatação de taxas de renda fixa (formatFixedIncomeRateLabel)

@@ -80,4 +80,23 @@ describe("RealCashHeroCard", () => {
     render(<RealCashHeroCard realCashData={noCheckpointData} />);
     expect(screen.getByText("Acumulado do Fluxo")).toBeInTheDocument();
   });
+
+  it("não exibe 'A receber previsto' quando não houver recebíveis no ciclo", () => {
+    render(<RealCashHeroCard realCashData={mockRealCashData} />);
+    expect(screen.queryByText("A receber previsto:")).not.toBeInTheDocument();
+  });
+
+  it("exibe 'A receber previsto' quando houver recebíveis pendentes no ciclo", () => {
+    const withReceivablesData: UseRealCashBalanceResult = {
+      ...mockRealCashData,
+      safeToSpend: {
+        ...mockRealCashData.safeToSpend,
+        receivablePendingCents: 85000,
+      },
+    };
+
+    render(<RealCashHeroCard realCashData={withReceivablesData} />);
+    expect(screen.getByText("A receber previsto:")).toBeInTheDocument();
+    expect(screen.getByText(/850,00/)).toBeInTheDocument();
+  });
 });

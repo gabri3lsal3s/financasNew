@@ -201,14 +201,14 @@ export function FireProjectionCurve({
             strokeWidth={1.5}
           />
 
-          {/* Rótulo da Meta FIRE */}
+          {/* Rótulo da Meta Patrimonial */}
           <text
             x={width - paddingX}
             y={fireTargetY - 4}
             textAnchor="end"
             className="fill-positive-strong dark:fill-positive text-[10px] font-mono font-bold"
           >
-            Meta FIRE: {formatBRL(fireTarget)}
+            Meta Patrimonial: {formatBRL(fireTarget)}
           </text>
 
           {/* Área com Gradiente Suave */}
@@ -256,7 +256,7 @@ export function FireProjectionCurve({
               textAnchor="middle"
               className="fill-positive-strong text-[10px] font-mono font-bold"
             >
-              {fireCrossover.year} anos (Independência FIRE)
+              {fireCrossover.year} anos (Liberdade Financeira)
             </text>
           ) : null}
           <text x={width - paddingX} y={height - 6} textAnchor="end" className="fill-muted-foreground text-[10px] font-mono">
@@ -267,10 +267,10 @@ export function FireProjectionCurve({
 
       {/* Grid com os 3 Cards Métricos Ricos, Espaçosos e com Barras de Progresso */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 pt-1">
-        {/* Card 1: Horizonte FIRE */}
+        {/* Card 1: Horizonte Patrimonial */}
         <div className="flex flex-col justify-between p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left">
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[11px] font-medium text-muted-foreground truncate">Horizonte FIRE</span>
+            <span className="text-[11px] font-medium text-muted-foreground truncate">Horizonte Patrimonial</span>
             <span className="size-2 rounded-full bg-positive-strong shrink-0" />
           </div>
           <div className="mt-1">

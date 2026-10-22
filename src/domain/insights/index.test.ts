@@ -8,6 +8,7 @@ import {
   confidenceScore,
   criticalAlerts,
   detectRecurrences,
+  essentialSpendingRatio,
   historyBonus,
   incomeConcentration,
   isSignificantTrend,
@@ -409,10 +410,12 @@ describe("diagnósticos (§3.7.6)", () => {
     expect(savingsHealth(35)).toBe("forte");
   });
 
-  it("concentração de renda: alerta quando 1 fonte > 60%", () => {
+  it("concentração de renda: alerta quando 1 fonte > 60%, exceto se for fonte salarial única/declarada", () => {
     expect(incomeConcentration([700000, 300000]).alert).toBe(true);
     expect(incomeConcentration([700000, 300000]).topSharePercent).toBe(70);
     expect(incomeConcentration([500000, 500000]).alert).toBe(false);
+    // Fonte única salarial estável não dispara alerta falso
+    expect(incomeConcentration([500000], { isSingleSalarySource: true }).alert).toBe(false);
   });
 
   it("ratio de fim de semana > 1.5 alerta", () => {
@@ -428,7 +431,7 @@ describe("diagnósticos (§3.7.6)", () => {
     expect(isSignificantTrend(110000, 100000)).toBe(false);
   });
 
-  it("calcula médias diárias de dia útil e fim de semana", () => {
+  it("calcula médias diárias de dia útil e fim de semana com dias reais decorridos", () => {
     const totals = [
       { ponderadoCents: 5000 },
       { ponderadoCents: 5000 },
@@ -438,9 +441,39 @@ describe("diagnósticos (§3.7.6)", () => {
       { ponderadoCents: 10000 },
       { ponderadoCents: 10000 },
     ];
+    // Default 5 dias úteis e 2 fins de semana
     const { weekdayDailyCents, weekendDailyCents } = calculateWeekdayWeekendDailyAverages(totals);
     expect(weekdayDailyCents).toBe(5000);
     expect(weekendDailyCents).toBe(10000);
+
+    // Com 10 dias úteis e 4 de fins de semana decorridos
+    const calibrated = calculateWeekdayWeekendDailyAverages(totals, {
+      elapsedWeekdaysCount: 10,
+      elapsedWeekendDaysCount: 4,
+    });
+    expect(calibrated.weekdayDailyCents).toBe(2500); // 25.000 / 10
+    expect(calibrated.weekendDailyCents).toBe(5000);  // 20.000 / 4
+  });
+
+  it("calcula comprometimento de gastos essenciais (Regra 50/30/20)", () => {
+    // 50% ou menos -> adequado
+    const r1 = essentialSpendingRatio(50_000, 100_000);
+    expect(r1.ratioPercent).toBe(50);
+    expect(r1.status).toBe("adequado");
+
+    // Entre 50% e 70% -> moderado
+    const r2 = essentialSpendingRatio(65_000, 100_000);
+    expect(r2.ratioPercent).toBe(65);
+    expect(r2.status).toBe("moderado");
+
+    // Acima de 70% -> elevado
+    const r3 = essentialSpendingRatio(80_000, 100_000);
+    expect(r3.ratioPercent).toBe(80);
+    expect(r3.status).toBe("elevado");
+
+    // Despesas zeradas -> seguro
+    expect(essentialSpendingRatio(0, 0).ratioPercent).toBe(0);
+    expect(essentialSpendingRatio(0, 0).status).toBe("adequado");
   });
 });
 

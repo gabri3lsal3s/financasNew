@@ -53,7 +53,7 @@ export function LandingFooter() {
                 Investimentos & Dossiês
               </a>
               <a href="#simulador" className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1 sm:py-0.5 inline-block">
-                Simulador FIRE
+                Simulador Patrimonial
               </a>
               <a href="#precos" className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1 sm:py-0.5 inline-block">
                 Planos & Preços

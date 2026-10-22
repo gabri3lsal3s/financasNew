@@ -1,8 +1,6 @@
-import { ArrowRight, Hourglass, Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
-import { ProjectionLine } from "@/components/modules";
-import type { ChallengeOption, DiscretionaryChallenge, LimitSuggestion } from "@/domain/savings";
+import { EmergencyThermometer, ProjectionLine } from "@/components/modules";
+import type { ChallengeOption, DiscretionaryChallenge } from "@/domain/savings";
 
 export interface ProjectionTabProps {
   dailyCents: number | null;
@@ -20,10 +18,13 @@ export interface ProjectionTabProps {
   challenges: ChallengeOption[];
   showDiscretionary: boolean;
   discretionary: DiscretionaryChallenge | null;
-  limitSuggestions: LimitSuggestion[];
   balanceCents?: number;
   monthlyExpensesCents?: number;
   runwayMonths?: number | null;
+  liquidReserveCents?: number;
+  baselineMonthlyExpensesCents?: number;
+  monthlySavingsVelocityCents?: number;
+  referenceMonth?: string;
 }
 
 export function ProjectionTab({
@@ -38,17 +39,19 @@ export function ProjectionTab({
   challenges,
   showDiscretionary,
   discretionary,
-  limitSuggestions,
   balanceCents,
   monthlyExpensesCents,
-  runwayMonths,
+  liquidReserveCents,
+  baselineMonthlyExpensesCents,
+  monthlySavingsVelocityCents,
+  referenceMonth,
 }: ProjectionTabProps) {
   return (
-    <div className="flex flex-col gap-5">
-      {/* Bloco 1: Fechamento Projetado & Runway */}
+    <div className="flex flex-col gap-6">
+      {/* Bloco 1: Fechamento Projetado & Caixa */}
       <section aria-label="Fechamento do mês" className="flex flex-col gap-3">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Fechamento Projetado & Runway
+          Fechamento Projetado do Mês
         </h2>
 
         <div className="flex flex-col gap-3">
@@ -62,60 +65,7 @@ export function ProjectionTab({
             paceActive={paceActive}
           />
 
-          {/* Autonomia Financeira (Runway) */}
-          <div className="flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-4 min-w-0 shadow-xs">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
-                <Hourglass aria-hidden="true" className="size-4 text-muted-foreground" />
-                <h3 className="text-sm font-semibold text-foreground">Autonomia Financeira (Runway)</h3>
-              </div>
-              {runwayMonths !== null && runwayMonths !== undefined ? (
-                <Badge
-                  variant={runwayMonths >= 6 ? "positive" : runwayMonths >= 3 ? "warning" : "critical"}
-                  size="xs"
-                >
-                  {runwayMonths >= 6 ? "Saudável" : runwayMonths >= 3 ? "Moderado" : "Atenção"}
-                </Badge>
-              ) : null}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs min-w-0">
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
-                <p className="text-muted-foreground">Autonomia estimada</p>
-                <div className="flex items-baseline gap-1 mt-0.5">
-                  <span className="text-sm font-semibold text-foreground tabular-nums">
-                    {runwayMonths !== null && runwayMonths !== undefined ? `${runwayMonths.toFixed(1)} meses` : "—"}
-                  </span>
-                  {runwayMonths !== null && runwayMonths !== undefined && runwayMonths > 0 ? (
-                    <span className="text-[11px] text-muted-foreground">
-                      (~{Math.round(runwayMonths * 30)} dias)
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
-                <p className="text-muted-foreground">Caixa / Saldo disponível</p>
-                <MoneyText
-                  cents={balanceCents ?? 0}
-                  tone={(balanceCents ?? 0) >= 0 ? "positive" : "negative"}
-                  className="text-sm font-semibold whitespace-nowrap tabular-nums"
-                />
-              </div>
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
-                <p className="text-muted-foreground">Custo de vida mensal base</p>
-                <MoneyText
-                  cents={monthlyExpensesCents ?? 0}
-                  tone="default"
-                  className="text-sm font-semibold whitespace-nowrap tabular-nums"
-                />
-              </div>
-            </div>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              O runway indica por quanto tempo seu capital e saldo atual conseguem cobrir o padrão de despesas mensais sem novas receitas.
-            </p>
-          </div>
-
-          {/* Pendências projetadas */}
+          {/* Pendências do período */}
           <div className="flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-4 min-w-0 shadow-xs">
             <h3 className="text-sm font-semibold text-foreground">Pendências do período</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs min-w-0">
@@ -136,19 +86,30 @@ export function ProjectionTab({
         </div>
       </section>
 
-      {/* Bloco 2: Oportunidades de Economia & Cortes */}
+      {/* Bloco 2: Reserva de Emergência & Autonomia (Centro de Segurança) */}
+      <section aria-label="Reserva e autonomia" className="flex flex-col gap-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Segurança Financeira & Reserva
+        </h2>
+
+        <EmergencyThermometer
+          liquidReserveCents={liquidReserveCents ?? balanceCents ?? 0}
+          monthlyExpensesCents={baselineMonthlyExpensesCents ?? monthlyExpensesCents ?? 0}
+          monthlySavingsVelocityCents={monthlySavingsVelocityCents}
+          referenceMonth={referenceMonth}
+        />
+      </section>
+
+      {/* Bloco 3: Oportunidades de Economia & Cortes */}
       <section aria-label="Desafios de economia" className="flex flex-col gap-3">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Plano de Economia & Cortes
+          Plano de Economia & Cortes Sugeridos
         </h2>
 
         <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-4 min-w-0 shadow-xs">
-          <div className="flex items-center gap-2">
-            <Sparkles className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-            <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-foreground">Desafios de economia sugeridos</h3>
-              <p className="text-[11px] text-muted-foreground truncate">Metas inteligentes de corte nas suas categorias de maior volume.</p>
-            </div>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-foreground">Desafios de economia inteligentes</h3>
+            <p className="text-[11px] text-muted-foreground truncate">Metas de corte nas suas maiores categorias de consumo discricionário.</p>
           </div>
 
           {challenges.length === 0 && !showDiscretionary ? (
@@ -174,43 +135,6 @@ export function ProjectionTab({
                   </span>
                 </div>
               ) : null}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Bloco 3: Otimização de Limites */}
-      <section aria-label="Sugestões de limite" className="flex flex-col gap-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Otimização de Limites
-        </h2>
-
-        <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-4 min-w-0 shadow-xs">
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-foreground">Sugestões de ajuste de limite</h3>
-            <p className="text-[11px] text-muted-foreground">Ajustes recomendados para alinhar os limites de orçamento ao consumo real.</p>
-          </div>
-
-          {limitSuggestions.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-2">Nenhuma sugestão de ajuste de limite no momento.</p>
-          ) : (
-            <div className="flex flex-col gap-2 min-w-0">
-              {limitSuggestions.map((s) => (
-                <div key={`${s.categoryId}-${s.kind}`} className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-border/60 p-3 text-xs min-w-0">
-                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="font-medium text-foreground truncate">{s.name}</span>
-                    <span className="text-muted-foreground text-[11px]">{s.reason}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0 font-semibold text-foreground">
-                    <MoneyText cents={s.currentLimitCents} tone="default" />
-                    <ArrowRight className="size-3 text-muted-foreground" aria-hidden="true" />
-                    <MoneyText cents={s.suggestedLimitCents} tone="default" />
-                  </div>
-                </div>
-              ))}
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Para aplicar uma sugestão, acesse a tela de Orçamentos e atualize o limite da categoria.
-              </p>
             </div>
           )}
         </div>

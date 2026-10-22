@@ -10,15 +10,24 @@ export type { ConfidenceParams, RecurrenceKind } from "./confidence";
 export { applyFeedback, partitionFeedback } from "./feedback";
 export type { FeedbackDecision, FeedbackMap } from "./feedback";
 export {
+  ESSENTIAL_STATUS_LABELS,
   SAVINGS_HEALTH_LABELS,
   WEEKEND_RATIO_LIMIT,
   calculateWeekdayWeekendDailyAverages,
+  essentialSpendingRatio,
   incomeConcentration,
   isSignificantTrend,
   savingsHealth,
   weekendSpendingRatio,
 } from "./diagnostics";
-export type { IncomeConcentration, SavingsHealth, WeekdayTotalItem } from "./diagnostics";
+export type {
+  EssentialSpendingResult,
+  IncomeConcentration,
+  IncomeConcentrationOptions,
+  SavingsHealth,
+  WeekdayAverageOptions,
+  WeekdayTotalItem,
+} from "./diagnostics";
 export { resolveCategorySemantics, findBestMatchingCategory } from "./category-semantics";
 export type { CategorySemantics, CategoryNature } from "./category-semantics";
 

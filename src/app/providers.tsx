@@ -17,21 +17,15 @@ import { SubscriptionProvider, useIsPro } from "@/state/subscription-context";
 import { AppLockOverlay } from "@/app/app-lock-overlay";
 import { initAppLockListener, setPrivacyShieldEnabled, syncDueReminderNotifications } from "@/services/native";
 import { useReminders } from "@/state";
-
-import {
-  USER_ACCESS_KEY,
-  USER_FEATURES_KEY,
-  USER_SUBSCRIPTION_KEY,
-} from "@/state";
+import { useAuth } from "@/hooks/use-auth";
 
 /**
  * Sincroniza o ciclo de vida do TanStack Query e das stores locais
  * com a sessão de autenticação do Supabase.
- * Ao deslogar (`SIGNED_OUT`) ou na troca de usuário (`userId` distinto),
+ * Ao deslogar (`SIGNED_OUT`), troca de conta ou autenticação de novo usuário,
  * invoca `resetAppState` cancelando requisições, limpando cache e restaurando
- * os padrões de fábrica no DOM e na memória.
- * No login (`SIGNED_IN`) ou identificação de novo usuário ativo, invalida queries
- * de controle de acesso para garantir dados frescos e atualizados.
+ * os padrões de fábrica no DOM e na memória para isolamento total.
+ * No login (`SIGNED_IN`), invalida todas as queries para garantir dados frescos.
  */
 function AuthQuerySync({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -48,18 +42,17 @@ function AuthQuerySync({ children }: { children: ReactNode }) {
     const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
       const newUserId = session?.user?.id ?? null;
 
-      // Evento de Logout explícito ou troca de usuário
-      if (
-        event === "SIGNED_OUT" ||
-        (activeUserIdRef.current !== null && activeUserIdRef.current !== newUserId)
-      ) {
+      // Evento de Logout explícito
+      if (event === "SIGNED_OUT") {
+        resetAppState(queryClient, null);
+      } else if (activeUserIdRef.current !== newUserId) {
+        // Ao transicionar entre usuários ou de visitante (null) para logado:
+        // Purgar cache não autenticado em memória para isolamento total
         resetAppState(queryClient, newUserId);
-      } else if (event === "SIGNED_IN" || (newUserId && activeUserIdRef.current !== newUserId)) {
-        // Ao autenticar ou inicializar com usuário ativo, invalida queries de acesso/permissão
-        // garantindo que dados frescos e autenticados sejam carregados imediatamente
-        void queryClient.invalidateQueries({ queryKey: USER_ACCESS_KEY });
-        void queryClient.invalidateQueries({ queryKey: USER_FEATURES_KEY });
-        void queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
+        void queryClient.invalidateQueries();
+      } else if (event === "SIGNED_IN") {
+        // Re-autenticação explícita: invalida todas as queries do app
+        void queryClient.invalidateQueries();
       }
 
       activeUserIdRef.current = newUserId;
@@ -75,8 +68,15 @@ function AuthQuerySync({ children }: { children: ReactNode }) {
 
 /**
  * Sincroniza preferências customizadas salvas na nuvem com o estado local do app.
+ * Só é executado quando há usuário autenticado ativo para evitar queries não autorizadas.
  */
 function CloudPreferencesSync({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  if (!user) return <>{children}</>;
+  return <CloudPreferencesSyncInner>{children}</CloudPreferencesSyncInner>;
+}
+
+function CloudPreferencesSyncInner({ children }: { children: ReactNode }) {
   const { data: preferences } = useUserPreferences();
 
   useEffect(() => {
@@ -104,8 +104,15 @@ function DynamicBrandSync() {
 /**
  * Sincroniza e despacha lembretes de contas e faturas para o sistema operacional
  * (Android via LocalNotifications ou PWA via Web Notification API) quando autorizado.
+ * Só é executado quando há usuário autenticado ativo para evitar queries prematuras.
  */
 function RemindersNotificationSync() {
+  const { user } = useAuth();
+  if (!user) return null;
+  return <RemindersNotificationSyncInner />;
+}
+
+function RemindersNotificationSyncInner() {
   const { allItems, preferences } = useReminders();
 
   useEffect(() => {

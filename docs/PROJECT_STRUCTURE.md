@@ -47,8 +47,10 @@
 │   ├── PWA_GUIDELINES.md          # Requisitos PWA (manifest, SW, instalação)
 │   ├── RELEASE.md                 # Checklist de release e homologação
 │   ├── ROADMAP.md                 # Fases de execução consolidadas e Definition of Done
+│   ├── SECURITY_GOVERNANCE.md     # Governança de segurança, criptografia, proteção de PII e LGPD
 │   ├── plans/                     # Planos de implementação ativos e pendentes
 │   │   ├── PLANO_IMPLEMENTACAO_ALTA_CONCORRENCIA_SEGURANCA.md # [CONCLUÍDO] Escala 1k-10k DAU e blindagem
+│   │   ├── PLANO_ADEQUACAO_LEGAL_E_REGULATORIA.md # Adequação LGPD, termos e conformidade regulatória
 │   │   ├── PLANO_AUDITORIA_CONGRUENCIA.md # [NOVO / EM ANDAMENTO] Auditoria de regras e integridade matemática
 │   │   └── completed/             # Histórico de planos executados com sucesso (100% concluídos)
 │   │       ├── CAPACITOR_ANDROID_PLAN.md
@@ -130,7 +132,7 @@
     │   │   │                      #   paste-receipt-dialog (modal universal de colagem de comprovantes e notificações bancárias),
     │   │   │                      #   prediction-suggestions (F21 — autopreenchimento preditivo),
     │   │   │                      #   export-data-hub (F22), monthly-close-print-view (F22),
-    │   │   │                      #   fire-projection-chart + planning-section (F24),
+    │   │   │                      #   emergency-thermometer (Reserva de Emergência e Autonomia),
     │   │   │                      #   aporte-result (F4/F31 — checklist interativo de aportes),
     │   │   │                      #   cash-kpi-card (card exclusivo de saldo em Caixa & Liquidez com variantes banner e card),
     │   │   │                      #   reports/ (report-document-layout, report-header, report-footer, report-kpi-grid,
@@ -209,7 +211,8 @@
     │   ├── accessibility/         #   F15: contraste AA — hexToRgb/relativeLuminance/
     │   │                          #     contrastRatio/isAANormalText/isAALargeText
     │   ├── preferences/           #   F11: Modos de Experiência (presets, detecção, metadados)
-    │   ├── projection/            #   gasto disponível, ritmo, fim de mês, pendências
+    │   ├── projection/            #   gasto disponível, ritmo, fim de mês, pendências,
+    │   │                          #     emergency-fund.ts (Reserva de Emergência)
     │   ├── search/                #   busca global: normalização, scoring, bônus de recência
     │   ├── calculator/            #   motor puro de operações e divisão de parcelas (F9)
     │   ├── predictions/           #   predição de entrada (F21): similaridade de descrição,
@@ -218,9 +221,6 @@
     │   ├── export/                #   F22: serialização CSV pt-BR (`;`/`,`/BOM — csv.ts)
     │   │                          #     e backup versionado com Zod + integridade
     │   │                          #     referencial (backup.ts, BACKUP_TABLE_KEYS)
-    │   ├── fire/                  #   F24: regra dos 4% (meta = despesas × 25),
-    │   │                          #     projeção anual determinística e faixas do
-    │   │                          #     fundo de emergência (index.ts)
     │   ├── reconciliation/        #   F30: conciliação de faturas (parsers CSV/OFX/Texto,
     │   │                          #     type-sniffer, hashing ordinal, scoring 0-100),
     │   │                          #     clean.ts (sanitização de descrições e remoção de ruídos bancários),
@@ -282,7 +282,7 @@
     │   │                          #     status-bar, haptics, splash-screen, biometrics, privacy-shield, app-lock,
     │   │                          #     deep-links, local-notifications, suggestions-store, bank-listener, app-icon,
     │   │                          #     update-checker, update-schema
-    │   ├── masks/                 #   máscaras de apresentação (moeda, percentual pt-BR)
+    │   ├── masks/                 #   máscaras de apresentação (moeda, percentual pt-BR, CPF)
     │   │                          #   — barrel index.ts (fonte única DRY: formatCentsAsBRL,
     │   │                          #     formatPercent)
     │   ├── errors/                #   Gateway de erros: index.ts (classifyError +

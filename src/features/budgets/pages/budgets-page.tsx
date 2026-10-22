@@ -242,7 +242,7 @@ export function BudgetsPage() {
 
       {/* Linha de controles: descrição + alternador de métrica */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <p className="text-xs text-muted-foreground sm:text-sm">
+        <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
           Acompanhe os gastos por categoria e defina o teto mensal.
         </p>
 
@@ -576,7 +576,7 @@ export function BudgetsPage() {
       <MonthPicker value={month} onValueChange={setMonth} />
 
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground sm:text-sm">
+        <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
           Defina a expectativa mensal por categoria de renda para comparar com os recebimentos realizados.
         </p>
       </div>
@@ -772,7 +772,7 @@ export function BudgetsPage() {
           <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
             Orçamentos
           </h1>
-          <p className="text-xs text-muted-foreground sm:text-sm">
+          <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
             Tetos de gastos mensais, metas de renda e controle de categorias
           </p>
         </div>

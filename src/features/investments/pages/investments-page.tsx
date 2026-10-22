@@ -105,7 +105,7 @@ export function InvestmentsPage() {
           <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
             Investimentos
           </h1>
-          <p className="text-xs text-muted-foreground sm:text-sm">
+          <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
             Posição da carteira, rendimentos, rebalanceamento de aportes e inteligência fiscal
           </p>
         </div>

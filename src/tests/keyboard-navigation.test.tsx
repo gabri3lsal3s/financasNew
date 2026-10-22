@@ -160,9 +160,13 @@ vi.mock("@/state", () => ({
 
 /** Foco inicial é o primeiro campo (auth) — ordem de tabulação natural. */
 describe("Navegação por teclado — telas P0 (F5.3 DoD)", () => {
-  it("LoginPage: Tab percorre e-mail → senha → entrar → links", async () => {
+  it("LoginPage: Tab percorre alternador de tema → e-mail → senha → entrar", async () => {
     const user = userEvent.setup();
     render(<LoginPage />);
+
+    // Topo da página possui o ThemeToggle acessível
+    await user.tab();
+    expect(screen.getByRole("button", { name: /Alternar tema/i })).toHaveFocus();
 
     await user.tab();
     expect(screen.getByRole("textbox", { name: "E-mail" })).toHaveFocus();

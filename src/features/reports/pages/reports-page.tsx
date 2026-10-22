@@ -968,7 +968,7 @@ export function ReportsPage() {
           <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
             Relatórios
           </h1>
-          <p className="text-xs text-muted-foreground sm:text-sm">
+          <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
             Dossiês executivos, DRE pessoal, consolidação patrimonial e inteligência fiscal
           </p>
         </div>

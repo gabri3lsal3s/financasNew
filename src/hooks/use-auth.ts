@@ -69,6 +69,47 @@ function updateGlobalAuthState(partial: Partial<AuthStateSnapshot>): void {
   authSubscribers.forEach((subscriber) => subscriber(current));
 }
 
+let globalAuthSubscription: { unsubscribe: () => void } | null = null;
+
+function initGlobalAuth(): void {
+  let supabase: ReturnType<typeof getSupabase>;
+  try {
+    supabase = getSupabase();
+  } catch (err) {
+    updateGlobalAuthState({ configError: getErrorMessage(err), loading: false });
+    return;
+  }
+
+  if (isGlobalAuthInitialized) return;
+  isGlobalAuthInitialized = true;
+
+  void supabase.auth
+    .getSession()
+    .then(({ data }) => {
+      const session = data?.session ?? null;
+      const user = session?.user ?? null;
+      const uid = user?.id ?? null;
+      if (uid) setActiveUserId(uid);
+      updateGlobalAuthState({ session, user, loading: false, configError: null });
+    })
+    .catch((err) => {
+      updateGlobalAuthState({ session: null, user: null, loading: false, configError: getErrorMessage(err) });
+    });
+
+  const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const user = session?.user ?? null;
+    const uid = user?.id ?? null;
+    if (uid) {
+      setActiveUserId(uid);
+    } else {
+      setActiveUserId(null);
+    }
+    updateGlobalAuthState({ session, user, loading: false, configError: null });
+  });
+
+  globalAuthSubscription = authListener?.subscription ?? null;
+}
+
 /**
  * Sessão do usuário — fonte única para guards de rota e telas de auth.
  * Opera como singleton reativo compartilhado em memória para que todos os
@@ -95,51 +136,15 @@ export function useAuth(): AuthState {
 
   useEffect(() => {
     authSubscribers.add(setSnapshot);
+    initGlobalAuth();
+
     return () => {
       authSubscribers.delete(setSnapshot);
-    };
-  }, []);
-
-  // Inicialização única da sessão do Supabase Auth
-  useEffect(() => {
-    let supabase: ReturnType<typeof getSupabase>;
-    try {
-      supabase = getSupabase();
-    } catch (err) {
-      updateGlobalAuthState({ configError: getErrorMessage(err), loading: false });
-      return;
-    }
-
-    if (isGlobalAuthInitialized) return;
-    isGlobalAuthInitialized = true;
-
-    void supabase.auth
-      .getSession()
-      .then(({ data }) => {
-        const session = data?.session ?? null;
-        const user = session?.user ?? null;
-        const uid = user?.id ?? null;
-        if (uid) setActiveUserId(uid);
-        updateGlobalAuthState({ session, user, loading: false, configError: null });
-      })
-      .catch((err) => {
-        updateGlobalAuthState({ session: null, user: null, loading: false, configError: getErrorMessage(err) });
-      });
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      const user = session?.user ?? null;
-      const uid = user?.id ?? null;
-      if (uid) {
-        setActiveUserId(uid);
-      } else {
-        setActiveUserId(null);
+      if (authSubscribers.size === 0 && globalAuthSubscription) {
+        globalAuthSubscription.unsubscribe();
+        globalAuthSubscription = null;
+        isGlobalAuthInitialized = false;
       }
-      updateGlobalAuthState({ session, user, loading: false, configError: null });
-    });
-
-    return () => {
-      authListener?.subscription?.unsubscribe();
-      isGlobalAuthInitialized = false;
     };
   }, []);
 

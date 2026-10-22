@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useUserPreferences, userPreferencesKey } from "./use-user-preferences";
 import * as userPrefsRepo from "@/data/repositories/user-preferences";
 import { STALE_TIMES, STATIC_GC_TIME } from "@/state/cache-policy";
+import { setActiveUserId } from "@/services/user-storage";
 import type { UserPreferences } from "@/types";
 
 vi.mock("@/data/repositories/user-preferences", () => ({
@@ -33,6 +34,7 @@ describe("useUserPreferences Hook — Calibração de Cache (Tarefa 1.2)", () =>
 
   beforeEach(() => {
     vi.clearAllMocks();
+    setActiveUserId("user-1");
     queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },

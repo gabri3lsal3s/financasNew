@@ -524,7 +524,7 @@ export function DebtsPage() {
           <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
             Contas & Dívidas
           </h1>
-          <p className="text-xs text-muted-foreground sm:text-sm">
+          <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
             Gestão de contas a pagar, a receber e contratos
           </p>
         </div>

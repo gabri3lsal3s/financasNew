@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { Activity, ChevronRight, DollarSign, Inbox, PieChart, PiggyBank, Plus, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react";
-import { Badge, Button, DashboardCentsProvider, EmptyState, ErrorState, MoneyText, NumberTicker, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
+import { Activity, ChevronRight, DollarSign, Inbox, PieChart, Plus, Target, TrendingDown, TrendingUp } from "lucide-react";
+import { Badge, Button, DashboardCentsProvider, EmptyState, ErrorState, MoneyText, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
 import {
   CategoryDonut,
   DailyFlowChart,
@@ -29,7 +29,7 @@ import {
   spentByCategoryMap,
   spentGrossByCategoryMap,
 } from "@/domain/budgets";
-import { calculateDebtsSummary, todayISO } from "@/domain/debts";
+import { todayISO } from "@/domain/debts";
 import {
   analyzeCashGap,
   dailyBudget,
@@ -38,18 +38,15 @@ import {
   spendingPace,
 } from "@/domain/projection";
 import {
-  accountsNet,
   buildDailyFlow,
   buildDailyCumulativeSeries,
   calculateSurplusCapacity,
   computeOverview,
-  openInvoicesTotal,
 } from "@/domain/overview";
 import { numberToCents, sumGrossCents, sumWeightedCents } from "@/domain/money";
 import { contributionsInMonthCents } from "@/domain/portfolio";
 
 import { currentMonth, monthLabel, shiftMonth } from "@/lib/date";
-import { formatPercent } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
 import {
   useAllCardExpenses,
@@ -167,19 +164,6 @@ export function OverviewPage() {
     prevMonth,
   ]);
 
-  // Resumo de contas e faturas.
-  const { receivablePending, payablePending, openInvoices, accountsBalance } = useMemo(() => {
-    const { receivablePendingCents, payablePendingCents } =
-      calculateDebtsSummary(debtsQuery.data ?? [], { beforeDueDateExclusive: rangeEnd });
-    const invoices = openInvoicesTotal(cardExpensesQuery.data ?? [], cardPaymentsQuery.data ?? [], today);
-    const balance = accountsNet(receivablePendingCents, payablePendingCents, invoices);
-    return {
-      receivablePending: receivablePendingCents,
-      payablePending: payablePendingCents,
-      openInvoices: invoices,
-      accountsBalance: balance,
-    };
-  }, [debtsQuery.data, rangeEnd, cardExpensesQuery.data, cardPaymentsQuery.data, today]);
 
   // Fluxo diário (barras empilhadas) + curva de saldo acumulado.
   const dailyFlow = useMemo(() => {
@@ -625,216 +609,136 @@ export function OverviewPage() {
             ) : null}
           </section>
 
-          {/* Seção Integrada: Orçamentos do Mês + Resumo Financeiro (Lado a lado no Desktop) */}
-          <div className="grid gap-3 min-w-0 items-start lg:grid-cols-2">
-            {/* Orçamentos (§3.6): Layout Revolut / Apple Wallet */}
-            <section
-              aria-label="Orçamentos"
-              className="flex flex-col gap-3.5 sm:gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden h-full"
-            >
-                  {/* Header do Card: Título + Botão de Ação */}
-                  <div className="flex items-center justify-between gap-2 min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Target className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                      <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">Orçamentos do mês</h2>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate("/orcamentos")}
-                      aria-label="Ver todos os orçamentos"
-                      className="h-7 gap-1 px-2 sm:px-2.5 text-xs font-medium text-foreground hover:bg-surface-hover cursor-pointer border-border/80 shrink-0"
-                    >
-                      <span className="hidden sm:inline">Ver todos</span>
-                      <ChevronRight className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                    </Button>
-                  </div>
+          {/* Orçamentos (§3.6): Layout Revolut / Apple Wallet em largura total */}
+          <section
+            aria-label="Orçamentos"
+            className="flex flex-col gap-3.5 sm:gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden"
+          >
+            {/* Header do Card: Título + Botão de Ação */}
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <Target className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">Orçamentos do mês</h2>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/orcamentos")}
+                aria-label="Ver todos os orçamentos"
+                className="h-7 gap-1 px-2 sm:px-2.5 text-xs font-medium text-foreground hover:bg-surface-hover cursor-pointer border-border/80 shrink-0"
+              >
+                <span className="hidden sm:inline">Ver todos</span>
+                <ChevronRight className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              </Button>
+            </div>
 
-                  {budgetRows.length === 0 ? (
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-dashed border-border/80 bg-surface-hover/20 p-3.5 text-xs text-muted-foreground">
-                      <span>Nenhum orçamento configurado para este mês.</span>
-                      <button
-                        type="button"
-                        onClick={() => navigate("/orcamentos")}
-                        className="font-medium text-primary hover:underline cursor-pointer"
-                      >
-                        Definir limites →
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-3 sm:gap-3.5">
-                      {/* Bloco de Métricas: Saldo à esquerda e Badge de Consumo à direita */}
-                      <div className="flex items-end justify-between gap-2 pt-0.5">
-                        <div className="flex flex-col gap-0.5 min-w-0">
-                          <span className="text-[11px] font-medium text-muted-foreground">
-                            {totalRemainingCents >= 0 ? "Saldo disponível no teto" : "Orçamento ultrapassado em"}
-                          </span>
-                          <div className="flex items-baseline gap-1.5 flex-wrap">
-                            <MoneyText
-                              cents={Math.abs(totalRemainingCents)}
-                              tone="default"
-                              className={cn(
-                                "font-bold tracking-tight whitespace-nowrap tabular-nums",
-                                totalRemainingCents >= 0 ? "text-positive-strong" : "text-critical-strong",
-                                Math.abs(totalRemainingCents) >= 100_000_000
-                                  ? "text-xl sm:text-2xl"
-                                  : "text-2xl sm:text-3xl",
-                              )}
-                            />
-                            <span className="text-xs text-muted-foreground font-normal">
-                              de <MoneyText cents={totalLimitsCents} tone="default" className="text-muted-foreground font-medium" /> planejado
-                            </span>
-                          </div>
-                        </div>
-
-                        <Badge
-                          variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"}
-                          size="xs"
-                          className="shrink-0 mb-1"
-                        >
-                          {Math.round(globalPercent)}% utilizado
-                        </Badge>
-                      </div>
-
-                      {/* Barra Segmentada Única (Estilo Apple / Linear) com clique para Raio-X */}
-                      <div className="w-full flex flex-col gap-2.5">
-                        <div
-                          className="flex w-full h-2.5 sm:h-3 rounded-full overflow-hidden bg-surface-hover/70 p-0.5 border border-border/40 gap-0.5"
-                          role="group"
-                          aria-label={`Uso do orçamento: ${Math.round(globalPercent)}%`}
-                        >
-                          {budgetSegments.map((seg) => (
-                            <button
-                              type="button"
-                              key={seg.id}
-                              style={{
-                                width: `${Math.max(1.5, seg.percent)}%`,
-                                backgroundColor: seg.color ?? undefined,
-                              }}
-                              className="h-full rounded-full transition-all duration-300 first:rounded-l-full last:rounded-r-full shrink-0 outline-none cursor-pointer hover:brightness-110 active:scale-95 focus-visible:ring-1 focus-visible:ring-ring"
-                              title={`${seg.label}: ${(seg.spentCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} — clique para ver detalhes`}
-                              onClick={() => {
-                                if (seg.id === "others") {
-                                  setIsOthersBudgetOpen(true);
-                                } else {
-                                  setSelectedCategoryId(seg.id);
-                                }
-                              }}
-                            />
-                          ))}
-                        </div>
-
-                        {/* Legenda Estruturada em 2 Colunas Simétricas no Mobile e Flex no Desktop */}
-                        {budgetSegments.length > 0 ? (
-                          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-3 sm:gap-x-4 gap-y-2 text-xs pt-0.5 min-w-0">
-                            {budgetSegments.map((seg) => (
-                              <button
-                                type="button"
-                                key={seg.id}
-                                onClick={() => {
-                                  if (seg.id === "others") {
-                                    setIsOthersBudgetOpen(true);
-                                  } else {
-                                    setSelectedCategoryId(seg.id);
-                                  }
-                                }}
-                                className="inline-flex items-center gap-1.5 min-w-0 text-muted-foreground transition-all duration-150 rounded-lg p-1 -m-1 cursor-pointer hover:bg-surface-hover hover:text-foreground active:scale-95 text-left"
-                              >
-                                <span
-                                  className="size-2 rounded-full shrink-0"
-                                  style={{ backgroundColor: seg.color ?? undefined }}
-                                  aria-hidden="true"
-                                />
-                                <span className="font-medium text-foreground truncate min-w-0">{seg.label}</span>
-                                <span className="hidden sm:inline font-medium text-foreground">:</span>
-                                <MoneyText cents={seg.spentCents} tone="default" className="hidden sm:inline-block text-muted-foreground shrink-0 tabular-nums font-medium" />
-                              </button>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  )}
-                </section>
-
-                {/* Resumo financeiro (§3.6): saldo líquido de contas e taxa de poupança */}
-                <section
-                  aria-label="Resumo financeiro"
-                  className="grid gap-3 min-w-0 grid-cols-1 sm:grid-cols-2 lg:grid-cols-1"
+            {budgetRows.length === 0 ? (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-dashed border-border/80 bg-surface-hover/20 p-3.5 text-xs text-muted-foreground">
+                <span>Nenhum orçamento configurado para este mês.</span>
+                <button
+                  type="button"
+                  onClick={() => navigate("/orcamentos")}
+                  className="font-medium text-primary hover:underline cursor-pointer"
                 >
-                  <article className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-                    <div className="flex items-center justify-between gap-2 min-w-0">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Wallet
-                          className={cn(
-                            "size-4 shrink-0 transition-colors",
-                            accountsBalance >= 0 ? "text-positive-strong" : "text-critical-strong",
-                          )}
-                          aria-hidden="true"
-                        />
-                        <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">Saldo líquido de contas</h2>
-                      </div>
-                      <Badge variant="muted" size="xs">Projeção</Badge>
-                    </div>
-                    <div>
+                  Definir limites →
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3 sm:gap-3.5">
+                {/* Bloco de Métricas: Saldo à esquerda e Badge de Consumo à direita */}
+                <div className="flex items-end justify-between gap-2 pt-0.5">
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <span className="text-[11px] font-medium text-muted-foreground">
+                      {totalRemainingCents >= 0 ? "Saldo disponível no teto" : "Orçamento ultrapassado em"}
+                    </span>
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
                       <MoneyText
-                        cents={accountsBalance}
-                        variant="hero"
-                        tone="auto"
-                        sign="auto"
-                        animated
+                        cents={Math.abs(totalRemainingCents)}
+                        tone="default"
                         className={cn(
-                          "tracking-tight whitespace-nowrap font-bold",
-                          Math.abs(accountsBalance) >= 100_000_000
+                          "font-bold tracking-tight whitespace-nowrap tabular-nums",
+                          totalRemainingCents >= 0 ? "text-positive-strong" : "text-critical-strong",
+                          Math.abs(totalRemainingCents) >= 100_000_000
                             ? "text-xl sm:text-2xl"
                             : "text-2xl sm:text-3xl",
                         )}
                       />
+                      <span className="text-xs text-muted-foreground font-normal">
+                        de <MoneyText cents={totalLimitsCents} tone="default" className="text-muted-foreground font-medium" /> planejado
+                      </span>
                     </div>
-                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2 border-t border-border/50 pt-2.5 sm:pt-3 text-[11px] text-muted-foreground min-w-0">
-                      <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 truncate">A receber</p>
-                        <MoneyText cents={receivablePending} tone="positive" className="privacy-mask text-[11px] whitespace-nowrap block font-medium" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 truncate">A pagar</p>
-                        <MoneyText cents={payablePending} tone="negative" className="privacy-mask text-[11px] whitespace-nowrap block font-medium" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 truncate">Faturas</p>
-                        <MoneyText cents={openInvoices} tone="default" className="privacy-mask text-[11px] whitespace-nowrap block font-medium" />
-                      </div>
-                    </div>
-                  </article>
+                  </div>
 
-                  <article className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-                    <div className="flex items-center justify-between gap-2 min-w-0">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <PiggyBank
-                          className={cn(
-                            "size-4 shrink-0 transition-colors",
-                            totals.savingsRatePercent >= 0 ? "text-positive-strong" : "text-critical-strong",
-                          )}
-                          aria-hidden="true"
-                        />
-                        <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">Taxa de poupança</h2>
-                      </div>
-                      <Badge variant={totals.savingsRatePercent >= 20 ? "positive" : totals.savingsRatePercent >= 0 ? "muted" : "critical"} size="xs">
-                        {totals.savingsRatePercent >= 20 ? "Meta atingida" : totals.savingsRatePercent >= 0 ? "Regular" : "Abaixo"}
-                      </Badge>
+                  <Badge
+                    variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"}
+                    size="xs"
+                    className="shrink-0 mb-1"
+                  >
+                    {Math.round(globalPercent)}% utilizado
+                  </Badge>
+                </div>
+
+                {/* Barra Segmentada Única (Estilo Apple / Linear) com clique para Raio-X */}
+                <div className="w-full flex flex-col gap-2.5">
+                  <div
+                    className="flex w-full h-2.5 sm:h-3 rounded-full overflow-hidden bg-surface-hover/70 p-0.5 border border-border/40 gap-0.5"
+                    role="group"
+                    aria-label={`Uso do orçamento: ${Math.round(globalPercent)}%`}
+                  >
+                    {budgetSegments.map((seg) => (
+                      <button
+                        type="button"
+                        key={seg.id}
+                        style={{
+                          width: `${Math.max(1.5, seg.percent)}%`,
+                          backgroundColor: seg.color ?? undefined,
+                        }}
+                        className="h-full rounded-full transition-all duration-300 first:rounded-l-full last:rounded-r-full shrink-0 outline-none cursor-pointer hover:brightness-110 active:scale-95 focus-visible:ring-1 focus-visible:ring-ring"
+                        title={`${seg.label}: ${(seg.spentCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} — clique para ver detalhes`}
+                        onClick={() => {
+                          if (seg.id === "others") {
+                            setIsOthersBudgetOpen(true);
+                          } else {
+                            setSelectedCategoryId(seg.id);
+                          }
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Legenda Estruturada em 2 Colunas Simétricas no Mobile e Flex no Desktop */}
+                  {budgetSegments.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-3 sm:gap-x-4 gap-y-2 text-xs pt-0.5 min-w-0">
+                      {budgetSegments.map((seg) => (
+                        <button
+                          type="button"
+                          key={seg.id}
+                          onClick={() => {
+                            if (seg.id === "others") {
+                              setIsOthersBudgetOpen(true);
+                            } else {
+                              setSelectedCategoryId(seg.id);
+                            }
+                          }}
+                          className="inline-flex items-center gap-1.5 min-w-0 text-muted-foreground transition-all duration-150 rounded-lg p-1 -m-1 cursor-pointer hover:bg-surface-hover hover:text-foreground active:scale-95 text-left"
+                        >
+                          <span
+                            className="size-2 rounded-full shrink-0"
+                            style={{ backgroundColor: seg.color ?? undefined }}
+                            aria-hidden="true"
+                          />
+                          <span className="font-medium text-foreground truncate min-w-0">{seg.label}</span>
+                          <span className="hidden sm:inline font-medium text-foreground">:</span>
+                          <MoneyText cents={seg.spentCents} tone="default" className="hidden sm:inline-block text-muted-foreground shrink-0 tabular-nums font-medium" />
+                        </button>
+                      ))}
                     </div>
-                    <div>
-                      <p className={cn("num text-2xl sm:text-3xl font-bold tracking-tight", totals.savingsRatePercent >= 20 ? "text-positive-strong" : totals.savingsRatePercent >= 0 ? "text-foreground" : "text-critical")}>
-                        <NumberTicker value={totals.savingsRatePercent} format={(v: number) => `${formatPercent(v)}%`} />
-                      </p>
-                    </div>
-                    <div className="border-t border-border/50 pt-2.5 sm:pt-3 text-xs text-muted-foreground">
-                      {totals.savingsRatePercent >= 20 ? "Poupança saudável (≥20% da renda)." : totals.savingsRatePercent >= 0 ? "Saldo positivo neste mês." : "Saldo negativo: revise os gastos."}
-                    </div>
-                  </article>
-                </section>
+                  ) : null}
+                </div>
               </div>
+            )}
+          </section>
 
           {/* Diálogo Raio-X de Categoria (Responsivo / BottomSheet no mobile / Modal no desktop) */}
           <CategoryBreakdownDialog
