@@ -267,7 +267,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes garantindo que compras corriqueiras de mesmo valor em dias diferentes NÃO disparem falsos alertas de duplicidade.
   - *Commit:* `feat(domain/insights): aplicar regras estritas antirruido para cobrancas duplicadas`
 
-- [ ] **Tarefa 4.4 — Sincronização dos Testes do Módulo de Insights:**
+- [x] **Tarefa 4.4 — Sincronização dos Testes do Módulo de Insights:**
   - Executar e atualizar a suíte completa de `src/domain/insights/index.test.ts` e `recurrences.test.ts`.
   - Garantir 100% de pureza arquitetural (zero imports de UI ou banco).
   - *Teste & Verificação:* `npx vitest run src/domain/insights/`.

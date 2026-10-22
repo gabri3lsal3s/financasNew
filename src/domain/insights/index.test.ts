@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   applyFeedback,
-
   calculateRecurringTotals,
   calculateWeekdayWeekendDailyAverages,
+  classifyPriceAdjustment,
   classifySubscription,
   confidenceScore,
   criticalAlerts,
+  detectDuplicateChargesInMonth,
+  detectIncomeRecurrences,
   detectRecurrences,
   essentialSpendingRatio,
+  evaluateBudgetImpact,
+  formatBRL,
   historyBonus,
   incomeConcentration,
   isSignificantTrend,
@@ -16,6 +20,8 @@ import {
   savingsHealth,
   varianceOf,
   weekendSpendingRatio,
+  type ExpenseLike,
+  type IncomeLike,
 } from "./index";
 
 import type { CriticalAlertInput } from "./alerts";
@@ -25,6 +31,7 @@ const expense = (
     id: string;
     description: string | null;
     date: string;
+    time?: string;
     month: string;
     valueCents: number;
     categoryId: string;
@@ -32,10 +39,11 @@ const expense = (
     categoryIcon: string | null;
     installmentGroupId: string | null;
   }>,
-) => ({
+): ExpenseLike => ({
   id: overrides.id ?? "x",
   description: overrides.description ?? null,
   date: overrides.date,
+  time: overrides.time,
   month: overrides.month ?? "2026-08",
   valueCents: overrides.valueCents ?? 1000,
   categoryId: overrides.categoryId ?? "cat",
@@ -492,6 +500,87 @@ describe("calculateRecurringTotals", () => {
     expect(result.totalAnnualRecurringCents).toBe(132000);
     expect(result.canCutRecurringCents).toBe(5000); // 3000 + 2000
     expect(result.canCutAnnualCents).toBe(60000);
+  });
+});
+
+describe("motor bidirecional e regras de anomalias (Fase 4, Tarefa 4.4)", () => {
+  describe("detectIncomeRecurrences via barrel de insights", () => {
+    it("detecta salário CLT estável com perfil fixed e sugestão one_touch_confirm", () => {
+      const incomes: IncomeLike[] = [
+        { id: "i1", description: "Salário Empresa X", month: "2026-07", date: "2026-07-05", valueCents: 450000, categoryId: "sal" },
+        { id: "i2", description: "Salário Empresa X", month: "2026-08", date: "2026-08-05", valueCents: 450000, categoryId: "sal" },
+        { id: "i3", description: "Salário Empresa X", month: "2026-09", date: "2026-09-05", valueCents: 450000, categoryId: "sal" },
+      ];
+
+      const detected = detectIncomeRecurrences(incomes, { todayISO: "2026-09-20" });
+      expect(detected).toHaveLength(1);
+      const sal = detected[0]!;
+      expect(sal.profile).toBe("fixed");
+      expect(sal.suggestedAction).toBe("one_touch_confirm");
+      expect(sal.averageCents).toBe(450000);
+      expect(sal.lastValueCents).toBe(450000);
+    });
+
+    it("detecta cliente frequente com perfil frequent_client e sugestão open_value_input", () => {
+      const incomes: IncomeLike[] = [
+        { id: "i1", description: "Freelance Design", month: "2026-07", date: "2026-07-15", valueCents: 150000, categoryId: "free" },
+        { id: "i2", description: "Freelance Design", month: "2026-08", date: "2026-08-18", valueCents: 350000, categoryId: "free" },
+        { id: "i3", description: "Freelance Design", month: "2026-09", date: "2026-09-12", valueCents: 200000, categoryId: "free" },
+      ];
+
+      const detected = detectIncomeRecurrences(incomes);
+      expect(detected).toHaveLength(1);
+      const free = detected[0]!;
+      expect(free.profile).toBe("frequent_client");
+      expect(free.suggestedAction).toBe("open_value_input");
+    });
+  });
+
+  describe("evaluateBudgetImpact e formatBRL via barrel de insights", () => {
+    it("avalia impacto orçamentário anual de assinatura", () => {
+      const impact = evaluateBudgetImpact({ name: "Assinatura Clube", averageCents: 9000 }, 1000000, 30000);
+      expect(impact.annualCostCents).toBe(108000);
+      expect(impact.annualCostFormatted).toBe("R$ 1.080,00");
+      expect(impact.annualCostMessage).toBe("Essa assinatura custa R$ 1.080,00 por ano");
+      expect(impact.highCategoryBudgetImpact).toBe(true);
+      expect(impact.hasHighBudgetImpact).toBe(true);
+      expect(formatBRL(108000)).toBe("R$ 1.080,00");
+    });
+  });
+
+  describe("classifyPriceAdjustment e detectDuplicateChargesInMonth via barrel de insights", () => {
+    it("classifica reajuste inflacionário e mudança de plano", () => {
+      const inf = classifyPriceAdjustment(10000, 12000);
+      expect(inf?.kind).toBe("inflationary");
+      expect(inf?.isInflationary).toBe(true);
+
+      const plan = classifyPriceAdjustment(10000, 16000);
+      expect(plan?.kind).toBe("plan_change");
+      expect(plan?.isPlanChange).toBe(true);
+    });
+
+    it("discrimina duplicidade estrita entre assinaturas e gastos comuns", () => {
+      // Assinatura de valor fixo cobrada 2x
+      const subCharges: ExpenseLike[] = [
+        expense({ id: "s1", date: "2026-08-05", valueCents: 3990 }),
+        expense({ id: "s2", date: "2026-08-20", valueCents: 3990 }),
+      ];
+      expect(detectDuplicateChargesInMonth(subCharges, true)).toBe(2);
+
+      // Compras comuns em dias diferentes (não duplicadas)
+      const commonChargesDiffDays: ExpenseLike[] = [
+        expense({ id: "c1", date: "2026-08-05", valueCents: 2000 }),
+        expense({ id: "c2", date: "2026-08-20", valueCents: 2000 }),
+      ];
+      expect(detectDuplicateChargesInMonth(commonChargesDiffDays, false)).toBeUndefined();
+
+      // Compras comuns no mesmo dia e minuto (duplicadas)
+      const commonChargesSameMinute: ExpenseLike[] = [
+        expense({ id: "c3", date: "2026-08-10", time: "14:30", valueCents: 2500 }),
+        expense({ id: "c4", date: "2026-08-10", time: "14:30", valueCents: 2500 }),
+      ];
+      expect(detectDuplicateChargesInMonth(commonChargesSameMinute, false)).toBe(2);
+    });
   });
 });
 
