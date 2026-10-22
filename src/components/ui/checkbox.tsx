@@ -29,7 +29,7 @@ export function Checkbox({ checked, onCheckedChange, disabled, label, id, classN
         disabled={disabled}
         aria-label={ariaLabel}
         className={cn(
-          "flex size-4 shrink-0 items-center justify-center rounded border border-input bg-surface transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-primary-strong data-[state=checked]:bg-primary-strong",
+          "flex !size-4 !min-w-4 !max-w-4 shrink-0 items-center justify-center rounded border border-input bg-surface transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-primary-strong data-[state=checked]:bg-primary-strong",
           className,
         )}
       >

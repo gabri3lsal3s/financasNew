@@ -65,4 +65,13 @@ describe("KpiCard (F12 — valores monetários via NumberTicker)", () => {
     expect(p8?.className).toContain("text-sm sm:text-base lg:text-lg");
     expect(p8?.className).not.toContain("truncate");
   });
+
+  it("renderiza o micro-gráfico sparkline normalmente mesmo quando a série for zerada (F8)", () => {
+    const { container } = render(
+      <KpiCard label="Investimentos" cents={0} tone="portfolio" spark={[0, 0, 0, 0]} />,
+    );
+    const polyline = container.querySelector("polyline");
+    expect(polyline).not.toBeNull();
+    expect(polyline?.getAttribute("class")).toContain("stroke-portfolio");
+  });
 });

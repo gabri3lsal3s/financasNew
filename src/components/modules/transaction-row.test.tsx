@@ -90,4 +90,17 @@ describe("TransactionRow", () => {
     expect(screen.getByText("Relat.:")).toBeInTheDocument();
     expect(screen.getByText("R$ 75,00")).toBeInTheDocument();
   });
+
+  it("renderiza classe transparente na variante flat", () => {
+    const { container } = render(
+      <TransactionRow
+        title="Almoço"
+        amountCents={3000}
+        kind="expense"
+        variant="flat"
+      />,
+    );
+    expect(container.querySelector(".bg-transparent")).toBeInTheDocument();
+    expect(container.querySelector(".bg-surface")).toBeNull();
+  });
 });

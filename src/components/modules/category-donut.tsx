@@ -236,10 +236,12 @@ export function CategoryDonut({
       setInternalSelectedKey(nextKey);
     }
     onSelectKey?.(nextKey);
-    slice?.onClick?.();
-    if (slice) {
-      const idx = slices.findIndex((s) => s === slice);
-      onSliceClick?.(slice, idx >= 0 ? idx : 0);
+    const targetSlice =
+      slice ?? slices.find((s, idx) => (s.key ? s.key === key : `${s.label}-${idx}` === key));
+    targetSlice?.onClick?.();
+    if (targetSlice) {
+      const idx = slices.findIndex((s) => s === targetSlice);
+      onSliceClick?.(targetSlice, idx >= 0 ? idx : 0);
     }
   };
 

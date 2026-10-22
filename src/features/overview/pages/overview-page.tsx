@@ -71,7 +71,7 @@ import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { useVisualCustomization, useApkPromo, useOnboardingDismissed } from "@/hooks";
 import { CashCheckpointDialog } from "@/components/modules/cash-checkpoint-dialog";
 import { cn } from "@/lib/utils";
-import { CategoryBreakdownDialog, OtherBudgetsDialog } from "../components";
+import { CategoryBreakdownDialog, OtherBudgetsDialog, OtherCategoriesDialog } from "../components";
 
 export function OverviewPage() {
   const { showPromo: showApkPromo, dismiss: dismissApkPromo } = useApkPromo();
@@ -79,6 +79,7 @@ export function OverviewPage() {
   const [month, setMonth] = useState(currentMonth);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [isOthersBudgetOpen, setIsOthersBudgetOpen] = useState(false);
+  const [isOtherCategoriesOpen, setIsOtherCategoriesOpen] = useState(false);
   const navigate = useNavigate();
   const subscription = useUserSubscription();
   const [checkpointOpen, setCheckpointOpen] = useState(false);
@@ -271,23 +272,55 @@ export function OverviewPage() {
     };
   }, [budgetsQuery.data, expensesQuery.data, expenseCategories.data, month, expenseCents]);
 
-  // Donut de categorias: principais despesas do mês (bruto) com suporte a clique.
-  const donutSlices = useMemo(
-    () =>
-      (expenseCategories.data ?? [])
-        .map((category) => ({
-          key: category.id,
-          label: category.name,
-          valueCents: spentGrossByCategory.get(category.id) ?? 0,
-          icon: category.icon,
-          color: category.color,
-          onClick: () => setSelectedCategoryId(category.id),
-        }))
-        .filter((slice) => slice.valueCents > 0)
-        .sort((a, b) => b.valueCents - a.valueCents)
-        .slice(0, 5),
-    [expenseCategories.data, spentGrossByCategory],
-  );
+  // Donut de categorias: Top 5 individuais + grupo 'Demais categorias' para fechar 100% das despesas brutas
+  const { donutSlices, otherCategoriesRows, totalActiveCategoriesCount } = useMemo(() => {
+    const categories = expenseCategories.data ?? [];
+    const activeRows = categories
+      .map((category) => {
+        const spentGrossCents = spentGrossByCategory.get(category.id) ?? 0;
+        return {
+          category,
+          spentGrossCents,
+          percent: grossExpenseCents > 0 ? (spentGrossCents / grossExpenseCents) * 100 : 0,
+        };
+      })
+      .filter((row) => row.spentGrossCents > 0)
+      .sort((a, b) => b.spentGrossCents - a.spentGrossCents);
+
+    const top5 = activeRows.slice(0, 5);
+    const others = activeRows.slice(5);
+
+    const top5SpentCents = top5.reduce((acc, r) => acc + r.spentGrossCents, 0);
+    // Garante fechamento de 100% com o total de despesas brutas (grossExpenseCents):
+    const othersSpentCents = Math.max(0, grossExpenseCents - top5SpentCents);
+
+    const slices = top5.map((row) => ({
+      key: row.category.id,
+      label: row.category.name,
+      valueCents: row.spentGrossCents,
+      icon: row.category.icon,
+      color: row.category.color,
+      onClick: () => setSelectedCategoryId(row.category.id),
+    }));
+
+    if (others.length > 0 || othersSpentCents > 0) {
+      const othersCount = others.length;
+      slices.push({
+        key: "__other_categories__",
+        label: othersCount > 0 ? `Demais (${othersCount})` : "Demais",
+        valueCents: othersSpentCents,
+        icon: "layers",
+        color: "#64748b",
+        onClick: () => setIsOtherCategoriesOpen(true),
+      });
+    }
+
+    return {
+      donutSlices: slices,
+      otherCategoriesRows: others,
+      totalActiveCategoriesCount: activeRows.length,
+    };
+  }, [expenseCategories.data, spentGrossByCategory, grossExpenseCents]);
 
   // Detalhes da Categoria Selecionada para o Diálogo de Raio-X
   const prevSpentWeightedByCategory = spentByCategoryMap(prevExpensesQuery.data ?? []);
@@ -617,12 +650,19 @@ export function OverviewPage() {
                     <PieChart className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
                     <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">Distribuição por categoria</h2>
                   </div>
-                  <Badge variant="muted" size="xs">{donutSlices.length} categorias</Badge>
+                  <Badge variant="muted" size="xs">
+                    {totalActiveCategoriesCount} {totalActiveCategoriesCount === 1 ? "categoria" : "categorias"}
+                  </Badge>
                 </div>
                 <CategoryDonut
                   slices={donutSlices}
+                  totalCents={grossExpenseCents}
                   onSliceClick={(slice) => {
-                    if (slice.key) setSelectedCategoryId(slice.key);
+                    if (slice.key === "__other_categories__") {
+                      setIsOtherCategoriesOpen(true);
+                    } else if (slice.key) {
+                      setSelectedCategoryId(slice.key);
+                    }
                   }}
                 />
               </section>
@@ -792,6 +832,16 @@ export function OverviewPage() {
             onOpenChange={setIsOthersBudgetOpen}
             month={month}
             rows={otherBudgetRows}
+            onSelectCategory={(catId) => setSelectedCategoryId(catId)}
+          />
+
+          {/* Diálogo Demais Categorias do Donut (Responsivo / BottomSheet no mobile / Modal no desktop) */}
+          <OtherCategoriesDialog
+            open={isOtherCategoriesOpen}
+            onOpenChange={setIsOtherCategoriesOpen}
+            month={month}
+            rows={otherCategoriesRows}
+            totalExpensesCents={grossExpenseCents}
             onSelectCategory={(catId) => setSelectedCategoryId(catId)}
           />
 

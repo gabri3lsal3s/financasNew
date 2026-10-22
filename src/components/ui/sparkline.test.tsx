@@ -16,9 +16,23 @@ describe("Sparkline (F8)", () => {
     expect(container.querySelector("svg")).toBeNull();
   });
 
-  it("não renderiza nada quando todos os valores da série forem zero", () => {
-    const { container } = render(<Sparkline data={[0, 0, 0, 0, 0, 0]} />);
-    expect(container.querySelector("svg")).toBeNull();
+  it("renderiza linha horizontal na base quando todos os valores da série forem zero", () => {
+    const { container } = render(<Sparkline data={[0, 0, 0, 0, 0, 0]} height={40} />);
+    const polyline = container.querySelector("polyline");
+    expect(polyline).not.toBeNull();
+    const points = polyline?.getAttribute("points") ?? "";
+    expect(points.split(" ")).toHaveLength(6);
+    // Na base, y = height - 2 = 38.0
+    expect(points).toContain(",38.0");
+  });
+
+  it("renderiza linha horizontal para série de elemento único", () => {
+    const { container } = render(<Sparkline data={[0]} height={40} />);
+    const polyline = container.querySelector("polyline");
+    expect(polyline).not.toBeNull();
+    const points = polyline?.getAttribute("points") ?? "";
+    expect(points.split(" ")).toHaveLength(2);
+    expect(points).toContain(",38.0");
   });
 
   it("posiciona linha no topo para série constante positiva com folga de 2px", () => {

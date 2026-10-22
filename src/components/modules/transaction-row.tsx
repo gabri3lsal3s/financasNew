@@ -21,6 +21,12 @@ export interface TransactionRowProps {
   badges?: ReactNode;
   onClick?: () => void;
   className?: string;
+  /**
+   * Variante visual da linha:
+   * - "card": caixa individual com fundo bg-surface e cantos arredondados (padrão).
+   * - "flat": fundo transparente sem cantos arredondados, para uso dentro de cards agrupadores com divide-y.
+   */
+  variant?: "card" | "flat";
 }
 
 const kindTone: Record<TransactionRowProps["kind"], MoneyTextProps["tone"]> = {
@@ -49,6 +55,7 @@ export function TransactionRow({
   badges,
   onClick,
   className,
+  variant = "card",
 }: TransactionRowProps) {
   const masked = usePrivacyMask();
 
@@ -83,9 +90,11 @@ export function TransactionRow({
   const content = (
     <div
       className={cn(
-        // Superfície consistente: densidade universal equilibrada (py-2.5 sm:py-2)
-        "flex w-full items-center gap-3 rounded-xl bg-surface px-2 py-2.5 sm:py-2 transition-colors",
-        onClick && "cursor-pointer hover:bg-surface-hover",
+        "flex w-full items-center gap-3 transition-colors",
+        variant === "card"
+          ? "rounded-xl bg-surface px-2 py-2.5 sm:py-2"
+          : "bg-transparent px-3 sm:px-4 py-2.5 sm:py-2",
+        onClick && (variant === "card" ? "cursor-pointer hover:bg-surface-hover" : "cursor-pointer hover:bg-surface-hover/60"),
         className,
       )}
     >

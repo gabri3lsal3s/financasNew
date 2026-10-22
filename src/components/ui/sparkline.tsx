@@ -19,23 +19,22 @@ const DEFAULT_STROKE = "stroke-primary";
 const DEFAULT_FILL = "fill-primary/15";
 
 /** Converte a série em pontos SVG (escala automática com folga de 2px).
- *  Retorna "" se todos os valores forem zero (sem SVG renderizado).
  *  A escala é sempre ancorada em zero: valores positivos ficam acima da linha base.
+ *  Séries zeradas renderizam uma linha horizontal contínua na linha base.
  */
 function toPoints(data: readonly number[], width: number, height: number): string {
   if (data.length === 0) return "";
-  // Série completamente zerada → não renderiza nada
-  if (data.every((v) => v === 0)) return "";
+  const pointsData = data.length === 1 ? [data[0]!, data[0]!] : data;
 
-  const rawMin = Math.min(...data);
-  const rawMax = Math.max(...data);
+  const rawMin = Math.min(...pointsData);
+  const rawMax = Math.max(...pointsData);
   // Ancora a escala em zero para que valores positivos não flutuem
   const min = Math.min(0, rawMin);
   const max = Math.max(0, rawMax);
   // Série constante positiva → coloca linha no topo (máxima visibilidade)
   const range = max - min || 1;
-  const step = data.length > 1 ? width / (data.length - 1) : width;
-  return data
+  const step = pointsData.length > 1 ? width / (pointsData.length - 1) : width;
+  return pointsData
     .map((value, index) => {
       const x = index * step;
       const y = height - 2 - ((value - min) / range) * (height - 4);
@@ -62,6 +61,7 @@ export function Sparkline({
 
   if (points === "") return null;
 
+  const hasNonZero = data.some((v) => v !== 0);
   const areaPoints = `${points} ${width},${height} 0,${height}`;
 
   return (
@@ -71,7 +71,7 @@ export function Sparkline({
       aria-hidden="true"
       className={cn("h-8 w-full", className)}
     >
-      {filled ? <polygon points={areaPoints} className={fillClassName} /> : null}
+      {filled && hasNonZero ? <polygon points={areaPoints} className={fillClassName} /> : null}
       <polyline
         points={points}
         fill="none"

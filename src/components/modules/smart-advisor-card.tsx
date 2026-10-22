@@ -318,21 +318,18 @@ export function SmartAdvisorCard({
         className,
       )}
     >
-      {/* Cabeçalho adaptativo (Regra 12) */}
-      <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between min-w-0">
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+      {/* 1. Barra superior: Categoria e contexto à esquerda | Controles à direita */}
+      <div className="flex items-center justify-between gap-3 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
           <span className="shrink-0 flex items-center justify-center" aria-hidden="true">
             {categoryIcon}
           </span>
-          <Badge variant={categoryBadgeVariant} size="xs" className="shrink-0">
+          <Badge variant={categoryBadgeVariant} size="xs" className="shrink-0 font-medium">
             {categoryBadgeLabel}
           </Badge>
-          <h3 className="text-sm font-semibold text-foreground tracking-tight truncate">
-            {activeInsight.title}
-          </h3>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+        <div className="flex items-center gap-1.5 shrink-0">
           {/* Navegação compacta 1 de N quando houver mais de uma sugestão */}
           {totalCount > 1 && (
             <div className="flex items-center rounded-md border border-border/80 bg-surface-hover/50 px-1 py-0.5">
@@ -342,7 +339,7 @@ export function SmartAdvisorCard({
                 aria-label="Sugestão anterior"
                 sensoryIntent="selection"
                 onClick={handlePrev}
-                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <ChevronLeft className="size-3.5" aria-hidden="true" />
               </Button>
@@ -355,7 +352,7 @@ export function SmartAdvisorCard({
                 aria-label="Próxima sugestão"
                 sensoryIntent="selection"
                 onClick={handleNext}
-                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <ChevronRight className="size-3.5" aria-hidden="true" />
               </Button>
@@ -365,33 +362,41 @@ export function SmartAdvisorCard({
           {/* Botão sutil de dispensar por 30 dias */}
           <Button
             variant="ghost"
-            size="sm"
+            size="xs"
+            aria-label="Dispensar por 30 dias"
+            title="Dispensar por 30 dias"
             sensoryIntent="action"
             onClick={handleDismiss}
-            className="text-xs text-muted-foreground hover:text-foreground h-7 px-2 shrink-0 gap-1"
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0 gap-1 cursor-pointer"
           >
             <X className="size-3.5" aria-hidden="true" />
-            <span>Dispensar por 30 dias</span>
+            <span className="hidden sm:inline">Dispensar por 30 dias</span>
+            <span className="sr-only sm:hidden">Dispensar por 30 dias</span>
           </Button>
         </div>
       </div>
 
-      {/* Descrição contextual */}
-      <p className="text-xs text-muted-foreground leading-relaxed">
-        {activeInsight.description}
-      </p>
+      {/* 2. Conteúdo editorial do insight com tipografia hierárquica */}
+      <div className="flex flex-col gap-1 min-w-0">
+        <h3 className="text-sm font-semibold text-foreground tracking-tight">
+          {activeInsight.title}
+        </h3>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          {activeInsight.description}
+        </p>
+      </div>
 
-      {/* Ações contextuais de 1 toque */}
-      <div className="flex flex-wrap items-center gap-2 pt-1">
+      {/* 3. Ações contextuais de 1 toque */}
+      <div className="flex flex-wrap items-center gap-2 pt-0.5">
         {activeInsight.category === "calibration" ? (
           <>
             <Button
               size="sm"
-              variant="outline"
+              variant="default"
               sensoryIntent="success"
               onClick={() => void handleConfirmRecurrence()}
               disabled={isSubmitting}
-              className="gap-1.5 text-xs h-8"
+              className="gap-1.5 text-xs h-8 cursor-pointer"
             >
               <Check className="size-3.5" aria-hidden="true" />
               <span>Sim, monitorar</span>
@@ -402,7 +407,7 @@ export function SmartAdvisorCard({
               sensoryIntent="action"
               onClick={() => void handleIgnoreRecurrence()}
               disabled={isSubmitting}
-              className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground"
+              className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer"
             >
               <X className="size-3.5" aria-hidden="true" />
               <span>Não, foi pontual</span>
@@ -414,7 +419,7 @@ export function SmartAdvisorCard({
             sensoryIntent="success"
             onClick={() => void handleConfirmIncome()}
             disabled={isSubmitting}
-            className="gap-1.5 text-xs h-8"
+            className="gap-1.5 text-xs h-8 cursor-pointer"
           >
             <Check className="size-3.5" aria-hidden="true" />
             <span>{activeInsight.primaryAction.label}</span>
@@ -422,11 +427,11 @@ export function SmartAdvisorCard({
         ) : activeInsight.primaryAction ? (
           <Button
             size="sm"
-            variant="outline"
+            variant="default"
             sensoryIntent="selection"
             onClick={handleActionClick}
             disabled={isSubmitting}
-            className="gap-1.5 text-xs h-8"
+            className="gap-1.5 text-xs h-8 cursor-pointer"
           >
             <span>{activeInsight.primaryAction.label}</span>
             <ChevronRight className="size-3.5" aria-hidden="true" />

@@ -1,7 +1,6 @@
 import { useNavigate, useSearchParams } from "react-router";
 import { useCallback, useMemo, useState } from "react";
 import { ArrowLeftRight, Calendar, ChevronDown, Download, Plus, Search, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -40,11 +39,15 @@ function ExpenseRow({
 }) {
   const title = expense.description || category?.name || "Despesa";
   const subtitle =
-    recurrenceLabel ?? (expense.installments_total > 1 ? `${expense.installment_number}/${expense.installments_total}` : undefined);
+    recurrenceLabel ??
+    (expense.installments_total > 1
+      ? `${expense.installment_number}/${expense.installments_total}`
+      : category?.name && expense.description
+        ? category.name
+        : undefined);
   return (
     <TransactionRow
       title={title}
-      date={expense.date}
       subtitle={subtitle}
       amountCents={Math.round(expense.value * 100)}
       reportWeight={expense.report_weight}
@@ -52,6 +55,7 @@ function ExpenseRow({
       icon={category?.icon}
       iconColor={category?.color}
       onClick={onClick}
+      variant="flat"
     />
   );
 }
@@ -70,17 +74,19 @@ function IncomeRow({
   onClick?: () => void;
 }) {
   const title = income.description || category?.name || "Receita";
+  const subtitle =
+    recurrenceLabel ?? (category?.name && income.description ? category.name : undefined);
   return (
     <TransactionRow
       title={title}
-      date={income.date}
-      subtitle={recurrenceLabel}
+      subtitle={subtitle}
       amountCents={Math.round(income.value * 100)}
       reportWeight={income.report_weight}
       kind="income"
       icon={category?.icon}
       iconColor={category?.color}
       onClick={onClick}
+      variant="flat"
     />
   );
 }
@@ -423,37 +429,23 @@ export function TransactionListPage() {
           }
         />
       ) : (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-3.5 sm:gap-4">
           {feedGroups.map((group) => (
             <section
               key={group.date}
               aria-label={`Lançamentos de ${formatDateBR(group.date)}`}
-              className="flex flex-col gap-2"
+              className="rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden"
             >
-              <div className="flex items-center justify-between border-b border-border/40 pb-2 pt-1 px-1">
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                    <Calendar className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                    <span>{formatDateBR(group.date)}</span>
-                  </div>
-                  <span className="text-[11px] font-medium text-muted-foreground/80">
-                    ({group.items.length} {group.items.length === 1 ? "lançamento" : "lançamentos"})
-                  </span>
+              <div className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-surface-hover/25 border-b border-border/50">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <Calendar className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                  <span>{formatDateBR(group.date)}</span>
                 </div>
-                <Badge
-                  variant={group.netCents > 0 ? "positive" : group.netCents < 0 ? "negative" : "muted"}
-                  size="sm"
-                  className="font-semibold"
-                >
-                  <MoneyText
-                    cents={group.netCents}
-                    tone={group.netCents > 0 ? "positive" : group.netCents < 0 ? "negative" : "default"}
-                    sign="auto"
-                    className="text-[11px]"
-                  />
-                </Badge>
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  ({group.items.length} {group.items.length === 1 ? "lançamento" : "lançamentos"})
+                </span>
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="divide-y divide-border/40">
                 {group.items.map((item) => (
                   <HighlightRow key={item.id} highlightId={highlightId} id={item.id}>
                     {item.kind === "income" && item.rawIncome ? (
@@ -473,6 +465,34 @@ export function TransactionListPage() {
                     ) : null}
                   </HighlightRow>
                 ))}
+              </div>
+              {/* Barra de rodapé com soma total e soma ponderada */}
+              <div className="flex items-center justify-between px-3 sm:px-4 py-1.5 sm:py-2 bg-surface-hover/20 border-t border-border/50 text-xs">
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  Total do dia
+                </span>
+                <div className="flex items-center gap-2 sm:gap-3 tabular-nums">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="text-[11px] text-muted-foreground">Total:</span>
+                    <MoneyText
+                      cents={group.netCents}
+                      tone={group.netCents > 0 ? "positive" : group.netCents < 0 ? "negative" : "default"}
+                      sign="auto"
+                      className="text-xs font-semibold"
+                    />
+                  </span>
+                  {group.netCents !== group.weightedNetCents ? (
+                    <span className="inline-flex items-center gap-1 border-l border-border/60 pl-2 sm:pl-3">
+                      <span className="text-[11px] text-muted-foreground">Ponderado:</span>
+                      <MoneyText
+                        cents={group.weightedNetCents}
+                        tone={group.weightedNetCents > 0 ? "positive" : group.weightedNetCents < 0 ? "negative" : "default"}
+                        sign="auto"
+                        className="text-xs font-medium text-muted-foreground"
+                      />
+                    </span>
+                  ) : null}
+                </div>
               </div>
             </section>
           ))}

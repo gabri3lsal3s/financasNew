@@ -23,4 +23,10 @@ describe("Checkbox", () => {
     render(<Checkbox checked onCheckedChange={vi.fn()} />);
     expect(screen.getByRole("checkbox")).toBeChecked();
   });
+
+  it("possui dimensões estritas contra deformação por estilos de button de containers pais", () => {
+    render(<Checkbox checked={false} onCheckedChange={vi.fn()} label="Opção com cabeçalho" />);
+    const checkboxBtn = screen.getByRole("checkbox");
+    expect(checkboxBtn).toHaveClass("!size-4", "!min-w-4", "!max-w-4", "shrink-0");
+  });
 });

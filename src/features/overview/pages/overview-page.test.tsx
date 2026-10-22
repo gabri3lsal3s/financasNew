@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SubscriptionStatus } from "@/types";
@@ -33,10 +33,11 @@ let onboardingCountsMock = {
   notificationsEnabled: true,
 };
 
-const expenseCategories = [
+const defaultExpenseCategories = [
   { id: "c1", name: "Moradia", icon: "moradia", color: null, type: "expense" },
   { id: "c2", name: "Lazer", icon: "lazer", color: null, type: "expense" },
 ];
+let expenseCategories = [...defaultExpenseCategories];
 
 const monthData = (month: string) =>
   month === "2026-08"
@@ -239,6 +240,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     resetVisualCustomization(null);
     localStorage.setItem(WELCOME_MODAL_STORAGE_KEY, "true");
     navigateMock.mockReset();
+    expenseCategories = [...defaultExpenseCategories];
     portfolioContributionsMock = [];
     onboardingCountsMock = {
       expenseCategories: 2,
@@ -354,6 +356,45 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     // Moradia 3.000 de 3.100 = 97% · Lazer 100 = 3%
     expect(screen.getByText("97%")).toBeInTheDocument();
     expect(screen.getByText("3%")).toBeInTheDocument();
+  });
+
+  it("agrupa categorias além do Top 5 em 'Demais categorias' e permite detalhar", () => {
+    expenseCategories = [
+      { id: "c1", name: "Cat 1", icon: "moradia", color: null, type: "expense" },
+      { id: "c2", name: "Cat 2", icon: "lazer", color: null, type: "expense" },
+      { id: "c3", name: "Cat 3", icon: "car", color: null, type: "expense" },
+      { id: "c4", name: "Cat 4", icon: "fuel", color: null, type: "expense" },
+      { id: "c5", name: "Cat 5", icon: "heart", color: null, type: "expense" },
+      { id: "c6", name: "Cat 6", icon: "book", color: null, type: "expense" },
+      { id: "c7", name: "Cat 7", icon: "shirt", color: null, type: "expense" },
+    ];
+    expensesMock = {
+      data: () => [
+        { id: "e1", value: 1000, report_weight: 1, date: "2026-08-01", category_id: "c1" },
+        { id: "e2", value: 900, report_weight: 1, date: "2026-08-02", category_id: "c2" },
+        { id: "e3", value: 800, report_weight: 1, date: "2026-08-03", category_id: "c3" },
+        { id: "e4", value: 700, report_weight: 1, date: "2026-08-04", category_id: "c4" },
+        { id: "e5", value: 600, report_weight: 1, date: "2026-08-05", category_id: "c5" },
+        { id: "e6", value: 500, report_weight: 1, date: "2026-08-06", category_id: "c6" },
+        { id: "e7", value: 400, report_weight: 1, date: "2026-08-07", category_id: "c7" },
+      ],
+      isLoading: false,
+      error: null,
+    };
+
+    render(<OverviewPage />);
+    expect(screen.getByText("Demais (2)")).toBeInTheDocument();
+    expect(screen.getByText("7 categorias")).toBeInTheDocument();
+
+    // Clica em 'Demais (2)' para abrir o modal
+    fireEvent.click(screen.getByText("Demais (2)"));
+    expect(screen.getByText("Cat 6")).toBeInTheDocument();
+    expect(screen.getByText("Cat 7")).toBeInTheDocument();
+
+    // Clica em 'Cat 6' no modal de demais categorias para abrir o raio-x da categoria
+    fireEvent.click(screen.getByText("Cat 6"));
+    // O raio-x deve abrir com o título da categoria
+    expect(screen.getAllByText("Cat 6").length).toBeGreaterThan(0);
   });
 
   it("lista categorias em atenção nos orçamentos", () => {

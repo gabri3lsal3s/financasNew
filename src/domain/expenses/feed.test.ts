@@ -145,13 +145,35 @@ describe("domain feed", () => {
     expect(groups[0]?.incomeCents).toBe(120000);
     expect(groups[0]?.expenseCents).toBe(5590 + 30000); // 35590
     expect(groups[0]?.netCents).toBe(120000 - 35590);
+    expect(groups[0]?.weightedNetCents).toBe(120000 - 35590);
 
     // Grupo 2: 2026-10-10
     expect(groups[1]?.date).toBe("2026-10-10");
     expect(groups[1]?.netCents).toBe(-15050);
+    expect(groups[1]?.weightedNetCents).toBe(-15050);
 
     // Grupo 3: 2026-10-05
     expect(groups[2]?.date).toBe("2026-10-05");
     expect(groups[2]?.netCents).toBe(500000);
+    expect(groups[2]?.weightedNetCents).toBe(500000);
+  });
+
+  it("deve computar weightedNetCents respeitando reportWeight parcial", () => {
+    const items = buildUnifiedFeedItems(
+      [
+        {
+          ...mockExpenses[0]!,
+          id: "exp-weighted",
+          value: 100,
+          report_weight: 0.5,
+          date: "2026-10-20",
+        },
+      ],
+      [],
+      "all",
+    );
+    const groups = groupFeedByDay(items);
+    expect(groups[0]?.netCents).toBe(-10000);
+    expect(groups[0]?.weightedNetCents).toBe(-5000);
   });
 });

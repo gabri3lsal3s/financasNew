@@ -182,7 +182,7 @@ export interface DailySeriesAccumulator {
 /**
  * Acumula o fluxo diário (output de buildDailyFlow) em séries paralelas
  * para os micro-sparklines dos KPIs da Visão Geral (F8).
- * Mês zerado → todos os arrays são preenchidos com zeros (Sparkline não renderiza).
+ * Mês zerado → todos os arrays são preenchidos com zeros (Sparkline renderiza linha horizontal na base).
  */
 export function buildDailyCumulativeSeries(days: readonly DailyFlowItem[]): DailySeriesAccumulator {
   let accIncome = 0;

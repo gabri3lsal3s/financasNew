@@ -101,7 +101,7 @@ export function KpiCard({ label, value, cents, tone = "default", hint, icon, spa
         </p>
       </div>
       <div className="min-w-0">
-        {spark && spark.length > 1 ? (
+        {spark && spark.length > 0 ? (
           <div className="mt-1.5" aria-hidden="true">
             <Sparkline data={spark} height={22} strokeClassName={sparkTone[tone]} />
           </div>

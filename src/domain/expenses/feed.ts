@@ -24,6 +24,7 @@ export interface TransactionFeedItem {
 export interface DailyFeedGroup {
   date: string;
   netCents: number;
+  weightedNetCents: number;
   incomeCents: number;
   expenseCents: number;
   items: TransactionFeedItem[];
@@ -118,6 +119,7 @@ export function groupFeedByDay(items: readonly TransactionFeedItem[]): DailyFeed
       currentGroup = {
         date: item.date,
         netCents: 0,
+        weightedNetCents: 0,
         incomeCents: 0,
         expenseCents: 0,
         items: [],
@@ -129,9 +131,11 @@ export function groupFeedByDay(items: readonly TransactionFeedItem[]): DailyFeed
     if (item.kind === "income") {
       currentGroup.incomeCents += item.amountCents;
       currentGroup.netCents += item.amountCents;
+      currentGroup.weightedNetCents += item.weightedCents;
     } else {
       currentGroup.expenseCents += item.amountCents;
       currentGroup.netCents -= item.amountCents;
+      currentGroup.weightedNetCents -= item.weightedCents;
     }
   }
 

@@ -30,8 +30,8 @@ export function HighlightRow({ highlightId, id, children, className }: Highlight
     <div
       ref={ref}
       className={cn(
-        "scroll-mt-24 rounded-xl transition-[box-shadow,background-color] duration-300",
-        active && "bg-primary/10 ring-2 ring-primary shadow-xs",
+        "scroll-mt-24 transition-[box-shadow,background-color] duration-300",
+        active && "bg-primary/10 ring-2 ring-inset ring-primary z-10 relative",
         className,
       )}
     >

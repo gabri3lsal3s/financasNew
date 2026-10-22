@@ -67,7 +67,7 @@ function ModularLicenseCard({ moduleAccess }: ModularLicenseCardProps) {
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <ShieldCheck className="size-4 text-portfolio" aria-hidden="true" />
+          <ShieldCheck className="size-4 text-muted-foreground" aria-hidden="true" />
           <span>Licença Modular Personalizada</span>
         </CardTitle>
       </CardHeader>
