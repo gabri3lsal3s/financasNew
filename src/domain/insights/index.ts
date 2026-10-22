@@ -56,5 +56,20 @@ export type {
 } from "./diagnostics";
 export { resolveCategorySemantics, findBestMatchingCategory } from "./category-semantics";
 export type { CategorySemantics, CategoryNature } from "./category-semantics";
+export {
+  generateSmartAdvisorInsights,
+  filterAndRankAdvisorInsights,
+  SMART_ADVISOR_DISMISSALS_KEY,
+  SMART_ADVISOR_LAST_DISMISSED_DAY_KEY,
+  DEFAULT_DISMISS_DAYS,
+} from "./advisor";
+export type {
+  SmartAdvisorCategory,
+  SmartAdvisorAction,
+  SmartAdvisorInsight,
+  GenerateSmartAdvisorInsightsInput,
+  FilterAndRankAdvisorInsightsOptions,
+} from "./advisor";
+
 
 

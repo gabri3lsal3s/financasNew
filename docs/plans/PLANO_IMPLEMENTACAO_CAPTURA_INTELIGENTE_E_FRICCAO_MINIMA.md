@@ -287,7 +287,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 **Objetivo:** Levar os insights para a Visão Geral em um microcard com ações de 1 toque, política de discrição antirruído, permitindo confirmar rendas e ensinar o motor a calibrar sua precisão.
 
 #### Tarefas da Fase 5:
-- [ ] **Tarefa 5.1 — Hook Unificado `useSmartAdvisorInsights` com Política de Cooldown:**
+- [x] **Tarefa 5.1 — Hook Unificado `useSmartAdvisorInsights` com Política de Cooldown:**
   - Criar `src/features/overview/hooks/use-smart-advisor-insights.ts` cruzando despesas, rendas, orçamentos, feedback do usuário e histórico de dismiss.
   - **Matriz de Prioridade:**
     1. *Crítica:* Cobrança duplicada ou conta esquecida com risco de juros.
