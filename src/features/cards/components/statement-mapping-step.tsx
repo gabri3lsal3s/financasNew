@@ -29,10 +29,15 @@ export function StatementMappingStep({
   const previewRows = rows.slice(0, 5);
   const maxCols = Math.max(...previewRows.map((r) => r.cells.length), 3);
 
-  const columnOptions = Array.from({ length: maxCols }, (_, i) => ({
-    value: i.toString(),
-    label: `Coluna ${i + 1}`,
-  }));
+  const headerCells = hasHeader && rows.length > 0 ? rows[0]?.cells ?? [] : [];
+  const columnOptions = Array.from({ length: maxCols }, (_, i) => {
+    const rawHeader = headerCells[i]?.trim();
+    const headerSuffix = rawHeader ? ` (${rawHeader})` : "";
+    return {
+      value: i.toString(),
+      label: `Coluna ${i + 1}${headerSuffix}`,
+    };
+  });
 
   const handleApply = () => {
     onConfirmMapping({

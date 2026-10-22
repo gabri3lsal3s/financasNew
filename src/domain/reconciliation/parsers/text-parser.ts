@@ -346,12 +346,127 @@ function parseNaturalLanguageLine(
 }
 
 /**
+ * Detecta se uma linha isolada é exclusivamente uma data.
+ */
+function isDateOnlyLine(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+
+  // Se for explicitamente parcela (ex: "1/3", "02/10", "Parcela 1 de 3"), NÃO é linha de data
+  if (/^(?:parcela\s+)?\d{1,2}\s*(?:\/|de)\s*\d{1,2}$/i.test(t)) {
+    const slashParts = t.split("/").map((p) => parseInt(p.trim(), 10));
+    if (slashParts.length === 2 && slashParts[0] && slashParts[1]) {
+      if (slashParts[0] <= 12 && slashParts[1] <= 12) {
+        return false;
+      }
+    }
+  }
+
+  // Data ISO: YYYY-MM-DD
+  if (/^\d{4}[/.-]\d{2}[/.-]\d{2}$/.test(t)) return true;
+  // DD/MM/YYYY ou DD/MM/YY
+  if (/^\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}$/.test(t)) return true;
+  // DD/MM com dia > 12 e mês <= 12
+  if (/^\d{1,2}[/.-]\d{1,2}$/.test(t)) {
+    const parts = t.split(/[/.-]/).map((p) => parseInt(p.trim(), 10));
+    if (parts[0] && parts[1] && parts[0] > 12 && parts[0] <= 31 && parts[1] <= 12) {
+      return true;
+    }
+  }
+  // 14 OUT, 14 de Outubro, 14 de out de 2026, 14/ago/2026
+  if (/^\d{1,2}(?:º|o)?\s*(?:de\s+|[/-])?\s*[a-zç]{3,9}(?:\s*(?:de\s+|[/-])?\s*\d{2,4})?$/i.test(t)) return true;
+  // Relativos: hoje, ontem, anteontem
+  if (/^(?:hoje|ontem|anteontem)$/i.test(t)) return true;
+
+  return false;
+}
+
+/**
+ * Detecta se uma linha isolada é exclusivamente um valor financeiro.
+ */
+function isAmountOnlyLine(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  return (
+    /^(?:[+-]|R\$|\$)?\s*-?\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?\s*(?:[dDcC+-])?$/i.test(t) ||
+    /^(?:[+-]|R\$|\$)?\s*-?\d+(?:\.\d{1,2})?\s*(?:[dDcC+-])?$/i.test(t)
+  );
+}
+
+/**
+ * Agrupa sequências de linhas consecutivas que formam uma transação multilinha
+ * (comum ao copiar de apps de bancos como Nubank, Itaú e Inter).
+ */
+function groupMultilineBlocks(lines: string[]): string[] {
+  const nonBlank = lines.map((l) => l.trim()).filter((l) => l.length > 0 && !isStatementNoiseOrSummary(l));
+  const grouped: string[] = [];
+  let i = 0;
+
+  while (i < nonBlank.length) {
+    const current = nonBlank[i]!;
+
+    // Padrão 1: Linha de data seguida por descrição e valor (opcionalmente com parcela intermediária)
+    if (isDateOnlyLine(current) && i + 1 < nonBlank.length) {
+      const next1 = nonBlank[i + 1]!;
+
+      // Data + Valor
+      if (isAmountOnlyLine(next1)) {
+        grouped.push(`${current} Transação ${next1}`);
+        i += 2;
+        continue;
+      }
+
+      // Data + Descrição
+      if (!isDateOnlyLine(next1) && !isAmountOnlyLine(next1)) {
+        // Data + Descrição + Valor
+        if (i + 2 < nonBlank.length && isAmountOnlyLine(nonBlank[i + 2]!)) {
+          const amountLine = nonBlank[i + 2]!;
+          grouped.push(`${current} ${next1} ${amountLine}`);
+          i += 3;
+          continue;
+        }
+
+        // Data + Descrição + Parcela + Valor (ex.: Nubank/Itaú parcelado)
+        if (
+          i + 3 < nonBlank.length &&
+          /^(?:parcela\s+)?\d{1,2}\s*(?:\/|de)\s*\d{1,2}$/i.test(nonBlank[i + 2]!) &&
+          isAmountOnlyLine(nonBlank[i + 3]!)
+        ) {
+          const installmentLine = nonBlank[i + 2]!;
+          const amountLine = nonBlank[i + 3]!;
+          grouped.push(`${current} ${next1} ${installmentLine} ${amountLine}`);
+          i += 4;
+          continue;
+        }
+      }
+    }
+
+    // Padrão 2: Descrição primeiro, depois data e valor
+    if (!isDateOnlyLine(current) && !isAmountOnlyLine(current) && i + 2 < nonBlank.length) {
+      const next1 = nonBlank[i + 1]!;
+      const next2 = nonBlank[i + 2]!;
+      if (isDateOnlyLine(next1) && isAmountOnlyLine(next2)) {
+        grouped.push(`${next1} ${current} ${next2}`);
+        i += 3;
+        continue;
+      }
+    }
+
+    grouped.push(current);
+    i += 1;
+  }
+
+  return grouped;
+}
+
+/**
  * Parser de texto livre copiado da web / internet banking / linguagem natural (Quick-Paste).
- * Analisa tanto dados tabulares quanto frases em linguagem natural,
+ * Analisa tanto dados tabulares quanto frases em linguagem natural e blocos multilinhas,
  * ignorando automaticamente cabeçalhos e linhas ruidosas.
  */
 export function parseTextToRows(rawText: string, defaultYear = new Date().getFullYear()): RawParsedRow[] {
-  const lines = rawText.split(/\r?\n/);
+  const rawLines = rawText.split(/\r?\n/);
+  const lines = groupMultilineBlocks(rawLines);
   const rows: RawParsedRow[] = [];
 
   let rowIndex = 0;

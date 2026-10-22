@@ -113,9 +113,8 @@ describe("InsightsPage (motor de insights §3.7)", () => {
     // Streaming com valor estável em 3 meses → assinatura.
     expect(screen.getByText("Streaming")).toBeInTheDocument();
 
-    const ignoreButtons = screen.getAllByRole("button", { name: /Ignorar/ });
-    expect(ignoreButtons.length).toBeGreaterThan(0);
-    await user.click(ignoreButtons[0]!);
+    const ignoreButton = screen.getByRole("button", { name: "Ignorar Streaming" });
+    await user.click(ignoreButton);
     expect(setFeedbackMock).toHaveBeenCalledWith({
       occurrenceKey: expect.any(String),
       decision: "ignore",

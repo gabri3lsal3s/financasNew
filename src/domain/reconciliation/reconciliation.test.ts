@@ -311,6 +311,45 @@ ganhei 200 reais de pix da maria
         installment: { current: 1, total: 3 },
       });
     });
+
+    it("interpreta blocos multilinhas copiados de aplicativos de bancos (Nubank / Itaú / Inter)", () => {
+      const bankAppText = `
+14 OUT
+Uber *Trip
+R$ 18,90
+
+15 OUT
+Supermercado Pão de Açúcar
+Parcela 1 de 3
+125,50
+
+Magazine Luiza
+20/10/2026
+R$ 350,00
+`;
+      const result = parseStatementInput(bankAppText, "pasted-nubank.txt", {
+        cardId: "card-1",
+        competenceMonth: "2026-10",
+      });
+
+      expect(result.transactions).toHaveLength(3);
+      expect(result.transactions[0]).toMatchObject({
+        date: "2026-10-14",
+        cleanDescription: "Trip",
+        amountCents: 1890,
+      });
+      expect(result.transactions[1]).toMatchObject({
+        date: "2026-10-15",
+        cleanDescription: "Supermercado Pão de Açúcar",
+        amountCents: 12550,
+        installment: { current: 1, total: 3 },
+      });
+      expect(result.transactions[2]).toMatchObject({
+        date: "2026-10-20",
+        cleanDescription: "Magazine Luiza",
+        amountCents: 35000,
+      });
+    });
   });
 
   describe("Scoring e Reconciliação", () => {

@@ -327,10 +327,11 @@ function StatementImportContent({ card, competenceMonth, onClose }: StatementImp
     if (toImport.length === 0) return;
 
     setError(null);
+    const fallbackCategory = defaultCategoryId || categories[0]?.id || "";
     const payload = toImport.map((it) => ({
       date: it.transaction.date,
       value: it.transaction.amountCents / 100,
-      category_id: it.selectedCategoryId,
+      category_id: it.selectedCategoryId || fallbackCategory,
       description: it.transaction.cleanDescription,
       installments_total: it.transaction.installment?.total ?? 1,
       installment_number: it.transaction.installment?.current ?? 1,

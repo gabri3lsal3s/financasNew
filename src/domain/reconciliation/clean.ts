@@ -67,6 +67,7 @@ export function cleanDescription(raw: string): string {
     .replace(/\s*\b\d{1,2}\s*DE\s*\d{1,2}\b/gi, "")
     .replace(/\s*\d{1,2}\/\d{1,2}\b/g, "")
     .replace(/\s*\b(?:parcelado\s+em\s+|em\s+)?\d{1,2}\s*(?:x|vezes)\b/gi, "")
+    .replace(/\s*\(\s*\)/g, "")
     .replace(/\b(?:POS|TERM|TERM\.|NSU|DOC|AUT|AUT\.)\s*[:.-]?\s*\d{3,10}\b/gi, "")
     .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, "")
     .replace(CITY_SUFFIX_REGEX, "")
