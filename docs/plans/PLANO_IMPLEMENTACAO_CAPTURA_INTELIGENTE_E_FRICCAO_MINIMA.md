@@ -309,7 +309,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes de renderização nos 4 estados e disparo sensorial (`triggerSensory`).
   - *Commit:* `feat(modules): criar componente SmartAdvisorCard com acoes de 1 toque e dismiss`
 
-- [ ] **Tarefa 5.3 — Persistência do Feedback do Usuário:**
+- [x] **Tarefa 5.3 — Persistência do Feedback do Usuário:**
   - Conectar as respostas de calibração à tabela `insight_feedback` via Supabase/RPC, garantindo que o motor recalcule imediatamente e elimine falsos positivos para aquele usuário.
   - *Teste & Verificação:* Testes de integração da mutation de feedback.
   - *Commit:* `feat(insights): persistir feedback de aprendizado ativo do usuario`

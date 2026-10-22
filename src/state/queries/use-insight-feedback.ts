@@ -5,7 +5,7 @@ import { pushToast } from "@/services/toast";
 import type { FeedbackDecision } from "@/domain/insights/feedback";
 import { STATIC_GC_TIME, STALE_TIMES } from "@/state/cache-policy";
 
-const feedbackKey = ["insight-feedback"] as const;
+export const feedbackKey = ["insight-feedback"] as const;
 
 /** Mapa occurrence_key → decisão persistida (aprendizado do usuário). */
 export function useFeedback() {
@@ -23,22 +23,46 @@ export function useFeedback() {
   });
 }
 
+/**
+ * Mutation de persistência de feedback do usuário com atualização otimista (Fase 5 — Tarefa 5.3).
+ *
+ * Atualiza o cache imediatamente (onMutate) para recalcular os motores de insights e Visão Geral
+ * sem latência, com rollback automático em caso de falha de rede e invalidação de agregados.
+ */
 export function useSetFeedback() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ occurrenceKey, decision }: { occurrenceKey: string; decision: FeedbackDecision | null }) =>
       setFeedback(occurrenceKey, decision),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: feedbackKey });
+    onMutate: async ({ occurrenceKey, decision }) => {
+      await queryClient.cancelQueries({ queryKey: feedbackKey });
+      const previous = queryClient.getQueryData<Record<string, FeedbackDecision>>(feedbackKey);
+
+      queryClient.setQueryData<Record<string, FeedbackDecision>>(feedbackKey, (old = {}) => {
+        if (decision === null) {
+          const next = { ...old };
+          delete next[occurrenceKey];
+          return next;
+        }
+        return { ...old, [occurrenceKey]: decision };
+      });
+
+      return { previous };
     },
-    // Falha não pode ser silenciosa (padrão das demais mutações): o toast
-    // avisa e a decisão pode ser tentada de novo.
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(feedbackKey, context.previous);
+      }
       pushToast({
         title: "Não foi possível salvar a avaliação",
         description: getErrorMessage(error),
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: feedbackKey });
+      void queryClient.invalidateQueries({ queryKey: ["insights"] });
+      void queryClient.invalidateQueries({ queryKey: ["overview"] });
     },
   });
 }
