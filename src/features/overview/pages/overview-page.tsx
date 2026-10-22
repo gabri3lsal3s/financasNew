@@ -20,6 +20,7 @@ import {
   PendingSuggestionsCard,
   AutoRegisteredBanner,
   AndroidProBanner,
+  SmartAdvisorCard,
 } from "@/components/modules";
 import { isDemoItem } from "@/services/demo-data";
 import {
@@ -491,6 +492,8 @@ export function OverviewPage() {
           {hasDemoData && <DemoModeBanner />}
 
           <DashboardAlertsCarousel items={alertItems} />
+
+          <SmartAdvisorCard />
 
           {subscription.isReadOnly && <ReadOnlyBanner />}
 

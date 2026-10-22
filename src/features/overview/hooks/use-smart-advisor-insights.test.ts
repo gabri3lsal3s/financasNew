@@ -32,6 +32,7 @@ vi.mock("@/state", () => ({
   useFeedback: () => ({ data: {}, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSetFeedback: () => ({ mutateAsync: mutateFeedbackMock }),
   useCreateIncome: () => ({ mutateAsync: mutateCreateIncomeMock }),
+  useDeleteIncome: () => ({ mutateAsync: vi.fn() }),
 }));
 
 describe("useSmartAdvisorInsights", () => {

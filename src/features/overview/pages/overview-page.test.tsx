@@ -220,6 +220,8 @@ vi.mock("@/state", () => ({
   useHasDemoData: () => ({ data: false, isLoading: false, isError: false }),
   useLoadDemoData: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useClearDemoData: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useFeedback: () => ({ data: {}, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useSetFeedback: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("OverviewPage — visão consolidada (§3.6)", () => {

@@ -22,6 +22,7 @@ import {
   useBudgets,
   useCategories,
   useCreateIncome,
+  useDeleteIncome,
   useExpenses,
   useFeedback,
   useIncomes,
@@ -190,6 +191,7 @@ export function useSmartAdvisorInsights(
 
   const setFeedbackMutation = useSetFeedback();
   const createIncomeMutation = useCreateIncome();
+  const deleteIncomeMutation = useDeleteIncome();
 
   // Estados locais para injeção em testes (opcional)
   const [localDismissals, setLocalDismissals] = useState<Record<string, number> | undefined>(
@@ -437,7 +439,7 @@ export function useSmartAdvisorInsights(
       date?: string;
     }) => {
       const value = payload.valueCents / 100;
-      await createIncomeMutation.mutateAsync({
+      const created = await createIncomeMutation.mutateAsync({
         description: payload.name,
         value,
         category_id: payload.categoryId,
@@ -453,9 +455,22 @@ export function useSmartAdvisorInsights(
       pushToast({
         title: "Entrada confirmada",
         description: `Renda de ${payload.name} registrada com sucesso.`,
+        action: {
+          label: "Desfazer",
+          onClick: () => {
+            if (created?.id) {
+              void deleteIncomeMutation.mutateAsync(created.id);
+              triggerSensory("action");
+              pushToast({
+                title: "Entrada desfeita",
+                description: `Renda de ${payload.name} foi removida.`,
+              });
+            }
+          },
+        },
       });
     },
-    [createIncomeMutation, todayISOStr, rankedInsight?.themeKey, dismiss],
+    [createIncomeMutation, deleteIncomeMutation, todayISOStr, rankedInsight?.themeKey, dismiss],
   );
 
   const isLoading =

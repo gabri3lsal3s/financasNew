@@ -298,7 +298,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes de hook simulando cooldown, dismiss e ordenação por criticidade.
   - *Commit:* `feat(overview): criar hook de insights proativos com politica de cooldown e discricao`
 
-- [ ] **Tarefa 5.2 — Componente `SmartAdvisorCard` na Home:**
+- [x] **Tarefa 5.2 — Componente `SmartAdvisorCard` na Home:**
   - Criar `src/components/modules/smart-advisor-card.tsx` respeitando as regras do Design System:
     - Borda canônica `border-border/80 bg-surface shadow-xs`.
     - Ícones temáticos `lucide-react` da escala `size-4`.
