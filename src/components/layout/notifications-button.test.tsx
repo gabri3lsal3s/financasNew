@@ -18,7 +18,7 @@ describe("NotificationsButton", () => {
   beforeEach(() => {
     localStorage.clear();
     mockUseOnboardingCounts.mockReturnValue({
-      data: { expenseCategories: 5, incomeCategories: 5, cards: 1, transactions: 1 },
+      data: { expenseCategories: 5, incomeCategories: 5, cards: 1, transactions: 1, notificationsEnabled: true },
     });
   });
   it("renderiza o sininho com badge de contagem quando há pendências", () => {

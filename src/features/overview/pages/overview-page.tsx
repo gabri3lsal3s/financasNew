@@ -22,8 +22,10 @@ import {
   AndroidProBanner,
   SmartAdvisorCard,
   QuickAporteCard,
+  OnboardingCard,
 } from "@/components/modules";
 import { isDemoItem } from "@/services/demo-data";
+import { isOnboardingComplete } from "@/domain/onboarding";
 import {
   budgetLimitsByCategory,
   isInheritedLimit,
@@ -62,9 +64,10 @@ import {
   usePortfolioContributions,
   useRealCashBalance,
   useUserSubscription,
+  useOnboardingCounts,
 } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
-import { useVisualCustomization, useApkPromo } from "@/hooks";
+import { useVisualCustomization, useApkPromo, useOnboardingDismissed } from "@/hooks";
 import { CashCheckpointDialog } from "@/components/modules/cash-checkpoint-dialog";
 import { cn } from "@/lib/utils";
 import { CategoryBreakdownDialog, OtherBudgetsDialog } from "../components";
@@ -100,6 +103,13 @@ export function OverviewPage() {
   const cardPaymentsQuery = useAllCardPayments();
   const contributionsQuery = usePortfolioContributions();
   const realCashData = useRealCashBalance(today);
+  const onboardingQuery = useOnboardingCounts();
+  const { isDismissed: isOnboardingDismissed, dismiss: dismissOnboarding } = useOnboardingDismissed();
+
+  const showOnboarding =
+    !isOnboardingDismissed && onboardingQuery?.data
+      ? !isOnboardingComplete(onboardingQuery.data)
+      : false;
 
   // Detecção de dados de demonstração ([Exemplo]) para banner informativo
   const hasDemoData = useMemo(() => {
@@ -495,6 +505,10 @@ export function OverviewPage() {
           <DashboardAlertsCarousel items={alertItems} />
 
           <SmartAdvisorCard />
+
+          {showOnboarding && !hasDemoData && onboardingQuery?.data ? (
+            <OnboardingCard counts={onboardingQuery.data} onDismiss={dismissOnboarding} />
+          ) : null}
 
           {subscription.isReadOnly && <ReadOnlyBanner />}
 

@@ -47,7 +47,7 @@ export function NotificationsPopover({ children, open, onOpenChange }: Notificat
 
   const showOnboarding =
     !isDismissed && onboardingQuery?.data ? !isOnboardingComplete(onboardingQuery.data) : false;
-  const onboardingProg = onboardingQuery?.data ? onboardingProgress(onboardingQuery.data) : { done: 0, total: 4 };
+  const onboardingProg = onboardingQuery?.data ? onboardingProgress(onboardingQuery.data) : { done: 0, total: 5 };
 
   const effectiveTotalCount = totalCount + (showOnboarding ? 1 : 0);
 

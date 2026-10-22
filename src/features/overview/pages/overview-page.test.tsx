@@ -24,6 +24,13 @@ vi.mock("react-router", () => ({
 
 const navigateMock = vi.fn();
 let portfolioContributionsMock: { id: string; asset_id: string | null; date: string; amount: number; notes: string | null }[] = [];
+let onboardingCountsMock = {
+  expenseCategories: 2,
+  incomeCategories: 1,
+  cards: 1,
+  transactions: 3,
+  notificationsEnabled: true,
+};
 
 const expenseCategories = [
   { id: "c1", name: "Moradia", icon: "moradia", color: null, type: "expense" },
@@ -199,7 +206,7 @@ vi.mock("@/state", () => ({
     error: null,
   }),
   useOnboardingCounts: () => ({
-    data: { expenseCategories: 2, incomeCategories: 1, cards: 1, transactions: 3 },
+    data: onboardingCountsMock,
     isLoading: false,
     isError: false,
     error: null,
@@ -231,6 +238,13 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     resetVisualCustomization(null);
     navigateMock.mockReset();
     portfolioContributionsMock = [];
+    onboardingCountsMock = {
+      expenseCategories: 2,
+      incomeCategories: 1,
+      cards: 1,
+      transactions: 3,
+      notificationsEnabled: true,
+    };
     realCashBalanceMock = {
       ...defaultRealCashBalanceMock,
       cashBalance: { ...defaultRealCashBalanceMock.cashBalance },
@@ -570,6 +584,24 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     await user.click(rebalanceButton);
 
     expect(navigateMock).toHaveBeenCalledWith("/investments?tab=aporte&valor=150000");
+  });
+
+  it("renderiza OnboardingCard na Home quando o checklist inicial estiver incompleto (Fase 6 — Tarefa 6.3)", () => {
+    onboardingCountsMock = {
+      expenseCategories: 1,
+      incomeCategories: 0,
+      cards: 0,
+      transactions: 0,
+      notificationsEnabled: false,
+    };
+    render(<OverviewPage />);
+    expect(screen.getByText("Configure sua conta")).toBeInTheDocument();
+    expect(screen.getByText("Ativar Leitor Automático de Notificações")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Seu banco não notificou uma transferência? Basta tocar em Compartilhar Comprovante para o Guia Financeiro.",
+      ),
+    ).toBeInTheDocument();
   });
 });
 

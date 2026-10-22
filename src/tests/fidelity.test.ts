@@ -626,9 +626,18 @@ describe("§5.7 — Onboarding de primeiro uso (derivação por dados)", () => {
       incomeCategories: 1,
       cards: 1,
       transactions: 1,
+      notificationsEnabled: true,
     });
-    expect(progress.done).toBe(4);
-    expect(progress.total).toBe(4);
-    expect(isFirstUse({ expenseCategories: 0, incomeCategories: 0, cards: 0, transactions: 0 })).toBe(true);
+    expect(progress.done).toBe(5);
+    expect(progress.total).toBe(5);
+    expect(
+      isFirstUse({
+        expenseCategories: 0,
+        incomeCategories: 0,
+        cards: 0,
+        transactions: 0,
+        notificationsEnabled: false,
+      }),
+    ).toBe(true);
   });
 });

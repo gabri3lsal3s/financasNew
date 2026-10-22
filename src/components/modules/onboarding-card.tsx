@@ -1,14 +1,16 @@
 import { Link } from "react-router";
-import { Check, CreditCard, Receipt, Sparkles, Tag, TrendingUp } from "lucide-react";
+import { Bell, Check, CreditCard, Receipt, Share2, Sparkles, Tag, TrendingUp } from "lucide-react";
 import { Button, Progress } from "@/components/ui";
 import { onboardingProgress, onboardingSteps } from "@/domain/onboarding";
-import type { OnboardingCounts } from "@/domain/onboarding";
+import type { OnboardingCounts, OnboardingStepId } from "@/domain/onboarding";
+import { requestNotificationListenerPermission } from "@/services/native";
+import { triggerSensory } from "@/services/sensory";
 import { useLoadDemoData } from "@/state";
 import { cn } from "@/lib/utils";
 
 const STEP_META: Record<
-  string,
-  { label: string; description: string; href: string; icon: typeof Tag }
+  OnboardingStepId,
+  { label: string; description: string; href?: string; icon: typeof Tag }
 > = {
   "expense-category": {
     label: "Crie categorias de despesa",
@@ -34,20 +36,35 @@ const STEP_META: Record<
     href: "/transacoes?novo=transacao",
     icon: Receipt,
   },
+  "bank-notifications": {
+    label: "Ativar Leitor Automático de Notificações",
+    description: "Captura de compras de cartão e Pix em segundo plano.",
+    icon: Bell,
+  },
 };
 
 export interface OnboardingCardProps {
   counts: OnboardingCounts;
   className?: string;
   onDismiss?: () => void;
+  onEnableNotifications?: () => void | Promise<void>;
 }
 
 /** Checklist de configuração inicial (§5.7) — exibido na Visão Geral enquanto o setup está incompleto. */
-export function OnboardingCard({ counts, className }: OnboardingCardProps) {
+export function OnboardingCard({ counts, className, onEnableNotifications }: OnboardingCardProps) {
   const steps = onboardingSteps(counts);
   const progress = onboardingProgress(counts);
   const pending = steps.filter((step) => !step.done);
   const loadDemoMutation = useLoadDemoData();
+
+  const handleEnableNotifications = async () => {
+    triggerSensory("action");
+    if (onEnableNotifications) {
+      await onEnableNotifications();
+      return;
+    }
+    await requestNotificationListenerPermission();
+  };
 
   return (
     <section
@@ -133,16 +150,40 @@ export function OnboardingCard({ counts, className }: OnboardingCardProps) {
                 ) : null}
               </div>
               {!step.done ? (
-                <Link to={meta.href}>
-                  <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs font-medium cursor-pointer">
+                meta.href ? (
+                  <Link to={meta.href}>
+                    <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs font-medium cursor-pointer">
+                      Configurar
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleEnableNotifications}
+                    className="h-7 px-2.5 text-xs font-medium cursor-pointer"
+                  >
                     Configurar
                   </Button>
-                </Link>
+                )
               ) : null}
             </li>
           );
         })}
       </ul>
+
+      {/* Dica educativa de contingência */}
+      <div className="flex items-start gap-2.5 rounded-xl border border-border/80 bg-surface-hover/30 p-3 text-xs text-muted-foreground">
+        <Share2 className="size-4 shrink-0 text-muted-foreground mt-0.5" aria-hidden="true" />
+        <div className="min-w-0">
+          <p className="font-semibold text-foreground text-xs">
+            Dica de contingência
+          </p>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Seu banco não notificou uma transferência? Basta tocar em Compartilhar Comprovante para o Guia Financeiro.
+          </p>
+        </div>
+      </div>
 
       {pending.length === 0 ? (
         <p className="text-xs text-muted-foreground">Setup completo — parabéns! Esta seção será recolhida.</p>

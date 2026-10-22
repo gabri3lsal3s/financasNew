@@ -13,9 +13,16 @@ export interface OnboardingCounts {
   cards: number;
   /** Lançamentos registrados (despesas + rendas). */
   transactions: number;
+  /** Leitor automático de notificações bancárias ativado (Android / nativo). */
+  notificationsEnabled?: boolean;
 }
 
-export type OnboardingStepId = "expense-category" | "income-category" | "card" | "first-transaction";
+export type OnboardingStepId =
+  | "expense-category"
+  | "income-category"
+  | "card"
+  | "first-transaction"
+  | "bank-notifications";
 
 export interface OnboardingStep {
   id: OnboardingStepId;
@@ -28,6 +35,7 @@ const ONBOARDING_STEP_IDS: readonly OnboardingStepId[] = [
   "income-category",
   "card",
   "first-transaction",
+  "bank-notifications",
 ] as const;
 
 /** Checklist derivado das contagens — cada passo vira `done` quando há dados. */
@@ -42,6 +50,8 @@ export function onboardingSteps(counts: OnboardingCounts): OnboardingStep[] {
         return { id, done: counts.cards > 0 };
       case "first-transaction":
         return { id, done: counts.transactions > 0 };
+      case "bank-notifications":
+        return { id, done: Boolean(counts.notificationsEnabled) };
     }
   });
 }
@@ -67,6 +77,7 @@ export function isFirstUse(counts: OnboardingCounts): boolean {
     counts.expenseCategories === 0 &&
     counts.incomeCategories === 0 &&
     counts.cards === 0 &&
-    counts.transactions === 0
+    counts.transactions === 0 &&
+    !counts.notificationsEnabled
   );
 }
