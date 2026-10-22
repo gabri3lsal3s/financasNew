@@ -95,6 +95,28 @@ describe("criticalAlerts (§3.7.1 — prioridade)", () => {
     expect(priorities).toEqual([...priorities].sort((a, b) => a - b));
     expect(alerts.some((a) => a.id === "burn_rate")).toBe(false);
   });
+
+  it("dispara alerta crítico de consumo sem renda quando incomeCents === 0 e expenseCents > 0 (Fase 7 — Tarefa 7.3)", () => {
+    const alerts = criticalAlerts({
+      balanceCents: -150000,
+      incomeCents: 0,
+      expenseCents: 150000,
+      paceRatio: 1,
+      overspentBudgets: 0,
+      burnRatePercent: 0,
+      projectedDeficit: false,
+      savingsRatePercent: 0,
+    });
+
+    const alert = alerts.find((a) => a.id === "burn_rate");
+    expect(alert).toBeDefined();
+    expect(alert?.priority).toBe(4);
+    expect(alert?.severity).toBe("critical");
+    expect(alert?.title).toBe("Consumo sem renda registrada");
+    expect(alert?.description).toContain("sem nenhuma entrada de renda registrada");
+    // Não deve disparar elogio de poupança com renda zero
+    expect(alerts.some((a) => a.id === "poupanca_saudavel")).toBe(false);
+  });
 });
 
 describe("assinaturas (§3.7.2 — 3 sinais + tiers)", () => {

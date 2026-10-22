@@ -95,30 +95,34 @@ export interface DetectIncomeRecurrencesOptions {
   historyMonthsLimit?: number;
 }
 
-export type PriceAdjustmentKind = "inflationary" | "plan_change";
+export type PriceAdjustmentKind = "inflationary" | "plan_change" | "consumption_variation";
 
 export interface PriceAdjustment {
   oldCents: number;
   newCents: number;
   percentIncrease: number;
-  /** Tipo de reajuste: inflacionário (10%–30%) ou mudança de plano (>50%). */
+  /** Tipo de reajuste: inflacionário (10%–30%), mudança de plano (>50%) ou variação sazonal de consumo. */
   kind: PriceAdjustmentKind;
   /** Sinaliza se o reajuste é inflacionário (10%–30%). */
   isInflationary: boolean;
   /** Sinaliza se o reajuste é mudança de plano (>50%). */
   isPlanChange: boolean;
-  /** Rótulo editorial canônico (ex.: "Reajuste inflacionário" ou "Mudança de plano"). */
+  /** Sinaliza se o reajuste é variação sazonal de consumo (concessionárias de energia/água/gás). */
+  isConsumptionVariation?: boolean;
+  /** Rótulo editorial canônico (ex.: "Reajuste inflacionário", "Mudança de plano" ou "Variação de consumo"). */
   label: string;
 }
 
 /**
- * Classifica a natureza do reajuste de preço (Fase 4, Tarefa 4.3).
- *   • Inflacionário: aumento típico de 10% a 30% (reajuste anual / inflação).
+ * Classifica a natureza do reajuste de preço (Fase 4, Tarefa 4.3; Fase 7, Tarefa 7.3).
+ *   • Variação de consumo: oscilações de concessionárias de serviços essenciais (energia/água/gás).
+ *   • Inflacionário: aumento típico de 10% a 30% em planos fixos (reajuste anual / inflação).
  *   • Mudança de plano: aumento expressivo >= 50% (ex.: upgrade de plano / adição de dependentes).
  */
 export function classifyPriceAdjustment(
   oldCents: number,
   newCents: number,
+  segment?: ServiceSegment,
 ): PriceAdjustment | null {
   if (oldCents <= 0 || newCents <= oldCents) return null;
 
@@ -126,6 +130,19 @@ export function classifyPriceAdjustment(
   const percentIncrease = Math.round(increaseRatio * 100);
 
   if (percentIncrease < 10) return null;
+
+  if (segment === "utilities") {
+    return {
+      oldCents,
+      newCents,
+      percentIncrease,
+      kind: "consumption_variation",
+      isInflationary: false,
+      isPlanChange: false,
+      isConsumptionVariation: true,
+      label: "Variação de consumo",
+    };
+  }
 
   const isPlanChange = percentIncrease >= 50;
   const isInflationary = percentIncrease >= 10 && percentIncrease <= 30;
@@ -139,6 +156,7 @@ export function classifyPriceAdjustment(
     kind,
     isInflationary,
     isPlanChange,
+    isConsumptionVariation: false,
     label,
   };
 }
@@ -448,7 +466,12 @@ export function estimateNextDueDate(
     targetYearMonth = `${y}-${String(m).padStart(2, "0")}`;
   }
 
-  const paddedDay = String(Math.min(typicalDay, 28)).padStart(2, "0");
+  const [targetYearStr, targetMonthStr] = targetYearMonth.split("-");
+  const targetYear = parseInt(targetYearStr!, 10);
+  const targetMonth = parseInt(targetMonthStr!, 10);
+  const daysInTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
+  const actualDay = Math.min(typicalDay, daysInTargetMonth);
+  const paddedDay = String(actualDay).padStart(2, "0");
   const nextDueDate = `${targetYearMonth}-${paddedDay}`;
 
   const todayDate = new Date(`${todayISO.slice(0, 10)}T00:00:00`);
@@ -549,17 +572,6 @@ export function detectRecurrences(
       todayISO,
     );
 
-    // Diagnóstico de reajuste de preço com diferenciação inflacionária vs mudança de plano.
-    let priceAdjustment: PriceAdjustment | null = null;
-    if (monthlyTotals.length >= 2) {
-      const previousTotals = monthlyTotals.slice(0, -1);
-      const prevMedian = medianOf(previousTotals);
-      const latestTotal = monthlyTotals[monthlyTotals.length - 1] ?? 0;
-      if (prevMedian > 0 && latestTotal > prevMedian) {
-        priceAdjustment = classifyPriceAdjustment(prevMedian, latestTotal);
-      }
-    }
-
     // subscription: usa a árvore de decisão de assinaturas (nome conhecido
     // no catálogo OU categoria de assinatura são sinais fortes).
     const subscription = classifySubscription({
@@ -569,11 +581,28 @@ export function detectRecurrences(
       monthlyValuesCents: monthlyTotals,
     });
 
-    // Regra estrita antirruído de duplicidade (Fase 4, Tarefa 4.3)
-    const isSubscription = subscription !== null;
+    const segment = subscription?.segment ?? segmentOf(cleanDisplayName, categoryIcons[0], first.categoryName);
+
+    // Diagnóstico de reajuste de preço com diferenciação inflacionária vs mudança de plano vs variação de consumo (Fase 7, Tarefa 7.3).
+    let priceAdjustment: PriceAdjustment | null = null;
+    if (monthlyTotals.length >= 2) {
+      const previousTotals = monthlyTotals.slice(0, -1);
+      const prevMedian = medianOf(previousTotals);
+      const latestTotal = monthlyTotals[monthlyTotals.length - 1] ?? 0;
+      if (prevMedian > 0 && latestTotal > prevMedian) {
+        priceAdjustment = classifyPriceAdjustment(prevMedian, latestTotal, segment);
+      }
+    }
+
+    // Regra estrita antirruído de duplicidade (Fase 4, Tarefa 4.3; Fase 7, Tarefa 7.3):
+    // Restringe alerta em dias diferentes estritamente a assinaturas do catálogo com valor fixo (excluindo utilities).
+    const isFixedValueSubscription =
+      subscription !== null &&
+      subscription.segment !== "utilities" &&
+      (subscription.signs.knownName || subscription.signs.subscriptionCategory);
     const duplicateChargesThisMonth = detectDuplicateChargesInMonth(
       latestExpenses,
-      isSubscription,
+      isFixedValueSubscription,
     );
 
     if (subscription !== null && months.length >= 2) {
@@ -781,7 +810,10 @@ export function detectIncomeRecurrences(
         missingThisMonth = false;
       } else {
         // Não recebido ainda no mês corrente -> esperado no mês corrente
-        const paddedDay = String(Math.min(typicalDayOfMonth, 28)).padStart(2, "0");
+        const [curYearStr, curMonthStr] = currentMonth.split("-");
+        const daysInCurrentMonth = new Date(parseInt(curYearStr!, 10), parseInt(curMonthStr!, 10), 0).getDate();
+        const actualIncomeDay = Math.min(typicalDayOfMonth, daysInCurrentMonth);
+        const paddedDay = String(actualIncomeDay).padStart(2, "0");
         expectedDate = `${currentMonth}-${paddedDay}`;
         const todayDate = new Date(`${todayISO.slice(0, 10)}T00:00:00`);
         const nextDate = new Date(`${expectedDate}T00:00:00`);

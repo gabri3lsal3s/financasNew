@@ -841,4 +841,91 @@ describe("domain/insights/recurrences — Detecção Dual de Rendas (Fase 4, Tar
       expect(detected[0]?.averageCents).toBe(600000);
     });
   });
+
+  describe("Correção de Calendário de Vencimentos & Blindagem Antirruído de Alertas (Fase 7 — Tarefa 7.3)", () => {
+    describe("estimateNextDueDate com total real de dias do mês", () => {
+      it("preserva dia 31 para meses de 31 dias", () => {
+        // Julho tem 31 dias
+        const result = estimateNextDueDate(31, "2026-06", "2026-07-05");
+        expect(result.nextDueDate).toBe("2026-07-31");
+      });
+
+      it("limita ao dia 30 para meses de 30 dias", () => {
+        // Setembro tem 30 dias
+        const result = estimateNextDueDate(31, "2026-08", "2026-09-05");
+        expect(result.nextDueDate).toBe("2026-09-30");
+      });
+
+      it("limita ao dia 28 em fevereiro de ano comum", () => {
+        // Fevereiro 2026 tem 28 dias
+        const result = estimateNextDueDate(31, "2026-01", "2026-02-05");
+        expect(result.nextDueDate).toBe("2026-02-28");
+      });
+
+      it("limita ao dia 29 em fevereiro de ano bissexto", () => {
+        // Fevereiro 2024 tem 29 dias (bissexto)
+        const result = estimateNextDueDate(31, "2024-01", "2024-02-05");
+        expect(result.nextDueDate).toBe("2024-02-29");
+      });
+    });
+
+    describe("Blindagem Antirruído de Duplicidades", () => {
+      it("NÃO sinaliza duplicidade para concessionárias públicas em dias diferentes no mesmo mês", () => {
+        const enelCharges: ExpenseLike[] = [
+          { id: "e1", description: "Enel", month: "2026-06", date: "2026-06-10", valueCents: 15000, categoryId: "moradia" },
+          { id: "e2", description: "Enel", month: "2026-07", date: "2026-07-05", valueCents: 15000, categoryId: "moradia" },
+          { id: "e3", description: "Enel", month: "2026-07", date: "2026-07-28", valueCents: 15000, categoryId: "moradia" },
+        ];
+
+        const occurrences = detectRecurrences(enelCharges);
+        const enel = occurrences.find((o) => normalizeText(o.name).includes("enel"));
+        expect(enel).toBeDefined();
+        // Concessionárias não possuem valor fixo contratual — duas contas em dias diferentes não é duplicidade de assinatura
+        expect(enel?.duplicateChargesThisMonth).toBeUndefined();
+      });
+    });
+
+    describe("Diferenciação de Reajuste Contratual vs Variação Sazonal de Consumo", () => {
+      it("rotula como 'Variação de consumo' para concessionárias do segmento utilities", () => {
+        const adj = classifyPriceAdjustment(10000, 12500, "utilities"); // +25%
+        expect(adj).toBeDefined();
+        expect(adj?.kind).toBe("consumption_variation");
+        expect(adj?.label).toBe("Variação de consumo");
+        expect(adj?.isConsumptionVariation).toBe(true);
+        expect(adj?.isInflationary).toBe(false);
+        expect(adj?.isPlanChange).toBe(false);
+      });
+
+      it("rotula como 'Reajuste inflacionário' para planos fixos com aumento entre 10% e 30%", () => {
+        const adj = classifyPriceAdjustment(10000, 12000, "streaming"); // +20%
+        expect(adj).toBeDefined();
+        expect(adj?.kind).toBe("inflationary");
+        expect(adj?.label).toBe("Reajuste inflacionário");
+        expect(adj?.isInflationary).toBe(true);
+      });
+
+      it("rotula como 'Mudança de plano' para planos fixos com aumento >= 50%", () => {
+        const adj = classifyPriceAdjustment(10000, 16000, "streaming"); // +60%
+        expect(adj).toBeDefined();
+        expect(adj?.kind).toBe("plan_change");
+        expect(adj?.label).toBe("Mudança de plano");
+        expect(adj?.isPlanChange).toBe(true);
+      });
+
+      it("integra 'Variação de consumo' no detectRecurrences para concessionárias", () => {
+        const expenses: ExpenseLike[] = [
+          { id: "e1", description: "Enel", month: "2026-05", valueCents: 10000, categoryId: "moradia" },
+          { id: "e2", description: "Enel", month: "2026-06", valueCents: 10000, categoryId: "moradia" },
+          { id: "e3", description: "Enel", month: "2026-07", valueCents: 13000, categoryId: "moradia" }, // +30%
+        ];
+
+        const occurrences = detectRecurrences(expenses);
+        const enel = occurrences.find((o) => normalizeText(o.name).includes("enel"));
+        expect(enel).toBeDefined();
+        expect(enel?.priceAdjustment).toBeDefined();
+        expect(enel?.priceAdjustment?.kind).toBe("consumption_variation");
+        expect(enel?.priceAdjustment?.label).toBe("Variação de consumo");
+      });
+    });
+  });
 });

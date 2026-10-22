@@ -22,6 +22,8 @@ export interface CriticalAlertInput {
   balanceCents: number;
   /** Renda do período (centavos). */
   incomeCents: number;
+  /** Despesas do período (centavos) — opcional para validação direta de consumo sem renda. */
+  expenseCents?: number;
   /** Ritmo de gastos: acumulado ÷ esperado (1 = no trilho). */
   paceRatio: number;
   /** Quantidade de orçamentos estourados (> 100%). */
@@ -75,13 +77,22 @@ export function criticalAlerts(input: CriticalAlertInput): InsightAlert[] {
     });
   }
 
-  if (input.burnRatePercent > BURN_LIMIT) {
+  const effectiveExpenseCents =
+    input.expenseCents != null
+      ? input.expenseCents
+      : input.incomeCents - input.balanceCents;
+
+  const hasNoIncomeWithExpenses = input.incomeCents === 0 && effectiveExpenseCents > 0;
+
+  if (hasNoIncomeWithExpenses || input.burnRatePercent > BURN_LIMIT) {
     alerts.push({
       id: "burn_rate",
       priority: 4,
       severity: "critical",
-      title: "Burn rate alto",
-      description: `As despesas consomem ${input.burnRatePercent.toFixed(0)}% da renda — acima de 85%.`,
+      title: hasNoIncomeWithExpenses ? "Consumo sem renda registrada" : "Burn rate alto",
+      description: hasNoIncomeWithExpenses
+        ? "Existem despesas no período sem nenhuma entrada de renda registrada."
+        : `As despesas consomem ${input.burnRatePercent.toFixed(0)}% da renda — acima de 85%.`,
     });
   }
 
@@ -95,7 +106,7 @@ export function criticalAlerts(input: CriticalAlertInput): InsightAlert[] {
     });
   }
 
-  if (input.savingsRatePercent >= PRAISE_MIN_SAVINGS) {
+  if (input.incomeCents > 0 && input.savingsRatePercent >= PRAISE_MIN_SAVINGS) {
     alerts.push({
       id: "poupanca_saudavel",
       priority: 6,

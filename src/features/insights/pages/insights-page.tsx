@@ -198,6 +198,7 @@ export function InsightsPage({
   const alerts = criticalAlerts({
     balanceCents,
     incomeCents,
+    expenseCents,
     paceRatio,
     overspentBudgets,
     burnRatePercent: burnRate,
