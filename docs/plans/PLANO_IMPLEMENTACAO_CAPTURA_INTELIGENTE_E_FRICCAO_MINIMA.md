@@ -355,7 +355,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes visuais da tabela em telas pequenas (<400px) e largas.
   - *Commit:* `feat(landing): alinhar comparacao de plataformas aos diferenciais reais de captura`
 
-- [ ] **Tarefa 6.3 — Setup Guiado de Permissões no Onboarding (`OnboardingCard.tsx`):**
+- [x] **Tarefa 6.3 — Setup Guiado de Permissões no Onboarding (`OnboardingCard.tsx`):**
   - Inserir no checklist de setup inicial da Home:
     - *"Ativar Leitor Automático de Notificações"* com link direto para a tela de configurações do sistema Android (`Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS`).
     - Dica educativa de contingência: *"Seu banco não notificou uma transferência? Basta tocar em Compartilhar Comprovante para o Guia Financeiro"*.
