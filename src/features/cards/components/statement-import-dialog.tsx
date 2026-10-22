@@ -146,8 +146,26 @@ function StatementImportContent({ card, competenceMonth, onClose }: StatementImp
 
   const handleFileSelect = async (file: File) => {
     try {
-      const buffer = await file.arrayBuffer();
-      handleProcessInput(buffer, file.name);
+      const lowerName = file.name.toLowerCase();
+      let content: string | ArrayBuffer;
+
+      if (lowerName.endsWith(".pdf") || file.type === "application/pdf") {
+        const buffer = await file.arrayBuffer();
+        const { extractText } = await import("unpdf");
+        const { text } = await extractText(buffer);
+        const fullText = Array.isArray(text) ? text.join("\n") : (text ?? "");
+        if (!fullText.trim()) {
+          setError(
+            "Não foi possível extrair o texto da fatura em PDF. Se o arquivo for protegido ou escaneado (imagem), copie o texto da fatura e cole na aba 'Colar Extrato'.",
+          );
+          return;
+        }
+        content = fullText;
+      } else {
+        content = await file.arrayBuffer();
+      }
+
+      handleProcessInput(content, file.name);
     } catch (err) {
       setError(getErrorMessage(err));
     }

@@ -7,64 +7,6 @@
 
 export const STATEMENT_IMPORT_CHUNK_SIZE = 250;
 
-export interface StatementBatchChunk<TExpense, TIncome> {
-  expenses: TExpense[];
-  incomes: TIncome[];
-}
-
-/**
- * Divide coleções de despesas e receitas em lotes sequenciais de tamanho máximo `maxChunkSize`
- * (soma de despesas + receitas em cada lote <= maxChunkSize).
- *
- * @param expenses Lista de despesas a serem particionadas.
- * @param incomes Lista de receitas a serem particionadas.
- * @param maxChunkSize Quantidade máxima de transações combinadas por lote (padrão: 250).
- * @returns Lista de lotes balanceados contendo as fatias correspondentes.
- */
-export function chunkBankStatementBatch<TExpense, TIncome>(
-  expenses: readonly TExpense[],
-  incomes: readonly TIncome[],
-  maxChunkSize: number = STATEMENT_IMPORT_CHUNK_SIZE,
-): StatementBatchChunk<TExpense, TIncome>[] {
-  if (maxChunkSize <= 0) {
-    throw new Error("maxChunkSize deve ser maior que zero.");
-  }
-
-  const totalCount = expenses.length + incomes.length;
-  if (totalCount === 0) {
-    return [];
-  }
-
-  const chunks: StatementBatchChunk<TExpense, TIncome>[] = [];
-  let expenseIndex = 0;
-  let incomeIndex = 0;
-
-  while (expenseIndex < expenses.length || incomeIndex < incomes.length) {
-    let remainingCapacity = maxChunkSize;
-    const chunkExpenses: TExpense[] = [];
-    const chunkIncomes: TIncome[] = [];
-
-    if (expenseIndex < expenses.length) {
-      const takeExpenses = Math.min(remainingCapacity, expenses.length - expenseIndex);
-      chunkExpenses.push(...expenses.slice(expenseIndex, expenseIndex + takeExpenses));
-      expenseIndex += takeExpenses;
-      remainingCapacity -= takeExpenses;
-    }
-
-    if (remainingCapacity > 0 && incomeIndex < incomes.length) {
-      const takeIncomes = Math.min(remainingCapacity, incomes.length - incomeIndex);
-      chunkIncomes.push(...incomes.slice(incomeIndex, incomeIndex + takeIncomes));
-      incomeIndex += takeIncomes;
-    }
-
-    chunks.push({
-      expenses: chunkExpenses,
-      incomes: chunkIncomes,
-    });
-  }
-
-  return chunks;
-}
 
 /**
  * Particiona um array linear genérico em lotes com tamanho máximo especificado.

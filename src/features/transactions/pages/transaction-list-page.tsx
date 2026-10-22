@@ -1,6 +1,6 @@
 import { useNavigate, useSearchParams } from "react-router";
-import { lazy, Suspense, useCallback, useMemo, useState } from "react";
-import { ArrowLeftRight, Calendar, ChevronDown, Download, FileSpreadsheet, Plus, Search, X } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { ArrowLeftRight, Calendar, ChevronDown, Download, Plus, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,12 +24,6 @@ import { serializeUnifiedTransactionsCsv, type ExportUnifiedTransactionRow } fro
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import { IncomeDetailDialog } from "@/features/transactions/components/income-detail-dialog";
 import type { Category, Expense, Income } from "@/types";
-
-const BankStatementImportDialog = lazy(() =>
-  import("@/features/transactions/components/bank-statement-import-dialog").then((m) => ({
-    default: m.BankStatementImportDialog,
-  })),
-);
 
 
 function ExpenseRow({
@@ -97,7 +91,6 @@ export function TransactionListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [selectedIncome, setSelectedIncome] = useState<Income | null>(null);
-  const [isImportOpen, setIsImportOpen] = useState(false);
   const { highlightId } = useHighlightTarget("q");
 
   // Mês derivado: deep-link ?month= (busca §3.9) prevalece; sem param,
@@ -269,15 +262,6 @@ export function TransactionListPage() {
     downloadCsv(`transacoes_${month}_${filterSlug}.csv`, serializeUnifiedTransactionsCsv(rows));
   };
 
-  const handleImportStatement = () => {
-    if (permission.isReadOnlyMode) {
-      setUpgradeContext("Importar Extrato Bancário");
-      setUpgradeOpen(true);
-      return;
-    }
-    setIsImportOpen(true);
-  };
-
   return (
     <div className="flex flex-col gap-6">
       {/* F12 — sem header visual: seletor de mês direto; o botão de novo
@@ -345,14 +329,6 @@ export function TransactionListPage() {
         <Button className="w-full sm:flex-1 gap-1.5" onClick={handleNewTransaction}>
           <Plus className="size-4" aria-hidden="true" />
           Nova transação
-        </Button>
-        <Button
-          variant="outline"
-          className="w-full sm:w-auto gap-1.5"
-          onClick={handleImportStatement}
-        >
-          <FileSpreadsheet className="size-4" aria-hidden="true" />
-          Importar extrato
         </Button>
         <Button
           variant="outline"
@@ -428,7 +404,7 @@ export function TransactionListPage() {
                     ? "Nenhum lançamento recorrente neste mês."
                     : filter === "installments"
                       ? "Nenhum lançamento parcelado neste mês."
-                      : "Registre sua primeira transação do mês ou importe seu extrato bancário."
+                      : "Registre sua primeira transação para acompanhar suas finanças neste mês."
           }
           action={
             isSearching ? (
@@ -441,15 +417,6 @@ export function TransactionListPage() {
                 <Button size="sm" onClick={handleNewTransaction} className="gap-1.5 cursor-pointer">
                   <Plus className="size-4" aria-hidden="true" />
                   Nova transação
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleImportStatement}
-                  className="gap-1.5 cursor-pointer"
-                >
-                  <FileSpreadsheet className="size-4" aria-hidden="true" />
-                  Importar extrato
                 </Button>
               </div>
             )
@@ -549,16 +516,6 @@ export function TransactionListPage() {
           }
         }}
       />
-
-      {isImportOpen && (
-        <Suspense fallback={null}>
-          <BankStatementImportDialog
-            open={isImportOpen}
-            onOpenChange={setIsImportOpen}
-            competenceMonth={month}
-          />
-        </Suspense>
-      )}
 
       <UpgradeDialog
         open={upgradeOpen}

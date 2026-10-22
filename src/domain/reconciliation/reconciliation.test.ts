@@ -350,6 +350,51 @@ R$ 350,00
         amountCents: 35000,
       });
     });
+
+    it("processa texto de fatura bancária em PDF (com cabeçalhos, totais e parcelas)", () => {
+      const pdfExtractedText = `
+BANCO NUBANK S.A. - FATURA DE CARTÃO DE CRÉDITO
+Titular: Gabriel Sales | Período: 01/08/2026 a 31/08/2026
+Vencimento: 10/09/2026 | Total da Fatura: R$ 344,20
+Saldo anterior: R$ 0,00 | Pagamentos: R$ 0,00
+------------------------------------------------------------
+Transações Nacionais
+14/08 Supermercado Pão de Açúcar R$ 125,50
+15/08 Farmácia São Paulo R$ 45,90
+18/08 Uber *Trip R$ 22,80
+20/08 Magazine Luiza Parcela 1 de 3 R$ 150,00
+------------------------------------------------------------
+Total de Lançamentos: R$ 344,20
+Encargos e Tarifas: R$ 0,00
+`;
+      const result = parseStatementInput(pdfExtractedText, "fatura-nubank.pdf", {
+        cardId: "card-1",
+        competenceMonth: "2026-08",
+      });
+
+      expect(result.transactions).toHaveLength(4);
+      expect(result.transactions[0]).toMatchObject({
+        date: "2026-08-14",
+        cleanDescription: "Supermercado Pão de Açúcar",
+        amountCents: 12550,
+      });
+      expect(result.transactions[1]).toMatchObject({
+        date: "2026-08-15",
+        cleanDescription: "Farmácia São Paulo",
+        amountCents: 4590,
+      });
+      expect(result.transactions[2]).toMatchObject({
+        date: "2026-08-18",
+        cleanDescription: "Trip",
+        amountCents: 2280,
+      });
+      expect(result.transactions[3]).toMatchObject({
+        date: "2026-08-20",
+        cleanDescription: "Magazine Luiza",
+        amountCents: 15000,
+        installment: { current: 1, total: 3 },
+      });
+    });
   });
 
   describe("Scoring e Reconciliação", () => {

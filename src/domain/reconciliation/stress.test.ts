@@ -2,32 +2,25 @@ import { describe, expect, it } from "vitest";
 import {
   STATEMENT_IMPORT_CHUNK_SIZE,
   chunkArray,
-  chunkBankStatementBatch,
   parseStatementInput,
-  reconcileBankTransactions,
+  reconcileStatementTransactions,
 } from "./index";
 
 describe("Teste de Estresse de Parsing e Chunking de Extratos (2.000 Linhas)", () => {
   it("faz parsing de extrato CSV de 2.000 transações em menos de 100ms e divide perfeitamente em lotes", () => {
-    // 1. Geração do payload CSV sintético de 2.000 linhas (1.600 despesas e 400 receitas)
+    // 1. Geração do payload CSV sintético de 2.000 linhas
     const csvLines: string[] = ["Data,Descricao,Valor"];
     for (let i = 1; i <= 2000; i++) {
       const day = String((i % 28) + 1).padStart(2, "0");
       const date = `${day}/08/2026`;
-      if (i % 5 === 0) {
-        // Receita (+): R$ 150,00
-        csvLines.push(`${date},Pix Recebido Cliente ${i},150.00`);
-      } else {
-        // Despesa (-): R$ 42,50
-        csvLines.push(`${date},Supermercado Compra ${i},42.50`);
-      }
+      csvLines.push(`${date},Supermercado Compra ${i},42.50`);
     }
     const csvContent = csvLines.join("\n");
 
     // 2. Medição de performance do parser
     const startParse = performance.now();
     const result = parseStatementInput(csvContent, "extrato_massivo_2000.csv", {
-      cardId: "bank_account",
+      cardId: "card-123",
       competenceMonth: "2026-08",
     });
     const parseDurationMs = performance.now() - startParse;
@@ -37,13 +30,12 @@ describe("Teste de Estresse de Parsing e Chunking de Extratos (2.000 Linhas)", (
     // Deve rodar confortavelmente abaixo de 250ms mesmo sob alta carga concorrente
     expect(parseDurationMs).toBeLessThan(250);
 
-    // 4. Reconciliação bancária completa
+    // 4. Reconciliação de fatura de cartão
     const startReconcile = performance.now();
-    const reconciliation = reconcileBankTransactions({
+    const reconciliation = reconcileStatementTransactions({
       statementTransactions: result.transactions,
       existingExpenses: [],
-      existingIncomes: [],
-      categoryPredictionHistory: [],
+      history: [],
       defaultCategoryId: "cat-general",
     });
     const reconcileDurationMs = performance.now() - startReconcile;
@@ -51,38 +43,17 @@ describe("Teste de Estresse de Parsing e Chunking de Extratos (2.000 Linhas)", (
     expect(reconciliation.items).toHaveLength(2000);
     expect(reconcileDurationMs).toBeLessThan(100);
 
-    const expenses = reconciliation.items
-      .filter((it) => it.kind === "expense")
-      .map((it) => it.transaction);
-    const incomes = reconciliation.items
-      .filter((it) => it.kind === "income")
-      .map((it) => it.transaction);
-
-    expect(expenses).toHaveLength(1600);
-    expect(incomes).toHaveLength(400);
-
     // 5. Particionamento em lotes com teto rígido de 250 itens
-    const chunks = chunkBankStatementBatch(expenses, incomes, STATEMENT_IMPORT_CHUNK_SIZE);
+    const chunks = chunkArray(reconciliation.items, STATEMENT_IMPORT_CHUNK_SIZE);
 
     // 2.000 / 250 = exatamente 8 lotes
     expect(chunks).toHaveLength(8);
 
-    const totalProcessed = chunks.reduce(
-      (acc, chunk) => acc + chunk.expenses.length + chunk.incomes.length,
-      0,
-    );
+    const totalProcessed = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
     expect(totalProcessed).toBe(2000);
 
-    // Cada um dos 8 lotes deve ter exatamente 250 itens
-    for (const [idx, chunk] of chunks.entries()) {
-      const chunkSize = chunk.expenses.length + chunk.incomes.length;
-      expect(chunkSize).toBe(250);
-      expect(chunkSize).toBeLessThanOrEqual(STATEMENT_IMPORT_CHUNK_SIZE);
-      expect(chunk.expenses.length).toBeGreaterThanOrEqual(0);
-      expect(chunk.incomes.length).toBeGreaterThanOrEqual(0);
-      // Nenhum lote pode estar vazio
-      expect(chunkSize).toBeGreaterThan(0);
-      void idx;
+    for (const chunk of chunks) {
+      expect(chunk).toHaveLength(250);
     }
   });
 
@@ -163,36 +134,28 @@ ${ofxTrns.join("\n")}
     expect(result.transactions).toHaveLength(2000);
     expect(parseDurationMs).toBeLessThan(100);
 
-    // 4. Reconciliação
-    const reconciliation = reconcileBankTransactions({
+    // 4. Reconciliação de fatura
+    const reconciliation = reconcileStatementTransactions({
       statementTransactions: result.transactions,
       existingExpenses: [],
-      existingIncomes: [],
-      categoryPredictionHistory: [],
+      history: [],
       defaultCategoryId: "cat-general",
     });
 
-    const expenses = reconciliation.items
-      .filter((it) => it.kind === "expense")
-      .map((it) => it.transaction);
-    const incomes = reconciliation.items
-      .filter((it) => it.kind === "income")
-      .map((it) => it.transaction);
-
-    expect(expenses.length + incomes.length).toBe(2000);
+    expect(reconciliation.items).toHaveLength(2000);
 
     // 5. Chunking
-    const chunks = chunkBankStatementBatch(expenses, incomes, 250);
+    const chunks = chunkArray(reconciliation.items, 250);
     expect(chunks).toHaveLength(8);
 
     const totalChunked = chunks.reduce(
-      (acc, c) => acc + c.expenses.length + c.incomes.length,
+      (acc, c) => acc + c.length,
       0,
     );
     expect(totalChunked).toBe(2000);
 
     for (const chunk of chunks) {
-      expect(chunk.expenses.length + chunk.incomes.length).toBe(250);
+      expect(chunk).toHaveLength(250);
     }
   });
 

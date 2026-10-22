@@ -30,6 +30,16 @@ vi.mock("@/state", () => ({
   }),
 }));
 
+vi.mock("unpdf", () => ({
+  extractText: vi.fn().mockResolvedValue({
+    text: [
+      "15/08/2026\tPadaria Estrela\t25,00",
+      "16/08/2026\tSupermercado Dia\t140,50",
+    ],
+    totalPages: 1,
+  }),
+}));
+
 const mockCard: CreditCard = {
   id: "card-test",
   user_id: "user-test",
@@ -435,4 +445,25 @@ describe("StatementImportDialog", () => {
     expect(mutateAsyncMock.mock.calls[1]![0].expenses).toHaveLength(20);
     expect(mutateAsyncMock.mock.calls[1]![0].cardId).toBe(mockCard.id);
   }, 30_000);
+
+  it("processa arquivo PDF de fatura extraindo seu texto via unpdf", async () => {
+    const user = userEvent.setup();
+    render(
+      <StatementImportDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        card={mockCard}
+        competenceMonth="2026-08"
+      />,
+    );
+
+    const file = new File(["dummy pdf content"], "fatura-nubank.pdf", { type: "application/pdf" });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(input).toBeInTheDocument();
+    await user.upload(input, file);
+
+    // Deve avançar para a prévia / mapeamento das linhas extraídas do PDF
+    expect(await screen.findByText("Padaria Estrela")).toBeInTheDocument();
+  });
 });
+

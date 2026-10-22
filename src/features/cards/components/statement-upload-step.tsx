@@ -2,6 +2,9 @@ import { useState } from "react";
 import { ClipboardPaste, FileSpreadsheet, Upload } from "lucide-react";
 import { Button, Dropzone, Tabs, Textarea } from "@/components/ui";
 
+export const STATEMENT_FILE_ACCEPT =
+  ".pdf,.csv,.ofx,.txt,.tsv,application/pdf,text/csv,text/plain,text/comma-separated-values,text/tab-separated-values,application/csv,application/vnd.ms-excel,application/x-ofx,application/ofx,text/ofx,application/octet-stream,*/*";
+
 interface StatementUploadStepProps {
   onFileSelect: (file: File) => void;
   onTextSubmit: (text: string) => void;
@@ -9,7 +12,7 @@ interface StatementUploadStepProps {
 
 /**
  * Passo 1 do Diálogo de Importação de Fatura:
- * Permite selecionar um arquivo (.csv, .ofx, .txt) via Dropzone
+ * Permite selecionar um arquivo (.pdf, .csv, .ofx, .txt) via Dropzone
  * ou colar diretamente o texto do extrato/fatura via Textarea.
  */
 export function StatementUploadStep({ onFileSelect, onTextSubmit }: StatementUploadStepProps) {
@@ -37,15 +40,15 @@ export function StatementUploadStep({ onFileSelect, onTextSubmit }: StatementUpl
         items={[
           {
             value: "file",
-            label: "Arquivo (CSV / OFX)",
+            label: "Arquivo (PDF / CSV / OFX)",
             icon: <FileSpreadsheet className="size-4" aria-hidden />,
             content: (
               <div className="space-y-2 pt-2">
                 <Dropzone
-                  accept=".csv,.ofx,.txt"
+                  accept={STATEMENT_FILE_ACCEPT}
                   maxSizeBytes={10 * 1024 * 1024}
                   onFiles={handleDrop}
-                  hint="Formatos suportados: CSV (Nubank, Inter, C6, Itaú, Bradesco) e OFX bancário nativo"
+                  hint="Formatos suportados: Fatura em PDF, CSV (Nubank, Inter, C6, Itaú, Bradesco) e OFX nativo"
                 />
               </div>
             ),
