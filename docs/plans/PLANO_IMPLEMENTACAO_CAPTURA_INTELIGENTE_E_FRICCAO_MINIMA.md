@@ -417,7 +417,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes cobrindo contas vencendo no dia 31, múltiplas corridas de Uber no mês e despesas com renda zero.
   - *Commit:* `fix(domain/insights): blindar regras de vencimentos duplicidades e burn rate com renda zero`
 
-- [ ] **Tarefa 7.4 — Modal de Auditoria e Drill-Down de Transações na Aba de Recorrências:**
+- [x] **Tarefa 7.4 — Modal de Auditoria e Drill-Down de Transações na Aba de Recorrências:**
   - Em `src/components/modules/insight-list.tsx` e `recurrences-tab.tsx`:
     - Permitir clique em qualquer linha da lista de recorrências para abrir modal de detalhes (`<Modal size="lg" />` respeitando AGENTS.md §18).
     - Exibir o histórico cronológico de lançamentos que compõem aquela recorrência: data, valor monetário, conta/cartão de origem e botão de atalho para editar a despesa.

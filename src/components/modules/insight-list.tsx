@@ -35,6 +35,8 @@ export interface InsightListProps {
   onIgnore?: (key: string) => void;
   onConfirm?: (key: string) => void;
   onRestore?: (key: string) => void;
+  /** Callback ao clicar na linha da ocorrência (drill-down e auditoria). */
+  onItemClick?: (key: string) => void;
   emptyLabel?: string;
   /** Formatação do valor (default BRL). */
   formatAmount?: (cents: number) => string;
@@ -43,7 +45,7 @@ export interface InsightListProps {
 /**
  * Lista de descobertas do motor de insights (§3.7.2/.3) — assinaturas e
  * recorrências com confiança e ações de aprendizado unificadas e animadas
- * (ignorar/confirmar/restaurar).
+ * (ignorar/confirmar/restaurar) + suporte a drill-down em modal de auditoria.
  */
 export function InsightList({
   items,
@@ -51,6 +53,7 @@ export function InsightList({
   onIgnore,
   onConfirm,
   onRestore,
+  onItemClick,
   emptyLabel = "Nenhuma ocorrência encontrada.",
   formatAmount = formatCentsAsBRL,
 }: InsightListProps) {
@@ -64,12 +67,36 @@ export function InsightList({
         const state = feedback[item.key];
         const confirmed = state === "confirm";
         const ignored = state === "ignore";
+        const isClickable = Boolean(onItemClick);
+
         return (
           <li
             key={item.key}
+            role={isClickable ? "button" : undefined}
+            tabIndex={isClickable ? 0 : undefined}
+            aria-label={isClickable ? `Ver detalhes de ${item.title}` : undefined}
+            onClick={() => {
+              if (onItemClick) {
+                triggerSensory("selection");
+                onItemClick(item.key);
+              }
+            }}
+            onKeyDown={
+              isClickable
+                ? (e) => {
+                    if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      triggerSensory("selection");
+                      onItemClick?.(item.key);
+                    }
+                  }
+                : undefined
+            }
             className={cn(
               "flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-3 transition-all duration-200 min-w-0 overflow-hidden",
               ignored && "opacity-60",
+              isClickable &&
+                "cursor-pointer hover:border-border-strong hover:bg-surface-hover/80 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
             )}
           >
             <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -99,7 +126,11 @@ export function InsightList({
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2.5">
+            <div
+              className="flex shrink-0 items-center gap-2.5"
+              onClick={(e) => isClickable && e.stopPropagation()}
+              onKeyDown={(e) => isClickable && e.stopPropagation()}
+            >
               {item.amountCents !== undefined && item.amountCents > 0 ? (
                 <span className="num text-sm font-semibold text-positive-strong">
                   {formatAmount(item.amountCents)}
@@ -115,7 +146,8 @@ export function InsightList({
                 >
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       triggerSensory("action");
                       onRestore?.(item.key);
                     }}
@@ -135,7 +167,8 @@ export function InsightList({
                 >
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       triggerSensory("action");
                       onRestore?.(item.key);
                     }}
@@ -155,7 +188,8 @@ export function InsightList({
                 >
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       triggerSensory("action");
                       onIgnore?.(item.key);
                     }}
@@ -168,7 +202,8 @@ export function InsightList({
                   <span className="h-3.5 w-px bg-border/60" aria-hidden="true" />
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       triggerSensory("success");
                       onConfirm?.(item.key);
                     }}

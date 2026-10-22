@@ -19,6 +19,7 @@ import {
   type ServiceSegment,
 } from "./subscriptions";
 import { normalizeText, stripTemporalSuffixes } from "./shared";
+import type { Expense } from "@/types";
 
 export interface ExpenseLike {
   id: string;
@@ -38,6 +39,14 @@ export interface ExpenseLike {
   installmentGroupId?: string | null;
   /** Recorrência formal (Fase 32) — nunca é "detecção" (já é conhecida). */
   recurrenceId?: string | null;
+  /** Método de pagamento / conta de origem (ex.: credit_card, pix, debit, etc.). */
+  paymentMethod?: string | null;
+  /** ID do cartão de crédito quando aplicável. */
+  cardId?: string | null;
+  /** Nome legível do cartão de crédito associado quando resolvido. */
+  cardName?: string | null;
+  /** Objeto bruto original para integração direta com diálogos de detalhe e edição. */
+  rawExpense?: Expense;
 }
 
 export interface IncomeLike {
@@ -252,6 +261,8 @@ export interface RecurrenceOccurrence {
   duplicateChargesThisMonth?: number;
   /** Avaliação de impacto orçamentário e classificação de gasto vampiro (Fase 4, Tarefa 4.2). */
   budgetImpact?: BudgetImpactEvaluation;
+  /** Lançamentos históricos que compõem esta recorrência (ordenados cronologicamente do mais recente ao mais antigo). */
+  expenses?: ExpenseLike[];
 }
 
 export interface RecurringTotalsResult {
@@ -605,6 +616,12 @@ export function detectRecurrences(
       isFixedValueSubscription,
     );
 
+    const sortedExpenses = [...group].sort((a, b) => {
+      const dateA = a.date ?? `${a.month}-01`;
+      const dateB = b.date ?? `${b.month}-01`;
+      return dateB.localeCompare(dateA);
+    });
+
     if (subscription !== null && months.length >= 2) {
       const variance = varianceOf(monthlyTotals);
       const confidence = confidenceScore({
@@ -630,6 +647,7 @@ export function detectRecurrences(
         missingThisMonth,
         priceAdjustment,
         duplicateChargesThisMonth,
+        expenses: sortedExpenses,
       });
       seen.add(key);
       continue;
@@ -656,6 +674,7 @@ export function detectRecurrences(
         missingThisMonth,
         priceAdjustment,
         duplicateChargesThisMonth,
+        expenses: sortedExpenses,
       });
       seen.add(key);
     }

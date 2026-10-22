@@ -36,6 +36,7 @@ import { getErrorMessage } from "@/services/errors";
 import {
   useBudgets,
   useCategories,
+  useCreditCards,
   useDebts,
   useExpenses,
   useFeedback,
@@ -109,6 +110,7 @@ export function InsightsPage({
   const incomesQuery = useIncomes(month);
   const budgetsQuery = useBudgets();
   const categoriesQuery = useCategories();
+  const cardsQuery = useCreditCards();
   const debtsQuery = useDebts();
   const feedbackQuery = useFeedback();
   const setFeedback = useSetFeedback();
@@ -208,6 +210,7 @@ export function InsightsPage({
 
   // Assinaturas e recorrências: despesas dos últimos 4 meses (sem parcelas).
   const categoryById = new Map((categoriesQuery.data ?? []).map((c) => [c.id, c]));
+  const cardById = new Map((cardsQuery.data ?? []).map((c) => [c.id, c]));
   const allExpenses: ExpenseLike[] = [month0, month1, month2, month3]
     .flatMap((q, index) =>
       (q.data ?? []).map((e) => ({
@@ -221,6 +224,10 @@ export function InsightsPage({
         categoryIcon: categoryById.get(e.category_id)?.icon ?? null,
         installmentGroupId: e.installment_group_id,
         recurrenceId: e.recurrence_id,
+        paymentMethod: e.payment_method,
+        cardId: e.card_id,
+        cardName: e.card_id ? cardById.get(e.card_id)?.name ?? null : null,
+        rawExpense: e,
       })),
     );
   const occurrences = detectRecurrences(allExpenses, { todayISO: todayISOStr });

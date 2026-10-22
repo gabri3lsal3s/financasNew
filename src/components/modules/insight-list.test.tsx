@@ -109,4 +109,55 @@ describe("InsightList", () => {
     render(<InsightList items={[]} emptyLabel="Nenhuma recorrência encontrada." />);
     expect(screen.getByText("Nenhuma recorrência encontrada.")).toBeInTheDocument();
   });
+
+  it("aciona onItemClick ao clicar na linha do item, mas preserva isolamento dos botões de ação", () => {
+    const handleItemClick = vi.fn();
+    const handleConfirm = vi.fn();
+
+    render(
+      <InsightList
+        items={[
+          {
+            key: "sub:netflix",
+            title: "Netflix",
+            amountCents: 3990,
+          },
+        ]}
+        onItemClick={handleItemClick}
+        onConfirm={handleConfirm}
+      />,
+    );
+
+    const titleEl = screen.getByText("Netflix");
+    fireEvent.click(titleEl);
+    expect(handleItemClick).toHaveBeenCalledWith("sub:netflix");
+
+    handleItemClick.mockClear();
+
+    const confirmBtn = screen.getByRole("button", { name: "Confirmar Netflix" });
+    fireEvent.click(confirmBtn);
+    expect(handleConfirm).toHaveBeenCalledWith("sub:netflix");
+    expect(handleItemClick).not.toHaveBeenCalled();
+  });
+
+  it("permite acionamento de onItemClick via teclado (Enter)", () => {
+    const handleItemClick = vi.fn();
+
+    render(
+      <InsightList
+        items={[
+          {
+            key: "sub:spotify",
+            title: "Spotify",
+            amountCents: 2190,
+          },
+        ]}
+        onItemClick={handleItemClick}
+      />,
+    );
+
+    const itemRow = screen.getByRole("button", { name: "Ver detalhes de Spotify" });
+    fireEvent.keyDown(itemRow, { key: "Enter" });
+    expect(handleItemClick).toHaveBeenCalledWith("sub:spotify");
+  });
 });

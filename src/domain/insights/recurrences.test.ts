@@ -926,6 +926,22 @@ describe("domain/insights/recurrences — Detecção Dual de Rendas (Fase 4, Tar
         expect(enel?.priceAdjustment?.kind).toBe("consumption_variation");
         expect(enel?.priceAdjustment?.label).toBe("Variação de consumo");
       });
+
+      it("anexa o histórico de despesas ordenado do mais recente ao mais antigo em cada ocorrência", () => {
+        const expenses: ExpenseLike[] = [
+          { id: "e1", description: "Netflix", date: "2026-05-10", month: "2026-05", valueCents: 3990, categoryId: "lazer" },
+          { id: "e2", description: "Netflix", date: "2026-07-10", month: "2026-07", valueCents: 3990, categoryId: "lazer" },
+          { id: "e3", description: "Netflix", date: "2026-06-10", month: "2026-06", valueCents: 3990, categoryId: "lazer" },
+        ];
+
+        const occurrences = detectRecurrences(expenses);
+        const netflix = occurrences.find((o) => o.name.toLowerCase().includes("netflix"));
+        expect(netflix).toBeDefined();
+        expect(netflix?.expenses).toHaveLength(3);
+        expect(netflix?.expenses?.[0]?.id).toBe("e2"); // 2026-07-10
+        expect(netflix?.expenses?.[1]?.id).toBe("e3"); // 2026-06-10
+        expect(netflix?.expenses?.[2]?.id).toBe("e1"); // 2026-05-10
+      });
     });
   });
 });

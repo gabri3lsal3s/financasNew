@@ -42,6 +42,11 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useCreditCards: () => ({
+    data: [{ id: "card-1", name: "Nubank", limit: 5000 }],
+    isLoading: false,
+    error: null,
+  }),
   useDebts: () => ({
     data: [
       { id: "d1", name: "Receber", type: "receivable", amount: 1000, due_date: "2026-08-20", paid_at: null },

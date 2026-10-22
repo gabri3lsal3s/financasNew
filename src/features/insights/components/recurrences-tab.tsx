@@ -1,9 +1,11 @@
+import { useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, EyeOff, Repeat } from "lucide-react";
 import { Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { InsightList } from "@/components/modules";
 import { SERVICE_SEGMENT_LABELS } from "@/domain/insights";
 import { RECURRENCE_LEVEL_LABELS } from "@/lib/labels";
+import { RecurrenceAuditModal } from "./recurrence-audit-modal";
 import type { RecurrenceOccurrence } from "@/domain/insights/recurrences";
 import type { FeedbackDecision, FeedbackMap } from "@/domain/insights/feedback";
 
@@ -32,6 +34,17 @@ export function RecurrencesTab({
   setShowIgnored,
   onFeedback,
 }: RecurrencesTabProps) {
+  const [selectedOccurrenceKey, setSelectedOccurrenceKey] = useState<string | null>(null);
+
+  const selectedOccurrence = useMemo(() => {
+    if (!selectedOccurrenceKey) return null;
+    return (
+      activeOccurrences.find((o) => o.key === selectedOccurrenceKey) ??
+      ignoredOccurrences.find((o) => o.key === selectedOccurrenceKey) ??
+      null
+    );
+  }, [activeOccurrences, ignoredOccurrences, selectedOccurrenceKey]);
+
   return (
     <div className="flex flex-col gap-4">
       {/* Card de Resumo de Recorrências */}
@@ -118,6 +131,7 @@ export function RecurrencesTab({
           onIgnore={(key) => onFeedback(key, "ignore")}
           onConfirm={(key) => onFeedback(key, "confirm")}
           onRestore={(key) => onFeedback(key, null)}
+          onItemClick={(key) => setSelectedOccurrenceKey(key)}
           emptyLabel="Nenhuma assinatura ou recorrência ativa detectada nos últimos meses."
         />
       </section>
@@ -162,11 +176,21 @@ export function RecurrencesTab({
                 }))}
                 feedback={feedbackMap}
                 onRestore={(key) => onFeedback(key, null)}
+                onItemClick={(key) => setSelectedOccurrenceKey(key)}
               />
             </div>
           ) : null}
         </section>
       ) : null}
+
+      {/* Modal de Auditoria e Drill-Down de Transações */}
+      <RecurrenceAuditModal
+        open={Boolean(selectedOccurrence)}
+        onOpenChange={(next) => {
+          if (!next) setSelectedOccurrenceKey(null);
+        }}
+        occurrence={selectedOccurrence}
+      />
     </div>
   );
 }
