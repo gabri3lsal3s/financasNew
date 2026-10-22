@@ -34,6 +34,61 @@ export interface ExpenseLike {
   recurrenceId?: string | null;
 }
 
+export interface IncomeLike {
+  id: string;
+  description: string | null;
+  /** YYYY-MM */
+  month: string;
+  /** YYYY-MM-DD (opcional — para cálculo do dia típico de recebimento). */
+  date?: string;
+  valueCents: number;
+  categoryId: string;
+  categoryName?: string | null;
+  categoryIcon?: string | null;
+  installmentGroupId?: string | null;
+  /** Recorrência formal (Fase 32) — nunca é "detecção" (já é conhecida). */
+  recurrenceId?: string | null;
+}
+
+export type IncomeProfile = "fixed" | "frequent_client";
+export type IncomeSuggestedAction = "one_touch_confirm" | "open_value_input";
+
+export interface RecurringIncomeOccurrence {
+  /** Chave estável para identificação/feedback. */
+  key: string;
+  /** Nome ou descrição do pagador/cliente. */
+  name: string;
+  /** Perfil da renda: fixa/CLT ou cliente frequente/variável. */
+  profile: IncomeProfile;
+  /** Ação recomendada para a UX de captura rápida (Fase 5). */
+  suggestedAction: IncomeSuggestedAction;
+  /** Meses em que houve recebimento. */
+  months: string[];
+  /** Valor médio mensal (centavos). */
+  averageCents: number;
+  /** Último valor recebido (centavos) — base para sugerir valor preenchido no Perfil 1. */
+  lastValueCents: number;
+  /** Confiança matemática do padrão (0–1). */
+  confidence: number;
+  /** Categoria associada. */
+  categoryId?: string;
+  /** Dia típico do mês em que costuma ser recebido (1–31). */
+  typicalDayOfMonth?: number;
+  /** Data prevista para o próximo recebimento (YYYY-MM-DD). */
+  expectedDate?: string;
+  /** Dias restantes até a data prevista. */
+  daysUntilExpected?: number;
+  /** Verdadeiro se a receita era regular nos meses anteriores e ainda não foi registrada no mês atual após o dia típico. */
+  missingThisMonth?: boolean;
+  /** Coeficiente de variação de valor em relação à mediana (0 = perfeitamente fixo). */
+  valueVariationRatio: number;
+}
+
+export interface DetectIncomeRecurrencesOptions {
+  todayISO?: string;
+  historyMonthsLimit?: number;
+}
+
 export interface PriceAdjustment {
   oldCents: number;
   newCents: number;
@@ -374,6 +429,168 @@ export function detectRecurrences(
       averageCents: Math.round(totals.reduce((acc, v) => acc + v, 0) / totals.length),
       confidence,
       categoryId,
+    });
+  }
+
+  return occurrences.sort((a, b) => b.confidence - a.confidence);
+}
+
+/**
+ * Detecta rendas previsíveis e recorrentes com classificação dual (Fase 4, Tarefa 4.1).
+ *
+ * Classificação Dual:
+ *   • Perfil 1 — Renda Fixa/CLT: Dia típico fixo (± 2 dias) e valor estável (± 10%).
+ *     Sugere confirmação em 1 toque com valor preenchido (`one_touch_confirm`).
+ *   • Perfil 2 — Renda Recorrente de Cliente Frequente (Freelancer): Mesma fonte/cliente habitual,
+ *     frequência mensal e valor flutuante. Sugere card com campo de valor aberto para digitação (`open_value_input`).
+ *
+ * Analisa o histórico dos últimos 3 a 6 meses e detecta `missingThisMonth` para receitas previstas no mês corrente.
+ */
+export function detectIncomeRecurrences(
+  incomes: readonly IncomeLike[],
+  options: DetectIncomeRecurrencesOptions = {},
+): RecurringIncomeOccurrence[] {
+  const { todayISO, historyMonthsLimit = 6 } = options;
+
+  // Filtra parcelas e recorrências formais (já conhecidas pelo usuário)
+  const active = incomes.filter(
+    (i) => i.installmentGroupId == null && i.recurrenceId == null && i.valueCents > 0,
+  );
+
+  // Agrupa por descrição normalizada (fonte / pagador / cliente habitual)
+  const byName = new Map<string, IncomeLike[]>();
+  for (const income of active) {
+    const rawName = (income.description || "").trim();
+    const key = normalizeText(rawName || income.id);
+    if (!key) continue;
+    const list = byName.get(key) ?? [];
+    list.push(income);
+    byName.set(key, list);
+  }
+
+  const occurrences: RecurringIncomeOccurrence[] = [];
+
+  for (const [key, group] of byName) {
+    if (group.length < 2) continue;
+    const first = group[0];
+    if (!first) continue;
+
+    // Agrupa por mês (YYYY-MM)
+    const monthMap = new Map<string, IncomeLike[]>();
+    for (const inc of group) {
+      const list = monthMap.get(inc.month) ?? [];
+      list.push(inc);
+      monthMap.set(inc.month, list);
+    }
+
+    const allMonths = [...monthMap.keys()].sort();
+    if (allMonths.length < 2) continue;
+
+    // Limita à janela histórica recente (3 a 6 meses)
+    const months = allMonths.slice(-historyMonthsLimit);
+    if (months.length < 2) continue;
+
+    // Total de receitas por mês desse pagador
+    const monthlyTotals = months.map((m) => {
+      const monthIncomes = monthMap.get(m) ?? [];
+      return monthIncomes.reduce((acc, i) => acc + i.valueCents, 0);
+    });
+
+    const averageCents = Math.round(
+      monthlyTotals.reduce((acc, v) => acc + v, 0) / monthlyTotals.length,
+    );
+    const median = medianOf(monthlyTotals);
+
+    // Variação de valor: tolerância de ±10% para Renda Fixa
+    const isValueStable = valuesWithinToleranceOfMedian(monthlyTotals, 0.10);
+    const maxDev = median > 0
+      ? Math.max(...monthlyTotals.map((v) => Math.abs(v - median) / median))
+      : 0;
+    const valueVariationRatio = Number(maxDev.toFixed(4));
+
+    // Dia típico e desvios de datas
+    const dates = group.map((i) => i.date).filter(Boolean);
+    const typicalDayOfMonth = calculateTypicalDay(dates);
+
+    const dayNumbers = dates
+      .map((d) => (d ? parseInt(d.slice(8, 10), 10) : NaN))
+      .filter((n) => !Number.isNaN(n) && n >= 1 && n <= 31);
+
+    const dayDeviations = dayNumbers.map((d) => Math.abs(d - typicalDayOfMonth));
+    const avgDayDeviation =
+      dayDeviations.length > 0
+        ? dayDeviations.reduce((a, b) => a + b, 0) / dayDeviations.length
+        : 0;
+    const isDayStable = dayDeviations.length === 0 || avgDayDeviation <= 2;
+
+    // Classificação Dual: Perfil 1 (Fixa/CLT) vs Perfil 2 (Cliente Frequente)
+    const isFixed = isValueStable && isDayStable;
+    const profile: IncomeProfile = isFixed ? "fixed" : "frequent_client";
+    const suggestedAction: IncomeSuggestedAction = isFixed ? "one_touch_confirm" : "open_value_input";
+
+    const variance = varianceOf(monthlyTotals);
+    const baseConfidence = isFixed ? 0.85 : 0.70;
+    const confidence = confidenceScore({
+      base: baseConfidence,
+      monthsHistory: months.length,
+      kind: "recurring",
+      variance,
+    });
+
+    // Último valor recebido
+    const latestMonth = months[months.length - 1];
+    const latestIncomes = latestMonth ? (monthMap.get(latestMonth) ?? []) : [];
+    const lastValueCents =
+      latestIncomes[latestIncomes.length - 1]?.valueCents ??
+      monthlyTotals[monthlyTotals.length - 1] ??
+      averageCents;
+
+    // Previsão temporal e status missingThisMonth
+    let expectedDate: string | undefined;
+    let daysUntilExpected: number | undefined;
+    let missingThisMonth = false;
+
+    if (todayISO && todayISO.length >= 10) {
+      const currentMonth = todayISO.slice(0, 7);
+      const currentDay = parseInt(todayISO.slice(8, 10), 10);
+      const alreadyReceivedThisMonth = latestMonth === currentMonth;
+
+      if (alreadyReceivedThisMonth) {
+        // Já recebido neste mês -> previsão para o mês seguinte
+        const { nextDueDate, daysUntilNextDue } = estimateNextDueDate(
+          typicalDayOfMonth,
+          currentMonth,
+          todayISO,
+        );
+        expectedDate = nextDueDate;
+        daysUntilExpected = daysUntilNextDue;
+        missingThisMonth = false;
+      } else {
+        // Não recebido ainda no mês corrente -> esperado no mês corrente
+        const paddedDay = String(Math.min(typicalDayOfMonth, 28)).padStart(2, "0");
+        expectedDate = `${currentMonth}-${paddedDay}`;
+        const todayDate = new Date(`${todayISO.slice(0, 10)}T00:00:00`);
+        const nextDate = new Date(`${expectedDate}T00:00:00`);
+        daysUntilExpected = Math.round((nextDate.getTime() - todayDate.getTime()) / 86_400_000);
+        missingThisMonth = currentDay > typicalDayOfMonth;
+      }
+    }
+
+    occurrences.push({
+      key: `income:${profile}:${key}`,
+      name: first.description?.trim() || key,
+      profile,
+      suggestedAction,
+      months,
+      averageCents,
+      lastValueCents,
+      confidence,
+      categoryId: first.categoryId,
+      typicalDayOfMonth,
+      expectedDate,
+      daysUntilExpected,
+      missingThisMonth,
+      valueVariationRatio,
     });
   }
 

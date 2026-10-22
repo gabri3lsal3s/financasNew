@@ -246,7 +246,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 **Objetivo:** Aprimorar o motor em `src/domain/insights/` para detectar rendas previsíveis (fixas e de clientes recorrentes), alertar sobre cobranças duplicadas sem falsos positivos e calcular o peso orçamentário de gastos recorrentes.
 
 #### Tarefas da Fase 4:
-- [ ] **Tarefa 4.1 — Suporte a Rendas (`IncomeLike`) com Classificação Dual:**
+- [x] **Tarefa 4.1 — Suporte a Rendas (`IncomeLike`) com Classificação Dual:**
   - Generalizar o algoritmo para processar receitas históricas dos últimos 3 a 6 meses.
   - **Perfil 1 — Renda Fixa/CLT:** Dia típico fixo ($\pm 2$ dias) e valor estável ($\pm 10\%$). Sugere confirmação em 1 toque com valor preenchido.
   - **Perfil 2 — Renda Recorrente de Cliente Frequente (Freelancer):** Mesma fonte/cliente habitual, frequência mensal, valor flutuante. Sugere card com campo de valor aberto para digitação imediata.
