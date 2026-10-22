@@ -24,6 +24,7 @@ import {
   partitionInvoiceExpenses,
   shiftMonth,
 } from "@/domain/cards";
+import { resolveBillCompetence } from "@/domain/competence";
 import { currentMonth, monthLabel } from "@/lib/date";
 import { serializeCardInvoiceCsv, type ExportCardInvoiceRow } from "@/domain/export";
 import { todayISO } from "@/domain/debts";
@@ -386,9 +387,19 @@ export function CardsPage() {
     const detected = detectRecurrences(cardExpenseLikes, { todayISO: todayISOStr });
     const feedbackMap = feedbackQuery.data ?? {};
     const { active } = partitionFeedback(detected, feedbackMap);
+
+    const openInvoiceCompetence = resolveBillCompetence(todayISOStr, selectedCard.closing_day);
+    const openInvoiceExpenses = allExpenses.filter(
+      (e) => e.card_id === selectedCard.id && e.bill_competence === openInvoiceCompetence,
+    );
+
     return calculateCardSubscriptionImpact(selectedCard, active, {
       todayISO: todayISOStr,
       availableLimitCents,
+      existingCardExpenses: openInvoiceExpenses.map((e) => ({
+        description: e.description,
+        installmentGroupId: e.installment_group_id,
+      })),
     });
   }, [selectedCard, allExpenses, categoryById, currentInvoiceSaldoBrutoCents, feedbackQuery.data]);
 

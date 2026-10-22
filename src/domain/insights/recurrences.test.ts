@@ -42,6 +42,16 @@ describe("domain/insights/recurrences — Detecção Dual de Rendas (Fase 4, Tar
       expect(result.nextDueDate).toBe("2026-11-05");
       expect(result.daysUntilNextDue).toBe(24);
       expect(result.missingThisMonth).toBe(false);
+      expect(result.lifecycle).toBe("active");
+    });
+
+    it("identifica como 'lapsed' (descontinuada) e não gera data de cobrança no mês atual quando a última cobrança foi anterior a M-1", () => {
+      // Ex.: hoje é 2026-10-22, mas a despesa parou em 2026-05 (há 5 meses)
+      const result = estimateNextDueDate(22, "2026-05", "2026-10-22");
+      expect(result.lifecycle).toBe("lapsed");
+      expect(result.nextDueDate).toBeUndefined();
+      expect(result.daysUntilNextDue).toBeUndefined();
+      expect(result.missingThisMonth).toBe(false);
     });
   });
 
@@ -987,6 +997,61 @@ describe("domain/insights/recurrences — Detecção Dual de Rendas (Fase 4, Tar
         // Nubank teve 2 cobranças contra 1 do Inter -> Nubank é o cartão habitual
         expect(spotify?.cardId).toBe("card-nubank");
         expect(spotify?.cardName).toBe("Nubank Ultravioleta");
+      });
+
+      it("detecta despesas descontinuadas como 'lapsed' quando cessaram há 2+ meses (Sabor do Bem / Burger King)", () => {
+        const expenses: ExpenseLike[] = [
+          {
+            id: "e1",
+            description: "Almoço Sabor do Bem",
+            date: "2026-04-22",
+            month: "2026-04",
+            valueCents: 9150,
+            categoryId: "alimentacao",
+          },
+          {
+            id: "e2",
+            description: "Almoço Sabor do Bem",
+            date: "2026-05-22",
+            month: "2026-05",
+            valueCents: 9150,
+            categoryId: "alimentacao",
+          },
+          {
+            id: "e3",
+            description: "Google AI Pro",
+            date: "2026-09-07",
+            month: "2026-09",
+            valueCents: 6799,
+            categoryId: "servicos",
+          },
+          {
+            id: "e4",
+            description: "Google AI Pro",
+            date: "2026-10-07",
+            month: "2026-10",
+            valueCents: 6799,
+            categoryId: "servicos",
+          },
+        ];
+
+        // Hoje é 2026-10-22. Sabor do Bem parou em 2026-05 (> M-1).
+        const occurrences = detectRecurrences(expenses, { todayISO: "2026-10-22" });
+
+        const saborDoBem = occurrences.find((o) => o.name.includes("Sabor do Bem"));
+        expect(saborDoBem).toBeDefined();
+        expect(saborDoBem?.lifecycle).toBe("lapsed");
+        expect(saborDoBem?.nextDueDate).toBeUndefined();
+        expect(saborDoBem?.missingThisMonth).toBe(false);
+
+        const googleAI = occurrences.find((o) => o.name.includes("Google AI"));
+        expect(googleAI).toBeDefined();
+        expect(googleAI?.lifecycle).toBe("active");
+        expect(googleAI?.nextDueDate).toBeDefined();
+
+        // calculateRecurringTotals descarta lapsed e soma apenas despesas ativas
+        const totals = calculateRecurringTotals(occurrences);
+        expect(totals.totalRecurringCents).toBe(6799); // Apenas Google AI Pro, sem os R$ 91,50 do Sabor do Bem
       });
     });
   });

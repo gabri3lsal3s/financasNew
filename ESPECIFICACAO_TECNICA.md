@@ -333,11 +333,13 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 - `recurring` — mesma descrição, valor com tolerância ±50%;
 - `similar` — mesma categoria com total ±30%; **categorias agregadoras excluídas** (supermercado, combustível, farmácia…), checagem de dispersão interna, 2+ meses quando há 3+ meses de histórico.
 - Parcelas (`installment_group_id`) são **filtradas** — parcelamento não é recorrência.
+- **Janela de Recência Ativa e Detecção de Churn:** Uma recorrência só é considerada `active` e elegível a projeções futuras no ciclo corrente se o seu último lançamento ocorreu no mês atual ($M$) ou no mês imediatamente anterior ($M-1$). Ocorrências sem cobrança há $\ge 2$ meses recebem `lifecycle: "lapsed"` (descontinuadas/encerradas), não projetam data futura no mês atual nem geram falso alerta de pendência (`missingThisMonth`).
+- **Desduplicação Inteligente no Radar de Faturas:** Se a fatura aberta do cartão já contém um lançamento faturado para o mesmo serviço (ex.: transição de assinatura mensal para plano parcelado em 12x), a previsão avulsa inferida é suprimida para evitar dupla contagem do limite e distorção da projeção.
 
 #### 3.7.4 Confiança e aprendizado
 
 - **Confiança** = base + bônus não-linear por meses de histórico (2m:+0.05 … 5m:+0.28) − penalidade de variância (0.3× subscription, 0.8× recurring).
-- **Aprendizado:** usuário pode **ignorar / confirmar / restaurar** ocorrências; ignorada deixa de contar.
+- **Aprendizado:** usuário pode **ignorar / confirmar / restaurar** ocorrências; ignorada deixa de contar. O aprendizado é consumido tanto na Central de Insights quanto na tela de Cartões de Crédito, com suporte a descarte/corte direto no componente de Radar de Assinaturas.
 
 #### 3.7.5 Desafios e sugestões
 

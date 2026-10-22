@@ -221,6 +221,65 @@ describe("card-radar domain — Impacto de assinaturas por cartão de crédito (
       expect(impact.items).toEqual([]);
       expect(impact.exceedsAvailableLimit).toBe(false);
     });
+
+    it("descarta ocorrências com lifecycle 'lapsed' (descontinuadas há 2+ meses)", () => {
+      const lapsedOccurrences: RecurrenceOccurrence[] = [
+        ...occurrences,
+        {
+          key: "recurring:almoco-sabor-do-bem",
+          name: "Almoço Sabor do Bem",
+          level: "recurring",
+          lifecycle: "lapsed",
+          months: ["2026-04", "2026-05"],
+          averageCents: 9150,
+          confidence: 0.9,
+          cardId: "card-nubank",
+          paymentMethod: "credit_card",
+        },
+      ];
+
+      const impact = calculateCardSubscriptionImpact(cardNubank, lapsedOccurrences, {
+        todayISO: "2026-08-04",
+      });
+
+      // Almoço Sabor do Bem não deve entrar na projeção
+      const saborItem = impact.items.find((i) => i.name === "Almoço Sabor do Bem");
+      expect(saborItem).toBeUndefined();
+      expect(impact.totalProjectedCents).toBe(3990); // apenas Netflix
+    });
+
+    it("suprime previsão se a assinatura já estiver lançada/faturada na fatura aberta (ex.: parcela Vivo Easy)", () => {
+      const vivoOccurrences: RecurrenceOccurrence[] = [
+        {
+          key: "sub:vivo-easy",
+          name: "Vivo Easy",
+          level: "subscription",
+          months: ["2026-06", "2026-07"],
+          averageCents: 4500,
+          confidence: 0.95,
+          typicalDayOfMonth: 3,
+          nextDueDate: "2026-08-08",
+          cardId: "card-nubank",
+          paymentMethod: "credit_card",
+        },
+      ];
+
+      // Cenário 1: sem parcela na fatura -> projeta normalmente
+      const withoutInstallment = calculateCardSubscriptionImpact(cardNubank, vivoOccurrences, {
+        todayISO: "2026-08-04",
+      });
+      expect(withoutInstallment.totalProjectedCents).toBe(4500);
+
+      // Cenário 2: com parcela de Vivo Easy já lançada na fatura aberta -> suprime projeção para não duplicar
+      const withInstallment = calculateCardSubscriptionImpact(cardNubank, vivoOccurrences, {
+        todayISO: "2026-08-04",
+        existingCardExpenses: [
+          { description: "Vivo Easy (Chip pessoal)", installmentGroupId: "group-123" },
+        ],
+      });
+      expect(withInstallment.totalProjectedCents).toBe(0);
+      expect(withInstallment.items).toHaveLength(0);
+    });
   });
 
   describe("calculateAllCardsSubscriptionImpact", () => {

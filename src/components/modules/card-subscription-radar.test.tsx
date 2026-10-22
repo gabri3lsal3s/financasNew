@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { CardSubscriptionRadar } from "./card-subscription-radar";
 import type { CardSubscriptionImpact } from "@/domain/insights";
 
@@ -85,5 +85,21 @@ describe("CardSubscriptionRadar component", () => {
     await user.click(toggleButton);
     expect(toggleButton).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByText("Netflix")).not.toBeInTheDocument();
+  });
+
+  it("chama onIgnoreItem ao clicar no botão de descarte/corte de uma assinatura", async () => {
+    const user = userEvent.setup();
+    const handleIgnore = vi.fn();
+
+    render(<CardSubscriptionRadar impact={normalImpact} onIgnoreItem={handleIgnore} />);
+
+    // Expande a lista
+    await user.click(screen.getByRole("button", { name: /Ver 2 assinatura\(s\) mapeada\(s\)/i }));
+
+    const ignoreButtons = screen.getAllByRole("button", { name: /Já cortei ou desconsiderar/i });
+    expect(ignoreButtons).toHaveLength(2);
+
+    await user.click(ignoreButtons[0]!);
+    expect(handleIgnore).toHaveBeenCalledWith("sub:netflix");
   });
 });
