@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  calculateRecurringTotals,
   calculateTypicalDay,
   classifyPriceAdjustment,
   detectDuplicateChargesInMonth,
@@ -715,6 +716,36 @@ describe("domain/insights/recurrences — Detecção Dual de Rendas (Fase 4, Tar
         expect(classifyPriceAdjustment(10000, 9000)).toBeNull(); // -10%
         expect(classifyPriceAdjustment(0, 5000)).toBeNull();
       });
+    });
+  });
+
+  describe("Higiene Conceitual e Expurgamento do Nível similar (Fase 7 — Tarefa 7.1)", () => {
+    it("não gera recorrências para despesas corriqueiras com descrições distintas na mesma categoria", () => {
+      const expenses: ExpenseLike[] = [
+        { id: "e1", description: "Cinema Cineart", month: "2026-07", valueCents: 4500, categoryId: "lazer" },
+        { id: "e2", description: "Show de Teatro", month: "2026-08", valueCents: 5000, categoryId: "lazer" },
+        { id: "e3", description: "Parque de Diversões", month: "2026-09", valueCents: 4800, categoryId: "lazer" },
+      ];
+
+      const detected = detectRecurrences(expenses);
+      expect(detected).toHaveLength(0);
+      expect(detected.some((d) => (d.level as string) === "similar" || d.name.includes("similares"))).toBe(false);
+    });
+
+    it("calculateRecurringTotals soma exclusivamente subscription e recurring, descartando similar", () => {
+      const occurrences = [
+        { averageCents: 3500, tier: "can_cut" as const, savingsIfCutCents: 3500, level: "subscription" },
+        { averageCents: 12000, tier: "essential" as const, level: "recurring" },
+        { averageCents: 8000, tier: "can_cut" as const, savingsIfCutCents: 8000, level: "similar" },
+      ];
+
+      const totals = calculateRecurringTotals(occurrences);
+      // Apenas 3500 + 12000 = 15500 (ignora os 8000 do similar)
+      expect(totals.totalRecurringCents).toBe(15500);
+      expect(totals.totalAnnualRecurringCents).toBe(15500 * 12);
+      // Economia de corte: apenas os 3500 da assinatura can_cut (ignora 8000 do similar)
+      expect(totals.canCutRecurringCents).toBe(3500);
+      expect(totals.canCutAnnualCents).toBe(3500 * 12);
     });
   });
 });

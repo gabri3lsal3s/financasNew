@@ -1,20 +1,18 @@
 /**
  * Detecção de recorrências — ESPECIFICAÇÃO §3.7.3.
  *
- * 3 níveis:
+ * 2 níveis canônicos de custos fixos reais:
  *   • subscription — mesmo nome + valor/categoria estável;
- *   • recurring — mesma descrição, valor com tolerância ±50%;
- *   • similar — mesma categoria com total ±30% (categorias agregadoras
- *     excluídas, checagem de dispersão interna, 2+ meses quando há 3+
- *     meses de histórico).
+ *   • recurring — mesma descrição, valor com tolerância ±50%.
+ * (O agrupamento estático por categoria 'similar' foi expurgado para eliminar
+ * ruídos e manter os totais focados exclusivamente em custos fixos reais — Fase 7).
  * Parcelas (`installment_group_id`) são SEMPRE filtradas — parcelamento
  * não é recorrência.
  */
 
 import { confidenceScore, varianceOf, type RecurrenceKind } from "./confidence";
 import { classifySubscription, segmentOf, type CutTier, type ServiceSegment } from "./subscriptions";
-import { ESSENTIAL_CATEGORY_ICONS, normalizeText } from "./shared";
-import { resolveCategorySemantics } from "./category-semantics";
+import { normalizeText } from "./shared";
 
 export interface ExpenseLike {
   id: string;
@@ -363,14 +361,24 @@ export function evaluateBudgetImpact(
 
 /**
  * Calcula os totais recorrentes mensais e anuais, bem como a economia potencial de corte (tier "can_cut").
+ * Soma exclusivamente assinaturas reais ('subscription') e contas com fornecedores repetidos ('recurring'),
+ * descartando ruídos e despesas corriqueiras variáveis de mesma categoria ('similar') — Fase 7.
  */
 export function calculateRecurringTotals(
-  activeOccurrences: readonly { averageCents: number; tier?: CutTier; savingsIfCutCents?: number }[],
+  activeOccurrences: readonly {
+    averageCents: number;
+    tier?: CutTier;
+    savingsIfCutCents?: number;
+    level?: string;
+  }[],
 ): RecurringTotalsResult {
   let totalRecurringCents = 0;
   let canCutRecurringCents = 0;
 
   for (const o of activeOccurrences) {
+    if (o.level === "similar") continue;
+    if (o.level != null && o.level !== "subscription" && o.level !== "recurring") continue;
+
     totalRecurringCents += o.averageCents;
     if (o.tier === "can_cut") {
       canCutRecurringCents += o.savingsIfCutCents ?? o.averageCents;
@@ -386,7 +394,6 @@ export function calculateRecurringTotals(
 }
 
 const RECURRING_TOLERANCE = 0.5; // ±50% (recurring)
-const SIMILAR_TOLERANCE = 0.3; // ±30% (similar)
 
 /** Calcula a mediana de um conjunto de valores. */
 export function medianOf(values: readonly number[]): number {
@@ -458,11 +465,6 @@ function valuesWithinToleranceOfMedian(values: readonly number[], tolerance: num
   return values.every((value) => Math.abs(value - median) / median <= tolerance);
 }
 
-/** Meses distintos de um conjunto de ocorrências. */
-function monthsWith(values: readonly string[]): number {
-  return new Set(values).size;
-}
-
 export interface DetectRecurrencesOptions {
   todayISO?: string;
   /** Renda mensal estimada para avaliação de impacto orçamentário. */
@@ -493,14 +495,6 @@ export function detectRecurrences(
     const list = byName.get(key) ?? [];
     list.push(expense);
     byName.set(key, list);
-  }
-
-  // Agrupa por categoria (nível similar).
-  const byCategory = new Map<string, ExpenseLike[]>();
-  for (const expense of active) {
-    const list = byCategory.get(expense.categoryId) ?? [];
-    list.push(expense);
-    byCategory.set(expense.categoryId, list);
   }
 
   const occurrences: RecurrenceOccurrence[] = [];
@@ -624,43 +618,6 @@ export function detectRecurrences(
       });
       seen.add(key);
     }
-  }
-
-  // similar: mesma categoria, totais mensais ±30%, sem categorias agregadoras.
-  for (const [categoryId, group] of byCategory) {
-    const categoryIcon = group[0]?.categoryIcon;
-    const categoryName = group[0]?.categoryName;
-    const sem = resolveCategorySemantics({ name: categoryName, icon: categoryIcon });
-    if (sem.isAggregator) continue;
-    if (categoryIcon && ESSENTIAL_CATEGORY_ICONS.has(categoryIcon)) continue;
-    if (seen.has(categoryId)) continue;
-
-    // Total por mês dentro da categoria.
-    const totalsByMonth = new Map<string, number>();
-    for (const expense of group) {
-      totalsByMonth.set(expense.month, (totalsByMonth.get(expense.month) ?? 0) + expense.valueCents);
-    }
-    const months = [...totalsByMonth.keys()].sort();
-    const totals = months.map((m) => totalsByMonth.get(m) ?? 0);
-    if (totals.length < 2) continue;
-
-    // 2+ meses quando há 3+ meses de histórico.
-    const distinctMonths = monthsWith(months);
-    if (distinctMonths < 2) continue;
-
-    if (!valuesWithinToleranceOfMedian(totals, SIMILAR_TOLERANCE)) continue;
-
-    const variance = varianceOf(totals);
-    const confidence = confidenceScore({ base: 0.6, monthsHistory: distinctMonths, kind: "similar", variance });
-    occurrences.push({
-      key: `similar:${categoryId}`,
-      name: "Gastos similares na categoria",
-      level: "similar",
-      months,
-      averageCents: Math.round(totals.reduce((acc, v) => acc + v, 0) / totals.length),
-      confidence,
-      categoryId,
-    });
   }
 
   if (options.monthlyIncomeCents != null || options.categoryBudgets != null) {

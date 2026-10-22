@@ -10,7 +10,6 @@ import type { PaymentMethod, PortfolioTransactionType, ReceiveType, RecurrenceFr
 export const RECURRENCE_LEVEL_LABELS: Record<RecurrenceKind, string> = {
   subscription: "Assinatura",
   recurring: "Recorrente",
-  similar: "Similar",
 };
 
 /** Rótulos das frequências de recorrência formal (Fase 32). */

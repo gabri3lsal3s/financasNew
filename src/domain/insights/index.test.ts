@@ -284,46 +284,12 @@ describe("recorrências (§3.7.3 — 3 níveis)", () => {
     expect(occurrences).toHaveLength(0);
   });
 
-  it("exclui categorias agregadoras do nível similar", () => {
-    const occurrences = detectRecurrences([
-      expense({ id: "s1", description: "Mercado", month: "2026-07", valueCents: 20000, categoryId: "mercado", categoryIcon: "mercado" }),
-      expense({ id: "s2", description: "Mercado", month: "2026-08", valueCents: 21000, categoryId: "mercado", categoryIcon: "mercado" }),
-    ]);
-    expect(occurrences.some((o) => o.level === "similar")).toBe(false);
-  });
-
-  it("exclui categorias agregadoras personalizadas do nível similar pelo nome", () => {
-    const occurrences = detectRecurrences([
-      expense({
-        id: "s1",
-        description: "Compras Diversas",
-        month: "2026-07",
-        valueCents: 20000,
-        categoryId: "custom_mercado",
-        categoryName: "Supermercado Compre Bem",
-        categoryIcon: null,
-      }),
-      expense({
-        id: "s2",
-        description: "Compras Diversas",
-        month: "2026-08",
-        valueCents: 21000,
-        categoryId: "custom_mercado",
-        categoryName: "Supermercado Compre Bem",
-        categoryIcon: null,
-      }),
-    ]);
-    expect(occurrences.some((o) => o.level === "similar")).toBe(false);
-  });
-
-  it("detecta similar pela categoria com total ±30%", () => {
+  it("não gera ocorrências do nível similar e não agrupa despesas com nomes distintos na mesma categoria", () => {
     const occurrences = detectRecurrences([
       expense({ id: "t1", description: "Cinema", month: "2026-07", valueCents: 4000, categoryId: "lazer", categoryIcon: "lazer" }),
       expense({ id: "t2", description: "Show", month: "2026-08", valueCents: 5000, categoryId: "lazer", categoryIcon: "lazer" }),
     ]);
-    const sim = occurrences.find((o) => o.level === "similar");
-    expect(sim).toBeDefined();
-    expect(sim?.averageCents).toBe(4500);
+    expect(occurrences).toHaveLength(0);
   });
 });
 
@@ -487,18 +453,18 @@ describe("diagnósticos (§3.7.6)", () => {
 });
 
 describe("calculateRecurringTotals", () => {
-  it("calculates recurring and potential cuts totals correctly", () => {
+  it("calcula totais recorrentes e economia de cortes exclusivamente para subscription e recurring (expurga similar)", () => {
     const active = [
-      { averageCents: 5000, tier: "can_cut" as const, savingsIfCutCents: 3000 },
-      { averageCents: 4000, tier: "discretionary" as const },
-      { averageCents: 2000, tier: "can_cut" as const }, // no savingsIfCutCents, defaults to averageCents
+      { averageCents: 5000, tier: "can_cut" as const, savingsIfCutCents: 3000, level: "subscription" },
+      { averageCents: 4000, tier: "discretionary" as const, level: "recurring" },
+      { averageCents: 2000, tier: "can_cut" as const, level: "subscription" }, // sem savingsIfCutCents, defaults to averageCents
+      { averageCents: 9000, tier: "can_cut" as const, savingsIfCutCents: 9000, level: "similar" }, // deve ser ignorado
     ];
-
 
     const result = calculateRecurringTotals(active);
     expect(result.totalRecurringCents).toBe(11000);
     expect(result.totalAnnualRecurringCents).toBe(132000);
-    expect(result.canCutRecurringCents).toBe(5000); // 3000 + 2000
+    expect(result.canCutRecurringCents).toBe(5000); // 3000 + 2000 (ignora os 9000 do similar)
     expect(result.canCutAnnualCents).toBe(60000);
   });
 });

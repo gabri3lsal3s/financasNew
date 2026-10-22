@@ -7,7 +7,7 @@
  * definidos pela especificação; os intermediários são interpolados.
  */
 
-export type RecurrenceKind = "subscription" | "recurring" | "similar";
+export type RecurrenceKind = "subscription" | "recurring";
 
 /** Bônus por meses de histórico (curva não-linear, pontos 2m e 5m do spec). */
 const MONTH_BONUS: Record<number, number> = {
@@ -22,7 +22,6 @@ const MONTH_BONUS: Record<number, number> = {
 const VARIANCE_PENALTY: Record<RecurrenceKind, number> = {
   subscription: 0.3,
   recurring: 0.8,
-  similar: 0.8,
 };
 
 export interface ConfidenceParams {
