@@ -11,7 +11,25 @@ interface PlatformFeature {
 
 const features: PlatformFeature[] = [
   {
-    name: "Lançamento e consulta de receitas e despesas",
+    name: "Identificação de Notificações Locais (Zero senhas bancárias entregues a terceiros)",
+    web: false,
+    pwa: false,
+    androidPro: true,
+  },
+  {
+    name: "Captura Inteligente de Comprovantes (PDF/Imagem/Texto com OCR local gratuito)",
+    web: true,
+    pwa: true,
+    androidPro: true,
+  },
+  {
+    name: "Aprendizado Semântico de CNPJ e Nomes Fantasia",
+    web: true,
+    pwa: true,
+    androidPro: true,
+  },
+  {
+    name: "Lançamento Rápido em 3 segundos (tela única)",
     web: true,
     pwa: true,
     androidPro: true,
@@ -30,12 +48,6 @@ const features: PlatformFeature[] = [
   },
   {
     name: "Simulador de Projeção Patrimonial",
-    web: true,
-    pwa: true,
-    androidPro: true,
-  },
-  {
-    name: "Leitor de Pix Copia e Cola (BR Code) e Comprovantes",
     web: true,
     pwa: true,
     androidPro: true,
@@ -68,12 +80,6 @@ const features: PlatformFeature[] = [
     name: "Biometria física nativa (Digital / FaceID)",
     web: "PIN local",
     pwa: "PIN local",
-    androidPro: true,
-  },
-  {
-    name: "Assistente Bancário Passivo (captura em segundo plano)",
-    web: false,
-    pwa: false,
     androidPro: true,
   },
   {
@@ -126,15 +132,15 @@ export function PlatformComparison() {
                 <div className="pt-2 space-y-2 text-xs text-muted-foreground">
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
+                    <span>Lançamento rápido em tela única e importação com OCR</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
                     <span>Telas amplas para visualização completa de faturas e relatórios</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>Simulações interativas de projeção patrimonial</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>Exportação de auditorias completas em planilhas Excel</span>
+                    <span>Simulações interativas de projeção patrimonial e rebalanceamento</span>
                   </div>
                 </div>
               </div>
@@ -162,11 +168,11 @@ export function PlatformComparison() {
                 <div className="pt-2 space-y-2 text-xs text-muted-foreground">
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>Fixa na tela inicial em 1 clique sem consumir armazenamento</span>
+                    <span>Captura inteligente de comprovantes (PDF, Imagem e Pix Copia e Cola)</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>Leitor Inteligente de Pix Copia e Cola e comprovantes por colagem rápida</span>
+                    <span>Fixa na tela inicial em 1 clique sem consumir armazenamento</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
@@ -198,15 +204,15 @@ export function PlatformComparison() {
                 <div className="pt-2 space-y-2 text-xs text-muted-foreground">
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>Assistente Bancário Inteligente: captura Pix e cartões em tempo real</span>
+                    <span>Identificação de Notificações Locais em segundo plano (Zero senhas)</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>Aprovação de despesas em 1 toque sem precisar digitar valores</span>
+                    <span>Compartilhamento nativo de comprovantes de qualquer banco via Intent</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>Biometria física, atalhos rápidos e atualizações in-app automáticas</span>
+                    <span>Biometria física, atalhos rápidos de launcher e Tile na barra de status</span>
                   </div>
                 </div>
               </div>
@@ -216,8 +222,8 @@ export function PlatformComparison() {
 
         {/* Tabela de Recursos Detalhada */}
         <ScrollReveal delay={200} className="mt-12">
-          <div className="overflow-x-auto rounded-2xl border border-border/80 bg-surface">
-            <table className="w-full text-left text-xs sm:text-sm">
+          <div className="overflow-x-auto no-scrollbar scroll-smooth rounded-2xl border border-border/80 bg-surface">
+            <table className="w-full min-w-[560px] text-left text-xs sm:text-sm">
               <caption className="sr-only">Matriz comparativa de funcionalidades por plataforma</caption>
               <thead className="border-b border-border/60 bg-background/50 font-semibold text-foreground">
                 <tr>

@@ -346,7 +346,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Teste de renderização responsiva da Landing Page com verificação de contraste de cores e acessibilidade.
   - *Commit:* `feat(landing): adicionar narrativa de captura automatica e contingencia de comprovantes`
 
-- [ ] **Tarefa 6.2 — Atualização da Tabela de Comparação de Plataformas (`PlatformComparison.tsx`):**
+- [x] **Tarefa 6.2 — Atualização da Tabela de Comparação de Plataformas (`PlatformComparison.tsx`):**
   - Atualizar a tabela destacando fatos 100% reais:
     - *Identificação de Notificações Locais (Zero senhas bancárias entregues a terceiros)*.
     - *Captura Inteligente de Comprovantes (PDF/Imagem/Texto com OCR local gratuito)*.
