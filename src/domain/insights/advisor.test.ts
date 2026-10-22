@@ -130,6 +130,64 @@ describe("generateSmartAdvisorInsights", () => {
     expect(insights[0]?.primaryAction?.kind).toBe("open_income");
   });
 
+  it("gera alerta discreto quando a renda passou da data habitual sem entrada no mês (Eixo 2)", () => {
+    const inc = makeIncome({
+      name: "Salário Empresa X",
+      profile: "fixed",
+      typicalDayOfMonth: 5,
+      missingThisMonth: true,
+      daysUntilExpected: -3,
+    });
+
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [],
+      incomes: [inc],
+      todayISO: "2026-10-08",
+    });
+
+    expect(insights).toHaveLength(1);
+    expect(insights[0]?.priority).toBe(2);
+    expect(insights[0]?.category).toBe("income");
+    expect(insights[0]?.description).toBe(
+      "Renda de Salário Empresa X prevista para o dia 5 ainda não foi identificada no mês.",
+    );
+    expect(insights[0]?.primaryAction?.kind).toBe("confirm_income");
+  });
+
+  it("gera oportunidade de 1 clique para aporte e rebalanceamento quando há poupança no mês (Eixo 3)", () => {
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [],
+      todayISO: "2026-10-22",
+      savingsSurplusCents: 85000, // R$ 850,00
+      plannedAporteCents: 50000, // R$ 500,00
+      currentMonthAportesCents: 0,
+    });
+
+    const aporteInsight = insights.find((i) => i.id === "aporte:rebalance");
+    expect(aporteInsight).toBeDefined();
+    expect(aporteInsight?.priority).toBe(3);
+    expect(aporteInsight?.category).toBe("savings");
+    expect(aporteInsight?.title).toBe("Aporte para rebalanceamento");
+    expect(aporteInsight?.description).toBe(
+      "Você poupou R$ 850,00 neste mês. Deseja realizar o aporte planejado para rebalancear sua carteira?",
+    );
+    expect(aporteInsight?.primaryAction?.kind).toBe("navigate_aporte");
+    expect(aporteInsight?.primaryAction?.payload).toEqual({ valorCents: 50000 });
+  });
+
+  it("não sugere aporte se já tiver sido realizado o valor planejado no mês", () => {
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [],
+      todayISO: "2026-10-22",
+      savingsSurplusCents: 85000,
+      plannedAporteCents: 50000,
+      currentMonthAportesCents: 50000,
+    });
+
+    const aporteInsight = insights.find((i) => i.id === "aporte:rebalance");
+    expect(aporteInsight).toBeUndefined();
+  });
+
   it("gera insight de prioridade 3 (Economia) para reajuste de preço e oportunidade de corte", () => {
     const occWithAdjustment = makeOccurrence({
       key: "adobe",

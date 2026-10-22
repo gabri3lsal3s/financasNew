@@ -8,6 +8,7 @@ import {
   type StatementIncomeItemInput,
   type ImportBankTransactionsResult,
 } from "@/data/rpc";
+import { autoLearnExpenseCategory } from "@/services/merchant-learning";
 import { cardExpensesKey } from "@/state/queries/use-card-payments";
 import { expensesKey } from "@/state/queries/use-expenses";
 import { incomesKey } from "@/state/queries/use-incomes";
@@ -26,10 +27,16 @@ export function useImportStatementExpenses() {
     { cardId: string; competenceMonth: string; expenses: StatementExpenseItemInput[] }
   >({
     mutationFn: (params) => importStatementExpenses(params),
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: cardExpensesKey });
       void queryClient.invalidateQueries({ queryKey: expensesKey });
       void queryClient.invalidateQueries({ queryKey: budgetsKey });
+
+      for (const exp of variables.expenses) {
+        if (exp.description && exp.category_id) {
+          autoLearnExpenseCategory(exp.description, exp.category_id);
+        }
+      }
     },
   });
 }
@@ -47,11 +54,17 @@ export function useImportBankTransactions() {
     { expenses: BankExpenseItemInput[]; incomes: StatementIncomeItemInput[] }
   >({
     mutationFn: (params) => importBankTransactions(params),
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: expensesKey });
       void queryClient.invalidateQueries({ queryKey: incomesKey });
       void queryClient.invalidateQueries({ queryKey: budgetsKey });
       void queryClient.invalidateQueries({ queryKey: ["overview"] });
+
+      for (const exp of variables.expenses) {
+        if (exp.description && exp.category_id) {
+          autoLearnExpenseCategory(exp.description, exp.category_id);
+        }
+      }
     },
   });
 }

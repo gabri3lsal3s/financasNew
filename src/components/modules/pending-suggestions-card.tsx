@@ -29,6 +29,7 @@ import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { formatCentsAsCurrency } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
+import { autoLearnExpenseCategory } from "@/services/merchant-learning";
 import { cn } from "@/lib/utils";
 import {
   inferCategoryKeyword,
@@ -254,6 +255,15 @@ export function PendingSuggestionsCard({
 
       if (sug.merchant && categoryId) {
         storeMerchantCategory(sug.merchant, categoryId);
+      }
+
+      if (sug.type === "expense" && categoryId) {
+        autoLearnExpenseCategory(
+          sug.merchant || sug.description || "",
+          categoryId,
+          sug.taxId,
+          sug.rawText || sug.description,
+        );
       }
 
       const formattedAmount = formatCentsAsCurrency(sug.amountCents);

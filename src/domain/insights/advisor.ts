@@ -8,14 +8,15 @@
  */
 
 import type { FeedbackMap } from "./feedback";
-import type { RecurrenceOccurrence, RecurringIncomeOccurrence } from "./recurrences";
+import type { ExpenseLike, RecurrenceOccurrence, RecurringIncomeOccurrence } from "./recurrences";
 import { formatBRL } from "./recurrences";
+import { learnBrokerAportePattern } from "./aporte-learning";
 
 export type SmartAdvisorCategory = "critical" | "income" | "savings" | "calibration";
 
 export interface SmartAdvisorAction {
   label: string;
-  kind: "confirm_income" | "open_income" | "register_expense" | "cut_subscription" | "confirm_recurrence" | "ignore_recurrence" | "dismiss";
+  kind: "confirm_income" | "open_income" | "register_expense" | "cut_subscription" | "confirm_recurrence" | "ignore_recurrence" | "navigate_aporte" | "dismiss";
   payload?: Record<string, unknown>;
 }
 
@@ -33,7 +34,7 @@ export interface SmartAdvisorInsight {
   /** Descrição explicativa contextual. */
   description: string;
   /** Nome do ícone representativo lucide-react (tamanho size-4). */
-  iconName: "alert-triangle" | "arrow-down-left" | "trending-down" | "help-circle";
+  iconName: "alert-triangle" | "arrow-down-left" | "trending-down" | "help-circle" | "trending-up";
   /** Ação primária de 1 toque recomendada. */
   primaryAction?: SmartAdvisorAction;
   /** Ação secundária (ex.: descartar ou discordar). */
@@ -59,13 +60,30 @@ export interface GenerateSmartAdvisorInsightsInput {
   incomes?: readonly RecurringIncomeOccurrence[];
   feedbackMap?: FeedbackMap;
   todayISO: string;
+  /** Poupança (sobra líquida) do ciclo em centavos para sugerir aporte (§Eixo 3). */
+  savingsSurplusCents?: number;
+  /** Meta mensal de aporte planejada em centavos. */
+  plannedAporteCents?: number;
+  /** Total de aportes já efetuados no mês vigente em centavos. */
+  currentMonthAportesCents?: number;
+  /** Histórico completo de despesas para correlação temporal com corretoras (§Eixo 3). */
+  allExpenses?: readonly ExpenseLike[];
 }
 
 /**
  * Gera todos os candidatos a insights do SmartAdvisor cruzando recorrências, rendas e feedback.
  */
 export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsightsInput): SmartAdvisorInsight[] {
-  const { occurrences, incomes = [], feedbackMap = {}, todayISO } = input;
+  const {
+    occurrences,
+    incomes = [],
+    feedbackMap = {},
+    todayISO,
+    savingsSurplusCents,
+    plannedAporteCents,
+    currentMonthAportesCents,
+    allExpenses = [],
+  } = input;
   const candidates: SmartAdvisorInsight[] = [];
 
   // 1. PRIORIDADE 1: CRÍTICA
@@ -146,6 +164,13 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
 
     if (isReadyForConfirmation) {
       const themeKey = inc.key.startsWith("income:") ? inc.key : `income:${inc.key}`;
+      const typicalDay = inc.typicalDayOfMonth ?? 5;
+      const description = inc.missingThisMonth
+        ? `Renda de ${inc.name} prevista para o dia ${typicalDay} ainda não foi identificada no mês.`
+        : inc.profile === "fixed"
+          ? `Renda de ${inc.name} (${formatBRL(inc.lastValueCents)}) prevista por volta do dia ${typicalDay}. Deseja confirmar?`
+          : `Recebimento habitual de ${inc.name} previsto. Informe o valor recebido neste mês.`;
+
       if (inc.profile === "fixed") {
         candidates.push({
           id: themeKey,
@@ -153,7 +178,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
           priority: 2,
           category: "income",
           title: "Confirmar recebimento",
-          description: `Renda de ${inc.name} (${formatBRL(inc.lastValueCents)}) prevista por volta do dia ${inc.typicalDayOfMonth ?? 5}. Deseja confirmar?`,
+          description,
           iconName: "arrow-down-left",
           primaryAction: {
             label: "Confirmar entrada",
@@ -182,7 +207,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
           priority: 2,
           category: "income",
           title: "Renda habitual prevista",
-          description: `Recebimento habitual de ${inc.name} previsto. Informe o valor recebido neste mês.`,
+          description,
           iconName: "arrow-down-left",
           primaryAction: {
             label: "Informar valor",
@@ -206,7 +231,53 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
     }
   }
 
-  // 3. PRIORIDADE 3: ECONOMIA (Reajustes de preço e oportunidades de corte)
+  // 3. PRIORIDADE 3: ECONOMIA & APORTES (Reajustes de preço, corte de gastos e rebalanceamento de aportes)
+  // 3.1 Oportunidade de aporte e rebalanceamento de carteira (§Eixo 3)
+  if (savingsSurplusCents !== undefined && savingsSurplusCents > 0) {
+    const brokerPattern = allExpenses.length > 0
+      ? learnBrokerAportePattern({ expenses: allExpenses, incomes, todayISO })
+      : undefined;
+
+    const alreadyAported =
+      (currentMonthAportesCents != null && currentMonthAportesCents > 0) ||
+      (brokerPattern?.hasAporteThisMonth ?? false);
+
+    const aporteUnderTarget =
+      plannedAporteCents != null &&
+      plannedAporteCents > 0 &&
+      (currentMonthAportesCents ?? 0) < plannedAporteCents;
+
+    if ((!alreadyAported || aporteUnderTarget) && feedbackMap["aporte:rebalance"] !== "ignore") {
+      const suggestedValueCents =
+        plannedAporteCents || brokerPattern?.averageAporteCents || savingsSurplusCents;
+
+      candidates.push({
+        id: "aporte:rebalance",
+        themeKey: "aporte:rebalance",
+        priority: 3,
+        category: "savings",
+        title: "Aporte para rebalanceamento",
+        description: `Você poupou ${formatBRL(savingsSurplusCents)} neste mês. Deseja realizar o aporte planejado para rebalancear sua carteira?`,
+        iconName: "trending-down",
+        primaryAction: {
+          label: "Realizar aporte",
+          kind: "navigate_aporte",
+          payload: {
+            valorCents: suggestedValueCents,
+          },
+        },
+        secondaryAction: {
+          label: "Dispensar por 30 dias",
+          kind: "dismiss",
+        },
+        metadata: {
+          valueCents: suggestedValueCents,
+          annualSavingsCents: savingsSurplusCents,
+        },
+      });
+    }
+  }
+
   for (const occ of occurrences) {
     if (feedbackMap[occ.key] === "ignore") continue;
     if (candidates.some((c) => c.themeKey.includes(occ.key))) continue;

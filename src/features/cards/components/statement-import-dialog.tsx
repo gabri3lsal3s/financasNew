@@ -19,6 +19,7 @@ import { useCategories, useCardExpenses, usePredictionHistory, useImportStatemen
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { autoLearnExpenseCategory } from "@/services/merchant-learning";
 import type { CreditCard, Expense } from "@/types";
 import { StatementUploadStep } from "./statement-upload-step";
 import { StatementMappingStep } from "./statement-mapping-step";
@@ -206,6 +207,15 @@ function StatementImportContent({ card, competenceMonth, onClose }: StatementImp
     setReconciledItems((prev) =>
       prev.map((it) => (it.transaction.id === id ? { ...it, selectedCategoryId: categoryId } : it)),
     );
+    const targetItem = reconciledItems.find((it) => it.transaction.id === id);
+    if (targetItem && categoryId) {
+      autoLearnExpenseCategory(
+        targetItem.transaction.cleanDescription,
+        categoryId,
+        undefined,
+        targetItem.transaction.rawDescription,
+      );
+    }
   };
 
   const handleEditItem = (
@@ -218,6 +228,15 @@ function StatementImportContent({ card, competenceMonth, onClose }: StatementImp
       installment?: { current: number; total: number };
     },
   ) => {
+    const existing = reconciledItems.find((it) => it.transaction.id === id);
+    if (updated.selectedCategoryId) {
+      autoLearnExpenseCategory(
+        updated.cleanDescription,
+        updated.selectedCategoryId,
+        undefined,
+        existing?.transaction.rawDescription,
+      );
+    }
     setReconciledItems((prev) =>
       prev.map((it) => {
         if (it.transaction.id !== id) return it;

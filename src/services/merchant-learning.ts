@@ -237,24 +237,68 @@ if (typeof window !== "undefined") {
   });
 }
 
+const sessionInsightsReevalListeners = new Set<() => void>();
+
 /**
- * Auto-aprende estabelecimento e categoria a partir do salvamento de despesas em segundo plano.
+ * Inscreve um ouvinte para reavaliação imediata de insights na sessão (§Eixo 1).
+ */
+export function subscribeInsightsReevaluation(callback: () => void): () => void {
+  sessionInsightsReevalListeners.add(callback);
+  return () => {
+    sessionInsightsReevalListeners.delete(callback);
+  };
+}
+
+/**
+ * Dispara reavaliação imediata de insights pendentes na sessão (§Eixo 1).
+ */
+export function triggerSessionInsightsReevaluation(): void {
+  sessionInsightsReevalListeners.forEach((fn) => {
+    try {
+      fn();
+    } catch {
+      // no-op
+    }
+  });
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new CustomEvent("axis:session-insights-reevaluate"));
+    } catch {
+      // no-op
+    }
+  }
+}
+
+/**
+ * Auto-aprende par (merchant, category) e (rawName, friendlyName) a partir de
+ * alterações no extrato, notificações, wizard ou salvamento de despesas (§Eixo 1).
+ * Dispara reavaliação imediata de insights pendentes na sessão.
  */
 export function autoLearnExpenseCategory(
   description: string,
   categorySlugOrId: string,
   taxId?: string,
+  rawName?: string,
 ): void {
   const trimmed = description?.trim();
   if (!trimmed || trimmed.length < 2 || !categorySlugOrId) return;
 
   try {
+    const rawTrimmed = rawName?.trim();
+    const rawAliases =
+      rawTrimmed && rawTrimmed.toLowerCase() !== trimmed.toLowerCase()
+        ? [rawTrimmed.toLowerCase()]
+        : undefined;
+
     recordMerchantLearningAction({
       friendlyName: trimmed,
       categorySlug: categorySlugOrId,
       cnpjOrCpf: taxId,
-      alias: trimmed,
+      alias: rawTrimmed || trimmed,
+      rawAliases,
     });
+
+    triggerSessionInsightsReevaluation();
   } catch {
     // Aprendizado em background nunca bloqueia a experiência do usuário
   }

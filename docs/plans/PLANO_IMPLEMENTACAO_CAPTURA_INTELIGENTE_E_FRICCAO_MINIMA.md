@@ -456,7 +456,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes em `cards-page.test.tsx` e `recurrences-tab.test.tsx` com cenários de fatura aberta e limite comprometido.
   - *Commit:* `feat(insights): correlacionar assinaturas ao cartao de credito e impacto na fatura`
 
-- [ ] **Tarefa 7.7 — Loop de Aprendizado Contínuo Multidomínio (Despesas, Rendas e Aportes):**
+- [x] **Tarefa 7.7 — Loop de Aprendizado Contínuo Multidomínio (Despesas, Rendas e Aportes):**
   - **Eixo 1 — Despesas & Estabelecimentos:**
     - Toda vez que o usuário alterar uma categoria ou descrição no extrato, em notificações ou no wizard, registrar o par `(merchant, category)` e `(rawName, friendlyName)` no `MerchantLearningEngine`.
     - Disparar re-avaliação imediata de insights pendentes na sessão.

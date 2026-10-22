@@ -140,6 +140,25 @@ describe("SmartAdvisorCard", () => {
     },
   };
 
+  const aporteInsight: SmartAdvisorInsight = {
+    id: "aporte:rebalance",
+    themeKey: "aporte:rebalance",
+    priority: 3,
+    category: "savings",
+    title: "Aporte para rebalanceamento",
+    description: "Você poupou R$ 1.200,00 neste mês. Deseja realizar o aporte planejado para rebalancear sua carteira?",
+    iconName: "trending-down",
+    primaryAction: {
+      label: "Realizar aporte",
+      kind: "navigate_aporte",
+      payload: { valorCents: 120000 },
+    },
+    secondaryAction: {
+      label: "Dispensar por 30 dias",
+      kind: "dismiss",
+    },
+  };
+
   const calibrationInsight: SmartAdvisorInsight = {
     id: "calib:academia",
     themeKey: "calib:academia",
@@ -199,6 +218,14 @@ describe("SmartAdvisorCard", () => {
       expect(screen.getByText("Calibração de gastos fixos")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /Sim, monitorar/i })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /Não, foi pontual/i })).toBeInTheDocument();
+    });
+
+    it("5. Aporte: renderiza badge Aporte e ação Realizar aporte", () => {
+      render(<SmartAdvisorCard insight={aporteInsight} />);
+
+      expect(screen.getByText("Aporte")).toBeInTheDocument();
+      expect(screen.getByText("Aporte para rebalanceamento")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Realizar aporte/i })).toBeInTheDocument();
     });
   });
 
@@ -270,6 +297,15 @@ describe("SmartAdvisorCard", () => {
 
       expect(mockNavigate).toHaveBeenCalledWith("/insights?aba=recurrences&item=streaming-antigo");
       expect(triggerSensoryMock).toHaveBeenCalledWith("selection");
+    });
+
+    it("ao clicar em Realizar aporte, navega para a calculadora de aporte com o valor planejado preenchido", () => {
+      render(<SmartAdvisorCard insight={aporteInsight} />);
+
+      const actionBtn = screen.getByRole("button", { name: /Realizar aporte/i });
+      fireEvent.click(actionBtn);
+
+      expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=aporte&valor=120000");
     });
 
     it("ao clicar em Registrar pagamento, abre modal LaunchWizard pré-preenchido via query params", () => {

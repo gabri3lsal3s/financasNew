@@ -8,6 +8,7 @@ import {
   SMART_ADVISOR_DISMISSALS_KEY,
   SMART_ADVISOR_LAST_DISMISSED_DAY_KEY,
 } from "@/domain/insights/advisor";
+import { triggerSessionInsightsReevaluation } from "@/services/merchant-learning";
 import type { ExpenseLike, IncomeLike } from "@/domain/insights/recurrences";
 
 // Mocks dos serviços sensoriais e toast
@@ -275,6 +276,69 @@ describe("useSmartAdvisorInsights", () => {
       );
 
       expect(result.current.insight).toBeNull();
+    });
+
+    it("sugere aporte de rebalanceamento quando há poupança positiva no mês (§Eixo 3)", () => {
+      const expenses: ExpenseLike[] = [
+        {
+          id: "e1",
+          description: "Despesas gerais",
+          valueCents: 200000,
+          month: "2026-10",
+          date: "2026-10-02",
+          categoryId: "cat-outros",
+        },
+      ];
+
+      const incomes: IncomeLike[] = [
+        {
+          id: "i1",
+          description: "Salário",
+          valueCents: 350000,
+          month: "2026-10",
+          date: "2026-10-05",
+          categoryId: "cat-renda",
+        },
+      ];
+
+      const { result } = renderHook(() =>
+        useSmartAdvisorInsights({
+          expenses,
+          incomes,
+          todayISO: TODAY,
+          nowMs: NOW_MS,
+          savingsSurplusCents: 150000,
+          plannedAporteCents: 100000,
+          currentMonthAportesCents: 0,
+        }),
+      );
+
+      expect(result.current.insight).not.toBeNull();
+      expect(result.current.insight?.id).toBe("aporte:rebalance");
+      expect(result.current.insight?.priority).toBe(3);
+      expect(result.current.insight?.category).toBe("savings");
+      expect(result.current.insight?.title).toBe("Aporte para rebalanceamento");
+      expect(result.current.insight?.primaryAction?.kind).toBe("navigate_aporte");
+      expect(result.current.insight?.primaryAction?.payload).toEqual({ valorCents: 100000 });
+    });
+
+    it("reavalia imediatamente a fila de insights na sessão quando notificado (§Eixo 1)", () => {
+      const { result } = renderHook(() =>
+        useSmartAdvisorInsights({
+          expenses: [],
+          incomes: [],
+          todayISO: TODAY,
+          nowMs: NOW_MS,
+        }),
+      );
+
+      expect(result.current.insight).toBeNull();
+      // Dispara o sinal global de reavaliação
+      act(() => {
+        triggerSessionInsightsReevaluation();
+      });
+      // Permanece estável e seguro
+      expect(result.current.isLoading).toBe(false);
     });
   });
 

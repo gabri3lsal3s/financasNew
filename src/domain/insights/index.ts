@@ -82,6 +82,16 @@ export type {
   ProjectedSubscriptionItem,
   CardSubscriptionImpact,
 } from "./card-radar";
+export {
+  isBrokerExpense,
+  extractBrokerName,
+  learnBrokerAportePattern,
+} from "./aporte-learning";
+export type {
+  LearnedBrokerPattern,
+  LearnBrokerAportePatternParams,
+} from "./aporte-learning";
+
 
 
 

@@ -27,6 +27,7 @@ import {
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { autoLearnExpenseCategory } from "@/services/merchant-learning";
 import type { Expense, Income } from "@/types";
 import { BankStatementUploadStep } from "./bank-statement-upload-step";
 import { BankStatementMappingStep } from "./bank-statement-mapping-step";
@@ -236,6 +237,15 @@ function BankStatementImportContent({ competenceMonth, onClose }: BankStatementI
     setReconciledItems((prev) =>
       prev.map((it) => (it.transaction.id === id ? { ...it, selectedCategoryId: categoryId } : it)),
     );
+    const targetItem = reconciledItems.find((it) => it.transaction.id === id);
+    if (targetItem && targetItem.kind === "expense" && categoryId) {
+      autoLearnExpenseCategory(
+        targetItem.transaction.cleanDescription,
+        categoryId,
+        undefined,
+        targetItem.transaction.rawDescription,
+      );
+    }
   };
 
   const handleChangeReceiveType = (id: string, receiveType: string) => {
@@ -255,6 +265,15 @@ function BankStatementImportContent({ competenceMonth, onClose }: BankStatementI
       selectedReceiveType?: string;
     },
   ) => {
+    const existing = reconciledItems.find((it) => it.transaction.id === id);
+    if (updated.kind === "expense" && updated.selectedCategoryId) {
+      autoLearnExpenseCategory(
+        updated.cleanDescription,
+        updated.selectedCategoryId,
+        undefined,
+        existing?.transaction.rawDescription,
+      );
+    }
     setReconciledItems((prev) =>
       prev.map((it) => {
         if (it.transaction.id !== id) return it;

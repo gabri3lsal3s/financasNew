@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { currentMonth, shiftMonth, todayLocalIso } from "@/lib/date";
 import { budgetLimitsByCategory, resolveEffectiveLimit } from "@/domain/budgets";
 import { numberToCents, sumGrossCents } from "@/domain/money";
@@ -30,6 +30,7 @@ import {
 } from "@/state";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
+import { subscribeInsightsReevaluation } from "@/services/merchant-learning";
 import type { Budget, Category } from "@/types";
 
 let memoryDismissals: Record<string, number> = {};
@@ -127,6 +128,12 @@ export interface UseSmartAdvisorInsightsOptions {
   initialLastDismissedDay?: string;
   /** Se as queries internas devem ser ativadas. */
   enabled?: boolean;
+  /** Poupança (sobra líquida) do ciclo em centavos para sugerir aporte (§Eixo 3). */
+  savingsSurplusCents?: number;
+  /** Meta mensal de aporte planejada em centavos. */
+  plannedAporteCents?: number;
+  /** Total de aportes já efetuados no mês vigente em centavos. */
+  currentMonthAportesCents?: number;
 }
 
 export interface UseSmartAdvisorInsightsResult {
@@ -321,6 +328,22 @@ export function useSmartAdvisorInsights(
     return sumGrossCents(month0Incomes.data ?? []);
   }, [options.incomes, refMonth, month0Incomes.data]);
 
+  const monthlyExpensesCents = useMemo(() => {
+    if (options.expenses) {
+      const current = options.expenses.filter((e) => e.month === refMonth);
+      return current.reduce((sum, item) => sum + item.valueCents, 0);
+    }
+    return sumGrossCents(month0Expenses.data ?? []);
+  }, [options.expenses, refMonth, month0Expenses.data]);
+
+  const effectiveSurplusCents = useMemo(() => {
+    if (options.savingsSurplusCents !== undefined) {
+      return options.savingsSurplusCents;
+    }
+    const diff = monthlyIncomeCents - monthlyExpensesCents;
+    return diff > 0 ? diff : 0;
+  }, [options.savingsSurplusCents, monthlyIncomeCents, monthlyExpensesCents]);
+
   // Feedback do usuário
   const feedbackMap: FeedbackMap = useMemo(() => {
     if (options.feedbackMap) return options.feedbackMap;
@@ -346,6 +369,10 @@ export function useSmartAdvisorInsights(
       incomes: incomeOccurrences,
       feedbackMap,
       todayISO: todayISOStr,
+      savingsSurplusCents: effectiveSurplusCents,
+      plannedAporteCents: options.plannedAporteCents,
+      currentMonthAportesCents: options.currentMonthAportesCents,
+      allExpenses,
     });
 
     const eligible = filterAndRankAllAdvisorInsights(candidates, {
@@ -361,6 +388,9 @@ export function useSmartAdvisorInsights(
     allIncomes,
     todayISOStr,
     monthlyIncomeCents,
+    effectiveSurplusCents,
+    options.plannedAporteCents,
+    options.currentMonthAportesCents,
     categoryBudgetsMap,
     feedbackMap,
     effectiveDismissals,
@@ -595,6 +625,12 @@ export function useSmartAdvisorInsights(
     categoriesQuery,
     feedbackQuery,
   ]);
+
+  useEffect(() => {
+    return subscribeInsightsReevaluation(() => {
+      void refetch();
+    });
+  }, [refetch]);
 
   return {
     insight: activeInsight,

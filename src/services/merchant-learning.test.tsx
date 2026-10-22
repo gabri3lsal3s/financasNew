@@ -6,7 +6,9 @@ import {
   getMerchantLearningMemory,
   recordMerchantLearningAction,
   setMerchantLearningMemory,
+  subscribeInsightsReevaluation,
   syncMerchantLearningFromCloud,
+  triggerSessionInsightsReevaluation,
   useMerchantLearning,
 } from "./merchant-learning";
 
@@ -127,6 +129,40 @@ describe("services/merchant-learning — Memória Rápida e Persistência", () =
     // Ignora descrições curtas ou vazias
     autoLearnExpenseCategory("a", "alimentacao");
     autoLearnExpenseCategory("", "alimentacao");
+  });
+
+  it("autoLearnExpenseCategory aprende aliases brutos (rawName) e dispara reavaliação de insights (§Eixo 1)", () => {
+    const reevalSpy = vi.fn();
+    const unsub = subscribeInsightsReevaluation(reevalSpy);
+
+    autoLearnExpenseCategory(
+      "Padaria Estrela",
+      "alimentacao",
+      undefined,
+      "PAG*PadariaEstrela LTDA ME",
+    );
+
+    const current = getMerchantLearningMemory();
+    const rec = current["name_padaria_estrela"];
+    expect(rec).toBeDefined();
+    expect(rec?.friendlyName).toBe("Padaria Estrela");
+    expect(rec?.categorySlug).toBe("alimentacao");
+    expect(rec?.rawAliases).toContain("pag*padariaestrela ltda me");
+
+    expect(reevalSpy).toHaveBeenCalledTimes(1);
+    unsub();
+  });
+
+  it("triggerSessionInsightsReevaluation notifica ouvintes inscritos", () => {
+    const spy = vi.fn();
+    const unsub = subscribeInsightsReevaluation(spy);
+
+    triggerSessionInsightsReevaluation();
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    unsub();
+    triggerSessionInsightsReevaluation();
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 });
 

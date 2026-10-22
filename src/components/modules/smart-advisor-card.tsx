@@ -8,6 +8,7 @@ import {
   ChevronRight,
   HelpCircle,
   TrendingDown,
+  TrendingUp,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -244,7 +245,19 @@ export function SmartAdvisorCard({
       return;
     }
 
-    // 3. Rever assinatura ou cobrança duplicada -> foca o item na aba de recorrências
+    // 3. Aporte para rebalanceamento de carteira -> navega para calculadora de aporte
+    if (activeInsight.primaryAction?.kind === "navigate_aporte" || activeInsight.themeKey.startsWith("aporte:")) {
+      const p = activeInsight.primaryAction?.payload as { valorCents?: number } | undefined;
+      const valor = p?.valorCents;
+      if (valor && valor > 0) {
+        navigate?.(`/investments?tab=aporte&valor=${valor}`);
+      } else {
+        navigate?.("/investments?tab=aporte");
+      }
+      return;
+    }
+
+    // 4. Rever assinatura ou cobrança duplicada -> foca o item na aba de recorrências
     if (
       activeInsight.category === "savings" ||
       activeInsight.primaryAction?.kind === "cut_subscription" ||
@@ -259,6 +272,14 @@ export function SmartAdvisorCard({
 
   // Ícones e badges de acordo com a categoria canônica
   const { categoryIcon, categoryBadgeVariant, categoryBadgeLabel } = (() => {
+    if (activeInsight.primaryAction?.kind === "navigate_aporte" || activeInsight.themeKey.startsWith("aporte:")) {
+      return {
+        categoryIcon: <TrendingUp className="size-4 text-portfolio shrink-0" aria-hidden="true" />,
+        categoryBadgeVariant: "portfolio" as const,
+        categoryBadgeLabel: "Aporte",
+      };
+    }
+
     switch (activeInsight.category) {
       case "critical":
         return {
