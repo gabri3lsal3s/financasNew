@@ -23,6 +23,7 @@ import {
   SmartAdvisorCard,
   QuickAporteCard,
   OnboardingCard,
+  WelcomeFeatureModal,
 } from "@/components/modules";
 import { isDemoItem } from "@/services/demo-data";
 import { isOnboardingComplete } from "@/domain/onboarding";
@@ -462,6 +463,7 @@ export function OverviewPage() {
 
   return (
     <DashboardCentsProvider hideCents={visual.hideDashboardCents}>
+      <WelcomeFeatureModal />
       <div className="flex flex-col gap-6 w-full min-w-0">
         {/* F12 — sem header visual: o app mostra direto o seletor de mês.
             Título mantido apenas para leitores de tela (ordem de heading). */}

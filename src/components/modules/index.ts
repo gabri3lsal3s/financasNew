@@ -111,5 +111,9 @@ export { SmartAdvisorCard } from "./smart-advisor-card";
 export type { SmartAdvisorCardProps } from "./smart-advisor-card";
 export { QuickAporteCard } from "./quick-aporte-card";
 export type { QuickAporteCardProps } from "./quick-aporte-card";
+export { WelcomeFeatureModal } from "./welcome-feature-modal";
+export type { WelcomeFeatureModalProps } from "./welcome-feature-modal";
+export { WELCOME_MODAL_STORAGE_KEY, WELCOME_SLIDES } from "./welcome-feature-modal-data";
+export type { FeatureSlide } from "./welcome-feature-modal-data";
 
 

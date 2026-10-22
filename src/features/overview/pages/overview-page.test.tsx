@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SubscriptionStatus } from "@/types";
 import * as nativeModule from "@/services/native";
 import { updateVisualCustomization, resetVisualCustomization } from "@/hooks/use-visual-customization";
+import { WELCOME_MODAL_STORAGE_KEY } from "@/components/modules";
 import { OverviewPage } from "./overview-page";
 
 const testQueryClient = new QueryClient({
@@ -236,6 +237,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
     resetVisualCustomization(null);
+    localStorage.setItem(WELCOME_MODAL_STORAGE_KEY, "true");
     navigateMock.mockReset();
     portfolioContributionsMock = [];
     onboardingCountsMock = {
@@ -602,6 +604,13 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
         "Seu banco não notificou uma transferência? Basta tocar em Compartilhar Comprovante para o Guia Financeiro.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("renderiza WelcomeFeatureModal na Home no primeiro acesso do usuário (Fase 6 — Tarefa 6.4)", () => {
+    localStorage.removeItem(WELCOME_MODAL_STORAGE_KEY);
+    render(<OverviewPage />);
+    expect(screen.getByText("A Mágica da Captura Sem Fricção")).toBeInTheDocument();
+    expect(screen.getByText("Notificações Automáticas")).toBeInTheDocument();
   });
 });
 
