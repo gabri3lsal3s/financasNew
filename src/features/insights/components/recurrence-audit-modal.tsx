@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   AlertTriangle,
   Calendar,
+  CalendarPlus,
   CreditCard,
   Pencil,
   TrendingUp,
@@ -21,6 +22,7 @@ export interface RecurrenceAuditModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEditExpense?: (expense: Expense) => void;
+  onConvert?: (occurrence: RecurrenceOccurrence) => void;
 }
 
 function toExpense(item: ExpenseLike): Expense {
@@ -53,6 +55,7 @@ export function RecurrenceAuditModal({
   open,
   onOpenChange,
   onEditExpense,
+  onConvert,
 }: RecurrenceAuditModalProps) {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
@@ -169,6 +172,30 @@ export function RecurrenceAuditModal({
               </span>
             </div>
           </div>
+
+          {/* Ação Proativa: Fixar como Recorrência Formal */}
+          {onConvert ? (
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 rounded-xl border border-primary/25 bg-primary/5 p-3 sm:p-3.5">
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <span className="text-xs font-semibold text-foreground">
+                  Planejamento e Automação
+                </span>
+                <span className="text-[11px] text-muted-foreground leading-relaxed">
+                  Fixe esta detecção como um agendamento formal para projeções e lançamentos automáticos.
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={() => onConvert(occurrence)}
+                className="gap-1.5 shrink-0"
+              >
+                <CalendarPlus className="size-4" aria-hidden="true" />
+                <span>Fixar como Recorrência Formal</span>
+              </Button>
+            </div>
+          ) : null}
 
           {/* Destaque Contextual: Alerta de Cobrança Duplicada */}
           {hasDuplicates ? (

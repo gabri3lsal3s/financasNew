@@ -160,4 +160,28 @@ describe("InsightList", () => {
     fireEvent.keyDown(itemRow, { key: "Enter" });
     expect(handleItemClick).toHaveBeenCalledWith("sub:spotify");
   });
+
+  it("renderiza botão de conversão formal para item confirmado e aciona onConvert", () => {
+    const handleConvert = vi.fn();
+
+    render(
+      <InsightList
+        items={[
+          {
+            key: "sub:spotify",
+            title: "Spotify",
+            amountCents: 2190,
+          },
+        ]}
+        feedback={{ "sub:spotify": "confirm" }}
+        onConvert={handleConvert}
+      />,
+    );
+
+    const convertBtn = screen.getByRole("button", { name: "Fixar Spotify como Recorrência Formal" });
+    expect(convertBtn).toBeInTheDocument();
+
+    fireEvent.click(convertBtn);
+    expect(handleConvert).toHaveBeenCalledWith("sub:spotify");
+  });
 });

@@ -1,4 +1,4 @@
-import { Check, RotateCcw, X } from "lucide-react";
+import { CalendarPlus, Check, RotateCcw, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -37,6 +37,8 @@ export interface InsightListProps {
   onRestore?: (key: string) => void;
   /** Callback ao clicar na linha da ocorrência (drill-down e auditoria). */
   onItemClick?: (key: string) => void;
+  /** Callback para conversão da ocorrência em recorrência formal (Fase 32). */
+  onConvert?: (key: string) => void;
   emptyLabel?: string;
   /** Formatação do valor (default BRL). */
   formatAmount?: (cents: number) => string;
@@ -54,6 +56,7 @@ export function InsightList({
   onConfirm,
   onRestore,
   onItemClick,
+  onConvert,
   emptyLabel = "Nenhuma ocorrência encontrada.",
   formatAmount = formatCentsAsBRL,
 }: InsightListProps) {
@@ -160,25 +163,43 @@ export function InsightList({
                   </button>
                 </div>
               ) : confirmed ? (
-                <div
-                  className="inline-flex items-center rounded-lg border border-positive/40 bg-positive/10 p-0.5 shadow-sm transition-all duration-200"
-                  role="group"
-                  aria-label={`Ações para ${item.title}`}
-                >
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      triggerSensory("action");
-                      onRestore?.(item.key);
-                    }}
-                    className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-positive-strong transition-all duration-200 hover:bg-positive/20 active:scale-95 sm:h-8"
-                    aria-label={`Confirmada (${item.title}) — clique para desmarcar`}
-                    title={`Confirmada (${item.title}) — clique para desmarcar`}
+                <div className="flex items-center gap-1.5">
+                  {onConvert ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        triggerSensory("action");
+                        onConvert?.(item.key);
+                      }}
+                      className="flex h-7 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2 text-xs font-medium text-primary-strong transition-all duration-200 hover:bg-primary/20 active:scale-95 sm:h-8"
+                      aria-label={`Fixar ${item.title} como Recorrência Formal`}
+                      title={`Fixar ${item.title} como Recorrência Formal`}
+                    >
+                      <CalendarPlus className="size-3.5 sm:size-4" aria-hidden="true" />
+                      <span className="hidden sm:inline">Fixar formal</span>
+                    </button>
+                  ) : null}
+                  <div
+                    className="inline-flex items-center rounded-lg border border-positive/40 bg-positive/10 p-0.5 shadow-sm transition-all duration-200"
+                    role="group"
+                    aria-label={`Ações para ${item.title}`}
                   >
-                    <Check className="size-3.5 animate-spring-pop sm:size-4" aria-hidden="true" />
-                    <span className="hidden sm:inline">Confirmada</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        triggerSensory("action");
+                        onRestore?.(item.key);
+                      }}
+                      className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-positive-strong transition-all duration-200 hover:bg-positive/20 active:scale-95 sm:h-8"
+                      aria-label={`Confirmada (${item.title}) — clique para desmarcar`}
+                      title={`Confirmada (${item.title}) — clique para desmarcar`}
+                    >
+                      <Check className="size-3.5 animate-spring-pop sm:size-4" aria-hidden="true" />
+                      <span className="hidden sm:inline">Confirmada</span>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div

@@ -2,6 +2,7 @@ export * from "./diagnostic-card";
 export * from "./diagnostics-tab";
 export * from "./recurrences-tab";
 export * from "./recurrence-audit-modal";
+export * from "./convert-recurrence-dialog";
 export * from "./projection-tab";
 export { RecurrencesTab as OccurrencesBlock } from "./recurrences-tab";
 export type { RecurrencesTabProps as OccurrencesBlockProps } from "./recurrences-tab";

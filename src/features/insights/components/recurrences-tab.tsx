@@ -6,6 +6,7 @@ import { InsightList } from "@/components/modules";
 import { SERVICE_SEGMENT_LABELS } from "@/domain/insights";
 import { RECURRENCE_LEVEL_LABELS } from "@/lib/labels";
 import { RecurrenceAuditModal } from "./recurrence-audit-modal";
+import { ConvertRecurrenceDialog } from "./convert-recurrence-dialog";
 import type { RecurrenceOccurrence } from "@/domain/insights/recurrences";
 import type { FeedbackDecision, FeedbackMap } from "@/domain/insights/feedback";
 
@@ -35,6 +36,7 @@ export function RecurrencesTab({
   onFeedback,
 }: RecurrencesTabProps) {
   const [selectedOccurrenceKey, setSelectedOccurrenceKey] = useState<string | null>(null);
+  const [convertingOccurrence, setConvertingOccurrence] = useState<RecurrenceOccurrence | null>(null);
 
   const selectedOccurrence = useMemo(() => {
     if (!selectedOccurrenceKey) return null;
@@ -44,6 +46,19 @@ export function RecurrencesTab({
       null
     );
   }, [activeOccurrences, ignoredOccurrences, selectedOccurrenceKey]);
+
+  const handleStartConversion = (keyOrOccurrence: string | RecurrenceOccurrence) => {
+    const occ =
+      typeof keyOrOccurrence === "string"
+        ? (activeOccurrences.find((o) => o.key === keyOrOccurrence) ??
+           ignoredOccurrences.find((o) => o.key === keyOrOccurrence) ??
+           null)
+        : keyOrOccurrence;
+    if (occ) {
+      setSelectedOccurrenceKey(null);
+      setConvertingOccurrence(occ);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -132,6 +147,7 @@ export function RecurrencesTab({
           onConfirm={(key) => onFeedback(key, "confirm")}
           onRestore={(key) => onFeedback(key, null)}
           onItemClick={(key) => setSelectedOccurrenceKey(key)}
+          onConvert={handleStartConversion}
           emptyLabel="Nenhuma assinatura ou recorrência ativa detectada nos últimos meses."
         />
       </section>
@@ -177,6 +193,7 @@ export function RecurrencesTab({
                 feedback={feedbackMap}
                 onRestore={(key) => onFeedback(key, null)}
                 onItemClick={(key) => setSelectedOccurrenceKey(key)}
+                onConvert={handleStartConversion}
               />
             </div>
           ) : null}
@@ -190,6 +207,16 @@ export function RecurrencesTab({
           if (!next) setSelectedOccurrenceKey(null);
         }}
         occurrence={selectedOccurrence}
+        onConvert={handleStartConversion}
+      />
+
+      {/* Diálogo de Agendamento Formal (Fase 32 / Tarefa 7.5) */}
+      <ConvertRecurrenceDialog
+        open={Boolean(convertingOccurrence)}
+        onOpenChange={(next) => {
+          if (!next) setConvertingOccurrence(null);
+        }}
+        occurrence={convertingOccurrence}
       />
     </div>
   );

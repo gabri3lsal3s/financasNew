@@ -18,6 +18,8 @@ vi.mock("@/state", () => ({
   useUpdateExpenseGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateRecurrenceOccurrences: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateRecurrence: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSetFeedback: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 const mockOccurrences: RecurrenceOccurrence[] = [
@@ -142,5 +144,60 @@ describe("RecurrencesTab", () => {
     expect(screen.getByText("Auditoria detalhada e histórico de cobranças")).toBeInTheDocument();
     expect(screen.getByText("05/08/2026")).toBeInTheDocument();
     expect(screen.getByText("Saúde")).toBeInTheDocument();
+  });
+
+  it("permite abrir o diálogo de agendamento formal a partir do botão Fixar formal em ocorrência confirmada", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <RecurrencesTab
+        totalRecurringCents={2190}
+        totalAnnualRecurringCents={26280}
+        canCutRecurringCents={2190}
+        canCutAnnualCents={26280}
+        activeOccurrences={mockOccurrences}
+        ignoredOccurrences={[]}
+        feedbackMap={{ "sub:spotify": "confirm" }}
+        showIgnored={false}
+        setShowIgnored={vi.fn()}
+        onFeedback={vi.fn()}
+      />,
+    );
+
+    const fixarFormalBtn = screen.getByRole("button", { name: "Fixar Spotify como Recorrência Formal" });
+    expect(fixarFormalBtn).toBeInTheDocument();
+
+    await user.click(fixarFormalBtn);
+
+    expect(screen.getByText("Fixar como Recorrência Formal")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Spotify")).toBeInTheDocument();
+  });
+
+  it("permite abrir o diálogo de agendamento formal a partir do modal de auditoria", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <RecurrencesTab
+        totalRecurringCents={2190}
+        totalAnnualRecurringCents={26280}
+        canCutRecurringCents={2190}
+        canCutAnnualCents={26280}
+        activeOccurrences={mockOccurrences}
+        ignoredOccurrences={[]}
+        feedbackMap={{}}
+        showIgnored={false}
+        setShowIgnored={vi.fn()}
+        onFeedback={vi.fn()}
+      />,
+    );
+
+    const spotifyRow = screen.getByRole("button", { name: "Ver detalhes de Spotify" });
+    await user.click(spotifyRow);
+
+    const fixarBtn = screen.getByRole("button", { name: "Fixar como Recorrência Formal" });
+    await user.click(fixarBtn);
+
+    expect(screen.getByText("Fixar como Recorrência Formal")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Spotify")).toBeInTheDocument();
   });
 });

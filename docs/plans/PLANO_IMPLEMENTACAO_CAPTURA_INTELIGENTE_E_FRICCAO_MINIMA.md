@@ -427,7 +427,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes de renderização com React Testing Library validando abertura do modal, exibição do histórico e acessibilidade.
   - *Commit:* `feat(insights): adicionar modal de drill-down com historico de cobrancas de recorrencias`
 
-- [ ] **Tarefa 7.5 — Ponte de Conversão de "Insight Detectado" em "Recorrência Formal" (Fase 32):**
+- [x] **Tarefa 7.5 — Ponte de Conversão de "Insight Detectado" em "Recorrência Formal" (Fase 32):**
   - No card de recorrência confirmada e no modal de detalhes, adicionar ação proativa: *"Fixar como Recorrência Formal"*.
   - Ao clicar, abrir diálogo de agendamento formal com dados pré-preenchidos:
     - Descrição amigável limpa.

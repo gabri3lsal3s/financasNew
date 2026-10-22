@@ -192,4 +192,25 @@ describe("RecurrenceAuditModal", () => {
       }),
     );
   });
+
+  it("chama onConvert ao clicar no botão Fixar como Recorrência Formal", async () => {
+    const user = userEvent.setup();
+    const handleConvert = vi.fn();
+
+    render(
+      <RecurrenceAuditModal
+        occurrence={baseOccurrence}
+        open={true}
+        onOpenChange={vi.fn()}
+        onConvert={handleConvert}
+      />,
+    );
+
+    const convertBtn = screen.getByRole("button", { name: "Fixar como Recorrência Formal" });
+    expect(convertBtn).toBeInTheDocument();
+
+    await user.click(convertBtn);
+    expect(handleConvert).toHaveBeenCalledTimes(1);
+    expect(handleConvert).toHaveBeenCalledWith(baseOccurrence);
+  });
 });

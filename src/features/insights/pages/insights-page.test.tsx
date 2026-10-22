@@ -60,6 +60,7 @@ vi.mock("@/state", () => ({
     error: null,
   }),
   useSetFeedback: () => ({ mutate: setFeedbackMock }),
+  useCreateRecurrence: () => ({ mutateAsync: vi.fn(), isPending: false }),
   usePortfolioPosition: () => ({
     rows: [],
     totalBRL: 0,
