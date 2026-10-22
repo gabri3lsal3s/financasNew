@@ -56,6 +56,16 @@ describe("LandingPage", () => {
     expect(screen.getByText(/Alocação matemática de aportes e blindagem contra impostos/i)).toBeInTheDocument();
   });
 
+  it("renderiza o bloco de narrativa editorial 'Captura Invisível com Inteligência Local' com os caminhos 1, 2 e mágica semântica (Fase 6 — Tarefa 6.1)", () => {
+    renderLanding();
+
+    expect(screen.getByText("Captura Invisível com Inteligência Local")).toBeInTheDocument();
+    expect(screen.getByText(/Caminho 1 \(Estrela\): Leitura Automática de Notificações/i)).toBeInTheDocument();
+    expect(screen.getByText(/Caminho 2 \(Garantia\): Compartilhamento Direto de Comprovantes/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mágica Semântica: Memória Ativa de CNPJs e Comerciantes/i)).toBeInTheDocument();
+    expect(screen.getByText("Zero Senhas Bancárias")).toBeInTheDocument();
+  });
+
   it("renderiza a vitrine de investimentos com os 6 cards de inteligência fiscal", () => {
     renderLanding();
 

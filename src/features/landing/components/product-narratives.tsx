@@ -4,8 +4,11 @@ import {
   Zap,
   CheckCircle2,
   Calendar,
-  Smartphone,
   Bell,
+  Share2,
+  Sparkles,
+  ShieldCheck,
+  FileText,
 } from "lucide-react";
 import { Badge, Card } from "@/components/ui";
 import { ScrollReveal } from "@/features/landing/components/scroll-reveal";
@@ -274,17 +277,17 @@ export function ProductNarratives() {
           </ScrollReveal>
         </div>
 
-        {/* Motor de Entrada: Automação Inteligente de Despesas & Pix */}
+        {/* Bloco de Narrativa Editorial: Captura Invisível com Inteligência Local (Fase 6 — Tarefa 6.1) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-16 xl:gap-20 items-center">
           {/* Texto Explicativo (Esquerda) */}
           <ScrollReveal delay={50} className="lg:col-span-6 space-y-4 sm:space-y-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-primary">
-              <Smartphone className="size-3.5 sm:size-4" aria-hidden="true" />
-              <span>Alimentação dos Três Eixos · Automação sem Fricção</span>
+              <Zap className="size-3.5 sm:size-4" aria-hidden="true" />
+              <span>Captura Invisível com Inteligência Local</span>
             </div>
 
             <h3 className="font-display text-xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-snug">
-              Compras e Pix registrados no momento em que acontecem
+              Registro sem esforço com a segurança que seu banco exige
             </h3>
 
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
@@ -292,21 +295,39 @@ export function ProductNarratives() {
             </p>
 
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              O ÁXIS elimina a digitação manual em qualquer plataforma: no <strong>Android Pro</strong>, o Assistente Bancário detecta em segundo plano as notificações de compras de cartões e transferências Pix emitidas pelo seu banco, com aprovação em 1 toque. No <strong>iPhone (iOS) e Web</strong>, conte com o <strong>Leitor Inteligente de Pix Copia e Cola (BR Code) e Comprovantes</strong>: basta colar o texto para preencher valor, categoria e beneficiário instantaneamente.
+              Em vez de conexões bancárias frágeis que exigem suas senhas ou quebram a cada atualização, o ÁXIS opera com duas vias integradas de captura local e um motor semântico adaptativo:
             </p>
 
-            <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Detecção passiva no Android Pro e Leitor Inteligente de Pix/Comprovantes no iOS e Web</span>
+            {/* Três Pilares da Hierarquia de Captura */}
+            <div className="space-y-3.5 pt-1 text-xs sm:text-sm text-muted-foreground">
+              <div className="p-3 sm:p-3.5 rounded-xl border border-border/70 bg-surface/60 space-y-1">
+                <div className="flex items-center gap-2 text-foreground font-semibold">
+                  <Bell className="size-4 text-primary shrink-0" aria-hidden="true" />
+                  <span>Caminho 1 (Estrela): Leitura Automática de Notificações</span>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
+                  No Android Pro, o app lê notificações de compras de cartões e transferências Pix em segundo plano. 100% privado, local e sem exigir senhas. Você apenas toca para aprovar.
+                </p>
               </div>
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Memória de Estabelecimentos: categorização determinística que aprende com seus hábitos</span>
+
+              <div className="p-3 sm:p-3.5 rounded-xl border border-border/70 bg-surface/60 space-y-1">
+                <div className="flex items-center gap-2 text-foreground font-semibold">
+                  <Share2 className="size-4 text-portfolio shrink-0" aria-hidden="true" />
+                  <span>Caminho 2 (Garantia): Compartilhamento Direto de Comprovantes</span>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
+                  O banco não notificou uma transferência ou você usa iPhone/Web? Toque em "Compartilhar" no app do banco e envie o comprovante (PDF, imagem ou texto). Nosso OCR local processa na hora sem enviar arquivos para a nuvem.
+                </p>
               </div>
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Zero senhas compartilhadas e sem conexões bancárias vulneráveis</span>
+
+              <div className="p-3 sm:p-3.5 rounded-xl border border-border/70 bg-surface/60 space-y-1">
+                <div className="flex items-center gap-2 text-foreground font-semibold">
+                  <Sparkles className="size-4 text-warning-strong dark:text-warning shrink-0" aria-hidden="true" />
+                  <span>Mágica Semântica: Memória Ativa de CNPJs e Comerciantes</span>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
+                  O motor aprende onde você consome (ex.: "Mc" vira "McDonald's" em Alimentação com pagamento no Crédito). Quanto mais você usa, mais inteligente e invisível fica o registro.
+                </p>
               </div>
             </div>
           </ScrollReveal>
@@ -316,42 +337,53 @@ export function ProductNarratives() {
             <Card className="border-border/80 bg-surface/90 shadow-xl p-4.5 sm:p-8 md:p-10 space-y-4 sm:space-y-6 rounded-2xl sm:rounded-3xl">
               <div className="flex justify-between items-center border-b border-border/50 pb-3 sm:pb-4">
                 <div className="flex items-center gap-2">
-                  <Bell className="size-4 text-primary" aria-hidden="true" />
-                  <span className="text-xs sm:text-sm font-bold text-foreground">Captura de Notificação & Pix</span>
+                  <ShieldCheck className="size-4 text-positive-strong dark:text-positive" aria-hidden="true" />
+                  <span className="text-xs sm:text-sm font-bold text-foreground">Captura Local & Privada</span>
                 </div>
                 <Badge variant="positive" size="xs" className="font-mono">
-                  Tempo Real ou Copia e Cola
+                  Zero Senhas Bancárias
                 </Badge>
               </div>
 
-              {/* Simulação de Notificação do Banco ou Pix */}
+              {/* Simulação de Notificação ou Comprovante Compartilhado */}
               <div className="p-3.5 sm:p-4 rounded-xl bg-background/60 border border-border/70 space-y-1.5">
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground">Notificação Bancária ou Código Pix</span>
+                  <span className="font-semibold text-foreground flex items-center gap-1.5">
+                    <FileText className="size-3.5 text-primary" aria-hidden="true" />
+                    Comprovante Pix ou Notificação Bancária
+                  </span>
                   <span>Agora mesmo</span>
                 </div>
                 <p className="text-xs sm:text-sm font-mono text-foreground font-medium">
-                  Compra aprovada ou Pix no valor de R$ 42,90 em Padaria e Confeitaria Bella
+                  Transferência Pix de R$ 42,90 para Padaria e Confeitaria Bella LTDA
                 </p>
               </div>
 
-              {/* Sugestão Gerada pelo Áxis */}
+              {/* Sugestão Gerada pelo Motor Semântico */}
               <div className="p-4 rounded-xl sm:rounded-2xl bg-primary/10 border border-primary/30 space-y-3">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-primary-strong">Sugestão Pronta para Aprovação:</span>
+                  <span className="font-semibold text-primary-strong">Identificação Semântica Automática:</span>
                   <Badge variant="default" size="xs">
-                    Classificação 98% · Memória Ativa
+                    99% Confiança · OCR Local
                   </Badge>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                   <div className="p-2 rounded-lg bg-surface/80 border border-border/50">
+                    <span className="text-muted-foreground block text-[10px]">Favorecido</span>
+                    <span className="font-bold text-foreground truncate block">Padaria Bella</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-surface/80 border border-border/50">
                     <span className="text-muted-foreground block text-[10px]">Valor</span>
-                    <span className="font-bold text-negative">R$ 42,90</span>
+                    <span className="font-bold text-negative-strong dark:text-negative">R$ 42,90</span>
                   </div>
                   <div className="p-2 rounded-lg bg-surface/80 border border-border/50">
                     <span className="text-muted-foreground block text-[10px]">Categoria</span>
                     <span className="font-bold text-foreground truncate block">Alimentação</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-surface/80 border border-border/50">
+                    <span className="text-muted-foreground block text-[10px]">Pagamento</span>
+                    <span className="font-bold text-foreground truncate block">Pix</span>
                   </div>
                 </div>
 

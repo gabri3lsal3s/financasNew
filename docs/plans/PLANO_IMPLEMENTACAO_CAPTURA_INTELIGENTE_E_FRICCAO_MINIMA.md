@@ -338,7 +338,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 **Objetivo:** Comunicar com clareza a hierarquia de captura (Leitura Passiva de Notificações como caminho principal + Compartilhamento de Comprovantes como fallback inteligente), guiando o usuário no setup de permissões sem promessas de recursos inexistentes.
 
 #### Tarefas da Fase 6:
-- [ ] **Tarefa 6.1 — Destaque Narrativo na Landing Page (`ProductNarratives.tsx`):**
+- [x] **Tarefa 6.1 — Destaque Narrativo na Landing Page (`ProductNarratives.tsx`):**
   - Adicionar o bloco de narrativa editorial "Captura Invisível com Inteligência Local":
     - **Caminho 1 (Estrela):** Leitura automática de notificações bancárias locais em segundo plano (100% privado, sem senhas).
     - **Caminho 2 (Garantia):** Compartilhamento direto de comprovante do banco para o app quando o banco não notificar.
