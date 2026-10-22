@@ -112,7 +112,7 @@ describe("local-notifications service", () => {
         notifications: [
           expect.objectContaining({
             id: DAILY_REMINDER_NOTIFICATION_ID,
-            title: "Fechamento Diário — ÁXIS Finance",
+            title: "Fechamento Diário — Áxis Finance",
             schedule: {
               on: { hour: 20, minute: 30 },
               allowWhileIdle: true,

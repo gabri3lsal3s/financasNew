@@ -176,7 +176,7 @@ function encodeIco(pngBuffers) {
   return Buffer.concat([header, ...dirEntries, ...pngBuffers.map((p) => p.buffer)]);
 }
 
-// Imagens base oficiais da marca ÁXIS:
+// Imagens base oficiais da marca Áxis:
 // - sourceDark: letra 'A' branca (para superfícies escuras como splash screen)
 // - sourceLight: letra 'A' escura (para superfícies claras e ícones de launcher com fundo branco)
 // - sourceAmberLight: letra 'A' escura e asas âmbar (para ícone do launcher Pro em fundo branco)
@@ -390,7 +390,7 @@ if (existsSync(brandFaviconPath)) {
 console.log(`✓ public/favicon.svg & public/brand/favicon.svg (vetor SVG oficial)`);
 
 // Lockup horizontal completo oficial
-console.log(`✓ public/brand/logo-full.png (lockup horizontal oficial AXIS • Guia Financeiro)`);
+console.log(`✓ public/brand/logo-full.png (lockup horizontal oficial Áxis Finance)`);
 
 // 5. Gera ícones e Splash Screens do Android Nativo (`android/app/src/main/res/`)
 const androidResDir = join(root, "android", "app", "src", "main", "res");

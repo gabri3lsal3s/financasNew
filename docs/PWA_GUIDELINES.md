@@ -55,7 +55,7 @@ Referência completa (ajustar nomes à marca final):
 ```json
 {
   "id": "/",
-  "name": "Áxis • Guia Financeiro",
+  "name": "Áxis Finance",
   "short_name": "Áxis",
   "description": "Gestão de gastos, orçamentos, relatórios, insights e rebalanceamento de carteira.",
   "lang": "pt-BR",

@@ -4,17 +4,17 @@ import { BrandLogo } from "./brand-logo";
 import { LogoIcon } from "./logo-icon";
 import { LogoFull } from "./logo-full";
 
-describe("BrandLogo — Sistema de Identidade Oficial ÁXIS Finance", () => {
+describe("BrandLogo — Sistema de Identidade Oficial Áxis Finance", () => {
   it("renderiza o símbolo com acessibilidade por padrão", () => {
     render(<BrandLogo />);
-    const symbol = screen.getByRole("img", { name: "AXIS" });
+    const symbol = screen.getByRole("img", { name: "Áxis" });
     expect(symbol).toBeInTheDocument();
     expect(symbol.tagName.toLowerCase()).toBe("img");
   });
 
-  it("com showWordmark=true exibe o símbolo e o wordmark 'ÁXIS'", () => {
+  it("com showWordmark=true exibe o símbolo e o wordmark 'Áxis'", () => {
     render(<BrandLogo showWordmark />);
-    expect(screen.getByText("ÁXIS")).toBeInTheDocument();
+    expect(screen.getByText("Áxis")).toBeInTheDocument();
     const img = document.querySelector("img");
     expect(img).not.toBeNull();
     expect(img).toHaveAttribute("aria-hidden", "true");
@@ -22,13 +22,13 @@ describe("BrandLogo — Sistema de Identidade Oficial ÁXIS Finance", () => {
 
   it("renderiza subtítulo 'Finance' por padrão quando showWordmark e showSubtitle são true", () => {
     render(<BrandLogo showWordmark showSubtitle />);
-    expect(screen.getByText("ÁXIS")).toBeInTheDocument();
+    expect(screen.getByText("Áxis")).toBeInTheDocument();
     expect(screen.getByText("Finance")).toBeInTheDocument();
   });
 
   it("renderiza subtítulo customizado se fornecido", () => {
     render(<BrandLogo showWordmark showSubtitle subtitleText="Gestão Inteligente" />);
-    expect(screen.getByText("ÁXIS")).toBeInTheDocument();
+    expect(screen.getByText("Áxis")).toBeInTheDocument();
     expect(screen.getByText("Gestão Inteligente")).toBeInTheDocument();
   });
 
@@ -105,9 +105,9 @@ describe("LogoIcon — Componente Gráfico Áxis Finance", () => {
 });
 
 describe("LogoFull — Lockup Corporativo Completo", () => {
-  it("renderiza lockup horizontal com wordmark 'ÁXIS' e símbolo", () => {
+  it("renderiza lockup horizontal com wordmark 'Áxis' e símbolo", () => {
     render(<LogoFull />);
-    expect(screen.getByText("ÁXIS")).toBeInTheDocument();
+    expect(screen.getByText("Áxis")).toBeInTheDocument();
     const img = document.querySelector("img");
     expect(img).toBeInTheDocument();
     expect(img).toHaveAttribute("aria-hidden", "true");

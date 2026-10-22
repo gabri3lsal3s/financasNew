@@ -11,7 +11,7 @@ O Áxis opera em um modelo unificado onde uma única conta/assinatura concede ac
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                        TRIPÉ DE PLATAFORMAS ÁXIS                       │
+│                        TRIPÉ DE PLATAFORMAS Áxis                       │
 ├────────────────────┬───────────────────────────┬───────────────────────┤
 │ 1. Web Desktop     │ 2. Mobile PWA             │ 3. Android App Pro    │
 ├────────────────────┼───────────────────────────┼───────────────────────┤

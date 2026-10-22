@@ -1,7 +1,7 @@
 # PLANO DE EXECUÇÃO: ADEQUAÇÃO LEGAL, REGULATÓRIA E CONTRATUAL INTEGRAL
 
 > **Documento:** Plano Canônico de Adequação Legal, Regulatória e Contratual  
-> **Aplicação:** ÁXIS Finance (Web, PWA e Android Nativo)  
+> **Aplicação:** Áxis Finance (Web, PWA e Android Nativo)  
 > **Jurisdição:** República Federativa do Brasil  
 > **Status:** Pronto para Execução por Fases  
 > **Governança:** Fases sequenciais, tarefas com checklist, portões de qualidade (*quality gates*), testes automatizados, revisões de conformidade, atualização contínua da documentação e commits semânticos.
@@ -10,7 +10,7 @@
 
 ## 1. Visão Geral e Normas Auditadas
 
-Este plano operacionaliza a conformidade jurídica integral do ÁXIS Finance com o ordenamento jurídico brasileiro:
+Este plano operacionaliza a conformidade jurídica integral do Áxis Finance com o ordenamento jurídico brasileiro:
 1. **LGPD (Lei nº 13.709/2018)** e Resoluções da Autoridade Nacional de Proteção de Dados (ANPD);
 2. **Marco Civil da Internet (Lei nº 12.965/2014)** e Decreto Regulamentador nº 8.771/2016;
 3. **Código de Defesa do Consumidor (Lei nº 8.078/1990)**;
@@ -31,9 +31,9 @@ Abaixo constam as minutas integrais dos 5 contratos que regem a plataforma e fun
 ### CONTRATO 1: TERMOS DE SERVIÇO E CONTRATO DE ADESÃO SAAS (B2C)
 
 **CLÁUSULA PRIMEIRA — DO OBJETO E DA NATUREZA DOS SERVIÇOS**  
-1.1. O presente instrumento regula a licença de uso do software **ÁXIS Finance**, disponibilizado sob o modelo de *Software as a Service* (SaaS), destinado à organização financeira pessoal, controle de receitas e despesas, gestão de cartões de crédito, dívidas, orçamentos e consolidação numérica e matemática de carteiras de investimentos.  
-1.2. O ÁXIS Finance é uma plataforma 100% *Online First*, funcionando com sincronização em nuvem e armazenamento criptografado.  
-1.3. O serviço é prestado por **ÁXIS Tecnologia & Gestão Financeira Ltda.**, inscrita no CNPJ sob o nº `00.000.000/0001-00`, com sede em São Paulo/SP.
+1.1. O presente instrumento regula a licença de uso do software **Áxis Finance**, disponibilizado sob o modelo de *Software as a Service* (SaaS), destinado à organização financeira pessoal, controle de receitas e despesas, gestão de cartões de crédito, dívidas, orçamentos e consolidação numérica e matemática de carteiras de investimentos.  
+1.2. O Áxis Finance é uma plataforma 100% *Online First*, funcionando com sincronização em nuvem e armazenamento criptografado.  
+1.3. O serviço é prestado por **Áxis Tecnologia & Gestão Financeira Ltda.**, inscrita no CNPJ sob o nº `00.000.000/0001-00`, com sede em São Paulo/SP.
 
 **CLÁUSULA SEGUNDA — DA CAPACIDADE E DO CADASTRO**  
 2.1. O cadastro é restrito a pessoas naturais plenamente capazes (maiores de 18 anos de idade nos termos do Código Civil Brasileiro).  
@@ -57,7 +57,7 @@ Abaixo constam as minutas integrais dos 5 contratos que regem a plataforma e fun
 6.2. O cancelamento não gera multas, retenções contratuais ou cláusulas de fidelidade. O acesso Pro permanecerá vigente até o término do ciclo já pago.
 
 **CLÁUSULA SÉTIMA — DA ISENÇÃO DE CUSTÓDIA, INTERMEDIAÇÃO E CONSULTORIA (CVM)**  
-7.1. O ÁXIS Finance **não é instituição financeira, cooperativa de crédito, corretora de valores ou distribuidora de títulos e valores mobiliários**. A plataforma não realiza custódia de numerário, não recebe depósitos e não executa ordens de compra e venda no mercado de capitais.  
+7.1. O Áxis Finance **não é instituição financeira, cooperativa de crédito, corretora de valores ou distribuidora de títulos e valores mobiliários**. A plataforma não realiza custódia de numerário, não recebe depósitos e não executa ordens de compra e venda no mercado de capitais.  
 7.2. As ferramentas de cálculo patrimonial e rebalanceamento de carteira operam em modelo **estritamente matemático e automatizado**, fundamentando-se nas metas percentuais e classes de ativos definidas de forma discricionária e exclusiva pelo próprio usuário.  
 7.3. O aplicativo não presta serviços de consultoria de valores mobiliários (Resolução CVM nº 19/2021) nem elabora relatórios de análise ou recomendações de investimento (Resolução CVM nº 20/2021). Rentabilidade passada não representa garantia de retorno futuro.
 
@@ -73,7 +73,7 @@ Abaixo constam as minutas integrais dos 5 contratos que regem a plataforma e fun
 ### CONTRATO 2: POLÍTICA DE PRIVACIDADE E PROTEÇÃO DE DADOS (LGPD)
 
 **SEÇÃO 1 — IDENTIFICAÇÃO DO CONTROLADOR E DO ENCARREGADO (DPO)**  
-O controlador do tratamento de dados pessoais é a **ÁXIS Tecnologia & Gestão Financeira Ltda.** (CNPJ `00.000.000/0001-00`). O Encarregado pelo Tratamento de Dados Pessoais (DPO) pode ser contatado diretamente e formalmente através do canal eletrônico permanente: **`privacidade@axis.app`**.
+O controlador do tratamento de dados pessoais é a **Áxis Tecnologia & Gestão Financeira Ltda.** (CNPJ `00.000.000/0001-00`). O Encarregado pelo Tratamento de Dados Pessoais (DPO) pode ser contatado diretamente e formalmente através do canal eletrônico permanente: **`privacidade@axis.app`**.
 
 **SEÇÃO 2 — BASES LEGAIS E FINALIDADES DO TRATAMENTO (LGPD ART. 7º E 11)**  
 1. **Identificação e Acesso:** Tratamento de nome, e-mail e credenciais para autenticação, segurança e prestação dos serviços (Execução de Contrato — Art. 7º, V).  
@@ -104,7 +104,7 @@ A plataforma utiliza unicamente armazenamento local (`localStorage` e cookies t�
 
 ### CONTRATO 3: ACORDO DE NÍVEL DE SERVIÇO (SLA) & DISPONIBILIDADE
 
-1. **Meta de Disponibilidade:** O ÁXIS Finance adota meta de disponibilidade mensal de **99,5%** para sua infraestrutura operacional em nuvem (hospedada em Cloudflare Pages e Supabase Enterprise Cloud).  
+1. **Meta de Disponibilidade:** O Áxis Finance adota meta de disponibilidade mensal de **99,5%** para sua infraestrutura operacional em nuvem (hospedada em Cloudflare Pages e Supabase Enterprise Cloud).  
 2. **Manutenções Programadas:** Intervenções de manutenção preventiva que impactem a disponibilidade do serviço serão informadas previamente com antecedência mínima de 24 (vinte e quatro) horas, ocorrendo preferencialmente em horários de menor tráfego (entre 01h00 e 05h00, horário de Brasília).  
 3. **Plano de Contingência:** Em caso de interrupção não programada, a equipe técnica iniciará procedimentos de contenção e recuperação em até 60 minutos, mantendo status atualizado aos usuários.
 
@@ -112,16 +112,16 @@ A plataforma utiliza unicamente armazenamento local (`localStorage` e cookies t�
 
 ### CONTRATO 4: TERMO DE CONSENTIMENTO ESPECÍFICO — CAPTURA PASSIVA ANDROID
 
-1. **Objeto do Consentimento:** O usuário autoriza expressamente o ÁXIS Finance a utilizar a permissão de acessibilidade/leitura de notificações do sistema operacional Android (`BIND_NOTIFICATION_LISTENER_SERVICE`).  
+1. **Objeto do Consentimento:** O usuário autoriza expressamente o Áxis Finance a utilizar a permissão de acessibilidade/leitura de notificações do sistema operacional Android (`BIND_NOTIFICATION_LISTENER_SERVICE`).  
 2. **Finalidade Estrita:** A permissão destina-se exclusivamente a detectar alertas emitidos por aplicativos de instituições bancárias autorizadas pelo usuário (compras no cartão, transferências Pix e confirmações de pagamento) para transformá-los em sugestões rápidas de lançamento financeiro.  
-3. **Privacidade e Descarte de Dados Críticos:** O ÁXIS Finance compromete-se a executar 100% da análise do texto no processador local do celular, sem envio de mensagens brutas à internet, descartando imediatamente senhas, tokens 2FA e dados confidenciais.  
+3. **Privacidade e Descarte de Dados Críticos:** O Áxis Finance compromete-se a executar 100% da análise do texto no processador local do celular, sem envio de mensagens brutas à internet, descartando imediatamente senhas, tokens 2FA e dados confidenciais.  
 4. **Revogabilidade:** O usuário pode revogar esta autorização a qualquer momento nas configurações do app ou do sistema operacional Android.
 
 ---
 
 ### CONTRATO 5: TERMO DE ISENÇÃO REGULATÓRIA CVM & RESPONSABILIDADE TRIBUTÁRIA
 
-1. **Isenção CVM:** O usuário declara ciência inequívoca de que o ÁXIS Finance opera como mero instrumento tecnológico de auxílio à consolidação contábil e orçamentária pessoal. Todas as sugestões de rebalanceamento e alocação são derivadas puramente de formulações matemáticas parametrizadas pelas metas informadas pelo próprio usuário, não configurando análise de valores mobiliários, consultoria financeira (Resolução CVM 19/2021) ou recomendação de compra e venda (Resolução CVM 20/2021).  
+1. **Isenção CVM:** O usuário declara ciência inequívoca de que o Áxis Finance opera como mero instrumento tecnológico de auxílio à consolidação contábil e orçamentária pessoal. Todas as sugestões de rebalanceamento e alocação são derivadas puramente de formulações matemáticas parametrizadas pelas metas informadas pelo próprio usuário, não configurando análise de valores mobiliários, consultoria financeira (Resolução CVM 19/2021) ou recomendação de compra e venda (Resolução CVM 20/2021).  
 2. **Isenção Fiscal:** O usuário reconhece que as rotinas de cálculo de DARF e controle fiscal de ganho de capital constituem estimativas informativas baseadas nos registros fornecidos. É de responsabilidade indelegável do usuário confrontar tais estimativas com os informes oficiais de suas corretoras de custódia e submeter sua Declaração de Ajuste Anual tempestivamente à Receita Federal do Brasil.
 
 ---

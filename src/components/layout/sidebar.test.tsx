@@ -55,14 +55,14 @@ beforeEach(() => {
 describe("Sidebar colapsável (F7.2)", () => {
   it("renderiza expandida com logo e labels visíveis", () => {
     renderSidebar();
-    expect(screen.getByText(/ÁXIS|AXIS/i)).toBeInTheDocument();
+    expect(screen.getByText(/Áxis|Axis/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Transações" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Recolher menu lateral" })).toBeInTheDocument();
   });
 
   it("modo compacto esconde labels e expõe os nomes via aria-label", () => {
     renderSidebar(true);
-    expect(screen.queryByText(/ÁXIS|AXIS/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Áxis|Axis/i)).not.toBeInTheDocument();
     // Link ainda nomeado para leitores de tela e tooltips (title).
     expect(screen.getByRole("link", { name: "Transações" })).toHaveAttribute(
       "title",
@@ -131,7 +131,7 @@ describe("Sidebar colapsável (F7.2)", () => {
 
     const logoButton = screen.getByRole("button", { name: "Abrir perfil do usuário" });
     expect(logoButton).toBeInTheDocument();
-    expect(screen.getByText(/ÁXIS|AXIS/i)).toBeInTheDocument();
+    expect(screen.getByText(/Áxis|Axis/i)).toBeInTheDocument();
 
     await user.click(logoButton);
 

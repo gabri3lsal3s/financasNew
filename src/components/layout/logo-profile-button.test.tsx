@@ -84,7 +84,7 @@ describe("LogoProfileButton (mobile & desktop)", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText(/ÁXIS|AXIS/i)).toBeInTheDocument();
+    expect(screen.getByText(/Áxis|Axis/i)).toBeInTheDocument();
 
     const trigger = screen.getByRole("button", { name: "Abrir perfil do usuário" });
     await user.click(trigger);
