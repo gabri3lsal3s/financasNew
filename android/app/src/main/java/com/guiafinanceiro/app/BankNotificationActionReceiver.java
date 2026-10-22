@@ -56,7 +56,56 @@ public class BankNotificationActionReceiver extends BroadcastReceiver {
             if (plugin != null) {
                 plugin.onTransactionUndone(packageName, title, text, timestamp);
             }
+
+            postUndoneConfirmationNotification(context, nm, notificationId);
         }
+    }
+
+    public static boolean isIncome(String title, String text) {
+        String combined = ((title != null ? title : "") + " " + (text != null ? text : "")).toLowerCase();
+        return combined.contains("recebeu") || combined.contains("recebido") || combined.contains("crédito em conta") ||
+               combined.contains("credito em conta") || combined.contains("transferência recebida") ||
+               combined.contains("transferencia recebida") || combined.contains("salário") || combined.contains("salario");
+    }
+
+    public static String extractPartyName(String text) {
+        if (text == null) return null;
+        try {
+            // Padrão Pix recebido: "Você recebeu um Pix de [Nome] ***..."
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile(
+                "(?:recebeu\\s+(?:um\\s+)?pix|pix\\s+recebido|transfer[êe]ncia\\s+recebida)\\s+de\\s+([A-Za-zÀ-ÿ\\s'-]{2,50}?)(?:\\s+[*0-9.-]{6,18})?(?:\\s+(?:via|com\\s+sucesso|no\\s+valor|de\\s+R\\$|valor)|\\.|$)",
+                java.util.regex.Pattern.CASE_INSENSITIVE
+            );
+            java.util.regex.Matcher m = p.matcher(text);
+            if (m.find()) {
+                String name = m.group(1);
+                if (name != null) {
+                    name = name.replaceAll("[*0-9.-]{6,18}", "").replaceAll("(?i)\\s+(?:via|com\\s+sucesso)$", "").trim();
+                    if (name.length() >= 2 && !name.toLowerCase().startsWith("r$") && !name.toLowerCase().startsWith("valor") && !name.toLowerCase().startsWith("no valor")) {
+                        return name;
+                    }
+                }
+            }
+
+            // Padrão Pix enviado: "Você enviou um Pix para [Nome]..."
+            java.util.regex.Pattern p2 = java.util.regex.Pattern.compile(
+                "(?:enviou\\s+(?:um\\s+)?pix|pix\\s+enviado|transferiu\\s+(?:um\\s+)?pix|pix\\s+para)\\s+(?:para\\s+|a\\s+)?([A-Za-zÀ-ÿ\\s'-]{2,50}?)(?:\\s+[*0-9.-]{6,18})?(?:\\s+(?:via|com\\s+sucesso|no\\s+valor|de\\s+R\\$|valor)|\\.|$)",
+                java.util.regex.Pattern.CASE_INSENSITIVE
+            );
+            java.util.regex.Matcher m2 = p2.matcher(text);
+            if (m2.find()) {
+                String name = m2.group(1);
+                if (name != null) {
+                    name = name.replaceAll("[*0-9.-]{6,18}", "").replaceAll("(?i)\\s+(?:via|com\\s+sucesso)$", "").trim();
+                    if (name.length() >= 2 && !name.toLowerCase().startsWith("r$") && !name.toLowerCase().startsWith("valor") && !name.toLowerCase().startsWith("no valor")) {
+                        return name;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Erro ao extrair nome do pagador/favorecido", e);
+        }
+        return null;
     }
 
     private void postUndoNotification(
@@ -87,6 +136,22 @@ public class BankNotificationActionReceiver extends BroadcastReceiver {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
+        Intent reviewIntent = new Intent(context, MainActivity.class);
+        reviewIntent.setAction(MainActivity.ACTION_REVIEW_TRANSACTION);
+        reviewIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        reviewIntent.putExtra("packageName", packageName);
+        reviewIntent.putExtra("title", title);
+        reviewIntent.putExtra("text", text);
+        reviewIntent.putExtra("timestamp", timestamp);
+        reviewIntent.putExtra("notificationId", undoNotificationId);
+
+        PendingIntent reviewPending = PendingIntent.getActivity(
+                context,
+                undoNotificationId + 10,
+                reviewIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
         Notification.Builder builder;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             builder = new Notification.Builder(context, BankNotificationListenerService.CHANNEL_ID);
@@ -94,18 +159,57 @@ public class BankNotificationActionReceiver extends BroadcastReceiver {
             builder = new Notification.Builder(context);
         }
 
-        String displayText = (title != null && !title.trim().isEmpty()) ? title : (text != null ? text : "");
+        String amountFormatted = BankNotificationListenerService.extractAmountText(title, text);
+        boolean income = isIncome(title, text);
+        String partyName = extractPartyName(text);
 
-        builder.setContentTitle("Lançamento confirmado")
-                .setContentText(displayText)
+        String notifTitle = (income ? "Receita adicionada" : "Despesa adicionada");
+        if (amountFormatted != null) {
+            notifTitle += " · " + amountFormatted;
+        }
+
+        String bodyText = (partyName != null ? partyName : (title != null && !title.trim().isEmpty() ? title.trim() : "Lançamento confirmado"))
+                + " • Categoria: Outros";
+
+        Notification.BigTextStyle bigStyle = new Notification.BigTextStyle()
+                .setBigContentTitle(notifTitle)
+                .bigText(bodyText);
+
+        builder.setContentTitle(notifTitle)
+                .setContentText(bodyText)
+                .setStyle(bigStyle)
                 .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentIntent(reviewPending)
                 .setAutoCancel(true)
-                .addAction(new Notification.Action.Builder(null, "Desfazer", undoPending).build());
+                .addAction(new Notification.Action.Builder(null, "Desfazer", undoPending).build())
+                .addAction(new Notification.Action.Builder(null, "Conferir", reviewPending).build());
 
         try {
             nm.notify(undoNotificationId, builder.build());
         } catch (Exception e) {
-            Log.e(TAG, "Erro ao emitir notificacao de desfazer", e);
+            Log.e(TAG, "Erro ao emitir notificacao rica de confirmacao", e);
+        }
+    }
+
+    private void postUndoneConfirmationNotification(Context context, NotificationManager nm, int notificationId) {
+        if (nm == null) return;
+
+        Notification.Builder builder;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            builder = new Notification.Builder(context, BankNotificationListenerService.CHANNEL_ID);
+        } else {
+            builder = new Notification.Builder(context);
+        }
+
+        builder.setContentTitle("Lançamento desfeito")
+                .setContentText("A transação foi cancelada com sucesso.")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setAutoCancel(true);
+
+        try {
+            nm.notify(notificationId, builder.build());
+        } catch (Exception e) {
+            Log.e(TAG, "Erro ao emitir confirmacao de cancelamento", e);
         }
     }
 

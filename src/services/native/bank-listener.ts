@@ -140,9 +140,10 @@ export function processBankNotification(
 
     addPendingSuggestion(parsed);
 
-    // Notificação interativa rica (com botões Adicionar Rápido e Editar)
-    // Se desativada, não envia push no celular (fica apenas no card discreto da Home)
-    if (prefs.interactiveNotificationsEnabled) {
+    // Em plataforma nativa Android, o BankNotificationListenerService nativo (Java)
+    // já emite a notificação interativa com botões nativos de segundo plano.
+    // Desativamos a emissão via @capacitor/local-notifications para garantir canal único e zero duplicação.
+    if (prefs.interactiveNotificationsEnabled && !isNativePlatform()) {
       void scheduleInteractiveBankNotification(parsed);
     }
   }
@@ -273,6 +274,8 @@ export function buildReviewRoute(parsed: ParsedBankTransaction): string {
   params.set("valor", parsed.amountCents.toString());
   params.set("descricao", parsed.description);
   params.set("data", parsed.date);
+  params.set("origem", "notificacao");
+  if (parsed.categorySlug) params.set("categoria", parsed.categorySlug);
   if (parsed.paymentMethod) params.set("forma", parsed.paymentMethod);
   if (parsed.cardLastDigits) params.set("cartao", parsed.cardLastDigits);
   if (parsed.installments && parsed.installments > 1) {

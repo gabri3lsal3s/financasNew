@@ -1245,12 +1245,30 @@ const IGNORED_MERCHANT_TOKENS = new Set([
   "compra",
   "aprovada",
   "aprovado",
+  "no valor de",
+  "valor de",
+  "no valor",
+  "de r$",
+  "em r$",
+  "no total de",
+  "total de",
+  "com sucesso",
+  "transferencia pix",
+  "transferência pix",
+  "da conta",
+  "sua conta",
+  "de sua conta",
+  "em sua conta",
+  "na sua conta",
 ]);
 
 function isValidCandidate(candidate: string): boolean {
   if (!candidate || candidate.length < 2) return false;
   const lower = candidate.toLowerCase().trim();
   if (lower.startsWith("r$") || /^\d/.test(lower)) return false;
+  if (/^(?:no|na|em|de|do|da|com|por)\s+valor\b/i.test(lower)) return false;
+  if (/^valor\b/i.test(lower)) return false;
+  if (/^(?:sua\s+)?conta\b/i.test(lower)) return false;
   if (IGNORED_MERCHANT_TOKENS.has(lower)) return false;
   return true;
 }
@@ -1264,11 +1282,83 @@ export function cleanMerchantName(rawName: string): string {
 }
 
 /**
+ * Extrai pagador ou favorecido de notificações Pix de bancos brasileiros
+ * (suporta BTG Pactual, Nubank, Inter, Itaú, Bradesco, Santander, C6, Mercado Pago).
+ */
+export function extractPixParty(text: string, type?: "income" | "expense"): string {
+  if (!text || typeof text !== "string") return "";
+
+  // 1. Recebimento de Pix:
+  // Ex BTG: "Você recebeu um Pix de Gabriel Isaac Santana Sales ***.563.565-** no valor de R$ 1,00."
+  // Ex Inter/Itaú: "Pix recebido de João da Silva no valor de R$ 50,00"
+  // Ex Nubank: "Transferência recebida de Maria Souza no valor de..."
+  if (!type || type === "income" || /(?:recebeu|recebido|cr[ée]dito)/i.test(text)) {
+    const rxIncome =
+      /(?:recebeu\s+(?:um\s+)?pix|pix\s+recebido|transfer[êe]ncia\s+recebida)\s+de\s+([A-Za-zÀ-ÿ\s'-]{2,60}?)(?:\s+[*0-9.-]{6,18})?(?:\s+(?:via\s+pix|via|com\s+sucesso|com|usando|aprovad[ao]|realizad[ao]|no\s+valor|de\s+R\$|valor)|\.|$)/i;
+    const m = rxIncome.exec(text);
+    if (m && m[1]) {
+      const candidate = m[1]
+        .replace(/[*0-9.-]{6,18}/g, "")
+        .replace(/\s+(?:via\s+pix|via|com\s+sucesso|aprovad[ao]|realizad[ao])$/i, "")
+        .trim();
+      if (isValidCandidate(candidate)) return cleanMerchantName(candidate);
+    }
+
+    // Padrão com valor antes do nome: "Você recebeu um Pix de R$ 50,00 de João Silva"
+    const rxIncomeAfterVal =
+      /(?:recebeu\s+(?:um\s+)?pix|pix\s+recebido|transfer[êe]ncia\s+recebida)\s+(?:no\s+valor\s+de\s+|de\s+)?R\$\s*[\d.,]+\s+de\s+([A-Za-zÀ-ÿ\s'-]{2,60}?)(?:\s+[*0-9.-]{6,18})?(?:\s+(?:via\s+pix|via|com\s+sucesso|com|aprovad[ao]|realizad[ao])|\.|$)/i;
+    const m2 = rxIncomeAfterVal.exec(text);
+    if (m2 && m2[1]) {
+      const candidate = m2[1]
+        .replace(/[*0-9.-]{6,18}/g, "")
+        .replace(/\s+(?:via\s+pix|via|com\s+sucesso|aprovad[ao]|realizad[ao])$/i, "")
+        .trim();
+      if (isValidCandidate(candidate)) return cleanMerchantName(candidate);
+    }
+  }
+
+  // 2. Envio de Pix:
+  // Ex: "Você enviou um Pix para Supermercado Dia no valor de R$ 80,00"
+  // Ex: "Pix enviado para Loja ABC R$ 30,00"
+  if (!type || type === "expense" || /(?:enviou|enviado|transferiu|pago|pagamento)/i.test(text)) {
+    const rxExpense =
+      /(?:enviou\s+(?:um\s+)?pix|pix\s+enviado|transferiu\s+(?:um\s+)?pix|pix\s+para)\s+(?:para\s+|a\s+)?([A-Za-zÀ-ÿ\s'-]{2,60}?)(?:\s+[*0-9.-]{6,18})?(?:\s+(?:via\s+pix|via|com\s+sucesso|com|usando|aprovad[ao]|realizad[ao]|no\s+valor|de\s+R\$|valor)|\.|$)/i;
+    const m = rxExpense.exec(text);
+    if (m && m[1]) {
+      const candidate = m[1]
+        .replace(/[*0-9.-]{6,18}/g, "")
+        .replace(/\s+(?:via\s+pix|via|com\s+sucesso|aprovad[ao]|realizad[ao])$/i, "")
+        .trim();
+      if (isValidCandidate(candidate)) return cleanMerchantName(candidate);
+    }
+
+    const rxExpenseAfterVal =
+      /(?:enviou\s+(?:um\s+)?pix|pix\s+enviado|transferiu)\s+(?:no\s+valor\s+de\s+|de\s+)?R\$\s*[\d.,]+\s+(?:para|a)\s+([A-Za-zÀ-ÿ\s'-]{2,60}?)(?:\s+[*0-9.-]{6,18})?(?:\s+(?:via\s+pix|via|com\s+sucesso|com|aprovad[ao]|realizad[ao])|\.|$)/i;
+    const m2 = rxExpenseAfterVal.exec(text);
+    if (m2 && m2[1]) {
+      const candidate = m2[1]
+        .replace(/[*0-9.-]{6,18}/g, "")
+        .replace(/\s+(?:via\s+pix|via|com\s+sucesso|aprovad[ao]|realizad[ao])$/i, "")
+        .trim();
+      if (isValidCandidate(candidate)) return cleanMerchantName(candidate);
+    }
+  }
+
+  return "";
+}
+
+/**
  * Extrai o nome do estabelecimento ou destinatário do texto da notificação,
  * com suporte multibanco (travessão, vírgulas, preposições contraídas).
  */
 export function extractMerchantOrRecipient(text: string): string {
   if (!text || typeof text !== "string") return "";
+
+  // 0. Se for notificação Pix, prioriza o extrator semântico especializado
+  if (/pix\b/i.test(text)) {
+    const pixParty = extractPixParty(text);
+    if (pixParty) return pixParty;
+  }
 
   // 1. Padrões com travessão e delimitadores específicos de cartões
   // Ex: "ITAUCARD final 1234 - LOJAS AMERICANAS R$ 89,90"
@@ -1306,7 +1396,7 @@ export function extractMerchantOrRecipient(text: string): string {
   // Ex: "em Padaria Estrela aprovada", "no Restaurante Fogão", "na Droga Raia", "na Tok&Stok"
   // Ignora preposições seguidas de valores (de R$, de 50), dígitos ou palavras de forma de pagamento/parcelamento
   const prepRegex =
-    /\b(?:em|no|na|nos|nas|para|de|do|da|pelo|pela|ao|à)\s+(?!(?:R\$\s*|\d|parcela\b|cr[ée]dito\b|d[ée]bito\b|cart[ãa]o\b|conta\b))([A-Za-zÀ-ÿ0-9&.*_\s'-]{2,35}?)(?:\s+(?:aprovada|aprovado|realizada|realizado|com|via|usando|pelo|pela|no\s+cartão|no\s+cartao|no\s+crédito|no\s+credito|no\s+débito|no\s+debito|cart[aã]o\s+final|final\s*[:.-]?\s*\d{4}|em\s+\d+x|\.|$)|$)/gi;
+    /\b(?:em|no|na|nos|nas|para|de|do|da|pelo|pela|ao|à)\s+(?!(?:R\$\s*|\d|parcela\b|cr[ée]dito\b|d[ée]bito\b|cart[ãa]o\b|conta\b|valor\b))([A-Za-zÀ-ÿ0-9&.*_\s'-]{2,35}?)(?:\s+(?:aprovada|aprovado|realizada|realizado|com|via|usando|pelo|pela|no\s+cartão|no\s+cartao|no\s+crédito|no\s+credito|no\s+débito|no\s+debito|cart[aã]o\s+final|final\s*[:.-]?\s*\d{4}|em\s+\d+x|\.|$)|$)/gi;
   const matches = Array.from(text.matchAll(prepRegex));
 
   for (const match of matches) {
@@ -1402,6 +1492,9 @@ export function parseBankNotification(
   }
 
   let defaultDesc = merchant;
+  if (paymentMethod === "pix" && merchant) {
+    defaultDesc = `Pix: ${merchant}`;
+  }
   if (!defaultDesc) {
     if (nature === "investment") {
       if (subtype === "dividend") {
@@ -1435,7 +1528,9 @@ export function parseBankNotification(
       defaultDesc = `Compra em ${installmentInfo.installments}x (${bankName})`;
     } else {
       defaultDesc =
-        type === "income" ? `Recebimento (${bankName})` : `Compra (${bankName})`;
+        type === "income"
+          ? (paymentMethod === "pix" ? `Pix Recebido (${bankName})` : `Recebimento (${bankName})`)
+          : (paymentMethod === "pix" ? `Pix Enviado (${bankName})` : `Compra (${bankName})`);
     }
   }
 

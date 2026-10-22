@@ -1469,5 +1469,60 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
         expect(merged.merchant).toBe("Padaria Estrela");
       });
     });
+
+    describe("extração especializada de Pix brasileiro (BTG, Inter, Itaú, Nubank)", () => {
+      it("extrai pagador com nome composto longo e máscara de CPF do BTG Pactual sem virar 'no valor de'", () => {
+        const payload = {
+          packageName: "com.btg.pactual.banking",
+          title: "Pix Recebido",
+          text: "Você recebeu um Pix de Gabriel Isaac Santana Sales ***.563.565-** no valor de R$ 1,00.",
+          timestamp: 1729630000000,
+        };
+
+        const parsed = parseBankNotification(payload);
+        expect(parsed).not.toBeNull();
+        expect(parsed?.type).toBe("income");
+        expect(parsed?.amountCents).toBe(100);
+        expect(parsed?.bankName).toBe("BTG Pactual");
+        expect(parsed?.merchant).toBe("Gabriel Isaac Santana Sales");
+        expect(parsed?.description).toBe("Pix: Gabriel Isaac Santana Sales");
+        expect(parsed?.paymentMethod).toBe("pix");
+      });
+
+      it("extrai pagador quando o valor vem antes do nome no Banco Inter", () => {
+        const payload = {
+          packageName: "br.com.intermedium",
+          title: "Pix recebido",
+          text: "Você recebeu um Pix de R$ 150,00 de Mariana Costa Santos.",
+          timestamp: 1729630000000,
+        };
+
+        const parsed = parseBankNotification(payload);
+        expect(parsed).not.toBeNull();
+        expect(parsed?.type).toBe("income");
+        expect(parsed?.amountCents).toBe(15000);
+        expect(parsed?.bankName).toBe("Inter");
+        expect(parsed?.merchant).toBe("Mariana Costa Santos");
+        expect(parsed?.description).toBe("Pix: Mariana Costa Santos");
+      });
+
+      it("extrai favorecido de envio Pix no Itaú descartando 'no valor de'", () => {
+        const payload = {
+          packageName: "com.itau",
+          title: "Pix enviado",
+          text: "Você enviou um Pix para Supermercado Estrela no valor de R$ 85,50 com sucesso.",
+          timestamp: 1729630000000,
+        };
+
+        const parsed = parseBankNotification(payload);
+        expect(parsed).not.toBeNull();
+        expect(parsed?.type).toBe("expense");
+        expect(parsed?.amountCents).toBe(8550);
+        expect(parsed?.bankName).toBe("Itaú");
+        expect(parsed?.merchant).toBe("Supermercado Estrela");
+        expect(parsed?.description).toBe("Pix: Supermercado Estrela");
+      });
+    });
   });
 });
+

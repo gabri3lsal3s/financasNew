@@ -424,6 +424,8 @@ export function initNotificationActionListener(
           const inferredSlug = sug.categorySlug || inferCategoryKeyword(sug.description);
           const params = new URLSearchParams({
             novo: sug.type,
+            modo: "rapido",
+            origem: "notificacao",
             valor: String(sug.amountCents),
             descricao: sug.description,
             data: sug.date,
@@ -436,9 +438,9 @@ export function initNotificationActionListener(
           if (sug.installments && sug.installments > 1) {
             params.set("parcelas", String(sug.installments));
           }
-          onNavigate(`/?${params.toString()}`);
+          onNavigate(`/transacoes?${params.toString()}`);
         } else {
-          onNavigate("/transacoes?novo=despesa");
+          onNavigate("/transacoes?novo=despesa&modo=rapido");
         }
       } else if (actionId === ACTION_UNDO) {
         if (extra?.createdId && extra?.type && extra?.suggestion) {

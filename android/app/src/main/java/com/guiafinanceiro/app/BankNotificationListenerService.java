@@ -244,14 +244,22 @@ public class BankNotificationListenerService extends NotificationListenerService
             }
 
             String amountFormatted = extractAmountText(title, text);
-            String notifTitle = title != null && !title.trim().isEmpty() ? title.trim() : "Transação detectada";
-            if (amountFormatted != null && !notifTitle.contains(amountFormatted)) {
-                notifTitle = notifTitle + " · " + amountFormatted;
+            boolean isIncome = BankNotificationActionReceiver.isIncome(title, text);
+            String partyName = BankNotificationActionReceiver.extractPartyName(text);
+
+            String notifTitle = isIncome ? "Renda detectada" : "Transação detectada";
+            if (amountFormatted != null) {
+                notifTitle += " · " + amountFormatted;
             }
 
-            String notifBody = (text != null && !text.trim().isEmpty())
-                    ? text.trim()
-                    : (amountFormatted != null ? ("Valor detectado: " + amountFormatted) : "Toque em Conferir para revisar ou Confirmar para adicionar.");
+            String notifBody;
+            if (partyName != null) {
+                notifBody = partyName + " • " + (title != null && !title.trim().isEmpty() ? title.trim() : "Banco");
+            } else if (text != null && !text.trim().isEmpty()) {
+                notifBody = text.trim();
+            } else {
+                notifBody = "Toque em Adicionar Rápido para salvar em 2º plano ou Conferir e Salvar para editar.";
+            }
 
             Notification.BigTextStyle bigStyle = new Notification.BigTextStyle()
                     .setBigContentTitle(notifTitle)
@@ -263,8 +271,8 @@ public class BankNotificationListenerService extends NotificationListenerService
                     .setSmallIcon(R.mipmap.ic_launcher)
                     .setContentIntent(reviewPending)
                     .setAutoCancel(true)
-                    .addAction(new Notification.Action.Builder(null, "Confirmar", confirmPending).build())
-                    .addAction(new Notification.Action.Builder(null, "Conferir", reviewPending).build());
+                    .addAction(new Notification.Action.Builder(null, "Adicionar Rápido", confirmPending).build())
+                    .addAction(new Notification.Action.Builder(null, "Conferir e Salvar", reviewPending).build());
 
             nm.notify(notifId, builder.build());
 

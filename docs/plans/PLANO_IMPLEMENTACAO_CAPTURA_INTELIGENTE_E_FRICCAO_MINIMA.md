@@ -65,14 +65,18 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 | **F28**| Desconexão contextual entre o compromisso sugerido e a saúde da fatura/limite do cartão | Contextualização em tempo real de impacto na fatura em aberto e limite disponível no rodapé do card. |
 | **F29**| Alertas do assistente confinados exclusivamente à página Home | Integração bidirecional do assistente com a central de notificações (`NotificationsPopover`) do cabeçalho global. |
 | **F30**| Impossibilidade de auditar e desfazer descartes ou micro-feedbacks de aprendizado | Painel de gestão e auditoria de memória do assistente em `/insights` com revogação em 1 clique. |
+| **F31**| Duplicação de Notificações Push Locais (Java nativo vs. Capacitor LocalNotifications) | Unificar a emissão exclusivamente no canal nativo Android (`BankNotificationListenerService`). Desativar agendamento de `@capacitor/local-notifications` para capturas passivas de push em ambiente Android, mantendo o plugin JS focado na sincronização de estado em memória. |
+| **F32**| Ação "Adicionar Rápido" trazendo o app para 1º plano e exigindo biometria | Ação rápida despachada via `PendingIntent.getBroadcast` para `BankNotificationActionReceiver`. O broadcast executa 100% silencioso em segundo plano gravando no buffer nativo/banco, sem invocar `startActivity`. Abertura do app reservada exclusivamente ao botão `[Conferir e Salvar]`. |
+| **F33**| Distorção semântica da descrição ("no valor de" como favorecido/pagador do Pix) | Parser semântico dedicado de Pix com suporte a nomes completos compostos e máscaras de CPF/CNPJ, higienização de pontuação e expansão da blacklist `IGNORED_MERCHANT_TOKENS` com expressões de valor monetário (`"no valor de"`, `"valor de"`, etc.). |
+| **F34**| Ausência de feedback transparente pós-cadastro em 2º plano e falta de botão "Desfazer" | O `BankNotificationActionReceiver` substitui a notificação original por uma notificação rica e informativa exibindo o valor, o nome real e a categoria atribuída, com botão `[Desfazer]` (cancelamento atômico sem abrir o app) e `[Conferir]` (deep link direto na transação). |
 
 ---
 
-## 3. ROTEIRO DE EXECUÇÃO DETALHADO EM 8 FASES
+## 3. ROTEIRO DE EXECUÇÃO DETALHADO EM 9 FASES
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                  FLUXO DE EXECUÇÃO EM 8 FASES MODULARES & INTEGRADAS                                  │
+│                                  FLUXO DE EXECUÇÃO EM 9 FASES MODULARES & INTEGRADAS                                  │
 └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
                                                            │
     ┌───────────────────┬───────────────────────────┬──────┴────────────────────┬───────────────────┬───────────────────┐
@@ -85,17 +89,16 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
     ▼                   ▼                           ▼                           ▼                   ▼                   ▼
 [Quality Gate 1]    [Quality Gate 2]            [Quality Gate 3]            [Quality Gate 4]    [Quality Gate 5]    [Quality Gate 6]
                                                                                                                         │
-                                                    ┌───────────────────────────────────────────────────────────────────┘
-                                                    │
-                                                    ├───────────────────────────────────┐
-                                                    ▼                                   ▼
-                                                 [FASE 7]                            [FASE 8]
-                                                 Motor de Insights                   Evolução do SmartAdvisor:
-                                                 Aprimorado &                        Ações 1-Toque, Fatura &
-                                                 Aprendizado Contínuo                Gestão de Aprendizado
+                                                    ┌───────────────────────────────────┬───────────────────────────────┘
                                                     │                                   │
-                                                    ▼                                   ▼
-                                                [Quality Gate 7]                    [Quality Gate 8]
+                                                    ├───────────────────┐               ▼
+                                                    ▼                   ▼            [FASE 9]
+                                                 [FASE 7]            [FASE 8]        Notificações 100% Background,
+                                                 Motor de Insights   SmartAdvisor    Deduplicação & Feedback
+                                                 Aprimorado          Evoluído        com Desfazer
+                                                    │                   │               │
+                                                    ▼                   ▼               ▼
+                                                [Quality Gate 7]    [Quality Gate 8] [Quality Gate 9]
 ```
 
 ---
@@ -602,11 +605,83 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 
 ---
 
+### FASE 9: MOTOR DE NOTIFICAÇÕES PASSIVAS 100% BACKGROUND, DEDUPLICAÇÃO NATIVA & FEEDBACK COM DESFAZER
+
+**Objetivo:** Unificar a emissão de notificações interativas exclusivamente no canal nativo Android (`BankNotificationListenerService`), eliminando duplicatas geradas pela camada de LocalNotifications do Capacitor, garantindo que o botão "Adicionar Rápido" registre silenciosamente em segundo plano (sem trazer a tela ou biometria para o primeiro plano), corrigindo com precisão semântica a extração de pagador em Pix brasileiro (eliminando falsos estabelecimentos como "no valor de") e fornecendo feedback transparente ao usuário via notificação rica pós-cadastro exibindo valor, nome e categoria atribuída, com botões para "Desfazer" em 1 toque e "Conferir".
+
+#### Tarefas da Fase 9:
+- [x] **Tarefa 9.1 — Unificação Arquitetural em Canal Nativo Único & Eliminação de Duplicidade (F31):**
+  - Em `src/services/native/bank-listener.ts` e `src/services/native/interactive-notifications.ts`:
+    - Desativar a chamada `scheduleInteractiveBankNotification` quando a notificação tiver sido capturada pelo listener nativo em ambiente Android (`Capacitor.isNativePlatform()`), extinguindo a emissão paralela de notificações via `@capacitor/local-notifications`.
+    - Manter o canal JS atuando estritamente como ouvinte de eventos em memória para atualização em tempo real da interface (`useSuggestionsStore`) caso o aplicativo já esteja aberto em primeiro plano.
+    - No `BankNotificationListenerService.java`, padronizar um único canal nativo (`axis_transactions`) com prioridade e som discretos (`IMPORTANCE_DEFAULT`), gerando ID determinístico baseado no hash da notificação bancária para evitar duplicatas mesmo em re-emissões do banco.
+  - *Teste & Verificação:* Teste de injeção de push bancário simulado via ADB com o app em primeiro plano e em segundo plano, validando que exatamente 1 notificação é gerada no Android.
+  - *Commit:* `refactor(native): unificar notificacoes interativas no canal nativo e eliminar duplicidade`
+
+- [x] **Tarefa 9.2 — Parser Especializado de Pix Brasileiro, Nomes Compostos e Blacklist de Expressões de Valor (F33):**
+  - Em `src/domain/notifications/bank-parser.ts`:
+    - Adicionar extrator semântico regex de alta precisão para recebimento de Pix e transferências bancárias:
+      `/(?:recebeu\s+um\s+Pix|Pix\s+recebido|transfer[êe]ncia\s+recebida)\s+de\s+([A-Za-zÀ-ÿ\s'-]+?)(?:\s+[*0-9.-]{6,16})?(?:\s+no\s+valor|\s+de\s+R\$|\s+valor|\.|$)/i`
+    - Permitir nomes completos longos ($\ge 35$ caracteres) e sanitizar caracteres residuais como asteriscos de CPF/CNPJ mascarado (`***.563.565-**`).
+    - Expandir `IGNORED_MERCHANT_TOKENS` com locuções e termos de sintaxe bancária que jamais devem ser categorizados como nome de estabelecimento ou descrição: `"no valor de"`, `"valor de"`, `"no valor"`, `"de r$"`, `"em r$"`, `"da conta"`, `"com sucesso"`, `"transferencia pix"`.
+    - Em caso de Pix recebido com pagador identificado, formatar a descrição limpa: `"Pix: [Nome do Pagador]"` (ex.: `"Pix: Gabriel Isaac Santana Sales"`), e `merchant` para `"[Nome do Pagador]"`.
+  - *Teste & Verificação:* Criar bateria de fixtures em `src/domain/notifications/bank-parser.test.ts` com notificações reais de BTG Pactual, Nubank, Inter, Itaú, Bradesco, Santander e C6 Bank contendo nomes compostos, máscaras de CPF e frases de valor.
+  - *Commit:* `fix(domain/notifications): implementar parser especializado de pix com suporte a nomes compostos e blacklist de valor`
+
+- [x] **Tarefa 9.3 — Ação "Adicionar Rápido" 100% Silenciosa em 2º Plano (Zero Abertura de Activity - F32):**
+  - Em `android/app/src/main/java/com/guiafinanceiro/app/BankNotificationListenerService.java`:
+    - Vincular o botão `[Adicionar Rápido]` exclusivamente a um `PendingIntent.getBroadcast(...)` direcionado a `BankNotificationActionReceiver.java`.
+    - Garantir que esta intenção de broadcast nunca invoque `context.startActivity(...)` e não traga o app para o primeiro plano.
+    - Vincular o botão `[Conferir e Salvar]` a um `PendingIntent.getActivity(...)`, sendo esta a única ação autorizada a abrir a aplicação.
+  - Em `android/app/src/main/java/com/guiafinanceiro/app/BankNotificationActionReceiver.java`:
+    - Ao receber `ACTION_CONFIRM_NOTIFICATION`, processar a transação diretamente no armazenamento local seguro (`pendingBackgroundTransactions`), permitindo sincronização atômica em segundo plano com o Supabase quando houver conectividade.
+    - Cancelar imediatamente a notificação pendente original (`NotificationManager.cancel`).
+  - *Teste & Verificação:* Simular toque no botão "Adicionar Rápido" da notificação nativa; comprovar via logs do Android que `MainActivity` não é inicializada e que o aparelho permanece na tela onde o usuário estava.
+  - *Commit:* `feat(android): implementar adicao rapida 100% silenciosa em segundo plano via broadcast`
+
+- [x] **Tarefa 9.4 — Notificação Rica Pós-Cadastro com Resumo Completo e Ação de Desfazer (F34):**
+  - Em `android/app/src/main/java/com/guiafinanceiro/app/BankNotificationActionReceiver.java`:
+    - Imediatamente após a gravação da transação em 2º plano, emitir notificação de confirmação contextual no canal `axis_confirmations`:
+      - *Título:* `Receita adicionada · R$ 1,00` (ou `Despesa adicionada · R$ X,XX`).
+      - *Corpo:* `[Nome do Pagador/Estabelecimento] • Categoria: [Categoria Aprendida ou Padrão]`.
+      - *Ação 1:* `[Desfazer]` ➔ Broadcast intent para `BankNotificationActionReceiver` com `ACTION_UNDO_NOTIFICATION`, que reverte o lançamento no buffer/banco sem abrir o app e atualiza a notificação para *"Lançamento desfeito"*.
+      - *Ação 2:* `[Conferir]` ➔ Activity intent que abre o app diretamente na visualização/edição do lançamento recém-cadastrado.
+    - Configurar auto-cancelamento após timeout ou ao toque para evitar acúmulo na gaveta de notificações.
+  - *Teste & Verificação:* Teste manual e automatizado do ciclo completo: notificação bancária ➔ toque em "Adicionar Rápido" ➔ recebimento da notificação de confirmação ➔ toque em "Desfazer" ➔ transação cancelada.
+  - *Commit:* `feat(android): adicionar notificacao rica de confirmacao em segundo plano com acao de desfazer`
+
+- [x] **Tarefa 9.5 — Ação "Conferir e Salvar" com Deep Link no Modal Rápido e Preservação de Rota:**
+  - Em `android/app/src/main/java/com/guiafinanceiro/app/BankNotificationListenerService.java`:
+    - Ao montar a Intent do botão `[Conferir e Salvar]`, incluir payload JSON serializado completo com deep link URI:
+      `guiafinanceiro://transacao/nova?modo=rapido&tipo=income&valor=100&descricao=Pix:%20Gabriel%20Isaac%20Santana%20Sales&origem=notificacao`.
+  - Em `src/components/layout/page-shell.tsx` e `src/features/auth/hooks/use-biometric-lock.ts`:
+    - Garantir que, após o desbloqueio biométrico, os parâmetros de deep link não sejam descartados ou sobrescritos, abrindo instantaneamente o `LaunchWizard` em tela cheia com os campos populados para validação visual do usuário.
+  - *Teste & Verificação:* Simular clique em "Conferir e Salvar" com o app bloqueado por biometria; autenticar com biometria e validar abertura automática do LaunchWizard pré-preenchido.
+  - *Commit:* `fix(layout): garantir deep link do wizard rapido pos-desbloqueio biometrico`
+
+#### PORTÃO DE QUALIDADE 9 (Quality Gate 9 / DoD de Notificações 100% Background e Precisão):
+1. Notificação única garantida no Android (zero duplicação entre Java e Capacitor LocalNotifications).
+2. Botão "Adicionar Rápido" opera 100% silencioso em segundo plano, sem abrir o app e sem exigir biometria.
+3. Notificação rica de confirmação pós-cadastro exibindo valor, descrição real e categoria atribuída.
+4. Botão "Desfazer" na notificação de confirmação cancela o lançamento atômico diretamente em segundo plano.
+5. Parser especializado de Pix extrai nomes completos de pessoas e empresas ignorando locuções de valor ("no valor de") e máscaras de CPF.
+6. Botão "Conferir e Salvar" abre o app diretamente no assistente rápido pré-preenchido após o desbloqueio biométrico.
+7. Zero emojis em todas as cópias e notificações (AGENTS.md §8).
+8. Suíte completa de testes (`npm run test`) 100% verde.
+9. `npm run typecheck` e `npm run lint` sem qualquer advertência ou erro.
+10. **Ação Obrigatória:** Executar `git push origin` e gerar build do APK Android assinado.
+
+---
+
 ## 4. MATRIZ DE VERIFICAÇÃO E TESTES FINAIS
 
 | Teste | Critério de Aceitação | Comando / Verificação |
 |---|---|---|
 | **Identificação Passiva de Push** | Notificação de banco homologado é lida em 2º plano e vira sugestão | Teste de notificação simulada em background |
+| **Deduplicação Nativa de Notificações** | Exatamente 1 notificação do app é exibida para cada push do banco (zero duplicação Java/Capacitor) | Teste de push simulado com app fechado e aberto |
+| **Adição Rápida 100% em Segundo Plano** | Clique em "Adicionar Rápido" cadastra em 2º plano sem abrir tela ou exigir biometria | Inspeção de lifecycle Android e logs ADB |
+| **Notificação de Confirmação e Desfazer** | Notificação pós-cadastro exibe valor, nome e categoria com botão "Desfazer" operacional | Teste de interação de broadcast |
+| **Parser Pix com Nomes e Máscara CPF** | Pix com "de Fulano de Tal ***.123.456-** no valor de R$ X" extrai nome limpo e descarta "no valor de" | Teste unitário em `bank-parser.test.ts` |
 | **Compartilhamento de Comprovante** | App surge no menu nativo, processa imagem/PDF sem custo e cadastra com opção de edição | Teste de Intent via ADB e banco real |
 | **Aprendizado de CNPJ e Nome Fantasia** | CNPJ burocrático vira nome amigável ("Arcos Dourados" ➔ "McDonald's") em comprovantes e push | Teste unitário em `merchant-memory.test.ts` |
 | **Deduplicação Comprovante $\leftrightarrow$ Push** | Notificação que chega 45s após o comprovante é descartada sem duplicar lançamento | Teste unitário em `suggestions-store.test.ts` |
