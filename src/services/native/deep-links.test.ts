@@ -24,6 +24,15 @@ describe("deep-links service", () => {
       expect(parseAppUrl("https://com.guiafinanceiro.app/transacoes?novo=despesa")).toBe(
         "/transacoes?novo=despesa",
       );
+      expect(parseAppUrl("https://com.guiafinanceiro.app/transacoes?novo=pix")).toBe(
+        "/transacoes?novo=pix",
+      );
+      expect(parseAppUrl("https://com.guiafinanceiro.app/transacoes?modo=rapido")).toBe(
+        "/transacoes?modo=rapido",
+      );
+      expect(parseAppUrl("https://com.guiafinanceiro.app/investimentos?novo=aporte")).toBe(
+        "/investimentos?novo=aporte",
+      );
       expect(parseAppUrl("https://com.guiafinanceiro.app/cartoes")).toBe("/cartoes");
       expect(parseAppUrl("https://com.guiafinanceiro.app/")).toBe("/");
     });

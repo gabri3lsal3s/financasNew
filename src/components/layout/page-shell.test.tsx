@@ -15,7 +15,22 @@ vi.mock("@/app/theme-provider", () => ({
 }));
 
 vi.mock("@/features/transactions", () => ({
-  LaunchWizard: ({ open }: { open?: boolean }) => (open ? <div data-testid="launch-wizard-overlay" /> : null),
+  LaunchWizard: ({
+    open,
+    initialMode,
+    initialValues,
+  }: {
+    open?: boolean;
+    initialMode?: string;
+    initialValues?: { paymentMethod?: string };
+  }) =>
+    open ? (
+      <div
+        data-testid="launch-wizard-overlay"
+        data-initial-mode={initialMode}
+        data-payment-method={initialValues?.paymentMethod}
+      />
+    ) : null,
 }));
 
 vi.mock("@/state", () => ({
@@ -128,6 +143,23 @@ describe("PageShell (F7.2/F7.3)", () => {
 
     expect(await screen.findByTestId("launch-wizard-overlay")).toBeInTheDocument();
     expect(screen.getByTestId("page-content")).toBeInTheDocument();
+  });
+
+  it("renderiza o LaunchWizard em modo rápido com forma Pix pré-selecionada quando ?novo=pix está presente", async () => {
+    renderShell(["/?novo=pix"]);
+
+    const overlay = await screen.findByTestId("launch-wizard-overlay");
+    expect(overlay).toBeInTheDocument();
+    expect(overlay).toHaveAttribute("data-initial-mode", "quick");
+    expect(overlay).toHaveAttribute("data-payment-method", "pix");
+  });
+
+  it("renderiza o LaunchWizard diretamente em modo rápido quando ?modo=rapido está presente", async () => {
+    renderShell(["/?modo=rapido"]);
+
+    const overlay = await screen.findByTestId("launch-wizard-overlay");
+    expect(overlay).toBeInTheDocument();
+    expect(overlay).toHaveAttribute("data-initial-mode", "quick");
   });
 
   it("renderiza o botão Voltar ao Topo acessível no shell", () => {

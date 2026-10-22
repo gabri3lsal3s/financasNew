@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut
-        android:shortcutId="novo_gasto"
+        android:shortcutId="nova_despesa"
         android:enabled="true"
         android:icon="@mipmap/ic_launcher"
         android:shortcutShortLabel="@string/shortcut_new_expense"
@@ -11,6 +11,32 @@
             android:targetPackage="com.guiafinanceiro.app"
             android:targetClass="com.guiafinanceiro.app.MainActivity"
             android:data="https://com.guiafinanceiro.app/transacoes?novo=despesa" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="novo_pix"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_new_pix"
+        android:shortcutLongLabel="@string/shortcut_new_pix_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.guiafinanceiro.app"
+            android:targetClass="com.guiafinanceiro.app.MainActivity"
+            android:data="https://com.guiafinanceiro.app/transacoes?novo=pix" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="novo_aporte"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_new_contribution"
+        android:shortcutLongLabel="@string/shortcut_new_contribution_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.guiafinanceiro.app"
+            android:targetClass="com.guiafinanceiro.app.MainActivity"
+            android:data="https://com.guiafinanceiro.app/investimentos?novo=aporte" />
         <categories android:name="android.shortcut.conversation" />
     </shortcut>
     <shortcut
@@ -24,32 +50,6 @@
             android:targetPackage="com.guiafinanceiro.app"
             android:targetClass="com.guiafinanceiro.app.MainActivity"
             android:data="https://com.guiafinanceiro.app/transacoes?novo=receita" />
-        <categories android:name="android.shortcut.conversation" />
-    </shortcut>
-    <shortcut
-        android:shortcutId="faturas"
-        android:enabled="true"
-        android:icon="@mipmap/ic_launcher"
-        android:shortcutShortLabel="@string/shortcut_invoices"
-        android:shortcutLongLabel="@string/shortcut_invoices_long">
-        <intent
-            android:action="android.intent.action.VIEW"
-            android:targetPackage="com.guiafinanceiro.app"
-            android:targetClass="com.guiafinanceiro.app.MainActivity"
-            android:data="https://com.guiafinanceiro.app/cartoes" />
-        <categories android:name="android.shortcut.conversation" />
-    </shortcut>
-    <shortcut
-        android:shortcutId="visao_geral"
-        android:enabled="true"
-        android:icon="@mipmap/ic_launcher"
-        android:shortcutShortLabel="@string/shortcut_overview"
-        android:shortcutLongLabel="@string/shortcut_overview_long">
-        <intent
-            android:action="android.intent.action.VIEW"
-            android:targetPackage="com.guiafinanceiro.app"
-            android:targetClass="com.guiafinanceiro.app.MainActivity"
-            android:data="https://com.guiafinanceiro.app/" />
         <categories android:name="android.shortcut.conversation" />
     </shortcut>
 </shortcuts>

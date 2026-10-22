@@ -4,9 +4,13 @@
     <string name="title_activity_main">Áxis</string>
     <string name="package_name">com.guiafinanceiro.app</string>
     <string name="custom_url_scheme">com.guiafinanceiro.app</string>
-    <string name="shortcut_new_expense">Lançar Despesa</string>
-    <string name="shortcut_new_expense_long">Lançar nova despesa financeira</string>
-    <string name="shortcut_new_income">Lançar Receita</string>
+    <string name="shortcut_new_expense">+ Nova Despesa</string>
+    <string name="shortcut_new_expense_long">Cadastrar nova despesa financeira</string>
+    <string name="shortcut_new_pix">+ Novo Pix</string>
+    <string name="shortcut_new_pix_long">Lançar novo Pix ou colar comprovante</string>
+    <string name="shortcut_new_contribution">+ Novo Aporte</string>
+    <string name="shortcut_new_contribution_long">Registrar novo aporte em investimentos</string>
+    <string name="shortcut_new_income">+ Nova Receita</string>
     <string name="shortcut_new_income_long">Lançar nova receita recebida</string>
     <string name="shortcut_invoices">Ver Faturas</string>
     <string name="shortcut_invoices_long">Acompanhar faturas de cartões</string>

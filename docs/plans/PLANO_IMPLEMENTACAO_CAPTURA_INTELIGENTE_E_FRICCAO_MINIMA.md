@@ -221,7 +221,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Teste simulando conteúdo no clipboard e verificando auto-preenchimento dos campos.
   - *Commit:* `feat(transactions): adicionar acao de colar comprovante no cabecalho do wizard`
 
-- [ ] **Tarefa 3.4 — Deep Links e Atalhos no Android (`shortcuts.xml`):**
+- [x] **Tarefa 3.4 — Deep Links e Atalhos no Android (`shortcuts.xml`):**
   - Mapear parâmetros de URL no `PageShell.tsx`:
     - `?novo=pix` ➔ abre `LaunchWizard` em modo rápido com forma Pix pré-selecionada.
     - `?modo=rapido` ➔ inicializa diretamente no `StepQuick`.

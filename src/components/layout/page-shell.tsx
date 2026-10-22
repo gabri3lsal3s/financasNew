@@ -41,22 +41,29 @@ export function PageShell() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Suporte aos atalhos rápidos nativos, sugestões de bancos e launcher (?novo=despesa, ?novo=receita, ?novo=transacao, ?novo=expense, ?novo=income)
+  // Suporte aos atalhos rápidos nativos, sugestões de bancos e launcher (?novo=despesa, ?novo=receita, ?novo=transacao, ?novo=pix, ?modo=rapido)
   const novoParam = searchParams.get("novo");
+  const modoParam = searchParams.get("modo");
   const isShortcutNew =
     novoParam === "transacao" ||
     novoParam === "despesa" ||
     novoParam === "receita" ||
     novoParam === "expense" ||
-    novoParam === "income";
+    novoParam === "income" ||
+    novoParam === "pix" ||
+    modoParam === "rapido" ||
+    modoParam === "quick";
   const [localWizardOpen, setLocalWizardOpen] = useState(false);
   const wizardOpen = isShortcutNew || localWizardOpen;
   const initialType = novoParam === "receita" || novoParam === "income" ? "income" : "expense";
+  const initialMode: "quick" | "guided" =
+    novoParam === "pix" || modoParam === "rapido" || modoParam === "quick" ? "quick" : "guided";
 
   const valorParam = searchParams.get("valor");
   const descParam = searchParams.get("descricao") || undefined;
   const dataParam = searchParams.get("data") || undefined;
-  const formaParam = (searchParams.get("forma") as PaymentMethod) || undefined;
+  const formaParam =
+    (searchParams.get("forma") as PaymentMethod) || (novoParam === "pix" ? "pix" : undefined);
   const parcelasParam = searchParams.get("parcelas");
   const categoriaParam = searchParams.get("categoria") || undefined;
   const sugIdParam = searchParams.get("sug_id") || undefined;
@@ -93,6 +100,7 @@ export function PageShell() {
           (prev) => {
             const updated = new URLSearchParams(prev);
             updated.delete("novo");
+            updated.delete("modo");
             updated.delete("valor");
             updated.delete("descricao");
             updated.delete("data");
@@ -137,8 +145,9 @@ export function PageShell() {
       {wizardOpen && (
         <Suspense fallback={null}>
           <LaunchWizard
-            key={`${initialType}-${wizardOpen ? "open" : "closed"}-${sugIdParam ?? ""}`}
+            key={`${initialType}-${initialMode}-${wizardOpen ? "open" : "closed"}-${sugIdParam ?? ""}`}
             open={wizardOpen}
+            initialMode={initialMode}
             initialType={initialType}
             initialValues={initialValues}
             onOpenChange={handleWizardOpenChange}
