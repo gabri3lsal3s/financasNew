@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CardsPage } from "./cards-page";
+import { shiftMonth } from "@/domain/cards";
 
 const searchParamsMock = vi.fn(() => [new URLSearchParams(), vi.fn()]);
 
@@ -28,7 +29,20 @@ const defaultCard = {
   is_active: true,
 };
 
-const defaultExpense = {
+interface MockExpense {
+  id: string;
+  description: string;
+  date: string;
+  value: number;
+  report_weight: number;
+  bill_competence: string;
+  installments_total: number;
+  installment_number: number;
+  card_id?: string | null;
+  payment_method?: string | null;
+}
+
+const defaultExpense: MockExpense = {
   id: "e1",
   description: "Supermercado",
   date: "2026-08-05",
@@ -37,6 +51,8 @@ const defaultExpense = {
   bill_competence: "2026-08",
   installments_total: 1,
   installment_number: 1,
+  card_id: "c1",
+  payment_method: "credit_card",
 };
 
 const defaultPayment = {
@@ -71,8 +87,10 @@ const stateMocks = vi.hoisted(() => ({
       bill_competence: "2026-08",
       installments_total: 1,
       installment_number: 1,
+      card_id: "c1",
+      payment_method: "credit_card",
     },
-  ],
+  ] as MockExpense[],
   payments: [
     { id: "p1", competence_month: "2026-08", amount: 100, date: "2026-08-10", note: null },
   ],
@@ -487,6 +505,92 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
 
     await user.click(atualBtn);
     expect(atualBtn).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("exibe bloco informativo do impacto de assinaturas previstas antes do fechamento da fatura em aberto (F22 / Tarefa 7.6)", () => {
+    // Configura despesas históricas no cartão c1 (Nubank, closing_day = 10, due_day = 15)
+    // formando uma assinatura recorrente prevista antes do fechamento
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const currM = todayStr.slice(0, 7);
+    const mPrev1 = shiftMonth(currM, -1);
+    const mPrev2 = shiftMonth(currM, -2);
+
+    stateMocks.cards = [{ ...defaultCard, closing_day: 28, due_day: 5, credit_limit: 5000 }];
+    stateMocks.expenses = [
+      {
+        id: "e-sub-1",
+        description: "Netflix",
+        date: `${mPrev2}-10`,
+        value: 39.9,
+        report_weight: 1,
+        bill_competence: mPrev2,
+        installments_total: 1,
+        installment_number: 1,
+        card_id: "c1",
+        payment_method: "credit_card",
+      },
+      {
+        id: "e-sub-2",
+        description: "Netflix",
+        date: `${mPrev1}-10`,
+        value: 39.9,
+        report_weight: 1,
+        bill_competence: mPrev1,
+        installments_total: 1,
+        installment_number: 1,
+        card_id: "c1",
+        payment_method: "credit_card",
+      },
+    ];
+
+    render(<CardsPage />);
+
+    // Bloco do Radar de Assinaturas deve estar visível com a mensagem canônica
+    expect(screen.getByText(/Radar de Assinaturas/i)).toBeInTheDocument();
+    expect(screen.getByText(/Você possui/i)).toBeInTheDocument();
+    expect(screen.getByText(/em assinaturas previstas para este cartão antes do fechamento da fatura/i)).toBeInTheDocument();
+  });
+
+  it("exibe alerta preventivo quando o total de assinaturas projetadas supera o limite disponível restante (F22 / Tarefa 7.6)", () => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const currM = todayStr.slice(0, 7);
+    const mPrev1 = shiftMonth(currM, -1);
+    const mPrev2 = shiftMonth(currM, -2);
+
+    // Limite muito baixo (R$ 20,00) para uma assinatura de R$ 39,90
+    stateMocks.cards = [{ ...defaultCard, closing_day: 28, due_day: 5, credit_limit: 20 }];
+    stateMocks.expenses = [
+      {
+        id: "e-sub-1",
+        description: "Netflix",
+        date: `${mPrev2}-10`,
+        value: 39.9,
+        report_weight: 1,
+        bill_competence: mPrev2,
+        installments_total: 1,
+        installment_number: 1,
+        card_id: "c1",
+        payment_method: "credit_card",
+      },
+      {
+        id: "e-sub-2",
+        description: "Netflix",
+        date: `${mPrev1}-10`,
+        value: 39.9,
+        report_weight: 1,
+        bill_competence: mPrev1,
+        installments_total: 1,
+        installment_number: 1,
+        card_id: "c1",
+        payment_method: "credit_card",
+      },
+    ];
+
+    render(<CardsPage />);
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText("Alerta de Limite Comprometido")).toBeInTheDocument();
+    expect(screen.getByText(/supera o limite disponível/i)).toBeInTheDocument();
   });
 });
 

@@ -438,7 +438,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Teste de fluxo completo simulando clique em conversão, envio do payload ao RPC e atualização de cache.
   - *Commit:* `feat(insights): permitir converter ocorrencia detectada em recorrencia formal`
 
-- [ ] **Tarefa 7.6 — Radar de Assinaturas por Cartão de Crédito e Impacto na Fatura (F22):**
+- [x] **Tarefa 7.6 — Radar de Assinaturas por Cartão de Crédito e Impacto na Fatura (F22):**
   - Mapear a forma de pagamento/cartão de crédito habitual (`card_id`) associado a cada assinatura ou despesa recorrente.
   - Na tela de Cartões e na aba de Recorrências, exibir bloco informativo do impacto na fatura em aberto:
     - *"Você possui R$ X em assinaturas previstas para este cartão antes do fechamento da fatura"*.

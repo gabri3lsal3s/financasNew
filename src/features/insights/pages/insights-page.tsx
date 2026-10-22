@@ -444,6 +444,7 @@ export function InsightsPage({
       showIgnored={showIgnored}
       setShowIgnored={setShowIgnored}
       onFeedback={handleFeedback}
+      cards={cardsQuery.data ?? []}
     />
   );
 

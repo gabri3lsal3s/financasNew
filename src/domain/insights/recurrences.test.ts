@@ -942,6 +942,52 @@ describe("domain/insights/recurrences — Detecção Dual de Rendas (Fase 4, Tar
         expect(netflix?.expenses?.[1]?.id).toBe("e3"); // 2026-06-10
         expect(netflix?.expenses?.[2]?.id).toBe("e1"); // 2026-05-10
       });
+
+      it("mapeia a forma de pagamento e cartão habitual em cada ocorrência (F22 / Tarefa 7.6)", () => {
+        const expenses: ExpenseLike[] = [
+          {
+            id: "e1",
+            description: "Spotify",
+            date: "2026-05-15",
+            month: "2026-05",
+            valueCents: 2190,
+            categoryId: "lazer",
+            paymentMethod: "credit_card",
+            cardId: "card-nubank",
+            cardName: "Nubank Ultravioleta",
+          },
+          {
+            id: "e2",
+            description: "Spotify",
+            date: "2026-06-15",
+            month: "2026-06",
+            valueCents: 2190,
+            categoryId: "lazer",
+            paymentMethod: "credit_card",
+            cardId: "card-nubank",
+            cardName: "Nubank Ultravioleta",
+          },
+          {
+            id: "e3",
+            description: "Spotify",
+            date: "2026-07-15",
+            month: "2026-07",
+            valueCents: 2190,
+            categoryId: "lazer",
+            paymentMethod: "credit_card",
+            cardId: "card-inter",
+            cardName: "Inter Gold",
+          },
+        ];
+
+        const occurrences = detectRecurrences(expenses);
+        const spotify = occurrences.find((o) => o.name.toLowerCase().includes("spotify"));
+        expect(spotify).toBeDefined();
+        expect(spotify?.paymentMethod).toBe("credit_card");
+        // Nubank teve 2 cobranças contra 1 do Inter -> Nubank é o cartão habitual
+        expect(spotify?.cardId).toBe("card-nubank");
+        expect(spotify?.cardName).toBe("Nubank Ultravioleta");
+      });
     });
   });
 });

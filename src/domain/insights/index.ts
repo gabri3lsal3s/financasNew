@@ -70,6 +70,18 @@ export type {
   GenerateSmartAdvisorInsightsInput,
   FilterAndRankAdvisorInsightsOptions,
 } from "./advisor";
+export {
+  getNextInvoiceClosingDate,
+  isSubscriptionDueBeforeClosing,
+  calculateCardSubscriptionImpact,
+  calculateAllCardsSubscriptionImpact,
+} from "./card-radar";
+export type {
+  CardForImpact,
+  CardSubscriptionImpactOptions,
+  ProjectedSubscriptionItem,
+  CardSubscriptionImpact,
+} from "./card-radar";
 
 
 

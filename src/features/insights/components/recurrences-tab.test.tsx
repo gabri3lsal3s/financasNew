@@ -200,4 +200,115 @@ describe("RecurrencesTab", () => {
     expect(screen.getByText("Fixar como Recorrência Formal")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Spotify")).toBeInTheDocument();
   });
+
+  it("exibe bloco informativo do impacto na fatura em aberto para cartão associado a assinaturas (F22 / Tarefa 7.6)", () => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const cardNubank = {
+      id: "card-nubank",
+      name: "Nubank Ultravioleta",
+      brand: "Mastercard",
+      credit_limit: 5000,
+      color: "#8B5CF6",
+      closing_day: 28,
+      due_day: 5,
+      is_active: true,
+      created_at: "2026-01-01",
+      updated_at: "2026-01-01",
+      user_id: "u1",
+    };
+
+    const cardOccurrences: RecurrenceOccurrence[] = [
+      {
+        key: "sub:netflix",
+        name: "Netflix",
+        level: "subscription",
+        segment: "streaming",
+        months: ["2026-06", "2026-07", "2026-08"],
+        averageCents: 3990,
+        confidence: 0.98,
+        typicalDayOfMonth: 10,
+        nextDueDate: todayStr, // hoje
+        cardId: "card-nubank",
+        cardName: "Nubank Ultravioleta",
+        paymentMethod: "credit_card",
+      },
+    ];
+
+    render(
+      <RecurrencesTab
+        totalRecurringCents={3990}
+        totalAnnualRecurringCents={47880}
+        canCutRecurringCents={0}
+        canCutAnnualCents={0}
+        activeOccurrences={cardOccurrences}
+        ignoredOccurrences={[]}
+        feedbackMap={{}}
+        showIgnored={false}
+        setShowIgnored={vi.fn()}
+        onFeedback={vi.fn()}
+        cards={[cardNubank]}
+      />,
+    );
+
+    expect(screen.getByText("Impacto de Assinaturas na Fatura em Aberto")).toBeInTheDocument();
+    expect(screen.getAllByText("Nubank Ultravioleta").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Você possui/i)).toBeInTheDocument();
+    expect(screen.getByText(/em assinaturas previstas para este cartão antes do fechamento da fatura/i)).toBeInTheDocument();
+    expect(screen.getAllByText("R$ 39,90").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("exibe alerta preventivo quando o total de assinaturas projetadas no cartão supera o limite disponível (F22 / Tarefa 7.6)", () => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const cardLimitLow = {
+      id: "card-nubank",
+      name: "Nubank Ultravioleta",
+      brand: "Mastercard",
+      credit_limit: 20, // R$ 20,00 vs R$ 39,90 de assinatura
+      color: "#8B5CF6",
+      closing_day: 28,
+      due_day: 5,
+      is_active: true,
+      created_at: "2026-01-01",
+      updated_at: "2026-01-01",
+      user_id: "u1",
+    };
+
+    const cardOccurrences: RecurrenceOccurrence[] = [
+      {
+        key: "sub:netflix",
+        name: "Netflix",
+        level: "subscription",
+        segment: "streaming",
+        months: ["2026-06", "2026-07", "2026-08"],
+        averageCents: 3990,
+        confidence: 0.98,
+        typicalDayOfMonth: 10,
+        nextDueDate: todayStr,
+        cardId: "card-nubank",
+        cardName: "Nubank Ultravioleta",
+        paymentMethod: "credit_card",
+      },
+    ];
+
+    render(
+      <RecurrencesTab
+        totalRecurringCents={3990}
+        totalAnnualRecurringCents={47880}
+        canCutRecurringCents={0}
+        canCutAnnualCents={0}
+        activeOccurrences={cardOccurrences}
+        ignoredOccurrences={[]}
+        feedbackMap={{}}
+        showIgnored={false}
+        setShowIgnored={vi.fn()}
+        onFeedback={vi.fn()}
+        cards={[cardLimitLow]}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText("Alerta de Limite Comprometido")).toBeInTheDocument();
+    expect(screen.getByText(/supera o limite disponível/i)).toBeInTheDocument();
+  });
 });

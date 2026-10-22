@@ -63,6 +63,8 @@ export type {
   CardInvoiceExpenseRow,
   CardInvoicePaymentRow,
 } from "./card-invoice-print-view";
+export { CardSubscriptionRadar } from "./card-subscription-radar";
+export type { CardSubscriptionRadarProps } from "./card-subscription-radar";
 export { PresetSelectorBar } from "./preset-selector-bar";
 export type { PresetSelectorBarProps } from "./preset-selector-bar";
 export { SavePresetDialog } from "./save-preset-dialog";

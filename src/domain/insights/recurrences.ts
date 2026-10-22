@@ -263,6 +263,12 @@ export interface RecurrenceOccurrence {
   budgetImpact?: BudgetImpactEvaluation;
   /** Lançamentos históricos que compõem esta recorrência (ordenados cronologicamente do mais recente ao mais antigo). */
   expenses?: ExpenseLike[];
+  /** Cartão de crédito habitual associado (Fase 7, Tarefa 7.6). */
+  cardId?: string | null;
+  /** Nome legível do cartão de crédito habitual. */
+  cardName?: string | null;
+  /** Forma de pagamento predominante (credit_card, pix, boleto, debit, etc.). */
+  paymentMethod?: string | null;
 }
 
 export interface RecurringTotalsResult {
@@ -622,6 +628,49 @@ export function detectRecurrences(
       return dateB.localeCompare(dateA);
     });
 
+    // Mapeamento da forma de pagamento e cartão habitual associado (Fase 7, Tarefa 7.6).
+    const methodCounts = new Map<string, number>();
+    const cardData = new Map<string, { count: number; name?: string | null; latestDate: string }>();
+
+    for (const exp of group) {
+      if (exp.paymentMethod) {
+        methodCounts.set(exp.paymentMethod, (methodCounts.get(exp.paymentMethod) ?? 0) + 1);
+      }
+      if (exp.cardId) {
+        const expDate = exp.date ?? `${exp.month}-01`;
+        const existing = cardData.get(exp.cardId);
+        if (!existing) {
+          cardData.set(exp.cardId, { count: 1, name: exp.cardName, latestDate: expDate });
+        } else {
+          existing.count += 1;
+          if (exp.cardName) existing.name = exp.cardName;
+          if (expDate > existing.latestDate) existing.latestDate = expDate;
+        }
+      }
+    }
+
+    let predominantPaymentMethod: string | null = null;
+    let maxMethodCount = 0;
+    for (const [m, count] of methodCounts.entries()) {
+      if (count > maxMethodCount) {
+        maxMethodCount = count;
+        predominantPaymentMethod = m;
+      }
+    }
+
+    let habitualCardId: string | null = null;
+    let habitualCardName: string | null = null;
+    let maxCardCount = 0;
+    let maxCardLatestDate = "";
+    for (const [cId, data] of cardData.entries()) {
+      if (data.count > maxCardCount || (data.count === maxCardCount && data.latestDate > maxCardLatestDate)) {
+        maxCardCount = data.count;
+        habitualCardId = cId;
+        habitualCardName = data.name ?? null;
+        maxCardLatestDate = data.latestDate;
+      }
+    }
+
     if (subscription !== null && months.length >= 2) {
       const variance = varianceOf(monthlyTotals);
       const confidence = confidenceScore({
@@ -648,6 +697,9 @@ export function detectRecurrences(
         priceAdjustment,
         duplicateChargesThisMonth,
         expenses: sortedExpenses,
+        cardId: habitualCardId,
+        cardName: habitualCardName,
+        paymentMethod: predominantPaymentMethod,
       });
       seen.add(key);
       continue;
@@ -675,6 +727,9 @@ export function detectRecurrences(
         priceAdjustment,
         duplicateChargesThisMonth,
         expenses: sortedExpenses,
+        cardId: habitualCardId,
+        cardName: habitualCardName,
+        paymentMethod: predominantPaymentMethod,
       });
       seen.add(key);
     }

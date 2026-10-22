@@ -6,6 +6,7 @@ import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, MoneyText,
 
 import {
   CardInvoicePrintView,
+  CardSubscriptionRadar,
   CreditCardWallet,
   InvoiceStatusBadge,
   KpiCard,
@@ -26,6 +27,9 @@ import {
 import { currentMonth, monthLabel } from "@/lib/date";
 import { serializeCardInvoiceCsv } from "@/domain/export";
 import type { ExportCardInvoiceRow } from "@/domain/export";
+import { todayISO } from "@/domain/debts";
+import { detectRecurrences, type ExpenseLike } from "@/domain/insights/recurrences";
+import { calculateCardSubscriptionImpact } from "@/domain/insights/card-radar";
 import type { CardInvoiceExpenseRow, CardInvoicePaymentRow } from "@/components/modules";
 import { numberToCents } from "@/domain/money";
 import { downloadCsv } from "@/services/export-actions";
@@ -329,8 +333,8 @@ export function CardsPage() {
   };
 
   const usedLimitMap: Record<string, { brutoCents: number; ponderadoCents: number }> = {};
-  const allExpenses = allCardExpensesQuery.data ?? [];
-  const allPayments = allCardPaymentsQuery.data ?? [];
+  const allExpenses = useMemo(() => allCardExpensesQuery.data ?? [], [allCardExpensesQuery.data]);
+  const allPayments = useMemo(() => allCardPaymentsQuery.data ?? [], [allCardPaymentsQuery.data]);
 
   for (const card of cards) {
     const cExpenses = allExpenses.filter((e) => e.card_id === card.id);
@@ -344,6 +348,43 @@ export function CardsPage() {
       };
     }
   }
+
+  const currentInvoiceSaldoBrutoCents = summary?.saldoBrutoCents ?? 0;
+
+  // Radar de Assinaturas e Impacto na Fatura em Aberto (F22 / Tarefa 7.6)
+  const cardSubscriptionImpact = useMemo(() => {
+    if (!selectedCard) return null;
+    const availableLimitCents =
+      selectedCard.credit_limit !== null && selectedCard.credit_limit !== undefined && selectedCard.credit_limit > 0
+        ? Math.max(0, Math.round(selectedCard.credit_limit * 100) - currentInvoiceSaldoBrutoCents)
+        : null;
+
+    const cardExpenseLikes: ExpenseLike[] = allExpenses
+      .filter((e) => e.card_id === selectedCard.id)
+      .map((e) => ({
+        id: e.id,
+        description: e.description,
+        date: e.date,
+        month: e.date ? e.date.slice(0, 7) : (e.bill_competence ?? currentMonth()),
+        valueCents: Math.round(e.value * 100),
+        categoryId: e.category_id,
+        categoryName: categoryById.get(e.category_id)?.name ?? null,
+        categoryIcon: categoryById.get(e.category_id)?.icon ?? null,
+        installmentGroupId: e.installment_group_id,
+        recurrenceId: e.recurrence_id,
+        paymentMethod: "credit_card",
+        cardId: e.card_id,
+        cardName: selectedCard.name,
+        rawExpense: e,
+      }));
+
+    const todayISOStr = todayISO();
+    const detected = detectRecurrences(cardExpenseLikes, { todayISO: todayISOStr });
+    return calculateCardSubscriptionImpact(selectedCard, detected, {
+      todayISO: todayISOStr,
+      availableLimitCents,
+    });
+  }, [selectedCard, allExpenses, categoryById, currentInvoiceSaldoBrutoCents]);
 
   const permission = usePermission("cards");
   const navigate = useNavigate();
@@ -705,6 +746,11 @@ export function CardsPage() {
                 }
               />
             </div>
+
+            {/* Bloco Informativo de Impacto de Assinaturas na Fatura em Aberto (F22 / Tarefa 7.6) */}
+            {cardSubscriptionImpact && cardSubscriptionImpact.totalProjectedCents > 0 ? (
+              <CardSubscriptionRadar impact={cardSubscriptionImpact} />
+            ) : null}
           </div>
 
           {/* =========================================================================

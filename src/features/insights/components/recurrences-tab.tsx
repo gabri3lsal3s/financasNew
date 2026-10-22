@@ -1,14 +1,16 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, EyeOff, Repeat } from "lucide-react";
+import { ChevronDown, ChevronUp, CreditCard as CreditCardIcon, EyeOff, Repeat } from "lucide-react";
 import { Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
-import { InsightList } from "@/components/modules";
-import { SERVICE_SEGMENT_LABELS } from "@/domain/insights";
+import { CardSubscriptionRadar, InsightList } from "@/components/modules";
+import { calculateAllCardsSubscriptionImpact, SERVICE_SEGMENT_LABELS } from "@/domain/insights";
 import { RECURRENCE_LEVEL_LABELS } from "@/lib/labels";
+import { useCreditCards } from "@/state";
 import { RecurrenceAuditModal } from "./recurrence-audit-modal";
 import { ConvertRecurrenceDialog } from "./convert-recurrence-dialog";
 import type { RecurrenceOccurrence } from "@/domain/insights/recurrences";
 import type { FeedbackDecision, FeedbackMap } from "@/domain/insights/feedback";
+import type { CreditCard } from "@/types";
 
 export interface RecurrencesTabProps {
   totalRecurringCents: number;
@@ -21,6 +23,7 @@ export interface RecurrencesTabProps {
   showIgnored: boolean;
   setShowIgnored: (val: boolean | ((prev: boolean) => boolean)) => void;
   onFeedback: (occurrenceKey: string, decision: FeedbackDecision | null) => void;
+  cards?: CreditCard[];
 }
 
 export function RecurrencesTab({
@@ -34,7 +37,17 @@ export function RecurrencesTab({
   showIgnored,
   setShowIgnored,
   onFeedback,
+  cards: cardsProp,
 }: RecurrencesTabProps) {
+  const cardsQuery = useCreditCards();
+
+  const cardImpacts = useMemo(() => {
+    const cards = cardsProp ?? cardsQuery.data ?? [];
+    if (cards.length === 0 || activeOccurrences.length === 0) return [];
+    const impacts = calculateAllCardsSubscriptionImpact(cards, activeOccurrences);
+    return impacts.filter((impact) => impact.totalProjectedCents > 0);
+  }, [cardsProp, cardsQuery.data, activeOccurrences]);
+
   const [selectedOccurrenceKey, setSelectedOccurrenceKey] = useState<string | null>(null);
   const [convertingOccurrence, setConvertingOccurrence] = useState<RecurrenceOccurrence | null>(null);
 
@@ -94,11 +107,32 @@ export function RecurrencesTab({
         </div>
       </div>
 
+      {/* Radar de Assinaturas por Cartão de Crédito e Impacto na Fatura (F22 / Tarefa 7.6) */}
+      {cardImpacts.length > 0 ? (
+        <section aria-label="Radar de assinaturas por cartão de crédito e faturas" className="flex flex-col gap-3">
+          <div className="flex items-center gap-2 px-0.5">
+            <CreditCardIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Impacto de Assinaturas na Fatura em Aberto
+            </h2>
+          </div>
+          <div className="flex flex-col gap-3">
+            {cardImpacts.map((impact) => (
+              <CardSubscriptionRadar key={impact.cardId} impact={impact} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {/* Lista de Recorrências Ativas */}
       <section aria-label="Lista de assinaturas e recorrências" className="flex flex-col gap-2">
         <InsightList
           items={activeOccurrences.map((o) => {
             const badges: { label: string; tone?: "default" | "positive" | "negative" | "warning" | "critical" | "muted" }[] = [];
+
+            if (o.cardName) {
+              badges.push({ label: o.cardName, tone: "muted" });
+            }
 
             if (o.segment && o.segment !== "other") {
               badges.push({ label: SERVICE_SEGMENT_LABELS[o.segment], tone: "default" });
