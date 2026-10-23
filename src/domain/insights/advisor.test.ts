@@ -91,6 +91,38 @@ describe("generateSmartAdvisorInsights", () => {
     );
   });
 
+  it("gera insight com confirmação expressa (confirm_expense) para assinatura/compromisso fixo altamente previsível (F27)", () => {
+    const occ = makeOccurrence({
+      key: "netflix",
+      name: "Netflix",
+      tier: "can_cut",
+      segment: "streaming",
+      missingThisMonth: true,
+      typicalDayOfMonth: 12,
+      categoryId: "cat-streaming",
+      cardId: "card-nubank",
+      averageCents: 5590,
+    });
+
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [occ],
+      todayISO: "2026-10-22",
+    });
+
+    expect(insights).toHaveLength(1);
+    expect(insights[0]?.primaryAction?.kind).toBe("confirm_expense");
+    expect(insights[0]?.primaryAction?.label).toBe("Confirmar pagamento");
+    expect(insights[0]?.primaryAction?.payload).toEqual(
+      expect.objectContaining({
+        name: "Netflix",
+        valueCents: 5590,
+        categoryId: "cat-streaming",
+        cardId: "card-nubank",
+        date: "2026-10-12",
+      }),
+    );
+  });
+
   it("gera insight de prioridade 2 (Entrada) para salário CLT pronto para confirmação em 1 toque", () => {
     const inc = makeIncome({
       profile: "fixed",

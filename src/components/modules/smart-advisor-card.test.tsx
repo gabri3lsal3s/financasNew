@@ -9,6 +9,7 @@ const mockNavigate = vi.fn();
 
 const mockHookDismiss = vi.fn();
 const mockHookConfirmIncome = vi.fn();
+const mockHookConfirmExpense = vi.fn();
 const mockHookConfirmRecurrence = vi.fn();
 const mockHookIgnoreRecurrence = vi.fn();
 const mockHookNext = vi.fn();
@@ -29,6 +30,7 @@ let mockHookReturn: {
   error: unknown;
   dismiss: typeof mockHookDismiss;
   confirmIncome: typeof mockHookConfirmIncome;
+  confirmExpense: typeof mockHookConfirmExpense;
   confirmRecurrence: typeof mockHookConfirmRecurrence;
   ignoreRecurrence: typeof mockHookIgnoreRecurrence;
   refetch: () => Promise<void>;
@@ -46,6 +48,7 @@ let mockHookReturn: {
   error: null,
   dismiss: mockHookDismiss,
   confirmIncome: mockHookConfirmIncome,
+  confirmExpense: mockHookConfirmExpense,
   confirmRecurrence: mockHookConfirmRecurrence,
   ignoreRecurrence: mockHookIgnoreRecurrence,
   refetch: vi.fn(),
@@ -80,6 +83,7 @@ describe("SmartAdvisorCard", () => {
       error: null,
       dismiss: mockHookDismiss,
       confirmIncome: mockHookConfirmIncome,
+      confirmExpense: mockHookConfirmExpense,
       confirmRecurrence: mockHookConfirmRecurrence,
       ignoreRecurrence: mockHookIgnoreRecurrence,
       refetch: vi.fn(),
@@ -179,6 +183,31 @@ describe("SmartAdvisorCard", () => {
     },
   };
 
+  const confirmExpenseInsight: SmartAdvisorInsight = {
+    id: "missing_expense:spotify",
+    themeKey: "missing_expense:spotify",
+    priority: 1,
+    category: "critical",
+    title: "Conta pendente no mês",
+    description: "Spotify costuma ser cobrada por volta do dia 15 e ainda não foi identificada no mês.",
+    iconName: "alert-triangle",
+    primaryAction: {
+      label: "Confirmar pagamento",
+      kind: "confirm_expense",
+      payload: {
+        name: "Spotify",
+        valueCents: 3490,
+        categoryId: "cat-stream",
+        cardId: "card-nubank",
+        date: "2026-10-15",
+      },
+    },
+    secondaryAction: {
+      label: "Dispensar por 30 dias",
+      kind: "dismiss",
+    },
+  };
+
   it("não renderiza nada (100% oculto) quando o insight for null", () => {
     const { container } = render(<SmartAdvisorCard insight={null} />);
     expect(container.firstChild).toBeNull();
@@ -255,6 +284,43 @@ describe("SmartAdvisorCard", () => {
         date: "2026-10-05",
       });
       expect(triggerSensoryMock).toHaveBeenCalledWith("success");
+    });
+
+    it("ao clicar em Confirmar pagamento, executa onConfirmExpense com payload (modo controlado)", async () => {
+      const onConfirmExpenseMock = vi.fn().mockResolvedValue({});
+      render(
+        <SmartAdvisorCard
+          insight={confirmExpenseInsight}
+          onConfirmExpense={onConfirmExpenseMock}
+        />,
+      );
+
+      const confirmBtn = screen.getByRole("button", { name: /Confirmar pagamento/i });
+      fireEvent.click(confirmBtn);
+
+      expect(onConfirmExpenseMock).toHaveBeenCalledWith({
+        name: "Spotify",
+        valueCents: 3490,
+        categoryId: "cat-stream",
+        cardId: "card-nubank",
+        date: "2026-10-15",
+      });
+    });
+
+    it("ao clicar em Confirmar pagamento sem onConfirmExpense, executa hook.confirmExpense", async () => {
+      mockHookReturn.insight = confirmExpenseInsight;
+      render(<SmartAdvisorCard />);
+
+      const confirmBtn = screen.getByRole("button", { name: /Confirmar pagamento/i });
+      fireEvent.click(confirmBtn);
+
+      expect(mockHookConfirmExpense).toHaveBeenCalledWith({
+        name: "Spotify",
+        valueCents: 3490,
+        categoryId: "cat-stream",
+        cardId: "card-nubank",
+        date: "2026-10-15",
+      });
     });
 
     it("ao clicar em Sim, monitorar, executa onConfirmRecurrence e dispara sensory success", async () => {

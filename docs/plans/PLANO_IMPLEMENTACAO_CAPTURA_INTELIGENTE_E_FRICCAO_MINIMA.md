@@ -551,7 +551,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Teste de navegação e pré-carregamento no `page-shell.test.tsx`, `smart-advisor-card.test.tsx` e `recurrences-tab.test.tsx`.
   - *Commit:* `feat(advisor): redirecionar acoes do assistente com pre-preenchimento total do wizard e modal de recorrencia`
 
-- [ ] **Tarefa 8.3 — Confirmação Expressa de Despesa Fixa em 1 Toque com Toast de Reversão (F27):**
+- [x] **Tarefa 8.3 — Confirmação Expressa de Despesa Fixa em 1 Toque com Toast de Reversão (F27):**
   - Para compromissos fixos e assinaturas de alta previsibilidade com conta/cartão já conhecidos e valor constante (ex.: streaming, academia, internet), oferecer no `SmartAdvisorCard` o botão de ação rápida primária *"Confirmar pagamento"*.
   - Ao clicar:
     - Gravar a transação instantaneamente via RPC (`create_expense_atomic`), sem a fricção de abrir o diálogo ou formulário do wizard.

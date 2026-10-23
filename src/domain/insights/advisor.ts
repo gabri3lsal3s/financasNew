@@ -17,7 +17,7 @@ export type SmartAdvisorCategory = "critical" | "income" | "savings" | "calibrat
 
 export interface SmartAdvisorAction {
   label: string;
-  kind: "confirm_income" | "open_income" | "register_expense" | "cut_subscription" | "confirm_recurrence" | "ignore_recurrence" | "navigate_aporte" | "dismiss";
+  kind: "confirm_income" | "open_income" | "confirm_expense" | "register_expense" | "cut_subscription" | "confirm_recurrence" | "ignore_recurrence" | "navigate_aporte" | "dismiss";
   payload?: Record<string, unknown>;
 }
 
@@ -127,6 +127,20 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
           ? `${todayISO.slice(0, 7)}-${String(occ.typicalDayOfMonth).padStart(2, "0")}`
           : todayISO);
 
+      // Compromissos fixos e assinaturas de alta previsibilidade com conta/cartão já conhecidos e valor constante
+      // (ex.: streaming, academia, internet) oferecem confirmação expressa em 1 toque (F27)
+      const isHighlyPredictable =
+        Boolean(occ.categoryId) &&
+        (Boolean(occ.cardId) || Boolean(occ.paymentMethod)) &&
+        (occ.level === "subscription" ||
+          occ.segment === "streaming" ||
+          occ.segment === "fitness" ||
+          occ.segment === "cloud_ai" ||
+          occ.segment === "telecom");
+
+      const actionKind = isHighlyPredictable ? "confirm_expense" : "register_expense";
+      const actionLabel = isHighlyPredictable ? "Confirmar pagamento" : "Registrar pagamento";
+
       candidates.push({
         id: `missing_expense:${occ.key}`,
         themeKey: `missing_expense:${occ.key}`,
@@ -136,8 +150,8 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
         description: `${occ.name} costuma ser cobrada por volta do dia ${occ.typicalDayOfMonth ?? 10} e ainda não foi identificada no mês.`,
         iconName: "alert-triangle",
         primaryAction: {
-          label: "Registrar pagamento",
-          kind: "register_expense",
+          label: actionLabel,
+          kind: actionKind,
           payload: {
             key: occ.key,
             name: occ.name,

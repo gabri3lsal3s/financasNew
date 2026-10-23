@@ -69,6 +69,17 @@ export interface SmartAdvisorCardProps {
     categoryId: string;
     date?: string;
   }) => void | Promise<void>;
+  /**
+   * Callback ao confirmar despesa fixa em 1 toque (F27 / Tarefa 8.3).
+   */
+  onConfirmExpense?: (payload: {
+    name: string;
+    valueCents: number;
+    categoryId: string;
+    date?: string;
+    forma?: string;
+    cardId?: string;
+  }) => void | Promise<void>;
 }
 
 /**
@@ -90,6 +101,7 @@ export function SmartAdvisorCard({
   onConfirmRecurrence,
   onIgnoreRecurrence,
   onConfirmIncome,
+  onConfirmExpense,
 }: SmartAdvisorCardProps) {
   const navigate = useNavigate();
   const isCurrentMonth = month ? month === currentMonth() : true;
@@ -151,6 +163,32 @@ export function SmartAdvisorCard({
         await onConfirmIncome(payload);
       } else {
         await hook.confirmIncome(payload);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleConfirmExpense = async () => {
+    const payload = activeInsight.primaryAction?.payload as
+      | {
+          name: string;
+          valueCents: number;
+          categoryId: string;
+          date?: string;
+          forma?: string;
+          cardId?: string;
+        }
+      | undefined;
+
+    if (!payload) return;
+
+    try {
+      setIsSubmitting(true);
+      if (onConfirmExpense) {
+        await onConfirmExpense(payload);
+      } else {
+        await hook.confirmExpense(payload);
       }
     } finally {
       setIsSubmitting(false);
@@ -475,6 +513,18 @@ export function SmartAdvisorCard({
               </Button>
             </QualifiedDismissPopover>
           </>
+        ) : activeInsight.primaryAction?.kind === "confirm_expense" ? (
+          <Button
+            size="sm"
+            variant="default"
+            sensoryIntent="success"
+            onClick={() => void handleConfirmExpense()}
+            disabled={isSubmitting}
+            className="gap-1.5 text-xs h-8 cursor-pointer"
+          >
+            <Check className="size-3.5" aria-hidden="true" />
+            <span>{activeInsight.primaryAction.label}</span>
+          </Button>
         ) : activeInsight.category === "income" && activeInsight.primaryAction?.kind === "confirm_income" ? (
           <Button
             size="sm"

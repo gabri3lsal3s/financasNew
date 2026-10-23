@@ -14,6 +14,8 @@ import type { ExpenseLike, IncomeLike } from "@/domain/insights/recurrences";
 // Mocks dos serviços sensoriais e toast
 const mutateFeedbackMock = vi.fn().mockResolvedValue({});
 const mutateCreateIncomeMock = vi.fn().mockResolvedValue({});
+const mutateCreateExpenseMock = vi.fn().mockResolvedValue("exp-created-123");
+const mutateDeleteExpenseMock = vi.fn().mockResolvedValue({});
 const pushToastMock = vi.fn();
 const triggerSensoryMock = vi.fn();
 
@@ -34,6 +36,8 @@ vi.mock("@/state", () => ({
   useSetFeedback: () => ({ mutateAsync: mutateFeedbackMock }),
   useCreateIncome: () => ({ mutateAsync: mutateCreateIncomeMock }),
   useDeleteIncome: () => ({ mutateAsync: vi.fn() }),
+  useCreateExpense: () => ({ mutateAsync: mutateCreateExpenseMock }),
+  useDeleteExpense: () => ({ mutateAsync: mutateDeleteExpenseMock }),
 }));
 
 describe("useSmartAdvisorInsights", () => {
@@ -633,6 +637,81 @@ describe("useSmartAdvisorInsights", () => {
       // Tema da renda silenciado no localStorage
       const stored = localStorage.getItem(SMART_ADVISOR_DISMISSALS_KEY);
       expect(stored).toContain("income:consultoria dev");
+    });
+
+    it("confirmExpense grava despesa via RPC em reais, dispara sensory/toast e oferece ação de desfazer", async () => {
+      const { result } = renderHook(() =>
+        useSmartAdvisorInsights({
+          expenses: [],
+          incomes: [],
+          todayISO: TODAY,
+          nowMs: NOW_MS,
+        }),
+      );
+
+      await act(async () => {
+        await result.current.confirmExpense({
+          name: "Netflix Premium",
+          valueCents: 5590,
+          categoryId: "cat-stream",
+          date: "2026-10-22",
+          forma: "credit_card",
+          cardId: "card-nubank",
+        });
+      });
+
+      expect(mutateCreateExpenseMock).toHaveBeenCalledWith({
+        value: 55.9,
+        date: "2026-10-22",
+        categoryId: "cat-stream",
+        paymentMethod: "credit_card",
+        cardId: "card-nubank",
+        description: "Netflix Premium",
+        reportWeight: 1,
+        installments: [
+          {
+            date: "2026-10-22",
+            value: 55.9,
+            billCompetence: null,
+          },
+        ],
+      });
+
+      expect(triggerSensoryMock).toHaveBeenCalledWith("success");
+      expect(pushToastMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Pagamento confirmado",
+          duration: 5000,
+          variant: "success",
+          action: expect.objectContaining({
+            label: "Desfazer",
+            onClick: expect.any(Function),
+          }),
+        }),
+      );
+
+      // Testa a reversão pelo toast de desfazer
+      const lastToastCall = pushToastMock.mock.calls[pushToastMock.mock.calls.length - 1]?.[0];
+      expect(lastToastCall?.action?.onClick).toBeDefined();
+      await act(async () => {
+        await lastToastCall?.action?.onClick?.();
+      });
+
+      expect(mutateDeleteExpenseMock).toHaveBeenCalledWith({
+        expenseId: "exp-created-123",
+        mode: "single",
+      });
+      expect(triggerSensoryMock).toHaveBeenCalledWith("action");
+      expect(pushToastMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Pagamento desfeito",
+          variant: "info",
+        }),
+      );
+
+      // Tema da despesa silenciado no localStorage
+      const stored = localStorage.getItem(SMART_ADVISOR_DISMISSALS_KEY);
+      expect(stored).toContain("missing_expense:netflix premium");
     });
   });
 

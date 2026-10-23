@@ -21,7 +21,9 @@ import {
 import {
   useBudgets,
   useCategories,
+  useCreateExpense,
   useCreateIncome,
+  useDeleteExpense,
   useDeleteIncome,
   useExpenses,
   useFeedback,
@@ -172,6 +174,15 @@ export interface UseSmartAdvisorInsightsResult {
     categoryId: string;
     date?: string;
   }) => Promise<void>;
+  /** Confirma expressamente despesa fixa em 1 toque com toast de reversão (F27). */
+  confirmExpense: (payload: {
+    name: string;
+    valueCents: number;
+    categoryId: string;
+    date?: string;
+    forma?: string;
+    cardId?: string;
+  }) => Promise<void>;
   /** Atualiza manualmente os dados do assistente. */
   refetch: () => Promise<void>;
 }
@@ -213,6 +224,8 @@ export function useSmartAdvisorInsights(
   const setFeedbackMutation = useSetFeedback();
   const createIncomeMutation = useCreateIncome();
   const deleteIncomeMutation = useDeleteIncome();
+  const createExpenseMutation = useCreateExpense();
+  const deleteExpenseMutation = useDeleteExpense();
 
   // Estados locais para injeção em testes (opcional)
   const [localDismissals, setLocalDismissals] = useState<Record<string, number> | undefined>(
@@ -600,6 +613,62 @@ export function useSmartAdvisorInsights(
     [createIncomeMutation, deleteIncomeMutation, todayISOStr, activeInsight?.themeKey, dismiss],
   );
 
+  // Confirmação expressa de despesa fixa em 1 toque com toast de reversão (F27 / Tarefa 8.3)
+  const confirmExpense = useCallback(
+    async (payload: {
+      name: string;
+      valueCents: number;
+      categoryId: string;
+      date?: string;
+      forma?: string;
+      cardId?: string;
+    }) => {
+      const value = payload.valueCents / 100;
+      const targetDate = payload.date ?? todayISOStr;
+      const createdId = await createExpenseMutation.mutateAsync({
+        value,
+        date: targetDate,
+        categoryId: payload.categoryId,
+        paymentMethod: payload.forma ?? (payload.cardId ? "credit_card" : "pix"),
+        cardId: payload.cardId ?? null,
+        description: payload.name,
+        reportWeight: 1,
+        installments: [
+          {
+            date: targetDate,
+            value,
+            billCompetence: null,
+          },
+        ],
+      });
+
+      const keyToDismiss = activeInsight?.themeKey ?? `missing_expense:${normalizeText(payload.name)}`;
+      dismiss(keyToDismiss, DEFAULT_DISMISS_DAYS);
+      triggerSensory("success");
+      pushToast({
+        title: "Pagamento confirmado",
+        description: `Despesa de ${payload.name} registrada com sucesso.`,
+        duration: 5000,
+        variant: "success",
+        action: {
+          label: "Desfazer",
+          onClick: () => {
+            if (createdId) {
+              void deleteExpenseMutation.mutateAsync({ expenseId: createdId, mode: "single" });
+              triggerSensory("action");
+              pushToast({
+                title: "Pagamento desfeito",
+                description: `Despesa de ${payload.name} foi removida.`,
+                variant: "info",
+              });
+            }
+          },
+        },
+      });
+    },
+    [createExpenseMutation, deleteExpenseMutation, todayISOStr, activeInsight?.themeKey, dismiss],
+  );
+
   const isLoading =
     queryEnabled &&
     (month0Expenses.isLoading ||
@@ -696,6 +765,7 @@ export function useSmartAdvisorInsights(
     confirmRecurrence,
     ignoreRecurrence,
     confirmIncome,
+    confirmExpense,
     refetch,
   };
 }
