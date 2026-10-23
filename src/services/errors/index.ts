@@ -13,6 +13,7 @@ export type ErrorKind =
   | "rate-limit"
   | "service-unavailable"
   | "email-not-confirmed"
+  | "user-already-exists"
   | "user_already_exists"
   | "invalid-credentials"
   | "session-expired"

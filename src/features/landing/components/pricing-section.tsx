@@ -60,7 +60,7 @@ export function PricingSection() {
                 className={cn(
                   "font-bold transition-colors",
                   isAnnual
-                    ? "bg-primary-foreground/20 text-primary-foreground border border-primary-foreground/30"
+                    ? "bg-surface text-primary-strong shadow-2xs border border-primary-strong/20"
                     : "border border-transparent"
                 )}
               >
