@@ -1,5 +1,5 @@
 import { getSupabase } from "@/data/client";
-import { AppError, classifyError } from "@/services/errors";
+import { AppError, classifyError, MESSAGES } from "@/services/errors";
 
 /**
  * Operações de autenticação — camada data (integração remota).
@@ -40,6 +40,17 @@ export async function signUpWithEmail(
     const classified = classifyError(error);
     throw new AppError(classified.kind, classified.message, error);
   }
+
+  // Blindagem contra falso positivo da flag anti-enumeração do Supabase:
+  // Se a conta já existe, o endpoint retorna HTTP 200 com array identities vazio.
+  if (
+    data.user &&
+    Array.isArray(data.user.identities) &&
+    data.user.identities.length === 0
+  ) {
+    throw new AppError("user-already-exists", MESSAGES["user-already-exists"], data.user);
+  }
+
   return { needsEmailConfirmation: data.session === null };
 }
 

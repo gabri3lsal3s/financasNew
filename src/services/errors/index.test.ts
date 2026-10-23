@@ -81,13 +81,18 @@ describe("getErrorMessage — gateway de erros (ESPECIFICAÇÃO §1.7)", () => {
     expect(err.message).toContain('Acesso negado: alert("xss")usuário sem permissão');
   });
 
-  it("classifica erros de usuário já cadastrado como user_already_exists", () => {
+  it("classifica erros de usuário já cadastrado como user-already-exists", () => {
     const err1 = classifyError({ message: "User already registered" });
-    expect(err1.kind).toBe("user_already_exists");
-    expect(err1.message).toBe("Este e-mail já está cadastrado na plataforma.");
+    expect(err1.kind).toBe("user-already-exists");
+    expect(err1.message).toBe(
+      "Este e-mail já está cadastrado no Áxis Finance. Faça login ou recupere sua senha se tiver esquecido.",
+    );
 
     const err2 = classifyError({ code: "user_already_exists" });
-    expect(err2.kind).toBe("user_already_exists");
+    expect(err2.kind).toBe("user-already-exists");
+
+    const err3 = classifyError({ status: 422, message: "User already registered" });
+    expect(err3.kind).toBe("user-already-exists");
   });
 
   it("cai em mensagem genérica para erros desconhecidos", () => {

@@ -132,8 +132,12 @@ export function RegisterPage() {
       setErrorKind(classified.kind);
 
       const errCode = (err as { code?: string })?.code?.toLowerCase() || "";
-      if (errCode === "user_already_exists" || errCode.includes("already")) {
-        setErrorKind("user_already_exists");
+      if (
+        errCode === "user_already_exists" ||
+        errCode === "user-already-exists" ||
+        errCode.includes("already")
+      ) {
+        setErrorKind("user-already-exists");
       }
     } finally {
       setPending(false);
@@ -141,6 +145,7 @@ export function RegisterPage() {
   };
 
   const isAccountExistsError =
+    errorKind === "user-already-exists" ||
     errorKind === "user_already_exists" ||
     error?.toLowerCase().includes("já existe") ||
     error?.toLowerCase().includes("já possui") ||

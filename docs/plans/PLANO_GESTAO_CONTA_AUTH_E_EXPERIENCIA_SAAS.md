@@ -1,204 +1,197 @@
-# PLANO DE EXECUÇÃO: GESTÃO DE CONTAS, AUTENTICAÇÃO RESILIENTE E EXPERIÊNCIA SAAS DE ALTO NÍVEL
+# PLANO CANÔNICO REFINADO: GESTÃO DE CONTAS, AUTENTICAÇÃO RESILIENTE E EXPERIÊNCIA SAAS
 
-> **Documento:** Plano Canônico de Gestão de Contas, Recuperação, Confirmação e Branding SaaS  
+> **Documento:** Plano de Execução Refinado & Reorganizado de Gestão de Contas, Recuperação, Confirmação e Branding SaaS  
 > **Aplicação:** Áxis Finance (Web, PWA e Android Nativo)  
-> **Status:** Pronto para Execução por Fases (Diagnóstico e Planejamento Concluídos)  
-> **Governança:** Fases sequenciais, tarefas com checklist, portões de qualidade (*quality gates*), testes automatizados, padronização visual estrita (DESIGN_SYSTEM), sem emojis, sem elementos nativos e conformidade com AGENTS.md.
+> **Status:** Refinado e Pronto para Execução (Diagnóstico Atualizado, Obras Concluídas Consolidadas e Fragilidades Mitigadas)  
+> **Governança:** Fases sequenciais, tarefas com checklist, portões de qualidade (*quality gates*), testes automatizados, padronização visual estrita (`DESIGN_SYSTEM.md`), sem emojis, sem elementos nativos e conformidade integral com `AGENTS.md`.
 
 ---
 
-## 1. DIAGNÓSTICO DO ESTADO ATUAL & ANÁLISE DE CAUSA-RAIZ
+## 1. AUDITORIA REAL DO ESTADO ATUAL (O QUE JÁ FOI FEITO VS. PENDÊNCIAS)
 
-Após auditoria detalhada no código-fonte, rotas, banco de dados e fluxos de autenticação do Áxis Finance, foram identificadas as causas raízes exatas para cada uma das deficiências apontadas:
+Após rigorosa auditoria em código, rotas, tipos, componentes e suíte de testes unitários com Vitest, este é o estado real e comprovado de cada componente do sistema:
 
-### 1.1 Conflito no Cadastro de E-mail Existente & Falso Positivo Anti-Enumeração
-* **Causa Raiz 1 (Tradução/Gateway de Erros):** Em `src/services/errors/index.ts`, a função `classifyError` captura códigos de erro Postgres (`23505`), mas o Supabase Auth no endpoint `/auth/v1/signup` retorna HTTP 422 com payload `{"code": "user_already_exists", "msg": "User already registered"}`. Essa mensagem não cai em nenhuma categoria pré-formatada e atinge o fallback em inglês `User already registered`.
-* **Causa Raiz 2 (Condicional Frágil na UI):** Em `src/features/auth/pages/register-page.tsx` (linhas 134–136), o código busca especificamente por:
-  ```ts
-  const isAccountExistsError =
-    error?.toLowerCase().includes("já existe uma conta") ||
-    error?.toLowerCase().includes("já possui uma conta");
-  ```
-  Como o erro chega em inglês (`User already registered`), a variável avalia para `false`. Por isso, os links *"Fazer login"* e *"Recuperar senha"* **nunca aparecem** para o usuário.
-* **Causa Raiz 3 (Proteção Anti-Enumeração do Supabase):** Quando o Supabase está com a flag *"Prevent user enumeration"* ligada nas configurações de Auth, requisições de cadastro para e-mails já existentes **não retornam erro**. Em vez disso, retornam HTTP 200 com um objeto `User` contendo array vazio de identidades (`identities: []`). Em `src/data/auth.ts`, a função `signUpWithEmail` avalia apenas `needsEmailConfirmation: data.session === null`, considerando a operação um sucesso. O frontend então exibe a mensagem de confirmação de e-mail enviada, enganando o usuário que acredita que a conta foi criada.
-
-### 1.2 Feedback Incompleto de E-mail Não Confirmado & Ausência de Reenvio no Login
-* **Causa Raiz 1 (Mensagem Genérica):** Em `src/features/auth/pages/login-page.tsx`, quando o login falha com erro `email_not_confirmed`, o gateway produz a mensagem estática: `"E-mail ainda não confirmado. Verifique sua caixa de entrada."`. Não há menção ao endereço específico digitado no formulário.
-* **Causa Raiz 2 (Ausência de CTA de Reenvio):** Não existe integração com o método `supabase.auth.resend({ type: 'signup', email })`. Se o link original expirou ou caiu na caixa de spam do usuário, o usuário fica bloqueado sem ter como disparar novo e-mail a partir da tela de login.
-* **Causa Raiz 3 (Onboarding Pós-Cadastro Frágil):** Na tela de cadastro (`/cadastro`), ao concluir um registro com confirmação pendente, o formulário permanece na tela apenas com um alerta no topo, sem um estado de sucesso imersivo de boas-vindas que destaque o e-mail cadastrado e os próximos passos.
-
-### 1.3 Quebra do Fluxo de Recuperação e Redefinição de Senha
-* **Causa Raiz 1 (Redirecionamento Incorreto):** Em `src/data/auth.ts`, o método `resetPasswordForEmail` define:
-  ```ts
-  emailRedirectTo: `${window.location.origin}/entrar`
-  ```
-  Ao clicar no link recebido por e-mail, o usuário é jogado na tela de login comum (`/entrar`), com os parâmetros de token na URL (`#access_token=...&type=recovery`), mas a tela de login **não possui formulário de nova senha**.
-* **Causa Raiz 2 (Ausência da Rota `/redefinir-senha`):** O sistema não possui uma página dedicada que capture o evento `PASSWORD_RECOVERY` do Supabase Auth e ofereça os campos de *"Nova Senha"* e *"Confirmar Nova Senha"* com validação dos requisitos de segurança (`checkPasswordRequirements`).
-
-### 1.4 Ausência de Gestão de Conta e Perfil do Usuário Autenticado
-* **Causa Raiz 1 (Sem Aba de Perfil/Conta):** No hub de `/configuracoes`, existem abas para *Aparência*, *Notificações*, *Segurança*, *Assinatura* e *Dispositivos*. No card de *Segurança*, há apenas a exibição estática do nome e e-mail e um botão de *"Sair da Conta"*.
-* **Causa Raiz 2 (Sem Edição de Nome):** Não existe interface nem mutação de dados para atualizar o campo `name` na tabela `public.profiles` e nos metadados do `auth.users`.
-* **Causa Raiz 3 (Sem Alteração de Senha Autenticada):** O usuário logado não tem como alterar sua senha atual por uma nova de forma preventiva dentro do painel.
-
-### 1.5 Travamento no Recadastro de Contas Apagadas (Supabase Auth vs. Profiles)
-* **Causa Raiz 1 (Exclusão Incompleta / Órfã):** A chave estrangeira no banco de dados é definida como:
-  ```sql
-  create table public.profiles (
-    id uuid primary key references auth.users (id) on delete cascade
-  );
-  ```
-  Isso significa que deletar de `auth.users` apaga o perfil, mas deletar de `public.profiles` **NÃO apaga** o usuário da tabela `auth.users`. Quando um administrador ou rotina manual deleta o usuário na tabela `profiles`, o registro permanece intacto no schema interno do Supabase (`auth.users`). Ao tentar recadastrar com o mesmo e-mail, o Supabase bloqueia o cadastro por duplicidade em `auth.users`.
-* **Causa Raiz 2 (Ausência de RPC de Autoexclusão Definitiva):** O aplicativo não possui uma RPC `SECURITY DEFINER` que permita ao próprio usuário (ou superadmin) expurgar integralmente sua identidade de `auth.users`, liberando o e-mail no ato para novos cadastros.
-
-### 1.6 E-mails Transacionais sem Branding Áxis Finance
-* **Causa Raiz:** O projeto está utilizando o remetente e o modelo de e-mail padrão do Supabase Auth (texto simples em inglês). Falta fornecer os modelos HTML responsivos completos e diagramados no Design System do Áxis Finance (Dark/Light harmônico, tipografia tabular, logo vetorial, CTAs estilizados e orientações de segurança em pt-BR), bem como orientações para configuração de SMTP profissional (ex.: Resend).
+### 1.1 Itens Concluídos e Validados com Sucesso (100% Verdes)
+* [x] **Rota Dedicada de Redefinição de Senha (`/redefinir-senha` e `/atualizar-senha`):**
+  - Implementada em `src/features/auth/pages/reset-password-page.tsx`.
+  - Integrada com lazy loading no router público (`src/app/router.tsx`).
+  - Escuta os eventos `PASSWORD_RECOVERY` e `SIGNED_IN` via `supabase.auth.onAuthStateChange`.
+  - Formulário com campos duplos de senha, validação de critérios em tempo real com `checkPasswordRequirements` e feedback sensorial.
+  - Testes automatizados aprovados em `src/features/auth/pages/reset-password-page.test.tsx` (4 testes passando).
+* [x] **Função de Atualização de Senha (`updateUserPassword`):**
+  - Implementada na camada de dados em `src/data/auth.ts`.
+  - Aponta redirecionamento de `resetPasswordForEmail` corretamente para `/redefinir-senha`.
+* [x] **Feedback e Reenvio de Confirmação de E-mail no Login:**
+  - Função `resendConfirmationEmail` implementada em `src/data/auth.ts` e exportada via `useAuth()`.
+  - Em `src/features/auth/pages/login-page.tsx`, o erro `email-not-confirmed` renderiza card de alerta contextual com o e-mail preenchido, botão de reenvio, cooldown decrescente de 60 segundos e proteção anti-flood.
+  - Testes automatizados aprovados em `src/features/auth/pages/login-page.test.tsx` (7 testes passando).
+* [x] **Card Imersivo de Sucesso Pós-Cadastro:**
+  - Em `src/features/auth/pages/register-page.tsx`, quando `needsEmailConfirmation === true`, o formulário é ocultado e um card amigável com `MailCheck`, orientações sobre spam e validade de 24 horas é apresentado.
+* [x] **CTAs de Conta Existente no Cadastro:**
+  - Em `src/features/auth/pages/register-page.tsx`, links diretos *"Fazer login agora"* (`/entrar?email=...`) e *"Recuperar minha senha"* (`/recuperar-senha?email=...`) já são exibidos quando `isAccountExistsError` é verdadeiro.
+  - Testes automatizados aprovados em `src/features/auth/pages/register-page.test.tsx` (8 testes passando).
+* [x] **Mutação de Atualização de Nome no Perfil:**
+  - Função `updateOwnProfile(userId, { name })` já implementada em `src/data/repositories/profiles.ts` (atualizando `auth.users` e `public.profiles`).
+  - Hook React Query `useUpdateProfile()` já implementado em `src/state/mutations/use-profile-mutations.ts`.
 
 ---
 
-## 2. MAPA GERAL DE FASES E PORTÕES DE QUALIDADE (QUALITY GATES)
+## 2. ANÁLISE DE FRAGILIDADES IDENTIFICADAS & SOLUÇÕES DE ENGENHARIA
 
-A execução seguirá **7 Fases Sequenciais**, com verificação rígida a cada entrega:
+Durante a revisão profunda do repositório, foram detectadas **4 fragilidades técnicas críticas** que precisam de solução arquitetural explícita antes e durante a continuidade da execução:
+
+### Fragilidade 1: Quebra de Typecheck por Inconsistência no Gateway de Erros (`src/services/errors/index.ts`)
+* **Problema:** A execução de `npm run typecheck` (`tsc -b`) falha atualmente com o erro:
+  ```
+  src/services/errors/index.ts:47:7 - error TS2741: Property '"user-already-exists"' is missing in type ... but required in type 'Record<ErrorKind, string>'.
+  ```
+* **Causa Raiz:** O tipo union `ErrorKind` possui tanto `"user_already_exists"` quanto `"user-already-exists"`, mas o objeto `MESSAGES` só mapeia a chave com sublinhado (`user_already_exists`).
+* **Solução Canônica:** Unificar o dicionário mapeando ambas as chaves para a mesma mensagem amigável em pt-BR no objeto `MESSAGES`, e garantir que a classificação emita a chave canônica `"user-already-exists"`, mantendo retrocompatibilidade total.
+
+### Fragilidade 2: Falso Positivo Anti-Enumeração no Cadastro (`src/data/auth.ts`)
+* **Problema:** Quando a proteção *"Prevent user enumeration"* está ativa no Supabase Auth (padrão de segurança em produção), requisições de cadastro para e-mails já registrados retornam HTTP 200 com `user.identities: []` e `session: null`.
+* **Causa Raiz:** Em `src/data/auth.ts`, a função `signUpWithEmail` avalia apenas `return { needsEmailConfirmation: data.session === null }`. Ela não checa a lista de identidades. Logo, o frontend assume que a conta foi criada e orienta o usuário a checar um e-mail que jamais chegará.
+* **Solução Canônica:** Em `signUpWithEmail`, checar explicitamente:
+  ```ts
+  if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+    throw new AppError("user-already-exists", MESSAGES["user-already-exists"]);
+  }
+  ```
+
+### Fragilidade 3: Risco de Violação de Chave Estrangeira na Exclusão em Cascata (`delete from auth.users`)
+* **Problema:** O plano original previa apenas `delete from auth.users where id = v_user_id;` na RPC de autoexclusão.
+* **Causa Raiz:** No schema Postgres (`supabase/migrations/20260101000001_schema.sql` e subsequentes):
+  - `expenses`, `incomes`, `recurrences` e `budget_limits` possuem FK para `categories(id)` **sem cascade**.
+  - `card_payments` e `card_competence_overrides` possuem FK para `credit_cards(id)`.
+  - `portfolio_transactions` e `allocation_targets` dependem de `portfolio_assets(id)`.
+  No PostgreSQL, quando um registro raiz de usuário é excluído, se o cascade tentar remover a tabela pai (`categories` ou `credit_cards`) antes das tabelas filhas (`expenses` ou `card_payments`), o banco lança erro `23503 foreign_key violation`.
+* **Solução Canônica:** A nova migração SQL de exclusão (`delete_own_account` e `admin_delete_user`) deve efetuar um expurgo atômico explícito em **ordem topológica reversa** (filhos antes dos pais, replicando o padrão seguro da migração `0010_backup_restore.sql`) antes de remover o registro em `profiles` e `auth.users`. Adicionalmente, `admin_delete_user` deve bloquear terminantemente a autoexclusão acidental do superadmin executor.
+
+### Fragilidade 4: Estado da Sessão e Limpeza de Cache no Frontend Pós-Exclusão
+* **Problema:** Ao excluir a conta no Supabase Auth, se o cliente chamar `supabase.auth.signOut()` logo em seguida, o SDK do Supabase pode receber 401/404 ao tentar revogar um token de um usuário que acabou de ser deletado.
+* **Solução Canônica:** A rotina do frontend deve:
+  1. Envolver o `signOut()` em bloco `try/catch` tolerante a falhas.
+  2. Limpar o estado do TanStack Query (`queryClient.clear()`).
+  3. Desvincular o storage de observabilidade e usuário (`setActiveUserId(null)`).
+  4. Redirecionar com `replace: true` para `/entrar` com toast explicativo.
+
+---
+
+## 3. ARQUITETURA DE ABAS EM CONFIGURAÇÕES (`/configuracoes`)
+
+Para garantir harmonia com o Design System, sem sobrecarregar a interface, as abas de configurações passam a ter a seguinte separação clara de responsabilidades:
+
+| Aba | Identificador | Ícone Lucide | Responsabilidades |
+|---|---|---|---|
+| **Minha Conta** *(Nova - 1ª aba)* | `account` | `User` | **Dados Pessoais:** Edição de Nome, E-mail com badge "Verificado", Papel no sistema.<br>**Segurança da Conta:** Alteração de senha autenticada (Nova + Confirmação com medidor).<br>**Identificação SaaS:** ID da conta (UUID truncado com cópia), data de ingresso, plano atual com badge.<br>**Zona de Perigo:** Exclusão definitiva de conta com modal rigoroso de confirmação digitada. |
+| **Aparência** | `appearance` | `Palette` | Temas (Claro, Escuro, OLED, Sistema), feedback sensorial e widgets visuais. |
+| **Notificações** | `notifications` | `Bell` | Lembretes de contas a pagar/receber, dias de antecedência, canais e assistente. |
+| **Segurança & Dados** | `security` | `ShieldCheck` | **Proteção de Acesso:** Bloqueio biométrico (Face/Fingerprint) e tempo de tolerância.<br>**Privacidade:** Escudo de Privacidade (Privacy Shield).<br>**Dados:** Exportação/Importação JSON/CSV e Wizard de Restauração.<br>**Demonstração:** Carga e limpeza de dados de teste. |
+| **Assinatura** | `subscription` | `Zap` | Gestão de planos Pro, status de cobrança e ciclo SaaS. |
+| **Dispositivos & App** | `devices` | `Smartphone` | Status de instalação PWA/Nativo, cache e atualização de versão. |
+
+---
+
+## 4. ROTEIRO DE EXECUÇÃO REORGANIZADO POR FASES
 
 ```mermaid
 flowchart TD
-    subgraph F1["Fase 1: Gateway de Erros & Anti-Enumeração"]
-        F1_T[Mapear user-already-exists e identities] --> QG1{"Portão 1: Vitest Erros Verde"}
+    subgraph FASE_A["Fase 1: Correção de Compilação & Anti-Enumeração"]
+        T1_1["Corrigir MESSAGES['user-already-exists'] em src/services/errors/index.ts"] --> T1_2["Checar identities: [] em signUpWithEmail (src/data/auth.ts)"]
+        T1_2 --> QG1{"Portão 1: typecheck & vitest auth verdes"}
     end
 
-    subgraph F2["Fase 2: Confirmação & Reenvio no Login/Cadastro"]
-        QG1 --> F2_T[Feedback de e-mail e botão reenviar 60s] --> QG2{"Portão 2: Testes Auth UI"}
+    subgraph FASE_B["Fase 2: Nova Aba Minha Conta (UI & Mutações)"]
+        QG1 --> T2_1["Criar src/features/settings/components/tabs/account-tab.tsx"]
+        T2_1 --> T2_2["Integrar AccountTab em settings-page.tsx & router"]
+        T2_2 --> T2_3["Remover bloco de perfil duplicado de SecurityTab"]
+        T2_3 --> QG2{"Portão 2: vitest settings & navegação fluida"}
     end
 
-    subgraph F3["Fase 3: Rota Dedicada de Redefinição de Senha"]
-        QG2 --> F3_T[Criar /redefinir-senha e handler Supabase] --> QG3{"Portão 3: Testes Recovery"}
+    subgraph FASE_C["Fase 3: Migração SQL & RPCs de Exclusão Definitiva"]
+        QG2 --> T3_1["Criar migração supabase/migrations/20260101000059_delete_account_rpcs.sql"]
+        T3_1 --> T3_2["Wrappers em src/data/rpc.ts (deleteOwnAccount / adminDeleteUser)"]
+        T3_2 --> T3_3["Modal 'Zona de Perigo' na AccountTab & Exclusão no Admin"]
+        T3_3 --> QG3{"Portão 3: Teste de Integridade & Expurgo DB"}
     end
 
-    subgraph F4["Fase 4: Aba Minha Conta & Edição de Perfil"]
-        QG3 --> F4_T[Aba Perfil, mudar nome e trocar senha] --> QG4{"Portão 4: Testes Settings"}
+    subgraph FASE_D["Fase 4: Templates de E-mail & Guia SMTP Profissional"]
+        QG3 --> T4_1["Criar docs/EMAIL_TEMPLATES.md (4 modelos HTML com marca Áxis Finance)"]
+        T4_1 --> T4_2["Documentar configuração SMTP (Resend / Brevo) no Supabase"]
+        T4_2 --> QG4{"Portão 4: Validação de Layout Responsivo"}
     end
 
-    subgraph F5["Fase 5: Exclusão Definitiva & Destravamento de Recadastro"]
-        QG4 --> F5_T[RPC delete_own_account e expurgo auth.users] --> QG5{"Portão 5: Integridade DB"}
-    end
-
-    subgraph F6["Fase 6: Templates de E-mail com Marca Áxis Finance"]
-        QG5 --> F6_T[4 Templates HTML pt-BR + Guia Resend/SMTP] --> QG6{"Portão 6: Validação HTML"}
-    end
-
-    subgraph F7["Fase 7: Verificação Integrada & Documentação Canônica"]
-        QG6 --> F7_T[Typecheck, Lint, Testes Gerais e Docs] --> QG7{"Portão 7: Build Prod Verde"}
+    subgraph FASE_E["Fase 5: Portão Geral de Qualidade & Documentação"]
+        QG4 --> T5_1["Atualizar docs/PROJECT_STRUCTURE.md e docs/ARCHITECTURE.md"]
+        T5_1 --> T5_2["Auditoria Final: typecheck, lint, vitest e build de produção"]
+        T5_2 --> QG5{"Portão 5: Homologação Concluída"}
     end
 ```
 
 ---
 
-## 3. DETALHAMENTO DAS FASES E TAREFAS (CHECKLIST DE EXECUÇÃO)
+## 5. DETALHAMENTO DAS TAREFAS RESIDUAIS (CHECKLIST CIRÚRGICO)
 
-### FASE 1: Gateway de Erros, Detecção de Duplicidade e Anti-Enumeração
-**Objetivo:** Eliminar mensagens técnicas em inglês no cadastro e tratar transparentemente tanto o erro 422 quanto retornos com identidades vazias.
+### FASE 1: Correção de Tipos e Detecção de Anti-Enumeração
+**Objetivo:** Restaurar integridade estrita do TypeScript (`npm run typecheck`) e sanar falso positivo no cadastro quando o e-mail já existe com anti-enumeração ativa no Supabase.
 
-- [ ] **Tarefa 1.1 — Ampliar o Gateway de Erros (`src/services/errors/index.ts`):**
-  - Adicionar o kind canônico `"user-already-exists"` ao tipo `ErrorKind`.
-  - Definir a mensagem amigável padrão em `MESSAGES`:
-    `"user-already-exists": "Este e-mail já está cadastrado no Áxis Finance. Faça login ou recupere sua senha se tiver esquecido."`
-  - Na função `classifyError()`, capturar detecções de `user_already_exists`, `user already registered` e status 422 de autenticação antes de qualquer fallback de sanitização.
-- [ ] **Tarefa 1.2 — Tratar Anti-Enumeração em `src/data/auth.ts`:**
-  - Na função `signUpWithEmail()`, verificar se `data.user` existe mas possui `identities` vazio (`data.user.identities && data.user.identities.length === 0`).
-  - Lançar `AppError("user-already-exists", MESSAGES["user-already-exists"])` quando essa condição for detectada, impedindo a exibição de falso sucesso de cadastro.
-- [ ] **Tarefa 1.3 — Aprimorar feedback na Tela de Cadastro (`src/features/auth/pages/register-page.tsx`):**
-  - Atualizar o detector de conta existente para verificar `err.kind === "user-already-exists"` ou textos sanitizados do gateway.
-  - Exibir card de alerta com bordas em tom de aviso/destaque contendo os botões CTA rápidos:
-    - Botão 1: *"Fazer Login Agora"* (redireciona para `/entrar?email=...`).
-    - Botão 2: *"Recuperar Minha Senha"* (redireciona para `/recuperar-senha?email=...`).
-- [ ] **Tarefa 1.4 — Testes Unitários de Regressão:**
-  - Atualizar `src/services/errors/index.test.ts` validando a classificação de `user_already_exists`.
-  - Atualizar `src/features/auth/pages/register-page.test.tsx` garantindo que os links de ação apareçam corretamente.
+- [x] **Tarefa 1.1 — Normalizar `ErrorKind` e `MESSAGES` em `src/services/errors/index.ts`:**
+  - Garantir que `MESSAGES` possua a entrada padronizada para `"user-already-exists"`:
+    ```ts
+    "user-already-exists": "Este e-mail já está cadastrado no Áxis Finance. Faça login ou recupere sua senha se tiver esquecido.",
+    user_already_exists: "Este e-mail já está cadastrado no Áxis Finance. Faça login ou recupere sua senha se tiver esquecido.",
+    ```
+  - Em `classifyError()`, retornar `kind: "user-already-exists"`.
+  - Executar `npm run typecheck` e validar eliminação do erro TS2741.
+- [x] **Tarefa 1.2 — Blindar Anti-Enumeração em `src/data/auth.ts`:**
+  - Na função `signUpWithEmail()`, verificar se `data.user` existe e `Array.isArray(data.user.identities) && data.user.identities.length === 0`.
+  - Nessa condição, disparar `AppError("user-already-exists", MESSAGES["user-already-exists"])`.
+- [x] **Tarefa 1.3 — Validar Suíte de Testes Existentes:**
+  - Executar: `npx vitest run src/services/errors/index.test.ts src/features/auth/pages/register-page.test.tsx`.
 
 > **PORTÃO DE QUALIDADE 1 (Quality Gate 1):**  
-> `npx vitest run src/services/errors/index.test.ts src/features/auth/pages/register-page.test.tsx` aprovado com 100% de sucesso.
+> `npm run typecheck` sem qualquer erro de compilação; testes de cadastro e erros aprovados com 100% de sucesso.
 
 ---
 
-### FASE 2: Confirmação de E-mail, Onboarding e Reenvio Seguro no Login
-**Objetivo:** Informar ao usuário o e-mail exato pendente de ativação, oferecer reenvio imediato com proteção anti-flood (cooldown) e proporcionar experiência de cadastro premium.
+### FASE 2: Implementação da Aba "Minha Conta" (`AccountTab`) em `/configuracoes`
+**Objetivo:** Entregar ao usuário autenticado total soberania sobre seus dados cadastrais (nome, e-mail, senha e metadados) com layout aderente ao Design System Áxis Finance.
 
-- [ ] **Tarefa 2.1 — Implementar Função de Reenvio em `src/data/auth.ts`:**
-  - Criar `resendConfirmationEmail(email: string): Promise<void>` utilizando `getSupabase().auth.resend({ type: 'signup', email, options: { emailRedirectTo: `${window.location.origin}/entrar` } })`.
-  - Normalizar erros através do gateway `classifyError`.
-  - Expor a função através do hook `useAuth()` em `src/hooks/use-auth.ts`.
-- [ ] **Tarefa 2.2 — Enriquecer Feedback na Tela de Login (`src/features/auth/pages/login-page.tsx`):**
-  - Ao capturar o erro `email-not-confirmed`:
-    - Exibir banner informativo contextual: *"O e-mail **{email}** ainda não foi confirmado. Verifique sua caixa de entrada e a pasta de spam."*
-    - Renderizar botão de ação direta: `<Button variant="outline" size="sm">Reenviar link de confirmação</Button>`.
-    - Implementar timer regressivo de cooldown (60 segundos) após o clique para impedir abusos e rate limits da API.
-    - Disparar feedback sensorial com `triggerSensory("success")` e toast de confirmação.
-- [ ] **Tarefa 2.3 — Tela de Sucesso de Onboarding no Cadastro (`src/features/auth/pages/register-page.tsx`):**
-  - Quando o cadastro for bem-sucedido e exigir confirmação (`needsEmailConfirmation === true`), ocultar o formulário e exibir o componente de confirmação imersivo:
-    - Ícone semântico `MailCheck` no padrão canônico.
-    - Título: *"Confirme seu endereço de e-mail"*.
-    - Destaque legível do e-mail digitado com badge neutro/positivo.
-    - Dicas úteis: checar spam, adicionar à lista de remetentes confiáveis.
-    - Botão de retorno seguro para `/entrar`.
-- [ ] **Tarefa 2.4 — Testes Automatizados de Fluxo:**
-  - Criar testes em `src/features/auth/pages/login-page.test.tsx` validando a exibição do botão de reenvio e acionamento do cooldown.
+- [x] **Tarefa 2.1 — Criar Componente `AccountTab` (`src/features/settings/components/tabs/account-tab.tsx`):**
+  - **Card 1: Dados Pessoais:**
+    - Input de Nome vinculado a `useUpdateProfile()`.
+    - Exibição do E-mail acompanhado de badge neutro/positivo `"Verificado"`.
+    - Badge do perfil de acesso (`userAccess.role` traduzido).
+    - Botão *"Salvar Alterações"* com feedback sensorial.
+  - **Card 2: Segurança & Senha:**
+    - Campos *"Nova Senha"* e *"Confirmar Nova Senha"* usando o primitivo `PasswordInput`.
+    - Validador de requisitos de segurança com `checkPasswordRequirements(newPassword)`.
+    - Botão *"Atualizar Senha"* chamando `updateUserPassword(newPassword)`.
+    - Limpeza de inputs e feedback sensorial pós-sucesso.
+  - **Card 3: Detalhes da Conta & SaaS:**
+    - Identificador único da conta (`UUID` com máscara e botão para copiar com feedback de cópia).
+    - Data de criação da conta formatada em pt-BR.
+    - Status do Plano Pro ativo com link de atalho para a aba de Assinatura.
+- [ ] **Tarefa 2.2 — Integrar no `SettingsPage` e `resolveSettingsTab` (`src/features/settings/pages/settings-page.tsx`):**
+  - Adicionar `"account"` como a primeira aba de configurações com ícone `User`.
+  - Atualizar a função `resolveSettingsTab()` para mapear os aliases: `"account"`, `"conta"`, `"perfil"`, `"usuario"`, `"usuário"`, `"profile"` para `"account"`.
+  - Exportar `AccountTab` em `src/features/settings/components/tabs/index.ts`.
+- [ ] **Tarefa 2.3 — Desacoplar `SecurityTab` (`src/features/settings/components/tabs/security-tab.tsx`):**
+  - Remover de `SecurityTab` o bloco redundante de cabeçalho de usuário que agora reside em `AccountTab`.
+  - Manter em `SecurityTab` exclusivamente: Biometria, Escudo de Privacidade, Hub de Exportação/Restauração de Dados e Ambiente de Demonstração.
+- [ ] **Tarefa 2.4 — Criar Testes Unitários:**
+  - Criar `src/features/settings/components/tabs/account-tab.test.tsx` cobrindo alteração de nome, validação de divergência de senhas e submissão bem-sucedida.
 
 > **PORTÃO DE QUALIDADE 2 (Quality Gate 2):**  
-> Testes de tela de login e cadastro executados com sucesso; zero warnings de acessibilidade ou lints.
+> `npx vitest run src/features/settings/` executado com 100% de aprovação. Navegação entre abas sem saltos ou layouts quebrados.
 
 ---
 
-### FASE 3: Rota Dedicada de Redefinição de Senha (`/redefinir-senha`)
-**Objetivo:** Fechar a lacuna crítica de recuperação de conta criando uma página moderna e segura para digitação da nova senha.
+### FASE 3: Migração SQL de Exclusão Definitiva, RPCs Atômicas e Zona de Perigo
+**Objetivo:** Permitir ao próprio usuário (e ao superadmin para contas de teste) excluir a conta de forma definitiva, eliminando todos os dados em ordem reversa segura e liberando o e-mail no ato em `auth.users`.
 
-- [ ] **Tarefa 3.1 — Atualizar Redirecionamento de Recuperação em `src/data/auth.ts`:**
-  - Alterar o `emailRedirectTo` de `resetPasswordForEmail()` para apontar especificamente para `${window.location.origin}/redefinir-senha`.
-- [ ] **Tarefa 3.2 — Criar Método de Atualização de Senha em `src/data/auth.ts`:**
-  - Criar função `updateUserPassword(newPassword: string): Promise<void>` chamando `getSupabase().auth.updateUser({ password: newPassword })`.
-- [ ] **Tarefa 3.3 — Desenvolver Página `ResetPasswordPage` (`src/features/auth/pages/reset-password-page.tsx`):**
-  - Construir layout sob o `AuthShell` padronizado.
-  - Escutar o evento `PASSWORD_RECOVERY` do Supabase via `supabase.auth.onAuthStateChange` e verificar sessão ativa com flag de recuperação.
-  - Validar requisitos de senha em tempo real usando `checkPasswordRequirements(newPassword)`.
-  - Campo duplo: *"Nova senha"* e *"Confirmar nova senha"*, com `PasswordInput` padronizado.
-  - Tratamento de sessão expirada/link inválido com redirecionamento amigável para solicitar novo link.
-  - Ao concluir com sucesso: emitir `triggerSensory("success")`, exibir toast e conduzir para a área autenticada (`/`).
-- [ ] **Tarefa 3.4 — Registrar Rota no Router (`src/app/router.tsx` e `src/app/routes.tsx`):**
-  - Adicionar rota pública lazy `/redefinir-senha` e `/atualizar-senha`.
-- [ ] **Tarefa 3.5 — Testes Unitários e de Componente:**
-  - Criar `src/features/auth/pages/reset-password-page.test.tsx` cobrindo sucesso, divergência de senhas e links expirados.
-
-> **PORTÃO DE QUALIDADE 3 (Quality Gate 3):**  
-> `npx vitest run src/features/auth/pages/reset-password-page.test.tsx` aprovado; rotas testadas contra deep-links.
-
----
-
-### FASE 4: Aba "Minha Conta" & Gestão de Perfil no Painel (`/configuracoes`)
-**Objetivo:** Permitir ao usuário autenticado total controle sobre sua conta: alteração de nome, troca preventiva de senha e dados cadastrais.
-
-- [ ] **Tarefa 4.1 — Criar Repositório e Mutations de Perfil:**
-  - Em `src/data/repositories/profiles.ts`, implementar `updateOwnProfile(userId: string, data: { name: string }): Promise<void>`.
-  - Atualizar simultaneamente os metadados em Supabase Auth via `supabase.auth.updateUser({ data: { name } })`.
-  - Criar hook React Query `useUpdateProfile()` em `src/state/` com invalidação otimista de caches.
-- [ ] **Tarefa 4.2 — Criar Aba "Minha Conta" (`src/features/settings/components/tabs/account-tab.tsx`):**
-  - Card 1 — **Dados Pessoais:** Exibição do e-mail (com badge "Verificado"), campo de edição de Nome com validação Zod e botão *"Salvar Alterações"*.
-  - Card 2 — **Segurança & Senha:** Formulário para alteração de senha (Nova Senha + Confirmação), medidor de força de senha e botão *"Atualizar Senha"*.
-  - Card 3 — **Informações da Conta:** Identificador da conta (UUID truncado com botão de cópia rápida), data de criação da conta e plano atual ativo.
-- [ ] **Tarefa 4.3 — Integrar Aba no `SettingsPage` (`src/features/settings/pages/settings-page.tsx`):**
-  - Adicionar a aba *"Minha Conta"* (`account`) como primeira aba de configurações com ícone `User` do Lucide.
-  - Atualizar o helper `resolveSettingsTab()` para mapear aliases: `conta`, `perfil`, `usuario`, `account`, `profile`.
-  - Reorganizar a aba `SecurityTab`, mantendo nela exclusivamente biometria, escudo de privacidade, backups/restauração e sessões.
-- [ ] **Tarefa 4.4 — Testes de Integração de Perfil:**
-  - Criar `src/features/settings/components/tabs/account-tab.test.tsx`.
-
-> **PORTÃO DE QUALIDADE 4 (Quality Gate 4):**  
-> Testes de configurações aprovados; navegação fluida em desktop e mobile sem quebra de abas.
-
----
-
-### FASE 5: Exclusão Definitiva de Conta e Destravamento de Recadastro no Supabase
-**Objetivo:** Sanar em definitivo a impossibilidade de recadastro de e-mails de contas apagadas, implementando exclusão segura e atômica diretamente em `auth.users`.
-
-- [ ] **Tarefa 5.1 — Criar Migration SQL de Exclusão Definitiva (`supabase/migrations/`):**
-  - Criar a função RPC `public.delete_own_account()` com privilégios `SECURITY DEFINER` e `set search_path = public, auth, pg_temp`:
+- [ ] **Tarefa 3.1 — Criar Migração SQL (`supabase/migrations/20260101000059_delete_account_rpcs.sql`):**
+  - Implementar `public.delete_own_account()` com privilégios `SECURITY DEFINER` e `set search_path = public, auth, pg_temp`:
     ```sql
     create or replace function public.delete_own_account()
     returns void
@@ -213,105 +206,124 @@ flowchart TD
         raise exception 'Acesso não autenticado.';
       end if;
 
-      -- 1. Exclui o usuário da tabela raiz de autenticação do Supabase
-      -- O ON DELETE CASCADE configurado no schema eliminará profiles,
-      -- despesas, receitas, cartões, dívidas, orçamentos e preferências.
+      -- 1. Investimentos (filhos antes dos pais)
+      delete from public.portfolio_transactions where user_id = v_user_id;
+      delete from public.allocation_targets where user_id = v_user_id;
+      delete from public.asset_prices where user_id = v_user_id;
+      delete from public.cash_checkpoints where user_id = v_user_id;
+      delete from public.portfolio_assets where user_id = v_user_id;
+
+      -- 2. Cartões, Lançamentos e Recorrências (filhos antes dos cartões/categorias)
+      delete from public.card_competence_overrides where card_id in (select id from public.credit_cards where user_id = v_user_id);
+      delete from public.card_payments where card_id in (select id from public.credit_cards where user_id = v_user_id);
+      delete from public.expenses where user_id = v_user_id;
+      delete from public.incomes where user_id = v_user_id;
+      delete from public.recurrences where user_id = v_user_id;
+      delete from public.debts where user_id = v_user_id;
+      delete from public.loans where user_id = v_user_id;
+      delete from public.budgets where user_id = v_user_id;
+      delete from public.income_goals where user_id = v_user_id;
+      delete from public.credit_cards where user_id = v_user_id;
+      delete from public.categories where user_id = v_user_id;
+
+      -- 3. Extratos e Lembretes
+      delete from public.bank_statement_import_items where batch_id in (select id from public.bank_statement_import_batches where user_id = v_user_id);
+      delete from public.bank_statement_import_batches where user_id = v_user_id;
+      delete from public.reminder_states where user_id = v_user_id;
+      delete from public.insight_feedback where user_id = v_user_id;
+
+      -- 4. Preferências, Permissões e Assinatura
+      delete from public.user_preferences where user_id = v_user_id;
+      delete from public.user_module_permissions where user_id = v_user_id;
+      delete from public.user_subscriptions where user_id = v_user_id;
+      delete from public.audit_events where user_id = v_user_id;
+
+      -- 5. Perfil e Conta em auth.users
+      delete from public.profiles where id = v_user_id;
       delete from auth.users where id = v_user_id;
     end;
     $$;
+
+    grant execute on function public.delete_own_account() to authenticated;
     ```
-  - Conceder permissão de execução: `grant execute on function public.delete_own_account() to authenticated;`.
-  - Criar RPC complementar para Superadmin: `public.admin_delete_user(target_user_id uuid)` permitindo aos administradores removerem contas de teste do sistema de forma limpa sem deixar resíduos em `auth.users`.
-- [ ] **Tarefa 5.2 — Implementar Função na Camada Data (`src/data/rpc.ts` e repositórios):**
-  - Criar wrapper tipado `deleteOwnAccount(): Promise<void>`.
-  - Criar wrapper para admin `adminDeleteUser(userId: string): Promise<void>`.
-- [ ] **Tarefa 5.3 — Interface de Zona de Perigo em `account-tab.tsx`:**
-  - Card estilizado *"Zona de Perigo"* com borda destrutiva suave.
-  - Botão *"Excluir Minha Conta"*.
-  - Modal de confirmação rigoroso (`ConfirmDialog` / `Modal`):
-    - Explicação clara sobre a perda irrecuperável dos dados financeiros.
-    - Exigência de digitação manual da frase de confirmação: `"EXCLUIR MINHA CONTA"`.
-  - Ao confirmar:
-    - Execução do RPC `delete_own_account()`.
-    - Execução da rotina centralizada `resetAppState(queryClient)`.
-    - Chamada `supabase.auth.signOut()`.
-    - Redirecionamento imediato para a página inicial com toast informativo.
-- [ ] **Tarefa 5.4 — Integrar Exclusão Limpa no Painel Administrativo (`src/features/admin/`):**
-  - No `UserEditDialog`, adicionar botão *"Excluir Usuário do Sistema"* para Superadmins, garantindo que o comando expurgue o usuário de `auth.users` e libere o e-mail para novo teste/recadastro.
-- [ ] **Tarefa 5.5 — Testes de Autonomia e Desconexão:**
-  - Criar teste automatizado garantindo que a rotina limpa integralmente o storage local e caches ao excluir a conta.
+  - Implementar RPC complementar para Superadmin: `public.admin_delete_user(target_user_id uuid)`:
+    - Validação estrita: apenas executores com `role = 'superadmin'` têm permissão.
+    - Bloqueio de autoexclusão acidental (`if target_user_id = auth.uid() then raise exception ...`).
+    - Expurgo na mesma ordem topológica reversa.
+- [ ] **Tarefa 3.2 — Criar Wrappers Tipados em `src/data/rpc.ts`:**
+  - Implementar `deleteOwnAccount(): Promise<void>`.
+  - Implementar `adminDeleteUser(params: { targetUserId: string }): Promise<void>`.
+- [ ] **Tarefa 3.3 — Implementar Card "Zona de Perigo" em `account-tab.tsx`:**
+  - Card com bordas sutis em tom destrutivo (`border-critical/30 bg-surface`).
+  - Botão *"Excluir Minha Conta"* abrindo `Modal` de confirmação rigorosa.
+  - Exigência de digitação manual da frase de confirmação: `"EXCLUIR MINHA CONTA"`.
+  - Ao confirmar: chamada da RPC `deleteOwnAccount()`, tratamento com `try/catch` para `supabase.auth.signOut()`, limpeza local com `queryClient.clear()` e redirecionamento seguro para `/entrar`.
+- [ ] **Tarefa 3.4 — Integrar Exclusão no Painel Administrativo (`user-edit-dialog.tsx`):**
+  - Para superadmins, exibir botão *"Excluir Usuário do Sistema"* com diálogo de confirmação.
+  - Atualização automática da listagem de usuários e invalidação do cache React Query.
+
+> **PORTÃO DE QUALIDADE 3 (Quality Gate 3):**  
+> RPC testada; recadastro de e-mail previamente excluído executado com sucesso imediato sem violação de FK.
+
+---
+
+### FASE 4: Templates de E-mail Transacionais com Design System Áxis Finance & Guia SMTP
+**Objetivo:** Substituir as mensagens genéricas em inglês do Supabase por templates HTML responsivos no Design System oficial, com guia de parametrização para provedores SMTP de alta entregabilidade (Resend / Brevo).
+
+- [ ] **Tarefa 4.1 — Criar Arquivo Canônico de Templates (`docs/EMAIL_TEMPLATES.md`):**
+  - Desenvolver 4 templates em HTML com CSS inline compatíveis com clientes web e mobile:
+    1. **Confirmação de Cadastro (`Confirm signup`):** Logo do Áxis Finance, mensagem de boas-vindas, botão de confirmação (`{{ .ConfirmationURL }}`), aviso de validade de 24h e dicas de segurança.
+    2. **Recuperação de Senha (`Reset password`):** Botão direcionando para `/redefinir-senha` (`{{ .ConfirmationURL }}`), aviso de expiração e instrução caso o usuário não tenha solicitado.
+    3. **Convite de Acesso (`Invite user`):** Mensagem de convite VIP, instruções de primeiro acesso e link seguro.
+    4. **Confirmação de Alteração de E-mail (`Change email address`):** Verificação de segurança para transição de endereço.
+  - Cores e tokens: Fundo escuro premium (`#0B0F19`), contêiner do card (`#111827`), borda sutil (`#1F2937`), tipografia Sans-Serif moderna e botão com cor primária de destaque.
+- [ ] **Tarefa 4.2 — Guia Operacional de Configuração de Provedor SMTP:**
+  - Passo a passo para obter API Key / credenciais SMTP no Resend (ou Brevo).
+  - Configuração no painel Supabase em `Project Settings > Authentication > SMTP Settings`.
+  - Mapeamento de cada template no menu `Authentication > Email Templates`.
+
+> **PORTÃO DE QUALIDADE 4 (Quality Gate 4):**  
+> Templates validados em clientes móveis e desktop; renderização sem distorção em modo claro e escuro.
+
+---
+
+### FASE 5: Auditoria Geral de Ponta a Ponta e Atualização da Documentação
+**Objetivo:** Consolidar todas as entregas, garantir que nenhum teste legado quebrou e sincronizar a documentação viva do projeto.
+
+- [ ] **Tarefa 5.1 — Bateria Completa de Testes Automatizados:**
+  - Checagem estrita de tipos: `npm run typecheck` (`tsc -b`).
+  - Checagem do linter (incluindo regra anti-emojis): `npm run lint`.
+  - Suíte completa de testes unitários: `npm run test:run`.
+- [ ] **Tarefa 5.2 — Atualização da Documentação Viva:**
+  - Atualizar `docs/PROJECT_STRUCTURE.md` incluindo o novo arquivo `account-tab.tsx` e a nova migração.
+  - Atualizar `docs/ARCHITECTURE.md` descrevendo o fluxo completo de gestão de conta e recuperação.
+  - Atualizar `docs/ROADMAP.md` marcando a entrega canônica.
 
 > **PORTÃO DE QUALIDADE 5 (Quality Gate 5):**  
-> RPC testada; recadastro de e-mail previamente excluído executado com sucesso imediato.
-
----
-
-### FASE 6: Templates de E-mail Transacional com a Marca Áxis Finance & Guia SMTP
-**Objetivo:** Entregar comunicação por e-mail de padrão internacional, personalizada com o logotipo, cores e tipografia do aplicativo, com instruções claras para o provedor de envio.
-
-- [ ] **Tarefa 6.1 — Criar Arquivo de Templates Canônicos (`docs/EMAIL_TEMPLATES.md`):**
-  - Desenvolver 4 templates HTML/CSS inline responsivos compatíveis com os principais clientes (Gmail, Outlook, Apple Mail):
-    1. **Template 1: Confirmação de Cadastro (`Confirm signup`)** — Mensagem de boas-vindas, botão de confirmação, link alternativo e aviso de validade do token (`{{ .ConfirmationURL }}`).
-    2. **Template 2: Recuperação de Senha (`Reset Password`)** — Aviso de solicitação de redefinição, botão com CTA claro apontando para `/redefinir-senha` (`{{ .ConfirmationURL }}`), aviso de segurança caso o usuário não tenha solicitado.
-    3. **Template 3: Convite de Acesso (`Invite User`)** — Apresentação da plataforma e código de convite.
-    4. **Template 4: Confirmação de Troca de E-mail (`Change Email Address`)** — Validação do novo endereço.
-  - Paleta alinhada ao design tokens: fundo `#0F172A` / `#F8FAFC`, texto de alto contraste, botão primário com raio de borda suave e rodapé com identificação da marca e canais de suporte.
-- [ ] **Tarefa 6.2 — Guia Operacional de Configuração SMTP:**
-  - Documentar passo a passo como configurar o provedor de e-mail profissional (Resend, Brevo ou SendGrid) no painel do Supabase (`Project Settings > Authentication > SMTP Settings`).
-  - Documentar onde colar os códigos HTML no menu `Authentication > Email Templates`.
-
-> **PORTÃO DE QUALIDADE 6 (Quality Gate 6):**  
-> Templates HTML validados; renderização impecável sem distorção em dispositivos móveis.
-
----
-
-### FASE 7: Auditoria de Ponta a Ponta, Testes de Regressão e Documentação Canônica
-**Objetivo:** Consolidar todas as entregas, garantir que nenhum teste legado quebrou e atualizar a documentação de arquitetura do repositório.
-
-- [ ] **Tarefa 7.1 — Bateria Completa de Testes Automatizados:**
-  - Execução de checagem de tipos estrita: `npm run typecheck` (`tsc --noEmit`).
-  - Execução do linter com a regra anti-emojis ativa: `npm run lint`.
-  - Execução da suíte completa de testes: `npm run test:run`.
-- [ ] **Tarefa 7.2 — Verificação Visual Cruzada (Desktop & Mobile):**
-  - Validar responsividade em 320px, 375px, 768px e 1440px.
-  - Testar temas: Claro, Escuro e Preto OLED.
-  - Verificar estados de carregamento (Skeleton), erro e vazios.
-- [ ] **Tarefa 7.3 — Atualização da Documentação do Projeto:**
-  - Atualizar `docs/PROJECT_STRUCTURE.md` incluindo novos arquivos (`account-tab.tsx`, `reset-password-page.tsx`).
-  - Atualizar `docs/ARCHITECTURE.md` detalhando o fluxo aprimorado de autenticação e recuperação.
-  - Atualizar `docs/ROADMAP.md` e `docs/DEPLOYMENT.md`.
-
-> **PORTÃO DE QUALIDADE 7 (Quality Gate 7):**  
 > `npm run build` gerando bundle limpo e sem warnings. 100% dos testes verdes.
 
 ---
 
-## 4. MATRIZ DE RASTREABILIDADE: REQUISITOS DO USUÁRIO VS. SOLUÇÃO TÉCNICA
+## 6. MATRIZ DE RASTREABILIDADE: REQUISITOS VS. SOLUÇÃO TÉCNICA
 
-| Requisito do Usuário | Problema Detectado no Código | Solução na Especificação Técnica | Fase de Execução |
+| Requisito do Usuário | Situação Encontrada | Solução no Plano Refinado | Status |
 |---|---|---|---|
-| **Recuperação de Senha Completa** | `resetPasswordForEmail` manda para `/entrar`; não há tela de nova senha. | Criação da rota `/redefinir-senha` com captura de sessão de recuperação e validador de força. | **Fase 3** |
-| **Alteração de Senha & Nome** | Sem tela e sem endpoints para o usuário autenticado editar seus dados cadastrais. | Nova aba *"Minha Conta"* em `/configuracoes` com mutações para nome e senha. | **Fase 4** |
-| **E-mails Personalizados com a Marca** | E-mails padrão do Supabase em inglês e layout básico. | Acervo de 4 templates HTML/CSS responsivos em pt-BR com design system e guia Resend. | **Fase 6** |
-| **Feedback de E-mail Não Confirmado no Login** | Alerta genérico sem informar o e-mail e sem opção de reenvio. | Alerta contextual destacando o e-mail digitado e botão de reenvio com cooldown de 60s. | **Fase 2** |
-| **Conflito no Cadastro de E-mail Existente** | Erro 422 em inglês e bypass por `identities: []` anti-enumeração. | Classificação de `user-already-exists` no gateway e exibição de CTAs para Login e Recuperação. | **Fase 1** |
-| **Travamento no Recadastro de Contas Apagadas** | Exclusão feita em `profiles` não deletava de `auth.users`, travando o e-mail. | RPC `delete_own_account()` com `SECURITY DEFINER` e exclusão limpa em `auth.users`. | **Fase 5** |
-| **Controle e Organização do Usuário** | Falta de autonomia de gerenciamento e conformidade LGPD. | Autoexclusão com confirmação manual, exportação de dados e gestão centralizada. | **Fase 4 e 5** |
+| **Recuperação de Senha** | Redirecionamento quebrado para `/entrar`. | Rota dedicada `/redefinir-senha` com validador de requisitos. | **CONCLUÍDO** |
+| **Reenvio de Confirmação** | Alerta estático e sem botão de ação no login. | Banner com e-mail destacado, botão de reenvio e cooldown de 60s. | **CONCLUÍDO** |
+| **Onboarding Pós-Cadastro** | Formulário continuava na tela apenas com texto. | Card imersivo com `MailCheck`, dicas de spam e botão seguro. | **CONCLUÍDO** |
+| **CTAs de Conta Existente** | Mensagens técnicas em inglês e links ausentes. | Classificação de `user-already-exists` com links rápidos. | **CONCLUÍDO** |
+| **Falso Positivo Anti-Enumeração** | Retorno 200 com `identities: []` exibia falso sucesso. | Detecção explícita de `identities.length === 0` em `signUpWithEmail`. | **FASE 1** |
+| **Gestão de Perfil (Nome & Senha)** | Usuário logado não podia alterar nome nem senha. | Nova aba `AccountTab` com mutações para nome e senha em sessão. | **FASE 2** |
+| **Exclusão Definitiva de Conta** | E-mail ficava travado em `auth.users` após exclusão. | RPC `delete_own_account` com expurgo topológico reverso de FKs. | **FASE 3** |
+| **Exclusão de Usuários no Admin** | Admin não conseguia expurgar contas de teste. | RPC `admin_delete_user` com proteção contra autoexclusão. | **FASE 3** |
+| **E-mails com a Marca Áxis Finance** | E-mails padrão do Supabase em inglês. | 4 templates HTML responsivos com design system e guia SMTP. | **FASE 4** |
 
 ---
 
-## 5. REGRAS INVIOLÁVEIS DE DESENVOLVIMENTO (AGENTS.md & DESIGN_SYSTEM)
+## 7. DIRETRIZES DE IMPLEMENTAÇÃO FUTURA (AGENTS.md)
 
-Durante a futura implementação deste plano, as seguintes regras devem ser rigorosamente observadas:
-1. **Zero Emojis:** É terminantemente proibido utilizar emojis em qualquer texto, toast ou empty state. Toda representação visual utiliza ícones do `lucide-react`.
-2. **Zero Controles Nativos:** Proibido usar inputs crus ou selects HTML nativos. Utilizar exclusivamente os primitivos `Input`, `PasswordInput`, `Button`, `Modal` e `Alert`.
-3. **Moeda e Valores:** Sempre utilizar formatação segura via `<MoneyText />` sem reticências arbitrárias.
-4. **Isolamento de Camadas:** Funções de cálculo de regras de validação permanecem puras em `src/domain/`; chamadas de API apenas em `src/data/`; orquestração de estado em `src/state/`.
-5. **Governança Sensorial:** Usar exclusivamente `triggerSensory()` para disparos táteis/sonoros sem duplicidade em cliques de botões.
-
----
-
-## 6. PRÓXIMOS PASSOS IMEDIATOS
-
-1. Revisão e homologação deste plano detalhado pelo usuário.
-2. Início da execução gradual a partir da **Fase 1** mediante autorização explícita.
+1. **Zero Emojis:** É terminantemente proibido o uso de emojis em qualquer texto, toast ou empty state. Toda representação visual utiliza ícones do `lucide-react`.
+2. **Zero Controles Nativos:** Proibido usar inputs, checkboxes ou selects HTML nativos. Utilizar exclusivamente os primitivos encapsulados (`Input`, `PasswordInput`, `Button`, `Modal`, `Alert`, `Checkbox`).
+3. **Moeda e Valores:** Sempre utilizar `<MoneyText />` ou tipografia tabular adaptativa sem `truncate` direto em valores.
+4. **Isolamento de Camadas:** Funções puras em `src/domain/`; chamadas de rede apenas em `src/data/`; estado em `src/state/`; componentes de UI em `src/components/` ou `src/features/`.
+5. **Governança Sensorial:** Usar exclusivamente `triggerSensory()` para disparos táteis/sonoros sem chamadas manuais redundantes em cliques de botões.

@@ -31,8 +31,7 @@ export function CtaBanner() {
             </h2>
 
             <p className="mt-3 sm:mt-5 max-w-3xl mx-auto text-sm sm:text-lg lg:text-xl text-muted-foreground leading-relaxed">
-              Junte-se a quem já abandonou o caos das planilhas e das faturas surpresas. Crie sua conta
-              gratuita hoje mesmo e organize sua vida financeira.
+              Junte-se a quem já abandonou o caos das planilhas, das faturas surpresas e dos cálculos manuais de aportes. Crie sua conta gratuita hoje mesmo e assuma o controle definitivo do seu patrimônio.
             </p>
 
             <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">

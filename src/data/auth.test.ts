@@ -57,6 +57,23 @@ describe("data/auth — operações de autenticação", () => {
       const result = await signUpWithEmail("teste@exemplo.com", "senha123", "Gabriel");
       expect(result.needsEmailConfirmation).toBe(false);
     });
+
+    it("lança AppError('user-already-exists') quando anti-enumeração retorna identities vazio", async () => {
+      mockSignUp.mockResolvedValueOnce({
+        data: {
+          session: null,
+          user: { id: "user-123", email: "jaexiste@exemplo.com", identities: [] },
+        },
+        error: null,
+      });
+
+      await expect(
+        signUpWithEmail("jaexiste@exemplo.com", "senha123", "Gabriel"),
+      ).rejects.toMatchObject({
+        kind: "user-already-exists",
+        message: expect.stringContaining("já está cadastrado no Áxis Finance"),
+      });
+    });
   });
 
   describe("resetPasswordForEmail", () => {

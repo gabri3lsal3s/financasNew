@@ -123,7 +123,11 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
     await user.type(screen.getByLabelText("Senha"), "MinhaSenhaForte123!");
     await user.click(screen.getByRole("button", { name: "Criar conta" }));
 
-    expect(screen.getByText("Este e-mail já está cadastrado na plataforma.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Este e-mail já está cadastrado no Áxis Finance. Faça login ou recupere sua senha se tiver esquecido.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Fazer login agora/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Recuperar minha senha/i })).toBeInTheDocument();
   });

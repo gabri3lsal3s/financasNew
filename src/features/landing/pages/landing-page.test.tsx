@@ -32,14 +32,15 @@ describe("LandingPage", () => {
     expect(screen.getByRole("button", { name: /Voltar para a página anterior/i })).toBeInTheDocument();
   });
 
-  it("renderiza a seção Hero Editorial com headline e métricas de caixa real", () => {
+  it("renderiza a seção Hero Editorial com headline e métricas de caixa real e aporte calibrado", () => {
     renderLanding();
     expect(
-      screen.getByRole("heading", { name: /Suas finanças em constante rotação/i }),
+      screen.getByRole("heading", { name: /Do controle de gastos ao aporte do mês/i }),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/30 Dias de Teste sem Compromisso/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Caixa Real Disponível").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Ritmo Diário/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Aporte Calibrado do Mês").length).toBeGreaterThan(0);
   });
 
   it("renderiza as histórias editoriais do produto (Caixa Real, Cartões e Aportes)", () => {

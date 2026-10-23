@@ -8,6 +8,7 @@ import {
   Cloud,
   Zap,
   Smartphone,
+  PieChart,
 } from "lucide-react";
 import { Badge, buttonVariants } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -29,18 +30,18 @@ export function HeroEditorial() {
           {/* Badge de Destaque */}
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-semibold text-primary transition-all duration-200">
             <Sparkles className="size-3.5 sm:size-4" aria-hidden="true" />
-            <span>Engenharia Financeira · O Eixo Central da sua Operação</span>
+            <span>Engenharia Financeira · Gastos, Faturas e Aportes sem Planilhas</span>
           </div>
 
           {/* Headline Principal Editorial Ampliada */}
           <h1 className="mt-5 sm:mt-8 max-w-4xl font-display text-3xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-foreground leading-[1.15] md:leading-[1.1]">
-            Suas finanças em constante rotação.{" "}
-            <span className="text-primary-strong">Seu patrimônio em torno de um eixo seguro.</span>
+            Do controle de gastos ao aporte do mês.{" "}
+            <span className="text-primary-strong">Saiba quanto gastar hoje e onde investir o que sobrar.</span>
           </h1>
 
           {/* Subtítulo Rico e Persuasivo com Tipografia Editorial */}
           <p className="mt-4 sm:mt-6 max-w-3xl text-sm sm:text-lg lg:text-xl text-muted-foreground leading-relaxed font-normal">
-            Elimine a fragilidade de planilhas e o atrito de faturas surpresas. Uma plataforma Online First de alta precisão que calcula seu caixa real, projeta parcelamentos futuros e mantém sua carteira calibrada por rigor matemático.
+            Elimine planilhas frágeis e o susto de faturas futuras. O Áxis calcula seu caixa real diário e distribui seus aportes com rigor matemático, rebalanceando sua carteira sem vender posições.
           </p>
 
           {/* CTAs de Conversão com Shimmer Reflexivo e Altura Confortável */}
@@ -148,12 +149,13 @@ export function HeroEditorial() {
               </div>
 
               <div className="p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-border/70 bg-background/60 flex flex-col justify-between overflow-hidden">
-                <span className="text-xs sm:text-sm text-muted-foreground block truncate">Taxa de Poupança</span>
-                <div className="my-1.5 sm:my-2 font-mono text-2xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-positive-strong dark:text-positive tracking-tight whitespace-nowrap tabular-nums">
-                  34.5%
+                <span className="text-xs sm:text-sm text-muted-foreground block truncate">Aporte Calibrado do Mês</span>
+                <div className="my-1.5 sm:my-2 font-mono text-2xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-portfolio tracking-tight whitespace-nowrap tabular-nums">
+                  R$ 1.500,00
                 </div>
-                <span className="text-xs text-muted-foreground block whitespace-nowrap">
-                  Meta saudável: acima de 20%
+                <span className="text-xs text-portfolio font-medium flex items-center gap-1.5 whitespace-nowrap">
+                  <PieChart className="size-3.5 shrink-0" aria-hidden="true" />
+                  Direcionado: Renda Fixa & FIIs
                 </span>
               </div>
             </div>
@@ -162,7 +164,7 @@ export function HeroEditorial() {
             <div className="mt-3.5 sm:mt-6 rounded-xl sm:rounded-2xl border border-border/70 bg-background/40 p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1 text-xs sm:text-sm mb-2.5 sm:mb-3">
                 <span className="font-semibold text-foreground">Orçamento Mensal Consolidado</span>
-                <span className="font-mono text-muted-foreground">R$ 3.820 de R$ 5.500 (69% utilizado)</span>
+                <span className="font-mono text-muted-foreground">R$ 3.820 de R$ 5.500 (69% utilizado · R$ 1.680 livres para aportes)</span>
               </div>
               <div className="w-full h-3 sm:h-4 rounded-full overflow-hidden bg-muted/60 p-0.5 flex gap-1 border border-border/50">
                 <div className="h-full rounded-full bg-cat-2 transition-all" style={{ width: "35%" }} />

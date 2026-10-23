@@ -69,6 +69,7 @@ export {
 } from "./queries/use-reminder-states";
 export { useUserPreferences } from "./queries/use-user-preferences";
 export { useUpdateReminderPreferences, useUpdateCustomSettings } from "./mutations/use-preference-mutations";
+export { useUpdateProfile } from "./mutations/use-profile-mutations";
 export { useReminders } from "./queries/use-reminders";
 export type { RemindersData } from "./queries/use-reminders";
 export {

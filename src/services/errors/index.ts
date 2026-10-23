@@ -44,11 +44,14 @@ export class AppError extends Error {
   }
 }
 
-const MESSAGES: Record<ErrorKind, string> = {
+export const MESSAGES: Record<ErrorKind, string> = {
   "rate-limit": "Muitas requisições simultâneas. Aguarde alguns instantes e tente novamente.",
   "service-unavailable": "Serviço temporariamente indisponível para manutenção. Aguarde alguns instantes e tente novamente.",
   "email-not-confirmed": "E-mail ainda não confirmado. Verifique sua caixa de entrada.",
-  user_already_exists: "Este e-mail já está cadastrado na plataforma.",
+  "user-already-exists":
+    "Este e-mail já está cadastrado no Áxis Finance. Faça login ou recupere sua senha se tiver esquecido.",
+  user_already_exists:
+    "Este e-mail já está cadastrado no Áxis Finance. Faça login ou recupere sua senha se tiver esquecido.",
   "invalid-credentials": "E-mail ou senha incorretos.",
   "session-expired": "Sua sessão expirou. Entre novamente para continuar.",
   duplicate: "Já existe um registro com esses dados.",
@@ -163,14 +166,21 @@ export function classifyError(error: unknown): ClassifiedError {
   ) {
     return { kind: "service-unavailable", message: MESSAGES["service-unavailable"], raw: error };
   }
-  if (status === 422 || code.includes("email_not_confirmed") || /email not confirmed/i.test(message)) {
-    return { kind: "email-not-confirmed", message: MESSAGES["email-not-confirmed"], raw: error };
-  }
   if (
     code.includes("user_already_exists") ||
-    /user already registered|user_already_exists|email_exists|user already exists/i.test(message)
+    code.includes("user-already-exists") ||
+    /user already registered|user_already_exists|email_exists|user already exists/i.test(message) ||
+    ((status === 422 || code === "422") &&
+      /user|registered|already|cadastrado/i.test(message))
   ) {
-    return { kind: "user_already_exists", message: MESSAGES.user_already_exists, raw: error };
+    return { kind: "user-already-exists", message: MESSAGES["user-already-exists"], raw: error };
+  }
+  if (
+    code.includes("email_not_confirmed") ||
+    /email not confirmed/i.test(message) ||
+    (status === 422 && !/login|credential/i.test(message))
+  ) {
+    return { kind: "email-not-confirmed", message: MESSAGES["email-not-confirmed"], raw: error };
   }
   if (code.includes("invalid_credentials") || /invalid login credentials|invalid credentials/i.test(message)) {
     return { kind: "invalid-credentials", message: MESSAGES["invalid-credentials"], raw: error };
