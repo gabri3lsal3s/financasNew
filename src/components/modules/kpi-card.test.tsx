@@ -70,8 +70,8 @@ describe("KpiCard (F12 — valores monetários via NumberTicker)", () => {
     const { container } = render(
       <KpiCard label="Investimentos" cents={0} tone="portfolio" spark={[0, 0, 0, 0]} />,
     );
-    const polyline = container.querySelector("polyline");
-    expect(polyline).not.toBeNull();
-    expect(polyline?.getAttribute("class")).toContain("stroke-portfolio");
+    const line = container.querySelector("path.stroke-portfolio") ?? container.querySelector("polyline.stroke-portfolio");
+    expect(line).not.toBeNull();
+    expect(line?.getAttribute("class")).toContain("stroke-portfolio");
   });
 });

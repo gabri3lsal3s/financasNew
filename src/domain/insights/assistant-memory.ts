@@ -67,9 +67,10 @@ export function formatCooldownExpiry(expiryMs: number): string {
 }
 
 /** Rótulos amigáveis para as decisões de micro-feedback memorizadas */
-export const MEMORIZED_FEEDBACK_LABELS: Record<QualifiedDismissReason | "ignore", string> = {
+export const MEMORIZED_FEEDBACK_LABELS: Record<QualifiedDismissReason | "ignore" | "essential", string> = {
   already_cancelled: "Já cancelei",
   one_off: "É pontual",
   not_subscription: "Não é assinatura",
   ignore: "Ignorado",
+  essential: "Considerado essencial",
 };

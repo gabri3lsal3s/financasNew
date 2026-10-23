@@ -68,6 +68,31 @@ export function useCreateCardPayment() {
   });
 }
 
+/** Quitação em lote de múltiplas faturas (competências anteriores). */
+export function useBatchCreateCardPayments() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payments: Array<Parameters<typeof createPayment>[0]>) => {
+      const results: string[] = [];
+      for (const p of payments) {
+        const id = await createPayment(p);
+        results.push(id);
+      }
+      return results;
+    },
+    onSuccess: (results) => {
+      void queryClient.invalidateQueries({ queryKey: cardPaymentsKey });
+      void queryClient.invalidateQueries({ queryKey: ["reminders"] });
+      void queryClient.invalidateQueries({ queryKey: ["overview"] });
+      pushToast({
+        title: "Faturas quitadas com sucesso",
+        description: `${results.length} fatura(s) foram marcadas como pagas.`,
+        variant: "default",
+      });
+    },
+  });
+}
+
 export function useCreateRefund() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -203,7 +203,7 @@ describe("local-notifications service", () => {
   });
 
   describe("dispatchLocalOrWebNotification e syncDueReminderNotifications", () => {
-    it("emite notificação para faturas e dívidas pendentes quando autorizado", async () => {
+    it("consolida em notificação única elegante quando há 2 ou mais contas pendentes (anti-flood)", async () => {
       vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
       (LocalNotifications.checkPermissions as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
         display: "granted",
@@ -239,8 +239,72 @@ describe("local-notifications service", () => {
         true,
       );
 
-      expect(count).toBe(2);
-      expect(LocalNotifications.schedule).toHaveBeenCalledTimes(2);
+      expect(count).toBe(1);
+      expect(LocalNotifications.schedule).toHaveBeenCalledTimes(1);
+      const scheduleCall = (LocalNotifications.schedule as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0];
+      expect(scheduleCall.notifications[0].title).toContain("Áxis · Contas e faturas pendentes (2)");
+    });
+
+    it("emite notificação específica detalhada quando há apenas 1 conta pendente", async () => {
+      vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+      (LocalNotifications.checkPermissions as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+        display: "granted",
+      });
+      (LocalNotifications.createChannel as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (LocalNotifications.schedule as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ notifications: [] });
+
+      const { syncDueReminderNotifications, setDueNotificationsEnabled } = await import("./local-notifications");
+      setDueNotificationsEnabled(true, "u2");
+
+      const count = await syncDueReminderNotifications(
+        [
+          {
+            key: "bill:c1:2026-10",
+            kind: "bill",
+            title: "Fatura Nubank · 2026-10",
+            dueDate: "2026-10-20",
+            amountCents: 150000,
+            status: "due_today",
+            link: { path: "/cartoes", params: { card: "c1" } },
+          },
+        ],
+        "u2",
+        true,
+      );
+
+      expect(count).toBe(1);
+      expect(LocalNotifications.schedule).toHaveBeenCalledTimes(1);
+      const scheduleCall = (LocalNotifications.schedule as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0];
+      expect(scheduleCall.notifications[0].title).toBe("Fatura Nubank · 2026-10 — Vence hoje");
+    });
+
+    it("ignora contas vencidas há mais de 30 dias (corte temporal anti-spam)", async () => {
+      vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+      (LocalNotifications.checkPermissions as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+        display: "granted",
+      });
+      (LocalNotifications.schedule as unknown as ReturnType<typeof vi.fn>).mockClear();
+
+      const { syncDueReminderNotifications, setDueNotificationsEnabled } = await import("./local-notifications");
+      setDueNotificationsEnabled(true, "u3");
+
+      const count = await syncDueReminderNotifications(
+        [
+          {
+            key: "bill:rico:2026-03",
+            kind: "bill",
+            title: "Fatura Rico · 2026-03",
+            dueDate: "2026-03-10", // Mais de 7 meses atrás
+            amountCents: 225585,
+            status: "overdue",
+          },
+        ],
+        "u3",
+        true,
+      );
+
+      expect(count).toBe(0);
+      expect(LocalNotifications.schedule).not.toHaveBeenCalled();
     });
   });
 });

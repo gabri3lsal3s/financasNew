@@ -58,7 +58,8 @@ export function AssistantMemorySection({
 
   // 2. Decisões de micro-feedback registradas
   const activeFeedbackDecisions = useMemo(() => {
-    const validDecisions: (QualifiedDismissReason | "ignore")[] = [
+    const validDecisions: (QualifiedDismissReason | "ignore" | "essential")[] = [
+      "essential",
       "already_cancelled",
       "one_off",
       "not_subscription",
@@ -67,8 +68,9 @@ export function AssistantMemorySection({
 
     return Object.entries(feedbackMap)
       .filter(
-        (entry): entry is [string, QualifiedDismissReason | "ignore"] =>
-          Boolean(entry[1]) && validDecisions.includes(entry[1] as QualifiedDismissReason | "ignore"),
+        (entry): entry is [string, QualifiedDismissReason | "ignore" | "essential"] =>
+          Boolean(entry[1]) &&
+          validDecisions.includes(entry[1] as QualifiedDismissReason | "ignore" | "essential"),
       )
       .map(([key, decision]) => {
         const found =
@@ -98,12 +100,15 @@ export function AssistantMemorySection({
     });
   };
 
-  const handleReactivateFeedback = (key: string, itemName: string) => {
+  const handleReactivateFeedback = (key: string, itemName: string, decision?: string) => {
     triggerSensory("action");
     onRevokeFeedback(key);
     pushToast({
       title: "Monitoramento reativado",
-      description: `${itemName} foi reintroduzido no fluxo ativo de detecção.`,
+      description:
+        decision === "essential"
+          ? `${itemName} voltou a ser analisado pelo assistente para oportunidades de economia.`
+          : `${itemName} foi reintroduzido no fluxo ativo de detecção.`,
       variant: "success",
     });
   };
@@ -199,7 +204,7 @@ export function AssistantMemorySection({
                   <div className="flex flex-col gap-1.5">
                     {activeFeedbackDecisions.map((item) => {
                       const badgeVariant =
-                        item.decision === "already_cancelled"
+                        item.decision === "already_cancelled" || item.decision === "essential"
                           ? "positive"
                           : item.decision === "one_off"
                             ? "warning"
@@ -228,7 +233,7 @@ export function AssistantMemorySection({
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => handleReactivateFeedback(item.key, item.name)}
+                            onClick={() => handleReactivateFeedback(item.key, item.name, item.decision)}
                             className="h-7 text-xs font-medium self-start sm:self-auto shrink-0"
                             aria-label={`Reativar monitoramento de ${item.name}`}
                             title={`Reativar monitoramento de ${item.name}`}

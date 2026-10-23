@@ -132,7 +132,7 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 | `debts` | id, user_id, name, type (`payable \| receivable`), amount (≥ 0), due_date, **paid_at (timestamptz NULL — preenchido na quitação; NULL = pendente)**, expense_id (FK nullable), installment_group_id (nullable), created_at | Check: amount ≥ 0; status derivado (overdue/due_today/due_soon/pending) nunca é armazenado |
 | `budgets` | id, user_id, category_id, month, limit | **Unique (category_id, month)**; upsert |
 | `income_goals` | id, user_id, category_id, month, expected | Unique (category_id, month); upsert |
-| `insight_feedback` | id, user_id, occurrence_key (hash estável: tipo + entidade + mês), decision (`ignore \| confirm`), created_at | Registra o aprendizado do usuário sobre insights (§3.7.4); ocorrência ignorada deixa de contar |
+| `insight_feedback` | id, user_id, occurrence_key (hash estável: tipo + entidade + mês), decision (`ignore \| confirm \| already_cancelled \| one_off \| not_subscription \| essential`), created_at | Registra o aprendizado do usuário sobre insights (§3.7.4); ocorrência ignorada ou essencial deixa de sugerir corte |
 | `portfolio_assets` | id, user_id, ticker, asset_class, sector (nullable), currency (BRL/USD), quantity, average_price, accumulated_dividends, estimated_monthly_dividend_per_share, fixed_income_metadata (jsonb nullable), notes (nullable) | Ticker único por user; custody position direta |
 | `portfolio_transactions` | id, user_id, asset_id, type (`buy \| sell \| dividend \| jcp \| fii_yield \| split \| reverse_split \| subscription`), date, quantity, price, total | Caixa derivado do ledger (nunca armazenado como saldo) |
 | `allocation_targets` | id, user_id, asset_id, target_percentage (0–100) | Soma por user ≤ 100 — **validada no domínio e no banco (trigger/RPC)**; check não cobre soma entre linhas |
@@ -338,8 +338,10 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 
 #### 3.7.4 Confiança e aprendizado
 
-- **Confiança** = base + bônus não-linear por meses de histórico (2m:+0.05 … 5m:+0.28) − penalidade de variância (0.3× subscription, 0.8× recurring).
-- **Aprendizado:** usuário pode **ignorar / confirmar / restaurar** ocorrências; ignorada deixa de contar. O aprendizado é consumido tanto na Central de Insights quanto na tela de Cartões de Crédito, com suporte a descarte/corte direto no componente de Radar de Assinaturas.
+- **Aprendizado:** usuário pode **ignorar / confirmar / restaurar / considerar como essencial** ocorrências; ocorrência ignorada ou essencial deixa de sugerir corte.
+  - **Decisão "Manter como essencial" (`decision = 'essential'`):** persiste na tabela `insight_feedback` e atribui `tier: 'essential'`, blindando a despesa perenemente contra alertas de corte e gastos vampiros. É 100% reversível em 1 clique na seção "Memória do Assistente" (`/insights?aba=recurrences`).
+  - **Dispensa com Cooldown de 30 dias:** ao dispensar uma sugestão específica, o cooldown é sincronizado na nuvem (`user_preferences.custom_settings.advisorDismissals`) e em cache local, garantindo que a sugestão não reapareça ao trocar de dispositivo antes de decorridos os 30 dias.
+  - O aprendizado é consumido de forma unificada no `SmartAdvisorCard` da Home, na Central de Insights e na tela de Cartões de Crédito.
 
 #### 3.7.5 Desafios e sugestões
 
@@ -378,6 +380,8 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 ### 3.10 Lembretes e Central de Notificações
 
 - Consolida alertas de **faturas** (saldo aberto por competência: vencida/em breve) e **dívidas** (pendentes: vence em X dias/vencida).
+- **Consolidação Anti-Flood de Notificações Locais/Push:** quando houver $\ge 2$ contas pendentes na sincronização diária, o sistema agrupa os avisos em uma notificação única executiva com o montante total pendente, evitando disparos repetitivos ou múltiplos alertas.
+- **Janela Máxima de Alerta para Vencidos:** notificações de atraso são limitadas a contas vencidas há no máximo 30 dias (`MAX_OVERDUE_DAYS_FOR_NOTIFICATION = 30`), impedindo a renotificação contínua de pendências antigas.
 - Ações: **marcar como lido** e **snooze** (adiar); snooze **expira automaticamente** ao vencer/atrasar.
 - Ordenação: atrasados primeiro; depois por vencimento.
 - Ativação: somente com preferência habilitada; janelas configuráveis.

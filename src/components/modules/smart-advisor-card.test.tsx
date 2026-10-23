@@ -12,6 +12,7 @@ const mockHookConfirmIncome = vi.fn();
 const mockHookConfirmExpense = vi.fn();
 const mockHookConfirmRecurrence = vi.fn();
 const mockHookIgnoreRecurrence = vi.fn();
+const mockHookMarkAsEssential = vi.fn();
 const mockHookNext = vi.fn();
 const mockHookPrev = vi.fn();
 const mockHookGoTo = vi.fn();
@@ -33,6 +34,7 @@ let mockHookReturn: {
   confirmExpense: typeof mockHookConfirmExpense;
   confirmRecurrence: typeof mockHookConfirmRecurrence;
   ignoreRecurrence: typeof mockHookIgnoreRecurrence;
+  markAsEssential: typeof mockHookMarkAsEssential;
   refetch: () => Promise<void>;
 } = {
   insight: null,
@@ -51,6 +53,7 @@ let mockHookReturn: {
   confirmExpense: mockHookConfirmExpense,
   confirmRecurrence: mockHookConfirmRecurrence,
   ignoreRecurrence: mockHookIgnoreRecurrence,
+  markAsEssential: mockHookMarkAsEssential,
   refetch: vi.fn(),
 };
 
@@ -86,6 +89,7 @@ describe("SmartAdvisorCard", () => {
       confirmExpense: mockHookConfirmExpense,
       confirmRecurrence: mockHookConfirmRecurrence,
       ignoreRecurrence: mockHookIgnoreRecurrence,
+      markAsEssential: mockHookMarkAsEssential,
       refetch: vi.fn(),
     };
   });
@@ -377,22 +381,34 @@ describe("SmartAdvisorCard", () => {
       expect(triggerSensoryMock).toHaveBeenCalledWith("success");
     });
 
-    it("ao dispensar oportunidade de economia (savings), permite micro-feedback qualificado", async () => {
-      const onIgnoreRecurrenceMock = vi.fn().mockResolvedValue({});
+    it("ao clicar em Manter como essencial no topo de economia (savings), executa onMarkEssential", async () => {
+      const onMarkEssentialMock = vi.fn().mockResolvedValue({});
       render(
         <SmartAdvisorCard
           insight={savingsInsight}
-          onIgnoreRecurrence={onIgnoreRecurrenceMock}
+          onMarkEssential={onMarkEssentialMock}
+        />,
+      );
+
+      const manterBtn = screen.getByRole("button", { name: /Manter como essencial/i });
+      fireEvent.click(manterBtn);
+
+      expect(onMarkEssentialMock).toHaveBeenCalledWith("streaming-antigo", "Oportunidade de economia");
+    });
+
+    it("ao clicar em Dispensar no rodapé de economia (savings), executa onDismiss com cooldown de 30 dias", () => {
+      const onDismissMock = vi.fn();
+      render(
+        <SmartAdvisorCard
+          insight={savingsInsight}
+          onDismiss={onDismissMock}
         />,
       );
 
       const dispensarBtn = screen.getByRole("button", { name: /^Dispensar$/i });
       fireEvent.click(dispensarBtn);
 
-      const notSubOption = screen.getByText("Não é assinatura");
-      fireEvent.click(notSubOption);
-
-      expect(onIgnoreRecurrenceMock).toHaveBeenCalledWith("streaming-antigo", "not_subscription");
+      expect(onDismissMock).toHaveBeenCalledWith("savings:vampire");
       expect(triggerSensoryMock).toHaveBeenCalledWith("action");
     });
 
@@ -688,6 +704,20 @@ describe("SmartAdvisorCard", () => {
       expect(nextBtn).toHaveClass("transition-transform");
       expect(nextBtn).toHaveClass("active:scale-95");
       expect(nextBtn).toHaveClass("motion-reduce:transform-none");
+    });
+
+    it("renderiza SmartAdvisorCardSkeleton com role='status' durante o carregamento inicial evitando layout shift", () => {
+      mockHookReturn = {
+        ...mockHookReturn,
+        insight: null,
+        isLoading: true,
+      };
+
+      render(<SmartAdvisorCard />);
+      const skeleton = screen.getByRole("status", { name: /carregando recomendações do assistente/i });
+      expect(skeleton).toBeInTheDocument();
+      expect(skeleton).toHaveClass("min-h-[148px]");
+      expect(skeleton).toHaveClass("sm:min-h-[140px]");
     });
   });
 });

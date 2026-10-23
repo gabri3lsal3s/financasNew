@@ -159,4 +159,42 @@ describe("DailyFlowChart (F8)", () => {
     expect(tooltip).toBeInTheDocument();
     expect(tooltip.style.left).toContain("clamp(76px");
   });
+
+  it("não apresenta overshoot abaixo do baseline (Y <= 148.0) mesmo com picos isolados entre dias zerados", () => {
+    // Cenário clássico de overshoot onde antes a spline afundava e cortava reto no chão
+    const spikeDays = buildDailyFlow("2026-08", [
+      { date: "2026-08-05", kind: "income", amountCents: 500000 },
+    ]);
+
+    const { container } = render(<DailyFlowChart days={spikeDays} />);
+    const incomeCurve = container.querySelector("path.stroke-positive-strong");
+    expect(incomeCurve).toBeInTheDocument();
+
+    const d = incomeCurve?.getAttribute("d") ?? "";
+    // Extrai todas as coordenadas numéricas do path d
+    // Ex.: M 0.0 148.0 C 3.4 148.0, 6.9 148.0, 10.3 148.0...
+    const numbers = d.match(/-?\d+(\.\d+)?/g)?.map(Number) ?? [];
+    // Em SVG, Y é o segundo valor de cada par (M x y, C x1 y1, x2 y2, x3 y3)
+    // O baseline zero fica em Y = 148.0. NENHUM valor Y pode ser maior que 148.01 (abaixo do chão).
+    for (let i = 1; i < numbers.length; i += 2) {
+      const y = numbers[i]!;
+      expect(y).toBeLessThanOrEqual(148.01);
+    }
+  });
+
+  it("renderiza áreas com gradiente translúcido sob as curvas ativas", () => {
+    const { container } = render(<DailyFlowChart days={days} />);
+    const incomeArea = container.querySelector("path[fill='url(#flow-income-grad)']");
+    const expenseArea = container.querySelector("path[fill='url(#flow-expense-grad)']");
+    expect(incomeArea).toBeInTheDocument();
+    expect(expenseArea).toBeInTheDocument();
+  });
+
+  it("renderiza régua temporal de dias no eixo X", () => {
+    render(<DailyFlowChart days={days} />);
+    // No mês de agosto (31 dias), os marcadores 01 e 31 devem estar presentes
+    expect(screen.getByText("01")).toBeInTheDocument();
+    expect(screen.getByText("31")).toBeInTheDocument();
+  });
 });
+

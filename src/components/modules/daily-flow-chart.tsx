@@ -2,6 +2,8 @@ import { useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { cn } from "@/lib/utils";
 import { MoneyText } from "@/components/ui/money-text";
+import { toMonotoneCubicPath, toAreaPath } from "@/lib/chart-curve";
+import type { ChartPoint } from "@/lib/chart-curve";
 import type { DailyFlowItem } from "@/domain/overview";
 
 export interface DailyFlowChartProps {
@@ -13,18 +15,14 @@ export interface DailyFlowChartProps {
 const LINE_WIDTH = 320;
 const LINE_HEIGHT = 160;
 const PAD = 12;
-
-interface LinePoint {
-  x: number;
-  y: number;
-}
+const BASELINE_Y = LINE_HEIGHT - PAD; // 148.0
 
 /**
  * Converte a série em pontos na escala sublinear do gráfico (com base no zero e no maior valor diário).
  * Aplica uma transformação de potência suave (x^0.6) para manter a proporção confortável e evitar
  * que despesas e aportes fiquem esmagados no chão na presença de picos pontuais de receita.
  */
-function toLinePointList(values: readonly number[], width: number, height: number, globalMax: number): LinePoint[] {
+function toLinePointList(values: readonly number[], width: number, height: number, globalMax: number): ChartPoint[] {
   const range = globalMax > 0 ? globalMax : 1;
   const usableHeight = height - PAD * 2;
   return values.map((value, index) => {
@@ -38,35 +36,9 @@ function toLinePointList(values: readonly number[], width: number, height: numbe
 }
 
 /**
- * Gera um comando SVG path com curvas suaves (Catmull-Rom / Bézier cúbicas),
- * eliminando cantos pontiagudos e produzindo linhas orgânicas e fluidas.
- */
-function toSmoothPath(points: readonly LinePoint[]): string {
-  if (points.length === 0) return "";
-  if (points.length === 1) return `M ${points[0]!.x.toFixed(1)} ${points[0]!.y.toFixed(1)}`;
-
-  let path = `M ${points[0]!.x.toFixed(1)} ${points[0]!.y.toFixed(1)}`;
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[Math.max(0, i - 1)]!;
-    const p1 = points[i]!;
-    const p2 = points[i + 1]!;
-    const p3 = points[Math.min(points.length - 1, i + 2)]!;
-
-    // Fator de suavização 0.2 para evitar overshoot em variações bruscas
-    const k = 0.2;
-    const cp1x = p1.x + (p2.x - p0.x) * k;
-    const cp1y = p1.y + (p2.y - p0.y) * k;
-    const cp2x = p2.x - (p3.x - p1.x) * k;
-    const cp2y = p2.y - (p3.y - p1.y) * k;
-
-    path += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
-  }
-  return path;
-}
-
-/**
- * DailyFlowChart — fluxo diário com curvas suaves e arredondadas (Bézier cúbicas),
- * sem sombras ou áreas sombreadas sob as linhas, com linhas guias sutis e scrubbing interativo.
+ * DailyFlowChart — fluxo diário com curvas suaves e arredondadas (Spline Cúbica Monótona),
+ * eliminando overshoot no eixo zero, com preenchimentos gradientes translúcidos,
+ * régua temporal discreta no eixo X e scrubbing interativo.
  */
 export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -102,12 +74,45 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
     [hasInvestments, investmentValues, globalMax],
   );
 
-  const incomePath = useMemo(() => (hasIncomes ? toSmoothPath(incomePointList) : ""), [incomePointList, hasIncomes]);
-  const expensePath = useMemo(() => (hasExpenses ? toSmoothPath(expensePointList) : ""), [expensePointList, hasExpenses]);
+  // Curvas com garantia matemática de monotonicidade e clamp na linha base (sem overshoot abaixo do zero)
+  const incomePath = useMemo(
+    () => (hasIncomes ? toMonotoneCubicPath(incomePointList, BASELINE_Y) : ""),
+    [incomePointList, hasIncomes],
+  );
+  const expensePath = useMemo(
+    () => (hasExpenses ? toMonotoneCubicPath(expensePointList, BASELINE_Y) : ""),
+    [expensePointList, hasExpenses],
+  );
   const investmentPath = useMemo(
-    () => (hasInvestments ? toSmoothPath(investmentPointList) : ""),
+    () => (hasInvestments ? toMonotoneCubicPath(investmentPointList, BASELINE_Y) : ""),
     [hasInvestments, investmentPointList],
   );
+
+  // Áreas sob as curvas preenchidas com gradientes translúcidos suaves
+  const incomeAreaPath = useMemo(
+    () => (hasIncomes && incomePath ? toAreaPath(incomePointList, incomePath, BASELINE_Y) : ""),
+    [incomePointList, incomePath, hasIncomes],
+  );
+  const expenseAreaPath = useMemo(
+    () => (hasExpenses && expensePath ? toAreaPath(expensePointList, expensePath, BASELINE_Y) : ""),
+    [expensePointList, expensePath, hasExpenses],
+  );
+  const investmentAreaPath = useMemo(
+    () => (hasInvestments && investmentPath ? toAreaPath(investmentPointList, investmentPath, BASELINE_Y) : ""),
+    [hasInvestments, investmentPointList, investmentPath],
+  );
+
+  // Marcações discretas dos dias do mês para a régua temporal do eixo X
+  const xTicks = useMemo(() => {
+    if (days.length <= 1) return [];
+    const total = days.length;
+    const candidates = total >= 20 ? [1, 5, 10, 15, 20, 25, total] : [1, Math.ceil(total / 2), total];
+    const unique = Array.from(new Set(candidates.filter((d) => d <= total)));
+    return unique.map((d) => ({
+      label: String(d).padStart(2, "0"),
+      leftPct: ((d - 1) / Math.max(1, total - 1)) * 100,
+    }));
+  }, [days.length]);
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const el = containerRef.current;
@@ -123,10 +128,6 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
   const scrubExpense = scrubIndex !== null && hasExpenses ? expensePointList[scrubIndex] : undefined;
   const scrubInvestment = scrubIndex !== null && hasInvestments ? investmentPointList[scrubIndex] : undefined;
   const scrubLeft = scrubIndex !== null ? `${(scrubIndex / Math.max(1, days.length - 1)) * 100}%` : undefined;
-
-  const lastIncome = hasIncomes && incomePointList.length > 0 ? incomePointList[incomePointList.length - 1] : undefined;
-  const lastExpense = hasExpenses && expensePointList.length > 0 ? expensePointList[expensePointList.length - 1] : undefined;
-  const lastInvestment = hasInvestments && investmentPointList.length > 0 ? investmentPointList[investmentPointList.length - 1] : undefined;
 
   if (days.length === 0 || !hasAnyData) {
     return (
@@ -150,12 +151,38 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
     >
       <div className="relative h-44 w-full overflow-hidden" aria-hidden="true">
         <svg viewBox={`0 0 ${LINE_WIDTH} ${LINE_HEIGHT}`} preserveAspectRatio="none" className="h-full w-full">
-          {/* Linhas guias horizontais limpas e sutis */}
+          <defs>
+            <linearGradient id="flow-income-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="hsl(var(--positive-strong))" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="hsl(var(--positive-strong))" stopOpacity="0.0" />
+            </linearGradient>
+            <linearGradient id="flow-expense-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="hsl(var(--negative-strong))" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="hsl(var(--negative-strong))" stopOpacity="0.0" />
+            </linearGradient>
+            <linearGradient id="flow-investment-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="hsl(var(--portfolio))" stopOpacity="0.20" />
+              <stop offset="100%" stopColor="hsl(var(--portfolio))" stopOpacity="0.0" />
+            </linearGradient>
+          </defs>
+
+          {/* Linhas guias horizontais limpas e linha base */}
           <line x1="0" y1={PAD} x2={LINE_WIDTH} y2={PAD} stroke="currentColor" strokeDasharray="2 4" className="text-border/30" strokeWidth={1} />
           <line x1="0" y1={LINE_HEIGHT / 2} x2={LINE_WIDTH} y2={LINE_HEIGHT / 2} stroke="currentColor" strokeDasharray="2 4" className="text-border/25" strokeWidth={1} />
-          <line x1="0" y1={LINE_HEIGHT - PAD} x2={LINE_WIDTH} y2={LINE_HEIGHT - PAD} stroke="currentColor" strokeDasharray="2 4" className="text-border/30" strokeWidth={1} />
+          <line x1="0" y1={BASELINE_Y} x2={LINE_WIDTH} y2={BASELINE_Y} stroke="currentColor" className="text-border/50" strokeWidth={1} />
 
-          {/* Curvas suaves e arredondadas sem sombras */}
+          {/* Áreas preenchidas com gradientes suaves translúcidos */}
+          {hasIncomes && incomeAreaPath ? (
+            <path d={incomeAreaPath} fill="url(#flow-income-grad)" className="pointer-events-none" />
+          ) : null}
+          {hasExpenses && expenseAreaPath ? (
+            <path d={expenseAreaPath} fill="url(#flow-expense-grad)" className="pointer-events-none" />
+          ) : null}
+          {hasInvestments && investmentAreaPath ? (
+            <path d={investmentAreaPath} fill="url(#flow-investment-grad)" className="pointer-events-none" />
+          ) : null}
+
+          {/* Curvas suaves e arredondadas (Spline Monótona sem overshoot) */}
           {hasIncomes ? (
             <path
               d={incomePath}
@@ -191,42 +218,22 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
           ) : null}
         </svg>
 
-        {/* Ponto final das linhas (sem sombras) */}
-        {lastIncome ? (
-          <span
-            className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-positive-strong ring-2 ring-surface pointer-events-none"
-            style={{ left: `${Math.min(99, Math.max(1, (lastIncome.x / LINE_WIDTH) * 100))}%`, top: `${(lastIncome.y / LINE_HEIGHT) * 100}%` }}
-          />
-        ) : null}
-        {lastExpense ? (
-          <span
-            className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-negative-strong ring-2 ring-surface pointer-events-none"
-            style={{ left: `${Math.min(99, Math.max(1, (lastExpense.x / LINE_WIDTH) * 100))}%`, top: `${(lastExpense.y / LINE_HEIGHT) * 100}%` }}
-          />
-        ) : null}
-        {lastInvestment ? (
-          <span
-            className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-portfolio ring-2 ring-surface pointer-events-none"
-            style={{ left: `${Math.min(99, Math.max(1, (lastInvestment.x / LINE_WIDTH) * 100))}%`, top: `${(lastInvestment.y / LINE_HEIGHT) * 100}%` }}
-          />
-        ) : null}
-
-        {/* Pontos do dia sob scrubbing (sem sombras) */}
+        {/* Pontos do dia sob scrubbing */}
         {scrubIncome ? (
           <span
-            className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-positive-strong ring-2 ring-surface pointer-events-none"
+            className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-positive-strong ring-2 ring-surface shadow-xs pointer-events-none"
             style={{ left: scrubLeft, top: `${(scrubIncome.y / LINE_HEIGHT) * 100}%` }}
           />
         ) : null}
         {scrubExpense ? (
           <span
-            className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-negative-strong ring-2 ring-surface pointer-events-none"
+            className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-negative-strong ring-2 ring-surface shadow-xs pointer-events-none"
             style={{ left: scrubLeft, top: `${(scrubExpense.y / LINE_HEIGHT) * 100}%` }}
           />
         ) : null}
         {scrubInvestment ? (
           <span
-            className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-portfolio ring-2 ring-surface pointer-events-none"
+            className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-portfolio ring-2 ring-surface shadow-xs pointer-events-none"
             style={{ left: scrubLeft, top: `${(scrubInvestment.y / LINE_HEIGHT) * 100}%` }}
           />
         ) : null}
@@ -237,10 +244,28 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
         <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-px bg-foreground/20" style={{ left: scrubLeft }} />
       ) : null}
 
-      {/* Tooltip flutuante limpo (sem sombras pesadas nem clipping nas bordas) */}
+      {/* Régua temporal discreta no rodapé (dias do mês) */}
+      {xTicks.length > 0 ? (
+        <div className="relative mt-2 h-3.5 w-full select-none" aria-hidden="true">
+          {xTicks.map((tick) => (
+            <span
+              key={tick.label}
+              className="absolute text-[10px] tabular-nums font-medium text-muted-foreground/60 transition-colors"
+              style={{
+                left: tick.leftPct === 0 ? "0%" : tick.leftPct === 100 ? "100%" : `${tick.leftPct}%`,
+                transform: tick.leftPct === 0 ? "none" : tick.leftPct === 100 ? "translateX(-100%)" : "translateX(-50%)",
+              }}
+            >
+              {tick.label}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Tooltip flutuante limpo */}
       {scrubDay ? (
         <div
-          className="pointer-events-none absolute top-0 z-tooltip -translate-x-1/2 rounded-xl border border-border/80 bg-surface/95 backdrop-blur-md p-2.5 text-xs min-w-36 animate-in fade-in zoom-in-95 duration-100"
+          className="pointer-events-none absolute top-0 z-tooltip -translate-x-1/2 rounded-xl border border-border/80 bg-surface/95 backdrop-blur-md p-2.5 text-xs min-w-36 animate-in fade-in zoom-in-95 duration-100 shadow-sm"
           style={{ left: `clamp(76px, ${scrubLeft}, calc(100% - 76px))` }}
           role="tooltip"
         >
@@ -281,3 +306,4 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
     </div>
   );
 }
+

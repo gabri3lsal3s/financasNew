@@ -854,6 +854,9 @@ export function detectRecurrences(
       const isSubPenalized =
         options.feedbackMap?.[subKey] === "not_subscription" ||
         options.feedbackMap?.[key] === "not_subscription";
+      const isSubEssential =
+        options.feedbackMap?.[subKey] === "essential" ||
+        options.feedbackMap?.[key] === "essential";
 
       const rawConfidence = confidenceScore({
         base: subscription.confidence,
@@ -876,8 +879,8 @@ export function detectRecurrences(
         averageCents: averageMonthlyCents,
         confidence,
         categoryId: first.categoryId,
-        tier: subscription.tier,
-        savingsIfCutCents: subscription.savingsIfCutCents,
+        tier: isSubEssential ? "essential" : subscription.tier,
+        savingsIfCutCents: isSubEssential ? 0 : subscription.savingsIfCutCents,
         typicalDayOfMonth,
         nextDueDate,
         daysUntilNextDue,
@@ -901,6 +904,9 @@ export function detectRecurrences(
       const isRecPenalized =
         options.feedbackMap?.[recurringKey] === "not_subscription" ||
         options.feedbackMap?.[key] === "not_subscription";
+      const isRecEssential =
+        options.feedbackMap?.[recurringKey] === "essential" ||
+        options.feedbackMap?.[key] === "essential";
 
       const rawConfidence = confidenceScore({ base: 0.7, monthsHistory: months.length, kind: "recurring", variance });
       const confidence = isRecPenalized
@@ -919,6 +925,8 @@ export function detectRecurrences(
         averageCents: averageMonthlyCents,
         confidence,
         categoryId: first.categoryId,
+        tier: isRecEssential ? "essential" : undefined,
+        savingsIfCutCents: isRecEssential ? 0 : undefined,
         typicalDayOfMonth,
         nextDueDate,
         daysUntilNextDue,
@@ -957,6 +965,8 @@ export function detectRecurrences(
         ),
       ).sort();
 
+      const isWeeklyEssential = options.feedbackMap?.[weekly.key] === "essential";
+
       occurrences.push({
         key: weekly.key,
         name: weekly.name,
@@ -970,6 +980,7 @@ export function detectRecurrences(
         months,
         expenses: weekly.expenses,
         lifecycle: weekly.active ? "active" : "lapsed",
+        tier: isWeeklyEssential ? "essential" : undefined,
       });
     }
   }

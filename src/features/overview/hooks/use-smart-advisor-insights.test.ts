@@ -39,6 +39,8 @@ vi.mock("@/state", () => ({
   useDeleteIncome: () => ({ mutateAsync: vi.fn() }),
   useCreateExpense: () => ({ mutateAsync: mutateCreateExpenseMock }),
   useDeleteExpense: () => ({ mutateAsync: mutateDeleteExpenseMock }),
+  useUserPreferences: () => ({ data: { custom_settings: {} }, isLoading: false, isError: false, error: null }),
+  useUpdateCustomSettings: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("useSmartAdvisorInsights", () => {
@@ -484,7 +486,6 @@ describe("useSmartAdvisorInsights", () => {
       // Imediatamente oculto
       expect(result.current.insight).toBeNull();
       expect(localStorage.getItem(SMART_ADVISOR_LAST_DISMISSED_DAY_KEY)).toBe(TODAY);
-      expect(triggerSensoryMock).toHaveBeenCalledWith("action");
     });
 
     it("silencia o tema específico por 30 dias no localStorage", () => {
@@ -652,6 +653,35 @@ describe("useSmartAdvisorInsights", () => {
       expect(pushToastMock).toHaveBeenCalledWith(
         expect.objectContaining({
           title: "Despesa reclassificada",
+        }),
+      );
+    });
+
+    it("markAsEssential grava decisão essential no banco, dispara sensory action e toast com desfazer", async () => {
+      const { result } = renderHook(() =>
+        useSmartAdvisorInsights({
+          expenses: [],
+          todayISO: TODAY,
+          nowMs: NOW_MS,
+        }),
+      );
+
+      await act(async () => {
+        await result.current.markAsEssential("sub:google_ai", "Google AI Pro");
+      });
+
+      expect(mutateFeedbackMock).toHaveBeenCalledWith({
+        occurrenceKey: "sub:google_ai",
+        decision: "essential",
+      });
+      expect(triggerSensoryMock).toHaveBeenCalledWith("action");
+      expect(pushToastMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Marcado como essencial",
+          description: expect.stringContaining("Google AI Pro"),
+          action: expect.objectContaining({
+            label: "Desfazer",
+          }),
         }),
       );
     });

@@ -61,6 +61,7 @@ describe("assistant-memory (F30)", () => {
       expect(MEMORIZED_FEEDBACK_LABELS.one_off).toBe("É pontual");
       expect(MEMORIZED_FEEDBACK_LABELS.not_subscription).toBe("Não é assinatura");
       expect(MEMORIZED_FEEDBACK_LABELS.ignore).toBe("Ignorado");
+      expect(MEMORIZED_FEEDBACK_LABELS.essential).toBe("Considerado essencial");
     });
   });
 });

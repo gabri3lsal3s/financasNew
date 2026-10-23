@@ -218,6 +218,17 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  useUserPreferences: () => ({
+    data: { custom_settings: { primaryCardId: null, cardOrder: [] } },
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
+  useUpdateCustomSettings: () => ({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   usePortfolioSnapshots: () => ({
     data: [],
     isLoading: false,

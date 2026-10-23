@@ -42,7 +42,17 @@ export interface CardForAdvisorContext {
 
 export interface SmartAdvisorAction {
   label: string;
-  kind: "confirm_income" | "open_income" | "confirm_expense" | "register_expense" | "cut_subscription" | "confirm_recurrence" | "ignore_recurrence" | "navigate_aporte" | "dismiss";
+  kind:
+    | "confirm_income"
+    | "open_income"
+    | "confirm_expense"
+    | "register_expense"
+    | "cut_subscription"
+    | "confirm_recurrence"
+    | "ignore_recurrence"
+    | "navigate_aporte"
+    | "dismiss"
+    | "mark_essential";
   payload?: Record<string, unknown>;
 }
 
@@ -502,7 +512,11 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
           cardContext,
         },
       });
-    } else if (occ.tier === "can_cut" || (occ.budgetImpact?.isVampire && occ.tier !== "essential")) {
+    } else if (
+      occ.tier !== "essential" &&
+      feedbackMap[occ.key] !== "essential" &&
+      (occ.tier === "can_cut" || occ.budgetImpact?.isVampire)
+    ) {
       // 3.2 Oportunidade de corte de gasto vampiro
       const annualCents = occ.budgetImpact?.annualCostCents ?? occ.averageCents * 12;
       const cardContext = resolveCardContext(occ.cardId, cards, occ.averageCents, todayISO, allExpenses);
@@ -520,8 +534,9 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
           payload: { key: occ.key, name: occ.name, annualSavingsCents: annualCents },
         },
         secondaryAction: {
-          label: "Dispensar por 30 dias",
-          kind: "dismiss",
+          label: "Manter como essencial",
+          kind: "mark_essential",
+          payload: { key: occ.key, name: occ.name },
         },
         cardContext,
         metadata: {

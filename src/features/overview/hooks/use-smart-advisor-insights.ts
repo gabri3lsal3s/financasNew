@@ -31,6 +31,8 @@ import {
   useFeedback,
   useIncomes,
   useSetFeedback,
+  useUpdateCustomSettings,
+  useUserPreferences,
 } from "@/state";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
@@ -218,6 +220,8 @@ export interface UseSmartAdvisorInsightsResult {
     categoryId: string;
     date?: string;
   }) => Promise<void>;
+  /** Marca expressamente uma despesa recorrente como essencial com sincronização na nuvem e reversibilidade. */
+  markAsEssential: (occurrenceKey: string, displayName?: string) => Promise<void>;
   /** Confirma expressamente despesa fixa em 1 toque com toast de reversão (F27). */
   confirmExpense: (payload: {
     name: string;
@@ -272,6 +276,9 @@ export function useSmartAdvisorInsights(
   const createExpenseMutation = useCreateExpense();
   const deleteExpenseMutation = useDeleteExpense();
 
+  const userPreferencesQuery = useUserPreferences();
+  const updateCustomSettingsMutation = useUpdateCustomSettings();
+
   // Estados locais para injeção em testes (opcional)
   const [localDismissals, setLocalDismissals] = useState<Record<string, number> | undefined>(
     options.initialDismissals,
@@ -280,12 +287,27 @@ export function useSmartAdvisorInsights(
     options.initialLastDismissedDay,
   );
 
+  const cloudDismissals = userPreferencesQuery.data?.custom_settings?.advisorDismissals;
+  const cloudLastDismissedDay = userPreferencesQuery.data?.custom_settings?.advisorLastDismissedDay;
+
   // External store com snapshot do localStorage
   const storeDismissals = useSyncExternalStore(subscribe, getDismissalsSnapshot, () => ({}));
   const storeLastDismissedDay = useSyncExternalStore(subscribe, getLastDismissedDaySnapshot, () => null);
 
-  const effectiveDismissals = localDismissals ?? storeDismissals;
-  const effectiveLastDismissedDay = localLastDismissedDay ?? storeLastDismissedDay;
+  const effectiveDismissals = useMemo(() => {
+    if (localDismissals !== undefined) return localDismissals;
+    if (!cloudDismissals) return storeDismissals;
+    const merged = { ...storeDismissals, ...cloudDismissals };
+    const valid: Record<string, number> = {};
+    for (const [k, v] of Object.entries(merged)) {
+      if (typeof v === "number" && v > nowMs) {
+        valid[k] = v;
+      }
+    }
+    return valid;
+  }, [localDismissals, storeDismissals, cloudDismissals, nowMs]);
+
+  const effectiveLastDismissedDay = localLastDismissedDay ?? cloudLastDismissedDay ?? storeLastDismissedDay;
 
   // Montagem das categorias
   const categories = useMemo(
@@ -431,6 +453,13 @@ export function useSmartAdvisorInsights(
 
   // Candidatos e ranqueamento
   const { allCandidates, eligibleInsights } = useMemo(() => {
+    // Prevenção de condição de corrida e flashes efêmeros (ghost insights):
+    // Não avalia nem emite candidatos com dados parciais enquanto consultas cadastrais,
+    // de feedback ou despesas recentes ainda estão em carregamento inicial.
+    if (queryEnabled && (feedbackQuery.isLoading || categoriesQuery.isLoading || month0Expenses.isLoading)) {
+      return { allCandidates: [], eligibleInsights: [] };
+    }
+
     const recentExpenses = allExpenses.filter((e) => {
       const m = e.date ? e.date.slice(0, 7) : e.month;
       return m >= shiftMonth(refMonth, -3);
@@ -468,6 +497,10 @@ export function useSmartAdvisorInsights(
 
     return { allCandidates: candidates, eligibleInsights: eligible };
   }, [
+    queryEnabled,
+    feedbackQuery.isLoading,
+    categoriesQuery.isLoading,
+    month0Expenses.isLoading,
     allExpenses,
     allIncomes,
     refMonth,
@@ -541,6 +574,13 @@ export function useSmartAdvisorInsights(
             ...memoryDismissals,
             [keyToDismiss]: expiry,
           };
+          updateCustomSettingsMutation.mutate({
+            advisorDismissals: {
+              ...(cloudDismissals ?? {}),
+              ...memoryDismissals,
+            },
+            advisorLastDismissedDay: effectiveDay ?? undefined,
+          });
         }
 
         if (typeof window !== "undefined" && window.localStorage) {
@@ -563,7 +603,16 @@ export function useSmartAdvisorInsights(
 
       setCurrentIndex((prev) => (prev > 0 ? prev - 1 : 0));
     },
-    [todayISOStr, activeInsight?.themeKey, eligibleInsights, localDismissals, localLastDismissedDay, nowMs],
+    [
+      todayISOStr,
+      activeInsight?.themeKey,
+      eligibleInsights,
+      localDismissals,
+      localLastDismissedDay,
+      nowMs,
+      cloudDismissals,
+      updateCustomSettingsMutation,
+    ],
   );
 
   // Confirmação de recorrência (calibração)
@@ -618,6 +667,41 @@ export function useSmartAdvisorInsights(
           description: "Esta despesa não será mais sugerida como recorrente.",
         });
       }
+    },
+    [setFeedbackMutation],
+  );
+
+  // Marcação expressa como essencial (sincronizada na nuvem com feedback de reversão imediata)
+  const markAsEssential = useCallback(
+    async (occurrenceKey: string, displayName?: string) => {
+      await setFeedbackMutation.mutateAsync({
+        occurrenceKey,
+        decision: "essential",
+      });
+
+      triggerSensory("action");
+      const name = displayName ?? "Esta despesa";
+      pushToast({
+        title: "Marcado como essencial",
+        description: `${name} foi classificado como essencial e não será sugerido para corte.`,
+        duration: 5000,
+        variant: "success",
+        action: {
+          label: "Desfazer",
+          onClick: () => {
+            void setFeedbackMutation.mutateAsync({
+              occurrenceKey,
+              decision: null,
+            });
+            triggerSensory("action");
+            pushToast({
+              title: "Decisão desfeita",
+              description: `${name} voltou ao monitoramento regular de sugestões.`,
+              variant: "info",
+            });
+          },
+        },
+      });
     },
     [setFeedbackMutation],
   );
@@ -816,6 +900,7 @@ export function useSmartAdvisorInsights(
     dismiss,
     confirmRecurrence,
     ignoreRecurrence,
+    markAsEssential,
     confirmIncome,
     confirmExpense,
     refetch,

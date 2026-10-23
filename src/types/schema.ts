@@ -54,6 +54,7 @@ export const INSIGHT_DECISIONS = [
   "already_cancelled",
   "one_off",
   "not_subscription",
+  "essential",
 ] as const;
 export type InsightDecision = (typeof INSIGHT_DECISIONS)[number];
 
@@ -253,6 +254,10 @@ export type UserCustomSettings = {
   merchantLearning?: Record<string, unknown>;
   hideDashboardCents?: boolean;
   privacyShieldEnabled?: boolean;
+  primaryCardId?: string | null;
+  cardOrder?: string[];
+  advisorDismissals?: Record<string, number>;
+  advisorLastDismissedDay?: string | null;
 };
 
 export type UserPreferences = {

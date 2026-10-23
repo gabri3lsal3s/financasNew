@@ -321,9 +321,14 @@ export interface DueReminderPayload {
   link?: { path: string; params?: Record<string, string> };
 }
 
+/** Janela máxima em dias para emissão de notificação ativa de conta vencida. */
+export const MAX_OVERDUE_DAYS_FOR_NOTIFICATION = 30;
+
 /**
  * Sincroniza e agenda/emite notificações para faturas e dívidas pendentes.
  * É executada uma vez por dia por usuário ou quando houver nova pendência urgente.
+ * Aplica consolidação anti-flood (notificação agrupada caso haja >= 2 contas)
+ * e corte temporal para contas antigas vencidas há mais de 30 dias.
  */
 export async function syncDueReminderNotifications(
   reminders: readonly DueReminderPayload[],
@@ -345,42 +350,81 @@ export async function syncDueReminderNotifications(
     return 0;
   }
 
-  let count = 0;
-  for (const rem of reminders) {
-    // Filtra apenas contas que vencem hoje, que estão atrasadas ou vencendo nos próximos 3 dias
-    if (rem.status === "due_today" || rem.status === "overdue" || rem.status === "due_soon") {
-      const statusLabel =
-        rem.status === "overdue"
-          ? "Vencida"
-          : rem.status === "due_today"
-            ? "Vence hoje"
-            : `Vence em ${rem.dueDate.slice(8, 10)}/${rem.dueDate.slice(5, 7)}`;
-
-      const reais = (rem.amountCents / 100).toLocaleString("pt-BR", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
-
-      let routeUrl = rem.kind === "bill" ? "/cartoes" : "/dividas";
-      if (rem.link?.params) {
-        const q = new URLSearchParams(rem.link.params).toString();
-        if (q) routeUrl = `${rem.link.path}?${q}`;
-      }
-
-      const title = `${rem.title} — ${statusLabel}`;
-      const body = `Saldo em aberto: R$ ${reais}. Toque para conferir e quitar.`;
-      const tag = `due:${rem.key}:${today}`;
-
-      const sent = await dispatchLocalOrWebNotification({
-        title,
-        body,
-        url: routeUrl,
-        tag,
-        channelId: DUE_REMINDER_CHANNEL_ID,
-      });
-
-      if (sent) count++;
+  // Filtra apenas contas que vencem hoje, nos próximos 3 dias ou atrasadas recentemente (<= 30 dias)
+  const eligible = reminders.filter((rem) => {
+    if (rem.status === "due_today" || rem.status === "due_soon") {
+      return true;
     }
+    if (rem.status === "overdue") {
+      const diffMs = new Date(today).getTime() - new Date(rem.dueDate).getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      return diffDays <= MAX_OVERDUE_DAYS_FOR_NOTIFICATION;
+    }
+    return false;
+  });
+
+  if (eligible.length === 0) {
+    setUserStorageItem(KEY_LAST_DUE_SYNC_DATE, today, userId);
+    return 0;
+  }
+
+  let count = 0;
+
+  // Consolidação anti-flood: se houver 2 ou mais contas pendentes, consolida em 1 notificação elegante
+  if (eligible.length > 1) {
+    const totalCents = eligible.reduce((acc, r) => acc + r.amountCents, 0);
+    const totalReais = (totalCents / 100).toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+    const title = `Áxis · Contas e faturas pendentes (${eligible.length})`;
+    const body = `Você possui ${eligible.length} contas aguardando quitação (total de R$ ${totalReais}). Toque para conferir.`;
+    const tag = `due:summary:${today}`;
+
+    const sent = await dispatchLocalOrWebNotification({
+      title,
+      body,
+      url: "/lembretes",
+      tag,
+      channelId: DUE_REMINDER_CHANNEL_ID,
+    });
+
+    if (sent) count = 1;
+  } else {
+    // Apenas 1 conta pendente: exibe os detalhes específicos da fatura/dívida
+    const rem = eligible[0]!;
+    const statusLabel =
+      rem.status === "overdue"
+        ? "Vencida"
+        : rem.status === "due_today"
+          ? "Vence hoje"
+          : `Vence em ${rem.dueDate.slice(8, 10)}/${rem.dueDate.slice(5, 7)}`;
+
+    const reais = (rem.amountCents / 100).toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+    let routeUrl = rem.kind === "bill" ? "/cartoes" : "/dividas";
+    if (rem.link?.params) {
+      const q = new URLSearchParams(rem.link.params).toString();
+      if (q) routeUrl = `${rem.link.path}?${q}`;
+    }
+
+    const title = `${rem.title} — ${statusLabel}`;
+    const body = `Saldo em aberto: R$ ${reais}. Toque para conferir e quitar.`;
+    const tag = `due:${rem.key}:${today}`;
+
+    const sent = await dispatchLocalOrWebNotification({
+      title,
+      body,
+      url: routeUrl,
+      tag,
+      channelId: DUE_REMINDER_CHANNEL_ID,
+    });
+
+    if (sent) count = 1;
   }
 
   setUserStorageItem(KEY_LAST_DUE_SYNC_DATE, today, userId);

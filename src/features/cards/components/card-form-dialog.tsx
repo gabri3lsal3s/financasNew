@@ -6,8 +6,14 @@ import { bestPurchaseDay, creditCardFormSchema } from "@/domain/cards";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
-import { useCreateCard, useDeleteCard, useUpdateCard } from "@/state";
 import type { CreditCard, CreditCardForm } from "@/types";
+import {
+  useCreateCard,
+  useDeleteCard,
+  useUpdateCard,
+  useUpdateCustomSettings,
+  useUserPreferences,
+} from "@/state";
 
 const QUICK_BRANDS = ["Visa", "Mastercard", "Elo", "Amex"] as const;
 
@@ -39,6 +45,11 @@ interface CardFormContentProps {
 }
 
 function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
+  const userPreferencesQuery = useUserPreferences();
+  const updateCustomSettingsMutation = useUpdateCustomSettings();
+  const primaryCardId = userPreferencesQuery.data?.custom_settings?.primaryCardId ?? null;
+  const currentCardOrder = userPreferencesQuery.data?.custom_settings?.cardOrder ?? [];
+
   const [name, setName] = useState(card?.name ?? "");
   const [brand, setBrand] = useState(card?.brand ?? "");
   const [limitCents, setLimitCents] = useState(
@@ -48,13 +59,18 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
   const [dueDay, setDueDay] = useState(card?.due_day ?? 15);
   const [color, setColor] = useState(card?.color ?? "");
   const [isActive, setIsActive] = useState(card?.is_active ?? true);
+  const [isPrimary, setIsPrimary] = useState(card ? card.id === primaryCardId : false);
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const createCard = useCreateCard();
   const updateCard = useUpdateCard();
   const deleteCard = useDeleteCard();
-  const pending = createCard.isPending || updateCard.isPending || deleteCard.isPending;
+  const pending =
+    createCard.isPending ||
+    updateCard.isPending ||
+    deleteCard.isPending ||
+    updateCustomSettingsMutation.isPending;
 
   const handleSubmit = async () => {
     setError(null);
@@ -74,11 +90,31 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
     }
     const form: CreditCardForm = parsed.data;
     try {
+      let savedCardId = card?.id;
       if (card) {
         await updateCard.mutateAsync({ id: card.id, input: form });
       } else {
-        await createCard.mutateAsync(form);
+        const created = await createCard.mutateAsync(form);
+        savedCardId = created.id;
       }
+
+      if (savedCardId) {
+        if (isPrimary && primaryCardId !== savedCardId) {
+          const newOrder = [
+            savedCardId,
+            ...currentCardOrder.filter((id) => id !== savedCardId),
+          ];
+          await updateCustomSettingsMutation.mutateAsync({
+            primaryCardId: savedCardId,
+            cardOrder: newOrder,
+          });
+        } else if (!isPrimary && primaryCardId === savedCardId) {
+          await updateCustomSettingsMutation.mutateAsync({
+            primaryCardId: null,
+          });
+        }
+      }
+
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -112,6 +148,12 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
     setError(null);
     try {
       await deleteCard.mutateAsync(card.id);
+      if (primaryCardId === card.id || currentCardOrder.includes(card.id)) {
+        await updateCustomSettingsMutation.mutateAsync({
+          primaryCardId: primaryCardId === card.id ? null : primaryCardId,
+          cardOrder: currentCardOrder.filter((id) => id !== card.id),
+        });
+      }
       setDeleteConfirmOpen(false);
       onClose();
       onDeleted?.(card.id);
@@ -181,10 +223,15 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
                 aria-hidden="true"
               />
 
-              {/* Topo do cartão: Contactless + Inativo badge à esquerda, Bandeira à direita */}
+              {/* Topo do cartão: Contactless + Inativo/Principal badge à esquerda, Bandeira à direita */}
               <div className="relative z-10 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Radio className="size-4 rotate-90 text-white/70" aria-label="Aproximação" />
+                  {isPrimary && (
+                    <span className="text-[10px] uppercase font-semibold text-white/95 px-2 py-0.5 rounded-full bg-white/20 border border-white/30 backdrop-blur-xs">
+                      Principal
+                    </span>
+                  )}
                   {!isActive && (
                     <span className="text-[10px] uppercase font-semibold text-amber-200/90 px-2 py-0.5 rounded-full bg-black/45 border border-amber-400/30">
                       Inativo
@@ -355,8 +402,20 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
               </div>
             </div>
 
+            <div className="rounded-lg border border-border/80 bg-surface p-3 flex flex-col gap-1.5 shadow-2xs">
+              <Checkbox
+                checked={isPrimary}
+                onCheckedChange={(checked) => setIsPrimary(Boolean(checked))}
+                label="Definir como cartão principal"
+                id="card-is-primary"
+              />
+              <p className="text-xs text-muted-foreground pl-6">
+                O cartão principal é exibido em primeiro lugar na carteira e abre selecionado por padrão.
+              </p>
+            </div>
+
             {card ? (
-              <div className="pt-1.5 rounded-lg border border-border/80 bg-surface p-3 flex flex-col gap-1.5 shadow-2xs">
+              <div className="rounded-lg border border-border/80 bg-surface p-3 flex flex-col gap-1.5 shadow-2xs">
                 <Checkbox
                   checked={isActive}
                   onCheckedChange={setIsActive}

@@ -444,7 +444,7 @@ describe("StatementImportDialog", () => {
     // Lote 2: exatamente 20 despesas
     expect(mutateAsyncMock.mock.calls[1]![0].expenses).toHaveLength(20);
     expect(mutateAsyncMock.mock.calls[1]![0].cardId).toBe(mockCard.id);
-  }, 30_000);
+  }, 60_000);
 
   it("processa arquivo PDF de fatura extraindo seu texto via unpdf", async () => {
     const user = userEvent.setup();

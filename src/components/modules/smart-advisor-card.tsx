@@ -8,6 +8,7 @@ import {
   ChevronRight,
   CreditCard,
   HelpCircle,
+  ShieldCheck,
   TrendingDown,
   TrendingUp,
   X,
@@ -21,6 +22,8 @@ import { useSmartAdvisorInsights } from "@/features/overview/hooks";
 import type { SmartAdvisorCardContext, SmartAdvisorInsight } from "@/domain/insights/advisor";
 import type { QualifiedDismissReason } from "@/domain/insights/feedback";
 import { QualifiedDismissPopover } from "./qualified-dismiss-popover";
+import { SmartAdvisorCardSkeleton } from "./smart-advisor-card-skeleton";
+import { pushToast } from "@/services/toast";
 
 export interface SmartAdvisorCardProps {
   className?: string;
@@ -86,6 +89,10 @@ export interface SmartAdvisorCardProps {
     forma?: string;
     cardId?: string;
   }) => void | Promise<void>;
+  /**
+   * Callback ao marcar despesa recorrente como essencial (sincronizada na nuvem).
+   */
+  onMarkEssential?: (occurrenceKey: string, displayName?: string) => void | Promise<void>;
 }
 
 /**
@@ -107,6 +114,7 @@ export function SmartAdvisorCard({
   onDismiss,
   onConfirmRecurrence,
   onIgnoreRecurrence,
+  onMarkEssential,
   onConfirmIncome,
   onConfirmExpense,
 }: SmartAdvisorCardProps) {
@@ -126,7 +134,16 @@ export function SmartAdvisorCard({
     controlledCardContext ?? activeInsight?.cardContext ?? activeInsight?.metadata?.cardContext;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!isCurrentMonth || !activeInsight) {
+  if (!isCurrentMonth) {
+    return null;
+  }
+
+  // Estado de carregamento: preserva o espaço visual estável sem layout shift
+  if (controlledInsight === undefined && hook.isLoading) {
+    return <SmartAdvisorCardSkeleton className={className} />;
+  }
+
+  if (!activeInsight) {
     return null;
   }
 
@@ -147,11 +164,17 @@ export function SmartAdvisorCard({
   };
 
   const handleDismiss = () => {
+    const key = activeInsight.themeKey;
     if (onDismiss) {
-      onDismiss(activeInsight.themeKey);
+      onDismiss(key);
     } else {
-      hook.dismiss(activeInsight.themeKey);
+      hook.dismiss(key);
     }
+    pushToast({
+      title: "Sugestão dispensada",
+      description: "Esta recomendação foi pausada e reaparecerá após 30 dias.",
+      variant: "default",
+    });
   };
 
   const handleConfirmIncome = async () => {
@@ -240,17 +263,20 @@ export function SmartAdvisorCard({
     }
   };
 
-  const handleIgnoreSavingsSubscription = async (
-    occurrenceKey: string,
-    reason: QualifiedDismissReason,
-  ) => {
+  const handleMarkEssential = async () => {
+    const payload = (activeInsight.secondaryAction?.payload ??
+      activeInsight.primaryAction?.payload) as { key?: string; name?: string } | undefined;
+    const occurrenceKey =
+      payload?.key ??
+      activeInsight.themeKey.replace(/^(savings:|calib:|price_adj:)/, "");
+    const displayName = payload?.name ?? activeInsight.title;
+
     try {
       setIsSubmitting(true);
-      if (onIgnoreRecurrence) {
-        await onIgnoreRecurrence(occurrenceKey, reason);
+      if (onMarkEssential) {
+        await onMarkEssential(occurrenceKey, displayName);
       } else {
-        await hook.ignoreRecurrence(occurrenceKey, reason);
-        hook.dismiss(activeInsight.themeKey);
+        await hook.markAsEssential(occurrenceKey, displayName);
       }
     } finally {
       setIsSubmitting(false);
@@ -425,20 +451,37 @@ export function SmartAdvisorCard({
             </div>
           )}
 
-          {/* Botão sutil de dispensar por 30 dias */}
-          <Button
-            variant="ghost"
-            size="xs"
-            aria-label="Dispensar por 30 dias"
-            title="Dispensar por 30 dias"
-            sensoryIntent="action"
-            onClick={handleDismiss}
-            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0 gap-1 cursor-pointer"
-          >
-            <X className="size-3.5" aria-hidden="true" />
-            <span className="hidden sm:inline">Dispensar por 30 dias</span>
-            <span className="sr-only sm:hidden">Dispensar por 30 dias</span>
-          </Button>
+          {/* Ação de dispensa ou marcação como essencial sincronizada */}
+          {activeInsight.category === "savings" && activeInsight.primaryAction?.kind === "cut_subscription" ? (
+            <Button
+              variant="ghost"
+              size="xs"
+              aria-label="Manter como essencial"
+              title="Manter como essencial"
+              sensoryIntent="action"
+              onClick={() => void handleMarkEssential()}
+              disabled={isSubmitting}
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0 gap-1 cursor-pointer"
+            >
+              <ShieldCheck className="size-3.5" aria-hidden="true" />
+              <span className="hidden sm:inline">Manter como essencial</span>
+              <span className="sr-only sm:hidden">Manter como essencial</span>
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="xs"
+              aria-label="Dispensar por 30 dias"
+              title="Dispensar por 30 dias"
+              sensoryIntent="action"
+              onClick={handleDismiss}
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0 gap-1 cursor-pointer"
+            >
+              <X className="size-3.5" aria-hidden="true" />
+              <span className="hidden sm:inline">Dispensar por 30 dias</span>
+              <span className="sr-only sm:hidden">Dispensar por 30 dias</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -503,30 +546,17 @@ export function SmartAdvisorCard({
                 <span>{activeInsight.primaryAction.label}</span>
                 <ChevronRight className="size-3.5" aria-hidden="true" />
               </Button>
-              <QualifiedDismissPopover
-                occurrenceName={
-                  (activeInsight.primaryAction?.payload?.name as string | undefined) ??
-                  activeInsight.title
-                }
-                averageCents={activeInsight.metadata?.valueCents}
-                onSelectReason={(reason) => {
-                  const key =
-                    (activeInsight.primaryAction?.payload?.key as string | undefined) ??
-                    activeInsight.themeKey.replace(/^(savings:|price_adj:)/, "");
-                  void handleIgnoreSavingsSubscription(key, reason);
-                }}
+              <Button
+                size="sm"
+                variant="ghost"
+                sensoryIntent="action"
+                onClick={handleDismiss}
+                disabled={isSubmitting}
+                className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer"
               >
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  sensoryIntent="action"
-                  disabled={isSubmitting}
-                  className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer"
-                >
-                  <X className="size-3.5" aria-hidden="true" />
-                  <span>Dispensar</span>
-                </Button>
-              </QualifiedDismissPopover>
+                <X className="size-3.5" aria-hidden="true" />
+                <span>Dispensar</span>
+              </Button>
             </>
           ) : activeInsight.primaryAction?.kind === "confirm_expense" ? (
             <Button

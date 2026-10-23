@@ -1,7 +1,7 @@
 # PLANO DE IMPLEMENTAÇÃO — ECOSSISTEMA DE CAPTURA INTELIGENTE, MOTOR SEMÂNTICO & ASSISTENTE PROATIVO
 
 > **Documento Canônico de Arquitetura e Engenharia**  
-> **Status:** Revisão Final Aprovada e Blindada (Pronto para Execução)  
+> **Status:** Fases 1 a 9 Concluídas com Sucesso · Fase 10 Pronta para Execução pelo Desenvolvedor  
 > **Módulos Afetados:** `android/`, `src/domain/notifications/`, `src/domain/insights/`, `src/features/transactions/wizard/`, `src/features/overview/`, `src/features/landing/`, `src/components/modules/`, `docs/`  
 > **Governança:** Custo Zero de Infraestrutura (Google ML Kit Thin on-device) · Zero Inchaço de APK (<800 KB) · Zero Emojis · TypeScript Estrito · Commit por Tarefa e Push por Fase  
 > **Data:** Outubro de 2026 · **Ambiente:** Android Nativo (Capacitor) & Web PWA  
@@ -69,14 +69,15 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 | **F32**| Ação "Adicionar Rápido" trazendo o app para 1º plano e exigindo biometria | Ação rápida despachada via `PendingIntent.getBroadcast` para `BankNotificationActionReceiver`. O broadcast executa 100% silencioso em segundo plano gravando no buffer nativo/banco, sem invocar `startActivity`. Abertura do app reservada exclusivamente ao botão `[Conferir e Salvar]`. |
 | **F33**| Distorção semântica da descrição ("no valor de" como favorecido/pagador do Pix) | Parser semântico dedicado de Pix com suporte a nomes completos compostos e máscaras de CPF/CNPJ, higienização de pontuação e expansão da blacklist `IGNORED_MERCHANT_TOKENS` com expressões de valor monetário (`"no valor de"`, `"valor de"`, etc.). |
 | **F34**| Ausência de feedback transparente pós-cadastro em 2º plano e falta de botão "Desfazer" | O `BankNotificationActionReceiver` substitui a notificação original por uma notificação rica e informativa exibindo o valor, o nome real e a categoria atribuída, com botão `[Desfazer]` (cancelamento atômico sem abrir o app) e `[Conferir]` (deep link direto na transação). |
+| **F35**| Falsos positivos por notificações publicitárias ou educativas de bancos (ex.: Nubank "ganhe fôlego fazendo Pix... saiba mais") | Funil de classificação com 4 filtros estritos no Java e no TypeScript: (1) banco monitorado, (2) quantia monetária formatada obrigatória (`extractAmountText != null`), (3) blacklist semântica de termos publicitários ("saiba mais", "ganhe fôlego", "conheça", "empréstimo"), e (4) exigência de verbos de fato consumado ("compra aprovada", "pix recebido"), descartando verbos no gerúndio ou sugestivos. |
 
 ---
 
-## 3. ROTEIRO DE EXECUÇÃO DETALHADO EM 9 FASES
+## 3. ROTEIRO DE EXECUÇÃO DETALHADO EM 10 FASES
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                  FLUXO DE EXECUÇÃO EM 9 FASES MODULARES & INTEGRADAS                                  │
+│                                 FLUXO DE EXECUÇÃO EM 10 FASES MODULARES & INTEGRADAS                                  │
 └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
                                                            │
     ┌───────────────────┬───────────────────────────┬──────┴────────────────────┬───────────────────┬───────────────────┐
@@ -91,14 +92,14 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
                                                                                                                         │
                                                     ┌───────────────────────────────────┬───────────────────────────────┘
                                                     │                                   │
-                                                    ├───────────────────┐               ▼
-                                                    ▼                   ▼            [FASE 9]
-                                                 [FASE 7]            [FASE 8]        Notificações 100% Background,
-                                                 Motor de Insights   SmartAdvisor    Deduplicação & Feedback
-                                                 Aprimorado          Evoluído        com Desfazer
-                                                    │                   │               │
-                                                    ▼                   ▼               ▼
-                                                [Quality Gate 7]    [Quality Gate 8] [Quality Gate 9]
+                                                    ├───────────────────┐               ├───────────────────┐
+                                                    ▼                   ▼               ▼                   ▼
+                                                 [FASE 7]            [FASE 8]        [FASE 9]            [FASE 10]
+                                                 Motor de Insights   SmartAdvisor    Notificações 100%   Classificação Cirúrgica,
+                                                 Aprimorado          Evoluído        Background & Desfaz Anti-Marketing & Precisão
+                                                    │                   │               │                   │
+                                                    ▼                   ▼               ▼                   ▼
+                                                [Quality Gate 7]    [Quality Gate 8] [Quality Gate 9]    [Quality Gate 10]
 ```
 
 ---
@@ -673,11 +674,263 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 
 ---
 
+### FASE 10: MOTOR DE CLASSIFICAÇÃO CIRÚRGICA DE TRANSAÇÕES & FILTRO ANTI-MARKETING BANCÁRIO
+
+> **Objetivo:** Erradicar 100% dos falsos positivos gerados por notificações publicitárias, institucionais, dicas e ofertas de crédito de bancos (como o caso do Nubank com *"ganhe fôlego fazendo Pix... saiba mais"*), estabelecendo um funil cirúrgico de 4 filtros consecutivos no Android nativo (`BankNotificationListenerService`) e no TypeScript (`bank-parser.ts`): (1) pacote de banco monitorado, (2) quantia monetária formatada obrigatória (`extractAmountText != null`), (3) blacklist semântica de termos de marketing, call-to-action e produtos, e (4) exigência de verbos de fato consumado (passado/particípio), garantindo que apenas transações reais com valor sejam notificadas para "Adicionar Rápido" (em 2º plano) ou "Conferir e Salvar" (abrindo o wizard pré-preenchido).
+
+#### 1. Diagnóstico Técnico & Causa Raiz do Falso Positivo:
+1. **Evidência do Incidente Real (Dispositivo Físico):**
+   - *Emissor:* Nubank (`com.nu.production`).
+   - *Título:* `"Flexibilidade que só o Nu tem"`
+   - *Texto:* `"Com o Nu, você ganha fôlego no final do mês fazendo Pix e pagando boletos com o cartão de crédito. Saiba mais."`
+   - *Comportamento Indevido:* O aplicativo interpretou a presença da palavra "Pix" como uma movimentação e disparou a notificação `"Transação detectada"` com botões `[Adicionar Rápido]` e `[Conferir e Salvar]`, porém sem valor associado e abrindo o wizard rápido vazio.
+2. **Causa Raiz no Código:**
+   - Em `BankNotificationListenerService.java`, a função `hasFinancialSignal` continha `"pix"` solto em sua lista de termos, casando com `"fazendo Pix"`.
+   - Inexistência de trava de valor monetário antes da postagem do push: o serviço postava `postInteractivePush` mesmo quando `extractAmountText(title, text)` retornava `null`.
+   - Ausência de blacklist nativa de expressões de marketing (`"saiba mais"`, `"ganhe fôlego"`) no Java.
+
+---
+
+#### 2. Arquitetura de Classificação em 4 Camadas (Funil Estrito):
+
+```
+                      NOTIFICAÇÃO PUSH DO BANCO
+                                  │
+                                  ▼
+      [CAMADA 1] Verificação de Pacote de Banco Monitorado
+                 (Nubank, Inter, BTG, Itaú, Bradesco, Santander, etc.)
+                                  │
+                                  ▼
+      [CAMADA 2] Exigência Inegociável de Valor Monetário
+                 (R$ XX,XX ou US$ XX.XX obrigatório)
+                 ❌ Sem valor? ➔ DESCARTE IMEDIATO EM 0ms
+                                  │
+                                  ▼
+      [CAMADA 3] Blacklist Semântica Anti-Marketing & Produtos
+                 (Descarta "saiba mais", "ganhe fôlego", "empréstimo", etc.)
+                 ❌ Termo promocional? ➔ DESCARTE IMEDIATO
+                                  │
+                                  ▼
+      [CAMADA 4] Verificação de Verbos de Fato Consumado
+                 ("compra aprovada", "pix recebido", "transferência enviada", etc.)
+                 ❌ Verbo no gerúndio/sugestivo? ➔ DESCARTE IMEDIATO
+                                  │
+                                  ▼
+                 TRANSAÇÃO REALMENTE CONFIRMADA
+                                  │
+          ┌───────────────────────┴───────────────────────┐
+          ▼                                               ▼
+ [Adicionar Rápido]                              [Conferir e Salvar]
+ ➔ Salva silencioso em 2º plano                  ➔ Abre o app com biometria
+ ➔ Feedback rico com botão [Desfazer]            ➔ Wizard rápido já preenchido
+```
+
+---
+
+#### 3. Roteiro Passo a Passo de Implementação da Fase 10:
+
+- [ ] **Tarefa 10.1 — Trava Obrigatória de Valor Monetário no Serviço Nativo Android (F35):**
+  - **Arquivo-Alvo:** `android/app/src/main/java/com/guiafinanceiro/app/BankNotificationListenerService.java`
+  - **Onde Alterar:** No método `onNotificationPosted(StatusBarNotification sbn)`, logo após a extração de `title` e `text`:
+    ```java
+    String title = titleChar != null ? titleChar.toString().trim() : "";
+    String text = textChar != null ? textChar.toString().trim() : "";
+
+    // TRAVA 1: Exigência inegociável de quantia monetária formatada.
+    // Transações financeiras sem valor não existem no mundo real.
+    // Descarta instantaneamente ~95% dos anúncios, dicas e alertas institucionais.
+    String amountFormatted = extractAmountText(title, text);
+    if (amountFormatted == null) {
+        return;
+    }
+    ```
+  - **Benefício:** Elimina sumariamente qualquer push que não contenha `R$ XX,XX`, `US$ XX.XX` ou formato monetário equivalente.
+  - *Teste & Verificação:* Simular notificação do Nubank com texto promocional sem valor; comprovar via logs do Logcat que o método finaliza imediatamente no `return`.
+  - *Commit Sugerido:* `fix(android): exigir valor monetario obrigatorio para emissao de notificacao de transacao`
+
+- [ ] **Tarefa 10.2 — Blacklist Semântica Nativa de Marketing & Produtos Bancários:**
+  - **Arquivo-Alvo:** `android/app/src/main/java/com/guiafinanceiro/app/BankNotificationListenerService.java`
+  - **Constante Pattern:** Adicionar como membro estático da classe para compilação única:
+    ```java
+    private static final Pattern BLACKLIST_MARKETING_PATTERN = Pattern.compile(
+        "(?i)\\b(?:" +
+        "saiba\\s+mais|clique\\s+aqui|conhe[çc]a|confira|aproveite|ganhe\\s+f[ôo]lego|" +
+        "dica(?:\\s+do)?|novidade|descubra|experimente|empr[ée]stimo|cr[ée]dito\\s+pr[ée]-aprovado|" +
+        "limite\\s+(?:dispon[íi]vel|aprovado|aumentou|liberado|especial)|aumento\\s+de\\s+limite|" +
+        "novo\\s+limite|dinheiro\\s+extra|seguro(?:\\s+de)?|open\\s+finance|portabilidade|" +
+        "traga\\s+seu\\s+sal[áa]rio|indique\\s+um\\s+amigo|cashback|acumule\\s+pontos|shopping|" +
+        "pontos\\s+do\\s+cart[ãa]o|fatura\\s+(?:fechou|fechada|abriu|aberta)|resumo\\s+d[aeo]\\s+fatura|" +
+        "pague\\s+o\\s+valor\\s+m[íi]nimo|n[ãa]o\\s+foi\\s+autorizad[ao]|compra\\s+negada|" +
+        "saldo\\s+insuficiente|cart[ãa]o\\s+bloqueado|token|c[óo]digo\\s+de\\s+seguran[çc]a" +
+        ")\\b"
+    );
+    ```
+  - **Método Auxiliar:**
+    ```java
+    static boolean isBlacklistedNotification(String text, String title) {
+        String combined = (title != null ? title : "") + " " + (text != null ? text : "");
+        return BLACKLIST_MARKETING_PATTERN.matcher(combined).find();
+    }
+    ```
+  - **Integração no `onNotificationPosted`:**
+    ```java
+    // TRAVA 2: Blacklist Semântica Anti-Marketing e Ofertas
+    if (isBlacklistedNotification(text, title)) {
+        return;
+    }
+    ```
+  - *Teste & Verificação:* Simular notificação bancária com menção a empréstimo ("Você tem R$ 5.000 pré-aprovados") e certificar que a blacklist bloqueia mesmo contendo valor monetário.
+  - *Commit Sugerido:* `feat(android): implementar blacklist semantica nativa anti-marketing bancario`
+
+- [ ] **Tarefa 10.3 — Validação Positiva de Verbos de Fato Consumado vs. Linguagem Sugestiva:**
+  - **Arquivo-Alvo:** `android/app/src/main/java/com/guiafinanceiro/app/BankNotificationListenerService.java`
+  - **Substituição de `hasFinancialSignal`:**
+    ```java
+    static boolean hasFinancialSignal(String text, String title) {
+        if (text == null) text = "";
+        if (title == null) title = "";
+
+        String combined = (title + " " + text).toLowerCase();
+
+        // 1. Rejeição imediata de construções no gerúndio ou tom instrutivo
+        if (combined.contains("fazendo pix") || combined.contains("pagando boleto") ||
+            combined.contains("pague com cart") || combined.contains("faça pix no cr") ||
+            combined.contains("faca pix no cr") || combined.contains("invista a partir")) {
+            return false;
+        }
+
+        // 2. Verbos e termos de fato consumado (movimentações financeiras reais efetivadas)
+        String[] executedSignals = new String[] {
+            "compra aprovada", "compra realizada", "compra de r$",
+            "você recebeu", "voce recebeu", "recebido", "recebida", "recebimento",
+            "você enviou", "voce enviou", "enviou um pix", "pix enviado", "pix de r$", "pix para",
+            "pago com sucesso", "pagamento realizado", "pagamento efetuado", "pagamento aprovado",
+            "boleto pago", "transferência recebida", "transferencia recebida",
+            "transferência enviada", "transferencia enviada", "transferência realizada", "transferencia realizada",
+            "depósito recebido", "deposito recebido", "crédito em conta", "credito em conta",
+            "ordem executada", "dividendo", "dividendos", "rendimento", "rendimentos"
+        };
+
+        for (String signal : executedSignals) {
+            if (combined.contains(signal)) {
+                return true;
+            }
+        }
+
+        // 3. Validação combinada de quantia monetária explícita com canal financeiro concreto
+        if (combined.contains("r$") || combined.contains("us$") || combined.contains("usd")) {
+            String[] channelSignals = new String[] {
+                "compra", "pix", "cartão", "cartao", "transferência", "transferencia",
+                "boleto", "ted", "doc", "debito", "débito", "crédito", "credito"
+            };
+            for (String cs : channelSignals) {
+                if (combined.contains(cs)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+    ```
+  - *Teste & Verificação:* Teste com string `"fazendo Pix e pagando boletos"` retornando estritamente `false`.
+  - *Commit Sugerido:* `fix(domain/notifications): validar verbos de fato consumado e descartar gerundios promocionais`
+
+- [ ] **Tarefa 10.4 — Espelhamento de Filtros no Domínio TypeScript & Testes com Fixtures Reais:**
+  - **Arquivo-Alvo 1:** `src/domain/notifications/bank-parser.ts`
+    - Adicionar ao array `BLACKLIST_EXPRESSIONS`:
+      ```typescript
+      // Chamadas comerciais, dicas e incentivos
+      /\bsaiba\s+mais\b/i,
+      /\bganhe\s+f[ôo]lego\b/i,
+      /\bfazendo\s+pix\b/i,
+      /\bpagando\s+boletos?\b/i,
+      /\bfa[çc]a\s+pix\s+no\s+cr[ée]dito\b/i,
+      /\bpague\s+com\s+cart[ãa]o\b/i,
+      /\bconhe[çc]a\b/i,
+      /\bportabilidade\b/i,
+      /\btraga\s+seu\s+sal[áa]rio\b/i,
+      /\bopen\s+finance\b/i,
+      /\bseguro\s+celular\b/i,
+      /\bdica\s+do\b/i,
+      ```
+  - **Arquivo-Alvo 2:** `src/domain/notifications/bank-parser.test.ts`
+    - Adicionar suíte de testes com fixtures reais:
+      ```typescript
+      describe("Filtro Anti-Marketing Bancario (Fase 10)", () => {
+        it("deve descartar notificacao promocional educativa do Nubank (print real)", () => {
+          const payload = {
+            title: "Flexibilidade que só o Nu tem",
+            text: "Com o Nu, você ganha fôlego no final do mês fazendo Pix e pagando boletos com o cartão de crédito. Saiba mais.",
+            packageName: "com.nu.production",
+          };
+          expect(parseBankNotification(payload)).toBeNull();
+        });
+
+        it("deve descartar ofertas de emprestimo com quantia monetaria", () => {
+          const payload = {
+            title: "Nubank",
+            text: "Você tem R$ 5.000,00 de empréstimo pré-aprovado. Simule agora no app.",
+            packageName: "com.nu.production",
+          };
+          expect(parseBankNotification(payload)).toBeNull();
+        });
+
+        it("deve descartar avisos de aumento de limite com quantia monetaria", () => {
+          const payload = {
+            title: "Inter",
+            text: "Aumentamos seu limite para R$ 3.500,00! Aproveite seu novo limite.",
+            packageName: "br.com.intermedium",
+          };
+          expect(parseBankNotification(payload)).toBeNull();
+        });
+      });
+      ```
+  - *Teste & Verificação:* Executar `npx vitest run src/domain/notifications/bank-parser.test.ts` e validar 100% de aprovação.
+  - *Commit Sugerido:* `test(domain/notifications): adicionar fixtures de descarte de marketing real do nubank e outros bancos`
+
+- [ ] **Tarefa 10.5 — Garantia de Fluidez no Fluxo Dual (Adição em 2º Plano vs. Wizard Pré-Preenchido):**
+  - **Componentes Afetados:** `BankNotificationListenerService.java`, `BankNotificationActionReceiver.java`, `MainActivity.java`, `src/features/transactions/wizard/wizard-dialog.tsx`.
+  - **Regras Operacionais:**
+    1. **Adicionar Rápido:**
+       - Disparado exclusivamente por `PendingIntent.getBroadcast` para `BankNotificationActionReceiver`.
+       - Grava em `pendingBackgroundTransactions` de forma assíncrona.
+       - Dispara notificação de confirmação rica no canal `axis_confirmations` com `[Desfazer]` e `[Conferir]`.
+       - O aplicativo permanece fechado (zero abertura de Activity).
+    2. **Conferir e Salvar:**
+       - Disparado exclusivamente por `PendingIntent.getActivity` para `MainActivity`.
+       - Solicita biometria normalmente caso ativada.
+       - Após o desbloqueio, abre o modal `LaunchWizard` no modo rápido com os campos preenchidos:
+         - Valor em centavos;
+         - Descrição/Favorecido sem tokens de valor;
+         - Categoria inferida ou badge discreto para confirmação.
+       - Usuário conclui o lançamento com apenas 1 toque em Salvar.
+  - *Teste & Verificação:* Validação do ciclo completo no emulador ou dispositivo físico via Logcat e ADB.
+  - *Commit Sugerido:* `refactor(native): blindar fluxo dual de adicao silenciosa e abertura de wizard pre-preenchido`
+
+---
+
+#### PORTÃO DE QUALIDADE 10 (Quality Gate 10 / DoD de Classificação Cirúrgica e Zero Falsos Positivos):
+1. Notificações promocionais ou educativas (como o caso do print do Nubank) 100% descartadas em 0ms.
+2. Invariante de valor monetário estritamente aplicada: zero pushes interativos sem quantia monetária.
+3. Ofertas de empréstimos, limites ou faturas que contenham valor monetário filtradas pela blacklist semântica.
+4. Botão "Adicionar Rápido" funciona silenciosamente apenas para transações legítimas.
+5. Botão "Conferir e Salvar" abre o wizard rápido com dados completos para transações legítimas.
+6. Zero emojis em todo o código e mensagens (AGENTS.md §8).
+7. Suíte completa de testes (`npm run test`) 100% verde.
+8. `npm run typecheck` e `npm run lint` sem qualquer advertência ou erro.
+9. **Ação Obrigatória:** Executar `git push origin` e compilar APK release v12.
+
+---
+
 ## 4. MATRIZ DE VERIFICAÇÃO E TESTES FINAIS
 
 | Teste | Critério de Aceitação | Comando / Verificação |
 |---|---|---|
 | **Identificação Passiva de Push** | Notificação de banco homologado é lida em 2º plano e vira sugestão | Teste de notificação simulada em background |
+| **Descarte de Anúncios e Dicas Bancárias** | Notificação educativa do Nubank ("ganhe fôlego... saiba mais") é descartada em 0ms | Teste unitário em `bank-parser.test.ts` |
+| **Invariante de Valor Monetário** | Pushes sem R$ ou US$ nunca geram notificação de "Transação detectada" | Teste nativo e de domínio |
+| **Descarte de Ofertas com Valor** | Oferta de empréstimo ("R$ 5.000 pré-aprovados") é descartada pela blacklist | Teste unitário em `bank-parser.test.ts` |
 | **Deduplicação Nativa de Notificações** | Exatamente 1 notificação do app é exibida para cada push do banco (zero duplicação Java/Capacitor) | Teste de push simulado com app fechado e aberto |
 | **Adição Rápida 100% em Segundo Plano** | Clique em "Adicionar Rápido" cadastra em 2º plano sem abrir tela ou exigir biometria | Inspeção de lifecycle Android e logs ADB |
 | **Notificação de Confirmação e Desfazer** | Notificação pós-cadastro exibe valor, nome e categoria com botão "Desfazer" operacional | Teste de interação de broadcast |

@@ -63,4 +63,28 @@ describe("Sparkline (F8)", () => {
     const { container } = render(<Sparkline data={[1, 2]} />);
     expect(container.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
   });
+
+  it("renderiza path com curva suave (Bézier cúbica) quando smooth=true", () => {
+    const { container } = render(<Sparkline data={[10, 50, 30, 80]} smooth />);
+    const path = container.querySelector("path");
+    expect(path).not.toBeNull();
+    expect(path?.getAttribute("d")).toContain("C");
+  });
+
+  it("renderiza área suave sob a curva quando smooth=true e filled=true", () => {
+    const { container } = render(
+      <Sparkline
+        data={[10, 50, 30, 80]}
+        smooth
+        filled
+        strokeClassName="stroke-positive-strong"
+        fillClassName="fill-positive-strong/15"
+      />,
+    );
+    const paths = container.querySelectorAll("path");
+    expect(paths).toHaveLength(2); // área + linha
+    expect(paths[0]?.getAttribute("class")).toContain("fill-positive-strong/15");
+    expect(paths[1]?.getAttribute("class")).toContain("stroke-positive-strong");
+  });
 });
+

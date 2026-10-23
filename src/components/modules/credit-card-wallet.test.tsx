@@ -151,5 +151,18 @@ describe("CreditCardWallet — Carrossel e Navegação Responsiva", () => {
     const animatedWrapper = container.querySelector(".animate-card-slide-right");
     expect(animatedWrapper).toBeInTheDocument();
   });
+
+  it("exibe badge de Principal no cartão selecionado quando for o cartão principal", () => {
+    render(
+      <CreditCardWallet
+        cards={mockCards}
+        selectedCardId="card-1"
+        primaryCardId="card-1"
+        onSelectCard={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Principal")).toBeInTheDocument();
+  });
 });
 

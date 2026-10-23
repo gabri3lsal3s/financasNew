@@ -1,5 +1,6 @@
 import { useState, useRef, type MouseEvent, type KeyboardEvent } from "react";
 import { Radio } from "lucide-react";
+import { Badge } from "@/components/ui";
 import { formatCentsAsBRL } from "@/services/masks";
 import { bestPurchaseDay, cardLimitUsage } from "@/domain/cards";
 import { NumberTicker } from "@/components/ui/number-ticker";
@@ -9,6 +10,8 @@ import type { CreditCard } from "@/types";
 
 export interface CreditCard3DProps {
   card: CreditCard;
+  /** Se o cartão é o principal da carteira. */
+  isPrimary?: boolean;
   /** Valor nominal total / bruto utilizado na fatura em centavos. */
   usedLimitCents?: number;
   /** Valor ponderado com pesos de relatório em centavos. */
@@ -139,6 +142,7 @@ export function CardBrandBadge({ brand, name }: { brand?: string | null; name: s
  */
 export function CreditCard3D({
   card,
+  isPrimary = false,
   usedLimitCents = 0,
   usedLimitPonderadoCents,
   isSelected = false,
@@ -230,6 +234,15 @@ export function CreditCard3D({
             <span className="text-sm sm:text-base md:text-lg font-semibold tracking-tight text-white drop-shadow-sm truncate max-w-[180px] sm:max-w-[220px]">
               {card.name}
             </span>
+            {isPrimary && (
+              <Badge
+                size="xs"
+                variant="muted"
+                className="bg-white/20 text-white border border-white/30 backdrop-blur-xs font-semibold shrink-0"
+              >
+                Principal
+              </Badge>
+            )}
             {!card.is_active && (
               <span className="text-[10px] uppercase font-medium text-amber-300/90 px-1.5 py-0.5 rounded-full bg-black/40 border border-amber-400/30 shrink-0">
                 Inativo

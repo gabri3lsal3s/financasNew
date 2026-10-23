@@ -15,6 +15,8 @@ export interface CardLimitUsageEntry {
 export interface CreditCardWalletProps {
   cards: CreditCard[];
   selectedCardId: string | null;
+  /** ID do cartão principal configurado pelo usuário. */
+  primaryCardId?: string | null;
   onSelectCard: (id: string) => void;
   onEditCard?: (card: CreditCard) => void;
   onNewCard?: () => void;
@@ -34,6 +36,7 @@ export interface CreditCardWalletProps {
 export function CreditCardWallet({
   cards,
   selectedCardId,
+  primaryCardId,
   onSelectCard,
   onEditCard,
   onNewCard,
@@ -190,6 +193,7 @@ export function CreditCardWallet({
             >
               <CreditCard3D
                 card={currentCard}
+                isPrimary={currentCard.id === primaryCardId}
                 usedLimitCents={usedLimitCents}
                 usedLimitPonderadoCents={usedLimitPonderadoCents}
                 competenceMonth={competenceMonth}

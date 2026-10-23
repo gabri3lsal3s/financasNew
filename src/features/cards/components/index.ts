@@ -1,3 +1,4 @@
+export { BatchInvoicePaymentDialog } from "./batch-invoice-payment-dialog";
 export { BillRefinanceDialog } from "./bill-refinance-dialog";
 export { CardFormDialog } from "./card-form-dialog";
 export { PaymentDialog } from "./payment-dialog";

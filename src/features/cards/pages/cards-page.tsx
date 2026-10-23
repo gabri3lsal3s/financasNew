@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { Download, FileUp, Plus, Printer, Repeat, Trash2, Undo2, WalletCards, Zap } from "lucide-react";
+import { CheckCircle2, Clock, Download, FileUp, Plus, Printer, Repeat, Trash2, Undo2, WalletCards, Zap } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, MoneyText, Skeleton } from "@/components/ui";
 
 
@@ -23,6 +23,7 @@ import {
   invoiceStatus,
   partitionInvoiceExpenses,
   shiftMonth,
+  sortCardsByPreference,
 } from "@/domain/cards";
 import { resolveBillCompetence } from "@/domain/competence";
 import { currentMonth, monthLabel } from "@/lib/date";
@@ -50,9 +51,11 @@ import {
   usePermission,
   useSetFeedback,
   useUpdateCard,
+  useUserPreferences,
 } from "@/state";
 import { CardFormDialog } from "@/features/cards/components/card-form-dialog";
 import { PaymentDialog } from "@/features/cards/components/payment-dialog";
+import { BatchInvoicePaymentDialog } from "@/features/cards/components/batch-invoice-payment-dialog";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import type { CardPayment, CreditCard, Expense } from "@/types";
 
@@ -83,7 +86,18 @@ export function CardsPage() {
   const setFeedbackMutation = useSetFeedback();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const cards = useMemo(() => cardsQuery.data ?? [], [cardsQuery.data]);
+  const userPreferencesQuery = useUserPreferences();
+  const primaryCardId = userPreferencesQuery.data?.custom_settings?.primaryCardId ?? null;
+  const cardOrder = useMemo(
+    () => userPreferencesQuery.data?.custom_settings?.cardOrder ?? [],
+    [userPreferencesQuery.data?.custom_settings?.cardOrder],
+  );
+
+  const rawCards = useMemo(() => cardsQuery.data ?? [], [cardsQuery.data]);
+  const cards = useMemo(
+    () => sortCardsByPreference(rawCards, { primaryCardId, cardOrder }),
+    [rawCards, primaryCardId, cardOrder],
+  );
 
   // Destaque do cartão via ?q= (um-shot — limpo pelo hook); seleção via
   // ?card= (derivada) ou escolha manual (limpa o param). Sem setState em effect.
@@ -91,9 +105,18 @@ export function CardsPage() {
   const paramCard = searchParams.get("card");
   const paramMonth = searchParams.get("month");
 
-  // Derivação pura: prioriza o cartão e fatura em aberto com vencimento mais próximo
+  // Derivação pura: prioriza o cartão principal (se configurado) ou fatura em aberto com vencimento mais próximo
   const prioritySelection = useMemo(() => {
     if (cards.length === 0) return { cardId: null, month: null };
+
+    // Se o usuário tiver um cartão principal configurado e ativo, prioriza esse cartão para exibição consistente
+    if (primaryCardId) {
+      const activePrimary = cards.find((c) => c.id === primaryCardId && c.is_active);
+      if (activePrimary) {
+        return { cardId: activePrimary.id, month: null };
+      }
+    }
+
     const allExpenses = allCardExpensesQuery.data ?? [];
     const allPayments = allCardPaymentsQuery.data ?? [];
 
@@ -140,7 +163,7 @@ export function CardsPage() {
 
     const fallbackCard = sortedByDue[0] ?? cards[0];
     return { cardId: fallbackCard?.id ?? null, month: null };
-  }, [cards, allCardExpensesQuery.data, allCardPaymentsQuery.data]);
+  }, [cards, primaryCardId, allCardExpensesQuery.data, allCardPaymentsQuery.data]);
 
   const [pickedCardId, setPickedCardId] = useState<string | null>(null);
   const selectedCardId = paramCard ?? pickedCardId ?? prioritySelection.cardId;
@@ -155,6 +178,7 @@ export function CardsPage() {
   const [paymentMode, setPaymentMode] = useState<PaymentMode>(null);
   const [printOpen, setPrintOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [batchPaymentOpen, setBatchPaymentOpen] = useState(false);
 
   const selectedCard =
     cards.find((card) => card.id === selectedCardId) ?? (selectedCardId ? undefined : cards[0]) ?? null;
@@ -183,6 +207,11 @@ export function CardsPage() {
     (pickedCardId === null && !paramCard && prioritySelection.month ? prioritySelection.month : null) ??
     (summaries.length > 0 ? autoSelectBillMonth(summaries) : currentMonth());
   const summary = summaries.find((s) => s.month === effectiveMonth);
+
+  // Faturas anteriores à competência atual que permanecem com saldo em aberto
+  const previousUnpaidSummaries = useMemo(() => {
+    return summaries.filter((s) => s.month < effectiveMonth && s.saldoCents > 0);
+  }, [summaries, effectiveMonth]);
 
   const currMonth = currentMonth();
   const prevMonth = shiftMonth(currMonth, -1);
@@ -534,6 +563,7 @@ export function CardsPage() {
             <CreditCardWallet
               cards={cards}
               selectedCardId={selectedCard?.id ?? null}
+              primaryCardId={primaryCardId}
               onSelectCard={selectCard}
               onEditCard={handleOpenForm}
               onNewCard={() => handleOpenForm(null)}
@@ -702,6 +732,33 @@ export function CardsPage() {
                 )}
               </div>
             ) : null}
+
+            {/* Aviso inteligente de faturas anteriores em aberto */}
+            {selectedCard && previousUnpaidSummaries.length > 0 && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-warning/40 bg-warning/5 text-xs text-foreground">
+                <div className="flex items-center gap-2.5">
+                  <Clock className="size-4 shrink-0 text-warning-strong" aria-hidden="true" />
+                  <span>
+                    Identificamos <strong>{previousUnpaidSummaries.length} fatura(s) anterior(es)</strong> com saldo pendente de{" "}
+                    <MoneyText
+                      cents={previousUnpaidSummaries.reduce((a, b) => a + b.saldoCents, 0)}
+                      tone="default"
+                      className="font-semibold"
+                    />
+                    .
+                  </span>
+                </div>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={() => setBatchPaymentOpen(true)}
+                  className="shrink-0 gap-1.5 self-start sm:self-auto border-warning/50 hover:bg-warning/10"
+                >
+                  <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                  Quitar faturas anteriores
+                </Button>
+              </div>
+            )}
 
             {/* KPIs da fatura com visão dupla (Bruto vs. Ponderado) */}
             <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
@@ -1026,6 +1083,15 @@ export function CardsPage() {
             competenceMonth={effectiveMonth}
           />
         </Suspense>
+      )}
+
+      {selectedCard && previousUnpaidSummaries.length > 0 && (
+        <BatchInvoicePaymentDialog
+          open={batchPaymentOpen}
+          onOpenChange={setBatchPaymentOpen}
+          card={selectedCard}
+          unpaidSummaries={previousUnpaidSummaries}
+        />
       )}
 
       <ExpenseDetailDialog

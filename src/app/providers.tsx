@@ -109,17 +109,17 @@ function DynamicBrandSync() {
 function RemindersNotificationSync() {
   const { user } = useAuth();
   if (!user) return null;
-  return <RemindersNotificationSyncInner />;
+  return <RemindersNotificationSyncInner userId={user.id} />;
 }
 
-function RemindersNotificationSyncInner() {
+function RemindersNotificationSyncInner({ userId }: { userId: string }) {
   const { allItems, preferences } = useReminders();
 
   useEffect(() => {
     if (preferences.enabled && allItems.length > 0) {
-      void syncDueReminderNotifications(allItems);
+      void syncDueReminderNotifications(allItems, userId);
     }
-  }, [preferences.enabled, allItems]);
+  }, [preferences.enabled, allItems, userId]);
 
   return null;
 }

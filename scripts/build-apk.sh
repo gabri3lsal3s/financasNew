@@ -161,9 +161,11 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Assistente Bancario Inteligente com deteccao automatica de comprovantes",
-    "Atualizacao automatizada in-app sem desinstalacao",
-    "Protecao com biometria fisica e privacy shield"
+    "Smart Advisor com fila sequencial de insights e microinteracoes",
+    "Integracao de alertas criticos a Central Global de Notificacoes",
+    "Painel de auditoria e revogacao de memoria do assistente",
+    "Contextualizacao de fatura e limite disponivel no card do assistente",
+    "Deteccao avancada de recorrencias anuais, semanais e parser Pix"
   ]
 }
 EOF

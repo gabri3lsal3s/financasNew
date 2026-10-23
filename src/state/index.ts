@@ -27,6 +27,7 @@ export {
   useUpdateCard,
   useDeleteCard,
   useCreateCardPayment,
+  useBatchCreateCardPayments,
   useCreateRefund,
   useDeleteCardPayment,
   useRefinanceCreditCardBill,

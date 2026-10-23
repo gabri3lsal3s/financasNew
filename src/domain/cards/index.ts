@@ -487,5 +487,55 @@ export function assertRefundCongruence(
   };
 }
 
+export interface CardOrderingOptions {
+  primaryCardId?: string | null;
+  cardOrder?: string[];
+}
+
+/**
+ * Ordena a lista de cartões com base na preferência do usuário:
+ * 1. O cartão indicado em `primaryCardId` é colocado obrigatoriamente na primeira posição (índice 0).
+ * 2. Se houver `cardOrder` (lista de IDs), os demais cartões seguem a ordem especificada.
+ * 3. Cartões não presentes em `cardOrder` (ex.: recém-criados) mantêm a ordem original ao final da lista.
+ * 4. A ordenação é puramente funcional e não muta a lista original.
+ */
+export function sortCardsByPreference<T extends { id: string }>(
+  cards: T[],
+  options?: CardOrderingOptions,
+): T[] {
+  if (!cards || cards.length <= 1) return [...(cards ?? [])];
+
+  const primaryCardId = options?.primaryCardId;
+  const cardOrder = options?.cardOrder ?? [];
+
+  const remainingCards = [...cards];
+
+  let primaryCard: T | null = null;
+  if (primaryCardId) {
+    const pIdx = remainingCards.findIndex((c) => c.id === primaryCardId);
+    if (pIdx !== -1) {
+      primaryCard = remainingCards.splice(pIdx, 1)[0] ?? null;
+    }
+  }
+
+  if (cardOrder.length > 0) {
+    const orderMap = new Map<string, number>();
+    cardOrder.forEach((id, idx) => {
+      orderMap.set(id, idx);
+    });
+
+    remainingCards.sort((a, b) => {
+      const orderA = orderMap.has(a.id) ? orderMap.get(a.id)! : Number.MAX_SAFE_INTEGER;
+      const orderB = orderMap.has(b.id) ? orderMap.get(b.id)! : Number.MAX_SAFE_INTEGER;
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      return 0;
+    });
+  }
+
+  return primaryCard ? [primaryCard, ...remainingCards] : remainingCards;
+}
+
 export * from "./refinancing";
 export * from "./schemas";

@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+import { toMonotoneCubicPath, toAreaPath } from "@/lib/chart-curve";
+import type { ChartPoint } from "@/lib/chart-curve";
 
 export interface SparklineProps {
   /** Série de valores (ex.: totais mensais) — ordenada cronologicamente. */
@@ -13,17 +15,16 @@ export interface SparklineProps {
   filled?: boolean;
   fillClassName?: string;
   className?: string;
+  /** Suaviza as curvas usando spline monótona (default false para polilinha linear, true para curva suave). */
+  smooth?: boolean;
 }
 
 const DEFAULT_STROKE = "stroke-primary";
 const DEFAULT_FILL = "fill-primary/15";
 
-/** Converte a série em pontos SVG (escala automática com folga de 2px).
- *  A escala é sempre ancorada em zero: valores positivos ficam acima da linha base.
- *  Séries zeradas renderizam uma linha horizontal contínua na linha base.
- */
-function toPoints(data: readonly number[], width: number, height: number): string {
-  if (data.length === 0) return "";
+/** Converte a série em pontos SVG ancorados em zero com folga de 2px. */
+function toSparklinePointList(data: readonly number[], width: number, height: number): ChartPoint[] {
+  if (data.length === 0) return [];
   const pointsData = data.length === 1 ? [data[0]!, data[0]!] : data;
 
   const rawMin = Math.min(...pointsData);
@@ -31,16 +32,19 @@ function toPoints(data: readonly number[], width: number, height: number): strin
   // Ancora a escala em zero para que valores positivos não flutuem
   const min = Math.min(0, rawMin);
   const max = Math.max(0, rawMax);
-  // Série constante positiva → coloca linha no topo (máxima visibilidade)
   const range = max - min || 1;
   const step = pointsData.length > 1 ? width / (pointsData.length - 1) : width;
-  return pointsData
-    .map((value, index) => {
-      const x = index * step;
-      const y = height - 2 - ((value - min) / range) * (height - 4);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
+  const baselineY = height - 2;
+
+  return pointsData.map((value, index) => {
+    const x = index * step;
+    const y = baselineY - ((value - min) / range) * (height - 4);
+    return { x, y };
+  });
+}
+
+function toPoints(pointList: readonly ChartPoint[]): string {
+  return pointList.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
 }
 
 /**
@@ -56,12 +60,42 @@ export function Sparkline({
   filled = false,
   fillClassName = DEFAULT_FILL,
   className,
+  smooth = false,
 }: SparklineProps) {
-  const points = toPoints(data, width, height);
+  const pointList = toSparklinePointList(data, width, height);
+  if (pointList.length === 0) return null;
 
-  if (points === "") return null;
-
+  const baselineY = height - 2;
   const hasNonZero = data.some((v) => v !== 0);
+
+  if (smooth) {
+    const smoothPath = toMonotoneCubicPath(pointList, baselineY);
+    const areaPath = filled && hasNonZero ? toAreaPath(pointList, smoothPath, baselineY) : "";
+
+    return (
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="none"
+        aria-hidden="true"
+        className={cn("h-8 w-full", className)}
+      >
+        {filled && hasNonZero && areaPath ? (
+          <path d={areaPath} className={cn("fill-current/15", fillClassName)} />
+        ) : null}
+        <path
+          d={smoothPath}
+          fill="none"
+          vectorEffect="non-scaling-stroke"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={cn("text-current", strokeClassName)}
+        />
+      </svg>
+    );
+  }
+
+  const points = toPoints(pointList);
   const areaPoints = `${points} ${width},${height} 0,${height}`;
 
   return (
@@ -84,3 +118,4 @@ export function Sparkline({
     </svg>
   );
 }
+

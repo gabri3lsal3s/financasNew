@@ -113,6 +113,8 @@ export { AutoRegisteredBanner } from "./auto-registered-banner";
 export type { AutoRegisteredBannerProps } from "./auto-registered-banner";
 export { SmartAdvisorCard } from "./smart-advisor-card";
 export type { SmartAdvisorCardProps } from "./smart-advisor-card";
+export { SmartAdvisorCardSkeleton } from "./smart-advisor-card-skeleton";
+export type { SmartAdvisorCardSkeletonProps } from "./smart-advisor-card-skeleton";
 export { QuickAporteCard } from "./quick-aporte-card";
 export type { QuickAporteCardProps } from "./quick-aporte-card";
 export { QualifiedDismissPopover } from "./qualified-dismiss-popover";

@@ -13,7 +13,7 @@
 
 export type QualifiedDismissReason = "already_cancelled" | "one_off" | "not_subscription";
 
-export type FeedbackDecision = "ignore" | "confirm" | QualifiedDismissReason;
+export type FeedbackDecision = "ignore" | "confirm" | "essential" | QualifiedDismissReason;
 
 export type FeedbackMap = Record<string, FeedbackDecision>;
 
@@ -59,6 +59,13 @@ export function isOccurrenceIgnored(decision?: FeedbackDecision | null): boolean
 }
 
 /**
+ * Avalia se uma decisão de feedback marca a ocorrência explicitamente como essencial.
+ */
+export function isOccurrenceEssential(decision?: FeedbackDecision | null): boolean {
+  return decision === "essential";
+}
+
+/**
  * Retorna o motivo qualificado de descarte associado a uma decisão, se houver.
  */
 export function getDismissReason(decision?: FeedbackDecision | null): QualifiedDismissReason | undefined {
@@ -75,6 +82,7 @@ export function getDismissReason(decision?: FeedbackDecision | null): QualifiedD
 export type FeedbackOccurrenceItem<T> = T & {
   ignored: boolean;
   confirmed: boolean;
+  essential?: boolean;
   dismissReason?: QualifiedDismissReason;
 };
 
@@ -89,6 +97,7 @@ export function applyFeedback<T extends { key: string }>(
       ...occurrence,
       ignored: false,
       confirmed: feedback[occurrence.key] === "confirm",
+      essential: feedback[occurrence.key] === "essential",
       dismissReason: getDismissReason(feedback[occurrence.key]),
     }));
 }
@@ -111,12 +120,14 @@ export function partitionFeedback<T extends { key: string }>(
     const decision = feedback[occurrence.key];
     const isIgnored = isOccurrenceIgnored(decision);
     const isConfirmed = decision === "confirm";
+    const isEssential = decision === "essential";
     const dismissReason = getDismissReason(decision);
 
     const item: FeedbackOccurrenceItem<T> = {
       ...occurrence,
       ignored: isIgnored,
       confirmed: isConfirmed,
+      essential: isEssential,
       dismissReason,
     };
 

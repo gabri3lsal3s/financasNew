@@ -144,4 +144,39 @@ describe("AssistantMemorySection (F30)", () => {
 
     expect(mockRevokeFeedback).toHaveBeenCalledWith("sub:netflix");
   });
+
+  it("renderiza item marcado como essencial e permite reativar monitoramento", async () => {
+    const user = userEvent.setup();
+    const mockRevokeFeedback = vi.fn();
+
+    render(
+      <AssistantMemorySection
+        feedbackMap={{ "sub:google_ai": "essential" }}
+        onRevokeFeedback={mockRevokeFeedback}
+        activeOccurrences={[
+          {
+            key: "sub:google_ai",
+            name: "Google AI Pro",
+            level: "subscription",
+            segment: "cloud_ai",
+            months: ["2026-06", "2026-07", "2026-08"],
+            averageCents: 9700,
+            confidence: 0.99,
+          },
+        ]}
+        dismissals={{}}
+        onRevokeDismissal={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Memória de Aprendizado do Assistente/i }));
+
+    expect(screen.getByText("Google AI Pro")).toBeInTheDocument();
+    expect(screen.getByText("Considerado essencial")).toBeInTheDocument();
+
+    const reactivateBtn = screen.getByRole("button", { name: /Reativar monitoramento de Google AI Pro/i });
+    await user.click(reactivateBtn);
+
+    expect(mockRevokeFeedback).toHaveBeenCalledWith("sub:google_ai");
+  });
 });

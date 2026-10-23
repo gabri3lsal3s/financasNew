@@ -45,6 +45,13 @@ const sparkTone: Record<NonNullable<KpiCardProps["tone"]>, string> = {
   portfolio: "stroke-portfolio",
 };
 
+const sparkFill: Record<NonNullable<KpiCardProps["tone"]>, string> = {
+  default: "fill-primary/12",
+  positive: "fill-positive-strong/12",
+  negative: "fill-negative-strong/12",
+  portfolio: "fill-portfolio/12",
+};
+
 /**
  * Escala tipográfica adaptativa para KPIs monetários (Regra 11 de AGENTS.md):
  * Reduz proporcionalmente o tamanho da fonte em valores de 7+ dígitos (≥ R$ 100.000,00)
@@ -103,11 +110,19 @@ export function KpiCard({ label, value, cents, tone = "default", hint, icon, spa
       <div className="min-w-0">
         {spark && spark.length > 0 ? (
           <div className="mt-1.5" aria-hidden="true">
-            <Sparkline data={spark} height={22} strokeClassName={sparkTone[tone]} />
+            <Sparkline
+              data={spark}
+              height={22}
+              smooth
+              filled
+              strokeClassName={sparkTone[tone]}
+              fillClassName={sparkFill[tone]}
+            />
           </div>
         ) : null}
         {hint ? <div className="mt-1 text-[11px] font-medium leading-tight text-muted-foreground min-w-0">{hint}</div> : null}
       </div>
     </Card>
   );
+
 }

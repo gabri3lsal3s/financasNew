@@ -9,6 +9,7 @@ import {
   invoiceBalance,
   invoiceStatus,
   partitionInvoiceExpenses,
+  sortCardsByPreference,
 } from "./index";
 import { APP_START_DATE } from "@/types";
 
@@ -563,6 +564,58 @@ describe("divideIntoInstallments — conservação estrita de centavos (§3.2.2 
         startDate: "2026-01-01",
       }),
     ).toThrow();
+  });
+});
+
+describe("sortCardsByPreference", () => {
+  const cards = [
+    { id: "c1", name: "Nubank" },
+    { id: "c2", name: "Itaú" },
+    { id: "c3", name: "XP" },
+    { id: "c4", name: "Inter" },
+  ];
+
+  it("retorna cópia idêntica se não houver preferências", () => {
+    const result = sortCardsByPreference(cards);
+    expect(result).toEqual(cards);
+    expect(result).not.toBe(cards);
+  });
+
+  it("coloca o cartão principal no início (índice 0)", () => {
+    const result = sortCardsByPreference(cards, { primaryCardId: "c3" });
+    expect(result.map((c) => c.id)).toEqual(["c3", "c1", "c2", "c4"]);
+  });
+
+  it("ordena conforme cardOrder quando fornecido", () => {
+    const result = sortCardsByPreference(cards, {
+      cardOrder: ["c4", "c3", "c2", "c1"],
+    });
+    expect(result.map((c) => c.id)).toEqual(["c4", "c3", "c2", "c1"]);
+  });
+
+  it("prioriza primaryCardId mesmo se cardOrder indicar outra posição", () => {
+    const result = sortCardsByPreference(cards, {
+      primaryCardId: "c2",
+      cardOrder: ["c4", "c3", "c2", "c1"],
+    });
+    expect(result.map((c) => c.id)).toEqual(["c2", "c4", "c3", "c1"]);
+  });
+
+  it("anexa cartões não incluídos em cardOrder ao final de forma estável", () => {
+    const result = sortCardsByPreference(cards, {
+      cardOrder: ["c3", "c1"],
+    });
+    expect(result.map((c) => c.id)).toEqual(["c3", "c1", "c2", "c4"]);
+  });
+
+  it("ignora primaryCardId inexistente sem estourar erro", () => {
+    const result = sortCardsByPreference(cards, { primaryCardId: "inexistente" });
+    expect(result.map((c) => c.id)).toEqual(["c1", "c2", "c3", "c4"]);
+  });
+
+  it("lida graciosamente com listas vazias ou com 1 único item", () => {
+    expect(sortCardsByPreference([])).toEqual([]);
+    expect(sortCardsByPreference([cards[0]!])).toEqual([cards[0]!]);
   });
 });
 
