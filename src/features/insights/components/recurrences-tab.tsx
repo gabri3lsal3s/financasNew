@@ -205,6 +205,12 @@ export function RecurrencesTab({
           items={activeOccurrences.map((o) => {
             const badges: { label: string; tone?: "default" | "positive" | "negative" | "warning" | "critical" | "muted" }[] = [];
 
+            if (o.cadence === "weekly") {
+              badges.push({ label: "Semanal", tone: "default" });
+            } else if (o.cadence === "annual") {
+              badges.push({ label: "Anual", tone: "default" });
+            }
+
             if (o.cardName) {
               badges.push({ label: o.cardName, tone: "muted" });
             }
@@ -241,12 +247,22 @@ export function RecurrencesTab({
               badges.push({ label: `${o.duplicateChargesThisMonth}x no mês`, tone: "warning" });
             }
 
+            const subtitle =
+              o.cadence === "weekly"
+                ? `Semanal (~4x/mês) · Custo consolidado de ${formatCentsAsBRL(o.monthlyConsolidatedCents ?? o.averageCents)}/mês`
+                : `${RECURRENCE_LEVEL_LABELS[o.level]} · ${o.months.length} mês(es)`;
+
+            const amountCents =
+              o.cadence === "weekly" && o.monthlyConsolidatedCents != null
+                ? o.monthlyConsolidatedCents
+                : o.averageCents;
+
             return {
               key: o.key,
               title: o.name,
-              subtitle: `${RECURRENCE_LEVEL_LABELS[o.level]} · ${o.months.length} mês(es)`,
+              subtitle,
               confidence: o.confidence,
-              amountCents: o.averageCents,
+              amountCents,
               badges,
               icon: <Repeat className="size-4" aria-hidden="true" />,
             };

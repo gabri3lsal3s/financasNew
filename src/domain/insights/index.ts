@@ -91,6 +91,18 @@ export type {
   LearnedBrokerPattern,
   LearnBrokerAportePatternParams,
 } from "./aporte-learning";
+export {
+  detectAnnualCommitments,
+  detectWeeklyCommitments,
+  MONTH_NAMES_FULL_PTBR,
+  DAY_OF_WEEK_LABELS_PTBR,
+} from "./extended-periodicity";
+export type {
+  AnnualCommitment,
+  DetectAnnualCommitmentsOptions,
+  WeeklyCommitment,
+  DetectWeeklyCommitmentsOptions,
+} from "./extended-periodicity";
 
 
 

@@ -115,9 +115,11 @@ describe("InsightsPage (motor de insights §3.7)", () => {
 
     const ignoreButton = screen.getByRole("button", { name: "Ignorar Streaming" });
     await user.click(ignoreButton);
+    const reasonOption = screen.getByText("É despesa pontual");
+    await user.click(reasonOption);
     expect(setFeedbackMock).toHaveBeenCalledWith({
       occurrenceKey: expect.any(String),
-      decision: "ignore",
+      decision: "one_off",
     });
   });
 

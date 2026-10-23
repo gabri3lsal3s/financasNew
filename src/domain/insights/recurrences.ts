@@ -21,6 +21,7 @@ import {
 import { normalizeText, stripTemporalSuffixes } from "./shared";
 import type { FeedbackMap } from "./feedback";
 import { shiftMonth } from "@/domain/cards";
+import { detectWeeklyCommitments } from "./extended-periodicity";
 import type { Expense } from "@/types";
 
 export interface ExpenseLike {
@@ -239,6 +240,10 @@ export interface RecurrenceOccurrence {
   key: string;
   name: string;
   level: RecurrenceKind;
+  /** Cadência temporal da recorrência (padrão mensal; suporta semanal e anual F21). */
+  cadence?: "monthly" | "weekly" | "annual";
+  /** Custo mensal consolidado quando a periodicidade for semanal (F21). */
+  monthlyConsolidatedCents?: number;
   /** Segmento do serviço (streaming, fitness, cloud_ai, etc.). */
   segment?: ServiceSegment;
   /** Ciclo de vida da recorrência: active (recente) ou lapsed (cessada há >= 2 ciclos). */
@@ -251,6 +256,7 @@ export interface RecurrenceOccurrence {
   averageCents: number;
   confidence: number;
   categoryId?: string;
+  categoryName?: string;
   /** Tier de corte quando aplicável. */
   tier?: CutTier;
   /** Economia mensal estimada se cortada (centavos). */
@@ -420,6 +426,8 @@ export function calculateRecurringTotals(
     savingsIfCutCents?: number;
     level?: string;
     lifecycle?: RecurrenceLifecycle;
+    cadence?: "monthly" | "weekly" | "annual";
+    monthlyConsolidatedCents?: number;
   }[],
 ): RecurringTotalsResult {
   let totalRecurringCents = 0;
@@ -430,9 +438,14 @@ export function calculateRecurringTotals(
     if (o.level != null && o.level !== "subscription" && o.level !== "recurring") continue;
     if (o.lifecycle === "lapsed") continue;
 
-    totalRecurringCents += o.averageCents;
+    const effectiveMonthly =
+      o.cadence === "weekly" && o.monthlyConsolidatedCents != null
+        ? o.monthlyConsolidatedCents
+        : o.averageCents;
+
+    totalRecurringCents += effectiveMonthly;
     if (o.tier === "can_cut") {
-      canCutRecurringCents += o.savingsIfCutCents ?? o.averageCents;
+      canCutRecurringCents += o.savingsIfCutCents ?? effectiveMonthly;
     }
   }
 
@@ -771,6 +784,46 @@ export function detectRecurrences(
         paymentMethod: predominantPaymentMethod,
       });
       seen.add(key);
+    }
+  }
+
+  // 3. Detecção e integração de compromissos com cadência semanal (F21)
+  const weeklyCommitments = detectWeeklyCommitments(expenses, {
+    todayISO,
+    feedbackMap: options.feedbackMap,
+  });
+
+  for (const weekly of weeklyCommitments) {
+    const existing = occurrences.find(
+      (o) => normalizeText(o.name) === normalizeText(weekly.name),
+    );
+
+    if (existing) {
+      existing.cadence = "weekly";
+      existing.monthlyConsolidatedCents = weekly.monthlyConsolidatedCents;
+    } else {
+      const months = Array.from(
+        new Set(
+          weekly.expenses
+            .map((e) => e.month || (e.date ? e.date.slice(0, 7) : ""))
+            .filter(Boolean),
+        ),
+      ).sort();
+
+      occurrences.push({
+        key: weekly.key,
+        name: weekly.name,
+        level: "recurring",
+        cadence: "weekly",
+        averageCents: weekly.monthlyConsolidatedCents,
+        monthlyConsolidatedCents: weekly.monthlyConsolidatedCents,
+        confidence: weekly.confidence,
+        categoryId: weekly.categoryId,
+        categoryName: weekly.categoryName,
+        months,
+        expenses: weekly.expenses,
+        lifecycle: weekly.active ? "active" : "lapsed",
+      });
     }
   }
 

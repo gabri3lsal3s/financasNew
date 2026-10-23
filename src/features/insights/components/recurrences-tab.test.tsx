@@ -360,4 +360,36 @@ describe("RecurrencesTab", () => {
     expect(screen.getByText("Conquistada com sucesso")).toBeInTheDocument();
     expect(screen.getByText("R$ 262,80")).toBeInTheDocument();
   });
+
+  it("renderiza compromisso semanal com badge Semanal e custo consolidado no subtítulo (F21)", () => {
+    const weeklyOccurrence: RecurrenceOccurrence = {
+      key: "weekly:terapia",
+      name: "Terapia Semanal",
+      level: "recurring",
+      cadence: "weekly",
+      averageCents: 60000,
+      monthlyConsolidatedCents: 60000,
+      confidence: 0.9,
+      months: ["2026-08", "2026-09"],
+    };
+
+    render(
+      <RecurrencesTab
+        totalRecurringCents={60000}
+        totalAnnualRecurringCents={720000}
+        canCutRecurringCents={0}
+        canCutAnnualCents={0}
+        activeOccurrences={[weeklyOccurrence]}
+        ignoredOccurrences={[]}
+        feedbackMap={{}}
+        showIgnored={false}
+        setShowIgnored={vi.fn()}
+        onFeedback={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Terapia Semanal")).toBeInTheDocument();
+    expect(screen.getByText("Semanal")).toBeInTheDocument();
+    expect(screen.getByText(/Custo consolidado de R\$ 600,00\/mês/)).toBeInTheDocument();
+  });
 });

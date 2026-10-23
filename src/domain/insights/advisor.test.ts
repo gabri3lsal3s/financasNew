@@ -420,6 +420,57 @@ describe("filterAndRankAdvisorInsights", () => {
     expect(result?.id).toBe("dup:celular");
   });
 
+  it("gera insight de prioridade 1 (Crítica) para compromisso anual previsto com até 30 dias de antecedência", () => {
+    const expenses = [
+      {
+        id: "exp-ipva-2025",
+        description: "IPVA SP",
+        date: "2025-01-20",
+        month: "2025-01",
+        valueCents: 185000,
+        categoryId: "cat-impostos",
+      },
+    ];
+
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [],
+      todayISO: "2026-01-05", // faltam 15 dias para 2026-01-20
+      allExpenses: expenses,
+    });
+
+    const annualInsight = insights.find((i) => i.id === "annual:ipva");
+    expect(annualInsight).toBeDefined();
+    expect(annualInsight?.priority).toBe(1);
+    expect(annualInsight?.category).toBe("critical");
+    expect(annualInsight?.title).toBe("Compromisso anual previsto");
+    expect(annualInsight?.description).toBe(
+      "No ano passado você pagou R$ 1.850,00 de IPVA em Janeiro. Deseja provisionar este valor?",
+    );
+    expect(annualInsight?.primaryAction?.label).toBe("Provisionar pagamento");
+  });
+
+  it("gera insight de prioridade 3 (Economia/Conscientização) para compromisso semanal", () => {
+    const expenses = [
+      { id: "t1", description: "Terapia", date: "2026-09-01", month: "2026-09", valueCents: 15000, categoryId: "cat-saude" },
+      { id: "t2", description: "Terapia", date: "2026-09-08", month: "2026-09", valueCents: 15000, categoryId: "cat-saude" },
+      { id: "t3", description: "Terapia", date: "2026-09-15", month: "2026-09", valueCents: 15000, categoryId: "cat-saude" },
+      { id: "t4", description: "Terapia", date: "2026-09-22", month: "2026-09", valueCents: 15000, categoryId: "cat-saude" },
+    ];
+
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [],
+      todayISO: "2026-09-25",
+      allExpenses: expenses,
+    });
+
+    const weeklyInsight = insights.find((i) => i.id === "weekly:terapia");
+    expect(weeklyInsight).toBeDefined();
+    expect(weeklyInsight?.priority).toBe(3);
+    expect(weeklyInsight?.category).toBe("savings");
+    expect(weeklyInsight?.title).toBe("Compromisso semanal: Terapia");
+    expect(weeklyInsight?.description).toContain("600,00 por mês");
+  });
+
   it("retorna null se todos os candidatos estiverem em cooldown", () => {
     const nowMs = 1700000000000;
     const result = filterAndRankAdvisorInsights([insightCrit], {

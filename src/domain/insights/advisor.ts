@@ -11,6 +11,7 @@ import { isOccurrenceIgnored, type FeedbackMap } from "./feedback";
 import type { ExpenseLike, RecurrenceOccurrence, RecurringIncomeOccurrence } from "./recurrences";
 import { formatBRL } from "./recurrences";
 import { learnBrokerAportePattern } from "./aporte-learning";
+import { detectAnnualCommitments, detectWeeklyCommitments } from "./extended-periodicity";
 
 export type SmartAdvisorCategory = "critical" | "income" | "savings" | "calibration";
 
@@ -155,6 +156,49 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
           valueCents: occ.averageCents,
           expectedDate: expectedDue,
           categoryId: occ.categoryId,
+        },
+      });
+    }
+  }
+
+  // 1.3 Compromissos anuais e sazonais frequentes com antecedência de até 30 dias (F21)
+  if (allExpenses.length > 0) {
+    const annualCommitments = detectAnnualCommitments(allExpenses, {
+      todayISO,
+      feedbackMap,
+    });
+
+    for (const commitment of annualCommitments) {
+      if (!commitment.isDueSoon || commitment.isAlreadyPaidThisYear) continue;
+      if (isOccurrenceIgnored(feedbackMap[commitment.key])) continue;
+      if (candidates.some((c) => c.themeKey === commitment.key)) continue;
+
+      candidates.push({
+        id: commitment.key,
+        themeKey: commitment.key,
+        priority: 1,
+        category: "critical",
+        title: "Compromisso anual previsto",
+        description: commitment.alertMessage,
+        iconName: "alert-triangle",
+        primaryAction: {
+          label: "Provisionar pagamento",
+          kind: "register_expense",
+          payload: {
+            name: commitment.name,
+            valueCents: commitment.lastValueCents,
+            date: commitment.projectedDate,
+            categoryId: commitment.categoryId,
+          },
+        },
+        secondaryAction: {
+          label: "Dispensar por 30 dias",
+          kind: "dismiss",
+        },
+        metadata: {
+          valueCents: commitment.lastValueCents,
+          expectedDate: commitment.projectedDate,
+          categoryId: commitment.categoryId,
         },
       });
     }
@@ -333,6 +377,45 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
         metadata: {
           annualSavingsCents: annualCents,
           valueCents: occ.averageCents,
+        },
+      });
+    }
+  }
+
+  // 3.3 Conscientização de compromissos com cadência semanal (F21)
+  if (allExpenses.length > 0) {
+    const weeklyCommitments = detectWeeklyCommitments(allExpenses, {
+      todayISO,
+      feedbackMap,
+    });
+
+    for (const weekly of weeklyCommitments) {
+      if (!weekly.active) continue;
+      if (isOccurrenceIgnored(feedbackMap[weekly.key])) continue;
+      if (feedbackMap[weekly.key] === "confirm") continue;
+      if (candidates.some((c) => c.themeKey === weekly.key)) continue;
+
+      candidates.push({
+        id: weekly.key,
+        themeKey: weekly.key,
+        priority: 3,
+        category: "savings",
+        title: `Compromisso semanal: ${weekly.name}`,
+        description: `Sua despesa semanal com ${weekly.name} (${weekly.dayOfWeekLabel}) totaliza aproximadamente ${formatBRL(weekly.monthlyConsolidatedCents)} por mês.`,
+        iconName: "trending-down",
+        primaryAction: {
+          label: "Ver compromisso",
+          kind: "cut_subscription",
+          payload: { key: weekly.key, name: weekly.name },
+        },
+        secondaryAction: {
+          label: "Dispensar por 30 dias",
+          kind: "dismiss",
+        },
+        metadata: {
+          valueCents: weekly.monthlyConsolidatedCents,
+          annualSavingsCents: weekly.monthlyConsolidatedCents * 12,
+          categoryId: weekly.categoryId,
         },
       });
     }

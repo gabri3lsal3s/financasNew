@@ -758,6 +758,40 @@ describe("domain/insights/recurrences — Detecção Dual de Rendas (Fase 4, Tar
       expect(totals.canCutRecurringCents).toBe(3500);
       expect(totals.canCutAnnualCents).toBe(3500 * 12);
     });
+
+    it("calculateRecurringTotals consolida o custo mensal de compromissos semanais (F21)", () => {
+      const occurrences = [
+        { averageCents: 3500, tier: "can_cut" as const, savingsIfCutCents: 3500, level: "subscription" },
+        {
+          averageCents: 15000, // R$ 150/semana
+          monthlyConsolidatedCents: 60000, // R$ 600/mês
+          cadence: "weekly" as const,
+          level: "recurring",
+        },
+      ];
+
+      const totals = calculateRecurringTotals(occurrences);
+      // 3500 (mensal) + 60000 (mensal consolidado da semanal) = 63500
+      expect(totals.totalRecurringCents).toBe(63500);
+      expect(totals.totalAnnualRecurringCents).toBe(63500 * 12);
+    });
+
+    it("detectRecurrences identifica compromisso semanal e atribui cadence weekly e monthlyConsolidatedCents", () => {
+      const weeklyExpenses = [
+        { id: "t1", description: "Terapia Sessão", date: "2026-09-01", month: "2026-09", valueCents: 15000, categoryId: "c-saude" },
+        { id: "t2", description: "Terapia Sessão", date: "2026-09-08", month: "2026-09", valueCents: 15000, categoryId: "c-saude" },
+        { id: "t3", description: "Terapia Sessão", date: "2026-09-15", month: "2026-09", valueCents: 15000, categoryId: "c-saude" },
+        { id: "t4", description: "Terapia Sessão", date: "2026-09-22", month: "2026-09", valueCents: 15000, categoryId: "c-saude" },
+      ];
+
+      const detected = detectRecurrences(weeklyExpenses, { todayISO: "2026-10-01" });
+      const terapia = detected.find((d) => d.name.toLowerCase().includes("terapia"));
+
+      expect(terapia).toBeDefined();
+      expect(terapia?.cadence).toBe("weekly");
+      expect(terapia?.monthlyConsolidatedCents).toBe(60000);
+      expect(terapia?.averageCents).toBe(60000);
+    });
   });
 
   describe("Sanitização Temporal & Concessionárias Brasileiras (Fase 7 — Tarefa 7.2)", () => {

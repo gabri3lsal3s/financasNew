@@ -486,7 +486,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Teste de interação validando gravação dos motivos e atualização da lista em tempo real.
   - *Commit:* `feat(insights): implementar micro-feedback qualificado no descarte de recorrencias`
 
-- [ ] **Tarefa 7.9 — Detector Estendido de Periodicidade (Anual e Semanal - F21):**
+- [x] **Tarefa 7.9 — Detector Estendido de Periodicidade (Anual e Semanal - F21):**
   - Expandir a janela analítica para identificar compromissos anuais e sazonais frequentes (IPVA, IPTU, Seguro do Carro, Anuidade de Cartão):
     - Alerta preventivo com 30 dias de antecedência: *"No ano passado você pagou R$ X de IPVA em Janeiro. Deseja provisionar este valor?"*.
   - Detectar compromissos com cadência semanal (terapia, diarista, feira) e apresentar o custo mensal consolidado correspondente.

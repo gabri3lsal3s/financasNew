@@ -109,6 +109,37 @@ describe("useSmartAdvisorInsights", () => {
       expect(result.current.insight?.themeKey).toBe("dup:sub:netflix");
     });
 
+    it("Prioridade 1: Exibe alerta preventivo de compromisso anual a 30 dias de antecedência", () => {
+      const expenses: ExpenseLike[] = [
+        // IPVA pago no ano anterior (novembro/2025)
+        {
+          id: "e-ipva-2025",
+          description: "IPVA Honda Civic",
+          valueCents: 250000,
+          month: "2025-11",
+          date: "2025-11-10",
+          categoryId: "cat-impostos",
+        },
+      ];
+
+      const { result } = renderHook(() =>
+        useSmartAdvisorInsights({
+          expenses,
+          incomes: [],
+          todayISO: TODAY, // 2026-10-22 (faltam 19 dias para 2026-11-10)
+          nowMs: NOW_MS,
+        }),
+      );
+
+      expect(result.current.insight).not.toBeNull();
+      expect(result.current.insight?.priority).toBe(1);
+      expect(result.current.insight?.category).toBe("critical");
+      expect(result.current.insight?.title).toBe("Compromisso anual previsto");
+      expect(result.current.insight?.description).toContain("de IPVA em Novembro");
+      expect(result.current.insight?.description).toContain("No ano passado você pagou");
+      expect(result.current.insight?.description).toContain("Deseja provisionar este valor?");
+    });
+
     it("Prioridade 2: Exibe confirmação de renda habitual quando não há anomalia crítica", () => {
       const incomes: IncomeLike[] = [
         {

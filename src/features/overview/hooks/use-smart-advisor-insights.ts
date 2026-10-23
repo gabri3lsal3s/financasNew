@@ -198,6 +198,8 @@ export function useSmartAdvisorInsights(
   const month1Expenses = useExpenses(shiftMonth(refMonth, -1), { enabled: queryEnabled });
   const month2Expenses = useExpenses(shiftMonth(refMonth, -2), { enabled: queryEnabled });
   const month3Expenses = useExpenses(shiftMonth(refMonth, -3), { enabled: queryEnabled });
+  const month11Expenses = useExpenses(shiftMonth(refMonth, -11), { enabled: queryEnabled });
+  const month12Expenses = useExpenses(shiftMonth(refMonth, -12), { enabled: queryEnabled });
 
   const month0Incomes = useIncomes(refMonth, { enabled: queryEnabled });
   const month1Incomes = useIncomes(shiftMonth(refMonth, -1), { enabled: queryEnabled });
@@ -238,18 +240,27 @@ export function useSmartAdvisorInsights(
   const m1ExpData = month1Expenses.data;
   const m2ExpData = month2Expenses.data;
   const m3ExpData = month3Expenses.data;
+  const m11ExpData = month11Expenses.data;
+  const m12ExpData = month12Expenses.data;
 
-  // Montagem das despesas dos últimos 4 meses
+  // Montagem das despesas recentes e históricas para detecção anual (F21)
   const allExpenses = useMemo<readonly ExpenseLike[]>(() => {
     if (options.expenses) return options.expenses;
 
-    const queryDataList = [m0ExpData, m1ExpData, m2ExpData, m3ExpData];
-    return queryDataList.flatMap((data, index) =>
+    const queryDataList = [
+      { data: m0ExpData, month: refMonth },
+      { data: m1ExpData, month: shiftMonth(refMonth, -1) },
+      { data: m2ExpData, month: shiftMonth(refMonth, -2) },
+      { data: m3ExpData, month: shiftMonth(refMonth, -3) },
+      { data: m11ExpData, month: shiftMonth(refMonth, -11) },
+      { data: m12ExpData, month: shiftMonth(refMonth, -12) },
+    ];
+    return queryDataList.flatMap(({ data, month }) =>
       (data ?? []).map((e) => ({
         id: e.id,
         description: e.description,
         date: e.date,
-        month: shiftMonth(refMonth, -index),
+        month: e.date ? e.date.slice(0, 7) : month,
         valueCents: numberToCents(e.value * (e.report_weight ?? 1.0)),
         categoryId: e.category_id,
         categoryName: categoryById.get(e.category_id)?.name ?? null,
@@ -264,6 +275,8 @@ export function useSmartAdvisorInsights(
     m1ExpData,
     m2ExpData,
     m3ExpData,
+    m11ExpData,
+    m12ExpData,
     refMonth,
     categoryById,
   ]);
@@ -354,10 +367,16 @@ export function useSmartAdvisorInsights(
 
   // Candidatos e ranqueamento
   const { allCandidates, eligibleInsights } = useMemo(() => {
-    const occurrences = detectRecurrences(allExpenses, {
+    const recentExpenses = allExpenses.filter((e) => {
+      const m = e.date ? e.date.slice(0, 7) : e.month;
+      return m >= shiftMonth(refMonth, -3);
+    });
+
+    const occurrences = detectRecurrences(recentExpenses, {
       todayISO: todayISOStr,
       monthlyIncomeCents,
       categoryBudgets: categoryBudgetsMap,
+      feedbackMap,
     });
 
     const incomeOccurrences = detectIncomeRecurrences(allIncomes, {
@@ -386,6 +405,7 @@ export function useSmartAdvisorInsights(
   }, [
     allExpenses,
     allIncomes,
+    refMonth,
     todayISOStr,
     monthlyIncomeCents,
     effectiveSurplusCents,
@@ -586,6 +606,8 @@ export function useSmartAdvisorInsights(
       month1Expenses.isLoading ||
       month2Expenses.isLoading ||
       month3Expenses.isLoading ||
+      month11Expenses.isLoading ||
+      month12Expenses.isLoading ||
       month0Incomes.isLoading ||
       month1Incomes.isLoading ||
       month2Incomes.isLoading ||
@@ -600,6 +622,8 @@ export function useSmartAdvisorInsights(
       month1Expenses.isError ||
       month2Expenses.isError ||
       month3Expenses.isError ||
+      month11Expenses.isError ||
+      month12Expenses.isError ||
       month0Incomes.isError ||
       month1Incomes.isError ||
       month2Incomes.isError ||
