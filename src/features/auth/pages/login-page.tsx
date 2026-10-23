@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useLocation } from "react-router";
 import {
@@ -7,12 +7,15 @@ import {
   BarChart3,
   CreditCard,
   Lock,
+  Mail,
 } from "lucide-react";
 import { Alert, Button, Input, PasswordInput, Turnstile } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { BrandLogo } from "@/components/layout";
 import { useAuth, signInWithEmail } from "@/hooks/use-auth";
-import { getErrorMessage } from "@/services/errors";
+import { resendConfirmationEmail } from "@/data/auth";
+import { classifyError, getErrorMessage } from "@/services/errors";
+import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 
 // ---------------------------------------------------------------------------
@@ -109,18 +112,56 @@ export function LoginPage() {
 
   const from = isSettingsOrAuth ? fallbackFrom : rawFrom;
 
-  const [email, setEmail] = useState("");
+  const emailParam = searchParams.get("email");
+
+  const [email, setEmail] = useState(emailParam || "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isEmailUnconfirmed, setIsEmailUnconfirmed] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const [isResending, setIsResending] = useState(false);
   const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   if (!loading && session) {
     return <Navigate to={from} replace />;
   }
 
+  const handleResendConfirmation = async () => {
+    if (!email || cooldown > 0 || isResending) return;
+    setIsResending(true);
+    try {
+      await resendConfirmationEmail(email.trim());
+      triggerSensory("success");
+      pushToast({
+        title: "Link reenviado!",
+        description: `Enviamos um novo link de confirmação para ${email}.`,
+        variant: "success",
+      });
+      setCooldown(60);
+    } catch (err) {
+      triggerSensory("destructive");
+      pushToast({
+        title: "Erro ao reenviar",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    setIsEmailUnconfirmed(false);
     setPending(true);
     try {
       await signInWithEmail(email, password);
@@ -128,7 +169,12 @@ export function LoginPage() {
       // onAuthStateChange atualiza a sessão → o guard/redirect acima conduz.
     } catch (err) {
       triggerSensory("destructive");
-      setError(getErrorMessage(err));
+      const classified = classifyError(err);
+      if (classified.kind === "email-not-confirmed") {
+        setIsEmailUnconfirmed(true);
+      } else {
+        setError(classified.message);
+      }
     } finally {
       setPending(false);
     }
@@ -143,6 +189,38 @@ export function LoginPage() {
       <div className="flex flex-col gap-4">
         {configError ? <Alert variant="error">{configError}</Alert> : null}
         {error ? <Alert variant="error">{error}</Alert> : null}
+
+        {isEmailUnconfirmed ? (
+          <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 space-y-3">
+            <div className="flex items-start gap-2.5">
+              <Mail className="size-4 text-warning-strong mt-0.5 shrink-0" aria-hidden="true" />
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-foreground">
+                  Confirmação de e-mail pendente
+                </p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  O endereço <span className="font-semibold text-foreground">{email}</span> ainda não foi confirmado. Verifique sua caixa de entrada e pasta de spam.
+                </p>
+              </div>
+            </div>
+            <div className="pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleResendConfirmation}
+                disabled={cooldown > 0 || isResending}
+                className="w-full text-xs h-8 rounded-lg"
+              >
+                {isResending
+                  ? "Reenviando…"
+                  : cooldown > 0
+                    ? `Aguarde ${cooldown}s para reenviar`
+                    : "Reenviar link de confirmação"}
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
           <div className="flex flex-col gap-1.5">

@@ -4,6 +4,16 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginPage } from "./login-page";
 import * as authHook from "@/hooks/use-auth";
+import * as authData from "@/data/auth";
+import * as toastModule from "@/services/toast";
+
+vi.mock("@/data/auth", () => ({
+  resendConfirmationEmail: vi.fn(),
+}));
+
+vi.mock("@/services/toast", () => ({
+  pushToast: vi.fn(),
+}));
 
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: vi.fn(),
@@ -33,6 +43,7 @@ describe("LoginPage - Autenticação e Visibilidade de Senha", () => {
       signIn: vi.fn(),
       signUp: vi.fn(),
       resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
     });
   });
 
@@ -87,6 +98,7 @@ describe("LoginPage - Autenticação e Visibilidade de Senha", () => {
       signIn: vi.fn(),
       signUp: vi.fn(),
       resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
     });
 
     const { container } = render(
@@ -110,6 +122,7 @@ describe("LoginPage - Autenticação e Visibilidade de Senha", () => {
       signIn: vi.fn(),
       signUp: vi.fn(),
       resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
     });
 
     const { container } = render(
@@ -120,5 +133,52 @@ describe("LoginPage - Autenticação e Visibilidade de Senha", () => {
 
     expect(screen.queryByLabelText("E-mail")).not.toBeInTheDocument();
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("exibe banner de confirmação pendente quando o login falha por e-mail não confirmado", async () => {
+    const user = userEvent.setup();
+    vi.mocked(authHook.signInWithEmail).mockRejectedValueOnce({
+      message: "Email not confirmed",
+      code: "email_not_confirmed",
+    });
+
+    renderLoginPage();
+
+    await user.type(screen.getByLabelText("E-mail"), "pendente@exemplo.com");
+    await user.type(screen.getByLabelText("Senha"), "MinhaSenha123!");
+
+    const submitBtn = screen.getByRole("button", { name: "Entrar" });
+    await user.click(submitBtn);
+
+    expect(screen.getByText("Confirmação de e-mail pendente")).toBeInTheDocument();
+    expect(screen.getByText("pendente@exemplo.com")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reenviar link de confirmação" })).toBeInTheDocument();
+  });
+
+  it("dispara reenvio e ativa cooldown de 60 segundos ao clicar em reenviar link de confirmação", async () => {
+    const user = userEvent.setup();
+    vi.mocked(authHook.signInWithEmail).mockRejectedValueOnce({
+      message: "Email not confirmed",
+      code: "email_not_confirmed",
+    });
+    vi.mocked(authData.resendConfirmationEmail).mockResolvedValueOnce(undefined);
+
+    renderLoginPage();
+
+    await user.type(screen.getByLabelText("E-mail"), "pendente@exemplo.com");
+    await user.type(screen.getByLabelText("Senha"), "MinhaSenha123!");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+
+    const resendBtn = screen.getByRole("button", { name: "Reenviar link de confirmação" });
+    await user.click(resendBtn);
+
+    expect(authData.resendConfirmationEmail).toHaveBeenCalledWith("pendente@exemplo.com");
+    expect(toastModule.pushToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Link reenviado!",
+      }),
+    );
+
+    expect(screen.getByRole("button", { name: /Aguarde \d+s para reenviar/i })).toBeDisabled();
   });
 });

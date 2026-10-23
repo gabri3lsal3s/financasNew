@@ -52,3 +52,33 @@ export async function ensureOwnProfile(
     throw new AppError(classified.kind, classified.message, preferencesError);
   }
 }
+
+/**
+ * Atualiza o nome do usuário autenticado tanto em auth.users quanto em public.profiles.
+ */
+export async function updateOwnProfile(
+  userId: string,
+  data: { name: string },
+): Promise<void> {
+  const supabase = getSupabase();
+
+  // 1. Atualiza metadados do usuário em auth.users
+  const { error: authError } = await supabase.auth.updateUser({
+    data: { name: data.name },
+  });
+  if (authError) {
+    const classified = classifyError(authError);
+    throw new AppError(classified.kind, classified.message, authError);
+  }
+
+  // 2. Atualiza nome na tabela public.profiles
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ name: data.name })
+    .eq("id", userId);
+
+  if (profileError) {
+    const classified = classifyError(profileError);
+    throw new AppError(classified.kind, classified.message, profileError);
+  }
+}

@@ -25,7 +25,7 @@ export async function getPlans(): Promise<Plan[]> {
   const { data, error } = await resolveQuery<Plan[]>(
     getSupabase()
       .from("plans")
-      .select("*")
+      .select("id, name, slug, description, price_cents, interval, is_active, features, created_at")
       .order("price_cents", { ascending: true }),
   );
 
@@ -77,7 +77,9 @@ export async function getUserSubscription(userId: string): Promise<UserSubscript
   const { data, error } = await resolveQuery<UserSubscription>(
     getSupabase()
       .from("user_subscriptions")
-      .select("*")
+      .select(
+        "id, user_id, plan_id, tier, status, starts_at, trial_ends_at, current_period_end, cancel_at_period_end, payment_provider, created_at, updated_at",
+      )
       .eq("user_id", userId)
       .maybeSingle(),
   );
@@ -97,7 +99,7 @@ export async function getUserModulePermissions(userId: string): Promise<UserModu
   const { data, error } = await resolveQuery<UserModulePermission[]>(
     getSupabase()
       .from("user_module_permissions")
-      .select("*")
+      .select("id, user_id, module, access_level, created_at, updated_at")
       .eq("user_id", userId),
   );
 

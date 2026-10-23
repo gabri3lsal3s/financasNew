@@ -40,6 +40,11 @@ const ForgotPasswordPage = lazy(() =>
     default: m.ForgotPasswordPage,
   })),
 );
+const ResetPasswordPage = lazy(() =>
+  import("@/features/auth/pages/reset-password-page").then((m) => ({
+    default: m.ResetPasswordPage,
+  })),
+);
 const SubscriptionCheckoutPage = lazy(() =>
   import("@/features/subscription/pages/subscription-checkout-page").then((m) => ({
     default: m.SubscriptionCheckoutPage,
@@ -224,6 +229,8 @@ export function AppRouter() {
           <Route path="/cadastro" element={<RegisterPage />} />
           <Route path="/criar-conta" element={<RegisterPage />} />
           <Route path="/recuperar-senha" element={<ForgotPasswordPage />} />
+          <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
+          <Route path="/atualizar-senha" element={<ResetPasswordPage />} />
 
           {/* Checkout de assinatura Pro — layout próprio (sem shell do app) */}
           <Route path="/assinatura" element={<SubscriptionCheckoutPage />} />

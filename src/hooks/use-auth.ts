@@ -16,10 +16,11 @@ import {
   signInWithEmail,
   signUpWithEmail,
   resetPasswordForEmail,
+  resendConfirmationEmail,
   type SignUpResult,
 } from "@/data/auth";
 
-export { signInWithEmail, signUpWithEmail, resetPasswordForEmail };
+export { signInWithEmail, signUpWithEmail, resetPasswordForEmail, resendConfirmationEmail };
 export type { SignUpResult };
 
 export interface AuthState {
@@ -32,6 +33,7 @@ export interface AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name?: string, inviteCode?: string) => Promise<SignUpResult>;
   resetPassword: (email: string) => Promise<void>;
+  resendConfirmation: (email: string) => Promise<void>;
 }
 
 
@@ -173,5 +175,6 @@ export function useAuth(): AuthState {
     signIn: signInWithEmail,
     signUp: signUpWithEmail,
     resetPassword: resetPasswordForEmail,
+    resendConfirmation: resendConfirmationEmail,
   };
 }

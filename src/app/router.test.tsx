@@ -24,6 +24,7 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
       signIn: vi.fn(),
       signUp: vi.fn(),
       resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
     });
 
     window.history.pushState({}, "", "/entrar");
@@ -41,6 +42,7 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
       signIn: vi.fn(),
       signUp: vi.fn(),
       resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
     });
 
     window.history.pushState({}, "", "/recuperar-senha");
@@ -58,6 +60,7 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
       signIn: vi.fn(),
       signUp: vi.fn(),
       resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
     });
 
     window.history.pushState({}, "", "/apresentacao");

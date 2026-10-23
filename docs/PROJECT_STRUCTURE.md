@@ -179,7 +179,10 @@
     │   │                          #       portfolio-snapshots-carousel, portfolio-snapshots-dialog,
     │   │                          #       initial-pocket-cost-dialog (calibração do Marco Zero) com barrels components/index.ts e index.ts
     │   │
-    │   └── landing/               #   Landing Page pública de apresentação & planos (/apresentacao, /precos, /landing)
+    │   ├── auth/                  #   Autenticação e Recuperação de Senha (/entrar, /cadastro, /recuperar-senha, /redefinir-senha)
+    │   │                          #     pages: login-page, register-page, forgot-password-page, reset-password-page
+    │   │                          #     components: auth-shell, invite-code-input
+    │   ├── landing/               #   Landing Page pública de apresentação & planos (/apresentacao, /precos, /landing)
     │                              #     com simulador FIRE interativo, showcase, platform-comparison (Tripé Web, PWA e Android Pro), pricing, FAQ, scroll-reveal, scroll-spy e back-to-top
     │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
@@ -270,7 +273,8 @@
     │                              #     (use-expense-mutations, use-card-mutations,
     │                              #      use-budget-mutations, use-debt-mutations,
     │                              #      use-category-mutations, use-income-mutations,
-    │                              #      use-recurrence-mutations — F32: grupo/recorrência)
+    │                              #      use-recurrence-mutations — F32: grupo/recorrência,
+    │                              #      use-profile-mutations — atualização de perfil/nome)
     │   │                          #   optimistic-cache.ts (F30 — helpers de snapshot/
     │   │                          #     rollback e updaters das listas em cache)
     │
@@ -352,7 +356,7 @@
 | `src/styles/` | Design tokens e estilos globais | Cores hard-coded em componente | `tokens.css` |
 | `public/pwa/` | Manifest, ícones, SW assets, offline | Código-fonte | `manifest.webmanifest` |
 | `supabase/migrations/` | Schema, RLS e funções/RPCs versionados (fonte do banco) | Dados sensíveis/segredos | `0003_functions.sql` |
-| `supabase/functions/` | Edge functions em runtime **Deno** (fora do bundle Vite; `_shared/` = motor puro compartilhado) | Segredos do servidor no corpo (só env da function); imports de `src/` | `quotes/index.ts` (F1.7) |
+| `supabase/functions/` | Edge functions em runtime **Deno** (fora do bundle Vite; `_shared/` = motor puro compartilhado) | Segredos do servidor no corpo (só env da function); imports de `src/` | `quotes/index.ts` (F1.7); `_shared/http.ts` (CORS/erros); `_shared/asaas-plans.ts` (catálogo billing) |
 | `docs/` | Documentação viva (governança em §7) | Arquivos soltos de outra natureza | `PWA_GUIDELINES.md` |
 
 ---

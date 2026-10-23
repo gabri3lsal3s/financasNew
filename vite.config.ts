@@ -55,8 +55,12 @@ export default defineConfig({
   build: {
     modulePreload: false,
     chunkSizeWarningLimit: 500,
-    rollupOptions: {
+    // Vite 8 (Oxc/Rolldown): drop de console/debugger no minifier — esbuild.drop é ignorado.
+    rolldownOptions: {
       output: {
+        minify: {
+          compress: { dropConsole: true, dropDebugger: true },
+        },
         manualChunks(id) {
           const normalizedId = id.replace(/\\/g, "/");
           if (!normalizedId.includes("/node_modules/")) {

@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
-import { ArrowLeft, ArrowRight, CheckCircle2, Layers, PieChart, Shield } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Layers, MailCheck, PieChart, Shield } from "lucide-react";
 import { Alert, Button, Input, PasswordInput, Turnstile, buttonVariants } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { useAuth, signUpWithEmail } from "@/hooks/use-auth";
-import { getErrorMessage } from "@/services/errors";
+import { classifyError } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { checkPasswordRequirements } from "@/domain/validation";
 import { BrandLogo } from "@/components/layout";
@@ -81,6 +81,7 @@ export function RegisterPage() {
     searchParams.get("convite") || searchParams.get("invite") || "",
   );
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<string | null>(null);
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [pending, setPending] = useState(false);
 
@@ -115,6 +116,7 @@ export function RegisterPage() {
       return;
     }
     setError(null);
+    setErrorKind(null);
     setConfirmationSent(false);
     setPending(true);
     try {
@@ -125,15 +127,26 @@ export function RegisterPage() {
       }
     } catch (err) {
       triggerSensory("destructive");
-      setError(getErrorMessage(err));
+      const classified = classifyError(err);
+      setError(classified.message);
+      setErrorKind(classified.kind);
+
+      const errCode = (err as { code?: string })?.code?.toLowerCase() || "";
+      if (errCode === "user_already_exists" || errCode.includes("already")) {
+        setErrorKind("user_already_exists");
+      }
     } finally {
       setPending(false);
     }
   };
 
   const isAccountExistsError =
-    error?.toLowerCase().includes("já existe uma conta") ||
-    error?.toLowerCase().includes("já possui uma conta");
+    errorKind === "user_already_exists" ||
+    error?.toLowerCase().includes("já existe") ||
+    error?.toLowerCase().includes("já possui") ||
+    error?.toLowerCase().includes("já está cadastrado") ||
+    error?.toLowerCase().includes("already registered") ||
+    error?.toLowerCase().includes("already exists");
 
   return (
     <AuthShell
@@ -152,17 +165,20 @@ export function RegisterPage() {
           <Alert variant="error">
             <p>{error}</p>
             {isAccountExistsError && (
-              <div className="mt-2 flex flex-wrap gap-3 text-xs">
-                <Link to="/entrar" className="font-semibold underline underline-offset-2">
-                  Fazer login
-                  <ArrowRight className="inline ml-1 size-3" aria-hidden="true" />
+              <div className="mt-3 pt-2 border-t border-critical/20 flex flex-wrap gap-2.5">
+                <Link
+                  to={`/entrar${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 text-xs font-semibold gap-1.5")}
+                >
+                  Fazer login agora
+                  <ArrowRight className="size-3" aria-hidden="true" />
                 </Link>
                 <Link
-                  to="/recuperar-senha"
-                  className="font-semibold underline underline-offset-2"
+                  to={`/recuperar-senha${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 text-xs font-semibold gap-1.5")}
                 >
-                  Recuperar senha
-                  <ArrowRight className="inline ml-1 size-3" aria-hidden="true" />
+                  Recuperar minha senha
+                  <ArrowRight className="size-3" aria-hidden="true" />
                 </Link>
               </div>
             )}
@@ -170,32 +186,61 @@ export function RegisterPage() {
         ) : null}
 
         {confirmationSent ? (
-          <Alert variant="success">
-            Verifique seu e-mail para confirmar o cadastro antes de entrar.
-          </Alert>
-        ) : null}
-
-        {/* Banner Pro — apenas mobile (lg+ vê o painel lateral) */}
-        {!planoParam && (
-          <div className="flex lg:hidden rounded-xl border border-primary/40 bg-primary/5 p-3.5 items-center gap-3">
-            <div className="flex flex-col gap-0.5 min-w-0">
-              <p className="text-xs font-semibold text-foreground">30 dias Pro grátis</p>
-              <p className="text-[11px] text-muted-foreground">Sem cartão de crédito</p>
+          <div className="rounded-2xl border border-positive/30 bg-surface p-6 shadow-xs flex flex-col items-center text-center space-y-4">
+            <div className="size-12 rounded-2xl bg-positive/10 border border-positive/20 flex items-center justify-center text-positive-strong">
+              <MailCheck className="size-6" aria-hidden="true" />
             </div>
+            <div className="space-y-1.5">
+              <h3 className="text-base font-semibold text-foreground">
+                Confirme seu endereço de e-mail
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
+                Enviamos um link de ativação para o endereço abaixo. Clique no link recebido para validar sua conta e começar a usar o app.
+              </p>
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-muted/30 border border-border/80 text-xs font-medium text-foreground">
+                {email}
+              </div>
+            </div>
+
+            <div className="w-full rounded-xl bg-muted/20 border border-border/60 p-3 text-left space-y-1.5">
+              <p className="text-[11px] font-semibold text-foreground">Dicas importantes:</p>
+              <ul className="text-[11px] text-muted-foreground space-y-1 list-disc list-inside">
+                <li>Verifique sua pasta de spam ou lixo eletrônico se não encontrar na caixa de entrada.</li>
+                <li>O link de ativação enviado é seguro e válido por 24 horas.</li>
+              </ul>
+            </div>
+
             <Link
-              to="/assinatura?plano=pro-anual"
-              className={cn(
-                buttonVariants({ size: "sm" }),
-                "shrink-0 text-xs gap-1 ml-auto",
-              )}
+              to="/entrar"
+              className={cn(buttonVariants({ variant: "default" }), "w-full text-xs h-9 font-semibold gap-1.5 rounded-xl")}
             >
-              Ver Plano Pro
-              <ArrowRight className="size-3" aria-hidden="true" />
+              <span>Ir para o login</span>
+              <ArrowRight className="size-3.5" aria-hidden="true" />
             </Link>
           </div>
-        )}
+        ) : (
+          <>
+            {/* Banner Pro — apenas mobile (lg+ vê o painel lateral) */}
+            {!planoParam && (
+              <div className="flex lg:hidden rounded-xl border border-primary/40 bg-primary/5 p-3.5 items-center gap-3">
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <p className="text-xs font-semibold text-foreground">30 dias Pro grátis</p>
+                  <p className="text-[11px] text-muted-foreground">Sem cartão de crédito</p>
+                </div>
+                <Link
+                  to="/assinatura?plano=pro-anual"
+                  className={cn(
+                    buttonVariants({ size: "sm" }),
+                    "shrink-0 text-xs gap-1 ml-auto",
+                  )}
+                >
+                  Ver Plano Pro
+                  <ArrowRight className="size-3" aria-hidden="true" />
+                </Link>
+              </div>
+            )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
           {/* Nome + E-mail em grid responsivo */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div className="flex flex-col gap-1.5">
@@ -373,6 +418,8 @@ export function RegisterPage() {
             <span>Conhecer o Áxis Finance e Planos</span>
           </Link>
         </div>
+          </>
+        )}
       </div>
     </AuthShell>
   );

@@ -397,6 +397,17 @@ deno_version = 2
 [functions.quotes]
 verify_jwt = false
 
+# Webhook Asaas: autenticação própria via asaas-access-token (timing-safe).
+[functions.asaas-webhook]
+verify_jwt = false
+
+# Checkout/manage validam JWT no handler com SUPABASE_ANON_KEY (fail-closed).
+[functions.asaas-checkout]
+verify_jwt = true
+
+[functions.asaas-manage]
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

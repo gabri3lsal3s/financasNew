@@ -35,6 +35,7 @@ vi.mock("@/hooks/use-auth", () => ({
     signIn: vi.fn(),
     signUp: vi.fn(),
     resetPassword: vi.fn(),
+    resendConfirmation: vi.fn(),
   }),
   signInWithEmail: vi.fn(),
   signUpWithEmail: vi.fn(),

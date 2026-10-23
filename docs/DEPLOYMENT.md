@@ -21,7 +21,8 @@
 - **Frontend:** Cloudflare Pages — Git Integration nativa via Webhooks (sem GitHub Actions). Roteamento SPA configurado via `public/_redirects` e segurança/cache via `public/_headers`.
 - **Segurança de Borda e Headers HTTP (`public/_headers`):**
   - **Content-Security-Policy (CSP):** política estrita que restringe a execução de scripts e conexões a origens homologadas (`default-src 'self'`, `script-src 'self' 'wasm-unsafe-eval'`, `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`, `img-src 'self' data: blob: https://*.supabase.co`, `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://brapi.dev`, `font-src 'self' data: https://fonts.gstatic.com`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`);
-  - **Defesa em Profundidade:** `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`;
+  - **Defesa em Profundidade:** `Strict-Transport-Security` (HSTS preload), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`;
+  - **CORS das Edge Functions:** allowlist (`ALLOWED_ORIGINS` + `*.pages.dev` + localhost/Capacitor); webhook Asaas sem CORS de browser; `quotes` só grava cache global com service role.
   - **Estratégia de Cache de Borda:** assets estáticos versionados (`/assets/*`) com cache imutável de 1 ano (`max-age=31536000, immutable`), e artefatos dinâmicos de ciclo de vida (`/index.html`, `/sw.js`, `/pwa/*`) com validação imediata (`max-age=0, must-revalidate`).
 - **Backend:** Supabase — migrations em `supabase/migrations/` (0001–0010: schema, RLS, RPCs, overrides, metas, metas de alocação, backfill de perfis, restauração de backup F22).
 - **Auth:** Supabase Auth (email/senha) + trigger `handle_new_user` (cria `profiles` e `user_preferences` automaticamente).
@@ -33,7 +34,7 @@
 
 | Item | Versão | Observação |
 |---|---|---|
-| Node.js | ≥ 22.0.0 | definido em `engines` do `package.json` |
+| Node.js | ≥ **22.23.4** (ou ≥24.22.1 / ≥26.12.1) | pinado em `engines`, `.nvmrc` e `.node-version` (CVEs out/2026: Brotli/TLS/dns) |
 | Conta Cloudflare | Free | uso comercial e monetização 100% permitidos, tráfego ilimitado |
 | Projeto Supabase | — | criar em `supabase.com` (região próxima dos usuários) |
 | Supabase CLI (opcional) | ≥ 2.114 | `npm run db:*` — requer `supabase/config.toml` local |
@@ -79,7 +80,7 @@ Para assegurar a prontidão para campanhas de aquisição e tráfego massivo (1k
 
    | Variável | Valor | Onde obter |
    |---|---|---|
-   | `NODE_VERSION` | `22` | Garante Node.js 22 LTS no runner da Cloudflare (ou via `.nvmrc`) |
+   | `NODE_VERSION` | `22.23.4` | **Obrigatório** pin patchado (não use só `22`) — ver security releases Node.js 21/out/2026 |
    | `VITE_SUPABASE_URL` | `https://<ref>.supabase.co` | Supabase → Settings → API → Project URL |
    | `VITE_SUPABASE_ANON_KEY` | `eyJ...` | Supabase → Settings → API → anon public key |
    | `VITE_SENTRY_DSN` | *(opcional)* | Sentry → Settings → Projects → Client Keys |

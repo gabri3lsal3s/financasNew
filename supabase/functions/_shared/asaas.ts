@@ -3,6 +3,8 @@
  * Suporta ambiente Sandbox (testes) e Produção.
  */
 
+import { ASAAS_PLAN_CATALOG } from "./asaas-plans.ts";
+
 export interface AsaasCustomerInput {
   name: string;
   email: string;
@@ -119,12 +121,13 @@ export async function createAsaasCreditCardSubscription(params: {
   holderInfo: AsaasHolderInfoInput;
   remoteIp?: string;
 }): Promise<{ id: string; status: string }> {
-  const isAnnual = params.plan === "annual";
-  const value = isAnnual ? 178.8 : 19.9;
-  const cycle = isAnnual ? "YEARLY" : "MONTHLY";
-  const description = isAnnual
-    ? "Plano Pro Anual - Guia Financeiro"
-    : "Plano Pro Mensal - Guia Financeiro";
+  const planMeta = ASAAS_PLAN_CATALOG[params.plan];
+  const value = planMeta.value;
+  const cycle = planMeta.cycle;
+  const description =
+    params.plan === "annual"
+      ? "Plano Pro Anual - Guia Financeiro"
+      : "Plano Pro Mensal - Guia Financeiro";
 
   // Data de vencimento inicial: hoje (formato YYYY-MM-DD)
   const nextDueDate = new Date().toISOString().slice(0, 10);

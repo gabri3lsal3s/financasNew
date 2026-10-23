@@ -13,6 +13,7 @@ describe("useLandingCta", () => {
       signIn: vi.fn(),
       signUp: vi.fn(),
       resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
     });
 
     const { result } = renderHook(() => useLandingCta());
@@ -32,6 +33,7 @@ describe("useLandingCta", () => {
       signIn: vi.fn(),
       signUp: vi.fn(),
       resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
     });
 
     const { result } = renderHook(() => useLandingCta());

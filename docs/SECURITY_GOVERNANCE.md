@@ -16,7 +16,7 @@ O **Áxis** processa dados financeiros e transacionais sensíveis. A governança
 | **Vazamento Lógico / API** | Invasor tenta acessar dados de outros usuários via API REST ou chamadas diretas. | **Row Level Security (RLS)** estrito em 100% das tabelas (`auth.uid() = user_id`) + RPCs com `SECURITY DEFINER` protegidas. |
 | **Roubo Físico / Backups** | Despejo de snapshot, roubo de discos na nuvem (AWS KMS). | **Criptografia em Repouso (TDE)** com AES-256 nativa nos volumes e backups do Supabase. |
 | **Interceptação em Trânsito** | Ataques *Man-in-the-Middle* na rede. | **TLS 1.3 / HTTPS** estrito com HSTS em todas as conexões (web e mobile). |
-| **Vazamento via DevTools** | Inspeção de memória ou logs em computadores compartilhados. | **Remoção de logs de console e debugger** via esbuild no build de produção do Vite. |
+| **Vazamento via DevTools** | Inspeção de memória ou logs em computadores compartilhados. | **Remoção de logs de console e debugger** via minifier Oxc/Rolldown (`rolldownOptions.output.minify.compress`) no build de produção do Vite. |
 | **Exposição em Auditoria** | Vazamento involuntário de senhas, chaves de API ou CPFs na trilha histórica. | **Trigger de sanitização automática** (`trg_sanitize_audit_events_payload`) antes da gravação em `audit_events`. |
 
 ---
@@ -34,6 +34,14 @@ O **Áxis** processa dados financeiros e transacionais sensíveis. A governança
   * O CPF é limpo de caracteres não numéricos (`cleanCPF`) antes da persistência.
   * Validação estrita por módulo 11 da Receita Federal impede injeção de dados corrompidos ou strings maliciosas.
   * A função `public.mask_cpf(text)` e o utilitário `maskCPF()` garantem mascaramento no padrão `***.***.789-**` em telas e relatórios, prevenindo *shoulder surfing*.
+  * **Controle de coluna (migração 0058):** `REVOKE SELECT (cpf)` de `anon`/`authenticated` — o PostgREST **não** devolve CPF ao bundle do cliente; leitura operacional fica restrita a `service_role` (Edge Asaas).
+
+### 2.3 Edge Functions (billing & cotações)
+* **CORS allowlist** (`ALLOWED_ORIGINS` + `*.pages.dev` + localhost/Capacitor) — sem `Access-Control-Allow-Origin: *` em rotas autenticadas.
+* **Webhook Asaas:** `verify_jwt = false` + token `asaas-access-token` com comparação *timing-safe*; **sem** CORS de browser; tier resolvido só pelo **catálogo de valores** (`asaas-plans.ts`), nunca por heurística `value > 50`.
+* **Checkout/manage:** exigem `SUPABASE_ANON_KEY` (fail-closed; **proibido** fallback para `service_role`); erros públicos genéricos.
+* **`quotes`:** escrita no cache global (`user_id IS NULL`) **somente** com service role (cron); JWT de usuário só calcula/devolve cotações (cliente persiste override próprio).
+* **Runtime Node:** engines/`NODE_VERSION` ≥ `22.23.4` | `24.22.1` | `26.12.1` (CVEs Brotli/TLS/`dns.resolve`, out/2026).
 
 ---
 
@@ -50,13 +58,21 @@ Para evitar que erros de programação gravem segredos operacionais na auditoria
 
 ## 4. HIGIENIZAÇÃO DE BUILDS FRONTEND
 
-O arquivo [`vite.config.ts`](../vite.config.ts) aplica remoção automática de saídas de depuração para builds de produção:
+O arquivo [`vite.config.ts`](../vite.config.ts) aplica remoção automática de saídas de depuração no **minifier Oxc (Vite 8 / Rolldown)**:
 
 ```ts
-esbuild: {
-  drop: process.env.NODE_ENV === "production" ? ["console", "debugger"] : [],
+build: {
+  rolldownOptions: {
+    output: {
+      minify: {
+        compress: { dropConsole: true, dropDebugger: true },
+      },
+    },
+  },
 }
 ```
+
+> Nota: em Vite 8, `esbuild.drop` é **ignorado** (transformadores Oxc). Use sempre `rolldownOptions.output.minify.compress`.
 
 Isso garante que nenhum `console.log` de debug ou retorno bruto de APIs permaneça inspecionável no console de navegadores de usuários finais.
 

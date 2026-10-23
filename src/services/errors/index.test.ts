@@ -81,6 +81,15 @@ describe("getErrorMessage — gateway de erros (ESPECIFICAÇÃO §1.7)", () => {
     expect(err.message).toContain('Acesso negado: alert("xss")usuário sem permissão');
   });
 
+  it("classifica erros de usuário já cadastrado como user_already_exists", () => {
+    const err1 = classifyError({ message: "User already registered" });
+    expect(err1.kind).toBe("user_already_exists");
+    expect(err1.message).toBe("Este e-mail já está cadastrado na plataforma.");
+
+    const err2 = classifyError({ code: "user_already_exists" });
+    expect(err2.kind).toBe("user_already_exists");
+  });
+
   it("cai em mensagem genérica para erros desconhecidos", () => {
     expect(getErrorMessage(null)).toContain("Algo deu errado");
   });

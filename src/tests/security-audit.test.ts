@@ -624,6 +624,11 @@ describe("Tarefa 1.4 — Regressão Automatizada de Headers de Segurança e Cach
     expect(content).toContain("X-Frame-Options: DENY");
   });
 
+  it("declara Strict-Transport-Security (HSTS) com preload", () => {
+    const content = readFileSync(headersPath, "utf8");
+    expect(content).toMatch(/Strict-Transport-Security:\s*max-age=31536000;\s*includeSubDomains;\s*preload/);
+  });
+
   it("configura políticas determinísticas de cache para assets estáticos e artefatos voláteis", () => {
     const content = readFileSync(headersPath, "utf8");
     expect(content).toContain("/assets/*");

@@ -1,11 +1,14 @@
 /**
  * Serviço de busca e sincronização de cotações online no cliente — ESPECIFICAÇÃO §1.6 (D5).
  *
- * Utiliza APIs com suporte a CORS e fallback em cascata:
- * 1. AwesomeAPI para câmbio (USD-BRL, EUR-BRL) e cripto (BTC-BRL, ETH-BRL);
- * 2. Brapi (brapi.dev) para ações/FIIs/BDRs da B3;
- * 3. Yahoo Finance Chart API v8 via proxies CORS públicos abertos (AllOrigins, CorsProxy, CodeTabs);
- * 4. Supabase Edge Function `quotes` como backend gateway.
+ * Cascata segura (sem proxies CORS públicos de terceiros):
+ * 1. Edge Function `quotes` (servidor) — preferencial em lote e no fallback;
+ * 2. AwesomeAPI (câmbio/cripto com CORS próprio);
+ * 3. Tesouro Direto (origem oficial);
+ * 4. Brapi (B3).
+ *
+ * Persistência do usuário: `asset_prices` com user_id do dono.
+ * Cache global só é escrito pelo cron com service role.
  */
 
 import {
@@ -14,13 +17,11 @@ import {
   isPrivateFixedIncomeTicker,
   isTesouroAsset,
   normalizeTesouroTicker,
-  normalizeTickerForApi,
   normalizeTickerForBrapi,
   parseAwesomeApiResponse,
   parseBcbSgsResponse,
   parseBrapiResponse,
   parseTesouroDiretoResponse,
-  parseYahooChartResponse,
   type ParsedQuote,
 } from "@/domain/portfolio";
 import { setAssetPriceFromApi, setAssetPricesBatchFromApi } from "@/data/repositories/asset-prices";
@@ -42,7 +43,7 @@ export function clearBcbCache(): void {
  *   • Série 12: CDI Diário
  *   • Série 432: Selic Meta (% a.a.)
  *
- * Utiliza fallback em cascata com proxies abertos e timeout resiliente.
+ * Apenas origem oficial (sem proxies de terceiros).
  */
 export async function fetchBcbIndicator(indicator: "CDI" | "SELIC" | "IPCA"): Promise<number | null> {
   const now = Date.now();
@@ -54,35 +55,27 @@ export async function fetchBcbIndicator(indicator: "CDI" | "SELIC" | "IPCA"): Pr
     }
   }
 
-  // Série 12: CDI Diário | Série 432: Selic Meta (% a.a.) | Série 13522: IPCA acumulado 12 meses (% a.a.)
   const serie = indicator === "CDI" ? 12 : indicator === "SELIC" ? 432 : 13522;
   const targetUrl = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${serie}/dados/ultimos/1?formato=json`;
-  const candidateUrls = [
-    targetUrl,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
-    `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`,
-  ];
 
-  for (const url of candidateUrls) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timer);
-      if (!response.ok) continue;
-      const payload: unknown = await response.json();
-      const parsed = parseBcbSgsResponse(payload);
-      if (parsed && parsed.rateAnnual !== undefined) {
-        if (!bcbRateCache) bcbRateCache = { timestamp: now };
-        if (indicator === "CDI") bcbRateCache.cdiAnnual = parsed.rateAnnual;
-        if (indicator === "SELIC") bcbRateCache.selicAnnual = parsed.rateAnnual;
-        if (indicator === "IPCA") (bcbRateCache as Record<string, unknown>).ipcaAnnual = parsed.rateAnnual;
-        bcbRateCache.timestamp = now;
-        return parsed.rateAnnual;
-      }
-    } catch {
-      // Tenta próximo endpoint na cascata
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const response = await fetch(targetUrl, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!response.ok) return null;
+    const payload: unknown = await response.json();
+    const parsed = parseBcbSgsResponse(payload);
+    if (parsed && parsed.rateAnnual !== undefined) {
+      if (!bcbRateCache) bcbRateCache = { timestamp: now };
+      if (indicator === "CDI") bcbRateCache.cdiAnnual = parsed.rateAnnual;
+      if (indicator === "SELIC") bcbRateCache.selicAnnual = parsed.rateAnnual;
+      if (indicator === "IPCA") (bcbRateCache as Record<string, unknown>).ipcaAnnual = parsed.rateAnnual;
+      bcbRateCache.timestamp = now;
+      return parsed.rateAnnual;
     }
+  } catch {
+    return null;
   }
 
   return null;
@@ -95,32 +88,26 @@ async function fetchTesouroDireto(ticker: string): Promise<ParsedQuote | null> {
   const tesouroCanon = normalizeTesouroTicker(ticker);
   if (!tesouroCanon) return null;
 
-  const targetUrl = "https://www.tesourodireto.com.br/json/br/com/b3/tesourodireto/service/api/treasurybondsinfo.json";
-  const proxyEndpoints = [
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
-    `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`,
-    targetUrl,
-  ];
+  const targetUrl =
+    "https://www.tesourodireto.com.br/json/br/com/b3/tesourodireto/service/api/treasurybondsinfo.json";
 
-  for (const url of proxyEndpoints) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timer);
-      if (!response.ok) continue;
-      const payload: unknown = await response.json();
-      const parsed = parseTesouroDiretoResponse(tesouroCanon, payload);
-      if (parsed && parsed.price > 0) {
-        return {
-          ticker,
-          price: parsed.price,
-          currency: "BRL",
-        };
-      }
-    } catch {
-      // Tenta próximo endpoint
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const response = await fetch(targetUrl, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!response.ok) return null;
+    const payload: unknown = await response.json();
+    const parsed = parseTesouroDiretoResponse(tesouroCanon, payload);
+    if (parsed && parsed.price > 0) {
+      return {
+        ticker,
+        price: parsed.price,
+        currency: "BRL",
+      };
     }
+  } catch {
+    return null;
   }
 
   return null;
@@ -149,7 +136,7 @@ async function fetchBrapi(ticker: string): Promise<ParsedQuote | null> {
   }
 }
 
-/** Busca cotação na AwesomeAPI (Câmbio USD-BRL, EUR-BRL e Cripto BTC-BRL, ETH-BRL com CORS aberto). */
+/** Busca cotação na AwesomeAPI (Câmbio USD-BRL, EUR-BRL e Cripto BTC-BRL, ETH-BRL). */
 async function fetchAwesomeApi(ticker: string): Promise<ParsedQuote | null> {
   const normalized = ticker.trim().toUpperCase();
   let pair: string;
@@ -183,60 +170,6 @@ async function fetchAwesomeApi(ticker: string): Promise<ParsedQuote | null> {
   }
 }
 
-/**
- * Busca cotação no Yahoo Finance Chart API v8 contornando restrições de CORS
- * do navegador através de gateways CORS públicos e rotação de hosts.
- */
-async function fetchYahoo(ticker: string): Promise<ParsedQuote | null> {
-  const apiTicker = normalizeTickerForApi(ticker);
-  if (!apiTicker) return null;
-
-  const targetYahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(apiTicker)}?interval=1d&range=1d`;
-
-  // Em navegadores clientes, chamadas diretas ao Yahoo sofrem bloqueio Same-Origin (CORS).
-  // Gateways em cascata com fallback:
-  // 1. Jina Reader com Accept: application/json (CORS 100% aberto, estável e rápido)
-  // 2. Proxies CORS públicos com suporte a raw/get
-  // 3. Chamada direta ao Yahoo (se dev proxy ou ambiente sem bloqueio CORS)
-  const proxyEndpoints: Array<{ url: string; headers?: Record<string, string> }> = [
-    {
-      url: `https://r.jina.ai/${targetYahooUrl}`,
-      headers: { Accept: "application/json" },
-    },
-    {
-      url: `https://api.allorigins.win/raw?url=${encodeURIComponent(targetYahooUrl)}`,
-    },
-    {
-      url: `https://api.allorigins.win/get?url=${encodeURIComponent(targetYahooUrl)}`,
-    },
-    {
-      url: `https://corsproxy.io/?url=${encodeURIComponent(targetYahooUrl)}`,
-    },
-    {
-      url: targetYahooUrl,
-    },
-  ];
-
-  for (const item of proxyEndpoints) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-      const response = await fetch(item.url, {
-        headers: item.headers,
-        signal: controller.signal,
-      });
-      clearTimeout(timer);
-      if (!response.ok) continue;
-      const payload: unknown = await response.json();
-      const parsed = parseYahooChartResponse(ticker, payload);
-      if (parsed) return parsed;
-    } catch {
-      // Continua para o próximo endpoint/proxy da cascata
-    }
-  }
-  return null;
-}
-
 /** Tenta buscar via Supabase Edge Function se estiver disponível */
 async function fetchViaEdgeFunction(tickers: string[]): Promise<ParsedQuote[]> {
   try {
@@ -252,31 +185,31 @@ async function fetchViaEdgeFunction(tickers: string[]): Promise<ParsedQuote[]> {
 }
 
 /**
- * Busca a cotação online de um ticker através de fallback em cascata.
+ * Busca a cotação online de um ticker através de fallback em cascata segura.
  */
 export async function fetchOnlineQuote(ticker: string): Promise<ParsedQuote | null> {
   const normalized = ticker.trim().toUpperCase();
   if (!normalized) return null;
 
-  // Instrumentos de renda fixa privada (CDB, LCI, LCA, etc.) não possuem cotação em bolsa
   if (isPrivateFixedIncomeTicker(normalized)) return null;
 
-  // 1. AwesomeAPI primeiro para Câmbio e Cripto (CORS aberto, altíssima velocidade)
+  // 1. Edge (Yahoo/Brapi no servidor — sem proxies de terceiros no browser)
+  const fromEdge = await fetchViaEdgeFunction([normalized]);
+  const edgeHit = fromEdge.find((q) => q.ticker.toUpperCase() === normalized && q.price > 0);
+  if (edgeHit) return edgeHit;
+
+  // 2. AwesomeAPI para Câmbio e Cripto
   const awesome = await fetchAwesomeApi(normalized);
   if (awesome) return awesome;
 
-  // 2. Tesouro Direto oficial se for título público federal
+  // 3. Tesouro Direto oficial
   if (normalizeTesouroTicker(normalized)) {
     const tesouro = await fetchTesouroDireto(normalized);
     if (tesouro) return tesouro;
   }
 
-  // 3. Brapi para B3 (se token configurado ou público)
-  const brapi = await fetchBrapi(ticker);
-  if (brapi) return brapi;
-
-  // 4. Yahoo Finance com CORS Gateway
-  return await fetchYahoo(ticker);
+  // 4. Brapi para B3
+  return await fetchBrapi(ticker);
 }
 
 /**
@@ -318,20 +251,13 @@ export async function syncQuotesForAssets(
     return true;
   });
 
-  // Garante que a cotação do dólar USDBRL=X seja sempre sincronizada
   const tickersToFetch = new Set(eligible.map((a) => a.ticker.trim().toUpperCase()));
   tickersToFetch.add("USDBRL=X");
 
   const tickerList = [...tickersToFetch];
 
-  // 1) Sincroniza via Edge Function (servidor com acesso direto e cache do banco)
   const edgeQuotes = await fetchViaEdgeFunction(tickerList);
   const successfulQuotes: ParsedQuote[] = [...edgeQuotes];
-
-  // Desacoplamento de Chamadas Client-Side Concorrentes (Tarefa 2.1 — Plano de Alta Concorrência):
-  // Eliminado o disparo massivo `missingTickers.map((t) => fetchOnlineQuote(t))` no cliente.
-  // Ativos não retornados pela Edge Function mantêm o último preço conhecido da tabela `asset_prices`
-  // ou status "Aguardando cotação", protegendo o ecossistema contra tempestades de requisições e HTTP 429.
 
   if (successfulQuotes.length > 0) {
     try {
@@ -343,7 +269,7 @@ export async function syncQuotesForAssets(
         })),
       );
     } catch {
-      // Degradação graciosa: segue sem lançar erro de persistência em lote
+      // Degradação graciosa
     }
   }
 

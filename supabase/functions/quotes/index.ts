@@ -1,24 +1,11 @@
 /**
  * Edge function de cotações (F1.7 — ESPECIFICAÇÃO §1.6 D5).
  *
- * Atualiza o CACHE GLOBAL de preços (`asset_prices` com `user_id` NULL) com
- * cotações do Yahoo Finance, em cascata (query1 → query2), tolerante a
- * falhas por ticker (timeouts curtos) e com guardrail de spike (> 50%/dia
- * mantém o último preço válido).
+ * - Service role (cron): atualiza o CACHE GLOBAL (`asset_prices.user_id` NULL).
+ * - Usuário autenticado (JWT): apenas calcula e devolve cotações (sem gravar
+ *   cache global) — o cliente persiste override próprio via repositório.
  *
- * Executa com service role (bypassa RLS) — nunca expõe chaves ao cliente.
- * Pode ser chamada manualmente (curl) ou agendada (Supabase Cron / pg_cron).
- *
- * Segurança: exige `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`.
- *
- * Deploy:
- *   supabase functions deploy quotes --no-verify-jwt
- *   # variáveis de ambiente: SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY
- *   # (a CLI injeta SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY automaticamente)
- *
- * Agendamento (ex.: a cada 6h) — ver `docs/DEPLOYMENT.md` §7.1 para o SQL
- * de cron (pg_cron + pg_net); evite escrever o padrão de cron dentro de
- * comentários de bloco (a sequência fecharia o comentário).
+ * Deploy: supabase functions deploy quotes --no-verify-jwt
  */
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -34,23 +21,12 @@ import {
   type ParsedQuote,
   type QuoteUpsertRow,
 } from "../_shared/quotes-core.ts";
+import { buildCorsHeaders, jsonResponse, safeErrorResponse } from "../_shared/http.ts";
 
 const YAHOO_HOSTS = ["query1.finance.yahoo.com", "query2.finance.yahoo.com"];
 const FETCH_TIMEOUT_MS = 4_000;
 const USER_AGENT =
   "Mozilla/5.0 (compatible; FinancasNew/1.0; +https://github.com/financasnew)";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json", ...corsHeaders },
-  });
-}
 
 /** Busca cotação no Yahoo Finance com timeout e rotação de hosts. */
 async function fetchYahooQuote(ticker: string): Promise<ParsedQuote | null> {
@@ -129,14 +105,12 @@ async function fetchQuote(ticker: string): Promise<ParsedQuote | null> {
   const normalized = ticker.trim().toUpperCase();
   if (!normalized) return null;
 
-  // Se for par de câmbio USD/BRL, tenta Yahoo e AwesomeAPI
   if (normalized === "USDBRL=X" || normalized === "USD-BRL" || normalized === "USDBRL") {
     const yahoo = await fetchYahooQuote(ticker);
     if (yahoo) return yahoo;
     return await fetchAwesomeApiQuote(ticker);
   }
 
-  // Para ações/FIIs/ativos em geral: tenta Yahoo e depois Brapi
   const yahoo = await fetchYahooQuote(ticker);
   if (yahoo) return yahoo;
 
@@ -148,7 +122,7 @@ async function fetchQuote(ticker: string): Promise<ParsedQuote | null> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: buildCorsHeaders(req) });
   }
 
   const auth = req.headers.get("authorization") ?? "";
@@ -157,7 +131,7 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 
   if (!supabaseUrl || !serviceRoleKey) {
-    return json({ error: "missing env" }, 500);
+    return safeErrorResponse(req, 500, "Serviço temporariamente indisponível.");
   }
 
   const token = auth.replace(/^Bearer\s+/i, "").trim();
@@ -173,23 +147,24 @@ Deno.serve(async (req) => {
 
   if (!isServiceRole) {
     if (!token) {
-      return json({ error: "unauthorized" }, 401);
+      return jsonResponse(req, { error: "unauthorized" }, 401);
     }
-    // Valida criptograficamente o JWT do usuário
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
     if (userError || !userData?.user) {
-      return json({ error: "unauthorized" }, 401);
+      return jsonResponse(req, { error: "unauthorized" }, 401);
     }
     callerUserId = userData.user.id;
   }
 
-  // Lê tickers customizados do body se fornecidos
   let requestedTickers: string[] = [];
   if (req.method === "POST") {
     try {
       const body = await req.json();
       if (body && Array.isArray(body.tickers)) {
-        requestedTickers = body.tickers.map((t: string) => String(t).trim().toUpperCase()).filter(Boolean);
+        requestedTickers = body.tickers
+          .map((t: string) => String(t).trim().toUpperCase())
+          .filter(Boolean)
+          .slice(0, 100);
       }
     } catch {
       // payload sem json body
@@ -198,9 +173,6 @@ Deno.serve(async (req) => {
 
   let tickers: string[] = requestedTickers;
 
-  // 1) Se não foram passados tickers no body:
-  // - Service Role (Cron): busca todos os ativos da base
-  // - Usuário autenticado: busca apenas os ativos do próprio usuário
   if (tickers.length === 0) {
     let query = supabase.from("portfolio_assets").select("ticker, asset_class");
     if (callerUserId) {
@@ -209,7 +181,7 @@ Deno.serve(async (req) => {
 
     const { data: assets, error: assetsError } = await query;
     if (assetsError) {
-      return json({ error: assetsError.message }, 500);
+      return safeErrorResponse(req, 500, "Falha ao carregar ativos.", assetsError);
     }
 
     tickers = [
@@ -223,10 +195,9 @@ Deno.serve(async (req) => {
   }
 
   if (tickers.length === 0) {
-    return json({ ok: true, updated: 0, guarded: 0, failed: 0, quotes: [] });
+    return jsonResponse(req, { ok: true, updated: 0, guarded: 0, failed: 0, quotes: [] });
   }
 
-  // 2) Preço atual do cache global (para o guardrail de spike).
   const { data: cachedRows } = await supabase
     .from("asset_prices")
     .select("ticker, price")
@@ -236,10 +207,8 @@ Deno.serve(async (req) => {
     (cachedRows ?? []).map((row) => [row.ticker, Number(row.price)]),
   );
 
-  // 3) Busca em paralelo (tolerante a falha por ticker).
   const quotes = await Promise.all(tickers.map((ticker) => fetchQuote(ticker)));
 
-  // 4) Guardrail + montagem das linhas de upsert.
   const now = new Date().toISOString();
   const rows: QuoteUpsertRow[] = [];
   let guarded = 0;
@@ -255,31 +224,32 @@ Deno.serve(async (req) => {
     rows.push(buildQuoteUpsertRow(quote.ticker, price, quote.currency, now));
   }
 
-  // 5) Upsert em lote (unique parcial `idx_asset_prices_manual_unique` não
-  //    cobre user_id NULL — por isso o upsert é por (ticker, user_id) com
-  //    o valor NULL explícito; o Postgres trata NULL como distinto, então
-  //    usamos delete+insert do cache global para manter 1 linha por ticker).
-  if (rows.length > 0) {
+  // Somente service role (cron) pode mutar o cache global — previne envenenamento por JWT de usuário.
+  if (isServiceRole && rows.length > 0) {
     const { error: deleteError } = await supabase
       .from("asset_prices")
       .delete()
       .is("user_id", null)
-      .in("ticker", rows.map((row) => row.ticker));
+      .in(
+        "ticker",
+        rows.map((row) => row.ticker),
+      );
     if (deleteError) {
-      return json({ error: deleteError.message }, 500);
+      return safeErrorResponse(req, 500, "Falha ao atualizar cache de cotações.", deleteError);
     }
 
     const { error: insertError } = await supabase.from("asset_prices").insert(rows);
     if (insertError) {
-      return json({ error: insertError.message }, 500);
+      return safeErrorResponse(req, 500, "Falha ao atualizar cache de cotações.", insertError);
     }
   }
 
-  return json({
+  return jsonResponse(req, {
     ok: true,
-    updated: rows.length,
+    updated: isServiceRole ? rows.length : 0,
     guarded,
     failed,
+    persistedGlobal: isServiceRole,
     tickers,
     quotes: rows.map((r) => ({
       ticker: r.ticker,
