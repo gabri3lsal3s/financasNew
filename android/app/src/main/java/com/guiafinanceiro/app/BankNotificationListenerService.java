@@ -72,12 +72,16 @@ public class BankNotificationListenerService extends NotificationListenerService
         // Investimentos, Cripto & Contas Globais
         "com.btg.pactual.banking",
         "com.btgpactual.investimentos",
+        "br.com.btg.pactual.digital",
         "br.com.xp.carteira",
         "com.xpinc.investments",
+        "br.com.xp.investimentos",
         "br.com.rico",
         "br.com.rico.investimentos",
+        "br.com.rico.rico",
         "com.binance.dev",
         "com.nomadfinancial.app",
+        "com.nomadglobal.app",
         "com.transferwise.android",
 
         // Cooperativas, Adquirentes & Outros

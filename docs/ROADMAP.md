@@ -1,5 +1,22 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.73** registra a **Homologação Canônica de Pacotes Android, Desacoplamento de Cartões em Corretoras e Auto-Vínculo Inteligente de Cartões** (Fase 11 do `PLANO_IMPLEMENTACAO_CAPTURA_INTELIGENTE_E_FRICCAO_MINIMA.md`) (2026-10-23):
+> - **(1) Homologação Canônica da Matriz de Pacotes Android (Rico, BTG, Nomad, XP)**:
+>   - Adição dos package names reais da Google Play Store no `AndroidManifest.xml` (`<queries>`), no `BankNotificationListenerService` e no `BankNotificationPlugin` (`br.com.rico.rico`, `br.com.btg.pactual.digital`, `com.nomadglobal.app`, `br.com.xp.investimentos`), mantendo retrocompatibilidade com identificadores legados;
+>   - Atualização do catálogo `KNOWN_BANK_APPS` e suporte à detecção de múltiplos pacotes por instituição no dispositivo (`scanInstalledBanks`).
+> - **(2) Desacoplamento de Cartões em Corretoras & Classificador Híbrido (`bank-parser.ts`)**:
+>   - Prevenção da classificação forçada como "investimento" para compras de consumo e despesas cotidianas em cartões emitidos por corretoras (Rico, XP, BTG);
+>   - Análise de canais de consumo e palavras-chave de cartão ("compra aprovada no cartão", "cartão rico", etc.) direcionando para `nature: "expense", subtype: "card"`, enquanto ordens de bolsa e notas de corretagem continuam como `nature: "investment"`.
+> - **(3) Higienização de Sufixos Regionais/Digitais e Blindagem de Inferência (`category-inference.ts`, `merchant-catalog.ts`)**:
+>   - Limpeza determinística de sufixos de país e plataformas (`" BR"`, `" BRASIL"`, `".COM"`, `" LTDA"`, `" S/A"`) evitando perda de similaridade em lojas como Amazon, Mercado Livre, Shopee e iFood;
+>   - Resiliência contra sobrescrita indevida de categorias inferidas de alta confiança.
+> - **(4) Motor Puro de Resolução e Auto-Vínculo de Cartões (`card-resolution.ts`)**:
+>   - Criação do módulo puro `src/domain/notifications/card-resolution.ts` com scoring e casamento de cartões por nome do banco/emissor mesmo na ausência dos 4 dígitos finais;
+>   - Integração no `LaunchWizard` e no `PendingSuggestionsCard` para pré-seleção automática e associação de despesas ao cartão correto do usuário.
+> - **(5) UX Refinada na Gestão de Instituições com Gatilho de Re-escaneamento (`notifications-tab.tsx`)**:
+>   - Adição de botão de re-escaneamento com ícone `RefreshCw` e feedback sensorial háptico para atualização instantânea dos apps instalados no dispositivo sem necessidade de recarregar o app;
+>   - Suíte de 12 arquivos e 340 testes passando com 100% verde em typecheck e linting.
+>
 > **v2.72** registra a **Calibração de Precisão em Diagnósticos, Eliminação de Redundâncias e Congruência do Fluxo de Caixa Real** (2026-10-21):
 > - **(1) Congruência com o Fluxo de Caixa Real nos Diagnósticos**:
 >   - Resolução da divergência de taxas de poupança positivas em períodos de déficit operacional: `InsightsPage` agora adota estritamente saídas brutas (`sumGrossCents`) ao invés de ponderações de relatórios fiscais (`sumWeightedCents`), garantindo que o usuário nunca receba diagnósticos de "Poupança saudável" enquanto seu caixa estiver deficitário;
@@ -5528,11 +5545,11 @@ flowchart TD
 
 ---
 
-### Fase 96 — Planejamento Canônico: Homologação de Pacotes Android, Desacoplamento de Cartões em Corretoras & Auto-Vínculo Semântico
+### Fase 96 — Homologação de Pacotes Android, Desacoplamento de Cartões em Corretoras & Auto-Vínculo Semântico
 
-> **Status:** 📋 Planejada e Documentada (Fase 11 do Plano de Captura Inteligente) — **Engenharia de Visibilidade Android & Desacoplamento de Cartões**: Estruturação arquitetural da Fase 11 em `docs/plans/PLANO_IMPLEMENTACAO_CAPTURA_INTELIGENTE_E_FRICCAO_MINIMA.md` para eliminar falsos negativos de instalação e descartes de notificações no Android 11+ (homologação canônica de IDs da Google Play Store: Rico `br.com.rico.rico`, BTG `br.com.btg.pactual.digital`, Nomad `com.nomadglobal.app`, XP `br.com.xp.investimentos`), desacoplar compras de cartão de crédito em corretoras (Cartão Rico / Cartão XP) de falsos trades de ações, blindar a inferência determinística de categorias (higienização de sufixos como "AMAZON BR" ➔ "compras") e estabelecer motor de auto-vínculo de cartão de crédito no domínio por correspondência semântica de banco emissor.
+> **Status:** ✅ Concluída e Auditada (Fase 11 do Plano de Captura Inteligente) — **Engenharia de Visibilidade Android & Desacoplamento de Cartões**: Conclusão integral da Fase 11 de `docs/plans/PLANO_IMPLEMENTACAO_CAPTURA_INTELIGENTE_E_FRICCAO_MINIMA.md` eliminando falsos negativos de instalação e descartes indevidos de notificações no Android 11+ (homologação canônica de IDs da Google Play Store: Rico `br.com.rico.rico`, BTG `br.com.btg.pactual.digital`, Nomad `com.nomadglobal.app`, XP `br.com.xp.investimentos`), desacoplamento de compras em cartões de corretoras (Rico e XP) de ordens da bolsa de valores, blindagem na inferência determinística de categorias com higienização de sufixos regionais ("AMAZON BR" ➔ "compras") e auto-vínculo de cartões no domínio puro por emissor no Wizard de lançamento e no card de sugestões pendentes. Suíte de 12 arquivos e 340 testes passando, zero erros no linter e typecheck estrito.
 
-#### 1. Entregas Planejadas e Mapeadas
+#### 1. Entregas Concluídas
 - **Homologação da Matriz Canônica de Pacotes Android (Tarefa 11.1):**
   - Adição dos IDs oficiais da Play Store em `<queries>` no `AndroidManifest.xml`, `BANK_PACKAGES` no `BankNotificationPlugin.java`, `DEFAULT_MONITORED_PACKAGES` no `BankNotificationListenerService.java` e mappings TypeScript (`preferences.ts`, `bank-parser.ts`);
   - Prevenção do descarte silencioso de notificações pelo ouvinte nativo e exibição correta do badge `[Instalado]`.
@@ -5540,7 +5557,7 @@ flowchart TD
   - Prioridade estrita para `nature: "expense"` e `paymentMethod: "credit_card"` quando notificações de corretoras contiverem menção a compras no cartão ("Cartão Rico", "compra de R$", "via cartão digital");
   - Prevenção da conversão indevida de compras no cartão em ordens de bolsa de valores ou investimento compulsório.
 - **Higienização de Sufixos e Inferência Resiliente de Categorias (Tarefa 11.3):**
-  - Remoção de sufixos regionais/digitais ("BR", "BRASIL", ".COM.BR") pelo extrator de estabelecimentos;
+  - Remoção de sufixos regionais/digitais ("BR", "BRASIL", ".COM.BR", "LTDA", "S/A") pelo extrator de estabelecimentos;
   - Mapeamento determinístico de grandes marketplaces ("Amazon") para a categoria canônica "compras".
 - **Motor de Resolução e Auto-Vínculo de Cartão por Emissor (Tarefa 11.4):**
   - Módulo de domínio puro `src/domain/notifications/card-resolution.ts` com função `resolveBestMatchingCard`;

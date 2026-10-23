@@ -277,7 +277,10 @@ export function buildReviewRoute(parsed: ParsedBankTransaction): string {
   params.set("origem", "notificacao");
   if (parsed.categorySlug) params.set("categoria", parsed.categorySlug);
   if (parsed.paymentMethod) params.set("forma", parsed.paymentMethod);
-  if (parsed.cardLastDigits) params.set("cartao", parsed.cardLastDigits);
+  const cardToken = parsed.cardLastDigits || parsed.issuerBank || parsed.bankName;
+  if (cardToken) {
+    params.set("cartao", cardToken);
+  }
   if (parsed.installments && parsed.installments > 1) {
     params.set("parcelas", parsed.installments.toString());
   }

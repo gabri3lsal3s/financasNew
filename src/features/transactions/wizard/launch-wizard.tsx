@@ -16,6 +16,7 @@ import {
   inferCategoryKeyword,
   lookupMerchantCategory,
   matchCategoryBySlug,
+  resolveBestMatchingCard,
   type CanonicalCategorySlug,
   type ParsedBankTransaction,
 } from "@/domain/notifications";
@@ -227,19 +228,31 @@ export function LaunchWizard({
     }
   }, [categoriesQuery.data, initialValues?.categoryId, state.categoryId, state.description]);
 
-  // Pré-seleção automática de cartão quando cartão de crédito selecionado e só há 1 cartão ativo
+  // Resolução inteligente e auto-vínculo de cartão de crédito por emissor/dígitos/fallback (Fase 11 / Tarefa 11.4)
   useEffect(() => {
     if (state.type !== "expense" || state.paymentMethod !== "credit_card") return;
-    if (state.cardId || !cardsQuery.data || cardsQuery.data.length === 0) return;
+    if (!cardsQuery.data || cardsQuery.data.length === 0) return;
 
-    if (cardsQuery.data.length === 1 && cardsQuery.data[0]) {
-      const singleCardId = cardsQuery.data[0].id;
+    // Se o state.cardId atual já corresponde a um cartão ativo cadastrado, não sobrescreve
+    const currentValid = cardsQuery.data.some((c) => c.id === state.cardId);
+    if (currentValid) return;
+
+    const rawToken = initialValues?.cardId || state.cardId;
+    const resolvedCard = resolveBestMatchingCard(cardsQuery.data, {
+      cardId: rawToken,
+      cardLastDigits: rawToken && /^\d{4}$/.test(rawToken.trim()) ? rawToken.trim() : undefined,
+      bankName: rawToken,
+      issuerBank: rawToken,
+    });
+
+    if (resolvedCard) {
+      const targetCardId = resolvedCard.id;
       const timer = setTimeout(() => {
-        setState((prev) => ({ ...prev, cardId: singleCardId }));
+        setState((prev) => ({ ...prev, cardId: targetCardId }));
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [state.type, state.paymentMethod, state.cardId, cardsQuery.data]);
+  }, [state.type, state.paymentMethod, state.cardId, initialValues?.cardId, cardsQuery.data]);
 
   const handleSubmit = async () => {
     setError(null);

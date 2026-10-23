@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import {
   inferCategoryKeyword,
   lookupMerchantCategory,
+  resolveBestMatchingCard,
   type MerchantCategoryMapping,
   type ParsedBankTransaction,
 } from "@/domain/notifications";
@@ -130,6 +131,22 @@ export function PendingSuggestionsCard({
     if (sug.installments && sug.installments > 1) {
       params.set("parcelas", String(sug.installments));
     }
+    if (sug.paymentMethod === "credit_card") {
+      const matchingCard = resolveBestMatchingCard(cardsQuery.data, {
+        cardLastDigits: sug.cardLastDigits,
+        bankName: sug.bankName,
+        issuerBank: sug.issuerBank,
+        cardBrand: sug.cardBrand,
+      });
+      if (matchingCard) {
+        params.set("cartao", matchingCard.id);
+      } else {
+        const cardToken = sug.cardLastDigits || sug.issuerBank || sug.bankName;
+        if (cardToken) {
+          params.set("cartao", cardToken);
+        }
+      }
+    }
     navigate(`/?${params.toString()}`);
   };
 
@@ -183,11 +200,12 @@ export function PendingSuggestionsCard({
         let closingDay: number | null = null;
 
         if (sug.paymentMethod === "credit_card") {
-          const cards = cardsQuery.data ?? [];
-          const matchingCard =
-            cards.find((card) =>
-              card.name.toLowerCase().includes(sug.bankName.toLowerCase()),
-            ) || cards[0];
+          const matchingCard = resolveBestMatchingCard(cardsQuery.data, {
+            cardLastDigits: sug.cardLastDigits,
+            bankName: sug.bankName,
+            issuerBank: sug.issuerBank,
+            cardBrand: sug.cardBrand,
+          });
 
           if (matchingCard) {
             cardId = matchingCard.id;

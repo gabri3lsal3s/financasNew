@@ -1,10 +1,21 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NotificationsTab } from "./notifications-tab";
 import * as nativeServices from "@/services/native";
+import { DEFAULT_BANK_ASSISTANT_PREFERENCES } from "@/domain/notifications";
+import { triggerSensory } from "@/services/sensory";
+import { pushToast } from "@/services/toast";
+
+vi.mock("@/services/sensory", () => ({
+  triggerSensory: vi.fn(),
+}));
+
+vi.mock("@/services/toast", () => ({
+  pushToast: vi.fn(),
+}));
 
 vi.mock("@/state", () => ({
   useUserPreferences: () => ({
@@ -234,6 +245,134 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
 
       const prefs = nativeServices.getBankAssistantPreferences();
       expect(prefs.monitoredBanks).toEqual(["Nubank", "Inter"]);
+    });
+
+    it("permite re-escanear aplicativos bancários chamando getInstalledBankingApps e emitindo feedback sensorial", async () => {
+      vi.mocked(nativeServices.getInstalledBankingApps).mockResolvedValueOnce({
+        installedBankNames: [],
+        apps: [],
+      });
+
+      const user = userEvent.setup();
+      renderNotificationsTab();
+
+      expect(
+        screen.getByText(
+          "Nenhum aplicativo bancário suportado detectado automaticamente no dispositivo",
+        ),
+      ).toBeInTheDocument();
+
+      // Configura retorno do re-escaneamento com Rico e XP
+      vi.mocked(nativeServices.getInstalledBankingApps).mockResolvedValueOnce({
+        installedBankNames: ["Rico", "XP Investimentos"],
+        apps: [
+          { packageName: "br.com.rico.rico", bankName: "Rico", isInstalled: true, category: "broker" },
+          {
+            packageName: "br.com.xp.investimentos",
+            bankName: "XP Investimentos",
+            isInstalled: true,
+            category: "broker",
+          },
+        ],
+      });
+
+      // Clica no botão de re-escanear (no cabeçalho)
+      const rescanButtons = screen.getAllByRole("button", {
+        name: /Re-escanear/i,
+      });
+      expect(rescanButtons.length).toBeGreaterThan(0);
+      await user.click(rescanButtons[0]!);
+
+      expect(triggerSensory).toHaveBeenCalledWith("action");
+      expect(nativeServices.getInstalledBankingApps).toHaveBeenCalledTimes(2);
+
+      // Novos bancos detectados devem aparecer
+      expect(await screen.findByRole("checkbox", { name: "Monitorar Rico" })).toBeInTheDocument();
+      expect(screen.getByRole("checkbox", { name: "Monitorar XP Investimentos" })).toBeInTheDocument();
+      expect(pushToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Lista de aplicativos atualizada",
+          description: "2 aplicativos bancários detectados no dispositivo.",
+          variant: "success",
+        }),
+      );
+    });
+
+    it("exibe badge [Instalado] para Rico, BTG Investimentos, Nomad e XP no catálogo após detecção", async () => {
+      vi.mocked(nativeServices.getInstalledBankingApps).mockResolvedValue({
+        installedBankNames: ["Rico", "BTG Investimentos", "Nomad", "XP Investimentos"],
+        apps: [
+          { packageName: "br.com.rico.rico", bankName: "Rico", isInstalled: true, category: "broker" },
+          {
+            packageName: "br.com.btg.pactual.digital",
+            bankName: "BTG Investimentos",
+            isInstalled: true,
+            category: "broker",
+          },
+          { packageName: "com.nomadglobal.app", bankName: "Nomad", isInstalled: true, category: "broker" },
+          {
+            packageName: "br.com.xp.investimentos",
+            bankName: "XP Investimentos",
+            isInstalled: true,
+            category: "broker",
+          },
+        ],
+      });
+
+      const user = userEvent.setup();
+      renderNotificationsTab();
+
+      // Aguarda carregar
+      await screen.findByRole("checkbox", { name: "Monitorar Rico" });
+
+      // Abre o catálogo completo
+      const catalogAccordion = screen.getByRole("button", {
+        name: /Explorar catálogo completo/i,
+      });
+      await user.click(catalogAccordion);
+
+      // Localiza os itens dentro da seção do catálogo
+      const catalogContent = document.getElementById("notification-catalog-content");
+      expect(catalogContent).not.toBeNull();
+      const catalogScope = within(catalogContent!);
+
+      expect(catalogScope.getByText("Rico").closest("div")).toHaveTextContent("Instalado");
+      expect(catalogScope.getByText("BTG Investimentos").closest("div")).toHaveTextContent("Instalado");
+      expect(catalogScope.getByText("Nomad").closest("div")).toHaveTextContent("Instalado");
+      expect(catalogScope.getByText("XP Investimentos").closest("div")).toHaveTextContent("Instalado");
+    });
+
+    it("recalcula e seleciona os novos apps detectados ao clicar em Monitorar todos os instalados", async () => {
+      // Inicia com preferências contendo Nubank monitorado
+      nativeServices.setBankAssistantPreferences({
+        ...DEFAULT_BANK_ASSISTANT_PREFERENCES,
+        monitoredBanks: ["Nubank"],
+      });
+
+      // Retorno do scanner com novos bancos instalados
+      vi.mocked(nativeServices.getInstalledBankingApps).mockResolvedValue({
+        installedBankNames: ["Rico", "Inter"],
+        apps: [
+          { packageName: "br.com.rico.rico", bankName: "Rico", isInstalled: true, category: "broker" },
+          { packageName: "br.com.intermedium", bankName: "Inter", isInstalled: true, category: "bank" },
+        ],
+      });
+
+      const user = userEvent.setup();
+      renderNotificationsTab();
+
+      await screen.findByRole("checkbox", { name: "Monitorar Rico" });
+
+      const monitorAllInstalledBtn = screen.getByRole("button", {
+        name: "Monitorar todos os instalados",
+      });
+      await user.click(monitorAllInstalledBtn);
+
+      const prefs = nativeServices.getBankAssistantPreferences();
+      // Deve conter Nubank (já monitorado) + Rico + Inter (novos instalados)
+      expect(prefs.monitoredBanks).toContain("Nubank");
+      expect(prefs.monitoredBanks).toContain("Rico");
+      expect(prefs.monitoredBanks).toContain("Inter");
     });
   });
 

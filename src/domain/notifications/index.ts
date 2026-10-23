@@ -1,4 +1,5 @@
 export * from "./bank-parser";
+export * from "./card-resolution";
 export * from "./category-inference";
 export * from "./merchant-catalog";
 export * from "./merchant-memory";

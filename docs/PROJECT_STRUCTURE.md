@@ -188,7 +188,9 @@
     │   ├── navigation/            #   F43: Resolução dinâmica de slots BottomNav e rota de fallback (landing route)
     │   ├── onboarding/             #   checklist/progresso do primeiro uso (F5.4)
     │   ├── notifications/         #   Fase 5 Android: parsing puro de notificações bancárias, comprovantes Pix em centavos,
-    │   │                          #     pix-receipt-parser.ts (extração de comprovantes Pix), merchant-memory.ts, pix-emv-parser.ts
+    │   │                          #     pix-receipt-parser.ts (extração de comprovantes Pix), merchant-memory.ts, pix-emv-parser.ts,
+    │   │                          #     card-resolution.ts (resolução e auto-vínculo de cartões por banco emissor),
+    │   │                          #     merchant-catalog.ts (catálogo canônico e aliases), category-inference.ts
     │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing e totais brutos/ponderados (totals.ts)
     │   ├── competence/            #   resolveBillCompetence, clampDay, overrides
     │   ├── debts/                 #   status derivado + penalty (mora/multa/desconto), schemas.ts (Zod) e resumo consolidado

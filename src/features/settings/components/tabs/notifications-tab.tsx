@@ -6,11 +6,12 @@ import {
   ChevronDown,
   ChevronUp,
   CreditCard,
+  Download,
+  RefreshCw,
   Search,
   Smartphone,
   TrendingUp,
   Wallet,
-  Download,
   Zap,
 } from "lucide-react";
 import {
@@ -50,6 +51,7 @@ import {
   requestNotificationListenerPermission,
   getInstalledBankingApps,
   isNativePlatform,
+  type InstalledBankApp,
 } from "@/services/native";
 import {
   HOMOLOGATED_BANKS,
@@ -224,6 +226,8 @@ export function NotificationsTab() {
   const { preferences: bankPrefs, updatePreferences: updateBankPrefs } = useBankAssistantPreferences();
   const [listenerPermissionGranted, setListenerPermissionGranted] = useState(true);
   const [installedBanks, setInstalledBanks] = useState<string[]>([]);
+  const [installedApps, setInstalledApps] = useState<InstalledBankApp[]>([]);
+  const [isScanning, setIsScanning] = useState(false);
 
   useEffect(() => {
     if (isNativePlatform()) {
@@ -231,10 +235,49 @@ export function NotificationsTab() {
         setListenerPermissionGranted(granted);
       });
       void getInstalledBankingApps().then((res) => {
-        setInstalledBanks(res.installedBankNames);
+        setInstalledBanks(res.installedBankNames || []);
+        setInstalledApps(res.apps || []);
       });
     }
   }, []);
+
+  const handleRescanBankingApps = async () => {
+    triggerSensory("action");
+    setIsScanning(true);
+    try {
+      const res = await getInstalledBankingApps();
+      const detectedNames = res?.installedBankNames || [];
+      const detectedApps = res?.apps || [];
+      setInstalledBanks(detectedNames);
+      setInstalledApps(detectedApps);
+
+      if (detectedNames.length === 0) {
+        pushToast({
+          title: "Nenhum aplicativo detectado",
+          description: "Nenhum aplicativo bancário suportado foi encontrado no dispositivo.",
+          variant: "default",
+        });
+      } else {
+        const count = detectedNames.length;
+        pushToast({
+          title: "Lista de aplicativos atualizada",
+          description:
+            count === 1
+              ? "1 aplicativo bancário detectado no dispositivo."
+              : `${count} aplicativos bancários detectados no dispositivo.`,
+          variant: "success",
+        });
+      }
+    } catch {
+      pushToast({
+        title: "Erro ao escanear aplicativos",
+        description: "Não foi possível verificar os aplicativos bancários instalados.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   const handleTogglePassiveCapture = async (enabled: boolean) => {
     triggerSensory("toggle");
@@ -352,9 +395,10 @@ export function NotificationsTab() {
 
   const handleSelectOnlyInstalledBanks = () => {
     if (installedBanks.length === 0) return;
-    updateBankPrefs({ monitoredBanks: installedBanks });
+    const nextList = [...new Set([...bankPrefs.monitoredBanks, ...installedBanks])];
+    updateBankPrefs({ monitoredBanks: nextList });
     updateCustomSettingsMutation.mutate({
-      bankAssistant: { monitoredBanks: installedBanks },
+      bankAssistant: { monitoredBanks: nextList },
     });
     pushToast({
       title: "Bancos instalados selecionados",
@@ -391,7 +435,16 @@ export function NotificationsTab() {
 
   const renderInstitutionItem = (inst: HomologatedInstitution) => {
     const isChecked = bankPrefs.monitoredBanks.includes(inst.name);
-    const isInstalled = installedBanks.includes(inst.name);
+    const isInstalled =
+      installedBanks.some(
+        (b) => b.trim().toLowerCase() === inst.name.trim().toLowerCase(),
+      ) ||
+      installedApps.some(
+        (app) =>
+          app.isInstalled &&
+          (inst.packages.includes(app.packageName) ||
+            app.bankName.trim().toLowerCase() === inst.name.trim().toLowerCase()),
+      );
 
     return (
       <div
@@ -829,32 +882,74 @@ export function NotificationsTab() {
                         </Badge>
                       )}
                     </div>
-                    {installedBanks.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <Button
-                        variant="ghost"
+                        type="button"
+                        variant="outline"
                         size="xs"
-                        onClick={handleSelectOnlyInstalledBanks}
-                        className="text-[11px] h-7 px-2 text-primary hover:text-primary-hover font-medium"
+                        onClick={handleRescanBankingApps}
+                        disabled={isScanning}
+                        className="text-[11px] h-7 px-2.5 gap-1.5 text-muted-foreground hover:text-foreground"
+                        aria-label="Re-escanear aplicativos instalados"
                       >
-                        Monitorar todos os instalados
+                        <RefreshCw
+                          className={cn("size-3", isScanning && "animate-spin")}
+                          aria-hidden="true"
+                        />
+                        <span>{isScanning ? "Escaneando..." : "Re-escanear"}</span>
                       </Button>
-                    )}
+                      {installedBanks.length > 0 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="xs"
+                          onClick={handleSelectOnlyInstalledBanks}
+                          className="text-[11px] h-7 px-2 text-primary hover:text-primary-hover font-medium"
+                        >
+                          Monitorar todos os instalados
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   {installedBanks.length === 0 ? (
-                    <div className="p-4 rounded-xl border border-dashed border-border/80 bg-surface/50 text-center space-y-1">
-                      <p className="text-xs font-medium text-foreground">
-                        Nenhum aplicativo bancário suportado detectado automaticamente no dispositivo
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        Explore o catálogo completo abaixo para ativar manualmente as instituições que você utiliza.
-                      </p>
+                    <div className="p-4 rounded-xl border border-dashed border-border/80 bg-surface/50 text-center space-y-2.5">
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-foreground">
+                          Nenhum aplicativo bancário suportado detectado automaticamente no dispositivo
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Explore o catálogo completo abaixo para ativar manualmente as instituições que você utiliza.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        onClick={handleRescanBankingApps}
+                        disabled={isScanning}
+                        className="text-[11px] h-7 px-3 gap-1.5 mx-auto"
+                      >
+                        <RefreshCw
+                          className={cn("size-3", isScanning && "animate-spin")}
+                          aria-hidden="true"
+                        />
+                        <span>{isScanning ? "Escaneando..." : "Re-escanear aplicativos"}</span>
+                      </Button>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                       {installedBanks.map((bankName) => {
                         const institution = HOMOLOGATED_INSTITUTIONS.find(
-                          (inst) => inst.name.toLowerCase() === bankName.toLowerCase(),
+                          (inst) =>
+                            inst.name.toLowerCase() === bankName.toLowerCase() ||
+                            inst.packages.some((pkg) =>
+                              installedApps.some(
+                                (app) =>
+                                  app.packageName === pkg &&
+                                  app.bankName.toLowerCase() === bankName.toLowerCase(),
+                              ),
+                            ),
                         );
                         const isChecked = bankPrefs.monitoredBanks.includes(bankName);
                         const categoryLabel = institution

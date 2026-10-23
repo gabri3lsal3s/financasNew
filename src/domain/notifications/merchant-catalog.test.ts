@@ -82,6 +82,17 @@ describe("merchant-catalog — cleanAcquirerPrefixes (Higienização Especializa
     expect(cleanAcquirerPrefixes("Posto Shell via cartao mastercard final 7788")).toBe("Posto Shell");
   });
 
+  it("remove sufixos regionais e digitais isolados ao final do nome (Fase 11 / Tarefa 11.3)", () => {
+    expect(cleanAcquirerPrefixes("AMAZON BR")).toBe("Amazon");
+    expect(cleanAcquirerPrefixes("AMZN BR")).toBe("Amazon");
+    expect(cleanAcquirerPrefixes("MERCADOLIVRE BR")).toBe("Mercado Livre");
+    expect(cleanAcquirerPrefixes("SHOPEE BRASIL")).toBe("Shopee");
+    expect(cleanAcquirerPrefixes("PADARIA BOM GOSTO BR")).toBe("PADARIA BOM GOSTO");
+    expect(cleanAcquirerPrefixes("FARMACIA POPULAR BRASIL")).toBe("FARMACIA POPULAR");
+    expect(cleanAcquirerPrefixes("MERCADINHO DIGITAL")).toBe("MERCADINHO");
+    expect(cleanAcquirerPrefixes("PIZZARIA COM.BR")).toBe("PIZZARIA");
+  });
+
   it("trata strings vazias ou sem ruídos sem corromper o texto", () => {
     expect(cleanAcquirerPrefixes("")).toBe("");
     expect(cleanAcquirerPrefixes("   ")).toBe("");

@@ -229,9 +229,17 @@ const KEYWORD_GROUPS: KeywordGroup[] = [
   {
     slug: "compras",
     terms: [
+      "amazon br",
+      "amazon brasil",
       "amazon",
+      "amzn br",
+      "amzn",
+      "mercadolivre br",
       "mercadolivre",
+      "mercado livre br",
       "mercado livre",
+      "shopee brasil",
+      "shopee br",
       "shopee",
       "shein",
       "magalu",

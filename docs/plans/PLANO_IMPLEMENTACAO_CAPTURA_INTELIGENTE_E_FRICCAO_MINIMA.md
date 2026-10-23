@@ -942,7 +942,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 **Objetivo:** Eliminar falsos negativos de instalação de aplicativos de bancos e corretoras (Rico, BTG Investimentos, Nomad, XP), garantir captura passiva de notificações no Android sem descartes indevidos por divergência de identificador de pacote, desacoplar compras no cartão de crédito em corretoras de ordens da bolsa de valores, assegurar inferência determinística de categorias com higienização de sufixos de estabelecimentos e vincular automaticamente despesas com cartão ao cartão de crédito cadastrado pelo usuário mesmo na ausência dos últimos 4 dígitos.
 
 #### Tarefas da Fase 11:
-- [ ] **Tarefa 11.1 — Homologação da Matriz Canônica de Pacotes Android (Android Native & TypeScript):**
+- [x] **Tarefa 11.1 — Homologação da Matriz Canônica de Pacotes Android (Android Native & TypeScript):**
   - **Contexto & Diagnóstico:** No Android 11+ (API 30+), restrições de visibilidade de pacotes exigem declarações exatas no `<queries>` do `AndroidManifest.xml` e no `PackageManager`. Atualmente, `Rico` (`br.com.rico.rico`), `BTG Investimentos` (`br.com.btg.pactual.digital`), `Nomad` (`com.nomadglobal.app`) e `XP Investimentos` (`br.com.xp.investimentos`) não são reconhecidos porque o código utiliza apenas pacotes defasados ou fictícios (`br.com.rico`, `com.btgpactual.investimentos`, `com.nomadfinancial.app`, `br.com.xp.carteira`), fazendo com que o `BankNotificationListenerService` descarte as notificações no Android antes de qualquer análise (`!allowedPackages.contains(packageName)`).
   - **Componentes Afetados:**
     1. `android/app/src/main/AndroidManifest.xml`: adicionar `<package android:name="br.com.rico.rico" />`, `<package android:name="br.com.btg.pactual.digital" />`, `<package android:name="com.nomadglobal.app" />`, `<package android:name="br.com.xp.investimentos" />` mantendo os identificadores anteriores para retrocompatibilidade.
@@ -955,7 +955,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
     - Teste de integração em `bank-listener.test.ts` simulando payload vindo de `br.com.rico.rico`, `br.com.btg.pactual.digital` e `com.nomadglobal.app`.
   - *Commit Sugerido:* `fix(notifications): homologar package names canonicos da google play store para rico, btg, nomad e xp`
 
-- [ ] **Tarefa 11.2 — Desacoplamento de Cartões em Corretoras & Classificador Híbrido de Natureza Financeira:**
+- [x] **Tarefa 11.2 — Desacoplamento de Cartões em Corretoras & Classificador Híbrido de Natureza Financeira:**
   - **Contexto & Diagnóstico:** Corretoras modernas como Rico e XP oferecem contas digitais e cartões de crédito (ex.: Cartão Rico Visa Infinite com investback). O motor atual no `bank-parser.ts` (`detectTransactionNature`) classifica compulsoriamente qualquer notificação que venha de corretora (`Binance`, `Rico`, `XP`, `BTG Investimentos`) como investimento (`nature: "investment", subtype: "trade"`), gerando a descrição genérica "Ordem de Compra", sobrescrevendo a categoria para "investimentos" e direcionando para a aba de investimentos em vez do lançamento de despesa.
   - **Regras Operacionais no Domínio Puro (`src/domain/notifications/bank-parser.ts`):**
     1. Avaliar evidência explícita de canal de cartão e consumo antes de aplicar a heurística padrão de corretora:
@@ -972,7 +972,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
     - Garantir que ordens de bolsa ("Nota de corretagem: Compra de 100 WEGE3...") continuem classificadas como `nature: "investment"`.
   - *Commit Sugerido:* `feat(domain/notifications): diferenciar compras em cartoes de corretoras de ordens de bolsa de valores`
 
-- [ ] **Tarefa 11.3 — Higienização de Sufixos Regionais/Digitais e Inferência Resiliente de Categorias:**
+- [x] **Tarefa 11.3 — Higienização de Sufixos Regionais/Digitais e Inferência Resiliente de Categorias:**
   - **Contexto & Diagnóstico:** Notificações de cartões digitais frequentemente formatam nomes de estabelecimentos com sufixos de país ou plataforma (ex.: `"AMAZON BR"`, `"AMZN BR"`, `"MERCADOLIVRE.COM"`, `"SHOPEE BRASIL"`, `"IFOO*RESTAURANTE"`). Se o motor semântico falhar na normalização ou se o parser sobrescrever a categoria inferida, o lançamento fica sem categoria ou com categoria equivocada.
   - **Ações em `src/domain/notifications/category-inference.ts` e `bank-parser.ts`:**
     1. Em `cleanMerchantName` / `cleanAcquirerPrefixes`:
@@ -987,7 +987,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
     - Testes unitários em `category-inference.test.ts` testando `"AMAZON BR"`, `"AMZN BR"`, `"MERCADOLIVRE BR"` mapeando para `"compras"`.
   - *Commit Sugerido:* `fix(domain/notifications): higienizar sufixos regionais de estabelecimentos e blindar inferencia de categoria`
 
-- [ ] **Tarefa 11.4 — Motor de Resolução e Auto-Vínculo de Cartão de Crédito por Emissor no Wizard e Sugestões:**
+- [x] **Tarefa 11.4 — Motor de Resolução e Auto-Vínculo de Cartão de Crédito por Emissor no Wizard e Sugestões:**
   - **Contexto & Diagnóstico:** Notificações como a do Cartão Rico contêm o emissor no título (`"Cartão Rico"`), mas não trazem os 4 dígitos finais (`cardLastDigits: undefined`). Atualmente, o `LaunchWizard` não tenta casar o nome do banco com os cartões do usuário se não houver um UUID explícito nos parâmetros da rota.
   - **Criação do Módulo de Domínio Puro (`src/domain/notifications/card-resolution.ts`):**
     - Implementar a função pura:
@@ -1022,7 +1022,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
     - Teste em `launch-wizard.test.tsx` validando que `cartao="Rico"` pré-seleciona o cartão "Cartão Rico" da lista de cartões mockados.
   - *Commit Sugerido:* `feat(domain/notifications): criar motor de resolucao inteligente de cartao por banco emissor e vincular no wizard`
 
-- [ ] **Tarefa 11.5 — UX Refinada na Gestão de Instituições com Gatilho de Re-escaneamento e Feedback Sensorial:**
+- [x] **Tarefa 11.5 — UX Refinada na Gestão de Instituições com Gatilho de Re-escaneamento e Feedback Sensorial:**
   - **Contexto & Diagnóstico:** Na aba de Notificações (`notifications-tab.tsx`), o escaneamento de apps só ocorre na montagem do componente. Se o usuário instalar um app ou alterar permissões e voltar à tela, o status permanece inalterado até um recarregamento completo.
   - **Ações em `src/features/settings/components/tabs/notifications-tab.tsx`:**
     1. Adicionar botão de ação com ícone de sincronização (`RefreshCw` do `lucide-react`) na seção "Aplicativos no seu Dispositivo":

@@ -16,6 +16,7 @@ import {
   extractMerchantOrRecipient,
   extractNomadExchangeMetadata,
   isBlacklistedNotification,
+  isBrokerCardTransaction,
   isCardBrand,
   isDigitalWallet,
   isRefundTransaction,
@@ -218,6 +219,12 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
       expect(resolveBankName("com.transferwise.android")).toBe("Wise");
       expect(resolveBankName("br.gov.caixa.tem")).toBe("Caixa Tem");
       expect(resolveBankName("br.com.bb.android")).toBe("Banco do Brasil");
+
+      // Novos pacotes canônicos da Google Play Store (Fase 11 / Tarefa 11.1)
+      expect(resolveBankName("br.com.rico.rico")).toBe("Rico");
+      expect(resolveBankName("br.com.btg.pactual.digital")).toBe("BTG Investimentos");
+      expect(resolveBankName("br.com.xp.investimentos")).toBe("XP Investimentos");
+      expect(resolveBankName("com.nomadglobal.app")).toBe("Nomad");
     });
 
     it("resolve bancos por palavras-chave no texto", () => {
@@ -1163,6 +1170,84 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
         expect(parsed?.investmentSubtype).toBe("trade");
         expect(parsed?.assetTicker).toBe("VALE3");
         expect(parsed?.description).toBe("Venda Spot VALE3 (XP Investimentos)");
+      });
+
+      it("desacopla compra no Cartão Rico de ordens de bolsa (Fase 11 / Tarefa 11.2)", () => {
+        const parsed = parseBankNotification({
+          packageName: "br.com.rico.rico",
+          title: "Cartão Rico",
+          text: "Compra de R$ 221,59 APROVADA em AMAZON BR via cartão digital.",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Rico");
+        expect(parsed?.amountCents).toBe(22159);
+        expect(parsed?.type).toBe("expense");
+        expect(parsed?.nature).toBe("expense");
+        expect(parsed?.investmentSubtype).toBeUndefined();
+        expect(parsed?.paymentMethod).toBe("credit_card");
+        expect(parsed?.merchant).toBe("Amazon");
+        expect(parsed?.description).toBe("Amazon");
+        expect(parsed?.issuerBank).toBe("Rico");
+        expect(parsed?.categorySlug).toBe("compras");
+      });
+
+      it("desacopla compra no Cartão XP de ordens de bolsa (Fase 11 / Tarefa 11.2)", () => {
+        const parsed = parseBankNotification({
+          packageName: "br.com.xp.investimentos",
+          title: "Cartão XP",
+          text: "Compra aprovada em RESTAURANTE SPOT no valor de R$ 149,90 via cartão digital.",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("XP Investimentos");
+        expect(parsed?.amountCents).toBe(14990);
+        expect(parsed?.type).toBe("expense");
+        expect(parsed?.nature).toBe("expense");
+        expect(parsed?.investmentSubtype).toBeUndefined();
+        expect(parsed?.paymentMethod).toBe("credit_card");
+        expect(parsed?.merchant).toBe("RESTAURANTE SPOT");
+        expect(parsed?.description).toBe("RESTAURANTE SPOT");
+        expect(parsed?.issuerBank).toBe("XP Investimentos");
+        expect(parsed?.categorySlug).toBe("alimentacao");
+      });
+
+      it("valida isBrokerCardTransaction com compras vs ordens de mercado (Fase 11 / Tarefa 11.2)", () => {
+        expect(
+          isBrokerCardTransaction(
+            "Compra de R$ 221,59 APROVADA em AMAZON BR via cartão digital.",
+            "Cartão Rico",
+            "Rico",
+          ),
+        ).toBe(true);
+        expect(
+          isBrokerCardTransaction(
+            "Compra aprovada em RESTAURANTE SPOT no valor de R$ 149,90 via cartão digital.",
+            "Cartão XP",
+            "XP Investimentos",
+          ),
+        ).toBe(true);
+        expect(
+          isBrokerCardTransaction(
+            "Nota de corretagem: Compra de 100 WEGE3 a R$ 40,00",
+            "Nota de corretagem",
+            "Rico",
+          ),
+        ).toBe(false);
+        expect(
+          isBrokerCardTransaction(
+            "Ordem executada: compra de PETR4 a R$ 38,50",
+            "XP Investimentos",
+            "XP Investimentos",
+          ),
+        ).toBe(false);
+        expect(
+          isBrokerCardTransaction(
+            "Compra aprovada de R$ 50,00 no cartão",
+            "Nubank",
+            "Nubank",
+          ),
+        ).toBe(false);
       });
     });
 

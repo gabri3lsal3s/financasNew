@@ -77,6 +77,14 @@ describe("category-inference (Motor Puro de Auto-Categorização)", () => {
       expect(inferCategoryKeyword("Lojas Renner Centro")).toBe("compras");
     });
 
+    it("infere categoria 'compras' para marketplaces com sufixos regionais e acrônimos (Fase 11 / Tarefa 11.3)", () => {
+      expect(inferCategoryKeyword("AMAZON BR")).toBe("compras");
+      expect(inferCategoryKeyword("AMZN BR")).toBe("compras");
+      expect(inferCategoryKeyword("MERCADOLIVRE BR")).toBe("compras");
+      expect(inferCategoryKeyword("Amazon")).toBe("compras");
+      expect(inferCategoryKeyword("Shopee Brasil")).toBe("compras");
+    });
+
     it("infere categoria 'salario' para folhas de pagamento e proventos de trabalho", () => {
       expect(inferCategoryKeyword("Folha de Pagamento Empresa XYZ")).toBe("salario");
       expect(inferCategoryKeyword("Crédito Salário Mensal")).toBe("salario");

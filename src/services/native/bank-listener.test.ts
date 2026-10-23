@@ -397,6 +397,45 @@ describe("bank-listener (Serviço de Notificações e Pix)", () => {
       const count = await flushConfirmedBankTransactions();
       expect(count).toBe(1);
     });
+
+    it("processa notificações originadas dos pacotes canônicos Play Store de Rico, BTG e Nomad (Fase 11 / Tarefa 11.1)", () => {
+      const addSpy = vi.spyOn(suggestionsStoreModule, "addPendingSuggestion");
+
+      // Rico canônico
+      const ricoResult = processBankNotification({
+        title: "Rico",
+        text: "Compra de R$ 120,00 no cartão aprovada",
+        packageName: "br.com.rico.rico",
+        timestamp: 1729000000000,
+      });
+      expect(ricoResult).not.toBeNull();
+      expect(ricoResult?.bankName).toBe("Rico");
+      expect(ricoResult?.amountCents).toBe(12000);
+      expect(addSpy).toHaveBeenCalledWith(ricoResult);
+
+      // BTG Investimentos canônico
+      const btgResult = processBankNotification({
+        title: "BTG Investimentos",
+        text: "Aplicação confirmada no valor de R$ 500,00 em CDB",
+        packageName: "br.com.btg.pactual.digital",
+        timestamp: 1729000000000,
+      });
+      expect(btgResult).not.toBeNull();
+      expect(btgResult?.bankName).toBe("BTG Investimentos");
+      expect(btgResult?.amountCents).toBe(50000);
+      expect(addSpy).toHaveBeenCalledWith(btgResult);
+
+      // Nomad canônico
+      const nomadResult = processBankNotification({
+        title: "Nomad",
+        text: "Compra no débito de US$ 25,00 aprovada",
+        packageName: "com.nomadglobal.app",
+        timestamp: 1729000000000,
+      });
+      expect(nomadResult).not.toBeNull();
+      expect(nomadResult?.bankName).toBe("Nomad");
+      expect(addSpy).toHaveBeenCalledWith(nomadResult);
+    });
   });
 });
 

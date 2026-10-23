@@ -53,8 +53,18 @@ export function cleanAcquirerPrefixes(text: string): string {
   }
 
   // 3. Tratamento especializado para Mercado Pago / Mercado Livre
-  if (/^(?:MP\s*\*\s*MERCADOLIVRE|MERCADOLIVRE(?:\.COM)?)\b/i.test(cleaned)) {
+  if (/^(?:MP\s*\*\s*MERCADOLIVRE|MERCADOLIVRE(?:\.COM|\s+BR|\s+BRASIL)?)\b/i.test(cleaned)) {
     return "Mercado Livre";
+  }
+
+  // 3.1. Tratamento especializado para Amazon
+  if (/^(?:AMAZON(?:\s*(?:BR|BRASIL|\.COM|\.COM\.BR|SERVICOS))?|AMZN(?:\s*BR)?)\b/i.test(cleaned)) {
+    return "Amazon";
+  }
+
+  // 3.2. Tratamento especializado para Shopee
+  if (/^SHOPEE(?:\s*(?:BRASIL|BR|\.COM|\.COM\.BR))?\b/i.test(cleaned)) {
+    return "Shopee";
   }
 
   // 4. Tratamento especializado para 99 / 99App
@@ -101,11 +111,20 @@ export function cleanAcquirerPrefixes(text: string): string {
   cleaned = cleaned.replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, "");
 
   // 9. Remoção de sufixos de geolocalização e siglas de UF (" SAO PAULO BR", " RIO DE JANEI BRA", etc.)
-  cleaned = cleaned.replace(/\s+[A-ZÀ-ÿ\s]{2,20}\s+(?:BR|BRA)$/i, "");
+  cleaned = cleaned.replace(
+    /\s+(?:SAO PAULO|RIO DE JANEI(?:RO)?|BELO HORIZONTE|CURITIBA|PORTO ALEGRE|BRASILIA|SALVADOR|FORTALEZA|RECIFE|CAMPINAS|GOIANIA|[A-Z]{2})\s+(?:BR|BRA)$/i,
+    "",
+  );
   cleaned = cleaned.replace(
     /\s+(?:SAO PAULO|RIO DE JANEIRO|BELO HORIZONTE|CURITIBA|PORTO ALEGRE|BRASILIA|SALVADOR|FORTALEZA|RECIFE|CAMPINAS|GOIANIA)\s+(?:SP|RJ|MG|PR|RS|DF|BA|CE|PE|GO)\b.*$/i,
     "",
   );
+
+  // 9.1. Remoção de sufixos regionais e digitais isolados ao final do nome (§11.3)
+  if (!/^(?:banco\s+do\s+brasil|bb)$/i.test(cleaned)) {
+    cleaned = cleaned.replace(/\s+(?:br|brasil|com|com\.br|digital|app|pay)\b.*$/i, "");
+    cleaned = cleaned.replace(/(?:\.com|\.com\.br)\b.*$/i, "");
+  }
 
   // 10. Remoção de resíduos de cartões e bandeiras (" com Cartão Nubank final 1234", " no cartão final 1234")
   cleaned = cleaned.replace(
@@ -604,17 +623,31 @@ export const CANONICAL_MERCHANT_CATALOG: CanonicalMerchantEntry[] = [
   {
     friendlyName: "Mercado Livre",
     categorySlug: "compras",
-    keywords: ["mercado livre", "mercadolivre", "mercadolivre com"],
+    keywords: [
+      "mercado livre",
+      "mercadolivre",
+      "mercadolivre com",
+      "mercadolivre br",
+      "mercado livre br",
+    ],
   },
   {
     friendlyName: "Amazon",
     categorySlug: "compras",
-    keywords: ["amazon com br", "amazon marketplace", "amazon brasil"],
+    keywords: [
+      "amazon com br",
+      "amazon marketplace",
+      "amazon brasil",
+      "amazon br",
+      "amazon",
+      "amzn br",
+      "amzn",
+    ],
   },
   {
     friendlyName: "Shopee",
     categorySlug: "compras",
-    keywords: ["shopee", "shopee brasil", "shopee com br"],
+    keywords: ["shopee", "shopee brasil", "shopee com br", "shopee br"],
   },
   {
     friendlyName: "Magazine Luiza",

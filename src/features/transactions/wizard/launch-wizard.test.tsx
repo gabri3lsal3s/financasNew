@@ -20,7 +20,7 @@ vi.mock("@/state", () => ({
     isError: false,
     error: null,
   }),
-  useActiveCreditCards: () => ({ data: [], isLoading: false, isError: false, error: null }),
+  useActiveCreditCards: () => ({ data: activeCreditCardsMock(), isLoading: false, isError: false, error: null }),
   useCreateExpense: () => ({ mutateAsync: createExpenseMock, isPending: false }),
   useCreateIncome: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateIncomeInstallments: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -28,12 +28,14 @@ vi.mock("@/state", () => ({
   usePredictionHistory: () => ({ entries: predictionHistoryMock(), isLoading: false, error: null, refetch: vi.fn() }),
 }));
 
+const activeCreditCardsMock = vi.fn(() => [] as unknown[]);
 const predictionHistoryMock = vi.fn(() => [] as unknown[]);
 
 describe("LaunchWizard — fluxo de lançamento (D10)", () => {
   beforeEach(() => {
     createExpenseMock.mockReset().mockResolvedValue("expense-1");
     navigateMock.mockReset();
+    activeCreditCardsMock.mockReset().mockReturnValue([]);
   });
 
   it("exibe os 4 passos do Stepper", () => {
@@ -529,6 +531,31 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
       // Deve abrir o diálogo de anexar comprovante
       expect(await screen.findByText("Anexar Comprovante")).toBeInTheDocument();
       expect(screen.getByText(/Arraste o comprovante aqui/i)).toBeInTheDocument();
+    });
+  });
+
+  describe("Auto-vínculo de Cartão de Crédito por Emissor (Fase 11 / Tarefa 11.4)", () => {
+    it("pré-seleciona o cartão 'Cartão Rico' quando cardId='Rico' é passado via query params/initialValues", async () => {
+      activeCreditCardsMock.mockReturnValue([
+        { id: "card-nu-1", name: "Nubank", brand: "mastercard", is_active: true },
+        { id: "card-rico-1", name: "Cartão Rico", brand: "visa", is_active: true },
+      ]);
+
+      render(
+        <LaunchWizard
+          initialMode="quick"
+          initialValues={{
+            valueCents: 15000,
+            description: "Amazon",
+            paymentMethod: "credit_card",
+            cardId: "Rico",
+          }}
+        />,
+      );
+
+      // No modo rápido, o select de cartão deve estar pré-preenchido com "Cartão Rico"
+      const cardSelect = await screen.findByRole("combobox", { name: "Selecione o cartão de crédito" });
+      expect(cardSelect).toHaveTextContent("Cartão Rico");
     });
   });
 });

@@ -85,12 +85,16 @@ public class BankNotificationPlugin extends Plugin {
         // Investimentos, Cripto & Contas Globais
         BANK_PACKAGES.put("com.btg.pactual.banking", new BankAppInfo("BTG Pactual", "bank"));
         BANK_PACKAGES.put("com.btgpactual.investimentos", new BankAppInfo("BTG Investimentos", "broker"));
+        BANK_PACKAGES.put("br.com.btg.pactual.digital", new BankAppInfo("BTG Investimentos", "broker"));
         BANK_PACKAGES.put("br.com.xp.carteira", new BankAppInfo("XP Investimentos", "broker"));
         BANK_PACKAGES.put("com.xpinc.investments", new BankAppInfo("XP Investimentos", "broker"));
+        BANK_PACKAGES.put("br.com.xp.investimentos", new BankAppInfo("XP Investimentos", "broker"));
         BANK_PACKAGES.put("br.com.rico", new BankAppInfo("Rico", "broker"));
         BANK_PACKAGES.put("br.com.rico.investimentos", new BankAppInfo("Rico", "broker"));
+        BANK_PACKAGES.put("br.com.rico.rico", new BankAppInfo("Rico", "broker"));
         BANK_PACKAGES.put("com.binance.dev", new BankAppInfo("Binance", "broker"));
         BANK_PACKAGES.put("com.nomadfinancial.app", new BankAppInfo("Nomad", "broker"));
+        BANK_PACKAGES.put("com.nomadglobal.app", new BankAppInfo("Nomad", "broker"));
         BANK_PACKAGES.put("com.transferwise.android", new BankAppInfo("Wise", "broker"));
 
         // Cooperativas, Adquirentes & Outros

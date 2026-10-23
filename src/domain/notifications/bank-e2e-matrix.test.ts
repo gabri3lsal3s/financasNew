@@ -662,6 +662,46 @@ describe("Suíte E2E de Notificações Bancárias & Matriz dos 10 Maiores Bancos
         expect(result?.type).toBe("expense");
         expect(result?.categorySlug).toBe("investimentos");
       });
+
+      it("desacopla compra de cartão na Rico classificando como despesa de consumo (Fase 11 / Tarefa 11.2)", () => {
+        const result = parseBankNotification({
+          packageName: "br.com.rico.rico",
+          title: "Cartão Rico",
+          text: "Compra de R$ 221,59 APROVADA em AMAZON BR via cartão digital.",
+        });
+
+        expect(result).not.toBeNull();
+        expect(result?.bankName).toBe("Rico");
+        expect(result?.amountCents).toBe(22159);
+        expect(result?.nature).toBe("expense");
+        expect(result?.type).toBe("expense");
+        expect(result?.investmentSubtype).toBeUndefined();
+        expect(result?.paymentMethod).toBe("credit_card");
+        expect(result?.merchant).toBe("Amazon");
+        expect(result?.description).toBe("Amazon");
+        expect(result?.issuerBank).toBe("Rico");
+        expect(result?.categorySlug).toBe("compras");
+      });
+
+      it("desacopla compra de cartão na XP Investimentos classificando como despesa de consumo (Fase 11 / Tarefa 11.2)", () => {
+        const result = parseBankNotification({
+          packageName: "br.com.xp.investimentos",
+          title: "Cartão XP",
+          text: "Compra aprovada em RESTAURANTE SPOT no valor de R$ 149,90 via cartão digital.",
+        });
+
+        expect(result).not.toBeNull();
+        expect(result?.bankName).toBe("XP Investimentos");
+        expect(result?.amountCents).toBe(14990);
+        expect(result?.nature).toBe("expense");
+        expect(result?.type).toBe("expense");
+        expect(result?.investmentSubtype).toBeUndefined();
+        expect(result?.paymentMethod).toBe("credit_card");
+        expect(result?.merchant).toBe("RESTAURANTE SPOT");
+        expect(result?.description).toBe("RESTAURANTE SPOT");
+        expect(result?.issuerBank).toBe("XP Investimentos");
+        expect(result?.categorySlug).toBe("alimentacao");
+      });
     });
 
     describe("Nomad (com.nomadfinancial.app)", () => {

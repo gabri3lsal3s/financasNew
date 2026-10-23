@@ -429,11 +429,15 @@ O Assistente Passivo opera em modelo híbrido entre o cliente Android nativo e o
    - Parser puro em TypeScript sem dependências externas;
    - Suporte a 20+ instituições: bancos digitais, tradicionais, carteiras digitais, corretoras (BTG, XP, Rico), cripto (Binance) e contas globais (Nomad, Wise);
    - Aritmética inteira estrita em centavos (`amountCents`);
-   - Detecção de natureza (despesa, receita, investimento/aporte/resgate).
+   - Detecção de natureza (despesa, receita, investimento/aporte/resgate) com classificador híbrido: compras em cartões de corretoras (Rico, XP, BTG) são tratadas como consumo (`nature: "expense"`, `subtype: "card"`), preservando notas de corretagem e ordens de bolsa como investimento (`nature: "investment"`).
 2. **`category-inference.ts`**:
-   - Mapeamento determinístico de estabelecimentos e palavras-chave para categorias canônicas do sistema.
+   - Mapeamento determinístico de estabelecimentos e palavras-chave para categorias canônicas do sistema com higienização de sufixos regionais e digitais (`" BR"`, `" BRASIL"`, `".COM"`, `" LTDA"`, `" S/A"`).
 3. **`preferences.ts`**:
-   - Modelagem de preferências de notificações, deduplicação temporal e persistência segura.
+   - Modelagem de preferências de notificações, deduplicação temporal, persistência segura e matriz de pacotes Android canônicos homologados (Google Play Store).
+4. **`card-resolution.ts`**:
+   - Resolução inteligente e auto-vínculo de cartões de crédito cadastrados pelo usuário (`resolveBestMatchingCard`) por correspondência semântica de banco emissor, com suporte a ausência de dígitos finais no texto e pontuação de relevância.
+5. **`merchant-catalog.ts`**:
+   - Catálogo estático de estabelecimentos conhecidos, aliases e regras fonéticas para aprendizado e predição imediata.
 
 ### 13.4 Gestão de Estado & Deduplicação (`src/services/native/suggestions-store.ts`)
 - Store reativa de sugestões pendentes;

@@ -155,12 +155,16 @@
         <!-- Investimentos, Cripto & Contas Globais -->
         <package android:name="com.btg.pactual.banking" />
         <package android:name="com.btgpactual.investimentos" />
+        <package android:name="br.com.btg.pactual.digital" />
         <package android:name="br.com.xp.carteira" />
         <package android:name="com.xpinc.investments" />
+        <package android:name="br.com.xp.investimentos" />
         <package android:name="br.com.rico" />
         <package android:name="br.com.rico.investimentos" />
+        <package android:name="br.com.rico.rico" />
         <package android:name="com.binance.dev" />
         <package android:name="com.nomadfinancial.app" />
+        <package android:name="com.nomadglobal.app" />
         <package android:name="com.transferwise.android" />
 
         <!-- Cooperativas, Adquirentes & Outros -->

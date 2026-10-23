@@ -70,12 +70,16 @@ const BANK_PACKAGE_MAP: Record<string, string> = {
   "br.com.bradesco.next": "Next",
   "com.btg.pactual.banking": "BTG Pactual",
   "com.btgpactual.investimentos": "BTG Investimentos",
+  "br.com.btg.pactual.digital": "BTG Investimentos",
   "br.com.xp.carteira": "XP Investimentos",
   "com.xpinc.investments": "XP Investimentos",
+  "br.com.xp.investimentos": "XP Investimentos",
   "br.com.rico": "Rico",
   "br.com.rico.investimentos": "Rico",
+  "br.com.rico.rico": "Rico",
   "com.binance.dev": "Binance",
   "com.nomadfinancial.app": "Nomad",
+  "com.nomadglobal.app": "Nomad",
   "com.transferwise.android": "Wise",
 
   // Grandes bancos tradicionais
@@ -693,7 +697,8 @@ export function resolveBankName(
   if (
     titleLower.includes("xp investimentos") ||
     titleLower.includes("cartão xp") ||
-    titleLower.includes("cartao xp")
+    titleLower.includes("cartao xp") ||
+    /\bxp\b/i.test(titleLower)
   ) {
     return "XP Investimentos";
   }
@@ -764,7 +769,8 @@ export function resolveBankName(
   if (
     combined.includes("xp investimentos") ||
     combined.includes("cartão xp") ||
-    combined.includes("cartao xp")
+    combined.includes("cartao xp") ||
+    /\bxp\b/i.test(combined)
   ) {
     return "XP Investimentos";
   }
@@ -805,9 +811,14 @@ export function hasValidTransactionSignal(
     packageName === "com.samsung.android.raja.spay" ||
     packageName === "com.binance.dev" ||
     packageName === "br.com.rico" ||
+    packageName === "br.com.rico.rico" ||
     packageName === "br.com.rico.investimentos" ||
     packageName === "com.btgpactual.investimentos" ||
-    packageName === "com.nomadfinancial.app"
+    packageName === "br.com.btg.pactual.digital" ||
+    packageName === "com.nomadfinancial.app" ||
+    packageName === "com.nomadglobal.app" ||
+    packageName === "br.com.xp.investimentos" ||
+    packageName === "br.com.xp.carteira"
   ) {
     return true;
   }
@@ -1113,6 +1124,79 @@ export function extractInvestmentAsset(text: string): string | undefined {
 }
 
 /**
+ * Padrões de palavras-chave exclusivas de mercado financeiro / bolsa de valores.
+ */
+export const MARKET_EXCLUSIVE_PATTERNS: RegExp[] = [
+  /\bnota\s+de\s+corretagem\b/i,
+  /\bordem\s+executada\b/i,
+  /\bordem\s+de\s+(?:compra|venda)\b/i,
+  /\bordem\s+a\s+mercado\b/i,
+  /\bfundo\s+de\s+investimento\b/i,
+  /\bcdb\b/i,
+  /\btesouro\s*(?:direto|selic|ipca|prefixado)?\b/i,
+  /\bcripto(?:moedas?|ativos?)?\b/i,
+  /\b(?:mercado|compra|venda|ordem)\s+spot\b/i,
+  /\bdividendos?\b/i,
+  /\bproventos?\b/i,
+  /\bjcp\b/i,
+  /\brendimento\s+de\s+fii\b/i,
+];
+
+/**
+ * Avalia se uma notificação de corretora/banco de investimentos representa
+ * uma compra ou despesa de cartão de crédito/débito, desacoplando-a de ordens de bolsa.
+ */
+export function isBrokerCardTransaction(
+  text: string,
+  title: string,
+  bankName: string,
+): boolean {
+  const isInvestmentInstitution =
+    bankName === "Binance" ||
+    bankName === "Rico" ||
+    bankName === "XP" ||
+    bankName === "XP Investimentos" ||
+    bankName === "BTG Investimentos" ||
+    bankName === "BTG Pactual";
+
+  if (!isInvestmentInstitution) {
+    return false;
+  }
+
+  const combined = `${title || ""} ${text || ""}`;
+
+  const hasMarketExclusiveKeywords = MARKET_EXCLUSIVE_PATTERNS.some((pattern) =>
+    pattern.test(combined),
+  );
+  if (hasMarketExclusiveKeywords) {
+    return false;
+  }
+
+  const lowerTitle = (title || "").toLowerCase();
+  const lowerText = (text || "").toLowerCase();
+
+  const hasCardTitleEvidence =
+    lowerTitle.includes("cartão") ||
+    lowerTitle.includes("cartao") ||
+    lowerTitle.includes("compra");
+
+  const hasCardTextEvidence =
+    lowerText.includes("compra de r$") ||
+    lowerText.includes("compra aprovada") ||
+    lowerText.includes("via cartão digital") ||
+    lowerText.includes("via cartao digital") ||
+    lowerText.includes("aproximação") ||
+    lowerText.includes("aproximacao") ||
+    lowerText.includes("crédito") ||
+    lowerText.includes("credito") ||
+    lowerText.includes("crédito à vista") ||
+    lowerText.includes("credito a vista") ||
+    lowerText.includes("fatura");
+
+  return hasCardTitleEvidence || hasCardTextEvidence;
+}
+
+/**
  * Detecta a natureza financeira (expense, income, investment) e o subtipo de investimento.
  */
 export function detectTransactionNature(
@@ -1123,13 +1207,22 @@ export function detectTransactionNature(
   nature: TransactionNature;
   subtype?: InvestmentSubtype;
 } {
+  // 0. Desacoplamento de cartões de corretoras (Rico, XP, BTG) antes da classificação de investimentos
+  if (isBrokerCardTransaction(text, title, bankName)) {
+    const isRefund = isRefundTransaction(text, title);
+    const txType = detectTransactionType(text, title);
+    return { nature: isRefund || txType === "income" ? "income" : "expense" };
+  }
+
   const combined = `${title} ${text}`.toLowerCase();
 
   const isInvestmentInstitution =
     bankName === "Binance" ||
     bankName === "Rico" ||
+    bankName === "XP" ||
     bankName === "XP Investimentos" ||
-    bankName === "BTG Investimentos";
+    bankName === "BTG Investimentos" ||
+    bankName === "BTG Pactual";
 
   // 1. Proventos / Dividendos / JCP
   if (
@@ -1410,7 +1503,7 @@ export function extractMerchantOrRecipient(text: string): string {
   // Ex: "em Padaria Estrela aprovada", "no Restaurante Fogão", "na Droga Raia", "na Tok&Stok"
   // Ignora preposições seguidas de valores (de R$, de 50), dígitos ou palavras de forma de pagamento/parcelamento
   const prepRegex =
-    /\b(?:em|no|na|nos|nas|para|de|do|da|pelo|pela|ao|à)\s+(?!(?:R\$\s*|\d|parcela\b|cr[ée]dito\b|d[ée]bito\b|cart[ãa]o\b|conta\b|valor\b))([A-Za-zÀ-ÿ0-9&.*_\s'-]{2,35}?)(?:\s+(?:aprovada|aprovado|realizada|realizado|com|via|usando|pelo|pela|no\s+cartão|no\s+cartao|no\s+crédito|no\s+credito|no\s+débito|no\s+debito|cart[aã]o\s+final|final\s*[:.-]?\s*\d{4}|em\s+\d+x|\.|$)|$)/gi;
+    /\b(?:em|no|na|nos|nas|para|de|do|da|pelo|pela|ao|à)\s+(?!(?:R\$\s*|\d|parcela\b|cr[ée]dito\b|d[ée]bito\b|cart[ãa]o\b|conta\b|valor\b))([A-Za-zÀ-ÿ0-9&.*_\s'-]{2,35}?)(?:\s+(?:aprovada|aprovado|realizada|realizado|com|via|usando|pelo|pela|no\s+valor|de\s+r\$|no\s+total|no\s+cartão|no\s+cartao|no\s+crédito|no\s+credito|no\s+débito|no\s+debito|cart[aã]o\s+final|final\s*[:.-]?\s*\d{4}|em\s+\d+x|\.|$)|$)/gi;
   const matches = Array.from(text.matchAll(prepRegex));
 
   for (const match of matches) {
@@ -1475,6 +1568,12 @@ export function parseBankNotification(
   ) {
     paymentMethod = "debit";
   }
+  const isBrokerCard = isBrokerCardTransaction(payload.text, payload.title, bankName);
+  if (isBrokerCard) {
+    if (paymentMethod !== "debit" && paymentMethod !== "pix") {
+      paymentMethod = "credit_card";
+    }
+  }
 
   const assetTicker = extractInvestmentAsset(combinedText);
   const exchangeMeta = extractNomadExchangeMetadata(combinedText);
@@ -1502,6 +1601,9 @@ export function parseBankNotification(
   const cardBrand =
     extractCardBrand(combinedText) || (isCardBrand(issuerBank) ? issuerBank : undefined);
   if (!issuerBank && bankName !== "Carteira Google" && bankName !== "Samsung Pay") {
+    issuerBank = bankName;
+  }
+  if (isBrokerCard && (!issuerBank || isCardBrand(issuerBank))) {
     issuerBank = bankName;
   }
 

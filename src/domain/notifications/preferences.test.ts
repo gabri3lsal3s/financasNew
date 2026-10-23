@@ -109,4 +109,25 @@ describe("Domain — BankAssistantPreferences (Fase 1 — Tarefa 1.4)", () => {
     expect(isBankMonitored("Nubank", disabledPrefs)).toBe(false);
     expect(isBankMonitored("Itaú", disabledPrefs)).toBe(false);
   });
+
+  it("mapeia pacotes canônicos da Play Store e legados para Rico, BTG, XP e Nomad (Fase 11 / Tarefa 11.1)", () => {
+    const pkgs = getPackagesForMonitoredBanks(["Rico", "BTG Investimentos", "XP Investimentos", "Nomad"]);
+    // Rico
+    expect(pkgs).toContain("br.com.rico.rico");
+    expect(pkgs).toContain("br.com.rico");
+    expect(pkgs).toContain("br.com.rico.investimentos");
+
+    // BTG Investimentos
+    expect(pkgs).toContain("br.com.btg.pactual.digital");
+    expect(pkgs).toContain("com.btgpactual.investimentos");
+
+    // XP Investimentos
+    expect(pkgs).toContain("br.com.xp.investimentos");
+    expect(pkgs).toContain("br.com.xp.carteira");
+    expect(pkgs).toContain("com.xpinc.investments");
+
+    // Nomad
+    expect(pkgs).toContain("com.nomadglobal.app");
+    expect(pkgs).toContain("com.nomadfinancial.app");
+  });
 });
