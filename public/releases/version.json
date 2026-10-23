@@ -1,14 +1,16 @@
 {
   "version": "0.1.0",
-  "versionCode": 11,
-  "releaseDate": "2026-10-22T23:24:50Z",
+  "versionCode": 12,
+  "releaseDate": "2026-10-23T13:37:33Z",
   "minSupportedVersion": "0.1.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "6092f7116da8630c6e2dbe456cbbc545b82d224d0f52d0a9596f0b3213ffe1e7",
-  "fileSizeBytes": 11751302,
+  "sha256": "c9e13221ad5292229ae500b191db6004a269a13cb3a925f2486824f1b2bb7b79",
+  "fileSizeBytes": 11763863,
   "changelog": [
-    "Assistente Bancario Inteligente com deteccao automatica de comprovantes",
-    "Atualizacao automatizada in-app sem desinstalacao",
-    "Protecao com biometria fisica e privacy shield"
+    "Smart Advisor com fila sequencial de insights e microinteracoes",
+    "Integracao de alertas criticos a Central Global de Notificacoes",
+    "Painel de auditoria e revogacao de memoria do assistente",
+    "Contextualizacao de fatura e limite disponivel no card do assistente",
+    "Deteccao avancada de recorrencias anuais, semanais e parser Pix"
   ]
 }
