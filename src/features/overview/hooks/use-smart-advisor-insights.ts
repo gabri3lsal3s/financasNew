@@ -562,7 +562,6 @@ export function useSmartAdvisorInsights(
       }
 
       setCurrentIndex((prev) => (prev > 0 ? prev - 1 : 0));
-      triggerSensory("action");
     },
     [todayISOStr, activeInsight?.themeKey, eligibleInsights, localDismissals, localLastDismissedDay, nowMs],
   );

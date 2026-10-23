@@ -494,6 +494,10 @@ O Assistente Passivo opera em modelo híbrido entre o cliente Android nativo e o
 - **Contextualização de Fatura e Limite de Cartão (F28)**:
   - Despesas e assinaturas mapeadas a cartões de crédito exibem linha contextual no rodapé: `Previsto na fatura [Nome do Cartão] • Limite restante: R$ X • Fecha em Y dias`.
   - Em situações de comprometimento severo (>= 90% do limite ou despesa superando o limite restante), aplica destaque preventivo em tom de alerta (`text-warning-strong` ou `text-critical-strong`) orientando o usuário antes de eventual recusa da transação.
+- **Microinterações, Transições Suaves e Estabilidade Dimensional (Fase 8 / Tarefa 8.7)**:
+  - O `SmartAdvisorCard` adota altura mínima estável (`min-h-[148px] sm:min-h-[140px]`), prevenindo *Cumulative Layout Shift* (CLS) no topo da Home entre diferentes variações de cards (com ou sem contexto de fatura).
+  - A alternância entre itens da fila sequencial `< 1 de N >` é animada de forma fluida via `motion-safe:animate-in motion-safe:fade-in-50 motion-safe:duration-150`, respeitando estritamente a preferência do usuário por movimento reduzido (`motion-reduce:animate-none motion-reduce:transition-none`).
+  - Governança sensorial estrita (AGENTS.md §17): botões de controle possuem microinteração física elástica no toque (`active:scale-95`) com emissão tátil unificada sem duplos cliques (*zero double-haptic*).
 - **Integração com a Central Global de Notificações (`NotificationsPopover` & `PageShell` - F29)**:
   - Insights proativos de prioridade 1 (anomalias críticas) e prioridade 2 (contas vencendo hoje / confirmações de renda do dia) de `useSmartAdvisorInsights` são integrados globalmente à Central de Notificações (`NotificationsPopover`) no cabeçalho do `PageShell`.
   - O indicador do sininho (`NotificationsButton`) exibe contagem combinada e badges de status semânticos (`bg-critical` para anomalias urgentes, `bg-warning-strong` para contas do dia), permanecendo acessível em qualquer tela do aplicativo (Transações, Relatórios, Metas, Carteira).

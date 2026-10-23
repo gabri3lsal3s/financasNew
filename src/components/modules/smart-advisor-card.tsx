@@ -380,14 +380,14 @@ export function SmartAdvisorCard({
       role="region"
       aria-label="Assistente Proativo de Insights"
       className={cn(
-        "w-full flex flex-col gap-3 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all",
+        "w-full flex flex-col justify-between gap-3 min-h-[148px] sm:min-h-[140px] rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all motion-reduce:transition-none",
         className,
       )}
     >
       {/* 1. Barra superior: Categoria e contexto à esquerda | Controles à direita */}
       <div className="flex items-center justify-between gap-3 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="shrink-0 flex items-center justify-center" aria-hidden="true">
+          <span className="shrink-0 flex items-center justify-center transition-transform motion-safe:duration-150" aria-hidden="true">
             {categoryIcon}
           </span>
           <Badge variant={categoryBadgeVariant} size="xs" className="shrink-0 font-medium">
@@ -405,7 +405,7 @@ export function SmartAdvisorCard({
                 aria-label="Sugestão anterior"
                 sensoryIntent="selection"
                 onClick={handlePrev}
-                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground cursor-pointer transition-transform active:scale-95 motion-reduce:transform-none"
               >
                 <ChevronLeft className="size-3.5" aria-hidden="true" />
               </Button>
@@ -418,7 +418,7 @@ export function SmartAdvisorCard({
                 aria-label="Próxima sugestão"
                 sensoryIntent="selection"
                 onClick={handleNext}
-                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground cursor-pointer transition-transform active:scale-95 motion-reduce:transform-none"
               >
                 <ChevronRight className="size-3.5" aria-hidden="true" />
               </Button>
@@ -442,50 +442,116 @@ export function SmartAdvisorCard({
         </div>
       </div>
 
-      {/* 2. Conteúdo editorial do insight com tipografia hierárquica */}
-      <div className="flex flex-col gap-1 min-w-0">
-        <h3 className="text-sm font-semibold text-foreground tracking-tight">
-          {activeInsight.title}
-        </h3>
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          {activeInsight.description}
-        </p>
-      </div>
+      {/* Conteúdo dinâmico com animação sutil e transições suaves entre itens da fila (Tarefa 8.7) */}
+      <div
+        key={activeInsight.id}
+        data-testid="smart-advisor-content-body"
+        className="flex flex-col gap-3 min-w-0 motion-safe:animate-in motion-safe:fade-in-50 motion-safe:duration-150 motion-reduce:animate-none motion-reduce:transition-none"
+      >
+        {/* 2. Conteúdo editorial do insight com tipografia hierárquica */}
+        <div className="flex flex-col gap-1 min-w-0">
+          <h3 className="text-sm font-semibold text-foreground tracking-tight">
+            {activeInsight.title}
+          </h3>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {activeInsight.description}
+          </p>
+        </div>
 
-      {/* 3. Ações contextuais de 1 toque */}
-      <div className="flex flex-wrap items-center gap-2 pt-0.5">
-        {activeInsight.category === "calibration" ? (
-          <>
+        {/* 3. Ações contextuais de 1 toque */}
+        <div className="flex flex-wrap items-center gap-2 pt-0.5">
+          {activeInsight.category === "calibration" ? (
+            <>
+              <Button
+                size="sm"
+                variant="default"
+                sensoryIntent="success"
+                onClick={() => void handleConfirmRecurrence()}
+                disabled={isSubmitting}
+                className="gap-1.5 text-xs h-8 cursor-pointer"
+              >
+                <Check className="size-3.5" aria-hidden="true" />
+                <span>Sim, monitorar</span>
+              </Button>
+              <QualifiedDismissPopover
+                occurrenceName={activeInsight.title}
+                averageCents={activeInsight.metadata?.valueCents}
+                onSelectReason={(reason) => void handleIgnoreRecurrence(reason)}
+              >
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  sensoryIntent="action"
+                  disabled={isSubmitting}
+                  className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <X className="size-3.5" aria-hidden="true" />
+                  <span>Não, foi pontual</span>
+                </Button>
+              </QualifiedDismissPopover>
+            </>
+          ) : activeInsight.category === "savings" && activeInsight.primaryAction?.kind === "cut_subscription" ? (
+            <>
+              <Button
+                size="sm"
+                variant="default"
+                sensoryIntent="selection"
+                onClick={handleActionClick}
+                disabled={isSubmitting}
+                className="gap-1.5 text-xs h-8 cursor-pointer"
+              >
+                <span>{activeInsight.primaryAction.label}</span>
+                <ChevronRight className="size-3.5" aria-hidden="true" />
+              </Button>
+              <QualifiedDismissPopover
+                occurrenceName={
+                  (activeInsight.primaryAction?.payload?.name as string | undefined) ??
+                  activeInsight.title
+                }
+                averageCents={activeInsight.metadata?.valueCents}
+                onSelectReason={(reason) => {
+                  const key =
+                    (activeInsight.primaryAction?.payload?.key as string | undefined) ??
+                    activeInsight.themeKey.replace(/^(savings:|price_adj:)/, "");
+                  void handleIgnoreSavingsSubscription(key, reason);
+                }}
+              >
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  sensoryIntent="action"
+                  disabled={isSubmitting}
+                  className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <X className="size-3.5" aria-hidden="true" />
+                  <span>Dispensar</span>
+                </Button>
+              </QualifiedDismissPopover>
+            </>
+          ) : activeInsight.primaryAction?.kind === "confirm_expense" ? (
             <Button
               size="sm"
               variant="default"
               sensoryIntent="success"
-              onClick={() => void handleConfirmRecurrence()}
+              onClick={() => void handleConfirmExpense()}
               disabled={isSubmitting}
               className="gap-1.5 text-xs h-8 cursor-pointer"
             >
               <Check className="size-3.5" aria-hidden="true" />
-              <span>Sim, monitorar</span>
+              <span>{activeInsight.primaryAction.label}</span>
             </Button>
-            <QualifiedDismissPopover
-              occurrenceName={activeInsight.title}
-              averageCents={activeInsight.metadata?.valueCents}
-              onSelectReason={(reason) => void handleIgnoreRecurrence(reason)}
+          ) : activeInsight.category === "income" && activeInsight.primaryAction?.kind === "confirm_income" ? (
+            <Button
+              size="sm"
+              sensoryIntent="success"
+              onClick={() => void handleConfirmIncome()}
+              disabled={isSubmitting}
+              className="gap-1.5 text-xs h-8 cursor-pointer"
             >
-              <Button
-                size="sm"
-                variant="ghost"
-                sensoryIntent="action"
-                disabled={isSubmitting}
-                className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                <X className="size-3.5" aria-hidden="true" />
-                <span>Não, foi pontual</span>
-              </Button>
-            </QualifiedDismissPopover>
-          </>
-        ) : activeInsight.category === "savings" && activeInsight.primaryAction?.kind === "cut_subscription" ? (
-          <>
+              <Check className="size-3.5" aria-hidden="true" />
+              <span>{activeInsight.primaryAction.label}</span>
+            </Button>
+          ) : activeInsight.primaryAction ? (
             <Button
               size="sm"
               variant="default"
@@ -497,117 +563,58 @@ export function SmartAdvisorCard({
               <span>{activeInsight.primaryAction.label}</span>
               <ChevronRight className="size-3.5" aria-hidden="true" />
             </Button>
-            <QualifiedDismissPopover
-              occurrenceName={
-                (activeInsight.primaryAction?.payload?.name as string | undefined) ??
-                activeInsight.title
-              }
-              averageCents={activeInsight.metadata?.valueCents}
-              onSelectReason={(reason) => {
-                const key =
-                  (activeInsight.primaryAction?.payload?.key as string | undefined) ??
-                  activeInsight.themeKey.replace(/^(savings:|price_adj:)/, "");
-                void handleIgnoreSavingsSubscription(key, reason);
-              }}
-            >
-              <Button
-                size="sm"
-                variant="ghost"
-                sensoryIntent="action"
-                disabled={isSubmitting}
-                className="gap-1.5 text-xs h-8 text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                <X className="size-3.5" aria-hidden="true" />
-                <span>Dispensar</span>
-              </Button>
-            </QualifiedDismissPopover>
-          </>
-        ) : activeInsight.primaryAction?.kind === "confirm_expense" ? (
-          <Button
-            size="sm"
-            variant="default"
-            sensoryIntent="success"
-            onClick={() => void handleConfirmExpense()}
-            disabled={isSubmitting}
-            className="gap-1.5 text-xs h-8 cursor-pointer"
-          >
-            <Check className="size-3.5" aria-hidden="true" />
-            <span>{activeInsight.primaryAction.label}</span>
-          </Button>
-        ) : activeInsight.category === "income" && activeInsight.primaryAction?.kind === "confirm_income" ? (
-          <Button
-            size="sm"
-            sensoryIntent="success"
-            onClick={() => void handleConfirmIncome()}
-            disabled={isSubmitting}
-            className="gap-1.5 text-xs h-8 cursor-pointer"
-          >
-            <Check className="size-3.5" aria-hidden="true" />
-            <span>{activeInsight.primaryAction.label}</span>
-          </Button>
-        ) : activeInsight.primaryAction ? (
-          <Button
-            size="sm"
-            variant="default"
-            sensoryIntent="selection"
-            onClick={handleActionClick}
-            disabled={isSubmitting}
-            className="gap-1.5 text-xs h-8 cursor-pointer"
-          >
-            <span>{activeInsight.primaryAction.label}</span>
-            <ChevronRight className="size-3.5" aria-hidden="true" />
-          </Button>
-        ) : null}
-      </div>
-
-      {/* 4. Linha contextual de fatura e limite de cartão de crédito (F28 / Tarefa 8.4) */}
-      {cardContext && (
-        <div
-          data-testid="smart-advisor-card-context"
-          className={cn(
-            "flex flex-wrap items-center gap-1.5 pt-2 border-t border-border/40 text-xs",
-            cardContext.exceedsAvailableLimit
-              ? "text-critical-strong font-medium"
-              : cardContext.isSeverelyCompromised
-                ? "text-warning-strong font-medium"
-                : "text-muted-foreground",
-          )}
-        >
-          <CreditCard className="size-3.5 shrink-0" aria-hidden="true" />
-          <span>Previsto na fatura {cardContext.cardName}</span>
-          <span aria-hidden="true">•</span>
-          {cardContext.availableLimitCents !== null && (
-            <>
-              <span className="whitespace-nowrap">
-                Limite restante:{" "}
-                <MoneyText
-                  cents={cardContext.availableLimitCents}
-                  className={cn(
-                    "tabular-nums tracking-tight whitespace-nowrap inline font-medium",
-                    cardContext.exceedsAvailableLimit
-                      ? "text-critical-strong"
-                      : cardContext.isSeverelyCompromised
-                        ? "text-warning-strong"
-                        : "text-foreground",
-                  )}
-                />
-              </span>
-              <span aria-hidden="true">•</span>
-            </>
-          )}
-          <span className="whitespace-nowrap">
-            {cardContext.closingLabel ??
-              (cardContext.daysUntilClosing === 1
-                ? "Fecha em 1 dia"
-                : `Fecha em ${cardContext.daysUntilClosing} dias`)}
-          </span>
-          {cardContext.orientationMessage && (
-            <span className="w-full sm:w-auto text-[11px] block sm:inline">
-              • {cardContext.orientationMessage}
-            </span>
-          )}
+          ) : null}
         </div>
-      )}
+
+        {/* 4. Linha contextual de fatura e limite de cartão de crédito (F28 / Tarefa 8.4) */}
+        {cardContext && (
+          <div
+            data-testid="smart-advisor-card-context"
+            className={cn(
+              "flex flex-wrap items-center gap-1.5 pt-2 border-t border-border/40 text-xs",
+              cardContext.exceedsAvailableLimit
+                ? "text-critical-strong font-medium"
+                : cardContext.isSeverelyCompromised
+                  ? "text-warning-strong font-medium"
+                  : "text-muted-foreground",
+            )}
+          >
+            <CreditCard className="size-3.5 shrink-0" aria-hidden="true" />
+            <span>Previsto na fatura {cardContext.cardName}</span>
+            <span aria-hidden="true">•</span>
+            {cardContext.availableLimitCents !== null && (
+              <>
+                <span className="whitespace-nowrap">
+                  Limite restante:{" "}
+                  <MoneyText
+                    cents={cardContext.availableLimitCents}
+                    className={cn(
+                      "tabular-nums tracking-tight whitespace-nowrap inline font-medium",
+                      cardContext.exceedsAvailableLimit
+                        ? "text-critical-strong"
+                        : cardContext.isSeverelyCompromised
+                          ? "text-warning-strong"
+                          : "text-foreground",
+                    )}
+                  />
+                </span>
+                <span aria-hidden="true">•</span>
+              </>
+            )}
+            <span className="whitespace-nowrap">
+              {cardContext.closingLabel ??
+                (cardContext.daysUntilClosing === 1
+                  ? "Fecha em 1 dia"
+                  : `Fecha em ${cardContext.daysUntilClosing} dias`)}
+            </span>
+            {cardContext.orientationMessage && (
+              <span className="w-full sm:w-auto text-[11px] block sm:inline">
+                • {cardContext.orientationMessage}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -647,4 +647,47 @@ describe("SmartAdvisorCard", () => {
       expect(screen.queryByTestId("smart-advisor-card-context")).not.toBeInTheDocument();
     });
   });
+
+  describe("Microinterações, Transições Suaves e Estabilidade Dimensional (Fase 8, Tarefa 8.7)", () => {
+    it("mantém altura mínima estável para evitar Cumulative Layout Shift (CLS) no topo da Home", () => {
+      render(<SmartAdvisorCard insight={criticalInsight} />);
+      const cardRegion = screen.getByRole("region", { name: "Assistente Proativo de Insights" });
+      expect(cardRegion).toHaveClass("min-h-[148px]");
+      expect(cardRegion).toHaveClass("sm:min-h-[140px]");
+      expect(cardRegion).toHaveClass("motion-reduce:transition-none");
+    });
+
+    it("aplica classes de animação suave e transição respeitando acessibilidade (prefers-reduced-motion)", () => {
+      render(<SmartAdvisorCard insight={criticalInsight} />);
+      const body = screen.getByTestId("smart-advisor-content-body");
+      expect(body).toHaveClass("motion-safe:animate-in");
+      expect(body).toHaveClass("motion-safe:fade-in-50");
+      expect(body).toHaveClass("motion-safe:duration-150");
+      expect(body).toHaveClass("motion-reduce:animate-none");
+      expect(body).toHaveClass("motion-reduce:transition-none");
+    });
+
+    it("aplica microinterações de toque nos botões de navegação da fila sem duplos cliques hápticos", () => {
+      render(
+        <SmartAdvisorCard
+          insight={criticalInsight}
+          totalCount={3}
+          currentIndex={0}
+          onNext={vi.fn()}
+          onPrev={vi.fn()}
+        />,
+      );
+
+      const prevBtn = screen.getByRole("button", { name: "Sugestão anterior" });
+      const nextBtn = screen.getByRole("button", { name: "Próxima sugestão" });
+
+      expect(prevBtn).toHaveClass("transition-transform");
+      expect(prevBtn).toHaveClass("active:scale-95");
+      expect(prevBtn).toHaveClass("motion-reduce:transform-none");
+
+      expect(nextBtn).toHaveClass("transition-transform");
+      expect(nextBtn).toHaveClass("active:scale-95");
+      expect(nextBtn).toHaveClass("motion-reduce:transform-none");
+    });
+  });
 });

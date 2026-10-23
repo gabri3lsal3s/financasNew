@@ -583,7 +583,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Teste no `recurrences-tab.test.tsx` validando listagem de itens memorizados, clique em reativar e atualização reativa do cache.
   - *Commit:* `feat(insights): adicionar painel de auditoria e revogacao de memoria do assistente`
 
-- [ ] **Tarefa 8.7 — Microinterações, Animações e Transições Suaves na Fila Sequencial:**
+- [x] **Tarefa 8.7 — Microinterações, Animações e Transições Suaves na Fila Sequencial:**
   - Aplicar animações sutis (`motion-safe:animate-in fade-in-50 duration-150`) ao transitar entre itens da fila `< 1 de N >` ou ao dispensar/concluir uma sugestão.
   - Manter alturas mínimas estáveis para evitar *Cumulative Layout Shift* (CLS) no topo da Home.
   - Garantir governança sensorial estrita (AGENTS.md §17): zero duplos cliques haptics e zero vibrações em desktops.
