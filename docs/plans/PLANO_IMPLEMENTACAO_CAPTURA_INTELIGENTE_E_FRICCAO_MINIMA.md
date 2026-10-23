@@ -568,7 +568,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes cobrindo cartões com limite baixo, fatura próxima ao fechamento e exibição de valores tabulares sem truncamento (AGENTS.md §11).
   - *Commit:* `feat(advisor): contextualizar impacto na fatura e limite disponivel no card do assistente`
 
-- [ ] **Tarefa 8.5 — Integração com a Central Global de Notificações (`NotificationsPopover` - F29):**
+- [x] **Tarefa 8.5 — Integração com a Central Global de Notificações (`NotificationsPopover` - F29):**
   - Conectar os insights proativos de prioridade 1 (críticos) e 2 (vencimento do dia) do `useSmartAdvisorInsights` ao `NotificationsPopover` no cabeçalho do `PageShell`.
   - Exibir contador no badge do sino quando houver anomalias não resolvidas ou contas vencendo hoje, tornando os alertas do assistente visíveis e acionáveis a partir de qualquer tela do aplicativo (Transações, Relatórios, Metas, Carteira).
   - Permitir executar o redirecionamento com pré-preenchimento ou dispensa diretamente do popover de notificações.

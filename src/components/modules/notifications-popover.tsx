@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { Bell, Check, CheckCheck, CreditCard, ExternalLink, HandCoins, Sparkles, X } from "lucide-react";
+import { AlertTriangle, ArrowDownLeft, Bell, Check, CheckCheck, CreditCard, ExternalLink, HandCoins, Sparkles, X } from "lucide-react";
 import {
   Badge,
   Button,
@@ -14,6 +14,8 @@ import { useOnboardingCounts, useReminders, useSetReminderState, useMarkAllRemin
 import { useOnboardingDismissed } from "@/hooks";
 import { shouldShowOnboardingBanner, coreOnboardingProgress } from "@/domain/onboarding";
 import type { ReminderItem, ReminderStatus } from "@/domain/reminders";
+import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
+import { useSmartAdvisorInsights } from "@/features/overview/hooks";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
 
@@ -35,9 +37,17 @@ export interface NotificationsPopoverProps {
   children: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  advisorAlerts?: SmartAdvisorInsight[];
+  onDismissAdvisor?: (themeKey: string, days?: number) => void;
 }
 
-export function NotificationsPopover({ children, open, onOpenChange }: NotificationsPopoverProps) {
+export function NotificationsPopover({
+  children,
+  open,
+  onOpenChange,
+  advisorAlerts: propAdvisorAlerts,
+  onDismissAdvisor: propOnDismissAdvisor,
+}: NotificationsPopoverProps) {
   const navigate = useNavigate();
   const { items, totalCount, urgentCount, isLoading } = useReminders();
   const onboardingQuery = useOnboardingCounts();
@@ -45,11 +55,18 @@ export function NotificationsPopover({ children, open, onOpenChange }: Notificat
   const setReminderStateMutation = useSetReminderState();
   const markAllMutation = useMarkAllRemindersAsRead();
 
+  const advisorHook = useSmartAdvisorInsights({ enabled: propAdvisorAlerts === undefined });
+  const advisorAlerts =
+    propAdvisorAlerts ??
+    advisorHook.insights.filter((i) => i.priority === 1 || i.priority === 2);
+  const onDismissAdvisor = propOnDismissAdvisor ?? advisorHook.dismiss;
+
   const showOnboarding =
     !isDismissed && onboardingQuery?.data ? shouldShowOnboardingBanner(onboardingQuery.data) : false;
   const onboardingProg = onboardingQuery?.data ? coreOnboardingProgress(onboardingQuery.data) : { done: 0, total: 4 };
 
-  const effectiveTotalCount = totalCount + (showOnboarding ? 1 : 0);
+  const effectiveTotalCount = totalCount + (showOnboarding ? 1 : 0) + advisorAlerts.length;
+  const hasUrgent = urgentCount > 0 || advisorAlerts.some((i) => i.priority === 1);
 
   const handleOpenItem = (item: ReminderItem) => {
     triggerSensory("action");
@@ -60,6 +77,94 @@ export function NotificationsPopover({ children, open, onOpenChange }: Notificat
     }
     const params = new URLSearchParams(item.link.params ?? {});
     navigate(`${item.link.path}?${params.toString()}`);
+  };
+
+  const handleOpenAdvisorAlert = (item: SmartAdvisorInsight) => {
+    triggerSensory("action");
+    onOpenChange?.(false);
+
+    // 1. Aporte para rebalanceamento
+    if (item.primaryAction?.kind === "navigate_aporte" || item.themeKey.startsWith("aporte:")) {
+      const p = item.primaryAction?.payload as { valorCents?: number } | undefined;
+      const valor = p?.valorCents;
+      if (valor && valor > 0) {
+        navigate(`/investments?tab=aporte&valor=${valor}`);
+      } else {
+        navigate("/investments?tab=aporte");
+      }
+      return;
+    }
+
+    // 2. Revisão de recorrências / assinaturas / duplicidades
+    if (
+      item.category === "savings" ||
+      item.primaryAction?.kind === "cut_subscription" ||
+      item.id.startsWith("dup:")
+    ) {
+      const p = item.primaryAction?.payload as { key?: string } | undefined;
+      const itemKey = p?.key ?? item.themeKey.replace(/^(dup:|savings:|price_adj:)/, "");
+      navigate(`/insights?aba=recurrences&item=${encodeURIComponent(itemKey)}`);
+      return;
+    }
+
+    // 3. Entrada / Receita
+    if (
+      item.category === "income" ||
+      item.primaryAction?.kind === "open_income" ||
+      item.primaryAction?.kind === "confirm_income"
+    ) {
+      const p = item.primaryAction?.payload as
+        | { name?: string; categoryId?: string; date?: string; valueCents?: number }
+        | undefined;
+      const params = new URLSearchParams(window.location.search);
+      params.set("novo", "receita");
+      params.set("modo", "rapido");
+      if (p?.name) params.set("descricao", p.name);
+      if (p?.categoryId) params.set("categoria", p.categoryId);
+      if (p?.date) params.set("data", p.date);
+      if (p?.valueCents) params.set("valor", String(p.valueCents));
+      else if (item.metadata?.valueCents) params.set("valor", String(item.metadata.valueCents));
+
+      navigate(`?${params.toString()}`);
+      return;
+    }
+
+    // 4. Despesa crítica / conta a pagar pré-preenchida
+    const p = item.primaryAction?.payload as
+      | {
+          name?: string;
+          valueCents?: number;
+          categoryId?: string;
+          date?: string;
+          forma?: string;
+          cardId?: string;
+        }
+      | undefined;
+
+    const params = new URLSearchParams(window.location.search);
+    params.set("novo", "despesa");
+    params.set("modo", "rapido");
+    const name = p?.name ?? item.title;
+    const valueCents = p?.valueCents ?? item.metadata?.valueCents;
+    const categoryId = p?.categoryId ?? item.metadata?.categoryId;
+    const date = p?.date ?? item.metadata?.expectedDate;
+    const forma = p?.forma;
+    const cardId = p?.cardId ?? item.metadata?.cardId ?? item.cardContext?.cardId;
+
+    if (name) params.set("descricao", name);
+    if (valueCents) params.set("valor", String(valueCents));
+    if (categoryId) params.set("categoria", categoryId);
+    if (date) params.set("data", date);
+    if (forma) params.set("forma", forma);
+    if (cardId) params.set("cartao", cardId);
+
+    navigate(`?${params.toString()}`);
+  };
+
+  const handleDismissAdvisor = (e: React.MouseEvent, themeKey: string) => {
+    e.stopPropagation();
+    triggerSensory("action");
+    onDismissAdvisor(themeKey, 30);
   };
 
   const handleOpenOnboarding = () => {
@@ -106,7 +211,7 @@ export function NotificationsPopover({ children, open, onOpenChange }: Notificat
           <div className="flex items-center gap-2">
             <span className="font-semibold text-sm">Lembretes & Avisos</span>
             {effectiveTotalCount > 0 && (
-              <Badge variant={urgentCount > 0 ? "critical" : "muted"}>
+              <Badge variant={hasUrgent ? "critical" : "muted"}>
                 {effectiveTotalCount}
               </Badge>
             )}
@@ -133,7 +238,7 @@ export function NotificationsPopover({ children, open, onOpenChange }: Notificat
               <Skeleton className="h-14 w-full rounded-xl" />
               <Skeleton className="h-14 w-full rounded-xl" />
             </div>
-          ) : items.length === 0 && !showOnboarding ? (
+          ) : items.length === 0 && !showOnboarding && advisorAlerts.length === 0 ? (
             <div className="py-2 px-4">
               <EmptyState
                 icon={<Bell className="size-5" aria-hidden="true" />}
@@ -191,63 +296,140 @@ export function NotificationsPopover({ children, open, onOpenChange }: Notificat
                 </div>
               )}
 
-              {items.slice(0, 6).map((item) => {
-              const Icon = item.kind === "bill" ? CreditCard : HandCoins;
-              return (
-                <div
-                  key={item.key}
-                  onClick={() => handleOpenItem(item)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      handleOpenItem(item);
-                    }
-                  }}
-                  className="group flex items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-surface-hover rounded-xl cursor-pointer"
-                >
-                  <div className="flex items-start gap-2.5 min-w-0">
-                    <span
-                      className={cn(
-                        "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg border",
-                        item.status === "overdue"
-                          ? "border-danger-border bg-danger-surface text-danger-text"
-                          : "border-border bg-surface text-muted-foreground",
-                      )}
-                    >
-                      <Icon className="size-3.5" aria-hidden="true" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-medium text-xs truncate max-w-[11rem]">{item.title}</span>
-                        <Badge variant={STATUS_VARIANTS[item.status]}>
-                          {STATUS_LABELS[item.status]}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-muted-foreground">
-                        <MoneyText cents={item.amountCents} className="font-semibold text-foreground text-xs" />
-                        {item.subtitle && <span>• {item.subtitle}</span>}
+              {/* Alertas Críticos e do Dia do Smart Advisor (§F29) */}
+              {advisorAlerts.map((advisorItem) => {
+                const isCritical = advisorItem.priority === 1;
+                const isIncome = advisorItem.category === "income";
+                const badgeVariant = isCritical ? "critical" : isIncome ? "positive" : "warning";
+                const badgeLabel = isCritical ? "Crítico" : isIncome ? "Entrada" : "Vence hoje";
+                const cardName = advisorItem.cardContext?.cardName ?? advisorItem.metadata?.cardName;
+
+                return (
+                  <div
+                    key={advisorItem.id}
+                    onClick={() => handleOpenAdvisorAlert(advisorItem)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleOpenAdvisorAlert(advisorItem);
+                      }
+                    }}
+                    className="group flex items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-surface-hover rounded-xl cursor-pointer"
+                  >
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <span
+                        className={cn(
+                          "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg border",
+                          isCritical
+                            ? "border-danger-border bg-danger-surface text-danger-text"
+                            : isIncome
+                              ? "border-positive-border bg-positive-surface text-positive-text"
+                              : "border-warning-border bg-warning-surface text-warning-text",
+                        )}
+                      >
+                        {isCritical ? (
+                          <AlertTriangle className="size-3.5" aria-hidden="true" />
+                        ) : isIncome ? (
+                          <ArrowDownLeft className="size-3.5" aria-hidden="true" />
+                        ) : (
+                          <CreditCard className="size-3.5" aria-hidden="true" />
+                        )}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-medium text-xs truncate max-w-[11rem]">{advisorItem.title}</span>
+                          <Badge variant={badgeVariant} size="xs">
+                            {badgeLabel}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-muted-foreground">
+                          {advisorItem.metadata?.valueCents !== undefined && (
+                            <MoneyText
+                              cents={advisorItem.metadata.valueCents}
+                              className="font-semibold text-foreground text-xs"
+                            />
+                          )}
+                          {cardName && <span>• {cardName}</span>}
+                          {advisorItem.metadata?.valueCents === undefined && !cardName && (
+                            <span className="truncate max-w-[13rem]">{advisorItem.description}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="size-7 p-0 shrink-0 opacity-80 group-hover:opacity-100 hover:bg-surface-active"
-                    onClick={(e) => handleMarkRead(e, item.key)}
-                    aria-label={`Marcar ${item.title} como lido`}
-                    title="Marcar como lido"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="size-7 p-0 shrink-0 opacity-80 group-hover:opacity-100 hover:bg-surface-active cursor-pointer"
+                      onClick={(e) => handleDismissAdvisor(e, advisorItem.themeKey)}
+                      aria-label={`Dispensar ${advisorItem.title}`}
+                      title="Dispensar aviso por 30 dias"
+                    >
+                      <X className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    </Button>
+                  </div>
+                );
+              })}
+
+              {items.slice(0, 6).map((item) => {
+                const Icon = item.kind === "bill" ? CreditCard : HandCoins;
+                return (
+                  <div
+                    key={item.key}
+                    onClick={() => handleOpenItem(item)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleOpenItem(item);
+                      }
+                    }}
+                    className="group flex items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-surface-hover rounded-xl cursor-pointer"
                   >
-                    <Check className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                  </Button>
-                </div>
-              );
-            })}
-          </>
-        )}
-      </div>
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <span
+                        className={cn(
+                          "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg border",
+                          item.status === "overdue"
+                            ? "border-danger-border bg-danger-surface text-danger-text"
+                            : "border-border bg-surface text-muted-foreground",
+                        )}
+                      >
+                        <Icon className="size-3.5" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-medium text-xs truncate max-w-[11rem]">{item.title}</span>
+                          <Badge variant={STATUS_VARIANTS[item.status]}>
+                            {STATUS_LABELS[item.status]}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-muted-foreground">
+                          <MoneyText cents={item.amountCents} className="font-semibold text-foreground text-xs" />
+                          {item.subtitle && <span>• {item.subtitle}</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="size-7 p-0 shrink-0 opacity-80 group-hover:opacity-100 hover:bg-surface-active"
+                      onClick={(e) => handleMarkRead(e, item.key)}
+                      aria-label={`Marcar ${item.title} como lido`}
+                      title="Marcar como lido"
+                    >
+                      <Check className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
 
         {/* Rodapé */}
         <footer className="border-t border-border/80 p-2 bg-surface/50 flex items-center justify-center">

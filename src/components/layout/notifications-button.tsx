@@ -5,6 +5,7 @@ import { NotificationsPopover } from "@/components/modules/notifications-popover
 import { useOnboardingCounts, useReminders } from "@/state";
 import { useOnboardingDismissed } from "@/hooks";
 import { shouldShowOnboardingBanner } from "@/domain/onboarding";
+import { useSmartAdvisorInsights } from "@/features/overview/hooks";
 import { cn } from "@/lib/utils";
 
 /**
@@ -16,21 +17,31 @@ export function NotificationsButton() {
   const { totalCount, overdueCount, dueTodayCount } = useReminders();
   const onboardingQuery = useOnboardingCounts();
   const { isDismissed } = useOnboardingDismissed();
+  const advisor = useSmartAdvisorInsights();
 
   const showOnboarding =
     !isDismissed && onboardingQuery?.data ? shouldShowOnboardingBanner(onboardingQuery.data) : false;
 
-  const effectiveTotalCount = totalCount + (showOnboarding ? 1 : 0);
+  const advisorAlerts = advisor.insights.filter((i) => i.priority === 1 || i.priority === 2);
+  const hasAdvisorCritical = advisorAlerts.some((i) => i.priority === 1);
+  const hasAdvisorDueToday = advisorAlerts.some((i) => i.priority === 2);
+
+  const effectiveTotalCount = totalCount + (showOnboarding ? 1 : 0) + advisorAlerts.length;
 
   if (effectiveTotalCount === 0) return null;
 
-  const isUrgent = overdueCount > 0;
-  const isDueToday = dueTodayCount > 0;
+  const isUrgent = overdueCount > 0 || hasAdvisorCritical;
+  const isDueToday = !isUrgent && (dueTodayCount > 0 || hasAdvisorDueToday);
 
   const displayCount = effectiveTotalCount > 9 ? "9+" : String(effectiveTotalCount);
 
   return (
-    <NotificationsPopover open={open} onOpenChange={setOpen}>
+    <NotificationsPopover
+      open={open}
+      onOpenChange={setOpen}
+      advisorAlerts={advisorAlerts}
+      onDismissAdvisor={advisor.dismiss}
+    >
       <Button
         type="button"
         variant="ghost"

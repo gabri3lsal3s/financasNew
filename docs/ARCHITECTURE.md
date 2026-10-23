@@ -494,6 +494,10 @@ O Assistente Passivo opera em modelo híbrido entre o cliente Android nativo e o
 - **Contextualização de Fatura e Limite de Cartão (F28)**:
   - Despesas e assinaturas mapeadas a cartões de crédito exibem linha contextual no rodapé: `Previsto na fatura [Nome do Cartão] • Limite restante: R$ X • Fecha em Y dias`.
   - Em situações de comprometimento severo (>= 90% do limite ou despesa superando o limite restante), aplica destaque preventivo em tom de alerta (`text-warning-strong` ou `text-critical-strong`) orientando o usuário antes de eventual recusa da transação.
+- **Integração com a Central Global de Notificações (`NotificationsPopover` & `PageShell` - F29)**:
+  - Insights proativos de prioridade 1 (anomalias críticas) e prioridade 2 (contas vencendo hoje / confirmações de renda do dia) de `useSmartAdvisorInsights` são integrados globalmente à Central de Notificações (`NotificationsPopover`) no cabeçalho do `PageShell`.
+  - O indicador do sininho (`NotificationsButton`) exibe contagem combinada e badges de status semânticos (`bg-critical` para anomalias urgentes, `bg-warning-strong` para contas do dia), permanecendo acessível em qualquer tela do aplicativo (Transações, Relatórios, Metas, Carteira).
+  - Permite acionamento pré-preenchido imediato em modal overlay (`/?novo=despesa|receita&modo=rapido...`, `/insights?aba=recurrences`, `/investments?tab=aporte`) ou descarte em lote/individual com cooldown de 30 dias diretamente pelo popover.
 - **Política de Cooldown e Discrição**:
   - Cooldown de 30 dias para qualquer tema dispensado (`dismiss`).
   - Totalmente invisível se o mês estiver equilibrado e sem pendências.

@@ -6,6 +6,11 @@ import { NotificationsButton } from "./notifications-button";
 
 const mockUseReminders = vi.fn();
 const mockUseOnboardingCounts = vi.fn();
+const mockUseSmartAdvisorInsights = vi.fn();
+
+vi.mock("@/features/overview/hooks", () => ({
+  useSmartAdvisorInsights: () => mockUseSmartAdvisorInsights(),
+}));
 
 vi.mock("@/state", () => ({
   useReminders: () => mockUseReminders(),
@@ -19,6 +24,13 @@ describe("NotificationsButton", () => {
     localStorage.clear();
     mockUseOnboardingCounts.mockReturnValue({
       data: { expenseCategories: 5, incomeCategories: 5, cards: 1, transactions: 1, notificationsEnabled: true },
+    });
+    mockUseSmartAdvisorInsights.mockReturnValue({
+      insight: null,
+      insights: [],
+      currentIndex: 0,
+      totalCount: 0,
+      dismiss: vi.fn(),
     });
   });
   it("renderiza o sininho com badge de contagem quando há pendências", () => {
@@ -145,5 +157,77 @@ describe("NotificationsButton", () => {
       </MemoryRouter>,
     );
     expect(screen.getByText("2")).toHaveClass("bg-primary", "text-primary-foreground");
+  });
+
+  it("renderiza o sininho com badge crítico (bg-critical) quando há insight de prioridade 1 (crítico) no Smart Advisor", () => {
+    mockUseReminders.mockReturnValue({
+      items: [],
+      totalCount: 0,
+      overdueCount: 0,
+      dueTodayCount: 0,
+      isLoading: false,
+    });
+    mockUseSmartAdvisorInsights.mockReturnValue({
+      insight: null,
+      insights: [
+        {
+          id: "crit-1",
+          themeKey: "dup:netflix",
+          priority: 1,
+          category: "critical",
+          title: "Cobrança duplicada",
+          description: "Detectamos cobrança duplicada",
+          iconName: "alert-triangle",
+        },
+      ],
+      currentIndex: 0,
+      totalCount: 1,
+      dismiss: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <NotificationsButton />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("button", { name: "Notificações: 1 pendências" })).toBeInTheDocument();
+    expect(screen.getByText("1")).toHaveClass("bg-critical");
+  });
+
+  it("renderiza o sininho com badge de aviso (bg-warning-strong) quando há insight de prioridade 2 (vencimento do dia / renda)", () => {
+    mockUseReminders.mockReturnValue({
+      items: [],
+      totalCount: 0,
+      overdueCount: 0,
+      dueTodayCount: 0,
+      isLoading: false,
+    });
+    mockUseSmartAdvisorInsights.mockReturnValue({
+      insight: null,
+      insights: [
+        {
+          id: "due-today-1",
+          themeKey: "due_today:aluguel",
+          priority: 2,
+          category: "critical",
+          title: "Aluguel vence hoje",
+          description: "Pagamento previsto para hoje",
+          iconName: "alert-triangle",
+        },
+      ],
+      currentIndex: 0,
+      totalCount: 1,
+      dismiss: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <NotificationsButton />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("button", { name: "Notificações: 1 pendências" })).toBeInTheDocument();
+    expect(screen.getByText("1")).toHaveClass("bg-warning-strong");
   });
 });

@@ -17,11 +17,13 @@ import type { LaunchState } from "@/features/transactions/wizard/wizard-state";
 const LaunchWizard = lazy(() =>
   import("@/features/transactions").then((m) => ({ default: m.LaunchWizard }))
 );
-import { useContainerScroll } from "@/hooks";
+import { useContainerScroll, useOnboardingDismissed } from "@/hooks";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { dismissPendingSuggestion } from "@/services/native";
-import { useReminders } from "@/state";
+import { useOnboardingCounts, useReminders } from "@/state";
+import { shouldShowOnboardingBanner } from "@/domain/onboarding";
+import { useSmartAdvisorInsights } from "@/features/overview/hooks";
 import type { PaymentMethod } from "@/types";
 
 /** Fallback de carregamento das rotas lazy (bundle splitting F5.5) — Skeleton, sem spinner. */
@@ -122,7 +124,14 @@ export function PageShell() {
     }
   };
 
-  const { totalCount } = useReminders();
+  const { totalCount: remindersTotalCount } = useReminders();
+  const onboardingQuery = useOnboardingCounts();
+  const { isDismissed: onboardingDismissed } = useOnboardingDismissed();
+  const showOnboarding =
+    !onboardingDismissed && onboardingQuery?.data ? shouldShowOnboardingBanner(onboardingQuery.data) : false;
+  const advisor = useSmartAdvisorInsights();
+  const advisorAlertsCount = advisor.insights.filter((i) => i.priority === 1 || i.priority === 2).length;
+
   const { isScrolled, showBackToTop } = useContainerScroll({
     containerId: "main-content",
     scrolledThreshold: 15,
@@ -131,7 +140,7 @@ export function PageShell() {
 
   // --- Slot logic (máx. 2 entre: calc, tema, privacidade, notificações) ---
   // Notificações deslocam: privacidade primeiro, depois tema. Calculadora nunca é deslocada.
-  const hasNotifications = totalCount > 0;
+  const hasNotifications = remindersTotalCount > 0 || showOnboarding || advisorAlertsCount > 0;
   const cfg = visual.headerButtons;
   const showCalc = cfg.calculatorButton;
   let showTheme = cfg.themeToggle;

@@ -33,6 +33,18 @@ vi.mock("@/features/transactions", () => ({
     ) : null,
 }));
 
+const mockUseSmartAdvisorInsights = vi.fn().mockReturnValue({
+  insight: null,
+  insights: [],
+  currentIndex: 0,
+  totalCount: 0,
+  dismiss: vi.fn(),
+});
+
+vi.mock("@/features/overview/hooks", () => ({
+  useSmartAdvisorInsights: () => mockUseSmartAdvisorInsights(),
+}));
+
 vi.mock("@/state", () => ({
   useGlobalSearchEntries: () => ({
     entries: [],
@@ -46,6 +58,10 @@ vi.mock("@/state", () => ({
     items: [],
     isLoading: false,
     error: null,
+  }),
+  useOnboardingCounts: () => ({
+    data: { expenseCategories: 5, incomeCategories: 5, cards: 1, transactions: 1, notificationsEnabled: true },
+    isLoading: false,
   }),
   useUserAccess: () => ({
     role: "user",
@@ -187,6 +203,37 @@ describe("PageShell (F7.2/F7.3)", () => {
     expect(
       screen.getByText(/Você está sem conexão com a internet/i),
     ).toBeInTheDocument();
+  });
+
+  it("renderiza o botão de notificações quando há insights críticos do Smart Advisor mesmo com 0 lembretes", () => {
+    mockUseSmartAdvisorInsights.mockReturnValue({
+      insight: {
+        id: "crit-1",
+        themeKey: "dup:netflix",
+        priority: 1,
+        category: "critical",
+        title: "Cobrança duplicada Netflix",
+        description: "Detectamos duas cobranças idênticas.",
+        iconName: "alert-triangle",
+      },
+      insights: [
+        {
+          id: "crit-1",
+          themeKey: "dup:netflix",
+          priority: 1,
+          category: "critical",
+          title: "Cobrança duplicada Netflix",
+          description: "Detectamos duas cobranças idênticas.",
+          iconName: "alert-triangle",
+        },
+      ],
+      currentIndex: 0,
+      totalCount: 1,
+      dismiss: vi.fn(),
+    });
+
+    renderShell();
+    expect(screen.getByRole("button", { name: /Notificações: 1 pendências/i })).toBeInTheDocument();
   });
 });
 
