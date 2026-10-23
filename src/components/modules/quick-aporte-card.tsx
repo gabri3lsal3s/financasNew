@@ -84,8 +84,8 @@ export function QuickAporteCard({
         className,
       )}
     >
-      {/* Cabeçalho do Bloco: Título à esquerda e Ação à direita */}
-      <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between min-w-0">
+      {/* Cabeçalho do Bloco: Título à esquerda e Ação na lateral direita */}
+      <div className="flex items-center justify-between gap-2 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
           <TrendingUp className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
           <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">
@@ -98,16 +98,16 @@ export function QuickAporteCard({
           size="sm"
           onClick={handleGoToPortfolio}
           aria-label="Ver carteira completa"
-          className="h-7 gap-1 px-2 sm:px-2.5 text-xs font-medium text-foreground hover:bg-surface-hover cursor-pointer border-border/80 shrink-0 self-start sm:self-auto"
+          className="h-7 gap-1 px-2 sm:px-2.5 text-xs font-medium text-foreground hover:bg-surface-hover cursor-pointer border-border/80 shrink-0"
         >
-          <span>Ver carteira</span>
+          <span className="hidden sm:inline">Ver carteira</span>
           <ChevronRight className="size-3.5 text-muted-foreground" aria-hidden="true" />
         </Button>
       </div>
 
       {/* Conteúdo: Resumo de Aportes Realizados e Aporte Rápido */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 pt-0.5">
+      <div className="flex flex-col gap-3.5">
+        <div className="flex items-end justify-between gap-2 pt-0.5">
           <div className="flex flex-col gap-0.5 min-w-0">
             <span className="text-[11px] font-medium text-muted-foreground">
               Aportes realizados no período
@@ -124,11 +124,11 @@ export function QuickAporteCard({
               type="button"
               onClick={handleUseSuggested}
               aria-label="Preencher com sugestão de aporte"
-              className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-lg border border-portfolio/20 bg-portfolio/10 px-2.5 py-1 text-xs font-medium text-portfolio hover:bg-portfolio/15 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 shrink-0 rounded-lg border border-portfolio/20 bg-portfolio/10 px-2 sm:px-2.5 py-1 text-xs font-medium text-portfolio hover:bg-portfolio/15 transition-colors cursor-pointer"
               title="Clique para preencher com a capacidade estimada de aporte"
             >
               <Sparkles className="size-3.5 shrink-0" aria-hidden="true" />
-              <span>Sugerido:</span>
+              <span className="hidden sm:inline">Sugerido:</span>
               <MoneyText
                 cents={suggestedAporteCents}
                 tone="portfolio"
@@ -139,20 +139,20 @@ export function QuickAporteCard({
         </div>
 
         {/* Formulário de Ação Rápida: Input de Aporte + Botão de Rebalanceamento */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-2 pt-1">
-          <div className="flex flex-col gap-1">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-2 pt-2.5 border-t border-border/60">
+          <div className="flex flex-col gap-0.5">
             <label
               htmlFor="quick-aporte-input"
               className="text-xs font-semibold text-foreground"
             >
               Planejar novo aporte
             </label>
-            <span className="text-[11px] text-muted-foreground">
-              Informe o valor para simular o rebalanceamento inteligente da carteira sem vender ativos.
+            <span className="text-[11px] text-muted-foreground leading-relaxed">
+              Simule o rebalanceamento inteligente sem vender ativos.
             </span>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-1">
+          <div className="flex items-center gap-2 pt-0.5">
             <div className="flex-1 min-w-0">
               <MoneyInput
                 id="quick-aporte-input"
@@ -169,10 +169,12 @@ export function QuickAporteCard({
               type="submit"
               variant="portfolio"
               size="default"
-              className="gap-1.5 shrink-0 font-medium cursor-pointer"
+              aria-label="Calcular Rebalanceamento"
+              className="h-10 gap-1.5 px-3 sm:px-4 shrink-0 font-medium cursor-pointer"
             >
-              <span>Calcular Rebalanceamento</span>
-              <ArrowRight className="size-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Calcular Rebalanceamento</span>
+              <span className="sm:hidden">Calcular</span>
+              <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
             </Button>
           </div>
         </form>

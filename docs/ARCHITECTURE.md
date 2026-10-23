@@ -405,7 +405,7 @@ O Assistente Passivo opera em modelo híbrido entre o cliente Android nativo e o
 1. **`BankNotificationListenerService.java`**:
    - Herda de `NotificationListenerService`;
    - Monitora notificações de bancos e corretoras autorizados pelo usuário;
-   - Aplica filtros rigorosos anti-spam e anti-publicidade (`hasValidTransactionSignal`);
+   - Aplica filtros rigorosos anti-spam e anti-publicidade com trava mandatória de quantia monetária (`extractAmountText`), blacklist semântica anti-marketing/ofertas (`BLACKLIST_MARKETING_PATTERN` / `isBlacklistedNotification`) e validação semântica (`hasFinancialSignal`);
    - Armazena transações capturadas em buffer de segundo plano em `SharedPreferences` quando o app está fechado;
    - Despacha notificações interativas com ação rápida `"Conferir e Salvar"` (`novo=expense` ou `novo=income`).
 2. **`BankNotificationPlugin.java`**:

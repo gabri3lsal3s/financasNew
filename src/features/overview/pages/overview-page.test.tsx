@@ -231,6 +231,8 @@ vi.mock("@/state", () => ({
   useClearDemoData: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useFeedback: () => ({ data: {}, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSetFeedback: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUserPreferences: () => ({ data: null, isLoading: false, isError: false, error: null }),
+  useUpdateCustomSettings: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
 }));
 
 describe("OverviewPage — visão consolidada (§3.6)", () => {

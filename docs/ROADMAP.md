@@ -5526,5 +5526,28 @@ flowchart TD
   - Suíte de 150+ testes aprovados cobrindo `advisor.test.ts`, `recurrences.test.ts`, `merchant-learning.test.tsx`, `use-smart-advisor-insights.test.ts`, `smart-advisor-card.test.tsx`, `quick-aporte-card.test.tsx` e `use-insight-feedback.test.tsx`;
   - 100% verde em typecheck estrito (`tsc -b`) e linting (`eslint .`).
 
+---
+
+### Fase 96 — Planejamento Canônico: Homologação de Pacotes Android, Desacoplamento de Cartões em Corretoras & Auto-Vínculo Semântico
+
+> **Status:** 📋 Planejada e Documentada (Fase 11 do Plano de Captura Inteligente) — **Engenharia de Visibilidade Android & Desacoplamento de Cartões**: Estruturação arquitetural da Fase 11 em `docs/plans/PLANO_IMPLEMENTACAO_CAPTURA_INTELIGENTE_E_FRICCAO_MINIMA.md` para eliminar falsos negativos de instalação e descartes de notificações no Android 11+ (homologação canônica de IDs da Google Play Store: Rico `br.com.rico.rico`, BTG `br.com.btg.pactual.digital`, Nomad `com.nomadglobal.app`, XP `br.com.xp.investimentos`), desacoplar compras de cartão de crédito em corretoras (Cartão Rico / Cartão XP) de falsos trades de ações, blindar a inferência determinística de categorias (higienização de sufixos como "AMAZON BR" ➔ "compras") e estabelecer motor de auto-vínculo de cartão de crédito no domínio por correspondência semântica de banco emissor.
+
+#### 1. Entregas Planejadas e Mapeadas
+- **Homologação da Matriz Canônica de Pacotes Android (Tarefa 11.1):**
+  - Adição dos IDs oficiais da Play Store em `<queries>` no `AndroidManifest.xml`, `BANK_PACKAGES` no `BankNotificationPlugin.java`, `DEFAULT_MONITORED_PACKAGES` no `BankNotificationListenerService.java` e mappings TypeScript (`preferences.ts`, `bank-parser.ts`);
+  - Prevenção do descarte silencioso de notificações pelo ouvinte nativo e exibição correta do badge `[Instalado]`.
+- **Desacoplamento de Cartões em Corretoras & Classificador Híbrido (Tarefa 11.2):**
+  - Prioridade estrita para `nature: "expense"` e `paymentMethod: "credit_card"` quando notificações de corretoras contiverem menção a compras no cartão ("Cartão Rico", "compra de R$", "via cartão digital");
+  - Prevenção da conversão indevida de compras no cartão em ordens de bolsa de valores ou investimento compulsório.
+- **Higienização de Sufixos e Inferência Resiliente de Categorias (Tarefa 11.3):**
+  - Remoção de sufixos regionais/digitais ("BR", "BRASIL", ".COM.BR") pelo extrator de estabelecimentos;
+  - Mapeamento determinístico de grandes marketplaces ("Amazon") para a categoria canônica "compras".
+- **Motor de Resolução e Auto-Vínculo de Cartão por Emissor (Tarefa 11.4):**
+  - Módulo de domínio puro `src/domain/notifications/card-resolution.ts` com função `resolveBestMatchingCard`;
+  - Auto-seleção no `LaunchWizard` e no `PendingSuggestionsCard` baseada no banco emissor quando a notificação não trouxer os 4 dígitos finais.
+- **UX Refinada na Gestão de Instituições com Gatilho de Re-escaneamento (Tarefa 11.5):**
+  - Botão de re-escaneamento dinâmico na aba de Notificações com feedback tátil e atualização instantânea de status.
+
+
 
 

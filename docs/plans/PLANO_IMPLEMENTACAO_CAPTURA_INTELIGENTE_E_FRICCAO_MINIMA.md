@@ -1,8 +1,8 @@
 # PLANO DE IMPLEMENTAÇÃO — ECOSSISTEMA DE CAPTURA INTELIGENTE, MOTOR SEMÂNTICO & ASSISTENTE PROATIVO
 
 > **Documento Canônico de Arquitetura e Engenharia**  
-> **Status:** Fases 1 a 9 Concluídas com Sucesso · Fase 10 Pronta para Execução pelo Desenvolvedor  
-> **Módulos Afetados:** `android/`, `src/domain/notifications/`, `src/domain/insights/`, `src/features/transactions/wizard/`, `src/features/overview/`, `src/features/landing/`, `src/components/modules/`, `docs/`  
+> **Status:** Fases 1 a 10 Concluídas com Sucesso · Fase 11 Pronta para Execução pelo Desenvolvedor  
+> **Módulos Afetados:** `android/`, `src/domain/notifications/`, `src/domain/insights/`, `src/features/transactions/wizard/`, `src/features/overview/`, `src/features/landing/`, `src/features/settings/`, `src/components/modules/`, `docs/`  
 > **Governança:** Custo Zero de Infraestrutura (Google ML Kit Thin on-device) · Zero Inchaço de APK (<800 KB) · Zero Emojis · TypeScript Estrito · Commit por Tarefa e Push por Fase  
 > **Data:** Outubro de 2026 · **Ambiente:** Android Nativo (Capacitor) & Web PWA  
 
@@ -70,14 +70,19 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 | **F33**| Distorção semântica da descrição ("no valor de" como favorecido/pagador do Pix) | Parser semântico dedicado de Pix com suporte a nomes completos compostos e máscaras de CPF/CNPJ, higienização de pontuação e expansão da blacklist `IGNORED_MERCHANT_TOKENS` com expressões de valor monetário (`"no valor de"`, `"valor de"`, etc.). |
 | **F34**| Ausência de feedback transparente pós-cadastro em 2º plano e falta de botão "Desfazer" | O `BankNotificationActionReceiver` substitui a notificação original por uma notificação rica e informativa exibindo o valor, o nome real e a categoria atribuída, com botão `[Desfazer]` (cancelamento atômico sem abrir o app) e `[Conferir]` (deep link direto na transação). |
 | **F35**| Falsos positivos por notificações publicitárias ou educativas de bancos (ex.: Nubank "ganhe fôlego fazendo Pix... saiba mais") | Funil de classificação com 4 filtros estritos no Java e no TypeScript: (1) banco monitorado, (2) quantia monetária formatada obrigatória (`extractAmountText != null`), (3) blacklist semântica de termos publicitários ("saiba mais", "ganhe fôlego", "conheça", "empréstimo"), e (4) exigência de verbos de fato consumado ("compra aprovada", "pix recebido"), descartando verbos no gerúndio ou sugestivos. |
+| **F36**| Falsos negativos de instalação e descarte de notificações por Package IDs defasados ou divergentes da Play Store (Rico, BTG, Nomad, XP) | Homologação canônica dos IDs oficiais da Play Store (`br.com.rico.rico`, `br.com.btg.pactual.digital`, `com.nomadglobal.app`, `br.com.xp.investimentos`) no `<queries>` do `AndroidManifest.xml`, no `BANK_PACKAGES` do plugin Java e nos mappings TypeScript, preservando compatibilidade retroativa com identificadores legados. |
+| **F37**| Hipertrofia de "Investimento/Trade" para instituições híbridas (falsos trades em compras no Cartão Rico/XP) | Desacoplamento de cartões de crédito em corretoras em `bank-parser.ts`: prioridade estrita para `nature: "expense"` e `paymentMethod: "credit_card"` quando a notificação indicar cartão ("cartão", "compra", "aprovada", "via cartão digital") ou título "Cartão X", prevenindo que compras virem ordens de bolsa de valores. |
+| **F38**| Supressão e quebra da inferência de categoria pelo estabelecimento comercial em transações de cartão | Blindagem semântica em `bank-parser.ts` e `category-inference.ts`: normalização de estabelecimentos com sufixos regionais/digitais (ex.: "AMAZON BR" ➔ "Amazon") e garantia de que o `categorySlug` inferido ("compras") não seja sobrescrito arbitrariamente por "investimentos". |
+| **F39**| Desconexão entre notificação bancária e cartão cadastrado (ausência de vínculo por emissor no Wizard/Sugestões) | Motor unificado de resolução de cartão de crédito no domínio (`card-resolution.ts`): quando não houver 4 dígitos na notificação, realizar match semântico entre o nome da instituição emissora ("Rico") e os cartões ativos cadastrados pelo usuário ("Cartão Rico"), com transmissão de parâmetros e pré-seleção automática no `LaunchWizard`. |
+| **F40**| Ausência de gatilho de re-escaneamento e atualização imediata de apps instalados na interface de preferências | Adicionar ação de re-escaneamento dinâmico na aba de Notificações (`notifications-tab.tsx`) para atualizar instantaneamente o status `[Instalado]` e a quantidade de apps detectados sem demandar reinicialização do app. |
 
 ---
 
-## 3. ROTEIRO DE EXECUÇÃO DETALHADO EM 10 FASES
+## 3. ROTEIRO DE EXECUÇÃO DETALHADO EM 11 FASES
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                 FLUXO DE EXECUÇÃO EM 10 FASES MODULARES & INTEGRADAS                                  │
+│                                 FLUXO DE EXECUÇÃO EM 11 FASES MODULARES & INTEGRADAS                                  │
 └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
                                                            │
     ┌───────────────────┬───────────────────────────┬──────┴────────────────────┬───────────────────┬───────────────────┐
@@ -100,6 +105,15 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
                                                     │                   │               │                   │
                                                     ▼                   ▼               ▼                   ▼
                                                 [Quality Gate 7]    [Quality Gate 8] [Quality Gate 9]    [Quality Gate 10]
+                                                                                                            │
+                                                                                                            ▼
+                                                                                                         [FASE 11]
+                                                                                                         Homologação Canônica,
+                                                                                                         Desacoplamento de Cartões
+                                                                                                         & Auto-Vínculo Semântico
+                                                                                                            │
+                                                                                                            ▼
+                                                                                                         [Quality Gate 11]
 ```
 
 ---
@@ -729,7 +743,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 
 #### 3. Roteiro Passo a Passo de Implementação da Fase 10:
 
-- [ ] **Tarefa 10.1 — Trava Obrigatória de Valor Monetário no Serviço Nativo Android (F35):**
+- [x] **Tarefa 10.1 — Trava Obrigatória de Valor Monetário no Serviço Nativo Android (F35):**
   - **Arquivo-Alvo:** `android/app/src/main/java/com/guiafinanceiro/app/BankNotificationListenerService.java`
   - **Onde Alterar:** No método `onNotificationPosted(StatusBarNotification sbn)`, logo após a extração de `title` e `text`:
     ```java
@@ -748,7 +762,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Simular notificação do Nubank com texto promocional sem valor; comprovar via logs do Logcat que o método finaliza imediatamente no `return`.
   - *Commit Sugerido:* `fix(android): exigir valor monetario obrigatorio para emissao de notificacao de transacao`
 
-- [ ] **Tarefa 10.2 — Blacklist Semântica Nativa de Marketing & Produtos Bancários:**
+- [x] **Tarefa 10.2 — Blacklist Semântica Nativa de Marketing & Produtos Bancários:**
   - **Arquivo-Alvo:** `android/app/src/main/java/com/guiafinanceiro/app/BankNotificationListenerService.java`
   - **Constante Pattern:** Adicionar como membro estático da classe para compilação única:
     ```java
@@ -782,7 +796,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Simular notificação bancária com menção a empréstimo ("Você tem R$ 5.000 pré-aprovados") e certificar que a blacklist bloqueia mesmo contendo valor monetário.
   - *Commit Sugerido:* `feat(android): implementar blacklist semantica nativa anti-marketing bancario`
 
-- [ ] **Tarefa 10.3 — Validação Positiva de Verbos de Fato Consumado vs. Linguagem Sugestiva:**
+- [x] **Tarefa 10.3 — Validação Positiva de Verbos de Fato Consumado vs. Linguagem Sugestiva:**
   - **Arquivo-Alvo:** `android/app/src/main/java/com/guiafinanceiro/app/BankNotificationListenerService.java`
   - **Substituição de `hasFinancialSignal`:**
     ```java
@@ -836,7 +850,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Teste com string `"fazendo Pix e pagando boletos"` retornando estritamente `false`.
   - *Commit Sugerido:* `fix(domain/notifications): validar verbos de fato consumado e descartar gerundios promocionais`
 
-- [ ] **Tarefa 10.4 — Espelhamento de Filtros no Domínio TypeScript & Testes com Fixtures Reais:**
+- [x] **Tarefa 10.4 — Espelhamento de Filtros no Domínio TypeScript & Testes com Fixtures Reais:**
   - **Arquivo-Alvo 1:** `src/domain/notifications/bank-parser.ts`
     - Adicionar ao array `BLACKLIST_EXPRESSIONS`:
       ```typescript
@@ -889,7 +903,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Executar `npx vitest run src/domain/notifications/bank-parser.test.ts` e validar 100% de aprovação.
   - *Commit Sugerido:* `test(domain/notifications): adicionar fixtures de descarte de marketing real do nubank e outros bancos`
 
-- [ ] **Tarefa 10.5 — Garantia de Fluidez no Fluxo Dual (Adição em 2º Plano vs. Wizard Pré-Preenchido):**
+- [x] **Tarefa 10.5 — Garantia de Fluidez no Fluxo Dual (Adição em 2º Plano vs. Wizard Pré-Preenchido):**
   - **Componentes Afetados:** `BankNotificationListenerService.java`, `BankNotificationActionReceiver.java`, `MainActivity.java`, `src/features/transactions/wizard/wizard-dialog.tsx`.
   - **Regras Operacionais:**
     1. **Adicionar Rápido:**
@@ -923,11 +937,127 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
 
 ---
 
+### FASE 11: HOMOLOGAÇÃO CANÔNICA DE PACOTES ANDROID, DESACOPLAMENTO DE CARTÕES EM CORRETORAS & AUTO-VÍNCULO SEMÂNTICO DE CARTÃO E CATEGORIA
+
+**Objetivo:** Eliminar falsos negativos de instalação de aplicativos de bancos e corretoras (Rico, BTG Investimentos, Nomad, XP), garantir captura passiva de notificações no Android sem descartes indevidos por divergência de identificador de pacote, desacoplar compras no cartão de crédito em corretoras de ordens da bolsa de valores, assegurar inferência determinística de categorias com higienização de sufixos de estabelecimentos e vincular automaticamente despesas com cartão ao cartão de crédito cadastrado pelo usuário mesmo na ausência dos últimos 4 dígitos.
+
+#### Tarefas da Fase 11:
+- [ ] **Tarefa 11.1 — Homologação da Matriz Canônica de Pacotes Android (Android Native & TypeScript):**
+  - **Contexto & Diagnóstico:** No Android 11+ (API 30+), restrições de visibilidade de pacotes exigem declarações exatas no `<queries>` do `AndroidManifest.xml` e no `PackageManager`. Atualmente, `Rico` (`br.com.rico.rico`), `BTG Investimentos` (`br.com.btg.pactual.digital`), `Nomad` (`com.nomadglobal.app`) e `XP Investimentos` (`br.com.xp.investimentos`) não são reconhecidos porque o código utiliza apenas pacotes defasados ou fictícios (`br.com.rico`, `com.btgpactual.investimentos`, `com.nomadfinancial.app`, `br.com.xp.carteira`), fazendo com que o `BankNotificationListenerService` descarte as notificações no Android antes de qualquer análise (`!allowedPackages.contains(packageName)`).
+  - **Componentes Afetados:**
+    1. `android/app/src/main/AndroidManifest.xml`: adicionar `<package android:name="br.com.rico.rico" />`, `<package android:name="br.com.btg.pactual.digital" />`, `<package android:name="com.nomadglobal.app" />`, `<package android:name="br.com.xp.investimentos" />` mantendo os identificadores anteriores para retrocompatibilidade.
+    2. `android/app/src/main/java/com/guiafinanceiro/app/BankNotificationPlugin.java`: registrar os novos package names no mapa estático `BANK_PACKAGES`.
+    3. `android/app/src/main/java/com/guiafinanceiro/app/BankNotificationListenerService.java`: adicionar os novos package names ao conjunto `DEFAULT_MONITORED_PACKAGES`.
+    4. `src/domain/notifications/preferences.ts`: atualizar `HOMOLOGATED_INSTITUTIONS`, `BANK_NAME_TO_PACKAGES` e `BANK_PACKAGES_BY_NAME` com arrays de pacotes que mapeiam tanto os identificadores canônicos atuais quanto os legados.
+    5. `src/domain/notifications/bank-parser.ts`: atualizar o mapa reverso `BANK_PACKAGE_MAP` para que todos os IDs resolvam com segurança para suas respectivas instituições.
+  - *Teste & Verificação:*
+    - Testes unitários em `preferences.test.ts` e `bank-parser.test.ts` validando a resolução de pacotes canônicos e legados.
+    - Teste de integração em `bank-listener.test.ts` simulando payload vindo de `br.com.rico.rico`, `br.com.btg.pactual.digital` e `com.nomadglobal.app`.
+  - *Commit Sugerido:* `fix(notifications): homologar package names canonicos da google play store para rico, btg, nomad e xp`
+
+- [ ] **Tarefa 11.2 — Desacoplamento de Cartões em Corretoras & Classificador Híbrido de Natureza Financeira:**
+  - **Contexto & Diagnóstico:** Corretoras modernas como Rico e XP oferecem contas digitais e cartões de crédito (ex.: Cartão Rico Visa Infinite com investback). O motor atual no `bank-parser.ts` (`detectTransactionNature`) classifica compulsoriamente qualquer notificação que venha de corretora (`Binance`, `Rico`, `XP`, `BTG Investimentos`) como investimento (`nature: "investment", subtype: "trade"`), gerando a descrição genérica "Ordem de Compra", sobrescrevendo a categoria para "investimentos" e direcionando para a aba de investimentos em vez do lançamento de despesa.
+  - **Regras Operacionais no Domínio Puro (`src/domain/notifications/bank-parser.ts`):**
+    1. Avaliar evidência explícita de canal de cartão e consumo antes de aplicar a heurística padrão de corretora:
+       - Se o título contiver `"cartão"`, `"cartao"`, `"compra"` (ex.: `"Cartão Rico"`, `"Cartão XP"`, `"Cartão BTG"`);
+       - Ou o texto contiver termos explícitos de compra com cartão (`"compra de r$"`, `"compra aprovada"`, `"via cartão digital"`, `"via cartao digital"`, `"aproximação"`, `"crédito"`, `"crédito à vista"`, `"fatura"`);
+       - E **não** contiver palavras-chave exclusivas de mercado financeiro (`"nota de corretagem"`, `"ordem executada"`, `"ordem de compra"`, `"fundo de investimento"`, `"cdb"`, `"tesouro"`, `"cripto"`, `"spot"`, `"dividendos"`, `"proventos"`).
+    2. Nesses casos, classificar estritamente como:
+       - `nature: "expense"` (ou `"income"` em caso de estorno/reembolso);
+       - `paymentMethod: "credit_card"` (ou `"debit"` quando indicado);
+       - `issuerBank: bankName` (ex.: `"Rico"` ou `"XP Investimentos"`).
+    3. Preservar o estabelecimento extraído como `merchant` e `description` (`"Amazon Br"`), sem converter para "Ordem de Compra (Rico)".
+  - *Teste & Verificação:*
+    - Adicionar fixtures reais de compra no Cartão Rico ("Cartão Rico", "Compra de R$ 221,59 APROVADA em AMAZON BR via cartão digital.") e Cartão XP em `src/domain/notifications/bank-parser.test.ts` e `bank-e2e-matrix.test.ts`.
+    - Garantir que ordens de bolsa ("Nota de corretagem: Compra de 100 WEGE3...") continuem classificadas como `nature: "investment"`.
+  - *Commit Sugerido:* `feat(domain/notifications): diferenciar compras em cartoes de corretoras de ordens de bolsa de valores`
+
+- [ ] **Tarefa 11.3 — Higienização de Sufixos Regionais/Digitais e Inferência Resiliente de Categorias:**
+  - **Contexto & Diagnóstico:** Notificações de cartões digitais frequentemente formatam nomes de estabelecimentos com sufixos de país ou plataforma (ex.: `"AMAZON BR"`, `"AMZN BR"`, `"MERCADOLIVRE.COM"`, `"SHOPEE BRASIL"`, `"IFOO*RESTAURANTE"`). Se o motor semântico falhar na normalização ou se o parser sobrescrever a categoria inferida, o lançamento fica sem categoria ou com categoria equivocada.
+  - **Ações em `src/domain/notifications/category-inference.ts` e `bank-parser.ts`:**
+    1. Em `cleanMerchantName` / `cleanAcquirerPrefixes`:
+       - Remover sufixos regionais e digitais isolados ao final do nome: `\s+(?:br|brasil|com|com\.br|digital|app|pay)\b`.
+       - Exemplo: `"AMAZON BR"` ➔ `"Amazon"`.
+    2. Em `inferCategoryKeyword`:
+       - Assegurar correspondência para variações de grandes marketplaces e e-commerce (`amazon`, `amazon br`, `amzn`).
+       - Mapear deterministicamente `"Amazon"` para a categoria canônica `"compras"`.
+    3. Em `parseBankNotification`:
+       - Remover a sobreposição cega `if (nature === "investment" && (!inferredSlug || inferredSlug === "compras")) inferredSlug = "investimentos"` para transações classificadas como `expense`.
+  - *Teste & Verificação:*
+    - Testes unitários em `category-inference.test.ts` testando `"AMAZON BR"`, `"AMZN BR"`, `"MERCADOLIVRE BR"` mapeando para `"compras"`.
+  - *Commit Sugerido:* `fix(domain/notifications): higienizar sufixos regionais de estabelecimentos e blindar inferencia de categoria`
+
+- [ ] **Tarefa 11.4 — Motor de Resolução e Auto-Vínculo de Cartão de Crédito por Emissor no Wizard e Sugestões:**
+  - **Contexto & Diagnóstico:** Notificações como a do Cartão Rico contêm o emissor no título (`"Cartão Rico"`), mas não trazem os 4 dígitos finais (`cardLastDigits: undefined`). Atualmente, o `LaunchWizard` não tenta casar o nome do banco com os cartões do usuário se não houver um UUID explícito nos parâmetros da rota.
+  - **Criação do Módulo de Domínio Puro (`src/domain/notifications/card-resolution.ts`):**
+    - Implementar a função pura:
+      ```typescript
+      export function resolveBestMatchingCard(
+        cards: CreditCard[],
+        params: {
+          cardId?: string;
+          cardLastDigits?: string;
+          bankName?: string;
+          issuerBank?: string;
+          cardBrand?: string;
+        }
+      ): CreditCard | undefined;
+      ```
+    - Cascata de resolução inteligente:
+      1. Se `cardId` for fornecido e corresponder a um cartão ativo ➔ Retornar o cartão correspondente;
+      2. Se `cardLastDigits` for fornecido (4 dígitos) ➔ Buscar cartão que termine com esses 4 dígitos no nome ou campo de dígitos;
+      3. Se `issuerBank` ou `bankName` for fornecido (ex.: `"Rico"`, `"Nubank"`, `"Inter"`) ➔ Buscar cartão cujo nome contenha o termo (case-insensitive, ex.: `"Cartão Rico"`, `"Rico Visa Infinite"` contém `"rico"`);
+      4. Se `cardBrand` for fornecida (ex.: `"Visa"`, `"Mastercard"`) e houver desempate entre múltiplos cartões do mesmo banco;
+      5. Se houver apenas 1 cartão de crédito ativo cadastrado ➔ Adotar como fallback inteligente.
+  - **Integração nas Telas e Serviços:**
+    1. `src/services/native/bank-listener.ts` (`buildReviewRoute`):
+       - Transmitir `cartao` nos query params da rota quando `parsed.cardLastDigits` OU `parsed.issuerBank` OU `parsed.bankName` estiver presente (ex.: `?cartao=Rico`).
+    2. `src/components/modules/pending-suggestions-card.tsx` (`handleReview` e `handleQuickSave`):
+       - Utilizar `resolveBestMatchingCard` para pré-selecionar o `cardId` antes de navegar ou cadastrar via ação rápida.
+    3. `src/features/transactions/wizard/launch-wizard.tsx`:
+       - No hook de inicialização de valores e no efeito de seleção de pagamento em crédito:
+         - Se `initialValues?.cardId` não for UUID, ou se `initialValues?.paymentMethod === "credit_card"`, executar `resolveBestMatchingCard(cardsQuery.data, { bankName, issuerBank, cardLastDigits })` e pré-selecionar o `state.cardId`.
+  - *Teste & Verificação:*
+    - Teste unitário exaustivo em `src/domain/notifications/card-resolution.test.ts`.
+    - Teste em `launch-wizard.test.tsx` validando que `cartao="Rico"` pré-seleciona o cartão "Cartão Rico" da lista de cartões mockados.
+  - *Commit Sugerido:* `feat(domain/notifications): criar motor de resolucao inteligente de cartao por banco emissor e vincular no wizard`
+
+- [ ] **Tarefa 11.5 — UX Refinada na Gestão de Instituições com Gatilho de Re-escaneamento e Feedback Sensorial:**
+  - **Contexto & Diagnóstico:** Na aba de Notificações (`notifications-tab.tsx`), o escaneamento de apps só ocorre na montagem do componente. Se o usuário instalar um app ou alterar permissões e voltar à tela, o status permanece inalterado até um recarregamento completo.
+  - **Ações em `src/features/settings/components/tabs/notifications-tab.tsx`:**
+    1. Adicionar botão de ação com ícone de sincronização (`RefreshCw` do `lucide-react`) na seção "Aplicativos no seu Dispositivo":
+       - Rótulo: `"Re-escanear"` / `"Atualizar lista"`;
+       - Ao clicar: invoca `getInstalledBankingApps()`, atualiza a lista `installedBanks`, emite sensory tátil (`triggerSensory("action")`) e exibe toast explicativo (*"X aplicativos bancários detectados no dispositivo"*).
+    2. Garantir que a lista de "Corretoras e Cripto" do catálogo reflita imediatamente o badge `[Instalado]` para Rico, BTG Investimentos, Nomad e XP assim que o pacote oficial correspondente for detectado.
+    3. Botão "Monitorar todos os instalados" recalcula e seleciona perfeitamente os novos apps detectados.
+  - *Teste & Verificação:*
+    - Teste de renderização em `notifications-tab.test.tsx` verificando presença do botão de re-escaneamento e atualização dos badges `[Instalado]`.
+  - *Commit Sugerido:* `feat(settings): adicionar gatilho de re-escaneamento de apps bancarios com feedback sensorial`
+
+---
+
+#### PORTÃO DE QUALIDADE 11 (Quality Gate 11 / DoD de Homologação Canônica e Auto-Vínculo):
+1. **Detecção de Apps Instalados 100% Funcional:** Rico (`br.com.rico.rico`), BTG Investimentos (`br.com.btg.pactual.digital`), Nomad (`com.nomadglobal.app`) e XP (`br.com.xp.investimentos`) exibem o badge verde `[Instalado]` quando presentes no dispositivo Android.
+2. **Zero Notificações Descartadas por Divergência de Pacote:** O serviço `BankNotificationListenerService` aceita e processa pushes dos pacotes oficiais da Play Store.
+3. **Classificação Precisa de Cartão de Crédito em Corretoras:** A notificação de compra no Cartão Rico é classificada como `nature: "expense"`, `paymentMethod: "credit_card"`, sem virar ordem de bolsa de valores.
+4. **Estabelecimento e Categoria Corretos:** "AMAZON BR" tem sufixo limpo para "Amazon" e infere deterministamente a categoria "compras".
+5. **Auto-Vínculo do Cartão Cadastrado:** Ao abrir o wizard de conferência ou na confirmação rápida, o cartão de crédito do usuário que contenha o nome "Rico" é automaticamente selecionado sem exigir seleção manual.
+6. **Zero Emojis e Conformidade de Design System:** Todo texto, toast e badge segue estritamente as regras de AGENTS.md e DESIGN_SYSTEM.md.
+7. **Bateria de Testes Automatizados 100% Verde:** `npm run test`, `npm run typecheck` e `npm run lint` aprovados sem advertências.
+
+---
+
 ## 4. MATRIZ DE VERIFICAÇÃO E TESTES FINAIS
 
 | Teste | Critério de Aceitação | Comando / Verificação |
 |---|---|---|
 | **Identificação Passiva de Push** | Notificação de banco homologado é lida em 2º plano e vira sugestão | Teste de notificação simulada em background |
+| **Detecção de Apps de Corretoras (Play Store)** | Rico (`br.com.rico.rico`), BTG (`br.com.btg.pactual.digital`), Nomad (`com.nomadglobal.app`) e XP (`br.com.xp.investimentos`) reconhecidos como `[Instalado]` | Teste nativo e unitário em `preferences.test.ts` |
+| **Interceptação sem Descarte Silencioso** | Notificação de compra emitida por `br.com.rico.rico` é aceita pelo `allowedPackages` e gera sugestão | Teste em `BankNotificationListenerServiceTest.java` e `bank-listener.test.ts` |
+| **Desacoplamento Cartão Rico vs. Trade** | Compra "Cartão Rico ... em AMAZON BR" vira despesa de crédito e não "Ordem de Compra" | Teste unitário em `bank-parser.test.ts` e `bank-e2e-matrix.test.ts` |
+| **Inferência Determinística de Categoria Amazon** | "AMAZON BR" normalizado para "Amazon" com atribuição imediata da categoria canônica "compras" | Teste unitário em `category-inference.test.ts` |
+| **Auto-Vínculo de Cartão por Nome do Banco** | Despesa no Cartão Rico associa automaticamente o cartão "Cartão Rico" do usuário mesmo sem 4 dígitos finais | Teste unitário em `card-resolution.test.ts` e `launch-wizard.test.tsx` |
+| **Gatilho de Re-escaneamento de Apps** | Botão na aba de Notificações reavalia apps instalados e atualiza badges em tempo real | Teste de componente em `notifications-tab.test.tsx` |
 | **Descarte de Anúncios e Dicas Bancárias** | Notificação educativa do Nubank ("ganhe fôlego... saiba mais") é descartada em 0ms | Teste unitário em `bank-parser.test.ts` |
 | **Invariante de Valor Monetário** | Pushes sem R$ ou US$ nunca geram notificação de "Transação detectada" | Teste nativo e de domínio |
 | **Descarte de Ofertas com Valor** | Oferta de empréstimo ("R$ 5.000 pré-aprovados") é descartada pela blacklist | Teste unitário em `bank-parser.test.ts` |

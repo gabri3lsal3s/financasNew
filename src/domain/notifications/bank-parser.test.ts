@@ -1522,6 +1522,35 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
         expect(parsed?.merchant).toBe("Supermercado Estrela");
         expect(parsed?.description).toBe("Pix: Supermercado Estrela");
       });
+
+      describe("Filtro Anti-Marketing Bancario (Fase 10 / Tarefa 10.4)", () => {
+        it("deve descartar notificacao promocional educativa do Nubank (print real)", () => {
+          const payload = {
+            title: "Flexibilidade que só o Nu tem",
+            text: "Com o Nu, você ganha fôlego no final do mês fazendo Pix e pagando boletos com o cartão de crédito. Saiba mais.",
+            packageName: "com.nu.production",
+          };
+          expect(parseBankNotification(payload)).toBeNull();
+        });
+
+        it("deve descartar ofertas de emprestimo com quantia monetaria", () => {
+          const payload = {
+            title: "Nubank",
+            text: "Você tem R$ 5.000,00 de empréstimo pré-aprovado. Simule agora no app.",
+            packageName: "com.nu.production",
+          };
+          expect(parseBankNotification(payload)).toBeNull();
+        });
+
+        it("deve descartar avisos de aumento de limite com quantia monetaria", () => {
+          const payload = {
+            title: "Inter",
+            text: "Aumentamos seu limite para R$ 3.500,00! Aproveite seu novo limite.",
+            packageName: "br.com.intermedium",
+          };
+          expect(parseBankNotification(payload)).toBeNull();
+        });
+      });
     });
   });
 });

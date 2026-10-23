@@ -140,6 +140,20 @@ const BLACKLIST_EXPRESSIONS: RegExp[] = [
   /\bpontos\s+(?:acumulados|do\s+cart[ãa]o)\b/i,
   /\bclube\s+de\s+vantagens\b/i,
 
+  // Chamadas comerciais, dicas e incentivos (Fase 10 / Tarefa 10.4)
+  /\bsaiba\s+mais\b/i,
+  /\bganhe\s+f[ôo]lego\b/i,
+  /\bfazendo\s+pix\b/i,
+  /\bpagando\s+boletos?\b/i,
+  /\bfa[çc]a\s+pix\s+no\s+cr[ée]dito\b/i,
+  /\bpague\s+com\s+cart[ãa]o\b/i,
+  /\bconhe[çc]a\b/i,
+  /\bportabilidade\b/i,
+  /\btraga\s+seu\s+sal[áa]rio\b/i,
+  /\bopen\s+finance\b/i,
+  /\bseguro\s+celular\b/i,
+  /\bdica\s+do\b/i,
+
   // Segurança, 2FA e tokens
   /\bc[óo]digo\s+de\s+(?:seguran[çc]a|verifica[çc][ãa]o|acesso|autoriza[çc][ãa]o)\b/i,
   /\bc[óo]digo\b.*?\b(?:para\s+autorizar|autorizar\s+o\s+acesso|de\s+acesso)\b/i,

@@ -19,6 +19,7 @@ public class BankNotificationActionReceiver extends BroadcastReceiver {
     public static final String ACTION_CONFIRM = "com.guiafinanceiro.app.ACTION_CONFIRM_TRANSACTION";
     public static final String ACTION_UNDO = "com.guiafinanceiro.app.ACTION_UNDO_TRANSACTION";
     public static final String KEY_CONFIRMED_BUFFER = "confirmed_transactions_buffer";
+    public static final String CHANNEL_CONFIRMATIONS = "axis_confirmations";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -108,6 +109,21 @@ public class BankNotificationActionReceiver extends BroadcastReceiver {
         return null;
     }
 
+    private void ensureConfirmationChannel(NotificationManager nm) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && nm != null) {
+            android.app.NotificationChannel channel = nm.getNotificationChannel(CHANNEL_CONFIRMATIONS);
+            if (channel == null) {
+                channel = new android.app.NotificationChannel(
+                        CHANNEL_CONFIRMATIONS,
+                        "Confirmações de Lançamentos",
+                        NotificationManager.IMPORTANCE_DEFAULT
+                );
+                channel.setDescription("Notificações de confirmação e ações de desfazer para lançamentos rápidos");
+                nm.createNotificationChannel(channel);
+            }
+        }
+    }
+
     private void postUndoNotification(
             Context context,
             NotificationManager nm,
@@ -118,6 +134,7 @@ public class BankNotificationActionReceiver extends BroadcastReceiver {
             long timestamp
     ) {
         if (nm == null) return;
+        ensureConfirmationChannel(nm);
 
         int undoNotificationId = (originalNotificationId != 0) ? originalNotificationId + 1 : 9999;
 
@@ -154,7 +171,7 @@ public class BankNotificationActionReceiver extends BroadcastReceiver {
 
         Notification.Builder builder;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            builder = new Notification.Builder(context, BankNotificationListenerService.CHANNEL_ID);
+            builder = new Notification.Builder(context, CHANNEL_CONFIRMATIONS);
         } else {
             builder = new Notification.Builder(context);
         }
@@ -193,10 +210,11 @@ public class BankNotificationActionReceiver extends BroadcastReceiver {
 
     private void postUndoneConfirmationNotification(Context context, NotificationManager nm, int notificationId) {
         if (nm == null) return;
+        ensureConfirmationChannel(nm);
 
         Notification.Builder builder;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            builder = new Notification.Builder(context, BankNotificationListenerService.CHANNEL_ID);
+            builder = new Notification.Builder(context, CHANNEL_CONFIRMATIONS);
         } else {
             builder = new Notification.Builder(context);
         }

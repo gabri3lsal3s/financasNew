@@ -31,6 +31,19 @@ public class BankNotificationListenerService extends NotificationListenerService
         "(?:R\\$\\s*|US\\$\\s*|USD\\s*)(\\d{1,3}(?:\\.\\d{3})*,\\d{2}|\\d+(?:,\\d{2})?)"
     );
 
+    private static final Pattern BLACKLIST_MARKETING_PATTERN = Pattern.compile(
+        "(?i)\\b(?:" +
+        "saiba\\s+mais|clique\\s+aqui|conhe[çc]a|confira|aproveite|ganhe\\s+f[ôo]lego|" +
+        "dica(?:\\s+do)?|novidade|descubra|experimente|empr[ée]stimo|cr[ée]dito\\s+pr[ée]-aprovado|" +
+        "limite\\s+(?:dispon[íi]vel|aprovado|aumentou|liberado|especial)|aumento\\s+de\\s+limite|" +
+        "novo\\s+limite|dinheiro\\s+extra|seguro(?:\\s+de)?|open\\s+finance|portabilidade|" +
+        "traga\\s+seu\\s+sal[áa]rio|indique\\s+um\\s+amigo|cashback|acumule\\s+pontos|shopping|" +
+        "pontos\\s+do\\s+cart[ãa]o|fatura\\s+(?:fechou|fechada|abriu|aberta)|resumo\\s+d[aeo]\\s+fatura|" +
+        "pague\\s+o\\s+valor\\s+m[íi]nimo|n[ãa]o\\s+foi\\s+autorizad[ao]|compra\\s+negada|" +
+        "saldo\\s+insuficiente|cart[ãa]o\\s+bloqueado|token|c[óo]digo\\s+de\\s+seguran[çc]a" +
+        ")\\b"
+    );
+
     public static final Set<String> DEFAULT_MONITORED_PACKAGES = new HashSet<>(Arrays.asList(
         // Bancos Tradicionais & Digitais
         "com.nu.production",
@@ -150,6 +163,19 @@ public class BankNotificationListenerService extends NotificationListenerService
         String title = titleChar != null ? titleChar.toString().trim() : "";
         String text = textChar != null ? textChar.toString().trim() : "";
 
+        // TRAVA 1: Exigência inegociável de quantia monetária formatada (F35 / Tarefa 10.1)
+        // Transações financeiras sem valor não existem no mundo real.
+        // Descarta instantaneamente ~95% dos anúncios, dicas e alertas institucionais.
+        String amountFormatted = extractAmountText(title, text);
+        if (amountFormatted == null) {
+            return;
+        }
+
+        // TRAVA 2: Blacklist Semântica Anti-Marketing e Ofertas (F35 / Tarefa 10.2)
+        if (isBlacklistedNotification(text, title)) {
+            return;
+        }
+
         if (!hasFinancialSignal(text, title)) {
             return;
         }
@@ -177,6 +203,14 @@ public class BankNotificationListenerService extends NotificationListenerService
             return m.group(0).trim();
         }
         return null;
+    }
+
+    /**
+     * Verifica se a notificação contém termos de marketing, ofertas de crédito ou mensagens institucionais (TRAVA 2).
+     */
+    static boolean isBlacklistedNotification(String text, String title) {
+        String combined = (title != null ? title : "") + " " + (text != null ? text : "");
+        return BLACKLIST_MARKETING_PATTERN.matcher(combined).find();
     }
 
     /**
@@ -310,39 +344,51 @@ public class BankNotificationListenerService extends NotificationListenerService
     }
 
     /**
-     * Valida heuristicamente se a notificação possui sinal financeiro relevante
-     * (compras, pagamentos, transferências, Pix, proventos, depósitos ou ordens de investimento).
+     * Valida heuristicamente se a notificação possui sinal financeiro relevante de fato consumado
+     * (compras, pagamentos, transferências, Pix, proventos, depósitos ou ordens de investimento)
+     * e descarta imediatamente construções no gerúndio ou de tom sugestivo/promocional (F35 / Tarefa 10.3).
      */
     static boolean hasFinancialSignal(String text, String title) {
         if (text == null) text = "";
         if (title == null) title = "";
 
-        if (text.contains("R$") || text.contains("US$") || text.contains("USD") ||
-            title.contains("R$") || title.contains("US$") || title.contains("USD")) {
-            return true;
+        String combined = (title + " " + text).toLowerCase();
+
+        // 1. Rejeição imediata de construções no gerúndio ou tom instrutivo
+        if (combined.contains("fazendo pix") || combined.contains("pagando boleto") ||
+            combined.contains("pague com cart") || combined.contains("faça pix no cr") ||
+            combined.contains("faca pix no cr") || combined.contains("invista a partir")) {
+            return false;
         }
 
-        String lowerText = text.toLowerCase();
-        String lowerTitle = title.toLowerCase();
-
-        String[] signals = new String[] {
-            "pix",
-            "compra",
-            "pago", "pagamento",
-            "recebeu", "recebimento",
-            "transferência", "transferencia",
-            "depósito", "deposito",
-            "ordem",
-            "executada", "executado",
-            "cripto", "crypto",
-            "dividendo", "dividendos",
-            "rendimento", "rendimentos",
-            "investimento", "investimentos"
+        // 2. Verbos e termos de fato consumado (movimentações financeiras reais efetivadas)
+        String[] executedSignals = new String[] {
+            "compra aprovada", "compra realizada", "compra de r$",
+            "você recebeu", "voce recebeu", "recebido", "recebida", "recebimento",
+            "você enviou", "voce enviou", "enviou um pix", "pix enviado", "pix de r$", "pix para",
+            "pago com sucesso", "pagamento realizado", "pagamento efetuado", "pagamento aprovado",
+            "boleto pago", "transferência recebida", "transferencia recebida",
+            "transferência enviada", "transferencia enviada", "transferência realizada", "transferencia realizada",
+            "depósito recebido", "deposito recebido", "crédito em conta", "credito em conta",
+            "ordem executada", "dividendo", "dividendos", "rendimento", "rendimentos"
         };
 
-        for (String signal : signals) {
-            if (lowerText.contains(signal) || lowerTitle.contains(signal)) {
+        for (String signal : executedSignals) {
+            if (combined.contains(signal)) {
                 return true;
+            }
+        }
+
+        // 3. Validação combinada de quantia monetária explícita com canal financeiro concreto
+        if (combined.contains("r$") || combined.contains("us$") || combined.contains("usd")) {
+            String[] channelSignals = new String[] {
+                "compra", "pix", "cartão", "cartao", "transferência", "transferencia",
+                "boleto", "ted", "doc", "debito", "débito", "crédito", "credito"
+            };
+            for (String cs : channelSignals) {
+                if (combined.contains(cs)) {
+                    return true;
+                }
             }
         }
 
