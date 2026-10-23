@@ -1,3 +1,4 @@
+export { AccountTab } from "./account-tab";
 export { AppearanceTab } from "./appearance-tab";
 export { AppearanceTab as PersonalizacaoTab } from "./appearance-tab";
 export { ExperiencePresetsCard } from "./experience-presets-card";

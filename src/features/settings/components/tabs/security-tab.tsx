@@ -1,8 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from "react";
 import {
-  ShieldCheck,
-  Lock,
-  LogOut,
   Database,
   Sparkles,
   Trash2,
@@ -25,8 +22,6 @@ import type { ExportCsvKind, ExportRange } from "@/components/modules";
 const RestoreWizardDialog = lazy(() =>
   import("../restore-wizard").then((m) => ({ default: m.RestoreWizardDialog }))
 );
-import { useAuth } from "@/hooks/use-auth";
-import { useSignOut } from "@/hooks/use-sign-out";
 import { downloadCsv, downloadJson } from "@/services/export-actions";
 import { pushToast } from "@/services/toast";
 import {
@@ -110,9 +105,7 @@ const APP_LOCK_GRACE_OPTIONS: SelectOption[] = [
 ];
 
 export function SecurityTab() {
-  const { user } = useAuth();
   const userAccess = useUserAccess();
-  const { signOut } = useSignOut();
   const userPreferencesQuery = useUserPreferences();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
 
@@ -201,10 +194,6 @@ export function SecurityTab() {
   const [restoreWizardOpen, setRestoreWizardOpen] = useState(false);
   const categoriesQuery = useCategories();
   const creditCardsQuery = useCreditCards();
-
-  const handleLogout = async () => {
-    await signOut();
-  };
 
   const handleExportJson = async (): Promise<void> => {
     const { data: payload } = await exportDataQuery.refetch();
@@ -321,70 +310,7 @@ export function SecurityTab() {
 
   return (
     <div className="space-y-6">
-      {/* Card 1: Conta do Usuário & Sessão */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <ShieldCheck className="size-4 text-muted-foreground" aria-hidden="true" />
-              <span>Conta &amp; Sessão</span>
-            </span>
-            <Badge variant="muted" size="xs" className="font-mono uppercase">
-              {userAccess.role}
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-4 p-4 rounded-xl border border-border bg-muted/30">
-            <div className="size-14 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-xl shadow-md">
-              {(user?.email?.[0] || "U").toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-bold text-foreground truncate text-base">
-                {user?.user_metadata?.name || user?.email?.split("@")[0] || "Usuário"}
-              </div>
-              <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
-              <div className="flex items-center gap-1.5 mt-1.5">
-                <Badge variant="positive" size="xs">
-                  Sessão Ativa
-                </Badge>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="p-3 rounded-xl border border-border bg-muted/20 flex flex-col justify-between gap-1">
-              <span className="text-xs text-muted-foreground">Status da Conta</span>
-              <span className="font-semibold text-sm text-positive-strong flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-positive inline-block" />
-                Conta Ativa
-              </span>
-            </div>
-            <div className="p-3 rounded-xl border border-border bg-muted/20 flex flex-col justify-between gap-1">
-              <span className="text-xs text-muted-foreground">E-mail Autenticado</span>
-              <span className="font-semibold text-sm text-foreground truncate">
-                {user?.email || "usuario@financas.app"}
-              </span>
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-xl border border-border/80 bg-surface text-xs text-muted-foreground leading-relaxed flex items-center gap-2.5">
-            <Lock className="size-4 text-positive-strong shrink-0" />
-            <span>
-              Sua conta está protegida por isolamento Row-Level Security (RLS) e criptografia de ponta a ponta.
-            </span>
-          </div>
-
-          <div className="pt-2 flex justify-end">
-            <Button variant="destructive" onClick={handleLogout} className="gap-2">
-              <LogOut className="size-4" />
-              <span>Sair da Conta</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Card 2: Bloqueio do Aplicativo & Privacidade */}
+      {/* Card 1: Bloqueio do Aplicativo & Privacidade */}
       {showAppLockCard && (
         <Card>
           <CardHeader>

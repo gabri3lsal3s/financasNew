@@ -49,12 +49,16 @@
 │   ├── ROADMAP.md                 # Fases de execução consolidadas e Definition of Done
 │   ├── SECURITY_GOVERNANCE.md     # Governança de segurança, criptografia, proteção de PII e LGPD
 │   ├── plans/                     # Planos de implementação ativos e pendentes
-│   │   ├── PLANO_IMPLEMENTACAO_ALTA_CONCORRENCIA_SEGURANCA.md # [CONCLUÍDO] Escala 1k-10k DAU e blindagem
+│   │   ├── PLANO_GESTAO_CONTA_AUTH_E_EXPERIENCIA_SAAS.md # Gestão de contas, recuperação e experiência SaaS
 │   │   ├── PLANO_ADEQUACAO_LEGAL_E_REGULATORIA.md # Adequação LGPD, termos e conformidade regulatória
-│   │   ├── PLANO_AUDITORIA_CONGRUENCIA.md # [NOVO / EM ANDAMENTO] Auditoria de regras e integridade matemática
+│   │   ├── PLANO_IMPLEMENTACAO_TOUR_INTERATIVO_E_SIMULACAO.md # Onboarding interativo e simulação guiada
+│   │   ├── PLANO_FINALIZACAO_PRODUCAO_E_PRIMEIROS_CLIENTES.md # [CANÔNICO / FINAL] Go-live, chat Telegram, Asaas e runbook
 │   │   └── completed/             # Histórico de planos executados com sucesso (100% concluídos)
 │   │       ├── CAPACITOR_ANDROID_PLAN.md
+│   │       ├── PLANO_AUDITORIA_CONGRUENCIA.md
+│   │       ├── PLANO_IMPLEMENTACAO_ALTA_CONCORRENCIA_SEGURANCA.md
 │   │       ├── PLANO_IMPLEMENTACAO_ASSISTENTE_PASSIVO.md
+│   │       ├── PLANO_IMPLEMENTACAO_CAPTURA_INTELIGENTE_E_FRICCAO_MINIMA.md
 │   │       ├── PLANO_IMPLEMENTACAO_MODULOS_E_SAAS.md
 │   │       └── PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md
 │   ├── diagnostics/               # Diagnósticos técnicos e relatórios de avaliação arquitetural

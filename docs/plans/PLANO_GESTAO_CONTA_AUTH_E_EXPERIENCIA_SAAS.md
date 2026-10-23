@@ -172,11 +172,11 @@ flowchart TD
     - Identificador único da conta (`UUID` com máscara e botão para copiar com feedback de cópia).
     - Data de criação da conta formatada em pt-BR.
     - Status do Plano Pro ativo com link de atalho para a aba de Assinatura.
-- [ ] **Tarefa 2.2 — Integrar no `SettingsPage` e `resolveSettingsTab` (`src/features/settings/pages/settings-page.tsx`):**
+- [x] **Tarefa 2.2 — Integrar no `SettingsPage` e `resolveSettingsTab` (`src/features/settings/pages/settings-page.tsx`):**
   - Adicionar `"account"` como a primeira aba de configurações com ícone `User`.
   - Atualizar a função `resolveSettingsTab()` para mapear os aliases: `"account"`, `"conta"`, `"perfil"`, `"usuario"`, `"usuário"`, `"profile"` para `"account"`.
   - Exportar `AccountTab` em `src/features/settings/components/tabs/index.ts`.
-- [ ] **Tarefa 2.3 — Desacoplar `SecurityTab` (`src/features/settings/components/tabs/security-tab.tsx`):**
+- [x] **Tarefa 2.3 — Desacoplar `SecurityTab` (`src/features/settings/components/tabs/security-tab.tsx`):**
   - Remover de `SecurityTab` o bloco redundante de cabeçalho de usuário que agora reside em `AccountTab`.
   - Manter em `SecurityTab` exclusivamente: Biometria, Escudo de Privacidade, Hub de Exportação/Restauração de Dados e Ambiente de Demonstração.
 - [ ] **Tarefa 2.4 — Criar Testes Unitários:**

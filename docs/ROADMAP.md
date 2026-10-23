@@ -1,5 +1,17 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.74** registra a **Elaboração Canônica do Plano de Finalização para Produção e Primeiros Clientes (`docs/plans/PLANO_FINALIZACAO_PRODUCAO_E_PRIMEIROS_CLIENTES.md`)** (2026-10-23):
+> - **(1) Chat Nativo de Suporte & Alertas em Tempo Real no Telegram**:
+>   - Planejamento arquitetural da tabela `public.support_tickets`, RLS multi-tenant, componente `SupportChatDialog` e Edge Function `support-notify` para notificação push no Telegram do fundador.
+> - **(2) Homologação do Gateway Asaas & Blindagem de Cobrança**:
+>   - Roteiro de secrets de produção, deploy das Edge Functions (`asaas-checkout`, `asaas-manage`, `asaas-webhook`), higienização da marca oficial (Áxis Finance) nos descritivos de faturas/Pix e prevenção de cobranças Pix órfãs.
+> - **(3) Resiliência de Runtime & Prevenção de Falhas em Produção**:
+>   - Previsão de `AppErrorBoundary` global (eliminando risco de tela branca em exceções React) e listener `vite:preloadError` (imunização contra `ChunkLoadError` em deploys da Cloudflare).
+> - **(4) Script Automatizado de Pré-Voo (`npm run preflight`)**:
+>   - Especificação do script `scripts/preflight-check.ts` para auditoria automática de variáveis de ambiente, conexão Supabase, integridade de tabelas/RPCs e status do cron de cotações.
+> - **(5) Checklist de Go-Live Externo & Runbook Operacional do Fundador**:
+>   - Passo a passo de DNS/SSL na Cloudflare, registros SPF/DKIM/DMARC no Resend para zero spam e manual de bordo do fundador (`docs/FOUNDER_RUNBOOK.md`).
+>
 > **v2.73** registra a **Homologação Canônica de Pacotes Android, Desacoplamento de Cartões em Corretoras e Auto-Vínculo Inteligente de Cartões** (Fase 11 do `PLANO_IMPLEMENTACAO_CAPTURA_INTELIGENTE_E_FRICCAO_MINIMA.md`) (2026-10-23):
 > - **(1) Homologação Canônica da Matriz de Pacotes Android (Rico, BTG, Nomad, XP)**:
 >   - Adição dos package names reais da Google Play Store no `AndroidManifest.xml` (`<queries>`), no `BankNotificationListenerService` e no `BankNotificationPlugin` (`br.com.rico.rico`, `br.com.btg.pactual.digital`, `com.nomadglobal.app`, `br.com.xp.investimentos`), mantendo retrocompatibilidade com identificadores legados;

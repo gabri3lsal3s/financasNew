@@ -103,6 +103,7 @@ vi.mock("@/state", () => ({
   useHasDemoData: () => ({ data: false, isLoading: false, isError: false }),
   useLoadDemoData: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useClearDemoData: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useUpdateProfile: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
 }));
 
 function renderSettings(initialEntries: string[] = ["/configuracoes"]) {
@@ -142,10 +143,11 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     cleanup();
   });
 
-  it("renderiza o cabeçalho e os 4 pilares consolidados de navegação", () => {
+  it("renderiza o cabeçalho e os pilares consolidados de navegação", () => {
     renderSettings();
 
     expect(screen.getByRole("heading", { level: 1, name: "Configurações" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Minha Conta" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Aparência" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Notificações" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Segurança" })).toBeInTheDocument();
@@ -154,7 +156,7 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
 
   it("permite alternar entre os Modos de Experiência na aba Aparência", async () => {
     const user = userEvent.setup();
-    renderSettings();
+    renderSettings(["/configuracoes?tab=aparencia"]);
 
     expect(screen.getByText("Modo de Experiência do Aplicativo")).toBeInTheDocument();
     expect(screen.getByText("Dinâmico")).toBeInTheDocument();
@@ -198,7 +200,7 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
 
   it("permite configurar Atalhos do Header em Aparência e não exibe seletor de widgets", async () => {
     const user = userEvent.setup();
-    renderSettings();
+    renderSettings(["/configuracoes?tab=aparencia"]);
 
     expect(screen.getByText("Interface & Composição")).toBeInTheDocument();
     expect(screen.getByText("Atalhos Rápidos do Cabeçalho")).toBeInTheDocument();
@@ -214,24 +216,20 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     });
   });
 
-  it("permite acessar a aba unificada de Segurança e visualizar proteção e exportação", async () => {
+  it("permite acessar a aba de Segurança e visualizar proteção e exportação", async () => {
     const user = userEvent.setup();
     renderSettings();
 
     const securityTab = screen.getByRole("tab", { name: "Segurança" });
     await user.click(securityTab);
 
-    // Conteúdo de Segurança (Conta & Sessão e Proteção)
-    expect(screen.getByText("Conta & Sessão")).toBeInTheDocument();
-    expect(screen.getByText("Status da Conta")).toBeInTheDocument();
-    expect(screen.getByText("Conta Ativa")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Sair da Conta/i })).toBeInTheDocument();
+    // Conteúdo de Dados e Backup
+    expect(screen.getByText("Gestão de Dados & Backup")).toBeInTheDocument();
+    expect(screen.queryByText("Conta & Sessão")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Sair da Conta/i })).not.toBeInTheDocument();
     expect(screen.queryByText("Autenticação em Duas Etapas (2FA / TOTP)")).not.toBeInTheDocument();
     expect(screen.queryByText("Aplicativo Autenticador (TOTP)")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Gerenciar 2FA/i })).not.toBeInTheDocument();
-
-    // Conteúdo de Dados
-    expect(screen.getByText("Gestão de Dados & Backup")).toBeInTheDocument();
   });
 
   it("permite acessar a aba Plano e visualizar status de assinatura e comparativo", async () => {
@@ -248,17 +246,21 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
 
   it("permite alternar entre opções de tema visual e emite toast de confirmação", async () => {
     const user = userEvent.setup();
-    renderSettings();
+    renderSettings(["/configuracoes?tab=aparencia"]);
 
     const darkOption = screen.getByRole("button", { name: /^Escuro/i });
     await user.click(darkOption);
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
 
-  it("ativa a aba de Segurança quando acessado via ?tab=perfil", () => {
+  it("ativa a aba Minha Conta quando acessado via ?tab=perfil", () => {
     renderSettings(["/configuracoes?tab=perfil"]);
-    expect(screen.getByText("Conta & Sessão")).toBeInTheDocument();
-    expect(screen.queryByText("Autenticação em Duas Etapas (2FA / TOTP)")).not.toBeInTheDocument();
+    expect(screen.getByText("Dados Pessoais")).toBeInTheDocument();
+  });
+
+  it("ativa a aba Minha Conta quando acessado via ?tab=conta", () => {
+    renderSettings(["/configuracoes?tab=conta"]);
+    expect(screen.getByText("Dados Pessoais")).toBeInTheDocument();
   });
 
   it("ativa a aba de Segurança quando acessado via ?subtab=dados", () => {
@@ -268,7 +270,8 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
 
   it("ativa a aba de Segurança quando acessado via ?tab=seguranca", () => {
     renderSettings(["/configuracoes?tab=seguranca"]);
-    expect(screen.getByText("Conta & Sessão")).toBeInTheDocument();
+    expect(screen.getByText("Gestão de Dados & Backup")).toBeInTheDocument();
+    expect(screen.queryByText("Conta & Sessão")).not.toBeInTheDocument();
     expect(screen.queryByText("Autenticação em Duas Etapas (2FA / TOTP)")).not.toBeInTheDocument();
   });
 

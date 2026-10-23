@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
+  User,
   Palette,
   Bell,
   ShieldCheck,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 import { Button, Tabs } from "@/components/ui";
 import {
+  AccountTab,
   AppearanceTab,
   NotificationsTab,
   SecurityTab,
@@ -25,8 +27,22 @@ import { cn } from "@/lib/utils";
  * de rota (tab, subtab ou aliases comuns de deep-link).
  */
 function resolveSettingsTab(param: string | null): string {
-  if (!param) return "appearance";
+  if (!param) return "account";
   const p = param.toLowerCase().trim();
+  if (
+    [
+      "account",
+      "conta",
+      "perfil",
+      "usuario",
+      "usuário",
+      "profile",
+      "minha-conta",
+      "dados-pessoais",
+    ].includes(p)
+  ) {
+    return "account";
+  }
   if (
     [
       "appearance",
@@ -74,10 +90,6 @@ function resolveSettingsTab(param: string | null): string {
       "security",
       "seguranca",
       "segurança",
-      "perfil",
-      "conta",
-      "usuario",
-      "usuário",
       "senha",
       "dados",
       "exportar",
@@ -106,7 +118,7 @@ function resolveSettingsTab(param: string | null): string {
   ) {
     return "devices";
   }
-  return "appearance";
+  return "account";
 }
 
 export function SettingsPage() {
@@ -143,6 +155,12 @@ export function SettingsPage() {
 
   const tabItems = useMemo(
     () => [
+      {
+        value: "account",
+        label: "Minha Conta",
+        icon: <User className="size-4" />,
+        content: <AccountTab />,
+      },
       {
         value: "appearance",
         label: "Aparência",
