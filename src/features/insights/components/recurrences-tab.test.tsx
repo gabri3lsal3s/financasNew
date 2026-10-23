@@ -392,4 +392,141 @@ describe("RecurrencesTab", () => {
     expect(screen.getByText("Semanal")).toBeInTheDocument();
     expect(screen.getByText(/Custo consolidado de R\$ 600,00\/mês/)).toBeInTheDocument();
   });
+
+  describe("KPIs Estratégicos & Abas Fluidas (Fase 7, Tarefa 7.10)", () => {
+    const testOccurrences: RecurrenceOccurrence[] = [
+      {
+        key: "sub:netflix",
+        name: "Netflix",
+        level: "subscription",
+        segment: "streaming",
+        tier: "can_cut",
+        averageCents: 5590,
+        confidence: 0.95,
+        months: ["2026-08", "2026-09", "2026-10"],
+      },
+      {
+        key: "rec:enel",
+        name: "Enel Energia",
+        level: "recurring",
+        segment: "utilities",
+        tier: "essential",
+        averageCents: 18500,
+        confidence: 0.9,
+        months: ["2026-08", "2026-09", "2026-10"],
+      },
+      {
+        key: "sub:spotify",
+        name: "Spotify",
+        level: "subscription",
+        segment: "streaming",
+        tier: "discretionary",
+        averageCents: 2190,
+        confidence: 0.95,
+        months: ["2026-08", "2026-09", "2026-10"],
+        priceAdjustment: {
+          oldCents: 1990,
+          newCents: 2190,
+          percentIncrease: 10,
+          kind: "inflationary",
+          isInflationary: true,
+          isPlanChange: false,
+          label: "Reajuste inflacionário",
+        },
+      },
+    ];
+
+    it("renderiza a Taxa de Comprometimento Fixo com percentual formatado e helper text", () => {
+      render(
+        <RecurrencesTab
+          totalRecurringCents={150000}
+          totalAnnualRecurringCents={1800000}
+          canCutRecurringCents={0}
+          canCutAnnualCents={0}
+          activeOccurrences={mockOccurrences}
+          ignoredOccurrences={[]}
+          feedbackMap={{}}
+          showIgnored={false}
+          setShowIgnored={vi.fn()}
+          onFeedback={vi.fn()}
+          monthlyIncomeCents={500000}
+        />,
+      );
+
+      expect(screen.getByText("Comprometimento fixo")).toBeInTheDocument();
+      expect(screen.getByText("30,0%")).toBeInTheDocument();
+      expect(screen.getByText("da renda")).toBeInTheDocument();
+      expect(screen.getByText("Fatia da renda comprometida antes do mês iniciar")).toBeInTheDocument();
+    });
+
+    it("renderiza traço quando a renda mensal não for informada", () => {
+      render(
+        <RecurrencesTab
+          totalRecurringCents={150000}
+          totalAnnualRecurringCents={1800000}
+          canCutRecurringCents={0}
+          canCutAnnualCents={0}
+          activeOccurrences={mockOccurrences}
+          ignoredOccurrences={[]}
+          feedbackMap={{}}
+          showIgnored={false}
+          setShowIgnored={vi.fn()}
+          onFeedback={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText("Comprometimento fixo")).toBeInTheDocument();
+      expect(screen.getByText("—")).toBeInTheDocument();
+      expect(screen.getByText("Cadastre sua renda para ver o percentual")).toBeInTheDocument();
+    });
+
+    it("renderiza as abas fluidas e filtra as ocorrências por Assinaturas, Contas Fixas e Com Alertas", async () => {
+      const user = userEvent.setup();
+
+      render(
+        <RecurrencesTab
+          totalRecurringCents={26280}
+          totalAnnualRecurringCents={315360}
+          canCutRecurringCents={5590}
+          canCutAnnualCents={67080}
+          activeOccurrences={testOccurrences}
+          ignoredOccurrences={[]}
+          feedbackMap={{}}
+          showIgnored={false}
+          setShowIgnored={vi.fn()}
+          onFeedback={vi.fn()}
+          monthlyIncomeCents={500000}
+        />,
+      );
+
+      // Abas presentes com contadores
+      expect(screen.getByRole("tab", { name: /Todas \(3\)/ })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /Assinaturas \(2\)/ })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /Contas Fixas \(1\)/ })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /Com Alertas \(1\)/ })).toBeInTheDocument();
+
+      // Na aba 'Todas', todos os 3 aparecem
+      expect(screen.getByText("Netflix")).toBeInTheDocument();
+      expect(screen.getByText("Enel Energia")).toBeInTheDocument();
+      expect(screen.getByText("Spotify")).toBeInTheDocument();
+
+      // Alterna para 'Assinaturas'
+      await user.click(screen.getByRole("tab", { name: /Assinaturas/ }));
+      expect(screen.getByText("Netflix")).toBeInTheDocument();
+      expect(screen.getByText("Spotify")).toBeInTheDocument();
+      expect(screen.queryByText("Enel Energia")).not.toBeInTheDocument();
+
+      // Alterna para 'Contas Fixas'
+      await user.click(screen.getByRole("tab", { name: /Contas Fixas/ }));
+      expect(screen.getByText("Enel Energia")).toBeInTheDocument();
+      expect(screen.queryByText("Netflix")).not.toBeInTheDocument();
+      expect(screen.queryByText("Spotify")).not.toBeInTheDocument();
+
+      // Alterna para 'Com Alertas'
+      await user.click(screen.getByRole("tab", { name: /Com Alertas/ }));
+      expect(screen.getByText("Spotify")).toBeInTheDocument();
+      expect(screen.queryByText("Netflix")).not.toBeInTheDocument();
+      expect(screen.queryByText("Enel Energia")).not.toBeInTheDocument();
+    });
+  });
 });

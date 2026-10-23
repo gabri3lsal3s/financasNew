@@ -457,6 +457,153 @@ export function calculateRecurringTotals(
   };
 }
 
+/**
+ * Calcula a taxa percentual de comprometimento da renda por custos fixos e recorrentes.
+ *
+ * Fórmula canônica:
+ *   (Total Mensal Recorrente / Renda Mensal Total) * 100
+ *
+ * Retorna null se não houver renda mensal registrada ou se for <= 0.
+ */
+export function calculateFixedCommitmentRate(
+  totalRecurringCents: number,
+  monthlyIncomeCents?: number,
+): number | null {
+  if (typeof monthlyIncomeCents !== "number" || monthlyIncomeCents <= 0) {
+    return null;
+  }
+  if (totalRecurringCents <= 0) {
+    return 0;
+  }
+  const rate = (totalRecurringCents / monthlyIncomeCents) * 100;
+  return Number(rate.toFixed(1));
+}
+
+export type RecurrenceFilterTab = "all" | "subscriptions" | "fixed_bills" | "with_alerts";
+
+/**
+ * Avalia se uma ocorrência possui alertas ativos (reajustes, duplicidades, pendência no mês ou vencimento próximo).
+ */
+export function isRecurrenceAlert(occurrence: RecurrenceOccurrence): boolean {
+  return (
+    Boolean(occurrence.priceAdjustment) ||
+    (occurrence.duplicateChargesThisMonth != null && occurrence.duplicateChargesThisMonth > 1) ||
+    Boolean(occurrence.missingThisMonth) ||
+    (occurrence.daysUntilNextDue != null && occurrence.daysUntilNextDue <= 7)
+  );
+}
+
+/**
+ * Avalia se uma ocorrência representa uma assinatura (streaming, nuvem/IA, fitness, clubes ou lazer).
+ */
+export function isSubscriptionRecurrence(occurrence: RecurrenceOccurrence): boolean {
+  // Serviços essenciais não são classificados como assinaturas de estilo de vida
+  if (
+    occurrence.segment === "utilities" ||
+    occurrence.segment === "telecom" ||
+    occurrence.segment === "health" ||
+    occurrence.tier === "essential"
+  ) {
+    return false;
+  }
+
+  // Segmentos explicitamente voltados a estilo de vida / assinaturas
+  if (
+    occurrence.segment === "streaming" ||
+    occurrence.segment === "cloud_ai" ||
+    occurrence.segment === "fitness" ||
+    occurrence.segment === "mobility"
+  ) {
+    return true;
+  }
+
+  // Classificação pelo nível do motor
+  if (occurrence.level === "subscription") {
+    return true;
+  }
+
+  // Tiers de corte (can_cut ou discretionary)
+  if (occurrence.tier === "can_cut" || occurrence.tier === "discretionary") {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Avalia se uma ocorrência representa uma conta fixa (energia, água, condomínio, internet, saúde, etc.).
+ */
+export function isFixedBillRecurrence(occurrence: RecurrenceOccurrence): boolean {
+  if (
+    occurrence.segment === "utilities" ||
+    occurrence.segment === "telecom" ||
+    occurrence.segment === "health"
+  ) {
+    return true;
+  }
+
+  if (occurrence.tier === "essential") {
+    return true;
+  }
+
+  const normName = occurrence.name.toLowerCase();
+  const fixedKeywords = [
+    "condomínio",
+    "condominio",
+    "aluguel",
+    "energia",
+    "luz",
+    "agua",
+    "água",
+    "gas",
+    "gás",
+    "internet",
+    "fibra",
+    "plano de saude",
+    "saude",
+    "saúde",
+    "iptu",
+    "ipva",
+    "seguro",
+    "escola",
+    "faculdade",
+    "mensalidade escolar",
+    "diarista",
+    "faxina",
+  ];
+
+  if (fixedKeywords.some((kw) => normName.includes(kw))) {
+    return true;
+  }
+
+  // Se for nível recorrente e não foi enquadrado como assinatura
+  if (occurrence.level === "recurring" && !isSubscriptionRecurrence(occurrence)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Filtra as ocorrências ativas com base na aba selecionada.
+ */
+export function filterRecurrencesByTab(
+  occurrences: readonly RecurrenceOccurrence[],
+  tab: RecurrenceFilterTab,
+): RecurrenceOccurrence[] {
+  switch (tab) {
+    case "subscriptions":
+      return occurrences.filter(isSubscriptionRecurrence);
+    case "fixed_bills":
+      return occurrences.filter(isFixedBillRecurrence);
+    case "with_alerts":
+      return occurrences.filter(isRecurrenceAlert);
+    case "all":
+    default:
+      return [...occurrences];
+  }
+}
+
 const RECURRING_TOLERANCE = 0.5; // ±50% (recurring)
 
 /** Calcula a mediana de um conjunto de valores. */

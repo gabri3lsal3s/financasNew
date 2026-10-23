@@ -493,7 +493,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes cobrindo detecção de transações espaçadas por 365 dias e frequência semanal.
   - *Commit:* `feat(domain/insights): adicionar detector estendido para contas anuais e semanais`
 
-- [ ] **Tarefa 7.10 — KPIs Estratégicos e Abas Fluidas de Navegação:**
+- [x] **Tarefa 7.10 — KPIs Estratégicos e Abas Fluidas de Navegação:**
   - Em `recurrences-tab.tsx`:
     - Adicionar no card de resumo a métrica:
       $$\text{Taxa de Comprometimento Fixo} = \frac{\text{Total Mensal Recorrente}}{\text{Renda Mensal Total}} \times 100$$

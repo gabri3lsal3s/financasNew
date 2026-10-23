@@ -8,6 +8,11 @@ export {
   calculateTypicalDay,
   estimateNextDueDate,
   calculateRecurringTotals,
+  calculateFixedCommitmentRate,
+  filterRecurrencesByTab,
+  isRecurrenceAlert,
+  isSubscriptionRecurrence,
+  isFixedBillRecurrence,
   evaluateBudgetImpact,
   classifyPriceAdjustment,
   detectDuplicateChargesInMonth,
@@ -30,6 +35,7 @@ export type {
   RecurringTotalsResult,
   BudgetImpactOccurrence,
   BudgetImpactEvaluation,
+  RecurrenceFilterTab,
 } from "./recurrences";
 export { confidenceScore, historyBonus, varianceOf } from "./confidence";
 export type { ConfidenceParams, RecurrenceKind } from "./confidence";

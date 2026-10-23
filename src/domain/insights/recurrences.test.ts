@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  calculateFixedCommitmentRate,
   calculateRecurringTotals,
   calculateTypicalDay,
   classifyPriceAdjustment,
@@ -8,11 +9,16 @@ import {
   detectRecurrences,
   estimateNextDueDate,
   evaluateBudgetImpact,
+  filterRecurrencesByTab,
   formatBRL,
+  isFixedBillRecurrence,
+  isRecurrenceAlert,
+  isSubscriptionRecurrence,
   VAMPIRE_CATEGORY_BUDGET_IMPACT_THRESHOLD_PERCENT,
   VAMPIRE_INCOME_IMPACT_THRESHOLD_PERCENT,
   type ExpenseLike,
   type IncomeLike,
+  type RecurrenceOccurrence,
 } from "./recurrences";
 import { normalizeText } from "./shared";
 
@@ -1086,6 +1092,134 @@ describe("domain/insights/recurrences — Detecção Dual de Rendas (Fase 4, Tar
         // calculateRecurringTotals descarta lapsed e soma apenas despesas ativas
         const totals = calculateRecurringTotals(occurrences);
         expect(totals.totalRecurringCents).toBe(6799); // Apenas Google AI Pro, sem os R$ 91,50 do Sabor do Bem
+      });
+    });
+  });
+
+  describe("KPIs Estratégicos & Abas Fluidas de Navegação (Fase 7, Tarefa 7.10)", () => {
+    describe("calculateFixedCommitmentRate", () => {
+      it("calcula o percentual da renda comprometida com custos fixos (Taxa de Comprometimento Fixo)", () => {
+        // Total recorrente: R$ 1.500,00 (150.000 centavos), Renda: R$ 5.000,00 (500.000 centavos) => 30.0%
+        expect(calculateFixedCommitmentRate(150000, 500000)).toBe(30);
+
+        // Total recorrente: R$ 2.450,00, Renda: R$ 7.000,00 => 35.0%
+        expect(calculateFixedCommitmentRate(245000, 700000)).toBe(35);
+
+        // Total recorrente: R$ 980,50, Renda: R$ 3.000,00 => 32.7%
+        expect(calculateFixedCommitmentRate(98050, 300000)).toBe(32.7);
+      });
+
+      it("retorna 0 quando o total recorrente for 0", () => {
+        expect(calculateFixedCommitmentRate(0, 500000)).toBe(0);
+      });
+
+      it("retorna null quando a renda não for informada ou for <= 0", () => {
+        expect(calculateFixedCommitmentRate(150000, undefined)).toBeNull();
+        expect(calculateFixedCommitmentRate(150000, 0)).toBeNull();
+        expect(calculateFixedCommitmentRate(150000, -5000)).toBeNull();
+      });
+    });
+
+    describe("Classificadores de Abas & filterRecurrencesByTab", () => {
+      const subNetflix: RecurrenceOccurrence = {
+        key: "sub:netflix",
+        name: "Netflix",
+        level: "subscription",
+        segment: "streaming",
+        tier: "can_cut",
+        averageCents: 5590,
+        confidence: 0.95,
+        months: ["2026-08", "2026-09", "2026-10"],
+      };
+
+      const billEnel: RecurrenceOccurrence = {
+        key: "rec:enel",
+        name: "Enel Energia",
+        level: "recurring",
+        segment: "utilities",
+        tier: "essential",
+        averageCents: 18500,
+        confidence: 0.9,
+        months: ["2026-08", "2026-09", "2026-10"],
+      };
+
+      const billCondominio: RecurrenceOccurrence = {
+        key: "rec:condominio",
+        name: "Condomínio Residencial",
+        level: "recurring",
+        tier: "essential",
+        averageCents: 85000,
+        confidence: 0.92,
+        months: ["2026-08", "2026-09", "2026-10"],
+      };
+
+      const subSpotifyWithAlert: RecurrenceOccurrence = {
+        key: "sub:spotify",
+        name: "Spotify",
+        level: "subscription",
+        segment: "streaming",
+        tier: "discretionary",
+        averageCents: 2190,
+        confidence: 0.95,
+        months: ["2026-08", "2026-09", "2026-10"],
+        priceAdjustment: {
+          oldCents: 1990,
+          newCents: 2190,
+          percentIncrease: 10,
+          kind: "inflationary",
+          isInflationary: true,
+          isPlanChange: false,
+          label: "Reajuste inflacionário",
+        },
+      };
+
+      const occurrences = [subNetflix, billEnel, billCondominio, subSpotifyWithAlert];
+
+      it("isSubscriptionRecurrence identifica assinaturas e descarta contas fixas", () => {
+        expect(isSubscriptionRecurrence(subNetflix)).toBe(true);
+        expect(isSubscriptionRecurrence(subSpotifyWithAlert)).toBe(true);
+        expect(isSubscriptionRecurrence(billEnel)).toBe(false);
+        expect(isSubscriptionRecurrence(billCondominio)).toBe(false);
+      });
+
+      it("isFixedBillRecurrence identifica concessionárias, moradia e saúde", () => {
+        expect(isFixedBillRecurrence(billEnel)).toBe(true);
+        expect(isFixedBillRecurrence(billCondominio)).toBe(true);
+        expect(isFixedBillRecurrence(subNetflix)).toBe(false);
+        expect(isFixedBillRecurrence(subSpotifyWithAlert)).toBe(false);
+      });
+
+      it("isRecurrenceAlert identifica ocorrências com reajustes, pendências ou duplicidades", () => {
+        expect(isRecurrenceAlert(subSpotifyWithAlert)).toBe(true);
+        expect(isRecurrenceAlert(subNetflix)).toBe(false);
+
+        const pendingOccurrence: RecurrenceOccurrence = {
+          ...billEnel,
+          missingThisMonth: true,
+        };
+        expect(isRecurrenceAlert(pendingOccurrence)).toBe(true);
+
+        const duplicateOccurrence: RecurrenceOccurrence = {
+          ...subNetflix,
+          duplicateChargesThisMonth: 2,
+        };
+        expect(isRecurrenceAlert(duplicateOccurrence)).toBe(true);
+      });
+
+      it("filterRecurrencesByTab filtra corretamente pelas 4 abas canônicas", () => {
+        expect(filterRecurrencesByTab(occurrences, "all")).toHaveLength(4);
+
+        const subs = filterRecurrencesByTab(occurrences, "subscriptions");
+        expect(subs).toHaveLength(2);
+        expect(subs.map((s) => s.name)).toEqual(["Netflix", "Spotify"]);
+
+        const fixas = filterRecurrencesByTab(occurrences, "fixed_bills");
+        expect(fixas).toHaveLength(2);
+        expect(fixas.map((f) => f.name)).toEqual(["Enel Energia", "Condomínio Residencial"]);
+
+        const alertas = filterRecurrencesByTab(occurrences, "with_alerts");
+        expect(alertas).toHaveLength(1);
+        expect(alertas[0]?.name).toBe("Spotify");
       });
     });
   });

@@ -446,6 +446,7 @@ export function InsightsPage({
       onFeedback={handleFeedback}
       cards={cardsQuery.data ?? []}
       initialSelectedKey={searchParams?.get("item") || undefined}
+      monthlyIncomeCents={incomeCents}
     />
   );
 
