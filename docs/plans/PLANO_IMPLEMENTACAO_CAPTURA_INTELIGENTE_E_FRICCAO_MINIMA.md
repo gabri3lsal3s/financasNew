@@ -561,7 +561,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Teste de integração do componente simulando clique direto, chamada do RPC, exibição do toast e cancelamento na reversão.
   - *Commit:* `feat(advisor): implementar confirmacao expressa de 1 toque com toast de reversao`
 
-- [ ] **Tarefa 8.4 — Contextualização de Impacto de Fatura e Limite Disponível no Card (F28):**
+- [x] **Tarefa 8.4 — Contextualização de Impacto de Fatura e Limite Disponível no Card (F28):**
   - Enriquecer o `SmartAdvisorCard` para despesas e assinaturas mapeadas a cartões de crédito com uma linha contextual no rodapé:
     - Exibir: *"Previsto na fatura [Nome do Cartão] • Limite restante: R$ X • Fecha em Y dias"*.
     - Em caso de comprometimento severo ($\ge 90\%$ do limite ou valor da conta excedendo o limite disponível), aplicar destaque semântico preventivo em tom de alerta (`text-warning-strong` ou `text-critical-strong`), orientando o usuário antes da cobrança ser recusada pelo emissor.

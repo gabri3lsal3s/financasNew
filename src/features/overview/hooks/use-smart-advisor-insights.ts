@@ -16,6 +16,7 @@ import {
   generateSmartAdvisorInsights,
   SMART_ADVISOR_DISMISSALS_KEY,
   SMART_ADVISOR_LAST_DISMISSED_DAY_KEY,
+  type CardForAdvisorContext,
   type SmartAdvisorInsight,
 } from "@/domain/insights/advisor";
 import {
@@ -23,6 +24,7 @@ import {
   useCategories,
   useCreateExpense,
   useCreateIncome,
+  useCreditCards,
   useDeleteExpense,
   useDeleteIncome,
   useExpenses,
@@ -136,6 +138,8 @@ export interface UseSmartAdvisorInsightsOptions {
   plannedAporteCents?: number;
   /** Total de aportes já efetuados no mês vigente em centavos. */
   currentMonthAportesCents?: number;
+  /** Cartões pré-carregados ou mockados com contexto de fatura/limite (F28 / Tarefa 8.4). */
+  cards?: readonly CardForAdvisorContext[];
 }
 
 export interface UseSmartAdvisorInsightsResult {
@@ -220,6 +224,7 @@ export function useSmartAdvisorInsights(
   const budgetsQuery = useBudgets();
   const categoriesQuery = useCategories();
   const feedbackQuery = useFeedback();
+  const creditCardsQuery = useCreditCards({ enabled: queryEnabled });
 
   const setFeedbackMutation = useSetFeedback();
   const createIncomeMutation = useCreateIncome();
@@ -248,6 +253,12 @@ export function useSmartAdvisorInsights(
     [options.categories, categoriesQuery.data],
   );
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
+
+  // Montagem dos cartões de crédito
+  const cards = useMemo<readonly CardForAdvisorContext[]>(
+    () => options.cards ?? creditCardsQuery.data ?? [],
+    [options.cards, creditCardsQuery.data],
+  );
 
   const m0ExpData = month0Expenses.data;
   const m1ExpData = month1Expenses.data;
@@ -405,6 +416,7 @@ export function useSmartAdvisorInsights(
       plannedAporteCents: options.plannedAporteCents,
       currentMonthAportesCents: options.currentMonthAportesCents,
       allExpenses,
+      cards,
     });
 
     const eligible = filterAndRankAllAdvisorInsights(candidates, {
@@ -429,6 +441,7 @@ export function useSmartAdvisorInsights(
     effectiveDismissals,
     effectiveLastDismissedDay,
     nowMs,
+    cards,
   ]);
 
   const totalCount = eligibleInsights.length;

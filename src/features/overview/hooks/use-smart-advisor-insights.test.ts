@@ -33,6 +33,7 @@ vi.mock("@/state", () => ({
   useBudgets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useCategories: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useFeedback: () => ({ data: {}, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useCreditCards: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSetFeedback: () => ({ mutateAsync: mutateFeedbackMock }),
   useCreateIncome: () => ({ mutateAsync: mutateCreateIncomeMock }),
   useDeleteIncome: () => ({ mutateAsync: vi.fn() }),
@@ -279,6 +280,60 @@ describe("useSmartAdvisorInsights", () => {
       expect(result.current.insight?.title).toBe("Calibração de gastos fixos");
       expect(result.current.insight?.primaryAction?.kind).toBe("confirm_recurrence");
       expect(result.current.insight?.secondaryAction?.kind).toBe("ignore_recurrence");
+    });
+
+    it("anexa cardContext aos insights de despesas recorrentes mapeadas a cartão de crédito (F28)", () => {
+      const expenses: ExpenseLike[] = [
+        {
+          id: "e1",
+          description: "Netflix Premium",
+          valueCents: 5590,
+          month: "2026-09",
+          date: "2026-09-15",
+          categoryId: "cat-stream",
+          categoryName: "Streaming",
+          cardId: "card-nubank",
+          cardName: "Nubank",
+        },
+        {
+          id: "e2",
+          description: "Netflix Premium",
+          valueCents: 5590,
+          month: "2026-08",
+          date: "2026-08-15",
+          categoryId: "cat-stream",
+          categoryName: "Streaming",
+          cardId: "card-nubank",
+          cardName: "Nubank",
+        },
+      ];
+
+      const cards = [
+        {
+          id: "card-nubank",
+          name: "Nubank Roxinho",
+          closing_day: 27,
+          due_day: 5,
+          credit_limit: 4000,
+          availableLimitCents: 120000,
+        },
+      ];
+
+      const { result } = renderHook(() =>
+        useSmartAdvisorInsights({
+          expenses,
+          incomes: [],
+          todayISO: TODAY,
+          nowMs: NOW_MS,
+          cards,
+        }),
+      );
+
+      expect(result.current.insight).not.toBeNull();
+      expect(result.current.insight?.cardContext).toBeDefined();
+      expect(result.current.insight?.cardContext?.cardName).toBe("Nubank Roxinho");
+      expect(result.current.insight?.cardContext?.availableLimitCents).toBe(120000);
+      expect(result.current.insight?.cardContext?.daysUntilClosing).toBe(5);
     });
 
     it("Card fica 100% oculto (null) quando o mês está regular sem anomalias", () => {

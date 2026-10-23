@@ -123,6 +123,111 @@ describe("generateSmartAdvisorInsights", () => {
     );
   });
 
+  it("enriquece insight com contexto de fatura e limite restante do cartão de crédito (F28)", () => {
+    const occ = makeOccurrence({
+      key: "netflix",
+      name: "Netflix",
+      tier: "can_cut",
+      segment: "streaming",
+      missingThisMonth: true,
+      typicalDayOfMonth: 12,
+      categoryId: "cat-streaming",
+      cardId: "card-nubank",
+      averageCents: 5590,
+    });
+
+    const card = {
+      id: "card-nubank",
+      name: "Nubank Roxinho",
+      closing_day: 27, // Hoje é 22 -> fecha em 5 dias
+      credit_limit: 5000, // R$ 5.000,00
+      availableLimitCents: 150000, // R$ 1.500,00 disponível
+    };
+
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [occ],
+      todayISO: "2026-10-22",
+      cards: [card],
+    });
+
+    expect(insights).toHaveLength(1);
+    expect(insights[0]?.cardContext).toBeDefined();
+    expect(insights[0]?.cardContext).toEqual(
+      expect.objectContaining({
+        cardId: "card-nubank",
+        cardName: "Nubank Roxinho",
+        availableLimitCents: 150000,
+        totalLimitCents: 500000,
+        daysUntilClosing: 5,
+        closingLabel: "Fecha em 5 dias",
+        isSeverelyCompromised: false,
+        exceedsAvailableLimit: false,
+      }),
+    );
+  });
+
+  it("sinaliza comprometimento severo (>= 90% do limite) com destaque preventivo (F28)", () => {
+    const occ = makeOccurrence({
+      key: "spotify",
+      name: "Spotify",
+      tier: "can_cut",
+      segment: "streaming",
+      missingThisMonth: true,
+      categoryId: "cat-streaming",
+      cardId: "card-itau",
+      averageCents: 3490,
+    });
+
+    const card = {
+      id: "card-itau",
+      name: "Itaú Click",
+      closing_day: 25,
+      credit_limit: 1000, // R$ 1.000
+      availableLimitCents: 8000, // R$ 80 restantes (92% usado >= 90%)
+    };
+
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [occ],
+      todayISO: "2026-10-22",
+      cards: [card],
+    });
+
+    expect(insights[0]?.cardContext?.isSeverelyCompromised).toBe(true);
+    expect(insights[0]?.cardContext?.exceedsAvailableLimit).toBe(false);
+    expect(insights[0]?.cardContext?.orientationMessage).toContain("90% do limite comprometido");
+  });
+
+  it("sinaliza risco crítico de recusa quando o valor da conta supera o limite disponível (F28)", () => {
+    const occ = makeOccurrence({
+      key: "academia-vip",
+      name: "Academia VIP",
+      tier: "can_cut",
+      segment: "fitness",
+      missingThisMonth: true,
+      categoryId: "cat-fitness",
+      cardId: "card-c6",
+      averageCents: 25000, // R$ 250,00
+    });
+
+    const card = {
+      id: "card-c6",
+      name: "C6 Carbon",
+      closing_day: 28,
+      credit_limit: 2000,
+      availableLimitCents: 10000, // R$ 100,00 disponível (despesa de 250 > 100)
+    };
+
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [occ],
+      todayISO: "2026-10-22",
+      cards: [card],
+    });
+
+    expect(insights[0]?.cardContext?.exceedsAvailableLimit).toBe(true);
+    expect(insights[0]?.cardContext?.isSeverelyCompromised).toBe(true);
+    expect(insights[0]?.cardContext?.orientationMessage).toContain("Risco de recusa");
+  });
+
   it("gera insight de prioridade 2 (Entrada) para salário CLT pronto para confirmação em 1 toque", () => {
     const inc = makeIncome({
       profile: "fixed",

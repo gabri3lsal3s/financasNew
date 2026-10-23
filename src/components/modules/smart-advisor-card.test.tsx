@@ -550,4 +550,101 @@ describe("SmartAdvisorCard", () => {
       expect(mockHookPrev).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("Contextualização de Fatura e Limite de Cartão (F28 / Tarefa 8.4)", () => {
+    const baseCardContext = {
+      cardId: "card-nubank",
+      cardName: "Nubank Roxinho",
+      availableLimitCents: 50000,
+      totalLimitCents: 500000,
+      daysUntilClosing: 5,
+      closingLabel: "Fecha em 5 dias",
+      isSeverelyCompromised: false,
+      exceedsAvailableLimit: false,
+    };
+
+    it("renderiza a linha contextual no rodapé com nome do cartão, limite restante e dias até o fechamento", () => {
+      render(
+        <SmartAdvisorCard
+          insight={{
+            ...criticalInsight,
+            cardContext: baseCardContext,
+          }}
+        />,
+      );
+
+      const footer = screen.getByTestId("smart-advisor-card-context");
+      expect(footer).toBeInTheDocument();
+      expect(screen.getByText(/Previsto na fatura Nubank Roxinho/i)).toBeInTheDocument();
+      expect(screen.getByText(/Limite restante:/i)).toBeInTheDocument();
+      expect(screen.getByText(/500,00/i)).toBeInTheDocument();
+      expect(screen.getByText(/Fecha em 5 dias/i)).toBeInTheDocument();
+      expect(footer).toHaveClass("text-muted-foreground");
+    });
+
+    it("aplica destaque preventivo text-warning-strong quando comprometimento for severo (>= 90% do limite)", () => {
+      render(
+        <SmartAdvisorCard
+          insight={{
+            ...criticalInsight,
+            cardContext: {
+              ...baseCardContext,
+              availableLimitCents: 8000,
+              isSeverelyCompromised: true,
+              orientationMessage: "Atenção: mais de 90% do limite comprometido",
+            },
+          }}
+        />,
+      );
+
+      const footer = screen.getByTestId("smart-advisor-card-context");
+      expect(footer).toHaveClass("text-warning-strong");
+      expect(screen.getByText(/Atenção: mais de 90% do limite comprometido/i)).toBeInTheDocument();
+    });
+
+    it("aplica destaque crítico text-critical-strong quando o valor da conta supera o limite disponível", () => {
+      render(
+        <SmartAdvisorCard
+          insight={{
+            ...criticalInsight,
+            cardContext: {
+              ...baseCardContext,
+              availableLimitCents: 2000,
+              exceedsAvailableLimit: true,
+              isSeverelyCompromised: true,
+              orientationMessage: "Risco de recusa: valor supera o limite disponível",
+            },
+          }}
+        />,
+      );
+
+      const footer = screen.getByTestId("smart-advisor-card-context");
+      expect(footer).toHaveClass("text-critical-strong");
+      expect(screen.getByText(/Risco de recusa: valor supera o limite disponível/i)).toBeInTheDocument();
+    });
+
+    it("renderiza valor monetário com tipografia tabular sem truncamento (AGENTS.md §11)", () => {
+      render(
+        <SmartAdvisorCard
+          insight={{
+            ...criticalInsight,
+            cardContext: {
+              ...baseCardContext,
+              availableLimitCents: 1250000, // R$ 12.500,00
+            },
+          }}
+        />,
+      );
+
+      const moneyElem = screen.getByText(/12\.500,00/i);
+      expect(moneyElem).toHaveClass("tabular-nums");
+      expect(moneyElem).toHaveClass("whitespace-nowrap");
+      expect(moneyElem).not.toHaveClass("truncate");
+    });
+
+    it("não renderiza rodapé contextual quando o insight não tiver cardContext mapeado", () => {
+      render(<SmartAdvisorCard insight={criticalInsight} />);
+      expect(screen.queryByTestId("smart-advisor-card-context")).not.toBeInTheDocument();
+    });
+  });
 });

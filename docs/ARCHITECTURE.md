@@ -491,6 +491,9 @@ O Assistente Passivo opera em modelo híbrido entre o cliente Android nativo e o
   - *Registrar Pagamento:* Abre o `LaunchWizard` em modo rápido imediatamente sobre a rota atual com todos os dados pré-preenchidos (`descricao`, `valor`, `categoria`, `data` típica e `cartao`/forma habitual).
   - *Registrar Renda Variável:* Abre o `LaunchWizard` com tipo receita pré-configurado com a descrição, categoria e data esperada.
   - *Rever Assinatura / Ver Cobranças:* Navega diretamente para `/insights?aba=recurrences&item=...`, abrindo automaticamente o modal de auditoria daquela recorrência específica (`RecurrenceAuditModal`).
+- **Contextualização de Fatura e Limite de Cartão (F28)**:
+  - Despesas e assinaturas mapeadas a cartões de crédito exibem linha contextual no rodapé: `Previsto na fatura [Nome do Cartão] • Limite restante: R$ X • Fecha em Y dias`.
+  - Em situações de comprometimento severo (>= 90% do limite ou despesa superando o limite restante), aplica destaque preventivo em tom de alerta (`text-warning-strong` ou `text-critical-strong`) orientando o usuário antes de eventual recusa da transação.
 - **Política de Cooldown e Discrição**:
   - Cooldown de 30 dias para qualquer tema dispensado (`dismiss`).
   - Totalmente invisível se o mês estiver equilibrado e sem pendências.

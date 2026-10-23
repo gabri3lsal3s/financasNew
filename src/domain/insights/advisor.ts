@@ -12,8 +12,33 @@ import type { ExpenseLike, RecurrenceOccurrence, RecurringIncomeOccurrence } fro
 import { formatBRL } from "./recurrences";
 import { learnBrokerAportePattern } from "./aporte-learning";
 import { detectAnnualCommitments, detectWeeklyCommitments } from "./extended-periodicity";
+import { getNextInvoiceClosingDate } from "./card-radar";
 
 export type SmartAdvisorCategory = "critical" | "income" | "savings" | "calibration";
+
+export interface SmartAdvisorCardContext {
+  cardId: string;
+  cardName: string;
+  availableLimitCents: number | null;
+  totalLimitCents: number | null;
+  daysUntilClosing: number;
+  closingLabel?: string;
+  /** Sinaliza comprometimento severo (>= 90% do limite ou valor da conta excedendo o limite disponível). */
+  isSeverelyCompromised?: boolean;
+  /** Sinaliza se o valor específico desta despesa excede o limite disponível restante. */
+  exceedsAvailableLimit?: boolean;
+  /** Mensagem preventiva para orientação do usuário antes de eventual recusa pelo emissor. */
+  orientationMessage?: string;
+}
+
+export interface CardForAdvisorContext {
+  id: string;
+  name: string;
+  closing_day: number;
+  due_day?: number;
+  credit_limit?: number | null;
+  availableLimitCents?: number | null;
+}
 
 export interface SmartAdvisorAction {
   label: string;
@@ -40,6 +65,8 @@ export interface SmartAdvisorInsight {
   primaryAction?: SmartAdvisorAction;
   /** Ação secundária (ex.: descartar ou discordar). */
   secondaryAction?: SmartAdvisorAction;
+  /** Contexto de fatura e limite de cartão de crédito quando a despesa/assinatura estiver mapeada a um cartão (§F28 / Tarefa 8.4). */
+  cardContext?: SmartAdvisorCardContext;
   /** Metadados contextuais adicionais. */
   metadata?: {
     valueCents?: number;
@@ -49,6 +76,9 @@ export interface SmartAdvisorInsight {
     duplicateCount?: number;
     percentIncrease?: number;
     categoryId?: string;
+    cardId?: string;
+    cardName?: string;
+    cardContext?: SmartAdvisorCardContext;
   };
 }
 
@@ -69,6 +99,92 @@ export interface GenerateSmartAdvisorInsightsInput {
   currentMonthAportesCents?: number;
   /** Histórico completo de despesas para correlação temporal com corretoras (§Eixo 3). */
   allExpenses?: readonly ExpenseLike[];
+  /** Lista de cartões cadastrados para enriquecer despesas e assinaturas com contexto de fatura e limite disponível (F28 / Tarefa 8.4). */
+  cards?: readonly CardForAdvisorContext[];
+}
+
+/**
+ * Constrói o contexto de fatura e limite de cartão de crédito para enriquecer despesas no SmartAdvisorCard (F28 / Tarefa 8.4).
+ */
+export function buildSmartAdvisorCardContext(params: {
+  card: CardForAdvisorContext;
+  expenseValueCents: number;
+  todayISO: string;
+  spentCents?: number;
+}): SmartAdvisorCardContext {
+  const { card, expenseValueCents, todayISO, spentCents = 0 } = params;
+  const nextClosingDate = getNextInvoiceClosingDate(card.closing_day, todayISO);
+  const todayTime = new Date(`${todayISO}T00:00:00Z`).getTime();
+  const closingTime = new Date(`${nextClosingDate}T00:00:00Z`).getTime();
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const daysUntilClosing = Math.max(0, Math.round((closingTime - todayTime) / msPerDay));
+
+  const totalLimitCents =
+    card.credit_limit != null && card.credit_limit > 0 ? Math.round(card.credit_limit * 100) : null;
+
+  let availableLimitCents: number | null = null;
+  if (card.availableLimitCents !== undefined && card.availableLimitCents !== null) {
+    availableLimitCents = card.availableLimitCents;
+  } else if (totalLimitCents !== null) {
+    availableLimitCents = Math.max(0, totalLimitCents - spentCents);
+  }
+
+  const exceedsAvailableLimit = availableLimitCents !== null && expenseValueCents > availableLimitCents;
+  const usagePercentage =
+    totalLimitCents && totalLimitCents > 0 && availableLimitCents !== null
+      ? Math.round(((totalLimitCents - availableLimitCents) / totalLimitCents) * 100)
+      : 0;
+
+  const isNearLimit = usagePercentage >= 90;
+  const isSeverelyCompromised = exceedsAvailableLimit || isNearLimit;
+
+  let orientationMessage: string | undefined;
+  if (exceedsAvailableLimit) {
+    orientationMessage = "Risco de recusa: valor supera o limite disponível";
+  } else if (isNearLimit) {
+    orientationMessage = "Atenção: mais de 90% do limite comprometido";
+  }
+
+  const closingLabel =
+    daysUntilClosing === 1
+      ? "Fecha em 1 dia"
+      : `Fecha em ${daysUntilClosing} dias`;
+
+  return {
+    cardId: card.id,
+    cardName: card.name,
+    availableLimitCents,
+    totalLimitCents,
+    daysUntilClosing,
+    closingLabel,
+    isSeverelyCompromised,
+    exceedsAvailableLimit,
+    orientationMessage,
+  };
+}
+
+function resolveCardContext(
+  cardId: string | null | undefined,
+  cards: readonly CardForAdvisorContext[],
+  expenseValueCents: number,
+  todayISO: string,
+  allExpenses: readonly ExpenseLike[],
+): SmartAdvisorCardContext | undefined {
+  if (!cardId || cards.length === 0) return undefined;
+  const card = cards.find((c) => c.id === cardId);
+  if (!card) return undefined;
+
+  const currentMonth = todayISO.slice(0, 7);
+  const spentCents = allExpenses
+    .filter((e) => e.cardId === card.id && (e.date ? e.date.slice(0, 7) === currentMonth : e.month === currentMonth))
+    .reduce((sum, e) => sum + e.valueCents, 0);
+
+  return buildSmartAdvisorCardContext({
+    card,
+    expenseValueCents,
+    todayISO,
+    spentCents,
+  });
 }
 
 /**
@@ -84,6 +200,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
     plannedAporteCents,
     currentMonthAportesCents,
     allExpenses = [],
+    cards = [],
   } = input;
   const candidates: SmartAdvisorInsight[] = [];
 
@@ -95,6 +212,8 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
     }
 
     if (occ.duplicateChargesThisMonth && occ.duplicateChargesThisMonth >= 2) {
+      const cardContext = resolveCardContext(occ.cardId, cards, occ.averageCents, todayISO, allExpenses);
+
       candidates.push({
         id: `dup:${occ.key}`,
         themeKey: `dup:${occ.key}`,
@@ -112,9 +231,13 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
           label: "Dispensar por 30 dias",
           kind: "dismiss",
         },
+        cardContext,
         metadata: {
           duplicateCount: occ.duplicateChargesThisMonth,
           valueCents: occ.averageCents,
+          cardId: occ.cardId ?? undefined,
+          cardName: occ.cardName ?? undefined,
+          cardContext,
         },
       });
     }
@@ -141,6 +264,8 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
       const actionKind = isHighlyPredictable ? "confirm_expense" : "register_expense";
       const actionLabel = isHighlyPredictable ? "Confirmar pagamento" : "Registrar pagamento";
 
+      const cardContext = resolveCardContext(occ.cardId, cards, occ.averageCents, todayISO, allExpenses);
+
       candidates.push({
         id: `missing_expense:${occ.key}`,
         themeKey: `missing_expense:${occ.key}`,
@@ -166,10 +291,14 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
           label: "Dispensar por 30 dias",
           kind: "dismiss",
         },
+        cardContext,
         metadata: {
           valueCents: occ.averageCents,
           expectedDate: expectedDue,
           categoryId: occ.categoryId,
+          cardId: occ.cardId ?? undefined,
+          cardName: occ.cardName ?? undefined,
+          cardContext,
         },
       });
     }
@@ -346,6 +475,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
 
     // 3.1 Reajuste de preço detectado
     if (occ.priceAdjustment) {
+      const cardContext = resolveCardContext(occ.cardId, cards, occ.priceAdjustment.newCents, todayISO, allExpenses);
       candidates.push({
         id: `price_adj:${occ.key}`,
         themeKey: `price_adj:${occ.key}`,
@@ -363,14 +493,19 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
           label: "Dispensar por 30 dias",
           kind: "dismiss",
         },
+        cardContext,
         metadata: {
           percentIncrease: occ.priceAdjustment.percentIncrease,
           valueCents: occ.priceAdjustment.newCents,
+          cardId: occ.cardId ?? undefined,
+          cardName: occ.cardName ?? undefined,
+          cardContext,
         },
       });
     } else if (occ.tier === "can_cut" || (occ.budgetImpact?.isVampire && occ.tier !== "essential")) {
       // 3.2 Oportunidade de corte de gasto vampiro
       const annualCents = occ.budgetImpact?.annualCostCents ?? occ.averageCents * 12;
+      const cardContext = resolveCardContext(occ.cardId, cards, occ.averageCents, todayISO, allExpenses);
       candidates.push({
         id: `savings:${occ.key}`,
         themeKey: `savings:${occ.key}`,
@@ -388,9 +523,13 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
           label: "Dispensar por 30 dias",
           kind: "dismiss",
         },
+        cardContext,
         metadata: {
           annualSavingsCents: annualCents,
           valueCents: occ.averageCents,
+          cardId: occ.cardId ?? undefined,
+          cardName: occ.cardName ?? undefined,
+          cardContext,
         },
       });
     }
@@ -441,6 +580,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
     if (feedbackMap[occ.key] == null && occ.level === "recurring") {
       const alreadyCovered = candidates.some((c) => c.themeKey.includes(occ.key));
       if (!alreadyCovered) {
+        const cardContext = resolveCardContext(occ.cardId, cards, occ.averageCents, todayISO, allExpenses);
         candidates.push({
           id: `calib:${occ.key}`,
           themeKey: `calib:${occ.key}`,
@@ -459,8 +599,12 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
             kind: "ignore_recurrence",
             payload: { key: occ.key },
           },
+          cardContext,
           metadata: {
             valueCents: occ.averageCents,
+            cardId: occ.cardId ?? undefined,
+            cardName: occ.cardName ?? undefined,
+            cardContext,
           },
         });
       }

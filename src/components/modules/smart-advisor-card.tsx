@@ -6,6 +6,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  CreditCard,
   HelpCircle,
   TrendingDown,
   TrendingUp,
@@ -13,10 +14,11 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { MoneyText } from "@/components/ui/money-text";
 import { cn } from "@/lib/utils";
 import { currentMonth } from "@/lib/date";
 import { useSmartAdvisorInsights } from "@/features/overview/hooks";
-import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
+import type { SmartAdvisorCardContext, SmartAdvisorInsight } from "@/domain/insights/advisor";
 import type { QualifiedDismissReason } from "@/domain/insights/feedback";
 import { QualifiedDismissPopover } from "./qualified-dismiss-popover";
 
@@ -32,6 +34,10 @@ export interface SmartAdvisorCardProps {
    * Se omitido, o componente consome diretamente do hook useSmartAdvisorInsights().
    */
   insight?: SmartAdvisorInsight | null;
+  /**
+   * Contexto de fatura e limite de cartão de crédito injetável (modo controlado).
+   */
+  cardContext?: SmartAdvisorCardContext;
   /**
    * Índice do insight exibido (modo controlado).
    */
@@ -93,6 +99,7 @@ export function SmartAdvisorCard({
   className,
   month,
   insight: controlledInsight,
+  cardContext: controlledCardContext,
   currentIndex: controlledCurrentIndex,
   totalCount: controlledTotalCount,
   onNext,
@@ -115,6 +122,8 @@ export function SmartAdvisorCard({
   const activeInsight = controlledInsight !== undefined ? controlledInsight : hook.insight;
   const currentIndex = controlledCurrentIndex ?? hook.currentIndex;
   const totalCount = controlledTotalCount ?? hook.totalCount;
+  const cardContext =
+    controlledCardContext ?? activeInsight?.cardContext ?? activeInsight?.metadata?.cardContext;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isCurrentMonth || !activeInsight) {
@@ -550,6 +559,55 @@ export function SmartAdvisorCard({
           </Button>
         ) : null}
       </div>
+
+      {/* 4. Linha contextual de fatura e limite de cartão de crédito (F28 / Tarefa 8.4) */}
+      {cardContext && (
+        <div
+          data-testid="smart-advisor-card-context"
+          className={cn(
+            "flex flex-wrap items-center gap-1.5 pt-2 border-t border-border/40 text-xs",
+            cardContext.exceedsAvailableLimit
+              ? "text-critical-strong font-medium"
+              : cardContext.isSeverelyCompromised
+                ? "text-warning-strong font-medium"
+                : "text-muted-foreground",
+          )}
+        >
+          <CreditCard className="size-3.5 shrink-0" aria-hidden="true" />
+          <span>Previsto na fatura {cardContext.cardName}</span>
+          <span aria-hidden="true">•</span>
+          {cardContext.availableLimitCents !== null && (
+            <>
+              <span className="whitespace-nowrap">
+                Limite restante:{" "}
+                <MoneyText
+                  cents={cardContext.availableLimitCents}
+                  className={cn(
+                    "tabular-nums tracking-tight whitespace-nowrap inline font-medium",
+                    cardContext.exceedsAvailableLimit
+                      ? "text-critical-strong"
+                      : cardContext.isSeverelyCompromised
+                        ? "text-warning-strong"
+                        : "text-foreground",
+                  )}
+                />
+              </span>
+              <span aria-hidden="true">•</span>
+            </>
+          )}
+          <span className="whitespace-nowrap">
+            {cardContext.closingLabel ??
+              (cardContext.daysUntilClosing === 1
+                ? "Fecha em 1 dia"
+                : `Fecha em ${cardContext.daysUntilClosing} dias`)}
+          </span>
+          {cardContext.orientationMessage && (
+            <span className="w-full sm:w-auto text-[11px] block sm:inline">
+              • {cardContext.orientationMessage}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
