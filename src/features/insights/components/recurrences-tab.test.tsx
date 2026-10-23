@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { RecurrencesTab } from "./recurrences-tab";
@@ -527,6 +527,70 @@ describe("RecurrencesTab", () => {
       expect(screen.getByText("Spotify")).toBeInTheDocument();
       expect(screen.queryByText("Netflix")).not.toBeInTheDocument();
       expect(screen.queryByText("Enel Energia")).not.toBeInTheDocument();
+    });
+
+    it("renderiza a seção recolhível de Memória do Assistente, lista itens memorizados e permite reativar monitoramento", async () => {
+      const user = userEvent.setup();
+      const mockOnFeedback = vi.fn();
+      const mockRevokeDismissal = vi.fn();
+      const expiry = new Date(2026, 10, 22, 12, 0, 0).getTime();
+
+      render(
+        <RecurrencesTab
+          totalRecurringCents={26280}
+          totalAnnualRecurringCents={315360}
+          canCutRecurringCents={0}
+          canCutAnnualCents={0}
+          activeOccurrences={testOccurrences}
+          ignoredOccurrences={[]}
+          feedbackMap={{
+            "sub:netflix": "already_cancelled",
+            "recurring:gym": "not_subscription",
+          }}
+          showIgnored={false}
+          setShowIgnored={vi.fn()}
+          onFeedback={mockOnFeedback}
+          dismissals={{ "dup:spotify": expiry }}
+          onRevokeDismissal={mockRevokeDismissal}
+        />,
+      );
+
+      // 1. Cabeçalho colapsado da seção de memória presente com contagem (1 cooldown + 2 micro-feedbacks = 3)
+      const memoryHeaderBtn = screen.getByRole("button", {
+        name: /Memória de Aprendizado do Assistente \(3\)/i,
+      });
+      expect(memoryHeaderBtn).toBeInTheDocument();
+
+      // 2. Expande a seção
+      await user.click(memoryHeaderBtn);
+
+      const memorySection = screen.getByRole("region", { name: "Memória de aprendizado do assistente" });
+      const withinMemory = within(memorySection);
+
+      // 3. Verifica exibição de itens sob cooldown
+      expect(withinMemory.getByText("Descartes Temporários sob Cooldown")).toBeInTheDocument();
+      expect(withinMemory.getByText("Spotify")).toBeInTheDocument();
+      expect(withinMemory.getByText("Descartado temporariamente até 22/11")).toBeInTheDocument();
+
+      // 4. Verifica exibição de decisões de micro-feedback registradas
+      expect(withinMemory.getByText("Decisões de Micro-Feedback Registradas")).toBeInTheDocument();
+      expect(withinMemory.getByText("Netflix")).toBeInTheDocument();
+      expect(withinMemory.getByText("Já cancelei")).toBeInTheDocument();
+      expect(withinMemory.getByText("Não é assinatura")).toBeInTheDocument();
+
+      // 5. Clica em Reativar monitoramento para o cooldown
+      const reactivateCooldownBtn = withinMemory.getByRole("button", {
+        name: /Reativar monitoramento de Spotify/i,
+      });
+      await user.click(reactivateCooldownBtn);
+      expect(mockRevokeDismissal).toHaveBeenCalledWith("dup:spotify");
+
+      // 6. Clica em Reativar monitoramento para a decisão de micro-feedback
+      const reactivateFeedbackBtn = withinMemory.getByRole("button", {
+        name: /Reativar monitoramento de Netflix/i,
+      });
+      await user.click(reactivateFeedbackBtn);
+      expect(mockOnFeedback).toHaveBeenCalledWith("sub:netflix", null);
     });
   });
 });

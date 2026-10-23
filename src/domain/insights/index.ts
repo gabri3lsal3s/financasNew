@@ -109,6 +109,12 @@ export type {
   WeeklyCommitment,
   DetectWeeklyCommitmentsOptions,
 } from "./extended-periodicity";
+export {
+  formatAdvisorThemeKey,
+  formatCooldownExpiry,
+  MEMORIZED_FEEDBACK_LABELS,
+} from "./assistant-memory";
+export type { FormattedThemeKey } from "./assistant-memory";
 
 
 

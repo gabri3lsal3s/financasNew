@@ -29,6 +29,7 @@ import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { RecurrenceAuditModal } from "./recurrence-audit-modal";
 import { ConvertRecurrenceDialog } from "./convert-recurrence-dialog";
+import { AssistantMemorySection } from "./assistant-memory-section";
 import type { RecurrenceOccurrence } from "@/domain/insights/recurrences";
 import type { FeedbackDecision, FeedbackMap } from "@/domain/insights/feedback";
 import type { CreditCard } from "@/types";
@@ -49,6 +50,10 @@ export interface RecurrencesTabProps {
   initialSelectedKey?: string;
   /** Renda mensal total em centavos para cálculo da Taxa de Comprometimento Fixo (Tarefa 7.10) */
   monthlyIncomeCents?: number;
+  /** Cooldowns de descarte do assistente (opcional para testes controlados) */
+  dismissals?: Record<string, number>;
+  /** Callback para revogação de descarte do assistente (opcional para testes controlados) */
+  onRevokeDismissal?: (themeKey: string) => void;
 }
 
 function mapOccurrenceToInsightItem(o: RecurrenceOccurrence) {
@@ -131,6 +136,8 @@ export function RecurrencesTab({
   cards: cardsProp,
   initialSelectedKey,
   monthlyIncomeCents,
+  dismissals,
+  onRevokeDismissal,
 }: RecurrencesTabProps) {
   const cardsQuery = useCreditCards();
 
@@ -461,6 +468,16 @@ export function RecurrencesTab({
           ) : null}
         </section>
       ) : null}
+
+      {/* Seção de Memória e Aprendizado do Assistente (F30 / Tarefa 8.6) */}
+      <AssistantMemorySection
+        feedbackMap={feedbackMap}
+        onRevokeFeedback={(key) => onFeedback(key, null)}
+        activeOccurrences={activeOccurrences}
+        ignoredOccurrences={ignoredOccurrences}
+        dismissals={dismissals}
+        onRevokeDismissal={onRevokeDismissal}
+      />
 
       {/* Modal de Auditoria e Drill-Down de Transações */}
       <RecurrenceAuditModal

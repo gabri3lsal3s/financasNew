@@ -109,6 +109,46 @@ export function resetSmartAdvisorCooldowns() {
   notifySubscribers();
 }
 
+/**
+ * Revoga um descarte específico sob cooldown ativo pelo themeKey, reintroduzindo
+ * o tema correspondente no fluxo de detecção do assistente proativo.
+ */
+export function revokeSmartAdvisorDismissal(themeKey: string) {
+  initStorageIfNeeded();
+  const next = { ...memoryDismissals };
+  delete next[themeKey];
+  memoryDismissals = next;
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      window.localStorage.setItem(SMART_ADVISOR_DISMISSALS_KEY, JSON.stringify(next));
+    } catch {
+      // Ignora erro
+    }
+  }
+  notifySubscribers();
+}
+
+/**
+ * Hook reativo para leitura e gerenciamento de descartes temporários (cooldowns) do assistente.
+ */
+export function useSmartAdvisorDismissals() {
+  const dismissals = useSyncExternalStore(subscribe, getDismissalsSnapshot, () => ({}));
+
+  const revokeDismissal = useCallback((themeKey: string) => {
+    revokeSmartAdvisorDismissal(themeKey);
+  }, []);
+
+  const resetAll = useCallback(() => {
+    resetSmartAdvisorCooldowns();
+  }, []);
+
+  return {
+    dismissals,
+    revokeDismissal,
+    resetAll,
+  };
+}
+
 export interface UseSmartAdvisorInsightsOptions {
   /** Mês de referência YYYY-MM (padrão: mês corrente). */
   month?: string;

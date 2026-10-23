@@ -502,8 +502,11 @@ O Assistente Passivo opera em modelo híbrido entre o cliente Android nativo e o
   - Cooldown de 30 dias para qualquer tema dispensado (`dismiss`).
   - Totalmente invisível se o mês estiver equilibrado e sem pendências.
 
-### 15.3 Persistência Otimista do Aprendizado (`useSetFeedback`)
+### 15.3 Persistência Otimista do Aprendizado & Auditoria de Memória (`AssistantMemorySection` - F30)
 - O feedback do usuário é gravado na tabela `insight_feedback` (`occurrence_key` e `decision`), com atualização otimista imediata no cache TanStack Query (`onMutate`) para eliminar falsos positivos sem latência, e rollback automático (`onError`) em falhas de rede.
+- **Painel de Gestão e Auditoria de Memória em `/insights?aba=recurrences`:**
+  - Seção recolhível dedicada que lista todos os itens atualmente sob cooldown de 30 dias (`memoryDismissals`) e decisões de micro-feedback registradas (*"Já cancelei"*, *"É pontual"*, *"Não é assinatura"*, *"Ignorado"*).
+  - Disponibiliza botão de 1 clique *"Reativar monitoramento"* para cada item, revogando o descarte (`revokeSmartAdvisorDismissal`) ou limpando o feedback (`onRevokeFeedback`), reintroduzindo a assinatura instantaneamente no fluxo ativo de detecção.
 
 ### 15.4 Aporte Mensal Direcionado na Home (`QuickAporteCard`)
 - Card dedicado na Visão Geral que consolida aportes executados no período e permite informar o valor do próximo aporte, navegando diretamente para a calculadora de rebalanceamento hierárquico em lote (`/investments?tab=aporte&valor=...`).

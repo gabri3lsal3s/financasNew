@@ -1,6 +1,7 @@
 export * from "./diagnostic-card";
 export * from "./diagnostics-tab";
 export * from "./recurrences-tab";
+export * from "./assistant-memory-section";
 export * from "./recurrence-audit-modal";
 export * from "./convert-recurrence-dialog";
 export * from "./projection-tab";

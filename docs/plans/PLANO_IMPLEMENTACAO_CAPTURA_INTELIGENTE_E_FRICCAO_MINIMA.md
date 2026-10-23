@@ -575,7 +575,7 @@ Tudo isso alimentado por um **Motor Unificado de Aprendizado Semântico (`Mercha
   - *Teste & Verificação:* Testes unitários e de componente em `page-shell.test.tsx` e `notifications-popover.test.tsx`.
   - *Commit:* `feat(layout): integrar alertas criticos do smart advisor a central de notificacoes`
 
-- [ ] **Tarefa 8.6 — Painel de Gestão e Auditoria de Memória do Assistente em `/insights` (F30):**
+- [x] **Tarefa 8.6 — Painel de Gestão e Auditoria de Memória do Assistente em `/insights` (F30):**
   - Na aba de Recorrências (`/insights?aba=recurrences`), introduzir seção recolhível/gerenciável *"Memória de Aprendizado do Assistente"*:
     - Listar itens atualmente sob cooldown de descarte (ex.: *"Netflix — descartado temporariamente até DD/MM"*).
     - Listar decisões de micro-feedback registradas (*"Já cancelei"*, *"É pontual"*, *"Não é assinatura"*).
