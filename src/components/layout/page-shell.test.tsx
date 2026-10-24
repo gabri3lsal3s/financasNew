@@ -239,25 +239,28 @@ describe("PageShell (F7.2/F7.3)", () => {
     expect(screen.getByRole("button", { name: /Notificações: 1 pendências/i })).toBeInTheDocument();
   });
 
-  it("não renderiza DemoTourBar quando a simulação não está ativa", () => {
+  it("não renderiza DemoTourSpotlight nem indicador no header quando a simulação não está ativa", () => {
     renderShell();
-    expect(screen.queryByRole("region", { name: /Barra guiada do modo de demonstração/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: /Tour guiado interativo/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("header-demo-indicator")).not.toBeInTheDocument();
   });
 
-  it("renderiza DemoTourBar no topo quando a simulação está ativa e permite encerrar para começar a conta real", async () => {
+  it("renderiza DemoTourSpotlight e indicador no header quando a simulação está ativa e permite encerrar imediatamente", async () => {
     startDemo("finances");
     const user = userEvent.setup();
 
     renderShell();
 
-    expect(screen.getByRole("region", { name: /Barra guiada do modo de demonstração/i })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /Tour guiado interativo/i })).toBeInTheDocument();
+    expect(screen.getByTestId("header-demo-indicator")).toBeInTheDocument();
     expect(screen.getByText("Passo 1 de 4")).toBeInTheDocument();
     expect(screen.getByText("Visão Geral & Fluxo Consolidado")).toBeInTheDocument();
 
-    const startRealBtn = screen.getByRole("button", { name: /Começar Minha Conta Real/i });
-    await user.click(startRealBtn);
+    const exitBtn = screen.getByRole("button", { name: /Encerrar demonstração/i });
+    await user.click(exitBtn);
 
-    expect(screen.queryByRole("region", { name: /Barra guiada do modo de demonstração/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: /Tour guiado interativo/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("header-demo-indicator")).not.toBeInTheDocument();
   });
 });
 

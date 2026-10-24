@@ -15,6 +15,8 @@ import type {
 
 export type TourTrackId = "finances" | "investments";
 
+export type TourStepPlacement = "top" | "bottom" | "left" | "right" | "auto";
+
 export interface TourStep {
   id: string;
   track: TourTrackId;
@@ -22,6 +24,12 @@ export interface TourStep {
   title: string;
   description: string;
   targetRoute: string;
+  /** Seletor CSS do elemento alvo a ser destacado pelo Spotlight (ex: '[data-tour="overview-kpis"]') */
+  targetSelector?: string;
+  /** Posicionamento preferencial do card popover em telas desktop */
+  preferredPlacement?: TourStepPlacement;
+  /** Padding interno do recorte do spotlight em pixels (default 8px) */
+  spotlightPadding?: number;
   badgeLabel?: string;
   actionLabel?: string;
 }

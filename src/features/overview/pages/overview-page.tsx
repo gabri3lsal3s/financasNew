@@ -564,7 +564,7 @@ export function OverviewPage() {
           ) : null}
 
           {/* KPIs fundamentais (§3.6) com sparkline */}
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 min-w-0">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 min-w-0" data-tour="overview-kpis">
               <KpiCard
                 label="Receitas"
                 cents={totals.incomeCents}

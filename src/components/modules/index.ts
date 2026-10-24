@@ -127,6 +127,8 @@ export { DemoTrackSelectModal } from "./demo-track-select-modal";
 export type { DemoTrackSelectModalProps } from "./demo-track-select-modal";
 export { DemoTourBar } from "./demo-tour-bar";
 export type { DemoTourBarProps } from "./demo-tour-bar";
+export { DemoTourSpotlight } from "./demo-tour-spotlight";
+export type { DemoTourSpotlightProps } from "./demo-tour-spotlight";
 export { DemoExitConfirmDialog } from "./demo-exit-confirm-dialog";
 export type { DemoExitConfirmDialogProps } from "./demo-exit-confirm-dialog";
 export { HelpModal } from "./help-modal";

@@ -1,6 +1,7 @@
 export type {
   TourTrackId,
   TourStep,
+  TourStepPlacement,
   DailyFinancesDataset,
   InvestmentsDataset,
   DemoSimulationDataset,

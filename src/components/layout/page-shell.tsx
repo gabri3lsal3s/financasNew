@@ -1,5 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { Outlet, useLocation, useSearchParams } from "react-router";
+import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { BackToTop } from "@/components/layout/back-to-top";
@@ -11,8 +12,9 @@ import { NetworkStatusBanner } from "@/components/layout/network-status-banner";
 import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { Skeleton } from "@/components/ui";
-import { DemoTourBar } from "@/components/modules";
+import { Badge, Button, Skeleton } from "@/components/ui";
+import { DemoTourSpotlight } from "@/components/modules";
+import { endDemo, useDemoSession } from "@/state/demo-mode";
 import type { LaunchState } from "@/features/transactions/wizard/wizard-state";
 
 const LaunchWizard = lazy(() =>
@@ -43,6 +45,7 @@ export function PageShell() {
   const { isCollapsed, toggle } = useSidebarState();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isDemoActive } = useDemoSession();
 
   // Suporte aos atalhos rápidos nativos, sugestões de bancos e launcher (?novo=despesa, ?novo=receita, ?novo=transacao, ?novo=pix, ?modo=rapido)
   const novoParam = searchParams.get("novo");
@@ -201,13 +204,34 @@ export function PageShell() {
               <div className="h-5 w-px bg-border shrink-0 lg:hidden" aria-hidden="true" />
             )}
             <GlobalSearch className="flex-1 min-w-0" />
+            {isDemoActive && (
+              <div
+                className="flex items-center gap-1.5 shrink-0 animate-fade-in"
+                data-testid="header-demo-indicator"
+              >
+                <Badge variant="default" size="xs" className="gap-1 font-semibold hidden sm:inline-flex">
+                  <Sparkles className="size-3" aria-hidden="true" />
+                  <span>Modo Simulação</span>
+                </Badge>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  onClick={endDemo}
+                  aria-label="Encerrar demonstração"
+                  className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  Sair
+                </Button>
+              </div>
+            )}
             {showCalc && <CalculatorButton />}
             {hasNotifications && <NotificationsButton />}
             {showTheme && <ThemeToggle />}
             {showPrivacy && <PrivacyToggle />}
           </div>
         </header>
-        <DemoTourBar />
+        <DemoTourSpotlight />
         <NetworkStatusBanner />
         <main id="main-content" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-none min-h-0 w-full">
           <div className="mx-auto w-full max-w-7xl px-3 sm:px-6 pb-[calc(6.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] lg:pb-10 pt-4 sm:pt-6 lg:px-8 min-w-0">

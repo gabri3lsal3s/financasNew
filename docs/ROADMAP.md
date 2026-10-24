@@ -1,5 +1,26 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.78** registra a **Conclusão Integral do Plano de Refatoração do Tour Interativo & Experiência de Foco (Spotlight) (`docs/plans/PLANO_REFATORACAO_TOUR_SPOTLIGHT_E_EXPERIENCIA_GUIADA.md`)** (2026-10-24):
+> - **(1) Eliminação Total da Barra Invasiva sob o Header**:
+>   - Remoção de `DemoTourBar` no layout do `PageShell`, liberando 100% da viewport e eliminando ruídos visuais e duplicações de controles;
+>   - Indicador discreto e elegante no Header principal: badge `Modo Simulação` acompanhado de botão de ação direta `Sair`.
+> - **(2) Nova Arquitetura de Foco & Spotlight com Backdrop Escurecido (`DemoTourSpotlight`)**:
+>   - Máscara fullscreen SVG (`demo-tour-spotlight-mask`) com corte cirúrgico arredondado (`rx="14"`) e moldura iluminada no acento primário sobre o elemento em foco;
+>   - Camada de escurecimento (`rgba(0,0,0,0.65)`) que bloqueia cliques externos e formulários em segundo plano, evitando quebras acidentais de fluxo;
+>   - Rolagem suave automática (`scrollIntoView`) para centralizar o elemento focado na viewport;
+>   - Fallback gracioso: caso o elemento não monte a tempo, o tour ilumina o centro da tela sem quebrar a navegação.
+> - **(3) Card Popover Inteligente e Adaptativo**:
+>   - Desktop (`>= 768px`): Popover ancorado adjacente ao elemento focado com auto-placement (top/bottom) e alinhamento visual inteligente;
+>   - Mobile (`< 768px`): Bottom Sheet compacto ancorado na base da tela, respeitando safe-areas e permitindo controle total ergonômico com o polegar;
+>   - Controles integrados: Badge de progresso por etapa (`Passo X de Y`), título, descrição didática, botões `Anterior` e `Próximo`, e botão primário `Começar Conta Real` no último passo;
+>   - Saída em 1 clique: botão `[X]` de fechar direto, botão `[Sair]` no header e tecla `Escape` sem popups burocráticos.
+> - **(4) Mapeamento Semântico (`data-tour`) nas Telas Principais**:
+>   - Inclusão dos seletores semânticos em `OverviewPage` (`overview-kpis`), `TransactionListPage` (`transactions-content`), `CardsPage` (`cards-content`), `BudgetsPage` (`budgets-content`) e no módulo de Investimentos (`investments-summary`, `investments-targets`, `investments-rebalance`);
+>   - Enriquecimento dos contratos de domínio em `src/domain/demo-simulation/` (`TourStepPlacement`, `targetSelector`, `preferredPlacement`, `spotlightPadding`).
+> - **(5) Bateria de Testes Vitest & Portões de Qualidade 100% Verdes**:
+>   - Testes colocalizados `tour-steps.test.ts`, `demo-tour-spotlight.test.tsx` e atualização dos testes de shell em `page-shell.test.tsx`;
+>   - Suíte completa de 442 arquivos de teste e 3887 testes aprovados sem falhas; typecheck e lint sem nenhuma violação.
+>
 > **v2.77** registra a **Conclusão Integral do Plano de Finalização para Produção e Primeiros Clientes (`docs/plans/PLANO_FINALIZACAO_PRODUCAO_E_PRIMEIROS_CLIENTES.md`)** (2026-10-24):
 > - **(1) Chat Nativo de Atendimento & Push em Tempo Real no Telegram (Fase 1)**:
 >   - Tabela `public.support_tickets` com migration `0060_support_tickets.sql`, isolamento multi-tenant estrito via RLS (`auth.uid() = user_id`) e política de inserção com validação de campos;

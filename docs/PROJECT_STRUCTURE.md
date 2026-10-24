@@ -149,7 +149,7 @@
     │   │   │                      #   export-data-hub (F22), monthly-close-print-view (F22),
     │   │   │                      #   emergency-thermometer (Reserva de Emergência e Autonomia),
     │   │   │                      #   help-modal (Central de Ajuda, FAQ e atalhos para modo simulação),
-    │   │   │                      #   welcome-modal, demo-track-select-modal, demo-tour-bar, demo-exit-confirm-dialog,
+    │   │   │                      #   welcome-modal, demo-track-select-modal, demo-tour-spotlight, demo-tour-bar, demo-exit-confirm-dialog,
     │   │   │                      #   aporte-result (F4/F31 — checklist interativo de aportes),
     │   │   │                      #   cash-kpi-card (card exclusivo de saldo em Caixa & Liquidez com variantes banner e card),
     │   │   │                      #   reports/ (report-document-layout, report-header, report-footer, report-kpi-grid,

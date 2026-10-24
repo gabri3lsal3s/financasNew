@@ -570,6 +570,7 @@ export function CardsPage() {
              ========================================================================= */}
           <section
             aria-label="Carteira de Cartões"
+            data-tour="cards-content"
             className={cn(
               "flex flex-col items-center justify-center p-3 sm:p-6 rounded-2xl bg-surface border border-border/80 shadow-xs transition-all",
               selectedCard && isHighlighted(selectedCard.id) && "ring-2 ring-primary",

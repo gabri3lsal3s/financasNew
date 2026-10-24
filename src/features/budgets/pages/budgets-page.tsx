@@ -313,7 +313,7 @@ export function BudgetsPage() {
       </div>
 
       {/* Resumo do Orçamento Geral (§3.5.2) — Régua de 3 Métricas */}
-      <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border">
+      <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border" data-tour="budgets-content">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">

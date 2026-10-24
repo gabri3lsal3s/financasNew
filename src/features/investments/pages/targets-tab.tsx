@@ -676,7 +676,8 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
           }
         />
       ) : (
-        <Tabs
+        <div data-tour="investments-targets" className="w-full">
+          <Tabs
           value={subTab}
           onValueChange={(val: string) => setSubTab(val as "classes" | "sectors" | "assets")}
           variant="pills"
@@ -765,6 +766,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
             },
           ]}
         />
+        </div>
       )}
 
       {/* Raio-X Analítico de Classe e Setor */}

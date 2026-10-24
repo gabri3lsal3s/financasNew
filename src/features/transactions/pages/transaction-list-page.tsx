@@ -441,7 +441,7 @@ export function TransactionListPage() {
           }
         />
       ) : (
-        <div className="flex flex-col gap-3.5 sm:gap-4">
+        <div className="flex flex-col gap-3.5 sm:gap-4" data-tour="transactions-content">
           {feedGroups.map((group) => (
             <section
               key={group.date}
