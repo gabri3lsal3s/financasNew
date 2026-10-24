@@ -291,8 +291,17 @@ export function RemindersCard() {
           </div>
         )}
 
-        {/* Notificações no Dispositivo para Contas a Vencer */}
-        <div className="pt-3.5 border-t border-border/80 space-y-3">
+        {/* Seção 2: Notificações no Dispositivo (Push Nativo & Navegador) */}
+        <div className="pt-4 border-t border-border/80 space-y-3">
+          <div className="space-y-0.5">
+            <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
+              Alertas no Sistema Operacional (Push)
+            </span>
+            <p className="text-[11px] text-muted-foreground">
+              Avisos entregues na central de notificações do celular ou navegador mesmo fora do app.
+            </p>
+          </div>
+
           <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/80 bg-surface shadow-xs">
             <div className="pr-4 space-y-0.5">
               <div className="flex items-center gap-2">

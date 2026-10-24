@@ -163,6 +163,20 @@ export function SettingsPage() {
         content: <AccountTab />,
       },
       {
+        value: "subscription",
+        label: "Plano",
+        shortLabel: "Plano",
+        icon: <Zap className="size-4" />,
+        content: <SubscriptionTab />,
+      },
+      {
+        value: "security",
+        label: "Segurança",
+        shortLabel: "Segurança",
+        icon: <ShieldCheck className="size-4" />,
+        content: <SecurityTab />,
+      },
+      {
         value: "appearance",
         label: "Aparência",
         shortLabel: "Aparência",
@@ -175,20 +189,6 @@ export function SettingsPage() {
         shortLabel: "Alertas",
         icon: <Bell className="size-4" />,
         content: <NotificationsTab />,
-      },
-      {
-        value: "security",
-        label: "Segurança",
-        shortLabel: "Segurança",
-        icon: <ShieldCheck className="size-4" />,
-        content: <SecurityTab />,
-      },
-      {
-        value: "subscription",
-        label: "Plano",
-        shortLabel: "Plano",
-        icon: <Zap className="size-4" />,
-        content: <SubscriptionTab />,
       },
       {
         value: "devices",
