@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   applyFeedback,
   getDismissReason,
+  isOccurrenceEssential,
   isOccurrenceIgnored,
   partitionFeedback,
+  QUALIFIED_CALIBRATION_OPTIONS,
   QUALIFIED_DISMISS_OPTIONS,
   type FeedbackMap,
 } from "./feedback";
@@ -17,10 +19,21 @@ describe("feedback domain", () => {
       expect(isOccurrenceIgnored("not_subscription")).toBe(true);
     });
 
-    it("retorna false para confirm ou valores vazios", () => {
+    it("retorna false para confirm, essential ou valores vazios", () => {
       expect(isOccurrenceIgnored("confirm")).toBe(false);
+      expect(isOccurrenceIgnored("essential")).toBe(false);
       expect(isOccurrenceIgnored(null)).toBe(false);
       expect(isOccurrenceIgnored(undefined)).toBe(false);
+    });
+  });
+
+  describe("isOccurrenceEssential", () => {
+    it("retorna true apenas para essential", () => {
+      expect(isOccurrenceEssential("essential")).toBe(true);
+      expect(isOccurrenceEssential("confirm")).toBe(false);
+      expect(isOccurrenceEssential("ignore")).toBe(false);
+      expect(isOccurrenceEssential("already_cancelled")).toBe(false);
+      expect(isOccurrenceEssential(null)).toBe(false);
     });
   });
 
@@ -31,6 +44,7 @@ describe("feedback domain", () => {
       expect(getDismissReason("not_subscription")).toBe("not_subscription");
       expect(getDismissReason("ignore")).toBeUndefined();
       expect(getDismissReason("confirm")).toBeUndefined();
+      expect(getDismissReason("essential")).toBeUndefined();
       expect(getDismissReason(null)).toBeUndefined();
     });
   });
@@ -43,25 +57,38 @@ describe("feedback domain", () => {
     });
   });
 
+  describe("QUALIFIED_CALIBRATION_OPTIONS", () => {
+    it("contém as 4 opções de calibração incluindo essencial", () => {
+      const decisions = QUALIFIED_CALIBRATION_OPTIONS.map((o) => o.decision);
+      expect(decisions).toEqual(["essential", "already_cancelled", "one_off", "not_subscription"]);
+      expect(QUALIFIED_CALIBRATION_OPTIONS.every((o) => o.label && o.description && o.badgeLabel && o.iconName)).toBe(true);
+    });
+  });
+
   describe("applyFeedback", () => {
-    it("filtra itens ignorados por qualquer motivo e marca confirmados", () => {
+    it("filtra itens ignorados por qualquer motivo e marca confirmados e essenciais", () => {
       const items = [
         { key: "item-1", name: "Netflix" },
         { key: "item-2", name: "Spotify" },
         { key: "item-3", name: "Almoço" },
         { key: "item-4", name: "Uber" },
+        { key: "item-5", name: "Academia" },
       ];
 
       const feedback: FeedbackMap = {
         "item-1": "confirm",
         "item-2": "already_cancelled",
         "item-3": "one_off",
+        "item-5": "essential",
       };
 
       const result = applyFeedback(items, feedback);
 
-      expect(result).toHaveLength(2);
+      expect(result).toHaveLength(3);
       expect(result.find((i) => i.key === "item-1")?.confirmed).toBe(true);
+      expect(result.find((i) => i.key === "item-1")?.essential).toBe(false);
+      expect(result.find((i) => i.key === "item-5")?.essential).toBe(true);
+      expect(result.find((i) => i.key === "item-5")?.confirmed).toBe(false);
       expect(result.find((i) => i.key === "item-4")?.confirmed).toBe(false);
       expect(result.find((i) => i.key === "item-2")).toBeUndefined();
       expect(result.find((i) => i.key === "item-3")).toBeUndefined();
@@ -75,6 +102,7 @@ describe("feedback domain", () => {
         { key: "item-2", name: "Spotify" },
         { key: "item-3", name: "Almoço" },
         { key: "item-4", name: "Academia" },
+        { key: "item-5", name: "Plano de Saúde" },
       ];
 
       const feedback: FeedbackMap = {
@@ -82,13 +110,14 @@ describe("feedback domain", () => {
         "item-2": "already_cancelled",
         "item-3": "not_subscription",
         "item-4": "ignore",
+        "item-5": "essential",
       };
 
       const { active, ignored } = partitionFeedback(items, feedback);
 
-      expect(active).toHaveLength(1);
-      expect(active[0]?.key).toBe("item-1");
-      expect(active[0]?.confirmed).toBe(true);
+      expect(active).toHaveLength(2);
+      expect(active.find((i) => i.key === "item-1")?.confirmed).toBe(true);
+      expect(active.find((i) => i.key === "item-5")?.essential).toBe(true);
 
       expect(ignored).toHaveLength(3);
       expect(ignored.find((i) => i.key === "item-2")?.dismissReason).toBe("already_cancelled");

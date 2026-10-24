@@ -24,6 +24,16 @@ export interface QualifiedDismissOption {
   badgeLabel: string;
 }
 
+export type CalibrationDecision = QualifiedDismissReason | "essential";
+
+export interface CalibrationOption {
+  decision: CalibrationDecision;
+  label: string;
+  description: string;
+  badgeLabel: string;
+  iconName: "sparkles" | "clock" | "ban" | "shield-check";
+}
+
 export const QUALIFIED_DISMISS_OPTIONS: readonly QualifiedDismissOption[] = [
   {
     reason: "already_cancelled",
@@ -42,6 +52,37 @@ export const QUALIFIED_DISMISS_OPTIONS: readonly QualifiedDismissOption[] = [
     label: "Não é assinatura",
     description: "Rebaixa de imediato a probabilidade de virar recorrência.",
     badgeLabel: "Não é assinatura",
+  },
+];
+
+export const QUALIFIED_CALIBRATION_OPTIONS: readonly CalibrationOption[] = [
+  {
+    decision: "essential",
+    label: "É gasto essencial",
+    description: "Mantém nos custos fixos ativos e silencia sugestões de corte.",
+    badgeLabel: "Essencial",
+    iconName: "shield-check",
+  },
+  {
+    decision: "already_cancelled",
+    label: "Já cancelei",
+    description: "Celebra a economia anual e remove dos custos fixos ativos.",
+    badgeLabel: "Cancelada",
+    iconName: "sparkles",
+  },
+  {
+    decision: "one_off",
+    label: "É despesa pontual",
+    description: "Silencia apenas no ciclo atual sem penalizar o classificador.",
+    badgeLabel: "Pontual",
+    iconName: "clock",
+  },
+  {
+    decision: "not_subscription",
+    label: "Não é assinatura",
+    description: "Rebaixa de imediato a probabilidade de virar recorrência.",
+    badgeLabel: "Não é assinatura",
+    iconName: "ban",
   },
 ];
 
