@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -57,14 +57,26 @@ export function RestoreWizardDialog({
   const [existingData, setExistingData] = useState<BackupData | null>(null);
   const [fetchingExisting, setFetchingExisting] = useState(false);
   const [restoredCount, setRestoredCount] = useState(0);
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const restoreMutation = useRestoreBackup();
+
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current) {
+        clearTimeout(resetTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleClose = () => {
     if (state.isRestoring) return;
     onOpenChange(false);
+    if (resetTimerRef.current) {
+      clearTimeout(resetTimerRef.current);
+    }
     // Reset após animação
-    setTimeout(() => {
+    resetTimerRef.current = setTimeout(() => {
       setState(DEFAULT_STATE);
       setExistingData(null);
     }, 300);

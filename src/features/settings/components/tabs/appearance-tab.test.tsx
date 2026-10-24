@@ -137,22 +137,4 @@ describe("AppearanceTab - Aparência & Identidade Visual (Fase 1 — Tarefa 1.3)
     );
   });
 
-  it("renderiza o card de instalação PWA quando em ambiente web e recebe o evento", async () => {
-    vi.mocked(nativeServices.isNativePlatform).mockReturnValue(false);
-    const { registerPWA } = await import("@/app/pwa");
-    registerPWA();
-
-    const event = new Event("beforeinstallprompt");
-    Object.assign(event, {
-      prompt: vi.fn().mockResolvedValue(undefined),
-      userChoice: Promise.resolve({ outcome: "accepted", platform: "web" }),
-    });
-    window.dispatchEvent(event);
-
-    renderAppearanceTab();
-
-    expect(await screen.findByText("Aplicativo Web Instalável (PWA)")).toBeInTheDocument();
-    expect(screen.getByText("Disponível")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Instalar app" })).toBeInTheDocument();
-  });
 });

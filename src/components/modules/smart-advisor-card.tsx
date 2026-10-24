@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { currentMonth } from "@/lib/date";
 import { useSmartAdvisorInsights } from "@/features/overview/hooks";
 import type { SmartAdvisorCardContext, SmartAdvisorInsight } from "@/domain/insights/advisor";
-import type { QualifiedDismissReason } from "@/domain/insights/feedback";
+import type { CalibrationDecision } from "@/domain/insights/feedback";
 import { QualifiedDismissPopover } from "./qualified-dismiss-popover";
 import { SmartAdvisorCardSkeleton } from "./smart-advisor-card-skeleton";
 import { pushToast } from "@/services/toast";
@@ -66,9 +66,9 @@ export interface SmartAdvisorCardProps {
    */
   onConfirmRecurrence?: (occurrenceKey: string) => void | Promise<void>;
   /**
-   * Callback ao ignorar uma despesa na calibração com motivo qualificado (§F23).
+   * Callback ao ignorar ou calibrar uma despesa na calibração com motivo qualificado (§F23).
    */
-  onIgnoreRecurrence?: (occurrenceKey: string, reason?: QualifiedDismissReason) => void | Promise<void>;
+  onIgnoreRecurrence?: (occurrenceKey: string, reason?: CalibrationDecision) => void | Promise<void>;
   /**
    * Callback ao confirmar entrada de renda em 1 clique.
    */
@@ -245,7 +245,13 @@ export function SmartAdvisorCard({
     }
   };
 
-  const handleIgnoreRecurrence = async (reason: QualifiedDismissReason = "one_off") => {
+  const handleIgnoreRecurrence = async (reason: CalibrationDecision = "one_off") => {
+    if (reason === "essential") {
+      await handleMarkEssential();
+      hook.dismiss(activeInsight.themeKey);
+      return;
+    }
+
     const payload = activeInsight.secondaryAction?.payload as { key?: string } | undefined;
     const occurrenceKey =
       payload?.key ?? activeInsight.themeKey.replace(/^calib:/, "");

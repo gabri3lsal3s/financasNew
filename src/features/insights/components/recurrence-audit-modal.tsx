@@ -5,6 +5,7 @@ import {
   CalendarPlus,
   CreditCard,
   Pencil,
+  ShieldCheck,
   TrendingUp,
 } from "lucide-react";
 import { Badge, Button, Modal } from "@/components/ui";
@@ -23,6 +24,8 @@ export interface RecurrenceAuditModalProps {
   onOpenChange: (open: boolean) => void;
   onEditExpense?: (expense: Expense) => void;
   onConvert?: (occurrence: RecurrenceOccurrence) => void;
+  isEssential?: boolean;
+  onToggleEssential?: (key: string, nextEssential: boolean) => void;
 }
 
 function toExpense(item: ExpenseLike): Expense {
@@ -56,6 +59,8 @@ export function RecurrenceAuditModal({
   onOpenChange,
   onEditExpense,
   onConvert,
+  isEssential = false,
+  onToggleEssential,
 }: RecurrenceAuditModalProps) {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
@@ -85,50 +90,66 @@ export function RecurrenceAuditModal({
         description="Auditoria detalhada e histórico de cobranças"
       >
         <div className="flex flex-col gap-4">
-          {/* Header de Badges de Classificação */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Badge variant="default" size="sm">
-              {RECURRENCE_LEVEL_LABELS[occurrence.level]}
-            </Badge>
-
-            {occurrence.segment && occurrence.segment !== "other" ? (
+          {/* Header de Badges de Classificação e Ação Rápida de Essencial */}
+          <div className="flex flex-wrap items-center justify-between gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <Badge variant="default" size="sm">
-                {SERVICE_SEGMENT_LABELS[occurrence.segment]}
+                {RECURRENCE_LEVEL_LABELS[occurrence.level]}
               </Badge>
-            ) : null}
 
-            {occurrence.tier === "can_cut" ? (
-              <Badge variant="positive" size="sm">
-                Pode cortar
-              </Badge>
-            ) : occurrence.tier === "discretionary" ? (
-              <Badge variant="default" size="sm">
-                Discricionário
-              </Badge>
-            ) : occurrence.tier === "essential" ? (
-              <Badge variant="default" size="sm">
-                Essencial
-              </Badge>
-            ) : null}
+              {occurrence.segment && occurrence.segment !== "other" ? (
+                <Badge variant="default" size="sm">
+                  {SERVICE_SEGMENT_LABELS[occurrence.segment]}
+                </Badge>
+              ) : null}
 
-            {occurrence.missingThisMonth ? (
-              <Badge variant="warning" size="sm">
-                Pendente no mês
-              </Badge>
-            ) : occurrence.daysUntilNextDue !== undefined ? (
-              occurrence.daysUntilNextDue === 0 ? (
+              {isEssential || occurrence.tier === "essential" ? (
+                <Badge variant="default" size="sm">
+                  Essencial
+                </Badge>
+              ) : occurrence.tier === "can_cut" ? (
+                <Badge variant="positive" size="sm">
+                  Pode cortar
+                </Badge>
+              ) : occurrence.tier === "discretionary" ? (
+                <Badge variant="default" size="sm">
+                  Discricionário
+                </Badge>
+              ) : null}
+
+              {occurrence.missingThisMonth ? (
                 <Badge variant="warning" size="sm">
-                  Vence hoje
+                  Pendente no mês
                 </Badge>
-              ) : occurrence.daysUntilNextDue > 0 && occurrence.daysUntilNextDue <= 7 ? (
-                <Badge variant="warning" size="sm">
-                  Em {occurrence.daysUntilNextDue}d
-                </Badge>
-              ) : occurrence.typicalDayOfMonth ? (
-                <Badge variant="muted" size="sm">
-                  Dia ~{occurrence.typicalDayOfMonth}
-                </Badge>
-              ) : null
+              ) : occurrence.daysUntilNextDue !== undefined ? (
+                occurrence.daysUntilNextDue === 0 ? (
+                  <Badge variant="warning" size="sm">
+                    Vence hoje
+                  </Badge>
+                ) : occurrence.daysUntilNextDue > 0 && occurrence.daysUntilNextDue <= 7 ? (
+                  <Badge variant="warning" size="sm">
+                    Em {occurrence.daysUntilNextDue}d
+                  </Badge>
+                ) : occurrence.typicalDayOfMonth ? (
+                  <Badge variant="muted" size="sm">
+                    Dia ~{occurrence.typicalDayOfMonth}
+                  </Badge>
+                ) : null
+              ) : null}
+            </div>
+
+            {onToggleEssential ? (
+              <Button
+                type="button"
+                variant={isEssential ? "default" : "outline"}
+                size="xs"
+                onClick={() => onToggleEssential(occurrence.key, !isEssential)}
+                className="gap-1 text-xs h-6.5 cursor-pointer shrink-0"
+                aria-label={isEssential ? "Remover classificação de essencial" : "Classificar como gasto essencial"}
+              >
+                <ShieldCheck className="size-3.5" aria-hidden="true" />
+                <span>{isEssential ? "Gasto Essencial" : "Marcar essencial"}</span>
+              </Button>
             ) : null}
           </div>
 

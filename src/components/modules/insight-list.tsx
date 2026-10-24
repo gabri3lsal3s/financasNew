@@ -1,4 +1,4 @@
-import { CalendarPlus, Check, RotateCcw, X } from "lucide-react";
+import { CalendarPlus, Check, RotateCcw, ShieldCheck, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -7,6 +7,7 @@ import { formatCentsAsBRL } from "@/services/masks/money";
 import {
   isOccurrenceIgnored,
   getDismissReason,
+  type CalibrationDecision,
   type FeedbackDecision,
   type QualifiedDismissReason,
 } from "@/domain/insights";
@@ -42,8 +43,8 @@ export interface InsightListProps {
   /** Estado de feedback por chave (ignore/confirm ou motivos qualificados). */
   feedback?: Record<string, FeedbackDecision>;
   onIgnore?: (key: string) => void;
-  /** Callback para descarte com micro-feedback qualificado (§F23). */
-  onIgnoreWithReason?: (key: string, reason: QualifiedDismissReason) => void;
+  /** Callback para calibração ou descarte com micro-feedback qualificado (§F23). */
+  onIgnoreWithReason?: (key: string, reason: CalibrationDecision) => void;
   onConfirm?: (key: string) => void;
   onRestore?: (key: string) => void;
   /** Callback ao clicar na linha da ocorrência (drill-down e auditoria). */
@@ -81,6 +82,7 @@ export function InsightList({
       {items.map((item) => {
         const state = feedback[item.key];
         const confirmed = state === "confirm";
+        const isEssential = state === "essential";
         const ignored = isOccurrenceIgnored(state);
         const reason = item.dismissReason ?? getDismissReason(state);
         const isClickable = Boolean(onItemClick);
@@ -224,7 +226,7 @@ export function InsightList({
                         triggerSensory("action");
                         onRestore?.(item.key);
                       }}
-                      className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-positive-strong transition-all duration-200 hover:bg-positive/20 active:scale-95 sm:h-8"
+                      className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-positive-strong transition-all duration-200 hover:bg-positive/20 active:scale-95 sm:h-8 cursor-pointer"
                       aria-label={`Confirmada (${item.title}) — clique para desmarcar`}
                       title={`Confirmada (${item.title}) — clique para desmarcar`}
                     >
@@ -232,6 +234,27 @@ export function InsightList({
                       <span className="hidden sm:inline">Confirmada</span>
                     </button>
                   </div>
+                </div>
+              ) : isEssential ? (
+                <div
+                  className="inline-flex items-center rounded-lg border border-primary/40 bg-primary/10 p-0.5 shadow-sm transition-all duration-200"
+                  role="group"
+                  aria-label={`Ações para ${item.title}`}
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerSensory("action");
+                      onRestore?.(item.key);
+                    }}
+                    className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-primary-strong transition-all duration-200 hover:bg-primary/20 active:scale-95 sm:h-8 cursor-pointer"
+                    aria-label={`Essencial (${item.title}) — clique para desmarcar`}
+                    title={`Essencial (${item.title}) — clique para desmarcar`}
+                  >
+                    <ShieldCheck className="size-3.5 animate-spring-pop sm:size-4" aria-hidden="true" />
+                    <span className="hidden sm:inline">Essencial</span>
+                  </button>
                 </div>
               ) : (
                 <div

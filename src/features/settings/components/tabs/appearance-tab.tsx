@@ -10,8 +10,6 @@ import { EXPERIENCE_PRESETS } from "@/domain/preferences";
 import { triggerSensory } from "@/services/sensory";
 import { useUpdateCustomSettings } from "@/state";
 import { pushToast } from "@/services/toast";
-import { isNativePlatform } from "@/services/native";
-import { InstallAppButton } from "@/components/modules";
 import { ExperiencePresetsCard } from "./experience-presets-card";
 import { VisualIdentityCard } from "./visual-identity-card";
 import { InterfaceShortcutsCard } from "./interface-shortcuts-card";
@@ -153,10 +151,7 @@ export function AppearanceTab() {
         onToggleHeaderButton={handleToggleHeaderButton}
       />
 
-      {/* --- CARD 4: INSTALAÇÃO DO APLICATIVO (PWA) --- */}
-      {!isNativePlatform() && <InstallAppButton variant="card" />}
-
-      {/* --- CARD 5: REDEFINIÇÃO DE PADRÕES --- */}
+      {/* --- CARD 4: REDEFINIÇÃO DE PADRÕES --- */}
       <ResetDefaultsCard onReset={handleResetDefaults} />
     </div>
   );

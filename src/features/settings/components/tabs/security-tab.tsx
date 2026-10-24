@@ -1,25 +1,12 @@
 import { useState, useEffect, lazy, Suspense } from "react";
-import { useNavigate } from "react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { Database, Fingerprint } from "lucide-react";
 import {
-  AlertTriangle,
-  Database,
-  Fingerprint,
-  Loader2,
-  Trash2,
-} from "lucide-react";
-import {
-  Alert,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   Badge,
-  Button,
   Checkbox,
-  Input,
-  Modal,
-  ModalFooter,
   Select,
 } from "@/components/ui";
 import type { SelectOption } from "@/components/ui";
@@ -30,12 +17,7 @@ const RestoreWizardDialog = lazy(() =>
 );
 import { downloadCsv, downloadJson } from "@/services/export-actions";
 import { pushToast } from "@/services/toast";
-import { triggerSensory } from "@/services/sensory";
-import { getErrorMessage } from "@/services/errors";
-import { resetAppState } from "@/services/auth-cleanup";
-import { useSignOut } from "@/hooks/use-sign-out";
-import { deleteCurrentUserAccount } from "@/data/rpc";
-import { cancelSubscription } from "@/data/repositories/billing";
+import { DeleteAccountCard } from "./delete-account-card";
 import {
   checkBiometricsAvailability,
   authenticateWithBiometrics,
@@ -115,9 +97,6 @@ const APP_LOCK_GRACE_OPTIONS: SelectOption[] = [
 ];
 
 export function SecurityTab() {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { signOut } = useSignOut();
   const userAccess = useUserAccess();
   const userPreferencesQuery = useUserPreferences();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
@@ -132,68 +111,12 @@ export function SecurityTab() {
   const showPrivacyShield = isNative;
   const showAppLockCard = showBiometrics || showPrivacyShield;
 
-  // Estados de Exclusão de Conta (LGPD)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deleteConfirmationInput, setDeleteConfirmationInput] = useState("");
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const CONFIRM_DELETE_WORD = "EXCLUIR";
-  const isConfirmationValid = deleteConfirmationInput.trim().toUpperCase() === CONFIRM_DELETE_WORD;
 
-  const handleDeleteAccount = async () => {
-    if (!isConfirmationValid || isDeletingAccount) return;
 
-    setIsDeletingAccount(true);
-    setDeleteError(null);
 
-    try {
-      // 1. Cancelamento preventivo no gateway Asaas/Stripe
-      try {
-        await cancelSubscription();
-      } catch {
-        // Ignora caso não possua assinatura ativa ou gateway offline
-      }
 
-      // 2. Expurgo em cascata das 34 tabelas e auth.users (LGPD Art. 18, VI)
-      await deleteCurrentUserAccount();
 
-      triggerSensory("destructive");
-      pushToast({
-        title: "Conta excluída",
-        description: "Sua conta e todos os dados foram definitivamente expurgados conforme a LGPD.",
-        variant: "default",
-      });
-
-      // 3. Limpeza profunda de cache, expurgo de storage e logout seguro
-      try {
-        resetAppState(queryClient, null);
-      } catch {
-        // noop
-      }
-
-      if (typeof window !== "undefined") {
-        try {
-          window.localStorage.clear();
-          window.sessionStorage.clear();
-        } catch {
-          // noop
-        }
-      }
-
-      try {
-        await signOut();
-      } catch {
-        // noop
-      }
-
-      navigate("/entrar", { replace: true });
-    } catch (err) {
-      triggerSensory("destructive");
-      setDeleteError(getErrorMessage(err));
-      setIsDeletingAccount(false);
-    }
-  };
 
   const [localPrivacyOverride, setLocalPrivacyOverride] = useState<boolean | null>(null);
   const cloudPrivacyShield = userPreferencesQuery.data?.custom_settings?.privacyShieldEnabled;
@@ -384,7 +307,7 @@ export function SecurityTab() {
   return (
     <div className="space-y-6">
       {/* Card 1: Bloqueio do Aplicativo & Privacidade */}
-      {showAppLockCard && (
+      {showAppLockCard ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center justify-between">
@@ -468,7 +391,7 @@ export function SecurityTab() {
             )}
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       {/* Card 3: Gestão de Dados & Backup */}
       <Card>
@@ -495,135 +418,7 @@ export function SecurityTab() {
       </Card>
 
       {/* Card 4: Zona de Perigo / Exclusão de Conta (LGPD) */}
-      <Card className="border-critical/30 bg-surface shadow-xs">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2 text-critical-strong">
-            <AlertTriangle className="size-4 text-critical-strong" aria-hidden="true" />
-            <span>Zona de Perigo / Exclusão de Conta (LGPD)</span>
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Direito ao Esquecimento garantido pelo Art. 18, VI da Lei Geral de Proteção de Dados (LGPD).
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-xl border border-critical/20 bg-critical/5">
-            <div className="space-y-0.5">
-              <span className="text-xs font-semibold text-foreground block">
-                Excluir conta e dados definitivamente
-              </span>
-              <span className="text-[11px] text-muted-foreground block">
-                Expurga todas as transações, cartões, dívidas, orçamentos, investimentos e remove permanentemente seu cadastro.
-              </span>
-            </div>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => {
-                setDeleteConfirmationInput("");
-                setDeleteError(null);
-                setIsDeleteModalOpen(true);
-              }}
-              className="h-9 px-4 text-xs font-semibold rounded-xl shrink-0 cursor-pointer"
-            >
-              <Trash2 className="size-3.5 mr-1.5" aria-hidden="true" />
-              <span>Excluir Minha Conta</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Modal de Confirmação Rigorosa de Exclusão (LGPD) */}
-      <Modal
-        open={isDeleteModalOpen}
-        onOpenChange={(open) => {
-          if (isDeletingAccount) return;
-          setIsDeleteModalOpen(open);
-          if (!open) {
-            setDeleteConfirmationInput("");
-            setDeleteError(null);
-          }
-        }}
-        title="Excluir Conta Definitivamente (LGPD)"
-        description="Esta ação é irreversível e aciona o expurgo definitivo de todos os seus dados pessoais e financeiros (Art. 18, VI da LGPD)."
-        size="sm"
-      >
-        <div className="space-y-4 pt-2">
-          {deleteError ? <Alert variant="error">{deleteError}</Alert> : null}
-
-          <div className="rounded-xl border border-critical/20 bg-critical/5 p-3.5 space-y-2">
-            <span className="text-xs font-medium text-critical-strong flex items-center gap-1.5">
-              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
-              <span>Atenção: Ação Irreversível</span>
-            </span>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Em conformidade com a LGPD, todo o seu histórico financeiro, lançamentos,
-              cartões, categorias, investimentos e preferências serão definitivamente
-              destruídos. Qualquer assinatura ativa no gateway de pagamento será cancelada
-              preventivamente.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <label
-              htmlFor="delete-account-security-confirm"
-              className="text-xs font-semibold text-foreground block"
-            >
-              Para confirmar a exclusão, digite a palavra{" "}
-              <span className="font-mono text-critical-strong font-bold select-all">
-                {CONFIRM_DELETE_WORD}
-              </span>{" "}
-              abaixo:
-            </label>
-            <Input
-              id="delete-account-security-confirm"
-              type="text"
-              value={deleteConfirmationInput}
-              onChange={(e) => {
-                setDeleteConfirmationInput(e.target.value);
-                if (deleteError) setDeleteError(null);
-              }}
-              placeholder={CONFIRM_DELETE_WORD}
-              disabled={isDeletingAccount}
-              autoComplete="off"
-              className="h-10 text-sm rounded-xl font-mono"
-            />
-            <span className="text-[11px] text-muted-foreground block">
-              O botão de exclusão só será ativado quando a palavra for digitada exatamente igual.
-            </span>
-          </div>
-
-          <ModalFooter className="mt-4 pt-3 border-t border-border/80">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsDeleteModalOpen(false)}
-              disabled={isDeletingAccount}
-              className="h-9 px-4 text-xs font-semibold rounded-xl cursor-pointer"
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => { void handleDeleteAccount(); }}
-              disabled={!isConfirmationValid || isDeletingAccount}
-              className="h-9 px-4 text-xs font-semibold rounded-xl cursor-pointer"
-            >
-              {isDeletingAccount ? (
-                <>
-                  <Loader2 className="size-3.5 mr-1.5 animate-spin" aria-hidden="true" />
-                  <span>Excluindo...</span>
-                </>
-              ) : (
-                <>
-                  <Trash2 className="size-3.5 mr-1.5" aria-hidden="true" />
-                  <span>Confirmar Exclusão</span>
-                </>
-              )}
-            </Button>
-          </ModalFooter>
-        </div>
-      </Modal>
+      <DeleteAccountCard />
 
       {restoreWizardOpen && (
         <Suspense fallback={null}>

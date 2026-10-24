@@ -60,14 +60,16 @@ export function AppInstallationTab() {
     }
   };
 
+  const defaultApkUrl = "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk";
+  const activeApkUrl = updateInfo?.manifest?.apkUrl || defaultApkUrl;
+
   const handleDownloadApk = async () => {
     try {
       if (updateInfo?.manifest) {
         await installUpdate();
       } else {
-        const apkDownloadUrl = "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk";
         const link = document.createElement("a");
-        link.href = apkDownloadUrl;
+        link.href = activeApkUrl;
         link.download = "axis-pro.apk";
         link.target = "_blank";
         link.rel = "noopener noreferrer";
@@ -268,15 +270,30 @@ export function AppInstallationTab() {
 
                 {/* Bloco de QR Code condicional */}
                 {showQrCode && (
-                  <div className="mt-3 p-4 rounded-xl border border-border/80 bg-background/80 flex flex-col items-center justify-center gap-2 text-center">
+                  <div className="mt-3 p-4 rounded-xl border border-border/80 bg-background/80 flex flex-col items-center justify-center gap-3 text-center">
                     <p className="text-xs text-muted-foreground">
-                      Abra a câmera do seu celular Android e aponte para o link direto de download:
+                      Aponte a câmera do seu celular Android para o QR Code abaixo para baixar o instalador:
                     </p>
-                    <div className="p-3 bg-white rounded-lg inline-block shadow-sm">
-                      {/* Imagem ou representação com link */}
-                      <div className="font-mono text-xs text-neutral-800 break-all max-w-xs">
-                        {updateInfo?.manifest?.apkUrl || "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk"}
-                      </div>
+                    <div className="p-3 bg-white rounded-xl inline-flex flex-col items-center shadow-xs border border-border/60">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(activeApkUrl)}`}
+                        alt="QR Code para download do APK do Áxis Pro"
+                        className="size-44 object-contain rounded"
+                        loading="lazy"
+                        width={176}
+                        height={176}
+                      />
+                    </div>
+                    <div className="flex flex-col items-center gap-1.5 max-w-sm">
+                      <span className="text-[11px] text-muted-foreground">Ou acesse diretamente pelo link:</span>
+                      <a
+                        href={activeApkUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-xs text-primary hover:underline break-all"
+                      >
+                        {activeApkUrl}
+                      </a>
                     </div>
                   </div>
                 )}

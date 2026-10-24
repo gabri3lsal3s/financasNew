@@ -181,7 +181,7 @@
     │   │                          #     components/ (diagnostic-card, diagnostics-tab, recurrences-tab, projection-tab F61)
     │   ├── reminders/             #   Lembretes (central de notificações)
     │   ├── settings/              #   Configurações consolidadas em 6 abas especializadas: Minha Conta & Identidade (AccountTab), Aparência & Identidade Visual, Notificações & Automações, Segurança & Gestão de Dados, Plano & Assinatura, Dispositivos & App (App Pro)
-    │   │                          #     components/tabs/ (account-tab, appearance-tab, notifications-tab, security-tab, subscription-tab, app-installation-tab, subcards F1.3)
+    │   │                          #     components/tabs/ (account-tab, appearance-tab, notifications-tab, security-tab, subscription-tab, app-installation-tab, delete-account-card, notifications/ [reminders-card, banking-assistant-card, banking-catalog-accordion, prominent-disclosure-modal])
     │   ├── admin/                 #   Painel Administrativo SaaS /admin (F43: 4 pilares consolidados — Visão Geral & KPIs SaaS, Gestão de Usuários, Convites & Allowlist, Sistema & Auditoria, whitelist-quick-actions.tsx)
     │   ├── subscription/          #   Fluxos de Assinatura & Checkout (/assinatura, /assinar, /assinatura/sucesso)
     │   │                          #     pages: subscription-checkout-page, subscription-success-page

@@ -247,4 +247,54 @@ describe("InsightList", () => {
     fireEvent.click(convertBtn);
     expect(handleConvert).toHaveBeenCalledWith("sub:spotify");
   });
+
+  it("aciona onIgnoreWithReason com essential ao selecionar É gasto essencial no popover", () => {
+    const handleIgnoreWithReason = vi.fn();
+
+    render(
+      <InsightList
+        items={[
+          {
+            key: "sub:academia",
+            title: "Academia",
+            amountCents: 8500,
+          },
+        ]}
+        onIgnoreWithReason={handleIgnoreWithReason}
+      />,
+    );
+
+    const triggerBtn = screen.getByRole("button", { name: "Ignorar Academia" });
+    fireEvent.click(triggerBtn);
+
+    const essentialOption = screen.getByText("É gasto essencial");
+    expect(essentialOption).toBeInTheDocument();
+
+    fireEvent.click(essentialOption);
+    expect(handleIgnoreWithReason).toHaveBeenCalledWith("sub:academia", "essential");
+  });
+
+  it("exibe cápsula de essencial e permite desmarcar acionando onRestore", () => {
+    const handleRestore = vi.fn();
+
+    render(
+      <InsightList
+        items={[
+          {
+            key: "sub:academia",
+            title: "Academia",
+            amountCents: 8500,
+          },
+        ]}
+        feedback={{ "sub:academia": "essential" }}
+        onRestore={handleRestore}
+      />,
+    );
+
+    const essentialBtn = screen.getByRole("button", { name: "Essencial (Academia) — clique para desmarcar" });
+    expect(essentialBtn).toBeInTheDocument();
+
+    fireEvent.click(essentialBtn);
+    expect(handleRestore).toHaveBeenCalledWith("sub:academia");
+  });
 });

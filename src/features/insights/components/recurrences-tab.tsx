@@ -18,7 +18,7 @@ import {
   filterRecurrencesByTab,
   getDismissReason,
   SERVICE_SEGMENT_LABELS,
-  type QualifiedDismissReason,
+  type CalibrationDecision,
   type RecurrenceFilterTab,
 } from "@/domain/insights";
 import { RECURRENCE_LEVEL_LABELS } from "@/lib/labels";
@@ -174,10 +174,17 @@ export function RecurrencesTab({
   }, [activeOccurrences]);
 
   const handleIgnoreWithReason = useCallback(
-    (key: string, reason: QualifiedDismissReason) => {
+    (key: string, reason: CalibrationDecision) => {
       onFeedback(key, reason);
 
-      if (reason === "already_cancelled") {
+      if (reason === "essential") {
+        triggerSensory("action");
+        pushToast({
+          title: "Gasto classificado como essencial",
+          description: "Mantido no monitoramento de custos fixos, com sugestões de corte silenciadas.",
+          variant: "info",
+        });
+      } else if (reason === "already_cancelled") {
         const occ = activeOccurrences.find((o) => o.key === key);
         const annualSavings = (occ?.averageCents ?? 0) * 12;
         triggerSensory("success");
@@ -487,6 +494,22 @@ export function RecurrencesTab({
         }}
         occurrence={selectedOccurrence}
         onConvert={handleStartConversion}
+        isEssential={
+          selectedOccurrence
+            ? feedbackMap[selectedOccurrence.key] === "essential" || selectedOccurrence.tier === "essential"
+            : false
+        }
+        onToggleEssential={(key, nextEssential) => {
+          onFeedback(key, nextEssential ? "essential" : null);
+          triggerSensory("action");
+          pushToast({
+            title: nextEssential ? "Gasto classificado como essencial" : "Classificação removida",
+            description: nextEssential
+              ? "Mantido nos custos fixos sem sugestões de corte."
+              : "Item voltou ao monitoramento regular de sugestões.",
+            variant: "info",
+          });
+        }}
       />
 
       {/* Diálogo de Conversão em Agendamento Formal (Fase 32 / Tarefa 7.5) */}

@@ -29,6 +29,11 @@ vi.mock("@/data/auth", () => ({
 
 vi.mock("@/data/rpc", () => ({
   deleteOwnAccount: vi.fn(),
+  deleteCurrentUserAccount: vi.fn(),
+}));
+
+vi.mock("@/data/repositories/billing", () => ({
+  cancelSubscription: vi.fn(),
 }));
 
 vi.mock("@/hooks/use-sign-out", () => ({
@@ -266,32 +271,32 @@ describe("AccountTab", () => {
       const confirmButton = screen.getByRole("button", { name: "Confirmar Exclusão" });
       expect(confirmButton).toBeDisabled();
 
-      const phraseInput = screen.getByPlaceholderText("EXCLUIR MINHA CONTA");
-      await user.type(phraseInput, "excluir minha conta"); // minúsculo não confere
+      const phraseInput = screen.getByPlaceholderText("EXCLUIR");
+      await user.type(phraseInput, "OUTRA");
       expect(confirmButton).toBeDisabled();
 
       await user.clear(phraseInput);
-      await user.type(phraseInput, "EXCLUIR MINHA CONTA");
+      await user.type(phraseInput, "EXCLUIR");
       expect(confirmButton).not.toBeDisabled();
     });
 
     it("executa a exclusão da conta, encerra a sessão e redireciona para login ao confirmar com a frase exata", async () => {
       const user = userEvent.setup();
-      vi.mocked(rpcData.deleteOwnAccount).mockResolvedValueOnce(undefined);
+      vi.mocked(rpcData.deleteCurrentUserAccount).mockResolvedValueOnce(undefined);
 
       renderAccountTab();
 
       const openModalButton = screen.getByRole("button", { name: "Excluir Minha Conta" });
       await user.click(openModalButton);
 
-      const phraseInput = screen.getByPlaceholderText("EXCLUIR MINHA CONTA");
-      await user.type(phraseInput, "EXCLUIR MINHA CONTA");
+      const phraseInput = screen.getByPlaceholderText("EXCLUIR");
+      await user.type(phraseInput, "EXCLUIR");
 
       const confirmButton = screen.getByRole("button", { name: "Confirmar Exclusão" });
       await user.click(confirmButton);
 
       await waitFor(() => {
-        expect(rpcData.deleteOwnAccount).toHaveBeenCalledTimes(1);
+        expect(rpcData.deleteCurrentUserAccount).toHaveBeenCalledTimes(1);
         expect(sensoryModule.triggerSensory).toHaveBeenCalledWith("destructive");
         expect(mockSignOut).toHaveBeenCalledTimes(1);
         expect(mockNavigate).toHaveBeenCalledWith("/entrar", { replace: true });
@@ -303,7 +308,7 @@ describe("AccountTab", () => {
 
     it("exibe mensagem de erro na modal caso a exclusão falhe", async () => {
       const user = userEvent.setup();
-      vi.mocked(rpcData.deleteOwnAccount).mockRejectedValueOnce(
+      vi.mocked(rpcData.deleteCurrentUserAccount).mockRejectedValueOnce(
         new Error("Erro interno ao deletar registros."),
       );
 
@@ -312,8 +317,8 @@ describe("AccountTab", () => {
       const openModalButton = screen.getByRole("button", { name: "Excluir Minha Conta" });
       await user.click(openModalButton);
 
-      const phraseInput = screen.getByPlaceholderText("EXCLUIR MINHA CONTA");
-      await user.type(phraseInput, "EXCLUIR MINHA CONTA");
+      const phraseInput = screen.getByPlaceholderText("EXCLUIR");
+      await user.type(phraseInput, "EXCLUIR");
 
       const confirmButton = screen.getByRole("button", { name: "Confirmar Exclusão" });
       await user.click(confirmButton);

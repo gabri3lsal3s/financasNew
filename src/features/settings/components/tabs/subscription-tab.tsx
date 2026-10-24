@@ -553,8 +553,17 @@ function UpdateCardModal({ open, onOpenChange }: UpdateCardModalProps) {
       return;
     }
     const [expMonth, expYear] = cardExpiry.split("/");
-    if (!expMonth || !expYear || parseInt(expMonth, 10) < 1 || parseInt(expMonth, 10) > 12) {
+    const expMonthNum = parseInt(expMonth || "", 10);
+    const expYearNum = parseInt(expYear?.length === 2 ? `20${expYear}` : (expYear || ""), 10);
+    if (!expMonth || !expYear || expMonthNum < 1 || expMonthNum > 12 || Number.isNaN(expYearNum)) {
       setError("Validade inválida (MM/AA).");
+      return;
+    }
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    if (expYearNum < currentYear || (expYearNum === currentYear && expMonthNum < currentMonth)) {
+      setError("Cartão expirado. Informe uma validade futura.");
       return;
     }
     if (cardCcv.length < 3) {
@@ -685,7 +694,7 @@ function UpdateCardModal({ open, onOpenChange }: UpdateCardModalProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Histórico de Faturas & Recibos
+// Faturamento & Comprovantes Fiscais
 // ---------------------------------------------------------------------------
 
 interface InvoiceHistoryCardProps {
@@ -693,73 +702,62 @@ interface InvoiceHistoryCardProps {
 }
 
 function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
-  const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null);
-
-  const mockInvoices = [
-    {
-      id: "FAT-2026-001",
-      date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }),
-      description: subscription.plan === "annual" ? "Plano Pro Anual (12 meses)" : "Plano Pro Mensal",
-      amount: subscription.plan === "annual" ? "R$\u00a0178,80" : "R$\u00a019,90",
-      status: "paid" as const,
-      method: "Cartão de Crédito",
-    },
-  ];
+  const planName =
+    subscription.plan === "annual" ? "Plano Pro Anual (12 meses)" : "Plano Pro Mensal";
+  const planAmount =
+    subscription.plan === "annual" ? "R$\u00a0178,80/ano" : "R$\u00a019,90/mês";
+  const renewDate = subscription.currentPeriodEnd
+    ? new Date(subscription.currentPeriodEnd).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
           <Receipt className="size-4 text-muted-foreground" aria-hidden="true" />
-          <span>Histórico de Faturas & Recibos</span>
+          <span>Faturamento &amp; Comprovantes Fiscais</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
         {subscription.isPro ? (
-          <div className="space-y-3">
-            <div className="rounded-xl border border-border/80 overflow-hidden divide-y divide-border/80">
-              {mockInvoices.map((inv) => (
-                <div
-                  key={inv.id}
-                  className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-surface hover:bg-surface-hover transition-colors"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-foreground">{inv.description}</span>
-                      <Badge variant="positive" size="xs">
-                        Pago
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <span>{inv.date}</span>
-                      <span>•</span>
-                      <span>{inv.id}</span>
-                      <span>•</span>
-                      <span>{inv.method}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between sm:justify-end gap-3">
-                    <span className="font-semibold text-sm text-foreground tabular-nums">{inv.amount}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedReceipt(inv.id);
-                      }}
-                      className="text-xs gap-1.5 h-8 text-muted-foreground hover:text-foreground cursor-pointer"
-                    >
-                      <FileText className="size-3.5" aria-hidden="true" />
-                      <span>Comprovante</span>
-                    </Button>
+          <div className="space-y-3.5">
+            <div className="rounded-xl border border-border/80 bg-muted/20 p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border/60 pb-3">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-semibold text-foreground">{planName}</span>
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <span>Cobrança ativa</span>
+                    <span>•</span>
+                    <span>Gateway Asaas</span>
+                    {renewDate && (
+                      <>
+                        <span>•</span>
+                        <span>Próxima renovação: {renewDate}</span>
+                      </>
+                    )}
                   </div>
                 </div>
-              ))}
+                <div className="flex items-center gap-2">
+                  <Badge variant="positive" size="xs">
+                    Em dia
+                  </Badge>
+                  <span className="font-semibold text-xs text-foreground tabular-nums">
+                    {planAmount}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5 text-xs text-muted-foreground leading-relaxed">
+                <FileText className="size-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+                <p className="text-[11px]">
+                  Os recibos de pagamento e notas fiscais eletrônicas (NFS-e) são emitidos automaticamente pelo gateway financeiro e encaminhados ao endereço de e-mail da sua conta a cada renovação.
+                </p>
+              </div>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Comprovantes oficiais processados com segurança pelo gateway Asaas.
-            </p>
           </div>
         ) : (
           <div className="rounded-xl border border-dashed border-border/80 p-6 text-center space-y-2">
@@ -767,58 +765,10 @@ function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
             <div className="space-y-1">
               <p className="text-xs font-semibold text-foreground">Nenhuma fatura emitida</p>
               <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
-                Ao assinar o Plano Pro, o histórico das suas faturas, recibos fiscais e comprovantes ficará disponível aqui.
+                Ao assinar o Plano Pro, as informações de cobrança, recibos e notas fiscais ficarão registradas para sua conta.
               </p>
             </div>
           </div>
-        )}
-
-        {/* Modal de Comprovante de Pagamento */}
-        {selectedReceipt && (
-          <Modal
-            open={Boolean(selectedReceipt)}
-            onOpenChange={(open) => !open && setSelectedReceipt(null)}
-            title="Comprovante de Assinatura"
-            description={`Identificador da transação: ${selectedReceipt}`}
-            size="md"
-          >
-            <div className="space-y-4 pt-2">
-              <div className="p-4 rounded-xl border border-border/80 bg-muted/20 space-y-3">
-                <div className="flex justify-between items-center text-xs pb-3 border-b border-border/80">
-                  <span className="text-muted-foreground">Status da Transação</span>
-                  <Badge variant="positive" size="xs">
-                    Confirmado
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-muted-foreground">Plano</span>
-                  <span className="font-semibold text-foreground">
-                    {subscription.plan === "annual" ? "Plano Pro Anual" : "Plano Pro Mensal"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-muted-foreground">Valor</span>
-                  <span className="font-semibold text-foreground tabular-nums">
-                    {subscription.plan === "annual" ? "R$\u00a0178,80" : "R$\u00a019,90"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-muted-foreground">Processamento</span>
-                  <span className="font-semibold text-foreground">Asaas Gestão Financeira</span>
-                </div>
-              </div>
-
-              <ModalFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setSelectedReceipt(null)}
-                >
-                  Fechar
-                </Button>
-              </ModalFooter>
-            </div>
-          </Modal>
         )}
       </CardContent>
     </Card>
