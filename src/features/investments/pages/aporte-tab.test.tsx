@@ -115,4 +115,19 @@ describe("AporteTab — Calculadora e Aportes", () => {
       }),
     );
   });
+
+  it("exibe o alerta permanente de isenção regulatória CVM (Resoluções 19/2021 e 20/2021)", () => {
+    render(
+      <MemoryRouter>
+        <AporteTab />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByText(/Isenção Regulatória CVM \(Resoluções CVM nº 19\/2021 e nº 20\/2021\)/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/não configurando análise de valores mobiliários, consultoria financeira ou recomendação/i),
+    ).toBeInTheDocument();
+  });
 });

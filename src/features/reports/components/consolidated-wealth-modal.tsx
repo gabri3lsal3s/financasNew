@@ -10,6 +10,7 @@ import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import type { ConsolidatedBalanceSheetResult } from "@/domain/reports";
 import { formatPercent } from "@/services/masks";
+import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
 
 export interface ConsolidatedWealthModalProps {
   open: boolean;
@@ -235,7 +236,7 @@ export function ConsolidatedWealthModal({
       {/* 6. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
-        disclaimer="Documento estritamente informativo gerado automaticamente com base nos dados e metas parametrizados pelo titular. Não constitui análise, consultoria, recomendação de compra, venda ou alocação de valores mobiliários (Resoluções CVM nº 19 e 20/2021)."
+        disclaimer={OFFICIAL_CVM_DISCLAIMER}
       />
     </ReportDocumentLayout>
   );

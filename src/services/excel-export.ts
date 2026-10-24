@@ -12,6 +12,8 @@
  * - 5 abas consolidadas: Resumo Patrimonial, Custódia, Proventos, DRE e Dívidas.
  */
 
+import { OFFICIAL_CVM_DISCLAIMER, OFFICIAL_TAX_DISCLAIMER } from "@/lib/institutional";
+
 export interface ExcelPositionRow {
   ticker: string;
   name?: string | null;
@@ -184,6 +186,10 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
   <Style ss:ID="TextBold">
    <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1"/>
   </Style>
+  <Style ss:ID="Disclaimer">
+   <Alignment ss:Vertical="Top" ss:WrapText="1"/>
+   <Font ss:FontName="Calibri" ss:Size="9" ss:Italic="1" ss:Color="#555555"/>
+  </Style>
  </Styles>`;
 
   // 1. Aba: Resumo Executivo
@@ -244,6 +250,16 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
    <Row>
     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Taxa Média de Poupança</Data></Cell>
     <Cell ss:StyleID="Percent"><Data ss:Type="Number">${(data.summary.savingsRatePct / 100).toFixed(4)}</Data></Cell>
+   </Row>
+   <Row/>
+   <Row ss:Height="20">
+    <Cell ss:MergeAcross="1" ss:StyleID="TextBold"><Data ss:Type="String">Aviso Legal, Isenção Regulatória (CVM) e Responsabilidade Tributária (CFC / RFB):</Data></Cell>
+   </Row>
+   <Row ss:Height="48">
+    <Cell ss:MergeAcross="1" ss:StyleID="Disclaimer"><Data ss:Type="String">${escapeXml(OFFICIAL_TAX_DISCLAIMER)}</Data></Cell>
+   </Row>
+   <Row ss:Height="48">
+    <Cell ss:MergeAcross="1" ss:StyleID="Disclaimer"><Data ss:Type="String">${escapeXml(OFFICIAL_CVM_DISCLAIMER)}</Data></Cell>
    </Row>
   </Table>
  </Worksheet>`;
@@ -456,6 +472,13 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
     <Cell><Data ss:Type="String">Resultado (R$)</Data></Cell>
     <Cell><Data ss:Type="String">Rentab. Final (%)</Data></Cell>
    </Row>${redemptionRowsXml}
+   <Row/>
+   <Row ss:Height="20">
+    <Cell ss:MergeAcross="9" ss:StyleID="TextBold"><Data ss:Type="String">Aviso Fiscal sobre Ganho de Capital e DARF (Receita Federal do Brasil):</Data></Cell>
+   </Row>
+   <Row ss:Height="48">
+    <Cell ss:MergeAcross="9" ss:StyleID="Disclaimer"><Data ss:Type="String">${escapeXml(OFFICIAL_TAX_DISCLAIMER)}</Data></Cell>
+   </Row>
    </Table>
  </Worksheet>`;
   }

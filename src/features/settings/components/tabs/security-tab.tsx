@@ -1,19 +1,25 @@
 import { useState, useEffect, lazy, Suspense } from "react";
+import { useNavigate } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   Database,
-  Sparkles,
-  Trash2,
   Fingerprint,
+  Loader2,
+  Trash2,
 } from "lucide-react";
 import {
+  Alert,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  Button,
   Badge,
-  ConfirmDialog,
+  Button,
   Checkbox,
+  Input,
+  Modal,
+  ModalFooter,
   Select,
 } from "@/components/ui";
 import type { SelectOption } from "@/components/ui";
@@ -24,6 +30,12 @@ const RestoreWizardDialog = lazy(() =>
 );
 import { downloadCsv, downloadJson } from "@/services/export-actions";
 import { pushToast } from "@/services/toast";
+import { triggerSensory } from "@/services/sensory";
+import { getErrorMessage } from "@/services/errors";
+import { resetAppState } from "@/services/auth-cleanup";
+import { useSignOut } from "@/hooks/use-sign-out";
+import { deleteCurrentUserAccount } from "@/data/rpc";
+import { cancelSubscription } from "@/data/repositories/billing";
 import {
   checkBiometricsAvailability,
   authenticateWithBiometrics,
@@ -56,8 +68,6 @@ import {
 import {
   useExportData,
   useRestoreBackup,
-  useLoadDemoData,
-  useClearDemoData,
   usePortfolioPosition,
   useUserAccess,
   useCategories,
@@ -105,6 +115,9 @@ const APP_LOCK_GRACE_OPTIONS: SelectOption[] = [
 ];
 
 export function SecurityTab() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { signOut } = useSignOut();
   const userAccess = useUserAccess();
   const userPreferencesQuery = useUserPreferences();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
@@ -118,6 +131,69 @@ export function SecurityTab() {
   const showBiometrics = isNative || Boolean(biometricsAvailable);
   const showPrivacyShield = isNative;
   const showAppLockCard = showBiometrics || showPrivacyShield;
+
+  // Estados de Exclusão de Conta (LGPD)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteConfirmationInput, setDeleteConfirmationInput] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const CONFIRM_DELETE_WORD = "EXCLUIR";
+  const isConfirmationValid = deleteConfirmationInput.trim().toUpperCase() === CONFIRM_DELETE_WORD;
+
+  const handleDeleteAccount = async () => {
+    if (!isConfirmationValid || isDeletingAccount) return;
+
+    setIsDeletingAccount(true);
+    setDeleteError(null);
+
+    try {
+      // 1. Cancelamento preventivo no gateway Asaas/Stripe
+      try {
+        await cancelSubscription();
+      } catch {
+        // Ignora caso não possua assinatura ativa ou gateway offline
+      }
+
+      // 2. Expurgo em cascata das 34 tabelas e auth.users (LGPD Art. 18, VI)
+      await deleteCurrentUserAccount();
+
+      triggerSensory("destructive");
+      pushToast({
+        title: "Conta excluída",
+        description: "Sua conta e todos os dados foram definitivamente expurgados conforme a LGPD.",
+        variant: "default",
+      });
+
+      // 3. Limpeza profunda de cache, expurgo de storage e logout seguro
+      try {
+        resetAppState(queryClient, null);
+      } catch {
+        // noop
+      }
+
+      if (typeof window !== "undefined") {
+        try {
+          window.localStorage.clear();
+          window.sessionStorage.clear();
+        } catch {
+          // noop
+        }
+      }
+
+      try {
+        await signOut();
+      } catch {
+        // noop
+      }
+
+      navigate("/entrar", { replace: true });
+    } catch (err) {
+      triggerSensory("destructive");
+      setDeleteError(getErrorMessage(err));
+      setIsDeletingAccount(false);
+    }
+  };
 
   const [localPrivacyOverride, setLocalPrivacyOverride] = useState<boolean | null>(null);
   const cloudPrivacyShield = userPreferencesQuery.data?.custom_settings?.privacyShieldEnabled;
@@ -188,9 +264,6 @@ export function SecurityTab() {
   const portfolioPosition = usePortfolioPosition();
   const exportDataQuery = useExportData({ enabled: false });
   const restoreBackupMutation = useRestoreBackup();
-  const loadDemoMutation = useLoadDemoData();
-  const clearDemoMutation = useClearDemoData();
-  const [confirmClearDemoOpen, setConfirmClearDemoOpen] = useState(false);
   const [restoreWizardOpen, setRestoreWizardOpen] = useState(false);
   const categoriesQuery = useCategories();
   const creditCardsQuery = useCreditCards();
@@ -418,66 +491,139 @@ export function SecurityTab() {
               ...(userAccess.hasFeature("investments") ? (["positions"] as const) : []),
             ]}
           />
+        </CardContent>
+      </Card>
 
-          <div className="pt-4 border-t border-border/80">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl border border-border/80 bg-surface">
-              <div className="flex items-start gap-3">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary-strong shrink-0">
-                  <Sparkles className="size-5" />
-                </div>
-                <div>
-                  <div className="font-semibold text-sm text-foreground flex items-center gap-2">
-                    <span>Ambiente de Demonstração</span>
-                    <Badge variant="muted" size="xs">Dados de Teste</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                    Carregue um conjunto realista de transações, cartão e investimentos para explorar a plataforma, ou limpe os dados demonstrativos a qualquer momento.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto flex-wrap">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => loadDemoMutation.mutate()}
-                  disabled={loadDemoMutation.isPending}
-                  className="gap-1.5 border-primary/40 hover:bg-primary/10 text-xs font-medium cursor-pointer"
-                >
-                  <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-                  <span>{loadDemoMutation.isPending ? "Carregando…" : "Carregar dados de exemplo"}</span>
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setConfirmClearDemoOpen(true)}
-                  disabled={clearDemoMutation.isPending}
-                  className="gap-1.5 border-warning/40 hover:bg-warning/10 text-xs font-medium cursor-pointer"
-                >
-                  <Trash2 className="size-3.5 text-warning-strong" aria-hidden="true" />
-                  <span>{clearDemoMutation.isPending ? "Limpando…" : "Limpar dados de exemplo"}</span>
-                </Button>
-              </div>
+      {/* Card 4: Zona de Perigo / Exclusão de Conta (LGPD) */}
+      <Card className="border-critical/30 bg-surface shadow-xs">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2 text-critical-strong">
+            <AlertTriangle className="size-4 text-critical-strong" aria-hidden="true" />
+            <span>Zona de Perigo / Exclusão de Conta (LGPD)</span>
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Direito ao Esquecimento garantido pelo Art. 18, VI da Lei Geral de Proteção de Dados (LGPD).
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-xl border border-critical/20 bg-critical/5">
+            <div className="space-y-0.5">
+              <span className="text-xs font-semibold text-foreground block">
+                Excluir conta e dados definitivamente
+              </span>
+              <span className="text-[11px] text-muted-foreground block">
+                Expurga todas as transações, cartões, dívidas, orçamentos, investimentos e remove permanentemente seu cadastro.
+              </span>
             </div>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                setDeleteConfirmationInput("");
+                setDeleteError(null);
+                setIsDeleteModalOpen(true);
+              }}
+              className="h-9 px-4 text-xs font-semibold rounded-xl shrink-0 cursor-pointer"
+            >
+              <Trash2 className="size-3.5 mr-1.5" aria-hidden="true" />
+              <span>Excluir Minha Conta</span>
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      <ConfirmDialog
-        open={confirmClearDemoOpen}
-        onOpenChange={setConfirmClearDemoOpen}
-        title="Limpar dados de exemplo?"
-        description="Esta ação removerá cirurgicamente apenas os lançamentos, cartões e ativos de demonstração com a marca [Exemplo]. Qualquer dado real cadastrado por você permanecerá intacto."
-        confirmLabel="Limpar dados"
-        variant="destructive"
-        onConfirm={async () => {
-          await clearDemoMutation.mutateAsync();
-          setConfirmClearDemoOpen(false);
+      {/* Modal de Confirmação Rigorosa de Exclusão (LGPD) */}
+      <Modal
+        open={isDeleteModalOpen}
+        onOpenChange={(open) => {
+          if (isDeletingAccount) return;
+          setIsDeleteModalOpen(open);
+          if (!open) {
+            setDeleteConfirmationInput("");
+            setDeleteError(null);
+          }
         }}
-      />
+        title="Excluir Conta Definitivamente (LGPD)"
+        description="Esta ação é irreversível e aciona o expurgo definitivo de todos os seus dados pessoais e financeiros (Art. 18, VI da LGPD)."
+        size="sm"
+      >
+        <div className="space-y-4 pt-2">
+          {deleteError ? <Alert variant="error">{deleteError}</Alert> : null}
+
+          <div className="rounded-xl border border-critical/20 bg-critical/5 p-3.5 space-y-2">
+            <span className="text-xs font-medium text-critical-strong flex items-center gap-1.5">
+              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+              <span>Atenção: Ação Irreversível</span>
+            </span>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Em conformidade com a LGPD, todo o seu histórico financeiro, lançamentos,
+              cartões, categorias, investimentos e preferências serão definitivamente
+              destruídos. Qualquer assinatura ativa no gateway de pagamento será cancelada
+              preventivamente.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label
+              htmlFor="delete-account-security-confirm"
+              className="text-xs font-semibold text-foreground block"
+            >
+              Para confirmar a exclusão, digite a palavra{" "}
+              <span className="font-mono text-critical-strong font-bold select-all">
+                {CONFIRM_DELETE_WORD}
+              </span>{" "}
+              abaixo:
+            </label>
+            <Input
+              id="delete-account-security-confirm"
+              type="text"
+              value={deleteConfirmationInput}
+              onChange={(e) => {
+                setDeleteConfirmationInput(e.target.value);
+                if (deleteError) setDeleteError(null);
+              }}
+              placeholder={CONFIRM_DELETE_WORD}
+              disabled={isDeletingAccount}
+              autoComplete="off"
+              className="h-10 text-sm rounded-xl font-mono"
+            />
+            <span className="text-[11px] text-muted-foreground block">
+              O botão de exclusão só será ativado quando a palavra for digitada exatamente igual.
+            </span>
+          </div>
+
+          <ModalFooter className="mt-4 pt-3 border-t border-border/80">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDeleteModalOpen(false)}
+              disabled={isDeletingAccount}
+              className="h-9 px-4 text-xs font-semibold rounded-xl cursor-pointer"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => { void handleDeleteAccount(); }}
+              disabled={!isConfirmationValid || isDeletingAccount}
+              className="h-9 px-4 text-xs font-semibold rounded-xl cursor-pointer"
+            >
+              {isDeletingAccount ? (
+                <>
+                  <Loader2 className="size-3.5 mr-1.5 animate-spin" aria-hidden="true" />
+                  <span>Excluindo...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="size-3.5 mr-1.5" aria-hidden="true" />
+                  <span>Confirmar Exclusão</span>
+                </>
+              )}
+            </Button>
+          </ModalFooter>
+        </div>
+      </Modal>
 
       {restoreWizardOpen && (
         <Suspense fallback={null}>

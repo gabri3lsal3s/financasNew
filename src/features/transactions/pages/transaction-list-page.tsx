@@ -1,6 +1,6 @@
 import { useNavigate, useSearchParams } from "react-router";
 import { useCallback, useMemo, useState } from "react";
-import { ArrowLeftRight, Calendar, ChevronDown, Download, Plus, Search, X } from "lucide-react";
+import { ArrowLeftRight, Calendar, ChevronDown, Download, Plus, Search, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -15,7 +15,7 @@ import { getErrorMessage } from "@/services/errors";
 import { downloadCsv } from "@/services/export-actions";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import { useCategories, useCreditCards, useExpenses, useIncomes, usePermission, useRecurrences } from "@/state";
+import { setStepIndex, startDemo, useCategories, useCreditCards, useExpenses, useIncomes, usePermission, useRecurrences } from "@/state";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS, RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import { sumGrossCents, sumWeightedCents } from "@/domain/money";
 import { buildUnifiedFeedItems, groupFeedByDay, type FeedFilter } from "@/domain/expenses";
@@ -422,7 +422,19 @@ export function TransactionListPage() {
               <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
                 <Button size="sm" onClick={handleNewTransaction} className="gap-1.5 cursor-pointer">
                   <Plus className="size-4" aria-hidden="true" />
-                  Nova transação
+                  Novo lançamento
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    startDemo("finances");
+                    setStepIndex(1);
+                  }}
+                  className="gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
+                >
+                  <Sparkles className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                  Ver exemplo na Simulação
                 </Button>
               </div>
             )

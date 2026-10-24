@@ -40,7 +40,9 @@
 │   ├── DATA_MIGRATION_GUIDE.md    # Guia de migração e batimento de dados legados
 │   ├── DEPLOYMENT.md              # Guia de deploy (Cloudflare Pages + Supabase) e env vars
 │   ├── DESIGN_SYSTEM.md           # Identidade visual e design tokens
+│   ├── EMAIL_TEMPLATES.md         # Templates de e-mail transacionais (HTML responsivo) e guia SMTP profissional
 │   ├── FINANCIAL_MATH_SPEC.md     # Especificação canônica de engenharia e precisão matemática
+│   ├── FOUNDER_RUNBOOK.md         # Manual operacional do fundador: atendimento via Telegram, gestão /admin, faturamento Asaas e incidentes
 │   ├── NATIVE_DISTRIBUTION_GUIDE.md # Guia de distribuição Android, keystore e in-app updater
 │   ├── PROJECT_STRUCTURE.md       # Este documento
 │   ├── PROJETO_SAAS.md            # Modelo de precificação SaaS, 30 dias de trial e conformidade CDC
@@ -88,24 +90,31 @@
 ├── scripts/                       # Scripts operacionais e de automação
 │   ├── build-apk.sh               #   Pipeline automatizado de compilação de APKs em 1 comando
 │   ├── deploy-quotes.mjs          #   Deploy e cron da edge function de cotações
-│   └── generate-icons.mjs         #   Gerador de ícones e favicons
+│   ├── generate-icons.mjs         #   Gerador de ícones e favicons
+│   └── preflight-check.ts         #   Diagnóstico pré-voo automatizado de prontidão operacional e produção (7 dimensões, npm run preflight)
 │
 ├── supabase/                      # Backend — ver ESPECIFICAÇÃO §2 (migrations versionadas)
-│   ├── migrations/                # 0001..0039_security_fixes_and_feature_flag_triggers.sql
+│   ├── migrations/                # 0001..0060_support_tickets.sql
 │   │                              # (schema, RLS estrito com is_current_user_active, triggers,
-│   │                              # RPCs transacionais, backend feature flag enforcement)
+│   │                              # RPCs transacionais, backend feature flag enforcement, expurgo atômico de contas, tickets de suporte)
 │   └── functions/                 # Edge functions (runtime Deno — fora do bundle Vite)
 │       ├── _shared/quotes-core.ts #   Motor puro de cotações (F1.7) — TS sem I/O, testável
-│       │                          #   em src/tests/quotes-core.test.ts
-│       └── quotes/index.ts        #   Edge function de cotações: fetch Yahoo em cascata +
-│                                  #   upsert do cache global asset_prices (auth por service role)
+│       ├── _shared/telegram.ts    #   Helper puro de formatação e despacho de mensagens ao Telegram
+│       ├── _shared/asaas-webhook-logic.ts # Motor puro de decisão de webhook Asaas e idempotência
+│       ├── _shared/http.ts        #   Utilitários HTTP, headers CORS e respostas seguras
+│       ├── quotes/index.ts        #   Edge function de cotações: fetch Yahoo em cascata +
+│       │                          #   upsert do cache global asset_prices (auth por service role)
+│       ├── support-notify/index.ts #  Edge function de suporte: despacho de tickets ao bot Telegram do fundador
+│       ├── asaas-checkout/index.ts #  Criação de clientes e cobranças Pix/Cartão via Asaas
+│       ├── asaas-manage/index.ts  #   Cancelamento e gestão de assinaturas no Asaas
+│       └── asaas-webhook/index.ts #   Webhook idempotente de processamento de pagamentos Asaas
 │
 └── src/
     ├── main.tsx                   # Entry point: ReactDOM + registerPWA()
     ├── app/                       # Bootstrap e orquestração (SEM lógica de negócio)
     │   ├── providers.tsx          # AuthProvider, QueryClientProvider, ThemeProvider
     │   ├── router.tsx             # <Routes> a partir de routes.ts
-    │   ├── routes.tsx             # Mapa de rotas + deep-links (?card=, ?month=, ?q=) +
+    │   ├── routes.tsx             # Mapa de rotas do app + rotas públicas legais (publicLegalRoutes) + deep-links (?card=, ?month=, ?q=) +
     │   │                          #   redirect /carteira → /investments (em redirect-to-investments.tsx)
     │   ├── pwa.ts                 # Registro SW (autoUpdate + toast) + stores de
     │   ├── theme-provider.tsx     # ThemeProvider — aplica tema/accent do usuário (F11)
@@ -139,11 +148,14 @@
     │   │   │                      #   prediction-suggestions (F21 — autopreenchimento preditivo),
     │   │   │                      #   export-data-hub (F22), monthly-close-print-view (F22),
     │   │   │                      #   emergency-thermometer (Reserva de Emergência e Autonomia),
+    │   │   │                      #   help-modal (Central de Ajuda, FAQ e atalhos para modo simulação),
+    │   │   │                      #   welcome-modal, demo-track-select-modal, demo-tour-bar, demo-exit-confirm-dialog,
     │   │   │                      #   aporte-result (F4/F31 — checklist interativo de aportes),
     │   │   │                      #   cash-kpi-card (card exclusivo de saldo em Caixa & Liquidez com variantes banner e card),
     │   │   │                      #   reports/ (report-document-layout, report-header, report-footer, report-kpi-grid,
     │   │   │                      #     report-donut-chart, report-stacked-bar, report-risk-gauge, report-class-tables,
-    │   │   │                      #     report-redemptions-table F80, report-allocation-donuts F84)…
+    │   │   │                      #     report-redemptions-table F80, report-allocation-donuts F84),
+    │   │   │                      #   support/ (support-chat-dialog, support-chat-trigger — atendimento nativo via Telegram)…
     │   │   └── index.ts
     │   └── layout/                # Estrutura de página: sidebar (collapsible F7), bottom-nav (5 slots F7),
     │       │                      #   more-menu-sheet (F56 — bottom sheet móvel),
@@ -151,7 +163,8 @@
     │       │                      #   privacy-toggle (F8), theme-toggle, calculator-button,
     │       │                      #   notifications-button (v1.62 — sininho com badge dinâmico no header),
     │       │                      #   global-search (busca no header), loading-screen (F10/F23 — tela de carregamento oficial e dinâmica),
-    │       │                      #   back-to-top (botão flutuante ergonômico acima da BottomNav móvel com scrollToTop canônico)
+    │       │                      #   back-to-top (botão flutuante ergonômico acima da BottomNav móvel com scrollToTop canônico),
+    │       │                      #   app-error-boundary (barreira global de contenção de erros de renderização e recarregamento)
     │       └── index.ts           #   barrel (AGENTS.md §7 — importações externas via @/components/layout)
     │
     ├── features/                  # ÁREAS funcionais — padrão interno em §5
@@ -167,8 +180,8 @@
     │   ├── insights/              #   Insights, radar de vencimentos RF (F72), projeção e corte
     │   │                          #     components/ (diagnostic-card, diagnostics-tab, recurrences-tab, projection-tab F61)
     │   ├── reminders/             #   Lembretes (central de notificações)
-    │   ├── settings/              #   Configurações consolidadas em 5 abas especializadas: Aparência & Identidade Visual, Notificações & Automações, Segurança & Gestão de Dados, Plano & Assinatura, Dispositivos & App (App Pro)
-    │   │                          #     components/tabs/ (appearance-tab, notifications-tab, security-tab, subscription-tab, app-installation-tab, subcards F1.3)
+    │   ├── settings/              #   Configurações consolidadas em 6 abas especializadas: Minha Conta & Identidade (AccountTab), Aparência & Identidade Visual, Notificações & Automações, Segurança & Gestão de Dados, Plano & Assinatura, Dispositivos & App (App Pro)
+    │   │                          #     components/tabs/ (account-tab, appearance-tab, notifications-tab, security-tab, subscription-tab, app-installation-tab, subcards F1.3)
     │   ├── admin/                 #   Painel Administrativo SaaS /admin (F43: 4 pilares consolidados — Visão Geral & KPIs SaaS, Gestão de Usuários, Convites & Allowlist, Sistema & Auditoria, whitelist-quick-actions.tsx)
     │   ├── subscription/          #   Fluxos de Assinatura & Checkout (/assinatura, /assinar, /assinatura/sucesso)
     │   │                          #     pages: subscription-checkout-page, subscription-success-page
@@ -189,11 +202,16 @@
     │   ├── landing/               #   Landing Page pública de apresentação & planos (/apresentacao, /precos, /landing)
     │                              #     com simulador FIRE interativo, showcase, platform-comparison (Tripé Web, PWA e Android Pro), pricing, FAQ, scroll-reveal, scroll-spy e back-to-top
     │
+    │   ├── legal/                 #   Páginas Legais e Regulatórias (/termos, /privacidade, LGPD, Decreto 7.962/2013)
+    │   │                          #     pages: terms-page, privacy-page (com pages/index.ts)
+    │   │                          #     components: legal-page-shell (com components/index.ts e index.ts)
+    │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
     │   ├── validation/            #   validação pura e defensiva com Zod: sanitization.ts (XSS/control chars/money limits), password.ts, cpf.ts
     │   ├── admin/                 #   F43: RBAC, hierarquia de papéis, resolução de Feature Flags, schemas.ts e validação de convites
     │   ├── navigation/            #   F43: Resolução dinâmica de slots BottomNav e rota de fallback (landing route)
-    │   ├── onboarding/             #   checklist/progresso do primeiro uso (F5.4)
+    │   ├── onboarding/            #   checklist/progresso do primeiro uso (F5.4)
+    │   ├── demo-simulation/       # datasets sintéticos puros em memória, trilhas (finanças/investimentos), passos do tour e hand-off contextual (handoff.ts)
     │   ├── notifications/         #   Fase 5 Android: parsing puro de notificações bancárias, comprovantes Pix em centavos,
     │   │                          #     pix-receipt-parser.ts (extração de comprovantes Pix), merchant-memory.ts, pix-emv-parser.ts,
     │   │                          #     card-resolution.ts (resolução e auto-vínculo de cartões por banco emissor),
@@ -260,6 +278,7 @@
     │   │                          #   budgets.ts, portfolio.ts, categories.ts,
     │   │                          #   billing.ts (adaptadores agnósticos Stripe/Asaas, checkout e portal de faturamento),
     │   │                          #   subscriptions.ts (status SaaS, planos e gestão administrativa de permissões modulares),
+    │   │                          #   support-tickets.ts (registro de tickets de suporte, feedback e despacho ao Telegram),
     │   │                          #   export.ts (F22: fetchAllUserData + restoreBackup),
     │   │                          #   onboarding.ts (contagens do primeiro uso),
     │   │                          #   profiles.ts (auto-cura de perfis órfãos),
@@ -273,14 +292,15 @@
     │   │                          #     use-insight-feedback.ts (aprendizado do usuário com persistência e atualização otimista),
     │   │                          #     use-range-queries.test.tsx (cancelamento cooperativo via AbortSignal),
     │   │                          #     concurrent-queries.test.tsx (estabilidade sob alta concorrência)…
-    │   └── mutations/             #   useCreateExpense(), useDeleteInstallment()…
-    │                              #     (use-expense-mutations, use-card-mutations,
-    │                              #      use-budget-mutations, use-debt-mutations,
-    │                              #      use-category-mutations, use-income-mutations,
-    │                              #      use-recurrence-mutations — F32: grupo/recorrência,
-    │                              #      use-profile-mutations — atualização de perfil/nome)
+    │   ├── mutations/             #   useCreateExpense(), useDeleteInstallment()…
+    │   │                          #     (use-expense-mutations, use-card-mutations,
+    │   │                          #      use-budget-mutations, use-debt-mutations,
+    │   │                          #      use-category-mutations, use-income-mutations,
+    │   │                          #      use-recurrence-mutations — F32: grupo/recorrência,
+    │   │                          #      use-profile-mutations — atualização de perfil/nome)
     │   │                          #   optimistic-cache.ts (F30 — helpers de snapshot/
     │   │                          #     rollback e updaters das listas em cache)
+    │   └── demo-mode/             #   Fase 2 Tour: máquina de estados reativa da simulação (useDemoSession, demo-session-store, demo-storage)
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (use-auth,
     │                              #   use-highlight-target, use-pwa-install, use-app-update (In-App Updater),
@@ -360,7 +380,7 @@
 | `src/styles/` | Design tokens e estilos globais | Cores hard-coded em componente | `tokens.css` |
 | `public/pwa/` | Manifest, ícones, SW assets, offline | Código-fonte | `manifest.webmanifest` |
 | `supabase/migrations/` | Schema, RLS e funções/RPCs versionados (fonte do banco) | Dados sensíveis/segredos | `0003_functions.sql` |
-| `supabase/functions/` | Edge functions em runtime **Deno** (fora do bundle Vite; `_shared/` = motor puro compartilhado) | Segredos do servidor no corpo (só env da function); imports de `src/` | `quotes/index.ts` (F1.7); `_shared/http.ts` (CORS/erros); `_shared/asaas-plans.ts` (catálogo billing) |
+| `supabase/functions/` | Edge functions em runtime **Deno** (fora do bundle Vite; `_shared/` = motor puro compartilhado) | Segredos do servidor no corpo (só env da function); imports de `src/` | `quotes/index.ts` (F1.7); `support-notify/index.ts`; `asaas-webhook/index.ts`; `asaas-checkout/index.ts`; `_shared/http.ts` (CORS/erros); `_shared/telegram.ts`; `_shared/asaas-webhook-logic.ts` |
 | `docs/` | Documentação viva (governança em §7) | Arquivos soltos de outra natureza | `PWA_GUIDELINES.md` |
 
 ---
@@ -419,6 +439,11 @@ src/features/transactions/
 | Motor puro de gestos (axis-lock, thresholds, flick, resistência de borda) | `src/domain/gestures/` (ex.: `swipe.ts` — F20) |
 | Hook de navegação por gesto (swipe horizontal) | `src/hooks/use-swipe-navigation.ts` (F20) |
 | Script de manutenção/ETL fora do bundle (ex.: migração de dados legados) | `scripts/` (ver `docs/DATA_MIGRATION_GUIDE.md`) |
+| Diagnóstico pré-voo automatizado de prontidão operacional | `scripts/preflight-check.ts` (`npm run preflight`) |
+| Manual de operação do fundador / atendimento, faturamento e incidentes | `docs/FOUNDER_RUNBOOK.md` |
+| Chat nativo de suporte ao cliente e feedback com push no Telegram | `src/components/modules/support/` |
+| Barreira global de contenção de erros de renderização (App Error Boundary) | `src/components/layout/app-error-boundary.tsx` |
+| Repositório e persistência de tickets de suporte com rate limit | `src/data/repositories/support-tickets.ts` |
 
 ---
 

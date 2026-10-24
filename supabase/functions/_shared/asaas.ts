@@ -5,6 +5,12 @@
 
 import { ASAAS_PLAN_CATALOG } from "./asaas-plans.ts";
 
+declare const Deno: {
+  env?: {
+    get(key: string): string | undefined;
+  };
+} | undefined;
+
 export interface AsaasCustomerInput {
   name: string;
   email: string;
@@ -29,19 +35,33 @@ export interface AsaasHolderInfoInput {
   phone?: string;
 }
 
+function getEnv(key: string): string | undefined {
+  if (typeof Deno !== "undefined" && Deno.env?.get) {
+    return Deno.env.get(key);
+  }
+  if (typeof process !== "undefined" && process.env) {
+    return process.env[key];
+  }
+  return undefined;
+}
+
 export function getAsaasBaseUrl(): string {
-  const env = Deno.env.get("ASAAS_ENVIRONMENT");
+  const directUrl = getEnv("ASAAS_API_URL");
+  if (directUrl && directUrl.trim().length > 0) {
+    return directUrl.trim().replace(/\/+$/, "");
+  }
+  const env = getEnv("ASAAS_ENVIRONMENT");
   return env === "production"
     ? "https://api.asaas.com/v3"
     : "https://sandbox.asaas.com/api/v3";
 }
 
 export function getAsaasApiKey(): string {
-  const key = Deno.env.get("ASAAS_API_KEY");
-  if (!key) {
+  const key = getEnv("ASAAS_API_KEY");
+  if (!key || key.trim().length === 0) {
     throw new Error("Chave ASAAS_API_KEY não configurada no ambiente.");
   }
-  return key;
+  return key.trim();
 }
 
 async function asaasFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -126,8 +146,8 @@ export async function createAsaasCreditCardSubscription(params: {
   const cycle = planMeta.cycle;
   const description =
     params.plan === "annual"
-      ? "Plano Pro Anual - Guia Financeiro"
-      : "Plano Pro Mensal - Guia Financeiro";
+      ? "Áxis Finance — Plano Pro Anual"
+      : "Áxis Finance — Plano Pro Mensal";
 
   // Data de vencimento inicial: hoje (formato YYYY-MM-DD)
   const nextDueDate = new Date().toISOString().slice(0, 10);
@@ -198,6 +218,40 @@ export async function getAsaasPixQrCode(paymentId: string): Promise<{
     payload: string;
     expirationDate: string;
   }>(`/payments/${paymentId}/pixQrCode`);
+}
+
+/**
+ * Consulta os dados de uma cobrança existente no Asaas.
+ */
+export async function getAsaasPayment(paymentId: string): Promise<{
+  id: string;
+  status: string;
+  value: number;
+  dateCreated?: string;
+}> {
+  return asaasFetch<{
+    id: string;
+    status: string;
+    value: number;
+    dateCreated?: string;
+  }>(`/payments/${paymentId}`);
+}
+
+/**
+ * Regra pura para reaproveitamento de cobrança Pix pendente gerada há menos de 1 hora.
+ */
+export function shouldReusePendingPixCharge(params: {
+  paymentStatus: string;
+  paymentValue: number;
+  expectedValue: number;
+  createdAtMillis: number;
+  nowMillis?: number;
+}): boolean {
+  const now = params.nowMillis ?? Date.now();
+  const isPending = (params.paymentStatus || "").toUpperCase() === "PENDING";
+  const isSameValue = Math.abs(params.paymentValue - params.expectedValue) < 0.01;
+  const isRecent = now - params.createdAtMillis < 60 * 60 * 1000 && now >= params.createdAtMillis;
+  return isPending && isSameValue && isRecent;
 }
 
 /**

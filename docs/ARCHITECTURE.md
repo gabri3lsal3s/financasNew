@@ -143,6 +143,7 @@ O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma
     │   ├── savings/               #   F27: desafios de economia (média típica, corte discricionário)
     │   ├── reminders/             #   agregação de lembretes (conta/dívida) e preferências
     │   ├── accessibility/         #   F15: contraste AA (relativeLuminance/contrastRatio)
+    │   ├── demo-simulation/       #   Datasets sintéticos puros em memória, trilhas e passos do tour
     │   ├── projection/            #   gasto disponível, ritmo, fim de mês, pendências, reserva de emergência
     │   ├── search/                #   busca global: normalização, scoring, bônus de recência
     │   ├── gestures/              #   F20: swipe (axis-lock, thresholds); overscroll removido (F26, 2026-08-16)
@@ -166,7 +167,8 @@ O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma
     │
     ├── state/                     # CONTRATOS DE ESTADO
     │   ├── queries/               #   useExpenses({month}), useInvoices(cardId), …
-    │   └── mutations/             #   useCreateExpense(), useDeleteInstallment(), …
+    │   ├── mutations/             #   useCreateExpense(), useDeleteInstallment(), …
+    │   └── demo-mode/             #   Máquina de estados reativa da simulação (useDemoSession, localStorage)
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (useDebounce, useMedia, …)
     ├── services/                  # Apresentação + integrações
@@ -258,9 +260,57 @@ O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma
 - **Estado de tela** (wizard, modais, filtros): hooks locais de `features/`. **Sem** store global de dados de negócio — dados de negócio vivem no servidor, nunca em memória de cliente.
 - **Sessão expirada (401):** redirect para login **preservando a rota pretendida** (retorno pós-login); mensagem via gateway.
 
-### 5.4 Storage de arquivos (~~D11~~ — REMOVIDO DO ESCOPO)
+### 5.4 Arquitetura de Gestão de Contas, Autenticação Blindada e Ciclo de Vida do Usuário SaaS
+
+A plataforma implementa uma camada soberana de autenticação e governança de contas, garantindo proteção contra vazamentos de dados, controle integral pelo usuário e expurgo atômico sem falhas de integridade referencial:
+
+1. **Detecção Proativa de Anti-Enumeração no Cadastro:**
+   - Para impedir ataques de enumeração de e-mails, o Supabase Auth pode responder com status `200 OK` quando um endereço já cadastrado tenta novo registro, mas com a lista de identidades vazia (`user.identities: []`).
+   - O wrapper `signUpWithEmail()` ([`src/data/auth.ts`](../src/data/auth.ts)) analisa essa assinatura em tempo real e dispara `AppError("user-already-exists")`, acionando o gateway de erros para alertar amigavelmente o usuário sobre a conta preexistente e oferecendo links imediatos para login e redefinição de senha.
+2. **Onboarding Pós-Cadastro & Reenvio com Cooldown:**
+   - A tela de registro exibe um estado dedicado pós-cadastro (`RegisterSuccessCard`) com orientações para confirmação na Caixa de Entrada e spam.
+   - Na tela de login ([`src/features/auth/pages/login-page.tsx`](../src/features/auth/pages/login-page.tsx)), contas não confirmadas recebem banner com botão de reenvio de confirmação acompanhado de temporizador de proteção (*cooldown* de 60 segundos) contra rate-limiting.
+3. **Fluxo Dedicado de Recuperação de Senha:**
+   - Rota dedicada `/redefinir-senha` ([`src/features/auth/pages/reset-password-page.tsx`](../src/features/auth/pages/reset-password-page.tsx)) com verificação síncrona dos critérios de segurança (`checkPasswordRequirements`), feedback visual progressivo e atualização criptográfica via `updateUserPassword()`.
+4. **Soberania do Usuário na Aba "Minha Conta" (`AccountTab`):**
+   - Integrada como a primeira aba de configurações em `/configuracoes?aba=account` ([`src/features/settings/components/tabs/account-tab.tsx`](../src/features/settings/components/tabs/account-tab.tsx)).
+   - **Dados Pessoais:** Atualização de nome de exibição sincronizada com `public.profiles` via TanStack Query.
+   - **Segurança & Senha:** Alteração de senha em sessão ativa com dupla confirmação e higienização pós-submissão.
+   - **Metadados SaaS:** Exibição do identificador único da conta (UUID mascarado com botão de cópia), data de adesão e status do plano ativo.
+5. **Exclusão Definitiva de Conta e Expurgo Topológico Reverso:**
+   - O usuário pode solicitar a autoexclusão definitiva no card **Zona de Perigo** mediante digitação rigorosa da frase de confirmação `"EXCLUIR MINHA CONTA"`.
+   - A operação aciona a RPC transacional `public.delete_own_account()` ([`supabase/migrations/20260101000059_delete_account_rpcs.sql`](../supabase/migrations/20260101000059_delete_account_rpcs.sql)), configurada com `SECURITY DEFINER` e `set search_path = public, pg_temp;`.
+   - **Ordem Topológica Reversa:** O banco purga dependências em cascata reversa:
+     1. Investimentos e Portfólio (`portfolio_transactions`, `portfolio_contributions`, `portfolio_dividends`, `allocation_targets`, `asset_prices`, `cash_checkpoints`, `portfolio_assets`);
+     2. Cartões, Lançamentos e Dívidas (`card_competence_overrides`, `card_payments`, `recurrence_skips`, `expenses`, `incomes`, `recurrences`, `debts`, `loans`, `budgets`, `income_goals`, `credit_cards`, `categories`);
+     3. Extratos e Lembretes (`bank_statement_import_items`, `bank_statement_import_batches`, `reminder_states`, `insight_feedback`);
+     4. Preferências, Módulos e Assinatura (`user_preferences`, `user_feature_overrides`, `user_module_permissions`, `user_subscriptions`, `audit_events`);
+     5. Raiz: `public.profiles` e `auth.users`.
+   - Essa ordem elimina erros de violação de chave estrangeira (`foreign_key_violation`), remove bloqueios ao recadastrar o mesmo e-mail e executa a limpeza profunda do estado local do app com `resetAppState(queryClient, null)` e `signOut()`.
+6. **Exclusão Administrativa de Contas no Painel SaaS:**
+   - Superadministradores contam com a RPC `public.admin_delete_user(target_user_id uuid)` no componente `UserEditDialog`, permitindo expurgo completo de contas de teste com salvaguarda estrita contra autoexclusão no painel (`target_user_id !== auth.uid()`).
+7. **Templates de E-mail Transacionais & Conexão SMTP:**
+   - 4 templates HTML canônicos com design escuro premium em [`docs/EMAIL_TEMPLATES.md`](EMAIL_TEMPLATES.md), com parametrização para provedores SMTP (Resend e Brevo) para superar o limite de 30 envios/hora e garantir autenticação SPF/DKIM/DMARC.
+
+### 5.5 Storage de arquivos (~~D11~~ — REMOVIDO DO ESCOPO)
 
 > **Decisão do usuário (2026-08-15):** storage de arquivos (Cloudflare R2) foi **removido do escopo** — nenhuma tela usa upload e anexos não participam dos cálculos financeiros. O primitivo `Dropzone` (`components/ui`) permanece disponível caso a feature seja retomada.
+
+### 5.6 Arquitetura do Modo de Simulação em Memória & Tour Guiado Interativo (Zero Injeção de Banco)
+
+A plataforma adota arquitetura de simulação estritamente em memória (*in-memory synthetic datasets*) para acolhimento e exploração demonstrativa, eliminando gravações físicas de dados falsos com tag `[Exemplo]` no banco de dados Supabase:
+
+1. **Datasets Dinâmicos Puros (`domain/demo-simulation/`):**
+   - Funções puras `generateMockFinances(referenceMonth)` e `generateMockInvestments(referenceMonth)` geram despesas, receitas, cartões com faturas abertas e compras parceladas, orçamentos, ativos balanceados por classe (Renda Fixa, Ações Brasil, FIIs, Cripto), metas e snapshots patrimoniais com datas ancoradas dinamicamente no mês de referência.
+   - Zero acoplamento com banco de dados, APIs de rede ou browser storage.
+2. **Máquina de Estados Global Reativa (`state/demo-mode/`):**
+   - Store singleton em memória (`demo-session-store.ts`) consumido de forma concorrente e segura pelo hook `useDemoSession()` via `useSyncExternalStore` (React 18+), dispensando wrappers contextuais redundantes.
+   - Controle atômico de ciclo de vida (`isDemoActive`, `activeTrack`, `currentStepIndex`, `startDemo`, `endDemo`, `goToNextStep`, `goToPrevStep`).
+   - Persistência leve em `localStorage` restrita a preferências de onboarding concluído (`demo-storage.ts`).
+3. **Interceptação Transparente no TanStack Query (`state/queries/use-simulated-queries.ts`):**
+   - Os hooks canônicos do sistema (`useExpenses`, `useIncomes`, `useCategories`, `useCreditCards`, `useBudgets`, `usePortfolioAssets`, etc.) avaliam `isDemoActive`.
+   - Quando `isDemoActive === true`: a consulta real ao Supabase é desativada (`enabled: ... && !isDemoActive`) e o resultado sintético em memória é retornado instantaneamente com `makeSimulatedQueryResult(mockData)`, garantindo `isLoading: false, isFetching: false, isError: false`.
+   - Quando `isDemoActive === false`: as queries continuam operando de forma 100% transparente sobre os repositórios reais do banco de dados.
 
 ---
 
@@ -344,7 +394,7 @@ O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma
 | D16 — Gateway de Acesso Unificado & Whitelist Modular na Inicialização | Integração direta do `getMySubscription` em paralelo no hook de roteamento `useUserAccess` (sem waterfalls), modelo estrito de Whitelist em `get_user_module_access` no Postgres (Migration 0046) e em `hasFeature`/`usePermission`, bloqueando módulos não concedidos e garantindo carregamento fail-closed sem vazamento de rotas ou flashes | Blindagem completa de rotas, eliminação de vazamento de módulos restritos e consistência reativa no boot da aplicação |
 | D17 — Code Splitting Global & Lazy Loading de Modais Executivos | `src/app/router.tsx` com `lazy()` em todas as rotas públicas, de autenticação e checkout de assinatura com fallback suave; `lazy()` sob demanda para relatórios complexos (`WealthTearSheetModal`, `FinancialCloseReportModal`) e assistente de restauração (`RestoreWizardDialog`) | Bundles iniciais enxutos (< 500 kB), eliminação de payloads ociosos no boot e carregamento assíncrono transparente |
 | D18 — Parametrização de Chaves por Usuário e Fail-Closed no Cold Start | Chaves de query parametrizadas no formato `[...KEY, userId]`, guarda `enabled: Boolean(userId)` impedindo chamadas com `auth.uid()` nulo, invalidação atômica em `SIGNED_IN` no `AuthQuerySync` e `hasFeature` estritamente Fail-Closed (retornando `false` sem assinatura/autenticação confirmada) | Eliminação definitiva de vazamento de módulos restritos no boot, ausência de cache de dados anônimos e transição suave sem flashes visuais |
-| D19 — Segurança Integral, RLS Multi-Tenant e Privacidade Mobile | 100% das 34 tabelas com RLS ativo por auth.uid(), 28 RPCs transacionais blindadas com search_path = public, pg_temp, is_current_user_active() e can_current_user_write_module() (Migration 0049), audit_events estritamente imutável, sanitização de borda Zod, neutralização de vazamento SQL no gateway de erros, Android FLAG_SECURE nativo e redaction automático de PII (CPF, cartões, senhas) no cliente Sentry | Defesa em profundidade estrita e proteção integral de dados sensíveis |
+| D19 — Segurança Integral, RLS Multi-Tenant e Privacidade Mobile | 100% das 35 tabelas com RLS ativo por auth.uid(), 28 RPCs transacionais blindadas com search_path = public, pg_temp, is_current_user_active() e can_current_user_write_module() (Migration 0049), audit_events estritamente imutável, sanitização de borda Zod, neutralização de vazamento SQL no gateway de erros, Android FLAG_SECURE nativo e redaction automático de PII (CPF, cartões, senhas) no cliente Sentry | Defesa em profundidade estrita e proteção integral de dados sensíveis |
 | D20 — Assistente Passivo Híbrido & Notificações Bancárias | Arquitetura híbrida Android + PWA: `BankNotificationListenerService` nativo (Android), `QuickExpenseTileService` (Quick Settings Tile), `useSuggestionsStore` com fusão temporal e deduplicação fuzzy, Web Share Target (`/share-target`) no manifest PWA, diálogo de fallback universal (`PasteReceiptDialog`) e motor puro de parsing em centavos (`bank-parser.ts`, `category-inference.ts`, `preferences.ts`) | Captura passiva e sem fricção de gastos bancários, Pix, cartões e aportes em corretoras |
 
 ---
@@ -364,9 +414,9 @@ O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma
 
 A governança de segurança do aplicativo segue o princípio de **Defesa em Profundidade** (*Defense in Depth*) e **Isolamento Lógico Estrito Multi-Tenant** fundamentado na identidade criptográfica do Supabase Auth (`auth.uid()`).
 
-### 12.1 Matriz de RLS e Multi-Tenancy (34 Tabelas)
-1. **Cobertura Universal:** 100% das 34 tabelas do banco de dados possuem `ALTER TABLE ... ENABLE ROW LEVEL SECURITY;`.
-2. **Propriedade e Isolamento com Caching Escalar (InitPlan):** Todas as tabelas de domínio (`expenses`, `incomes`, `credit_cards`, `debts`, `budgets`, `portfolio_assets`, `portfolio_transactions`, `recurrences`, etc.) filtram exclusivamente por `(select auth.uid()) = user_id` (Migration `0050_rls_subplan_caching_performance.sql`).
+### 12.1 Matriz de RLS e Multi-Tenancy (35 Tabelas)
+1. **Cobertura Universal:** 100% das 35 tabelas do banco de dados possuem `ALTER TABLE ... ENABLE ROW LEVEL SECURITY;`.
+2. **Propriedade e Isolamento com Caching Escalar (InitPlan):** Todas as tabelas de domínio (`expenses`, `incomes`, `credit_cards`, `debts`, `budgets`, `portfolio_assets`, `portfolio_transactions`, `recurrences`, `support_tickets`, etc.) filtram exclusivamente por `(select auth.uid()) = user_id` (Migration `0050_rls_subplan_caching_performance.sql` e `0060_support_tickets.sql`).
 3. **Imutabilidade de Trilha de Auditoria (D2):** A tabela `audit_events` possui apenas políticas de `INSERT` e `SELECT` para o usuário proprietário e administradores. Mutações (`UPDATE`) e exclusões (`DELETE`) são terminantemente bloqueadas via RLS no banco.
 4. **Catálogo Público de Planos e Features:** A tabela `plans` e a tabela `system_features` permitem leitura aos usuários autenticados, enquanto mutações são restritas à verificação `is_admin()`.
 5. **Otimização de RLS Subplan Caching (`InitPlan`):** Chamadas diretas como `auth.uid() = user_id` são tratadas como voláteis pelo planejador do PostgreSQL, forçando a re-execução da função para cada linha escaneada no heap. Ao utilizar a subquery escalar `(select auth.uid())`, o PostgreSQL a promove a um nó `InitPlan`, avaliado exatamente uma vez no início da consulta e reutilizado em memória para todas as linhas, gerando uma redução de até 90% no consumo de CPU sob alta concorrência.
@@ -395,6 +445,29 @@ A governança de segurança do aplicativo segue o princípio de **Defesa em Prof
    - **Resiliência no Cold Start:** No dispositivo, o valor é espelhado em `financas_active_privacy_shield_enabled` no `localStorage`. No boot nativo, `syncPrivacyShield()` despacha ativamente `enablePrivacyShield()` ou `disablePrivacyShield()`, sem reter bloqueios indevidos de tela caso o usuário tenha desabilitado o escudo.
 2. **Redaction Automático de PII no Sentry:** O cliente de observabilidade [`src/services/observability.ts`](../src/services/observability.ts) aplica sanitização recursiva (`scrubSensitiveData`) e gancho `beforeSend`, redigindo chaves confidenciais (`password`, `senha`, `secret`, `token`, `account_number`) e mascarando padrões de CPF (`[REDACTED_CPF]`) e cartões de crédito (`[REDACTED_CARD]`) antes de transmitir qualquer evento à telemetria.
 
+### 12.5 Exclusão Definitiva de Conta e Direito ao Esquecimento (LGPD Art. 18, VI)
+1. **Procedimento Atômico no PostgreSQL (`delete_current_user_account`):** Implementado na migração `20261021000001_delete_user_account_rpc.sql` sob `SECURITY DEFINER` com `SET search_path = public, pg_temp;`. A função executa a purga de dados em ordem topológica reversa estrita através das 34 tabelas dependentes (portfólio, transações, parcelamentos, dívidas, cartões, extratos, lembretes, metas e perfis) e finaliza com `delete from auth.users where id = v_user_id;`, liberando imediatamente o endereço de e-mail e as credenciais para eventuais novos cadastros.
+2. **Dupla Confirmação Rigorosa na UI:** Disponibilizado na aba de Segurança (`SecurityTab`) e na aba Minha Conta (`AccountTab`) com modal de confirmação exigindo a digitação explícita da palavra `"EXCLUIR"` (ou frase de confirmação), impedindo acionamentos acidentais.
+3. **Cancelamento Preventivo no Gateway e Limpeza Total do Cliente:** Antes de acionar a RPC no banco, o fluxo tenta preventivamente o cancelamento da assinatura ativa no gateway (Asaas/Stripe via `cancelSubscription()`). Após a confirmação do expurgo no banco, o cliente executa `resetAppState(queryClient, null)`, purga integralmente o `localStorage` e o `sessionStorage`, efetua o logout no Supabase Auth e redireciona a sessão para a tela de login (`/entrar`).
+
+### 12.6 Blindagem Regulatória CVM no Rebalanceamento de Carteira e Relatórios (Resoluções CVM nº 19 e nº 20/2021)
+1. **Natureza Estritamente Instrumental e Matemática:** O motor de sugestão de aportes e rebalanceamento opera exclusivamente como ferramenta tecnológica de consolidação contábil e simulação numérica parametrizada pelas metas informadas pelo próprio titular.
+2. **Isenção CVM Canônica (`src/lib/institutional.ts`):** Minutas institucionais padronizadas (`OFFICIAL_CVM_DISCLAIMER` e `OFFICIAL_WEALTH_TEAR_SHEET_DISCLAIMER`) integradas em todos os pontos de saída de patrimônio:
+   - Aba de Aportes (`AporteTab`);
+   - Relatório Executivo de Carteira (`PortfolioExecutiveReport`);
+   - Balanço Patrimonial Consolidado (`ConsolidatedWealthModal`);
+   - Painel de Liberdade e Proventos (`DividendFreedomModal`);
+   - Dossiê Executivo de Patrimônio (`WealthTearSheetModal`).
+3. **Salvaguardas Regulatórias:** Ressalva expressa de ausência de recomendação, consultoria de valores mobiliários ou garantia de rentabilidade futura, vedando terminantemente vocabulário de indicação ativa de compra ou venda de ações/FIIs.
+
+### 12.7 Responsabilidade Tributária e Isenção Fiscal (CFC e Receita Federal do Brasil)
+1. **Caráter Estritamente Informativo e Auxiliar:** Os motores de apuração de DARF mensal, controle da faixa de isenção de R$ 20.000 em ações e geradores de texto para as Fichas de Bens e Direitos e Rendimentos Isentos do programa IRPF constituem ferramentas de facilitação matemática baseadas exclusivamente nos lançamentos do usuário.
+2. **Minutas Padronizadas de Isenção (`src/lib/institutional.ts`):** Centralização dos avisos oficiais (`OFFICIAL_TAX_DISCLAIMER` e `OFFICIAL_TAX_FACILITATOR_DISCLAIMER`):
+   - **Monitor Mensal de DARF (`PortfolioDarfMonitor`):** Alerta permanente de responsabilidade fiscal reforçando que o demonstrativo não substitui os serviços de um contador habilitado perante o Conselho Federal de Contabilidade (CFC) nem a conferência com os informes de rendimentos oficiais e notas de corretagem emitidas pelas instituições custodiantes.
+   - **Dossiê Fiscal & Facilitador de IRPF (`TaxFacilitatorModal`):** Ressalva informativa expressa no banner de tela e no rodapé oficial do documento (`ReportFooter`), frisando a responsabilidade indelegável do contribuinte pela entrega tempestiva da Declaração de Ajuste Anual à Receita Federal do Brasil (RFB).
+   - **Aba de Relatórios Tributários (`TaxTab`):** Card permanente de contextualização sobre a natureza auxiliar da inteligência fiscal do sistema.
+   - **Caderno de Relatórios em Excel (`src/services/excel-export.ts`):** Inclusão de seções permanentes de Aviso Legal e Responsabilidade Tributária (CFC / RFB / CVM) com estilo formatado (`Disclaimer` com WrapText e MergeAcross) no rodapé do Resumo Executivo e na aba de apuração de Resgates e Vendas tributáveis.
+
 ---
 
 ## 13. ARQUITETURA DO ASSISTENTE PASSIVO HÍBRIDO & NOTIFICAÇÕES (D20)
@@ -414,6 +487,10 @@ O Assistente Passivo opera em modelo híbrido entre o cliente Android nativo e o
    - `TileService` da barra de configurações rápidas do Android;
    - Exibe bloco `"Lançar Despesa"`;
    - Ao ser acionado, desbloqueia a tela e redireciona diretamente para a tela de transações com wizard de despesa aberto (`/transacoes?novo=despesa`).
+
+4. **Prominent Disclosure & Consentimento Específico (Google Play & Contrato 4):**
+   - Antes de despachar o usuário para a Activity de concessão de permissão do sistema Android (`BIND_NOTIFICATION_LISTENER_SERVICE`), a aplicação exibe um diálogo de Divulgação Destacada (*Prominent Disclosure Modal*) e um banner permanente na aba de Notificações (`NotificationsTab`);
+   - Detalha a finalidade estrita de identificação de compras/Pix, o processamento 100% local no dispositivo (*On-Device Processing*), o descarte imediato de senhas/2FA e a revogabilidade total a qualquer momento, atendendo com rigor às Políticas de Privacidade da Google Play Store e aos termos do Contrato 4.
 
 ### 13.2 Camada Web e PWA (`src/features/transactions/pages/`, `src/components/modules/`)
 1. **Web Share Target (`/share-target` — `ShareTargetPage`)**:

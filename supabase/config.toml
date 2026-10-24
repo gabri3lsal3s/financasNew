@@ -401,12 +401,16 @@ verify_jwt = false
 [functions.asaas-webhook]
 verify_jwt = false
 
-# Checkout/manage validam JWT no handler com SUPABASE_ANON_KEY (fail-closed).
+# Checkout valida JWT no handler via userClient.auth.getUser() (fail-closed + CORS).
 [functions.asaas-checkout]
-verify_jwt = true
+verify_jwt = false
 
 [functions.asaas-manage]
 verify_jwt = true
+
+# Notificação de suporte (Telegram): acionada via trigger/webhook ou sessão autenticada
+[functions.support-notify]
+verify_jwt = false
 
 [analytics]
 enabled = true

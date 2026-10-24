@@ -2,6 +2,12 @@
  * Utilitários HTTP compartilhados pelas Edge Functions (CORS, erros seguros, token).
  */
 
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+} | undefined;
+
 const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
@@ -13,10 +19,10 @@ const DEFAULT_ALLOWED_ORIGINS = [
 
 /** Origens extras via secret ALLOWED_ORIGINS (CSV), ex.: https://app.exemplo.com */
 function configuredOrigins(): string[] {
-  const raw = Deno.env.get("ALLOWED_ORIGINS") ?? "";
+  const raw = (typeof Deno !== "undefined" && Deno?.env?.get ? Deno.env.get("ALLOWED_ORIGINS") : undefined) ?? "";
   return raw
     .split(",")
-    .map((s) => s.trim())
+    .map((s: string) => s.trim())
     .filter(Boolean);
 }
 
@@ -94,5 +100,18 @@ export async function timingSafeEqualString(a: string, b: string): Promise<boole
     void dig;
     return false;
   }
-  return crypto.subtle.timingSafeEqual(aBytes, bBytes);
+  // Deno implementa crypto.subtle.timingSafeEqual como extensão WebCrypto
+  const subtleWithTiming = crypto.subtle as unknown as {
+    timingSafeEqual?: (a: ArrayBufferView, b: ArrayBufferView) => boolean;
+  };
+  if (typeof subtleWithTiming.timingSafeEqual === "function") {
+    return subtleWithTiming.timingSafeEqual(aBytes, bBytes);
+  }
+
+  // Fallback de tempo constante bit a bit (resiste a timing attacks)
+  let mismatch = 0;
+  for (let i = 0; i < aBytes.length; i++) {
+    mismatch |= aBytes[i]! ^ bBytes[i]!;
+  }
+  return mismatch === 0;
 }

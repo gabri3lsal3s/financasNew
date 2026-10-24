@@ -136,13 +136,13 @@ A plataforma utiliza unicamente armazenamento local (`localStorage` e cookies t�
 Estabelecer a identidade jurídica oficial do fornecedor (Decreto 7.962/2013) e publicar as páginas legais completas e indexáveis, acessíveis a qualquer usuário e robô de indexação de lojas de aplicativos sem exigir autenticação.
 
 #### Checklist de Tarefas da Fase 1
-- [ ] **Tarefa 1.1:** Criar `src/lib/institutional.ts` com a interface `InstitutionalConfig` e constante `INSTITUTIONAL_CONFIG` suportando variáveis de ambiente (`VITE_APP_COMPANY_NAME`, `VITE_APP_CNPJ`, `VITE_APP_ADDRESS`, `VITE_APP_DPO_EMAIL`, `VITE_APP_SUPPORT_EMAIL`) com fallbacks seguros.
-- [ ] **Tarefa 1.2:** Criar `src/features/legal/components/legal-page-shell.tsx` com layout acessível (skip-link, navegação por teclado, cabeçalho institucional, seletor de abas Termos/Privacidade, alternância de tema e rodapé completo).
-- [ ] **Tarefa 1.3:** Criar `src/features/legal/pages/terms-page.tsx` materializando o **Contrato 1 (Termos de Serviço SaaS)** na íntegra.
-- [ ] **Tarefa 1.4:** Criar `src/features/legal/pages/privacy-page.tsx` materializando o **Contrato 2 (Política de Privacidade LGPD)**, incluindo a seção de autoatendimento e contato do DPO.
-- [ ] **Tarefa 1.5:** Criar os barris `src/features/legal/components/index.ts`, `src/features/legal/pages/index.ts` e `src/features/legal/index.ts`.
-- [ ] **Tarefa 1.6:** Registrar as rotas públicas desautenticadas em `src/app/routes.tsx` e `src/app/router.tsx` (`/termos`, `/termos-de-uso`, `/privacidade`, `/politica-de-privacidade`).
-- [ ] **Tarefa 1.7:** Atualizar o rodapé oficial da Landing Page ([`landing-footer.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/landing/components/landing-footer.tsx)) exibindo Razão Social, CNPJ, endereço físico, e-mail de suporte, contato do DPO e links diretos para `/termos` e `/privacidade`.
+- [x] **Tarefa 1.1:** Criar `src/lib/institutional.ts` com a interface `InstitutionalConfig` e constante `INSTITUTIONAL_CONFIG` suportando variáveis de ambiente (`VITE_APP_COMPANY_NAME`, `VITE_APP_CNPJ`, `VITE_APP_ADDRESS`, `VITE_APP_DPO_EMAIL`, `VITE_APP_SUPPORT_EMAIL`) com fallbacks seguros.
+- [x] **Tarefa 1.2:** Criar `src/features/legal/components/legal-page-shell.tsx` com layout acessível (skip-link, navegação por teclado, cabeçalho institucional, seletor de abas Termos/Privacidade, alternância de tema e rodapé completo).
+- [x] **Tarefa 1.3:** Criar `src/features/legal/pages/terms-page.tsx` materializando o **Contrato 1 (Termos de Serviço SaaS)** na íntegra.
+- [x] **Tarefa 1.4:** Criar `src/features/legal/pages/privacy-page.tsx` materializando o **Contrato 2 (Política de Privacidade LGPD)**, incluindo a seção de autoatendimento e contato do DPO.
+- [x] **Tarefa 1.5:** Criar os barris `src/features/legal/components/index.ts`, `src/features/legal/pages/index.ts` e `src/features/legal/index.ts`.
+- [x] **Tarefa 1.6:** Registrar as rotas públicas desautenticadas em `src/app/routes.tsx` e `src/app/router.tsx` (`/termos`, `/termos-de-uso`, `/privacidade`, `/politica-de-privacidade`).
+- [x] **Tarefa 1.7:** Atualizar o rodapé oficial da Landing Page ([`landing-footer.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/landing/components/landing-footer.tsx)) exibindo Razão Social, CNPJ, endereço físico, e-mail de suporte, contato do DPO e links diretos para `/termos` e `/privacidade`.
 
 #### Portão de Qualidade da Fase 1
 1. **Testes:** Execução de testes unitários `terms-page.test.tsx` e `privacy-page.test.tsx`.
@@ -159,8 +159,8 @@ Estabelecer a identidade jurídica oficial do fornecedor (Decreto 7.962/2013) e 
 Garantir a validade jurídica dos contratos eletrônicos coletando consentimento expresso, livre e informado no momento da criação de conta e assegurando transparência no checkout conforme o Código de Defesa do Consumidor e o Decreto do E-commerce.
 
 #### Checklist de Tarefas da Fase 2
-- [ ] **Tarefa 2.1:** Modificar [`register-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/auth/pages/register-page.tsx) adicionando estado `acceptedTerms` e checkbox customizado com o primitivo `Checkbox`: *"Li e concordo com os [Termos de Uso](/termos) e a [Política de Privacidade](/privacidade)."*, bloqueando o envio enquanto desmarcado.
-- [ ] **Tarefa 2.2:** Modificar [`subscription-checkout-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/subscription/pages/subscription-checkout-page.tsx) tornando os links para Termos e Privacidade clicáveis e adicionando a garantia incondicional de 7 dias com estorno integral (CDC Art. 49).
+- [x] **Tarefa 2.1:** Modificar [`register-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/auth/pages/register-page.tsx) adicionando estado `acceptedTerms` e checkbox customizado com o primitivo `Checkbox`: *"Li e concordo com os [Termos de Uso](/termos) e a [Política de Privacidade](/privacidade)."*, bloqueando o envio enquanto desmarcado.
+- [x] **Tarefa 2.2:** Modificar [`subscription-checkout-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/subscription/pages/subscription-checkout-page.tsx) tornando os links para Termos e Privacidade clicáveis e adicionando a garantia incondicional de 7 dias com estorno integral (CDC Art. 49).
 
 #### Portão de Qualidade da Fase 2
 1. **Testes:** Atualizar e rodar `register-page.test.tsx` e `subscription-checkout-page.test.tsx`.
@@ -177,9 +177,9 @@ Garantir a validade jurídica dos contratos eletrônicos coletando consentimento
 Implementar o fluxo completo de autoatendimento para que o titular possa encerrar sua conta e purgar todos os seus dados pessoais e financeiros de forma transacional e definitiva, atendendo à LGPD e às diretrizes obrigatórias da Google Play Store e Apple App Store.
 
 #### Checklist de Tarefas da Fase 3
-- [ ] **Tarefa 3.1:** Criar migração SQL `supabase/migrations/20261021000001_delete_user_account_rpc.sql` com procedimento `public.delete_current_user_account()` realizando expurgo seguro em cascata nas 34 tabelas e em `auth.users`.
-- [ ] **Tarefa 3.2:** Atualizar [`src/data/rpc.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/data/rpc.ts) exportando o método tipado `deleteCurrentUserAccount(): Promise<void>`.
-- [ ] **Tarefa 3.3:** Modificar [`security-tab.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/settings/components/tabs/security-tab.tsx) adicionando a seção "Zona de Perigo / Exclusão de Conta (LGPD)", modal de dupla confirmação com digitação da palavra `"EXCLUIR"`, cancelamento preventivo no gateway Asaas/Stripe, limpeza de cache, expurgo de storage e logout seguro.
+- [x] **Tarefa 3.1:** Criar migração SQL `supabase/migrations/20261021000001_delete_user_account_rpc.sql` com procedimento `public.delete_current_user_account()` realizando expurgo seguro em cascata nas 34 tabelas e em `auth.users`.
+- [x] **Tarefa 3.2:** Atualizar [`src/data/rpc.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/data/rpc.ts) exportando o método tipado `deleteCurrentUserAccount(): Promise<void>`.
+- [x] **Tarefa 3.3:** Modificar [`security-tab.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/settings/components/tabs/security-tab.tsx) adicionando a seção "Zona de Perigo / Exclusão de Conta (LGPD)", modal de dupla confirmação com digitação da palavra `"EXCLUIR"`, cancelamento preventivo no gateway Asaas/Stripe, limpeza de cache, expurgo de storage e logout seguro.
 
 #### Portão de Qualidade da Fase 3
 1. **Testes:** Criar e executar teste unitário em `security-tab.test.tsx` validando a trava de digitação da palavra "EXCLUIR".
@@ -196,8 +196,8 @@ Implementar o fluxo completo de autoatendimento para que o titular possa encerra
 Afastar qualquer caracterização de prestação não autorizada de consultoria ou análise de valores mobiliários (Resoluções CVM nº 19 e 20/2021) na aba de sugestão de aportes e relatórios patrimoniais.
 
 #### Checklist de Tarefas da Fase 4
-- [ ] **Tarefa 4.1:** Modificar a aba de Aportes ([`aporte-tab.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/investments/pages/aporte-tab.tsx)) inserindo alerta permanente de conformidade com o **Contrato 5 (Termo de Isenção CVM)**, frisando o cálculo estritamente matemático baseado nas metas do próprio titular.
-- [ ] **Tarefa 4.2:** Padronizar os disclaimers existentes em relatórios impressos e modais executivos (`WealthTearSheetModal`, `ConsolidatedWealthModal`, `DividendFreedomModal`) alinhando-os à minuta oficial.
+- [x] **Tarefa 4.1:** Modificar a aba de Aportes ([`aporte-tab.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/investments/pages/aporte-tab.tsx)) inserindo alerta permanente de conformidade com o **Contrato 5 (Termo de Isenção CVM)**, frisando o cálculo estritamente matemático baseado nas metas do próprio titular.
+- [x] **Tarefa 4.2:** Padronizar os disclaimers existentes em relatórios impressos e modais executivos (`WealthTearSheetModal`, `ConsolidatedWealthModal`, `DividendFreedomModal`) alinhando-os à minuta oficial.
 
 #### Portão de Qualidade da Fase 4
 1. **Testes:** Executar testes unitários do módulo de investimentos conferindo a presença do texto regulatório CVM.
@@ -214,8 +214,8 @@ Afastar qualquer caracterização de prestação não autorizada de consultoria 
 Proteger a plataforma contra litígios por autuações fiscais ou malha fina, delimitando que o radar fiscal de ganho de capital em ações/FIIs e investimentos no exterior (Lei 14.754/2023) tem caráter puramente auxiliar e estimativo.
 
 #### Checklist de Tarefas da Fase 5
-- [ ] **Tarefa 5.1:** Modificar as visualizações do Radar Fiscal de DARF e relatórios tributários inserindo o disclaimer contábil/fiscal de que o cálculo é estimativo e não substitui contador habilitado nem a Declaração de Ajuste Anual da Receita Federal.
-- [ ] **Tarefa 5.2:** Adicionar a mesma ressalva no dossiê de exportação executiva em planilha Excel (.xlsx).
+- [x] **Tarefa 5.1:** Modificar as visualizações do Radar Fiscal de DARF e relatórios tributários inserindo o disclaimer contábil/fiscal de que o cálculo é estimativo e não substitui contador habilitado nem a Declaração de Ajuste Anual da Receita Federal.
+- [x] **Tarefa 5.2:** Adicionar a mesma ressalva no dossiê de exportação executiva em planilha Excel (.xlsx).
 
 #### Portão de Qualidade da Fase 5
 1. **Testes:** Executar testes unitários de relatórios e exportação.
@@ -232,8 +232,8 @@ Proteger a plataforma contra litígios por autuações fiscais ou malha fina, de
 Garantir aprovação sem atritos nas políticas de Serviços Financeiros e Notificações da Google Play Store e Apple App Store, formalizando o aviso prévio de captura bancária e a separação de builds.
 
 #### Checklist de Tarefas da Fase 6
-- [ ] **Tarefa 6.1:** Atualizar a aba de Notificações ([`notifications-tab.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/settings/components/tabs/notifications-tab.tsx)) inserindo o **Prominent Disclosure (Contrato 4)** antes da solicitação da permissão nativa Android, frisando processamento 100% no dispositivo.
-- [ ] **Tarefa 6.2:** Atualizar a documentação de deploy e compilação nativa ([`docs/DEPLOYMENT.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/DEPLOYMENT.md) e [`docs/NATIVE_DISTRIBUTION_GUIDE.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/NATIVE_DISTRIBUTION_GUIDE.md)) registrando a separação de builds: distribuição direta (com auto-atualizador de APK) vs Google Play Store (sem permissão `REQUEST_INSTALL_PACKAGES`).
+- [x] **Tarefa 6.1:** Atualizar a aba de Notificações ([`notifications-tab.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/settings/components/tabs/notifications-tab.tsx)) inserindo o **Prominent Disclosure (Contrato 4)** antes da solicitação da permissão nativa Android, frisando processamento 100% no dispositivo.
+- [x] **Tarefa 6.2:** Atualizar a documentação de deploy e compilação nativa ([`docs/DEPLOYMENT.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/DEPLOYMENT.md) e [`docs/NATIVE_DISTRIBUTION_GUIDE.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/NATIVE_DISTRIBUTION_GUIDE.md)) registrando a separação de builds: distribuição direta (com auto-atualizador de APK) vs Google Play Store (sem permissão `REQUEST_INSTALL_PACKAGES`).
 
 #### Portão de Qualidade da Fase 6
 1. **Testes:** Suíte de testes completa verde (`npm run test`), typecheck sem erros (`npm run typecheck`), lint estrito sem avisos (`npm run lint`).

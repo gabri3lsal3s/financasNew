@@ -1,9 +1,26 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TransactionListPage } from "./transaction-list-page";
 
 const mockDownloadCsv = vi.fn();
+const mockStartDemo = vi.fn();
+const mockSetStepIndex = vi.fn();
+
+const defaultExpenses = [
+  {
+    id: "e1",
+    value: 1500,
+    date: "2026-08-13",
+    description: "Aluguel",
+    installments_total: 1,
+    installment_number: 1,
+  },
+];
+const defaultIncomes = [{ id: "i1", value: 3500, date: "2026-08-05", description: "Salário" }];
+let expensesMock = [...defaultExpenses];
+let incomesMock = [...defaultIncomes];
+
 vi.mock("@/services/export-actions", () => ({
   downloadCsv: (...args: unknown[]) => mockDownloadCsv(...args),
   shareText: vi.fn(),
@@ -30,28 +47,21 @@ vi.mock("@/state", () => ({
     refetch: vi.fn(),
   }),
   useExpenses: () => ({
-    data: [
-      {
-        id: "e1",
-        value: 1500,
-        date: "2026-08-13",
-        description: "Aluguel",
-        installments_total: 1,
-        installment_number: 1,
-      },
-    ],
+    data: expensesMock,
     isLoading: false,
     isError: false,
     error: null,
     refetch: vi.fn(),
   }),
   useIncomes: () => ({
-    data: [{ id: "i1", value: 3500, date: "2026-08-05", description: "Salário" }],
+    data: incomesMock,
     isLoading: false,
     isError: false,
     error: null,
     refetch: vi.fn(),
   }),
+  startDemo: (...args: unknown[]) => mockStartDemo(...args),
+  setStepIndex: (...args: unknown[]) => mockSetStepIndex(...args),
   useCreditCards: () => ({ data: [], isLoading: false, error: null }),
   useRecurrences: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useDeleteExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -68,6 +78,11 @@ vi.mock("@/state", () => ({
 }));
 
 describe("TransactionListPage — listagem por mês", () => {
+  beforeEach(() => {
+    expensesMock = [...defaultExpenses];
+    incomesMock = [...defaultIncomes];
+    vi.clearAllMocks();
+  });
   it("exibe receitas e despesas do mês com valores formatados", () => {
     render(<TransactionListPage />);
 
@@ -198,6 +213,25 @@ describe("TransactionListPage — listagem por mês", () => {
 
     expect(screen.getByText("Salário")).toBeInTheDocument();
     expect(screen.getByText("Aluguel")).toBeInTheDocument();
+  });
+
+  it("exibe atalho para simulação no EmptyState quando não há lançamentos e aciona startDemo", async () => {
+    expensesMock = [];
+    incomesMock = [];
+    const user = userEvent.setup();
+
+    render(<TransactionListPage />);
+
+    expect(screen.getByText("Nenhum lançamento encontrado")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Novo lançamento/i })).toBeInTheDocument();
+
+    const simBtn = screen.getByRole("button", { name: /Ver exemplo na Simulação/i });
+    expect(simBtn).toBeInTheDocument();
+
+    await user.click(simBtn);
+
+    expect(mockStartDemo).toHaveBeenCalledWith("finances");
+    expect(mockSetStepIndex).toHaveBeenCalledWith(1);
   });
 });
 

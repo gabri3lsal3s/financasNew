@@ -12,6 +12,7 @@ import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { sanitizeReportText, type FreedomAnalysisResult } from "@/domain/reports";
 import { formatPercent } from "@/services/masks";
+import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
 import type { PortfolioAsset, PortfolioDividend } from "@/types";
 
 export interface DividendFreedomModalProps {
@@ -220,7 +221,7 @@ export function DividendFreedomModal({
       {/* 6. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
-        disclaimer="Documento estritamente informativo gerado automaticamente com base nos dados e metas parametrizados pelo titular. Não constitui análise, consultoria, recomendação de compra, venda ou alocação de valores mobiliários (Resoluções CVM nº 19 e 20/2021). Rentabilidade passada não representa garantia de retorno futuro."
+        disclaimer={OFFICIAL_CVM_DISCLAIMER}
       />
     </ReportDocumentLayout>
   );

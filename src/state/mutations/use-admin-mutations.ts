@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   adminCreateInvite,
+  adminDeleteUser,
   adminRemoveFeatureOverride,
   adminRevokeInvite,
   adminSetFeatureOverride,
@@ -334,6 +335,31 @@ export function useAdminCreateModularInvite() {
     onError: (err) => {
       pushToast({
         title: "Erro ao criar convite modular",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useAdminDeleteUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { targetUserId: string }) => adminDeleteUser(params),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_METRICS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
+      pushToast({
+        title: "Usuário excluído",
+        description: "O usuário e todos os seus dados foram definitivamente removidos do sistema.",
+        variant: "default",
+      });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao excluir usuário",
         description: getErrorMessage(err),
         variant: "destructive",
       });

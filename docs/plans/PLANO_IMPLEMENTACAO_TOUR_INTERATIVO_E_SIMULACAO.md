@@ -98,19 +98,19 @@ A nova arquitetura unifica o acolhimento, a simulação em memória e o checklis
 **Objetivo:** Eliminar com segurança todo o código antigo que realizava inserções e exclusões físicas no banco de dados, limpando telas, mutações e imports obsoletos.
 
 #### Tarefas Granulares:
-- [ ] **1.1. Remoção do Módulo de Injeção Física (`src/services/demo-data.ts`):**
+- [x] **1.1. Remoção do Módulo de Injeção Física (`src/services/demo-data.ts`):**
   - Excluir o arquivo `src/services/demo-data.ts` e sua suíte de testes `src/services/demo-data.test.ts`.
   - Limpar exportações nos barrels de serviços (`src/services/index.ts`).
-- [ ] **1.2. Remoção das Mutações de Banco (`src/state/mutations/use-demo-data.ts`):**
+- [x] **1.2. Remoção das Mutações de Banco (`src/state/mutations/use-demo-data.ts`):**
   - Excluir o arquivo `src/state/mutations/use-demo-data.ts`.
   - Atualizar o barrel `src/state/mutations/index.ts`.
-- [ ] **1.3. Limpeza da Tela de Configurações (`SecurityTab.tsx`):**
+- [x] **1.3. Limpeza da Tela de Configurações (`SecurityTab.tsx`):**
   - Remover integralmente o bloco "Ambiente de Demonstração (Dados de Teste)" e o diálogo `ConfirmDialog` de limpeza de dados em `src/features/settings/components/tabs/security-tab.tsx`.
   - Limpar imports não utilizados (`loadDemoMutation`, `clearDemoMutation`, `Sparkles`, `Trash2`).
-- [ ] **1.4. Remoção do Componente Legado `DemoModeBanner`:**
+- [x] **1.4. Remoção do Componente Legado `DemoModeBanner`:**
   - Excluir `src/components/modules/demo-mode-banner.tsx`.
   - Remover imports e tags `DemoModeBanner` em `src/features/overview/pages/overview-page.tsx` e referências a `hasDemoData`/`isDemoItem`.
-- [ ] **1.5. Atualização de Barrels e Limpeza Geral:**
+- [x] **1.5. Atualização de Barrels e Limpeza Geral:**
   - Revisar `src/components/modules/index.ts` e remover referências obsoletas.
 
 #### Portão de Qualidade 1 (Quality Gate 1):
@@ -131,7 +131,7 @@ A nova arquitetura unifica o acolhimento, a simulação em memória e o checklis
 **Objetivo:** Construir o repositório de dados simulados em memória com datas relativas ao mês corrente e criar o gerenciador de estado da simulação.
 
 #### Tarefas Granulares:
-- [ ] **2.1. Datasets Dinâmicos Puros (`src/domain/demo-simulation/`):**
+- [x] **2.1. Datasets Dinâmicos Puros (`src/domain/demo-simulation/`):**
   - Criar `src/domain/demo-simulation/types.ts`: contratos para trilhas (`DailyFinancesTrack`, `InvestmentsTrack`, `TourStep`).
   - Criar `src/domain/demo-simulation/mock-finances.ts`: gerador de transações, categorias e faturas calculadas com base no `currentYearMonth()` atual:
     * Receitas realistas: Salário, Freela, Rendimento de Aplicação.
@@ -141,7 +141,7 @@ A nova arquitetura unifica o acolhimento, a simulação em memória e o checklis
     * Classes de ativos balanceadas: Renda Fixa (Tesouro/CDB), Ações Brasileiras, FIIs e Criptoativos.
     * Dados prontos para visualização de aporte ideal no motor de rebalanceamento.
   - Criar testes unitários colocalizados `src/domain/demo-simulation/mock-data.test.ts`.
-- [ ] **2.2. Estado Global do Modo Simulação (`src/state/demo-mode/`):**
+- [x] **2.2. Estado Global do Modo Simulação (`src/state/demo-mode/`):**
   - Criar `src/state/demo-mode/demo-session-store.ts` (ou hook contextual `useDemoSession`):
     * `isDemoActive: boolean`
     * `activeTrack: 'finances' | 'investments' | null`
@@ -149,11 +149,11 @@ A nova arquitetura unifica o acolhimento, a simulação em memória e o checklis
     * Ações: `startDemo(track)`, `endDemo()`, `goToNextStep()`, `goToPrevStep()`.
   - Criar helper de persistência leve para tours concluídos no `localStorage` (`hasCompletedDemoTour`, `markTourCompleted`, `hasSeenWelcomeModal`).
   - Criar testes unitários para a máquina de estados do tour.
-- [ ] **2.3. Interceptação Segura de Queries no TanStack Query:**
+- [x] **2.3. Interceptação Segura de Queries no TanStack Query:**
   - Criar hooks inteligentes em `src/state/queries/use-simulated-queries.ts` ou adaptar de forma transparente:
     * Quando `isDemoActive === true`, retornar dados sintéticos com `isFetching: false`, `isLoading: false`, `data: mockData`.
     * Quando `isDemoActive === false`, retornar as queries reais originais do Supabase.
-- [ ] **2.4. Barrels do Domínio e Estado:**
+- [x] **2.4. Barrels do Domínio e Estado:**
   - Exportar contratos em `src/domain/demo-simulation/index.ts` e `src/state/demo-mode/index.ts`.
 
 #### Portão de Qualidade 2 (Quality Gate 2):
@@ -174,7 +174,7 @@ A nova arquitetura unifica o acolhimento, a simulação em memória e o checklis
 **Objetivo:** Desenvolver componentes ergonômicos, acessíveis e padronizados para acolhimento inicial, escolha de trilhas, navegação guiada e interceptação inteligente.
 
 #### Tarefas Granulares:
-- [ ] **3.1. Diálogo de Boas-Vindas no Primeiro Login (`WelcomeModal`):**
+- [x] **3.1. Diálogo de Boas-Vindas no Primeiro Login (`WelcomeModal`):**
   - Criar `src/components/modules/welcome-modal.tsx`:
     * Apresentado no primeiro acesso de uma conta virgem (`isFirstUse`).
     * Título caloroso: "Boas-vindas ao seu novo centro financeiro".
@@ -182,29 +182,29 @@ A nova arquitetura unifica o acolhimento, a simulação em memória e o checklis
     * Botão primário com ícone de destaque: "Fazer Tour Rápido (2 min)".
     * Botão secundário de contorno: "Configurar Minha Conta Agora".
     * Responsivo: gaveta inferior com drag no mobile (`< 768px`) e diálogo centralizado no desktop (`size="md"`).
-- [ ] **3.2. Modal de Seleção de Trilha (`DemoTrackSelectModal`):**
+- [x] **3.2. Modal de Seleção de Trilha (`DemoTrackSelectModal`):**
   - Criar `src/components/modules/demo-track-select-modal.tsx`:
     * Apresenta as opções:
       1. *Finanças Diárias & Cartões:* "Explore entradas, saídas, faturas automáticas e limites de gastos."
       2. *Investimentos & Rebalanceamento:* "Conheça a visão patrimonial, alocação de classes e motor de aportes."
     * Botões estilizados com ícones da escala semântica (`Wallet`, `TrendingUp`).
     * Opção discreta "Pular tour e ir para conta real".
-- [ ] **3.3. Barra Guiada do Tour (`DemoTourBar`):**
+- [x] **3.3. Barra Guiada do Tour (`DemoTourBar`):**
   - Criar `src/components/modules/demo-tour-bar.tsx`:
     * Fixada na parte superior da viewport com transição suave e fundo fosco (`bg-surface/95 backdrop-blur border-b border-border/80 shadow-xs`).
     * Indicador de passo (`Passo X de Y`) e texto explicativo do passo atual.
     * Botões de navegação: "Anterior" (se passo > 1), "Próximo", "Trocar Trilha" e botão de destaque "Começar Minha Conta Real" (`variant="primary"`).
     * Totalmente responsivo para mobile (botões compactos, rótulos legíveis, sem sobrepor notch ou FABs).
-- [ ] **3.4. Diálogo de Interceptação de Ação Real (`DemoExitConfirmDialog`):**
+- [x] **3.4. Diálogo de Interceptação de Ação Real (`DemoExitConfirmDialog`):**
   - Criar `src/components/modules/demo-exit-confirm-dialog.tsx`:
     * Disparado quando o usuário no modo demo clica em criar despesa, receita, cartão ou ativo real.
     * Explicação acolhedora: "Você está no modo de demonstração. Deseja sair da simulação e registrar seu primeiro lançamento real agora?"
     * Ações: `Cancelar (Continuar Explorando)` e `Confirmar (Cadastrar Meu Dado Real)`.
-- [ ] **3.5. Atualização do `OnboardingBanner` e `ChecklistContent`:**
+- [x] **3.5. Atualização do `OnboardingBanner` e `ChecklistContent`:**
   - Em `src/components/modules/onboarding-banner.tsx`:
     * Substituir o botão legado de mutação pelo botão "Explorar com Simulação", que abre o `DemoTrackSelectModal`.
     * Manter o checklist visual fluido e sincronizado com os passos concluídos.
-- [ ] **3.6. Barrels de Componentes:**
+- [x] **3.6. Barrels de Componentes:**
   - Exportar os novos componentes em `src/components/modules/index.ts`.
 
 #### Portão de Qualidade 3 (Quality Gate 3):
@@ -228,24 +228,24 @@ A nova arquitetura unifica o acolhimento, a simulação em memória e o checklis
 **Objetivo:** Integrar a experiência de onboarding e o tour interativo no Dashboard, nos Empty States de todas as páginas principais, na Central de Ajuda e no ciclo de vida de usuário ativo.
 
 #### Tarefas Granulares:
-- [ ] **4.1. Gatilho do `WelcomeModal` no Dashboard (`OverviewPage`):**
+- [x] **4.1. Gatilho do `WelcomeModal` no Dashboard (`OverviewPage`):**
   - Em `src/features/overview/pages/overview-page.tsx`:
     * Detectar `isFirstUse(onboardingQuery.data)` no carregamento da página.
     * Se for primeiro acesso e ainda não visualizou o acolhimento, disparar o `WelcomeModal`.
-- [ ] **4.2. Empty States Ricos com Atalho para a Simulação:**
+- [x] **4.2. Empty States Ricos com Atalho para a Simulação:**
   - Atualizar os Empty States nas páginas principais:
     * *Transações (`ExpensesTab` / `IncomesTab`):* Se vazio, exibir botão primário "+ Novo Lançamento" e botão secundário sutil "Ver exemplo na Simulação".
     * *Cartões (`CardsPage`):* Se vazio, exibir "+ Novo Cartão" e "Ver fatura na Simulação".
     * *Investimentos (`InvestmentsPage`):* Se vazio, exibir "+ Adicionar Ativo" e "Ver carteira na Simulação".
-- [ ] **4.3. Ponto de Entrada para Usuários Existentes (`HelpModal` / Menu de Perfil):**
+- [x] **4.3. Ponto de Entrada para Usuários Existentes (`HelpModal` / Menu de Perfil):**
   - Adicionar opção permanente no menu de **Ajuda & Suporte** ou Perfil: "Rever Tour Guiado (Modo Simulação)".
   - Usuários que já possuem dados reais podem explorar as funcionalidades simuladas a qualquer momento, sem risco de interferir em seus registros.
-- [ ] **4.4. Roteamento e Hand-off Contextual ao Sair do Tour:**
+- [x] **4.4. Roteamento e Hand-off Contextual ao Sair do Tour:**
   - Ao clicar em "Começar Minha Conta Real":
     * O estado `isDemoActive` é desligado imediatamente.
     * O sistema direciona para a tela limpa correspondente (se em Finanças, abre o modal de Nova Despesa/Receita; se em Cartões, abre o modal de Novo Cartão).
     * Marca no `localStorage` que o tour foi realizado.
-- [ ] **4.5. Integração do Shell Global da Aplicação (`PageShell.tsx`):**
+- [x] **4.5. Integração do Shell Global da Aplicação (`PageShell.tsx`):**
   - Renderizar condicionalmente a `DemoTourBar` no topo da tela quando `isDemoActive === true`, garantindo que acompanhe a navegação entre rotas da simulação.
 
 #### Portão de Qualidade 4 (Quality Gate 4):

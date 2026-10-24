@@ -17,7 +17,7 @@ import { coreOnboardingProgress, coreOnboardingSteps, onboardingSteps } from "@/
 import type { OnboardingCounts, OnboardingStepId } from "@/domain/onboarding";
 import { requestNotificationListenerPermission } from "@/services/native";
 import { triggerSensory } from "@/services/sensory";
-import { useLoadDemoData } from "@/state";
+import { DemoTrackSelectModal } from "./demo-track-select-modal";
 import { cn } from "@/lib/utils";
 
 const STEP_META: Record<
@@ -60,11 +60,16 @@ interface ChecklistContentProps {
   counts: OnboardingCounts;
   onEnableNotifications?: () => void | Promise<void>;
   onClose: () => void;
+  onOpenDemoTrackSelect?: () => void;
 }
 
-function ChecklistContent({ counts, onEnableNotifications, onClose }: ChecklistContentProps) {
+function ChecklistContent({
+  counts,
+  onEnableNotifications,
+  onClose,
+  onOpenDemoTrackSelect,
+}: ChecklistContentProps) {
   const steps = onboardingSteps(counts);
-  const loadDemoMutation = useLoadDemoData();
 
   const handleEnableNotifications = async () => {
     triggerSensory("action");
@@ -91,14 +96,13 @@ function ChecklistContent({ counts, onEnableNotifications, onClose }: ChecklistC
               variant="outline"
               size="sm"
               onClick={() => {
-                loadDemoMutation.mutate();
                 onClose();
+                onOpenDemoTrackSelect?.();
               }}
-              disabled={loadDemoMutation.isPending}
               className="gap-1.5 border-primary/40 hover:bg-primary/10 text-xs font-medium cursor-pointer h-7 px-2.5"
             >
               <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-              <span>{loadDemoMutation.isPending ? "Carregando…" : "Explorar com dados de exemplo"}</span>
+              <span>Explorar com Simulação</span>
             </Button>
           )}
         </div>
@@ -180,7 +184,7 @@ function ChecklistContent({ counts, onEnableNotifications, onClose }: ChecklistC
             Dica de contingência
           </p>
           <p className="text-[11px] leading-relaxed text-muted-foreground">
-            Seu banco não notificou uma transferência? Basta tocar em Compartilhar Comprovante para o Guia Financeiro.
+            Seu banco não notificou uma transferência? Basta tocar em Compartilhar Comprovante para o Áxis Finance.
           </p>
         </div>
       </div>
@@ -205,6 +209,7 @@ export interface OnboardingBannerProps {
  */
 export function OnboardingBanner({ counts, onDismiss, onEnableNotifications, className }: OnboardingBannerProps) {
   const [open, setOpen] = useState(false);
+  const [demoTrackModalOpen, setDemoTrackModalOpen] = useState(false);
   const progress = coreOnboardingProgress(counts);
   const pendingSteps = coreOnboardingSteps(counts).filter((s) => !s.done);
 
@@ -295,8 +300,15 @@ export function OnboardingBanner({ counts, onDismiss, onEnableNotifications, cla
           counts={counts}
           onEnableNotifications={onEnableNotifications}
           onClose={() => setOpen(false)}
+          onOpenDemoTrackSelect={() => setDemoTrackModalOpen(true)}
         />
       </ResponsiveDialog>
+
+      {/* Modal seletor de trilha para simulação */}
+      <DemoTrackSelectModal
+        open={demoTrackModalOpen}
+        onOpenChange={setDemoTrackModalOpen}
+      />
     </>
   );
 }

@@ -7,13 +7,32 @@ import { AccountTab } from "./account-tab";
 import * as authHook from "@/hooks/use-auth";
 import * as stateModule from "@/state";
 import * as authData from "@/data/auth";
+import * as rpcData from "@/data/rpc";
 import * as toastModule from "@/services/toast";
 import * as sensoryModule from "@/services/sensory";
 
 const mockMutateAsync = vi.fn().mockResolvedValue(undefined);
+const mockNavigate = vi.fn();
+const mockSignOut = vi.fn().mockResolvedValue(undefined);
+
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual("react-router");
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 vi.mock("@/data/auth", () => ({
   updateUserPassword: vi.fn(),
+}));
+
+vi.mock("@/data/rpc", () => ({
+  deleteOwnAccount: vi.fn(),
+}));
+
+vi.mock("@/hooks/use-sign-out", () => ({
+  useSignOut: () => ({ signOut: mockSignOut }),
 }));
 
 vi.mock("@/services/toast", () => ({
@@ -171,6 +190,42 @@ describe("AccountTab", () => {
     });
   });
 
+  it("exibe aviso visual quando as senhas digitadas divergem", async () => {
+    const user = userEvent.setup();
+    renderAccountTab();
+
+    const newPasswordInput = screen.getByLabelText("Nova senha");
+    const confirmPasswordInput = screen.getByLabelText("Confirmar nova senha");
+    const updatePasswordButton = screen.getByRole("button", { name: "Atualizar Senha" });
+
+    await user.type(newPasswordInput, "NovaSenhaForte123");
+    await user.type(confirmPasswordInput, "Diferente123");
+
+    expect(screen.getByText("As senhas digitadas não coincidem.")).toBeInTheDocument();
+    expect(updatePasswordButton).toBeDisabled();
+  });
+
+  it("exibe mensagem de erro quando a alteração de senha falha na API", async () => {
+    const user = userEvent.setup();
+    vi.mocked(authData.updateUserPassword).mockRejectedValueOnce(new Error("Falha na rede"));
+
+    renderAccountTab();
+
+    const newPasswordInput = screen.getByLabelText("Nova senha");
+    const confirmPasswordInput = screen.getByLabelText("Confirmar nova senha");
+    const updatePasswordButton = screen.getByRole("button", { name: "Atualizar Senha" });
+
+    await user.type(newPasswordInput, "NovaSenhaForte123");
+    await user.type(confirmPasswordInput, "NovaSenhaForte123");
+
+    await user.click(updatePasswordButton);
+
+    await waitFor(() => {
+      expect(screen.getByText("Falha na rede")).toBeInTheDocument();
+      expect(sensoryModule.triggerSensory).toHaveBeenCalledWith("destructive");
+    });
+  });
+
   it("copia o ID da conta para o clipboard", async () => {
     const user = userEvent.setup();
     const writeTextMock = vi.fn().mockResolvedValue(undefined);
@@ -189,5 +244,85 @@ describe("AccountTab", () => {
     expect(toastModule.pushToast).toHaveBeenCalledWith(
       expect.objectContaining({ title: "ID copiado" }),
     );
+  });
+
+  describe("Zona de Perigo e Exclusão de Conta", () => {
+    it("renderiza o card Zona de Perigo com aviso e botão de exclusão", () => {
+      renderAccountTab();
+
+      expect(screen.getByText("Zona de Perigo")).toBeInTheDocument();
+      expect(screen.getByText("Excluir conta permanentemente")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Excluir Minha Conta" })).toBeInTheDocument();
+    });
+
+    it("abre o modal de confirmação e mantém o botão de confirmação desabilitado sem a frase exata", async () => {
+      const user = userEvent.setup();
+      renderAccountTab();
+
+      const openModalButton = screen.getByRole("button", { name: "Excluir Minha Conta" });
+      await user.click(openModalButton);
+
+      expect(screen.getByText("Atenção: Ação Irreversível")).toBeInTheDocument();
+      const confirmButton = screen.getByRole("button", { name: "Confirmar Exclusão" });
+      expect(confirmButton).toBeDisabled();
+
+      const phraseInput = screen.getByPlaceholderText("EXCLUIR MINHA CONTA");
+      await user.type(phraseInput, "excluir minha conta"); // minúsculo não confere
+      expect(confirmButton).toBeDisabled();
+
+      await user.clear(phraseInput);
+      await user.type(phraseInput, "EXCLUIR MINHA CONTA");
+      expect(confirmButton).not.toBeDisabled();
+    });
+
+    it("executa a exclusão da conta, encerra a sessão e redireciona para login ao confirmar com a frase exata", async () => {
+      const user = userEvent.setup();
+      vi.mocked(rpcData.deleteOwnAccount).mockResolvedValueOnce(undefined);
+
+      renderAccountTab();
+
+      const openModalButton = screen.getByRole("button", { name: "Excluir Minha Conta" });
+      await user.click(openModalButton);
+
+      const phraseInput = screen.getByPlaceholderText("EXCLUIR MINHA CONTA");
+      await user.type(phraseInput, "EXCLUIR MINHA CONTA");
+
+      const confirmButton = screen.getByRole("button", { name: "Confirmar Exclusão" });
+      await user.click(confirmButton);
+
+      await waitFor(() => {
+        expect(rpcData.deleteOwnAccount).toHaveBeenCalledTimes(1);
+        expect(sensoryModule.triggerSensory).toHaveBeenCalledWith("destructive");
+        expect(mockSignOut).toHaveBeenCalledTimes(1);
+        expect(mockNavigate).toHaveBeenCalledWith("/entrar", { replace: true });
+        expect(toastModule.pushToast).toHaveBeenCalledWith(
+          expect.objectContaining({ title: "Conta excluída" }),
+        );
+      });
+    });
+
+    it("exibe mensagem de erro na modal caso a exclusão falhe", async () => {
+      const user = userEvent.setup();
+      vi.mocked(rpcData.deleteOwnAccount).mockRejectedValueOnce(
+        new Error("Erro interno ao deletar registros."),
+      );
+
+      renderAccountTab();
+
+      const openModalButton = screen.getByRole("button", { name: "Excluir Minha Conta" });
+      await user.click(openModalButton);
+
+      const phraseInput = screen.getByPlaceholderText("EXCLUIR MINHA CONTA");
+      await user.type(phraseInput, "EXCLUIR MINHA CONTA");
+
+      const confirmButton = screen.getByRole("button", { name: "Confirmar Exclusão" });
+      await user.click(confirmButton);
+
+      await waitFor(() => {
+        expect(screen.getByText("Erro interno ao deletar registros.")).toBeInTheDocument();
+        expect(sensoryModule.triggerSensory).toHaveBeenCalledWith("destructive");
+        expect(mockNavigate).not.toHaveBeenCalled();
+      });
+    });
   });
 });

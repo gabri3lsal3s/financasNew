@@ -1,16 +1,18 @@
 import { useState, useMemo } from "react";
 import type { FormEvent } from "react";
-import { Check, Crown, RotateCcw, Shield, ShieldAlert, Sparkles, TrendingUp, UserCheck, X } from "lucide-react";
-import { Badge, Button, Input, Modal, ModalFooter, Select } from "@/components/ui";
+import { Check, Crown, RotateCcw, Shield, ShieldAlert, Sparkles, Trash2, TrendingUp, UserCheck, X } from "lucide-react";
+import { Badge, Button, ConfirmDialog, Input, Modal, ModalFooter, Select } from "@/components/ui";
 import {
   ROLE_LABELS,
   STATUS_LABELS,
   canManageRole,
   canManageUserStatus,
 } from "@/domain/admin";
+import { useAuth } from "@/hooks/use-auth";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import {
+  useAdminDeleteUser,
   useAdminRemoveUserModulePermission,
   useAdminSetUserModulePermission,
   useAdminSetUserRole,
@@ -48,9 +50,11 @@ const AVAILABLE_MODULES = [
 ] as const;
 
 export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps) {
-  const { role: currentUserRole } = useUserAccess();
+  const { user: authUser } = useAuth();
+  const { role: currentUserRole, profile: currentProfile } = useUserAccess();
   const updateStatusMutation = useAdminUpdateUserStatus();
   const setRoleMutation = useAdminSetUserRole();
+  const deleteUserMutation = useAdminDeleteUser();
 
   // Subscriptions & Modular Access
   const subscriptionQuery = useAdminUserSubscription(user?.id);
@@ -62,6 +66,7 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
   const [status, setStatus] = useState<UserStatus>((user?.status as UserStatus) || "active");
   const [role, setRole] = useState<UserRole>((user?.role as UserRole) || "user");
   const [reason, setReason] = useState(user?.suspended_reason || "");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // Local state for subscription editing overrides
   const [overrideTier, setOverrideTier] = useState<SubscriptionTier | null>(null);
@@ -91,6 +96,8 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
 
   const targetRole = user.role as UserRole;
   const isSuperadminActor = currentUserRole === "superadmin";
+  const isSelf = user.id === authUser?.id || user.id === currentProfile?.id;
+  const canDeleteUser = isSuperadminActor && !isSelf;
   const canEditStatus = canManageUserStatus(currentUserRole, targetRole);
   const canEditRole = canManageRole(currentUserRole, targetRole);
 
@@ -568,6 +575,31 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
           ) : null}
         </div>
 
+        {/* Zona de Perigo: Exclusão Definitiva (apenas Superadmin e não autoexclusão) */}
+        {canDeleteUser ? (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-xl border border-critical/30 bg-critical/5 text-xs">
+            <div className="space-y-0.5">
+              <span className="font-semibold text-critical-strong block">
+                Zona de Perigo: Exclusão Definitiva
+              </span>
+              <span className="text-[11px] text-muted-foreground block">
+                Remove permanentemente a conta, histórico financeiro e libera o e-mail no sistema.
+              </span>
+            </div>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={() => setIsDeleteDialogOpen(true)}
+              disabled={deleteUserMutation.isPending}
+              className="gap-1.5 h-8 text-xs shrink-0"
+            >
+              <Trash2 className="size-3.5" aria-hidden="true" />
+              <span>Excluir Usuário do Sistema</span>
+            </Button>
+          </div>
+        ) : null}
+
         {/* Rodapé */}
         <ModalFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
@@ -585,6 +617,28 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
         </ModalFooter>
 
       </form>
+
+      {/* Confirmação de Exclusão de Usuário para Superadmin */}
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        title="Excluir Usuário do Sistema"
+        description={`Tem certeza que deseja excluir permanentemente o usuário ${user.name || user.email}? Todos os dados financeiros, cartões, dívidas, categorias e histórico deste usuário serão permanentemente apagados e o e-mail será liberado no banco de dados. Esta ação não poderá ser desfeita.`}
+        confirmLabel={deleteUserMutation.isPending ? "Excluindo…" : "Excluir Definitivamente"}
+        cancelLabel="Cancelar"
+        variant="destructive"
+        confirmPending={deleteUserMutation.isPending}
+        onConfirm={async () => {
+          try {
+            await deleteUserMutation.mutateAsync({ targetUserId: user.id });
+            triggerSensory("destructive");
+            setIsDeleteDialogOpen(false);
+            onOpenChange(false);
+          } catch {
+            triggerSensory("destructive");
+          }
+        }}
+      />
     </Modal>
   );
 }

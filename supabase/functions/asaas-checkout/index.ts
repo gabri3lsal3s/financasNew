@@ -4,13 +4,22 @@ import {
   createAsaasCreditCardSubscription,
   createAsaasPixCharge,
   getAsaasPixQrCode,
+  getAsaasPayment,
+  shouldReusePendingPixCharge,
 } from "../_shared/asaas.ts";
 import { ASAAS_PLAN_CATALOG } from "../_shared/asaas-plans.ts";
 import { buildCorsHeaders, jsonResponse, safeErrorResponse } from "../_shared/http.ts";
 
+declare const Deno: {
+  env?: {
+    get(key: string): string | undefined;
+  };
+  serve?: (handler: (req: Request) => Promise<Response> | Response) => void;
+} | undefined;
+
 const CONFIRMED_SUBSCRIPTION_STATUSES = new Set(["ACTIVE", "CONFIRMED"]);
 
-Deno.serve(async (req: Request) => {
+Deno?.serve?.(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: buildCorsHeaders(req) });
   }
@@ -95,10 +104,51 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      // 1. Tenta reaproveitar cobrança Pix existente pendente há menos de 1 hora
+      const { data: userSub } = await supabase
+        .from("user_subscriptions")
+        .select("asaas_payment_id, status, updated_at")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (userSub?.asaas_payment_id && userSub.status !== "active") {
+        try {
+          const existingPayment = await getAsaasPayment(userSub.asaas_payment_id);
+          const createdAtMillis = existingPayment.dateCreated
+            ? new Date(existingPayment.dateCreated).getTime()
+            : userSub.updated_at
+              ? new Date(userSub.updated_at).getTime()
+              : 0;
+
+          const canReuse = shouldReusePendingPixCharge({
+            paymentStatus: existingPayment.status,
+            paymentValue: existingPayment.value,
+            expectedValue: planMeta.value,
+            createdAtMillis,
+          });
+
+          if (canReuse) {
+            const qrCode = await getAsaasPixQrCode(existingPayment.id);
+            return jsonResponse(req, {
+              ok: true,
+              method: "pix",
+              paymentId: existingPayment.id,
+              qrCodeBase64: qrCode.encodedImage,
+              copyPasteKey: qrCode.payload,
+              expirationDate: qrCode.expirationDate,
+              reused: true,
+            });
+          }
+        } catch (err: unknown) {
+          console.warn("[asaas-checkout] Falha ao verificar cobrança Pix pendente prévia, criando nova:", err);
+        }
+      }
+
+      // 2. Cria nova cobrança Pix caso não haja cobrança pendente recente reaproveitável
       const payment = await createAsaasPixCharge({
         customerId: customer.id,
         value: planMeta.value,
-        description: "Plano Pro Anual (1 Ano) - Guia Financeiro",
+        description: "Áxis Finance — Plano Pro Anual",
       });
 
       const qrCode = await getAsaasPixQrCode(payment.id);

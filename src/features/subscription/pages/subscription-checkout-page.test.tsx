@@ -5,12 +5,18 @@ import { MemoryRouter } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SubscriptionCheckoutPage } from "./subscription-checkout-page";
 
+const useAuthMock = vi.fn<() => {
+  session: { user: { id: string; email: string } } | null;
+  loading: boolean;
+  configError: string | null;
+}>(() => ({
+  session: { user: { id: "user-123", email: "teste@exemplo.com" } },
+  loading: false,
+  configError: null,
+}));
+
 vi.mock("@/hooks/use-auth", () => ({
-  useAuth: () => ({
-    session: { user: { id: "user-123" } },
-    loading: false,
-    configError: null,
-  }),
+  useAuth: () => useAuthMock(),
 }));
 
 vi.mock("@/state", () => ({
@@ -179,6 +185,51 @@ describe("SubscriptionCheckoutPage Component", () => {
       writable: true,
       configurable: true,
     });
+  });
+
+  it("exibe a garantia incondicional de 7 dias com estorno integral (CDC Art. 49) no resumo e nos selos de segurança", () => {
+    renderCheckout();
+
+    expect(
+      screen.getByText("Garantia incondicional de 7 dias com estorno integral (CDC Art. 49)"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Garantia 7 dias com estorno integral (CDC Art. 49)"),
+    ).toBeInTheDocument();
+  });
+
+  it("renderiza links clicáveis para Termos de Uso e Política de Privacidade com target blank e noopener no rodapé do checkout", () => {
+    renderCheckout();
+
+    const termsLink = screen.getByRole("link", { name: "Termos de Uso" });
+    const privacyLink = screen.getByRole("link", { name: "Política de Privacidade" });
+
+    expect(termsLink).toBeInTheDocument();
+    expect(termsLink).toHaveAttribute("href", "/termos");
+    expect(termsLink).toHaveAttribute("target", "_blank");
+    expect(termsLink).toHaveAttribute("rel", "noopener noreferrer");
+
+    expect(privacyLink).toBeInTheDocument();
+    expect(privacyLink).toHaveAttribute("href", "/privacidade");
+    expect(privacyLink).toHaveAttribute("target", "_blank");
+    expect(privacyLink).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("exibe links de Termos de Uso e Política de Privacidade no formulário de criação de conta integrada para visitantes não autenticados", () => {
+    useAuthMock.mockReturnValueOnce({
+      session: null,
+      loading: false,
+      configError: null,
+    });
+
+    renderCheckout();
+
+    expect(screen.getByText("Criar Sua Conta")).toBeInTheDocument();
+    const termsLinks = screen.getAllByRole("link", { name: "Termos de Uso" });
+    const privacyLinks = screen.getAllByRole("link", { name: "Política de Privacidade" });
+
+    expect(termsLinks.length).toBeGreaterThanOrEqual(2);
+    expect(privacyLinks.length).toBeGreaterThanOrEqual(2);
   });
 });
 

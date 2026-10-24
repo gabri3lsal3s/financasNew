@@ -116,7 +116,7 @@ export function WelcomeFeatureModal({
         }
       }}
       title="A Mágica da Captura Sem Fricção"
-      description="Descubra como o Guia Financeiro automatiza seu controle financeiro com privacidade local."
+      description="Descubra como o Áxis Finance automatiza seu controle financeiro com privacidade local."
       size="md"
       footer={
         <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 w-full">

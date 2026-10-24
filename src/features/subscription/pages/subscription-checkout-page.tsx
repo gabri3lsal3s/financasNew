@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useSearchParams, useNavigate, Navigate } from "react-router";
+import { useSearchParams, useNavigate, Navigate, Link } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Sparkles,
@@ -542,11 +542,16 @@ export function SubscriptionCheckoutPage() {
             {/* Garantia Legal e Proteção */}
             <div className="flex items-start gap-3 rounded-xl bg-muted/40 px-4 py-3 border border-border/60">
               <ShieldCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {billingSchedule.isDelayedByTrial
-                  ? "Cancele a qualquer momento durante o período de teste sem nenhum custo. Após a efetivação da cobrança, você tem 7 dias de garantia incondicional de reembolso (Art. 49 CDC)."
-                  : "Garantia incondicional de reembolso de 7 dias após o pagamento (Art. 49 do CDC). Seus dados nunca são excluídos mesmo se cancelar."}
-              </p>
+              <div className="space-y-1 text-xs text-muted-foreground leading-relaxed">
+                <p className="font-semibold text-foreground">
+                  Garantia incondicional de 7 dias com estorno integral (CDC Art. 49)
+                </p>
+                <p>
+                  {billingSchedule.isDelayedByTrial
+                    ? "Cancele a qualquer momento durante o período de teste sem nenhum custo. Após a efetivação da primeira cobrança, você tem 7 dias de garantia incondicional de reembolso com estorno integral (CDC Art. 49)."
+                    : "Experimente com tranquilidade: garantia incondicional de 7 dias com estorno integral após o pagamento (CDC Art. 49). Seus dados nunca são excluídos mesmo se cancelar."}
+                </p>
+              </div>
             </div>
           </aside>
 
@@ -614,6 +619,30 @@ export function SubscriptionCheckoutPage() {
                     autoComplete={authMode === "register" ? "new-password" : "current-password"}
                   />
                 </div>
+
+                {authMode === "register" && (
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    Ao criar sua conta, você concorda com os{" "}
+                    <Link
+                      to="/termos"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary-strong font-medium hover:text-primary hover:underline transition-colors"
+                    >
+                      Termos de Uso
+                    </Link>{" "}
+                    e a{" "}
+                    <Link
+                      to="/privacidade"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary-strong font-medium hover:text-primary hover:underline transition-colors"
+                    >
+                      Política de Privacidade
+                    </Link>
+                    .
+                  </p>
+                )}
               </div>
             ) : (
               <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/80 bg-muted/20 text-xs">
@@ -911,7 +940,7 @@ export function SubscriptionCheckoutPage() {
             <div className="flex flex-wrap gap-x-4 gap-y-1.5">
               <SecuritySeal icon={Lock} label="SSL 256-bit" />
               <SecuritySeal icon={ShieldCheck} label="Dados protegidos" />
-              <SecuritySeal icon={CheckCircle2} label="Garantia 7 dias (CDC)" />
+              <SecuritySeal icon={CheckCircle2} label="Garantia 7 dias com estorno integral (CDC Art. 49)" />
             </div>
 
             {/* CTA Principal */}
@@ -941,9 +970,26 @@ export function SubscriptionCheckoutPage() {
               </Button>
             )}
 
-            <p className="text-center text-[11px] text-muted-foreground">
-              Ao confirmar, você concorda com os Termos de Uso e a Política de Privacidade.
-              Cancelamento a qualquer momento em 1 clique sem burocracia.
+            <p className="text-center text-[11px] text-muted-foreground leading-relaxed">
+              Ao confirmar, você concorda com os{" "}
+              <Link
+                to="/termos"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary-strong font-medium hover:text-primary hover:underline transition-colors"
+              >
+                Termos de Uso
+              </Link>{" "}
+              e a{" "}
+              <Link
+                to="/privacidade"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary-strong font-medium hover:text-primary hover:underline transition-colors"
+              >
+                Política de Privacidade
+              </Link>
+              . Garantia incondicional de 7 dias com estorno integral (CDC Art. 49) e cancelamento a qualquer momento em 1 clique.
             </p>
           </section>
         </div>

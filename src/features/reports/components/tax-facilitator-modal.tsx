@@ -10,6 +10,7 @@ import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { isCashAssetClass, getBensDireitosClassification, calculateTotalCostBRL } from "@/domain/portfolio";
 import { sanitizeReportText } from "@/domain/reports";
+import { OFFICIAL_TAX_FACILITATOR_DISCLAIMER } from "@/lib/institutional";
 
 import type { PortfolioAsset, PortfolioDividend } from "@/types";
 
@@ -142,7 +143,7 @@ export function TaxFacilitatorModal({
       {/* 2. Alerta Informativo (Apenas tela interativa) */}
       <div className="print:hidden">
         <Alert variant="info">
-          Utilize o botão de cópia rápida para preencher o campo &quot;Discriminação&quot; diretamente no programa da Receita Federal. Valores calculados pelo Preço Médio Ponderado.
+          Utilize o botão de cópia rápida para preencher o campo &quot;Discriminação&quot; diretamente no programa da Receita Federal. Valores calculados pelo Preço Médio Ponderado. Cálculos de caráter estimativo e auxiliar que não substituem o trabalho de um contador habilitado nem a Declaração de Ajuste Anual.
         </Alert>
       </div>
 
@@ -327,7 +328,7 @@ export function TaxFacilitatorModal({
       {/* 5. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
-        disclaimer="Documento auxiliar e orientativo gerado pelo Áxis Finance. A verificação final e a entrega da Declaração de Ajuste Anual cabem exclusivamente ao contribuinte."
+        disclaimer={OFFICIAL_TAX_FACILITATOR_DISCLAIMER}
       />
     </ReportDocumentLayout>
   );

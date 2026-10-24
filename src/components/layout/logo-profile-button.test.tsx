@@ -179,4 +179,33 @@ describe("LogoProfileButton (mobile & desktop)", () => {
 
     expect(mockSignOut).toHaveBeenCalled();
   });
+
+  it("atalho 'Rever Tour Guiado' abre o modal de seleção de trilha", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <LogoProfileButton />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Abrir perfil do usuário" }));
+    await user.click(screen.getByRole("button", { name: /Rever Tour Guiado \(Modo Simulação\)/i }));
+
+    expect(screen.getByText("Escolha sua Trilha de Demonstração")).toBeInTheDocument();
+  });
+
+  it("atalho 'Central de Ajuda & Suporte' abre o modal de ajuda", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <LogoProfileButton />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Abrir perfil do usuário" }));
+    await user.click(screen.getByRole("button", { name: /Central de Ajuda & Suporte/i }));
+
+    expect(screen.getByText("Central de Ajuda & Suporte")).toBeInTheDocument();
+    expect(screen.getByText("Tour Guiado & Modo Simulação")).toBeInTheDocument();
+  });
 });

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -44,7 +44,67 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
     expect(screen.getByLabelText("E-mail")).toBeInTheDocument();
     expect(screen.getByLabelText("Senha")).toBeInTheDocument();
     expect(screen.getByLabelText("Código de Convite")).toBeInTheDocument();
+    const checkbox = screen.getByRole("checkbox", {
+      name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,
+    });
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox).not.toBeChecked();
     expect(screen.getByRole("button", { name: "Criar conta" })).toBeInTheDocument();
+  });
+
+  it("bloqueia o envio e desabilita o botão até que o usuário aceite os termos de uso", async () => {
+    const user = userEvent.setup();
+    renderRegisterPage();
+
+    const submitBtn = screen.getByRole("button", { name: "Criar conta" });
+    const checkbox = screen.getByRole("checkbox", {
+      name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,
+    });
+
+    // Inicialmente desmarcado e botão desabilitado
+    expect(checkbox).not.toBeChecked();
+    expect(submitBtn).toBeDisabled();
+
+    // Ao marcar o checkbox, o botão é habilitado
+    await user.click(checkbox);
+    expect(checkbox).toBeChecked();
+    expect(submitBtn).not.toBeDisabled();
+
+    // Ao desmarcar novamente, o botão volta a ser desabilitado
+    await user.click(checkbox);
+    expect(checkbox).not.toBeChecked();
+    expect(submitBtn).toBeDisabled();
+  });
+
+  it("renderiza links acessíveis e seguros para /termos e /privacidade no label do consentimento", () => {
+    renderRegisterPage();
+
+    const termsLink = screen.getByRole("link", { name: "Termos de Uso" });
+    const privacyLink = screen.getByRole("link", { name: "Política de Privacidade" });
+
+    expect(termsLink).toBeInTheDocument();
+    expect(termsLink).toHaveAttribute("href", "/termos");
+    expect(termsLink).toHaveAttribute("target", "_blank");
+    expect(termsLink).toHaveAttribute("rel", "noopener noreferrer");
+
+    expect(privacyLink).toBeInTheDocument();
+    expect(privacyLink).toHaveAttribute("href", "/privacidade");
+    expect(privacyLink).toHaveAttribute("target", "_blank");
+    expect(privacyLink).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("impede o envio defensivamente com mensagem de erro ao submeter o formulário diretamente sem aceite", async () => {
+    renderRegisterPage();
+
+    const form = screen.getByRole("button", { name: "Criar conta" }).closest("form")!;
+    fireEvent.submit(form);
+
+    expect(
+      screen.getByText(
+        "É obrigatório concordar com os Termos de Uso e a Política de Privacidade para prosseguir.",
+      ),
+    ).toBeInTheDocument();
+    expect(authHook.signUpWithEmail).not.toHaveBeenCalled();
   });
 
   it("exibe o checklist de requisitos de senha e altera a força da senha em tempo real", async () => {
@@ -97,6 +157,11 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
     await user.type(screen.getByLabelText("Nome"), "Gabriel");
     await user.type(screen.getByLabelText("E-mail"), "gabriel@exemplo.com");
     await user.type(screen.getByLabelText("Senha"), "MinhaSenhaForte123!");
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,
+      }),
+    );
 
     const submitBtn = screen.getByRole("button", { name: "Criar conta" });
     await user.click(submitBtn);
@@ -121,6 +186,11 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
     await user.type(screen.getByLabelText("Nome"), "Gabriel");
     await user.type(screen.getByLabelText("E-mail"), "existente@exemplo.com");
     await user.type(screen.getByLabelText("Senha"), "MinhaSenhaForte123!");
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,
+      }),
+    );
     await user.click(screen.getByRole("button", { name: "Criar conta" }));
 
     expect(
@@ -144,6 +214,11 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
     await user.type(screen.getByLabelText("Nome"), "Gabriel");
     await user.type(screen.getByLabelText("E-mail"), "existente@exemplo.com");
     await user.type(screen.getByLabelText("Senha"), "MinhaSenhaForte123!");
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,
+      }),
+    );
     await user.click(screen.getByRole("button", { name: "Criar conta" }));
 
     expect(screen.getByRole("link", { name: /Fazer login agora/i })).toBeInTheDocument();
@@ -159,6 +234,11 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
     await user.type(screen.getByLabelText("Nome"), "Gabriel");
     await user.type(screen.getByLabelText("E-mail"), "novo@exemplo.com");
     await user.type(screen.getByLabelText("Senha"), "MinhaSenhaForte123!");
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,
+      }),
+    );
     await user.click(screen.getByRole("button", { name: "Criar conta" }));
 
     expect(screen.queryByRole("link", { name: /Fazer login agora/i })).not.toBeInTheDocument();
@@ -175,6 +255,11 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
     await user.type(screen.getByLabelText("Nome"), "Gabriel");
     await user.type(screen.getByLabelText("E-mail"), "confirmar@exemplo.com");
     await user.type(screen.getByLabelText("Senha"), "MinhaSenhaForte123!");
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,
+      }),
+    );
     await user.click(screen.getByRole("button", { name: "Criar conta" }));
 
     expect(screen.getByText("Confirme seu endereço de e-mail")).toBeInTheDocument();

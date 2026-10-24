@@ -226,13 +226,27 @@ vi.mock("@/state", () => ({
     isPending: false,
   }),
   useUserSubscription: () => subscriptionMock,
-  useHasDemoData: () => ({ data: false, isLoading: false, isError: false }),
-  useLoadDemoData: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
-  useClearDemoData: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useFeedback: () => ({ data: {}, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSetFeedback: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUserPreferences: () => ({ data: null, isLoading: false, isError: false, error: null }),
   useUpdateCustomSettings: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+  hasSeenWelcomeModal: () => {
+    try {
+      return typeof window !== "undefined" && window.localStorage.getItem("financas:welcome_modal_seen") === "true";
+    } catch {
+      return false;
+    }
+  },
+  markWelcomeModalSeen: () => {
+    try {
+      if (typeof window !== "undefined") window.localStorage.setItem("financas:welcome_modal_seen", "true");
+    } catch {
+      return;
+    }
+  },
+  useDemoSession: () => ({ isDemoActive: false, activeTrack: null, currentStepIndex: 0 }),
+  startDemo: vi.fn(),
+  endDemo: vi.fn(),
 }));
 
 describe("OverviewPage — visão consolidada (§3.6)", () => {
@@ -648,7 +662,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(screen.getByText("Ativar Leitor Automático de Notificações")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Seu banco não notificou uma transferência? Basta tocar em Compartilhar Comprovante para o Guia Financeiro.",
+        "Seu banco não notificou uma transferência? Basta tocar em Compartilhar Comprovante para o Áxis Finance.",
       ),
     ).toBeInTheDocument();
   });
@@ -670,6 +684,74 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     render(<OverviewPage />);
     expect(screen.getByText("A Mágica da Captura Sem Fricção")).toBeInTheDocument();
     expect(screen.getByText("Notificações Automáticas")).toBeInTheDocument();
+  });
+
+  describe("Gatilho do WelcomeModal e Tour Demonstrativo (§4.1)", () => {
+    it("dispara WelcomeModal automaticamente quando a conta for virgem e o acolhimento não tiver sido visto", () => {
+      onboardingCountsMock = {
+        expenseCategories: 0,
+        incomeCategories: 0,
+        cards: 0,
+        transactions: 0,
+        notificationsEnabled: false,
+      };
+      localStorage.removeItem("financas:welcome_modal_seen");
+
+      render(<OverviewPage />);
+
+      expect(
+        screen.getByText("Boas-vindas ao seu novo centro financeiro"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Fazer Tour Rápido \(2 min\)/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Configurar Minha Conta Agora/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("ao clicar em 'Fazer Tour Rápido' no WelcomeModal, fecha o acolhimento e abre o DemoTrackSelectModal", () => {
+      onboardingCountsMock = {
+        expenseCategories: 0,
+        incomeCategories: 0,
+        cards: 0,
+        transactions: 0,
+        notificationsEnabled: false,
+      };
+      localStorage.removeItem("financas:welcome_modal_seen");
+
+      render(<OverviewPage />);
+
+      const tourBtn = screen.getByRole("button", { name: /Fazer Tour Rápido \(2 min\)/i });
+      fireEvent.click(tourBtn);
+
+      expect(
+        screen.getByText("Escolha sua Trilha de Demonstração"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Finanças Diárias & Cartões"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Investimentos & Rebalanceamento"),
+      ).toBeInTheDocument();
+    });
+
+    it("não dispara WelcomeModal se o usuário já tiver visto anteriormente", () => {
+      onboardingCountsMock = {
+        expenseCategories: 0,
+        incomeCategories: 0,
+        cards: 0,
+        transactions: 0,
+        notificationsEnabled: false,
+      };
+      localStorage.setItem("financas:welcome_modal_seen", "true");
+
+      render(<OverviewPage />);
+
+      expect(
+        screen.queryByText("Boas-vindas ao seu novo centro financeiro"),
+      ).not.toBeInTheDocument();
+    });
   });
 });
 

@@ -5,16 +5,11 @@ import { OnboardingBanner } from "./onboarding-banner";
 import type { OnboardingCounts } from "@/domain/onboarding";
 
 const mockRequestNotificationListenerPermission = vi.fn().mockResolvedValue(true);
+const mockNavigate = vi.fn();
 
 vi.mock("react-router", () => ({
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
-}));
-
-vi.mock("@/state", () => ({
-  useLoadDemoData: () => ({
-    mutate: vi.fn(),
-    isPending: false,
-  }),
+  useNavigate: () => mockNavigate,
 }));
 
 vi.mock("@/services/native", () => ({
@@ -67,6 +62,19 @@ describe("OnboardingBanner — banner compacto de configuração inicial (§5.7)
 
     expect(screen.getByText("Crie categorias de despesa")).toBeInTheDocument();
     expect(screen.getByText("Ativar Leitor Automático de Notificações")).toBeInTheDocument();
+  });
+
+  it("botão 'Explorar com Simulação' abre o modal de seleção de trilha", () => {
+    render(<OnboardingBanner counts={empty} onDismiss={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
+
+    const simBtn = screen.getByRole("button", { name: /Explorar com Simulação/i });
+    expect(simBtn).toBeInTheDocument();
+
+    fireEvent.click(simBtn);
+    expect(screen.getByText("Escolha sua Trilha de Demonstração")).toBeInTheDocument();
+    expect(screen.getByText("Finanças Diárias & Cartões")).toBeInTheDocument();
+    expect(screen.getByText("Investimentos & Rebalanceamento")).toBeInTheDocument();
   });
 
   it("botão de dismiss chama onDismiss e não abre o modal", () => {

@@ -376,6 +376,77 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
     });
   });
 
+  describe("Prominent Disclosure Android (Contrato 4 & Google Play Store)", () => {
+    it("exibe o banner permanente de processamento 100% no dispositivo (On-Device)", () => {
+      renderNotificationsTab();
+      expect(
+        screen.getByText("Processamento 100% Local no Aparelho (On-Device)"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/processador do seu celular/i),
+      ).toBeInTheDocument();
+    });
+
+    it("abre o modal de Prominent Disclosure ao clicar em Habilitar no Android quando permissão estiver pendente", async () => {
+      vi.mocked(nativeServices.isNotificationListenerGranted).mockResolvedValue(false);
+
+      const user = userEvent.setup();
+      renderNotificationsTab();
+
+      // Aguarda e clica em Habilitar no Android
+      const enableBtn = await screen.findByRole("button", { name: "Habilitar no Android" });
+      await user.click(enableBtn);
+
+      // Deve abrir o modal de consentimento
+      expect(
+        screen.getByRole("heading", { name: "Consentimento para Leitura de Notificações Bancárias" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/BIND_NOTIFICATION_LISTENER_SERVICE/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/Descarte Instantâneo de Dados Críticos/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Entendi e Habilitar no Android" }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Agora Não" })).toBeInTheDocument();
+    });
+
+    it("chama requestNotificationListenerPermission ao confirmar no modal de Prominent Disclosure", async () => {
+      vi.mocked(nativeServices.isNotificationListenerGranted).mockResolvedValue(false);
+
+      const user = userEvent.setup();
+      renderNotificationsTab();
+
+      const enableBtn = await screen.findByRole("button", { name: "Habilitar no Android" });
+      await user.click(enableBtn);
+
+      const confirmBtn = screen.getByRole("button", { name: "Entendi e Habilitar no Android" });
+      await user.click(confirmBtn);
+
+      expect(nativeServices.requestNotificationListenerPermission).toHaveBeenCalledTimes(1);
+    });
+
+    it("fecha o modal sem solicitar permissão ao clicar em Agora Não", async () => {
+      vi.mocked(nativeServices.isNotificationListenerGranted).mockResolvedValue(false);
+
+      const user = userEvent.setup();
+      renderNotificationsTab();
+
+      const enableBtn = await screen.findByRole("button", { name: "Habilitar no Android" });
+      await user.click(enableBtn);
+
+      const cancelBtn = screen.getByRole("button", { name: "Agora Não" });
+      await user.click(cancelBtn);
+
+      expect(nativeServices.requestNotificationListenerPermission).not.toHaveBeenCalled();
+      expect(
+        screen.queryByRole("heading", { name: "Consentimento para Leitura de Notificações Bancárias" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("Ambiente Web / PWA (Ocultação Condicional)", () => {
     it("não renderiza o card nem opções do Assistente Passivo de Compras & Bancos na Web/PWA", () => {
       vi.mocked(nativeServices.isNativePlatform).mockReturnValue(false);

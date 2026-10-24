@@ -3,3 +3,5 @@ export { OverviewTab } from "./overview-tab";
 export { UsersTab } from "./users-tab";
 export { InvitesTab } from "./invites-tab";
 export { SystemTab } from "./system-tab";
+export { TicketsTab } from "./tickets-tab";
+

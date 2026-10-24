@@ -5,6 +5,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SecurityTab } from "./security-tab";
 import * as nativeServices from "@/services/native";
 
+const mockNavigate = vi.fn();
+const mockSignOut = vi.fn().mockResolvedValue(undefined);
+const mockDeleteCurrentUserAccount = vi.fn().mockResolvedValue(undefined);
+const mockCancelSubscription = vi.fn().mockResolvedValue(undefined);
+
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual("react-router");
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({
     user: { id: "u-123", email: "teste@financas.app", user_metadata: { name: "Usuario Teste" } },
@@ -13,8 +26,17 @@ vi.mock("@/hooks/use-auth", () => ({
 
 vi.mock("@/hooks/use-sign-out", () => ({
   useSignOut: () => ({
-    signOut: vi.fn(),
+    signOut: mockSignOut,
   }),
+}));
+
+vi.mock("@/data/rpc", () => ({
+  deleteCurrentUserAccount: () => mockDeleteCurrentUserAccount(),
+  deleteOwnAccount: () => mockDeleteCurrentUserAccount(),
+}));
+
+vi.mock("@/data/repositories/billing", () => ({
+  cancelSubscription: () => mockCancelSubscription(),
 }));
 
 const mockUpdateCustomSettings = vi.fn();
@@ -23,8 +45,6 @@ vi.mock("@/state", () => ({
   usePortfolioPosition: () => ({ rows: [] }),
   useExportData: () => ({ refetch: vi.fn() }),
   useRestoreBackup: () => ({ mutateAsync: vi.fn() }),
-  useLoadDemoData: () => ({ mutate: vi.fn(), isPending: false }),
-  useClearDemoData: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUserAccess: () => ({
     role: "admin",
     hasFeature: () => true,
@@ -183,6 +203,91 @@ describe("SecurityTab - Bloqueio do Aplicativo & Privacidade", () => {
 
       // Escudo de privacidade (FLAG_SECURE) NUNCA deve ser exibido em Web/PWA
       expect(screen.queryByText("Escudo de Privacidade (Privacy Shield)")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Zona de Perigo / Exclusão de Conta (LGPD Art. 18, VI)", () => {
+    it("renderiza o card de Zona de Perigo com descrição da LGPD e botão de ação", () => {
+      renderSecurityTab();
+
+      expect(
+        screen.getByText("Zona de Perigo / Exclusão de Conta (LGPD)"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Direito ao Esquecimento garantido pelo Art. 18, VI da Lei Geral de Proteção de Dados (LGPD).",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Excluir Minha Conta/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("abre o modal de confirmação e mantém o botão desabilitado até a digitação da palavra EXCLUIR", async () => {
+      const user = userEvent.setup();
+      renderSecurityTab();
+
+      const openDeleteModalBtn = screen.getByRole("button", { name: /Excluir Minha Conta/i });
+      await user.click(openDeleteModalBtn);
+
+      expect(screen.getByText("Excluir Conta Definitivamente (LGPD)")).toBeInTheDocument();
+
+      const confirmBtn = screen.getByRole("button", { name: /Confirmar Exclusão/i });
+      expect(confirmBtn).toBeDisabled();
+
+      const input = screen.getByPlaceholderText("EXCLUIR");
+
+      // Digita palavra incorreta
+      await user.type(input, "CANCELAR");
+      expect(confirmBtn).toBeDisabled();
+
+      // Digita palavra correta "EXCLUIR"
+      await user.clear(input);
+      await user.type(input, "EXCLUIR");
+      expect(confirmBtn).not.toBeDisabled();
+    });
+
+    it("executa cancelamento preventivo no gateway, exclusão no RPC, limpeza de storage e redireciona ao confirmar", async () => {
+      const user = userEvent.setup();
+      renderSecurityTab();
+
+      await user.click(screen.getByRole("button", { name: /Excluir Minha Conta/i }));
+
+      const input = screen.getByPlaceholderText("EXCLUIR");
+      await user.type(input, "EXCLUIR");
+
+      const confirmBtn = screen.getByRole("button", { name: /Confirmar Exclusão/i });
+      await user.click(confirmBtn);
+
+      await waitFor(() => {
+        expect(mockCancelSubscription).toHaveBeenCalledTimes(1);
+        expect(mockDeleteCurrentUserAccount).toHaveBeenCalledTimes(1);
+        expect(mockSignOut).toHaveBeenCalledTimes(1);
+        expect(mockNavigate).toHaveBeenCalledWith("/entrar", { replace: true });
+      });
+    });
+
+    it("exibe mensagem de erro na modal caso o expurgo da conta falhe", async () => {
+      mockDeleteCurrentUserAccount.mockRejectedValueOnce(
+        new Error("Falha de conexão com o banco de dados."),
+      );
+
+      const user = userEvent.setup();
+      renderSecurityTab();
+
+      await user.click(screen.getByRole("button", { name: /Excluir Minha Conta/i }));
+
+      const input = screen.getByPlaceholderText("EXCLUIR");
+      await user.type(input, "EXCLUIR");
+
+      const confirmBtn = screen.getByRole("button", { name: /Confirmar Exclusão/i });
+      await user.click(confirmBtn);
+
+      expect(
+        await screen.findByText("Falha de conexão com o banco de dados."),
+      ).toBeInTheDocument();
+      expect(mockSignOut).not.toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
     });
   });
 });

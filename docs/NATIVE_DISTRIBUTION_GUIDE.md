@@ -157,3 +157,84 @@ Ao disponibilizar o APK fora da Play Store, alguns usuários leigos podem ter d�
 - [ ] Testar a instalação por cima via `adb install -r dist-apk/guia-financeiro-release.apk` em aparelho real;
 - [ ] Fazer upload do APK para a CDN/Storage;
 - [ ] Fazer commit e push do repositório contendo o novo `public/releases/version.json`.
+
+---
+
+## 8. SEPARAÇÃO CANÔNICA DE BUILDS: DISTRIBUIÇÃO DIRETA (APK) VS GOOGLE PLAY STORE (AAB)
+
+Para garantir distribuição eficiente aos assinantes SaaS e, simultaneamente, aprovação estrita nas políticas da **Google Play Store**, o projeto adota uma arquitetura de compilação dual:
+
+### 8.1 Por que a Separação de Builds é Obrigatória?
+
+A política de segurança da Google Play (*Device and Network Abuse / Alternative App Stores Policy*) estabelece que nenhum aplicativo publicado na loja pode solicitar a permissão:
+
+```xml
+<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+```
+
+Aplicativos convencionais que contenham essa permissão no manifesto são **automaticamente reprovados** pelos robôs de análise do Google Play Console, pois a Google exige que qualquer atualização de aplicativo distribuído pela loja seja canalizada exclusivamente pelos serviços do Google Play Services (`com.google.android.play:core`).
+
+Por outro lado, na **Distribuição Direta** (download do APK via Cloudflare R2 ou site oficial para assinantes Pro), a permissão `REQUEST_INSTALL_PACKAGES` é **essencial** para que o In-App Updater autônomo possa acionar o instalador do Android (`PackageInstaller` / `FileProvider`) sem exigir que o usuário baixe manualmente o binário a cada release.
+
+### 8.2 Matriz Comparativa de Builds
+
+| Requisito / Recurso | Build 1: Distribuição Direta (SaaS Pro) | Build 2: Google Play Store (Oficial) |
+|---|---|---|
+| **Formato do Pacote** | APK assinado (`dist-apk/axis-pro.apk`) | AAB — Android App Bundle (`app-release.aab`) |
+| **Canal de Entrega** | Site Oficial / Cloudflare R2 / Painel SaaS | Google Play Store / Google Play Console |
+| **Comando de Compilação** | `npm run build:apk` | `npx cap sync android && cd android && ./gradlew bundleRelease` |
+| **Permissão `REQUEST_INSTALL_PACKAGES`** | **Ativa** (necessária para in-app updater) | **Removida** via manifesto strip (`tools:node="remove"`) |
+| **Mecanismo de Atualização** | Autônomo via `version.json` e Cloudflare R2 | Google Play Core In-App Updates / Play Store |
+| **Monetização e Faturamento** | 100% retido pelo gateway próprio (Asaas/Stripe) | Sujeito às taxas da Google Play (15% a 30%) |
+| **Captura Passiva (`BIND_NOTIFICATION_LISTENER_SERVICE`)** | Ativa (leitura local de bancos/Pix) | Ativa com **Prominent Disclosure obrigatório** |
+| **Processamento dos Dados** | 100% On-Device (no processador do celular) | 100% On-Device (sem envio à nuvem) |
+
+### 8.3 Procedimento para Gerar o Pacote da Google Play Store (AAB)
+
+Para compilar o Android App Bundle (`.aab`) pronto para upload no Google Play Console:
+
+1. **Remover a permissão `REQUEST_INSTALL_PACKAGES`:**
+   No arquivo `android/app/src/main/AndroidManifest.xml`, comente ou remova a permissão antes de gerar o bundle de loja:
+   ```xml
+   <!-- Permissão restrita exclusivamente à distribuição direta (remover para Google Play): -->
+   <!-- <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" /> -->
+   ```
+   *Alternativa com Manifest Merger:* Declarar no manifesto de release de loja `<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />`.
+
+2. **Compilar o Bundle de Produção:**
+   ```bash
+   # 1. Compila o frontend web Vite
+   npm run build
+
+   # 2. Sincroniza plugins e assets nativos
+   npx cap sync android
+
+   # 3. Compila o Android App Bundle (.aab) assinado
+   cd android
+   ./gradlew clean bundleRelease
+   ```
+
+3. **Artefato Final:**
+   O binário gerado para envio ao Play Console estará localizado em:
+   ```
+   android/app/build/outputs/bundle/release/app-release.aab
+   ```
+
+### 8.4 Diretrizes de Aprovação no Google Play Console (Compliance & Data Safety)
+
+Ao submeter o aplicativo para revisão no Google Play Console, preencha as seções obrigatórias conforme as orientações abaixo:
+
+#### A. Declaração de Acesso a Notificações (`BIND_NOTIFICATION_LISTENER_SERVICE`)
+- **Categoria de Serviço:** Gestão Financeira Pessoal / Automação Orçamentária.
+- **Justificativa para a Equipe de Revisão do Google:**
+  > *"O aplicativo Áxis Finance utiliza a permissão de leitura de notificações exclusivamente para identificar alertas transacionais emitidos por instituições bancárias autorizadas pelo próprio usuário (compras no cartão de crédito, transferências Pix e confirmações de pagamento). Todo o processamento e extração de valores ocorrem 100% localmente no processador do dispositivo (on-device processing), sem envio de mensagens brutas à internet. Senhas, códigos 2FA e alertas de outros aplicativos são descartados instantaneamente na memória."*
+- **Vídeo de Demonstração (Exigência Google):**
+  A Google Play exige o envio de um link do YouTube demonstrando a exibição do **Prominent Disclosure** na aba de Notificações antes da solicitação da permissão do sistema Android (implementado na Tarefa 6.1).
+
+#### B. Formulário de Segurança de Dados (Data Safety Form)
+- **Coleta de Dados:** O aplicativo coleta apenas as transações financeiras inseridas ou confirmadas pelo próprio usuário (valor, data, categoria).
+- **Compartilhamento de Dados:** Nenhum dado é compartilhado com terceiros ou redes de publicidade.
+- **Práticas de Segurança:**
+  - Dados em trânsito criptografados via HTTPS/TLS 1.3;
+  - Dados em repouso criptografados no banco de dados (Supabase PostgreSQL AES-256);
+  - **Exclusão de Dados (Account Deletion):** O usuário possui autoatendimento para exclusão definitiva de conta e expurgo total de dados em cascata em `Configurações > Segurança` ou `Minha Conta` (cumprindo a política obrigatória de Account Deletion da Google Play Store).

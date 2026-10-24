@@ -9,10 +9,12 @@ import {
   Database,
   Sparkles,
   ArrowUpRight,
+  Compass,
+  HelpCircle,
 } from "lucide-react";
 import { Modal, Button, LivePulseBeacon, Badge } from "@/components/ui";
 import { BrandLogo } from "@/components/layout/brand-logo";
-import { SubscriptionBadge } from "@/components/modules";
+import { SubscriptionBadge, DemoTrackSelectModal, HelpModal } from "@/components/modules";
 import { useAuth } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useUserSubscription } from "@/state";
@@ -82,6 +84,8 @@ export function LogoProfileButton({
   className,
 }: LogoProfileButtonProps) {
   const [open, setOpen] = useState(false);
+  const [demoSelectOpen, setDemoSelectOpen] = useState(false);
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { signOut } = useSignOut();
@@ -219,6 +223,29 @@ export function LogoProfileButton({
                   onClick={() => goTo("/configuracoes?tab=plano")}
                 />
               </div>
+              <div className="sm:col-span-2">
+                <MenuLink
+                  icon={Compass}
+                  label="Rever Tour Guiado (Modo Simulação)"
+                  badge="Simulação"
+                  onClick={() => {
+                    triggerSensory("selection");
+                    setOpen(false);
+                    setDemoSelectOpen(true);
+                  }}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <MenuLink
+                  icon={HelpCircle}
+                  label="Central de Ajuda & Suporte"
+                  onClick={() => {
+                    triggerSensory("selection");
+                    setOpen(false);
+                    setHelpModalOpen(true);
+                  }}
+                />
+              </div>
             </div>
           </div>
 
@@ -238,6 +265,17 @@ export function LogoProfileButton({
           </div>
         </div>
       </Modal>
+
+      <HelpModal
+        open={helpModalOpen}
+        onOpenChange={setHelpModalOpen}
+        onOpenDemoSelect={() => setDemoSelectOpen(true)}
+      />
+
+      <DemoTrackSelectModal
+        open={demoSelectOpen}
+        onOpenChange={setDemoSelectOpen}
+      />
     </>
   );
 }

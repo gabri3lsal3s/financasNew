@@ -33,12 +33,34 @@ export interface AppRoute {
   Component: ComponentType;
 }
 
-/** Mapa de rotas — deep-links (?card=, ?month=, ?q=) são parseados nas features (F1+). */
+/** Mapa de rotas protegidas da aplicação — deep-links (?card=, ?month=, ?q=) são parseados nas features (F1+). */
 export const appRoutes: AppRoute[] = [
   ...Object.entries(pageLoaders).map(([path, loader]) => ({ path, Component: lazy(loader) })),
   // /carteira não tem loader próprio — é redirect puro para o hub.
   { path: "/carteira", Component: RedirectToInvestments },
 ];
+
+/**
+ * Loaders das páginas legais e regulatórias públicas desautenticadas (Decreto 7.962/2013 e LGPD).
+ */
+export const publicLegalLoaders: Record<string, () => Promise<PageModule>> = {
+  "/termos": () => import("@/features/legal/pages/terms-page").then((m) => ({ default: m.TermsPage })),
+  "/termos-de-uso": () => import("@/features/legal/pages/terms-page").then((m) => ({ default: m.TermsPage })),
+  "/privacidade": () => import("@/features/legal/pages/privacy-page").then((m) => ({ default: m.PrivacyPage })),
+  "/politica-de-privacidade": () =>
+    import("@/features/legal/pages/privacy-page").then((m) => ({ default: m.PrivacyPage })),
+};
+
+/** Rotas públicas legais desautenticadas (fora do shell autenticado). */
+export const publicLegalRoutes: AppRoute[] = Object.entries(publicLegalLoaders).map(([path, loader]) => ({
+  path,
+  Component: lazy(loader),
+}));
+
+const allPageLoaders: Record<string, () => Promise<PageModule>> = {
+  ...pageLoaders,
+  ...publicLegalLoaders,
+};
 
 /**
  * Pre-fetching discreto de chunks (F23, entrega 3): pré-carrega os módulos
@@ -48,7 +70,7 @@ export const appRoutes: AppRoute[] = [
  */
 export function prefetchPageChunks(paths: readonly string[]): void {
   for (const path of paths) {
-    const loader = pageLoaders[path];
+    const loader = allPageLoaders[path];
     if (loader) void loader().catch(() => undefined);
   }
 }

@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PageShell } from "./page-shell";
 import { resetNetworkStatusForTesting } from "@/services/network-status";
+import { resetDemoSession, resetDemoTourStorage, startDemo } from "@/state/demo-mode";
 
 import { getUserStorageKey } from "@/services/user-storage";
 
@@ -114,6 +115,8 @@ function contentWrapper() {
 beforeEach(() => {
   window.localStorage.clear();
   resetNetworkStatusForTesting(true);
+  resetDemoTourStorage();
+  resetDemoSession();
 });
 
 describe("PageShell (F7.2/F7.3)", () => {
@@ -234,6 +237,27 @@ describe("PageShell (F7.2/F7.3)", () => {
 
     renderShell();
     expect(screen.getByRole("button", { name: /Notificações: 1 pendências/i })).toBeInTheDocument();
+  });
+
+  it("não renderiza DemoTourBar quando a simulação não está ativa", () => {
+    renderShell();
+    expect(screen.queryByRole("region", { name: /Barra guiada do modo de demonstração/i })).not.toBeInTheDocument();
+  });
+
+  it("renderiza DemoTourBar no topo quando a simulação está ativa e permite encerrar para começar a conta real", async () => {
+    startDemo("finances");
+    const user = userEvent.setup();
+
+    renderShell();
+
+    expect(screen.getByRole("region", { name: /Barra guiada do modo de demonstração/i })).toBeInTheDocument();
+    expect(screen.getByText("Passo 1 de 4")).toBeInTheDocument();
+    expect(screen.getByText("Visão Geral & Fluxo Consolidado")).toBeInTheDocument();
+
+    const startRealBtn = screen.getByRole("button", { name: /Começar Minha Conta Real/i });
+    await user.click(startRealBtn);
+
+    expect(screen.queryByRole("region", { name: /Barra guiada do modo de demonstração/i })).not.toBeInTheDocument();
   });
 });
 

@@ -175,7 +175,6 @@ vi.mock("@/state", () => ({
     isError: false,
     error: null,
   }),
-  useLoadDemoData: () => ({ mutate: vi.fn(), isPending: false }),
   usePortfolioPosition: () => ({
     rows: (portfolioAssetsMock() as Array<{ id: string; ticker: string; asset_class?: string; currency: "BRL" | "USD" }>).map((a) => ({
       assetId: a.id,

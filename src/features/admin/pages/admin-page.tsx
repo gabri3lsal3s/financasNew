@@ -1,18 +1,22 @@
 import { useSearchParams } from "react-router";
-import { KeyRound, ShieldCheck, SlidersHorizontal, Users } from "lucide-react";
+import { KeyRound, LifeBuoy, ShieldCheck, SlidersHorizontal, Users } from "lucide-react";
 import { Tabs, type TabItem } from "@/components/ui";
 import { triggerSensory } from "@/services/sensory";
 import { OverviewTab } from "./overview-tab";
 import { UsersTab } from "./users-tab";
 import { InvitesTab } from "./invites-tab";
 import { SystemTab } from "./system-tab";
+import { TicketsTab } from "./tickets-tab";
 
-type AdminTab = "visao-geral" | "usuarios" | "convites" | "sistema";
+type AdminTab = "visao-geral" | "usuarios" | "convites" | "sistema" | "chamados";
 
 function resolveAdminTab(param: string | null): AdminTab {
   if (!param) return "visao-geral";
   const normalized = param.trim().toLowerCase();
 
+  if (["chamados", "suporte", "tickets", "ticket", "ajuda"].includes(normalized)) {
+    return "chamados";
+  }
   if (["usuarios", "users", "acessos", "clientes", "membros"].includes(normalized)) {
     return "usuarios";
   }
@@ -83,6 +87,13 @@ export function AdminPage() {
       shortLabel: "Sistema",
       icon: <SlidersHorizontal className="size-4" aria-hidden="true" />,
       content: <SystemTab />,
+    },
+    {
+      value: "chamados",
+      label: "Chamados de Suporte",
+      shortLabel: "Chamados",
+      icon: <LifeBuoy className="size-4" aria-hidden="true" />,
+      content: <TicketsTab />,
     },
   ];
 

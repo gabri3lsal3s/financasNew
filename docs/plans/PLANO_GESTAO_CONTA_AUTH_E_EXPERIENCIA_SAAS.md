@@ -179,7 +179,7 @@ flowchart TD
 - [x] **Tarefa 2.3 — Desacoplar `SecurityTab` (`src/features/settings/components/tabs/security-tab.tsx`):**
   - Remover de `SecurityTab` o bloco redundante de cabeçalho de usuário que agora reside em `AccountTab`.
   - Manter em `SecurityTab` exclusivamente: Biometria, Escudo de Privacidade, Hub de Exportação/Restauração de Dados e Ambiente de Demonstração.
-- [ ] **Tarefa 2.4 — Criar Testes Unitários:**
+- [x] **Tarefa 2.4 — Criar Testes Unitários:**
   - Criar `src/features/settings/components/tabs/account-tab.test.tsx` cobrindo alteração de nome, validação de divergência de senhas e submissão bem-sucedida.
 
 > **PORTÃO DE QUALIDADE 2 (Quality Gate 2):**  
@@ -190,7 +190,7 @@ flowchart TD
 ### FASE 3: Migração SQL de Exclusão Definitiva, RPCs Atômicas e Zona de Perigo
 **Objetivo:** Permitir ao próprio usuário (e ao superadmin para contas de teste) excluir a conta de forma definitiva, eliminando todos os dados em ordem reversa segura e liberando o e-mail no ato em `auth.users`.
 
-- [ ] **Tarefa 3.1 — Criar Migração SQL (`supabase/migrations/20260101000059_delete_account_rpcs.sql`):**
+- [x] **Tarefa 3.1 — Criar Migração SQL (`supabase/migrations/20260101000059_delete_account_rpcs.sql`):**
   - Implementar `public.delete_own_account()` com privilégios `SECURITY DEFINER` e `set search_path = public, auth, pg_temp`:
     ```sql
     create or replace function public.delete_own_account()
@@ -250,15 +250,15 @@ flowchart TD
     - Validação estrita: apenas executores com `role = 'superadmin'` têm permissão.
     - Bloqueio de autoexclusão acidental (`if target_user_id = auth.uid() then raise exception ...`).
     - Expurgo na mesma ordem topológica reversa.
-- [ ] **Tarefa 3.2 — Criar Wrappers Tipados em `src/data/rpc.ts`:**
+- [x] **Tarefa 3.2 — Criar Wrappers Tipados em `src/data/rpc.ts`:**
   - Implementar `deleteOwnAccount(): Promise<void>`.
   - Implementar `adminDeleteUser(params: { targetUserId: string }): Promise<void>`.
-- [ ] **Tarefa 3.3 — Implementar Card "Zona de Perigo" em `account-tab.tsx`:**
+- [x] **Tarefa 3.3 — Implementar Card "Zona de Perigo" em `account-tab.tsx`:**
   - Card com bordas sutis em tom destrutivo (`border-critical/30 bg-surface`).
   - Botão *"Excluir Minha Conta"* abrindo `Modal` de confirmação rigorosa.
   - Exigência de digitação manual da frase de confirmação: `"EXCLUIR MINHA CONTA"`.
   - Ao confirmar: chamada da RPC `deleteOwnAccount()`, tratamento com `try/catch` para `supabase.auth.signOut()`, limpeza local com `queryClient.clear()` e redirecionamento seguro para `/entrar`.
-- [ ] **Tarefa 3.4 — Integrar Exclusão no Painel Administrativo (`user-edit-dialog.tsx`):**
+- [x] **Tarefa 3.4 — Integrar Exclusão no Painel Administrativo (`user-edit-dialog.tsx`):**
   - Para superadmins, exibir botão *"Excluir Usuário do Sistema"* com diálogo de confirmação.
   - Atualização automática da listagem de usuários e invalidação do cache React Query.
 
@@ -270,14 +270,14 @@ flowchart TD
 ### FASE 4: Templates de E-mail Transacionais com Design System Áxis Finance & Guia SMTP
 **Objetivo:** Substituir as mensagens genéricas em inglês do Supabase por templates HTML responsivos no Design System oficial, com guia de parametrização para provedores SMTP de alta entregabilidade (Resend / Brevo).
 
-- [ ] **Tarefa 4.1 — Criar Arquivo Canônico de Templates (`docs/EMAIL_TEMPLATES.md`):**
+- [x] **Tarefa 4.1 — Criar Arquivo Canônico de Templates (`docs/EMAIL_TEMPLATES.md`):**
   - Desenvolver 4 templates em HTML com CSS inline compatíveis com clientes web e mobile:
     1. **Confirmação de Cadastro (`Confirm signup`):** Logo do Áxis Finance, mensagem de boas-vindas, botão de confirmação (`{{ .ConfirmationURL }}`), aviso de validade de 24h e dicas de segurança.
     2. **Recuperação de Senha (`Reset password`):** Botão direcionando para `/redefinir-senha` (`{{ .ConfirmationURL }}`), aviso de expiração e instrução caso o usuário não tenha solicitado.
     3. **Convite de Acesso (`Invite user`):** Mensagem de convite VIP, instruções de primeiro acesso e link seguro.
     4. **Confirmação de Alteração de E-mail (`Change email address`):** Verificação de segurança para transição de endereço.
   - Cores e tokens: Fundo escuro premium (`#0B0F19`), contêiner do card (`#111827`), borda sutil (`#1F2937`), tipografia Sans-Serif moderna e botão com cor primária de destaque.
-- [ ] **Tarefa 4.2 — Guia Operacional de Configuração de Provedor SMTP:**
+- [x] **Tarefa 4.2 — Guia Operacional de Configuração de Provedor SMTP:**
   - Passo a passo para obter API Key / credenciais SMTP no Resend (ou Brevo).
   - Configuração no painel Supabase em `Project Settings > Authentication > SMTP Settings`.
   - Mapeamento de cada template no menu `Authentication > Email Templates`.
@@ -290,17 +290,17 @@ flowchart TD
 ### FASE 5: Auditoria Geral de Ponta a Ponta e Atualização da Documentação
 **Objetivo:** Consolidar todas as entregas, garantir que nenhum teste legado quebrou e sincronizar a documentação viva do projeto.
 
-- [ ] **Tarefa 5.1 — Bateria Completa de Testes Automatizados:**
+- [x] **Tarefa 5.1 — Bateria Completa de Testes Automatizados:**
   - Checagem estrita de tipos: `npm run typecheck` (`tsc -b`).
   - Checagem do linter (incluindo regra anti-emojis): `npm run lint`.
   - Suíte completa de testes unitários: `npm run test:run`.
-- [ ] **Tarefa 5.2 — Atualização da Documentação Viva:**
+- [x] **Tarefa 5.2 — Atualização da Documentação Viva:**
   - Atualizar `docs/PROJECT_STRUCTURE.md` incluindo o novo arquivo `account-tab.tsx` e a nova migração.
   - Atualizar `docs/ARCHITECTURE.md` descrevendo o fluxo completo de gestão de conta e recuperação.
   - Atualizar `docs/ROADMAP.md` marcando a entrega canônica.
 
 > **PORTÃO DE QUALIDADE 5 (Quality Gate 5):**  
-> `npm run build` gerando bundle limpo e sem warnings. 100% dos testes verdes.
+> `npm run build` gerando bundle limpo e sem warnings. 100% dos testes verdes. **[APROVADO]**
 
 ---
 
@@ -312,11 +312,11 @@ flowchart TD
 | **Reenvio de Confirmação** | Alerta estático e sem botão de ação no login. | Banner com e-mail destacado, botão de reenvio e cooldown de 60s. | **CONCLUÍDO** |
 | **Onboarding Pós-Cadastro** | Formulário continuava na tela apenas com texto. | Card imersivo com `MailCheck`, dicas de spam e botão seguro. | **CONCLUÍDO** |
 | **CTAs de Conta Existente** | Mensagens técnicas em inglês e links ausentes. | Classificação de `user-already-exists` com links rápidos. | **CONCLUÍDO** |
-| **Falso Positivo Anti-Enumeração** | Retorno 200 com `identities: []` exibia falso sucesso. | Detecção explícita de `identities.length === 0` em `signUpWithEmail`. | **FASE 1** |
-| **Gestão de Perfil (Nome & Senha)** | Usuário logado não podia alterar nome nem senha. | Nova aba `AccountTab` com mutações para nome e senha em sessão. | **FASE 2** |
-| **Exclusão Definitiva de Conta** | E-mail ficava travado em `auth.users` após exclusão. | RPC `delete_own_account` com expurgo topológico reverso de FKs. | **FASE 3** |
-| **Exclusão de Usuários no Admin** | Admin não conseguia expurgar contas de teste. | RPC `admin_delete_user` com proteção contra autoexclusão. | **FASE 3** |
-| **E-mails com a Marca Áxis Finance** | E-mails padrão do Supabase em inglês. | 4 templates HTML responsivos com design system e guia SMTP. | **FASE 4** |
+| **Falso Positivo Anti-Enumeração** | Retorno 200 com `identities: []` exibia falso sucesso. | Detecção explícita de `identities.length === 0` em `signUpWithEmail`. | **CONCLUÍDO** |
+| **Gestão de Perfil (Nome & Senha)** | Usuário logado não podia alterar nome nem senha. | Nova aba `AccountTab` com mutações para nome e senha em sessão. | **CONCLUÍDO** |
+| **Exclusão Definitiva de Conta** | E-mail ficava travado em `auth.users` após exclusão. | RPC `delete_own_account` com expurgo topológico reverso de FKs. | **CONCLUÍDO** |
+| **Exclusão de Usuários no Admin** | Admin não conseguia expurgar contas de teste. | RPC `admin_delete_user` com proteção contra autoexclusão. | **CONCLUÍDO** |
+| **E-mails com a Marca Áxis Finance** | E-mails padrão do Supabase em inglês. | 4 templates HTML responsivos com design system e guia SMTP. | **CONCLUÍDO** |
 
 ---
 

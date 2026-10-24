@@ -1,12 +1,14 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { Smartphone } from "lucide-react";
+import { Compass, HelpCircle, Smartphone } from "lucide-react";
 import { navGroups, filterNavItems, navItems } from "@/components/layout/nav-items";
 import { resolveBottomNavSlots } from "@/domain/navigation";
 import { InstallAppButton } from "@/components/modules/install-app-button";
+import { DemoTrackSelectModal, HelpModal } from "@/components/modules";
 import { isAndroidDevice, isNativePlatform } from "@/services/native/platform";
 import { useReminders, useUserAccess } from "@/state";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 
 export interface MoreMenuSheetProps {
@@ -15,6 +17,8 @@ export interface MoreMenuSheetProps {
 }
 
 export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
+  const [demoSelectOpen, setDemoSelectOpen] = useState(false);
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
   const { totalCount, urgentCount } = useReminders();
   const { isAdmin, hasFeature } = useUserAccess();
 
@@ -36,13 +40,14 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
   }, [isAdmin, hasFeature]);
 
   return (
-    <ResponsiveDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Mais opções"
-      description="Navegue pelas demais áreas e configurações da aplicação"
-      size="md"
-    >
+    <>
+      <ResponsiveDialog
+        open={open}
+        onOpenChange={onOpenChange}
+        title="Mais opções"
+        description="Navegue pelas demais áreas e configurações da aplicação"
+        size="md"
+      >
       <div className="space-y-6 pt-2 pb-4">
         {groups.map((group) => (
           <section key={group.title} aria-label={group.title} className="space-y-2">
@@ -85,6 +90,57 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
         ))}
 
         <div className="pt-2 space-y-2">
+          {/* Acesso ao Tour Guiado (Modo Simulação) */}
+          <button
+            type="button"
+            onClick={() => {
+              onOpenChange(false);
+              setDemoSelectOpen(true);
+            }}
+            className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-gradient-to-br from-primary/10 via-surface to-accent/5 p-3.5 text-left transition-colors hover:bg-primary/15 cursor-pointer shadow-xs"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary-strong">
+                <Compass className="size-4" aria-hidden="true" />
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <span>Rever Tour Guiado</span>
+                  <Badge variant="muted" size="xs">
+                    Simulação
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Explore recursos com dados ilustrativos em memória
+                </p>
+              </div>
+            </div>
+          </button>
+
+          {/* Acesso à Central de Ajuda & Suporte */}
+          <button
+            type="button"
+            onClick={() => {
+              onOpenChange(false);
+              setHelpModalOpen(true);
+            }}
+            className="flex w-full items-center justify-between rounded-xl border border-border/80 bg-surface p-3.5 text-left transition-colors hover:bg-surface-hover cursor-pointer shadow-xs"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-muted-foreground">
+                <HelpCircle className="size-4" aria-hidden="true" />
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-foreground">
+                  Central de Ajuda & Suporte
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Dúvidas frequentes, orientações e contato
+                </p>
+              </div>
+            </div>
+          </button>
+
           <InstallAppButton />
 
           {!isNativePlatform() && isAndroidDevice() && (
@@ -111,5 +167,17 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
         </div>
       </div>
     </ResponsiveDialog>
+
+    <HelpModal
+      open={helpModalOpen}
+      onOpenChange={setHelpModalOpen}
+      onOpenDemoSelect={() => setDemoSelectOpen(true)}
+    />
+
+    <DemoTrackSelectModal
+      open={demoSelectOpen}
+      onOpenChange={setDemoSelectOpen}
+    />
+  </>
   );
 }

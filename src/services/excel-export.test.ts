@@ -177,4 +177,50 @@ describe("generateMultiSheetExcelXml", () => {
     expect(xml).toContain("Abaixo da Meta (Aporte Sugerido)");
     expect(xml).toContain("5000.00");
   });
+
+  it("deve incluir os disclaimers regulatórios CVM e tributários (RFB/CFC) na planilha Excel", () => {
+    const mockDataWithRedemptions: ExcelWorkbookData = {
+      summary: {
+        totalPatrimonyBRL: 80000,
+        totalInvestedCostBRL: 70000,
+        unrealizedPnlBRL: 10000,
+        unrealizedPnlPct: 14.28,
+        cashBalanceBRL: 5000,
+        yearDividendsBRL: 3000,
+        freedomPct: 40,
+        savingsRatePct: 25,
+      },
+      positions: [],
+      dividends: [],
+      dreMonthly: [],
+      debts: [],
+      redemptions: [
+        {
+          ticker: "VALE3",
+          name: "Vale ON",
+          assetClass: "Ações",
+          sector: "Mineração",
+          redemptionDate: "2026-09-10",
+          quantity: 100,
+          appliedCostBRL: 6000,
+          redeemedValueBRL: 7500,
+          realizedPnlBRL: 1500,
+          finalReturnPct: 25,
+        },
+      ],
+    };
+
+    const xml = generateMultiSheetExcelXml(mockDataWithRedemptions);
+
+    // Valida a presença dos estilos e dos disclaimers na aba Resumo Executivo
+    expect(xml).toContain('ss:ID="Disclaimer"');
+    expect(xml).toContain("Aviso Legal, Isenção Regulatória (CVM) e Responsabilidade Tributária (CFC / RFB):");
+    expect(xml).toContain("Receita Federal do Brasil");
+    expect(xml).toContain("contador habilitado");
+    expect(xml).toContain("Resolução CVM nº 19/2021");
+
+    // Valida a presença do aviso fiscal na aba Resgates e Vendas
+    expect(xml).toContain('ss:Name="Resgates e Vendas"');
+    expect(xml).toContain("Aviso Fiscal sobre Ganho de Capital e DARF (Receita Federal do Brasil):");
+  });
 });

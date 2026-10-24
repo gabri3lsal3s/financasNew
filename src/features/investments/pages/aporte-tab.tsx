@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { Calculator, Sparkles } from "lucide-react";
+import { Calculator, ShieldCheck, Sparkles } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, ErrorState, MoneyInput, SkeletonChart, SkeletonKpi } from "@/components/ui";
 
 import { AporteResult, type AporteRouteRow, type CustomAporteExecutionItem } from "@/components/modules";
@@ -325,6 +325,25 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
               />
             </div>
           ) : null}
+
+          {/* Alerta Permanente de Conformidade Regulatória CVM (Contrato 5 / Resoluções CVM 19 e 20) */}
+          <aside
+            aria-label="Isenção regulatória CVM"
+            className="flex items-start gap-3 rounded-2xl border border-border/80 bg-surface p-4 shadow-2xs text-xs text-muted-foreground"
+          >
+            <ShieldCheck className="size-4 shrink-0 text-muted-foreground mt-0.5" aria-hidden="true" />
+            <div className="space-y-1 leading-relaxed">
+              <p className="font-semibold text-foreground text-xs">
+                Isenção Regulatória CVM (Resoluções CVM nº 19/2021 e nº 20/2021)
+              </p>
+              <p className="text-[11px] leading-relaxed">
+                Esta ferramenta opera como mero instrumento tecnológico de consolidação matemática e orçamentária.
+                Todas as sugestões de rebalanceamento e alocação são derivadas puramente de formulações algorítmicas
+                parametrizadas pelas metas e percentuais definidos discricionariamente por você, não configurando
+                análise de valores mobiliários, consultoria financeira ou recomendação de compra e venda de ativos.
+              </p>
+            </div>
+          </aside>
         </>
       )}
 

@@ -100,9 +100,6 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: () => Promise.resolve(),
   }),
-  useHasDemoData: () => ({ data: false, isLoading: false, isError: false }),
-  useLoadDemoData: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
-  useClearDemoData: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useUpdateProfile: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
 }));
 

@@ -15,6 +15,7 @@ import {
 import { MoneyText } from "@/components/ui/money-text";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { OFFICIAL_WEALTH_TEAR_SHEET_DISCLAIMER } from "@/lib/institutional";
 import { numberToCents } from "@/domain/money";
 import { formatPercent, formatSignedPct } from "@/services/masks/percent";
 import {
@@ -964,7 +965,7 @@ export function WealthTearSheetModal({
       {/* 10. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
-        disclaimer="Documento estritamente informativo gerado automaticamente com base nos dados e metas parametrizados pelo titular. Proventos reportados com base no valor líquido creditado em conta (isentos para dividendos e FIIs locais; líquidos de 15% retidos na fonte para JCP e 30% retidos pelo IRS para ativos nos EUA). Valores de retorno contábil sob custódia aberta não deduzem IR latente sobre ganhos não realizados. Não constitui análise, consultoria, recomendação de compra, venda ou alocação de valores mobiliários (Resoluções CVM nº 19 e 20/2021). Rentabilidade passada não representa garantia de retorno futuro."
+        disclaimer={OFFICIAL_WEALTH_TEAR_SHEET_DISCLAIMER}
       />
     </ReportDocumentLayout>
   );

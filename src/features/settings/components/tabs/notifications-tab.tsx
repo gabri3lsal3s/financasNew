@@ -3,12 +3,14 @@ import { useNavigate } from "react-router";
 import {
   Bell,
   Building2,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
   CreditCard,
   Download,
   RefreshCw,
   Search,
+  ShieldCheck,
   Smartphone,
   TrendingUp,
   Wallet,
@@ -23,9 +25,11 @@ import {
   CardTitle,
   Checkbox,
   Input,
+  Modal,
   Select,
   type SelectOption,
 } from "@/components/ui";
+import { PROMINENT_DISCLOSURE_INFO } from "@/lib/institutional";
 import { triggerSensory } from "@/services/sensory";
 import {
   useUpdateCustomSettings,
@@ -225,6 +229,7 @@ export function NotificationsTab() {
 
   const { preferences: bankPrefs, updatePreferences: updateBankPrefs } = useBankAssistantPreferences();
   const [listenerPermissionGranted, setListenerPermissionGranted] = useState(true);
+  const [isDisclosureModalOpen, setIsDisclosureModalOpen] = useState(false);
   const [installedBanks, setInstalledBanks] = useState<string[]>([]);
   const [installedApps, setInstalledApps] = useState<InstalledBankApp[]>([]);
   const [isScanning, setIsScanning] = useState(false);
@@ -290,11 +295,7 @@ export function NotificationsTab() {
       const granted = await isNotificationListenerGranted();
       setListenerPermissionGranted(granted);
       if (!granted) {
-        pushToast({
-          title: "Permissão de leitura de notificações necessária",
-          description: "Habilite o acesso a notificações nas configurações do seu celular.",
-          variant: "warning",
-        });
+        setIsDisclosureModalOpen(true);
       } else {
         pushToast({
           title: "Captura de compras ativada",
@@ -309,10 +310,29 @@ export function NotificationsTab() {
     }
   };
 
-  const handleRequestPermission = async () => {
+  const handleOpenDisclosureModal = () => {
+    setIsDisclosureModalOpen(true);
+  };
+
+  const handleConfirmDisclosure = async () => {
+    setIsDisclosureModalOpen(false);
+    triggerSensory("action");
     await requestNotificationListenerPermission();
     const granted = await isNotificationListenerGranted();
     setListenerPermissionGranted(granted);
+    if (!granted) {
+      pushToast({
+        title: "Permissão pendente no Android",
+        description: "Habilite o Áxis Finance nas configurações de Acesso a Notificações do seu aparelho.",
+        variant: "warning",
+      });
+    } else {
+      pushToast({
+        title: "Permissão concedida",
+        description: "Captura passiva de notificações bancárias autorizada.",
+        variant: "success",
+      });
+    }
   };
 
   const handleToggleInteractiveNotifications = (enabled: boolean) => {
@@ -726,13 +746,26 @@ export function NotificationsTab() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleRequestPermission}
+                  onClick={handleOpenDisclosureModal}
                   className="shrink-0 text-xs gap-1.5"
                 >
                   <span>Habilitar no Android</span>
                 </Button>
               </div>
             )}
+
+            {/* Divulgação Destacada de Privacidade (Prominent Disclosure — Contrato 4 / Google Play) */}
+            <div className="flex items-start gap-3 rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 text-xs">
+              <ShieldCheck className="size-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="flex flex-col gap-1 min-w-0">
+                <span className="font-semibold text-foreground text-xs">
+                  {PROMINENT_DISCLOSURE_INFO.onDeviceBadge}
+                </span>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {PROMINENT_DISCLOSURE_INFO.onDeviceDescription} {PROMINENT_DISCLOSURE_INFO.dataDiscardDescription}
+                </p>
+              </div>
+            </div>
 
             {/* Opções Detalhadas se o Toggle Mestre estiver ativo */}
             {bankPrefs.passiveCaptureEnabled && (
@@ -1161,6 +1194,79 @@ export function NotificationsTab() {
           </CardContent>
         </Card>
       )}
+
+      {/* Modal de Divulgação Destacada e Consentimento (Prominent Disclosure - Contrato 4) */}
+      <Modal
+        open={isDisclosureModalOpen}
+        onOpenChange={setIsDisclosureModalOpen}
+        title={PROMINENT_DISCLOSURE_INFO.title}
+        description={PROMINENT_DISCLOSURE_INFO.subtitle}
+        size="md"
+        footer={
+          <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 w-full [&_button]:w-full [&_button]:sm:w-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDisclosureModalOpen(false)}
+            >
+              Agora Não
+            </Button>
+            <Button
+              type="button"
+              variant="default"
+              onClick={handleConfirmDisclosure}
+            >
+              Entendi e Habilitar no Android
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-1">
+          {/* Destaque On-Device */}
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-3.5 space-y-1.5">
+            <div className="flex items-center gap-2 text-foreground font-semibold text-xs">
+              <ShieldCheck className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+              <span>{PROMINENT_DISCLOSURE_INFO.onDeviceBadge}</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {PROMINENT_DISCLOSURE_INFO.onDeviceDescription}
+            </p>
+          </div>
+
+          {/* Cláusulas do Contrato 4 */}
+          <div className="space-y-3 text-xs">
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 className="size-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="flex flex-col gap-0.5">
+                <strong className="font-semibold text-foreground">{PROMINENT_DISCLOSURE_INFO.strictPurposeTitle}</strong>
+                <span className="text-[11px] text-muted-foreground leading-relaxed">
+                  {PROMINENT_DISCLOSURE_INFO.strictPurposeDescription}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 className="size-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="flex flex-col gap-0.5">
+                <strong className="font-semibold text-foreground">{PROMINENT_DISCLOSURE_INFO.dataDiscardTitle}</strong>
+                <span className="text-[11px] text-muted-foreground leading-relaxed">
+                  {PROMINENT_DISCLOSURE_INFO.dataDiscardDescription}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 className="size-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="flex flex-col gap-0.5">
+                <strong className="font-semibold text-foreground">{PROMINENT_DISCLOSURE_INFO.revocabilityTitle}</strong>
+                <span className="text-[11px] text-muted-foreground leading-relaxed">
+                  {PROMINENT_DISCLOSURE_INFO.revocabilityDescription}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

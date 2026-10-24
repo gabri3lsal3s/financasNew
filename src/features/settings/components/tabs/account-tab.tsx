@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   User,
   Mail,
@@ -12,6 +13,8 @@ import {
   Sparkles,
   ExternalLink,
   Loader2,
+  AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import {
   Card,
@@ -23,10 +26,15 @@ import {
   Input,
   PasswordInput,
   Alert,
+  Modal,
+  ModalFooter,
 } from "@/components/ui";
 import { useAuth } from "@/hooks/use-auth";
+import { useSignOut } from "@/hooks/use-sign-out";
+import { resetAppState } from "@/services/auth-cleanup";
 import { useUserAccess, useUserSubscription, useUpdateProfile } from "@/state";
 import { updateUserPassword } from "@/data/auth";
+import { deleteOwnAccount } from "@/data/rpc";
 import { checkPasswordRequirements } from "@/domain/validation";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
@@ -55,8 +63,13 @@ function getRoleLabel(role?: string): string {
   }
 }
 
+const CONFIRM_DELETE_PHRASE = "EXCLUIR MINHA CONTA";
+
 export function AccountTab() {
   const { user } = useAuth();
+  const { signOut } = useSignOut();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const userAccess = useUserAccess();
   const subscription = useUserSubscription();
   const updateProfileMutation = useUpdateProfile();
@@ -79,6 +92,12 @@ export function AccountTab() {
 
   // Estado do botão de cópia do ID
   const [copiedId, setCopiedId] = useState(false);
+
+  // Estado da exclusão definitiva da conta (Zona de Perigo)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteConfirmationInput, setDeleteConfirmationInput] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const passwordRequirements = checkPasswordRequirements(newPassword);
   const isPasswordSufficient =
@@ -158,6 +177,37 @@ export function AccountTab() {
   };
 
   const accountCreatedAt = profile?.created_at ?? user?.created_at;
+
+  const isConfirmationValid = deleteConfirmationInput.trim() === CONFIRM_DELETE_PHRASE;
+
+  const handleDeleteAccount = async () => {
+    if (!isConfirmationValid || isDeletingAccount) return;
+
+    setIsDeletingAccount(true);
+    setDeleteError(null);
+
+    try {
+      await deleteOwnAccount();
+      triggerSensory("destructive");
+      pushToast({
+        title: "Conta excluída",
+        description: "Sua conta e todos os dados foram definitivamente removidos.",
+        variant: "default",
+      });
+
+      try {
+        await signOut();
+      } catch {
+        resetAppState(queryClient, null);
+      }
+
+      navigate("/entrar", { replace: true });
+    } catch (err) {
+      triggerSensory("destructive");
+      setDeleteError(getErrorMessage(err));
+      setIsDeletingAccount(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -436,6 +486,133 @@ export function AccountTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Card 4: Zona de Perigo / Exclusão de Conta */}
+      <Card className="border-critical/30 bg-surface shadow-xs">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2 text-critical-strong">
+            <AlertTriangle className="size-4 text-critical-strong" aria-hidden="true" />
+            <span>Zona de Perigo</span>
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Ações irreversíveis que afetam permanentemente sua conta e histórico financeiro.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-xl border border-critical/20 bg-critical/5">
+            <div className="space-y-0.5">
+              <span className="text-xs font-semibold text-foreground block">
+                Excluir conta permanentemente
+              </span>
+              <span className="text-[11px] text-muted-foreground block">
+                Exclui todas as transações, cartões, metas, investimentos e desvincula seu e-mail do sistema.
+              </span>
+            </div>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                setDeleteConfirmationInput("");
+                setDeleteError(null);
+                setIsDeleteModalOpen(true);
+              }}
+              className="h-9 px-4 text-xs font-semibold rounded-xl shrink-0"
+            >
+              <Trash2 className="size-3.5 mr-1.5" aria-hidden="true" />
+              <span>Excluir Minha Conta</span>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Modal de Confirmação Rigorosa de Exclusão */}
+      <Modal
+        open={isDeleteModalOpen}
+        onOpenChange={(open) => {
+          if (isDeletingAccount) return;
+          setIsDeleteModalOpen(open);
+          if (!open) {
+            setDeleteConfirmationInput("");
+            setDeleteError(null);
+          }
+        }}
+        title="Excluir Minha Conta"
+        description="Esta ação é definitiva e não poderá ser desfeita. Todos os seus dados serão apagados imediatamente."
+        size="sm"
+      >
+        <div className="space-y-4 pt-2">
+          {deleteError ? <Alert variant="error">{deleteError}</Alert> : null}
+
+          <div className="rounded-xl border border-critical/20 bg-critical/5 p-3.5 space-y-2">
+            <span className="text-xs font-medium text-critical-strong flex items-center gap-1.5">
+              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+              <span>Atenção: Ação Irreversível</span>
+            </span>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Ao confirmar, seu histórico de receitas, despesas, cartões, categorias,
+              investimentos e preferências serão permanentemente excluídos do banco de dados.
+              Seu e-mail será liberado para novos cadastros caso queira retornar futuramente.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label
+              htmlFor="delete-account-confirm-phrase"
+              className="text-xs font-semibold text-foreground block"
+            >
+              Para confirmar, digite{" "}
+              <span className="font-mono text-critical-strong font-bold select-all">
+                {CONFIRM_DELETE_PHRASE}
+              </span>{" "}
+              abaixo:
+            </label>
+            <Input
+              id="delete-account-confirm-phrase"
+              type="text"
+              value={deleteConfirmationInput}
+              onChange={(e) => {
+                setDeleteConfirmationInput(e.target.value);
+                if (deleteError) setDeleteError(null);
+              }}
+              placeholder={CONFIRM_DELETE_PHRASE}
+              disabled={isDeletingAccount}
+              autoComplete="off"
+              className="h-10 text-sm rounded-xl font-mono"
+            />
+            <span className="text-[11px] text-muted-foreground block">
+              O botão de confirmação só será ativado quando a frase for digitada exatamente igual.
+            </span>
+          </div>
+
+          <ModalFooter className="mt-4 pt-3 border-t border-border/80">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDeleteModalOpen(false)}
+              disabled={isDeletingAccount}
+              className="h-9 px-4 text-xs font-semibold rounded-xl"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={!isConfirmationValid || isDeletingAccount}
+              className="h-9 px-4 text-xs font-semibold rounded-xl"
+            >
+              {isDeletingAccount ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
+                  <span>Excluindo…</span>
+                </>
+              ) : (
+                <span>Confirmar Exclusão</span>
+              )}
+            </Button>
+          </ModalFooter>
+        </div>
+      </Modal>
     </div>
   );
 }

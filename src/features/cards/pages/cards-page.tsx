@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { CheckCircle2, Clock, Download, FileUp, Plus, Printer, Repeat, Trash2, Undo2, WalletCards, Zap } from "lucide-react";
+import { CheckCircle2, Clock, Download, FileUp, Plus, Printer, Repeat, Sparkles, Trash2, Undo2, WalletCards, Zap } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, MoneyText, Skeleton } from "@/components/ui";
 
 
@@ -40,6 +40,8 @@ import { triggerSensory } from "@/services/sensory";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import {
+  setStepIndex,
+  startDemo,
   useAllCardExpenses,
   useAllCardPayments,
   useCardExpenses,
@@ -542,10 +544,23 @@ export function CardsPage() {
           tone="default"
           className="py-12 sm:py-16 px-6"
           action={
-            <Button onClick={() => handleOpenForm(null)} className="gap-2">
-              <Plus className="size-4" aria-hidden="true" />
-              Adicionar primeiro cartão
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+              <Button onClick={() => handleOpenForm(null)} className="gap-2 cursor-pointer">
+                <Plus className="size-4" aria-hidden="true" />
+                Adicionar primeiro cartão
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  startDemo("finances");
+                  setStepIndex(2);
+                }}
+                className="gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
+              >
+                <Sparkles className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                Ver fatura na Simulação
+              </Button>
+            </div>
           }
         />
       ) : (

@@ -18,6 +18,12 @@ initHardwareBackButton();
 initSafeAreaInsets();
 // Bloqueio de orientação mobile (portrait only) — manifest + Screen Orientation API
 initOrientationLock();
+// Auto-recuperação de chunks dinâmicos do Vite após novos deploys na Cloudflare Pages
+if (typeof window !== "undefined") {
+  window.addEventListener("vite:preloadError", () => {
+    window.location.reload();
+  });
+}
 // Observabilidade (Sentry) — no-op sem VITE_SENTRY_DSN (dev/testes).
 void initObservability();
 

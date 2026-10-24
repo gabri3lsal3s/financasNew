@@ -15,6 +15,7 @@ import { useDynamicFavicon } from "@/hooks/use-dynamic-favicon";
 import { useDynamicAppIcon } from "@/hooks/use-dynamic-app-icon";
 import { SubscriptionProvider, useIsPro } from "@/state/subscription-context";
 import { AppLockOverlay } from "@/app/app-lock-overlay";
+import { AppErrorBoundary } from "@/components/layout";
 import { initAppLockListener, setPrivacyShieldEnabled, syncDueReminderNotifications } from "@/services/native";
 import { useReminders } from "@/state";
 import { useAuth } from "@/hooks/use-auth";
@@ -170,7 +171,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
                 <ToastHost />
                 {/* Overlay de bloqueio biométrico do aplicativo */}
                 <AppLockOverlay />
-                {children}
+                <AppErrorBoundary>
+                  {children}
+                </AppErrorBoundary>
               </Toaster>
             </ThemeProvider>
           </SubscriptionProvider>

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
 import { ArrowLeft, ArrowRight, CheckCircle2, Layers, MailCheck, PieChart, Shield } from "lucide-react";
-import { Alert, Button, Input, PasswordInput, Turnstile, buttonVariants } from "@/components/ui";
+import { Alert, Button, Checkbox, Input, PasswordInput, Turnstile, buttonVariants } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { useAuth, signUpWithEmail } from "@/hooks/use-auth";
 import { classifyError } from "@/services/errors";
@@ -80,6 +80,7 @@ export function RegisterPage() {
   const [inviteCode, setInviteCode] = useState(
     searchParams.get("convite") || searchParams.get("invite") || "",
   );
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorKind, setErrorKind] = useState<string | null>(null);
   const [confirmationSent, setConfirmationSent] = useState(false);
@@ -109,6 +110,11 @@ export function RegisterPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!acceptedTerms) {
+      setError("É obrigatório concordar com os Termos de Uso e a Política de Privacidade para prosseguir.");
+      triggerSensory("destructive");
+      return;
+    }
     if (!isPasswordSufficient) {
       setError(
         "A senha deve atender aos critérios de segurança mínimos (ao menos 8 caracteres com letras e números).",
@@ -394,11 +400,48 @@ export function RegisterPage() {
             />
           </div>
 
+          <div className="flex items-start gap-2.5 pt-1">
+            <Checkbox
+              id="register-terms"
+              checked={acceptedTerms}
+              onCheckedChange={setAcceptedTerms}
+              disabled={pending}
+              className="mt-0.5"
+              aria-label="Li e concordo com os Termos de Uso e a Política de Privacidade"
+            />
+            <label
+              htmlFor="register-terms"
+              className="cursor-pointer text-xs text-muted-foreground leading-relaxed select-none"
+            >
+              Li e concordo com os{" "}
+              <Link
+                to="/termos"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary-strong font-medium hover:text-primary hover:underline transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Termos de Uso
+              </Link>{" "}
+              e a{" "}
+              <Link
+                to="/privacidade"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary-strong font-medium hover:text-primary hover:underline transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Política de Privacidade
+              </Link>
+              .
+            </label>
+          </div>
+
           <Turnstile className="my-0.5" />
 
           <Button
             type="submit"
-            disabled={pending || Boolean(configError)}
+            disabled={pending || Boolean(configError) || !acceptedTerms}
             className="h-10 text-sm font-semibold rounded-xl bg-primary-strong hover:bg-primary text-primary-foreground shadow-xs transition-colors"
           >
             {pending ? "Criando conta…" : "Criar conta"}

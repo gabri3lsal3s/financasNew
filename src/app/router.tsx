@@ -70,6 +70,12 @@ const ShareTargetPage = lazy(() =>
     default: m.ShareTargetPage,
   })),
 );
+const TermsPage = lazy(() =>
+  import("@/features/legal/pages/terms-page").then((m) => ({ default: m.TermsPage })),
+);
+const PrivacyPage = lazy(() =>
+  import("@/features/legal/pages/privacy-page").then((m) => ({ default: m.PrivacyPage })),
+);
 
 function RouteSuspenseFallback() {
   return (
@@ -223,6 +229,12 @@ export function AppRouter() {
           <Route path="/precos" element={<LandingPage />} />
           <Route path="/planos" element={<LandingPage />} />
           <Route path="/vendas" element={<LandingPage />} />
+
+          {/* Páginas públicas legais e regulatórias (fora do shell autenticado) */}
+          <Route path="/termos" element={<TermsPage />} />
+          <Route path="/termos-de-uso" element={<TermsPage />} />
+          <Route path="/privacidade" element={<PrivacyPage />} />
+          <Route path="/politica-de-privacidade" element={<PrivacyPage />} />
 
           {/* Telas de auth — fora do shell (sem sidebar/bottom nav) */}
           <Route path="/entrar" element={<LoginPage />} />

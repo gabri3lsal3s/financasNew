@@ -5,16 +5,11 @@ import { OnboardingCard } from "./onboarding-card";
 import type { OnboardingCounts } from "@/domain/onboarding";
 
 const mockRequestNotificationListenerPermission = vi.fn().mockResolvedValue(true);
+const mockNavigate = vi.fn();
 
 vi.mock("react-router", () => ({
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
-}));
-
-vi.mock("@/state", () => ({
-  useLoadDemoData: () => ({
-    mutate: vi.fn(),
-    isPending: false,
-  }),
+  useNavigate: () => mockNavigate,
 }));
 
 vi.mock("@/services/native", () => ({
@@ -141,9 +136,18 @@ describe("OnboardingCard — checklist de primeiro uso com captura inteligente (
     expect(screen.getByText("Dica de contingência")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Seu banco não notificou uma transferência? Basta tocar em Compartilhar Comprovante para o Guia Financeiro.",
+        "Seu banco não notificou uma transferência? Basta tocar em Compartilhar Comprovante para o Áxis Finance.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("botão 'Explorar com Simulação' abre o modal de seleção de trilha", () => {
+    render(<OnboardingCard counts={empty} />);
+    const simBtn = screen.getByRole("button", { name: /Explorar com Simulação/i });
+    expect(simBtn).toBeInTheDocument();
+
+    fireEvent.click(simBtn);
+    expect(screen.getByText("Escolha sua Trilha de Demonstração")).toBeInTheDocument();
   });
 
   it("sem violações de acessibilidade", async () => {

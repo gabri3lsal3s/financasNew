@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router";
 import { Bell, Check, CreditCard, Receipt, Share2, Sparkles, Tag, TrendingUp } from "lucide-react";
 import { Button, Progress } from "@/components/ui";
@@ -5,7 +6,7 @@ import { onboardingProgress, onboardingSteps } from "@/domain/onboarding";
 import type { OnboardingCounts, OnboardingStepId } from "@/domain/onboarding";
 import { requestNotificationListenerPermission } from "@/services/native";
 import { triggerSensory } from "@/services/sensory";
-import { useLoadDemoData } from "@/state";
+import { DemoTrackSelectModal } from "./demo-track-select-modal";
 import { cn } from "@/lib/utils";
 
 const STEP_META: Record<
@@ -52,10 +53,10 @@ export interface OnboardingCardProps {
 
 /** Checklist de configuração inicial (§5.7) — exibido na Visão Geral enquanto o setup está incompleto. */
 export function OnboardingCard({ counts, className, onEnableNotifications }: OnboardingCardProps) {
+  const [demoTrackModalOpen, setDemoTrackModalOpen] = useState(false);
   const steps = onboardingSteps(counts);
   const progress = onboardingProgress(counts);
   const pending = steps.filter((step) => !step.done);
-  const loadDemoMutation = useLoadDemoData();
 
   const handleEnableNotifications = async () => {
     triggerSensory("action");
@@ -94,12 +95,11 @@ export function OnboardingCard({ counts, className, onEnableNotifications }: Onb
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => loadDemoMutation.mutate()}
-            disabled={loadDemoMutation.isPending}
+            onClick={() => setDemoTrackModalOpen(true)}
             className="shrink-0 self-start sm:self-auto gap-1.5 border-primary/40 hover:bg-primary/10 text-xs font-medium cursor-pointer"
           >
             <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-            <span>{loadDemoMutation.isPending ? "Carregando…" : "Explorar com dados de exemplo"}</span>
+            <span>Explorar com Simulação</span>
           </Button>
         )}
       </div>
@@ -180,7 +180,7 @@ export function OnboardingCard({ counts, className, onEnableNotifications }: Onb
             Dica de contingência
           </p>
           <p className="text-[11px] leading-relaxed text-muted-foreground">
-            Seu banco não notificou uma transferência? Basta tocar em Compartilhar Comprovante para o Guia Financeiro.
+            Seu banco não notificou uma transferência? Basta tocar em Compartilhar Comprovante para o Áxis Finance.
           </p>
         </div>
       </div>
@@ -188,6 +188,11 @@ export function OnboardingCard({ counts, className, onEnableNotifications }: Onb
       {pending.length === 0 ? (
         <p className="text-xs text-muted-foreground">Setup completo — parabéns! Esta seção será recolhida.</p>
       ) : null}
+
+      <DemoTrackSelectModal
+        open={demoTrackModalOpen}
+        onOpenChange={setDemoTrackModalOpen}
+      />
     </section>
   );
 }

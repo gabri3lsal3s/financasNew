@@ -89,7 +89,10 @@ vi.mock("@/state", () => ({
   useAdminSetUserSubscription: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAdminSetUserModulePermission: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAdminRemoveUserModulePermission: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAdminDeleteUser: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUserOverrides: () => ({ data: [], isLoading: false }),
+  useAdminSupportTickets: () => ({ data: [], isLoading: false }),
+  useUpdateSupportTicketMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("AdminPage Component", () => {
@@ -157,5 +160,27 @@ describe("AdminPage Component", () => {
     );
 
     expect(screen.getByText("Funcionalidades & Kill-Switches Globais")).toBeInTheDocument();
+  });
+
+  it("permite alternar para a aba de Chamados de Suporte", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/admin"]}>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole("tab", { name: /Chamados de Suporte/i }));
+    expect(screen.getByText("Total Recebidos")).toBeInTheDocument();
+  });
+
+  it("resolve deep-link (?aba=chamados ou ?tab=suporte) para a aba Chamados", () => {
+    render(
+      <MemoryRouter initialEntries={["/admin?aba=chamados"]}>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Total Recebidos")).toBeInTheDocument();
   });
 });

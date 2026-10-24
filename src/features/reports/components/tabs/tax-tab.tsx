@@ -1,6 +1,7 @@
-import { FileSpreadsheet, Landmark, Printer } from "lucide-react";
+import { FileSpreadsheet, Landmark, Printer, Scale } from "lucide-react";
 import { Button } from "@/components/ui";
 import { ExcelExportCard } from "@/features/reports/components/excel-export-card";
+import { OFFICIAL_TAX_DISCLAIMER } from "@/lib/institutional";
 import type { ExcelWorkbookData } from "@/services/excel-export";
 
 export interface TaxTabProps {
@@ -67,6 +68,19 @@ export function TaxTab({
 
       {/* Card 3: Caderno de Relatórios em Excel (.xlsx) */}
       <ExcelExportCard workbookData={workbookData} description={excelDescription} />
+
+      {/* Aviso Institucional de Responsabilidade Tributária e Fiscal (Contrato 5 / CFC / RFB) */}
+      <div className="flex items-start gap-3 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+        <Scale className="size-5 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+        <div className="flex flex-col gap-1 min-w-0">
+          <span className="text-xs font-semibold text-foreground">
+            Aviso de Responsabilidade Tributária e Fiscal
+          </span>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            {OFFICIAL_TAX_DISCLAIMER}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

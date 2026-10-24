@@ -30,5 +30,7 @@ export { BackToTop } from "./back-to-top";
 export type { BackToTopProps } from "./back-to-top";
 export { NetworkStatusBanner } from "./network-status-banner";
 export type { NetworkStatusBannerProps } from "./network-status-banner";
+export { AppErrorBoundary } from "./app-error-boundary";
+export type { AppErrorBoundaryProps } from "./app-error-boundary";
 
 

@@ -8,7 +8,6 @@ import {
   DashboardAlertsCarousel,
   type DashboardAlertItem,
   DeltaHint,
-  DemoModeBanner,
   KpiCard,
   MonthPicker,
   PaceAlertBanner,
@@ -24,9 +23,10 @@ import {
   QuickAporteCard,
   OnboardingBanner,
   WelcomeFeatureModal,
+  WelcomeModal,
+  DemoTrackSelectModal,
 } from "@/components/modules";
-import { isDemoItem } from "@/services/demo-data";
-import { shouldShowOnboardingBanner } from "@/domain/onboarding";
+import { isFirstUse, shouldShowOnboardingBanner } from "@/domain/onboarding";
 import {
   budgetLimitsByCategory,
   isInheritedLimit,
@@ -66,6 +66,7 @@ import {
   useRealCashBalance,
   useUserSubscription,
   useOnboardingCounts,
+  hasSeenWelcomeModal,
 } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { useVisualCustomization, useApkPromo, useOnboardingDismissed } from "@/hooks";
@@ -108,18 +109,17 @@ export function OverviewPage() {
   const onboardingQuery = useOnboardingCounts();
   const { isDismissed: isOnboardingDismissed, dismiss: dismissOnboarding } = useOnboardingDismissed();
 
+  // Acolhimento no primeiro login (§4.1): detecta conta virgem e abre o WelcomeModal sem cascading render
+  const isVirginAccount = Boolean(onboardingQuery?.data && isFirstUse(onboardingQuery.data));
+  const shouldOpenWelcome = isVirginAccount && !hasSeenWelcomeModal();
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+  const welcomeModalOpen = shouldOpenWelcome && !welcomeDismissed;
+  const [demoTrackModalOpen, setDemoTrackModalOpen] = useState(false);
+
   const showOnboarding =
     !isOnboardingDismissed && onboardingQuery?.data
       ? shouldShowOnboardingBanner(onboardingQuery.data)
       : false;
-
-  // Detecção de dados de demonstração ([Exemplo]) para banner informativo
-  const hasDemoData = useMemo(() => {
-    const hasDemoExpenses = (expensesQuery.data ?? []).some((e) => isDemoItem(e.description));
-    const hasDemoIncomes = (incomesQuery.data ?? []).some((i) => isDemoItem(i.description));
-    const hasDemoCards = (cardsQuery.data ?? []).some((c) => isDemoItem(c.name));
-    return hasDemoExpenses || hasDemoIncomes || hasDemoCards;
-  }, [expensesQuery.data, incomesQuery.data, cardsQuery.data]);
 
   // Isolamento de erros críticos (§Fase 4): a tela só bloqueia se o fluxo financeiro base falhar
   const loading =
@@ -496,6 +496,17 @@ export function OverviewPage() {
 
   return (
     <DashboardCentsProvider hideCents={visual.hideDashboardCents}>
+      <WelcomeModal
+        open={welcomeModalOpen}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setWelcomeDismissed(true);
+        }}
+        onStartTour={() => setDemoTrackModalOpen(true)}
+      />
+      <DemoTrackSelectModal
+        open={demoTrackModalOpen}
+        onOpenChange={setDemoTrackModalOpen}
+      />
       <WelcomeFeatureModal />
       <div className="flex flex-col gap-6 w-full min-w-0">
         {/* F12 — sem header visual: o app mostra direto o seletor de mês.
@@ -535,13 +546,11 @@ export function OverviewPage() {
         </div>
       ) : (
         <>
-          {hasDemoData && <DemoModeBanner />}
-
           <DashboardAlertsCarousel items={alertItems} />
 
           {isCurrentMonth ? <SmartAdvisorCard month={month} /> : null}
 
-          {showOnboarding && !hasDemoData && onboardingQuery?.data ? (
+          {showOnboarding && onboardingQuery?.data ? (
             <OnboardingBanner counts={onboardingQuery.data} onDismiss={dismissOnboarding} />
           ) : null}
 

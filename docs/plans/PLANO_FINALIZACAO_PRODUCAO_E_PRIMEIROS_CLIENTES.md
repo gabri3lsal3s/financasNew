@@ -158,7 +158,7 @@ flowchart TD
 ### FASE 1: Resiliência Runtime, Blindagem de Deploys & Chat Nativo de Atendimento
 **Objetivo:** Eliminar riscos de tela branca no React, imunizar a navegação contra novos deploys e permitir que qualquer cliente envie mensagens e reporte bugs diretamente pelo aplicativo, notificando o fundador em tempo real no Telegram.
 
-- [ ] **Tarefa 1.1 — Migração SQL `public.support_tickets` (`supabase/migrations/20260101000060_support_tickets.sql`):**
+- [x] **Tarefa 1.1 — Migração SQL `public.support_tickets` (`supabase/migrations/20260101000060_support_tickets.sql`):**
   - Criar tabela `public.support_tickets`:
     ```sql
     create type public.support_ticket_type as enum ('doubt', 'bug', 'suggestion', 'other');
@@ -207,7 +207,7 @@ flowchart TD
       );
     ```
 
-- [ ] **Tarefa 1.2 — Edge Function para Notificação no Telegram (`supabase/functions/support-notify/index.ts`):**
+- [x] **Tarefa 1.2 — Edge Function para Notificação no Telegram (`supabase/functions/support-notify/index.ts`):**
   - Implementar função serverless acionada na criação de chamados.
   - Formatar mensagem rica no Telegram com:
     - Nome e E-mail do cliente (com links diretos);
@@ -217,7 +217,7 @@ flowchart TD
     - Informações do dispositivo (plataforma Web/PWA/Android).
   - Usar variáveis secretas: `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`.
 
-- [ ] **Tarefa 1.3 — Componente de UI `SupportChatDialog` (`src/components/modules/support/support-chat-dialog.tsx`):**
+- [x] **Tarefa 1.3 — Componente de UI `SupportChatDialog` (`src/components/modules/support/support-chat-dialog.tsx`):**
   - Diálogo acessível no padrão do Design System (`components/ui/modal.tsx`).
   - Seletor de tipo com abas estilizadas: *Dúvida*, *Reportar Problema (Bug)*, *Sugestão*.
   - Campo de texto (`Textarea` encapsulado) com contador de caracteres.
@@ -225,12 +225,12 @@ flowchart TD
   - Feedback visual de envio com `triggerSensory("success")` e toast explicativo: *"Mensagem enviada! Retornaremos o contato em breve"*.
   - Ponto de acesso contextual: Botão de ajuda discreto no cabeçalho global (`GlobalHeader`) e item *"Ajuda & Suporte"* no menu móvel (`MoreMenuSheet`).
 
-- [ ] **Tarefa 1.4 — Aba de Gestão de Chamados no Painel Administrativo (`/admin`):**
+- [x] **Tarefa 1.4 — Aba de Gestão de Chamados no Painel Administrativo (`/admin`):**
   - Visualização de chamados abertos na área administrativa (`src/features/admin/`).
   - Filtro por status (*Abertos*, *Em Andamento*, *Resolvidos*).
   - Ação rápida para alterar status e registrar notas internas.
 
-- [ ] **Tarefa 1.5 — `AppErrorBoundary` Global & Listener de `vite:preloadError`:**
+- [x] **Tarefa 1.5 — `AppErrorBoundary` Global & Listener de `vite:preloadError`:**
   - Criar `src/components/layout/app-error-boundary.tsx` com tratamento gracioso de falhas de renderização React:
     - Tela polida no Design System com ícone `AlertTriangle`, título *"Algo inesperado aconteceu"*, descrição amigável e sem vazamento de detalhes técnicos;
     - Botão *"Tentar novamente"* (reseta o estado do boundary) e botão *"Recarregar Aplicativo"* (`window.location.reload()`);
@@ -252,14 +252,14 @@ flowchart TD
 ### FASE 2: Homologação Asaas em Produção, Higienização de Marca & Reúso de Pix
 **Objetivo:** Validar o ciclo completo de cobrança do plano Pro (R$ 19,90/mês e R$ 178,80/ano) via Asaas, assegurando marca oficial nos comprovantes bancários, reaproveitamento de Pix pendente e ativação atômica de assinaturas.
 
-- [ ] **Tarefa 2.1 — Configuração das Credenciais do Asaas no Supabase Secrets:**
+- [x] **Tarefa 2.1 — Configuração das Credenciais do Asaas no Supabase Secrets:**
   - Configurar as variáveis secretas de produção via Supabase CLI:
     ```bash
     supabase secrets set ASAAS_API_KEY="sua_chave_producao_asaas"
     supabase secrets set ASAAS_API_URL="https://api.asaas.com/v3"
     supabase secrets set ASAAS_WEBHOOK_TOKEN="seu_token_secreto_webhook"
     ```
-- [ ] **Tarefa 2.2 — Deploy e Blindagem das Edge Functions do Asaas:**
+- [x] **Tarefa 2.2 — Deploy e Blindagem das Edge Functions do Asaas:**
   - Fazer o deploy das funções `asaas-checkout`, `asaas-manage` e `asaas-webhook`:
     ```bash
     supabase functions deploy asaas-checkout --no-verify-jwt
@@ -269,7 +269,7 @@ flowchart TD
   - Verificar a validação do header de autenticação `asaas-access-token` no webhook, descartando requisições não autorizadas.
   - Garantir idempotência: eventos repetidos de `PAYMENT_RECEIVED` ou `PAYMENT_CONFIRMED` não devem duplicar registros em `user_subscriptions`.
 
-- [ ] **Tarefa 2.3 — Higienização de Marca Oficial ("Áxis Finance") & Reúso de Pix Ativo:**
+- [x] **Tarefa 2.3 — Higienização de Marca Oficial ("Áxis Finance") & Reúso de Pix Ativo:**
   - Atualizar `supabase/functions/_shared/asaas.ts`:
     - Trocar `"Plano Pro Anual - Guia Financeiro"` por `"Áxis Finance — Plano Pro Anual"`.
     - Trocar `"Plano Pro Mensal - Guia Financeiro"` por `"Áxis Finance — Plano Pro Mensal"`.
@@ -280,7 +280,7 @@ flowchart TD
     - Consultar se existe `asaas_payment_id` recente com status `PENDING` para o usuário gerado há menos de 1 hora.
     - Se existir, buscar o QR Code correspondente e devolvê-lo, prevenindo geração de múltiplas cobranças órfãs no Asaas.
 
-- [ ] **Tarefa 2.4 — Teste Real de Ponta a Ponta de R$ 1,00 (Go-Live Transacional):**
+- [x] **Tarefa 2.4 — Teste Real de Ponta a Ponta de R$ 1,00 (Go-Live Transacional):**
   - No painel Asaas, cadastrar a URL do webhook: `https://<PROJETO>.supabase.co/functions/v1/asaas-webhook`.
   - Habilitar eventos: `PAYMENT_RECEIVED`, `PAYMENT_CONFIRMED`, `PAYMENT_OVERDUE`, `PAYMENT_DELETED`.
   - Criar uma conta de teste no app e simular contratação do plano com Pix de teste ou valor mínimo.
@@ -298,7 +298,7 @@ flowchart TD
 ### FASE 3: Script Automatizado de Pré-Voo & Health Check (`npm run preflight`)
 **Objetivo:** Fornecer um comando único e infalível para validar se a aplicação, o banco e os serviços externos estão 100% saudáveis antes de passar o app para qualquer cliente.
 
-- [ ] **Tarefa 3.1 — Desenvolver o Script `scripts/preflight-check.ts`:**
+- [x] **Tarefa 3.1 — Desenvolver o Script `scripts/preflight-check.ts`:**
   - O script deve executar as seguintes checagens automáticas:
     1. **Ambiente Local e Node.js:** Versão do Node em conformidade com `.nvmrc` (≥ 22.23.4).
     2. **Variáveis de Ambiente:** Presença de `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_DEFAULT_BILLING_PROVIDER`.
@@ -309,7 +309,7 @@ flowchart TD
     7. **Integridade do Build:** Testar compilação limpa do TypeScript (`tsc -b`) e linting (`eslint .`).
   - Formatar a saída no terminal com indicadores claros de aprovação (*SUCESSO*, *ALERTA*, *FALHA*).
 
-- [ ] **Tarefa 3.2 — Registrar Script no `package.json`:**
+- [x] **Tarefa 3.2 — Registrar Script no `package.json`:**
   - Adicionar script: `"preflight": "tsx scripts/preflight-check.ts"`.
 
 > **PORTÃO DE QUALIDADE 3:**  
@@ -320,7 +320,7 @@ flowchart TD
 ### FASE 4: Checklist Operacional de Go-Live Externo (Domínio, DNS, Resend e Supabase)
 **Objetivo:** Garantir a prontidão de infraestrutura, eliminando qualquer risco de e-mails caindo em spam ou bloqueios de tráfego.
 
-- [ ] **Tarefa 4.1 — Configuração de SMTP Dedicado no Resend (Alta Entregabilidade):**
+- [x] **Tarefa 4.1 — Configuração de SMTP Dedicado no Resend (Alta Entregabilidade):**
   - Criar conta no [Resend](https://resend.com) e cadastrar o domínio institucional.
   - Inserir as entradas DNS exigidas no registrador/Cloudflare:
     - Registro TXT para validação de domínio.
@@ -336,7 +336,7 @@ flowchart TD
     - **Sender Email:** `nao-responda@seudominio.com.br` (ou `contato@...`)
     - **Sender Name:** `Áxis Finance`
 
-- [ ] **Tarefa 4.2 — Configuração do Domínio Oficial na Cloudflare:**
+- [x] **Tarefa 4.2 — Configuração do Domínio Oficial na Cloudflare:**
   - No painel da Cloudflare Pages, vincular o domínio oficial (ex.: `app.seudominio.com.br`).
   - Configurar SSL/TLS em modo **Full (Strict)**.
   - Validar se os cabeçalhos de borda (`public/_headers`) estão sendo servidos corretamente (HSTS, CSP estrita e cache imutável de assets).
@@ -344,7 +344,7 @@ flowchart TD
     - Atualizar `Site URL` para a URL oficial de produção.
     - Atualizar `Redirect URLs` para incluir `https://app.seudominio.com.br/**`.
 
-- [ ] **Tarefa 4.3 — Blindagem de Rate Limits e Agendamento de Cotações:**
+- [x] **Tarefa 4.3 — Blindagem de Rate Limits e Agendamento de Cotações:**
   - Em *Supabase Dashboard → Authentication → Rate Limits*:
     - Ativar proteção contra força bruta (lockout temporário após erros repetidos).
     - Ajustar limites de envio de e-mails para garantir que novos usuários não sejam bloqueados.
@@ -359,7 +359,7 @@ flowchart TD
 ### FASE 5: Guia Operacional do Fundador (`FOUNDER_RUNBOOK.md`) & Documentação
 **Objetivo:** Criar o manual de bordo do fundador para a operação cotidiana com os primeiros clientes.
 
-- [ ] **Tarefa 5.1 — Criar `docs/FOUNDER_RUNBOOK.md`:**
+- [x] **Tarefa 5.1 — Criar `docs/FOUNDER_RUNBOOK.md`:**
   - O manual deve conter procedimentos operacionais padronizados para:
     1. **Primeiro Atendimento a Clientes:** Como receber chamados via Telegram e responder pelo e-mail ou WhatsApp do cliente.
     2. **Concessão Manual de Planos e Ajustes de Acesso:**
@@ -372,7 +372,7 @@ flowchart TD
     5. **Monitoramento e Alertas:**
        - Onde acompanhar métricas de saúde, erros no Sentry e concorrência no Supabase.
 
-- [ ] **Tarefa 5.2 — Atualização da Documentação Viva:**
+- [x] **Tarefa 5.2 — Atualização da Documentação Viva:**
   - Atualizar `docs/PROJECT_STRUCTURE.md` incluindo `support_tickets`, `SupportChatDialog`, `AppErrorBoundary`, `scripts/preflight-check.ts` e `FOUNDER_RUNBOOK.md`.
   - Atualizar `docs/ROADMAP.md` registrando a consolidação deste plano mestre de go-live.
 

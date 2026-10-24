@@ -1,19 +1,22 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { ResumoTab } from "./resumo-tab";
 
-const mockDeleteAsset = vi.fn();
-const mockSyncQuotes = vi.fn();
-
-vi.mock("@/state", () => ({
-  useUserSubscription: () => ({
-    canWrite: true,
-    isReadOnly: false,
-    tier: "pro_annual",
-  }),
-  usePortfolioPosition: () => ({
+const {
+  mockDeleteAsset,
+  mockSyncQuotes,
+  mockStartDemo,
+  mockSetStepIndex,
+  getMockPortfolioPosition,
+  getMockPortfolioAssets,
+  setMockPortfolioPosition,
+  setMockPortfolioAssets,
+  defaultPosition,
+  defaultAssets,
+} = vi.hoisted(() => {
+  const initialPosition = {
     totalBRL: 15000,
     cashBRL: 5000,
     investedBRL: 10000,
@@ -69,13 +72,45 @@ vi.mock("@/state", () => ({
     ],
     isLoading: false,
     error: null,
+  };
+  const initialAssets = [
+    { id: "c1", ticker: "CAIXA", asset_class: "Caixa", quantity: 5000, average_price: 1, currency: "BRL" },
+    { id: "a1", ticker: "PETR4", asset_class: "Ações", quantity: 100, average_price: 30, currency: "BRL" },
+    { id: "a2", ticker: "MXRF11", asset_class: "FIIs", quantity: 650, average_price: 10, currency: "BRL" },
+  ];
+
+  let currentPos = initialPosition;
+  let currentAss = initialAssets;
+
+  return {
+    mockDeleteAsset: vi.fn(),
+    mockSyncQuotes: vi.fn(),
+    mockStartDemo: vi.fn(),
+    mockSetStepIndex: vi.fn(),
+    defaultPosition: initialPosition,
+    defaultAssets: initialAssets,
+    getMockPortfolioPosition: () => currentPos,
+    getMockPortfolioAssets: () => currentAss,
+    setMockPortfolioPosition: (p: typeof initialPosition) => {
+      currentPos = p;
+    },
+    setMockPortfolioAssets: (a: typeof initialAssets) => {
+      currentAss = a;
+    },
+  };
+});
+
+vi.mock("@/state", () => ({
+  startDemo: mockStartDemo,
+  setStepIndex: mockSetStepIndex,
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
   }),
+  usePortfolioPosition: () => getMockPortfolioPosition(),
   usePortfolioAssets: () => ({
-    data: [
-      { id: "c1", ticker: "CAIXA", asset_class: "Caixa", quantity: 5000, average_price: 1, currency: "BRL" },
-      { id: "a1", ticker: "PETR4", asset_class: "Ações", quantity: 100, average_price: 30, currency: "BRL" },
-      { id: "a2", ticker: "MXRF11", asset_class: "FIIs", quantity: 650, average_price: 10, currency: "BRL" },
-    ],
+    data: getMockPortfolioAssets(),
     isLoading: false,
     error: null,
   }),
@@ -210,6 +245,11 @@ function renderResumo(entry = "/investments") {
 }
 
 describe("ResumoTab", () => {
+  beforeEach(() => {
+    setMockPortfolioPosition(defaultPosition);
+    setMockPortfolioAssets(defaultAssets);
+    vi.clearAllMocks();
+  });
   it("renderiza o card exclusivo de Caixa & Liquidez com ações de ajustar e aportar caixa, e o grid de 4 KPIs de performance", () => {
     renderResumo();
 
@@ -272,5 +312,31 @@ describe("ResumoTab", () => {
     await user.click(reportBtn);
 
     expect(screen.getByText("Relatório Executivo da Carteira")).toBeInTheDocument();
+  });
+
+  it("renderiza o empty state quando não há ativos e aciona a simulação ao clicar em 'Ver carteira na Simulação'", async () => {
+    setMockPortfolioPosition({
+      totalBRL: 0,
+      cashBRL: 0,
+      investedBRL: 0,
+      unrealizedPnlBRL: 0,
+      unrealizedPct: 0,
+      rows: [],
+      monthlySeries: [],
+      isLoading: false,
+      error: null,
+    });
+    setMockPortfolioAssets([]);
+
+    const user = userEvent.setup();
+    renderResumo();
+
+    expect(screen.getByText("Nenhum ativo cadastrado")).toBeInTheDocument();
+    const demoBtn = screen.getByRole("button", { name: /Ver carteira na Simulação/i });
+    expect(demoBtn).toBeInTheDocument();
+
+    await user.click(demoBtn);
+    expect(mockStartDemo).toHaveBeenCalledWith("investments");
+    expect(mockSetStepIndex).toHaveBeenCalledWith(0);
   });
 });

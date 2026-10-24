@@ -38,8 +38,6 @@ export { OnboardingCard } from "./onboarding-card";
 export type { OnboardingCardProps } from "./onboarding-card";
 export { OnboardingBanner } from "./onboarding-banner";
 export type { OnboardingBannerProps } from "./onboarding-banner";
-export { DemoModeBanner } from "./demo-mode-banner";
-export type { DemoModeBannerProps } from "./demo-mode-banner";
 export { CategoryDonut } from "./category-donut";
 export type { CategoryDonutProps, DonutSlice } from "./category-donut";
 export { AllocationDonut } from "./allocation-donut";
@@ -123,5 +121,17 @@ export { WelcomeFeatureModal } from "./welcome-feature-modal";
 export type { WelcomeFeatureModalProps } from "./welcome-feature-modal";
 export { WELCOME_MODAL_STORAGE_KEY, WELCOME_SLIDES } from "./welcome-feature-modal-data";
 export type { FeatureSlide } from "./welcome-feature-modal-data";
+export { WelcomeModal } from "./welcome-modal";
+export type { WelcomeModalProps } from "./welcome-modal";
+export { DemoTrackSelectModal } from "./demo-track-select-modal";
+export type { DemoTrackSelectModalProps } from "./demo-track-select-modal";
+export { DemoTourBar } from "./demo-tour-bar";
+export type { DemoTourBarProps } from "./demo-tour-bar";
+export { DemoExitConfirmDialog } from "./demo-exit-confirm-dialog";
+export type { DemoExitConfirmDialogProps } from "./demo-exit-confirm-dialog";
+export { HelpModal } from "./help-modal";
+export type { HelpModalProps } from "./help-modal";
+export { SupportChatDialog } from "./support";
+export type { SupportChatDialogProps } from "./support";
 
 

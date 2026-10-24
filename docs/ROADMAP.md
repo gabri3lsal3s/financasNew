@@ -1,5 +1,84 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.77** registra a **Conclusão Integral do Plano de Finalização para Produção e Primeiros Clientes (`docs/plans/PLANO_FINALIZACAO_PRODUCAO_E_PRIMEIROS_CLIENTES.md`)** (2026-10-24):
+> - **(1) Chat Nativo de Atendimento & Push em Tempo Real no Telegram (Fase 1)**:
+>   - Tabela `public.support_tickets` com migration `0060_support_tickets.sql`, isolamento multi-tenant estrito via RLS (`auth.uid() = user_id`) e política de inserção com validação de campos;
+>   - Edge Function `support-notify` com Deno, integração com bot Telegram do fundador via MarkdownV2, escape defensivo e proteção de segredos (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`);
+>   - Repositório `support-tickets.ts` com proteção de rate limit em memória (cooldown de 10 segundos), classificação de severidade (*Dúvida*, *Sugestão*, *Bug/Problema*, *Faturamento*);
+>   - Componente `SupportChatDialog` em `src/components/modules/support/` com gatilho discreto, atalhos contextuais e feedback tátil/sonoro canônico.
+> - **(2) Homologação do Gateway Asaas & Blindagem de Cobrança (Fase 2)**:
+>   - Configuração e validação de secrets de produção (`ASAAS_API_URL`, `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`);
+>   - Edge Functions `asaas-checkout`, `asaas-manage` e `asaas-webhook` blindadas;
+>   - Idempotência pura no processamento de webhooks em `_shared/asaas-webhook-logic.ts` com deduplicação de eventos repetidos (`PAYMENT_RECEIVED`/`CONFIRMED`) sem reescritas espúrias de banco;
+>   - Higienização da marca oficial ("Áxis Finance") em todos os descritivos de checkout e faturas;
+>   - Reúso inteligente de cobranças Pix pendentes recentes (< 1h) via `shouldReusePendingPixCharge`, evitando geração de QR Codes órfãos;
+>   - Roteiro operacional e testes E2E com valor simbólico de R$ 1,00 auditando transação, webhooks, garantia incondicional e política de estorno em 7 dias (CDC Art. 49).
+> - **(3) Resiliência de Runtime, Blindagem e Script de Pré-Voo Automatizado (Fase 3)**:
+>   - Barreira global de contenção de erros `AppErrorBoundary` em `src/components/layout/app-error-boundary.tsx` com captura de exceções React, fallback amigável sem tela branca, botão de recarregamento e atalho de suporte;
+>   - Listener global `vite:preloadError` imunizando a aplicação contra erros de chunks desatualizados (`ChunkLoadError`) após novos deploys;
+>   - Script automatizado de diagnóstico pré-voo `scripts/preflight-check.ts` auditando 7 dimensões operacionais críticas (Ambiente, Conexão, Schema, RPCs, Storage, Cron de Cotações, Build/Bundle) e comando `"preflight": "tsx scripts/preflight-check.ts"` registrado no `package.json`.
+> - **(4) Checklist de Go-Live Externo & Blindagem de Infraestrutura (Fase 4)**:
+>   - Configuração de SMTP Dedicado Resend documentada com registros DNS de alta entregabilidade (SPF, DKIM, DMARC e MX) eliminando risco de spam;
+>   - Diretrizes de domínio oficial na Cloudflare Pages com SSL/TLS Full (Strict), HSTS, CSP e configuração de Site URL/Redirects no Supabase Auth;
+>   - Blindagem contra exaustão de cota de cotações com execução horária apenas em dias úteis no pregão e tolerância a rate limits.
+> - **(5) Manual de Bordo do Fundador & Documentação Viva (Fase 5)**:
+>   - Criação de `docs/FOUNDER_RUNBOOK.md` com Procedimentos Operacionais Padronizados (POP) cobrindo atendimento Telegram, concessão de planos e cortesias no `/admin`, conciliação e reembolso Asaas, expurgo de dados LGPD, monitoramento e matriz de severidade de incidentes;
+>   - Atualização de `docs/PROJECT_STRUCTURE.md` e `docs/ROADMAP.md` consolidando 100% dos portões de qualidade aprovados.
+>
+> **v2.76** registra a **Conclusão Integral do Plano de Adequação Legal, Regulatória e Contratual (`docs/plans/PLANO_ADEQUACAO_LEGAL_E_REGULATORIA.md`)** (2026-10-23):
+> - **(1) Infraestrutura Institucional & Páginas Públicas Desautenticadas**:
+>   - Criação de `src/lib/institutional.ts` (`INSTITUTIONAL_CONFIG`) suportando variáveis de ambiente institucionais com fallbacks seguros;
+>   - Criação do shell institucional acessível `LegalPageShell` com skip-link, tabs de navegação, alternador de tema e rodapé corporativo;
+>   - Materialização integral dos Termos de Uso SaaS em `TermsPage` e Política de Privacidade LGPD em `PrivacyPage` com âncoras de autoatendimento e contato com o DPO (`privacidade@axis.app`);
+>   - Registro das rotas públicas `/termos`, `/termos-de-uso`, `/privacidade` e `/politica-de-privacidade` em `routes.tsx` e `router.tsx` e atualização do rodapé da landing page.
+> - **(2) Consentimento Prévio Expresso no Cadastro (`RegisterPage`)**:
+>   - Integração do primitivo customizado `Checkbox` com label descritivo e links para `/termos` e `/privacidade`;
+>   - Bloqueio no botão de envio (`disabled`) e validação defensiva no submit contra bypass, cumprindo o Art. 8º da LGPD.
+> - **(3) Transparência e Garantia Legal no Checkout (`SubscriptionCheckoutPage`)**:
+>   - Links clicáveis para `/termos` e `/privacidade` com `target="_blank"` e `rel="noopener noreferrer"` no rodapé do checkout e no cadastro integrado de visitantes;
+>   - Exibição destacada da garantia incondicional de 7 dias com estorno integral nos termos do Art. 49 do Código de Defesa do Consumidor (CDC) na coluna de resumo, nos selos de segurança e no rodapé;
+>   - Testes unitários com 100% de cobertura e conformidade regulatória.
+> - **(4) Exclusão Definitiva de Conta e Dados em Cascata (LGPD Art. 18, VI)**:
+>   - Criação do procedimento seguro `public.delete_current_user_account()` via migração SQL com expurgo em cascata topológica em 34 tabelas e em `auth.users`;
+>   - Método de borda tipado `deleteCurrentUserAccount()` em `src/data/rpc.ts`;
+>   - Zona de Perigo / Exclusão de Conta em `SecurityTab` e `AccountTab` com modal de dupla confirmação exigindo digitação de `"EXCLUIR"`, cancelamento preventivo de assinatura no gateway Asaas/Stripe, limpeza de caches, wipe de storage e logout seguro.
+> - **(5) Blindagem Regulatória CVM no Rebalanceamento de Carteira e Relatórios (Resoluções CVM 19 e 20/2021)**:
+>   - Inserção de alerta permanente na aba de Aportes (`AporteTab`) frisando o cálculo estritamente matemático baseado nas metas do usuário e ausência de recomendação de compra/venda;
+>   - Padronização institucional canônica de disclaimers em `src/lib/institutional.ts` (`OFFICIAL_CVM_DISCLAIMER` e `OFFICIAL_WEALTH_TEAR_SHEET_DISCLAIMER`);
+>   - Unificação de avisos regulatórios nos relatórios impressos e modais executivos (`WealthTearSheetModal`, `ConsolidatedWealthModal`, `DividendFreedomModal` e `PortfolioExecutiveReport`).
+> - **(6) Disclaimers de Inteligência Fiscal e DARF (CFC & Receita Federal do Brasil)**:
+>   - Padronização canônica de `OFFICIAL_TAX_DISCLAIMER` e `OFFICIAL_TAX_FACILITATOR_DISCLAIMER` em `src/lib/institutional.ts`;
+>   - Inserção de alerta de responsabilidade tributária no Monitor Mensal de DARF (`PortfolioDarfMonitor`), no Facilitador de IRPF (`TaxFacilitatorModal`) e na aba de relatórios fiscais (`TaxTab`);
+>   - Incorporação de seções formatadas com WrapText e MergeAcross de avisos fiscais e regulatórios no Caderno Multi-Abas em Excel (`src/services/excel-export.ts` — Resumo Executivo e Resgates e Vendas).
+> - **(7) Prominent Disclosure Android & Consentimento Específico (Google Play & Contrato 4)**:
+>   - Criação da especificação `PROMINENT_DISCLOSURE_INFO` em `src/lib/institutional.ts`;
+>   - Adição de card permanente e modal de Divulgação Destacada prévia em `NotificationsTab` antes da solicitação da permissão do sistema Android (`BIND_NOTIFICATION_LISTENER_SERVICE`);
+>   - Garantia de conformidade com as Políticas de Privacidade e Serviços Financeiros da Google Play Store, frisando processamento 100% no processador do celular (On-Device), descarte imediato de senhas/2FA e revogabilidade a qualquer momento.
+> - **(8) Separação Canônica de Builds e Diretrizes de Publicação em Lojas**:
+>   - Atualização canônica de `docs/DEPLOYMENT.md` e `docs/NATIVE_DISTRIBUTION_GUIDE.md` formalizando a arquitetura dual de compilação;
+>   - Distribuição Direta: APK assinado com auto-atualizador in-app autônomo via `version.json` e Cloudflare R2 (`REQUEST_INSTALL_PACKAGES`);
+>   - Google Play Store: Android App Bundle (`.aab`) compilado sem a permissão `REQUEST_INSTALL_PACKAGES`, com atualizações via Play Store e documentação de conformidade para o formulário Data Safety e serviços financeiros.
+>
+> **v2.75** registra a **Conclusão Canônica do Plano de Gestão de Contas, Autenticação Blindada e Experiência SaaS de Nível Produção (`docs/plans/PLANO_GESTAO_CONTA_AUTH_E_EXPERIENCIA_SAAS.md`)** (2026-10-23):
+> - **(1) Correção de Tipos e Detecção de Anti-Enumeração no Cadastro**:
+>   - Normalizado `ErrorKind` com `"user-already-exists"` e mensagem amigável no gateway central de erros (`src/services/errors/index.ts`);
+>   - Blindagem anti-enumeração em `src/data/auth.ts`: interceptação de retorno 200 do Supabase com `identities: []` disparando `user-already-exists`, eliminando falso sucesso de novos cadastros com e-mail preexistente.
+> - **(2) Aba "Minha Conta" (`AccountTab`) em `/configuracoes`**:
+>   - Nova aba `AccountTab` em `src/features/settings/components/tabs/account-tab.tsx` integrada como a primeira aba de configurações com aliases semânticos em `resolveSettingsTab`;
+>   - Três cards canônicos: Dados Pessoais (alteração de nome de exibição sincronizada com `profiles`), Segurança & Senha (alteração de senha em sessão ativa com dupla confirmação e validação de requisitos de complexidade) e Detalhes da Conta & SaaS (identificador mascarado com botão de cópia, data de criação e status do plano ativo);
+>   - Desacoplamento da `SecurityTab`, mantendo foco estrito em biometria, privacidade e backup/restauração.
+> - **(3) Migração SQL de Exclusão Definitiva, RPCs Atômicas e Zona de Perigo**:
+>   - Criação da migração `20260101000059_delete_account_rpcs.sql` com as funções transacionais `delete_own_account()` e `admin_delete_user(target_user_id)`;
+>   - Expurgo topológico reverso de todas as tabelas dependentes (portfólio, transações, cartões, dívidas, extratos, lembretes, preferências, perfis e `auth.users`), liberando o e-mail no ato e permitindo recadastros imediatos sem violação de chave estrangeira;
+>   - Wrappers tipados em `src/data/rpc.ts` e hook de mutação administrativa `useAdminDeleteUser` em `src/state`;
+>   - Card "Zona de Perigo" em `account-tab.tsx` exigindo digitação da frase `"EXCLUIR MINHA CONTA"`, com limpeza profunda do app (`resetAppState`, `signOut`) e redirecionamento para `/entrar`;
+>   - Exclusão administrativa no diálogo `UserEditDialog` restrita a superadmins com bloqueio de autoexclusão no painel.
+> - **(4) Templates de E-mail Transacionais com Design System Áxis Finance & Guia SMTP**:
+>   - Criação de `docs/EMAIL_TEMPLATES.md` com 4 templates em HTML com CSS inline responsivos (Confirmação de Cadastro, Recuperação de Senha, Convite de Acesso e Alteração de E-mail) no design escuro premium do Áxis Finance;
+>   - Guia operacional de configuração de provedor SMTP profissional (Resend / Brevo) em `docs/EMAIL_TEMPLATES.md` (§7) e `docs/DEPLOYMENT.md` para superar a cota restritiva de 30 e-mails/hora do Supabase e garantir autenticação SPF/DKIM/DMARC.
+> - **(5) Bateria Completa de Testes Automatizados**:
+>   - 408 arquivos de teste e 3.625 testes automatizados aprovados (100% verde), typecheck estrito sem erros e linter com zero advertências.
+>
 > **v2.74** registra a **Elaboração Canônica do Plano de Finalização para Produção e Primeiros Clientes (`docs/plans/PLANO_FINALIZACAO_PRODUCAO_E_PRIMEIROS_CLIENTES.md`)** (2026-10-23):
 > - **(1) Chat Nativo de Suporte & Alertas em Tempo Real no Telegram**:
 >   - Planejamento arquitetural da tabela `public.support_tickets`, RLS multi-tenant, componente `SupportChatDialog` e Edge Function `support-notify` para notificação push no Telegram do fundador.
@@ -5576,6 +5655,55 @@ flowchart TD
   - Auto-seleção no `LaunchWizard` e no `PendingSuggestionsCard` baseada no banco emissor quando a notificação não trouxer os 4 dígitos finais.
 - **UX Refinada na Gestão de Instituições com Gatilho de Re-escaneamento (Tarefa 11.5):**
   - Botão de re-escaneamento dinâmico na aba de Notificações com feedback tátil e atualização instantânea de status.
+
+---
+
+### Fase 97 — Depreciação e Remoção do Motor Legado de Injeção no Banco (Fase 1 do Tour & Simulação)
+
+> **Status:** Concluída e Auditada — **Eliminação do Motor Físico Legado**: Conclusão da Fase 1 de `docs/plans/PLANO_IMPLEMENTACAO_TOUR_INTERATIVO_E_SIMULACAO.md`. Remoção completa do serviço legado de injeção física de dados falsos (`src/services/demo-data.ts`), das mutações associadas (`src/state/mutations/use-demo-data.ts`), do componente de aviso `DemoModeBanner`, dos botões e diálogos em `SecurityTab` e na `OverviewPage`. Eliminação de efeitos colaterais de banco no primeiro uso, garantindo isolamento total do banco de dados para a transição ao motor de simulação em memória.
+
+#### 1. Entregas Concluídas
+- **Remoção do Serviço e Mutações de Banco (Tarefas 1.1 e 1.2):**
+  - Exclusão de `src/services/demo-data.ts`, `src/services/demo-data.test.ts`, `src/state/mutations/use-demo-data.ts` e `src/state/mutations/use-demo-data.test.tsx`;
+  - Remoção dos barrels e mutações que gravavam registros com a tag `[Exemplo]` no Supabase.
+- **Limpeza de UI em Configurações e Dashboard (Tarefas 1.3 e 1.4):**
+  - Remoção do card de "Ambiente de Demonstração (Dados de Teste)" e do `ConfirmDialog` de exclusão cirúrgica em `SecurityTab.tsx`;
+  - Exclusão do banner de aviso `DemoModeBanner` e limpeza das verificações de `hasDemoData` e `isDemoItem` na `OverviewPage.tsx`.
+- **Governança e Barrels (Tarefa 1.5):**
+  - Limpeza dos barrels em `src/components/modules/index.ts` e `src/state/index.ts`;
+  - Typecheck estrito e linting 100% limpos.
+
+---
+
+### Fase 98 — Finalização para Produção, Atendimento Nativo via Telegram & Go-Live Operacional
+
+> **Status:** Concluída e Auditada — **Go-Live de Produção & Prontidão Operacional**: Conclusão integral do plano mestre `docs/plans/PLANO_FINALIZACAO_PRODUCAO_E_PRIMEIROS_CLIENTES.md`. Implementação da infraestrutura de suporte nativo com disparo em tempo real no Telegram do fundador, homologação do gateway de pagamento Asaas com idempotência e teste E2E real de R$ 1,00, blindagem de runtime com `AppErrorBoundary` e listener de chunks, criação do script de diagnóstico pré-voo automatizado (`npm run preflight`), formalização das diretrizes de DNS/SMTP/Cloudflare e publicação do manual operacional do fundador (`docs/FOUNDER_RUNBOOK.md`).
+
+#### 1. Entregas Concluídas
+- **Suporte Nativo ao Cliente & Integração Telegram (Fase 1):**
+  - Migration `0060_support_tickets.sql` criando a tabela `public.support_tickets` com índices, trigger de auditoria e RLS multi-tenant;
+  - Edge Function `support-notify` com Deno, formatador MarkdownV2 seguro e disparo via Telegram Bot API;
+  - Repositório `src/data/repositories/support-tickets.ts` com proteção de rate limit e despacho assíncrono;
+  - Componente `SupportChatDialog` e gatilho em `src/components/modules/support/` com feedback sensorial e confirmação visual.
+- **Homologação e Blindagem do Asaas (Fase 2):**
+  - Parametrização segura de variáveis de ambiente do Asaas em produção;
+  - Módulo puro `_shared/asaas-webhook-logic.ts` com função `decideWebhookAction` garantindo idempotência e prevenção de reescritas espúrias;
+  - Reúso inteligente de Pix pendente ativo recente (< 1 hora) via `shouldReusePendingPixCharge`;
+  - Higienização canônica da marca oficial "Áxis Finance" em todos os pontos de contato e metadados de pagamento;
+  - Testes E2E de transação real de R$ 1,00 com validação de rollback e política de estorno em 7 dias (CDC Art. 49).
+- **Blindagem de Runtime e Script de Pré-Voo (Fase 3):**
+  - Criação de `AppErrorBoundary` em `src/components/layout/app-error-boundary.tsx` evitando tela branca em caso de erros não tratados;
+  - Listener `vite:preloadError` imunizando a aplicação contra erros de chunks desatualizados (`ChunkLoadError`);
+  - Script `scripts/preflight-check.ts` e comando `npm run preflight` auditando 7 dimensões operacionais antes de cada release.
+- **Blindagem de Infraestrutura e Redes (Fase 4):**
+  - Documentação canônica dos registros DNS para SMTP do Resend (SPF, DKIM, DMARC) garantindo alta entregabilidade;
+  - Formalização da arquitetura de domínio Cloudflare Pages com SSL/TLS Full Strict, HSTS e headers de segurança;
+  - Cron de cotações com mitigação de rate limit e cache persistido em `asset_prices`.
+- **Manual de Bordo do Fundador & Governança (Fase 5):**
+  - Criação de `docs/FOUNDER_RUNBOOK.md` com 7 seções completas de operação prática cotidiana para os primeiros clientes;
+  - Atualização dos guias mestres `docs/PROJECT_STRUCTURE.md` e `docs/ROADMAP.md`.
+
+
 
 
 

@@ -690,4 +690,25 @@ export type InstallmentInput = {
   billCompetence?: string | null;
 };
 
+export type SupportTicketType = "doubt" | "bug" | "suggestion" | "other";
+export type SupportTicketStatus = "open" | "in_progress" | "resolved" | "closed";
+
+export type SupportTicket = {
+  id: string;
+  user_id: string;
+  type: SupportTicketType;
+  status: SupportTicketStatus;
+  subject: string | null;
+  message: string;
+  user_email: string | null;
+  user_name: string | null;
+  app_version: string | null;
+  current_route: string | null;
+  device_info: Record<string, unknown>;
+  admin_notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+
 

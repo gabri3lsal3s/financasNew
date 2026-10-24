@@ -169,6 +169,7 @@ export {
   useAdminSetUserModulePermission,
   useAdminRemoveUserModulePermission,
   useAdminCreateModularInvite,
+  useAdminDeleteUser,
 } from "./mutations/use-admin-mutations";
 
 export {
@@ -186,9 +187,50 @@ export {
 } from "./mutations/use-cash-checkpoint-mutations";
 export { useExportData, EXPORT_DATA_QUERY_KEY } from "./queries/use-export-data";
 export { useRestoreBackup } from "./mutations/use-restore-backup";
-export { useLoadDemoData, useClearDemoData } from "./mutations/use-demo-data";
+
+export {
+  getDemoSessionState,
+  startDemo,
+  endDemo,
+  goToNextStep,
+  goToPrevStep,
+  setStepIndex,
+  resetDemoSession,
+  useDemoSession,
+  hasCompletedDemoTour,
+  markTourCompleted,
+  hasSeenWelcomeModal,
+  markWelcomeModalSeen,
+  resetDemoTourStorage,
+  type DemoSessionState,
+} from "./demo-mode";
+
+export {
+  makeSimulatedQueryResult,
+  useSimulatedExpenses,
+  useSimulatedExpensesByRange,
+  useSimulatedIncomes,
+  useSimulatedIncomesByRange,
+  useSimulatedCategories,
+  useSimulatedCreditCards,
+  useSimulatedBudgets,
+  useSimulatedPortfolioAssets,
+  useSimulatedAllPortfolioTransactions,
+  useSimulatedPortfolioSnapshots,
+  useSimulatedPortfolioContributions,
+  useSimulatedPortfolioDividends,
+  useSimulatedAllocationTargets,
+  useSimulatedGroupTargets,
+  useSimulatedOnboardingCounts,
+} from "./queries/use-simulated-queries";
 
 export { useUserSubscription } from "./queries/use-user-subscription";
 export { SubscriptionProvider, useIsPro } from "./subscription-context";
 export { usePermission, type PermissionResult } from "./queries/use-permission";
 export type { SubscriptionStatus } from "@/types";
+export {
+  useCreateSupportTicketMutation,
+  useUpdateSupportTicketMutation,
+  supportTicketsKey,
+} from "./mutations/use-support-mutations";
+export { useAdminSupportTickets } from "./queries/use-support-tickets";

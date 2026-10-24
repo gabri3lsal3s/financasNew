@@ -12,6 +12,7 @@ import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Skeleton } from "@/components/ui";
+import { DemoTourBar } from "@/components/modules";
 import type { LaunchState } from "@/features/transactions/wizard/wizard-state";
 
 const LaunchWizard = lazy(() =>
@@ -206,6 +207,7 @@ export function PageShell() {
             {showPrivacy && <PrivacyToggle />}
           </div>
         </header>
+        <DemoTourBar />
         <NetworkStatusBanner />
         <main id="main-content" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-none min-h-0 w-full">
           <div className="mx-auto w-full max-w-7xl px-3 sm:px-6 pb-[calc(6.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] lg:pb-10 pt-4 sm:pt-6 lg:px-8 min-w-0">

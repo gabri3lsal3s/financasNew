@@ -7,6 +7,10 @@ import type { AdminUserRow, UserModulePermission } from "@/types";
 const mockSetSubscriptionMutateAsync = vi.fn();
 const mockSetModulePermissionMutateAsync = vi.fn();
 const mockRemoveModulePermissionMutateAsync = vi.fn();
+const mockDeleteUserMutateAsync = vi.fn();
+
+let mockCurrentUserRole = "superadmin";
+let mockAuthUserId = "superadmin-999";
 
 let mockModulePermissions: UserModulePermission[] = [
   {
@@ -32,14 +36,25 @@ const mockUser: AdminUserRow = {
   total_count: 1,
 };
 
+vi.mock("@/hooks/use-auth", () => ({
+  useAuth: () => ({
+    user: { id: mockAuthUserId, email: "super@admin.com" },
+  }),
+}));
+
 vi.mock("@/state", () => ({
   useUserAccess: () => ({
-    role: "superadmin",
-    isAdmin: true,
-    isSuperAdmin: true,
+    role: mockCurrentUserRole,
+    isAdmin: mockCurrentUserRole === "admin" || mockCurrentUserRole === "superadmin",
+    isSuperAdmin: mockCurrentUserRole === "superadmin",
+    profile: { id: mockAuthUserId, name: "Super Admin", role: mockCurrentUserRole },
   }),
   useAdminUpdateUserStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAdminSetUserRole: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAdminDeleteUser: () => ({
+    mutateAsync: mockDeleteUserMutateAsync,
+    isPending: false,
+  }),
   useAdminPlans: () => ({ data: [], isLoading: false }),
   useAdminUserSubscription: () => ({
     data: {
@@ -78,6 +93,8 @@ vi.mock("@/state", () => ({
 describe("UserEditDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCurrentUserRole = "superadmin";
+    mockAuthUserId = "superadmin-999";
     mockModulePermissions = [
       {
         id: "perm-1",
@@ -91,6 +108,7 @@ describe("UserEditDialog", () => {
     mockSetSubscriptionMutateAsync.mockResolvedValue(undefined);
     mockSetModulePermissionMutateAsync.mockResolvedValue(undefined);
     mockRemoveModulePermissionMutateAsync.mockResolvedValue(undefined);
+    mockDeleteUserMutateAsync.mockResolvedValue(undefined);
   });
 
   it("renderiza os detalhes do usuário, seção de assinatura e permissões modulares", () => {
@@ -239,6 +257,66 @@ describe("UserEditDialog", () => {
     expect(mockRemoveModulePermissionMutateAsync).toHaveBeenCalledWith({
       userId: "u-123",
       moduleKey: "debts",
+    });
+  });
+
+  describe("Exclusão de Usuário do Sistema (Superadmin)", () => {
+    it("exibe o botão 'Excluir Usuário do Sistema' quando o usuário é superadmin e não é autoexclusão", () => {
+      mockCurrentUserRole = "superadmin";
+      mockAuthUserId = "superadmin-999";
+      render(<UserEditDialog user={mockUser} open={true} onOpenChange={vi.fn()} />);
+
+      expect(screen.getByText("Zona de Perigo: Exclusão Definitiva")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Excluir Usuário do Sistema" }),
+      ).toBeInTheDocument();
+    });
+
+    it("oculta a Zona de Perigo e botão de exclusão quando o executor é um admin regular", () => {
+      mockCurrentUserRole = "admin";
+      mockAuthUserId = "admin-888";
+      render(<UserEditDialog user={mockUser} open={true} onOpenChange={vi.fn()} />);
+
+      expect(screen.queryByText("Zona de Perigo: Exclusão Definitiva")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Excluir Usuário do Sistema" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("oculta a Zona de Perigo e botão de exclusão quando o usuário editado é o próprio superadmin logado (bloqueio de autoexclusão)", () => {
+      mockCurrentUserRole = "superadmin";
+      mockAuthUserId = "u-123"; // mesmo ID do mockUser
+      render(<UserEditDialog user={mockUser} open={true} onOpenChange={vi.fn()} />);
+
+      expect(screen.queryByText("Zona de Perigo: Exclusão Definitiva")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Excluir Usuário do Sistema" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("abre o ConfirmDialog e executa a exclusão ao confirmar", async () => {
+      const user = userEvent.setup();
+      mockCurrentUserRole = "superadmin";
+      mockAuthUserId = "superadmin-999";
+      const onOpenChangeMock = vi.fn();
+
+      render(<UserEditDialog user={mockUser} open={true} onOpenChange={onOpenChangeMock} />);
+
+      const deleteBtn = screen.getByRole("button", { name: "Excluir Usuário do Sistema" });
+      await user.click(deleteBtn);
+
+      expect(screen.getByRole("heading", { name: "Excluir Usuário do Sistema" })).toBeInTheDocument();
+      expect(
+        screen.getByText(/Tem certeza que deseja excluir permanentemente o usuário Maria Santos\?/i),
+      ).toBeInTheDocument();
+
+      const confirmBtn = screen.getByRole("button", { name: "Excluir Definitivamente" });
+      await user.click(confirmBtn);
+
+      expect(mockDeleteUserMutateAsync).toHaveBeenCalledWith({
+        targetUserId: "u-123",
+      });
+      expect(onOpenChangeMock).toHaveBeenCalledWith(false);
     });
   });
 });

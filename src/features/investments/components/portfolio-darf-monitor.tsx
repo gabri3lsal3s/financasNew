@@ -5,6 +5,7 @@ import { MonthPicker } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { calculateMonthlyDarf } from "@/domain/portfolio";
 import { currentMonth } from "@/lib/date";
+import { OFFICIAL_TAX_DISCLAIMER } from "@/lib/institutional";
 import type { PortfolioAsset, PortfolioTransaction } from "@/types";
 
 export interface PortfolioDarfMonitorProps {
@@ -204,6 +205,12 @@ export function PortfolioDarfMonitor({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Disclaimer Contábil e Fiscal Oficial (Contrato 5 / CFC / RFB) */}
+        <div className="flex items-start gap-2.5 rounded-xl border border-border/80 bg-surface-hover/30 p-3 text-[11px] text-muted-foreground leading-relaxed">
+          <ShieldAlert className="size-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+          <span>{OFFICIAL_TAX_DISCLAIMER}</span>
         </div>
       </div>
     </Modal>

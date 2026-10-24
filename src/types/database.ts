@@ -29,6 +29,7 @@ import type {
   Profile,
   Recurrence,
   RecurrenceSkip,
+  SupportTicket,
   SystemFeature,
   UserFeatureOverride,
   UserModulePermission,
@@ -83,10 +84,23 @@ export interface Database {
       asset_prices: Table<AssetPrice>;
       cash_checkpoints: Table<CashCheckpoint>;
       audit_events: Table<AuditEvent>;
+      support_tickets: Table<SupportTicket>;
     };
 
     Views: Record<string, never>;
     Functions: {
+      delete_current_user_account: {
+        Args: Record<string, never>;
+        Returns: void;
+      };
+      delete_own_account: {
+        Args: Record<string, never>;
+        Returns: void;
+      };
+      admin_delete_user: {
+        Args: { target_user_id: string };
+        Returns: void;
+      };
       create_expense_with_debt: {
         Args: {
           p_value: number;

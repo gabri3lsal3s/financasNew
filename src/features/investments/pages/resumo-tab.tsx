@@ -11,6 +11,7 @@ import {
   Plus,
   RefreshCw,
   Shield,
+  Sparkles,
   TrendingUp,
 } from "lucide-react";
 import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, Modal, SkeletonKpi } from "@/components/ui";
@@ -36,6 +37,8 @@ import { getErrorMessage } from "@/services/errors";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import {
+  setStepIndex,
+  startDemo,
   useAllocationTargets,
   useDeletePortfolioAsset,
   useGroupTargets,
@@ -569,6 +572,19 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
               </Button>
               <Button type="button" size="sm" variant="outline" onClick={handleOpenCash}>
                 Cadastrar Saldo em Caixa
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  startDemo("investments");
+                  setStepIndex(0);
+                }}
+                className="gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
+              >
+                <Sparkles className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                Ver carteira na Simulação
               </Button>
             </div>
           }

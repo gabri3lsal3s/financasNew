@@ -704,6 +704,42 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
   - Em telas móveis (`< sm`), as 3 competências de fatura (*Anterior*, *Atual*, *Próxima*) renderizam em grade de 3 colunas compactas (`grid grid-cols-3 gap-2`) com rótulo uppercase (`ANTERIOR`, `ATUAL`, `PRÓXIMA`), mês abreviado (`Set.`, `Out.`, `Nov.`) e badge de status (`InvoiceStatusBadge` com `size="xs"`), garantindo affordance tátil clara.
   - No desktop (`>= sm`), preserva-se o layout horizontal compacto em pills (`role="group"`) alinhado às ações de fatura.
 
+### 14.29 Módulos de Onboarding, Boas-Vindas e Tour Guiado Interativo em Memória (Fase 3)
+- **Componentes:** `src/components/modules/welcome-modal.tsx`, `src/components/modules/demo-track-select-modal.tsx`, `src/components/modules/demo-tour-bar.tsx`, `src/components/modules/demo-exit-confirm-dialog.tsx`, `src/components/modules/onboarding-banner.tsx`.
+- **Arquitetura de Demonstração em Memória (Zero Injeção Física de Banco):**
+  - Eliminação total do mecanismo legado de injeção e exclusão física de dados falsos (`demo-data.ts`, `use-demo-data.ts`).
+  - O tour opera com sandbox puramente em memória no TanStack Query (`use-simulated-queries.ts`), fornecendo transições instantâneas (< 100ms) sem nenhum risco de poluição de dados reais no Supabase.
+- **`WelcomeModal` (Acolhimento no Primeiro Login):**
+  - Acionado para contas recém-criadas sem dados (`isFirstUse`).
+  - Apresentação didática dos 3 pilares da plataforma em padrão *icon-only* neutro e semântico (`ArrowUpDown` com `text-positive-strong`, `CreditCard` com `text-muted-foreground`, `TrendingUp` com `text-portfolio`).
+  - Botão Primário: "Fazer Tour Rápido (2 min)" com ícone `Compass`. Botão Secundário: "Configurar Minha Conta Agora".
+  - Diálogo adaptativo: Bottom Sheet no mobile (`< 768px`) com arrasto suave e modal centralizado no desktop (`size="md"`).
+- **`DemoTrackSelectModal` (Escolha Modular de Trilha):**
+  - Oferece escolha entre duas trilhas didáticas:
+    1. *Finanças Diárias & Cartões* (4 passos, ícone `Wallet`, direciona para `/`).
+    2. *Investimentos & Rebalanceamento* (3 passos, ícone `TrendingUp`, direciona para `/investimentos`).
+  - Cards interativos com feedback tátil centralizado (`triggerSensory("action")`), badges padronizadas (`variant="muted" size="xs"` para contagem de passos; `variant="positive" size="xs"` com `Check` para trilhas já finalizadas).
+  - Ação no rodapé: "Pular tour e ir para conta real".
+- **`DemoTourBar` (Barra Superior Guiada):**
+  - Fixada no topo da viewport (`sticky top-0 z-sticky`, `bg-surface/95 backdrop-blur-md border-b border-border/80 shadow-xs`).
+  - Acessibilidade semântica com `role="region"` e `aria-label="Barra guiada do modo de demonstração"`.
+  - Indicador de passo (`Passo X de Y`), título e descrição concisa do recurso em exibição.
+  - Controles ergonômicos de navegação: "Anterior" (desabilitado no 1º passo), "Próximo / Concluir Tour", "Trocar Trilha" (abre `DemoTrackSelectModal` sob demanda) e botão de destaque "Começar Minha Conta Real".
+- **`DemoExitConfirmDialog` (Interceptação Segura de Ações Reais):**
+  - Diálogo de confirmação com tamanho canônico `size="sm"` (`md:max-w-md` = 448px).
+  - Intercepta cliques de criação de dados reais durante o tour com mensagem acolhedora e ações claras: "Continuar Explorando" e "Confirmar (Cadastrar Dado Real)".
+- **`OnboardingBanner` Atualizado:**
+  - Botão de exploração adaptado para "Explorar com Simulação", acionando o `DemoTrackSelectModal` e mantendo o checklist sincronizado em tempo real.
+- **`HelpModal` (Central de Ajuda & Ponto de Entrada Permanente):**
+  - Componente: `src/components/modules/help-modal.tsx`.
+  - Diálogo adaptativo `size="lg"` integrando destaque do Modo Simulação & Tour Guiado, perguntas frequentes sanfonadas com respostas claras sobre rebalanceamento e competência de faturas, e canais de contato.
+  - Acessível permanentemente no menu Minha Conta (`LogoProfileButton`) e no menu de navegação móvel (`MoreMenuSheet`).
+- **Governança Estrita do Design System:**
+  - ZERO controles nativos (uso estrito dos primitivos `Modal`, `ResponsiveDialog`, `Button`, `Badge`, `Progress`).
+  - ZERO emojis e ZERO caracteres decorativos no produto.
+  - Governança sensorial: sem duplicidade de vibração tátil em botões.
+
+
 
 
 

@@ -1021,6 +1021,33 @@ export async function adminCreateModularInvite(params: {
   );
 }
 
+/**
+ * Exclui a conta do usuário autenticado e todos os seus dados em ordem topológica reversa (LGPD Art. 18, VI).
+ */
+export async function deleteCurrentUserAccount(): Promise<void> {
+  await unwrapRpc(callRpc("delete_current_user_account", {}), true);
+}
+
+/**
+ * Alias de retrocompatibilidade para deleteCurrentUserAccount().
+ */
+export async function deleteOwnAccount(): Promise<void> {
+  return deleteCurrentUserAccount();
+}
+
+/**
+ * Superadmin exclui definitivamente um usuário e todos os seus dados do sistema.
+ */
+export async function adminDeleteUser(params: { targetUserId: string }): Promise<void> {
+  await unwrapRpc(
+    callRpc("admin_delete_user", {
+      target_user_id: params.targetUserId,
+    }),
+    true,
+  );
+}
+
+
 
 
 

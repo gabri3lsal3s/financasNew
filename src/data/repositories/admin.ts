@@ -2,6 +2,7 @@ import { getSupabase } from "@/data/client";
 import { resolveQuery } from "@/data/query";
 import {
   adminCreateInvite as adminCreateInviteRpc,
+  adminDeleteUser as adminDeleteUserRpc,
   adminGetMetrics as adminGetMetricsRpc,
   adminListUsers as adminListUsersRpc,
   adminRemoveFeatureOverride as adminRemoveFeatureOverrideRpc,
@@ -97,6 +98,7 @@ export async function listAuditEvents(limit = 100): Promise<AuditEvent[]> {
 // Re-export das operações administrativas transacionais
 export {
   adminCreateInviteRpc as adminCreateInvite,
+  adminDeleteUserRpc as adminDeleteUser,
   adminGetMetricsRpc as adminGetMetrics,
   adminListUsersRpc as adminListUsers,
   adminRemoveFeatureOverrideRpc as adminRemoveFeatureOverride,

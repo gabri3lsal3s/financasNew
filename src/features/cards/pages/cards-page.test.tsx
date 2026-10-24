@@ -17,6 +17,8 @@ const createCardMock = vi.fn();
 const updateCardMock = vi.fn();
 const deleteCardMock = vi.fn();
 const deleteCardPaymentMock = vi.fn();
+const mockStartDemo = vi.fn();
+const mockSetStepIndex = vi.fn();
 
 const defaultCard = {
   id: "c1",
@@ -168,6 +170,8 @@ vi.mock("@/state", () => ({
   useSetFeedback: () => ({ mutate: vi.fn(), isPending: false }),
   useCreateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteRecurrenceOccurrences: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  startDemo: (...args: unknown[]) => mockStartDemo(...args),
+  setStepIndex: (...args: unknown[]) => mockSetStepIndex(...args),
   useUserPreferences: () => ({
     data: {
       user_id: "u1",
@@ -437,11 +441,19 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     expect(screen.getByText("Nenhum pagamento")).toBeInTheDocument();
   });
 
-  it("exibe estado vazio harmonizado quando não houver nenhum cartão cadastrado", () => {
+  it("exibe estado vazio harmonizado quando não houver nenhum cartão cadastrado", async () => {
     stateMocks.cards = [];
+    const user = userEvent.setup();
     render(<CardsPage />);
     expect(screen.getByText("Nenhum cartão cadastrado")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /adicionar primeiro cartão/i })).toBeInTheDocument();
+
+    const simBtn = screen.getByRole("button", { name: /Ver fatura na Simulação/i });
+    expect(simBtn).toBeInTheDocument();
+
+    await user.click(simBtn);
+    expect(mockStartDemo).toHaveBeenCalledWith("finances");
+    expect(mockSetStepIndex).toHaveBeenCalledWith(2);
   });
 
   it("exibe limite disponível recalculado dinamicamente na barra de status da fatura", () => {

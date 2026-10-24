@@ -68,4 +68,92 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
 
     expect(await screen.findByRole("button", { name: "Recursos" }, { timeout: 8000 })).toBeInTheDocument();
   });
+
+  it("renderiza a rota pública desautenticada /termos com lazy loading", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/termos");
+    render(<AppRouter />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Termos de Serviço e Contrato de Adesão SaaS",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("renderiza o alias desautenticado /termos-de-uso com lazy loading", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/termos-de-uso");
+    render(<AppRouter />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Termos de Serviço e Contrato de Adesão SaaS",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("renderiza a rota pública desautenticada /privacidade com lazy loading", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/privacidade");
+    render(<AppRouter />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Política de Privacidade e Proteção de Dados (LGPD)",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("renderiza o alias desautenticado /politica-de-privacidade com lazy loading", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/politica-de-privacidade");
+    render(<AppRouter />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Política de Privacidade e Proteção de Dados (LGPD)",
+      }),
+    ).toBeInTheDocument();
+  });
 });

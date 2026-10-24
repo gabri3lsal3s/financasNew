@@ -10,6 +10,7 @@ import {
 } from "@/components/modules/reports";
 import { numberToCents } from "@/domain/money";
 import { formatFixedIncomeRateLabel } from "@/domain/portfolio/fixed-income";
+import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
 import type { PositionRow } from "@/components/modules/position-table";
 
 export interface PortfolioExecutiveReportProps {
@@ -190,7 +191,7 @@ export function PortfolioExecutiveReport({
         {/* Rodapé */}
         <ReportFooter
           accountHolder={accountHolder}
-          disclaimer="Documento estritamente confidencial gerado pelo titular da conta via Áxis Finance. As informações refletem a posição de custódia e cotações na data de emissão."
+          disclaimer={OFFICIAL_CVM_DISCLAIMER}
         />
       </div>
     </ReportDocumentLayout>
