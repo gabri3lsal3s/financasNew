@@ -161,11 +161,10 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Smart Advisor com fila sequencial de insights e microinteracoes",
-    "Integracao de alertas criticos a Central Global de Notificacoes",
-    "Painel de auditoria e revogacao de memoria do assistente",
-    "Contextualizacao de fatura e limite disponivel no card do assistente",
-    "Deteccao avancada de recorrencias anuais, semanais e parser Pix"
+    "Tour Guiado com Spotlight e foco visual escurecido",
+    "Card popover adaptativo com navegacao ergonomica e saida em 1 clique",
+    "Eliminacao da barra invasiva superior e integracao discreta no header",
+    "Melhorias de responsividade e prevencao de cliques externos acidentais"
   ]
 }
 EOF

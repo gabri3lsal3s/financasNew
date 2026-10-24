@@ -1,16 +1,15 @@
 {
   "version": "0.1.0",
-  "versionCode": 15,
-  "releaseDate": "2026-10-24T14:14:35Z",
+  "versionCode": 16,
+  "releaseDate": "2026-10-24T15:44:06Z",
   "minSupportedVersion": "0.1.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "2f7c4a1d7f31edebec8a91855e329ac81e40ccf2072cb10b97ee321637c633bd",
-  "fileSizeBytes": 11801476,
+  "sha256": "2826de7c13f57de51eff1ea00dbadeedab571e80deceafcdb64472379699b3f5",
+  "fileSizeBytes": 11802464,
   "changelog": [
-    "Smart Advisor com fila sequencial de insights e microinteracoes",
-    "Integracao de alertas criticos a Central Global de Notificacoes",
-    "Painel de auditoria e revogacao de memoria do assistente",
-    "Contextualizacao de fatura e limite disponivel no card do assistente",
-    "Deteccao avancada de recorrencias anuais, semanais e parser Pix"
+    "Tour Guiado com Spotlight e foco visual escurecido",
+    "Card popover adaptativo com navegacao ergonomica e saida em 1 clique",
+    "Eliminacao da barra invasiva superior e integracao discreta no header",
+    "Melhorias de responsividade e prevencao de cliques externos acidentais"
   ]
 }
