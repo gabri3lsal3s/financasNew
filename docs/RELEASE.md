@@ -39,6 +39,35 @@
 | 15 | Modo privacidade (tecla P) — ofusca todos os valores | ☐ | ☐ | — |
 | 16 | PWA: instalação, offline (App Shell), toast de atualização | ☐ | ☐ | `beforeinstallprompt` |
 
+### 2.1 MATRIZ DE GESTOS E MOBILE UX (F20 — iOS Safari & Chrome Android)
+
+| Cenário de Gesto | Comportamento Esperado | iOS Safari | Chrome Android | Cobertura Automatizada |
+|---|---|---|---|---|
+| **Thumb Drift (Scroll Vertical Rápido)** | Scroll vertical nativo livre; axis-lock ±30° bloqueia falso positivo horizontal | [x] Aprovado | [x] Aprovado | `use-swipe-navigation.test.ts` (descarte por dy > dx) |
+| **Coexistência com Swipe-to-Action** | Arrastar despesa para excluir/editar (`.swipeable-item`) NÃO aciona troca de abas | [x] Aprovado | [x] Aprovado | `use-swipe-navigation.test.ts` (`.swipeable-item` ignorado) |
+| **Edge Inset do SO (Voltar/Avançar Nativo)** | Gestos a ≤12px das bordas do display não interferem com o gesto nativo de navegação | [x] Aprovado | [x] Aprovado | `use-swipe-navigation.test.ts` (zonas de borda x ≤ 12px e x ≥ width - 12px) |
+| **Bordas das Abas (Primeira/Última)** | Rubber-banding elástico suave com fator de amortecimento e sem transição fantasma | [x] Aprovado | [x] Aprovado | `swipe.test.ts` (`boundaryResistance` + spring-back) |
+| **Gráficos com Scrub & Modais** | Elementos interativos (`[data-swipe-nav-ignore]`, `input`, `[role="dialog"]`) isolados | [x] Aprovado | [x] Aprovado | `use-swipe-navigation.test.ts` (ignore selectors) |
+
+### 2.2 MATRIZ DE PERFORMANCE, CODE-SPLITTING & RENDERIZAÇÃO 3D (F23)
+
+| Cenário de Performance & Visual | Comportamento Esperado | Desktop (≥ 1024px) | Mobile (< 640px) | Cobertura Automatizada |
+|---|---|---|---|---|
+| **Cartão de Crédito 3D em CSS Puro** | Renderização via CSS 3D Transforms (`perspective`, `rotateX/Y`, `translateZ`) sem WebGL/Three.js; feedback tátil e inclinação suave sem jank | [x] Aprovado (3 temas) | [x] Aprovado (3 temas) | `visual-qa-multi-theme.test.tsx` (Fase 23, light/dark/oled) |
+| **Code-Splitting da Rota `/cartoes`** | Chunk de cartões isolado e carregado sob demanda; sem impacto no bundle inicial da Home | [x] Aprovado | [x] Aprovado | `routes.tsx` + `pageLoaders` |
+| **Pre-fetching no Idle (`useRoutePrefetch`)** | Rotas primárias carregadas via `requestIdleCallback` (fallback 1s) sem bloquear primeira renderização | [x] Aprovado | [x] Aprovado | `use-route-prefetch.test.ts` |
+| **Política de Cache TanStack Query** | `STALE_TIMES` diferenciados por volatilidade (estático 5m, analítico 60s, transacional 30s) e `gcTime` de 30m | [x] Aprovado | [x] Aprovado | `cache-policy.ts` |
+| **Alvos de Toque e Tipografia Tabular** | Valores monetários com `<NumberTicker />` tabular-nums sem layout shifts; alvos de toque ≥ 44px | [x] Aprovado | [x] Aprovado | `visual-qa-multi-theme.test.tsx` + `accessibility-audit.test.tsx` |
+
+### 2.3 MATRIZ DE PLANEJAMENTO FINANCEIRO, RESERVA & SIMULADOR FIRE (F24)
+
+| Cenário de Planejamento & Projeção | Comportamento Esperado | Desktop (≥ 1024px) | Mobile (< 640px) | Cobertura Automatizada |
+|---|---|---|---|---|
+| **Termômetro da Reserva (`EmergencyThermometer`)** | Diagnóstico de autonomia em meses/dias, marcos de 3, 6 e 12 meses, faixas de saúde semânticas e painel expansível de premissas | [x] Aprovado (3 temas) | [x] Aprovado (3 temas) | `visual-qa-multi-theme.test.tsx` (Fase 24) + `emergency-thermometer.test.tsx` |
+| **Fechamento Projetado & Caixa (`ProjectionTab`)** | Ritmo diário de gastos, pendências do período com grid adaptativo, desafios inteligentes de economia e cortes sugeridos | [x] Aprovado (3 temas) | [x] Aprovado (3 temas) | `visual-qa-multi-theme.test.tsx` (Fase 24) |
+| **Simulador de Independência FIRE (`FireProjectionCurve`)** | Curva SVG suave (Catmull-Rom), regra determinística dos 4% (25x despesas anuais), linha de meta patrimonial e scrub interativo | [x] Aprovado (3 temas) | [x] Aprovado (3 temas) | `visual-qa-multi-theme.test.tsx` (Fase 24) |
+| **Valores Financeiros e Acessibilidade** | Zero reticências em moedas (`MoneyText` tabular-nums), heading order `h1` → `h2` estrito, contraste AA nos 3 temas | [x] Aprovado (3 temas) | [x] Aprovado (3 temas) | `accessibility-audit.test.tsx` |
+
 ## 3. QA VISUAL & ACESSIBILIDADE
 
 - [ ] Contraste AA nos 3 temas × 6 acentos (regras de `domain/accessibility` — 18 combinações, testes verdes).

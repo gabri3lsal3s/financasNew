@@ -932,6 +932,100 @@ describe("Tarefa 5.1 — Suíte de Penetração Cross-Tenant & RLS Isolation", (
   });
 });
 
+describe("SECURITY_GOVERNANCE §5 — Checklist de Conformidade para Novas Tabelas", () => {
+  it("a nova tabela support_tickets possui coluna user_id uuid not null references public.profiles(id)", () => {
+    const migrationPath = resolve(root, "supabase/migrations/20260101000060_support_tickets.sql");
+    expect(existsSync(migrationPath)).toBe(true);
+    const content = readFileSync(migrationPath, "utf8");
+
+    const hasUserIdProfilesFk = /user_id\s+uuid\s+not\s+null\s+references\s+public\.profiles\s*\(\s*id\s*\)\s+on\s+delete\s+cascade/i.test(content);
+    expect(hasUserIdProfilesFk).toBe(true);
+  });
+
+  it("o RLS foi ativado explicitamente na nova tabela support_tickets (enable row level security)", () => {
+    const migrationPath = resolve(root, "supabase/migrations/20260101000060_support_tickets.sql");
+    expect(existsSync(migrationPath)).toBe(true);
+    const content = readFileSync(migrationPath, "utf8");
+
+    const hasRlsEnabled = /alter\s+table\s+public\.support_tickets\s+enable\s+row\s+level\s+security\s*;/i.test(content);
+    expect(hasRlsEnabled).toBe(true);
+  });
+
+  it("foram criadas políticas isoladas para SELECT, INSERT, UPDATE e DELETE baseadas em auth.uid() = user_id em support_tickets", () => {
+    const migrationPath = resolve(root, "supabase/migrations/20260101000060_support_tickets.sql");
+    expect(existsSync(migrationPath)).toBe(true);
+    const content = readFileSync(migrationPath, "utf8");
+
+    // Valida que cada operação possui policy isolada dedicada
+    expect(content).toMatch(/create\s+policy\s+"Users can insert own support tickets"\s+on\s+public\.support_tickets\s+for\s+insert/i);
+    expect(content).toMatch(/create\s+policy\s+"Users can view own support tickets"\s+on\s+public\.support_tickets\s+for\s+select/i);
+    expect(content).toMatch(/create\s+policy\s+"Users can update own support tickets"\s+on\s+public\.support_tickets\s+for\s+update/i);
+    expect(content).toMatch(/create\s+policy\s+"Users can delete own support tickets"\s+on\s+public\.support_tickets\s+for\s+delete/i);
+
+    // Valida que todas usam (select auth.uid()) = user_id
+    expect(content).toContain("with check ((select auth.uid()) = user_id)");
+    expect(content).toContain("using ((select auth.uid()) = user_id)");
+  });
+
+  it("nenhum dado de cartão de crédito além dos últimos 4 dígitos e da bandeira é persistido", () => {
+    // 1. Tabela credit_cards: zero colunas de PAN ou CVV
+    const schemaSql = readFileSync(resolve(root, "supabase/migrations/20260101000001_schema.sql"), "utf8");
+    const creditCardsTableMatch = schemaSql.match(/create\s+table\s+public\.credit_cards\s*\(([\s\S]*?)\);/i);
+    expect(creditCardsTableMatch).toBeTruthy();
+    const columns = creditCardsTableMatch![1]!.toLowerCase();
+
+    expect(columns).not.toMatch(/\bcvv\b/);
+    expect(columns).not.toMatch(/\bcvc\b/);
+    expect(columns).not.toMatch(/\bpan\b/);
+    expect(columns).not.toMatch(/\bcard_number\b/);
+    expect(columns).not.toMatch(/\bnumber\s+text\b/);
+    expect(columns).toContain("brand");
+
+    // 2. Nenhuma migration adiciona colunas de CVV ou PAN
+    expect(ALL_SQL.toLowerCase()).not.toMatch(/add\s+column.*(?:cvv|cvc|card_number|full_number|pan)/i);
+
+    // 3. Trigger sanitize_audit_payload redige cvv caso surja em payloads
+    expect(ALL_SQL.toLowerCase()).toContain("'cvv'");
+
+    // 4. Contratos de tipos (CreditCard)
+    const schemaTs = readFileSync(resolve(root, "src/types/schema.ts"), "utf8");
+    const creditCardType = schemaTs.match(/export\s+type\s+CreditCard\s*=\s*{([\s\S]*?)};/);
+    expect(creditCardType).toBeTruthy();
+    const tsFields = creditCardType![1]!.toLowerCase();
+    expect(tsFields).not.toMatch(/\bcvv\b/);
+    expect(tsFields).not.toMatch(/\bpan\b/);
+    expect(tsFields).not.toMatch(/\bcardnumber\b/);
+    expect(tsFields).toContain("brand");
+  });
+
+  it("nenhum log de dados sensíveis foi introduzido sem mascaramento", () => {
+    // 1. Zero console.log / console.info / console.debug em código de produção em src/
+    const prodFiles = walkDir(resolve(root, "src"), [".ts", ".tsx"]).filter(
+      (f) => !f.includes("/tests/") && !f.endsWith(".test.ts") && !f.endsWith(".test.tsx"),
+    );
+    for (const file of prodFiles) {
+      const content = readFileSync(file, "utf8");
+      expect(content).not.toMatch(/console\.(log|info|debug)\s*\(/);
+    }
+
+    // 2. Vite minifier configurado para dropConsole e dropDebugger no build de produção
+    const viteConfig = readFileSync(resolve(root, "vite.config.ts"), "utf8");
+    expect(viteConfig).toMatch(/dropConsole:\s*true/);
+    expect(viteConfig).toMatch(/dropDebugger:\s*true/);
+
+    // 3. Trigger sanitize_audit_payload mascara CPF e redige chaves sensíveis
+    expect(ALL_SQL).toContain("public.mask_cpf(v_val)");
+    expect(ALL_SQL).toContain("'password'");
+    expect(ALL_SQL).toContain("'token'");
+    expect(ALL_SQL).toContain("'api_key'");
+    expect(ALL_SQL).toContain("'[REDACTED]'");
+
+    // 4. Utilitário maskCPF em produção mascara no formato anti-shoulder surfing
+    const cpfMaskSource = readFileSync(resolve(root, "src/services/masks/cpf.ts"), "utf8");
+    expect(cpfMaskSource).toContain("maskCPF");
+  });
+});
+
 
 
 

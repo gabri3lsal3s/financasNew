@@ -609,6 +609,7 @@ export function OverviewPage() {
                 tone="portfolio"
                 icon={<TrendingUp className="size-4" aria-hidden="true" />}
                 spark={dailySeries.investmentSeries}
+                onClick={() => navigate("/investments")}
               />
               <KpiCard
                 label={

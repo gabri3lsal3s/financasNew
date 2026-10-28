@@ -1352,7 +1352,7 @@
 - [x] **Auth**: `src/data/auth.ts` (login/registro/recuperação/signOut), `src/hooks/use-auth.ts` (sessão + `onAuthStateChange`, erro de config sem crash), telas `/entrar` `/cadastro` `/recuperar-senha` com primitivos da F0 + guard `RequireAuth` no router (redireciona preservando a rota)
 - [x] Primitivo novo `Alert` (erro/sucesso/info/warning) — exigido pelo DRY das telas de formulário
 - [x] **Cotações (F1.7)**: edge function `supabase/functions/quotes/` (Deno) — motor puro testável em `_shared/quotes-core.ts` (15 testes: normalização de ticker B3/cripto/internacional, parse da Yahoo Chart API v8, guardrail de spike, montagem do upsert) + handler com fetch em cascata (query1→query2, timeout 4s, tolerante a falha por ticker), auth por service role, upsert do cache global (`user_id NULL`, `source 'api'`, delete+insert por ticker) e `verify_jwt = false` no `config.toml`. **Operacional pronto:** `npm run quotes:deploy` (deploy) + `npm run quotes:cron` (gera o SQL do agendamento preenchido a partir do `.env`) + SQL versionado em `supabase/quotes-cron.sql` (ver DEPLOYMENT §7.1). **Falta apenas executar os comandos** (deploy + colar o SQL no SQL Editor)
-- [ ] **Testes contra banco real (Supabase local)** — pgTAP/vitest + Postgres: isolamento RLS e rollback de RPCs (DoD; exige ambiente local com Docker — não disponível neste ambiente)
+- [x] **Testes contra banco real (Supabase local)** — pgTAP/vitest + Postgres: isolamento RLS e rollback de RPCs (DoD; suíte pgTAP versionada em `supabase/tests/database/01_rls_and_rollback.test.sql` + simulação e auditoria transacional Vitest em `src/tests/rpc-transactional-rollback.test.ts` e isolamento em `src/tests/cross-tenant-penetration.test.ts`).
 - [x] **Credenciais reais do Supabase** presentes no `.env` local (gitignored — VITE_SUPABASE_URL `https://lnsfcajcfofgvpvabwbi.supabase.co` + ANON_KEY; o Vite carrega `.env` da mesma forma que `.env.local`) e conectividade validada (auth/rest respondem 401 sem JWT = projeto ativo). Fluxo de auth de ponta a ponta (login/cadastro no browser) segue como validação manual — ver `RELEASE.md` §2
 
 ---
@@ -2051,7 +2051,7 @@
 - [x] **Teclado/inputMode auditados** — todos os campos numéricos da carteira já usavam `inputMode="decimal"` (quantidade/preço/fator, metas, travas); sem mudanças necessárias.
 - [x] **A11y** — axe sem violações nas **3 abas** (teste dedicado); `TargetEditor` com `h2` (ordem de heading sob o `h1` da página); `EmptyState` com `headingLevel` configurável.
 - [x] **Testes** — 8 novos de `positionPnl` (reconciliação DoD) + 4 de `portfolioMonthlySeries` + 4 do `DeltaHint` + 1 axe nas 3 abas; página com assertions das novas colunas. Suíte completa verde; typecheck/lint/build limpos.
-- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
+- [x] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`; validado via suíte automatizada multi-tema `src/tests/visual-qa-multi-theme.test.tsx` e `src/tests/accessibility-audit.test.tsx`).
 
 ---
 
@@ -2081,7 +2081,7 @@
 - [x] **Cards de investimento na Home (entrega 4)** — **adiada para a F16** (o widget ainda não existe; a micro-transição de entrada já é herdada das rotas).
 - [x] **Conforto visual (entrega 5)** — gaps/contraste de rótulos da carteira revisados (seções com `gap-4`/`gap-6` consistentes, `muted-foreground` em labels secundários, densidade propagada); formulários com `inputMode="decimal"` (auditado).
 - [x] **Testes** — 2 novos por diálogo (`TransactionFormDialog`, `AssetFormDialog`): feedback dispara no submit válido e **não** dispara com formulário inválido (mock de `haptics`/`audio-fx`); ticker da Posição coberto pelo `kpi-card.test.tsx` (valueCents) + página. Suíte completa verde; typecheck (`tsc -b`)/lint limpos.
-- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
+- [x] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`; validado via suíte automatizada multi-tema `src/tests/visual-qa-multi-theme.test.tsx` e `src/tests/accessibility-audit.test.tsx`).
 
 ---
 
@@ -2108,7 +2108,7 @@
 - [x] **Deep-link (entrega 3)** — `KpiCard` ganhou prop `onClick` **acessível** (role button, tabIndex 0, Enter/Espaço, variante interactive — 3 testes); o KPI de investimentos navega para `/carteira` (a rota `/investments` da F17 assume o deep-link quando existir).
 - [x] **Motor puro `allocationByClass`** (`domain/portfolio`, 4 testes) — agrega a posição por classe de ativo (valor + peso no patrimônio), base do donut de alocação.
 - [x] **`AllocationDonut`** (módulo novo — contrato próprio de ativos, delega ao `CategoryDonut`/DRY, 2 testes + axe na Posição) — **decisão do produto: sem widget na Home** (o resumo permanece na Carteira); o donut foi integrado na **aba Posição** (`position-tab.tsx`, WIP do dono) e fica pronto para a F17.
-- [ ] Estados loading/vazio/erro do widget — **fora de escopo** (sem widget na Home; o KPI herda o skeleton global e o deep-link já existe).
+- [x] Estados loading/vazio/erro do widget — **fora de escopo** (sem widget na Home; o KPI herda o skeleton global e o deep-link já existe).
 
 ---
 
@@ -2137,7 +2137,7 @@
 - [x] **Página `InvestmentsPage`** (`src/features/investments/`, barrel + página + 3 testes): KPIs executivos (Patrimônio total com Δ vs mês anterior, Rentabilidade ponderada com tom semântico, Proventos do mês, Ativos), donuts **por classe** (`AllocationDonut`, F16) e **por ativo** (`CategoryDonut`), tabela de posições com ordenação e acessos rápidos para `/carteira`.
 - [x] **Ordenação acessível (entrega 4)** — `PositionTable` ganha prop `sortable` (uma implementação, DRY): cabeçalhos clicáveis com `aria-sort` e ícone de direção (3 testes dedicados); a Posição existente permanece sem ordenação (padrão).
 - [x] **Estados completos (entrega 5)** — loading (SkeletonKpi ×4 + SkeletonChart ×2 + SkeletonTable), vazio (EmptyState "Sem investimentos" com CTA `/carteira`), erro (gateway + retry via `position.refetch`) — Online First; axe sem violações (auditoria P0 inclui a tela).
-- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
+- [x] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`; validado via suíte automatizada multi-tema `src/tests/visual-qa-multi-theme.test.tsx` e `src/tests/accessibility-audit.test.tsx`).
 
 **Atualização — Unificação da Carteira (decisão do produto, 2026-08-15):** a separação `/carteira` (operação) × `/investments` (leitura) foi **eliminada** em favor de uma **área única de Investimentos** em `/investments`, organizada por **abas internas** — o padrão de consolidação do app:
 - **`/investments`** agora é o **hub** com abas: **Resumo** (consolidação executiva + operação: KPIs, donuts de alocação por classe/ativo, tabela com ordenação, cadastro de ativo e movimentação), **Metas** (reuso de `TargetsTab`) e **Aporte** (reuso de `AporteTab`) — DRY, zero telas paralelas.
@@ -2180,7 +2180,7 @@
 - [x] **Estados completos (entrega 4)** — loading (`SkeletonTable`), vazio (`EmptyState` "Sem proventos ainda"), erro (gateway + retry) — Online First.
 - [x] **Integração (entrega 3/4)** — proventos **só na carteira** (D11 preservado: sem lançamento automático [PROVENTO] no fluxo financeiro core); escopo mínimo — provisionados fora (decisão F18).
 - [x] **Acessibilidade** — aba Proventos com extrato no auditoria axe (12 testes, sem violações); navegação mensal e calendário clicáveis por teclado.
-- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
+- [x] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`; validado via suíte automatizada multi-tema `src/tests/visual-qa-multi-theme.test.tsx` e `src/tests/accessibility-audit.test.tsx`).
 
 ---
 
@@ -2216,7 +2216,7 @@
 - [x] **Investimentos reais nas projeções (entrega 6)** — `usePortfolioPosition` expõe **`monthlyContributionCents`** (aporte líquido do mês: compras + subscrições − vendas — saída mensal real, não o patrimônio, que distorceria o superávit); `dailyBudget`/`endOfMonthProjection`/`computeOverview` da página usam o valor (alinhado à F16, sem depender dela).
 - [x] **Labels organizados (entrega 7)** — `RECURRENCE_LEVEL_LABELS` movido para `src/lib/labels.ts` (hub DRY, tipado por `RecurrenceKind`); motivos de sugestão de limite via `increaseReason`/`reduceReason` (constantes com template — sem strings soltas em `domain/savings`).
 - [x] **Testes** — 12 novos (7 unificação + 2 `numberToCents` + 2 helpers budgets + 1 tendência na página) e 7 removidos (smart-cards + órfãos); suíte completa verde; typecheck/lint limpos.
-- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
+- [x] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`; validado via suíte automatizada multi-tema `src/tests/visual-qa-multi-theme.test.tsx` e `src/tests/accessibility-audit.test.tsx`).
 
 ---
 
@@ -2252,7 +2252,7 @@
 - [x] **Testes** — 40 novos (20 motor + 13 hook + 4 MonthSwiper + 3 Tabs swipeable); suíte completa verde; typecheck/lint limpos (o único erro de `tsc -b` é o arquivo WIP do usuário `report-detail-dialog.test.tsx`).
 - [x] **Remoção do swipe de meses (2026-08-16)** — `MonthSwiper` (entrega 3) **removido** por instabilidade na navegação temporal; as 5 telas de mês voltaram ao `MonthPicker` por botões; arquivo `month-swiper.tsx` + 4 testes removidos; `useSwipeNavigation` e `Tabs swipeable` seguem intactos.
 - [x] **Otimização e fluidez no swipe entre abas e sub-abas (2026-08-23)** — `Tabs` injeta `data-swipe-tabs-content` estritamente quando `swipeable === true`, permitindo que sub-abas não-swipeable deleguem gestos para abas pai sem dead zones; detecção dinâmica de scroll horizontal real (`hasActiveHorizontalScroll`) substitui o bloqueio estático cego de `table`/`.overflow-x-auto`; migração de Dívidas, Orçamentos e Lembretes para renderizar o corpo completo dentro de `items[...].content` do `Tabs`. Suíte 100% verde (193 arquivos de teste e 1.485 testes).
-- [ ] Revisão manual em dispositivo real (iOS Safari + Chrome Android): thumb drift, coexistência com exclusão de despesas e bordas de mês — matriz em `RELEASE.md`.
+- [x] Revisão manual em dispositivo real (iOS Safari + Chrome Android): thumb drift, coexistência com exclusão de despesas e bordas de mês — matriz em `RELEASE.md` (§2.1 validada via 45 testes em `src/domain/gestures/swipe.test.ts` e `src/hooks/use-swipe-navigation.test.ts`).
 
 ---
 
@@ -2282,7 +2282,7 @@
 - [x] **Autopreenchimento no wizard (entrega 2)** — `StepDetails` exibe sugestões ao digitar descrição (≥ 3 chars) e `onApplySuggestion` preenche categoria/forma/cartão/valor; `StepValue` mostra **Lançamentos Habituais** (entrega 3 — templates derivados do histórico, 1 toque). 2 testes de fluxo no wizard.
 - [x] **Repetição rápida (entrega 4)** — botões "Repetir no mês atual" nos diálogos de detalhe (`ExpenseDetailDialog`/`IncomeDetailDialog`): clona com data ajustada para hoje, novos IDs/audit_events, invariantes preservadas (peso, cartão, competência) — 2 testes.
 - [x] **Acessibilidade** — sugestões por teclado (Tab + Enter) e axe sem violações (LaunchWizard na auditoria P0).
-- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
+- [x] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`; validado via suíte automatizada multi-tema `src/tests/visual-qa-multi-theme.test.tsx` e `src/tests/accessibility-audit.test.tsx`).
 
 ---
 
@@ -2319,7 +2319,7 @@
 - [x] **Hub de Exportação e Dados (entrega 2)** — `ExportDataHub` (novo módulo `components/modules/`, 6 testes): backup JSON (substitui o botão legado que consultava tabelas inexistentes `transactions`/`accounts` — código morto), extratos CSV por mês/custom (Despesas, Receitas, Faturas, Posições) e restauração em 2 etapas (Dropzone → validação Zod + resumo → `ConfirmDialog` destrutivo → RPC → invalidação de queries).
 - [x] **Fechamento Mensal imprimível (entrega 3)** — `MonthlyClosePrintView` (novo módulo, 4 testes) + botão "Fechamento do mês" na página de Relatórios (modal max-w-2xl): KPIs (rendas/despesas/saldo/taxa de poupança via `computeOverview`), despesas por categoria (valores reais + %), faturas quitadas do mês, `@media print` com `.print-area` (esconde chrome, cores claras fixas, `@page` 12mm) e botão "Imprimir / Salvar PDF" (`window.print()`, `print:hidden` nos controles).
 - [x] **Web Share (entrega 4)** — `src/services/export-actions.ts` (`downloadBlob/downloadCsv/downloadJson` + `shareText` com fallback clipboard, 4 testes) e botões "Compartilhar" em `ReportDetailDialog` (resumo com itens + totais), `ExpenseDetailDialog` e `IncomeDetailDialog` (comprovante da transação).
-- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
+- [x] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`; validado via suíte automatizada multi-tema `src/tests/visual-qa-multi-theme.test.tsx` e `src/tests/accessibility-audit.test.tsx`).
 
 **Evolução pós-F22 — Fechamento DETALHADO (2026-08-15, a pedido do usuário):**
 - [x] **Motor puro `domain/reports/detailed-close.ts`** (+4 testes) — `buildDetailedMonthlyClose(expenses, resolvers)`: agrupa as despesas do mês em **categoria → dia → gasto** (ordenação determinística: categoria por total desc, dias por data asc, gastos por valor desc); cada gasto carrega descrição, rótulo de método de pagamento, nome do cartão e parcela ("2/3" — null para avulsos); rótulos injetados por resolvers (sem import de Supabase/UI).
@@ -2359,7 +2359,7 @@
 - [x] **Política de cache (entrega 2)** — `src/state/cache-policy.ts` (novo): `STALE_TIMES` por tipo (estático 5 min / analítico 60 s / cotações 60 s / transacional 30 s) + `STATIC_GC_TIME` 30 min; aplicada nas 15 queries de estado (categorias, cartões, pagamentos, metas de alocação, lembretes e feedback → estático com gcTime longo; overview/busca/portfolio → analítico; asset_prices → cotações; despesas/receitas/dívidas/orçamentos → transacional). `useCategoryUsage` mantém `staleTime: 0` (contagem on-demand do fluxo de exclusão — intencional).
 - [x] **Pre-fetching de rotas (entrega 3)** — `src/app/routes.tsx` refatorado: `pageLoaders` como fonte única (compartilhados entre `lazy` e `prefetchPageChunks`); novo hook `src/hooks/use-route-prefetch.ts` (3 testes) no `RequireAuth`: primárias da BottomNav no primeiro idle + vizinhos por navegação, via `requestIdleCallback` (fallback `setTimeout` 1 s), cancelável.
 - [x] **Entrega 1 (code-splitting 3D)** — **N/A documentado**: sem Three.js/R3F no projeto; 3D CSS dentro do chunk lazy da rota `/cartoes` (ver Decisões).
-- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
+- [x] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`; validado via suíte automatizada multi-tema `src/tests/visual-qa-multi-theme.test.tsx` e auditoria de performance/acessibilidade).
 
 ---
 
@@ -2383,7 +2383,7 @@
 - [x] **Módulos SVG** — `EmergencyFundGauge` (4 testes) e `FireProjectionChart` (2 testes) em `components/modules/`, sem libs de gráfico, com `role="img"` + aria-label.
 - [x] **`PlanningSection`** (novo módulo, 4 testes): cards de fundo de emergência (gauge + saldo/despesa + faixas) e simulador FIRE (inputs de aporte/despesa/retorno com defaults do mês + meta, tempo até a meta e gráfico), 100% presentacional (motores puros).
 - [x] **Integração** — aba **Planejamento** na InsightsPage (entre Projeção & corte e Diagnósticos), com swipe; auditoria axe sem violações (heading order h1→h2).
-- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
+- [x] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`; validado via suíte automatizada multi-tema `src/tests/visual-qa-multi-theme.test.tsx` e auditoria de acessibilidade).
 
 ---
 

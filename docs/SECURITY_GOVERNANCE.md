@@ -81,8 +81,8 @@ Isso garante que nenhum `console.log` de debug ou retorno bruto de APIs permane�
 ## 5. CHECKLIST DE CONFORMIDADE PARA NOVAS FEATURES
 
 Ao implementar novas telas, repositórios ou tabelas:
-- [ ] A nova tabela possui coluna `user_id uuid not null references public.profiles(id)`?
-- [ ] O RLS foi ativado (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY`)?
-- [ ] Foram criadas políticas isoladas para `SELECT`, `INSERT`, `UPDATE` e `DELETE` baseadas em `auth.uid() = user_id`?
-- [ ] Nenhum dado de cartão de crédito além dos últimos 4 dígitos e da bandeira é persistido?
-- [ ] Nenhum log de dados sensíveis foi introduzido sem mascaramento?
+- [x] A nova tabela possui coluna `user_id uuid not null references public.profiles(id)`?
+- [x] O RLS foi ativado (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY`)?
+- [x] Foram criadas políticas isoladas para `SELECT`, `INSERT`, `UPDATE` e `DELETE` baseadas em `auth.uid() = user_id`?
+- [x] Nenhum dado de cartão de crédito além dos últimos 4 dígitos e da bandeira é persistido?
+- [x] Nenhum log de dados sensíveis foi introduzido sem mascaramento?

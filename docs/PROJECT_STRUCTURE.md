@@ -97,6 +97,8 @@
 │   ├── migrations/                # 0001..0060_support_tickets.sql
 │   │                              # (schema, RLS estrito com is_current_user_active, triggers,
 │   │                              # RPCs transacionais, backend feature flag enforcement, expurgo atômico de contas, tickets de suporte)
+│   ├── tests/                     # Testes pgTAP para execução contra banco Postgres real (supabase test db)
+│   │   └── database/              #   01_rls_and_rollback.test.sql (auditoria pgTAP de RLS e rollback atômico)
 │   └── functions/                 # Edge functions (runtime Deno — fora do bundle Vite)
 │       ├── _shared/quotes-core.ts #   Motor puro de cotações (F1.7) — TS sem I/O, testável
 │       ├── _shared/telegram.ts    #   Helper puro de formatação e despacho de mensagens ao Telegram
@@ -355,7 +357,9 @@
                                    #     db/schema/domain), axe-sanity + keyboard-navigation
                                    #     (a11y), accessibility-audit (contraste AA via
                                    #     domain/accessibility), pwa + pwa-audit, security-audit,
+                                   #     visual-qa-multi-theme (QA visual nos 3 temas light/dark/oled e mobile/desktop),
                                    #     cross-tenant-penetration (37 testes de penetração e IDOR — Fase 5.1),
+                                   #     rpc-transactional-rollback (atomicidade e rollback de RPCs — Fase 1 DoD),
                                    #     quotes-core (edge de cotações), setup.ts
 ```
 

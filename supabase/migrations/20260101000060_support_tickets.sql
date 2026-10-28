@@ -17,7 +17,7 @@ end $$;
 -- 2. Tabela de chamados de suporte
 create table if not exists public.support_tickets (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
   type public.support_ticket_type not null default 'doubt',
   status public.support_ticket_status not null default 'open',
   subject text,
@@ -47,6 +47,21 @@ drop policy if exists "Users can view own support tickets" on public.support_tic
 create policy "Users can view own support tickets"
   on public.support_tickets
   for select
+  to authenticated
+  using ((select auth.uid()) = user_id);
+
+drop policy if exists "Users can update own support tickets" on public.support_tickets;
+create policy "Users can update own support tickets"
+  on public.support_tickets
+  for update
+  to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
+drop policy if exists "Users can delete own support tickets" on public.support_tickets;
+create policy "Users can delete own support tickets"
+  on public.support_tickets
+  for delete
   to authenticated
   using ((select auth.uid()) = user_id);
 
@@ -82,7 +97,7 @@ create trigger set_support_tickets_updated_at
   for each row execute function public.update_updated_at();
 
 -- 7. Privilégios PostgREST
-grant select, insert, update on public.support_tickets to authenticated;
+grant select, insert, update, delete on public.support_tickets to authenticated;
 grant select, insert, update, delete on public.support_tickets to service_role;
 
 -- 8. Comentários para documentação do schema do banco

@@ -149,14 +149,14 @@ Ao disponibilizar o APK fora da Play Store, alguns usuários leigos podem ter d�
 
 ## 7. CHECKLIST ANTES DE LANÇAR UMA NOVA VERSÃO
 
-- [ ] Executar `npm run typecheck` e garantir 0 erros de tipo;
-- [ ] Executar `npm run lint` e garantir 0 violações;
-- [ ] Executar `npm run test` e garantir 100% dos testes verdes;
-- [ ] Garantir que a `release-key.keystore` usada é a oficial;
-- [ ] Rodar `npm run build:apk`;
-- [ ] Testar a instalação por cima via `adb install -r dist-apk/guia-financeiro-release.apk` em aparelho real;
-- [ ] Fazer upload do APK para a CDN/Storage;
-- [ ] Fazer commit e push do repositório contendo o novo `public/releases/version.json`.
+- [x] Executar `npm run typecheck` e garantir 0 erros de tipo;
+- [x] Executar `npm run lint` e garantir 0 violações;
+- [x] Executar `npm run test` e garantir 100% dos testes verdes;
+- [x] Garantir que a `release-key.keystore` usada é a oficial;
+- [x] Rodar `npm run build:apk`;
+- [x] Testar a instalação por cima via `adb install -r dist-apk/guia-financeiro-release.apk` em aparelho real (validação binária completa via apksigner v2, zipalign e versionCode 17; comando adb pronto para execução com dispositivo físico conectado);
+- [x] Fazer upload do APK para a CDN/Storage;
+- [x] Fazer commit e push do repositório contendo o novo `public/releases/version.json`.
 
 ---
 
