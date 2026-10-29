@@ -1,11 +1,11 @@
 {
   "version": "0.1.0",
-  "versionCode": 17,
-  "releaseDate": "2026-10-28T18:36:09Z",
+  "versionCode": 18,
+  "releaseDate": "2026-10-29T23:47:32Z",
   "minSupportedVersion": "0.1.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "8f9959a46867050175ee42680c61b339405cf38b2a3d7016ad986e92539831d0",
-  "fileSizeBytes": 11802488,
+  "sha256": "1c9eb5831fc093aa725cb128a53cbdb5114182a72a288b1b2321b3b1bfe79855",
+  "fileSizeBytes": 11820355,
   "changelog": [
     "Tour Guiado com Spotlight e foco visual escurecido",
     "Card popover adaptativo com navegacao ergonomica e saida em 1 clique",

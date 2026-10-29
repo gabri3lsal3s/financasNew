@@ -471,13 +471,13 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 6
 
-- [ ] **Tarefa 6.1: Varredura de Qualidade, Detecção e Correção de Bugs**
+- [x] **Tarefa 6.1: Varredura de Qualidade, Detecção e Correção de Bugs**
   - Executar: `npm run typecheck` (zero erros de tipagem estrita).
   - Executar: `npm run lint` (zero violações de ESLint, emojis ou controles nativos).
   - Executar suíte completa de testes: `npm run test`.
   - **Correção imediata**: Se for detectado qualquer bug, regressão visual ou fragilidade em mobile/desktop, aplicar a correção pontual e retestar até aprovação integral (100% verde).
 
-- [ ] **Tarefa 6.2: Teste de Build Web e Build do APK Android**
+- [x] **Tarefa 6.2: Teste de Build Web e Build do APK Android**
   - **Build Web:**
     ```bash
     npm run build
@@ -490,11 +490,11 @@ git push origin main
     ```
     - Confirmar que o APK release assinado foi gerado com sucesso em `dist-apk/` ou `public/releases/`.
 
-- [ ] **Tarefa 6.3: Atualização da Documentação Governamental**
+- [x] **Tarefa 6.3: Atualização da Documentação Governamental**
   - Atualizar `docs/architecture/ESPECIFICACAO_TECNICA.md` consolidando a ordem oficial das abas e as diretrizes do tema padrão.
   - Marcar como concluídos os checklists em `docs/plans/PLANO_CONFIGURACOES_INICIAIS_E_EXPERIENCIA_NOVO_USUARIO.md`.
 
-- [ ] **Tarefa 6.4: Commit & Push Final da Homologação**
+- [x] **Tarefa 6.4: Commit & Push Final da Homologação**
   - Realizar commit atômico:
     ```bash
     git add .

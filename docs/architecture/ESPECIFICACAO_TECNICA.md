@@ -20,7 +20,7 @@
 | D6 | Frontend | **React (Vite) + Tailwind + shadcn/ui** | Combina com os contratos de estado (hooks/providers) da spec e com Supabase; SPA pura, sem SSR |
 | D7 | Filosofia visual | **Cards amigáveis (fintech)** — estilo Nubank/Organizze | Acolhedor, mobile-first, microinterações; adequado a finanças pessoais |
 | D8 | Navegação | **Sidebar fixa (desktop) + bottom tabs (mobile)** | Escala com 8+ áreas; padrão moderno SaaS/fintech |
-| D9 | Temas | **Light / Dark / OLED** (true black) com toggle e preferência do sistema | Suporte completo; OLED economiza bateria em AMOLED |
+| D9 | Temas & Aparência | **Dinâmico (Sistema) por padrão + Teal Vital oficial**; suporte a Light, Dark e **OLED** (true black) com recomendação para paleta Monocromática | Experiência acolhedora inicial sem FOUC; máxima economia de bateria em telas AMOLED |
 | D10 | Lançamento rápido | **Tela cheia guiada** (wizard 4 passos) + **atalho global** + defaults inteligentes | Respeita a escolha de fluxo guiado mantendo a fricção mínima |
 | ~~D11~~ | ~~Storage de arquivos~~ | ~~**Cloudflare R2** atrás de abstração própria (`src/services/storage`), upload via presigned URLs~~ | ~~A UI nunca conhece a implementação; anexos (comprovantes, avatar) ficam fora do fluxo financeiro core~~ — **REMOVIDO DO ESCOPO** (decisão do usuário, 2026-08-15): nenhuma tela usa upload e anexos não participam do fluxo financeiro core; o primitivo `Dropzone` permanece para uso futuro |
 | D12 | Parcelamento | **Cliente calcula** (`domain/money`, centavos) **+ servidor valida invariantes** (soma = original, 1–60, datas) | Lógica de divisão única em TS; SQL só valida — sem duplicação |
@@ -561,11 +561,23 @@ Erros via gateway único (`getErrorMessage`), §1.7.
 - **Deep-links:** `?card=`, `?month=`, busca com destaque (§3.9).
 - Áreas secundárias (categorias, perfil) acessíveis via Configurações.
 
-### 5.3 Temas (D9) — Light / Dark / OLED
+### 5.3 Temas e Aparência (D9) — Light / Dark / OLED & Paletas de Destaque
 
-- Três temas completos via **tokens CSS** (variáveis): `light`, `dark` e `oled` (**true black `#000`** para telas AMOLED, com economia de bateria).
-- Toggle no cabeçalho + **seguir preferência do sistema**; preferência persistida em `user_preferences.theme`.
-- Tokens: cor de fundo, superfície, texto, borda, primária, sucesso/atenção/crítico, radius, sombra, espaçamento.
+- **Modo Padrão Dinâmico:** o app adota nativamente o modo **Dinâmico** (`system`), sincronizando automaticamente com a preferência do dispositivo/sistema operacional (`prefers-color-scheme`) desde o primeiro carregamento, eliminando qualquer flash visual (*FOUC*).
+- **Paleta Padrão Oficial:** **Teal Vital** (`teal` / `#0D9488`), transmitindo calma, autoridade fintech e controle emocional.
+- **Três temas completos via tokens CSS:** `light`, `dark` e `oled` (**true black `#000000`** para telas AMOLED, com contraste absoluto e máxima economia de bateria).
+- **Recomendação OLED na Paleta Monocromática:** quando a paleta Monocromática (`zinc`) é selecionada, a interface apresenta orientação informativa recomendando a ativação do modo escuro **OLED** para alcançar a melhor experiência visual e de eficiência energética em telas AMOLED.
+- **Tokens CSS centralizados:** cor de fundo, superfície, texto, borda, primária, sucesso/atenção/crítico, radius, sombra, espaçamento. Preferências persistidas em `user_preferences.theme` e `user_preferences.palette`.
+
+### 5.3.1 Central de Configurações (Settings Hub)
+
+A Central de Configurações unifica as preferências e gestão da conta do usuário em abas fluidas (`Tabs`), ordenadas ergonomicamente por frequência de uso e impacto visual:
+1. **Aparência (`appearance`):** Modo de tema (Claro, Escuro, OLED, Dinâmico/Sistema), paletas de cores (Teal Vital padrão, Azul Real, Esmeralda, Índigo, Violeta, Âmbar, Rosa e Monocromático com recomendação OLED) e densidade de interface.
+2. **Alertas (`alerts`):** Notificações de vencimento, fechamento de faturas e lembretes proativos.
+3. **Segurança (`security`):** Bloqueio biométrico nativo (Face ID / Touch ID / Digital), tempo limite de inatividade e tela de privacidade (*Privacy Screen*).
+4. **App (`app`):** Feedback sensorial (sons e vibrações pelo gateway único), comportamento de inicialização e dados offline/PWA.
+5. **Plano (`plan`):** Informações de assinatura, limites operacionais e upgrade Pro.
+6. **Conta (`account`):** Dados de identificação (nome, e-mail), **Card de Sessão** com encerramento de sessão seguro (`useSignOut`) mediante confirmação amigável, e **Exclusão Definitiva de Conta** isolada estritamente como o último bloco da aba (conformidade LGPD).
 
 ### 5.4 Design System (D6)
 
