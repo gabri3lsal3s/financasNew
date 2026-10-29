@@ -9,6 +9,7 @@
  * Função 100% pura: sem efeitos colaterais, sem dependências de UI, React ou banco de dados.
  */
 
+import type { PaymentMethod } from "@/types/schema";
 import type { CanonicalCategorySlug } from "./category-inference";
 import { inferCategoryKeyword } from "./category-inference";
 import {
@@ -55,6 +56,10 @@ export interface ResolvedMerchantIdentity {
   taxId?: string;
   /** Identificador da camada vitoriosa na hierarquia. */
   layer: 1 | 2 | 3 | "fallback";
+  /** Método de pagamento preferencial memorizado para o estabelecimento (se aprendido). */
+  preferredPaymentMethod?: PaymentMethod;
+  /** ID do cartão de crédito preferencial memorizado para o estabelecimento (se aprendido). */
+  preferredCardId?: string;
 }
 
 const LOWERCASE_CONNECTORS = new Set([
@@ -136,6 +141,8 @@ export function resolveMerchantIdentity(
           isLearned: true,
           taxId: extractedTax,
           layer: 1,
+          preferredPaymentMethod: learnedByTax.preferredPaymentMethod,
+          preferredCardId: learnedByTax.preferredCardId,
         };
       }
     }
@@ -185,6 +192,8 @@ export function resolveMerchantIdentity(
         isLearned: true,
         taxId: learnedByAlias.cnpjOrCpf || extractedTax,
         layer: 2,
+        preferredPaymentMethod: learnedByAlias.preferredPaymentMethod,
+        preferredCardId: learnedByAlias.preferredCardId,
       };
     }
   }

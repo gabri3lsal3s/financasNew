@@ -85,6 +85,10 @@ export async function updateCustomSettings(patch: Partial<UserCustomSettings>): 
       ...(current?.custom_settings?.merchantLearning ?? {}),
       ...(patch.merchantLearning ?? {}),
     },
+    cardDigitsMapping: {
+      ...(current?.custom_settings?.cardDigitsMapping ?? {}),
+      ...(patch.cardDigitsMapping ?? {}),
+    },
   };
 
   const input: DbUpdate<UserPreferences> = {

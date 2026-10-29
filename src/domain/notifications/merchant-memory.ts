@@ -7,6 +7,7 @@
  * Função 100% pura: sem dependências de UI, React ou banco de dados.
  */
 
+import type { PaymentMethod } from "@/types/schema";
 import { normalizeMerchantText } from "./bank-parser";
 import type { CanonicalCategorySlug } from "./category-inference";
 import { cleanAcquirerPrefixes } from "./merchant-catalog";
@@ -27,6 +28,10 @@ export interface MerchantLearningRecord {
   cnpjOrCpf?: string;
   /** Lista de variações brutas/termos de identificação (ex.: ["arcos dourados", "pag*mcdonalds", "mc donalds"]). */
   rawAliases: string[];
+  /** Método de pagamento preferencial memorizado para o estabelecimento (ex.: "credit_card", "pix"). */
+  preferredPaymentMethod?: PaymentMethod;
+  /** ID do cartão de crédito preferencial memorizado para o estabelecimento. */
+  preferredCardId?: string;
   /** Contador de vezes que esta regra foi aplicada ou confirmada pelo usuário. */
   usageCount: number;
   /** Timestamp ISO da última utilização/atualização (ex.: "2026-10-21T17:47:00.000Z"). */
@@ -43,6 +48,8 @@ export interface RecordMerchantLearningParams {
   cnpjOrCpf?: string;
   alias?: string;
   rawAliases?: string[];
+  preferredPaymentMethod?: PaymentMethod;
+  preferredCardId?: string;
 }
 
 export interface FindLearnedMerchantQuery {
@@ -177,6 +184,8 @@ export function recordMerchantLearning(
     categorySlug: params.categorySlug,
     cnpjOrCpf: cleanTax || existing?.cnpjOrCpf,
     rawAliases: cleanAliases.length > 0 ? cleanAliases : [params.friendlyName.toLowerCase().trim()],
+    preferredPaymentMethod: params.preferredPaymentMethod ?? existing?.preferredPaymentMethod,
+    preferredCardId: params.preferredCardId ?? existing?.preferredCardId,
     usageCount: (existing?.usageCount ?? 0) + 1,
     lastUsedAt: now,
   };
@@ -213,7 +222,7 @@ export function findLearnedMerchant(
       if (normFriendly === targetMerchant) return true;
       if (cleanTarget && normFriendly === cleanTarget) return true;
 
-      return r.rawAliases.some((alias) => {
+      return (r.rawAliases || []).some((alias) => {
         const normAlias = normalizeMerchantText(alias);
         if (normAlias === targetMerchant) return true;
         const cleanAlias = normalizeMerchantText(cleanAcquirerPrefixes(alias));
@@ -228,7 +237,7 @@ export function findLearnedMerchant(
     const normRaw = query.rawText.toLowerCase();
     const cleanRaw = normalizeMerchantText(query.rawText);
     const matchByRaw = records.find((r) => {
-      return r.rawAliases.some((alias) => {
+      return (r.rawAliases || []).some((alias) => {
         const normAlias = alias.toLowerCase().trim();
         const cleanAlias = normalizeMerchantText(cleanAcquirerPrefixes(alias));
         if (normAlias.length >= 3 && normRaw.includes(normAlias)) return true;
@@ -342,4 +351,81 @@ export function resolveCategoryWithPriority(
 
   // 2. Fallback: inferência geral de palavras-chave
   return keywordFallback(description);
+}
+
+// =========================================================================
+// MEMÓRIA E MAPEAMENTO DE DÍGITOS DE CARTÕES (Card Digits Mapping)
+// =========================================================================
+
+/**
+ * Dicionário associativo entre 4 últimos dígitos de cartão e o ID do cartão no app.
+ * Exemplo: { "4821": "card-itau-uuid", "3341": "card-stone-uuid" }
+ */
+export type CardDigitsMapping = Record<string, string>;
+
+/**
+ * Normaliza os dígitos de um cartão para chave limpa de 2 a 4 dígitos.
+ * Extrai os últimos dígitos caso uma string com máscara (ex.: "**** 4821", "final 4821") seja informada.
+ */
+export function normalizeCardDigits(digits: string | undefined | null): string | undefined {
+  if (!digits) return undefined;
+  const cleaned = digits.replace(/\D/g, "");
+  if (cleaned.length >= 4) {
+    return cleaned.slice(-4);
+  }
+  if (cleaned.length >= 2) {
+    return cleaned;
+  }
+  return undefined;
+}
+
+/**
+ * Associa de forma pura e imutável os dígitos finais ao ID do cartão.
+ */
+export function recordCardDigitsLearning(
+  digits: string,
+  cardId: string,
+  current: CardDigitsMapping = {},
+): CardDigitsMapping {
+  const normDigits = normalizeCardDigits(digits);
+  if (!normDigits || !cardId) return current;
+
+  return {
+    ...current,
+    [normDigits]: cardId,
+  };
+}
+
+/**
+ * Consulta o ID do cartão associado aos dígitos finais informados.
+ */
+export function lookupCardByDigits(
+  digits: string | undefined | null,
+  mapping: CardDigitsMapping = {},
+): string | undefined {
+  const normDigits = normalizeCardDigits(digits);
+  if (!normDigits || !mapping) return undefined;
+
+  return mapping[normDigits];
+}
+
+/**
+ * Remove associações de dígitos da memória de forma imutável, seja pelo ID do cartão ou pelos dígitos.
+ */
+export function forgetCardDigitsLearning(
+  cardIdOrDigits: string,
+  current: CardDigitsMapping = {},
+): CardDigitsMapping {
+  if (!cardIdOrDigits || !current) return current;
+
+  const next: CardDigitsMapping = {};
+  const normDigits = normalizeCardDigits(cardIdOrDigits);
+
+  for (const [dig, id] of Object.entries(current)) {
+    if (id === cardIdOrDigits) continue;
+    if (normDigits && dig === normDigits) continue;
+    next[dig] = id;
+  }
+
+  return next;
 }

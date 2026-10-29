@@ -10,3 +10,8 @@ export * from "./ocr-cleaner";
 export * from "./receipt-types";
 export * from "./installment-extractor";
 export * from "./card-slip-parser";
+export * from "./pix-receipt-parser";
+export * from "./bank-slip-parser";
+export * from "./danfe-nfc-parser";
+export * from "./wire-transfer-parser";
+export * from "./universal-receipt-parser";

@@ -3,14 +3,19 @@ import {
   cleanTaxId,
   extractTaxIdFromText,
   findLearnedMerchant,
+  forgetCardDigitsLearning,
   forgetMerchantCategoryMemory,
   forgetMerchantLearning,
   formatTaxId,
+  lookupCardByDigits,
   lookupMerchantCategory,
+  normalizeCardDigits,
+  recordCardDigitsLearning,
   recordMerchantCategoryMemory,
   recordMerchantLearning,
   resolveCategoryWithPriority,
   toMerchantMemoryKey,
+  type CardDigitsMapping,
   type MerchantLearningMemory,
 } from "./merchant-memory";
 
@@ -279,6 +284,119 @@ describe("merchant-memory — Aprendizado Semântico de Estabelecimentos (Mercha
     const afterNameRemove = forgetMerchantLearning("Padaria Central", afterTaxRemove);
     expect(afterNameRemove["name_padaria_central"]).toBeUndefined();
     expect(Object.keys(afterNameRemove)).toHaveLength(0);
+  });
+
+  it("recordMerchantLearning armazena e preserva preferredPaymentMethod e preferredCardId", () => {
+    const now = "2026-10-29T10:00:00.000Z";
+    const initial = recordMerchantLearning(
+      {
+        friendlyName: "Posto Shell",
+        categorySlug: "transporte",
+        preferredPaymentMethod: "credit_card",
+        preferredCardId: "card-itau-black-123",
+      },
+      {},
+      now,
+    );
+
+    const record = initial["name_posto_shell"];
+    expect(record).toBeDefined();
+    expect(record?.preferredPaymentMethod).toBe("credit_card");
+    expect(record?.preferredCardId).toBe("card-itau-black-123");
+
+    // Atualização preserva os campos caso não sejam passados
+    const updated = recordMerchantLearning(
+      {
+        friendlyName: "Posto Shell",
+        categorySlug: "transporte",
+        alias: "Auto Posto Shell",
+      },
+      initial,
+      "2026-10-29T11:00:00.000Z",
+    );
+
+    const updatedRecord = updated["name_posto_shell"];
+    expect(updatedRecord?.preferredPaymentMethod).toBe("credit_card");
+    expect(updatedRecord?.preferredCardId).toBe("card-itau-black-123");
+    expect(updatedRecord?.rawAliases).toContain("auto posto shell");
+
+    // Atualização com novo método e cartão sobrescreve
+    const overwritten = recordMerchantLearning(
+      {
+        friendlyName: "Posto Shell",
+        categorySlug: "transporte",
+        preferredPaymentMethod: "pix",
+        preferredCardId: undefined,
+      },
+      updated,
+      "2026-10-29T12:00:00.000Z",
+    );
+
+    const overwrittenRecord = overwritten["name_posto_shell"];
+    expect(overwrittenRecord?.preferredPaymentMethod).toBe("pix");
+  });
+});
+
+describe("merchant-memory — Mapeamento e Memória de Dígitos de Cartão (CardDigitsMapping)", () => {
+  it("normalizeCardDigits limpa e extrai dígitos corretamente", () => {
+    expect(normalizeCardDigits("4821")).toBe("4821");
+    expect(normalizeCardDigits("**** 4821")).toBe("4821");
+    expect(normalizeCardDigits("Cartão final 4821")).toBe("4821");
+    expect(normalizeCardDigits("****.****.****.1029")).toBe("1029");
+    expect(normalizeCardDigits("12")).toBe("12");
+    expect(normalizeCardDigits("")).toBeUndefined();
+    expect(normalizeCardDigits(undefined)).toBeUndefined();
+    expect(normalizeCardDigits(null)).toBeUndefined();
+    expect(normalizeCardDigits("a")).toBeUndefined();
+  });
+
+  it("recordCardDigitsLearning adiciona e atualiza mapeamentos de forma imutável", () => {
+    const initial: CardDigitsMapping = {};
+    const step1 = recordCardDigitsLearning("4821", "card-itau-uuid", initial);
+
+    expect(step1).toEqual({ "4821": "card-itau-uuid" });
+    expect(initial).toEqual({});
+
+    const step2 = recordCardDigitsLearning("**** 3341", "card-stone-uuid", step1);
+    expect(step2).toEqual({
+      "4821": "card-itau-uuid",
+      "3341": "card-stone-uuid",
+    });
+
+    // Atualização de cartão existente para os mesmos dígitos
+    const step3 = recordCardDigitsLearning("4821", "card-nubank-uuid", step2);
+    expect(step3["4821"]).toBe("card-nubank-uuid");
+  });
+
+  it("lookupCardByDigits consulta o cartão correto aceitando dígitos mascarados ou puros", () => {
+    const mapping: CardDigitsMapping = {
+      "4821": "card-itau-uuid",
+      "3341": "card-stone-uuid",
+    };
+
+    expect(lookupCardByDigits("4821", mapping)).toBe("card-itau-uuid");
+    expect(lookupCardByDigits("**** 4821", mapping)).toBe("card-itau-uuid");
+    expect(lookupCardByDigits("Final 3341", mapping)).toBe("card-stone-uuid");
+    expect(lookupCardByDigits("9999", mapping)).toBeUndefined();
+    expect(lookupCardByDigits(undefined, mapping)).toBeUndefined();
+    expect(lookupCardByDigits("4821", undefined)).toBeUndefined();
+  });
+
+  it("forgetCardDigitsLearning remove associações por ID do cartão ou por dígitos", () => {
+    const mapping: CardDigitsMapping = {
+      "4821": "card-itau-uuid",
+      "3341": "card-stone-uuid",
+      "9988": "card-itau-uuid", // mesmo cartão itau com outro cartão virtual
+    };
+
+    // Remove todas as entradas associadas a card-itau-uuid
+    const afterCardRemoval = forgetCardDigitsLearning("card-itau-uuid", mapping);
+    expect(afterCardRemoval).toEqual({ "3341": "card-stone-uuid" });
+    expect(mapping).toHaveProperty("4821");
+
+    // Remove por dígitos
+    const afterDigitRemoval = forgetCardDigitsLearning("3341", afterCardRemoval);
+    expect(afterDigitRemoval).toEqual({});
   });
 });
 

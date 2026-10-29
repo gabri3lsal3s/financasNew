@@ -24,6 +24,8 @@ import * as toastModule from "@/services/toast";
 import * as sensoryModule from "@/services/sensory";
 import * as rpcModule from "@/data/rpc";
 import * as categoriesModule from "@/data/repositories/categories";
+import * as creditCardsModule from "@/data/repositories/credit-cards";
+import * as merchantLearningModule from "@/services/merchant-learning";
 import {
   clearPendingSuggestions,
   dismissAutoRegisteredBanner,
@@ -53,8 +55,12 @@ vi.mock("@/data/rpc", () => ({
 }));
 
 vi.mock("@/data/repositories/incomes", () => ({
-  createIncome: vi.fn(),
-  deleteIncome: vi.fn(),
+  createIncome: vi.fn().mockResolvedValue({ id: "income-created-123" }),
+  deleteIncome: vi.fn().mockResolvedValue({ id: "income-deleted-123" }),
+}));
+
+vi.mock("@/data/repositories/credit-cards", () => ({
+  listCreditCards: vi.fn().mockResolvedValue([]),
 }));
 
 describe("ShareTargetPage — Web Share Target & Auto-Cadastro (§1.6)", () => {
@@ -63,11 +69,11 @@ describe("ShareTargetPage — Web Share Target & Auto-Cadastro (§1.6)", () => {
     clearPendingSuggestions();
     dismissAutoRegisteredBanner();
 
-    vi.spyOn(categoriesModule, "listCategories").mockResolvedValue([
+    vi.spyOn(categoriesModule, "listCategories").mockImplementation(async (type) => [
       {
-        id: "cat_mercado",
-        name: "Alimentação",
-        type: "expense",
+        id: type === "income" ? "cat_salario" : "cat_mercado",
+        name: type === "income" ? "Salário" : "Alimentação",
+        type: type || "expense",
         icon: null,
         color: null,
         is_reserved: false,
@@ -294,5 +300,140 @@ describe("ShareTargetPage — Web Share Target & Auto-Cadastro (§1.6)", () => {
 
     expect(screen.getByRole("region", { name: "Processamento de comprovante compartilhado" })).toBeInTheDocument();
     expect(screen.getByText("Processando comprovante compartilhado...")).toBeInTheDocument();
+  });
+
+  it("auto-cadastra comprovante de cartão parcelado com auto-resolução do cartão, closing_day e mensagem personalizada", async () => {
+    const pushToastSpy = vi.spyOn(toastModule, "pushToast").mockReturnValue(1);
+    vi.spyOn(sensoryModule, "triggerSensory").mockImplementation(() => {});
+    const recordLearningSpy = vi.spyOn(merchantLearningModule, "recordTransactionLearning").mockImplementation(() => {});
+
+    vi.spyOn(creditCardsModule, "listCreditCards").mockResolvedValue([
+      {
+        id: "card-itau-visa-1",
+        name: "Itaú Click Visa",
+        brand: "visa",
+        closing_day: 10,
+        due_day: 20,
+        is_active: true,
+        user_id: "user_test",
+        credit_limit: 5000,
+        color: null,
+      },
+    ]);
+
+    const slipText = [
+      "REDE",
+      "PADARIA ESTRELA",
+      "VIA DO CLIENTE",
+      "DATA: 25/10/2026 14:30",
+      "CREDITO PARCELADO",
+      "PARC: 03",
+      "VALOR DA PARCELA: R$ 50,00",
+      "VALOR TOTAL: R$ 150,00",
+      "CARTAO: VISA FINAL 4821",
+      "AUT: 918273",
+    ].join("\n");
+
+    render(
+      <MemoryRouter initialEntries={[`/share-target?text=${encodeURIComponent(slipText)}`]}>
+        <ShareTargetPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(rpcModule.createExpenseWithDebt).toHaveBeenCalledTimes(1);
+    });
+
+    expect(rpcModule.createExpenseWithDebt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        value: 150,
+        paymentMethod: "credit_card",
+        cardId: "card-itau-visa-1",
+        description: expect.stringMatching(/Padaria Estrela/i),
+        installments: expect.arrayContaining([
+          expect.objectContaining({
+            value: 50,
+            billCompetence: expect.any(String),
+          }),
+        ]),
+      }),
+    );
+
+    // Verifica que o array de parcelas tem 3 itens
+    const callArgs = vi.mocked(rpcModule.createExpenseWithDebt).mock.calls[0]?.[0];
+    expect(callArgs?.installments).toHaveLength(3);
+
+    // Toast personalizado: "Cartão de Crédito de R$ 150,00 (3x) para Padaria Estrela cadastrado!"
+    expect(pushToastSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: expect.stringMatching(/Cartão de Crédito de R\$\s*150,00\s*\(3x\)\s*para Padaria Estrela cadastrado!/),
+        variant: "success",
+      }),
+    );
+
+    // Banner persistente com o título discriminado
+    const banner = getAutoRegisteredBanner();
+    expect(banner).toBeDefined();
+    expect(banner?.paymentMethod).toBe("credit_card");
+    expect(banner?.cardId).toBe("card-itau-visa-1");
+    expect(banner?.installments).toBe(3);
+    expect(banner?.bannerTitle).toMatch(/Cartão de Crédito de R\$\s*150,00\s*\(3x\)\s*para Padaria Estrela cadastrado!/);
+
+    // Aprendizado contínuo registrado
+    expect(recordLearningSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        merchant: expect.stringMatching(/Padaria Estrela/i),
+        paymentMethod: "credit_card",
+        cardId: "card-itau-visa-1",
+        cardLastDigits: "4821",
+      }),
+    );
+  });
+
+  it("auto-cadastra comprovante de renda parcelada acionando buildIncomeInstallments e mensagem discriminada", async () => {
+    const pushToastSpy = vi.spyOn(toastModule, "pushToast").mockReturnValue(1);
+    vi.spyOn(rpcModule, "createIncomeInstallments").mockResolvedValue("income-installments-123");
+
+    // Comprovante Pix com recebimento parcelado
+    const incomeSlip = [
+      "COMPROVANTE DE TRANSFERENCIA PIX",
+      "PIX RECEBIDO",
+      "ORIGEM: JOAO SILVA",
+      "VALOR: R$ 600,00",
+      "PARCELAS: 2X",
+      "DATA: 25/10/2026",
+    ].join("\n");
+
+    render(
+      <MemoryRouter initialEntries={[`/share-target?text=${encodeURIComponent(incomeSlip)}`]}>
+        <ShareTargetPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(rpcModule.createIncomeInstallments).toHaveBeenCalledTimes(1);
+    });
+
+    expect(rpcModule.createIncomeInstallments).toHaveBeenCalledWith(
+      expect.objectContaining({
+        value: 600,
+        receiveType: "pix",
+        installments: expect.arrayContaining([
+          expect.objectContaining({
+            value: 300,
+          }),
+        ]),
+      }),
+    );
+
+    const callArgs = vi.mocked(rpcModule.createIncomeInstallments).mock.calls[0]?.[0];
+    expect(callArgs?.installments).toHaveLength(2);
+
+    expect(pushToastSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: expect.stringMatching(/Pix de R\$\s*600,00 recebido de JOAO SILVA cadastrado!|Receita de R\$\s*600,00\s*\(2x\)\s*de JOAO SILVA cadastrada!/),
+        variant: "success",
+      }),
+    );
   });
 });

@@ -86,7 +86,7 @@ function fixDateOcrArtifacts(text: string): string {
 function fixTaxIdOcrArtifacts(text: string): string {
   // Corrige 'O' em ramal /0001- ou dígitos de CNPJ formatado
   return text.replace(
-    /(?:CNPJ|CPF|CPF\/CNPJ)[\s:.-]*([0-9OolI./-]+)/gi,
+    /(?:CNPJ|CPF|CPF\/CNPJ|CNPJ\/CPF)[\s:.-]*([0-9OolI./-]+)/gi,
     (_match, docStr: string) => {
       const cleaned = docStr.replace(/[Oo]/g, "0").replace(/[lI]/g, "1");
       return `CNPJ/CPF: ${cleaned}`;

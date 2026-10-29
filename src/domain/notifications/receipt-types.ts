@@ -45,5 +45,9 @@ export interface UniversalReceiptData {
   isScheduled?: boolean;
   scheduledFor?: string;
   txId?: string;
+  pixKey?: string;
+  barcodeOrDigitableLine?: string;
+  dueDate?: string;
+  nfeAccessKey?: string;
   rawCleanText: string;
 }

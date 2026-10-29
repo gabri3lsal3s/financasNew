@@ -149,7 +149,16 @@ export function isCardSlipReceipt(text: string): boolean {
 export function parseCardSlipReceipt(rawText: string): UniversalReceiptData | null {
   if (!rawText) return null;
 
-  const cents = extractCentsFromText(rawText);
+  // Prioriza valor total explícito quando presente no slip
+  const totalMatch =
+    /(?:VALOR\s+TOTAL|TOTAL(?:\s+A\s+PAGAR)?|VALOR\s+DA\s+OPERA[ÇC][ÃA]O)\s*[:=]?\s*(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})/i.exec(
+      rawText,
+    );
+  const cents =
+    totalMatch && totalMatch[1] && totalMatch[2]
+      ? parseInt(totalMatch[1].replace(/\./g, ""), 10) * 100 + parseInt(totalMatch[2], 10)
+      : (extractCentsFromText(rawText) ?? 0);
+
   if (!cents || cents <= 0) return null;
 
   const paymentMethod = detectCardPaymentMethod(rawText);

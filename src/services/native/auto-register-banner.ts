@@ -1,7 +1,13 @@
 import { useSyncExternalStore } from "react";
-import type { ParsedBankTransaction } from "@/domain/notifications";
+import {
+  matchCategoryBySlug,
+  resolveBestMatchingCard,
+  resolveMerchantIdentity,
+  type ParsedBankTransaction,
+} from "@/domain/notifications";
 import { addPendingSuggestion, dismissPendingSuggestion, registerReceiptDeduplication } from "./suggestions-store";
 import { listCategories } from "@/data/repositories/categories";
+import { listCreditCards } from "@/data/repositories/credit-cards";
 import {
   createExpenseWithDebt,
   createIncomeInstallments,
@@ -17,6 +23,12 @@ import { pushToast } from "@/services/toast";
 import { formatCentsAsCurrency } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
 import { toISODate } from "@/domain/money";
+import {
+  getCardDigitsMapping,
+  getMerchantLearningMemory,
+  recordTransactionLearning,
+} from "@/services/merchant-learning";
+import type { PaymentMethod, ReceiveType } from "@/types";
 
 export interface AutoRegisteredTransaction {
   id: string;
@@ -27,9 +39,60 @@ export interface AutoRegisteredTransaction {
   date: string;
   categoryId: string;
   categoryName?: string;
-  paymentMethod?: string;
+  paymentMethod?: PaymentMethod | string;
+  cardId?: string | null;
+  installments?: number;
+  bannerTitle?: string;
   parsed: ParsedBankTransaction;
   registeredAt: number;
+}
+
+/**
+ * Constrói mensagem amigável e discriminada do tipo de operação financeira.
+ */
+export function buildAutoRegisteredMessage(params: {
+  type: "expense" | "income";
+  amountCents: number;
+  targetName: string;
+  paymentMethod?: PaymentMethod | string;
+  installments?: number;
+  receiptKind?: string;
+}): string {
+  const formatted = formatCentsAsCurrency(params.amountCents);
+  const count = params.installments && params.installments > 1 ? params.installments : 1;
+  const installmentsSuffix = count > 1 ? ` (${count}x)` : "";
+
+  if (params.type === "income") {
+    if (count > 1) {
+      return `Receita de ${formatted} (${count}x) de ${params.targetName} cadastrada!`;
+    }
+    if (params.paymentMethod === "pix" || params.receiptKind === "pix") {
+      return `Pix de ${formatted} recebido de ${params.targetName} cadastrado!`;
+    }
+    if (params.paymentMethod === "transfer" || params.receiptKind === "wire_transfer") {
+      return `Transferência de ${formatted} recebida de ${params.targetName} cadastrada!`;
+    }
+    return `Receita de ${formatted} de ${params.targetName} cadastrada!`;
+  }
+
+  // Despesa
+  if (params.paymentMethod === "credit_card" || params.receiptKind === "card_slip") {
+    return `Cartão de Crédito de ${formatted}${installmentsSuffix} para ${params.targetName} cadastrado!`;
+  }
+  if (params.paymentMethod === "debit") {
+    return `Cartão de Débito de ${formatted} para ${params.targetName} cadastrado!`;
+  }
+  if (params.receiptKind === "bank_slip_payment") {
+    return `Boleto de ${formatted} para ${params.targetName} cadastrado!`;
+  }
+  if (params.paymentMethod === "transfer" || params.receiptKind === "wire_transfer") {
+    return `Transferência de ${formatted} para ${params.targetName} cadastrada!`;
+  }
+  if (params.paymentMethod === "cash") {
+    return `Dinheiro de ${formatted} para ${params.targetName} cadastrado!`;
+  }
+
+  return `Pix de ${formatted} para ${params.targetName} cadastrado!`;
 }
 
 let activeAutoRegistered: AutoRegisteredTransaction | null = null;
@@ -129,9 +192,36 @@ export async function autoRegisterReceipt(
     const isIncome = parsed.nature === "income" || parsed.type === "income";
     const txType: "expense" | "income" = isIncome ? "income" : "expense";
 
-    // 2. Busca categorias e resolve categoria mais adequada
+    // 2. Resolve identidade do estabelecimento com memória do usuário
+    const userMemory = getMerchantLearningMemory();
+    const targetSource = isIncome
+      ? (parsed.payerName || parsed.merchant || parsed.description)
+      : (parsed.merchant || parsed.description);
+
+    const identity = resolveMerchantIdentity({
+      merchantOrDescription: targetSource,
+      rawText: parsed.rawText,
+      taxId: parsed.taxId,
+      userMemory,
+    });
+
+    const targetName = isIncome
+      ? (parsed.payerName || identity.friendlyName || parsed.merchant || "Favorecido")
+      : (identity.friendlyName ||
+         parsed.merchant ||
+         parsed.recipientName ||
+         parsed.payerName ||
+         "Favorecido");
+
+    // 3. Busca categorias e resolve categoria mais adequada
     const categories = await listCategories(txType).catch(() => []);
-    let targetCategory = findMatchingCategory(categories, parsed.merchant || parsed.description);
+    let targetCategory = identity.categorySlug
+      ? matchCategoryBySlug(categories, identity.categorySlug)
+      : undefined;
+
+    if (!targetCategory) {
+      targetCategory = findMatchingCategory(categories, targetName);
+    }
     if (!targetCategory && categories.length > 0) {
       targetCategory =
         categories.find(
@@ -145,8 +235,63 @@ export async function autoRegisterReceipt(
     const categoryId = targetCategory?.id ?? "";
     const value = parsed.amountCents / 100;
     const date = parsed.date || toISODate(new Date());
-    const targetName = parsed.merchant || parsed.recipientName || parsed.payerName || "Favorecido";
-    const description = parsed.description || (isIncome ? `Pix recebido de ${targetName}` : `Pix para ${targetName}`);
+
+    // 4. Resolve cartão de crédito cadastrado ativo quando pertinente
+    const isCardRelevant =
+      !isIncome &&
+      (Boolean(parsed.cardId) ||
+        Boolean(parsed.cardLastDigits) ||
+        parsed.paymentMethod === "credit_card" ||
+        parsed.receiptKind === "card_slip" ||
+        Boolean(parsed.installments && parsed.installments > 1));
+
+    const allCards = isCardRelevant ? await listCreditCards().catch(() => []) : [];
+    const cardDigitsMapping = getCardDigitsMapping();
+
+    let resolvedCard = parsed.cardId
+      ? allCards.find((c) => c.id === parsed.cardId && c.is_active !== false)
+      : undefined;
+
+    if (!resolvedCard && allCards.length > 0) {
+      resolvedCard = resolveBestMatchingCard(allCards, {
+        cardId: parsed.cardId || identity.preferredCardId,
+        cardLastDigits: parsed.cardLastDigits,
+        bankName: parsed.bankName || parsed.issuerBank,
+        issuerBank: parsed.issuerBank,
+        cardBrand: parsed.cardBrand,
+        cardDigitsMapping,
+        preferredCardId: identity.preferredCardId,
+      });
+    }
+
+    // 5. Determina forma de pagamento real e cartão vinculado
+    const isCardSlip =
+      parsed.receiptKind === "card_slip" ||
+      Boolean(parsed.installments && parsed.installments > 1 && !isIncome);
+
+    let paymentMethod: PaymentMethod =
+      (identity.preferredPaymentMethod as PaymentMethod) ||
+      (parsed.paymentMethod as PaymentMethod) ||
+      (resolvedCard || isCardSlip ? "credit_card" : "pix");
+
+    if (resolvedCard && (!parsed.paymentMethod || parsed.paymentMethod === "credit_card")) {
+      paymentMethod = "credit_card";
+    }
+
+    const cardId = paymentMethod === "credit_card" ? (resolvedCard?.id ?? null) : null;
+
+    let description = parsed.description;
+    if (!description) {
+      if (isIncome) {
+        description = `Pix recebido de ${targetName}`;
+      } else if (paymentMethod === "credit_card") {
+        description = targetName;
+      } else {
+        description = `Pix para ${targetName}`;
+      }
+    } else if (identity.friendlyName) {
+      description = identity.friendlyName;
+    }
 
     let createdId = "";
 
@@ -156,19 +301,29 @@ export async function autoRegisterReceipt(
         totalCents: parsed.amountCents,
         count,
         startDate: date,
+        closingDay: paymentMethod === "credit_card" ? (resolvedCard?.closing_day ?? null) : null,
       });
 
       createdId = await createExpenseWithDebt({
         value,
         date,
         categoryId,
-        paymentMethod: parsed.paymentMethod || "pix",
-        cardId: null,
+        paymentMethod,
+        cardId,
         description,
         reportWeight: 1,
         installments,
       });
     } else {
+      let receiveType: ReceiveType = "pix";
+      if (paymentMethod === "transfer" || parsed.receiptKind === "wire_transfer") {
+        receiveType = "transfer";
+      } else if (paymentMethod === "cash") {
+        receiveType = "cash";
+      } else if (paymentMethod === "other") {
+        receiveType = "other";
+      }
+
       if (parsed.installments && parsed.installments > 1) {
         const installments = buildIncomeInstallments({
           totalCents: parsed.amountCents,
@@ -180,7 +335,7 @@ export async function autoRegisterReceipt(
           value,
           date,
           categoryId,
-          receiveType: "pix",
+          receiveType,
           description,
           reportWeight: 1,
           installments,
@@ -190,7 +345,7 @@ export async function autoRegisterReceipt(
           value,
           date,
           category_id: categoryId,
-          receive_type: "pix",
+          receive_type: receiveType,
           description,
           report_weight: 1,
           source_ref: null,
@@ -199,13 +354,28 @@ export async function autoRegisterReceipt(
       }
     }
 
-    // Memoriza a categoria para o estabelecimento identificado
+    // Memoriza estabelecimento e vínculos de cartão e dígitos
     if (parsed.merchant && categoryId) {
       storeMerchantCategory(parsed.merchant, categoryId);
     }
+    recordTransactionLearning({
+      merchant: targetName,
+      categoryId,
+      paymentMethod,
+      cardId: cardId ?? undefined,
+      cardLastDigits: parsed.cardLastDigits,
+      taxId: parsed.taxId || identity.taxId,
+    });
 
-    const formattedAmount = formatCentsAsCurrency(parsed.amountCents);
-    const toastTitle = `Pix de ${formattedAmount} para ${targetName} cadastrado!`;
+    const count = parsed.installments && parsed.installments > 1 ? parsed.installments : 1;
+    const toastTitle = buildAutoRegisteredMessage({
+      type: txType,
+      amountCents: parsed.amountCents,
+      targetName,
+      paymentMethod,
+      installments: count,
+      receiptKind: parsed.receiptKind,
+    });
 
     const autoRegItem: AutoRegisteredTransaction = {
       id: createdId,
@@ -216,7 +386,10 @@ export async function autoRegisterReceipt(
       date,
       categoryId,
       categoryName: targetCategory?.name,
-      paymentMethod: parsed.paymentMethod || "pix",
+      paymentMethod,
+      cardId,
+      installments: count,
+      bannerTitle: toastTitle,
       parsed,
       registeredAt: Date.now(),
     };

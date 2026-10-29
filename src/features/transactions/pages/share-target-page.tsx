@@ -6,7 +6,12 @@ import {
   BankNotificationPlugin,
   processPixShare,
 } from "@/services/native";
-import { parseBankNotification, parsePixShareText } from "@/domain/notifications";
+import {
+  parseBankNotification,
+  parsePixShareText,
+  parseUniversalReceipt,
+  type ParsedBankTransaction,
+} from "@/domain/notifications";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 
@@ -54,15 +59,49 @@ export function ShareTargetPage() {
       }
 
       try {
-        let parsed = null;
-        try {
-          parsed = processPixShare(rawContent);
-        } catch {
-          parsed = null;
+        let parsed: ParsedBankTransaction | null = null;
+        const trimmed = rawContent.trim();
+
+        // 1. Tenta o motor universal de comprovantes
+        const universal = parseUniversalReceipt(trimmed);
+        if (universal) {
+          parsed = {
+            id: universal.id,
+            bankName: universal.bankName || universal.issuerBank || "Comprovante",
+            nature: universal.nature,
+            type: universal.nature,
+            amountCents: universal.amountCents,
+            description: universal.description,
+            date: universal.date,
+            paymentMethod: universal.paymentMethod,
+            cardLastDigits: universal.cardLastDigits,
+            cardBrand: universal.cardBrand,
+            merchant: universal.merchantOrBeneficiary,
+            receiptKind: universal.kind,
+            rawText: trimmed,
+            timestamp: Date.now(),
+            installments: universal.installments?.count,
+            currentInstallment: universal.installments?.currentInstallment,
+            installmentAmountCents: universal.installments?.installmentAmountCents,
+            issuerBank: universal.issuerBank,
+            taxId: universal.taxId,
+            payerName: universal.payerOrSource,
+            recipientName: universal.merchantOrBeneficiary,
+            source: "receipt",
+          };
+        }
+
+        // 2. Fallback para parsers legados
+        if (!parsed) {
+          try {
+            parsed = processPixShare(trimmed, { skipSuggestion: true });
+          } catch {
+            parsed = null;
+          }
         }
 
         if (!parsed) {
-          parsed = parsePixShareText(rawContent) || parseBankNotification({ title: "", text: rawContent });
+          parsed = parsePixShareText(trimmed) || parseBankNotification({ title: "", text: trimmed });
         }
 
         if (parsed) {

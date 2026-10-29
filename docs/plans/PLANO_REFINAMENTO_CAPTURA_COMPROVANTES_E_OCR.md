@@ -154,26 +154,26 @@ Este plano estabelece a modernização e refinamento profundo dessa funcionalida
   - [x] Extração de estabelecimento comercial higienizado de adquirentes e código de autorização/NSU.
   - [x] Testes unitários colocalizados em `src/domain/notifications/card-slip-parser.test.ts` (6/6 testes aprovados).
 
-- [ ] **Tarefa 2.4: Sub-parsers Especializados Restantes (`src/domain/notifications/`)**
-  - [ ] **`pix-receipt-parser.ts` (Comprovantes Pix)**:
+- [x] **Tarefa 2.4: Sub-parsers Especializados Restantes (`src/domain/notifications/`)**
+  - [x] **`pix-receipt-parser.ts` (Comprovantes Pix)**:
     - Extrair a lógica de comprovante Pix de `bank-parser.ts` para um módulo dedicado puro.
     - Retornar `UniversalReceiptData` com `kind: "pix"`, favorecido/pagador, chave Pix, EndToEndId/TXID e status (efetivado vs agendado).
     - Criar `pix-receipt-parser.test.ts`.
-  - [ ] **`bank-slip-parser.ts` (Boletos Bancários e Tributos)**:
+  - [x] **`bank-slip-parser.ts` (Boletos Bancários e Tributos)**:
     - Identificar termos: `COMPROVANTE DE PAGAMENTO DE BOLETO / TITULO / CONVENIO / TRIBUTO / DARF / GPS`.
     - Extrair beneficiário/cedente, pagador/sacado, valor cobrado, valor pago, data de vencimento e data de pagamento.
     - Extrair código de barras ou linha digitável quando presente.
     - Criar `bank-slip-parser.test.ts`.
-  - [ ] **`danfe-nfc-parser.ts` (Cupons Fiscais Eletrônicos NFC-e / SAT)**:
+  - [x] **`danfe-nfc-parser.ts` (Cupons Fiscais Eletrônicos NFC-e / SAT)**:
     - Identificar termos: `DANFE NFC-e`, `DOCUMENTO AUXILIAR DA NOTA FISCAL DE CONSUMIDOR`, `EXTRATO SAT`.
     - Extrair emitente, CNPJ, valor total a pagar e forma de pagamento (crédito, débito, dinheiro, Pix).
     - Criar `danfe-nfc-parser.test.ts`.
-  - [ ] **`wire-transfer-parser.ts` (Transferências TED / DOC / Entre Contas)**:
+  - [x] **`wire-transfer-parser.ts` (Transferências TED / DOC / Entre Contas)**:
     - Identificar comprovantes de transferências bancárias tradicionais com banco de origem, agência, conta, favorecido e valor.
     - Criar `wire-transfer-parser.test.ts`.
 
-- [ ] **Tarefa 2.5: Orquestrador Universal de Comprovantes (`src/domain/notifications/universal-receipt-parser.ts`)**
-  - [ ] Implementar a função pura `parseUniversalReceipt(rawText: string): UniversalReceiptData | null`:
+- [x] **Tarefa 2.5: Orquestrador Universal de Comprovantes (`src/domain/notifications/universal-receipt-parser.ts`)**
+  - [x] Implementar a função pura `parseUniversalReceipt(rawText: string): UniversalReceiptData | null`:
     1. Executar `cleanOcrText(rawText)`.
     2. Detecção determinística de assinaturas para eleger o sub-parser com maior confiança:
        - Se contiver marcadores de boleto (`código de barras`, `linha digitável`, `pagamento de título`) $\rightarrow$ `parseBankSlipReceipt`.
@@ -183,8 +183,8 @@ Este plano estabelece a modernização e refinamento profundo dessa funcionalida
        - Se contiver marcadores de TED/DOC $\rightarrow$ `parseWireTransferReceipt`.
     3. Acoplamento automático do extrator de parcelamento (`extractDetailedInstallments`).
     4. Fallback semântico para recibos não estruturados.
-  - [ ] Criar testes unitários em `src/domain/notifications/universal-receipt-parser.test.ts` cobrindo 20+ amostras reais de comprovantes.
-  - [ ] Exportar no barrel `src/domain/notifications/index.ts`.
+  - [x] Criar testes unitários em `src/domain/notifications/universal-receipt-parser.test.ts` cobrindo 20+ amostras reais de comprovantes.
+  - [x] Exportar no barrel `src/domain/notifications/index.ts`.
 
 > [!TIP]
 > **Quality Gate 2 (QG2) — Critérios de Aprovação**:
@@ -196,38 +196,38 @@ Este plano estabelece a modernização e refinamento profundo dessa funcionalida
 ---
 
 ### FASE 3: Resolução Avançada e Memória Contínua de Cartões
-> **Status:** Pendente (Para Execução Manual pelo Desenvolvedor)
+> **Status:** Concluída
 
-- [ ] **Tarefa 3.1: Expansão do Motor de Memória (`src/domain/notifications/merchant-memory.ts`)**
-  - [ ] Adicionar campos opcionais em `RecordMerchantLearningParams` e `MerchantLearningRecord`:
+- [x] **Tarefa 3.1: Expansão do Motor de Memória (`src/domain/notifications/merchant-memory.ts`)**
+  - [x] Adicionar campos opcionais em `RecordMerchantLearningParams` e `MerchantLearningRecord`:
     - `preferredPaymentMethod?: PaymentMethod`
     - `preferredCardId?: string`
-  - [ ] Criar a estrutura e funções puras do mapa de dígitos de cartão:
+  - [x] Criar a estrutura e funções puras do mapa de dígitos de cartão:
     - `export type CardDigitsMapping = Record<string, string>;` (ex: `{"4821": "card-itau-uuid", "3341": "card-stone-uuid"}`).
     - `recordCardDigitsLearning(digits: string, cardId: string, current: CardDigitsMapping): CardDigitsMapping`
     - `lookupCardByDigits(digits: string, mapping: CardDigitsMapping): string | undefined`
     - `forgetCardDigitsLearning(cardId: string, current: CardDigitsMapping): CardDigitsMapping`
-  - [ ] Criar testes unitários colocalizados em `src/domain/notifications/merchant-memory.test.ts`.
+  - [x] Criar testes unitários colocalizados em `src/domain/notifications/merchant-memory.test.ts`.
 
-- [ ] **Tarefa 3.2: Refinamento de `resolveBestMatchingCard` (`src/domain/notifications/card-resolution.ts`)**
-  - [ ] Adicionar campos em `CardResolutionParams`:
+- [x] **Tarefa 3.2: Refinamento de `resolveBestMatchingCard` (`src/domain/notifications/card-resolution.ts`)**
+  - [x] Adicionar campos em `CardResolutionParams`:
     - `cardDigitsMapping?: CardDigitsMapping`
     - `preferredCardId?: string`
-  - [ ] Implementar a hierarquia de resolução em 5 etapas estritas:
+  - [x] Implementar a hierarquia de resolução em 5 etapas estritas:
     1. **1ª Prioridade (Dígitos Aprendidos)**: se `cardLastDigits` constar no `cardDigitsMapping`, retorna o cartão correspondente imediatamente.
     2. **2ª Prioridade (Dígitos no Nome do Cartão)**: busca cartões cadastrados cujo nome contenha os 4 dígitos informados.
     3. **3ª Prioridade (Emissor/Banco + Desempate por Bandeira)**: cruza aliases de banco (`Nubank`, `Itaú`, `C6`, `Bradesco`, `XP`, `Rico`) e desempata por bandeira (`Visa`, `Mastercard`, `Elo`).
     4. **4ª Prioridade (Cartão Preferencial do Estabelecimento)**: se houver `preferredCardId` memorizado para aquele estabelecimento, seleciona esse cartão.
     5. **5ª Prioridade (Fallback Seguro)**: se o usuário tiver exatamente 1 cartão de crédito ativo cadastrado, seleciona-o como sugestão padrão.
-  - [ ] Atualizar e expandir testes unitários em `src/domain/notifications/card-resolution.test.ts`.
+  - [x] Atualizar e expandir testes unitários em `src/domain/notifications/card-resolution.test.ts`.
 
-- [ ] **Tarefa 3.3: Sincronização e Persistência do Aprendizado (`src/services/merchant-learning.ts`)**
-  - [ ] Armazenar o `cardDigitsMapping` no `localStorage` isolado por usuário (`card_digits_memory_${userId}`).
-  - [ ] Sincronizar na nuvem no Supabase via `user_preferences.custom_settings.cardDigitsMapping`.
-  - [ ] Criar hook reativo `useCardDigitsMapping()` e função `recordCardDigitFeedback(digits: string, cardId: string)`.
-  - [ ] Implementar helper unificado de feedback:
+- [x] **Tarefa 3.3: Sincronização e Persistência do Aprendizado (`src/services/merchant-learning.ts`)**
+  - [x] Armazenar o `cardDigitsMapping` no `localStorage` isolado por usuário (`card_digits_memory_${userId}`).
+  - [x] Sincronizar na nuvem no Supabase via `user_preferences.custom_settings.cardDigitsMapping`.
+  - [x] Criar hook reativo `useCardDigitsMapping()` e função `recordCardDigitFeedback(digits: string, cardId: string)`.
+  - [x] Implementar helper unificado de feedback:
     `recordTransactionLearning(params: { merchant: string; categoryId: string; paymentMethod: PaymentMethod; cardId?: string; cardLastDigits?: string; taxId?: string })`.
-  - [ ] Testes unitários em `src/services/merchant-learning.test.tsx`.
+  - [x] Testes unitários em `src/services/merchant-learning.test.tsx`.
 
 > [!TIP]
 > **Quality Gate 3 (QG3) — Critérios de Aprovação**:
@@ -240,26 +240,26 @@ Este plano estabelece a modernização e refinamento profundo dessa funcionalida
 ### FASE 4: Integração de UI no Dialog, Wizard e Share Target
 > **Status:** Pendente (Para Execução Manual pelo Desenvolvedor)
 
-- [ ] **Tarefa 4.1: Modernização do `AttachReceiptDialog` (`src/components/modules/attach-receipt-dialog.tsx`)**
-  - [ ] Integrar `extractReceiptTextFromFile` com `parseUniversalReceipt`.
-  - [ ] Integrar resolução de identidade do estabelecimento em 3 camadas via `resolveMerchantIdentity`.
-  - [ ] Resolver o cartão cadastrado ativo via `resolveBestMatchingCard` utilizando os cartões do usuário e o `cardDigitsMapping`.
-  - [ ] Adicionar indicador visual de feedback rico informando o tipo de comprovante identificado (ex.: *"Comprovante de Cartão de Crédito (3x)"*, *"Comprovante Pix"*, *"Boleto Bancário"*).
-  - [ ] Atualizar testes de componente em `src/components/modules/attach-receipt-dialog.test.tsx`.
+- [x] **Tarefa 4.1: Modernização do `AttachReceiptDialog` (`src/components/modules/attach-receipt-dialog.tsx`)**
+  - [x] Integrar `extractReceiptTextFromFile` com `parseUniversalReceipt`.
+  - [x] Integrar resolução de identidade do estabelecimento em 3 camadas via `resolveMerchantIdentity`.
+  - [x] Resolver o cartão cadastrado ativo via `resolveBestMatchingCard` utilizando os cartões do usuário e o `cardDigitsMapping`.
+  - [x] Adicionar indicador visual de feedback rico informando o tipo de comprovante identificado (ex.: *"Comprovante de Cartão de Crédito (3x)"*, *"Comprovante Pix"*, *"Boleto Bancário"*).
+  - [x] Atualizar testes de componente em `src/components/modules/attach-receipt-dialog.test.tsx`.
 
-- [ ] **Tarefa 4.2: Integração e Auto-Preenchimento no `LaunchWizard` (`src/features/transactions/wizard/launch-wizard.tsx`)**
-  - [ ] No handler `handleReceiptParsed(parsed: UniversalReceiptData)`:
+- [x] **Tarefa 4.2: Integração e Auto-Preenchimento no `LaunchWizard` (`src/features/transactions/wizard/launch-wizard.tsx`)**
+  - [x] No handler `handleReceiptParsed(parsed: UniversalReceiptData)`:
     - Preencher: `type: parsed.nature`, `valueCents: parsed.amountCents`, `description: parsed.description`, `date: parsed.date`, `paymentMethod: parsed.paymentMethod`.
     - Se houver parcelamento (`parsed.installments?.count > 1`), definir `state.installments = parsed.installments.count`.
     - Resolver o cartão cadastrado com precisão através de `resolveBestMatchingCard` passando `cardLastDigits`, `bankName`, `issuerBank` e `cardBrand`.
     - Resolver a categoria via `resolveMerchantIdentity` e `matchCategoryBySlug`.
     - Se for despesa no crédito parcelada, aplicar o `closing_day` do cartão selecionado no cálculo de competências.
-  - [ ] No `handleSubmit` do `LaunchWizard`:
+  - [x] No `handleSubmit` do `LaunchWizard`:
     - Disparar `recordTransactionLearning` ao salvar a transação, persistindo o aprendizado de estabelecimento, categoria, método de pagamento, cartão e dígitos.
-  - [ ] Atualizar testes em `src/features/transactions/wizard/launch-wizard.test.tsx`.
+  - [x] Atualizar testes em `src/features/transactions/wizard/launch-wizard.test.tsx`.
 
-- [ ] **Tarefa 4.3: Blindagem do Auto-Cadastro e Share Target (`src/services/native/auto-register-banner.ts` e `share-target-page.tsx`)**
-  - [ ] No `autoRegisterReceipt` (`auto-register-banner.ts`):
+- [x] **Tarefa 4.3: Blindagem do Auto-Cadastro e Share Target (`src/services/native/auto-register-banner.ts` e `share-target-page.tsx`)**
+  - [x] No `autoRegisterReceipt` (`auto-register-banner.ts`):
     - Eliminar hardcodes de `cardId: null` e `paymentMethod: "pix"`.
     - Atribuir o `paymentMethod` real e o `cardId` resolvido.
     - Se for despesa parcelada no cartão, aplicar o `closing_day` do cartão correspondente no `buildExpenseInstallments`.
@@ -277,22 +277,22 @@ Este plano estabelece a modernização e refinamento profundo dessa funcionalida
 ### FASE 5: Matriz de Testes E2E, Typecheck e Governança
 > **Status:** Pendente (Para Execução Manual pelo Desenvolvedor)
 
-- [ ] **Tarefa 5.1: Matriz de Testes E2E de Comprovantes Reais (`src/domain/notifications/receipt-e2e-matrix.test.ts`)**
-  - [ ] Criar suíte completa testando amostras reais de:
-    - [ ] Pix enviado Nubank e Itaú.
-    - [ ] Pix recebido Inter e Mercado Pago.
-    - [ ] Pix agendado Bradesco.
-    - [ ] Slip Cielo Crédito 3x com final 4821 e adquirente.
-    - [ ] Slip Stone Mastercard Débito à vista.
-    - [ ] Slip PagBank Elo Crédito 10x.
-    - [ ] Comprovante de Pagamento de Boleto Santander / Concessionária.
-    - [ ] Cupom Fiscal Eletrônico NFC-e com pagamento em Cartão de Crédito.
-    - [ ] Transferência TED Banco do Brasil para Caixa.
+- [x] **Tarefa 5.1: Matriz de Testes E2E de Comprovantes Reais (`src/domain/notifications/receipt-e2e-matrix.test.ts`)**
+  - [x] Criar suíte completa testando amostras reais de:
+    - [x] Pix enviado Nubank e Itaú.
+    - [x] Pix recebido Inter e Mercado Pago.
+    - [x] Pix agendado Bradesco.
+    - [x] Slip Cielo Crédito 3x com final 4821 e adquirente.
+    - [x] Slip Stone Mastercard Débito à vista.
+    - [x] Slip PagBank Elo Crédito 10x.
+    - [x] Comprovante de Pagamento de Boleto Santander / Concessionária.
+    - [x] Cupom Fiscal Eletrônico NFC-e com pagamento em Cartão de Crédito.
+    - [x] Transferência TED Banco do Brasil para Caixa.
 
-- [ ] **Tarefa 5.2: Validação de Qualidade Integral do Repositório**
-  - [ ] Checagem estrita de tipos: `npm run typecheck`.
-  - [ ] Linter com regra anti-emojis: `npm run lint`.
-  - [ ] Toda a suíte de testes: `npm run test:run`.
+- [x] **Tarefa 5.2: Validação de Qualidade Integral do Repositório**
+  - [x] Checagem estrita de tipos: `npm run typecheck`.
+  - [x] Linter com regra anti-emojis: `npm run lint`.
+  - [x] Toda a suíte de testes: `npm run test:run`.
 
 - [ ] **Tarefa 5.3: Documentação Técnica de Arquitetura (`docs/ARCHITECTURE.md`)**
   - [ ] Sincronizar a Seção 14 de `docs/ARCHITECTURE.md` registrando a conclusão das fases.

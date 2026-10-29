@@ -89,7 +89,7 @@ export function extractDetailedInstallments(
   // CASO 3: Padrão de Maquininhas POS / TEF (ex: "PARC: 03", "QTDE PARCELAS: 3", "PARCELAS: 03", "PARC 03/03")
   // =========================================================================
   const posMatch =
-    /(?:PARC(?:ELAS?)?|QTDE\s+PARC(?:ELAS?)?|NUMERO\s+DE\s+PARCELAS)\s*[:=]?\s*(\d{1,2})(?:\/\d{1,2})?\b/i.exec(
+    /(?:PARC(?:ELAS?)?|QTDE\s+PARC(?:ELAS?)?|NUMERO\s+DE\s+PARCELAS)\s*[:=]?\s*(\d{1,2})[xX]?(?:\/\d{1,2})?\b/i.exec(
       text,
     );
 

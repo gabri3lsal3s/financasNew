@@ -43,6 +43,8 @@ export function AutoRegisteredBanner({ className }: AutoRegisteredBannerProps) {
   const targetName = item.merchant || item.description;
   const formattedAmount = formatCentsAsCurrency(item.amountCents);
   const undoLabel = countdown > 0 ? `Desfazer (${countdown}s)` : "Desfazer";
+  const bannerTitle =
+    item.bannerTitle || `Pix de ${formattedAmount} para ${targetName} cadastrado!`;
 
   const handleUndo = async () => {
     await revertAutoRegisteredTransaction(item);
@@ -59,8 +61,8 @@ export function AutoRegisteredBanner({ className }: AutoRegisteredBannerProps) {
     date: item.date,
     category_id: item.categoryId,
     payment_method: (item.paymentMethod as PaymentMethod) || "pix",
-    card_id: null,
-    installments_total: 1,
+    card_id: item.cardId ?? null,
+    installments_total: item.installments ?? 1,
     installment_number: 1,
     installment_group_id: null,
     bill_competence: null,
@@ -77,11 +79,15 @@ export function AutoRegisteredBanner({ className }: AutoRegisteredBannerProps) {
     value: item.amountCents / 100,
     date: item.date,
     category_id: item.categoryId,
-    receive_type: "pix",
+    receive_type: (item.paymentMethod === "transfer"
+      ? "transfer"
+      : item.paymentMethod === "cash"
+        ? "cash"
+        : "pix") as PaymentMethod extends "pix" ? "pix" : "pix",
     description: item.description,
     report_weight: 1,
     source_ref: null,
-    installments_total: 1,
+    installments_total: item.installments ?? 1,
     installment_number: 1,
     installment_group_id: null,
     created_at: new Date(item.registeredAt).toISOString(),
@@ -106,7 +112,7 @@ export function AutoRegisteredBanner({ className }: AutoRegisteredBannerProps) {
           </span>
           <div className="flex flex-col min-w-0">
             <p className="text-sm font-semibold text-foreground tracking-tight">
-              Pix de {formattedAmount} para {targetName} cadastrado!
+              {bannerTitle}
             </p>
             <p className="text-xs text-muted-foreground">
               Lançamento efetivado com sucesso. Você pode editar ou reverter a qualquer momento.

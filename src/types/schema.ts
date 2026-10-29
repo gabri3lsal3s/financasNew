@@ -252,6 +252,7 @@ export type UserCustomSettings = {
     monitoredBanks?: string[];
   };
   merchantLearning?: Record<string, unknown>;
+  cardDigitsMapping?: Record<string, string>;
   hideDashboardCents?: boolean;
   privacyShieldEnabled?: boolean;
   primaryCardId?: string | null;

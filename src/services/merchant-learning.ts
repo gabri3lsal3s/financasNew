@@ -10,9 +10,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { updateCustomSettings } from "@/data/repositories/user-preferences";
 import {
+  type CardDigitsMapping,
   type MerchantLearningMemory,
   type MerchantLearningRecord,
   type RecordMerchantLearningParams,
+  recordCardDigitsLearning,
+  forgetCardDigitsLearning,
+  lookupCardByDigits,
   recordMerchantLearning,
   forgetMerchantLearning,
   type ResolveMerchantIdentityParams,
@@ -24,6 +28,7 @@ import {
   setUserStorageItem,
   subscribeActiveUserId,
 } from "@/services/user-storage";
+import type { PaymentMethod } from "@/types/schema";
 
 const STORAGE_KEY = "merchant_learning_memory";
 const listeners = new Set<(memory: MerchantLearningMemory) => void>();
@@ -57,6 +62,8 @@ function sanitizeLearningMemory(raw: unknown): MerchantLearningMemory {
         rawAliases: Array.isArray(rec.rawAliases)
           ? rec.rawAliases.map((a) => String(a).toLowerCase().trim()).filter(Boolean)
           : [],
+        preferredPaymentMethod: rec.preferredPaymentMethod,
+        preferredCardId: rec.preferredCardId ? String(rec.preferredCardId) : undefined,
         usageCount: Number(rec.usageCount) || 1,
         lastUsedAt: String(rec.lastUsedAt || new Date().toISOString()),
       };
@@ -165,6 +172,14 @@ export function syncMerchantLearningFromCloud(
         categorySlug: cloudTime >= localTime ? cloudRec.categorySlug : localRec.categorySlug,
         cnpjOrCpf: cloudRec.cnpjOrCpf || localRec.cnpjOrCpf,
         rawAliases: mergedAliases,
+        preferredPaymentMethod:
+          cloudTime >= localTime
+            ? cloudRec.preferredPaymentMethod ?? localRec.preferredPaymentMethod
+            : localRec.preferredPaymentMethod ?? cloudRec.preferredPaymentMethod,
+        preferredCardId:
+          cloudTime >= localTime
+            ? cloudRec.preferredCardId ?? localRec.preferredCardId
+            : localRec.preferredCardId ?? cloudRec.preferredCardId,
         usageCount: Math.max(localRec.usageCount, cloudRec.usageCount),
         lastUsedAt: cloudTime >= localTime ? cloudRec.lastUsedAt : localRec.lastUsedAt,
       };
@@ -233,7 +248,9 @@ function notifyListeners(memory: MerchantLearningMemory): void {
 if (typeof window !== "undefined") {
   subscribeActiveUserId(() => {
     memoryCache = null;
+    cardDigitsCache = null;
     notifyListeners(getMerchantLearningMemory());
+    notifyCardDigitsListeners(getCardDigitsMapping());
   });
 }
 
@@ -352,3 +369,257 @@ export function useMerchantLearning() {
     resolve,
   };
 }
+
+// =========================================================================
+// SERVIÇO E PERSISTÊNCIA DE MAPEAMENTO DE DÍGITOS DE CARTÃO (§11.4 / Fase 3)
+// =========================================================================
+
+const CARD_DIGITS_STORAGE_KEY = "card_digits_memory";
+const cardDigitsListeners = new Set<(mapping: CardDigitsMapping) => void>();
+let cardDigitsCache: CardDigitsMapping | null = null;
+let cardDigitsSyncTimeout: NodeJS.Timeout | null = null;
+let isSyncingCardDigitsToCloud = false;
+const cardDigitsSyncStatusListeners = new Set<(syncing: boolean) => void>();
+
+function sanitizeCardDigitsMapping(raw: unknown): CardDigitsMapping {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return {};
+  }
+  const result: CardDigitsMapping = {};
+  for (const [key, val] of Object.entries(raw as Record<string, unknown>)) {
+    const cleanKey = String(key || "").replace(/\D/g, "");
+    const cleanVal = typeof val === "string" ? val.trim() : "";
+    if (cleanKey && cleanVal) {
+      result[cleanKey] = cleanVal;
+    }
+  }
+  return result;
+}
+
+/**
+ * Lê o mapa de dígitos de cartão do cache em memória ou localStorage isolado por usuário (< 2 ms).
+ */
+export function getCardDigitsMapping(): CardDigitsMapping {
+  if (cardDigitsCache !== null) {
+    return cardDigitsCache;
+  }
+  try {
+    const raw = getUserStorageItem(CARD_DIGITS_STORAGE_KEY);
+    if (!raw) {
+      cardDigitsCache = {};
+      return cardDigitsCache;
+    }
+    const parsed = JSON.parse(raw);
+    cardDigitsCache = sanitizeCardDigitsMapping(parsed);
+    return cardDigitsCache;
+  } catch {
+    cardDigitsCache = {};
+    return cardDigitsCache;
+  }
+}
+
+/**
+ * Atualiza o cache local de dígitos e emite notificação para os ouvintes reativos.
+ */
+export function setCardDigitsMapping(
+  mapping: CardDigitsMapping,
+  scheduleCloud = true,
+): void {
+  cardDigitsCache = mapping;
+  try {
+    setUserStorageItem(CARD_DIGITS_STORAGE_KEY, JSON.stringify(mapping));
+  } catch {
+    // Local storage quota ou iframe restrito
+  }
+
+  notifyCardDigitsListeners(mapping);
+
+  if (scheduleCloud) {
+    triggerCardDigitsCloudSync(mapping);
+  }
+}
+
+/**
+ * Registra o feedback do usuário associando dígitos finais ao ID do cartão.
+ */
+export function recordCardDigitFeedback(
+  digits: string,
+  cardId: string,
+): CardDigitsMapping {
+  const current = getCardDigitsMapping();
+  const next = recordCardDigitsLearning(digits, cardId, current);
+  setCardDigitsMapping(next, true);
+  return next;
+}
+
+/**
+ * Remove associações de dígitos da memória do usuário.
+ */
+export function forgetCardDigitFeedback(
+  cardIdOrDigits: string,
+): CardDigitsMapping {
+  const current = getCardDigitsMapping();
+  const next = forgetCardDigitsLearning(cardIdOrDigits, current);
+  setCardDigitsMapping(next, true);
+  return next;
+}
+
+/**
+ * Mescla o mapa de dígitos da nuvem (Supabase) com a memória local.
+ */
+export function syncCardDigitsMappingFromCloud(
+  cloudMappingRaw?: Record<string, unknown> | null,
+): void {
+  if (!cloudMappingRaw) return;
+  const cloudMapping = sanitizeCardDigitsMapping(cloudMappingRaw);
+  const localMapping = getCardDigitsMapping();
+
+  // Nuvem fornece base, local prevalece para edições offline recentes
+  const merged: CardDigitsMapping = { ...cloudMapping, ...localMapping };
+  setCardDigitsMapping(merged, false);
+}
+
+/**
+ * Envia o mapa de dígitos para a nuvem de forma debounced em segundo plano.
+ */
+function triggerCardDigitsCloudSync(mapping: CardDigitsMapping): void {
+  if (cardDigitsSyncTimeout) {
+    clearTimeout(cardDigitsSyncTimeout);
+  }
+
+  setCardDigitsSyncingState(true);
+  cardDigitsSyncTimeout = setTimeout(async () => {
+    try {
+      await updateCustomSettings({
+        cardDigitsMapping: mapping,
+      });
+    } catch {
+      // Falha de rede em segundo plano: mantém local e tentará na próxima sincronização
+    } finally {
+      setCardDigitsSyncingState(false);
+    }
+  }, 1000);
+}
+
+function setCardDigitsSyncingState(syncing: boolean): void {
+  if (isSyncingCardDigitsToCloud !== syncing) {
+    isSyncingCardDigitsToCloud = syncing;
+    cardDigitsSyncStatusListeners.forEach((l) => l(syncing));
+  }
+}
+
+/**
+ * Inscreve um ouvinte para alterações no mapa de dígitos de cartão.
+ */
+export function subscribeCardDigitsMapping(
+  callback: (mapping: CardDigitsMapping) => void,
+): () => void {
+  cardDigitsListeners.add(callback);
+  return () => {
+    cardDigitsListeners.delete(callback);
+  };
+}
+
+function notifyCardDigitsListeners(mapping: CardDigitsMapping): void {
+  cardDigitsListeners.forEach((listener) => {
+    try {
+      listener(mapping);
+    } catch {
+      // no-op
+    }
+  });
+}
+
+/**
+ * Hook reativo para consultar e registrar aprendizado de dígitos de cartão.
+ */
+export function useCardDigitsMapping() {
+  const [mapping, setMapping] = useState<CardDigitsMapping>(() =>
+    getCardDigitsMapping(),
+  );
+  const [isSyncing, setIsSyncing] = useState<boolean>(isSyncingCardDigitsToCloud);
+
+  useEffect(() => {
+    const unsub = subscribeCardDigitsMapping((next) => {
+      setMapping(next);
+    });
+    const unsubSync = (syncing: boolean) => setIsSyncing(syncing);
+    cardDigitsSyncStatusListeners.add(unsubSync);
+
+    return () => {
+      unsub();
+      cardDigitsSyncStatusListeners.delete(unsubSync);
+    };
+  }, []);
+
+  const recordFeedback = useCallback((digits: string, cardId: string) => {
+    return recordCardDigitFeedback(digits, cardId);
+  }, []);
+
+  const forgetFeedback = useCallback((cardIdOrDigits: string) => {
+    return forgetCardDigitFeedback(cardIdOrDigits);
+  }, []);
+
+  const lookupCard = useCallback(
+    (digits: string | undefined | null) => {
+      return lookupCardByDigits(digits, mapping);
+    },
+    [mapping],
+  );
+
+  return {
+    mapping,
+    cardDigitsMapping: mapping,
+    recordFeedback,
+    forgetFeedback,
+    lookupCard,
+    isSyncing,
+  };
+}
+
+// =========================================================================
+// HELPER UNIFICADO DE FEEDBACK DE TRANSAÇÃO (Tarefa 3.3)
+// =========================================================================
+
+export interface RecordTransactionLearningParams {
+  merchant: string;
+  categoryId: string;
+  paymentMethod: PaymentMethod;
+  cardId?: string;
+  cardLastDigits?: string;
+  taxId?: string;
+}
+
+/**
+ * Helper unificado que atualiza a memória semântica do estabelecimento (categoria habitual,
+ * método de pagamento e cartão preferencial) e os dígitos aprendidos do cartão simultaneamente.
+ */
+export function recordTransactionLearning(params: RecordTransactionLearningParams): void {
+  const { merchant, categoryId, paymentMethod, cardId, cardLastDigits, taxId } = params;
+
+  try {
+    const trimmedMerchant = merchant?.trim();
+
+    // 1. Memoriza estabelecimento, categoria habitual e preferências se houver nome válido
+    if (trimmedMerchant && trimmedMerchant.length >= 2 && categoryId) {
+      recordMerchantLearningAction({
+        friendlyName: trimmedMerchant,
+        categorySlug: categoryId,
+        cnpjOrCpf: taxId,
+        preferredPaymentMethod: paymentMethod,
+        preferredCardId: cardId,
+      });
+    }
+
+    // 2. Memoriza vínculo de 4 dígitos do cartão se ambos estiverem disponíveis
+    if (cardId && cardLastDigits) {
+      recordCardDigitFeedback(cardLastDigits, cardId);
+    }
+
+    // 3. Dispara reavaliação de insights
+    triggerSessionInsightsReevaluation();
+  } catch {
+    // Aprendizado em background nunca bloqueia a experiência do usuário
+  }
+}
+

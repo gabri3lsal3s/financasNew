@@ -6,32 +6,41 @@ import {
   ResponsiveDialog,
 } from "@/components/ui";
 import {
-  lookupMerchantCategory,
+  getReceiptKindLabel,
   parseBankNotification,
   parsePixShareText,
+  parseUniversalReceipt,
+  resolveBestMatchingCard,
+  resolveMerchantIdentity,
   type ParsedBankTransaction,
 } from "@/domain/notifications";
 import {
   addPendingSuggestion,
   extractReceiptTextFromFile,
   processPixShare,
-  useMerchantCategoryMapping,
 } from "@/services/native";
+import {
+  useCardDigitsMapping,
+  useMerchantLearning,
+} from "@/services/merchant-learning";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsCurrency } from "@/services/masks";
+import type { CreditCard } from "@/types/schema";
 
 export interface AttachReceiptDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Callback acionado quando o comprovante é convertido com sucesso */
   onParsed?: (parsed: ParsedBankTransaction) => void;
+  /** Carteira de cartões de crédito ativos para auto-resolução */
+  cards?: CreditCard[];
 }
 
 /**
  * Diálogo ergonômico de "Anexar Comprovante".
  *
- * Permite ao usuário enviar o comprovante bancário por arquivo (PDF ou imagem)
+ * Permite ao usuário enviar comprovantes bancários por arquivo (PDF ou imagem)
  * ou tirar foto diretamente pela câmera no mobile, convertendo automaticamente
  * as informações financeiras via OCR e abrindo o Wizard Rápido pré-preenchido.
  */
@@ -39,6 +48,7 @@ export function AttachReceiptDialog({
   open,
   onOpenChange,
   onParsed,
+  cards,
 }: AttachReceiptDialogProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +56,8 @@ export function AttachReceiptDialog({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const merchantMemory = useMerchantCategoryMapping();
+  const { memory: userMemory } = useMerchantLearning();
+  const { cardDigitsMapping } = useCardDigitsMapping();
 
   const handleClose = () => {
     if (loading) return;
@@ -75,36 +86,118 @@ export function AttachReceiptDialog({
         return;
       }
 
-      // Processa com o motor semântico sem poluir a lista de sugestões da Home
-      let parsed = processPixShare(trimmed, { skipSuggestion: true });
-      if (!parsed) {
-        parsed =
-          parsePixShareText(trimmed) ||
-          parseBankNotification({ title: "", text: trimmed });
+      // 1. Processa primariamente via Orquestrador Universal
+      const universal = parseUniversalReceipt(trimmed);
+      let resolvedParsed: ParsedBankTransaction | null = null;
+
+      if (universal) {
+        // 2. Resolução de Identidade do Estabelecimento em 3 Camadas
+        const merchantTarget = universal.merchantOrBeneficiary || universal.description;
+        const identity = resolveMerchantIdentity({
+          merchantOrDescription: merchantTarget,
+          rawText: universal.rawCleanText,
+          taxId: universal.taxId,
+          userMemory,
+        });
+
+        // 3. Resolução de Cartão em 5 Etapas
+        const matchedCard = resolveBestMatchingCard(cards, {
+          cardId: identity.preferredCardId,
+          cardLastDigits: universal.cardLastDigits,
+          bankName: universal.bankName,
+          issuerBank: universal.bankName,
+          cardBrand: universal.cardBrand,
+          cardDigitsMapping,
+          preferredCardId: identity.preferredCardId,
+        });
+
+        const effectivePaymentMethod =
+          universal.paymentMethod ||
+          identity.preferredPaymentMethod ||
+          (matchedCard ? "credit_card" : "pix");
+
+        resolvedParsed = {
+          id: universal.id,
+          bankName: universal.bankName || matchedCard?.name || "Banco",
+          nature: universal.nature,
+          type: universal.nature === "income" ? "income" : "expense",
+          amountCents: universal.amountCents,
+          description: identity.friendlyName || universal.description,
+          date: universal.date,
+          paymentMethod: effectivePaymentMethod,
+          cardId: matchedCard?.id,
+          cardLastDigits: universal.cardLastDigits,
+          cardBrand: universal.cardBrand || matchedCard?.brand || undefined,
+          merchant: identity.friendlyName,
+          categorySlug: identity.categorySlug,
+          receiptKind: universal.kind,
+          rawText: universal.rawCleanText,
+          timestamp: Date.now(),
+          installments: universal.installments?.count,
+          currentInstallment: universal.installments?.currentInstallment,
+          installmentAmountCents: universal.installments?.installmentAmountCents,
+          taxId: universal.taxId,
+          payerName: universal.payerOrSource,
+          recipientName: universal.merchantOrBeneficiary,
+          source: "receipt",
+        };
+      } else {
+        // Fallback secundário para parsers legados
+        let legacyParsed = processPixShare(trimmed, { skipSuggestion: true });
+        if (!legacyParsed) {
+          legacyParsed =
+            parsePixShareText(trimmed) ||
+            parseBankNotification({ title: "", text: trimmed });
+        }
+
+        if (legacyParsed) {
+          const identity = resolveMerchantIdentity({
+            merchantOrDescription: legacyParsed.merchant || legacyParsed.description,
+            rawText: legacyParsed.rawText || trimmed,
+            taxId: legacyParsed.taxId,
+            userMemory,
+          });
+
+          const matchedCard = resolveBestMatchingCard(cards, {
+            cardId: identity.preferredCardId,
+            cardLastDigits: legacyParsed.cardLastDigits,
+            bankName: legacyParsed.bankName,
+            issuerBank: legacyParsed.issuerBank,
+            cardBrand: legacyParsed.cardBrand,
+            cardDigitsMapping,
+            preferredCardId: identity.preferredCardId,
+          });
+
+          resolvedParsed = {
+            ...legacyParsed,
+            description: identity.friendlyName || legacyParsed.description,
+            merchant: identity.friendlyName,
+            categorySlug: identity.categorySlug || legacyParsed.categorySlug,
+            cardId: matchedCard?.id || legacyParsed.cardId,
+            cardBrand: matchedCard?.brand || legacyParsed.cardBrand,
+          };
+        }
       }
 
-      if (parsed) {
-        // Aplica memorização semântica aprendida
-        const categorySlug =
-          lookupMerchantCategory(parsed.merchant, merchantMemory) || parsed.categorySlug;
-
-        const resolvedParsed: ParsedBankTransaction = {
-          ...parsed,
-          categorySlug,
-        };
+      if (resolvedParsed) {
+        const kindLabel = getReceiptKindLabel(
+          resolvedParsed.receiptKind,
+          resolvedParsed.installments,
+        );
+        const formattedAmount = formatCentsAsCurrency(resolvedParsed.amountCents);
 
         triggerSensory("success");
+
+        pushToast({
+          title: `${kindLabel} reconhecido`,
+          description: `${resolvedParsed.description} no valor de ${formattedAmount} pronto para conferência.`,
+          variant: "success",
+        });
 
         if (onParsed) {
           onParsed(resolvedParsed);
         } else {
           addPendingSuggestion(resolvedParsed);
-          const formattedAmount = formatCentsAsCurrency(resolvedParsed.amountCents);
-          pushToast({
-            title: "Comprovante reconhecido",
-            description: `${resolvedParsed.description} no valor de ${formattedAmount} pronto para conferência.`,
-            variant: "success",
-          });
         }
 
         handleClose();
@@ -148,7 +241,7 @@ export function AttachReceiptDialog({
         else onOpenChange(next);
       }}
       title="Anexar Comprovante"
-      description="Envie o comprovante Pix, transferência ou fatura em PDF ou imagem para identificação e preenchimento automático."
+      description="Envie comprovantes Pix, cartões de crédito/débito, boletos, concessionárias ou notas fiscais em PDF ou imagem para identificação automática."
       size="md"
       footer={
         <div className="flex items-center justify-end w-full">
@@ -203,7 +296,7 @@ export function AttachReceiptDialog({
                 Lendo dados do comprovante...
               </span>
               <span className="text-xs text-muted-foreground">
-                Identificando valor, data e estabelecimento para o Wizard Rápido
+                Identificando tipo de comprovante, valor, parcelamento e cartão para o Wizard Rápido
               </span>
             </div>
           </div>
@@ -267,7 +360,7 @@ export function AttachReceiptDialog({
         <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-muted/40 border border-border/40 text-[11px] text-muted-foreground">
           <FileUp className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
           <span>
-            Compatível com comprovantes Pix de todos os bancos homologados (Nubank, Itaú, Bradesco, Inter, BB, Mercado Pago, etc.) e faturas de cartão.
+            Compatível com comprovantes Pix de todos os bancos homologados, cartões de crédito/débito com parcelamento, boletos bancários, concessionárias e cupons fiscais (NFC-e/SAT).
           </span>
         </div>
       </div>

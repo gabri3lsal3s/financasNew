@@ -105,6 +105,7 @@ describe("user-preferences repository", () => {
         headerButtons: {},
         bankAssistant: {},
         merchantLearning: {},
+        cardDigitsMapping: {},
       },
     });
   });

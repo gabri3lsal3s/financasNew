@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CreditCard } from "@/types/schema";
 import { resolveBestMatchingCard } from "./card-resolution";
+import { recordCardDigitsLearning, type CardDigitsMapping } from "./merchant-memory";
 
 function makeCard(overrides: Partial<CreditCard> & { id: string; name: string }): CreditCard {
   return {
@@ -101,5 +102,94 @@ describe("card-resolution — Motor Puro de Resolução e Auto-Vínculo de Cart�
     const cards = [cardNubank, cardRico];
     const resolved = resolveBestMatchingCard(cards, { bankName: "Santander" });
     expect(resolved).toBeUndefined();
+  });
+
+  describe("Hierarquia Estrita em 5 Etapas e Memória de Dígitos (§11.4 / Fase 3)", () => {
+    const itauBlack = makeCard({ id: "itau-black", name: "Itaú Personnalité Black", brand: "mastercard" });
+    const c6Carbon = makeCard({ id: "c6-carbon", name: "C6 Carbon Mastercard Black", brand: "mastercard" });
+    const nubankPlat = makeCard({ id: "nu-plat", name: "Nubank Platinum final 9911", brand: "mastercard" });
+    const allCards = [itauBlack, c6Carbon, nubankPlat];
+
+    it("1ª Prioridade: seleciona cartão via cardDigitsMapping mesmo sem dígitos no nome", () => {
+      const mapping: CardDigitsMapping = {
+        "4821": "itau-black",
+      };
+
+      const resolved = resolveBestMatchingCard(allCards, {
+        cardLastDigits: "4821",
+        cardDigitsMapping: mapping,
+      });
+
+      expect(resolved?.id).toBe("itau-black");
+    });
+
+    it("1ª Prioridade sobrepuja 2ª Prioridade (Dígitos Aprendidos > Dígitos no Nome)", () => {
+      // nu-plat tem 9911 no nome, mas o usuário reconfigurou/aprendeu que 9911 é c6-carbon
+      const mapping: CardDigitsMapping = {
+        "9911": "c6-carbon",
+      };
+
+      const resolved = resolveBestMatchingCard(allCards, {
+        cardLastDigits: "9911",
+        cardDigitsMapping: mapping,
+      });
+
+      expect(resolved?.id).toBe("c6-carbon");
+    });
+
+    it("1ª Prioridade ignora mapping se o cartão correspondente estiver inativo", () => {
+      const inactiveItau = makeCard({ id: "itau-black", name: "Itaú Black", is_active: false });
+      const cardsWithInactive = [inactiveItau, c6Carbon, nubankPlat];
+      const mapping: CardDigitsMapping = {
+        "4821": "itau-black",
+      };
+
+      // Não deve selecionar o cartão inativo; como não há outro critério, retorna undefined
+      const resolved = resolveBestMatchingCard(cardsWithInactive, {
+        cardLastDigits: "4821",
+        cardDigitsMapping: mapping,
+      });
+
+      expect(resolved).toBeUndefined();
+    });
+
+    it("4ª Prioridade: seleciona preferredCardId para estabelecimento habitual sem dígitos", () => {
+      const resolved = resolveBestMatchingCard(allCards, {
+        preferredCardId: "c6-carbon",
+      });
+
+      expect(resolved?.id).toBe("c6-carbon");
+    });
+
+    it("4ª Prioridade ignora preferredCardId se for de cartão inativo", () => {
+      const inactiveC6 = makeCard({ id: "c6-carbon", name: "C6 Carbon", is_active: false });
+      const cardsWithInactive = [itauBlack, inactiveC6, nubankPlat];
+
+      const resolved = resolveBestMatchingCard(cardsWithInactive, {
+        preferredCardId: "c6-carbon",
+      });
+
+      expect(resolved).toBeUndefined();
+    });
+
+    it("Quality Gate 3: simula fluxo completo de aprendizado de dígitos e preferência", () => {
+      // 1. Primeira transação: usuário seleciona cartão C6 Carbon com final 4821
+      let digitsMemory: CardDigitsMapping = {};
+      digitsMemory = recordCardDigitsLearning("4821", "c6-carbon", digitsMemory);
+
+      // 2. Segunda transação chega via notificação com '**** 4821': sistema seleciona C6 Carbon automaticamente
+      const autoResolved = resolveBestMatchingCard(allCards, {
+        cardLastDigits: "4821",
+        cardDigitsMapping: digitsMemory,
+      });
+      expect(autoResolved?.id).toBe("c6-carbon");
+
+      // 3. Terceira transação no mesmo estabelecimento habitual sem dígitos de cartão:
+      // Herda o preferredCardId configurado
+      const prefResolved = resolveBestMatchingCard(allCards, {
+        preferredCardId: "c6-carbon",
+      });
+      expect(prefResolved?.id).toBe("c6-carbon");
+    });
   });
 });

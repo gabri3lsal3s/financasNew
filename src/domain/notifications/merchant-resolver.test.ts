@@ -119,6 +119,52 @@ describe("merchant-resolver — 2ª Camada (Memória Adaptativa do Usuário)", (
     expect(resolved.layer).toBe(2);
   });
 
+  it("propaga preferredPaymentMethod e preferredCardId configurados na memória", () => {
+    const memoryWithCard: MerchantLearningMemory = {
+      name_posto_ipiranga: {
+        friendlyName: "Posto Ipiranga",
+        categorySlug: "transporte",
+        rawAliases: ["posto ipiranga", "auto posto ipiranga"],
+        usageCount: 1,
+        lastUsedAt: "2026-10-29T10:00:00.000Z",
+        preferredPaymentMethod: "credit_card",
+        preferredCardId: "card-uuid-456",
+      },
+    };
+
+    const resolved = resolveMerchantIdentity({
+      merchantOrDescription: "Auto Posto Ipiranga",
+      userMemory: memoryWithCard,
+    });
+
+    expect(resolved.friendlyName).toBe("Posto Ipiranga");
+    expect(resolved.preferredPaymentMethod).toBe("credit_card");
+    expect(resolved.preferredCardId).toBe("card-uuid-456");
+  });
+
+  it("propaga preferredPaymentMethod e preferredCardId configurados na memória", () => {
+    const memoryWithCard: MerchantLearningMemory = {
+      name_posto_ipiranga: {
+        friendlyName: "Posto Ipiranga",
+        categorySlug: "transporte",
+        rawAliases: ["posto ipiranga", "auto posto ipiranga"],
+        usageCount: 1,
+        lastUsedAt: "2026-10-29T10:00:00.000Z",
+        preferredPaymentMethod: "credit_card",
+        preferredCardId: "card-uuid-456",
+      },
+    };
+
+    const resolved = resolveMerchantIdentity({
+      merchantOrDescription: "Auto Posto Ipiranga",
+      userMemory: memoryWithCard,
+    });
+
+    expect(resolved.friendlyName).toBe("Posto Ipiranga");
+    expect(resolved.preferredPaymentMethod).toBe("credit_card");
+    expect(resolved.preferredCardId).toBe("card-uuid-456");
+  });
+
   it("resolve por variação/alias prévia registrada mesmo com ruído de adquirente", () => {
     const resolved = resolveMerchantIdentity({
       merchantOrDescription: "PAG*BAIRRO MERC",

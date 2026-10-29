@@ -7,6 +7,7 @@
  */
 
 import type { CreditCard } from "@/types/schema";
+import { lookupCardByDigits, type CardDigitsMapping } from "./merchant-memory";
 
 export interface CardResolutionParams {
   /** UUID explícito do cartão ou token textual de banco/dígitos */
@@ -19,6 +20,10 @@ export interface CardResolutionParams {
   issuerBank?: string | null;
   /** Bandeira do cartão (ex.: "Visa", "Mastercard") para desempate */
   cardBrand?: string | null;
+  /** Mapa dinâmico de 4 dígitos aprendidos para IDs de cartões (§11.4 / Fase 3) */
+  cardDigitsMapping?: CardDigitsMapping | null;
+  /** ID do cartão preferencial memorizado para o estabelecimento */
+  preferredCardId?: string | null;
 }
 
 const BANK_CARD_ALIASES: Record<string, string[]> = {
@@ -144,7 +149,7 @@ export function resolveBestMatchingCard(
   const activeCards = cards.filter((c) => c.is_active !== false);
   if (activeCards.length === 0) return undefined;
 
-  // 1. Se cardId for fornecido e corresponder exatamente ao id de um cartão ativo
+  // 0. Se cardId for fornecido e corresponder exatamente ao id de um cartão ativo
   if (params.cardId) {
     const exactIdMatch = activeCards.find((c) => c.id === params.cardId);
     if (exactIdMatch) {
@@ -152,11 +157,26 @@ export function resolveBestMatchingCard(
     }
   }
 
-  // 2. Se cardLastDigits for fornecido (ou cardId for composto estritamente por 4 dígitos)
   const digits =
     params.cardLastDigits ||
     (params.cardId && /^\d{4}$/.test(params.cardId.trim()) ? params.cardId.trim() : undefined);
 
+  // =========================================================================
+  // 1ª Prioridade: Dígitos Aprendidos na Memória Contínua (cardDigitsMapping)
+  // =========================================================================
+  if (digits && params.cardDigitsMapping) {
+    const learnedCardId = lookupCardByDigits(digits, params.cardDigitsMapping);
+    if (learnedCardId) {
+      const learnedCard = activeCards.find((c) => c.id === learnedCardId);
+      if (learnedCard) {
+        return learnedCard;
+      }
+    }
+  }
+
+  // =========================================================================
+  // 2ª Prioridade: Dígitos no Nome do Cartão Cadastrado
+  // =========================================================================
   if (digits) {
     const digitMatches = activeCards.filter((c) => {
       const normName = c.name.toLowerCase();
@@ -176,7 +196,9 @@ export function resolveBestMatchingCard(
     }
   }
 
-  // 3. Se issuerBank ou bankName (ou cardId como token de banco) for fornecido
+  // =========================================================================
+  // 3ª Prioridade: Emissor / Banco + Desempate por Bandeira
+  // =========================================================================
   const bankCandidates = [params.issuerBank, params.bankName, params.cardId].filter(
     (b): b is string => Boolean(b && b.trim() && !/^\d{4}$/.test(b.trim())),
   );
@@ -194,7 +216,7 @@ export function resolveBestMatchingCard(
     }
   }
 
-  // 4. Se cardBrand for fornecida isoladamente
+  // Desempate ou busca por bandeira isolada
   if (params.cardBrand) {
     const normBrand = normalizeText(params.cardBrand);
     const brandMatches = activeCards.filter((c) => {
@@ -212,7 +234,19 @@ export function resolveBestMatchingCard(
     }
   }
 
-  // 5. Fallback inteligente: se houver exatamente 1 cartão de crédito ativo cadastrado
+  // =========================================================================
+  // 4ª Prioridade: Cartão Preferencial do Estabelecimento (preferredCardId)
+  // =========================================================================
+  if (params.preferredCardId) {
+    const preferredMatch = activeCards.find((c) => c.id === params.preferredCardId);
+    if (preferredMatch) {
+      return preferredMatch;
+    }
+  }
+
+  // =========================================================================
+  // 5ª Prioridade: Fallback Seguro (Exatamente 1 Cartão Ativo)
+  // =========================================================================
   if (activeCards.length === 1) {
     return activeCards[0];
   }

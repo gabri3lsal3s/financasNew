@@ -2,13 +2,20 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   autoLearnExpenseCategory,
+  forgetCardDigitFeedback,
   forgetMerchantLearningAction,
+  getCardDigitsMapping,
   getMerchantLearningMemory,
+  recordCardDigitFeedback,
   recordMerchantLearningAction,
+  recordTransactionLearning,
+  setCardDigitsMapping,
   setMerchantLearningMemory,
   subscribeInsightsReevaluation,
+  syncCardDigitsMappingFromCloud,
   syncMerchantLearningFromCloud,
   triggerSessionInsightsReevaluation,
+  useCardDigitsMapping,
   useMerchantLearning,
 } from "./merchant-learning";
 
@@ -20,6 +27,7 @@ describe("services/merchant-learning — Memória Rápida e Persistência", () =
   beforeEach(() => {
     vi.clearAllMocks();
     setMerchantLearningMemory({}, false);
+    setCardDigitsMapping({}, false);
     if (typeof window !== "undefined") {
       window.localStorage.clear();
     }
@@ -222,5 +230,275 @@ describe("services/merchant-learning — Hook useMerchantLearning & Concorrênci
 
     // O hook1 deve refletir a exclusão imediatamente
     expect(hook1.result.current.memory["name_bar_do_ze"]).toBeUndefined();
+  });
+});
+
+describe("services/merchant-learning — Memória e Sincronização de Dígitos de Cartão (§11.4 / Tarefa 3.3)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setCardDigitsMapping({}, false);
+    if (typeof window !== "undefined") {
+      window.localStorage.clear();
+    }
+  });
+
+  it("getCardDigitsMapping responde com mapa limpo", () => {
+    const mapping = getCardDigitsMapping();
+    expect(mapping).toEqual({});
+  });
+
+  it("recordCardDigitFeedback associa dígitos a um cardId e persiste de forma síncrona", () => {
+    const updated = recordCardDigitFeedback("4821", "card-itau-uuid");
+    expect(updated).toEqual({ "4821": "card-itau-uuid" });
+
+    // Segunda associação acumula de forma imutável
+    const updated2 = recordCardDigitFeedback("**** 3341", "card-stone-uuid");
+    expect(updated2).toEqual({
+      "4821": "card-itau-uuid",
+      "3341": "card-stone-uuid",
+    });
+
+    expect(getCardDigitsMapping()).toEqual({
+      "4821": "card-itau-uuid",
+      "3341": "card-stone-uuid",
+    });
+  });
+
+  it("forgetCardDigitFeedback remove mapeamento por cardId ou dígitos", () => {
+    recordCardDigitFeedback("4821", "card-itau-uuid");
+    recordCardDigitFeedback("3341", "card-stone-uuid");
+
+    const afterCardRemoval = forgetCardDigitFeedback("card-itau-uuid");
+    expect(afterCardRemoval).toEqual({ "3341": "card-stone-uuid" });
+
+    const afterDigitRemoval = forgetCardDigitFeedback("3341");
+    expect(afterDigitRemoval).toEqual({});
+  });
+
+  it("syncCardDigitsMappingFromCloud mescla dados da nuvem com dados locais", () => {
+    setCardDigitsMapping({ "1111": "card-local-uuid" }, false);
+
+    syncCardDigitsMappingFromCloud({
+      "2222": "card-cloud-uuid",
+      "1111": "card-cloud-antigo", // local prevalece
+    });
+
+    const current = getCardDigitsMapping();
+    expect(current["2222"]).toBe("card-cloud-uuid");
+    expect(current["1111"]).toBe("card-local-uuid");
+  });
+
+  it("hook useCardDigitsMapping provê estado reativo e métodos de consulta", async () => {
+    const { result } = renderHook(() => useCardDigitsMapping());
+    expect(result.current.cardDigitsMapping).toEqual({});
+
+    await act(async () => {
+      result.current.recordFeedback("5544", "card-c6-uuid");
+    });
+
+    expect(result.current.cardDigitsMapping["5544"]).toBe("card-c6-uuid");
+    expect(result.current.lookupCard("**** 5544")).toBe("card-c6-uuid");
+    expect(result.current.lookupCard("9999")).toBeUndefined();
+
+    await act(async () => {
+      result.current.forgetFeedback("5544");
+    });
+
+    expect(result.current.cardDigitsMapping["5544"]).toBeUndefined();
+  });
+});
+
+describe("services/merchant-learning — Helper Unificado recordTransactionLearning (Tarefa 3.3)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setMerchantLearningMemory({}, false);
+    setCardDigitsMapping({}, false);
+    if (typeof window !== "undefined") {
+      window.localStorage.clear();
+    }
+  });
+
+  it("recordTransactionLearning atualiza memória do estabelecimento, preferências e dígitos simultaneamente", () => {
+    const reevalSpy = vi.fn();
+    const unsub = subscribeInsightsReevaluation(reevalSpy);
+
+    recordTransactionLearning({
+      merchant: "Posto Shell Central",
+      categoryId: "transporte",
+      paymentMethod: "credit_card",
+      cardId: "card-itau-black",
+      cardLastDigits: "4821",
+      taxId: "33.453.598/0001-23",
+    });
+
+    // 1. Memória do estabelecimento registrada com método e cartão preferencial
+    const merchantMemory = getMerchantLearningMemory();
+    const record = merchantMemory["tax_33453598000123"];
+    expect(record).toBeDefined();
+    expect(record?.friendlyName).toBe("Posto Shell Central");
+    expect(record?.categorySlug).toBe("transporte");
+    expect(record?.preferredPaymentMethod).toBe("credit_card");
+    expect(record?.preferredCardId).toBe("card-itau-black");
+
+    // 2. Dígitos do cartão mapeados
+    const digitsMemory = getCardDigitsMapping();
+    expect(digitsMemory["4821"]).toBe("card-itau-black");
+
+    // 3. Reavaliação de insights disparada
+    expect(reevalSpy).toHaveBeenCalledTimes(1);
+
+    unsub();
+  });
+
+  it("recordTransactionLearning lida com transações sem cartão ou sem dígitos com segurança", () => {
+    recordTransactionLearning({
+      merchant: "Padaria da Esquina",
+      categoryId: "alimentacao",
+      paymentMethod: "pix",
+    });
+
+    const merchantMemory = getMerchantLearningMemory();
+    const record = merchantMemory["name_padaria_da_esquina"];
+    expect(record).toBeDefined();
+    expect(record?.preferredPaymentMethod).toBe("pix");
+    expect(record?.preferredCardId).toBeUndefined();
+
+    // Nenhum dígito novo registrado
+    expect(getCardDigitsMapping()).toEqual({});
+  });
+});
+
+describe("services/merchant-learning — Memória e Sincronização de Dígitos de Cartão (§11.4 / Tarefa 3.3)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setCardDigitsMapping({}, false);
+    if (typeof window !== "undefined") {
+      window.localStorage.clear();
+    }
+  });
+
+  it("getCardDigitsMapping responde com mapa limpo", () => {
+    const mapping = getCardDigitsMapping();
+    expect(mapping).toEqual({});
+  });
+
+  it("recordCardDigitFeedback associa dígitos a um cardId e persiste de forma síncrona", () => {
+    const updated = recordCardDigitFeedback("4821", "card-itau-uuid");
+    expect(updated).toEqual({ "4821": "card-itau-uuid" });
+
+    // Segunda associação acumula de forma imutável
+    const updated2 = recordCardDigitFeedback("**** 3341", "card-stone-uuid");
+    expect(updated2).toEqual({
+      "4821": "card-itau-uuid",
+      "3341": "card-stone-uuid",
+    });
+
+    expect(getCardDigitsMapping()).toEqual({
+      "4821": "card-itau-uuid",
+      "3341": "card-stone-uuid",
+    });
+  });
+
+  it("forgetCardDigitFeedback remove mapeamento por cardId ou dígitos", () => {
+    recordCardDigitFeedback("4821", "card-itau-uuid");
+    recordCardDigitFeedback("3341", "card-stone-uuid");
+
+    const afterCardRemoval = forgetCardDigitFeedback("card-itau-uuid");
+    expect(afterCardRemoval).toEqual({ "3341": "card-stone-uuid" });
+
+    const afterDigitRemoval = forgetCardDigitFeedback("3341");
+    expect(afterDigitRemoval).toEqual({});
+  });
+
+  it("syncCardDigitsMappingFromCloud mescla dados da nuvem com dados locais", () => {
+    setCardDigitsMapping({ "1111": "card-local-uuid" }, false);
+
+    syncCardDigitsMappingFromCloud({
+      "2222": "card-cloud-uuid",
+      "1111": "card-cloud-antigo", // local prevalece
+    });
+
+    const current = getCardDigitsMapping();
+    expect(current["2222"]).toBe("card-cloud-uuid");
+    expect(current["1111"]).toBe("card-local-uuid");
+  });
+
+  it("hook useCardDigitsMapping provê estado reativo e métodos de consulta", async () => {
+    const { result } = renderHook(() => useCardDigitsMapping());
+    expect(result.current.cardDigitsMapping).toEqual({});
+
+    await act(async () => {
+      result.current.recordFeedback("5544", "card-c6-uuid");
+    });
+
+    expect(result.current.cardDigitsMapping["5544"]).toBe("card-c6-uuid");
+    expect(result.current.lookupCard("**** 5544")).toBe("card-c6-uuid");
+    expect(result.current.lookupCard("9999")).toBeUndefined();
+
+    await act(async () => {
+      result.current.forgetFeedback("5544");
+    });
+
+    expect(result.current.cardDigitsMapping["5544"]).toBeUndefined();
+  });
+});
+
+describe("services/merchant-learning — Helper Unificado recordTransactionLearning (Tarefa 3.3)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setMerchantLearningMemory({}, false);
+    setCardDigitsMapping({}, false);
+    if (typeof window !== "undefined") {
+      window.localStorage.clear();
+    }
+  });
+
+  it("recordTransactionLearning atualiza memória do estabelecimento, preferências e dígitos simultaneamente", () => {
+    const reevalSpy = vi.fn();
+    const unsub = subscribeInsightsReevaluation(reevalSpy);
+
+    recordTransactionLearning({
+      merchant: "Posto Shell Central",
+      categoryId: "transporte",
+      paymentMethod: "credit_card",
+      cardId: "card-itau-black",
+      cardLastDigits: "4821",
+      taxId: "33.453.598/0001-23",
+    });
+
+    // 1. Memória do estabelecimento registrada com método e cartão preferencial
+    const merchantMemory = getMerchantLearningMemory();
+    const record = merchantMemory["tax_33453598000123"];
+    expect(record).toBeDefined();
+    expect(record?.friendlyName).toBe("Posto Shell Central");
+    expect(record?.categorySlug).toBe("transporte");
+    expect(record?.preferredPaymentMethod).toBe("credit_card");
+    expect(record?.preferredCardId).toBe("card-itau-black");
+
+    // 2. Dígitos do cartão mapeados
+    const digitsMemory = getCardDigitsMapping();
+    expect(digitsMemory["4821"]).toBe("card-itau-black");
+
+    // 3. Reavaliação de insights disparada
+    expect(reevalSpy).toHaveBeenCalledTimes(1);
+
+    unsub();
+  });
+
+  it("recordTransactionLearning lida com transações sem cartão ou sem dígitos com segurança", () => {
+    recordTransactionLearning({
+      merchant: "Padaria da Esquina",
+      categoryId: "alimentacao",
+      paymentMethod: "pix",
+    });
+
+    const merchantMemory = getMerchantLearningMemory();
+    const record = merchantMemory["name_padaria_da_esquina"];
+    expect(record).toBeDefined();
+    expect(record?.preferredPaymentMethod).toBe("pix");
+    expect(record?.preferredCardId).toBeUndefined();
+
+    // Nenhum dígito novo registrado
+    expect(getCardDigitsMapping()).toEqual({});
   });
 });

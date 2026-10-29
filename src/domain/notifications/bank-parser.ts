@@ -20,11 +20,13 @@ export interface ParsedBankTransaction {
   description: string;
   date: string; // YYYY-MM-DD
   paymentMethod?: PaymentMethod;
+  cardId?: string;
   cardLastDigits?: string;
   cardBrand?: string;
   merchant?: string;
   assetTicker?: string;
   categorySlug?: string;
+  receiptKind?: string;
   rawText: string;
   timestamp: number;
   installments?: number;
@@ -1734,7 +1736,7 @@ export function detectPixTransactionNature(rawText: string): "expense" | "income
 
   // Termos inequívocos de recebimento de Pix
   const incomeRegex =
-    /\b(?:pix\s+recebido|recebemos\s+um\s+pix|voc[êe]\s+recebeu|transfer[êe]ncia\s+recebida|quem\s+te\s+enviou|recebido\s+por|valor\s+creditado)\b/i;
+    /\b(?:pix\s+recebido|recebemos\s+um\s+pix|voc[êe]\s+recebeu|transfer[êe]ncia(?:\s+pix)?\s+recebida|quem\s+te\s+enviou|recebido\s+por|valor\s+creditado|valor\s+recebido)\b/i;
   // Termos inequívocos de envio de Pix
   const expenseRegex =
     /\b(?:pix\s+enviado|voc[êe]\s+transferiu|voc[êe]\s+pagou|pago\s+para|para:|destinat[áa]rio:|benefici[áa]rio:|favorecido:|dados\s+do\s+recebedor|comprovante\s+de\s+pagamento|comprovante\s+de\s+agendamento)\b/i;
@@ -1744,7 +1746,7 @@ export function detectPixTransactionNature(rawText: string): "expense" | "income
   }
 
   // Se ambos os blocos estiverem presentes (ex: comprovante com dados do pagador e do recebedor):
-  if (/\b(?:pix\s+recebido|transfer[êe]ncia\s+recebida|quem\s+te\s+enviou)\b/i.test(lower)) {
+  if (/\b(?:pix\s+recebido|transfer[êe]ncia(?:\s+pix)?\s+recebida|quem\s+te\s+enviou|valor\s+recebido)\b/i.test(lower)) {
     return "income";
   }
 
@@ -1797,7 +1799,7 @@ export function extractTaxId(text: string): string | undefined {
 
   // 1. CNPJ explícito: XX.XXX.XXX/XXXX-XX ou 14 dígitos após token CNPJ
   const cnpjMatch =
-    /(?:CNPJ|CPF\/CNPJ):\s*([0-9]{2}\.[0-9]{3}\.[0-9]{3}\/[0-9]{4}-[0-9]{2}|[0-9]{14})\b/i.exec(
+    /(?:CNPJ\/CPF|CPF\/CNPJ|CNPJ)[\s:.-]+([0-9]{2}\.[0-9]{3}\.[0-9]{3}\/[0-9]{4}-[0-9]{2}|[0-9]{14})\b/i.exec(
       text,
     );
   if (cnpjMatch && cnpjMatch[1]) {
@@ -1806,7 +1808,7 @@ export function extractTaxId(text: string): string | undefined {
 
   // 2. CPF explícito: XXX.XXX.XXX-XX ou mascarado ***.XXX.XXX-**
   const cpfMatch =
-    /(?:CPF|CPF\/CNPJ):\s*([0-9*]{3}\.[0-9*]{3}\.[0-9*]{3}-[0-9*]{2}|[0-9]{11})\b/i.exec(
+    /(?:CNPJ\/CPF|CPF\/CNPJ|CPF)[\s:.-]+([0-9*]{3}\.[0-9*]{3}\.[0-9*]{3}-[0-9*]{2}|[0-9]{11})\b/i.exec(
       text,
     );
   if (cpfMatch && cpfMatch[1]) {

@@ -1,14 +1,32 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LaunchWizard } from "./launch-wizard";
 
 const createExpenseMock = vi.fn();
 const navigateMock = vi.fn();
+const extractReceiptTextFromFileMock = vi.fn();
+const recordTransactionLearningMock = vi.fn();
 
 vi.mock("react-router", () => ({
   useNavigate: () => navigateMock,
 }));
+
+vi.mock("@/services/native", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/native")>();
+  return {
+    ...actual,
+    extractReceiptTextFromFile: (...args: unknown[]) => extractReceiptTextFromFileMock(...args),
+  };
+});
+
+vi.mock("@/services/merchant-learning", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/merchant-learning")>();
+  return {
+    ...actual,
+    recordTransactionLearning: (...args: unknown[]) => recordTransactionLearningMock(...args),
+  };
+});
 
 vi.mock("@/state", () => ({
   useCategories: () => ({
@@ -36,6 +54,8 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     createExpenseMock.mockReset().mockResolvedValue("expense-1");
     navigateMock.mockReset();
     activeCreditCardsMock.mockReset().mockReturnValue([]);
+    extractReceiptTextFromFileMock.mockReset();
+    recordTransactionLearningMock.mockReset();
   });
 
   it("exibe os 4 passos do Stepper", () => {
@@ -555,7 +575,131 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
 
       // No modo rápido, o select de cartão deve estar pré-preenchido com "Cartão Rico"
       const cardSelect = await screen.findByRole("combobox", { name: "Selecione o cartão de crédito" });
-      expect(cardSelect).toHaveTextContent("Cartão Rico");
+      await waitFor(() => {
+        expect(cardSelect).toHaveTextContent("Cartão Rico");
+      });
+    });
+  });
+
+  describe("Integração e Auto-Preenchimento via Comprovantes (Fase 4 / Tarefa 4.2)", () => {
+    it("auto-preenche campos a partir de comprovante de cartão parcelado, calcula competências com closing_day e persiste aprendizado ao salvar", async () => {
+      const user = userEvent.setup();
+      const onSuccess = vi.fn();
+
+      activeCreditCardsMock.mockReturnValue([
+        {
+          id: "card-visa-xp-1",
+          name: "XP Visa Infinite",
+          brand: "visa",
+          closing_day: 15,
+          due_day: 25,
+          is_active: true,
+        },
+      ]);
+
+      extractReceiptTextFromFileMock.mockResolvedValueOnce(
+        [
+          "REDE",
+          "LOJAS AMERICANAS",
+          "VIA DO CLIENTE",
+          "DATA: 25/10/2026 14:30",
+          "CREDITO PARCELADO",
+          "PARC: 03",
+          "VALOR DA PARCELA: R$ 100,00",
+          "VALOR TOTAL: R$ 300,00",
+          "CARTAO: VISA FINAL 4821",
+          "AUT: 918273",
+        ].join("\n"),
+      );
+
+      render(<LaunchWizard initialMode="guided" onSuccess={onSuccess} />);
+
+      // Abre modal de anexar comprovante
+      const attachBtn = screen.getByRole("button", { name: "Anexar comprovante" });
+      await user.click(attachBtn);
+
+      expect(await screen.findByText("Anexar Comprovante")).toBeInTheDocument();
+
+      // Simula upload do arquivo
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      expect(fileInput).toBeDefined();
+
+      const file = new File(["dummy slip"], "slip.png", { type: "image/png" });
+      fireEvent.change(fileInput, { target: { files: [file] } });
+
+      // O wizard deve transicionar para o modo rápido com os campos preenchidos
+      await waitFor(() => {
+        expect(screen.getByText("Lançamento rápido")).toBeInTheDocument();
+      });
+
+      // Valida que o valor foi preenchido com 300,00
+      const valueInput = screen.getByRole("textbox", { name: "Valor do lançamento" });
+      expect((valueInput as HTMLInputElement).value).toMatch(/300,00/);
+
+      // Valida descrição
+      const descInput = screen.getByRole("textbox", { name: /descrição/i });
+      expect(descInput).toHaveValue("Lojas Americanas");
+
+      // Seleciona categoria caso ainda não selecionada
+      const catBtn = screen.getByRole("button", { name: /alimentação/i });
+      await user.click(catBtn);
+
+      // Clica em salvar transação
+      const saveBtn = screen.getByRole("button", { name: /salvar transação/i });
+      await user.click(saveBtn);
+
+      // Verifica envio de despesa parcelada com 3 parcelas e competência calculada com closing_day: 15
+      await waitFor(() => {
+        expect(createExpenseMock).toHaveBeenCalledTimes(1);
+      });
+
+      const expenseCall = createExpenseMock.mock.calls[0]?.[0];
+      expect(expenseCall).toBeDefined();
+      expect(expenseCall?.value).toBe(300);
+      expect(expenseCall?.paymentMethod).toBe("credit_card");
+      expect(expenseCall?.cardId).toBe("card-visa-xp-1");
+      expect(expenseCall?.installments).toHaveLength(3);
+
+      // Verifica que recordTransactionLearning foi disparado
+      expect(recordTransactionLearningMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          merchant: "Lojas Americanas",
+          paymentMethod: "credit_card",
+          cardId: "card-visa-xp-1",
+          cardLastDigits: "4821",
+        }),
+      );
+      expect(onSuccess).toHaveBeenCalled();
+    });
+
+    it("chama recordTransactionLearning ao submeter lançamento simples pelo wizard", async () => {
+      const user = userEvent.setup();
+
+      render(
+        <LaunchWizard
+          initialMode="quick"
+          initialValues={{
+            valueCents: 5000,
+            categoryId: "c1",
+            description: "Padaria da Esquina",
+            paymentMethod: "pix",
+          }}
+        />,
+      );
+
+      const saveBtn = screen.getByRole("button", { name: /salvar transação/i });
+      await user.click(saveBtn);
+
+      await waitFor(() => {
+        expect(createExpenseMock).toHaveBeenCalledTimes(1);
+        expect(recordTransactionLearningMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            merchant: "Padaria da Esquina",
+            categoryId: "c1",
+            paymentMethod: "pix",
+          }),
+        );
+      });
     });
   });
 });

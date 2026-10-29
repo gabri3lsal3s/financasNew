@@ -13,18 +13,24 @@ import { triggerSensory } from "@/services/sensory";
 import { buildDescriptionSuggestions, buildHabitualEntries, dayOfMonth } from "@/domain/predictions";
 import { todayISO } from "@/domain/debts";
 import {
+  getReceiptKindLabel,
   inferCategoryKeyword,
-  lookupMerchantCategory,
   matchCategoryBySlug,
   resolveBestMatchingCard,
+  resolveMerchantIdentity,
   type CanonicalCategorySlug,
   type ParsedBankTransaction,
+  type UniversalReceiptData,
 } from "@/domain/notifications";
 import {
   getBankAssistantPreferences,
   storeMerchantCategory,
-  useMerchantCategoryMapping,
 } from "@/services/native";
+import {
+  recordTransactionLearning,
+  useCardDigitsMapping,
+  useMerchantLearning,
+} from "@/services/merchant-learning";
 
 import {
   useActiveCreditCards,
@@ -89,7 +95,13 @@ export function LaunchWizard({
   const [confirmClose, setConfirmClose] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
   const [isCategoryUnconfirmed, setIsCategoryUnconfirmed] = useState(false);
-  const merchantMemory = useMerchantCategoryMapping();
+  const merchantLearning = useMerchantLearning();
+  const cardDigits = useCardDigitsMapping();
+  const [receiptMeta, setReceiptMeta] = useState<{
+    merchant?: string;
+    cardLastDigits?: string;
+    taxId?: string;
+  } | null>(null);
 
   // Transição suave para o modo guiado sem perda de dados
   const handleSwitchToGuided = () => {
@@ -121,6 +133,7 @@ export function LaunchWizard({
     setMode(initialMode);
     setError(null);
     setPending(false);
+    setReceiptMeta(null);
     onClose?.();
     onOpenChange?.(false);
     if (!onClose && !onOpenChange) {
@@ -325,10 +338,22 @@ export function LaunchWizard({
 
       if (state.description && state.categoryId) {
         storeMerchantCategory(state.description, state.categoryId);
+        recordTransactionLearning({
+          merchant: receiptMeta?.merchant || state.description,
+          categoryId: state.categoryId,
+          paymentMethod: state.type === "expense" ? state.paymentMethod : "pix",
+          cardId:
+            state.type === "expense" && state.paymentMethod === "credit_card" && state.cardId
+              ? state.cardId
+              : undefined,
+          cardLastDigits: receiptMeta?.cardLastDigits,
+          taxId: receiptMeta?.taxId,
+        });
       }
 
       triggerSensory("success");
       setState(defaultLaunchState(initialType));
+      setReceiptMeta(null);
       setPending(false);
       onSuccess?.();
       onOpenChange?.(false);
@@ -342,44 +367,106 @@ export function LaunchWizard({
     }
   };
 
-  const handleReceiptParsed = (parsed: ParsedBankTransaction) => {
+  const handleReceiptParsed = (parsed: ParsedBankTransaction | UniversalReceiptData) => {
     setMode("quick");
     let isMemorized = false;
 
+    const rawMerchant =
+      ("merchantOrBeneficiary" in parsed ? parsed.merchantOrBeneficiary : undefined) ||
+      ("merchant" in parsed ? parsed.merchant : undefined) ||
+      parsed.description ||
+      "";
+
+    // 1. Resolução em 3 camadas de identidade e categoria via resolveMerchantIdentity
+    const identity = resolveMerchantIdentity({
+      merchantOrDescription: rawMerchant,
+      rawText: "rawText" in parsed ? parsed.rawText : undefined,
+      taxId: parsed.taxId,
+      userMemory: merchantLearning.memory,
+    });
+
+    if (identity.isLearned) {
+      isMemorized = true;
+    }
+
+    // 2. Extração de parcelamento
+    const installmentCount =
+      typeof parsed.installments === "number"
+        ? parsed.installments
+        : parsed.installments?.count;
+
+    // 3. Resolução precisa do cartão de crédito através de 5 camadas e mapa de 4 dígitos
+    const cardLastDigits = parsed.cardLastDigits;
+    const bankName = parsed.bankName;
+    const issuerBank = "issuerBank" in parsed ? parsed.issuerBank : undefined;
+    const cardBrand = parsed.cardBrand;
+    const cardId = "cardId" in parsed ? parsed.cardId : undefined;
+
+    const matchedCard = resolveBestMatchingCard(cardsQuery.data, {
+      cardId: cardId || identity.preferredCardId,
+      cardLastDigits,
+      bankName,
+      issuerBank,
+      cardBrand,
+      cardDigitsMapping: cardDigits.cardDigitsMapping,
+    });
+
+    // 4. Salva metadados do comprovante para o aprendizado no submit
+    setReceiptMeta({
+      merchant: identity.friendlyName || rawMerchant,
+      cardLastDigits,
+      taxId: parsed.taxId || identity.taxId,
+    });
+
     setState((prev) => {
       const next = { ...prev };
-      next.type = parsed.type;
+
+      // Natureza / Tipo
+      const nature: EntryType =
+        ("nature" in parsed && (parsed.nature === "expense" || parsed.nature === "income"))
+          ? parsed.nature
+          : ("type" in parsed && (parsed.type === "expense" || parsed.type === "income") ? parsed.type : "expense");
+      next.type = nature;
+
+      // Valores e Data
       next.valueCents = parsed.amountCents;
-      if (parsed.description) next.description = parsed.description;
       if (parsed.date) next.date = parsed.date;
-      if (parsed.paymentMethod) next.paymentMethod = parsed.paymentMethod;
-      if (parsed.installments && parsed.installments > 1) {
-        next.installments = parsed.installments;
-      }
-      // 1. Prioriza categoria memorizada do estabelecimento
-      let categoryMatched = false;
-      if (parsed.merchant && categoriesQuery.data) {
-        const memorized = lookupMerchantCategory(parsed.merchant, merchantMemory);
-        if (memorized) {
-          const found = categoriesQuery.data.find(
-            (c) =>
-              c.id === memorized ||
-              c.icon === memorized ||
-              c.name.toLowerCase() === memorized.toLowerCase() ||
-              c.name.toLowerCase().includes(memorized.toLowerCase()),
-          );
-          if (found) {
-            next.categoryId = found.id;
-            categoryMatched = true;
-            isMemorized = true;
-          }
+      next.description = identity.friendlyName || parsed.description;
+
+      // Forma de pagamento inicial
+      const initialMethod =
+        identity.preferredPaymentMethod ||
+        parsed.paymentMethod ||
+        (matchedCard ? "credit_card" : "pix");
+      next.paymentMethod = initialMethod;
+
+      // Se houver parcelamento
+      if (installmentCount && installmentCount > 1) {
+        next.installments = installmentCount;
+        if (nature === "expense") {
+          next.paymentMethod = "credit_card";
         }
       }
-      // 2. Fallback para slug inferido por palavras-chave ou catalog
-      if (!categoryMatched && parsed.categorySlug && categoriesQuery.data) {
+
+      // Vínculo do cartão resolvido
+      if (matchedCard) {
+        next.cardId = matchedCard.id;
+        if (nature === "expense") {
+          next.paymentMethod = "credit_card";
+        }
+      } else if (identity.preferredCardId && cardsQuery.data?.some((c) => c.id === identity.preferredCardId)) {
+        next.cardId = identity.preferredCardId;
+        if (nature === "expense") {
+          next.paymentMethod = "credit_card";
+        }
+      }
+
+      // Categoria via slug canônico ou catálogo ou inferência
+      let categoryMatched = false;
+      if (identity.categorySlug && categoriesQuery.data) {
         const matched = matchCategoryBySlug(
           categoriesQuery.data,
-          parsed.categorySlug as CanonicalCategorySlug,
+          identity.categorySlug as CanonicalCategorySlug,
         );
         if (matched) {
           next.categoryId = matched.id;
@@ -387,8 +474,8 @@ export function LaunchWizard({
         } else {
           const found = categoriesQuery.data.find(
             (c) =>
-              c.name.toLowerCase().includes(parsed.categorySlug!.toLowerCase()) ||
-              parsed.categorySlug!.toLowerCase().includes(c.name.toLowerCase()),
+              c.name.toLowerCase().includes(identity.categorySlug.toLowerCase()) ||
+              identity.categorySlug.toLowerCase().includes(c.name.toLowerCase()),
           );
           if (found) {
             next.categoryId = found.id;
@@ -396,9 +483,10 @@ export function LaunchWizard({
           }
         }
       }
-      // 3. Inferência determinística adicional a partir do texto do comprovante
+
+      // Fallback para categorização preditiva se ainda não vinculou
       if (!categoryMatched && categoriesQuery.data) {
-        const textToInfer = parsed.description || parsed.merchant || "";
+        const textToInfer = next.description || rawMerchant;
         if (textToInfer) {
           const slug = inferCategoryKeyword(textToInfer);
           if (slug) {
@@ -409,23 +497,26 @@ export function LaunchWizard({
           }
         }
       }
-      if (parsed.paymentMethod === "credit_card" && cardsQuery.data) {
-        const matchingCard = cardsQuery.data.find((card) =>
-          card.name.toLowerCase().includes(parsed.bankName.toLowerCase()),
-        );
-        if (matchingCard) next.cardId = matchingCard.id;
-      }
+
       return next;
     });
 
-    // Se a categoria foi memorizada, não requer confirmação; caso contrário, destaca para conferência
+    // Se a categoria foi memorizada previamente pelo usuário, não requer confirmação
     setIsCategoryUnconfirmed(!isMemorized);
 
     triggerSensory("success");
 
+    const receiptKind =
+      "receiptKind" in parsed
+        ? parsed.receiptKind
+        : "kind" in parsed
+          ? parsed.kind
+          : undefined;
+    const label = getReceiptKindLabel(receiptKind, installmentCount);
+
     pushToast({
-      title: "Comprovante reconhecido",
-      description: `${parsed.description} preenchido no Wizard Rápido para conferência.`,
+      title: `${label} reconhecido`,
+      description: `${identity.friendlyName || parsed.description} preenchido no Wizard Rápido para conferência.`,
       variant: "success",
     });
   };
@@ -685,6 +776,7 @@ export function LaunchWizard({
           open={attachOpen}
           onOpenChange={setAttachOpen}
           onParsed={handleReceiptParsed}
+          cards={cardsQuery.data}
         />
       </div>
     </Modal>
