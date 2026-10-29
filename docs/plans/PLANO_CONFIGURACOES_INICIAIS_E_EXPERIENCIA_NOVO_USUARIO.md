@@ -444,19 +444,19 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 5
 
-- [ ] **Tarefa 5.1: Mensagem Acolhedora no `WelcomeModal`**
+- [x] **Tarefa 5.1: Mensagem Acolhedora no `WelcomeModal`**
   - **Arquivo:** `src/components/modules/welcome-modal.tsx`
   - Adicionar um aviso sutil no modal: *"Sua conta já inclui as 11 categorias essenciais organizadas (Alimentação, Moradia, Transporte, etc.) para você começar imediatamente."*
 
-- [ ] **Tarefa 5.2: Testes de Onboarding**
+- [x] **Tarefa 5.2: Testes de Onboarding**
   - **Arquivo:** `src/components/modules/welcome-modal.test.tsx`
   - Rodar: `npx vitest run src/components/modules/welcome-modal.test.tsx`
 
 ### Portão de Qualidade da Fase 5
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/components/modules/welcome-modal.test.tsx`
-- [ ] **Commit & Push da Fase 5:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/components/modules/welcome-modal.test.tsx`
+- [x] **Commit & Push da Fase 5:**
   ```bash
   git add src/components/modules/welcome-modal.tsx src/components/modules/welcome-modal.test.tsx
   git commit -m "feat(onboarding): destaca categorias essenciais prontas no acolhimento de novos usuarios"

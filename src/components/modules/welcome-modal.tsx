@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { ArrowUpDown, Compass, CreditCard, Sparkles, TrendingUp } from "lucide-react";
+import { ArrowUpDown, Compass, CreditCard, Layers, Sparkles, TrendingUp } from "lucide-react";
 import { Button, Modal } from "@/components/ui";
 import { hasSeenWelcomeModal, markWelcomeModalSeen } from "@/state/demo-mode";
 
@@ -142,6 +142,14 @@ export function WelcomeModal({
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Aviso acolhedor de categorias essenciais prontas */}
+        <div className="flex items-start gap-2.5 rounded-lg border border-border/80 bg-surface/60 p-3 text-xs text-muted-foreground">
+          <Layers className="size-4 shrink-0 text-muted-foreground mt-0.5" aria-hidden="true" />
+          <p className="leading-relaxed">
+            Sua conta já inclui as 11 categorias essenciais organizadas (Alimentação, Moradia, Transporte, etc.) para você começar imediatamente.
+          </p>
         </div>
 
         {/* Nota explicativa contextual da simulação */}

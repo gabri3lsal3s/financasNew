@@ -34,6 +34,11 @@ describe("WelcomeModal — Acolhimento e Escolha de Partida (§3.1)", () => {
     expect(screen.getByText("Cartões Inteligentes")).toBeInTheDocument();
     expect(screen.getByText("Carteira & Rebalanceamento")).toBeInTheDocument();
 
+    // Aviso de categorias essenciais prontas
+    expect(
+      screen.getByText(/Sua conta já inclui as 11 categorias essenciais organizadas/i),
+    ).toBeInTheDocument();
+
     // Nota da simulação
     expect(
       screen.getByText(/Experimente todos os recursos com dados simulados em memória/i),
