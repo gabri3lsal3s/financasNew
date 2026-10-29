@@ -376,7 +376,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 4
 
-- [ ] **Tarefa 4.1: Exportar `CANONICAL_DEFAULT_CATEGORIES` no Domínio**
+- [x] **Tarefa 4.1: Exportar `CANONICAL_DEFAULT_CATEGORIES` no Domínio**
   - **Arquivo:** `src/domain/budgets/index.ts`
   - Adicionar a estrutura tipada das 11 categorias padrão brasileiras:
     ```ts
@@ -405,7 +405,7 @@ git push origin main
     ] as const;
     ```
 
-- [ ] **Tarefa 4.2: Auditar `category-semantics.ts` contra as Categorias Canônicas**
+- [x] **Tarefa 4.2: Auditar `category-semantics.ts` contra as Categorias Canônicas**
   - **Arquivo:** `src/domain/insights/category-semantics.ts`
   - Validar que cada uma das 11 categorias padrão é resolvida com determinismo estrito:
     - `Alimentação` ➔ `isEssential: true`, `isAggregator: true`, `canonicalSlug: "alimentacao"`.
@@ -415,21 +415,21 @@ git push origin main
     - `Assinaturas` ➔ `isSubscriptionCategory: true`, `canonicalSlug: "assinaturas"`.
     - `Salário` / `Investimentos` ➔ `nature: "investment"` ou renda correspondente.
 
-- [ ] **Tarefa 4.3: Certificar a Blindagem de Usuários Existentes**
+- [x] **Tarefa 4.3: Certificar a Blindagem de Usuários Existentes**
   - **Verificação no Código:**
     - Assegurar que **NENHUM** hook (`useCategories`, `useIncomes`, `useTransactions`, etc.) faça chamada a `createCategory` ou `insert` de forma automática.
     - O banco de dados já cuida do seed no signup via trigger `handle_new_user()`.
     - Usuários antigos mantêm suas categorias intactas sem qualquer alteração.
 
-- [ ] **Tarefa 4.4: Testes Automatizados no Domínio**
+- [x] **Tarefa 4.4: Testes Automatizados no Domínio**
   - **Arquivo:** `src/domain/budgets/index.test.ts`
   - Adicionar testes verificando que `CANONICAL_DEFAULT_CATEGORIES` possui as 11 entradas e que casam com as regras de sugestão inteligente (`suggestCategory`).
 
 ### Portão de Qualidade da Fase 4
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/domain/budgets/index.test.ts src/domain/insights/category-semantics.test.ts`
-- [ ] **Commit & Push da Fase 4:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/domain/budgets/index.test.ts src/domain/insights/category-semantics.test.ts`
+- [x] **Commit & Push da Fase 4:**
   ```bash
   git add src/domain/budgets/index.ts src/domain/budgets/index.test.ts
   git commit -m "feat(categories): consolida catalogo de categorias padrao canonicas integradas ao motor de insights"

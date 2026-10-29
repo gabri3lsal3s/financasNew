@@ -160,4 +160,78 @@ describe("resolveCategorySemantics — inteligência para categorias padrão e c
       expect(findBestMatchingCategory(userCategories, "pets")).toBeUndefined();
     });
   });
+
+  describe("Auditoria das 11 Categorias Padrão Canônicas (Tarefa 4.2)", () => {
+    it("resolve determinismo estrito para as categorias canônicas", () => {
+      // 1. Alimentação
+      expect(resolveCategorySemantics({ name: "Alimentação", icon: "alimentacao" })).toMatchObject({
+        isEssential: true,
+        isAggregator: true,
+        canonicalSlug: "alimentacao",
+      });
+
+      // 2. Moradia
+      expect(resolveCategorySemantics({ name: "Moradia", icon: "moradia" })).toMatchObject({
+        isEssential: true,
+        canonicalSlug: "moradia",
+      });
+
+      // 3. Transporte
+      expect(resolveCategorySemantics({ name: "Transporte", icon: "transporte" })).toMatchObject({
+        isEssential: true,
+        isAggregator: true,
+        canonicalSlug: "transporte",
+      });
+
+      // 4. Saúde
+      expect(resolveCategorySemantics({ name: "Saúde", icon: "saude" })).toMatchObject({
+        isEssential: true,
+        tier: "essential",
+        canonicalSlug: "saude",
+      });
+
+      // 5. Educação
+      expect(resolveCategorySemantics({ name: "Educação", icon: "educacao" })).toMatchObject({
+        isEssential: true,
+        tier: "essential",
+        canonicalSlug: "educacao",
+      });
+
+      // 6. Lazer
+      expect(resolveCategorySemantics({ name: "Lazer", icon: "lazer" })).toMatchObject({
+        isEssential: false,
+        tier: "discretionary",
+        canonicalSlug: "lazer",
+      });
+
+      // 7. Compras
+      expect(resolveCategorySemantics({ name: "Compras", icon: "compras" })).toMatchObject({
+        isEssential: false,
+        tier: "discretionary",
+        canonicalSlug: "compras",
+      });
+
+      // 8. Assinaturas
+      expect(resolveCategorySemantics({ name: "Assinaturas", icon: "assinaturas" })).toMatchObject({
+        isSubscriptionCategory: true,
+        canonicalSlug: "assinaturas",
+      });
+
+      // 9. Salário
+      expect(resolveCategorySemantics({ name: "Salário", icon: "salario" })).toMatchObject({
+        canonicalSlug: "salario",
+      });
+
+      // 10. Investimentos
+      expect(resolveCategorySemantics({ name: "Investimentos", icon: "investimentos" })).toMatchObject({
+        nature: "investment",
+        canonicalSlug: "investimentos",
+      });
+
+      // 11. Outras Rendas
+      expect(resolveCategorySemantics({ name: "Outras Rendas", icon: "salario" })).toMatchObject({
+        canonicalSlug: "salario",
+      });
+    });
+  });
 });

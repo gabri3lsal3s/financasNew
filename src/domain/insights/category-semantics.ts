@@ -348,10 +348,14 @@ export function resolveCategorySemantics(category: {
     canonicalSlug = "educacao";
   } else if (normName.includes("lazer") || icon === "lazer") {
     canonicalSlug = "lazer";
+  } else if (normName.includes("compra") || icon === "compras") {
+    canonicalSlug = "compras";
   } else if (isSubscriptionCategory) {
     canonicalSlug = "assinaturas";
   } else if (isInvestment) {
     canonicalSlug = "investimentos";
+  } else if (normName.includes("salario") || icon === "salario" || normName.includes("renda")) {
+    canonicalSlug = "salario";
   }
 
   return {

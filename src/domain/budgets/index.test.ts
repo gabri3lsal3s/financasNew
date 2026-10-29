@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   budgetLimitsByCategory,
   budgetStatus,
+  CANONICAL_DEFAULT_CATEGORIES,
   exceededCents,
   globalUsedPercent,
   incomeGoalStatus,
@@ -396,5 +397,54 @@ describe("incomeGoalStatus (§3.5.3 — metas de renda)", () => {
 
   it("sem meta definida nunca fica em déficit", () => {
     expect(incomeGoalStatus(5000, 0)).toBe("on_track");
+  });
+});
+
+describe("CANONICAL_DEFAULT_CATEGORIES (§4.1 / §4.4 — catálogo canônico)", () => {
+  it("possui exatamente 11 categorias de partida padronizadas", () => {
+    expect(CANONICAL_DEFAULT_CATEGORIES).toHaveLength(11);
+
+    const expenses = CANONICAL_DEFAULT_CATEGORIES.filter((c) => c.type === "expense");
+    const incomes = CANONICAL_DEFAULT_CATEGORIES.filter((c) => c.type === "income");
+
+    expect(expenses).toHaveLength(8);
+    expect(incomes).toHaveLength(3);
+  });
+
+  it("garante integridade de tipos, ícones e cores hexadecimais válidas", () => {
+    const hexRegex = /^#[0-9A-Fa-f]{6}$/;
+
+    for (const cat of CANONICAL_DEFAULT_CATEGORIES) {
+      expect(cat.name.trim().length).toBeGreaterThan(0);
+      expect(cat.icon.trim().length).toBeGreaterThan(0);
+      expect(cat.color).toMatch(hexRegex);
+      expect(["expense", "income"]).toContain(cat.type);
+    }
+  });
+
+  it("casa perfeitamente todas as 8 despesas com o motor de sugestão inteligente (suggestCategory)", () => {
+    const expenseCategories = CANONICAL_DEFAULT_CATEGORIES.filter((c) => c.type === "expense");
+
+    for (const cat of expenseCategories) {
+      const suggestion = suggestCategory(cat.name);
+      expect(suggestion).not.toBeNull();
+      expect(suggestion?.icon).toBe(cat.icon);
+      expect(suggestion?.limitPercent).toBeGreaterThan(0);
+    }
+  });
+
+  it("contém as categorias essenciais e as rendas canônicas esperadas", () => {
+    const names = CANONICAL_DEFAULT_CATEGORIES.map((c) => c.name);
+    expect(names).toContain("Alimentação");
+    expect(names).toContain("Moradia");
+    expect(names).toContain("Transporte");
+    expect(names).toContain("Saúde");
+    expect(names).toContain("Educação");
+    expect(names).toContain("Lazer");
+    expect(names).toContain("Compras");
+    expect(names).toContain("Assinaturas");
+    expect(names).toContain("Salário");
+    expect(names).toContain("Investimentos");
+    expect(names).toContain("Outras Rendas");
   });
 });
