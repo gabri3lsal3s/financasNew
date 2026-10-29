@@ -502,7 +502,7 @@ git push origin main
     git push origin main
     ```
 
-- [ ] **Tarefa 6.5: Despacho do Relatório Executivo ao Fundador via Bot ARGOS (Telegram)**
+- [x] **Tarefa 6.5: Despacho do Relatório Executivo ao Fundador via Bot ARGOS (Telegram)**
   - Enviar mensagem formatada via bot **ARGOS** (Telegram) reportando a conclusão de todos os trabalhos.
   - **Conteúdo Obrigatório da Notificação ARGOS:**
     1. **Status Geral:** Conclusão com sucesso de todas as 6 fases e aprovação nos Quality Gates.
@@ -530,7 +530,7 @@ git push origin main
     ```
 
 ### Portão de Qualidade Final da Fase 6
-- [ ] 100% dos testes passando sem alertas.
-- [ ] Build Web e APK gerados com sucesso.
-- [ ] Notificação Telegram entregue pelo bot ARGOS com o relatório executivo e parecer Supabase.
-- [ ] Repositório sincronizado no GitHub (`git push origin main`).
+- [x] 100% dos testes passando sem alertas.
+- [x] Build Web e APK gerados com sucesso.
+- [x] Notificação Telegram entregue pelo bot ARGOS com o relatório executivo e parecer Supabase.
+- [x] Repositório sincronizado no GitHub (`git push origin main`).
