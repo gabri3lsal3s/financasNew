@@ -60,6 +60,16 @@ describe("getErrorMessage — gateway de erros (ESPECIFICAÇÃO §1.7)", () => {
       'null value in column "id" of relation "profiles"',
       "deadlock detected on relation cards",
       "PostgREST error: connection refused",
+      "function public.create_card_payment(uuid) does not exist",
+      "procedure public.recalculate_bill_competences failed",
+      "SELECT * FROM public.credit_cards WHERE user_id = 'abc'",
+      "DELETE FROM public.incomes WHERE id = 1",
+      "UPDATE public.debts SET amount_cents = 0",
+      "TypeError: Cannot read properties of undefined (reading 'filter')",
+      "Error: unhandled runtime failure\n    at Object.execute (/app/src/data/rpc.ts:45:10)",
+      "at runBackgroundSync (src/services/sync.ts:25:3)",
+      "operator does not exist: uuid = text",
+      "key (user_id)=(123) is still referenced from table expenses",
     ];
 
     for (const msg of technicalErrors) {
@@ -69,7 +79,31 @@ describe("getErrorMessage — gateway de erros (ESPECIFICAÇÃO §1.7)", () => {
       expect(err.message).not.toContain("relation");
       expect(err.message).not.toContain("column");
       expect(err.message).not.toContain("syntax error");
+      expect(err.message).not.toContain("public.");
+      expect(err.message).not.toContain("SELECT");
+      expect(err.message).not.toContain("TypeError");
     }
+  });
+
+  it("classifica violação de check constraint com mensagem amigável sem expor o nome da constraint", () => {
+    const err = classifyError({ message: "new row violates check constraint check_positive_amount" });
+    expect(err.kind).toBe("validation");
+    expect(err.message).toBe("Dados inválidos. Revise as informações e tente novamente.");
+    expect(err.message).not.toContain("check_positive_amount");
+  });
+
+  it("sanitiza vazamentos presentes nos campos details ou hint de erros PostgREST", () => {
+    const errWithDetails = classifyError({
+      message: "Query execution error",
+      details: 'column "password_hash" of relation "users" does not exist',
+    });
+    expect(errWithDetails.message).toBe("Algo deu errado. Tente novamente em instantes.");
+
+    const errWithHint = classifyError({
+      message: "Database failure",
+      hint: "Perhaps you meant to reference column credit_cards.id",
+    });
+    expect(errWithHint.message).toBe("Algo deu errado. Tente novamente em instantes.");
   });
 
   it("sanitiza tags HTML em mensagens de erro para prevenir XSS", () => {

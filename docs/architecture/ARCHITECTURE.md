@@ -525,23 +525,30 @@ O Assistente Passivo opera em modelo híbrido entre o cliente Android nativo e o
 
 ## 14. ARQUITETURA DE CAPTURA UNIVERSAL DE COMPROVANTES & MOTOR SEMÂNTICO (F1–F3)
 
-### 14.1 Compartilhamento Nativo de Arquivos & OCR Local
+### 14.1 Compartilhamento Nativo de Arquivos & OCR Local Híbrido
 1. **Intent Filter Nativo Android (`android/app/src/main/AndroidManifest.xml`)**:
    - Mapeia `ACTION_SEND` para tipos MIME `application/pdf` e `image/*`.
    - Permite que o usuário utilize a função "Compartilhar" do aplicativo do banco diretamente para o Guia Financeiro.
-2. **Recepção e Processamento (`/compartilhar-comprovante` — `ShareReceiptPage`)**:
-   - Lê arquivos e imagens nativos via Capacitor File/Blob API ou Web Share Target.
-   - Extrai texto localmente utilizando motor OCR baseado em Tesseract.js (`ocr-receipt-parser.ts`) sem enviar imagens a servidores de terceiros (100% privado).
-3. **Parsing de Comprovantes Pix (`pix-receipt-parser.ts`)**:
-   - Identifica padrões canônicos de comprovantes de transferência (valor em centavos, data da operação, favorecido, pagador, instituição bancária e chave Pix).
-   - Converte diretamente em sugestão de transação ou pré-popula o wizard de lançamento.
+2. **Recepção e Processamento Multiplataforma (`src/services/native/receipt-extractor.ts`)**:
+   - **Android Nativo**: ML Kit Text Recognition nativo on-device thin (<800 KB baixado via Google Play Services) + `PdfRenderer` nativo (até 2 páginas convertidas em Bitmaps). 100% offline e sem custos de nuvem.
+   - **Web / PWA (PDFs)**: Processamento de streams digitais compactadas via biblioteca `unpdf` com fallback para operadores literais.
+   - **Web / PWA (Imagens)**: OCR no cliente via `tesseract.js` carregado sob demanda (*dynamic import* em `web-ocr.ts`), preservando a leveza do bundle inicial e sem envio de dados a servidores de terceiros (100% privado).
+3. **Normalização Óptica e Correção de Ruídos (`src/domain/notifications/ocr-cleaner.ts`)**:
+   - Função pura `cleanOcrText` que neutraliza artefatos visuais de digitalização, corrige trocas de caracteres em valores monetários (`R$ 1O,OO` -> `R$ 10,00`, `l` vs `1`), datas e sequências de CNPJ/CPF antes do envio aos parsers semânticos.
+4. **Parsing Universal e Suporte a Múltiplos Formatos (`src/domain/notifications/`)**:
+   - **Contratos Unificados (`receipt-types.ts`)**: Modelo `UniversalReceiptData` com identificação estrita de `ReceiptKind` (Pix, Slips de Maquininha POS/TEF, Boletos Bancários/Tributos, Cupons Fiscais NFC-e/SAT e Transferências).
+   - **Extrator Estruturado de Parcelamento (`installment-extractor.ts`)**: Suporta multiplicadores (`3x de R$ 50,00`), totais parcelados (`R$ 300 em 3x`), marcações de maquininhas (`PARC: 03`, `QTDE PARCELAS: 3`) e parcelas pontuais (`02/10`), com validação matemática de centavos e resíduo na primeira parcela.
+   - **Slips de Maquininha POS/TEF (`card-slip-parser.ts`)**: Extração de adquirentes (Cielo, Rede, Stone, PagBank, SafraPay), modalidade (Crédito vs Débito), bandeira, últimos 4 dígitos e código de autorização.
+   - **Comprovantes Pix (`bank-parser.ts` / `pix-receipt-parser.ts`)**: Extração de valor, data, favorecido, pagador, chave Pix, EndToEndId e status (agendado vs efetivado).
 
-### 14.2 Motor Semântico de Estabelecimentos (`MerchantLearningEngine`)
+### 14.2 Motor Semântico de Estabelecimentos & Memória de Cartões (`MerchantLearningEngine`)
 - **Normalização e Tokenização Fonética (`src/services/merchant-learning.ts`)**:
   - Remove sufixos operacionais corporativos (LTDA, S/A, ME, EPP) e códigos de POS/máquinas de cartão ("PAG*", "MP*", "SUMUP*").
-  - Indexa comerciantes conhecidos com aprendizado adaptativo local em `localStorage` isolado por usuário.
+  - Indexa comerciantes conhecidos com aprendizado adaptativo local em `localStorage` isolado por usuário e sincronizado na nuvem (`custom_settings.merchantLearning`).
+- **Resolução e Memória de Cartões Cadastrados (`card-resolution.ts`)**:
+  - Hierarquia de casamento em 5 etapas: 1) mapa aprendido de 4 dígitos (`cardDigitsMap`), 2) dígitos no nome do cartão, 3) emissor/banco + desempate por bandeira, 4) cartão preferencial memorizado para o estabelecimento, 5) fallback para cartão único ativo.
 - **Predição Instantânea e Fricção Mínima**:
-  - Sugere automaticamente categoria, nome fantasia formatado e método de pagamento mais frequente ao digitar os primeiros caracteres na descrição.
+  - Sugere automaticamente categoria, nome fantasia formatado, cartão e método de pagamento mais frequente ao digitar os primeiros caracteres na descrição.
   - Alimenta o lançamento rápido em tela única (`StepQuick` no `LaunchWizard`).
 
 ---

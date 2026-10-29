@@ -70,22 +70,22 @@
 
 ## 3. QA VISUAL & ACESSIBILIDADE
 
-- [ ] Contraste AA nos 3 temas × 6 acentos (regras de `domain/accessibility` — 18 combinações, testes verdes).
-- [ ] Sem overflow horizontal no mobile (salvaguarda global + `Modal max-h-[90dvh]`).
-- [ ] Header/sidebar/bottom nav fixos com scroll interno; FAB não sobrepõe conteúdo.
-- [ ] Zoom 200% e navegação por teclado (Tab/Enter/setas) sem perda de foco.
-- [ ] `prefers-reduced-motion` / nível "Reduzida" desativa animações.
-- [ ] Auditoria axe nas 10 telas P0 (suíte automatizada — executar `npm test`).
-- [ ] Lighthouse mobile ≥ 90 em produção (performance/PWA/a11y).
+- [x] Contraste AA nos 3 temas × 6 acentos (regras de `domain/accessibility` — 18 combinações, testes verdes em `visual-qa-multi-theme.test.tsx`).
+- [x] Sem overflow horizontal no mobile (salvaguarda global + `Modal max-h-[90dvh]`).
+- [x] Header/sidebar/bottom nav fixos com scroll interno; FAB não sobrepõe conteúdo.
+- [x] Zoom 200% e navegação por teclado (Tab/Enter/setas) sem perda de foco.
+- [x] `prefers-reduced-motion` / nível "Reduzida" desativa animações.
+- [x] Auditoria axe nas 10 telas P0 (suíte automatizada — `accessibility-audit.test.tsx` 100% verde).
+- [ ] Lighthouse mobile ≥ 90 em produção (performance/PWA/a11y — validação manual pós-deploy).
 
 ## 4. DADOS & CONSISTÊNCIA
 
-- [ ] Parcelamento: soma das parcelas = valor original (invariante D12) — incl. edição.
-- [ ] Competência de fatura: dia ≥ closing → mês seguinte; overrides respeitados.
-- [ ] Estorno gera renda `[REFUND]` somente-leitura; recebimento integrado reduz despesa no relatório.
-- [ ] Exclusão em cascata: rollback total em falha (RPCs transacionais).
-- [ ] Backfill de `profiles` (contas órfãs) sem duplicação (idempotente).
-- [ ] Auditoria `audit_events` gravada nas escritas compostas; imutável.
+- [x] Parcelamento: soma das parcelas = valor original (invariante D12) — incl. edição (`parcelar.test.ts`).
+- [x] Competência de fatura: dia ≥ closing → mês seguinte; overrides respeitados (`competence/index.test.ts` e `cards/index.test.ts`).
+- [x] Estorno gera renda `[REFUND]` somente-leitura; recebimento integrado reduz despesa no relatório (`card-payments.test.ts` e `cards/index.ts`).
+- [x] Exclusão em cascata: rollback total em falha (RPCs transacionais cobertas em `cross-tenant-penetration.test.ts`).
+- [x] Backfill de `profiles` (contas órfãs) sem duplicação (idempotente nas migrations).
+- [x] Auditoria `audit_events` gravada nas escritas compostas; imutável (`security-audit.test.ts`).
 
 ---
 

@@ -6,5 +6,7 @@ export * from "./merchant-memory";
 export * from "./merchant-resolver";
 export * from "./pix-emv-parser";
 export * from "./preferences";
-
-
+export * from "./ocr-cleaner";
+export * from "./receipt-types";
+export * from "./installment-extractor";
+export * from "./card-slip-parser";

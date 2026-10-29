@@ -3,8 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("Auditoria de E-mails Transacionais & SMTP Resend (Go-Live)", () => {
-  const emailTemplatesPath = join(process.cwd(), "docs/EMAIL_TEMPLATES.md");
-  const deploymentPath = join(process.cwd(), "docs/DEPLOYMENT.md");
+  const emailTemplatesPath = join(process.cwd(), "docs/platforms/EMAIL_TEMPLATES.md");
+  const deploymentPath = join(process.cwd(), "docs/platforms/DEPLOYMENT.md");
 
   it("verifica se a documentação de templates de e-mail existe e possui conteúdo", () => {
     const content = readFileSync(emailTemplatesPath, "utf8");

@@ -16,16 +16,20 @@ Aplicativo **web 100% Online First** de **gestão financeira pessoal** (receitas
 
 | Arquivo | Papel |
 |---|---|
-| `RECONSTRUCAO.md` | Spec funcional original (fonte histórica) |
-| `ESPECIFICACAO_TECNICA.md` | **Spec executável**: regras de negócio, schema, UI/UX, decisões D1–D12 |
-| `docs/ARCHITECTURE.md` | Camadas, dependências, convenções, estratégia de estado |
-| `docs/PROJECT_STRUCTURE.md` | **Árvore de pastas e onde criar cada arquivo** |
-| `docs/DESIGN_SYSTEM.md` | Identidade visual e design tokens (`src/styles/tokens.css`) |
-| `docs/PWA_GUIDELINES.md` | Requisitos PWA (manifest, service worker, instalação) |
-| `docs/ROADMAP.md` | **Plano de execução canônico** — fases, ordem e Definition of Done |
-| `docs/DEPLOYMENT.md` | Guia de deploy (Cloudflare Pages + Supabase), env vars e checklist de prontidão |
+| `docs/architecture/ESPECIFICACAO_TECNICA.md` | **Spec executável**: regras de negócio, schema, UI/UX, decisões D1–D12 |
+| `docs/architecture/RECONSTRUCAO.md` | Spec funcional original (fonte histórica) |
+| `docs/architecture/ARCHITECTURE.md` | Camadas, dependências, convenções, estratégia de estado |
+| `docs/architecture/PROJECT_STRUCTURE.md` | **Árvore de pastas e onde criar cada arquivo** |
+| `docs/architecture/FINANCIAL_MATH_SPEC.md` | Especificação canônica de engenharia e precisão matemática financeira |
+| `docs/design/DESIGN_SYSTEM.md` | Identidade visual e design tokens (`src/styles/tokens.css`) |
+| `docs/roadmap/ROADMAP.md` | **Plano de execução canônico** — fases, ordem e Definition of Done |
+| `docs/operations/FOUNDER_RUNBOOK.md` | Manual de operação do fundador: suporte Telegram, admin, faturamento e incidentes |
+| `docs/operations/SECURITY_GOVERNANCE.md` | Governança de segurança, criptografia, proteção de PII e conformidade LGPD |
+| `docs/platforms/PWA_GUIDELINES.md` | Requisitos PWA (manifest, service worker, instalação) |
+| `docs/platforms/NATIVE_DISTRIBUTION_GUIDE.md` | Diretrizes de compilação, keystores e distribuição Android Pro |
+| `docs/platforms/DEPLOYMENT.md` | Guia de deploy (Cloudflare Pages + Supabase), env vars e checklist de prontidão |
 
-**Antes de implementar qualquer funcionalidade, consulte a seção correspondente do `ESPECIFICACAO_TECNICA.md` e a estrutura do `docs/ARCHITECTURE.md`.**
+**Antes de implementar qualquer funcionalidade, consulte a seção correspondente do `docs/architecture/ESPECIFICACAO_TECNICA.md` e a estrutura do `docs/architecture/ARCHITECTURE.md`.**
 
 ---
 

@@ -2,8 +2,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-describe("Auditoria do Manual de Bordo do Fundador (docs/FOUNDER_RUNBOOK.md)", () => {
-  const runbookPath = join(process.cwd(), "docs/FOUNDER_RUNBOOK.md");
+describe("Auditoria do Manual de Bordo do Fundador (docs/operations/FOUNDER_RUNBOOK.md)", () => {
+  const runbookPath = join(process.cwd(), "docs/operations/FOUNDER_RUNBOOK.md");
 
   it("verifica se o arquivo existe e possui conteúdo substancial", () => {
     expect(existsSync(runbookPath)).toBe(true);

@@ -33,45 +33,56 @@
 ```
 /
 ├── AGENTS.md                      # Governança do agente de IA (ler SEMPRE)
-├── RECONSTRUCAO.md                # Spec funcional original (fonte histórica)
-├── ESPECIFICACAO_TECNICA.md       # Spec executável: regras de negócio, schema, UI/UX
-├── docs/                          # Documentação — UPPER_SNAKE_CASE.md (ver §7)
-│   ├── ARCHITECTURE.md            # Camadas, dependências, convenções
-│   ├── DATA_MIGRATION_GUIDE.md    # Guia de migração e batimento de dados legados
-│   ├── DEPLOYMENT.md              # Guia de deploy (Cloudflare Pages + Supabase) e env vars
-│   ├── DESIGN_SYSTEM.md           # Identidade visual e design tokens
-│   ├── EMAIL_TEMPLATES.md         # Templates de e-mail transacionais (HTML responsivo) e guia SMTP profissional
-│   ├── FINANCIAL_MATH_SPEC.md     # Especificação canônica de engenharia e precisão matemática
-│   ├── FOUNDER_RUNBOOK.md         # Manual operacional do fundador: atendimento via Telegram, gestão /admin, faturamento Asaas e incidentes
-│   ├── NATIVE_DISTRIBUTION_GUIDE.md # Guia de distribuição Android, keystore e in-app updater
-│   ├── PROJECT_STRUCTURE.md       # Este documento
-│   ├── PROJETO_SAAS.md            # Modelo de precificação SaaS, 30 dias de trial e conformidade CDC
-│   ├── PWA_GUIDELINES.md          # Requisitos PWA (manifest, SW, instalação)
-│   ├── RELEASE.md                 # Checklist de release e homologação
-│   ├── ROADMAP.md                 # Fases de execução consolidadas e Definition of Done
-│   ├── SECURITY_GOVERNANCE.md     # Governança de segurança, criptografia, proteção de PII e LGPD
+├── README.md                      # Apresentação do produto e setup local
+├── docs/                          # Documentação modularizada em pastas temáticas
+│   ├── architecture/              # Arquitetura de software, especificações técnicas e matemática
+│   │   ├── ARCHITECTURE.md        #   Camadas, dependências, convenções e estado
+│   │   ├── ESPECIFICACAO_TECNICA.md # Spec executável: regras de negócio, schema, UI/UX
+│   │   ├── RECONSTRUCAO.md        #   Spec funcional original (fonte histórica)
+│   │   ├── FINANCIAL_MATH_SPEC.md #   Especificação canônica de engenharia e precisão matemática
+│   │   ├── DATA_MIGRATION_GUIDE.md #  Guia de migração e batimento de dados legados
+│   │   └── PROJECT_STRUCTURE.md   #   Este documento — árvore canônica de diretórios
+│   ├── design/                    # Identidade visual, tokens e regras de interface
+│   │   └── DESIGN_SYSTEM.md       #   Tokens, componentes, regras DRY e ergonomia
+│   ├── platforms/                 # Guias de plataformas, distribuição e deploy
+│   │   ├── DEPLOYMENT.md          #   Deploy (Cloudflare Pages + Supabase), env vars e DNS
+│   │   ├── NATIVE_DISTRIBUTION_GUIDE.md # Android nativo, keystore e in-app updater via R2
+│   │   ├── PWA_GUIDELINES.md      #   Requisitos PWA (manifest, SW, instalação)
+│   │   └── EMAIL_TEMPLATES.md     #   Templates de e-mail transacionais e setup SMTP
+│   ├── operations/                # Operação, negócio SaaS e conformidade legal
+│   │   ├── FOUNDER_RUNBOOK.md     #   Manual operacional do fundador: suporte Telegram, admin, faturamento Asaas
+│   │   ├── PROJETO_SAAS.md        #   Modelo de precificação SaaS, trial e conformidade CDC
+│   │   └── SECURITY_GOVERNANCE.md #   Governança de segurança, criptografia e LGPD
+│   ├── roadmap/                   # Ciclo de vida, histórico de releases e metas
+│   │   ├── ROADMAP.md             #   Plano canônico de execução, histórico de versões v2.0–v2.78+
+│   │   └── RELEASE.md             #   Checklist de release e homologação
 │   ├── plans/                     # Planos de implementação ativos e pendentes
-│   │   ├── PLANO_GESTAO_CONTA_AUTH_E_EXPERIENCIA_SAAS.md # Gestão de contas, recuperação e experiência SaaS
-│   │   ├── PLANO_ADEQUACAO_LEGAL_E_REGULATORIA.md # Adequação LGPD, termos e conformidade regulatória
-│   │   ├── PLANO_IMPLEMENTACAO_TOUR_INTERATIVO_E_SIMULACAO.md # Onboarding interativo e simulação guiada
-│   │   ├── PLANO_FINALIZACAO_PRODUCAO_E_PRIMEIROS_CLIENTES.md # [CANÔNICO / FINAL] Go-live, chat Telegram, Asaas e runbook
-│   │   └── completed/             # Histórico de planos executados com sucesso (100% concluídos)
+│   │   ├── PLANO_CORRECAO_E_OTIMIZACAO_TOUR_INTERATIVO.md # Correções finas de dados mockados, rotas e ergonomia do tour
+│   │   ├── PLANO_MELHORIA_NOTIFICACOES_BANCOS.md # Captura passiva Android, carteiras digitais e categorização rápida
+│   │   ├── PLANO_REFINAMENTO_CAPTURA_COMPROVANTES_E_OCR.md # Refinamento de comprovantes (foto, PDF e imagem), parcelamento e cartões
+│   │   └── completed/             # Histórico de planos executados com sucesso (100% concluídos — 12 planos)
 │   │       ├── CAPACITOR_ANDROID_PLAN.md
+│   │       ├── PLANO_ADEQUACAO_LEGAL_E_REGULATORIA.md
 │   │       ├── PLANO_AUDITORIA_CONGRUENCIA.md
+│   │       ├── PLANO_FINALIZACAO_PRODUCAO_E_PRIMEIROS_CLIENTES.md
+│   │       ├── PLANO_GESTAO_CONTA_AUTH_E_EXPERIENCIA_SAAS.md
 │   │       ├── PLANO_IMPLEMENTACAO_ALTA_CONCORRENCIA_SEGURANCA.md
 │   │       ├── PLANO_IMPLEMENTACAO_ASSISTENTE_PASSIVO.md
 │   │       ├── PLANO_IMPLEMENTACAO_CAPTURA_INTELIGENTE_E_FRICCAO_MINIMA.md
 │   │       ├── PLANO_IMPLEMENTACAO_MODULOS_E_SAAS.md
-│   │       └── PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md
+│   │       ├── PLANO_IMPLEMENTACAO_TOUR_INTERATIVO_E_SIMULACAO.md
+│   │       ├── PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md
+│   │       └── PLANO_REFATORACAO_TOUR_SPOTLIGHT_E_EXPERIENCIA_GUIADA.md
 │   ├── diagnostics/               # Diagnósticos técnicos e relatórios de avaliação arquitetural
 │   │   └── DIAGNOSTICO_SEGURANCA_PERFORMANCE_ESCALA.md # Diagnóstico de concorrência, velocidade e blindagem
-│   └── reports/                   # Relatórios de auditoria, logs de orquestrador e homologação (.gitkeep)
+│   └── reports/                   # Relatórios de auditoria e logs de homologação (.gitkeep)
 │
 ├── public/                        # Assets estáticos servidos na raiz (não processados)
 │   ├── favicon.ico / favicon.svg  # Multi-resolução (16, 32, 48) e SVG transparente
 │   ├── brand/                     # Assets oficiais da marca (logo.png, logo-128, favicon-32, favicon.svg, logo-full)
 │   ├── offline.html               # Fallback offline (raiz)
 │   ├── _headers                   # Políticas de cache e segurança Cloudflare Pages
+│   ├── releases/                  # Manifesto de atualização in-app de builds Android (version.json)
 │   └── pwa/                       # Artefatos PWA — ver PWA_GUIDELINES.md
 │       ├── manifest.webmanifest
 │       ├── icons/                 # icon-192, icon-512 (transparente), maskable-192/512 (safe zone), apple-touch-icon-180
@@ -91,7 +102,12 @@
 │   ├── build-apk.sh               #   Pipeline automatizado de compilação de APKs em 1 comando
 │   ├── deploy-quotes.mjs          #   Deploy e cron da edge function de cotações
 │   ├── generate-icons.mjs         #   Gerador de ícones e favicons
-│   └── preflight-check.ts         #   Diagnóstico pré-voo automatizado de prontidão operacional e produção (7 dimensões, npm run preflight)
+│   ├── preflight-check.ts         #   Diagnóstico pré-voo automatizado de prontidão operacional e produção (7 dimensões, npm run preflight)
+│   └── upload-r2.mjs              #   Upload de APKs compilados e manifestos version.json para o Cloudflare R2
+│
+├── marketing-kit/                 # Assets oficiais da marca e mockups promocionais (fora do bundle)
+│   ├── brand/                     #   Logos e elementos de identidade visual
+│   └── mockups/                   #   Mockups promocionais e prévias da interface
 │
 ├── supabase/                      # Backend — ver ESPECIFICAÇÃO §2 (migrations versionadas)
 │   ├── migrations/                # 0001..0060_support_tickets.sql

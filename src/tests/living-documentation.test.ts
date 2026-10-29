@@ -5,8 +5,8 @@ import * as path from "node:path";
 describe("Auditoria de Documentação Viva e Congruência do Repositório", () => {
   const rootDir = process.cwd();
 
-  it("garante que docs/PROJECT_STRUCTURE.md contempla os artefatos de produção e go-live", () => {
-    const projectStructurePath = path.join(rootDir, "docs/PROJECT_STRUCTURE.md");
+  it("garante que docs/architecture/PROJECT_STRUCTURE.md contempla os artefatos de produção e go-live", () => {
+    const projectStructurePath = path.join(rootDir, "docs/architecture/PROJECT_STRUCTURE.md");
     expect(fs.existsSync(projectStructurePath)).toBe(true);
 
     const content = fs.readFileSync(projectStructurePath, "utf-8");
@@ -38,8 +38,8 @@ describe("Auditoria de Documentação Viva e Congruência do Repositório", () =
     expect(content).toContain("Barreira global de contenção de erros de renderização");
   });
 
-  it("garante que docs/ROADMAP.md registra a versão v2.77 e a Fase 98", () => {
-    const roadmapPath = path.join(rootDir, "docs/ROADMAP.md");
+  it("garante que docs/roadmap/ROADMAP.md registra a versão v2.77 e a Fase 98", () => {
+    const roadmapPath = path.join(rootDir, "docs/roadmap/ROADMAP.md");
     expect(fs.existsSync(roadmapPath)).toBe(true);
 
     const content = fs.readFileSync(roadmapPath, "utf-8");
@@ -55,7 +55,7 @@ describe("Auditoria de Documentação Viva e Congruência do Repositório", () =
 
   it("valida a existência física dos arquivos citados na documentação viva", () => {
     const requiredFiles = [
-      "docs/FOUNDER_RUNBOOK.md",
+      "docs/operations/FOUNDER_RUNBOOK.md",
       "scripts/preflight-check.ts",
       "supabase/migrations/20260101000060_support_tickets.sql",
       "src/components/layout/app-error-boundary.tsx",

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 describe("Auditoria de Rate Limits & Agendamento de Cotações (Tarefa 4.3)", () => {
   const rootDir = process.cwd();
   const cronSqlPath = join(rootDir, "supabase/quotes-cron.sql");
-  const deploymentPath = join(rootDir, "docs/DEPLOYMENT.md");
+  const deploymentPath = join(rootDir, "docs/platforms/DEPLOYMENT.md");
 
   it("verifica se o script supabase/quotes-cron.sql existe e implementa hardening de segurança", () => {
     expect(existsSync(cronSqlPath)).toBe(true);

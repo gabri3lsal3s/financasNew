@@ -195,11 +195,11 @@ O script executará automaticamente:
 ## 7. DEFINIÇÃO DE PRONTIDÃO (CHECKLIST FINAL DE GO-LIVE)
 
 Antes de entregar o aplicativo ao primeiro cliente pagante, valide os 8 itens fundamentais:
-- [ ] `npm run preflight` executado com 100% de sucesso no terminal;
+- [ ] `npm run preflight` executado com 100% de sucesso no terminal (validação com credenciais ativas do ambiente);
 - [ ] Suíte de testes `npm test` verde com ~2.300+ testes unitários e de integração;
 - [ ] Domínio próprio com SSL Full (Strict) apontando para o Cloudflare Pages;
 - [ ] E-mail de cadastro de teste entregue diretamente na Caixa de Entrada via Resend;
 - [ ] Chamado de teste enviado via chat de suporte entregue no Telegram em < 2 segundos;
 - [ ] Cobrança de teste de R$ 1,00 via Pix processada no Asaas com nome "Áxis Finance";
 - [ ] Selo Pro ativado na conta de teste sem intervenção manual;
-- [ ] Termos de Uso e Política de Privacidade acessíveis no rodapé.
+- [x] Termos de Uso e Política de Privacidade acessíveis no rodapé (`landing-footer.tsx` e `LegalDialog`).

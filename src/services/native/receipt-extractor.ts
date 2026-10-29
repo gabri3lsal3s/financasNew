@@ -1,5 +1,7 @@
 import { isNativePlatform } from "./platform";
 import { BankNotificationPlugin } from "./bank-listener";
+import { cleanOcrText } from "@/domain/notifications/ocr-cleaner";
+import { extractTextFromImageWeb } from "./web-ocr";
 
 /**
  * Converte um arquivo do navegador (File ou Blob) em string base64 pura (sem data prefix).
@@ -22,7 +24,8 @@ export async function fileToBase64(file: File | Blob): Promise<string> {
 }
 
 /**
- * Extrai texto legível de streams embutidas de um arquivo PDF digital no navegador.
+ * Extrai texto legível de streams embutidas de um arquivo PDF digital no navegador
+ * com fallback leve caso o módulo principal não esteja disponível.
  */
 export function extractTextFromPdfArrayBuffer(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -70,11 +73,39 @@ export function extractTextFromPdfArrayBuffer(buffer: ArrayBuffer): string {
 }
 
 /**
+ * Extrai o texto contido em um arquivo PDF no navegador usando unpdf com fallback defensivo.
+ */
+async function extractPdfTextWeb(file: File): Promise<string> {
+  try {
+    const buffer = await file.arrayBuffer();
+    const { extractText } = await import("unpdf");
+    const result = await extractText(buffer);
+    const text = Array.isArray(result.text) ? result.text.join("\n") : (result.text ?? "");
+    if (text.trim().length > 0) {
+      return text.trim();
+    }
+    // Fallback para parser manual se unpdf retornar texto vazio
+    return extractTextFromPdfArrayBuffer(buffer);
+  } catch {
+    try {
+      const buffer = await file.arrayBuffer();
+      return extractTextFromPdfArrayBuffer(buffer);
+    } catch {
+      return "";
+    }
+  }
+}
+
+/**
  * Extrai o texto contido em um arquivo de comprovante (PDF ou imagem):
- * - No Android nativo: delega ao ML Kit Text Recognition via Capacitor Plugin (100% offline e sem inchaço de APK).
- * - Na Web / PWA: analisa a estrutura do PDF ou lê arquivos textuais diretamente.
+ * - No Android nativo: delega ao ML Kit Text Recognition via Capacitor Plugin (100% offline).
+ * - Na Web / PWA (PDF): extrai streams digitais compactadas via unpdf.
+ * - Na Web / PWA (Imagem): reconhece o texto via Tesseract.js sob demanda (dynamic import).
+ * - Em qualquer plataforma: higieniza e repara ruídos com cleanOcrText.
  */
 export async function extractReceiptTextFromFile(file: File): Promise<string> {
+  let extractedRaw = "";
+
   if (isNativePlatform()) {
     try {
       const base64Data = await fileToBase64(file);
@@ -83,36 +114,37 @@ export async function extractReceiptTextFromFile(file: File): Promise<string> {
         mimeType: file.type || (file.name.endsWith(".pdf") ? "application/pdf" : "image/jpeg"),
       });
       if (res?.text && res.text.trim().length > 0) {
-        return res.text.trim();
+        extractedRaw = res.text.trim();
       }
     } catch {
       // Fallback para leitura em JS caso o plugin nativo falhe
     }
   }
 
-  // Fallback Web / PWA
-  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+  // Se não foi resolvido pelo plugin nativo, processa no Web/PWA
+  if (!extractedRaw) {
+    const lowerName = file.name.toLowerCase();
+    const isPdf = file.type === "application/pdf" || lowerName.endsWith(".pdf");
+    const isImage =
+      file.type.startsWith("image/") ||
+      lowerName.endsWith(".png") ||
+      lowerName.endsWith(".jpg") ||
+      lowerName.endsWith(".jpeg") ||
+      lowerName.endsWith(".webp");
 
-  if (isPdf) {
-    try {
-      const buffer = await file.arrayBuffer();
-      const extracted = extractTextFromPdfArrayBuffer(buffer);
-      if (extracted.trim().length > 0) {
-        return extracted;
+    if (isPdf) {
+      extractedRaw = await extractPdfTextWeb(file);
+    } else if (isImage) {
+      extractedRaw = await extractTextFromImageWeb(file);
+    } else if (file.type.startsWith("text/")) {
+      try {
+        extractedRaw = (await file.text()).trim();
+      } catch {
+        extractedRaw = "";
       }
-    } catch {
-      // Ignora erro
     }
   }
 
-  // Se for texto puro
-  if (file.type.startsWith("text/")) {
-    try {
-      return (await file.text()).trim();
-    } catch {
-      return "";
-    }
-  }
-
-  return "";
+  // Normaliza ruídos de OCR e substituições ópticas antes de repassar aos motores semânticos
+  return cleanOcrText(extractedRaw);
 }

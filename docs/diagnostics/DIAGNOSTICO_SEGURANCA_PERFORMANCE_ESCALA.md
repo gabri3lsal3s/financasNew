@@ -297,30 +297,30 @@ O plano de ação está estruturado para **multiplicar a capacidade do aplicativ
 
 ### FASE 1: Quick Wins Imediatos no Frontend & Cabeçalhos (Impacto Instantâneo)
 
-- [ ] **Ação 1.1 — Eliminação de Refetch Storms no TanStack Query:**
+- [x] **Ação 1.1 — Eliminação de Refetch Storms no TanStack Query:**
   - Em `src/app/providers.tsx`: desativar `refetchOnWindowFocus: false` e calibrar `staleTime: 60_000` (1 min para transações) e `gcTime: 600_000` (10 min de retenção).
   - Em queries de leitura estática (categorias, preferências, planos): definir `staleTime: 300_000` (5 minutos).
-- [ ] **Ação 1.2 — Implementação de Content-Security-Policy (CSP) Estrita:**
+- [x] **Ação 1.2 — Implementação de Content-Security-Policy (CSP) Estrita:**
   - Em `public/_headers`: adicionar cabeçalho `Content-Security-Policy` bloqueando origens externas não autorizadas e permitindo apenas Supabase, Sentry e assets locais.
-- [ ] **Ação 1.3 — Blindagem de Fallback de Cotações Client-Side:**
+- [x] **Ação 1.3 — Blindagem de Fallback de Cotações Client-Side:**
   - Em `src/services/quotes.ts`: desativar requisições em leque para a Brapi no browser em listagens regulares; utilizar prioritariamente a tabela de preços do banco e acionar edge function com debounce apenas em adições pontuais de novos tickers.
 
 ### FASE 2: Quick Wins no Banco de Dados Supabase (Otimização de Throughput)
 
-- [ ] **Ação 2.1 — Normalização de RLS para InitPlan (`(select auth.uid())`):**
+- [x] **Ação 2.1 — Normalização de RLS para InitPlan (`(select auth.uid())`):**
   - Criar migração SQL de performance revisando policies que ainda utilizam `auth.uid() = user_id` solto para `(select auth.uid()) = user_id`, permitindo que o PostgreSQL use avaliação escalar única.
-- [ ] **Ação 2.2 — Encapsulamento de Checagens de Módulos SaaS:**
+- [x] **Ação 2.2 — Encapsulamento de Checagens de Módulos SaaS:**
   - Garantir que chamadas a `is_current_user_active()` e `can_current_user_read_module(...)` nas policies RLS estejam encapsuladas em subqueries escalares `(select ...)`.
-- [ ] **Ação 2.3 — Índice Composto Complementar em Transações de Ativos:**
+- [x] **Ação 2.3 — Índice Composto Complementar em Transações de Ativos:**
   - Adicionar índice `idx_portfolio_tx_user_asset_date` em `portfolio_transactions (user_id, asset_id, date desc)`.
 
 ### FASE 3: Validação de Carga & Homologação de Segurança
 
-- [ ] **Ação 3.1 — Testes Automatizados de Regressão de Segurança & CSP:**
+- [x] **Ação 3.1 — Testes Automatizados de Regressão de Segurança & CSP:**
   - Expandir `src/tests/security-audit.test.ts` para validar o cabeçalho CSP em `public/_headers` e a ausência de chamadas a domínios não autorizados.
-- [ ] **Ação 3.2 — Testes de Penetração RLS Cross-Tenant:**
+- [x] **Ação 3.2 — Testes de Penetração RLS Cross-Tenant:**
   - Validar isolamento horizontal completo simulando dois usuários concorrentes nas tabelas centrais.
-- [ ] **Ação 3.3 — Quality Gate Global:**
+- [x] **Ação 3.3 — Quality Gate Global:**
   - `npm run typecheck` (0 erros).
   - `npm run lint` (0 erros e 0 avisos).
   - `npm run test` (100% da suíte verde).

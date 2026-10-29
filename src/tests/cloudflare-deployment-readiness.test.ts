@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 describe("Auditoria de Prontidão Cloudflare Pages & Borda (Tarefa 4.2)", () => {
   const rootDir = process.cwd();
   const headersPath = join(rootDir, "public/_headers");
-  const deploymentPath = join(rootDir, "docs/DEPLOYMENT.md");
+  const deploymentPath = join(rootDir, "docs/platforms/DEPLOYMENT.md");
 
   it("verifica a presença e integridade das regras em public/_headers", () => {
     const headersContent = readFileSync(headersPath, "utf8");

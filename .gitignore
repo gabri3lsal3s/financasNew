@@ -12,6 +12,7 @@ coverage
 .idea
 .vscode
 .venv/
+.freebuff/
 
 # Build / tooling
 *.tsbuildinfo

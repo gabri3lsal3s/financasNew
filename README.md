@@ -1,26 +1,33 @@
-# Guia Financeiro
+# Áxis Finance
 
 Aplicativo web **100% Online First** de **gestão financeira pessoal** (receitas, despesas, cartões, dívidas, orçamentos, relatórios, insights e projeção) + **motor de rebalanceamento de carteira** (metas e valor de aporte).
 
-- **Stack:** React 18+ (Vite) · TypeScript estrito · Tailwind CSS · shadcn/ui · TanStack Query · Supabase (Postgres + RLS + Auth)
+- **Stack:** React 18+ (Vite) · TypeScript estrito · Tailwind CSS · shadcn/ui · TanStack Query · Supabase (Postgres + RLS + Auth) · Capacitor (Android)
 - **Idioma do produto e dos docs:** pt-BR
 
 ---
 
 ## Documentação oficial (leia antes de codar)
 
-| Documento | Papel |
-|---|---|
-| [`AGENTS.md`](AGENTS.md) | Regras de governança da workspace — vinculam qualquer agente/humano |
-| [`ESPECIFICACAO_TECNICA.md`](ESPECIFICACAO_TECNICA.md) | Spec executável: regras de negócio, schema, UI/UX, decisões D1–D12 |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Camadas, dependências, convenções e estratégia de estado |
-| [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md) | Árvore de pastas e onde criar cada arquivo |
-| [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) | Identidade visual e design tokens |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Plano de execução canônico — fases, ordem e Definition of Done |
-| [`docs/PROJETO_SAAS.md`](docs/PROJETO_SAAS.md) | Modelo de precificação SaaS, trial de 30 dias e conformidade CDC |
-| [`docs/PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md`](docs/PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md) | Plano de governança, limpeza, otimização e blindagem de segurança |
-| [`docs/PWA_GUIDELINES.md`](docs/PWA_GUIDELINES.md) | Requisitos PWA (manifest, service worker, instalação) |
-| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Deploy (Cloudflare Pages + Supabase), env vars e checklist de prontidão |
+| Categoria | Documento | Papel |
+|---|---|---|
+| **Governança & Regras** | [`AGENTS.md`](AGENTS.md) | Regras de governança da workspace — vinculam qualquer agente/humano |
+| **Arquitetura & Specs** | [`docs/architecture/ESPECIFICACAO_TECNICA.md`](docs/architecture/ESPECIFICACAO_TECNICA.md) | Spec executável: regras de negócio, schema, UI/UX, decisões D1–D12 |
+| | [`docs/architecture/ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md) | Camadas, dependências, convenções e estratégia de estado |
+| | [`docs/architecture/PROJECT_STRUCTURE.md`](docs/architecture/PROJECT_STRUCTURE.md) | Árvore de pastas oficial e onde criar cada arquivo |
+| | [`docs/architecture/FINANCIAL_MATH_SPEC.md`](docs/architecture/FINANCIAL_MATH_SPEC.md) | Especificação canônica de engenharia e precisão matemática financeira |
+| | [`docs/architecture/DATA_MIGRATION_GUIDE.md`](docs/architecture/DATA_MIGRATION_GUIDE.md) | Guia de migração e batimento de dados legados |
+| | [`docs/architecture/RECONSTRUCAO.md`](docs/architecture/RECONSTRUCAO.md) | Spec funcional original (fonte histórica) |
+| **Design System** | [`docs/design/DESIGN_SYSTEM.md`](docs/design/DESIGN_SYSTEM.md) | Identidade visual, tokens de design e regras DRY de interface |
+| **Plataformas & Deploy** | [`docs/platforms/DEPLOYMENT.md`](docs/platforms/DEPLOYMENT.md) | Deploy (Cloudflare Pages + Supabase), env vars e checklist de prontidão |
+| | [`docs/platforms/NATIVE_DISTRIBUTION_GUIDE.md`](docs/platforms/NATIVE_DISTRIBUTION_GUIDE.md) | Distribuição Android Pro, keystore e in-app updater via Cloudflare R2 |
+| | [`docs/platforms/PWA_GUIDELINES.md`](docs/platforms/PWA_GUIDELINES.md) | Requisitos PWA (manifest, service worker, instalação offline) |
+| | [`docs/platforms/EMAIL_TEMPLATES.md`](docs/platforms/EMAIL_TEMPLATES.md) | Templates de e-mail transacionais responsivos e guia SMTP |
+| **Operação & Negócio** | [`docs/operations/FOUNDER_RUNBOOK.md`](docs/operations/FOUNDER_RUNBOOK.md) | Manual operacional do fundador: suporte Telegram, admin, faturamento Asaas e incidentes |
+| | [`docs/operations/SECURITY_GOVERNANCE.md`](docs/operations/SECURITY_GOVERNANCE.md) | Governança de segurança, criptografia, proteção de PII e LGPD |
+| | [`docs/operations/PROJETO_SAAS.md`](docs/operations/PROJETO_SAAS.md) | Modelo de precificação SaaS, trial de 30 dias e conformidade CDC |
+| **Roadmap & Releases** | [`docs/roadmap/ROADMAP.md`](docs/roadmap/ROADMAP.md) | Plano de execução canônico — fases, ordem e Definition of Done |
+| | [`docs/roadmap/RELEASE.md`](docs/roadmap/RELEASE.md) | Checklist de release, versão e homologação |
 
 ---
 
@@ -62,16 +69,22 @@ npm run db:types       # regenera src/types/database.ts a partir do banco local
 | Comando | Ação |
 |---|---|
 | `npm run dev` | Servidor de desenvolvimento (Vite) |
-| `npm run typecheck` | Verificação de tipos (`tsc -b`) |
+| `npm run typecheck` | Verificação estrita de tipos (`tsc -b`) |
 | `npm run lint` | ESLint (inclui regra `local/no-decorative-unicode`) |
 | `npm run test` | Suíte completa de testes (Vitest) |
 | `npm run test:watch` | Testes em modo watch |
 | `npm run build` | Build de produção (`tsc -b && vite build`) |
 | `npm run preview` | Pré-visualização do build |
+| `npm run preflight` | Diagnóstico pré-voo automatizado de prontidão operacional e produção (7 dimensões) |
 | `npm run format` | Prettier |
 | `npm run icons` | Regenera ícones PWA/brand a partir de `public/brand/` |
 | `npm run quotes:deploy` | Deploy da edge function de cotações |
 | `npm run quotes:cron` | Gera/aplica o cron da edge function de cotações |
+| `npm run cap:sync` | Sincroniza assets web com o projeto nativo Android |
+| `npm run cap:open` | Abre o projeto Android no Android Studio |
+| `npm run cap:build` | Build web + sincronização Android |
+| `npm run build:apk` | Pipeline automatizado de compilação de APKs em 1 comando |
+| `npm run upload:apk` | Upload de APKs e version.json para o Cloudflare R2 |
 
 ---
 

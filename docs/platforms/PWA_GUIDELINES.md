@@ -305,12 +305,12 @@ Com o objetivo de oferecer paridade de experiência entre o ambiente nativo Andr
 
 **Auditoria manual (Lighthouse — exige app servido em HTTPS):** rodar `npm run build` + servir `dist/` (ex.: `npx serve dist`) e executar o Lighthouse (Chrome DevTools → Lighthouse → category PWA/Progressive Web App). Com o Lighthouse v10+ a categoria PWA foi absorvida; validar os checks de **instalabilidade** (manifest, SW, HTTPS) e **PWA otimizado** (offline no shell, redirects de HTTP→HTTPS).
 
-- [ ] Lighthouse instalável: manifest válido + SW com fetch + HTTPS.
-- [ ] Manifest válido (ícones 192/512/maskable; `display: standalone`).
-- [ ] Instalação funciona em Android (Chrome) e desktop (Chrome/Edge); iOS via "Adicionar à tela de início" (botão "Instalar app" no menu "Mais").
-- [ ] Abertura com rede lenta: shell instantâneo + skeletons nos dados.
-- [ ] Abertura offline: shell carrega do cache e a UI exibe estado offline com retry; sem dados falsos.
-- [ ] Atualização de versão: toast "Nova versão disponível" + "Atualizar" recarrega sem perda de estado.
-- [ ] Safe areas (notch) respeitadas no modo standalone (`viewport-fit=cover`).
-- [ ] Tema do status bar coerente com light/dark/oled.
-- [ ] Rotação bloqueada em retrato (manifest + `screen.orientation.lock`).
+- [ ] Lighthouse instalável: manifest válido + SW com fetch + HTTPS (aferição manual via Chrome DevTools em ambiente HTTPS).
+- [x] Manifest válido (ícones 192/512/maskable; `display: standalone` — coberto por `pwa-audit.test.ts`).
+- [x] Instalação funciona em Android (Chrome) e desktop (Chrome/Edge); iOS via "Adicionar à tela de início" (botão "Instalar app" no menu "Mais" — coberto por `pwa.test.tsx` e `ios-pwa-install-dialog.test.tsx`).
+- [x] Abertura com rede lenta: shell instantâneo + skeletons nos dados (App Shell precached em Workbox + `Skeleton` nos componentes).
+- [x] Abertura offline: shell carrega do cache e a UI exibe estado offline com retry; sem dados falsos (`offline.html` + `pwa-audit.test.ts`).
+- [x] Atualização de versão: toast "Nova versão disponível" + "Atualizar" recarrega sem perda de estado (`pwa.ts` + `pwa-update-toast.tsx`).
+- [x] Safe areas (notch) respeitadas no modo standalone (`viewport-fit=cover` e insets híbridos em `index.html` + `status-bar.ts`).
+- [x] Tema do status bar coerente com light/dark/oled (meta tags theme-color por media query em `index.html`).
+- [x] Rotação bloqueada em retrato (manifest + `screen.orientation.lock`).
