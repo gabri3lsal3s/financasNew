@@ -52,7 +52,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 1
 
-- [ ] **Tarefa 1.1: Revisar `DEFAULT_CONFIG` e Fallback de Storage**
+- [x] **Tarefa 1.1: Revisar `DEFAULT_CONFIG` e Fallback de Storage**
   - **Arquivo:** `src/hooks/use-visual-customization.ts`
   - **O que verificar/ajustar:**
     - Linha ~84: Confirmar que `DEFAULT_CONFIG.accent` permanece `'teal'`.
@@ -65,7 +65,7 @@ git push origin main
           : "teal";
       ```
 
-- [ ] **Tarefa 1.2: Revisar o Script Inline de Inicialização no `<head>`**
+- [x] **Tarefa 1.2: Revisar o Script Inline de Inicialização no `<head>`**
   - **Arquivo:** `index.html`
   - **O que verificar/ajustar:**
     - Linha ~92: Garantir que a lógica não force atributo divergente quando não houver preferência:
@@ -77,7 +77,7 @@ git push origin main
       ```
     - Como o Teal é a variável raiz do CSS (sem `data-accent`), ausência de atributo = Teal Vital imediato sem *FOUC*.
 
-- [ ] **Tarefa 1.3: Destaque do Monocromático com Recomendação para OLED**
+- [x] **Tarefa 1.3: Destaque do Monocromático com Recomendação para OLED**
   - **Arquivo:** `src/features/settings/components/tabs/visual-identity-card.tsx`
   - **O que verificar/ajustar:**
     - No array `ACCENT_OPTIONS` (linha ~22), posicionar `teal` e `mono` como as primeiras opções com as descrições claras:
@@ -92,7 +92,7 @@ git push origin main
       ];
       ```
 
-- [ ] **Tarefa 1.4: Atualizar Texto do Card de Redefinição aos Padrões**
+- [x] **Tarefa 1.4: Atualizar Texto do Card de Redefinição aos Padrões**
   - **Arquivo:** `src/features/settings/components/tabs/reset-defaults-card.tsx`
   - **O que verificar/ajustar:**
     - Linha ~28: Atualizar a descrição da redefinição aos padrões para refletir a nova composição:
@@ -102,16 +102,16 @@ git push origin main
       </div>
       ```
 
-- [ ] **Tarefa 1.5: Validar Testes Unitários da Camada Visual**
+- [x] **Tarefa 1.5: Validar Testes Unitários da Camada Visual**
   - **Arquivo:** `src/hooks/use-visual-customization.test.ts`
   - Rodar: `npx vitest run src/hooks/use-visual-customization.test.ts`
   - Garantir que todas as asserções de default passam sem erros.
 
 ### Portão de Qualidade da Fase 1
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/hooks/use-visual-customization.test.ts`
-- [ ] **Commit & Push da Fase 1:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/hooks/use-visual-customization.test.ts`
+- [x] **Commit & Push da Fase 1:**
   ```bash
   git add src/hooks/use-visual-customization.ts src/features/settings/components/tabs/visual-identity-card.tsx src/features/settings/components/tabs/reset-defaults-card.tsx index.html
   git commit -m "feat(settings): padroniza estado inicial teal vital oficial com recomendacao monocromatica para oled"

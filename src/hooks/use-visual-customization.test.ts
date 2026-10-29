@@ -140,4 +140,15 @@ describe("useVisualCustomization (F11)", () => {
     syncVisualWithCloud({ hideDashboardCents: false }, "user-cents");
     expect(getVisualCustomization().hideDashboardCents).toBe(false);
   });
+
+  it("aplica fallback para teal e dynamic quando o storage contém valores ausentes ou inválidos", () => {
+    setActiveUserId("user-fallback");
+    window.localStorage.setItem("financas_user-fallback_accent_theme", "cor-invalida");
+    window.localStorage.setItem("financas_user-fallback_experience_preset", "preset-invalido");
+
+    const config = initVisualCustomization("user-fallback");
+    expect(config.accent).toBe("teal");
+    expect(config.experiencePreset).toBe("dynamic");
+    expect(document.documentElement.getAttribute("data-accent")).toBeNull();
+  });
 });

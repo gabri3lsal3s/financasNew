@@ -84,6 +84,11 @@ describe("Appearance Subcomponents (Fase 1 — Tarefa 1.3)", () => {
       await user.click(goldOption);
       expect(onSelectAccent).toHaveBeenCalledWith("gold", "Ouro Âmbar");
 
+      const monoOption = screen.getByRole("button", { name: /^Monocromático \(Recomendado para OLED\)/i });
+      expect(monoOption).toBeInTheDocument();
+      await user.click(monoOption);
+      expect(onSelectAccent).toHaveBeenCalledWith("mono", "Monocromático (Recomendado para OLED)");
+
       const hideCentsCheckbox = screen.getByRole("checkbox", { name: "Ocultar centavos na Visão Geral" });
       expect(hideCentsCheckbox).not.toBeChecked();
       await user.click(hideCentsCheckbox);
@@ -124,6 +129,12 @@ describe("Appearance Subcomponents (Fase 1 — Tarefa 1.3)", () => {
       const onReset = vi.fn();
 
       render(<ResetDefaultsCard onReset={onReset} />);
+
+      expect(
+        screen.getByText(
+          "Restaura o modo de experiência Dinâmico, tema oficial Teal Vital e disposição padrão da interface.",
+        ),
+      ).toBeInTheDocument();
 
       const resetBtn = screen.getByRole("button", { name: /Redefinir/i });
       await user.click(resetBtn);

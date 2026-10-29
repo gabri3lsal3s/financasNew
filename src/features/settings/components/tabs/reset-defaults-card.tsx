@@ -25,7 +25,7 @@ export function ResetDefaultsCard({ onReset }: ResetDefaultsCardProps) {
           <div>
             <div className="font-semibold text-sm text-foreground">Redefinir tudo aos valores de fábrica</div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              Restaura o modo de experiência Dinâmico, tema oficial, paleta Teal e disposição padrão de widgets.
+              Restaura o modo de experiência Dinâmico, tema oficial Teal Vital e disposição padrão da interface.
             </div>
           </div>
           <Button
