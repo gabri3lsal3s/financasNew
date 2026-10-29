@@ -77,10 +77,18 @@ public class BankNotificationPlugin extends Plugin {
         BANK_PACKAGES.put("com.google.android.apps.walletnfcrel", new BankAppInfo("Carteira Google", "wallet"));
         BANK_PACKAGES.put("com.samsung.android.spay", new BankAppInfo("Samsung Pay", "wallet"));
         BANK_PACKAGES.put("com.samsung.android.raja.spay", new BankAppInfo("Samsung Pay", "wallet"));
+        BANK_PACKAGES.put("com.samsung.android.app.spay", new BankAppInfo("Samsung Pay", "wallet"));
         BANK_PACKAGES.put("com.mercadopago.wallet", new BankAppInfo("Mercado Pago", "wallet"));
         BANK_PACKAGES.put("com.picpay", new BankAppInfo("PicPay", "wallet"));
         BANK_PACKAGES.put("br.com.uol.ps", new BankAppInfo("PagBank", "wallet"));
         BANK_PACKAGES.put("br.com.uol.ps.myaccount", new BankAppInfo("PagBank", "wallet"));
+        BANK_PACKAGES.put("com.recargapay", new BankAppInfo("RecargaPay", "wallet"));
+
+        // Fintechs & Outros Bancos
+        BANK_PACKAGES.put("com.willbank.app", new BankAppInfo("Will Bank", "bank"));
+        BANK_PACKAGES.put("br.com.willbank", new BankAppInfo("Will Bank", "bank"));
+        BANK_PACKAGES.put("br.com.original.bank", new BankAppInfo("Banco Original", "bank"));
+        BANK_PACKAGES.put("br.com.agibank", new BankAppInfo("Agibank", "bank"));
 
         // Investimentos, Cripto & Contas Globais
         BANK_PACKAGES.put("com.btg.pactual.banking", new BankAppInfo("BTG Pactual", "bank"));

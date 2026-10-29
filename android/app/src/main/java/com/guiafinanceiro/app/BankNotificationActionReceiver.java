@@ -62,11 +62,50 @@ public class BankNotificationActionReceiver extends BroadcastReceiver {
         }
     }
 
+    /**
+     * Determina se a notificação bancária representa uma entrada de receita (income) ou despesa (expense).
+     * Garante que compras no crédito, crédito à vista ou saídas não sejam classificadas como renda.
+     */
     public static boolean isIncome(String title, String text) {
+        if (title == null && text == null) return false;
         String combined = ((title != null ? title : "") + " " + (text != null ? text : "")).toLowerCase();
-        return combined.contains("recebeu") || combined.contains("recebido") || combined.contains("crédito em conta") ||
-               combined.contains("credito em conta") || combined.contains("transferência recebida") ||
-               combined.contains("transferencia recebida") || combined.contains("salário") || combined.contains("salario");
+        if (combined.trim().isEmpty()) return false;
+
+        // 1. Estornos e reembolsos são entradas financeiras (reversão de valores)
+        if (combined.contains("estorno") || combined.contains("reembolso") ||
+            combined.contains("devolução pix") || combined.contains("devolucao pix") ||
+            combined.contains("pix devolvido")) {
+            return true;
+        }
+
+        // 2. Sinais inequívocos de compra ou despesa (têm precedência sobre termos genéricos de recebimento)
+        if (combined.contains("crédito à vista") || combined.contains("credito a vista") ||
+            combined.contains("crédito parcelado") || combined.contains("credito parcelado") ||
+            combined.contains("compra no crédito") || combined.contains("compra no credito") ||
+            combined.contains("compra no débito") || combined.contains("compra no debito") ||
+            combined.contains("compra aprovada") || combined.contains("compra realizada") ||
+            combined.contains("compra autorizada") || combined.contains("compra de") ||
+            combined.contains("você pagou") || combined.contains("voce pagou") ||
+            combined.contains("pagamento de") || combined.contains("pagamento realizado") ||
+            combined.contains("pagamento efetuado") || combined.contains("pix enviado") ||
+            combined.contains("transferência enviada") || combined.contains("transferencia enviada") ||
+            combined.contains("débito realizado") || combined.contains("debito realizado") ||
+            combined.contains("valor debitado") || combined.contains("debitado")) {
+            return false;
+        }
+
+        // 3. Sinais legítimos de entrada / renda financeira
+        return combined.contains("recebeu") || combined.contains("recebido") || combined.contains("recebida") ||
+               combined.contains("crédito em conta") || combined.contains("credito em conta") ||
+               combined.contains("creditado em conta") || combined.contains("creditada em conta") ||
+               combined.contains("creditado na sua conta") || combined.contains("creditada na sua conta") ||
+               combined.contains("transferência recebida") || combined.contains("transferencia recebida") ||
+               combined.contains("pix recebido") || combined.contains("salário") || combined.contains("salario") ||
+               combined.contains("folha de pagamento") || combined.contains("depósito recebido") ||
+               combined.contains("deposito recebido") || combined.contains("depósito em conta") ||
+               combined.contains("deposito em conta") || combined.contains("ted recebida") ||
+               combined.contains("doc recebido") || combined.contains("proventos") ||
+               combined.contains("rendimentos") || combined.contains("dividendos");
     }
 
     public static String extractPartyName(String text) {

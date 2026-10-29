@@ -76,14 +76,30 @@ public class BankNotificationListenerServiceTest {
         assertTrue(BankNotificationListenerService.hasFinancialSignal("Despesa de R$ 85,00 no débito", "Nubank"));
         assertTrue(BankNotificationListenerService.hasFinancialSignal("Pagamento via TED de R$ 500,00", "Santander"));
 
-        // 3. Rejeição imediata de construções no gerúndio ou tom instrutivo/promocional
+        // 3. Notificações sintéticas de Carteiras Digitais (Google Wallet / Samsung Pay - Tarefa 1.2)
+        assertTrue(BankNotificationListenerService.hasFinancialSignal("Padaria Estrela · R$ 35,50 com Nubank •••• 1234", "Google Pay"));
+        assertTrue(BankNotificationListenerService.hasFinancialSignal("R$ 42,00 em Starbucks", "Samsung Pay"));
+        assertTrue(BankNotificationListenerService.hasFinancialSignal("R$ 18,90 · Droga Raia", "Samsung Wallet"));
+        assertTrue(BankNotificationListenerService.hasFinancialSignal("Compra de R$ 12,00 no débito", "Carteira Google"));
+
+        // 4. Vocabulário moderno de transações (utilizado, cobrado, autorizada, debitado, nfc, aproximação - Tarefa 1.2)
+        assertTrue(BankNotificationListenerService.hasFinancialSignal("Cartão final 1234 utilizado com sucesso", "Nubank"));
+        assertTrue(BankNotificationListenerService.hasFinancialSignal("Valor de R$ 50,00 cobrado na sua fatura", "Itaú"));
+        assertTrue(BankNotificationListenerService.hasFinancialSignal("Transação autorizada no valor de R$ 90,00", "C6 Bank"));
+        assertTrue(BankNotificationListenerService.hasFinancialSignal("Transação aprovada de R$ 33,00", "Bradesco"));
+        assertTrue(BankNotificationListenerService.hasFinancialSignal("R$ 45,00 debitado da sua conta", "Inter"));
+        assertTrue(BankNotificationListenerService.hasFinancialSignal("Você pagou R$ 35,00 para Restaurante", "PicPay"));
+        assertTrue(BankNotificationListenerService.hasFinancialSignal("Pagamento por aproximação de R$ 22,00", "Santander"));
+        assertTrue(BankNotificationListenerService.hasFinancialSignal("Pagamento via NFC aprovado de R$ 15,00", "Caixa"));
+
+        // 5. Rejeição imediata de construções no gerúndio ou tom instrutivo/promocional
         assertFalse(BankNotificationListenerService.hasFinancialSignal("Economize tempo fazendo Pix e pagando boletos pelo app", "Nubank"));
         assertFalse(BankNotificationListenerService.hasFinancialSignal("Pague com cartão e ganhe pontos em dobro", "Inter"));
         assertFalse(BankNotificationListenerService.hasFinancialSignal("Faça Pix no crédito para parcelar compras", "C6 Bank"));
         assertFalse(BankNotificationListenerService.hasFinancialSignal("Faca pix no credito com taxas reduzidas", "Neon"));
         assertFalse(BankNotificationListenerService.hasFinancialSignal("Invista a partir de R$ 10,00 e veja seu dinheiro render", "Itaú"));
 
-        // 4. Textos vazios ou não financeiros
+        // 6. Textos vazios ou não financeiros
         assertFalse(BankNotificationListenerService.hasFinancialSignal("Saiba mais sobre nossos novos produtos", "Banco"));
         assertFalse(BankNotificationListenerService.hasFinancialSignal("", ""));
         assertFalse(BankNotificationListenerService.hasFinancialSignal(null, null));

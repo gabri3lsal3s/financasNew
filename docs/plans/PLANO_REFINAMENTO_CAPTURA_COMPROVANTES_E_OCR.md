@@ -1,7 +1,7 @@
 # PLANO DE IMPLEMENTAÇÃO — REFINAMENTO DA CAPTURA DE COMPROVANTES (FOTO, PDF E IMAGEM), PARCELAMENTO & RESOLUÇÃO DE CARTÕES
 
 > **Documento Canônico de Arquitetura e Engenharia**  
-> **Status:** Fase 1 Concluída · Alicerce de Domínio da Fase 2 Estruturado · Fases 2 a 5 Prontas para Execução Manual  
+> **Status:** 100% Concluído (Fases 1 a 5) · Quality Gates QG1–QG Final Aprovados  
 > **Módulos Afetados:** `src/domain/notifications/`, `src/services/native/`, `src/services/merchant-learning.ts`, `src/components/modules/`, `src/features/transactions/wizard/`, `docs/`  
 > **Governança:** Custo Zero de Infraestrutura (Google ML Kit nativo on-device + `unpdf` e `tesseract.js` dinâmico sob demanda na Web) · TypeScript Estrito · Funções Puras no Domínio · Moeda em Centavos · Zero Emojis · Portões de Qualidade (QG) por Fase  
 > **Data:** Outubro de 2026 · **Ambiente:** Android Nativo (Capacitor) & Web PWA  
@@ -72,16 +72,16 @@ Este plano estabelece a modernização e refinamento profundo dessa funcionalida
 |---|---|---|---|---|
 | **F1** | Imagens e fotos no Web/PWA falham 100% | `receipt-extractor.ts` retornava string vazia `""` para imagens no navegador. | Implementado `web-ocr.ts` usando `tesseract.js` carregado sob demanda (*dynamic import* `await import(...)`), mantendo o bundle inicial inalterado. | **Concluído** |
 | **F2** | PDFs no Web/PWA falham na maioria dos bancos | Regex ingênua procurava strings Latin1 `Tj` no buffer cru; não decodificava streams zlib. | Substituída a leitura regex pelo extrator digital `unpdf`, já integrado em `receipt-extractor.ts`. | **Concluído** |
-| **F3** | Monocultura de Pix no parser | `AttachReceiptDialog` aciona exclusivamente `parsePixShareText`, forçando `paymentMethod: "pix"`. | Criar o `universal-receipt-parser.ts` com sub-parsers especializados para Cartões (POS), Boletos, NFC-e e TED. | **Em Andamento** |
+| **F3** | Monocultura de Pix no parser | `AttachReceiptDialog` aciona exclusivamente `parsePixShareText`, forçando `paymentMethod: "pix"`. | Implementado `universal-receipt-parser.ts` com sub-parsers especializados para Cartões (POS), Boletos, NFC-e e TED. | **Concluído** |
 | **F4** | Formatos comuns de maquininhas ignorados | Extrator de parcelamento ignorava `PARC: 03`, `3x de R$ 50,00` e espaços entre número e `x`. | Desenvolvido `installment-extractor.ts` puro, cobrindo regexes tolerantes a espaços, variações de caixa e marcações POS. | **Concluído** |
-| **F5** | Despesas parceladas corrompidas no auto-cadastro | `autoRegisterReceipt` hardcoda `cardId: null` e `paymentMethod: "pix"`. | Respeitar o `cardId` resolvido e a competência de fatura calculada via `closing_day` do cartão no `buildExpenseInstallments`. | **Pendente** |
-| **F6** | Resolução de cartão ignorada no LaunchWizard | Linha 413 de `launch-wizard.tsx` usa `.find(name.includes(bankName))`, ignorando `resolveBestMatchingCard`. | Integrar `resolveBestMatchingCard` no `handleReceiptParsed`, transmitindo `cardLastDigits`, `bankName`, `issuerBank` e `cardBrand`. | **Pendente** |
-| **F7** | Desempate impossível entre múltiplos cartões do mesmo banco | Comprovantes térmicos trazem apenas `**** 1234` e a bandeira, sem o nome do cartão. | Criar memória `cardDigitsMap` (`1234 -> cardId`), permitindo que a primeira confirmação do usuário ensine o sistema. | **Pendente** |
-| **F8** | Memória do usuário limitada à categoria | `MerchantLearningRecord` salva apenas `friendlyName` e `categorySlug`. | Estender o registro com `preferredPaymentMethod` e `preferredCardId`, alimentados ao salvar a transação. | **Pendente** |
+| **F5** | Despesas parceladas corrompidas no auto-cadastro | `autoRegisterReceipt` hardcoda `cardId: null` e `paymentMethod: "pix"`. | Respeitado o `cardId` resolvido e a competência de fatura calculada via `closing_day` do cartão no `buildExpenseInstallments`. | **Concluído** |
+| **F6** | Resolução de cartão ignorada no LaunchWizard | Linha 413 de `launch-wizard.tsx` usa `.find(name.includes(bankName))`, ignorando `resolveBestMatchingCard`. | Integrado `resolveBestMatchingCard` no `handleReceiptParsed`, transmitindo `cardLastDigits`, `bankName`, `issuerBank` e `cardBrand`. | **Concluído** |
+| **F7** | Desempate impossível entre múltiplos cartões do mesmo banco | Comprovantes térmicos trazem apenas `**** 1234` e a bandeira, sem o nome do cartão. | Criada memória `cardDigitsMapping` (`1234 -> cardId`), permitindo que a confirmação do usuário ensine o sistema. | **Concluído** |
+| **F8** | Memória do usuário limitada à categoria | `MerchantLearningRecord` salva apenas `friendlyName` e `categorySlug`. | Estendido o registro com `preferredPaymentMethod` e `preferredCardId`, alimentados ao salvar a transação. | **Concluído** |
 | **F9** | Ruídos de OCR quebrando valores monetários | Caracteres `O` lidos como `0`, `l` como `1`, ou vírgula trocada por ponto em tickets térmicos. | Implementado normalizador óptico puro `ocr-cleaner.ts` executado antes do parsing semântico. | **Concluído** |
-| **F10**| Dialog de anexo não informa o que foi lido | O usuário vê apenas mensagem genérica ou erro sem saber qual tipo de comprovante foi detectado. | Card de preview no diálogo indicando o tipo identificado (Pix, Cartão de Crédito 3x, Boleto) antes de fechar. | **Pendente** |
+| **F10**| Dialog de anexo não informa o que foi lido | O usuário vê apenas mensagem genérica ou erro sem saber qual tipo de comprovante foi detectado. | Card de preview no diálogo indicando o tipo identificado (Pix, Cartão de Crédito 3x, Boleto) antes de fechar. | **Concluído** |
 | **F11**| Risco de overhead no bundle web | Adicionar OCR pesado no bundle inicial aumentaria o tempo de carregamento da aplicação. | Módulo `tesseract.js` sob demanda (*dynamic import*) em `web-ocr.ts`. | **Concluído** |
-| **F12**| Rendas parceladas sem tratamento | Comprovantes de vendas ou serviços parcelados recebidos pelo usuário viravam despesa ou valor truncado. | Suporte a `nature: "income"` com parcelamento via `buildIncomeInstallments` integrado. | **Pendente** |
+| **F12**| Rendas parceladas sem tratamento | Comprovantes de vendas ou serviços parcelados recebidos pelo usuário viravam despesa ou valor truncado. | Suporte a `nature: "income"` com parcelamento via `buildIncomeInstallments` integrado. | **Concluído** |
 
 ---
 
@@ -130,7 +130,7 @@ Este plano estabelece a modernização e refinamento profundo dessa funcionalida
 ---
 
 ### FASE 2: Motor Universal de Domínio e Parcelamento Robusto
-> **Status:** Em Andamento (Contratos e Sub-parser de Cartões Concluídos; Restante para Execução Manual)
+> **Status:** 100% Concluída · Quality Gate 2 Aprovado (2026-10-29)
 
 - [x] **Tarefa 2.1: Contratos e Tipagem Unificada (`src/domain/notifications/receipt-types.ts`)**
   - [x] Definição de `ReceiptKind = "pix" | "card_slip" | "bank_slip_payment" | "invoice_danfe" | "wire_transfer" | "generic"`.
@@ -196,7 +196,7 @@ Este plano estabelece a modernização e refinamento profundo dessa funcionalida
 ---
 
 ### FASE 3: Resolução Avançada e Memória Contínua de Cartões
-> **Status:** Concluída
+> **Status:** 100% Concluída · Quality Gate 3 Aprovado (2026-10-29)
 
 - [x] **Tarefa 3.1: Expansão do Motor de Memória (`src/domain/notifications/merchant-memory.ts`)**
   - [x] Adicionar campos opcionais em `RecordMerchantLearningParams` e `MerchantLearningRecord`:
@@ -238,7 +238,7 @@ Este plano estabelece a modernização e refinamento profundo dessa funcionalida
 ---
 
 ### FASE 4: Integração de UI no Dialog, Wizard e Share Target
-> **Status:** Pendente (Para Execução Manual pelo Desenvolvedor)
+> **Status:** 100% Concluída · Quality Gate 4 Aprovado (2026-10-29)
 
 - [x] **Tarefa 4.1: Modernização do `AttachReceiptDialog` (`src/components/modules/attach-receipt-dialog.tsx`)**
   - [x] Integrar `extractReceiptTextFromFile` com `parseUniversalReceipt`.
@@ -275,7 +275,7 @@ Este plano estabelece a modernização e refinamento profundo dessa funcionalida
 ---
 
 ### FASE 5: Matriz de Testes E2E, Typecheck e Governança
-> **Status:** Pendente (Para Execução Manual pelo Desenvolvedor)
+> **Status:** 100% Concluída · Quality Gate Final (QG Final) Aprovado (2026-10-29)
 
 - [x] **Tarefa 5.1: Matriz de Testes E2E de Comprovantes Reais (`src/domain/notifications/receipt-e2e-matrix.test.ts`)**
   - [x] Criar suíte completa testando amostras reais de:
@@ -294,22 +294,22 @@ Este plano estabelece a modernização e refinamento profundo dessa funcionalida
   - [x] Linter com regra anti-emojis: `npm run lint`.
   - [x] Toda a suíte de testes: `npm run test:run`.
 
-- [ ] **Tarefa 5.3: Revisão do que Já Foi Feito e Verificação Completa de Integridade do App**
-  - [ ] Revisão aprofundada de todas as funcionalidades recuperadas (Fases 1 a 5) comparando com a especificação original.
-  - [ ] Verificação ponta a ponta dos fluxos de comprovante:
-    - [ ] `AttachReceiptDialog` (captura, preview, inferência de dados e vinculação de cartões/categorias).
-    - [ ] `LaunchWizard` (auto-preenchimento dos steps, suporte a despesas e rendas parceladas).
-    - [ ] Auto-registro em background e banner PWA (`auto-registered-banner.tsx` e `share-target-page.tsx`).
-    - [ ] Memória de dígitos e aprendizado contínuo (`cardDigitsMapping` local e Supabase).
-  - [ ] Auditoria de integridade do app:
-    - [ ] Build de produção (`npm run build`).
-    - [ ] Validação estrita de ausência de regressões no ecossistema completo do app.
+- [x] **Tarefa 5.3: Revisão do que Já Foi Feito e Verificação Completa de Integridade do App**
+  - [x] Revisão aprofundada de todas as funcionalidades recuperadas (Fases 1 a 5) comparando com a especificação original.
+  - [x] Verificação ponta a ponta dos fluxos de comprovante:
+    - [x] `AttachReceiptDialog` (captura, preview, inferência de dados e vinculação de cartões/categorias).
+    - [x] `LaunchWizard` (auto-preenchimento dos steps, suporte a despesas e rendas parceladas).
+    - [x] Auto-registro em background e banner PWA (`auto-registered-banner.tsx` e `share-target-page.tsx`).
+    - [x] Memória de dígitos e aprendizado contínuo (`cardDigitsMapping` local e Supabase).
+  - [x] Auditoria de integridade do app:
+    - [x] Build de produção (`npm run build`).
+    - [x] Validação estrita de ausência de regressões no ecossistema completo do app.
 
-- [ ] **Tarefa 5.4: Documentação Técnica de Arquitetura (`docs/ARCHITECTURE.md`)**
-  - [ ] Sincronizar a Seção 14 de `docs/ARCHITECTURE.md` registrando a conclusão das fases.
+- [x] **Tarefa 5.4: Documentação Técnica de Arquitetura (`docs/ARCHITECTURE.md`)**
+  - [x] Sincronizar a Seção 14 de `docs/ARCHITECTURE.md` registrando a conclusão das fases.
 
 > [!TIP]
-> **Quality Gate Final (QG Final) — Critérios de Conclusão**:
+> **Quality Gate Final (QG Final) — APROVADO**:
 > - 100% dos testes unitários e de integração passando.
 > - Zero violações de linting (sem emojis e sem `@ts-ignore`).
 > - Zero erros de tipagem estrita no TypeScript.

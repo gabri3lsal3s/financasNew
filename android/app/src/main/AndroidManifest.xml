@@ -147,10 +147,18 @@
         <package android:name="com.google.android.apps.walletnfcrel" />
         <package android:name="com.samsung.android.spay" />
         <package android:name="com.samsung.android.raja.spay" />
+        <package android:name="com.samsung.android.app.spay" />
         <package android:name="com.mercadopago.wallet" />
         <package android:name="com.picpay" />
         <package android:name="br.com.uol.ps" />
         <package android:name="br.com.uol.ps.myaccount" />
+        <package android:name="com.recargapay" />
+
+        <!-- Fintechs & Outros Bancos -->
+        <package android:name="com.willbank.app" />
+        <package android:name="br.com.willbank" />
+        <package android:name="br.com.original.bank" />
+        <package android:name="br.com.agibank" />
 
         <!-- Investimentos, Cripto & Contas Globais -->
         <package android:name="com.btg.pactual.banking" />

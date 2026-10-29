@@ -64,10 +64,18 @@ public class BankNotificationListenerService extends NotificationListenerService
         "com.google.android.apps.walletnfcrel",
         "com.samsung.android.spay",
         "com.samsung.android.raja.spay",
+        "com.samsung.android.app.spay",
         "com.mercadopago.wallet",
         "com.picpay",
         "br.com.uol.ps",
         "br.com.uol.ps.myaccount",
+        "com.recargapay",
+
+        // Fintechs & Outros Bancos
+        "com.willbank.app",
+        "br.com.willbank",
+        "br.com.original.bank",
+        "br.com.agibank",
 
         // Investimentos, Cripto & Contas Globais
         "com.btg.pactual.banking",
@@ -367,13 +375,21 @@ public class BankNotificationListenerService extends NotificationListenerService
 
         // 2. Verbos e termos de fato consumado (movimentações financeiras reais efetivadas)
         String[] executedSignals = new String[] {
-            "compra aprovada", "compra realizada", "compra de r$",
+            "compra aprovada", "compra realizada", "compra de r$", "compra no cartão", "compra no cartao",
             "você recebeu", "voce recebeu", "recebido", "recebida", "recebimento",
-            "você enviou", "voce enviou", "enviou um pix", "pix enviado", "pix de r$", "pix para",
-            "pago com sucesso", "pagamento realizado", "pagamento efetuado", "pagamento aprovado",
+            "você pagou", "voce pagou", "pagou", "pago com sucesso", "pagamento realizado", "pagamento efetuado", "pagamento aprovado",
+            "você enviou", "voce enviou", "enviou um pix", "pix enviado", "pix de r$", "pix para", "enviado", "enviada",
             "boleto pago", "transferência recebida", "transferencia recebida",
             "transferência enviada", "transferencia enviada", "transferência realizada", "transferencia realizada",
             "depósito recebido", "deposito recebido", "crédito em conta", "credito em conta",
+            "debitado", "debitada", "débito realizado", "debito realizado",
+            "autorizada", "autorizado", "transação autorizada", "transacao autorizada",
+            "aprovada", "aprovado", "transação aprovada", "transacao aprovada",
+            "utilizado", "utilizada", "limite utilizado",
+            "cobrado", "cobrada",
+            "aproximação", "aproximacao", "por aproximação", "por aproximacao", "nfc",
+            "transação", "transacao",
+            "google pay", "google wallet", "carteira google", "samsung pay", "samsung wallet", "gpay", "spay",
             "ordem executada", "dividendo", "dividendos", "rendimento", "rendimentos"
         };
 
@@ -383,11 +399,15 @@ public class BankNotificationListenerService extends NotificationListenerService
             }
         }
 
-        // 3. Validação combinada de quantia monetária explícita com canal financeiro concreto
-        if (combined.contains("r$") || combined.contains("us$") || combined.contains("usd")) {
+        // 3. Validação combinada de quantia monetária explícita com canal financeiro concreto ou carteira
+        if (combined.contains("r$") || combined.contains("us$") || combined.contains("usd") || combined.contains("brl")) {
             String[] channelSignals = new String[] {
                 "compra", "pix", "cartão", "cartao", "transferência", "transferencia",
-                "boleto", "ted", "doc", "debito", "débito", "crédito", "credito"
+                "boleto", "ted", "doc", "debito", "débito", "crédito", "credito",
+                "google pay", "google wallet", "carteira google", "samsung pay", "samsung wallet", "gpay", "spay",
+                "aproximação", "aproximacao", "nfc", "transação", "transacao", "pago", "pagou",
+                "cobrado", "cobrada", "debitado", "debitada", "autorizado", "autorizada",
+                "aprovado", "aprovada", "utilizado", "utilizada", "enviado", "enviada"
             };
             for (String cs : channelSignals) {
                 if (combined.contains(cs)) {
