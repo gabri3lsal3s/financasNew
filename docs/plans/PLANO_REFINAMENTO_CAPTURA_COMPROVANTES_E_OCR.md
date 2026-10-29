@@ -294,7 +294,18 @@ Este plano estabelece a modernização e refinamento profundo dessa funcionalida
   - [x] Linter com regra anti-emojis: `npm run lint`.
   - [x] Toda a suíte de testes: `npm run test:run`.
 
-- [ ] **Tarefa 5.3: Documentação Técnica de Arquitetura (`docs/ARCHITECTURE.md`)**
+- [ ] **Tarefa 5.3: Revisão do que Já Foi Feito e Verificação Completa de Integridade do App**
+  - [ ] Revisão aprofundada de todas as funcionalidades recuperadas (Fases 1 a 5) comparando com a especificação original.
+  - [ ] Verificação ponta a ponta dos fluxos de comprovante:
+    - [ ] `AttachReceiptDialog` (captura, preview, inferência de dados e vinculação de cartões/categorias).
+    - [ ] `LaunchWizard` (auto-preenchimento dos steps, suporte a despesas e rendas parceladas).
+    - [ ] Auto-registro em background e banner PWA (`auto-registered-banner.tsx` e `share-target-page.tsx`).
+    - [ ] Memória de dígitos e aprendizado contínuo (`cardDigitsMapping` local e Supabase).
+  - [ ] Auditoria de integridade do app:
+    - [ ] Build de produção (`npm run build`).
+    - [ ] Validação estrita de ausência de regressões no ecossistema completo do app.
+
+- [ ] **Tarefa 5.4: Documentação Técnica de Arquitetura (`docs/ARCHITECTURE.md`)**
   - [ ] Sincronizar a Seção 14 de `docs/ARCHITECTURE.md` registrando a conclusão das fases.
 
 > [!TIP]
