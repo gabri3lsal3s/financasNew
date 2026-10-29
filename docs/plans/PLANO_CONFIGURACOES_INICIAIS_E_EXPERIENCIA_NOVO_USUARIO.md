@@ -219,7 +219,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 3
 
-- [ ] **Tarefa 3.1: Importações Necessárias em `AccountTab`**
+- [x] **Tarefa 3.1: Importações Necessárias em `AccountTab`**
   - **Arquivo:** `src/features/settings/components/tabs/account-tab.tsx`
   - Adicionar as importações:
     ```tsx
@@ -228,7 +228,7 @@ git push origin main
     import { useSignOut } from "@/hooks/use-sign-out";
     ```
 
-- [ ] **Tarefa 3.2: Estados e Handler de Encerramento de Sessão**
+- [x] **Tarefa 3.2: Estados e Handler de Encerramento de Sessão**
   - **Arquivo:** `src/features/settings/components/tabs/account-tab.tsx`
   - Adicionar dentro do componente `AccountTab`:
     ```tsx
@@ -258,7 +258,7 @@ git push origin main
     };
     ```
 
-- [ ] **Tarefa 3.3: Renderização do Card de Sessão e do Modal de Confirmação**
+- [x] **Tarefa 3.3: Renderização do Card de Sessão e do Modal de Confirmação**
   - **Arquivo:** `src/features/settings/components/tabs/account-tab.tsx`
   - Inserir logo após o Card 3 (Detalhes da Conta & SaaS) e antes do Card de Exclusão:
     ```tsx
@@ -344,11 +344,11 @@ git push origin main
     </Modal>
     ```
 
-- [ ] **Tarefa 3.4: Garantir que o Card de Exclusão Permaneça por Último**
+- [x] **Tarefa 3.4: Garantir que o Card de Exclusão Permaneça por Último**
   - **Arquivo:** `src/features/settings/components/tabs/account-tab.tsx`
   - Certificar-se de que `<DeleteAccountCard ... />` seja o **último elemento renderizado** dentro do `div.space-y-6`.
 
-- [ ] **Tarefa 3.5: Testes Automatizados da Aba Conta**
+- [x] **Tarefa 3.5: Testes Automatizados da Aba Conta**
   - **Arquivo:** `src/features/settings/components/tabs/account-tab.test.tsx`
   - Adicionar testes:
     1. Renderiza o card "Sessão & Desconexão" com botão "Sair da Conta".
@@ -358,10 +358,10 @@ git push origin main
     5. O card "Zona de Perigo" permanece como o último card.
 
 ### Portão de Qualidade da Fase 3
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/features/settings/components/tabs/account-tab.test.tsx`
-- [ ] **Commit & Push da Fase 3:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/features/settings/components/tabs/account-tab.test.tsx`
+- [x] **Commit & Push da Fase 3:**
   ```bash
   git add src/features/settings/components/tabs/account-tab.tsx src/features/settings/components/tabs/account-tab.test.tsx
   git commit -m "feat(account): adiciona encerramento de sessao com confirmacao e isola exclusao no fim da aba"

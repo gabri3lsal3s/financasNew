@@ -12,6 +12,7 @@ import {
   Sparkles,
   ExternalLink,
   Loader2,
+  LogOut,
 } from "lucide-react";
 import {
   Card,
@@ -23,8 +24,11 @@ import {
   Input,
   PasswordInput,
   Alert,
+  Modal,
+  ModalFooter,
 } from "@/components/ui";
 import { useAuth } from "@/hooks/use-auth";
+import { useSignOut } from "@/hooks/use-sign-out";
 import { useUserAccess, useUserSubscription, useUpdateProfile } from "@/state";
 import { updateUserPassword } from "@/data/auth";
 import { checkPasswordRequirements } from "@/domain/validation";
@@ -83,6 +87,32 @@ export function AccountTab() {
 
   // Estado do botão de cópia do ID
   const [copiedId, setCopiedId] = useState(false);
+
+  // Estado da desconexão / encerramento de sessão
+  const { signOut } = useSignOut();
+  const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    triggerSensory("action");
+    try {
+      await signOut();
+      pushToast({
+        title: "Sessão encerrada",
+        description: "Você foi desconectado com sucesso deste dispositivo.",
+        variant: "default",
+      });
+    } catch (err) {
+      triggerSensory("destructive");
+      pushToast({
+        title: "Não foi possível sair",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+      setIsSigningOut(false);
+    }
+  };
 
   const passwordRequirements = checkPasswordRequirements(newPassword);
   const isPasswordSufficient =
@@ -445,7 +475,90 @@ export function AccountTab() {
         </CardContent>
       </Card>
 
-      {/* Card 4: Zona de Perigo / Exclusão de Conta */}
+      {/* Card 4: Sessão & Desconexão */}
+      <Card className="border-border/80 bg-surface shadow-xs">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <LogOut className="size-4 text-muted-foreground" aria-hidden="true" />
+            <span>Sessão &amp; Desconexão</span>
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Encerre a sessão do aplicativo neste dispositivo com segurança. Seus dados permanecerão salvos na nuvem.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-xl border border-border/80 bg-muted/20">
+            <div className="space-y-0.5">
+              <span className="text-xs font-semibold text-foreground block">
+                Sair da conta neste dispositivo
+              </span>
+              <span className="text-[11px] text-muted-foreground block">
+                Você precisará inserir suas credenciais de acesso para entrar novamente.
+              </span>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsSignOutModalOpen(true)}
+              className="h-9 px-4 text-xs font-semibold rounded-xl shrink-0 cursor-pointer gap-1.5"
+            >
+              <LogOut className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <span>Sair da Conta</span>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Modal de Confirmação de Saída */}
+      <Modal
+        open={isSignOutModalOpen}
+        onOpenChange={(open) => {
+          if (!isSigningOut) setIsSignOutModalOpen(open);
+        }}
+        title="Encerrar Sessão"
+        description="Tem certeza de que deseja sair da sua conta neste dispositivo?"
+        size="sm"
+      >
+        <div className="space-y-4 pt-2">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Ao sair, suas informações e lançamentos continuam seguros na sua conta da nuvem. Você poderá se autenticar novamente a qualquer momento com seu e-mail e senha.
+          </p>
+          <ModalFooter className="mt-4 pt-3 border-t border-border/80">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsSignOutModalOpen(false)}
+              disabled={isSigningOut}
+              className="h-9 px-4 text-xs font-semibold rounded-xl cursor-pointer"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => {
+                void handleSignOut();
+              }}
+              disabled={isSigningOut}
+              className="h-9 px-4 text-xs font-semibold rounded-xl cursor-pointer gap-1.5"
+            >
+              {isSigningOut ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                  <span>Saindo…</span>
+                </>
+              ) : (
+                <>
+                  <LogOut className="size-3.5" aria-hidden="true" />
+                  <span>Confirmar Saída</span>
+                </>
+              )}
+            </Button>
+          </ModalFooter>
+        </div>
+      </Modal>
+
+      {/* Card 5: Zona de Perigo / Exclusão de Conta */}
       <DeleteAccountCard
         title="Zona de Perigo"
         description="Ações irreversíveis que afetam permanentemente sua conta e histórico financeiro."

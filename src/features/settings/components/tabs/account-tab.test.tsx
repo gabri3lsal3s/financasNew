@@ -251,6 +251,81 @@ describe("AccountTab", () => {
     );
   });
 
+  describe("Sessão & Desconexão", () => {
+    it("renderiza o card Sessão & Desconexão com botão Sair da Conta", () => {
+      renderAccountTab();
+
+      expect(screen.getByText("Sessão & Desconexão")).toBeInTheDocument();
+      expect(screen.getByText("Sair da conta neste dispositivo")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Sair da Conta" })).toBeInTheDocument();
+    });
+
+    it("abre o modal de confirmação ao clicar em Sair da Conta", async () => {
+      const user = userEvent.setup();
+      renderAccountTab();
+
+      const signOutButton = screen.getByRole("button", { name: "Sair da Conta" });
+      await user.click(signOutButton);
+
+      expect(screen.getByRole("heading", { name: "Encerrar Sessão" })).toBeInTheDocument();
+      expect(
+        screen.getByText("Tem certeza de que deseja sair da sua conta neste dispositivo?"),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Confirmar Saída" })).toBeInTheDocument();
+    });
+
+    it("fecha o modal sem chamar signOut ao clicar em Cancelar", async () => {
+      const user = userEvent.setup();
+      renderAccountTab();
+
+      const signOutButton = screen.getByRole("button", { name: "Sair da Conta" });
+      await user.click(signOutButton);
+
+      const cancelButton = screen.getByRole("button", { name: "Cancelar" });
+      await user.click(cancelButton);
+
+      await waitFor(() => {
+        expect(screen.queryByRole("heading", { name: "Encerrar Sessão" })).not.toBeInTheDocument();
+      });
+      expect(mockSignOut).not.toHaveBeenCalled();
+    });
+
+    it("chama signOut() e exibe toast de sucesso ao clicar em Confirmar Saída", async () => {
+      const user = userEvent.setup();
+      mockSignOut.mockResolvedValueOnce(undefined);
+
+      renderAccountTab();
+
+      const signOutButton = screen.getByRole("button", { name: "Sair da Conta" });
+      await user.click(signOutButton);
+
+      const confirmButton = screen.getByRole("button", { name: "Confirmar Saída" });
+      await user.click(confirmButton);
+
+      await waitFor(() => {
+        expect(mockSignOut).toHaveBeenCalledTimes(1);
+        expect(sensoryModule.triggerSensory).toHaveBeenCalledWith("action");
+        expect(toastModule.pushToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: "Sessão encerrada",
+            description: "Você foi desconectado com sucesso deste dispositivo.",
+          }),
+        );
+      });
+    });
+
+    it("permanece com o card Zona de Perigo como o último card da aba", () => {
+      const { container } = renderAccountTab();
+
+      const cards = container.querySelectorAll(".space-y-6 > div");
+      expect(cards.length).toBeGreaterThanOrEqual(2);
+      const lastCard = cards[cards.length - 1];
+      expect(lastCard).toHaveTextContent("Zona de Perigo");
+      expect(lastCard).toHaveTextContent("Excluir conta permanentemente");
+    });
+  });
+
   describe("Zona de Perigo e Exclusão de Conta", () => {
     it("renderiza o card Zona de Perigo com aviso e botão de exclusão", () => {
       renderAccountTab();
