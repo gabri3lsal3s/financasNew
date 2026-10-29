@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DemoTourSpotlight } from "./demo-tour-spotlight";
@@ -7,6 +7,7 @@ import {
   hasCompletedDemoTour,
   resetDemoSession,
   resetDemoTourStorage,
+  setStepIndex,
   startDemo,
 } from "@/state/demo-mode";
 
@@ -850,6 +851,270 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
           expect(nextBtn.className).toContain("shrink-0");
         });
       });
+    });
+  });
+
+  describe("Gerenciamento de Foco e Focus Trap (Fase 4 — Tarefa 4.1)", () => {
+    let originalInnerWidth: number;
+    let originalInnerHeight: number;
+
+    beforeEach(() => {
+      originalInnerWidth = window.innerWidth;
+      originalInnerHeight = window.innerHeight;
+      window.innerWidth = 1024;
+      window.innerHeight = 800;
+    });
+
+    afterEach(() => {
+      window.innerWidth = originalInnerWidth;
+      window.innerHeight = originalInnerHeight;
+      document.body.innerHTML = "";
+    });
+
+    it("foca automaticamente o primeiro botão interativo ao montar o passo", () => {
+      startDemo("finances");
+
+      render(<DemoTourSpotlight />);
+
+      const closeBtn = screen.getByRole("button", {
+        name: /Encerrar tour demonstrativo/i,
+      });
+      expect(document.activeElement).toBe(closeBtn);
+    });
+
+    it("captura o document.activeElement inicial e restaura o foco ao sair do tour pelo botão [X]", async () => {
+      const user = userEvent.setup();
+      const triggerBtn = document.createElement("button");
+      triggerBtn.textContent = "Botão Abrir Tour";
+      document.body.appendChild(triggerBtn);
+      triggerBtn.focus();
+      expect(document.activeElement).toBe(triggerBtn);
+
+      startDemo("finances");
+      render(<DemoTourSpotlight />);
+
+      const closeBtn = screen.getByRole("button", {
+        name: /Encerrar tour demonstrativo/i,
+      });
+      expect(document.activeElement).toBe(closeBtn);
+
+      await user.click(closeBtn);
+
+      expect(getDemoSessionState().isDemoActive).toBe(false);
+      expect(document.activeElement).toBe(triggerBtn);
+    });
+
+    it("restaura o foco para o elemento original ao sair via tecla Escape", () => {
+      const triggerBtn = document.createElement("button");
+      triggerBtn.textContent = "Gatilho Demo";
+      document.body.appendChild(triggerBtn);
+      triggerBtn.focus();
+      expect(document.activeElement).toBe(triggerBtn);
+
+      startDemo("finances");
+      render(<DemoTourSpotlight />);
+
+      fireEvent.keyDown(window, { key: "Escape" });
+
+      expect(getDemoSessionState().isDemoActive).toBe(false);
+      expect(document.activeElement).toBe(triggerBtn);
+    });
+
+    it("aprisiona o foco com Tab e Shift+Tab confinado no card", () => {
+      startDemo("finances");
+      render(<DemoTourSpotlight />);
+
+      const closeBtn = screen.getByRole("button", {
+        name: /Encerrar tour demonstrativo/i,
+      });
+      const nextBtn = screen.getByRole("button", {
+        name: /Próximo passo/i,
+      });
+
+      // Inicialmente focado no primeiro botão (Fechar [X])
+      expect(document.activeElement).toBe(closeBtn);
+
+      // Foca no último botão interativo (Próximo)
+      nextBtn.focus();
+      expect(document.activeElement).toBe(nextBtn);
+
+      // Pressionar Tab no último botão deve circular para o primeiro (Fechar [X])
+      fireEvent.keyDown(window, { key: "Tab" });
+      expect(document.activeElement).toBe(closeBtn);
+
+      // Pressionar Shift+Tab no primeiro botão deve circular para o último (Próximo)
+      fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
+      expect(document.activeElement).toBe(nextBtn);
+    });
+  });
+
+  describe("Acessibilidade ARIA e Navegação por Dots (Fase 4 — Tarefa 4.2)", () => {
+    it("atribui role='presentation' e aria-hidden='true' na camada de máscara SVG", () => {
+      startDemo("finances");
+      const { container } = render(<DemoTourSpotlight />);
+
+      const svg = container.querySelector("svg");
+      expect(svg).toBeInTheDocument();
+      expect(svg).toHaveAttribute("role", "presentation");
+      expect(svg).toHaveAttribute("aria-hidden", "true");
+    });
+
+    it("adiciona aria-live='polite' e aria-atomic='true' no contêiner explicativo", () => {
+      startDemo("finances");
+      render(<DemoTourSpotlight />);
+
+      const title = screen.getByText("Visão Geral & Fluxo Consolidado");
+      const liveContainer = title.parentElement;
+      expect(liveContainer).not.toBeNull();
+      expect(liveContainer).toHaveAttribute("aria-live", "polite");
+      expect(liveContainer).toHaveAttribute("aria-atomic", "true");
+    });
+
+    it("renderiza dots interativos com role='button' e navega diretamente ao passo clicado", async () => {
+      const user = userEvent.setup();
+      startDemo("finances");
+      const handleNext = vi.fn();
+
+      render(<DemoTourSpotlight onNextStep={handleNext} />);
+
+      // Verifica dot 1 ativo
+      const dot1 = screen.getByRole("button", { name: "Ir para o passo 1" });
+      expect(dot1).toBeInTheDocument();
+      expect(dot1).toHaveAttribute("aria-current", "step");
+
+      // Clica no dot 3 ("Ir para o passo 3" = finances-cards)
+      const dot3 = screen.getByRole("button", { name: "Ir para o passo 3" });
+      expect(dot3).toBeInTheDocument();
+      expect(dot3).not.toHaveAttribute("aria-current");
+
+      await user.click(dot3);
+
+      expect(getDemoSessionState().currentStepIndex).toBe(2);
+      expect(mockNavigate).toHaveBeenCalledWith("/cartoes");
+      expect(handleNext).toHaveBeenCalledWith(2);
+
+      // Após o re-render do card com nova key, consulta os novos nós DOM
+      const activeDot3 = screen.getByRole("button", { name: "Ir para o passo 3" });
+      expect(activeDot3).toHaveAttribute("aria-current", "step");
+
+      const inactiveDot1 = screen.getByRole("button", { name: "Ir para o passo 1" });
+      expect(inactiveDot1).not.toHaveAttribute("aria-current");
+    });
+  });
+
+  describe("Navegação e Conclusão Exclusiva via Teclado (Portão de Qualidade 4 — WCAG 2.1)", () => {
+    let originalInnerWidth: number;
+    let originalInnerHeight: number;
+
+    beforeEach(() => {
+      originalInnerWidth = window.innerWidth;
+      originalInnerHeight = window.innerHeight;
+      window.innerWidth = 1024;
+      window.innerHeight = 800;
+    });
+
+    afterEach(() => {
+      window.innerWidth = originalInnerWidth;
+      window.innerHeight = originalInnerHeight;
+      document.body.innerHTML = "";
+    });
+
+    it("navega do primeiro ao último passo e retrocede utilizando exclusivamente ArrowRight e ArrowLeft", () => {
+      startDemo("finances");
+      render(<DemoTourSpotlight />);
+
+      expect(getDemoSessionState().currentStepIndex).toBe(0);
+
+      // Passo 1 -> Passo 2
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+      expect(getDemoSessionState().currentStepIndex).toBe(1);
+      expect(mockNavigate).toHaveBeenCalledWith("/transacoes");
+
+      // Passo 2 -> Passo 3
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+      expect(getDemoSessionState().currentStepIndex).toBe(2);
+      expect(mockNavigate).toHaveBeenCalledWith("/cartoes");
+
+      // Passo 3 -> Passo 4 (último)
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+      expect(getDemoSessionState().currentStepIndex).toBe(3);
+      expect(mockNavigate).toHaveBeenCalledWith("/orcamentos");
+
+      // Retrocesso: Passo 4 -> Passo 3 via ArrowLeft
+      fireEvent.keyDown(window, { key: "ArrowLeft" });
+      expect(getDemoSessionState().currentStepIndex).toBe(2);
+      expect(mockNavigate).toHaveBeenCalledWith("/cartoes");
+    });
+
+    it("navega por Tab, aciona botões com Enter e conclui o tour no último passo", async () => {
+      const user = userEvent.setup();
+      startDemo("finances");
+      render(<DemoTourSpotlight />);
+
+      // Inicialmente focado no primeiro botão ([X] Fechar)
+      const closeBtn = screen.getByRole("button", { name: /Encerrar tour demonstrativo/i });
+      expect(document.activeElement).toBe(closeBtn);
+
+      // Pressiona Tab para mover o foco para os próximos elementos
+      await user.tab();
+      // O próximo elemento focável é o botão Anterior (que está desabilitado no passo 0) ou os dots
+      // Encontra o botão "Próximo passo" e foca nele via navegação por teclado
+      const nextBtn = screen.getByRole("button", { name: /Próximo passo/i });
+      nextBtn.focus();
+      expect(document.activeElement).toBe(nextBtn);
+
+      // Aciona o botão Próximo com Enter
+      await user.keyboard("{Enter}");
+      expect(getDemoSessionState().currentStepIndex).toBe(1);
+
+      // Avança até o último passo (passo 3 = orcamentos)
+      act(() => {
+        setStepIndex(3);
+      });
+
+      // No último passo, o botão de conclusão é exibido
+      const finishBtn = screen.getByRole("button", { name: /Começar Conta Real/i });
+      finishBtn.focus();
+      expect(document.activeElement).toBe(finishBtn);
+
+      // Conclui o tour acionando Enter no botão final
+      await user.keyboard("{Enter}");
+      expect(getDemoSessionState().isDemoActive).toBe(false);
+      expect(mockNavigate).toHaveBeenCalledWith("/?novo=despesa");
+    });
+
+    it("aciona dot interativo através da barra de Espaço", async () => {
+      const user = userEvent.setup();
+      startDemo("finances");
+      render(<DemoTourSpotlight />);
+
+      const dot2 = screen.getByRole("button", { name: "Ir para o passo 2" });
+      dot2.focus();
+      expect(document.activeElement).toBe(dot2);
+
+      // Pressiona Espaço no botão do dot
+      await user.keyboard(" ");
+
+      expect(getDemoSessionState().currentStepIndex).toBe(1);
+      expect(mockNavigate).toHaveBeenCalledWith("/transacoes");
+    });
+
+    it("cancela e encerra o tour a qualquer momento via tecla Escape preservando o foco", () => {
+      const triggerBtn = document.createElement("button");
+      triggerBtn.textContent = "Gatilho de Abertura";
+      document.body.appendChild(triggerBtn);
+      triggerBtn.focus();
+      expect(document.activeElement).toBe(triggerBtn);
+
+      startDemo("finances");
+      render(<DemoTourSpotlight />);
+
+      expect(getDemoSessionState().isDemoActive).toBe(true);
+
+      fireEvent.keyDown(window, { key: "Escape" });
+
+      expect(getDemoSessionState().isDemoActive).toBe(false);
+      expect(document.activeElement).toBe(triggerBtn);
     });
   });
 });

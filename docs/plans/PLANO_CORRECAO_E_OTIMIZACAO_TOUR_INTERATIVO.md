@@ -172,35 +172,35 @@ Itens da arquitetura base do tour implementados anteriormente e validados na bas
 **Meta:** Garantir navegação 100% acessível por teclado e leitor de tela, e marcar formalmente a depreciação de componentes legados.
 
 ### Checklist de Tarefas:
-- [ ] **4.1. Gerenciamento de Foco e Focus Trap (`src/components/modules/demo-tour-spotlight.tsx`)**
-  - [ ] Capturar e armazenar `document.activeElement` antes de abrir o tour.
-  - [ ] Focar automaticamente o primeiro botão interativo ao montar o passo.
-  - [ ] Implementar aprisionamento de foco (ciclo de Tab e Shift+Tab confinado no card).
-  - [ ] Restaurar foco para o elemento original ao sair do tour (`ESC` ou botão `[X]`).
+- [x] **4.1. Gerenciamento de Foco e Focus Trap (`src/components/modules/demo-tour-spotlight.tsx`)**
+  - [x] Capturar e armazenar `document.activeElement` antes de abrir o tour.
+  - [x] Focar automaticamente o primeiro botão interativo ao montar o passo.
+  - [x] Implementar aprisionamento de foco (ciclo de Tab e Shift+Tab confinado no card).
+  - [x] Restaurar foco para o elemento original ao sair do tour (`ESC` ou botão `[X]`).
 
-- [ ] **4.2. Acessibilidade ARIA e Navegação por Dots**
-  - [ ] Adicionar `aria-live="polite"` no contêiner de título/descrição do passo para sintetizadores de voz.
-  - [ ] Atribuir `role="presentation"` e `aria-hidden="true"` na camada de máscara SVG.
-  - [ ] Tornar os dots interativos: `role="button"` com `aria-label={`Ir para o passo ${idx + 1}`}` e suporte a clique direto.
+- [x] **4.2. Acessibilidade ARIA e Navegação por Dots**
+  - [x] Adicionar `aria-live="polite"` no contêiner de título/descrição do passo para sintetizadores de voz.
+  - [x] Atribuir `role="presentation"` e `aria-hidden="true"` na camada de máscara SVG.
+  - [x] Tornar os dots interativos: `role="button"` com `aria-label={`Ir para o passo ${idx + 1}`}` e suporte a clique direto.
 
-- [ ] **4.3. Governança e Limpeza de Componentes Legados**
-  - [ ] Marcar `@deprecated` no JSDoc de `src/components/modules/demo-tour-bar.tsx`.
-  - [ ] Confirmar que `src/components/layout/page-shell.tsx` não utiliza a barra superior redundante.
-  - [ ] Manter testes de `demo-tour-bar.test.tsx` verdes para integridade da suíte.
+- [x] **4.3. Governança e Limpeza de Componentes Legados**
+  - [x] Marcar `@deprecated` no JSDoc de `src/components/modules/demo-tour-bar.tsx`.
+  - [x] Confirmar que `src/components/layout/page-shell.tsx` não utiliza a barra superior redundante.
+  - [x] Manter testes de `demo-tour-bar.test.tsx` verdes para integridade da suíte.
 
-- [ ] **4.4. Auditoria Final Integrada**
-  - [ ] Executar suíte completa de testes (`npm test`).
-  - [ ] Atualizar status nos documentos de roadmap e histórico.
+- [x] **4.4. Auditoria Final Integrada**
+  - [x] Executar suíte completa de testes (`npm test`).
+  - [x] Atualizar status nos documentos de roadmap e histórico.
 
 ### Portão de Qualidade 4:
-- [ ] `npm run typecheck` aprovado.
-- [ ] `npm run lint` aprovado.
-- [ ] `npm test` 100% verde em todo o repositório.
-- [ ] Teste manual de A11y: Navegar e concluir o tour operando exclusivamente via teclado (Tab, Enter, Espaço, Setas ← →, Esc).
+- [x] `npm run typecheck` aprovado.
+- [x] `npm run lint` aprovado.
+- [x] `npm test` 100% verde em todo o repositório.
+- [x] Teste manual de A11y: Navegar e concluir o tour operando exclusivamente via teclado (Tab, Enter, Espaço, Setas ← →, Esc).
 
 ### Commit & Push 4:
-- [ ] Commit: `fix(tour/a11y): implementa focus trap, aria-live, navegacao por dots e deprecation de componentes`
-- [ ] Push para o repositório remoto.
+- [x] Commit: `fix(tour/a11y): implementa focus trap, aria-live, navegacao por dots e deprecation de componentes`
+- [x] Push para o repositório remoto.
 
 ---
 
@@ -219,7 +219,7 @@ Itens da arquitetura base do tour implementados anteriormente e validados na bas
 | `src/domain/demo-simulation/tour-steps.test.ts` | Modificação | [x] Concluído | Testes de asserção de rotas e integridade dos passos |
 | `src/app/router.tsx` | Modificação | [x] Concluído | Preservação de `location.search` em rotas legadas |
 | `src/features/transactions/pages/transaction-list-page.tsx` | Modificação | [x] Concluído | Inclusão do seletor contido de extrato |
-| `src/components/modules/demo-tour-spotlight.tsx` | Modificação | [ ] Pendente | Motor anti-colisão, layout responsivo, tokens e A11y |
-| `src/components/modules/demo-tour-spotlight.test.tsx` | Modificação | [ ] Pendente | Testes de anti-colisão, dots interativos e foco |
-| `src/components/modules/demo-tour-bar.tsx` | Documentação | [ ] Pendente | Marcação de depreciação e manutenção da tipagem |
+| `src/components/modules/demo-tour-spotlight.tsx` | Modificação | [x] Concluído | Motor anti-colisão, layout responsivo, tokens e A11y |
+| `src/components/modules/demo-tour-spotlight.test.tsx` | Modificação | [x] Concluído | Testes de anti-colisão, dots interativos e foco |
+| `src/components/modules/demo-tour-bar.tsx` | Documentação | [x] Concluído | Marcação de depreciação e manutenção da tipagem |
 | `docs/plans/PLANO_CORRECAO_E_OTIMIZACAO_TOUR_INTERATIVO.md` | Criação | [x] Concluído | Checklist canônica de acompanhamento |

@@ -704,8 +704,8 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
   - Em telas móveis (`< sm`), as 3 competências de fatura (*Anterior*, *Atual*, *Próxima*) renderizam em grade de 3 colunas compactas (`grid grid-cols-3 gap-2`) com rótulo uppercase (`ANTERIOR`, `ATUAL`, `PRÓXIMA`), mês abreviado (`Set.`, `Out.`, `Nov.`) e badge de status (`InvoiceStatusBadge` com `size="xs"`), garantindo affordance tátil clara.
   - No desktop (`>= sm`), preserva-se o layout horizontal compacto em pills (`role="group"`) alinhado às ações de fatura.
 
-### 14.29 Módulos de Onboarding, Boas-Vindas e Tour Guiado Interativo em Memória (Fase 3)
-- **Componentes:** `src/components/modules/welcome-modal.tsx`, `src/components/modules/demo-track-select-modal.tsx`, `src/components/modules/demo-tour-bar.tsx`, `src/components/modules/demo-exit-confirm-dialog.tsx`, `src/components/modules/onboarding-banner.tsx`.
+### 14.29 Módulos de Onboarding, Boas-Vindas e Tour Guiado Interativo em Memória (Fase 3 & v2.79)
+- **Componentes:** `src/components/modules/welcome-modal.tsx`, `src/components/modules/demo-track-select-modal.tsx`, `src/components/modules/demo-tour-spotlight.tsx`, `src/components/modules/demo-tour-bar.tsx` (legado), `src/components/modules/demo-exit-confirm-dialog.tsx`, `src/components/modules/onboarding-banner.tsx`.
 - **Arquitetura de Demonstração em Memória (Zero Injeção Física de Banco):**
   - Eliminação total do mecanismo legado de injeção e exclusão física de dados falsos (`demo-data.ts`, `use-demo-data.ts`).
   - O tour opera com sandbox puramente em memória no TanStack Query (`use-simulated-queries.ts`), fornecendo transições instantâneas (< 100ms) sem nenhum risco de poluição de dados reais no Supabase.
@@ -720,11 +720,15 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
     2. *Investimentos & Rebalanceamento* (3 passos, ícone `TrendingUp`, direciona para `/investimentos`).
   - Cards interativos com feedback tátil centralizado (`triggerSensory("action")`), badges padronizadas (`variant="muted" size="xs"` para contagem de passos; `variant="positive" size="xs"` com `Check` para trilhas já finalizadas).
   - Ação no rodapé: "Pular tour e ir para conta real".
-- **`DemoTourBar` (Barra Superior Guiada):**
-  - Fixada no topo da viewport (`sticky top-0 z-sticky`, `bg-surface/95 backdrop-blur-md border-b border-border/80 shadow-xs`).
-  - Acessibilidade semântica com `role="region"` e `aria-label="Barra guiada do modo de demonstração"`.
-  - Indicador de passo (`Passo X de Y`), título e descrição concisa do recurso em exibição.
-  - Controles ergonômicos de navegação: "Anterior" (desabilitado no 1º passo), "Próximo / Concluir Tour", "Trocar Trilha" (abre `DemoTrackSelectModal` sob demanda) e botão de destaque "Começar Minha Conta Real".
+- **`DemoTourSpotlight` (Apresentação Guiada Contextual via Spotlight & Popover Adaptativo — Canônico v2.79):**
+  - Backdrop SVG recortado em tela cheia (`rgba(0, 0, 0, 0.60)`) com cantos arredondados (`rx={16}`, `ry={16}`) e moldura iluminada no elemento alvo (`data-tour="..."`).
+  - Card popover responsivo com anti-colisão inteligente no mobile (< 768px): ancora no topo se o elemento estiver na metade inferior (`top > 45%` do viewport) e na base caso contrário, impedindo que o card encubra o conteúdo focado.
+  - Alinhamento de rolagem suave contextual (`block: "end"` para alvo inferior / card no topo; `block: "center"` para alvo superior / card na base).
+  - Posicionamento dinâmico no desktop com detecção de borda e clamp horizontal seguro de 16px.
+  - Acessibilidade WCAG 2.1: aprisionamento de foco (*focus trap* com Tab/Shift+Tab), `aria-live="polite"` com `aria-atomic="true"` no anúncio textual, máscara com `role="presentation"` e dots interativos (`role="button"`).
+  - Rodapé adaptativo para viewports estreitas (< 400px), com auto-fit de botões e rótulos concisos ("Começar").
+- **`DemoTourBar` (Barra Superior Guiada — Legado / `@deprecated`):**
+  - Mantida unicamente para compatibilidade de testes unitários; substituída integralmente pelo `DemoTourSpotlight` e pelo badge minimalista `Modo Simulação` no Header de `PageShell`.
 - **`DemoExitConfirmDialog` (Interceptação Segura de Ações Reais):**
   - Diálogo de confirmação com tamanho canônico `size="sm"` (`md:max-w-md` = 448px).
   - Intercepta cliques de criação de dados reais durante o tour com mensagem acolhedora e ações claras: "Continuar Explorando" e "Confirmar (Cadastrar Dado Real)".

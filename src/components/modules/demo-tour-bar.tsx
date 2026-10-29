@@ -13,6 +13,10 @@ import {
 } from "@/state/demo-mode";
 import { DemoTrackSelectModal } from "./demo-track-select-modal";
 
+/**
+ * @deprecated Substituído por `DemoTourSpotlight` (apresentação contextual orientada a spotlight).
+ * Mantido apenas para compatibilidade de testes unitários e histórico do projeto.
+ */
 export interface DemoTourBarProps {
   /** Callback opcional acionado quando o usuário avança para o próximo passo. */
   onNextStep?: (newStepIndex: number) => void;
@@ -30,6 +34,10 @@ export interface DemoTourBarProps {
  * Barra Guiada Superior do Tour Interativo (DemoTourBar).
  * Fixada na parte superior da viewport enquanto a simulação em memória está ativa,
  * exibindo o progresso do tour, didática de cada tela e controles de navegação contextual.
+ *
+ * @deprecated Substituído por `DemoTourSpotlight`. O layout de página agora utiliza exclusivamente
+ * `DemoTourSpotlight` em conjunto com o badge minimalista no header em `PageShell`, eliminando a
+ * compressão vertical da tela e a duplicação de controles de navegação.
  */
 export function DemoTourBar({
   onNextStep,

@@ -311,6 +311,12 @@ A plataforma adota arquitetura de simulação estritamente em memória (*in-memo
    - Os hooks canônicos do sistema (`useExpenses`, `useIncomes`, `useCategories`, `useCreditCards`, `useBudgets`, `usePortfolioAssets`, etc.) avaliam `isDemoActive`.
    - Quando `isDemoActive === true`: a consulta real ao Supabase é desativada (`enabled: ... && !isDemoActive`) e o resultado sintético em memória é retornado instantaneamente com `makeSimulatedQueryResult(mockData)`, garantindo `isLoading: false, isFetching: false, isError: false`.
    - Quando `isDemoActive === false`: as queries continuam operando de forma 100% transparente sobre os repositórios reais do banco de dados.
+4. **Camada de Apresentação Guiada & Motor Anti-Colisão (`components/modules/demo-tour-spotlight.tsx`):**
+   - Máscara SVG recortada (`rgba(0, 0, 0, 0.60)`) com cantos suaves `rx={16}` / `ry={16}` e moldura iluminada no elemento alvo via seletor semântico (`data-tour="..."`).
+   - Motor anti-colisão mobile que inverte a ancoragem entre topo e base (`top > 45%` do viewport) e alinha o scroll contextual (`block: "end"` para alvo inferior / card no topo; `block: "center"` para alvo superior / card na base).
+   - Posicionamento dinâmico desktop com clamp horizontal seguro de 16px e auto-flip vertical.
+   - Acessibilidade WCAG 2.1: aprisionamento de foco (*focus trap*), anúncio em leitores de tela (`aria-live="polite"`), dots interativos e tecla `Escape` para encerramento gracioso.
+   - Depreciação formal de componentes legados de barra superior (`DemoTourBar`), mantendo o layout de página desobstruído.
 
 ---
 

@@ -1,5 +1,31 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.79** registra a **Conclusão Integral do Plano de Correção e Otimização do Tour Interativo (`docs/plans/PLANO_CORRECAO_E_OTIMIZACAO_TOUR_INTERATIVO.md`)** (2026-10-29):
+> - **(1) Intercepção de Dados e Correção de Rotas (Fase 1)**:
+>   - Mocks de despesas e pagamentos sintéticos integrados a `use-simulated-queries.ts`;
+>   - Chaveamento do modo demo em `use-card-payments.ts` e `use-overview.ts` eliminando o erro de sintaxe UUID no Supabase;
+>   - Correção das rotas de Investimentos (`/investments?tab=summary`, `/investments?tab=targets`, `/investments?tab=rebalance`);
+>   - Preservação de query strings (`location.search`) em rotas legadas em `router.tsx` e inclusão do seletor contido `transactions-statement-container` em `TransactionListPage`.
+> - **(2) Motor Anti-Colisão Mobile & Posicionamento Dinâmico (Fase 2)**:
+>   - Algoritmo de inversão dinâmica de ancoragem mobile: se o elemento alvo estiver na metade inferior (`top > 45%` da viewport), o card ancora no topo; caso contrário, na base;
+>   - Rolagem suave com alinhamento contextual (`block: "end"` para alvo inferior / card no topo; `block: "center"` para alvo superior / card na base);
+>   - Posicionamento dinâmico desktop com auto-flip vertical e clamp horizontal estrito com margem de segurança de 16px;
+>   - Observador de redimensionamento `ResizeObserver` com desconexão reativa no desmonte.
+> - **(3) Ergonomia Visual, Design System & Responsividade (Fase 3)**:
+>   - Rodapé adaptativo para telas pequenas (< 400px), ocultando rótulo "Anterior" (mantendo ícone) e condensando rótulo de conclusão para "Começar";
+>   - Hierarquia semântica de cores conforme Regra 13 do AGENTS.md (badge de passo com variante `muted`, ícone `Sparkles` em tom neutro `text-muted-foreground`);
+>   - Backdrop escurecido equilibrado (`rgba(0, 0, 0, 0.60)`), cantos suaves `rx={16}` / `ry={16}` e borda pontilhada suave com pulso de 3s;
+>   - Transições fluidas com fade-in de 200ms na troca de etapas.
+> - **(4) Acessibilidade WCAG, Focus Trap e Governança (Fase 4)**:
+>   - Gerenciamento de foco completo: armazenamento de `document.activeElement`, foco automático no primeiro botão interativo ao montar e restauração do foco original ao encerrar via `[X]` ou `Escape`;
+>   - Focus trap confinado no card popover gerenciando ciclos de `Tab` e `Shift+Tab`;
+>   - Anúncio dinâmico em sintetizadores de voz via `aria-live="polite"` e `aria-atomic="true"`;
+>   - Camada SVG com `role="presentation"` e `aria-hidden="true"`;
+>   - Dots de progresso interativos (`role="button"`, `aria-label`, `aria-current="step"`) com navegação direta por clique e feedback háptico;
+>   - Marcação formal `@deprecated` no JSDoc de `DemoTourBar` e confirmação da ausência de componentes redundantes no `PageShell`.
+> - **(5) Bateria de Testes Vitest & Portões de Qualidade 100% Verdes**:
+>   - Suíte completa de 452 arquivos de teste e 4159 testes aprovados sem falhas; typecheck e lint sem nenhuma violação.
+>
 > **v2.78** registra a **Conclusão Integral do Plano de Refatoração do Tour Interativo & Experiência de Foco (Spotlight) (`docs/plans/PLANO_REFATORACAO_TOUR_SPOTLIGHT_E_EXPERIENCIA_GUIADA.md`)** (2026-10-24):
 > - **(1) Eliminação Total da Barra Invasiva sob o Header**:
 >   - Remoção de `DemoTourBar` no layout do `PageShell`, liberando 100% da viewport e eliminando ruídos visuais e duplicações de controles;

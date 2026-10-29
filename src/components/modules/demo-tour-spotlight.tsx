@@ -10,6 +10,7 @@ import {
   goToNextStep,
   goToPrevStep,
   markTourCompleted,
+  setStepIndex,
   useDemoSession,
 } from "@/state/demo-mode";
 
@@ -68,6 +69,50 @@ export function DemoTourSpotlight({
   const [prevStepIndex, setPrevStepIndex] = useState<number>(currentStepIndex);
   const [isPulsing, setIsPulsing] = useState<boolean>(true);
   const cardRef = useRef<HTMLDivElement>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
+
+  // Captura e armazena o elemento com foco antes de abrir o tour (Fase 4 — Tarefa 4.1)
+  useEffect(() => {
+    if (!isDemoActive) {
+      previousActiveElementRef.current = null;
+      return;
+    }
+
+    if (typeof document !== "undefined" && !previousActiveElementRef.current) {
+      if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) {
+        previousActiveElementRef.current = document.activeElement;
+      }
+    }
+  }, [isDemoActive]);
+
+  // Foca automaticamente o primeiro botão interativo ao montar o passo (Fase 4 — Tarefa 4.1)
+  useEffect(() => {
+    if (!isDemoActive || !cardRef.current) return;
+
+    const focusables = cardRef.current.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    if (focusables.length > 0) {
+      focusables[0]?.focus();
+    }
+  }, [currentStep?.id, isDemoActive]);
+
+  // Restaura o foco para o elemento original ao sair do tour (Fase 4 — Tarefa 4.1)
+  const restoreFocus = useCallback(() => {
+    if (previousActiveElementRef.current && typeof previousActiveElementRef.current.focus === "function") {
+      if (previousActiveElementRef.current.isConnected) {
+        previousActiveElementRef.current.focus();
+      }
+      previousActiveElementRef.current = null;
+    }
+  }, []);
+
+  // Garante a restauração do foco caso o componente seja desmontado (Fase 4 — Tarefa 4.1)
+  useEffect(() => {
+    return () => {
+      restoreFocus();
+    };
+  }, [restoreFocus]);
 
   // Reinicia o pulso ao trocar de etapa durante o render (padrão oficial React para ajuste de estado por prop/store)
   if (prevStepIndex !== currentStepIndex) {
@@ -99,16 +144,18 @@ export function DemoTourSpotlight({
     return () => observer.disconnect();
   }, [currentStep?.id]);
 
-  // Encerramento limpo sem fricção
+  // Encerramento limpo sem fricção com restauração de foco (Fase 4 — Tarefa 4.1)
   const handleClose = useCallback(() => {
     triggerSensory("action");
+    restoreFocus();
     endDemo();
     onClose?.();
-  }, [onClose]);
+  }, [onClose, restoreFocus]);
 
-  // Hand-off direto para o primeiro uso na conta real
+  // Hand-off direto para o primeiro uso na conta real com restauração de foco (Fase 4 — Tarefa 4.1)
   const handleStartRealAccount = useCallback(() => {
     triggerSensory("action");
+    restoreFocus();
     if (activeTrack) {
       markTourCompleted(activeTrack);
     }
@@ -119,7 +166,7 @@ export function DemoTourSpotlight({
       const destination = getTourHandoffDestination(activeTrack, location.pathname);
       navigate(destination);
     }
-  }, [activeTrack, location.pathname, navigate, onClose]);
+  }, [activeTrack, location.pathname, navigate, onClose, restoreFocus]);
 
   const handleNext = useCallback(() => {
     if (!isLastStep) {
@@ -148,6 +195,22 @@ export function DemoTourSpotlight({
       onPrevStep?.(prevIndex);
     }
   }, [currentStepIndex, isFirstStep, navigate, onPrevStep, steps]);
+
+  // Navegação direta por dots interativos (Fase 4 — Tarefa 4.2)
+  const handleGoToStep = useCallback((index: number) => {
+    if (index === currentStepIndex || index < 0 || index >= steps.length) return;
+    triggerSensory("selection");
+    setStepIndex(index);
+    const targetStep = steps[index];
+    if (targetStep) {
+      navigate(targetStep.targetRoute);
+    }
+    if (index > currentStepIndex) {
+      onNextStep?.(index);
+    } else {
+      onPrevStep?.(index);
+    }
+  }, [currentStepIndex, navigate, onNextStep, onPrevStep, steps]);
 
   // Atualização das dimensões e escuta de redimensionamento
   const updateTargetRect = useCallback(() => {
@@ -243,7 +306,7 @@ export function DemoTourSpotlight({
     };
   }, [isDemoActive, updateTargetRect]);
 
-  // Suporte a atalhos de teclado (Escape para sair, setas para navegar)
+  // Suporte a atalhos de teclado e Focus Trap (Fase 4 — Tarefa 4.1)
   useEffect(() => {
     if (!isDemoActive) return;
 
@@ -257,6 +320,31 @@ export function DemoTourSpotlight({
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
         handlePrev();
+      } else if (e.key === "Tab") {
+        if (!cardRef.current) return;
+        const focusableElements = cardRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+
+        if (focusableElements.length === 0) {
+          e.preventDefault();
+          return;
+        }
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement || !cardRef.current.contains(document.activeElement)) {
+            e.preventDefault();
+            lastElement?.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement || !cardRef.current.contains(document.activeElement)) {
+            e.preventDefault();
+            firstElement?.focus();
+          }
+        }
       }
     };
 
@@ -340,10 +428,11 @@ export function DemoTourSpotlight({
     >
       {/* Máscara SVG recortada com corte iluminado */}
       <svg
+        role="presentation"
+        aria-hidden="true"
         className="fixed inset-0 size-full pointer-events-auto"
         width="100%"
         height="100%"
-        aria-hidden="true"
       >
         <defs>
           <mask id="demo-tour-spotlight-mask">
@@ -444,8 +533,8 @@ export function DemoTourSpotlight({
           </Button>
         </div>
 
-        {/* Conteúdo Explicativo */}
-        <div className="mt-2.5 space-y-1">
+        {/* Conteúdo Explicativo com anúncio acessível para leitores de tela (Fase 4 — Tarefa 4.2) */}
+        <div className="mt-2.5 space-y-1" aria-live="polite" aria-atomic="true">
           <h3 className="text-sm font-semibold text-foreground tracking-tight">
             {currentStep.title}
           </h3>
@@ -469,18 +558,31 @@ export function DemoTourSpotlight({
             <span className="hidden sm:inline">Anterior</span>
           </Button>
 
-          <div className="flex items-center justify-center gap-1.5 shrink-0" aria-hidden="true">
-            {steps.map((step, idx) => (
-              <span
-                key={step.id}
-                className={cn(
-                  "size-1.5 rounded-full transition-colors",
-                  idx === currentStepIndex
-                    ? "bg-primary w-3.5"
-                    : "bg-muted-foreground/30",
-                )}
-              />
-            ))}
+          {/* Indicadores de progresso interativos com suporte a clique e A11y (Fase 4 — Tarefa 4.2) */}
+          <div
+            role="tablist"
+            aria-label="Progresso do tour demonstrativo"
+            className="flex items-center justify-center gap-1.5 shrink-0"
+          >
+            {steps.map((step, idx) => {
+              const isActive = idx === currentStepIndex;
+              return (
+                <button
+                  key={step.id}
+                  type="button"
+                  role="button"
+                  onClick={() => handleGoToStep(idx)}
+                  aria-label={`Ir para o passo ${idx + 1}`}
+                  aria-current={isActive ? "step" : undefined}
+                  className={cn(
+                    "h-1.5 rounded-full transition-all duration-200 cursor-pointer p-0 border-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                    isActive
+                      ? "bg-primary w-3.5"
+                      : "bg-muted-foreground/30 hover:bg-muted-foreground/50 w-1.5",
+                  )}
+                />
+              );
+            })}
           </div>
 
           {isLastStep ? (
