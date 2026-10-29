@@ -14,10 +14,18 @@ import {
   useOnboardingCounts,
   usePortfolioAssets,
   usePortfolioSnapshots,
+  useCardExpenses,
+  useCardPayments,
+  useAllCardExpenses,
+  useAllCardPayments,
   useSimulatedExpenses,
   useSimulatedIncomes,
   useSimulatedCategories,
   useSimulatedCreditCards,
+  useSimulatedCardExpenses,
+  useSimulatedCardPayments,
+  useSimulatedAllCardExpenses,
+  useSimulatedAllCardPayments,
   useSimulatedBudgets,
   useSimulatedPortfolioAssets,
 } from "@/state";
@@ -29,11 +37,22 @@ const mockListCategories = vi.fn().mockResolvedValue([]);
 const mockListCreditCards = vi.fn().mockResolvedValue([]);
 const mockListBudgets = vi.fn().mockResolvedValue([]);
 const mockListPortfolioAssets = vi.fn().mockResolvedValue([]);
+const mockListExpensesByCard = vi.fn().mockResolvedValue([]);
+const mockListAllCardExpenses = vi.fn().mockResolvedValue([]);
+const mockListCardPayments = vi.fn().mockResolvedValue([]);
+const mockListAllCardPayments = vi.fn().mockResolvedValue([]);
 
 vi.mock("@/data/repositories/expenses", () => ({
   listExpensesByMonth: (...args: unknown[]) => mockListExpensesByMonth(...args),
   listExpensesByRange: vi.fn().mockResolvedValue([]),
+  listExpensesByCard: (...args: unknown[]) => mockListExpensesByCard(...args),
+  listAllCardExpenses: (...args: unknown[]) => mockListAllCardExpenses(...args),
   getExpense: vi.fn().mockResolvedValue(null),
+}));
+
+vi.mock("@/data/repositories/card-payments", () => ({
+  listCardPayments: (...args: unknown[]) => mockListCardPayments(...args),
+  listAllCardPayments: (...args: unknown[]) => mockListAllCardPayments(...args),
 }));
 
 vi.mock("@/data/repositories/incomes", () => ({
@@ -134,6 +153,50 @@ describe("use-simulated-queries — Interceptação Segura de Queries no TanStac
 
       expect(cards.current.data).toHaveLength(1);
       expect(budgets.current.data?.length).toBeGreaterThan(0);
+    });
+
+    it("useSimulatedCardExpenses e useSimulatedCardPayments filtram corretamente por cardId", () => {
+      // Quando cardId for null, deve retornar array vazio
+      const { result: emptyExpenses } = renderHook(() => useSimulatedCardExpenses(null), {
+        wrapper: createWrapper(),
+      });
+      const { result: emptyPayments } = renderHook(() => useSimulatedCardPayments(null), {
+        wrapper: createWrapper(),
+      });
+
+      expect(emptyExpenses.current.data).toEqual([]);
+      expect(emptyPayments.current.data).toEqual([]);
+
+      // Quando passar o id do cartão demo ("card-demo-black")
+      const { result: cardExpenses } = renderHook(
+        () => useSimulatedCardExpenses("card-demo-black"),
+        { wrapper: createWrapper() },
+      );
+      const { result: cardPayments } = renderHook(
+        () => useSimulatedCardPayments("card-demo-black"),
+        { wrapper: createWrapper() },
+      );
+
+      expect(cardExpenses.current.data?.length).toBeGreaterThan(0);
+      expect(cardExpenses.current.data?.every((e) => e.card_id === "card-demo-black")).toBe(true);
+
+      expect(cardPayments.current.data?.length).toBeGreaterThan(0);
+      expect(cardPayments.current.data?.every((p) => p.card_id === "card-demo-black")).toBe(true);
+    });
+
+    it("useSimulatedAllCardExpenses e useSimulatedAllCardPayments retornam visões consolidadas", () => {
+      const { result: allCardExp } = renderHook(() => useSimulatedAllCardExpenses(), {
+        wrapper: createWrapper(),
+      });
+      const { result: allCardPay } = renderHook(() => useSimulatedAllCardPayments(), {
+        wrapper: createWrapper(),
+      });
+
+      expect(allCardExp.current.data?.length).toBeGreaterThan(0);
+      expect(allCardExp.current.data?.every((e) => e.card_id !== null)).toBe(true);
+
+      expect(allCardPay.current.data?.length).toBeGreaterThan(0);
+      expect(allCardPay.current.data?.every((p) => p.amount > 0)).toBe(true);
     });
 
     it("useSimulatedPortfolioAssets retorna ativos diversificados", () => {
@@ -262,6 +325,70 @@ describe("use-simulated-queries — Interceptação Segura de Queries no TanStac
         transactions: 12,
         notificationsEnabled: false,
       });
+    });
+
+    it("useCardExpenses, useCardPayments, useAllCardExpenses e useAllCardPayments retornam repositório real quando isDemoActive === false", async () => {
+      mockListExpensesByCard.mockResolvedValueOnce([
+        { id: "real-exp-card", value: 50, card_id: "card-real-1" },
+      ]);
+      mockListCardPayments.mockResolvedValueOnce([
+        { id: "real-pay-1", amount: 50, card_id: "card-real-1" },
+      ]);
+      mockListAllCardExpenses.mockResolvedValueOnce([]);
+      mockListAllCardPayments.mockResolvedValueOnce([]);
+
+      renderHook(() => useCardExpenses("card-real-1"), {
+        wrapper: createWrapper(),
+      });
+      renderHook(() => useCardPayments("card-real-1"), {
+        wrapper: createWrapper(),
+      });
+      renderHook(() => useAllCardExpenses(), {
+        wrapper: createWrapper(),
+      });
+      renderHook(() => useAllCardPayments(), {
+        wrapper: createWrapper(),
+      });
+
+      expect(mockListExpensesByCard).toHaveBeenCalledWith("card-real-1");
+      expect(mockListCardPayments).toHaveBeenCalledWith("card-real-1");
+      expect(mockListAllCardExpenses).toHaveBeenCalled();
+      expect(mockListAllCardPayments).toHaveBeenCalled();
+    });
+
+    it("useCardExpenses, useCardPayments, useAllCardExpenses e useAllCardPayments interceptam e retornam mocks sem chamar banco quando isDemoActive === true", () => {
+      act(() => {
+        startDemo("finances");
+      });
+
+      const { result: cardExp } = renderHook(
+        () => useCardExpenses("card-demo-black"),
+        { wrapper: createWrapper() },
+      );
+      const { result: cardPay } = renderHook(
+        () => useCardPayments("card-demo-black"),
+        { wrapper: createWrapper() },
+      );
+      const { result: allExp } = renderHook(() => useAllCardExpenses(), {
+        wrapper: createWrapper(),
+      });
+      const { result: allPay } = renderHook(() => useAllCardPayments(), {
+        wrapper: createWrapper(),
+      });
+
+      expect(mockListExpensesByCard).not.toHaveBeenCalled();
+      expect(mockListCardPayments).not.toHaveBeenCalled();
+      expect(mockListAllCardExpenses).not.toHaveBeenCalled();
+      expect(mockListAllCardPayments).not.toHaveBeenCalled();
+
+      expect(cardExp.current.data?.length).toBeGreaterThan(0);
+      expect(cardExp.current.data?.[0]?.card_id).toBe("card-demo-black");
+
+      expect(cardPay.current.data?.length).toBeGreaterThan(0);
+      expect(cardPay.current.data?.[0]?.card_id).toBe("card-demo-black");
+
+      expect(allExp.current.data?.length).toBeGreaterThan(0);
+      expect(allPay.current.data?.length).toBeGreaterThan(0);
     });
 
     it("transição em tempo de execução: desativar demo restaura reatividade para as queries reais", () => {

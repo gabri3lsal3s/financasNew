@@ -217,6 +217,14 @@ function NativeIntegrationsHandler() {
   return null;
 }
 
+/**
+ * Redireciona para rota de destino preservando parâmetros de busca (query strings).
+ */
+function RedirectWithSearch({ to }: { to: string }) {
+  const location = useLocation();
+  return <Navigate to={`${to}${location.search}`} replace />;
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
@@ -259,9 +267,9 @@ export function AppRouter() {
             <Route element={<RequireActiveAccount />}>
               {/* Redirecionamento de compatibilidade para atalhos PWA / links legados / rotas unificadas */}
               <Route path="/transacoes/novo" element={<Navigate to="/transacoes?novo=transacao" replace />} />
-              <Route path="/categorias" element={<Navigate to="/orcamentos" replace />} />
-              <Route path="/investimentos" element={<Navigate to="/investments" replace />} />
-              <Route path="/carteira" element={<Navigate to="/investments" replace />} />
+              <Route path="/categorias" element={<RedirectWithSearch to="/orcamentos" />} />
+              <Route path="/investimentos" element={<RedirectWithSearch to="/investments" />} />
+              <Route path="/carteira" element={<RedirectWithSearch to="/investments" />} />
 
               <Route element={<PageShell />}>
                 <Route path="/share-target" element={<ShareTargetPage />} />

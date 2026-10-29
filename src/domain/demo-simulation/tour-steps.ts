@@ -24,8 +24,8 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       description:
         "Acompanhe receitas e despesas organizadas por categoria, com suporte a parcelas e conciliação.",
       targetRoute: "/transacoes",
-      targetSelector: '[data-tour="transactions-content"]',
-      preferredPlacement: "top",
+      targetSelector: '[data-tour="transactions-feed-card"]',
+      preferredPlacement: "bottom",
       spotlightPadding: 10,
       badgeLabel: "Passo 2 de 4",
       actionLabel: "Ver Transações",
@@ -67,7 +67,7 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       title: "Visão Patrimonial Consolidada",
       description:
         "Acompanhe a distribuição global do seu patrimônio entre renda fixa, ações, fundos imobiliários e cripto.",
-      targetRoute: "/investimentos",
+      targetRoute: "/investments",
       targetSelector: '[data-tour="investments-summary"]',
       preferredPlacement: "bottom",
       spotlightPadding: 10,
@@ -81,7 +81,7 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       title: "Metas de Alocação por Classe & Ativo",
       description:
         "Defina os percentuais ideais para cada classe e ativo para guiar seus aportes sem viés emocional.",
-      targetRoute: "/investimentos?tab=metas",
+      targetRoute: "/investments?tab=metas",
       targetSelector: '[data-tour="investments-targets"]',
       preferredPlacement: "top",
       spotlightPadding: 10,
@@ -95,7 +95,7 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       title: "Calculadora de Aporte Inteligente",
       description:
         "Informe quanto deseja investir e o motor matemático calcula exatamente onde alocar para rebalancear.",
-      targetRoute: "/investimentos?tab=aporte",
+      targetRoute: "/investments?tab=aporte",
       targetSelector: '[data-tour="investments-rebalance"]',
       preferredPlacement: "top",
       spotlightPadding: 10,

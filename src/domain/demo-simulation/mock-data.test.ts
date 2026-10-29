@@ -73,6 +73,13 @@ describe("demo-simulation — Datasets Puros e Dinâmicos em Memória (Fase 2)",
         expect(b.month).toBe(nowMonth);
         expect(b.limit).toBeGreaterThan(0);
       }
+
+      // Validação de pagamentos de cartão simulados
+      expect(dataset.cardPayments.length).toBeGreaterThan(0);
+      for (const p of dataset.cardPayments) {
+        expect(p.amount).toBeGreaterThan(0);
+        expect(p.card_id).toBe("card-demo-black");
+      }
     });
 
     it("suporta mês de referência arbitrário mantendo integridade temporal", () => {

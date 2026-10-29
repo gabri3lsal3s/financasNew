@@ -442,9 +442,10 @@ export function TransactionListPage() {
         />
       ) : (
         <div className="flex flex-col gap-3.5 sm:gap-4" data-tour="transactions-content">
-          {feedGroups.map((group) => (
+          {feedGroups.map((group, index) => (
             <section
               key={group.date}
+              data-tour={index === 0 ? "transactions-feed-card" : undefined}
               aria-label={`Lançamentos de ${formatDateBR(group.date)}`}
               className="rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden"
             >

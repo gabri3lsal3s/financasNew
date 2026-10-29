@@ -36,7 +36,7 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
 
     it("mapeia os seletores corretos para cada etapa de finanças", () => {
       expect(steps[0]?.targetSelector).toBe('[data-tour="overview-kpis"]');
-      expect(steps[1]?.targetSelector).toBe('[data-tour="transactions-content"]');
+      expect(steps[1]?.targetSelector).toBe('[data-tour="transactions-feed-card"]');
       expect(steps[2]?.targetSelector).toBe('[data-tour="cards-content"]');
       expect(steps[3]?.targetSelector).toBe('[data-tour="budgets-content"]');
     });
@@ -54,12 +54,18 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
 
     it("todos os passos definem targetRoute e targetSelector válidos", () => {
       for (const step of steps) {
-        expect(step.targetRoute).toMatch(/^\/investimentos/);
+        expect(step.targetRoute).toMatch(/^\/investments/);
         expect(step.targetSelector).toBeDefined();
         expect(step.targetSelector).toMatch(/^\[data-tour="[\w-]+"]$/);
         expect(step.title.trim().length).toBeGreaterThan(0);
         expect(step.description.trim().length).toBeGreaterThan(0);
       }
+    });
+
+    it("utiliza as rotas canônicas de investimentos com suas respectivas abas", () => {
+      expect(steps[0]?.targetRoute).toBe("/investments");
+      expect(steps[1]?.targetRoute).toBe("/investments?tab=metas");
+      expect(steps[2]?.targetRoute).toBe("/investments?tab=aporte");
     });
 
     it("mapeia os seletores corretos para cada etapa de investimentos", () => {

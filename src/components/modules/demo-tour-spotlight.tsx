@@ -64,7 +64,40 @@ export function DemoTourSpotlight({
   const [isMobile, setIsMobile] = useState<boolean>(() =>
     typeof window !== "undefined" ? window.innerWidth < 768 : false,
   );
+  const [measuredCardHeight, setMeasuredCardHeight] = useState<number>(220);
+  const [prevStepIndex, setPrevStepIndex] = useState<number>(currentStepIndex);
+  const [isPulsing, setIsPulsing] = useState<boolean>(true);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // Reinicia o pulso ao trocar de etapa durante o render (padrão oficial React para ajuste de estado por prop/store)
+  if (prevStepIndex !== currentStepIndex) {
+    setPrevStepIndex(currentStepIndex);
+    setIsPulsing(true);
+  }
+
+  // Animação de pulso da borda cessa suavemente após 3 segundos (Fase 3 — Tarefa 3.3)
+  useEffect(() => {
+    const pulseTimer = setTimeout(() => {
+      setIsPulsing(false);
+    }, 3000);
+
+    return () => clearTimeout(pulseTimer);
+  }, [currentStepIndex]);
+
+  // Monitora a altura real do card popover no desktop (Fase 2 — Tarefa 2.3)
+  useEffect(() => {
+    if (!cardRef.current || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+        if (height > 0) {
+          setMeasuredCardHeight(height);
+        }
+      }
+    });
+    observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, [currentStep?.id]);
 
   // Encerramento limpo sem fricção
   const handleClose = useCallback(() => {
@@ -140,29 +173,48 @@ export function DemoTourSpotlight({
       y: Math.max(0, elementRect.top - padding),
       width: Math.min(window.innerWidth, elementRect.width + padding * 2),
       height: Math.min(window.innerHeight, elementRect.height + padding * 2),
-      borderRadius: 14,
+      borderRadius: 16,
     });
   }, [currentStep]);
 
-  // Scroll suave para centralizar o alvo na tela ao trocar de passo
+  // Scroll suave contextual e observação de redimensionamento do alvo (Fase 2 — Tarefa 2.2)
   useEffect(() => {
     if (!isDemoActive || !currentStep?.targetSelector) return;
 
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let resizeObserver: ResizeObserver | undefined;
 
     const attemptScrollAndMeasure = (attemptsLeft: number) => {
-      if (attemptsLeft <= 0) {
-        updateTargetRect();
-        return;
-      }
-
       const element = document.querySelector(currentStep.targetSelector ?? "");
       if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "center" });
-        // Pequena pausa para aguardar a rolagem finalizar antes de medir as coordenadas
+        const isMobileScreen = typeof window !== "undefined" && window.innerWidth < 768;
+        let blockAlignment: ScrollLogicalPosition = "center";
+
+        if (isMobileScreen) {
+          const elRect = element.getBoundingClientRect();
+          const elCenterY = elRect.top + elRect.height / 2;
+          const willAnchorTop = elCenterY > window.innerHeight * 0.45;
+          // Se o popover ancorar no topo, alinha o alvo com block: "end"
+          // Se o popover ancorar na base, alinha com block: "center"
+          blockAlignment = willAnchorTop ? "end" : "center";
+        }
+
+        element.scrollIntoView({ behavior: "smooth", block: blockAlignment });
+
+        // Acopla ResizeObserver para recalcular dimensões após carregamento assíncrono de dados
+        if (typeof ResizeObserver !== "undefined") {
+          resizeObserver = new ResizeObserver(() => {
+            updateTargetRect();
+          });
+          resizeObserver.observe(element);
+        }
+
+        // Aguarda a transição de rolagem para registrar as coordenadas finais
         timer = setTimeout(updateTargetRect, 200);
-      } else {
+      } else if (attemptsLeft > 0) {
         timer = setTimeout(() => attemptScrollAndMeasure(attemptsLeft - 1), 100);
+      } else {
+        updateTargetRect();
       }
     };
 
@@ -170,6 +222,7 @@ export function DemoTourSpotlight({
 
     return () => {
       if (timer) clearTimeout(timer);
+      if (resizeObserver) resizeObserver.disconnect();
     };
   }, [currentStep, isDemoActive, updateTargetRect]);
 
@@ -211,6 +264,35 @@ export function DemoTourSpotlight({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleClose, handleNext, handlePrev, isDemoActive]);
 
+  // Algoritmo anti-colisão no mobile (Fase 2 — Tarefa 2.1):
+  // Se o centro vertical do elemento alvo estiver na metade inferior (> 45% da viewport),
+  // ancoramos o popover no TOPO para não encobrir o elemento em foco.
+  // Caso contrário, ancoramos na BASE.
+  const isAnchorTopMobile = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    if (!rect) {
+      return currentStep?.preferredPlacement === "top";
+    }
+    const elementCenterY = rect.y + rect.height / 2;
+    return elementCenterY > window.innerHeight * 0.45;
+  }, [currentStep?.preferredPlacement, rect]);
+
+  // Colocação dinâmica no desktop (Fase 2 — Tarefa 2.3):
+  // Avalia o espaço disponível real acima e abaixo para inverter dinamicamente
+  // entre "top" e "bottom", evitando que o card transborde a viewport.
+  const desktopPlacement = useMemo<"top" | "bottom">(() => {
+    if (!rect || typeof window === "undefined") return "bottom";
+    const cardHeight = measuredCardHeight;
+    const spaceBelow = window.innerHeight - (rect.y + rect.height);
+    const spaceAbove = rect.y;
+
+    if (currentStep?.preferredPlacement === "top") {
+      return spaceAbove >= cardHeight + 20 ? "top" : spaceBelow >= spaceAbove ? "bottom" : "top";
+    }
+
+    return spaceBelow < cardHeight + 20 && spaceAbove > spaceBelow ? "top" : "bottom";
+  }, [currentStep?.preferredPlacement, measuredCardHeight, rect]);
+
   if (!isDemoActive || !activeTrack || !currentStep) {
     return null;
   }
@@ -218,7 +300,7 @@ export function DemoTourSpotlight({
   const trackLabel =
     activeTrack === "finances" ? "Finanças Diárias" : "Investimentos";
 
-  // Posicionamento do card popover no desktop
+  // Posicionamento dinâmico do card popover no desktop com altura real e clamp estrito (Fase 2 — Tarefa 2.3)
   const desktopCardStyle = (): React.CSSProperties => {
     if (!rect || typeof window === "undefined") {
       return {
@@ -228,19 +310,15 @@ export function DemoTourSpotlight({
       };
     }
 
-    const cardEstimatedHeight = 220;
+    const cardHeight = measuredCardHeight;
     const cardWidth = 380;
-    const spaceBelow = window.innerHeight - (rect.y + rect.height);
-    const spaceAbove = rect.y;
+    const gap = 12;
 
-    let top = rect.y + rect.height + 12;
+    const top = desktopPlacement === "top"
+      ? Math.max(16, rect.y - cardHeight - gap)
+      : Math.min(window.innerHeight - cardHeight - 16, rect.y + rect.height + gap);
 
-    if (currentStep.preferredPlacement === "top" && spaceAbove > cardEstimatedHeight + 20) {
-      top = Math.max(16, rect.y - cardEstimatedHeight - 12);
-    } else if (spaceBelow < cardEstimatedHeight + 20 && spaceAbove > spaceBelow) {
-      top = Math.max(16, rect.y - cardEstimatedHeight - 12);
-    }
-
+    // Clamp horizontal estrito contra vazamento de viewport
     const left = Math.max(
       16,
       Math.min(rect.x, window.innerWidth - cardWidth - 16),
@@ -286,17 +364,18 @@ export function DemoTourSpotlight({
           </mask>
         </defs>
 
-        {/* Camada escurecida sobreposta que absorve os cliques externos */}
+        {/* Camada escurecida sobreposta que absorve os cliques externos (Fase 3 — Tarefa 3.3) */}
         <rect
           x="0"
           y="0"
           width="100%"
           height="100%"
-          fill="rgba(0, 0, 0, 0.65)"
+          fill="rgba(0, 0, 0, 0.60)"
           mask="url(#demo-tour-spotlight-mask)"
+          data-testid="spotlight-backdrop"
         />
 
-        {/* Borda acentuada suave em volta da área recortada */}
+        {/* Borda pontilhada suave em volta da área recortada (Fase 3 — Tarefa 3.3) */}
         {rect && (
           <rect
             x={rect.x}
@@ -309,20 +388,31 @@ export function DemoTourSpotlight({
             stroke="hsl(var(--primary))"
             strokeWidth="2"
             strokeDasharray="4 2"
-            className="animate-pulse"
-            opacity="0.9"
+            data-testid="spotlight-border"
+            className={cn(
+              "transition-opacity duration-700",
+              isPulsing ? "animate-pulse opacity-90" : "opacity-75",
+            )}
           />
         )}
       </svg>
 
-      {/* Card Popover Adaptativo */}
+      {/* Card Popover Adaptativo com transições fluidas entre passos (Fase 3 — Tarefa 3.4) */}
       <aside
+        key={currentStep.id}
         ref={cardRef}
+        data-tour-step={currentStep.id}
+        data-placement={isMobile ? (isAnchorTopMobile ? "top" : "bottom") : desktopPlacement}
         style={!isMobile ? desktopCardStyle() : undefined}
         className={cn(
-          "pointer-events-auto border border-border/80 bg-surface shadow-lg transition-all duration-200",
+          "pointer-events-auto border border-border/80 bg-surface shadow-lg transition-all duration-200 animate-fade-in",
           isMobile
-            ? "fixed inset-x-3 bottom-3 rounded-2xl p-4 max-h-[85vh] overflow-y-auto pb-[max(env(safe-area-inset-bottom,0px),12px)]"
+            ? cn(
+                "fixed inset-x-3 rounded-2xl p-4 max-h-[42vh] overflow-y-auto",
+                isAnchorTopMobile
+                  ? "top-[max(env(safe-area-inset-top,0px),16px)]"
+                  : "bottom-[max(env(safe-area-inset-bottom,0px),16px)]",
+              )
             : "fixed rounded-xl p-4.5 z-modal",
           className,
         )}
@@ -330,8 +420,8 @@ export function DemoTourSpotlight({
         {/* Cabeçalho do Card: Badges e Botão [X] de saída imediata */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <Badge variant="default" size="xs" className="gap-1 font-semibold">
-              <Sparkles className="size-3" aria-hidden="true" />
+            <Badge variant="muted" size="xs" className="gap-1 font-semibold text-muted-foreground">
+              <Sparkles className="size-3 text-muted-foreground" aria-hidden="true" />
               <span>
                 Passo {currentStepNumber} de {totalSteps}
               </span>
@@ -364,7 +454,7 @@ export function DemoTourSpotlight({
           </p>
         </div>
 
-        {/* Rodapé com Navegação e Hand-off */}
+        {/* Rodapé com Navegação Adaptativa e Hand-off (Fase 3 — Tarefa 3.1) */}
         <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between gap-2">
           <Button
             type="button"
@@ -372,13 +462,14 @@ export function DemoTourSpotlight({
             size="sm"
             onClick={handlePrev}
             disabled={isFirstStep}
-            className="h-8 px-2.5 text-xs cursor-pointer gap-1"
+            aria-label="Passo anterior"
+            className="h-8 px-2.5 text-xs cursor-pointer gap-1 shrink-0"
           >
             <ArrowLeft className="size-3.5" aria-hidden="true" />
-            <span>Anterior</span>
+            <span className="hidden sm:inline">Anterior</span>
           </Button>
 
-          <div className="flex items-center gap-1.5" aria-hidden="true">
+          <div className="flex items-center justify-center gap-1.5 shrink-0" aria-hidden="true">
             {steps.map((step, idx) => (
               <span
                 key={step.id}
@@ -398,10 +489,12 @@ export function DemoTourSpotlight({
               variant="default"
               size="sm"
               onClick={handleStartRealAccount}
-              className="h-8 px-3 text-xs font-semibold cursor-pointer gap-1.5"
+              aria-label="Começar Conta Real"
+              className="h-8 px-3 text-xs font-semibold cursor-pointer gap-1.5 shrink-0"
             >
               <Check className="size-3.5" aria-hidden="true" />
-              <span>Começar Conta Real</span>
+              <span className="sm:hidden">Começar</span>
+              <span className="hidden sm:inline">Começar Conta Real</span>
             </Button>
           ) : (
             <Button
@@ -409,7 +502,8 @@ export function DemoTourSpotlight({
               variant="default"
               size="sm"
               onClick={handleNext}
-              className="h-8 px-3 text-xs font-semibold cursor-pointer gap-1"
+              aria-label="Próximo passo"
+              className="h-8 px-3 text-xs font-semibold cursor-pointer gap-1 shrink-0"
             >
               <span>Próximo</span>
               <ArrowRight className="size-3.5" aria-hidden="true" />

@@ -91,6 +91,48 @@ export function useSimulatedCreditCards(options?: { activeOnly?: boolean }) {
   return makeSimulatedQueryResult(data);
 }
 
+/** Despesas simuladas de um cartão específico (todas as competências). */
+export function useSimulatedCardExpenses(cardId: string | null) {
+  const data = useMemo(() => {
+    if (!cardId) return [];
+    const mock = generateMockFinances();
+    return mock.expenses.filter((e) => e.card_id === cardId);
+  }, [cardId]);
+
+  return makeSimulatedQueryResult(data);
+}
+
+/** Pagamentos e faturas simuladas de um cartão (todas as competências). */
+export function useSimulatedCardPayments(cardId: string | null) {
+  const data = useMemo(() => {
+    if (!cardId) return [];
+    const mock = generateMockFinances();
+    return mock.cardPayments.filter((p) => p.card_id === cardId);
+  }, [cardId]);
+
+  return makeSimulatedQueryResult(data);
+}
+
+/** Todas as despesas de cartão simuladas (visão consolidada de cartões). */
+export function useSimulatedAllCardExpenses() {
+  const data = useMemo(() => {
+    const mock = generateMockFinances();
+    return mock.expenses.filter((e) => e.card_id !== null);
+  }, []);
+
+  return makeSimulatedQueryResult(data);
+}
+
+/** Todos os pagamentos e faturas consolidadas de cartão simulados. */
+export function useSimulatedAllCardPayments() {
+  const data = useMemo(() => {
+    const mock = generateMockFinances();
+    return mock.cardPayments;
+  }, []);
+
+  return makeSimulatedQueryResult(data);
+}
+
 /** Orçamentos simulados. */
 export function useSimulatedBudgets(month?: string) {
   const data = useMemo(() => {

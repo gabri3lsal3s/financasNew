@@ -3,6 +3,7 @@ import type {
   Expense,
   Income,
   CreditCard,
+  CardPayment,
   Budget,
   PortfolioAsset,
   AllocationTarget,
@@ -42,6 +43,7 @@ export interface DailyFinancesDataset {
   incomes: Income[];
   cards: CreditCard[];
   budgets: Budget[];
+  cardPayments: CardPayment[];
 }
 
 export interface InvestmentsDataset {

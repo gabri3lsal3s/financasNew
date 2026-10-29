@@ -1,5 +1,5 @@
 import { currentMonth, shiftMonth } from "@/lib/date";
-import type { Budget, Category, CreditCard, Expense, Income } from "@/types";
+import type { Budget, CardPayment, Category, CreditCard, Expense, Income } from "@/types";
 import type { DailyFinancesDataset } from "./types";
 
 export const DEMO_USER_ID = "demo-simulation-user";
@@ -467,6 +467,20 @@ export function generateMockFinances(referenceMonth: string = currentMonth()): D
     },
   ];
 
+  // 5. Pagamentos e faturas de cartão simuladas
+  const cardPayments: CardPayment[] = [
+    {
+      id: "pay-demo-black-prev",
+      user_id: DEMO_USER_ID,
+      card_id: "card-demo-black",
+      competence_month: prevMonth,
+      amount: 250,
+      date: formatIsoDate(referenceMonth, 5),
+      note: "Pagamento fatura anterior",
+      is_refund: false,
+    },
+  ];
+
   return {
     referenceMonth,
     previousMonth: prevMonth,
@@ -475,5 +489,6 @@ export function generateMockFinances(referenceMonth: string = currentMonth()): D
     incomes,
     cards,
     budgets,
+    cardPayments,
   };
 }
