@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
  * de rota (tab, subtab ou aliases comuns de deep-link).
  */
 function resolveSettingsTab(param: string | null): string {
-  if (!param) return "account";
+  if (!param) return "appearance";
   const p = param.toLowerCase().trim();
   if (
     [
@@ -118,7 +118,7 @@ function resolveSettingsTab(param: string | null): string {
   ) {
     return "devices";
   }
-  return "account";
+  return "appearance";
 }
 
 export function SettingsPage() {
@@ -156,27 +156,6 @@ export function SettingsPage() {
   const tabItems = useMemo(
     () => [
       {
-        value: "account",
-        label: "Minha Conta",
-        shortLabel: "Conta",
-        icon: <User className="size-4" />,
-        content: <AccountTab />,
-      },
-      {
-        value: "subscription",
-        label: "Plano",
-        shortLabel: "Plano",
-        icon: <Zap className="size-4" />,
-        content: <SubscriptionTab />,
-      },
-      {
-        value: "security",
-        label: "Segurança",
-        shortLabel: "Segurança",
-        icon: <ShieldCheck className="size-4" />,
-        content: <SecurityTab />,
-      },
-      {
         value: "appearance",
         label: "Aparência",
         shortLabel: "Aparência",
@@ -191,11 +170,32 @@ export function SettingsPage() {
         content: <NotificationsTab />,
       },
       {
+        value: "security",
+        label: "Segurança",
+        shortLabel: "Segurança",
+        icon: <ShieldCheck className="size-4" />,
+        content: <SecurityTab />,
+      },
+      {
         value: "devices",
         label: "Dispositivos & App",
         shortLabel: "App",
         icon: <Smartphone className="size-4" />,
         content: <AppInstallationTab />,
+      },
+      {
+        value: "subscription",
+        label: "Plano",
+        shortLabel: "Plano",
+        icon: <Zap className="size-4" />,
+        content: <SubscriptionTab />,
+      },
+      {
+        value: "account",
+        label: "Minha Conta",
+        shortLabel: "Conta",
+        icon: <User className="size-4" />,
+        content: <AccountTab />,
       },
     ],
     [],

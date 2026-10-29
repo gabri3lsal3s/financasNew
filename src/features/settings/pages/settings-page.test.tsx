@@ -144,11 +144,19 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     renderSettings();
 
     expect(screen.getByRole("heading", { level: 1, name: "Configurações" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Minha Conta" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Aparência" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Notificações" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Segurança" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Dispositivos & App" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Plano" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Minha Conta" })).toBeInTheDocument();
+    expect(screen.getByText("Modo de Experiência do Aplicativo")).toBeInTheDocument();
+  });
+
+  it("ativa a aba Aparência por padrão ao acessar /configuracoes sem parâmetros", () => {
+    renderSettings(["/configuracoes"]);
+    expect(screen.getByText("Modo de Experiência do Aplicativo")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Aparência" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("permite alternar entre os Modos de Experiência na aba Aparência", async () => {

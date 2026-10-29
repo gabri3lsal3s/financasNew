@@ -1,9 +1,9 @@
-# PLANO CANÔNICO & CHECKLIST — REFATORAÇÃO INTEGRAL DO TOUR INTERATIVO E MICRO-TOURS
+# PLANO CANÔNICO & CHECKLIST — REFATORAÇÃO INTEGRAL DO TOUR INTERATIVO, MICRO-TOURS E GOVERNANÇA DE MODAIS
 
 > **Documento Canônico de Engenharia, Arquitetura Visual e Experiência do Usuário (UI/UX)**  
 > **Status:** Revisado, Refinado e Pronto para Execução  
 > **Arquivo:** `docs/plans/PLANO_CORRECAO_E_OTIMIZACAO_TOUR_INTERATIVO.md`  
-> **Módulos:** `src/domain/demo-simulation/`, `src/state/demo-mode/`, `src/state/queries/`, `src/components/modules/`, `src/components/layout/`, `src/features/`  
+> **Módulos:** `src/domain/demo-simulation/`, `src/state/demo-mode/`, `src/state/queries/`, `src/components/modules/`, `src/components/layout/`, `src/components/ui/`, `src/features/`  
 > **Regras Vinculantes:** `AGENTS.md` (Regras 3, 4, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18).
 
 ---
@@ -15,16 +15,17 @@
 [FASE 1: RESILIÊNCIA DE DADOS & ROTAS]       ░░░░░░░░░░░░░░░░░░░░   0% Pendente
 [FASE 2: MOTOR DE SCROLL & CENTRALIZAÇÃO]   ░░░░░░░░░░░░░░░░░░░░   0% Pendente
 [FASE 3: CATÁLOGO DE MICRO-TOURS & APK]      ░░░░░░░░░░░░░░░░░░░░   0% Pendente
-[FASE 4: DESIGN SYSTEM, RESPONSIVIDADE & A11Y]░░░░░░░░░░░░░░░░░░░░   0% Pendente
-[FASE 5: AUDITORIA INTEGRADA & POLIMENTO]    ░░░░░░░░░░░░░░░░░░░░   0% Pendente
-[FASE 6: REVISÃO, PUSH, BUILD APK & TELEGRAM]░░░░░░░░░░░░░░░░░░░░   0% Pendente
+[FASE 4: GOVERNANÇA DE MODAIS & UPDATE TOAST]░░░░░░░░░░░░░░░░░░░░   0% Pendente
+[FASE 5: DESIGN SYSTEM, RESPONSIVIDADE & A11Y]░░░░░░░░░░░░░░░░░░░░   0% Pendente
+[FASE 6: AUDITORIA INTEGRADA & POLIMENTO]    ░░░░░░░░░░░░░░░░░░░░   0% Pendente
+[FASE 7: REVISÃO, PUSH, BUILD APK & TELEGRAM]░░░░░░░░░░░░░░░░░░░░   0% Pendente
 ```
 
 ---
 
 ## 1. SUMÁRIO EXECUTIVO & DIAGNÓSTICO DE CAUSAS RAÍZES
 
-A auditoria exaustiva do código-fonte e a análise das capturas de tela fornecidas pelo usuário identificaram as falhas críticas do sistema atual de tour:
+A auditoria exaustiva do código-fonte e a análise das capturas de tela fornecidas pelo usuário identificaram as falhas críticas do sistema atual:
 
 ### 1.1 Diagnóstico de Erros Críticos
 
@@ -42,19 +43,21 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 - **Causa Raiz 3 (Invasão do Header Fixo):** `scrollIntoView({ block: "center" })` ignorava a altura do Header fixo (`64px` + safe area top). Ao rolar, o elemento subia demais e o recorte cobria o Header, conforme evidenciado nas capturas de tela.
 - **Causa Raiz 4 (Scroll Residual):** Ao navegar de uma página longa para outra, o scroll anterior de `#main-content` não era resetado deterministicamente antes do cálculo de coordenadas.
 
-#### D. Colisão Crítica de Sobreposição no Mobile
-- **Causa Raiz:** O card do tour estava fixo na base (`fixed inset-x-3 bottom-3`). Quando o elemento recortado estava na metade inferior da tela (ex: KPIs de Investimentos, Lançamentos em Transações), o popover era desenhado exatamente por cima do elemento.
+#### D. Colisão e Inoperância entre Modais e o Toast de Nova Versão (Captura Recente)
+- **Causa Raiz:** Em `providers.tsx`, o `<NativeUpdateToast />` roda autoCheck incondicional no Android e renderiza dentro do `<Toaster>` com `z-toast = 60` no terço inferior da viewport (`bottom-[calc(4.5rem+...)]`).
+- **Mecanismo do Bloqueio Mútuo:** Quando o modal de onboarding ("A Mágica da Captura Sem Fricção" / `WelcomeFeatureModal`) ou qualquer wizard está aberto, o Toast de atualização aparece flutuando diretamente sobre os botões do modal. Porém, como o Radix Dialog do modal intercepta o foco com focus trap e bloqueia ponteiros externos, o usuário **NÃO CONSEGUE CLICAR** no botão "Atualizar" nem no "X" do Toast, ao mesmo tempo em que o Toast obstrui o conteúdo explicativo e o botão "Próximo" do modal de baixo.
+- **Solução Arquitetural:** O pop-up de atualização só deve ser liberado quando o usuário estiver em uma página limpa, sem nenhum modal, diálogo, wizard ou tour aberto. Se o usuário dispensar no "X", a notificação só voltará a ser sugerida na próxima inicialização do app.
 
-#### E. Recortes Desproporcionais em Listas
-- **Causa Raiz:** `data-tour="transactions-content"` englobava a lista inteira de transações com mais de 800px de altura, estourando a altura da tela no smartphone.
+#### E. Colisão Crítica de Sobreposição no Mobile
+- **Causa Raiz:** O card do tour estava fixo na base (`fixed inset-x-3 bottom-3`). Quando o elemento recortado estava na metade inferior da tela (ex: KPIs de Investimentos, Lançamentos em Transações), o popover era desenhado exatamente por cima do elemento.
 
 #### F. Fricção Cognitiva & Omissão de Funcionalidades Essenciais
 - O tour atual era puramente passivo e omitia os maiores valores do app: o **Botão Wizard (+)**, a inteligência do **Saldo Livre Real**, a criação de **Categorias & Tetos**, o radar de **Insights (Smart Advisor)**, os **Relatórios**, o cadastro de **Ativos de Investimento**, a **Personalização** e o **Canal de Suporte**.
-- Ausência de onboarding no primeiro acesso e ausência de explicação para os recursos exclusivos do **APK Nativo Android** (leitor de notificações bancárias, biometria e escudo de privacidade).
+- Ausência de onboarding modular e ausência de explicação para os recursos exclusivos do **APK Nativo Android** (leitor de notificações bancárias, biometria e escudo de privacidade).
 
 ---
 
-## 2. ARQUITETURA DA NOVA EXPERIÊNCIA DE TOURS
+## 2. ARQUITETURA DA NOVA EXPERIÊNCIA DE TOURS & GOVERNANÇA DE MODAIS
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────┐
@@ -66,6 +69,13 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
   • Medição sincronizada após estabilização do scroll (evento 'scrollend' ou RAF)
   • Algoritmo Anti-Colisão Mobile: elemento na metade inferior ──> Card no Topo
                                   elemento na metade superior ──> Card na Base
+
+ [GOVERNANÇA INTELIGENTE DE MODAIS & ATUALIZAÇÕES]
+  • Hook useCanShowUpdateNotification(): monitora [role="dialog"], [role="alertdialog"],
+    isDemoActive e wizards ativos.
+  • Se houver qualquer overlay/modal aberto: Toast de atualização permanece oculto/em espera.
+  • Quando a tela fica limpa: Toast é exibido suavemente sem colisões.
+  • Se o usuário dispensar [X]: posterga para a próxima abertura do aplicativo.
 
  [CATÁLOGO DE TRILHAS E MICRO-TOURS]
   ├─ 🌟 TRILHA 0: BEM-VINDO AO APP NATIVO (Exclusivo APK Android via isNative())
@@ -295,121 +305,164 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 
 ---
 
-### FASE 4: DESIGN SYSTEM, RESPONSIVIDADE & ACESSIBILIDADE WCAG
+### FASE 4: GOVERNANÇA DE MODAIS, PREVENÇÃO DE COLISÃO & NATIVE UPDATE TOAST
+
+**Meta:** Eliminar 100% dos conflitos e sobreposições entre o Toast de Nova Versão e os modais/wizards do app, garantindo que atualizações só sejam sugeridas em momentos tranquilos e postergadas com persistência limpa.
+
+#### Tarefas:
+- [ ] **4.1. Hook Global de Detecção de Overlays Ativos (`src/hooks/use-active-overlays.ts`)**
+  - [ ] Implementar verificação reativa que detecta:
+    * Existência de `[role="dialog"]:not([data-state="closed"]):not([data-lock-overlay])` ou `[role="alertdialog"]` no DOM.
+    * Se o tour de demonstração está ativo (`isDemoActive === true`).
+    * Se o assistente de lançamento `LaunchWizard` está aberto (`wizardOpen === true`).
+    * Se modais de primeiro uso / onboarding (`WelcomeFeatureModal`) estão abertos.
+  - [ ] Retornar `hasBlockingOverlay: boolean` para componentes de notificação.
+
+- [ ] **4.2. Supressão Condicional no `NativeUpdateToast` (`src/components/modules/native-update-toast.tsx`)**
+  - [ ] Integrar `useActiveOverlays()`: se `hasBlockingOverlay === true`, retornar `null` (ou adiar a exibição).
+  - [ ] Quando o modal/tour for fechado pelo usuário e a tela voltar ao estado limpo, permitir que o Toast seja exibido com transição suave.
+
+- [ ] **4.3. Persistência de Adiantamento por Sessão no Dismiss (`[X]`)**
+  - [ ] Ao clicar no `[X]` de dispensar o `NativeUpdateToast`, gravar flag com timestamp no `sessionStorage` (ou `localStorage` com prazo de 12 horas):
+    `sessionStorage.setItem("financas:update_dismissed_session", "true")`.
+  - [ ] Evitar que o toast volte a interromper o usuário durante a mesma sessão de uso. A notificação só volta a ser checada e sugerida na próxima vez que o aplicativo for aberto.
+
+- [ ] **4.4. Prevenção de Bloqueio de Ponteiros e Stacking Context (`src/components/ui/toast.tsx`)**
+  - [ ] Assegurar que o `Viewport` do Radix Toast e os itens de Toast não bloqueiem eventos de clique do modal inferior quando montados.
+  - [ ] Ajustar `z-index`: o `NativeUpdateToast` deve operar com coordenação para que nunca sobreponha modais de primeiro uso.
+
+- [ ] **4.5. Testes Unitários de Supressão de Modais (`native-update-toast.test.tsx`)**
+  - [ ] Criar caso de teste: com atualização disponível e modal aberto (`[role="dialog"]` presente), comprovar que o Toast NÃO é renderizado.
+  - [ ] Criar caso de teste: ao fechar o modal, comprovar que o Toast passa a ser exibido.
+  - [ ] Criar caso de teste: ao clicar em dispensar `[X]`, comprovar que a preferência persiste e não reabre na mesma sessão.
+
+#### Portão de Qualidade 4:
+- [ ] `npm run typecheck` aprovado.
+- [ ] `npm run lint` aprovado.
+- [ ] `npm test -- src/components/modules/native-update-toast.test.tsx` aprovado.
+- [ ] Teste Manual: Simular nova versão disponível e abrir o modal "A Mágica da Captura Sem Fricção" (ou o LaunchWizard). Comprovar que o banner de atualização NÃO aparece sobre o modal. Fechar o modal e comprovar que o toast de atualização aparece calmamente na tela inicial.
+
+#### Commit & Push 4:
+- [ ] Mensagem de Commit: `fix(updates): suprime toast de nova versao durante modais e persiste adiamento no dismiss`
+- [ ] Executar push para a branch remota.
+
+---
+
+### FASE 5: DESIGN SYSTEM, RESPONSIVIDADE & ACESSIBILIDADE WCAG
 
 **Meta:** Ajustar tipografia e botões para mobile (< 400px), aplicar tokens semânticos e implementar focus trap e leitor de tela.
 
 #### Tarefas:
-- [ ] **4.1. Rodapé Adaptativo sem Esmagamento (< 400px)**
+- [ ] **5.1. Rodapé Adaptativo sem Esmagamento (< 400px)**
   - [ ] Botão "Anterior": ícone `<ArrowLeft className="size-3.5" />` com texto `sm:inline`.
   - [ ] Dots de progresso: estilizados como pílulas discretas com espaçamento seguro.
   - [ ] Botão Conclusão adaptativo:
     * `sm:hidden`: `"Começar"`.
     * `hidden sm:inline`: `"Começar Conta Real"`.
 
-- [ ] **4.2. Conformidade com a Regra 13 do Design System (Hierarquia Semântica)**
+- [ ] **5.2. Conformidade com a Regra 13 do Design System (Hierarquia Semântica)**
   - [ ] Trocar badge de passo de `variant="default"` para `variant="muted"`.
   - [ ] Ícone Sparkles em `text-muted-foreground`.
   - [ ] Manter cor `primary` exclusivamente no botão CTA de avanço.
 
-- [ ] **4.3. Backdrop Suave e Borda Arredondada**
+- [ ] **5.3. Backdrop Suave e Borda Arredondada**
   - [ ] Opacidade suave de fundo: `fill="rgba(0, 0, 0, 0.60)"`.
   - [ ] Cantos arredondados do recorte com `rx={16}` e `ry={16}` (`rounded-2xl`).
   - [ ] Pulso da borda cessa suavemente após 3 segundos.
 
-- [ ] **4.4. Focus Trap e Gerenciamento de Foco**
+- [ ] **5.4. Focus Trap e Gerenciamento de Foco**
   - [ ] Salvar `document.activeElement` antes de abrir o tour.
   - [ ] Mover foco para o botão de ação ao renderizar o passo.
   - [ ] Confinar ciclo de Tab/Shift+Tab dentro do card popover.
   - [ ] Restaurar foco ao fechar via ESC ou botão `[X]`.
 
-- [ ] **4.5. Acessibilidade ARIA e Anúncios para Leitores de Tela**
+- [ ] **5.5. Acessibilidade ARIA e Anúncios para Leitores de Tela**
   - [ ] Inserir `aria-live="polite"` no bloco de título/descrição do passo.
   - [ ] Aplicar `role="presentation"` e `aria-hidden="true"` na camada SVG de fundo.
   - [ ] Tornar os dots clicáveis com `role="button"` e `aria-label={`Ir para o passo ${idx + 1}`}`.
 
-#### Portão de Qualidade 4:
+#### Portão de Qualidade 5:
 - [ ] `npm run typecheck` aprovado.
 - [ ] `npm run lint` aprovado.
 - [ ] `npm test -- src/components/modules/demo-tour-spotlight.test.tsx` aprovado.
 - [ ] Teste Manual: Navegação 100% via teclado (Tab, Enter, Espaço, Setas ← →, Esc) em temas Claro e Escuro.
 
-#### Commit & Push 4:
+#### Commit & Push 5:
 - [ ] Mensagem de Commit: `style(tour): alinha design tokens, ergonomia mobile, focus trap e a11y`
 - [ ] Executar push para a branch remota.
 
 ---
 
-### FASE 5: AUDITORIA FINAL INTEGRADA, GOVERNANÇA & POLIMENTO
+### FASE 6: AUDITORIA FINAL INTEGRADA, GOVERNANÇA & POLIMENTO
 
 **Meta:** Validar integridade de 100% da suíte de testes, marcar formalmente depreciações e atualizar a documentação.
 
 #### Tarefas:
-- [ ] **5.1. Governança e Limpeza de Componentes Legados**
+- [ ] **6.1. Governança e Limpeza de Componentes Legados**
   - [ ] Adicionar anotação `@deprecated` no JSDoc de `src/components/modules/demo-tour-bar.tsx`.
   - [ ] Assegurar que `page-shell.tsx` não renderiza a barra superior redundante.
   - [ ] Manter testes unitários de `demo-tour-bar.test.tsx` verdes para integridade.
 
-- [ ] **5.2. Execução da Suíte Completa de Testes**
+- [ ] **6.2. Execução da Suíte Completa de Testes**
   - [ ] Rodar `npm test` em todo o repositório garantindo 100% de testes passando.
   - [ ] Executar auditoria de acessibilidade (`src/tests/accessibility-audit.test.tsx`).
 
-- [ ] **5.3. Atualização de Documentação Canônica**
+- [ ] **6.3. Atualização de Documentação Canônica**
   - [ ] Atualizar referências no `docs/architecture/ESPECIFICACAO_TECNICA.md`.
   - [ ] Atualizar status da funcionalidade no `docs/roadmap/ROADMAP.md`.
 
-#### Portão de Qualidade 5:
+#### Portão de Qualidade 6:
 - [ ] `npm run typecheck` com zero erros.
 - [ ] `npm run lint` 100% aprovado.
 - [ ] `npm test` 100% verde em todos os arquivos de teste.
 - [ ] Teste Manual E2E: Executar cada um dos micro-tours no desktop e em simulador mobile.
 
-#### Commit & Push 5:
+#### Commit & Push 6:
 - [ ] Mensagem de Commit: `chore(tour): finaliza auditoria integrada, deprecation de componentes e documentacao`
 - [ ] Executar push para a branch remota.
 
 ---
 
-### FASE 6: REVISÃO DE FRAGILIDADES, RESOLUÇÃO DE BUGS, GIT PUSH, BUILD DO APK & NOTIFICAÇÃO TELEGRAM (ARGOS)
+### FASE 7: REVISÃO DE FRAGILIDADES, RESOLUÇÃO DE BUGS, GIT PUSH, BUILD DO APK & NOTIFICAÇÃO TELEGRAM (ARGOS)
 
 **Meta:** Realizar uma varredura completa de ponta a ponta procurando erros, bugs residuais e fragilidades de segurança/execução, implementar as soluções, realizar a sincronização final (`git push`), compilar o novo APK Android assinado e disparar relatório executivo com diagnóstico de migração Supabase via Bot Telegram ARGOS.
 
 #### Tarefas:
-- [ ] **6.1. Varredura Exaustiva de Fragilidades e Casos de Borda**
+- [ ] **7.1. Varredura Exaustiva de Fragilidades e Casos de Borda**
   - [ ] Verificar limpeza de listeners no `#main-content` ao desmontar o componente para evitar memory leaks.
   - [ ] Verificar transição entre modo demo e conta real (garantir que nenhum dado de mock vaze para o Supabase).
   - [ ] Verificar comportamento em modo offline ou rede intermitente durante o tour.
   - [ ] Verificar compatibilidade do tour exclusivo com permissões nativas no Android (notificações bancárias).
   - [ ] Identificar e corrigir qualquer bug ou fragilidade remanescente encontrada durante a revisão.
 
-- [ ] **6.2. Portão de Qualidade Pré-Release (Preflight Check)**
+- [ ] **7.2. Portão de Qualidade Pré-Release (Preflight Check)**
   - [ ] Executar `npm run typecheck` (zero erros).
   - [ ] Executar `npm run lint` (zero warnings, sem emojis).
   - [ ] Executar `npm test` (100% de testes passando em toda a aplicação).
   - [ ] Executar `npm run preflight` (script oficial de prontidão).
 
-- [ ] **6.3. Sincronização Final com Git Push**
+- [ ] **7.3. Sincronização Final com Git Push**
   - [ ] Verificar status do git com `git status`.
   - [ ] Commitar todas as correções residuais: `fix(tour): resolve fragilidades remanescentes e consolida release`.
   - [ ] Executar `git push origin main` (ou branch ativa).
 
-- [ ] **6.4. Compilação e Geração do APK Android da Nova Versão (`build:apk`)**
+- [ ] **7.4. Compilação e Geração do APK Android da Nova Versão (`build:apk`)**
   - [ ] Executar o build de produção dos assets web: `npm run build`.
   - [ ] Sincronizar os assets e plugins nativos com o projeto Android: `npx cap sync android` (ou `npm run cap:sync`).
   - [ ] Executar o script oficial de build e assinatura do APK: `npm run build:apk`.
   - [ ] Validar a geração do artefato final em `dist-apk/` (ex: `dist-apk/guiafinanceiro-release.apk`).
   - [ ] Verificar a atualização do manifesto `public/releases/version.json` com a nova versão gerada.
 
-- [ ] **6.5. Notificação e Relatório Executivo via Bot Telegram (ARGOS)**
+- [ ] **7.5. Notificação e Relatório Executivo via Bot Telegram (ARGOS)**
   - [ ] Construir payload da mensagem formatado em HTML/Markdown contendo:
-    * 📋 **Relatório da Release:** Resumo consolidado de todas as correções entregues (eliminação do erro SQL em cartões, motor de centralização determinístico no `#main-content`, anti-colisão mobile, catálogo de micro-tours e tour do APK nativo).
-    * 🗄️ **Diagnóstico de Banco de Dados / Supabase:** Confirmação explícita e transparente se há necessidade de rodar alguma migração de schema/SQL no Supabase (no caso da simulação em memória do tour: destacar que **NÃO requer nenhuma migração de banco de dados**, operando com zero downtime e isolamento estrito in-memory).
+    * 📋 **Relatório da Release:** Resumo consolidado de todas as correções entregues (eliminação do erro SQL em cartões, motor de centralização determinístico no `#main-content`, anti-colisão mobile, supressão de toast durante modais, catálogo de micro-tours e tour do APK nativo).
+    * 🗄️ **Diagnóstico de Banco de Dados / Supabase:** Confirmação explícita e transparente se há necessidade de rodar alguma migração de schema/SQL no Supabase (no caso da simulação em memória do tour e da governança de modais: destacar que **NÃO requer nenhuma migração de banco de dados**, operando com zero downtime e isolamento estrito in-memory).
     * 📱 **Status do APK:** Confirmação do build e assinatura da nova versão do APK, código de versão (`versionCode`), nome da versão (`versionName`) e caminho do arquivo gerado.
     * ✅ **Métricas de Qualidade:** Confirmação de 100% dos testes verdes, typecheck limpo e preflight check validado.
   - [ ] Disparar a mensagem via Telegram Bot API para o bot ARGOS utilizando `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` configurados no ambiente.
   - [ ] Validar o retorno HTTP 200 OK da API do Telegram.
 
-#### Portão de Qualidade 6:
+#### Portão de Qualidade 7:
 - [ ] Build do APK concluído com código de saída 0.
 - [ ] Arquivo `.apk` assinado gerado com sucesso em `dist-apk/`.
 - [ ] Repositório sincronizado e atualizado remotamente via `git push`.
@@ -426,15 +479,18 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 | `src/state/queries/use-overview.ts` | Modificação | Fase 1 | Chaveamento demo em totais consolidados de cartão |
 | `src/app/router.tsx` | Modificação | Fase 1 | Preservação de query strings no redirecionamento legado |
 | `src/features/transactions/pages/transaction-list-page.tsx` | Modificação | Fase 1 | Inclusão de seletor contido de extrato |
-| `src/components/modules/demo-tour-spotlight.tsx` | Modificação | Fases 2, 4, 6 | Motor de centralização, listener em `#main-content`, anti-colisão, A11y e mitigação de leaks |
-| `src/components/modules/demo-tour-spotlight.test.tsx` | Modificação | Fases 2, 4 | Testes de centralização, anti-colisão, dots e foco |
+| `src/components/modules/demo-tour-spotlight.tsx` | Modificação | Fases 2, 5, 7 | Motor de centralização, listener em `#main-content`, anti-colisão, A11y e mitigação de leaks |
+| `src/components/modules/demo-tour-spotlight.test.tsx` | Modificação | Fases 2, 5 | Testes de centralização, anti-colisão, dots e foco |
 | `src/domain/demo-simulation/types.ts` | Modificação | Fase 3 | Novos contratos de trilhas e micro-tours |
 | `src/domain/demo-simulation/tour-steps.ts` | Modificação | Fases 1, 3 | Passos de todos os micro-tours e tour do APK nativo |
 | `src/domain/demo-simulation/tour-steps.test.ts` | Modificação | Fases 1, 3 | Asserções de rotas e integridade dos novos passos |
 | `src/components/layout/bottom-nav.tsx` | Modificação | Fase 3 | Seletor `data-tour="bottom-nav-wizard"` no botão central |
 | `src/components/modules/demo-track-select-modal.tsx` | Modificação | Fase 3 | Redesign do seletor em Hub de Micro-Tours |
-| `src/components/modules/demo-tour-bar.tsx` | Documentação | Fase 5 | Marcação de depreciação e manutenção da tipagem |
-| `scripts/build-apk.sh` | Execução | Fase 6 | Script oficial de compilação e assinatura do APK Android |
+| `src/hooks/use-active-overlays.ts` | Criação | Fase 4 | Hook de detecção de modais, diálogos e wizards abertos |
+| `src/components/modules/native-update-toast.tsx` | Modificação | Fase 4 | Supressão de toast de atualização durante modais e adiamento no dismiss |
+| `src/components/modules/native-update-toast.test.tsx` | Modificação | Fase 4 | Testes de supressão de toast durante modais ativos |
+| `src/components/modules/demo-tour-bar.tsx` | Documentação | Fase 6 | Marcação de depreciação e manutenção da tipagem |
+| `scripts/build-apk.sh` | Execução | Fase 7 | Script oficial de compilação e assinatura do APK Android |
 | `docs/plans/PLANO_CORRECAO_E_OTIMIZACAO_TOUR_INTERATIVO.md` | Criação/Refinamento | Planejamento | Documento canônico da refatoração |
 
 ---
@@ -444,6 +500,7 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 - [ ] **Zero Erros de API/Postgres:** Nenhuma mensagem *"Algo deu errado"* em Cartões ou em qualquer outra tela do tour.
 - [ ] **Centralização Precisa:** O spotlight centraliza com margem uniforme nos elementos tanto ao avançar quanto ao retroceder passos, sem tremores ou medições no meio da animação de scroll.
 - [ ] **Zero Sobreposição no Mobile:** O popover explicativo detecta o centro do elemento e ancora no topo ou na base, mantendo o conteúdo focado 100% desobstruído.
+- [ ] **Zero Conflito entre Modais e Atualização:** O toast de nova versão NUNCA aparece sobre modais de onboarding, wizards de transação ou diálogos do app; se dispensado no [X], só volta a sugerir na próxima abertura do app.
 - [ ] **Catálogo Completo de Micro-Tours:** O usuário pode escolher entre um tour geral rápido ou micro-tours específicos (Wizard +, Cartões, Orçamentos, Insights, Ativos, Aporte, Suporte).
 - [ ] **Onboarding Nativo do APK Android:** Novos usuários no app nativo recebem apresentação das notificações bancárias automáticas e da biometria.
 - [ ] **Aderência ao Design System:** Badges em tom suave (`muted`), acento primário estritamente no CTA, sem emojis, tipografia adaptativa.

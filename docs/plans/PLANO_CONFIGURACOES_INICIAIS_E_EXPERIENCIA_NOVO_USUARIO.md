@@ -126,7 +126,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 2
 
-- [ ] **Tarefa 2.1: Reordenar o Array `tabItems`**
+- [x] **Tarefa 2.1: Reordenar o Array `tabItems`**
   - **Arquivo:** `src/features/settings/pages/settings-page.tsx`
   - **O que verificar/ajustar:**
     - No `useMemo` de `tabItems` (linha ~156), reestruturar os itens na ordem estrita:
@@ -180,7 +180,7 @@ git push origin main
       );
       ```
 
-- [ ] **Tarefa 2.2: Atualizar o Resolvedor de Abas Padrão (`resolveSettingsTab`)**
+- [x] **Tarefa 2.2: Atualizar o Resolvedor de Abas Padrão (`resolveSettingsTab`)**
   - **Arquivo:** `src/features/settings/pages/settings-page.tsx`
   - **O que verificar/ajustar:**
     - Linha ~30: Quando `!param`, retornar `"appearance"`.
@@ -194,17 +194,17 @@ git push origin main
       }
       ```
 
-- [ ] **Tarefa 2.3: Atualizar Testes Automatizados da Página de Configurações**
+- [x] **Tarefa 2.3: Atualizar Testes Automatizados da Página de Configurações**
   - **Arquivo:** `src/features/settings/pages/settings-page.test.tsx`
   - **O que verificar/ajustar:**
     - Atualizar os testes para esperar que ao acessar `/configuracoes` sem parâmetros, a aba ativa seja "Aparência" (verificando a presença de "Modo de Experiência do Aplicativo").
     - Validar que deep-links como `?tab=conta` ou `?tab=perfil` continuam ativando "Minha Conta".
 
 ### Portão de Qualidade da Fase 2
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/features/settings/pages/settings-page.test.tsx`
-- [ ] **Commit & Push da Fase 2:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/features/settings/pages/settings-page.test.tsx`
+- [x] **Commit & Push da Fase 2:**
   ```bash
   git add src/features/settings/pages/settings-page.tsx src/features/settings/pages/settings-page.test.tsx
   git commit -m "refactor(settings): reordena abas para aparencia alertas seguranca app plano e conta"
