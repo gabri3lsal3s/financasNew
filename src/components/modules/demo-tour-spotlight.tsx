@@ -701,7 +701,7 @@ export function DemoTourSpotlight({
         </div>
 
         {/* Rodapé com Navegação Adaptativa e Hand-off (Fase 3 — Tarefa 3.1) */}
-        <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between gap-2">
+        <div className="mt-4 pt-3 border-t border-border/80 flex items-center justify-between gap-2">
           <Button
             type="button"
             variant="outline"

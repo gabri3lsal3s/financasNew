@@ -1014,6 +1014,29 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(fullSpan?.className).toContain("sm:inline");
       expect(fullSpan?.textContent).toBe("Começar Conta Real");
     });
+
+    it("renderiza dots de progresso como pílulas discretas e espaçamento seguro", () => {
+      startDemo("finances"); // 4 passos
+
+      render(<DemoTourSpotlight />);
+
+      const tablist = screen.getByRole("tablist", { name: "Progresso do tour demonstrativo" });
+      expect(tablist).toBeInTheDocument();
+      expect(tablist.className).toContain("gap-1.5");
+
+      const dots = tablist.querySelectorAll("button");
+      expect(dots).toHaveLength(4);
+
+      // Dot ativo: pílula expandida w-3.5
+      expect(dots[0]?.className).toContain("h-1.5");
+      expect(dots[0]?.className).toContain("rounded-full");
+      expect(dots[0]?.className).toContain("bg-primary");
+      expect(dots[0]?.className).toContain("w-3.5");
+
+      // Dots inativos: w-1.5
+      expect(dots[1]?.className).toContain("w-1.5");
+      expect(dots[1]?.className).toContain("bg-muted-foreground/30");
+    });
   });
 
   describe("Hierarquia Semântica de Cores (Fase 3 — Tarefa 3.2)", () => {
@@ -1031,6 +1054,23 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       const sparklesIcon = badge?.querySelector("svg");
       expect(sparklesIcon).not.toBeNull();
       expect(sparklesIcon?.getAttribute("class")).toContain("text-muted-foreground");
+
+      // Badge de trilha em tom neutro muted
+      const trackBadge = screen.getByText("Finanças Diárias").closest("span.inline-flex");
+      expect(trackBadge).not.toBeNull();
+      expect(trackBadge?.className).toContain("bg-muted");
+      expect(trackBadge?.className).toContain("text-muted-foreground");
+
+      // Acento primário reservado estritamente para o botão de ação CTA (Próximo)
+      const nextBtn = screen.getByRole("button", { name: /Próximo passo/i });
+      expect(nextBtn.className).toContain("bg-primary");
+      expect(nextBtn.className).toContain("text-primary-strong");
+
+      // Botão Anterior usa variant outline e botão fechar usa variant ghost
+      const prevBtn = screen.getByRole("button", { name: /Passo anterior|Anterior/i });
+      expect(prevBtn.className).toContain("border");
+      const closeBtn = screen.getByRole("button", { name: /Encerrar tour demonstrativo/i });
+      expect(closeBtn.className).toContain("text-muted-foreground");
     });
   });
 
@@ -1561,6 +1601,91 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(border.getAttribute("height")).toBe("76");
       expect(border.getAttribute("rx")).toBe("16");
       expect(border.getAttribute("ry")).toBe("16");
+    });
+  });
+
+  describe("Navegação 100% via Teclado em Temas Claro e Escuro (Portão de Qualidade 5 — A11y & WCAG 2.1)", () => {
+    const themes = ["light", "dark"] as const;
+
+    themes.forEach((theme) => {
+      describe(`Tema: ${theme}`, () => {
+        beforeEach(() => {
+          document.documentElement.setAttribute("data-theme", theme);
+          if (theme === "dark") {
+            document.documentElement.classList.add("dark");
+          } else {
+            document.documentElement.classList.remove("dark");
+          }
+        });
+
+        afterEach(() => {
+          document.documentElement.removeAttribute("data-theme");
+          document.documentElement.classList.remove("dark");
+          document.body.innerHTML = "";
+        });
+
+        it("navega fluidamente por setas (ArrowRight/ArrowLeft), avança com Enter, salta com Espaço nos dots e encerra com Esc", async () => {
+          const user = userEvent.setup();
+          const triggerBtn = document.createElement("button");
+          triggerBtn.textContent = "Disparador do Tour";
+          document.body.appendChild(triggerBtn);
+          triggerBtn.focus();
+          expect(document.activeElement).toBe(triggerBtn);
+
+          startDemo("finances");
+          render(<DemoTourSpotlight />);
+
+          // 1. Início: foco no primeiro elemento interativo ([X] Fechar)
+          const closeBtn = screen.getByRole("button", { name: /Encerrar tour demonstrativo/i });
+          expect(document.activeElement).toBe(closeBtn);
+
+          // 2. Setas: avança passo 0 -> 1 -> 2
+          fireEvent.keyDown(window, { key: "ArrowRight" });
+          expect(getDemoSessionState().currentStepIndex).toBe(1);
+
+          fireEvent.keyDown(window, { key: "ArrowRight" });
+          expect(getDemoSessionState().currentStepIndex).toBe(2);
+
+          // Setas: retrocede passo 2 -> 1
+          fireEvent.keyDown(window, { key: "ArrowLeft" });
+          expect(getDemoSessionState().currentStepIndex).toBe(1);
+
+          // 3. Tab e Espaço nos dots: salta para o passo 4 (último)
+          const dot4 = screen.getByRole("button", { name: "Ir para o passo 4" });
+          dot4.focus();
+          expect(document.activeElement).toBe(dot4);
+          await user.keyboard(" ");
+          expect(getDemoSessionState().currentStepIndex).toBe(3);
+
+          // 4. Tab e Enter no botão CTA final ("Começar Conta Real"): conclui tour
+          const finishBtn = screen.getByRole("button", { name: /Começar Conta Real/i });
+          finishBtn.focus();
+          expect(document.activeElement).toBe(finishBtn);
+          await user.keyboard("{Enter}");
+          expect(getDemoSessionState().isDemoActive).toBe(false);
+          expect(mockNavigate).toHaveBeenCalledWith("/?novo=despesa");
+        });
+
+        it("preserva restauração de foco ao fechar via Esc após navegação por teclado", () => {
+          const triggerBtn = document.createElement("button");
+          triggerBtn.textContent = "Disparador Inicial";
+          document.body.appendChild(triggerBtn);
+          triggerBtn.focus();
+          expect(document.activeElement).toBe(triggerBtn);
+
+          startDemo("finances");
+          render(<DemoTourSpotlight />);
+
+          // Navega um passo
+          fireEvent.keyDown(window, { key: "ArrowRight" });
+          expect(getDemoSessionState().currentStepIndex).toBe(1);
+
+          // Fecha via Esc
+          fireEvent.keyDown(window, { key: "Escape" });
+          expect(getDemoSessionState().isDemoActive).toBe(false);
+          expect(document.activeElement).toBe(triggerBtn);
+        });
+      });
     });
   });
 });

@@ -353,43 +353,43 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 **Meta:** Ajustar tipografia e botões para mobile (< 400px), aplicar tokens semânticos e implementar focus trap e leitor de tela.
 
 #### Tarefas:
-- [ ] **5.1. Rodapé Adaptativo sem Esmagamento (< 400px)**
-  - [ ] Botão "Anterior": ícone `<ArrowLeft className="size-3.5" />` com texto `sm:inline`.
-  - [ ] Dots de progresso: estilizados como pílulas discretas com espaçamento seguro.
-  - [ ] Botão Conclusão adaptativo:
+- [x] **5.1. Rodapé Adaptativo sem Esmagamento (< 400px)**
+  - [x] Botão "Anterior": ícone `<ArrowLeft className="size-3.5" />` com texto `sm:inline`.
+  - [x] Dots de progresso: estilizados como pílulas discretas com espaçamento seguro.
+  - [x] Botão Conclusão adaptativo:
     * `sm:hidden`: `"Começar"`.
     * `hidden sm:inline`: `"Começar Conta Real"`.
 
-- [ ] **5.2. Conformidade com a Regra 13 do Design System (Hierarquia Semântica)**
-  - [ ] Trocar badge de passo de `variant="default"` para `variant="muted"`.
-  - [ ] Ícone Sparkles em `text-muted-foreground`.
-  - [ ] Manter cor `primary` exclusivamente no botão CTA de avanço.
+- [x] **5.2. Conformidade com a Regra 13 do Design System (Hierarquia Semântica)**
+  - [x] Trocar badge de passo de `variant="default"` para `variant="muted"`.
+  - [x] Ícone Sparkles em `text-muted-foreground`.
+  - [x] Manter cor `primary` exclusivamente no botão CTA de avanço.
 
-- [ ] **5.3. Backdrop Suave e Borda Arredondada**
-  - [ ] Opacidade suave de fundo: `fill="rgba(0, 0, 0, 0.60)"`.
-  - [ ] Cantos arredondados do recorte com `rx={16}` e `ry={16}` (`rounded-2xl`).
-  - [ ] Pulso da borda cessa suavemente após 3 segundos.
+- [x] **5.3. Backdrop Suave e Borda Arredondada**
+  - [x] Opacidade suave de fundo: `fill="rgba(0, 0, 0, 0.60)"`.
+  - [x] Cantos arredondados do recorte com `rx={16}` e `ry={16}` (`rounded-2xl`).
+  - [x] Pulso da borda cessa suavemente após 3 segundos.
 
-- [ ] **5.4. Focus Trap e Gerenciamento de Foco**
-  - [ ] Salvar `document.activeElement` antes de abrir o tour.
-  - [ ] Mover foco para o botão de ação ao renderizar o passo.
-  - [ ] Confinar ciclo de Tab/Shift+Tab dentro do card popover.
-  - [ ] Restaurar foco ao fechar via ESC ou botão `[X]`.
+- [x] **5.4. Focus Trap e Gerenciamento de Foco**
+  - [x] Salvar `document.activeElement` antes de abrir o tour.
+  - [x] Mover foco para o botão de ação ao renderizar o passo.
+  - [x] Confinar ciclo de Tab/Shift+Tab dentro do card popover.
+  - [x] Restaurar foco ao fechar via ESC ou botão `[X]`.
 
-- [ ] **5.5. Acessibilidade ARIA e Anúncios para Leitores de Tela**
-  - [ ] Inserir `aria-live="polite"` no bloco de título/descrição do passo.
-  - [ ] Aplicar `role="presentation"` e `aria-hidden="true"` na camada SVG de fundo.
-  - [ ] Tornar os dots clicáveis com `role="button"` e `aria-label={`Ir para o passo ${idx + 1}`}`.
+- [x] **5.5. Acessibilidade ARIA e Anúncios para Leitores de Tela**
+  - [x] Inserir `aria-live="polite"` no bloco de título/descrição do passo.
+  - [x] Aplicar `role="presentation"` e `aria-hidden="true"` na camada SVG de fundo.
+  - [x] Tornar os dots clicáveis com `role="button"` e `aria-label={`Ir para o passo ${idx + 1}`}`.
 
 #### Portão de Qualidade 5:
-- [ ] `npm run typecheck` aprovado.
-- [ ] `npm run lint` aprovado.
-- [ ] `npm test -- src/components/modules/demo-tour-spotlight.test.tsx` aprovado.
-- [ ] Teste Manual: Navegação 100% via teclado (Tab, Enter, Espaço, Setas ← →, Esc) em temas Claro e Escuro.
+- [x] `npm run typecheck` aprovado.
+- [x] `npm run lint` aprovado.
+- [x] `npm test -- src/components/modules/demo-tour-spotlight.test.tsx` aprovado.
+- [x] Teste Manual: Navegação 100% via teclado (Tab, Enter, Espaço, Setas ← →, Esc) em temas Claro e Escuro.
 
 #### Commit & Push 5:
-- [ ] Mensagem de Commit: `style(tour): alinha design tokens, ergonomia mobile, focus trap e a11y`
-- [ ] Executar push para a branch remota.
+- [x] Mensagem de Commit: `style(tour): alinha design tokens, ergonomia mobile, focus trap e a11y`
+- [x] Executar push para a branch remota.
 
 ---
 
