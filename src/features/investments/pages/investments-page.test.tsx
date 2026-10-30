@@ -89,6 +89,7 @@ vi.mock("@/state", () => ({
   useAssetPosition: () => ({ data: [], isLoading: false, ledger: { dividends: 0 } }),
   useSyncQuotes: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useSetManualPrice: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useExecutePortfolioBatchAporte: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 function renderPage(entry = "/investments") {
@@ -177,6 +178,27 @@ describe("InvestmentsPage — F17 unificada", () => {
     const movTab = screen.getByRole("tab", { name: "Movimentações" });
     await userEvent.click(movTab);
     expect(screen.getByRole("tab", { name: "Movimentações", selected: true })).toBeInTheDocument();
+  });
+
+  it("abre imediatamente as abas Metas e Aporte via query string com seus seletores de tour", () => {
+    // Configura ativos na posição para simular o estado do tour
+    positionMock = {
+      ...positionMock,
+      rows: [row({ assetId: "a1", ticker: "PETR4", valueBRL: 8000, pct: 80, unrealizedPct: 20 })],
+      totalBRL: 8000,
+    };
+
+    // Passo 2 do Tour: /investments?tab=metas
+    const { unmount: unmountMetas } = renderPage("/investments?tab=metas");
+    expect(screen.getByRole("tab", { name: "Metas", selected: true })).toBeInTheDocument();
+    expect(document.querySelector('[data-tour="investments-targets"]')).toBeInTheDocument();
+    unmountMetas();
+
+    // Passo 3 do Tour: /investments?tab=aporte
+    const { unmount: unmountAporte } = renderPage("/investments?tab=aporte");
+    expect(screen.getByRole("tab", { name: "Aporte", selected: true })).toBeInTheDocument();
+    expect(document.querySelector('[data-tour="investments-rebalance"]')).toBeInTheDocument();
+    unmountAporte();
   });
 });
 

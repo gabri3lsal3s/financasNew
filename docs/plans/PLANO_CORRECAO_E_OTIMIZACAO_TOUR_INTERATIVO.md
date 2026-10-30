@@ -12,7 +12,7 @@
 
 ```
 [FASE 0: INFRAESTRUTURA BASE ANTERIOR]       ████████████████████ 100% Concluído
-[FASE 1: RESILIÊNCIA DE DADOS & ROTAS]       ░░░░░░░░░░░░░░░░░░░░   0% Pendente
+[FASE 1: RESILIÊNCIA DE DADOS & ROTAS]       ████████████████████ 100% Concluído
 [FASE 2: MOTOR DE SCROLL & CENTRALIZAÇÃO]   ░░░░░░░░░░░░░░░░░░░░   0% Pendente
 [FASE 3: CATÁLOGO DE MICRO-TOURS & APK]      ░░░░░░░░░░░░░░░░░░░░   0% Pendente
 [FASE 4: GOVERNANÇA DE MODAIS & UPDATE TOAST]░░░░░░░░░░░░░░░░░░░░   0% Pendente
@@ -131,27 +131,27 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 **Meta:** Eliminar 100% dos erros *"Algo deu errado. Tente novamente"* em Cartões, corrigir o roteamento das abas de Investimentos e ajustar seletores desproporcionais.
 
 #### Tarefas:
-- [ ] **1.1. Implementação de Mocks de Cartão (`src/state/queries/use-simulated-queries.ts`)**
-  - [ ] Implementar `useSimulatedCardExpenses(cardId: string | null)` para filtrar despesas do cartão simulado.
-  - [ ] Implementar `useSimulatedCardPayments(cardId: string | null)` com histórico de pagamentos/faturas simuladas.
-  - [ ] Implementar `useSimulatedAllCardExpenses()` retornando todas as despesas com cartão do mock.
-  - [ ] Implementar `useSimulatedAllCardPayments()` com totalizações de pagamentos simulados.
+- [x] **1.1. Implementação de Mocks de Cartão (`src/state/queries/use-simulated-queries.ts`)**
+  - [x] Implementar `useSimulatedCardExpenses(cardId: string | null)` para filtrar despesas do cartão simulado.
+  - [x] Implementar `useSimulatedCardPayments(cardId: string | null)` com histórico de pagamentos/faturas simuladas.
+  - [x] Implementar `useSimulatedAllCardExpenses()` retornando todas as despesas com cartão do mock.
+  - [x] Implementar `useSimulatedAllCardPayments()` com totalizações de pagamentos simulados.
 
-- [ ] **1.2. Chaveamento por `isDemoActive` nas Queries de Cartão**
-  - [ ] Em `src/state/queries/use-card-payments.ts`:
+- [x] **1.2. Chaveamento por `isDemoActive` nas Queries de Cartão**
+  - [x] Em `src/state/queries/use-card-payments.ts`:
     * Chavear `useCardExpenses` com `isDemoActive ? simulated : real` e `enabled: !isDemoActive`.
     * Chavear `useCardPayments` com `isDemoActive ? simulated : real` e `enabled: !isDemoActive`.
-  - [ ] Em `src/state/queries/use-overview.ts`:
+  - [x] Em `src/state/queries/use-overview.ts`:
     * Chavear `useAllCardExpenses` com `isDemoActive ? simulated : real` e `enabled: !isDemoActive`.
     * Chavear `useAllCardPayments` com `isDemoActive ? simulated : real` e `enabled: !isDemoActive`.
 
-- [ ] **1.3. Correção Canônica das Rotas de Investimentos (`src/domain/demo-simulation/tour-steps.ts`)**
-  - [ ] Atualizar Passo 1 de Investimentos: `targetRoute: "/investments"`.
-  - [ ] Atualizar Passo 2 de Investimentos: `targetRoute: "/investments?tab=metas"`.
-  - [ ] Atualizar Passo 3 de Investimentos: `targetRoute: "/investments?tab=aporte"`.
+- [x] **1.3. Correção Canônica das Rotas de Investimentos (`src/domain/demo-simulation/tour-steps.ts`)**
+  - [x] Atualizar Passo 1 de Investimentos: `targetRoute: "/investments"`.
+  - [x] Atualizar Passo 2 de Investimentos: `targetRoute: "/investments?tab=metas"`.
+  - [x] Atualizar Passo 3 de Investimentos: `targetRoute: "/investments?tab=aporte"`.
 
-- [ ] **1.4. Preservação de Query Strings no Redirecionamento (`src/app/router.tsx`)**
-  - [ ] Atualizar redirecionamento de compatibilidade:
+- [x] **1.4. Preservação de Query Strings no Redirecionamento (`src/app/router.tsx`)**
+  - [x] Atualizar redirecionamento de compatibilidade:
     ```tsx
     <Route
       path="/investimentos"
@@ -159,25 +159,25 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
     />
     ```
 
-- [ ] **1.5. Redimensionamento de Seletores em Transações (`transaction-list-page.tsx`)**
-  - [ ] Substituir o seletor da lista inteira de 800px por um seletor contido:
+- [x] **1.5. Redimensionamento de Seletores em Transações (`transaction-list-page.tsx`)**
+  - [x] Substituir o seletor da lista inteira de 800px por um seletor contido:
     `data-tour="transactions-feed-card"` no primeiro bloco representativo de lançamentos.
-  - [ ] Atualizar o seletor correspondente em `tour-steps.ts`.
+  - [x] Atualizar o seletor correspondente em `tour-steps.ts`.
 
-- [ ] **1.6. Testes Unitários de Rota e Mocks**
-  - [ ] Atualizar asserções de teste em `src/domain/demo-simulation/tour-steps.test.ts`.
-  - [ ] Testar retorno síncrono das queries de cartão com `isDemoActive = true`.
+- [x] **1.6. Testes Unitários de Rota e Mocks**
+  - [x] Atualizar asserções de teste em `src/domain/demo-simulation/tour-steps.test.ts`.
+  - [x] Testar retorno síncrono das queries de cartão com `isDemoActive = true`.
 
 #### Portão de Qualidade 1:
-- [ ] `npm run typecheck` executado com zero erros de tipo.
-- [ ] `npm run lint` aprovado sem nenhuma violação.
-- [ ] `npm test -- src/domain/demo-simulation/tour-steps.test.ts src/state/queries/` aprovado.
-- [ ] Teste Manual: Navegar até `/cartoes` durante o tour e verificar se a carteira carrega perfeitamente sem nenhuma caixa vermelha de erro.
-- [ ] Teste Manual: Avançar os passos de investimentos e confirmar que as abas "Metas" e "Aporte" abrem imediatamente.
+- [x] `npm run typecheck` executado com zero erros de tipo.
+- [x] `npm run lint` aprovado sem nenhuma violação.
+- [x] `npm test -- src/domain/demo-simulation/tour-steps.test.ts src/state/queries/` aprovado.
+- [x] Teste Manual: Navegar até `/cartoes` durante o tour e verificar se a carteira carrega perfeitamente sem nenhuma caixa vermelha de erro.
+- [x] Teste Manual: Avançar os passos de investimentos e confirmar que as abas "Metas" e "Aporte" abrem imediatamente.
 
 #### Commit & Push 1:
-- [ ] Mensagem de Commit: `fix(tour): intercepta queries de cartao em modo demo e corrige rotas de abas de investimentos`
-- [ ] Executar push para a branch remota.
+- [x] Mensagem de Commit: `fix(tour): intercepta queries de cartao em modo demo e corrige rotas de abas de investimentos`
+- [x] Executar push para a branch remota.
 
 ---
 

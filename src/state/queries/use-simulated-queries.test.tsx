@@ -381,6 +381,16 @@ describe("use-simulated-queries — Interceptação Segura de Queries no TanStac
       expect(mockListAllCardExpenses).not.toHaveBeenCalled();
       expect(mockListAllCardPayments).not.toHaveBeenCalled();
 
+      // Validação de retorno síncrono imediato (sem pending / loading)
+      expect(cardExp.current.isLoading).toBe(false);
+      expect(cardExp.current.isSuccess).toBe(true);
+      expect(cardPay.current.isLoading).toBe(false);
+      expect(cardPay.current.isSuccess).toBe(true);
+      expect(allExp.current.isLoading).toBe(false);
+      expect(allExp.current.isSuccess).toBe(true);
+      expect(allPay.current.isLoading).toBe(false);
+      expect(allPay.current.isSuccess).toBe(true);
+
       expect(cardExp.current.data?.length).toBeGreaterThan(0);
       expect(cardExp.current.data?.[0]?.card_id).toBe("card-demo-black");
 
