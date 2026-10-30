@@ -7,8 +7,10 @@ import {
   goToPrevStep,
   hasCompletedDemoTour,
   hasSeenWelcomeModal,
+  hasSeenNativeOnboarding,
   markTourCompleted,
   markWelcomeModalSeen,
+  markNativeOnboardingSeen,
   resetDemoSession,
   resetDemoTourStorage,
   setStepIndex,
@@ -170,6 +172,16 @@ describe("demo-session-store — Máquina de Estados da Simulação & Storage (F
 
       resetDemoTourStorage();
       expect(hasSeenWelcomeModal()).toBe(false);
+    });
+
+    it("gerencia a exibição do onboarding de recursos nativos do APK", () => {
+      expect(hasSeenNativeOnboarding()).toBe(false);
+
+      markNativeOnboardingSeen();
+      expect(hasSeenNativeOnboarding()).toBe(true);
+
+      resetDemoTourStorage();
+      expect(hasSeenNativeOnboarding()).toBe(false);
     });
   });
 });

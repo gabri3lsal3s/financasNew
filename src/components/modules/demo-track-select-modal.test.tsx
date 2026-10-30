@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { axe } from "vitest-axe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DemoTrackSelectModal } from "./demo-track-select-modal";
+import * as platformModule from "@/services/native/platform";
 import {
   getDemoSessionState,
   markTourCompleted,
@@ -15,15 +16,16 @@ vi.mock("react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-describe("DemoTrackSelectModal — Seleção de Trilha do Tour (§3.2)", () => {
+describe("DemoTrackSelectModal — Hub de Aprendizado & Micro-Tours (§3.4)", () => {
   beforeEach(() => {
     localStorage.clear();
     resetDemoTourStorage();
     resetDemoSession();
     vi.clearAllMocks();
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
   });
 
-  it("renderiza o modal aberto com os cabeçalhos e as 2 opções de trilha", () => {
+  it("renderiza o modal aberto com os cabeçalhos, abas e visão geral", () => {
     render(<DemoTrackSelectModal open={true} onOpenChange={vi.fn()} />);
 
     expect(screen.getByText("Escolha sua Trilha de Demonstração")).toBeInTheDocument();
@@ -31,19 +33,20 @@ describe("DemoTrackSelectModal — Seleção de Trilha do Tour (§3.2)", () => {
       screen.getByText(/Explore os recursos do aplicativo com dados simulados em memória/i),
     ).toBeInTheDocument();
 
-    // Opção 1: Finanças
-    expect(screen.getByText("Finanças Diárias & Cartões")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Explore entradas, saídas, faturas automáticas e limites de gastos/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText("4 passos")).toBeInTheDocument();
+    // Abas de navegação
+    expect(screen.getByRole("tab", { name: "Finanças" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Investimentos" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Ajustes & Suporte" })).toBeInTheDocument();
 
-    // Opção 2: Investimentos
+    // Opções principais
+    expect(screen.getByText("Finanças Diárias & Cartões")).toBeInTheDocument();
     expect(screen.getByText("Investimentos & Rebalanceamento")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Conheça a visão patrimonial, alocação de classes e motor de aportes/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText("3 passos")).toBeInTheDocument();
+
+    // Micro-tours específicos
+    expect(screen.getByText("Botão Wizard (+) e Lançamento")).toBeInTheDocument();
+    expect(screen.getByText("Cartões, Faturas e Limites")).toBeInTheDocument();
+    expect(screen.getByText("Categorias e Tetos de Gastos")).toBeInTheDocument();
+    expect(screen.getByText("Smart Advisor e Relatórios")).toBeInTheDocument();
 
     // Botão de pular
     expect(
@@ -52,15 +55,15 @@ describe("DemoTrackSelectModal — Seleção de Trilha do Tour (§3.2)", () => {
   });
 
   it("exibe badge 'Concluído' nas trilhas que já foram finalizadas", () => {
-    markTourCompleted("finances");
+    markTourCompleted("finances_wizard");
 
     render(<DemoTrackSelectModal open={true} onOpenChange={vi.fn()} />);
 
     expect(screen.getByText("Concluído")).toBeInTheDocument();
-    expect(screen.getByText("3 passos")).toBeInTheDocument();
+    expect(screen.getAllByText("3 passos").length).toBeGreaterThan(0);
   });
 
-  it("inicia a trilha de finanças, navega para '/' e fecha o modal ao selecionar finanças", async () => {
+  it("inicia a trilha de finanças geral ao clicar no card de finanças", async () => {
     const user = userEvent.setup();
     const handleOpenChange = vi.fn();
     const handleSelectTrack = vi.fn();
@@ -86,7 +89,33 @@ describe("DemoTrackSelectModal — Seleção de Trilha do Tour (§3.2)", () => {
     expect(session.activeTrack).toBe("finances");
   });
 
-  it("inicia a trilha de investimentos, navega para '/investimentos' e fecha o modal ao selecionar investimentos", async () => {
+  it("inicia o micro-tour do Wizard (+) com foco na rota inicial ao selecionar o micro-tour", async () => {
+    const user = userEvent.setup();
+    const handleOpenChange = vi.fn();
+    const handleSelectTrack = vi.fn();
+
+    render(
+      <DemoTrackSelectModal
+        open={true}
+        onOpenChange={handleOpenChange}
+        onSelectTrack={handleSelectTrack}
+      />,
+    );
+
+    const wizardBtn = screen.getByText("Botão Wizard (+) e Lançamento").closest("button");
+    expect(wizardBtn).not.toBeNull();
+    await user.click(wizardBtn!);
+
+    expect(mockNavigate).toHaveBeenCalledWith("/");
+    expect(handleSelectTrack).toHaveBeenCalledWith("finances_wizard");
+    expect(handleOpenChange).toHaveBeenCalledWith(false);
+
+    const session = getDemoSessionState();
+    expect(session.isDemoActive).toBe(true);
+    expect(session.activeTrack).toBe("finances_wizard");
+  });
+
+  it("inicia a trilha de investimentos geral, navega para '/investimentos' e fecha o modal", async () => {
     const user = userEvent.setup();
     const handleOpenChange = vi.fn();
     const handleSelectTrack = vi.fn();
@@ -112,6 +141,68 @@ describe("DemoTrackSelectModal — Seleção de Trilha do Tour (§3.2)", () => {
     const session = getDemoSessionState();
     expect(session.isDemoActive).toBe(true);
     expect(session.activeTrack).toBe("investments");
+  });
+
+  it("inicia o micro-tour de metas de alocação de investimentos navegando para '/investments?tab=metas'", async () => {
+    const user = userEvent.setup();
+    const handleOpenChange = vi.fn();
+    const handleSelectTrack = vi.fn();
+
+    render(
+      <DemoTrackSelectModal
+        open={true}
+        onOpenChange={handleOpenChange}
+        onSelectTrack={handleSelectTrack}
+      />,
+    );
+
+    const targetsBtn = screen.getByText("Metas por Classe e Ativo").closest("button");
+    expect(targetsBtn).not.toBeNull();
+    await user.click(targetsBtn!);
+
+    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=metas");
+    expect(handleSelectTrack).toHaveBeenCalledWith("investments_targets");
+    expect(handleOpenChange).toHaveBeenCalledWith(false);
+
+    const session = getDemoSessionState();
+    expect(session.isDemoActive).toBe(true);
+    expect(session.activeTrack).toBe("investments_targets");
+  });
+
+  it("renderiza o Card de Boas-Vindas do APK Nativo em destaque caso isNativePlatform() retorne true", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+    const handleSelectTrack = vi.fn();
+
+    render(
+      <DemoTrackSelectModal
+        open={true}
+        onOpenChange={vi.fn()}
+        onSelectTrack={handleSelectTrack}
+      />,
+    );
+
+    expect(screen.getByText("Bem-vindo ao App Nativo Android")).toBeInTheDocument();
+    expect(screen.getByText("Exclusivo APK")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Leitor de notificações bancárias em tempo real/i),
+    ).toBeInTheDocument();
+
+    const nativeBtn = screen.getByText("Bem-vindo ao App Nativo Android").closest("button");
+    expect(nativeBtn).not.toBeNull();
+    await user.click(nativeBtn!);
+
+    expect(handleSelectTrack).toHaveBeenCalledWith("app_native_apk");
+    expect(mockNavigate).toHaveBeenCalledWith("/");
+  });
+
+  it("não renderiza o Card do APK Nativo quando isNativePlatform() for false", () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+
+    render(<DemoTrackSelectModal open={true} onOpenChange={vi.fn()} />);
+
+    expect(screen.queryByText("Bem-vindo ao App Nativo Android")).not.toBeInTheDocument();
+    expect(screen.queryByText("Exclusivo APK")).not.toBeInTheDocument();
   });
 
   it("aciona onSkipToReal e fecha o modal ao clicar em pular tour", async () => {

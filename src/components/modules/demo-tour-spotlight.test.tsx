@@ -1491,4 +1491,76 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(document.activeElement).toBe(triggerBtn);
     });
   });
+
+  describe("Micro-Tour do Wizard (+) — Foco Preciso no Botão Central e Anti-Colisão Mobile (Portão 3)", () => {
+    let originalInnerWidth: number;
+    let originalInnerHeight: number;
+
+    beforeEach(() => {
+      originalInnerWidth = window.innerWidth;
+      originalInnerHeight = window.innerHeight;
+      window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    });
+
+    afterEach(() => {
+      window.innerWidth = originalInnerWidth;
+      window.innerHeight = originalInnerHeight;
+    });
+
+    it("inicia o micro-tour finances_wizard e foca com precisão no botão central [data-tour='bottom-nav-wizard'] sem colisão", () => {
+      window.innerWidth = 375;
+      window.innerHeight = 812;
+
+      const wizardButton = document.createElement("a");
+      wizardButton.setAttribute("data-tour", "bottom-nav-wizard");
+      wizardButton.setAttribute("href", "/");
+      document.body.appendChild(wizardButton);
+
+      // Botão central do FAB posicionado no fundo da tela (ex: bottom navigation)
+      vi.spyOn(wizardButton, "getBoundingClientRect").mockReturnValue({
+        x: 160,
+        y: 730,
+        left: 160,
+        top: 730,
+        right: 216,
+        bottom: 786,
+        width: 56,
+        height: 56,
+        toJSON: () => ({}),
+      });
+
+      startDemo("finances_wizard");
+
+      const { container } = render(<DemoTourSpotlight />);
+
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      // Card do passo 1 do micro-tour
+      expect(screen.getByText("Passo 1 de 3")).toBeInTheDocument();
+      expect(
+        screen.getByText("Acesso Rápido com o Botão Central (+)"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/O botão de destaque central na barra inferior/i),
+      ).toBeInTheDocument();
+
+      // Card posicionado no topo para não encobrir o botão inferior
+      const aside = container.querySelector("aside");
+      expect(aside).not.toBeNull();
+      expect(aside?.getAttribute("data-placement")).toBe("top");
+      expect(aside?.className).toContain("top-[max(env(safe-area-inset-top,0px),16px)]");
+
+      // Spotlight border e máscara posicionados com precisão e padding de 10px ao redor do botão
+      const border = screen.getByTestId("spotlight-border");
+      expect(border).toBeInTheDocument();
+      expect(border.getAttribute("x")).toBe("150");
+      expect(border.getAttribute("y")).toBe("720");
+      expect(border.getAttribute("width")).toBe("76");
+      expect(border.getAttribute("height")).toBe("76");
+      expect(border.getAttribute("rx")).toBe("16");
+      expect(border.getAttribute("ry")).toBe("16");
+    });
+  });
 });

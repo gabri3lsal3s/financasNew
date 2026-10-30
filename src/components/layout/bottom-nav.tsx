@@ -203,6 +203,7 @@ export function BottomNav() {
             <NavLink
               to={create.to}
               aria-label={create.label}
+              data-tour="bottom-nav-wizard"
               className="flex min-h-11 items-center justify-center"
               onClick={(e) => {
                 triggerSensory("action");

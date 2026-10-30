@@ -17,5 +17,7 @@ export {
   markTourCompleted,
   hasSeenWelcomeModal,
   markWelcomeModalSeen,
+  hasSeenNativeOnboarding,
+  markNativeOnboardingSeen,
   resetDemoTourStorage,
 } from "./demo-storage";

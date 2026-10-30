@@ -13,7 +13,7 @@ import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Badge, Button, Skeleton } from "@/components/ui";
-import { DemoTourSpotlight } from "@/components/modules";
+import { DemoTourSpotlight, NativeOnboardingDialog } from "@/components/modules";
 import { endDemo, useDemoSession } from "@/state/demo-mode";
 import type { LaunchState } from "@/features/transactions/wizard/wizard-state";
 
@@ -227,11 +227,14 @@ export function PageShell() {
             )}
             {showCalc && <CalculatorButton />}
             {hasNotifications && <NotificationsButton />}
-            {showTheme && <ThemeToggle />}
-            {showPrivacy && <PrivacyToggle />}
+            <div data-tour="header-privacy-theme" className="flex items-center gap-1.5 shrink-0">
+              {showTheme && <ThemeToggle />}
+              {showPrivacy && <PrivacyToggle />}
+            </div>
           </div>
         </header>
         <DemoTourSpotlight />
+        <NativeOnboardingDialog />
         <NetworkStatusBanner />
         <main id="main-content" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-none min-h-0 w-full">
           <div className="mx-auto w-full max-w-7xl px-3 sm:px-6 pb-[calc(6.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] lg:pb-10 pt-4 sm:pt-6 lg:px-8 min-w-0">

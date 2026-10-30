@@ -127,6 +127,7 @@ describe("PageShell (F7.2/F7.3)", () => {
     expect(screen.getByTestId("page-content")).toBeInTheDocument();
     // Sidebar (desktop) + BottomNav (mobile) compartilham o mesmo label acessível.
     expect(screen.getAllByRole("navigation", { name: "Navegação principal" })).toHaveLength(2);
+    expect(document.querySelector('[data-tour="header-privacy-theme"]')).toBeInTheDocument();
   });
 
   it("margem inicial acompanha a sidebar expandida (lg:pl-64)", () => {

@@ -153,6 +153,7 @@ describe("InvestmentsPage — F17 unificada", () => {
   it("abre o InvestmentWizard ao clicar no botão Nova Operação do header", async () => {
     renderPage();
     const novaOpBtn = screen.getByRole("button", { name: "Nova operação" });
+    expect(novaOpBtn).toHaveAttribute("data-tour", "investments-new-op");
     await userEvent.click(novaOpBtn);
     expect(screen.getByPlaceholderText(/Ex: PETR4, MXRF11/i)).toBeInTheDocument();
   });

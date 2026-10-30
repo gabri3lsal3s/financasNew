@@ -50,6 +50,10 @@ describe("BottomNav Dinâmica & Adaptativa", () => {
       "Cartões",
     ]);
     expect(screen.getByRole("button", { name: "Mais opções" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Nova transação" })).toHaveAttribute(
+      "data-tour",
+      "bottom-nav-wizard",
+    );
   });
 
   it("abre a gaveta MoreMenuSheet ao clicar no botão Mais", () => {

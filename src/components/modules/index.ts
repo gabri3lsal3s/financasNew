@@ -131,6 +131,8 @@ export { DemoTourSpotlight } from "./demo-tour-spotlight";
 export type { DemoTourSpotlightProps } from "./demo-tour-spotlight";
 export { DemoExitConfirmDialog } from "./demo-exit-confirm-dialog";
 export type { DemoExitConfirmDialogProps } from "./demo-exit-confirm-dialog";
+export { NativeOnboardingDialog } from "./native-onboarding-dialog";
+export type { NativeOnboardingDialogProps } from "./native-onboarding-dialog";
 export { HelpModal } from "./help-modal";
 export type { HelpModalProps } from "./help-modal";
 export { SupportChatDialog } from "./support";

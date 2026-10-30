@@ -1,7 +1,11 @@
 import { useCallback, useState } from "react";
 import { ArrowUpDown, Compass, CreditCard, Layers, Sparkles, TrendingUp } from "lucide-react";
 import { Button, Modal } from "@/components/ui";
-import { hasSeenWelcomeModal, markWelcomeModalSeen } from "@/state/demo-mode";
+import {
+  hasSeenWelcomeModal,
+  markNativeOnboardingSeen,
+  markWelcomeModalSeen,
+} from "@/state/demo-mode";
 
 export interface WelcomeModalProps {
   /** Controle externo de visibilidade (opcional). Se omitido, deriva de hasSeenWelcomeModal(). */
@@ -40,6 +44,7 @@ export function WelcomeModal({
 
   const handleClose = useCallback(() => {
     markWelcomeModalSeen();
+    markNativeOnboardingSeen();
     setInternalOpen(false);
     onOpenChange?.(false);
   }, [onOpenChange]);

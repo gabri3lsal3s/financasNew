@@ -124,6 +124,7 @@ export function InvestmentsPage() {
           <Button
             size="sm"
             aria-label="Nova operação"
+            data-tour="investments-new-op"
             className="flex-1 sm:flex-initial"
             onClick={() => handleOpenWizard(null, "select")}
           >

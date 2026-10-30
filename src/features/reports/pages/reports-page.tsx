@@ -961,7 +961,7 @@ export function ReportsPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-6 w-full min-w-0">
+    <div className="flex flex-col gap-6 w-full min-w-0" data-tour="reports-content">
       {/* Header */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>

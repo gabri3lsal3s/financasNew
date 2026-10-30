@@ -241,8 +241,8 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 **Meta:** Transformar o seletor em um Hub de Aprendizado sob demanda com micro-tours específicos e tour de onboarding para o aplicativo APK Nativo (Android).
 
 #### Tarefas:
-- [ ] **3.1. Expansão de Tipos e Contratos de Domínio (`src/domain/demo-simulation/types.ts`)**
-  - [ ] Expandir `TourTrackId` para suportar:
+- [x] **3.1. Expansão de Tipos e Contratos de Domínio (`src/domain/demo-simulation/types.ts`)**
+  - [x] Expandir `TourTrackId` para suportar:
     * `"finances_overview"` (Visão Geral Finanças - 3 passos)
     * `"finances_wizard"` (O Botão Wizard (+) e Lançamento Rápido - 3 passos)
     * `"finances_cards"` (Cartões, Faturas e Limites - 3 passos)
@@ -254,54 +254,54 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
     * `"investments_aporte"` (Calculadora de Aporte Inteligente - 2 passos)
     * `"settings_support"` (Personalização, Privacidade e Suporte - 2 passos)
     * `"app_native_apk"` (Recursos Nativos do APK Android - 3 passos)
-  - [ ] Criar estrutura de grupos de trilhas com metadados (ícone, categoria, passos, badges de conclusão).
+  - [x] Criar estrutura de grupos de trilhas com metadados (ícone, categoria, passos, badges de conclusão).
 
-- [ ] **3.2. Mapeamento dos Passos dos Novos Micro-Tours (`tour-steps.ts`)**
-  - [ ] **Micro-Tour Wizard (+):**
+- [x] **3.2. Mapeamento dos Passos dos Novos Micro-Tours (`tour-steps.ts`)**
+  - [x] **Micro-Tour Wizard (+):**
     * Passo 1: Botão `+` na BottomNav (`[data-tour="bottom-nav-wizard"]`).
     * Passo 2: Modal do Wizard (seleção de despesa, receita, PIX).
     * Passo 3: Parcelamento inteligente de despesas.
-  - [ ] **Micro-Tour Insights & Relatórios:**
+  - [x] **Micro-Tour Insights & Relatórios:**
     * Passo 1: Smart Advisor / Alertas de Ritmo na Home.
     * Passo 2: Radar de Assinaturas na tela de Cartões.
     * Passo 3: Fechamento mensal em Relatórios (`/relatorios`).
-  - [ ] **Micro-Tour Ativos de Investimento:**
+  - [x] **Micro-Tour Ativos de Investimento:**
     * Passo 1: Botão `+ Nova Operação` em Investimentos.
     * Passo 2: Adicionar saldo em Caixa de corretora.
-  - [ ] **Micro-Tour Personalização & Suporte:**
+  - [x] **Micro-Tour Personalização & Suporte:**
     * Passo 1: Botão de Privacidade (esconder saldos) e Tema no Header.
     * Passo 2: Canal direto de suporte no menu Mais/Configurações.
-  - [ ] **Tour Exclusivo do APK Nativo Android (`app_native_apk`):**
+  - [x] **Tour Exclusivo do APK Nativo Android (`app_native_apk`):**
     * Passo 1: Interface nativa e desempenho acelerado.
     * Passo 2: Assistente de Notificações Bancárias (captura automática de compras).
     * Passo 3: Bloqueio por Biometria e Escudo de Privacidade.
 
-- [ ] **3.3. Inclusão dos Atributos `data-tour` nas Telas Correspondentes**
-  - [ ] BottomNav: `data-tour="bottom-nav-wizard"` no botão central flutuante.
-  - [ ] Investimentos: `data-tour="investments-new-op"` no botão Nova Operação.
-  - [ ] Header: `data-tour="header-privacy-theme"` nos botões de privacidade e tema.
+- [x] **3.3. Inclusão dos Atributos `data-tour` nas Telas Correspondentes**
+  - [x] BottomNav: `data-tour="bottom-nav-wizard"` no botão central flutuante.
+  - [x] Investimentos: `data-tour="investments-new-op"` no botão Nova Operação.
+  - [x] Header: `data-tour="header-privacy-theme"` nos botões de privacidade e tema.
 
-- [ ] **3.4. Redesign do Modal Seletor (`src/components/modules/demo-track-select-modal.tsx`)**
-  - [ ] Renderizar Hub de Aprendizado com seções colapsáveis ou agrupadas por abas:
+- [x] **3.4. Redesign do Modal Seletor (`src/components/modules/demo-track-select-modal.tsx`)**
+  - [x] Renderizar Hub de Aprendizado com seções colapsáveis ou agrupadas por abas:
     * Card de Boas-Vindas do APK Nativo em destaque caso `isNative()` retorne `true`.
     * Bloco de Finanças Diárias com botão de "Visão Geral" e lista de 4 micro-tours específicos.
     * Bloco de Investimentos com botão de "Visão Geral" e lista de 4 micro-tours específicos.
     * Bloco de Configurações, Visual e Suporte.
-  - [ ] Exibir badge `"Concluído"` em cada micro-tour finalizado pelo usuário.
+  - [x] Exibir badge `"Concluído"` em cada micro-tour finalizado pelo usuário.
 
-- [ ] **3.5. Disparo de Onboarding no Primeiro Uso / Instalação do APK**
-  - [ ] Em `src/state/demo-mode/demo-storage.ts`, verificar se o usuário já viu o onboarding nativo.
-  - [ ] Se estiver rodando no APK (`isNative()`) e for o primeiro acesso, sugerir automaticamente o micro-tour de recursos nativos.
+- [x] **3.5. Disparo de Onboarding no Primeiro Uso / Instalação do APK**
+  - [x] Em `src/state/demo-mode/demo-storage.ts`, verificar se o usuário já viu o onboarding nativo.
+  - [x] Se estiver rodando no APK (`isNative()`) e for o primeiro acesso, sugerir automaticamente o micro-tour de recursos nativos.
 
 #### Portão de Qualidade 3:
-- [ ] `npm run typecheck` aprovado.
-- [ ] `npm run lint` aprovado.
-- [ ] `npm test -- src/domain/demo-simulation/` aprovado com todos os novos passos validados.
-- [ ] Teste Manual: Abrir o modal de seleção e comprovar a listagem organizada de micro-tours; iniciar o micro-tour do Wizard (+) e verificar se o botão central é focado com precisão.
+- [x] `npm run typecheck` aprovado.
+- [x] `npm run lint` aprovado.
+- [x] `npm test -- src/domain/demo-simulation/` aprovado com todos os novos passos validados.
+- [x] Teste Manual: Abrir o modal de seleção e comprovar a listagem organizada de micro-tours; iniciar o micro-tour do Wizard (+) e verificar se o botão central é focado com precisão.
 
 #### Commit & Push 3:
-- [ ] Mensagem de Commit: `feat(tour): implementa catalogo de micro-tours modulares e onboarding nativo do apk`
-- [ ] Executar push para a branch remota.
+- [x] Mensagem de Commit: `feat(tour): implementa catalogo de micro-tours modulares e onboarding nativo do apk`
+- [x] Executar push para a branch remota.
 
 ---
 

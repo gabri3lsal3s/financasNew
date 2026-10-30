@@ -1,11 +1,25 @@
 export type {
+  TourTrackCategory,
+  LegacyTourTrackId,
+  MicroTourTrackId,
   TourTrackId,
+  TourIconName,
+  TourTrackMeta,
+  TourTrackGroup,
   TourStep,
   TourStepPlacement,
   DailyFinancesDataset,
   InvestmentsDataset,
   DemoSimulationDataset,
 } from "./types";
+
+export {
+  TOUR_TRACK_METAS,
+  TOUR_TRACK_GROUPS,
+  getTourTrackMeta,
+  getTourTrackGroups,
+  getTourTracksByCategory,
+} from "./tour-catalog";
 
 export {
   DEMO_USER_ID,
