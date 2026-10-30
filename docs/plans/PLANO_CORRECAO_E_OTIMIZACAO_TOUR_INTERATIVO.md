@@ -186,52 +186,52 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 **Meta:** Garantir que o spotlight centralize perfeitamente nos elementos sem oscilar ao navegar para frente e para trás, e posicionar o popover no topo ou na base evitando sobreposição no mobile.
 
 #### Tarefas:
-- [ ] **2.1. Ouvinte de Scroll no Container Correto (`src/components/modules/demo-tour-spotlight.tsx`)**
-  - [ ] Substituir `window.addEventListener("scroll", ...)` pelo listener no elemento `#main-content`:
+- [x] **2.1. Ouvinte de Scroll no Container Correto (`src/components/modules/demo-tour-spotlight.tsx`)**
+  - [x] Substituir `window.addEventListener("scroll", ...)` pelo listener no elemento `#main-content`:
     ```ts
     const container = document.getElementById("main-content");
     container?.addEventListener("scroll", handleResizeOrScroll, { passive: true });
     ```
 
-- [ ] **2.2. Algoritmo Determinístico de Scroll com Offset do Header**
-  - [ ] Substituir `element.scrollIntoView({ behavior: "smooth" })` por rolagem matemática calculada no container:
+- [x] **2.2. Algoritmo Determinístico de Scroll com Offset do Header**
+  - [x] Substituir `element.scrollIntoView({ behavior: "smooth" })` por rolagem matemática calculada no container:
     ```ts
     const container = document.getElementById("main-content");
     const headerHeight = 64; // altura do header fixo
     const targetScrollTop = element.offsetTop - headerHeight - 16;
     container.scrollTo({ top: Math.max(0, targetScrollTop), behavior: "smooth" });
     ```
-  - [ ] Resetar `container.scrollTop = 0` imediatamente ao mudar de rota antes de buscar o novo elemento.
+  - [x] Resetar `container.scrollTop = 0` imediatamente ao mudar de rota antes de buscar o novo elemento.
 
-- [ ] **2.3. Sincronização Precisa pós-Estabilização (Fim Real da Rolagem)**
-  - [ ] Eliminar `setTimeout(updateTargetRect, 200)`.
-  - [ ] Implementar verificação de estabilização via `scrollend` com fallback de `requestAnimationFrame` que confirma quando o `container.scrollTop` para de variar por 2 frames consecutivos antes de chamar `updateTargetRect`.
-  - [ ] Acoplar `ResizeObserver` ao elemento-alvo para recalcular dimensões caso o layout sofra expansão tardia.
+- [x] **2.3. Sincronização Precisa pós-Estabilização (Fim Real da Rolagem)**
+  - [x] Eliminar `setTimeout(updateTargetRect, 200)`.
+  - [x] Implementar verificação de estabilização via `scrollend` com fallback de `requestAnimationFrame` que confirma quando o `container.scrollTop` para de variar por 2 frames consecutivos antes de chamar `updateTargetRect`.
+  - [x] Acoplar `ResizeObserver` ao elemento-alvo para recalcular dimensões caso o layout sofra expansão tardia.
 
-- [ ] **2.4. Motor Anti-Colisão Mobile Adaptativo**
-  - [ ] Medir posição vertical do elemento em relação à viewport:
+- [x] **2.4. Motor Anti-Colisão Mobile Adaptativo**
+  - [x] Medir posição vertical do elemento em relação à viewport:
     * Se `rect.y + rect.height / 2 > window.innerHeight * 0.45`:
       - Ancorar no **TOPO**: `fixed inset-x-3 top-[max(env(safe-area-inset-top,0px),16px)]`.
     * Se `rect.y + rect.height / 2 <= window.innerHeight * 0.45`:
       - Ancorar na **BASE**: `fixed inset-x-3 bottom-[max(env(safe-area-inset-bottom,0px),16px)]`.
-  - [ ] Limitar altura máxima do card mobile: `max-h-[42vh]` com `overflow-y-auto`.
+  - [x] Limitar altura máxima do card mobile: `max-h-[42vh]` com `overflow-y-auto`.
 
-- [ ] **2.5. Posicionamento Dinâmico no Desktop com Altura Real**
-  - [ ] Substituir constante `220` pela medição real `cardRef.current?.offsetHeight`.
-  - [ ] Inverter colocação (topo ↔ base) dinamicamente caso o espaço inferior seja menor que o card.
-  - [ ] Clamp horizontal de segurança: `Math.max(16, Math.min(rect.x, window.innerWidth - cardWidth - 16))`.
+- [x] **2.5. Posicionamento Dinâmico no Desktop com Altura Real**
+  - [x] Substituir constante `220` pela medição real `cardRef.current?.offsetHeight`.
+  - [x] Inverter colocação (topo ↔ base) dinamicamente caso o espaço inferior seja menor que o card.
+  - [x] Clamp horizontal de segurança: `Math.max(16, Math.min(rect.x, window.innerWidth - cardWidth - 16))`.
 
-- [ ] **2.6. Testes Unitários de Posicionamento e Anti-Colisão**
-  - [ ] Testar cenários de viewport mobile simulando elemento no topo e na base em `demo-tour-spotlight.test.tsx`.
+- [x] **2.6. Testes Unitários de Posicionamento e Anti-Colisão**
+  - [x] Testar cenários de viewport mobile simulando elemento no topo e na base em `demo-tour-spotlight.test.tsx`.
 
 #### Portão de Qualidade 2:
-- [ ] `npm run typecheck` aprovado.
-- [ ] `npm run lint` aprovado.
-- [ ] `npm test -- src/components/modules/demo-tour-spotlight.test.tsx` aprovado.
-- [ ] Teste Manual: Navegar para frente e para trás entre os passos de Finanças e Investimentos no mobile (375x667 e 390x844). Comprovar que o recorte não oscila e que o card nunca encobre o elemento focado.
+- [x] `npm run typecheck` aprovado.
+- [x] `npm run lint` aprovado.
+- [x] `npm test -- src/components/modules/demo-tour-spotlight.test.tsx` aprovado.
+- [x] Teste Manual: Navegar para frente e para trás entre os passos de Finanças e Investimentos no mobile (375x667 e 390x844). Comprovar que o recorte não oscila e que o card nunca encobre o elemento focado.
 
 #### Commit & Push 2:
-- [ ] Mensagem de Commit: `feat(tour): implementa motor de centralizacao deterministico e anti-colisao mobile`
+- [x] Mensagem de Commit: `feat(tour): implementa motor de centralizacao deterministico e anti-colisao mobile`
 - [ ] Executar push para a branch remota.
 
 ---

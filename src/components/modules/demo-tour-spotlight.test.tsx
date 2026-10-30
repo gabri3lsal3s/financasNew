@@ -20,11 +20,16 @@ vi.mock("react-router", () => ({
 
 describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () => {
   beforeEach(() => {
+    document.body.innerHTML = "";
     mockPathname = "/";
     localStorage.clear();
     resetDemoTourStorage();
     resetDemoSession();
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = "";
   });
 
   it("não renderiza nada se a demonstração estiver inativa", () => {
@@ -136,6 +141,40 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
     expect(mockNavigate).toHaveBeenCalledWith("/transacoes");
   });
 
+  it("escuta evento de scroll no container #main-content e recalcula o retângulo do spotlight", () => {
+    startDemo("finances");
+
+    const mainContainer = document.createElement("main");
+    mainContainer.id = "main-content";
+    document.body.appendChild(mainContainer);
+
+    const targetEl = document.createElement("div");
+    targetEl.setAttribute("data-tour", "overview-kpis");
+    targetEl.scrollIntoView = vi.fn();
+    mainContainer.appendChild(targetEl);
+
+    const rectSpy = vi.spyOn(targetEl, "getBoundingClientRect").mockReturnValue({
+      x: 10,
+      y: 100,
+      top: 100,
+      bottom: 200,
+      left: 10,
+      right: 310,
+      width: 300,
+      height: 100,
+      toJSON: () => ({}),
+    });
+
+    render(<DemoTourSpotlight />);
+
+    // Simula evento de scroll no #main-content
+    act(() => {
+      mainContainer.dispatchEvent(new Event("scroll"));
+    });
+
+    expect(rectSpy).toHaveBeenCalled();
+  });
+
   it("conclui a trilha e aciona o hand-off para a conta real no último passo", async () => {
     const user = userEvent.setup();
     startDemo("investments"); // 3 passos (0, 1, 2)
@@ -160,7 +199,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
     expect(mockNavigate).toHaveBeenCalledWith("/investments?novo=investimento");
   });
 
-  describe("Algoritmo Anti-Colisão Mobile (Fase 2 — Tarefa 2.1)", () => {
+  describe("Motor Anti-Colisão Mobile Adaptativo (Fase 2 — Tarefa 2.4)", () => {
     let originalInnerWidth: number;
     let originalInnerHeight: number;
 
@@ -351,6 +390,74 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(observeSpy).toHaveBeenCalledWith(targetEl);
     });
 
+    it("rola matematicamente no container #main-content com offset do header e margem de respiro", () => {
+      startDemo("finances");
+
+      const mainContainer = document.createElement("main");
+      mainContainer.id = "main-content";
+      const scrollToSpy = vi.fn();
+      mainContainer.scrollTo = scrollToSpy;
+      document.body.appendChild(mainContainer);
+
+      const targetEl = document.createElement("div");
+      targetEl.setAttribute("data-tour", "overview-kpis");
+      Object.defineProperty(targetEl, "offsetTop", { value: 300, configurable: true });
+      mainContainer.appendChild(targetEl);
+
+      render(<DemoTourSpotlight />);
+
+      // targetScrollTop = 300 - 64 (header) - 16 (spacing) = 220
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        top: 220,
+        behavior: "smooth",
+      });
+    });
+
+    it("reseta container.scrollTop para 0 ao trocar de rota antes de buscar o novo elemento", async () => {
+      const user = userEvent.setup();
+      startDemo("finances");
+
+      const mainContainer = document.createElement("main");
+      mainContainer.id = "main-content";
+      mainContainer.scrollTop = 450;
+      mainContainer.scrollTo = vi.fn();
+      document.body.appendChild(mainContainer);
+
+      const targetEl = document.createElement("div");
+      targetEl.setAttribute("data-tour", "overview-kpis");
+      mainContainer.appendChild(targetEl);
+
+      render(<DemoTourSpotlight />);
+
+      const nextBtn = screen.getByRole("button", { name: /Próximo/i });
+      await user.click(nextBtn);
+
+      expect(mainContainer.scrollTop).toBe(0);
+    });
+
+    it("limita o scroll em 0 quando o offsetTop é menor que a altura do header + margem", () => {
+      startDemo("finances");
+
+      const mainContainer = document.createElement("main");
+      mainContainer.id = "main-content";
+      const scrollToSpy = vi.fn();
+      mainContainer.scrollTo = scrollToSpy;
+      document.body.appendChild(mainContainer);
+
+      const targetEl = document.createElement("div");
+      targetEl.setAttribute("data-tour", "overview-kpis");
+      Object.defineProperty(targetEl, "offsetTop", { value: 50, configurable: true });
+      mainContainer.appendChild(targetEl);
+
+      render(<DemoTourSpotlight />);
+
+      // targetScrollTop = Math.max(0, 50 - 64 - 16) = 0
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        top: 0,
+        behavior: "smooth",
+      });
+    });
+
     it("desconecta o ResizeObserver na desmontagem do componente", () => {
       startDemo("finances");
 
@@ -369,7 +476,150 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
     });
   });
 
-  describe("Posicionamento Dinâmico Desktop (Fase 2 — Tarefa 2.3)", () => {
+  describe("Sincronização Precisa pós-Estabilização (Fim Real da Rolagem) (Fase 2 — Tarefa 2.3)", () => {
+    it("sincroniza medição do spotlight via evento 'scrollend' no container #main-content", () => {
+      startDemo("finances");
+
+      const mainContainer = document.createElement("main");
+      mainContainer.id = "main-content";
+      mainContainer.scrollTo = vi.fn();
+      document.body.appendChild(mainContainer);
+
+      const targetEl = document.createElement("div");
+      targetEl.setAttribute("data-tour", "overview-kpis");
+      mainContainer.appendChild(targetEl);
+
+      const rectSpy = vi.spyOn(targetEl, "getBoundingClientRect").mockReturnValue({
+        x: 10,
+        y: 100,
+        left: 10,
+        top: 100,
+        right: 300,
+        bottom: 250,
+        width: 290,
+        height: 150,
+        toJSON: () => ({}),
+      });
+
+      render(<DemoTourSpotlight />);
+
+      rectSpy.mockClear();
+
+      // Dispara o evento de scrollend no #main-content
+      act(() => {
+        mainContainer.dispatchEvent(new Event("scrollend"));
+      });
+
+      // Confirma que a medição foi realizada imediatamente com a estabilização via scrollend
+      expect(rectSpy).toHaveBeenCalled();
+    });
+
+    it("sincroniza medição do spotlight via fallback de estabilização por 2 frames de requestAnimationFrame", () => {
+      startDemo("finances");
+
+      const mainContainer = document.createElement("main");
+      mainContainer.id = "main-content";
+      mainContainer.scrollTop = 100;
+      mainContainer.scrollTo = vi.fn();
+      document.body.appendChild(mainContainer);
+
+      const targetEl = document.createElement("div");
+      targetEl.setAttribute("data-tour", "overview-kpis");
+      mainContainer.appendChild(targetEl);
+
+      let rafCallback: ((time: number) => void) | undefined;
+      const originalRaf = window.requestAnimationFrame;
+      window.requestAnimationFrame = vi.fn().mockImplementation((cb) => {
+        rafCallback = cb;
+        return 123;
+      });
+
+      const rectSpy = vi.spyOn(targetEl, "getBoundingClientRect").mockReturnValue({
+        x: 10,
+        y: 100,
+        left: 10,
+        top: 100,
+        right: 300,
+        bottom: 250,
+        width: 290,
+        height: 150,
+        toJSON: () => ({}),
+      });
+
+      try {
+        render(<DemoTourSpotlight />);
+        rectSpy.mockClear();
+
+        // Frame 1: scrollTop não variou (estável 1x)
+        act(() => {
+          if (rafCallback) rafCallback(16);
+        });
+
+        // Frame 2: scrollTop continuou estável (estável 2x -> sincroniza medição)
+        act(() => {
+          if (rafCallback) rafCallback(32);
+        });
+
+        expect(rectSpy).toHaveBeenCalled();
+      } finally {
+        window.requestAnimationFrame = originalRaf;
+      }
+    });
+
+    it("recalcula medição quando ResizeObserver detecta mutação no elemento-alvo", () => {
+      startDemo("finances");
+
+      let resizeCallback: (() => void) | undefined;
+      const mockObserver = {
+        observe: vi.fn(),
+        disconnect: vi.fn(),
+        unobserve: vi.fn(),
+      };
+      const originalResizeObserver = window.ResizeObserver;
+      class MockResizeObserver {
+        constructor(cb: () => void) {
+          resizeCallback = cb;
+        }
+        observe = mockObserver.observe;
+        disconnect = mockObserver.disconnect;
+        unobserve = mockObserver.unobserve;
+      }
+      window.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+
+      const targetEl = document.createElement("div");
+      targetEl.setAttribute("data-tour", "overview-kpis");
+      targetEl.scrollIntoView = vi.fn();
+      document.body.appendChild(targetEl);
+
+      const rectSpy = vi.spyOn(targetEl, "getBoundingClientRect").mockReturnValue({
+        x: 10,
+        y: 100,
+        left: 10,
+        top: 100,
+        right: 300,
+        bottom: 250,
+        width: 290,
+        height: 150,
+        toJSON: () => ({}),
+      });
+
+      try {
+        render(<DemoTourSpotlight />);
+        rectSpy.mockClear();
+
+        // Simula ResizeObserver disparado por expansão tardia do elemento
+        act(() => {
+          if (resizeCallback) resizeCallback();
+        });
+
+        expect(rectSpy).toHaveBeenCalled();
+      } finally {
+        window.ResizeObserver = originalResizeObserver;
+      }
+    });
+  });
+
+  describe("Posicionamento Dinâmico Desktop com Altura Real (Fase 2 — Tarefa 2.5)", () => {
     let originalInnerWidth: number;
     let originalInnerHeight: number;
 
@@ -385,6 +635,61 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       window.innerWidth = originalInnerWidth;
       window.innerHeight = originalInnerHeight;
       document.body.innerHTML = "";
+    });
+
+    it("utiliza a medição real de offsetHeight do card para o cálculo de posicionamento e inversão", () => {
+      startDemo("finances");
+
+      const callbacks: Array<(entries: ResizeObserverEntry[]) => void> = [];
+      const originalResizeObserver = window.ResizeObserver;
+      class MockResizeObserver {
+        constructor(cb: (entries: ResizeObserverEntry[]) => void) {
+          callbacks.push(cb);
+        }
+        observe = vi.fn();
+        disconnect = vi.fn();
+        unobserve = vi.fn();
+      }
+      window.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+
+      const targetEl = document.createElement("div");
+      targetEl.setAttribute("data-tour", "overview-kpis");
+      document.body.appendChild(targetEl);
+
+      // Alvo posicionado com spaceBelow = 900 - 620 = 280px
+      // Se a altura do card for 280px (+ 20px margem = 300px), spaceBelow (280) < 300 -> inverte para "top"
+      vi.spyOn(targetEl, "getBoundingClientRect").mockReturnValue({
+        x: 100,
+        y: 520,
+        left: 100,
+        top: 520,
+        right: 500,
+        bottom: 620,
+        width: 400,
+        height: 100,
+        toJSON: () => ({}),
+      });
+
+      try {
+        const { container } = render(<DemoTourSpotlight />);
+
+        act(() => {
+          for (const cb of callbacks) {
+            cb([
+              {
+                contentRect: { height: 280 } as unknown as DOMRectReadOnly,
+                borderBoxSize: [{ blockSize: 280 } as unknown as ResizeObserverSize],
+              } as unknown as ResizeObserverEntry,
+            ]);
+          }
+          window.dispatchEvent(new Event("resize"));
+        });
+
+        const aside = container.querySelector("aside");
+        expect(aside?.getAttribute("data-placement")).toBe("top");
+      } finally {
+        window.ResizeObserver = originalResizeObserver;
+      }
     });
 
     it("posiciona o card abaixo do elemento quando há espaço inferior suficiente", () => {
@@ -516,7 +821,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
     });
   });
 
-  describe("Simulações de Viewport Mobile (375x667 e 390x844) - Portão de Qualidade 2", () => {
+  describe("Testes Unitários de Posicionamento e Anti-Colisão (Fase 2 — Tarefa 2.6)", () => {
     let originalInnerWidth: number;
     let originalInnerHeight: number;
 
@@ -600,6 +905,75 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(aside?.getAttribute("data-placement")).toBe("bottom");
       expect(aside?.className).toContain("bottom-[max(env(safe-area-inset-bottom,0px),16px)]");
       expect(aside?.className).toContain("max-h-[42vh]");
+    });
+
+    it("cenário Samsung Galaxy S20 / Android (360x800): anti-colisão posiciona no topo para alvo inferior (> 45% viewport)", () => {
+      window.innerWidth = 360;
+      window.innerHeight = 800;
+      startDemo("finances");
+
+      const targetEl = document.createElement("div");
+      targetEl.setAttribute("data-tour", "overview-kpis");
+      document.body.appendChild(targetEl);
+
+      // Alvo inferior (y = 480, height = 80 -> centerY = 520 > 800 * 0.45 = 360)
+      vi.spyOn(targetEl, "getBoundingClientRect").mockReturnValue({
+        x: 12,
+        y: 480,
+        left: 12,
+        top: 480,
+        right: 348,
+        bottom: 560,
+        width: 336,
+        height: 80,
+        toJSON: () => ({}),
+      });
+
+      const { container } = render(<DemoTourSpotlight />);
+
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      const aside = container.querySelector("aside");
+      expect(aside).not.toBeNull();
+      expect(aside?.getAttribute("data-placement")).toBe("top");
+      expect(aside?.className).toContain("top-[max(env(safe-area-inset-top,0px),16px)]");
+      expect(aside?.className).toContain("max-h-[42vh]");
+    });
+
+    it("cenário Google Pixel 7 (412x915): ancora deterministicamente na base quando alvo está no limiar de 45%", () => {
+      window.innerWidth = 412;
+      window.innerHeight = 915;
+      startDemo("finances");
+
+      const targetEl = document.createElement("div");
+      targetEl.setAttribute("data-tour", "overview-kpis");
+      document.body.appendChild(targetEl);
+
+      // Limiar exato: 915 * 0.45 = 411.75 -> centerY = 400 (<= 411.75 -> base)
+      vi.spyOn(targetEl, "getBoundingClientRect").mockReturnValue({
+        x: 16,
+        y: 350,
+        left: 16,
+        top: 350,
+        right: 396,
+        bottom: 450,
+        width: 380,
+        height: 100,
+        toJSON: () => ({}),
+      });
+
+      const { container } = render(<DemoTourSpotlight />);
+
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      const aside = container.querySelector("aside");
+      expect(aside).not.toBeNull();
+      expect(aside?.getAttribute("data-placement")).toBe("bottom");
+      expect(aside?.className).toContain("bottom-[max(env(safe-area-inset-bottom,0px),16px)]");
     });
   });
 
