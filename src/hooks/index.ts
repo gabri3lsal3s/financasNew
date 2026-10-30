@@ -26,3 +26,4 @@ export { useIsPro } from "./use-is-pro";
 export { useSensory, type SensoryDispatcher } from "./use-sensory";
 export { useAppUpdate, type UseAppUpdateOptions, type UseAppUpdateReturn } from "./use-app-update";
 export { useApkPromo } from "./use-apk-promo";
+export { useActiveOverlays, type ActiveOverlaysResult } from "./use-active-overlays";

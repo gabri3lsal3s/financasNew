@@ -310,41 +310,41 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 **Meta:** Eliminar 100% dos conflitos e sobreposições entre o Toast de Nova Versão e os modais/wizards do app, garantindo que atualizações só sejam sugeridas em momentos tranquilos e postergadas com persistência limpa.
 
 #### Tarefas:
-- [ ] **4.1. Hook Global de Detecção de Overlays Ativos (`src/hooks/use-active-overlays.ts`)**
-  - [ ] Implementar verificação reativa que detecta:
+- [x] **4.1. Hook Global de Detecção de Overlays Ativos (`src/hooks/use-active-overlays.ts`)**
+  - [x] Implementar verificação reativa que detecta:
     * Existência de `[role="dialog"]:not([data-state="closed"]):not([data-lock-overlay])` ou `[role="alertdialog"]` no DOM.
     * Se o tour de demonstração está ativo (`isDemoActive === true`).
     * Se o assistente de lançamento `LaunchWizard` está aberto (`wizardOpen === true`).
     * Se modais de primeiro uso / onboarding (`WelcomeFeatureModal`) estão abertos.
-  - [ ] Retornar `hasBlockingOverlay: boolean` para componentes de notificação.
+  - [x] Retornar `hasBlockingOverlay: boolean` para componentes de notificação.
 
-- [ ] **4.2. Supressão Condicional no `NativeUpdateToast` (`src/components/modules/native-update-toast.tsx`)**
-  - [ ] Integrar `useActiveOverlays()`: se `hasBlockingOverlay === true`, retornar `null` (ou adiar a exibição).
-  - [ ] Quando o modal/tour for fechado pelo usuário e a tela voltar ao estado limpo, permitir que o Toast seja exibido com transição suave.
+- [x] **4.2. Supressão Condicional no `NativeUpdateToast` (`src/components/modules/native-update-toast.tsx`)**
+  - [x] Integrar `useActiveOverlays()`: se `hasBlockingOverlay === true`, retornar `null` (ou adiar a exibição).
+  - [x] Quando o modal/tour for fechado pelo usuário e a tela voltar ao estado limpo, permitir que o Toast seja exibido com transição suave.
 
-- [ ] **4.3. Persistência de Adiantamento por Sessão no Dismiss (`[X]`)**
-  - [ ] Ao clicar no `[X]` de dispensar o `NativeUpdateToast`, gravar flag com timestamp no `sessionStorage` (ou `localStorage` com prazo de 12 horas):
+- [x] **4.3. Persistência de Adiantamento por Sessão no Dismiss (`[X]`)**
+  - [x] Ao clicar no `[X]` de dispensar o `NativeUpdateToast`, gravar flag com timestamp no `sessionStorage` (ou `localStorage` com prazo de 12 horas):
     `sessionStorage.setItem("financas:update_dismissed_session", "true")`.
-  - [ ] Evitar que o toast volte a interromper o usuário durante a mesma sessão de uso. A notificação só volta a ser checada e sugerida na próxima vez que o aplicativo for aberto.
+  - [x] Evitar que o toast volte a interromper o usuário durante a mesma sessão de uso. A notificação só volta a ser checada e sugerida na próxima vez que o aplicativo for aberto.
 
-- [ ] **4.4. Prevenção de Bloqueio de Ponteiros e Stacking Context (`src/components/ui/toast.tsx`)**
-  - [ ] Assegurar que o `Viewport` do Radix Toast e os itens de Toast não bloqueiem eventos de clique do modal inferior quando montados.
-  - [ ] Ajustar `z-index`: o `NativeUpdateToast` deve operar com coordenação para que nunca sobreponha modais de primeiro uso.
+- [x] **4.4. Prevenção de Bloqueio de Ponteiros e Stacking Context (`src/components/ui/toast.tsx`)**
+  - [x] Assegurar que o `Viewport` do Radix Toast e os itens de Toast não bloqueiem eventos de clique do modal inferior quando montados.
+  - [x] Ajustar `z-index`: o `NativeUpdateToast` deve operar com coordenação para que nunca sobreponha modais de primeiro uso.
 
-- [ ] **4.5. Testes Unitários de Supressão de Modais (`native-update-toast.test.tsx`)**
-  - [ ] Criar caso de teste: com atualização disponível e modal aberto (`[role="dialog"]` presente), comprovar que o Toast NÃO é renderizado.
-  - [ ] Criar caso de teste: ao fechar o modal, comprovar que o Toast passa a ser exibido.
-  - [ ] Criar caso de teste: ao clicar em dispensar `[X]`, comprovar que a preferência persiste e não reabre na mesma sessão.
+- [x] **4.5. Testes Unitários de Supressão de Modais (`native-update-toast.test.tsx`)**
+  - [x] Criar caso de teste: com atualização disponível e modal aberto (`[role="dialog"]` presente), comprovar que o Toast NÃO é renderizado.
+  - [x] Criar caso de teste: ao fechar o modal, comprovar que o Toast passa a ser exibido.
+  - [x] Criar caso de teste: ao clicar em dispensar `[X]`, comprovar que a preferência persiste e não reabre na mesma sessão.
 
 #### Portão de Qualidade 4:
-- [ ] `npm run typecheck` aprovado.
-- [ ] `npm run lint` aprovado.
-- [ ] `npm test -- src/components/modules/native-update-toast.test.tsx` aprovado.
-- [ ] Teste Manual: Simular nova versão disponível e abrir o modal "A Mágica da Captura Sem Fricção" (ou o LaunchWizard). Comprovar que o banner de atualização NÃO aparece sobre o modal. Fechar o modal e comprovar que o toast de atualização aparece calmamente na tela inicial.
+- [x] `npm run typecheck` aprovado.
+- [x] `npm run lint` aprovado.
+- [x] `npm test -- src/components/modules/native-update-toast.test.tsx` aprovado.
+- [x] Teste Manual: Simular nova versão disponível e abrir o modal "A Mágica da Captura Sem Fricção" (ou o LaunchWizard). Comprovar que o banner de atualização NÃO aparece sobre o modal. Fechar o modal e comprovar que o toast de atualização aparece calmamente na tela inicial.
 
 #### Commit & Push 4:
-- [ ] Mensagem de Commit: `fix(updates): suprime toast de nova versao durante modais e persiste adiamento no dismiss`
-- [ ] Executar push para a branch remota.
+- [x] Mensagem de Commit: `fix(updates): suprime toast de nova versao durante modais e persiste adiamento no dismiss`
+- [x] Executar push para a branch remota.
 
 ---
 

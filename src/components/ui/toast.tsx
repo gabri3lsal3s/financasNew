@@ -61,6 +61,7 @@ export function Toast({
       open={open}
       onOpenChange={onOpenChange}
       duration={duration}
+      data-toast="true"
       onClick={(event) => {
         const target = event.target as HTMLElement;
         if (!target.closest("button")) {
@@ -68,7 +69,7 @@ export function Toast({
         }
       }}
       className={cn(
-        "pointer-events-auto flex w-full cursor-pointer select-none items-start gap-3 rounded-xl border bg-surface p-4 shadow-xl backdrop-blur-md transition-transform active:scale-[0.99] data-[state=open]:animate-toast-in data-[state=closed]:animate-toast-out",
+        "pointer-events-auto flex w-full cursor-pointer select-none items-start gap-3 rounded-xl border bg-surface p-4 shadow-xl backdrop-blur-md transition-transform active:scale-[0.99] data-[state=open]:animate-toast-in data-[state=closed]:animate-toast-out data-[state=closed]:pointer-events-none",
         variantClass[variant],
       )}
     >
