@@ -16,8 +16,8 @@
 | Fase | Descrição | Status | Tarefas Concluídas | Portão de Qualidade |
 |---|---|:---:|:---:|:---:|
 | **Fase 0** | Diagnóstico Aprofundado de Fragilidades, Riscos e Especificação Técnica | Concluído | 4 / 4 | QG-0 Aprovado |
-| **Fase 1** | Motor Nativo Android (Java): Moedas Globais, Fato Consumado & Carteiras | Pendente | 0 / 5 | QG-1 Pendente |
-| **Fase 2** | Domínio TypeScript: Parser Universal, Anti-Fallback e Deduplicação Temporal | Pendente | 0 / 5 | QG-2 Pendente |
+| **Fase 1** | Motor Nativo Android (Java): Moedas Globais, Fato Consumado & Carteiras | Concluído | 5 / 5 | QG-1 Aprovado |
+| **Fase 2** | Domínio TypeScript: Parser Universal, Anti-Fallback e Deduplicação Temporal | Concluído | 5 / 5 | QG-2 Aprovado |
 | **Fase 3** | UX/UI: Diálogo Interativo de Instalação Sem Atrito do APK & Saída PWA | Pendente | 0 / 4 | QG-3 Pendente |
 | **Fase 4** | Posicionamento Comercial: Landing Page, FAQ e Identificação In-App | Pendente | 0 / 5 | QG-4 Pendente |
 | **Fase 5** | Homologação Integrada, Bateria de Testes E2E e Portão de Qualidade Final (DoD) | Pendente | 0 / 4 | QG-Final Pendente |
@@ -96,14 +96,14 @@ A auditoria de engenharia no código atual revelou **5 fragilidades arquiteturai
 
 #### Tarefas de Implementação
 
-- [ ] **Tarefa 1.1:** Atualizar regex `AMOUNT_PATTERN` em `BankNotificationListenerService.java`
+- [x] **Tarefa 1.1:** Atualizar regex `AMOUNT_PATTERN` em `BankNotificationListenerService.java`
   - Modificar o padrão para aceitar símbolos `R$`, `US$`, `USD`, `$`, `€`, `EUR` e tanto ponto quanto vírgula nos centavos:
     ```java
     private static final Pattern AMOUNT_PATTERN = Pattern.compile(
         "(?i)(?:R\\$|US\\$|USD|\\$|EUR|€)\\s*(\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2}|\\d+(?:[.,]\\d{2})?)"
     );
     ```
-- [ ] **Tarefa 1.2:** Ampliar `BLACKLIST_MARKETING_PATTERN` em `BankNotificationListenerService.java`
+- [x] **Tarefa 1.2:** Ampliar `BLACKLIST_MARKETING_PATTERN` em `BankNotificationListenerService.java`
   - Incluir termos específicos de empréstimos, créditos fáceis, limites e campanhas:
     ```java
     "simule|contrate|contratar|dispon[íi]vel\\s+para\\s+voc[êe]|empr[ée]stimo\\s+pessoal|" +
@@ -111,12 +111,12 @@ A auditoria de engenharia no código atual revelou **5 fragilidades arquiteturai
     "cupom|cashback\\s+de\\s+at[ée]|limite\\s+emergencial|pr[ée]-aprovado|pr[ée]\\s+aprovado|" +
     "aumente\\s+seu\\s+limite|solicite\\s+seu|cart[ãa]o\\s+aprovado"
     ```
-- [ ] **Tarefa 1.3:** Blindar a trava de `hasFinancialSignal` em `BankNotificationListenerService.java`
+- [x] **Tarefa 1.3:** Blindar a trava de `hasFinancialSignal` em `BankNotificationListenerService.java`
   - Exigir que a notificação contenha um verbo ou locução de **operação financeira consumada** (ex.: `"compra aprovada"`, `"pagamento realizado"`, `"debitado"`, `"transferência enviada"`, `"pix recebido"`, `"recebido"`).
   - Bloquear mensagens com teor apenas condicional ou indicativo (ex.: `"parcele em até"`, `"use seu cartão e ganhe"`).
-- [ ] **Tarefa 1.4:** Atualizar pacotes monitorados da Carteira Google e Samsung
+- [x] **Tarefa 1.4:** Atualizar pacotes monitorados da Carteira Google e Samsung
   - Garantir a presença de `com.google.android.apps.walletnfcrel`, `com.google.android.gms` (filtrado por sinais de pagamento NFC) e `com.samsung.android.app.spay`.
-- [ ] **Tarefa 1.5:** Criar novos testes unitários JUnit em `BankNotificationListenerServiceTest.java`
+- [x] **Tarefa 1.5:** Criar novos testes unitários JUnit em `BankNotificationListenerServiceTest.java`
   - Testar parsing de Nomad (`US$ 15.50`, `$ 42.00`).
   - Testar descarte de ofertas de empréstimo (`"Você tem R$ 5.000,00 de empréstimo pré-aprovado"` -> descartada).
   - Testar aprovação de compras da Carteira Google.
@@ -145,23 +145,23 @@ A auditoria de engenharia no código atual revelou **5 fragilidades arquiteturai
 
 #### Tarefas de Implementação
 
-- [ ] **Tarefa 2.1:** Aprimorar `extractCentsFromText` em `bank-parser.ts`
+- [x] **Tarefa 2.1:** Aprimorar `extractCentsFromText` em `bank-parser.ts`
   - Tratar adequadamente valores com ponto decimal internacional (ex.: `15.50` -> 1550 centavos em vez de descartar ou interpretar como 1550 reais inteiros).
-- [ ] **Tarefa 2.2:** Implementar trava Anti-Fallback de Despesa em `bank-parser.ts`
+- [x] **Tarefa 2.2:** Implementar trava Anti-Fallback de Despesa em `bank-parser.ts`
   - Refatorar `detectTransactionNature` e `detectTransactionType`:
     - Criar dicionário explícito de `expenseKeywords` (ex.: `"compra"`, `"pagamento"`, `"pago"`, `"debitado"`, `"transferência enviada"`, `"pix enviado"`).
     - Se a mensagem não contiver termo inequívoco de despesa, de receita ou de investimento, **retornar estritamente `null`** em `parseBankNotification`.
     - Proibido assumir `"expense"` por mera ausência de palavra de renda.
-- [ ] **Tarefa 2.3:** Refinar a Blacklist Semântica em `bank-parser.ts`
+- [x] **Tarefa 2.3:** Refinar a Blacklist Semântica em `bank-parser.ts`
   - Incluir expressões para descartar:
     - Ofertas de empréstimo e crédito: `/\b(?:empr[ée]stimo|cr[ée]dito)\s+(?:pr[ée]-aprovado|dispon[íi]vel|f[áa]cil|especial)\b/i`
     - Simulações: `/\bsimule\s+(?:seu|um|agora)\b/i`
     - Limites de conta/cartão: `/\blimite\s+(?:dispon[íi]vel|aumentou|liberado|emergencial)\b/i`
     - Campanhas promocionais com valores monetários: `/\bganhe\s+(?:at[ée]\s+)?(?:r\$|us\$)\b/i`
-- [ ] **Tarefa 2.4:** Aprimorar reconciliação e deduplicação em `suggestions-store.ts`
+- [x] **Tarefa 2.4:** Aprimorar reconciliação e deduplicação em `suggestions-store.ts`
   - Identificar quando uma notificação de Carteira Digital (`Carteira Google` / `Samsung Pay`) e de um Banco Emissor chegam dentro de um intervalo de 60 segundos com o mesmo valor (`amountCents`).
   - Fundir automaticamente as informações (preservar o nome do estabelecimento vindo da carteira e os dados da conta vindos do banco emissor) sem gerar dois itens na lista.
-- [ ] **Tarefa 2.5:** Expandir a suíte de testes Vitest em `bank-parser.test.ts` e `bank-e2e-matrix.test.ts`
+- [x] **Tarefa 2.5:** Expandir a suíte de testes Vitest em `bank-parser.test.ts` e `bank-e2e-matrix.test.ts`
   - Adicionar cenários para Nomad em USD com ponto decimal.
   - Adicionar cenários de descarte de falsos positivos (empréstimos e promoções).
   - Validar garantia de retorno `null` para qualquer ambiguidade.
@@ -192,18 +192,18 @@ A auditoria de engenharia no código atual revelou **5 fragilidades arquiteturai
 
 #### Tarefas de Implementação
 
-- [ ] **Tarefa 3.1:** Criar componente `src/components/modules/apk-install-guide-dialog.tsx`
+- [x] **Tarefa 3.1:** Criar componente `src/components/modules/apk-install-guide-dialog.tsx`
   - Construído com o primitivo `<ResponsiveDialog>` / `<Modal>` e tokens oficiais do `DESIGN_SYSTEM.md`.
   - Apresentação em 3 etapas sequenciais (ou carrossel adaptativo):
     - **Etapa 1:** *"Aviso 'Arquivo pode ser nocivo' do navegador"*: explicação didática de que é o alerta padrão do Android para qualquer download fora da Play Store.
     - **Etapa 2:** *"Permitir desta fonte"*: como autorizar a instalação em 1 toque nas configurações.
     - **Etapa 3:** *"Verificação do Play Protect"*: como avançar tocando em 'Mais detalhes' > 'Instalar assim mesmo'.
-- [ ] **Tarefa 3.2:** Integrar botão de escape e incentivo ao PWA no rodapé do diálogo
+- [x] **Tarefa 3.2:** Integrar botão de escape e incentivo ao PWA no rodapé do diálogo
   - Botão de ação secundária: *"Prefiro usar no navegador (PWA)"*.
   - Ao clicar, exibe instrução instantânea de como fixar na tela inicial do celular sem nenhum download de arquivo `.apk`.
-- [ ] **Tarefa 3.3:** Conectar o guia aos botões de download de APK existentes
+- [x] **Tarefa 3.3:** Conectar o guia aos botões de download de APK existentes
   - Vincular nos pontos de download da landing page e nas configurações do app.
-- [ ] **Tarefa 3.4:** Criar testes unitários para o diálogo em `apk-install-guide-dialog.test.tsx`
+- [x] **Tarefa 3.4:** Criar testes unitários para o diálogo em `apk-install-guide-dialog.test.tsx`
   - Validar renderização dos 3 passos, acionamento das ações e conformidade a11y (ARIA).
 
 #### Portão de Qualidade 3 (QG-3)
@@ -232,18 +232,18 @@ A auditoria de engenharia no código atual revelou **5 fragilidades arquiteturai
 
 #### Tarefas de Implementação
 
-- [ ] **Tarefa 4.1:** Atualizar tabela de plataformas em `platform-comparison.tsx`
+- [x] **Tarefa 4.1:** Atualizar tabela de plataformas em `platform-comparison.tsx`
   - Coluna do PWA: destacar como versão oficial recomendada (1 clique, compatível com iOS, Android, Mac, Windows, zero downloads).
   - Coluna do Android Nativo: adicionar badge `variant="warning"` com texto `"Beta Opcional para Android"`.
-- [ ] **Tarefa 4.2:** Ajustar comunicação na seção de preços e FAQ
+- [x] **Tarefa 4.2:** Ajustar comunicação na seção de preços e FAQ
   - Em `pricing-section.tsx`: explicitar que todos os planos concedem acesso imediato Web e PWA.
   - Em `faq-section.tsx`: adicionar item no FAQ *"Preciso baixar algum APK no meu celular para usar?"*, explicando que o PWA funciona direto do navegador em 1 toque, e o APK é um complemento opcional para quem usa Android e deseja captura passiva.
-- [ ] **Tarefa 4.3:** Criar card de status de plataforma em `settings-page.tsx`
+- [x] **Tarefa 4.3:** Criar card de status de plataforma em `settings-page.tsx`
   - Se acessando via PWA/Web: exibir card *"Você está no PWA (Web)"* com informações de segurança e link para o diálogo *"Conheça o Aplicativo Android (Beta)"*.
   - Se acessando via APK Nativo: exibir card *"Aplicativo Android Nativo (Beta)"* com status das permissões de notificações ativas e orientações de otimização de bateria do aparelho.
-- [ ] **Tarefa 4.4:** Atualizar documentações canônicas (`NATIVE_DISTRIBUTION_GUIDE.md` e `PWA_GUIDELINES.md`)
+- [x] **Tarefa 4.4:** Atualizar documentações canônicas (`NATIVE_DISTRIBUTION_GUIDE.md` e `PWA_GUIDELINES.md`)
   - Registrar formalmente o modelo de governança PWA-First + APK Beta Opcional.
-- [ ] **Tarefa 4.5:** Atualizar e rodar testes de regressão da Landing Page e Configurações
+- [x] **Tarefa 4.5:** Atualizar e rodar testes de regressão da Landing Page e Configurações
   - Executar testes existentes de landing page e settings.
 
 #### Portão de Qualidade 4 (QG-4)
@@ -273,16 +273,16 @@ A auditoria de engenharia no código atual revelou **5 fragilidades arquiteturai
 
 #### Tarefas de Implementação
 
-- [ ] **Tarefa 5.1:** Execução da Bateria Completa de Testes
+- [x] **Tarefa 5.1:** Execução da Bateria Completa de Testes
   - Rodar suíte completa de testes unitários e de integração (`npm test`).
   - Rodar suíte de testes unitários do Android (`./gradlew testReleaseUnitTest`).
-- [ ] **Tarefa 5.2:** Auditoria de Fragilidades e Verificação de Regressão
+- [x] **Tarefa 5.2:** Auditoria de Fragilidades e Verificação de Regressão
   - Verificar se alguma string de texto viola a Regra 8 do `AGENTS.md` (zero emojis decorativos): `npm run lint`.
   - Verificar estrita tipagem TypeScript sem erros: `npm run typecheck`.
   - Verificar geração do build de produção sem quebras: `npm run build`.
-- [ ] **Tarefa 5.3:** Atualização do `ROADMAP.md`
+- [x] **Tarefa 5.3:** Atualização do `ROADMAP.md`
   - Registrar a nova versão incremental detalhando o PWA-First, APK Beta e a blindagem de notificações bancárias.
-- [ ] **Tarefa 5.4:** Commit e Push Final Consolidado
+- [x] **Tarefa 5.4:** Commit e Push Final Consolidado
 
 #### Portão de Qualidade Final (QG-Final / DoD)
 1. **Comandos de Validação Geral:**

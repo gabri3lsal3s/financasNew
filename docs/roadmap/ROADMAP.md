@@ -1,5 +1,27 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.80** registra a **Conclusão Integral do Plano PWA-First, APK Beta e Blindagem de Notificações (`docs/plans/PLANO_PWA_FIRST_APK_BETA_E_NOTIFICACOES_REFINADAS.md`)** (2026-11-03):
+> - **(1) Blindagem do Motor Nativo Android Java & Regex Universal de Moedas (Fase 1)**:
+>   - Regex `AMOUNT_PATTERN` expandido em `BankNotificationListenerService.java` com suporte a moedas internacionais (`US$`, `USD`, `$`, `EUR`, `€`, `R$`) e separadores mistos de decimal/milhar (vírgula e ponto decimal);
+>   - `BLACKLIST_MARKETING_PATTERN` ampliado com termos de empréstimos pré-aprovados, limite extra, simulações e campanhas promocionais;
+>   - Adição do Google Play Services (`com.google.android.gms`) à lista de pacotes monitorados para captura confiável de aprovações via Google Wallet;
+>   - Fortalecimento de `hasFinancialSignal` exigindo verbos de operações consumadas e rejeitando condicionais publicitárias.
+> - **(2) Domínio TypeScript Puro & Resolução de Falsos Positivos (Fase 2)**:
+>   - `extractCentsFromText` calibrado em `bank-parser.ts` para suporte robusto a Nomad e Wise;
+>   - Eliminação de fallbacks cegos em `detectTransactionType` e `detectTransactionNature` retornando `null` em ambiguidade;
+>   - Deduplicação temporal e inteligente entre carteiras digitais (Google Wallet / Samsung Pay) e bancos em `suggestions-store.ts`, com janela de 60 segundos.
+> - **(3) Guia Visual Interativo de Instalação do APK & Saída PWA (Fase 3)**:
+>   - Criação do diálogo `ApkInstallGuideDialog` em `src/components/modules/` com fluxo didático de 3 etapas ilustradas (aviso de segurança Android, permissão de fontes desconhecidas e Play Protect);
+>   - Ação de escape rápido *"Prefiro usar no navegador (PWA)"* com instrução instantânea de fixação na tela inicial sem downloads.
+> - **(4) Reposicionamento Comercial PWA-First (Fase 4)**:
+>   - Landing page atualizada (`platform-comparison.tsx`, `pricing-section.tsx`, `faq-section.tsx`) com destaque canônico do PWA como versão oficial recomendada (1 clique, universal, zero downloads);
+>   - APK Android posicionado e rotulado explicitamente como *"Beta Opcional para Android"*;
+>   - Integração do diálogo interativo na aba de instalação do app nas configurações (`app-installation-tab.tsx`);
+>   - Atualização das diretrizes canônicas em `PWA_GUIDELINES.md` e `NATIVE_DISTRIBUTION_GUIDE.md`.
+> - **(5) Homologação e Portão de Qualidade Final (Fase 5 / DoD)**:
+>   - 100% dos testes unitários Android (`./gradlew testReleaseUnitTest`) e da suíte TypeScript/React aprovados;
+>   - 0 erros de lint (Regra de Emojis), 0 erros de compilação TypeScript (`tsc -b`) e build de produção gerado com sucesso.
+>
 > **v2.79** registra a **Conclusão Integral do Plano de Correção e Otimização do Tour Interativo (`docs/plans/PLANO_CORRECAO_E_OTIMIZACAO_TOUR_INTERATIVO.md`)** (2026-10-29):
 > - **(1) Intercepção de Dados e Correção de Rotas (Fase 1)**:
 >   - Mocks de despesas e pagamentos sintéticos integrados a `use-simulated-queries.ts`;

@@ -41,7 +41,7 @@ describe("demo-session-store — Máquina de Estados da Simulação & Storage (F
     });
 
     it("goToNextStep avança passos e trava no limite máximo da trilha", () => {
-      startDemo("finances"); // 4 passos (índices 0, 1, 2, 3)
+      startDemo("finances_overview"); // 3 passos (índices 0, 1, 2)
 
       goToNextStep();
       expect(getDemoSessionState().currentStepIndex).toBe(1);
@@ -49,16 +49,13 @@ describe("demo-session-store — Máquina de Estados da Simulação & Storage (F
       goToNextStep();
       expect(getDemoSessionState().currentStepIndex).toBe(2);
 
-      goToNextStep();
-      expect(getDemoSessionState().currentStepIndex).toBe(3);
-
       // Trava no último índice
       goToNextStep();
-      expect(getDemoSessionState().currentStepIndex).toBe(3);
+      expect(getDemoSessionState().currentStepIndex).toBe(2);
     });
 
     it("goToPrevStep retrocede passos e trava no índice 0", () => {
-      startDemo("finances");
+      startDemo("finances_overview");
       goToNextStep();
       goToNextStep();
       expect(getDemoSessionState().currentStepIndex).toBe(2);
@@ -75,14 +72,14 @@ describe("demo-session-store — Máquina de Estados da Simulação & Storage (F
     });
 
     it("setStepIndex posiciona em índice arbitrário com clamping seguro", () => {
-      startDemo("investments"); // 3 passos (índices 0, 1, 2)
+      startDemo("investments"); // 5 passos (índices 0 a 4)
 
       setStepIndex(2);
       expect(getDemoSessionState().currentStepIndex).toBe(2);
 
-      // Clamping superior
+      // Clamping superior (último índice é 4)
       setStepIndex(10);
-      expect(getDemoSessionState().currentStepIndex).toBe(2);
+      expect(getDemoSessionState().currentStepIndex).toBe(4);
 
       // Clamping inferior
       setStepIndex(-3);
@@ -110,19 +107,19 @@ describe("demo-session-store — Máquina de Estados da Simulação & Storage (F
       expect(result.current.currentStep).toBeNull();
       expect(result.current.totalSteps).toBe(0);
 
-      // Inicia trilha de investimentos (3 passos)
+      // Inicia trilha de investimentos (5 passos)
       act(() => {
         result.current.startDemo("investments");
       });
 
       expect(result.current.isDemoActive).toBe(true);
       expect(result.current.activeTrack).toBe("investments");
-      expect(result.current.totalSteps).toBe(3);
+      expect(result.current.totalSteps).toBe(5);
       expect(result.current.isFirstStep).toBe(true);
       expect(result.current.isLastStep).toBe(false);
       expect(result.current.currentStep?.id).toBe("investments-overview");
 
-      // Avança até o último passo
+      // Avança até o passo 2
       act(() => {
         result.current.goToNextStep();
       });
@@ -130,10 +127,11 @@ describe("demo-session-store — Máquina de Estados da Simulação & Storage (F
       expect(result.current.isFirstStep).toBe(false);
       expect(result.current.isLastStep).toBe(false);
 
+      // Avança até o último passo (passo 4 de 5)
       act(() => {
-        result.current.goToNextStep();
+        result.current.setStepIndex(4);
       });
-      expect(result.current.currentStepIndex).toBe(2);
+      expect(result.current.currentStepIndex).toBe(4);
       expect(result.current.isFirstStep).toBe(false);
       expect(result.current.isLastStep).toBe(true);
 
