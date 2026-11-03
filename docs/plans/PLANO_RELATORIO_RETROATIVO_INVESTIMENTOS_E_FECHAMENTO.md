@@ -162,8 +162,8 @@ Esta tabela sintetiza a evolução matemática rigorosa para todas as fórmulas 
 ### FASE 2: Modelagem de Dados, Migração Supabase & Repositórios (Persistência de Cotações Mensais)
 > **Objetivo:** Criar a infraestrutura de dados para armazenar o histórico de cotações mensais com segurança RLS multi-tenant e repositórios tipados.
 
-- [ ] **Tarefa 2.1: Migração SQL no Supabase (`supabase/migrations/20261103000001_portfolio_monthly_prices.sql`)**
-  - [ ] Criar tabela `public.portfolio_monthly_prices`:
+- [x] **Tarefa 2.1: Migração SQL no Supabase (`supabase/migrations/20261103000001_portfolio_monthly_prices.sql`)**
+  - [x] Criar tabela `public.portfolio_monthly_prices`:
     - `id uuid primary key default gen_random_uuid()`
     - `user_id uuid not null references public.profiles(id) on delete cascade`
     - `ticker text not null`
@@ -174,33 +174,33 @@ Esta tabela sintetiza a evolução matemática rigorosa para todas as fórmulas 
     - `created_at timestamptz not null default now()`
     - `updated_at timestamptz not null default now()`
     - `unique (user_id, ticker, month)`
-  - [ ] Habilitar RLS: `alter table public.portfolio_monthly_prices enable row level security;`
-  - [ ] Criar políticas RLS blindadas com padrão `is_current_user_active()`:
+  - [x] Habilitar RLS: `alter table public.portfolio_monthly_prices enable row level security;`
+  - [x] Criar políticas RLS blindadas com padrão `is_current_user_active()`:
     - `portfolio_monthly_prices_select_own`
     - `portfolio_monthly_prices_write_own`
-  - [ ] Criar índices para performance:
+  - [x] Criar índices para performance:
     - `idx_portfolio_monthly_prices_user_month on public.portfolio_monthly_prices (user_id, month desc);`
     - `idx_portfolio_monthly_prices_lookup on public.portfolio_monthly_prices (user_id, month, ticker);`
 
-- [ ] **Tarefa 2.2: Contratos de Tipos em TypeScript (`src/types/database.ts` e `src/types/portfolio.ts`)**
-  - [ ] Adicionar `PortfolioMonthlyPrice` em `src/types/database.ts`.
-  - [ ] Definir `MonthlyPriceRow`, `MonthlyPriceInput` e `MonthlyClosingData` em `src/types/portfolio.ts`.
+- [x] **Tarefa 2.2: Contratos de Tipos em TypeScript (`src/types/database.ts` e `src/types/portfolio.ts`)**
+  - [x] Adicionar `PortfolioMonthlyPrice` em `src/types/database.ts`.
+  - [x] Definir `MonthlyPriceRow`, `MonthlyPriceInput` e `MonthlyClosingData` em `src/types/portfolio.ts`.
 
-- [ ] **Tarefa 2.3: Repositório de Cotações Mensais (`src/data/repositories/portfolio-monthly-prices.ts`)**
-  - [ ] Implementar `listPortfolioMonthlyPrices(month: string): Promise<MonthlyPriceRow[]>`.
-  - [ ] Implementar `upsertPortfolioMonthlyPricesBatch(items: MonthlyPriceInput[]): Promise<void>` com atomicidade e idempotência.
-  - [ ] Implementar `deletePortfolioMonthlyPrice(ticker: string, month: string): Promise<void>`.
+- [x] **Tarefa 2.3: Repositório de Cotações Mensais (`src/data/repositories/portfolio-monthly-prices.ts`)**
+  - [x] Implementar `listPortfolioMonthlyPrices(month: string): Promise<MonthlyPriceRow[]>`.
+  - [x] Implementar `upsertPortfolioMonthlyPricesBatch(items: MonthlyPriceInput[]): Promise<void>` com atomicidade e idempotência.
+  - [x] Implementar `deletePortfolioMonthlyPrice(ticker: string, month: string): Promise<void>`.
 
-- [ ] **Tarefa 2.4: Testes Automatizados do Repositório (`src/data/repositories/portfolio-monthly-prices.test.ts`)**
-  - [ ] Testar leitura vazia e preenchida.
-  - [ ] Testar upsert em lote sem duplicidade (upsert por `user_id, ticker, month`).
-  - [ ] Testar isolamento de usuário simulado.
+- [x] **Tarefa 2.4: Testes Automatizados do Repositório (`src/data/repositories/portfolio-monthly-prices.test.ts`)**
+  - [x] Testar leitura vazia e preenchida.
+  - [x] Testar upsert em lote sem duplicidade (upsert por `user_id, ticker, month`).
+  - [x] Testar isolamento de usuário simulado.
 
 #### 🚪 Quality Gate 2 (QG2)
-- [ ] Executar typecheck estrito: `npm run typecheck`.
-- [ ] Executar testes do repositório: `npx vitest run src/data/repositories/portfolio-monthly-prices.test.ts`.
-- [ ] Validar integridade da migração SQL com as regras de hardening (RLS e checks).
-- [ ] **Commit & Push:** `feat(portfolio): schema e repositorio de cotacoes mensais historicas (QG2)`
+- [x] Executar typecheck estrito: `npm run typecheck`.
+- [x] Executar testes do repositório: `npx vitest run src/data/repositories/portfolio-monthly-prices.test.ts`.
+- [x] Validar integridade da migração SQL com as regras de hardening (RLS e checks).
+- [x] **Commit & Push:** `feat(portfolio): schema e repositorio de cotacoes mensais historicas (QG2)`
 
 ---
 

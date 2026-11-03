@@ -12,3 +12,4 @@ export type {
 } from "./subscription";
 export * from "./billing";
 export * from "./app-update";
+export * from "./portfolio";

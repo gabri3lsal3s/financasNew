@@ -23,6 +23,7 @@ import type {
   PortfolioAsset,
   PortfolioContribution,
   PortfolioDividend,
+  PortfolioMonthlyPrice,
   PortfolioSnapshot,
   ReminderState,
   PortfolioTransaction,
@@ -76,6 +77,7 @@ export interface Database {
       portfolio_contributions: Table<PortfolioContribution>;
       portfolio_dividends: Table<PortfolioDividend>;
       portfolio_snapshots: Table<PortfolioSnapshot>;
+      portfolio_monthly_prices: Table<PortfolioMonthlyPrice>;
       portfolio_transactions: Table<PortfolioTransaction>;
       allocation_targets: Table<AllocationTarget>;
       allocation_presets: Table<AllocationPreset>;
