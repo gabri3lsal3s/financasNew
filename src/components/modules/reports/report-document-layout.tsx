@@ -51,7 +51,7 @@ export function ReportDocumentLayout({
         onOpenChange={onOpenChange}
         title={title}
         size={size}
-        className="w-full max-h-[90dvh] flex flex-col p-4 sm:p-6 lg:p-7 overflow-hidden"
+        contentClassName="p-3 sm:p-5 lg:p-6"
         headerActions={
           <div className="flex items-center gap-1.5 print:hidden">
             {customActions}
@@ -73,16 +73,14 @@ export function ReportDocumentLayout({
           </div>
         }
       >
-        {/* Corpo do Relatório com Rolagem Suave no Modal */}
-        <div className="flex-1 overflow-y-auto overscroll-contain mt-3 sm:mt-4 pr-0.5 -mr-0.5 print:hidden">
-          <div
-            className={cn(
-              "mx-auto w-full bg-surface text-foreground rounded-xl border border-border/80 p-4 sm:p-6 lg:p-7 shadow-xs flex flex-col gap-6",
-              className,
-            )}
-          >
-            {children}
-          </div>
+        {/* Folha Editorial A4 renderizada diretamente no contêiner com rolagem nativa do Modal */}
+        <div
+          className={cn(
+            "mx-auto w-full bg-surface text-foreground rounded-xl border border-border/80 p-4 sm:p-6 lg:p-7 shadow-xs flex flex-col gap-6 print:hidden",
+            className,
+          )}
+        >
+          {children}
         </div>
       </Modal>
 
