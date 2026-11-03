@@ -50,9 +50,9 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       screen.getByRole("dialog", { name: /Tour guiado interativo/i }),
     ).toBeInTheDocument();
 
-    expect(screen.getByText("Passo 1 de 4")).toBeInTheDocument();
+    expect(screen.getByText("Passo 1 de 8")).toBeInTheDocument();
     expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
-    expect(screen.getByText("Visão Geral & Fluxo Consolidado")).toBeInTheDocument();
+    expect(screen.getByText("Dashboard & Saldo Livre Real")).toBeInTheDocument();
 
     const prevBtn = screen.getByRole("button", { name: /Anterior/i });
     expect(prevBtn).toBeDisabled();
@@ -74,7 +74,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
     await user.click(nextBtn);
 
     expect(getDemoSessionState().currentStepIndex).toBe(1);
-    expect(mockNavigate).toHaveBeenCalledWith("/transacoes");
+    expect(mockNavigate).toHaveBeenCalledWith("/");
     expect(handleNext).toHaveBeenCalledWith(1);
   });
 
@@ -140,7 +140,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
     await user.keyboard("{ArrowRight}");
 
     expect(getDemoSessionState().currentStepIndex).toBe(1);
-    expect(mockNavigate).toHaveBeenCalledWith("/transacoes");
+    expect(mockNavigate).toHaveBeenCalledWith("/");
   });
 
   it("escuta evento de scroll no container #main-content e recalcula o retângulo do spotlight", () => {
@@ -179,16 +179,17 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
   it("conclui a trilha e aciona o hand-off para a conta real no último passo", async () => {
     const user = userEvent.setup();
-    startDemo("investments"); // 3 passos (0, 1, 2)
+    startDemo("investments"); // 5 passos (0, 1, 2, 3, 4)
 
     render(<DemoTourSpotlight />);
 
-    // Avança para o passo 2
+    // Avança para os passos subsequentes até o 5 (último)
     await user.click(screen.getByRole("button", { name: /Próximo/i }));
-    // Avança para o passo 3 (último)
+    await user.click(screen.getByRole("button", { name: /Próximo/i }));
+    await user.click(screen.getByRole("button", { name: /Próximo/i }));
     await user.click(screen.getByRole("button", { name: /Próximo/i }));
 
-    expect(screen.getByText("Passo 3 de 3")).toBeInTheDocument();
+    expect(screen.getByText("Passo 5 de 5")).toBeInTheDocument();
     const finishBtn = screen.getByRole("button", {
       name: /Começar Conta Real/i,
     });
@@ -417,7 +418,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
     it("reseta container.scrollTop para 0 ao trocar de rota antes de buscar o novo elemento", async () => {
       const user = userEvent.setup();
-      startDemo("finances");
+      startDemo("finances_overview");
 
       const mainContainer = document.createElement("main");
       mainContainer.id = "main-content";
@@ -996,11 +997,13 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
     it("renderiza rótulo adaptativo no botão de conclusão (sm:hidden: 'Começar', hidden sm:inline: 'Começar Conta Real')", async () => {
       const user = userEvent.setup();
-      startDemo("investments"); // 3 passos (0, 1, 2)
+      startDemo("investments"); // 5 passos (0, 1, 2, 3, 4)
 
       render(<DemoTourSpotlight />);
 
-      // Avança para o último passo
+      // Avança para o último passo (passo 5)
+      await user.click(screen.getByRole("button", { name: /Próximo/i }));
+      await user.click(screen.getByRole("button", { name: /Próximo/i }));
       await user.click(screen.getByRole("button", { name: /Próximo/i }));
       await user.click(screen.getByRole("button", { name: /Próximo/i }));
 
@@ -1018,7 +1021,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
     });
 
     it("renderiza dots de progresso como pílulas discretas e espaçamento seguro", () => {
-      startDemo("finances"); // 4 passos
+      startDemo("finances"); // 8 passos
 
       render(<DemoTourSpotlight />);
 
@@ -1027,7 +1030,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(tablist.className).toContain("gap-1.5");
 
       const dots = tablist.querySelectorAll("button");
-      expect(dots).toHaveLength(4);
+      expect(dots).toHaveLength(8);
 
       // Dot ativo: pílula expandida w-3.5
       expect(dots[0]?.className).toContain("h-1.5");
@@ -1047,7 +1050,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
       render(<DemoTourSpotlight />);
 
-      const stepText = screen.getByText("Passo 1 de 4");
+      const stepText = screen.getByText("Passo 1 de 8");
       const badge = stepText.closest("span.inline-flex");
       expect(badge).not.toBeNull();
       expect(badge?.className).toContain("bg-muted");
@@ -1193,7 +1196,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       const asideStep2 = document.querySelector("aside");
       expect(asideStep2).toBeInTheDocument();
       expect(asideStep2?.className).toContain("animate-fade-in");
-      expect(asideStep2?.getAttribute("data-tour-step")).toBe("finances-transactions");
+      expect(asideStep2?.getAttribute("data-tour-step")).toBe("finances-wizard-btn");
     });
   });
 
@@ -1240,13 +1243,13 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
           expect(aside?.className).toContain("border-border/80");
 
           // Hierarquia semântica de cores com tokens adaptativos ao tema
-          const stepBadge = screen.getByText(/Passo 1 de 4/i).closest("span.inline-flex");
+          const stepBadge = screen.getByText(/Passo 1 de 8/i).closest("span.inline-flex");
           expect(stepBadge).not.toBeNull();
           expect(stepBadge?.className).toContain("bg-muted");
           expect(stepBadge?.className).toContain("text-muted-foreground");
 
           // Título e descrição com contraste tipográfico legível
-          const title = screen.getByText("Visão Geral & Fluxo Consolidado");
+          const title = screen.getByText("Dashboard & Saldo Livre Real");
           expect(title.className).toContain("text-foreground");
           const desc = screen.getByText(/Monitore seu saldo livre real/i);
           expect(desc.className).toContain("text-muted-foreground");
@@ -1379,7 +1382,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       startDemo("finances");
       render(<DemoTourSpotlight />);
 
-      const title = screen.getByText("Visão Geral & Fluxo Consolidado");
+      const title = screen.getByText("Dashboard & Saldo Livre Real");
       const liveContainer = title.parentElement;
       expect(liveContainer).not.toBeNull();
       expect(liveContainer).toHaveAttribute("aria-live", "polite");
@@ -1398,7 +1401,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(dot1).toBeInTheDocument();
       expect(dot1).toHaveAttribute("aria-current", "step");
 
-      // Clica no dot 3 ("Ir para o passo 3" = finances-cards)
+      // Clica no dot 3 ("Ir para o passo 3" = finances-wizard-dialog)
       const dot3 = screen.getByRole("button", { name: "Ir para o passo 3" });
       expect(dot3).toBeInTheDocument();
       expect(dot3).not.toHaveAttribute("aria-current");
@@ -1406,7 +1409,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       await user.click(dot3);
 
       expect(getDemoSessionState().currentStepIndex).toBe(2);
-      expect(mockNavigate).toHaveBeenCalledWith("/cartoes");
+      expect(mockNavigate).toHaveBeenCalledWith("/transacoes?novo=despesa");
       expect(handleNext).toHaveBeenCalledWith(2);
 
       // Após o re-render do card com nova key, consulta os novos nós DOM
@@ -1441,25 +1444,45 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
       expect(getDemoSessionState().currentStepIndex).toBe(0);
 
-      // Passo 1 -> Passo 2
+      // Passo 1 -> Passo 2 (/)
       fireEvent.keyDown(window, { key: "ArrowRight" });
       expect(getDemoSessionState().currentStepIndex).toBe(1);
-      expect(mockNavigate).toHaveBeenCalledWith("/transacoes");
+      expect(mockNavigate).toHaveBeenCalledWith("/");
 
-      // Passo 2 -> Passo 3
+      // Passo 2 -> Passo 3 (/transacoes?novo=despesa)
       fireEvent.keyDown(window, { key: "ArrowRight" });
       expect(getDemoSessionState().currentStepIndex).toBe(2);
-      expect(mockNavigate).toHaveBeenCalledWith("/cartoes");
+      expect(mockNavigate).toHaveBeenCalledWith("/transacoes?novo=despesa");
 
-      // Passo 3 -> Passo 4 (último)
+      // Passo 3 -> Passo 4 (/transacoes)
       fireEvent.keyDown(window, { key: "ArrowRight" });
       expect(getDemoSessionState().currentStepIndex).toBe(3);
+      expect(mockNavigate).toHaveBeenCalledWith("/transacoes");
+
+      // Passo 4 -> Passo 5 (/cartoes)
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+      expect(getDemoSessionState().currentStepIndex).toBe(4);
+      expect(mockNavigate).toHaveBeenCalledWith("/cartoes");
+
+      // Passo 5 -> Passo 6 (/cartoes)
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+      expect(getDemoSessionState().currentStepIndex).toBe(5);
+      expect(mockNavigate).toHaveBeenCalledWith("/cartoes");
+
+      // Passo 6 -> Passo 7 (/orcamentos)
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+      expect(getDemoSessionState().currentStepIndex).toBe(6);
       expect(mockNavigate).toHaveBeenCalledWith("/orcamentos");
 
-      // Retrocesso: Passo 4 -> Passo 3 via ArrowLeft
+      // Passo 7 -> Passo 8 (/relatorios - último)
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+      expect(getDemoSessionState().currentStepIndex).toBe(7);
+      expect(mockNavigate).toHaveBeenCalledWith("/relatorios");
+
+      // Retrocesso: Passo 8 -> Passo 7 via ArrowLeft
       fireEvent.keyDown(window, { key: "ArrowLeft" });
-      expect(getDemoSessionState().currentStepIndex).toBe(2);
-      expect(mockNavigate).toHaveBeenCalledWith("/cartoes");
+      expect(getDemoSessionState().currentStepIndex).toBe(6);
+      expect(mockNavigate).toHaveBeenCalledWith("/orcamentos");
     });
 
     it("navega por Tab, aciona botões com Enter e conclui o tour no último passo", async () => {
@@ -1483,9 +1506,9 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       await user.keyboard("{Enter}");
       expect(getDemoSessionState().currentStepIndex).toBe(1);
 
-      // Avança até o último passo (passo 3 = orcamentos)
+      // Avança até o último passo (passo 8 = relatorios, idx 7)
       act(() => {
-        setStepIndex(3);
+        setStepIndex(7);
       });
 
       // No último passo, o botão de conclusão é exibido
@@ -1512,7 +1535,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       await user.keyboard(" ");
 
       expect(getDemoSessionState().currentStepIndex).toBe(1);
-      expect(mockNavigate).toHaveBeenCalledWith("/transacoes");
+      expect(mockNavigate).toHaveBeenCalledWith("/");
     });
 
     it("cancela e encerra o tour a qualquer momento via tecla Escape preservando o foco", () => {
@@ -1652,12 +1675,12 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
           fireEvent.keyDown(window, { key: "ArrowLeft" });
           expect(getDemoSessionState().currentStepIndex).toBe(1);
 
-          // 3. Tab e Espaço nos dots: salta para o passo 4 (último)
-          const dot4 = screen.getByRole("button", { name: "Ir para o passo 4" });
-          dot4.focus();
-          expect(document.activeElement).toBe(dot4);
+          // 3. Tab e Espaço nos dots: salta para o passo 8 (último)
+          const dot8 = screen.getByRole("button", { name: "Ir para o passo 8" });
+          dot8.focus();
+          expect(document.activeElement).toBe(dot8);
           await user.keyboard(" ");
-          expect(getDemoSessionState().currentStepIndex).toBe(3);
+          expect(getDemoSessionState().currentStepIndex).toBe(7);
 
           // 4. Tab e Enter no botão CTA final ("Começar Conta Real"): conclui tour
           const finishBtn = screen.getByRole("button", { name: /Começar Conta Real/i });
@@ -1726,7 +1749,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(aside2).not.toBeNull();
       // O mesmo elemento no DOM foi preservado sem recriação (zero flick)
       expect(aside1).toBe(aside2);
-      expect(aside2?.getAttribute("data-tour-step")).toBe("finances-transactions");
+      expect(aside2?.getAttribute("data-tour-step")).toBe("finances-wizard-btn");
     });
 
     it("utiliza aceleração por hardware GPU translate3d e transição posicional suave no desktop", () => {
@@ -1778,7 +1801,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
       const stepBadgeText = container.querySelector("span.animate-fade-in");
       expect(stepBadgeText).not.toBeNull();
-      expect(stepBadgeText?.textContent).toContain("Passo 1 de 4");
+      expect(stepBadgeText?.textContent).toContain("Passo 1 de 8");
     });
   });
 

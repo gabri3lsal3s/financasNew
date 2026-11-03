@@ -150,30 +150,30 @@ export const TOUR_TRACK_METAS: Record<TourTrackId, TourTrackMeta> = {
     badgeLabel: "2 passos",
   },
 
-  // Trilhas Originais (Compatibilidade Retroativa)
+  // Trilhas Consolidadas e Didáticas Principais
   finances: {
     id: "finances",
     title: "Finanças Diárias & Cartões",
     shortTitle: "Finanças Completo",
     description:
-      "Tour consolidado com visão geral, transações, faturas de cartões e tetos de gastos.",
+      "Jornada sequencial completa com saldo livre, botão wizard, lançamentos, extrato, faturas, parcelamentos, tetos e relatórios.",
     category: "finances",
-    stepsCount: 4,
+    stepsCount: 8,
     iconName: "wallet",
     startRoute: "/",
-    badgeLabel: "4 passos",
+    badgeLabel: "8 passos",
   },
   investments: {
     id: "investments",
     title: "Investimentos & Rebalanceamento",
     shortTitle: "Investimentos Completo",
     description:
-      "Tour consolidado com visão patrimonial, metas de alocação e cálculo de aporte.",
+      "Jornada patrimonial completa com visão geral, nova operação, metas de alocação, cálculo de aportes e proventos.",
     category: "investments",
-    stepsCount: 3,
+    stepsCount: 5,
     iconName: "trending-up",
     startRoute: "/investments",
-    badgeLabel: "3 passos",
+    badgeLabel: "5 passos",
   },
 };
 

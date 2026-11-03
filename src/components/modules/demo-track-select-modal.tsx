@@ -166,8 +166,8 @@ export function DemoTrackSelectModal({
             <TourCardItem
               id="finances"
               title="Finanças Diárias & Cartões"
-              description="Explore entradas, saídas, faturas automáticas e limites de gastos."
-              stepsCount={4}
+              description="Jornada sequencial completa com saldo livre, wizard, lançamentos, cartões, parcelas, tetos e relatórios."
+              stepsCount={8}
               icon={Wallet}
               iconColorClass="text-positive-strong"
               isCompleted={financesOverviewCompleted}
@@ -236,8 +236,8 @@ export function DemoTrackSelectModal({
             <TourCardItem
               id="investments"
               title="Investimentos & Rebalanceamento"
-              description="Conheça a visão patrimonial, alocação de classes e motor de aportes."
-              stepsCount={3}
+              description="Jornada patrimonial completa com visão geral, nova operação, metas de alocação, aportes e proventos."
+              stepsCount={5}
               icon={TrendingUp}
               iconColorClass="text-portfolio"
               isCompleted={investmentsOverviewCompleted}

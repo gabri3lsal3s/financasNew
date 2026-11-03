@@ -922,7 +922,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
   );
 
   return (
-    <div className="flex flex-col gap-5 min-w-0">
+    <div className="flex flex-col gap-5 min-w-0" data-tour="investments-dividends">
       {error ? (
         <ErrorState message={getErrorMessage(error)} onRetry={() => dividendsQuery.refetch()} />
       ) : null}

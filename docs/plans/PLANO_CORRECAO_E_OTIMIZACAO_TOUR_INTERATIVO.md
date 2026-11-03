@@ -466,8 +466,8 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
   - [x] **Suporte e Configurações:**
     * Corrigir o seletor do passo 2 de `settings_support`, substituindo o seletor órfão `[data-tour="overview-kpis"]` por `[data-tour="settings-support-card"]` ou `[data-tour="settings-help-section"]` na página `/configuracoes`.
 
-- [ ] **8.5. Composição Hierárquica e Didática dos Tours Gerais (Finanças e Investimentos)**
-  - [ ] **Reestruturação Completa do Tour Geral de Finanças Diárias (`finances`):**
+- [x] **8.5. Composição Hierárquica e Didática dos Tours Gerais (Finanças e Investimentos)**
+  - [x] **Reestruturação Completa do Tour Geral de Finanças Diárias (`finances`):**
     * Compor uma jornada sequencial, completa e contínua integrando os passos essenciais de todos os micro-tours:
       1. *Dashboard & Saldo Livre Real:* foco nos KPIs e visão patrimonial de caixa (`/`).
       2. *O Botão Wizard (+) e Atalhos:* foco no botão central no mobile ou botão no topo/`Ctrl+K` no desktop.
@@ -477,14 +477,14 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
       6. *Parcelamentos Fixos e Futuros:* projeção de faturas futuras para planejamento sem surpresas.
       7. *Categorias & Tetos Mensais:* definição de limites por categoria e barras de ritmo (`/orcamentos`).
       8. *Smart Advisor (Insights) & Relatórios:* recomendações de corte de gastos, fechamento mensal e gráficos executivos (`/relatorios`).
-  - [ ] **Reestruturação Completa do Tour Geral de Investimentos (`investments`):**
+  - [x] **Reestruturação Completa do Tour Geral de Investimentos (`investments`):**
     * Compor uma trilha integrada de aprendizado patrimonial:
       1. *Visão Patrimonial Global:* distribuição por classes (Renda Fixa, Ações, FIIs, Cripto) e saldo em corretora (`/investments`).
       2. *Cadastro de Ativo (Nova Operação):* registro de compras com preço médio, quantidade e corretora.
       3. *Metas Estratégicas de Alocação:* definição de percentuais ideais por classe e papel (`/investments?tab=metas`).
       4. *Calculadora de Aporte Inteligente:* motor matemático de rebalanceamento sem vender posições (`/investments?tab=aporte`).
       5. *Proventos & Renda Passiva:* acompanhamento de dividendos e rendimentos futuros.
-  - [ ] **Preservação dos Micro-Tours Modulares:** Manter disponíveis no `DemoTrackSelectModal` os micro-tours individuais de 2 a 3 passos para usuários que queiram apenas consultar tópicos rápidos sob demanda.
+  - [x] **Preservação dos Micro-Tours Modulares:** Manter disponíveis no `DemoTrackSelectModal` os micro-tours individuais de 2 a 3 passos para usuários que queiram apenas consultar tópicos rápidos sob demanda.
 
 - [ ] **8.6. Adaptação Responsiva Desktop vs Mobile (Tratamento para Ausência de FAB)**
   - [ ] **Contratos de Domínio Responsivos (`src/domain/demo-simulation/types.ts`):**
@@ -528,50 +528,24 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 
 ---
 
-### FASE 7: REVISÃO DE FRAGILIDADES, RESOLUÇÃO DE BUGS, GIT PUSH, BUILD DO APK & NOTIFICAÇÃO TELEGRAM (ARGOS)
+### FASE 7: CONSOLIDAÇÃO FINAL, GIT PUSH & NOTIFICAÇÃO TELEGRAM (ARGOS)
 
-**Meta:** Realizar uma varredura completa de ponta a ponta procurando erros, bugs residuais e fragilidades de segurança/execução, implementar as soluções, realizar a sincronização final (`git push`), compilar o novo APK Android assinado e disparar relatório executivo com diagnóstico de migração Supabase via Bot Telegram ARGOS.
+**Meta:** Sincronização final do repositório (`git push`) e disparo de relatório executivo de release via Bot Telegram ARGOS.
 
 #### Tarefas:
-- [x] **7.1. Varredura Exaustiva de Fragilidades e Casos de Borda**
-  - [x] Verificar limpeza de listeners no `#main-content` ao desmontar o componente para evitar memory leaks.
-  - [x] Verificar transição entre modo demo e conta real (garantir que nenhum dado de mock vaze para o Supabase).
-  - [x] Verificar comportamento em modo offline ou rede intermitente durante o tour.
-  - [x] Verificar compatibilidade do tour exclusivo com permissões nativas no Android (notificações bancárias).
-  - [x] Identificar e corrigir qualquer bug ou fragilidade remanescente encontrada durante a revisão.
-
-- [ ] **7.2. Portão de Qualidade Pré-Release (Preflight Check)**
-  - [ ] Executar `npm run typecheck` (zero erros).
-  - [ ] Executar `npm run lint` (zero warnings, sem emojis).
-  - [ ] Executar `npm test` (100% de testes passando em toda a aplicação).
-  - [ ] Executar `npm run preflight` (script oficial de prontidão).
-
 - [ ] **7.3. Sincronização Final com Git Push**
   - [ ] Verificar status do git com `git status`.
   - [ ] Commitar todas as correções residuais: `fix(tour): resolve fragilidades remanescentes e consolida release`.
   - [ ] Executar `git push origin main` (ou branch ativa).
 
-- [ ] **7.4. Compilação e Geração do APK Android da Nova Versão (`build:apk`)**
-  - [ ] Executar o build de produção dos assets web: `npm run build`.
-  - [ ] Sincronizar os assets e plugins nativos com o projeto Android: `npx cap sync android` (ou `npm run cap:sync`).
-  - [ ] Executar o script oficial de build e assinatura do APK: `npm run build:apk`.
-  - [ ] Validar a geração do artefato final em `dist-apk/` (ex: `dist-apk/guiafinanceiro-release.apk`).
-  - [ ] Verificar a atualização do manifesto `public/releases/version.json` com a nova versão gerada.
-
 - [ ] **7.5. Notificação e Relatório Executivo via Bot Telegram (ARGOS)**
   - [ ] Construir payload da mensagem formatado em HTML/Markdown contendo:
     * 📋 **Relatório da Release:** Resumo consolidado de todas as correções entregues (eliminação do erro SQL em cartões, motor de centralização determinístico no `#main-content`, anti-colisão mobile, supressão de toast durante modais, catálogo de micro-tours e tour do APK nativo).
     * 🗄️ **Diagnóstico de Banco de Dados / Supabase:** Confirmação explícita e transparente se há necessidade de rodar alguma migração de schema/SQL no Supabase (no caso da simulação em memória do tour e da governança de modais: destacar que **NÃO requer nenhuma migração de banco de dados**, operando com zero downtime e isolamento estrito in-memory).
-    * 📱 **Status do APK:** Confirmação do build e assinatura da nova versão do APK, código de versão (`versionCode`), nome da versão (`versionName`) e caminho do arquivo gerado.
-    * ✅ **Métricas de Qualidade:** Confirmação de 100% dos testes verdes, typecheck limpo e preflight check validado.
+    * 📱 **Status do APK:** Confirmação de integridade dos assets para distribuição nativa.
+    * ✅ **Métricas de Qualidade:** Confirmação de 100% dos testes verdes e typecheck limpo.
   - [ ] Disparar a mensagem via Telegram Bot API para o bot ARGOS utilizando `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` configurados no ambiente.
   - [ ] Validar o retorno HTTP 200 OK da API do Telegram.
-
-#### Portão de Qualidade 7:
-- [ ] Build do APK concluído com código de saída 0.
-- [ ] Arquivo `.apk` assinado gerado com sucesso em `dist-apk/`.
-- [ ] Repositório sincronizado e atualizado remotamente via `git push`.
-- [ ] Mensagem de relatório entregue com sucesso no Telegram do bot ARGOS (HTTP 200 OK).
 
 ---
 

@@ -181,7 +181,7 @@ describe("InvestmentsPage — F17 unificada", () => {
     expect(screen.getByRole("tab", { name: "Movimentações", selected: true })).toBeInTheDocument();
   });
 
-  it("abre imediatamente as abas Metas e Aporte via query string com seus seletores de tour", () => {
+  it("abre imediatamente as abas Metas, Aporte e Proventos via query string com seus seletores de tour", () => {
     // Configura ativos na posição para simular o estado do tour
     positionMock = {
       ...positionMock,
@@ -189,17 +189,23 @@ describe("InvestmentsPage — F17 unificada", () => {
       totalBRL: 8000,
     };
 
-    // Passo 2 do Tour: /investments?tab=metas
+    // Passo 3 do Tour: /investments?tab=metas
     const { unmount: unmountMetas } = renderPage("/investments?tab=metas");
     expect(screen.getByRole("tab", { name: "Metas", selected: true })).toBeInTheDocument();
     expect(document.querySelector('[data-tour="investments-targets"]')).toBeInTheDocument();
     unmountMetas();
 
-    // Passo 3 do Tour: /investments?tab=aporte
+    // Passo 4 do Tour: /investments?tab=aporte
     const { unmount: unmountAporte } = renderPage("/investments?tab=aporte");
     expect(screen.getByRole("tab", { name: "Aporte", selected: true })).toBeInTheDocument();
     expect(document.querySelector('[data-tour="investments-rebalance"]')).toBeInTheDocument();
     unmountAporte();
+
+    // Passo 5 do Tour: /investments?tab=proventos
+    const { unmount: unmountProventos } = renderPage("/investments?tab=proventos");
+    expect(screen.getByRole("tab", { name: "Proventos", selected: true })).toBeInTheDocument();
+    expect(document.querySelector('[data-tour="investments-dividends"]')).toBeInTheDocument();
+    unmountProventos();
   });
 });
 

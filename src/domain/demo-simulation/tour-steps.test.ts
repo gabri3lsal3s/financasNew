@@ -188,25 +188,93 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
     });
   });
 
-  describe("Trilhas consolidadas originais (finances e investments)", () => {
-    it("preserva a trilha finances com 4 passos", () => {
+  describe("Tours gerais consolidados e didáticos (finances e investments) — Fase 8.5", () => {
+    it("estrutura a trilha finances com 8 passos integrados em sequência lógica e didática", () => {
       const steps = getTourSteps("finances");
-      expect(steps).toHaveLength(4);
+      expect(steps).toHaveLength(8);
+
+      // Passo 1: Dashboard & Saldo Livre Real
+      expect(steps[0]?.id).toBe("finances-overview");
       expect(steps[0]?.targetSelector).toBe('[data-tour="overview-kpis"]');
-      expect(steps[1]?.targetSelector).toBe('[data-tour="transactions-feed-card"]');
-      expect(steps[2]?.targetSelector).toBe('[data-tour="cards-content"]');
-      expect(steps[3]?.targetSelector).toBe('[data-tour="budgets-content"]');
+      expect(steps[0]?.targetRoute).toBe("/");
+      expect(steps[0]?.badgeLabel).toBe("Passo 1 de 8");
+
+      // Passo 2: O Botão Wizard (+) e Atalhos
+      expect(steps[1]?.id).toBe("finances-wizard-btn");
+      expect(steps[1]?.targetSelector).toBe('[data-tour="bottom-nav-wizard"]');
+      expect(steps[1]?.targetRoute).toBe("/");
+      expect(steps[1]?.badgeLabel).toBe("Passo 2 de 8");
+
+      // Passo 3: Modal de Lançamento Inteligente
+      expect(steps[2]?.id).toBe("finances-wizard-dialog");
+      expect(steps[2]?.targetSelector).toBe('[data-tour="launch-wizard-dialog"]');
+      expect(steps[2]?.targetRoute).toBe("/transacoes?novo=despesa");
+      expect(steps[2]?.badgeLabel).toBe("Passo 3 de 8");
+
+      // Passo 4: Extrato Unificado & Filtros
+      expect(steps[3]?.id).toBe("finances-transactions");
+      expect(steps[3]?.targetSelector).toBe('[data-tour="transactions-feed-card"]');
+      expect(steps[3]?.targetRoute).toBe("/transacoes");
+      expect(steps[3]?.badgeLabel).toBe("Passo 4 de 8");
+
+      // Passo 5: Cartões & Faturas Abertas
+      expect(steps[4]?.id).toBe("finances-cards");
+      expect(steps[4]?.targetSelector).toBe('[data-tour="cards-invoice-summary"]');
+      expect(steps[4]?.targetRoute).toBe("/cartoes");
+      expect(steps[4]?.badgeLabel).toBe("Passo 5 de 8");
+
+      // Passo 6: Parcelamentos Fixos e Futuros
+      expect(steps[5]?.id).toBe("finances-installments");
+      expect(steps[5]?.targetSelector).toBe('[data-tour="cards-installments-section"]');
+      expect(steps[5]?.targetRoute).toBe("/cartoes");
+      expect(steps[5]?.badgeLabel).toBe("Passo 6 de 8");
+
+      // Passo 7: Categorias & Tetos Mensais
+      expect(steps[6]?.id).toBe("finances-budgets");
+      expect(steps[6]?.targetSelector).toBe('[data-tour="budgets-content"]');
+      expect(steps[6]?.targetRoute).toBe("/orcamentos");
+      expect(steps[6]?.badgeLabel).toBe("Passo 7 de 8");
+
+      // Passo 8: Smart Advisor & Relatórios
+      expect(steps[7]?.id).toBe("finances-insights");
+      expect(steps[7]?.targetSelector).toBe('[data-tour="reports-content"]');
+      expect(steps[7]?.targetRoute).toBe("/relatorios");
+      expect(steps[7]?.badgeLabel).toBe("Passo 8 de 8");
     });
 
-    it("preserva a trilha investments com 3 passos", () => {
+    it("estrutura a trilha investments com 5 passos integrados de aprendizado patrimonial", () => {
       const steps = getTourSteps("investments");
-      expect(steps).toHaveLength(3);
+      expect(steps).toHaveLength(5);
+
+      // Passo 1: Visão Patrimonial Global
+      expect(steps[0]?.id).toBe("investments-overview");
       expect(steps[0]?.targetSelector).toBe('[data-tour="investments-summary"]');
-      expect(steps[1]?.targetSelector).toBe('[data-tour="investments-targets"]');
-      expect(steps[2]?.targetSelector).toBe('[data-tour="investments-rebalance"]');
       expect(steps[0]?.targetRoute).toBe("/investments");
-      expect(steps[1]?.targetRoute).toBe("/investments?tab=metas");
-      expect(steps[2]?.targetRoute).toBe("/investments?tab=aporte");
+      expect(steps[0]?.badgeLabel).toBe("Passo 1 de 5");
+
+      // Passo 2: Cadastro de Ativo (Nova Operação)
+      expect(steps[1]?.id).toBe("investments-new-op");
+      expect(steps[1]?.targetSelector).toBe('[data-tour="investments-new-op"]');
+      expect(steps[1]?.targetRoute).toBe("/investments");
+      expect(steps[1]?.badgeLabel).toBe("Passo 2 de 5");
+
+      // Passo 3: Metas Estratégicas de Alocação
+      expect(steps[2]?.id).toBe("investments-targets");
+      expect(steps[2]?.targetSelector).toBe('[data-tour="investments-targets"]');
+      expect(steps[2]?.targetRoute).toBe("/investments?tab=metas");
+      expect(steps[2]?.badgeLabel).toBe("Passo 3 de 5");
+
+      // Passo 4: Calculadora de Aporte Inteligente
+      expect(steps[3]?.id).toBe("investments-rebalance");
+      expect(steps[3]?.targetSelector).toBe('[data-tour="investments-rebalance"]');
+      expect(steps[3]?.targetRoute).toBe("/investments?tab=aporte");
+      expect(steps[3]?.badgeLabel).toBe("Passo 4 de 5");
+
+      // Passo 5: Proventos & Renda Passiva
+      expect(steps[4]?.id).toBe("investments-dividends");
+      expect(steps[4]?.targetSelector).toBe('[data-tour="investments-dividends"]');
+      expect(steps[4]?.targetRoute).toBe("/investments?tab=proventos");
+      expect(steps[4]?.badgeLabel).toBe("Passo 5 de 5");
     });
   });
 });
