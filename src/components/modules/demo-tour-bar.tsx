@@ -3,7 +3,11 @@ import { useLocation, useNavigate } from "react-router";
 import { ArrowLeft, ArrowRight, Check, Shuffle, Sparkles } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { getTourHandoffDestination, getTourSteps } from "@/domain/demo-simulation";
+import {
+  getTourHandoffDestination,
+  getTourSteps,
+  getTourTrackCategoryLabel,
+} from "@/domain/demo-simulation";
 import {
   endDemo,
   goToNextStep,
@@ -114,8 +118,7 @@ export function DemoTourBar({
     return null;
   }
 
-  const trackLabel =
-    activeTrack === "finances" ? "Finanças Diárias" : "Investimentos";
+  const trackLabel = getTourTrackCategoryLabel(activeTrack);
 
   return (
     <>

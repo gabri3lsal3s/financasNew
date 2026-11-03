@@ -424,9 +424,11 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 
 ---
 
-### FASE 8: REFINAMENTO DE FLUIDEZ (ZERO FLICK), EXPERIÊNCIA DESKTOP & ENCERRAMENTO LIMPO (ZERO MODAIS INVASIVOS)
+---
 
-**Meta:** Eliminar qualquer flick ou piscar na tela durante a movimentação do card de tour no desktop e mobile utilizando transições suaves aceleradas por GPU sem recriação do nó DOM; prover contratos e seletores específicos para Desktop (já que não há botão FAB inferior no desktop) orientando o usuário para as ações de topo (`+ Nova transação`, `+ Nova Operação`, `Ctrl+K`); e eliminar a abertura indesejada de modais de criação (`?novo=...`) ao término dos tours, garantindo encerramento calmo e limpo na própria página atual.
+### FASE 8: REFINAMENTO DE FLUIDEZ (ZERO FLICK), EXPERIÊNCIA DESKTOP, CORREÇÃO DE TAXONOMIA & DIDÁTICA INTEGRADA DOS TOURS
+
+**Meta:** Eliminar qualquer flick ou piscar na tela durante a movimentação do card de tour utilizando aceleração por hardware GPU sem recriação do nó DOM; corrigir a categorização semântica errônea nos badges (que exibia indevidamente "Investimentos" em telas de Finanças Pessoais); substituir iluminações estáticas genéricas por foco real nos modais de criação (`LaunchWizard`) e tabelas relevantes (despesas parceladas, faturas); eliminar elementos fantasmas no tour de cartões e configurações; estruturar os Tours Gerais de Finanças e Investimentos para unificar e encadear os passos de todos os micro-tours em uma sequência lógica e altamente didática; e assegurar encerramento limpo sem abertura invasiva de modais (`?novo=...`).
 
 #### Tarefas:
 - [x] **8.1. Eliminação de Flicks e Otimização da Movimentação do Card Popover**
@@ -440,55 +442,88 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
   - [x] **Eliminação de Salto Inicial Desktop:**
     * Iniciar opacidade em 0 (`opacity: 0`) até que as primeiras coordenadas matemáticas de posicionamento estejam plenamente calculadas e estáveis, transicionando suavemente para `opacity: 1`.
 
-- [ ] **8.2. Adaptação Responsiva Desktop vs Mobile (Tratamento para Ausência de FAB)**
+- [x] **8.2. Correção Canônica da Taxonomia e Rótulos Semânticos nos Badges**
+  - [x] **Erradicação do Fallback Incorreto em `demo-tour-spotlight.tsx`:**
+    * Substituir o ternário ingênuo `activeTrack === "finances" ? "Finanças Diárias" : "Investimentos"` por função pura canônica `getTourTrackCategoryLabel(trackId: TourTrackId)` em `src/domain/demo-simulation/metadata.ts`.
+    * Garantir o mapeamento semântico exato para cada trilha ativa:
+      - `finances`, `finances_overview`, `finances_wizard`, `finances_cards`, `finances_budgets`, `finances_insights` $\rightarrow$ **"Finanças Diárias"** (ou subtítulo contextual: *"Finanças · Lançamentos"*, *"Finanças · Cartões"*, *"Finanças · Orçamentos"*).
+      - `investments`, `investments_overview`, `investments_assets`, `investments_targets`, `investments_aporte` $\rightarrow$ **"Investimentos"**.
+      - `settings_support` $\rightarrow$ **"Configurações"**.
+      - `app_native_apk` $\rightarrow$ **"App Nativo"**.
+  - [x] Validar que em todas as telas de cartões, orçamentos, lançamentos e transações o badge exiba categorização correta de finanças pessoais, nunca investimentos.
+
+- [ ] **8.3. Didática Real de Lançamento de Transações (Foco no Modal `LaunchWizard`)**
+  - [ ] **Iluminação do Modal em Vez de Linha Estática do Extrato:**
+    * No micro-tour do Wizard e no tour geral de finanças, ao explicar *"Lançamento de Despesa, Receita e Pix"*, o passo deve navegar para a rota ou abrir o diálogo de lançamento (ex: `targetRoute: "/transacoes?novo=despesa"` em modo demonstração assistida) com atributo contido `[data-tour="launch-wizard-dialog"]`.
+    * Explicar didaticamente a alternância entre **Despesa**, **Receita** e **Pix**, as sugestões preditivas de categorias inteligentes e o botão de **Anexar Comprovante**.
+    * Assegurar que ao avançar ou retroceder o passo, o modal de demonstração seja fechado sem poluir a navegação.
+
+- [ ] **8.4. Resolução de Ações Fantasmas e Ajuste Fino de Seletores (Cartões e Configurações)**
+  - [ ] **Radar de Assinaturas e Recorrências:**
+    * Se o radar de assinaturas estiver vazio ou colapsado no cartão ativo, focar no resumo da fatura aberta `[data-tour="cards-invoice-summary"]` ou nas despesas fixas recorrentes, sem apontar genericamente para a carteira 3D inteira.
+  - [ ] **Parcelamento Inteligente:**
+    * Apontar o spotlight diretamente para a seção de `[data-tour="cards-installments-section"]` (Despesas Parceladas) ou para o cálculo de competências futuras, proporcionando coerência visual entre o texto explicativo e o elemento destacado.
+  - [ ] **Suporte e Configurações:**
+    * Corrigir o seletor do passo 2 de `settings_support`, substituindo o seletor órfão `[data-tour="overview-kpis"]` por `[data-tour="settings-support-card"]` ou `[data-tour="settings-help-section"]` na página `/configuracoes`.
+
+- [ ] **8.5. Composição Hierárquica e Didática dos Tours Gerais (Finanças e Investimentos)**
+  - [ ] **Reestruturação Completa do Tour Geral de Finanças Diárias (`finances`):**
+    * Compor uma jornada sequencial, completa e contínua integrando os passos essenciais de todos os micro-tours:
+      1. *Dashboard & Saldo Livre Real:* foco nos KPIs e visão patrimonial de caixa (`/`).
+      2. *O Botão Wizard (+) e Atalhos:* foco no botão central no mobile ou botão no topo/`Ctrl+K` no desktop.
+      3. *Modal de Lançamento Inteligente:* apresentação dos tipos (Despesa, Receita, Pix), categorias preditivas e OCR de comprovantes.
+      4. *Extrato Unificado & Filtros:* visão cronológica com separação de parcelas e conciliação (`/transacoes`).
+      5. *Cartões & Faturas Abertas:* melhor dia de compra, limite disponível e competências (`/cartoes`).
+      6. *Parcelamentos Fixos e Futuros:* projeção de faturas futuras para planejamento sem surpresas.
+      7. *Categorias & Tetos Mensais:* definição de limites por categoria e barras de ritmo (`/orcamentos`).
+      8. *Smart Advisor (Insights) & Relatórios:* recomendações de corte de gastos, fechamento mensal e gráficos executivos (`/relatorios`).
+  - [ ] **Reestruturação Completa do Tour Geral de Investimentos (`investments`):**
+    * Compor uma trilha integrada de aprendizado patrimonial:
+      1. *Visão Patrimonial Global:* distribuição por classes (Renda Fixa, Ações, FIIs, Cripto) e saldo em corretora (`/investments`).
+      2. *Cadastro de Ativo (Nova Operação):* registro de compras com preço médio, quantidade e corretora.
+      3. *Metas Estratégicas de Alocação:* definição de percentuais ideais por classe e papel (`/investments?tab=metas`).
+      4. *Calculadora de Aporte Inteligente:* motor matemático de rebalanceamento sem vender posições (`/investments?tab=aporte`).
+      5. *Proventos & Renda Passiva:* acompanhamento de dividendos e rendimentos futuros.
+  - [ ] **Preservação dos Micro-Tours Modulares:** Manter disponíveis no `DemoTrackSelectModal` os micro-tours individuais de 2 a 3 passos para usuários que queiram apenas consultar tópicos rápidos sob demanda.
+
+- [ ] **8.6. Adaptação Responsiva Desktop vs Mobile (Tratamento para Ausência de FAB)**
   - [ ] **Contratos de Domínio Responsivos (`src/domain/demo-simulation/types.ts`):**
-    * Adicionar propriedades opcionais na interface `TourStep`:
+    * Manter e utilizar propriedades adaptativas:
       ```ts
-      targetSelectorDesktop?: string; // Seletor alternativo específico para telas desktop
-      titleDesktop?: string;          // Título adaptado para o contexto de desktop
-      contentDesktop?: string;        // Instruções de desktop (ex: usar botão de topo ou Ctrl+K)
+      targetSelectorDesktop?: string;
+      titleDesktop?: string;
+      contentDesktop?: string;
       ```
   - [ ] **Resolução Dinâmica do Alvo no Spotlight (`demo-tour-spotlight.tsx`):**
-    * Detectar largura da viewport (`window.innerWidth >= 768` ou media query `(min-width: 768px)`).
-    * Se for desktop e houver `targetSelectorDesktop`, utilizá-lo prioritariamente como seletor-alvo da busca no DOM.
-  - [ ] **Adaptação dos Passos em `src/domain/demo-simulation/tour-steps.ts`:**
-    * **No Micro-Tour do Wizard (+) (`finances_wizard`):**
-      - No mobile: foca o botão central flutuante `[data-tour="bottom-nav-wizard"]`.
-      - No desktop: foca o botão `[data-tour="desktop-new-transaction"]` no topo da página de transações / header, ou orienta sobre o atalho de teclado global `Ctrl+K` para inclusão rápida sem fricção.
-    * **No Micro-Tour de Ativos / Operações (`investments_assets`):**
-      - Focar diretamente no botão `+ Nova Operação` (`[data-tour="investments-new-op"]`) visível tanto no mobile quanto no desktop.
-    * **No Micro-Tour de Finanças e Extrato (`finances_overview`):**
-      - Fornecer texto adaptativo no desktop destacando a visão ampla em colunas e tabelas analíticas.
+    * Detectar viewport desktop (`window.innerWidth >= 768`) e utilizar `targetSelectorDesktop` prioritariamente.
+    * No Desktop, apontar para `[data-tour="desktop-new-transaction"]` e atalho `Ctrl+K`, em vez de procurar o botão central da `BottomNav`.
 
-- [ ] **8.3. Erradicação de Modais Invasivos no Encerramento de Tours (`handoff.ts`)**
-  - [ ] **Refatoração Completa de `getTourHandoffDestination()` (`src/domain/demo-simulation/handoff.ts`):**
-    * Remover todas as injeções de query params automáticos:
-      - Substituir `/cartoes?novo=cartao` por rota limpa `/cartoes`.
-      - Substituir `/investments?novo=investimento` por rota limpa `/investments`.
-      - Substituir `/transacoes?novo=despesa` por rota limpa `/transacoes`.
-      - Substituir `/?novo=despesa` por rota limpa `/`.
-  - [ ] **Permanência Consistente na Página Atual:** Ao clicar em "Começar" ou no botão de fechar `[X]`, o usuário encerra o tour e continua na página exata onde terminou, com a tela desobstruída e livre de qualquer modal de adição forçado.
-  - [ ] Atualizar testes unitários em `handoff.test.ts` para refletir o encerramento limpo sem modais.
+- [ ] **8.7. Erradicação de Modais Invasivos no Encerramento de Tours (`handoff.ts`)**
+  - [ ] **Encerramento Limpo sem Parâmetros Forçados:**
+    * Remover todas as injeções automáticas de `?novo=...` ao finalizar qualquer tour (geral ou micro-tour).
+    * O usuário permanece calmo na rota em que o tour terminou (`/`, `/transacoes`, `/cartoes`, `/investments`), com tela limpa e sem modais na cara.
+  - [ ] Atualizar testes unitários em `handoff.test.ts` assegurando rotas limpas no término.
 
-- [ ] **8.4. Otimização de Responsividade e Refinamento Visual Geral**
-  - [ ] Garantir que em monitores ultra-wide (> 1440px) ou telas compactas de laptop (1024px a 1366px), o card popover nunca fique colado nas bordas nem sobreponha a Sidebar de navegação esquerda (`DesktopNav`).
-  - [ ] Ajustar o clamp horizontal para respeitar a largura da Sidebar desktop (`left >= sidebarWidth + 16px`).
+- [ ] **8.8. Otimização de Responsividade e Refinamento Visual Geral**
+  - [ ] Ajustar o clamp horizontal do card popover no desktop para respeitar a largura da Sidebar de navegação esquerda (`DesktopNav`), evitando sobreposição em telas laptop (1024px a 1366px).
 
-- [ ] **8.5. Testes Unitários e Validação da Fase 8**
-  - [ ] Testar em `demo-tour-spotlight.test.tsx` a persistência do nó do card sem desmontes por troca de passo.
-  - [ ] Testar alternância correta de seletores mobile vs desktop (`targetSelectorDesktop`).
-  - [ ] Testar conclusão de todos os tours garantindo que nenhuma rota resultante contenha `novo=`.
+- [ ] **8.9. Testes Unitários e Validação da Fase 8**
+  - [x] Testar `getTourTrackCategoryLabel` assegurando 100% de precisão nos badges.
+  - [ ] Testar encadeamento dos passos dos novos tours gerais em `tour-steps.test.ts`.
+  - [ ] Testar persistência do nó do card e ausência de flashes em `demo-tour-spotlight.test.tsx`.
+  - [ ] Testar conclusão limpa de todos os tours em `handoff.test.ts`.
 
 #### Portão de Qualidade 8:
 - [ ] `npm run typecheck` executado com zero erros de tipo.
 - [ ] `npm run lint` aprovado sem violações.
-- [ ] `npm test -- src/domain/demo-simulation/handoff.test.ts src/components/modules/demo-tour-spotlight.test.tsx` 100% verde.
-- [ ] Teste Manual no Desktop: Percorrer os tours observando transições suaves sem nenhum flick ou tela piscando.
-- [ ] Teste Manual no Desktop: Comprovar que o tour não tenta apontar para o botão FAB inexistente, e sim para as ações corretas de desktop.
-- [ ] Teste Manual de Conclusão: Concluir os tours de Finanças, Cartões e Investimentos e verificar que nenhum modal de cadastro é aberto na cara do usuário.
+- [ ] `npm test -- src/domain/demo-simulation/ tour-steps spotlight handoff` 100% verde.
+- [ ] Teste Manual Desktop e Mobile: Percorrer os tours de Finanças e Orçamentos e conferir se os badges indicam "Finanças Diárias".
+- [ ] Teste Manual de Lançamentos: Comprovar que o passo de lançamento demonstra o modal com campos didáticos em vez de um item solto do extrato.
+- [ ] Teste Manual do Tour Geral: Percorrer o tour geral de Finanças e de Investimentos comprovando a jornada lógica e completa de todas as funcionalidades.
+- [ ] Teste Manual de Conclusão: Concluir os tours e verificar que o app encerra suavemente sem abrir nenhum modal indesejado.
 
 #### Commit & Push 8:
-- [ ] Mensagem de Commit: `refactor(tour): elimina flicks de animacao, adapta passos para desktop e remove modais invasivos de encerramento`
+- [ ] Mensagem de Commit: `refactor(tour): aprimora taxonomia de badges, didatica dos tours gerais e foco nos modais reais`
 - [ ] Executar push para a branch remota.
 
 ---
@@ -560,6 +595,8 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 | `src/components/modules/native-update-toast.tsx` | Modificação | Fase 4 | Supressão de toast de atualização durante modais e adiamento no dismiss |
 | `src/components/modules/native-update-toast.test.tsx` | Modificação | Fase 4 | Testes de supressão de toast durante modais ativos |
 | `src/components/modules/demo-tour-bar.tsx` | Documentação | Fase 6 | Marcação de depreciação e manutenção da tipagem |
+| `src/domain/demo-simulation/metadata.ts` | Criação | Fase 8 | Função pura canônica de taxonomia e rótulos de categoria de trilha |
+| `src/domain/demo-simulation/metadata.test.ts` | Criação | Fase 8 | Testes unitários de precisão dos rótulos e taxonomia semântica |
 | `scripts/build-apk.sh` | Execução | Fase 7 | Script oficial de compilação e assinatura do APK Android |
 | `docs/plans/PLANO_CORRECAO_E_OTIMIZACAO_TOUR_INTERATIVO.md` | Criação/Refinamento | Planejamento | Documento canônico da refatoração |
 

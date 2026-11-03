@@ -13,6 +13,17 @@ export type {
   DemoSimulationDataset,
 } from "./types";
 
+export type { TourTrackLabelOptions } from "./metadata";
+
+export {
+  TOUR_CATEGORY_LABELS,
+  TOUR_TRACK_CATEGORY_LABELS,
+  TOUR_TRACK_CONTEXTUAL_LABELS,
+  getTourTrackCategory,
+  getTourTrackCategoryLabel,
+  getTourTrackContextualLabel,
+} from "./metadata";
+
 export {
   TOUR_TRACK_METAS,
   TOUR_TRACK_GROUPS,

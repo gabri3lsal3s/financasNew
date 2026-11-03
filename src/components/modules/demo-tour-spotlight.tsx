@@ -4,7 +4,11 @@ import { ArrowLeft, ArrowRight, Check, Sparkles, X } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
-import { getTourHandoffDestination, getTourSteps } from "@/domain/demo-simulation";
+import {
+  getTourHandoffDestination,
+  getTourSteps,
+  getTourTrackCategoryLabel,
+} from "@/domain/demo-simulation";
 import {
   endDemo,
   goToNextStep,
@@ -556,8 +560,8 @@ export function DemoTourSpotlight({
     return null;
   }
 
-  const trackLabel =
-    activeTrack === "finances" ? "Finanças Diárias" : "Investimentos";
+  // Rótulo semântico canônico da trilha ativo via função pura de domínio (Fase 8 — Tarefa 8.2)
+  const trackLabel = getTourTrackCategoryLabel(activeTrack);
 
   // Posicionamento dinâmico do card popover no desktop com aceleração GPU translate3d e transições suaves (Fase 8 — Tarefa 8.1)
   const desktopCardStyle = (): React.CSSProperties => {

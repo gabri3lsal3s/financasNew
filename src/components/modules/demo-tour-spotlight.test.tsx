@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DemoTourSpotlight } from "./demo-tour-spotlight";
@@ -1777,6 +1777,72 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       const stepBadgeText = container.querySelector("span.animate-fade-in");
       expect(stepBadgeText).not.toBeNull();
       expect(stepBadgeText?.textContent).toContain("Passo 1 de 4");
+    });
+  });
+
+  describe("Correção Canônica da Taxonomia e Rótulos Semânticos nos Badges (Fase 8 — Tarefa 8.2)", () => {
+    it("exibe 'Finanças Diárias' nos micro-tours de cartões, orçamentos, wizard, visão geral e insights, nunca 'Investimentos'", () => {
+      const financeTracks: Array<"finances_cards" | "finances_budgets" | "finances_wizard" | "finances_overview" | "finances_insights"> = [
+        "finances_cards",
+        "finances_budgets",
+        "finances_wizard",
+        "finances_overview",
+        "finances_insights",
+      ];
+
+      financeTracks.forEach((track) => {
+        cleanup();
+        startDemo(track);
+
+        render(<DemoTourSpotlight />);
+
+        // O badge deve exibir estritamente "Finanças Diárias"
+        expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
+        // Não deve exibir de forma alguma "Investimentos"
+        expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
+      });
+    });
+
+    it("exibe 'Investimentos' nas trilhas e micro-tours de investimentos", () => {
+      const investmentTracks: Array<"investments" | "investments_overview" | "investments_assets" | "investments_targets" | "investments_aporte"> = [
+        "investments",
+        "investments_overview",
+        "investments_assets",
+        "investments_targets",
+        "investments_aporte",
+      ];
+
+      investmentTracks.forEach((track) => {
+        cleanup();
+        startDemo(track);
+
+        render(<DemoTourSpotlight />);
+
+        expect(screen.getByText("Investimentos")).toBeInTheDocument();
+        expect(screen.queryByText("Finanças Diárias")).not.toBeInTheDocument();
+      });
+    });
+
+    it("exibe 'Configurações' no micro-tour de configurações e suporte", () => {
+      cleanup();
+      startDemo("settings_support");
+
+      render(<DemoTourSpotlight />);
+
+      expect(screen.getByText("Configurações")).toBeInTheDocument();
+      expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
+      expect(screen.queryByText("Finanças Diárias")).not.toBeInTheDocument();
+    });
+
+    it("exibe 'App Nativo' no micro-tour de recursos nativos do APK Android", () => {
+      cleanup();
+      startDemo("app_native_apk");
+
+      render(<DemoTourSpotlight />);
+
+      expect(screen.getByText("App Nativo")).toBeInTheDocument();
+      expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
+      expect(screen.queryByText("Finanças Diárias")).not.toBeInTheDocument();
     });
   });
 });
