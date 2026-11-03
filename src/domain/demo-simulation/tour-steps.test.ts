@@ -300,4 +300,126 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
       expect(steps[4]?.badgeLabel).toBe("Passo 5 de 5");
     });
   });
+
+  describe("Adaptação Responsiva Desktop vs Mobile (Fase 8 — Tarefa 8.8)", () => {
+    it("configura propriedades adaptativas em finances_wizard (passo 1) para ausência de FAB no desktop", () => {
+      const steps = getTourSteps("finances_wizard");
+      const step1 = steps[0];
+
+      expect(step1).toBeDefined();
+      expect(step1?.targetSelector).toBe('[data-tour="bottom-nav-wizard"]');
+      expect(step1?.targetSelectorDesktop).toBe('[data-tour="desktop-new-transaction"]');
+      expect(step1?.titleDesktop).toBe("Comandos Rápidos & Atalho (Ctrl+K)");
+      expect(step1?.contentDesktop).toContain("Ctrl+K");
+    });
+
+    it("configura propriedades adaptativas na trilha finances (passo 2) para ausência de FAB no desktop", () => {
+      const steps = getTourSteps("finances");
+      const step2 = steps[1];
+
+      expect(step2).toBeDefined();
+      expect(step2?.id).toBe("finances-wizard-btn");
+      expect(step2?.targetSelector).toBe('[data-tour="bottom-nav-wizard"]');
+      expect(step2?.targetSelectorDesktop).toBe('[data-tour="desktop-new-transaction"]');
+      expect(step2?.titleDesktop).toBe("Comandos Rápidos & Atalho (Ctrl+K)");
+      expect(step2?.contentDesktop).toContain("Ctrl+K");
+    });
+  });
+
+  describe("Testar Encadeamento dos Passos dos Novos Tours Gerais (Fase 8 — Tarefa 8.11)", () => {
+    it("encadeia com precisão a sequência lógica do Tour Geral de Finanças Diárias (8 passos)", () => {
+      const steps = getTourSteps("finances");
+      expect(steps).toHaveLength(8);
+
+      const expectedSequence = [
+        { order: 1, id: "finances-overview", route: "/", selector: '[data-tour="overview-kpis"]', badge: "Passo 1 de 8" },
+        { order: 2, id: "finances-wizard-btn", route: "/", selector: '[data-tour="bottom-nav-wizard"]', badge: "Passo 2 de 8" },
+        { order: 3, id: "finances-wizard-dialog", route: "/transacoes?novo=despesa", selector: '[data-tour="launch-wizard-dialog"]', badge: "Passo 3 de 8" },
+        { order: 4, id: "finances-transactions", route: "/transacoes", selector: '[data-tour="transactions-feed-card"]', badge: "Passo 4 de 8" },
+        { order: 5, id: "finances-cards", route: "/cartoes", selector: '[data-tour="cards-invoice-summary"]', badge: "Passo 5 de 8" },
+        { order: 6, id: "finances-installments", route: "/cartoes", selector: '[data-tour="cards-installments-section"]', badge: "Passo 6 de 8" },
+        { order: 7, id: "finances-budgets", route: "/orcamentos", selector: '[data-tour="budgets-content"]', badge: "Passo 7 de 8" },
+        { order: 8, id: "finances-insights", route: "/relatorios", selector: '[data-tour="reports-content"]', badge: "Passo 8 de 8" },
+      ];
+
+      expectedSequence.forEach((expected, idx) => {
+        const step = steps[idx];
+        expect(step?.order).toBe(expected.order);
+        expect(step?.id).toBe(expected.id);
+        expect(step?.targetRoute).toBe(expected.route);
+        expect(step?.targetSelector).toBe(expected.selector);
+        expect(step?.badgeLabel).toBe(expected.badge);
+        expect(step?.title.length).toBeGreaterThan(0);
+        expect(step?.description.length).toBeGreaterThan(0);
+      });
+
+      // Valida unicidade de IDs na trilha
+      const ids = steps.map((s) => s.id);
+      expect(new Set(ids).size).toBe(8);
+    });
+
+    it("encadeia com precisão a sequência lógica do Tour Geral de Investimentos (5 passos)", () => {
+      const steps = getTourSteps("investments");
+      expect(steps).toHaveLength(5);
+
+      const expectedSequence = [
+        { order: 1, id: "investments-overview", route: "/investments", selector: '[data-tour="investments-summary"]', badge: "Passo 1 de 5" },
+        { order: 2, id: "investments-new-op", route: "/investments", selector: '[data-tour="investments-new-op"]', badge: "Passo 2 de 5" },
+        { order: 3, id: "investments-targets", route: "/investments?tab=metas", selector: '[data-tour="investments-targets"]', badge: "Passo 3 de 5" },
+        { order: 4, id: "investments-rebalance", route: "/investments?tab=aporte", selector: '[data-tour="investments-rebalance"]', badge: "Passo 4 de 5" },
+        { order: 5, id: "investments-dividends", route: "/investments?tab=proventos", selector: '[data-tour="investments-dividends"]', badge: "Passo 5 de 5" },
+      ];
+
+      expectedSequence.forEach((expected, idx) => {
+        const step = steps[idx];
+        expect(step?.order).toBe(expected.order);
+        expect(step?.id).toBe(expected.id);
+        expect(step?.targetRoute).toBe(expected.route);
+        expect(step?.targetSelector).toBe(expected.selector);
+        expect(step?.badgeLabel).toBe(expected.badge);
+      });
+
+      const ids = steps.map((s) => s.id);
+      expect(new Set(ids).size).toBe(5);
+    });
+
+    it("encadeia com precisão a sequência lógica do Tour Geral de Configurações, Visual e Suporte (5 passos)", () => {
+      const steps = getTourSteps("settings_support");
+      expect(steps).toHaveLength(5);
+
+      const expectedSequence = [
+        { order: 1, id: "settings-privacy-theme", route: "/", selector: '[data-tour="header-privacy-theme"]', badge: "Passo 1 de 5" },
+        { order: 2, id: "settings-experience-presets", route: "/configuracoes?tab=appearance", selector: '[data-tour="settings-experience-presets"]', badge: "Passo 2 de 5" },
+        { order: 3, id: "settings-visual-identity", route: "/configuracoes?tab=appearance", selector: '[data-tour="settings-visual-identity"]', badge: "Passo 3 de 5" },
+        { order: 4, id: "settings-notifications", route: "/configuracoes?tab=notifications", selector: '[data-tour="settings-notifications-card"]', badge: "Passo 4 de 5" },
+        { order: 5, id: "settings-support-channel", route: "/configuracoes", selector: '[data-tour="settings-support-card"]', badge: "Passo 5 de 5" },
+      ];
+
+      expectedSequence.forEach((expected, idx) => {
+        const step = steps[idx];
+        expect(step?.order).toBe(expected.order);
+        expect(step?.id).toBe(expected.id);
+        expect(step?.targetRoute).toBe(expected.route);
+        expect(step?.targetSelector).toBe(expected.selector);
+        expect(step?.badgeLabel).toBe(expected.badge);
+      });
+
+      const ids = steps.map((s) => s.id);
+      expect(new Set(ids).size).toBe(5);
+    });
+
+    it("assegura que todos os passos possuem rotas válidas e seletores data-tour formatados", () => {
+      const generalTracks: TourTrackId[] = ["finances", "investments", "settings_support"];
+
+      for (const trackId of generalTracks) {
+        const steps = getTourSteps(trackId);
+        for (const step of steps) {
+          expect(step.targetRoute.startsWith("/")).toBe(true);
+          expect(step.targetSelector).toBeDefined();
+          expect(step.targetSelector?.startsWith('[data-tour="')).toBe(true);
+          expect(step.targetSelector?.endsWith('"]')).toBe(true);
+        }
+      }
+    });
+  });
 });

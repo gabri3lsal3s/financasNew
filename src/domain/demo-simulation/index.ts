@@ -48,6 +48,9 @@ export {
 } from "./tour-steps";
 
 export {
+  INVASIVE_QUERY_PARAMS,
+  cleanPathWithoutInvasiveParams,
+  isCompleteTourTrack,
   getTourHandoffDestination,
 } from "./handoff";
 
@@ -57,6 +60,9 @@ export type {
   CalculateDeadCenterScrollOptions,
   SpotlightGeometryOptions,
   SpotlightGeometry,
+  SkeletonSpotlightOptions,
+  DesktopCardPositionOptions,
+  DesktopCardPosition,
 } from "./viewport";
 
 export {
@@ -64,9 +70,18 @@ export {
   DEFAULT_BOTTOM_NAV_HEIGHT,
   DEFAULT_CARD_HEIGHT,
   DEFAULT_SAFETY_MARGIN,
+  DEFAULT_SEARCH_TIMEOUT_MS,
+  DEFAULT_POLLING_INTERVAL_MS,
   MOBILE_BREAKPOINT,
   calculateFreeViewportWindow,
   calculateDeadCenterScrollTop,
   calculateSpotlightGeometry,
+  calculateSkeletonSpotlightGeometry,
   isElementInsideFreeViewport,
+  isDesktopViewport,
+  resolveTourStepTargetSelector,
+  resolveTourStepTitle,
+  resolveTourStepContent,
+  calculateDesktopCardPosition,
+  getDesktopSidebarWidth,
 } from "./viewport";

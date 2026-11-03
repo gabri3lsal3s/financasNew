@@ -113,7 +113,7 @@ describe("DemoExitConfirmDialog — Interceptação de Ação Real (§3.4)", () 
     expect(hasCompletedDemoTour("finances")).toBe(true);
   });
 
-  it("navega para o hand-off contextual ao confirmar sem onConfirm customizado", async () => {
+  it("navega para o hand-off contextual ao confirmar sem onConfirm customizado (tour completo)", async () => {
     startDemo("finances");
     mockPathname = "/cartoes";
     const user = userEvent.setup();
@@ -131,10 +131,34 @@ describe("DemoExitConfirmDialog — Interceptação de Ação Real (§3.4)", () 
     });
     await user.click(confirmBtn);
 
-    expect(mockNavigate).toHaveBeenCalledWith("/cartoes?novo=cartao");
+    expect(mockNavigate).toHaveBeenCalledWith("/?novo=despesa");
     expect(handleOpenChange).toHaveBeenCalledWith(false);
     expect(getDemoSessionState().isDemoActive).toBe(false);
     expect(hasCompletedDemoTour("finances")).toBe(true);
+  });
+
+  it("permanece na rota limpa sem abrir modal invasivo ao confirmar em micro-tours", async () => {
+    startDemo("finances_cards");
+    mockPathname = "/cartoes";
+    const user = userEvent.setup();
+    const handleOpenChange = vi.fn();
+
+    render(
+      <DemoExitConfirmDialog
+        open={true}
+        onOpenChange={handleOpenChange}
+      />,
+    );
+
+    const confirmBtn = screen.getByRole("button", {
+      name: "Confirmar (Cadastrar Dado Real)",
+    });
+    await user.click(confirmBtn);
+
+    expect(mockNavigate).toHaveBeenCalledWith("/cartoes");
+    expect(handleOpenChange).toHaveBeenCalledWith(false);
+    expect(getDemoSessionState().isDemoActive).toBe(false);
+    expect(hasCompletedDemoTour("finances_cards")).toBe(true);
   });
 
   it("não apresenta violações de acessibilidade (axe)", async () => {

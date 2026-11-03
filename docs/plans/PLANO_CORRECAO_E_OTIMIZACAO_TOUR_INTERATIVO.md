@@ -18,8 +18,8 @@
 [FASE 4: GOVERNANÇA DE MODAIS & UPDATE TOAST]████████████████████ 100% Concluído
 [FASE 5: DESIGN SYSTEM, RESPONSIVIDADE & A11Y]████████████████████ 100% Concluído
 [FASE 6: AUDITORIA INTEGRADA & POLIMENTO]    ████████████████████ 100% Concluído
-[FASE 8: REFINAMENTO DE FLUIDEZ, DESKTOP & ZERO MODAIS INVASIVOS]░░░░░░░░░░░░░░░░░░░░ 0% Pendente
-[FASE 7: REVISÃO, PUSH, BUILD APK & TELEGRAM]░░░░░░░░░░░░░░░░░░░░   0% Pendente
+[FASE 8: REFINAMENTO DE FLUIDEZ, DESKTOP & ZERO MODAIS INVASIVOS]████████████████████ 100% Concluído
+[FASE 7: REVISÃO, PUSH, BUILD APK & TELEGRAM]████████████████████ 100% Concluído
 ```
 
 ---
@@ -519,31 +519,31 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
       `targetScrollTop = container.scrollTop + (elementCenterY - viewportFreeCenterY)`.
     * Garantir que tanto a mensagem explicativa quanto a barra inferior respeitem uma margem de segurança mínima de 16px acima e abaixo do recorte iluminado.
 
-- [ ] **8.7. Resiliência de Carregamento e Foco de Elementos com Montagem Tardia**
-  - [ ] **Diagnóstico de Falhas de Foco / Carregamento:**
+- [x] **8.7. Resiliência de Carregamento e Foco de Elementos com Montagem Tardia**
+  - [x] **Diagnóstico de Falhas de Foco / Carregamento:**
     * Elementos que dependem de queries assíncronas do TanStack Query ou de animações de transição de rota (`animate-route-in`, 150ms) demoram mais que os 8 attempts de 100ms caso a CPU do smartphone engasgue.
     * Quando a busca falha (`attemptsLeft === 0`), o Spotlight desistia, chamava `updateTargetRect()` vazio e o spotlight ficava órfão ou centralizado no vazio.
-  - [ ] **Implementação de MutationObserver + Polling Adaptativo com Timeout de 2.5s:**
+  - [x] **Implementação de MutationObserver + Polling Adaptativo com Timeout de 2.5s:**
     * Substituir o timer fixo frágil por uma estratégia híbrida:
       1. Tenta encontrar imediatamente no DOM.
       2. Se não encontrar, acopla um `MutationObserver` ao `#main-content` ouvindo inserções de novos nós por até 2500ms.
       3. Assim que o nó correspondente ao `targetSelector` for montado e possuir dimensões válidas (`width > 0 && height > 0`), desconecta o observer e dispara imediatamente a medição e rolagem.
     * Adicionar esqueleto discreto de foco com fallback gracioso para impedir recortes pretos congelados enquanto os dados carregam.
 
-- [ ] **8.8. Adaptação Responsiva Desktop vs Mobile (Tratamento para Ausência de FAB)**
-  - [ ] **Contratos de Domínio Responsivos (`src/domain/demo-simulation/types.ts`):**
+- [x] **8.8. Adaptação Responsiva Desktop vs Mobile (Tratamento para Ausência de FAB)**
+  - [x] **Contratos de Domínio Responsivos (`src/domain/demo-simulation/types.ts`):**
     * Manter e utilizar propriedades adaptativas:
       ```ts
       targetSelectorDesktop?: string;
       titleDesktop?: string;
       contentDesktop?: string;
       ```
-  - [ ] **Resolução Dinâmica do Alvo no Spotlight (`demo-tour-spotlight.tsx`):**
+  - [x] **Resolução Dinâmica do Alvo no Spotlight (`demo-tour-spotlight.tsx`):**
     * Detectar viewport desktop (`window.innerWidth >= 768`) e utilizar `targetSelectorDesktop` prioritariamente.
     * No Desktop, apontar para `[data-tour="desktop-new-transaction"]` e atalho `Ctrl+K`, em vez de procurar o botão central da `BottomNav`.
 
-- [ ] **8.9. Governança Contextual de Handoff e Modais de Entrada (`handoff.ts`)**
-  - [ ] **Regra de Ouro: Modais de Ação Apenas nos Tours Completos (Zero Interrupção em Micro-Tours):**
+- [x] **8.9. Governança Contextual de Handoff e Modais de Entrada (`handoff.ts`)**
+  - [x] **Regra de Ouro: Modais de Ação Apenas nos Tours Completos (Zero Interrupção em Micro-Tours):**
     * **Nos Micro-Tours Individuais** (`finances_overview`, `finances_wizard`, `finances_cards`, `finances_budgets`, `finances_insights`, `investments_overview`, `investments_assets`, `investments_targets`, `investments_aporte`, `settings_support`, `app_native_apk`):
       - O usuário buscou uma consulta didática pontual. Ao concluir ("Começar" ou `[X]`), encerra **sem nenhum modal**, permanecendo na rota atual limpa (`/`, `/cartoes`, `/orcamentos`, `/investments`).
     * **No Tour Completo de Finanças Diárias (`finances`):**
@@ -552,44 +552,44 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
       - Ao concluir a jornada completa de investimentos, direciona para `/investments?novo=investimento` (ou `/investments?tab=aporte`), abrindo o modal de **Inserção de Operação/Aporte** para cadastrar o primeiro ativo patrimonial.
     * **No Tour Completo de Configurações, Visual e Suporte (`settings` / `settings_support` completo):**
       - Ao concluir, direciona para `/configuracoes?tab=suporte` (ou abre o canal/modal de **Suporte e Ajuda**), permitindo ao usuário tirar dúvidas imediatamente ou falar com o atendimento.
-  - [ ] **Atualização da Função Pura `getTourHandoffDestination()` (`src/domain/demo-simulation/handoff.ts`):**
+  - [x] **Atualização da Função Pura `getTourHandoffDestination()` (`src/domain/demo-simulation/handoff.ts`):**
     * Recebe `(track: TourTrackId | null, currentPath?: string)`.
     * Verifica se a trilha concluída é um Tour Completo (`track === "finances"`, `track === "investments"`, etc.) para injetar o parâmetro de ação (`novo=...`), ou se é micro-tour para retornar estritamente a rota limpa sem query params invasivos.
-  - [ ] Atualizar testes unitários em `handoff.test.ts` cobrindo tanto a abertura dos modais certos nos tours completos quanto o fechamento limpo nos micro-tours.
+  - [x] Atualizar testes unitários em `handoff.test.ts` cobrindo tanto a abertura dos modais certos nos tours completos quanto o fechamento limpo nos micro-tours.
 
-- [ ] **8.10. Otimização de Responsividade e Refinamento Visual dos Cards Popover**
-  - [ ] **Diagnóstico da Quebra Visual e Colisão de Elementos no Rodapé:**
+- [x] **8.10. Otimização de Responsividade e Refinamento Visual dos Cards Popover**
+  - [x] **Diagnóstico da Quebra Visual e Colisão de Elementos no Rodapé:**
     * Na captura de tela, o botão *"Começar Conta Real"* colide com os dots de progresso e transborda para fora da margem direita do card popover.
     * **Causa Raiz 1 (Largura Rígida Desktop):** `desktopCardStyle()` usava `cardWidth = 380` rígido. Em passos com 8 passos (como Finanças Diárias completo), a soma de:
       Botão Anterior (~90px) + 8 dots de progresso com gap (~85px) + Botão *"Começar Conta Real"* (~165px) + gaps e paddings internos (~48px) = **~388px**.
       O conteúdo ultrapassa os 380px estáticos, esmagando os dots e fazendo o botão saltar para fora da borda arredondada.
     * **Causa Raiz 2 (Layout Flex Rígido no Rodapé):** O rodapé do card usava `flex items-center justify-between gap-2` com todos os botões marcados com `shrink-0`. Sem flexibilidade, quando a largura atinge o limite, os elementos se sobrepõem visualmente.
-  - [ ] **Solução Arquitetural Responsiva:**
+  - [x] **Solução Arquitetural Responsiva:**
     * **Largura Adaptativa no Desktop:** Alterar a largura do card para `min(420px, calc(100vw - 32px))` (ou `w-[420px]` dinâmico), oferecendo a folga necessária para comportar os 8 dots e o botão com rótulo completo.
     * **Auto-fit Inteligente no Botão de Ação:** Usar `max-w-fit truncate` ou encurtar o rótulo suavemente para `"Começar"` caso a largura disponível seja restrita (`< 400px`), mantendo o ícone `<Check className="size-3.5" />` e a ergonomia intacta.
     * **Clamp Horizontal contra a Sidebar Desktop:** Garantir que o card popover nunca fique colado nas bordas nem sobreponha a Sidebar de navegação esquerda (`DesktopNav`), respeitando `left >= sidebarWidth + 16px`.
 
-- [ ] **8.11. Testes Unitários e Validação da Fase 8**
+- [x] **8.11. Testes Unitários e Validação da Fase 8**
   - [x] Testar `getTourTrackCategoryLabel` assegurando 100% de precisão nos badges.
-  - [ ] Testar cálculo da janela livre útil mobile e ausência de sobreposição por BottomNav.
-  - [ ] Testar resiliência com MutationObserver em montagens tardias de elementos assíncronos.
-  - [ ] Testar encadeamento dos passos dos novos tours gerais em `tour-steps.test.ts`.
-  - [ ] Testar persistência do nó do card e ausência de flashes em `demo-tour-spotlight.test.tsx`.
-  - [ ] Testar conclusão limpa de todos os tours em `handoff.test.ts`.
+  - [x] Testar cálculo da janela livre útil mobile e ausência de sobreposição por BottomNav.
+  - [x] Testar resiliência com MutationObserver em montagens tardias de elementos assíncronos.
+  - [x] Testar encadeamento dos passos dos novos tours gerais em `tour-steps.test.ts`.
+  - [x] Testar persistência do nó do card e ausência de flashes em `demo-tour-spotlight.test.tsx`.
+  - [x] Testar conclusão limpa de todos os tours em `handoff.test.ts`.
 
 #### Portão de Qualidade 8:
-- [ ] `npm run typecheck` executado com zero erros de tipo.
-- [ ] `npm run lint` aprovado sem violações.
-- [ ] `npm test -- src/domain/demo-simulation/ tour-steps spotlight handoff` 100% verde.
-- [ ] Teste Manual Mobile (iPhone/Android Viewport): Percorrer passos longos (ex: Passo 1 KPIs e Passo 6 Parceladas) comprovando que o elemento iluminado NUNCA fica escondido atrás da BottomNav nem colado no card superior, mantendo-se perfeitamente visível na zona central livre.
-- [ ] Teste Manual Desktop e Mobile: Percorrer os tours de Finanças e Orçamentos e conferir se os badges indicam "Finanças Diárias".
-- [ ] Teste Manual de Lançamentos: Comprovar que o passo de lançamento demonstra o modal com campos didáticos em vez de um item solto do extrato.
-- [ ] Teste Manual do Tour Geral: Percorrer o tour geral de Finanças e de Investimentos comprovando a jornada lógica e completa de todas as funcionalidades.
-- [ ] Teste Manual de Conclusão: Concluir os tours completos (Finanças, Investimentos, Configurações) comprovando a abertura do modal correto (LaunchWizard para Finanças, Aporte para Investimentos, Suporte para Configurações), e concluir micro-tours comprovando encerramento limpo sem nenhum modal.
+- [x] `npm run typecheck` executado com zero erros de tipo.
+- [x] `npm run lint` aprovado sem violações.
+- [x] `npm test -- src/domain/demo-simulation/ tour-steps spotlight handoff` 100% verde.
+- [x] Teste Manual Mobile (iPhone/Android Viewport): Percorrer passos longos (ex: Passo 1 KPIs e Passo 6 Parceladas) comprovando que o elemento iluminado NUNCA fica escondido atrás da BottomNav nem colado no card superior, mantendo-se perfeitamente visível na zona central livre.
+- [x] Teste Manual Desktop e Mobile: Percorrer os tours de Finanças e Orçamentos e conferir se os badges indicam "Finanças Diárias".
+- [x] Teste Manual de Lançamentos: Comprovar que o passo de lançamento demonstra o modal com campos didáticos em vez de um item solto do extrato.
+- [x] Teste Manual do Tour Geral: Percorrer o tour geral de Finanças e de Investimentos comprovando a jornada lógica e completa de todas as funcionalidades.
+- [x] Teste Manual de Conclusão: Concluir os tours completos (Finanças, Investimentos, Configurações) comprovando a abertura do modal correto (LaunchWizard para Finanças, Aporte para Investimentos, Suporte para Configurações), e concluir micro-tours comprovando encerramento limpo sem nenhum modal.
 
 #### Commit & Push 8:
-- [ ] Mensagem de Commit: `refactor(tour): aprimora taxonomia de badges, didatica dos tours gerais e foco nos modais reais`
-- [ ] Executar push para a branch remota.
+- [x] Mensagem de Commit: `refactor(tour): aprimora taxonomia de badges, didatica dos tours gerais e foco nos modais reais`
+- [x] Executar push para a branch remota.
 
 ---
 
@@ -598,19 +598,19 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 **Meta:** Sincronização final do repositório (`git push`) e disparo de relatório executivo de release via Bot Telegram ARGOS.
 
 #### Tarefas:
-- [ ] **7.3. Sincronização Final com Git Push**
-  - [ ] Verificar status do git com `git status`.
-  - [ ] Commitar todas as correções residuais: `fix(tour): resolve fragilidades remanescentes e consolida release`.
-  - [ ] Executar `git push origin main` (ou branch ativa).
+- [x] **7.3. Sincronização Final com Git Push**
+  - [x] Verificar status do git com `git status`.
+  - [x] Commitar todas as correções residuais: `fix(tour): resolve fragilidades remanescentes e consolida release`.
+  - [x] Executar `git push origin main` (ou branch ativa).
 
-- [ ] **7.5. Notificação e Relatório Executivo via Bot Telegram (ARGOS)**
-  - [ ] Construir payload da mensagem formatado em HTML/Markdown contendo:
+- [x] **7.5. Notificação e Relatório Executivo via Bot Telegram (ARGOS)**
+  - [x] Construir payload da mensagem formatado em HTML/Markdown contendo:
     * 📋 **Relatório da Release:** Resumo consolidado de todas as correções entregues (eliminação do erro SQL em cartões, motor de centralização determinístico no `#main-content`, anti-colisão mobile, supressão de toast durante modais, catálogo de micro-tours e tour do APK nativo).
     * 🗄️ **Diagnóstico de Banco de Dados / Supabase:** Confirmação explícita e transparente se há necessidade de rodar alguma migração de schema/SQL no Supabase (no caso da simulação em memória do tour e da governança de modais: destacar que **NÃO requer nenhuma migração de banco de dados**, operando com zero downtime e isolamento estrito in-memory).
     * 📱 **Status do APK:** Confirmação de integridade dos assets para distribuição nativa.
     * ✅ **Métricas de Qualidade:** Confirmação de 100% dos testes verdes e typecheck limpo.
-  - [ ] Disparar a mensagem via Telegram Bot API para o bot ARGOS utilizando `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` configurados no ambiente.
-  - [ ] Validar o retorno HTTP 200 OK da API do Telegram.
+  - [x] Disparar a mensagem via Telegram Bot API para o bot ARGOS utilizando `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` configurados no ambiente.
+  - [x] Validar o retorno HTTP 200 OK da API do Telegram.
 
 ---
 
@@ -643,15 +643,15 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 
 ## 5. DEFINITION OF DONE (CRITÉRIOS DE ACEITAÇÃO FINAIS)
 
-- [ ] **Zero Erros de API/Postgres:** Nenhuma mensagem *"Algo deu errado"* em Cartões ou em qualquer outra tela do tour.
-- [ ] **Centralização Precisa:** O spotlight centraliza com margem uniforme nos elementos tanto ao avançar quanto ao retroceder passos, sem tremores ou medições no meio da animação de scroll.
-- [ ] **Zero Sobreposição no Mobile:** O popover explicativo detecta o centro do elemento e ancora no topo ou na base, mantendo o conteúdo focado 100% desobstruído.
-- [ ] **Zero Conflito entre Modais e Atualização:** O toast de nova versão NUNCA aparece sobre modais de onboarding, wizards de transação ou diálogos do app; se dispensado no [X], só volta a sugerir na próxima abertura do app.
-- [ ] **Catálogo Completo de Micro-Tours:** O usuário pode escolher entre um tour geral rápido ou micro-tours específicos (Wizard +, Cartões, Orçamentos, Insights, Ativos, Aporte, Suporte).
-- [ ] **Onboarding Nativo do APK Android:** Novos usuários no app nativo recebem apresentação das notificações bancárias automáticas e da biometria.
-- [ ] **Aderência ao Design System:** Badges em tom suave (`muted`), acento primário estritamente no CTA, sem emojis, tipografia adaptativa.
-- [ ] **Acessibilidade WCAG 2.1 AA:** Foco confinado (focus trap), navegação por teclado e por dots, anúncios em leitores de tela.
-- [ ] **Revisão de Fragilidades Concluída:** Toda e qualquer fragilidade, bug ou vazamento de listener identificado é corrigido antes do release.
-- [ ] **Git Push Concluído:** Repositório sincronizado remotamente com histórico limpo e atômico.
-- [ ] **Build do APK Android Gerado:** APK assinado e compilado com sucesso via `npm run build:apk`.
-- [ ] **Notificação Telegram Entregue:** Relatório detalhado disparado e recebido com sucesso via bot ARGOS com diagnóstico explícito sobre migração Supabase.
+- [x] **Zero Erros de API/Postgres:** Nenhuma mensagem *"Algo deu errado"* em Cartões ou em qualquer outra tela do tour.
+- [x] **Centralização Precisa:** O spotlight centraliza com margem uniforme nos elementos tanto ao avançar quanto ao retroceder passos, sem tremores ou medições no meio da animação de scroll.
+- [x] **Zero Sobreposição no Mobile:** O popover explicativo detecta o centro do elemento e ancora no topo ou na base, mantendo o conteúdo focado 100% desobstruído.
+- [x] **Zero Conflito entre Modais e Atualização:** O toast de nova versão NUNCA aparece sobre modais de onboarding, wizards de transação ou diálogos do app; se dispensado no [X], só volta a sugerir na próxima abertura do app.
+- [x] **Catálogo Completo de Micro-Tours:** O usuário pode escolher entre um tour geral rápido ou micro-tours específicos (Wizard +, Cartões, Orçamentos, Insights, Ativos, Aporte, Suporte).
+- [x] **Onboarding Nativo do APK Android:** Novos usuários no app nativo recebem apresentação das notificações bancárias automáticas e da biometria.
+- [x] **Aderência ao Design System:** Badges em tom suave (`muted`), acento primário estritamente no CTA, sem emojis, tipografia adaptativa.
+- [x] **Acessibilidade WCAG 2.1 AA:** Foco confinado (focus trap), navegação por teclado e por dots, anúncios em leitores de tela.
+- [x] **Revisão de Fragilidades Concluída:** Toda e qualquer fragilidade, bug ou vazamento de listener identificado é corrigido antes do release.
+- [x] **Git Push Concluído:** Repositório sincronizado remotamente com histórico limpo e atômico.
+- [x] **Build do APK Android Gerado:** APK assinado e compilado com sucesso via `npm run build:apk`.
+- [x] **Notificação Telegram Entregue:** Relatório detalhado disparado e recebido com sucesso via bot ARGOS com diagnóstico explícito sobre migração Supabase.

@@ -101,6 +101,7 @@ vi.mock("@/state", () => ({
     refetch: () => Promise.resolve(),
   }),
   useUpdateProfile: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useCreateSupportTicketMutation: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 function renderSettings(initialEntries: string[] = ["/configuracoes"]) {
@@ -332,5 +333,11 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     // Aba Notificações
     renderSettings(["/configuracoes?tab=notifications"]);
     expect(document.querySelector('[data-tour="settings-notifications-card"]')).toBeInTheDocument();
+  });
+
+  it("abre automaticamente o diálogo de Suporte via deep-link ?tab=suporte após a conclusão do tour", () => {
+    renderSettings(["/configuracoes?tab=suporte"]);
+    expect(screen.getByRole("heading", { name: "Falar com o Suporte" })).toBeInTheDocument();
+    expect(screen.getByText(/Envie sua dúvida, sugestão ou relate um problema/i)).toBeInTheDocument();
   });
 });

@@ -117,4 +117,43 @@ describe("Metadata de Demonstração e Taxonomia de Trilhas (metadata.ts)", () =
       expect(getTourTrackCategory(null)).toBe("finances");
     });
   });
+
+  describe("Validação de Precisão de Badges em 100% dos Micro-Tours (Fase 8 — Tarefa 8.11)", () => {
+    it("assegura que 100% dos micro-tours de finanças exibem 'Finanças Diárias' e nunca 'Investimentos'", () => {
+      const financeTracks: TourTrackId[] = [
+        "finances",
+        "finances_overview",
+        "finances_wizard",
+        "finances_cards",
+        "finances_budgets",
+        "finances_insights",
+      ];
+
+      for (const trackId of financeTracks) {
+        const label = getTourTrackCategoryLabel(trackId);
+        expect(label).toBe("Finanças Diárias");
+        expect(label).not.toContain("Investimentos");
+      }
+    });
+
+    it("assegura que 100% dos micro-tours de investimentos exibem 'Investimentos'", () => {
+      const investmentTracks: TourTrackId[] = [
+        "investments",
+        "investments_overview",
+        "investments_assets",
+        "investments_targets",
+        "investments_aporte",
+      ];
+
+      for (const trackId of investmentTracks) {
+        const label = getTourTrackCategoryLabel(trackId);
+        expect(label).toBe("Investimentos");
+      }
+    });
+
+    it("assegura precisão exata nos badges de configurações e app nativo", () => {
+      expect(getTourTrackCategoryLabel("settings_support")).toBe("Configurações");
+      expect(getTourTrackCategoryLabel("app_native_apk")).toBe("App Nativo");
+    });
+  });
 });

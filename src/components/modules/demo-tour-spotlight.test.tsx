@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DemoTourSpotlight } from "./demo-tour-spotlight";
@@ -788,7 +788,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(aside).not.toBeNull();
       expect(aside?.getAttribute("data-placement")).toBe("bottom");
       expect(aside?.style.top).toBeDefined();
-      expect(aside?.style.width).toBe("380px");
+      expect(aside?.style.width).toBe("420px");
     });
 
     it("inverte dinamicamente para o topo quando o espaço inferior é insuficiente", () => {
@@ -850,8 +850,8 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
       const aside = container.querySelector("aside");
       expect(aside).not.toBeNull();
-      // Clamp: Math.min(1100, 1280 - 380 - 16) = Math.min(1100, 884) = 884px posicionado via GPU translate3d
-      expect(aside?.style.transform).toContain("translate3d(884px");
+      // Clamp: Math.min(1100, 1280 - 420 - 16) = Math.min(1100, 844) = 844px posicionado via GPU translate3d
+      expect(aside?.style.transform).toContain("translate3d(844px");
     });
 
     it("aplica clamp horizontal estrito impedindo que o card ultrapasse a borda esquerda", () => {
@@ -884,6 +884,61 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(aside).not.toBeNull();
       // Clamp: Math.max(16, ...) = 16px posicionado via GPU translate3d
       expect(aside?.style.transform).toContain("translate3d(16px");
+    });
+
+    it("respeita a sidebar desktop no clamp horizontal evitando sobreposição (Fase 8 — Tarefa 8.10)", () => {
+      startDemo("finances");
+
+      // Monta sidebar desktop mockada de 256px
+      const sidebarEl = document.createElement("aside");
+      sidebarEl.className = "fixed inset-y-0 left-0 z-sidebar hidden lg:flex";
+      vi.spyOn(sidebarEl, "getBoundingClientRect").mockReturnValue({
+        x: 0,
+        y: 0,
+        left: 0,
+        top: 0,
+        right: 256,
+        bottom: 800,
+        width: 256,
+        height: 800,
+        toJSON: () => ({}),
+      });
+      document.body.appendChild(sidebarEl);
+
+      const targetEl = document.createElement("div");
+      targetEl.setAttribute("data-tour", "overview-kpis");
+      document.body.appendChild(targetEl);
+
+      // Alvo com x = 50 (dentro da zona da sidebar)
+      vi.spyOn(targetEl, "getBoundingClientRect").mockReturnValue({
+        x: 50,
+        y: 200,
+        left: 50,
+        top: 200,
+        right: 200,
+        bottom: 300,
+        width: 150,
+        height: 100,
+        toJSON: () => ({}),
+      });
+
+      const originalInnerWidth = window.innerWidth;
+      window.innerWidth = 1280;
+
+      try {
+        const { container } = render(<DemoTourSpotlight />);
+
+        act(() => {
+          window.dispatchEvent(new Event("resize"));
+        });
+
+        const aside = container.querySelector<HTMLElement>("aside[data-tour-spotlight-card='true']");
+        expect(aside).not.toBeNull();
+        // Clamp com sidebar: left >= sidebarWidth + 16 = 256 + 16 = 272px
+        expect(aside?.style.transform).toContain("translate3d(272px");
+      } finally {
+        window.innerWidth = originalInnerWidth;
+      }
     });
   });
 
@@ -2104,6 +2159,761 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       await user.click(nextButton);
 
       expect(mockNavigate).toHaveBeenCalledWith("/configuracoes");
+    });
+  });
+
+  describe("Resiliência de Carregamento e Foco de Elementos com Montagem Tardia (Fase 8 — Tarefa 8.7)", () => {
+    it("exibe esqueleto discreto de foco com pulso suave enquanto o elemento assíncrono não foi montado no DOM", () => {
+      startDemo("finances"); // Passo 1: targetSelector = '[data-tour="overview-kpis"]'
+
+      render(<DemoTourSpotlight />);
+
+      // Elemento ainda não foi montado: esqueleto de loading deve estar presente com pulso suave
+      const skeleton = screen.getByTestId("spotlight-loading-skeleton");
+      expect(skeleton).toBeInTheDocument();
+      expect(skeleton).toHaveAttribute("stroke-dasharray", "4 4");
+      expect(skeleton.getAttribute("class")).toContain("animate-pulse");
+
+      // Borda do elemento real NÃO deve existir enquanto estiver carregando
+      expect(screen.queryByTestId("spotlight-border")).not.toBeInTheDocument();
+    });
+
+    it("detecta montagem tardia de elemento via MutationObserver, remove o esqueleto e ativa o spotlight real", async () => {
+      startDemo("finances");
+
+      render(<DemoTourSpotlight />);
+
+      expect(screen.getByTestId("spotlight-loading-skeleton")).toBeInTheDocument();
+
+      // Monta o elemento assincronamente no DOM após a renderização inicial
+      const targetEl = document.createElement("div");
+      targetEl.setAttribute("data-tour", "overview-kpis");
+      targetEl.scrollIntoView = vi.fn();
+      vi.spyOn(targetEl, "getBoundingClientRect").mockReturnValue({
+        x: 16,
+        y: 120,
+        left: 16,
+        top: 120,
+        right: 356,
+        bottom: 240,
+        width: 340,
+        height: 120,
+        toJSON: () => ({}),
+      });
+
+      // Dispara a mutação no DOM (inserção de nó filho capturada pelo MutationObserver)
+      act(() => {
+        document.body.appendChild(targetEl);
+      });
+
+      // MutationObserver detecta a inserção, remove o esqueleto e exibe a borda real do spotlight
+      await waitFor(() => {
+        expect(screen.queryByTestId("spotlight-loading-skeleton")).not.toBeInTheDocument();
+        expect(screen.getByTestId("spotlight-border")).toBeInTheDocument();
+      });
+    });
+
+    it("detecta elemento presente no DOM que ganha dimensões assíncronas via polling adaptativo", () => {
+      vi.useFakeTimers();
+      try {
+        startDemo("finances");
+
+        const targetEl = document.createElement("div");
+        targetEl.setAttribute("data-tour", "overview-kpis");
+        targetEl.scrollIntoView = vi.fn();
+        document.body.appendChild(targetEl);
+
+        let hasDimensions = false;
+        vi.spyOn(targetEl, "getBoundingClientRect").mockImplementation(() => {
+          if (!hasDimensions) {
+            return {
+              x: 0,
+              y: 0,
+              left: 0,
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: 0,
+              height: 0,
+              toJSON: () => ({}),
+            };
+          }
+          return {
+            x: 16,
+            y: 80,
+            left: 16,
+            top: 80,
+            right: 356,
+            bottom: 200,
+            width: 340,
+            height: 120,
+            toJSON: () => ({}),
+          };
+        });
+
+        render(<DemoTourSpotlight />);
+
+        // Inicialmente com dimensões 0, o esqueleto de carregamento continua ativo
+        expect(screen.getByTestId("spotlight-loading-skeleton")).toBeInTheDocument();
+        expect(screen.queryByTestId("spotlight-border")).not.toBeInTheDocument();
+
+        // Dados assíncronos chegam e o elemento ganha dimensões reais
+        hasDimensions = true;
+
+        // Avança 1 ciclo do polling adaptativo (100ms)
+        act(() => {
+          vi.advanceTimersByTime(120);
+        });
+
+        // Polling adaptativo detectou dimensões válidas: remove esqueleto e ativa borda real
+        expect(screen.queryByTestId("spotlight-loading-skeleton")).not.toBeInTheDocument();
+        expect(screen.getByTestId("spotlight-border")).toBeInTheDocument();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("aciona fallback gracioso após timeout de 2.5s sem travar o card nem congelar a tela", () => {
+      vi.useFakeTimers();
+      try {
+        startDemo("finances");
+
+        render(<DemoTourSpotlight />);
+
+        // Inicialmente buscando: esqueleto de loading visível
+        expect(screen.getByTestId("spotlight-loading-skeleton")).toBeInTheDocument();
+
+        // Avança o timeout de 2.5s (2500ms)
+        act(() => {
+          vi.advanceTimersByTime(2500);
+        });
+
+        // Fallback gracioso acionado: esqueleto removido, rect nulo, card funcional no centro
+        expect(screen.queryByTestId("spotlight-loading-skeleton")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("spotlight-border")).not.toBeInTheDocument();
+
+        const card = screen.getByRole("dialog");
+        expect(card).toBeInTheDocument();
+        expect(screen.getByText("Passo 1 de 8")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Próximo passo" })).toBeInTheDocument();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("limpa imediatamente o recorte antigo ao trocar de passo evitando 'recorte preto congelado'", async () => {
+      const user = userEvent.setup();
+      startDemo("finances");
+
+      // Passo 1 com elemento presente
+      const step1El = document.createElement("div");
+      step1El.setAttribute("data-tour", "overview-kpis");
+      step1El.scrollIntoView = vi.fn();
+      document.body.appendChild(step1El);
+
+      vi.spyOn(step1El, "getBoundingClientRect").mockReturnValue({
+        x: 16,
+        y: 80,
+        left: 16,
+        top: 80,
+        right: 356,
+        bottom: 200,
+        width: 340,
+        height: 120,
+        toJSON: () => ({}),
+      });
+
+      render(<DemoTourSpotlight />);
+
+      // Passo 1 está iluminado com borda ativa
+      expect(screen.getByTestId("spotlight-border")).toBeInTheDocument();
+
+      // Avança para o Passo 2 (que procura o botão wizard na BottomNav, que ainda não foi montado)
+      const nextBtn = screen.getByRole("button", { name: "Próximo passo" });
+      await user.click(nextBtn);
+
+      // Ao trocar de passo, o recorte antigo DEVE ser limpo imediatamente (zero recorte congelado)
+      expect(screen.queryByTestId("spotlight-border")).not.toBeInTheDocument();
+      // E o esqueleto de carregamento assume o lugar enquanto o nó do passo 2 é aguardado
+      expect(screen.getByTestId("spotlight-loading-skeleton")).toBeInTheDocument();
+    });
+  });
+
+  describe("Adaptação Responsiva Desktop vs Mobile — Tratamento para Ausência de FAB (Fase 8 — Tarefa 8.8)", () => {
+    const originalInnerWidth = window.innerWidth;
+    const originalInnerHeight = window.innerHeight;
+
+    beforeEach(() => {
+      resetDemoSession();
+      document.body.innerHTML = "";
+    });
+
+    afterEach(() => {
+      window.innerWidth = originalInnerWidth;
+      window.innerHeight = originalInnerHeight;
+      resetDemoSession();
+      document.body.innerHTML = "";
+    });
+
+    it("no Desktop (window.innerWidth >= 768), foca em [data-tour='desktop-new-transaction'] e exibe atalho Ctrl+K", () => {
+      window.innerWidth = 1024;
+      window.innerHeight = 768;
+
+      // Elemento desktop de nova transação (botão de busca/comando no header)
+      const desktopBtn = document.createElement("button");
+      desktopBtn.setAttribute("data-tour", "desktop-new-transaction");
+      document.body.appendChild(desktopBtn);
+
+      vi.spyOn(desktopBtn, "getBoundingClientRect").mockReturnValue({
+        x: 200,
+        y: 12,
+        left: 200,
+        top: 12,
+        right: 600,
+        bottom: 52,
+        width: 400,
+        height: 40,
+        toJSON: () => ({}),
+      });
+
+      startDemo("finances_wizard");
+      const { container } = render(<DemoTourSpotlight />);
+
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      // Título e conteúdo adaptativos para desktop
+      expect(
+        screen.getByText("Comandos Rápidos & Atalho (Ctrl+K)"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/utilize a barra de busca e comandos ou pressione Ctrl\+K/i),
+      ).toBeInTheDocument();
+
+      // Spotlight border recortando o botão desktop com raio retangular
+      const border = screen.getByTestId("spotlight-border");
+      expect(border).toBeInTheDocument();
+      expect(border.getAttribute("width")).toBe("420"); // 400 + 20
+      expect(border.getAttribute("height")).toBe("60"); // 40 + 20
+      expect(border.getAttribute("rx")).toBe("8");
+
+      // No desktop com elemento no topo da tela, o popover ancora em "bottom"
+      const aside = container.querySelector("aside");
+      expect(aside?.getAttribute("data-placement")).toBe("bottom");
+    });
+
+    it("no Mobile (window.innerWidth < 768), foca em [data-tour='bottom-nav-wizard'] e exibe textos da barra inferior", () => {
+      window.innerWidth = 375;
+      window.innerHeight = 812;
+
+      // Elemento FAB central da BottomNav
+      const fabBtn = document.createElement("span");
+      fabBtn.setAttribute("data-tour", "bottom-nav-wizard");
+      document.body.appendChild(fabBtn);
+
+      vi.spyOn(fabBtn, "getBoundingClientRect").mockReturnValue({
+        x: 160,
+        y: 730,
+        left: 160,
+        top: 730,
+        right: 216,
+        bottom: 786,
+        width: 56,
+        height: 56,
+        toJSON: () => ({}),
+      });
+
+      startDemo("finances_wizard");
+      render(<DemoTourSpotlight />);
+
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      // Título e conteúdo voltados para o mobile
+      expect(
+        screen.getByText("Acesso Rápido com o Botão Central (+)"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/O botão de destaque central na barra inferior permite registrar/i),
+      ).toBeInTheDocument();
+
+      // Spotlight circular (rx=9999) ao redor do botão FAB
+      const border = screen.getByTestId("spotlight-border");
+      expect(border).toBeInTheDocument();
+      expect(border.getAttribute("rx")).toBe("9999");
+      expect(border.getAttribute("ry")).toBe("9999");
+    });
+
+    it("na trilha finances completa (Passo 2), prioriza [data-tour='desktop-new-transaction'] no desktop", async () => {
+      window.innerWidth = 1200;
+      window.innerHeight = 800;
+
+      const user = userEvent.setup();
+
+      // Elementos do passo 1 e passo 2
+      const step1El = document.createElement("div");
+      step1El.setAttribute("data-tour", "overview-kpis");
+      document.body.appendChild(step1El);
+
+      const desktopBtn = document.createElement("button");
+      desktopBtn.setAttribute("data-tour", "desktop-new-transaction");
+      document.body.appendChild(desktopBtn);
+
+      vi.spyOn(step1El, "getBoundingClientRect").mockReturnValue({
+        x: 40,
+        y: 80,
+        left: 40,
+        top: 80,
+        right: 800,
+        bottom: 240,
+        width: 760,
+        height: 160,
+        toJSON: () => ({}),
+      });
+
+      vi.spyOn(desktopBtn, "getBoundingClientRect").mockReturnValue({
+        x: 300,
+        y: 12,
+        left: 300,
+        top: 12,
+        right: 700,
+        bottom: 52,
+        width: 400,
+        height: 40,
+        toJSON: () => ({}),
+      });
+
+      startDemo("finances");
+      render(<DemoTourSpotlight />);
+
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      // Avança para o Passo 2
+      const nextBtn = screen.getByRole("button", { name: "Próximo passo" });
+      await user.click(nextBtn);
+
+      expect(screen.getByText("Passo 2 de 8")).toBeInTheDocument();
+      expect(
+        screen.getByText("Comandos Rápidos & Atalho (Ctrl+K)"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/No desktop, acione a barra de comandos ou utilize o atalho Ctrl\+K/i),
+      ).toBeInTheDocument();
+
+      const border = screen.getByTestId("spotlight-border");
+      expect(border).toBeInTheDocument();
+      expect(border.getAttribute("width")).toBe("420");
+    });
+
+    it("adapta dinamicamente o alvo e textos ao redimensionar a tela entre desktop e mobile", () => {
+      // Inicia em Mobile
+      window.innerWidth = 375;
+      window.innerHeight = 812;
+
+      const fabBtn = document.createElement("span");
+      fabBtn.setAttribute("data-tour", "bottom-nav-wizard");
+      document.body.appendChild(fabBtn);
+
+      const desktopBtn = document.createElement("button");
+      desktopBtn.setAttribute("data-tour", "desktop-new-transaction");
+      document.body.appendChild(desktopBtn);
+
+      vi.spyOn(fabBtn, "getBoundingClientRect").mockReturnValue({
+        x: 160,
+        y: 730,
+        left: 160,
+        top: 730,
+        right: 216,
+        bottom: 786,
+        width: 56,
+        height: 56,
+        toJSON: () => ({}),
+      });
+
+      vi.spyOn(desktopBtn, "getBoundingClientRect").mockReturnValue({
+        x: 200,
+        y: 12,
+        left: 200,
+        top: 12,
+        right: 600,
+        bottom: 52,
+        width: 400,
+        height: 40,
+        toJSON: () => ({}),
+      });
+
+      startDemo("finances_wizard");
+      render(<DemoTourSpotlight />);
+
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      // Inicialmente em mobile
+      expect(screen.getByText("Acesso Rápido com o Botão Central (+)")).toBeInTheDocument();
+      let border = screen.getByTestId("spotlight-border");
+      expect(border.getAttribute("rx")).toBe("9999");
+
+      // Redimensiona para Desktop
+      act(() => {
+        window.innerWidth = 1024;
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      // Adapta imediatamente para os textos e recorte desktop
+      expect(screen.getByText("Comandos Rápidos & Atalho (Ctrl+K)")).toBeInTheDocument();
+      border = screen.getByTestId("spotlight-border");
+      expect(border.getAttribute("width")).toBe("420");
+      expect(border.getAttribute("rx")).toBe("8");
+    });
+  });
+
+  describe("Validação Integrada da Fase 8 (Fase 8 — Tarefa 8.11)", () => {
+    let originalInnerWidth: number;
+    let originalInnerHeight: number;
+
+    beforeEach(() => {
+      originalInnerWidth = window.innerWidth;
+      originalInnerHeight = window.innerHeight;
+      resetDemoSession();
+      document.body.innerHTML = "";
+    });
+
+    afterEach(() => {
+      window.innerWidth = originalInnerWidth;
+      window.innerHeight = originalInnerHeight;
+      resetDemoSession();
+      document.body.innerHTML = "";
+    });
+
+    describe("Persistência Estrita do Nó DOM do Card Popover e Ausência de Flicks", () => {
+      it("preserva a MESMA instância do nó aside através de 5 transições consecutivas (avançar, retroceder e salto por dots)", async () => {
+        const user = userEvent.setup();
+        window.innerWidth = 1280;
+        window.innerHeight = 900;
+
+        startDemo("finances");
+        const { container } = render(<DemoTourSpotlight />);
+
+        const asideInitial = container.querySelector("aside");
+        expect(asideInitial).not.toBeNull();
+        expect(asideInitial?.getAttribute("data-tour-step")).toBe("finances-overview");
+
+        // Passo 1 -> Passo 2
+        const nextBtn = screen.getByRole("button", { name: "Próximo passo" });
+        await user.click(nextBtn);
+        const asideStep2 = container.querySelector("aside");
+        expect(asideStep2).toBe(asideInitial);
+        expect(asideStep2?.getAttribute("data-tour-step")).toBe("finances-wizard-btn");
+
+        // Passo 2 -> Passo 3
+        await user.click(screen.getByRole("button", { name: "Próximo passo" }));
+        const asideStep3 = container.querySelector("aside");
+        expect(asideStep3).toBe(asideInitial);
+        expect(asideStep3?.getAttribute("data-tour-step")).toBe("finances-wizard-dialog");
+
+        // Passo 3 -> Passo 2 (Retroceder)
+        const prevBtn = screen.getByRole("button", { name: "Passo anterior" });
+        await user.click(prevBtn);
+        const asideStep2Back = container.querySelector("aside");
+        expect(asideStep2Back).toBe(asideInitial);
+        expect(asideStep2Back?.getAttribute("data-tour-step")).toBe("finances-wizard-btn");
+
+        // Salto direto para o Passo 5 através dos dots de navegação
+        const dot5 = screen.getByRole("button", { name: "Ir para o passo 5" });
+        await user.click(dot5);
+        const asideStep5 = container.querySelector("aside");
+        expect(asideStep5).toBe(asideInitial);
+        expect(asideStep5?.getAttribute("data-tour-step")).toBe("finances-cards");
+
+        // Confirma estilização acelerada por GPU e transição suave no container persistido
+        expect(asideInitial?.style.transition).toContain("transform 300ms");
+        expect(asideInitial?.style.transform).toContain("translate3d(");
+      });
+
+      it("garante que o container textual interno atualiza o conteúdo com aria-live sem recriar o envelope do card", async () => {
+        const user = userEvent.setup();
+        window.innerWidth = 1024;
+        window.innerHeight = 768;
+
+        startDemo("settings_support");
+        const { container } = render(<DemoTourSpotlight />);
+
+        const aside = container.querySelector("aside");
+        const liveRegion = aside?.querySelector('div[aria-live="polite"]');
+        expect(liveRegion).not.toBeNull();
+
+        // Inicialmente no passo 1
+        expect(screen.getByText("Passo 1 de 5")).toBeInTheDocument();
+        expect(screen.getByText("Atalhos Rápidos de Cabeçalho")).toBeInTheDocument();
+
+        // Avança para o passo 2
+        await user.click(screen.getByRole("button", { name: "Próximo passo" }));
+
+        // O nó do card aside é preservado
+        expect(container.querySelector("aside")).toBe(aside);
+        // O conteúdo textual interno transicionou suavemente com fade-in
+        expect(screen.getByText("Passo 2 de 5")).toBeInTheDocument();
+        expect(screen.getByText("Modos de Experiência & Sensorial")).toBeInTheDocument();
+        expect(liveRegion?.className).toContain("animate-fade-in");
+      });
+    });
+
+    describe("Resiliência com MutationObserver em Montagens Tardias Profundas", () => {
+      it("detecta montagem tardia de elemento aninhado profundamente em container assíncrono", async () => {
+        window.innerWidth = 375;
+        window.innerHeight = 812;
+
+        startDemo("finances"); // Passo 1 procura [data-tour="overview-kpis"]
+
+        const mainContainer = document.createElement("main");
+        mainContainer.id = "main-content";
+        document.body.appendChild(mainContainer);
+
+        render(<DemoTourSpotlight />);
+
+        // Inicialmente em estado de busca com esqueleto de pulso ativo
+        expect(screen.getByTestId("spotlight-loading-skeleton")).toBeInTheDocument();
+        expect(screen.queryByTestId("spotlight-border")).not.toBeInTheDocument();
+
+        // Cria estrutura aninhada com atraso assíncrono (simulando montagem de tabela/card após query)
+        const wrapper = document.createElement("div");
+        wrapper.className = "dashboard-grid";
+
+        const cardSection = document.createElement("section");
+        cardSection.className = "kpi-section";
+
+        const targetEl = document.createElement("div");
+        targetEl.setAttribute("data-tour", "overview-kpis");
+        targetEl.scrollIntoView = vi.fn();
+        vi.spyOn(targetEl, "getBoundingClientRect").mockReturnValue({
+          x: 16,
+          y: 90,
+          left: 16,
+          top: 90,
+          right: 359,
+          bottom: 230,
+          width: 343,
+          height: 140,
+          toJSON: () => ({}),
+        });
+
+        cardSection.appendChild(targetEl);
+        wrapper.appendChild(cardSection);
+
+        // Insere a árvore profunda no #main-content
+        act(() => {
+          mainContainer.appendChild(wrapper);
+        });
+
+        // MutationObserver com subtree: true intercepta a inserção e ativa o spotlight real
+        await waitFor(() => {
+          expect(screen.queryByTestId("spotlight-loading-skeleton")).not.toBeInTheDocument();
+          expect(screen.getByTestId("spotlight-border")).toBeInTheDocument();
+        });
+      });
+
+      it("desconecta o MutationObserver e limpa timers sem disparar callbacks após unmount", () => {
+        const disconnectSpy = vi.fn();
+        const originalMO = window.MutationObserver;
+
+        class TrackedMutationObserver extends originalMO {
+          override disconnect(): void {
+            disconnectSpy();
+            super.disconnect();
+          }
+        }
+        window.MutationObserver = TrackedMutationObserver;
+
+        try {
+          startDemo("finances");
+          const { unmount } = render(<DemoTourSpotlight />);
+
+          unmount();
+          expect(disconnectSpy).toHaveBeenCalled();
+        } finally {
+          window.MutationObserver = originalMO;
+        }
+      });
+    });
+
+    describe("Cálculo da Janela Livre Útil Mobile e Ausência de Sobreposição por BottomNav", () => {
+      it("rola o container #main-content para o Dead Center livre garantindo ausência de sobreposição pela BottomNav", () => {
+        window.innerWidth = 375;
+        window.innerHeight = 812;
+
+        const mainContainer = document.createElement("main");
+        mainContainer.id = "main-content";
+        const scrollToSpy = vi.fn();
+        mainContainer.scrollTo = scrollToSpy;
+        Object.defineProperty(mainContainer, "scrollTop", { value: 200, configurable: true });
+        Object.defineProperty(mainContainer, "scrollHeight", { value: 1600, configurable: true });
+        Object.defineProperty(mainContainer, "clientHeight", { value: 740, configurable: true });
+        document.body.appendChild(mainContainer);
+
+        // Elemento posicionado na parte inferior da tela (y = 650, height = 80 -> centerY = 690)
+        // Sem o cálculo do Dead Center livre, ficaria colado ou encoberto pela BottomNav (740..812)
+        const targetEl = document.createElement("div");
+        targetEl.setAttribute("data-tour", "overview-kpis");
+        mainContainer.appendChild(targetEl);
+
+        vi.spyOn(targetEl, "getBoundingClientRect").mockReturnValue({
+          x: 16,
+          y: 650,
+          left: 16,
+          top: 650,
+          right: 359,
+          bottom: 730,
+          width: 343,
+          height: 80,
+          toJSON: () => ({}),
+        });
+
+        startDemo("finances");
+        render(<DemoTourSpotlight />);
+
+        // O alvo está em centerY = 690 (> 812 * 0.45 = 365), portanto o card ancorará no TOPO
+        // freeWindow: top = 64 + 180 + 16 = 260, bottom = 812 - 72 - 16 = 724
+        // freeWindow.centerY = 260 + (724 - 260) / 2 = 492
+        // targetScrollTop = containerScrollTop (200) + (elementCenterY 690 - freeWindowCenterY 492) = 200 + 198 = 398
+        expect(scrollToSpy).toHaveBeenCalledWith({
+          top: 398,
+          behavior: "smooth",
+        });
+      });
+    });
+
+    describe("Teste Manual Desktop e Mobile — Percurso dos Tours de Finanças e Orçamentos (Portão de Qualidade 8)", () => {
+      it("no Desktop (1024x768), percorre todos os 8 passos do tour de Finanças e confirma que todos os badges exibem 'Finanças Diárias' e nunca 'Investimentos'", async () => {
+        const user = userEvent.setup();
+        window.innerWidth = 1024;
+        window.innerHeight = 768;
+
+        startDemo("finances");
+        render(<DemoTourSpotlight />);
+
+        // Percorre para frente: passos 1 a 8
+        for (let step = 1; step <= 8; step++) {
+          expect(screen.getByText(`Passo ${step} de 8`)).toBeInTheDocument();
+          expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
+          expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
+
+          if (step < 8) {
+            const nextBtn = screen.getByRole("button", { name: /Próximo passo/i });
+            await user.click(nextBtn);
+          }
+        }
+
+        // Percorre para trás: passos 7 a 1
+        for (let step = 7; step >= 1; step--) {
+          const prevBtn = screen.getByRole("button", { name: /Passo anterior/i });
+          await user.click(prevBtn);
+
+          expect(screen.getByText(`Passo ${step} de 8`)).toBeInTheDocument();
+          expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
+          expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
+        }
+      });
+
+      it("no Desktop (1024x768), percorre todos os 3 passos do micro-tour de Orçamentos e confirma que os badges exibem 'Finanças Diárias'", async () => {
+        const user = userEvent.setup();
+        window.innerWidth = 1024;
+        window.innerHeight = 768;
+
+        startDemo("finances_budgets");
+        render(<DemoTourSpotlight />);
+
+        // Percorre para frente: passos 1 a 3
+        for (let step = 1; step <= 3; step++) {
+          expect(screen.getByText(`Passo ${step} de 3`)).toBeInTheDocument();
+          expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
+          expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
+
+          if (step < 3) {
+            const nextBtn = screen.getByRole("button", { name: /Próximo passo/i });
+            await user.click(nextBtn);
+          }
+        }
+
+        // Percorre para trás: passos 2 a 1
+        for (let step = 2; step >= 1; step--) {
+          const prevBtn = screen.getByRole("button", { name: /Passo anterior/i });
+          await user.click(prevBtn);
+
+          expect(screen.getByText(`Passo ${step} de 3`)).toBeInTheDocument();
+          expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
+          expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
+        }
+      });
+
+      it("no Mobile (375x667), percorre todos os 8 passos do tour de Finanças e confirma que todos os badges exibem 'Finanças Diárias' e layout mobile", async () => {
+        const user = userEvent.setup();
+        window.innerWidth = 375;
+        window.innerHeight = 667;
+
+        startDemo("finances");
+        const { container } = render(<DemoTourSpotlight />);
+
+        const aside = container.querySelector("aside[data-tour-spotlight-card='true']");
+        expect(aside?.className).toContain("inset-x-3");
+
+        // Percorre para frente: passos 1 a 8
+        for (let step = 1; step <= 8; step++) {
+          expect(screen.getByText(`Passo ${step} de 8`)).toBeInTheDocument();
+          expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
+          expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
+
+          if (step < 8) {
+            const nextBtn = screen.getByRole("button", { name: /Próximo passo/i });
+            await user.click(nextBtn);
+          }
+        }
+
+        // Percorre para trás: passos 7 a 1
+        for (let step = 7; step >= 1; step--) {
+          const prevBtn = screen.getByRole("button", { name: /Passo anterior/i });
+          await user.click(prevBtn);
+
+          expect(screen.getByText(`Passo ${step} de 8`)).toBeInTheDocument();
+          expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
+          expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
+        }
+      });
+
+      it("no Mobile (375x667), percorre todos os 3 passos do micro-tour de Orçamentos e confirma que os badges exibem 'Finanças Diárias'", async () => {
+        const user = userEvent.setup();
+        window.innerWidth = 375;
+        window.innerHeight = 667;
+
+        startDemo("finances_budgets");
+        render(<DemoTourSpotlight />);
+
+        // Percorre para frente: passos 1 a 3
+        for (let step = 1; step <= 3; step++) {
+          expect(screen.getByText(`Passo ${step} de 3`)).toBeInTheDocument();
+          expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
+          expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
+
+          if (step < 3) {
+            const nextBtn = screen.getByRole("button", { name: /Próximo passo/i });
+            await user.click(nextBtn);
+          }
+        }
+
+        // Percorre para trás: passos 2 a 1
+        for (let step = 2; step >= 1; step--) {
+          const prevBtn = screen.getByRole("button", { name: /Passo anterior/i });
+          await user.click(prevBtn);
+
+          expect(screen.getByText(`Passo ${step} de 3`)).toBeInTheDocument();
+          expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
+          expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
+        }
+      });
     });
   });
 });

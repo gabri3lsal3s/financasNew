@@ -58,10 +58,13 @@ export function DemoExitConfirmDialog({
     if (onConfirm) {
       onConfirm();
     } else {
-      const destination = getTourHandoffDestination(activeTrack, location.pathname);
+      const destination = getTourHandoffDestination(
+        activeTrack,
+        `${location.pathname}${location.search ?? ""}`,
+      );
       navigate(destination);
     }
-  }, [activeTrack, location.pathname, navigate, onConfirm, onOpenChange]);
+  }, [activeTrack, location.pathname, location.search, navigate, onConfirm, onOpenChange]);
 
   return (
     <Modal

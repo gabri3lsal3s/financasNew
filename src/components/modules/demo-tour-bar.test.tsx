@@ -122,7 +122,7 @@ describe("DemoTourBar — Barra Superior do Tour (§3.3)", () => {
     expect(handleChangeTrack).toHaveBeenCalledTimes(1);
   });
 
-  it("redireciona para /cartoes?novo=cartao ao iniciar conta real na tela de cartões", async () => {
+  it("redireciona para /?novo=despesa ao iniciar conta real no tour completo de finanças", async () => {
     startDemo("finances");
     mockPathname = "/cartoes";
     const user = userEvent.setup();
@@ -132,9 +132,24 @@ describe("DemoTourBar — Barra Superior do Tour (§3.3)", () => {
     const realBtn = screen.getByRole("button", { name: /Começar Minha Conta Real/i });
     await user.click(realBtn);
 
-    expect(mockNavigate).toHaveBeenCalledWith("/cartoes?novo=cartao");
+    expect(mockNavigate).toHaveBeenCalledWith("/?novo=despesa");
     expect(getDemoSessionState().isDemoActive).toBe(false);
     expect(hasCompletedDemoTour("finances")).toBe(true);
+  });
+
+  it("permanece na rota limpa sem abrir modal invasivo em micro-tours (ex: finances_cards)", async () => {
+    startDemo("finances_cards");
+    mockPathname = "/cartoes";
+    const user = userEvent.setup();
+
+    render(<DemoTourBar />);
+
+    const realBtn = screen.getByRole("button", { name: /Começar Minha Conta Real/i });
+    await user.click(realBtn);
+
+    expect(mockNavigate).toHaveBeenCalledWith("/cartoes");
+    expect(getDemoSessionState().isDemoActive).toBe(false);
+    expect(hasCompletedDemoTour("finances_cards")).toBe(true);
   });
 
   it("redireciona para /?novo=despesa ao iniciar conta real no dashboard", async () => {

@@ -6,6 +6,8 @@
  * além da geometria de recortes circulares e retangulares do Spotlight.
  */
 
+import type { TourStep } from "./types";
+
 export const DEFAULT_HEADER_HEIGHT = 64;
 export const DEFAULT_BOTTOM_NAV_HEIGHT = 72;
 export const DEFAULT_CARD_HEIGHT = 180;
@@ -209,6 +211,81 @@ export function calculateSpotlightGeometry(
   };
 }
 
+export const DEFAULT_SEARCH_TIMEOUT_MS = 2500;
+export const DEFAULT_POLLING_INTERVAL_MS = 100;
+
+export interface SkeletonSpotlightOptions {
+  /** Largura da viewport (window.innerWidth) */
+  windowWidth?: number;
+  /** Altura da viewport (window.innerHeight) */
+  windowHeight?: number;
+  /** Se o viewport atual é mobile (< 768px) */
+  isMobile: boolean;
+  /** Altura do cabeçalho fixo superior em pixels (padrão: 64px) */
+  headerHeight?: number;
+  /** Altura da barra inferior em pixels (padrão: 72px) */
+  bottomNavHeight?: number;
+  /** Altura estimada do card popover em pixels (padrão: 180px) */
+  cardHeight?: number;
+  /** Posição em que o card popover está ancorado no mobile */
+  anchorPosition?: "top" | "bottom";
+  /** Largura personalizada do esqueleto (opcional) */
+  skeletonWidth?: number;
+  /** Altura personalizada do esqueleto (opcional) */
+  skeletonHeight?: number;
+}
+
+/**
+ * Calcula a geometria segura do esqueleto discreto de foco para elementos com montagem tardia.
+ * Posiciona o recorte de loading no centroide da janela livre útil desobstruída.
+ */
+export function calculateSkeletonSpotlightGeometry(
+  options: SkeletonSpotlightOptions,
+): SpotlightGeometry {
+  const {
+    windowWidth = typeof window !== "undefined" ? window.innerWidth : 1024,
+    windowHeight = typeof window !== "undefined" ? window.innerHeight : 768,
+    isMobile,
+    headerHeight = DEFAULT_HEADER_HEIGHT,
+    bottomNavHeight = DEFAULT_BOTTOM_NAV_HEIGHT,
+    cardHeight = DEFAULT_CARD_HEIGHT,
+    anchorPosition = "bottom",
+    skeletonWidth,
+    skeletonHeight,
+  } = options;
+
+  const freeWindow = calculateFreeViewportWindow({
+    windowHeight,
+    headerHeight,
+    bottomNavHeight,
+    cardHeight,
+    anchorPosition,
+    isMobile,
+  });
+
+  const width =
+    skeletonWidth ??
+    (isMobile
+      ? Math.min(340, Math.max(260, windowWidth - 32))
+      : Math.min(480, Math.max(320, windowWidth - 80)));
+  const height = skeletonHeight ?? (isMobile ? 96 : 120);
+  const x = Math.round(Math.max(16, (windowWidth - width) / 2));
+  const y = Math.round(
+    Math.max(
+      freeWindow.top + 8,
+      Math.min(freeWindow.bottom - height - 8, freeWindow.centerY - height / 2),
+    ),
+  );
+
+  return {
+    x,
+    y,
+    width,
+    height,
+    borderRadius: 16,
+  };
+}
+
 /**
  * Verifica se um elemento cabe e está contido dentro da janela livre útil calculada.
  */
@@ -222,3 +299,161 @@ export function isElementInsideFreeViewport(
     elementRect.bottom <= freeWindow.bottom + safetyMargin
   );
 }
+
+/**
+ * Determina se a largura da janela corresponde a um ambiente desktop (>= 768px).
+ */
+export function isDesktopViewport(windowWidth: number): boolean {
+  return windowWidth >= MOBILE_BREAKPOINT;
+}
+
+/**
+ * Resolve dinamicamente o seletor CSS do elemento alvo para o passo atual,
+ * priorizando `targetSelectorDesktop` em telas desktop (>= 768px).
+ */
+export function resolveTourStepTargetSelector(
+  step?: TourStep | null,
+  isDesktop = false,
+): string | undefined {
+  if (!step) return undefined;
+  if (isDesktop && step.targetSelectorDesktop) {
+    return step.targetSelectorDesktop;
+  }
+  return step.targetSelector;
+}
+
+/**
+ * Resolve dinamicamente o título a ser exibido no card popover,
+ * priorizando `titleDesktop` em telas desktop (>= 768px).
+ */
+export function resolveTourStepTitle(
+  step: TourStep,
+  isDesktop = false,
+): string {
+  if (isDesktop && step.titleDesktop) {
+    return step.titleDesktop;
+  }
+  return step.title;
+}
+
+/**
+ * Resolve dinamicamente o conteúdo/descrição a ser exibido no card popover,
+ * priorizando `contentDesktop` em telas desktop (>= 768px).
+ */
+export function resolveTourStepContent(
+  step: TourStep,
+  isDesktop = false,
+): string {
+  if (isDesktop && step.contentDesktop) {
+    return step.contentDesktop;
+  }
+  return step.description;
+}
+
+export interface DesktopCardPositionOptions {
+  /** Retângulo do elemento alvo (x, y, width, height) ou null se não houver alvo */
+  rect: { x: number; y: number; width: number; height: number } | null;
+  /** Altura medida do card popover */
+  cardHeight: number;
+  /** Largura da viewport (window.innerWidth) */
+  windowWidth: number;
+  /** Altura da viewport (window.innerHeight) */
+  windowHeight: number;
+  /** Largura da sidebar esquerda desktop em pixels (padrão: 0) */
+  sidebarWidth?: number;
+  /** Posicionamento vertical preferido ou calculado ("top" | "bottom") */
+  placement?: "top" | "bottom";
+  /** Largura máxima preferida do card em pixels (padrão: 420px) */
+  preferredWidth?: number;
+  /** Espaçamento entre o elemento e o card em pixels (padrão: 12px) */
+  gap?: number;
+  /** Margem mínima de segurança contra colisões em pixels (padrão: 16px) */
+  safetyMargin?: number;
+}
+
+export interface DesktopCardPosition {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Calcula a posição e dimensões adaptativas do card popover em telas desktop (Fase 8 — Tarefa 8.10).
+ *
+ * Garante:
+ * 1. Largura adaptativa: min(preferredWidth, windowWidth - safetyMargin * 2), com folga para 8 passos.
+ * 2. Clamp horizontal estrito contra a sidebar esquerda (left >= sidebarWidth + safetyMargin).
+ * 3. Clamp horizontal direito impedindo vazamento fora da viewport (left <= windowWidth - width - safetyMargin).
+ * 4. Centralização perfeita no espaço útil quando rect é nulo.
+ */
+export function calculateDesktopCardPosition(
+  options: DesktopCardPositionOptions,
+): DesktopCardPosition {
+  const {
+    rect,
+    cardHeight,
+    windowWidth,
+    windowHeight,
+    sidebarWidth = 0,
+    placement = "bottom",
+    preferredWidth = 420,
+    gap = 12,
+    safetyMargin = 16,
+  } = options;
+
+  // Largura adaptativa: min(420px, windowWidth - 32px) com piso de 280px
+  const width = Math.min(preferredWidth, Math.max(280, windowWidth - safetyMargin * 2));
+  const minLeft = sidebarWidth + safetyMargin;
+  const maxLeft = Math.max(minLeft, windowWidth - width - safetyMargin);
+
+  if (!rect) {
+    const availableWidth = Math.max(0, windowWidth - sidebarWidth);
+    const centerLeft = Math.max(minLeft, Math.min(maxLeft, sidebarWidth + (availableWidth - width) / 2));
+    const centerTop = Math.max(safetyMargin, (windowHeight - cardHeight) / 2);
+    return {
+      x: Math.round(centerLeft),
+      y: Math.round(centerTop),
+      width,
+      height: cardHeight,
+    };
+  }
+
+  const top =
+    placement === "top"
+      ? Math.max(safetyMargin, Math.min(windowHeight - cardHeight - safetyMargin, rect.y - cardHeight - gap))
+      : Math.min(windowHeight - cardHeight - safetyMargin, Math.max(safetyMargin, rect.y + rect.height + gap));
+
+  // Clamp horizontal estrito: respeita sidebar à esquerda (minLeft) e borda da tela à direita (maxLeft)
+  const left = Math.max(minLeft, Math.min(rect.x, maxLeft));
+
+  return {
+    x: Math.round(left),
+    y: Math.round(top),
+    width,
+    height: cardHeight,
+  };
+}
+
+/**
+ * Obtém a largura da Sidebar desktop (`aside.z-sidebar`) no DOM se visível (>= 1024px).
+ */
+export function getDesktopSidebarWidth(
+  doc: Document | null = typeof document !== "undefined" ? document : null,
+): number {
+  if (!doc || typeof window === "undefined") {
+    return 0;
+  }
+  // A sidebar desktop só está visível em telas >= 1024px (breakpoint lg)
+  if (window.innerWidth < 1024) {
+    return 0;
+  }
+  const sidebar = doc.querySelector("aside.z-sidebar, aside[class*='z-sidebar']");
+  if (sidebar instanceof HTMLElement) {
+    const rect = sidebar.getBoundingClientRect();
+    if (rect.width > 0) return rect.width;
+    if (sidebar.offsetWidth > 0) return sidebar.offsetWidth;
+  }
+  return 0;
+}
+
