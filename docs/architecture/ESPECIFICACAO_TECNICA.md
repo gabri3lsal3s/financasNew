@@ -489,6 +489,20 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 
 ---
 
+### 3.12 Tour Interativo, Micro-Tours & Modo Simulação em Memória
+
+- **Modo Simulação 100% em Memória:** isolamento total do banco de dados relacional. Toda a experiência guiada é mantida em memória (`src/state/demo-mode/` e `src/domain/demo-simulation/`), com interceptação dinâmica em queries do TanStack Query (`use-simulated-queries.ts`, `use-card-payments.ts`, `use-overview.ts`) utilizando identificadores canônicos compatíveis com UUID (`uuid-mock-...`), impedindo erros de sintaxe relacional no PostgreSQL.
+- **Motor de Apresentação Guiada (Spotlight):** componente `DemoTourSpotlight` com máscara fullscreen SVG recortada (`fill="rgba(0, 0, 0, 0.60)"`), cantos arredondados (`rx={16}`, `ry={16}` / `rounded-2xl`) e moldura pontilhada com cor primária (`stroke="hsl(var(--primary))"`, `strokeDasharray="4 2"`) e pulsação suave temporizada por 3 segundos.
+- **Algoritmo Anti-Colisão Mobile Adaptativo:** se o centro vertical do elemento alvo estiver na metade inferior da viewport (`top > 45%`), o card popover ancora no topo; caso contrário, ancora na base. Rolagem contextual no container `#main-content` respeitando a barra superior fixa (offset de 64px) e margem de respiro de 16px.
+- **Catálogo de Micro-Tours Hierárquicos:**
+  1. *Trilha 0 — Bem-vindo ao App Nativo Android:* exclusivo para o APK Android (`isNative()`), apresentando o Leitor de Notificações Bancárias em tempo real, Biometria e Escudo de Privacidade.
+  2. *Trilha 1 — Finanças Diárias & Cartões:* Home, Saldo Livre Real, Botão Wizard (+), Faturas e Melhor Dia de Compra, Categorias & Tetos e Smart Advisor (Insights).
+  3. *Trilha 2 — Investimentos & Rebalanceamento:* Carteira Consolidada, Nova Operação, Metas por Classe/Ativo, Calculadora de Aporte e Proventos.
+- **Acessibilidade WCAG 2.1 AA & Teclado Completo:** foco inicial automático no popover, preservação e restauração determinística do `document.activeElement`, focus trap (ciclo de Tab/Shift+Tab confinado no card popover), suporte a teclas de atalho (`Escape`, setas `ArrowLeft` / `ArrowRight`, `Enter`, `Espaço`), camada SVG marcada com `role="presentation"` e `aria-hidden="true"`, e anúncios em sintetizadores de tela via `aria-live="polite"`.
+- **Governança de Modais e Prevenção de Conflitos:** supressão coordenada de banners de atualização (`NativeUpdateToast`) via hook `useActiveOverlays` durante a exibição de modais, tours e wizards, com adiamento persistido por sessão e timer de 12 horas.
+
+---
+
 ## 4. DATAS, MOEDA E VALIDAÇÕES
 
 ### 4.1 Datas e calendário

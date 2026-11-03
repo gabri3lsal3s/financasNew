@@ -24,7 +24,7 @@
 >   - Dots de progresso interativos (`role="button"`, `aria-label`, `aria-current="step"`) com navegação direta por clique e feedback háptico;
 >   - Marcação formal `@deprecated` no JSDoc de `DemoTourBar` e confirmação da ausência de componentes redundantes no `PageShell`.
 > - **(5) Bateria de Testes Vitest & Portões de Qualidade 100% Verdes**:
->   - Suíte completa de 452 arquivos de teste e 4159 testes aprovados sem falhas; typecheck e lint sem nenhuma violação.
+>   - Suíte completa de 459 arquivos de teste e 4187 testes aprovados sem falhas; typecheck e lint sem nenhuma violação.
 >
 > **v2.78** registra a **Conclusão Integral do Plano de Refatoração do Tour Interativo & Experiência de Foco (Spotlight) (`docs/plans/PLANO_REFATORACAO_TOUR_SPOTLIGHT_E_EXPERIENCIA_GUIADA.md`)** (2026-10-24):
 > - **(1) Eliminação Total da Barra Invasiva sob o Header**:
@@ -5749,6 +5749,42 @@ flowchart TD
 - **Manual de Bordo do Fundador & Governança (Fase 5):**
   - Criação de `docs/FOUNDER_RUNBOOK.md` com 7 seções completas de operação prática cotidiana para os primeiros clientes;
   - Atualização dos guias mestres `docs/PROJECT_STRUCTURE.md` e `docs/ROADMAP.md`.
+
+---
+
+### Fase 99 — Refatoração Integral do Tour Interativo, Micro-Tours & Governança de Modais
+
+> **Status:** Concluída e Auditada — **Onboarding Guiado, Anti-Colisão & Governança de Modais**: Conclusão integral do plano `docs/plans/PLANO_CORRECAO_E_OTIMIZACAO_TOUR_INTERATIVO.md`. Eliminação definitiva de injeção física de dados falsos, motor de simulação 100% em memória, intercepção de consultas React Query com IDs compatíveis com UUID, algoritmo de anti-colisão mobile adaptativo (inversão dinâmica topo/base), catálogo completo de micro-tours hierárquicos e tour exclusivo do APK Android, acessibilidade WCAG 2.1 AA completa (focus trap, preservação de `document.activeElement`, navegação por teclado e leitor de tela) e supressão inteligente de banners de atualização (`NativeUpdateToast`) durante a exibição de modais.
+
+#### 1. Entregas Concluídas
+- **Intercepção de Dados & Correção de Rotas (Fase 1):**
+  - Mocks de dados em memória para despesas e pagamentos de cartão em `use-simulated-queries.ts`;
+  - Chaveamento do modo demo em `use-card-payments.ts` e `use-overview.ts` eliminando o erro de sintaxe UUID no Supabase;
+  - Correção e preservação de query strings (`location.search`) em rotas de investimentos e inclusão do seletor contido `transactions-statement-container` em `TransactionListPage`.
+- **Motor de Scroll Determinístico & Centralização (Fase 2):**
+  - Rolagem contextual no container `#main-content` respeitando a barra superior fixa (offset de 64px) e margem de respiro de 16px;
+  - Algoritmo Anti-Colisão Mobile: elemento com centro vertical > 45% da viewport posiciona o card popover no topo; caso contrário, na base;
+  - Posicionamento dinâmico em desktop com auto-flip vertical e clamp horizontal estrito impedindo transbordamentos da viewport.
+- **Catálogo de Micro-Tours & Tour do APK Nativo (Fase 3):**
+  - Trilha 0 exclusiva para o APK Nativo Android (`isNative()`) com foco em Leitor de Notificações, Biometria e Escudo de Privacidade;
+  - Micro-tours dedicados para o Botão Wizard (+), Cartões e Faturas, Categorias & Tetos e Smart Advisor;
+  - Modal `DemoTrackSelectModal` com catálogo navegável e badges temáticos.
+- **Governança de Modais & Prevenção de Conflitos (Fase 4):**
+  - Hook reativo `useActiveOverlays` para detecção de diálogos (`[role="dialog"]`, `[role="alertdialog"]`), tour ativo e wizards;
+  - Supressão temporária do toast de nova versão no Android (`NativeUpdateToast`) enquanto houver overlays abertos, reaparecendo suavemente ao fechar;
+  - Persistência de adiamento no dismiss com timer de 12 horas e isolamento de eventos de ponteiro no `ToastViewport`.
+- **Design System, Responsividade & Acessibilidade WCAG 2.1 AA (Fase 5):**
+  - Rodapé adaptativo para telas estreitas (< 400px) sem esmagamento ou quebra de rótulos;
+  - Hierarquia semântica conforme Regra 13 do `AGENTS.md` (badges neutros com `variant="muted"`, ícone em `text-muted-foreground`, acento primário restrito ao botão CTA);
+  - Backdrop suave SVG (`rgba(0, 0, 0, 0.60)`), cantos arredondados `rx={16}` / `ry={16}` e pulsação temporizada de 3s;
+  - Gerenciamento de foco completo: armazenamento do `document.activeElement`, foco automático ao abrir e restauração de foco ao fechar via tecla `Escape` ou botão `[X]`;
+  - Focus trap confinado no card gerenciando ciclos de `Tab` e `Shift+Tab`;
+  - Anúncios acessíveis via `aria-live="polite"` e camada SVG com `role="presentation"` e `aria-hidden="true"`;
+  - Dots interativos com semântica de botão (`role="button"`), suporte a clique e barra de espaço.
+- **Auditoria, Governança & Depreciação (Fase 6):**
+  - Marcação formal `@deprecated` no JSDoc de `DemoTourBar` e confirmação de uso exclusivo de `DemoTourSpotlight` no `PageShell`;
+  - Suíte completa de 459 arquivos de teste e 4.187 testes aprovados (100% verde);
+  - Auditoria de acessibilidade (`accessibility-audit.test.tsx`) 100% verde; typecheck e lint sem nenhuma violação.
 
 
 

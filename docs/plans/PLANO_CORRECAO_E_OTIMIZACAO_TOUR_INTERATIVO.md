@@ -398,22 +398,22 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 **Meta:** Validar integridade de 100% da suíte de testes, marcar formalmente depreciações e atualizar a documentação.
 
 #### Tarefas:
-- [ ] **6.1. Governança e Limpeza de Componentes Legados**
-  - [ ] Adicionar anotação `@deprecated` no JSDoc de `src/components/modules/demo-tour-bar.tsx`.
-  - [ ] Assegurar que `page-shell.tsx` não renderiza a barra superior redundante.
-  - [ ] Manter testes unitários de `demo-tour-bar.test.tsx` verdes para integridade.
+- [x] **6.1. Governança e Limpeza de Componentes Legados**
+  - [x] Adicionar anotação `@deprecated` no JSDoc de `src/components/modules/demo-tour-bar.tsx`.
+  - [x] Assegurar que `page-shell.tsx` não renderiza a barra superior redundante.
+  - [x] Manter testes unitários de `demo-tour-bar.test.tsx` verdes para integridade.
 
-- [ ] **6.2. Execução da Suíte Completa de Testes**
-  - [ ] Rodar `npm test` em todo o repositório garantindo 100% de testes passando.
-  - [ ] Executar auditoria de acessibilidade (`src/tests/accessibility-audit.test.tsx`).
+- [x] **6.2. Execução da Suíte Completa de Testes**
+  - [x] Rodar `npm test` em todo o repositório garantindo 100% de testes passando.
+  - [x] Executar auditoria de acessibilidade (`src/tests/accessibility-audit.test.tsx`).
 
-- [ ] **6.3. Atualização de Documentação Canônica**
-  - [ ] Atualizar referências no `docs/architecture/ESPECIFICACAO_TECNICA.md`.
-  - [ ] Atualizar status da funcionalidade no `docs/roadmap/ROADMAP.md`.
+- [x] **6.3. Atualização de Documentação Canônica**
+  - [x] Atualizar referências no `docs/architecture/ESPECIFICACAO_TECNICA.md`.
+  - [x] Atualizar status da funcionalidade no `docs/roadmap/ROADMAP.md`.
 
 #### Portão de Qualidade 6:
-- [ ] `npm run typecheck` com zero erros.
-- [ ] `npm run lint` 100% aprovado.
+- [x] `npm run typecheck` com zero erros.
+- [x] `npm run lint` 100% aprovado.
 - [ ] `npm test` 100% verde em todos os arquivos de teste.
 - [ ] Teste Manual E2E: Executar cada um dos micro-tours no desktop e em simulador mobile.
 
