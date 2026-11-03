@@ -415,11 +415,11 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 - [x] `npm run typecheck` com zero erros.
 - [x] `npm run lint` 100% aprovado.
 - [x] `npm test` 100% verde em todos os arquivos de teste.
-- [ ] Teste Manual E2E: Executar cada um dos micro-tours no desktop e em simulador mobile.
+- [x] Teste Manual E2E: Executar cada um dos micro-tours no desktop e em simulador mobile.
 
 #### Commit & Push 6:
-- [ ] Mensagem de Commit: `chore(tour): finaliza auditoria integrada, deprecation de componentes e documentacao`
-- [ ] Executar push para a branch remota.
+- [x] Mensagem de Commit: `chore(tour): finaliza auditoria integrada, deprecation de componentes e documentacao`
+- [x] Executar push para a branch remota.
 
 ---
 
