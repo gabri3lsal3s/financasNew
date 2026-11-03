@@ -162,7 +162,7 @@ Esta tabela sintetiza a evolução matemática rigorosa para todas as fórmulas 
 ### FASE 2: Modelagem de Dados, Migração Supabase & Repositórios (Persistência de Cotações Mensais)
 > **Objetivo:** Criar a infraestrutura de dados para armazenar o histórico de cotações mensais com segurança RLS multi-tenant e repositórios tipados.
 
-- [x] **Tarefa 2.1: Migração SQL no Supabase (`supabase/migrations/20261103000001_portfolio_monthly_prices.sql`)**
+- [x] **Tarefa 2.1: Migração SQL no Supabase (`supabase/migrations/20260101000063_portfolio_monthly_prices.sql`)**
   - [x] Criar tabela `public.portfolio_monthly_prices`:
     - `id uuid primary key default gen_random_uuid()`
     - `user_id uuid not null references public.profiles(id) on delete cascade`
@@ -458,7 +458,7 @@ Esta tabela sintetiza a evolução matemática rigorosa para todas as fórmulas 
 | **MODIFY** | `src/state/mutations/use-portfolio-mutations.ts` | syncCash silencioso em useRecordOrder sem pseudo-transações |
 | **MODIFY** | `src/features/investments/components/portfolio-activity-panel.tsx` | Filtro estrito de caixa na timeline e métricas de compras/vendas |
 | **MODIFY** | `src/features/reports/pages/reports-page.tsx` | Desduplicação de métricas de fluxo financeiro sem caixa |
-| **NEW** | `supabase/migrations/20261103000001_portfolio_monthly_prices.sql` | Tabela de cotações mensais, índices e políticas RLS |
+| **NEW** | `supabase/migrations/20260101000063_portfolio_monthly_prices.sql` | Tabela de cotações mensais, índices e políticas RLS |
 | **MODIFY** | `src/types/database.ts` | Tipagem da tabela `portfolio_monthly_prices` |
 | **MODIFY** | `src/types/portfolio.ts` | Contratos de dados de fechamento mensal e histórico |
 | **NEW** | `src/domain/portfolio/point-in-time.ts` | Motor puro de reconstrução de custódia ponto-no-tempo |

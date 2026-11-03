@@ -1,4 +1,4 @@
--- Migration: 20261103000001_portfolio_monthly_prices.sql
+-- Migration: 20260101000063_portfolio_monthly_prices.sql
 -- Descrição: Tabela para persistência de cotações de fechamento histórico por ativo e competência (Fase 2)
 
 create table if not exists public.portfolio_monthly_prices (

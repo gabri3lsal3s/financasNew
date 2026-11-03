@@ -1,5 +1,5 @@
 -- ---------------------------------------------------------------------------
--- 20261021000001_delete_user_account_rpc.sql
+-- 20260101000061_delete_user_account_rpc.sql
 -- Expurgo definitivo de conta de usuário (LGPD Art. 18, VI - Direito ao Esquecimento)
 -- Procedimento transacional public.delete_current_user_account()
 -- Limpeza profunda em cascata e em ordem topológica reversa nas 34 tabelas e em auth.users

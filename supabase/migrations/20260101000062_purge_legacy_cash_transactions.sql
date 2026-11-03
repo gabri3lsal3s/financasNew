@@ -1,4 +1,4 @@
--- Migration: 20261103000000_purge_legacy_cash_transactions.sql
+-- Migration: 20260101000062_purge_legacy_cash_transactions.sql
 -- Descrição: Remove pseudo-transações legadas de compra/venda de Caixa em portfolio_transactions.
 -- O saldo de liquidez permanece fielmente preservado em portfolio_assets.quantity.
 
