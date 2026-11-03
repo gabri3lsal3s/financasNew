@@ -40,7 +40,7 @@ export function isLaunchWizardActive(): boolean {
 
   if (typeof document !== "undefined") {
     const el = document.querySelector(
-      '[data-tour="launch-wizard"], [data-wizard-open="true"], [data-component="launch-wizard"]',
+      '[data-tour="launch-wizard"], [data-tour="launch-wizard-dialog"], [data-wizard-open="true"], [data-component="launch-wizard"]',
     );
     if (el) return true;
   }

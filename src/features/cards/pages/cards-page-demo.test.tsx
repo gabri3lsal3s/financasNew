@@ -86,5 +86,9 @@ describe("CardsPage no Modo Demo / Tour Interativo (Fase 1)", () => {
     expect(cardButton).toHaveAttribute("aria-label", expect.stringContaining("fatura atual R$"));
     expect(cardButton).toHaveAttribute("aria-label", expect.stringContaining("disponível R$"));
     expect(screen.getByText("Sua Carteira")).toBeInTheDocument();
+
+    // 7. Valida a presença dos seletores refinados de fatura e parcelamentos (Fase 8 — Tarefa 8.4)
+    expect(document.querySelector('[data-tour="cards-invoice-summary"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-tour="cards-installments-section"]')).toBeInTheDocument();
   });
 });

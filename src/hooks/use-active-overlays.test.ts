@@ -165,6 +165,25 @@ describe("useActiveOverlays — Detecção Reativa de Overlays e Modais (§4.1)"
     await waitFor(() => {
       expect(result.current.isWizardOpen).toBe(false);
     });
+
+    const wizardDialogEl = document.createElement("div");
+    wizardDialogEl.setAttribute("data-tour", "launch-wizard-dialog");
+
+    act(() => {
+      document.body.appendChild(wizardDialogEl);
+    });
+
+    expect(isLaunchWizardActive()).toBe(true);
+    await waitFor(() => {
+      expect(result.current.isWizardOpen).toBe(true);
+      expect(result.current.hasBlockingOverlay).toBe(true);
+    });
+
+    act(() => {
+      document.body.removeChild(wizardDialogEl);
+    });
+
+    expect(isLaunchWizardActive()).toBe(false);
   });
 
   it("detecta modais de primeiro uso (WelcomeFeatureModal / WelcomeModal)", () => {

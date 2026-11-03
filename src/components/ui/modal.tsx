@@ -40,6 +40,11 @@ export interface ModalProps {
   showCalculator?: boolean;
   /** Ações contextuais adicionais renderizadas no cabeçalho antes do botão fechar. */
   headerActions?: ReactNode;
+  /** Se false, o modal opera em modo não-bloqueante (sem focus-trap agressivo ou lock de cliques externos). Útil em tours assistidos. */
+  modal?: boolean;
+  /** Identificador para foco em tours guiados e automação. */
+  dataTour?: string;
+  "data-tour"?: string;
 }
 
 /** Distância (px) de arrasto que dispara o fechamento do bottom sheet. */
@@ -78,7 +83,11 @@ export function Modal({
   elevated = false,
   showCalculator = false,
   headerActions,
+  modal = true,
+  dataTour,
+  "data-tour": dataTourAttr,
 }: ModalProps) {
+  const resolvedDataTour = dataTour ?? dataTourAttr;
   const z = elevated ? "z-floating-tools" : "z-modal";
   const displayCalculator = showCalculator && !elevated;
 
@@ -165,7 +174,7 @@ export function Modal({
   };
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange}>
+    <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange} modal={modal}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
           className={cn(
@@ -175,6 +184,19 @@ export function Modal({
         />
         <DialogPrimitive.Content
           ref={contentRef}
+          data-tour={resolvedDataTour}
+          onPointerDownOutside={(e) => {
+            const target = e.target as HTMLElement | null;
+            if (target?.closest?.('[data-tour-spotlight-card], [data-tour-spotlight-root]')) {
+              e.preventDefault();
+            }
+          }}
+          onInteractOutside={(e) => {
+            const target = e.target as HTMLElement | null;
+            if (target?.closest?.('[data-tour-spotlight-card], [data-tour-spotlight-root]')) {
+              e.preventDefault();
+            }
+          }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={finishDrag}

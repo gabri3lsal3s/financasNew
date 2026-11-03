@@ -13,15 +13,17 @@ import {
 
 const mockNavigate = vi.fn();
 let mockPathname = "/";
+let mockSearch = "";
 vi.mock("react-router", () => ({
   useNavigate: () => mockNavigate,
-  useLocation: () => ({ pathname: mockPathname }),
+  useLocation: () => ({ pathname: mockPathname, search: mockSearch }),
 }));
 
 describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () => {
   beforeEach(() => {
     document.body.innerHTML = "";
     mockPathname = "/";
+    mockSearch = "";
     localStorage.clear();
     resetDemoTourStorage();
     resetDemoSession();
@@ -1843,6 +1845,70 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(screen.getByText("App Nativo")).toBeInTheDocument();
       expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
       expect(screen.queryByText("Finanças Diárias")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Didática Real de Lançamento de Transações — Foco no Modal LaunchWizard (Fase 8 — Tarefa 8.3)", () => {
+    it("foca no modal LaunchWizard no passo 2 de finances_wizard com didática completa e seletor launch-wizard-dialog", () => {
+      window.innerWidth = 1024;
+      window.innerHeight = 768;
+
+      const wizardDialog = document.createElement("div");
+      wizardDialog.setAttribute("data-tour", "launch-wizard-dialog");
+      wizardDialog.setAttribute("role", "dialog");
+      document.body.appendChild(wizardDialog);
+
+      vi.spyOn(wizardDialog, "getBoundingClientRect").mockReturnValue({
+        x: 200,
+        y: 120,
+        left: 200,
+        top: 120,
+        right: 824,
+        bottom: 600,
+        width: 624,
+        height: 480,
+        toJSON: () => ({}),
+      });
+
+      startDemo("finances_wizard");
+      setStepIndex(1); // Passo 2: wizard-flow-selection
+
+      const { container } = render(<DemoTourSpotlight />);
+
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      expect(screen.getByText("Passo 2 de 3")).toBeInTheDocument();
+      expect(screen.getByText("Lançamento de Despesa, Receita e Pix")).toBeInTheDocument();
+      expect(
+        screen.getByText(/Alterne com facilidade entre Despesa, Receita e Pix/i),
+      ).toBeInTheDocument();
+
+      const border = screen.getByTestId("spotlight-border");
+      expect(border).toBeInTheDocument();
+      // padding de 6px configurado para o modal
+      expect(border.getAttribute("x")).toBe("194");
+      expect(border.getAttribute("y")).toBe("114");
+
+      const aside = container.querySelector("aside");
+      expect(aside?.getAttribute("data-tour-step")).toBe("wizard-flow-selection");
+    });
+
+    it("limpa parâmetros de URL novo= ao fechar o tour enquanto no modal assistido", async () => {
+      const user = userEvent.setup();
+      startDemo("finances_wizard");
+      setStepIndex(1);
+
+      mockPathname = "/transacoes";
+      mockSearch = "?novo=despesa";
+
+      render(<DemoTourSpotlight />);
+
+      const closeButton = screen.getByLabelText("Encerrar tour demonstrativo");
+      await user.click(closeButton);
+
+      expect(mockNavigate).toHaveBeenCalledWith("/transacoes", { replace: true });
     });
   });
 });

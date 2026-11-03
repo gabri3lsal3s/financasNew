@@ -8,6 +8,8 @@ import {
   Zap,
   RefreshCw,
   Smartphone,
+  HelpCircle,
+  MessageSquare,
 } from "lucide-react";
 import { Button, Tabs } from "@/components/ui";
 import {
@@ -18,6 +20,7 @@ import {
   SubscriptionTab,
   AppInstallationTab,
 } from "../components/tabs";
+import { HelpModal, SupportChatDialog } from "@/components/modules";
 import { forceAppUpdate } from "@/app/pwa";
 import { pushToast } from "@/services/toast";
 import { cn } from "@/lib/utils";
@@ -124,6 +127,8 @@ function resolveSettingsTab(param: string | null): string {
 export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
+  const [supportChatOpen, setSupportChatOpen] = useState(false);
 
   const tabParam = searchParams.get("tab");
   const subTabParam = searchParams.get("subtab") || searchParams.get("subTab") || searchParams.get("aba");
@@ -229,7 +234,7 @@ export function SettingsPage() {
         </Button>
       </header>
 
-      <div className="pb-12">
+      <div className="pb-8">
         <Tabs
           value={activeTab}
           onValueChange={handleTabChange}
@@ -238,6 +243,67 @@ export function SettingsPage() {
           className="w-full"
         />
       </div>
+
+      {/* --- SEÇÃO CANÔNICA DE SUPORTE E AJUDA (Fase 8 — Tarefa 8.4) --- */}
+      <section
+        data-tour="settings-support-card"
+        aria-label="Central de Ajuda e Suporte"
+        className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-12"
+      >
+        <div className="flex items-start gap-3.5">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-hover border border-border/60 text-muted-foreground">
+            <HelpCircle className="size-5" aria-hidden="true" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-sm font-semibold text-foreground">
+              Central de Ajuda &amp; Suporte Técnico
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Tire dúvidas frequentes, assista a tutoriais guiados ou fale diretamente com a nossa equipe de suporte.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 w-full sm:w-auto">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setHelpModalOpen(true)}
+            className="gap-1.5 text-xs h-9 px-3.5 rounded-xl border-border/80 cursor-pointer flex-1 sm:flex-none justify-center"
+          >
+            <HelpCircle className="size-3.5 text-muted-foreground" aria-hidden="true" />
+            <span>Ver Ajuda &amp; FAQ</span>
+          </Button>
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={() => setSupportChatOpen(true)}
+            className="gap-1.5 text-xs h-9 px-3.5 rounded-xl cursor-pointer shadow-xs flex-1 sm:flex-none justify-center"
+          >
+            <MessageSquare className="size-3.5" aria-hidden="true" />
+            <span>Falar com Suporte</span>
+          </Button>
+        </div>
+      </section>
+
+      {/* Diálogos modais de Ajuda e Suporte */}
+      {helpModalOpen && (
+        <HelpModal
+          open={helpModalOpen}
+          onOpenChange={setHelpModalOpen}
+          onOpenSupport={() => {
+            setHelpModalOpen(false);
+            setSupportChatOpen(true);
+          }}
+        />
+      )}
+      {supportChatOpen && (
+        <SupportChatDialog
+          open={supportChatOpen}
+          onOpenChange={setSupportChatOpen}
+        />
+      )}
     </div>
   );
 }

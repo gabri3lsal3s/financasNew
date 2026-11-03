@@ -170,8 +170,17 @@ export function DemoTourSpotlight({
     triggerSensory("action");
     restoreFocus();
     endDemo();
+    // Limpa parâmetros de modal assistido (?novo=...) se o tour for encerrado prematuramente (Fase 8 — Tarefa 8.3)
+    const currentSearch = location?.search ?? "";
+    if (currentSearch.includes("novo=")) {
+      const cleanParams = new URLSearchParams(currentSearch);
+      cleanParams.delete("novo");
+      cleanParams.delete("modo");
+      const cleanSearch = cleanParams.toString();
+      navigate(`${location?.pathname ?? "/"}${cleanSearch ? `?${cleanSearch}` : ""}`, { replace: true });
+    }
     onClose?.();
-  }, [onClose, restoreFocus]);
+  }, [location.pathname, location.search, navigate, onClose, restoreFocus]);
 
   // Hand-off direto para o primeiro uso na conta real com restauração de foco (Fase 4 — Tarefa 4.1)
   const handleStartRealAccount = useCallback(() => {
@@ -309,7 +318,7 @@ export function DemoTourSpotlight({
         const headerHeight = 64; // altura do header fixo
         const spacing = 16;
 
-        if (container) {
+        if (container && container.contains(element)) {
           const isMobileScreen = typeof window !== "undefined" && window.innerWidth < 768;
           let targetScrollTop = 0;
 
@@ -443,7 +452,7 @@ export function DemoTourSpotlight({
       }
     };
 
-    attemptScrollAndMeasure(5);
+    attemptScrollAndMeasure(8);
 
     return () => {
       if (timer) clearTimeout(timer);
@@ -609,7 +618,8 @@ export function DemoTourSpotlight({
       role="dialog"
       aria-modal="true"
       aria-label="Tour guiado interativo"
-      className="fixed inset-0 z-modal overflow-hidden select-none"
+      data-tour-spotlight-root="true"
+      className="fixed inset-0 z-floating-tools overflow-hidden select-none"
     >
       {/* Máscara SVG recortada com corte iluminado */}
       <svg
@@ -674,6 +684,7 @@ export function DemoTourSpotlight({
       {/* Card Popover Adaptativo com transições fluidas entre passos (Fase 8 — Tarefa 8.1) */}
       <aside
         ref={cardRef}
+        data-tour-spotlight-card="true"
         data-tour-step={currentStep.id}
         data-placement={isMobile ? (isAnchorTopMobile ? "top" : "bottom") : desktopPlacement}
         style={!isMobile ? desktopCardStyle() : undefined}
@@ -681,12 +692,12 @@ export function DemoTourSpotlight({
           "pointer-events-auto border border-border/80 bg-surface shadow-lg animate-fade-in",
           isMobile
             ? cn(
-                "fixed inset-x-3 rounded-2xl p-4 max-h-[42vh] overflow-y-auto transition-all duration-300 ease-out",
+                "fixed inset-x-3 rounded-2xl p-4 max-h-[42vh] overflow-y-auto transition-all duration-300 ease-out z-floating-tools",
                 isAnchorTopMobile
                   ? "top-[max(env(safe-area-inset-top,0px),16px)]"
                   : "bottom-[max(env(safe-area-inset-bottom,0px),16px)]",
               )
-            : "fixed rounded-xl p-4.5 z-modal",
+            : "fixed rounded-xl p-4.5 z-floating-tools",
           className,
         )}
       >

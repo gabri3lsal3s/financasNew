@@ -777,7 +777,10 @@ export function CardsPage() {
             )}
 
             {/* KPIs da fatura com visão dupla (Bruto vs. Ponderado) */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
+            <div
+              data-tour="cards-invoice-summary"
+              className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1"
+            >
               <KpiCard
                 label="Fatura Total (Bruto)"
                 cents={summary?.previstoBrutoCents ?? 0}
@@ -839,10 +842,12 @@ export function CardsPage() {
 
             {/* Bloco Informativo de Impacto de Assinaturas na Fatura em Aberto (F22 / Tarefa 7.6) */}
             {cardSubscriptionImpact && cardSubscriptionImpact.totalProjectedCents > 0 ? (
-              <CardSubscriptionRadar
-                impact={cardSubscriptionImpact}
-                onIgnoreItem={(key) => setFeedbackMutation.mutate({ occurrenceKey: key, decision: "ignore" })}
-              />
+              <div data-tour="cards-subscription-radar">
+                <CardSubscriptionRadar
+                  impact={cardSubscriptionImpact}
+                  onIgnoreItem={(key) => setFeedbackMutation.mutate({ occurrenceKey: key, decision: "ignore" })}
+                />
+              </div>
             ) : null}
           </div>
 
@@ -909,7 +914,7 @@ export function CardsPage() {
             ) : (
               <div className="flex flex-col gap-6 sm:gap-7">
                 {/* Parceladas — compras herdadas de meses anteriores (topo) */}
-                <div className="flex flex-col gap-3">
+                <div data-tour="cards-installments-section" className="flex flex-col gap-3">
                   <div className="flex items-center justify-between pb-0.5">
                     <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       <Repeat className="size-3.5" aria-hidden="true" />

@@ -310,4 +310,14 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     renderSettings(["/configuracoes?tab=dispositivos"]);
     expect(screen.getByText("Plataforma em Uso")).toBeInTheDocument();
   });
+
+  it("renderiza a seção canônica de suporte e ajuda com o seletor do tour", () => {
+    renderSettings();
+
+    const supportSection = document.querySelector('[data-tour="settings-support-card"]');
+    expect(supportSection).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: /Central de Ajuda & Suporte Técnico/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Ver Ajuda & FAQ/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Falar com Suporte/i })).toBeInTheDocument();
+  });
 });

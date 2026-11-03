@@ -41,6 +41,7 @@ import {
   useCreateRecurrence,
   usePredictionHistory,
 } from "@/state";
+import { useDemoSession } from "@/state/demo-mode";
 import type { RecurrenceFrequency } from "@/domain/recurrences";
 import type { DbInsert, Income, PaymentMethod, ReceiveType } from "@/types";
 import { StepCategory } from "./step-category";
@@ -87,6 +88,7 @@ export function LaunchWizard({
   onClose,
   onSuccess,
 }: LaunchWizardProps = {}) {
+  const { isDemoActive } = useDemoSession();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"quick" | "guided">(initialMode);
   const [state, setState] = useState<LaunchState>(() => defaultLaunchState(initialType, initialValues));
@@ -530,6 +532,8 @@ export function LaunchWizard({
   return (
     <Modal
       open={open}
+      data-tour="launch-wizard-dialog"
+      modal={!isDemoActive}
       onOpenChange={(next) => {
         if (!next) {
           requestClose();

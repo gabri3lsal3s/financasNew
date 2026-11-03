@@ -701,5 +701,11 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
         );
       });
     });
+
+    it("renderiza o atributo data-tour='launch-wizard-dialog' no modal para suporte ao Spotlight do tour interativo (Fase 8 — Tarefa 8.3)", () => {
+      render(<LaunchWizard />);
+      const dialog = document.querySelector('[data-tour="launch-wizard-dialog"]');
+      expect(dialog).toBeInTheDocument();
+    });
   });
 });

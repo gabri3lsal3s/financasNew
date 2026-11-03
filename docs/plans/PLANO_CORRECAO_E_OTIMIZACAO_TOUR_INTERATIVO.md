@@ -452,18 +452,18 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
       - `app_native_apk` $\rightarrow$ **"App Nativo"**.
   - [x] Validar que em todas as telas de cartões, orçamentos, lançamentos e transações o badge exiba categorização correta de finanças pessoais, nunca investimentos.
 
-- [ ] **8.3. Didática Real de Lançamento de Transações (Foco no Modal `LaunchWizard`)**
-  - [ ] **Iluminação do Modal em Vez de Linha Estática do Extrato:**
+- [x] **8.3. Didática Real de Lançamento de Transações (Foco no Modal `LaunchWizard`)**
+  - [x] **Iluminação do Modal em Vez de Linha Estática do Extrato:**
     * No micro-tour do Wizard e no tour geral de finanças, ao explicar *"Lançamento de Despesa, Receita e Pix"*, o passo deve navegar para a rota ou abrir o diálogo de lançamento (ex: `targetRoute: "/transacoes?novo=despesa"` em modo demonstração assistida) com atributo contido `[data-tour="launch-wizard-dialog"]`.
     * Explicar didaticamente a alternância entre **Despesa**, **Receita** e **Pix**, as sugestões preditivas de categorias inteligentes e o botão de **Anexar Comprovante**.
     * Assegurar que ao avançar ou retroceder o passo, o modal de demonstração seja fechado sem poluir a navegação.
 
-- [ ] **8.4. Resolução de Ações Fantasmas e Ajuste Fino de Seletores (Cartões e Configurações)**
-  - [ ] **Radar de Assinaturas e Recorrências:**
+- [x] **8.4. Resolução de Ações Fantasmas e Ajuste Fino de Seletores (Cartões e Configurações)**
+  - [x] **Radar de Assinaturas e Recorrências:**
     * Se o radar de assinaturas estiver vazio ou colapsado no cartão ativo, focar no resumo da fatura aberta `[data-tour="cards-invoice-summary"]` ou nas despesas fixas recorrentes, sem apontar genericamente para a carteira 3D inteira.
-  - [ ] **Parcelamento Inteligente:**
+  - [x] **Parcelamento Inteligente:**
     * Apontar o spotlight diretamente para a seção de `[data-tour="cards-installments-section"]` (Despesas Parceladas) ou para o cálculo de competências futuras, proporcionando coerência visual entre o texto explicativo e o elemento destacado.
-  - [ ] **Suporte e Configurações:**
+  - [x] **Suporte e Configurações:**
     * Corrigir o seletor do passo 2 de `settings_support`, substituindo o seletor órfão `[data-tour="overview-kpis"]` por `[data-tour="settings-support-card"]` ou `[data-tour="settings-help-section"]` na página `/configuracoes`.
 
 - [ ] **8.5. Composição Hierárquica e Didática dos Tours Gerais (Finanças e Investimentos)**

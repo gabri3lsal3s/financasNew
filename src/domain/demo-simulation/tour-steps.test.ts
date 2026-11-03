@@ -86,12 +86,32 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
       expect(steps[0]?.targetRoute).toBe("/");
       expect(steps[0]?.preferredPlacement).toBe("top");
 
-      // Passo 2: Modal / Feed de lançamentos
-      expect(steps[1]?.targetSelector).toBe('[data-tour="transactions-feed-card"]');
-      expect(steps[1]?.targetRoute).toBe("/transacoes");
+      // Passo 2: Modal LaunchWizard com foco no diálogo de lançamento
+      expect(steps[1]?.targetSelector).toBe('[data-tour="launch-wizard-dialog"]');
+      expect(steps[1]?.targetRoute).toBe("/transacoes?novo=despesa");
 
       // Passo 3: Parcelamento inteligente de despesas
-      expect(steps[2]?.targetSelector).toBe('[data-tour="cards-content"]');
+      expect(steps[2]?.targetSelector).toBe('[data-tour="cards-installments-section"]');
+      expect(steps[2]?.targetRoute).toBe("/cartoes");
+    });
+  });
+
+  describe("Micro-Tour Cartões, Faturas e Limites (finances_cards)", () => {
+    const steps = getTourSteps("finances_cards");
+
+    it("possui 3 passos mapeando Fatura Aberta/Limite, Melhor Dia e Comprometimento Futuro", () => {
+      expect(steps).toHaveLength(3);
+
+      // Passo 1: Fatura Aberta & Limite Disponível
+      expect(steps[0]?.targetSelector).toBe('[data-tour="cards-content"]');
+      expect(steps[0]?.targetRoute).toBe("/cartoes");
+
+      // Passo 2: Melhor Dia de Compra
+      expect(steps[1]?.targetSelector).toBe('[data-tour="cards-content"]');
+      expect(steps[1]?.targetRoute).toBe("/cartoes");
+
+      // Passo 3: Comprometimento com Parcelas Futuras
+      expect(steps[2]?.targetSelector).toBe('[data-tour="cards-installments-section"]');
       expect(steps[2]?.targetRoute).toBe("/cartoes");
     });
   });
@@ -106,8 +126,8 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
       expect(steps[0]?.targetSelector).toBe('[data-tour="overview-kpis"]');
       expect(steps[0]?.targetRoute).toBe("/");
 
-      // Passo 2: Radar de Assinaturas na tela de Cartões
-      expect(steps[1]?.targetSelector).toBe('[data-tour="cards-content"]');
+      // Passo 2: Radar de Assinaturas ou Resumo da Fatura na tela de Cartões
+      expect(steps[1]?.targetSelector).toBe('[data-tour="cards-invoice-summary"]');
       expect(steps[1]?.targetRoute).toBe("/cartoes");
 
       // Passo 3: Fechamento mensal em Relatórios
@@ -143,7 +163,7 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
       expect(steps[0]?.targetRoute).toBe("/");
 
       // Passo 2: Canal direto de suporte no menu /configuracoes
-      expect(steps[1]?.targetSelector).toBe('[data-tour="overview-kpis"]');
+      expect(steps[1]?.targetSelector).toBe('[data-tour="settings-support-card"]');
       expect(steps[1]?.targetRoute).toBe("/configuracoes");
     });
   });
