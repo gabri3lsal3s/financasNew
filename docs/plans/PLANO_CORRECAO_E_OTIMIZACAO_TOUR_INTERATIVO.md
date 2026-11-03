@@ -19,7 +19,7 @@
 [FASE 5: DESIGN SYSTEM, RESPONSIVIDADE & A11Y]████████████████████ 100% Concluído
 [FASE 6: AUDITORIA INTEGRADA & POLIMENTO]    ████████████████████ 100% Concluído
 [FASE 8: REFINAMENTO DE FLUIDEZ, DESKTOP & ZERO MODAIS INVASIVOS]████████████████████ 100% Concluído
-[FASE 7: REVISÃO, PUSH, BUILD APK & TELEGRAM]░░░░░░░░░░░░░░░░░░░░   0% Pendente
+[FASE 7: REVISÃO, PUSH, BUILD APK & TELEGRAM]████████████████████ 100% Concluído
 ```
 
 ---
@@ -603,14 +603,14 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
   - [x] Commitar todas as correções residuais: `fix(tour): resolve fragilidades remanescentes e consolida release`.
   - [x] Executar `git push origin main` (ou branch ativa).
 
-- [ ] **7.5. Notificação e Relatório Executivo via Bot Telegram (ARGOS)**
-  - [ ] Construir payload da mensagem formatado em HTML/Markdown contendo:
+- [x] **7.5. Notificação e Relatório Executivo via Bot Telegram (ARGOS)**
+  - [x] Construir payload da mensagem formatado em HTML/Markdown contendo:
     * 📋 **Relatório da Release:** Resumo consolidado de todas as correções entregues (eliminação do erro SQL em cartões, motor de centralização determinístico no `#main-content`, anti-colisão mobile, supressão de toast durante modais, catálogo de micro-tours e tour do APK nativo).
     * 🗄️ **Diagnóstico de Banco de Dados / Supabase:** Confirmação explícita e transparente se há necessidade de rodar alguma migração de schema/SQL no Supabase (no caso da simulação em memória do tour e da governança de modais: destacar que **NÃO requer nenhuma migração de banco de dados**, operando com zero downtime e isolamento estrito in-memory).
     * 📱 **Status do APK:** Confirmação de integridade dos assets para distribuição nativa.
     * ✅ **Métricas de Qualidade:** Confirmação de 100% dos testes verdes e typecheck limpo.
-  - [ ] Disparar a mensagem via Telegram Bot API para o bot ARGOS utilizando `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` configurados no ambiente.
-  - [ ] Validar o retorno HTTP 200 OK da API do Telegram.
+  - [x] Disparar a mensagem via Telegram Bot API para o bot ARGOS utilizando `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` configurados no ambiente.
+  - [x] Validar o retorno HTTP 200 OK da API do Telegram.
 
 ---
 
@@ -643,15 +643,15 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 
 ## 5. DEFINITION OF DONE (CRITÉRIOS DE ACEITAÇÃO FINAIS)
 
-- [ ] **Zero Erros de API/Postgres:** Nenhuma mensagem *"Algo deu errado"* em Cartões ou em qualquer outra tela do tour.
-- [ ] **Centralização Precisa:** O spotlight centraliza com margem uniforme nos elementos tanto ao avançar quanto ao retroceder passos, sem tremores ou medições no meio da animação de scroll.
-- [ ] **Zero Sobreposição no Mobile:** O popover explicativo detecta o centro do elemento e ancora no topo ou na base, mantendo o conteúdo focado 100% desobstruído.
-- [ ] **Zero Conflito entre Modais e Atualização:** O toast de nova versão NUNCA aparece sobre modais de onboarding, wizards de transação ou diálogos do app; se dispensado no [X], só volta a sugerir na próxima abertura do app.
-- [ ] **Catálogo Completo de Micro-Tours:** O usuário pode escolher entre um tour geral rápido ou micro-tours específicos (Wizard +, Cartões, Orçamentos, Insights, Ativos, Aporte, Suporte).
-- [ ] **Onboarding Nativo do APK Android:** Novos usuários no app nativo recebem apresentação das notificações bancárias automáticas e da biometria.
-- [ ] **Aderência ao Design System:** Badges em tom suave (`muted`), acento primário estritamente no CTA, sem emojis, tipografia adaptativa.
-- [ ] **Acessibilidade WCAG 2.1 AA:** Foco confinado (focus trap), navegação por teclado e por dots, anúncios em leitores de tela.
-- [ ] **Revisão de Fragilidades Concluída:** Toda e qualquer fragilidade, bug ou vazamento de listener identificado é corrigido antes do release.
-- [ ] **Git Push Concluído:** Repositório sincronizado remotamente com histórico limpo e atômico.
-- [ ] **Build do APK Android Gerado:** APK assinado e compilado com sucesso via `npm run build:apk`.
-- [ ] **Notificação Telegram Entregue:** Relatório detalhado disparado e recebido com sucesso via bot ARGOS com diagnóstico explícito sobre migração Supabase.
+- [x] **Zero Erros de API/Postgres:** Nenhuma mensagem *"Algo deu errado"* em Cartões ou em qualquer outra tela do tour.
+- [x] **Centralização Precisa:** O spotlight centraliza com margem uniforme nos elementos tanto ao avançar quanto ao retroceder passos, sem tremores ou medições no meio da animação de scroll.
+- [x] **Zero Sobreposição no Mobile:** O popover explicativo detecta o centro do elemento e ancora no topo ou na base, mantendo o conteúdo focado 100% desobstruído.
+- [x] **Zero Conflito entre Modais e Atualização:** O toast de nova versão NUNCA aparece sobre modais de onboarding, wizards de transação ou diálogos do app; se dispensado no [X], só volta a sugerir na próxima abertura do app.
+- [x] **Catálogo Completo de Micro-Tours:** O usuário pode escolher entre um tour geral rápido ou micro-tours específicos (Wizard +, Cartões, Orçamentos, Insights, Ativos, Aporte, Suporte).
+- [x] **Onboarding Nativo do APK Android:** Novos usuários no app nativo recebem apresentação das notificações bancárias automáticas e da biometria.
+- [x] **Aderência ao Design System:** Badges em tom suave (`muted`), acento primário estritamente no CTA, sem emojis, tipografia adaptativa.
+- [x] **Acessibilidade WCAG 2.1 AA:** Foco confinado (focus trap), navegação por teclado e por dots, anúncios em leitores de tela.
+- [x] **Revisão de Fragilidades Concluída:** Toda e qualquer fragilidade, bug ou vazamento de listener identificado é corrigido antes do release.
+- [x] **Git Push Concluído:** Repositório sincronizado remotamente com histórico limpo e atômico.
+- [x] **Build do APK Android Gerado:** APK assinado e compilado com sucesso via `npm run build:apk`.
+- [x] **Notificação Telegram Entregue:** Relatório detalhado disparado e recebido com sucesso via bot ARGOS com diagnóstico explícito sobre migração Supabase.
