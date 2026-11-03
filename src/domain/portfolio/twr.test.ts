@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  annualizeRateFromDays,
   annualizeRateFromMonths,
   calculateTwrSeries,
   compoundMonthlyRates,
@@ -77,6 +78,36 @@ describe("TWR — Time-Weighted Return (Padrão CVM/ANBIMA)", () => {
     it("anualiza corretamente para prazos maiores (ex: 24 meses)", () => {
       // 21% em 24 meses -> 10% a.a.
       expect(annualizeRateFromMonths(21, 24)).toBe(10);
+    });
+  });
+
+  describe("annualizeRateFromDays (Padrão CVM / ANBIMA por dias exatos)", () => {
+    it("retorna null para períodos menores que 365 dias (salvaguarda de período em formação)", () => {
+      expect(annualizeRateFromDays(5.0, 180)).toBeNull();
+      expect(annualizeRateFromDays(12.0, 364)).toBeNull();
+    });
+
+    it("retorna null para perdas totais de 100% ou mais", () => {
+      expect(annualizeRateFromDays(-100, 400)).toBeNull();
+      expect(annualizeRateFromDays(-110, 500)).toBeNull();
+    });
+
+    it("calcula exatamente a anualização do caso auditado: 978 dias e +22,4% gerando +7,84% a.a.", () => {
+      const annualized = annualizeRateFromDays(22.4, 978);
+      expect(annualized).toBe(7.84);
+    });
+
+    it("anualiza exatamente para 365 dias sem alteração da taxa", () => {
+      expect(annualizeRateFromDays(10.5, 365)).toBe(10.5);
+    });
+
+    it("calcula anualização com daysElapsed fornecido em calculateTwrSeries", () => {
+      const points: TwrMonthlyInputPoint[] = [
+        { month: "2024-01", totalValueBRL: 10000 },
+        { month: "2026-10", totalValueBRL: 12240, explicitRatePct: 22.4 },
+      ];
+      const result = calculateTwrSeries(points, 978);
+      expect(result.annualizedRatePct).toBe(7.84);
     });
   });
 

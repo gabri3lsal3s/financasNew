@@ -1,3 +1,5 @@
+import { normalizePercentagesTo100 } from "./distribution";
+
 const round2 = (v: number): number => Math.round(v * 100) / 100;
 
 export interface RawAllocationPosition {
@@ -60,7 +62,7 @@ export const DONUT_SECTOR_PALETTE: readonly string[] = [
 
 /**
  * Constrói os segmentos dos gráficos Donut de Classes e Setores
- * com blindagem de cauda longa e paridade patrimonial.
+ * com isolamento estrito de Caixa e soma de percentuais normalizada a 100,0% (§F19).
  */
 export function buildAllocationDonutSegments(
   params: BuildAllocationDonutsParams,
@@ -113,30 +115,36 @@ export function buildAllocationDonutSegments(
   // Ordena decrescente por valor
   classList.sort((a, b) => b.value - a.value);
 
-  const classSegments: AllocationDonutSegment[] = classList.map((item) => {
+  const rawClassSegments = classList.map((item) => {
     const color = DONUT_CLASS_COLORS[item.key] ?? DONUT_CLASS_COLORS.outros ?? "#64748b";
-    const pct = round2((item.value / totalBRL) * 100);
+    const rawPct = (item.value / totalBRL) * 100;
     return {
       key: item.key,
       label: item.label,
       value: round2(item.value),
-      pct,
+      rawPct,
       color,
     };
   });
 
-  // 2. Agrupamento por Setor Econômico (com blindagem de cauda longa)
+  const normalizedClasses = normalizePercentagesTo100(rawClassSegments, 1);
+  const classSegments: AllocationDonutSegment[] = normalizedClasses.map((item) => ({
+    key: item.key,
+    label: item.label,
+    value: item.value,
+    pct: item.formattedPct,
+    color: item.color,
+  }));
+
+  // 2. Agrupamento por Setor Econômico (exclusivo para ativos produtivos corporativos)
   const sectorMap = new Map<string, number>();
   for (const pos of validPositions) {
-    const rawSector = pos.sector && pos.sector.trim().length > 0
-      ? pos.sector.trim()
-      : (pos.assetClass ?? "Geral / Outros").trim();
+    const rawSector =
+      pos.sector && pos.sector.trim().length > 0
+        ? pos.sector.trim()
+        : (pos.assetClass ?? "Geral / Outros").trim();
     const currentVal = sectorMap.get(rawSector) ?? 0;
     sectorMap.set(rawSector, currentVal + pos.valueBRL);
-  }
-
-  if (effectiveCashBRL > 0) {
-    sectorMap.set("Reserva de Liquidez", (sectorMap.get("Reserva de Liquidez") ?? 0) + effectiveCashBRL);
   }
 
   const rawSectorList: { label: string; value: number }[] = [];
@@ -150,11 +158,10 @@ export function buildAllocationDonutSegments(
   rawSectorList.sort((a, b) => b.value - a.value);
   const totalUniqueSectors = rawSectorList.length;
 
-  // Se houver mais de 12 setores, agrupa excedentes ou fatias microscópicas (< 1.0%) em "Outros Setores"
   const MAX_VISIBLE_SECTORS = 12;
   const MIN_SECTOR_PCT = 1.0;
 
-  const topSectors: { label: string; value: number }[] = [];
+  const topSectors: { label: string; value: number; isCash?: boolean }[] = [];
   let otherSectorsValue = 0;
 
   for (let i = 0; i < rawSectorList.length; i++) {
@@ -179,9 +186,19 @@ export function buildAllocationDonutSegments(
     });
   }
 
-  const sectorSegments: AllocationDonutSegment[] = topSectors.map((sec, index) => {
+  // Se houver saldo em caixa, mantém como fatia destacada de liquidez própria
+  // NUNCA aglutinada em "Outros Setores"
+  if (effectiveCashBRL > 0) {
+    topSectors.push({
+      label: "Reserva de Caixa",
+      value: effectiveCashBRL,
+      isCash: true,
+    });
+  }
+
+  const rawSectorSegments = topSectors.map((sec, index) => {
     const isOther = sec.label === "Outros Setores";
-    const isCash = sec.label === "Reserva de Liquidez";
+    const isCash = sec.isCash === true;
     let color: string;
 
     if (isCash) {
@@ -192,15 +209,24 @@ export function buildAllocationDonutSegments(
       color = DONUT_SECTOR_PALETTE[index % (DONUT_SECTOR_PALETTE.length - 1)] ?? "#64748b";
     }
 
-    const pct = round2((sec.value / totalBRL) * 100);
+    const rawPct = (sec.value / totalBRL) * 100;
     return {
       key: `sector-${index}-${sec.label.toLowerCase().replace(/\s+/g, "-")}`,
       label: sec.label,
       value: round2(sec.value),
-      pct,
+      rawPct,
       color,
     };
   });
+
+  const normalizedSectors = normalizePercentagesTo100(rawSectorSegments, 1);
+  const sectorSegments: AllocationDonutSegment[] = normalizedSectors.map((s) => ({
+    key: s.key,
+    label: s.label,
+    value: s.value,
+    pct: s.formattedPct,
+    color: s.color,
+  }));
 
   return {
     classSegments,

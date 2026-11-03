@@ -65,5 +65,26 @@ describe("benchmarks — Motor de Comparativos de Mercado", () => {
       // Juro Real Líquido: (1.15 / 1.04) - 1 = ~10.58%
       expect(res.realReturnPct).toBe(10.58);
     });
+
+    it("calcula métricas de 12M e juro real 12M para a visão híbrida quando portfolio12mRatePct é informado", () => {
+      const res = calculateConsolidatedBenchmarks({
+        portfolioRatePct: 22.4, // Total desde o início
+        monthsCount: 32,
+        annualCdiRate: 10.5,
+        portfolio12mRatePct: 12.8, // Janela recente 12M
+        annualIpcaRate: 4.0,
+      });
+
+      const cdi = res.items.find((i) => i.key === "cdi")!;
+      expect(cdi.benchmarkRatePct).toBeGreaterThan(25); // CDI acumulado em 32 meses
+      expect(cdi.sub12m).toBeDefined();
+      expect(cdi.sub12m?.portfolio12mRatePct).toBe(12.8);
+      expect(cdi.sub12m?.benchmark12mRatePct).toBe(10.5);
+      expect(cdi.sub12m?.alpha12mPct).toBe(2.3); // 12.8 - 10.5
+      expect(cdi.sub12m?.pctOf12mBenchmark).toBe(121.9); // 12.8 / 10.5 = 121.9%
+
+      // Juro Real Líquido 12M: (1.128 / 1.04) - 1 = 8.46%
+      expect(res.realReturn12mPct).toBe(8.46);
+    });
   });
 });

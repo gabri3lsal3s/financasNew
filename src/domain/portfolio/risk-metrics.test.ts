@@ -124,5 +124,25 @@ describe("risk-metrics — Motor de Risco & Consistência", () => {
       expect(summary.volatility.monthlyStdDevPct).toBeGreaterThan(0);
       expect(summary.sharpeLabel).toBeDefined();
     });
+
+    it("segrega o mês parcial (MTD) do cálculo da volatilidade e Sharpe para evitar distorção", () => {
+      // 11 meses completos com volatilidade conhecida + 1 mês parcial MTD de 3 dias
+      const closedPoints = [
+        { patrimonyBRL: 100000, ratePct: 1.0 },
+        { patrimonyBRL: 102000, ratePct: 2.0 },
+        { patrimonyBRL: 101000, ratePct: -1.0 },
+        { patrimonyBRL: 103000, ratePct: 1.5 },
+        { patrimonyBRL: 104000, ratePct: 0.8 },
+      ];
+      const mtdPoint = { patrimonyBRL: 104100, ratePct: 0.1, isMtd: true };
+
+      const summaryWithoutMtd = calculatePortfolioRiskSummary(closedPoints, 10.5);
+      const summaryWithMtd = calculatePortfolioRiskSummary([...closedPoints, mtdPoint], 10.5);
+
+      // A volatilidade mensal e anualizada deve ser IDÊNTICA pois o MTD foi segregado
+      expect(summaryWithMtd.volatility.monthlyStdDevPct).toBe(summaryWithoutMtd.volatility.monthlyStdDevPct);
+      expect(summaryWithMtd.volatility.annualizedStdDevPct).toBe(summaryWithoutMtd.volatility.annualizedStdDevPct);
+      expect(summaryWithMtd.consistency.totalMonths).toBe(5);
+    });
   });
 });

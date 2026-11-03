@@ -194,45 +194,61 @@ export function calculateSharpeRatio(input: {
 }
 
 /**
- * Consolidador Geral de Risco e Consistência da Carteira.
+ * Consolidador Geral de Risco e Consistência da Carteira (Padrão ANBIMA / CFA Institute).
+ *
+ * Segregação de Mês Parcial (MTD):
+ * Se o último ponto da série for um mês incompleto (isMtd ou hasPartialCurrentMonth),
+ * a volatilidade anualizada e o índice de Sharpe são calculados estritamente sobre os
+ * meses fechados anteriores, mantendo a homogeneidade temporal (Δt = 1/12) e evitando
+ * distorções estocásticas por períodos de poucos dias.
  */
 export function calculatePortfolioRiskSummary(
-  points: readonly { patrimonyBRL: number; ratePct: number | null }[],
+  points: readonly { patrimonyBRL: number; ratePct: number | null; isMtd?: boolean }[],
   riskFreeRatePct = 10.5,
+  options?: { hasPartialCurrentMonth?: boolean },
 ): PortfolioRiskSummary {
-  const rates = points.map((p) => p.ratePct ?? 0);
-  const monthsCount = points.length;
+  const allRates = points.map((p) => p.ratePct ?? 0);
 
   // Constrói a curva de cota acumulada (base 1.0) a partir dos retornos do período,
   // isolando resgates e aportes de capital que distorceriam o Drawdown nominal em reais.
   const unitCurve: number[] = [1.0];
   let accumulatedUnit = 1.0;
-  for (const r of rates) {
+  for (const r of allRates) {
     accumulatedUnit *= 1 + r / 100;
     unitCurve.push(accumulatedUnit);
   }
 
   const maxDrawdown = calculateMaxDrawdown(unitCurve);
-  const volatility = calculateSampleVolatility(rates);
-  const consistency = calculateConsistencyMetrics(rates);
 
-  // Retorno geométrico acumulado no período
-  const compoundFactor = rates.reduce((acc, r) => acc * (1 + r / 100), 1);
+  // Identifica se o último mês é parcial (MTD)
+  const lastPointIsMtd =
+    points.length > 0 &&
+    (points[points.length - 1]?.isMtd === true || options?.hasPartialCurrentMonth === true);
+  const closedRates =
+    lastPointIsMtd && allRates.length > 1 ? allRates.slice(0, -1) : allRates;
+
+  const volatility = calculateSampleVolatility(closedRates);
+  const consistency = calculateConsistencyMetrics(closedRates);
+
+  const closedMonthsCount = closedRates.length;
+
+  // Retorno geométrico acumulado sobre os meses fechados de referência
+  const compoundFactor = closedRates.reduce((acc, r) => acc * (1 + r / 100), 1);
   const totalReturnPct = (compoundFactor - 1) * 100;
 
-  // Anualização da rentabilidade
+  // Anualização da rentabilidade sobre os meses fechados homogêneos
   const annualizedReturnPct =
-    monthsCount >= 12
-      ? (Math.pow(compoundFactor, 12 / monthsCount) - 1) * 100
-      : monthsCount > 0
-        ? (Math.pow(compoundFactor, 12 / monthsCount) - 1) * 100
+    closedMonthsCount >= 12
+      ? (Math.pow(compoundFactor, 12 / closedMonthsCount) - 1) * 100
+      : closedMonthsCount > 0
+        ? (Math.pow(compoundFactor, 12 / closedMonthsCount) - 1) * 100
         : totalReturnPct;
 
   const { sharpeRatio, sharpeLabel } = calculateSharpeRatio({
     annualizedReturnPct,
     riskFreeRatePct,
     annualizedStdDevPct: volatility.annualizedStdDevPct,
-    monthsCount,
+    monthsCount: closedMonthsCount,
   });
 
   return {

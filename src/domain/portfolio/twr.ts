@@ -104,6 +104,28 @@ export function annualizeRateFromMonths(
 }
 
 /**
+ * Anualiza uma taxa acumulada dado o número exato de dias corridos transcorridos (Padrão CVM / ANBIMA / CFA):
+ * R_anual = (1 + R_acum / 100)^(365 / daysElapsed) - 1
+ *
+ * Salvaguarda CVM/ANBIMA: Se daysElapsed < 365 ou accumulatedRatePct <= -100, retorna null
+ * impedindo distorções matemáticas artificiais em períodos curtos de formação da carteira.
+ */
+export function annualizeRateFromDays(
+  accumulatedRatePct: number,
+  daysElapsed: number,
+): number | null {
+  if (daysElapsed < 365 || accumulatedRatePct <= -100) {
+    return null;
+  }
+
+  const factor = 1 + accumulatedRatePct / 100;
+  if (factor <= 0) return -100;
+
+  const annualized = Math.pow(factor, 365 / daysElapsed) - 1;
+  return Math.round(annualized * 10000) / 100;
+}
+
+/**
  * Calcula a evolução completa do TWR por cotização a partir de uma série mensal de snapshots
  * e fluxos externos.
  *
@@ -122,6 +144,7 @@ export function annualizeRateFromMonths(
  */
 export function calculateTwrSeries(
   points: readonly TwrMonthlyInputPoint[],
+  daysElapsed?: number,
 ): TwrConsolidatedResult {
   if (!points || points.length === 0) {
     return {
@@ -212,7 +235,10 @@ export function calculateTwrSeries(
       ? (series[series.length - 1]?.accumulatedRatePct ?? 0)
       : 0;
 
-  const annualizedRatePct = annualizeRateFromMonths(accumulatedRatePct, monthsElapsed);
+  const annualizedRatePct =
+    daysElapsed !== undefined && daysElapsed >= 365
+      ? annualizeRateFromDays(accumulatedRatePct, daysElapsed)
+      : annualizeRateFromMonths(accumulatedRatePct, monthsElapsed);
 
   return {
     accumulatedRatePct,

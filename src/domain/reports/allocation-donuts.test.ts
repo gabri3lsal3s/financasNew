@@ -114,4 +114,39 @@ describe("buildAllocationDonutSegments — Distribuição por Classes e Setores"
     expect(result.classSegments).toEqual([]);
     expect(result.sectorSegments).toEqual([]);
   });
+
+  it("garante que percentuais somam rigorosamente 100,0% e isola Caixa dos setores produtivos", () => {
+    const positions = [
+      { assetClass: "Ações", sector: "Financeiro", valueBRL: 2384 },
+      { assetClass: "FIIs", sector: "Logística", valueBRL: 2386 },
+      { assetClass: "Renda Fixa", sector: "Títulos Públicos", valueBRL: 2996 },
+      { assetClass: "Internacional", sector: "Tecnologia", valueBRL: 2172 },
+    ];
+    // Caixa microscópico de 0.54% (54 / 10000)
+    const cashBalanceBRL = 54;
+
+    const result = buildAllocationDonutSegments({
+      positions,
+      cashBalanceBRL,
+      includeCash: true,
+    });
+
+    expect(result.totalBRL).toBe(9992);
+
+    // Soma das classes deve fechar exatamente em 100,0%
+    const sumClasses = result.classSegments.reduce((acc, c) => acc + c.pct, 0);
+    expect(Math.round(sumClasses * 10) / 10).toBe(100.0);
+
+    // Soma dos setores deve fechar exatamente em 100,0%
+    const sumSectors = result.sectorSegments.reduce((acc, s) => acc + s.pct, 0);
+    expect(Math.round(sumSectors * 10) / 10).toBe(100.0);
+
+    // Caixa não cai em Outros Setores, tem cor esmeralda #10b981
+    const cashSegment = result.sectorSegments.find((s) => s.label === "Reserva de Caixa");
+    expect(cashSegment).toBeDefined();
+    expect(cashSegment?.color).toBe("#10b981");
+
+    // totalUniqueSectors reporta apenas os 4 setores corporativos reais
+    expect(result.totalUniqueSectors).toBe(4);
+  });
 });

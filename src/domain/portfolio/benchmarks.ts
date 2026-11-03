@@ -25,12 +25,21 @@ export interface BenchmarkComparisonItem {
   alphaPct: number;
   /** Status relativo frente ao benchmark. */
   status: "outperforming" | "matching" | "underperforming";
+  /** Recorte móvel dos últimos 12 meses para visão híbrida (§F15). */
+  sub12m?: {
+    portfolio12mRatePct: number;
+    benchmark12mRatePct: number;
+    pctOf12mBenchmark: number | null;
+    alpha12mPct: number;
+  };
 }
 
 export interface ConsolidatedBenchmarksResult {
   items: BenchmarkComparisonItem[];
-  /** Rendimento real líquido acima da inflação (% de ganho real de poder de compra). */
+  /** Rendimento real líquido acima da inflação (% de ganho real de poder de compra) no período principal. */
   realReturnPct: number;
+  /** Rendimento real líquido na janela recente de 12 meses. */
+  realReturn12mPct?: number;
 }
 
 /**
@@ -109,6 +118,8 @@ export interface ConsolidatedBenchmarksInput {
   annualSelicRate?: number;
   annualIpcaRate?: number;
   ibovPeriodRatePct?: number;
+  /** Rentabilidade da carteira nos últimos 12 meses (para visão híbrida §F15). */
+  portfolio12mRatePct?: number;
 }
 
 /**
@@ -124,6 +135,7 @@ export function calculateConsolidatedBenchmarks(
     annualSelicRate = 10.5,
     annualIpcaRate = 4.0,
     ibovPeriodRatePct,
+    portfolio12mRatePct,
   } = input;
 
   const months = Math.max(1, monthsCount);
@@ -172,13 +184,50 @@ export function calculateConsolidatedBenchmarks(
     ibovRate,
   );
 
+  // Visão Híbrida: Cálculo do recorte móvel dos últimos 12M se fornecido
+  const has12m = portfolio12mRatePct !== undefined;
+  if (has12m) {
+    const buildSub12m = (port12m: number, bench12m: number) => {
+      const dispPort = Math.round(port12m * 10) / 10;
+      const dispBench = Math.round(bench12m * 10) / 10;
+      const alpha12mPct = Math.round((dispPort - dispBench) * 10) / 10;
+      const pctOf12mBenchmark =
+        bench12m > 0 ? Math.round((port12m / bench12m) * 1000) / 10 : null;
+      return {
+        portfolio12mRatePct: port12m,
+        benchmark12mRatePct: bench12m,
+        pctOf12mBenchmark,
+        alpha12mPct,
+      };
+    };
+
+    const cdi12mRate = compoundAnnualRateToPeriod(annualCdiRate, 12);
+    const poupanca12mRate = calculatePoupancaRate(annualSelicRate, 12);
+    const ipca12mRate = compoundAnnualRateToPeriod(annualIpcaRate, 12);
+    const ibov12mRate = compoundAnnualRateToPeriod(12.0, 12);
+
+    cdiItem.sub12m = buildSub12m(portfolio12mRatePct, cdi12mRate);
+    poupancaItem.sub12m = buildSub12m(portfolio12mRatePct, poupanca12mRate);
+    ipcaItem.sub12m = buildSub12m(portfolio12mRatePct, ipca12mRate);
+    ibovItem.sub12m = buildSub12m(portfolio12mRatePct, ibov12mRate);
+  }
+
   // Juro Real Líquido da Carteira: ((1 + R_carteira) / (1 + IPCA)) - 1
   const portFactor = 1 + portfolioRatePct / 100;
   const ipcaFactor = 1 + ipcaPeriodRate / 100;
   const realReturnPct = Math.round(((portFactor / ipcaFactor) - 1) * 10000) / 100;
 
+  let realReturn12mPct: number | undefined;
+  if (has12m) {
+    const ipca12mRate = compoundAnnualRateToPeriod(annualIpcaRate, 12);
+    const port12mFactor = 1 + portfolio12mRatePct / 100;
+    const ipca12mFactor = 1 + ipca12mRate / 100;
+    realReturn12mPct = Math.round(((port12mFactor / ipca12mFactor) - 1) * 10000) / 100;
+  }
+
   return {
     items: [cdiItem, poupancaItem, ipcaItem, ibovItem],
     realReturnPct,
+    ...(realReturn12mPct !== undefined ? { realReturn12mPct } : {}),
   };
 }
