@@ -22,6 +22,7 @@ import {
 import { MonthPicker } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
+import { isCashAssetClass } from "@/domain/portfolio";
 import { currentMonth, formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
@@ -108,6 +109,9 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
     // 1. Transações do Ledger (Compras, Vendas, Splits, etc.)
     for (const t of transactionsQuery.data ?? []) {
       const asset = assetMap.get(t.asset_id);
+      if (asset && (isCashAssetClass(asset.asset_class) || asset.ticker.toUpperCase() === "CAIXA")) {
+        continue;
+      }
       const ticker = asset?.ticker ?? "Ativo";
       const totalAmount = t.total > 0 ? t.total : (t.quantity > 0 && t.price > 0 ? t.quantity * t.price : 0);
       const linkedNote = contributionNotesMap.get(`${t.asset_id}_${t.date}`);
@@ -203,15 +207,31 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
         ? assetMap.get(item.rawTransaction.asset_id)
         : item.rawDividend?.asset_id
           ? assetMap.get(item.rawDividend.asset_id)
-          : null;
+          : item.rawContribution?.asset_id
+            ? assetMap.get(item.rawContribution.asset_id)
+            : null;
+
+      const isCash = asset
+        ? isCashAssetClass(asset.asset_class) || asset.ticker.toUpperCase() === "CAIXA"
+        : item.assetClass
+          ? isCashAssetClass(item.assetClass)
+          : false;
+
       const isUSD = asset?.currency === "USD";
       const rate = isUSD ? usdRate : 1;
       const totalBRL = item.total * rate;
 
-      if (item.type === "buy" || item.type === "contribution") {
+      if (item.type === "buy") {
+        if (!isCash) {
+          totalBought += totalBRL;
+        }
+      } else if (item.type === "contribution") {
+        // Aportes de capital externo
         totalBought += totalBRL;
       } else if (item.type === "sell") {
-        totalSold += totalBRL;
+        if (!isCash) {
+          totalSold += totalBRL;
+        }
       } else if (item.type === "dividend") {
         totalDividends += totalBRL;
       }

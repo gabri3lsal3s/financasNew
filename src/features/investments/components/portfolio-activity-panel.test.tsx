@@ -19,6 +19,7 @@ vi.mock("@/state", () => ({
       { id: "tx-1", user_id: "u-1", asset_id: "a-1", type: "buy", date: "2026-08-05", quantity: 10, price: 38.5, total: 385, notes: "Compra PETR4" },
       { id: "tx-2", user_id: "u-1", asset_id: "a-2", type: "sell", date: "2026-08-12", quantity: 1, price: 1400, total: 1400, notes: "Resgate CDB-FACTA" },
       { id: "tx-3", user_id: "u-1", asset_id: "a-1", type: "buy", date: "2026-08-02", quantity: 100, price: 30, total: 3000 },
+      { id: "tx-cash", user_id: "u-1", asset_id: "a-cash", type: "buy", date: "2026-08-10", quantity: 500, price: 1, total: 500, notes: "Pseudo-compra de Caixa" },
     ],
     isLoading: false,
   }),
@@ -39,6 +40,7 @@ vi.mock("@/state", () => ({
     data: [
       { id: "a-1", ticker: "PETR4", asset_class: "Ações", currency: "BRL" },
       { id: "a-2", ticker: "CDB-FACTA", asset_class: "Renda Fixa", currency: "BRL" },
+      { id: "a-cash", ticker: "CAIXA", asset_class: "Caixa", currency: "BRL" },
     ],
     isLoading: false,
   }),
@@ -115,6 +117,14 @@ describe("PortfolioActivityPanel", () => {
     expect(content).toContain("Data;Tipo;Ticker / Ativo;Classe;Quantidade;Preço unitário (R$);Valor total (R$);Observações");
     expect(content).toContain("PETR4");
     expect(content).toContain("CDB-FACTA");
+    expect(content).not.toContain("Pseudo-compra de Caixa");
+  });
+
+  it("não renderiza nem computa transações do ativo CAIXA na timeline", () => {
+    render(<PortfolioActivityPanel defaultMonth="2026-08" />);
+
+    // Não deve listar a transação espúria de CAIXA
+    expect(screen.queryByText("Pseudo-compra de Caixa")).not.toBeInTheDocument();
   });
 });
 

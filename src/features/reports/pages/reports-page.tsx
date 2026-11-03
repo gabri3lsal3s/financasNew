@@ -336,9 +336,18 @@ export function ReportsPage() {
   }, [dividends, selectedYearNum, positionQuery.totalDividendsBRL, assetCurrencyMap, usdRate]);
 
   // Movimentações, proventos e aportes filtrados estritamente pelo período ativo
+  // Ignora movimentações em ativos de Caixa para não inflar compras/vendas com ajustes de saldo
   const periodTransactions = useMemo(
-    () => transactions.filter((t) => isDateInPeriod(t.date)),
-    [transactions, isDateInPeriod],
+    () =>
+      transactions.filter((t) => {
+        if (!isDateInPeriod(t.date)) return false;
+        const asset = assets.find((a) => a.id === t.asset_id);
+        if (asset && (isCashAssetClass(asset.asset_class) || asset.ticker.toUpperCase() === "CAIXA")) {
+          return false;
+        }
+        return true;
+      }),
+    [transactions, isDateInPeriod, assets],
   );
   const periodDividendsList = useMemo(
     () => dividends.filter((d) => isDateInPeriod(d.date)),

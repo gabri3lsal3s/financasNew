@@ -6,6 +6,8 @@ import { CashFormDialog } from "./cash-form-dialog";
 const mockCreateAsset = vi.fn();
 const mockUpdateAsset = vi.fn();
 const mockDeleteAsset = vi.fn();
+const mockCreateTx = vi.fn();
+const mockCreateContrib = vi.fn();
 
 vi.mock("@/state", () => ({
   useCreatePortfolioAsset: () => ({
@@ -25,11 +27,11 @@ vi.mock("@/state", () => ({
     isLoading: false,
   }),
   useCreatePortfolioTransaction: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ id: "tx1" }),
+    mutateAsync: mockCreateTx,
     isPending: false,
   }),
   useCreatePortfolioContribution: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ id: "cb1" }),
+    mutateAsync: mockCreateContrib,
     isPending: false,
   }),
 }));
@@ -57,7 +59,7 @@ describe("CashFormDialog", () => {
     await user.clear(moneyInput);
     await user.type(moneyInput, "100000");
 
-    // Submete
+    // Submete sem marcar aporte
     await user.click(screen.getByRole("button", { name: /Cadastrar caixa/i }));
 
     expect(mockCreateAsset).toHaveBeenCalledWith(
@@ -66,13 +68,19 @@ describe("CashFormDialog", () => {
         asset_class: "Caixa",
         currency: "BRL",
         average_price: 1,
+        quantity: 1000,
       }),
     );
+    // Não gera transação de compra nem aporte
+    expect(mockCreateTx).not.toHaveBeenCalled();
+    expect(mockCreateContrib).not.toHaveBeenCalled();
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("renderiza o formulário de edição quando o ativo de caixa é informado", async () => {
+  it("renderiza o formulário de edição quando o ativo de caixa é informado e faz reconciliação pura sem gerar ordens", async () => {
     mockUpdateAsset.mockResolvedValue({ id: "c1" });
+    mockCreateTx.mockClear();
+    mockCreateContrib.mockClear();
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
 
@@ -102,5 +110,58 @@ describe("CashFormDialog", () => {
         asset_class: "Caixa",
       }),
     });
+    // Reconciliação contábil pura: zero buy/sell no ledger e zero aportes
+    expect(mockCreateTx).not.toHaveBeenCalled();
+    expect(mockCreateContrib).not.toHaveBeenCalled();
+  });
+
+  it("registra contribuição quando o usuário marca explicitamente o switch de aporte vindo de fora", async () => {
+    mockUpdateAsset.mockResolvedValue({ id: "c1" });
+    mockCreateContrib.mockResolvedValue({ id: "cb1" });
+    mockCreateTx.mockClear();
+    mockCreateContrib.mockClear();
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+
+    const existingCash = {
+      id: "c1",
+      user_id: "u1",
+      ticker: "CAIXA",
+      asset_class: "Caixa",
+      quantity: 1000,
+      average_price: 1,
+      currency: "BRL" as const,
+    };
+
+    render(<CashFormDialog open={true} onOpenChange={onOpenChange} asset={existingCash} />);
+
+    const moneyInput = screen.getByLabelText("Saldo disponível em caixa");
+    await user.clear(moneyInput);
+    // Novo saldo: 2000,00 (delta +1000)
+    await user.type(moneyInput, "200000");
+
+    // Marca o checkbox de aporte vindo de fora
+    const checkbox = screen.getByLabelText(/Registrar como novo aporte financeiro vindo de fora/i);
+    expect(checkbox).toBeInTheDocument();
+    await user.click(checkbox);
+
+    await user.click(screen.getByRole("button", { name: /Atualizar saldo/i }));
+
+    expect(mockUpdateAsset).toHaveBeenCalledWith({
+      id: "c1",
+      patch: expect.objectContaining({
+        quantity: 2000,
+        average_price: 1,
+      }),
+    });
+    // Registra o aporte financeiro com delta de 1000
+    expect(mockCreateContrib).toHaveBeenCalledWith(
+      expect.objectContaining({
+        asset_id: "c1",
+        amount: 1000,
+      }),
+    );
+    // Mas NUNCA cria ordem de compra de CAIXA no ledger
+    expect(mockCreateTx).not.toHaveBeenCalled();
   });
 });

@@ -688,6 +688,14 @@ export function useRecordOrder() {
   return useMutation({
     mutationFn: async (params: RecordOrderParams) => {
       const { asset, type, date, quantity, price, total, syncCash, cashAsset, recordContribution, notes, usdRate, appliedCostBasis } = params;
+
+      // Impede ordens de mercado (compra/venda/provento) diretas sobre o ativo de Caixa
+      if (isCashAssetClass(asset.asset_class) || asset.ticker.toUpperCase() === "CAIXA") {
+        throw new Error(
+          "Ordens diretas em ativos de Caixa não são permitidas. Para gerenciar liquidez, utilize o diálogo de ajuste de Caixa.",
+        );
+      }
+
       const rate = asset.currency === "USD" ? (usdRate ?? 5.25) : 1;
       const totalBRL = Math.round(total * rate * 100) / 100;
 
