@@ -75,10 +75,13 @@ export function DemoTourBar({
     if (onStartRealAccount) {
       onStartRealAccount();
     } else {
-      const destination = getTourHandoffDestination(activeTrack, location.pathname);
+      const destination = getTourHandoffDestination(
+        activeTrack,
+        `${location.pathname}${location.search ?? ""}`,
+      );
       navigate(destination);
     }
-  }, [activeTrack, location.pathname, navigate, onStartRealAccount]);
+  }, [activeTrack, location.pathname, location.search, navigate, onStartRealAccount]);
 
   const handleNext = useCallback(() => {
     if (!isLastStep) {

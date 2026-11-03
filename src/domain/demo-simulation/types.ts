@@ -119,6 +119,12 @@ export interface TourStep {
   targetRoute: string;
   /** Seletor CSS do elemento alvo a ser destacado pelo Spotlight (ex: '[data-tour="overview-kpis"]') */
   targetSelector?: string;
+  /** Seletor CSS alternativo para telas desktop (>= 768px), substituindo targetSelector */
+  targetSelectorDesktop?: string;
+  /** Título adaptativo opcional para exibição em telas desktop (>= 768px) */
+  titleDesktop?: string;
+  /** Conteúdo/descrição adaptativa opcional para exibição em telas desktop (>= 768px) */
+  contentDesktop?: string;
   /** Posicionamento preferencial do card popover em telas desktop */
   preferredPlacement?: TourStepPlacement;
   /** Padding interno do recorte do spotlight em pixels (default 8px) */

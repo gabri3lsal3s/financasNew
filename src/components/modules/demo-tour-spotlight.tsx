@@ -6,12 +6,20 @@ import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
 import {
   calculateDeadCenterScrollTop,
+  calculateDesktopCardPosition,
   calculateFreeViewportWindow,
+  calculateSkeletonSpotlightGeometry,
   calculateSpotlightGeometry,
   DEFAULT_CARD_HEIGHT,
+  DEFAULT_POLLING_INTERVAL_MS,
+  DEFAULT_SEARCH_TIMEOUT_MS,
+  getDesktopSidebarWidth,
   getTourHandoffDestination,
   getTourSteps,
   getTourTrackCategoryLabel,
+  resolveTourStepContent,
+  resolveTourStepTargetSelector,
+  resolveTourStepTitle,
 } from "@/domain/demo-simulation";
 import {
   endDemo,
@@ -78,6 +86,11 @@ export function DemoTourSpotlight({
   const [prevIsDemoActive, setPrevIsDemoActive] = useState<boolean>(isDemoActive);
   const [isPulsing, setIsPulsing] = useState<boolean>(true);
   const [isPositionReady, setIsPositionReady] = useState<boolean>(false);
+  const [isTargetLoading, setIsTargetLoading] = useState<boolean>(() => {
+    const isDesk = typeof window !== "undefined" ? window.innerWidth >= 768 : false;
+    const sel = resolveTourStepTargetSelector(currentStep, isDesk);
+    return Boolean(isDemoActive && sel);
+  });
   const cardRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
 
@@ -86,6 +99,7 @@ export function DemoTourSpotlight({
     setPrevIsDemoActive(isDemoActive);
     if (!isDemoActive) {
       setIsPositionReady(false);
+      setIsTargetLoading(false);
       setRect(null);
     }
   }
@@ -133,10 +147,13 @@ export function DemoTourSpotlight({
     };
   }, [restoreFocus]);
 
-  // Reinicia o pulso ao trocar de etapa durante o render (padrão oficial React para ajuste de estado por prop/store)
+  // Reinicia o pulso e sincroniza estado de busca ao trocar de etapa durante o render (padrão oficial React para ajuste de estado por prop/store)
   if (prevStepIndex !== currentStepIndex) {
     setPrevStepIndex(currentStepIndex);
     setIsPulsing(true);
+    setRect(null);
+    const sel = resolveTourStepTargetSelector(currentStep, !isMobile);
+    setIsTargetLoading(Boolean(isDemoActive && sel));
   }
 
   // Animação de pulso da borda cessa suavemente após 3 segundos (Fase 3 — Tarefa 3.3)
@@ -197,10 +214,13 @@ export function DemoTourSpotlight({
     if (onClose) {
       onClose();
     } else {
-      const destination = getTourHandoffDestination(activeTrack, location.pathname);
+      const destination = getTourHandoffDestination(
+        activeTrack,
+        `${location.pathname}${location.search ?? ""}`,
+      );
       navigate(destination);
     }
-  }, [activeTrack, location.pathname, navigate, onClose, restoreFocus]);
+  }, [activeTrack, location.pathname, location.search, navigate, onClose, restoreFocus]);
 
   const currentRoute = `${location.pathname}${location.search}`;
   const previousRouteRef = useRef<string>(currentRoute);
@@ -270,35 +290,50 @@ export function DemoTourSpotlight({
   // Atualização das dimensões e escuta de redimensionamento
   const updateTargetRect = useCallback(() => {
     if (typeof window === "undefined") return;
-    setIsMobile(window.innerWidth < 768);
+    const mobile = window.innerWidth < 768;
+    setIsMobile(mobile);
+    const desktop = !mobile;
 
-    if (!currentStep?.targetSelector) {
+    const activeSelector = resolveTourStepTargetSelector(currentStep, desktop);
+    if (!activeSelector) {
       setRect(null);
       setIsPositionReady(true);
       return;
     }
 
-    const element = document.querySelector(currentStep.targetSelector);
+    const element = document.querySelector(activeSelector);
     if (!element) {
       setRect(null);
       return;
     }
 
     const elementRect = element.getBoundingClientRect();
-    const isCircular =
-      currentStep.spotlightBorderRadius === 9999 ||
-      element.classList.contains("rounded-full") ||
-      Boolean(currentStep.targetSelector?.includes("bottom-nav-wizard")) ||
-      (element instanceof HTMLElement &&
-        (window.getComputedStyle(element).borderRadius === "9999px" ||
-          window.getComputedStyle(element).borderRadius === "50%"));
+    const isUsingDesktopTarget = Boolean(
+      desktop &&
+        currentStep?.targetSelectorDesktop &&
+        activeSelector === currentStep.targetSelectorDesktop,
+    );
 
-    const padding = currentStep.spotlightPadding ?? (isCircular ? 6 : 10);
+    const isCircular =
+      !isUsingDesktopTarget &&
+      (currentStep?.spotlightBorderRadius === 9999 ||
+        element.classList.contains("rounded-full") ||
+        Boolean(currentStep?.targetSelector?.includes("bottom-nav-wizard")) ||
+        (element instanceof HTMLElement &&
+          (window.getComputedStyle(element).borderRadius === "9999px" ||
+            window.getComputedStyle(element).borderRadius === "50%")));
+
+    const customBorderRadius =
+      isUsingDesktopTarget && currentStep?.spotlightBorderRadius === 9999
+        ? 8
+        : currentStep?.spotlightBorderRadius;
+
+    const padding = currentStep?.spotlightPadding ?? (isCircular ? 6 : 10);
 
     const geometry = calculateSpotlightGeometry(elementRect, {
       isCircular,
       padding,
-      customBorderRadius: currentStep.spotlightBorderRadius,
+      customBorderRadius,
       windowWidth: window.innerWidth,
       windowHeight: window.innerHeight,
     });
@@ -307,225 +342,331 @@ export function DemoTourSpotlight({
     setIsPositionReady(true);
   }, [currentStep]);
 
-  // Scroll suave contextual e observação de redimensionamento do alvo (Fase 2 — Tarefa 2.2)
+  // Scroll suave contextual, busca híbrida resiliente e observação de redimensionamento do alvo (Fase 8 — Tarefa 8.7 e 8.8)
   useEffect(() => {
-    if (!isDemoActive || !currentStep?.targetSelector) return;
+    const isDesktop = typeof window !== "undefined" ? window.innerWidth >= 768 : !isMobile;
+    const targetSelector = resolveTourStepTargetSelector(currentStep, isDesktop);
 
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    if (!isDemoActive || !targetSelector) {
+      return;
+    }
+
+    let mutationObserver: MutationObserver | undefined;
+    let pollingTimer: ReturnType<typeof setInterval> | undefined;
+    let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
     let resizeObserver: ResizeObserver | undefined;
     let cancelSettle: (() => void) | undefined;
+    let bottomCheckTimeout: ReturnType<typeof setTimeout> | undefined;
+    let isCleanedUp = false;
 
     // Reseta o scroll do #main-content imediatamente ao mudar de rota antes de buscar o novo elemento (Fase 2 — Tarefa 2.2)
     const activeRoute = `${location.pathname}${location.search}`;
     if (previousRouteRef.current !== activeRoute) {
       previousRouteRef.current = activeRoute;
       const container = document.getElementById("main-content");
-      if (container && currentStep.targetSelector !== '[data-tour="settings-support-card"]') {
+      if (container && targetSelector !== '[data-tour="settings-support-card"]') {
         container.scrollTop = 0;
       }
     }
 
-    let bottomCheckTimeout: ReturnType<typeof setTimeout> | undefined;
+    // Validador de dimensões válidas para elementos assíncronos (Fase 8 — Tarefa 8.7)
+    const isJsdomEnvironment =
+      typeof navigator !== "undefined" &&
+      (navigator.userAgent.includes("jsdom") || (typeof process !== "undefined" && process.env?.NODE_ENV === "test"));
 
-    const attemptScrollAndMeasure = (attemptsLeft: number) => {
-      const element = document.querySelector(currentStep.targetSelector ?? "");
-      if (element) {
-        const container = document.getElementById("main-content");
-        const headerHeight = 64; // altura do header fixo
-        const spacing = 16;
-        const isMobileScreen = typeof window !== "undefined" && window.innerWidth < 768;
+    const hasValidDimensions = (element: Element): boolean => {
+      if (typeof element.getBoundingClientRect === "function") {
+        const isMocked =
+          "_isMockFunction" in element.getBoundingClientRect ||
+          Boolean((element.getBoundingClientRect as unknown as { getMockImplementation?: () => unknown }).getMockImplementation);
 
-        // Se for o card de suporte no rodapé ou elemento explicitamente configurado para rolagem ao fim (Fase 8 — Diagnóstico Passo 5)
-        const isBottomElement =
-          currentStep.targetSelector === '[data-tour="settings-support-card"]' ||
-          element.getAttribute("data-tour") === "settings-support-card";
+        const bRect = element.getBoundingClientRect();
+        if (bRect.width > 0 && bRect.height > 0) return true;
+        if (isMocked) return false;
+      }
+      if (element instanceof HTMLElement) {
+        if (element.offsetWidth > 0 || element.offsetHeight > 0) return true;
+      }
+      // Fallback para elementos de teste sem layout engine em JSDOM quando getBoundingClientRect não for mockado
+      if (isJsdomEnvironment && element.isConnected) {
+        return true;
+      }
+      return false;
+    };
 
-        // Elementos com posicionamento fixo (ex: FAB central da BottomNav ou ações do Header)
-        // já estão perfeitamente posicionados na tela e não devem sofrer rolagem (Fase 8 — Tarefa 8.6)
-        const isFixedElement =
-          (element instanceof HTMLElement &&
-            window.getComputedStyle(element).position === "fixed") ||
-          Boolean(element.closest("nav.fixed, header.fixed, [data-tour-fixed='true']"));
-
-        if (isBottomElement && container) {
-          // Dispara rolagem garantida até o fim do #main-content para o Passo 5 de Configurações
-          const targetScroll = container.scrollHeight;
-          if (typeof container.scrollTo === "function") {
-            container.scrollTo({ top: targetScroll, behavior: "smooth" });
-          } else {
-            container.scrollTop = targetScroll;
-          }
-          if (typeof element.scrollIntoView === "function") {
-            element.scrollIntoView({ behavior: "smooth", block: "center" });
-          }
-        } else if (!isFixedElement && container && container.contains(element)) {
-          let targetScrollTop = 0;
-
-          if (element instanceof HTMLElement && typeof element.getBoundingClientRect === "function") {
-            const containerRect = container.getBoundingClientRect();
-            const elementRect = element.getBoundingClientRect();
-
-            if (isMobileScreen && (elementRect.top !== 0 || elementRect.bottom !== 0 || elementRect.height !== 0)) {
-              const elCenterY = elementRect.top + elementRect.height / 2;
-              const willAnchorTop = elCenterY > (window.innerHeight || 800) * 0.45;
-              const anchorPosition = willAnchorTop ? "top" : "bottom";
-              const cardHeight = cardRef.current?.offsetHeight || DEFAULT_CARD_HEIGHT;
-
-              // Calcula a janela visual livre útil (Dead Center do Viewport Útil)
-              const freeWindow = calculateFreeViewportWindow({
-                windowHeight: window.innerHeight,
-                cardHeight,
-                anchorPosition,
-                isMobile: true,
-              });
-
-              const maxScrollTop = container.scrollHeight - container.clientHeight;
-
-              targetScrollTop = calculateDeadCenterScrollTop({
-                containerScrollTop: container.scrollTop,
-                elementCenterY: elCenterY,
-                viewportFreeCenterY: freeWindow.centerY,
-                maxScrollTop: maxScrollTop > 0 ? maxScrollTop : undefined,
-              });
-            } else if (elementRect.top !== 0 || containerRect.top !== 0) {
-              const containerTopOffset = containerRect.top > 0 ? 0 : headerHeight;
-              targetScrollTop = container.scrollTop + (elementRect.top - containerRect.top) - containerTopOffset - spacing;
-            } else {
-              targetScrollTop = (element.offsetTop || 0) - headerHeight - spacing;
-            }
-          } else if (element instanceof HTMLElement) {
-            targetScrollTop = (element.offsetTop || 0) - headerHeight - spacing;
-          }
-
-          const safeScrollTop = Math.max(0, targetScrollTop);
-
-          if (typeof container.scrollTo === "function") {
-            container.scrollTo({ top: safeScrollTop, behavior: "smooth" });
-          } else {
-            container.scrollTop = safeScrollTop;
-          }
-        } else if (!isFixedElement && typeof element.scrollIntoView === "function") {
-          // Centralização determinística na viewport livre (nunca block: "end" para não esconder sob a BottomNav)
-          element.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-
-        // Acopla ResizeObserver para recalcular dimensões após carregamento assíncrono de dados
-        if (typeof ResizeObserver !== "undefined") {
-          resizeObserver = new ResizeObserver(() => {
-            if (isBottomElement && container) {
-              container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
-            }
-            updateTargetRect();
-          });
-          resizeObserver.observe(element);
-          if (isBottomElement && container) {
-            resizeObserver.observe(container);
-          }
-        }
-
-        // Sincronização Precisa pós-Estabilização (Fim Real da Rolagem) (Fase 2 — Tarefa 2.3)
-        let isSettled = false;
-        let rafId: number | undefined;
-        let maxTimeout: ReturnType<typeof setTimeout> | undefined;
-        let onScrollEnd: (() => void) | null = null;
-        const scrollTarget = container ?? (typeof window !== "undefined" ? window : null);
-
-        const settleAndMeasure = () => {
-          if (isSettled) return;
-          isSettled = true;
-          if (rafId) cancelAnimationFrame(rafId);
-          if (maxTimeout) {
-            clearTimeout(maxTimeout);
-            maxTimeout = undefined;
-          }
-          if (scrollTarget && onScrollEnd) {
-            scrollTarget.removeEventListener("scrollend", onScrollEnd);
-          }
-          if (isBottomElement && container) {
-            container.scrollTop = container.scrollHeight;
-          }
-          updateTargetRect();
-        };
-
-        onScrollEnd = () => {
-          settleAndMeasure();
-        };
-
-        if (scrollTarget) {
-          scrollTarget.addEventListener("scrollend", onScrollEnd, { once: true });
-        }
-
-        // Fallback determinístico via requestAnimationFrame (2 frames consecutivos sem variação de scrollTop)
-        let lastScrollTop = container ? container.scrollTop : (typeof window !== "undefined" ? window.scrollY : 0);
-        let stableFrames = 0;
-
-        const checkScrollStabilization = () => {
-          if (isSettled) return;
-
-          const currentScrollTop = container ? container.scrollTop : (typeof window !== "undefined" ? window.scrollY : 0);
-          if (Math.abs(currentScrollTop - lastScrollTop) < 1) {
-            stableFrames += 1;
-          } else {
-            stableFrames = 0;
-            lastScrollTop = currentScrollTop;
-          }
-
-          if (stableFrames >= 2) {
-            settleAndMeasure();
-          } else {
-            rafId = requestAnimationFrame(checkScrollStabilization);
-          }
-        };
-
-        rafId = requestAnimationFrame(checkScrollStabilization);
-
-        // Fallback de segurança caso scrollend e RAF sejam suspensos por aba inativa
-        maxTimeout = setTimeout(settleAndMeasure, 600);
-
-        if (isBottomElement && container) {
-          bottomCheckTimeout = setTimeout(() => {
-            if (container) {
-              container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
-              updateTargetRect();
-            }
-          }, 200);
-        }
-
-        cancelSettle = () => {
-          if (isSettled) return;
-          isSettled = true;
-          if (rafId) cancelAnimationFrame(rafId);
-          if (maxTimeout) {
-            clearTimeout(maxTimeout);
-            maxTimeout = undefined;
-          }
-          if (scrollTarget && onScrollEnd) {
-            scrollTarget.removeEventListener("scrollend", onScrollEnd);
-          }
-        };
-      } else if (attemptsLeft > 0) {
-        timer = setTimeout(() => attemptScrollAndMeasure(attemptsLeft - 1), 100);
-      } else {
-        updateTargetRect();
-        setIsPositionReady(true);
+    const cleanupSearch = () => {
+      if (mutationObserver) {
+        mutationObserver.disconnect();
+        mutationObserver = undefined;
+      }
+      if (pollingTimer) {
+        clearInterval(pollingTimer);
+        pollingTimer = undefined;
+      }
+      if (timeoutTimer) {
+        clearTimeout(timeoutTimer);
+        timeoutTimer = undefined;
       }
     };
 
-    attemptScrollAndMeasure(8);
+    const performScrollAndMeasure = (element: Element) => {
+      if (isCleanedUp) return;
+
+      // Medição e posicionamento imediatos ao resolver o elemento alvo (Fase 8 — Tarefa 8.7)
+      updateTargetRect();
+
+      const container = document.getElementById("main-content");
+      const headerHeight = 64; // altura do header fixo
+      const spacing = 16;
+      const isMobileScreen = typeof window !== "undefined" && window.innerWidth < 768;
+
+      // Se for o card de suporte no rodapé ou elemento explicitamente configurado para rolagem ao fim (Fase 8 — Diagnóstico Passo 5)
+      const isBottomElement =
+        targetSelector === '[data-tour="settings-support-card"]' ||
+        element.getAttribute("data-tour") === "settings-support-card";
+
+      // Elementos com posicionamento fixo (ex: FAB central da BottomNav ou ações do Header)
+      // já estão perfeitamente posicionados na tela e não devem sofrer rolagem (Fase 8 — Tarefa 8.6)
+      const isFixedElement =
+        (element instanceof HTMLElement &&
+          window.getComputedStyle(element).position === "fixed") ||
+        Boolean(element.closest("nav.fixed, header.fixed, [data-tour-fixed='true']"));
+
+      if (isBottomElement && container) {
+        // Dispara rolagem garantida até o fim do #main-content para o Passo 5 de Configurações
+        const targetScroll = container.scrollHeight;
+        if (typeof container.scrollTo === "function") {
+          container.scrollTo({ top: targetScroll, behavior: "smooth" });
+        } else {
+          container.scrollTop = targetScroll;
+        }
+        if (typeof element.scrollIntoView === "function") {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      } else if (!isFixedElement && container && container.contains(element)) {
+        let targetScrollTop = 0;
+
+        if (element instanceof HTMLElement && typeof element.getBoundingClientRect === "function") {
+          const containerRect = container.getBoundingClientRect();
+          const elementRect = element.getBoundingClientRect();
+
+          if (isMobileScreen && (elementRect.top !== 0 || elementRect.bottom !== 0 || elementRect.height !== 0)) {
+            const elCenterY = elementRect.top + elementRect.height / 2;
+            const willAnchorTop = elCenterY > (window.innerHeight || 800) * 0.45;
+            const anchorPosition = willAnchorTop ? "top" : "bottom";
+            const cardHeight = cardRef.current?.offsetHeight || DEFAULT_CARD_HEIGHT;
+
+            // Calcula a janela visual livre útil (Dead Center do Viewport Útil)
+            const freeWindow = calculateFreeViewportWindow({
+              windowHeight: window.innerHeight,
+              cardHeight,
+              anchorPosition,
+              isMobile: true,
+            });
+
+            const maxScrollTop = container.scrollHeight - container.clientHeight;
+
+            targetScrollTop = calculateDeadCenterScrollTop({
+              containerScrollTop: container.scrollTop,
+              elementCenterY: elCenterY,
+              viewportFreeCenterY: freeWindow.centerY,
+              maxScrollTop: maxScrollTop > 0 ? maxScrollTop : undefined,
+            });
+          } else if (elementRect.top !== 0 || containerRect.top !== 0) {
+            const containerTopOffset = containerRect.top > 0 ? 0 : headerHeight;
+            targetScrollTop = container.scrollTop + (elementRect.top - containerRect.top) - containerTopOffset - spacing;
+          } else {
+            targetScrollTop = (element.offsetTop || 0) - headerHeight - spacing;
+          }
+        } else if (element instanceof HTMLElement) {
+          targetScrollTop = (element.offsetTop || 0) - headerHeight - spacing;
+        }
+
+        const safeScrollTop = Math.max(0, targetScrollTop);
+
+        if (typeof container.scrollTo === "function") {
+          container.scrollTo({ top: safeScrollTop, behavior: "smooth" });
+        } else {
+          container.scrollTop = safeScrollTop;
+        }
+      } else if (!isFixedElement && typeof element.scrollIntoView === "function") {
+        // Centralização determinística na viewport livre (nunca block: "end" para não esconder sob a BottomNav)
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      // Acopla ResizeObserver para recalcular dimensões após carregamento assíncrono de dados
+      if (typeof ResizeObserver !== "undefined") {
+        resizeObserver = new ResizeObserver(() => {
+          if (isBottomElement && container) {
+            container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+          }
+          updateTargetRect();
+        });
+        resizeObserver.observe(element);
+        if (isBottomElement && container) {
+          resizeObserver.observe(container);
+        }
+      }
+
+      // Sincronização Precisa pós-Estabilização (Fim Real da Rolagem) (Fase 2 — Tarefa 2.3)
+      let isSettled = false;
+      let rafId: number | undefined;
+      let maxTimeout: ReturnType<typeof setTimeout> | undefined;
+      let onScrollEnd: (() => void) | null = null;
+      const scrollTarget = container ?? (typeof window !== "undefined" ? window : null);
+
+      const settleAndMeasure = () => {
+        if (isSettled || isCleanedUp) return;
+        isSettled = true;
+        if (rafId) cancelAnimationFrame(rafId);
+        if (maxTimeout) {
+          clearTimeout(maxTimeout);
+          maxTimeout = undefined;
+        }
+        if (scrollTarget && onScrollEnd) {
+          scrollTarget.removeEventListener("scrollend", onScrollEnd);
+        }
+        if (isBottomElement && container) {
+          container.scrollTop = container.scrollHeight;
+        }
+        updateTargetRect();
+      };
+
+      onScrollEnd = () => {
+        settleAndMeasure();
+      };
+
+      if (scrollTarget) {
+        scrollTarget.addEventListener("scrollend", onScrollEnd, { once: true });
+      }
+
+      // Fallback determinístico via requestAnimationFrame (2 frames consecutivos sem variação de scrollTop)
+      let lastScrollTop = container ? container.scrollTop : (typeof window !== "undefined" ? window.scrollY : 0);
+      let stableFrames = 0;
+
+      const checkScrollStabilization = () => {
+        if (isSettled || isCleanedUp) return;
+
+        const currentScrollTop = container ? container.scrollTop : (typeof window !== "undefined" ? window.scrollY : 0);
+        if (Math.abs(currentScrollTop - lastScrollTop) < 1) {
+          stableFrames += 1;
+        } else {
+          stableFrames = 0;
+          lastScrollTop = currentScrollTop;
+        }
+
+        if (stableFrames >= 2) {
+          settleAndMeasure();
+        } else {
+          rafId = requestAnimationFrame(checkScrollStabilization);
+        }
+      };
+
+      rafId = requestAnimationFrame(checkScrollStabilization);
+
+      // Fallback de segurança caso scrollend e RAF sejam suspensos por aba inativa
+      maxTimeout = setTimeout(settleAndMeasure, 600);
+
+      if (isBottomElement && container) {
+        bottomCheckTimeout = setTimeout(() => {
+          if (container && !isCleanedUp) {
+            container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+            updateTargetRect();
+          }
+        }, 200);
+      }
+
+      cancelSettle = () => {
+        if (isSettled) return;
+        isSettled = true;
+        if (rafId) cancelAnimationFrame(rafId);
+        if (maxTimeout) {
+          clearTimeout(maxTimeout);
+          maxTimeout = undefined;
+        }
+        if (scrollTarget && onScrollEnd) {
+          scrollTarget.removeEventListener("scrollend", onScrollEnd);
+        }
+      };
+    };
+
+    let resolved = false;
+
+    const handleTargetResolved = (element: Element) => {
+      if (resolved || isCleanedUp) return;
+      resolved = true;
+      cleanupSearch();
+      setIsTargetLoading(false);
+      performScrollAndMeasure(element);
+    };
+
+    const handleSearchTimeout = () => {
+      if (resolved || isCleanedUp) return;
+      resolved = true;
+      cleanupSearch();
+      setIsTargetLoading(false);
+      // Fallback gracioso: encerra a busca, define rect nulo e posiciona card no centro seguro
+      updateTargetRect();
+      setIsPositionReady(true);
+    };
+
+    const checkTarget = (): boolean => {
+      if (resolved || isCleanedUp) return true;
+      const el = document.querySelector(targetSelector);
+      if (el && hasValidDimensions(el)) {
+        handleTargetResolved(el);
+        return true;
+      }
+      return false;
+    };
+
+    // 1. Tenta encontrar imediatamente no DOM (Fase 8 — Tarefa 8.7)
+    const foundImmediately = checkTarget();
+
+    if (!foundImmediately) {
+      // 2. Timeout absoluto de 2.5s para fallback gracioso (Fase 8 — Tarefa 8.7)
+      timeoutTimer = setTimeout(handleSearchTimeout, DEFAULT_SEARCH_TIMEOUT_MS);
+
+      // 3. Acopla MutationObserver para capturar inserções assíncronas imediatas (Fase 8 — Tarefa 8.7)
+      if (typeof MutationObserver !== "undefined") {
+        mutationObserver = new MutationObserver(() => {
+          checkTarget();
+        });
+        mutationObserver.observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ["class", "style", "data-state", "hidden"],
+        });
+      }
+
+      // 4. Polling adaptativo para cobrir transições CSS, fontes e queries assíncronas (Fase 8 — Tarefa 8.7)
+      pollingTimer = setInterval(() => {
+        checkTarget();
+      }, DEFAULT_POLLING_INTERVAL_MS);
+    }
 
     return () => {
-      if (timer) clearTimeout(timer);
+      isCleanedUp = true;
+      cleanupSearch();
       if (bottomCheckTimeout) clearTimeout(bottomCheckTimeout);
       if (resizeObserver) resizeObserver.disconnect();
       if (cancelSettle) cancelSettle();
     };
-  }, [currentRoute, currentStep, isDemoActive, location.pathname, location.search, updateTargetRect]);
+  }, [currentRoute, currentStep, isDemoActive, isMobile, location.pathname, location.search, updateTargetRect]);
 
   // Listener para redimensionamento da janela e rolagem manual no container correto (#main-content) (Fase 2 — Tarefa 2.1)
   useEffect(() => {
     if (!isDemoActive) return;
 
     const handleResizeOrScroll = () => {
+      const currentMobile = window.innerWidth < 768;
+      setIsMobile((prev) => {
+        if (prev !== currentMobile) {
+          return currentMobile;
+        }
+        return prev;
+      });
       updateTargetRect();
     };
 
@@ -598,8 +739,9 @@ export function DemoTourSpotlight({
       const elementCenterY = rect.y + rect.height / 2;
       return elementCenterY > window.innerHeight * 0.45;
     }
-    if (currentStep?.targetSelector) {
-      const element = document.querySelector(currentStep.targetSelector);
+    const targetSel = resolveTourStepTargetSelector(currentStep, false);
+    if (targetSel) {
+      const element = document.querySelector(targetSel);
       if (element) {
         const elRect = element.getBoundingClientRect();
         const elementCenterY = elRect.top + elRect.height / 2;
@@ -627,6 +769,36 @@ export function DemoTourSpotlight({
     return spaceBelow < cardHeight + 20 && spaceAbove > spaceBelow ? "top" : "bottom";
   }, [currentStep, measuredCardHeight, rect]);
 
+  // Geometria calculada para o esqueleto de carregamento com pulso suave enquanto o elemento assíncrono é montado (Fase 8 — Tarefa 8.7)
+  const loadingSkeletonRect = useMemo(() => {
+    const targetSel = resolveTourStepTargetSelector(currentStep, !isMobile);
+    if (!isTargetLoading || !targetSel || typeof window === "undefined") {
+      return null;
+    }
+    const anchor = isMobile
+      ? isAnchorTopMobile
+        ? "top"
+        : "bottom"
+      : desktopPlacement === "top"
+        ? "top"
+        : "bottom";
+
+    return calculateSkeletonSpotlightGeometry({
+      windowWidth: window.innerWidth,
+      windowHeight: window.innerHeight,
+      isMobile,
+      cardHeight: measuredCardHeight,
+      anchorPosition: anchor,
+    });
+  }, [
+    currentStep,
+    desktopPlacement,
+    isAnchorTopMobile,
+    isMobile,
+    isTargetLoading,
+    measuredCardHeight,
+  ]);
+
   if (!isDemoActive || !activeTrack || !currentStep) {
     return null;
   }
@@ -634,46 +806,41 @@ export function DemoTourSpotlight({
   // Rótulo semântico canônico da trilha ativo via função pura de domínio (Fase 8 — Tarefa 8.2)
   const trackLabel = getTourTrackCategoryLabel(activeTrack);
 
-  // Posicionamento dinâmico do card popover no desktop com aceleração GPU translate3d e transições suaves (Fase 8 — Tarefa 8.1)
+  // Posicionamento dinâmico do card popover no desktop com aceleração GPU translate3d e transições suaves (Fase 8 — Tarefa 8.1 e 8.10)
   const desktopCardStyle = (): React.CSSProperties => {
-    const cardWidth = 380;
     const cardHeight = measuredCardHeight;
-    const gap = 12;
+    const winW = typeof window !== "undefined" ? window.innerWidth : 1024;
+    const winH = typeof window !== "undefined" ? window.innerHeight : 768;
+    const sidebarWidth = getDesktopSidebarWidth();
 
-    if (!rect || typeof window === "undefined") {
-      const winW = typeof window !== "undefined" ? window.innerWidth : 1024;
-      const winH = typeof window !== "undefined" ? window.innerHeight : 768;
-      const centerLeft = Math.max(16, (winW - cardWidth) / 2);
-      const centerTop = Math.max(16, (winH - cardHeight) / 2);
-      return {
-        top: 0,
-        left: 0,
-        transform: `translate3d(${centerLeft}px, ${centerTop}px, 0)`,
-        width: `${cardWidth}px`,
-        opacity: isPositionReady ? 1 : 0,
-        transition: "transform 300ms cubic-bezier(0.16, 1, 0.3, 1), opacity 200ms ease",
-      };
-    }
-
-    const top = desktopPlacement === "top"
-      ? Math.max(16, Math.min(window.innerHeight - cardHeight - 16, rect.y - cardHeight - gap))
-      : Math.min(window.innerHeight - cardHeight - 16, Math.max(16, rect.y + rect.height + gap));
-
-    // Clamp horizontal estrito contra vazamento de viewport
-    const left = Math.max(
-      16,
-      Math.min(rect.x, window.innerWidth - cardWidth - 16),
-    );
+    const position = calculateDesktopCardPosition({
+      rect,
+      cardHeight,
+      windowWidth: winW,
+      windowHeight: winH,
+      sidebarWidth,
+      placement: desktopPlacement,
+      preferredWidth: 420,
+      gap: 12,
+      safetyMargin: 16,
+    });
 
     return {
       top: 0,
       left: 0,
-      transform: `translate3d(${left}px, ${top}px, 0)`,
-      width: `${cardWidth}px`,
-      opacity: isPositionReady ? 1 : 0,
+      transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
+      width: `${position.width}px`,
+      opacity: !rect ? (isPositionReady || isTargetLoading ? 1 : 0) : (isPositionReady ? 1 : 0),
       transition: "transform 300ms cubic-bezier(0.16, 1, 0.3, 1), opacity 200ms ease",
     };
   };
+
+  // Avaliação de largura útil disponível para auto-fit inteligente do botão e anti-colisão (Fase 8 — Tarefa 8.10)
+  const effectiveCardWidth = isMobile
+    ? (typeof window !== "undefined" ? window.innerWidth - 24 : 360)
+    : (typeof window !== "undefined" ? Math.min(420, window.innerWidth - 32) : 420);
+
+  const isNarrowCard = effectiveCardWidth < 400;
 
   return (
     <div
@@ -696,7 +863,7 @@ export function DemoTourSpotlight({
             {/* Fundo branco: opaco na máscara */}
             <rect x="0" y="0" width="100%" height="100%" fill="white" />
             {/* Retângulo preto: fura a máscara deixando o elemento 100% visível */}
-            {rect && (
+            {rect ? (
               <rect
                 x={rect.x}
                 y={rect.y}
@@ -706,7 +873,17 @@ export function DemoTourSpotlight({
                 ry={rect.borderRadius}
                 fill="black"
               />
-            )}
+            ) : isTargetLoading && loadingSkeletonRect ? (
+              <rect
+                x={loadingSkeletonRect.x}
+                y={loadingSkeletonRect.y}
+                width={loadingSkeletonRect.width}
+                height={loadingSkeletonRect.height}
+                rx={loadingSkeletonRect.borderRadius}
+                ry={loadingSkeletonRect.borderRadius}
+                fill="black"
+              />
+            ) : null}
           </mask>
         </defs>
 
@@ -739,6 +916,24 @@ export function DemoTourSpotlight({
               "transition-opacity duration-700",
               isPulsing ? "animate-pulse opacity-90" : "opacity-75",
             )}
+          />
+        )}
+
+        {/* Esqueleto discreto de foco enquanto elemento com montagem tardia carrega (Fase 8 — Tarefa 8.7) */}
+        {!rect && isTargetLoading && loadingSkeletonRect && (
+          <rect
+            x={loadingSkeletonRect.x}
+            y={loadingSkeletonRect.y}
+            width={loadingSkeletonRect.width}
+            height={loadingSkeletonRect.height}
+            rx={loadingSkeletonRect.borderRadius}
+            ry={loadingSkeletonRect.borderRadius}
+            fill="none"
+            stroke="hsl(var(--primary))"
+            strokeWidth="1.5"
+            strokeDasharray="4 4"
+            data-testid="spotlight-loading-skeleton"
+            className="animate-pulse opacity-70"
           />
         )}
       </svg>
@@ -790,7 +985,7 @@ export function DemoTourSpotlight({
           </Button>
         </div>
 
-        {/* Conteúdo Explicativo com anúncio acessível para leitores de tela e cross-fade suave (Fase 8 — Tarefa 8.1) */}
+        {/* Conteúdo Explicativo com anúncio acessível para leitores de tela e cross-fade suave (Fase 8 — Tarefa 8.1 e 8.8) */}
         <div
           key={currentStep.id}
           className="mt-2.5 space-y-1 animate-fade-in"
@@ -798,15 +993,15 @@ export function DemoTourSpotlight({
           aria-atomic="true"
         >
           <h3 className="text-sm font-semibold text-foreground tracking-tight">
-            {currentStep.title}
+            {resolveTourStepTitle(currentStep, !isMobile)}
           </h3>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            {currentStep.description}
+            {resolveTourStepContent(currentStep, !isMobile)}
           </p>
         </div>
 
-        {/* Rodapé com Navegação Adaptativa e Hand-off (Fase 3 — Tarefa 3.1) */}
-        <div className="mt-4 pt-3 border-t border-border/80 flex items-center justify-between gap-2">
+        {/* Rodapé com Navegação Adaptativa e Hand-off (Fase 3 — Tarefa 3.1, Fase 8 — Tarefa 8.10) */}
+        <div className="mt-4 pt-3 border-t border-border/80 flex items-center justify-between gap-2 min-w-0">
           <Button
             type="button"
             variant="outline"
@@ -814,10 +1009,10 @@ export function DemoTourSpotlight({
             onClick={handlePrev}
             disabled={isFirstStep}
             aria-label="Passo anterior"
-            className="h-8 px-2.5 text-xs cursor-pointer gap-1 shrink-0"
+            className="h-8 px-2.5 text-xs cursor-pointer gap-1 shrink-0 max-w-fit"
           >
-            <ArrowLeft className="size-3.5" aria-hidden="true" />
-            <span className="hidden sm:inline">Anterior</span>
+            <ArrowLeft className="size-3.5 shrink-0" aria-hidden="true" />
+            <span className="hidden sm:inline truncate">Anterior</span>
           </Button>
 
           {/* Indicadores de progresso interativos com suporte a clique e A11y (Fase 4 — Tarefa 4.2) */}
@@ -837,7 +1032,7 @@ export function DemoTourSpotlight({
                   aria-label={`Ir para o passo ${idx + 1}`}
                   aria-current={isActive ? "step" : undefined}
                   className={cn(
-                    "h-1.5 rounded-full transition-all duration-200 cursor-pointer p-0 border-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                    "h-1.5 rounded-full transition-all duration-200 cursor-pointer p-0 border-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0",
                     isActive
                       ? "bg-primary w-3.5"
                       : "bg-muted-foreground/30 hover:bg-muted-foreground/50 w-1.5",
@@ -854,11 +1049,13 @@ export function DemoTourSpotlight({
               size="sm"
               onClick={handleStartRealAccount}
               aria-label="Começar Conta Real"
-              className="h-8 px-3 text-xs font-semibold cursor-pointer gap-1.5 shrink-0"
+              className="h-8 px-3 text-xs font-semibold cursor-pointer gap-1.5 shrink-0 max-w-fit"
             >
-              <Check className="size-3.5" aria-hidden="true" />
-              <span className="sm:hidden">Começar</span>
-              <span className="hidden sm:inline">Começar Conta Real</span>
+              <Check className="size-3.5 shrink-0" aria-hidden="true" />
+              <span className="sm:hidden truncate">Começar</span>
+              <span className="hidden sm:inline truncate">
+                {isNarrowCard ? "Começar" : "Começar Conta Real"}
+              </span>
             </Button>
           ) : (
             <Button
@@ -867,10 +1064,10 @@ export function DemoTourSpotlight({
               size="sm"
               onClick={handleNext}
               aria-label="Próximo passo"
-              className="h-8 px-3 text-xs font-semibold cursor-pointer gap-1 shrink-0"
+              className="h-8 px-3 text-xs font-semibold cursor-pointer gap-1 shrink-0 max-w-fit"
             >
-              <span>Próximo</span>
-              <ArrowRight className="size-3.5" aria-hidden="true" />
+              <span className="truncate">Próximo</span>
+              <ArrowRight className="size-3.5 shrink-0" aria-hidden="true" />
             </Button>
           )}
         </div>

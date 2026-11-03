@@ -145,6 +145,29 @@ export function SettingsPage() {
   const tabParam = searchParams.get("tab");
   const subTabParam = searchParams.get("subtab") || searchParams.get("subTab") || searchParams.get("aba");
 
+  // Abertura automática do modal de suporte via deep-link ou hand-off de conclusão do tour (?tab=suporte)
+  const isDirectSupportTab = tabParam === "suporte" || tabParam === "support" || searchParams.get("modal") === "suporte";
+  const isSupportDialogOpen = supportChatOpen || Boolean(isDirectSupportTab);
+
+  const handleSupportOpenChange = (open: boolean) => {
+    setSupportChatOpen(open);
+    if (!open && isDirectSupportTab) {
+      setSearchParams(
+        (prev) => {
+          const updated = new URLSearchParams(prev);
+          if (updated.get("tab") === "suporte" || updated.get("tab") === "support") {
+            updated.delete("tab");
+          }
+          if (updated.get("modal") === "suporte") {
+            updated.delete("modal");
+          }
+          return updated;
+        },
+        { replace: true },
+      );
+    }
+  };
+
   const activeTab = useMemo(() => {
     if (subTabParam) {
       return resolveSettingsTab(subTabParam);
@@ -310,10 +333,10 @@ export function SettingsPage() {
           }}
         />
       )}
-      {supportChatOpen && (
+      {isSupportDialogOpen && (
         <SupportChatDialog
-          open={supportChatOpen}
-          onOpenChange={setSupportChatOpen}
+          open={isSupportDialogOpen}
+          onOpenChange={handleSupportOpenChange}
         />
       )}
     </div>

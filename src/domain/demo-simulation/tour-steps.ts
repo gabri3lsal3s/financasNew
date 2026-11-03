@@ -22,10 +22,14 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       track: "finances",
       order: 2,
       title: "O Botão Wizard (+) e Atalhos",
+      titleDesktop: "Comandos Rápidos & Atalho (Ctrl+K)",
       description:
         "O botão de destaque central na barra inferior (ou atalhos no topo) permite registrar despesas, receitas ou transferências com agilidade.",
+      contentDesktop:
+        "No desktop, acione a barra de comandos ou utilize o atalho Ctrl+K para registrar despesas, receitas ou navegar rapidamente por qualquer recurso.",
       targetRoute: "/",
       targetSelector: '[data-tour="bottom-nav-wizard"]',
+      targetSelectorDesktop: '[data-tour="desktop-new-transaction"]',
       preferredPlacement: "top",
       spotlightPadding: 10,
       spotlightBorderRadius: 9999,
@@ -245,10 +249,14 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       track: "finances_wizard",
       order: 1,
       title: "Acesso Rápido com o Botão Central (+)",
+      titleDesktop: "Comandos Rápidos & Atalho (Ctrl+K)",
       description:
         "O botão de destaque central na barra inferior permite registrar despesas, receitas ou transferências com apenas um toque.",
+      contentDesktop:
+        "No desktop, utilize a barra de busca e comandos ou pressione Ctrl+K para lançar novas transações e despesas instantaneamente.",
       targetRoute: "/",
       targetSelector: '[data-tour="bottom-nav-wizard"]',
+      targetSelectorDesktop: '[data-tour="desktop-new-transaction"]',
       preferredPlacement: "top",
       spotlightPadding: 10,
       spotlightBorderRadius: 9999,

@@ -142,6 +142,7 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
         type="button"
         variant="ghost"
         size="icon"
+        data-tour="desktop-new-transaction"
         aria-label="Buscar ou executar comando (Ctrl+K)"
         title="Buscar ou executar comando (Ctrl+K)"
         onClick={() => setOpen(true)}
