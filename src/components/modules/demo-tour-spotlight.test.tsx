@@ -784,8 +784,8 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
       const aside = container.querySelector("aside");
       expect(aside).not.toBeNull();
-      // Clamp: Math.min(1100, 1280 - 380 - 16) = Math.min(1100, 884) = 884px
-      expect(aside?.style.left).toBe("884px");
+      // Clamp: Math.min(1100, 1280 - 380 - 16) = Math.min(1100, 884) = 884px posicionado via GPU translate3d
+      expect(aside?.style.transform).toContain("translate3d(884px");
     });
 
     it("aplica clamp horizontal estrito impedindo que o card ultrapasse a borda esquerda", () => {
@@ -816,8 +816,8 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
       const aside = container.querySelector("aside");
       expect(aside).not.toBeNull();
-      // Clamp: Math.max(16, ...) = 16px
-      expect(aside?.style.left).toBe("16px");
+      // Clamp: Math.max(16, ...) = 16px posicionado via GPU translate3d
+      expect(aside?.style.transform).toContain("translate3d(16px");
     });
   });
 
@@ -1686,6 +1686,97 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
           expect(document.activeElement).toBe(triggerBtn);
         });
       });
+    });
+  });
+
+  describe("Eliminação de Flicks e Otimização da Movimentação do Card Popover (Fase 8 — Tarefa 8.1)", () => {
+    let originalInnerWidth: number;
+    let originalInnerHeight: number;
+
+    beforeEach(() => {
+      originalInnerWidth = window.innerWidth;
+      originalInnerHeight = window.innerHeight;
+      window.innerWidth = 1280;
+      window.innerHeight = 900;
+    });
+
+    afterEach(() => {
+      window.innerWidth = originalInnerWidth;
+      window.innerHeight = originalInnerHeight;
+      document.body.innerHTML = "";
+    });
+
+    it("preserva o nó DOM do card aside sem unmount/mount destrutivo ao trocar de passo", async () => {
+      const user = userEvent.setup();
+      startDemo("finances");
+
+      render(<DemoTourSpotlight />);
+
+      const aside1 = document.querySelector("aside");
+      expect(aside1).not.toBeNull();
+      expect(aside1?.getAttribute("data-tour-step")).toBe("finances-overview");
+
+      // Avança para o próximo passo
+      const nextBtn = screen.getByRole("button", { name: /Próximo passo/i });
+      await user.click(nextBtn);
+
+      const aside2 = document.querySelector("aside");
+      expect(aside2).not.toBeNull();
+      // O mesmo elemento no DOM foi preservado sem recriação (zero flick)
+      expect(aside1).toBe(aside2);
+      expect(aside2?.getAttribute("data-tour-step")).toBe("finances-transactions");
+    });
+
+    it("utiliza aceleração por hardware GPU translate3d e transição posicional suave no desktop", () => {
+      startDemo("finances");
+
+      const targetEl = document.createElement("div");
+      targetEl.setAttribute("data-tour", "overview-kpis");
+      document.body.appendChild(targetEl);
+
+      vi.spyOn(targetEl, "getBoundingClientRect").mockReturnValue({
+        x: 200,
+        y: 100,
+        left: 200,
+        top: 100,
+        right: 600,
+        bottom: 250,
+        width: 400,
+        height: 150,
+        toJSON: () => ({}),
+      });
+
+      const { container } = render(<DemoTourSpotlight />);
+
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      const aside = container.querySelector("aside");
+      expect(aside).not.toBeNull();
+      // Transição suave exclusiva de transform e opacity
+      expect(aside?.style.transition).toBe(
+        "transform 300ms cubic-bezier(0.16, 1, 0.3, 1), opacity 200ms ease",
+      );
+      // Movimentação posicional via translate3d
+      expect(aside?.style.transform).toContain("translate3d(");
+      expect(aside?.style.top).toBe("0px");
+      expect(aside?.style.left).toBe("0px");
+      expect(aside?.style.opacity).toBe("1");
+    });
+
+    it("aplica classe animate-fade-in no bloco textual interno garantindo cross-fade suave", () => {
+      startDemo("finances");
+
+      const { container } = render(<DemoTourSpotlight />);
+
+      const textContainer = container.querySelector('div[aria-live="polite"]');
+      expect(textContainer).not.toBeNull();
+      expect(textContainer?.className).toContain("animate-fade-in");
+
+      const stepBadgeText = container.querySelector("span.animate-fade-in");
+      expect(stepBadgeText).not.toBeNull();
+      expect(stepBadgeText?.textContent).toContain("Passo 1 de 4");
     });
   });
 });

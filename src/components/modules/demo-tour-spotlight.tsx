@@ -67,9 +67,20 @@ export function DemoTourSpotlight({
   );
   const [measuredCardHeight, setMeasuredCardHeight] = useState<number>(220);
   const [prevStepIndex, setPrevStepIndex] = useState<number>(currentStepIndex);
+  const [prevIsDemoActive, setPrevIsDemoActive] = useState<boolean>(isDemoActive);
   const [isPulsing, setIsPulsing] = useState<boolean>(true);
+  const [isPositionReady, setIsPositionReady] = useState<boolean>(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
+
+  // Ajusta estados sincronizados durante a fase de render (padrão oficial React para ajuste de estado por prop/store)
+  if (prevIsDemoActive !== isDemoActive) {
+    setPrevIsDemoActive(isDemoActive);
+    if (!isDemoActive) {
+      setIsPositionReady(false);
+      setRect(null);
+    }
+  }
 
   // Captura e armazena o elemento com foco antes de abrir o tour (Fase 4 — Tarefa 4.1)
   useEffect(() => {
@@ -246,6 +257,7 @@ export function DemoTourSpotlight({
 
     if (!currentStep?.targetSelector) {
       setRect(null);
+      setIsPositionReady(true);
       return;
     }
 
@@ -265,6 +277,7 @@ export function DemoTourSpotlight({
       height: Math.min(window.innerHeight, elementRect.height + padding * 2),
       borderRadius: 16,
     });
+    setIsPositionReady(true);
   }, [currentStep]);
 
   // Scroll suave contextual e observação de redimensionamento do alvo (Fase 2 — Tarefa 2.2)
@@ -422,6 +435,7 @@ export function DemoTourSpotlight({
         timer = setTimeout(() => attemptScrollAndMeasure(attemptsLeft - 1), 100);
       } else {
         updateTargetRect();
+        setIsPositionReady(true);
       }
     };
 
@@ -545,19 +559,26 @@ export function DemoTourSpotlight({
   const trackLabel =
     activeTrack === "finances" ? "Finanças Diárias" : "Investimentos";
 
-  // Posicionamento dinâmico do card popover no desktop com altura real e clamp estrito (Fase 2 — Tarefa 2.5)
+  // Posicionamento dinâmico do card popover no desktop com aceleração GPU translate3d e transições suaves (Fase 8 — Tarefa 8.1)
   const desktopCardStyle = (): React.CSSProperties => {
+    const cardWidth = 380;
+    const cardHeight = measuredCardHeight;
+    const gap = 12;
+
     if (!rect || typeof window === "undefined") {
+      const winW = typeof window !== "undefined" ? window.innerWidth : 1024;
+      const winH = typeof window !== "undefined" ? window.innerHeight : 768;
+      const centerLeft = Math.max(16, (winW - cardWidth) / 2);
+      const centerTop = Math.max(16, (winH - cardHeight) / 2);
       return {
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
+        top: 0,
+        left: 0,
+        transform: `translate3d(${centerLeft}px, ${centerTop}px, 0)`,
+        width: `${cardWidth}px`,
+        opacity: isPositionReady ? 1 : 0,
+        transition: "transform 300ms cubic-bezier(0.16, 1, 0.3, 1), opacity 200ms ease",
       };
     }
-
-    const cardHeight = measuredCardHeight;
-    const cardWidth = 380;
-    const gap = 12;
 
     const top = desktopPlacement === "top"
       ? Math.max(16, rect.y - cardHeight - gap)
@@ -570,9 +591,12 @@ export function DemoTourSpotlight({
     );
 
     return {
-      top: `${top}px`,
-      left: `${left}px`,
+      top: 0,
+      left: 0,
+      transform: `translate3d(${left}px, ${top}px, 0)`,
       width: `${cardWidth}px`,
+      opacity: isPositionReady ? 1 : 0,
+      transition: "transform 300ms cubic-bezier(0.16, 1, 0.3, 1), opacity 200ms ease",
     };
   };
 
@@ -643,18 +667,17 @@ export function DemoTourSpotlight({
         )}
       </svg>
 
-      {/* Card Popover Adaptativo com transições fluidas entre passos (Fase 3 — Tarefa 3.4) */}
+      {/* Card Popover Adaptativo com transições fluidas entre passos (Fase 8 — Tarefa 8.1) */}
       <aside
-        key={currentStep.id}
         ref={cardRef}
         data-tour-step={currentStep.id}
         data-placement={isMobile ? (isAnchorTopMobile ? "top" : "bottom") : desktopPlacement}
         style={!isMobile ? desktopCardStyle() : undefined}
         className={cn(
-          "pointer-events-auto border border-border/80 bg-surface shadow-lg transition-all duration-200 animate-fade-in",
+          "pointer-events-auto border border-border/80 bg-surface shadow-lg animate-fade-in",
           isMobile
             ? cn(
-                "fixed inset-x-3 rounded-2xl p-4 max-h-[42vh] overflow-y-auto",
+                "fixed inset-x-3 rounded-2xl p-4 max-h-[42vh] overflow-y-auto transition-all duration-300 ease-out",
                 isAnchorTopMobile
                   ? "top-[max(env(safe-area-inset-top,0px),16px)]"
                   : "bottom-[max(env(safe-area-inset-bottom,0px),16px)]",
@@ -668,7 +691,7 @@ export function DemoTourSpotlight({
           <div className="flex items-center gap-1.5 flex-wrap">
             <Badge variant="muted" size="xs" className="gap-1 font-semibold text-muted-foreground">
               <Sparkles className="size-3 text-muted-foreground" aria-hidden="true" />
-              <span>
+              <span key={currentStepNumber} className="animate-fade-in">
                 Passo {currentStepNumber} de {totalSteps}
               </span>
             </Badge>
@@ -690,8 +713,13 @@ export function DemoTourSpotlight({
           </Button>
         </div>
 
-        {/* Conteúdo Explicativo com anúncio acessível para leitores de tela (Fase 4 — Tarefa 4.2) */}
-        <div className="mt-2.5 space-y-1" aria-live="polite" aria-atomic="true">
+        {/* Conteúdo Explicativo com anúncio acessível para leitores de tela e cross-fade suave (Fase 8 — Tarefa 8.1) */}
+        <div
+          key={currentStep.id}
+          className="mt-2.5 space-y-1 animate-fade-in"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           <h3 className="text-sm font-semibold text-foreground tracking-tight">
             {currentStep.title}
           </h3>

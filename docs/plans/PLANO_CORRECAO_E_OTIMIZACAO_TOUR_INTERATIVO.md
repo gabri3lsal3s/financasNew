@@ -13,11 +13,12 @@
 ```
 [FASE 0: INFRAESTRUTURA BASE ANTERIOR]       ████████████████████ 100% Concluído
 [FASE 1: RESILIÊNCIA DE DADOS & ROTAS]       ████████████████████ 100% Concluído
-[FASE 2: MOTOR DE SCROLL & CENTRALIZAÇÃO]   ░░░░░░░░░░░░░░░░░░░░   0% Pendente
-[FASE 3: CATÁLOGO DE MICRO-TOURS & APK]      ░░░░░░░░░░░░░░░░░░░░   0% Pendente
-[FASE 4: GOVERNANÇA DE MODAIS & UPDATE TOAST]░░░░░░░░░░░░░░░░░░░░   0% Pendente
-[FASE 5: DESIGN SYSTEM, RESPONSIVIDADE & A11Y]░░░░░░░░░░░░░░░░░░░░   0% Pendente
-[FASE 6: AUDITORIA INTEGRADA & POLIMENTO]    ░░░░░░░░░░░░░░░░░░░░   0% Pendente
+[FASE 2: MOTOR DE SCROLL & CENTRALIZAÇÃO]   ████████████████████ 100% Concluído
+[FASE 3: CATÁLOGO DE MICRO-TOURS & APK]      ████████████████████ 100% Concluído
+[FASE 4: GOVERNANÇA DE MODAIS & UPDATE TOAST]████████████████████ 100% Concluído
+[FASE 5: DESIGN SYSTEM, RESPONSIVIDADE & A11Y]████████████████████ 100% Concluído
+[FASE 6: AUDITORIA INTEGRADA & POLIMENTO]    ████████████████████ 100% Concluído
+[FASE 8: REFINAMENTO DE FLUIDEZ, DESKTOP & ZERO MODAIS INVASIVOS]░░░░░░░░░░░░░░░░░░░░ 0% Pendente
 [FASE 7: REVISÃO, PUSH, BUILD APK & TELEGRAM]░░░░░░░░░░░░░░░░░░░░   0% Pendente
 ```
 
@@ -420,6 +421,75 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 #### Commit & Push 6:
 - [x] Mensagem de Commit: `chore(tour): finaliza auditoria integrada, deprecation de componentes e documentacao`
 - [x] Executar push para a branch remota.
+
+---
+
+### FASE 8: REFINAMENTO DE FLUIDEZ (ZERO FLICK), EXPERIÊNCIA DESKTOP & ENCERRAMENTO LIMPO (ZERO MODAIS INVASIVOS)
+
+**Meta:** Eliminar qualquer flick ou piscar na tela durante a movimentação do card de tour no desktop e mobile utilizando transições suaves aceleradas por GPU sem recriação do nó DOM; prover contratos e seletores específicos para Desktop (já que não há botão FAB inferior no desktop) orientando o usuário para as ações de topo (`+ Nova transação`, `+ Nova Operação`, `Ctrl+K`); e eliminar a abertura indesejada de modais de criação (`?novo=...`) ao término dos tours, garantindo encerramento calmo e limpo na própria página atual.
+
+#### Tarefas:
+- [x] **8.1. Eliminação de Flicks e Otimização da Movimentação do Card Popover**
+  - [x] **Preservação do Nó DOM no `DemoTourSpotlight` (`src/components/modules/demo-tour-spotlight.tsx`):**
+    * Remover a prop `key={currentStep.id}` do container principal do card para impedir o ciclo destrutivo de unmount/mount a cada troca de passo.
+    * Animar a transição posicional do card exclusivamente através de `transform: translate3d(x, y, 0)` com aceleração por hardware GPU.
+    * Aplicar transição de curva suave nos estilos do container do card:
+      `transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1), opacity 200ms ease`.
+  - [x] **Cross-Fade Suave no Conteúdo Textual:**
+    * Manter o envelope visual do card estável e aplicar animação suave de fade apenas no bloco textual interno (título, descrição, contadores), evitando recargas ou flashes bruscos na tela.
+  - [x] **Eliminação de Salto Inicial Desktop:**
+    * Iniciar opacidade em 0 (`opacity: 0`) até que as primeiras coordenadas matemáticas de posicionamento estejam plenamente calculadas e estáveis, transicionando suavemente para `opacity: 1`.
+
+- [ ] **8.2. Adaptação Responsiva Desktop vs Mobile (Tratamento para Ausência de FAB)**
+  - [ ] **Contratos de Domínio Responsivos (`src/domain/demo-simulation/types.ts`):**
+    * Adicionar propriedades opcionais na interface `TourStep`:
+      ```ts
+      targetSelectorDesktop?: string; // Seletor alternativo específico para telas desktop
+      titleDesktop?: string;          // Título adaptado para o contexto de desktop
+      contentDesktop?: string;        // Instruções de desktop (ex: usar botão de topo ou Ctrl+K)
+      ```
+  - [ ] **Resolução Dinâmica do Alvo no Spotlight (`demo-tour-spotlight.tsx`):**
+    * Detectar largura da viewport (`window.innerWidth >= 768` ou media query `(min-width: 768px)`).
+    * Se for desktop e houver `targetSelectorDesktop`, utilizá-lo prioritariamente como seletor-alvo da busca no DOM.
+  - [ ] **Adaptação dos Passos em `src/domain/demo-simulation/tour-steps.ts`:**
+    * **No Micro-Tour do Wizard (+) (`finances_wizard`):**
+      - No mobile: foca o botão central flutuante `[data-tour="bottom-nav-wizard"]`.
+      - No desktop: foca o botão `[data-tour="desktop-new-transaction"]` no topo da página de transações / header, ou orienta sobre o atalho de teclado global `Ctrl+K` para inclusão rápida sem fricção.
+    * **No Micro-Tour de Ativos / Operações (`investments_assets`):**
+      - Focar diretamente no botão `+ Nova Operação` (`[data-tour="investments-new-op"]`) visível tanto no mobile quanto no desktop.
+    * **No Micro-Tour de Finanças e Extrato (`finances_overview`):**
+      - Fornecer texto adaptativo no desktop destacando a visão ampla em colunas e tabelas analíticas.
+
+- [ ] **8.3. Erradicação de Modais Invasivos no Encerramento de Tours (`handoff.ts`)**
+  - [ ] **Refatoração Completa de `getTourHandoffDestination()` (`src/domain/demo-simulation/handoff.ts`):**
+    * Remover todas as injeções de query params automáticos:
+      - Substituir `/cartoes?novo=cartao` por rota limpa `/cartoes`.
+      - Substituir `/investments?novo=investimento` por rota limpa `/investments`.
+      - Substituir `/transacoes?novo=despesa` por rota limpa `/transacoes`.
+      - Substituir `/?novo=despesa` por rota limpa `/`.
+  - [ ] **Permanência Consistente na Página Atual:** Ao clicar em "Começar" ou no botão de fechar `[X]`, o usuário encerra o tour e continua na página exata onde terminou, com a tela desobstruída e livre de qualquer modal de adição forçado.
+  - [ ] Atualizar testes unitários em `handoff.test.ts` para refletir o encerramento limpo sem modais.
+
+- [ ] **8.4. Otimização de Responsividade e Refinamento Visual Geral**
+  - [ ] Garantir que em monitores ultra-wide (> 1440px) ou telas compactas de laptop (1024px a 1366px), o card popover nunca fique colado nas bordas nem sobreponha a Sidebar de navegação esquerda (`DesktopNav`).
+  - [ ] Ajustar o clamp horizontal para respeitar a largura da Sidebar desktop (`left >= sidebarWidth + 16px`).
+
+- [ ] **8.5. Testes Unitários e Validação da Fase 8**
+  - [ ] Testar em `demo-tour-spotlight.test.tsx` a persistência do nó do card sem desmontes por troca de passo.
+  - [ ] Testar alternância correta de seletores mobile vs desktop (`targetSelectorDesktop`).
+  - [ ] Testar conclusão de todos os tours garantindo que nenhuma rota resultante contenha `novo=`.
+
+#### Portão de Qualidade 8:
+- [ ] `npm run typecheck` executado com zero erros de tipo.
+- [ ] `npm run lint` aprovado sem violações.
+- [ ] `npm test -- src/domain/demo-simulation/handoff.test.ts src/components/modules/demo-tour-spotlight.test.tsx` 100% verde.
+- [ ] Teste Manual no Desktop: Percorrer os tours observando transições suaves sem nenhum flick ou tela piscando.
+- [ ] Teste Manual no Desktop: Comprovar que o tour não tenta apontar para o botão FAB inexistente, e sim para as ações corretas de desktop.
+- [ ] Teste Manual de Conclusão: Concluir os tours de Finanças, Cartões e Investimentos e verificar que nenhum modal de cadastro é aberto na cara do usuário.
+
+#### Commit & Push 8:
+- [ ] Mensagem de Commit: `refactor(tour): elimina flicks de animacao, adapta passos para desktop e remove modais invasivos de encerramento`
+- [ ] Executar push para a branch remota.
 
 ---
 
