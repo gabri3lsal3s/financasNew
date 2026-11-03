@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, ChevronLeft, ChevronRight, LineChart, Table } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, FileText, LineChart, Table } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
@@ -16,6 +16,8 @@ export interface PortfolioSnapshotsCarouselProps {
   currentMonthStr?: string;
   /** Callback para abertura do diálogo de tabela analítica completa. */
   onOpenAnalyticsDialog?: () => void;
+  /** Callback para emissão direta do relatório executivo referente à competência do card. */
+  onGenerateReport?: (month: string) => void;
   className?: string;
 }
 
@@ -30,6 +32,7 @@ export function PortfolioSnapshotsCarousel({
   totalMonthsCount,
   currentMonthStr,
   onOpenAnalyticsDialog,
+  onGenerateReport,
   className,
 }: PortfolioSnapshotsCarouselProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -269,6 +272,23 @@ export function PortfolioSnapshotsCarousel({
                     </span>
                   </div>
                 </div>
+
+                {/* Ação Rápida: Gerar Relatório deste Mês */}
+                {onGenerateReport && (
+                  <div className="pt-2 mt-1 border-t border-border/40 flex justify-end">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onGenerateReport(point.month)}
+                      className="h-6 px-2 text-[10.5px] font-medium text-muted-foreground hover:text-portfolio gap-1 cursor-pointer"
+                      title={`Gerar Relatório Executivo de ${formatMonthYear(point.month)}`}
+                    >
+                      <FileText className="size-3" aria-hidden="true" />
+                      <span>Relatório do Mês</span>
+                    </Button>
+                  </div>
+                )}
               </div>
             );
           })}

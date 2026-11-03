@@ -39,8 +39,10 @@ export type { QuickTransactionSheetProps } from "./quick-transaction-sheet";
 
 export { PortfolioSnapshotsCarousel } from "./portfolio-snapshots-carousel";
 export { PortfolioSnapshotsDialog } from "./portfolio-snapshots-dialog";
+export { MonthlyClosingEditor } from "./monthly-closing-editor";
 export type { PortfolioSnapshotsCarouselProps } from "./portfolio-snapshots-carousel";
 export type { PortfolioSnapshotsDialogProps } from "./portfolio-snapshots-dialog";
+export type { MonthlyClosingEditorProps } from "./monthly-closing-editor";
 
 export * from "./targets";
 

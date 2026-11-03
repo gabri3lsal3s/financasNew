@@ -9,6 +9,7 @@ import {
   DEFAULT_ANNUAL_CDI_RATE,
   DEFAULT_ANNUAL_IPCA_RATE,
 } from "@/domain/portfolio";
+import { currentMonth } from "@/lib/date";
 
 export interface ReportPerformancePoint {
   month: string;
@@ -17,9 +18,11 @@ export interface ReportPerformancePoint {
   ratePct: number | null;
   dividendsBRL?: number;
   costBRL?: number;
+  isMtd?: boolean;
 }
 
 export interface ReportPerformanceChartProps {
+  /** Serie completa de meses historicos da carteira (para benchmarks e metricas de longo prazo). */
   series: readonly ReportPerformancePoint[];
   className?: string;
   title?: string;
@@ -36,12 +39,11 @@ const PAD_TOP = 20;
 const PAD_BOTTOM = 24;
 
 /**
- * Gráfico Institucional de Rentabilidade & Análise de Risco (SVG puro).
- * Projetado especificamente para impressão A4 e visualização em alta fidelidade.
+ * Grafico Institucional de Rentabilidade & Analise de Risco (SVG puro).
  * Exibe:
- * 1. Gráfico de barras de rentabilidade mês a mês limpo e sem sobreposições;
- * 2. Quadro comparativo oficial de Benchmarks (CDI, Poupança, IPCA/Inflação e IBOVESPA);
- * 3. Painel de Métricas Avançadas de Risco & Eficiência (Índice Sharpe, Volatilidade, Max Drawdown e Consistência).
+ * 1. Grafico de barras de rentabilidade mes a mes limpo com distincao visual explicita para mes MTD aberto;
+ * 2. Quadro comparativo oficial de Benchmarks com visao hibrida (Destaque Desde o Inicio + Subtitulo 12M);
+ * 3. Painel de Metricas Avancadas de Risco & Eficiencia (Sharpe, Volatilidade segregando MTD, Drawdown, Consistencia).
  */
 export function ReportPerformanceChart({
   series,
@@ -52,34 +54,49 @@ export function ReportPerformanceChart({
   annualIpcaRate = DEFAULT_ANNUAL_IPCA_RATE,
   ibovPeriodReturnPct,
 }: ReportPerformanceChartProps) {
-  // Considera no máximo as últimas 12 competências para manter clareza e legibilidade no A4
+  const activeMonth = currentMonth();
+
+  // Considera no maximo as ultimas 12 competencias para manter clareza no layout A4
   const displaySeries = useMemo(() => {
     if (!series || series.length < 2) return [];
-    return series.slice(-12);
-  }, [series]);
+    return series.slice(-12).map((p) => {
+      const isMtd = p.isMtd ?? (p.month === activeMonth);
+      return {
+        ...p,
+        isMtd,
+        monthLabel: isMtd ? `${p.monthLabel}* (MTD)` : p.monthLabel,
+      };
+    });
+  }, [series, activeMonth]);
 
   const rates = useMemo(() => displaySeries.map((p) => p.ratePct ?? 0), [displaySeries]);
   const maxAbsRate = useMemo(() => {
     if (rates.length === 0) return 1;
     const maxVal = Math.max(...rates.map((r) => Math.abs(r)), 1);
-    return Math.max(2, Math.ceil(maxVal * 1.25)); // ao menos 2% e 25% de margem no topo
+    return Math.max(2, Math.ceil(maxVal * 1.25));
   }, [rates]);
 
-  // Rentabilidade acumulada rigorosa das competências exibidas no gráfico
-  const seriesAccumulatedRatePct = useMemo(() => {
+  // Rentabilidade acumulada das ultimas 12 competencias exibidas no grafico
+  const display12mAccumulatedRatePct = useMemo(() => {
     const factor = rates.reduce((acc, r) => acc * (1 + r / 100), 1);
     return Math.round((factor - 1) * 10000) / 100;
   }, [rates]);
 
-  // Rótulo da janela temporal avaliada (ex: "10/25 a 09/26")
+  // Rentabilidade acumulada total de toda a serie historica da carteira
+  const fullAccumulatedRatePct = useMemo(() => {
+    const allRates = series.map((s) => s.ratePct ?? 0);
+    const factor = allRates.reduce((acc, r) => acc * (1 + r / 100), 1);
+    return Math.round((factor - 1) * 10000) / 100;
+  }, [series]);
+
+  // Rotulo da janela temporal do grafico (ex: "10/25 a 09/26")
   const periodWindowLabel = useMemo(() => {
     if (displaySeries.length === 0) return "";
-    const first = displaySeries[0]?.monthLabel ?? "";
-    const last = displaySeries[displaySeries.length - 1]?.monthLabel ?? "";
+    const first = displaySeries[0]?.monthLabel.replace("* (MTD)", "") ?? "";
+    const last = displaySeries[displaySeries.length - 1]?.monthLabel.replace("* (MTD)", "") ?? "";
     return `${first} a ${last}`;
   }, [displaySeries]);
 
-  // Taxa livre de risco ponderada para a janela de 12 meses (CDI anualizado canônico de 10.5% a.a. como teto histórico seguro)
   const effectiveCdiRate = useMemo(() => {
     if (annualCdiRate && annualCdiRate > 0 && annualCdiRate <= 12.0) {
       return annualCdiRate;
@@ -87,31 +104,35 @@ export function ReportPerformanceChart({
     return DEFAULT_ANNUAL_CDI_RATE;
   }, [annualCdiRate]);
 
-  // Resumo de Risco (Sharpe, Drawdown, Volatilidade, Win Rate)
+  // Resumo de Risco (Sharpe, Drawdown, Volatilidade, Win Rate) com segregacao de MTD
   const riskSummary = useMemo(() => {
-    return calculatePortfolioRiskSummary(displaySeries, effectiveCdiRate);
+    const hasPartialCurrentMonth = displaySeries.some((p) => p.isMtd);
+    return calculatePortfolioRiskSummary(displaySeries, effectiveCdiRate, {
+      hasPartialCurrentMonth,
+    });
   }, [displaySeries, effectiveCdiRate]);
 
-  // Comparativos Oficiais de Benchmarks (CDI, Poupança, IPCA, IBOVESPA) para o período da série
+  // Comparativos de Benchmarks com visao hibrida: Total Desde o Inicio + Janela 12M
   const benchmarkComparison = useMemo(() => {
     return calculateConsolidatedBenchmarks({
-      portfolioRatePct: seriesAccumulatedRatePct,
-      monthsCount: displaySeries.length,
+      portfolioRatePct: fullAccumulatedRatePct,
+      monthsCount: series.length,
       annualCdiRate: effectiveCdiRate,
       annualSelicRate,
       annualIpcaRate,
       ibovPeriodRatePct: ibovPeriodReturnPct,
+      portfolio12mRatePct: display12mAccumulatedRatePct,
     });
   }, [
-    seriesAccumulatedRatePct,
-    displaySeries.length,
+    fullAccumulatedRatePct,
+    series.length,
     effectiveCdiRate,
     annualSelicRate,
     annualIpcaRate,
     ibovPeriodReturnPct,
+    display12mAccumulatedRatePct,
   ]);
 
-  // Salvaguarda: só renderiza se houver 2 ou mais competências
   if (!series || series.length < 2 || displaySeries.length < 2) {
     return null;
   }
@@ -141,7 +162,7 @@ export function ReportPerformanceChart({
       </div>
 
       <div className="rounded-xl border border-border/80 bg-transparent p-3 print:border-border shadow-2xs w-full flex flex-col gap-3">
-        {/* Gráfico SVG de Barras de Rentabilidade Limpo (Sem Linhas Invasivas Cruzando) */}
+        {/* Grafico SVG de Barras de Rentabilidade */}
         <div className="relative w-full overflow-hidden">
           <svg
             viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
@@ -149,7 +170,7 @@ export function ReportPerformanceChart({
             role="img"
             aria-label="Gráfico de barras da rentabilidade percentual mês a mês"
           >
-            {/* Linha Zero de Referência Pontilhada */}
+            {/* Linha Zero de Referencia Pontilhada */}
             <line
               x1={PAD_X}
               y1={zeroY}
@@ -186,7 +207,7 @@ export function ReportPerformanceChart({
               -{maxAbsRate}%
             </text>
 
-            {/* Barras por Mês */}
+            {/* Barras por Mes */}
             {displaySeries.map((point, idx) => {
               const centerX = PAD_X + idx * stepX + stepX / 2;
               const rate = point.ratePct ?? 0;
@@ -204,10 +225,11 @@ export function ReportPerformanceChart({
                     rx={2}
                     className={cn(
                       isPositive ? "fill-positive-strong" : "fill-negative-strong",
+                      point.isMtd && "stroke-primary stroke-1 stroke-dasharray-[2,2] opacity-85",
                       "transition-all",
                     )}
                   />
-                  {/* Rótulo de Taxa no Topo da Barra */}
+                  {/* Rotulo de Taxa no Topo da Barra */}
                   <text
                     x={centerX}
                     y={isPositive ? barY - 4 : barY + barHeight + 8}
@@ -219,12 +241,15 @@ export function ReportPerformanceChart({
                   >
                     {formatSignedPct(rate)}
                   </text>
-                  {/* Rótulo do Mês no Eixo X */}
+                  {/* Rotulo do Mes no Eixo X */}
                   <text
                     x={centerX}
                     y={SVG_HEIGHT - 6}
                     textAnchor="middle"
-                    className="text-[8.5px] font-mono fill-muted-foreground"
+                    className={cn(
+                      "text-[8px] font-mono",
+                      point.isMtd ? "fill-primary font-bold" : "fill-muted-foreground",
+                    )}
                   >
                     {point.monthLabel}
                   </text>
@@ -234,14 +259,14 @@ export function ReportPerformanceChart({
           </svg>
         </div>
 
-        {/* 1. Painel Oficial de Benchmarks de Mercado (Comparativo Institucional do Período) */}
+        {/* 1. Painel Oficial de Benchmarks com Visao Hibrida */}
         <div className="flex flex-col gap-1.5 pt-1">
           <div className="flex items-center justify-between border-b border-border/60 pb-1">
             <div className="flex items-center gap-1.5 text-[9.5px] font-bold text-foreground uppercase tracking-wider">
               <Compass className="size-3 text-primary-strong" aria-hidden="true" />
-              <span>Benchmarks de Comparação ({periodWindowLabel})</span>
+              <span>Benchmarks de Comparação (Desde o Início: {series.length} meses)</span>
               <span className="text-positive-strong font-mono font-bold">
-                • Carteira: {formatSignedPct(seriesAccumulatedRatePct)}
+                • Carteira: {formatSignedPct(fullAccumulatedRatePct)}
               </span>
             </div>
             <span className="text-[9px] text-muted-foreground font-mono">
@@ -296,15 +321,23 @@ export function ReportPerformanceChart({
                   </span>
                 </div>
 
-                <p className="text-[8.5px] text-muted-foreground/80 truncate leading-tight">
-                  {bm.description}
+                {/* Subtitulo: Recorte Movel dos Ultimos 12 Meses */}
+                <p className="text-[8.5px] text-muted-foreground font-mono leading-tight truncate">
+                  {bm.sub12m ? (
+                    <span>
+                      12M: {formatSignedPct(bm.sub12m.portfolio12mRatePct)} vs {formatPercent(bm.sub12m.benchmark12mRatePct)}%
+                      {bm.sub12m.pctOf12mBenchmark !== null ? ` (${formatPercent(bm.sub12m.pctOf12mBenchmark)}%)` : ""}
+                    </span>
+                  ) : (
+                    bm.description
+                  )}
                 </p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* 2. Painel de Métricas Avançadas de Risco & Eficiência */}
+        {/* 2. Painel de Metricas Avancadas de Risco & Eficiencia */}
         <div className="flex flex-col gap-1.5 pt-1">
           <div className="flex items-center justify-between border-b border-border/60 pb-1">
             <div className="flex items-center gap-1 text-[9.5px] font-bold text-foreground uppercase tracking-wider">
@@ -317,7 +350,7 @@ export function ReportPerformanceChart({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {/* Índice de Sharpe */}
+            {/* Indice de Sharpe */}
             <div className="rounded-lg border border-border/70 bg-transparent p-2 flex flex-col justify-between gap-1 shadow-2xs">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold text-foreground">Índice Sharpe</span>
@@ -382,7 +415,7 @@ export function ReportPerformanceChart({
               </p>
             </div>
 
-            {/* Consistência / Win Rate */}
+            {/* Consistencia / Win Rate */}
             <div className="rounded-lg border border-border/70 bg-transparent p-2 flex flex-col justify-between gap-1 shadow-2xs">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold text-foreground">Consistência</span>

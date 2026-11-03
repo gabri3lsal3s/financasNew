@@ -1,6 +1,9 @@
-import { useMemo } from "react";
-import { TrendingUp } from "lucide-react";
+import { useState, useMemo } from "react";
+import { TrendingUp, FileText, SlidersHorizontal } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
+import { Badge } from "@/components/ui/badge";
+import { Select } from "@/components/ui/select";
+import { Tabs } from "@/components/ui/tabs";
 import {
   ReportDocumentLayout,
   ReportHeader,
@@ -8,9 +11,13 @@ import {
   ReportExecutiveSummary,
   ReportClassTables,
 } from "@/components/modules/reports";
+import { MonthlyClosingEditor } from "./monthly-closing-editor";
+import { usePortfolioMonthlyPosition } from "@/state/queries/use-portfolio-monthly-position";
+import { usePortfolioSnapshots } from "@/state/queries/use-portfolio";
 import { numberToCents } from "@/domain/money";
 import { formatFixedIncomeRateLabel } from "@/domain/portfolio/fixed-income";
 import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
+import { currentMonth, formatMonthYear } from "@/lib/date";
 import type { PositionRow } from "@/components/modules/position-table";
 
 export interface PortfolioExecutiveReportProps {
@@ -28,11 +35,12 @@ export interface PortfolioExecutiveReportProps {
   periodLabel?: string;
   appName?: string;
   accountHolder?: string;
+  initialMonth?: string;
 }
 
 /**
- * Relatório Executivo de Acompanhamento da Carteira em padrão A4/PDF (§F40).
- * Usa ReportDocumentLayout como preview interativo e PrintSheet para injeção de impressão.
+ * Relatorio Executivo de Acompanhamento da Carteira em padrao A4/PDF (§F40/F51).
+ * Suporta selecao retroativa de competencia e modo de auditoria/ajuste de fechamento.
  */
 export function PortfolioExecutiveReport({
   open,
@@ -46,11 +54,126 @@ export function PortfolioExecutiveReport({
   totalReturnPct,
   totalReturnPnlBRL,
   allTimeEconomicPnlBRL,
-  periodLabel = "Posição Atual Consolidada",
   appName = "Áxis Finance",
   accountHolder,
+  initialMonth,
 }: PortfolioExecutiveReportProps) {
-  const investmentRows = useMemo(() => rows.filter((r) => !r.isCash), [rows]);
+  const activeMonth = currentMonth();
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => initialMonth ?? activeMonth);
+  const [activeTab, setActiveTab] = useState<"report" | "closing">("report");
+
+  // Consulta snapshots historicos para povoar as opcoes de meses disponiveis
+  const snapshotsQuery = usePortfolioSnapshots();
+
+  // Opcoes de meses: mes corrente + meses com snapshots gravados
+  const monthOptions = useMemo(() => {
+    const monthsSet = new Set<string>();
+    monthsSet.add(activeMonth);
+    if (initialMonth) monthsSet.add(initialMonth);
+
+    const snapshots = snapshotsQuery.data ?? [];
+    for (const snap of snapshots) {
+      if (snap.month) monthsSet.add(snap.month);
+    }
+
+    return Array.from(monthsSet)
+      .sort((a, b) => b.localeCompare(a))
+      .map((m) => ({
+        value: m,
+        label: m === activeMonth ? `${formatMonthYear(m)} (Mês Atual)` : formatMonthYear(m),
+      }));
+  }, [activeMonth, initialMonth, snapshotsQuery.data]);
+
+  const isCurrentSelected = selectedMonth === activeMonth;
+
+  // Carrega a posicao historica ponto-no-tempo para o mes selecionado
+  const monthlyPositionQuery = usePortfolioMonthlyPosition(selectedMonth);
+
+  // Mapeia posicoes para PositionRow de acordo com a fonte
+  const effectiveRows: PositionRow[] = useMemo(() => {
+    if (isCurrentSelected || !monthlyPositionQuery.data) {
+      return rows;
+    }
+
+    const pit = monthlyPositionQuery.data;
+    const pitRows: PositionRow[] = pit.positions.map((p) => ({
+      assetId: p.assetId ?? p.ticker,
+      ticker: p.ticker,
+      assetClass: p.assetClass,
+      sector: p.sector ?? undefined,
+      currency: (p.currency as "BRL" | "USD") ?? "BRL",
+      quantity: p.quantity,
+      averageCost: p.averagePrice,
+      totalCost: p.totalCost,
+      totalCostBRL: p.totalCostBRL,
+      priceQuote: p.priceQuote ?? p.priceBRL,
+      priceBRL: p.priceBRL,
+      usdRate: 1,
+      valueBRL: p.valueBRL,
+      pct: pit.totalValueBRL > 0 ? (p.valueBRL / pit.totalValueBRL) * 100 : 0,
+      source: (p.quoteSource ?? "manual") as import("@/components/modules/position-table").PositionRow["source"],
+      isEstimate: p.isEstimate,
+      pricingMode: "market_quote",
+      unrealizedPnl: p.unrealizedPnl,
+      unrealizedPct: p.unrealizedPct,
+      dividends: p.accumulatedDividendsBRL,
+      totalReturnPnl: p.totalReturnPnl,
+      totalReturnPct: p.totalReturnPct,
+      isCash: false,
+    }));
+
+    if (pit.cashQuantity > 0) {
+      pitRows.push({
+        assetId: "caixa-pit",
+        ticker: "CAIXA",
+        assetClass: "Caixa",
+        sector: "Liquidez",
+        currency: "BRL",
+        quantity: pit.cashQuantity,
+        averageCost: 1,
+        totalCost: pit.cashQuantity,
+        totalCostBRL: pit.cashQuantity,
+        priceQuote: 1,
+        priceBRL: 1,
+        usdRate: 1,
+        valueBRL: pit.cashQuantity,
+        pct: pit.totalValueBRL > 0 ? (pit.cashQuantity / pit.totalValueBRL) * 100 : 0,
+        source: "manual",
+        isEstimate: false,
+        pricingMode: "market_quote",
+        unrealizedPnl: 0,
+        unrealizedPct: 0,
+        dividends: 0,
+        totalReturnPnl: 0,
+        totalReturnPct: 0,
+        isCash: true,
+      });
+    }
+
+    return pitRows;
+  }, [isCurrentSelected, monthlyPositionQuery.data, rows]);
+
+  const effectiveTotalBRL = useMemo(() => {
+    if (isCurrentSelected || !monthlyPositionQuery.data) return totalBRL;
+    return monthlyPositionQuery.data.totalValueBRL;
+  }, [isCurrentSelected, monthlyPositionQuery.data, totalBRL]);
+
+  const effectiveCashBRL = useMemo(() => {
+    if (isCurrentSelected || !monthlyPositionQuery.data) return cashBRL;
+    return monthlyPositionQuery.data.cashQuantity;
+  }, [isCurrentSelected, monthlyPositionQuery.data, cashBRL]);
+
+  const effectiveDividendsBRL = useMemo(() => {
+    if (isCurrentSelected || !monthlyPositionQuery.data) return yearDividendsBRL;
+    return monthlyPositionQuery.data.accumulatedDividendsTotalBRL;
+  }, [isCurrentSelected, monthlyPositionQuery.data, yearDividendsBRL]);
+
+  const effectivePeriodLabel = useMemo(() => {
+    if (isCurrentSelected) return "Posição Atual Consolidada";
+    return `Competência: ${formatMonthYear(selectedMonth)} — Posição de Fechamento`;
+  }, [isCurrentSelected, selectedMonth]);
+
+  const investmentRows = useMemo(() => effectiveRows.filter((r) => !r.isCash), [effectiveRows]);
 
   // Agrupamento por classe para ReportClassTables
   const classGroups = useMemo(() => {
@@ -70,7 +193,7 @@ export function PortfolioExecutiveReport({
         return {
           className,
           totalCents: numberToCents(subtotalBRL),
-          sharePct: totalBRL > 0 ? (subtotalBRL / totalBRL) * 100 : 0,
+          sharePct: effectiveTotalBRL > 0 ? (subtotalBRL / effectiveTotalBRL) * 100 : 0,
           pnlPct,
           items: items.map((i) => ({
             ticker: i.ticker,
@@ -89,7 +212,7 @@ export function PortfolioExecutiveReport({
         };
       })
       .sort((a, b) => b.totalCents - a.totalCents);
-  }, [investmentRows, totalBRL]);
+  }, [investmentRows, effectiveTotalBRL]);
 
   return (
     <ReportDocumentLayout
@@ -99,102 +222,216 @@ export function PortfolioExecutiveReport({
       size="2xl"
     >
       <div className="flex flex-col gap-4 w-full">
-        {/* Cabeçalho do Relatório */}
-        <ReportHeader
-          title="Relatório Executivo de Acompanhamento da Carteira"
-          subtitle="Posição Patrimonial Consolidada & Custódia de Ativos"
-          periodLabel={periodLabel}
-          appName={appName}
-          icon={TrendingUp}
-          accountHolder={accountHolder}
-        />
+        {/* Barra Superior Interativa: Seletor de Competencia e Abas de Modo */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border border-border/80 bg-surface/80 shadow-2xs print:hidden">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xs font-semibold text-foreground whitespace-nowrap">
+              Competência:
+            </span>
+            <div className="w-48">
+              <Select
+                value={selectedMonth}
+                onValueChange={(val) => setSelectedMonth(val)}
+                options={monthOptions}
+                ariaLabel="Selecionar competência do relatório"
+              />
+            </div>
+            <Badge
+              variant={isCurrentSelected ? "portfolio" : "muted"}
+              size="xs"
+              className="shrink-0 font-medium"
+            >
+              {isCurrentSelected ? "Mês Aberto" : "Fechamento Histórico"}
+            </Badge>
+          </div>
 
-        {/* Síntese Executiva em Linha Única */}
-        {(() => {
-          const isTwrActive = Boolean(portfolioTwr && portfolioTwr.status === "ok" && portfolioTwr.accumulatedRatePct !== null);
-          const isCustodyActive = !isTwrActive && totalReturnPct !== null && totalReturnPct !== undefined;
-
-          const rentabilidadeItem = portfolioTwr && isTwrActive
-            ? {
-                label: "Rentabilidade (TWR)",
-                value: (
-                  <span className={portfolioTwr.accumulatedRatePct >= 0 ? "text-positive-strong" : "text-negative-strong"}>
-                    {portfolioTwr.accumulatedRatePct >= 0 ? "+" : ""}{portfolioTwr.accumulatedRatePct.toFixed(1)}%
-                  </span>
-                ),
-                subtext: portfolioTwr.annualizedRatePct !== null
-                  ? `${portfolioTwr.annualizedRatePct >= 0 ? "+" : ""}${portfolioTwr.annualizedRatePct.toFixed(1)}% a.a. (Padrão CVM)`
-                  : `Por cotas (${portfolioTwr.monthsElapsed}m)`,
-              }
-            : isCustodyActive
-              ? {
-                  label: "Rentabilidade da Carteira",
-                  value: (
-                    <span className={totalReturnPct >= 0 ? "text-positive-strong" : "text-negative-strong"}>
-                      {totalReturnPct >= 0 ? "+" : ""}{totalReturnPct.toFixed(1)}%
-                    </span>
-                  ),
-                  subtext: "Custódia aberta sobre custo",
-                }
-              : {
-                  label: "Rentabilidade da Carteira",
-                  value: "Em formação",
-                  subtext: "Requer histórico",
-                };
-
-          return (
-            <ReportExecutiveSummary
-              title="SÍNTESE PATRIMONIAL & DESEMPENHO"
+          <div className="w-full sm:w-auto">
+            <Tabs
+              value={activeTab}
+              onValueChange={(val) => setActiveTab(val as "report" | "closing")}
+              variant="pills"
               items={[
                 {
-                  label: "Patrimônio Total",
-                  value: <MoneyText cents={numberToCents(totalBRL)} tone="portfolio" />,
-                  subtext: `${investmentRows.length} ativos em custódia`,
-                },
-                rentabilidadeItem,
-                {
-                  label: "Retorno do Bolso (TIR)",
-                  value: portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
-                    ? `${portfolioIrr.annualizedRatePct >= 0 ? "+" : ""}${portfolioIrr.annualizedRatePct.toFixed(1)}% a.a.`
-                    : "Em formação",
-                  subtext: portfolioIrr?.isEligible
-                    ? `Ponderada (${portfolioIrr.daysElapsed}d)`
-                    : "Requer histórico",
+                  value: "report",
+                  label: "Relatório Executivo (A4)",
+                  icon: <FileText className="size-3.5" aria-hidden="true" />,
                 },
                 {
-                  label: "Resultado Histórico",
-                  value: (() => {
-                    const finalPnl = allTimeEconomicPnlBRL ?? totalReturnPnlBRL ?? 0;
-                    return (
-                      <span className={finalPnl >= 0 ? "text-positive-strong" : "text-negative-strong"}>
-                        <MoneyText cents={numberToCents(finalPnl)} tone={finalPnl >= 0 ? "positive" : "negative"} />
-                      </span>
-                    );
-                  })(),
-                  subtext: "P&L Econômico Total",
+                  value: "closing",
+                  label: "Conferir & Ajustar",
+                  icon: <SlidersHorizontal className="size-3.5" aria-hidden="true" />,
                 },
               ]}
-              narrative={
-                <span>
-                  A carteira encerra o período com <strong><MoneyText cents={numberToCents(totalBRL)} className="inline font-bold" /></strong> sob custódia, distribuídos em <strong>{investmentRows.length} ativos</strong> e <strong>{classGroups.length} classes de investimento</strong>. O saldo em reserva de liquidez é de <MoneyText cents={numberToCents(cashBRL)} className="inline font-bold" /> e os proventos acumulados no exercício somam <MoneyText cents={numberToCents(yearDividendsBRL)} className="inline font-bold text-positive-strong" />.
-                </span>
-              }
             />
-          );
-        })()}
+          </div>
+        </div>
 
-        {/* Tabelas Especializadas por Classe */}
-        <section aria-label="Detalhamento das Posições" className="flex flex-col gap-3 pt-1">
-          <ReportClassTables groups={classGroups} />
-        </section>
+        {/* Conteudo: Aba 2 (Conferir e Ajustar Fechamento) */}
+        {activeTab === "closing" && monthlyPositionQuery.data && (
+          <div className="pt-1 print:hidden">
+            <MonthlyClosingEditor
+              month={selectedMonth}
+              historicalPosition={monthlyPositionQuery.data}
+              onSaved={() => {
+                setActiveTab("report");
+                void monthlyPositionQuery.refetch();
+              }}
+            />
+          </div>
+        )}
 
-        {/* Rodapé */}
-        <ReportFooter
-          accountHolder={accountHolder}
-          disclaimer={OFFICIAL_CVM_DISCLAIMER}
-        />
+        {/* Conteudo: Aba 1 (Relatorio Executivo A4 / PDF Oficial) */}
+        {(activeTab === "report" || !monthlyPositionQuery.data) && (
+          <div className="flex flex-col gap-4 w-full">
+            {/* Cabecalho do Relatorio */}
+            <ReportHeader
+              title="Relatório Executivo de Acompanhamento da Carteira"
+              subtitle="Posição Patrimonial Consolidada & Custódia de Ativos"
+              periodLabel={effectivePeriodLabel}
+              appName={appName}
+              icon={TrendingUp}
+              accountHolder={accountHolder}
+            />
+
+            {/* Sintese Executiva em Linha Unica */}
+            {(() => {
+              const isTwrActive = Boolean(
+                isCurrentSelected &&
+                  portfolioTwr &&
+                  portfolioTwr.status === "ok" &&
+                  portfolioTwr.accumulatedRatePct !== null,
+              );
+              const isCustodyActive =
+                !isTwrActive && totalReturnPct !== null && totalReturnPct !== undefined;
+
+              const rentabilidadeItem =
+                isCurrentSelected && portfolioTwr && isTwrActive
+                  ? {
+                      label: "Rentabilidade (TWR)",
+                      value: (
+                        <span
+                          className={
+                            portfolioTwr.accumulatedRatePct >= 0
+                              ? "text-positive-strong"
+                              : "text-negative-strong"
+                          }
+                        >
+                          {portfolioTwr.accumulatedRatePct >= 0 ? "+" : ""}
+                          {portfolioTwr.accumulatedRatePct.toFixed(1)}%
+                        </span>
+                      ),
+                      subtext:
+                        portfolioTwr.annualizedRatePct !== null
+                          ? `${portfolioTwr.annualizedRatePct >= 0 ? "+" : ""}${portfolioTwr.annualizedRatePct.toFixed(1)}% a.a. (Padrão CVM)`
+                          : `Por cotas (${portfolioTwr.monthsElapsed}m)`,
+                    }
+                  : isCustodyActive
+                    ? {
+                        label: "Rentabilidade da Carteira",
+                        value: (
+                          <span
+                            className={
+                              (totalReturnPct ?? 0) >= 0
+                                ? "text-positive-strong"
+                                : "text-negative-strong"
+                            }
+                          >
+                            {(totalReturnPct ?? 0) >= 0 ? "+" : ""}
+                            {(totalReturnPct ?? 0).toFixed(1)}%
+                          </span>
+                        ),
+                        subtext: "Custódia aberta sobre custo",
+                      }
+                    : {
+                        label: "Rentabilidade da Carteira",
+                        value: "Em formação",
+                        subtext: "Requer histórico",
+                      };
+
+              return (
+                <ReportExecutiveSummary
+                  title="SÍNTESE PATRIMONIAL & DESEMPENHO"
+                  items={[
+                    {
+                      label: "Patrimônio Total",
+                      value: (
+                        <MoneyText cents={numberToCents(effectiveTotalBRL)} tone="portfolio" />
+                      ),
+                      subtext: `${investmentRows.length} ativos em custódia`,
+                    },
+                    rentabilidadeItem,
+                    {
+                      label: "Retorno do Bolso (TIR)",
+                      value:
+                        portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
+                          ? `${portfolioIrr.annualizedRatePct >= 0 ? "+" : ""}${portfolioIrr.annualizedRatePct.toFixed(1)}% a.a.`
+                          : "Em formação",
+                      subtext: portfolioIrr?.isEligible
+                        ? `Ponderada (${portfolioIrr.daysElapsed}d)`
+                        : "Requer histórico",
+                    },
+                    {
+                      label: "Resultado Histórico",
+                      value: (() => {
+                        const finalPnl = allTimeEconomicPnlBRL ?? totalReturnPnlBRL ?? 0;
+                        return (
+                          <span
+                            className={
+                              finalPnl >= 0 ? "text-positive-strong" : "text-negative-strong"
+                            }
+                          >
+                            <MoneyText
+                              cents={numberToCents(finalPnl)}
+                              tone={finalPnl >= 0 ? "positive" : "negative"}
+                            />
+                          </span>
+                        );
+                      })(),
+                      subtext: "P&L Econômico Total",
+                    },
+                  ]}
+                  narrative={
+                    <span>
+                      A carteira encerra o período com{" "}
+                      <strong>
+                        <MoneyText
+                          cents={numberToCents(effectiveTotalBRL)}
+                          className="inline font-bold"
+                        />
+                      </strong>{" "}
+                      sob custódia, distribuídos em{" "}
+                      <strong>{investmentRows.length} ativos</strong> e{" "}
+                      <strong>{classGroups.length} classes de investimento</strong>. O saldo em
+                      reserva de liquidez é de{" "}
+                      <MoneyText
+                        cents={numberToCents(effectiveCashBRL)}
+                        className="inline font-bold"
+                      />{" "}
+                      e os proventos acumulados no exercício somam{" "}
+                      <MoneyText
+                        cents={numberToCents(effectiveDividendsBRL)}
+                        className="inline font-bold text-positive-strong"
+                      />
+                      .
+                    </span>
+                  }
+                />
+              );
+            })()}
+
+            {/* Tabelas Especializadas por Classe */}
+            <section aria-label="Detalhamento das Posições" className="flex flex-col gap-3 pt-1">
+              <ReportClassTables groups={classGroups} />
+            </section>
+
+            {/* Rodapé */}
+            <ReportFooter
+              accountHolder={accountHolder}
+              disclaimer={OFFICIAL_CVM_DISCLAIMER}
+            />
+          </div>
+        )}
       </div>
     </ReportDocumentLayout>
   );
 }
-

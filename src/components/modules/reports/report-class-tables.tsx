@@ -160,7 +160,7 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                         <th className="py-1.5 px-1.5 text-right print:w-[15%]">Preço Médio</th>
                         <th className="py-1.5 px-1.5 text-right print:w-[15%]">Cotação</th>
                         <th className="py-1.5 px-2 text-right print:w-[17%]">Total (R$)</th>
-                        <th className="py-1.5 px-1.5 text-right print:w-[8%]">Var. (USD)</th>
+                        <th className="py-1.5 px-1.5 text-right print:w-[8%]">Var. Cota</th>
                         <th className="py-1.5 px-2.5 text-right print:w-[9%]">Ret. Total</th>
                       </>
                     ) : (
@@ -342,7 +342,7 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                             : "text-negative-strong",
                         )}
                       >
-                        {subtotalPriceVarPct !== null ? formatSignedPct(subtotalPriceVarPct) : "—"}
+                        {subtotalPriceVarPct !== null ? `${formatSignedPct(subtotalPriceVarPct)} (BRL)` : "—"}
                       </td>
                       <td
                         className={cn(

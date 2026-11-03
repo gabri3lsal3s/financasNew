@@ -368,4 +368,10 @@ export {
   type BuildAllocationDonutsParams,
 } from "./allocation-donuts";
 
+export {
+  normalizePercentagesTo100,
+  type NormalizedPercentageItem,
+  type NormalizedResult,
+} from "./distribution";
+
 

@@ -345,16 +345,16 @@ Esta tabela sintetiza a evolução matemática rigorosa para todas as fórmulas 
 ### FASE 6: Interface do Usuário (UI/UX) — Seletor de Competência, Modal de Conferência e Dossiê A4/PDF Retificado
 > **Objetivo:** Entregar a experiência visual completa no modal do Relatório Executivo com seletor de mês, tabela interativa de conferência com cotação atual comparativa, edição de valores, eliminação das 5 debilidades quantitativas e impressão em A4 limpo.
 
-- [ ] **Tarefa 6.1: Seletor de Mês & Alternância de Modos em `PortfolioExecutiveReport`**
-  - [ ] Adicionar seletor de competência no cabeçalho do diálogo (`portfolio-executive-report.tsx`):
+- [x] **Tarefa 6.1: Seletor de Mês & Alternância de Modos em `PortfolioExecutiveReport`**
+  - [x] Adicionar seletor de competência no cabeçalho do diálogo (`portfolio-executive-report.tsx`):
     - Seleção de qualquer mês arquivado (desde o início da carteira até o mês corrente).
     - Badge discreta indicando se o mês selecionado é o "Mês Atual" ou "Fechamento Histórico".
-  - [ ] Adicionar abas/botões de alternância:
+  - [x] Adicionar abas/botões de alternância:
     - Aba 1: "Relatório Executivo (A4/PDF)" — visualização e impressão do relatório oficial.
     - Aba 2: "Conferir & Ajustar Fechamento" — tabela de auditoria e edição das cotações daquele mês.
 
-- [ ] **Tarefa 6.2: Tabela de Conferência e Edição de Cotações (`MonthlyClosingEditor`)**
-  - [ ] Criar sub-componente `MonthlyClosingEditor`:
+- [x] **Tarefa 6.2: Tabela de Conferência e Edição de Cotações (`MonthlyClosingEditor`)**
+  - [x] Criar sub-componente `MonthlyClosingEditor`:
     - Listagem de todos os ativos sob custódia naquele mês (com ticker, classe, quantidade histórica bloqueada para leitura).
     - Input de Cotação de Fechamento com máscara monetária (`MoneyInput`).
     - Badge de status de preço: `Oficial API`, `Manual` ou `Sugerida` (fallback).
@@ -363,52 +363,52 @@ Esta tabela sintetiza a evolução matemática rigorosa para todas as fórmulas 
     - Card de resumo com o Patrimônio Total Recalculado em tempo real conforme o usuário digita.
     - Botão de ação: "Salvar Fechamento & Gerar Relatório" com ícone `Check` e indicador de carregamento.
 
-- [ ] **Tarefa 6.3: Refatoração do Gráfico e Painéis em `ReportPerformanceChart` (`report-performance-chart.tsx`)**
-  - [ ] Receber `fullSeries` (série histórica consolidada) e `displaySeries` (últimas 12 competências para o gráfico visual).
-  - [ ] **Identificação de MTD:** Se o mês corrente estiver aberto, renderizar a barra correspondente com distinção visual e rótulo explícito `MM/AA* (MTD)`.
-  - [ ] **Painel de Benchmarks:**
+- [x] **Tarefa 6.3: Refatoração do Gráfico e Painéis em `ReportPerformanceChart` (`report-performance-chart.tsx`)**
+  - [x] Receber `fullSeries` (série histórica consolidada) e `displaySeries` (últimas 12 competências para o gráfico visual).
+  - [x] **Identificação de MTD:** Se o mês corrente estiver aberto, renderizar a barra correspondente com distinção visual e rótulo explícito `MM/AA* (MTD)`.
+  - [x] **Painel de Benchmarks:**
     - Destacar no cabeçalho e nos cards o comparativo **Desde o Início** (ex.: TWR total vs CDI acumulado e Ganho Real Fisher total).
     - No subtítulo de cada card (onde havia texto estático), exibir o recorte móvel: `12M: +X.X% vs Y.Y% (Z% CDI)`.
-  - [ ] **Painel de Risco & Consistência:**
+  - [x] **Painel de Risco & Consistência:**
     - Calcular Volatilidade Anualizada e Índice de Sharpe estritamente sobre as competências mensais fechadas (sem distorção de dias parciais).
     - Max Drawdown e Consistência calculados na curva global da carteira.
 
-- [ ] **Tarefa 6.4: Refatoração Semântica e Cambial em `ReportClassTables` (`report-class-tables.tsx`)**
-  - [ ] Substituir o cabeçalho `Var. (USD)` por **`Var. Cota`**.
-  - [ ] Nas linhas da tabela Internacional:
+- [x] **Tarefa 6.4: Refatoração Semântica e Cambial em `ReportClassTables` (`report-class-tables.tsx`)**
+  - [x] Substituir o cabeçalho `Var. (USD)` por **`Var. Cota`**.
+  - [x] Nas linhas da tabela Internacional:
     - Ativos USD exibem cotações e variação em dólares (`US$`).
     - Ativos BRL (`IVVB11`, BDRs) exibem cotação e variação em reais com identificação explícita `(BRL)`.
-  - [ ] Na linha de subtotal contábil da classe internacional:
+  - [x] Na linha de subtotal contábil da classe internacional:
     - Indicar explicitamente que a variação consolidada é em Reais: `Subtotal Internacional ... +10,0% (BRL)`.
 
-- [ ] **Tarefa 6.5: Normalização Visual de Percentuais a 100,0% em Componentes Visuais**
-  - [ ] Em `ReportStackedBar.tsx`: aplicar `normalizePercentagesTo100` para que a soma dos percentuais da barra de classes feche matematicamente em 100,0%.
-  - [ ] Em `ReportAllocationDonuts.tsx`: aplicar a normalização nas fatias de classes e setores econômicos.
-  - [ ] Exibir `"X Setores Econômicos (+ Reserva de Caixa)"` com a fatia de caixa claramente destacada em verde `#10b981`.
+- [x] **Tarefa 6.5: Normalização Visual de Percentuais a 100,0% em Componentes Visuais**
+  - [x] Em `ReportStackedBar.tsx`: aplicar `normalizePercentagesTo100` para que a soma dos percentuais da barra de classes feche matematicamente em 100,0%.
+  - [x] Em `ReportAllocationDonuts.tsx`: aplicar a normalização nas fatias de classes e setores econômicos.
+  - [x] Exibir `"X Setores Econômicos (+ Reserva de Caixa)"` com a fatia de caixa claramente destacada em verde `#10b981`.
 
-- [ ] **Tarefa 6.6: Adaptação Global do Documento A4/PDF do Relatório Executivo (`wealth-tear-sheet-modal.tsx`)**
-  - [ ] Atualizar cabeçalho para exibir a competência de referência (ex: *"Competência: Outubro de 2026 — Posição de Fechamento"*).
-  - [ ] Exibir o TWR anualizado calculado com base em dias corridos exatos (`+7,8% a.a.`).
-  - [ ] Garantir alinhamento perfeito de quebra de páginas (`print-break-inside-avoid` e `.print-sheet`).
+- [x] **Tarefa 6.6: Adaptação Global do Documento A4/PDF do Relatório Executivo (`wealth-tear-sheet-modal.tsx`)**
+  - [x] Atualizar cabeçalho para exibir a competência de referência (ex: *"Competência: Outubro de 2026 — Posição de Fechamento"*).
+  - [x] Exibir o TWR anualizado calculado com base em dias corridos exatos (`+7,8% a.a.`).
+  - [x] Garantir alinhamento perfeito de quebra de páginas (`print-break-inside-avoid` e `.print-sheet`).
 
-- [ ] **Tarefa 6.7: Conexão com a Página de Investimentos (`resumo-tab.tsx` e `portfolio-snapshots-carousel.tsx`)**
-  - [ ] No botão "Relatório" da aba Resumo: permitir abrir diretamente o modal executivo.
-  - [ ] No Carrossel de Evolução Histórica (`PortfolioSnapshotsCarousel`): adicionar ação rápida em cada card de mês *"Gerar Relatório deste Mês"* que já abre o modal com aquela competência pré-selecionada.
+- [x] **Tarefa 6.7: Conexão com a Página de Investimentos (`resumo-tab.tsx` e `portfolio-snapshots-carousel.tsx`)**
+  - [x] No botão "Relatório" da aba Resumo: permitir abrir diretamente o modal executivo.
+  - [x] No Carrossel de Evolução Histórica (`PortfolioSnapshotsCarousel`): adicionar ação rápida em cada card de mês *"Gerar Relatório deste Mês"* que já abre o modal com aquela competência pré-selecionada.
 
-- [ ] **Tarefa 6.8: Testes de Renderização, Layout A4 e Acessibilidade**
-  - [ ] Atualizar `wealth-tear-sheet-modal.test.tsx` e `report-performance-chart.test.tsx`.
-  - [ ] Testar conformidade de acessibilidade (ARIA labels, foco, teclado) e ausência de emojis.
+- [x] **Tarefa 6.8: Testes de Renderização, Layout A4 e Acessibilidade**
+  - [x] Atualizar `wealth-tear-sheet-modal.test.tsx` e `report-performance-chart.test.tsx`.
+  - [x] Testar conformidade de acessibilidade (ARIA labels, foco, teclado) e ausência de emojis.
 
 #### 🚪 Quality Gate 6 (QG6)
-- [ ] Executar testes de componentes: `npx vitest run src/features/reports/components/wealth-tear-sheet-modal.test.tsx src/components/modules/reports/reports.test.tsx`.
-- [ ] Validar conformidade estrita com o Design System:
+- [x] Executar testes de componentes: `npx vitest run src/features/reports/components/wealth-tear-sheet-modal.test.tsx src/components/modules/reports/reports.test.tsx`.
+- [x] Validar conformidade estrita com o Design System:
   - Zero controles nativos (usar componentes shadcn/tokens);
   - Zero emojis (ícones `lucide-react`);
   - Tipografia de moeda sem reticências (`MoneyText` / tabular-nums);
   - Responsividade mobile-first e layout A4 sem cortes de margem.
-- [ ] Executar typecheck: `npm run typecheck`.
-- [ ] Executar linting: `npm run lint`.
-- [ ] **Commit & Push:** `feat(reports): interface de selecao retroativa conferencia e dossie a4 com visao hibrida e normalizacao (QG6)`
+- [x] Executar typecheck: `npm run typecheck`.
+- [x] Executar linting: `npm run lint`.
+- [x] **Commit & Push:** `feat(reports): interface de selecao retroativa conferencia e dossie a4 com visao hibrida e normalizacao (QG6)`
 
 ---
 

@@ -93,6 +93,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const [wizardInitialMode, setWizardInitialMode] = useState<WizardMode>("select");
   const [snapshotsDialogOpen, setSnapshotsDialogOpen] = useState(false);
   const [executiveReportOpen, setExecutiveReportOpen] = useState(false);
+  const [reportSelectedMonth, setReportSelectedMonth] = useState<string | undefined>(undefined);
   const [cashDialogOpen, setCashDialogOpen] = useState(false);
   const [quickTxAsset, setQuickTxAsset] = useState<PortfolioAsset | null>(null);
   const [quickTxType, setQuickTxType] = useState<PortfolioTransactionType>("buy");
@@ -727,6 +728,10 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             totalMonthsCount={allSeries.length}
             currentMonthStr={month}
             onOpenAnalyticsDialog={() => setSnapshotsDialogOpen(true)}
+            onGenerateReport={(targetMonth) => {
+              setReportSelectedMonth(targetMonth);
+              setExecutiveReportOpen(true);
+            }}
           />
         </>
       )}
@@ -1030,7 +1035,12 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
       {/* Relatório Executivo da Carteira */}
       <PortfolioExecutiveReport
         open={executiveReportOpen}
-        onOpenChange={setExecutiveReportOpen}
+        onOpenChange={(next) => {
+          setExecutiveReportOpen(next);
+          if (!next) {
+            setReportSelectedMonth(undefined);
+          }
+        }}
         rows={position.rows}
         totalBRL={position.totalBRL}
         cashBRL={position.cashBRL}
@@ -1040,6 +1050,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         totalReturnPct={position.totalReturnPct}
         totalReturnPnlBRL={position.totalReturnPnlBRL}
         allTimeEconomicPnlBRL={position.allTimeEconomicPnlBRL}
+        initialMonth={reportSelectedMonth}
       />
 
       {/* Extrato Analítico Completo de Snapshots Mensais */}

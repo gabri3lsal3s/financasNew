@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { formatPercent } from "@/services/masks/percent";
+import { normalizePercentagesTo100 } from "@/domain/reports";
 import { cn } from "@/lib/utils";
 
 export interface ReportStackedSegment {
@@ -22,7 +23,7 @@ export interface ReportStackedBarProps {
  * Barra de Alocação Empilhada (Stacked Allocation Bar) para Relatórios A4 / PDF.
  *
  * Exibe uma faixa única proporcional (100%) dividida pelas classes de ativos
- * ou categorias de gastos com legenda semântica.
+ * ou categorias de gastos com legenda semântica normalizada pelo método do maior resto.
  */
 export function ReportStackedBar({
   title,
@@ -31,7 +32,15 @@ export function ReportStackedBar({
   showLegend = true,
   className,
 }: ReportStackedBarProps) {
-  const validSegments = segments.filter((s) => s.pct > 0 && !isNaN(s.pct));
+  const filtered = segments.filter((s) => s.pct > 0 && !isNaN(s.pct));
+  const normalized = normalizePercentagesTo100(
+    filtered.map((s) => ({ ...s, rawPct: s.pct })),
+    1,
+  );
+  const validSegments = normalized.map((n) => ({
+    ...n,
+    pct: n.formattedPct,
+  }));
 
   return (
     <div className={cn("flex flex-col gap-2 break-inside-avoid", className)}>
