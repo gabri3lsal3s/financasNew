@@ -414,7 +414,7 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 #### Portão de Qualidade 6:
 - [x] `npm run typecheck` com zero erros.
 - [x] `npm run lint` 100% aprovado.
-- [ ] `npm test` 100% verde em todos os arquivos de teste.
+- [x] `npm test` 100% verde em todos os arquivos de teste.
 - [ ] Teste Manual E2E: Executar cada um dos micro-tours no desktop e em simulador mobile.
 
 #### Commit & Push 6:
