@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import {
   Compass,
   CreditCard,
@@ -12,6 +13,8 @@ import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SupportChatDialog } from "@/components/modules/support";
+import { startDemo } from "@/state/demo-mode";
+import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 
 export interface HelpModalProps {
@@ -74,6 +77,7 @@ export function HelpModal({
   onOpenDemoSelect,
   onOpenSupport,
 }: HelpModalProps) {
+  const navigate = useNavigate();
   const [expandedFaq, setExpandedFaq] = useState<string | null>("rebalance");
   const [supportChatOpen, setSupportChatOpen] = useState(false);
 
@@ -85,6 +89,10 @@ export function HelpModal({
     onOpenChange(false);
     if (onOpenDemoSelect) {
       onOpenDemoSelect();
+    } else {
+      triggerSensory("action");
+      startDemo("finances");
+      navigate("/");
     }
   };
 

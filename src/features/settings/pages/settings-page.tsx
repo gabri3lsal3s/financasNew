@@ -20,7 +20,7 @@ import {
   SubscriptionTab,
   AppInstallationTab,
 } from "../components/tabs";
-import { HelpModal, SupportChatDialog } from "@/components/modules";
+import { DemoTrackSelectModal, HelpModal, SupportChatDialog } from "@/components/modules";
 import { forceAppUpdate } from "@/app/pwa";
 import { pushToast } from "@/services/toast";
 import { cn } from "@/lib/utils";
@@ -140,6 +140,7 @@ export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isUpdating, setIsUpdating] = useState(false);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
+  const [demoSelectOpen, setDemoSelectOpen] = useState(false);
   const [supportChatOpen, setSupportChatOpen] = useState(false);
 
   const tabParam = searchParams.get("tab");
@@ -327,10 +328,20 @@ export function SettingsPage() {
         <HelpModal
           open={helpModalOpen}
           onOpenChange={setHelpModalOpen}
+          onOpenDemoSelect={() => {
+            setHelpModalOpen(false);
+            setDemoSelectOpen(true);
+          }}
           onOpenSupport={() => {
             setHelpModalOpen(false);
             setSupportChatOpen(true);
           }}
+        />
+      )}
+      {demoSelectOpen && (
+        <DemoTrackSelectModal
+          open={demoSelectOpen}
+          onOpenChange={setDemoSelectOpen}
         />
       )}
       {isSupportDialogOpen && (

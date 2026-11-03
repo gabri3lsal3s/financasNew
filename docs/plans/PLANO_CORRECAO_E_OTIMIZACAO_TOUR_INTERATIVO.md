@@ -577,6 +577,12 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
   - [x] Testar persistência do nó do card e ausência de flashes em `demo-tour-spotlight.test.tsx`.
   - [x] Testar conclusão limpa de todos os tours em `handoff.test.ts`.
 
+- [x] **8.12. Correção da Inoperância do Botão "Rever Tour Guiado" na Central de Ajuda & Configurações**
+  - [x] **Diagnóstico da Causa Raiz:** O botão dentro do card de simulação no `HelpModal` dependia de `onOpenDemoSelect`. Na página de Configurações (`settings-page.tsx`), a prop `onOpenDemoSelect` não era fornecida e o `<DemoTrackSelectModal />` não estava montado, fazendo o modal fechar silenciosamente sem nenhuma ação.
+  - [x] **Conexão no SettingsPage:** Importado `DemoTrackSelectModal`, declarado o estado `demoSelectOpen`, passado `onOpenDemoSelect={() => setDemoSelectOpen(true)}` e renderizado o modal na raiz da página.
+  - [x] **Blindagem Anti-Falha no HelpModal:** Adicionado fallback defensivo no `handleStartTour`: caso `onOpenDemoSelect` seja omitido em qualquer tela, o sistema aciona `startDemo("finances")` e redireciona via router, impedindo cliques inertes.
+  - [x] **Validação com Testes Automatizados:** Testes integrados implementados em `settings-page.test.tsx` (clique em Ajuda & FAQ -> Rever Tour Guiado -> abertura do Hub de Trilhas) e em `help-modal.test.tsx` (validação de fallback). Todos os 27 testes aprovados.
+
 #### Portão de Qualidade 8:
 - [x] `npm run typecheck` executado com zero erros de tipo.
 - [x] `npm run lint` aprovado sem violações.

@@ -340,4 +340,23 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     expect(screen.getByRole("heading", { name: "Falar com o Suporte" })).toBeInTheDocument();
     expect(screen.getByText(/Envie sua dúvida, sugestão ou relate um problema/i)).toBeInTheDocument();
   });
+
+  it("abre a Central de Ajuda e permite iniciar a simulação pelo botão 'Rever Tour Guiado'", async () => {
+    const user = userEvent.setup();
+    renderSettings(["/configuracoes"]);
+
+    const helpBtn = screen.getByRole("button", { name: /Ver Ajuda & FAQ/i });
+    await user.click(helpBtn);
+
+    expect(screen.getByRole("heading", { name: "Central de Ajuda & Suporte" })).toBeInTheDocument();
+    expect(screen.getByText("Tour Guiado & Modo Simulação")).toBeInTheDocument();
+
+    const tourBtn = screen.getByRole("button", { name: /Rever Tour Guiado/i });
+    expect(tourBtn).toBeInTheDocument();
+
+    await user.click(tourBtn);
+
+    expect(screen.getByRole("heading", { name: "Escolha sua Trilha de Demonstração" })).toBeInTheDocument();
+    expect(screen.getByText(/Explore os recursos do aplicativo com dados simulados em memória/i)).toBeInTheDocument();
+  });
 });
