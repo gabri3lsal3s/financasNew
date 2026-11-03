@@ -203,7 +203,6 @@ export function BottomNav() {
             <NavLink
               to={create.to}
               aria-label={create.label}
-              data-tour="bottom-nav-wizard"
               className="flex min-h-11 items-center justify-center"
               onClick={(e) => {
                 triggerSensory("action");
@@ -213,7 +212,10 @@ export function BottomNav() {
                 }
               }}
             >
-              <span className="-mt-6 flex size-14 items-center justify-center rounded-full bg-background shadow-xs transform-gpu">
+              <span
+                data-tour="bottom-nav-wizard"
+                className="-mt-6 flex size-14 items-center justify-center rounded-full bg-background shadow-xs transform-gpu"
+              >
                 <span className="flex size-12 items-center justify-center rounded-full border-[1.5px] border-primary bg-surface text-primary shadow-sm transition-transform active:scale-95 hover:border-primary-strong hover:text-primary-strong transform-gpu">
                   <Plus className="size-6" aria-hidden="true" />
                 </span>

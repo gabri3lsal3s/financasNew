@@ -123,6 +123,8 @@ export interface TourStep {
   preferredPlacement?: TourStepPlacement;
   /** Padding interno do recorte do spotlight em pixels (default 8px) */
   spotlightPadding?: number;
+  /** Raio de curvatura da borda do spotlight (default 16px, ou 9999 para circular / rounded-full) */
+  spotlightBorderRadius?: number;
   badgeLabel?: string;
   actionLabel?: string;
 }

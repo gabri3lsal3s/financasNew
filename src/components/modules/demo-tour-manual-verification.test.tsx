@@ -52,18 +52,24 @@ describe("Teste de Validação Manual: Navegação Bidirecional Mobile (375x667 
     mainContainer.scrollTo = vi.fn();
     document.body.appendChild(mainContainer);
 
-    // Mock dos elementos no DOM para a trilha
+    // Mock dos elementos no DOM para a trilha completa
     const selectors = track === "finances"
       ? [
           { selector: "overview-kpis", y: 80, height: 120, route: "/" }, // Upper half (centerY = 140 <= 0.45 * height) -> Base
+          { selector: "bottom-nav-wizard", y: 550, height: 56, route: "/" }, // Lower half (centerY = 578 > 0.45 * height) -> Topo
+          { selector: "launch-wizard-dialog", y: 80, height: 160, route: "/transacoes?novo=despesa" }, // Upper half (centerY = 160) -> Base
           { selector: "transactions-feed-card", y: 420, height: 140, route: "/transacoes" }, // Lower half (centerY = 490 > 0.45 * height) -> Topo
-          { selector: "cards-content", y: 100, height: 180, route: "/cartoes" }, // Upper half (centerY = 190) -> Base
+          { selector: "cards-invoice-summary", y: 80, height: 140, route: "/cartoes" }, // Upper half (centerY = 150) -> Base
+          { selector: "cards-installments-section", y: 420, height: 160, route: "/cartoes" }, // Lower half (centerY = 500) -> Topo
           { selector: "budgets-content", y: 400, height: 150, route: "/orcamentos" }, // Lower half (centerY = 475) -> Topo
+          { selector: "reports-content", y: 80, height: 140, route: "/relatorios" }, // Upper half (centerY = 150) -> Base
         ]
       : [
           { selector: "investments-summary", y: 90, height: 130, route: "/investments" }, // Upper half -> Base
+          { selector: "investments-new-op", y: 80, height: 120, route: "/investments" }, // Upper half -> Base
           { selector: "investments-targets", y: 390, height: 140, route: "/investments?tab=metas" }, // Lower half -> Topo
           { selector: "investments-rebalance", y: 410, height: 160, route: "/investments?tab=aporte" }, // Lower half -> Topo
+          { selector: "investments-dividends", y: 400, height: 140, route: "/investments?tab=proventos" }, // Lower half -> Topo
         ];
 
     const elementMap = new Map<string, HTMLElement>();

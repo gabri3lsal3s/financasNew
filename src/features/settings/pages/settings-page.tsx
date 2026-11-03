@@ -121,6 +121,18 @@ function resolveSettingsTab(param: string | null): string {
   ) {
     return "devices";
   }
+  if (
+    [
+      "support",
+      "suporte",
+      "ajuda",
+      "help",
+      "faq",
+      "atendimento",
+    ].includes(p)
+  ) {
+    return "appearance";
+  }
   return "appearance";
 }
 

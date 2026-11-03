@@ -43,9 +43,9 @@ describe("DemoTourBar — Barra Superior do Tour (§3.3)", () => {
       screen.getByRole("region", { name: /Barra guiada do modo de demonstração/i }),
     ).toBeInTheDocument();
 
-    expect(screen.getByText("Passo 1 de 4")).toBeInTheDocument();
+    expect(screen.getByText("Passo 1 de 8")).toBeInTheDocument();
     expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
-    expect(screen.getByText("Visão Geral & Fluxo Consolidado")).toBeInTheDocument();
+    expect(screen.getByText("Dashboard & Saldo Livre Real")).toBeInTheDocument();
 
     const prevBtn = screen.getByRole("button", { name: /Anterior/i });
     expect(prevBtn).toBeDisabled();
@@ -67,7 +67,7 @@ describe("DemoTourBar — Barra Superior do Tour (§3.3)", () => {
     const nextBtn = screen.getByRole("button", { name: /Próximo/i });
     await user.click(nextBtn);
 
-    expect(mockNavigate).toHaveBeenCalledWith("/transacoes");
+    expect(mockNavigate).toHaveBeenCalledWith("/");
     expect(handleNext).toHaveBeenCalledWith(1);
     expect(getDemoSessionState().currentStepIndex).toBe(1);
   });

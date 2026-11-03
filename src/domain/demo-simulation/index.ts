@@ -50,3 +50,23 @@ export {
 export {
   getTourHandoffDestination,
 } from "./handoff";
+
+export type {
+  CalculateFreeViewportOptions,
+  FreeViewportWindow,
+  CalculateDeadCenterScrollOptions,
+  SpotlightGeometryOptions,
+  SpotlightGeometry,
+} from "./viewport";
+
+export {
+  DEFAULT_HEADER_HEIGHT,
+  DEFAULT_BOTTOM_NAV_HEIGHT,
+  DEFAULT_CARD_HEIGHT,
+  DEFAULT_SAFETY_MARGIN,
+  MOBILE_BREAKPOINT,
+  calculateFreeViewportWindow,
+  calculateDeadCenterScrollTop,
+  calculateSpotlightGeometry,
+  isElementInsideFreeViewport,
+} from "./viewport";

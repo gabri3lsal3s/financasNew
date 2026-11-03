@@ -329,7 +329,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       document.body.innerHTML = "";
     });
 
-    it("alinha scroll com block: 'end' quando o popover ancorará no topo (alvo na base)", () => {
+    it("alinha scroll com block: 'center' quando o elemento não está no #main-content para não esconder sob a BottomNav (Fase 8 — Tarefa 8.6)", () => {
       startDemo("finances");
 
       const targetEl = document.createElement("div");
@@ -356,7 +356,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
       expect(scrollSpy).toHaveBeenCalledWith({
         behavior: "smooth",
-        block: "end",
+        block: "center",
       });
       expect(observeSpy).toHaveBeenCalledWith(targetEl);
     });
@@ -459,6 +459,69 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
         top: 0,
         behavior: "smooth",
       });
+    });
+
+    it("centraliza o elemento no Dead Center da viewport livre mobile sem sobreposição pela BottomNav (Fase 8 — Tarefa 8.6)", () => {
+      window.innerWidth = 375;
+      window.innerHeight = 800;
+      startDemo("finances");
+
+      const mainContainer = document.createElement("main");
+      mainContainer.id = "main-content";
+      const scrollToSpy = vi.fn();
+      mainContainer.scrollTo = scrollToSpy;
+      mainContainer.scrollTop = 100;
+      document.body.appendChild(mainContainer);
+
+      const targetEl = document.createElement("div");
+      targetEl.setAttribute("data-tour", "overview-kpis");
+      mainContainer.appendChild(targetEl);
+
+      // Elemento na parte inferior: y = 600, height = 80 -> centerY = 640 (> 360 -> card ancorará no topo)
+      // Janela livre calculada: top = 64 + 180 + 16 = 260, bottom = 800 - 72 - 16 = 712, centerY = 486
+      // targetScrollTop = 100 + (640 - 486) = 254
+      vi.spyOn(targetEl, "getBoundingClientRect").mockReturnValue({
+        x: 16,
+        y: 600,
+        left: 16,
+        top: 600,
+        right: 359,
+        bottom: 680,
+        width: 343,
+        height: 80,
+        toJSON: () => ({}),
+      });
+
+      render(<DemoTourSpotlight />);
+
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        top: 254,
+        behavior: "smooth",
+      });
+    });
+
+    it("não rola o container quando o elemento alvo possui posição fixa ou está na BottomNav (Fase 8 — Tarefa 8.6)", () => {
+      window.innerWidth = 375;
+      window.innerHeight = 800;
+      startDemo("finances_wizard");
+
+      const mainContainer = document.createElement("main");
+      mainContainer.id = "main-content";
+      const scrollToSpy = vi.fn();
+      mainContainer.scrollTo = scrollToSpy;
+      document.body.appendChild(mainContainer);
+
+      const navEl = document.createElement("nav");
+      navEl.className = "fixed bottom-0";
+      document.body.appendChild(navEl);
+
+      const wizardBtn = document.createElement("span");
+      wizardBtn.setAttribute("data-tour", "bottom-nav-wizard");
+      navEl.appendChild(wizardBtn);
+
+      render(<DemoTourSpotlight />);
+
+      expect(scrollToSpy).not.toHaveBeenCalled();
     });
 
     it("desconecta o ResizeObserver na desmontagem do componente", () => {
@@ -1617,15 +1680,15 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(aside?.getAttribute("data-placement")).toBe("top");
       expect(aside?.className).toContain("top-[max(env(safe-area-inset-top,0px),16px)]");
 
-      // Spotlight border e máscara posicionados com precisão e padding de 10px ao redor do botão
+      // Spotlight border e máscara posicionados com precisão circular (borderRadius 9999) ao redor do botão
       const border = screen.getByTestId("spotlight-border");
       expect(border).toBeInTheDocument();
       expect(border.getAttribute("x")).toBe("150");
       expect(border.getAttribute("y")).toBe("720");
       expect(border.getAttribute("width")).toBe("76");
       expect(border.getAttribute("height")).toBe("76");
-      expect(border.getAttribute("rx")).toBe("16");
-      expect(border.getAttribute("ry")).toBe("16");
+      expect(border.getAttribute("rx")).toBe("9999");
+      expect(border.getAttribute("ry")).toBe("9999");
     });
   });
 
@@ -1932,6 +1995,115 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       await user.click(closeButton);
 
       expect(mockNavigate).toHaveBeenCalledWith("/transacoes", { replace: true });
+    });
+  });
+
+  describe("Diagnóstico do Passo 5 de Configurações Invisível / Órfão (Fase 8 — Tarefa 8.5)", () => {
+    let mainContainer: HTMLElement;
+
+    beforeEach(() => {
+      mainContainer = document.createElement("main");
+      mainContainer.id = "main-content";
+      Object.defineProperty(mainContainer, "scrollHeight", { configurable: true, value: 2400 });
+      Object.defineProperty(mainContainer, "clientHeight", { configurable: true, value: 800 });
+      mainContainer.scrollTop = 0;
+      const scrollToSpy = vi.fn();
+      mainContainer.scrollTo = scrollToSpy;
+      document.body.appendChild(mainContainer);
+    });
+
+    afterEach(() => {
+      mainContainer.remove();
+      document.body.innerHTML = "";
+    });
+
+    it("dispara rolagem garantida até o fim do #main-content (container.scrollHeight) no passo 5 de configurações", () => {
+      const supportCard = document.createElement("section");
+      supportCard.setAttribute("data-tour", "settings-support-card");
+      mainContainer.appendChild(supportCard);
+
+      vi.spyOn(supportCard, "getBoundingClientRect").mockReturnValue({
+        x: 32,
+        y: 600,
+        left: 32,
+        top: 600,
+        right: 992,
+        bottom: 740,
+        width: 960,
+        height: 140,
+        toJSON: () => ({}),
+      });
+
+      startDemo("settings_support");
+      setStepIndex(4); // Passo 5 de 5: settings-support-channel
+
+      render(<DemoTourSpotlight />);
+
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      expect(mainContainer.scrollTo).toHaveBeenCalledWith({
+        top: 2400,
+        behavior: "smooth",
+      });
+      expect(screen.getByText("Central de Ajuda & Suporte Direto")).toBeInTheDocument();
+      expect(screen.getByText("Passo 5 de 5")).toBeInTheDocument();
+    });
+
+    it("ancora o card popover no topo com preferredPlacement: 'top' e mantém coordenadas visíveis", () => {
+      window.innerWidth = 375;
+      window.innerHeight = 812;
+
+      const supportCard = document.createElement("section");
+      supportCard.setAttribute("data-tour", "settings-support-card");
+      mainContainer.appendChild(supportCard);
+
+      // Elemento no rodapé da página móvel
+      vi.spyOn(supportCard, "getBoundingClientRect").mockReturnValue({
+        x: 16,
+        y: 620,
+        left: 16,
+        top: 620,
+        right: 359,
+        bottom: 760,
+        width: 343,
+        height: 140,
+        toJSON: () => ({}),
+      });
+
+      startDemo("settings_support");
+      setStepIndex(4);
+
+      const { container } = render(<DemoTourSpotlight />);
+
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      const aside = container.querySelector("aside");
+      expect(aside).not.toBeNull();
+      expect(aside?.getAttribute("data-placement")).toBe("top");
+      expect(aside?.className).toContain("top-[max(env(safe-area-inset-top,0px),16px)]");
+      expect(screen.getByText("Passo 5 de 5")).toBeInTheDocument();
+    });
+
+    it("ao avançar do Passo 4 para o Passo 5 navega para /configuracoes sem resetar scroll para zero", async () => {
+      const user = userEvent.setup();
+
+      startDemo("settings_support");
+      setStepIndex(3); // Passo 4: settings-notifications (/configuracoes?tab=notifications)
+
+      const notificationsCard = document.createElement("div");
+      notificationsCard.setAttribute("data-tour", "settings-notifications-card");
+      mainContainer.appendChild(notificationsCard);
+
+      render(<DemoTourSpotlight />);
+
+      const nextButton = screen.getByRole("button", { name: "Próximo passo" });
+      await user.click(nextButton);
+
+      expect(mockNavigate).toHaveBeenCalledWith("/configuracoes");
     });
   });
 });

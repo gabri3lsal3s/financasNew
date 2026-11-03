@@ -254,8 +254,8 @@ describe("PageShell (F7.2/F7.3)", () => {
 
     expect(screen.getByRole("dialog", { name: /Tour guiado interativo/i })).toBeInTheDocument();
     expect(screen.getByTestId("header-demo-indicator")).toBeInTheDocument();
-    expect(screen.getByText("Passo 1 de 4")).toBeInTheDocument();
-    expect(screen.getByText("Visão Geral & Fluxo Consolidado")).toBeInTheDocument();
+    expect(screen.getByText("Passo 1 de 8")).toBeInTheDocument();
+    expect(screen.getByText("Dashboard & Saldo Livre Real")).toBeInTheDocument();
 
     const exitBtn = screen.getByRole("button", { name: /Encerrar demonstração/i });
     await user.click(exitBtn);

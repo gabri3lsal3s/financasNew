@@ -5,6 +5,10 @@ import { Badge, Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
 import {
+  calculateDeadCenterScrollTop,
+  calculateFreeViewportWindow,
+  calculateSpotlightGeometry,
+  DEFAULT_CARD_HEIGHT,
   getTourHandoffDestination,
   getTourSteps,
   getTourTrackCategoryLabel,
@@ -210,7 +214,7 @@ export function DemoTourSpotlight({
       if (nextStep) {
         if (nextStep.targetRoute !== currentStep?.targetRoute) {
           const container = document.getElementById("main-content");
-          if (container) {
+          if (container && nextStep.targetSelector !== '[data-tour="settings-support-card"]') {
             container.scrollTop = 0;
           }
         }
@@ -231,7 +235,7 @@ export function DemoTourSpotlight({
       if (prevStep) {
         if (prevStep.targetRoute !== currentStep?.targetRoute) {
           const container = document.getElementById("main-content");
-          if (container) {
+          if (container && prevStep.targetSelector !== '[data-tour="settings-support-card"]') {
             container.scrollTop = 0;
           }
         }
@@ -250,7 +254,7 @@ export function DemoTourSpotlight({
     if (targetStep) {
       if (targetStep.targetRoute !== currentStep?.targetRoute) {
         const container = document.getElementById("main-content");
-        if (container) {
+        if (container && targetStep.targetSelector !== '[data-tour="settings-support-card"]') {
           container.scrollTop = 0;
         }
       }
@@ -281,15 +285,25 @@ export function DemoTourSpotlight({
     }
 
     const elementRect = element.getBoundingClientRect();
-    const padding = currentStep.spotlightPadding ?? 10;
+    const isCircular =
+      currentStep.spotlightBorderRadius === 9999 ||
+      element.classList.contains("rounded-full") ||
+      Boolean(currentStep.targetSelector?.includes("bottom-nav-wizard")) ||
+      (element instanceof HTMLElement &&
+        (window.getComputedStyle(element).borderRadius === "9999px" ||
+          window.getComputedStyle(element).borderRadius === "50%"));
 
-    setRect({
-      x: Math.max(0, elementRect.left - padding),
-      y: Math.max(0, elementRect.top - padding),
-      width: Math.min(window.innerWidth, elementRect.width + padding * 2),
-      height: Math.min(window.innerHeight, elementRect.height + padding * 2),
-      borderRadius: 16,
+    const padding = currentStep.spotlightPadding ?? (isCircular ? 6 : 10);
+
+    const geometry = calculateSpotlightGeometry(elementRect, {
+      isCircular,
+      padding,
+      customBorderRadius: currentStep.spotlightBorderRadius,
+      windowWidth: window.innerWidth,
+      windowHeight: window.innerHeight,
     });
+
+    setRect(geometry);
     setIsPositionReady(true);
   }, [currentStep]);
 
@@ -306,10 +320,12 @@ export function DemoTourSpotlight({
     if (previousRouteRef.current !== activeRoute) {
       previousRouteRef.current = activeRoute;
       const container = document.getElementById("main-content");
-      if (container) {
+      if (container && currentStep.targetSelector !== '[data-tour="settings-support-card"]') {
         container.scrollTop = 0;
       }
     }
+
+    let bottomCheckTimeout: ReturnType<typeof setTimeout> | undefined;
 
     const attemptScrollAndMeasure = (attemptsLeft: number) => {
       const element = document.querySelector(currentStep.targetSelector ?? "");
@@ -317,24 +333,60 @@ export function DemoTourSpotlight({
         const container = document.getElementById("main-content");
         const headerHeight = 64; // altura do header fixo
         const spacing = 16;
+        const isMobileScreen = typeof window !== "undefined" && window.innerWidth < 768;
 
-        if (container && container.contains(element)) {
-          const isMobileScreen = typeof window !== "undefined" && window.innerWidth < 768;
+        // Se for o card de suporte no rodapé ou elemento explicitamente configurado para rolagem ao fim (Fase 8 — Diagnóstico Passo 5)
+        const isBottomElement =
+          currentStep.targetSelector === '[data-tour="settings-support-card"]' ||
+          element.getAttribute("data-tour") === "settings-support-card";
+
+        // Elementos com posicionamento fixo (ex: FAB central da BottomNav ou ações do Header)
+        // já estão perfeitamente posicionados na tela e não devem sofrer rolagem (Fase 8 — Tarefa 8.6)
+        const isFixedElement =
+          (element instanceof HTMLElement &&
+            window.getComputedStyle(element).position === "fixed") ||
+          Boolean(element.closest("nav.fixed, header.fixed, [data-tour-fixed='true']"));
+
+        if (isBottomElement && container) {
+          // Dispara rolagem garantida até o fim do #main-content para o Passo 5 de Configurações
+          const targetScroll = container.scrollHeight;
+          if (typeof container.scrollTo === "function") {
+            container.scrollTo({ top: targetScroll, behavior: "smooth" });
+          } else {
+            container.scrollTop = targetScroll;
+          }
+          if (typeof element.scrollIntoView === "function") {
+            element.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        } else if (!isFixedElement && container && container.contains(element)) {
           let targetScrollTop = 0;
 
           if (element instanceof HTMLElement && typeof element.getBoundingClientRect === "function") {
             const containerRect = container.getBoundingClientRect();
             const elementRect = element.getBoundingClientRect();
 
-            if (isMobileScreen && (elementRect.top !== 0 || containerRect.top !== 0)) {
+            if (isMobileScreen && (elementRect.top !== 0 || elementRect.bottom !== 0 || elementRect.height !== 0)) {
               const elCenterY = elementRect.top + elementRect.height / 2;
               const willAnchorTop = elCenterY > (window.innerHeight || 800) * 0.45;
-              if (willAnchorTop) {
-                targetScrollTop = container.scrollTop + (elementRect.bottom - containerRect.bottom) + spacing;
-              } else {
-                const containerTopOffset = containerRect.top > 0 ? 0 : headerHeight;
-                targetScrollTop = container.scrollTop + (elementRect.top - containerRect.top) - containerTopOffset - spacing;
-              }
+              const anchorPosition = willAnchorTop ? "top" : "bottom";
+              const cardHeight = cardRef.current?.offsetHeight || DEFAULT_CARD_HEIGHT;
+
+              // Calcula a janela visual livre útil (Dead Center do Viewport Útil)
+              const freeWindow = calculateFreeViewportWindow({
+                windowHeight: window.innerHeight,
+                cardHeight,
+                anchorPosition,
+                isMobile: true,
+              });
+
+              const maxScrollTop = container.scrollHeight - container.clientHeight;
+
+              targetScrollTop = calculateDeadCenterScrollTop({
+                containerScrollTop: container.scrollTop,
+                elementCenterY: elCenterY,
+                viewportFreeCenterY: freeWindow.centerY,
+                maxScrollTop: maxScrollTop > 0 ? maxScrollTop : undefined,
+              });
             } else if (elementRect.top !== 0 || containerRect.top !== 0) {
               const containerTopOffset = containerRect.top > 0 ? 0 : headerHeight;
               targetScrollTop = container.scrollTop + (elementRect.top - containerRect.top) - containerTopOffset - spacing;
@@ -352,28 +404,23 @@ export function DemoTourSpotlight({
           } else {
             container.scrollTop = safeScrollTop;
           }
-        } else if (typeof element.scrollIntoView === "function") {
-          const isMobileScreen = typeof window !== "undefined" && window.innerWidth < 768;
-          let blockAlignment: ScrollLogicalPosition = "center";
-
-          if (isMobileScreen) {
-            const elRect = element.getBoundingClientRect();
-            const elCenterY = elRect.top + elRect.height / 2;
-            const willAnchorTop = elCenterY > window.innerHeight * 0.45;
-            // Se o popover ancorar no topo, alinha o alvo com block: "end"
-            // Se o popover ancorar na base, alinha com block: "center"
-            blockAlignment = willAnchorTop ? "end" : "center";
-          }
-
-          element.scrollIntoView({ behavior: "smooth", block: blockAlignment });
+        } else if (!isFixedElement && typeof element.scrollIntoView === "function") {
+          // Centralização determinística na viewport livre (nunca block: "end" para não esconder sob a BottomNav)
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
         }
 
         // Acopla ResizeObserver para recalcular dimensões após carregamento assíncrono de dados
         if (typeof ResizeObserver !== "undefined") {
           resizeObserver = new ResizeObserver(() => {
+            if (isBottomElement && container) {
+              container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+            }
             updateTargetRect();
           });
           resizeObserver.observe(element);
+          if (isBottomElement && container) {
+            resizeObserver.observe(container);
+          }
         }
 
         // Sincronização Precisa pós-Estabilização (Fim Real da Rolagem) (Fase 2 — Tarefa 2.3)
@@ -393,6 +440,9 @@ export function DemoTourSpotlight({
           }
           if (scrollTarget && onScrollEnd) {
             scrollTarget.removeEventListener("scrollend", onScrollEnd);
+          }
+          if (isBottomElement && container) {
+            container.scrollTop = container.scrollHeight;
           }
           updateTargetRect();
         };
@@ -432,6 +482,15 @@ export function DemoTourSpotlight({
         // Fallback de segurança caso scrollend e RAF sejam suspensos por aba inativa
         maxTimeout = setTimeout(settleAndMeasure, 600);
 
+        if (isBottomElement && container) {
+          bottomCheckTimeout = setTimeout(() => {
+            if (container) {
+              container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+              updateTargetRect();
+            }
+          }, 200);
+        }
+
         cancelSettle = () => {
           if (isSettled) return;
           isSettled = true;
@@ -456,6 +515,7 @@ export function DemoTourSpotlight({
 
     return () => {
       if (timer) clearTimeout(timer);
+      if (bottomCheckTimeout) clearTimeout(bottomCheckTimeout);
       if (resizeObserver) resizeObserver.disconnect();
       if (cancelSettle) cancelSettle();
     };
@@ -553,7 +613,9 @@ export function DemoTourSpotlight({
   // Avalia o espaço disponível real acima e abaixo para inverter dinamicamente
   // entre "top" e "bottom", evitando que o card transborde a viewport.
   const desktopPlacement = useMemo<"top" | "bottom">(() => {
-    if (!rect || typeof window === "undefined") return "bottom";
+    if (!rect || typeof window === "undefined") {
+      return currentStep?.preferredPlacement === "top" ? "top" : "bottom";
+    }
     const cardHeight = measuredCardHeight;
     const spaceBelow = window.innerHeight - (rect.y + rect.height);
     const spaceAbove = rect.y;
@@ -594,8 +656,8 @@ export function DemoTourSpotlight({
     }
 
     const top = desktopPlacement === "top"
-      ? Math.max(16, rect.y - cardHeight - gap)
-      : Math.min(window.innerHeight - cardHeight - 16, rect.y + rect.height + gap);
+      ? Math.max(16, Math.min(window.innerHeight - cardHeight - 16, rect.y - cardHeight - gap))
+      : Math.min(window.innerHeight - cardHeight - 16, Math.max(16, rect.y + rect.height + gap));
 
     // Clamp horizontal estrito contra vazamento de viewport
     const left = Math.max(

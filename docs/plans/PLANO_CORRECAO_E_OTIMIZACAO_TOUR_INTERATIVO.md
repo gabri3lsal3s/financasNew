@@ -490,18 +490,21 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
       2. *Modos de Experiência & Sensorial:* Presets Dinâmico, Foco (Minimalista) e Discreto (Silencioso), regulando densidade, sons e haptics (`/configuracoes?tab=appearance` -> `[data-tour="settings-experience-presets"]`).
       3. *Identidade Visual & Cores de Destaque:* Seleção de temas Claro/Escuro/Sistema, paleta de cores primárias (Teal, Blue, Emerald, Violet...) e modo sem centavos no Dashboard (`[data-tour="settings-visual-identity"]`).
       4. *Notificações, Lembretes & Assistente Bancário:* Gestão de alertas de vencimento, fechamento diário e leitor passivo de notificações (`/configuracoes?tab=notifications` -> `[data-tour="settings-notifications-card"]`).
-      5. *Central de Ajuda & Suporte Direto:* Acesso ao chat de suporte e guias técnicos (`/configuracoes` -> `[data-tour="settings-support-card"]`).
+      5. *Central de Ajuda & Suporte Direto:* Rolagem determinística até a seção de suporte no rodapé da página (`/configuracoes` -> `[data-tour="settings-support-card"]`) com `scrollIntoView` forçado até o final da página e ancoragem superior do card popover (`preferredPlacement: "top"`).
+  - [x] **Diagnóstico do Passo 5 de Configurações Invisível / Órfão:**
+    * **O que acontece:** Ao avançar do Passo 4 (`/configuracoes?tab=notifications`) para o Passo 5 (`/configuracoes`), a navegação para a rota sem query param remove a aba ativa, voltando para `appearance`. A seção `[data-tour="settings-support-card"]` fica no fim da página, bem abaixo da primeira dobra (`mb-12`). Como o container `#main-content` não rolava até o final, a seção ficava fora da viewport visível e o spotlight desistia ou calculava coordenadas fora da tela, fazendo o card desaparecer.
+    * **Solução:** No Passo 5, garantir rota explícita `/configuracoes` (ou `/configuracoes?tab=account` / aba ativa com suporte), disparar rolagem garantida até o fim do `#main-content` (`container.scrollTo({ top: container.scrollHeight, behavior: "smooth" })`) e ancorar o popover no topo da tela com `preferredPlacement: "top"`.
   - [x] **Preservação dos Micro-Tours Modulares:** Manter disponíveis no `DemoTrackSelectModal` os micro-tours individuais de 2 a 3 passos para usuários que queiram apenas consultar tópicos rápidos sob demanda.
 
-- [ ] **8.6. Centralização Determinística no Viewport Útil Mobile & Calibragem Precisa do FAB**
-  - [ ] **Diagnóstico do Escondimento sob a BottomNav:**
+- [x] **8.6. Centralização Determinística no Viewport Útil Mobile & Calibragem Precisa do FAB**
+  - [x] **Diagnóstico do Escondimento sob a BottomNav:**
     * No mobile, o container `<main id="main-content">` se estende até o chão da tela e a `<BottomNav>` flutua por cima com `fixed bottom-0` e altura de `64px + safe-area-bottom` (~80px).
     * Se o card explicativo ancora no topo e o elemento focado rola para o final da página (ou usa `block: "end"`), o elemento é empurrado exatamente para baixo da barra inferior, ficando totalmente oculto pelo menu.
-  - [ ] **Diagnóstico da Descentralização do Botão FAB (+):**
+  - [x] **Diagnóstico da Descentralização do Botão FAB (+):**
     * Na captura de tela, o recorte verde aparece como um retângulo largo deslocado para baixo e achatado na parte inferior.
     * **Causa Raiz:** O atributo `data-tour="bottom-nav-wizard"` foi colocado no contêiner pai `<NavLink>` (`flex min-h-11 items-center justify-center`). Esse link ocupa o slot da coluna (altura de 44px) dentro da barra inferior, enquanto o botão FAB físico real é o círculo flutuante interno com margem negativa (`-mt-6`) e tamanho `size-14` (56px) / `size-12` (48px). O spotlight estava medindo a caixa retangular do link em vez do círculo do botão!
     * **Solução:** Mover `data-tour="bottom-nav-wizard"` para o elemento circular real do botão (`<span className="-mt-6 flex size-14 ...">` ou no botão físico `<span className="flex size-12 ...">`) e utilizar `rounded-full` (`borderRadius: 9999`) no cálculo do spotlight para gerar um recorte perfeitamente circular e milimetricamente centralizado no FAB (+).
-  - [ ] **Fórmula Matemática do Viewport Útil Livre:**
+  - [x] **Fórmula Matemática do Viewport Útil Livre:**
     * Calcular a janela visual livre de obstrução no mobile:
       ```ts
       const headerHeight = 64; // Header fixo superior
@@ -511,7 +514,7 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
       // Quando o card ancorar no topo: a área visível para o elemento fica entre (headerHeight + cardHeight + 16) e (window.innerHeight - bottomNavHeight - 16)
       // Quando o card ancorar na base: a área visível fica entre (headerHeight + 16) e (window.innerHeight - cardHeight - bottomNavHeight - 16)
       ```
-  - [ ] **Rolagem para o Centro da Janela Livre (Dead Center do Viewport Útil):**
+  - [x] **Rolagem para o Centro da Janela Livre (Dead Center do Viewport Útil):**
     * Em vez de alinhar com `block: "end"` ou `targetScrollTop` extremo, rolar o elemento para que seu centro fique exatamente no ponto médio da zona visível desobstruída:
       `targetScrollTop = container.scrollTop + (elementCenterY - viewportFreeCenterY)`.
     * Garantir que tanto a mensagem explicativa quanto a barra inferior respeitem uma margem de segurança mínima de 16px acima e abaixo do recorte iluminado.
@@ -554,8 +557,17 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
     * Verifica se a trilha concluída é um Tour Completo (`track === "finances"`, `track === "investments"`, etc.) para injetar o parâmetro de ação (`novo=...`), ou se é micro-tour para retornar estritamente a rota limpa sem query params invasivos.
   - [ ] Atualizar testes unitários em `handoff.test.ts` cobrindo tanto a abertura dos modais certos nos tours completos quanto o fechamento limpo nos micro-tours.
 
-- [ ] **8.10. Otimização de Responsividade e Refinamento Visual Geral**
-  - [ ] Ajustar o clamp horizontal do card popover no desktop para respeitar a largura da Sidebar de navegação esquerda (`DesktopNav`), evitando sobreposição em telas laptop (1024px a 1366px).
+- [ ] **8.10. Otimização de Responsividade e Refinamento Visual dos Cards Popover**
+  - [ ] **Diagnóstico da Quebra Visual e Colisão de Elementos no Rodapé:**
+    * Na captura de tela, o botão *"Começar Conta Real"* colide com os dots de progresso e transborda para fora da margem direita do card popover.
+    * **Causa Raiz 1 (Largura Rígida Desktop):** `desktopCardStyle()` usava `cardWidth = 380` rígido. Em passos com 8 passos (como Finanças Diárias completo), a soma de:
+      Botão Anterior (~90px) + 8 dots de progresso com gap (~85px) + Botão *"Começar Conta Real"* (~165px) + gaps e paddings internos (~48px) = **~388px**.
+      O conteúdo ultrapassa os 380px estáticos, esmagando os dots e fazendo o botão saltar para fora da borda arredondada.
+    * **Causa Raiz 2 (Layout Flex Rígido no Rodapé):** O rodapé do card usava `flex items-center justify-between gap-2` com todos os botões marcados com `shrink-0`. Sem flexibilidade, quando a largura atinge o limite, os elementos se sobrepõem visualmente.
+  - [ ] **Solução Arquitetural Responsiva:**
+    * **Largura Adaptativa no Desktop:** Alterar a largura do card para `min(420px, calc(100vw - 32px))` (ou `w-[420px]` dinâmico), oferecendo a folga necessária para comportar os 8 dots e o botão com rótulo completo.
+    * **Auto-fit Inteligente no Botão de Ação:** Usar `max-w-fit truncate` ou encurtar o rótulo suavemente para `"Começar"` caso a largura disponível seja restrita (`< 400px`), mantendo o ícone `<Check className="size-3.5" />` e a ergonomia intacta.
+    * **Clamp Horizontal contra a Sidebar Desktop:** Garantir que o card popover nunca fique colado nas bordas nem sobreponha a Sidebar de navegação esquerda (`DesktopNav`), respeitando `left >= sidebarWidth + 16px`.
 
 - [ ] **8.11. Testes Unitários e Validação da Fase 8**
   - [x] Testar `getTourTrackCategoryLabel` assegurando 100% de precisão nos badges.
