@@ -428,12 +428,12 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 **Meta:** Realizar uma varredura completa de ponta a ponta procurando erros, bugs residuais e fragilidades de segurança/execução, implementar as soluções, realizar a sincronização final (`git push`), compilar o novo APK Android assinado e disparar relatório executivo com diagnóstico de migração Supabase via Bot Telegram ARGOS.
 
 #### Tarefas:
-- [ ] **7.1. Varredura Exaustiva de Fragilidades e Casos de Borda**
-  - [ ] Verificar limpeza de listeners no `#main-content` ao desmontar o componente para evitar memory leaks.
-  - [ ] Verificar transição entre modo demo e conta real (garantir que nenhum dado de mock vaze para o Supabase).
-  - [ ] Verificar comportamento em modo offline ou rede intermitente durante o tour.
-  - [ ] Verificar compatibilidade do tour exclusivo com permissões nativas no Android (notificações bancárias).
-  - [ ] Identificar e corrigir qualquer bug ou fragilidade remanescente encontrada durante a revisão.
+- [x] **7.1. Varredura Exaustiva de Fragilidades e Casos de Borda**
+  - [x] Verificar limpeza de listeners no `#main-content` ao desmontar o componente para evitar memory leaks.
+  - [x] Verificar transição entre modo demo e conta real (garantir que nenhum dado de mock vaze para o Supabase).
+  - [x] Verificar comportamento em modo offline ou rede intermitente durante o tour.
+  - [x] Verificar compatibilidade do tour exclusivo com permissões nativas no Android (notificações bancárias).
+  - [x] Identificar e corrigir qualquer bug ou fragilidade remanescente encontrada durante a revisão.
 
 - [ ] **7.2. Portão de Qualidade Pré-Release (Preflight Check)**
   - [ ] Executar `npm run typecheck` (zero erros).
