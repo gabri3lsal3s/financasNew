@@ -147,58 +147,58 @@ export function PlatformComparison() {
             </Card>
           </ScrollReveal>
 
-          {/* Card 2: PWA Mobile */}
+          {/* Card 2: PWA Mobile (Versão Oficial Recomendada) */}
           <ScrollReveal delay={100}>
-            <Card className="h-full border-border/80 bg-surface/90 shadow-xs p-5 sm:p-6 rounded-2xl flex flex-col justify-between space-y-4">
+            <Card className="h-full border-primary/50 bg-gradient-to-b from-primary/10 via-surface to-surface shadow-sm p-5 sm:p-6 rounded-2xl flex flex-col justify-between space-y-4 ring-1 ring-primary/20">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-background border border-border/60 text-muted-foreground">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
                     <Smartphone className="size-5" aria-hidden="true" />
                   </div>
-                  <Badge variant="muted" size="xs">
-                    iPhone & Android
+                  <Badge variant="default" size="xs" className="font-semibold">
+                    Oficial Recomendado
                   </Badge>
                 </div>
                 <div>
                   <h3 className="font-display text-lg font-bold text-foreground">Mobile PWA</h3>
                   <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                    Acesso instantâneo e leve sem consumir armazenamento no seu celular.
+                    Instalação instantânea em 1 toque no iPhone, Android e computador sem ocupar memória.
                   </p>
                 </div>
                 <div className="pt-2 space-y-2 text-xs text-muted-foreground">
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>Captura inteligente de comprovantes (PDF, Imagem e Pix Copia e Cola)</span>
+                    <span>Acesso a 100% dos motores de cálculo, orçamentos e rebalanceamento de aportes</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>Fixa na tela inicial em 1 clique sem consumir armazenamento</span>
+                    <span>Fixa direto na tela inicial sem downloads de arquivos pesados ou lojas</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>Compatibilidade perfeita com iPhone (Safari), PIN local e Privacy Shield</span>
+                    <span>Captura rápida de Pix Copia e Cola, leitura de comprovantes com OCR e Privacy Shield</span>
                   </div>
                 </div>
               </div>
             </Card>
           </ScrollReveal>
 
-          {/* Card 3: Android App Pro */}
+          {/* Card 3: Android App Pro (Beta Opcional) */}
           <ScrollReveal delay={150}>
-            <Card className="h-full border-primary/40 bg-gradient-to-b from-primary/10 via-surface to-surface shadow-sm p-5 sm:p-6 rounded-2xl flex flex-col justify-between space-y-4">
+            <Card className="h-full border-border/80 bg-surface/90 shadow-xs p-5 sm:p-6 rounded-2xl flex flex-col justify-between space-y-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-background border border-border/60 text-muted-foreground">
                     <Zap className="size-5" aria-hidden="true" />
                   </div>
-                  <Badge variant="positive" size="xs" className="font-semibold">
-                    Superpoderes
+                  <Badge variant="warning" size="xs" className="font-semibold">
+                    Beta Opcional para Android
                   </Badge>
                 </div>
                 <div>
                   <h3 className="font-display text-lg font-bold text-foreground">Android App Pro</h3>
                   <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                    A experiência definitiva com detecção automática de compras bancárias.
+                    Automação adicional de detecção passiva de notificações bancárias em segundo plano.
                   </p>
                 </div>
                 <div className="pt-2 space-y-2 text-xs text-muted-foreground">
@@ -229,8 +229,8 @@ export function PlatformComparison() {
                 <tr>
                   <th scope="col" className="p-3.5 sm:p-4">Funcionalidade</th>
                   <th scope="col" className="p-3.5 sm:p-4 text-center">Web Desktop</th>
-                  <th scope="col" className="p-3.5 sm:p-4 text-center">Mobile PWA</th>
-                  <th scope="col" className="p-3.5 sm:p-4 text-center bg-primary/5">Android App Pro</th>
+                  <th scope="col" className="p-3.5 sm:p-4 text-center bg-primary/5">Mobile PWA (Oficial)</th>
+                  <th scope="col" className="p-3.5 sm:p-4 text-center">Android App Pro (Beta)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40 text-muted-foreground">
@@ -248,26 +248,26 @@ export function PlatformComparison() {
                         <span className="font-semibold text-foreground">{f.web}</span>
                       )}
                     </td>
-                    <td className="p-3.5 sm:p-4 text-center">
+                    <td className="p-3.5 sm:p-4 text-center bg-primary/5">
                       {typeof f.pwa === "boolean" ? (
                         f.pwa ? (
-                          <CheckCircle2 className="size-4 text-positive mx-auto" aria-hidden="true" />
-                        ) : (
-                          <span className="text-muted-foreground/40">-</span>
-                        )
-                      ) : (
-                        <span className="font-semibold text-foreground">{f.pwa}</span>
-                      )}
-                    </td>
-                    <td className="p-3.5 sm:p-4 text-center bg-primary/5">
-                      {typeof f.androidPro === "boolean" ? (
-                        f.androidPro ? (
                           <CheckCircle2 className="size-4 text-positive-strong mx-auto" aria-hidden="true" />
                         ) : (
                           <span className="text-muted-foreground/40">-</span>
                         )
                       ) : (
-                        <span className="font-semibold text-primary">{f.androidPro}</span>
+                        <span className="font-semibold text-primary">{f.pwa}</span>
+                      )}
+                    </td>
+                    <td className="p-3.5 sm:p-4 text-center">
+                      {typeof f.androidPro === "boolean" ? (
+                        f.androidPro ? (
+                          <CheckCircle2 className="size-4 text-positive mx-auto" aria-hidden="true" />
+                        ) : (
+                          <span className="text-muted-foreground/40">-</span>
+                        )
+                      ) : (
+                        <span className="font-semibold text-foreground">{f.androidPro}</span>
                       )}
                     </td>
                   </tr>

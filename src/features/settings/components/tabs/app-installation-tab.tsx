@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAppUpdate } from "@/hooks/use-app-update";
 import { isNativePlatform } from "@/services/native/platform";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
+import { ApkInstallGuideDialog } from "@/components/modules";
 import { pushToast } from "@/services/toast";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +37,7 @@ export function AppInstallationTab() {
 
   const [showGuide, setShowGuide] = useState(false);
   const [showQrCode, setShowQrCode] = useState(false);
+  const [showApkDialog, setShowApkDialog] = useState(false);
 
   const handleManualCheck = async () => {
     const res = await checkForUpdates(false);
@@ -248,11 +250,11 @@ export function AppInstallationTab() {
                       type="button"
                       variant="default"
                       size="sm"
-                      onClick={handleDownloadApk}
+                      onClick={() => setShowApkDialog(true)}
                       className="gap-2"
                     >
                       <Download className="size-4" aria-hidden="true" />
-                      <span>Baixar App Android Pro</span>
+                      <span>Conhecer o App Android (Beta)</span>
                     </Button>
                     <Button
                       type="button"
@@ -384,6 +386,14 @@ export function AppInstallationTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Diálogo interativo com guia de 3 passos e alternativa PWA */}
+      <ApkInstallGuideDialog
+        open={showApkDialog}
+        onOpenChange={setShowApkDialog}
+        onDownloadApk={handleDownloadApk}
+        apkUrl={activeApkUrl}
+      />
     </div>
   );
 }

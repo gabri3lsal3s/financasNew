@@ -140,4 +140,24 @@ describe("AppInstallationTab", () => {
       );
     });
   });
+
+  it("abre o diálogo de guia de instalação ao clicar em 'Conhecer o App Android (Beta)' na web", () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+    vi.spyOn(appUpdateHookModule, "useAppUpdate").mockReturnValue({
+      status: "idle",
+      isChecking: false,
+      hasUpdate: false,
+      updateInfo: null,
+      error: null,
+      checkForUpdates: vi.fn(),
+      installUpdate: vi.fn(),
+    });
+
+    render(<AppInstallationTab />);
+
+    const openGuideButton = screen.getByText("Conhecer o App Android (Beta)");
+    fireEvent.click(openGuideButton);
+
+    expect(screen.getByRole("heading", { name: "Instalação do Aplicativo Android (Beta)" })).toBeInTheDocument();
+  });
 });

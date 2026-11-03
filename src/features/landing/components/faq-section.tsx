@@ -40,9 +40,14 @@ const faqs: FaqItem[] = [
       "Sim, com 1 clique direto no seu painel de configurações. Sem pegadinhas, taxas ocultas ou ligações. Você continuará tendo acesso completo até o último dia do período já contratado.",
   },
   {
+    question: "Preciso baixar algum APK no meu celular para usar?",
+    answer:
+      "Não. O produto comercial oficial do Áxis é 100% web e opera como PWA (Progressive Web App). Você pode acessar imediatamente de qualquer navegador no iPhone, Android, Mac ou Windows e fixá-lo na tela inicial em 1 toque, sem precisar baixar nenhum arquivo .apk e sem ocupar o armazenamento do aparelho. O APK Android é apenas um complemento beta opcional para quem usa Android e deseja a captura passiva em segundo plano de notificações bancárias.",
+  },
+  {
     question: "O aplicativo funciona no celular como um app nativo?",
     answer:
-      "Sim. O Áxis opera em dois formatos complementares no celular: como PWA (Progressive Web App) ultraleve para iPhone e Android, que você adiciona à tela inicial em 1 clique sem ocupar espaço de memória; e como Aplicativo Android Pro (.apk), que adiciona o Assistente Bancário Inteligente para capturar comprovantes de cartão e Pix em tempo real.",
+      "Sim. O Áxis opera com carregamento instantâneo e interface em tela cheia via PWA universal no iPhone e Android. Além disso, para usuários de Android que desejam automação em segundo plano sem senhas, disponibilizamos o Aplicativo Android Pro Beta opcional (.apk) com o Assistente Bancário de notificações em tempo real.",
   },
   {
     question: "Por que o Aplicativo Android Pro é baixado pelo site e não pela Google Play Store?",

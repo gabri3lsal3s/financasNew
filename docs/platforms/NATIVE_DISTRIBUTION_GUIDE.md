@@ -1,6 +1,7 @@
 # 📱 NATIVE_DISTRIBUTION_GUIDE.md — Guia de Distribuição, Assinatura e Atualização do APK Android
 
-> **Status:** v1.0 — Guia Canônico de Distribuição Nativa e Atualizações Automatizadas (2026-10-20).  
+> **Status:** v2.0 — Guia Canônico de Distribuição Nativa, Assinatura e Atualizações Automatizadas (2026-11-03).  
+> **Modelo Comercial:** Governança PWA-First — O PWA é o produto comercial oficial universal. O APK Android é distribuído como **Beta Opcional para Android** com automação passiva em segundo plano.  
 > **Aplica-se a:** Desenvolvedores, pipelines de CI/CD e suporte ao cliente do aplicativo **Áxis**.
 
 ---
@@ -13,9 +14,9 @@ O Áxis opera em um modelo unificado onde uma única conta/assinatura concede ac
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        TRIPÉ DE PLATAFORMAS Áxis                       │
 ├────────────────────┬───────────────────────────┬───────────────────────┤
-│ 1. Web Desktop     │ 2. Mobile PWA             │ 3. Android App Pro    │
+│ 1. Web Desktop     │ 2. Mobile PWA (Oficial)   │ 3. Android Pro (Beta) │
 ├────────────────────┼───────────────────────────┼───────────────────────┤
-│ • Telas amplas     │ • iPhone (iOS) & Android  │ • Android Exclusivo   │
+│ • Telas amplas     │ • iPhone (iOS) & Android  │ • Beta Opcional       │
 │ • Projeção FIRE    │ • Instalação instantânea  │ • Leitor Bancário     │
 │ • Conciliação      │ • Zero megabytes ocupados │ • Biometria física    │
 │ • Exportação Excel │ • Sem passar por lojas    │ • Atualização in-app  │

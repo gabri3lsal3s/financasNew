@@ -20,8 +20,8 @@ describe("PlatformComparison — Comparação Realista de Plataformas (Fase 6 �
     expect(screen.getByRole("heading", { name: "Android App Pro" })).toBeInTheDocument();
 
     expect(screen.getByText("Computador")).toBeInTheDocument();
-    expect(screen.getByText("iPhone & Android")).toBeInTheDocument();
-    expect(screen.getByText("Superpoderes")).toBeInTheDocument();
+    expect(screen.getByText("Oficial Recomendado")).toBeInTheDocument();
+    expect(screen.getByText("Beta Opcional para Android")).toBeInTheDocument();
   });
 
   it("renderiza os diferenciais reais de captura inteligente na tabela detalhada", () => {

@@ -189,6 +189,10 @@ export function PricingSection() {
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
+                    <span><strong>Acesso Web & PWA Imediato:</strong> celular, tablet e computador</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
                     <span>Dossiê completo em <strong>Excel (.xlsx nativo)</strong></span>
                   </div>
                 </div>
