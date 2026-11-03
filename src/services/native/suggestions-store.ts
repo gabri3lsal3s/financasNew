@@ -351,9 +351,17 @@ export function addPendingSuggestion(suggestion: ParsedBankTransaction): void {
     const isSameAmount = existing.amountCents === suggestion.amountCents;
     const isSameWindow = isWithinTemporalWindow(existing, suggestion, DEDUPLICATION_WINDOW_MS);
 
-    if (isSameAmount && isSameWindow && areMerchantsCompatible(existing, suggestion)) {
-      const existingIsWallet = isDigitalWallet(existing.bankName);
+    const existingIsWallet = isDigitalWallet(existing.bankName);
+    const isWalletBankPair = (existingIsWallet && !incomingIsWallet) || (!existingIsWallet && incomingIsWallet);
+    const hasConflictingMerchants =
+      Boolean(existing.merchant) &&
+      Boolean(suggestion.merchant) &&
+      !areMerchantsCompatible(existing, suggestion);
+    const isCompatible =
+      areMerchantsCompatible(existing, suggestion) ||
+      (isWalletBankPair && !hasConflictingMerchants);
 
+    if (isSameAmount && isSameWindow && isCompatible) {
       // CASO A: A notificação da Carteira Digital chegou primeiro e dentro de 5 min chega a do Banco Oficial
       // -> Fazer o merge: atribuir a transação ao banco oficial e manter a bandeira e dígitos do cartão
       if (existingIsWallet && !incomingIsWallet) {
@@ -365,9 +373,14 @@ export function addPendingSuggestion(suggestion: ParsedBankTransaction): void {
       }
 
       // CASO B: A notificação do Banco Oficial chegou primeiro e dentro de 5 min chega a da Carteira Digital
-      // -> Rejeitar a notificação subsequente da carteira como duplicata (e enriquecer bandeira/dígitos se faltavam)
+      // -> Rejeitar a notificação subsequente da carteira como duplicata (e enriquecer comerciante/bandeira/dígitos)
       if (!existingIsWallet && incomingIsWallet) {
         let enriched = false;
+        if (!existing.merchant && suggestion.merchant) {
+          existing.merchant = suggestion.merchant;
+          existing.description = suggestion.description;
+          enriched = true;
+        }
         if (!existing.cardBrand && (suggestion.cardBrand || isCardBrand(suggestion.issuerBank))) {
           existing.cardBrand =
             suggestion.cardBrand ||

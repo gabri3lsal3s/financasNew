@@ -1320,6 +1320,49 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
         expect(parsed?.merchant).toBe("Starbucks Miami");
         expect(parsed?.paymentMethod).toBe("debit");
       });
+
+      it("parseia compra no débito internacional Nomad com ponto decimal em dólares", () => {
+        const parsed = parseBankNotification({
+          packageName: "com.nomadfinancial.app",
+          title: "Nomad",
+          text: "Compra aprovada: US$ 15.50 em Starbucks",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Nomad");
+        expect(parsed?.amountCents).toBe(1550);
+        expect(parsed?.currency).toBe("USD");
+        expect(parsed?.merchant).toBe("Starbucks");
+        expect(parsed?.paymentMethod).toBe("debit");
+      });
+
+      it("parseia compra aprovada em dólares com formato $45.00", () => {
+        const parsed = parseBankNotification({
+          packageName: "com.nomadfinancial.app",
+          title: "Nomad",
+          text: "Purchase of $45.00 approved at Apple Store",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Nomad");
+        expect(parsed?.amountCents).toBe(4500);
+        expect(parsed?.currency).toBe("USD");
+        expect(parsed?.merchant).toBe("Apple Store");
+      });
+
+      it("parseia pagamento Wise em euros com ponto decimal", () => {
+        const parsed = parseBankNotification({
+          packageName: "com.transferwise.android",
+          title: "Wise",
+          text: "Pagamento de € 12.80 aprovado",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Wise");
+        expect(parsed?.amountCents).toBe(1280);
+        expect(parsed?.nature).toBe("expense");
+        expect(parsed?.type).toBe("expense");
+      });
     });
 
     describe("BTG Investimentos (com.btgpactual.investimentos)", () => {
@@ -1632,6 +1675,51 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
             title: "Inter",
             text: "Aumentamos seu limite para R$ 3.500,00! Aproveite seu novo limite.",
             packageName: "br.com.intermedium",
+          };
+          expect(parseBankNotification(payload)).toBeNull();
+        });
+
+        it("deve descartar oferta de crédito pré-aprovado para contratar (anti-falso positivo)", () => {
+          const payload = {
+            title: "Nubank",
+            text: "Gabriel, você tem R$ 10.000,00 de crédito pré-aprovado para contratar agora",
+            packageName: "com.nu.production",
+          };
+          expect(parseBankNotification(payload)).toBeNull();
+        });
+
+        it("deve descartar simulação de empréstimo pessoal com taxa (anti-falso positivo)", () => {
+          const payload = {
+            title: "Inter",
+            text: "Simule seu empréstimo pessoal de R$ 5.000,00 com taxas a partir de 1,99%",
+            packageName: "br.com.intermedium",
+          };
+          expect(parseBankNotification(payload)).toBeNull();
+        });
+
+        it("deve descartar limite emergencial disponível (anti-falso positivo)", () => {
+          const payload = {
+            title: "Itaú",
+            text: "Disponível para você: limite emergencial de R$ 1.200,00",
+            packageName: "com.itau",
+          };
+          expect(parseBankNotification(payload)).toBeNull();
+        });
+
+        it("deve descartar oferta de limite extra no cartão (anti-falso positivo)", () => {
+          const payload = {
+            title: "Santander",
+            text: "Aproveite o limite extra de R$ 1.500,00 no seu cartão",
+            packageName: "com.santander.app",
+          };
+          expect(parseBankNotification(payload)).toBeNull();
+        });
+
+        it("garante retorno estrito de null para mensagens financeiras ambíguas (anti-fallback cego de despesa)", () => {
+          const payload = {
+            title: "Nubank",
+            text: "Saldo em conta de R$ 2.300,00 atualizado",
+            packageName: "com.nu.production",
           };
           expect(parseBankNotification(payload)).toBeNull();
         });

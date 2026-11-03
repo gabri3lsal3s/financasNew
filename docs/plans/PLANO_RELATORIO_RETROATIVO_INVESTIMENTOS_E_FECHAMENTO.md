@@ -415,38 +415,38 @@ Esta tabela sintetiza a evolução matemática rigorosa para todas as fórmulas 
 ### FASE 7: Homologação Final, Varredura de Fragilidades, Documentação & Fechamento
 > **Objetivo:** Executar auditoria de segurança multi-tenant, testes de regressão ponta a ponta com casos de teste paramétricos cobrindo todos os tipos de carteira, atualizar a documentação arquitetural e finalizar a entrega.
 
-- [ ] **Tarefa 7.1: Auditoria de Segurança Multi-Tenant (RLS Penetration)**
-  - [ ] Adicionar cenários em `src/tests/cross-tenant-penetration.test.ts` validando que Usuário B não consegue ler nem modificar cotações mensais de Usuário A em `portfolio_monthly_prices`.
-  - [ ] Testar exclusão em cascata (`on delete cascade`) ao deletar conta de usuário.
+- [x] **Tarefa 7.1: Auditoria de Segurança Multi-Tenant (RLS Penetration)**
+  - [x] Adicionar cenários em `src/tests/cross-tenant-penetration.test.ts` validando que Usuário B não consegue ler nem modificar cotações mensais de Usuário A em `portfolio_monthly_prices`.
+  - [x] Testar exclusão em cascata (`on delete cascade`) ao deletar conta de usuário.
 
-- [ ] **Tarefa 7.2: Testes de Regressão Integrados Parametrizados**
-  - [ ] **Cenário 1 (Caso Auditado em 03/11/2026):**
+- [x] **Tarefa 7.2: Testes de Regressão Integrados Parametrizados**
+  - [x] **Cenário 1 (Caso Auditado em 03/11/2026):**
     - 978 dias, 34 competências, R$ 106.107,27 de patrimônio, 61 ativos, TWR acumulado +22,4%;
     - TWR anualizado validado em **+7,8% a.a.** (+7,84%);
     - Soma visual das classes validada em exatamente **100,0%**;
     - Volatilidade e Sharpe calculados sobre os 33 meses fechados (excluindo MTD de 3 dias);
     - Tabela internacional exibindo `Var. Cota` e subtotal em Reais (+10,0% BRL);
     - 25 setores econômicos produtivos + Reserva de Caixa isolada (0,54%).
-  - [ ] **Cenário 2 (Usuário Iniciante / Pouco Histórico):**
+  - [x] **Cenário 2 (Usuário Iniciante / Pouco Histórico):**
     - Carteira com 3 meses de histórico;
     - TWR anualizado e Sharpe retornando `null` com badges "Em formação" / "Requer histórico", sem estourar erros de divisão por zero.
-  - [ ] **Cenário 3 (Fechamento Mensal Retroativo Efetivo):**
+  - [x] **Cenário 3 (Fechamento Mensal Retroativo Efetivo):**
     - Emissão de relatório para competência fechada anterior (ex.: `2026-10`);
     - O relatório não possui MTD (100% de meses fechados).
-  - [ ] **Cenário 4 (Carteira Puramente Doméstica):**
+  - [x] **Cenário 4 (Carteira Puramente Doméstica):**
     - Carteira sem ativos em USD; validação de ausência de ruídos cambiais.
 
-- [ ] **Tarefa 7.3: Atualização da Documentação Governança (`docs/`)**
-  - [ ] Atualizar `docs/architecture/ESPECIFICACAO_TECNICA.md` com a nova seção §F51: *"Fechamento Histórico de Carteira, Relatórios Retroativos Ponto-no-Tempo e Retificação Quantitativa do Dossiê Executivo"*.
-  - [ ] Atualizar `docs/architecture/PROJECT_STRUCTURE.md` registrando os novos arquivos criados.
-  - [ ] Atualizar `docs/roadmap/ROADMAP.md` marcando a funcionalidade como concluída.
+- [x] **Tarefa 7.3: Atualização da Documentação Governança (`docs/`)**
+  - [x] Atualizar `docs/architecture/ESPECIFICACAO_TECNICA.md` com a nova seção §F51: *"Fechamento Histórico de Carteira, Relatórios Retroativos Ponto-no-Tempo e Retificação Quantitativa do Dossiê Executivo"*.
+  - [x] Atualizar `docs/architecture/PROJECT_STRUCTURE.md` registrando os novos arquivos criados.
+  - [x] Atualizar `docs/roadmap/ROADMAP.md` marcando a funcionalidade como concluída.
 
 #### 🚪 Quality Gate Final (QG Final)
-- [ ] Suíte completa de testes verde: `npm run test`.
-- [ ] Typecheck sem nenhum erro: `npm run typecheck`.
-- [ ] Linter sem violações: `npm run lint`.
-- [ ] Build de produção concluído com sucesso: `npm run build`.
-- [ ] **Commit & Push:** `chore(release): homologacao e documentacao de relatorios retroativos de investimentos e saneamento quantitativo (QG Final)`
+- [x] Suíte completa de testes verde: `npm run test`.
+- [x] Typecheck sem nenhum erro: `npm run typecheck`.
+- [x] Linter sem violações: `npm run lint`.
+- [x] Build de produção concluído com sucesso: `npm run build`.
+- [x] **Commit & Push:** `chore(release): homologacao e documentacao de relatorios retroativos de investimentos e saneamento quantitativo (QG Final)`
 
 ---
 

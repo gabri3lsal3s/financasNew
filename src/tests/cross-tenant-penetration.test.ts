@@ -58,6 +58,7 @@ class PostgresRlsDatabase {
       "portfolio_transactions",
       "portfolio_contributions",
       "portfolio_snapshots",
+      "portfolio_monthly_prices",
       "cash_checkpoints",
       "audit_events",
     ];
@@ -338,6 +339,11 @@ describe("Fase 5.1 — Suíte Automatizada de Penetração Cross-Tenant & RLS Is
       { id: "psnap_b_1", user_id: USER_B, date: "2026-10-01", total_equity_cents: 2480000 },
     ]);
 
+    database.seed("portfolio_monthly_prices", [
+      { id: "pmp_a_1", user_id: USER_A, ticker: "WEGE3", month: "2026-10", price: 38.5, currency: "BRL", source: "api" },
+      { id: "pmp_b_1", user_id: USER_B, ticker: "VALE3", month: "2026-10", price: 62.0, currency: "BRL", source: "manual" },
+    ]);
+
     // Caixa & Liquidez
     database.seed("cash_checkpoints", [
       { id: "cash_a_1", user_id: USER_A, balance_cents: 350000 },
@@ -413,6 +419,9 @@ describe("Fase 5.1 — Suíte Automatizada de Penetração Cross-Tenant & RLS Is
 
       expect(db.select("portfolio_snapshots", USER_A).map((s) => s.id)).toEqual(["psnap_a_1"]);
       expect(db.selectById("portfolio_snapshots", USER_A, "psnap_b_1")).toBeNull();
+
+      expect(db.select("portfolio_monthly_prices", USER_A).map((p) => p.id)).toEqual(["pmp_a_1"]);
+      expect(db.selectById("portfolio_monthly_prices", USER_A, "pmp_b_1")).toBeNull();
     });
 
     it("Usuário A é categoricamente incapaz de ler saldos de caixa e liquidez do Usuário B", () => {
@@ -495,6 +504,20 @@ describe("Fase 5.1 — Suíte Automatizada de Penetração Cross-Tenant & RLS Is
 
       expect(db.getRawRecord("portfolio_transactions", "malicious_tx_1")).toBeNull();
     });
+
+    it("bloqueia tentativa de Usuário A injetar cotações mensais para o Usuário B", () => {
+      expect(() => {
+        db.insert("portfolio_monthly_prices", USER_A, {
+          id: "malicious_pmp_1",
+          user_id: USER_B,
+          ticker: "PETR4",
+          month: "2026-10",
+          price: 40.0,
+        });
+      }).toThrow(PostgresRlsViolationError);
+
+      expect(db.getRawRecord("portfolio_monthly_prices", "malicious_pmp_1")).toBeNull();
+    });
   });
 
   describe("3. Simulação de Penetração: Modificação Cross-Tenant (UPDATE)", () => {
@@ -529,6 +552,12 @@ describe("Fase 5.1 — Suíte Automatizada de Penetração Cross-Tenant & RLS Is
       expect(db.getRawRecord("portfolio_assets", "asset_b_1")?.quantity).toBe(400);
     });
 
+    it("Usuário A não consegue alterar cotações mensais salvas pelo Usuário B", () => {
+      const result = db.update("portfolio_monthly_prices", USER_A, "pmp_b_1", { price: 999.99 });
+      expect(result.affected).toBe(0);
+      expect(db.getRawRecord("portfolio_monthly_prices", "pmp_b_1")?.price).toBe(62.0);
+    });
+
     it("bloqueia tentativa de Usuário A transferir a posse de um registro próprio para o Usuário B (spoofing via UPDATE)", () => {
       expect(() => {
         db.update("expenses", USER_A, "exp_a_1", { user_id: USER_B });
@@ -561,6 +590,12 @@ describe("Fase 5.1 — Suíte Automatizada de Penetração Cross-Tenant & RLS Is
       const result = db.delete("portfolio_assets", USER_A, "asset_b_1");
       expect(result.affected).toBe(0);
       expect(db.getRawRecord("portfolio_assets", "asset_b_1")).not.toBeNull();
+    });
+
+    it("Usuário A não consegue deletar cotações mensais do Usuário B", () => {
+      const result = db.delete("portfolio_monthly_prices", USER_A, "pmp_b_1");
+      expect(result.affected).toBe(0);
+      expect(db.getRawRecord("portfolio_monthly_prices", "pmp_b_1")).not.toBeNull();
     });
 
     it("nenhum usuário consegue deletar registros em audit_events (imutabilidade estrita D2)", () => {
@@ -685,6 +720,7 @@ describe("Fase 5.1 — Suíte Automatizada de Penetração Cross-Tenant & RLS Is
       "portfolio_transactions",
       "portfolio_contributions",
       "portfolio_snapshots",
+      "portfolio_monthly_prices",
       "portfolio_dividends",
       "class_targets",
       "sector_targets",
@@ -698,7 +734,7 @@ describe("Fase 5.1 — Suíte Automatizada de Penetração Cross-Tenant & RLS Is
       "user_module_permissions",
     ];
 
-    it("100% das 25 tabelas de dados de usuário possuem RLS habilitado", () => {
+    it("100% das 26 tabelas de dados de usuário possuem RLS habilitado", () => {
       for (const table of coreTables) {
         expect(allSql).toMatch(
           new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),

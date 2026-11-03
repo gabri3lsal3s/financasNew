@@ -98,6 +98,7 @@ const BANK_PACKAGE_MAP: Record<string, string> = {
   "com.google.android.apps.walletnfcrel": "Carteira Google",
   "com.samsung.android.spay": "Samsung Pay",
   "com.samsung.android.raja.spay": "Samsung Pay",
+  "com.samsung.android.app.spay": "Samsung Pay",
 };
 
 /**
@@ -132,15 +133,27 @@ const BLACKLIST_EXPRESSIONS: RegExp[] = [
   /\bestorno\s+negado\b/i,
 
   // Ofertas de crédito, aumento de limite, empréstimos e promoções
-  /\blimite\s+(?:aumentou|aprovado|pr[ée]-aprovado|dispon[íi]vel|foi\s+ajustado)\b/i,
+  /\blimite\s+(?:aumentou|aprovado|pr[ée]-aprovado|pr[ée]\s+aprovado|dispon[íi]vel|foi\s+ajustado|emergencial|especial|liberado)\b/i,
   /\baumento\s+de\s+limite\b/i,
   /\bnovo\s+limite\b/i,
-  /\b(?:empr[ée]stimo|cr[ée]dito)\s+pr[ée]-aprovado\b/i,
+  /\baumente\s+seu\s+limite\b/i,
+  /\b(?:empr[ée]stimo|cr[ée]dito)\s+(?:pr[ée]-aprovado|pr[ée]\s+aprovado|dispon[íi]vel|f[áa]cil|especial|pessoal|liberado)\b/i,
+  /\b(?:cr[ée]dito|empr[ée]stimo)\s+(?:para\s+voc[êe]|na\s+sua\s+conta|liberado|r[áa]pido)\b/i,
   /\boferta\s+(?:especial\s+)?de\s+empr[ée]stimo\b/i,
   /\bliberamos\s+.*de\s+cr[ée]dito\b/i,
-  /\bdinheiro\s+extra\s+dispon[íi]vel\b/i,
-  /\baproveite\s+a\s+oferta\b/i,
-  /\baproveite\s+.*cashback\b/i,
+  /\bdinheiro\s+(?:extra|r[áa]pido)\s*(?:dispon[íi]vel|na\s+conta)?\b/i,
+  /\bsimule\s+(?:seu|um|agora)?\b/i,
+  /\bcontrat(?:e|ar)\s+(?:agora|seu|j[áa]|empr[ée]stimo)\b/i,
+  /\bdispon[íi]vel\s+para\s+voc[êe]\b/i,
+  /\btaxas\s+a\s+partir\b/i,
+  /\bsolicite\s+seu\b/i,
+  /\bcart[ãa]o\s+aprovado\b/i,
+  /\baproveite\s+(?:o\s+limite|a\s+oferta|.*cashback)\b/i,
+  /\bganhe\s+(?:at[ée]\s+)?(?:r\$|us\$|\$|eur|€)\b/i,
+  /\bdesconto\s+de\s+(?:at[ée]\s+)?(?:r\$|us\$|\$|eur|€)\b/i,
+  /\bcompras\s+acima\s+de\s+(?:r\$|us\$|\$|eur|€)\b/i,
+  /\buse\s+seu\s+cart[ãa]o\s+e\s+ganhe\b/i,
+  /\bparcele\s+em\s+at[ée]\b/i,
   /\bconhe[çc]a\s+o\s+novo\b/i,
   /\bganhe\s+cashback\b/i,
   /\bpontos\s+(?:acumulados|do\s+cart[ãa]o)\b/i,
@@ -200,29 +213,38 @@ export function isBlacklistedNotification(text?: string, title?: string): boolea
 export function extractCentsFromText(text: string): number | null {
   if (!text) return null;
 
-  // 1. Tentar primeiro valores precedidos explicitamente por R$
-  const r$Match = /R\$\s*(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})\b/i.exec(text);
+  // 1. Tentar primeiro valores precedidos explicitamente por R$ (suporta "R$ 42,90" e "R$ 42.90")
+  const r$Match = /R\$\s*(\d{1,3}(?:[.,]\d{3})*|\d+)[,.](\d{2})\b/i.exec(text);
   if (r$Match && r$Match[1] && r$Match[2]) {
-    const wholeStr = r$Match[1].replace(/\./g, "");
+    const wholeStr = r$Match[1].replace(/[.,]/g, "");
     const fractionStr = r$Match[2];
     const total = parseInt(wholeStr, 10) * 100 + parseInt(fractionStr, 10);
     if (Number.isFinite(total) && total > 0) return total;
   }
 
-  // 2. Valores internacionais explicitamente precedidos por US$, USD ou $
-  const usdMatch = /(?:US\$|USD|\$)\s*(\d{1,3}(?:\.\d{3})*|\d+)[,.](\d{2})\b/i.exec(text);
-  if (usdMatch && usdMatch[1] && usdMatch[2]) {
-    const wholeStr = usdMatch[1].replace(/\./g, "");
-    const fractionStr = usdMatch[2];
+  // 2. Valores internacionais explicitamente precedidos por US$, USD, $, EUR ou €
+  const intlMatch = /(?:US\$|USD|\$|EUR|€)\s*(\d{1,3}(?:[.,]\d{3})*|\d+)[,.](\d{2})\b/i.exec(text);
+  if (intlMatch && intlMatch[1] && intlMatch[2]) {
+    const wholeStr = intlMatch[1].replace(/[.,]/g, "");
+    const fractionStr = intlMatch[2];
     const total = parseInt(wholeStr, 10) * 100 + parseInt(fractionStr, 10);
     if (Number.isFinite(total) && total > 0) return total;
   }
 
-  // 3. Fallback para valores decimais com vírgula típicos ("42,90", "1.250,50")
+  // 3. Fallback para valores decimais com vírgula típicos brasileiros ("42,90", "1.250,50")
   const genericMatch = /\b(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})\b/.exec(text);
   if (genericMatch && genericMatch[1] && genericMatch[2]) {
     const wholeStr = genericMatch[1].replace(/\./g, "");
     const fractionStr = genericMatch[2];
+    const total = parseInt(wholeStr, 10) * 100 + parseInt(fractionStr, 10);
+    if (Number.isFinite(total) && total > 0) return total;
+  }
+
+  // 4. Fallback para valores decimais internacionais com ponto e contexto financeiro explícito ("15.50", "42.00")
+  const intlGenericMatch = /(?:\b(?:valor|total|amount|price|de|pago|paga)\s+|\s*:\s*)(\d{1,3}(?:,\d{3})*|\d+)\.(\d{2})\b/i.exec(text);
+  if (intlGenericMatch && intlGenericMatch[1] && intlGenericMatch[2]) {
+    const wholeStr = intlGenericMatch[1].replace(/,/g, "");
+    const fractionStr = intlGenericMatch[2];
     const total = parseInt(wholeStr, 10) * 100 + parseInt(fractionStr, 10);
     if (Number.isFinite(total) && total > 0) return total;
   }
@@ -639,6 +661,22 @@ export function resolveBankName(
   title?: string,
   text?: string,
 ): string | null {
+  if (packageName === "com.google.android.gms") {
+    const combinedGms = `${title || ""} ${text || ""}`.toLowerCase();
+    if (
+      combinedGms.includes("google pay") ||
+      combinedGms.includes("google wallet") ||
+      combinedGms.includes("carteira google") ||
+      combinedGms.includes("gpay") ||
+      combinedGms.includes("nfc") ||
+      combinedGms.includes("aproximação") ||
+      combinedGms.includes("aproximacao")
+    ) {
+      return "Carteira Google";
+    }
+    return null;
+  }
+
   if (packageName && BANK_PACKAGE_MAP[packageName]) {
     return BANK_PACKAGE_MAP[packageName];
   }
@@ -811,6 +849,7 @@ export function hasValidTransactionSignal(
     packageName === "com.google.android.apps.walletnfcrel" ||
     packageName === "com.samsung.android.spay" ||
     packageName === "com.samsung.android.raja.spay" ||
+    packageName === "com.samsung.android.app.spay" ||
     packageName === "com.binance.dev" ||
     packageName === "br.com.rico" ||
     packageName === "br.com.rico.rico" ||
@@ -819,10 +858,24 @@ export function hasValidTransactionSignal(
     packageName === "br.com.btg.pactual.digital" ||
     packageName === "com.nomadfinancial.app" ||
     packageName === "com.nomadglobal.app" ||
+    packageName === "com.transferwise.android" ||
     packageName === "br.com.xp.investimentos" ||
     packageName === "br.com.xp.carteira"
   ) {
     return true;
+  }
+
+  if (packageName === "com.google.android.gms") {
+    const combinedGms = `${title || ""} ${text || ""}`.toLowerCase();
+    return (
+      combinedGms.includes("google pay") ||
+      combinedGms.includes("google wallet") ||
+      combinedGms.includes("carteira google") ||
+      combinedGms.includes("gpay") ||
+      combinedGms.includes("nfc") ||
+      combinedGms.includes("aproximação") ||
+      combinedGms.includes("aproximacao")
+    );
   }
 
   const combined = `${title || ""} ${text || ""}`.toLowerCase();
@@ -898,17 +951,114 @@ export function hasValidTransactionSignal(
     "binance",
     "rico",
     "nomad",
+    "wise",
+    "purchase",
+    "approved",
+    "payment",
+    "paid",
+    "received",
+    "sent",
   ];
 
   return signals.some((signal) => combined.includes(signal));
 }
 
+export const EXPENSE_KEYWORDS = [
+  "compra aprovada",
+  "compra realizada",
+  "compra no cartão",
+  "compra no cartao",
+  "compra de",
+  "compra internacional",
+  "compra",
+  "pagamento realizado",
+  "pagamento efetuado",
+  "pagamento aprovado",
+  "pagamento de boleto",
+  "pagamento por aproximação",
+  "pagamento por aproximacao",
+  "pagamento com cartão",
+  "pagamento com cartao",
+  "pagamento via nfc",
+  "pagamento",
+  "você pagou",
+  "voce pagou",
+  "pagou",
+  "pago com sucesso",
+  "pago",
+  "transferência enviada",
+  "transferencia enviada",
+  "transferência realizada",
+  "transferencia realizada",
+  "transferência de",
+  "transferencia de",
+  "transferência",
+  "transferencia",
+  "você enviou",
+  "voce enviou",
+  "enviou um pix",
+  "enviou",
+  "pix enviado",
+  "pix para",
+  "pix realizado",
+  "pix de",
+  "pix",
+  "boleto pago",
+  "boleto",
+  "debitado",
+  "debitada",
+  "débito realizado",
+  "debito realizado",
+  "débito",
+  "debito",
+  "transação autorizada",
+  "transacao autorizada",
+  "transação aprovada",
+  "transacao aprovada",
+  "transação",
+  "transacao",
+  "autorizada",
+  "autorizado",
+  "aprovada",
+  "aprovado",
+  "utilizado",
+  "utilizada",
+  "cobrado",
+  "cobrada",
+  "despesa",
+  "saque realizado",
+  "saque efetuado",
+  "saque",
+  "google pay",
+  "google wallet",
+  "carteira google",
+  "samsung pay",
+  "samsung wallet",
+  "gpay",
+  "spay",
+  "aproximação",
+  "aproximacao",
+  "nfc",
+  "purchase approved",
+  "purchase",
+  "payment approved",
+  "payment",
+  "paid",
+  "sent",
+];
+
 /**
  * Detecta se a notificação trata de uma entrada (receita) ou saída (despesa),
  * suportando salários, reembolsos, estornos, devoluções Pix e transferências (TED/DOC).
+ * Retorna null se não houver termos inequívocos (anti-fallback de despesa).
  */
-export function detectTransactionType(text: string, title: string): "expense" | "income" {
+export function detectTransactionType(text: string, title: string): "expense" | "income" | null {
   const combined = `${title} ${text}`.toLowerCase();
+
+  if (isRefundTransaction(text, title)) {
+    return "income";
+  }
+
   const incomeKeywords = [
     "você recebeu",
     "voce recebeu",
@@ -960,7 +1110,13 @@ export function detectTransactionType(text: string, title: string): "expense" | 
     }
   }
 
-  return "expense";
+  for (const keyword of EXPENSE_KEYWORDS) {
+    if (combined.includes(keyword)) {
+      return "expense";
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -1036,7 +1192,7 @@ export function detectPaymentMethod(text: string, title: string): PaymentMethod 
  * Detecta a moeda predominante da notificação ("BRL" ou "USD").
  */
 export function detectCurrency(text: string): "BRL" | "USD" {
-  if (/(?:US\$|USD|\bUSD\b)/i.test(text) && !/R\$/i.test(text)) {
+  if (/(?:US\$|USD|\bUSD\b|\$\s*\d)/i.test(text) && !/R\$/i.test(text)) {
     return "USD";
   }
   return "BRL";
@@ -1208,11 +1364,12 @@ export function detectTransactionNature(
 ): {
   nature: TransactionNature;
   subtype?: InvestmentSubtype;
-} {
+} | null {
   // 0. Desacoplamento de cartões de corretoras (Rico, XP, BTG) antes da classificação de investimentos
   if (isBrokerCardTransaction(text, title, bankName)) {
     const isRefund = isRefundTransaction(text, title);
     const txType = detectTransactionType(text, title);
+    if (!txType && !isRefund) return null;
     return { nature: isRefund || txType === "income" ? "income" : "expense" };
   }
 
@@ -1294,7 +1451,8 @@ export function detectTransactionNature(
 
   // Caso padrão para contas de despesas e receitas convencionais
   const txType = detectTransactionType(text, title);
-  return { nature: txType === "income" ? "income" : "expense" };
+  if (!txType) return null;
+  return { nature: txType };
 }
 
 const IGNORED_MERCHANT_TOKENS = new Set([
@@ -1505,7 +1663,7 @@ export function extractMerchantOrRecipient(text: string): string {
   // Ex: "em Padaria Estrela aprovada", "no Restaurante Fogão", "na Droga Raia", "na Tok&Stok"
   // Ignora preposições seguidas de valores (de R$, de 50), dígitos ou palavras de forma de pagamento/parcelamento
   const prepRegex =
-    /\b(?:em|no|na|nos|nas|para|de|do|da|pelo|pela|ao|à)\s+(?!(?:R\$\s*|\d|parcela\b|cr[ée]dito\b|d[ée]bito\b|cart[ãa]o\b|conta\b|valor\b))([A-Za-zÀ-ÿ0-9&.*_\s'-]{2,35}?)(?:\s+(?:aprovada|aprovado|realizada|realizado|com|via|usando|pelo|pela|no\s+valor|de\s+r\$|no\s+total|no\s+cartão|no\s+cartao|no\s+crédito|no\s+credito|no\s+débito|no\s+debito|cart[aã]o\s+final|final\s*[:.-]?\s*\d{4}|em\s+\d+x|\.|$)|$)/gi;
+    /\b(?:em|no|na|nos|nas|para|de|do|da|pelo|pela|ao|à|at)\s+(?!(?:R\$\s*|US\$\s*|\$\s*|EUR\s*|€\s*|\d|parcela\b|cr[ée]dito\b|d[ée]bito\b|cart[ãa]o\b|conta\b|valor\b))([A-Za-zÀ-ÿ0-9&.*_\s'-]{2,35}?)(?:\s+(?:aprovada|aprovado|approved|realizada|realizado|com|via|usando|pelo|pela|no\s+valor|de\s+r\$|no\s+total|no\s+cartão|no\s+cartao|no\s+crédito|no\s+credito|no\s+débito|no\s+debito|cart[aã]o\s+final|final\s*[:.-]?\s*\d{4}|em\s+\d+x|\.|$)|$)/gi;
   const matches = Array.from(text.matchAll(prepRegex));
 
   for (const match of matches) {
@@ -1555,7 +1713,13 @@ export function parseBankNotification(
   if (!cents) return null;
 
   const type = detectTransactionType(payload.text, payload.title);
-  const { nature, subtype } = detectTransactionNature(payload.text, payload.title, bankName);
+  const natureResult = detectTransactionNature(payload.text, payload.title, bankName);
+  if (!type && !natureResult) {
+    return null;
+  }
+  const nature = natureResult?.nature ?? (type === "income" ? "income" : "expense");
+  const subtype = natureResult?.subtype;
+  const effectiveType: "expense" | "income" = type ?? (nature === "income" ? "income" : "expense");
   let paymentMethod = detectPaymentMethod(payload.text, payload.title);
   if (
     paymentMethod === "other" &&
@@ -1646,7 +1810,7 @@ export function parseBankNotification(
       defaultDesc = `Compra em ${installmentInfo.installments}x (${bankName})`;
     } else {
       defaultDesc =
-        type === "income"
+        effectiveType === "income"
           ? (paymentMethod === "pix" ? `Pix Recebido (${bankName})` : `Recebimento (${bankName})`)
           : (paymentMethod === "pix" ? `Pix Enviado (${bankName})` : `Compra (${bankName})`);
     }
@@ -1667,7 +1831,7 @@ export function parseBankNotification(
     id,
     bankName,
     nature,
-    type,
+    type: effectiveType,
     investmentSubtype: subtype,
     amountCents: cents,
     currency,

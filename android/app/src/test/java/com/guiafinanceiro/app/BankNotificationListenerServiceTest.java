@@ -19,7 +19,11 @@ public class BankNotificationListenerServiceTest {
         
         // US$ / USD
         assertEquals("US$ 45,00", BankNotificationListenerService.extractAmountText("Nomad", "Compra internacional US$ 45,00"));
+        assertEquals("US$ 15.50", BankNotificationListenerService.extractAmountText("Nomad", "Compra aprovada: US$ 15.50 em Starbucks"));
         assertEquals("USD 20,00", BankNotificationListenerService.extractAmountText("Wise", "Conversão de USD 20,00 concluída"));
+        assertEquals("$45.00", BankNotificationListenerService.extractAmountText("Nomad", "Purchase of $45.00 approved"));
+        assertEquals("€ 12.80", BankNotificationListenerService.extractAmountText("Wise", "Pagamento de € 12.80 aprovado"));
+        assertEquals("EUR 50,00", BankNotificationListenerService.extractAmountText("Wise", "Transferência EUR 50,00 concluída"));
     }
 
     @Test
@@ -48,6 +52,13 @@ public class BankNotificationListenerServiceTest {
         assertTrue(BankNotificationListenerService.isBlacklistedNotification("Compra negada de R$ 50,00: cartão bloqueado", "Caixa"));
         assertTrue(BankNotificationListenerService.isBlacklistedNotification("Seu token de segurança é 849201", "Inter"));
         assertTrue(BankNotificationListenerService.isBlacklistedNotification("Conheça as novas opções de seguro de vida", "Bradesco"));
+        assertTrue(BankNotificationListenerService.isBlacklistedNotification("Gabriel, você tem R$ 10.000,00 de crédito pré-aprovado para contratar agora", "Nubank"));
+        assertTrue(BankNotificationListenerService.isBlacklistedNotification("Simule seu empréstimo pessoal de R$ 5.000,00 com taxas a partir de 1,99%", "Inter"));
+        assertTrue(BankNotificationListenerService.isBlacklistedNotification("Disponível para você: limite emergencial de R$ 1.200,00", "Itaú"));
+        assertTrue(BankNotificationListenerService.isBlacklistedNotification("Dinheiro rápido na conta: contrate empréstimo de R$ 2.500,00", "C6 Bank"));
+        assertTrue(BankNotificationListenerService.isBlacklistedNotification("Aproveite o limite extra de R$ 1.500,00 no seu cartão", "Santander"));
+        assertTrue(BankNotificationListenerService.isBlacklistedNotification("Aumente seu limite para R$ 8.000,00 agora mesmo", "Bradesco"));
+        assertTrue(BankNotificationListenerService.isBlacklistedNotification("Solicite seu cartão aprovado com limite de R$ 3.000,00", "Neon"));
     }
 
     @Test
@@ -57,6 +68,8 @@ public class BankNotificationListenerServiceTest {
         assertFalse(BankNotificationListenerService.isBlacklistedNotification("Pix recebido de R$ 150,50 de Maria Silva", "Inter"));
         assertFalse(BankNotificationListenerService.isBlacklistedNotification("Transferência enviada de R$ 500,00 para Pedro Santos", "Itaú"));
         assertFalse(BankNotificationListenerService.isBlacklistedNotification("Pagamento de boleto de R$ 250,00 realizado com sucesso", "Bradesco"));
+        assertFalse(BankNotificationListenerService.isBlacklistedNotification("Compra aprovada: US$ 15.50 em Starbucks", "Nomad"));
+        assertFalse(BankNotificationListenerService.isBlacklistedNotification("Pagamento de € 12.80 aprovado", "Wise"));
         assertFalse(BankNotificationListenerService.isBlacklistedNotification("", ""));
         assertFalse(BankNotificationListenerService.isBlacklistedNotification(null, null));
     }
@@ -71,6 +84,9 @@ public class BankNotificationListenerServiceTest {
         assertTrue(BankNotificationListenerService.hasFinancialSignal("Boleto pago com sucesso", "Bradesco"));
         assertTrue(BankNotificationListenerService.hasFinancialSignal("Ordem executada com sucesso", "BTG Pactual"));
         assertTrue(BankNotificationListenerService.hasFinancialSignal("Rendimento creditado em conta", "XP"));
+        assertTrue(BankNotificationListenerService.hasFinancialSignal("Compra aprovada: US$ 15.50 em Starbucks", "Nomad"));
+        assertTrue(BankNotificationListenerService.hasFinancialSignal("Purchase of $45.00 approved", "Nomad"));
+        assertTrue(BankNotificationListenerService.hasFinancialSignal("Pagamento de € 12.80 aprovado", "Wise"));
 
         // 2. Quantia monetária explícita combinada com canal financeiro concreto
         assertTrue(BankNotificationListenerService.hasFinancialSignal("Despesa de R$ 85,00 no débito", "Nubank"));
@@ -98,6 +114,8 @@ public class BankNotificationListenerServiceTest {
         assertFalse(BankNotificationListenerService.hasFinancialSignal("Faça Pix no crédito para parcelar compras", "C6 Bank"));
         assertFalse(BankNotificationListenerService.hasFinancialSignal("Faca pix no credito com taxas reduzidas", "Neon"));
         assertFalse(BankNotificationListenerService.hasFinancialSignal("Invista a partir de R$ 10,00 e veja seu dinheiro render", "Itaú"));
+        assertFalse(BankNotificationListenerService.hasFinancialSignal("Use seu cartão e ganhe desconto na loja parceira para compras acima de R$ 200,00", "Nubank"));
+        assertFalse(BankNotificationListenerService.hasFinancialSignal("Parcele em até 12x suas compras de fim de ano", "Bradesco"));
 
         // 6. Textos vazios ou não financeiros
         assertFalse(BankNotificationListenerService.hasFinancialSignal("Saiba mais sobre nossos novos produtos", "Banco"));

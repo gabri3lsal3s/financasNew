@@ -12,8 +12,7 @@ import {
   ReportClassTables,
 } from "@/components/modules/reports";
 import { MonthlyClosingEditor } from "./monthly-closing-editor";
-import { usePortfolioMonthlyPosition } from "@/state/queries/use-portfolio-monthly-position";
-import { usePortfolioSnapshots } from "@/state/queries/use-portfolio";
+import { usePortfolioMonthlyPosition, usePortfolioSnapshots } from "@/state";
 import { numberToCents } from "@/domain/money";
 import { formatFixedIncomeRateLabel } from "@/domain/portfolio/fixed-income";
 import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
@@ -112,8 +111,7 @@ export function PortfolioExecutiveReport({
       valueBRL: p.valueBRL,
       pct: pit.totalValueBRL > 0 ? (p.valueBRL / pit.totalValueBRL) * 100 : 0,
       source: (p.quoteSource ?? "manual") as import("@/components/modules/position-table").PositionRow["source"],
-      isEstimate: p.isEstimate,
-      pricingMode: "market_quote",
+      pricingMode: "unit_price",
       unrealizedPnl: p.unrealizedPnl,
       unrealizedPct: p.unrealizedPct,
       dividends: p.accumulatedDividendsBRL,
@@ -139,8 +137,7 @@ export function PortfolioExecutiveReport({
         valueBRL: pit.cashQuantity,
         pct: pit.totalValueBRL > 0 ? (pit.cashQuantity / pit.totalValueBRL) * 100 : 0,
         source: "manual",
-        isEstimate: false,
-        pricingMode: "market_quote",
+        pricingMode: "cash",
         unrealizedPnl: 0,
         unrealizedPct: 0,
         dividends: 0,

@@ -1,5 +1,33 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.81** registra a **Conclusão Integral do Plano de Relatório Retroativo de Investimentos, Fechamento de Carteira e Saneamento Quantitativo (`docs/plans/PLANO_RELATORIO_RETROATIVO_INVESTIMENTOS_E_FECHAMENTO.md`)** (2026-11-03):
+> - **(1) Saneamento do Módulo de Caixa & Eliminação de Pseudo-Ordens (Fase 1 - QG1)**:
+>   - Desacoplamento de Caixa em `cash-form-dialog.tsx`: saldo direto sem injeção de compras/vendas artificiais;
+>   - Mutação `syncCash` silenciosa em `use-portfolio-mutations.ts` sem poluir extrato ou timeline;
+>   - Expurgo de ativos de Caixa da aba de atividades e relatórios operacionais.
+> - **(2) Schema Supabase & Repositório de Cotações Mensais (Fase 2 - QG2)**:
+>   - Tabela `portfolio_monthly_prices` com constraint de unicidade `(user_id, ticker, month)` e RLS ativo por usuário/módulo;
+>   - Repositório `portfolio-monthly-prices.ts` com queries e mutações em lote para cotações auditadas.
+> - **(3) Motores de Domínio Puro & Retificação Matemática (Fase 3 - QG3)**:
+>   - Reconstrução de custódia ponto-no-tempo (`point-in-time.ts`) filtrando eventos estritamente até a data de corte do mês;
+>   - Anualização de TWR por dias corridos exatos (`annualizeRateFromDays`) com salvaguarda CVM/ANBIMA (< 365 dias);
+>   - Normalização de percentuais a 100,0% exatos via Algoritmo do Maior Resto (Hamilton-Hare) em `distribution.ts`;
+>   - Segregação de MTD parcial nos gráficos e expurgo de meses incompletos da volatilidade anualizada e Sharpe;
+>   - Desacoplamento da Reserva de Caixa (`#10b981`) dos setores produtivos da economia em `allocation-donuts.ts`.
+> - **(4) Serviço de Cotações de Fechamento com Cascata Defensiva (Fase 4 - QG4)**:
+>   - Busca em cascata de 4 níveis em `historical-quotes.ts` (banco -> API oficial do fechamento -> ordem do mês -> fallback seguro da custódia aberta) com timeout rígido de 4s.
+> - **(5) Orquestração de Estado & Recálculo Retroativo (Fase 5 - QG5)**:
+>   - Hooks reativos `usePortfolioMonthlyPrices`, `usePortfolioMonthlyPosition` e mutação `useSaveMonthlyClosing`;
+>   - Recalculador automático `use-auto-portfolio-snapshot.ts` atualizado para movimentações retroativas e unificação temporal de dias corridos em `use-portfolio-position.ts`.
+> - **(6) Interface do Usuário (UI/UX) & Dossiê A4 (Fase 6 - QG6)**:
+>   - Sub-componente interativo `MonthlyClosingEditor` com tabela de conferência de cotações, badges de fonte, comparação com hoje e edição de caixa;
+>   - Seletor de competência retroativa e abas de conferência vs dossiê no modal executivo `portfolio-executive-report.tsx`;
+>   - Ação rápida direta nos cards do carrossel mensal `portfolio-snapshots-carousel.tsx` gerando relatório para qualquer mês auditado.
+> - **(7) Homologação Multi-Tenant, Testes de Regressão & Governança (Fase 7 - QG Final)**:
+>   - 40 testes de penetração cross-tenant em `cross-tenant-penetration.test.ts` validando isolamento completo de `portfolio_monthly_prices`;
+>   - 4 cenários de regressão integrados em `portfolio-historical-regression.test.ts` cobrindo o caso auditado de 978 dias, iniciantes, fechamento retroativo e carteira doméstica;
+>   - Documentação sincronizada em `ESPECIFICACAO_TECNICA.md` (§3.11.4 / §F51) e `PROJECT_STRUCTURE.md`.
+>
 > **v2.80** registra a **Conclusão Integral do Plano PWA-First, APK Beta e Blindagem de Notificações (`docs/plans/PLANO_PWA_FIRST_APK_BETA_E_NOTIFICACOES_REFINADAS.md`)** (2026-11-03):
 > - **(1) Blindagem do Motor Nativo Android Java & Regex Universal de Moedas (Fase 1)**:
 >   - Regex `AMOUNT_PATTERN` expandido em `BankNotificationListenerService.java` com suporte a moedas internacionais (`US$`, `USD`, `$`, `EUR`, `€`, `R$`) e separadores mistos de decimal/milhar (vírgula e ponto decimal);

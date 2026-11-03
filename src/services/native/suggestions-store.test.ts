@@ -825,5 +825,47 @@ describe("suggestions-store (Fila de Sugestões Nativas)", () => {
       clearRecentReceipts();
       expect(getRecentReceipts()).toEqual([]);
     });
+
+    it("reconcilia notificação de Carteira Google e Banco Emissor dentro de 60s fundindo estabelecimento e conta", () => {
+      const now = Date.now();
+      const walletNotification: ParsedBankTransaction = {
+        id: "sug_gpay_1",
+        bankName: "Carteira Google",
+        nature: "expense",
+        type: "expense",
+        amountCents: 4200,
+        description: "Starbucks",
+        merchant: "Starbucks",
+        cardBrand: "Mastercard",
+        cardLastDigits: "9876",
+        date: "2026-10-21",
+        timestamp: now,
+        rawText: "Starbucks · R$ 42,00 com Nubank •••• 9876",
+      };
+
+      const bankNotification: ParsedBankTransaction = {
+        id: "sug_nubank_1",
+        bankName: "Nubank",
+        nature: "expense",
+        type: "expense",
+        amountCents: 4200,
+        description: "Compra aprovada no cartão Nubank",
+        date: "2026-10-21",
+        timestamp: now + 5000, // 5 segundos depois
+        rawText: "Compra de R$ 42,00 aprovada no cartão Nubank",
+      };
+
+      addPendingSuggestion(walletNotification);
+      expect(getPendingSuggestions().length).toBe(1);
+
+      // Banco chega 5s depois: deve fundir em um único item do Nubank com merchant Starbucks
+      addPendingSuggestion(bankNotification);
+      const suggestions = getPendingSuggestions();
+      expect(suggestions.length).toBe(1);
+      expect(suggestions[0]?.bankName).toBe("Nubank");
+      expect(suggestions[0]?.merchant).toBe("Starbucks");
+      expect(suggestions[0]?.amountCents).toBe(4200);
+      expect(suggestions[0]?.cardLastDigits).toBe("9876");
+    });
   });
 });

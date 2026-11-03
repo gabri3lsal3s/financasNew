@@ -183,6 +183,25 @@ vi.mock("@/state", () => ({
     isLoading: false,
     refetch: vi.fn(),
   }),
+  usePortfolioMonthlyPosition: () => ({
+    data: {
+      month: "2026-10",
+      positions: [],
+      cashQuantity: 0,
+      totalValueBRL: 0,
+      totalCostBRL: 0,
+      daysElapsed: 900,
+      annualizedTwrPct: null,
+      isClosingLocked: false,
+    },
+    isLoading: false,
+    refetch: vi.fn(),
+  }),
+  useSaveMonthlyClosing: () => ({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useUpsertPortfolioSnapshot: () => ({
     mutate: vi.fn(),
     mutateAsync: vi.fn(),

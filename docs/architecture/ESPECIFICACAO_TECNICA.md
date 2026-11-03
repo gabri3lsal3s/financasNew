@@ -138,6 +138,7 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 | `allocation_targets` | id, user_id, asset_id, target_percentage (0–100) | Soma por user ≤ 100 — **validada no domínio e no banco (trigger/RPC)**; check não cobre soma entre linhas |
 | `class_targets` / `sector_targets` | id, user_id, group_type (`class \| sector`), name, target_percentage | Metas opcionais por classe/setor |
 | `asset_prices` | id, **user_id (nullable — NULL = cache global da edge function; preenchido = override manual do usuário)**, ticker, price, currency, source (`api \| fallback \| manual`), manual_price (nullable), updated_at | Cache servidor; override manual prevalece; RLS: dono quando `user_id` presente, leitura global quando NULL |
+| `portfolio_monthly_prices` | id, user_id (FK), ticker, month (`YYYY-MM`), price, currency (`BRL \| USD`), source (`api \| manual \| fallback`), created_at, updated_at | Cotações mensais auditadas por competência; Unique (user_id, ticker, month); RLS: dono |
 | `audit_events` | id, user_id, entity_type, entity_id, action, payload jsonb, created_at | **Imutável** (RLS: insert + select; sem update/delete) |
 
 **Índices recomendados:** `expenses (user_id, date DESC)`, `expenses (installment_group_id)`, `incomes (user_id, date DESC)`, `debts (user_id, due_date)`, `card_payments (card_id, competence_month)`, `budgets (user_id, month)`.
@@ -485,7 +486,33 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
     - **Sem saldo em Caixa (ou R$ 0,00):** os cards exibem `"Meta: W%"` (sem valor monetário de déficit) e, ao clicar, a quantidade no formulário vem **em branco** (`""`), permitindo digitação livre pelo usuário.
     - **Soberania da Quantidade Digitada:** para ativos cotizados (renda variável), o total financeiro é estritamente $\text{Quantidade} \times \text{Preço Unitário}$. Alterações na quantidade ou preço limpam qualquer resquício de valor residual, impedindo a imposição forçada de valores recomendados.
 
-**Consistência:** soma dos aportes nunca excede o aporte informado; ativo sem meta não recebe aporte; aporte só para ativos **abaixo** da meta (gap > 0); motor hierárquico único e opinado.
+#### 3.11.4 Fechamento Histórico de Carteira, Relatórios Retroativos Ponto-no-Tempo e Retificação Quantitativa do Dossiê Executivo (§F51)
+
+- **Reconstrução Ponto-no-Tempo de Custódia (`calculatePointInTimePosition`, `domain/portfolio/point-in-time.ts`):**
+  - Permite reproduzir a carteira exata do investidor em qualquer data de corte histórica $t$ (`cutoffDate = YYYY-MM-lastDay`).
+  - **Filtro Estrito de Eventos:** considera exclusivamente compras e vendas com $\text{data} \le \text{cutoffDate}$; movimentações posteriores são categoricamente ignoradas na quantidade histórica.
+  - **Soma Contábil de Proventos:** soma de proventos filtrada por $\text{data} \le \text{cutoffDate}$.
+  - **Preservação do Caixa Ponto-no-Tempo:** suporta injeção de saldo de caixa histórico (`cashBalance`) desacoplado de ativos de renda variável.
+- **Cascata Hierárquica Defensiva de Cotações de Fechamento (`historical-quotes.ts` / `portfolio_monthly_prices`):**
+  - Resolução de preço para cada ativo no fechamento mensal obedece a 4 níveis estritos de prioridade com timeout defensivo de 4 segundos:
+    1. **Nível 1 (Cotação Salva no Banco):** valor persistido em `portfolio_monthly_prices` por `(user_id, ticker, month)` (origem `api` ou `manual`).
+    2. **Nível 2 (API Oficial do Fechamento):** busca automática da cotação do último dia útil do mês via Brapi / Yahoo Finance.
+    3. **Nível 3 (Cotação de Transação do Mês):** fallback baseado na última compra/venda do ativo ocorrida dentro da competência.
+    4. **Nível 4 (Cotação Atual de Custódia / Fallback Seguro):** último preço conhecido do ativo na custódia aberta.
+  - A interface (`MonthlyClosingEditor`) exibe badges transparentes da origem do preço (`Oficial API`, `Manual`, `Sugerida`) e percentual de desvio frente à cotação de hoje.
+- **Anualização de TWR por Dias Corridos Exatos (`annualizeRateFromDays`, `domain/portfolio/twr.ts`):**
+  - Fórmula canônica: $\text{TWR}_{\text{anualizado}} = \left( (1 + \text{TWR}_{\text{acumulado}}/100)^{\frac{365}{\text{diasCorridos}}} - 1 \right) \times 100$.
+  - Elimina distorções de contagem por número de meses (ex.: 34 meses = 978 dias corridos gera +7,8% a.a. ao invés de +7,4% a.a.).
+  - **Salvaguarda CVM/ANBIMA:** para históricos inferiores a 365 dias corridos, o retorno anualizado retorna categoricamente `null` com badge de "Em formação", evitando extrapolações enganosas.
+- **Normalização de Alocação a 100,0% pelo Maior Resto (`normalizePercentagesTo100`, `domain/reports/distribution.ts`):**
+  - Aplicação do algoritmo de Hamilton-Hare / Largest Remainder Method para garantir que a soma de fatias de classes e setores feche matematicamente em exatamente 100,0%, eliminando resíduos de arredondamento (como 99,9% ou 100,1%).
+- **Segregação do Mês Corrente Parcial (MTD) e Volatilidade Anualizada:**
+  - O mês corrente incompleto é sinalizado visualmente como `MM/AA* (MTD)` nos gráficos de performance.
+  - Métrica de risco (volatilidade e índice de Sharpe em `calculatePortfolioRiskSummary`) expurga o mês parcial incompleto da série quando `hasPartialCurrentMonth = true`, prevenindo contaminações estatísticas por períodos curtos (ex.: 3 dias de mês).
+- **Desacoplamento de Caixa dos Setores Produtivos:**
+  - A fatia de liquidez é isolada como `"Reserva de Caixa"` com tom esmeralda `#10b981`, sem inflar nem poluir a contagem e os nomes dos setores econômicos reais da economia.
+- **Visão Híbrida de Benchmarks:**
+  - Exibição simultânea da performance histórica global ("Desde o Início") com destaque visual no cabeçalho e da janela recente dos últimos 12 meses móveis (12M) em subtítulo adaptativo.
 
 ---
 

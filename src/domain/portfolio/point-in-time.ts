@@ -124,7 +124,7 @@ export function calculatePointInTimePosition(
     (div) => div.date && div.date.slice(0, 10) <= cutoffDate,
   );
 
-  let cashTotal = 0;
+  let cashTotal = cashBalance ?? 0;
   const positions: PointInTimeAssetPosition[] = [];
 
   for (const asset of assets) {

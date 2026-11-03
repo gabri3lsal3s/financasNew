@@ -213,7 +213,7 @@
     │   │                          #       fixed-income-form-fields (F72), calibrate-fixed-income-dialog (F72), asset-edit-dialog (F72), asset-detail-sheet,
     │   │                          #       transaction-form-dialog, transaction-list-dialog, dividend-form-dialog, portfolio-import-dialog,
     │   │                          #       portfolio-tax-report, portfolio-darf-monitor, allocation-breakdown-dialog,
-    │   │                          #       portfolio-snapshots-carousel, portfolio-snapshots-dialog,
+    │   │                          #       portfolio-snapshots-carousel, portfolio-snapshots-dialog, monthly-closing-editor (F51),
     │   │                          #       initial-pocket-cost-dialog (calibração do Marco Zero) com barrels components/index.ts e index.ts
     │   │
     │   ├── auth/                  #   Autenticação e Recuperação de Senha (/entrar, /cadastro, /recuperar-senha, /redefinir-senha)
@@ -253,7 +253,8 @@
     │   ├── reports/               #   peso de relatório (base × weight), detailed-close.ts (fechamento),
     │   │                          #     allocation-gaps.ts, concentration-risk.ts, consolidated-balance.ts,
     │   │                          #     freedom-index.ts, period-redemptions.ts (F80: resgates da competência),
-    │   │                          #     allocation-donuts.ts (F84: distribuição donut classes e setores)
+    │   │                          #     distribution.ts (F51: normalização de percentuais a 100,0% pelo algoritmo do maior resto),
+    │   │                          #     allocation-donuts.ts (F84: distribuição donut classes e setores com reserva de caixa desacoplada)
     │   ├── insights/              #   advisor.ts (SmartAdvisor proativo e cooldown), recurrences.ts (rendas habituais, classificação dual e gastos vampiros), alertas, assinaturas, feedback.ts
     │   ├── savings/               #   F27: desafios de economia (média mensal típica, corte
     │   │                          #     discricionário 10/20/30% — typicalMonthlySpendCents)
@@ -277,6 +278,8 @@
     │   │                          #     chunking.ts (teto rígido de 250 itens por lote e chunkArray),
     │   │                          #     chunking.test.ts, stress.test.ts (estresse com 2.000 linhas)
     │   ├── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
+    │   │                          #   point-in-time.ts (F51: reconstrução de custódia ponto-no-tempo por competência),
+    │   │                          #   historical-quotes.ts (F51: resolução de cotações de fechamento com cascata defensiva),
     │   │                          #   contributions.ts (agregação pura de aportes em centavos),
     │   │                          #   simulation.ts (simulação de rebalanceamento por classes e renda passiva),
     │   │                          #   irr.ts (motor puro de TIR / Money-Weighted Return / XIRR com solver híbrido Newton-Raphson + Bisseção),
@@ -295,7 +298,7 @@
     │   ├── auth.ts                #   Operações de autenticação (login/registro/recuperação)
     │   ├── session.ts             #   currentUserId() — usuário autenticado (RLS auth.uid())
     │   ├── repositories/          #   expenses.ts, incomes.ts, cards.ts, debts.ts,
-    │   │                          #   budgets.ts, portfolio.ts, categories.ts,
+    │   │                          #   budgets.ts, portfolio.ts, portfolio-monthly-prices.ts (F51: cotações mensais auditadas), categories.ts,
     │   │                          #   billing.ts (adaptadores agnósticos Stripe/Asaas, checkout e portal de faturamento),
     │   │                          #   subscriptions.ts (status SaaS, planos e gestão administrativa de permissões modulares),
     │   │                          #   support-tickets.ts (registro de tickets de suporte, feedback e despacho ao Telegram),

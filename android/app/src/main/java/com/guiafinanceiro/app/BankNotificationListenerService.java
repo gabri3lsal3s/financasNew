@@ -28,15 +28,18 @@ public class BankNotificationListenerService extends NotificationListenerService
     private static final int MAX_BUFFER_SIZE = 30;
 
     private static final Pattern AMOUNT_PATTERN = Pattern.compile(
-        "(?:R\\$\\s*|US\\$\\s*|USD\\s*)(\\d{1,3}(?:\\.\\d{3})*,\\d{2}|\\d+(?:,\\d{2})?)"
+        "(?i)(?:R\\$|US\\$|USD|\\$|EUR|€)\\s*(\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2}|\\d+(?:[.,]\\d{2})?)"
     );
 
     private static final Pattern BLACKLIST_MARKETING_PATTERN = Pattern.compile(
         "(?i)\\b(?:" +
         "saiba\\s+mais|clique\\s+aqui|conhe[çc]a|confira|aproveite|ganhe\\s+f[ôo]lego|" +
-        "dica(?:\\s+do)?|novidade|descubra|experimente|empr[ée]stimo|cr[ée]dito\\s+pr[ée]-aprovado|" +
-        "limite\\s+(?:dispon[íi]vel|aprovado|aumentou|liberado|especial)|aumento\\s+de\\s+limite|" +
-        "novo\\s+limite|dinheiro\\s+extra|seguro(?:\\s+de)?|open\\s+finance|portabilidade|" +
+        "dica(?:\\s+do)?|novidade|descubra|experimente|simule|contrate|contratar|" +
+        "dispon[íi]vel\\s+para\\s+voc[êe]|empr[ée]stimo|cr[ée]dito\\s+(?:pr[ée]-aprovado|pr[ée]\\s+aprovado|f[áa]cil|especial)|" +
+        "dinheiro\\s+r[áa]pido|taxas\\s+a\\s+partir|desconto\\s+de|cupom|cashback\\s+de\\s+at[ée]|" +
+        "limite\\s+(?:dispon[íi]vel|aprovado|aumentou|liberado|especial|emergencial)|aumento\\s+de\\s+limite|" +
+        "novo\\s+limite|aumente\\s+seu\\s+limite|solicite\\s+seu|cart[ãa]o\\s+aprovado|" +
+        "pr[ée]-aprovado|pr[ée]\\s+aprovado|dinheiro\\s+extra|seguro(?:\\s+de)?|open\\s+finance|portabilidade|" +
         "traga\\s+seu\\s+sal[áa]rio|indique\\s+um\\s+amigo|cashback|acumule\\s+pontos|shopping|" +
         "pontos\\s+do\\s+cart[ãa]o|fatura\\s+(?:fechou|fechada|abriu|aberta)|resumo\\s+d[aeo]\\s+fatura|" +
         "pague\\s+o\\s+valor\\s+m[íi]nimo|n[ãa]o\\s+foi\\s+autorizad[ao]|compra\\s+negada|" +
@@ -62,6 +65,7 @@ public class BankNotificationListenerService extends NotificationListenerService
 
         // Carteiras Digitais & Pagamentos
         "com.google.android.apps.walletnfcrel",
+        "com.google.android.gms",
         "com.samsung.android.spay",
         "com.samsung.android.raja.spay",
         "com.samsung.android.app.spay",
@@ -174,6 +178,21 @@ public class BankNotificationListenerService extends NotificationListenerService
 
         String title = titleChar != null ? titleChar.toString().trim() : "";
         String text = textChar != null ? textChar.toString().trim() : "";
+
+        // Para com.google.android.gms, exige estritamente sinal de Carteira Digital / Pagamento NFC
+        if ("com.google.android.gms".equals(packageName)) {
+            String combinedPkgCheck = (title + " " + text).toLowerCase();
+            boolean isGooglePaySignal = combinedPkgCheck.contains("google pay") ||
+                combinedPkgCheck.contains("google wallet") ||
+                combinedPkgCheck.contains("carteira google") ||
+                combinedPkgCheck.contains("gpay") ||
+                combinedPkgCheck.contains("nfc") ||
+                combinedPkgCheck.contains("aproximação") ||
+                combinedPkgCheck.contains("aproximacao");
+            if (!isGooglePaySignal) {
+                return;
+            }
+        }
 
         // TRAVA 1: Exigência inegociável de quantia monetária formatada (F35 / Tarefa 10.1)
         // Transações financeiras sem valor não existem no mundo real.
@@ -366,16 +385,21 @@ public class BankNotificationListenerService extends NotificationListenerService
 
         String combined = (title + " " + text).toLowerCase();
 
-        // 1. Rejeição imediata de construções no gerúndio ou tom instrutivo
+        // 1. Rejeição imediata de construções no gerúndio ou tom instrutivo/promocional
         if (combined.contains("fazendo pix") || combined.contains("pagando boleto") ||
             combined.contains("pague com cart") || combined.contains("faça pix no cr") ||
-            combined.contains("faca pix no cr") || combined.contains("invista a partir")) {
+            combined.contains("faca pix no cr") || combined.contains("invista a partir") ||
+            combined.contains("use seu cart") || combined.contains("parcele em at") ||
+            combined.contains("parcele em até") || combined.contains("ganhe at") ||
+            combined.contains("ganhe até") || combined.contains("compras acima de") ||
+            combined.contains("desconto na loja") || combined.contains("aproveite e")) {
             return false;
         }
 
         // 2. Verbos e termos de fato consumado (movimentações financeiras reais efetivadas)
         String[] executedSignals = new String[] {
             "compra aprovada", "compra realizada", "compra de r$", "compra no cartão", "compra no cartao",
+            "compra de us$", "compra de usd", "compra de $", "compra de €", "compra de eur",
             "você recebeu", "voce recebeu", "recebido", "recebida", "recebimento",
             "você pagou", "voce pagou", "pagou", "pago com sucesso", "pagamento realizado", "pagamento efetuado", "pagamento aprovado",
             "você enviou", "voce enviou", "enviou um pix", "pix enviado", "pix de r$", "pix para", "enviado", "enviada",
@@ -390,7 +414,8 @@ public class BankNotificationListenerService extends NotificationListenerService
             "aproximação", "aproximacao", "por aproximação", "por aproximacao", "nfc",
             "transação", "transacao",
             "google pay", "google wallet", "carteira google", "samsung pay", "samsung wallet", "gpay", "spay",
-            "ordem executada", "dividendo", "dividendos", "rendimento", "rendimentos"
+            "ordem executada", "dividendo", "dividendos", "rendimento", "rendimentos",
+            "purchase approved", "payment approved", "approved", "purchase"
         };
 
         for (String signal : executedSignals) {
@@ -400,14 +425,16 @@ public class BankNotificationListenerService extends NotificationListenerService
         }
 
         // 3. Validação combinada de quantia monetária explícita com canal financeiro concreto ou carteira
-        if (combined.contains("r$") || combined.contains("us$") || combined.contains("usd") || combined.contains("brl")) {
+        if (combined.contains("r$") || combined.contains("us$") || combined.contains("usd") ||
+            combined.contains("brl") || combined.contains("$") || combined.contains("eur") || combined.contains("€")) {
             String[] channelSignals = new String[] {
-                "compra", "pix", "cartão", "cartao", "transferência", "transferencia",
-                "boleto", "ted", "doc", "debito", "débito", "crédito", "credito",
+                "compra", "pix", "transferência", "transferencia",
+                "boleto", "ted", "doc", "debito", "débito", "despesa",
                 "google pay", "google wallet", "carteira google", "samsung pay", "samsung wallet", "gpay", "spay",
                 "aproximação", "aproximacao", "nfc", "transação", "transacao", "pago", "pagou",
                 "cobrado", "cobrada", "debitado", "debitada", "autorizado", "autorizada",
-                "aprovado", "aprovada", "utilizado", "utilizada", "enviado", "enviada"
+                "aprovado", "aprovada", "approved", "purchase", "payment",
+                "utilizado", "utilizada", "enviado", "enviada"
             };
             for (String cs : channelSignals) {
                 if (combined.contains(cs)) {

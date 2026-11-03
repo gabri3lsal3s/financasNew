@@ -372,7 +372,7 @@ export function DemoTourSpotlight({
     // Validador de dimensões válidas para elementos assíncronos (Fase 8 — Tarefa 8.7)
     const isJsdomEnvironment =
       typeof navigator !== "undefined" &&
-      (navigator.userAgent.includes("jsdom") || (typeof process !== "undefined" && process.env?.NODE_ENV === "test"));
+      (navigator.userAgent.includes("jsdom") || import.meta.env.MODE === "test");
 
     const hasValidDimensions = (element: Element): boolean => {
       if (typeof element.getBoundingClientRect === "function") {
