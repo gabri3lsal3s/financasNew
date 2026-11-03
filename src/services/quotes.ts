@@ -276,3 +276,63 @@ export async function syncQuotesForAssets(
   const userAssetUpdatedCount = successfulQuotes.filter((q) => q.ticker !== "USDBRL=X").length;
   return userAssetUpdatedCount > 0 ? userAssetUpdatedCount : successfulQuotes.length;
 }
+
+export interface HistoricalMonthlyQuote {
+  ticker: string;
+  price: number;
+  currency: "BRL" | "USD";
+  source: "api" | "fallback";
+}
+
+/**
+ * Busca cotações históricas oficiais de fechamento do mês para uma lista de ativos.
+ * Cascata defensiva com timeout de 4s:
+ * 1. Edge Function `quotes` com payload { tickers, month };
+ * 2. Fallback gracioso caso a Edge Function falhe ou retorne vazio: devolve array vazio
+ *    permitindo que a cascata de domínio use última transação ou estimativa.
+ */
+export async function fetchHistoricalMonthlyQuotes(
+  tickers: string[],
+  month: string,
+): Promise<HistoricalMonthlyQuote[]> {
+  const cleanTickers = [
+    ...new Set(
+      tickers
+        .map((t) => t.trim().toUpperCase())
+        .filter((t) => t.length > 0 && !isPrivateFixedIncomeTicker(t)),
+    ),
+  ];
+
+  if (cleanTickers.length === 0) return [];
+
+  try {
+    const supabase = getSupabase();
+    const timeoutPromise = new Promise<{ data: null; error: Error }>((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout quotes edge function")), 4000),
+    );
+
+    const fetchPromise = supabase.functions.invoke<{
+      quotes?: Array<{ ticker: string; price: number; currency: "BRL" | "USD" }>;
+    }>("quotes", {
+      body: { tickers: cleanTickers, month },
+    });
+
+    const response = await Promise.race([fetchPromise, timeoutPromise]);
+    const quotes = response.data?.quotes;
+
+    if (Array.isArray(quotes) && quotes.length > 0) {
+      return quotes
+        .filter((q) => q.price > 0)
+        .map((q) => ({
+          ticker: q.ticker.toUpperCase().trim(),
+          price: q.price,
+          currency: q.currency ?? "BRL",
+          source: "api",
+        }));
+    }
+  } catch {
+    // Degradação graciosa em timeout ou falha de rede
+  }
+
+  return [];
+}

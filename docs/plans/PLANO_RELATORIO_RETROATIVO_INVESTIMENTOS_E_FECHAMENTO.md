@@ -207,8 +207,8 @@ Esta tabela sintetiza a evolução matemática rigorosa para todas as fórmulas 
 ### FASE 3: Motor de Domínio Puro — Reconstrução Ponto-no-Tempo & Retificação Quantitativa
 > **Objetivo:** Desenvolver funções puras, testáveis isoladamente e sem dependências de UI/banco, para reconstruir a custódia no fechamento e fornecer motores de cálculo matematicamente blindados para todos os investidores.
 
-- [ ] **Tarefa 3.1: Motor Ponto-no-Tempo (`src/domain/portfolio/point-in-time.ts`)**
-  - [ ] Implementar `calculatePointInTimePosition(params: PointInTimeCalculationParams): PointInTimeResult`:
+- [x] **Tarefa 3.1: Motor Ponto-no-Tempo (`src/domain/portfolio/point-in-time.ts`)**
+  - [x] Implementar `calculatePointInTimePosition(params: PointInTimeCalculationParams): PointInTimeResult`:
     - Filtrar movimentações (`transactions`) onde `date <= endOfMonth(month)`.
     - Iterar operações cronologicamente: compras aumentam quantidade e ajustam preço médio ponderado; desdobramentos/splits ajustam quantidade e custo unitário; vendas parciais reduzem quantidade sem alterar o custo médio unitário; vendas totais zeram a posição.
     - Descartar ativos cuja quantidade em custódia na data de corte seja zero ou negativa.
@@ -217,84 +217,84 @@ Esta tabela sintetiza a evolução matemática rigorosa para todas as fórmulas 
     - Aplicar cotações de fechamento (convertendo ativos USD para BRL pela PTAX da data de corte).
     - Calcular ganho de capital aberto, proventos do mês e retorno total consolidado na competência.
 
-- [ ] **Tarefa 3.2: Utilitários de Resolução de Cotações Históricas (`src/domain/portfolio/historical-quotes.ts`)**
-  - [ ] Implementar `resolveHistoricalQuotePriority`:
+- [x] **Tarefa 3.2: Utilitários de Resolução de Cotações Históricas (`src/domain/portfolio/historical-quotes.ts`)**
+  - [x] Implementar `resolveHistoricalQuotePriority`:
     - Prioridade 1: Preço manual gravado pelo usuário (`source: 'manual'`).
     - Prioridade 2: Cotação oficial de fechamento via API (`source: 'api'`).
     - Prioridade 3: Sugestão baseada na última compra/venda do mês (`source: 'fallback'`).
     - Prioridade 4: Cotação atual com flag `isEstimate: true` e badge "Sugerida".
-  - [ ] Normalizar tickers e tratamento de arredondamentos monetários (2 casas decimais para valores totais, até 4 casas para cotações).
+  - [x] Normalizar tickers e tratamento de arredondamentos monetários (2 casas decimais para valores totais, até 4 casas para cotações).
 
-- [ ] **Tarefa 3.3: Motor de Anualização de TWR por Dias Corridos Exatos (`src/domain/portfolio/twr.ts`)**
-  - [ ] Implementar `annualizeRateFromDays(accumulatedRatePct: number, daysElapsed: number): number | null`:
+- [x] **Tarefa 3.3: Motor de Anualização de TWR por Dias Corridos Exatos (`src/domain/portfolio/twr.ts`)**
+  - [x] Implementar `annualizeRateFromDays(accumulatedRatePct: number, daysElapsed: number): number | null`:
     - Se `daysElapsed < 365` ou `accumulatedRatePct <= -100`: retornar `null` (salvaguarda CVM/ANBIMA: proíbe anualizar períodos curtos $< 1$ ano).
     - Se `daysElapsed >= 365`: calcular $(1 + R_{\text{acum}} / 100)^{\frac{365}{\text{daysElapsed}}} - 1$.
-  - [ ] Atualizar `calculateTwrSeries`: aceitar parâmetro opcional `daysElapsed?: number` (ou `startDate?: string` e `endDate?: string`). Se fornecido e $\ge 365$, utilizar a anualização exata por dias corridos; caso contrário, fallback para `annualizeRateFromMonths`.
+  - [x] Atualizar `calculateTwrSeries`: aceitar parâmetro opcional `daysElapsed?: number` (ou `startDate?: string` e `endDate?: string`). Se fornecido e $\ge 365$, utilizar a anualização exata por dias corridos; caso contrário, fallback para `annualizeRateFromMonths`.
 
-- [ ] **Tarefa 3.4: Motor de Normalização de Percentuais pelo Método do Maior Resto (`src/domain/reports/distribution.ts`)**
-  - [ ] Implementar `normalizePercentagesTo100<T extends { rawPct: number }>(items: readonly T[], decimals?: number): (T & { formattedPct: number; displayPctStr: string })[]`:
+- [x] **Tarefa 3.4: Motor de Normalização de Percentuais pelo Método do Maior Resto (`src/domain/reports/distribution.ts`)**
+  - [x] Implementar `normalizePercentagesTo100<T extends { rawPct: number }>(items: readonly T[], decimals?: number): (T & { formattedPct: number; displayPctStr: string })[]`:
     - Baseado no algoritmo de Hamilton-Hare / Largest Remainder Method;
     - Trunca no inteiro multiplicado por $10^{\text{decimals}}$ e distribui o déficit residual entre os itens com maiores restos fracionários;
     - Assegura invariante absoluto: $\sum \text{formattedPct} \equiv 100,0\%$.
 
-- [ ] **Tarefa 3.5: Retificação de Métricas de Risco com Segregação de MTD (`src/domain/portfolio/risk-metrics.ts`)**
-  - [ ] Atualizar `calculatePortfolioRiskSummary`:
+- [x] **Tarefa 3.5: Retificação de Métricas de Risco com Segregação de MTD (`src/domain/portfolio/risk-metrics.ts`)**
+  - [x] Atualizar `calculatePortfolioRiskSummary`:
     - Aceitar flag `hasPartialCurrentMonth?: boolean` ou data de corte.
     - Se o último ponto for o mês corrente incompleto (`isMtd`), **excluí-lo** do cálculo do desvio-padrão amostral ($\sigma_m$) e do Sharpe anualizado, preservando a hipótese de homogeneidade temporal ($\Delta t = 1/12$).
     - Calcular Max Drawdown e Consistência (Win Rate) com a granularidade apropriada.
 
-- [ ] **Tarefa 3.6: Retificação de Benchmarks com Visão Híbrida (`src/domain/portfolio/benchmarks.ts`)**
-  - [ ] Atualizar `calculateConsolidatedBenchmarks`:
+- [x] **Tarefa 3.6: Retificação de Benchmarks com Visão Híbrida (`src/domain/portfolio/benchmarks.ts`)**
+  - [x] Atualizar `calculateConsolidatedBenchmarks`:
     - Permitir entrada de taxas acumuladas do período total (`portfolioTotalRatePct`) e da janela recente de 12 meses (`portfolio12mRatePct?: number`).
     - Produzir dados comparativos tanto para o Total Desde o Início quanto para o recorte de 12 meses.
 
-- [ ] **Tarefa 3.7: Desacoplamento de Caixa dos Setores Econômicos (`src/domain/reports/allocation-donuts.ts`)**
-  - [ ] Refatorar `buildAllocationDonutSegments`:
+- [x] **Tarefa 3.7: Desacoplamento de Caixa dos Setores Econômicos (`src/domain/reports/allocation-donuts.ts`)**
+  - [x] Refatorar `buildAllocationDonutSegments`:
     - Não injetar Caixa dentro de `sectorMap` de emissores corporativos.
     - Setores econômicos refletem estritamente empresas e títulos produtivos (`totalUniqueSectors` reporta apenas setores reais).
     - A fatia de Caixa é mantida como elemento de liquidez próprio (`#10b981`), nunca permitindo ser aglutinada em "Outros Setores".
     - Aplicar `normalizePercentagesTo100` tanto nas classes quanto nos setores.
 
-- [ ] **Tarefa 3.8: Testes de Unidade Exaustivos do Domínio (`point-in-time.test.ts`, `twr.test.ts`, `risk-metrics.test.ts`, `distribution.test.ts`)**
-  - [ ] Testar anualização de TWR: 978 dias e +22,4% acumulado gerando exatamente **+7,8% a.a.** (+7,84%).
-  - [ ] Testar anualização para usuário iniciante (< 365 dias): retorna `null` ("Em formação").
-  - [ ] Testar Largest Remainder Method: array `[23.84, 23.86, 29.96, 0.54, 21.72]` somando exatamente **100,0%**.
-  - [ ] Testar segregação de MTD: série com 11 meses cheios + 1 mês de 3 dias não distorcendo $\sigma_m \times \sqrt{12}$.
-  - [ ] Testar ponto-no-tempo com ativos comprados/vendidos, proventos e splits.
+- [x] **Tarefa 3.8: Testes de Unidade Exaustivos do Domínio (`point-in-time.test.ts`, `twr.test.ts`, `risk-metrics.test.ts`, `distribution.test.ts`)**
+  - [x] Testar anualização de TWR: 978 dias e +22,4% acumulado gerando exatamente **+7,8% a.a.** (+7,84%).
+  - [x] Testar anualização para usuário iniciante (< 365 dias): retorna `null` ("Em formação").
+  - [x] Testar Largest Remainder Method: array `[23.84, 23.86, 29.96, 0.54, 21.72]` somando exatamente **100,0%**.
+  - [x] Testar segregação de MTD: série com 11 meses cheios + 1 mês de 3 dias não distorcendo $\sigma_m \times \sqrt{12}$.
+  - [x] Testar ponto-no-tempo com ativos comprados/vendidos, proventos e splits.
 
 #### 🚪 Quality Gate 3 (QG3)
-- [ ] Executar testes de domínio: `npx vitest run src/domain/portfolio/point-in-time.test.ts src/domain/portfolio/historical-quotes.test.ts src/domain/portfolio/twr.test.ts src/domain/portfolio/risk-metrics.test.ts src/domain/reports/allocation-donuts.test.ts`.
-- [ ] Garantir 100% de cobertura nos cenários de borda e invariantes financeiras.
-- [ ] Executar typecheck estrito: `npm run typecheck`.
-- [ ] **Commit & Push:** `feat(portfolio): motores puros de ponto-no-tempo anualizacao exata e normalizacao quantitativa (QG3)`
+- [x] Executar testes de domínio: `npx vitest run src/domain/portfolio/point-in-time.test.ts src/domain/portfolio/historical-quotes.test.ts src/domain/portfolio/twr.test.ts src/domain/portfolio/risk-metrics.test.ts src/domain/reports/allocation-donuts.test.ts`.
+- [x] Garantir 100% de cobertura nos cenários de borda e invariantes financeiras.
+- [x] Executar typecheck estrito: `npm run typecheck`.
+- [x] **Commit & Push:** `feat(portfolio): motores puros de ponto-no-tempo anualizacao exata e normalizacao quantitativa (QG3)`
 
 ---
 
 ### FASE 4: Serviço de Cotações Históricas & Cascata Inteligente (Edge Function + API)
 > **Objetivo:** Buscar cotações de fechamento oficiais para o último dia útil de meses anteriores com fallback resiliente e sem travar a interface do usuário.
 
-- [ ] **Tarefa 4.1: Suporte a Fechamento Histórico na Edge Function (`supabase/functions/quotes/`)**
-  - [ ] Adaptar a Edge Function para aceitar parâmetro opcional `date` ou `month` (ex: `date=2026-10-31`).
-  - [ ] Para Yahoo Finance: consultar o histórico diário (`interval=1d&range=5d` centrado no fim do mês) para extrair o `close` do último pregão.
-  - [ ] Para Moedas: consultar o histórico da AwesomeAPI ou BCB SGS para taxa de câmbio USD de fechamento do mês.
+- [x] **Tarefa 4.1: Suporte a Fechamento Histórico na Edge Function (`supabase/functions/quotes/`)**
+  - [x] Adaptar a Edge Function para aceitar parâmetro opcional `date` ou `month` (ex: `date=2026-10-31`).
+  - [x] Para Yahoo Finance: consultar o histórico diário (`interval=1d&range=5d` centrado no fim do mês) para extrair o `close` do último pregão.
+  - [x] Para Moedas: consultar o histórico da AwesomeAPI ou BCB SGS para taxa de câmbio USD de fechamento do mês.
 
-- [ ] **Tarefa 4.2: Método de Serviço no Cliente (`src/services/quotes.ts`)**
-  - [ ] Implementar `fetchHistoricalMonthlyQuotes(params: { tickers: string[]; month: string; lastTransactionsPrices?: Map<string, number> }): Promise<Map<string, HistoricalQuoteResult>>`.
-  - [ ] Cascata de busca com timeout defensivo de 4 segundos:
+- [x] **Tarefa 4.2: Método de Serviço no Cliente (`src/services/quotes.ts`)**
+  - [x] Implementar `fetchHistoricalMonthlyQuotes(params: { tickers: string[]; month: string; lastTransactionsPrices?: Map<string, number> }): Promise<Map<string, HistoricalQuoteResult>>`.
+  - [x] Cascata de busca com timeout defensivo de 4 segundos:
     - 1. Edge Function com data de fechamento;
     - 2. AwesomeAPI para USD e cripto;
     - 3. Fallback para preço da última movimentação no mês;
     - 4. Fallback final para cotação atual com flag `isSuggested: true`.
 
-- [ ] **Tarefa 4.3: Testes de Integração e Resiliência do Serviço (`src/services/quotes.test.ts`)**
-  - [ ] Testar mock de resposta de histórico com sucesso.
-  - [ ] Testar degradação graciosa em timeout e erro de rede (retornando fallback sem estourar exceção não tratada).
+- [x] **Tarefa 4.3: Testes de Integração e Resiliência do Serviço (`src/services/quotes.test.ts`)**
+  - [x] Testar mock de resposta de histórico com sucesso.
+  - [x] Testar degradação graciosa em timeout e erro de rede (retornando fallback sem estourar exceção não tratada).
 
 #### 🚪 Quality Gate 4 (QG4)
-- [ ] Executar testes do serviço: `npx vitest run src/services/quotes.test.ts`.
-- [ ] Executar typecheck: `npm run typecheck`.
-- [ ] Executar linting: `npm run lint`.
-- [ ] **Commit & Push:** `feat(portfolio): servico de cotacoes historicas de fechamento com cascata defensiva (QG4)`
+- [x] Executar testes do serviço: `npx vitest run src/services/quotes.test.ts`.
+- [x] Executar typecheck: `npm run typecheck`.
+- [x] Executar linting: `npm run lint`.
+- [x] **Commit & Push:** `feat(portfolio): servico de cotacoes historicas de fechamento com cascata defensiva (QG4)`
 
 ---
 

@@ -1,5 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { clearBcbCache, fetchBcbIndicator, fetchOnlineQuote, syncQuoteForTicker, syncQuotesForAssets } from "./quotes";
+import {
+  clearBcbCache,
+  fetchBcbIndicator,
+  fetchHistoricalMonthlyQuotes,
+  fetchOnlineQuote,
+  syncQuoteForTicker,
+  syncQuotesForAssets,
+} from "./quotes";
 
 const mockSetAssetPrice = vi.fn();
 const mockSetAssetPricesBatch = vi.fn();
@@ -170,5 +177,41 @@ describe("quotes service", () => {
     expect(globalFetch).toHaveBeenCalledTimes(1);
 
     vi.unstubAllGlobals();
+  });
+
+  describe("fetchHistoricalMonthlyQuotes", () => {
+    it("retorna cotações históricas da Edge Function formatadas", async () => {
+      mockInvoke.mockResolvedValueOnce({
+        data: {
+          quotes: [
+            { ticker: "PETR4", price: 38.5, currency: "BRL" },
+            { ticker: "AAPL", price: 230.0, currency: "USD" },
+          ],
+        },
+        error: null,
+      });
+
+      const quotes = await fetchHistoricalMonthlyQuotes(["PETR4", "AAPL"], "2026-01");
+      expect(quotes).toEqual([
+        { ticker: "PETR4", price: 38.5, currency: "BRL", source: "api" },
+        { ticker: "AAPL", price: 230.0, currency: "USD", source: "api" },
+      ]);
+      expect(mockInvoke).toHaveBeenCalledWith("quotes", {
+        body: { tickers: ["PETR4", "AAPL"], month: "2026-01" },
+      });
+    });
+
+    it("retorna array vazio em caso de erro da Edge Function ou timeout", async () => {
+      mockInvoke.mockRejectedValueOnce(new Error("Network failure"));
+
+      const quotes = await fetchHistoricalMonthlyQuotes(["VALE3"], "2026-01");
+      expect(quotes).toEqual([]);
+    });
+
+    it("ignora tickers vazios ou de renda fixa privada antes de chamar Edge Function", async () => {
+      const quotes = await fetchHistoricalMonthlyQuotes(["", "   "], "2026-01");
+      expect(quotes).toEqual([]);
+      expect(mockInvoke).not.toHaveBeenCalled();
+    });
   });
 });
