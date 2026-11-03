@@ -301,44 +301,44 @@ Esta tabela sintetiza a evolução matemática rigorosa para todas as fórmulas 
 ### FASE 5: Orquestração de Estado & Recálculo Retroativo Automático (TanStack Query & Hooks)
 > **Objetivo:** Conectar TanStack Query, repositórios e domínio em hooks reativos, gerenciando o carregamento da posição histórica, a unificação temporal com contagem de dias exatos e o recálculo automático após movimentações retroativas.
 
-- [ ] **Tarefa 5.1: Query de Posição Histórica (`src/state/queries/use-portfolio-monthly-position.ts`)**
-  - [ ] Criar hook `usePortfolioMonthlyPosition(month: string)`:
+- [x] **Tarefa 5.1: Query de Posição Histórica (`src/state/queries/use-portfolio-monthly-position.ts`)**
+  - [x] Criar hook `usePortfolioMonthlyPosition(month: string)`:
     - Se `month === currentMonth()`, retorna diretamente o resultado de `usePortfolioPosition()`.
     - Se `month < currentMonth()`:
       - Carrega `portfolio_assets`, `portfolio_transactions`, `portfolio_dividends`, `portfolio_contributions` e `portfolio_monthly_prices(month)`.
       - Identifica tickers sem cotação salva para o mês e dispara busca assíncrona via `fetchHistoricalMonthlyQuotes`.
       - Executa `calculatePointInTimePosition` gerando a lista de ativos, valores de fechamento, rentabilidades e totais.
-  - [ ] Gerenciar estados `isLoading`, `isRefetching`, `isError` e cache com `staleTime` adequado.
+  - [x] Gerenciar estados `isLoading`, `isRefetching`, `isError` e cache com `staleTime` adequado.
 
-- [ ] **Tarefa 5.2: Mutação de Salvamento e Fechamento (`src/state/mutations/use-portfolio-monthly-mutations.ts`)**
-  - [ ] Implementar mutação `useSaveMonthlyClosing()`:
+- [x] **Tarefa 5.2: Mutação de Salvamento e Fechamento (`src/state/mutations/use-portfolio-monthly-mutations.ts`)**
+  - [x] Implementar mutação `useSaveMonthlyClosing()`:
     - Grava lote em `portfolio_monthly_prices` com `source: 'manual' | 'api'`.
     - Executa upsert na tabela `portfolio_snapshots` com o novo `total_value` e `total_cost` reconciliados daquele mês.
     - Invalida queries relevantes: `["portfolio_snapshots"]`, `["portfolio_monthly_prices", month]` e `["portfolio_position"]`.
     - Emite feedback sensorial via gateway central (`triggerSensory("success")`) e toast de confirmação.
 
-- [ ] **Tarefa 5.3: Gatilho de Recálculo Automático Retroativo (`src/hooks/use-auto-portfolio-snapshot.ts`)**
-  - [ ] Estender `useAutoPortfolioSnapshot`:
+- [x] **Tarefa 5.3: Gatilho de Recálculo Automático Retroativo (`src/hooks/use-auto-portfolio-snapshot.ts`)**
+  - [x] Estender `useAutoPortfolioSnapshot`:
     - Monitorar inserções/edições de transações (`portfolio_transactions`) e proventos (`portfolio_dividends`).
     - Se a data do lançamento for `< currentMonth()`, identificar os meses retroativos afetados.
     - Executar recálculo do snapshot consolidado em background para cada mês afetado, atualizando `portfolio_snapshots`.
     - Proteger contra loop de execuções com `useRef` e deduplicação de chamadas.
 
-- [ ] **Tarefa 5.4: Unificação Temporal em `usePortfolioPosition` (`src/state/queries/use-portfolio-position.ts`)**
-  - [ ] Determinar a data inicial real da carteira a partir da primeira transação ou aporte (`firstOperationDate`).
-  - [ ] Calcular `daysElapsed = differenceInDays(today, firstOperationDate)`.
-  - [ ] Passar `daysElapsed` ao invocar `calculateTwrSeries`, permitindo a anualização fiel por dias corridos exatos.
+- [x] **Tarefa 5.4: Unificação Temporal em `usePortfolioPosition` (`src/state/queries/use-portfolio-position.ts`)**
+  - [x] Determinar a data inicial real da carteira a partir da primeira transação ou aporte (`firstOperationDate`).
+  - [x] Calcular `daysElapsed = differenceInDays(today, firstOperationDate)`.
+  - [x] Passar `daysElapsed` ao invocar `calculateTwrSeries`, permitindo a anualização fiel por dias corridos exatos.
 
-- [ ] **Tarefa 5.5: Testes Automatizados dos Hooks de Estado (`src/state/queries/use-portfolio-monthly-position.test.ts`)**
-  - [ ] Testar alternância entre mês corrente e mês retroativo.
-  - [ ] Testar salvamento de fechamento atualizando cache de snapshots.
-  - [ ] Testar gatilho retroativo em segundo plano.
+- [x] **Tarefa 5.5: Testes Automatizados dos Hooks de Estado (`src/state/queries/use-portfolio-monthly-position.test.ts`)**
+  - [x] Testar alternância entre mês corrente e mês retroativo.
+  - [x] Testar salvamento de fechamento atualizando cache de snapshots.
+  - [x] Testar gatilho retroativo em segundo plano.
 
 #### 🚪 Quality Gate 5 (QG5)
-- [ ] Executar testes de estado e hooks: `npx vitest run src/state/queries/use-portfolio-monthly-position.test.ts src/hooks/use-auto-portfolio-snapshot.test.ts`.
-- [ ] Executar typecheck estrito: `npm run typecheck`.
-- [ ] Verificar ausência de loops infinitos no hook de recálculo retroativo.
-- [ ] **Commit & Push:** `feat(portfolio): queries e mutacoes de fechamento mensal e unificacao temporal de dias (QG5)`
+- [x] Executar testes de estado e hooks: `npx vitest run src/state/queries/use-portfolio-monthly-position.test.ts src/hooks/use-auto-portfolio-snapshot.test.ts`.
+- [x] Executar typecheck estrito: `npm run typecheck`.
+- [x] Verificar ausência de loops infinitos no hook de recálculo retroativo.
+- [x] **Commit & Push:** `feat(portfolio): queries e mutacoes de fechamento mensal e unificacao temporal de dias (QG5)`
 
 ---
 

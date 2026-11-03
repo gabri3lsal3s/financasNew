@@ -105,6 +105,10 @@ export {
 export { useAssetPrices, useSetManualPrice, useRemoveManualPrice, useSyncQuotes } from "./queries/use-asset-prices";
 export { usePortfolioPosition } from "./queries/use-portfolio-position";
 export type { PortfolioPosition, PortfolioPositionRow } from "./queries/use-portfolio-position";
+export { usePortfolioMonthlyPosition } from "./queries/use-portfolio-monthly-position";
+export type { PortfolioMonthlyPositionState } from "./queries/use-portfolio-monthly-position";
+export { usePortfolioMonthlyPrices, PORTFOLIO_MONTHLY_PRICES_QUERY_KEY } from "./queries/use-portfolio-monthly-prices";
+export { useSaveMonthlyClosing, type SaveMonthlyClosingInput } from "./mutations/use-portfolio-monthly-mutations";
 export { useMacroIndicators, type MacroIndicatorsData, MACRO_INDICATORS_QUERY_KEY } from "./queries/use-macro-indicators";
 
 export {

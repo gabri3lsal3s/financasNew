@@ -49,6 +49,30 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
       isPending: false,
     } as unknown as ReturnType<typeof stateModule.useUpsertPortfolioSnapshot>);
 
+    vi.spyOn(stateModule, "usePortfolioAssets").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.usePortfolioAssets>);
+
+    vi.spyOn(stateModule, "useAllPortfolioTransactions").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.useAllPortfolioTransactions>);
+
+    vi.spyOn(stateModule, "usePortfolioDividends").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.usePortfolioDividends>);
+
     renderHook(() => useAutoPortfolioSnapshot());
 
     expect(mutateMock).toHaveBeenCalledTimes(1);
@@ -105,6 +129,30 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
       mutate: mutateMock,
       isPending: false,
     } as unknown as ReturnType<typeof stateModule.useUpsertPortfolioSnapshot>);
+
+    vi.spyOn(stateModule, "usePortfolioAssets").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.usePortfolioAssets>);
+
+    vi.spyOn(stateModule, "useAllPortfolioTransactions").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.useAllPortfolioTransactions>);
+
+    vi.spyOn(stateModule, "usePortfolioDividends").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.usePortfolioDividends>);
 
     renderHook(() => useAutoPortfolioSnapshot());
 

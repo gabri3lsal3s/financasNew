@@ -160,16 +160,23 @@ export function usePortfolioPosition(): PortfolioPosition {
   const upsertSnapshot = useUpsertPortfolioSnapshot();
 
   const computed = useMemo(() => {
+    const assets = assetsQuery.data ?? [];
     const prices = pricesQuery.data ?? [];
-    const usdRate = usdRateFromPrices(prices);
-  const priceByTicker = new Map(prices.map((p) => [p.ticker.trim().toUpperCase(), p]));
-  const annualCdiRate = macroQuery.data?.annualCdiRate;
-  const today = todayISO();
+    const macro = macroQuery.data;
+    const contributions = contributionsQuery.data ?? [];
+    const dividends = dividendsQuery.data ?? [];
+    const snapshots = snapshotsQuery.data ?? [];
+    const transactions = transactionsQuery.data ?? [];
 
-  // Agrupa compras e vendas históricas por ativo a partir do ledger
-  const boughtByAsset = new Map<string, number>();
-  const soldByAsset = new Map<string, number>();
-  for (const t of transactionsQuery.data ?? []) {
+    const usdRate = usdRateFromPrices(prices);
+    const priceByTicker = new Map(prices.map((p) => [p.ticker.trim().toUpperCase(), p]));
+    const annualCdiRate = macro?.annualCdiRate;
+    const today = todayISO();
+
+    // Agrupa compras e vendas históricas por ativo a partir do ledger
+    const boughtByAsset = new Map<string, number>();
+    const soldByAsset = new Map<string, number>();
+    for (const t of transactions) {
     const amount = t.total > 0 ? t.total : (t.quantity > 0 && t.price > 0 ? t.quantity * t.price : 0);
     if (t.type === "buy" || t.type === "subscription") {
       boughtByAsset.set(t.asset_id, (boughtByAsset.get(t.asset_id) ?? 0) + amount);
@@ -179,9 +186,9 @@ export function usePortfolioPosition(): PortfolioPosition {
   }
 
   // Agrega também aportes financeiros direcionados ao ativo (evitando duplicar se já estiver no ledger)
-  for (const c of contributionsQuery.data ?? []) {
+  for (const c of contributions) {
     if (c.asset_id && c.amount > 0) {
-      const alreadyInTx = (transactionsQuery.data ?? []).some(
+      const alreadyInTx = transactions.some(
         (t) => t.asset_id === c.asset_id && (t.type === "buy" || t.type === "subscription") && t.date === c.date && Math.abs(t.total - c.amount) < 0.01,
       );
       if (!alreadyInTx) {
@@ -192,14 +199,14 @@ export function usePortfolioPosition(): PortfolioPosition {
 
   // Agrupa proventos periódicos por ativo (lançamentos em portfolio_dividends)
   const dividendsByAsset = new Map<string, number>();
-  for (const d of dividendsQuery.data ?? []) {
+  for (const d of dividends) {
     if (d.asset_id) {
       dividendsByAsset.set(d.asset_id, (dividendsByAsset.get(d.asset_id) ?? 0) + d.amount);
     }
   }
   // Soma proventos acumulados históricos (anteriores ao extrato periódico).
   // Alimentam YoC e Bola de Neve sem distorcer o calendário/extrato mensal.
-  for (const a of assetsQuery.data ?? []) {
+  for (const a of assets) {
     const acc = a.accumulated_dividends ?? 0;
     if (acc > 0) {
       dividendsByAsset.set(a.id, (dividendsByAsset.get(a.id) ?? 0) + acc);
@@ -211,7 +218,7 @@ export function usePortfolioPosition(): PortfolioPosition {
   let cashBRL = 0;
   const rawRows: Array<Omit<PortfolioPositionRow, "pct">> = [];
 
-  for (const asset of assetsQuery.data ?? []) {
+  for (const asset of assets) {
     const isCash = isCashAssetClass(asset.asset_class);
     const quantity = Number(asset.quantity ?? 0);
     const averageCost = Number(asset.average_price ?? 0);
@@ -347,8 +354,8 @@ export function usePortfolioPosition(): PortfolioPosition {
         : summary.totalReturnPct;
 
     // Fluxos do ativo para cálculo da TIR individual
-    const assetTxs = (transactionsQuery.data ?? []).filter((t) => t.asset_id === asset.id);
-    const assetDivs = (dividendsQuery.data ?? []).filter((d) => d.asset_id === asset.id);
+    const assetTxs = transactions.filter((t) => t.asset_id === asset.id);
+    const assetDivs = dividends.filter((d) => d.asset_id === asset.id);
     const assetAccDiv = asset.accumulated_dividends ?? 0;
     const allAssetDivs =
       assetAccDiv > 0
@@ -422,13 +429,13 @@ export function usePortfolioPosition(): PortfolioPosition {
   // Fluxo do Bolso & TIR da Carteira Consolidada (XIRR)
   // ---------------------------------------------------------------------------
   const cashAssetIds = new Set(
-    (assetsQuery.data ?? [])
+    assets
       .filter((a) => isCashAssetClass(a.asset_class) || a.ticker.toUpperCase() === "CAIXA")
       .map((a) => a.id),
   );
 
   const cashWithdrawals: { date: string; amount: number }[] = [];
-  for (const t of transactionsQuery.data ?? []) {
+  for (const t of transactions) {
     if (t.type === "sell" && cashAssetIds.has(t.asset_id) && t.total > 0) {
       cashWithdrawals.push({
         date: t.date,
@@ -438,7 +445,7 @@ export function usePortfolioPosition(): PortfolioPosition {
   }
 
   const portfolioCashFlows = buildPortfolioCashFlows({
-    contributions: (contributionsQuery.data ?? []).map((c) => ({
+    contributions: contributions.map((c) => ({
       date: c.date,
       amount: c.amount,
       notes: c.notes,
@@ -448,7 +455,7 @@ export function usePortfolioPosition(): PortfolioPosition {
     today,
   });
 
-  const hasMarcoZeroContribution = (contributionsQuery.data ?? []).some((c) => {
+  const hasMarcoZeroContribution = contributions.some((c) => {
     if (!c.asset_id) return true;
     const n = (c.notes ?? "").toLowerCase();
     return (
@@ -462,7 +469,7 @@ export function usePortfolioPosition(): PortfolioPosition {
   const portfolioIrr = calculateXIRR(portfolioCashFlows);
 
   const netInjectedCapitalBRL = calculateNetInjectedCapital(
-    contributionsQuery.data ?? [],
+    contributions,
     cashWithdrawals,
   );
   const netPocketGainBRL = calculateNetPocketGain(totalBRL, netInjectedCapitalBRL);
@@ -470,14 +477,14 @@ export function usePortfolioPosition(): PortfolioPosition {
   // Aporte líquido do mês corrente a partir de portfolio_contributions
   const thisMonth = currentMonth();
   let contributionBRL = 0;
-  for (const c of contributionsQuery.data ?? []) {
+  for (const c of contributions) {
     if (c.date.startsWith(thisMonth)) {
       contributionBRL += c.amount;
     }
   }
 
   // Snapshots mensais reais com proventos integrados (F36 & F37)
-  const initialAccumulatedDividends = (assetsQuery.data ?? []).reduce(
+  const initialAccumulatedDividends = assets.reduce(
     (acc, a) => {
       const isUSD = a.currency === "USD";
       const aRate = isUSD ? usdRate : 1;
@@ -487,7 +494,7 @@ export function usePortfolioPosition(): PortfolioPosition {
   );
 
   const currentMonthPoint =
-    totalBRL > 0 || (assetsQuery.data && assetsQuery.data.length > 0)
+    totalBRL > 0 || assets.length > 0
       ? {
           month: thisMonth,
           total_value: totalBRL,
@@ -500,7 +507,7 @@ export function usePortfolioPosition(): PortfolioPosition {
       : null;
 
   const allMonthsTwrMap = new Map<string, { total_value: number; total_cost: number }>();
-  for (const snap of snapshotsQuery.data ?? []) {
+  for (const snap of snapshots) {
     if (snap.month < thisMonth || !thisMonth) {
       allMonthsTwrMap.set(snap.month, {
         total_value: Number(snap.total_value),
@@ -523,7 +530,7 @@ export function usePortfolioPosition(): PortfolioPosition {
   const twrInputs: TwrMonthlyInputPoint[] = sortedAllMonths.map(([m, data]) => {
     let flow = 0;
     let explicitRate: number | null = null;
-    for (const c of contributionsQuery.data ?? []) {
+    for (const c of contributions) {
       if (c.date.startsWith(m)) {
         const isWithdrawal = isHistoricalWithdrawal(c);
         flow += isWithdrawal ? -Math.abs(c.amount) : Math.abs(c.amount);
@@ -542,10 +549,32 @@ export function usePortfolioPosition(): PortfolioPosition {
     };
   });
 
-  const portfolioTwr = calculateTwrSeries(twrInputs);
+  // Determina a primeira operação real (transação ou aporte) para cálculo temporal exato
+  let firstOpDate: string | null = null;
+  for (const t of transactions) {
+    if (t.date && (!firstOpDate || t.date.slice(0, 10) < firstOpDate)) {
+      firstOpDate = t.date.slice(0, 10);
+    }
+  }
+  for (const c of contributions) {
+    if (c.date && (!firstOpDate || c.date.slice(0, 10) < firstOpDate)) {
+      firstOpDate = c.date.slice(0, 10);
+    }
+  }
 
-  const rawDividendsForSeries = (dividendsQuery.data ?? []).map((d) => {
-    const asset = d.asset_id ? (assetsQuery.data ?? []).find((a) => a.id === d.asset_id) : null;
+  let daysElapsed: number | undefined;
+  if (firstOpDate) {
+    const startMs = new Date(`${firstOpDate}T00:00:00`).getTime();
+    const todayMs = new Date(`${todayISO()}T00:00:00`).getTime();
+    if (!Number.isNaN(startMs) && !Number.isNaN(todayMs) && todayMs >= startMs) {
+      daysElapsed = Math.round((todayMs - startMs) / (1000 * 60 * 60 * 24));
+    }
+  }
+
+  const portfolioTwr = calculateTwrSeries(twrInputs, daysElapsed);
+
+  const rawDividendsForSeries = dividends.map((d) => {
+    const asset = d.asset_id ? assets.find((a) => a.id === d.asset_id) : null;
     const isUSD = asset?.currency === "USD";
     const dRate = isUSD ? usdRate : 1;
     return {
@@ -554,13 +583,13 @@ export function usePortfolioPosition(): PortfolioPosition {
     };
   });
 
-  const rawContributionsForSeries = (contributionsQuery.data ?? []).map((c) => ({
+  const rawContributionsForSeries = contributions.map((c) => ({
     date: c.date,
     amount: c.amount,
     notes: c.notes,
   }));
 
-  const rawSnapshotsForSeries = (snapshotsQuery.data ?? []).map((s) => ({
+  const rawSnapshotsForSeries = snapshots.map((s) => ({
     month: s.month,
     total_value: Number(s.total_value),
     total_cost: Number(s.total_cost),
