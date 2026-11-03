@@ -59,7 +59,9 @@
 │   ├── plans/                     # Planos de implementação ativos e pendentes
 │   │   ├── PLANO_CORRECAO_E_OTIMIZACAO_TOUR_INTERATIVO.md # Correções finas de dados mockados, rotas e ergonomia do tour
 │   │   ├── PLANO_MELHORIA_NOTIFICACOES_BANCOS.md # Captura passiva Android, carteiras digitais e categorização rápida
+│   │   ├── PLANO_PWA_FIRST_APK_BETA_E_NOTIFICACOES_REFINADAS.md # PWA First, APK Beta Opcional, Blindagem Anti-Falsos Positivos e Suporte Universal
 │   │   ├── PLANO_REFINAMENTO_CAPTURA_COMPROVANTES_E_OCR.md # Refinamento de comprovantes (foto, PDF e imagem), parcelamento e cartões
+│   │   ├── PLANO_RELATORIO_RETROATIVO_INVESTIMENTOS_E_FECHAMENTO.md # Saneamento de caixa, relatório retroativo e fechamento de carteira
 │   │   └── completed/             # Histórico de planos executados com sucesso (100% concluídos — 12 planos)
 │   │       ├── CAPACITOR_ANDROID_PLAN.md
 │   │       ├── PLANO_ADEQUACAO_LEGAL_E_REGULATORIA.md
