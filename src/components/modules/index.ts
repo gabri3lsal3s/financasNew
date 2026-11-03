@@ -137,5 +137,8 @@ export { HelpModal } from "./help-modal";
 export type { HelpModalProps } from "./help-modal";
 export { SupportChatDialog } from "./support";
 export type { SupportChatDialogProps } from "./support";
+export { ApkInstallGuideDialog } from "./apk-install-guide-dialog";
+export type { ApkInstallGuideDialogProps } from "./apk-install-guide-dialog";
+
 
 
