@@ -320,4 +320,17 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     expect(screen.getByRole("button", { name: /Ver Ajuda & FAQ/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Falar com Suporte/i })).toBeInTheDocument();
   });
+
+  it("renderiza os seletores semânticos do tour de configurações em suas respectivas abas", () => {
+    // Aba Aparência (padrão)
+    renderSettings(["/configuracoes?tab=appearance"]);
+    expect(document.querySelector('[data-tour="settings-experience-presets"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-tour="settings-visual-identity"]')).toBeInTheDocument();
+
+    cleanup();
+
+    // Aba Notificações
+    renderSettings(["/configuracoes?tab=notifications"]);
+    expect(document.querySelector('[data-tour="settings-notifications-card"]')).toBeInTheDocument();
+  });
 });

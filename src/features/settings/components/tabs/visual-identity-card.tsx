@@ -53,7 +53,7 @@ export function VisualIdentityCard({
   onToggleHideDashboardCents,
 }: VisualIdentityCardProps) {
   return (
-    <Card>
+    <Card data-tour="settings-visual-identity">
       <CardHeader>
         <CardTitle className="text-base flex items-center justify-between">
           <span className="flex items-center gap-2">

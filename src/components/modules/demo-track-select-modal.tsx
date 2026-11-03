@@ -294,9 +294,9 @@ export function DemoTrackSelectModal({
           <div className="space-y-4 pt-3 pb-1">
             <TourCardItem
               id="settings_support"
-              title="Personalização, Privacidade e Suporte"
-              description="Oculte saldos em público com o modo privacidade, alterne o tema visual e acesse o suporte imediato."
-              stepsCount={2}
+              title="Personalização, Modos Visuais e Suporte"
+              description="Atalhos de privacidade, modos de experiência, identidade visual, notificações e canal direto de atendimento."
+              stepsCount={5}
               icon={Settings}
               iconColorClass="text-muted-foreground"
               isCompleted={hasCompletedDemoTour("settings_support")}

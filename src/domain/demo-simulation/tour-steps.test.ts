@@ -152,19 +152,42 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
     });
   });
 
-  describe("Micro-Tour Personalização & Suporte (settings_support)", () => {
+  describe("Tour Personalização, Visual & Suporte (settings_support)", () => {
     const steps = getTourSteps("settings_support");
 
-    it("possui 2 passos mapeando Modo Privacidade/Tema e Canal de Suporte", () => {
-      expect(steps).toHaveLength(2);
+    it("possui 5 passos mapeando Atalhos de Cabeçalho, Presets de Experiência, Identidade Visual, Notificações e Canal de Suporte", () => {
+      expect(steps).toHaveLength(5);
 
-      // Passo 1: Botões de Privacidade e Tema no Header
+      // Passo 1: Atalhos Rápidos de Cabeçalho (Modo Privacidade e Tema)
+      expect(steps[0]?.id).toBe("settings-privacy-theme");
       expect(steps[0]?.targetSelector).toBe('[data-tour="header-privacy-theme"]');
       expect(steps[0]?.targetRoute).toBe("/");
+      expect(steps[0]?.badgeLabel).toBe("Passo 1 de 5");
 
-      // Passo 2: Canal direto de suporte no menu /configuracoes
-      expect(steps[1]?.targetSelector).toBe('[data-tour="settings-support-card"]');
-      expect(steps[1]?.targetRoute).toBe("/configuracoes");
+      // Passo 2: Modos de Experiência & Sensorial
+      expect(steps[1]?.id).toBe("settings-experience-presets");
+      expect(steps[1]?.targetSelector).toBe('[data-tour="settings-experience-presets"]');
+      expect(steps[1]?.targetRoute).toBe("/configuracoes?tab=appearance");
+      expect(steps[1]?.badgeLabel).toBe("Passo 2 de 5");
+
+      // Passo 3: Identidade Visual & Cores de Destaque
+      expect(steps[2]?.id).toBe("settings-visual-identity");
+      expect(steps[2]?.targetSelector).toBe('[data-tour="settings-visual-identity"]');
+      expect(steps[2]?.targetRoute).toBe("/configuracoes?tab=appearance");
+      expect(steps[2]?.badgeLabel).toBe("Passo 3 de 5");
+
+      // Passo 4: Notificações, Lembretes & Assistente Bancário
+      expect(steps[3]?.id).toBe("settings-notifications");
+      expect(steps[3]?.targetSelector).toBe('[data-tour="settings-notifications-card"]');
+      expect(steps[3]?.targetRoute).toBe("/configuracoes?tab=notifications");
+      expect(steps[3]?.badgeLabel).toBe("Passo 4 de 5");
+
+      // Passo 5: Central de Ajuda & Suporte Direto
+      expect(steps[4]?.id).toBe("settings-support-channel");
+      expect(steps[4]?.targetSelector).toBe('[data-tour="settings-support-card"]');
+      expect(steps[4]?.targetRoute).toBe("/configuracoes");
+      expect(steps[4]?.badgeLabel).toBe("Passo 5 de 5");
+      expect(steps[4]?.actionLabel).toBe("Concluir");
     });
   });
 

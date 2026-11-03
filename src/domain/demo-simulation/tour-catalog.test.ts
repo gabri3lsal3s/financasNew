@@ -52,7 +52,7 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
       expect(TOUR_TRACK_METAS.investments_assets.stepsCount).toBe(2);
       expect(TOUR_TRACK_METAS.investments_targets.stepsCount).toBe(2);
       expect(TOUR_TRACK_METAS.investments_aporte.stepsCount).toBe(2);
-      expect(TOUR_TRACK_METAS.settings_support.stepsCount).toBe(2);
+      expect(TOUR_TRACK_METAS.settings_support.stepsCount).toBe(5);
       expect(TOUR_TRACK_METAS.finances.stepsCount).toBe(8);
       expect(TOUR_TRACK_METAS.investments.stepsCount).toBe(5);
     });

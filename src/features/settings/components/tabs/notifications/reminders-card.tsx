@@ -176,7 +176,7 @@ export function RemindersCard() {
   if (!hasFeature("reminders")) return null;
 
   return (
-    <Card>
+    <Card data-tour="settings-notifications-card">
       <CardHeader>
         <CardTitle className="text-base flex items-center justify-between gap-2 flex-wrap">
           <span className="flex items-center gap-2 min-w-0">

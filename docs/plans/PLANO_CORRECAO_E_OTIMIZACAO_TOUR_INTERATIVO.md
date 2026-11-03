@@ -484,9 +484,50 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
       3. *Metas Estratégicas de Alocação:* definição de percentuais ideais por classe e papel (`/investments?tab=metas`).
       4. *Calculadora de Aporte Inteligente:* motor matemático de rebalanceamento sem vender posições (`/investments?tab=aporte`).
       5. *Proventos & Renda Passiva:* acompanhamento de dividendos e rendimentos futuros.
+  - [x] **Reestruturação Completa do Tour de Configurações, Personalização & Suporte (`settings_support`):**
+    * Substituir o tour simplório de 2 passos por uma jornada rica de 5 passos contemplando as capacidades avançadas de personalização do app:
+      1. *Atalhos Rápidos de Cabeçalho:* Modo Privacidade (ocultar valores em público) e alternância de Tema no Header (`data-tour="header-privacy-theme"`).
+      2. *Modos de Experiência & Sensorial:* Presets Dinâmico, Foco (Minimalista) e Discreto (Silencioso), regulando densidade, sons e haptics (`/configuracoes?tab=appearance` -> `[data-tour="settings-experience-presets"]`).
+      3. *Identidade Visual & Cores de Destaque:* Seleção de temas Claro/Escuro/Sistema, paleta de cores primárias (Teal, Blue, Emerald, Violet...) e modo sem centavos no Dashboard (`[data-tour="settings-visual-identity"]`).
+      4. *Notificações, Lembretes & Assistente Bancário:* Gestão de alertas de vencimento, fechamento diário e leitor passivo de notificações (`/configuracoes?tab=notifications` -> `[data-tour="settings-notifications-card"]`).
+      5. *Central de Ajuda & Suporte Direto:* Acesso ao chat de suporte e guias técnicos (`/configuracoes` -> `[data-tour="settings-support-card"]`).
   - [x] **Preservação dos Micro-Tours Modulares:** Manter disponíveis no `DemoTrackSelectModal` os micro-tours individuais de 2 a 3 passos para usuários que queiram apenas consultar tópicos rápidos sob demanda.
 
-- [ ] **8.6. Adaptação Responsiva Desktop vs Mobile (Tratamento para Ausência de FAB)**
+- [ ] **8.6. Centralização Determinística no Viewport Útil Mobile & Calibragem Precisa do FAB**
+  - [ ] **Diagnóstico do Escondimento sob a BottomNav:**
+    * No mobile, o container `<main id="main-content">` se estende até o chão da tela e a `<BottomNav>` flutua por cima com `fixed bottom-0` e altura de `64px + safe-area-bottom` (~80px).
+    * Se o card explicativo ancora no topo e o elemento focado rola para o final da página (ou usa `block: "end"`), o elemento é empurrado exatamente para baixo da barra inferior, ficando totalmente oculto pelo menu.
+  - [ ] **Diagnóstico da Descentralização do Botão FAB (+):**
+    * Na captura de tela, o recorte verde aparece como um retângulo largo deslocado para baixo e achatado na parte inferior.
+    * **Causa Raiz:** O atributo `data-tour="bottom-nav-wizard"` foi colocado no contêiner pai `<NavLink>` (`flex min-h-11 items-center justify-center`). Esse link ocupa o slot da coluna (altura de 44px) dentro da barra inferior, enquanto o botão FAB físico real é o círculo flutuante interno com margem negativa (`-mt-6`) e tamanho `size-14` (56px) / `size-12` (48px). O spotlight estava medindo a caixa retangular do link em vez do círculo do botão!
+    * **Solução:** Mover `data-tour="bottom-nav-wizard"` para o elemento circular real do botão (`<span className="-mt-6 flex size-14 ...">` ou no botão físico `<span className="flex size-12 ...">`) e utilizar `rounded-full` (`borderRadius: 9999`) no cálculo do spotlight para gerar um recorte perfeitamente circular e milimetricamente centralizado no FAB (+).
+  - [ ] **Fórmula Matemática do Viewport Útil Livre:**
+    * Calcular a janela visual livre de obstrução no mobile:
+      ```ts
+      const headerHeight = 64; // Header fixo superior
+      const bottomNavHeight = 72; // Altura efetiva da barra de ferramentas inferior + safe area
+      const cardHeight = isMobile ? (cardRef.current?.offsetHeight || 180) : 0;
+      
+      // Quando o card ancorar no topo: a área visível para o elemento fica entre (headerHeight + cardHeight + 16) e (window.innerHeight - bottomNavHeight - 16)
+      // Quando o card ancorar na base: a área visível fica entre (headerHeight + 16) e (window.innerHeight - cardHeight - bottomNavHeight - 16)
+      ```
+  - [ ] **Rolagem para o Centro da Janela Livre (Dead Center do Viewport Útil):**
+    * Em vez de alinhar com `block: "end"` ou `targetScrollTop` extremo, rolar o elemento para que seu centro fique exatamente no ponto médio da zona visível desobstruída:
+      `targetScrollTop = container.scrollTop + (elementCenterY - viewportFreeCenterY)`.
+    * Garantir que tanto a mensagem explicativa quanto a barra inferior respeitem uma margem de segurança mínima de 16px acima e abaixo do recorte iluminado.
+
+- [ ] **8.7. Resiliência de Carregamento e Foco de Elementos com Montagem Tardia**
+  - [ ] **Diagnóstico de Falhas de Foco / Carregamento:**
+    * Elementos que dependem de queries assíncronas do TanStack Query ou de animações de transição de rota (`animate-route-in`, 150ms) demoram mais que os 8 attempts de 100ms caso a CPU do smartphone engasgue.
+    * Quando a busca falha (`attemptsLeft === 0`), o Spotlight desistia, chamava `updateTargetRect()` vazio e o spotlight ficava órfão ou centralizado no vazio.
+  - [ ] **Implementação de MutationObserver + Polling Adaptativo com Timeout de 2.5s:**
+    * Substituir o timer fixo frágil por uma estratégia híbrida:
+      1. Tenta encontrar imediatamente no DOM.
+      2. Se não encontrar, acopla um `MutationObserver` ao `#main-content` ouvindo inserções de novos nós por até 2500ms.
+      3. Assim que o nó correspondente ao `targetSelector` for montado e possuir dimensões válidas (`width > 0 && height > 0`), desconecta o observer e dispara imediatamente a medição e rolagem.
+    * Adicionar esqueleto discreto de foco com fallback gracioso para impedir recortes pretos congelados enquanto os dados carregam.
+
+- [ ] **8.8. Adaptação Responsiva Desktop vs Mobile (Tratamento para Ausência de FAB)**
   - [ ] **Contratos de Domínio Responsivos (`src/domain/demo-simulation/types.ts`):**
     * Manter e utilizar propriedades adaptativas:
       ```ts
@@ -498,17 +539,28 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
     * Detectar viewport desktop (`window.innerWidth >= 768`) e utilizar `targetSelectorDesktop` prioritariamente.
     * No Desktop, apontar para `[data-tour="desktop-new-transaction"]` e atalho `Ctrl+K`, em vez de procurar o botão central da `BottomNav`.
 
-- [ ] **8.7. Erradicação de Modais Invasivos no Encerramento de Tours (`handoff.ts`)**
-  - [ ] **Encerramento Limpo sem Parâmetros Forçados:**
-    * Remover todas as injeções automáticas de `?novo=...` ao finalizar qualquer tour (geral ou micro-tour).
-    * O usuário permanece calmo na rota em que o tour terminou (`/`, `/transacoes`, `/cartoes`, `/investments`), com tela limpa e sem modais na cara.
-  - [ ] Atualizar testes unitários em `handoff.test.ts` assegurando rotas limpas no término.
+- [ ] **8.9. Governança Contextual de Handoff e Modais de Entrada (`handoff.ts`)**
+  - [ ] **Regra de Ouro: Modais de Ação Apenas nos Tours Completos (Zero Interrupção em Micro-Tours):**
+    * **Nos Micro-Tours Individuais** (`finances_overview`, `finances_wizard`, `finances_cards`, `finances_budgets`, `finances_insights`, `investments_overview`, `investments_assets`, `investments_targets`, `investments_aporte`, `settings_support`, `app_native_apk`):
+      - O usuário buscou uma consulta didática pontual. Ao concluir ("Começar" ou `[X]`), encerra **sem nenhum modal**, permanecendo na rota atual limpa (`/`, `/cartoes`, `/orcamentos`, `/investments`).
+    * **No Tour Completo de Finanças Diárias (`finances`):**
+      - Ao concluir a jornada completa de finanças, direciona para `/?novo=transacao` (ou `/?novo=despesa`), abrindo sobre o Dashboard o modal central **LaunchWizard** (inserção guiada do 1º lançamento de despesa/renda para iniciar a conta real).
+    * **No Tour Completo de Investimentos & Rebalanceamento (`investments`):**
+      - Ao concluir a jornada completa de investimentos, direciona para `/investments?novo=investimento` (ou `/investments?tab=aporte`), abrindo o modal de **Inserção de Operação/Aporte** para cadastrar o primeiro ativo patrimonial.
+    * **No Tour Completo de Configurações, Visual e Suporte (`settings` / `settings_support` completo):**
+      - Ao concluir, direciona para `/configuracoes?tab=suporte` (ou abre o canal/modal de **Suporte e Ajuda**), permitindo ao usuário tirar dúvidas imediatamente ou falar com o atendimento.
+  - [ ] **Atualização da Função Pura `getTourHandoffDestination()` (`src/domain/demo-simulation/handoff.ts`):**
+    * Recebe `(track: TourTrackId | null, currentPath?: string)`.
+    * Verifica se a trilha concluída é um Tour Completo (`track === "finances"`, `track === "investments"`, etc.) para injetar o parâmetro de ação (`novo=...`), ou se é micro-tour para retornar estritamente a rota limpa sem query params invasivos.
+  - [ ] Atualizar testes unitários em `handoff.test.ts` cobrindo tanto a abertura dos modais certos nos tours completos quanto o fechamento limpo nos micro-tours.
 
-- [ ] **8.8. Otimização de Responsividade e Refinamento Visual Geral**
+- [ ] **8.10. Otimização de Responsividade e Refinamento Visual Geral**
   - [ ] Ajustar o clamp horizontal do card popover no desktop para respeitar a largura da Sidebar de navegação esquerda (`DesktopNav`), evitando sobreposição em telas laptop (1024px a 1366px).
 
-- [ ] **8.9. Testes Unitários e Validação da Fase 8**
+- [ ] **8.11. Testes Unitários e Validação da Fase 8**
   - [x] Testar `getTourTrackCategoryLabel` assegurando 100% de precisão nos badges.
+  - [ ] Testar cálculo da janela livre útil mobile e ausência de sobreposição por BottomNav.
+  - [ ] Testar resiliência com MutationObserver em montagens tardias de elementos assíncronos.
   - [ ] Testar encadeamento dos passos dos novos tours gerais em `tour-steps.test.ts`.
   - [ ] Testar persistência do nó do card e ausência de flashes em `demo-tour-spotlight.test.tsx`.
   - [ ] Testar conclusão limpa de todos os tours em `handoff.test.ts`.
@@ -517,10 +569,11 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 - [ ] `npm run typecheck` executado com zero erros de tipo.
 - [ ] `npm run lint` aprovado sem violações.
 - [ ] `npm test -- src/domain/demo-simulation/ tour-steps spotlight handoff` 100% verde.
+- [ ] Teste Manual Mobile (iPhone/Android Viewport): Percorrer passos longos (ex: Passo 1 KPIs e Passo 6 Parceladas) comprovando que o elemento iluminado NUNCA fica escondido atrás da BottomNav nem colado no card superior, mantendo-se perfeitamente visível na zona central livre.
 - [ ] Teste Manual Desktop e Mobile: Percorrer os tours de Finanças e Orçamentos e conferir se os badges indicam "Finanças Diárias".
 - [ ] Teste Manual de Lançamentos: Comprovar que o passo de lançamento demonstra o modal com campos didáticos em vez de um item solto do extrato.
 - [ ] Teste Manual do Tour Geral: Percorrer o tour geral de Finanças e de Investimentos comprovando a jornada lógica e completa de todas as funcionalidades.
-- [ ] Teste Manual de Conclusão: Concluir os tours e verificar que o app encerra suavemente sem abrir nenhum modal indesejado.
+- [ ] Teste Manual de Conclusão: Concluir os tours completos (Finanças, Investimentos, Configurações) comprovando a abertura do modal correto (LaunchWizard para Finanças, Aporte para Investimentos, Suporte para Configurações), e concluir micro-tours comprovando encerramento limpo sem nenhum modal.
 
 #### Commit & Push 8:
 - [ ] Mensagem de Commit: `refactor(tour): aprimora taxonomia de badges, didatica dos tours gerais e foco nos modais reais`

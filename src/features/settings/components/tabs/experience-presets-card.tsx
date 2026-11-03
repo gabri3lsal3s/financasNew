@@ -23,7 +23,7 @@ export function ExperiencePresetsCard({
   onSelectPreset,
 }: ExperiencePresetsCardProps) {
   return (
-    <Card>
+    <Card data-tour="settings-experience-presets">
       <CardHeader>
         <CardTitle className="text-base flex items-center justify-between flex-wrap gap-2">
           <span className="flex items-center gap-2">

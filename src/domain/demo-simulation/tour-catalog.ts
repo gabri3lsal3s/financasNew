@@ -139,15 +139,15 @@ export const TOUR_TRACK_METAS: Record<TourTrackId, TourTrackMeta> = {
   // Trilha 3: Personalização, Visual & Suporte
   settings_support: {
     id: "settings_support",
-    title: "Personalização, Privacidade e Suporte",
-    shortTitle: "Privacidade & Ajuda",
+    title: "Personalização, Modos Visuais e Suporte",
+    shortTitle: "Personalização & Ajuda",
     description:
-      "Ocultação de saldos em público, alternância de tema e canal direto de atendimento.",
+      "Atalhos de privacidade, modos de experiência, identidade visual, notificações e canal direto de atendimento.",
     category: "settings",
-    stepsCount: 2,
+    stepsCount: 5,
     iconName: "settings",
     startRoute: "/",
-    badgeLabel: "2 passos",
+    badgeLabel: "5 passos",
   },
 
   // Trilhas Consolidadas e Didáticas Principais
