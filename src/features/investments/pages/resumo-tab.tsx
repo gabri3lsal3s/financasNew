@@ -1059,6 +1059,11 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         onOpenChange={setSnapshotsDialogOpen}
         series={allSeries}
         currentMonthStr={month}
+        onGenerateReport={(targetMonth) => {
+          setSnapshotsDialogOpen(false);
+          setReportSelectedMonth(targetMonth);
+          setExecutiveReportOpen(true);
+        }}
       />
     </div>
   );

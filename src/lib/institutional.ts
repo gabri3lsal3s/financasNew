@@ -9,11 +9,15 @@
  */
 
 export interface InstitutionalConfig {
-  /** Razão Social da empresa fornecedora do serviço (Decreto 7.962/2013). */
+  /** Natureza jurídica da operação: pessoa física ou jurídica */
+  legalNature: "pj" | "pf";
+  /** Nome do desenvolvedor responsável / titular */
+  developerName: string;
+  /** Razão Social ou identificação do prestador do serviço (Decreto 7.962/2013). */
   companyName: string;
-  /** Cadastro Nacional da Pessoa Jurídica (CNPJ formatado). */
+  /** Cadastro Nacional da Pessoa Jurídica (CNPJ formatado) ou vazio para Pessoa Física. */
   cnpj: string;
-  /** Endereço físico completo da sede do prestador de serviços. */
+  /** Endereço físico completo da sede ou domicílio do prestador de serviços. */
   address: string;
   /** Canal eletrônico direto do Encarregado de Proteção de Dados (DPO) (LGPD Art. 41). */
   dpoEmail: string;
@@ -26,11 +30,13 @@ export interface InstitutionalConfig {
 }
 
 export const DEFAULT_INSTITUTIONAL_CONFIG: InstitutionalConfig = Object.freeze({
-  companyName: "Áxis Tecnologia & Gestão Financeira Ltda.",
-  cnpj: "00.000.000/0001-00",
+  legalNature: "pf",
+  developerName: "Gabriel Sales",
+  companyName: "Áxis Finance — Gabriel Sales (Desenvolvedor Independente)",
+  cnpj: "",
   address: "São Paulo/SP — Brasil",
   dpoEmail: "privacidade@axis.app",
-  supportEmail: "suporte@axis.app",
+  supportEmail: "contato@axis.app",
   appName: "Áxis Finance",
   legalJurisdiction: "Comarca da Capital do Estado de São Paulo",
 });
@@ -41,6 +47,9 @@ export const DEFAULT_INSTITUTIONAL_CONFIG: InstitutionalConfig = Object.freeze({
 export function getInstitutionalConfig(): InstitutionalConfig {
   const env = import.meta.env;
 
+  const rawNature = (env.VITE_APP_LEGAL_NATURE as string | undefined)?.trim().toLowerCase();
+  const legalNature: "pj" | "pf" = rawNature === "pj" ? "pj" : "pf";
+  const developerName = (env.VITE_APP_DEVELOPER_NAME as string | undefined)?.trim();
   const companyName = (env.VITE_APP_COMPANY_NAME as string | undefined)?.trim();
   const cnpj = (env.VITE_APP_CNPJ as string | undefined)?.trim();
   const address = (env.VITE_APP_ADDRESS as string | undefined)?.trim();
@@ -50,8 +59,10 @@ export function getInstitutionalConfig(): InstitutionalConfig {
   const legalJurisdiction = (env.VITE_APP_LEGAL_JURISDICTION as string | undefined)?.trim();
 
   return {
+    legalNature,
+    developerName: developerName || DEFAULT_INSTITUTIONAL_CONFIG.developerName,
     companyName: companyName || DEFAULT_INSTITUTIONAL_CONFIG.companyName,
-    cnpj: cnpj || DEFAULT_INSTITUTIONAL_CONFIG.cnpj,
+    cnpj: cnpj !== undefined ? cnpj : DEFAULT_INSTITUTIONAL_CONFIG.cnpj,
     address: address || DEFAULT_INSTITUTIONAL_CONFIG.address,
     dpoEmail: dpoEmail || DEFAULT_INSTITUTIONAL_CONFIG.dpoEmail,
     supportEmail: supportEmail || DEFAULT_INSTITUTIONAL_CONFIG.supportEmail,
@@ -66,13 +77,21 @@ export function getInstitutionalConfig(): InstitutionalConfig {
  * imutabilidade e compatibilidade com acessos estáticos INSTITUTIONAL_CONFIG.<prop>.
  */
 export const INSTITUTIONAL_CONFIG: InstitutionalConfig = {
+  get legalNature(): "pj" | "pf" {
+    const rawNature = (import.meta.env.VITE_APP_LEGAL_NATURE as string | undefined)?.trim().toLowerCase();
+    return rawNature === "pj" ? "pj" : DEFAULT_INSTITUTIONAL_CONFIG.legalNature;
+  },
+  get developerName(): string {
+    const val = (import.meta.env.VITE_APP_DEVELOPER_NAME as string | undefined)?.trim();
+    return val || DEFAULT_INSTITUTIONAL_CONFIG.developerName;
+  },
   get companyName(): string {
     const val = (import.meta.env.VITE_APP_COMPANY_NAME as string | undefined)?.trim();
     return val || DEFAULT_INSTITUTIONAL_CONFIG.companyName;
   },
   get cnpj(): string {
     const val = (import.meta.env.VITE_APP_CNPJ as string | undefined)?.trim();
-    return val || DEFAULT_INSTITUTIONAL_CONFIG.cnpj;
+    return val !== undefined ? val : DEFAULT_INSTITUTIONAL_CONFIG.cnpj;
   },
   get address(): string {
     const val = (import.meta.env.VITE_APP_ADDRESS as string | undefined)?.trim();

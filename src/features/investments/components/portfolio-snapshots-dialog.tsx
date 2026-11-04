@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Calendar, Printer, Trash2 } from "lucide-react";
+import { Calendar, Printer, Trash2, FileText } from "lucide-react";
 import { Badge, Button, ConfirmDialog, EmptyState, Modal, usePrint } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
@@ -14,6 +14,7 @@ export interface PortfolioSnapshotsDialogProps {
   series: PortfolioMonthlySeriesPoint[];
   currentMonthStr?: string;
   onDeleteSnapshot?: (month: string) => Promise<void> | void;
+  onGenerateReport?: (month: string) => void;
 }
 
 /**
@@ -29,6 +30,7 @@ export function PortfolioSnapshotsDialog({
   series,
   currentMonthStr,
   onDeleteSnapshot,
+  onGenerateReport,
 }: PortfolioSnapshotsDialogProps) {
   const { printing, triggerPrint } = usePrint("Extrato_Evolucao_Patrimonial.pdf");
   const [selectedYear, setSelectedYear] = useState<string>("all");
@@ -370,21 +372,37 @@ export function PortfolioSnapshotsDialog({
 
                       {/* Ações de Gestão do Snapshot */}
                       <td className="py-2.5 px-3 text-center whitespace-nowrap print:hidden">
-                        {!isCurrent ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSnapshotToDelete(pt.month)}
-                            className="size-7 p-0 text-muted-foreground hover:text-negative-strong hover:bg-negative/10 cursor-pointer inline-flex items-center justify-center"
-                            aria-label={`Excluir snapshot de ${formatMonthYear(pt.month)}`}
-                            title={`Excluir snapshot de ${formatMonthYear(pt.month)}`}
-                          >
-                            <Trash2 className="size-3.5" aria-hidden="true" />
-                          </Button>
-                        ) : (
-                          <span className="text-[10px] text-muted-foreground font-normal">Ao vivo</span>
-                        )}
+                        <div className="flex items-center justify-center gap-1">
+                          {onGenerateReport && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                onOpenChange(false);
+                                onGenerateReport(pt.month);
+                              }}
+                              className="size-7 p-0 text-muted-foreground hover:text-portfolio hover:bg-portfolio/10 cursor-pointer inline-flex items-center justify-center"
+                              aria-label={`Abrir relatório de ${formatMonthYear(pt.month)}`}
+                              title={`Abrir relatório de ${formatMonthYear(pt.month)}`}
+                            >
+                              <FileText className="size-3.5" aria-hidden="true" />
+                            </Button>
+                          )}
+                          {!isCurrent ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSnapshotToDelete(pt.month)}
+                              className="size-7 p-0 text-muted-foreground hover:text-negative-strong hover:bg-negative/10 cursor-pointer inline-flex items-center justify-center"
+                              aria-label={`Excluir snapshot de ${formatMonthYear(pt.month)}`}
+                              title={`Excluir snapshot de ${formatMonthYear(pt.month)}`}
+                            >
+                              <Trash2 className="size-3.5" aria-hidden="true" />
+                            </Button>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   );

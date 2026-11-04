@@ -64,6 +64,16 @@ export function PortfolioExecutiveReport({
   const [activeTab, setActiveTab] = useState<"report" | "closing">("report");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
+  // Sincroniza a competência selecionada durante a renderização quando initialMonth mudar (padrão oficial React)
+  const [prevInitialMonth, setPrevInitialMonth] = useState(initialMonth);
+  if (initialMonth !== prevInitialMonth) {
+    setPrevInitialMonth(initialMonth);
+    if (initialMonth) {
+      setSelectedMonth(initialMonth);
+      setActiveTab("report");
+    }
+  }
+
   const deleteSnapshotMutation = useDeletePortfolioSnapshot();
 
   // Consulta snapshots historicos para povoar as opcoes de meses disponiveis

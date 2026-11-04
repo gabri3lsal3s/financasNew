@@ -215,9 +215,27 @@ export function MonthlyClosingEditor({
             tone="portfolio"
             className="text-base sm:text-lg font-bold tabular-nums"
           />
-          <span className="text-[10.5px] text-muted-foreground">
-            {recalculatedSummary.items.length} ativos em custódia
-          </span>
+          <div className="flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
+            <span>{recalculatedSummary.items.length} ativos</span>
+            {historicalPosition.fidelity?.snapshotTotalValue ? (
+              <>
+                <span className="text-border" aria-hidden="true">•</span>
+                <span
+                  className={cn(
+                    "font-semibold",
+                    Math.abs(recalculatedSummary.totalValueBRL - historicalPosition.fidelity.snapshotTotalValue) < 1
+                      ? "text-positive-strong"
+                      : "text-warning-strong",
+                  )}
+                  title="Comparação com o Saldo Registrado no Marco Zero (TWA)"
+                >
+                  {Math.abs(recalculatedSummary.totalValueBRL - historicalPosition.fidelity.snapshotTotalValue) < 1
+                    ? "Alinhado ao TWA"
+                    : `${recalculatedSummary.totalValueBRL >= historicalPosition.fidelity.snapshotTotalValue ? "+" : ""}${(((recalculatedSummary.totalValueBRL - historicalPosition.fidelity.snapshotTotalValue) / historicalPosition.fidelity.snapshotTotalValue) * 100).toFixed(1)}% vs TWA`}
+                </span>
+              </>
+            ) : null}
+          </div>
         </div>
 
         <div className="rounded-xl border border-border/80 bg-surface p-3 flex flex-col gap-1 shadow-2xs">
