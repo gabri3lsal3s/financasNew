@@ -1,15 +1,15 @@
 {
   "version": "0.1.0",
-  "versionCode": 18,
-  "releaseDate": "2026-10-29T23:47:32Z",
+  "versionCode": 19,
+  "releaseDate": "2026-11-04T00:32:04Z",
   "minSupportedVersion": "0.1.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "1c9eb5831fc093aa725cb128a53cbdb5114182a72a288b1b2321b3b1bfe79855",
-  "fileSizeBytes": 11820355,
+  "sha256": "701db7b1f485306163a49c77c46f9747bd39116beac2dd53379e878ff07592d4",
+  "fileSizeBytes": 11843439,
   "changelog": [
-    "Tour Guiado com Spotlight e foco visual escurecido",
-    "Card popover adaptativo com navegacao ergonomica e saida em 1 clique",
-    "Eliminacao da barra invasiva superior e integracao discreta no header",
-    "Melhorias de responsividade e prevencao de cliques externos acidentais"
+    "Correção e saneamento contábil do snapshot patrimonial de Agosto/2026",
+    "Gestão e exclusão de snapshots históricos anômalos na tabela analítica",
+    "Correção de conversão cambial USD/BRL no fechamento mensal retroativo",
+    "Reconciliação e normalização do TWR por cotas, Sharpe ratio e Drawdown"
   ]
 }
