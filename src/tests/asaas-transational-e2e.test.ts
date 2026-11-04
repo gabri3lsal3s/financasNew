@@ -68,7 +68,7 @@ describe("Homologação Transacional Asaas (Go-Live & Portão de Qualidade 2)", 
       id: "pay_pix_live_001",
       customer: "cus_asaas_001",
       billingType: "PIX",
-      value: 178.8,
+      value: 143.88,
     };
 
     const targetTier = resolveTierFromPayment(asaasPayment);
@@ -207,14 +207,14 @@ describe("Homologação Transacional Asaas (Go-Live & Portão de Qualidade 2)", 
     const fixedNow = 1761300000000;
     const payment = {
       status: "PENDING",
-      value: 178.8,
+      value: 143.88,
       createdAtMillis: fixedNow - 15 * 60 * 1000, // 15 minutos atrás
     };
 
     const canReuse = shouldReusePendingPixCharge({
       paymentStatus: payment.status,
       paymentValue: payment.value,
-      expectedValue: 178.8,
+      expectedValue: 143.88,
       createdAtMillis: payment.createdAtMillis,
       nowMillis: fixedNow,
     });

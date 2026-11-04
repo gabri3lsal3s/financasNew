@@ -10,6 +10,7 @@ import {
   Smartphone,
   HelpCircle,
   MessageSquare,
+  LifeBuoy,
 } from "lucide-react";
 import { Button, Tabs } from "@/components/ui";
 import {
@@ -19,6 +20,7 @@ import {
   SecurityTab,
   SubscriptionTab,
   AppInstallationTab,
+  SupportTab,
 } from "../components/tabs";
 import { DemoTrackSelectModal, HelpModal, SupportChatDialog } from "@/components/modules";
 import { forceAppUpdate } from "@/app/pwa";
@@ -129,9 +131,10 @@ function resolveSettingsTab(param: string | null): string {
       "help",
       "faq",
       "atendimento",
+      "chamados",
     ].includes(p)
   ) {
-    return "appearance";
+    return "support";
   }
   return "appearance";
 }
@@ -237,6 +240,13 @@ export function SettingsPage() {
         shortLabel: "Conta",
         icon: <User className="size-4" />,
         content: <AccountTab />,
+      },
+      {
+        value: "support",
+        label: "Suporte & Chamados",
+        shortLabel: "Suporte",
+        icon: <LifeBuoy className="size-4" />,
+        content: <SupportTab />,
       },
     ],
     [],

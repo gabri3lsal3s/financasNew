@@ -105,6 +105,7 @@
 │   ├── build-apk.sh               #   Pipeline automatizado de compilação de APKs em 1 comando
 │   ├── deploy-quotes.mjs          #   Deploy e cron da edge function de cotações
 │   ├── generate-icons.mjs         #   Gerador de ícones e favicons
+│   ├── generate-play-protect-appeal.ts # Extrator de fingerprints SHA-256 e gerador de dossiê para apelação do Play Protect (npm run playprotect:info)
 │   ├── preflight-check.ts         #   Diagnóstico pré-voo automatizado de prontidão operacional e produção (7 dimensões, npm run preflight)
 │   └── upload-r2.mjs              #   Upload de APKs compilados e manifestos version.json para o Cloudflare R2
 │

@@ -32,12 +32,12 @@ describe("lib/institutional — InstitutionalConfig & INSTITUTIONAL_CONFIG", () 
   });
 
   it("permite leitura via constante INSTITUTIONAL_CONFIG com valores padrão", () => {
-    expect(INSTITUTIONAL_CONFIG.companyName).toBe("Áxis Tecnologia & Gestão Financeira Ltda.");
-    expect(INSTITUTIONAL_CONFIG.cnpj).toBe("00.000.000/0001-00");
-    expect(INSTITUTIONAL_CONFIG.address).toBe("São Paulo/SP — Brasil");
-    expect(INSTITUTIONAL_CONFIG.dpoEmail).toBe("privacidade@axis.app");
-    expect(INSTITUTIONAL_CONFIG.supportEmail).toBe("suporte@axis.app");
-    expect(INSTITUTIONAL_CONFIG.appName).toBe("Áxis Finance");
+    expect(INSTITUTIONAL_CONFIG.companyName).toBe(DEFAULT_INSTITUTIONAL_CONFIG.companyName);
+    expect(INSTITUTIONAL_CONFIG.cnpj).toBe(DEFAULT_INSTITUTIONAL_CONFIG.cnpj);
+    expect(INSTITUTIONAL_CONFIG.address).toBe(DEFAULT_INSTITUTIONAL_CONFIG.address);
+    expect(INSTITUTIONAL_CONFIG.dpoEmail).toBe(DEFAULT_INSTITUTIONAL_CONFIG.dpoEmail);
+    expect(INSTITUTIONAL_CONFIG.supportEmail).toBe(DEFAULT_INSTITUTIONAL_CONFIG.supportEmail);
+    expect(INSTITUTIONAL_CONFIG.appName).toBe(DEFAULT_INSTITUTIONAL_CONFIG.appName);
   });
 
   it("utiliza variáveis de ambiente customizadas quando fornecidas", () => {

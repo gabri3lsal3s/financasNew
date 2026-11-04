@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NotificationsPopover } from "@/components/modules/notifications-popover";
-import { useOnboardingCounts, useReminders } from "@/state";
+import { useOnboardingCounts, useReminders, useMySupportTickets } from "@/state";
 import { useOnboardingDismissed } from "@/hooks";
 import { shouldShowOnboardingBanner } from "@/domain/onboarding";
 import { useSmartAdvisorInsights } from "@/features/overview/hooks";
@@ -18,6 +18,11 @@ export function NotificationsButton() {
   const onboardingQuery = useOnboardingCounts();
   const { isDismissed } = useOnboardingDismissed();
   const advisor = useSmartAdvisorInsights();
+  const myTicketsQuery = useMySupportTickets();
+
+  const unreadSupportCount = (myTicketsQuery.data ?? []).filter(
+    (t) => Boolean(t.admin_reply) && !t.user_read_at,
+  ).length;
 
   const showOnboarding =
     !isDismissed && onboardingQuery?.data ? shouldShowOnboardingBanner(onboardingQuery.data) : false;
@@ -26,12 +31,13 @@ export function NotificationsButton() {
   const hasAdvisorCritical = advisorAlerts.some((i) => i.priority === 1);
   const hasAdvisorDueToday = advisorAlerts.some((i) => i.priority === 2);
 
-  const effectiveTotalCount = totalCount + (showOnboarding ? 1 : 0) + advisorAlerts.length;
+  const effectiveTotalCount =
+    totalCount + (showOnboarding ? 1 : 0) + advisorAlerts.length + unreadSupportCount;
 
   if (effectiveTotalCount === 0) return null;
 
   const isUrgent = overdueCount > 0 || hasAdvisorCritical;
-  const isDueToday = !isUrgent && (dueTodayCount > 0 || hasAdvisorDueToday);
+  const isDueToday = !isUrgent && (dueTodayCount > 0 || hasAdvisorDueToday || unreadSupportCount > 0);
 
   const displayCount = effectiveTotalCount > 9 ? "9+" : String(effectiveTotalCount);
 

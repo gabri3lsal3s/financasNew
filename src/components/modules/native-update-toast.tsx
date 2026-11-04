@@ -16,7 +16,7 @@ import { isNativePlatform } from "@/services/native/platform";
  */
 export function NativeUpdateToast() {
   const isNative = isNativePlatform();
-  const { hasUpdate, updateInfo, installUpdate } = useAppUpdate({ autoCheck: isNative });
+  const { hasUpdate, updateInfo, installUpdate, error, status } = useAppUpdate({ autoCheck: isNative });
   const { hasBlockingOverlay } = useActiveOverlays();
   const [dismissed, setDismissed] = useState<boolean>(() => isUpdateDismissedForSession());
   const [isInstalling, setIsInstalling] = useState(false);
@@ -43,28 +43,43 @@ export function NativeUpdateToast() {
 
   const newVersion = updateInfo?.latestVersion || updateInfo?.manifest?.version || "mais recente";
 
+  // Tratamento de falha ou permissão
+  const hasError = status === "error" || Boolean(error);
+  const isPermissionNotice = error?.toLowerCase().includes("permissão");
+
+  const title = isInstalling
+    ? "Baixando atualização..."
+    : hasError
+      ? isPermissionNotice
+        ? "Permissão necessária"
+        : "Não foi possível atualizar"
+      : "Nova versão disponível";
+
+  const description = isInstalling
+    ? "O download do instalador foi iniciado pelo Android."
+    : hasError
+      ? error || "Ocorreu um erro ao preparar a atualização."
+      : `A versão ${newVersion} já está disponível para instalação.`;
+
   return (
     <Toast
       open={hasUpdate && !dismissed}
       onOpenChange={(open) => {
         if (!open) handleDismiss();
       }}
-      title={isInstalling ? "Baixando atualização..." : "Nova versão disponível"}
-      description={
-        isInstalling
-          ? "O download do instalador foi iniciado pelo Android."
-          : `A versão ${newVersion} já está disponível para instalação.`
-      }
-      variant="info"
+      title={title}
+      description={description}
+      variant={hasError ? "warning" : "info"}
       duration={Infinity}
       action={
         isInstalling
           ? undefined
           : {
-              label: "Atualizar",
+              label: hasError ? "Tentar novamente" : "Atualizar",
               onClick: handleUpdate,
             }
       }
     />
   );
 }
+

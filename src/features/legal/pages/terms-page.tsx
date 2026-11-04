@@ -161,10 +161,10 @@ export function TermsPage() {
           </p>
           <ul className="list-disc list-inside space-y-1 pl-2 text-muted-foreground">
             <li>
-              <strong className="text-foreground">Plano Pro Mensal:</strong> cobrança recorrente no valor de <strong>R$ 19,90 por mês</strong>.
+              <strong className="text-foreground">Plano Pro Mensal:</strong> cobrança recorrente no valor de <strong>R$ 19,99 por mês</strong>.
             </li>
             <li>
-              <strong className="text-foreground">Plano Pro Anual:</strong> cobrança em parcela única anual no valor de <strong>R$ 178,80 por ano</strong> (equivalente a R$ 14,90/mês, com desconto promocional integrado).
+              <strong className="text-foreground">Plano Pro Anual:</strong> cobrança em parcela única anual no valor de <strong>R$ 143,88 por ano</strong> (equivalente a R$ 11,99/mês, com desconto promocional integrado).
             </li>
           </ul>
           <p>

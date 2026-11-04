@@ -2,12 +2,13 @@ import { useState, useMemo } from "react";
 import { Check, RefreshCw, Layers, ShieldCheck, Wallet, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { formatPercent, formatSignedPct } from "@/services/masks/percent";
 import { useSaveMonthlyClosing } from "@/state/mutations/use-portfolio-monthly-mutations";
-import type { PointInTimeAssetPosition, PointInTimeResult } from "@/domain/portfolio";
+import type { PointInTimeResult } from "@/domain/portfolio";
 import type { MonthlyPriceInput, MonthlyPriceSource } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -18,10 +19,16 @@ export interface MonthlyClosingEditorProps {
   className?: string;
 }
 
-interface EditableQuoteState {
+interface EditableItemState {
   ticker: string;
+  assetClass: string;
+  currency: "BRL" | "USD";
+  quantity: number;
   priceCents: number;
   source: MonthlyPriceSource;
+  isCandidate: boolean;
+  currentPrice: number;
+  fxRate: number;
 }
 
 export function MonthlyClosingEditor({
@@ -32,16 +39,51 @@ export function MonthlyClosingEditor({
 }: MonthlyClosingEditorProps) {
   const saveClosingMutation = useSaveMonthlyClosing();
 
-  // Estado local para cotacoes editaveis por ticker
-  const [quotesState, setQuotesState] = useState<Record<string, EditableQuoteState>>(() => {
-    const initial: Record<string, EditableQuoteState> = {};
+  // Estado local para ativos e cotacoes editaveis
+  const [itemsState, setItemsState] = useState<Record<string, EditableItemState>>(() => {
+    const initial: Record<string, EditableItemState> = {};
+
+    // 1. Posições apuradas deterministicamente via transações até a data de corte
     for (const pos of historicalPosition.positions) {
+      const isUsd = pos.currency === "USD";
+      const fxRate = isUsd && pos.priceQuote > 0 ? pos.priceBRL / pos.priceQuote : 1;
+
       initial[pos.ticker] = {
         ticker: pos.ticker,
+        assetClass: pos.assetClass ?? "Outros",
+        currency: (pos.currency as "BRL" | "USD") ?? "BRL",
+        quantity: pos.quantity,
         priceCents: Math.round((pos.priceQuote ?? pos.priceBRL) * 100),
         source: (pos.quoteSource as MonthlyPriceSource) ?? (pos.isEstimate ? "fallback" : "api"),
+        isCandidate: false,
+        currentPrice: pos.priceQuote ?? pos.priceBRL,
+        fxRate,
       };
     }
+
+    // 2. Se a competência possui apenas saldo TWA ou faltam ativos apurados, carrega os candidatos da carteira
+    const isBalanceOnly =
+      historicalPosition.fidelity?.status === "balance_only" ||
+      historicalPosition.positions.length === 0;
+
+    if (isBalanceOnly && historicalPosition.candidateAssets) {
+      for (const cand of historicalPosition.candidateAssets) {
+        if (!initial[cand.ticker]) {
+          initial[cand.ticker] = {
+            ticker: cand.ticker,
+            assetClass: cand.assetClass,
+            currency: cand.currency,
+            quantity: cand.suggestedQuantity,
+            priceCents: Math.round(cand.referencePrice * 100),
+            source: "fallback",
+            isCandidate: true,
+            currentPrice: cand.referencePrice,
+            fxRate: cand.currency === "USD" ? 5.25 : 1,
+          };
+        }
+      }
+    }
+
     return initial;
   });
 
@@ -51,62 +93,88 @@ export function MonthlyClosingEditor({
   });
 
   const handlePriceChange = (ticker: string, cents: number) => {
-    setQuotesState((prev) => ({
-      ...prev,
-      [ticker]: {
-        ticker,
-        priceCents: Math.max(0, cents),
-        source: "manual",
-      },
-    }));
+    setItemsState((prev) => {
+      const item = prev[ticker];
+      if (!item) return prev;
+      return {
+        ...prev,
+        [ticker]: {
+          ...item,
+          priceCents: Math.max(0, cents),
+          source: "manual",
+        },
+      };
+    });
+  };
+
+  const handleQuantityChange = (ticker: string, rawVal: string) => {
+    const num = Number.parseFloat(rawVal.replace(",", "."));
+    const qty = Number.isNaN(num) ? 0 : Math.max(0, num);
+    setItemsState((prev) => {
+      const item = prev[ticker];
+      if (!item) return prev;
+      return {
+        ...prev,
+        [ticker]: {
+          ...item,
+          quantity: qty,
+        },
+      };
+    });
   };
 
   // Calculo do patrimonio recalculado em tempo real
   const recalculatedSummary = useMemo(() => {
-    const items = historicalPosition.positions.map((pos) => {
-      const qState = quotesState[pos.ticker];
-      const unitPrice = qState ? qState.priceCents / 100 : pos.priceQuote ?? pos.priceBRL;
-      const isUsd = pos.currency === "USD";
-      const fxRate = isUsd && pos.priceQuote > 0 ? pos.priceBRL / pos.priceQuote : 1;
-      const valueBRL = Math.round(pos.quantity * unitPrice * fxRate * 100) / 100;
-
-      // Comparacao com cotacao atual (hoje)
-      const currentPrice = isUsd ? (pos.priceQuote ?? pos.priceBRL) : pos.priceBRL;
+    const itemsList = Object.values(itemsState).map((item) => {
+      const unitPrice = item.priceCents / 100;
+      const valueBRL = Math.round(item.quantity * unitPrice * item.fxRate * 100) / 100;
+      const currentPrice = item.currentPrice;
       const diffPct =
         unitPrice > 0 && currentPrice > 0
           ? ((currentPrice - unitPrice) / unitPrice) * 100
           : null;
 
       return {
-        ...pos,
+        ...item,
         editedPrice: unitPrice,
         editedValueBRL: valueBRL,
-        source: qState?.source ?? (pos.isEstimate ? "fallback" : "api"),
-        currentPrice,
         diffPct,
       };
     });
 
-    const totalInvestedBRL = items.reduce((acc, it) => acc + it.editedValueBRL, 0);
+    const totalInvestedBRL = itemsList.reduce((acc, it) => acc + it.editedValueBRL, 0);
     const cashBRL = cashBalanceCents / 100;
     const totalValueBRL = Math.round((totalInvestedBRL + cashBRL) * 100) / 100;
-    const totalCostBRL = historicalPosition.totalCostBRL;
+    const totalCostBRL =
+      historicalPosition.totalCostBRL > 0
+        ? historicalPosition.totalCostBRL
+        : totalInvestedBRL;
     const gainBRL = Math.round((totalValueBRL - totalCostBRL) * 100) / 100;
     const gainPct = totalCostBRL > 0 ? (gainBRL / totalCostBRL) * 100 : 0;
 
+    const snapshotTargetValue = historicalPosition.fidelity?.snapshotTotalValue ?? null;
+    const discrepancyBRL =
+      snapshotTargetValue !== null
+        ? Math.round((totalValueBRL - snapshotTargetValue) * 100) / 100
+        : null;
+
     return {
-      items,
+      items: itemsList,
       totalInvestedBRL,
       cashBRL,
       totalValueBRL,
       totalCostBRL,
       gainBRL,
       gainPct,
+      snapshotTargetValue,
+      discrepancyBRL,
     };
-  }, [historicalPosition, quotesState, cashBalanceCents]);
+  }, [itemsState, cashBalanceCents, historicalPosition]);
 
   const handleSave = async () => {
-    const pricesPayload: MonthlyPriceInput[] = recalculatedSummary.items.map((item) => ({
+    const validItems = recalculatedSummary.items.filter((item) => item.editedPrice > 0);
+
+    const pricesPayload: MonthlyPriceInput[] = validItems.map((item) => ({
       ticker: item.ticker,
       month,
       price: item.editedPrice,
@@ -167,23 +235,23 @@ export function MonthlyClosingEditor({
                   className="inline font-bold"
                 />
               </strong>
-              . Revise as cotações e quantidades dos seus ativos abaixo e clique em{" "}
-              <strong>Salvar Fechamento & Gerar Relatório</strong> para arquivar a custódia auditada e liberar a visualização oficial do Relatório Executivo A4.
+              . Carregamos os ativos da sua carteira abaixo para você calibrar o que possuía naquele mês. Ajuste as quantidades, cotações e saldo de caixa e clique em{" "}
+              <strong>Salvar Fechamento & Gerar Relatório</strong> para oficializar a custódia auditada.
             </p>
           </div>
         </div>
       )}
 
-      {/* Banner Informativo */}
+      {/* Banner Informativo & Ação de Salvamento */}
       <div className="rounded-xl border border-border/80 bg-surface/60 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
         <div className="flex items-start gap-2.5">
           <ShieldCheck className="size-4 text-portfolio shrink-0 mt-0.5" aria-hidden="true" />
           <div className="flex flex-col gap-0.5">
             <span className="text-xs font-semibold text-foreground">
-              Conferência e Ajuste das Cotações de Fechamento ({month})
+              Conferência e Calibração do Fechamento ({month})
             </span>
             <p className="text-[11px] text-muted-foreground leading-relaxed m-0">
-              As quantidades sob custódia são derivadas deterministicamente das suas movimentações até o fechamento daquele mês. Você pode ajustar as cotações de fechamento ou o saldo em caixa livre antes de emitir o relatório oficial.
+              Revise e calibre as quantidades e cotações de fechamento dos ativos para auditar este mês. Ao salvar, os dados serão consolidados e o Relatório Executivo A4 será gerado de forma oficial.
             </p>
           </div>
         </div>
@@ -204,6 +272,56 @@ export function MonthlyClosingEditor({
         </Button>
       </div>
 
+      {/* Régua de Reconciliação com o Saldo TWA em Tempo Real */}
+      {recalculatedSummary.snapshotTargetValue !== null && (
+        <div className="rounded-xl border border-border/80 bg-surface p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                Saldo Registrado no TWA
+              </span>
+              <MoneyText
+                cents={numberToCents(recalculatedSummary.snapshotTargetValue)}
+                tone="portfolio"
+                className="text-sm sm:text-base font-bold tabular-nums"
+              />
+            </div>
+            <span className="text-border text-lg font-light" aria-hidden="true">vs</span>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                Patrimônio Calibrado (Ativos + Caixa)
+              </span>
+              <MoneyText
+                cents={numberToCents(recalculatedSummary.totalValueBRL)}
+                tone={
+                  Math.abs(recalculatedSummary.discrepancyBRL ?? 0) < 1
+                    ? "positive"
+                    : "default"
+                }
+                className={
+                  Math.abs(recalculatedSummary.discrepancyBRL ?? 0) < 1
+                    ? "text-sm sm:text-base font-bold tabular-nums"
+                    : "text-warning-strong text-sm sm:text-base font-bold tabular-nums"
+                }
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {Math.abs(recalculatedSummary.discrepancyBRL ?? 0) < 1 ? (
+              <Badge variant="positive" size="sm" className="font-semibold">
+                100% Alinhado ao Saldo TWA
+              </Badge>
+            ) : (
+              <Badge variant="warning" size="sm" className="font-semibold">
+                {recalculatedSummary.discrepancyBRL && recalculatedSummary.discrepancyBRL > 0 ? "+" : ""}
+                <MoneyText cents={numberToCents(recalculatedSummary.discrepancyBRL ?? 0)} /> vs TWA
+              </Badge>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Card de Resumo Recalculado em Tempo Real */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         <div className="rounded-xl border border-border/80 bg-surface p-3 flex flex-col gap-1 shadow-2xs">
@@ -215,27 +333,9 @@ export function MonthlyClosingEditor({
             tone="portfolio"
             className="text-base sm:text-lg font-bold tabular-nums"
           />
-          <div className="flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
-            <span>{recalculatedSummary.items.length} ativos</span>
-            {historicalPosition.fidelity?.snapshotTotalValue ? (
-              <>
-                <span className="text-border" aria-hidden="true">•</span>
-                <span
-                  className={cn(
-                    "font-semibold",
-                    Math.abs(recalculatedSummary.totalValueBRL - historicalPosition.fidelity.snapshotTotalValue) < 1
-                      ? "text-positive-strong"
-                      : "text-warning-strong",
-                  )}
-                  title="Comparação com o Saldo Registrado no Marco Zero (TWA)"
-                >
-                  {Math.abs(recalculatedSummary.totalValueBRL - historicalPosition.fidelity.snapshotTotalValue) < 1
-                    ? "Alinhado ao TWA"
-                    : `${recalculatedSummary.totalValueBRL >= historicalPosition.fidelity.snapshotTotalValue ? "+" : ""}${(((recalculatedSummary.totalValueBRL - historicalPosition.fidelity.snapshotTotalValue) / historicalPosition.fidelity.snapshotTotalValue) * 100).toFixed(1)}% vs TWA`}
-                </span>
-              </>
-            ) : null}
-          </div>
+          <span className="text-[10.5px] text-muted-foreground">
+            {recalculatedSummary.items.filter((i) => i.quantity > 0).length} ativos com custódia
+          </span>
         </div>
 
         <div className="rounded-xl border border-border/80 bg-surface p-3 flex flex-col gap-1 shadow-2xs">
@@ -248,7 +348,7 @@ export function MonthlyClosingEditor({
             className="text-base sm:text-lg font-bold tabular-nums"
           />
           <span className="text-[10.5px] text-muted-foreground">
-            Aportes até {month}
+            Custo apurado até {month}
           </span>
         </div>
 
@@ -302,7 +402,7 @@ export function MonthlyClosingEditor({
             </span>
           </div>
           <span className="text-[11px] text-muted-foreground font-mono">
-            {recalculatedSummary.items.length} ativos apurados
+            {recalculatedSummary.items.length} ativos listados
           </span>
         </div>
 
@@ -311,47 +411,57 @@ export function MonthlyClosingEditor({
             <thead>
               <tr className="border-b border-border/70 bg-muted/30 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
                 <th className="py-2 px-3">Ativo / Classe</th>
-                <th className="py-2 px-2.5 text-right">Qtd. Histórica</th>
+                <th className="py-2 px-2.5 text-right w-28">Qtd. Fechamento</th>
                 <th className="py-2 px-2.5 text-right w-36">Cotação Fechamento</th>
                 <th className="py-2 px-2 text-center">Origem</th>
-                <th className="py-2 px-2.5 text-right">Cotação Atual</th>
+                <th className="py-2 px-2.5 text-right">Cotação Ref.</th>
                 <th className="py-2 px-2 text-right">Dif. (%)</th>
                 <th className="py-2 px-3 text-right">Total Fechamento</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {recalculatedSummary.items.map((item: PointInTimeAssetPosition & { editedPrice: number; editedValueBRL: number; source: MonthlyPriceSource; currentPrice: number; diffPct: number | null }) => {
-                const qState = quotesState[item.ticker];
-                const centsVal = qState ? qState.priceCents : Math.round(item.editedPrice * 100);
-
+              {recalculatedSummary.items.map((item) => {
                 return (
                   <tr key={item.ticker} className="even:bg-muted/15 hover:bg-surface-hover/40 transition-colors">
                     {/* Ticker + Classe */}
-                    <td className="py-2 px-3 min-w-[130px]">
+                    <td className="py-2 px-3 min-w-[140px]">
                       <div className="flex flex-col">
-                        <span className="font-bold text-foreground text-xs">{item.ticker}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-foreground text-xs">{item.ticker}</span>
+                          {item.isCandidate && (
+                            <Badge variant="muted" size="xs">
+                              Sugerido
+                            </Badge>
+                          )}
+                        </div>
                         <span className="text-[10px] text-muted-foreground capitalize">
                           {item.assetClass}
                         </span>
                       </div>
                     </td>
 
-                    {/* Quantidade Histórica (Leitura Apenas) */}
-                    <td className="py-2 px-2.5 text-right font-mono font-semibold text-foreground text-xs">
-                      {item.quantity.toLocaleString("pt-BR", {
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 4,
-                      })}
+                    {/* Quantidade Histórica (Editável para Calibração) */}
+                    <td className="py-1.5 px-2.5 text-right">
+                      <div className="w-24 ml-auto">
+                        <Input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={item.quantity}
+                          onChange={(e) => handleQuantityChange(item.ticker, e.target.value)}
+                          className="h-7 text-xs font-mono font-bold text-right px-2"
+                        />
+                      </div>
                     </td>
 
                     {/* Cotação de Fechamento (Editável com MoneyInput) */}
                     <td className="py-1.5 px-2.5 text-right">
                       <div className="w-32 ml-auto">
                         <MoneyInput
-                          cents={centsVal}
+                          cents={item.priceCents}
                           onCentsChange={(c) => handlePriceChange(item.ticker, c)}
                           size="sm"
-                          currency={item.currency as "BRL" | "USD"}
+                          currency={item.currency}
                           className="h-7 text-xs font-mono font-bold text-right"
                         />
                       </div>
@@ -359,14 +469,14 @@ export function MonthlyClosingEditor({
 
                     {/* Badge de Origem */}
                     <td className="py-2 px-2 text-center whitespace-nowrap">
-                      {getSourceBadge(item.source, item.isEstimate)}
+                      {getSourceBadge(item.source, item.isCandidate)}
                     </td>
 
-                    {/* Cotação Atual (Hoje) */}
+                    {/* Cotação Atual/Referência */}
                     <td className="py-2 px-2.5 text-right font-mono text-muted-foreground text-xs">
                       <MoneyText
                         cents={numberToCents(item.currentPrice)}
-                        currency={item.currency as "BRL" | "USD"}
+                        currency={item.currency}
                       />
                     </td>
 

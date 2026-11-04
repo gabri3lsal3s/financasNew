@@ -98,6 +98,9 @@ export function buildTelegramSupportMessage(data: SupportTicketNotificationData)
     `<b>Dispositivo:</b> ${escapeTelegramHtml(formatDeviceInfo(data.deviceInfo))}`,
     data.ticketId ? `<b>ID do Chamado:</b> <code>${escapeTelegramHtml(data.ticketId)}</code>` : null,
     `\n<b>Mensagem:</b>\n${escapeTelegramHtml(data.message.trim())}`,
+    data.ticketId
+      ? `\n👉 <a href="https://axisfinancas.com.br/admin?aba=chamados&amp;ticket=${encodeURIComponent(data.ticketId)}">Responder Chamado no Painel Admin</a>`
+      : null,
   ];
 
   return lines.filter((line): line is string => Boolean(line)).join("\n");

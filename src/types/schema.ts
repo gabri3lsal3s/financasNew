@@ -719,9 +719,42 @@ export type SupportTicket = {
   current_route: string | null;
   device_info: Record<string, unknown>;
   admin_notes: string | null;
+  admin_reply?: string | null;
+  admin_replied_at?: string | null;
+  user_read_at?: string | null;
+  admin_id?: string | null;
   created_at: string;
   updated_at: string;
 };
+
+export type AdminTelegramSettings = {
+  id: string;
+  notify_support: boolean;
+  notify_git: boolean;
+  notify_deploys: boolean;
+  notify_analytics: boolean;
+  notify_new_users: boolean;
+  silent_mode: boolean;
+  updated_at: string;
+  updated_by: string | null;
+};
+
+export type AppAnalyticsEvent = {
+  id: string;
+  user_id: string | null;
+  event_name: string;
+  module: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+export type FeatureUsageMetric = {
+  module: string;
+  count: number;
+  percentage: number;
+  lastUsedAt: string | null;
+};
+
 
 
 

@@ -1,8 +1,17 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { MemoryRouter } from "react-router";
 import { TicketsTab } from "./tickets-tab";
 import type { SupportTicket } from "@/types";
+
+function renderWithRouter() {
+  return render(
+    <MemoryRouter>
+      <TicketsTab />
+    </MemoryRouter>,
+  );
+}
 
 const mockTickets: SupportTicket[] = [
   {
@@ -18,6 +27,10 @@ const mockTickets: SupportTicket[] = [
     current_route: "/transactions",
     device_info: { platform: "Android Nativo" },
     admin_notes: null,
+    admin_reply: null,
+    admin_replied_at: null,
+    user_read_at: null,
+    admin_id: null,
     created_at: "2026-10-23T14:30:00Z",
     updated_at: "2026-10-23T14:30:00Z",
   },
@@ -34,6 +47,10 @@ const mockTickets: SupportTicket[] = [
     current_route: "/investments",
     device_info: { platform: "Web" },
     admin_notes: "Respondido por e-mail com guia passo a passo.",
+    admin_reply: "Olá Lucas! Para definir a meta, abra a aba Alocação Alvo em Investimentos.",
+    admin_replied_at: "2026-10-22T11:00:00Z",
+    user_read_at: null,
+    admin_id: "admin-1",
     created_at: "2026-10-22T10:00:00Z",
     updated_at: "2026-10-22T11:00:00Z",
   },
@@ -50,6 +67,10 @@ const mockTickets: SupportTicket[] = [
     current_route: "/settings",
     device_info: { platform: "PWA Instalado" },
     admin_notes: "Adicionado ao backlog do Design System.",
+    admin_reply: "Sugestão anotada!",
+    admin_replied_at: "2026-10-21T09:00:00Z",
+    user_read_at: "2026-10-21T10:00:00Z",
+    admin_id: "admin-1",
     created_at: "2026-10-20T09:00:00Z",
     updated_at: "2026-10-21T09:00:00Z",
   },
@@ -83,7 +104,7 @@ describe("TicketsTab — Gestão Administrativa de Chamados de Suporte", () => {
   });
 
   it("renderiza os cards de métricas no topo e a lista completa de chamados", () => {
-    render(<TicketsTab />);
+    renderWithRouter();
 
     // Métricas
     expect(screen.getByText("Total Recebidos")).toBeInTheDocument();
@@ -107,7 +128,7 @@ describe("TicketsTab — Gestão Administrativa de Chamados de Suporte", () => {
 
   it("filtra chamados pela busca textual", async () => {
     const user = userEvent.setup();
-    render(<TicketsTab />);
+    renderWithRouter();
 
     const searchInput = screen.getByPlaceholderText(/Buscar por cliente, e-mail ou mensagem/i);
     await user.type(searchInput, "Nubank");
@@ -119,7 +140,7 @@ describe("TicketsTab — Gestão Administrativa de Chamados de Suporte", () => {
 
   it("filtra chamados pelo status", async () => {
     const user = userEvent.setup();
-    render(<TicketsTab />);
+    renderWithRouter();
 
     const statusSelect = screen.getByRole("combobox", { name: "Filtrar por status" });
     await user.click(statusSelect);
@@ -140,7 +161,7 @@ describe("TicketsTab — Gestão Administrativa de Chamados de Suporte", () => {
       refetch: vi.fn(),
     };
 
-    const { container } = render(<TicketsTab />);
+    const { container } = renderWithRouter();
     expect(container.querySelectorAll(".animate-shimmer").length).toBeGreaterThan(0);
   });
 
@@ -154,7 +175,7 @@ describe("TicketsTab — Gestão Administrativa de Chamados de Suporte", () => {
       refetch: mockRefetch,
     };
 
-    render(<TicketsTab />);
+    renderWithRouter();
 
     expect(screen.getByText("Não foi possível carregar os chamados")).toBeInTheDocument();
     const retryBtn = screen.getByRole("button", { name: /Tentar novamente/i });
@@ -171,7 +192,7 @@ describe("TicketsTab — Gestão Administrativa de Chamados de Suporte", () => {
       refetch: vi.fn(),
     };
 
-    render(<TicketsTab />);
+    renderWithRouter();
 
     expect(screen.getByText("Nenhum chamado recebido até o momento")).toBeInTheDocument();
   });
@@ -180,7 +201,7 @@ describe("TicketsTab — Gestão Administrativa de Chamados de Suporte", () => {
     const user = userEvent.setup();
     mockMutateAsync.mockResolvedValueOnce({ id: "ticket-001" });
 
-    render(<TicketsTab />);
+    renderWithRouter();
 
     const attendButtons = screen.getAllByRole("button", { name: /Atender Chamado/i });
     await user.click(attendButtons[0]!);
@@ -195,7 +216,7 @@ describe("TicketsTab — Gestão Administrativa de Chamados de Suporte", () => {
     });
     await user.type(notesTextarea, "Investigado e corrigido no extrato.");
 
-    const saveBtn = screen.getByRole("button", { name: /Salvar Alterações/i });
+    const saveBtn = screen.getByRole("button", { name: /Salvar/i });
     await user.click(saveBtn);
 
     await waitFor(() => {

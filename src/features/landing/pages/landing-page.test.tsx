@@ -35,7 +35,7 @@ describe("LandingPage", () => {
   it("renderiza a seção Hero Editorial com headline e métricas de caixa real e aporte calibrado", () => {
     renderLanding();
     expect(
-      screen.getByRole("heading", { name: /Do controle de gastos ao aporte do mês/i }),
+      screen.getByRole("heading", { name: /Do controle de cartões e fiados ao aporte do mês/i }),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/30 Dias de Teste sem Compromisso/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Caixa Real Disponível").length).toBeGreaterThan(0);
@@ -107,7 +107,7 @@ describe("LandingPage", () => {
     const mensalToggle = screen.getByRole("button", { name: "Mensal" });
     await user.click(mensalToggle);
 
-    expect(screen.getByText("R$ 19,90")).toBeInTheDocument();
+    expect(screen.getByText("R$ 19,99")).toBeInTheDocument();
   });
 
   it("permite expandir e fechar dúvidas no FAQ", async () => {

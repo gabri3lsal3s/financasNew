@@ -8,6 +8,7 @@ import {
 } from "@/state";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { FeatureUsageSection } from "../components";
 
 export function OverviewTab() {
   const metricsQuery = useAdminMetrics();
@@ -174,6 +175,11 @@ export function OverviewTab() {
             <span>Módulos: {activeFeaturesCount}/{totalFeaturesCount}</span>
           </div>
         </div>
+      </section>
+
+      {/* Engajamento & Uso de Funcionalidades */}
+      <section aria-label="Engajamento de Funcionalidades">
+        <FeatureUsageSection />
       </section>
 
       {/* Fila Rápida de Aprovação com Layout Adaptativo Mobile e Desktop */}

@@ -42,7 +42,7 @@ describe("Webhook Asaas — Lógica de Decisão e Idempotência", () => {
       payment: {
         id: "pay_pix_999",
         billingType: "PIX",
-        value: 178.8,
+        value: 143.88,
       },
       currentSub: baseTrialSub,
     });
@@ -69,7 +69,7 @@ describe("Webhook Asaas — Lógica de Decisão e Idempotência", () => {
       payment: {
         id: "pay_pix_999",
         billingType: "PIX",
-        value: 178.8,
+        value: 143.88,
       },
       currentSub: alreadyActiveSub,
     });
@@ -94,7 +94,7 @@ describe("Webhook Asaas — Lógica de Decisão e Idempotência", () => {
       payment: {
         id: "pay_pix_999",
         billingType: "PIX",
-        value: 178.8,
+        value: 143.88,
       },
       currentSub: alreadyActiveSub,
     });
@@ -118,7 +118,7 @@ describe("Webhook Asaas — Lógica de Decisão e Idempotência", () => {
         id: "pay_second_invoice",
         subscription: "sub_card_777",
         billingType: "CREDIT_CARD",
-        value: 19.9,
+        value: 19.99,
       },
       currentSub: activeCardSub,
     });

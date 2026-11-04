@@ -78,9 +78,9 @@ export function UpgradeDialog({
 
   const isAnnual = selectedPlan === "annual";
 
-  const monthlyPrice = "R$\u00a019,90";
-  const annualMonthlyPrice = "R$\u00a014,90";
-  const annualTotalPrice = "R$\u00a0178,80";
+  const monthlyPrice = "R$\u00a019,99";
+  const annualMonthlyPrice = "R$\u00a011,99";
+  const annualTotalPrice = "R$\u00a0143,88";
 
   return (
     <Modal
@@ -117,7 +117,7 @@ export function UpgradeDialog({
           >
             Anual
             <Badge variant="positive" size="xs">
-              -25%
+              -40%
             </Badge>
           </button>
         </div>

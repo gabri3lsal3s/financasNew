@@ -52,7 +52,7 @@ export function SubscriptionSuccessPage() {
   const isAnnual = plan === "annual";
   const isPix = metodoParam === "pix";
 
-  const priceText = isAnnual ? "R$\u00a0178,80/ano" : "R$\u00a019,90/mês";
+  const priceText = isAnnual ? "R$\u00a0143,88/ano" : "R$\u00a019,99/mês";
   const planTitle = isAnnual ? "Plano Pro Anual" : "Plano Pro Mensal";
 
   // Data estimada de próxima renovação (1 ano ou 1 mês a partir de hoje)

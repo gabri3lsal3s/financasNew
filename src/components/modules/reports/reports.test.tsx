@@ -13,6 +13,7 @@ import {
   ReportGapPinBar,
   ReportClassTables,
   ReportDocumentLayout,
+  ReportPerformanceChart,
 } from "./index";
 
 describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () => {
@@ -212,4 +213,37 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     expect(screen.getByText("Imprimir / Salvar PDF")).toBeInTheDocument();
     expect(screen.getAllByText("Conteúdo Editorial").length).toBeGreaterThanOrEqual(1);
   });
+
+  it("renderiza ReportPerformanceChart com rótulos sem colisão e footer explicativo de MTD", () => {
+    const series = [
+      { month: "2025-12", monthLabel: "12/25", patrimonyBRL: 10000, ratePct: 2.4, isMtd: false },
+      { month: "2026-01", monthLabel: "01/26", patrimonyBRL: 10240, ratePct: 1.7, isMtd: false },
+      { month: "2026-02", monthLabel: "02/26", patrimonyBRL: 10414, ratePct: 0.3, isMtd: false },
+      { month: "2026-03", monthLabel: "03/26", patrimonyBRL: 10122, ratePct: -2.8, isMtd: false },
+      { month: "2026-04", monthLabel: "04/26", patrimonyBRL: 10061, ratePct: -0.6, isMtd: false },
+      { month: "2026-05", monthLabel: "05/26", patrimonyBRL: 10050, ratePct: -0.1, isMtd: false },
+      { month: "2026-06", monthLabel: "06/26", patrimonyBRL: 9889, ratePct: -1.6, isMtd: false },
+      { month: "2026-07", monthLabel: "07/26", patrimonyBRL: 9859, ratePct: -0.3, isMtd: false },
+      { month: "2026-08", monthLabel: "08/26", patrimonyBRL: 9592, ratePct: -2.7, isMtd: false },
+      { month: "2026-09", monthLabel: "09/26", patrimonyBRL: 10205, ratePct: 6.4, isMtd: false },
+      { month: "2026-10", monthLabel: "10/26", patrimonyBRL: 10072, ratePct: -1.3, isMtd: false },
+      { month: "2026-11", monthLabel: "11/26", patrimonyBRL: 9920, ratePct: -1.5, isMtd: true },
+    ];
+
+    render(<ReportPerformanceChart series={series} />);
+
+    // Rótulos do eixo X limpos
+    expect(screen.getByText("10/26")).toBeInTheDocument();
+    expect(screen.getByText("11/26*")).toBeInTheDocument();
+    expect(screen.getByText("MTD")).toBeInTheDocument();
+
+    // Footer explicativo de MTD presente
+    expect(
+      screen.getByText(/competência corrente parcial em andamento/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/o mês incompleto é automaticamente segregado do cálculo da volatilidade anualizada e do Índice de Sharpe/),
+    ).toBeInTheDocument();
+  });
 });
+

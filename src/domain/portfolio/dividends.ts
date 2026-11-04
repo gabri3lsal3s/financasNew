@@ -199,14 +199,17 @@ export function calculatePortfolioAverageYoC(yocs: readonly number[]): number {
 
 /**
  * Calcula o custo total de aquisição de uma lista de ativos (em reais).
+ * Suporta conversão cambial para ativos em moeda estrangeira (ex: USD).
  */
 export function calculateTotalCostBRL(
-  assets: readonly { quantity: number; average_price: number }[],
+  assets: readonly { quantity: number; average_price: number; currency?: string }[],
+  usdRate: number = 1,
 ): number {
   let total = 0;
   for (const asset of assets) {
     if (asset.quantity > 0 && asset.average_price > 0) {
-      total += asset.quantity * asset.average_price;
+      const rate = asset.currency === "USD" ? usdRate : 1;
+      total += asset.quantity * asset.average_price * rate;
     }
   }
   return Math.round(total * 100) / 100;

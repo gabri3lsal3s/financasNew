@@ -39,6 +39,10 @@ describe("useCreateSupportTicketMutation", () => {
       current_route: "/cards",
       device_info: {},
       admin_notes: null,
+      admin_reply: null,
+      admin_replied_at: null,
+      user_read_at: null,
+      admin_id: null,
       created_at: "2026-10-23T23:00:00Z",
       updated_at: "2026-10-23T23:00:00Z",
     };

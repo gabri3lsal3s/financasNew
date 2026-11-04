@@ -19,6 +19,7 @@ export interface TaxFacilitatorModalProps {
   onOpenChange: (open: boolean) => void;
   assets: readonly PortfolioAsset[];
   dividends: readonly PortfolioDividend[];
+  usdRate?: number;
   appName?: string;
   accountHolder?: string;
 }
@@ -33,6 +34,7 @@ export function TaxFacilitatorModal({
   onOpenChange,
   assets,
   dividends,
+  usdRate = 5.25,
   appName = "Áxis Finance",
   accountHolder,
 }: TaxFacilitatorModalProps) {
@@ -46,8 +48,8 @@ export function TaxFacilitatorModal({
   );
 
   const totalCostAllAssetsBRL = useMemo(
-    () => calculateTotalCostBRL(nonCashAssets),
-    [nonCashAssets],
+    () => calculateTotalCostBRL(nonCashAssets, usdRate),
+    [nonCashAssets, usdRate],
   );
 
 
@@ -97,14 +99,15 @@ export function TaxFacilitatorModal({
     const safeTicker = sanitizeReportText(asset.ticker);
     const classification = getBensDireitosClassification(asset.asset_class, asset.ticker);
     const isUSD = asset.currency === "USD";
-    const totalCostBRL = asset.quantity * asset.average_price;
+    const totalCostNative = asset.quantity * asset.average_price;
+    const totalCostBRL = isUSD ? totalCostNative * usdRate : totalCostNative;
     const qtyStr = asset.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
     const cotaWord = asset.quantity === 1 ? "cota" : "cotas";
 
     let textToCopy: string;
     if (isUSD) {
       const unitPriceUSD = asset.average_price.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const totalCostUSD = (asset.quantity * asset.average_price).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const totalCostUSD = totalCostNative.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const totalCostBRLFormatted = formatMoneyBR(numberToCents(totalCostBRL));
       textToCopy = `${qtyStr} ${cotaWord} de ${safeTicker} (${classification.itemName}), custodiadas no exterior em conta própria, custo médio unitário de US$ ${unitPriceUSD} (total em moeda estrangeira: US$ ${totalCostUSD}), equivalente a R$ ${totalCostBRLFormatted}.`;
     } else {

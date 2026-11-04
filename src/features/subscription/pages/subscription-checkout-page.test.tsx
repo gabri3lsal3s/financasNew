@@ -65,14 +65,14 @@ describe("SubscriptionCheckoutPage Component", () => {
     const pixButton = screen.getByRole("button", { name: /PIX Instantâneo/i });
     await user.click(pixButton);
 
-    expect(screen.getByText(/PIX Anual com 25% OFF/i)).toBeInTheDocument();
+    expect(screen.getByText(/PIX Anual com 40% OFF/i)).toBeInTheDocument();
     expect(screen.getByText(/Gerar QR Code PIX/i)).toBeInTheDocument();
   });
 
   it("inicia diretamente no método PIX via deep link (?metodo=pix)", () => {
     renderCheckout("/assinatura?plano=pro-anual&metodo=pix");
 
-    expect(screen.getByText(/PIX Anual com 25% OFF/i)).toBeInTheDocument();
+    expect(screen.getByText(/PIX Anual com 40% OFF/i)).toBeInTheDocument();
     expect(screen.getByText(/Gerar QR Code PIX/i)).toBeInTheDocument();
   });
 

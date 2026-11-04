@@ -63,6 +63,15 @@ export interface PointInTimeAssetPosition {
   totalReturnPct: number | null;
 }
 
+export interface PointInTimeCandidateAsset {
+  assetId: string;
+  ticker: string;
+  assetClass: string;
+  currency: "BRL" | "USD";
+  suggestedQuantity: number;
+  referencePrice: number;
+}
+
 export interface PointInTimeResult {
   month: string;
   cutoffDate: string;
@@ -75,6 +84,8 @@ export interface PointInTimeResult {
   accumulatedDividendsTotalBRL: number;
   /** Status de integridade e fidedignidade analítica para a competência */
   fidelity: PointInTimeFidelity;
+  /** Ativos existentes na carteira que não tiveram movimentações retroativas apuradas na competência */
+  candidateAssets?: PointInTimeCandidateAsset[];
 }
 
 export interface PointInTimeCalculationParams {
@@ -468,6 +479,29 @@ export function calculatePointInTimePosition(
     }
   }
 
+  const candidateAssets: PointInTimeCandidateAsset[] = [];
+  const includedAssetIds = new Set(positions.map((p) => p.assetId));
+
+  for (const asset of assets) {
+    const rawClass = (asset.asset_class ?? "").toLowerCase().trim();
+    const isCash =
+      rawClass === "caixa" ||
+      asset.ticker.toUpperCase() === "CAIXA" ||
+      asset.ticker.toUpperCase() === "CASH";
+    if (isCash) continue;
+
+    if (!includedAssetIds.has(asset.id)) {
+      candidateAssets.push({
+        assetId: asset.id,
+        ticker: asset.ticker.toUpperCase().trim(),
+        assetClass: asset.asset_class ?? "Outros",
+        currency: (asset.currency as "BRL" | "USD") ?? "BRL",
+        suggestedQuantity: Number(asset.quantity) || 0,
+        referencePrice: Number(asset.average_price) || 0,
+      });
+    }
+  }
+
   const fidelity: PointInTimeFidelity = {
     status: fidelityStatus,
     canGenerateExecutiveReport,
@@ -494,5 +528,6 @@ export function calculatePointInTimePosition(
     monthDividendsTotalBRL: Math.round(monthDividendsTotalBRL * 100) / 100,
     accumulatedDividendsTotalBRL: Math.round(accumulatedDividendsTotalBRL * 100) / 100,
     fidelity,
+    candidateAssets,
   };
 }

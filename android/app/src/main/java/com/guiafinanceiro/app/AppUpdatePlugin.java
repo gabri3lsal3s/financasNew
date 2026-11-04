@@ -99,8 +99,20 @@ public class AppUpdatePlugin extends Plugin {
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
             request.setMimeType("application/vnd.android.package-archive");
             
+            File downloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+            if (downloadsDir != null && downloadsDir.exists()) {
+                File[] existingFiles = downloadsDir.listFiles();
+                if (existingFiles != null) {
+                    for (File f : existingFiles) {
+                        if (f.getName().startsWith("axis-update-") && f.getName().endsWith(".apk")) {
+                            try { f.delete(); } catch (Exception ignored) {}
+                        }
+                    }
+                }
+            }
+
             String fileName = "axis-update-" + System.currentTimeMillis() + ".apk";
-            File targetFile = new File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName);
+            File targetFile = new File(downloadsDir, fileName);
             request.setDestinationUri(Uri.fromFile(targetFile));
 
             downloadId = downloadManager.enqueue(request);
@@ -176,6 +188,17 @@ public class AppUpdatePlugin extends Plugin {
     private boolean triggerInstall(File apkFile) {
         try {
             Context context = getContext();
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (!context.getPackageManager().canRequestPackageInstalls()) {
+                    Intent settingsIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
+                    settingsIntent.setData(Uri.parse("package:" + context.getPackageName()));
+                    settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(settingsIntent);
+                    return false;
+                }
+            }
+
             Uri apkUri = FileProvider.getUriForFile(
                 context,
                 context.getPackageName() + ".fileprovider",

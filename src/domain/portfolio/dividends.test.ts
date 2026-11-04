@@ -175,6 +175,15 @@ describe("dividends — motor puro de proventos (F18)", () => {
       expect(calculateTotalCostBRL(assets)).toBe(1275);
     });
 
+    it("converte ativos em USD com taxa cambial informada", () => {
+      const assets = [
+        { quantity: 10, average_price: 10, currency: "BRL" },
+        { quantity: 2, average_price: 50, currency: "USD" },
+      ];
+      // BRL: 10 * 10 = 100; USD: 2 * 50 * 5.5 = 550; total = 650
+      expect(calculateTotalCostBRL(assets, 5.5)).toBe(650);
+    });
+
     it("arredonda somas de múltiplos proventos com centavos quebrados exatamente", () => {
       const dividendTxs = [
         { type: "dividend", date: "2026-05-10", total: 10.05 },

@@ -1,5 +1,18 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.83** registra a **Conclusão Integral da Otimização do In-App Updater & Homologação Google Play Protect (Solução 1 e 2)** (2026-11-04):
+> - **(1) Otimização do In-App Updater & Prevenção de Falhas de Permissão (Solução 1)**:
+>   - Limpeza preventiva de arquivos temporários `axis-update-*.apk` em `AppUpdatePlugin.java` antes do início de novos downloads;
+>   - Adição de verificação prévia de autorização de instalação via `canRequestPackageInstalls()` com redirecionamento nativo `ACTION_MANAGE_UNKNOWN_APP_SOURCES` específico do pacote `com.guiafinanceiro.app`;
+>   - Exposição dos métodos `canInstallPackages()` e `openInstallPermissionSettings()` em `src/services/native/update-checker.ts`;
+>   - Refinamento do componente `NativeUpdateToast` com detecção de estados de erro e permissão, exibindo mensagem amigável e ação direta de autorização/retry;
+>   - Instrução contextual no diálogo `ApkInstallGuideDialog` para desativação temporária do Bloqueador Automático da Samsung (One UI 6+).
+> - **(2) Automação de Dossiê e Homologação Google Play Protect (Solução 2)**:
+>   - Criação do script automatizado `scripts/generate-play-protect-appeal.ts` com comando `npm run playprotect:info` no `package.json`;
+>   - Extração automática da impressão digital SHA-256 do certificado RSA oficial (`release-key.keystore`), hash do APK e geração de justificativas prontas em inglês e português para o formulário de apelação oficial da Google;
+>   - Inclusão da **Etapa 9: Submissão do APK ao Google Play Protect (Lista Branca)** em `docs/operations/GUIA_CONFIGURACAO_MANUAL_GO_LIVE.md`;
+>   - Sincronização dos documentos de arquitetura e governança em `docs/architecture/PROJECT_STRUCTURE.md` e `docs/platforms/NATIVE_DISTRIBUTION_GUIDE.md`.
+>
 > **v2.82** registra a **Conclusão Integral do Plano de Prontidão Operacional para Produção e Go-Live (`docs/plans/PLANO_PREPARACAO_GO_LIVE_PRODUCAO.md`)** (2026-11-04):
 > - **(1) Saneamento Integral de Código & Qualidade Estrita (Fase 1 - QG1)**:
 >   - Resolução do erro TS2741 em `monthly-closing-editor.test.tsx` com a propriedade `fidelity`;

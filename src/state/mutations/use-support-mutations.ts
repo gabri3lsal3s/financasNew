@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   createSupportTicket,
   updateAdminSupportTicket,
+  markTicketAsRead,
   type CreateSupportTicketInput,
 } from "@/data/repositories/support-tickets";
 import { getErrorMessage } from "@/services/errors";
@@ -41,7 +42,7 @@ export function useCreateSupportTicketMutation() {
 }
 
 /**
- * Hook de mutação administrativa para atualizar status e notas de chamados.
+ * Hook de mutação administrativa para atualizar status, notas e enviar resposta ao usuário.
  */
 export function useUpdateSupportTicketMutation() {
   const queryClient = useQueryClient();
@@ -52,14 +53,20 @@ export function useUpdateSupportTicketMutation() {
       patch,
     }: {
       ticketId: string;
-      patch: { status?: SupportTicketStatus; admin_notes?: string | null };
+      patch: {
+        status?: SupportTicketStatus;
+        admin_notes?: string | null;
+        admin_reply?: string | null;
+      };
     }) => updateAdminSupportTicket(ticketId, patch),
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       void queryClient.invalidateQueries({ queryKey: supportTicketsKey });
       triggerSensory("success");
       pushToast({
-        title: "Chamado atualizado",
-        description: "O status e notas do chamado foram salvos com sucesso.",
+        title: vars.patch.admin_reply ? "Resposta enviada!" : "Chamado atualizado",
+        description: vars.patch.admin_reply
+          ? "Sua resposta foi registrada e ficará disponível para o usuário no app."
+          : "O status e notas do chamado foram salvos com sucesso.",
         variant: "default",
       });
     },
@@ -73,4 +80,27 @@ export function useUpdateSupportTicketMutation() {
     },
   });
 }
+
+/**
+ * Hook de mutação para o usuário marcar um chamado respondido como lido.
+ */
+export function useMarkTicketAsReadMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ticketId: string) => markTicketAsRead(ticketId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: supportTicketsKey });
+      triggerSensory("selection");
+    },
+    onError: (error) => {
+      pushToast({
+        title: "Erro ao marcar como lido",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 

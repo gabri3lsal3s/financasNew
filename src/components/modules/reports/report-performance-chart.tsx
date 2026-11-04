@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { BarChart3, ShieldCheck, TrendingUp, Gauge, Compass } from "lucide-react";
+import { BarChart3, ShieldCheck, TrendingUp, Gauge, Compass, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { formatSignedPct, formatPercent } from "@/services/masks/percent";
@@ -33,10 +33,10 @@ export interface ReportPerformanceChartProps {
 }
 
 const SVG_WIDTH = 560;
-const SVG_HEIGHT = 140;
+const SVG_HEIGHT = 148;
 const PAD_X = 32;
 const PAD_TOP = 20;
-const PAD_BOTTOM = 24;
+const PAD_BOTTOM = 32;
 
 /**
  * Grafico Institucional de Rentabilidade & Analise de Risco (SVG puro).
@@ -64,10 +64,18 @@ export function ReportPerformanceChart({
       return {
         ...p,
         isMtd,
-        monthLabel: isMtd ? `${p.monthLabel}* (MTD)` : p.monthLabel,
+        rawMonthLabel: p.monthLabel,
+        // Mantém label limpo e conciso para não colidir no eixo X do gráfico
+        monthLabel: isMtd ? `${p.monthLabel}*` : p.monthLabel,
       };
     });
   }, [series, activeMonth]);
+
+  const mtdPoint = useMemo(
+    () => displaySeries.find((p) => p.isMtd),
+    [displaySeries],
+  );
+  const hasMtd = Boolean(mtdPoint);
 
   const rates = useMemo(() => displaySeries.map((p) => p.ratePct ?? 0), [displaySeries]);
   const maxAbsRate = useMemo(() => {
@@ -92,8 +100,8 @@ export function ReportPerformanceChart({
   // Rotulo da janela temporal do grafico (ex: "10/25 a 09/26")
   const periodWindowLabel = useMemo(() => {
     if (displaySeries.length === 0) return "";
-    const first = displaySeries[0]?.monthLabel.replace("* (MTD)", "") ?? "";
-    const last = displaySeries[displaySeries.length - 1]?.monthLabel.replace("* (MTD)", "") ?? "";
+    const first = displaySeries[0]?.rawMonthLabel ?? displaySeries[0]?.monthLabel.replace("*", "") ?? "";
+    const last = displaySeries[displaySeries.length - 1]?.rawMonthLabel ?? displaySeries[displaySeries.length - 1]?.monthLabel.replace("*", "") ?? "";
     return `${first} a ${last}`;
   }, [displaySeries]);
 
@@ -241,10 +249,10 @@ export function ReportPerformanceChart({
                   >
                     {formatSignedPct(rate)}
                   </text>
-                  {/* Rotulo do Mes no Eixo X */}
+                  {/* Rotulo do Mes no Eixo X (Alinhado e sem colisão) */}
                   <text
                     x={centerX}
-                    y={SVG_HEIGHT - 6}
+                    y={SVG_HEIGHT - 17}
                     textAnchor="middle"
                     className={cn(
                       "text-[8px] font-mono",
@@ -253,11 +261,47 @@ export function ReportPerformanceChart({
                   >
                     {point.monthLabel}
                   </text>
+                  {/* Indicador MTD em segunda linha exclusiva sem invadir as colunas vizinhas */}
+                  {point.isMtd && (
+                    <g aria-label="Mês corrente parcial (Month to Date)">
+                      <rect
+                        x={centerX - 13}
+                        y={SVG_HEIGHT - 12}
+                        width={26}
+                        height={9}
+                        rx={2}
+                        className="fill-primary/10 stroke-primary/30 stroke-[0.5]"
+                      />
+                      <text
+                        x={centerX}
+                        y={SVG_HEIGHT - 5.5}
+                        textAnchor="middle"
+                        className="text-[6.5px] font-mono font-bold fill-primary tracking-wider"
+                      >
+                        MTD
+                      </text>
+                    </g>
+                  )}
                 </g>
               );
             })}
           </svg>
         </div>
+
+        {/* Footer / Nota Metodológica Explicativa de Competência Parcial (MTD) */}
+        {hasMtd && (
+          <div className="flex items-start gap-2 rounded-lg border border-border/70 bg-surface/50 p-2 text-[8.5px] text-muted-foreground print:bg-transparent">
+            <Info className="size-3.5 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="flex flex-col gap-0.5">
+              <span className="font-semibold text-foreground">
+                * {mtdPoint?.rawMonthLabel ?? mtdPoint?.monthLabel} (MTD — Month to Date): competência corrente parcial em andamento
+              </span>
+              <p className="m-0 leading-relaxed text-muted-foreground/90">
+                Os dados desta barra refletem a posição em tempo real acumulada no mês até a data de emissão do relatório. Por rigor regulatório e metodológico (Padrão CFA & CVM/ANBIMA), o mês incompleto é automaticamente segregado do cálculo da volatilidade anualizada e do Índice de Sharpe para não introduzir distorção estatística de amostragem heterogênea.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* 1. Painel Oficial de Benchmarks com Visao Hibrida */}
         <div className="flex flex-col gap-1.5 pt-1">

@@ -1,7 +1,7 @@
 import { History, Layers, ShieldCheck } from "lucide-react";
 import { Alert, EmptyState, Skeleton, Badge } from "@/components/ui";
 import { useAdminFeatures, useAdminAuditLogs } from "@/state";
-import { FeatureToggleCard } from "../components";
+import { FeatureToggleCard, TelegramSettingsCard } from "../components";
 
 export function SystemTab() {
   const featuresQuery = useAdminFeatures();
@@ -12,7 +12,12 @@ export function SystemTab() {
 
   return (
     <div className="flex flex-col gap-8 w-full min-w-0">
-      {/* --- SEÇÃO 1: FEATURE FLAGS & KILL-SWITCHES --- */}
+      {/* --- SEÇÃO 1: CENTRAL DE ALERTAS & BOT TELEGRAM PROGRAMÁVEL --- */}
+      <section aria-label="Central de Alertas e Bot Telegram">
+        <TelegramSettingsCard />
+      </section>
+
+      {/* --- SEÇÃO 2: FEATURE FLAGS & KILL-SWITCHES --- */}
       <section aria-label="Módulos e Feature Flags" className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2.5">

@@ -23,11 +23,15 @@ import { useMacroIndicators } from "./use-macro-indicators";
 import { fetchHistoricalMonthlyQuotes } from "@/services/quotes";
 import { calculatePointInTimePosition, type PointInTimeResult } from "@/domain/portfolio";
 
+import type { PortfolioAsset } from "@/types";
+
 export interface PortfolioMonthlyPositionState {
   data: PointInTimeResult | null;
   isLoading: boolean;
   isError: boolean;
   isCurrentMonth: boolean;
+  isEnrichingQuotes: boolean;
+  assets: PortfolioAsset[];
   error: unknown;
   refetch: () => void;
 }
@@ -224,6 +228,8 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
       isLoading: currentPos.isLoading,
       isError: Boolean(currentPos.error),
       isCurrentMonth: true,
+      isEnrichingQuotes: false,
+      assets: assetsQuery.data ?? [],
       error: currentPos.error ?? null,
       refetch: () => {
         void currentPos.refetch();
@@ -231,13 +237,14 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
     };
   }
 
+  // Carregamento instantâneo: depende estritamente das queries locais do banco Supabase (<50ms).
+  // A busca de cotações em APIs externas roda de forma 100% não-bloqueante em background.
   const isLoading =
     assetsQuery.isLoading ||
     transactionsQuery.isLoading ||
     dividendsQuery.isLoading ||
     monthlyPricesQuery.isLoading ||
-    snapshotsQuery.isLoading ||
-    isFetchingApiQuotes;
+    snapshotsQuery.isLoading;
 
   const isError =
     assetsQuery.isError ||
@@ -258,6 +265,8 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
     isLoading,
     isError,
     isCurrentMonth: false,
+    isEnrichingQuotes: isFetchingApiQuotes,
+    assets: assetsQuery.data ?? [],
     error,
     refetch: () => {
       void assetsQuery.refetch();

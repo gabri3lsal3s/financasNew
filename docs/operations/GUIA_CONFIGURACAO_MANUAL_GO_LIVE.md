@@ -15,8 +15,10 @@
 6. [Etapa 6: Configuração de E-mails Transacionais no Resend (SMTP)](#6-etapa-6-configuração-de-e-mails-transacionais-no-resend-smtp)
 7. [Etapa 7: Habilitação de Extensões & Cron de Cotações no Supabase](#7-etapa-7-habilitação-de-extensões--cron-de-cotações-no-supabase)
 8. [Etapa 8: Roteiro de Teste Real e Validação do Go-Live](#8-etapa-8-roteiro-de-teste-real-e-validação-do-go-live)
+9. [Etapa 9: Submissão do APK ao Google Play Protect (Lista Branca)](#9-etapa-9-submissão-do-apk-ao-google-play-protect-lista-branca)
 
 ---
+
 
 ## 1. ETAPA 1: AQUISIÇÃO DO DOMÍNIO PRÓPRIO & DNS NA CLOUDFLARE
 
@@ -293,4 +295,44 @@ Antes de divulgar aos primeiros clientes, execute este teste de ponta a ponta:
 
 ---
 
-🎉 **Parabéns!** Cumpridas estas 8 etapas, o **Áxis Finance** estará operando em produção de nível profissional, com segurança bancária, compliance LGPD/CDC e zero pontos únicos de falha.
+## 9. ETAPA 9: SUBMISSÃO DO APK AO GOOGLE PLAY PROTECT (LISTA BRANCA)
+
+Como o aplicativo Áxis distribui uma versão Android Pro de alto desempenho diretamente pelo site (sem passar pela Google Play Store), o serviço **Google Play Protect** e o recurso de segurança **Samsung Bloqueador Automático (Auto Blocker)** podem exibir alertas preventivos para os usuários caso a assinatura ainda não seja conhecida nos servidores do Google.
+
+Para eliminar esse atrito e colocar o aplicativo na lista de permissão (whitelist) do Google:
+
+### 9.1 Gerar os Dados Prontos da Aplicação
+No terminal do projeto, execute o comando automatizado:
+```bash
+npm run playprotect:info
+```
+Este comando extrairá automaticamente a impressão digital criptográfica SHA-256 da sua keystore oficial (`release-key.keystore`), a hash do APK atual e gerará o texto de apelação pronto para envio.
+
+### 9.2 Preencher o Formulário de Apelação do Google
+1. Acesse o portal oficial de apelações do Google Play Protect:  
+   👉 **[https://support.google.com/googleplay/android-developer/contact/protectappeals](https://support.google.com/googleplay/android-developer/contact/protectappeals)**
+2. Preencha os campos com os dados impressos pelo comando:
+   * **Developer Name:** `Gabriel Sales`
+   * **Developer Email:** Seu e-mail de contato / suporte (ex.: seu Gmail de desenvolvedor)
+   * **Application Package Name:** `com.guiafinanceiro.app`
+   * **App Name:** `Áxis — Controle Financeiro`
+   * **Download Link to APK:** `https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk`
+   * **Certificate SHA-256 Fingerprint:** Cole o fingerprint exibido no terminal (`B9:C1:4B:F2:4D:F9:95:0A:84:70:EA:2E:02:6C:BC:2D:84:32:86:FE:6F:0A:30:8F:8B:F3:1D:4A:5C:29:9A:1B`)
+   * **Description / Justification:** Copie e cole o texto em inglês gerado pelo script na Seção 2.
+3. Clique em **Submit**.
+
+### 9.3 O que Esperar do Google
+* O robô de triagem do Google Play Protect realiza a varredura do APK na URL fornecida em um prazo de **48 a 72 horas úteis**.
+* Assim que aprovado, a assinatura digital da sua keystore passa a ser reconhecida pelo ecossistema Android e o Play Protect para de bloquear ou exibir telas de aviso no download.
+* **Nota sobre atualizações futuras:** Como mantemos a mesma keystore criptográfica permanente (`release-key.keystore`), as novas versões compiladas herdam a mesma confiabilidade e atualizam via In-App Updater sem novos bloqueios.
+
+### 9.4 Dica para Aparelhos Samsung Galaxy (One UI 6+)
+Em smartphones Samsung atualizados com Android 14/One UI 6, a fabricante introduziu o recurso **Bloqueador Automático (Auto Blocker)** que bloqueia downloads fora de lojas por padrão.
+* Se um usuário relatar que não consegue abrir o arquivo APK baixado, instrua-o a:
+  1. Abrir **Configurações** do Samsung;
+  2. Acessar **Segurança e Privacidade**;
+  3. Tocar em **Bloqueador Automático** e desativá-lo temporariamente para instalar o app.
+
+---
+
+🎉 **Parabéns!** Cumpridas estas etapas, o **Áxis Finance** estará operando em produção de nível profissional, com segurança bancária, compliance LGPD/CDC e zero pontos únicos de falha.

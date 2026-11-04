@@ -240,6 +240,11 @@ export type { SubscriptionStatus } from "@/types";
 export {
   useCreateSupportTicketMutation,
   useUpdateSupportTicketMutation,
+  useMarkTicketAsReadMutation,
   supportTicketsKey,
 } from "./mutations/use-support-mutations";
-export { useAdminSupportTickets } from "./queries/use-support-tickets";
+export { useAdminSupportTickets, useMySupportTickets } from "./queries/use-support-tickets";
+export { useAdminTelegramSettings, telegramSettingsKey } from "./queries/use-telegram-settings";
+export { useUpdateTelegramSettingsMutation } from "./mutations/use-telegram-mutations";
+export { useFeatureUsageMetrics, analyticsRankingKey } from "./queries/use-analytics-metrics";
+

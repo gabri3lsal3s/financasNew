@@ -139,4 +139,50 @@ describe("PortfolioExecutiveReport — Ausência de Flash e Estado de Carregamen
     retryBtn?.click();
     expect(mockRefetch).toHaveBeenCalled();
   });
+
+  it("calcula retorno de classe internacional com base no custo em BRL sem distorção cambial", () => {
+    mockMonthlyPositionLoading = false;
+    mockMonthlyPositionIsError = false;
+    mockMonthlyPositionData = null;
+
+    const usdRows: PositionRow[] = [
+      {
+        assetId: "voo-1",
+        ticker: "VOO",
+        assetClass: "internacional",
+        quantity: 1,
+        averageCost: 464.41, // em USD
+        totalCost: 464.41,
+        totalCostBRL: 2554.26, // 464.41 * 5.50 em BRL
+        priceQuote: 691.32, // em USD
+        priceBRL: 3802.26,
+        usdRate: 5.50,
+        valueBRL: 3802.26,
+        currency: "USD",
+        source: "manual",
+        pricingMode: "unit_price",
+        pct: 100,
+        unrealizedPnl: 1248.00,
+        unrealizedPct: 48.86,
+        totalReturnPnl: 1248.00,
+        totalReturnPct: 48.86,
+        isCash: false,
+      },
+    ];
+
+    render(
+      <PortfolioExecutiveReport
+        {...defaultProps}
+        rows={usdRows}
+        totalBRL={3802.26}
+      />,
+    );
+
+    // Não deve conter a distorção absurda de 500%+ ou 700%+
+    expect(screen.queryByText(/\+573/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\+718/)).not.toBeInTheDocument();
+
+    // Deve exibir a rentabilidade realista calculada sobre o custo em BRL (+48,9%)
+    expect(screen.getAllByText(/\+48,9%/)[0]).toBeInTheDocument();
+  });
 });

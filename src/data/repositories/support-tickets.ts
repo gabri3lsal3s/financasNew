@@ -40,6 +40,10 @@ export async function createSupportTicket(
     current_route: input.current_route ?? null,
     device_info: input.device_info ?? {},
     admin_notes: null,
+    admin_reply: null,
+    admin_replied_at: null,
+    user_read_at: null,
+    admin_id: null,
   };
 
   const { data, error } = await resolveQuery<SupportTicket>(
@@ -96,19 +100,77 @@ export async function listAdminSupportTickets(
 }
 
 /**
- * Atualiza o status operacional e as notas internas de atendimento de um chamado.
+ * Lista os chamados abertos pelo próprio usuário autenticado.
+ */
+export async function listMySupportTickets(): Promise<SupportTicket[]> {
+  const user_id = await currentUserId();
+  const { data, error } = await resolveQuery<SupportTicket[]>(
+    getSupabase()
+      .from("support_tickets")
+      .select("*")
+      .eq("user_id", user_id)
+      .order("created_at", { ascending: false }),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+
+  return data ?? [];
+}
+
+/**
+ * Marca a resposta de um chamado como lida pelo usuário autenticado.
+ */
+export async function markTicketAsRead(ticketId: string): Promise<SupportTicket> {
+  const user_id = await currentUserId();
+  const { data, error } = await resolveQuery<SupportTicket>(
+    getSupabase()
+      .from("support_tickets")
+      .update({ user_read_at: new Date().toISOString() })
+      .eq("id", ticketId)
+      .eq("user_id", user_id)
+      .select()
+      .single(),
+  );
+
+  if (error || !data) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+
+  return data;
+}
+
+/**
+ * Atualiza o status operacional, as notas internas e opcionalmente envia resposta oficial ao usuário.
  */
 export async function updateAdminSupportTicket(
   ticketId: string,
   patch: {
     status?: SupportTicketStatus;
     admin_notes?: string | null;
+    admin_reply?: string | null;
   },
 ): Promise<SupportTicket> {
+  const updateData: Partial<DbInsert<SupportTicket>> = {
+    ...(patch.status ? { status: patch.status } : {}),
+    ...(patch.admin_notes !== undefined ? { admin_notes: patch.admin_notes } : {}),
+  };
+  if (patch.admin_reply !== undefined) {
+    updateData.admin_reply = patch.admin_reply;
+    if (patch.admin_reply && patch.admin_reply.trim()) {
+      updateData.admin_replied_at = new Date().toISOString();
+      // Reseta o lido caso seja uma nova resposta
+      updateData.user_read_at = null;
+    }
+  }
+
   const { data, error } = await resolveQuery<SupportTicket>(
     getSupabase()
       .from("support_tickets")
-      .update(patch)
+      .update(updateData)
       .eq("id", ticketId)
       .select()
       .single(),
@@ -121,4 +183,5 @@ export async function updateAdminSupportTicket(
 
   return data;
 }
+
 

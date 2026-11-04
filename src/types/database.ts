@@ -31,6 +31,8 @@ import type {
   Recurrence,
   RecurrenceSkip,
   SupportTicket,
+  AdminTelegramSettings,
+  AppAnalyticsEvent,
   SystemFeature,
   UserFeatureOverride,
   UserModulePermission,
@@ -87,6 +89,8 @@ export interface Database {
       cash_checkpoints: Table<CashCheckpoint>;
       audit_events: Table<AuditEvent>;
       support_tickets: Table<SupportTicket>;
+      admin_telegram_settings: Table<AdminTelegramSettings>;
+      app_analytics_events: Table<AppAnalyticsEvent>;
     };
 
     Views: Record<string, never>;

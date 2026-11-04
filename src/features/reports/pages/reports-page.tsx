@@ -1103,6 +1103,7 @@ export function ReportsPage() {
         onOpenChange={setTaxReportOpen}
         assets={assets}
         dividends={dividends}
+        usdRate={usdRate}
       />
 
       <PortfolioDarfMonitor

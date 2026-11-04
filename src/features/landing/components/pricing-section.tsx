@@ -64,7 +64,7 @@ export function PricingSection() {
                     : "border border-transparent"
                 )}
               >
-                Economize 25%
+                Economize 40%
               </Badge>
             </button>
           </div>
@@ -94,7 +94,7 @@ export function PricingSection() {
                 </p>
 
                 <p className="mt-2.5 sm:mt-3 text-xs sm:text-sm text-muted-foreground">
-                  Experimente o poder do Safe-to-Spend e do motor de aportes na prática com seus dados reais.
+                  Experimente o poder do Safe-to-Spend, controle de cartões e rebalanceamento com seus dados reais.
                 </p>
 
                 <div className="mt-6 sm:mt-8 flex flex-col gap-2.5 sm:gap-3.5 text-xs sm:text-sm text-muted-foreground">
@@ -105,6 +105,10 @@ export function PricingSection() {
                   <div className="flex items-center gap-2.5">
                     <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
                     <span>Gestão de múltiplos cartões e parcelamentos</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
+                    <span>Controle de dívidas a pagar e a receber</span>
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
@@ -154,12 +158,12 @@ export function PricingSection() {
 
                 <div className="mt-3 sm:mt-4 flex items-baseline gap-1">
                   <span className="font-mono text-3xl sm:text-4xl font-extrabold text-foreground">
-                    {isAnnual ? "R$ 14,90" : "R$ 19,90"}
+                    {isAnnual ? "R$ 11,99" : "R$ 19,99"}
                   </span>
                   <span className="text-xs sm:text-sm text-muted-foreground">/ mês</span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {isAnnual ? "Cobrado anualmente (R$ 178,80/ano)" : "Cobrado mensalmente"}
+                  {isAnnual ? "Cobrado anualmente (R$ 143,88/ano · 12x de R$ 11,99)" : "Cobrado mensalmente (sem carência)"}
                 </p>
 
                 <p className="mt-2.5 sm:mt-3 text-xs sm:text-sm text-muted-foreground">
@@ -181,6 +185,10 @@ export function PricingSection() {
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
+                    <span><strong>Controle de Dívidas & Cobranças:</strong> a pagar e a receber</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
                     <span><strong>Motor de Rebalanceamento</strong> determinístico de aportes</span>
                   </div>
                   <div className="flex items-center gap-2.5">
@@ -189,7 +197,7 @@ export function PricingSection() {
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span><strong>Acesso Web & PWA Imediato:</strong> celular, tablet e computador</span>
+                    <span><strong>Pagamento no Pix</strong> ou parcelado no cartão</span>
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />

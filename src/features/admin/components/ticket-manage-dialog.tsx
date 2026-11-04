@@ -64,6 +64,7 @@ interface TicketManageFormProps {
 function TicketManageForm({ ticket, onClose, onSuccess }: TicketManageFormProps) {
   const [status, setStatus] = useState<SupportTicketStatus>(ticket.status);
   const [adminNotes, setAdminNotes] = useState(ticket.admin_notes ?? "");
+  const [adminReply, setAdminReply] = useState(ticket.admin_reply ?? "");
   const updateMutation = useUpdateSupportTicketMutation();
 
   const formattedDate = new Date(ticket.created_at).toLocaleDateString("pt-BR", {
@@ -83,6 +84,7 @@ function TicketManageForm({ ticket, onClose, onSuccess }: TicketManageFormProps)
         patch: {
           status,
           admin_notes: adminNotes.trim() || null,
+          admin_reply: adminReply.trim() || null,
         },
       });
 
@@ -185,6 +187,36 @@ function TicketManageForm({ ticket, onClose, onSuccess }: TicketManageFormProps)
 
       {/* Formulário de Gestão do Atendimento */}
       <div className="space-y-4">
+        {/* Resposta Oficial ao Usuário */}
+        <div className="space-y-1.5">
+          <Textarea
+            id="ticket-admin-reply"
+            label="Resposta Oficial ao Usuário (visível no aplicativo para o cliente)"
+            placeholder="Escreva a resposta ou orientação técnica. O usuário receberá um aviso no sininho do app..."
+            value={adminReply}
+            onChange={(e) => setAdminReply(e.target.value)}
+            disabled={isSubmitting}
+            rows={4}
+            className="resize-none"
+          />
+          {ticket.admin_replied_at && (
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
+              <span>
+                Última resposta enviada em:{" "}
+                {new Date(ticket.admin_replied_at).toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+              <Badge variant={ticket.user_read_at ? "muted" : "warning"} size="xs">
+                {ticket.user_read_at ? "Lido pelo usuário" : "Aguardando leitura"}
+              </Badge>
+            </div>
+          )}
+        </div>
+
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-foreground">
             Status do Chamado
@@ -205,11 +237,11 @@ function TicketManageForm({ ticket, onClose, onSuccess }: TicketManageFormProps)
           <Textarea
             id="ticket-admin-notes"
             label="Notas Internas da Equipe (visível apenas para administradores)"
-            placeholder="Registre aqui as providências tomadas, data de contato ou observações técnicas..."
+            placeholder="Registre aqui anotações técnicas, logs ou observações de desenvolvimento..."
             value={adminNotes}
             onChange={(e) => setAdminNotes(e.target.value)}
             disabled={isSubmitting}
-            rows={3}
+            rows={2}
             className="resize-none"
           />
         </div>
@@ -240,7 +272,7 @@ function TicketManageForm({ ticket, onClose, onSuccess }: TicketManageFormProps)
           ) : (
             <>
               <Save className="size-4" aria-hidden="true" />
-              <span>Salvar Alterações</span>
+              <span>Salvar e Enviar</span>
             </>
           )}
         </Button>

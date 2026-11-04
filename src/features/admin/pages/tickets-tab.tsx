@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router";
 import {
   Search,
   HelpCircle,
@@ -39,6 +40,9 @@ const TYPE_CONFIG: Record<
 const EMPTY_TICKETS: SupportTicket[] = [];
 
 export function TicketsTab() {
+  const [searchParams] = useSearchParams();
+  const ticketParam = searchParams.get("ticket");
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("");
@@ -46,6 +50,16 @@ export function TicketsTab() {
 
   const ticketsQuery = useAdminSupportTickets();
   const allTickets = ticketsQuery.data ?? EMPTY_TICKETS;
+
+  // Deep Link: abre automaticamente o chamado vindo do link do Telegram (?ticket=<uuid>)
+  useEffect(() => {
+    if (ticketParam && allTickets.length > 0 && !selectedTicket) {
+      const match = allTickets.find((t) => t.id === ticketParam);
+      if (match) {
+        setSelectedTicket(match);
+      }
+    }
+  }, [ticketParam, allTickets, selectedTicket]);
 
   // Métricas do Topo
   const metrics = useMemo(() => {
@@ -55,6 +69,7 @@ export function TicketsTab() {
     const resolved = allTickets.filter((t) => t.status === "resolved" || t.status === "closed").length;
     return { total, open, inProgress, resolved };
   }, [allTickets]);
+
 
   // Filtragem combinada
   const filteredTickets = useMemo(() => {

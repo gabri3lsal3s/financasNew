@@ -705,7 +705,7 @@ function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
   const planName =
     subscription.plan === "annual" ? "Plano Pro Anual (12 meses)" : "Plano Pro Mensal";
   const planAmount =
-    subscription.plan === "annual" ? "R$\u00a0178,80/ano" : "R$\u00a019,90/mês";
+    subscription.plan === "annual" ? "R$\u00a0143,88/ano" : "R$\u00a019,99/mês";
   const renewDate = subscription.currentPeriodEnd
     ? new Date(subscription.currentPeriodEnd).toLocaleDateString("pt-BR", {
         day: "2-digit",

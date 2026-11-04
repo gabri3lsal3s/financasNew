@@ -123,7 +123,7 @@ export function PortfolioExecutiveReport({
       totalCostBRL: p.totalCostBRL,
       priceQuote: p.priceQuote ?? p.priceBRL,
       priceBRL: p.priceBRL,
-      usdRate: 1,
+      usdRate: p.currency === "USD" && p.priceQuote && p.priceQuote > 0 ? p.priceBRL / p.priceQuote : 1,
       valueBRL: p.valueBRL,
       pct: pit.totalValueBRL > 0 ? (p.valueBRL / pit.totalValueBRL) * 100 : 0,
       source: (p.quoteSource ?? "manual") as import("@/components/modules/position-table").PositionRow["source"],
@@ -222,28 +222,72 @@ export function PortfolioExecutiveReport({
     return Array.from(map.entries())
       .map(([className, items]) => {
         const subtotalBRL = items.reduce((acc, i) => acc + i.valueBRL, 0);
-        const totalCostGroup = items.reduce((acc, i) => acc + i.quantity * i.averageCost, 0);
-        const pnlPct = totalCostGroup > 0 ? ((subtotalBRL - totalCostGroup) / totalCostGroup) * 100 : 0;
+        const totalCostBRLGroup = items.reduce((acc, i) => {
+          const itemCostBRL =
+            i.totalCostBRL !== undefined && i.totalCostBRL !== null && i.totalCostBRL > 0
+              ? i.totalCostBRL
+              : i.currency === "USD"
+                ? i.quantity * i.averageCost * (i.usdRate ?? 1)
+                : i.quantity * i.averageCost;
+          return acc + Math.max(0, itemCostBRL);
+        }, 0);
+        const totalDividendsBRLGroup = items.reduce((acc, i) => acc + (i.dividends ?? 0), 0);
+        const totalReturnPnlBRLGroup = items.reduce((acc, i) => {
+          const itemCostBRL =
+            i.totalCostBRL !== undefined && i.totalCostBRL !== null && i.totalCostBRL > 0
+              ? i.totalCostBRL
+              : i.currency === "USD"
+                ? i.quantity * i.averageCost * (i.usdRate ?? 1)
+                : i.quantity * i.averageCost;
+          const pnl =
+            i.totalReturnPnl !== undefined && i.totalReturnPnl !== null
+              ? i.totalReturnPnl
+              : (i.valueBRL - itemCostBRL) + (i.dividends ?? 0);
+          return acc + pnl;
+        }, 0);
+
+        // Retorno Total % consolidado da classe sobre o custo em BRL
+        const classTotalReturnPct =
+          totalCostBRLGroup > 0 ? (totalReturnPnlBRLGroup / totalCostBRLGroup) * 100 : 0;
 
         return {
           className,
           totalCents: numberToCents(subtotalBRL),
+          totalCostCents: numberToCents(totalCostBRLGroup),
+          totalDividendsCents: numberToCents(totalDividendsBRLGroup),
           sharePct: effectiveTotalBRL > 0 ? (subtotalBRL / effectiveTotalBRL) * 100 : 0,
-          pnlPct,
-          items: items.map((i) => ({
-            ticker: i.ticker,
-            sector: i.sector,
-            quantity: i.quantity,
-            avgPriceCents: numberToCents(i.averageCost),
-            currentPriceCents: numberToCents(i.priceQuote || i.priceBRL),
-            totalCents: numberToCents(i.valueBRL),
-            pnlPct: (i.totalReturnPct ?? i.unrealizedPct) ?? 0,
-            currency: i.currency,
-            indexType: i.fixedIncomeMetadata
-              ? formatFixedIncomeRateLabel(i.fixedIncomeMetadata)
-              : null,
-            maturityDate: i.fixedIncomeMetadata?.maturity_date ?? i.maturityDate ?? null,
-          })),
+          pnlPct: classTotalReturnPct,
+          items: items.map((i) => {
+            const isUsd = i.currency === "USD";
+            const quoteOrPrice = i.priceQuote || i.priceBRL;
+            // Para ativos em USD: Var. Cota é na moeda original USD (conforme legenda e padrão de mercado)
+            const nativePriceVarPct =
+              isUsd && i.averageCost > 0 && quoteOrPrice > 0
+                ? ((quoteOrPrice - i.averageCost) / i.averageCost) * 100
+                : (i.unrealizedPct ?? 0);
+
+            const itemTotalReturnPct =
+              i.totalReturnPct !== undefined && i.totalReturnPct !== null
+                ? i.totalReturnPct
+                : (i.unrealizedPct ?? 0);
+
+            return {
+              ticker: i.ticker,
+              sector: i.sector,
+              quantity: i.quantity,
+              avgPriceCents: numberToCents(i.averageCost),
+              currentPriceCents: numberToCents(quoteOrPrice),
+              totalCents: numberToCents(i.valueBRL),
+              pricePnlPct: nativePriceVarPct,
+              pnlPct: itemTotalReturnPct,
+              dividendsCents: numberToCents(i.dividends ?? 0),
+              currency: i.currency,
+              indexType: i.fixedIncomeMetadata
+                ? formatFixedIncomeRateLabel(i.fixedIncomeMetadata)
+                : null,
+              maturityDate: i.fixedIncomeMetadata?.maturity_date ?? i.maturityDate ?? null,
+            };
+          }),
         };
       })
       .sort((a, b) => b.totalCents - a.totalCents);

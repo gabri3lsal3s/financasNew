@@ -9,8 +9,8 @@ describe("shouldReusePendingPixCharge — Reúso Inteligente de Pix Pendente", (
     const createdAtMillis = now - 30 * 60 * 1000; // 30 minutos atrás
     const canReuse = shouldReusePendingPixCharge({
       paymentStatus: "PENDING",
-      paymentValue: 178.8,
-      expectedValue: 178.8,
+      paymentValue: 143.88,
+      expectedValue: 143.88,
       createdAtMillis,
       nowMillis: now,
     });
@@ -21,8 +21,8 @@ describe("shouldReusePendingPixCharge — Reúso Inteligente de Pix Pendente", (
     const createdAtMillis = now - (ONE_HOUR_MS + 1000); // 1 hora e 1 segundo atrás
     const canReuse = shouldReusePendingPixCharge({
       paymentStatus: "PENDING",
-      paymentValue: 178.8,
-      expectedValue: 178.8,
+      paymentValue: 143.88,
+      expectedValue: 143.88,
       createdAtMillis,
       nowMillis: now,
     });
@@ -34,8 +34,8 @@ describe("shouldReusePendingPixCharge — Reúso Inteligente de Pix Pendente", (
     expect(
       shouldReusePendingPixCharge({
         paymentStatus: "CONFIRMED",
-        paymentValue: 178.8,
-        expectedValue: 178.8,
+        paymentValue: 143.88,
+        expectedValue: 143.88,
         createdAtMillis,
         nowMillis: now,
       }),
@@ -44,8 +44,8 @@ describe("shouldReusePendingPixCharge — Reúso Inteligente de Pix Pendente", (
     expect(
       shouldReusePendingPixCharge({
         paymentStatus: "RECEIVED",
-        paymentValue: 178.8,
-        expectedValue: 178.8,
+        paymentValue: 143.88,
+        expectedValue: 143.88,
         createdAtMillis,
         nowMillis: now,
       }),
@@ -54,8 +54,8 @@ describe("shouldReusePendingPixCharge — Reúso Inteligente de Pix Pendente", (
     expect(
       shouldReusePendingPixCharge({
         paymentStatus: "OVERDUE",
-        paymentValue: 178.8,
-        expectedValue: 178.8,
+        paymentValue: 143.88,
+        expectedValue: 143.88,
         createdAtMillis,
         nowMillis: now,
       }),
@@ -67,7 +67,7 @@ describe("shouldReusePendingPixCharge — Reúso Inteligente de Pix Pendente", (
     const canReuse = shouldReusePendingPixCharge({
       paymentStatus: "PENDING",
       paymentValue: 99.0, // valor diferente
-      expectedValue: 178.8,
+      expectedValue: 143.88,
       createdAtMillis,
       nowMillis: now,
     });
@@ -78,8 +78,8 @@ describe("shouldReusePendingPixCharge — Reúso Inteligente de Pix Pendente", (
     const createdAtMillis = now + 5000;
     const canReuse = shouldReusePendingPixCharge({
       paymentStatus: "PENDING",
-      paymentValue: 178.8,
-      expectedValue: 178.8,
+      paymentValue: 143.88,
+      expectedValue: 143.88,
       createdAtMillis,
       nowMillis: now,
     });

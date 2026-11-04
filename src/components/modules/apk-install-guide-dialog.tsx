@@ -52,9 +52,10 @@ const APK_INSTALL_STEPS = [
     title: "Verificação e Conclusão",
     badge: "100% Verificado",
     description:
-      "Caso o Google Play Protect exiba uma mensagem de verificação, selecione 'Mais detalhes' e em seguida 'Instalar assim mesmo'. Nosso APK é assinado criptograficamente.",
+      "Caso o Google Play Protect exiba uma mensagem de verificação, selecione 'Mais detalhes' e em seguida 'Instalar assim mesmo'. Em aparelhos Samsung Galaxy com One UI 6+, se o botão estiver bloqueado, desative temporariamente o 'Bloqueador Automático' em Configurações > Segurança.",
   },
 ] as const;
+
 
 /**
  * Diálogo interativo de orientação passo a passo para instalação do APK Beta do Android.

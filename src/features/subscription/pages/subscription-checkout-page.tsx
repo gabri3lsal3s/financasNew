@@ -48,15 +48,15 @@ const PLAN_LABELS: Record<
 > = {
   monthly: {
     label: PLAN_CONFIGS.monthly.title,
-    price: "R$\u00a019,90",
-    monthly: "R$\u00a019,90/mês",
+    price: "R$\u00a019,99",
+    monthly: "R$\u00a019,99/mês",
     detail: PLAN_CONFIGS.monthly.description,
     badge: PLAN_CONFIGS.monthly.badge,
   },
   annual: {
     label: PLAN_CONFIGS.annual.title,
-    price: "R$\u00a0178,80",
-    monthly: "R$\u00a014,90/mês",
+    price: "R$\u00a0143,88",
+    monthly: "R$\u00a011,99/mês",
     detail: PLAN_CONFIGS.annual.description,
     badge: PLAN_CONFIGS.annual.badge,
   },
@@ -66,6 +66,7 @@ const BENEFITS = [
   "Lançamentos e escritas ilimitados",
   "Histórico vitalício preservado",
   "Multi-Cartões + Parcelamentos em até 60x",
+  "Dívidas e cobranças a pagar e a receber",
   "Motor de Rebalanceamento de Aportes",
   "Radar Fiscal IR e DARF",
   "Dossiê Executivo Excel (.xlsx)",
@@ -902,7 +903,7 @@ export function SubscriptionCheckoutPage() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-foreground">
-                    PIX Anual com 25% OFF
+                    PIX Anual com 40% OFF
                   </p>
                   <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
                     Ao confirmar, geramos o QR Code dinâmico oficial do Banco Central.
@@ -910,7 +911,7 @@ export function SubscriptionCheckoutPage() {
                   </p>
                 </div>
                 <Badge variant="positive" size="sm">
-                  R$&nbsp;178,80 à vista
+                  R$&nbsp;143,88 à vista
                 </Badge>
               </div>
             )}

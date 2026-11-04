@@ -146,7 +146,20 @@ Ao disponibilizar o APK fora da Play Store, alguns usuários leigos podem ter d�
 > **Resposta sugerida:**  
 > *"Não! Como o aplicativo é atualizado por cima (in-place) com a mesma assinatura digital criptográfica, o Android preserva integralmente todos os seus dados locais, sessão ativa de login e permissões já concedidas (acesso a notificações bancárias, lembretes de faturas e segundo plano). Tudo continua funcionando imediatamente sem precisar reconfigurar."*
 
+### Dúvida 5: "O Samsung bloqueou a instalação dizendo 'Bloqueador Automático ativado'."
+> **Resposta sugerida:**  
+> *"Nos aparelhos Samsung com Android 14 (One UI 6+), a fabricante introduziu um recurso que trava qualquer arquivo baixado fora de lojas. Para liberar a instalação: abra as **Configurações** do seu Galaxy, vá em **Segurança e Privacidade**, toque em **Bloqueador Automático** e desative-o temporariamente."*
+
 ---
+
+## 6.1 WHITELIST NO GOOGLE PLAY PROTECT
+Para prevenir que o Google Play Protect mostre avisos de "App não reconhecido" para os usuários, o desenvolvedor deve submeter o APK e a assinatura digital ao formulário oficial:
+1. Execute `npm run playprotect:info` para extrair a fingerprint SHA-256 e o dossiê pré-formatado;
+2. Envie o formulário em [Google Play Protect Appeals](https://support.google.com/googleplay/android-developer/contact/protectappeals);
+3. Em 48–72h úteis a assinatura é cadastrada na whitelist e os alertas deixam de aparecer.
+
+---
+
 
 ## 7. CHECKLIST ANTES DE LANÇAR UMA NOVA VERSÃO
 

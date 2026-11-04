@@ -31,7 +31,9 @@
     "cap:open": "cap open android",
     "cap:build": "npm run build && cap sync android",
     "build:apk": "./scripts/build-apk.sh",
-    "upload:apk": "node scripts/upload-r2.mjs"
+    "upload:apk": "node scripts/upload-r2.mjs",
+    "playprotect:info": "tsx scripts/generate-play-protect-appeal.ts",
+    "telegram:notify": "tsx scripts/notify-telegram.ts"
   },
   "dependencies": {
     "@aparajita/capacitor-biometric-auth": "^10.0.0",

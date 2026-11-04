@@ -9,21 +9,21 @@ import {
 describe("Domain: Plans & Pricing", () => {
   it("fornece configurações corretas para Plano Pro Mensal e Anual", () => {
     const monthly = getPlanDetails("monthly");
-    expect(monthly.priceCents).toBe(1990);
-    expect(monthly.monthlyEquivalentCents).toBe(1990);
+    expect(monthly.priceCents).toBe(1999);
+    expect(monthly.monthlyEquivalentCents).toBe(1999);
     expect(monthly.intervalMonths).toBe(1);
 
     const annual = getPlanDetails("annual");
-    expect(annual.priceCents).toBe(17880);
-    expect(annual.monthlyEquivalentCents).toBe(1490);
+    expect(annual.priceCents).toBe(14388);
+    expect(annual.monthlyEquivalentCents).toBe(1199);
     expect(annual.intervalMonths).toBe(12);
-    expect(annual.discountPercentage).toBe(25);
+    expect(annual.discountPercentage).toBe(40);
   });
 
-  it("calcula economia anual de R$ 60,00 (6000 centavos) com precisão", () => {
-    // (19,90 * 12) - 178,80 = 238,80 - 178,80 = 60,00
+  it("calcula economia anual de R$ 96,00 (9600 centavos) com precisão", () => {
+    // (19,99 * 12) - 143,88 = 239,88 - 143,88 = 96,00
     const savings = calculateAnnualSavingsCents();
-    expect(savings).toBe(6000);
+    expect(savings).toBe(9600);
   });
 });
 
@@ -67,7 +67,7 @@ describe("Domain: CDC & Cancellation Refund Rules", () => {
       currentDate: cancelAt,
     });
     expect(monthlyRefund.eligibleForRefund).toBe(true);
-    expect(monthlyRefund.refundAmountCents).toBe(1990);
+    expect(monthlyRefund.refundAmountCents).toBe(1999);
     expect(monthlyRefund.isCdcArrependimento).toBe(true);
 
     // Plano Anual
@@ -77,7 +77,7 @@ describe("Domain: CDC & Cancellation Refund Rules", () => {
       currentDate: cancelAt,
     });
     expect(annualRefund.eligibleForRefund).toBe(true);
-    expect(annualRefund.refundAmountCents).toBe(17880);
+    expect(annualRefund.refundAmountCents).toBe(14388);
     expect(annualRefund.isCdcArrependimento).toBe(true);
   });
 
@@ -111,8 +111,8 @@ describe("Domain: CDC & Cancellation Refund Rules", () => {
     expect(refund.isCdcArrependimento).toBe(false);
     expect(refund.monthsUsed).toBe(3);
     expect(refund.monthsRemaining).toBe(9);
-    // Preço por mês: Math.floor(17880 / 12) = 1490. 1490 * 9 = 13410 centavos
-    expect(refund.refundAmountCents).toBe(1490 * 9);
+    // Preço por mês: Math.floor(14388 / 12) = 1199. 1199 * 9 = 10791 centavos
+    expect(refund.refundAmountCents).toBe(1199 * 9);
   });
 
   it("retorna zero de reembolso quando todo o ciclo anual de 12 meses foi usufruído", () => {

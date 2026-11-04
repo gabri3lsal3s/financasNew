@@ -83,8 +83,8 @@ describe("TermsPage (Contrato 1: Termos de Serviço SaaS)", () => {
       }),
     ).toBeInTheDocument();
 
-    expect(scope.getByText(/R\$ 19,90 por mês/i)).toBeInTheDocument();
-    expect(scope.getByText(/R\$ 178,80 por ano/i)).toBeInTheDocument();
+    expect(scope.getByText(/R\$ 19,99 por mês/i)).toBeInTheDocument();
+    expect(scope.getByText(/R\$ 143,88 por ano/i)).toBeInTheDocument();
   });
 
   it("materializa a Cláusula Quinta com o Direito de Arrependimento de 7 dias e estorno integral (CDC Art. 49)", () => {

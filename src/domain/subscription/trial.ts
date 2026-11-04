@@ -1,4 +1,5 @@
 import type { SubscriptionPlan, SubscriptionTier } from "@/types";
+import { PLAN_CONFIGS } from "./plans";
 
 export interface TrialResidualResult {
   /** Quantidade inteira de dias restantes de teste (0 quando expirado). */
@@ -30,8 +31,8 @@ export const STANDARD_TRIAL_DAYS = 30;
  * Preços canônicos em centavos.
  */
 export const PLAN_PRICES_CENTS: Record<SubscriptionPlan, number> = {
-  monthly: 1990, // R$ 19,90
-  annual: 17880, // R$ 178,80
+  monthly: PLAN_CONFIGS.monthly.priceCents, // R$ 19,99
+  annual: PLAN_CONFIGS.annual.priceCents, // R$ 143,88
 };
 
 /**

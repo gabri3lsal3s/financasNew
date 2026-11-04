@@ -31,7 +31,7 @@ A gestão financeira pessoal opera em ciclos mensais (recebimento de salário, p
                            ▼                               ▼
        ┌──────────────────────────────────────┐  ┌──────────────────────────────────────┐
        │             PLANO PRO                │  │        MODO SOMENTE-LEITURA          │
-       │    (Mensal R$ 19,90 ou Anual R$ 14,90) │  │          (R$ 0 para sempre)          │
+       │    (Mensal R$ 19,99 ou Anual R$ 11,99) │  │          (R$ 0 para sempre)          │
        │  • Gestão e escritas ativas contínuas│  │  • Consulta de todo histórico salvo  │
        │  • Lançamentos e parcelamentos 60x   │  │  • Visualização de faturas e saldos  │
        │  • Rebalanceamento de Investimentos  │  │  • Zero perda de dados cadastrados   │
@@ -68,8 +68,8 @@ A gestão financeira pessoal opera em ciclos mensais (recebimento de salário, p
 
 ## 4. ESTRUTURA DE PREÇOS & ANCORAGEM
 
-- **Plano Pro Mensal:** `R$ 19,90 / mês` (Flexibilidade total, sem fidelidade, cancelamento a qualquer momento em 1 clique).
-- **Plano Pro Anual (Âncora Principal):** `R$ 14,90 / mês` (`R$ 178,80 faturado anualmente em 1x ou parcelado`, com **25% de desconto** em relação ao mensal).
+- **Plano Pro Mensal:** `R$ 19,99 / mês` (Flexibilidade total, sem fidelidade, cancelamento a qualquer momento em 1 clique).
+- **Plano Pro Anual (Âncora Principal):** `R$ 11,99 / mês` (`R$ 143,88 faturado anualmente em 1x no Pix ou parcelado em 12x no cartão`, com **40% de desconto** em relação ao mensal).
 
 ---
 

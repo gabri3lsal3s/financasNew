@@ -30,18 +30,18 @@ export function HeroEditorial() {
           {/* Badge de Destaque */}
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-semibold text-primary transition-all duration-200">
             <Sparkles className="size-3.5 sm:size-4" aria-hidden="true" />
-            <span>Engenharia Financeira · Gastos, Faturas e Aportes sem Planilhas</span>
+            <span>Controle Financeiro Real · Faturas, Cobranças e Aportes sem Planilhas</span>
           </div>
 
           {/* Headline Principal Editorial Ampliada */}
           <h1 className="mt-5 sm:mt-8 max-w-4xl font-display text-3xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-foreground leading-[1.15] md:leading-[1.1]">
-            Do controle de gastos ao aporte do mês.{" "}
+            Do controle de cartões e fiados ao aporte do mês.{" "}
             <span className="text-primary-strong">Saiba quanto gastar hoje e onde investir o que sobrar.</span>
           </h1>
 
           {/* Subtítulo Rico e Persuasivo com Tipografia Editorial */}
           <p className="mt-4 sm:mt-6 max-w-3xl text-sm sm:text-lg lg:text-xl text-muted-foreground leading-relaxed font-normal">
-            Elimine planilhas frágeis e o susto de faturas futuras. O Áxis calcula seu caixa real diário e distribui seus aportes com rigor matemático, rebalanceando sua carteira sem vender posições.
+            Elimine o susto das faturas futuras e a bagunça do caderninho. O Áxis calcula seu caixa real diário, acompanha o que você deve e tem a receber, e distribui seus aportes com rigor matemático sem vender posições.
           </p>
 
           {/* CTAs de Conversão com Shimmer Reflexivo e Altura Confortável */}

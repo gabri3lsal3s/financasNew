@@ -298,7 +298,12 @@ export function WealthTearSheetModal({
       .map(([assetClass, items]) => {
         const subtotalBRL = items.reduce((acc, i) => acc + i.valueBRL, 0);
         const subtotalCostBRL = items.reduce((acc, i) => {
-          const cost = i.totalCostBRL ?? (i.averagePrice * i.quantity);
+          const cost =
+            i.totalCostBRL !== undefined && i.totalCostBRL !== null && i.totalCostBRL > 0
+              ? i.totalCostBRL
+              : i.currency === "USD"
+                ? i.valueBRL - i.unrealizedPnlBRL
+                : i.averagePrice * i.quantity;
           return acc + Math.max(0, cost);
         }, 0);
         const subtotalPnlBRL = items.reduce((acc, i) => acc + i.unrealizedPnlBRL, 0);
@@ -729,20 +734,28 @@ export function WealthTearSheetModal({
               totalDividendsCents: numberToCents(group.subtotalDividendsBRL),
               topAssetTicker: group.topAssetTicker,
               topAssetSharePct: group.topAssetSharePct,
-              items: group.items.map((r) => ({
-                ticker: r.ticker,
-                name: r.name,
-                sector: r.sector,
-                quantity: r.quantity,
-                avgPriceCents: numberToCents(r.averagePrice),
-                currentPriceCents: numberToCents(r.currentPrice),
-                totalCents: numberToCents(r.valueBRL),
-                pricePnlPct: r.unrealizedPnlPct,
-                pnlPct: r.totalReturnPct !== undefined ? r.totalReturnPct : r.unrealizedPnlPct,
-                dividendsCents: numberToCents(r.dividendsBRL ?? r.yearDividendsBRL ?? 0),
-                yocPct: r.yocPct,
-                currency: r.currency,
-              })),
+              items: group.items.map((r) => {
+                const isUsd = r.currency === "USD";
+                const nativePriceVarPct =
+                  isUsd && r.averagePrice > 0 && r.currentPrice > 0
+                    ? ((r.currentPrice - r.averagePrice) / r.averagePrice) * 100
+                    : r.unrealizedPnlPct;
+
+                return {
+                  ticker: r.ticker,
+                  name: r.name,
+                  sector: r.sector,
+                  quantity: r.quantity,
+                  avgPriceCents: numberToCents(r.averagePrice),
+                  currentPriceCents: numberToCents(r.currentPrice),
+                  totalCents: numberToCents(r.valueBRL),
+                  pricePnlPct: nativePriceVarPct,
+                  pnlPct: r.totalReturnPct !== undefined ? r.totalReturnPct : r.unrealizedPnlPct,
+                  dividendsCents: numberToCents(r.dividendsBRL ?? r.yearDividendsBRL ?? 0),
+                  yocPct: r.yocPct,
+                  currency: r.currency,
+                };
+              }),
             };
           })}
         />

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { AlertTriangle, ArrowDownLeft, Bell, Check, CheckCheck, CreditCard, ExternalLink, HandCoins, Sparkles, X } from "lucide-react";
+import { AlertTriangle, ArrowDownLeft, Bell, Check, CheckCheck, CreditCard, ExternalLink, HandCoins, LifeBuoy, Sparkles, X } from "lucide-react";
 import {
   Badge,
   Button,
@@ -10,7 +10,7 @@ import {
   PopoverTrigger,
   Skeleton,
 } from "@/components/ui";
-import { useOnboardingCounts, useReminders, useSetReminderState, useMarkAllRemindersAsRead } from "@/state";
+import { useOnboardingCounts, useReminders, useSetReminderState, useMarkAllRemindersAsRead, useMySupportTickets } from "@/state";
 import { useOnboardingDismissed } from "@/hooks";
 import { shouldShowOnboardingBanner, coreOnboardingProgress } from "@/domain/onboarding";
 import type { ReminderItem, ReminderStatus } from "@/domain/reminders";
@@ -54,6 +54,12 @@ export function NotificationsPopover({
   const { isDismissed, dismiss } = useOnboardingDismissed();
   const setReminderStateMutation = useSetReminderState();
   const markAllMutation = useMarkAllRemindersAsRead();
+  const myTicketsQuery = useMySupportTickets();
+
+  // Chamados respondidos pelo suporte que ainda não foram lidos pelo usuário
+  const unreadSupportTickets = (myTicketsQuery.data ?? []).filter(
+    (t) => Boolean(t.admin_reply) && !t.user_read_at,
+  );
 
   const advisorHook = useSmartAdvisorInsights({ enabled: propAdvisorAlerts === undefined });
   const advisorAlerts =
@@ -65,7 +71,8 @@ export function NotificationsPopover({
     !isDismissed && onboardingQuery?.data ? shouldShowOnboardingBanner(onboardingQuery.data) : false;
   const onboardingProg = onboardingQuery?.data ? coreOnboardingProgress(onboardingQuery.data) : { done: 0, total: 4 };
 
-  const effectiveTotalCount = totalCount + (showOnboarding ? 1 : 0) + advisorAlerts.length;
+  const effectiveTotalCount =
+    totalCount + (showOnboarding ? 1 : 0) + advisorAlerts.length + unreadSupportTickets.length;
   const hasUrgent = urgentCount > 0 || advisorAlerts.some((i) => i.priority === 1);
 
   const handleOpenItem = (item: ReminderItem) => {
@@ -238,7 +245,7 @@ export function NotificationsPopover({
               <Skeleton className="h-14 w-full rounded-xl" />
               <Skeleton className="h-14 w-full rounded-xl" />
             </div>
-          ) : items.length === 0 && !showOnboarding && advisorAlerts.length === 0 ? (
+          ) : items.length === 0 && !showOnboarding && advisorAlerts.length === 0 && unreadSupportTickets.length === 0 ? (
             <div className="py-2 px-4">
               <EmptyState
                 icon={<Bell className="size-5" aria-hidden="true" />}
@@ -250,6 +257,46 @@ export function NotificationsPopover({
             </div>
           ) : (
             <>
+              {/* Respostas do Suporte Pendentes de Leitura */}
+              {unreadSupportTickets.map((st) => (
+                <div
+                  key={st.id}
+                  onClick={() => {
+                    triggerSensory("action");
+                    onOpenChange?.(false);
+                    navigate("/settings?tab=support");
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      triggerSensory("action");
+                      onOpenChange?.(false);
+                      navigate("/settings?tab=support");
+                    }
+                  }}
+                  className="group flex items-start gap-3 p-3 text-left transition-colors hover:bg-surface-hover rounded-xl cursor-pointer bg-primary/5 border border-primary/20 mb-1"
+                >
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary mt-0.5">
+                    <LifeBuoy className="size-4" aria-hidden="true" />
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-semibold text-foreground truncate">
+                        Resposta do Suporte Áxis
+                      </span>
+                      <Badge variant="warning" size="xs">
+                        Novo
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                      {st.admin_reply}
+                    </p>
+                  </div>
+                </div>
+              ))}
+
               {showOnboarding && (
                 <div
                   onClick={handleOpenOnboarding}

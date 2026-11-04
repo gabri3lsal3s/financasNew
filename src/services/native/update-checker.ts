@@ -154,10 +154,48 @@ export async function checkAppUpdate(options?: CheckUpdateOptions): Promise<AppU
 }
 
 /**
+ * Verifica se o aplicativo possui autorização do sistema operacional
+ * para instalar pacotes APK (REQUEST_INSTALL_PACKAGES / Fontes Desconhecidas).
+ */
+export async function canInstallPackages(): Promise<boolean> {
+  if (!isNativePlatform()) {
+    return true;
+  }
+  try {
+    const res = await AppUpdatePlugin.canRequestPackageInstalls();
+    return res.canInstall;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Abre a tela nativa do Android para que o usuário autorize a instalação
+ * de atualizações por dentro do aplicativo Áxis.
+ */
+export async function openInstallPermissionSettings(): Promise<void> {
+  if (isNativePlatform()) {
+    try {
+      await AppUpdatePlugin.openInstallPermissionSettings();
+    } catch {
+      // Fallback gracioso
+    }
+  }
+}
+
+/**
  * Dispara o download e instalação da atualização.
  */
 export async function triggerAppUpdate(manifest: AppVersionManifest): Promise<void> {
   if (isNativePlatform()) {
+    const canInstall = await canInstallPackages();
+    if (!canInstall) {
+      await openInstallPermissionSettings();
+      throw new Error(
+        "Permissão necessária: ative 'Permitir desta fonte' para o Áxis nas configurações e toque em Atualizar novamente.",
+      );
+    }
+
     // Normaliza URL se for relativa
     let fullUrl = manifest.apkUrl;
     if (fullUrl.startsWith("/")) {
