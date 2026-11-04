@@ -49,6 +49,7 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
   // Cotações buscadas via API sob demanda para tickers sem registro salvo
   const [apiQuotesMap, setApiQuotesMap] = useState<Record<string, number>>({});
   const [isFetchingApiQuotes, setIsFetchingApiQuotes] = useState(false);
+  const attemptedKeysRef = useState(() => new Set<string>())[0];
 
   useEffect(() => {
     if (isCurrent || assetsQuery.isLoading || !assetsQuery.data) return;
@@ -57,45 +58,59 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
     const savedPrices = monthlyPricesQuery.data ?? [];
     const savedTickerSet = new Set(savedPrices.map((p) => p.ticker.toUpperCase().trim()));
 
-    // Tickers elegíveis que ainda não têm cotação salva
+    // Tickers elegíveis que ainda não têm cotação salva e nunca foram consultados para este mês
     const missingTickers = assets
       .map((a) => a.ticker.toUpperCase().trim())
-      .filter(
-        (ticker) =>
-          ticker &&
-          ticker !== "CAIXA" &&
-          ticker !== "CASH" &&
-          !savedTickerSet.has(ticker) &&
-          apiQuotesMap[ticker] === undefined,
-      );
+      .filter((ticker) => {
+        if (!ticker || ticker === "CAIXA" || ticker === "CASH") return false;
+        if (savedTickerSet.has(ticker)) return false;
+        const cacheKey = `${month}:${ticker}`;
+        return !attemptedKeysRef.has(cacheKey);
+      });
 
     if (missingTickers.length === 0) return;
+
+    // Registra imediatamente como consultados para prevenir qualquer re-disparo
+    for (const ticker of missingTickers) {
+      attemptedKeysRef.add(`${month}:${ticker}`);
+    }
 
     let isMounted = true;
     queueMicrotask(() => {
       if (isMounted) setIsFetchingApiQuotes(true);
     });
 
+    // Safety timeout: descongela a UI em no máximo 3.5s caso a API externa/rede demore
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setIsFetchingApiQuotes(false);
+    }, 3500);
+
     fetchHistoricalMonthlyQuotes(missingTickers, month)
       .then((quotes) => {
         if (!isMounted) return;
-        const newMap: Record<string, number> = {};
-        for (const q of quotes) {
-          if (q.price > 0) {
-            newMap[q.ticker] = q.price;
+        if (quotes.length > 0) {
+          const newMap: Record<string, number> = {};
+          for (const q of quotes) {
+            if (q.price > 0) {
+              newMap[q.ticker] = q.price;
+            }
+          }
+          if (Object.keys(newMap).length > 0) {
+            setApiQuotesMap((prev) => ({ ...prev, ...newMap }));
           }
         }
-        setApiQuotesMap((prev) => ({ ...prev, ...newMap }));
       })
       .catch(() => undefined)
       .finally(() => {
+        clearTimeout(safetyTimer);
         if (isMounted) setIsFetchingApiQuotes(false);
       });
 
     return () => {
       isMounted = false;
+      clearTimeout(safetyTimer);
     };
-  }, [isCurrent, month, assetsQuery.data, assetsQuery.isLoading, monthlyPricesQuery.data, apiQuotesMap]);
+  }, [isCurrent, month, assetsQuery.data, assetsQuery.isLoading, monthlyPricesQuery.data, attemptedKeysRef]);
 
   // Execução do motor puro de Ponto-no-Tempo
   const historicalResult = useMemo<PointInTimeResult | null>(() => {

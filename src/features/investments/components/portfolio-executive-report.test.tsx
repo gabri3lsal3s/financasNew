@@ -4,13 +4,16 @@ import { PortfolioExecutiveReport } from "./portfolio-executive-report";
 import type { PositionRow } from "@/components/modules/position-table";
 
 let mockMonthlyPositionLoading = false;
+let mockMonthlyPositionIsError = false;
 let mockMonthlyPositionData: unknown = null;
+const mockRefetch = vi.fn();
 
 vi.mock("@/state", () => ({
   usePortfolioMonthlyPosition: () => ({
     data: mockMonthlyPositionData,
     isLoading: mockMonthlyPositionLoading,
-    refetch: vi.fn(),
+    isError: mockMonthlyPositionIsError,
+    refetch: mockRefetch,
   }),
   usePortfolioSnapshots: () => ({
     data: [
@@ -111,5 +114,29 @@ describe("PortfolioExecutiveReport — Ausência de Flash e Estado de Carregamen
       screen.getAllByText(/Esta competência possui apenas registro consolidado de saldo patrimonial/)[0],
     ).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Conferir & Calibrar Fechamento/i })[0]).toBeInTheDocument();
+  });
+
+  it("renderiza estado de erro e permite tentar novamente quando a query de posição falha", () => {
+    mockMonthlyPositionLoading = false;
+    mockMonthlyPositionIsError = true;
+    mockMonthlyPositionData = null;
+
+    render(
+      <PortfolioExecutiveReport
+        {...defaultProps}
+        initialMonth="2026-07"
+      />,
+    );
+
+    const errorTitles = screen.getAllByText("Falha ao Carregar Competência Histórica");
+    expect(errorTitles.length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/Não foi possível recuperar os dados desta competência/)[0],
+    ).toBeInTheDocument();
+
+    const retryBtn = screen.getAllByRole("button", { name: /Tentar novamente/i })[0];
+    expect(retryBtn).toBeInTheDocument();
+    retryBtn?.click();
+    expect(mockRefetch).toHaveBeenCalled();
   });
 });

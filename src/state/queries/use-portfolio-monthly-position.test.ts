@@ -220,4 +220,103 @@ describe("usePortfolioMonthlyPosition", () => {
     expect(result.current.data?.positions).toHaveLength(1);
     expect(result.current.data?.positions[0]?.unrealizedPnl).toBe(600);
   });
+
+  it("não entra em loop infinito e finaliza o loading quando não há cotações salvas e a API retorna vazio", async () => {
+    vi.spyOn(usePortfolioPositionModule, "usePortfolioPosition").mockReturnValue({
+      rows: [],
+      totalBRL: 0,
+      totalCostBRL: 0,
+      cashBRL: 0,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof usePortfolioPositionModule.usePortfolioPosition>);
+
+    vi.spyOn(usePortfolioModule, "usePortfolioAssets").mockReturnValue({
+      data: [
+        {
+          id: "a-sem-cotacao",
+          user_id: "u1",
+          ticker: "ATIVO_CUSTOM_1",
+          asset_class: "Outros",
+          currency: "BRL",
+          quantity: 10,
+          average_price: 50,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof usePortfolioModule.usePortfolioAssets>);
+
+    vi.spyOn(usePortfolioModule, "useAllPortfolioTransactions").mockReturnValue({
+      data: [
+        {
+          id: "tx-2",
+          user_id: "u1",
+          asset_id: "a-sem-cotacao",
+          type: "buy",
+          date: "2026-01-05",
+          quantity: 10,
+          price: 50,
+          total: 500,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof usePortfolioModule.useAllPortfolioTransactions>);
+
+    vi.spyOn(usePortfolioModule, "usePortfolioDividends").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof usePortfolioModule.usePortfolioDividends>);
+
+    vi.spyOn(usePortfolioModule, "usePortfolioSnapshots").mockReturnValue({
+      data: [
+        {
+          id: "snap-1",
+          user_id: "u1",
+          month: "2026-01",
+          total_value: 500,
+          total_cost: 500,
+          cash_balance: 0,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof usePortfolioModule.usePortfolioSnapshots>);
+
+    // Sem cotações pré-salvas na tabela
+    vi.spyOn(usePortfolioMonthlyPricesModule, "usePortfolioMonthlyPrices").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof usePortfolioMonthlyPricesModule.usePortfolioMonthlyPrices>);
+
+    vi.spyOn(useMacroIndicatorsModule, "useMacroIndicators").mockReturnValue({
+      data: { annualCdiRate: 10.5, annualSelicRate: 10.5, annualIpcaRate: 4.0 },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useMacroIndicatorsModule.useMacroIndicators>);
+
+    const { result } = renderHook(() => usePortfolioMonthlyPosition("2026-01"));
+
+    // O hook conclui com os dados da cascata e fidelity calculados
+    expect(result.current.isCurrentMonth).toBe(false);
+    expect(result.current.data).not.toBeNull();
+    expect(result.current.data?.positions).toHaveLength(1);
+    expect(result.current.data?.fidelity).toBeDefined();
+  });
 });

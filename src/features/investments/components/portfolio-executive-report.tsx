@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { TrendingUp, FileText, SlidersHorizontal, Trash2, AlertCircle } from "lucide-react";
+import { TrendingUp, FileText, SlidersHorizontal, Trash2, AlertCircle, RefreshCw } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -323,6 +323,13 @@ export function PortfolioExecutiveReport({
               <Skeleton className="h-32 w-full rounded-xl" />
               <Skeleton className="h-64 w-full rounded-xl" />
             </div>
+          ) : monthlyPositionQuery.isError ? (
+            <div className="flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-border/80 bg-surface shadow-xs gap-3 my-2 print:hidden">
+              <p className="text-xs text-muted-foreground">Falha ao carregar dados de fechamento desta competência.</p>
+              <Button size="xs" variant="outline" onClick={() => monthlyPositionQuery.refetch()}>
+                Tentar novamente
+              </Button>
+            </div>
           ) : monthlyPositionQuery.data ? (
             <div className="pt-1 print:hidden">
               <MonthlyClosingEditor
@@ -353,6 +360,30 @@ export function PortfolioExecutiveReport({
                   <Skeleton className="h-16 rounded-xl" />
                 </div>
                 <Skeleton className="h-64 w-full rounded-xl" />
+              </div>
+            ) : !isCurrentSelected && monthlyPositionQuery.isError ? (
+              <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-2xl border border-border/80 bg-surface shadow-xs gap-4 my-2">
+                <div className="flex items-center justify-center size-12 rounded-xl bg-negative/10 text-negative-strong">
+                  <AlertCircle className="size-6 text-negative-strong" aria-hidden="true" />
+                </div>
+                <div className="flex flex-col gap-1.5 max-w-lg">
+                  <h3 className="text-base font-bold text-foreground">
+                    Falha ao Carregar Competência Histórica
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Não foi possível recuperar os dados desta competência. Verifique sua conexão e tente novamente.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => monthlyPositionQuery.refetch()}
+                  className="gap-2 cursor-pointer"
+                >
+                  <RefreshCw className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                  <span>Tentar novamente</span>
+                </Button>
               </div>
             ) : !isCurrentSelected &&
             monthlyPositionQuery.data?.fidelity &&
