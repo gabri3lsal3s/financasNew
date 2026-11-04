@@ -1,11 +1,15 @@
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { inferCategoryKeyword } from "@/domain/notifications";
+import { todayISO } from "@/domain/debts";
+import { DEMO_USER_ID } from "@/domain/demo-simulation";
+import { getDemoSessionState } from "@/state/demo-mode";
 import { getUserStorageItem, setUserStorageItem } from "@/services/user-storage";
 import { isNativePlatform } from "./platform";
 import {
   ACTION_EDIT,
   ACTION_QUICK_ADD,
   ACTION_UNDO,
+  hashString,
   quickAddTransaction,
   undoQuickAddTransaction,
 } from "./interactive-notifications";
@@ -14,12 +18,14 @@ export const DAILY_REMINDER_NOTIFICATION_ID = 2026;
 export const DAILY_REMINDER_CHANNEL_ID = "daily_reminders";
 export const DAILY_REMINDER_ACTION_TYPE_ID = "DAILY_REMINDER_ACTIONS";
 export const DUE_REMINDER_CHANNEL_ID = "due_reminders";
+export const DUE_SUMMARY_NOTIFICATION_ID = 2030;
 export const ACTION_ADD_EXPENSE = "add_expense";
 export const ACTION_ADD_INCOME = "add_income";
 
 const KEY_REMINDER_ENABLED = "daily_reminder_enabled";
 const KEY_DUE_NOTIFICATIONS_ENABLED = "due_notifications_enabled";
 const KEY_LAST_DUE_SYNC_DATE = "due_notifications_last_sync_date";
+const KEY_ACTIVE_DUE_KEYS = "due_notifications_active_keys";
 const KEY_REMINDER_TIME = "daily_reminder_time";
 const DEFAULT_REMINDER_TIME = "20:00";
 
@@ -116,6 +122,10 @@ export async function scheduleDailyReminder(options?: {
   hour?: number;
   minute?: number;
 }): Promise<boolean> {
+  if (getDemoSessionState().isDemoActive) {
+    return false;
+  }
+
   const hour = options?.hour ?? 20;
   const minute = options?.minute ?? 0;
 
@@ -204,6 +214,7 @@ export async function cancelDailyReminder(): Promise<void> {
   }
 }
 
+
 /**
  * Cria o canal de notificações de contas a vencer/vencidas no Android.
  */
@@ -241,6 +252,10 @@ export interface DispatchNotificationOptions {
 export async function dispatchLocalOrWebNotification(
   options: DispatchNotificationOptions,
 ): Promise<boolean> {
+  if (getDemoSessionState().isDemoActive) {
+    return false;
+  }
+
   const perm = await checkNotificationPermissions();
   if (!perm.granted) {
     return false;
@@ -324,22 +339,103 @@ export interface DueReminderPayload {
 /** Janela máxima em dias para emissão de notificação ativa de conta vencida. */
 export const MAX_OVERDUE_DAYS_FOR_NOTIFICATION = 30;
 
+/** Retorna um identificador numérico determinístico estável para a notificação de uma conta. */
+export function getDueReminderNotificationId(key: string): number {
+  return hashString(`due:${key}`);
+}
+
+/** Retorna a lista de chaves de lembretes atualmente ativos no sistema operacional. */
+export function getActiveDueKeys(userId?: string | null): string[] {
+  const val = getUserStorageItem(KEY_ACTIVE_DUE_KEYS, userId);
+  if (!val) return [];
+  try {
+    return JSON.parse(val) as string[];
+  } catch {
+    return [];
+  }
+}
+
+/** Atualiza a lista de chaves de lembretes ativos no sistema operacional. */
+export function setActiveDueKeys(keys: string[], userId?: string | null): void {
+  setUserStorageItem(KEY_ACTIVE_DUE_KEYS, JSON.stringify(keys), userId);
+}
+
+/**
+ * Cancela e remove da barra de status do dispositivo (Android) uma notificação pelo seu ID.
+ */
+export async function cancelNotificationById(id: number): Promise<void> {
+  if (!isNativePlatform()) return;
+  try {
+    await LocalNotifications.cancel({ notifications: [{ id }] });
+    const pluginWithDelivered = LocalNotifications as unknown as {
+      removeDeliveredNotificationsById?: (options: { notifications: Array<{ id: number }> }) => Promise<void>;
+      removeDeliveredNotifications?: (options: { notifications: Array<{ id: number }> }) => Promise<void>;
+    };
+    if (typeof pluginWithDelivered.removeDeliveredNotificationsById === "function") {
+      await pluginWithDelivered.removeDeliveredNotificationsById({ notifications: [{ id }] });
+    } else if (typeof pluginWithDelivered.removeDeliveredNotifications === "function") {
+      await pluginWithDelivered.removeDeliveredNotifications({
+        notifications: [{ id }],
+      });
+    }
+  } catch {
+    // Falha silenciosa
+  }
+}
+
+/**
+ * Cancela e remove a notificação de uma fatura ou dívida que acabou de ser paga ou lida.
+ */
+export async function cancelDueReminderNotification(key: string, userId?: string | null): Promise<void> {
+  const notifId = getDueReminderNotificationId(key);
+  await cancelNotificationById(notifId);
+
+  const active = getActiveDueKeys(userId);
+  if (active.includes(key)) {
+    setActiveDueKeys(active.filter((k) => k !== key), userId);
+  }
+}
+
+/**
+ * Remove todas as notificações de vencimento ativas e limpa a barra de status.
+ */
+export async function clearAllDueNotifications(userId?: string | null): Promise<void> {
+  const active = getActiveDueKeys(userId);
+  for (const k of active) {
+    if (k !== "summary") {
+      await cancelNotificationById(getDueReminderNotificationId(k));
+    }
+  }
+  await cancelNotificationById(DUE_SUMMARY_NOTIFICATION_ID);
+  setActiveDueKeys([], userId);
+}
+
 /**
  * Sincroniza e agenda/emite notificações para faturas e dívidas pendentes.
  * É executada uma vez por dia por usuário ou quando houver nova pendência urgente.
- * Aplica consolidação anti-flood (notificação agrupada caso haja >= 2 contas)
- * e corte temporal para contas antigas vencidas há mais de 30 dias.
+ * Aplica consolidação anti-flood (notificação agrupada caso haja >= 2 contas),
+ * corte temporal para contas antigas vencidas há mais de 30 dias e cancela
+ * imediatamente notificações de contas que já foram quitadas ou que não são mais elegíveis.
  */
 export async function syncDueReminderNotifications(
   reminders: readonly DueReminderPayload[],
   userId?: string | null,
   force = false,
 ): Promise<number> {
-  if (!isDueNotificationsEnabled(userId) || reminders.length === 0) {
+  // Bloqueio rigoroso: nenhuma notificação para o sistema operacional em modo tour/demonstração
+  if (getDemoSessionState().isDemoActive || userId === DEMO_USER_ID) {
     return 0;
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  if (!isDueNotificationsEnabled(userId)) {
+    await clearAllDueNotifications(userId);
+    return 0;
+  }
+
+  // Filtra itens simulados ou mockados que possam ter vazado
+  const cleanReminders = reminders.filter((r) => !r.key.includes("mock-"));
+
+  const today = todayISO();
   const lastSync = getUserStorageItem(KEY_LAST_DUE_SYNC_DATE, userId);
   if (!force && lastSync === today) {
     return 0;
@@ -351,12 +447,12 @@ export async function syncDueReminderNotifications(
   }
 
   // Filtra apenas contas que vencem hoje, nos próximos 3 dias ou atrasadas recentemente (<= 30 dias)
-  const eligible = reminders.filter((rem) => {
+  const eligible = cleanReminders.filter((rem) => {
     if (rem.status === "due_today" || rem.status === "due_soon") {
       return true;
     }
     if (rem.status === "overdue") {
-      const diffMs = new Date(today).getTime() - new Date(rem.dueDate).getTime();
+      const diffMs = new Date(`${today}T12:00:00`).getTime() - new Date(`${rem.dueDate}T12:00:00`).getTime();
       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
       return diffDays <= MAX_OVERDUE_DAYS_FOR_NOTIFICATION;
     }
@@ -364,6 +460,7 @@ export async function syncDueReminderNotifications(
   });
 
   if (eligible.length === 0) {
+    await clearAllDueNotifications(userId);
     setUserStorageItem(KEY_LAST_DUE_SYNC_DATE, today, userId);
     return 0;
   }
@@ -372,6 +469,14 @@ export async function syncDueReminderNotifications(
 
   // Consolidação anti-flood: se houver 2 ou mais contas pendentes, consolida em 1 notificação elegante
   if (eligible.length > 1) {
+    // Limpa notificações individuais anteriores para consolidar em uma só
+    const previousActive = getActiveDueKeys(userId);
+    for (const k of previousActive) {
+      if (k !== "summary") {
+        await cancelNotificationById(getDueReminderNotificationId(k));
+      }
+    }
+
     const totalCents = eligible.reduce((acc, r) => acc + r.amountCents, 0);
     const totalReais = (totalCents / 100).toLocaleString("pt-BR", {
       minimumFractionDigits: 2,
@@ -380,9 +485,10 @@ export async function syncDueReminderNotifications(
 
     const title = `Áxis · Contas e faturas pendentes (${eligible.length})`;
     const body = `Você possui ${eligible.length} contas aguardando quitação (total de R$ ${totalReais}). Toque para conferir.`;
-    const tag = `due:summary:${today}`;
+    const tag = "due:summary";
 
     const sent = await dispatchLocalOrWebNotification({
+      id: DUE_SUMMARY_NOTIFICATION_ID,
       title,
       body,
       url: "/lembretes",
@@ -390,10 +496,22 @@ export async function syncDueReminderNotifications(
       channelId: DUE_REMINDER_CHANNEL_ID,
     });
 
-    if (sent) count = 1;
+    if (sent) {
+      setActiveDueKeys(["summary"], userId);
+      count = 1;
+    }
   } else {
-    // Apenas 1 conta pendente: exibe os detalhes específicos da fatura/dívida
+    // Apenas 1 conta pendente: cancela o resumo anterior e outras notificações
+    await cancelNotificationById(DUE_SUMMARY_NOTIFICATION_ID);
+
     const rem = eligible[0]!;
+    const previousActive = getActiveDueKeys(userId);
+    for (const k of previousActive) {
+      if (k !== rem.key && k !== "summary") {
+        await cancelNotificationById(getDueReminderNotificationId(k));
+      }
+    }
+
     const statusLabel =
       rem.status === "overdue"
         ? "Vencida"
@@ -414,9 +532,11 @@ export async function syncDueReminderNotifications(
 
     const title = `${rem.title} — ${statusLabel}`;
     const body = `Saldo em aberto: R$ ${reais}. Toque para conferir e quitar.`;
-    const tag = `due:${rem.key}:${today}`;
+    const notifId = getDueReminderNotificationId(rem.key);
+    const tag = `due:${rem.key}`;
 
     const sent = await dispatchLocalOrWebNotification({
+      id: notifId,
       title,
       body,
       url: routeUrl,
@@ -424,7 +544,10 @@ export async function syncDueReminderNotifications(
       channelId: DUE_REMINDER_CHANNEL_ID,
     });
 
-    if (sent) count = 1;
+    if (sent) {
+      setActiveDueKeys([rem.key], userId);
+      count = 1;
+    }
   }
 
   setUserStorageItem(KEY_LAST_DUE_SYNC_DATE, today, userId);

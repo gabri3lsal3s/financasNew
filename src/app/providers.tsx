@@ -18,6 +18,7 @@ import { AppLockOverlay } from "@/app/app-lock-overlay";
 import { AppErrorBoundary } from "@/components/layout";
 import { initAppLockListener, setPrivacyShieldEnabled, syncDueReminderNotifications } from "@/services/native";
 import { useReminders } from "@/state";
+import { useDemoSession } from "@/state/demo-mode";
 import { useAuth } from "@/hooks/use-auth";
 
 /**
@@ -114,13 +115,18 @@ function RemindersNotificationSync() {
 }
 
 function RemindersNotificationSyncInner({ userId }: { userId: string }) {
-  const { allItems, preferences } = useReminders();
+  const { allItems, preferences, isLoading } = useReminders();
+  const { isDemoActive } = useDemoSession();
 
   useEffect(() => {
-    if (preferences.enabled && allItems.length > 0) {
+    // Nunca emite notificações para o sistema operacional em modo de demonstração/tour
+    // nem enquanto as queries de contas estiverem carregando.
+    if (isDemoActive || isLoading) return;
+
+    if (preferences.enabled) {
       void syncDueReminderNotifications(allItems, userId);
     }
-  }, [preferences.enabled, allItems, userId]);
+  }, [preferences.enabled, allItems, userId, isLoading, isDemoActive]);
 
   return null;
 }

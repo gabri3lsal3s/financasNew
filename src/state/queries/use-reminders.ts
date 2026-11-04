@@ -69,10 +69,26 @@ export function useReminders(today: string = todayISO()): RemindersData {
       return { allItems: [], items: [], readCount: 0 };
     }
 
-    const cards = cardsQuery.data ?? [];
-    const allExpenses = cardExpensesQuery.data ?? [];
-    const allPayments = cardPaymentsQuery.data ?? [];
-    const allDebts = debtsQuery.data ?? [];
+    // Salvaguarda estrita: nunca deriva lembretes enquanto as queries essenciais
+    // estiverem carregando ou com dados parciais (ex.: despesas prontas mas pagamentos
+    // ainda não carregados transformariam faturas pagas em faturas vencidas falsas).
+    if (
+      cardsQuery.isLoading ||
+      cardExpensesQuery.isLoading ||
+      cardPaymentsQuery.isLoading ||
+      debtsQuery.isLoading ||
+      !cardsQuery.data ||
+      !cardExpensesQuery.data ||
+      !cardPaymentsQuery.data ||
+      !debtsQuery.data
+    ) {
+      return { allItems: [], items: [], readCount: 0 };
+    }
+
+    const cards = cardsQuery.data;
+    const allExpenses = cardExpensesQuery.data;
+    const allPayments = cardPaymentsQuery.data;
+    const allDebts = debtsQuery.data;
     const states = statesQuery.data ?? [];
 
     const bills = cards
@@ -113,6 +129,10 @@ export function useReminders(today: string = todayISO()): RemindersData {
     return { allItems: derived, items: unread, readCount: read };
   }, [
     preferences,
+    cardsQuery.isLoading,
+    cardExpensesQuery.isLoading,
+    cardPaymentsQuery.isLoading,
+    debtsQuery.isLoading,
     cardsQuery.data,
     cardExpensesQuery.data,
     cardPaymentsQuery.data,

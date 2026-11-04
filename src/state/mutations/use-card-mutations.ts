@@ -12,6 +12,7 @@ import { incomesKey } from "@/state/queries/use-incomes";
 import { expensesKey } from "@/state/queries/use-expenses";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
+import { cancelDueReminderNotification } from "@/services/native";
 import {
   removeCardPayments,
   removeIncomesBySourceRef,
@@ -61,8 +62,9 @@ export function useCreateCardPayment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: Parameters<typeof createPayment>[0]) => createPayment(input),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: cardPaymentsKey });
+      void cancelDueReminderNotification(`bill:${variables.cardId}:${variables.competenceMonth}`);
       pushToast({ title: "Pagamento registrado", variant: "default" });
     },
   });
@@ -80,10 +82,13 @@ export function useBatchCreateCardPayments() {
       }
       return results;
     },
-    onSuccess: (results) => {
+    onSuccess: (results, variables) => {
       void queryClient.invalidateQueries({ queryKey: cardPaymentsKey });
       void queryClient.invalidateQueries({ queryKey: ["reminders"] });
       void queryClient.invalidateQueries({ queryKey: ["overview"] });
+      for (const p of variables) {
+        void cancelDueReminderNotification(`bill:${p.cardId}:${p.competenceMonth}`);
+      }
       pushToast({
         title: "Faturas quitadas com sucesso",
         description: `${results.length} fatura(s) foram marcadas como pagas.`,

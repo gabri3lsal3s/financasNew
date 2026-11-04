@@ -3,6 +3,7 @@ import { listReminderStates, setReminderState, markAllRemindersAsRead } from "@/
 import type { ReminderState } from "@/domain/reminders";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
+import { cancelDueReminderNotification } from "@/services/native";
 import { STATIC_GC_TIME, STALE_TIMES } from "@/state/cache-policy";
 
 const reminderStatesKey = ["reminder-states"] as const;
@@ -34,8 +35,11 @@ export function useSetReminderState() {
       occurrenceKey: string;
       state: { kind: "read" | "snoozed"; snoozeUntil?: string } | null;
     }) => setReminderState(occurrenceKey, state),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: reminderStatesKey });
+      if (variables.state?.kind === "read") {
+        void cancelDueReminderNotification(variables.occurrenceKey);
+      }
     },
     // Falha silenciosa em lido/snooze/restaurar deixava o lembrete sem
     // feedback — agora o erro aparece com retry implícito (novo clique).
@@ -53,8 +57,11 @@ export function useMarkAllRemindersAsRead() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (occurrenceKeys: string[]) => markAllRemindersAsRead(occurrenceKeys),
-    onSuccess: () => {
+    onSuccess: (_data, occurrenceKeys) => {
       void queryClient.invalidateQueries({ queryKey: reminderStatesKey });
+      for (const k of occurrenceKeys) {
+        void cancelDueReminderNotification(k);
+      }
       pushToast({
         title: "Lembretes atualizados",
         description: "Todos os lembretes visíveis foram marcados como lidos.",

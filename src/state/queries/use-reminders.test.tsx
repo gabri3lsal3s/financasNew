@@ -96,4 +96,15 @@ describe("useReminders", () => {
     expect(result.current.readCount).toBe(0);
     expect(result.current.preferences.enabled).toBe(true);
   });
+
+  it("retorna lista vazia de itens quando queries essenciais estiverem carregando para evitar falsos positivos", () => {
+    mockCardPayments.isLoading = true;
+    const { result } = renderHook(() => useReminders("2026-08-08"));
+
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.items).toHaveLength(0);
+    expect(result.current.allItems).toHaveLength(0);
+    expect(result.current.totalCount).toBe(0);
+    mockCardPayments.isLoading = false;
+  });
 });

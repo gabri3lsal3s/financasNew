@@ -306,5 +306,77 @@ describe("local-notifications service", () => {
       expect(count).toBe(0);
       expect(LocalNotifications.schedule).not.toHaveBeenCalled();
     });
+
+    it("não emite notificações nativas quando o modo de demonstração/tour está ativo", async () => {
+      vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+      const demoStateModule = await import("@/state/demo-mode");
+      const startSpy = vi.spyOn(demoStateModule, "getDemoSessionState").mockReturnValue({
+        isDemoActive: true,
+        activeTrack: "finances",
+        currentStepIndex: 0,
+      });
+
+      const { syncDueReminderNotifications, setDueNotificationsEnabled } = await import("./local-notifications");
+      setDueNotificationsEnabled(true, "u-demo");
+
+      const count = await syncDueReminderNotifications(
+        [
+          {
+            key: "bill:mock-card-1:2026-11",
+            kind: "bill",
+            title: "Fatura Mastercard Black Principal · 2026-11",
+            dueDate: "2026-11-05",
+            amountCents: 67500,
+            status: "due_soon",
+          },
+        ],
+        "u-demo",
+        true,
+      );
+
+      expect(count).toBe(0);
+      expect(LocalNotifications.schedule).not.toHaveBeenCalled();
+      startSpy.mockRestore();
+    });
+
+    it("filtra itens mock e limpa notificações ao zerar pendências", async () => {
+      vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+      (LocalNotifications.checkPermissions as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+        display: "granted",
+      });
+
+      const { syncDueReminderNotifications, setDueNotificationsEnabled } = await import("./local-notifications");
+      setDueNotificationsEnabled(true, "u4");
+
+      const count = await syncDueReminderNotifications(
+        [
+          {
+            key: "bill:mock-card-1:2026-11",
+            kind: "bill",
+            title: "Fatura Mastercard Black Principal",
+            dueDate: "2026-11-05",
+            amountCents: 67500,
+            status: "due_soon",
+          },
+        ],
+        "u4",
+        true,
+      );
+
+      expect(count).toBe(0);
+      expect(LocalNotifications.schedule).not.toHaveBeenCalled();
+      expect(LocalNotifications.cancel).toHaveBeenCalled();
+    });
+
+    it("cancela notificação de fatura individual ao chamar cancelDueReminderNotification", async () => {
+      vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+      const { cancelDueReminderNotification } = await import("./local-notifications");
+
+      await cancelDueReminderNotification("bill:rico:2026-10", "u-rico");
+
+      expect(LocalNotifications.cancel).toHaveBeenCalledWith({
+        notifications: [expect.objectContaining({ id: expect.any(Number) })],
+      });
+    });
   });
 });
