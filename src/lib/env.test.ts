@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getSupabaseEnv } from "./env";
+import { getPublicAppUrl, getSupabaseEnv } from "./env";
 
 describe("lib/env — getSupabaseEnv", () => {
   beforeEach(() => {
@@ -31,5 +31,20 @@ describe("lib/env — getSupabaseEnv", () => {
     vi.stubEnv("VITE_SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.valid");
 
     expect(() => getSupabaseEnv()).toThrowError(/contém valores padrão de placeholder/);
+  });
+});
+
+describe("lib/env — getPublicAppUrl", () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("reexporta getPublicAppUrl corretamente", () => {
+    vi.stubEnv("VITE_PUBLIC_SITE_URL", "https://custom.app");
+    expect(getPublicAppUrl("/entrar")).toBe("https://custom.app/entrar");
   });
 });

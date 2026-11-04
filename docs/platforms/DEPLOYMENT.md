@@ -20,7 +20,7 @@
 
 - **Frontend:** Cloudflare Pages — Git Integration nativa via Webhooks (sem GitHub Actions). Roteamento SPA configurado via `public/_redirects` e segurança/cache via `public/_headers`.
 - **Segurança de Borda e Headers HTTP (`public/_headers`):**
-  - **Content-Security-Policy (CSP):** política estrita que restringe a execução de scripts e conexões a origens homologadas (`default-src 'self'`, `script-src 'self' 'wasm-unsafe-eval'`, `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`, `img-src 'self' data: blob: https://*.supabase.co`, `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://brapi.dev`, `font-src 'self' data: https://fonts.gstatic.com`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`);
+  - **Content-Security-Policy (CSP):** política estrita que restringe a execução de scripts e conexões a origens homologadas (`default-src 'self'`, `script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com`, `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`, `img-src 'self' data: blob: https://*.supabase.co`, `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://challenges.cloudflare.com https://brapi.dev`, `font-src 'self' data: https://fonts.gstatic.com`, `frame-src 'self' https://challenges.cloudflare.com`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`);
   - **Defesa em Profundidade:** `Strict-Transport-Security` (HSTS preload), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`;
   - **CORS das Edge Functions:** allowlist (`ALLOWED_ORIGINS` + `*.pages.dev` + localhost/Capacitor); webhook Asaas sem CORS de browser; `quotes` só grava cache global com service role.
   - **Estratégia de Cache de Borda:** assets estáticos versionados (`/assets/*`) com cache imutável de 1 ano (`max-age=31536000, immutable`), e artefatos dinâmicos de ciclo de vida (`/index.html`, `/sw.js`, `/pwa/*`) com validação imediata (`max-age=0, must-revalidate`).
@@ -366,11 +366,12 @@ O arquivo `public/_headers` implementa uma arquitetura de segurança de borda em
 1. **Content-Security-Policy (CSP) Estrita:**
    - **Zero Wildcards Permissivos:** Proibido o uso de `*` em `script-src` ou `connect-src`. Apenas origens homologadas e necessárias para o funcionamento do ecossistema são permitidas:
      - `default-src 'self'`: Restringe qualquer recurso não especificado à mesma origem do app;
-     - `script-src 'self' 'wasm-unsafe-eval'`: Execução exclusiva de bundles locais e WebAssembly (necessário para bibliotecas de cálculo e compilação client-side);
+     - `script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com`: Execução de bundles locais, WebAssembly e script anti-bot Cloudflare Turnstile;
      - `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`: Folhas de estilo locais e tipografia do Google Fonts;
-     - `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://brapi.dev https://*.r2.dev`: Conexões REST e WebSockets do Supabase, telemetria Sentry, cotações e distribuição de releases no Cloudflare R2;
+     - `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://challenges.cloudflare.com https://brapi.dev https://*.r2.dev`: Conexões REST e WebSockets do Supabase, telemetria Sentry, validações Turnstile, cotações e distribuição de releases no Cloudflare R2;
      - `font-src 'self' data: https://fonts.gstatic.com`: Fontes estáticas locais e remotas;
      - `img-src 'self' data: blob: https://*.supabase.co`: Imagens locais, avatars, dados base64 e storage do Supabase;
+     - `frame-src 'self' https://challenges.cloudflare.com`: Permite embutir frames de desafios anti-bot gerenciados pelo Cloudflare Turnstile;
      - `object-src 'none'`: Desativa completamente Flash, Java Applets e plugins herdados;
      - `base-uri 'self'` e `form-action 'self'`: Impede ataques de manipulação de base URL e submissões de formulário externas não-autorizadas.
 2. **Prevenção Completa de Clickjacking:**

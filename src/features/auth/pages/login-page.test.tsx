@@ -21,7 +21,17 @@ vi.mock("@/hooks/use-auth", () => ({
 }));
 
 vi.mock("@/components/ui/turnstile", () => ({
-  Turnstile: () => <div data-testid="turnstile-stub" />,
+  Turnstile: ({ onVerify }: { onVerify?: (token: string) => void }) => (
+    <div data-testid="turnstile-stub">
+      <button
+        type="button"
+        data-testid="turnstile-trigger"
+        onClick={() => onVerify?.("mock-turnstile-token-xyz")}
+      >
+        Simular Captcha
+      </button>
+    </div>
+  ),
 }));
 
 function renderLoginPage() {
@@ -86,6 +96,27 @@ describe("LoginPage - Autenticação e Visibilidade de Senha", () => {
     expect(authHook.signInWithEmail).toHaveBeenCalledWith(
       "usuario@exemplo.com",
       "MinhaSenha123!",
+      undefined,
+    );
+  });
+
+  it("repassa o captchaToken retornado pelo Turnstile ao submeter o login", async () => {
+    const user = userEvent.setup();
+    vi.mocked(authHook.signInWithEmail).mockResolvedValue(undefined);
+
+    renderLoginPage();
+
+    await user.type(screen.getByLabelText("E-mail"), "usuario@exemplo.com");
+    await user.type(screen.getByLabelText("Senha"), "MinhaSenha123!");
+    await user.click(screen.getByTestId("turnstile-trigger"));
+
+    const submitBtn = screen.getByRole("button", { name: "Entrar" });
+    await user.click(submitBtn);
+
+    expect(authHook.signInWithEmail).toHaveBeenCalledWith(
+      "usuario@exemplo.com",
+      "MinhaSenha123!",
+      "mock-turnstile-token-xyz",
     );
   });
 

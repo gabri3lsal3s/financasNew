@@ -22,15 +22,28 @@ describe("Tarefa 1.3 — Content-Security-Policy (CSP) & Segurança de Borda em 
 
     // Valida diretivas obrigatórias de contenção
     expect(csp).toContain("default-src 'self'");
-    expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval'");
+    expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com");
     expect(csp).toContain("style-src 'self' 'unsafe-inline'");
     expect(csp).toContain("img-src 'self' data: blob: https://*.supabase.co");
-    expect(csp).toContain("connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://brapi.dev");
+    expect(csp).toContain(
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://challenges.cloudflare.com https://brapi.dev"
+    );
     expect(csp).toContain("font-src 'self'");
+    expect(csp).toContain("frame-src 'self' https://challenges.cloudflare.com");
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("base-uri 'self'");
     expect(csp).toContain("form-action 'self'");
     expect(csp).toContain("frame-ancestors 'none'");
+  });
+
+  it("autoriza o widget Cloudflare Turnstile em script-src, frame-src e connect-src", () => {
+    const content = readFileSync(headersPath, "utf8");
+    const cspMatch = content.match(/Content-Security-Policy:\s*([^\r\n]+)/);
+    const csp = cspMatch?.[1] ?? "";
+
+    expect(csp).toMatch(/script-src[^;]*https:\/\/challenges\.cloudflare\.com/);
+    expect(csp).toMatch(/frame-src[^;]*https:\/\/challenges\.cloudflare\.com/);
+    expect(csp).toMatch(/connect-src[^;]*https:\/\/challenges\.cloudflare\.com/);
   });
 
   it("não possui wildcards permissivos (*) em script-src ou connect-src", () => {

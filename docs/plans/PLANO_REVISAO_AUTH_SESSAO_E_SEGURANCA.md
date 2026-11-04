@@ -58,7 +58,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 1
 
-- [ ] **Tarefa 1.1: Atualização do CSP em `public/_headers` para Cloudflare Turnstile**
+- [x] **Tarefa 1.1: Atualização do CSP em `public/_headers` para Cloudflare Turnstile**
   - **Arquivo:** `public/_headers`
   - **O que verificar/ajustar:**
     - Localizar a diretiva `Content-Security-Policy` (linha ~2).
@@ -66,7 +66,7 @@ git push origin main
     - Garantir que `connect-src` inclua `https://challenges.cloudflare.com`.
     - Atualizar o teste de segurança de headers: `src/tests/security-headers.test.ts`.
 
-- [ ] **Tarefa 1.2: Criação do Helper Universal de URL Pública (`getPublicAppUrl`)**
+- [x] **Tarefa 1.2: Criação do Helper Universal de URL Pública (`getPublicAppUrl`)**
   - **Arquivo:** `src/lib/env.ts` (ou `src/services/app-url.ts`)
   - **O que verificar/ajustar:**
     - Implementar a função pura:
@@ -81,7 +81,7 @@ git push origin main
       ```
     - Criar teste colocalizado `src/services/app-url.test.ts` cobrindo cenários Web, Mobile e fallback.
 
-- [ ] **Tarefa 1.3: Normalização de E-mail e Sanitização Defensiva de Strings**
+- [x] **Tarefa 1.3: Normalização de E-mail e Sanitização Defensiva de Strings**
   - **Arquivo:** `src/domain/validation/sanitization.ts`
   - **O que verificar/ajustar:**
     - Exportar a função:
@@ -93,7 +93,7 @@ git push origin main
       ```
     - Atualizar `src/domain/validation/sanitization.test.ts` com testes para e-mails com espaços, maiúsculas e caracteres especiais válidos.
 
-- [ ] **Tarefa 1.4: Integração do `captchaToken` em `src/data/auth.ts`**
+- [x] **Tarefa 1.4: Integração do `captchaToken` em `src/data/auth.ts`**
   - **Arquivo:** `src/data/auth.ts`
   - **O que verificar/ajustar:**
     - Atualizar a assinatura de `signInWithEmail`:
@@ -151,7 +151,7 @@ git push origin main
       ```
     - Atualizar testes em `src/data/auth.test.ts`.
 
-- [ ] **Tarefa 1.5: Adicionar Campo "Confirmar Senha" e Validação em `RegisterPage`**
+- [x] **Tarefa 1.5: Adicionar Campo "Confirmar Senha" e Validação em `RegisterPage`**
   - **Arquivo:** `src/features/auth/pages/register-page.tsx`
   - **O que verificar/ajustar:**
     - Declarar estado `const [confirmPassword, setConfirmPassword] = useState("");`.
@@ -168,7 +168,7 @@ git push origin main
     - Passar o token para `signUpWithEmail(email, password, name, inviteCode, captchaToken)`.
     - Atualizar `src/features/auth/pages/register-page.test.tsx`.
 
-- [ ] **Tarefa 1.6: Captura do Token Turnstile em `LoginPage`**
+- [x] **Tarefa 1.6: Captura do Token Turnstile em `LoginPage`**
   - **Arquivo:** `src/features/auth/pages/login-page.tsx`
   - **O que verificar/ajustar:**
     - Declarar `const [captchaToken, setCaptchaToken] = useState<string | null>(null);`.
@@ -177,10 +177,10 @@ git push origin main
     - Atualizar `src/features/auth/pages/login-page.test.tsx`.
 
 ### Portão de Qualidade da Fase 1
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/tests/security-headers.test.ts src/domain/validation/sanitization.test.ts src/data/auth.test.ts src/features/auth/pages/login-page.test.tsx src/features/auth/pages/register-page.test.tsx`
-- [ ] **Commit & Push da Fase 1:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/tests/security-headers.test.ts src/domain/validation/sanitization.test.ts src/data/auth.test.ts src/features/auth/pages/login-page.test.tsx src/features/auth/pages/register-page.test.tsx`
+- [x] **Commit & Push da Fase 1:**
   ```bash
   git add public/_headers src/lib/env.ts src/services/app-url.ts src/services/app-url.test.ts src/domain/validation/sanitization.ts src/domain/validation/sanitization.test.ts src/data/auth.ts src/data/auth.test.ts src/features/auth/pages/login-page.tsx src/features/auth/pages/login-page.test.tsx src/features/auth/pages/register-page.tsx src/features/auth/pages/register-page.test.tsx
   git commit -m "feat(auth): reforca login e cadastro com confirmacao de senha captcha e normalizacao de dados"

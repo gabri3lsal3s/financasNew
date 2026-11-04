@@ -116,6 +116,7 @@ export function LoginPage() {
 
   const [email, setEmail] = useState(emailParam || "");
   const [password, setPassword] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isEmailUnconfirmed, setIsEmailUnconfirmed] = useState(false);
   const [cooldown, setCooldown] = useState(0);
@@ -164,7 +165,7 @@ export function LoginPage() {
     setIsEmailUnconfirmed(false);
     setPending(true);
     try {
-      await signInWithEmail(email, password);
+      await signInWithEmail(email, password, captchaToken ?? undefined);
       triggerSensory("success");
       // onAuthStateChange atualiza a sessão → o guard/redirect acima conduz.
     } catch (err) {
@@ -255,7 +256,11 @@ export function LoginPage() {
               className="h-10 text-sm rounded-xl"
             />
           </div>
-          <Turnstile className="my-0.5" />
+          <Turnstile
+            className="my-0.5"
+            onVerify={setCaptchaToken}
+            onExpire={() => setCaptchaToken(null)}
+          />
 
           <Button
             type="submit"

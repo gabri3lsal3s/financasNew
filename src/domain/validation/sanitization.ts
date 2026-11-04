@@ -28,6 +28,17 @@ const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009
 const HTML_TAGS_REGEX = /<[^>]*>/g;
 
 /**
+ * Função pura para normalização defensiva de endereços de e-mail:
+ * - Converte para minúsculas (RFC 5321 case-insensitivity defensivo);
+ * - Remove espaços em branco nas extremidades (trim);
+ * - Retorna string vazia caso a entrada não seja do tipo string.
+ */
+export function normalizeEmail(email: string): string {
+  if (typeof email !== "string") return "";
+  return email.trim().toLowerCase();
+}
+
+/**
  * Função pura para sanitização estrita de strings de entrada:
  * 1. Remove caracteres nulos e de controle perigosos;
  * 2. Remove tags HTML/XML;

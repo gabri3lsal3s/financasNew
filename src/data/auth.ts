@@ -1,4 +1,6 @@
 import { getSupabase } from "@/data/client";
+import { normalizeEmail, sanitizeString } from "@/domain/validation";
+import { getPublicAppUrl } from "@/lib/env";
 import { AppError, classifyError, MESSAGES } from "@/services/errors";
 
 /**
@@ -11,8 +13,17 @@ export interface SignUpResult {
   needsEmailConfirmation: boolean;
 }
 
-export async function signInWithEmail(email: string, password: string): Promise<void> {
-  const { error } = await getSupabase().auth.signInWithPassword({ email, password });
+export async function signInWithEmail(
+  email: string,
+  password: string,
+  captchaToken?: string,
+): Promise<void> {
+  const normalized = normalizeEmail(email);
+  const { error } = await getSupabase().auth.signInWithPassword({
+    email: normalized,
+    password,
+    options: captchaToken ? { captchaToken } : undefined,
+  });
   if (error) {
     const classified = classifyError(error);
     throw new AppError(classified.kind, classified.message, error);
@@ -24,16 +35,21 @@ export async function signUpWithEmail(
   password: string,
   name?: string,
   inviteCode?: string,
+  captchaToken?: string,
 ): Promise<SignUpResult> {
+  const normalized = normalizeEmail(email);
+  const cleanName = name ? sanitizeString(name) : "";
+  const cleanInvite = inviteCode ? sanitizeString(inviteCode).toUpperCase() : "";
   const { data, error } = await getSupabase().auth.signUp({
-    email,
+    email: normalized,
     password,
     options: {
       data: {
-        name: name ?? "",
-        invite_code: inviteCode?.trim().toUpperCase() ?? "",
+        name: cleanName,
+        invite_code: cleanInvite,
       },
-      emailRedirectTo: `${window.location.origin}/entrar`,
+      emailRedirectTo: getPublicAppUrl("/entrar"),
+      captchaToken: captchaToken || undefined,
     },
   });
   if (error) {
@@ -69,11 +85,12 @@ export async function resetPasswordForEmail(email: string): Promise<void> {
  * Reenvia o e-mail de confirmação de cadastro para contas pendentes de ativação (Fase 2.1).
  */
 export async function resendConfirmationEmail(email: string): Promise<void> {
+  const normalized = normalizeEmail(email);
   const { error } = await getSupabase().auth.resend({
     type: "signup",
-    email,
+    email: normalized,
     options: {
-      emailRedirectTo: `${window.location.origin}/entrar`,
+      emailRedirectTo: getPublicAppUrl("/entrar"),
     },
   });
   if (error) {
