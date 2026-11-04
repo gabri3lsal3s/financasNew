@@ -1,5 +1,20 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.86** registra o **Refinamento Matemático de Performance Equity e Salvaguardas CVM/ANBIMA (TWR Modified Dietz Diário e XIRR $\ge 365$d)** (2026-11-04):
+> - **(1) TWRR com Ponderação Diária Exata de Fluxos de Caixa (`twr.ts`)**:
+>   - Evolução do método Modified Dietz para calcular o peso de cada aporte/resgate com precisão diária ANBIMA/GIPS ($W_i = \frac{CD - D_i + 1}{CD}$);
+>   - Conexão em `use-portfolio-position.ts` fornecendo os fluxos exatos (`flows: monthFlows`) a partir de `portfolio_contributions`;
+>   - Proteção matemática contra colapso de denominador em saques maciços que zerem o capital médio ponderado.
+> - **(2) Salvaguardas CVM/ANBIMA e Estabilidade Temporal na TIR / XIRR (`irr.ts`)**:
+>   - Em estrita conformidade com a Resolução CVM 19/2021, períodos inferiores a 365 dias exibem a rentabilidade acumulada simples do período (`periodRatePct`) com badge explicativo, mantendo `annualizedRatePct = null` na UI para impedir taxas projetadas distorcidas;
+>   - Preservação da taxa matemática bruta (`rawAnnualizedRatePct`) para auditoria analítica interna;
+>   - Atualização de `resumo-tab.tsx` e `asset-detail-sheet.tsx` com tratamento transparente para o investidor.
+> - **(3) Bateria de Testes Unitários e Integrados 100% Verde**:
+>   - 100% dos testes unitários de `twr.test.ts` (21/21) e `irr.test.ts` (17/17) aprovados;
+>   - Todos os 455 testes do módulo de investimentos e 4 cenários de regressão histórica (`portfolio-historical-regression.test.ts`) validados.
+> - **(4) Documentação Matemática Atualizada**:
+>   - Sincronização de fórmulas e especificações em `docs/architecture/FINANCIAL_MATH_SPEC.md`.
+>
 > **v2.85** registra a **Conclusão Integral da Otimização de Consultas de Cartões e Faturas com Janela Temporal Inteligente (24 Meses)** (2026-11-04):
 > - **(1) Salvaguarda de Desempenho e Contenção de Tráfego de Rede na Camada de Dados (`src/data/`)**:
 >   - Adição da constante `DEFAULT_CARD_WINDOW_MONTHS = 24` e `DEFAULT_CARD_PAYMENT_WINDOW_MONTHS = 24` em `expenses.ts` e `card-payments.ts`;

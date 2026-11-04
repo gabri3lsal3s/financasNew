@@ -16,6 +16,13 @@
  * Módulo puro — sem import de UI ou Supabase; 100% testável isoladamente.
  */
 
+export interface TwrCashFlowItem {
+  /** Data no formato ISO (YYYY-MM-DD). */
+  date: string;
+  /** Valor monetário do fluxo em BRL: positivo (> 0) para aporte, negativo (< 0) para resgate. */
+  amount: number;
+}
+
 export interface TwrMonthlyInputPoint {
   /** Competência (YYYY-MM). */
   month: string;
@@ -29,6 +36,11 @@ export interface TwrMonthlyInputPoint {
    * - Negativo (< 0): resgate / retirada transferida para fora da carteira.
    */
   netExternalCashFlowBRL?: number;
+  /**
+   * Detalhamento de fluxos de caixa do mês com data exata (ANBIMA / GIPS).
+   * Se informado, permite ponderação por dias corridos no Modified Dietz.
+   */
+  flows?: readonly TwrCashFlowItem[];
   /**
    * Rentabilidade percentual explícita pré-calculada do mês (% ex: 1.15 para 1,15%).
    * Se fornecida pelo extrato/relatório da corretora, tem precedência sobre o cálculo derivado.
@@ -126,6 +138,52 @@ export function annualizeRateFromDays(
 }
 
 /**
+ * Retorna o número de dias corridos em uma competência YYYY-MM.
+ */
+export function getDaysInMonth(monthStr: string): number {
+  const parts = monthStr.split("-").map(Number);
+  const year = parts[0] ?? 2026;
+  const month = parts[1] ?? 1;
+  return new Date(year, month, 0).getDate();
+}
+
+/**
+ * Calcula o fluxo de caixa ponderado no mês de acordo com a regra ANBIMA / GIPS:
+ * W_i = (diasNoMês - diaDoFluxo + 1) / diasNoMês
+ */
+export function calculateWeightedCashFlow(
+  month: string,
+  flows?: readonly TwrCashFlowItem[],
+  defaultNetFlow = 0,
+): { totalFlow: number; weightedFlow: number } {
+  if (!flows || flows.length === 0) {
+    return {
+      totalFlow: defaultNetFlow,
+      weightedFlow: 0.5 * defaultNetFlow,
+    };
+  }
+
+  const daysInMonth = getDaysInMonth(month);
+  let totalFlow = 0;
+  let weightedFlow = 0;
+
+  for (const f of flows) {
+    const amt = Math.round(f.amount * 100) / 100;
+    totalFlow += amt;
+    const dayStr = f.date ? f.date.slice(8, 10) : "";
+    const day = parseInt(dayStr, 10);
+    const validDay = Number.isFinite(day) && day >= 1 && day <= daysInMonth ? day : 15;
+    const weight = Math.max(0, Math.min(1, (daysInMonth - validDay + 1) / daysInMonth));
+    weightedFlow += amt * weight;
+  }
+
+  return {
+    totalFlow: Math.round(totalFlow * 100) / 100,
+    weightedFlow: Math.round(weightedFlow * 100) / 100,
+  };
+}
+
+/**
  * Calcula a evolução completa do TWR por cotização a partir de uma série mensal de snapshots
  * e fluxos externos.
  *
@@ -169,7 +227,11 @@ export function calculateTwrSeries(
     if (!pt) continue;
 
     const balance = Math.max(0, Math.round(pt.totalValueBRL * 100) / 100);
-    const flow = Math.round((pt.netExternalCashFlowBRL ?? 0) * 100) / 100;
+    const { totalFlow, weightedFlow } = calculateWeightedCashFlow(
+      pt.month,
+      pt.flows,
+      pt.netExternalCashFlowBRL ?? 0,
+    );
 
     let monthRatePct: number;
     let totalShares: number;
@@ -192,13 +254,14 @@ export function calculateTwrSeries(
         currentSharePrice = Math.max(0.0001, Math.round(currentSharePrice * (1 + monthRatePct / 100) * 10000) / 10000);
         totalShares = balance > 0 && currentSharePrice > 0 ? balance / currentSharePrice : 0;
       } else {
-        // Cálculo via saldo e fluxo externo (Modified Dietz com peso médio W = 0.5):
+        // Cálculo via saldo e fluxo externo (Modified Dietz com dias corridos exatos ANBIMA ou peso médio W = 0.5):
         if (prevBalance > 0) {
-          const gain = balance - prevBalance - flow;
-          const capitalBase = prevBalance + 0.5 * flow;
+          const gain = balance - prevBalance - totalFlow;
+          const capitalBase = prevBalance + weightedFlow;
           if (capitalBase > 0) {
             const rawRate = gain / capitalBase;
-            monthRatePct = Math.round(rawRate * 10000) / 100;
+            const clampedRate = Math.max(-1.0, Math.min(10.0, rawRate));
+            monthRatePct = Math.round(clampedRate * 10000) / 100;
           } else {
             monthRatePct = 0;
           }

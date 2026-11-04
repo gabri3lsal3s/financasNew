@@ -232,5 +232,40 @@ describe("TWR — Time-Weighted Return (Padrão CVM/ANBIMA)", () => {
       expect(result.series[3]?.totalShares).toBeGreaterThan(0);
       expect(Number.isNaN(result.currentSharePrice)).toBe(false);
     });
+
+    it("calcula Modified Dietz com precisão superior quando fluxos diários são informados (ANBIMA)", () => {
+      // Cenário: Janeiro/2026 (31 dias)
+      // Mês 1: Saldo 10.000
+      // Mês 2: Saldo final 21.000, com aporte de 10.000 no dia 01
+      // No dia 01, o peso é (31 - 1 + 1)/31 = 1.0 (exposto o mês todo)
+      const pointsDia01: TwrMonthlyInputPoint[] = [
+        { month: "2026-01", totalValueBRL: 10000 },
+        {
+          month: "2026-02",
+          totalValueBRL: 21000,
+          flows: [{ date: "2026-02-01", amount: 10000 }],
+        },
+      ];
+
+      // Mesma situação, mas aporte no dia 28 (último dia de Fev com 28 dias)
+      // Peso do dia 28 é (28 - 28 + 1)/28 = 1/28 ~= 0.0357
+      const pointsDia28: TwrMonthlyInputPoint[] = [
+        { month: "2026-01", totalValueBRL: 10000 },
+        {
+          month: "2026-02",
+          totalValueBRL: 21000,
+          flows: [{ date: "2026-02-28", amount: 10000 }],
+        },
+      ];
+
+      const resDia01 = calculateTwrSeries(pointsDia01);
+      const resDia28 = calculateTwrSeries(pointsDia28);
+
+      // Com aporte no dia 1, o ganho de 1.000 é distribuído sobre base ~20.000 (~5%)
+      // Com aporte no dia 28, o ganho de 1.000 ocorreu quase todo sobre a base de 10.000 (~9.6%)
+      expect(resDia01.series[1]?.monthRatePct).toBeLessThan(resDia28.series[1]?.monthRatePct ?? 0);
+      expect(resDia01.series[1]?.monthRatePct).toBeCloseTo(5.0, 0);
+    });
   });
 });
+

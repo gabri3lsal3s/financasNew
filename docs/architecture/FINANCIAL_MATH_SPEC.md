@@ -100,8 +100,16 @@ Isso impede que desvalorizações ou valorizações conjunturais da taxa PTAX (U
 
 ### 4.1. TWRR — Time-Weighted Rate of Return (`twr.ts`)
 
-Padrão CVM/ANBIMA para aferir o mérito da estratégia de alocação de forma imune aos aportes e resgates externos:
-- Cada subperíodo calcula a variação percentual isolada $r_t$;
+Padrão CVM/ANBIMA/GIPS para aferir o mérito da estratégia de alocação de forma imune aos aportes e resgates externos:
+- Cada subperíodo calcula a variação percentual isolada $r_t$ utilizando o método **Modified Dietz com ponderação exata de fluxos diários**:
+  $$W_i = \frac{CD - D_i + 1}{CD}$$
+  onde $CD$ é a quantidade total de dias corridos no mês de competência e $D_i$ é o dia em que o aporte/resgate ocorreu ($1 \le D_i \le CD$).
+- O capital médio ponderado no mês $t$ é calculado por:
+  $$\bar{C}_t = V_{\text{inicial}} + \sum_{i=1}^{n} (F_i \times W_i)$$
+- Caso não haja detalhamento dia a dia dos fluxos de caixa, o sistema adota $W = 0.5$ (simplificação padrão de fluxo no meio do mês).
+- A rentabilidade do subperíodo é computada como:
+  $$r_t = \frac{V_{\text{final}} - V_{\text{inicial}} - F_{\text{líquido}}}{\bar{C}_t}$$
+- **Proteção de Colapso de Denominador:** Se resgates atípicos massivos tornarem $\bar{C}_t \le 0$ mesmo com patrimônio remanescente positivo, a rentabilidade do subperíodo é travada em $0.00\%$ para evitar singularidades matemáticas ou inversões de sinal fictícias.
 - A taxa acumulada no período decorre do encadeamento geométrico:
 
 $$R_{\text{twr}} = \prod_{t=1}^{T} (1 + r_t) - 1$$
@@ -116,6 +124,11 @@ Mede a taxa interna de retorno do capital efetivamente investido pelo bolso, pon
 $$\text{VPL}(r) = \sum_{k=1}^{K} \frac{C_k}{(1 + r)^{\frac{d_k - d_0}{365}}} = 0$$
 
 - **Solver Híbrido:** Executa até 50 iterações de Newton-Raphson com tolerância $\epsilon = 10^{-7}$. Em caso de divergência ou derivada nula, aciona busca intervalar por bisseção no intervalo $[-0.999, 10.0]$.
+- **Salvaguardas Regulatórias CVM/ANBIMA e de Formação:**
+  1. **Histórico < 30 dias:** Retorna status `insufficient_history` e `isEligible = false`. A taxa simples do período é calculada, mas nenhuma taxa anualizada é gerada.
+  2. **Histórico entre 30 e 364 dias ($30 \le \Delta d < 365$):** Em estrito cumprimento à Resolução CVM 19/2021 e às diretrizes ANBIMA, o produto expõe a rentabilidade acumulada simples do período (`periodRatePct`), mantendo `annualizedRatePct = null`. A taxa anualizada matemática bruta (`rawAnnualizedRatePct`) é preservada para fins analíticos internos, impedindo a exibição de taxas projetadas distorcidas por exponenciação curta.
+  3. **Histórico $\ge 365$ dias:** Exibe tanto o retorno no período quanto a taxa anualizada ponderada no tempo (`annualizedRatePct` em % a.a.).
+  4. **Imunidade ao Turnover:** Reinvestimentos internos (venda de um ativo seguida de compra de outro na mesma corretora) têm fluxo líquido do bolso zero, impactando a carteira apenas pela valorização dos ativos e não como novos aportes externos.
 
 ---
 

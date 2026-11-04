@@ -34,8 +34,10 @@ export type XIRRStatus =
   | "invalid_input";
 
 export interface XIRRResult {
-  /** Taxa anualizada (% a.a.), ex.: 14.52 para 14.52% a.a. Null se dados insuficientes ou divergência. */
+  /** Taxa anualizada (% a.a.) calculada apenas se daysElapsed >= 365 (Padrão CVM/ANBIMA). Null caso contrário. */
   annualizedRatePct: number | null;
+  /** Taxa anualizada bruta matemática (disponível internamente mesmo para períodos < 365 dias). */
+  rawAnnualizedRatePct?: number | null;
   /** Taxa acumulada simples no período (% total sobre o capital aportado). Null se cobertura insuficiente ou sem dados. */
   periodRatePct: number | null;
   /** Quantidade de dias corridos entre o primeiro fluxo e a data final. */
@@ -48,7 +50,8 @@ export interface XIRRResult {
   status: XIRRStatus;
 }
 
-const MIN_DAYS_FOR_ANNUALIZATION = 30;
+const MIN_DAYS_FOR_FORMATION = 30;
+const MIN_DAYS_FOR_ANNUALIZATION = 365;
 const MAX_NEWTON_ITERATIONS = 50;
 const TOLERANCE = 1e-7;
 const MIN_RATE = -0.999;
@@ -177,8 +180,8 @@ export function calculateXIRR(rawFlows: readonly CashFlow[]): XIRRResult {
     };
   }
 
-  // Trava de período mínimo: < 30 dias não anualiza sem gerar distorção matemática extrema
-  if (daysElapsed < MIN_DAYS_FOR_ANNUALIZATION) {
+  // Trava de período mínimo: < 30 dias não calcula sem gerar distorção matemática extrema
+  if (daysElapsed < MIN_DAYS_FOR_FORMATION) {
     return {
       annualizedRatePct: null,
       periodRatePct,
@@ -239,8 +242,11 @@ export function calculateXIRR(rawFlows: readonly CashFlow[]): XIRRResult {
   }
 
   if (newtonConverged && rate > MIN_RATE && rate <= MAX_RATE) {
+    const rawAnnualizedRatePct = Math.round(rate * 10000) / 100;
+    const annualizedRatePct = daysElapsed >= MIN_DAYS_FOR_ANNUALIZATION ? rawAnnualizedRatePct : null;
     return {
-      annualizedRatePct: Math.round(rate * 10000) / 100,
+      annualizedRatePct,
+      rawAnnualizedRatePct,
       periodRatePct,
       daysElapsed,
       isEligible: true,
@@ -274,8 +280,11 @@ export function calculateXIRR(rawFlows: readonly CashFlow[]): XIRRResult {
       const fMid = npv(mid, preparedFlows);
 
       if (Math.abs(fMid) < TOLERANCE || (high - low) / 2 < TOLERANCE) {
+        const rawAnnualizedRatePct = Math.round(mid * 10000) / 100;
+        const annualizedRatePct = daysElapsed >= MIN_DAYS_FOR_ANNUALIZATION ? rawAnnualizedRatePct : null;
         return {
-          annualizedRatePct: Math.round(mid * 10000) / 100,
+          annualizedRatePct,
+          rawAnnualizedRatePct,
           periodRatePct,
           daysElapsed,
           isEligible: true,

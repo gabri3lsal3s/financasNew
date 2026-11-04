@@ -55,7 +55,8 @@ describe("calculateXIRR — Motor Puro de Taxa Interna de Retorno", () => {
   });
 
   it("calcula taxa anualizada para 180 dias com ganho de 5%", () => {
-    // 5% em aprox meio ano vira ~10.4% a.a. composta
+    // 5% em aprox meio ano vira ~10.4% a.a. composta internamente (rawAnnualizedRatePct)
+    // Porem annualizedRatePct e nulo por salvaguarda CVM/ANBIMA (< 365 dias)
     const flows: CashFlow[] = [
       { date: "2026-01-01", amount: -1000 },
       { date: "2026-07-01", amount: 1050 }, // 181 dias
@@ -65,7 +66,8 @@ describe("calculateXIRR — Motor Puro de Taxa Interna de Retorno", () => {
     expect(res.status).toBe("ok");
     expect(res.isEligible).toBe(true);
     expect(res.periodRatePct).toBe(5);
-    expect(res.annualizedRatePct).toBeCloseTo(10.3, 0);
+    expect(res.annualizedRatePct).toBeNull();
+    expect(res.rawAnnualizedRatePct).toBeCloseTo(10.3, 0);
   });
 
   it("prova imunidade à armadilha do giro de carteira (CDB A -> CDB B reinvestido)", () => {
@@ -81,11 +83,11 @@ describe("calculateXIRR — Motor Puro de Taxa Interna de Retorno", () => {
     const res = calculateXIRR(flows);
     expect(res.status).toBe("ok");
     expect(res.periodRatePct).toBe(30);
-    expect(res.annualizedRatePct).toBe(30); // 30% a.a. sobre os R$ 1.000 que saíram do bolso
+    expect(res.annualizedRatePct).toBe(30); // 30% a.a. sobre os R$ 1.000 que saíram do bolso (>= 365d)
   });
 
   it("calcula TIR consistente para múltiplos aportes mensais espaçados", () => {
-    // 3 aportes de R$ 1.000 e saldo final de R$ 3.200 após 6 meses
+    // 3 aportes de R$ 1.000 e saldo final de R$ 3.200 após 6 meses (181 dias)
     const flows: CashFlow[] = [
       { date: "2026-01-01", amount: -1000 },
       { date: "2026-02-01", amount: -1000 },
@@ -97,7 +99,8 @@ describe("calculateXIRR — Motor Puro de Taxa Interna de Retorno", () => {
     expect(res.status).toBe("ok");
     expect(res.isEligible).toBe(true);
     expect(res.periodRatePct).toBeCloseTo(6.67, 1); // 200 / 3000 = 6.67%
-    expect(res.annualizedRatePct).toBeGreaterThan(12); // Ponderada no tempo anualizada
+    expect(res.annualizedRatePct).toBeNull(); // < 365 dias nao expoe taxa anualizada
+    expect(res.rawAnnualizedRatePct).toBeGreaterThan(12); // Ponderada no tempo anualizada interna
   });
 
   it("aplica salvaguarda temporal para históricos inferiores a 30 dias", () => {

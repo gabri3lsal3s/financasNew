@@ -132,22 +132,27 @@ export function AssetDetailSheet({
   // Métrica da TIR / Fluxo do Bolso individual do ativo
   const assetIrr = positionRow?.irrResult;
   const isAssetIrrReady = Boolean(assetIrr?.isEligible && assetIrr.annualizedRatePct !== null);
-  const hasIrr = isAssetIrrReady || (assetIrr?.status === "insufficient_history" && assetIrr.periodRatePct !== null && Math.abs(assetIrr.periodRatePct) <= 200);
-  const irrRate = assetIrr?.annualizedRatePct ?? (assetIrr?.status === "insufficient_history" && (assetIrr.periodRatePct ?? 0) <= 200 ? assetIrr.periodRatePct : null);
+  const hasPeriodRate = Boolean(
+    assetIrr?.isEligible &&
+    assetIrr.periodRatePct !== null &&
+    Math.abs(assetIrr.periodRatePct ?? 0) <= 500,
+  );
+  const hasIrr = isAssetIrrReady || hasPeriodRate;
+  const irrRate = assetIrr?.annualizedRatePct ?? assetIrr?.periodRatePct ?? null;
   const irrLabel =
     isAssetIrrReady
       ? `${(assetIrr?.annualizedRatePct ?? 0) >= 0 ? "+" : ""}${(assetIrr?.annualizedRatePct ?? 0).toFixed(1)}% a.a.`
-      : assetIrr?.status === "insufficient_history" && assetIrr.periodRatePct !== null && Math.abs(assetIrr.periodRatePct) <= 200
-        ? `${assetIrr.periodRatePct >= 0 ? "+" : ""}${assetIrr.periodRatePct.toFixed(1)}% no período`
+      : hasPeriodRate && (assetIrr?.daysElapsed ?? 0) >= 30
+        ? `${(assetIrr?.periodRatePct ?? 0) >= 0 ? "+" : ""}${(assetIrr?.periodRatePct ?? 0).toFixed(1)}% no período`
         : "Em formação";
   const irrSub =
     assetIrr?.status === "insufficient_capital_coverage"
       ? "Aguardando compras"
-      : assetIrr?.status === "insufficient_history"
-        ? `Histórico de ${assetIrr.daysElapsed}d`
+      : (assetIrr?.daysElapsed ?? 0) < 30
+        ? `Histórico de ${assetIrr?.daysElapsed ?? 0}d`
         : isAssetIrrReady
           ? `Ponderada (${assetIrr?.daysElapsed}d)`
-          : "Sem histórico suficiente";
+          : `Histórico de ${assetIrr?.daysElapsed}d (< 365d p/ anualizar)`;
 
 
   const formatTxType = (type: PortfolioTransactionType) => {

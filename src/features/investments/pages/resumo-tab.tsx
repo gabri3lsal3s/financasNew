@@ -352,23 +352,29 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const isIrrReady = Boolean(
     portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null,
   );
-  const irrRate = portfolioIrr?.annualizedRatePct ?? (portfolioIrr?.status === "insufficient_history" && (portfolioIrr.periodRatePct ?? 0) <= 200 ? portfolioIrr.periodRatePct : null);
-  const irrTone = isIrrReady ? ((irrRate ?? 0) >= 0 ? "positive" : "negative") : "default";
+  const hasPeriodRate = Boolean(
+    portfolioIrr?.isEligible &&
+    portfolioIrr.periodRatePct !== null &&
+    portfolioIrr.periodRatePct !== undefined &&
+    Math.abs(portfolioIrr.periodRatePct) <= 500,
+  );
+  const irrRate = portfolioIrr?.annualizedRatePct ?? portfolioIrr?.periodRatePct ?? null;
+  const irrTone = (isIrrReady || hasPeriodRate) ? ((irrRate ?? 0) >= 0 ? "positive" : "negative") : "default";
 
   const irrLabel = isIrrReady
     ? `${(portfolioIrr?.annualizedRatePct ?? 0) >= 0 ? "+" : ""}${(portfolioIrr?.annualizedRatePct ?? 0).toFixed(1)}% a.a.`
-    : portfolioIrr?.status === "insufficient_history" && portfolioIrr.periodRatePct !== null && Math.abs(portfolioIrr.periodRatePct) <= 200
-      ? `${portfolioIrr.periodRatePct >= 0 ? "+" : ""}${portfolioIrr.periodRatePct.toFixed(1)}% no período`
+    : hasPeriodRate && (portfolioIrr?.daysElapsed ?? 0) >= 30
+      ? `${(portfolioIrr?.periodRatePct ?? 0) >= 0 ? "+" : ""}${(portfolioIrr?.periodRatePct ?? 0).toFixed(1)}% no período`
       : "Em formação";
 
   const irrHint =
     portfolioIrr?.status === "insufficient_capital_coverage"
       ? "Aguardando histórico de aportes"
-      : portfolioIrr?.status === "insufficient_history"
-        ? `Histórico de ${portfolioIrr.daysElapsed}d (mín. 30d)`
+      : (portfolioIrr?.daysElapsed ?? 0) < 30
+        ? `Histórico de ${portfolioIrr?.daysElapsed ?? 0}d (mín. 30d)`
         : isIrrReady
           ? `Ponderada no tempo (${portfolioIrr?.daysElapsed}d)`
-          : "Requer histórico de aportes";
+          : `Histórico de ${portfolioIrr?.daysElapsed}d (< 365d p/ anualizar)`;
 
   // ---------------------------------------------------------------------------
   // Métrica Primária Adaptativa: Rentabilidade da Carteira (TWR com fallback para Custódia)

@@ -530,10 +530,13 @@ export function usePortfolioPosition(): PortfolioPosition {
   const twrInputs: TwrMonthlyInputPoint[] = sortedAllMonths.map(([m, data]) => {
     let flow = 0;
     let explicitRate: number | null = null;
+    const monthFlows: { date: string; amount: number }[] = [];
     for (const c of contributions) {
       if (c.date.startsWith(m)) {
         const isWithdrawal = isHistoricalWithdrawal(c);
-        flow += isWithdrawal ? -Math.abs(c.amount) : Math.abs(c.amount);
+        const signedAmount = isWithdrawal ? -Math.abs(c.amount) : Math.abs(c.amount);
+        flow += signedAmount;
+        monthFlows.push({ date: c.date, amount: signedAmount });
         const r = extractExplicitRateFromNotes(c.notes);
         if (r !== null) {
           explicitRate = r;
@@ -545,6 +548,7 @@ export function usePortfolioPosition(): PortfolioPosition {
       totalValueBRL: data.total_value,
       totalCostBRL: data.total_cost,
       netExternalCashFlowBRL: Math.round(flow * 100) / 100,
+      flows: monthFlows.length > 0 ? monthFlows : undefined,
       explicitRatePct: explicitRate,
     };
   });
