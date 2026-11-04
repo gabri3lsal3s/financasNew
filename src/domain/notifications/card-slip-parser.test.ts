@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   detectCardPaymentMethod,
+  detectCardSlipModality,
   extractAuthorizationCode,
   extractCardSlipMerchant,
   extractTerminalAcquirer,
@@ -93,5 +94,66 @@ describe("card-slip-parser", () => {
     expect(parsed?.terminalAcquirer).toBe("Stone");
     expect(parsed?.installments?.count).toBe(3);
     expect(parsed?.installments?.installmentAmountCents).toBe(10000);
+    expect(parsed?.cardModality).toBe("credit_store_installments");
+  });
+
+  describe("Aprimoramento de Slips POS/TEF (Tarefa 7.2)", () => {
+    it("distingue modalidades de cartao (a vista, parcelado loja, parcelado emissor, debito)", () => {
+      expect(detectCardSlipModality("MASTERCARD CREDITO A VISTA")).toBe("credit_sight");
+      expect(detectCardSlipModality("VISA CREDITO PARCELADO LOJA")).toBe("credit_store_installments");
+      expect(detectCardSlipModality("ELO CREDITO PARCELADO ADM")).toBe("credit_issuer_installments");
+      expect(detectCardSlipModality("PARC EMISSOR 4X")).toBe("credit_issuer_installments");
+      expect(detectCardSlipModality("DEBITO A VISTA")).toBe("debit");
+    });
+
+    it("faz parsing de slip PagBank Elo com parcelamento e modalidade loja", () => {
+      const pagBankSlip = `
+        PAGBANK PAGSEGURO
+        AUTO PECAS ZONA SUL
+        VIA CLIENTE
+        DATA: 04/11/2026
+        ELO CREDITO PARCELADO LOJA
+        CARTAO: **** **** **** 9012
+        PARC: 06
+        AUT: 778899
+        VALOR TOTAL R$ 600,00
+      `;
+
+      const parsed = parseCardSlipReceipt(pagBankSlip);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.amountCents).toBe(60000);
+      expect(parsed?.paymentMethod).toBe("credit_card");
+      expect(parsed?.cardBrand).toBe("Elo");
+      expect(parsed?.cardLastDigits).toBe("9012");
+      expect(parsed?.terminalAcquirer).toBe("PagBank");
+      expect(parsed?.cardModality).toBe("credit_store_installments");
+      expect(parsed?.installments?.count).toBe(6);
+      expect(parsed?.installments?.installmentAmountCents).toBe(10000);
+    });
+
+    it("faz parsing de slip Getnet com modalidade emissor / adm e sintaxe 3X", () => {
+      const getnetSlip = `
+        GETNET
+        OTICA MODERNA
+        VIA DO CLIENTE
+        DATA: 10/11/2026
+        AMEX CREDITO PARC ADM
+        CARTAO: FINAL 5544
+        3X
+        AUT: 332211
+        VALOR: R$ 450,00
+      `;
+
+      const parsed = parseCardSlipReceipt(getnetSlip);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.amountCents).toBe(45000);
+      expect(parsed?.paymentMethod).toBe("credit_card");
+      expect(parsed?.cardBrand).toBe("American Express");
+      expect(parsed?.cardLastDigits).toBe("5544");
+      expect(parsed?.terminalAcquirer).toBe("Getnet");
+      expect(parsed?.cardModality).toBe("credit_issuer_installments");
+      expect(parsed?.installments?.count).toBe(3);
+      expect(parsed?.installments?.installmentAmountCents).toBe(15000);
+    });
   });
 });

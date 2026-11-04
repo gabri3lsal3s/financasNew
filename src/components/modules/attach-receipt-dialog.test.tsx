@@ -207,6 +207,41 @@ describe("AttachReceiptDialog", () => {
     });
   });
 
+  it("processa carnê de loja com parcelamento e resolução de categoria (Tarefa 7.4)", async () => {
+    const rawCarne = `
+      MAGAZINE LUIZA
+      COMPROVANTE DE PAGAMENTO DE CARNÊ
+      DATA DO PAGAMENTO: 10/11/2026
+      VENCIMENTO: 15/11/2026
+      BENEFICIÁRIO: MAGAZINE LUIZA S.A.
+      CNPJ: 47.960.950/0001-21
+      PARCELA 04 DE 10
+      VALOR PAGO: R$ 120,00
+      LINHA DIGITÁVEL: 23793.38128 60000.123456 01000.654321 8 89010000012000
+    `;
+    mockExtractReceiptTextFromFile.mockResolvedValueOnce(rawCarne);
+
+    render(
+      <AttachReceiptDialog open={true} onOpenChange={onOpenChange} onParsed={onParsed} />,
+    );
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(["carne"], "carne.pdf", { type: "application/pdf" });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(onParsed).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amountCents: 12000,
+          installments: 10,
+          currentInstallment: 4,
+          receiptKind: "bank_slip_payment",
+          categorySlug: "compras",
+        }),
+      );
+    });
+  });
+
   it("exibe mensagem de erro quando o arquivo não contém informações financeiras válidas", async () => {
     mockExtractReceiptTextFromFile.mockResolvedValueOnce("Texto aleatório sem nenhum valor financeiro");
 

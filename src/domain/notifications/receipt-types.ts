@@ -8,6 +8,12 @@ export type ReceiptKind =
   | "wire_transfer"
   | "generic";
 
+export type CardSlipModality =
+  | "credit_sight"
+  | "credit_store_installments"
+  | "credit_issuer_installments"
+  | "debit";
+
 export interface ParsedInstallmentData {
   /** Quantidade total de parcelas (2 a 60) */
   count: number;
@@ -37,8 +43,10 @@ export interface UniversalReceiptData {
   taxId?: string; // CPF (11 dígitos) ou CNPJ (14 dígitos)
   bankName?: string;
   issuerBank?: string;
+  destinationBank?: string;
   cardBrand?: string; // Visa, Mastercard, Elo, Amex, Hipercard
   cardLastDigits?: string; // 4 dígitos finais (ex: "4821")
+  cardModality?: CardSlipModality;
   authorizationCode?: string;
   terminalAcquirer?: string; // Cielo, Rede, Stone, PagBank, SafraPay, Getnet, etc.
   installments?: ParsedInstallmentData;

@@ -100,4 +100,53 @@ describe("bank-slip-parser — Parser Especializado de Boletos e Tributos (Taref
   it("rejeita texto sem valor financeiro", () => {
     expect(parseBankSlipReceipt("Boleto bancário emitido")).toBeNull();
   });
+
+  describe("Boletos Bancários e Carnês de Pagamento (Tarefa 7.3)", () => {
+    it("parseia carnê de loja de varejo com identificação de parcela (PARCELA 03 DE 12)", () => {
+      const rawCarne = `
+        CASAS BAHIA
+        COMPROVANTE DE PAGAMENTO DE CARNÊ
+        DATA DO PAGAMENTO: 15/11/2026
+        VENCIMENTO: 20/11/2026
+        
+        BENEFICIÁRIO: VIA VAREJO S.A.
+        CNPJ: 33.041.260/0652-90
+        PAGADOR: GABRIEL SALES
+        
+        PARCELA 03 DE 12
+        VALOR DA PARCELA: R$ 89,90
+        VALOR PAGO: R$ 89,90
+        
+        LINHA DIGITÁVEL: 23793.38128 60000.123456 01000.654321 8 89010000008990
+      `;
+
+      const parsed = parseBankSlipReceipt(rawCarne);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.kind).toBe("bank_slip_payment");
+      expect(parsed?.amountCents).toBe(8990);
+      expect(parsed?.dueDate).toBe("2026-11-20");
+      expect(parsed?.date).toBe("2026-11-15");
+      expect(parsed?.merchantOrBeneficiary).toContain("VIA VAREJO");
+      expect(parsed?.taxId).toBe("33041260065290");
+      expect(parsed?.installments?.count).toBe(12);
+      expect(parsed?.installments?.currentInstallment).toBe(3);
+      expect(parsed?.description).toContain("Carnê: VIA VAREJO (3/12)");
+    });
+
+    it("extrai linha digitável contínua de 47 dígitos sem pontuação", () => {
+      const rawContinuous = `
+        BANCO DO BRASIL
+        COMPROVANTE DE PAGAMENTO DE TITULO
+        DATA: 01/12/2026
+        VALOR PAGO: R$ 200,00
+        BENEFICIARIO: ESCOLA IDIOMAS LTDA
+        00190000090123456780201234567802189010000020000
+      `;
+
+      const parsed = parseBankSlipReceipt(rawContinuous);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.amountCents).toBe(20000);
+      expect(parsed?.barcodeOrDigitableLine).toBe("00190000090123456780201234567802189010000020000");
+    });
+  });
 });

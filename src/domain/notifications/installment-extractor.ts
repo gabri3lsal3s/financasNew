@@ -149,15 +149,20 @@ export function extractDetailedInstallments(
   }
 
   // =========================================================================
-  // CASO 5: Quantidade de parcelas vinculada a valor total ("R$ 300,00 em 3x", "parcelado em 3x", "dividido em 4x", "6x sem juros", "(3x)")
+  // CASO 5: Quantidade de parcelas vinculada a valor total ("R$ 300,00 em 3x", "parcelado em 3x", "PARCELADO 6X", "CREDITO 3X", "(3x)")
   // =========================================================================
   const countOnlyMatch =
-    /\b(?:em|parcelad[ao]\s+em|dividid[ao]\s+em)\s+(\d{1,2})\s*(?:x|vezes|parcelas)\b|\((\d{1,2})x\)|\b(\d{1,2})x\s*(?:sem\s+juros|com\s+juros)\b/i.exec(
+    /\b(?:em|parcelad[ao](?:\s+em)?|dividid[ao](?:\s+em)?|cr[ée]dito)\s+(\d{1,2})\s*(?:x|vezes|parcelas)\b|\((\d{1,2})x\)|\b(\d{1,2})x\s*(?:sem\s+juros|com\s+juros)\b|(?:\b(?:forma\s+(?:de\s+)?pagto|modalidade|cr[ée]dito)\s*[:=]?\s*)(\d{1,2})\s*[xX]\b|(?:^|[\r\n])\s*(?:cr[ée]dito\s+)?(\d{1,2})\s*[xX]\s*(?:$|[\r\n])/i.exec(
       text,
     );
 
   if (countOnlyMatch) {
-    const countStr = countOnlyMatch[1] || countOnlyMatch[2] || countOnlyMatch[3];
+    const countStr =
+      countOnlyMatch[1] ||
+      countOnlyMatch[2] ||
+      countOnlyMatch[3] ||
+      countOnlyMatch[4] ||
+      countOnlyMatch[5];
     if (countStr) {
       const count = parseInt(countStr, 10);
       if (count >= 2 && count <= 60 && fallbackAmountCents && fallbackAmountCents > 0) {

@@ -32,13 +32,15 @@ export function isPixReceipt(text: string): boolean {
   if (isBlacklistedReceipt(text)) return false;
 
   const pixMarkers = [
-    /\bcomprovante\s+(?:de\s+envio\s+|de\s+transfer[êe]ncia\s+|de\s+pagamento\s+)?(?:do\s+|de\s+)?pix\b/i,
-    /\bpix\s+(?:enviado|recebido|agendado|realizado)\b/i,
+    /\bcomprovante\s+(?:de\s+envio\s+|de\s+transfer[êe]ncia\s+|de\s+pagamento\s+|de\s+opera[çc][ãa]o\s+)?(?:do\s+|de\s+)?pix\b/i,
+    /\bpix\s+(?:enviado|recebido|agendado|realizado|conclu[íi]do)\b/i,
     /\btransfer[êe]ncia\s+pix\b/i,
     /\bpagamento\s+(?:com\s+|via\s+)?pix\b/i,
     /\bchave\s+pix\b/i,
     /\bendtoendid\b/i,
     /\bid\s+da\s+transa[çc][ãa]o\s*:\s*e\d{8}/i,
+    /\bcomprovante\s+de\s+transa[çc][ãa]o\s+pix\b/i,
+    /\bcomprovante\s+pix\b/i,
   ];
 
   for (const marker of pixMarkers) {
@@ -48,7 +50,7 @@ export function isPixReceipt(text: string): boolean {
   // Se tiver a palavra "pix" acompanhada de identificador ou comprovante
   if (/\bpix\b/i.test(lower)) {
     if (
-      /\b(?:comprovante|autentica[çc][ãa]o|dados\s+do\s+recebedor|dados\s+do\s+pagador|valor\s+pago)\b/i.test(
+      /\b(?:comprovante|autentica[çc][ãa]o|dados\s+do\s+recebedor|dados\s+do\s+pagador|valor\s+pago|institui[çc][ãa]o|favorecido|benefici[áa]rio)\b/i.test(
         lower,
       )
     ) {
@@ -57,6 +59,48 @@ export function isPixReceipt(text: string): boolean {
   }
 
   return false;
+}
+
+/**
+ * Extrai a instituição financeira destinatária (banco do recebedor/favorecido).
+ */
+export function extractPixDestinationBank(text: string): string | undefined {
+  if (!text) return undefined;
+
+  // 1. Bloco de destino / recebedor com instituição ou banco
+  const destBlock =
+    /(?:Destino|Recebedor|Destinat[áa]rio|Dados\s+(?:do\s+Recebedor|de\s+quem\s+recebeu|do\s+Destinat[áa]rio|do\s+favorecido|do\s+benefici[áa]rio)|Favorecido|Benefici[áa]rio|Para)[\s\S]*?(?:Institui[çc][ãa]o(?:\s+(?:Financeira|Destinat[áa]ria|do\s+Recebedor|de\s+Destino))?|Banco(?:\s+(?:Destinat[áa]rio|do\s+Recebedor|de\s+Destino))?)\s*[:=]\s*([^\n\r,]+)/i.exec(
+      text,
+    );
+  if (destBlock && destBlock[1]) {
+    const rawBank = destBlock[1].trim();
+    const resolved = resolveBankName(undefined, undefined, rawBank);
+    if (resolved) return resolved;
+    return cleanMerchantName(rawBank);
+  }
+
+  // 2. Rótulo explícito isolado com qualificador de destino
+  const directMatch =
+    /(?:Institui[çc][ãa]o\s+(?:Financeira\s+)?(?:Destinat[áa]ria|do\s+Recebedor|de\s+Destino)|Banco\s+(?:Destinat[áa]rio|do\s+Recebedor|de\s+Destino))\s*[:=]?\s*([^\n\r,]+)/i.exec(
+      text,
+    );
+  if (directMatch && directMatch[1]) {
+    const rawBank = directMatch[1].trim();
+    const resolved = resolveBankName(undefined, undefined, rawBank);
+    if (resolved) return resolved;
+    return cleanMerchantName(rawBank);
+  }
+
+  // 3. Fallback: Instituição isolada após o valor/chave
+  const genericInstMatch =
+    /(?:Institui[çc][ãa]o(?:\s+Financeira)?|Banco)\s*[:=]\s*([^\n\r,]+)/i.exec(text);
+  if (genericInstMatch && genericInstMatch[1]) {
+    const rawBank = genericInstMatch[1].trim();
+    const resolved = resolveBankName(undefined, undefined, rawBank);
+    if (resolved) return resolved;
+  }
+
+  return undefined;
 }
 
 /**
@@ -147,21 +191,23 @@ export function parsePixReceipt(rawText: string): UniversalReceiptData | null {
 
   // 1. Extração do recebedor / favorecido
   const recipientMatch =
-    /(?:(?:Dados\s+(?:do\s+Recebedor|de\s+quem\s+recebeu|de\s+destino|do\s+destino)|Destino)[\s\S]*?(?:Nome|Raz[ãa]o\s+Social):\s*([^\n\r,]+)|(?:Para|Destinat[áa]rio|Nome\s+do\s+recebedor|Recebedor|Pago\s+para|Benefici[áa]rio|Favorecido|Quem\s+recebeu|Destino)\s*[:=]\s*([^\n\r,]+))/i.exec(
+    /(?:(?:Dados\s+(?:do\s+Recebedor|de\s+quem\s+recebeu|de\s+destino|do\s+destino|do\s+favorecido|do\s+benefici[áa]rio)|Destino|Dados\s+do\s+Destinat[áa]rio)[\s\S]*?(?:Nome|Raz[ãa]o\s+Social):\s*([^\n\r,]+)|(?:Para|Destinat[áa]rio|Nome\s+do\s+recebedor|Recebedor|Pago\s+para|Benefici[áa]rio|Favorecido|Quem\s+recebeu|Destino)\s*[:=]\s*([^\n\r,]+))/i.exec(
       rawText,
     );
-  const rawRecipient = recipientMatch
+  let rawRecipient = recipientMatch
     ? (recipientMatch[1] || recipientMatch[2] || "").trim()
     : "";
+  rawRecipient = rawRecipient.replace(/^(?:Nome|Raz[ãa]o\s+Social)\s*[:=]?\s*/i, "").trim();
 
   // 2. Extração do pagador / remetente
   const payerMatch =
     /(?:(?:Dados\s+(?:do\s+Pagador|de\s+quem\s+(?:pagou|enviou)|de\s+origem|da\s+origem)|Origem|Quem\s+te\s+enviou)[\s\S]*?(?:Nome|Raz[ãa]o\s+Social):\s*([^\n\r,]+)|(?:Quem\s+te\s+enviou|Pagador|De|Origem|Nome\s+do\s+pagador|Remetente)\s*[:=]\s*([^\n\r,]+))/i.exec(
       rawText,
     );
-  const rawPayer = payerMatch
+  let rawPayer = payerMatch
     ? (payerMatch[1] || payerMatch[2] || "").trim()
     : "";
+  rawPayer = rawPayer.replace(/^(?:Nome|Raz[ãa]o\s+Social)\s*[:=]?\s*/i, "").trim();
 
   const recipient = cleanMerchantName(
     rawRecipient || (nature === "expense" ? extractMerchantOrRecipient(rawText) : ""),
@@ -170,9 +216,19 @@ export function parsePixReceipt(rawText: string): UniversalReceiptData | null {
     rawPayer || (nature === "income" ? extractMerchantOrRecipient(rawText) : ""),
   );
 
-  const taxId = extractTaxId(rawText);
+  let taxId = extractTaxId(rawText);
+  if (!taxId) {
+    const maskedMatch =
+      /\b([0-9*]{3}\.[0-9*]{3}\.[0-9*]{3}-[0-9*]{2})\b|\b([0-9*]{2}\.[0-9*]{3}\.[0-9*]{3}\/[0-9*]{4}-[0-9*]{2})\b/.exec(
+        rawText,
+      );
+    if (maskedMatch) {
+      taxId = (maskedMatch[1] || maskedMatch[2] || "").trim();
+    }
+  }
   const pixKey = extractPixKey(rawText);
   const txId = extractPixEndToEndId(rawText);
+  const destinationBank = extractPixDestinationBank(rawText);
 
   let description: string;
   if (isScheduled) {
@@ -200,6 +256,8 @@ export function parsePixReceipt(rawText: string): UniversalReceiptData | null {
     payerOrSource: payer || undefined,
     taxId,
     bankName,
+    issuerBank: bankName,
+    destinationBank,
     isScheduled,
     scheduledFor,
     txId,

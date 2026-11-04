@@ -19,6 +19,8 @@ import {
   resolveBankName,
 } from "./bank-parser";
 import { isPixReceipt } from "./pix-receipt-parser";
+import { extractDetailedInstallments } from "./installment-extractor";
+import { cleanCorporateSuffixes } from "./danfe-nfc-parser";
 import type { UniversalReceiptData } from "./receipt-types";
 
 /**
@@ -35,12 +37,13 @@ export function isBankSlipReceipt(text: string): boolean {
   if (isPixReceipt(text)) return false;
 
   const boletoMarkers = [
-    /\bcomprovante\s+(?:de\s+pagamento\s+de\s+|de\s+liquida[çc][ãa]o\s+de\s+)?(?:boleto|t[íi]tulo|concession[áa]ria|conv[êe]nio|arrecada[çc][ãa]o)\b/i,
-    /\bpagamento\s+(?:de\s+)?(?:boleto|t[íi]tulo|concession[áa]ria|conv[êe]nio|tributo|darf|gps|das)\b/i,
+    /\bcomprovante\s+(?:de\s+pagamento\s+de\s+|de\s+liquida[çc][ãa]o\s+de\s+)?(?:boleto|t[íi]tulo|concession[áa]ria|conv[êe]nio|arrecada[çc][ãa]o|carn[êe])\b/i,
+    /\bpagamento\s+(?:de\s+)?(?:boleto|t[íi]tulo|concession[áa]ria|conv[êe]nio|tributo|darf|gps|das|carn[êe])\b/i,
     /\b(?:linha\s+digit[áa]vel|c[óo]digo\s+de\s+barras)\b/i,
     /\b(?:comprovante\s+de\s+pagamento\s*-\s*darf|documento\s+de\s+arrecada[çc][ãa]o\s+de\s+receitas\s+federais)\b/i,
     /\b(?:guia\s+da\s+previd[êe]ncia\s+social|comprovante\s+gps)\b/i,
     /\b(?:benefici[áa]rio|cedente)\s*(?:original)?:\s*[^\n\r]+/i,
+    /\b(?:carn[êe]|prestac[ãa]o|parcela\s+\d{1,2}\s+(?:de|\/)\s+\d{1,2})\b/i,
   ];
 
   let matches = 0;
@@ -52,6 +55,8 @@ export function isBankSlipReceipt(text: string): boolean {
         (lower.includes("boleto") ||
           lower.includes("título") ||
           lower.includes("titulo") ||
+          lower.includes("carnê") ||
+          lower.includes("carne") ||
           lower.includes("linha digitável") ||
           lower.includes("código de barras") ||
           lower.includes("darf") ||
@@ -117,6 +122,12 @@ export function extractDigitableLine(text: string): string | undefined {
     }
   }
 
+  // 4. Sequência contínua ou em blocos de 47 ou 48 dígitos
+  const continuousMatch = /\b(\d{47,48})\b/.exec(text);
+  if (continuousMatch && continuousMatch[1]) {
+    return continuousMatch[1].trim();
+  }
+
   return undefined;
 }
 
@@ -145,7 +156,7 @@ export function extractBankSlipBeneficiary(text: string): string {
   if (match && match[1]) {
     const candidate = match[1].trim();
     if (candidate.length >= 3 && !/^(?:n[ãa]o\s+informado|-+)$/i.test(candidate)) {
-      return cleanMerchantName(candidate);
+      return cleanCorporateSuffixes(cleanMerchantName(candidate));
     }
   }
 
@@ -184,7 +195,7 @@ export function extractBankSlipPayer(text: string): string {
   if (match && match[1]) {
     const candidate = match[1].trim();
     if (candidate.length >= 3 && !/^(?:n[ãa]o\s+informado|-+)$/i.test(candidate)) {
-      return cleanMerchantName(candidate);
+      return cleanCorporateSuffixes(cleanMerchantName(candidate));
     }
   }
   return "";
@@ -224,6 +235,7 @@ export function parseBankSlipReceipt(rawText: string): UniversalReceiptData | nu
   const payer = extractBankSlipPayer(rawText);
   const taxId = extractTaxId(rawText);
   const digitableLine = extractDigitableLine(rawText);
+  const installments = extractDetailedInstallments(rawText, cents);
 
   // Resolução do banco processador / arrecadador
   const headerLines = rawText.split(/[\r\n]+/).slice(0, 4).join(" ");
@@ -235,7 +247,12 @@ export function parseBankSlipReceipt(rawText: string): UniversalReceiptData | nu
   // Descrição limpa e informativa
   let description: string;
   if (beneficiary) {
-    if (/\b(?:darf|receita\s+federal)\b/i.test(rawText)) {
+    if (installments && installments.count > 1) {
+      const part = installments.currentInstallment
+        ? ` (${installments.currentInstallment}/${installments.count})`
+        : ` (${installments.count}x)`;
+      description = `Carnê: ${beneficiary}${part}`;
+    } else if (/\b(?:darf|receita\s+federal)\b/i.test(rawText)) {
       description = `DARF: ${beneficiary}`;
     } else if (/\b(?:gps|inss)\b/i.test(rawText)) {
       description = `GPS: ${beneficiary}`;
@@ -243,7 +260,10 @@ export function parseBankSlipReceipt(rawText: string): UniversalReceiptData | nu
       description = `Boleto: ${beneficiary}`;
     }
   } else {
-    description = `Pagamento de Boleto (${bankName})`;
+    description =
+      installments && installments.count > 1
+        ? `Carnê (${installments.count}x)`
+        : `Pagamento de Boleto (${bankName})`;
   }
 
   const idSuffix = digitableLine
@@ -265,6 +285,7 @@ export function parseBankSlipReceipt(rawText: string): UniversalReceiptData | nu
     taxId,
     bankName,
     barcodeOrDigitableLine: digitableLine,
+    installments: installments || undefined,
     rawCleanText: rawText,
   };
 }

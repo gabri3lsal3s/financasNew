@@ -247,28 +247,28 @@ Eliminar o risco de captura de valores parciais de itens individuais em cupons d
 
 Suporte exaustivo aos comprovantes bancários mais emitidos no Brasil, extraindo dados de parcelamento, beneficiário e instituição.
 
-- [ ] **Tarefa 7.1: Matriz Universal de Comprovantes Pix (`pix-receipt-parser.ts`)**
+- [x] **Tarefa 7.1: Matriz Universal de Comprovantes Pix (`pix-receipt-parser.ts`)**
   - Atualizar regex e campos de comprovantes Pix emitidos por: Nubank, Inter, Itaú, Bradesco, Santander, Banco do Brasil, Caixa, C6 Bank, BTG, Mercado Pago e PicPay.
   - Extrair: Nome do Destinatário/Beneficiário, CPF/CNPJ mascarado, Instituição Financeira de Destino, Data/Hora e Chave Pix.
 
-- [ ] **Tarefa 7.2: Extração de Parcelamento em Comprovantes de Maquininha (`card-slip-parser.ts`)**
+- [x] **Tarefa 7.2: Extração de Parcelamento em Comprovantes de Maquininha (`card-slip-parser.ts`)**
   - Aprimorar parsing de slips POS/TEF (Cielo, Rede, Stone, PagBank, Getnet):
     - Extração do número de parcelas ("PARC: 03", "3X", "PARCELADO EM 6X").
     - Distinção entre: Crédito à Vista, Crédito Parcelado Loja, Crédito Parcelado Emissor e Débito.
     - Captura da bandeira e dos 4 últimos dígitos do cartão.
 
-- [ ] **Tarefa 7.3: Boletos Bancários e Carnês de Pagamento (`bank-slip-parser.ts`)**
+- [x] **Tarefa 7.3: Boletos Bancários e Carnês de Pagamento (`bank-slip-parser.ts`)**
   - Suportar carnês de lojas com parcelas ("PARCELA 03 DE 12").
   - Extrair linha digitável (47 ou 48 dígitos), data de vencimento e beneficiário principal.
 
-- [ ] **Tarefa 7.4: Integração de Resolução de Cartão e Categoria no Diálogo de Anexo (`AttachReceiptDialog.tsx`)**
+- [x] **Tarefa 7.4: Integração de Resolução de Cartão e Categoria no Diálogo de Anexo (`AttachReceiptDialog.tsx`)**
   - Garantir que, após o OCR ler o comprovante, os dados sejam enriquecidos com a memória de categorias e o cartão mais aderente seja selecionado automaticamente no formulário pré-preenchido.
 
-- [ ] **Portão de Qualidade 7:**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/domain/notifications/pix-receipt-parser.test.ts src/domain/notifications/card-slip-parser.test.ts src/domain/notifications/bank-slip-parser.test.ts src/domain/notifications/receipt-e2e-matrix.test.ts`
-  - [ ] **Commit & Push da Fase 7:** `git commit -m "feat(ocr): amplia suporte a comprovantes pix, boletos carnes e slips de maquininhas"`
+- [x] **Portão de Qualidade 7:**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/domain/notifications/pix-receipt-parser.test.ts src/domain/notifications/card-slip-parser.test.ts src/domain/notifications/bank-slip-parser.test.ts src/domain/notifications/receipt-e2e-matrix.test.ts`
+  - [x] **Commit & Push da Fase 7:** `git commit -m "feat(ocr): amplia suporte a comprovantes pix, boletos carnes e slips de maquininhas"`
 
 ---
 

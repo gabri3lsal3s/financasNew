@@ -20,7 +20,7 @@ import {
 } from "./bank-parser";
 import { cleanAcquirerPrefixes } from "./merchant-catalog";
 import { extractDetailedInstallments } from "./installment-extractor";
-import type { UniversalReceiptData } from "./receipt-types";
+import type { CardSlipModality, UniversalReceiptData } from "./receipt-types";
 
 const ACQUIRER_PATTERNS: Array<{ regex: RegExp; name: string }> = [
   { regex: /\bcielo\b/i, name: "Cielo" },
@@ -61,6 +61,59 @@ export function detectCardPaymentMethod(text: string): PaymentMethod {
 
   // Padrão de comprovantes de maquininhas: crédito
   return "credit_card";
+}
+
+/**
+ * Distingue a modalidade de pagamento do cartão no slip da maquininha:
+ * - Débito
+ * - Crédito à Vista
+ * - Crédito Parcelado Loja
+ * - Crédito Parcelado Emissor (ADM)
+ */
+export function detectCardSlipModality(text: string): CardSlipModality {
+  const lower = text.toLowerCase();
+
+  // 1. Débito
+  if (
+    /\b(?:d[ée]bito|visa\s+electron|maestro|mastercard\s+debit|elo\s+d[ée]bito)\b/i.test(lower) &&
+    !/\bcr[ée]dito\b/i.test(lower)
+  ) {
+    return "debit";
+  }
+
+  // 2. Crédito Parcelado Loja
+  if (
+    /\b(?:parc(?:elado)?\s+loja|cr[ée]dito\s+(?:parc(?:elado)?\s+)?loja|parc\s+loj)\b/i.test(
+      lower,
+    )
+  ) {
+    return "credit_store_installments";
+  }
+
+  // 3. Crédito Parcelado Emissor / ADM
+  if (
+    /\b(?:parc(?:elado)?\s+(?:adm|emissor)|cr[ée]dito\s+(?:parc(?:elado)?\s+)?(?:adm|emissor)|parc\s+adm)\b/i.test(
+      lower,
+    )
+  ) {
+    return "credit_issuer_installments";
+  }
+
+  // 4. Crédito à Vista explícito
+  if (/\b(?:cr[ée]dito\s+([àa]\s+)?vista|[àa]\s+vista)\b/i.test(lower)) {
+    return "credit_sight";
+  }
+
+  // 5. Se contiver contagem de parcelas > 1 ou menção a crédito parcelado, assume loja por padrão
+  if (
+    /\b(?:cr[ée]dito\s+parcelado|parc(?:elas?)?:\s*0?[2-9]|\b[2-9]\s*x\b|parcelado\s+em\s+[2-9]|qtde\s+parc)/i.test(
+      lower,
+    )
+  ) {
+    return "credit_store_installments";
+  }
+
+  return "credit_sight";
 }
 
 /**
@@ -162,6 +215,7 @@ export function parseCardSlipReceipt(rawText: string): UniversalReceiptData | nu
   if (!cents || cents <= 0) return null;
 
   const paymentMethod = detectCardPaymentMethod(rawText);
+  const cardModality = detectCardSlipModality(rawText);
   const cardBrand = extractCardBrand(rawText);
   const cardLastDigits = extractCardLastDigits(rawText);
   const acquirer = extractTerminalAcquirer(rawText);
@@ -204,6 +258,7 @@ export function parseCardSlipReceipt(rawText: string): UniversalReceiptData | nu
     bankName,
     cardBrand,
     cardLastDigits,
+    cardModality,
     authorizationCode,
     terminalAcquirer: acquirer,
     installments: installments || undefined,
