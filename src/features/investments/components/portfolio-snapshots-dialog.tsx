@@ -1,34 +1,39 @@
 import { useMemo, useState } from "react";
-import { Calendar, Printer } from "lucide-react";
-import { Badge, Button, EmptyState, Modal, usePrint } from "@/components/ui";
+import { Calendar, Printer, Trash2 } from "lucide-react";
+import { Badge, Button, ConfirmDialog, EmptyState, Modal, usePrint } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import type { PortfolioMonthlySeriesPoint } from "@/domain/portfolio";
 import { formatMonthYear } from "@/lib/date";
 import { cn } from "@/lib/utils";
+import { useDeletePortfolioSnapshot } from "@/state";
 
 export interface PortfolioSnapshotsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   series: PortfolioMonthlySeriesPoint[];
   currentMonthStr?: string;
+  onDeleteSnapshot?: (month: string) => Promise<void> | void;
 }
 
 /**
  * Diálogo modal analítico de evolução patrimonial histórica.
  *
  * Apresenta a auditoria completa mês a mês dos snapshots em formato tabular
- * (padrão CVM/ANBIMA), com filtros por ano, métricas consolidadas do período
- * e opção de impressão/PDF.
+ * (padrão CVM/ANBIMA), com filtros por ano, métricas consolidadas do período,
+ * opção de impressão/PDF e gestão de snapshots históricos anômalos.
  */
 export function PortfolioSnapshotsDialog({
   open,
   onOpenChange,
   series,
   currentMonthStr,
+  onDeleteSnapshot,
 }: PortfolioSnapshotsDialogProps) {
   const { printing, triggerPrint } = usePrint("Extrato_Evolucao_Patrimonial.pdf");
   const [selectedYear, setSelectedYear] = useState<string>("all");
+  const [snapshotToDelete, setSnapshotToDelete] = useState<string | null>(null);
+  const deleteSnapshotMutation = useDeletePortfolioSnapshot();
 
   // Anos únicos presentes na série (ordenados decrescentemente)
   const availableYears = useMemo(() => {
@@ -234,6 +239,9 @@ export function PortfolioSnapshotsDialog({
                   <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">
                     Cota (R$)
                   </th>
+                  <th scope="col" className="py-2.5 px-3 text-center whitespace-nowrap print:hidden">
+                    Ações
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60 font-medium">
@@ -359,6 +367,25 @@ export function PortfolioSnapshotsDialog({
                           <span className="text-muted-foreground font-sans font-normal">—</span>
                         )}
                       </td>
+
+                      {/* Ações de Gestão do Snapshot */}
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap print:hidden">
+                        {!isCurrent ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSnapshotToDelete(pt.month)}
+                            className="size-7 p-0 text-muted-foreground hover:text-negative-strong hover:bg-negative/10 cursor-pointer inline-flex items-center justify-center"
+                            aria-label={`Excluir snapshot de ${formatMonthYear(pt.month)}`}
+                            title={`Excluir snapshot de ${formatMonthYear(pt.month)}`}
+                          >
+                            <Trash2 className="size-3.5" aria-hidden="true" />
+                          </Button>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground font-normal">Ao vivo</span>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -367,6 +394,31 @@ export function PortfolioSnapshotsDialog({
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={snapshotToDelete !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setSnapshotToDelete(null);
+        }}
+        title="Excluir Snapshot Mensal"
+        description={
+          snapshotToDelete
+            ? `Tem certeza que deseja excluir o snapshot patrimonial de ${formatMonthYear(snapshotToDelete)}? Esta ação removerá o registro consolidado do banco de dados.`
+            : ""
+        }
+        confirmLabel="Excluir Snapshot"
+        variant="destructive"
+        confirmPending={deleteSnapshotMutation.isPending}
+        onConfirm={async () => {
+          if (!snapshotToDelete) return;
+          if (onDeleteSnapshot) {
+            await onDeleteSnapshot(snapshotToDelete);
+          } else {
+            await deleteSnapshotMutation.mutateAsync(snapshotToDelete);
+          }
+          setSnapshotToDelete(null);
+        }}
+      />
     </Modal>
   );
 }

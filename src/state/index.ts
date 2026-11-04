@@ -83,6 +83,7 @@ export {
   usePortfolioSnapshots,
   useUpsertPortfolioSnapshot,
   useBatchUpsertPortfolioSnapshots,
+  useDeletePortfolioSnapshot,
   usePortfolioContributions,
   useCreatePortfolioContribution,
   useDeletePortfolioContribution,

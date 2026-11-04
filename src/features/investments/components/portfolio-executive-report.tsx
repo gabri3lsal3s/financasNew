@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react";
-import { TrendingUp, FileText, SlidersHorizontal } from "lucide-react";
+import { TrendingUp, FileText, SlidersHorizontal, Trash2 } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select } from "@/components/ui/select";
 import { Tabs } from "@/components/ui/tabs";
 import {
@@ -12,7 +14,7 @@ import {
   ReportClassTables,
 } from "@/components/modules/reports";
 import { MonthlyClosingEditor } from "./monthly-closing-editor";
-import { usePortfolioMonthlyPosition, usePortfolioSnapshots } from "@/state";
+import { usePortfolioMonthlyPosition, usePortfolioSnapshots, useDeletePortfolioSnapshot } from "@/state";
 import { numberToCents } from "@/domain/money";
 import { formatFixedIncomeRateLabel } from "@/domain/portfolio/fixed-income";
 import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
@@ -60,6 +62,9 @@ export function PortfolioExecutiveReport({
   const activeMonth = currentMonth();
   const [selectedMonth, setSelectedMonth] = useState<string>(() => initialMonth ?? activeMonth);
   const [activeTab, setActiveTab] = useState<"report" | "closing">("report");
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+
+  const deleteSnapshotMutation = useDeletePortfolioSnapshot();
 
   // Consulta snapshots historicos para povoar as opcoes de meses disponiveis
   const snapshotsQuery = usePortfolioSnapshots();
@@ -240,6 +245,20 @@ export function PortfolioExecutiveReport({
             >
               {isCurrentSelected ? "Mês Aberto" : "Fechamento Histórico"}
             </Badge>
+
+            {!isCurrentSelected && snapshotsQuery.data?.some((s) => s.month === selectedMonth) ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                onClick={() => setDeleteModalOpen(true)}
+                className="text-muted-foreground hover:text-negative-strong hover:bg-negative/10 gap-1.5 h-6 px-2 text-[11px] cursor-pointer"
+                title="Excluir snapshot gravado deste mês"
+              >
+                <Trash2 className="size-3 text-muted-foreground" aria-hidden="true" />
+                <span>Excluir Fechamento</span>
+              </Button>
+            ) : null}
           </div>
 
           <div className="w-full sm:w-auto">
@@ -428,6 +447,22 @@ export function PortfolioExecutiveReport({
             />
           </div>
         )}
+
+        {/* Diálogo de Confirmação de Exclusão de Fechamento Histórico */}
+        <ConfirmDialog
+          open={deleteModalOpen}
+          onOpenChange={setDeleteModalOpen}
+          title="Excluir Fechamento Histórico"
+          description={`Tem certeza que deseja excluir o fechamento e as cotações gravadas para ${formatMonthYear(selectedMonth)}? A carteira passará a utilizar as cotações de referência/estimadas até que um novo fechamento seja realizado.`}
+          confirmLabel={deleteSnapshotMutation.isPending ? "Excluindo..." : "Excluir Fechamento"}
+          variant="destructive"
+          onConfirm={async () => {
+            await deleteSnapshotMutation.mutateAsync(selectedMonth);
+            setDeleteModalOpen(false);
+            setSelectedMonth(activeMonth);
+            setActiveTab("report");
+          }}
+        />
       </div>
     </ReportDocumentLayout>
   );

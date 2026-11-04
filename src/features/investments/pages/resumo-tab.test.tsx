@@ -212,6 +212,11 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useDeletePortfolioSnapshot: () => ({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useAllocationTargets: () => ({
     data: [],
     isLoading: false,

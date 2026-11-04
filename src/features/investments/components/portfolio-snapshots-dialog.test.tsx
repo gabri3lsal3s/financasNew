@@ -1,7 +1,16 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PortfolioSnapshotsDialog } from "./portfolio-snapshots-dialog";
 import type { PortfolioMonthlySeriesPoint } from "@/domain/portfolio";
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+});
+
+function renderWithClient(ui: React.ReactElement) {
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
 
 const mockSeries: PortfolioMonthlySeriesPoint[] = [
   {
@@ -51,7 +60,7 @@ const mockSeries: PortfolioMonthlySeriesPoint[] = [
 describe("PortfolioSnapshotsDialog", () => {
   it("renderiza a tabela analítica completa com os pontos ordenados decrescentemente", () => {
     const onOpenChange = vi.fn();
-    render(
+    renderWithClient(
       <PortfolioSnapshotsDialog
         open={true}
         onOpenChange={onOpenChange}
@@ -73,6 +82,7 @@ describe("PortfolioSnapshotsDialog", () => {
     expect(screen.getByText("Patrimônio")).toBeInTheDocument();
     expect(screen.getByText("Mês (TWR %)")).toBeInTheDocument();
     expect(screen.getByText("TWR Acum.")).toBeInTheDocument();
+    expect(screen.getByText("Ações")).toBeInTheDocument();
 
     // Linhas de dados formatadas
     expect(screen.getByText("Set/2026")).toBeInTheDocument();
@@ -85,7 +95,7 @@ describe("PortfolioSnapshotsDialog", () => {
 
   it("permite filtrar por ano", () => {
     const onOpenChange = vi.fn();
-    render(
+    renderWithClient(
       <PortfolioSnapshotsDialog
         open={true}
         onOpenChange={onOpenChange}
@@ -106,4 +116,39 @@ describe("PortfolioSnapshotsDialog", () => {
     expect(screen.queryByText("Set/2026")).not.toBeInTheDocument();
     expect(screen.queryByText("Ago/2026")).not.toBeInTheDocument();
   });
+
+  it("permite acionar o diálogo de exclusão de snapshot histórico", async () => {
+    const onOpenChange = vi.fn();
+    const onDeleteSnapshot = vi.fn();
+    renderWithClient(
+      <PortfolioSnapshotsDialog
+        open={true}
+        onOpenChange={onOpenChange}
+        series={mockSeries}
+        currentMonthStr="2026-09"
+        onDeleteSnapshot={onDeleteSnapshot}
+      />,
+    );
+
+    // Botão de exclusão para o mês Ago/2026
+    const deleteBtn = screen.getByRole("button", {
+      name: "Excluir snapshot de Ago/2026",
+    });
+    expect(deleteBtn).toBeInTheDocument();
+
+    fireEvent.click(deleteBtn);
+
+    // Deve abrir o ConfirmDialog
+    expect(screen.getByText("Excluir Snapshot Mensal")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Tem certeza que deseja excluir o snapshot patrimonial de Ago\/2026/),
+    ).toBeInTheDocument();
+
+    // Clicar em confirmar
+    const confirmBtn = screen.getByRole("button", { name: "Excluir Snapshot" });
+    fireEvent.click(confirmBtn);
+
+    expect(onDeleteSnapshot).toHaveBeenCalledWith("2026-08");
+  });
 });
+
