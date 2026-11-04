@@ -19,6 +19,7 @@ vi.mock("@/state", () => ({
   useOnboardingCounts: () => mockUseOnboardingCounts(),
   useSetReminderState: () => ({ mutate: mockSetReminderStateMutate, isPending: false }),
   useMarkAllRemindersAsRead: () => ({ mutate: mockMarkAllMutate, isPending: false }),
+  useMySupportTickets: () => ({ data: [], isLoading: false }),
 }));
 
 describe("NotificationsPopover", () => {

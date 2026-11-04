@@ -184,4 +184,91 @@ describe("MonthlyClosingEditor", () => {
       expect(onSaved).toHaveBeenCalled();
     });
   });
+
+  it("atualiza o patrimonio calibrado em tempo real ao editar a quantidade do ativo candidato", async () => {
+    const mockTwaPosition: PointInTimeResult = {
+      month: "2026-07",
+      cutoffDate: "2026-07-31",
+      cashQuantity: 1000,
+      totalInvestedBRL: 0,
+      totalCostBRL: 0,
+      totalValueBRL: 1000,
+      monthDividendsTotalBRL: 0,
+      accumulatedDividendsTotalBRL: 0,
+      positions: [],
+      fidelity: {
+        status: "balance_only",
+        canGenerateExecutiveReport: false,
+        reasons: ["Competência registrada apenas com saldo consolidado (TWA)."],
+        snapshotTotalValue: 10000,
+        reconstructedTotalValue: 0,
+        totalAssetsCount: 0,
+        calibratedQuotesCount: 0,
+        apiQuotesCount: 0,
+        fallbackQuotesCount: 0,
+      },
+      candidateAssets: [
+        {
+          assetId: "cand-1",
+          ticker: "VALE3",
+          assetClass: "Ações",
+          currency: "BRL",
+          suggestedQuantity: 100, // 100 * 60 = 6.000 + 1000 = 7.000 (dif = 3.000)
+          referencePrice: 60,
+        },
+      ],
+    };
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MonthlyClosingEditor
+          month="2026-07"
+          historicalPosition={mockTwaPosition}
+        />
+      </QueryClientProvider>,
+    );
+
+    // Inicialmente: 100 ações a R$ 60 = R$ 6.000 + R$ 1.000 (caixa) = R$ 7.000 (dif vs 10.000)
+    expect(screen.getByText(/vs TWA/)).toBeInTheDocument();
+
+    // Localiza o input de quantidade de VALE3 e altera para 150 (150 * 60 = 9.000 + 1.000 caixa = 10.000!)
+    const qtyInput = screen.getByRole("spinbutton");
+    expect(qtyInput).toHaveValue(100);
+
+    fireEvent.change(qtyInput, { target: { value: "150" } });
+    expect(qtyInput).toHaveValue(150);
+
+    // Agora o total é 10.000,00, exatamente igual ao TWA (diferença zero)
+    // A régua de reconciliação deve exibir "100% Alinhado ao Saldo TWA"
+    await waitFor(() => {
+      expect(screen.getByText("100% Alinhado ao Saldo TWA")).toBeInTheDocument();
+    });
+  });
+
+  it("permite restaurar os valores e cotações originais com um clique", async () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MonthlyClosingEditor
+          month="2026-08"
+          historicalPosition={mockHistoricalPosition}
+        />
+      </QueryClientProvider>,
+    );
+
+    const qtyInputs = screen.getAllByRole("spinbutton");
+    const firstInput = qtyInputs[0]!;
+    const originalValue = Number(firstInput.getAttribute("value"));
+
+    fireEvent.change(firstInput, { target: { value: "999" } });
+    expect(firstInput).toHaveValue(999);
+
+    const resetButton = screen.getByRole("button", { name: /Restaurar/i });
+    expect(resetButton).toBeInTheDocument();
+    fireEvent.click(resetButton);
+
+    await waitFor(() => {
+      expect(firstInput).toHaveValue(originalValue);
+    });
+  });
 });
+

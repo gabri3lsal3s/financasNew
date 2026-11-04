@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Check, RefreshCw, Layers, ShieldCheck, Wallet, AlertCircle } from "lucide-react";
+import { Check, RefreshCw, Layers, ShieldCheck, Wallet, AlertCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,55 @@ interface EditableItemState {
   fxRate: number;
 }
 
+function buildInitialItemsState(
+  historicalPosition: PointInTimeResult,
+): Record<string, EditableItemState> {
+  const initial: Record<string, EditableItemState> = {};
+
+  // 1. Posições apuradas deterministicamente via transações até a data de corte
+  for (const pos of historicalPosition.positions) {
+    const isUsd = pos.currency === "USD";
+    const fxRate = isUsd && pos.priceQuote > 0 ? pos.priceBRL / pos.priceQuote : 1;
+
+    initial[pos.ticker] = {
+      ticker: pos.ticker,
+      assetClass: pos.assetClass ?? "Outros",
+      currency: (pos.currency as "BRL" | "USD") ?? "BRL",
+      quantity: pos.quantity,
+      priceCents: Math.round((pos.priceQuote ?? pos.priceBRL) * 100),
+      source: (pos.quoteSource as MonthlyPriceSource) ?? (pos.isEstimate ? "fallback" : "api"),
+      isCandidate: false,
+      currentPrice: pos.priceQuote ?? pos.priceBRL,
+      fxRate,
+    };
+  }
+
+  // 2. Se a competência possui apenas saldo TWA ou faltam ativos apurados, carrega os candidatos da carteira
+  const isBalanceOnly =
+    historicalPosition.fidelity?.status === "balance_only" ||
+    historicalPosition.positions.length === 0;
+
+  if (isBalanceOnly && historicalPosition.candidateAssets) {
+    for (const cand of historicalPosition.candidateAssets) {
+      if (!initial[cand.ticker]) {
+        initial[cand.ticker] = {
+          ticker: cand.ticker,
+          assetClass: cand.assetClass,
+          currency: cand.currency,
+          quantity: cand.suggestedQuantity,
+          priceCents: Math.round(cand.referencePrice * 100),
+          source: "fallback",
+          isCandidate: true,
+          currentPrice: cand.referencePrice,
+          fxRate: cand.currency === "USD" ? 5.25 : 1,
+        };
+      }
+    }
+  }
+
+  return initial;
+}
+
 export function MonthlyClosingEditor({
   month,
   historicalPosition,
@@ -40,57 +89,19 @@ export function MonthlyClosingEditor({
   const saveClosingMutation = useSaveMonthlyClosing();
 
   // Estado local para ativos e cotacoes editaveis
-  const [itemsState, setItemsState] = useState<Record<string, EditableItemState>>(() => {
-    const initial: Record<string, EditableItemState> = {};
-
-    // 1. Posições apuradas deterministicamente via transações até a data de corte
-    for (const pos of historicalPosition.positions) {
-      const isUsd = pos.currency === "USD";
-      const fxRate = isUsd && pos.priceQuote > 0 ? pos.priceBRL / pos.priceQuote : 1;
-
-      initial[pos.ticker] = {
-        ticker: pos.ticker,
-        assetClass: pos.assetClass ?? "Outros",
-        currency: (pos.currency as "BRL" | "USD") ?? "BRL",
-        quantity: pos.quantity,
-        priceCents: Math.round((pos.priceQuote ?? pos.priceBRL) * 100),
-        source: (pos.quoteSource as MonthlyPriceSource) ?? (pos.isEstimate ? "fallback" : "api"),
-        isCandidate: false,
-        currentPrice: pos.priceQuote ?? pos.priceBRL,
-        fxRate,
-      };
-    }
-
-    // 2. Se a competência possui apenas saldo TWA ou faltam ativos apurados, carrega os candidatos da carteira
-    const isBalanceOnly =
-      historicalPosition.fidelity?.status === "balance_only" ||
-      historicalPosition.positions.length === 0;
-
-    if (isBalanceOnly && historicalPosition.candidateAssets) {
-      for (const cand of historicalPosition.candidateAssets) {
-        if (!initial[cand.ticker]) {
-          initial[cand.ticker] = {
-            ticker: cand.ticker,
-            assetClass: cand.assetClass,
-            currency: cand.currency,
-            quantity: cand.suggestedQuantity,
-            priceCents: Math.round(cand.referencePrice * 100),
-            source: "fallback",
-            isCandidate: true,
-            currentPrice: cand.referencePrice,
-            fxRate: cand.currency === "USD" ? 5.25 : 1,
-          };
-        }
-      }
-    }
-
-    return initial;
-  });
+  const [itemsState, setItemsState] = useState<Record<string, EditableItemState>>(() =>
+    buildInitialItemsState(historicalPosition),
+  );
 
   // Estado local de caixa
   const [cashBalanceCents, setCashBalanceCents] = useState<number>(() => {
     return Math.round(historicalPosition.cashQuantity * 100);
   });
+
+  const handleReset = () => {
+    setItemsState(buildInitialItemsState(historicalPosition));
+    setCashBalanceCents(Math.round(historicalPosition.cashQuantity * 100));
+  };
 
   const handlePriceChange = (ticker: string, cents: number) => {
     setItemsState((prev) => {
@@ -256,20 +267,34 @@ export function MonthlyClosingEditor({
           </div>
         </div>
 
-        <Button
-          type="button"
-          onClick={handleSave}
-          disabled={saveClosingMutation.isPending}
-          size="sm"
-          className="shrink-0 gap-1.5 cursor-pointer font-semibold"
-        >
-          {saveClosingMutation.isPending ? (
-            <RefreshCw className="size-3.5 animate-spin" aria-hidden="true" />
-          ) : (
-            <Check className="size-3.5" aria-hidden="true" />
-          )}
-          <span>Salvar Fechamento & Gerar Relatório</span>
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleReset}
+            disabled={saveClosingMutation.isPending}
+            size="sm"
+            className="gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
+          >
+            <RotateCcw className="size-3.5" aria-hidden="true" />
+            <span>Restaurar Valores</span>
+          </Button>
+
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={saveClosingMutation.isPending}
+            size="sm"
+            className="gap-1.5 cursor-pointer font-semibold"
+          >
+            {saveClosingMutation.isPending ? (
+              <RefreshCw className="size-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Check className="size-3.5" aria-hidden="true" />
+            )}
+            <span>Salvar Fechamento & Gerar Relatório</span>
+          </Button>
+        </div>
       </div>
 
       {/* Régua de Reconciliação com o Saldo TWA em Tempo Real */}

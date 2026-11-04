@@ -93,6 +93,21 @@ vi.mock("@/state", () => ({
   useUserOverrides: () => ({ data: [], isLoading: false }),
   useAdminSupportTickets: () => ({ data: [], isLoading: false }),
   useUpdateSupportTicketMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useFeatureUsageMetrics: () => ({ data: [], isLoading: false }),
+  useAdminTelegramSettings: () => ({
+    data: {
+      id: "global",
+      notify_support_tickets: true,
+      notify_git_push: true,
+      notify_deploys: true,
+      notify_usage_telemetry: false,
+      notify_new_users: true,
+      silent_mode: false,
+      updated_at: "2026-08-20T10:00:00Z",
+    },
+    isLoading: false,
+  }),
+  useUpdateTelegramSettingsMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("AdminPage Component", () => {

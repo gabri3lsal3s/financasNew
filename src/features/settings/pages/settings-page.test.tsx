@@ -103,6 +103,8 @@ vi.mock("@/state", () => ({
   }),
   useUpdateProfile: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useCreateSupportTicketMutation: () => ({ mutate: vi.fn(), isPending: false }),
+  useMySupportTickets: () => ({ data: [], isLoading: false }),
+  useMarkTicketAsReadMutation: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
 }));
 
 function renderSettings(initialEntries: string[] = ["/configuracoes"]) {
