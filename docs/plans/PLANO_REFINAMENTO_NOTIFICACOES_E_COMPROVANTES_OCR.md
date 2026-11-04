@@ -127,28 +127,28 @@ Implementar heurísticas universais para identificar compras parceladas em notif
 
 Garantir que a seleção de bancos na UI do app sincronize em tempo real com o serviço Android nativo e auto-vincule cartões de crédito e contas correntes.
 
-- [ ] **Tarefa 3.1: Sincronização em Tempo Real entre UI e SharedPreferences (`syncMonitoredPackages`)**
+- [x] **Tarefa 3.1: Sincronização em Tempo Real entre UI e SharedPreferences (`syncMonitoredPackages`)**
   - Conectar `syncMonitoredPackages` ao hook `useBankAssistantPreferences` e ao componente `BankingAssistantCard.tsx`:
     - Sempre que o usuário marcar/desmarcar um banco ou ativar/desativar a captura passiva, despachar imediatamente a lista de pacotes atualizada para o Android via Capacitor Plugin.
     - O `BankNotificationListenerService` passa a utilizar a lista exata e atualizada de pacotes autorizados.
 
-- [ ] **Tarefa 3.2: Resolução de Cartões por 4 Últimos Dígitos e Bandeira**
+- [x] **Tarefa 3.2: Resolução de Cartões por 4 Últimos Dígitos e Bandeira**
   - Aprimorar `src/domain/notifications/card-resolution.ts`:
     - Casamento unívoco pelos 4 últimos dígitos informados no push ("final 1234", "terminado em 5678", "**** 9012").
     - Desempate por bandeira (Visa, Mastercard, Elo, Amex) quando o usuário possui mais de um cartão do mesmo banco.
     - Suporte a cartões virtuais vs físicos com identificadores distintos.
 
-- [ ] **Tarefa 3.3: Auto-Resolução de Conta Bancária para Débito e Pix**
+- [x] **Tarefa 3.3: Auto-Resolução de Conta Bancária para Débito e Pix**
   - Criar `resolveBestMatchingBankAccount` em `src/domain/notifications/card-resolution.ts`:
     - Quando o método for "debit", "pix" ou "transfer", buscar nas contas bancárias (`BankAccount[]`) cadastradas pelo usuário a conta com nome ou instituição correspondente.
     - Atribuir o `accountId` sugerido para que a transação não fique órfã de conta de liquidação.
 
-- [ ] **Tarefa 3.4: Gravação Automática de Aprendizado no Wizard Rápido**
+- [x] **Tarefa 3.4: Gravação Automática de Aprendizado no Wizard Rápido**
   - Quando o usuário altera a categoria ou o cartão de uma sugestão no Wizard rápido, disparar `recordMerchantLearning` (`merchant-memory.ts`):
     - Salvar a tríade: Estabelecimento + Categoria Escolhida + Método/Cartão Utilizado.
     - Próximas notificações do mesmo estabelecimento virão 100% calibradas automaticamente.
 
-- [ ] **Tarefa 3.5: Enriquecimento do Catálogo de Palavras-Chave de Categorias (`category-inference.ts`)**
+- [x] **Tarefa 3.5: Enriquecimento do Catálogo de Palavras-Chave de Categorias (`category-inference.ts`)**
   - Expandir os termos em `KEYWORD_GROUPS`:
     - Saúde: farmácias regionais, drogarias, laboratórios, clínicas, planos de saúde.
     - Alimentação: padarias, cafeterias, fast foods, delivery, restaurantes, açougues.
@@ -156,11 +156,11 @@ Garantir que a seleção de bancos na UI do app sincronize em tempo real com o s
     - Assinaturas: streaming, nuvem, softwares, academias.
     - Mercado: redes regionais, atacadistas, hortifrutis.
 
-- [ ] **Portão de Qualidade 3:**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/domain/notifications/card-resolution.test.ts src/domain/notifications/merchant-memory.test.ts src/domain/notifications/category-inference.test.ts`
-  - [ ] **Commit & Push da Fase 3:** `git commit -m "feat(notifications): sincronizacao ui-nativa de pacotes e auto-resolucao de contas e cartoes"`
+- [x] **Portão de Qualidade 3:**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/domain/notifications/card-resolution.test.ts src/domain/notifications/merchant-memory.test.ts src/domain/notifications/category-inference.test.ts`
+  - [x] **Commit & Push da Fase 3:** `git commit -m "feat(notifications): sincronizacao ui-nativa de pacotes e auto-resolucao de contas e cartoes"`
 
 ---
 

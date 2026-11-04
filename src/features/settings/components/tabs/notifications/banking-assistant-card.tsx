@@ -29,6 +29,7 @@ import {
   requestNotificationListenerPermission,
   getInstalledBankingApps,
   isNativePlatform,
+  syncMonitoredBanksWithNative,
   type InstalledBankApp,
 } from "@/services/native";
 import {
@@ -73,8 +74,11 @@ export function BankingAssistantCard() {
         setInstalledBanks(res.installedBankNames || []);
         setInstalledApps(res.apps || []);
       });
+      void syncMonitoredBanksWithNative(
+        bankPrefs.passiveCaptureEnabled ? bankPrefs.monitoredBanks : [],
+      );
     }
-  }, [isNative]);
+  }, [isNative, bankPrefs.passiveCaptureEnabled, bankPrefs.monitoredBanks]);
 
   const handleRescanBankingApps = async () => {
     triggerSensory("action");
@@ -120,6 +124,7 @@ export function BankingAssistantCard() {
     updateCustomSettingsMutation.mutate({
       bankAssistant: { passiveCaptureEnabled: enabled },
     });
+    void syncMonitoredBanksWithNative(enabled ? bankPrefs.monitoredBanks : []);
 
     if (enabled) {
       const granted = await isNotificationListenerGranted();
@@ -214,6 +219,9 @@ export function BankingAssistantCard() {
     updateCustomSettingsMutation.mutate({
       bankAssistant: { monitoredBanks: nextList },
     });
+    if (bankPrefs.passiveCaptureEnabled) {
+      void syncMonitoredBanksWithNative(nextList);
+    }
   };
 
   const handleSelectAllBanks = () => {
@@ -222,6 +230,9 @@ export function BankingAssistantCard() {
     updateCustomSettingsMutation.mutate({
       bankAssistant: { monitoredBanks: all },
     });
+    if (bankPrefs.passiveCaptureEnabled) {
+      void syncMonitoredBanksWithNative(all);
+    }
     pushToast({
       title: "Todos os bancos selecionados",
       description: `Todos os ${HOMOLOGATED_BANKS.length} bancos homologados estão sendo monitorados.`,
@@ -233,6 +244,7 @@ export function BankingAssistantCard() {
     updateCustomSettingsMutation.mutate({
       bankAssistant: { monitoredBanks: [] },
     });
+    void syncMonitoredBanksWithNative([]);
     pushToast({
       title: "Todos os bancos desmarcados",
       description: "Nenhum banco está selecionado para captura.",
@@ -246,6 +258,9 @@ export function BankingAssistantCard() {
     updateCustomSettingsMutation.mutate({
       bankAssistant: { monitoredBanks: nextList },
     });
+    if (bankPrefs.passiveCaptureEnabled) {
+      void syncMonitoredBanksWithNative(nextList);
+    }
     pushToast({
       title: "Bancos instalados selecionados",
       description: `${installedBanks.length} aplicativo(s) bancário(s) detectado(s) no dispositivo estão sendo monitorados.`,

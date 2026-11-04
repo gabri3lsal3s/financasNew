@@ -123,9 +123,11 @@ public class BankNotificationListenerService extends NotificationListenerService
     public Set<String> getAllowedPackages() {
         try {
             android.content.SharedPreferences prefs = getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE);
-            Set<String> saved = prefs.getStringSet(KEY_ALLOWED_PACKAGES, null);
-            if (saved != null && !saved.isEmpty()) {
-                return saved;
+            if (prefs.contains(KEY_ALLOWED_PACKAGES)) {
+                Set<String> saved = prefs.getStringSet(KEY_ALLOWED_PACKAGES, null);
+                if (saved != null) {
+                    return saved;
+                }
             }
         } catch (Exception ignored) {
         }

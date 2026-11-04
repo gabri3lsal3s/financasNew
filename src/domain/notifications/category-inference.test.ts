@@ -18,8 +18,13 @@ describe("category-inference (Motor Puro de Auto-Categorização)", () => {
     it("infere categoria 'mercado' para supermercados e atacados", () => {
       expect(inferCategoryKeyword("Supermercado Carrefour")).toBe("mercado");
       expect(inferCategoryKeyword("Pão de Açúcar Loja Morumbi")).toBe("mercado");
+      expect(inferCategoryKeyword("Minuto Pão de Açúcar")).toBe("mercado");
       expect(inferCategoryKeyword("Assaí Atacadista")).toBe("mercado");
       expect(inferCategoryKeyword("Atacadão Distribuição")).toBe("mercado");
+      expect(inferCategoryKeyword("Roldão Atacadista")).toBe("mercado");
+      expect(inferCategoryKeyword("Supermercados BH")).toBe("mercado");
+      expect(inferCategoryKeyword("Sonda Supermercados")).toBe("mercado");
+      expect(inferCategoryKeyword("Natural da Terra")).toBe("mercado");
       expect(inferCategoryKeyword("Hortifruti da Villa")).toBe("mercado");
       expect(inferCategoryKeyword("Sacolão São Jorge")).toBe("mercado");
     });
@@ -28,6 +33,11 @@ describe("category-inference (Motor Puro de Auto-Categorização)", () => {
       expect(inferCategoryKeyword("Padaria Bella Vista")).toBe("alimentacao");
       expect(inferCategoryKeyword("iFood *Restaurante Fogão")).toBe("alimentacao");
       expect(inferCategoryKeyword("McDonald's Drive Thru")).toBe("alimentacao");
+      expect(inferCategoryKeyword("Burger King Loja 10")).toBe("alimentacao");
+      expect(inferCategoryKeyword("Habib's Esfihas")).toBe("alimentacao");
+      expect(inferCategoryKeyword("Rei do Mate Shopping")).toBe("alimentacao");
+      expect(inferCategoryKeyword("Swift Carnes")).toBe("alimentacao");
+      expect(inferCategoryKeyword("Zé Delivery de Bebidas")).toBe("alimentacao");
       expect(inferCategoryKeyword("Pizzaria Forno a Lenha")).toBe("alimentacao");
       expect(inferCategoryKeyword("Starbucks Coffee")).toBe("alimentacao");
       expect(inferCategoryKeyword("Churrascaria Fogo de Chão")).toBe("alimentacao");
@@ -39,25 +49,38 @@ describe("category-inference (Motor Puro de Auto-Categorização)", () => {
       expect(inferCategoryKeyword("99Pop Corrida Centro")).toBe("transporte");
       expect(inferCategoryKeyword("Posto Shell Jardim")).toBe("transporte");
       expect(inferCategoryKeyword("Auto Posto Ipiranga")).toBe("transporte");
+      expect(inferCategoryKeyword("Posto Petrobras")).toBe("transporte");
+      expect(inferCategoryKeyword("Postos Ale Combustíveis")).toBe("transporte");
       expect(inferCategoryKeyword("Sem Parar Pedágio")).toBe("transporte");
       expect(inferCategoryKeyword("Estapar Estacionamentos")).toBe("transporte");
+      expect(inferCategoryKeyword("Indigo Estacionamento")).toBe("transporte");
     });
 
     it("infere categoria 'saude' para farmácias, drogarias e clínicas", () => {
       expect(inferCategoryKeyword("Drogasil Filial 123")).toBe("saude");
       expect(inferCategoryKeyword("Droga Raia Centro")).toBe("saude");
+      expect(inferCategoryKeyword("Drogaria São Paulo")).toBe("saude");
+      expect(inferCategoryKeyword("Drogaria Araujo")).toBe("saude");
       expect(inferCategoryKeyword("Farmácia Pague Menos")).toBe("saude");
       expect(inferCategoryKeyword("Laboratório Fleury")).toBe("saude");
+      expect(inferCategoryKeyword("Delboni Auriemo")).toBe("saude");
       expect(inferCategoryKeyword("Consulta Médica Unimed")).toBe("saude");
+      expect(inferCategoryKeyword("Hapvida Saúde")).toBe("saude");
+      expect(inferCategoryKeyword("Notredame Intermédica")).toBe("saude");
+      expect(inferCategoryKeyword("Óticas Carol")).toBe("saude");
     });
 
-    it("infere categoria 'assinaturas' para streamings e serviços digitais", () => {
+    it("infere categoria 'assinaturas' para streamings, academias e serviços digitais", () => {
       expect(inferCategoryKeyword("Netflix.com Assinatura")).toBe("assinaturas");
       expect(inferCategoryKeyword("Spotify Premium Mensal")).toBe("assinaturas");
       expect(inferCategoryKeyword("Amazon Prime Video")).toBe("assinaturas");
       expect(inferCategoryKeyword("ChatGPT Subscription OpenAI")).toBe("assinaturas");
       expect(inferCategoryKeyword("Globoplay Mensal")).toBe("assinaturas");
       expect(inferCategoryKeyword("YouTube Premium")).toBe("assinaturas");
+      expect(inferCategoryKeyword("Smart Fit Mensalidade")).toBe("assinaturas");
+      expect(inferCategoryKeyword("Bluefit Academia")).toBe("assinaturas");
+      expect(inferCategoryKeyword("Google One Storage")).toBe("assinaturas");
+      expect(inferCategoryKeyword("Microsoft 365 Family")).toBe("assinaturas");
     });
 
     it("infere categoria 'lazer' para cinemas, hotéis, viagens e ingressos", () => {

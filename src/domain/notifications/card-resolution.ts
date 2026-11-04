@@ -1,7 +1,7 @@
 /**
- * Motor puro de resolução e auto-vínculo de cartão de crédito (§11.4).
+ * Motor puro de resolução e auto-vínculo de cartão de crédito e contas bancárias (§11.4).
  * Responsável por casar tokens bancários (emissor, nome do banco, últimos 4 dígitos)
- * com a carteira de cartões cadastrados do usuário.
+ * com a carteira de cartões cadastrados e contas do usuário.
  *
  * Função 100% pura: sem efeitos colaterais, sem dependência de UI, React ou banco de dados.
  */
@@ -12,18 +12,42 @@ import { lookupCardByDigits, type CardDigitsMapping } from "./merchant-memory";
 export interface CardResolutionParams {
   /** UUID explícito do cartão ou token textual de banco/dígitos */
   cardId?: string | null;
-  /** Últimos 4 dígitos do cartão (ex.: "1234") */
+  /** Últimos 4 dígitos do cartão (ex.: "1234", "final 1234", "**** 5678") */
   cardLastDigits?: string | null;
   /** Nome da instituição bancária de origem (ex.: "Rico", "Nubank", "BTG") */
   bankName?: string | null;
   /** Banco emissor específico (ex.: "Rico", "XP Investimentos", "Itaú") */
   issuerBank?: string | null;
-  /** Bandeira do cartão (ex.: "Visa", "Mastercard") para desempate */
+  /** Bandeira do cartão (ex.: "Visa", "Mastercard", "Elo", "Amex") para desempate */
   cardBrand?: string | null;
+  /** Indica se a transação especificou explicitamente cartão virtual */
+  isVirtual?: boolean | null;
   /** Mapa dinâmico de 4 dígitos aprendidos para IDs de cartões (§11.4 / Fase 3) */
   cardDigitsMapping?: CardDigitsMapping | null;
   /** ID do cartão preferencial memorizado para o estabelecimento */
   preferredCardId?: string | null;
+}
+
+export interface BankAccount {
+  id: string;
+  name: string;
+  institution?: string | null;
+  is_active?: boolean;
+  type?: string | null;
+  color?: string | null;
+}
+
+export interface BankAccountResolutionParams {
+  /** UUID explícito da conta bancária ou token textual de banco */
+  accountId?: string | null;
+  /** Nome do banco ou instituição de origem (ex.: "Nubank", "Itaú", "Inter") */
+  bankName?: string | null;
+  /** Instituição bancária explícita */
+  institution?: string | null;
+  /** Método de pagamento / liquidação (ex.: "debit", "pix", "transfer") */
+  paymentMethod?: string | null;
+  /** ID da conta preferencial memorizada para o estabelecimento */
+  preferredAccountId?: string | null;
 }
 
 const BANK_CARD_ALIASES: Record<string, string[]> = {
@@ -43,11 +67,16 @@ const BANK_CARD_ALIASES: Record<string, string[]> = {
   rico: ["rico", "cartao rico", "cartão rico"],
   nomad: ["nomad"],
   wise: ["wise"],
+  avenue: ["avenue", "avenue securities"],
   "mercado pago": ["mercado pago", "mercadopago"],
   picpay: ["picpay", "picpay card"],
   pagbank: ["pagbank", "pagseguro"],
   neon: ["neon"],
   next: ["next"],
+  sofisa: ["sofisa", "sofisa direto"],
+  pan: ["pan", "banco pan"],
+  bv: ["bv", "banco bv", "financeira bv"],
+  cora: ["cora", "banco cora"],
   safra: ["safra"],
   sicredi: ["sicredi"],
   sicoob: ["sicoob"],
@@ -66,7 +95,28 @@ function normalizeText(text: string): string {
 }
 
 /**
- * Verifica se o nome do cartão ou sua bandeira corresponde ao termo do banco.
+ * Extrai 4 dígitos finais de strings textuais variadas:
+ * "1234", "final 1234", "terminado em 5678", "**** 9012", "****-1234", "cartão final 4321".
+ */
+export function extractLastFourDigits(input?: string | null): string | undefined {
+  if (!input) return undefined;
+  const trimmed = input.trim();
+  if (/^\d{4}$/.test(trimmed)) {
+    return trimmed;
+  }
+  // Padrões explícitos com prefixos comuns em notificações bancárias
+  const explicitMatch = trimmed.match(
+    /(?:final|terminad[oa]\s+em|\*{2,4}|[•*]{2,4}|cart[ãa]o\s*final)?\s*[:#-]?\s*(\d{4})\b/i,
+  );
+  if (explicitMatch && explicitMatch[1]) {
+    return explicitMatch[1];
+  }
+  const fallback = trimmed.match(/\b(\d{4})\b/);
+  return fallback ? fallback[1] : undefined;
+}
+
+/**
+ * Verifica se o nome ou a bandeira corresponde ao termo do banco.
  */
 function cardMatchesBankTerm(cardName: string, bankTerm: string): boolean {
   const normName = normalizeText(cardName);
@@ -87,7 +137,7 @@ function cardMatchesBankTerm(cardName: string, bankTerm: string): boolean {
     if (keyMatches) {
       for (const alias of aliases) {
         const normAlias = normalizeText(alias);
-        // Para termos curtos (ex: "xp", "nu", "bb", "c6"), exige fronteira de palavra
+        // Para termos curtos (ex: "xp", "nu", "bb", "c6", "bv"), exige fronteira de palavra
         if (normAlias.length <= 3) {
           const rx = new RegExp(`(?:^|\\b)${normAlias}(?:$|\\b)`);
           if (rx.test(normName)) {
@@ -104,7 +154,7 @@ function cardMatchesBankTerm(cardName: string, bankTerm: string): boolean {
 }
 
 /**
- * Desempate entre múltiplos cartões do mesmo banco usando bandeira ou dígitos.
+ * Desempate entre múltiplos cartões usando 4 dígitos, virtual/físico ou bandeira.
  */
 function tieBreakCards(
   candidates: CreditCard[],
@@ -113,22 +163,49 @@ function tieBreakCards(
   if (candidates.length === 0) return undefined;
   if (candidates.length === 1) return candidates[0];
 
-  // 1. Desempate por bandeira
+  // 1. Desempate por 4 dígitos
+  const digits =
+    extractLastFourDigits(params.cardLastDigits) ||
+    extractLastFourDigits(params.cardId);
+  if (digits) {
+    const digitMatch = candidates.find((c) => {
+      const normName = c.name.toLowerCase();
+      return (
+        normName.includes(digits) ||
+        new RegExp(`(?:\\b|\\D)${digits}(?:\\b|\\D|$)`).test(normName)
+      );
+    });
+    if (digitMatch) return digitMatch;
+  }
+
+  // 2. Desempate por virtual vs físico
+  if (params.isVirtual !== undefined && params.isVirtual !== null) {
+    if (params.isVirtual) {
+      const virtualMatch = candidates.find((c) =>
+        normalizeText(c.name).includes("virtual"),
+      );
+      if (virtualMatch) return virtualMatch;
+    } else {
+      const physicalMatch = candidates.find(
+        (c) => !normalizeText(c.name).includes("virtual"),
+      );
+      if (physicalMatch) return physicalMatch;
+    }
+  }
+
+  // 3. Desempate por bandeira
   if (params.cardBrand) {
     const normBrand = normalizeText(params.cardBrand);
     const brandMatch = candidates.find((c) => {
       const cBrand = c.brand ? normalizeText(c.brand) : "";
       const cName = normalizeText(c.name);
-      return cBrand.includes(normBrand) || cName.includes(normBrand);
+      return (
+        cBrand.includes(normBrand) ||
+        cName.includes(normBrand) ||
+        (normBrand === "amex" && (cBrand.includes("american") || cName.includes("american")))
+      );
     });
     if (brandMatch) return brandMatch;
-  }
-
-  // 2. Desempate por 4 dígitos
-  if (params.cardLastDigits) {
-    const digits = params.cardLastDigits;
-    const digitMatch = candidates.find((c) => c.name.includes(digits));
-    if (digitMatch) return digitMatch;
   }
 
   // Fallback: primeiro da lista de candidatos
@@ -137,7 +214,7 @@ function tieBreakCards(
 
 /**
  * Resolve o cartão de crédito mais aderente a partir da carteira de cartões do usuário
- * e parâmetros contextuais capturados (ID, dígitos finais, nome do banco, emissor ou bandeira).
+ * e parâmetros contextuais capturados (ID, dígitos finais, nome do banco, emissor, bandeira ou tipo virtual).
  */
 export function resolveBestMatchingCard(
   cards: CreditCard[] | undefined | null,
@@ -158,8 +235,8 @@ export function resolveBestMatchingCard(
   }
 
   const digits =
-    params.cardLastDigits ||
-    (params.cardId && /^\d{4}$/.test(params.cardId.trim()) ? params.cardId.trim() : undefined);
+    extractLastFourDigits(params.cardLastDigits) ||
+    extractLastFourDigits(params.cardId);
 
   // =========================================================================
   // 1ª Prioridade: Dígitos Aprendidos na Memória Contínua (cardDigitsMapping)
@@ -197,10 +274,10 @@ export function resolveBestMatchingCard(
   }
 
   // =========================================================================
-  // 3ª Prioridade: Emissor / Banco + Desempate por Bandeira
+  // 3ª Prioridade: Emissor / Banco + Desempate por Bandeira / Virtual
   // =========================================================================
   const bankCandidates = [params.issuerBank, params.bankName, params.cardId].filter(
-    (b): b is string => Boolean(b && b.trim() && !/^\d{4}$/.test(b.trim())),
+    (b): b is string => Boolean(b && b.trim() && !extractLastFourDigits(b)),
   );
 
   for (const candidate of bankCandidates) {
@@ -222,7 +299,11 @@ export function resolveBestMatchingCard(
     const brandMatches = activeCards.filter((c) => {
       const cBrand = c.brand ? normalizeText(c.brand) : "";
       const cName = normalizeText(c.name);
-      return cBrand.includes(normBrand) || cName.includes(normBrand);
+      return (
+        cBrand.includes(normBrand) ||
+        cName.includes(normBrand) ||
+        (normBrand === "amex" && (cBrand.includes("american") || cName.includes("american")))
+      );
     });
 
     if (brandMatches.length === 1) {
@@ -230,7 +311,8 @@ export function resolveBestMatchingCard(
     }
 
     if (brandMatches.length > 1) {
-      return brandMatches[0];
+      const broken = tieBreakCards(brandMatches, params);
+      if (broken) return broken;
     }
   }
 
@@ -249,6 +331,59 @@ export function resolveBestMatchingCard(
   // =========================================================================
   if (activeCards.length === 1) {
     return activeCards[0];
+  }
+
+  return undefined;
+}
+
+/**
+ * Resolve a conta bancária mais aderente para liquidação de transações em débito, Pix ou transferências.
+ * Função 100% pura: sem efeitos colaterais.
+ */
+export function resolveBestMatchingBankAccount(
+  accounts: BankAccount[] | undefined | null,
+  params: BankAccountResolutionParams = {},
+): BankAccount | undefined {
+  if (!accounts || accounts.length === 0) return undefined;
+
+  const activeAccounts = accounts.filter((a) => a.is_active !== false);
+  if (activeAccounts.length === 0) return undefined;
+
+  // 1. Correspondência exata por accountId
+  if (params.accountId) {
+    const exactMatch = activeAccounts.find((a) => a.id === params.accountId);
+    if (exactMatch) return exactMatch;
+  }
+
+  // 2. Conta preferencial do estabelecimento
+  if (params.preferredAccountId) {
+    const preferredMatch = activeAccounts.find((a) => a.id === params.preferredAccountId);
+    if (preferredMatch) return preferredMatch;
+  }
+
+  // 3. Correspondência por nome da conta ou instituição via aliases bancários
+  const bankCandidates = [params.institution, params.bankName, params.accountId].filter(
+    (b): b is string => Boolean(b && b.trim() && !extractLastFourDigits(b)),
+  );
+
+  for (const candidate of bankCandidates) {
+    const matched = activeAccounts.filter((a) => {
+      const nameMatch = cardMatchesBankTerm(a.name, candidate);
+      const instMatch = a.institution ? cardMatchesBankTerm(a.institution, candidate) : false;
+      return nameMatch || instMatch;
+    });
+
+    if (matched.length === 1) {
+      return matched[0];
+    }
+    if (matched.length > 1) {
+      return matched[0];
+    }
+  }
+
+  // 4. Se houver apenas 1 conta ativa, adota-a como fallback seguro
+  if (activeAccounts.length === 1) {
+    return activeAccounts[0];
   }
 
   return undefined;

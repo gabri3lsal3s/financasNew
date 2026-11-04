@@ -28,7 +28,7 @@ import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { formatCentsAsCurrency } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
-import { autoLearnExpenseCategory } from "@/services/merchant-learning";
+import { autoLearnExpenseCategory, recordTransactionLearning } from "@/services/merchant-learning";
 import { cn } from "@/lib/utils";
 import {
   inferCategoryKeyword,
@@ -194,6 +194,7 @@ export function PendingSuggestionsCard({
 
     try {
       let createdId = "";
+      let resolvedCardId: string | undefined = undefined;
 
       if (sug.type === "expense") {
         let cardId: string | null = null;
@@ -209,6 +210,7 @@ export function PendingSuggestionsCard({
 
           if (matchingCard) {
             cardId = matchingCard.id;
+            resolvedCardId = matchingCard.id;
             closingDay = matchingCard.closing_day;
           }
         }
@@ -269,8 +271,16 @@ export function PendingSuggestionsCard({
         }
       }
 
-      if (sug.merchant && categoryId) {
-        storeMerchantCategory(sug.merchant, categoryId);
+      if ((sug.merchant || sug.description) && categoryId) {
+        const merchantName = sug.merchant || sug.description || "";
+        storeMerchantCategory(merchantName, categoryId);
+        recordTransactionLearning({
+          merchant: merchantName,
+          categoryId,
+          paymentMethod: sug.paymentMethod || (sug.type === "expense" ? "other" : "pix"),
+          cardId: sug.type === "expense" && sug.paymentMethod === "credit_card" ? resolvedCardId : undefined,
+          cardLastDigits: sug.cardLastDigits,
+        });
       }
 
       if (sug.type === "expense" && categoryId) {

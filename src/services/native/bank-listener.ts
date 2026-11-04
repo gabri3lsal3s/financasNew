@@ -322,11 +322,15 @@ export function initBankNotificationListener(onNavigate?: (route: string) => voi
 
   // Sincroniza imediatamente os pacotes autorizados nas preferências com o serviço nativo
   const prefs = getBankAssistantPreferences();
-  void syncMonitoredBanksWithNative(prefs.monitoredBanks);
+  void syncMonitoredBanksWithNative(
+    prefs.passiveCaptureEnabled ? prefs.monitoredBanks : [],
+  );
 
   // Inscreve ouvinte para sincronizar pacotes quando o usuário altera as preferências
   const unsubPrefs = subscribeBankAssistantPreferences((nextPrefs) => {
-    void syncMonitoredBanksWithNative(nextPrefs.monitoredBanks);
+    void syncMonitoredBanksWithNative(
+      nextPrefs.passiveCaptureEnabled ? nextPrefs.monitoredBanks : [],
+    );
   });
 
   // Esvazia imediatamente o buffer de notificações capturadas em segundo plano

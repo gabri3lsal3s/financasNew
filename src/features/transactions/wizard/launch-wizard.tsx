@@ -13,6 +13,7 @@ import { triggerSensory } from "@/services/sensory";
 import { buildDescriptionSuggestions, buildHabitualEntries, dayOfMonth } from "@/domain/predictions";
 import { todayISO } from "@/domain/debts";
 import {
+  extractLastFourDigits,
   getReceiptKindLabel,
   inferCategoryKeyword,
   matchCategoryBySlug,
@@ -255,7 +256,7 @@ export function LaunchWizard({
     const rawToken = initialValues?.cardId || state.cardId;
     const resolvedCard = resolveBestMatchingCard(cardsQuery.data, {
       cardId: rawToken,
-      cardLastDigits: rawToken && /^\d{4}$/.test(rawToken.trim()) ? rawToken.trim() : undefined,
+      cardLastDigits: extractLastFourDigits(rawToken),
       bankName: rawToken,
       issuerBank: rawToken,
     });
@@ -340,6 +341,10 @@ export function LaunchWizard({
 
       if (state.description && state.categoryId) {
         storeMerchantCategory(state.description, state.categoryId);
+        const resolvedLastDigits =
+          receiptMeta?.cardLastDigits ||
+          extractLastFourDigits(initialValues?.cardId) ||
+          extractLastFourDigits(state.cardId);
         recordTransactionLearning({
           merchant: receiptMeta?.merchant || state.description,
           categoryId: state.categoryId,
@@ -348,7 +353,7 @@ export function LaunchWizard({
             state.type === "expense" && state.paymentMethod === "credit_card" && state.cardId
               ? state.cardId
               : undefined,
-          cardLastDigits: receiptMeta?.cardLastDigits,
+          cardLastDigits: resolvedLastDigits,
           taxId: receiptMeta?.taxId,
         });
       }

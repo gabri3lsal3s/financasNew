@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { CreditCard } from "@/types/schema";
-import { resolveBestMatchingCard } from "./card-resolution";
+import {
+  extractLastFourDigits,
+  resolveBestMatchingCard,
+  resolveBestMatchingBankAccount,
+  type BankAccount,
+} from "./card-resolution";
 import { recordCardDigitsLearning, type CardDigitsMapping } from "./merchant-memory";
 
 function makeCard(overrides: Partial<CreditCard> & { id: string; name: string }): CreditCard {
@@ -190,6 +195,125 @@ describe("card-resolution — Motor Puro de Resolução e Auto-Vínculo de Cart�
         preferredCardId: "c6-carbon",
       });
       expect(prefResolved?.id).toBe("c6-carbon");
+    });
+  });
+
+  describe("extractLastFourDigits (Tarefa 3.2)", () => {
+    it("extrai 4 dígitos de strings desmascaradas e prefixadas", () => {
+      expect(extractLastFourDigits("1234")).toBe("1234");
+      expect(extractLastFourDigits("final 1234")).toBe("1234");
+      expect(extractLastFourDigits("terminado em 5678")).toBe("5678");
+      expect(extractLastFourDigits("**** 9012")).toBe("9012");
+      expect(extractLastFourDigits("****-4321")).toBe("4321");
+      expect(extractLastFourDigits("cartão final 8899")).toBe("8899");
+      expect(extractLastFourDigits("cartao final 7766")).toBe("7766");
+      expect(extractLastFourDigits("Nubank Roxinho")).toBeUndefined();
+      expect(extractLastFourDigits("")).toBeUndefined();
+      expect(extractLastFourDigits(null)).toBeUndefined();
+    });
+  });
+
+  describe("Resolução de Cartões com Unmasking, Bandeira e Virtual vs Físico (Tarefa 3.2)", () => {
+    const cardNuFisico = makeCard({ id: "nu-fisico", name: "Nubank Físico", brand: "mastercard" });
+    const cardNuVirtual = makeCard({ id: "nu-virtual", name: "Nubank Cartão Virtual", brand: "mastercard" });
+    const cardItauVisa = makeCard({ id: "itau-visa", name: "Itaú Click", brand: "visa" });
+    const cardItauMaster = makeCard({ id: "itau-master", name: "Itaú Click", brand: "mastercard" });
+    const cardBradescoElo = makeCard({ id: "brad-elo", name: "Bradesco Elo Nanquim", brand: "elo" });
+    const cardSantanderAmex = makeCard({ id: "sant-amex", name: "Santander The Platinum Card", brand: "amex" });
+
+    it("casa 4 dígitos informados com máscaras textuais ('final 4321', '**** 4321')", () => {
+      const cards = [cardNubank, cardRico, cardItau];
+      expect(resolveBestMatchingCard(cards, { cardLastDigits: "final 4321" })?.id).toBe("card-itau-1");
+      expect(resolveBestMatchingCard(cards, { cardLastDigits: "**** 4321" })?.id).toBe("card-itau-1");
+      expect(resolveBestMatchingCard(cards, { cardLastDigits: "terminado em 4321" })?.id).toBe("card-itau-1");
+      expect(resolveBestMatchingCard(cards, { cardId: "final 4321" })?.id).toBe("card-itau-1");
+    });
+
+    it("desempata entre cartão virtual e físico quando isVirtual for informado", () => {
+      const cards = [cardNuFisico, cardNuVirtual];
+      const resolvedVirtual = resolveBestMatchingCard(cards, {
+        bankName: "Nubank",
+        isVirtual: true,
+      });
+      expect(resolvedVirtual?.id).toBe("nu-virtual");
+
+      const resolvedFisico = resolveBestMatchingCard(cards, {
+        bankName: "Nubank",
+        isVirtual: false,
+      });
+      expect(resolvedFisico?.id).toBe("nu-fisico");
+    });
+
+    it("desempata por bandeira para múltiplos cartões do mesmo banco (Visa, Mastercard, Elo, Amex)", () => {
+      const cards = [cardItauVisa, cardItauMaster, cardBradescoElo, cardSantanderAmex];
+
+      const resolvedMaster = resolveBestMatchingCard(cards, {
+        bankName: "Itaú",
+        cardBrand: "Mastercard",
+      });
+      expect(resolvedMaster?.id).toBe("itau-master");
+
+      const resolvedVisa = resolveBestMatchingCard(cards, {
+        bankName: "Itaú",
+        cardBrand: "Visa",
+      });
+      expect(resolvedVisa?.id).toBe("itau-visa");
+
+      const resolvedElo = resolveBestMatchingCard(cards, {
+        bankName: "Bradesco",
+        cardBrand: "Elo",
+      });
+      expect(resolvedElo?.id).toBe("brad-elo");
+
+      const resolvedAmex = resolveBestMatchingCard(cards, {
+        bankName: "Santander",
+        cardBrand: "Amex",
+      });
+      expect(resolvedAmex?.id).toBe("sant-amex");
+    });
+  });
+
+  describe("resolveBestMatchingBankAccount (Tarefa 3.3)", () => {
+    const accNu: BankAccount = { id: "acc-nu", name: "NuConta", institution: "Nubank", is_active: true };
+    const accItau: BankAccount = { id: "acc-itau", name: "Conta Corrente", institution: "Banco Itaú", is_active: true };
+    const accInter: BankAccount = { id: "acc-inter", name: "Inter Digital", institution: "Banco Inter", is_active: true };
+    const accInactive: BankAccount = { id: "acc-inativa", name: "Conta Antiga", institution: "Bradesco", is_active: false };
+    const allAccounts = [accNu, accItau, accInter, accInactive];
+
+    it("retorna undefined quando lista de contas for vazia ou nula", () => {
+      expect(resolveBestMatchingBankAccount([], { bankName: "Nubank" })).toBeUndefined();
+      expect(resolveBestMatchingBankAccount(null, { bankName: "Nubank" })).toBeUndefined();
+      expect(resolveBestMatchingBankAccount(undefined, { bankName: "Nubank" })).toBeUndefined();
+    });
+
+    it("prioriza correspondência exata por accountId ativo", () => {
+      expect(resolveBestMatchingBankAccount(allAccounts, { accountId: "acc-itau" })?.id).toBe("acc-itau");
+    });
+
+    it("ignora accountId se a conta estiver inativa", () => {
+      // Como accInactive está inativa e há mais de 1 conta ativa, não retorna a inativa
+      expect(resolveBestMatchingBankAccount(allAccounts, { accountId: "acc-inativa" })).toBeUndefined();
+    });
+
+    it("prioriza preferredAccountId se especificado e ativo", () => {
+      expect(resolveBestMatchingBankAccount(allAccounts, { preferredAccountId: "acc-inter" })?.id).toBe("acc-inter");
+    });
+
+    it("resolve por bankName ou institution usando aliases bancários", () => {
+      expect(resolveBestMatchingBankAccount(allAccounts, { bankName: "Nubank" })?.id).toBe("acc-nu");
+      expect(resolveBestMatchingBankAccount(allAccounts, { bankName: "Nu" })?.id).toBe("acc-nu");
+      expect(resolveBestMatchingBankAccount(allAccounts, { institution: "Itaú" })?.id).toBe("acc-itau");
+      expect(resolveBestMatchingBankAccount(allAccounts, { bankName: "Inter" })?.id).toBe("acc-inter");
+    });
+
+    it("adota fallback para conta única ativa quando não houver outro critério específico", () => {
+      const singleAccount = [accNu];
+      expect(resolveBestMatchingBankAccount(singleAccount, { paymentMethod: "pix" })?.id).toBe("acc-nu");
+      expect(resolveBestMatchingBankAccount(singleAccount, { bankName: "Banco Qualquer" })?.id).toBe("acc-nu");
+    });
+
+    it("retorna undefined se houver múltiplas contas ativas e nenhuma correspondência de banco", () => {
+      expect(resolveBestMatchingBankAccount(allAccounts, { bankName: "Banco Safra" })).toBeUndefined();
     });
   });
 });
