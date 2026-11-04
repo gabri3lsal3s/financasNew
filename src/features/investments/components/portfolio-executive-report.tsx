@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select } from "@/components/ui/select";
 import { Tabs } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ReportDocumentLayout,
   ReportHeader,
@@ -60,6 +61,7 @@ export function PortfolioExecutiveReport({
   initialMonth,
 }: PortfolioExecutiveReportProps) {
   const activeMonth = currentMonth();
+  // Define competência inicial com base estrita no initialMonth solicitado se presente
   const [selectedMonth, setSelectedMonth] = useState<string>(() => initialMonth ?? activeMonth);
   const [activeTab, setActiveTab] = useState<"report" | "closing">("report");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -68,10 +70,9 @@ export function PortfolioExecutiveReport({
   const [prevInitialMonth, setPrevInitialMonth] = useState(initialMonth);
   if (initialMonth !== prevInitialMonth) {
     setPrevInitialMonth(initialMonth);
-    if (initialMonth) {
-      setSelectedMonth(initialMonth);
-      setActiveTab("report");
-    }
+    const nextMonth = initialMonth ?? activeMonth;
+    setSelectedMonth(nextMonth);
+    setActiveTab("report");
   }
 
   const deleteSnapshotMutation = useDeletePortfolioSnapshot();
@@ -315,23 +316,45 @@ export function PortfolioExecutiveReport({
         </div>
 
         {/* Conteudo: Aba 2 (Conferir e Ajustar Fechamento) */}
-        {activeTab === "closing" && monthlyPositionQuery.data && (
-          <div className="pt-1 print:hidden">
-            <MonthlyClosingEditor
-              month={selectedMonth}
-              historicalPosition={monthlyPositionQuery.data}
-              onSaved={() => {
-                setActiveTab("report");
-                void monthlyPositionQuery.refetch();
-              }}
-            />
-          </div>
+        {activeTab === "closing" && (
+          monthlyPositionQuery.isLoading ? (
+            <div className="flex flex-col gap-4 w-full p-4 sm:p-6 rounded-2xl border border-border/80 bg-surface shadow-xs my-2 print:hidden">
+              <Skeleton className="h-10 w-48 rounded-xl" />
+              <Skeleton className="h-32 w-full rounded-xl" />
+              <Skeleton className="h-64 w-full rounded-xl" />
+            </div>
+          ) : monthlyPositionQuery.data ? (
+            <div className="pt-1 print:hidden">
+              <MonthlyClosingEditor
+                month={selectedMonth}
+                historicalPosition={monthlyPositionQuery.data}
+                onSaved={() => {
+                  setActiveTab("report");
+                  void monthlyPositionQuery.refetch();
+                }}
+              />
+            </div>
+          ) : null
         )}
 
         {/* Conteúdo: Aba 1 (Relatório Executivo A4 / PDF Oficial) */}
         {activeTab === "report" && (
           <>
-            {!isCurrentSelected &&
+            {!isCurrentSelected && monthlyPositionQuery.isLoading ? (
+              <div
+                data-testid="report-loading-skeleton"
+                className="flex flex-col gap-4 w-full p-4 sm:p-6 rounded-2xl border border-border/80 bg-surface shadow-xs my-2"
+              >
+                <Skeleton className="h-20 w-full rounded-xl" />
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Skeleton className="h-16 rounded-xl" />
+                  <Skeleton className="h-16 rounded-xl" />
+                  <Skeleton className="h-16 rounded-xl" />
+                  <Skeleton className="h-16 rounded-xl" />
+                </div>
+                <Skeleton className="h-64 w-full rounded-xl" />
+              </div>
+            ) : !isCurrentSelected &&
             monthlyPositionQuery.data?.fidelity &&
             !monthlyPositionQuery.data.fidelity.canGenerateExecutiveReport ? (
               <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-2xl border border-border/80 bg-surface shadow-xs gap-4 my-2">
