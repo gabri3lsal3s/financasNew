@@ -1,5 +1,18 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.85** registra a **Conclusão Integral da Otimização de Consultas de Cartões e Faturas com Janela Temporal Inteligente (24 Meses)** (2026-11-04):
+> - **(1) Salvaguarda de Desempenho e Contenção de Tráfego de Rede na Camada de Dados (`src/data/`)**:
+>   - Adição da constante `DEFAULT_CARD_WINDOW_MONTHS = 24` e `DEFAULT_CARD_PAYMENT_WINDOW_MONTHS = 24` em `expenses.ts` e `card-payments.ts`;
+>   - Otimização de `listAllCardExpenses` e `listExpensesByCard` com filtro composto `bill_competence.gte.YYYY-MM,date.gte.YYYY-MM-01`, cobrindo parcelas ativas e transbordo de crédito sem puxar anos antigos;
+>   - Otimização de `listAllCardPayments` e `listCardPayments` com filtro `competence_month >= YYYY-MM`;
+>   - Suporte a `sinceMonth: null` para permitir buscas irrestritas em auditorias completas.
+> - **(2) Orquestração de Estado & TanStack Query (`src/state/`)**:
+>   - Tipagem e parâmetros `UseCardQueryOptions` e `UseAllCardQueryOptions` expostos com query keys isoladas;
+>   - Preservação da aridade de chamadas existentes sem nenhuma quebra de contrato.
+> - **(3) Bateria de Testes Unitários Dedicada & Portão de Qualidade 100% Verde**:
+>   - Criação de `card-queries-optimization.test.ts` com 9 testes cobrindo padrão de 24 meses, valores customizados e busca irrestrita;
+>   - 100% dos testes de Cartões e Visão Geral aprovados.
+>
 > **v2.84** registra a **Conclusão Integral do Suporte Bidirecional com Resposta In-App, Bot Telegram Programável e Telemetria Leve (LGPD)** (2026-11-04):
 > - **(1) Fluxo de Suporte Bidirecional & Resposta In-App**:
 >   - Migration `20260101000061_support_replies_and_analytics.sql`: suporte a `admin_reply`, `admin_replied_at`, `user_read_at` e `admin_id`;
