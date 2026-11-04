@@ -255,7 +255,7 @@ export function BankingAssistantCard() {
 
   if (!isNative) {
     return (
-      <Card className="border-border/80 bg-surface shadow-xs">
+      <Card data-tour="settings-banking-assistant" className="border-border/80 bg-surface shadow-xs">
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between gap-2 flex-wrap">
             <span className="flex items-center gap-2 min-w-0">
@@ -304,7 +304,7 @@ export function BankingAssistantCard() {
 
   return (
     <>
-      <Card>
+      <Card data-tour="settings-banking-assistant">
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between gap-2 flex-wrap">
             <span className="flex items-center gap-2 min-w-0">

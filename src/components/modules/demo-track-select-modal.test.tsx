@@ -185,7 +185,7 @@ describe("DemoTrackSelectModal — Hub de Aprendizado & Micro-Tours (§3.4)", ()
     expect(screen.getByText("Bem-vindo ao App Nativo Android")).toBeInTheDocument();
     expect(screen.getByText("Exclusivo APK")).toBeInTheDocument();
     expect(
-      screen.getByText(/Leitor de notificações bancárias em tempo real/i),
+      screen.getByText(/leitor passivo de notificações bancárias/i),
     ).toBeInTheDocument();
 
     const nativeBtn = screen.getByText("Bem-vindo ao App Nativo Android").closest("button");
@@ -193,7 +193,7 @@ describe("DemoTrackSelectModal — Hub de Aprendizado & Micro-Tours (§3.4)", ()
     await user.click(nativeBtn!);
 
     expect(handleSelectTrack).toHaveBeenCalledWith("app_native_apk");
-    expect(mockNavigate).toHaveBeenCalledWith("/");
+    expect(mockNavigate).toHaveBeenCalledWith("/configuracoes?tab=devices");
   });
 
   it("não renderiza o Card do APK Nativo quando isNativePlatform() for false", () => {

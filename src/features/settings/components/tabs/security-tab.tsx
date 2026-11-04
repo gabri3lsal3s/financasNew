@@ -57,6 +57,7 @@ import {
   useUserPreferences,
   useUpdateCustomSettings,
 } from "@/state";
+import { useDemoSession } from "@/state/demo-mode";
 
 interface BackupExpenseItem {
   date: string;
@@ -106,7 +107,8 @@ export function SecurityTab() {
   const [biometryType, setBiometryType] = useState<string>("none");
   const [bioLockEnabled, setBioLockEnabled] = useState(() => isBiometricLockEnabled());
   const [graceMinutes, setGraceMinutes] = useState(() => String(getAppLockGraceMinutes()));
-  const isNative = isNativePlatform();
+  const { isDemoActive } = useDemoSession();
+  const isNative = isNativePlatform() || isDemoActive;
   const showBiometrics = isNative || Boolean(biometricsAvailable);
   const showPrivacyShield = isNative;
   const showAppLockCard = showBiometrics || showPrivacyShield;
@@ -308,7 +310,7 @@ export function SecurityTab() {
     <div className="space-y-6">
       {/* Card 1: Bloqueio do Aplicativo & Privacidade */}
       {showAppLockCard ? (
-        <Card>
+        <Card data-tour="settings-app-lock">
           <CardHeader>
             <CardTitle className="text-base flex items-center justify-between">
               <span className="flex items-center gap-2">
@@ -316,7 +318,7 @@ export function SecurityTab() {
                 <span>Bloqueio do Aplicativo &amp; Privacidade</span>
               </span>
               {showBiometrics ? (
-                biometricsAvailable ? (
+                biometricsAvailable || isDemoActive ? (
                   <Badge variant="positive" size="xs">
                     {biometryType === "face"
                       ? "Reconhecimento Facial"

@@ -15,12 +15,12 @@ export const TOUR_TRACK_METAS: Record<TourTrackId, TourTrackMeta> = {
     title: "Recursos Nativos do APK Android",
     shortTitle: "App Nativo",
     description:
-      "Aceleração nativa, leitor de notificações bancárias em tempo real e proteção biométrica.",
+      "O Tripé de Plataformas, leitor passivo de notificações bancárias, biometria física e escudo anti-print.",
     category: "native",
-    stepsCount: 3,
+    stepsCount: 4,
     iconName: "smartphone",
-    startRoute: "/",
-    badgeLabel: "3 passos",
+    startRoute: "/configuracoes?tab=devices",
+    badgeLabel: "4 passos",
     isNativeOnly: true,
   },
 

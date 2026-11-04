@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsPage } from "./settings-page";
 import { ThemeProvider } from "@/app/theme-provider";
+import { startDemo, resetDemoSession } from "@/state/demo-mode";
 
 const mockUpdateReminderPreferences = vi.fn();
 const mockUpdateCustomSettings = vi.fn();
@@ -333,6 +334,22 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     // Aba Notificações
     renderSettings(["/configuracoes?tab=notifications"]);
     expect(document.querySelector('[data-tour="settings-notifications-card"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-tour="settings-banking-assistant"]')).toBeInTheDocument();
+
+    cleanup();
+
+    // Aba Dispositivos & App (Tripé de Plataformas e Status do APK)
+    renderSettings(["/configuracoes?tab=devices"]);
+    expect(document.querySelector('[data-tour="settings-platform-status"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-tour="settings-platforms-triptych"]')).toBeInTheDocument();
+
+    cleanup();
+
+    // Aba Segurança (Biometria e Escudo de Privacidade durante o tour do APK)
+    startDemo("app_native_apk");
+    renderSettings(["/configuracoes?tab=security"]);
+    expect(document.querySelector('[data-tour="settings-app-lock"]')).toBeInTheDocument();
+    resetDemoSession();
   });
 
   it("abre automaticamente o diálogo de Suporte via deep-link ?tab=suporte após a conclusão do tour", () => {

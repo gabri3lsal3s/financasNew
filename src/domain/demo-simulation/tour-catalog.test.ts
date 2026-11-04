@@ -42,7 +42,7 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
     });
 
     it("respeita rigorosamente a contagem de passos definida na especificação", () => {
-      expect(TOUR_TRACK_METAS.app_native_apk.stepsCount).toBe(3);
+      expect(TOUR_TRACK_METAS.app_native_apk.stepsCount).toBe(4);
       expect(TOUR_TRACK_METAS.finances_overview.stepsCount).toBe(3);
       expect(TOUR_TRACK_METAS.finances_wizard.stepsCount).toBe(3);
       expect(TOUR_TRACK_METAS.finances_cards.stepsCount).toBe(3);

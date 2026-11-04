@@ -364,12 +364,12 @@ export function DemoTrackSelectModal({
                     </Badge>
                   ) : (
                     <Badge variant="muted" size="xs" className="shrink-0">
-                      3 passos
+                      4 passos
                     </Badge>
                   )}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                  Aceleração nativa, leitor de notificações bancárias em tempo real e escudo biométrico de privacidade.
+                  O Tripé de Plataformas, leitor passivo de notificações bancárias, biometria física e escudo anti-print.
                 </p>
               </div>
 

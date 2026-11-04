@@ -96,7 +96,7 @@ export function AppInstallationTab() {
   return (
     <div className="space-y-6">
       {/* Card 1: Status Atual de Plataforma */}
-      <Card className="border-border/80 bg-surface shadow-xs">
+      <Card data-tour="settings-platform-status" className="border-border/80 bg-surface shadow-xs">
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
@@ -350,7 +350,7 @@ export function AppInstallationTab() {
       </Card>
 
       {/* Card 2: Comparativo do Tripé de Plataformas */}
-      <Card className="border-border/80 bg-surface shadow-xs">
+      <Card data-tour="settings-platforms-triptych" className="border-border/80 bg-surface shadow-xs">
         <CardHeader>
           <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Info className="size-4 text-muted-foreground" aria-hidden="true" />
