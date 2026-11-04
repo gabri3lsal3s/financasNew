@@ -101,9 +101,13 @@ describe("LegalPageShell", () => {
       </LegalPageShell>,
     );
 
-    // Razão Social e CNPJ
+    // Razão Social / Identificação e CNPJ / Responsável Técnico
     expect(screen.getByText(INSTITUTIONAL_CONFIG.companyName)).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(INSTITUTIONAL_CONFIG.cnpj))).toBeInTheDocument();
+    if (INSTITUTIONAL_CONFIG.cnpj) {
+      expect(screen.getByText(new RegExp(INSTITUTIONAL_CONFIG.cnpj))).toBeInTheDocument();
+    } else {
+      expect(screen.getByText(new RegExp(`Desenvolvedor Responsável: ${INSTITUTIONAL_CONFIG.developerName}`))).toBeInTheDocument();
+    }
     expect(screen.getByText(new RegExp(INSTITUTIONAL_CONFIG.address))).toBeInTheDocument();
 
     // DPO e Suporte

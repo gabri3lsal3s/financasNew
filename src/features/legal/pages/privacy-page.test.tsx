@@ -38,8 +38,13 @@ describe("PrivacyPage (Contrato 2: Política de Privacidade LGPD)", () => {
       }),
     ).toBeInTheDocument();
 
-    expect(scope.getByText(new RegExp(INSTITUTIONAL_CONFIG.companyName))).toBeInTheDocument();
-    expect(scope.getByText(new RegExp(INSTITUTIONAL_CONFIG.cnpj))).toBeInTheDocument();
+    if (INSTITUTIONAL_CONFIG.cnpj) {
+      expect(scope.getByText(new RegExp(INSTITUTIONAL_CONFIG.companyName))).toBeInTheDocument();
+      expect(scope.getByText(new RegExp(INSTITUTIONAL_CONFIG.cnpj))).toBeInTheDocument();
+    } else {
+      expect(scope.getByText(new RegExp(INSTITUTIONAL_CONFIG.developerName))).toBeInTheDocument();
+      expect(scope.getByText(/desenvolvedor independente/i)).toBeInTheDocument();
+    }
 
     const dpoLink = scope.getByRole("link", { name: INSTITUTIONAL_CONFIG.dpoEmail });
     expect(dpoLink).toHaveAttribute("href", `mailto:${INSTITUTIONAL_CONFIG.dpoEmail}`);

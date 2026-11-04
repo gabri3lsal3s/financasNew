@@ -1,5 +1,21 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.82** registra a **Conclusão Integral do Plano de Prontidão Operacional para Produção e Go-Live (`docs/plans/PLANO_PREPARACAO_GO_LIVE_PRODUCAO.md`)** (2026-11-04):
+> - **(1) Saneamento Integral de Código & Qualidade Estrita (Fase 1 - QG1)**:
+>   - Resolução do erro TS2741 em `monthly-closing-editor.test.tsx` com a propriedade `fidelity`;
+>   - 0 erros em `tsc -b`, 0 erros/alertas em `eslint .` e 584 testes de portfólio aprovados no Vitest.
+> - **(2) Adequação Jurídica e Institucional para Pessoa Física (Fase 2 - QG2)**:
+>   - Atualização de `src/lib/institutional.ts` com suporte transparente a Pessoa Física (`legalNature: "pf"`, `developerName: "Gabriel Sales"`, `cnpj: ""`);
+>   - Adaptação das cláusulas em `TermsPage`, `PrivacyPage` e `LegalPageShell` eliminando a menção fictícia de "Ltda." e CNPJ zerado;
+>   - 100% dos testes legais e de acessibilidade (axe) aprovados em `src/features/legal`.
+> - **(3) Hardening de Deploy & Script de Pré-Voo Automatizado (Fase 3 - QG3)**:
+>   - Script `"deploy:functions"` em `package.json` para publicação das 5 Edge Functions essenciais (`asaas-checkout`, `asaas-manage`, `asaas-webhook`, `support-notify`, `quotes`);
+>   - Expansão de `scripts/preflight-check.ts` auditando 8 dimensões de produção;
+>   - 8/8 checagens de pré-voo aprovadas com status de sucesso (`npm run preflight`);
+>   - Build de produção (`npm run build`) gerado com sucesso em 2,45s com Service Worker ativo.
+> - **(4) Confecção do Guia Operacional Manual do Fundador para o Go-Live (Fase 4 - QG4)**:
+>   - Criação de `docs/operations/GUIA_CONFIGURACAO_MANUAL_GO_LIVE.md` contendo o roteiro passo a passo para o fundador (Domínio próprio, DNS Cloudflare, Asaas Pessoa Física, Bot Telegram, Resend SMTP e teste de ponta a ponta).
+>
 > **v2.81** registra a **Conclusão Integral do Plano de Relatório Retroativo de Investimentos, Fechamento de Carteira e Saneamento Quantitativo (`docs/plans/PLANO_RELATORIO_RETROATIVO_INVESTIMENTOS_E_FECHAMENTO.md`)** (2026-11-03):
 > - **(1) Saneamento do Módulo de Caixa & Eliminação de Pseudo-Ordens (Fase 1 - QG1)**:
 >   - Desacoplamento de Caixa em `cash-form-dialog.tsx`: saldo direto sem injeção de compras/vendas artificiais;

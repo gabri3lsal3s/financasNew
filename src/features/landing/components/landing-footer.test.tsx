@@ -19,7 +19,11 @@ describe("LandingFooter (Rodapé Oficial da Landing Page)", () => {
     renderFooter();
 
     expect(screen.getByText(INSTITUTIONAL_CONFIG.companyName)).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(INSTITUTIONAL_CONFIG.cnpj))).toBeInTheDocument();
+    if (INSTITUTIONAL_CONFIG.cnpj) {
+      expect(screen.getByText(new RegExp(INSTITUTIONAL_CONFIG.cnpj))).toBeInTheDocument();
+    } else {
+      expect(screen.getByText(`Desenvolvedor Responsável: ${INSTITUTIONAL_CONFIG.developerName}`)).toBeInTheDocument();
+    }
     expect(screen.getByText(new RegExp(INSTITUTIONAL_CONFIG.address))).toBeInTheDocument();
   });
 

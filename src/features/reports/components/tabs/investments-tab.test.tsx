@@ -1,7 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router";
 import { InvestmentsTab } from "./investments-tab";
+
+const mockNavigate = vi.fn();
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual("react-router");
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 vi.mock("@/state", () => ({
   usePortfolioPosition: () => ({
@@ -61,64 +71,59 @@ describe("InvestmentsTab — Sincronização Temporal e Empty State", () => {
     onOpenTearSheet: vi.fn(),
   };
 
-  it("renderiza empty state informativo quando hasDataForPeriod é false e permite retornar ao mês atual", async () => {
-    const handleReset = vi.fn();
+  it("renderiza empty state informativo com botão para Investimentos quando hasDataForPeriod é false", async () => {
     const user = userEvent.setup();
 
     render(
-      <InvestmentsTab
-        {...defaultProps}
-        hasDataForPeriod={false}
-        periodLabel="Maio de 2024"
-        onResetToCurrentMonth={handleReset}
-      />,
+      <MemoryRouter>
+        <InvestmentsTab
+          {...defaultProps}
+          hasDataForPeriod={false}
+        />
+      </MemoryRouter>,
     );
 
-    expect(screen.getByText("Nenhum dado patrimonial para Maio de 2024")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum ativo ou custódia cadastrada")).toBeInTheDocument();
     expect(
-      screen.getByText(/Não foram encontrados snapshots, movimentações ou proventos registrados/),
+      screen.getByText(/Você ainda não possui ativos ou saldo de caixa cadastrados na sua carteira/),
     ).toBeInTheDocument();
 
-    const resetButton = screen.getByRole("button", { name: /Ver mês atual/i });
-    expect(resetButton).toBeInTheDocument();
+    const actionButton = screen.getByRole("button", { name: /Ir para Investimentos/i });
+    expect(actionButton).toBeInTheDocument();
 
-    await user.click(resetButton);
-    expect(handleReset).toHaveBeenCalledTimes(1);
+    await user.click(actionButton);
+    expect(mockNavigate).toHaveBeenCalledWith("/investimentos");
 
-    // Não deve renderizar botões da tela cheia ou tabela de gap
+    // Não deve renderizar o card de dossiê ou métricas
     expect(screen.queryByText(/Dossiê Executivo de Alocação/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Patrimônio Consolidado/i)).not.toBeInTheDocument();
   });
 
-  it("renderiza normalmente a tela quando hasDataForPeriod é true", () => {
+  it("renderiza normalmente a tela quando hasDataForPeriod é true com card de atalho para histórico", async () => {
+    const user = userEvent.setup();
+
     render(
-      <InvestmentsTab
-        {...defaultProps}
-        hasDataForPeriod={true}
-        periodLabel="Março de 2026"
-      />,
+      <MemoryRouter>
+        <InvestmentsTab
+          {...defaultProps}
+          hasDataForPeriod={true}
+        />
+      </MemoryRouter>,
     );
+
+    expect(screen.getByText("Análise e Auditoria de Meses Anteriores")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Deseja auditar ou emitir relatórios de fechamento de meses anteriores\? Acesse os Fechamentos & Snapshots/),
+    ).toBeInTheDocument();
+
+    const historyButton = screen.getByRole("button", { name: /Ir para Fechamentos/i });
+    expect(historyButton).toBeInTheDocument();
+    await user.click(historyButton);
+    expect(mockNavigate).toHaveBeenCalledWith("/investimentos");
 
     expect(screen.getByText(/Dossiê Executivo de Alocação & Patrimônio/i)).toBeInTheDocument();
     expect(screen.getByText("Patrimônio Consolidado")).toBeInTheDocument();
     expect(screen.getByText("85%")).toBeInTheDocument();
     expect(screen.getByText("35.5%")).toBeInTheDocument();
-  });
-
-  it("renderiza o seletor de mês quando month e onMonthChange são fornecidos", () => {
-    const handleMonthChange = vi.fn();
-    render(
-      <InvestmentsTab
-        {...defaultProps}
-        hasDataForPeriod={true}
-        periodLabel="Março de 2026"
-        month="2026-03"
-        onMonthChange={handleMonthChange}
-      />,
-    );
-
-    // MonthPicker renderiza botões de navegação e mês/ano
-    expect(screen.getByRole("button", { name: /Mês anterior/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Próximo mês/i })).toBeInTheDocument();
   });
 });

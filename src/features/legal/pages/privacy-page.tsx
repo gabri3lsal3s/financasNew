@@ -98,7 +98,16 @@ export function PrivacyPage() {
         </h2>
         <div className="space-y-2 text-xs sm:text-sm text-foreground/90 leading-relaxed pl-1">
           <p>
-            <strong>1.1. Identificação do Controlador:</strong> O controlador do tratamento de dados pessoais no âmbito da plataforma {INSTITUTIONAL_CONFIG.appName} é a <strong>{INSTITUTIONAL_CONFIG.companyName}</strong>, pessoa jurídica de direito privado inscrita no CNPJ sob o nº <strong>{INSTITUTIONAL_CONFIG.cnpj}</strong>, com sede em {INSTITUTIONAL_CONFIG.address}.
+            <strong>1.1. Identificação do Controlador:</strong>{" "}
+            {INSTITUTIONAL_CONFIG.cnpj ? (
+              <>
+                O controlador do tratamento de dados pessoais no âmbito da plataforma {INSTITUTIONAL_CONFIG.appName} é a <strong>{INSTITUTIONAL_CONFIG.companyName}</strong>, pessoa jurídica de direito privado inscrita no CNPJ sob o nº <strong>{INSTITUTIONAL_CONFIG.cnpj}</strong>, com sede em {INSTITUTIONAL_CONFIG.address}.
+              </>
+            ) : (
+              <>
+                O controlador do tratamento de dados pessoais no âmbito da plataforma <strong>{INSTITUTIONAL_CONFIG.appName}</strong> é a pessoa natural de <strong>{INSTITUTIONAL_CONFIG.developerName}</strong>, desenvolvedor independente e responsável técnico pela aplicação, com domicílio profissional em {INSTITUTIONAL_CONFIG.address}.
+              </>
+            )}
           </p>
           <p>
             <strong>1.2. Encarregado pelo Tratamento de Dados Pessoais (DPO):</strong> Em estrito cumprimento ao Artigo 41 da Lei Geral de Proteção de Dados (Lei nº 13.709/2018), nomeamos Encarregado de Dados para atuar como canal de comunicação entre o controlador, os titulares de dados pessoais e a Autoridade Nacional de Proteção de Dados (ANPD). O contato oficial e formal com o DPO é realizado exclusivamente através do canal permanente:

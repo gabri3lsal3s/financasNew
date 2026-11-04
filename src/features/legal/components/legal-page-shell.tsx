@@ -7,6 +7,7 @@ import {
   Mail,
   MapPin,
   Building2,
+  User,
 } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { BrandLogo, ThemeToggle } from "@/components/layout";
@@ -228,10 +229,18 @@ export function LegalPageShell({
               />
               <div className="flex flex-col gap-1 text-xs text-muted-foreground mt-1 leading-relaxed">
                 <span className="font-semibold text-foreground flex items-center gap-1.5">
-                  <Building2 className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                  {INSTITUTIONAL_CONFIG.cnpj ? (
+                    <Building2 className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                  ) : (
+                    <User className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                  )}
                   {INSTITUTIONAL_CONFIG.companyName}
                 </span>
-                <span>CNPJ: {INSTITUTIONAL_CONFIG.cnpj}</span>
+                {INSTITUTIONAL_CONFIG.cnpj ? (
+                  <span>CNPJ: {INSTITUTIONAL_CONFIG.cnpj}</span>
+                ) : (
+                  <span>Desenvolvedor Responsável: {INSTITUTIONAL_CONFIG.developerName}</span>
+                )}
                 <div className="flex items-start gap-1.5 mt-0.5">
                   <MapPin className="size-3.5 shrink-0 mt-0.5 text-muted-foreground" aria-hidden="true" />
                   <span>{INSTITUTIONAL_CONFIG.address}</span>

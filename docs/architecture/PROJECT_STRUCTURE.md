@@ -51,6 +51,7 @@
 │   │   └── EMAIL_TEMPLATES.md     #   Templates de e-mail transacionais e setup SMTP
 │   ├── operations/                # Operação, negócio SaaS e conformidade legal
 │   │   ├── FOUNDER_RUNBOOK.md     #   Manual operacional do fundador: suporte Telegram, admin, faturamento Asaas
+│   │   ├── GUIA_CONFIGURACAO_MANUAL_GO_LIVE.md # Roteiro de configuração manual do fundador (domínio, Asaas PF, Telegram, Resend)
 │   │   ├── PROJETO_SAAS.md        #   Modelo de precificação SaaS, trial e conformidade CDC
 │   │   └── SECURITY_GOVERNANCE.md #   Governança de segurança, criptografia e LGPD
 │   ├── roadmap/                   # Ciclo de vida, histórico de releases e metas

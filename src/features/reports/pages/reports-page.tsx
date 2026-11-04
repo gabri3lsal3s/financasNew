@@ -18,12 +18,9 @@ import {
 } from "@/domain/reports";
 import {
   isCashAssetClass,
-  buildPortfolioMonthlySeries,
-  calculateTwrSeries,
-  type TwrMonthlyInputPoint,
 } from "@/domain/portfolio";
 import { addDaysISO, todayISO } from "@/domain/debts";
-import { currentMonth, currentYear, formatMonthYear, monthRange, shiftMonth, yearRange } from "@/lib/date";
+import { currentMonth, currentYear, monthRange, shiftMonth, yearRange } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import {
 
@@ -40,7 +37,6 @@ import {
   usePortfolioContributions,
   usePortfolioDividends,
   usePortfolioPosition,
-  usePortfolioMonthlyPosition,
   usePortfolioSnapshots,
   useMacroIndicators,
   useUserAccess,
@@ -60,7 +56,6 @@ import {
   TaxTab,
   type AggregationTab,
 } from "../components";
-import type { PositionRow } from "@/components/modules/position-table";
 import type { Expense } from "@/types";
 
 const FinancialCloseReportModal = lazy(() =>
@@ -135,7 +130,6 @@ export function ReportsPage() {
 
   // Filtros de Período da Aba Finanças
   const [month, setMonth] = useState(currentMonth());
-  const [investmentMonth, setInvestmentMonth] = useState(currentMonth());
   const [year, setYear] = useState(currentYear());
   const [mode, setMode] = useState<PeriodMode>("month");
   const [aggregationTab, setAggregationTab] = useState<AggregationTab>("category");
@@ -227,7 +221,6 @@ export function ReportsPage() {
 
   // Queries de Investimentos & Patrimônio
   const positionQuery = usePortfolioPosition();
-  const monthlyPositionQuery = usePortfolioMonthlyPosition(investmentMonth);
   const snapshotsQuery = usePortfolioSnapshots();
   const macroIndicatorsQuery = useMacroIndicators();
   const assetsQuery = usePortfolioAssets();
@@ -485,224 +478,10 @@ export function ReportsPage() {
     usdRate,
   ]);
 
-  // Resolução temporal da aba de Investimentos (mês selecionado vs mês atual)
-  const isCurrentInvestmentMonth = investmentMonth === currentMonth();
-
-  const investmentEffectiveRows: PositionRow[] = useMemo(() => {
-    if (isCurrentInvestmentMonth || !monthlyPositionQuery.data) {
-      return positionRows;
-    }
-
-    const pit = monthlyPositionQuery.data;
-    const pitRows: PositionRow[] = pit.positions.map((p) => ({
-      assetId: p.assetId ?? p.ticker,
-      ticker: p.ticker,
-      assetClass: p.assetClass,
-      sector: p.sector ?? undefined,
-      currency: (p.currency as "BRL" | "USD") ?? "BRL",
-      quantity: p.quantity,
-      averageCost: p.averagePrice,
-      totalCost: p.totalCost,
-      totalCostBRL: p.totalCostBRL,
-      priceQuote: p.priceQuote ?? p.priceBRL,
-      priceBRL: p.priceBRL,
-      usdRate: 1,
-      valueBRL: p.valueBRL,
-      pct: pit.totalValueBRL > 0 ? (p.valueBRL / pit.totalValueBRL) * 100 : 0,
-      source: (p.quoteSource ?? "manual") as PositionRow["source"],
-      pricingMode: "unit_price",
-      unrealizedPnl: p.unrealizedPnl,
-      unrealizedPct: p.unrealizedPct,
-      dividends: p.accumulatedDividendsBRL,
-      totalReturnPnl: p.totalReturnPnl,
-      totalReturnPct: p.totalReturnPct,
-      isCash: false,
-    }));
-
-    if (pit.cashQuantity > 0) {
-      pitRows.push({
-        assetId: "caixa-pit",
-        ticker: "CAIXA",
-        assetClass: "Caixa",
-        sector: "Liquidez",
-        currency: "BRL",
-        quantity: pit.cashQuantity,
-        averageCost: 1,
-        totalCost: pit.cashQuantity,
-        totalCostBRL: pit.cashQuantity,
-        priceQuote: 1,
-        priceBRL: 1,
-        usdRate: 1,
-        valueBRL: pit.cashQuantity,
-        pct: pit.totalValueBRL > 0 ? (pit.cashQuantity / pit.totalValueBRL) * 100 : 0,
-        source: "manual",
-        pricingMode: "cash",
-        unrealizedPnl: 0,
-        unrealizedPct: 0,
-        dividends: 0,
-        totalReturnPnl: 0,
-        totalReturnPct: 0,
-        isCash: true,
-      });
-    }
-
-    return pitRows;
-  }, [isCurrentInvestmentMonth, monthlyPositionQuery.data, positionRows]);
-
-  const investmentTotalBRL = useMemo(() => {
-    if (isCurrentInvestmentMonth || !monthlyPositionQuery.data) {
-      return positionQuery.totalBRL ?? 0;
-    }
-    return monthlyPositionQuery.data.totalValueBRL;
-  }, [isCurrentInvestmentMonth, monthlyPositionQuery.data, positionQuery.totalBRL]);
-
-  const investmentCashBRL = useMemo(() => {
-    if (isCurrentInvestmentMonth || !monthlyPositionQuery.data) {
-      return cashBalanceBRL;
-    }
-    return monthlyPositionQuery.data.cashQuantity;
-  }, [isCurrentInvestmentMonth, monthlyPositionQuery.data, cashBalanceBRL]);
-
-  const investmentCostBRL = useMemo(() => {
-    if (isCurrentInvestmentMonth || !monthlyPositionQuery.data) {
-      return totalInvestedCostBRL;
-    }
-    return monthlyPositionQuery.data.totalCostBRL;
-  }, [isCurrentInvestmentMonth, monthlyPositionQuery.data, totalInvestedCostBRL]);
-
-  const investmentUnrealizedPnlBRL = useMemo(() => {
-    if (isCurrentInvestmentMonth || !monthlyPositionQuery.data) {
-      return positionQuery.unrealizedPnlBRL;
-    }
-    return Math.round((monthlyPositionQuery.data.totalValueBRL - monthlyPositionQuery.data.totalCostBRL) * 100) / 100;
-  }, [isCurrentInvestmentMonth, monthlyPositionQuery.data, positionQuery.unrealizedPnlBRL]);
-
-  const investmentUnrealizedPnlPct = useMemo(() => {
-    if (isCurrentInvestmentMonth || !monthlyPositionQuery.data) {
-      return positionQuery.unrealizedPct;
-    }
-    const cost = monthlyPositionQuery.data.totalCostBRL;
-    return cost > 0
-      ? ((monthlyPositionQuery.data.totalValueBRL - cost) / cost) * 100
-      : 0;
-  }, [isCurrentInvestmentMonth, monthlyPositionQuery.data, positionQuery.unrealizedPct]);
-
-  const investmentDividendsBRL = useMemo(() => {
-    if (isCurrentInvestmentMonth || !monthlyPositionQuery.data) {
-      return positionQuery.totalDividendsBRL;
-    }
-    return monthlyPositionQuery.data.accumulatedDividendsTotalBRL;
-  }, [isCurrentInvestmentMonth, monthlyPositionQuery.data, positionQuery.totalDividendsBRL]);
-
-  const investmentTotalReturnPnlBRL = useMemo(() => {
-    if (isCurrentInvestmentMonth || !monthlyPositionQuery.data) {
-      return positionQuery.totalReturnPnlBRL;
-    }
-    return monthlyPositionQuery.data.positions.reduce((acc, p) => acc + p.totalReturnPnl, 0);
-  }, [isCurrentInvestmentMonth, monthlyPositionQuery.data, positionQuery.totalReturnPnlBRL]);
-
-  const investmentTotalReturnPct = useMemo(() => {
-    if (isCurrentInvestmentMonth || !monthlyPositionQuery.data) {
-      return positionQuery.totalReturnPct;
-    }
-    const cost = monthlyPositionQuery.data.totalCostBRL;
-    return cost > 0 ? (investmentTotalReturnPnlBRL / cost) * 100 : 0;
-  }, [isCurrentInvestmentMonth, monthlyPositionQuery.data, investmentTotalReturnPnlBRL, positionQuery.totalReturnPct]);
-
-  const investmentPeriodLabel = useMemo(() => {
-    return isCurrentInvestmentMonth ? "Posição Atual" : formatMonthYear(investmentMonth);
-  }, [isCurrentInvestmentMonth, investmentMonth]);
-
-  // Série mensal e TWR retroativos até a competência selecionada
-  const investmentMonthlySeries = useMemo(() => {
-    if (isCurrentInvestmentMonth) {
-      return positionQuery.monthlySeries;
-    }
-
-    const filteredSnaps = snapshots
-      .filter((s) => s.month <= investmentMonth)
-      .map((s) => ({
-        month: s.month,
-        total_value: Number(s.total_value),
-        total_cost: Number(s.total_cost),
-      }));
-
-    const selectedPit = monthlyPositionQuery.data;
-    const currentPoint = selectedPit
-      ? {
-          month: investmentMonth,
-          total_value: selectedPit.totalValueBRL,
-          total_cost: selectedPit.totalCostBRL,
-        }
-      : null;
-
-    const rawDividends = dividends.map((d) => {
-      const asset = d.asset_id ? assets.find((a) => a.id === d.asset_id) : null;
-      const isUSD = asset?.currency === "USD";
-      const dRate = isUSD ? usdRate : 1;
-      return {
-        date: d.date,
-        amount: Number(d.amount) * dRate,
-      };
-    });
-
-    const rawContributions = contributions.map((c) => ({
-      date: c.date,
-      amount: c.amount,
-      notes: c.notes,
-    }));
-
-    return buildPortfolioMonthlySeries({
-      rawSnapshots: filteredSnaps,
-      currentMonthPoint: currentPoint,
-      dividends: rawDividends,
-      contributions: rawContributions,
-      limit: 12,
-    });
-  }, [
-    isCurrentInvestmentMonth,
-    investmentMonth,
-    positionQuery.monthlySeries,
-    snapshots,
-    monthlyPositionQuery.data,
-    dividends,
-    assets,
-    usdRate,
-    contributions,
-  ]);
-
-  const investmentTwr = useMemo(() => {
-    if (isCurrentInvestmentMonth) {
-      return positionQuery.portfolioTwr;
-    }
-
-    if (!investmentMonthlySeries || investmentMonthlySeries.length < 2) {
-      return positionQuery.portfolioTwr;
-    }
-
-    const twrInputs: TwrMonthlyInputPoint[] = investmentMonthlySeries.map((pt) => {
-      let flow = 0;
-      for (const c of contributions) {
-        if (c.date.startsWith(pt.month)) {
-          const isWithdrawal = (c.notes ?? "").toLowerCase().includes("resgate");
-          flow += isWithdrawal ? -Math.abs(c.amount) : Math.abs(c.amount);
-        }
-      }
-      return {
-        month: pt.month,
-        totalValueBRL: pt.valueBRL,
-        totalCostBRL: pt.costBRL,
-        netExternalCashFlowBRL: Math.round(flow * 100) / 100,
-      };
-    });
-
-    return calculateTwrSeries(twrInputs);
-  }, [isCurrentInvestmentMonth, positionQuery.portfolioTwr, investmentMonthlySeries, contributions]);
-
-  // Cálculos de Consultoria de Investimentos baseados nas posições efetivas da aba de Investimentos
+  // Cálculos de Consultoria de Investimentos baseados estritamente na posição viva consolidada da carteira
   const allocationAnalysis = useMemo(() => {
     return calculateAllocationGaps(
-      investmentEffectiveRows.map((r) => ({
+      positionRows.map((r) => ({
         id: r.assetId ?? r.ticker,
         ticker: r.ticker,
         assetClass: r.assetClass ?? "outros",
@@ -714,11 +493,11 @@ export function ReportsPage() {
       assetTargets.map((at) => ({ assetId: at.asset_id, targetPercentage: at.target_percentage })),
       sectorTargets,
     );
-  }, [investmentEffectiveRows, classTargets, assetTargets, sectorTargets]);
+  }, [positionRows, classTargets, assetTargets, sectorTargets]);
 
   const concentrationRisk = useMemo(() => {
     return calculateConcentrationRisk(
-      investmentEffectiveRows.map((r) => ({
+      positionRows.map((r) => ({
         id: r.assetId ?? r.ticker,
         ticker: r.ticker,
         assetClass: r.assetClass ?? "outros",
@@ -728,21 +507,21 @@ export function ReportsPage() {
         isCash: isCashAssetClass(r.assetClass),
       })),
     );
-  }, [investmentEffectiveRows]);
+  }, [positionRows]);
 
   const investmentDonutData = useMemo(() => {
     return buildAllocationDonutSegments({
-      positions: investmentEffectiveRows
+      positions: positionRows
         .filter((r) => !r.isCash && r.quantity > 0)
         .map((r) => ({
           assetClass: r.assetClass,
           sector: r.sector,
           valueBRL: r.valueBRL,
         })),
-      cashBalanceBRL: investmentCashBRL,
-      includeCash: investmentCashBRL > 0,
+      cashBalanceBRL,
+      includeCash: cashBalanceBRL > 0,
     });
-  }, [investmentEffectiveRows, investmentCashBRL]);
+  }, [positionRows, cashBalanceBRL]);
 
   const freedomAnalysis = useMemo(() => {
     const monthlyDivs = yearDividendsBRL > 0 ? yearDividendsBRL / 12 : 0;
@@ -1136,14 +915,9 @@ export function ReportsPage() {
             icon: <TrendingUp className="size-4" aria-hidden="true" />,
             content: (
               <InvestmentsTab
-                totalPatrimonyBRL={investmentTotalBRL}
-                hasDataForPeriod={investmentEffectiveRows.length > 0 || (investmentCashBRL > 0)}
-                periodLabel={investmentPeriodLabel}
-                month={investmentMonth}
-                onMonthChange={setInvestmentMonth}
-                rows={investmentEffectiveRows}
-                fidelityStatus={isCurrentInvestmentMonth ? "complete" : monthlyPositionQuery.data?.fidelity.status}
-                onResetToCurrentMonth={() => setInvestmentMonth(currentMonth())}
+                totalPatrimonyBRL={positionQuery.totalBRL ?? 0}
+                hasDataForPeriod={positionRows.length > 0 || (cashBalanceBRL > 0)}
+                rows={positionRows}
                 allocationAnalysis={allocationAnalysis}
                 concentrationRisk={concentrationRisk}
                 classSegments={investmentDonutData.classSegments}
@@ -1254,8 +1028,8 @@ export function ReportsPage() {
           <WealthTearSheetModal
             open={tearSheetOpen}
             onOpenChange={setTearSheetOpen}
-            periodLabel={investmentPeriodLabel}
-            rows={investmentEffectiveRows.map((r) => {
+            periodLabel="Posição Atual Consolidada"
+            rows={positionRows.map((r) => {
               const effectiveDivs = r.currency === "USD" ? (r.dividendsNative ?? (r.usdRate && r.usdRate > 0 ? (r.dividends ?? 0) / r.usdRate : (r.dividends ?? 0))) : (r.dividends ?? 0);
               const effectiveCost = (r.currency === "USD" ? (r.totalCost ?? (r.usdRate && r.usdRate > 0 && r.totalCostBRL ? r.totalCostBRL / r.usdRate : r.totalCostBRL)) : r.totalCostBRL) ?? 0;
               const yoc = effectiveCost > 0 && effectiveDivs > 0 ? (effectiveDivs / effectiveCost) * 100 : 0;
@@ -1280,22 +1054,22 @@ export function ReportsPage() {
                 isCash: isCashAssetClass(r.assetClass),
               };
             })}
-            totalBRL={investmentTotalBRL}
-            totalCostBRL={investmentCostBRL}
-            totalDividendsBRL={investmentDividendsBRL}
-            totalReturnPnlBRL={investmentTotalReturnPnlBRL}
-            totalReturnPct={investmentTotalReturnPct}
-            unrealizedPnlBRL={investmentUnrealizedPnlBRL}
-            unrealizedPnlPct={investmentUnrealizedPnlPct}
+            totalBRL={positionQuery.totalBRL ?? 0}
+            totalCostBRL={positionQuery.totalCostBRL ?? 0}
+            totalDividendsBRL={positionQuery.totalDividendsBRL ?? 0}
+            totalReturnPnlBRL={positionQuery.totalReturnPnlBRL}
+            totalReturnPct={positionQuery.totalReturnPct}
+            unrealizedPnlBRL={positionQuery.unrealizedPnlBRL}
+            unrealizedPnlPct={positionQuery.unrealizedPct}
             periodRedemptions={periodRedemptions}
-            cashBRL={investmentCashBRL}
-            yearDividendsBRL={isCurrentInvestmentMonth ? yearDividendsBRL : investmentDividendsBRL}
+            cashBRL={cashBalanceBRL}
+            yearDividendsBRL={yearDividendsBRL}
             monthSummary={periodFlowSummary}
             allocationAnalysis={allocationAnalysis}
             concentrationRisk={concentrationRisk}
             portfolioIrr={positionQuery.portfolioIrr}
-            portfolioTwr={investmentTwr}
-            monthlySeries={investmentMonthlySeries}
+            portfolioTwr={positionQuery.portfolioTwr}
+            monthlySeries={positionQuery.monthlySeries}
             allTimeEconomicPnlBRL={positionQuery.allTimeEconomicPnlBRL}
             realizedPnlBRL={positionQuery.realizedPnlBRL}
             annualCdiRate={macroIndicatorsQuery.data?.annualCdiRate}

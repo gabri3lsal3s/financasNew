@@ -24,6 +24,7 @@
     "db:reset": "supabase db reset",
     "db:push": "supabase db push",
     "db:types": "supabase gen types typescript --local > src/types/database.ts",
+    "deploy:functions": "npx supabase functions deploy asaas-checkout --no-verify-jwt && npx supabase functions deploy asaas-manage && npx supabase functions deploy asaas-webhook --no-verify-jwt && npx supabase functions deploy support-notify --no-verify-jwt && npx supabase functions deploy quotes",
     "quotes:deploy": "node scripts/deploy-quotes.mjs deploy",
     "quotes:cron": "node scripts/deploy-quotes.mjs cron",
     "cap:sync": "cap sync android",

@@ -357,7 +357,45 @@ export async function checkQuotesCache(supabase: SupabaseClient): Promise<CheckI
   }
 }
 
-// --- 7. Integridade do Build (TypeScript & ESLint) ---
+// --- 7. Integridade das Edge Functions de Produção ---
+export function checkEdgeFunctions(): CheckItem {
+  const functionsDir = join(rootDir, "supabase", "functions");
+  const requiredFunctions = [
+    "asaas-checkout",
+    "asaas-manage",
+    "asaas-webhook",
+    "quotes",
+    "support-notify",
+  ];
+
+  const missing: string[] = [];
+
+  for (const fn of requiredFunctions) {
+    const fnPath = join(functionsDir, fn, "index.ts");
+    if (!existsSync(fnPath)) {
+      missing.push(fn);
+    }
+  }
+
+  if (missing.length > 0) {
+    return {
+      id: "edge_functions",
+      name: "Edge Functions de Produção (Supabase)",
+      status: "FAILURE",
+      message: `Edge Functions ausentes em supabase/functions/: ${missing.join(", ")}`,
+      details: missing,
+    };
+  }
+
+  return {
+    id: "edge_functions",
+    name: "Edge Functions de Produção (Supabase)",
+    status: "SUCCESS",
+    message: `Todas as 5 Edge Functions prontas para deploy (${requiredFunctions.join(", ")}).`,
+  };
+}
+
+// --- 8. Integridade do Build (TypeScript & ESLint) ---
 export function checkBuildIntegrity(): CheckItem {
   try {
     execSync("npm run typecheck", { stdio: "pipe", cwd: rootDir });
@@ -426,7 +464,10 @@ export async function runPreflight(options: { skipBuildCheck?: boolean } = {}): 
     });
   }
 
-  // 7. Checagem de Build / Tipagem
+  // 7. Checagem de Edge Functions de Produção
+  items.push(checkEdgeFunctions());
+
+  // 8. Checagem de Build / Tipagem
   if (!options.skipBuildCheck) {
     items.push(checkBuildIntegrity());
   }

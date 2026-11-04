@@ -103,7 +103,16 @@ export function TermsPage() {
             <strong>1.2.</strong> O {INSTITUTIONAL_CONFIG.appName} é uma plataforma 100% <em>Online First</em>, funcionando com sincronização em nuvem e armazenamento criptografado sob rigorosos padrões de segurança da informação.
           </p>
           <p>
-            <strong>1.3.</strong> O serviço é prestado por <strong>{INSTITUTIONAL_CONFIG.companyName}</strong>, pessoa jurídica de direito privado inscrita no CNPJ sob o nº <strong>{INSTITUTIONAL_CONFIG.cnpj}</strong>, com sede em {INSTITUTIONAL_CONFIG.address}.
+            <strong>1.3.</strong>{" "}
+            {INSTITUTIONAL_CONFIG.cnpj ? (
+              <>
+                O serviço é prestado por <strong>{INSTITUTIONAL_CONFIG.companyName}</strong>, pessoa jurídica de direito privado inscrita no CNPJ sob o nº <strong>{INSTITUTIONAL_CONFIG.cnpj}</strong>, com sede em {INSTITUTIONAL_CONFIG.address}.
+              </>
+            ) : (
+              <>
+                O serviço é desenvolvido, mantido e operado por <strong>{INSTITUTIONAL_CONFIG.developerName}</strong>, desenvolvedor independente e responsável técnico pela plataforma <strong>{INSTITUTIONAL_CONFIG.appName}</strong>, com domicílio e sede de desenvolvimento em {INSTITUTIONAL_CONFIG.address}.
+              </>
+            )}
           </p>
         </div>
       </section>

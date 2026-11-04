@@ -39,8 +39,13 @@ describe("TermsPage (Contrato 1: Termos de Serviço SaaS)", () => {
       }),
     ).toBeInTheDocument();
 
-    expect(scope.getByText(new RegExp(INSTITUTIONAL_CONFIG.companyName))).toBeInTheDocument();
-    expect(scope.getByText(new RegExp(INSTITUTIONAL_CONFIG.cnpj))).toBeInTheDocument();
+    if (INSTITUTIONAL_CONFIG.cnpj) {
+      expect(scope.getByText(new RegExp(INSTITUTIONAL_CONFIG.companyName))).toBeInTheDocument();
+      expect(scope.getByText(new RegExp(INSTITUTIONAL_CONFIG.cnpj))).toBeInTheDocument();
+    } else {
+      expect(scope.getByText(new RegExp(INSTITUTIONAL_CONFIG.developerName))).toBeInTheDocument();
+      expect(scope.getByText(/desenvolvedor independente/i)).toBeInTheDocument();
+    }
     expect(scope.getByText(/Online First/i)).toBeInTheDocument();
     expect(scope.getByText(/sincronização em nuvem/i)).toBeInTheDocument();
   });
