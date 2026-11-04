@@ -739,6 +739,38 @@ describe("Suíte E2E de Notificações Bancárias & Matriz dos 10 Maiores Bancos
         expect(result?.merchant).toBe("Apple Store");
         expect(result?.cardLastDigits).toBe("1234");
       });
+
+      it("parseia compra internacional Nomad com sufixo e notação alternativa (Caso Nomad)", () => {
+        const result = parseBankNotification({
+          packageName: "com.nomadfinancial.app",
+          title: "Cartão Nomad",
+          text: "15.00 USD aprovado em Target",
+        });
+
+        expect(result).not.toBeNull();
+        expect(result?.bankName).toBe("Nomad");
+        expect(result?.amountCents).toBe(1500);
+        expect(result?.currency).toBe("USD");
+        expect(result?.nature).toBe("expense");
+        expect(result?.merchant).toBe("Target");
+      });
+    });
+
+    describe("Avenue (us.avenue.app)", () => {
+      it("parseia compra internacional na Avenue com cartão", () => {
+        const result = parseBankNotification({
+          packageName: "us.avenue.app",
+          title: "Avenue",
+          text: "Compra aprovada de 25.50 USD em Starbucks",
+        });
+
+        expect(result).not.toBeNull();
+        expect(result?.bankName).toBe("Avenue");
+        expect(result?.amountCents).toBe(2550);
+        expect(result?.currency).toBe("USD");
+        expect(result?.nature).toBe("expense");
+        expect(result?.merchant).toBe("Starbucks");
+      });
     });
 
     describe("BTG Investimentos (com.btgpactual.investimentos)", () => {

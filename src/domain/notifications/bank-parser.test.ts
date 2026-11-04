@@ -42,6 +42,19 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
       expect(extractCentsFromText("Pix de 2.500,75 realizado")).toBe(250075);
     });
 
+    it("extrai centavos de valores com moedas internacionais e nacionais com prefixo ou sufixo (Caso Nomad)", () => {
+      expect(extractCentsFromText("Compra internacional US$ 15.00")).toBe(1500);
+      expect(extractCentsFromText("Transação de 15.00 USD aprovada")).toBe(1500);
+      expect(extractCentsFromText("Cartão Nomad: 15.00 US$ aprovado")).toBe(1500);
+      expect(extractCentsFromText("Compra aprovada de $15.00")).toBe(1500);
+      expect(extractCentsFromText("Transação de 15,00 USD")).toBe(1500);
+      expect(extractCentsFromText("Pagamento de 15.00 EUR realizado")).toBe(1500);
+      expect(extractCentsFromText("Pagamento de 15.00 € realizado")).toBe(1500);
+      expect(extractCentsFromText("Débito de 50,00 BRL")).toBe(5000);
+      expect(extractCentsFromText("Compra de 50,00 R$")).toBe(5000);
+      expect(extractCentsFromText("Total de 1.250,00 BRL")).toBe(125000);
+    });
+
     it("retorna null para textos sem valor monetário válido ou zero", () => {
       expect(extractCentsFromText("Seu limite aumentou!")).toBeNull();
       expect(extractCentsFromText("R$ 0,00")).toBeNull();
@@ -76,6 +89,12 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
       expect(isBlacklistedNotification("Você tem um empréstimo pré-aprovado de R$ 10.000,00", "Inter")).toBe(true);
       expect(isBlacklistedNotification("Dinheiro extra disponível na sua conta", "C6 Bank")).toBe(true);
       expect(isBlacklistedNotification("Aproveite a oferta e ganhe cashback", "PicPay")).toBe(true);
+      expect(isBlacklistedNotification("A cada compra de R$ 50 concorra a um carro", "Nubank")).toBe(true);
+      expect(isBlacklistedNotification("Ganhe R$ 20 de bônus no seu cartão", "Inter")).toBe(true);
+      expect(isBlacklistedNotification("Crédito de R$ 5.000 liberado para suas compras", "Itaú")).toBe(true);
+      expect(isBlacklistedNotification("Seu saldo rendeu R$ 0,15 hoje", "Nubank")).toBe(true);
+      expect(isBlacklistedNotification("Lembrete de fatura com vencimento em 10/11: R$ 500,00", "Bradesco")).toBe(true);
+      expect(isBlacklistedNotification("Sua fatura fechou no valor de R$ 850,20", "Nubank")).toBe(true);
     });
 
     it("rejeita tokens, códigos de segurança e 2FA", () => {
@@ -225,6 +244,17 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
       expect(resolveBankName("br.com.btg.pactual.digital")).toBe("BTG Investimentos");
       expect(resolveBankName("br.com.xp.investimentos")).toBe("XP Investimentos");
       expect(resolveBankName("com.nomadglobal.app")).toBe("Nomad");
+
+      // Novos bancos digitais e contas PJ (Fase 1 / Tarefa 1.4)
+      expect(resolveBankName("br.com.sofisa.direto")).toBe("Sofisa Direto");
+      expect(resolveBankName("br.com.bancopan.app")).toBe("Banco Pan");
+      expect(resolveBankName("br.com.bv.banco")).toBe("Banco BV");
+      expect(resolveBankName("us.avenue.app")).toBe("Avenue");
+      expect(resolveBankName("com.cora.app")).toBe("Cora");
+      expect(resolveBankName("br.com.intermedium.pj")).toBe("Inter Empresas");
+      expect(resolveBankName("com.c6bank.empresa")).toBe("C6 Empresas");
+      expect(resolveBankName("com.btgpactual.empresas")).toBe("BTG Empresas");
+      expect(resolveBankName("br.com.uol.ps.seller")).toBe("PagBank Vendedor");
     });
 
     it("resolve bancos por palavras-chave no texto", () => {
@@ -247,6 +277,9 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
       expect(detectTransactionType("DOC recebido de R$ 350,00", "Caixa")).toBe("income");
       expect(detectTransactionType("Proventos creditados de R$ 75,20", "XP")).toBe("income");
       expect(detectTransactionType("Cashback recebido de R$ 15,00", "PicPay")).toBe("income");
+      expect(detectTransactionType("Pix recebido de R$ 50,00 referente a compra de artesanato", "Inter")).toBe("income");
+      expect(detectTransactionType("Salário creditado referente a pagamento de comissão", "Itaú")).toBe("income");
+      expect(detectTransactionType("Estorno de compra aprovado no valor de R$ 80,00", "Bradesco")).toBe("income");
     });
 
     it("identifica despesas por padrão", () => {
@@ -1348,6 +1381,36 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
         expect(parsed?.amountCents).toBe(4500);
         expect(parsed?.currency).toBe("USD");
         expect(parsed?.merchant).toBe("Apple Store");
+      });
+
+      it("parseia compra internacional Nomad com prefixo US$ e nome do cartão no título (Caso Nomad)", () => {
+        const parsed = parseBankNotification({
+          packageName: "com.nomadfinancial.app",
+          title: "Cartão Nomad",
+          text: "US$ 15.00 aprovado em Target",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Nomad");
+        expect(parsed?.amountCents).toBe(1500);
+        expect(parsed?.currency).toBe("USD");
+        expect(parsed?.merchant).toBe("Target");
+        expect(parsed?.nature).toBe("expense");
+      });
+
+      it("parseia compra internacional Nomad com notação posterior 15.00 USD (Caso Nomad)", () => {
+        const parsed = parseBankNotification({
+          packageName: "com.nomadfinancial.app",
+          title: "Nomad",
+          text: "Compra aprovada: 15.00 USD em Target",
+        });
+
+        expect(parsed).not.toBeNull();
+        expect(parsed?.bankName).toBe("Nomad");
+        expect(parsed?.amountCents).toBe(1500);
+        expect(parsed?.currency).toBe("USD");
+        expect(parsed?.merchant).toBe("Target");
+        expect(parsed?.nature).toBe("expense");
       });
 
       it("parseia pagamento Wise em euros com ponto decimal", () => {

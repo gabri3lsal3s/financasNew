@@ -71,20 +71,32 @@ public class BankNotificationActionReceiver extends BroadcastReceiver {
         String combined = ((title != null ? title : "") + " " + (text != null ? text : "")).toLowerCase();
         if (combined.trim().isEmpty()) return false;
 
-        // 1. Estornos e reembolsos são entradas financeiras (reversão de valores)
+        // 1. Sinais inequívocos e inegociáveis de renda/receita financeira e estornos (prioridade máxima sobre termos comerciais)
         if (combined.contains("estorno") || combined.contains("reembolso") ||
             combined.contains("devolução pix") || combined.contains("devolucao pix") ||
-            combined.contains("pix devolvido")) {
+            combined.contains("pix devolvido") || combined.contains("pix recebido") ||
+            combined.contains("recebeu um pix") || combined.contains("recebeu pix") ||
+            combined.contains("salário") || combined.contains("salario") ||
+            combined.contains("folha de pagamento") ||
+            combined.contains("transferência recebida") || combined.contains("transferencia recebida") ||
+            combined.contains("depósito recebido") || combined.contains("deposito recebido") ||
+            combined.contains("depósito em conta") || combined.contains("deposito em conta") ||
+            combined.contains("ted recebida") || combined.contains("doc recebido") ||
+            combined.contains("creditado em conta") || combined.contains("creditada em conta") ||
+            combined.contains("creditado na sua conta") || combined.contains("creditada na sua conta") ||
+            combined.contains("crédito em conta") || combined.contains("credito em conta") ||
+            combined.contains("proventos") || combined.contains("dividendos")) {
             return true;
         }
 
-        // 2. Sinais inequívocos de compra ou despesa (têm precedência sobre termos genéricos de recebimento)
+        // 2. Sinais inequívocos de compra ou despesa
         if (combined.contains("crédito à vista") || combined.contains("credito a vista") ||
             combined.contains("crédito parcelado") || combined.contains("credito parcelado") ||
             combined.contains("compra no crédito") || combined.contains("compra no credito") ||
             combined.contains("compra no débito") || combined.contains("compra no debito") ||
             combined.contains("compra aprovada") || combined.contains("compra realizada") ||
             combined.contains("compra autorizada") || combined.contains("compra de") ||
+            combined.contains("comprovante de compra") ||
             combined.contains("você pagou") || combined.contains("voce pagou") ||
             combined.contains("pagamento de") || combined.contains("pagamento realizado") ||
             combined.contains("pagamento efetuado") || combined.contains("pix enviado") ||
@@ -94,18 +106,9 @@ public class BankNotificationActionReceiver extends BroadcastReceiver {
             return false;
         }
 
-        // 3. Sinais legítimos de entrada / renda financeira
+        // 3. Sinais adicionais de recebimento genérico
         return combined.contains("recebeu") || combined.contains("recebido") || combined.contains("recebida") ||
-               combined.contains("crédito em conta") || combined.contains("credito em conta") ||
-               combined.contains("creditado em conta") || combined.contains("creditada em conta") ||
-               combined.contains("creditado na sua conta") || combined.contains("creditada na sua conta") ||
-               combined.contains("transferência recebida") || combined.contains("transferencia recebida") ||
-               combined.contains("pix recebido") || combined.contains("salário") || combined.contains("salario") ||
-               combined.contains("folha de pagamento") || combined.contains("depósito recebido") ||
-               combined.contains("deposito recebido") || combined.contains("depósito em conta") ||
-               combined.contains("deposito em conta") || combined.contains("ted recebida") ||
-               combined.contains("doc recebido") || combined.contains("proventos") ||
-               combined.contains("rendimentos") || combined.contains("dividendos");
+               combined.contains("recebimento") || combined.contains("rendimentos");
     }
 
     public static String extractPartyName(String text) {

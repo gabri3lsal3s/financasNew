@@ -83,6 +83,15 @@ const BANK_PACKAGE_MAP: Record<string, string> = {
   "com.nomadfinancial.app": "Nomad",
   "com.nomadglobal.app": "Nomad",
   "com.transferwise.android": "Wise",
+  "us.avenue.app": "Avenue",
+  "br.com.sofisa.direto": "Sofisa Direto",
+  "br.com.bancopan.app": "Banco Pan",
+  "br.com.bv.banco": "Banco BV",
+  "com.cora.app": "Cora",
+  "br.com.intermedium.pj": "Inter Empresas",
+  "com.c6bank.empresa": "C6 Empresas",
+  "com.btgpactual.empresas": "BTG Empresas",
+  "br.com.uol.ps.seller": "PagBank Vendedor",
 
   // Grandes bancos tradicionais
   "com.itau": "Itaú",
@@ -108,8 +117,11 @@ const BANK_PACKAGE_MAP: Record<string, string> = {
 const BLACKLIST_EXPRESSIONS: RegExp[] = [
   // Faturas fechadas / resumos / abertas
   /\bfatura\b.*?\b(?:fechou|fechada|est[áa]\s+fechada|abriu|aberta|dispon[íi]vel|pronta|fechamento)\b/i,
+  /\bsua\s+fatura\s+fechou\b/i,
   /\bfechamento\b.*?\bfatura\b/i,
   /\bresumo\s+d[aeo]\s+fatura\b/i,
+  /\blembrete\s+de\s+fatura\b/i,
+  /\bfatura\s+com\s+vencimento\s+em\b/i,
   /\bpague\s+o\s+valor\s+m[íi]nimo\b/i,
 
   // Pagamento de fatura confirmado (já computado pelas compras individuais no cartão)
@@ -134,11 +146,15 @@ const BLACKLIST_EXPRESSIONS: RegExp[] = [
 
   // Ofertas de crédito, aumento de limite, empréstimos e promoções
   /\blimite\s+(?:aumentou|aprovado|pr[ée]-aprovado|pr[ée]\s+aprovado|dispon[íi]vel|foi\s+ajustado|emergencial|especial|liberado)\b/i,
+  /\blimite\s+especial\b/i,
   /\baumento\s+de\s+limite\b/i,
   /\bnovo\s+limite\b/i,
   /\baumente\s+seu\s+limite\b/i,
   /\b(?:empr[ée]stimo|cr[ée]dito)\s+(?:pr[ée]-aprovado|pr[ée]\s+aprovado|dispon[íi]vel|f[áa]cil|especial|pessoal|liberado)\b/i,
   /\b(?:cr[ée]dito|empr[ée]stimo)\s+(?:para\s+voc[êe]|na\s+sua\s+conta|liberado|r[áa]pido)\b/i,
+  /\bcr[ée]dito\s+de\s+.*?\s+liberado\b/i,
+  /\bcr[ée]dito\s+dispon[íi]vel\s+para\s+voc[êe]\b/i,
+  /\bempr[ée]stimo\s+liberado\b/i,
   /\boferta\s+(?:especial\s+)?de\s+empr[ée]stimo\b/i,
   /\bliberamos\s+.*de\s+cr[ée]dito\b/i,
   /\bdinheiro\s+(?:extra|r[áa]pido)\s*(?:dispon[íi]vel|na\s+conta)?\b/i,
@@ -149,15 +165,28 @@ const BLACKLIST_EXPRESSIONS: RegExp[] = [
   /\bsolicite\s+seu\b/i,
   /\bcart[ãa]o\s+aprovado\b/i,
   /\baproveite\s+(?:o\s+limite|a\s+oferta|.*cashback)\b/i,
-  /\bganhe\s+(?:at[ée]\s+)?(?:r\$|us\$|\$|eur|€)\b/i,
-  /\bdesconto\s+de\s+(?:at[ée]\s+)?(?:r\$|us\$|\$|eur|€)\b/i,
-  /\bcompras\s+acima\s+de\s+(?:r\$|us\$|\$|eur|€)\b/i,
+  /\bganhe\b/i,
+  /\bconcorra\b/i,
+  /\ba\s+cada\s+compra\b/i,
+  /\bpr[óo]xima\s+compra\b/i,
+  /\bfa[çc]a\s+compras(?:\s+acima\s+de)?\b/i,
+  /\bfaca\s+compras(?:\s+acima\s+de)?\b/i,
+  /\bb[ôo]nus(?:\s+no\s+seu\s+cart[ãa]o)?\b/i,
+  /\bcupom(?:\s+de)?\b/i,
+  /\bcashback\s+de\s+at[ée]\b/i,
+  /\bdesconto\s+de\s+(?:at[ée]\s+)?(?:r\$|us\$|\$|eur|€)?\b/i,
+  /\bcompras\s+acima\s+de\s+(?:r\$|us\$|\$|eur|€)?\b/i,
   /\buse\s+seu\s+cart[ãa]o\s+e\s+ganhe\b/i,
   /\bparcele\s+em\s+at[ée]\b/i,
   /\bconhe[çc]a\s+o\s+novo\b/i,
   /\bganhe\s+cashback\b/i,
   /\bpontos\s+(?:acumulados|do\s+cart[ãa]o)\b/i,
   /\bclube\s+de\s+vantagens\b/i,
+
+  // Rendimentos diários passivos (ruído)
+  /\brendeu\s+hoje\b/i,
+  /\brendimento\s+da\s+sua\s+conta\b/i,
+  /\bseu\s+saldo\s+rendeu\b/i,
 
   // Chamadas comerciais, dicas e incentivos (Fase 10 / Tarefa 10.4)
   /\bsaiba\s+mais\b/i,
@@ -231,7 +260,16 @@ export function extractCentsFromText(text: string): number | null {
     if (Number.isFinite(total) && total > 0) return total;
   }
 
-  // 3. Fallback para valores decimais com vírgula típicos brasileiros ("42,90", "1.250,50")
+  // 3. Valores com moeda em sufixo: "15.00 USD", "15.00 US$", "15,00 USD", "50,00 BRL", "50,00 R$", "15.00 EUR", "15.00 €", "15.00 $"
+  const suffixMatch = /\b(\d{1,3}(?:[.,]\d{3})*|\d+)[,.](\d{2})\s*(?:US\$|USD|BRL|EUR|€|R\$|\$)\b/i.exec(text);
+  if (suffixMatch && suffixMatch[1] && suffixMatch[2]) {
+    const wholeStr = suffixMatch[1].replace(/[.,]/g, "");
+    const fractionStr = suffixMatch[2];
+    const total = parseInt(wholeStr, 10) * 100 + parseInt(fractionStr, 10);
+    if (Number.isFinite(total) && total > 0) return total;
+  }
+
+  // 4. Fallback para valores decimais com vírgula típicos brasileiros ("42,90", "1.250,50")
   const genericMatch = /\b(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})\b/.exec(text);
   if (genericMatch && genericMatch[1] && genericMatch[2]) {
     const wholeStr = genericMatch[1].replace(/\./g, "");
@@ -860,7 +898,8 @@ export function hasValidTransactionSignal(
     packageName === "com.nomadglobal.app" ||
     packageName === "com.transferwise.android" ||
     packageName === "br.com.xp.investimentos" ||
-    packageName === "br.com.xp.carteira"
+    packageName === "br.com.xp.carteira" ||
+    packageName === "us.avenue.app"
   ) {
     return true;
   }
@@ -952,6 +991,10 @@ export function hasValidTransactionSignal(
     "rico",
     "nomad",
     "wise",
+    "avenue",
+    "conta",
+    "card",
+    "estabelecimento",
     "purchase",
     "approved",
     "payment",
@@ -1064,11 +1107,17 @@ export function detectTransactionType(text: string, title: string): "expense" | 
     "voce recebeu",
     "recebido",
     "recebida",
+    "recebimento",
+    "recebimento de",
+    "recebeu um pix",
+    "recebeu pix",
     "transferência recebida",
     "transferencia recebida",
     "pix recebido",
     "depósito recebido",
     "deposito recebido",
+    "depósito em conta",
+    "deposito em conta",
     "depósito de",
     "deposito de",
     "depósito confirmado",
@@ -1192,7 +1241,7 @@ export function detectPaymentMethod(text: string, title: string): PaymentMethod 
  * Detecta a moeda predominante da notificação ("BRL" ou "USD").
  */
 export function detectCurrency(text: string): "BRL" | "USD" {
-  if (/(?:US\$|USD|\bUSD\b|\$\s*\d)/i.test(text) && !/R\$/i.test(text)) {
+  if (/(?:US\$|USD|\bUSD\b|\$\s*\d|\d\s*(?:USD|US\$|\$))/i.test(text) && !/R\$/i.test(text)) {
     return "USD";
   }
   return "BRL";

@@ -60,18 +60,18 @@ flowchart TD
 
 Resolver as falhas críticas de identificação de compras em contas globais (Nomad, Wise) e eliminar de forma definitiva os falsos positivos de notificações publicitárias no Android nativo e no domínio.
 
-- [ ] **Tarefa 1.1: Suporte a Moedas Globais com Sufixo e Prefixo (Caso Nomad)**
+- [x] **Tarefa 1.1: Suporte a Moedas Globais com Sufixo e Prefixo (Caso Nomad)**
   - Atualizar `AMOUNT_PATTERN` em `BankNotificationListenerService.java`:
     - Suportar símbolo monetário **antes ou depois** do número: `US$ 15.00`, `15.00 USD`, `15.00 US$`, `$15.00`, `15,00 USD`, `15.00 EUR`, `15.00 €`, `R$ 50,00`, `50,00 BRL`.
   - Atualizar `extractCentsFromText` em `src/domain/notifications/bank-parser.ts` para espelhar a mesma flexibilidade bidirecional de moedas internacionais e nacionais.
 
-- [ ] **Tarefa 1.2: Refinamento de `hasFinancialSignal` e Suporte a Contas Globais no Java**
+- [x] **Tarefa 1.2: Refinamento de `hasFinancialSignal` e Suporte a Contas Globais no Java**
   - Em `BankNotificationListenerService.java`:
     - Adicionar `"cartão"`, `"cartao"`, `"conta"`, `"card"`, `"nomad"`, `"wise"`, `"avenue"` na lista `channelSignals`.
     - Garantir que frases como *"Cartão Nomad: US$ 15.00 aprovado em Target"* ou *"Transação aprovada no seu cartão Nomad"* ativem o sinal financeiro com sucesso.
     - Tratar notificações agrupadas (`Notification.FLAG_GROUP_SUMMARY`): se a notificação for um resumo de grupo sem texto ou sem valor, não descartar nem emitir push falso; buscar dados nos extras filhos ou aguardar a notificação detalhada da transação.
 
-- [ ] **Tarefa 1.3: Escudo Reforçado Anti-Marketing e Falsos Positivos (Java e TS)**
+- [x] **Tarefa 1.3: Escudo Reforçado Anti-Marketing e Falsos Positivos (Java e TS)**
   - Em `BankNotificationListenerService.java` (`BLACKLIST_MARKETING_PATTERN`) e `src/domain/notifications/bank-parser.ts` (`BLACKLIST_EXPRESSIONS`):
     - Bloquear expressões condicionais e de incentivo:
       - `"ganhe"`, `"concorra"`, `"a cada compra"`, `"próxima compra"`, `"faça compras acima de"`, `"desconto de até"`, `"cupom de"`, `"cashback de até"`.
@@ -80,19 +80,19 @@ Resolver as falhas críticas de identificação de compras em contas globais (No
       - Faturas e cobranças futuras: `"sua fatura fechou"`, `"lembrete de fatura"`, `"resumo de fatura"`, `"fatura com vencimento em"`.
     - Exigir sinal de **fato financeiro consumado e efetivado** (ex.: `"aprovada"`, `"realizada"`, `"confirmada"`, `"pago"`, `"debitado"`, `"enviado"`, `"recebeu"`).
 
-- [ ] **Tarefa 1.4: Expansão do Catálogo de Bancos no Android e TypeScript**
+- [x] **Tarefa 1.4: Expansão do Catálogo de Bancos no Android e TypeScript**
   - Sincronizar os novos bancos digitais e PJ no `DEFAULT_MONITORED_PACKAGES` (`BankNotificationListenerService.java`) e `BANK_PACKAGE_MAP` (`bank-parser.ts`):
     - Sofisa Direto (`br.com.sofisa.direto`), Banco Pan (`br.com.bancopan.app`), BV (`br.com.bv.banco`), Avenue (`us.avenue.app`), Cora PJ (`com.cora.app`), Inter Empresas (`br.com.intermedium.pj`), C6 Empresas (`com.c6bank.empresa`), BTG Empresas (`com.btgpactual.empresas`), PagBank Vendedor (`br.com.uol.ps.seller`).
     - Carteira Google (`com.google.android.apps.walletnfcrel`) e Samsung Wallet (`com.samsung.android.spay`, `com.samsung.android.raja.spay`, `com.samsung.android.app.spay`).
 
-- [ ] **Tarefa 1.5: Identificação Precisa de Rendas Recebidas (Incomes)**
+- [x] **Tarefa 1.5: Identificação Precisa de Rendas Recebidas (Incomes)**
   - Blindar a detecção de receitas para que Pix recebido, salário creditado e estornos sejam categorizados inequivocamente como `nature: "income"`, mesmo quando a mensagem citar termos comerciais.
 
-- [ ] **Portão de Qualidade 1:**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/domain/notifications/bank-parser.test.ts src/domain/notifications/bank-e2e-matrix.test.ts`
-  - [ ] **Commit & Push da Fase 1:** `git commit -m "feat(notifications): suporte a moedas globais nomad e escudo anti-marketing robusto"`
+- [x] **Portão de Qualidade 1:**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/domain/notifications/bank-parser.test.ts src/domain/notifications/bank-e2e-matrix.test.ts`
+  - [x] **Commit & Push da Fase 1:** `git commit -m "feat(notifications): suporte a moedas globais nomad e escudo anti-marketing robusto"`
 
 ---
 

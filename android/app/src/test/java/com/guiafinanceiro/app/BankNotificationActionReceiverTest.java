@@ -25,6 +25,10 @@ public class BankNotificationActionReceiverTest {
         assertTrue(BankNotificationActionReceiver.isIncome("Reembolso", "Reembolso aprovado de R$ 85,00"));
         assertTrue(BankNotificationActionReceiver.isIncome("Estorno", "Estorno no cartão de crédito de R$ 120,00 realizado"));
         assertTrue(BankNotificationActionReceiver.isIncome("XP", "Proventos recebidos no valor de R$ 45,00"));
+        assertTrue(BankNotificationActionReceiver.isIncome("Inter", "Pix recebido de R$ 50,00 referente a compra de artesanato"));
+        assertTrue(BankNotificationActionReceiver.isIncome("Nubank", "Você recebeu um Pix de R$ 120,00 da compra da bicicleta"));
+        assertTrue(BankNotificationActionReceiver.isIncome("Itaú", "Salário creditado referente a pagamento de comissão"));
+        assertTrue(BankNotificationActionReceiver.isIncome("Bradesco", "Estorno de compra aprovado no valor de R$ 80,00"));
 
         // Despesas e compras no crédito (não devem ser classificadas como renda)
         assertFalse(BankNotificationActionReceiver.isIncome("Nubank", "Compra no crédito à vista de R$ 50,00 aprovada"));

@@ -28,20 +28,23 @@ public class BankNotificationListenerService extends NotificationListenerService
     private static final int MAX_BUFFER_SIZE = 30;
 
     private static final Pattern AMOUNT_PATTERN = Pattern.compile(
-        "(?i)(?:R\\$|US\\$|USD|\\$|EUR|€)\\s*(\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2}|\\d+(?:[.,]\\d{2})?)"
+        "(?i)(?:(?:R\\$|US\\$|USD|BRL|\\$|EUR|€)\\s*(\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2}|\\d+(?:[.,]\\d{2})?)|(\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2}|\\d+(?:[.,]\\d{2})?)\\s*(?:US\\$|USD|BRL|EUR|€|R\\$|\\$))"
     );
 
     private static final Pattern BLACKLIST_MARKETING_PATTERN = Pattern.compile(
         "(?i)\\b(?:" +
-        "saiba\\s+mais|clique\\s+aqui|conhe[çc]a|confira|aproveite|ganhe\\s+f[ôo]lego|" +
-        "dica(?:\\s+do)?|novidade|descubra|experimente|simule|contrate|contratar|" +
-        "dispon[íi]vel\\s+para\\s+voc[êe]|empr[ée]stimo|cr[ée]dito\\s+(?:pr[ée]-aprovado|pr[ée]\\s+aprovado|f[áa]cil|especial)|" +
-        "dinheiro\\s+r[áa]pido|taxas\\s+a\\s+partir|desconto\\s+de|cupom|cashback\\s+de\\s+at[ée]|" +
+        "saiba\\s+mais|clique\\s+aqui|conhe[çc]a|confira|aproveite|ganhe\\b|ganhe\\s+f[ôo]lego|" +
+        "concorra|a\\s+cada\\s+compra|pr[óo]xima\\s+compra|proxima\\s+compra|fa[çc]a\\s+compras(?:\\s+acima\\s+de)?|faca\\s+compras(?:\\s+acima\\s+de)?|" +
+        "dica(?:\\s+do)?|novidade|descubra|experimente|simule(?:\\s+agora|\\s+seu)?|contrate(?:\\s+j[áa]|\\s+agora)?|contratar|" +
+        "dispon[íi]vel\\s+para\\s+voc[êe]|empr[ée]stimo(?:\\s+liberado)?|cr[ée]dito\\s+(?:pr[ée]-aprovado|pr[ée]\\s+aprovado|f[áa]cil|especial|dispon[íi]vel|liberado)|" +
+        "cr[ée]dito\\s+de\\s+.*\\s+liberado|" +
+        "dinheiro\\s+r[áa]pido|taxas\\s+a\\s+partir|desconto\\s+de(?:\\s+at[ée])?|cupom(?:\\s+de)?|cashback\\s+de\\s+at[ée]|b[ôo]nus(?:\\s+no\\s+seu\\s+cart[ãa]o)?|" +
         "limite\\s+(?:dispon[íi]vel|aprovado|aumentou|liberado|especial|emergencial)|aumento\\s+de\\s+limite|" +
         "novo\\s+limite|aumente\\s+seu\\s+limite|solicite\\s+seu|cart[ãa]o\\s+aprovado|" +
         "pr[ée]-aprovado|pr[ée]\\s+aprovado|dinheiro\\s+extra|seguro(?:\\s+de)?|open\\s+finance|portabilidade|" +
         "traga\\s+seu\\s+sal[áa]rio|indique\\s+um\\s+amigo|cashback|acumule\\s+pontos|shopping|" +
-        "pontos\\s+do\\s+cart[ãa]o|fatura\\s+(?:fechou|fechada|abriu|aberta)|resumo\\s+d[aeo]\\s+fatura|" +
+        "pontos\\s+do\\s+cart[ãa]o|fatura\\s+(?:fechou|fechada|abriu|aberta|com\\s+vencimento\\s+em)|sua\\s+fatura\\s+fechou|lembrete\\s+de\\s+fatura|resumo\\s+d[aeo]\\s+fatura|" +
+        "rendeu\\s+hoje|rendimento\\s+da\\s+sua\\s+conta|seu\\s+saldo\\s+rendeu|" +
         "pague\\s+o\\s+valor\\s+m[íi]nimo|n[ãa]o\\s+foi\\s+autorizad[ao]|compra\\s+negada|" +
         "saldo\\s+insuficiente|cart[ãa]o\\s+bloqueado|token|c[óo]digo\\s+de\\s+seguran[çc]a" +
         ")\\b"
@@ -51,7 +54,9 @@ public class BankNotificationListenerService extends NotificationListenerService
         // Bancos Tradicionais & Digitais
         "com.nu.production",
         "br.com.intermedium",
+        "br.com.intermedium.pj",
         "com.c6bank.app",
+        "com.c6bank.empresa",
         "br.com.neon",
         "br.com.bradesco.next",
         "com.itau",
@@ -62,6 +67,10 @@ public class BankNotificationListenerService extends NotificationListenerService
         "br.gov.caixa.tem",
         "br.com.gabba.Caixa",
         "br.com.bb.android",
+        "br.com.sofisa.direto",
+        "br.com.bancopan.app",
+        "br.com.bv.banco",
+        "com.cora.app",
 
         // Carteiras Digitais & Pagamentos
         "com.google.android.apps.walletnfcrel",
@@ -73,6 +82,7 @@ public class BankNotificationListenerService extends NotificationListenerService
         "com.picpay",
         "br.com.uol.ps",
         "br.com.uol.ps.myaccount",
+        "br.com.uol.ps.seller",
         "com.recargapay",
 
         // Fintechs & Outros Bancos
@@ -84,6 +94,7 @@ public class BankNotificationListenerService extends NotificationListenerService
         // Investimentos, Cripto & Contas Globais
         "com.btg.pactual.banking",
         "com.btgpactual.investimentos",
+        "com.btgpactual.empresas",
         "br.com.btg.pactual.digital",
         "br.com.xp.carteira",
         "com.xpinc.investments",
@@ -95,6 +106,7 @@ public class BankNotificationListenerService extends NotificationListenerService
         "com.nomadfinancial.app",
         "com.nomadglobal.app",
         "com.transferwise.android",
+        "us.avenue.app",
 
         // Cooperativas, Adquirentes & Outros
         "br.com.sicoob.net",
@@ -138,6 +150,10 @@ public class BankNotificationListenerService extends NotificationListenerService
         Notification notification = sbn.getNotification();
         if (notification == null) return;
 
+        // Trata resumos de grupos de notificações (FLAG_GROUP_SUMMARY).
+        // Se for resumo sem texto detalhado ou sem valor monetário, descarta silenciosamente para aguardar a notificação filha.
+        boolean isGroupSummary = (notification.flags & Notification.FLAG_GROUP_SUMMARY) != 0;
+
         Bundle extras = notification.extras;
         if (extras == null) return;
 
@@ -178,6 +194,10 @@ public class BankNotificationListenerService extends NotificationListenerService
 
         String title = titleChar != null ? titleChar.toString().trim() : "";
         String text = textChar != null ? textChar.toString().trim() : "";
+
+        if (isGroupSummary && (text.isEmpty() || title.isEmpty())) {
+            return;
+        }
 
         // Para com.google.android.gms, exige estritamente sinal de Carteira Digital / Pagamento NFC
         if ("com.google.android.gms".equals(packageName)) {
@@ -385,14 +405,25 @@ public class BankNotificationListenerService extends NotificationListenerService
 
         String combined = (title + " " + text).toLowerCase();
 
-        // 1. Rejeição imediata de construções no gerúndio ou tom instrutivo/promocional
+        // 1. Rejeição imediata de construções no gerúndio ou tom instrutivo/promocional/condicional
         if (combined.contains("fazendo pix") || combined.contains("pagando boleto") ||
             combined.contains("pague com cart") || combined.contains("faça pix no cr") ||
             combined.contains("faca pix no cr") || combined.contains("invista a partir") ||
             combined.contains("use seu cart") || combined.contains("parcele em at") ||
             combined.contains("parcele em até") || combined.contains("ganhe at") ||
-            combined.contains("ganhe até") || combined.contains("compras acima de") ||
-            combined.contains("desconto na loja") || combined.contains("aproveite e")) {
+            combined.contains("ganhe até") || combined.contains("ganhe ") ||
+            combined.contains("concorra") || combined.contains("a cada compra") ||
+            combined.contains("próxima compra") || combined.contains("proxima compra") ||
+            combined.contains("faça compras acima") || combined.contains("faca compras acima") ||
+            combined.contains("compras acima de") || combined.contains("desconto na loja") ||
+            combined.contains("desconto de até") || combined.contains("desconto de ate") ||
+            combined.contains("cupom de") || combined.contains("cashback de até") ||
+            combined.contains("cashback de ate") || combined.contains("bônus no seu cartão") ||
+            combined.contains("bonus no seu cartao") || combined.contains("crédito liberado") ||
+            combined.contains("credito liberado") || combined.contains("empréstimo liberado") ||
+            combined.contains("emprestimo liberado") || combined.contains("rendeu hoje") ||
+            combined.contains("rendimento da sua conta") || combined.contains("seu saldo rendeu") ||
+            combined.contains("aproveite e")) {
             return false;
         }
 
@@ -434,7 +465,8 @@ public class BankNotificationListenerService extends NotificationListenerService
                 "aproximação", "aproximacao", "nfc", "transação", "transacao", "pago", "pagou",
                 "cobrado", "cobrada", "debitado", "debitada", "autorizado", "autorizada",
                 "aprovado", "aprovada", "approved", "purchase", "payment",
-                "utilizado", "utilizada", "enviado", "enviada"
+                "utilizado", "utilizada", "enviado", "enviada",
+                "cartão", "cartao", "conta", "card", "nomad", "wise", "avenue", "estabelecimento"
             };
             for (String cs : channelSignals) {
                 if (combined.contains(cs)) {

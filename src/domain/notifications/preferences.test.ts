@@ -11,18 +11,18 @@ import {
 } from "./preferences";
 
 describe("Domain — BankAssistantPreferences (Fase 1 — Tarefa 1.4)", () => {
-  it("contém catálogo homologado categorizado com 27 instituições", () => {
-    expect(HOMOLOGATED_INSTITUTIONS.length).toBe(27);
-    expect(HOMOLOGATED_BANKS.length).toBe(27);
+  it("contém catálogo homologado categorizado com 36 instituições", () => {
+    expect(HOMOLOGATED_INSTITUTIONS.length).toBe(36);
+    expect(HOMOLOGATED_BANKS.length).toBe(36);
 
     const traditionalDigital = getInstitutionsByCategory("traditional_digital");
     const paymentWallets = getInstitutionsByCategory("payment_wallets");
     const investmentsCrypto = getInstitutionsByCategory("investments_crypto");
 
-    expect(traditionalDigital.length).toBe(14);
-    expect(paymentWallets.length).toBe(7);
-    expect(investmentsCrypto.length).toBe(6);
-    expect(traditionalDigital.length + paymentWallets.length + investmentsCrypto.length).toBe(27);
+    expect(traditionalDigital.length).toBe(21);
+    expect(paymentWallets.length).toBe(8);
+    expect(investmentsCrypto.length).toBe(7);
+    expect(traditionalDigital.length + paymentWallets.length + investmentsCrypto.length).toBe(36);
   });
 
   it("garante integridade de cada instituição homologada", () => {
