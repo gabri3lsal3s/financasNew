@@ -168,25 +168,25 @@ Garantir que a seleção de bancos na UI do app sincronize em tempo real com o s
 
 Análise técnica detalhada sobre viabilidade de monitoramento de apps de transporte/serviços, sem implementar código executável no momento.
 
-- [ ] **Tarefa 4.1: Mapeamento de Pacotes e Estrutura de Pushes de Serviços**
+- [x] **Tarefa 4.1: Mapeamento de Pacotes e Estrutura de Pushes de Serviços**
   - Mapear pacotes Android: Uber (`com.ubercab`, `com.ubercab.eats`), 99 Tecnologia (`com.taxis99`), iFood (`br.com.brainweb.ifood`).
   - Analisar estrutura de textos pós-corrida e pós-pedido.
 
-- [ ] **Tarefa 4.2: Análise Crítica do Risco de Duplicação com Notificações Bancárias**
+- [x] **Tarefa 4.2: Análise Crítica do Risco de Duplicação com Notificações Bancárias**
   - Avaliar o cenário em que o usuário utiliza cartão de crédito:
     - Push Uber: "Sua viagem de R$ 24,90 terminou".
     - Push Banco: "Compra de R$ 24,90 aprovada em Uber *Trip".
     - Análise de impacto no extrato e risco de transações duplicadas.
 
-- [ ] **Tarefa 4.3: Redação do Relatório Formal de Viabilidade & Recomendações**
+- [x] **Tarefa 4.3: Redação do Relatório Formal de Viabilidade & Recomendações**
   - Elaborar o documento `docs/reports/VIABILIDADE_NOTIFICACOES_APPS_SERVICOS.md` contendo:
     - Prós e Contras da captura direta de apps de terceiros.
     - Solução técnica recomendada para o futuro (janela de tolerância temporal e deduplicação de transações entre App de Serviço e Banco).
     - Parecer formal: manter o foco na notificação bancária oficial (fonte primária e líquida da movimentação financeira).
 
-- [ ] **Portão de Qualidade 4:**
-  - [ ] Validar formatação do relatório `docs/reports/VIABILIDADE_NOTIFICACOES_APPS_SERVICOS.md`.
-  - [ ] **Commit & Push da Fase 4:** `git commit -m "docs(reports): adiciona relatorio de viabilidade tecnica para apps de servicos"`
+- [x] **Portão de Qualidade 4:**
+  - [x] Validar formatação do relatório `docs/reports/VIABILIDADE_NOTIFICACOES_APPS_SERVICOS.md`.
+  - [x] **Commit & Push da Fase 4:** `git commit -m "docs(reports): adiciona relatorio de viabilidade tecnica para apps de servicos"`
 
 ---
 
