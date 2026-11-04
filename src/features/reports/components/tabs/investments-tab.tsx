@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState, type Dispatch, type SetStateAction } from "react";
-import { ChevronDown, ChevronRight, PieChart, Printer, TrendingUp } from "lucide-react";
+import { ChevronDown, ChevronRight, PieChart, Printer, TrendingUp, AlertCircle } from "lucide-react";
 import { Badge, Button, EmptyState } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { MonthPicker, ReportAllocationDonuts } from "@/components/modules";
@@ -30,6 +30,8 @@ export interface InvestmentsTabProps {
   onMonthChange?: (month: string) => void;
   /** Linhas de posição efetivas (vivas ou ponto-no-tempo retroativo). */
   rows?: readonly PositionRow[];
+  /** Status de integridade e fidedignidade analítica */
+  fidelityStatus?: "complete" | "balance_only" | "insufficient";
 }
 
 /**
@@ -54,6 +56,7 @@ export function InvestmentsTab({
   month,
   onMonthChange,
   rows,
+  fidelityStatus,
 }: InvestmentsTabProps) {
   const position = usePortfolioPosition();
   const assetsQuery = usePortfolioAssets();
@@ -125,6 +128,21 @@ export function InvestmentsTab({
       {month && onMonthChange ? (
         <MonthPicker value={month} onValueChange={onMonthChange} />
       ) : null}
+
+      {/* Aviso de Fidedignidade quando a competência possui apenas saldo consolidado TWA */}
+      {fidelityStatus === "balance_only" && (
+        <div className="rounded-xl border border-warning/30 bg-warning/5 p-3 flex items-start gap-2.5 shadow-2xs">
+          <AlertCircle className="size-4 text-warning-strong shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="flex flex-col gap-0.5 text-xs">
+            <span className="font-semibold text-foreground">
+              Competência registrada apenas com saldo consolidado (TWA)
+            </span>
+            <p className="text-muted-foreground leading-relaxed m-0 text-[11px]">
+              Esta competência histórica possui apenas o valor de saldo consolidado registrado (histórico TWA/Marco Zero). Para visualizar ou imprimir relatórios analíticos de custódia completos (A4), acesse a aba Investimentos e realize a calibração de fechamento.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Card Dossiê Executivo A4 */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Check, RefreshCw, Layers, ShieldCheck, Wallet } from "lucide-react";
+import { Check, RefreshCw, Layers, ShieldCheck, Wallet, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MoneyInput } from "@/components/ui/money-input";
@@ -150,6 +150,30 @@ export function MonthlyClosingEditor({
 
   return (
     <div className={cn("flex flex-col gap-4 w-full", className)}>
+      {/* Aviso de Calibração quando a competência possuía apenas saldo TWA */}
+      {historicalPosition.fidelity?.status === "balance_only" && (
+        <div className="rounded-xl border border-warning/30 bg-warning/5 p-3 flex items-start gap-2.5 shadow-2xs">
+          <AlertCircle className="size-4 text-warning-strong shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="flex flex-col gap-0.5 text-xs">
+            <span className="font-semibold text-foreground">
+              Competência registrada apenas com saldo consolidado (TWA)
+            </span>
+            <p className="text-muted-foreground leading-relaxed m-0 text-[11px]">
+              O saldo registrado no histórico de rentabilidade para este mês é de{" "}
+              <strong>
+                <MoneyText
+                  cents={numberToCents(historicalPosition.fidelity.snapshotTotalValue ?? 0)}
+                  tone="portfolio"
+                  className="inline font-bold"
+                />
+              </strong>
+              . Revise as cotações e quantidades dos seus ativos abaixo e clique em{" "}
+              <strong>Salvar Fechamento & Gerar Relatório</strong> para arquivar a custódia auditada e liberar a visualização oficial do Relatório Executivo A4.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Banner Informativo */}
       <div className="rounded-xl border border-border/80 bg-surface/60 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
         <div className="flex items-start gap-2.5">

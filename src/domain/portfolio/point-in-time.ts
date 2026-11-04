@@ -17,10 +17,28 @@ import type {
   PortfolioAsset,
   PortfolioDividend,
   PortfolioMonthlyPrice,
+  PortfolioSnapshot,
   PortfolioTransaction,
 } from "@/types";
 import { calculateFixedIncomeBalance } from "./fixed-income";
 import { resolveHistoricalQuotePriority, type ResolvedHistoricalQuote } from "./historical-quotes";
+
+export type PointInTimeFidelityStatus = "complete" | "balance_only" | "insufficient";
+
+export interface PointInTimeFidelity {
+  status: PointInTimeFidelityStatus;
+  canGenerateExecutiveReport: boolean;
+  reasons: string[];
+  snapshotTotalValue?: number | null;
+  snapshotTotalCost?: number | null;
+  reconstructedTotalValue: number;
+  discrepancyBRL?: number;
+  discrepancyPct?: number;
+  totalAssetsCount: number;
+  calibratedQuotesCount: number;
+  apiQuotesCount: number;
+  fallbackQuotesCount: number;
+}
 
 export interface PointInTimeAssetPosition {
   assetId: string;
@@ -55,6 +73,8 @@ export interface PointInTimeResult {
   totalValueBRL: number;
   monthDividendsTotalBRL: number;
   accumulatedDividendsTotalBRL: number;
+  /** Status de integridade e fidedignidade analítica para a competência */
+  fidelity: PointInTimeFidelity;
 }
 
 export interface PointInTimeCalculationParams {
@@ -64,6 +84,8 @@ export interface PointInTimeCalculationParams {
   transactions: PortfolioTransaction[];
   dividends?: PortfolioDividend[];
   monthlyPrices?: PortfolioMonthlyPrice[];
+  /** Snapshot consolidado gravado no banco de dados para a competência (se houver) */
+  snapshot?: PortfolioSnapshot | null;
   /** Cotações de fechamento retornadas via API de mercado para o mês (ticker -> cotação) */
   apiPrices?: Record<string, number>;
   /** Taxa de câmbio USD/BRL na data de fechamento (padrão 5.25) */
@@ -97,6 +119,7 @@ export function calculatePointInTimePosition(
     transactions,
     dividends = [],
     monthlyPrices = [],
+    snapshot = null,
     apiPrices = {},
     usdRate = 5.25,
     annualCdiRate = 10.5,
@@ -113,11 +136,6 @@ export function calculatePointInTimePosition(
       monthlyPriceMap.set(mp.ticker.toUpperCase().trim(), mp);
     }
   }
-
-  // Filtrar transações até a data de corte cronologicamente ordenadas
-  const eligibleTransactions = transactions
-    .filter((tx) => tx.date && tx.date.slice(0, 10) <= cutoffDate)
-    .sort((a, b) => a.date.localeCompare(b.date));
 
   // Filtrar proventos até a data de corte
   const eligibleDividends = dividends.filter(
@@ -144,18 +162,66 @@ export function calculatePointInTimePosition(
       continue;
     }
 
-    const assetTxs = eligibleTransactions.filter((tx) => tx.asset_id === asset.id);
+    const allAssetTxs = transactions.filter((tx) => tx.asset_id === asset.id);
+    const eligibleAssetTxs = allAssetTxs
+      .filter((tx) => tx.date && tx.date.slice(0, 10) <= cutoffDate)
+      .sort((a, b) => a.date.localeCompare(b.date));
+
     const assetCurrency = asset.currency ?? "BRL";
     const fxRate = assetCurrency === "USD" ? usdRate : 1;
     const tickerUpper = asset.ticker.toUpperCase().trim();
 
-    // Reconstituição cronológica de Quantidade e Preço Médio (PMM)
-    let runningQty = 0;
-    let runningCost = 0;
+    // Verificação de Renda Fixa parametrizada com metadados
+    const fiMeta = asset.fixed_income_metadata;
+    const isFixedIncome =
+      rawClass.includes("renda fixa") ||
+      rawClass.includes("tesouro") ||
+      Boolean(fiMeta);
+
+    // Se é Renda Fixa com data base / data inicial e ela for posterior à data de corte, o título não existia na data de corte
+    const fiStartDate = fiMeta?.base_date ?? fiMeta?.initial_investment_date ?? null;
+    if (isFixedIncome && fiStartDate && fiStartDate.slice(0, 10) > cutoffDate) {
+      continue;
+    }
+
+    // Reconstituição de Quantidade e Preço Médio (PMM)
     let lastTxPriceInMonth: number | null = null;
 
-    if (assetTxs.length > 0) {
-      for (const tx of assetTxs) {
+    // Soma das quantidades negociadas no histórico total de transações cadastradas
+    const totalBuysAll = allAssetTxs
+      .filter((t) => t.type === "buy" || t.type === "subscription")
+      .reduce((acc, t) => acc + (Number(t.quantity) || 0), 0);
+    const totalSellsAll = allAssetTxs
+      .filter((t) => t.type === "sell")
+      .reduce((acc, t) => acc + (Number(t.quantity) || 0), 0);
+    const netTransactionsQuantity = totalBuysAll - totalSellsAll;
+
+    const currentAssetQty = asset.quantity ?? 0;
+    const currentAvgPrice = asset.average_price ?? 0;
+
+    // Determina se há custódia inicial (baseline) não explicada pelas transações registradas
+    const transactionsFullyExplain =
+      allAssetTxs.length > 0 &&
+      Math.abs(netTransactionsQuantity - currentAssetQty) < 0.001;
+
+    let baselineQty = 0;
+    let baselineCost = 0;
+
+    if (allAssetTxs.length === 0) {
+      // Sem transações registradas: posição estática cadastrada diretamente na custódia
+      baselineQty = currentAssetQty;
+      baselineCost = currentAssetQty * currentAvgPrice;
+    } else if (!transactionsFullyExplain) {
+      // Há transações, mas não explicam a posição total (ex: usuário cadastrou custódia inicial e compras posteriores)
+      baselineQty = Math.max(0, currentAssetQty - netTransactionsQuantity);
+      baselineCost = baselineQty * currentAvgPrice;
+    }
+
+    let runningQty = baselineQty;
+    let runningCost = baselineCost;
+
+    if (eligibleAssetTxs.length > 0) {
+      for (const tx of eligibleAssetTxs) {
         const txDate = tx.date.slice(0, 10);
         const txQty = Number(tx.quantity) || 0;
         const txPrice = Number(tx.price) || 0;
@@ -185,32 +251,18 @@ export function calculatePointInTimePosition(
             break;
           }
           case "split": {
-            // Desdobramento: aumenta quantidade sem alterar o custo total
             if (txQty > 0) {
               runningQty += txQty;
             }
             break;
           }
           case "reverse_split": {
-            // Grupamento: reduz quantidade sem alterar o custo total
             if (txQty > 0) {
               runningQty = Math.max(0, runningQty - txQty);
             }
             break;
           }
         }
-      }
-    } else {
-      // Se existem transações registradas no histórico do usuário para este ativo,
-      // mas nenhuma até a data de corte (ex: ativo comprado no futuro), runningQty deve ser 0.
-      const hasAnyFutureTx = transactions.some((tx) => tx.asset_id === asset.id);
-      if (hasAnyFutureTx) {
-        runningQty = 0;
-        runningCost = 0;
-      } else {
-        // Ativo sem nenhuma transação cadastrada no histórico (posição estática/importada)
-        runningQty = asset.quantity ?? 0;
-        runningCost = (asset.quantity ?? 0) * (asset.average_price ?? 0);
       }
     }
 
@@ -344,6 +396,93 @@ export function calculatePointInTimePosition(
   );
   const totalValueBRL = Math.round((totalInvestedBRL + cashTotal) * 100) / 100;
 
+  // Diagnóstico de fidedignidade analítica
+  let calibratedQuotesCount = 0;
+  let apiQuotesCount = 0;
+  let fallbackQuotesCount = 0;
+
+  for (const pos of positions) {
+    if (pos.quoteSource === "manual") {
+      calibratedQuotesCount++;
+    } else if (pos.quoteSource === "api" || !pos.isEstimate) {
+      apiQuotesCount++;
+    } else {
+      fallbackQuotesCount++;
+    }
+  }
+
+  const snapshotTotalValue = snapshot ? Number(snapshot.total_value) || 0 : null;
+  const snapshotTotalCost = snapshot ? Number(snapshot.total_cost) || 0 : null;
+
+  const discrepancyBRL =
+    snapshotTotalValue !== null
+      ? Math.round((totalValueBRL - snapshotTotalValue) * 100) / 100
+      : undefined;
+
+  const discrepancyPct =
+    snapshotTotalValue !== null && snapshotTotalValue > 0 && discrepancyBRL !== undefined
+      ? Math.round((discrepancyBRL / snapshotTotalValue) * 10000) / 100
+      : undefined;
+
+  const savedPricesInMonthCount = monthlyPrices.filter(
+    (mp) => mp.month === month,
+  ).length;
+
+  let fidelityStatus: PointInTimeFidelityStatus;
+  let canGenerateExecutiveReport: boolean;
+  const reasons: string[] = [];
+
+  if (snapshot) {
+    if (savedPricesInMonthCount === 0) {
+      if (
+        (discrepancyPct !== undefined && Math.abs(discrepancyPct) > 3.0) ||
+        fallbackQuotesCount > 0
+      ) {
+        fidelityStatus = "balance_only";
+        canGenerateExecutiveReport = false;
+        reasons.push(
+          "Esta competência possui apenas registro consolidado de saldo patrimonial (histórico TWA/Marco Zero). Não há arquivo auditado de ativos e cotações para este mês.",
+        );
+      } else {
+        fidelityStatus = "complete";
+        canGenerateExecutiveReport = true;
+      }
+    } else {
+      fidelityStatus = "complete";
+      canGenerateExecutiveReport = true;
+    }
+  } else {
+    if (positions.length === 0) {
+      fidelityStatus = "insufficient";
+      canGenerateExecutiveReport = false;
+      reasons.push("Não há ativos ou movimentações registradas nesta competência.");
+    } else if (fallbackQuotesCount > positions.length * 0.4) {
+      fidelityStatus = "insufficient";
+      canGenerateExecutiveReport = false;
+      reasons.push(
+        "Cotações históricas insuficientes para gerar relatório analítico oficial sem estimativas.",
+      );
+    } else {
+      fidelityStatus = "complete";
+      canGenerateExecutiveReport = true;
+    }
+  }
+
+  const fidelity: PointInTimeFidelity = {
+    status: fidelityStatus,
+    canGenerateExecutiveReport,
+    reasons,
+    snapshotTotalValue,
+    snapshotTotalCost,
+    reconstructedTotalValue: totalValueBRL,
+    discrepancyBRL,
+    discrepancyPct,
+    totalAssetsCount: positions.length,
+    calibratedQuotesCount,
+    apiQuotesCount,
+    fallbackQuotesCount,
+  };
+
   return {
     month,
     cutoffDate,
@@ -354,5 +493,6 @@ export function calculatePointInTimePosition(
     totalValueBRL,
     monthDividendsTotalBRL: Math.round(monthDividendsTotalBRL * 100) / 100,
     accumulatedDividendsTotalBRL: Math.round(accumulatedDividendsTotalBRL * 100) / 100,
+    fidelity,
   };
 }

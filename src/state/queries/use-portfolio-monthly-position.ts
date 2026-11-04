@@ -15,6 +15,7 @@ import {
   useAllPortfolioTransactions,
   usePortfolioAssets,
   usePortfolioDividends,
+  usePortfolioSnapshots,
 } from "./use-portfolio";
 import { usePortfolioMonthlyPrices } from "./use-portfolio-monthly-prices";
 import { usePortfolioPosition } from "./use-portfolio-position";
@@ -42,6 +43,7 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
   const transactionsQuery = useAllPortfolioTransactions();
   const dividendsQuery = usePortfolioDividends();
   const monthlyPricesQuery = usePortfolioMonthlyPrices(month);
+  const snapshotsQuery = usePortfolioSnapshots();
   const macroQuery = useMacroIndicators();
 
   // Cotações buscadas via API sob demanda para tickers sem registro salvo
@@ -102,7 +104,8 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
       assetsQuery.isLoading ||
       transactionsQuery.isLoading ||
       dividendsQuery.isLoading ||
-      monthlyPricesQuery.isLoading
+      monthlyPricesQuery.isLoading ||
+      snapshotsQuery.isLoading
     ) {
       return null;
     }
@@ -112,6 +115,10 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
     const dividends = dividendsQuery.data ?? [];
     const monthlyPrices = monthlyPricesQuery.data ?? [];
     const annualCdiRate = macroQuery.data?.annualCdiRate ?? 10.5;
+
+    // Localiza snapshot arquivado para este mês
+    const targetSnapshot =
+      (snapshotsQuery.data ?? []).find((s) => s.month === month) ?? null;
 
     // Localiza saldo de caixa gravado em snapshot ou no ativo Caixa
     const cashAsset = assets.find(
@@ -128,6 +135,7 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
       transactions,
       dividends,
       monthlyPrices,
+      snapshot: targetSnapshot,
       apiPrices: apiQuotesMap,
       annualCdiRate,
       cashBalance,
@@ -143,6 +151,8 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
     dividendsQuery.isLoading,
     monthlyPricesQuery.data,
     monthlyPricesQuery.isLoading,
+    snapshotsQuery.data,
+    snapshotsQuery.isLoading,
     macroQuery.data,
     apiQuotesMap,
   ]);
@@ -182,6 +192,16 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
       totalValueBRL: currentPos.totalBRL,
       monthDividendsTotalBRL: 0,
       accumulatedDividendsTotalBRL: currentPos.rows.reduce((acc, r) => acc + (r.dividends ?? 0), 0),
+      fidelity: {
+        status: "complete",
+        canGenerateExecutiveReport: true,
+        reasons: [],
+        reconstructedTotalValue: currentPos.totalBRL,
+        totalAssetsCount: currentPos.rows.filter((r) => !r.isCash).length,
+        calibratedQuotesCount: 0,
+        apiQuotesCount: currentPos.rows.filter((r) => !r.isCash).length,
+        fallbackQuotesCount: 0,
+      },
     };
 
     return {
@@ -201,19 +221,22 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
     transactionsQuery.isLoading ||
     dividendsQuery.isLoading ||
     monthlyPricesQuery.isLoading ||
+    snapshotsQuery.isLoading ||
     isFetchingApiQuotes;
 
   const isError =
     assetsQuery.isError ||
     transactionsQuery.isError ||
     dividendsQuery.isError ||
-    monthlyPricesQuery.isError;
+    monthlyPricesQuery.isError ||
+    snapshotsQuery.isError;
 
   const error =
     (assetsQuery.error as Error | null) ??
     (transactionsQuery.error as Error | null) ??
     (dividendsQuery.error as Error | null) ??
-    (monthlyPricesQuery.error as Error | null);
+    (monthlyPricesQuery.error as Error | null) ??
+    (snapshotsQuery.error as Error | null);
 
   return {
     data: historicalResult,
@@ -226,6 +249,7 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
       void transactionsQuery.refetch();
       void dividendsQuery.refetch();
       void monthlyPricesQuery.refetch();
+      void snapshotsQuery.refetch();
     },
   };
 }

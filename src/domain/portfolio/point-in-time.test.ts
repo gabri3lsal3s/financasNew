@@ -339,5 +339,125 @@ describe("point-in-time portfolio calculation engine", () => {
       expect(pos.valueBRL).toBe(12100); // 10 * 1210
       expect(pos.unrealizedPnl).toBe(1100); // 12100 - 11000
     });
+
+    it("preserves baseline custody for assets with initial holdings and future transactions", () => {
+      // Ativo cadastrado na carteira com 100 cotas vivas a R$ 30
+      // Usuário fez uma compra adicional de 10 cotas em Novembro (após o fechamento de Outubro)
+      const assetBbas3: PortfolioAsset = {
+        id: "asset-bbas3",
+        user_id: "user-1",
+        ticker: "BBAS3",
+        asset_class: "Ações Nacionais",
+        currency: "BRL",
+        quantity: 110,
+        average_price: 30,
+      };
+
+      const futureTransaction: PortfolioTransaction = {
+        id: "tx-future-1",
+        user_id: "user-1",
+        asset_id: "asset-bbas3",
+        type: "buy",
+        date: "2026-11-05",
+        quantity: 10,
+        price: 32,
+        total: 320,
+      };
+
+      const result = calculatePointInTimePosition({
+        month: "2026-10",
+        assets: [assetBbas3],
+        transactions: [futureTransaction],
+        apiPrices: { BBAS3: 31 },
+      });
+
+      // Em Outubro, o ativo NÃO deve ser zerado! A custódia baseline era de 100 cotas.
+      expect(result.positions).toHaveLength(1);
+      const pos = result.positions[0]!;
+      expect(pos.ticker).toBe("BBAS3");
+      expect(pos.quantity).toBe(100); // 110 - 10
+      expect(pos.totalCostBRL).toBe(3000); // 100 * 30
+      expect(pos.valueBRL).toBe(3100); // 100 * 31
+    });
+
+    it("flags fidelity as balance_only when snapshot exists but has no saved monthly prices and large discrepancy", () => {
+      const asset: PortfolioAsset = {
+        id: "asset-1",
+        user_id: "user-1",
+        ticker: "PETR4",
+        asset_class: "Ações",
+        currency: "BRL",
+        quantity: 100,
+        average_price: 30,
+      };
+
+      // Snapshot gravado via TWA no valor de 106.700
+      const snapshot = {
+        id: "snap-1",
+        user_id: "user-1",
+        month: "2026-09",
+        total_value: 106700,
+        total_cost: 95000,
+      };
+
+      const result = calculatePointInTimePosition({
+        month: "2026-09",
+        assets: [asset],
+        transactions: [],
+        snapshot,
+        monthlyPrices: [], // sem cotações salvas
+        apiPrices: { PETR4: 30 }, // total reconstruído = 3000 (muito discrepante de 106700)
+      });
+
+      expect(result.fidelity.status).toBe("balance_only");
+      expect(result.fidelity.canGenerateExecutiveReport).toBe(false);
+      expect(result.fidelity.discrepancyBRL).toBeDefined();
+      expect(result.fidelity.reasons[0]).toContain("TWA");
+    });
+
+    it("flags fidelity as complete when monthly prices are saved for the month", () => {
+      const asset: PortfolioAsset = {
+        id: "asset-1",
+        user_id: "user-1",
+        ticker: "PETR4",
+        asset_class: "Ações",
+        currency: "BRL",
+        quantity: 100,
+        average_price: 30,
+      };
+
+      const snapshot = {
+        id: "snap-1",
+        user_id: "user-1",
+        month: "2026-10",
+        total_value: 3500,
+        total_cost: 3000,
+      };
+
+      const monthlyPrices: PortfolioMonthlyPrice[] = [
+        {
+          id: "mp-1",
+          user_id: "user-1",
+          ticker: "PETR4",
+          month: "2026-10",
+          price: 35,
+          currency: "BRL",
+          source: "manual",
+        },
+      ];
+
+      const result = calculatePointInTimePosition({
+        month: "2026-10",
+        assets: [asset],
+        transactions: [],
+        snapshot,
+        monthlyPrices,
+      });
+
+      expect(result.fidelity.status).toBe("complete");
+      expect(result.fidelity.canGenerateExecutiveReport).toBe(true);
+      expect(result.positions[0]?.quoteSource).toBe("manual");
+    });
   });
 });
+

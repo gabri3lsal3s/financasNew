@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { TrendingUp, FileText, SlidersHorizontal, Trash2 } from "lucide-react";
+import { TrendingUp, FileText, SlidersHorizontal, Trash2, AlertCircle } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -318,16 +318,68 @@ export function PortfolioExecutiveReport({
           </div>
         )}
 
-        {/* Conteudo: Aba 1 (Relatorio Executivo A4 / PDF Oficial) */}
-        {(activeTab === "report" || !monthlyPositionQuery.data) && (
-          <div className="flex flex-col gap-4 w-full">
-            {/* Cabecalho do Relatorio */}
-            <ReportHeader
-              title="Relatório Executivo de Acompanhamento da Carteira"
-              subtitle="Posição Patrimonial Consolidada & Custódia de Ativos"
-              periodLabel={effectivePeriodLabel}
-              appName={appName}
-              icon={TrendingUp}
+        {/* Conteúdo: Aba 1 (Relatório Executivo A4 / PDF Oficial) */}
+        {activeTab === "report" && (
+          <>
+            {!isCurrentSelected &&
+            monthlyPositionQuery.data?.fidelity &&
+            !monthlyPositionQuery.data.fidelity.canGenerateExecutiveReport ? (
+              <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-2xl border border-border/80 bg-surface shadow-xs gap-4 my-2">
+                <div className="flex items-center justify-center size-12 rounded-xl bg-muted/60 text-muted-foreground">
+                  <AlertCircle className="size-6 text-muted-foreground" aria-hidden="true" />
+                </div>
+                <div className="flex flex-col gap-1.5 max-w-lg">
+                  <h3 className="text-base font-bold text-foreground">
+                    Relatório Analítico Não Disponível para esta Competência
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {monthlyPositionQuery.data.fidelity.reasons[0] ??
+                      "Esta competência possui apenas registro consolidado de saldo patrimonial (TWA). Não há arquivo auditado de ativos e cotações para este mês."}
+                  </p>
+                </div>
+
+                {monthlyPositionQuery.data.fidelity.snapshotTotalValue ? (
+                  <div className="flex flex-wrap items-center justify-center gap-3 p-3 rounded-xl bg-surface-hover/70 border border-border/70 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-muted-foreground">Saldo Registrado (TWA):</span>
+                      <MoneyText
+                        cents={numberToCents(monthlyPositionQuery.data.fidelity.snapshotTotalValue)}
+                        tone="portfolio"
+                        className="font-bold"
+                      />
+                    </div>
+                    <span className="text-border" aria-hidden="true">•</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-muted-foreground">Custódia Analítica:</span>
+                      <span className="font-semibold text-warning-strong">Pendente de calibração</span>
+                    </div>
+                  </div>
+                ) : null}
+
+                <p className="text-[11px] text-muted-foreground/80 max-w-md">
+                  Para manter a fidedignidade institucional (padrão CVM/Anbima), relatórios analíticos oficiais de custódia não são gerados com dados incompletos. Você pode calibrar as cotações e oficializar este fechamento.
+                </p>
+
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  onClick={() => setActiveTab("closing")}
+                  className="gap-2 cursor-pointer mt-1 font-semibold"
+                >
+                  <SlidersHorizontal className="size-4" aria-hidden="true" />
+                  <span>Conferir & Calibrar Fechamento</span>
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4 w-full">
+                {/* Cabecalho do Relatorio */}
+                <ReportHeader
+                  title="Relatório Executivo de Acompanhamento da Carteira"
+                  subtitle="Posição Patrimonial Consolidada & Custódia de Ativos"
+                  periodLabel={effectivePeriodLabel}
+                  appName={appName}
+                  icon={TrendingUp}
               accountHolder={accountHolder}
             />
 
@@ -476,6 +528,8 @@ export function PortfolioExecutiveReport({
             />
           </div>
         )}
+      </>
+    )}
 
         {/* Diálogo de Confirmação de Exclusão de Fechamento Histórico */}
         <ConfirmDialog

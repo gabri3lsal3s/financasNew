@@ -67,6 +67,16 @@ const mockHistoricalPosition: PointInTimeResult = {
       totalReturnPct: 16.67,
     },
   ],
+  fidelity: {
+    status: "complete",
+    canGenerateExecutiveReport: true,
+    reasons: [],
+    reconstructedTotalValue: 8100,
+    totalAssetsCount: 2,
+    calibratedQuotesCount: 0,
+    apiQuotesCount: 2,
+    fallbackQuotesCount: 0,
+  },
 };
 
 const queryClient = new QueryClient({

@@ -1142,6 +1142,7 @@ export function ReportsPage() {
                 month={investmentMonth}
                 onMonthChange={setInvestmentMonth}
                 rows={investmentEffectiveRows}
+                fidelityStatus={isCurrentInvestmentMonth ? "complete" : monthlyPositionQuery.data?.fidelity.status}
                 onResetToCurrentMonth={() => setInvestmentMonth(currentMonth())}
                 allocationAnalysis={allocationAnalysis}
                 concentrationRisk={concentrationRisk}
