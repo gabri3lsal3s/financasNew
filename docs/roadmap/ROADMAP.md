@@ -1,5 +1,20 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.84** registra a **Conclusão Integral do Suporte Bidirecional com Resposta In-App, Bot Telegram Programável e Telemetria Leve (LGPD)** (2026-11-04):
+> - **(1) Fluxo de Suporte Bidirecional & Resposta In-App**:
+>   - Migration `20260101000061_support_replies_and_analytics.sql`: suporte a `admin_reply`, `admin_replied_at`, `user_read_at` e `admin_id`;
+>   - Painel Administrativo (`TicketsTab.tsx` e `TicketManageDialog.tsx`): resposta direta oficial aos usuários com feedback de leitura em tempo real e deep link automático via query param `?ticket=<uuid>`;
+>   - Notificações In-App (`NotificationsPopover.tsx` e `NotificationsButton.tsx`): aviso em destaque de respostas do suporte com redirecionamento para o chamado;
+>   - Central do Usuário (`SupportTab.tsx`): aba "Meus Chamados" em Configurações com balão de resposta oficial da equipe e botão de "Marcar como lida".
+> - **(2) Bot do Telegram 100% Programável**:
+>   - Tabela singleton `admin_telegram_settings` e hooks de estado com controle granular dos 6 canais de transmissão (chamados de suporte, git commits/push, deploys/releases, telemetria de uso, novos usuários e modo silencioso);
+>   - Interface administrativa de gestão (`TelegramSettingsCard.tsx`) em Sistema & Auditoria;
+>   - Script de despacho automatizado (`scripts/notify-telegram.ts` e `npm run telegram:notify`) consultando preferências ativas antes de qualquer envio.
+> - **(3) Telemetria de Uso e Métricas Leves em Conformidade LGPD**:
+>   - Tabela `app_analytics_events` com batching em memória no cliente (`src/services/analytics/tracker.ts`), flush periódico e descarte seguro em `pagehide`/`visibilitychange`;
+>   - Zero envio de valores monetários (R$) ou PII sensível;
+>   - Painel de ranking visual (`FeatureUsageSection.tsx`) na aba Visão Geral do Admin com as funcionalidades mais e menos utilizadas.
+>
 > **v2.83** registra a **Conclusão Integral da Otimização do In-App Updater & Homologação Google Play Protect (Solução 1 e 2)** (2026-11-04):
 > - **(1) Otimização do In-App Updater & Prevenção de Falhas de Permissão (Solução 1)**:
 >   - Limpeza preventiva de arquivos temporários `axis-update-*.apk` em `AppUpdatePlugin.java` antes do início de novos downloads;

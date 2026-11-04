@@ -147,6 +147,18 @@ O app envia todos os chamados de suporte abertos pelos usuários diretamente par
    ```
 4. Esse número é o seu identificador privado no Telegram. Guarde este valor, ele será o seu `TELEGRAM_CHAT_ID`.
 
+### 4.3 Gestão e Controle Programável do Bot (No Painel Admin)
+O bot do Telegram do Áxis é 100% programável e modular. Uma vez configuradas as credenciais, você pode ligar ou desligar canais específicos a qualquer momento sem reiniciar servidores ou fazer novos deploys:
+1. Acesse o aplicativo como Administrador e navegue para a aba **Sistema & Auditoria** (`/admin?tab=sistema`);
+2. Localize o card **Configuração do Bot Telegram (Canais de Transmissão)**;
+3. Ative ou desative os canais conforme sua preferência de operação:
+   - **Chamados de Suporte:** Notificações em tempo real com deep link direto para o chamado no painel admin;
+   - **Git Commits & Push:** Alertas automatizados de commits enviados ao repositório via script de CI/CD;
+   - **Deploys & Releases:** Avisos de publicação de novas versões e builds;
+   - **Telemetria de Uso:** Alertas periódicos de volume e métricas de funcionalidades acessadas;
+   - **Novos Usuários Cadastrados:** Alerta imediato a cada novo registro na plataforma;
+   - **Modo Silencioso (DND):** Pausa todas as notificações do bot instantaneamente com apenas um switch.
+
 ---
 
 ## 5. ETAPA 5: INJEÇÃO DOS SECRETS & DEPLOY DAS EDGE FUNCTIONS

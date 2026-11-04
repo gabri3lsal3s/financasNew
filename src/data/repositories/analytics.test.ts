@@ -3,7 +3,6 @@ import { logAnalyticsBatch, getFeatureUsageRanking } from "./analytics";
 
 const mockResolveQuery = vi.fn();
 const mockInsert = vi.fn();
-const mockSelect = vi.fn();
 const mockGte = vi.fn();
 
 vi.mock("@/data/query", () => ({
