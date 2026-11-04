@@ -545,20 +545,21 @@ O Assistente Passivo opera em modelo híbrido entre o cliente Android nativo e o
 ### 14.2 Motor Universal de Domínio & Extratores Especializados (Fase 2)
 1. **Contratos Unificados (`src/domain/notifications/receipt-types.ts`)**:
    - Modelo `UniversalReceiptData` com identificação estrita de `ReceiptKind`:
-     * `"card_slip"`: Comprovantes térmicos de maquininhas de cartão (POS/TEF).
-     * `"pix"`: Comprovantes de transferências e pagamentos Pix (enviado, recebido, agendado).
-     * `"bank_slip_payment"`: Boletos bancários, títulos e concessionárias/tributos.
-     * `"invoice_danfe"`: Cupons fiscais eletrônicos ao consumidor (DANFE NFC-e e Extrato SAT CF-e).
+     * `"card_slip"`: Comprovantes térmicos de maquininhas de cartão (POS/TEF) com extração de modalidade (`credit_sight`, `credit_store_installments`, `credit_issuer_installments`, `debit`).
+     * `"pix"`: Comprovantes de transferências e pagamentos Pix (enviado, recebido, agendado) com instituição financeira de destino e chave Pix.
+     * `"bank_slip_payment"`: Boletos bancários, carnês de pagamento com parcelas (`03/12`), títulos e concessionárias/tributos.
+     * `"invoice_danfe"`: Cupons fiscais eletrônicos ao consumidor (DANFE NFC-e e Extrato SAT CF-e) com busca reversa *bottom-up* de totais.
      * `"wire_transfer"`: Transferências bancárias tradicionais (TED, DOC e Entre Contas).
-     * `"generic"`: Fallback semântico para declarações e recibos avulsos.
+     * `"generic"`: Fallback semântico para declarações e recibos avulsos com isolamento prioritário da linha de total.
 2. **Extrator Estruturado de Parcelamento (`src/domain/notifications/installment-extractor.ts`)**:
    - Função pura `extractDetailedInstallments` com invariantes matemáticas estritas (soma das parcelas = total original, sem perda de centavos).
-   - Suporta multiplicadores (`3x de R$ 50,00`), totais parcelados (`R$ 300 em 3x`), marcações de maquininhas (`PARC: 03`, `QTDE PARCELAS: 3`) e parcelas pontuais (`02/10`).
+   - Suporta multiplicadores (`3x de R$ 50,00`), totais parcelados (`R$ 300 em 3x`, `PARCELADO 6X`), marcações de maquininhas (`PARC: 03`, `QTDE PARCELAS: 3`, `3X`), parcelas pontuais e carnês (`02/10`, `PARCELA 03 DE 12`).
+   - Discernimento matemático estrito entre novas compras parceladas (`isNewFinancedPurchase: true`) e pagamentos de parcelas isoladas/faturas (`isNewFinancedPurchase: false`).
 3. **Sub-parsers Especializados de Domínio**:
-   - **Maquininhas POS/TEF (`card-slip-parser.ts`)**: Extração de adquirentes (Cielo, Rede, Stone, PagBank, Getnet, SafraPay, Mercado Pago, Vero), modalidade (Crédito vs Débito), bandeira (Visa, Mastercard, Elo, Amex, Hipercard), últimos 4 dígitos e código de autorização/NSU.
-   - **Comprovantes Pix (`pix-receipt-parser.ts`)**: Extração de favorecido, pagador, chave Pix (email, CPF, telefone, EVP/aleatória), EndToEndId e status (agendado vs efetivado).
-   - **Boletos e Tributos (`bank-slip-parser.ts`)**: Extração de linha digitável/código de barras, beneficiário, pagador, valor cobrado, valor pago, data de vencimento e liquidação de tributos federais (DARF/GPS) e concessionárias (ENEL, SABESP).
-   - **Cupons Fiscais (`danfe-nfc-parser.ts`)**: Extração de emitente, CNPJ, Chave de Acesso oficial de 44 dígitos, valor a pagar e forma de liquidação.
+   - **Maquininhas POS/TEF (`card-slip-parser.ts`)**: Extração de adquirentes (Cielo, Rede, Stone, PagBank, Getnet, SafraPay, Mercado Pago, Vero), distinção de 4 modalidades de cartão, bandeira (Visa, Mastercard, Elo, Amex, Hipercard), últimos 4 dígitos e código de autorização/NSU.
+   - **Comprovantes Pix (`pix-receipt-parser.ts`)**: Matriz homologada para 11 instituições financeiras (Nubank, Inter, Itaú, Bradesco, Santander, Banco do Brasil, Caixa, C6 Bank, BTG Pactual, Mercado Pago, PicPay), favorecido, pagador, chave Pix (email, CPF, telefone, EVP/aleatória), banco de destino (`destinationBank`), EndToEndId e status (agendado vs efetivado).
+   - **Boletos e Carnês (`bank-slip-parser.ts`)**: Extração de linha digitável contínua ou formatada (47 ou 48 dígitos), código de barras, beneficiário com higienização de sufixos societários (`cleanCorporateSuffixes`), carnês com controle de parcela, data de vencimento e liquidação de tributos federais (DARF/GPS) e concessionárias (ENEL, SABESP).
+   - **Cupons Fiscais (`danfe-nfc-parser.ts`)**: Motor de busca reversa *bottom-up* que varre o cupom do fim para o início priorizando âncoras da SEFAZ (`VALOR A PAGAR`, `TOTAL LIQUIDO`, `VALOR TOTAL`), eliminando interferência de subtotais parciais e troco; higienização de emitente e chave de 44 dígitos.
    - **Transferências Bancárias (`wire-transfer-parser.ts`)**: Identificação de TED, DOC e TEF interno com dados de origem, banco de destino e favorecido.
 4. **Orquestrador Universal (`src/domain/notifications/universal-receipt-parser.ts`)**:
    - Roteamento determinístico por ordem de especificidade e assinatura, garantindo alta precisão sem falsos positivos.

@@ -390,6 +390,20 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 - Ordenação: atrasados primeiro; depois por vencimento.
 - Ativação: somente com preferência habilitada; janelas configuráveis.
 
+#### 3.10.1 Motor de Captura Passiva de Notificações Bancárias e Comprovantes OCR (D20)
+
+- **Escuta Passiva Nativa Android (`BankNotificationListenerService`):**
+  - Monitoramento em tempo real de notificações emitidas por 36 instituições financeiras homologadas.
+  - Sincronização bidirecional de pacotes permitidos entre o listener nativo e as preferências do app, com persistência atômica via SharedPreferences.
+  - Blindagem anti-marketing e anti-spam de 3 níveis: descarta notificações de propaganda, empréstimos pré-aprovados e cashback sem débito financeiro real.
+  - Suporte multimoedas a 5 moedas globais (BRL, USD, EUR, GBP, JPY) com conversão determinística em centavos inteiros (`amountCents`).
+- **Orquestrador Universal de Comprovantes OCR (`universal-receipt-parser.ts`):**
+  - **Cupons Fiscais (DANFE NFC-e / SAT):** busca reversa *bottom-up* varrendo o documento do fim para o início priorizando âncoras da SEFAZ (`VALOR A PAGAR`, `TOTAL LIQUIDO`, `VALOR TOTAL`), eliminando confusão com subtotais de itens parciais em compras de múltiplos produtos.
+  - **Pix Universal:** matriz especializada cobrindo 11 instituições (Nubank, Inter, Itaú, Bradesco, Santander, BB, Caixa, C6 Bank, BTG Pactual, Mercado Pago, PicPay) com extração de recebedor, chave Pix, EndToEndId e banco de destino (`destinationBank`).
+  - **Slips de Maquininhas (POS/TEF):** extração de adquirente (Cielo, Rede, Stone, PagBank, Getnet), últimos 4 dígitos do cartão, bandeira e distinção entre 4 modalidades (`credit_sight`, `credit_store_installments`, `credit_issuer_installments`, `debit`).
+  - **Boletos e Carnês:** extração de código de barras / linha digitável (47/48 dígitos contínuos ou formatados), data de vencimento e parcelas de carnês de lojas (`PARCELA 03 DE 12`).
+  - **Resolução de Cartões e Contas:** auto-resolução em 5 etapas via `resolveBestMatchingCard` e `resolveBestMatchingBankAccount`, com aprendizado contínuo (`cardDigitsMapping`) memorizado por estabelecimento.
+
 ### 3.11 Motor de Rebalanceamento de Carteira
 
 > Escopo reduzido: metas, leitura de posição e cálculo de aporte. Sem motor quantamental.

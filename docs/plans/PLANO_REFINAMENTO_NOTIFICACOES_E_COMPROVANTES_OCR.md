@@ -276,38 +276,38 @@ Suporte exaustivo aos comprovantes bancários mais emitidos no Brasil, extraindo
 
 Consolidação de todo o trabalho realizado, execução dos testes integrados, compilação dos artefatos de produção e envio do relatório final ao fundador no Telegram via robô ARGOS.
 
-- [ ] **Tarefa 8.1: Execução da Suíte Completa de Testes Automatizados**
+- [x] **Tarefa 8.1: Execução da Suíte Completa de Testes Automatizados**
   - Rodar typecheck global: `npm run typecheck`.
   - Rodar linting: `npm run lint`.
   - Rodar todos os testes de notificações e OCR: `npx vitest run src/domain/notifications/ src/services/native/`.
 
-- [ ] **Tarefa 8.2: Atualização dos Documentos de Arquitetura e Governança**
+- [x] **Tarefa 8.2: Atualização dos Documentos de Arquitetura e Governança**
   - Atualizar `docs/architecture/ESPECIFICACAO_TECNICA.md` documentando os novos bancos suportados, algoritmos de parcelamento e o motor bottom-up de cupons fiscais.
   - Atualizar `docs/architecture/ARCHITECTURE.md` refletindo as melhorias na camada de notificações e OCR.
 
-- [ ] **Tarefa 8.3: Compilação Web de Produção e Sincronização com o Capacitor**
+- [x] **Tarefa 8.3: Compilação Web de Produção e Sincronização com o Capacitor**
   - Executar: `npm run build`.
   - Executar sincronização nativa: `npx cap sync android`.
 
-- [ ] **Tarefa 8.4: Compilação dos APKs Android de Produção (Debug & Release Assinado)**
+- [x] **Tarefa 8.4: Compilação dos APKs Android de Produção (Debug & Release Assinado)**
   - Executar o script oficial de empacotamento:
     ```bash
     bash scripts/build-apk.sh
     ```
   - Validar a integridade dos artefatos em `android/app/build/outputs/apk/` e o preenchimento de `version.json` com SHA-256 e tamanho em MB.
 
-- [ ] **Tarefa 8.5: Commit e Push Final da Homologação**
+- [x] **Tarefa 8.5: Commit e Push Final da Homologação**
   - Sincronizar todos os arquivos alterados com a branch principal (`git push origin main`).
 
-- [ ] **Tarefa 8.6: Despacho do Relatório Executivo ao Fundador via Bot ARGOS (Telegram)**
+- [x] **Tarefa 8.6: Despacho do Relatório Executivo ao Fundador via Bot ARGOS (Telegram)**
   - Executar o despachante de notificação no Telegram com o resumo detalhado de todas as melhorias entregues:
     ```bash
     npx tsx scripts/notify-telegram.ts --summary "Refinamento Integral de Notificações e Comprovantes OCR concluído com sucesso."
     ```
 
-- [ ] **Portão de Qualidade Final:**
-  - [ ] 100% da suíte de testes de notificações e OCR aprovada sem falhas.
-  - [ ] Build Web e APK Android Release gerados e validados.
-  - [ ] Documentação técnica sincronizada.
-  - [ ] Notificação Telegram entregue pelo bot ARGOS com o relatório executivo.
-  - [ ] Repositório sincronizado no GitHub (`git push origin main`).
+- [x] **Portão de Qualidade Final:**
+  - [x] 100% da suíte de testes de notificações e OCR aprovada sem falhas.
+  - [x] Build Web e APK Android Release gerados e validados.
+  - [x] Documentação técnica sincronizada.
+  - [x] Notificação Telegram entregue pelo bot ARGOS com o relatório executivo.
+  - [x] Repositório sincronizado no GitHub (`git push origin main`).

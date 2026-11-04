@@ -1,11 +1,11 @@
 {
   "version": "0.1.0",
-  "versionCode": 24,
-  "releaseDate": "2026-11-04T20:24:20Z",
+  "versionCode": 25,
+  "releaseDate": "2026-11-04T23:56:18Z",
   "minSupportedVersion": "0.1.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "7782abf69e28bb4e41be3348effbd30626fedeb023aa7d80faaaafee1b1c6db6",
-  "fileSizeBytes": 11854367,
+  "sha256": "e01df13d6b286002130e3eff12904126782df22053485bd62d392002d41726b8",
+  "fileSizeBytes": 11859491,
   "changelog": [
     "Micro-tour didatico do APK Nativo Android com apresentacao do Tripe de Plataformas",
     "Demonstracao do leitor passivo de notificacoes Pix e biometria com escudo anti-print",
