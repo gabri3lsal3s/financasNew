@@ -302,25 +302,75 @@ export function extractInstallmentInfo(
 ): InstallmentInfo | null {
   if (!text) return null;
 
-  // Caso 1: Parcela isolada de controle mensal ("Parcela 2/10 de R$ 45,00", "Parcela 02/10 - R$ 45,00")
-  const singleMatch = /\bparcela\s*(\d{1,2})\s*(?:\/|\s+de\s+)\s*(\d{1,2})\b/i.exec(text);
-  if (singleMatch && singleMatch[1] && singleMatch[2]) {
-    const current = parseInt(singleMatch[1], 10);
-    const total = parseInt(singleMatch[2], 10);
-    if (current >= 1 && total >= current && total <= 60) {
-      const cents = fallbackAmountCents ?? undefined;
+  // Caso 1: Padrão combinado Total + Multiplicador com valor de parcela
+  // Ex: "Compra de R$ 600,00 (6x de R$ 100,00)", "R$ 300,00 em 3x de R$ 100,00"
+  const combinedMatch =
+    /(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})[^\d\n]*?(?:(?:\(|em\s+|parcelad[ao]\s+em\s+|dividid[ao]\s+em\s+)?(\d{1,2})\s*(?:x|vezes|parcelas)(?:\s+sem\s+juros)?\s+de\s+(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*|\d+),(\d{2}))/i.exec(
+      text,
+    );
+  if (
+    combinedMatch &&
+    combinedMatch[1] &&
+    combinedMatch[2] &&
+    combinedMatch[3] &&
+    combinedMatch[4] &&
+    combinedMatch[5]
+  ) {
+    const totalWhole = combinedMatch[1].replace(/\./g, "");
+    const totalCents = parseInt(totalWhole, 10) * 100 + parseInt(combinedMatch[2], 10);
+    const count = parseInt(combinedMatch[3], 10);
+    const instWhole = combinedMatch[4].replace(/\./g, "");
+    const instCents = parseInt(instWhole, 10) * 100 + parseInt(combinedMatch[5], 10);
+
+    if (
+      count >= 2 &&
+      count <= 60 &&
+      Number.isFinite(totalCents) &&
+      totalCents > 0 &&
+      Number.isFinite(instCents) &&
+      instCents > 0
+    ) {
       return {
-        installments: total,
-        currentInstallment: current,
-        installmentAmountCents: cents,
-        totalAmountCents: cents,
+        installments: count,
+        installmentAmountCents: instCents,
+        totalAmountCents: totalCents,
       };
     }
   }
 
-  // Caso 2: Multiplicador e valor da parcela ("em 3x de R$ 50,00", "3x de R$ 50,00", "3 parcelas de R$ 50,00")
+  // Caso 2: Parcela isolada de controle mensal/periódico
+  // Ex: "Parcela 2/10 de R$ 45,00", "Parc 2/10", "Parcela 2 de 5 de R$ 80,00", "03/12 de R$ 50,00"
+  const singleMatch =
+    /\b(?:parcela|parc\.?)\s*(\d{1,2})\s*(?:\/|\s+de\s+)\s*(\d{1,2})(?:[\s-]+(?:de\s+)?(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*|\d+),(\d{2}))?\b|\b(\d{1,2})\/(\d{1,2})\s*(?:de\s+)?(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})\b/i.exec(
+      text,
+    );
+  if (singleMatch) {
+    const currentStr = singleMatch[1] || singleMatch[5];
+    const totalStr = singleMatch[2] || singleMatch[6];
+    if (currentStr && totalStr) {
+      const current = parseInt(currentStr, 10);
+      const total = parseInt(totalStr, 10);
+      if (current >= 1 && total >= current && total <= 60) {
+        let cents = fallbackAmountCents ?? undefined;
+        const wholeStr = singleMatch[3] || singleMatch[7];
+        const fractionStr = singleMatch[4] || singleMatch[8];
+        if (wholeStr && fractionStr) {
+          cents = parseInt(wholeStr.replace(/\./g, ""), 10) * 100 + parseInt(fractionStr, 10);
+        }
+        return {
+          installments: total,
+          currentInstallment: current,
+          installmentAmountCents: cents,
+          totalAmountCents: cents,
+        };
+      }
+    }
+  }
+
+  // Caso 3: Multiplicador e valor da parcela (sem total anterior explícito)
+  // Ex: "em 3x de R$ 50,00", "3x de R$ 50,00", "parcelado em 3x de R$ 50,00", "dividido em 4x de R$ 25,00", "6x sem juros de R$ 100,00"
   const multiplierWithAmountMatch =
-    /\b(?:em\s+)?(\d{1,2})\s*(?:x|vezes|parcelas)\s+de\s+(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})\b/i.exec(
+    /\b(?:em\s+|parcelad[ao]\s+em\s+|dividid[ao]\s+em\s+)?(\d{1,2})\s*(?:x|vezes|parcelas)(?:\s+sem\s+juros)?\s+de\s+(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})\b/i.exec(
       text,
     );
   if (
@@ -342,11 +392,14 @@ export function extractInstallmentInfo(
     }
   }
 
-  // Caso 3: Valor total com indicação de parcelas ("Compra de R$ 300,00 em 3x", "R$ 300,00 parcelado em 3x", "R$ 300,00 (3x)")
+  // Caso 4: Quantidade de parcelas vinculada ao valor total (fallbackAmountCents)
+  // Ex: "Compra de R$ 300,00 em 3x", "R$ 300,00 parcelado em 3x", "em 6 vezes", "em 10 parcelas", "dividido em 4x", "6x sem juros", "(3x)"
   const countOnlyMatch =
-    /\b(?:em|parcelad[ao]\s+em)\s+(\d{1,2})\s*(?:x|vezes|parcelas)\b|\((\d{1,2})x\)/i.exec(text);
+    /\b(?:em|parcelad[ao]\s+em|dividid[ao]\s+em)\s+(\d{1,2})\s*(?:x|vezes|parcelas)\b|\((\d{1,2})x\)|\b(\d{1,2})x\s*(?:sem\s+juros|com\s+juros)\b/i.exec(
+      text,
+    );
   if (countOnlyMatch) {
-    const countStr = countOnlyMatch[1] || countOnlyMatch[2];
+    const countStr = countOnlyMatch[1] || countOnlyMatch[2] || countOnlyMatch[3];
     if (countStr) {
       const count = parseInt(countStr, 10);
       if (count >= 2 && count <= 60 && fallbackAmountCents && fallbackAmountCents > 0) {

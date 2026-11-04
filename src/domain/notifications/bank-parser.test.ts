@@ -146,6 +146,139 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
       expect(info?.totalAmountCents).toBe(4500);
     });
 
+    it("reconhece padrão combinado Total + Multiplicador com valor de parcela (ex: R$ 600,00 (6x de R$ 100,00))", () => {
+      const info1 = extractInstallmentInfo("Compra de R$ 600,00 (6x de R$ 100,00) no cartão", 60000);
+      expect(info1).not.toBeNull();
+      expect(info1?.installments).toBe(6);
+      expect(info1?.installmentAmountCents).toBe(10000);
+      expect(info1?.totalAmountCents).toBe(60000);
+
+      const info2 = extractInstallmentInfo("Compra de R$ 300,00 em 3x de R$ 100,00", 30000);
+      expect(info2).not.toBeNull();
+      expect(info2?.installments).toBe(3);
+      expect(info2?.installmentAmountCents).toBe(10000);
+      expect(info2?.totalAmountCents).toBe(30000);
+    });
+
+    it("reconhece sintaxes expandidas: em vezes, parcelas, dividido em, sem juros e sufixo (3x)", () => {
+      const infoVezes = extractInstallmentInfo("Compra de R$ 600,00 em 6 vezes", 60000);
+      expect(infoVezes?.installments).toBe(6);
+      expect(infoVezes?.installmentAmountCents).toBe(10000);
+      expect(infoVezes?.totalAmountCents).toBe(60000);
+
+      const infoDividido = extractInstallmentInfo("Compra de R$ 200,00 dividida em 4x", 20000);
+      expect(infoDividido?.installments).toBe(4);
+      expect(infoDividido?.installmentAmountCents).toBe(5000);
+
+      const infoSemJuros = extractInstallmentInfo("Compra de R$ 600,00 em 6x sem juros", 60000);
+      expect(infoSemJuros?.installments).toBe(6);
+      expect(infoSemJuros?.installmentAmountCents).toBe(10000);
+
+      const infoSufixo = extractInstallmentInfo("Compra aprovada R$ 150,00 Mercado Livre (3x)", 15000);
+      expect(infoSufixo?.installments).toBe(3);
+      expect(infoSufixo?.installmentAmountCents).toBe(5000);
+      expect(infoSufixo?.totalAmountCents).toBe(15000);
+    });
+
+    it("discernimento matemático: total vs parcela vs controle periódico (Tarefa 2.2)", () => {
+      // 1. "em 3x de R$ 50,00" -> Total financiado: R$ 150,00
+      const fin = extractInstallmentInfo("Compra de produto em 3x de R$ 50,00", null);
+      expect(fin?.installments).toBe(3);
+      expect(fin?.installmentAmountCents).toBe(5000);
+      expect(fin?.totalAmountCents).toBe(15000);
+
+      // 2. "Compra de R$ 150,00 em 3x" -> Total financiado: R$ 150,00
+      const tot = extractInstallmentInfo("Compra de R$ 150,00 em 3x", 15000);
+      expect(tot?.installments).toBe(3);
+      expect(tot?.installmentAmountCents).toBe(5000);
+      expect(tot?.totalAmountCents).toBe(15000);
+
+      // 3. "Parcela 2 de 5 de R$ 80,00" -> Competência mensal
+      const monthly = extractInstallmentInfo("Parcela 2 de 5 de R$ 80,00", 8000);
+      expect(monthly?.currentInstallment).toBe(2);
+      expect(monthly?.installments).toBe(5);
+      expect(monthly?.installmentAmountCents).toBe(8000);
+      expect(monthly?.totalAmountCents).toBe(8000);
+
+      // 4. "03/12 de R$ 50,00"
+      const slashMonthly = extractInstallmentInfo("Empréstimo 03/12 de R$ 50,00", 5000);
+      expect(slashMonthly?.currentInstallment).toBe(3);
+      expect(slashMonthly?.installments).toBe(12);
+      expect(slashMonthly?.installmentAmountCents).toBe(5000);
+    });
+
+    it("matriz de pushes de parcelamento multi-bancos (Tarefa 2.3)", () => {
+      // Nubank
+      const nu = parseBankNotification({
+        packageName: "com.nu.production",
+        title: "Nubank",
+        text: "Compra de R$ 600,00 em 6x de R$ 100,00 no cartão Roxinho em Magazine Luiza",
+      });
+      expect(nu?.installments).toBe(6);
+      expect(nu?.installmentAmountCents).toBe(10000);
+      expect(nu?.amountCents).toBe(60000);
+
+      // Itaú
+      const itau = parseBankNotification({
+        packageName: "com.itau",
+        title: "Itaucard",
+        text: "Compra aprovada de R$ 300,00 em 3x de R$ 100,00 em Fast Shop",
+      });
+      expect(itau?.installments).toBe(3);
+      expect(itau?.installmentAmountCents).toBe(10000);
+      expect(itau?.amountCents).toBe(30000);
+
+      // Santander
+      const santander = parseBankNotification({
+        packageName: "com.santander.app",
+        title: "Santander Way",
+        text: "Compra de R$ 150,00 dividida em 3x aprovada no Cartão SX em Renner",
+      });
+      expect(santander?.installments).toBe(3);
+      expect(santander?.installmentAmountCents).toBe(5000);
+      expect(santander?.amountCents).toBe(15000);
+
+      // Bradesco
+      const bradesco = parseBankNotification({
+        packageName: "com.bradesco",
+        title: "Bradesco Cartões",
+        text: "Compra de R$ 400,00 parcelada em 4x sem juros em Leroy Merlin",
+      });
+      expect(bradesco?.installments).toBe(4);
+      expect(bradesco?.installmentAmountCents).toBe(10000);
+      expect(bradesco?.amountCents).toBe(40000);
+
+      // C6 Bank
+      const c6 = parseBankNotification({
+        packageName: "com.c6bank.app",
+        title: "C6 Bank",
+        text: "Compra aprovada em 10 parcelas de R$ 80,00 na Tok&Stok",
+      });
+      expect(c6?.installments).toBe(10);
+      expect(c6?.installmentAmountCents).toBe(8000);
+      expect(c6?.amountCents).toBe(80000);
+
+      // Inter
+      const inter = parseBankNotification({
+        packageName: "br.com.intermedium",
+        title: "Inter",
+        text: "Compra no crédito no valor de R$ 240,00 em 6 vezes de R$ 40,00 na Centauro",
+      });
+      expect(inter?.installments).toBe(6);
+      expect(inter?.installmentAmountCents).toBe(4000);
+      expect(inter?.amountCents).toBe(24000);
+
+      // Banco do Brasil
+      const bb = parseBankNotification({
+        packageName: "br.com.bb.android",
+        title: "Banco do Brasil",
+        text: "BB informa: Compra Ourocard R$ 150,00 Mercado Livre (3x)",
+      });
+      expect(bb?.installments).toBe(3);
+      expect(bb?.installmentAmountCents).toBe(5000);
+      expect(bb?.amountCents).toBe(15000);
+    });
+
     it("retorna null para transações à vista", () => {
       expect(extractInstallmentInfo("Compra de R$ 42,90 à vista na padaria", 4290)).toBeNull();
     });

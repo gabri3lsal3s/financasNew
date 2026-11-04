@@ -100,26 +100,26 @@ Resolver as falhas críticas de identificação de compras em contas globais (No
 
 Implementar heurísticas universais para identificar compras parceladas em notificações bancárias, suportando as variações sintáticas de cada banco.
 
-- [ ] **Tarefa 2.1: Expansão dos Padrões de Parcelamento em Notificações**
+- [x] **Tarefa 2.1: Expansão dos Padrões de Parcelamento em Notificações**
   - Atualizar `extractInstallmentInfo` em `src/domain/notifications/bank-parser.ts`:
     - Multiplicador por extenso: "em 6 vezes", "em 10 parcelas", "parcelado em 3x", "6x sem juros", "dividido em 4x".
     - Parcela atual e total: "Parcela 02 de 10", "Parc 2/10", "03/12 de R$ 50,00".
     - Padrão Combinado: "Compra de R$ 600,00 (6x de R$ 100,00)" ou "R$ 300,00 em 3x de R$ 100,00".
     - Padrão de Sufixo: "Compra aprovada R$ 150,00 Mercado Livre (3x)".
 
-- [ ] **Tarefa 2.2: Discernimento Matemático entre Valor Total e Valor da Parcela**
+- [x] **Tarefa 2.2: Discernimento Matemático entre Valor Total e Valor da Parcela**
   - "em 3x de R$ 50,00" -> Total financiado: **R$ 150,00**, `installments: 3`, `installmentAmountCents: 5000`.
   - "Compra de R$ 150,00 em 3x" -> Total financiado: **R$ 150,00**, `installments: 3`, `installmentAmountCents: 5000`.
   - "Parcela 2 de 5 de R$ 80,00" -> Competência mensal: `currentInstallment: 2`, `installments: 5`.
 
-- [ ] **Tarefa 2.3: Testes de Matriz de Sintaxes de Parcelamento Multi-Bancos**
+- [x] **Tarefa 2.3: Testes de Matriz de Sintaxes de Parcelamento Multi-Bancos**
   - Criar testes dedicados em `src/domain/notifications/bank-parser.test.ts` simulando pushes de Nubank, Itaú, Santander, Bradesco, C6, Inter e Banco do Brasil.
 
-- [ ] **Portão de Qualidade 2:**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/domain/notifications/bank-parser.test.ts src/domain/notifications/installment-extractor.test.ts`
-  - [ ] **Commit & Push da Fase 2:** `git commit -m "feat(notifications): motor de parcelamento para notificacoes bancarias"`
+- [x] **Portão de Qualidade 2:**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/domain/notifications/bank-parser.test.ts src/domain/notifications/installment-extractor.test.ts`
+  - [x] **Commit & Push da Fase 2:** `git commit -m "feat(notifications): motor de parcelamento para notificacoes bancarias"`
 
 ---
 

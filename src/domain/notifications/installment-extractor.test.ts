@@ -74,6 +74,43 @@ describe("extractDetailedInstallments", () => {
     expect(result?.isNewFinancedPurchase).toBe(false);
   });
 
+  it("reconhece padrao combinado Total + Multiplicador (Compra de R$ 600,00 (6x de R$ 100,00))", () => {
+    const text = "Compra de R$ 600,00 (6x de R$ 100,00) aprovada";
+    const result = extractDetailedInstallments(text);
+    expect(result).not.toBeNull();
+    expect(result?.count).toBe(6);
+    expect(result?.installmentAmountCents).toBe(10000);
+    expect(result?.totalAmountCents).toBe(60000);
+    expect(result?.isNewFinancedPurchase).toBe(true);
+  });
+
+  it("reconhece formato '03/12 de R$ 50,00'", () => {
+    const text = "Contrato de emprestimo 03/12 de R$ 50,00";
+    const result = extractDetailedInstallments(text);
+    expect(result).not.toBeNull();
+    expect(result?.count).toBe(12);
+    expect(result?.currentInstallment).toBe(3);
+    expect(result?.installmentAmountCents).toBe(5000);
+    expect(result?.isNewFinancedPurchase).toBe(false);
+  });
+
+  it("reconhece variacoes sintaticas: dividido em 4x e 6x sem juros", () => {
+    const textDividido = "Compra de R$ 200,00 dividida em 4x";
+    const resultDividido = extractDetailedInstallments(textDividido, 20000);
+    expect(resultDividido?.count).toBe(4);
+    expect(resultDividido?.installmentAmountCents).toBe(5000);
+
+    const textSemJuros = "R$ 600,00 em 6x sem juros no cartao";
+    const resultSemJuros = extractDetailedInstallments(textSemJuros, 60000);
+    expect(resultSemJuros?.count).toBe(6);
+    expect(resultSemJuros?.installmentAmountCents).toBe(10000);
+
+    const textSufixo = "Compra aprovada R$ 150,00 Mercado Livre (3x)";
+    const resultSufixo = extractDetailedInstallments(textSufixo, 15000);
+    expect(resultSufixo?.count).toBe(3);
+    expect(resultSufixo?.installmentAmountCents).toBe(5000);
+  });
+
   it("rejeita quantidades fora do limite de negocio (ex: mais de 60 parcelas)", () => {
     const text = "Compra em 72x de R$ 100,00";
     expect(extractDetailedInstallments(text)).toBeNull();
