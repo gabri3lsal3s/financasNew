@@ -1,5 +1,18 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.87** registra a **Otimização de Usabilidade Mobile & Desktop da Projeção Patrimonial e Simulador FIRE (`fire-projection-curve.tsx`)** (2026-11-04):
+> - **(1) Motor de Scrubbing Touch Nativo com Trava de Rolagem**:
+>   - Adição de `touch-action: none` e captura contínua de ponteiro (`setPointerCapture`) no `onPointerDown`/`onPointerMove`/`onPointerUp`/`onPointerCancel`, impedindo que o scroll vertical da tela interfira no deslizamento horizontal pelo gráfico no celular;
+>   - Feedback tátil háptico (`triggerSensory`) disparado a cada ano percorrido.
+> - **(2) Tooltip Flutuante em Tempo Real (*Floating Scrub Pill*)**:
+>   - Pílula flutuante dinâmica que acompanha o dedo na parte superior do gráfico, exibindo o ano atual, o patrimônio acumulado com clareza e selo comemorativo `FIRE` quando a meta for atingida, resolvendo o ponto cego sob o polegar.
+> - **(3) Navegação Ágil por Marcos e Stepper Ano a Ano**:
+>   - Botões de ajuste fino `[ < ]` e `[ > ]` e atalhos rápidos para `Hoje (0a)`, `Meta (FIRE)` e `25a`.
+> - **(4) Grid Responsivo Compacto em 3 Colunas no Mobile**:
+>   - Reorganização dos 3 cards de métricas em `grid-cols-3` no mobile com tipografia proporcional e supressão de centavos (`hideCents`), reduzindo mais de 60% da altura vertical da seção e eliminando a sensação de tela esticada.
+> - **(5) Bateria de Testes Unitários Dedicada**:
+>   - Criação de `src/features/landing/components/fire-projection-curve.test.tsx` com 3 testes cobrindo renderização, stepper e navegação por atalhos.
+>
 > **v2.86** registra o **Refinamento Matemático de Performance Equity e Salvaguardas CVM/ANBIMA (TWR Modified Dietz Diário e XIRR $\ge 365$d)** (2026-11-04):
 > - **(1) TWRR com Ponderação Diária Exata de Fluxos de Caixa (`twr.ts`)**:
 >   - Evolução do método Modified Dietz para calcular o peso de cada aporte/resgate com precisão diária ANBIMA/GIPS ($W_i = \frac{CD - D_i + 1}{CD}$);
