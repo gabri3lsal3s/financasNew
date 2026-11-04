@@ -1,6 +1,8 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { Sparkles, Flag, ChevronLeft, ChevronRight } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
+import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 
 export interface FireProjectionCurveProps {
@@ -52,8 +54,10 @@ export function FireProjectionCurve({
   years = 25,
   className,
 }: FireProjectionCurveProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const chartWrapperRef = useRef<HTMLDivElement>(null);
   const [scrubIndex, setScrubIndex] = useState<number | null>(null);
+  const [isPointerActive, setIsPointerActive] = useState(false);
+  const lastHapticIndexRef = useRef<number | null>(null);
 
   // Regra 4%: Patrimônio necessário = Despesas anuais * 25
   const fireTarget = monthlyExpenses * 12 * 25;
@@ -82,12 +86,12 @@ export function FireProjectionCurve({
   const fireCrossoverIndex = dataPoints.findIndex((p) => p.balance >= fireTarget);
   const fireCrossover = fireCrossoverIndex !== -1 ? dataPoints[fireCrossoverIndex] : null;
 
-  // Dimensões do SVG com proporção confortável e ampla
+  // Dimensões do SVG
   const width = 500;
-  const height = 170;
+  const height = 180;
   const paddingX = 14;
-  const paddingTop = 14;
-  const paddingBottom = 24;
+  const paddingTop = 16;
+  const paddingBottom = 26;
 
   const maxBalance = Math.max(fireTarget * 1.15, dataPoints[dataPoints.length - 1]?.balance ?? 1);
 
@@ -122,13 +126,60 @@ export function FireProjectionCurve({
   const activePoint = dataPoints[activeIndex]!;
   const activeCoord = linePoints[activeIndex]!;
 
+  // Percentual horizontal para posicionamento de elementos de UI flutuantes
+  const activePercent = (activeIndex / Math.max(1, dataPoints.length - 1)) * 100;
+
+  // Manipulador unificado de coordenadas relativas do ponteiro com captura nativa
+  const updatePointerIndex = useCallback(
+    (clientX: number) => {
+      const el = chartWrapperRef.current;
+      if (!el || dataPoints.length === 0) return;
+      const rect = el.getBoundingClientRect();
+      const relativeX = clientX - rect.left;
+      const ratio = Math.max(0, Math.min(1, relativeX / Math.max(1, rect.width)));
+      const nextIndex = Math.round(ratio * (dataPoints.length - 1));
+
+      if (nextIndex !== lastHapticIndexRef.current) {
+        lastHapticIndexRef.current = nextIndex;
+        triggerSensory("selection", { skipSound: true });
+      }
+
+      setScrubIndex(nextIndex);
+    },
+    [dataPoints.length],
+  );
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setIsPointerActive(true);
+    updatePointerIndex(event.clientX);
+  };
+
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const el = containerRef.current;
-    if (!el || dataPoints.length === 0) return;
-    const rect = el.getBoundingClientRect();
-    const ratio = (event.clientX - rect.left) / Math.max(1, rect.width);
-    const index = Math.max(0, Math.min(dataPoints.length - 1, Math.round(ratio * (dataPoints.length - 1))));
-    setScrubIndex(index);
+    if (isPointerActive || event.pointerType === "mouse") {
+      updatePointerIndex(event.clientX);
+    }
+  };
+
+  const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+    }
+    setIsPointerActive(false);
+  };
+
+  const handlePointerCancel = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+    }
+    setIsPointerActive(false);
+  };
+
+  const setYearExplicit = (year: number) => {
+    const clampedYear = Math.max(0, Math.min(years, year));
+    lastHapticIndexRef.current = clampedYear;
+    triggerSensory("selection", { skipSound: true });
+    setScrubIndex(clampedYear);
   };
 
   const formatBRL = (val: number) => {
@@ -139,149 +190,257 @@ export function FireProjectionCurve({
     });
   };
 
+  const isFireReached = activePoint.balance >= fireTarget;
+
   return (
-    <div
-      ref={containerRef}
-      className={cn("flex flex-col gap-3 sm:gap-4 w-full min-w-0 select-none", className)}
-      onPointerMove={handlePointerMove}
-      onPointerLeave={() => setScrubIndex(null)}
-      data-swipe-nav-ignore
-    >
-      {/* Gráfico de Linha Amplo e Fluido (Estilo DailyFlowChart) */}
-      <div className="relative w-full overflow-hidden cursor-crosshair" aria-hidden="true">
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible">
-          <defs>
-            <linearGradient id="fireAreaGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--positive)" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="var(--positive)" stopOpacity="0.01" />
-            </linearGradient>
-          </defs>
+    <div className={cn("flex flex-col gap-3.5 sm:gap-4 w-full min-w-0 select-none", className)}>
+      {/* Zona Interativa do Gráfico com touch-action: none e captura de ponteiro */}
+      <div
+        ref={chartWrapperRef}
+        className="relative w-full rounded-2xl bg-surface/40 p-2 sm:p-3 border border-border/60 touch-none cursor-ew-resize select-none overflow-hidden"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onPointerLeave={() => {
+          if (!isPointerActive) {
+            // No desktop com mouse, o scrub pode resetar ao sair; no mobile, preserva o ano tocado
+            // para comodidade de leitura
+          }
+        }}
+        data-swipe-nav-ignore
+      >
+        {/* Tooltip Flutuante Dinâmico que acompanha o cursor (Floating Scrub Pill) */}
+        <div
+          className="absolute z-20 pointer-events-none transition-transform duration-75 ease-out"
+          style={{
+            left: `${Math.max(16, Math.min(84, activePercent))}%`,
+            top: "10px",
+            transform: "translateX(-50%)",
+          }}
+        >
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface border border-border/90 shadow-md text-[11px] font-mono whitespace-nowrap">
+            <span className="font-bold text-foreground">
+              {activePoint.year === 0 ? "Hoje" : `${activePoint.year}a`}
+            </span>
+            <span className="text-muted-foreground/60">·</span>
+            <span className={cn("font-bold tabular-nums", isFireReached ? "text-positive-strong" : "text-foreground")}>
+              {formatBRL(activePoint.balance)}
+            </span>
+            {isFireReached ? (
+              <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-positive-strong bg-positive/10 px-1.5 py-0.2 rounded-md">
+                <Sparkles className="size-2.5" aria-hidden="true" />
+                FIRE
+              </span>
+            ) : null}
+          </div>
+        </div>
 
-          {/* Linhas guias horizontais sutis (padrão DailyFlowChart) */}
-          <line
-            x1={paddingX}
-            y1={paddingTop}
-            x2={width - paddingX}
-            y2={paddingTop}
-            stroke="currentColor"
-            strokeDasharray="2 4"
-            className="text-border/25"
-            strokeWidth={1}
-          />
-          <line
-            x1={paddingX}
-            y1={(height - paddingBottom + paddingTop) / 2}
-            x2={width - paddingX}
-            y2={(height - paddingBottom + paddingTop) / 2}
-            stroke="currentColor"
-            strokeDasharray="2 4"
-            className="text-border/20"
-            strokeWidth={1}
-          />
-          <line
-            x1={paddingX}
-            y1={height - paddingBottom}
-            x2={width - paddingX}
-            y2={height - paddingBottom}
-            stroke="currentColor"
-            strokeDasharray="2 4"
-            className="text-border/30"
-            strokeWidth={1}
-          />
+        {/* Gráfico SVG Fluido */}
+        <div className="relative w-full overflow-hidden mt-4">
+          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible">
+            <defs>
+              <linearGradient id="fireAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--positive)" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="var(--positive)" stopOpacity="0.01" />
+              </linearGradient>
+            </defs>
 
-          {/* Linha Tracejada da Meta FIRE */}
-          <line
-            x1={paddingX}
-            y1={fireTargetY}
-            x2={width - paddingX}
-            y2={fireTargetY}
-            stroke="currentColor"
-            strokeDasharray="3 3"
-            className="text-positive-strong/70 dark:text-positive/70"
-            strokeWidth={1.5}
-          />
+            {/* Linhas guias horizontais sutis */}
+            <line
+              x1={paddingX}
+              y1={paddingTop}
+              x2={width - paddingX}
+              y2={paddingTop}
+              stroke="currentColor"
+              strokeDasharray="2 4"
+              className="text-border/25"
+              strokeWidth={1}
+            />
+            <line
+              x1={paddingX}
+              y1={(height - paddingBottom + paddingTop) / 2}
+              x2={width - paddingX}
+              y2={(height - paddingBottom + paddingTop) / 2}
+              stroke="currentColor"
+              strokeDasharray="2 4"
+              className="text-border/20"
+              strokeWidth={1}
+            />
+            <line
+              x1={paddingX}
+              y1={height - paddingBottom}
+              x2={width - paddingX}
+              y2={height - paddingBottom}
+              stroke="currentColor"
+              strokeDasharray="2 4"
+              className="text-border/30"
+              strokeWidth={1}
+            />
 
-          {/* Rótulo da Meta Patrimonial */}
-          <text
-            x={width - paddingX}
-            y={fireTargetY - 4}
-            textAnchor="end"
-            className="fill-positive-strong dark:fill-positive text-[10px] font-mono font-bold"
-          >
-            Meta Patrimonial: {formatBRL(fireTarget)}
-          </text>
+            {/* Linha Tracejada da Meta FIRE */}
+            <line
+              x1={paddingX}
+              y1={fireTargetY}
+              x2={width - paddingX}
+              y2={fireTargetY}
+              stroke="currentColor"
+              strokeDasharray="3 3"
+              className="text-positive-strong/70 dark:text-positive/70"
+              strokeWidth={1.5}
+            />
 
-          {/* Área com Gradiente Suave */}
-          <path d={areaD} fill="url(#fireAreaGradient)" />
-
-          {/* Linha Principal da Curva Suave Bézier */}
-          <path
-            d={smoothCurvePath}
-            fill="none"
-            stroke="var(--positive-strong)"
-            strokeWidth={2.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-
-          {/* Linha vertical de referência sob scrubbing */}
-          <line
-            x1={activeCoord.x}
-            y1={paddingTop}
-            x2={activeCoord.x}
-            y2={height - paddingBottom}
-            stroke="currentColor"
-            strokeDasharray="2 2"
-            className="text-foreground/30"
-            strokeWidth={1}
-          />
-
-          {/* Ponto Destaque com anel de alto contraste */}
-          <circle
-            cx={activeCoord.x}
-            cy={activeCoord.y}
-            r="5"
-            className="fill-positive-strong stroke-surface"
-            strokeWidth="2.5"
-          />
-
-          {/* Rótulos dos eixos temporais */}
-          <text x={paddingX} y={height - 6} className="fill-muted-foreground text-[10px] font-mono">
-            Ano 0 (Hoje)
-          </text>
-          {fireCrossover && fireCrossover.year > 0 && fireCrossover.year < years ? (
+            {/* Rótulo da Meta Patrimonial */}
             <text
-              x={Math.max(70, Math.min(width - 70, linePoints[fireCrossoverIndex]!.x))}
-              y={height - 6}
-              textAnchor="middle"
-              className="fill-positive-strong text-[10px] font-mono font-bold"
+              x={width - paddingX}
+              y={fireTargetY - 4}
+              textAnchor="end"
+              className="fill-positive-strong dark:fill-positive text-[10px] font-mono font-bold"
             >
-              {fireCrossover.year} anos (Liberdade Financeira)
+              Meta Patrimonial: {formatBRL(fireTarget)}
             </text>
-          ) : null}
-          <text x={width - paddingX} y={height - 6} textAnchor="end" className="fill-muted-foreground text-[10px] font-mono">
-            {years} anos
-          </text>
-        </svg>
+
+            {/* Área com Gradiente Suave */}
+            <path d={areaD} fill="url(#fireAreaGradient)" />
+
+            {/* Linha Principal da Curva Suave Bézier */}
+            <path
+              d={smoothCurvePath}
+              fill="none"
+              stroke="var(--positive-strong)"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+
+            {/* Linha vertical de referência que acompanha o scrubbing */}
+            <line
+              x1={activeCoord.x}
+              y1={paddingTop}
+              x2={activeCoord.x}
+              y2={height - paddingBottom}
+              stroke="currentColor"
+              strokeDasharray="2 2"
+              className="text-foreground/40"
+              strokeWidth={1.5}
+            />
+
+            {/* Ponto Destaque com anel de alto contraste e halo responsivo */}
+            <circle
+              cx={activeCoord.x}
+              cy={activeCoord.y}
+              r={isPointerActive ? "7" : "5.5"}
+              className="fill-positive-strong stroke-surface transition-all duration-100"
+              strokeWidth={isPointerActive ? "3" : "2"}
+            />
+
+            {/* Rótulos dos eixos temporais */}
+            <text x={paddingX} y={height - 6} className="fill-muted-foreground text-[10px] font-mono">
+              Ano 0 (Hoje)
+            </text>
+            {fireCrossover && fireCrossover.year > 0 && fireCrossover.year < years ? (
+              <text
+                x={Math.max(80, Math.min(width - 80, linePoints[fireCrossoverIndex]!.x))}
+                y={height - 6}
+                textAnchor="middle"
+                className="fill-positive-strong text-[10px] font-mono font-bold"
+              >
+                {fireCrossover.year} anos (Liberdade Financeira)
+              </text>
+            ) : null}
+            <text x={width - paddingX} y={height - 6} textAnchor="end" className="fill-muted-foreground text-[10px] font-mono">
+              {years} anos
+            </text>
+          </svg>
+        </div>
+
+        {/* Trilho de Toque Rápido / Stepper com Marcos de Navegação */}
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/40 gap-1.5 text-xs">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setYearExplicit(activePoint.year - 1)}
+              disabled={activePoint.year <= 0}
+              aria-label="Voltar 1 ano"
+              className="size-7 rounded-lg border border-border/80 bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none cursor-pointer active:scale-95 transition-all"
+            >
+              <ChevronLeft className="size-3.5" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setYearExplicit(activePoint.year + 1)}
+              disabled={activePoint.year >= years}
+              aria-label="Avançar 1 ano"
+              className="size-7 rounded-lg border border-border/80 bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none cursor-pointer active:scale-95 transition-all"
+            >
+              <ChevronRight className="size-3.5" aria-hidden="true" />
+            </button>
+          </div>
+
+          {/* Atalhos para Marcos Importantes */}
+          <div className="flex items-center gap-1 font-mono text-[11px]">
+            <button
+              type="button"
+              onClick={() => setYearExplicit(0)}
+              className={cn(
+                "px-2 py-1 rounded-md transition-all cursor-pointer border text-center font-semibold",
+                activePoint.year === 0
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-surface/80 border-border/60 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Hoje (0a)
+            </button>
+
+            {fireCrossover ? (
+              <button
+                type="button"
+                onClick={() => setYearExplicit(fireCrossover.year)}
+                className={cn(
+                  "px-2 py-1 rounded-md transition-all cursor-pointer border text-center font-semibold flex items-center gap-1",
+                  activePoint.year === fireCrossover.year
+                    ? "bg-positive-strong text-white border-positive-strong shadow-xs"
+                    : "bg-surface/80 border-positive-strong/30 text-positive-strong hover:bg-positive/10",
+                )}
+              >
+                <Flag className="size-2.5" aria-hidden="true" />
+                <span>Meta ({fireCrossover.year}a)</span>
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => setYearExplicit(years)}
+              className={cn(
+                "px-2 py-1 rounded-md transition-all cursor-pointer border text-center font-semibold",
+                activePoint.year === years
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-surface/80 border-border/60 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {years}a
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Grid com os 3 Cards Métricos Ricos, Espaçosos e com Barras de Progresso */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 pt-1">
+      {/* Grid com os 3 Cards Métricos Ricos e Compactos no Mobile (3 Colunas Sempre) */}
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5">
         {/* Card 1: Horizonte Patrimonial */}
-        <div className="flex flex-col justify-between p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
+        <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[11px] font-medium text-muted-foreground truncate">Horizonte Patrimonial</span>
-            <span className="size-2 rounded-full bg-positive-strong shrink-0" />
+            <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground truncate">Horizonte</span>
+            <span className="size-1.5 sm:size-2 rounded-full bg-positive-strong shrink-0" />
           </div>
-          <div className="mt-1 min-w-0">
-            <span className="font-mono font-bold text-foreground text-sm sm:text-base lg:text-lg tabular-nums block truncate">
-              {activePoint.year === 0 ? "Ano 0 (Início)" : `${activePoint.year} anos`}
+          <div className="mt-0.5 sm:mt-1 min-w-0">
+            <span className="font-mono font-bold text-foreground text-xs sm:text-base lg:text-lg tabular-nums block truncate">
+              {activePoint.year === 0 ? "Ano 0" : `${activePoint.year} anos`}
             </span>
-            <span className="text-[10px] text-muted-foreground block mt-0.5 truncate">
-              {fireCrossover ? `Independência em ${fireCrossover.year} anos` : "Projeção 25 anos"}
+            <span className="text-[9px] sm:text-[10px] text-muted-foreground block mt-0.5 truncate">
+              {fireCrossover ? `Meta: ${fireCrossover.year}a` : "25 anos"}
             </span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/40 mt-2">
+          <div className="h-1 sm:h-1.5 w-full overflow-hidden rounded-full bg-border/40 mt-1.5 sm:mt-2">
             <div
               className="h-full rounded-full bg-positive-strong transition-all duration-300"
               style={{
@@ -292,23 +451,23 @@ export function FireProjectionCurve({
         </div>
 
         {/* Card 2: Patrimônio Acumulado */}
-        <div className="flex flex-col justify-between p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
+        <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[11px] font-medium text-muted-foreground truncate">Patrimônio Acumulado</span>
-            <span className="size-2 rounded-full bg-portfolio shrink-0" />
+            <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground truncate">Patrimônio</span>
+            <span className="size-1.5 sm:size-2 rounded-full bg-portfolio shrink-0" />
           </div>
-          <div className="mt-1 min-w-0">
+          <div className="mt-0.5 sm:mt-1 min-w-0">
             <MoneyText
               cents={activePoint.balance * 100}
               tone="default"
               hideCents
-              className="font-mono font-bold text-foreground text-sm sm:text-base lg:text-lg tabular-nums block truncate"
+              className="font-mono font-bold text-foreground text-xs sm:text-base lg:text-lg tabular-nums block truncate"
             />
-            <span className="text-[10px] text-muted-foreground block mt-0.5 truncate">
-              {Math.round((activePoint.balance / fireTarget) * 100)}% da meta atingida
+            <span className="text-[9px] sm:text-[10px] text-muted-foreground block mt-0.5 truncate">
+              {Math.round((activePoint.balance / fireTarget) * 100)}% da meta
             </span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/40 mt-2">
+          <div className="h-1 sm:h-1.5 w-full overflow-hidden rounded-full bg-border/40 mt-1.5 sm:mt-2">
             <div
               className="h-full rounded-full bg-portfolio transition-all duration-300"
               style={{
@@ -319,26 +478,26 @@ export function FireProjectionCurve({
         </div>
 
         {/* Card 3: Renda Mensal Passiva */}
-        <div className="flex flex-col justify-between p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
+        <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[11px] font-medium text-muted-foreground truncate">Renda Mensal Passiva</span>
-            <span className="size-2 rounded-full bg-positive-strong shrink-0" />
+            <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground truncate">Renda Passiva</span>
+            <span className="size-1.5 sm:size-2 rounded-full bg-positive-strong shrink-0" />
           </div>
-          <div className="mt-1 min-w-0">
+          <div className="mt-0.5 sm:mt-1 min-w-0">
             <div className="flex items-baseline gap-0.5 min-w-0">
               <MoneyText
                 cents={activePoint.passiveMonthly * 100}
                 tone="positive"
                 hideCents
-                className="font-mono font-bold text-positive-strong dark:text-positive text-sm sm:text-base lg:text-lg tabular-nums truncate"
+                className="font-mono font-bold text-positive-strong dark:text-positive text-xs sm:text-base lg:text-lg tabular-nums truncate"
               />
-              <span className="text-[11px] text-muted-foreground font-normal shrink-0">/mês</span>
+              <span className="text-[9px] sm:text-[11px] text-muted-foreground font-normal shrink-0">/m</span>
             </div>
-            <span className="text-[10px] text-muted-foreground block mt-0.5 truncate">
-              Regra dos 4% perpétua
+            <span className="text-[9px] sm:text-[10px] text-muted-foreground block mt-0.5 truncate">
+              Regra dos 4%
             </span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/40 mt-2">
+          <div className="h-1 sm:h-1.5 w-full overflow-hidden rounded-full bg-border/40 mt-1.5 sm:mt-2">
             <div
               className="h-full rounded-full bg-positive-strong transition-all duration-300"
               style={{
@@ -351,3 +510,4 @@ export function FireProjectionCurve({
     </div>
   );
 }
+
