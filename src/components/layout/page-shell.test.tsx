@@ -86,6 +86,7 @@ vi.mock("@/state", () => ({
   }),
   useSetReminderState: () => ({ mutate: vi.fn(), isPending: false }),
   useMarkAllRemindersAsRead: () => ({ mutate: vi.fn(), isPending: false }),
+  useMySupportTickets: () => ({ data: [], isLoading: false }),
 }));
 
 
