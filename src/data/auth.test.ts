@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   changeUserPassword,
+  requestUserEmailChange,
   resendConfirmationEmail,
   resetPasswordForEmail,
   signInWithEmail,
@@ -339,6 +340,71 @@ describe("data/auth — operações de autenticação", () => {
 
       await expect(
         changeUserPassword("SenhaAtual123", "fraca"),
+      ).rejects.toThrow(AppError);
+    });
+  });
+
+  describe("requestUserEmailChange", () => {
+    it("reautentica com sucesso e solicita atualização de e-mail com getPublicAppUrl('/configuracoes?tab=conta') e e-mail normalizado", async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: { email: "usuario@exemplo.com" } },
+      });
+      mockSignInWithPassword.mockResolvedValueOnce({ error: null });
+      mockUpdateUser.mockResolvedValueOnce({ error: null });
+
+      await requestUserEmailChange("MinhaSenha123", "  NOVO.EMAIL@EXEMPLO.COM  ");
+
+      expect(mockSignInWithPassword).toHaveBeenCalledWith({
+        email: "usuario@exemplo.com",
+        password: "MinhaSenha123",
+      });
+      expect(mockUpdateUser).toHaveBeenCalledWith(
+        { email: "novo.email@exemplo.com" },
+        { emailRedirectTo: getPublicAppUrl("/configuracoes?tab=conta") },
+      );
+    });
+
+    it("lança AppError('invalid-credentials') e não chama updateUser se a senha atual for incorreta", async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: { email: "usuario@exemplo.com" } },
+      });
+      mockSignInWithPassword.mockResolvedValueOnce({
+        error: { message: "Invalid credentials", status: 400 },
+      });
+
+      await expect(
+        requestUserEmailChange("SenhaErrada", "novo@exemplo.com"),
+      ).rejects.toMatchObject({
+        kind: "invalid-credentials",
+        message: "A senha atual informada está incorreta.",
+      });
+      expect(mockUpdateUser).not.toHaveBeenCalled();
+    });
+
+    it("não chama updateUser se a sessão estiver expirada (getUser sem usuário)", async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: null },
+      });
+
+      await expect(
+        requestUserEmailChange("Senha123", "novo@exemplo.com"),
+      ).rejects.toMatchObject({
+        kind: "session-expired",
+      });
+      expect(mockUpdateUser).not.toHaveBeenCalled();
+    });
+
+    it("propaga AppError se updateUser retornar erro do Supabase", async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: { email: "usuario@exemplo.com" } },
+      });
+      mockSignInWithPassword.mockResolvedValueOnce({ error: null });
+      mockUpdateUser.mockResolvedValueOnce({
+        error: { message: "Email rate limit exceeded", status: 429 },
+      });
+
+      await expect(
+        requestUserEmailChange("MinhaSenha123", "novo@exemplo.com"),
       ).rejects.toThrow(AppError);
     });
   });

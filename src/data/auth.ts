@@ -150,5 +150,29 @@ export async function changeUserPassword(currentPassword: string, newPassword: s
   await updateUserPassword(newPassword);
 }
 
+/**
+ * Solicita a alteração do e-mail do usuário autenticado exigindo comprovação prévia da senha atual (Fase 4.2).
+ * Envia e-mails de confirmação com link duplo e redirecionamento universal para a aba Minha Conta.
+ */
+export async function requestUserEmailChange(
+  currentPassword: string,
+  newEmail: string,
+): Promise<void> {
+  const normalized = normalizeEmail(newEmail);
+  const isValid = await verifyCurrentPassword(currentPassword);
+  if (!isValid) {
+    throw new AppError("invalid-credentials", "A senha atual informada está incorreta.");
+  }
+  const { error } = await getSupabase().auth.updateUser(
+    { email: normalized },
+    { emailRedirectTo: getPublicAppUrl("/configuracoes?tab=conta") },
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
+
 
 

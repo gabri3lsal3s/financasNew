@@ -30,7 +30,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useUserAccess, useUserSubscription, useUpdateProfile } from "@/state";
-import { changeUserPassword } from "@/data/auth";
+import { changeUserPassword, requestUserEmailChange } from "@/data/auth";
 import { checkPasswordRequirements } from "@/domain/validation";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
@@ -78,6 +78,54 @@ export function AccountTab() {
       setName(currentName);
     }
   }
+
+  // Estado da alteração de e-mail
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailCurrentPassword, setEmailCurrentPassword] = useState("");
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
+  const [emailChangeError, setEmailChangeError] = useState<string | null>(null);
+
+  const handleRequestEmailChange = async (e: FormEvent) => {
+    e.preventDefault();
+    const trimmedEmail = newEmail.trim();
+
+    if (!trimmedEmail) {
+      setEmailChangeError("Informe o novo endereço de e-mail.");
+      return;
+    }
+
+    if (user?.email && trimmedEmail.toLowerCase() === user.email.toLowerCase()) {
+      setEmailChangeError("O novo e-mail deve ser diferente do e-mail atual.");
+      return;
+    }
+
+    if (!emailCurrentPassword) {
+      setEmailChangeError("Informe sua senha atual.");
+      return;
+    }
+
+    setEmailChangeError(null);
+    setIsUpdatingEmail(true);
+
+    try {
+      await requestUserEmailChange(emailCurrentPassword, trimmedEmail);
+      triggerSensory("success");
+      setIsEmailModalOpen(false);
+      setNewEmail("");
+      setEmailCurrentPassword("");
+      pushToast({
+        title: "Confirmação enviada",
+        description: "Enviamos um link de confirmação para o novo e-mail. Verifique sua caixa de entrada.",
+        variant: "success",
+      });
+    } catch (err) {
+      triggerSensory("destructive");
+      setEmailChangeError(getErrorMessage(err));
+    } finally {
+      setIsUpdatingEmail(false);
+    }
+  };
 
   // Estado da troca de senha
   const [currentPassword, setCurrentPassword] = useState("");
@@ -240,14 +288,30 @@ export function AccountTab() {
               </div>
 
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <label htmlFor="account-email" className="text-xs font-semibold text-foreground">
                     Endereço de e-mail
                   </label>
-                  <Badge variant="positive" size="xs" className="gap-1">
-                    <Check className="size-3" aria-hidden="true" />
-                    <span>Verificado</span>
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="positive" size="xs" className="gap-1">
+                      <Check className="size-3" aria-hidden="true" />
+                      <span>Verificado</span>
+                    </Badge>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      onClick={() => {
+                        setEmailChangeError(null);
+                        setNewEmail("");
+                        setEmailCurrentPassword("");
+                        setIsEmailModalOpen(true);
+                      }}
+                      className="rounded-lg cursor-pointer"
+                    >
+                      Alterar e-mail
+                    </Button>
+                  </div>
                 </div>
                 <div className="relative">
                   <Input
@@ -533,6 +597,118 @@ export function AccountTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal de Alteração de E-mail */}
+      <Modal
+        open={isEmailModalOpen}
+        onOpenChange={(open) => {
+          if (!isUpdatingEmail) {
+            setIsEmailModalOpen(open);
+            if (!open) {
+              setNewEmail("");
+              setEmailCurrentPassword("");
+              setEmailChangeError(null);
+            }
+          }
+        }}
+        title="Alterar E-mail de Acesso"
+        description="Atualize seu endereço de e-mail. Um link de confirmação será enviado para validação."
+        size="md"
+      >
+        <form onSubmit={handleRequestEmailChange} className="space-y-4 pt-2">
+          {emailChangeError ? <Alert variant="error">{emailChangeError}</Alert> : null}
+
+          <div className="rounded-xl bg-muted/20 border border-border/80 p-3.5 space-y-1.5">
+            <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+              <Mail className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <span>Confirmação de Segurança</span>
+            </span>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Por motivos de segurança, enviaremos links de confirmação para validar a alteração. O novo e-mail só será efetivado após a confirmação.
+            </p>
+          </div>
+
+          <div className="space-y-3.5">
+            <div className="space-y-1.5">
+              <label htmlFor="modal-new-email" className="text-xs font-semibold text-foreground">
+                Novo endereço de e-mail
+              </label>
+              <Input
+                id="modal-new-email"
+                type="email"
+                required
+                value={newEmail}
+                onChange={(e) => {
+                  setNewEmail(e.target.value);
+                  if (emailChangeError) setEmailChangeError(null);
+                }}
+                placeholder="novo@exemplo.com"
+                className="h-10 text-sm rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label
+                htmlFor="modal-email-current-password"
+                className="text-xs font-semibold text-foreground"
+              >
+                Senha atual
+              </label>
+              <PasswordInput
+                id="modal-email-current-password"
+                autoComplete="current-password"
+                required
+                value={emailCurrentPassword}
+                onChange={(e) => {
+                  setEmailCurrentPassword(e.target.value);
+                  if (emailChangeError) setEmailChangeError(null);
+                }}
+                placeholder="Digite sua senha atual"
+                className="h-10 text-sm rounded-xl"
+              />
+              <span className="text-[11px] text-muted-foreground block">
+                Necessária para confirmar sua identidade antes da alteração.
+              </span>
+            </div>
+          </div>
+
+          <ModalFooter className="mt-4 pt-3 border-t border-border/80">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsEmailModalOpen(false);
+                setNewEmail("");
+                setEmailCurrentPassword("");
+                setEmailChangeError(null);
+              }}
+              disabled={isUpdatingEmail}
+              className="h-9 px-4 text-xs font-semibold rounded-xl cursor-pointer"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              variant="default"
+              disabled={
+                isUpdatingEmail ||
+                !newEmail.trim() ||
+                !emailCurrentPassword.trim()
+              }
+              className="h-9 px-4 text-xs font-semibold rounded-xl cursor-pointer gap-1.5"
+            >
+              {isUpdatingEmail ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
+                  <span>Enviando…</span>
+                </>
+              ) : (
+                <span>Confirmar</span>
+              )}
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
 
       {/* Modal de Confirmação de Saída */}
       <Modal

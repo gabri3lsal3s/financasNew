@@ -323,7 +323,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 4
 
-- [ ] **Tarefa 4.1: Criação da Migração PostgreSQL para Sincronização de E-mail**
+- [x] **Tarefa 4.1: Criação da Migração PostgreSQL para Sincronização de E-mail**
   - **Arquivo:** `supabase/migrations/20260101000064_sync_profile_email_on_auth_change.sql`
   - **O que verificar/ajustar:**
     - Criar o arquivo de migração contendo a trigger de atualização atômica:
@@ -359,7 +359,7 @@ git push origin main
         execute function public.handle_user_email_updated();
       ```
 
-- [ ] **Tarefa 4.2: Implementação da Função `requestUserEmailChange` em `src/data/auth.ts`**
+- [x] **Tarefa 4.2: Implementação da Função `requestUserEmailChange` em `src/data/auth.ts`**
   - **Arquivo:** `src/data/auth.ts`
   - **O que verificar/ajustar:**
     - Implementar a função com normalização e reautenticação:
@@ -382,7 +382,7 @@ git push origin main
       ```
     - Atualizar testes em `src/data/auth.test.ts`.
 
-- [ ] **Tarefa 4.3: Diálogo Modal de Alteração de E-mail em `AccountTab`**
+- [x] **Tarefa 4.3: Diálogo Modal de Alteração de E-mail em `AccountTab`**
   - **Arquivo:** `src/features/settings/components/tabs/account-tab.tsx`
   - **O que verificar/ajustar:**
     - No Card 1 (Dados Pessoais), adicionar botão *"Alterar e-mail"* ao lado do badge de verificado.
@@ -395,10 +395,10 @@ git push origin main
     - Atualizar `src/features/settings/components/tabs/account-tab.test.tsx`.
 
 ### Portão de Qualidade da Fase 4
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/data/auth.test.ts src/features/settings/components/tabs/account-tab.test.tsx`
-- [ ] **Commit & Push da Fase 4:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/data/auth.test.ts src/features/settings/components/tabs/account-tab.test.tsx`
+- [x] **Commit & Push da Fase 4:**
   ```bash
   git add supabase/migrations/20260101000064_sync_profile_email_on_auth_change.sql src/data/auth.ts src/data/auth.test.ts src/features/settings/components/tabs/account-tab.tsx src/features/settings/components/tabs/account-tab.test.tsx
   git commit -m "feat(auth): disponibiliza fluxo de alteracao de e-mail com reautenticacao e trigger no banco"
