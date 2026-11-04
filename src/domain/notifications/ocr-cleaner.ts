@@ -2,6 +2,10 @@
  * Utilitário puro de limpeza e normalização óptica de textos brutos de OCR.
  *
  * Corrige ruídos recorrentes de digitalização, scanners e fotos de baixa nitidez:
+ * - Prefixos monetários danificados: B$, RS, P$, A$, h$, F$, 8$, k$ -> R$.
+ * - Valores monetários fraturados por espaçamento: "1. 250, 00" -> "1.250,00" e "45 , 90" -> "45,90".
+ * - Pontuações acidentais em centavos: apóstrofos e traços ("42'90", "42-90", "42 90") -> "42,90".
+ * - Linhas decorativas e bordas pontilhadas (- - - -, * * * *, =======).
  * - Troca de letras e dígitos em valores monetários (ex.: 'O'/'o' por '0', 'l'/'I' por '1').
  * - Troca de letras em datas brasileiras (ex.: 'l0/05/2O26' -> '10/05/2026').
  * - Troca de letras em sequências de CNPJ/CPF (ex.: '/OOO1-' -> '/0001-').
@@ -26,14 +30,92 @@ function stripControlCharacters(text: string): string {
 }
 
 /**
- * Normaliza ruídos comuns de OCR em valores monetários brasileiros precedidos por R$ ou RS.
+ * Remove ruídos de linhas decorativas e bordas pontilhadas típicas de cupons fiscais térmicos
+ * (- - - - -, * * * * *, ====================, _ _ _ _ _).
+ */
+function removeDecorativeNoiseLines(text: string): string {
+  const lines = text.split("\n");
+  const filtered = lines.filter((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return true; // preserva linhas vazias estruturais
+    // Se a linha for composta exclusivamente por 3 ou mais caracteres decorativos e espaços
+    const isDecorative = /^(?:[\s\-_*=.~#•·])*(?:[-*=_~#•·]\s*){3,}$/.test(trimmed);
+    return !isDecorative;
+  });
+  return filtered.join("\n");
+}
+
+/**
+ * Converte prefixos monetários danificados por falhas ópticas (B$, RS, P$, A$, h$, F$, 8$, k$) para R$.
+ */
+function fixDamagedCurrencyPrefixes(text: string): string {
+  // Converte prefixos danificados em R$ quando precedidos por início de linha, espaço ou pontuação
+  // (evita transformar moedas como US$) e seguidos por valor monetário
+  let result = text.replace(
+    /(^|[^a-zA-Z0-9$])([BPAhF8k]|RS|R)\$\s*[:=]?\s*(?=[0-9OolI])/gi,
+    "$1R$ ",
+  );
+
+  // Também trata "RS " ou "RS: " sem cifrão quando seguido por dígitos
+  result = result.replace(
+    /\bRS\s*[:=]?\s*(?=[0-9OolI])/gi,
+    "R$ ",
+  );
+
+  return result;
+}
+
+/**
+ * Repara valores fraturados por espaçamento irregular do OCR:
+ * "1. 250, 00" -> "1.250,00", "45 , 90" -> "45,90", "1 . 250 , 00" -> "1.250,00", "1 50,00" -> "150,00".
+ */
+function fixFracturedMonetaryAmounts(text: string): string {
+  let result = text;
+
+  // 1. Espaços ao redor do separador de milhar ponto: "1 . 250" ou "1. 250" ou "1 .250"
+  result = result.replace(/(?<=\b\d{1,3})\s*\.\s*(?=\d{3}\b)/g, ".");
+
+  // 2. Espaços ao redor da vírgula decimal: "45 , 90" ou "45, 90" ou "45 ,90"
+  result = result.replace(/(?<=\b\d{1,6})\s*,\s*(?=\d{2}\b)/g, ",");
+
+  // 3. Espaços internos anômalos entre dígitos que possuem decimais: "1 50,00" -> "150,00"
+  result = result.replace(/(?<=\b\d{1,4})\s+(?=\d+(?:[.,]\d{2}))/g, "");
+
+  // 4. Espaços internos anômalos em números monetários precedidos por R$:
+  // Ex: "R$ 1 250,00" -> "R$ 1250,00"
+  result = result.replace(/(R\$\s*\d{1,3})\s+(\d{3}(?:[.,]\d{2})?)/g, "$1$2");
+
+  return result;
+}
+
+/**
+ * Corrige pontuações acidentais em centavos causadas por sujeira na fita térmica:
+ * "42'90" -> "42,90", "42-90" -> "42,90", "R$ 42 90" -> "R$ 42,90".
+ */
+function fixCentPunctuationArtifacts(text: string): string {
+  let result = text;
+
+  // 1. Apóstrofo ou traço separando centavos: "42'90" ou "42-90" ou "1.250'50"
+  result = result.replace(
+    /(R\$\s*\d{1,3}(?:\.\d{3})*|\b\d{1,6})['-](\d{2})(?![.,\d])\b/g,
+    "$1,$2",
+  );
+
+  // 2. Espaço isolado separando centavos após R$: "R$ 42 90" -> "R$ 42,90"
+  result = result.replace(
+    /(R\$\s*\d{1,3}(?:\.\d{3})*)\s+(\d{2})(?![.,\d])\b/gi,
+    "$1,$2",
+  );
+
+  return result;
+}
+
+/**
+ * Normaliza ruídos comuns de OCR em valores monetários brasileiros precedidos por R$.
  */
 function fixMonetaryOcrArtifacts(text: string): string {
-  // 1. Corrige variações de prefixo R$ (ex: "RS ", "R$: ", "R$  ")
-  let result = text.replace(/\b(?:RS|R\$)\s*[:=]?\s*/gi, "R$ ");
-
-  // 2. Corrige dígitos em valores precedidos por R$: 'O'/'o' por '0', 'l'/'I' por '1'
-  result = result.replace(
+  // Corrige dígitos em valores precedidos por R$: 'O'/'o' por '0', 'l'/'I' por '1'
+  return text.replace(
     /(R\$\s*)([0-9OolI.,\s]+)/gi,
     (_fullMatch, prefix: string, numberPart: string) => {
       // Substitui caracteres ópticos óbvios dentro do bloco numérico
@@ -46,8 +128,6 @@ function fixMonetaryOcrArtifacts(text: string): string {
       return `${prefix}${cleanedPart}`;
     },
   );
-
-  return result;
 }
 
 /**
@@ -109,12 +189,28 @@ export function cleanOcrText(rawText: string): string {
     // Remove múltiplos espaços horizontais repetidos
     .replace(/[ \t]+/g, " ");
 
-  // 2. Corrige ruídos monetários, datas e documentos
+  // 2. Remove ruídos de linhas decorativas e bordas pontilhadas
+  text = removeDecorativeNoiseLines(text);
+
+  // 3. Corrige prefixos monetários danificados (B$, RS, P$, A$, h$, F$, 8$, k$ -> R$)
+  text = fixDamagedCurrencyPrefixes(text);
+
+  // 4. Corrige valores fraturados por espaçamento irregular (1. 250, 00 -> 1.250,00)
+  text = fixFracturedMonetaryAmounts(text);
+
+  // 5. Corrige pontuações acidentais em centavos (42'90, 42-90, 42 90 -> 42,90)
+  text = fixCentPunctuationArtifacts(text);
+
+  // 6. Corrige substituições ópticas de dígitos e letras em valores monetários (O/o -> 0, l/I -> 1)
   text = fixMonetaryOcrArtifacts(text);
+
+  // 7. Corrige ruídos em datas brasileiras
   text = fixDateOcrArtifacts(text);
+
+  // 8. Corrige ruídos em sequências de CNPJ/CPF
   text = fixTaxIdOcrArtifacts(text);
 
-  // 3. Compacta linhas vazias excessivas (> 2 linhas viram 1 linha em branco)
+  // 9. Compacta linhas vazias excessivas (> 2 linhas viram 1 linha em branco)
   text = text.replace(/\n{3,}/g, "\n\n").trim();
 
   return text;

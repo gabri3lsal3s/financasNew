@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.pdf.PdfRenderer;
+import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
@@ -75,7 +76,33 @@ public final class ReceiptOcrHelper {
     }
 
     /**
-     * Extrai texto de imagem usando ML Kit Text Recognition.
+     * Lê a orientação EXIF de uma imagem a partir de sua Uri e retorna os graus de rotação (0, 90, 180 ou 270).
+     */
+    public static int getExifOrientationDegrees(@NonNull Context context, @NonNull Uri imageUri) {
+        try (InputStream is = context.getContentResolver().openInputStream(imageUri)) {
+            if (is == null) return 0;
+            ExifInterface exif = new ExifInterface(is);
+            int orientation = exif.getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            );
+            switch (orientation) {
+                case ExifInterface.ORIENTATION_ROTATE_90:
+                    return 90;
+                case ExifInterface.ORIENTATION_ROTATE_180:
+                    return 180;
+                case ExifInterface.ORIENTATION_ROTATE_270:
+                    return 270;
+                default:
+                    return 0;
+            }
+        } catch (Exception ignored) {
+            return 0;
+        }
+    }
+
+    /**
+     * Extrai texto de imagem usando ML Kit Text Recognition com correção de rotação EXIF.
      */
     public static void extractTextFromImage(
             @NonNull Context context,
@@ -83,8 +110,27 @@ public final class ReceiptOcrHelper {
             @NonNull OcrCallback callback
     ) {
         InputImage image;
+        int rotationDegrees = getExifOrientationDegrees(context, imageUri);
+
         try {
-            image = InputImage.fromFilePath(context, imageUri);
+            if (rotationDegrees != 0) {
+                // Se a orientação EXIF indicar rotação (foto capturada de lado ou invertida),
+                // decodifica o Bitmap e alimenta o ML Kit com os graus exatos de compensação
+                try (InputStream is = context.getContentResolver().openInputStream(imageUri)) {
+                    if (is != null) {
+                        Bitmap bitmap = BitmapFactory.decodeStream(is);
+                        if (bitmap != null) {
+                            image = InputImage.fromBitmap(bitmap, rotationDegrees);
+                        } else {
+                            image = InputImage.fromFilePath(context, imageUri);
+                        }
+                    } else {
+                        image = InputImage.fromFilePath(context, imageUri);
+                    }
+                }
+            } else {
+                image = InputImage.fromFilePath(context, imageUri);
+            }
         } catch (Exception ex) {
             Log.w(TAG, "Falha em InputImage.fromFilePath, tentando decodificacao direta por InputStream: " + ex.getMessage());
             try (InputStream is = context.getContentResolver().openInputStream(imageUri)) {
@@ -97,7 +143,7 @@ public final class ReceiptOcrHelper {
                     callback.onError(new IllegalArgumentException("Falha ao decodificar bitmap da imagem fornecida"));
                     return;
                 }
-                image = InputImage.fromBitmap(bitmap, 0);
+                image = InputImage.fromBitmap(bitmap, rotationDegrees);
             } catch (Exception streamEx) {
                 Log.e(TAG, "Erro fatal ao decodificar imagem para OCR", streamEx);
                 callback.onError(streamEx);

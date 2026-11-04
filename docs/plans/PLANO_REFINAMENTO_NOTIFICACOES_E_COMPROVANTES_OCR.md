@@ -194,25 +194,25 @@ Análise técnica detalhada sobre viabilidade de monitoramento de apps de transp
 
 Garantir que comprovantes capturados por fotos de celular, escaneamentos ou impressões térmicas desgastadas tenham o texto corrigido antes do parsing.
 
-- [ ] **Tarefa 5.1: Expansão do Higienizador de Ruídos Ópticos (`ocr-cleaner.ts`)**
+- [x] **Tarefa 5.1: Expansão do Higienizador de Ruídos Ópticos (`ocr-cleaner.ts`)**
   - Suportar prefixos monetários danificados: `B$`, `RS`, `P$`, `A$`, `h$`, `F$`, `8$`, `k$`, convertendo para `R$`.
   - Reparar valores fraturados por espaçamento irregular do OCR: `1. 250, 00` -> `1.250,00` e `45 , 90` -> `45,90`.
   - Corrigir pontuações acidentais: apóstrofos e traços em centavos (`42'90`, `42-90`, `42 90`) -> `42,90`.
   - Remover ruídos de linhas decorativas e bordas pontilhadas (`- - - - -`, `* * * * *`, `===========`).
 
-- [ ] **Tarefa 5.2: Otimização do Pipeline OCR no Web/PWA (`web-ocr.ts` & Canvas Preprocessing)**
+- [x] **Tarefa 5.2: Otimização do Pipeline OCR no Web/PWA (`web-ocr.ts` & Canvas Preprocessing)**
   - Adicionar normalização de imagem no navegador via `<canvas>` antes do envio ao Tesseract:
     - Ajuste de contraste e conversão para escala de cinza (grayscale).
     - Redimensionamento suave para imagens excessivamente grandes (> 2500px), acelerando o processamento sem perda de nitidez.
 
-- [ ] **Tarefa 5.3: Tratamento de Orientação e Rotação no Android Nativo (`ReceiptOcrHelper.java`)**
+- [x] **Tarefa 5.3: Tratamento de Orientação e Rotação no Android Nativo (`ReceiptOcrHelper.java`)**
   - Corrigir orientação EXIF de fotos tiradas de lado ou invertidas antes do envio ao Google ML Kit Text Recognition.
 
-- [ ] **Portão de Qualidade 5:**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/domain/notifications/ocr-cleaner.test.ts`
-  - [ ] **Commit & Push da Fase 5:** `git commit -m "feat(ocr): aprimora pre-processamento optico e tolerancia a ruidos visuais"`
+- [x] **Portão de Qualidade 5:**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/domain/notifications/ocr-cleaner.test.ts`
+  - [x] **Commit & Push da Fase 5:** `git commit -m "feat(ocr): aprimora pre-processamento optico e tolerancia a ruidos visuais"`
 
 ---
 
