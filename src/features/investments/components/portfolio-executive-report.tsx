@@ -165,6 +165,28 @@ export function PortfolioExecutiveReport({
     return monthlyPositionQuery.data.cashQuantity;
   }, [isCurrentSelected, monthlyPositionQuery.data, cashBRL]);
 
+  const effectiveCostBRL = useMemo(() => {
+    if (isCurrentSelected || !monthlyPositionQuery.data) {
+      return rows.reduce((acc, r) => acc + (r.totalCostBRL ?? r.totalCost ?? 0), 0);
+    }
+    return monthlyPositionQuery.data.totalCostBRL;
+  }, [isCurrentSelected, monthlyPositionQuery.data, rows]);
+
+  const effectiveReturnPnlBRL = useMemo(() => {
+    if (isCurrentSelected || !monthlyPositionQuery.data) {
+      return totalReturnPnlBRL ?? (allTimeEconomicPnlBRL ?? 0);
+    }
+    return monthlyPositionQuery.data.positions.reduce((acc, p) => acc + p.totalReturnPnl, 0);
+  }, [isCurrentSelected, monthlyPositionQuery.data, totalReturnPnlBRL, allTimeEconomicPnlBRL]);
+
+  const effectiveReturnPct = useMemo(() => {
+    if (isCurrentSelected || !monthlyPositionQuery.data) {
+      return totalReturnPct;
+    }
+    const cost = monthlyPositionQuery.data.totalCostBRL;
+    return cost > 0 ? (effectiveReturnPnlBRL / cost) * 100 : 0;
+  }, [isCurrentSelected, monthlyPositionQuery.data, effectiveReturnPnlBRL, totalReturnPct]);
+
   const effectiveDividendsBRL = useMemo(() => {
     if (isCurrentSelected || !monthlyPositionQuery.data) return yearDividendsBRL;
     return monthlyPositionQuery.data.accumulatedDividendsTotalBRL;
@@ -318,7 +340,7 @@ export function PortfolioExecutiveReport({
                   portfolioTwr.accumulatedRatePct !== null,
               );
               const isCustodyActive =
-                !isTwrActive && totalReturnPct !== null && totalReturnPct !== undefined;
+                !isTwrActive && effectiveReturnPct !== null && effectiveReturnPct !== undefined;
 
               const rentabilidadeItem =
                 isCurrentSelected && portfolioTwr && isTwrActive
@@ -343,20 +365,20 @@ export function PortfolioExecutiveReport({
                     }
                   : isCustodyActive
                     ? {
-                        label: "Rentabilidade da Carteira",
+                        label: isCurrentSelected ? "Rentabilidade da Carteira" : "Retorno na Competência",
                         value: (
                           <span
                             className={
-                              (totalReturnPct ?? 0) >= 0
+                              (effectiveReturnPct ?? 0) >= 0
                                 ? "text-positive-strong"
                                 : "text-negative-strong"
                             }
                           >
-                            {(totalReturnPct ?? 0) >= 0 ? "+" : ""}
-                            {(totalReturnPct ?? 0).toFixed(1)}%
+                            {(effectiveReturnPct ?? 0) >= 0 ? "+" : ""}
+                            {(effectiveReturnPct ?? 0).toFixed(1)}%
                           </span>
                         ),
-                        subtext: "Custódia aberta sobre custo",
+                        subtext: isCurrentSelected ? "Custódia aberta sobre custo" : "Retorno total sobre custo",
                       }
                     : {
                         label: "Rentabilidade da Carteira",
@@ -389,7 +411,9 @@ export function PortfolioExecutiveReport({
                     {
                       label: "Resultado Histórico",
                       value: (() => {
-                        const finalPnl = allTimeEconomicPnlBRL ?? totalReturnPnlBRL ?? 0;
+                        const finalPnl = isCurrentSelected
+                          ? (allTimeEconomicPnlBRL ?? totalReturnPnlBRL ?? 0)
+                          : effectiveReturnPnlBRL;
                         return (
                           <span
                             className={
@@ -403,7 +427,7 @@ export function PortfolioExecutiveReport({
                           </span>
                         );
                       })(),
-                      subtext: "P&L Econômico Total",
+                      subtext: isCurrentSelected ? "P&L Econômico Total" : "P&L Total da Competência",
                     },
                   ]}
                   narrative={
@@ -415,7 +439,12 @@ export function PortfolioExecutiveReport({
                           className="inline font-bold"
                         />
                       </strong>{" "}
-                      sob custódia, distribuídos em{" "}
+                      sob custódia (custo de aquisição de{" "}
+                      <MoneyText
+                        cents={numberToCents(effectiveCostBRL)}
+                        className="inline font-bold text-muted-foreground"
+                      />
+                      ), distribuídos em{" "}
                       <strong>{investmentRows.length} ativos</strong> e{" "}
                       <strong>{classGroups.length} classes de investimento</strong>. O saldo em
                       reserva de liquidez é de{" "}

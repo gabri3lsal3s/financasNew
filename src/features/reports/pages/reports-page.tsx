@@ -558,6 +558,52 @@ export function ReportsPage() {
     return monthlyPositionQuery.data.cashQuantity;
   }, [isCurrentInvestmentMonth, monthlyPositionQuery.data, cashBalanceBRL]);
 
+  const investmentCostBRL = useMemo(() => {
+    if (isCurrentInvestmentMonth || !monthlyPositionQuery.data) {
+      return totalInvestedCostBRL;
+    }
+    return monthlyPositionQuery.data.totalCostBRL;
+  }, [isCurrentInvestmentMonth, monthlyPositionQuery.data, totalInvestedCostBRL]);
+
+  const investmentUnrealizedPnlBRL = useMemo(() => {
+    if (isCurrentInvestmentMonth || !monthlyPositionQuery.data) {
+      return positionQuery.unrealizedPnlBRL;
+    }
+    return Math.round((monthlyPositionQuery.data.totalValueBRL - monthlyPositionQuery.data.totalCostBRL) * 100) / 100;
+  }, [isCurrentInvestmentMonth, monthlyPositionQuery.data, positionQuery.unrealizedPnlBRL]);
+
+  const investmentUnrealizedPnlPct = useMemo(() => {
+    if (isCurrentInvestmentMonth || !monthlyPositionQuery.data) {
+      return positionQuery.unrealizedPct;
+    }
+    const cost = monthlyPositionQuery.data.totalCostBRL;
+    return cost > 0
+      ? ((monthlyPositionQuery.data.totalValueBRL - cost) / cost) * 100
+      : 0;
+  }, [isCurrentInvestmentMonth, monthlyPositionQuery.data, positionQuery.unrealizedPct]);
+
+  const investmentDividendsBRL = useMemo(() => {
+    if (isCurrentInvestmentMonth || !monthlyPositionQuery.data) {
+      return positionQuery.totalDividendsBRL;
+    }
+    return monthlyPositionQuery.data.accumulatedDividendsTotalBRL;
+  }, [isCurrentInvestmentMonth, monthlyPositionQuery.data, positionQuery.totalDividendsBRL]);
+
+  const investmentTotalReturnPnlBRL = useMemo(() => {
+    if (isCurrentInvestmentMonth || !monthlyPositionQuery.data) {
+      return positionQuery.totalReturnPnlBRL;
+    }
+    return monthlyPositionQuery.data.positions.reduce((acc, p) => acc + p.totalReturnPnl, 0);
+  }, [isCurrentInvestmentMonth, monthlyPositionQuery.data, positionQuery.totalReturnPnlBRL]);
+
+  const investmentTotalReturnPct = useMemo(() => {
+    if (isCurrentInvestmentMonth || !monthlyPositionQuery.data) {
+      return positionQuery.totalReturnPct;
+    }
+    const cost = monthlyPositionQuery.data.totalCostBRL;
+    return cost > 0 ? (investmentTotalReturnPnlBRL / cost) * 100 : 0;
+  }, [isCurrentInvestmentMonth, monthlyPositionQuery.data, investmentTotalReturnPnlBRL, positionQuery.totalReturnPct]);
+
   const investmentPeriodLabel = useMemo(() => {
     return isCurrentInvestmentMonth ? "Posição Atual" : formatMonthYear(investmentMonth);
   }, [isCurrentInvestmentMonth, investmentMonth]);
@@ -1143,15 +1189,15 @@ export function ReportsPage() {
               };
             })}
             totalBRL={investmentTotalBRL}
-            totalCostBRL={isCurrentInvestmentMonth ? totalInvestedCostBRL : (monthlyPositionQuery.data?.totalCostBRL ?? totalInvestedCostBRL)}
-            totalDividendsBRL={isCurrentInvestmentMonth ? positionQuery.totalDividendsBRL : (monthlyPositionQuery.data?.accumulatedDividendsTotalBRL ?? positionQuery.totalDividendsBRL)}
-            totalReturnPnlBRL={positionQuery.totalReturnPnlBRL}
-            totalReturnPct={positionQuery.totalReturnPct}
-            unrealizedPnlBRL={isCurrentInvestmentMonth ? positionQuery.unrealizedPnlBRL : ((monthlyPositionQuery.data ? monthlyPositionQuery.data.totalValueBRL - monthlyPositionQuery.data.totalCostBRL : null) ?? positionQuery.unrealizedPnlBRL)}
-            unrealizedPnlPct={isCurrentInvestmentMonth ? positionQuery.unrealizedPct : ((monthlyPositionQuery.data && monthlyPositionQuery.data.totalCostBRL > 0 ? ((monthlyPositionQuery.data.totalValueBRL - monthlyPositionQuery.data.totalCostBRL) / monthlyPositionQuery.data.totalCostBRL) * 100 : null) ?? positionQuery.unrealizedPct)}
+            totalCostBRL={investmentCostBRL}
+            totalDividendsBRL={investmentDividendsBRL}
+            totalReturnPnlBRL={investmentTotalReturnPnlBRL}
+            totalReturnPct={investmentTotalReturnPct}
+            unrealizedPnlBRL={investmentUnrealizedPnlBRL}
+            unrealizedPnlPct={investmentUnrealizedPnlPct}
             periodRedemptions={periodRedemptions}
             cashBRL={investmentCashBRL}
-            yearDividendsBRL={isCurrentInvestmentMonth ? yearDividendsBRL : (monthlyPositionQuery.data?.accumulatedDividendsTotalBRL ?? yearDividendsBRL)}
+            yearDividendsBRL={isCurrentInvestmentMonth ? yearDividendsBRL : investmentDividendsBRL}
             monthSummary={periodFlowSummary}
             allocationAnalysis={allocationAnalysis}
             concentrationRisk={concentrationRisk}
