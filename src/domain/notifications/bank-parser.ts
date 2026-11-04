@@ -2081,6 +2081,12 @@ export function extractTaxId(text: string): string | undefined {
     return cpfMatch[1].trim();
   }
 
+  // 3. CNPJ formatado avulso sem prefixo: XX.XXX.XXX/XXXX-XX
+  const bareCnpjMatch = /\b([0-9]{2}\.[0-9]{3}\.[0-9]{3}\/[0-9]{4}-[0-9]{2})\b/.exec(text);
+  if (bareCnpjMatch && bareCnpjMatch[1]) {
+    return bareCnpjMatch[1].replace(/[^\d]/g, "");
+  }
+
   return undefined;
 }
 

@@ -87,10 +87,40 @@ function extractGenericPayer(text: string): string | undefined {
 }
 
 /**
+ * Extrai o valor monetário total de recibos genéricos buscando explicitamente linhas de totalizador
+ * (do fim para o início) antes de recorrer ao primeiro valor monetário encontrado.
+ */
+export function extractGenericReceiptTotalCents(text: string): number | null {
+  if (!text) return null;
+
+  const lines = text
+    .split(/[\r\n]+/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  // 1. Busca reversa por linha explícita de total (do fim para o início)
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i]!;
+    if (/\b(?:troco|troco\s+r\$|tributos|lei\s+12\.741)\b/i.test(line)) continue;
+
+    const matchTotal = line.match(
+      /(?:VALOR\s+A\s+PAGAR|TOTAL\s+(?:A\s+PAGAR|LIQUIDO|GERAL)|VALOR\s+TOTAL|TOTAL\s+R\$|TOTAL\s*[:=])\s*R?\$?\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2}|[0-9]+,[0-9]{2})/i,
+    );
+    if (matchTotal && matchTotal[1]) {
+      const cents = extractCentsFromText(matchTotal[1]);
+      if (cents && cents > 0) return cents;
+    }
+  }
+
+  // 2. Fallback: extrai o primeiro valor monetário geral
+  return extractCentsFromText(text);
+}
+
+/**
  * Fallback semântico para recibos avulsos e declarações de pagamento genéricas.
  */
 function parseGenericReceipt(cleanedText: string): UniversalReceiptData | null {
-  const cents = extractCentsFromText(cleanedText);
+  const cents = extractGenericReceiptTotalCents(cleanedText);
   if (!cents || cents <= 0) return null;
 
   const { date: txDate } = extractDateFromReceipt(cleanedText, false);

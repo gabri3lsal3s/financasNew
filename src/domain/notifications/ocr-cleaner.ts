@@ -95,13 +95,19 @@ function fixFracturedMonetaryAmounts(text: string): string {
 function fixCentPunctuationArtifacts(text: string): string {
   let result = text;
 
-  // 1. Apóstrofo ou traço separando centavos: "42'90" ou "42-90" ou "1.250'50"
+  // 1. Apóstrofo separando centavos: "42'90" ou "1.250'50"
   result = result.replace(
-    /(R\$\s*\d{1,3}(?:\.\d{3})*|\b\d{1,6})['-](\d{2})(?![.,\d])\b/g,
+    /(R\$\s*\d{1,3}(?:\.\d{3})*|\b\d{1,6})'(\d{2})(?![.,\d])\b/g,
     "$1,$2",
   );
 
-  // 2. Espaço isolado separando centavos após R$: "R$ 42 90" -> "R$ 42,90"
+  // 2. Traço acidental separando centavos estritamente precedido por R$: "R$ 42-90"
+  result = result.replace(
+    /(R\$\s*\d{1,3}(?:\.\d{3})*)-(\d{2})(?![.,\d])\b/g,
+    "$1,$2",
+  );
+
+  // 3. Espaço isolado separando centavos após R$: "R$ 42 90" -> "R$ 42,90"
   result = result.replace(
     /(R\$\s*\d{1,3}(?:\.\d{3})*)\s+(\d{2})(?![.,\d])\b/gi,
     "$1,$2",

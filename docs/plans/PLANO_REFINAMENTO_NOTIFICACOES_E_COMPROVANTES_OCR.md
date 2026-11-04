@@ -220,26 +220,26 @@ Garantir que comprovantes capturados por fotos de celular, escaneamentos ou impr
 
 Eliminar o risco de captura de valores parciais de itens individuais em cupons de supermercado, farmácia e restaurante, isolando o total consolidado.
 
-- [ ] **Tarefa 6.1: Algoritmo de Busca Reversa (Bottom-Up) para Totalizador Fiscal**
+- [x] **Tarefa 6.1: Algoritmo de Busca Reversa (Bottom-Up) para Totalizador Fiscal**
   - Modificar `extractDanfeTotalCents` em `src/domain/notifications/danfe-nfc-parser.ts`:
     - Varrer as linhas do texto a partir do final (onde os totalizadores fiscais residem por especificação da SEFAZ).
     - Priorizar marcadores oficiais: "VALOR A PAGAR R$", "TOTAL A PAGAR", "TOTAL LIQUIDO R$", "TOTAL R$", "VALOR TOTAL R$".
     - Eliminar confusão com subtotais de itens, descontos, troco ("TROCO R$ 10,00") ou número de itens ("QTD TOTAL DE ITENS: 15").
 
-- [ ] **Tarefa 6.2: Extração de Razão Social e Nome Fantasia em Cupons Fiscais**
+- [x] **Tarefa 6.2: Extração de Razão Social e Nome Fantasia em Cupons Fiscais**
   - Aprimorar `extractDanfeIssuer`:
     - Filtrar títulos operacionais ("VIA CONSUMIDOR", "EXTRATO SAT", "DANFE NFC-e").
     - Capturar o nome do estabelecimento emitente nas primeiras linhas e higienizar prefixos e sufixos fiscais (LTDA, S/A, ME, EPP).
     - Associar o CNPJ capturado à memória de estabelecimentos para herdar a categoria correta.
 
-- [ ] **Tarefa 6.3: Fallback Semântico para Recibos Genéricos de Múltiplos Itens (`universal-receipt-parser.ts`)**
+- [x] **Tarefa 6.3: Fallback Semântico para Recibos Genéricos de Múltiplos Itens (`universal-receipt-parser.ts`)**
   - Aprimorar `parseGenericReceipt` para que, ao se deparar com listas de compras (restaurantes, oficinas, farmácias avulsas), busque explicitamente a linha de total antes de recorrer ao primeiro valor monetário encontrado.
 
-- [ ] **Portão de Qualidade 6:**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/domain/notifications/danfe-nfc-parser.test.ts src/domain/notifications/universal-receipt-parser.test.ts`
-  - [ ] **Commit & Push da Fase 6:** `git commit -m "feat(ocr): busca reversa bottom-up para extracao precisa de totais fiscais"`
+- [x] **Portão de Qualidade 6:**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/domain/notifications/danfe-nfc-parser.test.ts src/domain/notifications/universal-receipt-parser.test.ts`
+  - [x] **Commit & Push da Fase 6:** `git commit -m "feat(ocr): busca reversa bottom-up para extracao precisa de totais fiscais"`
 
 ---
 

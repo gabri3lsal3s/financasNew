@@ -456,6 +456,28 @@ describe("universal-receipt-parser (Orquestrador Universal)", () => {
       expect(result?.installments?.count).toBe(3);
       expect(result?.merchantOrBeneficiary).toContain("OFICINA DA MADEIRA");
     });
+
+    it("deve priorizar a linha de total em recibos genéricos de múltiplos itens (Tarefa 6.3)", () => {
+      const multiItemGeneric = `
+        OFICINA MECANICA DO MARRECO
+        ORDEM DE SERVICO / RECIBO
+        DATA: 20/05/2026
+        
+        ITEM 1: TROCA DE OLEO R$ 120,00
+        ITEM 2: FILTRO DE OLEO R$ 45,00
+        ITEM 3: ALINHAMENTO E BALANCEAMENTO R$ 150,00
+        
+        VALOR TOTAL A PAGAR R$ 315,00
+        FORMA: PIX
+      `;
+
+      const result = parseUniversalReceipt(multiItemGeneric);
+      expect(result).not.toBeNull();
+      expect(result?.kind).toBe("generic");
+      expect(result?.amountCents).toBe(31500);
+      expect(result?.paymentMethod).toBe("pix");
+      expect(result?.date).toBe("2026-05-20");
+    });
   });
 
   describe("7. Casos de Borda, Mensagens Rejeitadas e Normalização", () => {
