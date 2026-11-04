@@ -251,7 +251,7 @@ export function FireProjectionCurve({
           </text>
           {fireCrossover && fireCrossover.year > 0 && fireCrossover.year < years ? (
             <text
-              x={linePoints[fireCrossoverIndex]!.x}
+              x={Math.max(70, Math.min(width - 70, linePoints[fireCrossoverIndex]!.x))}
               y={height - 6}
               textAnchor="middle"
               className="fill-positive-strong text-[10px] font-mono font-bold"
@@ -268,13 +268,13 @@ export function FireProjectionCurve({
       {/* Grid com os 3 Cards Métricos Ricos, Espaçosos e com Barras de Progresso */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 pt-1">
         {/* Card 1: Horizonte Patrimonial */}
-        <div className="flex flex-col justify-between p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left">
+        <div className="flex flex-col justify-between p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
           <div className="flex items-center justify-between gap-1">
             <span className="text-[11px] font-medium text-muted-foreground truncate">Horizonte Patrimonial</span>
             <span className="size-2 rounded-full bg-positive-strong shrink-0" />
           </div>
-          <div className="mt-1">
-            <span className="font-mono font-bold text-foreground text-base sm:text-lg tabular-nums block">
+          <div className="mt-1 min-w-0">
+            <span className="font-mono font-bold text-foreground text-sm sm:text-base lg:text-lg tabular-nums block truncate">
               {activePoint.year === 0 ? "Ano 0 (Início)" : `${activePoint.year} anos`}
             </span>
             <span className="text-[10px] text-muted-foreground block mt-0.5 truncate">
@@ -292,16 +292,17 @@ export function FireProjectionCurve({
         </div>
 
         {/* Card 2: Patrimônio Acumulado */}
-        <div className="flex flex-col justify-between p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left">
+        <div className="flex flex-col justify-between p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
           <div className="flex items-center justify-between gap-1">
             <span className="text-[11px] font-medium text-muted-foreground truncate">Patrimônio Acumulado</span>
             <span className="size-2 rounded-full bg-portfolio shrink-0" />
           </div>
-          <div className="mt-1">
+          <div className="mt-1 min-w-0">
             <MoneyText
               cents={activePoint.balance * 100}
               tone="default"
-              className="font-mono font-bold text-foreground text-base sm:text-lg tabular-nums block"
+              hideCents
+              className="font-mono font-bold text-foreground text-sm sm:text-base lg:text-lg tabular-nums block truncate"
             />
             <span className="text-[10px] text-muted-foreground block mt-0.5 truncate">
               {Math.round((activePoint.balance / fireTarget) * 100)}% da meta atingida
@@ -318,19 +319,20 @@ export function FireProjectionCurve({
         </div>
 
         {/* Card 3: Renda Mensal Passiva */}
-        <div className="flex flex-col justify-between p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left">
+        <div className="flex flex-col justify-between p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
           <div className="flex items-center justify-between gap-1">
             <span className="text-[11px] font-medium text-muted-foreground truncate">Renda Mensal Passiva</span>
             <span className="size-2 rounded-full bg-positive-strong shrink-0" />
           </div>
-          <div className="mt-1">
-            <div className="flex items-baseline gap-0.5">
+          <div className="mt-1 min-w-0">
+            <div className="flex items-baseline gap-0.5 min-w-0">
               <MoneyText
                 cents={activePoint.passiveMonthly * 100}
                 tone="positive"
-                className="font-mono font-bold text-positive-strong dark:text-positive text-base sm:text-lg tabular-nums"
+                hideCents
+                className="font-mono font-bold text-positive-strong dark:text-positive text-sm sm:text-base lg:text-lg tabular-nums truncate"
               />
-              <span className="text-[11px] text-muted-foreground font-normal">/mês</span>
+              <span className="text-[11px] text-muted-foreground font-normal shrink-0">/mês</span>
             </div>
             <span className="text-[10px] text-muted-foreground block mt-0.5 truncate">
               Regra dos 4% perpétua
