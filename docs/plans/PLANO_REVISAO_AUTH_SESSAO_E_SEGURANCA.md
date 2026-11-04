@@ -195,7 +195,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 2
 
-- [ ] **Tarefa 2.1: URL Pública Universal e Anti-Enumeração em `ForgotPasswordPage`**
+- [x] **Tarefa 2.1: URL Pública Universal e Anti-Enumeração em `ForgotPasswordPage`**
   - **Arquivos:** `src/data/auth.ts`, `src/features/auth/pages/forgot-password-page.tsx`
   - **O que verificar/ajustar:**
     - Em `resetPasswordForEmail` (`src/data/auth.ts`), utilizar `redirectTo: getPublicAppUrl("/redefinir-senha")` e normalizar com `normalizeEmail(email)`.
@@ -206,7 +206,7 @@ git push origin main
       - Garantir que a mensagem de sucesso seja neutra e institucional: *"Se o endereço estiver cadastrado, você receberá um link de redefinição em instantes."*.
     - Atualizar `src/features/auth/pages/forgot-password-page.test.tsx`.
 
-- [ ] **Tarefa 2.2: Higienização de Tokens da URL e Invalidação Pós-Reset (`ResetPasswordPage`)**
+- [x] **Tarefa 2.2: Higienização de Tokens da URL e Invalidação Pós-Reset (`ResetPasswordPage`)**
   - **Arquivo:** `src/features/auth/pages/reset-password-page.tsx`
   - **O que verificar/ajustar:**
     - Ao capturar o evento `PASSWORD_RECOVERY` ou ao inicializar com hash/query de recuperação, higienizar imediatamente o histórico do browser:
@@ -227,10 +227,10 @@ git push origin main
     - Atualizar `src/features/auth/pages/reset-password-page.test.tsx`.
 
 ### Portão de Qualidade da Fase 2
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/features/auth/pages/forgot-password-page.test.tsx src/features/auth/pages/reset-password-page.test.tsx`
-- [ ] **Commit & Push da Fase 2:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/features/auth/pages/forgot-password-page.test.tsx src/features/auth/pages/reset-password-page.test.tsx`
+- [x] **Commit & Push da Fase 2:**
   ```bash
   git add src/data/auth.ts src/features/auth/pages/forgot-password-page.tsx src/features/auth/pages/forgot-password-page.test.tsx src/features/auth/pages/reset-password-page.tsx src/features/auth/pages/reset-password-page.test.tsx
   git commit -m "feat(auth): blinda recuperacao e redefinicao de senha com limpeza de url e anti-enumeracao"

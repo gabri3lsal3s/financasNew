@@ -41,6 +41,28 @@ export function ResetPasswordPage() {
       return;
     }
 
+    const cleanUrlTokens = () => {
+      if (typeof window !== "undefined" && (window.location.hash || window.location.search)) {
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname || "/redefinir-senha",
+        );
+      }
+    };
+
+    const hasRecoveryParams =
+      typeof window !== "undefined" &&
+      (window.location.hash.includes("type=recovery") ||
+        window.location.hash.includes("access_token") ||
+        window.location.hash.includes("refresh_token") ||
+        window.location.search.includes("type=recovery") ||
+        window.location.search.includes("code="));
+
+    if (hasRecoveryParams) {
+      cleanUrlTokens();
+    }
+
     const supabase = getSupabase();
 
     // Escuta eventos de Auth do Supabase (PASSWORD_RECOVERY ou SIGNED_IN com recovery)
@@ -49,6 +71,7 @@ export function ResetPasswordPage() {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
         setIsInvalidLink(false);
+        cleanUrlTokens();
       }
     });
 
@@ -78,6 +101,15 @@ export function ResetPasswordPage() {
     setPending(true);
     try {
       await updateUserPassword(newPassword);
+
+      // Invalida outras sessões ativas no Supabase para proteção contra dispositivos roubados ou sessões órfãs
+      try {
+        const supabase = getSupabase();
+        await supabase.auth.signOut({ scope: "others" });
+      } catch {
+        // fail-safe
+      }
+
       triggerSensory("success");
       setIsSuccess(true);
       pushToast({

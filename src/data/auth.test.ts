@@ -150,12 +150,23 @@ describe("data/auth — operações de autenticação", () => {
   });
 
   describe("resetPasswordForEmail", () => {
-    it("chama auth.resetPasswordForEmail apontando para /redefinir-senha", async () => {
+    it("chama auth.resetPasswordForEmail apontando para /redefinir-senha com getPublicAppUrl e email normalizado", async () => {
       mockResetPasswordForEmail.mockResolvedValueOnce({ error: null });
-      await resetPasswordForEmail("recuperar@exemplo.com");
+      await resetPasswordForEmail("  RECUPERAR@EXEMPLO.COM  ");
 
       expect(mockResetPasswordForEmail).toHaveBeenCalledWith("recuperar@exemplo.com", {
-        redirectTo: `${window.location.origin}/redefinir-senha`,
+        redirectTo: getPublicAppUrl("/redefinir-senha"),
+        captchaToken: undefined,
+      });
+    });
+
+    it("repassa captchaToken nas opções quando fornecido", async () => {
+      mockResetPasswordForEmail.mockResolvedValueOnce({ error: null });
+      await resetPasswordForEmail("recuperar@exemplo.com", "token-captcha-123");
+
+      expect(mockResetPasswordForEmail).toHaveBeenCalledWith("recuperar@exemplo.com", {
+        redirectTo: getPublicAppUrl("/redefinir-senha"),
+        captchaToken: "token-captcha-123",
       });
     });
 

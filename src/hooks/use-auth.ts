@@ -32,7 +32,7 @@ export interface AuthState {
   configError: string | null;
   signIn: (email: string, password: string, captchaToken?: string) => Promise<void>;
   signUp: (email: string, password: string, name?: string, inviteCode?: string, captchaToken?: string) => Promise<SignUpResult>;
-  resetPassword: (email: string) => Promise<void>;
+  resetPassword: (email: string, captchaToken?: string) => Promise<void>;
   resendConfirmation: (email: string) => Promise<void>;
 }
 

@@ -71,9 +71,18 @@ export async function signUpWithEmail(
 }
 
 
-export async function resetPasswordForEmail(email: string): Promise<void> {
-  const { error } = await getSupabase().auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/redefinir-senha`,
+/**
+ * Solicita o envio de link de recuperação/redefinição de senha para o e-mail informado (Fase 2.1).
+ * Utiliza URL universal de retorno via getPublicAppUrl e validação anti-bot (captchaToken).
+ */
+export async function resetPasswordForEmail(
+  email: string,
+  captchaToken?: string,
+): Promise<void> {
+  const normalized = normalizeEmail(email);
+  const { error } = await getSupabase().auth.resetPasswordForEmail(normalized, {
+    redirectTo: getPublicAppUrl("/redefinir-senha"),
+    captchaToken: captchaToken || undefined,
   });
   if (error) {
     const classified = classifyError(error);

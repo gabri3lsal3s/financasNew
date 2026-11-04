@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
@@ -8,22 +8,33 @@ import { resetPasswordForEmail } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 
-
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [pending, setPending] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (cooldown > 0 || pending) return;
     setError(null);
     setSent(false);
     setPending(true);
     try {
-      await resetPasswordForEmail(email);
+      await resetPasswordForEmail(email, captchaToken ?? undefined);
       triggerSensory("success");
       setSent(true);
+      setCooldown(60);
     } catch (err) {
       triggerSensory("destructive");
       setError(getErrorMessage(err));
@@ -37,7 +48,9 @@ export function ForgotPasswordPage() {
       <div className="flex flex-col gap-4">
         {error ? <Alert variant="error">{error}</Alert> : null}
         {sent ? (
-          <Alert variant="success">Enviamos um link de recuperação para o seu e-mail. Verifique sua caixa de entrada.</Alert>
+          <Alert variant="success">
+            Se o endereço estiver cadastrado, você receberá um link de redefinição em instantes.
+          </Alert>
         ) : null}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
@@ -55,10 +68,18 @@ export function ForgotPasswordPage() {
               placeholder="voce@exemplo.com"
             />
           </div>
-          <Turnstile />
+          <Turnstile
+            className="my-0.5"
+            onVerify={setCaptchaToken}
+            onExpire={() => setCaptchaToken(null)}
+          />
 
-          <Button type="submit" disabled={pending}>
-            {pending ? "Enviando…" : "Enviar link de recuperação"}
+          <Button type="submit" disabled={pending || cooldown > 0}>
+            {pending
+              ? "Enviando…"
+              : cooldown > 0
+                ? `Aguarde ${cooldown}s para reenviar`
+                : "Enviar link de recuperação"}
           </Button>
         </form>
 
@@ -69,7 +90,10 @@ export function ForgotPasswordPage() {
               Entrar
             </Link>
           </p>
-          <Link to="/entrar" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-2">
+          <Link
+            to="/entrar"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-2"
+          >
             <ArrowLeft className="size-3.5" aria-hidden="true" />
             <span>Voltar para o login</span>
           </Link>
