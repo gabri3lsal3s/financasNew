@@ -354,8 +354,15 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     resetDemoSession();
   });
 
-  it("abre automaticamente o diálogo de Suporte via deep-link ?tab=suporte após a conclusão do tour", () => {
+  it("renderiza a aba de Suporte & Chamados via deep-link ?tab=suporte sem abrir modal invasivo", () => {
     renderSettings(["/configuracoes?tab=suporte"]);
+    expect(screen.getByRole("tab", { name: /Suporte/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Central de Suporte & Chamados")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Falar com o Suporte" })).not.toBeInTheDocument();
+  });
+
+  it("abre automaticamente o diálogo de Suporte via deep-link ?modal=suporte", () => {
+    renderSettings(["/configuracoes?modal=suporte"]);
     expect(screen.getByRole("heading", { name: "Falar com o Suporte" })).toBeInTheDocument();
     expect(screen.getByText(/Envie sua dúvida, sugestão ou relate um problema/i)).toBeInTheDocument();
   });

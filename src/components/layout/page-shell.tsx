@@ -24,7 +24,7 @@ import { useContainerScroll, useOnboardingDismissed } from "@/hooks";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { dismissPendingSuggestion } from "@/services/native";
-import { useOnboardingCounts, useReminders } from "@/state";
+import { useOnboardingCounts, useReminders, useMySupportTickets } from "@/state";
 import { shouldShowOnboardingBanner } from "@/domain/onboarding";
 import { useSmartAdvisorInsights } from "@/features/overview/hooks";
 import type { PaymentMethod } from "@/types";
@@ -135,6 +135,10 @@ export function PageShell() {
     !onboardingDismissed && onboardingQuery?.data ? shouldShowOnboardingBanner(onboardingQuery.data) : false;
   const advisor = useSmartAdvisorInsights();
   const advisorAlertsCount = advisor.insights.filter((i) => i.priority === 1 || i.priority === 2).length;
+  const myTicketsQuery = useMySupportTickets();
+  const unreadSupportCount = (myTicketsQuery.data ?? []).filter(
+    (t) => Boolean(t.admin_reply) && !t.user_read_at,
+  ).length;
 
   const { isScrolled, showBackToTop } = useContainerScroll({
     containerId: "main-content",
@@ -144,7 +148,7 @@ export function PageShell() {
 
   // --- Slot logic (máx. 2 entre: calc, tema, privacidade, notificações) ---
   // Notificações deslocam: privacidade primeiro, depois tema. Calculadora nunca é deslocada.
-  const hasNotifications = remindersTotalCount > 0 || showOnboarding || advisorAlertsCount > 0;
+  const hasNotifications = remindersTotalCount > 0 || showOnboarding || advisorAlertsCount > 0 || unreadSupportCount > 0;
   const cfg = visual.headerButtons;
   const showCalc = cfg.calculatorButton;
   let showTheme = cfg.themeToggle;

@@ -34,9 +34,9 @@ export const DEFAULT_INSTITUTIONAL_CONFIG: InstitutionalConfig = Object.freeze({
   developerName: "Gabriel Sales",
   companyName: "Áxis Finance — Gabriel Sales (Desenvolvedor Independente)",
   cnpj: "",
-  address: "São Paulo/SP — Brasil",
-  dpoEmail: "privacidade@axis.app",
-  supportEmail: "contato@axis.app",
+  address: "Alto Sertão Nordestino — Brasil",
+  dpoEmail: "axisfinance.app@gmail.com",
+  supportEmail: "axisfinance.app@gmail.com",
   appName: "Áxis Finance",
   legalJurisdiction: "Comarca da Capital do Estado de São Paulo",
 });

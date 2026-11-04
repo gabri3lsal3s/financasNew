@@ -2,6 +2,7 @@ import { getSupabase } from "@/data/client";
 import { resolveQuery } from "@/data/query";
 import { createCardPayment, createRefund, deleteCardPaymentRpc } from "@/data/rpc";
 import { AppError, classifyError } from "@/services/errors";
+import { currentMonth, shiftMonth } from "@/lib/date";
 import type { CardPayment } from "@/types";
 
 /**
@@ -10,14 +11,37 @@ import type { CardPayment } from "@/types";
  * `create_refund` (gera renda automática [REFUND] — §3.3.3).
  */
 
+/** Janela temporal padrão para consultas de pagamentos de cartão (24 meses retroativos). */
+export const DEFAULT_CARD_PAYMENT_WINDOW_MONTHS = 24;
+
+export interface CardPaymentQueryOptions {
+  /**
+   * Mês inicial (YYYY-MM) do corte temporal.
+   * Se omitido (undefined), adota o padrão de 24 meses retroativos.
+   * Se for null, desativa o corte temporal e executa a busca irrestrita em todo o histórico.
+   */
+  sinceMonth?: string | null;
+}
+
 function mapPayment(row: CardPayment): CardPayment {
   return { ...row, amount: Number(row.amount) };
 }
 
-/** Pagamentos e estornos de um cartão (todas as competências, data desc). */
-export async function listCardPayments(cardId: string): Promise<CardPayment[]> {
+/** Pagamentos e estornos de um cartão (derivação de fatura com janela padrão de 24 meses ou customizada, data desc). */
+export async function listCardPayments(cardId: string, options?: CardPaymentQueryOptions): Promise<CardPayment[]> {
+  let query = getSupabase().from("card_payments").select("*").eq("card_id", cardId);
+
+  const resolvedSinceMonth =
+    options?.sinceMonth === undefined
+      ? shiftMonth(currentMonth(), -DEFAULT_CARD_PAYMENT_WINDOW_MONTHS)
+      : options.sinceMonth;
+
+  if (resolvedSinceMonth) {
+    query = query.gte("competence_month", resolvedSinceMonth);
+  }
+
   const { data, error } = await resolveQuery<CardPayment[]>(
-    getSupabase().from("card_payments").select("*").eq("card_id", cardId).order("date", { ascending: false }),
+    query.order("date", { ascending: false }),
   );
   if (error) {
     const classified = classifyError(error);
@@ -26,10 +50,21 @@ export async function listCardPayments(cardId: string): Promise<CardPayment[]> {
   return (data ?? []).map(mapPayment);
 }
 
-/** Todos os pagamentos/estornos de cartão do usuário (faturas em aberto). */
-export async function listAllCardPayments(): Promise<CardPayment[]> {
+/** Todos os pagamentos/estornos de cartão do usuário (visão consolidada com janela padrão de 24 meses ou customizada). */
+export async function listAllCardPayments(options?: CardPaymentQueryOptions): Promise<CardPayment[]> {
+  let query = getSupabase().from("card_payments").select("*");
+
+  const resolvedSinceMonth =
+    options?.sinceMonth === undefined
+      ? shiftMonth(currentMonth(), -DEFAULT_CARD_PAYMENT_WINDOW_MONTHS)
+      : options.sinceMonth;
+
+  if (resolvedSinceMonth) {
+    query = query.gte("competence_month", resolvedSinceMonth);
+  }
+
   const { data, error } = await resolveQuery<CardPayment[]>(
-    getSupabase().from("card_payments").select("*").order("date", { ascending: false }),
+    query.order("date", { ascending: false }),
   );
   if (error) {
     const classified = classifyError(error);

@@ -22,7 +22,7 @@ Ao abrir um chamado pelo botão de ajuda no cabeçalho ou menu móvel, o fundado
 ### 1.2 Roteiro de Resposta e SLA
 - **Tempo de Resposta Alvo:** Menos de 15 minutos para os 100 primeiros clientes;
 - **Canais de Resposta:**
-  1. **E-mail:** Clique no link `mailto:` gerado no alerta do Telegram para responder diretamente ao cliente com o e-mail corporativo (`suporte@axis.finance`);
+  1. **E-mail:** Clique no link `mailto:` gerado no alerta do Telegram para responder diretamente ao cliente com o e-mail corporativo (`axisfinance.app@gmail.com`);
   2. **WhatsApp Corporativo:** Caso o cliente tenha cadastrado telefone no perfil ou checkout, o fundador pode iniciar contato direto cordial e ágil;
 - **Registro no Painel Administrativo (`/admin`):**
   1. Acesse o aplicativo e navegue até a rota `/admin`;
@@ -128,7 +128,7 @@ Oriente sempre o cliente a utilizar os recursos de autoatendimento nativos:
 - **Zona de Perigo (Exclusão Autônoma):** O próprio usuário pode solicitar a eliminação irrevogável de sua conta e de todos os seus dados em **Configurações > Conta > Zona de Perigo**, acionando a RPC atômica `public.delete_user_account()`.
 
 ### 4.2 Atendimento a Solicitações de DPO / Encarregado de Dados
-Caso chegue uma solicitação formal pelo canal de privacidade (`privacidade@axis.finance`):
+Caso chegue uma solicitação formal pelo canal de privacidade (`axisfinance.app@gmail.com`):
 1. Confirme a identidade do solicitante através do e-mail cadastrado na conta;
 2. Caso o usuário prefira que a exclusão seja realizada pela equipe de engenharia, execute via SQL no Supabase:
 ```sql

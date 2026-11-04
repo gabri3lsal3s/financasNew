@@ -264,7 +264,7 @@ export function NotificationsPopover({
                   onClick={() => {
                     triggerSensory("action");
                     onOpenChange?.(false);
-                    navigate("/settings?tab=support");
+                    navigate("/configuracoes?tab=support");
                   }}
                   role="button"
                   tabIndex={0}
@@ -273,7 +273,7 @@ export function NotificationsPopover({
                       e.preventDefault();
                       triggerSensory("action");
                       onOpenChange?.(false);
-                      navigate("/settings?tab=support");
+                      navigate("/configuracoes?tab=support");
                     }
                   }}
                   className="group flex items-start gap-3 p-3 text-left transition-colors hover:bg-surface-hover rounded-xl cursor-pointer bg-primary/5 border border-primary/20 mb-1"

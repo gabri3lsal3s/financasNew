@@ -1,7 +1,7 @@
 import { getSupabase } from "@/data/client";
 import { resolveQuery } from "@/data/query";
 import { AppError, classifyError } from "@/services/errors";
-import { monthRange } from "@/lib/date";
+import { currentMonth, monthRange, shiftMonth } from "@/lib/date";
 import { materializeRecurrencesForMonth, materializeRecurrencesForRange } from "./recurrences";
 import type { DbUpdate, Expense } from "@/types";
 
@@ -89,14 +89,37 @@ export async function listAllExpenses(): Promise<Expense[]> {
   return (data ?? []).map(mapExpense);
 }
 
-/** Despesas de um cartão (todas as competências — derivação de fatura). */
-export async function listExpensesByCard(cardId: string): Promise<Expense[]> {
+/** Janela temporal padrão para consultas de cartão (24 meses retroativos para cobertura de parcelamentos estendidos). */
+export const DEFAULT_CARD_WINDOW_MONTHS = 24;
+
+export interface CardQueryOptions {
+  /**
+   * Mês inicial (YYYY-MM) do corte temporal.
+   * Se omitido (undefined), adota o padrão de 24 meses retroativos.
+   * Se for null, desativa o corte temporal e executa a busca irrestrita em todo o histórico.
+   */
+  sinceMonth?: string | null;
+}
+
+/** Despesas de um cartão (derivação de fatura com janela padrão de 24 meses ou customizada). */
+export async function listExpensesByCard(cardId: string, options?: CardQueryOptions): Promise<Expense[]> {
+  let query = getSupabase()
+    .from("expenses")
+    .select("*")
+    .eq("card_id", cardId);
+
+  const resolvedSinceMonth =
+    options?.sinceMonth === undefined
+      ? shiftMonth(currentMonth(), -DEFAULT_CARD_WINDOW_MONTHS)
+      : options.sinceMonth;
+
+  if (resolvedSinceMonth) {
+    const sinceDate = `${resolvedSinceMonth}-01`;
+    query = query.or(`bill_competence.gte.${resolvedSinceMonth},date.gte.${sinceDate}`);
+  }
+
   const { data, error } = await resolveQuery<Expense[]>(
-    getSupabase()
-      .from("expenses")
-      .select("*")
-      .eq("card_id", cardId)
-      .order("date", { ascending: false }),
+    query.order("date", { ascending: false }),
   );
   if (error) {
     const classified = classifyError(error);
@@ -105,10 +128,25 @@ export async function listExpensesByCard(cardId: string): Promise<Expense[]> {
   return (data ?? []).map(mapExpense);
 }
 
-/** Todas as despesas de cartão (faturas em aberto na visão consolidada). */
-export async function listAllCardExpenses(): Promise<Expense[]> {
+/** Todas as despesas de cartão (faturas na visão consolidada com janela padrão de 24 meses ou customizada). */
+export async function listAllCardExpenses(options?: CardQueryOptions): Promise<Expense[]> {
+  let query = getSupabase()
+    .from("expenses")
+    .select("*")
+    .not("card_id", "is", null);
+
+  const resolvedSinceMonth =
+    options?.sinceMonth === undefined
+      ? shiftMonth(currentMonth(), -DEFAULT_CARD_WINDOW_MONTHS)
+      : options.sinceMonth;
+
+  if (resolvedSinceMonth) {
+    const sinceDate = `${resolvedSinceMonth}-01`;
+    query = query.or(`bill_competence.gte.${resolvedSinceMonth},date.gte.${sinceDate}`);
+  }
+
   const { data, error } = await resolveQuery<Expense[]>(
-    getSupabase().from("expenses").select("*").not("card_id", "is", null).order("date", { ascending: false }),
+    query.order("date", { ascending: false }),
   );
   if (error) {
     const classified = classifyError(error);

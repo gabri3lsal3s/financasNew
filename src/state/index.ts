@@ -1,7 +1,7 @@
 export { useCategories, useAllCategories, useCategoryUsage } from "./queries/use-categories";
 export { useActiveCreditCards, useCreditCards } from "./queries/use-credit-cards";
-export { useCardPayments, useCardExpenses } from "./queries/use-card-payments";
-export { useAllCardExpenses, useAllCardPayments } from "./queries/use-overview";
+export { useCardPayments, useCardExpenses, type UseCardQueryOptions } from "./queries/use-card-payments";
+export { useAllCardExpenses, useAllCardPayments, type UseAllCardQueryOptions } from "./queries/use-overview";
 export { useDebts } from "./queries/use-debts";
 export { useBudgets } from "./queries/use-budgets";
 export { useIncomeGoals } from "./queries/use-income-goals";

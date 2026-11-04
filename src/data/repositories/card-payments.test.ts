@@ -4,6 +4,7 @@ import { createPayment, createRefundPayment, deleteCardPayment, listCardPayments
 interface Builder {
   select: ReturnType<typeof vi.fn>;
   eq: ReturnType<typeof vi.fn>;
+  gte: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
   then: (onFulfilled: (value: unknown) => unknown) => Promise<unknown>;
 }
@@ -12,11 +13,13 @@ function makeBuilder(result: unknown): Builder {
   const builder = {
     select: vi.fn(),
     eq: vi.fn(),
+    gte: vi.fn(),
     order: vi.fn(),
     then: (onFulfilled: (value: unknown) => unknown) => Promise.resolve(result).then(onFulfilled),
   } as Builder;
   builder.select.mockReturnValue(builder);
   builder.eq.mockReturnValue(builder);
+  builder.gte.mockReturnValue(builder);
   builder.order.mockReturnValue(builder);
   return builder;
 }

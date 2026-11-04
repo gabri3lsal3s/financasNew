@@ -149,22 +149,18 @@ export function SettingsPage() {
   const tabParam = searchParams.get("tab");
   const subTabParam = searchParams.get("subtab") || searchParams.get("subTab") || searchParams.get("aba");
 
-  // Abertura automática do modal de suporte via deep-link ou hand-off de conclusão do tour (?tab=suporte)
-  const isDirectSupportTab = tabParam === "suporte" || tabParam === "support" || searchParams.get("modal") === "suporte";
-  const isSupportDialogOpen = supportChatOpen || Boolean(isDirectSupportTab);
+  // Abertura automática do modal de criação de chamado via query params dedicados (?modal=suporte ou ?chat=open)
+  const isDirectSupportModal = searchParams.get("modal") === "suporte" || searchParams.get("chat") === "open";
+  const isSupportDialogOpen = supportChatOpen || Boolean(isDirectSupportModal);
 
   const handleSupportOpenChange = (open: boolean) => {
     setSupportChatOpen(open);
-    if (!open && isDirectSupportTab) {
+    if (!open && isDirectSupportModal) {
       setSearchParams(
         (prev) => {
           const updated = new URLSearchParams(prev);
-          if (updated.get("tab") === "suporte" || updated.get("tab") === "support") {
-            updated.delete("tab");
-          }
-          if (updated.get("modal") === "suporte") {
-            updated.delete("modal");
-          }
+          updated.delete("modal");
+          updated.delete("chat");
           return updated;
         },
         { replace: true },

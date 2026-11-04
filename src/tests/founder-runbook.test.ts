@@ -34,7 +34,7 @@ describe("Auditoria do Manual de Bordo do Fundador (docs/operations/FOUNDER_RUNB
     // 4. Privacidade e LGPD
     expect(content).toContain("## 4. PRIVACIDADE, LGPD & EXCLUSÃO MANUAL DE DADOS");
     expect(content).toContain("delete_user_account");
-    expect(content).toContain("privacidade@axis.finance");
+    expect(content).toContain("axisfinance.app@gmail.com");
 
     // 5. Monitoramento e preflight
     expect(content).toContain("## 5. MONITORAMENTO OPERACIONAL & DIAGNÓSTICO EM PRODUÇÃO");
