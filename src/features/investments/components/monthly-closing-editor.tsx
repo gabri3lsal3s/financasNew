@@ -66,10 +66,12 @@ export function MonthlyClosingEditor({
     const items = historicalPosition.positions.map((pos) => {
       const qState = quotesState[pos.ticker];
       const unitPrice = qState ? qState.priceCents / 100 : pos.priceQuote ?? pos.priceBRL;
-      const valueBRL = Math.round(pos.quantity * unitPrice * 100) / 100;
+      const isUsd = pos.currency === "USD";
+      const fxRate = isUsd && pos.priceQuote > 0 ? pos.priceBRL / pos.priceQuote : 1;
+      const valueBRL = Math.round(pos.quantity * unitPrice * fxRate * 100) / 100;
 
       // Comparacao com cotacao atual (hoje)
-      const currentPrice = pos.priceBRL;
+      const currentPrice = isUsd ? (pos.priceQuote ?? pos.priceBRL) : pos.priceBRL;
       const diffPct =
         unitPrice > 0 && currentPrice > 0
           ? ((currentPrice - unitPrice) / unitPrice) * 100

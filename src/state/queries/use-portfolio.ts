@@ -146,4 +146,6 @@ export {
   useUpsertPortfolioSnapshot,
   useBatchUpsertPortfolioSnapshots,
   useUpsertPortfolioAssetsBatch,
+  useDeletePortfolioSnapshot,
 } from "@/state/mutations/use-portfolio-snapshots-mutations";
+

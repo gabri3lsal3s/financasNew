@@ -104,4 +104,21 @@ describe("InvestmentsTab — Sincronização Temporal e Empty State", () => {
     expect(screen.getByText("85%")).toBeInTheDocument();
     expect(screen.getByText("35.5%")).toBeInTheDocument();
   });
+
+  it("renderiza o seletor de mês quando month e onMonthChange são fornecidos", () => {
+    const handleMonthChange = vi.fn();
+    render(
+      <InvestmentsTab
+        {...defaultProps}
+        hasDataForPeriod={true}
+        periodLabel="Março de 2026"
+        month="2026-03"
+        onMonthChange={handleMonthChange}
+      />,
+    );
+
+    // MonthPicker renderiza botões de navegação e mês/ano
+    expect(screen.getByRole("button", { name: /Mês anterior/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Próximo mês/i })).toBeInTheDocument();
+  });
 });

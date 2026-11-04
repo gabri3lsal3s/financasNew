@@ -189,6 +189,21 @@ export async function batchUpsertPortfolioSnapshots(
   return (data ?? []).map(mapSnapshot);
 }
 
+export async function deletePortfolioSnapshot(month: string): Promise<void> {
+  const user_id = await currentUserId();
+  const { error } = await resolveQuery(
+    getSupabase()
+      .from("portfolio_snapshots")
+      .delete()
+      .eq("user_id", user_id)
+      .eq("month", month),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Contribuições / Aportes Mensais (Desacopladas)
 // ---------------------------------------------------------------------------

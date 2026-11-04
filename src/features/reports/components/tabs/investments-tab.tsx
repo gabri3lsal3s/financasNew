@@ -1,12 +1,13 @@
-import { Fragment, useState, type Dispatch, type SetStateAction } from "react";
+import { Fragment, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { ChevronDown, ChevronRight, PieChart, Printer, TrendingUp } from "lucide-react";
 import { Badge, Button, EmptyState } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
-import { ReportAllocationDonuts } from "@/components/modules/reports";
+import { MonthPicker, ReportAllocationDonuts } from "@/components/modules";
 import { AllocationBreakdownDialog, AssetDetailSheet } from "@/features/investments/components";
 import { useGroupTargets, usePortfolioAssets, usePortfolioPosition } from "@/state";
 import { numberToCents } from "@/domain/money";
 import type { AllocationAnalysisResult, ConcentrationRiskResult, AllocationDonutSegment } from "@/domain/reports";
+import type { PositionRow } from "@/components/modules/position-table";
 
 export interface InvestmentsTabProps {
   totalPatrimonyBRL: number;
@@ -23,6 +24,12 @@ export interface InvestmentsTabProps {
   hasDataForPeriod?: boolean;
   periodLabel?: string;
   onResetToCurrentMonth?: () => void;
+  /** Competência selecionada (YYYY-MM) para análise temporal. */
+  month?: string;
+  /** Callback para alteração da competência de análise de investimentos. */
+  onMonthChange?: (month: string) => void;
+  /** Linhas de posição efetivas (vivas ou ponto-no-tempo retroativo). */
+  rows?: readonly PositionRow[];
 }
 
 /**
@@ -44,11 +51,45 @@ export function InvestmentsTab({
   hasDataForPeriod = true,
   periodLabel,
   onResetToCurrentMonth,
+  month,
+  onMonthChange,
+  rows,
 }: InvestmentsTabProps) {
   const position = usePortfolioPosition();
   const assetsQuery = usePortfolioAssets();
   const classTargetsQuery = useGroupTargets("class");
   const sectorTargetsQuery = useGroupTargets("sector");
+
+  const breakdownRows = useMemo(() => {
+    if (!rows) return position.rows;
+    return rows.map((r) => ({
+      assetId: r.assetId ?? r.ticker,
+      ticker: r.ticker,
+      assetClass: r.assetClass ?? null,
+      sector: r.sector ?? null,
+      currency: (r.currency as "BRL" | "USD") ?? "BRL",
+      quantity: r.quantity,
+      averageCost: r.averageCost,
+      totalCost: r.totalCost ?? (r.quantity * r.averageCost),
+      totalCostBRL: r.totalCostBRL ?? (r.quantity * r.averageCost),
+      averageCostBRL: r.averageCost,
+      dividends: r.dividends ?? 0,
+      dividendsNative: r.dividends ?? 0,
+      priceQuote: r.priceQuote ?? r.priceBRL,
+      priceBRL: r.priceBRL,
+      usdRate: r.usdRate ?? 1,
+      valueBRL: r.valueBRL,
+      valueNative: r.valueBRL,
+      pct: r.pct,
+      unrealizedPnl: r.unrealizedPnl,
+      unrealizedPct: r.unrealizedPct ?? 0,
+      totalReturnPnl: r.totalReturnPnl ?? 0,
+      totalReturnPct: r.totalReturnPct ?? 0,
+      source: r.source ?? "manual",
+      pricingMode: r.pricingMode ?? "unit_price",
+      isCash: r.isCash ?? false,
+    }));
+  }, [rows, position.rows]);
 
   const [breakdownGroup, setBreakdownGroup] = useState<{
     type: "class" | "sector";
@@ -80,6 +121,11 @@ export function InvestmentsTab({
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Seletor de Competência Mensal */}
+      {month && onMonthChange ? (
+        <MonthPicker value={month} onValueChange={onMonthChange} />
+      ) : null}
+
       {/* Card Dossiê Executivo A4 */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
@@ -377,8 +423,8 @@ export function InvestmentsTab({
         }}
         type={breakdownGroup?.type ?? "class"}
         groupName={breakdownGroup?.name ?? null}
-        rows={position.rows}
-        totalPortfolioBRL={position.totalBRL}
+        rows={breakdownRows}
+        totalPortfolioBRL={totalPatrimonyBRL > 0 ? totalPatrimonyBRL : position.totalBRL}
         targetPercent={
           breakdownGroup?.type === "class"
             ? classTargetsQuery.data?.find((t) => t.name === breakdownGroup.name)?.target_percentage ?? null

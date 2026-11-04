@@ -136,6 +136,11 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  usePortfolioMonthlyPosition: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+  }),
   usePortfolioAssets: () => ({
     data: [
       {
