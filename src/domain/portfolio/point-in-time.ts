@@ -205,7 +205,14 @@ export function calculatePointInTimePosition(
     const totalSellsAll = allAssetTxs
       .filter((t) => t.type === "sell")
       .reduce((acc, t) => acc + (Number(t.quantity) || 0), 0);
-    const netTransactionsQuantity = totalBuysAll - totalSellsAll;
+    const totalSplitsAll = allAssetTxs
+      .filter((t) => t.type === "split")
+      .reduce((acc, t) => acc + (Number(t.quantity) || 0), 0);
+    const totalReverseSplitsAll = allAssetTxs
+      .filter((t) => t.type === "reverse_split")
+      .reduce((acc, t) => acc + (Number(t.quantity) || 0), 0);
+    const netTransactionsQuantity =
+      totalBuysAll + totalSplitsAll - totalSellsAll - totalReverseSplitsAll;
 
     const currentAssetQty = asset.quantity ?? 0;
     const currentAvgPrice = asset.average_price ?? 0;

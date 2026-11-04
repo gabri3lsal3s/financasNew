@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router";
 import {
   Search,
@@ -40,26 +40,23 @@ const TYPE_CONFIG: Record<
 const EMPTY_TICKETS: SupportTicket[] = [];
 
 export function TicketsTab() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const ticketParam = searchParams.get("ticket");
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("");
-  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 
   const ticketsQuery = useAdminSupportTickets();
   const allTickets = ticketsQuery.data ?? EMPTY_TICKETS;
 
-  // Deep Link: abre automaticamente o chamado vindo do link do Telegram (?ticket=<uuid>)
-  useEffect(() => {
-    if (ticketParam && allTickets.length > 0 && !selectedTicket) {
-      const match = allTickets.find((t) => t.id === ticketParam);
-      if (match) {
-        setSelectedTicket(match);
-      }
-    }
-  }, [ticketParam, allTickets, selectedTicket]);
+  // Derivação do chamado ativo (via deep link ?ticket=<uuid> ou clique manual)
+  const activeTicketId = selectedTicketId ?? ticketParam;
+  const selectedTicket = useMemo(() => {
+    if (!activeTicketId || allTickets.length === 0) return null;
+    return allTickets.find((t) => t.id === activeTicketId) ?? null;
+  }, [activeTicketId, allTickets]);
 
   // Métricas do Topo
   const metrics = useMemo(() => {
@@ -296,7 +293,7 @@ export function TicketsTab() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() => setSelectedTicket(ticket)}
+                      onClick={() => setSelectedTicketId(ticket.id)}
                       className="gap-1.5 h-8 text-xs font-medium"
                     >
                       <Settings2 className="size-3.5" aria-hidden="true" />
@@ -360,10 +357,22 @@ export function TicketsTab() {
         ticket={selectedTicket}
         open={Boolean(selectedTicket)}
         onOpenChange={(open) => {
-          if (!open) setSelectedTicket(null);
+          if (!open) {
+            setSelectedTicketId(null);
+            if (ticketParam) {
+              const next = new URLSearchParams(searchParams);
+              next.delete("ticket");
+              setSearchParams(next, { replace: true });
+            }
+          }
         }}
         onSuccess={() => {
-          setSelectedTicket(null);
+          setSelectedTicketId(null);
+          if (ticketParam) {
+            const next = new URLSearchParams(searchParams);
+            next.delete("ticket");
+            setSearchParams(next, { replace: true });
+          }
         }}
       />
     </div>

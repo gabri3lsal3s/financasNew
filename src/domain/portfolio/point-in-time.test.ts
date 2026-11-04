@@ -458,6 +458,195 @@ describe("point-in-time portfolio calculation engine", () => {
       expect(result.fidelity.canGenerateExecutiveReport).toBe(true);
       expect(result.positions[0]?.quoteSource).toBe("manual");
     });
+
+    it("extracts candidateAssets excluding cash and assets already in custody", () => {
+      const assetAcao: PortfolioAsset = {
+        id: "asset-1",
+        user_id: "user-1",
+        ticker: "VALE3",
+        asset_class: "Ações",
+        currency: "BRL",
+        quantity: 100,
+        average_price: 65,
+      };
+      const assetVoo: PortfolioAsset = {
+        id: "asset-2",
+        user_id: "user-1",
+        ticker: "VOO",
+        asset_class: "Internacional",
+        currency: "USD",
+        quantity: 10,
+        average_price: 450,
+      };
+      const assetCash: PortfolioAsset = {
+        id: "asset-cash",
+        user_id: "user-1",
+        ticker: "CAIXA",
+        asset_class: "Caixa",
+        currency: "BRL",
+        quantity: 15000,
+        average_price: 1,
+      };
+      const assetPetr4: PortfolioAsset = {
+        id: "asset-petr",
+        user_id: "user-1",
+        ticker: "PETR4",
+        asset_class: "Ações",
+        currency: "BRL",
+        quantity: 200,
+        average_price: 35,
+      };
+
+      // Apenas PETR4 tem transação anterior à data de corte (2026-05)
+      // VALE3 e VOO possuem transações de compra futuras (2026-08), de modo que em 2026-05 a quantidade em custódia era 0
+      const txPetr: PortfolioTransaction = {
+        id: "tx-petr",
+        user_id: "user-1",
+        asset_id: "asset-petr",
+        type: "buy",
+        date: "2026-05-10",
+        quantity: 200,
+        price: 35,
+        total: 7000,
+      };
+      const txValeFutura: PortfolioTransaction = {
+        id: "tx-vale-fut",
+        user_id: "user-1",
+        asset_id: "asset-1",
+        type: "buy",
+        date: "2026-08-10",
+        quantity: 100,
+        price: 65,
+        total: 6500,
+      };
+      const txVooFutura: PortfolioTransaction = {
+        id: "tx-voo-fut",
+        user_id: "user-1",
+        asset_id: "asset-2",
+        type: "buy",
+        date: "2026-08-15",
+        quantity: 10,
+        price: 450,
+        total: 4500,
+      };
+
+      const result = calculatePointInTimePosition({
+        month: "2026-05",
+        assets: [assetAcao, assetVoo, assetCash, assetPetr4],
+        transactions: [txPetr, txValeFutura, txVooFutura],
+      });
+
+      // PETR4 deve estar em positions
+      expect(result.positions.map((p) => p.ticker)).toEqual(["PETR4"]);
+
+      // candidateAssets deve conter VALE3 e VOO, mas NÃO PETR4 (já em custódia) nem CAIXA
+      expect(result.candidateAssets).toBeDefined();
+      const candidateTickers = result.candidateAssets!.map((c) => c.ticker);
+      expect(candidateTickers).toContain("VALE3");
+      expect(candidateTickers).toContain("VOO");
+      expect(candidateTickers).not.toContain("PETR4");
+      expect(candidateTickers).not.toContain("CAIXA");
+
+      const vooCand = result.candidateAssets!.find((c) => c.ticker === "VOO")!;
+      expect(vooCand.currency).toBe("USD");
+      expect(vooCand.suggestedQuantity).toBe(10);
+      expect(vooCand.referencePrice).toBe(450);
+    });
+
+    it("correctly handles international USD assets with PTAX currency conversion", () => {
+      const assetVoo: PortfolioAsset = {
+        id: "asset-voo",
+        user_id: "user-1",
+        ticker: "VOO",
+        asset_class: "Internacional",
+        currency: "USD",
+        quantity: 5,
+        average_price: 400,
+      };
+
+      const txVoo: PortfolioTransaction = {
+        id: "tx-voo",
+        user_id: "user-1",
+        asset_id: "asset-voo",
+        type: "buy",
+        date: "2026-06-15",
+        quantity: 5,
+        price: 400,
+        total: 2000, // USD 2000
+      };
+
+      const result = calculatePointInTimePosition({
+        month: "2026-06",
+        assets: [assetVoo],
+        transactions: [txVoo],
+        apiPrices: { VOO: 500 }, // USD 500
+        usdRate: 5.5, // 1 USD = R$ 5,50
+      });
+
+      expect(result.positions).toHaveLength(1);
+      const vooPos = result.positions[0]!;
+      expect(vooPos.ticker).toBe("VOO");
+      expect(vooPos.currency).toBe("USD");
+      expect(vooPos.quantity).toBe(5);
+      expect(vooPos.averagePrice).toBe(400); // USD
+      expect(vooPos.totalCost).toBe(2000); // USD
+      expect(vooPos.totalCostBRL).toBe(11000); // 2000 * 5.5 = 11.000,00
+      expect(vooPos.priceQuote).toBe(500); // USD
+      expect(vooPos.priceBRL).toBe(2750); // 500 * 5.5 = 2.750,00
+      expect(vooPos.valueBRL).toBe(13750); // 5 * 500 * 5.5 = 13.750,00
+      expect(vooPos.unrealizedPnl).toBe(2750); // 13750 - 11000 = 2.750,00
+      expect(vooPos.unrealizedPct).toBe(25); // +25%
+    });
+
+    it("correctly factors splits and reverse splits into running quantity and average price", () => {
+      const assetItub: PortfolioAsset = {
+        id: "asset-itub",
+        user_id: "user-1",
+        ticker: "ITUB4",
+        asset_class: "Ações",
+        currency: "BRL",
+        quantity: 200,
+        average_price: 15,
+      };
+
+      const transactions: PortfolioTransaction[] = [
+        {
+          id: "tx-1",
+          user_id: "user-1",
+          asset_id: "asset-itub",
+          type: "buy",
+          date: "2026-01-10",
+          quantity: 100,
+          price: 30,
+          total: 3000,
+        },
+        // Desdobramento 1:1 (+100 ações, custo inalterado)
+        {
+          id: "tx-split",
+          user_id: "user-1",
+          asset_id: "asset-itub",
+          type: "split",
+          date: "2026-02-10",
+          quantity: 100,
+          price: 0,
+          total: 0,
+        },
+      ];
+
+      const result = calculatePointInTimePosition({
+        month: "2026-02",
+        assets: [assetItub],
+        transactions,
+        apiPrices: { ITUB4: 18 },
+      });
+
+      const itubPos = result.positions[0]!;
+      expect(itubPos.quantity).toBe(200);
+      expect(itubPos.averagePrice).toBe(15); // 3000 / 200 = 15
+      expect(itubPos.totalCostBRL).toBe(3000);
+      expect(itubPos.valueBRL).toBe(3600); // 200 * 18
+    });
   });
 });
+
 
