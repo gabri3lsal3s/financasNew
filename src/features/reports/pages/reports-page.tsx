@@ -16,7 +16,12 @@ import {
   validateCustomPeriod,
   weightedCents,
 } from "@/domain/reports";
-import { isCashAssetClass } from "@/domain/portfolio";
+import {
+  isCashAssetClass,
+  buildPortfolioMonthlySeries,
+  calculateTwrSeries,
+  type TwrMonthlyInputPoint,
+} from "@/domain/portfolio";
 import { addDaysISO, todayISO } from "@/domain/debts";
 import { currentMonth, currentYear, formatMonthYear, monthRange, shiftMonth, yearRange } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
@@ -607,6 +612,92 @@ export function ReportsPage() {
   const investmentPeriodLabel = useMemo(() => {
     return isCurrentInvestmentMonth ? "Posição Atual" : formatMonthYear(investmentMonth);
   }, [isCurrentInvestmentMonth, investmentMonth]);
+
+  // Série mensal e TWR retroativos até a competência selecionada
+  const investmentMonthlySeries = useMemo(() => {
+    if (isCurrentInvestmentMonth) {
+      return positionQuery.monthlySeries;
+    }
+
+    const filteredSnaps = snapshots
+      .filter((s) => s.month <= investmentMonth)
+      .map((s) => ({
+        month: s.month,
+        total_value: Number(s.total_value),
+        total_cost: Number(s.total_cost),
+      }));
+
+    const selectedPit = monthlyPositionQuery.data;
+    const currentPoint = selectedPit
+      ? {
+          month: investmentMonth,
+          total_value: selectedPit.totalValueBRL,
+          total_cost: selectedPit.totalCostBRL,
+        }
+      : null;
+
+    const rawDividends = dividends.map((d) => {
+      const asset = d.asset_id ? assets.find((a) => a.id === d.asset_id) : null;
+      const isUSD = asset?.currency === "USD";
+      const dRate = isUSD ? usdRate : 1;
+      return {
+        date: d.date,
+        amount: Number(d.amount) * dRate,
+      };
+    });
+
+    const rawContributions = contributions.map((c) => ({
+      date: c.date,
+      amount: c.amount,
+      notes: c.notes,
+    }));
+
+    return buildPortfolioMonthlySeries({
+      rawSnapshots: filteredSnaps,
+      currentMonthPoint: currentPoint,
+      dividends: rawDividends,
+      contributions: rawContributions,
+      limit: 12,
+    });
+  }, [
+    isCurrentInvestmentMonth,
+    investmentMonth,
+    positionQuery.monthlySeries,
+    snapshots,
+    monthlyPositionQuery.data,
+    dividends,
+    assets,
+    usdRate,
+    contributions,
+  ]);
+
+  const investmentTwr = useMemo(() => {
+    if (isCurrentInvestmentMonth) {
+      return positionQuery.portfolioTwr;
+    }
+
+    if (!investmentMonthlySeries || investmentMonthlySeries.length < 2) {
+      return positionQuery.portfolioTwr;
+    }
+
+    const twrInputs: TwrMonthlyInputPoint[] = investmentMonthlySeries.map((pt) => {
+      let flow = 0;
+      for (const c of contributions) {
+        if (c.date.startsWith(pt.month)) {
+          const isWithdrawal = (c.notes ?? "").toLowerCase().includes("resgate");
+          flow += isWithdrawal ? -Math.abs(c.amount) : Math.abs(c.amount);
+        }
+      }
+      return {
+        month: pt.month,
+        totalValueBRL: pt.valueBRL,
+        totalCostBRL: pt.costBRL,
+        netExternalCashFlowBRL: Math.round(flow * 100) / 100,
+      };
+    });
+
+    return calculateTwrSeries(twrInputs);
+  }, [isCurrentInvestmentMonth, positionQuery.portfolioTwr, investmentMonthlySeries, contributions]);
 
   // Cálculos de Consultoria de Investimentos baseados nas posições efetivas da aba de Investimentos
   const allocationAnalysis = useMemo(() => {
@@ -1202,8 +1293,8 @@ export function ReportsPage() {
             allocationAnalysis={allocationAnalysis}
             concentrationRisk={concentrationRisk}
             portfolioIrr={positionQuery.portfolioIrr}
-            portfolioTwr={positionQuery.portfolioTwr}
-            monthlySeries={positionQuery.monthlySeries}
+            portfolioTwr={investmentTwr}
+            monthlySeries={investmentMonthlySeries}
             allTimeEconomicPnlBRL={positionQuery.allTimeEconomicPnlBRL}
             realizedPnlBRL={positionQuery.realizedPnlBRL}
             annualCdiRate={macroIndicatorsQuery.data?.annualCdiRate}
