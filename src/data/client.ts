@@ -25,6 +25,7 @@ export function getSupabase(): Supabase {
     const { url, anonKey } = getSupabaseEnv();
     client = createClient<Database, "public">(url, anonKey, {
       auth: {
+        flowType: "pkce",
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,

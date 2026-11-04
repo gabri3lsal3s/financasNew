@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { Lock, ShieldCheck } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Lock, LogOut, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui";
+import { useSignOut } from "@/hooks/use-sign-out";
 import {
   isAppLocked,
   subscribeAppLock,
@@ -16,10 +17,12 @@ import {
 export function AppLockOverlay() {
   const isLocked = useSyncExternalStore(subscribeAppLock, isAppLocked);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const isAuthenticatingRef = useRef(false);
+  const { signOut } = useSignOut();
 
-  const handleUnlock = async () => {
-    if (isAuthenticatingRef.current) return;
+  const handleUnlock = useCallback(async () => {
+    if (isAuthenticatingRef.current || isSigningOut) return;
     isAuthenticatingRef.current = true;
     setIsAuthenticating(true);
     try {
@@ -28,7 +31,17 @@ export function AppLockOverlay() {
       isAuthenticatingRef.current = false;
       setIsAuthenticating(false);
     }
-  };
+  }, [isSigningOut]);
+
+  const handleEmergencySignOut = useCallback(async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    try {
+      await signOut();
+    } finally {
+      setIsSigningOut(false);
+    }
+  }, [isSigningOut, signOut]);
 
   // Tenta acionar o prompt biométrico automaticamente ao travar
   useEffect(() => {
@@ -39,7 +52,7 @@ export function AppLockOverlay() {
     }, 150);
 
     return () => clearTimeout(timer);
-  }, [isLocked]);
+  }, [isLocked, handleUnlock]);
 
   if (!isLocked) return null;
 
@@ -73,11 +86,24 @@ export function AppLockOverlay() {
             size="lg"
             aria-label="Desbloquear com Biometria"
             onClick={handleUnlock}
-            disabled={isAuthenticating}
+            disabled={isAuthenticating || isSigningOut}
             className="w-full gap-2"
           >
             <Lock className="size-4" aria-hidden="true" />
             <span>{isAuthenticating ? "Autenticando..." : "Desbloquear com Biometria"}</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label="Sair da conta e entrar com senha"
+            onClick={handleEmergencySignOut}
+            disabled={isAuthenticating || isSigningOut}
+            className="w-full gap-2 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <LogOut className="size-3.5" aria-hidden="true" />
+            <span>{isSigningOut ? "Saindo..." : "Sair da conta e entrar com senha"}</span>
           </Button>
         </div>
       </div>

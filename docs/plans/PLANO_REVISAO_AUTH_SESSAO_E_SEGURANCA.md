@@ -413,7 +413,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 5
 
-- [ ] **Tarefa 5.1: Expansão do Gateway de Limpeza de Sessão (`resetAppState`)**
+- [x] **Tarefa 5.1: Expansão do Gateway de Limpeza de Sessão (`resetAppState`)**
   - **Arquivos:** `src/services/auth-cleanup.ts`, `src/services/native/suggestions-store.ts`
   - **O que verificar/ajustar:**
     - Desconectar ativamente todos os canais de Realtime do Supabase:
@@ -429,7 +429,7 @@ git push origin main
     - Limpar registros temporários em `sessionStorage` que possam conter resíduos de checkout ou parâmetros transitórios.
     - Atualizar testes em `src/services/auth-cleanup.test.ts`.
 
-- [ ] **Tarefa 5.2: Ativação Estrita de PKCE no Cliente Supabase**
+- [x] **Tarefa 5.2: Ativação Estrita de PKCE no Cliente Supabase**
   - **Arquivo:** `src/data/client.ts`
   - **O que verificar/ajustar:**
     - Configurar explicitamente `flowType: "pkce"` nas opções de autenticação do `createClient`:
@@ -444,17 +444,17 @@ git push origin main
       }) as Supabase;
       ```
 
-- [ ] **Tarefa 5.3: Aprimoramento do Escudo do AppLock Mobile com Opção de Desconexão de Emergência**
+- [x] **Tarefa 5.3: Aprimoramento do Escudo do AppLock Mobile com Opção de Desconexão de Emergência**
   - **Arquivo:** `src/app/app-lock-overlay.tsx`
   - **O que verificar/ajustar:**
     - Adicionar na tela de bloqueio biométrico um botão discreto *"Sair da conta e entrar com senha"*, permitindo que o usuário encerre a sessão caso o sensor biométrico do smartphone apresente falha de hardware.
     - Atualizar `src/app/app-lock-overlay.test.tsx`.
 
 ### Portão de Qualidade da Fase 5
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/services/auth-cleanup.test.ts src/hooks/use-sign-out.test.ts src/app/app-lock-overlay.test.tsx`
-- [ ] **Commit & Push da Fase 5:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/services/auth-cleanup.test.ts src/hooks/use-sign-out.test.ts src/app/app-lock-overlay.test.tsx`
+- [x] **Commit & Push da Fase 5:**
   ```bash
   git add src/services/auth-cleanup.ts src/services/auth-cleanup.test.ts src/data/client.ts src/app/app-lock-overlay.tsx src/app/app-lock-overlay.test.tsx
   git commit -m "security(session): habilita pkce estrito desconecta realtime no logout e limpa memoria de comprovantes"
