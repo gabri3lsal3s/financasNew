@@ -5831,13 +5831,10 @@ flowchart TD
   - Focus trap confinado no card gerenciando ciclos de `Tab` e `Shift+Tab`;
   - Anúncios acessíveis via `aria-live="polite"` e camada SVG com `role="presentation"` e `aria-hidden="true"`;
   - Dots interativos com semântica de botão (`role="button"`), suporte a clique e barra de espaço.
-- **Auditoria, Governança & Depreciação (Fase 6):**
-  - Marcação formal `@deprecated` no JSDoc de `DemoTourBar` e confirmação de uso exclusivo de `DemoTourSpotlight` no `PageShell`;
-  - Suíte completa de 459 arquivos de teste e 4.187 testes aprovados (100% verde);
-  - Auditoria de acessibilidade (`accessibility-audit.test.tsx`) 100% verde; typecheck e lint sem nenhuma violação.
-
-
-
-
-
+- **Aprimoramento do Micro-Tour do APK Nativo & Tripé de Plataformas (Fase 8):**
+  - Reestruturação didática do micro-tour `app_native_apk` com 4 passos congruentes guiando o usuário pelas abas de Configurações (`devices`, `notifications`, `security`);
+  - Apresentação didática do Tripé de Plataformas (Web Desktop, Mobile PWA e Android Pro) eliminando referências a botões/cards genéricos da tela inicial;
+  - Conexão determinística do botão "Rever Tour Guiado" na Central de Ajuda (`HelpModal`) com o catálogo de trilhas (`DemoTrackSelectModal`);
+  - Blindagem do motor de notificações nativas (`cancelDueReminderNotification`): cancelamento reativo de notificações ao quitar faturas ou marcar lembretes como lidos, salvaguarda estrita contra disparos em modo de simulação/tour e prevenção de falsos alertas durante o carregamento de queries;
+  - Compilação automatizada e assinatura da Build #20 do APK Android (`guia-financeiro-release.apk` e `axis-pro.apk`) via `build:apk`.
 

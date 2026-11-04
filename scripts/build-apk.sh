@@ -161,10 +161,10 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Tour Guiado com Spotlight e foco visual escurecido",
-    "Card popover adaptativo com navegacao ergonomica e saida em 1 clique",
-    "Eliminacao da barra invasiva superior e integracao discreta no header",
-    "Melhorias de responsividade e prevencao de cliques externos acidentais"
+    "Micro-tour didatico do APK Nativo Android com apresentacao do Tripe de Plataformas",
+    "Demonstracao do leitor passivo de notificacoes Pix e biometria com escudo anti-print",
+    "Integracao do botao Rever Tour Guiado na Central de Ajuda com seletor de trilhas",
+    "Blindagem de notificacoes de vencimento com cancelamento instantaneo pos-quitacao"
   ]
 }
 EOF

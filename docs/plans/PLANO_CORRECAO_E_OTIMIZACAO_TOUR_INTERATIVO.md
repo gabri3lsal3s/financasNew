@@ -642,6 +642,12 @@ A auditoria exaustiva do código-fonte e a análise das capturas de tela forneci
 | `src/components/modules/demo-tour-bar.tsx` | Documentação | Fase 6 | Marcação de depreciação e manutenção da tipagem |
 | `src/domain/demo-simulation/metadata.ts` | Criação | Fase 8 | Função pura canônica de taxonomia e rótulos de categoria de trilha |
 | `src/domain/demo-simulation/metadata.test.ts` | Criação | Fase 8 | Testes unitários de precisão dos rótulos e taxonomia semântica |
+| `src/features/settings/components/tabs/app-installation-tab.tsx` | Modificação | Fase 8 | Seletores `settings-platform-status` e `settings-platforms-triptych` |
+| `src/features/settings/components/tabs/notifications/banking-assistant-card.tsx` | Modificação | Fase 8 | Seletor `settings-banking-assistant` para leitura de notificações |
+| `src/features/settings/components/tabs/security-tab.tsx` | Modificação | Fase 8 | Seletor `settings-app-lock` e renderização em modo demo |
+| `src/components/modules/help-modal.tsx` | Modificação | Fase 8 | Fallback defensivo e conexão com seletor de trilhas |
+| `src/services/native/local-notifications.ts` | Modificação | Fase 8 | Função `cancelDueReminderNotification`, cancelamento de faturas e bloqueio demo |
+| `src/state/queries/use-reminders.ts` | Modificação | Fase 8 | Salvaguarda anti-falsos positivos durante carregamento de pagamentos |
 | `scripts/build-apk.sh` | Execução | Fase 7 | Script oficial de compilação e assinatura do APK Android |
 | `docs/plans/PLANO_CORRECAO_E_OTIMIZACAO_TOUR_INTERATIVO.md` | Criação/Refinamento | Planejamento | Documento canônico da refatoração |
 
