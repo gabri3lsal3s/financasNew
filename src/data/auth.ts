@@ -119,4 +119,36 @@ export async function updateUserPassword(newPassword: string): Promise<void> {
   }
 }
 
+/**
+ * Valida a senha atual do usuário ativo antes de operações sensíveis (Fase 3.1).
+ * Reautentica via signInWithPassword com o e-mail da sessão atual.
+ */
+export async function verifyCurrentPassword(password: string): Promise<boolean> {
+  const supabase = getSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || !user.email) {
+    throw new AppError("session-expired", MESSAGES["session-expired"]);
+  }
+  const { error } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password,
+  });
+  return !error;
+}
+
+/**
+ * Altera a senha do usuário autenticado exigindo comprovação prévia da senha atual (Fase 3.1).
+ * Proteção contra sequestro de conta (Account Takeover).
+ */
+export async function changeUserPassword(currentPassword: string, newPassword: string): Promise<void> {
+  const isValid = await verifyCurrentPassword(currentPassword);
+  if (!isValid) {
+    throw new AppError("invalid-credentials", "A senha atual informada está incorreta.");
+  }
+  await updateUserPassword(newPassword);
+}
+
+
 

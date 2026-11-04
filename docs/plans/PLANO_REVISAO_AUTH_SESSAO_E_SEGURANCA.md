@@ -245,7 +245,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 3
 
-- [ ] **Tarefa 3.1: Implementação da Reautenticação Prévia em `src/data/auth.ts`**
+- [x] **Tarefa 3.1: Implementação da Reautenticação Prévia em `src/data/auth.ts`**
   - **Arquivo:** `src/data/auth.ts`
   - **O que verificar/ajustar:**
     - Criar e exportar a função de validação de senha:
@@ -275,7 +275,7 @@ git push origin main
       ```
     - Atualizar testes em `src/data/auth.test.ts`.
 
-- [ ] **Tarefa 3.2: Formulário de Senha com Campo "Senha Atual" em `AccountTab`**
+- [x] **Tarefa 3.2: Formulário de Senha com Campo "Senha Atual" em `AccountTab`**
   - **Arquivo:** `src/features/settings/components/tabs/account-tab.tsx`
   - **O que verificar/ajustar:**
     - Declarar estado `const [currentPassword, setCurrentPassword] = useState("");`.
@@ -305,10 +305,10 @@ git push origin main
     - Atualizar `src/features/settings/components/tabs/account-tab.test.tsx`.
 
 ### Portão de Qualidade da Fase 3
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/data/auth.test.ts src/features/settings/components/tabs/account-tab.test.tsx`
-- [ ] **Commit & Push da Fase 3:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/data/auth.test.ts src/features/settings/components/tabs/account-tab.test.tsx`
+- [x] **Commit & Push da Fase 3:**
   ```bash
   git add src/data/auth.ts src/data/auth.test.ts src/features/settings/components/tabs/account-tab.tsx src/features/settings/components/tabs/account-tab.test.tsx
   git commit -m "security(auth): exige senha atual na alteracao de credenciais prevenindo account takeover"

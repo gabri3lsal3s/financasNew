@@ -25,6 +25,7 @@ vi.mock("react-router", async () => {
 
 vi.mock("@/data/auth", () => ({
   updateUserPassword: vi.fn(),
+  changeUserPassword: vi.fn(),
 }));
 
 vi.mock("@/data/rpc", () => ({
@@ -168,41 +169,57 @@ describe("AccountTab", () => {
     });
   });
 
-  it("permite atualizar a senha com validação de critérios", async () => {
+  it("permite atualizar a senha exigindo a senha atual e validação de critérios", async () => {
     const user = userEvent.setup();
-    vi.mocked(authData.updateUserPassword).mockResolvedValueOnce(undefined);
+    vi.mocked(authData.changeUserPassword).mockResolvedValueOnce(undefined);
 
     renderAccountTab();
 
+    const currentPasswordInput = screen.getByLabelText("Senha atual");
     const newPasswordInput = screen.getByLabelText("Nova senha");
     const confirmPasswordInput = screen.getByLabelText("Confirmar nova senha");
     const updatePasswordButton = screen.getByRole("button", { name: "Atualizar Senha" });
 
     expect(updatePasswordButton).toBeDisabled();
 
+    // Sem a senha atual preenchida, o botão permanece desabilitado
     await user.type(newPasswordInput, "NovaSenhaForte123");
     await user.type(confirmPasswordInput, "NovaSenhaForte123");
+    expect(updatePasswordButton).toBeDisabled();
 
+    // Ao preencher a senha atual, habilita o botão
+    await user.type(currentPasswordInput, "SenhaAtualValida123");
     expect(updatePasswordButton).not.toBeDisabled();
+
     await user.click(updatePasswordButton);
 
     await waitFor(() => {
-      expect(authData.updateUserPassword).toHaveBeenCalledWith("NovaSenhaForte123");
+      expect(authData.changeUserPassword).toHaveBeenCalledWith(
+        "SenhaAtualValida123",
+        "NovaSenhaForte123",
+      );
       expect(sensoryModule.triggerSensory).toHaveBeenCalledWith("success");
       expect(toastModule.pushToast).toHaveBeenCalledWith(
         expect.objectContaining({ variant: "success", title: "Senha atualizada" }),
       );
     });
+
+    // Confirma que os 3 campos foram limpos pós-sucesso
+    expect(currentPasswordInput).toHaveValue("");
+    expect(newPasswordInput).toHaveValue("");
+    expect(confirmPasswordInput).toHaveValue("");
   });
 
   it("exibe aviso visual quando as senhas digitadas divergem", async () => {
     const user = userEvent.setup();
     renderAccountTab();
 
+    const currentPasswordInput = screen.getByLabelText("Senha atual");
     const newPasswordInput = screen.getByLabelText("Nova senha");
     const confirmPasswordInput = screen.getByLabelText("Confirmar nova senha");
     const updatePasswordButton = screen.getByRole("button", { name: "Atualizar Senha" });
 
+    await user.type(currentPasswordInput, "SenhaAtualValida123");
     await user.type(newPasswordInput, "NovaSenhaForte123");
     await user.type(confirmPasswordInput, "Diferente123");
 
@@ -212,23 +229,54 @@ describe("AccountTab", () => {
 
   it("exibe mensagem de erro quando a alteração de senha falha na API", async () => {
     const user = userEvent.setup();
-    vi.mocked(authData.updateUserPassword).mockRejectedValueOnce(new Error("Falha na rede"));
+    vi.mocked(authData.changeUserPassword).mockRejectedValueOnce(
+      new Error("A senha atual informada está incorreta."),
+    );
 
     renderAccountTab();
 
+    const currentPasswordInput = screen.getByLabelText("Senha atual");
     const newPasswordInput = screen.getByLabelText("Nova senha");
     const confirmPasswordInput = screen.getByLabelText("Confirmar nova senha");
     const updatePasswordButton = screen.getByRole("button", { name: "Atualizar Senha" });
 
+    await user.type(currentPasswordInput, "SenhaErrada");
     await user.type(newPasswordInput, "NovaSenhaForte123");
     await user.type(confirmPasswordInput, "NovaSenhaForte123");
 
     await user.click(updatePasswordButton);
 
     await waitFor(() => {
-      expect(screen.getByText("Falha na rede")).toBeInTheDocument();
+      expect(screen.getByText("A senha atual informada está incorreta.")).toBeInTheDocument();
       expect(sensoryModule.triggerSensory).toHaveBeenCalledWith("destructive");
     });
+  });
+
+  it("limpa mensagem de erro ao digitar na senha atual", async () => {
+    const user = userEvent.setup();
+    vi.mocked(authData.changeUserPassword).mockRejectedValueOnce(
+      new Error("A senha atual informada está incorreta."),
+    );
+
+    renderAccountTab();
+
+    const currentPasswordInput = screen.getByLabelText("Senha atual");
+    const newPasswordInput = screen.getByLabelText("Nova senha");
+    const confirmPasswordInput = screen.getByLabelText("Confirmar nova senha");
+    const updatePasswordButton = screen.getByRole("button", { name: "Atualizar Senha" });
+
+    await user.type(currentPasswordInput, "SenhaErrada");
+    await user.type(newPasswordInput, "NovaSenhaForte123");
+    await user.type(confirmPasswordInput, "NovaSenhaForte123");
+
+    await user.click(updatePasswordButton);
+
+    await waitFor(() => {
+      expect(screen.getByText("A senha atual informada está incorreta.")).toBeInTheDocument();
+    });
+
+    await user.type(currentPasswordInput, "1");
+    expect(screen.queryByText("A senha atual informada está incorreta.")).not.toBeInTheDocument();
   });
 
   it("copia o ID da conta para o clipboard", async () => {

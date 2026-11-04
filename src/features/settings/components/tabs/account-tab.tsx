@@ -30,7 +30,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useUserAccess, useUserSubscription, useUpdateProfile } from "@/state";
-import { updateUserPassword } from "@/data/auth";
+import { changeUserPassword } from "@/data/auth";
 import { checkPasswordRequirements } from "@/domain/validation";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
@@ -80,6 +80,7 @@ export function AccountTab() {
   }
 
   // Estado da troca de senha
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
@@ -140,6 +141,10 @@ export function AccountTab() {
 
   const handleUpdatePassword = async (e: FormEvent) => {
     e.preventDefault();
+    if (!currentPassword) {
+      setPasswordError("Informe sua senha atual.");
+      return;
+    }
     if (!isPasswordSufficient) {
       setPasswordError("A nova senha deve atender aos critérios de segurança mínimos.");
       return;
@@ -152,8 +157,9 @@ export function AccountTab() {
     setPasswordError(null);
     setIsUpdatingPassword(true);
     try {
-      await updateUserPassword(newPassword);
+      await changeUserPassword(currentPassword, newPassword);
       triggerSensory("success");
+      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       pushToast({
@@ -296,6 +302,24 @@ export function AccountTab() {
             {passwordError ? <Alert variant="error">{passwordError}</Alert> : null}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="space-y-1.5 sm:col-span-2">
+                <label htmlFor="account-current-password" className="text-xs font-semibold text-foreground">
+                  Senha atual
+                </label>
+                <PasswordInput
+                  id="account-current-password"
+                  autoComplete="current-password"
+                  required
+                  value={currentPassword}
+                  onChange={(e) => {
+                    setCurrentPassword(e.target.value);
+                    if (passwordError) setPasswordError(null);
+                  }}
+                  placeholder="Digite sua senha atual"
+                  className="h-10 text-sm rounded-xl"
+                />
+              </div>
+
               <div className="space-y-1.5">
                 <label htmlFor="account-new-password" className="text-xs font-semibold text-foreground">
                   Nova senha
@@ -374,7 +398,8 @@ export function AccountTab() {
                   isUpdatingPassword ||
                   !isPasswordSufficient ||
                   !isPasswordMatching ||
-                  newPassword.length === 0
+                  newPassword.length === 0 ||
+                  currentPassword.length === 0
                 }
                 className="h-9 px-4 text-xs font-semibold rounded-xl"
               >

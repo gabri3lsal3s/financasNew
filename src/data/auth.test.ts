@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { resendConfirmationEmail, resetPasswordForEmail, signInWithEmail, signUpWithEmail, updateUserPassword } from "./auth";
+import {
+  changeUserPassword,
+  resendConfirmationEmail,
+  resetPasswordForEmail,
+  signInWithEmail,
+  signUpWithEmail,
+  updateUserPassword,
+  verifyCurrentPassword,
+} from "./auth";
 import { getPublicAppUrl } from "@/lib/env";
 import { AppError } from "@/services/errors";
 
@@ -8,6 +16,7 @@ const mockSignUp = vi.fn();
 const mockResetPasswordForEmail = vi.fn();
 const mockResend = vi.fn();
 const mockUpdateUser = vi.fn();
+const mockGetUser = vi.fn();
 
 vi.mock("@/data/client", () => ({
   getSupabase: () => ({
@@ -17,6 +26,7 @@ vi.mock("@/data/client", () => ({
       resetPasswordForEmail: (...args: unknown[]) => mockResetPasswordForEmail(...args),
       resend: (...args: unknown[]) => mockResend(...args),
       updateUser: (...args: unknown[]) => mockUpdateUser(...args),
+      getUser: (...args: unknown[]) => mockGetUser(...args),
     },
   }),
 }));
@@ -215,6 +225,121 @@ describe("data/auth — operações de autenticação", () => {
         error: { message: "Password should be different from current password", status: 422 },
       });
       await expect(updateUserPassword("NovaSenhaForte@2026")).rejects.toThrow(AppError);
+    });
+  });
+
+  describe("verifyCurrentPassword", () => {
+    it("retorna true quando a senha atual é válida", async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: { email: "usuario@exemplo.com" } },
+      });
+      mockSignInWithPassword.mockResolvedValueOnce({ error: null });
+
+      const isValid = await verifyCurrentPassword("senhaAtualCorreta123");
+      expect(isValid).toBe(true);
+      expect(mockGetUser).toHaveBeenCalledTimes(1);
+      expect(mockSignInWithPassword).toHaveBeenCalledWith({
+        email: "usuario@exemplo.com",
+        password: "senhaAtualCorreta123",
+      });
+    });
+
+    it("retorna false quando a senha atual é incorreta", async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: { email: "usuario@exemplo.com" } },
+      });
+      mockSignInWithPassword.mockResolvedValueOnce({
+        error: { message: "Invalid login credentials", status: 400 },
+      });
+
+      const isValid = await verifyCurrentPassword("senhaErrada");
+      expect(isValid).toBe(false);
+    });
+
+    it("lança AppError('session-expired') quando não há usuário ativo", async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: null },
+      });
+
+      await expect(verifyCurrentPassword("senha123")).rejects.toMatchObject({
+        kind: "session-expired",
+      });
+      expect(mockSignInWithPassword).not.toHaveBeenCalled();
+    });
+
+    it("lança AppError('session-expired') quando o usuário não possui e-mail", async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: { email: null } },
+      });
+
+      await expect(verifyCurrentPassword("senha123")).rejects.toMatchObject({
+        kind: "session-expired",
+      });
+      expect(mockSignInWithPassword).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("changeUserPassword", () => {
+    it("valida a senha atual e altera para a nova senha com sucesso", async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: { email: "usuario@exemplo.com" } },
+      });
+      mockSignInWithPassword.mockResolvedValueOnce({ error: null });
+      mockUpdateUser.mockResolvedValueOnce({ error: null });
+
+      await changeUserPassword("SenhaAtual123", "NovaSenhaForte@2026");
+
+      expect(mockSignInWithPassword).toHaveBeenCalledWith({
+        email: "usuario@exemplo.com",
+        password: "SenhaAtual123",
+      });
+      expect(mockUpdateUser).toHaveBeenCalledWith({
+        password: "NovaSenhaForte@2026",
+      });
+    });
+
+    it("lança AppError('invalid-credentials') e não altera a senha se a senha atual for incorreta", async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: { email: "usuario@exemplo.com" } },
+      });
+      mockSignInWithPassword.mockResolvedValueOnce({
+        error: { message: "Invalid credentials", status: 400 },
+      });
+
+      await expect(
+        changeUserPassword("SenhaIncorreta", "NovaSenhaForte@2026"),
+      ).rejects.toMatchObject({
+        kind: "invalid-credentials",
+        message: "A senha atual informada está incorreta.",
+      });
+      expect(mockUpdateUser).not.toHaveBeenCalled();
+    });
+
+    it("não altera a senha se a sessão estiver expirada", async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: null },
+      });
+
+      await expect(
+        changeUserPassword("SenhaQualquer", "NovaSenhaForte@2026"),
+      ).rejects.toMatchObject({
+        kind: "session-expired",
+      });
+      expect(mockUpdateUser).not.toHaveBeenCalled();
+    });
+
+    it("propaga erro caso updateUserPassword falhe após confirmação da senha atual", async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: { email: "usuario@exemplo.com" } },
+      });
+      mockSignInWithPassword.mockResolvedValueOnce({ error: null });
+      mockUpdateUser.mockResolvedValueOnce({
+        error: { message: "Weak password", status: 422 },
+      });
+
+      await expect(
+        changeUserPassword("SenhaAtual123", "fraca"),
+      ).rejects.toThrow(AppError);
     });
   });
 });
