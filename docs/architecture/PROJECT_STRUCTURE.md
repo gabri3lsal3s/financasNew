@@ -57,16 +57,13 @@
 │   ├── roadmap/                   # Ciclo de vida, histórico de releases e metas
 │   │   ├── ROADMAP.md             #   Plano canônico de execução, histórico de versões v2.0–v2.78+
 │   │   └── RELEASE.md             #   Checklist de release e homologação
-│   ├── plans/                     # Planos de implementação ativos e pendentes
-│   │   ├── PLANO_CORRECAO_E_OTIMIZACAO_TOUR_INTERATIVO.md # Correções finas de dados mockados, rotas e ergonomia do tour
-│   │   ├── PLANO_MELHORIA_NOTIFICACOES_BANCOS.md # Captura passiva Android, carteiras digitais e categorização rápida
-│   │   ├── PLANO_PWA_FIRST_APK_BETA_E_NOTIFICACOES_REFINADAS.md # PWA First, APK Beta Opcional, Blindagem Anti-Falsos Positivos e Suporte Universal
-│   │   ├── PLANO_REFINAMENTO_CAPTURA_COMPROVANTES_E_OCR.md # Refinamento de comprovantes (foto, PDF e imagem), parcelamento e cartões
-│   │   ├── PLANO_RELATORIO_RETROATIVO_INVESTIMENTOS_E_FECHAMENTO.md # Saneamento de caixa, relatório retroativo e fechamento de carteira
-│   │   └── completed/             # Histórico de planos executados com sucesso (100% concluídos — 12 planos)
+│   ├── plans/                     # Planos de implementação ativos e pendentes (atualmente 100% executados)
+│   │   └── completed/             # Histórico de planos executados com sucesso (100% concluídos — 18 planos)
 │   │       ├── CAPACITOR_ANDROID_PLAN.md
 │   │       ├── PLANO_ADEQUACAO_LEGAL_E_REGULATORIA.md
 │   │       ├── PLANO_AUDITORIA_CONGRUENCIA.md
+│   │       ├── PLANO_CONFIGURACOES_INICIAIS_E_EXPERIENCIA_NOVO_USUARIO.md
+│   │       ├── PLANO_CORRECAO_E_OTIMIZACAO_TOUR_INTERATIVO.md
 │   │       ├── PLANO_FINALIZACAO_PRODUCAO_E_PRIMEIROS_CLIENTES.md
 │   │       ├── PLANO_GESTAO_CONTA_AUTH_E_EXPERIENCIA_SAAS.md
 │   │       ├── PLANO_IMPLEMENTACAO_ALTA_CONCORRENCIA_SEGURANCA.md
@@ -75,7 +72,11 @@
 │   │       ├── PLANO_IMPLEMENTACAO_MODULOS_E_SAAS.md
 │   │       ├── PLANO_IMPLEMENTACAO_TOUR_INTERATIVO_E_SIMULACAO.md
 │   │       ├── PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md
-│   │       └── PLANO_REFATORACAO_TOUR_SPOTLIGHT_E_EXPERIENCIA_GUIADA.md
+│   │       ├── PLANO_MELHORIA_NOTIFICACOES_BANCOS.md
+│   │       ├── PLANO_PWA_FIRST_APK_BETA_E_NOTIFICACOES_REFINADAS.md
+│   │       ├── PLANO_REFATORACAO_TOUR_SPOTLIGHT_E_EXPERIENCIA_GUIADA.md
+│   │       ├── PLANO_REFINAMENTO_CAPTURA_COMPROVANTES_E_OCR.md
+│   │       └── PLANO_RELATORIO_RETROATIVO_INVESTIMENTOS_E_FECHAMENTO.md
 │   ├── diagnostics/               # Diagnósticos técnicos e relatórios de avaliação arquitetural
 │   │   └── DIAGNOSTICO_SEGURANCA_PERFORMANCE_ESCALA.md # Diagnóstico de concorrência, velocidade e blindagem
 │   └── reports/                   # Relatórios de auditoria e logs de homologação (.gitkeep)

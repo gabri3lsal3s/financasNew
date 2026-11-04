@@ -18,9 +18,9 @@
 | **Fase 0** | Diagnóstico Aprofundado de Fragilidades, Riscos e Especificação Técnica | Concluído | 4 / 4 | QG-0 Aprovado |
 | **Fase 1** | Motor Nativo Android (Java): Moedas Globais, Fato Consumado & Carteiras | Concluído | 5 / 5 | QG-1 Aprovado |
 | **Fase 2** | Domínio TypeScript: Parser Universal, Anti-Fallback e Deduplicação Temporal | Concluído | 5 / 5 | QG-2 Aprovado |
-| **Fase 3** | UX/UI: Diálogo Interativo de Instalação Sem Atrito do APK & Saída PWA | Pendente | 0 / 4 | QG-3 Pendente |
-| **Fase 4** | Posicionamento Comercial: Landing Page, FAQ e Identificação In-App | Pendente | 0 / 5 | QG-4 Pendente |
-| **Fase 5** | Homologação Integrada, Bateria de Testes E2E e Portão de Qualidade Final (DoD) | Pendente | 0 / 4 | QG-Final Pendente |
+| **Fase 3** | UX/UI: Diálogo Interativo de Instalação Sem Atrito do APK & Saída PWA | Concluído | 4 / 4 | QG-3 Aprovado |
+| **Fase 4** | Posicionamento Comercial: Landing Page, FAQ e Identificação In-App | Concluído | 5 / 5 | QG-4 Aprovado |
+| **Fase 5** | Homologação Integrada, Bateria de Testes E2E e Portão de Qualidade Final (DoD) | Concluído | 4 / 4 | QG-Final Aprovado |
 
 ---
 
