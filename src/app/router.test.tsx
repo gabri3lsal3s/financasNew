@@ -40,6 +40,11 @@ vi.mock("@/state/queries/use-public-shares", () => ({
     isLoading: false,
     error: null,
   }),
+  useSharedGoalTracker: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+  }),
 }));
 
 
@@ -221,6 +226,24 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
     render(<AppRouter />);
 
     expect(await screen.findByText(/Orçamento familiar/i)).toBeInTheDocument();
+  });
+
+  it("renderiza a rota pública /meta/:token (GoalTrackerPublicPage) para visitantes", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/meta/token-meta");
+    render(<AppRouter />);
+
+    expect(await screen.findByText(/Meta não encontrada/i)).toBeInTheDocument();
   });
 
 

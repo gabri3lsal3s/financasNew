@@ -257,10 +257,12 @@ export {
 export {
   usePublicShare,
   useSharedFamilyBudget,
+  useSharedGoalTracker,
   useMyPublicShares,
   publicShareTokenQueryKey,
   myPublicSharesQueryKey,
   sharedFamilyBudgetQueryKey,
+  sharedGoalTrackerQueryKey,
 } from "./queries/use-public-shares";
 
 

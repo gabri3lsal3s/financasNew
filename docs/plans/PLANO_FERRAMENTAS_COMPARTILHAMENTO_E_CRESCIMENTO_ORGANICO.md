@@ -161,23 +161,23 @@ Possibilitar a separação elegante entre despesas individuais e familiares, ofe
 
 Permitir o compartilhamento transparente do progresso de metas em grupo (viagens, presentes, festas, reformas) com botão de Pix para arrecadação.
 
-- [ ] **Tarefa 4.1: Ativação de Termômetro Público no Módulo de Metas**
-  - No card de Metas (`GoalCard`), adicionar opção: **"Compartilhar Progresso da Meta"**.
-  - O usuário vincula sua chave Pix para arrecadação e gera o link público.
+- [x] **Tarefa 4.1: Ativação de Termômetro Público no Módulo de Metas**
+  - [x] No card de Metas (`GoalCard`), adicionar opção: **"Compartilhar Progresso da Meta"**.
+  - [x] O usuário vincula sua chave Pix para arrecadação e gera o link público.
 
-- [ ] **Tarefa 4.2: Rota Web Pública `/meta/:token` (`GoalTrackerPublicPage.tsx`)**
-  - Criar `src/features/public-share/pages/goal-tracker-public-page.tsx`:
+- [x] **Tarefa 4.2: Rota Web Pública `/meta/:token` (`GoalTrackerPublicPage.tsx`)**
+  - [x] Criar `src/features/public-share/pages/goal-tracker-public-page.tsx`:
     - Título da Meta (ex.: *"Viagem de Fim de Ano"*), Alvo e Valor Arrecadado.
     - Termômetro visual de progresso dinâmico (ex.: R$ 4.200 / R$ 6.000 — 70%).
     - Contagem regressiva de dias até a data alvo.
     - Botão de um toque: **[Copiar Pix do Organizador]**.
     - Conforme o organizador cadastra os depósitos na meta pelo app, o termômetro atualiza sozinho na web para todos os participantes acompanharem.
 
-- [ ] **Portão de Qualidade 4:**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/features/goals/ src/features/public-share/`
-  - [ ] **Commit & Push da Fase 4:** `git commit -m "feat(goals): termometro de meta coletiva com pix para arrecadacao"`
+- [x] **Portão de Qualidade 4:**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/features/goals/ src/features/public-share/`
+  - [x] **Commit & Push da Fase 4:** `git commit -m "feat(goals): termometro de meta coletiva com pix para arrecadacao"`
 
 ---
 

@@ -9,6 +9,7 @@ import type {
   RecurrenceFrequency,
   RecurrenceKind,
   SharedFamilyBudgetResult,
+  SharedGoalTrackerResult,
 } from "@/types";
 
 /**
@@ -1068,6 +1069,21 @@ export async function getSharedFamilyBudget(params: {
     true,
   );
 }
+
+/**
+ * Consulta pública e segura do Termômetro de Meta Coletiva compartilhado (/meta/:token).
+ */
+export async function getSharedGoalTracker(params: {
+  token: string;
+}): Promise<SharedGoalTrackerResult | null> {
+  return unwrapRpc(
+    callRpc("get_shared_goal_tracker", {
+      p_token: params.token,
+    }),
+    true,
+  );
+}
+
 
 
 

@@ -8,10 +8,16 @@
 import { getSupabase } from "@/data/client";
 import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
-import { createExpenseWithDebt, getSharedFamilyBudget } from "@/data/rpc";
+import { createExpenseWithDebt, getSharedFamilyBudget, getSharedGoalTracker } from "@/data/rpc";
 import { createCategory, listCategories } from "./categories";
 import { AppError, classifyError } from "@/services/errors";
-import type { PublicShare, PublicShareKind, DbInsert, SharedFamilyBudgetResult } from "@/types";
+import type {
+  PublicShare,
+  PublicShareKind,
+  DbInsert,
+  SharedFamilyBudgetResult,
+  SharedGoalTrackerResult,
+} from "@/types";
 import { generateShareToken } from "@/domain/share/token";
 
 export interface CreatePublicShareInput {
@@ -218,6 +224,16 @@ export async function getSharedFamilyBudgetByToken(
 ): Promise<SharedFamilyBudgetResult | null> {
   return getSharedFamilyBudget({ token, month });
 }
+
+/**
+ * Consulta o termômetro de meta coletiva consolidado pelo token de compartilhamento.
+ */
+export async function getSharedGoalTrackerByToken(
+  token: string,
+): Promise<SharedGoalTrackerResult | null> {
+  return getSharedGoalTracker({ token });
+}
+
 
 /**
  * Revoga um link anterior e gera um novo compartilhamento com payload preservado/atualizado.

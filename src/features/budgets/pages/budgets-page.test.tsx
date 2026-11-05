@@ -88,6 +88,7 @@ vi.mock("@/state", () => ({
   useSetIncomeGoal: () => ({ mutateAsync: setIncomeGoalMock, isPending: false }),
   useRemoveIncomeGoal: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useReallocateBudget: () => ({ mutateAsync: reallocateMock, isPending: false }),
+  useMyPublicShares: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
 }));
 
 describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {

@@ -32,6 +32,7 @@ import type {
   Recurrence,
   RecurrenceSkip,
   SharedFamilyBudgetResult,
+  SharedGoalTrackerResult,
   SupportTicket,
   AdminTelegramSettings,
   AppAnalyticsEvent,
@@ -98,6 +99,12 @@ export interface Database {
 
     Views: Record<string, never>;
     Functions: {
+      get_shared_goal_tracker: {
+        Args: {
+          p_token: string;
+        };
+        Returns: SharedGoalTrackerResult | null;
+      };
       get_shared_family_budget: {
         Args: {
           p_token: string;

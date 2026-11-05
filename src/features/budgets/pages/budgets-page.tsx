@@ -12,7 +12,6 @@ import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import {
   budgetLimitsByCategory,
   incomeGoalStatus,
-  INCOME_GOAL_LABELS,
   isInheritedLimit,
   realizedByCategoryMap,
   reallocationSuggestion,
@@ -34,6 +33,7 @@ import {
   useExpenses,
   useIncomeGoals,
   useIncomes,
+  useMyPublicShares,
   usePermission,
   useReallocateBudget,
 } from "@/state";
@@ -44,6 +44,7 @@ import {
   LimitDialog,
   type BudgetAdjustCategoryItem,
 } from "@/features/budgets/components";
+import { GoalCard, ShareGoalDialog } from "@/features/goals";
 import type { Category } from "@/types";
 
 /** Categorias & Orçamentos (§3.5.2) e metas de renda (§3.5.3) — Opção C unificada. */
@@ -60,15 +61,18 @@ export function BudgetsPage() {
   );
   const [limitFor, setLimitFor] = useState<Category | null>(null);
   const [goalFor, setGoalFor] = useState<Category | null>(null);
+  const [sharingGoalFor, setSharingGoalFor] = useState<Category | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const { open: categoryFormOpen, setOpen: setCategoryFormOpen } = useCreateDeepLink("categoria");
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [reallocateOpen, setReallocateOpen] = useState(false);
   const [reallocateError, setReallocateError] = useState<string | null>(null);
   const [spendMetric, setSpendMetric] = useState<"personal" | "household">("personal");
+  const [nowMs] = useState(() => Date.now());
 
   const budgetsQuery = useBudgets();
   const goalsQuery = useIncomeGoals();
+  const goalSharesQuery = useMyPublicShares("goal_tracker");
   const allCategoriesQuery = useAllCategories();
   const expenseCategories = useCategories("expense");
   const incomeCategories = useCategories("income");
@@ -600,117 +604,28 @@ export function BudgetsPage() {
             const expectedCents = goalsByCategory.get(category.id) ?? 0;
             const status = incomeGoalStatus(realizedCents, expectedCents);
             const percent = expectedCents > 0 ? Math.min(100, (realizedCents / expectedCents) * 100) : 0;
+            const activeShare = (goalSharesQuery.data ?? []).find(
+              (s) =>
+                !s.is_revoked &&
+                (!s.expires_at || new Date(s.expires_at).getTime() > nowMs) &&
+                s.payload?.category_id === category.id,
+            );
 
             return (
-              <HighlightRow
+              <GoalCard
                 key={category.id}
+                category={category}
+                month={month}
+                realizedCents={realizedCents}
+                expectedCents={expectedCents}
+                status={status}
+                percent={percent}
                 highlightId={effectiveHighlightId}
-                id={category.id}
-                className="rounded-2xl"
-              >
-                <div
-                  className="group flex flex-col gap-3 rounded-2xl border border-border/80 bg-surface/90 p-3.5 sm:p-4 shadow-xs transition-all hover:border-border hover:bg-surface min-w-0"
-                >
-                  <div className="flex items-center justify-between gap-3 min-w-0">
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`Editar meta de renda de ${category.name}`}
-                      onClick={() => {
-                        triggerSensory("action");
-                        handleOpenGoal(category);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          triggerSensory("action");
-                          handleOpenGoal(category);
-                        }
-                      }}
-                      className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg p-0.5"
-                    >
-                      <CategoryIcon icon={category.icon} color={category.color} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-                          {category.name}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Badge
-                        variant={expectedCents === 0 ? "muted" : status === "deficit" ? "critical" : "positive"}
-                        size="xs"
-                      >
-                        {expectedCents > 0 ? INCOME_GOAL_LABELS[status] : "Sem meta"}
-                      </Badge>
-
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="size-7 text-muted-foreground hover:text-foreground"
-                        aria-label={`Editar cadastro de ${category.name}`}
-                        title={`Editar cadastro de ${category.name}`}
-                        onClick={() => handleEditCategory(category)}
-                      >
-                        <Edit3 className="size-3.5" aria-hidden="true" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Editar meta de renda de ${category.name}`}
-                    onClick={() => {
-                      triggerSensory("action");
-                      handleOpenGoal(category);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        triggerSensory("action");
-                        handleOpenGoal(category);
-                      }
-                    }}
-                    className="cursor-pointer"
-                  >
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <span>Realizado:</span>
-                        <MoneyText cents={realizedCents} tone="default" className="font-semibold text-foreground" />
-                        {expectedCents > 0 ? (
-                          <>
-                            <span>de</span>
-                            <MoneyText cents={expectedCents} tone="default" />
-                          </>
-                        ) : null}
-                      </span>
-                      {expectedCents > 0 ? (
-                        <span className="num font-medium">{Math.round(percent)}%</span>
-                      ) : (
-                        <span className="text-[11px] text-primary hover:underline">Toque para definir</span>
-                      )}
-                    </div>
-
-                    <div className="relative mt-2 h-2 w-full overflow-hidden rounded-full bg-muted/70">
-                      <div
-                        className={`h-full transition-all duration-300 ${
-                          expectedCents === 0
-                            ? "bg-muted"
-                            : status === "on_track"
-                              ? "bg-positive"
-                              : status === "surplus"
-                                ? "bg-positive-strong"
-                                : "bg-warning"
-                        }`}
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </HighlightRow>
+                activeShare={activeShare}
+                onOpenGoal={handleOpenGoal}
+                onEditCategory={handleEditCategory}
+                onShareGoal={(cat) => setSharingGoalFor(cat)}
+              />
             );
           })}
         </div>
@@ -860,6 +775,18 @@ export function BudgetsPage() {
           open={goalFor !== null}
           onOpenChange={(next) => !next && setGoalFor(null)}
           onEditCategory={handleEditCategory}
+        />
+      ) : null}
+
+      {sharingGoalFor ? (
+        <ShareGoalDialog
+          key={`share:${sharingGoalFor.id}:${month}`}
+          category={sharingGoalFor}
+          month={month}
+          currentExpectedCents={goalsByCategory.get(sharingGoalFor.id) ?? 0}
+          currentRealizedCents={realizedByCategory.get(sharingGoalFor.id) ?? 0}
+          open={sharingGoalFor !== null}
+          onOpenChange={(next) => !next && setSharingGoalFor(null)}
         />
       ) : null}
 

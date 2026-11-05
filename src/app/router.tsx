@@ -87,6 +87,11 @@ const FamilyBudgetPage = lazy(() =>
     default: m.FamilyBudgetPage,
   })),
 );
+const GoalTrackerPublicPage = lazy(() =>
+  import("@/features/public-share/pages/goal-tracker-public-page").then((m) => ({
+    default: m.GoalTrackerPublicPage,
+  })),
+);
 
 
 function RouteSuspenseFallback() {
@@ -253,9 +258,10 @@ export function AppRouter() {
           <Route path="/planos" element={<LandingPage />} />
           <Route path="/vendas" element={<LandingPage />} />
 
-          {/* Rotas públicas de compartilhamento (Racha de Contas & Orçamento Familiar) */}
+          {/* Rotas públicas de compartilhamento (Racha de Contas, Orçamento Familiar & Termômetro de Meta) */}
           <Route path="/r/:token" element={<SplitPublicPage />} />
           <Route path="/orcamento-familiar/:token" element={<FamilyBudgetPage />} />
+          <Route path="/meta/:token" element={<GoalTrackerPublicPage />} />
 
 
           {/* Páginas públicas legais e regulatórias (fora do shell autenticado) */}

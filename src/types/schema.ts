@@ -826,6 +826,40 @@ export type FamilyBudgetSharePayload = {
   title?: string;
 };
 
+export type GoalTrackerSharePayload = {
+  title: string;
+  category_id?: string;
+  month?: string;
+  target_cents: number;
+  current_cents?: number;
+  deadline?: string | null;
+  organizer_name: string;
+  organizer_city: string;
+  pix_key: string;
+  pix_key_type: string;
+  pix_br_code: string;
+};
+
+export type SharedGoalTrackerResult = {
+  token: string;
+  title: string;
+  category_id?: string | null;
+  target_cents: number;
+  current_cents: number;
+  remaining_cents: number;
+  percentage: number;
+  deadline: string | null;
+  days_remaining: number | null;
+  organizer_name: string;
+  organizer_city: string;
+  pix_key: string;
+  pix_key_type: string;
+  pix_br_code: string;
+  is_revoked: boolean;
+  expires_at: string | null;
+};
+
+
 
 
 
