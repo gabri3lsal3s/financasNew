@@ -1,5 +1,24 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.88** registra a **Conclusão Integral da Revisão de Autenticação, Segurança de Sessão & Conformidade LGPD** (2026-11-04):
+> - **(1) Blindagem contra Account Takeover & Reautenticação Obrigatória**:
+>   - Exigência atômica da senha atual em `changeUserPassword` e no novo fluxo `requestUserEmailChange` via `verifyCurrentPassword`;
+>   - Modal seguro de alteração de e-mail em `AccountTab` com trigger PostgreSQL em `auth.users` (`20260101000064_sync_profile_email_on_auth_change.sql`) para sincronização imediata em `public.profiles`;
+>   - Campo obrigatório de confirmação de senha no cadastro (`register-page.tsx`) e Turnstile anti-bot real integrado aos formulários públicos.
+> - **(2) Resolução Universal de URLs de Redirecionamento (Web & Mobile)**:
+>   - Utilitário centralizado `getPublicAppUrl(path)` em `src/services/app-url.ts` direcionando e-mails de confirmação e recuperação para o domínio público oficial, prevenindo esquemas nativos inválidos (`capacitor://localhost`).
+> - **(3) PKCE Estrito, Governança de Sessão & Teardown de Memória**:
+>   - Ativação de `flowType: "pkce"` no cliente Supabase;
+>   - Desconexão forçada de canais WebSockets Realtime (`supabase.removeAllChannels()`) e purga total de memória de comprovantes bancários (`clearRecentReceipts()`) no logout (`resetAppState`);
+>   - Saída de emergência no `AppLockOverlay` nativo para contingência em falhas biométricas.
+> - **(4) Proteção contra Inatividade Web & Throttling contra Força Bruta**:
+>   - Hook `useIdleSessionTimeout` encerrando sessões inativas na Web após 20 minutos;
+>   - Throttling com backoff exponencial progressivo no formulário de login (3 falhas: 15s; 5 falhas: 60s).
+> - **(5) Privacidade por Design (LGPD) & Trava de Exportação de Dados**:
+>   - Minimização estrita de PII no Sentry (apenas UUID anônimo em `setObservabilityUser`), higienização de URLs e query strings no `beforeSend`;
+>   - Trava de confirmação de segurança (biometria nativa ou modal Web) para download do backup JSON completo em `ExportDataHub`;
+>   - Auditoria e validação da RPC de expurgo integral `delete_current_user_account`.
+>
 > **v2.87** registra a **Otimização de Usabilidade Mobile & Desktop da Projeção Patrimonial e Simulador FIRE (`fire-projection-curve.tsx`)** (2026-11-04):
 > - **(1) Motor de Scrubbing Touch Nativo com Trava de Rolagem**:
 >   - Adição de `touch-action: none` e captura contínua de ponteiro (`setPointerCapture`) no `onPointerDown`/`onPointerMove`/`onPointerUp`/`onPointerCancel`, impedindo que o scroll vertical da tela interfira no deslizamento horizontal pelo gráfico no celular;
@@ -5922,4 +5941,33 @@ flowchart TD
   - Conexão determinística do botão "Rever Tour Guiado" na Central de Ajuda (`HelpModal`) com o catálogo de trilhas (`DemoTrackSelectModal`);
   - Blindagem do motor de notificações nativas (`cancelDueReminderNotification`): cancelamento reativo de notificações ao quitar faturas ou marcar lembretes como lidos, salvaguarda estrita contra disparos em modo de simulação/tour e prevenção de falsos alertas durante o carregamento de queries;
   - Compilação automatizada e assinatura da Build #20 do APK Android (`guia-financeiro-release.apk` e `axis-pro.apk`) via `build:apk`.
+
+---
+
+### Fase 100 — Revisão Integral de Autenticação, Segurança de Sessão & Conformidade LGPD
+
+> **Status:** ✅ Concluída e Auditada — **Governança de Autenticação, Proteção contra Account Takeover, PKCE Estrito, Teardown de Sessão e Privacidade por Design**: Conclusão integral do plano `docs/plans/PLANO_REVISAO_AUTH_SESSAO_E_SEGURANCA.md`. Implementação de salvaguardas rigorosas contra sequestro de contas com reautenticação obrigatória por senha atual em alterações de credenciais (`changeUserPassword` e `requestUserEmailChange`), novo fluxo modal de alteração de e-mail com trigger PostgreSQL atômica em `auth.users` (`20260101000064_sync_profile_email_on_auth_change.sql`) sincronizando `public.profiles`, confirmação de senha no formulário de cadastro, integração real anti-bot com Cloudflare Turnstile, resolução universal de URLs públicas (`getPublicAppUrl`), ativação de PKCE estrito no cliente Supabase, desconexão atômica de WebSockets Realtime e purga de memória volátil de comprovantes/OCR no logout (`resetAppState`), timeout de inatividade de 20 minutos na Web (`useIdleSessionTimeout`), backoff exponencial no login, escudo biométrico com botão de emergência no Android Pro, minimização estrita de PII na telemetria Sentry (apenas UUID anônimo, zero e-mails), trava de segurança para exportação de backup financeiro completo e garantia do Direito ao Esquecimento via RPC `delete_current_user_account`.
+
+#### 1. Entregas Concluídas
+- **Blindagem contra Account Takeover & Reautenticação Obrigatória (Fases 3 e 4):**
+  - Implementação de `verifyCurrentPassword` autenticando a senha atual antes de permitir troca de senha ou alteração de e-mail;
+  - Modal seguro `<Modal size="md">` em `AccountTab` para solicitação de troca de e-mail com senha atual e confirmação em duplo fator;
+  - Migração PostgreSQL `20260101000064_sync_profile_email_on_auth_change.sql` criando a trigger `on_auth_user_email_updated` em `auth.users` com função `public.handle_user_email_updated()` sincronizando atomicamente `public.profiles.email`;
+  - Adição do campo obrigatório de Confirmação de Senha no formulário de cadastro (`register-page.tsx`) com validação Zod.
+- **Resolução Universal de URLs de Redirecionamento (Fase 2):**
+  - Criação do serviço centralizado `src/services/app-url.ts` com função `getPublicAppUrl(path)`;
+  - Resolução dinâmica para o domínio web oficial (`VITE_PUBLIC_APP_URL` ou `window.location.origin`), garantindo funcionamento íntegro de e-mails de confirmação e recuperação quando disparados a partir do APK Nativo Capacitor Android.
+- **PKCE Estrito, Teardown de Sessão & Desconexão Completa (Fase 5):**
+  - Configuração explícita de `flowType: "pkce"` no cliente Supabase em `src/data/client.ts`;
+  - Gateway de encerramento de sessão `resetAppState` expandido com chamada forçada a `supabase.removeAllChannels()`, cancelando subscrições Realtime no servidor;
+  - Purgamento completo do buffer volátil de comprovantes bancários (`clearRecentReceipts()`) e descarte de dados transitórios no `sessionStorage`;
+  - Botão de saída de emergência *"Sair da conta e entrar com senha"* no escudo biométrico `AppLockOverlay` para contingência contra defeitos físicos no sensor biométrico.
+- **Proteção contra Inatividade na Web & Throttling contra Força Bruta (Fase 6):**
+  - Hook reativo `useIdleSessionTimeout` integrado ao shell autenticado (`router.tsx`), encerrando sessões web abandonadas após 20 minutos de inatividade com aviso amigável;
+  - Backoff exponencial progressivo no botão de login (3 erros: bloqueio de 15s; 5 erros: bloqueio de 60s) complementando a barreira anti-bot Cloudflare Turnstile.
+- **Privacidade por Design (LGPD), Minimização de PII e Trava de Backup (Fase 7):**
+  - Minimização estrita em `src/services/observability.ts`: envio exclusivo de `{ id: user.id }` ao Sentry, erradicando a transmissão de e-mails de usuários;
+  - Sanitização de URLs de requisição e query strings no gancho `beforeSend` do Sentry via `scrubSensitiveData`;
+  - Trava de confirmação de segurança para download de backup integral JSON em `ExportDataHub` (biometria obrigatória no Android Pro ou modal com confirmação explícita na Web);
+  - Auditoria e validação da RPC de expurgo integral `delete_current_user_account`.
 

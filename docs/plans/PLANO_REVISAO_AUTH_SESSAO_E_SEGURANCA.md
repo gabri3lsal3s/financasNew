@@ -560,18 +560,18 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 8
 
-- [ ] **Tarefa 8.1: Varredura de Qualidade Transversal e Correção de Fragilidades Residuais**
+- [x] **Tarefa 8.1: Varredura de Qualidade Transversal e Correção de Fragilidades Residuais**
   - Executar: `npm run typecheck` (zero erros de tipagem TypeScript estrita).
   - Executar: `npm run lint` (zero erros de lint, emojis ou controles nativos não padronizados).
   - Executar suíte completa de testes: `npm run test`.
   - **Ação corretiva imediata:** Caso qualquer teste falhe ou surja regressão de interface em mobile/desktop, aplicar a correção no código e retestar até aprovação integral (100% verde).
 
-- [ ] **Tarefa 8.2: Atualização dos Documentos de Governança & Arquitetura**
+- [x] **Tarefa 8.2: Atualização dos Documentos de Governança & Arquitetura**
   - Atualizar `docs/operations/SECURITY_GOVERNANCE.md` documentando a política de reautenticação obrigatória com senha atual, PKCE estrito, timeout de inatividade e minimização de PII na telemetria.
   - Atualizar `docs/architecture/ESPECIFICACAO_TECNICA.md` registrando as novas diretrizes do fluxo de auth, cadastro e alteração de e-mail.
   - Atualizar `docs/roadmap/ROADMAP.md` e o presente plano marcando todos os itens como concluídos.
 
-- [ ] **Tarefa 8.3: Compilação Web de Produção e Sincronização Capacitor**
+- [x] **Tarefa 8.3: Compilação Web de Produção e Sincronização Capacitor**
   - Compilar o bundle web:
     ```bash
     npm run build
@@ -582,7 +582,7 @@ git push origin main
     npx cap sync android
     ```
 
-- [ ] **Tarefa 8.4: Compilação dos APKs Android de Produção (Debug & Release Assinado)**
+- [x] **Tarefa 8.4: Compilação dos APKs Android de Produção (Debug & Release Assinado)**
   - Executar script oficial de automação:
     ```bash
     ./scripts/build-apk.sh
@@ -591,7 +591,7 @@ git push origin main
     - Geração do APK assinado em `dist-apk/guia-financeiro-release.apk` e `dist-apk/axis-pro.apk`.
     - Geração do manifesto de versão e hashes SHA-256 em `dist-apk/version.json` e `public/releases/version.json`.
 
-- [ ] **Tarefa 8.5: Commit e Push Final da Homologação**
+- [x] **Tarefa 8.5: Commit e Push Final da Homologação**
   - Executar:
     ```bash
     git add .

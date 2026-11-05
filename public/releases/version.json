@@ -1,15 +1,15 @@
 {
   "version": "0.1.0",
-  "versionCode": 24,
-  "releaseDate": "2026-11-04T20:24:20Z",
+  "versionCode": 25,
+  "releaseDate": "2026-11-05T00:53:14Z",
   "minSupportedVersion": "0.1.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "7782abf69e28bb4e41be3348effbd30626fedeb023aa7d80faaaafee1b1c6db6",
-  "fileSizeBytes": 11854367,
+  "sha256": "817073ec3f116aba91deec09b2a2a401ba60982bd8751cf7bd7e202b996a53b4",
+  "fileSizeBytes": 11856970,
   "changelog": [
-    "Micro-tour didatico do APK Nativo Android com apresentacao do Tripe de Plataformas",
-    "Demonstracao do leitor passivo de notificacoes Pix e biometria com escudo anti-print",
-    "Integracao do botao Rever Tour Guiado na Central de Ajuda com seletor de trilhas",
-    "Blindagem de notificacoes de vencimento com cancelamento instantaneo pos-quitacao"
+    "Protecao contra account takeover com exigencia de senha atual nas alteracoes",
+    "Fluxo seguro de alteracao de e-mail com reautenticacao e confirmacao",
+    "Blindagem de sessao com PKCE estrito, purga de buffers e timeout web",
+    "Minimizacao de PII no Sentry e trava de seguranca para exportacao de backup"
   ]
 }

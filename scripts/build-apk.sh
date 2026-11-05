@@ -161,10 +161,10 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Micro-tour didatico do APK Nativo Android com apresentacao do Tripe de Plataformas",
-    "Demonstracao do leitor passivo de notificacoes Pix e biometria com escudo anti-print",
-    "Integracao do botao Rever Tour Guiado na Central de Ajuda com seletor de trilhas",
-    "Blindagem de notificacoes de vencimento com cancelamento instantaneo pos-quitacao"
+    "Protecao contra account takeover com exigencia de senha atual nas alteracoes",
+    "Fluxo seguro de alteracao de e-mail com reautenticacao e confirmacao",
+    "Blindagem de sessao com PKCE estrito, purga de buffers e timeout web",
+    "Minimizacao de PII no Sentry e trava de seguranca para exportacao de backup"
   ]
 }
 EOF
