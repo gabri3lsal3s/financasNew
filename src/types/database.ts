@@ -103,6 +103,10 @@ export interface Database {
         Args: Record<string, never>;
         Returns: void;
       };
+      delete_user_account: {
+        Args: Record<string, never>;
+        Returns: void;
+      };
       admin_delete_user: {
         Args: { target_user_id: string };
         Returns: void;

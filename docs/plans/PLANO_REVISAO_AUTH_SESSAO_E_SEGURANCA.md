@@ -508,7 +508,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 7
 
-- [ ] **Tarefa 7.1: Minimização e Anonimização de PII na Telemetria de Erros (`setObservabilityUser`)**
+- [x] **Tarefa 7.1: Minimização e Anonimização de PII na Telemetria de Erros (`setObservabilityUser`)**
   - **Arquivo:** `src/services/observability.ts`
   - **O que verificar/ajustar:**
     - Modificar `setObservabilityUser` para enviar exclusivamente o identificador anônimo (`id: user.id`), eliminando o envio do e-mail do usuário em texto claro para servidores externos do Sentry:
@@ -528,7 +528,7 @@ git push origin main
     - No hook `beforeSend` do Sentry, incluir a higienização de URLs de requisição (`event.request?.url` e `event.request?.query_string`) via `scrubSensitiveData`.
     - Atualizar testes em `src/services/observability.test.ts`.
 
-- [ ] **Tarefa 7.2: Trava de Confirmação de Segurança para Download de Backup Completo**
+- [x] **Tarefa 7.2: Trava de Confirmação de Segurança para Download de Backup Completo**
   - **Arquivos:** `src/components/modules/export-data-hub.tsx`, `src/features/settings/components/tabs/security-tab.tsx`
   - **O que verificar/ajustar:**
     - Antes de iniciar a geração e download do arquivo JSON de backup completo com todas as transações da vida financeira do usuário, exibir modal de confirmação de segurança.
@@ -536,16 +536,16 @@ git push origin main
     - Na Web: exibir modal com confirmação explícita de download seguro.
     - Atualizar testes em `src/components/modules/export-data-hub.test.tsx`.
 
-- [ ] **Tarefa 7.3: Auditoria do Procedimento de Expurgo em Cascata LGPD (`delete_current_user_account`)**
+- [x] **Tarefa 7.3: Auditoria do Procedimento de Expurgo em Cascata LGPD (`delete_current_user_account`)**
   - **Arquivo:** `supabase/migrations/20260101000061_delete_user_account_rpc.sql`
   - **O que verificar/ajustar:**
     - Confirmar que todas as tabelas recentes (`support_tickets`, `support_ticket_replies`, etc.) possuem `on delete cascade` ou remoção explícita, garantindo que o Direito ao Esquecimento (Art. 18, VI da LGPD) opere de forma atômica e 100% limpa.
 
 ### Portão de Qualidade da Fase 7
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/services/observability.test.ts src/components/modules/export-data-hub.test.tsx`
-- [ ] **Commit & Push da Fase 7:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/services/observability.test.ts src/components/modules/export-data-hub.test.tsx`
+- [x] **Commit & Push da Fase 7:**
   ```bash
   git add src/services/observability.ts src/services/observability.test.ts src/components/modules/export-data-hub.tsx src/components/modules/export-data-hub.test.tsx
   git commit -m "privacy(lgpd): minimiza telemetria no sentry e adiciona trava de seguranca para exportacao de backup"

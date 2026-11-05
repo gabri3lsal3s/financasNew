@@ -4,6 +4,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ExportDataHub } from "./export-data-hub";
 import type { ExportCsvKind } from "./export-data-hub";
 import type { RestoreSummary } from "@/domain/export";
+import { authenticateWithBiometrics, isNativePlatform } from "@/services/native";
+
+vi.mock("@/services/native", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/native")>();
+  return {
+    ...actual,
+    isNativePlatform: vi.fn().mockReturnValue(false),
+    authenticateWithBiometrics: vi.fn().mockResolvedValue({ success: true }),
+  };
+});
 
 type HubProps = Parameters<typeof ExportDataHub>[0];
 
@@ -31,12 +41,62 @@ function renderHub(overrides: Partial<HubProps> = {}) {
 describe("ExportDataHub (F22)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.mocked(isNativePlatform).mockReturnValue(false);
+    vi.mocked(authenticateWithBiometrics).mockResolvedValue({ success: true });
   });
 
-  it("exporta o backup JSON ao clicar no botão", async () => {
+  it("exibe modal de confirmação na Web antes de exportar o backup JSON e executa após confirmar", async () => {
     const { props } = renderHub();
     fireEvent.click(screen.getByRole("button", { name: "Exportar JSON" }));
+
+    expect(props.onExportJson).not.toHaveBeenCalled();
+    expect(screen.getByText("Confirmar download do backup")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Exportar backup" }));
     await waitFor(() => expect(props.onExportJson).toHaveBeenCalledTimes(1));
+  });
+
+  it("cancela a exportação do backup JSON na Web se o modal for cancelado", async () => {
+    const { props } = renderHub();
+    fireEvent.click(screen.getByRole("button", { name: "Exportar JSON" }));
+
+    expect(screen.getByText("Confirmar download do backup")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(props.onExportJson).not.toHaveBeenCalled();
+    expect(screen.queryByText("Confirmar download do backup")).not.toBeInTheDocument();
+  });
+
+  it("solicita autenticação biométrica em ambiente nativo móvel e exporta após sucesso", async () => {
+    vi.mocked(isNativePlatform).mockReturnValue(true);
+    vi.mocked(authenticateWithBiometrics).mockResolvedValue({ success: true });
+
+    const { props } = renderHub();
+    fireEvent.click(screen.getByRole("button", { name: "Exportar JSON" }));
+
+    expect(authenticateWithBiometrics).toHaveBeenCalledWith(
+      "Confirme sua identidade para exportar seus dados financeiros",
+    );
+    await waitFor(() => expect(props.onExportJson).toHaveBeenCalledTimes(1));
+  });
+
+  it("bloqueia exportação do backup JSON em ambiente nativo se a biometria falhar", async () => {
+    vi.mocked(isNativePlatform).mockReturnValue(true);
+    vi.mocked(authenticateWithBiometrics).mockResolvedValue({
+      success: false,
+      error: "Cancelado pelo usuário",
+    });
+
+    const { props } = renderHub();
+    fireEvent.click(screen.getByRole("button", { name: "Exportar JSON" }));
+
+    expect(authenticateWithBiometrics).toHaveBeenCalledWith(
+      "Confirme sua identidade para exportar seus dados financeiros",
+    );
+    expect(props.onExportJson).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText("Cancelado pelo usuário")).toBeInTheDocument();
+    });
   });
 
   it("exporta CSV de despesas com o range do mês corrente", async () => {

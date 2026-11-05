@@ -478,6 +478,7 @@ describe("Fase 1 (DoD): Testes de Isolamento RLS e Rollback de RPCs Transacionai
         "early_amortize_loan",
         "import_bank_transactions",
         "restore_backup",
+        "delete_current_user_account",
         "delete_own_account",
         "admin_delete_user",
       ];
@@ -500,6 +501,7 @@ describe("Fase 1 (DoD): Testes de Isolamento RLS e Rollback de RPCs Transacionai
         "pay_debt",
         "receive_debt",
         "delete_category_migrate",
+        "delete_current_user_account",
         "delete_own_account",
       ];
 
@@ -512,6 +514,48 @@ describe("Fase 1 (DoD): Testes de Isolamento RLS e Rollback de RPCs Transacionai
         expect(body).toMatch(/auth\.uid\(\)/i);
         expect(body).toMatch(/is\s+null/i);
         expect(body).toMatch(/raise\s+exception/i);
+      }
+    });
+
+    it("6. Auditoria de Expurgo em Cascata LGPD (delete_current_user_account & admin_delete_user)", () => {
+      const migration61Path = resolve(root, "supabase/migrations", "20260101000061_delete_user_account_rpc.sql");
+      const migration61Sql = readFileSync(migration61Path, "utf-8");
+
+      // 1. Verifica presença das RPCs principais e aliases
+      expect(migration61Sql).toMatch(/create\s+or\s+replace\s+function\s+public\.delete_current_user_account\(\)/i);
+      expect(migration61Sql).toMatch(/create\s+or\s+replace\s+function\s+public\.delete_own_account\(\)/i);
+      expect(migration61Sql).toMatch(/create\s+or\s+replace\s+function\s+public\.delete_user_account\(\)/i);
+      expect(migration61Sql).toMatch(/create\s+or\s+replace\s+function\s+public\.admin_delete_user\(target_user_id uuid\)/i);
+
+      // 2. Verifica inclusão das tabelas recentes no expurgo de delete_current_user_account
+      expect(migration61Sql).toContain("delete from public.portfolio_monthly_prices where user_id = v_user_id;");
+      expect(migration61Sql).toContain("delete from public.support_tickets where user_id = v_user_id;");
+      expect(migration61Sql).toContain("update public.support_tickets set admin_id = null where admin_id = v_user_id;");
+      expect(migration61Sql).toContain("delete from public.app_analytics_events where user_id = v_user_id;");
+      expect(migration61Sql).toContain("update public.admin_telegram_settings set updated_by = null where updated_by = v_user_id;");
+
+      // 3. Verifica inclusão das tabelas recentes no expurgo de admin_delete_user
+      expect(migration61Sql).toContain("delete from public.portfolio_monthly_prices where user_id = target_user_id;");
+      expect(migration61Sql).toContain("delete from public.support_tickets where user_id = target_user_id;");
+      expect(migration61Sql).toContain("update public.support_tickets set admin_id = null where admin_id = target_user_id;");
+      expect(migration61Sql).toContain("delete from public.app_analytics_events where user_id = target_user_id;");
+      expect(migration61Sql).toContain("update public.admin_telegram_settings set updated_by = null where updated_by = target_user_id;");
+
+      // 4. Verifica expurgo final de profiles e auth.users
+      expect(migration61Sql).toContain("delete from public.profiles where id = v_user_id;");
+      expect(migration61Sql).toContain("delete from auth.users where id = v_user_id;");
+      expect(migration61Sql).toContain("delete from public.profiles where id = target_user_id;");
+      expect(migration61Sql).toContain("delete from auth.users where id = target_user_id;");
+
+      // 5. Verifica que todas as foreign keys que referenciam profiles ou auth.users possuem ON DELETE CASCADE ou ON DELETE SET NULL
+      const fkMatches = Array.from(
+        allMigrationSql.matchAll(/references\s+(?:public\.profiles|auth\.users)\s*(?:\([a-zA-Z0-9_]+\))?\s+([^;,\n]+)/gi)
+      );
+      expect(fkMatches.length).toBeGreaterThan(0);
+      for (const match of fkMatches) {
+        const clause = match[1]!.toLowerCase();
+        const hasValidCascadeOrSetNull = clause.includes("on delete cascade") || clause.includes("on delete set null");
+        expect(hasValidCascadeOrSetNull, `FK sem ON DELETE CASCADE/SET NULL: ${match[0]}`).toBe(true);
       }
     });
   });
