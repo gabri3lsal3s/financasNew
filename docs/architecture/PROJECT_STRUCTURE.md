@@ -228,6 +228,14 @@
     │   ├── legal/                 #   Páginas Legais e Regulatórias (/termos, /privacidade, LGPD, Decreto 7.962/2013)
     │   │                          #     pages: terms-page, privacy-page (com pages/index.ts)
     │   │                          #     components: legal-page-shell (com components/index.ts e index.ts)
+    │   │
+    │   ├── public-share/          #   Compartilhamento Público (/r/:token, /orcamento-familiar/:token, /meta/:token)
+    │   │                          #     pages: split-public-page, family-budget-page, goal-tracker-public-page
+    │   │                          #     components: pix-copy-block, share-public-shell, family-budget-category-list
+    │   │
+    │   ├── tools/                 #   Simuladores Financeiros Abertos & Hub (/ferramentas, /ferramentas/simulador-dividas, /ferramentas/rebalanceamento, /ferramentas/juros-compostos)
+    │   │                          #     pages: tools-hub-page, debt-simulator-page, rebalance-simulator-page, compound-interest-page
+    │   │                          #     components: tools-header, tools-footer-cta
     │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
     │   ├── finance/               #   motor puro de rateio de despesas e divisão equitativa em centavos (split-math.ts, balanceamento de sobra)

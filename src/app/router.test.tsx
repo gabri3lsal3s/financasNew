@@ -246,6 +246,93 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
     expect(await screen.findByText(/Meta não encontrada/i)).toBeInTheDocument();
   });
 
+  it("renderiza o hub público /ferramentas para visitantes", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/ferramentas");
+    render(<AppRouter />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Simuladores Financeiros Gratuitos" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renderiza a ferramenta pública /ferramentas/simulador-dividas para visitantes", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/ferramentas/simulador-dividas");
+    render(<AppRouter />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Simulador de Quitação: Avalanche vs Bola de Neve",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("renderiza a ferramenta pública /ferramentas/rebalanceamento para visitantes", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/ferramentas/rebalanceamento");
+    render(<AppRouter />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Simulador de Rebalanceamento Inteligente de Carteira",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("renderiza a ferramenta pública /ferramentas/juros-compostos para visitantes", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/ferramentas/juros-compostos");
+    render(<AppRouter />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Simulador de Juros Compostos & Independência Financeira",
+      }),
+    ).toBeInTheDocument();
+  });
+
+
 
   it("redireciona rota legada /investimentos preservando query strings para /investments", async () => {
     vi.spyOn(useAuthModule, "useAuth").mockReturnValue({

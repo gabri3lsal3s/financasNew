@@ -185,7 +185,7 @@ Permitir o compartilhamento transparente do progresso de metas em grupo (viagens
 
 Transformar os motores de amortização e alocação de carteira em ferramentas públicas abertas na web, operando como ímãs de atração orgânica sem custo de servidor.
 
-- [ ] **Tarefa 5.1: Rotas Públicas dos Simuladores no Cliente**
+- [x] **Tarefa 5.1: Rotas Públicas dos Simuladores no Cliente**
   - Criar rotas públicas indexáveis:
     - `/ferramentas/simulador-dividas` (Método Avalanche vs Bola de Neve).
     - `/ferramentas/rebalanceamento` (Cálculo de Aportes para Carteira de Investimentos).

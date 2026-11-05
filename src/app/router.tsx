@@ -92,6 +92,19 @@ const GoalTrackerPublicPage = lazy(() =>
     default: m.GoalTrackerPublicPage,
   })),
 );
+const ToolsHubPage = lazy(() =>
+  import("@/features/tools/pages/tools-hub-page").then((m) => ({ default: m.ToolsHubPage })),
+);
+const DebtSimulatorPage = lazy(() =>
+  import("@/features/tools/pages/debt-simulator-page").then((m) => ({ default: m.DebtSimulatorPage })),
+);
+const RebalanceSimulatorPage = lazy(() =>
+  import("@/features/tools/pages/rebalance-simulator-page").then((m) => ({ default: m.RebalanceSimulatorPage })),
+);
+const CompoundInterestPage = lazy(() =>
+  import("@/features/tools/pages/compound-interest-page").then((m) => ({ default: m.CompoundInterestPage })),
+);
+
 
 
 function RouteSuspenseFallback() {
@@ -262,6 +275,13 @@ export function AppRouter() {
           <Route path="/r/:token" element={<SplitPublicPage />} />
           <Route path="/orcamento-familiar/:token" element={<FamilyBudgetPage />} />
           <Route path="/meta/:token" element={<GoalTrackerPublicPage />} />
+
+          {/* Rotas públicas de simuladores financeiros abertos (Fase 5) */}
+          <Route path="/ferramentas" element={<ToolsHubPage />} />
+          <Route path="/ferramentas/simulador-dividas" element={<DebtSimulatorPage />} />
+          <Route path="/ferramentas/rebalanceamento" element={<RebalanceSimulatorPage />} />
+          <Route path="/ferramentas/juros-compostos" element={<CompoundInterestPage />} />
+
 
 
           {/* Páginas públicas legais e regulatórias (fora do shell autenticado) */}
