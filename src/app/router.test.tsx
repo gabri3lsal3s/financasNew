@@ -23,7 +23,20 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useSaveSplitExpense: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }));
+
+vi.mock("@/state/queries/use-public-shares", () => ({
+  usePublicShare: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 
 describe("AppRouter (Code Splitting e Lazy Routes)", () => {
   it("renderiza a rota /entrar com Suspense e lazy loading para visitantes", async () => {
@@ -167,6 +180,26 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
       }),
     ).toBeInTheDocument();
   });
+
+  it("renderiza a rota pública /r/:token (SplitPublicPage) para visitantes", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/r/token-teste");
+    render(<AppRouter />);
+
+    // Deve exibir o badge ou o estado da página sem redirecionar para /entrar
+    expect(await screen.findByText("Racha de Conta")).toBeInTheDocument();
+  });
+
 
   it("redireciona rota legada /investimentos preservando query strings para /investments", async () => {
     vi.spyOn(useAuthModule, "useAuth").mockReturnValue({

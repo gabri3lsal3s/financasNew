@@ -16,8 +16,22 @@ export {
   validatePixBrCode,
 } from "./pix-br-code";
 
+export {
+  drawQrCodeToCanvas,
+  drawQrMatrixToCanvas,
+  generateQrCodeMatrix,
+  renderQrCodeSvg,
+} from "./qr-code";
+
 export type {
   DecodedPixBrCode,
   GeneratePixBrCodeOptions,
   PixKeyType,
 } from "./pix-br-code";
+
+export type {
+  DrawQrCodeOptions,
+  GenerateQrCodeOptions,
+  QrCodeEccLevel,
+} from "./qr-code";
+

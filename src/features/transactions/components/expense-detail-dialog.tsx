@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Copy, Pencil, Share2, Trash2 } from "lucide-react";
+import { Copy, Pencil, Share2, Trash2, Users } from "lucide-react";
 import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, ModalFooter, MoneyInput, Select } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
+import { SplitExpenseDialog } from "@/components/modules/split-expense-dialog";
 import { formatCentsAsBRL } from "@/services/masks";
 import { shareText } from "@/services/export-actions";
 import { getErrorMessage } from "@/services/errors";
@@ -393,6 +394,7 @@ export function ExpenseDetailDialog({
     }
   }
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [splitOpen, setSplitOpen] = useState(false);
   const [mode, setMode] = useState<InstallmentDeleteMode>("single");
   const [editScope, setEditScope] = useState<InstallmentDeleteMode>("single");
   const [error, setError] = useState<string | null>(null);
@@ -665,8 +667,18 @@ export function ExpenseDetailDialog({
                   ) : null}
                 </dl>
 
-                <div className="flex items-center justify-between gap-2 pt-3 border-t border-border/80 mt-2">
-                  <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-border/80 mt-2">
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => setSplitOpen(true)}
+                    >
+                      <Users className="size-3.5" aria-hidden="true" />
+                      Rachar Despesa
+                    </Button>
                     <Button
                       type="button"
                       variant="ghost"
@@ -705,6 +717,14 @@ export function ExpenseDetailDialog({
           </div>
         ) : null}
       </Modal>
+
+      {splitOpen ? (
+        <SplitExpenseDialog
+          open={splitOpen}
+          onOpenChange={setSplitOpen}
+          expense={expense}
+        />
+      ) : null}
 
       <ConfirmDialog
         open={confirmOpen}

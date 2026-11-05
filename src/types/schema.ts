@@ -758,6 +758,29 @@ export type FeatureUsageMetric = {
 export const PUBLIC_SHARE_KINDS = ["split", "family_budget", "goal_tracker"] as const;
 export type PublicShareKind = (typeof PUBLIC_SHARE_KINDS)[number];
 
+export type SplitParticipantItem = {
+  name: string;
+  share_cents: number;
+  is_host: boolean;
+};
+
+export type SplitSharePayload = {
+  title: string;
+  total_cents: number;
+  date: string;
+  people_count: number;
+  guest_share_cents: number;
+  host_share_cents: number;
+  participants: SplitParticipantItem[];
+  remainder_policy: "host" | "balanced";
+  host_name: string;
+  host_city: string;
+  pix_key: string;
+  pix_key_type: string;
+  pix_br_code: string;
+  expense_id?: string;
+};
+
 export type PublicShare = {
   id: string;
   user_id: string;

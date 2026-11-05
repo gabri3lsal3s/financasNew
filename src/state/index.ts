@@ -247,4 +247,17 @@ export { useAdminSupportTickets, useMySupportTickets } from "./queries/use-suppo
 export { useAdminTelegramSettings, telegramSettingsKey } from "./queries/use-telegram-settings";
 export { useUpdateTelegramSettingsMutation } from "./mutations/use-telegram-mutations";
 export { useFeatureUsageMetrics, analyticsRankingKey } from "./queries/use-analytics-metrics";
+export {
+  useCreatePublicShare,
+  useRevokePublicShare,
+  useSaveSplitExpense,
+  publicSharesQueryKey,
+} from "./mutations/use-public-share-mutations";
+export {
+  usePublicShare,
+  useMyPublicShares,
+  publicShareTokenQueryKey,
+  myPublicSharesQueryKey,
+} from "./queries/use-public-shares";
+
 

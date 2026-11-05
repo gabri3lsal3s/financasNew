@@ -69,13 +69,14 @@ import {
   hasSeenWelcomeModal,
 } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
-import { useVisualCustomization, useApkPromo, useOnboardingDismissed } from "@/hooks";
+import { useVisualCustomization, useApkPromo, useOnboardingDismissed, usePendingSplitExpense } from "@/hooks";
 import { CashCheckpointDialog } from "@/components/modules/cash-checkpoint-dialog";
 import { cn } from "@/lib/utils";
 import { CategoryBreakdownDialog, OtherBudgetsDialog, OtherCategoriesDialog } from "../components";
 
 export function OverviewPage() {
   const { showPromo: showApkPromo, dismiss: dismissApkPromo } = useApkPromo();
+  usePendingSplitExpense();
 
   const [month, setMonth] = useState(currentMonth);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);

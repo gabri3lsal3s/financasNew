@@ -95,14 +95,14 @@ Estruturar a camada pura de dados e o motor de geração de Pix Copia e Cola com
 
 Permitir que o usuário divida qualquer despesa rapidamente e gere uma página pública limpa onde o amigo copia o Pix com o valor preenchido e pode inaugurar sua conta.
 
-- [ ] **Tarefa 2.1: Diálogo de Divisão de Despesa no Aplicativo (`SplitExpenseDialog.tsx`)**
+- [x] **Tarefa 2.1: Diálogo de Divisão de Despesa no Aplicativo (`SplitExpenseDialog.tsx`)**
   - Criar `src/components/modules/split-expense-dialog.tsx`:
     - Abre a partir do menu de opções de qualquer transação de despesa.
     - Permite definir número de participantes ou nomes customizados.
     - Seleciona a chave Pix do anfitrião (com preenchimento automático a partir do perfil).
     - Botão de ação: **[Gerar Racha & Copiar Link]**.
 
-- [ ] **Tarefa 2.2: Rota Web Pública Ultraleve `/r/:token` (`SplitPublicPage.tsx`)**
+- [x] **Tarefa 2.2: Rota Web Pública Ultraleve `/r/:token` (`SplitPublicPage.tsx`)**
   - Criar página pública em `src/features/public-share/pages/split-public-page.tsx`:
     - Design executivo limpo, adaptado para telas mobile:
       - Título da despesa, data e valor total.
@@ -110,17 +110,17 @@ Permitir que o usuário divida qualquer despesa rapidamente e gere uma página p
       - Botão de um toque com feedback tátil e cópia instantânea: **[Copiar Pix — R$ XX,XX]**.
       - QR Code Pix opcional gerado em canvas client-side.
 
-- [ ] **Tarefa 2.3: Fluxo de Auto-Inauguração de Conta (Auto-Onboarding)**
+- [x] **Tarefa 2.3: Fluxo de Auto-Inauguração de Conta (Auto-Onboarding)**
   - Na página `/r/:token`:
     - Botão: **[Salvar esta despesa no meu controle financeiro]**.
     - Se o usuário já possuir o app instalado: abre via deep link e salva a transação.
     - Se for um novo visitante: modal simples com E-mail e Senha que cria a conta e já inaugura o dashboard com a despesa de R$ XX,XX cadastrada.
 
-- [ ] **Portão de Qualidade 2:**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/features/public-share/`
-  - [ ] **Commit & Push da Fase 2:** `git commit -m "feat(share): racha de contas com pix copia e cola e auto-onboarding"`
+- [x] **Portão de Qualidade 2:**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/features/public-share/`
+  - [x] **Commit & Push da Fase 2:** `git commit -m "feat(share): racha de contas com pix copia e cola e auto-onboarding"`
 
 ---
 

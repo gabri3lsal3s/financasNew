@@ -77,6 +77,12 @@ const TermsPage = lazy(() =>
 const PrivacyPage = lazy(() =>
   import("@/features/legal/pages/privacy-page").then((m) => ({ default: m.PrivacyPage })),
 );
+const SplitPublicPage = lazy(() =>
+  import("@/features/public-share/pages/split-public-page").then((m) => ({
+    default: m.SplitPublicPage,
+  })),
+);
+
 
 function RouteSuspenseFallback() {
   return (
@@ -241,6 +247,10 @@ export function AppRouter() {
           <Route path="/precos" element={<LandingPage />} />
           <Route path="/planos" element={<LandingPage />} />
           <Route path="/vendas" element={<LandingPage />} />
+
+          {/* Rotas públicas de compartilhamento (Racha de Contas) */}
+          <Route path="/r/:token" element={<SplitPublicPage />} />
+
 
           {/* Páginas públicas legais e regulatórias (fora do shell autenticado) */}
           <Route path="/termos" element={<TermsPage />} />
