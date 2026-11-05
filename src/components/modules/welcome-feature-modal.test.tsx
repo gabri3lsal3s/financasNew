@@ -49,7 +49,7 @@ describe("WelcomeFeatureModal — Apresentação da Captura Sem Fricção (§6.4
     // Avança para Slide 2: Contingência
     await user.click(screen.getByRole("button", { name: /Próximo/i }));
     expect(screen.getByTestId("slide-contingency")).toBeInTheDocument();
-    expect(screen.getByText("Contingência de Comprovantes")).toBeInTheDocument();
+    expect(screen.getByText("Comprovantes e Cupons Fiscais")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Voltar/i })).toBeInTheDocument();
 
     // Avança para Slide 3: Mágica Semântica

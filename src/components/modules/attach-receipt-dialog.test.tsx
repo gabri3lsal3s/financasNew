@@ -75,7 +75,7 @@ describe("AttachReceiptDialog", () => {
   it("renderiza os elementos de envio de arquivo e captura por câmera", () => {
     render(<AttachReceiptDialog open={true} onOpenChange={onOpenChange} onParsed={onParsed} />);
 
-    expect(screen.getByText("Anexar Comprovante")).toBeDefined();
+    expect(screen.getByText("Anexar Comprovante ou Cupom")).toBeDefined();
     expect(screen.getByText(/Arraste o comprovante aqui/i)).toBeDefined();
     expect(screen.getByRole("button", { name: /Escolher arquivo/i })).toBeDefined();
     expect(screen.getByRole("button", { name: /Tirar foto/i })).toBeDefined();

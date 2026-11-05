@@ -62,7 +62,7 @@ describe("LandingPage", () => {
 
     expect(screen.getByText("Captura Invisível com Inteligência Local")).toBeInTheDocument();
     expect(screen.getByText(/Caminho 1 \(Estrela\): Leitura Automática de Notificações/i)).toBeInTheDocument();
-    expect(screen.getByText(/Caminho 2 \(Garantia\): Compartilhamento Direto de Comprovantes/i)).toBeInTheDocument();
+    expect(screen.getByText(/Caminho 2 \(Garantia\): Leitura Universal de Comprovantes & Cupons/i)).toBeInTheDocument();
     expect(screen.getByText(/Mágica Semântica: Memória Ativa de CNPJs e Comerciantes/i)).toBeInTheDocument();
     expect(screen.getByText("Zero Senhas Bancárias")).toBeInTheDocument();
   });

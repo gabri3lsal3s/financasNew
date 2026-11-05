@@ -240,8 +240,8 @@ export function AttachReceiptDialog({
         if (!next) handleClose();
         else onOpenChange(next);
       }}
-      title="Anexar Comprovante"
-      description="Envie comprovantes Pix, cartões de crédito/débito, boletos, concessionárias ou notas fiscais em PDF ou imagem para identificação automática."
+      title="Anexar Comprovante ou Cupom"
+      description="Identificação automática de cupons fiscais (DANFE NFC-e / SAT), comprovantes Pix, cartões com parcelamento, boletos bancários e carnês em PDF ou foto."
       size="md"
       footer={
         <div className="flex items-center justify-end w-full">
@@ -360,7 +360,7 @@ export function AttachReceiptDialog({
         <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-muted/40 border border-border/40 text-[11px] text-muted-foreground">
           <FileUp className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
           <span>
-            Compatível com comprovantes Pix de todos os bancos homologados, cartões de crédito/débito com parcelamento, boletos bancários, concessionárias e cupons fiscais (NFC-e/SAT).
+            Compatível com cupons fiscais com múltiplos itens, comprovantes Pix de 11 bancos, slips de maquininhas com parcelamento em até 60x, boletos bancários e carnês de lojas.
           </span>
         </div>
       </div>

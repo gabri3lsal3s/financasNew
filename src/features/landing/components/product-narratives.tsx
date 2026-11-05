@@ -313,10 +313,10 @@ export function ProductNarratives() {
               <div className="p-3 sm:p-3.5 rounded-xl border border-border/70 bg-surface/60 space-y-1">
                 <div className="flex items-center gap-2 text-foreground font-semibold">
                   <Share2 className="size-4 text-portfolio shrink-0" aria-hidden="true" />
-                  <span>Caminho 2 (Garantia): Compartilhamento Direto de Comprovantes</span>
+                  <span>Caminho 2 (Garantia): Leitura Universal de Comprovantes & Cupons</span>
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
-                  O banco não notificou uma transferência ou você usa iPhone/Web? Toque em "Compartilhar" no app do banco e envie o comprovante (PDF, imagem ou texto). Nosso OCR local processa na hora sem enviar arquivos para a nuvem.
+                  Compartilhe ou anexe comprovantes Pix, cupons fiscais (NFC-e/SAT com múltiplos itens), boletos, carnês e slips de cartão parcelado. Nosso OCR local processa na hora sem enviar arquivos para a nuvem.
                 </p>
               </div>
 

@@ -568,10 +568,10 @@ export function LaunchWizard({
             size="xs"
             onClick={() => setAttachOpen(true)}
             className="h-7 text-xs border-border/80 bg-surface-raised hover:bg-surface-hover text-foreground gap-1.5 px-2.5 font-medium shadow-xs cursor-pointer"
-            aria-label="Anexar comprovante"
+            aria-label="Anexar comprovante ou cupom fiscal"
           >
             <Paperclip className="size-3.5 text-foreground" aria-hidden="true" />
-            <span className="hidden sm:inline">Anexar comprovante</span>
+            <span className="hidden sm:inline">Anexar comprovante / cupom</span>
           </Button>
         </div>
       }

@@ -131,12 +131,12 @@ describe("OnboardingCard — checklist de primeiro uso com captura inteligente (
     expect(mockRequestNotificationListenerPermission).not.toHaveBeenCalled();
   });
 
-  it("exibe a dica educativa de contingência para compartilhamento de comprovante", () => {
+  it("exibe a dica educativa para compartilhamento de comprovante e cupom fiscal", () => {
     render(<OnboardingCard counts={empty} />);
-    expect(screen.getByText("Dica de contingência")).toBeInTheDocument();
+    expect(screen.getByText("Comprovantes e Cupons Fiscais")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Seu banco não notificou uma transferência? Basta tocar em Compartilhar Comprovante para o Áxis Finance.",
+        "Compartilhe ou anexe comprovantes Pix, boletos, carnês, maquininhas ou cupons fiscais para registro automático sem digitação.",
       ),
     ).toBeInTheDocument();
   });

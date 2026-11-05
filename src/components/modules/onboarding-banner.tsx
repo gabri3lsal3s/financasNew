@@ -181,10 +181,10 @@ function ChecklistContent({
         <Share2 className="size-4 shrink-0 text-muted-foreground mt-0.5" aria-hidden="true" />
         <div className="min-w-0">
           <p className="font-semibold text-foreground text-xs">
-            Dica de contingência
+            Comprovantes e Cupons Fiscais
           </p>
           <p className="text-[11px] leading-relaxed text-muted-foreground">
-            Seu banco não notificou uma transferência? Basta tocar em Compartilhar Comprovante para o Áxis Finance.
+            Compartilhe ou anexe comprovantes Pix, boletos, carnês, maquininhas ou cupons fiscais para registro automático sem digitação.
           </p>
         </div>
       </div>

@@ -23,11 +23,11 @@ export const WELCOME_SLIDES: readonly FeatureSlide[] = [
   },
   {
     id: "contingency",
-    badge: "Contingência Inteligente",
-    title: "Contingência de Comprovantes",
-    headline: "O banco não enviou push? Sem problema",
+    badge: "Captura Universal",
+    title: "Comprovantes e Cupons Fiscais",
+    headline: "Pix, cartões parcelados, boletos e notas fiscais",
     description:
-      "Compartilhe PDFs, imagens ou textos de qualquer banco se o push falhar. O motor reconhece na hora os dados da transação com alta precisão.",
+      "Compartilhe ou anexe comprovantes Pix, cupons fiscais (NFC-e/SAT com múltiplos itens), boletos, carnês e comprovantes de maquininhas de cartão. O motor extrai totais, parcelamentos e dados do emissor automaticamente via OCR local.",
     icon: Share2,
   },
   {
