@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Copy, Pencil, Share2, Trash2, Users } from "lucide-react";
-import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, ModalFooter, MoneyInput, Select } from "@/components/ui";
+import { Alert, Badge, Button, ConfirmDialog, DatePicker, Input, Modal, ModalFooter, MoneyInput, Select, Switch } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { SplitExpenseDialog } from "@/components/modules/split-expense-dialog";
@@ -89,6 +89,7 @@ interface ExpenseEditFormProps {
     card_id: string | null;
     bill_competence: string | null;
     report_weight: number;
+    is_family?: boolean;
   }) => Promise<void>;
 }
 
@@ -111,6 +112,7 @@ function ExpenseEditForm({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(expense.payment_method);
   const [cardId, setCardId] = useState<string>(expense.card_id || "");
   const [billCompetence, setBillCompetence] = useState<string>(expense.bill_competence || "");
+  const [isFamily, setIsFamily] = useState(Boolean(expense.is_family));
   // Competência digitada manualmente → data deixa de recalculá-la (override).
   const [competenceTouched, setCompetenceTouched] = useState(false);
   const isPreset = REPORT_WEIGHT_PRESETS.includes(expense.report_weight);
@@ -196,6 +198,7 @@ function ExpenseEditForm({
         card_id: paymentMethod === "credit_card" ? cardId || null : null,
         bill_competence: effectiveCompetence,
         report_weight: calculatedWeight,
+        is_family: isFamily,
       });
     } catch (err) {
       setFormError(getErrorMessage(err));
@@ -358,6 +361,16 @@ function ExpenseEditForm({
         ariaLabelCustom="Sua cota considerada no relatório"
       />
 
+      <div className="rounded-xl border border-border/80 bg-surface p-3">
+        <Switch
+          id="edit-expense-family"
+          checked={isFamily}
+          onCheckedChange={setIsFamily}
+          label="Despesa da Casa / Familiar"
+          description="Visível no Painel Familiar compartilhado"
+        />
+      </div>
+
       <ModalFooter>
         <Button
           type="button"
@@ -461,6 +474,7 @@ export function ExpenseDetailDialog({
     card_id: string | null;
     bill_competence: string | null;
     report_weight: number;
+    is_family?: boolean;
   }) => {
     if (!expense) return;
     setError(null);
@@ -474,6 +488,7 @@ export function ExpenseDetailDialog({
         payment_method: payload.payment_method,
         card_id: payload.card_id,
         report_weight: payload.report_weight,
+        is_family: payload.is_family,
         ...(editScope === "single" ? { bill_competence: payload.bill_competence } : {}),
       };
       if (isRecurring) {
@@ -630,6 +645,18 @@ export function ExpenseDetailDialog({
                         </>
                       ) : (
                         "Outra"
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <dt className="text-xs text-muted-foreground">Orçamento</dt>
+                    <dd className="font-medium text-foreground text-xs">
+                      {expense.is_family ? (
+                        <Badge variant="muted" size="xs">
+                          Familiar
+                        </Badge>
+                      ) : (
+                        "Individual"
                       )}
                     </dd>
                   </div>

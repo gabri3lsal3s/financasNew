@@ -36,6 +36,7 @@ import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
 import { DeleteAccountCard } from "./delete-account-card";
+import { FamilyBudgetShareCard } from "./family-budget-share-card";
 
 function formatAccountDate(dateString?: string | null): string {
   if (!dateString) return "Data indisponível";
@@ -564,7 +565,10 @@ export function AccountTab() {
         </CardContent>
       </Card>
 
-      {/* Card 4: Sessão & Desconexão */}
+      {/* Card 4: Orçamento Familiar & Link do Cônjuge */}
+      <FamilyBudgetShareCard />
+
+      {/* Card 5: Sessão & Desconexão */}
       <Card className="border-border/80 bg-surface shadow-xs">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">

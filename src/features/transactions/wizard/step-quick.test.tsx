@@ -178,6 +178,26 @@ describe("StepQuick (Lançamento Rápido em Tela Única)", () => {
     expect(screen.getByText("Confirmar categoria")).toBeDefined();
   });
 
+  it("renderiza o switch de despesa familiar e dispara onFamilyChange ao clicar", async () => {
+    const onFamilyChange = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <StepQuick
+        {...defaultProps}
+        onFamilyChange={onFamilyChange}
+      />,
+    );
+
+    const familySwitch = screen.getByRole("switch", { name: "Despesa da Casa / Familiar" });
+    expect(familySwitch).toBeDefined();
+    expect(screen.getByText("Visível no Painel Familiar compartilhado")).toBeDefined();
+    expect(familySwitch).toHaveAttribute("aria-checked", "false");
+
+    await user.click(familySwitch);
+    expect(onFamilyChange).toHaveBeenCalledWith(true);
+  });
+
   it("submete no Enter caso o valor seja maior que zero", () => {
     render(<StepQuick {...defaultProps} state={{ ...defaultProps.state, valueCents: 1500 }} />);
 

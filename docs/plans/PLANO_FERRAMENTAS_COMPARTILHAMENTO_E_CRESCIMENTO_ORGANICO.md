@@ -128,20 +128,20 @@ Permitir que o usuário divida qualquer despesa rapidamente e gere uma página p
 
 Possibilitar a separação elegante entre despesas individuais e familiares, oferecendo ao cônjuge/família uma visão segura de leitura do orçamento da casa.
 
-- [ ] **Tarefa 3.1: Migração PostgreSQL para o Campo `is_family`**
+- [x] **Tarefa 3.1: Migração PostgreSQL para o Campo `is_family`**
   - Criar migração `supabase/migrations/20260101000066_add_is_family_to_transactions.sql`:
     - Adicionar coluna `is_family boolean default false not null` em `transactions`.
     - Criar índice parcial: `create index idx_transactions_user_family on transactions(user_id, date) where is_family = true`.
 
-- [ ] **Tarefa 3.2: Integração do Switch no Formulário de Transações**
+- [x] **Tarefa 3.2: Integração do Switch no Formulário de Transações**
   - Atualizar os formulários de criação/edição de transações (`TransactionFormDialog` e `QuickExpenseModal`):
     - Switch discreto: `[ ] Despesa da Casa / Familiar` com helper text *"Visível no Painel Familiar compartilhado"*.
     - Configuração por categoria: permitir marcar nas categorias (ex.: "Supermercado", "Moradia") a opção *"Sugerir como familiar por padrão"*.
 
-- [ ] **Tarefa 3.3: Filtro Rápido no Extrato do Titular**
+- [x] **Tarefa 3.3: Filtro Rápido no Extrato do Titular**
   - No extrato do titular, adicionar filtro de visão: `[Todos | Pessoais | Familiar]`, permitindo ao usuário consultar isoladamente quanto o lar consumiu no mês.
 
-- [ ] **Tarefa 3.4: Rota Web Pública de Leitura `/orcamento-familiar/:token`**
+- [x] **Tarefa 3.4: Rota Web Pública de Leitura `/orcamento-familiar/:token`**
   - Criar `src/features/public-share/pages/family-budget-page.tsx`:
     - Consulta via RPC seguro `get_shared_family_budget`:
       - Exibe apenas: Teto do Mês, Total Gasto e **Saldo Restante Disponível** em barra de progresso.
@@ -149,11 +149,11 @@ Possibilitar a separação elegante entre despesas individuais e familiares, ofe
     - O cônjuge pode fixar a página na tela inicial como atalho PWA.
     - Titular conta com botão em Configurações para revogar ou regenerar o link a qualquer momento.
 
-- [ ] **Portão de Qualidade 3:**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/features/settings/ src/features/public-share/`
-  - [ ] **Commit & Push da Fase 3:** `git commit -m "feat(family): distincao de despesas familiares e link de leitura para conjuge"`
+- [x] **Portão de Qualidade 3:**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/features/settings/ src/features/public-share/`
+  - [x] **Commit & Push da Fase 3:** `git commit -m "feat(family): distincao de despesas familiares e link de leitura para conjuge"`
 
 ---
 

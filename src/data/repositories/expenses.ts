@@ -16,6 +16,7 @@ function mapExpense(row: Expense): Expense {
     value: Number(row.value),
     report_weight: Number(row.report_weight),
     base_amount: Number(row.base_amount),
+    is_family: Boolean(row.is_family),
   };
 }
 

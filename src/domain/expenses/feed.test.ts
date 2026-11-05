@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildUnifiedFeedItems, groupFeedByDay } from "./feed";
+import { buildUnifiedFeedItems, filterByVisionScope, groupFeedByDay } from "./feed";
 import type { Expense, Income } from "@/types";
 
 describe("domain feed", () => {
@@ -175,5 +175,40 @@ describe("domain feed", () => {
     const groups = groupFeedByDay(items);
     expect(groups[0]?.netCents).toBe(-10000);
     expect(groups[0]?.weightedNetCents).toBe(-5000);
+  });
+
+  describe("filterByVisionScope (Fase 3 — Tarefa 3.3)", () => {
+    const mixedExpenses: Expense[] = [
+      { ...mockExpenses[0]!, id: "exp-personal-1", is_family: false },
+      { ...mockExpenses[1]!, id: "exp-family-1", is_family: true },
+      { ...mockExpenses[2]!, id: "exp-personal-2" }, // sem is_family = pessoal
+    ];
+
+    it("retorna todos os lançamentos quando o escopo é 'all'", () => {
+      const result = filterByVisionScope(mixedExpenses, "all");
+      expect(result).toHaveLength(3);
+    });
+
+    it("retorna apenas lançamentos pessoais quando o escopo é 'personal'", () => {
+      const result = filterByVisionScope(mixedExpenses, "personal");
+      expect(result).toHaveLength(2);
+      expect(result.map((r) => r.id)).toEqual(["exp-personal-1", "exp-personal-2"]);
+    });
+
+    it("retorna apenas lançamentos familiares quando o escopo é 'family'", () => {
+      const result = filterByVisionScope(mixedExpenses, "family");
+      expect(result).toHaveLength(1);
+      expect(result[0]?.id).toBe("exp-family-1");
+    });
+  });
+
+  it("popula a propriedade isFamily nos itens unificados do feed", () => {
+    const items = buildUnifiedFeedItems(
+      [{ ...mockExpenses[0]!, id: "exp-fam", is_family: true }],
+      [{ ...mockIncomes[0]!, id: "inc-pers", is_family: false }],
+      "all",
+    );
+    expect(items[0]?.isFamily).toBe(true);
+    expect(items[1]?.isFamily).toBe(false);
   });
 });

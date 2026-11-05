@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CategoryFormDialog } from "./category-form-dialog";
 import { DeleteCategoryDialog } from "./delete-category-dialog";
 import type { Category } from "@/types";
@@ -38,6 +38,9 @@ const siblingCategory: Category = {
 };
 
 describe("CategoryFormDialog & DeleteCategoryDialog", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
   it("cria categoria de despesa aplicando a sugestão inteligente por nome", async () => {
     createCategoryMock.mockResolvedValue({ id: "c9" });
     const user = userEvent.setup();
@@ -68,7 +71,38 @@ describe("CategoryFormDialog & DeleteCategoryDialog", () => {
     expect(params.type).toBe("expense");
     expect(params.name).toBe("Transporte");
     expect(params.icon).toBe("transporte");
+    expect(params.is_family).toBe(false);
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("permite marcar a opção de sugerir como familiar por padrão na criação", async () => {
+    createCategoryMock.mockResolvedValue({ id: "c10" });
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+
+    render(
+      <CategoryFormDialog
+        category={null}
+        defaultType="expense"
+        open={true}
+        onOpenChange={onOpenChange}
+        siblings={[siblingCategory]}
+      />
+    );
+
+    const nameInput = screen.getByLabelText("Nome");
+    await user.type(nameInput, "Supermercado");
+
+    const familySwitch = screen.getByRole("switch", { name: "Sugerir como familiar por padrão" });
+    expect(familySwitch).toHaveAttribute("aria-checked", "false");
+    await user.click(familySwitch);
+    expect(familySwitch).toHaveAttribute("aria-checked", "true");
+
+    await user.click(screen.getByRole("button", { name: "Criar categoria" }));
+
+    expect(createCategoryMock).toHaveBeenCalledTimes(1);
+    const params = createCategoryMock.mock.calls[0]?.[0];
+    expect(params.is_family).toBe(true);
   });
 
   it("abre formulário de edição com dados pré-preenchidos e salva alterações", async () => {

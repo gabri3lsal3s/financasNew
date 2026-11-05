@@ -282,6 +282,8 @@ export type Category = {
   color: string | null;
   is_reserved: boolean;
   is_active: boolean;
+  /** Sugere marcar lançamentos desta categoria como despesa familiar por padrão (Fase 3). */
+  is_family?: boolean;
 };
 
 export type Income = {
@@ -307,6 +309,8 @@ export type Income = {
   statement_hash?: string | null;
   /** Flag que indica se a receita foi importada via extrato bancário. */
   imported_from_statement?: boolean;
+  /** Flag que indica se o lançamento pertence ao orçamento familiar compartilhado (Fase 3). */
+  is_family?: boolean;
   created_at: string;
 };
 
@@ -337,6 +341,8 @@ export type Expense = {
   statement_hash?: string | null;
   /** Flag que indica se a despesa foi importada via extrato bancário. */
   imported_from_statement?: boolean;
+  /** Flag que indica se a despesa pertence ao orçamento familiar compartilhado (Fase 3). */
+  is_family?: boolean;
   created_at: string;
 };
 
@@ -694,6 +700,7 @@ export type RecurrenceGroupFields = {
   card_id?: string | null;
   receive_type?: string | null;
   bill_competence?: string | null;
+  is_family?: boolean | null;
 };
 
 export type InstallmentInput = {
@@ -791,6 +798,32 @@ export type PublicShare = {
   expires_at: string | null;
   is_revoked: boolean;
   updated_at: string;
+};
+
+export type SharedFamilyExpenseItem = {
+  id: string;
+  description: string;
+  date: string;
+  amount_cents: number;
+};
+
+export type SharedFamilyBudgetResult = {
+  token: string;
+  month: string;
+  owner_name: string;
+  monthly_ceiling_cents: number;
+  total_spent_cents: number;
+  remaining_cents: number;
+  spent_percentage: number;
+  is_revoked: boolean;
+  expires_at: string | null;
+  expenses: SharedFamilyExpenseItem[];
+};
+
+export type FamilyBudgetSharePayload = {
+  monthly_ceiling_cents?: number;
+  owner_name?: string;
+  title?: string;
 };
 
 

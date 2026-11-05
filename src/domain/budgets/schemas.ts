@@ -72,6 +72,7 @@ export const categoryFormSchema = z.object({
   type: z.enum(["expense", "income"]),
   icon: cleanTextSchema(50).nullable().optional(),
   color: cleanTextSchema(30).nullable().optional(),
+  is_family: z.boolean().default(false).optional(),
 });
 
 export type CategoryFormInput = z.infer<typeof categoryFormSchema>;

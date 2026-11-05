@@ -8,6 +8,7 @@ import type {
   ReceiveType,
   RecurrenceFrequency,
   RecurrenceKind,
+  SharedFamilyBudgetResult,
 } from "@/types";
 
 /**
@@ -71,6 +72,7 @@ export interface CreateExpenseWithDebtParams {
   debtAmount?: number | null;
   debtDueDate?: string | null;
   debtType?: DebtType | null;
+  isFamily?: boolean;
 }
 
 /** Despesa + cobrança vinculada em uma única transação (D1/§3.2.4). */
@@ -93,6 +95,7 @@ export async function createExpenseWithDebt(params: CreateExpenseWithDebtParams)
       p_debt_amount: params.debtAmount ?? null,
       p_debt_due_date: params.debtDueDate ?? null,
       p_debt_type: params.debtType ?? null,
+      p_is_family: params.isFamily ?? false,
     }),
   );
 }
@@ -142,6 +145,7 @@ export type RecurrenceGroupFields = {
   card_id?: string | null;
   receive_type?: string | null;
   bill_competence?: string | null;
+  is_family?: boolean | null;
 };
 
 export interface CreateRecurrenceParams {
@@ -250,6 +254,7 @@ export interface CreateIncomeInstallmentsParams {
   description?: string | null;
   reportWeight?: number;
   installments: InstallmentInput[];
+  isFamily?: boolean;
 }
 
 /** Renda parcelada (1–60) numa única transação — invariantes D12. */
@@ -266,6 +271,7 @@ export async function createIncomeInstallments(params: CreateIncomeInstallmentsP
         date: item.date,
         value: item.value,
       })),
+      p_is_family: params.isFamily ?? false,
     }),
   );
 }
@@ -1046,6 +1052,23 @@ export async function adminDeleteUser(params: { targetUserId: string }): Promise
     true,
   );
 }
+
+/**
+ * Consulta pública e segura do Orçamento Familiar compartilhado (/orcamento-familiar/:token).
+ */
+export async function getSharedFamilyBudget(params: {
+  token: string;
+  month?: string | null;
+}): Promise<SharedFamilyBudgetResult | null> {
+  return unwrapRpc(
+    callRpc("get_shared_family_budget", {
+      p_token: params.token,
+      p_month: params.month ?? null,
+    }),
+    true,
+  );
+}
+
 
 
 

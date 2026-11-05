@@ -62,11 +62,37 @@ describe("incomes repository", () => {
     });
   });
 
-  it("converte os campos numeric (string) para number em listIncomesByMonth", async () => {
+  it("converte os campos numeric (string) para number em listIncomesByMonth e mapeia is_family", async () => {
     const incomes = await listIncomesByMonth("2026-08");
     expect(incomes).toHaveLength(1);
     expect(incomes[0]?.value).toBe(5000);
     expect(incomes[0]?.report_weight).toBe(1);
+    expect(incomes[0]?.is_family).toBe(false);
+  });
+
+  it("mapeia is_family como true quando informado no banco", async () => {
+    builder = makeBuilder({
+      data: [
+        {
+          id: "inc-2",
+          user_id: "u1",
+          value: "1200.00",
+          date: "2026-08-06",
+          category_id: "c-inc",
+          receive_type: "transfer",
+          description: "Aporte Conjunto",
+          report_weight: "1.0",
+          source_ref: null,
+          statement_hash: null,
+          is_family: true,
+          created_at: "2026-08-06T09:00:00Z",
+        },
+      ],
+      error: null,
+    });
+    const incomes = await listIncomesByMonth("2026-08");
+    expect(incomes).toHaveLength(1);
+    expect(incomes[0]?.is_family).toBe(true);
   });
 
   describe("listIncomesByRange (AbortController & Cancelamento)", () => {

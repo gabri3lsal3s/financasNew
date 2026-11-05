@@ -1,6 +1,6 @@
 import { Sparkles } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
-import { Badge, NumberStepper, RadioGroup, Select } from "@/components/ui";
+import { Badge, NumberStepper, RadioGroup, Select, Switch } from "@/components/ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ export interface StepDetailsProps {
   onCardChange: (cardId: string) => void;
   onReceiveTypeChange: (type: ReceiveType) => void;
   onDescriptionChange: (description: string) => void;
+  onFamilyChange: (isFamily: boolean) => void;
   onReportWeightChange: (weight: number) => void;
   onReportCustomAmountChange: (cents: number) => void;
   onDebtToggle: (enabled: boolean) => void;
@@ -74,6 +75,7 @@ export function StepDetails({
   onCardChange,
   onReceiveTypeChange,
   onDescriptionChange,
+  onFamilyChange,
   onReportWeightChange,
   onReportCustomAmountChange,
   onDebtToggle,
@@ -189,6 +191,17 @@ export function StepDetails({
             </div>
           </div>
         ) : null}
+      </div>
+
+      {/* Switch Discreto: Despesa Familiar (Fase 3 — Tarefa 3.2) */}
+      <div className="rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs">
+        <Switch
+          id="details-family-switch"
+          checked={state.isFamily}
+          onCheckedChange={onFamilyChange}
+          label={isExpense ? "Despesa da Casa / Familiar" : "Receita da Casa / Familiar"}
+          description="Visível no Painel Familiar compartilhado"
+        />
       </div>
 
       <div className="flex flex-col gap-1.5">

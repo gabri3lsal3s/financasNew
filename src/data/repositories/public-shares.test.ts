@@ -2,7 +2,9 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   createPublicShare,
   getPublicShareByToken,
+  getSharedFamilyBudgetByToken,
   listMyPublicShares,
+  regeneratePublicShare,
   revokePublicShare,
   saveSplitExpenseToAccount,
 } from "./public-shares";
@@ -16,6 +18,7 @@ vi.mock("@/data/client", () => ({
 
 vi.mock("@/data/rpc", () => ({
   createExpenseWithDebt: vi.fn(),
+  getSharedFamilyBudget: vi.fn(),
 }));
 
 vi.mock("./categories", () => ({
@@ -229,5 +232,80 @@ describe("data/repositories/public-shares", () => {
       expect(result).toBe("expense-auto-cat");
     });
   });
+
+  describe("getSharedFamilyBudgetByToken & regeneratePublicShare", () => {
+    it("getSharedFamilyBudgetByToken delega para o RPC getSharedFamilyBudget", async () => {
+      const mockResult = {
+        token: "fam-tok-1",
+        month: "2026-11",
+        owner_name: "Gabriel",
+        monthly_ceiling_cents: 500000,
+        total_spent_cents: 200000,
+        remaining_cents: 300000,
+        spent_percentage: 40,
+        is_revoked: false,
+        expires_at: null,
+        expenses: [],
+      };
+      vi.mocked(rpcModule.getSharedFamilyBudget).mockResolvedValueOnce(mockResult);
+
+      const res = await getSharedFamilyBudgetByToken("fam-tok-1", "2026-11");
+      expect(rpcModule.getSharedFamilyBudget).toHaveBeenCalledWith({
+        token: "fam-tok-1",
+        month: "2026-11",
+      });
+      expect(res).toEqual(mockResult);
+    });
+
+    it("regeneratePublicShare revoga o token anterior e cria um novo compartilhamento", async () => {
+      const mockEq = vi.fn().mockResolvedValue({ error: null });
+      const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq });
+      const mockSingle = vi.fn().mockResolvedValue({
+        data: {
+          id: "new-share-id",
+          user_id: "user-test-uuid",
+          kind: "family_budget",
+          token: "brandnewtoken",
+          payload: { monthly_ceiling_cents: 500000 },
+          created_at: "2026-11-05T12:00:00Z",
+          expires_at: null,
+          is_revoked: false,
+          updated_at: "2026-11-05T12:00:00Z",
+        },
+        error: null,
+      });
+      const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
+      const mockInsert = vi.fn().mockReturnValue({ select: mockSelect });
+
+      const mockFrom = vi.fn().mockImplementation((table: string) => {
+        if (table === "public_shares") {
+          return {
+            update: mockUpdate,
+            insert: mockInsert,
+          };
+        }
+        return {};
+      });
+
+      vi.mocked(getSupabase).mockReturnValue({
+        from: mockFrom,
+      } as unknown as ReturnType<typeof getSupabase>);
+
+      const result = await regeneratePublicShare("old-share-id", {
+        kind: "family_budget",
+        payload: { monthly_ceiling_cents: 500000 },
+      });
+
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          is_revoked: true,
+        }),
+      );
+      expect(mockEq).toHaveBeenCalledWith("id", "old-share-id");
+      expect(result.id).toBe("new-share-id");
+      expect(result.token).toBe("brandnewtoken");
+    });
+  });
 });
+
 

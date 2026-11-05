@@ -33,6 +33,7 @@ vi.mock("@/state", () => ({
     data: [
       { id: "c1", name: "Alimentação", type: "expense", icon: "alimentacao", color: null, is_reserved: false, is_active: true },
       { id: "c2", name: "Salário", type: "income", icon: "salario", color: null, is_reserved: false, is_active: true },
+      { id: "c3", name: "Supermercado", type: "expense", icon: "mercado", color: null, is_reserved: false, is_active: true, is_family: true },
     ],
     isLoading: false,
     isError: false,
@@ -697,6 +698,37 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
             merchant: "Padaria da Esquina",
             categoryId: "c1",
             paymentMethod: "pix",
+          }),
+        );
+      });
+    });
+
+    it("envia isFamily: true ao marcar o switch de despesa familiar no lançamento rápido", async () => {
+      const user = userEvent.setup();
+
+      render(
+        <LaunchWizard
+          initialMode="quick"
+          initialValues={{
+            valueCents: 4500,
+            categoryId: "c1",
+            paymentMethod: "pix",
+          }}
+        />,
+      );
+
+      const familySwitch = screen.getByRole("switch", { name: "Despesa da Casa / Familiar" });
+      expect(familySwitch).toHaveAttribute("aria-checked", "false");
+      await user.click(familySwitch);
+      expect(familySwitch).toHaveAttribute("aria-checked", "true");
+
+      const saveBtn = screen.getByRole("button", { name: /salvar transação/i });
+      await user.click(saveBtn);
+
+      await waitFor(() => {
+        expect(createExpenseMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            isFamily: true,
           }),
         );
       });

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Badge } from "@/components/ui/badge";
 import { MoneyText } from "@/components/ui/money-text";
 import { PAYMENT_METHOD_LABELS, RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import { buildRecurrenceOccurrences } from "@/domain/recurrences";
@@ -47,6 +48,18 @@ export function StepReview({ state, categoryName, closingDay }: StepReviewProps)
         <Row label="Valor" value={<MoneyText cents={state.valueCents} tone="default" />} />
         <Row label="Sua Participação / Rateio" value={reportWeightLabel(effectiveReportWeight(state), state.valueCents)} />
         <Row label="Categoria" value={categoryName ?? "—"} />
+        <Row
+          label="Orçamento Familiar"
+          value={
+            state.isFamily ? (
+              <Badge variant="muted" size="xs">
+                Painel Familiar
+              </Badge>
+            ) : (
+              "Individual"
+            )
+          }
+        />
         <Row label="Data" value={state.date} />
         {state.recurring ? (
           <Row

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Copy, Pencil, Share2, Sparkles, Trash2 } from "lucide-react";
-import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, ModalFooter, MoneyInput, Select } from "@/components/ui";
+import { Alert, Badge, Button, ConfirmDialog, DatePicker, Input, Modal, ModalFooter, MoneyInput, Select, Switch } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { formatCentsAsBRL } from "@/services/masks";
@@ -75,6 +75,7 @@ interface IncomeEditFormProps {
     category_id: string;
     receive_type: ReceiveType;
     report_weight: number;
+    is_family?: boolean;
   }) => Promise<void>;
 }
 
@@ -94,6 +95,7 @@ function IncomeEditForm({
   const [date, setDate] = useState(income.date);
   const [categoryId, setCategoryId] = useState(income.category_id);
   const [receiveType, setReceiveType] = useState<ReceiveType>(income.receive_type);
+  const [isFamily, setIsFamily] = useState(Boolean(income.is_family));
   const isPreset = REPORT_WEIGHT_PRESETS.includes(income.report_weight);
   const [weightMode, setWeightMode] = useState<string>(isPreset ? String(income.report_weight) : "custom");
   const [reportCustomAmountCents, setReportCustomAmountCents] = useState(
@@ -134,6 +136,7 @@ function IncomeEditForm({
         category_id: categoryId,
         receive_type: receiveType,
         report_weight: calculatedWeight,
+        is_family: isFamily,
       });
     } catch (err) {
       setFormError(getErrorMessage(err));
@@ -245,6 +248,16 @@ function IncomeEditForm({
         ariaLabelCustom="Sua cota considerada no relatório"
       />
 
+      <div className="rounded-xl border border-border/80 bg-surface p-3">
+        <Switch
+          id="edit-income-family"
+          checked={isFamily}
+          onCheckedChange={setIsFamily}
+          label="Receita da Casa / Familiar"
+          description="Visível no Painel Familiar compartilhado"
+        />
+      </div>
+
       <ModalFooter>
         <Button
           type="button"
@@ -354,6 +367,7 @@ export function IncomeDetailDialog({
     category_id: string;
     receive_type: ReceiveType;
     report_weight: number;
+    is_family?: boolean;
   }) => {
     if (!income) return;
     setError(null);
@@ -365,6 +379,7 @@ export function IncomeDetailDialog({
         category_id: payload.category_id,
         receive_type: payload.receive_type,
         report_weight: payload.report_weight,
+        is_family: payload.is_family,
       };
       if (isRecurring) {
         await updateRecurrence.mutateAsync({ occurrenceId: income.id, mode: editScope, fields });
@@ -504,6 +519,18 @@ export function IncomeDetailDialog({
                         </>
                       ) : (
                         "Outra"
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <dt className="text-xs text-muted-foreground">Orçamento</dt>
+                    <dd className="font-medium text-foreground text-xs">
+                      {income.is_family ? (
+                        <Badge variant="muted" size="xs">
+                          Familiar
+                        </Badge>
+                      ) : (
+                        "Individual"
                       )}
                     </dd>
                   </div>

@@ -331,4 +331,36 @@ describe("ExpenseDetailDialog", () => {
 
     expect(screen.getByTestId("split-expense-dialog")).toBeInTheDocument();
   });
+
+  it("exibe badge 'Familiar' para despesa da casa e 'Individual' para despesa pessoal", () => {
+    const { rerender } = render(
+      <ExpenseDetailDialog expense={{ ...baseExpense, is_family: true }} open={true} onOpenChange={vi.fn()} />,
+    );
+    expect(screen.getByText("Familiar")).toBeInTheDocument();
+
+    rerender(
+      <ExpenseDetailDialog expense={{ ...baseExpense, is_family: false }} open={true} onOpenChange={vi.fn()} />,
+    );
+    expect(screen.getByText("Individual")).toBeInTheDocument();
+  });
+
+  it("permite alternar switch de despesa familiar na edição e envia is_family", async () => {
+    updateExpenseMock.mockClear();
+    updateExpenseMock.mockResolvedValue({});
+    const user = userEvent.setup();
+    render(<ExpenseDetailDialog expense={{ ...baseExpense, is_family: false }} open={true} onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: /editar/i }));
+
+    const familySwitch = screen.getByRole("switch", { name: "Despesa da Casa / Familiar" });
+    expect(familySwitch).toHaveAttribute("aria-checked", "false");
+    await user.click(familySwitch);
+    expect(familySwitch).toHaveAttribute("aria-checked", "true");
+
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+
+    expect(updateExpenseMock).toHaveBeenCalledTimes(1);
+    const payload = updateExpenseMock.mock.calls[0]?.[0] as { input: { is_family: boolean } };
+    expect(payload.input.is_family).toBe(true);
+  });
 });

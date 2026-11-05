@@ -3,6 +3,28 @@ import { numberToCents } from "@/domain/money";
 
 export type FeedFilter = "all" | "incomes" | "expenses" | "installments" | "recurring";
 
+/** Escopo de visão do extrato (Fase 3 — Tarefa 3.3). */
+export type VisionScope = "all" | "personal" | "family";
+
+/**
+ * Filtra despesas ou receitas pelo escopo de visão do usuário (Fase 3).
+ * - "all": retorna todos os registros.
+ * - "personal": retorna apenas despesas/receitas individuais (!is_family).
+ * - "family": retorna apenas despesas/receitas do lar/orçamento familiar (is_family === true).
+ */
+export function filterByVisionScope<T extends { is_family?: boolean }>(
+  items: readonly T[],
+  scope: VisionScope = "all",
+): T[] {
+  if (scope === "personal") {
+    return items.filter((item) => !item.is_family);
+  }
+  if (scope === "family") {
+    return items.filter((item) => Boolean(item.is_family));
+  }
+  return [...items];
+}
+
 export interface TransactionFeedItem {
   id: string;
   kind: "expense" | "income";
@@ -19,6 +41,8 @@ export interface TransactionFeedItem {
   installmentsTotal?: number;
   rawExpense?: Expense;
   rawIncome?: Income;
+  /** Lançamento da casa / familiar compartilhado (Fase 3). */
+  isFamily?: boolean;
 }
 
 export interface DailyFeedGroup {
@@ -66,6 +90,7 @@ export function buildUnifiedFeedItems(
         installmentNumber: exp.installment_number,
         installmentsTotal: exp.installments_total,
         rawExpense: exp,
+        isFamily: Boolean(exp.is_family),
       });
     }
   }
@@ -89,6 +114,7 @@ export function buildUnifiedFeedItems(
         categoryId: inc.category_id,
         recurrenceId: inc.recurrence_id,
         rawIncome: inc,
+        isFamily: Boolean(inc.is_family),
       });
     }
   }

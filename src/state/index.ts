@@ -250,14 +250,17 @@ export { useFeatureUsageMetrics, analyticsRankingKey } from "./queries/use-analy
 export {
   useCreatePublicShare,
   useRevokePublicShare,
+  useRegeneratePublicShare,
   useSaveSplitExpense,
   publicSharesQueryKey,
 } from "./mutations/use-public-share-mutations";
 export {
   usePublicShare,
+  useSharedFamilyBudget,
   useMyPublicShares,
   publicShareTokenQueryKey,
   myPublicSharesQueryKey,
+  sharedFamilyBudgetQueryKey,
 } from "./queries/use-public-shares";
 
 

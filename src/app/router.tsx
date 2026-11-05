@@ -82,6 +82,11 @@ const SplitPublicPage = lazy(() =>
     default: m.SplitPublicPage,
   })),
 );
+const FamilyBudgetPage = lazy(() =>
+  import("@/features/public-share/pages/family-budget-page").then((m) => ({
+    default: m.FamilyBudgetPage,
+  })),
+);
 
 
 function RouteSuspenseFallback() {
@@ -248,8 +253,9 @@ export function AppRouter() {
           <Route path="/planos" element={<LandingPage />} />
           <Route path="/vendas" element={<LandingPage />} />
 
-          {/* Rotas públicas de compartilhamento (Racha de Contas) */}
+          {/* Rotas públicas de compartilhamento (Racha de Contas & Orçamento Familiar) */}
           <Route path="/r/:token" element={<SplitPublicPage />} />
+          <Route path="/orcamento-familiar/:token" element={<FamilyBudgetPage />} />
 
 
           {/* Páginas públicas legais e regulatórias (fora do shell autenticado) */}

@@ -35,6 +35,11 @@ vi.mock("@/state/queries/use-public-shares", () => ({
     isLoading: false,
     error: null,
   }),
+  useSharedFamilyBudget: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+  }),
 }));
 
 
@@ -198,6 +203,24 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
 
     // Deve exibir o badge ou o estado da página sem redirecionar para /entrar
     expect(await screen.findByText("Racha de Conta")).toBeInTheDocument();
+  });
+
+  it("renderiza a rota pública /orcamento-familiar/:token (FamilyBudgetPage) para visitantes", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/orcamento-familiar/token-familiar");
+    render(<AppRouter />);
+
+    expect(await screen.findByText(/Orçamento familiar/i)).toBeInTheDocument();
   });
 
 

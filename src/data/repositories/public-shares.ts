@@ -8,10 +8,10 @@
 import { getSupabase } from "@/data/client";
 import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
-import { createExpenseWithDebt } from "@/data/rpc";
+import { createExpenseWithDebt, getSharedFamilyBudget } from "@/data/rpc";
 import { createCategory, listCategories } from "./categories";
 import { AppError, classifyError } from "@/services/errors";
-import type { PublicShare, PublicShareKind, DbInsert } from "@/types";
+import type { PublicShare, PublicShareKind, DbInsert, SharedFamilyBudgetResult } from "@/types";
 import { generateShareToken } from "@/domain/share/token";
 
 export interface CreatePublicShareInput {
@@ -208,4 +208,26 @@ export async function saveSplitExpenseToAccount(input: SaveSplitExpenseInput): P
     installments,
   });
 }
+
+/**
+ * Consulta o orçamento familiar consolidado pelo token de compartilhamento.
+ */
+export async function getSharedFamilyBudgetByToken(
+  token: string,
+  month?: string | null,
+): Promise<SharedFamilyBudgetResult | null> {
+  return getSharedFamilyBudget({ token, month });
+}
+
+/**
+ * Revoga um link anterior e gera um novo compartilhamento com payload preservado/atualizado.
+ */
+export async function regeneratePublicShare(
+  oldId: string,
+  input: CreatePublicShareInput,
+): Promise<PublicShare> {
+  await revokePublicShare(oldId);
+  return createPublicShare(input);
+}
+
 

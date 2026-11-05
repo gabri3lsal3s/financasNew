@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TransactionListPage } from "./transaction-list-page";
@@ -7,7 +7,25 @@ const mockDownloadCsv = vi.fn();
 const mockStartDemo = vi.fn();
 const mockSetStepIndex = vi.fn();
 
-const defaultExpenses = [
+type MockExpense = {
+  id: string;
+  value: number;
+  date: string;
+  description: string;
+  installments_total: number;
+  installment_number: number;
+  is_family?: boolean;
+};
+
+type MockIncome = {
+  id: string;
+  value: number;
+  date: string;
+  description: string;
+  is_family?: boolean;
+};
+
+const defaultExpenses: MockExpense[] = [
   {
     id: "e1",
     value: 1500,
@@ -17,9 +35,9 @@ const defaultExpenses = [
     installment_number: 1,
   },
 ];
-const defaultIncomes = [{ id: "i1", value: 3500, date: "2026-08-05", description: "Salário" }];
-let expensesMock = [...defaultExpenses];
-let incomesMock = [...defaultIncomes];
+const defaultIncomes: MockIncome[] = [{ id: "i1", value: 3500, date: "2026-08-05", description: "Salário" }];
+let expensesMock: MockExpense[] = [...defaultExpenses];
+let incomesMock: MockIncome[] = [...defaultIncomes];
 
 vi.mock("@/services/export-actions", () => ({
   downloadCsv: (...args: unknown[]) => mockDownloadCsv(...args),
@@ -106,7 +124,8 @@ describe("TransactionListPage — listagem por mês", () => {
 
   it("exibe as abas de filtro na ordem canonica: Tudo, Receitas, Despesas, Parceladas, Recorrentes", () => {
     render(<TransactionListPage />);
-    const tabs = screen.getAllByRole("tab");
+    const feedTabsList = screen.getByRole("tablist", { name: "Filtro de lançamentos" });
+    const tabs = within(feedTabsList).getAllByRole("tab");
     const tabLabels = tabs.map((tab) => tab.textContent?.trim());
     expect(tabLabels).toEqual(["Tudo", "Receitas", "Despesas", "Parceladas", "Recorrentes"]);
   });
@@ -232,6 +251,118 @@ describe("TransactionListPage — listagem por mês", () => {
 
     expect(mockStartDemo).toHaveBeenCalledWith("finances");
     expect(mockSetStepIndex).toHaveBeenCalledWith(1);
+  });
+
+  describe("Filtro Rápido de Visão no Extrato (Fase 3 — Tarefa 3.3)", () => {
+    beforeEach(() => {
+      expensesMock = [
+        {
+          id: "e-personal",
+          value: 200,
+          date: "2026-08-10",
+          description: "Cinema Individual",
+          installments_total: 1,
+          installment_number: 1,
+          is_family: false,
+        },
+        {
+          id: "e-family",
+          value: 800,
+          date: "2026-08-11",
+          description: "Supermercado da Família",
+          installments_total: 1,
+          installment_number: 1,
+          is_family: true,
+        },
+      ];
+      incomesMock = [
+        {
+          id: "i-personal",
+          value: 3000,
+          date: "2026-08-05",
+          description: "Salário Individual",
+          is_family: false,
+        },
+        {
+          id: "i-family",
+          value: 1000,
+          date: "2026-08-06",
+          description: "Ajuda de Custo Familiar",
+          is_family: true,
+        },
+      ];
+    });
+
+    it("renderiza as abas de visão: Todos, Pessoais e Familiar", () => {
+      render(<TransactionListPage />);
+      expect(screen.getByRole("tab", { name: "Todos" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Pessoais" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Familiar" })).toBeInTheDocument();
+    });
+
+    it("exibe badge 'Familiar' para transações da casa na visão 'Todos'", () => {
+      render(<TransactionListPage />);
+      expect(screen.getByText("Supermercado da Família")).toBeInTheDocument();
+      expect(screen.getByText("Cinema Individual")).toBeInTheDocument();
+      // Deve haver badges Familiar para a despesa e receita familiares
+      const badges = screen.getAllByText("Familiar");
+      expect(badges.length).toBeGreaterThan(0);
+    });
+
+    it("ao clicar em 'Familiar', isola as transações e recalcula quanto o lar consumiu", async () => {
+      const user = userEvent.setup();
+      render(<TransactionListPage />);
+
+      const familyTab = screen.getByRole("tab", { name: "Familiar" });
+      await user.click(familyTab);
+
+      // Deve exibir apenas os lançamentos familiares
+      expect(screen.getByText("Supermercado da Família")).toBeInTheDocument();
+      expect(screen.getByText("Ajuda de Custo Familiar")).toBeInTheDocument();
+      expect(screen.queryByText("Cinema Individual")).not.toBeInTheDocument();
+      expect(screen.queryByText("Salário Individual")).not.toBeInTheDocument();
+
+      // Despesa familiar total (R$ 800,00) nos KPIs e no dia
+      expect(screen.getAllByText("−R$ 800,00").length).toBeGreaterThan(0);
+      // Receita familiar total (R$ 1.000,00) nos KPIs e no dia
+      expect(screen.getAllByText("+R$ 1.000,00").length).toBeGreaterThan(0);
+    });
+
+    it("ao clicar em 'Pessoais', isola as transações individuais", async () => {
+      const user = userEvent.setup();
+      render(<TransactionListPage />);
+
+      const personalTab = screen.getByRole("tab", { name: "Pessoais" });
+      await user.click(personalTab);
+
+      // Deve exibir apenas os lançamentos pessoais
+      expect(screen.getByText("Cinema Individual")).toBeInTheDocument();
+      expect(screen.getByText("Salário Individual")).toBeInTheDocument();
+      expect(screen.queryByText("Supermercado da Família")).not.toBeInTheDocument();
+      expect(screen.queryByText("Ajuda de Custo Familiar")).not.toBeInTheDocument();
+    });
+
+    it("exibe EmptyState dedicado quando não há lançamentos familiares", async () => {
+      expensesMock = [
+        {
+          id: "e-only-personal",
+          value: 150,
+          date: "2026-08-10",
+          description: "Despesa Individual",
+          installments_total: 1,
+          installment_number: 1,
+          is_family: false,
+        },
+      ];
+      incomesMock = [];
+      const user = userEvent.setup();
+      render(<TransactionListPage />);
+
+      const familyTab = screen.getByRole("tab", { name: "Familiar" });
+      await user.click(familyTab);
+
+      expect(screen.getByText("Nenhum lançamento familiar registrado neste mês.")).toBeInTheDocument();
+    });
   });
 });
 
