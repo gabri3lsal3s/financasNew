@@ -57,7 +57,7 @@ function parseArgs(): CliArgs {
       type = raw[i + 1] as NotificationCategory;
       i++;
     } else if (raw[i] === "--msg" && raw[i + 1]) {
-      message = raw[i + 1];
+      message = raw[i + 1].replace(/%0A/gi, "\n");
       i++;
     } else if (raw[i] === "--force") {
       force = true;

@@ -599,7 +599,7 @@ git push origin main
     git push origin main
     ```
 
-- [ ] **Tarefa 8.6: Despacho do Relatório Executivo ao Fundador via Bot ARGOS (Telegram)**
+- [x] **Tarefa 8.6: Despacho do Relatório Executivo ao Fundador via Bot ARGOS (Telegram)**
   - Disparar mensagem formatada ao canal do fundador via API do Telegram ou script `scripts/notify-telegram.ts`.
   - **Conteúdo Mandatório do Relatório ARGOS:**
     1. **Identificação:** `[ARGOS] Relatório Executivo — Revisão Integral de Autenticação, Segurança & Privacidade LGPD`.
@@ -629,8 +629,8 @@ git push origin main
     ```
 
 ### Portão de Qualidade Final da Fase 8
-- [ ] 100% da suíte de testes passando sem erros.
-- [ ] Bundle web e APK Android release gerados e validados com SHA-256 e `version.json`.
-- [ ] Documentação técnica e de segurança atualizada.
-- [ ] Notificação Telegram entregue pelo bot ARGOS com o relatório executivo e parecer formal Supabase.
-- [ ] Repositório sincronizado no GitHub (`git push origin main`).
+- [x] 100% da suíte de testes passando sem erros.
+- [x] Bundle web e APK Android release gerados e validados com SHA-256 e `version.json`.
+- [x] Documentação técnica e de segurança atualizada.
+- [x] Notificação Telegram entregue pelo bot ARGOS com o relatório executivo e parecer formal Supabase.
+- [x] Repositório sincronizado no GitHub (`git push origin main`).
