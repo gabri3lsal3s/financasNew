@@ -42,6 +42,8 @@ export interface LaunchState {
   recurrenceEndDate: string;
   /** Nº de ocorrências (quando `recurrenceEndMode === "count"`). */
   recurrenceCount: number;
+  /** Lançamento da casa / familiar compartilhado (Fase 3). */
+  isFamily: boolean;
 }
 
 export const WIZARD_STEPS = ["Valor", "Categoria", "Detalhes", "Revisão"] as const;
@@ -72,6 +74,7 @@ export function defaultLaunchState(
     recurrenceEndMode: "date",
     recurrenceEndDate: "",
     recurrenceCount: 12,
+    isFamily: overrides?.isFamily ?? false,
   };
   return overrides ? { ...base, ...overrides } : base;
 }
@@ -160,6 +163,7 @@ export const step3DetailsSchema = z
     recurrenceEndMode: z.enum(["date", "count"]),
     recurrenceEndDate: z.string(),
     recurrenceCount: z.number().int(),
+    isFamily: z.boolean().default(false).optional(),
     valueCents: moneyCentsSchema({ allowZero: true }),
   })
   .superRefine((data, ctx) => {
@@ -227,6 +231,7 @@ export const launchStateSchema = z
     recurrenceEndMode: z.enum(["date", "count"]),
     recurrenceEndDate: z.string(),
     recurrenceCount: z.number().int(),
+    isFamily: z.boolean().default(false).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.type === "expense" && data.paymentMethod === "credit_card" && (!data.cardId || data.cardId.trim() === "")) {

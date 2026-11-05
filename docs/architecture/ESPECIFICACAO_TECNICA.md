@@ -15,7 +15,7 @@
 | D1 | Atomicidade de escritas | **Transações no servidor (RPC Postgres)** para toda operação composta | Operações multi-registro (despesa+cobrança, estorno→renda, exclusão em cascata) nunca podem ficar pela metade; o cliente faz **1 chamada** e recebe sucesso/erro atômico |
 | D2 | Exclusão | **Hard delete + log de eventos imutável** (`audit_events`) | Schema e queries limpos (sem `deleted_at` em tudo); auditoria financeira preservada (quem/quando/valores) |
 | D3 | Competência de fatura | **Snapshot na escrita + recálculo controlado em lote** | Histórico de faturas estável; mudanças de regras do cartão exigem confirmação do usuário antes de reclassificar |
-| D4 | Multiusuário | **Isolado** — RLS por `auth.uid()`; sem compartilhamento nesta fase | Schema simples; modelo permite evoluir para compartilhamento sem ruptura |
+| D4 | Multiusuário & Compartilhamento Desacoplado | **Isolado com Links Públicos Desacoplados** — RLS base por `auth.uid()`, complementado por tokens seguros via tabela `public_shares` e RPCs com `SECURITY DEFINER` (Racha Pix, Orçamento Familiar e Metas Coletivas) | Permite cooperação e viralidade (cônjuges, amigos e grupos) com zero exposição de credenciais, dados bancários confidenciais ou patrimônio privado |
 | D5 | Integração de cotações | Cache em servidor + fallback estático + **preço manual** (override do usuário) | Rebalanceamento nunca fica bloqueado por indisponibilidade da API externa |
 | D6 | Frontend | **React (Vite) + Tailwind + shadcn/ui** | Combina com os contratos de estado (hooks/providers) da spec e com Supabase; SPA pura, sem SSR |
 | D7 | Filosofia visual | **Cards amigáveis (fintech)** — estilo Nubank/Organizze | Acolhedor, mobile-first, microinterações; adequado a finanças pessoais |
@@ -67,6 +67,8 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 | `recalculate_bill_competences` | Recálculo em lote de competências de um cartão (D3) | Reclassificação consistente + log |
 | `delete_category_migrate` | Excluir categoria movendo lançamentos para outra | Migração sem órfãos |
 | `set_budget_limit` / `set_income_goal` | Upsert de limite/expectativa por `(categoria, mês)` | Upsert atômico |
+| `get_shared_family_budget` | Leitura anônima de orçamento familiar compartilhado via token público | Agregação restrita a categorias e gastos familiares (`is_family = true`) na competência; dados bancários, investimentos e gastos individuais do titular permanecem blindados |
+| `get_shared_goal_tracker` | Leitura pública do progresso de meta coletiva via token | Retorno exclusivo de dados da meta (título, alvo, arrecadado, prazo e chave Pix); isolamento total do restante da conta do usuário |
 
 > **Regra de ouro:** se a ação toca 2+ tabelas, é RPC transacional. O cliente **nunca** faz chamadas sequenciais compensatórias.
 
@@ -149,8 +151,8 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
 | `profiles` | id (PK = auth.users.id), name, email, created_at | Criada no signup (trigger) e sincronizada na alteração de e-mail via trigger `on_auth_user_email_updated` (0064) |
 | `user_preferences` | user_id (PK), theme (`light \| dark \| oled \| system`), reminders_enabled, reminder_days_before_debt, reminder_days_before_bill, report_weights_enabled | — |
 | `categories` | id, user_id, type (`expense \| income`), name, icon, color, is_reserved (ex.: "Estorno"), is_active | Nome único por (user, type); reservadas não são editáveis/excluíveis nos fluxos normais |
-| `incomes` | id, user_id, value, date, category_id (FK), receive_type (`cash \| pix \| transfer \| other`), description, report_weight (default 1, 0–1), source_ref (para rendas automáticas `[REFUND]`), created_at | Check: value > 0; date ≥ APP_START_DATE; report_weight 0–1; rendas com `source_ref` = somente-leitura |
-| `expenses` | id, user_id, value, date, category_id, payment_method (`cash \| debit \| credit_card \| pix \| transfer \| other`), card_id (FK nullable), installments_total (1–60), installment_number, installment_group_id (UUID, nullable), bill_competence (`YYYY-MM` snapshot, nullable), report_weight, base_amount (valor original p/ auditoria de pesos), description, created_at | Check: value > 0; date ≥ APP_START_DATE; installments 1–60; **card_id NOT NULL quando payment_method = `credit_card`**; `installment_group_id` presente sse installments_total > 1 |
+| `incomes` | id, user_id, value, date, category_id (FK), receive_type (`cash \| pix \| transfer \| other`), description, report_weight (default 1, 0–1), source_ref (para rendas automáticas `[REFUND]`), is_family (boolean default false), created_at | Check: value > 0; date ≥ APP_START_DATE; report_weight 0–1; rendas com `source_ref` = somente-leitura |
+| `expenses` | id, user_id, value, date, category_id, payment_method (`cash \| debit \| credit_card \| pix \| transfer \| other`), card_id (FK nullable), installments_total (1–60), installment_number, installment_group_id (UUID, nullable), bill_competence (`YYYY-MM` snapshot, nullable), report_weight, base_amount (valor original p/ auditoria de pesos), description, is_family (boolean default false), created_at | Check: value > 0; date ≥ APP_START_DATE; installments 1–60; **card_id NOT NULL quando payment_method = `credit_card`**; `installment_group_id` presente sse installments_total > 1 |
 | `credit_cards` | id, user_id, name, brand, credit_limit, closing_day (1–31), due_day (1–31), color, is_active | Desativar não apaga histórico |
 | `card_competence_overrides` | id, card_id, month (`YYYY-MM`), closing_day, due_day | Unique (card_id, month); prevalece sobre padrão |
 | `card_payments` | id, user_id, card_id, competence_month, amount, date, note, is_refund | Estorno = amount negativo OU note `[REFUND]...`; estorno → RPC `create_refund` |
@@ -164,9 +166,10 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
 | `class_targets` / `sector_targets` | id, user_id, group_type (`class \| sector`), name, target_percentage | Metas opcionais por classe/setor |
 | `asset_prices` | id, **user_id (nullable — NULL = cache global da edge function; preenchido = override manual do usuário)**, ticker, price, currency, source (`api \| fallback \| manual`), manual_price (nullable), updated_at | Cache servidor; override manual prevalece; RLS: dono quando `user_id` presente, leitura global quando NULL |
 | `portfolio_monthly_prices` | id, user_id (FK), ticker, month (`YYYY-MM`), price, currency (`BRL \| USD`), source (`api \| manual \| fallback`), created_at, updated_at | Cotações mensais auditadas por competência; Unique (user_id, ticker, month); RLS: dono |
+| `public_shares` | id (UUID PK), user_id (FK auth.users), kind (`split \| family_budget \| goal_tracker`), token (text unique), payload jsonb, created_at, expires_at, is_revoked (boolean default false), updated_at | RLS: leitura pública de compartilhamentos válidos (não revogados e não expirados); proprietário (`user_id = auth.uid()`) possui CRUD integral; tokens criptográficos (nanoid) |
 | `audit_events` | id, user_id, entity_type, entity_id, action, payload jsonb, created_at | **Imutável** (RLS: insert + select; sem update/delete) |
 
-**Índices recomendados:** `expenses (user_id, date DESC)`, `expenses (installment_group_id)`, `incomes (user_id, date DESC)`, `debts (user_id, due_date)`, `card_payments (card_id, competence_month)`, `budgets (user_id, month)`.
+**Índices recomendados:** `expenses (user_id, date DESC)`, `expenses (user_id, date) WHERE is_family = true` (`idx_transactions_user_family`), `expenses (installment_group_id)`, `incomes (user_id, date DESC)`, `debts (user_id, due_date)`, `card_payments (card_id, competence_month)`, `budgets (user_id, month)`, `public_shares (token)`, `public_shares (user_id, created_at DESC)`.
 
 **Contratos de domínio TS:** os enums canônicos (`payment_method`, `receive_type`, `debts.type`, `portfolio_transactions.type`, faixas de atenção, `source`) são definidos em `src/types/` com os **mesmos literais** desta tabela; validação nas bordas (zod) e constraints do banco espelham esses valores (DRY de tipos — sem literais soltos).
 
@@ -626,6 +629,44 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
 - **Experiência Sem Fricção (Zero Friction UX):**
   * Autocompletar heurístico e inferência imediata de setor, estratégia imobiliária, perfil cíclico de ações, emissor de renda fixa e jurisdição internacional ao digitar tickers no formulário de ativos (`inferSectorFromTicker`, `getFiiMacroCategory`, `inferFixedIncomeCategories`, `getStocksProfile` e `getInternationalProfile`);
   * Badges de feedback em tempo real no formulário orientando o investidor com transparência visual sobre a classificação patrimonial instantaneamente.
+
+---
+
+### 3.13 Módulo de Compartilhamento, Racha Pix, Orçamento Familiar e Ferramentas Públicas
+
+O módulo de compartilhamento e crescimento orgânico foi projetado para permitir colaboração financeira sem atrito e atração de novos usuários, preservando a governança rígida de segurança, RLS e privacidade do modelo Online First.
+
+#### 3.13.1 Racha de Contas e Rateio de Despesas (Split Expense)
+- **Modos de Rateio:** Divisão Equitativa (1/N), Divisão por Porcentagem e Valores Fixos Customizados por participante.
+- **Precisão Matemática em Centavos (`src/domain/finance/split-math.ts`):** os valores são processados exclusivamente em centavos inteiros (BRL). A distribuição do resto euclidiano adota as políticas `"balanced"` (distribuição de centavos residuais aos primeiros participantes) e `"host"` (resto absorvido pelo titular para que convidados tenham cotas rigorosamente idênticas), garantindo a invariante $\sum \text{cotas} = \text{valor original}$.
+- **Padrão Pix BACEN EMV QRCPS-MPM (`src/domain/pix/pix-br-code.ts`):** gerador puro do padrão normativo do Banco Central do Brasil para arranjos Pix. Constrói payloads TLV (Tag-Length-Value) incluindo Payload Format Indicator (00), Point of Initiation Method (01), Merchant Account Information (26 com GUI `br.gov.bcb.pix`), Merchant Category Code (52: "0000"), Moeda BRL (53: "986"), Valor da Transação (54 formatado com 2 decimais), País (58: "BR"), Nome do Titular (59 sanitizado sem acentos), Cidade (60), Campo Adicional/txid (62) e CRC16-CCITT Kermit (63 com polinômio 0x1021). Suporta chaves CPF, CNPJ, E-mail, Celular e Chave Aleatória (EVP).
+- **Página Pública `/r/:token` (`SplitPublicPage`):** rota aberta desautenticada consumida via token de `public_shares` (`kind = 'split'`). Renderiza o resumo da conta dividida, card de cota de cada pessoa, botão de 1 toque **[Copiar Código Pix]**, renderização de QR Code canvas dinâmico via `QrCodeCanvas` e marcação local em memória/localStorage de "Já paguei".
+- **Auto-Onboarding com Pré-Preenchimento (`SplitOnboardingModal` & `usePendingSplitExpense`):** convidados que abrem o link do racha encontram o CTA *"Salvar despesa no Áxis Finance"*. Ao clicar, a cota individual e descrição são armazenadas em sessão e injetadas automaticamente no wizard de lançamento (`LaunchWizard`) após a criação da conta.
+
+#### 3.13.2 Orçamento Familiar Compartilhado (Visão Cônjuge/Parceiro)
+- **Segregação de Despesas e Receitas Familiares:** campo booleano `is_family` nas tabelas `expenses` e `incomes`. Permite que o titular marque lançamentos que compõem o custo de vida conjunto da casa.
+- **Link Somente-Leitura Seguro (`/orcamento-familiar/:token`):** ativado e gerenciado pelo titular em Configurações (`FamilyBudgetShareCard`). O titular pode visualizar, copiar, revogar ou regenerar o token a qualquer momento.
+- **Blindagem de Dados via RPC `get_shared_family_budget`:** executada com `SECURITY DEFINER` e sanitização estrita, a função consolida apenas os tetos orçamentários das categorias familiares e as despesas com `is_family = true` para o mês solicitado. Contas bancárias, investimentos, patrimônio líquido ou despesas pessoais (`is_family = false`) do titular jamais são expostos.
+- **Página Pública `FamilyBudgetPage`:** interface mobile-first e responsiva com cards do teto orçamentário do mês, valor gasto conjunto, percentual de consumo, gráfico de distribuição e lista detalhada das despesas familiares do período.
+
+#### 3.13.3 Termômetro de Meta Coletiva (`/meta/:token`)
+- **Ativação no Módulo de Metas (`GoalCard` & `ShareGoalDialog`):** o usuário pode marcar qualquer meta financeira para arrecadação coletiva (viagens, eventos, festas, presentes ou reformas), associando sua chave Pix.
+- **RPC `get_shared_goal_tracker`:** consulta pública via token que retorna exclusivamente o título da meta, valor alvo, valor já arrecadado, data limite e chave Pix do organizador.
+- **Página Pública `GoalTrackerPublicPage`:** exibe barra de termômetro animada com o percentual atingido, dias restantes para o encerramento da campanha e botão de 1 clique para copiar o Pix do organizador. Conforme o organizador registra depósitos pelo app, o termômetro atualiza automaticamente para todos os participantes na web.
+
+#### 3.13.4 Hub de Simuladores Financeiros Abertos & Stateful URLs
+- **Simuladores Públicos Client-Side (Custo Zero de Servidor):** rotas abertas indexáveis executadas 100% no cliente sem autenticação e sem requisições ao banco de dados:
+  - `/ferramentas`: Hub de navegação com cards dos simuladores disponíveis.
+  - `/ferramentas/simulador-dividas` (`DebtSimulatorPage`): comparação lado a lado entre o Método Avalanche (prioridade por taxa de juros) e Bola de Neve (prioridade por menor saldo), exibindo economia de juros e meses economizados via motor puro `payoff-simulator.ts`.
+  - `/ferramentas/rebalanceamento` (`RebalanceSimulatorPage`): simulador de alocação de carteira por classes com cálculo de aportes ideais para reequilíbrio patrimonial.
+  - `/ferramentas/juros-compostos` (`CompoundInterestPage`): projeção temporal de patrimônio acumulado e renda passiva mensal estimada baseada em aportes regulares via motor puro `compound-interest.ts`.
+- **Motor de Stateful URLs (`src/domain/share/stateful-url.ts`):** serialização e compressão de parâmetros de simulação em formato Base64 URL-safe compacto (`?s=...`), gerando links imutáveis compartilháveis entre usuários sem gravar nada em tabelas do banco de dados.
+- **CTA Sóbrio de Conversão & Transporte de Simulação (`ToolsFooterCta` & `simulation-transport.ts`):** rodapé integrado nos simuladores com convite para gestão automatizada no Áxis Finance. Ao clicar para criar conta, os dados simulados são preservados via `usePendingSimulation` e hidratados na conta do usuário no primeiro login via `hydrateSimulationToUser()`.
+
+#### 3.13.5 Chancela Institucional em Relatórios e Extratos PDF
+- **Rodapé Contábil Padronizado (`ReportFooter`):** aplicado em todas as exportações e relatórios analíticos impressos com tipografia sóbria:
+  `Relatório estruturado via Áxis Finance · Gestão Financeira Pessoal & Automação | axis.app`
+- **Micro QR Code de Autenticidade:** componente `QrCodeCanvas` embutido no rodapé do documento permitindo validação e reforçando o posicionamento executivo perante contadores, cônjuges e parceiros.
 
 ---
 

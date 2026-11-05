@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Copy, Pencil, Share2, Trash2 } from "lucide-react";
-import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, ModalFooter, MoneyInput, Select } from "@/components/ui";
+import { Copy, Pencil, Share2, Trash2, Users } from "lucide-react";
+import { Alert, Badge, Button, ConfirmDialog, DatePicker, Input, Modal, ModalFooter, MoneyInput, Select, Switch } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
+import { SplitExpenseDialog } from "@/components/modules/split-expense-dialog";
 import { formatCentsAsBRL } from "@/services/masks";
 import { shareText } from "@/services/export-actions";
 import { getErrorMessage } from "@/services/errors";
@@ -88,6 +89,7 @@ interface ExpenseEditFormProps {
     card_id: string | null;
     bill_competence: string | null;
     report_weight: number;
+    is_family?: boolean;
   }) => Promise<void>;
 }
 
@@ -110,6 +112,7 @@ function ExpenseEditForm({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(expense.payment_method);
   const [cardId, setCardId] = useState<string>(expense.card_id || "");
   const [billCompetence, setBillCompetence] = useState<string>(expense.bill_competence || "");
+  const [isFamily, setIsFamily] = useState(Boolean(expense.is_family));
   // Competência digitada manualmente → data deixa de recalculá-la (override).
   const [competenceTouched, setCompetenceTouched] = useState(false);
   const isPreset = REPORT_WEIGHT_PRESETS.includes(expense.report_weight);
@@ -195,6 +198,7 @@ function ExpenseEditForm({
         card_id: paymentMethod === "credit_card" ? cardId || null : null,
         bill_competence: effectiveCompetence,
         report_weight: calculatedWeight,
+        is_family: isFamily,
       });
     } catch (err) {
       setFormError(getErrorMessage(err));
@@ -357,6 +361,16 @@ function ExpenseEditForm({
         ariaLabelCustom="Sua cota considerada no relatório"
       />
 
+      <div className="rounded-xl border border-border/80 bg-surface p-3">
+        <Switch
+          id="edit-expense-family"
+          checked={isFamily}
+          onCheckedChange={setIsFamily}
+          label="Despesa da Casa / Familiar"
+          description="Visível no Painel Familiar compartilhado"
+        />
+      </div>
+
       <ModalFooter>
         <Button
           type="button"
@@ -393,6 +407,7 @@ export function ExpenseDetailDialog({
     }
   }
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [splitOpen, setSplitOpen] = useState(false);
   const [mode, setMode] = useState<InstallmentDeleteMode>("single");
   const [editScope, setEditScope] = useState<InstallmentDeleteMode>("single");
   const [error, setError] = useState<string | null>(null);
@@ -459,6 +474,7 @@ export function ExpenseDetailDialog({
     card_id: string | null;
     bill_competence: string | null;
     report_weight: number;
+    is_family?: boolean;
   }) => {
     if (!expense) return;
     setError(null);
@@ -472,6 +488,7 @@ export function ExpenseDetailDialog({
         payment_method: payload.payment_method,
         card_id: payload.card_id,
         report_weight: payload.report_weight,
+        is_family: payload.is_family,
         ...(editScope === "single" ? { bill_competence: payload.bill_competence } : {}),
       };
       if (isRecurring) {
@@ -632,6 +649,18 @@ export function ExpenseDetailDialog({
                     </dd>
                   </div>
                   <div className="flex items-center justify-between">
+                    <dt className="text-xs text-muted-foreground">Orçamento</dt>
+                    <dd className="font-medium text-foreground text-xs">
+                      {expense.is_family ? (
+                        <Badge variant="muted" size="xs">
+                          Familiar
+                        </Badge>
+                      ) : (
+                        "Individual"
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between">
                     <dt className="text-xs text-muted-foreground">Data</dt>
                     <dd className="font-medium text-foreground text-xs">{expense.date}</dd>
                   </div>
@@ -665,8 +694,18 @@ export function ExpenseDetailDialog({
                   ) : null}
                 </dl>
 
-                <div className="flex items-center justify-between gap-2 pt-3 border-t border-border/80 mt-2">
-                  <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-border/80 mt-2">
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => setSplitOpen(true)}
+                    >
+                      <Users className="size-3.5" aria-hidden="true" />
+                      Rachar Despesa
+                    </Button>
                     <Button
                       type="button"
                       variant="ghost"
@@ -705,6 +744,14 @@ export function ExpenseDetailDialog({
           </div>
         ) : null}
       </Modal>
+
+      {splitOpen ? (
+        <SplitExpenseDialog
+          open={splitOpen}
+          onOpenChange={setSplitOpen}
+          expense={expense}
+        />
+      ) : null}
 
       <ConfirmDialog
         open={confirmOpen}

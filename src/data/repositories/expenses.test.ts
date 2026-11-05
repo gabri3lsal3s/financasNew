@@ -69,12 +69,42 @@ describe("listExpensesByMonth (repository — conversão de borda)", () => {
     });
   });
 
-  it("converte os campos numeric (string) para number", async () => {
+  it("converte os campos numeric (string) para number e boolean para is_family", async () => {
     const expenses = await listExpensesByMonth("2026-08");
     expect(expenses).toHaveLength(1);
     expect(expenses[0]?.value).toBe(1500);
     expect(expenses[0]?.report_weight).toBe(1);
     expect(expenses[0]?.base_amount).toBe(1500);
+    expect(expenses[0]?.is_family).toBe(false);
+  });
+
+  it("mapeia is_family como true quando sinalizado no banco", async () => {
+    builder = makeBuilder({
+      data: [
+        {
+          id: "fam-1",
+          user_id: "u1",
+          value: "350.50",
+          date: "2026-08-14",
+          category_id: "c1",
+          payment_method: "pix",
+          card_id: null,
+          installments_total: 1,
+          installment_number: 1,
+          installment_group_id: null,
+          bill_competence: null,
+          report_weight: "1",
+          base_amount: "350.50",
+          description: "Supermercado do Mês",
+          is_family: true,
+          created_at: "2026-08-14T12:00:00Z",
+        },
+      ],
+      error: null,
+    });
+    const expenses = await listExpensesByMonth("2026-08");
+    expect(expenses).toHaveLength(1);
+    expect(expenses[0]?.is_family).toBe(true);
   });
 
   it("filtra pelo range do mês (gte start, lt end)", async () => {

@@ -124,4 +124,39 @@ describe("IncomeDetailDialog", () => {
     expect(screen.queryByRole("button", { name: "Excluir" })).not.toBeInTheDocument();
     expect(screen.getByText("Renda automática — somente leitura")).toBeInTheDocument();
   });
+
+  it("exibe badge 'Familiar' para receita da casa e 'Individual' para receita pessoal", () => {
+    const { rerender } = render(
+      <IncomeDetailDialog income={baseIncome({ is_family: true })} open={true} onOpenChange={vi.fn()} />,
+    );
+    expect(screen.getByText("Familiar")).toBeInTheDocument();
+
+    rerender(
+      <IncomeDetailDialog income={baseIncome({ is_family: false })} open={true} onOpenChange={vi.fn()} />,
+    );
+    expect(screen.getByText("Individual")).toBeInTheDocument();
+  });
+
+  it("permite alternar switch de receita familiar na edição e envia is_family", async () => {
+    updateIncomeMock.mockClear();
+    updateIncomeMock.mockResolvedValue({});
+    const user = userEvent.setup();
+    render(<IncomeDetailDialog income={baseIncome({ is_family: false })} open={true} onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: /editar/i }));
+
+    const familySwitch = screen.getByRole("switch", { name: "Receita da Casa / Familiar" });
+    expect(familySwitch).toHaveAttribute("aria-checked", "false");
+    await user.click(familySwitch);
+    expect(familySwitch).toHaveAttribute("aria-checked", "true");
+
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+
+    expect(updateIncomeMock).toHaveBeenCalledWith({
+      id: "i1",
+      input: expect.objectContaining({
+        is_family: true,
+      }),
+    });
+  });
 });

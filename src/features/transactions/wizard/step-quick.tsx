@@ -14,7 +14,7 @@
 
 import { useMemo, useState } from "react";
 import { Check, CreditCard, Sparkles, SlidersHorizontal } from "lucide-react";
-import { Badge, Button, Input, MoneyInput, Select, Tabs } from "@/components/ui";
+import { Badge, Button, Input, MoneyInput, Select, Switch, Tabs } from "@/components/ui";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import {
   CANONICAL_MERCHANT_CATALOG,
@@ -39,6 +39,7 @@ export interface StepQuickProps {
   isCategoryUnconfirmed?: boolean;
   onReceiveTypeChange: (type: ReceiveType) => void;
   onDescriptionChange: (description: string) => void;
+  onFamilyChange?: (isFamily: boolean) => void;
   onSwitchToGuided: () => void;
   categories: Category[] | undefined;
   categoriesLoading?: boolean;
@@ -78,6 +79,7 @@ export function StepQuick({
   isCategoryUnconfirmed = false,
   onReceiveTypeChange,
   onDescriptionChange,
+  onFamilyChange,
   onSwitchToGuided,
   categories,
   categoriesLoading = false,
@@ -399,7 +401,18 @@ export function StepQuick({
         )}
       </div>
 
-      {/* 6. Botão de Alternância para o Modo Guiado */}
+      {/* 6. Switch Discreto: Despesa Familiar (Fase 3 — Tarefa 3.2) */}
+      <div className="rounded-xl border border-border/80 bg-surface p-3">
+        <Switch
+          id="quick-family-switch"
+          checked={state.isFamily}
+          onCheckedChange={(checked) => onFamilyChange?.(checked)}
+          label={isExpense ? "Despesa da Casa / Familiar" : "Receita da Casa / Familiar"}
+          description="Visível no Painel Familiar compartilhado"
+        />
+      </div>
+
+      {/* 7. Botão de Alternância para o Modo Guiado */}
       <div className="pt-2 border-t border-border/80 flex items-center justify-between">
         <Button
           type="button"

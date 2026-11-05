@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
-import { Alert, Button, ColorPicker, IconPicker, Input, Modal, ModalFooter, RadioGroup } from "@/components/ui";
+import { Alert, Button, ColorPicker, IconPicker, Input, Modal, ModalFooter, RadioGroup, Switch } from "@/components/ui";
 import type { IconPickerOption } from "@/components/ui";
 import { CATEGORY_ICON_MAP } from "@/components/modules/category-icons";
 import { categoryFormSchema, suggestCategory } from "@/domain/budgets";
@@ -49,6 +49,7 @@ function CategoryFormContent({
   const [type, setType] = useState<CategoryType>(category?.type ?? defaultType);
   const [icon, setIcon] = useState(category?.icon ?? "");
   const [color, setColor] = useState(category?.color ?? "");
+  const [isFamily, setIsFamily] = useState(Boolean(category?.is_family));
   const [error, setError] = useState<string | null>(null);
 
   const createCategory = useCreateCategory();
@@ -70,6 +71,7 @@ function CategoryFormContent({
       type,
       icon: icon || null,
       color: color || null,
+      is_family: isFamily,
     };
     const parsed = categoryFormSchema.safeParse(rawForm);
     if (!parsed.success) {
@@ -85,6 +87,7 @@ function CategoryFormContent({
             name: parsed.data.name,
             icon: parsed.data.icon ?? null,
             color: parsed.data.color ?? null,
+            is_family: parsed.data.is_family,
           },
         });
       } else {
@@ -93,6 +96,7 @@ function CategoryFormContent({
           name: parsed.data.name,
           icon: parsed.data.icon ?? null,
           color: parsed.data.color ?? null,
+          is_family: parsed.data.is_family,
         });
       }
       triggerSensory("success");
@@ -170,6 +174,16 @@ function CategoryFormContent({
             ariaLabel="Cor da categoria"
           />
         </div>
+      </div>
+
+      <div className="rounded-xl border border-border/80 bg-surface-raised p-3">
+        <Switch
+          id="category-is-family"
+          checked={isFamily}
+          onCheckedChange={setIsFamily}
+          label="Sugerir como familiar por padrão"
+          description="Lançamentos desta categoria serão marcados como despesas familiares automaticamente."
+        />
       </div>
 
       <ModalFooter className="sm:justify-end">

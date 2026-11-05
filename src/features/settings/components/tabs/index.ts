@@ -10,5 +10,6 @@ export { SecurityTab } from "./security-tab";
 export { SubscriptionTab } from "./subscription-tab";
 export { AppInstallationTab } from "./app-installation-tab";
 export { DeleteAccountCard } from "./delete-account-card";
+export { FamilyBudgetShareCard } from "./family-budget-share-card";
 export { SupportTab } from "./support-tab";
 

@@ -479,5 +479,6 @@ export * from "./simulation";
 export * from "./historical-quotes";
 export * from "./point-in-time";
 export * from "./class-breakdown";
+export * from "./compound-interest";
 
 

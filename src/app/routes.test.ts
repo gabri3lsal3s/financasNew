@@ -3,6 +3,8 @@ import {
   appRoutes,
   publicLegalRoutes,
   publicLegalLoaders,
+  publicToolsRoutes,
+  publicToolsLoaders,
   prefetchPageChunks,
 } from "./routes";
 
@@ -27,7 +29,32 @@ describe("app/routes", () => {
     ]);
   });
 
+  it("registra as rotas públicas dos simuladores em publicToolsRoutes", () => {
+    const toolsPaths = publicToolsRoutes.map((r) => r.path);
+    expect(toolsPaths).toEqual([
+      "/ferramentas",
+      "/ferramentas/simulador-dividas",
+      "/ferramentas/rebalanceamento",
+      "/ferramentas/juros-compostos",
+    ]);
+  });
+
+  it("carrega os simuladores públicos sob demanda via publicToolsLoaders", async () => {
+    const hubModule = await publicToolsLoaders["/ferramentas"]!();
+    expect(hubModule.default).toBeDefined();
+
+    const debtsModule = await publicToolsLoaders["/ferramentas/simulador-dividas"]!();
+    expect(debtsModule.default).toBeDefined();
+
+    const rebalanceModule = await publicToolsLoaders["/ferramentas/rebalanceamento"]!();
+    expect(rebalanceModule.default).toBeDefined();
+
+    const compoundModule = await publicToolsLoaders["/ferramentas/juros-compostos"]!();
+    expect(compoundModule.default).toBeDefined();
+  }, 60_000);
+
   it("carrega as páginas legais sob demanda via publicLegalLoaders", async () => {
+
     const termsModule = await publicLegalLoaders["/termos"]!();
     expect(termsModule.default).toBeDefined();
 

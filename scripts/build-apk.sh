@@ -161,10 +161,10 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Saneamento estrutural de codigo morto e componentes legados substituidos",
-    "Remocao do motor de encargos e relatorios orfaos",
-    "Padronizacao de KpiCard, OnboardingBanner e DemoTourSpotlight",
-    "Ativacao de telemetria leve e resiliente com protecao LGPD"
+    "Modulo de compartilhamento publico (Racha Pix, Orcamento Familiar e Metas)",
+    "Simuladores financeiros abertos (Juros Compostos, Bola de Neve de Dividas e Rebalanceamento)",
+    "Gerador de Pix copia-e-cola conforme padrao BACEN EMV-BR",
+    "Chancela institucional sobria em relatorios PDF"
   ]
 }
 EOF

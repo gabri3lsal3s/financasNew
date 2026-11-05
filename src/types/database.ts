@@ -28,8 +28,11 @@ import type {
   ReminderState,
   PortfolioTransaction,
   Profile,
+  PublicShare,
   Recurrence,
   RecurrenceSkip,
+  SharedFamilyBudgetResult,
+  SharedGoalTrackerResult,
   SupportTicket,
   AdminTelegramSettings,
   AppAnalyticsEvent,
@@ -91,10 +94,24 @@ export interface Database {
       support_tickets: Table<SupportTicket>;
       admin_telegram_settings: Table<AdminTelegramSettings>;
       app_analytics_events: Table<AppAnalyticsEvent>;
+      public_shares: Table<PublicShare>;
     };
 
     Views: Record<string, never>;
     Functions: {
+      get_shared_goal_tracker: {
+        Args: {
+          p_token: string;
+        };
+        Returns: SharedGoalTrackerResult | null;
+      };
+      get_shared_family_budget: {
+        Args: {
+          p_token: string;
+          p_month?: string | null;
+        };
+        Returns: SharedFamilyBudgetResult | null;
+      };
       delete_current_user_account: {
         Args: Record<string, never>;
         Returns: void;
@@ -126,6 +143,7 @@ export interface Database {
           p_debt_amount: number | null;
           p_debt_due_date: string | null;
           p_debt_type?: string | null;
+          p_is_family?: boolean;
         };
         Returns: string;
       };
@@ -185,6 +203,7 @@ export interface Database {
           p_description: string | null;
           p_report_weight: number;
           p_installments: unknown;
+          p_is_family?: boolean;
         };
         Returns: string;
       };
@@ -218,6 +237,7 @@ export interface Database {
           p_total_installments: number;
           p_start_date: string;
           p_installments: unknown;
+          p_is_family?: boolean;
         };
         Returns: string;
       };

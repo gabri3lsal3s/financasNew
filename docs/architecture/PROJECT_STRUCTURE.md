@@ -236,8 +236,20 @@
     │   ├── legal/                 #   Páginas Legais e Regulatórias (/termos, /privacidade, LGPD, Decreto 7.962/2013)
     │   │                          #     pages: terms-page, privacy-page (com pages/index.ts)
     │   │                          #     components: legal-page-shell (com components/index.ts e index.ts)
+    │   │
+    │   ├── public-share/          #   Compartilhamento Público (/r/:token, /orcamento-familiar/:token, /meta/:token)
+    │   │                          #     pages: split-public-page, family-budget-page, goal-tracker-public-page
+    │   │                          #     components: pix-copy-block, share-public-shell, family-budget-category-list
+    │   │
+    │   ├── tools/                 #   Simuladores Financeiros Abertos & Hub (/ferramentas, /ferramentas/simulador-dividas, /ferramentas/rebalanceamento, /ferramentas/juros-compostos)
+    │   │                          #     pages: tools-hub-page, debt-simulator-page, rebalance-simulator-page, compound-interest-page
+    │   │                          #     components: tools-header, tools-footer-cta, share-simulation-button
+    │   │
     │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
+    │   ├── share/                 #   tokens públicos URL-safe (token.ts), motor de serialização stateful URL comprimida (stateful-url.ts) e transporte de simulação (simulation-transport.ts)
+    │   ├── finance/               #   motor puro de rateio de despesas e divisão equitativa em centavos (split-math.ts, balanceamento de sobra)
+    │   ├── pix/                   #   motor puro de Pix Copia e Cola padrão BACEN (pix-br-code.ts, CRC16-CCITT 0x1021, normalização)
     │   ├── validation/            #   validação pura e defensiva com Zod: sanitization.ts (XSS/control chars/money limits), password.ts, cpf.ts
     │   ├── admin/                 #   F43: RBAC, hierarquia de papéis, resolução de Feature Flags, schemas.ts e validação de convites
     │   ├── navigation/            #   F43: Resolução dinâmica de slots BottomNav e rota de fallback (landing route)
@@ -311,6 +323,7 @@
     │   ├── session.ts             #   currentUserId() — usuário autenticado (RLS auth.uid())
     │   ├── repositories/          #   expenses.ts, incomes.ts, cards.ts, debts.ts,
     │   │                          #   budgets.ts, portfolio.ts, portfolio-monthly-prices.ts (F51: cotações mensais auditadas), categories.ts,
+    │   │                          #   public-shares.ts (links públicos, tokens criptográficos, rateio Pix e orçamentos familiares),
     │   │                          #   billing.ts (adaptadores agnósticos Stripe/Asaas, checkout e portal de faturamento),
     │   │                          #   subscriptions.ts (status SaaS, planos e gestão administrativa de permissões modulares),
     │   │                          #   support-tickets.ts (registro de tickets de suporte, feedback, respostas e despacho ao Telegram),

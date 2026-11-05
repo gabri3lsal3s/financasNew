@@ -422,6 +422,7 @@ export function FinancialCloseReportModal({
       <ReportFooter
         accountHolder={accountHolder}
         disclaimer="Documento estritamente informativo emitido automaticamente com base nos registros financeiros e contábeis inseridos pelo titular da conta."
+        showQrCode
       />
     </ReportDocumentLayout>
   );

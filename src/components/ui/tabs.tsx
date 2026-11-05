@@ -20,6 +20,7 @@ export interface TabsProps {
   variant?: "underline" | "pills";
   fullWidth?: boolean;
   className?: string;
+  ariaLabel?: string;
   /**
    * F20 — navegação por gesto: swipe horizontal na área de conteúdo alterna
    * as abas (esquerda = próxima, direita = anterior). Gestos adicionais ao
@@ -41,6 +42,7 @@ export function Tabs({
   variant = "underline",
   fullWidth,
   className,
+  ariaLabel,
   swipeable = false,
   forceMount = false,
 }: TabsProps) {
@@ -102,7 +104,7 @@ export function Tabs({
             ? "border-b border-border"
             : "p-1 rounded-xl bg-muted/60 border border-border/50 backdrop-blur-sm",
         )}
-        aria-label="Abas de navegação"
+        aria-label={ariaLabel ?? "Abas de navegação"}
       >
         {items.map((item) => (
           <TabsPrimitive.Trigger
@@ -128,33 +130,35 @@ export function Tabs({
       </TabsPrimitive.List>
       {/* F20 — a área de conteúdo é o alvo do swipe (o List tem overflow-x-auto).
           `touch-action: pan-y` preserva o scroll vertical. */}
-      <div
-        onPointerDown={swipeable ? handlePointerDown : undefined}
-        onPointerMove={swipeable ? swipe.pointerHandlers.onPointerMove : undefined}
-        onPointerUp={swipeable ? swipe.pointerHandlers.onPointerUp : undefined}
-        onPointerCancel={swipeable ? swipe.pointerHandlers.onPointerCancel : undefined}
-        ref={contentRef}
-        className="mt-4 will-change-transform"
-        style={{
-          touchAction: swipeable ? "pan-y" : undefined,
-          transition: swipe.dragging ? "none" : "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-        }}
-        data-swipe-tabs-content={swipeable ? "" : undefined}
-      >
-        {items.map((item) => (
-          <TabsPrimitive.Content
-            key={item.value}
-            value={item.value}
-            forceMount={forceMount ? true : undefined}
-            className={cn(
-              "outline-none focus-visible:ring-1 focus-visible:ring-ring animate-route-in",
-              forceMount && "data-[state=inactive]:hidden",
-            )}
-          >
-            {item.content}
-          </TabsPrimitive.Content>
-        ))}
-      </div>
+      {items.some((item) => item.content !== undefined) ? (
+        <div
+          onPointerDown={swipeable ? handlePointerDown : undefined}
+          onPointerMove={swipeable ? swipe.pointerHandlers.onPointerMove : undefined}
+          onPointerUp={swipeable ? swipe.pointerHandlers.onPointerUp : undefined}
+          onPointerCancel={swipeable ? swipe.pointerHandlers.onPointerCancel : undefined}
+          ref={contentRef}
+          className="mt-4 will-change-transform"
+          style={{
+            touchAction: swipeable ? "pan-y" : undefined,
+            transition: swipe.dragging ? "none" : "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
+          data-swipe-tabs-content={swipeable ? "" : undefined}
+        >
+          {items.map((item) => (
+            <TabsPrimitive.Content
+              key={item.value}
+              value={item.value}
+              forceMount={forceMount ? true : undefined}
+              className={cn(
+                "outline-none focus-visible:ring-1 focus-visible:ring-ring animate-route-in",
+                forceMount && "data-[state=inactive]:hidden",
+              )}
+            >
+              {item.content}
+            </TabsPrimitive.Content>
+          ))}
+        </div>
+      ) : null}
     </TabsPrimitive.Root>
   );
 }

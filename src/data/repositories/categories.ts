@@ -12,7 +12,10 @@ import type { Category, CategoryType, DbUpdate } from "@/types";
  */
 
 function mapCategory(row: Category): Category {
-  return row;
+  return {
+    ...row,
+    is_family: Boolean(row.is_family),
+  };
 }
 
 export async function listCategories(type?: CategoryType): Promise<Category[]> {
@@ -48,6 +51,7 @@ export async function createCategory(input: {
   name: string;
   icon?: string | null;
   color?: string | null;
+  is_family?: boolean;
 }): Promise<Category> {
   const user_id = await currentUserId();
   const { data, error } = await resolveQuery<Category>(
@@ -57,6 +61,7 @@ export async function createCategory(input: {
         ...input,
         icon: input.icon ?? null,
         color: input.color ?? null,
+        is_family: Boolean(input.is_family),
         user_id,
         is_active: true,
         is_reserved: false,

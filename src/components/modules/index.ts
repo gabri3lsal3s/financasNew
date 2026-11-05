@@ -125,6 +125,9 @@ export { SupportChatDialog } from "./support";
 export type { SupportChatDialogProps } from "./support";
 export { ApkInstallGuideDialog } from "./apk-install-guide-dialog";
 export type { ApkInstallGuideDialogProps } from "./apk-install-guide-dialog";
+export { SplitExpenseDialog } from "./split-expense-dialog";
+export type { SplitExpenseDialogProps } from "./split-expense-dialog";
+
 
 
 

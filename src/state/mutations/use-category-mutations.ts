@@ -21,8 +21,13 @@ function invalidateFinance(queryClient: QueryClient) {
 export function useCreateCategory() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { type: CategoryType; name: string; icon?: string | null; color?: string | null }) =>
-      createCategory(input),
+    mutationFn: (input: {
+      type: CategoryType;
+      name: string;
+      icon?: string | null;
+      color?: string | null;
+      is_family?: boolean;
+    }) => createCategory(input),
     onSuccess: () => invalidateFinance(queryClient),
   });
 }

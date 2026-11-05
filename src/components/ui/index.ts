@@ -77,3 +77,8 @@ export { Turnstile } from "./turnstile";
 export type { TurnstileProps } from "./turnstile";
 export { NumericInput } from "./numeric-input";
 export type { NumericInputProps } from "./numeric-input";
+export { QrCodeCanvas } from "./qr-code-canvas";
+export type { QrCodeCanvasProps } from "./qr-code-canvas";
+export { Switch } from "./switch";
+export type { SwitchProps } from "./switch";
+

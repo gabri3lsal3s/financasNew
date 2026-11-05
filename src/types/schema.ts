@@ -300,6 +300,8 @@ export type Category = {
   color: string | null;
   is_reserved: boolean;
   is_active: boolean;
+  /** Sugere marcar lançamentos desta categoria como despesa familiar por padrão (Fase 3). */
+  is_family?: boolean;
 };
 
 export type Income = {
@@ -325,6 +327,8 @@ export type Income = {
   statement_hash?: string | null;
   /** Flag que indica se a receita foi importada via extrato bancário. */
   imported_from_statement?: boolean;
+  /** Flag que indica se o lançamento pertence ao orçamento familiar compartilhado (Fase 3). */
+  is_family?: boolean;
   created_at: string;
 };
 
@@ -355,6 +359,8 @@ export type Expense = {
   statement_hash?: string | null;
   /** Flag que indica se a despesa foi importada via extrato bancário. */
   imported_from_statement?: boolean;
+  /** Flag que indica se a despesa pertence ao orçamento familiar compartilhado (Fase 3). */
+  is_family?: boolean;
   created_at: string;
 };
 
@@ -724,6 +730,7 @@ export type RecurrenceGroupFields = {
   card_id?: string | null;
   receive_type?: string | null;
   bill_competence?: string | null;
+  is_family?: boolean | null;
 };
 
 export type InstallmentInput = {
@@ -784,6 +791,105 @@ export type FeatureUsageMetric = {
   percentage: number;
   lastUsedAt: string | null;
 };
+
+export const PUBLIC_SHARE_KINDS = ["split", "family_budget", "goal_tracker"] as const;
+export type PublicShareKind = (typeof PUBLIC_SHARE_KINDS)[number];
+
+export type SplitParticipantItem = {
+  name: string;
+  share_cents: number;
+  is_host: boolean;
+};
+
+export type SplitSharePayload = {
+  title: string;
+  total_cents: number;
+  date: string;
+  people_count: number;
+  guest_share_cents: number;
+  host_share_cents: number;
+  participants: SplitParticipantItem[];
+  remainder_policy: "host" | "balanced";
+  host_name: string;
+  host_city: string;
+  pix_key: string;
+  pix_key_type: string;
+  pix_br_code: string;
+  expense_id?: string;
+};
+
+export type PublicShare = {
+  id: string;
+  user_id: string;
+  kind: PublicShareKind;
+  token: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+  expires_at: string | null;
+  is_revoked: boolean;
+  updated_at: string;
+};
+
+export type SharedFamilyExpenseItem = {
+  id: string;
+  description: string;
+  date: string;
+  amount_cents: number;
+};
+
+export type SharedFamilyBudgetResult = {
+  token: string;
+  month: string;
+  owner_name: string;
+  monthly_ceiling_cents: number;
+  total_spent_cents: number;
+  remaining_cents: number;
+  spent_percentage: number;
+  is_revoked: boolean;
+  expires_at: string | null;
+  expenses: SharedFamilyExpenseItem[];
+};
+
+export type FamilyBudgetSharePayload = {
+  monthly_ceiling_cents?: number;
+  owner_name?: string;
+  title?: string;
+};
+
+export type GoalTrackerSharePayload = {
+  title: string;
+  category_id?: string;
+  month?: string;
+  target_cents: number;
+  current_cents?: number;
+  deadline?: string | null;
+  organizer_name: string;
+  organizer_city: string;
+  pix_key: string;
+  pix_key_type: string;
+  pix_br_code: string;
+};
+
+export type SharedGoalTrackerResult = {
+  token: string;
+  title: string;
+  category_id?: string | null;
+  target_cents: number;
+  current_cents: number;
+  remaining_cents: number;
+  percentage: number;
+  deadline: string | null;
+  days_remaining: number | null;
+  organizer_name: string;
+  organizer_city: string;
+  pix_key: string;
+  pix_key_type: string;
+  pix_br_code: string;
+  is_revoked: boolean;
+  expires_at: string | null;
+};
+
+
 
 
 

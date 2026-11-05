@@ -222,6 +222,7 @@ export function DividendFreedomModal({
       <ReportFooter
         accountHolder={accountHolder}
         disclaimer={OFFICIAL_CVM_DISCLAIMER}
+        showQrCode
       />
     </ReportDocumentLayout>
   );

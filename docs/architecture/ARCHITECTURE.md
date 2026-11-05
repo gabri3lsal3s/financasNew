@@ -127,12 +127,17 @@ O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma
     │   ├── reminders/             #   Lembretes (central de notificações)
     │   ├── settings/              #   Configurações (preferências, perfil)
     │   ├── investments/           #   Investimentos (Hub 5 abas: Resumo, Proventos, Metas, Aporte, Relatórios & IR)
-    │   └── landing/               #   Landing page pública e simulador patrimonial
+    │   ├── landing/               #   Landing page pública e simulador patrimonial
+    │   ├── public-share/          #   Compartilhamento público (/r/:token, /orcamento-familiar/:token, /meta/:token)
+    │   └── tools/                 #   Simuladores abertos client-side (/ferramentas/*)
     │
     ├── domain/                    # ⭐ MOTORES DE CÁLCULO PUROS (testáveis, sem deps)
+    │   ├── pix/                   #   gerador EMV QRCPS-MPM BACEN, CRC16, chave Pix e QR Code
+    │   ├── finance/               #   rateio de despesas em centavos e políticas de sobra (split-math.ts)
+    │   ├── share/                 #   tokens crypto, stateful URLs comprimidas (?s=...) e transporte de simulação
     │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing
     │   ├── competence/            #   resolveBillCompetence, clampDay, overrides
-    │   ├── debts/                 #   status derivado (overdue/due_today/due_soon/…)
+    │   ├── debts/                 #   status derivado (overdue/due_today/due_soon/…), payoff-simulator (Avalanche vs Bola de Neve)
     │   ├── recurrences/           #   F32: ocorrências por frequência (cliente calcula,
     │   │                          #     RPC valida) + modos de exclusão em grupo
     │   ├── cards/                 #   saldo de fatura, status da fatura
@@ -152,7 +157,7 @@ O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma
     │   ├── cards/                 #   faturas, fechamento e refinanciamento sem double-counting
     │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
     │                              #   proventos/YoC (snowball), apuração fiscal/DARF/IRPF (tax),
-    │                              #   formatação de taxas de renda fixa (formatFixedIncomeRateLabel)
+    │                              #   juros compostos (compound-interest.ts) e taxas de renda fixa
     │
     ├── data/                      # SERVIÇOS DE DADOS
     │   ├── client.ts              #   Cliente Supabase único (env centralizado)
@@ -161,6 +166,7 @@ O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma
     │   ├── session.ts             #   currentUserId() — usuário autenticado (RLS)
     │   ├── repositories/          #   expenses.ts, incomes.ts, cards.ts, debts.ts, loans.ts,
     │   │                          #   budgets.ts, portfolio.ts, categories.ts,
+    │   │                          #   public-shares.ts (compartilhamentos públicos, tokens e RPCs seguras),
     │   │                          #   recurrences.ts (F32: templates + materialização lazy)
     │   └── rpc.ts                 #   Wrappers tipados dos RPCs transacionais (D1)
     │
@@ -317,15 +323,50 @@ A plataforma adota arquitetura de simulação estritamente em memória (*in-memo
    - Acessibilidade WCAG 2.1: aprisionamento de foco (*focus trap*), anúncio em leitores de tela (`aria-live="polite"`), dots interativos e tecla `Escape` para encerramento gracioso.
    - Depreciação formal de componentes legados de barra superior (`DemoTourBar`), mantendo o layout de página desobstruído.
 
+### 5.7 Arquitetura de Acesso Público Desacoplado & Stateful URLs (Zero Autenticação / Zero Custo de Banco)
+
+O ecossistema Áxis implementa uma camada de rotas públicas otimizada para colaboração e crescimento viral orgânico, garantindo isolamento total do banco de dados relacional e blindagem de segurança:
+
+1. **Desacoplamento do Shell Autenticado no Roteador (`src/app/routes.tsx` & `src/app/router.tsx`):**
+   - As 7 rotas públicas são declaradas no topo da hierarquia de rotas, fora dos guards `RequireAuth` e `PageShell`:
+     - Racha de Despesas: `/r/:token` (`SplitPublicPage`);
+     - Orçamento Familiar: `/orcamento-familiar/:token` (`FamilyBudgetPage`);
+     - Termômetro de Metas: `/meta/:token` (`GoalTrackerPublicPage`);
+     - Hub e Simuladores Abertos: `/ferramentas`, `/ferramentas/simulador-dividas`, `/ferramentas/rebalanceamento`, `/ferramentas/juros-compostos`.
+   - Carregamento assíncrono via `lazy()` e pre-fetching programático via `prefetchPageChunks()`, assegurando abertura instantânea sem round-trips de autenticação.
+2. **Segurança por Token na Nuvem & RPCs com SECURITY DEFINER:**
+   - Tabela `public_shares` com tokens criptográficos seguros (nanoid);
+   - RLS público restrito estritamente a registros com `is_revoked = false` e `(expires_at is null or expires_at > now())`;
+   - RPCs dedicadas (`get_shared_family_budget` e `get_shared_goal_tracker`) executadas com `SECURITY DEFINER` e `set search_path = public, pg_temp;`. Elas atuam como firewalls de dados, extraindo e agregando apenas dados autorizados (`is_family = true` ou metadados de meta) e impedindo qualquer visibilidade de contas bancárias, investimentos ou despesas privadas do titular.
+3. **Execução 100% Client-Side de Simuladores & Stateful URLs:**
+   - Ferramentas públicas gratuitas executam exclusivamente no navegador via funções puras de `src/domain/debts/` e `src/domain/portfolio/`.
+   - Parâmetros da simulação são serializados e comprimidos em URLs compactas (`?s=...` via `stateful-url.ts`), gerando links imutáveis compartilháveis com custo zero de infraestrutura e zero gravação no banco de dados.
+4. **Transporte Transiente e Auto-Onboarding Sem Perda de Contexto:**
+   - Hooks transientes (`usePendingSplitExpense` e `usePendingSimulation`) capturam a intenção do visitante no navegador.
+   - Ao criar uma conta ou fazer login, o fluxo conecta os dados pendentes (`hydrateSimulationToUser()`), abrindo o assistente com categorias e despesas pré-preenchidas para ativação imediata do usuário.
+
 ---
 
 ## 6. MOTORES DE CÁLCULO (DOMAIN)
 
 - **Funções puras**, sem efeitos colaterais, sem import de React/Supabase; dependência apenas de `lib/` e `types/`.
 - **Moeda em centavos (inteiro)** dentro dos motores — divisão exata de parcelas sem erro de ponto flutuante; conversão para `numeric(12,2)` na borda (data/UI).
-- **Testes obrigatórios** (Vitest, colocalizados `*.test.ts`): parcelamento, competência, status derivado, projeções, insights, ledger e rebalanceamento.
+- **Testes obrigatórios** (Vitest, colocalizados `*.test.ts`): parcelamento, competência, status derivado, projeções, insights, ledger, Pix BR Code, rateio e rebalanceamento.
 - Assinatura típica: `f(entradaTipada) → saídaTipada`, sem estado global.
-- **Cálculo no cliente, validação no servidor:** derivados gerados em TS (ex.: parcelas) são enviados prontos ao RPC, que valida invariantes (constraints/checks) antes de persistir — a lógica de cálculo não é duplicada em SQL.
+- **Cálculo no cliente, validação no servidor:** derivados gerados em TS (ex.: parcelas, rateios) são enviados prontos ao RPC, que valida invariantes (constraints/checks) antes de persistir — a lógica de cálculo não é duplicada em SQL.
+- **Motor Pix BACEN BR Code EMV QRCPS-MPM (`src/domain/pix/`):**
+  - Implementação normativa estrita do Banco Central do Brasil para geração de Pix Copia e Cola e QR Code dinâmico/estático (`pix-br-code.ts`).
+  - Formatação TLV (Tag-Length-Value), CRC16-CCITT (polinômio 0x1021) e normalização estrita de chaves (CPF, CNPJ, Telefone com DDI, E-mail e EVP aleatória).
+  - Geração vetorial/matricial de QR Code direto no canvas (`qr-code.ts`).
+- **Rateio Matemático com Balanceamento de Sobra (`src/domain/finance/split-math.ts`):**
+  - Cálculos em centavos inteiros com garantia de conservação $\sum \text{cotas} = \text{totalCents}$.
+  - Políticas `"balanced"` (distribuição do resto aos primeiros convidados) e `"host"` (resto absorvido pelo anfitrião, permitindo código Pix de valor fixo idêntico para todos os demais).
+- **Simulador de Quitação de Dívidas (`src/domain/debts/payoff-simulator.ts`):**
+  - Motor comparativo puro das estratégias Avalanche e Bola de Neve com apuração de juros acumulados, meses de amortização e economia total.
+- **Simulador de Juros Compostos (`src/domain/portfolio/compound-interest.ts`):**
+  - Motor de projeção patrimonial FIRE, rentabilidade acumulada e renda passiva perpétua.
+- **Stateful URLs & Transporte de Simulação (`src/domain/share/`):**
+  - Serialização comprimida de parâmetros de simulação em query string (`stateful-url.ts`) e hidratação automática na conta (`simulation-transport.ts`).
 - **Motor de Investimentos & Posição Consolidada (F36 / v1.75):**
   - Modelo de custódia direta em `portfolio_assets` (`quantity`, `average_price`), proporcionando valoração instantânea $O(1)$ (`calculatePositionSummary`) com conversão cambial USD/BRL e PnL não realizado.
   - Histórico patrimonial via snapshots mensais (`portfolio_snapshots`), gravados automaticamente e lidos em $O(1)$, dispensando o processamento de ledger transacional de ponta a ponta.
@@ -643,6 +684,83 @@ O Assistente Passivo opera em modelo híbrido entre o cliente Android nativo e o
 
 ### 15.4 Aporte Mensal Direcionado na Home (`QuickAporteCard`)
 - Card dedicado na Visão Geral que consolida aportes executados no período e permite informar o valor do próximo aporte, navegando diretamente para a calculadora de rebalanceamento hierárquico em lote (`/investments?tab=aporte&valor=...`).
+
+---
+
+## 16. ARQUITETURA DE COMPARTILHAMENTO PÚBLICO, RACHA PIX, ORÇAMENTO FAMILIAR E FERRAMENTAS ABERTAS (Fases 1 a 6)
+
+A arquitetura de compartilhamento e ferramentas abertas foi construída sobre três pilares fundamentais: **segurança por design**, **zero custo de infraestrutura** para visitantes deslogados e **crescimento orgânico viral sem atrito**.
+
+### 16.1 Motor Pix BACEN EMV QRCPS-MPM & Gerador de QR Code (`src/domain/pix/`)
+1. **Especificação Normativa BACEN:**
+   - Implementação estrita do padrão BR Code do Banco Central do Brasil para Pix estático e dinâmico, baseado no padrão internacional EMVCo MPM (*Merchant-Presented Mode*).
+   - O gerador `generatePixBrCode()` monta deterministicamente os blocos TLV (*Tag-Length-Value*):
+     - `00`: Payload Format Indicator ("01");
+     - `01`: Point of Initiation Method ("11" para QR dinâmico / uso único ou "12" para estático / reutilizável);
+     - `26`: Merchant Account Information (GUI `br.gov.bcb.pix`, chave Pix normalizada e info adicional opcional);
+     - `52`: Merchant Category Code ("0000");
+     - `53`: Transaction Currency ("986" - Real Brasileiro);
+     - `54`: Transaction Amount (formatado com 2 casas decimais, omitido se valor aberto);
+     - `58`: Country Code ("BR");
+     - `59`: Merchant Name (higienizado sem acentos, truncado a 25 caracteres);
+     - `60`: Merchant City (higienizado sem acentos, em caixa alta, truncado a 15 caracteres);
+     - `62`: Additional Data Field Template com txid / Reference Label (ID `05`, adotando `"***"` quando omitido);
+     - `63`: CRC16-CCITT com 4 dígitos hexadecimais em maiúsculas calculado sobre toda a string anterior acrescida de `"6304"`.
+2. **Renderização de QR Code sem Dependências Externas Infladas:**
+   - Módulo puro `qr-code.ts` e componente React `QrCodeCanvas` (`src/components/ui/qr-code-canvas.tsx`).
+   - Gera a matriz de módulos preto/branco com máscaras de alinhamento e renderiza diretamente em `<canvas>` com controle de densidade de pixels (resolução nítida em telas Retina / HiDPI), exportável como imagem PNG.
+
+### 16.2 Racha de Despesas com Auto-Onboarding (`/r/:token`)
+1. **Fluxo do Titular:**
+   - No diálogo `SplitExpenseDialog` (acessível a partir do card de detalhes de qualquer despesa ou pelo wizard), o usuário define os participantes e a forma de divisão.
+   - O sistema gera os códigos Pix individuais com os valores de cada cota e cria um registro em `public_shares` com `kind = 'split'`.
+   - Gera o link compartilhável `/r/:token` e botão para cópia rápida com mensagem formatada para WhatsApp / Telegram.
+2. **Experiência do Convidado (`SplitPublicPage`):**
+   - Página pública deslogada, ultra-rápida, com visual sóbrio fintech.
+   - Exibe o valor total da conta, o detalhe da sua cota, QR Code Pix dinâmico e botão Copiar Código Pix Copia e Cola.
+   - Permite que o participante marque "Já paguei" para controle individual local (salvo em `localStorage`).
+3. **Auto-Onboarding (`SplitOnboardingModal`):**
+   - Botão em destaque no rodapé *"Salvar despesa no Áxis Finance"*.
+   - Ao clicar, o participante é convidado a criar sua conta gratuita, e sua cota da despesa é transportada via hook `usePendingSplitExpense`, sendo aberta automaticamente no assistente de lançamento após o cadastro.
+
+### 16.3 Orçamento Familiar Compartilhado (`/orcamento-familiar/:token`) & RPC Segura
+1. **Governança de Privacidade Familiar:**
+   - Para casais e famílias que desejam planejar suas finanças juntos sem abrir mão da privacidade financeira individual.
+   - O titular marca despesas e receitas domésticas com a flag booleana `is_family = true`.
+2. **RPC de Acesso Seguro `get_shared_family_budget`:**
+   - Executada com privilégios `SECURITY DEFINER` e busca pelo token em `public_shares`.
+   - Retorna exclusivamente a agregação das categorias marcadas e a soma de despesas com `is_family = true` para o mês corrente ou competência selecionada.
+   - Não expõe saldo de contas, extratos bancários, cartões de crédito, dívidas, ativos de investimento ou despesas privadas (`is_family = false`).
+3. **Página Pública `FamilyBudgetPage`:**
+   - Dashboard exclusivo e limpo para o cônjuge: teto orçamentário total, total gasto no mês, percentual atingido, saldo restante e lista categorizada das despesas da casa.
+   - Suporte a filtros de competência (mês anterior / próximo mês).
+
+### 16.4 Termômetro de Meta Coletiva com Chave Pix (`/meta/:token`)
+1. **Arrecadação e Objetivos em Grupo:**
+   - Em `ShareGoalDialog` (integrado ao `GoalCard`), o organizador ativa a página pública da meta e cadastra sua chave Pix para receber os aportes dos participantes.
+   - Salvo em `public_shares` com `kind = 'goal_tracker'` e payload estruturado.
+2. **Página Pública `GoalTrackerPublicPage`:**
+   - Visualização em tempo real do progresso da meta coletiva: barra dinâmica com preenchimento percentual, valor acumulado vs alvo financeiro, contagem regressiva de dias até a data final e nome do organizador.
+   - Botão de 1 toque **[Copiar Chave Pix]** com detecção automática do tipo de chave para facilitar transferências diretas pelos participantes.
+   - Conforme o organizador cadastra depósitos na meta no aplicativo, o termômetro reflete os novos totais na web sem intervenção manual.
+
+### 16.5 Hub de Simuladores Financeiros Abertos & Stateful URLs (`/ferramentas/*`)
+1. **Operação 100% Client-Side:**
+   - Simulador de Quitação de Dívidas (`DebtSimulatorPage`): compara estratégias Bola de Neve e Avalanche com gráfico de amortização e projeção de economia de juros via motor puro `payoff-simulator.ts`.
+   - Simulador de Rebalanceamento (`RebalanceSimulatorPage`): distribuição de aportes entre classes de ativos baseada em percentuais alvo.
+   - Simulador de Juros Compostos (`CompoundInterestPage`): evolução temporal do patrimônio e renda passiva mensal projetada via motor puro `compound-interest.ts`.
+2. **Stateful URLs (`stateful-url.ts`):**
+   - Serialização dos formulários de simulação em query string compacta (`?s=...`), permitindo que cenários complexos sejam compartilhados por link sem criar registros no banco de dados.
+3. **Transporte Transiente de Simulação (`simulation-transport.ts` & `ToolsFooterCta`):**
+   - CTA no rodapé convida o usuário a acompanhar suas metas e carteira no Áxis Finance.
+   - Ao iniciar o cadastro a partir de uma simulação, os parâmetros são preservados via `usePendingSimulation` e transferidos para o banco no primeiro login com a função `hydrateSimulationToUser()`.
+
+### 16.6 Chancela Institucional em Relatórios e Extratos PDF
+- **Padronização Visual:**
+  - Componente `ReportFooter` integrado às visualizações de impressão e relatórios A4 (`financial-close-report-modal.tsx`, `consolidated-wealth-modal.tsx`, `dividend-freedom-modal.tsx`, `tax-facilitator-modal.tsx`, `wealth-tear-sheet-modal.tsx`, `portfolio-executive-report.tsx`).
+  - Assinatura discreta: `Relatório estruturado via Áxis Finance · Gestão Financeira Pessoal & Automação | axis.app`.
+  - Micro QR Code institucional vetorial conferindo acabamento executivo aos documentos impressos entregues a contadores, parceiros e instituições financeiras.
+
 
 
 

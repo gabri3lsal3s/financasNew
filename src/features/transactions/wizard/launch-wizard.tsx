@@ -311,6 +311,7 @@ export function LaunchWizard({
           debtAmount: state.debtEnabled ? state.debtAmountCents / 100 : null,
           debtDueDate: state.debtEnabled && state.debtDueDate ? state.debtDueDate : null,
           debtType: state.debtEnabled ? state.debtType : null,
+          isFamily: state.isFamily,
         });
       } else if (state.installments > 1) {
         await createIncomeInstallments.mutateAsync({
@@ -325,6 +326,7 @@ export function LaunchWizard({
             count: state.installments,
             startDate: state.date,
           }),
+          isFamily: state.isFamily,
         });
       } else {
         const input = {
@@ -335,6 +337,7 @@ export function LaunchWizard({
           description: state.description || null,
           report_weight: effectiveReportWeight(state),
           source_ref: null,
+          is_family: state.isFamily,
         } satisfies Omit<DbInsert<Income>, "user_id">;
         await createIncome.mutateAsync(input);
       }
@@ -644,6 +647,10 @@ export function LaunchWizard({
             onCategoryChange={(categoryId) => {
               set("categoryId", categoryId);
               setIsCategoryUnconfirmed(false);
+              const cat = categoriesQuery.data?.find((c) => c.id === categoryId);
+              if (cat?.is_family) {
+                set("isFamily", true);
+              }
             }}
             onPaymentMethodChange={(method: PaymentMethod) => {
               set("paymentMethod", method);
@@ -654,6 +661,7 @@ export function LaunchWizard({
             isCategoryUnconfirmed={isCategoryUnconfirmed}
             onReceiveTypeChange={(receiveType: ReceiveType) => set("receiveType", receiveType)}
             onDescriptionChange={(description) => set("description", description)}
+            onFamilyChange={(isFamily) => set("isFamily", isFamily)}
             onSwitchToGuided={handleSwitchToGuided}
             categories={categoriesQuery.data}
             categoriesLoading={categoriesQuery.isLoading}
@@ -710,7 +718,13 @@ export function LaunchWizard({
                 isError={categoriesQuery.isError}
                 error={categoriesQuery.error}
                 selectedId={state.categoryId}
-                onSelect={(categoryId) => set("categoryId", categoryId)}
+                onSelect={(categoryId) => {
+                  set("categoryId", categoryId);
+                  const cat = categoriesQuery.data?.find((c) => c.id === categoryId);
+                  if (cat?.is_family) {
+                    set("isFamily", true);
+                  }
+                }}
               />
             ) : null}
 
@@ -725,6 +739,7 @@ export function LaunchWizard({
                 onCardChange={(cardId) => set("cardId", cardId)}
                 onReceiveTypeChange={(receiveType: ReceiveType) => set("receiveType", receiveType)}
                 onDescriptionChange={(description) => set("description", description)}
+                onFamilyChange={(isFamily) => set("isFamily", isFamily)}
                 descriptionSuggestions={descriptionSuggestions}
                 onReportWeightChange={(weight) => {
                   set("reportWeight", weight);

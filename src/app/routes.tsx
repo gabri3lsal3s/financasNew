@@ -57,9 +57,30 @@ export const publicLegalRoutes: AppRoute[] = Object.entries(publicLegalLoaders).
   Component: lazy(loader),
 }));
 
+/**
+ * Loaders dos simuladores financeiros abertos e ferramentas públicas no cliente.
+ */
+export const publicToolsLoaders: Record<string, () => Promise<PageModule>> = {
+  "/ferramentas": () =>
+    import("@/features/tools/pages/tools-hub-page").then((m) => ({ default: m.ToolsHubPage })),
+  "/ferramentas/simulador-dividas": () =>
+    import("@/features/tools/pages/debt-simulator-page").then((m) => ({ default: m.DebtSimulatorPage })),
+  "/ferramentas/rebalanceamento": () =>
+    import("@/features/tools/pages/rebalance-simulator-page").then((m) => ({ default: m.RebalanceSimulatorPage })),
+  "/ferramentas/juros-compostos": () =>
+    import("@/features/tools/pages/compound-interest-page").then((m) => ({ default: m.CompoundInterestPage })),
+};
+
+/** Rotas públicas dos simuladores abertos. */
+export const publicToolsRoutes: AppRoute[] = Object.entries(publicToolsLoaders).map(([path, loader]) => ({
+  path,
+  Component: lazy(loader),
+}));
+
 const allPageLoaders: Record<string, () => Promise<PageModule>> = {
   ...pageLoaders,
   ...publicLegalLoaders,
+  ...publicToolsLoaders,
 };
 
 /**

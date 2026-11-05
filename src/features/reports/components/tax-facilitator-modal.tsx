@@ -332,6 +332,7 @@ export function TaxFacilitatorModal({
       <ReportFooter
         accountHolder={accountHolder}
         disclaimer={OFFICIAL_TAX_FACILITATOR_DISCLAIMER}
+        showQrCode
       />
     </ReportDocumentLayout>
   );

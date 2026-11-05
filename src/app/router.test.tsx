@@ -23,7 +23,34 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useSaveSplitExpense: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useSaveSimulationToAccount: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }));
+
+vi.mock("@/state/queries/use-public-shares", () => ({
+  usePublicShare: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+  }),
+  useSharedFamilyBudget: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+  }),
+  useSharedGoalTracker: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 
 describe("AppRouter (Code Splitting e Lazy Routes)", () => {
   it("renderiza a rota /entrar com Suspense e lazy loading para visitantes", async () => {
@@ -167,6 +194,149 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
       }),
     ).toBeInTheDocument();
   });
+
+  it("renderiza a rota pública /r/:token (SplitPublicPage) para visitantes", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/r/token-teste");
+    render(<AppRouter />);
+
+    // Deve exibir o badge ou o estado da página sem redirecionar para /entrar
+    expect(await screen.findByText("Racha de Conta")).toBeInTheDocument();
+  });
+
+  it("renderiza a rota pública /orcamento-familiar/:token (FamilyBudgetPage) para visitantes", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/orcamento-familiar/token-familiar");
+    render(<AppRouter />);
+
+    expect(await screen.findByText(/Orçamento familiar/i)).toBeInTheDocument();
+  });
+
+  it("renderiza a rota pública /meta/:token (GoalTrackerPublicPage) para visitantes", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/meta/token-meta");
+    render(<AppRouter />);
+
+    expect(await screen.findByText(/Meta não encontrada/i)).toBeInTheDocument();
+  });
+
+  it("renderiza o hub público /ferramentas para visitantes", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/ferramentas");
+    render(<AppRouter />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Simuladores Financeiros Gratuitos" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renderiza a ferramenta pública /ferramentas/simulador-dividas para visitantes", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/ferramentas/simulador-dividas");
+    render(<AppRouter />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Simulador de Quitação: Avalanche vs Bola de Neve",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("renderiza a ferramenta pública /ferramentas/rebalanceamento para visitantes", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/ferramentas/rebalanceamento");
+    render(<AppRouter />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Simulador de Rebalanceamento Inteligente de Carteira",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("renderiza a ferramenta pública /ferramentas/juros-compostos para visitantes", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/ferramentas/juros-compostos");
+    render(<AppRouter />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Simulador de Juros Compostos & Independência Financeira",
+      }),
+    ).toBeInTheDocument();
+  });
+
+
 
   it("redireciona rota legada /investimentos preservando query strings para /investments", async () => {
     vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
