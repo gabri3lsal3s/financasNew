@@ -4,9 +4,11 @@ import {
   regeneratePublicShare,
   revokePublicShare,
   saveSplitExpenseToAccount,
+  saveSimulationToAccount,
   type CreatePublicShareInput,
   type SaveSplitExpenseInput,
 } from "@/data/repositories/public-shares";
+import type { PendingSimulation } from "@/domain/share";
 import { pushToast } from "@/services/toast";
 import { getErrorMessage } from "@/services/errors";
 
@@ -85,4 +87,38 @@ export function useSaveSplitExpense() {
     },
   });
 }
+
+export function useSaveSimulationToAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (simulation: PendingSimulation) => saveSimulationToAccount(simulation),
+    onSuccess: (_, variables) => {
+      if (variables.type === "debt_simulator") {
+        void queryClient.invalidateQueries({ queryKey: ["debts"] });
+      } else if (variables.type === "rebalance_simulator") {
+        void queryClient.invalidateQueries({ queryKey: ["class_targets"] });
+        void queryClient.invalidateQueries({ queryKey: ["allocation_targets"] });
+        void queryClient.invalidateQueries({ queryKey: ["investments"] });
+      } else if (variables.type === "compound_interest") {
+        void queryClient.invalidateQueries({ queryKey: ["income_goals"] });
+      }
+      void queryClient.invalidateQueries({ queryKey: ["overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["insights"] });
+      pushToast({
+        title: "Simulação salva com sucesso!",
+        description: "Os parâmetros da simulação foram vinculados à sua conta.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      pushToast({
+        title: "Não foi possível salvar a simulação",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 

@@ -39,4 +39,6 @@ export {
   PENDING_SPLIT_STORAGE_KEY,
   type PendingSplitExpenseData,
 } from "./use-pending-split-expense";
+export { usePendingSimulation } from "./use-pending-simulation";
+
 

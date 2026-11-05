@@ -10,6 +10,9 @@ import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
 import { createExpenseWithDebt, getSharedFamilyBudget, getSharedGoalTracker } from "@/data/rpc";
 import { createCategory, listCategories } from "./categories";
+import { createDebt } from "./debts";
+import { saveGroupTarget } from "./allocation-targets";
+import { setGoal } from "./income-goals";
 import { AppError, classifyError } from "@/services/errors";
 import type {
   PublicShare,
@@ -19,6 +22,7 @@ import type {
   SharedGoalTrackerResult,
 } from "@/types";
 import { generateShareToken } from "@/domain/share/token";
+import type { PendingSimulation } from "@/domain/share/simulation-transport";
 
 export interface CreatePublicShareInput {
   kind: PublicShareKind;
@@ -245,5 +249,68 @@ export async function regeneratePublicShare(
   await revokePublicShare(oldId);
   return createPublicShare(input);
 }
+
+/**
+ * Salva e transporta os parâmetros de uma simulação financeira executada
+ * nos simuladores abertos para a conta autenticada do usuário.
+ */
+export async function saveSimulationToAccount(simulation: PendingSimulation): Promise<void> {
+  if (simulation.type === "debt_simulator") {
+    const debts = simulation.debts ?? [];
+    if (debts.length === 0) return;
+
+    const now = new Date();
+    const dueDate = new Date(now.getFullYear(), now.getMonth() + 1, Math.min(now.getDate(), 28))
+      .toISOString()
+      .slice(0, 10);
+
+    for (const debt of debts) {
+      if (!debt.name || debt.balanceCents <= 0) continue;
+      await createDebt({
+        name: debt.name,
+        amount: debt.balanceCents / 100,
+        due_date: dueDate,
+        type: "payable",
+      });
+    }
+  } else if (simulation.type === "rebalance_simulator") {
+    const classes = simulation.classes ?? [];
+    if (classes.length === 0) return;
+
+    for (const cls of classes) {
+      if (!cls.name || cls.targetPercent <= 0) continue;
+      await saveGroupTarget("class", cls.name, cls.targetPercent);
+    }
+  } else if (simulation.type === "compound_interest") {
+    const contributionCents = simulation.monthlyContributionCents ?? 0;
+    if (contributionCents <= 0) return;
+
+    const month = new Date().toISOString().slice(0, 7);
+    const categories = await listCategories("income").catch(() => []);
+    let targetCat =
+      categories.find(
+        (c) =>
+          c.name.toLowerCase().includes("invest") ||
+          c.name.toLowerCase().includes("meta") ||
+          c.name.toLowerCase().includes("aporte") ||
+          c.name.toLowerCase().includes("outros"),
+      ) || categories[0];
+
+    if (!targetCat) {
+      const created = await createCategory({
+        type: "income",
+        name: "Investimentos & Metas",
+        icon: "investimentos",
+        color: "#3B82F6",
+      }).catch(() => null);
+      targetCat = created ?? undefined;
+    }
+
+    if (targetCat) {
+      await setGoal(targetCat.id, month, contributionCents / 100);
+    }
+  }
+}
+
 
 

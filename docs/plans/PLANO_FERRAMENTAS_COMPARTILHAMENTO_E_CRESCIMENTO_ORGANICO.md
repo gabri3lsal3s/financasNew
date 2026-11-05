@@ -192,21 +192,21 @@ Transformar os motores de amortização e alocação de carteira em ferramentas 
     - `/ferramentas/juros-compostos` (Projeção de Independência Financeira).
   - Execução 100% no cliente (client-side), importando as funções puras de `src/domain/debts/` e `src/domain/investments/`. Custo zero de banco de dados.
 
-- [ ] **Tarefa 5.2: Motor de Serialização e Compartilhamento via Stateful URLs**
-  - Criar utilitário `src/domain/share/stateful-url.ts`:
-    - Serializa os parâmetros da simulação em query string comprimida (ex.: `?s=eyJw...`).
-    - Botão **[Copiar Link da Simulação]**: qualquer amigo que abrir o link vê os gráficos e tabelas pré-carregados com os números exatos.
+- [x] **Tarefa 5.2: Motor de Serialização e Compartilhamento via Stateful URLs**
+  - [x] Criar utilitário `src/domain/share/stateful-url.ts`:
+    - [x] Serializa os parâmetros da simulação em query string comprimida (ex.: `?s=eyJw...`).
+    - [x] Botão **[Copiar Link da Simulação]**: qualquer amigo que abrir o link vê os gráficos e tabelas pré-carregados com os números exatos.
 
-- [ ] **Tarefa 5.3: CTA Sóbrio de Conversão**
+- [x] **Tarefa 5.3: CTA Sóbrio de Conversão**
   - No rodapé dos simuladores públicos:
     - *"Deseja monitorar suas finanças e metas com automação diária? Criar conta no Áxis Finance"*.
     - Botão de início rápido que já transporta os dados da simulação para a conta criada.
 
-- [ ] **Portão de Qualidade 5:**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/domain/share/stateful-url.test.ts`
-  - [ ] **Commit & Push da Fase 5:** `git commit -m "feat(tools): hub de simuladores financeiros abertos com stateful urls"`
+- [x] **Portão de Qualidade 5:**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/domain/share/stateful-url.test.ts`
+  - [x] **Commit & Push da Fase 5:** `git commit -m "feat(tools): hub de simuladores financeiros abertos com stateful urls"`
 
 ---
 

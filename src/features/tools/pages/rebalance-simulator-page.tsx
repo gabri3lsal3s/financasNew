@@ -1,8 +1,10 @@
 import { useState, useMemo } from "react";
+import { useSearchParams } from "react-router";
 import {
   Plus,
   Trash2,
   AlertCircle,
+  Link2,
 } from "lucide-react";
 import {
   Card,
@@ -19,10 +21,17 @@ import {
 import { AllocationDonut, type AllocationSlice } from "@/components/modules/allocation-donut";
 import { ToolsHeader } from "../components/tools-header";
 import { ToolsFooterCta } from "../components/tools-footer-cta";
+import { ShareSimulationButton } from "../components/share-simulation-button";
 import {
   simulateStrategyAporte,
   type StrategyClassItem,
 } from "@/domain/portfolio";
+import {
+  buildStatefulUrl,
+  decodeRebalanceSimulatorState,
+  type RebalanceSimulatorShareState,
+  type PendingRebalanceSimulation,
+} from "@/domain/share";
 
 interface PresetConfig {
   id: string;
@@ -68,10 +77,33 @@ const PRESETS: PresetConfig[] = [
 ];
 
 export function RebalanceSimulatorPage() {
-  const [patrimonyBaseCents, setPatrimonyBaseCents] = useState<number>(5000000); // R$ 50.000,00
-  const [aporteAmountCents, setAporteAmountCents] = useState<number>(300000); // R$ 3.000,00
-  const [classes, setClasses] = useState<StrategyClassItem[]>(PRESETS[0]!.classes);
-  const [selectedPreset, setSelectedPreset] = useState<string>("dividendos");
+  const [searchParams] = useSearchParams();
+
+  // Carrega parâmetros a partir de stateful URL se presente
+  const sharedState = useMemo(() => {
+    const param = searchParams.get("s");
+    return param ? decodeRebalanceSimulatorState(param) : null;
+  }, [searchParams]);
+
+  const [patrimonyBaseCents, setPatrimonyBaseCents] = useState<number>(
+    () => sharedState?.patrimonyBaseCents ?? 5000000, // R$ 50.000,00
+  );
+  const [aporteAmountCents, setAporteAmountCents] = useState<number>(
+    () => sharedState?.aporteAmountCents ?? 300000, // R$ 3.000,00
+  );
+  const [classes, setClasses] = useState<StrategyClassItem[]>(
+    () =>
+      sharedState?.classes.map((c) => ({
+        key: c.key,
+        name: c.name,
+        targetPercent: c.targetPercent,
+        currentProportion: c.currentProportion,
+        yieldRate: c.yieldRate ?? 0.06,
+      })) ?? PRESETS[0]!.classes,
+  );
+  const [selectedPreset, setSelectedPreset] = useState<string>(
+    () => sharedState?.selectedPreset ?? (sharedState ? "custom" : "dividendos"),
+  );
 
   const handleApplyPreset = (presetId: string) => {
     const found = PRESETS.find((p) => p.id === presetId);
@@ -133,6 +165,31 @@ export function RebalanceSimulatorPage() {
 
   const isTarget100 = Math.abs(totalTargetPercent - 100) < 0.1;
 
+  const getShareUrl = () => {
+    const state: RebalanceSimulatorShareState = {
+      patrimonyBaseCents,
+      aporteAmountCents,
+      classes,
+      selectedPreset,
+    };
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    return buildStatefulUrl(`${origin}/ferramentas/rebalanceamento`, state);
+  };
+
+  const simulationPayload: PendingRebalanceSimulation = useMemo(
+    () => ({
+      type: "rebalance_simulator",
+      classes: classes.map((c) => ({
+        name: c.name,
+        targetPercent: c.targetPercent,
+      })),
+      patrimonyBaseCents,
+      aporteAmountCents,
+      selectedPreset,
+    }),
+    [classes, patrimonyBaseCents, aporteAmountCents, selectedPreset],
+  );
+
   return (
     <div className="min-h-dvh bg-background text-foreground flex flex-col justify-between">
       <ToolsHeader />
@@ -140,13 +197,25 @@ export function RebalanceSimulatorPage() {
       <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 flex-1">
         {/* Cabeçalho Editorial */}
         <section className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="muted" size="sm">
-              Ferramenta Gratuita
-            </Badge>
-            <Badge variant="positive" size="sm">
-              Rebalanceamento sem Venda de Ativos
-            </Badge>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="muted" size="sm">
+                Ferramenta Gratuita
+              </Badge>
+              <Badge variant="positive" size="sm">
+                Rebalanceamento sem Venda de Ativos
+              </Badge>
+              {sharedState && (
+                <Badge variant="warning" size="sm" className="gap-1">
+                  <Link2 className="size-3 shrink-0" aria-hidden="true" />
+                  <span>Simulação Compartilhada</span>
+                </Badge>
+              )}
+            </div>
+            <ShareSimulationButton
+              getShareUrl={getShareUrl}
+              simulationTitle="Rebalanceamento de Carteira"
+            />
           </div>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight">
             Simulador de Rebalanceamento Inteligente de Carteira
@@ -415,8 +484,9 @@ export function RebalanceSimulatorPage() {
       </main>
 
       <ToolsFooterCta
-        title="Deseja rebalancear ativos reais com cotações automáticas?"
+        title="Deseja monitorar suas finanças e metas com automação diária?"
         description="O motor de investimentos do Áxis Finance integra suas notas de corretagem, calcula o preço médio automaticamente e aponta os ativos mais descontados da sua carteira."
+        simulationPayload={simulationPayload}
       />
     </div>
   );

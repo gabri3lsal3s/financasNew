@@ -235,9 +235,11 @@
     │   │
     │   ├── tools/                 #   Simuladores Financeiros Abertos & Hub (/ferramentas, /ferramentas/simulador-dividas, /ferramentas/rebalanceamento, /ferramentas/juros-compostos)
     │   │                          #     pages: tools-hub-page, debt-simulator-page, rebalance-simulator-page, compound-interest-page
-    │   │                          #     components: tools-header, tools-footer-cta
+    │   │                          #     components: tools-header, tools-footer-cta, share-simulation-button
+    │   │
     │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
+    │   ├── share/                 #   tokens públicos URL-safe (token.ts), motor de serialização stateful URL comprimida (stateful-url.ts) e transporte de simulação (simulation-transport.ts)
     │   ├── finance/               #   motor puro de rateio de despesas e divisão equitativa em centavos (split-math.ts, balanceamento de sobra)
     │   ├── pix/                   #   motor puro de Pix Copia e Cola padrão BACEN (pix-br-code.ts, CRC16-CCITT 0x1021, normalização)
     │   ├── validation/            #   validação pura e defensiva com Zod: sanitization.ts (XSS/control chars/money limits), password.ts, cpf.ts

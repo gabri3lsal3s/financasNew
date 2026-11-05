@@ -1,19 +1,76 @@
-import { Link } from "react-router";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { Button, Card, CardContent } from "@/components/ui";
+import { triggerSensory } from "@/services/sensory";
+import { useAuth } from "@/hooks/use-auth";
+import { useSaveSimulationToAccount } from "@/state";
+import {
+  storePendingSimulation,
+  buildSimulationRegisterUrl,
+  type PendingSimulation,
+} from "@/domain/share";
 
 export interface ToolsFooterCtaProps {
   title?: string;
   description?: string;
   registerQueryParams?: string;
+  simulationPayload?: PendingSimulation;
 }
 
 export function ToolsFooterCta({
   title = "Deseja monitorar suas finanças e metas com automação diária?",
   description = "Centralize contas bancárias, cartões, dívidas, orçamentos e carteira de investimentos em um único painel inteligente com máxima privacidade e zero anúncios.",
   registerQueryParams = "",
+  simulationPayload,
 }: ToolsFooterCtaProps) {
-  const registerUrl = `/cadastro${registerQueryParams ? `?${registerQueryParams}` : ""}`;
+  const navigate = useNavigate();
+  const { session } = useAuth();
+  const saveMutation = useSaveSimulationToAccount();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isLoggedIn = !!session?.user;
+
+  const handleQuickStart = async () => {
+    triggerSensory("action");
+
+    if (simulationPayload) {
+      if (isLoggedIn) {
+        setIsSubmitting(true);
+        try {
+          await saveMutation.mutateAsync(simulationPayload);
+          const targetRoute =
+            simulationPayload.type === "debt_simulator"
+              ? "/dividas"
+              : simulationPayload.type === "rebalance_simulator"
+                ? "/investimentos"
+                : "/";
+          navigate(targetRoute);
+        } catch {
+          // Toast já disparado no callback onError da mutation
+        } finally {
+          setIsSubmitting(false);
+        }
+        return;
+      }
+
+      // Convidado/Não logado: persiste em storage e conduz para o cadastro com query param
+      storePendingSimulation(simulationPayload);
+      const url = buildSimulationRegisterUrl(simulationPayload);
+      const targetUrl = registerQueryParams ? `${url}&${registerQueryParams}` : url;
+      navigate(targetUrl);
+      return;
+    }
+
+    const defaultUrl = `/cadastro${registerQueryParams ? `?${registerQueryParams}` : ""}`;
+    navigate(isLoggedIn ? "/" : defaultUrl);
+  };
+
+  const primaryButtonLabel = isLoggedIn
+    ? simulationPayload
+      ? "Salvar Simulação na Minha Conta"
+      : "Ir para o Painel"
+    : "Criar Conta no Áxis Finance";
 
   return (
     <footer className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-12">
@@ -49,12 +106,26 @@ export function ToolsFooterCta({
                 Conhecer Recursos
               </Button>
             </Link>
-            <Link to={registerUrl} className="w-full sm:w-auto">
-              <Button variant="default" size="sm" className="w-full gap-2 font-semibold shadow-xs">
-                <span>Criar Conta no Áxis Finance</span>
+
+            <div className="flex flex-col items-center gap-1.5 w-full sm:w-auto">
+              <Button
+                variant="default"
+                size="sm"
+                className="w-full gap-2 font-semibold shadow-xs"
+                onClick={handleQuickStart}
+                disabled={isSubmitting}
+                aria-label={primaryButtonLabel}
+              >
+                <span>{primaryButtonLabel}</span>
                 <ArrowRight className="size-4" aria-hidden="true" />
               </Button>
-            </Link>
+              {simulationPayload && !isLoggedIn && (
+                <span className="text-[11px] text-muted-foreground text-center flex items-center justify-center gap-1">
+                  <Sparkles className="size-3 text-primary" aria-hidden="true" />
+                  <span>Transporta dados da simulação</span>
+                </span>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

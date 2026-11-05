@@ -7,10 +7,14 @@ import {
   regeneratePublicShare,
   revokePublicShare,
   saveSplitExpenseToAccount,
+  saveSimulationToAccount,
 } from "./public-shares";
 import { getSupabase } from "@/data/client";
 import * as rpcModule from "@/data/rpc";
 import * as categoriesRepo from "./categories";
+import * as debtsRepo from "./debts";
+import * as allocationRepo from "./allocation-targets";
+import * as incomeGoalsRepo from "./income-goals";
 
 vi.mock("@/data/client", () => ({
   getSupabase: vi.fn(),
@@ -24,6 +28,18 @@ vi.mock("@/data/rpc", () => ({
 vi.mock("./categories", () => ({
   listCategories: vi.fn(),
   createCategory: vi.fn(),
+}));
+
+vi.mock("./debts", () => ({
+  createDebt: vi.fn(),
+}));
+
+vi.mock("./allocation-targets", () => ({
+  saveGroupTarget: vi.fn(),
+}));
+
+vi.mock("./income-goals", () => ({
+  setGoal: vi.fn(),
 }));
 
 vi.mock("@/data/session", () => ({
@@ -306,6 +322,79 @@ describe("data/repositories/public-shares", () => {
       expect(result.token).toBe("brandnewtoken");
     });
   });
+
+  describe("saveSimulationToAccount", () => {
+    it("transporta simulação de dívidas criando registros na tabela de dívidas", async () => {
+      vi.mocked(debtsRepo.createDebt).mockResolvedValue({} as never);
+
+      await saveSimulationToAccount({
+        type: "debt_simulator",
+        debts: [
+          {
+            name: "Empréstimo Pessoal",
+            balanceCents: 500000,
+            interestRateAnnual: 18.5,
+            minimumPaymentCents: 50000,
+          },
+        ],
+      });
+
+      expect(debtsRepo.createDebt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Empréstimo Pessoal",
+          amount: 5000,
+          type: "payable",
+        }),
+      );
+    });
+
+    it("transporta simulação de rebalanceamento salvando metas de classe", async () => {
+      vi.mocked(allocationRepo.saveGroupTarget).mockResolvedValue(undefined);
+
+      await saveSimulationToAccount({
+        type: "rebalance_simulator",
+        classes: [
+          { name: "Ações", targetPercent: 50 },
+          { name: "FIIs", targetPercent: 50 },
+        ],
+      });
+
+      expect(allocationRepo.saveGroupTarget).toHaveBeenCalledWith("class", "Ações", 50);
+      expect(allocationRepo.saveGroupTarget).toHaveBeenCalledWith("class", "FIIs", 50);
+    });
+
+    it("transporta simulação de juros compostos criando meta de aportes", async () => {
+      vi.mocked(categoriesRepo.listCategories).mockResolvedValueOnce([
+        {
+          id: "cat-invest-1",
+          name: "Investimentos & Metas",
+          type: "income",
+          icon: "investimentos",
+          color: "#3B82F6",
+          is_reserved: false,
+          is_active: true,
+          user_id: "user-1",
+          is_family: false,
+        },
+      ]);
+      vi.mocked(incomeGoalsRepo.setGoal).mockResolvedValue(undefined);
+
+      await saveSimulationToAccount({
+        type: "compound_interest",
+        initialAmountCents: 1000000,
+        monthlyContributionCents: 200000,
+        annualRatePercent: 12,
+        periodYears: 15,
+      });
+
+      expect(incomeGoalsRepo.setGoal).toHaveBeenCalledWith(
+        "cat-invest-1",
+        expect.any(String),
+        2000,
+      );
+    });
+  });
 });
+
 
 

@@ -1,10 +1,12 @@
 import { useState, useMemo } from "react";
+import { useSearchParams } from "react-router";
 import {
   Flame,
   Snowflake,
   Plus,
   Trash2,
   Info,
+  Link2,
 } from "lucide-react";
 import {
   Card,
@@ -20,11 +22,18 @@ import {
 } from "@/components/ui";
 import { ToolsHeader } from "../components/tools-header";
 import { ToolsFooterCta } from "../components/tools-footer-cta";
+import { ShareSimulationButton } from "../components/share-simulation-button";
 import {
   compareDebtStrategies,
   type SimulatorDebtInput,
   type DebtPayoffStrategy,
 } from "@/domain/debts";
+import {
+  buildStatefulUrl,
+  decodeDebtSimulatorState,
+  type DebtSimulatorShareState,
+  type PendingDebtSimulation,
+} from "@/domain/share";
 
 const INITIAL_SAMPLE_DEBTS: SimulatorDebtInput[] = [
   {
@@ -51,9 +60,23 @@ const INITIAL_SAMPLE_DEBTS: SimulatorDebtInput[] = [
 ];
 
 export function DebtSimulatorPage() {
-  const [debts, setDebts] = useState<SimulatorDebtInput[]>(INITIAL_SAMPLE_DEBTS);
-  const [extraBudgetCents, setExtraBudgetCents] = useState<number>(50000); // R$ 500,00
-  const [activeTab, setActiveTab] = useState<DebtPayoffStrategy>("avalanche");
+  const [searchParams] = useSearchParams();
+
+  // Carrega parâmetros a partir de stateful URL se presente
+  const sharedState = useMemo(() => {
+    const param = searchParams.get("s");
+    return param ? decodeDebtSimulatorState(param) : null;
+  }, [searchParams]);
+
+  const [debts, setDebts] = useState<SimulatorDebtInput[]>(
+    () => sharedState?.debts ?? INITIAL_SAMPLE_DEBTS,
+  );
+  const [extraBudgetCents, setExtraBudgetCents] = useState<number>(
+    () => sharedState?.extraBudgetCents ?? 50000, // R$ 500,00
+  );
+  const [activeTab, setActiveTab] = useState<DebtPayoffStrategy>(
+    () => sharedState?.strategy ?? "avalanche",
+  );
 
   const comparison = useMemo(() => {
     return compareDebtStrategies(debts, extraBudgetCents);
@@ -92,6 +115,31 @@ export function DebtSimulatorPage() {
 
   const activeResult = activeTab === "avalanche" ? comparison.avalanche : comparison.snowball;
 
+  const getShareUrl = () => {
+    const state: DebtSimulatorShareState = {
+      debts,
+      extraBudgetCents,
+      strategy: activeTab,
+    };
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    return buildStatefulUrl(`${origin}/ferramentas/simulador-dividas`, state);
+  };
+
+  const simulationPayload: PendingDebtSimulation = useMemo(
+    () => ({
+      type: "debt_simulator",
+      debts: debts.map((d) => ({
+        name: d.name,
+        balanceCents: d.balanceCents,
+        interestRateAnnual: d.monthlyRatePercent * 12,
+        minimumPaymentCents: d.minPaymentCents,
+      })),
+      extraMonthlyCents: extraBudgetCents,
+      strategy: activeTab,
+    }),
+    [debts, extraBudgetCents, activeTab],
+  );
+
   return (
     <div className="min-h-dvh bg-background text-foreground flex flex-col justify-between">
       <ToolsHeader />
@@ -99,13 +147,25 @@ export function DebtSimulatorPage() {
       <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 flex-1">
         {/* Cabeçalho Editorial */}
         <section className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="muted" size="sm">
-              Ferramenta Gratuita
-            </Badge>
-            <Badge variant="positive" size="sm">
-              Processamento 100% no Navegador
-            </Badge>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="muted" size="sm">
+                Ferramenta Gratuita
+              </Badge>
+              <Badge variant="positive" size="sm">
+                Processamento 100% no Navegador
+              </Badge>
+              {sharedState && (
+                <Badge variant="warning" size="sm" className="gap-1">
+                  <Link2 className="size-3 shrink-0" aria-hidden="true" />
+                  <span>Simulação Compartilhada</span>
+                </Badge>
+              )}
+            </div>
+            <ShareSimulationButton
+              getShareUrl={getShareUrl}
+              simulationTitle="Quitação de Dívidas"
+            />
           </div>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight">
             Simulador de Quitação: Avalanche vs Bola de Neve
@@ -445,8 +505,9 @@ export function DebtSimulatorPage() {
       </main>
 
       <ToolsFooterCta
-        title="Deseja controlar suas dívidas e despesas automaticamente?"
+        title="Deseja monitorar suas finanças e metas com automação diária?"
         description="O Áxis Finance automatiza o controle de dívidas, faturas de cartão de crédito e amortizações com avisos inteligentes antes do vencimento."
+        simulationPayload={simulationPayload}
       />
     </div>
   );

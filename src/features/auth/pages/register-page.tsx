@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
-import { ArrowLeft, ArrowRight, CheckCircle2, Layers, MailCheck, PieChart, Shield } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Layers, MailCheck, PieChart, Shield, Sparkles } from "lucide-react";
 import { Alert, Button, Checkbox, Input, PasswordInput, Turnstile, buttonVariants } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { useAuth, signUpWithEmail } from "@/hooks/use-auth";
 import { classifyError } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { checkPasswordRequirements } from "@/domain/validation";
+import { getPendingSimulation } from "@/domain/share";
 import { BrandLogo } from "@/components/layout";
 import { cn } from "@/lib/utils";
 
@@ -90,6 +91,7 @@ export function RegisterPage() {
 
   const planoParam = searchParams.get("plano");
   const metodoParam = searchParams.get("metodo");
+  const isFromSimulator = searchParams.get("from") === "simulador" || !!getPendingSimulation();
 
   const requirements = useMemo(() => checkPasswordRequirements(password), [password]);
   const metCount = useMemo(
@@ -183,6 +185,15 @@ export function RegisterPage() {
       sideHero={<RegisterSideHero planoParam={planoParam} />}
     >
       <div className="flex flex-col gap-4">
+        {isFromSimulator ? (
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-xs text-foreground flex items-center gap-2.5">
+            <Sparkles className="size-4 text-primary shrink-0" aria-hidden="true" />
+            <p className="leading-relaxed">
+              Sua simulação será automaticamente transportada e integrada à sua conta no primeiro acesso.
+            </p>
+          </div>
+        ) : null}
+
         {configError ? <Alert variant="error">{configError}</Alert> : null}
 
         {error ? (

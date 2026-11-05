@@ -1,8 +1,10 @@
 import { useState, useMemo } from "react";
+import { useSearchParams } from "react-router";
 import {
   Flame,
   Calendar,
   Zap,
+  Link2,
 } from "lucide-react";
 import {
   Card,
@@ -17,14 +19,39 @@ import {
 } from "@/components/ui";
 import { ToolsHeader } from "../components/tools-header";
 import { ToolsFooterCta } from "../components/tools-footer-cta";
+import { ShareSimulationButton } from "../components/share-simulation-button";
 import { calculateCompoundInterest } from "@/domain/portfolio";
+import {
+  buildStatefulUrl,
+  decodeCompoundInterestState,
+  type CompoundInterestShareState,
+  type PendingCompoundInterestSimulation,
+} from "@/domain/share";
 
 export function CompoundInterestPage() {
-  const [initialAmountCents, setInitialAmountCents] = useState<number>(1000000); // R$ 10.000,00
-  const [monthlyContributionCents, setMonthlyContributionCents] = useState<number>(150000); // R$ 1.500,00
-  const [annualRatePercent, setAnnualRatePercent] = useState<number>(10.0); // 10% a.a.
-  const [periodYears, setPeriodYears] = useState<number>(20); // 20 anos
-  const [monthlyLivingCostCents, setMonthlyLivingCostCents] = useState<number>(500000); // R$ 5.000,00/mês
+  const [searchParams] = useSearchParams();
+
+  // Carrega parâmetros a partir de stateful URL se presente
+  const sharedState = useMemo(() => {
+    const param = searchParams.get("s");
+    return param ? decodeCompoundInterestState(param) : null;
+  }, [searchParams]);
+
+  const [initialAmountCents, setInitialAmountCents] = useState<number>(
+    () => sharedState?.initialAmountCents ?? 1000000, // R$ 10.000,00
+  );
+  const [monthlyContributionCents, setMonthlyContributionCents] = useState<number>(
+    () => sharedState?.monthlyContributionCents ?? 150000, // R$ 1.500,00
+  );
+  const [annualRatePercent, setAnnualRatePercent] = useState<number>(
+    () => sharedState?.annualRatePercent ?? 10.0, // 10% a.a.
+  );
+  const [periodYears, setPeriodYears] = useState<number>(
+    () => sharedState?.periodYears ?? 20, // 20 anos
+  );
+  const [monthlyLivingCostCents, setMonthlyLivingCostCents] = useState<number>(
+    () => sharedState?.monthlyLivingCostCents ?? 500000, // R$ 5.000,00/mês
+  );
 
   const result = useMemo(() => {
     return calculateCompoundInterest({
@@ -47,6 +74,36 @@ export function CompoundInterestPage() {
     return Math.round((result.totalInterestCents / result.finalBalanceCents) * 100);
   }, [result]);
 
+  const getShareUrl = () => {
+    const state: CompoundInterestShareState = {
+      initialAmountCents,
+      monthlyContributionCents,
+      annualRatePercent,
+      periodYears,
+      monthlyLivingCostCents,
+    };
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    return buildStatefulUrl(`${origin}/ferramentas/juros-compostos`, state);
+  };
+
+  const simulationPayload: PendingCompoundInterestSimulation = useMemo(
+    () => ({
+      type: "compound_interest",
+      initialAmountCents,
+      monthlyContributionCents,
+      annualRatePercent,
+      periodYears,
+      monthlyLivingCostCents,
+    }),
+    [
+      initialAmountCents,
+      monthlyContributionCents,
+      annualRatePercent,
+      periodYears,
+      monthlyLivingCostCents,
+    ],
+  );
+
   return (
     <div className="min-h-dvh bg-background text-foreground flex flex-col justify-between">
       <ToolsHeader />
@@ -54,13 +111,25 @@ export function CompoundInterestPage() {
       <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 flex-1">
         {/* Cabeçalho Editorial */}
         <section className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="muted" size="sm">
-              Ferramenta Gratuita
-            </Badge>
-            <Badge variant="positive" size="sm">
-              Planejamento FIRE & Independência Financeira
-            </Badge>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="muted" size="sm">
+                Ferramenta Gratuita
+              </Badge>
+              <Badge variant="positive" size="sm">
+                Planejamento FIRE & Independência Financeira
+              </Badge>
+              {sharedState && (
+                <Badge variant="warning" size="sm" className="gap-1">
+                  <Link2 className="size-3 shrink-0" aria-hidden="true" />
+                  <span>Simulação Compartilhada</span>
+                </Badge>
+              )}
+            </div>
+            <ShareSimulationButton
+              getShareUrl={getShareUrl}
+              simulationTitle="Juros Compostos & FIRE"
+            />
           </div>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight">
             Simulador de Juros Compostos & Independência Financeira
@@ -198,9 +267,9 @@ export function CompoundInterestPage() {
           <Card className="border-border/80 bg-surface shadow-xs">
             <CardHeader className="pb-2">
               <span className="text-xs font-semibold text-muted-foreground">
-                Total em Juros Gerados
+                Total em Juros Acumulados
               </span>
-              <CardTitle className="text-xl sm:text-2xl font-bold">
+              <CardTitle className="text-xl sm:text-2xl font-bold text-positive-strong">
                 <MoneyText
                   cents={result.totalInterestCents}
                   tone="positive"
@@ -210,7 +279,7 @@ export function CompoundInterestPage() {
             </CardHeader>
             <CardContent>
               <p className="text-xs text-muted-foreground">
-                Representa {interestPercentage}% do bolo final
+                {interestPercentage}% do patrimônio gerado por juros
               </p>
             </CardContent>
           </Card>
@@ -343,8 +412,9 @@ export function CompoundInterestPage() {
       </main>
 
       <ToolsFooterCta
-        title="Deseja transformar projeções em patrimônio real?"
+        title="Deseja monitorar suas finanças e metas com automação diária?"
         description="Acompanhe sua carteira de investimentos dia a dia, receba notificações de proventos recebidos e trace metas financeiras guiadas no Áxis Finance."
+        simulationPayload={simulationPayload}
       />
     </div>
   );
