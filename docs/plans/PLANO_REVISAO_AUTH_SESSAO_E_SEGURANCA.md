@@ -469,7 +469,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 6
 
-- [ ] **Tarefa 6.1: Implementação do Hook de Inatividade Web (`useIdleSessionTimeout`)**
+- [x] **Tarefa 6.1: Implementação do Hook de Inatividade Web (`useIdleSessionTimeout`)**
   - **Arquivo:** `src/hooks/use-idle-session-timeout.ts`
   - **O que verificar/ajustar:**
     - Criar hook que escuta eventos de atividade do usuário (`pointerdown`, `keydown`, `touchstart`, `scroll`) de forma não obstrutiva e passiva (`{ passive: true }`).
@@ -480,7 +480,7 @@ git push origin main
     - Integrar o hook no shell de rotas autenticadas em `src/app/router.tsx`.
     - Criar testes colocalizados `src/hooks/use-idle-session-timeout.test.ts`.
 
-- [ ] **Tarefa 6.2: Mecanismo de Backoff Exponencial no Cliente contra Força Bruta**
+- [x] **Tarefa 6.2: Mecanismo de Backoff Exponencial no Cliente contra Força Bruta**
   - **Arquivo:** `src/features/auth/pages/login-page.tsx`
   - **O que verificar/ajustar:**
     - Controlar o número de falhas consecutivas de autenticação na sessão ativa.
@@ -490,10 +490,10 @@ git push origin main
     - Atualizar testes em `login-page.test.tsx`.
 
 ### Portão de Qualidade da Fase 6
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/hooks/use-idle-session-timeout.test.ts src/features/auth/pages/login-page.test.tsx`
-- [ ] **Commit & Push da Fase 6:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/hooks/use-idle-session-timeout.test.ts src/features/auth/pages/login-page.test.tsx`
+- [x] **Commit & Push da Fase 6:**
   ```bash
   git add src/hooks/use-idle-session-timeout.ts src/hooks/use-idle-session-timeout.test.ts src/app/router.tsx src/features/auth/pages/login-page.tsx src/features/auth/pages/login-page.test.tsx
   git commit -m "security(web): adiciona timeout de inatividade para web e backoff exponencial contra forca bruta"

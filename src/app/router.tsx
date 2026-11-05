@@ -8,6 +8,7 @@ const FloatingCalculator = lazy(() =>
   import("@/components/modules/floating-calculator").then((m) => ({ default: m.FloatingCalculator })),
 );
 import { useAuth } from "@/hooks/use-auth";
+import { useIdleSessionTimeout } from "@/hooks/use-idle-session-timeout";
 import { useMinimumLoading } from "@/hooks/use-minimum-loading";
 import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
 import { useUserAccess } from "@/state";
@@ -114,6 +115,9 @@ function RequireAuth() {
 
   // F23 — pre-fetching discreto dos chunks das rotas vizinhas (idle).
   useRoutePrefetch();
+
+  // F6.1 — Proteção contra inatividade em ambiente Web (20 minutos de ociosidade)
+  useIdleSessionTimeout();
 
   // O carregamento inicial só termina quando tanto a autenticação quanto os dados de perfil/permissões estiverem prontos
   const hasUser = Boolean(session?.user);
