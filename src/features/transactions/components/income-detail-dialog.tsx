@@ -13,6 +13,7 @@ import {
   useDeleteIncome,
   useDeleteIncomeGrouped,
   useDeleteRecurrenceOccurrences,
+  useFamilyMode,
   useUpdateIncome,
   useUpdateIncomeGrouped,
   useUpdateRecurrenceOccurrences,
@@ -102,6 +103,7 @@ function IncomeEditForm({
     Math.round(income.value * income.report_weight * 100),
   );
   const [formError, setFormError] = useState<string | null>(null);
+  const { isFamilyModeEnabled } = useFamilyMode();
 
   const handleSubmit = async () => {
     if (valueCents <= 0) {
@@ -136,7 +138,7 @@ function IncomeEditForm({
         category_id: categoryId,
         receive_type: receiveType,
         report_weight: calculatedWeight,
-        is_family: isFamily,
+        is_family: isFamilyModeEnabled ? isFamily : Boolean(income.is_family),
       });
     } catch (err) {
       setFormError(getErrorMessage(err));
@@ -248,15 +250,17 @@ function IncomeEditForm({
         ariaLabelCustom="Sua cota considerada no relatório"
       />
 
-      <div className="rounded-xl border border-border/80 bg-surface p-3">
-        <Switch
-          id="edit-income-family"
-          checked={isFamily}
-          onCheckedChange={setIsFamily}
-          label="Receita da Casa / Familiar"
-          description="Visível no Painel Familiar compartilhado"
-        />
-      </div>
+      {isFamilyModeEnabled && (
+        <div className="rounded-xl border border-border/80 bg-surface p-3">
+          <Switch
+            id="edit-income-family"
+            checked={isFamily}
+            onCheckedChange={setIsFamily}
+            label="Receita da Casa / Familiar"
+            description="Visível no Painel Familiar compartilhado"
+          />
+        </div>
+      )}
 
       <ModalFooter>
         <Button
@@ -304,6 +308,7 @@ export function IncomeDetailDialog({
   const { guardAction, upgradeModal } = useMutationGuard();
 
   const categoriesQuery = useCategories("income");
+  const { isFamilyModeEnabled } = useFamilyMode();
   const deleteIncome = useDeleteIncome();
   const deleteIncomeGrouped = useDeleteIncomeGrouped();
   const deleteRecurrence = useDeleteRecurrenceOccurrences();
@@ -392,6 +397,23 @@ export function IncomeDetailDialog({
         input: payload,
       });
     }
+
+    const familyChanged = isFamilyModeEnabled && payload.is_family !== undefined && payload.is_family !== income.is_family;
+    if (familyChanged) {
+      pushToast({
+        title: "Receita atualizada com sucesso",
+        description: payload.is_family
+          ? "Esta receita foi marcada como Familiar e agora pertence à visão Familiar."
+          : "Esta receita foi marcada como Individual e agora pertence à visão Pessoal.",
+        variant: "success",
+      });
+    } else {
+      pushToast({
+        title: "Receita atualizada com sucesso",
+        variant: "success",
+      });
+    }
+
     setIsEditing(false);
     onOpenChange(false);
   };
@@ -522,18 +544,20 @@ export function IncomeDetailDialog({
                       )}
                     </dd>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <dt className="text-xs text-muted-foreground">Orçamento</dt>
-                    <dd className="font-medium text-foreground text-xs">
-                      {income.is_family ? (
-                        <Badge variant="muted" size="xs">
-                          Familiar
-                        </Badge>
-                      ) : (
-                        "Individual"
-                      )}
-                    </dd>
-                  </div>
+                  {isFamilyModeEnabled && (
+                    <div className="flex items-center justify-between">
+                      <dt className="text-xs text-muted-foreground">Orçamento</dt>
+                      <dd className="font-medium text-foreground text-xs">
+                        {income.is_family ? (
+                          <Badge variant="muted" size="xs">
+                            Familiar
+                          </Badge>
+                        ) : (
+                          "Individual"
+                        )}
+                      </dd>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <dt className="text-xs text-muted-foreground">Data</dt>
                     <dd className="font-medium text-foreground text-xs">{income.date}</dd>

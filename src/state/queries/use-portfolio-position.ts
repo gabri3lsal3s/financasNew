@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo } from "react";
 import {
   useAllPortfolioTransactions,
   usePortfolioAssets,
   usePortfolioContributions,
   usePortfolioDividends,
   usePortfolioSnapshots,
-  useUpsertPortfolioSnapshot,
 } from "./use-portfolio";
 import { useAssetPrices } from "./use-asset-prices";
 import { useMacroIndicators } from "./use-macro-indicators";
@@ -161,7 +160,6 @@ export function usePortfolioPosition(): PortfolioPosition {
   const dividendsQuery = usePortfolioDividends();
   const snapshotsQuery = usePortfolioSnapshots();
   const transactionsQuery = useAllPortfolioTransactions();
-  const upsertSnapshot = useUpsertPortfolioSnapshot();
 
   const computed = useMemo(() => {
     const assets = assetsQuery.data ?? [];
@@ -502,7 +500,7 @@ export function usePortfolioPosition(): PortfolioPosition {
       ? {
           month: thisMonth,
           total_value: totalBRL,
-          total_cost: totalCostBRL,
+          total_cost: Math.round((totalCostBRL + cashBRL) * 100) / 100,
           capital_gain_pnl: consolidatedReturn.capitalGainPnl,
           capital_gain_pct: consolidatedReturn.capitalGainPct,
           total_return_pnl: consolidatedReturn.totalReturnPnl,
@@ -673,30 +671,6 @@ export function usePortfolioPosition(): PortfolioPosition {
     allMonthlySeries,
     contributionBRL,
   } = computed;
-
-  const thisMonth = currentMonth();
-
-  // Atualiza snapshot do mês corrente em background quando há dados carregados
-  const lastUpdatedMonth = useRef<string | null>(null);
-  useEffect(() => {
-    if (
-      assetsQuery.isLoading ||
-      pricesQuery.isLoading ||
-      !assetsQuery.data ||
-      assetsQuery.data.length === 0 ||
-      totalBRL <= 0
-    ) {
-      return;
-    }
-    if (lastUpdatedMonth.current !== thisMonth) {
-      lastUpdatedMonth.current = thisMonth;
-      upsertSnapshot.mutate({
-        month: thisMonth,
-        total_value: totalBRL,
-        total_cost: totalCostBRL + cashBRL,
-      });
-    }
-  }, [assetsQuery.data, assetsQuery.isLoading, pricesQuery.isLoading, thisMonth, totalBRL, totalCostBRL, cashBRL, upsertSnapshot]);
 
   const refetch = useCallback(() => {
     void assetsQuery.refetch();

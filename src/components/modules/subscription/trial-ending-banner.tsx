@@ -46,35 +46,35 @@ export function TrialEndingBanner({
       role="region"
       aria-label="Aviso de Término do Teste Pro"
       className={cn(
-        "flex flex-col gap-3 rounded-xl border border-warning/30 bg-warning/5 p-4 sm:flex-row sm:items-center sm:justify-between shadow-2xs",
+        "w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-warning/30 bg-warning/5 p-3.5 sm:p-4 shadow-xs transition-all",
         className,
       )}
     >
-      <div className="flex items-start gap-3 min-w-0">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-warning/15 text-warning-strong">
+      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-warning/15 border border-warning/20 text-warning-strong">
           <Clock className="size-4.5" aria-hidden="true" />
         </div>
-        <div className="min-w-0 flex-1 space-y-1">
+        <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-xs font-semibold text-foreground">{titleText}</p>
+            <h2 className="text-sm font-semibold text-foreground truncate">{titleText}</h2>
             <Badge variant="warning" size="xs">
               {daysRemaining === 0 ? "Último dia" : `${daysRemaining}d restantes`}
             </Badge>
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground leading-relaxed">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground leading-relaxed truncate">
             <ShieldCheck className="size-3.5 shrink-0 text-positive-strong" aria-hidden="true" />
-            <span>
-              Seus dados, cartões e relatórios ficam 100% seguros e nunca serão excluídos.
+            <span className="truncate">
+              Seus dados ficam 100% salvos. Ative o Pro para manter automações e relatórios.
             </span>
           </div>
         </div>
       </div>
 
-      <div className="shrink-0 sm:self-center">
+      <div className="shrink-0 self-stretch sm:self-center mt-auto sm:mt-0">
         <Button
           size="sm"
           onClick={handleActivate}
-          className="w-full sm:w-auto gap-1.5 text-xs font-medium"
+          className="w-full sm:w-auto gap-1.5 text-xs font-medium cursor-pointer"
         >
           <Sparkles className="size-3.5" aria-hidden="true" />
           Ativar Plano Pro

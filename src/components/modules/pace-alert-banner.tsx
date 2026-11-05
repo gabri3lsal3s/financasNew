@@ -1,4 +1,5 @@
 import { ArrowRight, TrendingDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { cn } from "@/lib/utils";
@@ -27,7 +28,6 @@ export function PaceAlertBanner({
   spentPercent,
   elapsedPercent,
   dailyCents,
-  daysRemaining,
   surplusCents,
   onNavigateInsights,
   className,
@@ -38,7 +38,7 @@ export function PaceAlertBanner({
     <section
       aria-label="Atenção ao ritmo de gastos"
       className={cn(
-        "w-full flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-4 sm:p-5 transition-all shadow-xs",
+        "w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 transition-all shadow-xs",
         isDeficit
           ? "border-critical/40 bg-critical/5 text-foreground"
           : "border-warning/40 bg-warning/5 text-foreground",
@@ -56,41 +56,31 @@ export function PaceAlertBanner({
         >
           <TrendingDown className="size-4.5" aria-hidden="true" />
         </span>
-        <div className="flex flex-col gap-1 min-w-0">
+        <div className="flex flex-col gap-0.5 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-sm font-semibold text-foreground">
               {isDeficit ? "Projeção de déficit no mês" : "Ritmo de gastos acima do previsto"}
             </h2>
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-                isDeficit
-                  ? "bg-critical/15 text-critical-strong"
-                  : "bg-warning/15 text-warning-strong",
-              )}
+            <Badge
+              variant={isDeficit ? "critical" : "warning"}
+              size="xs"
+              className="uppercase tracking-wider font-semibold"
             >
               Fora do trilho
-            </span>
+            </Badge>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Você já consumiu{" "}
-            <strong className="font-semibold text-foreground">{Math.round(spentPercent)}%</strong> do
-            orçamento com{" "}
-            <strong className="font-semibold text-foreground">{Math.round(elapsedPercent)}%</strong> do
-            mês decorrido.
-            {dailyCents !== null && dailyCents >= 0 && daysRemaining !== null && (
+          <p className="text-xs text-muted-foreground leading-relaxed truncate">
+            Consumido {Math.round(spentPercent)}% do orçamento ({Math.round(elapsedPercent)}% do mês decorrido).
+            {dailyCents !== null && dailyCents >= 0 && (
               <>
-                {" "}
-                Limite diário recomendado:{" "}
-                <MoneyText cents={dailyCents} tone="default" className="font-semibold text-foreground" />{" "}
-                ({daysRemaining} {daysRemaining === 1 ? "dia restante" : "dias restantes"}).
+                {" "}Limite: <MoneyText cents={dailyCents} tone="default" className="font-semibold text-foreground" />/dia.
               </>
             )}
           </p>
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center w-full sm:w-auto">
+      <div className="flex shrink-0 items-center w-full sm:w-auto self-stretch sm:self-center mt-auto sm:mt-0">
         <Button
           type="button"
           size="sm"

@@ -247,6 +247,14 @@ vi.mock("@/state", () => ({
   useDemoSession: () => ({ isDemoActive: false, activeTrack: null, currentStepIndex: 0 }),
   startDemo: vi.fn(),
   endDemo: vi.fn(),
+  useMyPublicShares: () => ({ data: [], isLoading: false, isError: false, error: null }),
+  useSaveSplitExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSaveSimulationToAccount: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdatePublicShare: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+  useUpdateExpense: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+  useUpdateDebt: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+  useSettleIntegratedReceivable: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+  useDismissSplitPaymentSignal: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
 }));
 
 describe("OverviewPage — visão consolidada (§3.6)", () => {

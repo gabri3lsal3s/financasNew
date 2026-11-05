@@ -55,9 +55,7 @@ export function OtherBudgetsDialog({
       size="md"
       description={`Categorias adicionais com limites em ${monthLabel(month)}`}
       headerActions={
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover border border-border/80 text-muted-foreground">
-          <Layers className="size-4" aria-hidden="true" />
-        </span>
+        <Layers className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
       }
       footer={
         <Button

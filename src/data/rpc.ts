@@ -163,6 +163,7 @@ export interface CreateRecurrenceParams {
   receiveType?: ReceiveType | null;
   description?: string | null;
   reportWeight?: number;
+  isFamily?: boolean;
 }
 
 /** Ocorrência a materializar (D12 — datas calculadas no cliente). */
@@ -192,6 +193,7 @@ export async function createRecurrence(params: CreateRecurrenceParams): Promise<
       p_receive_type: params.receiveType ?? null,
       p_description: params.description ?? null,
       p_report_weight: params.reportWeight ?? 1,
+      p_is_family: params.isFamily ?? false,
     }),
   );
 }
@@ -373,6 +375,35 @@ export async function createLoanContract(input: {
   );
 }
 
+/** Edição, recálculo e repactuação de contrato de empréstimo. */
+export async function renegotiateLoanContract(input: {
+  loanId: string;
+  name: string;
+  loanType: string;
+  principalAmount: number;
+  interestRateMonthly: number;
+  amortizationSystem: string;
+  totalInstallments: number;
+  startDate: string;
+  strategy: string;
+  installments: Array<{ installment_number: number; due_date: string; amount: number }>;
+}): Promise<boolean> {
+  return unwrapRpc(
+    callRpc("renegotiate_loan_contract", {
+      p_loan_id: input.loanId,
+      p_name: input.name,
+      p_loan_type: input.loanType,
+      p_principal_amount: input.principalAmount,
+      p_interest_rate_monthly: input.interestRateMonthly,
+      p_amortization_system: input.amortizationSystem,
+      p_total_installments: input.totalInstallments,
+      p_start_date: input.startDate,
+      p_strategy: input.strategy,
+      p_installments: input.installments,
+    }),
+  );
+}
+
 /** Amortização extraordinária de parcelas de empréstimo com desconto transacional. */
 export async function earlyAmortizeLoan(input: {
   loanId: string;
@@ -441,6 +472,26 @@ export async function settleIntegratedReceivable(debtId: string, result: number)
       p_result: result,
     }),
     true,
+  );
+}
+
+/** Exclusão de parcela(s) de dívida em 3 modos (single/all/subsequent). */
+export async function deleteDebtInstallments(debtId: string, mode: InstallmentDeleteMode): Promise<number> {
+  return unwrapRpc(
+    callRpc("delete_debt_installments", {
+      p_debt_id: debtId,
+      p_mode: mode,
+    }),
+  );
+}
+
+/** Exclusão de contrato de empréstimo com exclusão opcional das parcelas vinculadas. */
+export async function deleteLoanContract(loanId: string, deleteDebts: boolean = true): Promise<boolean> {
+  return unwrapRpc(
+    callRpc("delete_loan_contract", {
+      p_loan_id: loanId,
+      p_delete_debts: deleteDebts,
+    }),
   );
 }
 
@@ -1083,6 +1134,41 @@ export async function getSharedGoalTracker(params: {
     true,
   );
 }
+
+/**
+ * Sinalização pública e segura de que um convidado pagou via Pix ou salvou a despesa (/r/:token).
+ */
+export async function signalSplitPayment(params: {
+  token: string;
+  participantName: string;
+  amountCents: number;
+  participantId?: string | null;
+}): Promise<{ success: boolean; signal_id: string; participant_matched: boolean }> {
+  return unwrapRpc(
+    callRpc("signal_split_payment", {
+      p_token: params.token,
+      p_participant_name: params.participantName,
+      p_amount_cents: params.amountCents,
+      p_participant_id: params.participantId ?? null,
+    }),
+  );
+}
+
+/**
+ * Descarta uma sinalização de pagamento pelo anfitrião caso não tenha sido confirmada.
+ */
+export async function dismissSplitPaymentSignal(params: {
+  shareId: string;
+  signalId: string;
+}): Promise<{ success: boolean }> {
+  return unwrapRpc(
+    callRpc("dismiss_split_payment_signal", {
+      p_share_id: params.shareId,
+      p_signal_id: params.signalId,
+    }),
+  );
+}
+
 
 
 

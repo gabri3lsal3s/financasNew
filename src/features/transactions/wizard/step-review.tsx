@@ -16,10 +16,11 @@ export interface StepReviewProps {
   state: LaunchState;
   categoryName?: string;
   closingDay?: number | null;
+  isFamilyModeEnabled?: boolean;
 }
 
 /** Passo 4 — revisão antes de confirmar (parcelas calculadas no cliente, D12). */
-export function StepReview({ state, categoryName, closingDay }: StepReviewProps) {
+export function StepReview({ state, categoryName, closingDay, isFamilyModeEnabled }: StepReviewProps) {
   const isExpense = state.type === "expense";
   const installments =
     !state.recurring && state.installments > 1
@@ -48,18 +49,20 @@ export function StepReview({ state, categoryName, closingDay }: StepReviewProps)
         <Row label="Valor" value={<MoneyText cents={state.valueCents} tone="default" />} />
         <Row label="Sua Participação / Rateio" value={reportWeightLabel(effectiveReportWeight(state), state.valueCents)} />
         <Row label="Categoria" value={categoryName ?? "—"} />
-        <Row
-          label="Orçamento Familiar"
-          value={
-            state.isFamily ? (
-              <Badge variant="muted" size="xs">
-                Painel Familiar
-              </Badge>
-            ) : (
-              "Individual"
-            )
-          }
-        />
+        {isFamilyModeEnabled && (
+          <Row
+            label="Orçamento Familiar"
+            value={
+              state.isFamily ? (
+                <Badge variant="muted" size="xs">
+                  Painel Familiar
+                </Badge>
+              ) : (
+                "Individual"
+              )
+            }
+          />
+        )}
         <Row label="Data" value={state.date} />
         {state.recurring ? (
           <Row
@@ -81,6 +84,16 @@ export function StepReview({ state, categoryName, closingDay }: StepReviewProps)
             <Row label="Pagamento" value={PAYMENT_METHOD_LABELS[state.paymentMethod] ?? state.paymentMethod} />
             {state.installments > 1 ? (
               <Row label="Parcelas" value={`${state.installments}×`} />
+            ) : null}
+            {state.splitEnabled ? (
+              <Row
+                label="Rachar Despesa"
+                value={
+                  <Badge variant="muted" size="xs">
+                    {state.splitPeopleCount} pessoas · Gerar Pix e cobrança
+                  </Badge>
+                }
+              />
             ) : null}
             {state.debtEnabled ? (
               <Row

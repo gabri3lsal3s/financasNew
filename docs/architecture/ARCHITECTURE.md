@@ -759,7 +759,7 @@ A arquitetura de compartilhamento e ferramentas abertas foi construída sobre tr
 - **Padronização Visual:**
   - Componente `ReportFooter` integrado às visualizações de impressão e relatórios A4 (`financial-close-report-modal.tsx`, `consolidated-wealth-modal.tsx`, `dividend-freedom-modal.tsx`, `tax-facilitator-modal.tsx`, `wealth-tear-sheet-modal.tsx`, `portfolio-executive-report.tsx`).
   - Assinatura discreta: `Relatório estruturado via Áxis Finance · Gestão Financeira Pessoal & Automação | axis.app`.
-  - Micro QR Code institucional vetorial conferindo acabamento executivo aos documentos impressos entregues a contadores, parceiros e instituições financeiras.
+  - Chancela oficial com hyperlink sutil direcionando para a página de apresentação (`/apresentacao`), garantindo acabamento executivo, divulgação orgânica e zero ruído de códigos de barra (com micro QR Code opcional desativado por padrão).
 
 
 

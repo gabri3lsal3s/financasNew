@@ -241,7 +241,7 @@ export function DashboardAlertsCarousel({
           {extendedItems.map((item, idx) => (
             <div
               key={item.id}
-              className="w-full min-w-full shrink-0 flex flex-col px-1 sm:px-1.5"
+              className="w-full min-w-full shrink-0 flex items-stretch px-1 sm:px-1.5"
               aria-hidden={idx !== safePhysicalIndex}
             >
               {item.content}

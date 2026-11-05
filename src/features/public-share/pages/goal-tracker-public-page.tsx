@@ -192,11 +192,17 @@ export function GoalTrackerPublicPage() {
   }
 
   // 3. Cálculos de progresso e resolução de status
-  const isCompleted = goalData.percentage >= 100;
+  const isArchived = goalData.status === "archived";
+  const isCompleted = goalData.status === "completed" || goalData.percentage >= 100;
   const progressTone = isCompleted ? "positive" : "portfolio";
   const hasDeadline = Boolean(goalData.deadline);
 
-  const statusBadge = isCompleted ? (
+  const statusBadge = isArchived ? (
+    <Badge variant="muted" size="xs" className="gap-1">
+      <CheckCircle2 className="size-3 text-muted-foreground" aria-hidden="true" />
+      <span>Arrecadação Concluída</span>
+    </Badge>
+  ) : isCompleted ? (
     <Badge variant="positive" size="xs" className="gap-1">
       <CheckCircle2 className="size-3 text-positive-strong" aria-hidden="true" />
       <span>Meta Atingida ({goalData.percentage}%)</span>
@@ -401,111 +407,154 @@ export function GoalTrackerPublicPage() {
           </section>
         )}
 
-        {/* Card de Contribuição Pix */}
-        <Card className="border-border/80 bg-surface shadow-xs">
-          <CardHeader className="pb-3 border-b border-border/80">
-            <CardTitle className="text-base flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-              <span>Contribua com a Meta via Pix</span>
-              <Badge variant="muted" size="xs">
-                {PIX_KEY_TYPE_LABELS[goalData.pix_key_type] ?? "Chave Pix"}
-              </Badge>
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Envie qualquer quantia diretamente para o organizador para somar ao progresso da meta
-            </p>
-          </CardHeader>
-          <CardContent className="pt-4 space-y-4">
-            {/* Botão de Um Toque: [Copiar Pix do Organizador] */}
-            <Button
-              type="button"
-              variant="default"
-              size="lg"
-              onClick={handleCopyPix}
-              className="w-full rounded-xl font-semibold cursor-pointer gap-2"
-              aria-label="Copiar Pix do Organizador"
-            >
-              {copiedPix ? (
-                <>
-                  <Check className="size-4 text-positive-strong" aria-hidden="true" />
-                  <span>Pix Copiado com Sucesso!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="size-4" aria-hidden="true" />
-                  <span>Copiar Pix do Organizador</span>
-                </>
-              )}
-            </Button>
-
-            {/* Caixa com detalhes da Chave Pix */}
-            <div className="rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-2 text-xs">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-muted-foreground font-medium">Chave Pix:</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-mono font-semibold text-foreground select-all break-all text-right">
-                    {goalData.pix_key}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCopyKey}
-                    className="size-7 p-0 cursor-pointer shrink-0 text-muted-foreground hover:text-foreground"
-                    title="Copiar apenas a chave"
-                    aria-label="Copiar apenas a chave Pix"
-                  >
-                    {copiedKey ? (
-                      <Check className="size-3 text-positive-strong" aria-hidden="true" />
-                    ) : (
-                      <Copy className="size-3" aria-hidden="true" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
-                <span className="text-muted-foreground">Favorecido:</span>
-                <span className="font-semibold text-foreground text-right">
-                  {goalData.organizer_name}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
-                <span className="text-muted-foreground">Cidade:</span>
-                <span className="text-foreground text-right">{goalData.organizer_city}</span>
-              </div>
+        {/* Card de Contribuição Pix ou Aviso de Encerramento */}
+        {isArchived ? (
+          <Card className="border-border/80 bg-surface shadow-xs text-center p-6 sm:p-8 space-y-3">
+            <div className="flex justify-center">
+              <span className="flex size-12 items-center justify-center rounded-2xl bg-positive/10 text-positive-strong">
+                <CheckCircle2 className="size-6" aria-hidden="true" />
+              </span>
             </div>
-
-            {/* Alternar QR Code Pix para visualização no computador */}
-            <div className="space-y-3 pt-1">
+            <h2 className="text-base sm:text-lg font-bold text-foreground">Campanha Concluída com Sucesso!</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+              A arrecadação para esta meta foi encerrada pelo organizador. Agradecemos a todos os participantes que contribuíram!
+            </p>
+          </Card>
+        ) : (
+          <Card className="border-border/80 bg-surface shadow-xs">
+            <CardHeader className="pb-3 border-b border-border/80">
+              <CardTitle className="text-base flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+                <span>Contribua com a Meta via Pix</span>
+                <Badge variant="muted" size="xs">
+                  {PIX_KEY_TYPE_LABELS[goalData.pix_key_type] ?? "Chave Pix"}
+                </Badge>
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Envie qualquer quantia diretamente para o organizador para somar ao progresso da meta
+              </p>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              {/* Botão de Um Toque: [Copiar Pix do Organizador] */}
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  triggerSensory("action");
-                  setShowQrCode((prev) => !prev);
-                }}
-                className="w-full gap-2 border-border/80 bg-surface hover:bg-surface-hover rounded-xl cursor-pointer text-xs"
+                variant="default"
+                size="lg"
+                onClick={handleCopyPix}
+                className="w-full rounded-xl font-semibold cursor-pointer gap-2"
+                aria-label="Copiar Pix do Organizador"
               >
-                <QrCode className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                <span>{showQrCode ? "Ocultar QR Code Pix" : "Exibir QR Code Pix"}</span>
+                {copiedPix ? (
+                  <>
+                    <Check className="size-4 text-positive-strong" aria-hidden="true" />
+                    <span>Pix Copiado com Sucesso!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="size-4" aria-hidden="true" />
+                    <span>Copiar Pix do Organizador</span>
+                  </>
+                )}
               </Button>
 
-              {showQrCode && (
-                <div className="flex flex-col items-center justify-center p-4 bg-muted/20 rounded-xl border border-border/80 space-y-2.5">
-                  <QrCodeCanvas
-                    text={goalData.pix_br_code?.trim() || goalData.pix_key?.trim()}
-                    size={180}
-                  />
-                  <p className="text-[11px] text-muted-foreground text-center max-w-xs">
-                    Abra o aplicativo do seu banco no celular e escaneie o código QR acima para transferir.
-                  </p>
+              {/* Caixa com detalhes da Chave Pix */}
+              <div className="rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-2 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground font-medium">Chave Pix:</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono font-semibold text-foreground select-all break-all text-right">
+                      {goalData.pix_key}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCopyKey}
+                      className="size-7 p-0 cursor-pointer shrink-0 text-muted-foreground hover:text-foreground"
+                      title="Copiar apenas a chave"
+                      aria-label="Copiar apenas a chave Pix"
+                    >
+                      {copiedKey ? (
+                        <Check className="size-3 text-positive-strong" aria-hidden="true" />
+                      ) : (
+                        <Copy className="size-3" aria-hidden="true" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+
+                <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
+                  <span className="text-muted-foreground">Favorecido:</span>
+                  <span className="font-semibold text-foreground text-right">
+                    {goalData.organizer_name}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
+                  <span className="text-muted-foreground">Cidade:</span>
+                  <span className="text-foreground text-right">{goalData.organizer_city}</span>
+                </div>
+              </div>
+
+              {/* Alternar QR Code Pix para visualização no computador */}
+              <div className="space-y-3 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    triggerSensory("action");
+                    setShowQrCode((prev) => !prev);
+                  }}
+                  className="w-full gap-2 border-border/80 bg-surface hover:bg-surface-hover rounded-xl cursor-pointer text-xs"
+                >
+                  <QrCode className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                  <span>{showQrCode ? "Ocultar QR Code Pix" : "Exibir QR Code Pix"}</span>
+                </Button>
+
+                {showQrCode && (
+                  <div className="flex flex-col items-center justify-center p-4 bg-muted/20 rounded-xl border border-border/80 space-y-2.5">
+                    <QrCodeCanvas
+                      text={goalData.pix_br_code?.trim() || goalData.pix_key?.trim()}
+                      size={180}
+                    />
+                    <p className="text-[11px] text-muted-foreground text-center max-w-xs">
+                      Abra o aplicativo do seu banco no celular e escaneie o código QR acima para transferir.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Lista de Depósitos Registrados (Transparência Coletiva) */}
+        {goalData.show_contributions_publicly !== false &&
+          goalData.contributions &&
+          goalData.contributions.length > 0 && (
+          <Card className="border-border/80 bg-surface shadow-xs">
+            <CardHeader className="pb-3 border-b border-border/80">
+              <CardTitle className="text-sm font-semibold text-foreground flex items-center justify-between">
+                <span>Depósitos Registrados na Vaquinha</span>
+                <Badge variant="muted" size="xs">
+                  {goalData.contributions.length} recebimento{goalData.contributions.length > 1 ? "s" : ""}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-2 divide-y divide-border/40 text-xs">
+              {goalData.contributions.map((c) => (
+                <div key={c.id} className="py-2.5 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-medium text-foreground truncate">
+                      {c.contributor_name || "Participante Anônimo"}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground shrink-0">{c.date}</span>
+                  </div>
+                  <MoneyText cents={c.amount_cents} tone="positive" className="font-semibold tabular-nums shrink-0" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Nota de Atualização Dinâmica */}
         <div className="rounded-xl border border-border/80 bg-surface p-4 text-xs text-muted-foreground leading-relaxed flex items-start gap-3">

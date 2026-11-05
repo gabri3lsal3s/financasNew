@@ -38,6 +38,7 @@ const defaultExpenses: MockExpense[] = [
 const defaultIncomes: MockIncome[] = [{ id: "i1", value: 3500, date: "2026-08-05", description: "Salário" }];
 let expensesMock: MockExpense[] = [...defaultExpenses];
 let incomesMock: MockIncome[] = [...defaultIncomes];
+let mockIsFamilyModeEnabled = false;
 
 vi.mock("@/services/export-actions", () => ({
   downloadCsv: (...args: unknown[]) => mockDownloadCsv(...args),
@@ -51,6 +52,12 @@ vi.mock("react-router", () => ({
 }));
 
 vi.mock("@/state", () => ({
+  useFamilyMode: () => ({
+    isFamilyModeEnabled: mockIsFamilyModeEnabled,
+    toggleFamilyMode: vi.fn(),
+    isLoading: false,
+    isPending: false,
+  }),
   useUserSubscription: () => ({
     canWrite: true,
     isReadOnly: false,
@@ -93,6 +100,9 @@ vi.mock("@/state", () => ({
   useUpdateExpenseGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteIncomeGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateIncomeGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useMyPublicShares: () => ({ data: [], isLoading: false }),
+  useDebts: () => ({ data: [], isLoading: false }),
+  useSettleIntegratedReceivable: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("TransactionListPage — listagem por mês", () => {
@@ -255,6 +265,7 @@ describe("TransactionListPage — listagem por mês", () => {
 
   describe("Filtro Rápido de Visão no Extrato (Fase 3 — Tarefa 3.3)", () => {
     beforeEach(() => {
+      mockIsFamilyModeEnabled = true;
       expensesMock = [
         {
           id: "e-personal",
@@ -293,7 +304,19 @@ describe("TransactionListPage — listagem por mês", () => {
       ];
     });
 
-    it("renderiza as abas de visão: Todos, Pessoais e Familiar", () => {
+    it("não renderiza as abas de visão e oculta badges quando o modo familiar está desabilitado (padrão)", () => {
+      mockIsFamilyModeEnabled = false;
+      render(<TransactionListPage />);
+      expect(screen.queryByRole("tab", { name: "Todos" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("tab", { name: "Pessoais" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("tab", { name: "Familiar" })).not.toBeInTheDocument();
+      // Transações continuam perfeitamente visíveis (nada é perdido ou apagado)
+      expect(screen.getByText("Supermercado da Família")).toBeInTheDocument();
+      expect(screen.getByText("Cinema Individual")).toBeInTheDocument();
+      expect(screen.queryByText("Familiar")).not.toBeInTheDocument();
+    });
+
+    it("renderiza as abas de visão: Todos, Pessoais e Familiar quando habilitado", () => {
       render(<TransactionListPage />);
       expect(screen.getByRole("tab", { name: "Todos" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "Pessoais" })).toBeInTheDocument();

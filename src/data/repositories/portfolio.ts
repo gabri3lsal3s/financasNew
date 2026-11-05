@@ -9,6 +9,7 @@ import type {
   PortfolioContribution,
   PortfolioDividend,
   PortfolioSnapshot,
+  PortfolioSnapshotInput,
   PortfolioTransaction,
 } from "@/types";
 
@@ -136,6 +137,44 @@ export async function deletePortfolioAsset(id: string): Promise<void> {
 // Snapshots Mensais de Patrimônio
 // ---------------------------------------------------------------------------
 
+/**
+ * Valida e normaliza as invariantes canônicas de um snapshot patrimonial (§2.1 PLANO_AUDITORIA):
+ * - month: formato estrito YYYY-MM;
+ * - total_value: saldo patrimonial total na data de corte (Ativos valorados + Saldo de Caixa), não-negativo;
+ * - total_cost: custo de aquisição total aplicado sob custódia (Custo dos Ativos + Saldo de Caixa 1:1), não-negativo.
+ */
+function validateSnapshotInput(input: PortfolioSnapshotInput): {
+  month: string;
+  total_value: number;
+  total_cost: number;
+} {
+  if (!/^\d{4}-\d{2}$/.test(input.month)) {
+    throw new AppError(
+      "validation",
+      `Competência inválida para snapshot: "${input.month}". Formato esperado: YYYY-MM.`,
+    );
+  }
+  const totalValue = Number(input.total_value);
+  const totalCost = Number(input.total_cost);
+  if (!Number.isFinite(totalValue) || totalValue < 0) {
+    throw new AppError(
+      "validation",
+      "O patrimônio total do snapshot (total_value) deve ser um número não-negativo.",
+    );
+  }
+  if (!Number.isFinite(totalCost) || totalCost < 0) {
+    throw new AppError(
+      "validation",
+      "O custo total do snapshot (total_cost) deve ser um número não-negativo.",
+    );
+  }
+  return {
+    month: input.month,
+    total_value: Math.round(totalValue * 100) / 100,
+    total_cost: Math.round(totalCost * 100) / 100,
+  };
+}
+
 export async function listPortfolioSnapshots(): Promise<PortfolioSnapshot[]> {
   const { data, error } = await resolveQuery<PortfolioSnapshot[]>(
     getSupabase().from("portfolio_snapshots").select("*").order("month"),
@@ -147,16 +186,20 @@ export async function listPortfolioSnapshots(): Promise<PortfolioSnapshot[]> {
   return (data ?? []).map(mapSnapshot);
 }
 
-export async function upsertPortfolioSnapshot(input: {
-  month: string;
-  total_value: number;
-  total_cost: number;
-}): Promise<PortfolioSnapshot> {
+/**
+ * Cria ou atualiza um snapshot patrimonial mensal respeitando a regra canônica (§2.1):
+ * - total_value: Ativos valorados a mercado/curva + Saldo de Caixa na data de corte.
+ * - total_cost: Custo de aquisição dos ativos + Saldo de Caixa (paridade 1:1).
+ */
+export async function upsertPortfolioSnapshot(
+  input: PortfolioSnapshotInput,
+): Promise<PortfolioSnapshot> {
+  const sanitized = validateSnapshotInput(input);
   const user_id = await currentUserId();
   const { data, error } = await resolveQuery<PortfolioSnapshot>(
     getSupabase()
       .from("portfolio_snapshots")
-      .upsert({ ...input, user_id }, { onConflict: "user_id,month" })
+      .upsert({ ...sanitized, user_id }, { onConflict: "user_id,month" })
       .select()
       .single(),
   );
@@ -170,12 +213,16 @@ export async function upsertPortfolioSnapshot(input: {
   return mapSnapshot(data);
 }
 
+/**
+ * Cria ou atualiza em lote múltiplos snapshots mensais com validação das invariantes canônicas.
+ */
 export async function batchUpsertPortfolioSnapshots(
-  inputs: { month: string; total_value: number; total_cost: number }[],
+  inputs: PortfolioSnapshotInput[],
 ): Promise<PortfolioSnapshot[]> {
   if (inputs.length === 0) return [];
+  const sanitizedInputs = inputs.map(validateSnapshotInput);
   const user_id = await currentUserId();
-  const rows = inputs.map((input) => ({ ...input, user_id }));
+  const rows = sanitizedInputs.map((input) => ({ ...input, user_id }));
   const { data, error } = await resolveQuery<PortfolioSnapshot[]>(
     getSupabase()
       .from("portfolio_snapshots")

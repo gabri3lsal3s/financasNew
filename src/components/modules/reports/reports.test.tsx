@@ -32,7 +32,7 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     expect(screen.getByText(/Gabriel Sales/)).toBeInTheDocument();
   });
 
-  it("renderiza ReportFooter com termos de confidencialidade, chancela tipográfica e micro QR Code", () => {
+  it("renderiza ReportFooter com termos de confidencialidade, chancela com link para apresentação e sem QR Code por padrão", () => {
     render(
       <ReportFooter
         accountHolder="Gabriel Sales"
@@ -43,34 +43,49 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     expect(screen.getByText(/Documento estritamente confidencial/)).toBeInTheDocument();
     expect(screen.getByText(/DOC-202608-XYZ/)).toBeInTheDocument();
     expect(screen.getByText("Relatório estruturado via Áxis Finance · Gestão Financeira Pessoal & Automação | axis.app")).toBeInTheDocument();
-    expect(screen.getByText("Chancela Oficial · Validação em axis.app")).toBeInTheDocument();
-    expect(screen.getByLabelText(/QR Code de validação do documento DOC-202608-XYZ/i)).toBeInTheDocument();
+    
+    // QR Code não é renderizado por padrão
+    expect(screen.queryByLabelText(/QR Code de validação/i)).not.toBeInTheDocument();
+
+    // Chancela Oficial é link discreto para a página de apresentação
+    const chancelaLink = screen.getByRole("link", { name: "Chancela Oficial · axis.app" });
+    expect(chancelaLink).toBeInTheDocument();
+    expect(chancelaLink).toHaveAttribute("href", "https://axisfinance.app/apresentacao");
+    expect(chancelaLink).toHaveAttribute("target", "_blank");
+
+    // Marca no bloco superior também possui link para a página de apresentação
+    const brandLink = screen.getByRole("link", { name: "Áxis Finance" });
+    expect(brandLink).toBeInTheDocument();
+    expect(brandLink).toHaveAttribute("href", "https://axisfinance.app/apresentacao");
   });
 
-  it("permite ocultar o micro QR Code no ReportFooter via showQrCode={false}", () => {
+  it("permite exibir o micro QR Code no ReportFooter via showQrCode={true}", () => {
     render(
       <ReportFooter
         accountHolder="Gabriel Sales"
         documentId="DOC-202608-XYZ"
-        showQrCode={false}
+        showQrCode={true}
       />,
     );
 
-    expect(screen.queryByLabelText(/QR Code de validação/i)).not.toBeInTheDocument();
-    expect(screen.getByText("Relatório estruturado via Áxis Finance · Gestão Financeira Pessoal & Automação | axis.app")).toBeInTheDocument();
+    expect(screen.getByLabelText(/QR Code de validação do documento DOC-202608-XYZ/i)).toBeInTheDocument();
   });
 
-  it("permite customizar a URL de validação e o texto da chancela no ReportFooter", () => {
+  it("permite customizar a URL de apresentação, validação e textos no ReportFooter", () => {
     render(
       <ReportFooter
         accountHolder="Gabriel Sales"
         creditText="Relatório Customizado · Contabilidade Alpha | alpha.com"
+        chancelaText="Chancela Oficial · alpha.com"
+        presentationUrl="https://alpha.com/conheca"
         validationUrl="https://alpha.com/cert/123"
         showQrCode={true}
       />,
     );
 
     expect(screen.getByText("Relatório Customizado · Contabilidade Alpha | alpha.com")).toBeInTheDocument();
+    const chancelaLink = screen.getByRole("link", { name: "Chancela Oficial · alpha.com" });
+    expect(chancelaLink).toHaveAttribute("href", "https://alpha.com/conheca");
     expect(screen.getByRole("img", { name: /QR Code de validação do documento/i })).toBeInTheDocument();
   });
 

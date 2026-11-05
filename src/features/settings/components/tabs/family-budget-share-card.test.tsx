@@ -9,6 +9,21 @@ import * as toastService from "@/services/toast";
 import * as sensoryService from "@/services/sensory";
 import type { PublicShare } from "@/types";
 
+let mockIsFamilyModeEnabled = true;
+const mockToggleFamilyMode = vi.fn().mockResolvedValue(true);
+
+vi.mock("@/state", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/state")>();
+  return {
+    ...actual,
+    useFamilyMode: () => ({
+      isFamilyModeEnabled: mockIsFamilyModeEnabled,
+      toggleFamilyMode: mockToggleFamilyMode,
+      isUpdating: false,
+    }),
+  };
+});
+
 vi.mock("@/services/toast", () => ({
   pushToast: vi.fn(),
 }));
@@ -50,6 +65,7 @@ describe("FamilyBudgetShareCard", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsFamilyModeEnabled = true;
 
     vi.spyOn(publicShareMutations, "useCreatePublicShare").mockReturnValue({
       mutateAsync: mockMutateCreate,
@@ -65,6 +81,42 @@ describe("FamilyBudgetShareCard", () => {
       mutateAsync: mockMutateRegenerate,
       isPending: false,
     } as unknown as ReturnType<typeof publicShareMutations.useRegeneratePublicShare>);
+  });
+
+  it("renderiza switch do modo familiar e permite alternar", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(publicShareQueries, "useMyPublicShares").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof publicShareQueries.useMyPublicShares>);
+
+    renderCard();
+
+    const toggle = screen.getByRole("switch", { name: "Habilitar Modo Familiar" });
+    expect(toggle).toBeInTheDocument();
+    expect(toggle).toBeChecked();
+
+    await user.click(toggle);
+    expect(mockToggleFamilyMode).toHaveBeenCalledWith(false);
+  });
+
+  it("renderiza estado calmo com aviso quando modo familiar estiver desativado", () => {
+    mockIsFamilyModeEnabled = false;
+    vi.spyOn(publicShareQueries, "useMyPublicShares").mockReturnValue({
+      data: [mockActiveShare],
+      isLoading: false,
+    } as unknown as ReturnType<typeof publicShareQueries.useMyPublicShares>);
+
+    renderCard();
+
+    expect(screen.getByText("Modo Desativado")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Ao desativar o modo familiar, todas as transações continuam disponíveis de forma consolidada/i,
+      ),
+    ).toBeInTheDocument();
+    // O link não deve aparecer quando desativado
+    expect(screen.queryByText("Link Exclusivo de Leitura")).not.toBeInTheDocument();
   });
 
   it("renderiza estado sem link ativo quando não houver compartilhamentos", () => {

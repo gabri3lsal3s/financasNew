@@ -6,7 +6,7 @@ import { CATEGORY_ICON_MAP } from "@/components/modules/category-icons";
 import { categoryFormSchema, suggestCategory } from "@/domain/budgets";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
-import { useCreateCategory, useUpdateCategory } from "@/state";
+import { useCreateCategory, useFamilyMode, useUpdateCategory } from "@/state";
 import { DeleteCategoryDialog } from "@/features/budgets/components/delete-category-dialog";
 import type { Category, CategoryType } from "@/types";
 
@@ -52,6 +52,7 @@ function CategoryFormContent({
   const [isFamily, setIsFamily] = useState(Boolean(category?.is_family));
   const [error, setError] = useState<string | null>(null);
 
+  const { isFamilyModeEnabled } = useFamilyMode();
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const pending = createCategory.isPending || updateCategory.isPending;
@@ -71,7 +72,7 @@ function CategoryFormContent({
       type,
       icon: icon || null,
       color: color || null,
-      is_family: isFamily,
+      is_family: isFamilyModeEnabled ? isFamily : Boolean(category?.is_family),
     };
     const parsed = categoryFormSchema.safeParse(rawForm);
     if (!parsed.success) {
@@ -176,15 +177,17 @@ function CategoryFormContent({
         </div>
       </div>
 
-      <div className="rounded-xl border border-border/80 bg-surface-raised p-3">
-        <Switch
-          id="category-is-family"
-          checked={isFamily}
-          onCheckedChange={setIsFamily}
-          label="Sugerir como familiar por padrão"
-          description="Lançamentos desta categoria serão marcados como despesas familiares automaticamente."
-        />
-      </div>
+      {isFamilyModeEnabled && (
+        <div className="rounded-xl border border-border/80 bg-surface-raised p-3">
+          <Switch
+            id="category-is-family"
+            checked={isFamily}
+            onCheckedChange={setIsFamily}
+            label="Sugerir como familiar por padrão"
+            description="Lançamentos desta categoria serão marcados como despesas familiares automaticamente."
+          />
+        </div>
+      )}
 
       <ModalFooter className="sm:justify-end">
         {category && siblings !== undefined ? (

@@ -84,7 +84,7 @@ export function ToolsHubPage() {
         {/* Hero Section */}
         <section className="text-center space-y-4 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-surface px-3 py-1 text-xs font-semibold text-muted-foreground shadow-xs">
-            <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
+            <Sparkles className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
             <span>Ferramentas Financeiras Abertas</span>
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-foreground">

@@ -21,7 +21,12 @@ import { usePortfolioMonthlyPrices } from "./use-portfolio-monthly-prices";
 import { usePortfolioPosition } from "./use-portfolio-position";
 import { useMacroIndicators } from "./use-macro-indicators";
 import { fetchHistoricalMonthlyQuotes } from "@/services/quotes";
-import { calculatePointInTimePosition, type PointInTimeResult } from "@/domain/portfolio";
+import {
+  calculateMonthlyStatement,
+  calculatePointInTimePosition,
+  getPreviousMonth,
+  type PointInTimeResult,
+} from "@/domain/portfolio";
 
 import type { PortfolioAsset } from "@/types";
 
@@ -155,6 +160,7 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
       dividends,
       monthlyPrices,
       snapshot: targetSnapshot,
+      snapshots: snapshotsQuery.data ?? [],
       apiPrices: apiQuotesMap,
       annualCdiRate,
       cashBalance,
@@ -177,6 +183,37 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
   ]);
 
   if (isCurrent) {
+    const prevMonth = getPreviousMonth(month);
+    const prevSnapshot = (snapshotsQuery.data ?? []).find((s) => s.month === prevMonth);
+    const prevStartBalance =
+      prevSnapshot && prevSnapshot.total_value !== undefined && prevSnapshot.total_value !== null
+        ? Number(prevSnapshot.total_value) || 0
+        : 0;
+    const currentDividends = (dividendsQuery.data ?? []).map((d) => ({
+      date: d.date,
+      amount: Number(d.amount) || 0,
+      ticker: d.ticker,
+      notes: d.notes,
+    }));
+    const assetTickerMap = new Map<string, string>(
+      (assetsQuery.data ?? []).map((a) => [a.id, a.ticker]),
+    );
+    const currentTransactions = (transactionsQuery.data ?? []).map((t) => ({
+      date: t.date,
+      type: t.type,
+      quantity: Number(t.quantity) || 0,
+      price: Number(t.price) || 0,
+      total: Number(t.total) || 0,
+      ticker: assetTickerMap.get(t.asset_id) ?? null,
+    }));
+    const currentStatement = calculateMonthlyStatement({
+      month,
+      startBalanceBRL: prevStartBalance,
+      endBalanceBRL: currentPos.totalBRL,
+      dividends: currentDividends,
+      transactions: currentTransactions,
+    });
+
     // Mapeia usePortfolioPosition para a estrutura unificada PointInTimeResult
     const mappedCurrentResult: PointInTimeResult = {
       month,
@@ -220,7 +257,10 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
         calibratedQuotesCount: 0,
         apiQuotesCount: currentPos.rows.filter((r) => !r.isCash).length,
         fallbackQuotesCount: 0,
+        isDerivedFromSnapshot: false,
       },
+      isDerivedFromSnapshot: false,
+      monthlyStatement: currentStatement,
     };
 
     return {

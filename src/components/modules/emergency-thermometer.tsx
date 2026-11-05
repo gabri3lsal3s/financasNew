@@ -146,7 +146,7 @@ export function EmergencyThermometer({
               onClick={onOpenConfig}
               className="h-7 px-2 text-xs text-foreground hover:bg-surface-hover"
             >
-              <Shield className="size-3.5 mr-1 text-primary" aria-hidden="true" />
+              <Shield className="size-3.5 mr-1 text-muted-foreground" aria-hidden="true" />
               Configurar reserva
             </Button>
           )}

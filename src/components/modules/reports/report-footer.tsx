@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { QrCodeCanvas } from "@/components/ui/qr-code-canvas";
 import { OFFICIAL_REPORT_FOOTER_CREDIT } from "@/lib/institutional";
+import { getPublicAppUrl } from "@/services/app-url";
 
 export { OFFICIAL_REPORT_FOOTER_CREDIT };
 
@@ -13,13 +14,17 @@ export interface ReportFooterProps {
   documentId?: string;
   /** Texto da chancela institucional tipográfica minimalista. Padrão: OFFICIAL_REPORT_FOOTER_CREDIT */
   creditText?: string;
+  /** Texto da chancela oficial à direita. Padrão: "Chancela Oficial · axis.app" */
+  chancelaText?: string;
   /**
    * Inclusão opcional de micro QR Code no canto com link de validação de autenticidade.
-   * Padrão: true.
+   * Padrão: false (desativado em favor da chancela digital limpa com link direto).
    */
   showQrCode?: boolean;
   /** URL de validação codificada no QR Code (fallback: https://axis.app/validar?doc={authCode}). */
   validationUrl?: string;
+  /** URL pública da página de apresentação do aplicativo (fallback: getPublicAppUrl('/apresentacao')). */
+  presentationUrl?: string;
   className?: string;
 }
 
@@ -40,21 +45,24 @@ function generateReportAuthId(accountHolder?: string): string {
  * Rodapé Institucional e Contábil Padronizado de Relatórios A4 / PDF (§F6 — Tarefa 6.1).
  *
  * Apresenta termos de confidencialidade/CVM, identificação do titular, ID de
- * autenticação, chancela tipográfica minimalista e micro QR Code opcional
- * para validação de integridade.
+ * autenticação e chancela tipográfica minimalista com links discretos para a página
+ * de apresentação da plataforma (e micro QR Code opcional).
  */
 export function ReportFooter({
   disclaimer = "Documento estritamente confidencial emitido pelo titular da conta via Áxis Finance. As informações refletem a posição consolidada na data de emissão.",
   accountHolder,
   documentId,
   creditText = OFFICIAL_REPORT_FOOTER_CREDIT,
-  showQrCode = true,
+  chancelaText = "Chancela Oficial · axis.app",
+  showQrCode = false,
   validationUrl,
+  presentationUrl,
   className,
 }: ReportFooterProps) {
   const authCode = documentId ?? generateReportAuthId(accountHolder);
   const targetValidationUrl =
     validationUrl ?? `https://axis.app/validar?doc=${encodeURIComponent(authCode)}`;
+  const targetPresentationUrl = presentationUrl ?? getPublicAppUrl("/apresentacao");
 
   return (
     <footer
@@ -63,7 +71,7 @@ export function ReportFooter({
         className,
       )}
     >
-      {/* 1. Linha Superior: Termo de Responsabilidade & Bloco de Identificação/QR Code */}
+      {/* 1. Linha Superior: Termo de Responsabilidade & Bloco de Identificação */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex flex-col gap-0.5 max-w-xl">
           <p className="leading-tight text-muted-foreground">{disclaimer}</p>
@@ -76,7 +84,15 @@ export function ReportFooter({
 
         <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
           <div className="flex flex-col items-start sm:items-end text-left sm:text-right">
-            <span className="font-semibold text-foreground/85">Áxis Finance</span>
+            <a
+              href={targetPresentationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-foreground/85 hover:text-foreground hover:underline transition-colors decoration-muted-foreground/40 print:text-foreground/85 print:no-underline"
+              title="Conheça a plataforma Áxis Finance"
+            >
+              Áxis Finance
+            </a>
             <span className="num font-mono text-[9px] text-muted-foreground/75">
               ID: {authCode}
             </span>
@@ -102,14 +118,20 @@ export function ReportFooter({
         </div>
       </div>
 
-      {/* 2. Linha Inferior: Rodapé Tipográfico Minimalista Padronizado */}
+      {/* 2. Linha Inferior: Rodapé Tipográfico Minimalista Padronizado & Chancela Clicável */}
       <div className="pt-2 border-t border-border/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 text-[9px] text-muted-foreground/80 print:text-[8.5px] print:pt-1.5 print:border-border/50">
         <p className="font-medium tracking-tight">
           {creditText}
         </p>
-        <span className="font-mono text-[8.5px] text-muted-foreground/60">
-          Chancela Oficial · Validação em axis.app
-        </span>
+        <a
+          href={targetPresentationUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-[8.5px] text-muted-foreground/75 hover:text-foreground hover:underline transition-colors decoration-muted-foreground/40 print:text-muted-foreground/80 print:no-underline"
+          title="Acesse a apresentação do Áxis Finance"
+        >
+          {chancelaText}
+        </a>
       </div>
     </footer>
   );

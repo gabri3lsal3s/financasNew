@@ -32,10 +32,16 @@ export function useEarlyAmortizeLoan() {
   });
 }
 
+export type DeleteLoanParams = string | { id: string; deleteDebts?: boolean };
+
 export function useDeleteLoan() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: deleteLoan,
+    mutationFn: (param: DeleteLoanParams) => {
+      const id = typeof param === "string" ? param : param.id;
+      const deleteDebts = typeof param === "string" ? true : (param.deleteDebts ?? true);
+      return deleteLoan(id, deleteDebts);
+    },
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: LOANS_QUERY_KEY }),
@@ -54,6 +60,24 @@ export function useUpdateLoan() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: LOANS_QUERY_KEY }),
         queryClient.invalidateQueries({ queryKey: debtsKey }),
+      ]);
+    },
+  });
+}
+
+import { renegotiateLoanContract } from "@/data/rpc";
+
+export function useRenegotiateLoanContract() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: renegotiateLoanContract,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: LOANS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: debtsKey }),
+        queryClient.invalidateQueries({ queryKey: expensesKey }),
+        queryClient.invalidateQueries({ queryKey: ["overview"] }),
+        queryClient.invalidateQueries({ queryKey: ["insights"] }),
       ]);
     },
   });

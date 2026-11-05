@@ -7,10 +7,12 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Stepper } from "@/components/ui/stepper";
 import { AttachReceiptDialog } from "@/components/modules/attach-receipt-dialog";
+import { SplitExpenseDialog } from "@/components/modules/split-expense-dialog";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { buildDescriptionSuggestions, buildHabitualEntries, dayOfMonth } from "@/domain/predictions";
+import { calculateSplitSummary } from "@/domain/finance/split-math";
 import { todayISO } from "@/domain/debts";
 import {
   extractLastFourDigits,
@@ -40,6 +42,7 @@ import {
   useCreateIncome,
   useCreateIncomeInstallments,
   useCreateRecurrence,
+  useFamilyMode,
   usePredictionHistory,
 } from "@/state";
 import { useDemoSession } from "@/state/demo-mode";
@@ -154,6 +157,7 @@ export function LaunchWizard({
 
   const categoriesQuery = useCategories(state.type);
   const cardsQuery = useActiveCreditCards();
+  const { isFamilyModeEnabled } = useFamilyMode();
   const createExpense = useCreateExpense();
   const createIncome = useCreateIncome();
   const createIncomeInstallments = useCreateIncomeInstallments();
@@ -186,8 +190,80 @@ export function LaunchWizard({
     todayISO: today,
   });
 
+  const [createdSplitExpense, setCreatedSplitExpense] = useState<{
+    id: string;
+    value: number;
+    description?: string | null;
+    date: string;
+    peopleCount: number;
+    categoryId?: string;
+    categoryName?: string;
+    categoryIcon?: string;
+  } | null>(null);
+
   const set = <K extends keyof LaunchState>(key: K, value: LaunchState[K]) =>
     setState((prev) => ({ ...prev, [key]: value }));
+
+  const handleSplitToggle = (enabled: boolean) => {
+    triggerSensory("selection");
+    setState((prev) => {
+      if (enabled) {
+        const splitMath = calculateSplitSummary(prev.valueCents, prev.splitPeopleCount, {
+          remainderPolicy: "host",
+        });
+        return {
+          ...prev,
+          splitEnabled: true,
+          reportWeight: 1,
+          reportCustomAmountCents: prev.valueCents,
+          debtEnabled: true,
+          debtType: "receivable",
+          debtAmountCents: splitMath.guestShareCents * splitMath.guestCount,
+          debtDueDate: prev.debtDueDate || prev.date || todayISO(),
+        };
+      }
+      return {
+        ...prev,
+        splitEnabled: false,
+        reportWeight: 1,
+        reportCustomAmountCents: prev.valueCents,
+      };
+    });
+  };
+
+  const handleSplitPeopleCountChange = (count: number) => {
+    setState((prev) => {
+      const clamped = Math.max(2, Math.min(count, 50));
+      const splitMath = calculateSplitSummary(prev.valueCents, clamped, {
+        remainderPolicy: "host",
+      });
+      return {
+        ...prev,
+        splitPeopleCount: clamped,
+        reportCustomAmountCents: prev.splitEnabled ? prev.valueCents : prev.reportCustomAmountCents,
+        debtAmountCents: prev.splitEnabled
+          ? splitMath.guestShareCents * splitMath.guestCount
+          : prev.debtAmountCents,
+      };
+    });
+  };
+
+  const handleValueChange = (cents: number) => {
+    setState((prev) => {
+      if (prev.splitEnabled) {
+        const splitMath = calculateSplitSummary(cents, prev.splitPeopleCount, {
+          remainderPolicy: "host",
+        });
+        return {
+          ...prev,
+          valueCents: cents,
+          reportCustomAmountCents: cents,
+          debtAmountCents: splitMath.guestShareCents * splitMath.guestCount,
+        };
+      }
+      return { ...prev, valueCents: cents };
+    });
+  };
 
   const goTo = (step: number) => {
     triggerSensory("selection");
@@ -273,7 +349,9 @@ export function LaunchWizard({
   const handleSubmit = async () => {
     setError(null);
     setPending(true);
+    let createdExpenseId: string | null = null;
     try {
+
       if (state.recurring) {
         const rule = recurrenceRuleFromLaunchState(state);
         if (!rule) {
@@ -292,9 +370,10 @@ export function LaunchWizard({
           receiveType: state.type === "income" ? state.receiveType : null,
           description: state.description || null,
           reportWeight: effectiveReportWeight(state),
+          isFamily: state.isFamily,
         });
       } else if (state.type === "expense") {
-        await createExpense.mutateAsync({
+        createdExpenseId = await createExpense.mutateAsync({
           value: state.valueCents / 100,
           date: state.date,
           categoryId: state.categoryId,
@@ -308,6 +387,11 @@ export function LaunchWizard({
             startDate: state.date,
             closingDay: state.paymentMethod === "credit_card" ? (selectedCard?.closing_day ?? null) : null,
           }),
+          debtName: state.debtEnabled
+            ? state.splitEnabled
+              ? `Racha: ${state.description || "Despesa"}`
+              : null
+            : null,
           debtAmount: state.debtEnabled ? state.debtAmountCents / 100 : null,
           debtDueDate: state.debtEnabled && state.debtDueDate ? state.debtDueDate : null,
           debtType: state.debtEnabled ? state.debtType : null,
@@ -362,13 +446,45 @@ export function LaunchWizard({
       }
 
       triggerSensory("success");
+      const isSplitActive = state.type === "expense" && state.splitEnabled;
+      const selectedCategory = (categoriesQuery.data ?? []).find((c) => c.id === state.categoryId);
+      const savedExpenseData = isSplitActive
+        ? {
+            id: typeof createdExpenseId === "string" ? createdExpenseId : "",
+            value: state.valueCents / 100,
+            description: state.description || null,
+            date: state.date,
+            peopleCount: state.splitPeopleCount,
+            categoryId: state.categoryId,
+            categoryName: selectedCategory?.name,
+            categoryIcon: selectedCategory?.icon ?? undefined,
+          }
+        : null;
+
       setState(defaultLaunchState(initialType));
       setReceiptMeta(null);
       setPending(false);
-      onSuccess?.();
-      onOpenChange?.(false);
-      if (!onSuccess && !onOpenChange) {
-        navigate(-1);
+
+      if (savedExpenseData) {
+        setCreatedSplitExpense(savedExpenseData);
+      } else {
+        if (isFamilyModeEnabled && state.isFamily) {
+          pushToast({
+            title: state.type === "expense" ? "Despesa registrada" : "Receita registrada",
+            description: "Lançamento adicionado à visão Familiar.",
+            variant: "success",
+          });
+        } else {
+          pushToast({
+            title: state.type === "expense" ? "Despesa registrada" : "Receita registrada",
+            variant: "success",
+          });
+        }
+        onSuccess?.();
+        onOpenChange?.(false);
+        if (!onSuccess && !onOpenChange) {
+          navigate(-1);
+        }
       }
     } catch (err) {
       triggerSensory("destructive");
@@ -538,8 +654,9 @@ export function LaunchWizard({
     !(state.type === "expense" && state.paymentMethod === "credit_card" && !state.cardId);
 
   return (
-    <Modal
-      open={open}
+    <>
+      <Modal
+        open={open && !createdSplitExpense}
       data-tour="launch-wizard-dialog"
       modal={!isDemoActive}
       onOpenChange={(next) => {
@@ -642,13 +759,14 @@ export function LaunchWizard({
               set("debtType", "payable");
               set("recurring", false);
               set("recurrenceEndDate", "");
+              set("splitEnabled", false);
             }}
-            onValueChange={(cents) => set("valueCents", cents)}
+            onValueChange={handleValueChange}
             onCategoryChange={(categoryId) => {
               set("categoryId", categoryId);
               setIsCategoryUnconfirmed(false);
               const cat = categoriesQuery.data?.find((c) => c.id === categoryId);
-              if (cat?.is_family) {
+              if (isFamilyModeEnabled && cat?.is_family) {
                 set("isFamily", true);
               }
             }}
@@ -662,6 +780,9 @@ export function LaunchWizard({
             onReceiveTypeChange={(receiveType: ReceiveType) => set("receiveType", receiveType)}
             onDescriptionChange={(description) => set("description", description)}
             onFamilyChange={(isFamily) => set("isFamily", isFamily)}
+            isFamilyModeEnabled={isFamilyModeEnabled}
+            onSplitToggle={handleSplitToggle}
+            onSplitPeopleCountChange={handleSplitPeopleCountChange}
             onSwitchToGuided={handleSwitchToGuided}
             categories={categoriesQuery.data}
             categoriesLoading={categoriesQuery.isLoading}
@@ -688,11 +809,12 @@ export function LaunchWizard({
                   set("debtType", "payable");
                   set("recurring", false);
                   set("recurrenceEndDate", "");
+                  set("splitEnabled", false);
                 }}
-                onValueChange={(cents) => set("valueCents", cents)}
+                onValueChange={handleValueChange}
                 onInstallmentsChange={(count) => set("installments", count)}
                 onApplyHabitual={(habit) => {
-                  set("valueCents", Math.round(habit.value * 100));
+                  handleValueChange(Math.round(habit.value * 100));
                   set("categoryId", habit.categoryId);
                   set("description", habit.description);
                   if (habit.paymentMethod) {
@@ -721,7 +843,7 @@ export function LaunchWizard({
                 onSelect={(categoryId) => {
                   set("categoryId", categoryId);
                   const cat = categoriesQuery.data?.find((c) => c.id === categoryId);
-                  if (cat?.is_family) {
+                  if (isFamilyModeEnabled && cat?.is_family) {
                     set("isFamily", true);
                   }
                 }}
@@ -740,6 +862,7 @@ export function LaunchWizard({
                 onReceiveTypeChange={(receiveType: ReceiveType) => set("receiveType", receiveType)}
                 onDescriptionChange={(description) => set("description", description)}
                 onFamilyChange={(isFamily) => set("isFamily", isFamily)}
+                isFamilyModeEnabled={isFamilyModeEnabled}
                 descriptionSuggestions={descriptionSuggestions}
                 onReportWeightChange={(weight) => {
                   set("reportWeight", weight);
@@ -748,6 +871,8 @@ export function LaunchWizard({
                   }
                 }}
                 onReportCustomAmountChange={(cents) => set("reportCustomAmountCents", cents)}
+                onSplitToggle={handleSplitToggle}
+                onSplitPeopleCountChange={handleSplitPeopleCountChange}
                 onDebtToggle={(enabled) => set("debtEnabled", enabled)}
                 onDebtTypeChange={(debtType) => set("debtType", debtType)}
                 onDebtAmountChange={(cents) => set("debtAmountCents", cents)}
@@ -777,6 +902,7 @@ export function LaunchWizard({
                 state={state}
                 categoryName={selectedCategory?.name}
                 closingDay={selectedCard?.closing_day}
+                isFamilyModeEnabled={isFamilyModeEnabled}
               />
             ) : null}
           </>
@@ -804,5 +930,38 @@ export function LaunchWizard({
         />
       </div>
     </Modal>
+
+    {createdSplitExpense && (
+      <SplitExpenseDialog
+        open={true}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setCreatedSplitExpense(null);
+            onSuccess?.();
+            onOpenChange?.(false);
+            if (!onSuccess && !onOpenChange) {
+              navigate(-1);
+            }
+          }
+        }}
+        expense={{
+          id: createdSplitExpense.id,
+          value: createdSplitExpense.value,
+          description: createdSplitExpense.description ?? null,
+          date: createdSplitExpense.date,
+          category_id: createdSplitExpense.categoryId || "",
+          payment_method: "pix",
+          created_at: "",
+        }}
+        categoryName={createdSplitExpense.categoryName}
+        categoryIcon={createdSplitExpense.categoryIcon}
+        initialAmountCents={Math.round(createdSplitExpense.value * 100)}
+        initialDescription={createdSplitExpense.description || ""}
+        initialDate={createdSplitExpense.date}
+        initialPeopleCount={createdSplitExpense.peopleCount}
+        autoGenerate={false}
+      />
+    )}
+  </>
   );
 }

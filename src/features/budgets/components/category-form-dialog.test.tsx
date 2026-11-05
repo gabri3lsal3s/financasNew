@@ -9,7 +9,10 @@ const createCategoryMock = vi.fn();
 const updateCategoryMock = vi.fn();
 const deleteCategoryMock = vi.fn();
 
+let mockIsFamilyModeEnabled = true;
+
 vi.mock("@/state", () => ({
+  useFamilyMode: () => ({ isFamilyModeEnabled: mockIsFamilyModeEnabled }),
   useCreateCategory: () => ({ mutateAsync: createCategoryMock, isPending: false }),
   useUpdateCategory: () => ({ mutateAsync: updateCategoryMock, isPending: false }),
   useDeleteCategory: () => ({ mutateAsync: deleteCategoryMock, isPending: false }),
@@ -40,6 +43,7 @@ const siblingCategory: Category = {
 describe("CategoryFormDialog & DeleteCategoryDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsFamilyModeEnabled = true;
   });
   it("cria categoria de despesa aplicando a sugestão inteligente por nome", async () => {
     createCategoryMock.mockResolvedValue({ id: "c9" });
@@ -187,5 +191,31 @@ describe("CategoryFormDialog & DeleteCategoryDialog", () => {
 
     expect(deleteCategoryMock).toHaveBeenCalledWith({ id: "c1", migrateTo: "c2" });
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("oculta o switch de categoria familiar quando o modo familiar está desabilitado, preservando is_family na edição", async () => {
+    mockIsFamilyModeEnabled = false;
+    updateCategoryMock.mockResolvedValue({ id: "c1" });
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+
+    render(
+      <CategoryFormDialog
+        category={{ ...sampleCategory, is_family: true }}
+        defaultType="expense"
+        open={true}
+        onOpenChange={onOpenChange}
+        siblings={[siblingCategory]}
+      />
+    );
+
+    // Switch não deve estar no DOM
+    expect(screen.queryByRole("switch", { name: "Sugerir como familiar por padrão" })).not.toBeInTheDocument();
+
+    // Ao salvar: preserva is_family: true original
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+    expect(updateCategoryMock).toHaveBeenCalledTimes(1);
+    const params = updateCategoryMock.mock.calls[0]?.[0];
+    expect(params.input.is_family).toBe(true);
   });
 });

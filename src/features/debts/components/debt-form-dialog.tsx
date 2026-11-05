@@ -1,9 +1,15 @@
 import { useState } from "react";
 import { Check, RotateCcw, Trash2 } from "lucide-react";
-import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, ModalFooter, MoneyInput, RadioGroup } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, ModalFooter, MoneyInput, RadioGroup, Select } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateDebt, useUpdateDebt } from "@/state";
-import type { Debt, DebtType } from "@/types";
+import type { Debt, DebtType, InstallmentDeleteMode } from "@/types";
+
+const MODE_OPTIONS = [
+  { value: "single", label: "Apenas esta parcela" },
+  { value: "all", label: "Todas as parcelas" },
+  { value: "subsequent", label: "Esta parcela e as seguintes" },
+];
 
 export interface DebtFormDialogProps {
   /** Dívida em edição; `null` = criação. */
@@ -12,13 +18,13 @@ export interface DebtFormDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Chamado quando o usuário confirma a exclusão (apenas em edição).
    *  Deve rejeitar em falha — o formulário permanece aberto com o erro. */
-  onDelete?: (debt: Debt) => Promise<void>;
+  onDelete?: (debt: Debt, mode?: InstallmentDeleteMode) => Promise<void>;
 }
 
 interface DebtFormContentProps {
   debt: Debt | null;
   onClose: () => void;
-  onDelete?: (debt: Debt) => Promise<void>;
+  onDelete?: (debt: Debt, mode?: InstallmentDeleteMode) => Promise<void>;
 }
 
 function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
@@ -29,6 +35,8 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
   const [isPaid, setIsPaid] = useState(debt?.paid_at !== null && debt?.paid_at !== undefined);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteMode, setDeleteMode] = useState<InstallmentDeleteMode>("single");
+  const isGrouped = Boolean(debt?.installment_group_id);
 
   const createDebt = useCreateDebt();
   const updateDebt = useUpdateDebt();
@@ -160,21 +168,37 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
         <ConfirmDialog
           open={confirmDelete}
           onOpenChange={setConfirmDelete}
-          title="Excluir dívida?"
-          description="Esta ação não pode ser desfeita. Dívidas quitadas permanecem no histórico."
+          title={isGrouped ? "Excluir parcela da dívida?" : "Excluir dívida?"}
+          description={
+            isGrouped
+              ? "Esta dívida faz parte de um parcelamento ou contrato. Escolha o que deseja excluir."
+              : "Esta ação não pode ser desfeita. Dívidas quitadas permanecem no histórico."
+          }
           confirmLabel="Excluir"
           variant="destructive"
           onConfirm={() => {
             setConfirmDelete(false);
             // Exclusão com falha mantém o formulário aberto com o erro visível
             // (o toast do hook também avisa) — o usuário não perde a edição.
-            void Promise.resolve(onDelete(debt))
+            void Promise.resolve(onDelete(debt, deleteMode))
               .then(() => onClose())
               .catch((err: unknown) => {
                 setError(getErrorMessage(err));
               });
           }}
-        />
+        >
+          {isGrouped ? (
+            <div className="mt-4 flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-foreground">O que excluir?</span>
+              <Select
+                value={deleteMode}
+                onValueChange={(value) => setDeleteMode(value as InstallmentDeleteMode)}
+                options={MODE_OPTIONS}
+                ariaLabel="Modo de exclusão"
+              />
+            </div>
+          ) : null}
+        </ConfirmDialog>
       ) : null}
     </form>
   );

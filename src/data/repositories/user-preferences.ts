@@ -95,6 +95,12 @@ export async function updateCustomSettings(patch: Partial<UserCustomSettings>): 
           ...patch.emergencyFundConfig,
         }
       : current?.custom_settings?.emergencyFundConfig,
+    splitPreferences: patch.splitPreferences !== undefined
+      ? {
+          ...(current?.custom_settings?.splitPreferences ?? {}),
+          ...patch.splitPreferences,
+        }
+      : current?.custom_settings?.splitPreferences,
   };
 
   const input: DbUpdate<UserPreferences> = {

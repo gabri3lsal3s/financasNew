@@ -2,7 +2,10 @@ import { useMemo, useState } from "react";
 import {
   Check,
   Copy,
+  Edit2,
   ExternalLink,
+  Eye,
+  EyeOff,
   QrCode,
   RotateCw,
   Share2,
@@ -11,6 +14,7 @@ import {
 import {
   Badge,
   Button,
+  ConfirmDialog,
   DatePicker,
   Input,
   Modal,
@@ -19,6 +23,7 @@ import {
   MoneyText,
   QrCodeCanvas,
   Select,
+  Switch,
   type SelectOption,
 } from "@/components/ui";
 import {
@@ -30,20 +35,25 @@ import { useUserAccess } from "@/state/queries/use-user-access";
 import { useMyPublicShares } from "@/state/queries/use-public-shares";
 import {
   useCreatePublicShare,
+  useDeletePublicShare,
   useRegeneratePublicShare,
+  useRestorePublicShare,
   useRevokePublicShare,
+  useUpdatePublicShare,
 } from "@/state/mutations/use-public-share-mutations";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import type { Category, GoalTrackerSharePayload } from "@/types";
+import type { Category, GoalTrackerSharePayload, GoalTrackerStatus, PublicShare } from "@/types";
 
 export interface ShareGoalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  category: Category;
-  month: string;
+  category?: Category | null;
+  existingShare?: PublicShare | null;
+  month?: string;
   currentExpectedCents?: number;
   currentRealizedCents?: number;
+  initialEditMode?: boolean;
 }
 
 const PIX_KEY_OPTIONS: SelectOption[] = [
@@ -59,33 +69,43 @@ export function ShareGoalDialog({
   open,
   onOpenChange,
   category,
-  month,
+  existingShare,
+  month = new Date().toISOString().slice(0, 7),
   currentExpectedCents = 0,
   currentRealizedCents = 0,
+  initialEditMode = false,
 }: ShareGoalDialogProps) {
   const { profile } = useUserAccess();
   const { data: myShares } = useMyPublicShares("goal_tracker");
   const createPublicShareMutation = useCreatePublicShare();
+  const updatePublicShareMutation = useUpdatePublicShare();
   const revokePublicShareMutation = useRevokePublicShare();
+  const restorePublicShareMutation = useRestorePublicShare();
+  const deletePublicShareMutation = useDeletePublicShare();
   const regeneratePublicShareMutation = useRegeneratePublicShare();
 
   const [nowMs] = useState(() => Date.now());
 
-  // Localiza link ativo prévio para a mesma categoria
+  // Localiza link ativo prévio para a mesma categoria ou usa existingShare direto
   const activeShare = useMemo(() => {
+    if (existingShare) return existingShare;
+    if (!category) return undefined;
     return (myShares ?? []).find(
       (s) =>
         !s.is_revoked &&
         (!s.expires_at || new Date(s.expires_at).getTime() > nowMs) &&
         s.payload?.category_id === category.id,
     );
-  }, [myShares, category.id, nowMs]);
+  }, [existingShare, myShares, category, nowMs]);
 
   const profileDefaultPix = profile?.cpf || profile?.email || "";
   const profileDefaultName = profile?.name || "Organizador";
 
+  // Modo de edição caso activeShare já exista
+  const [isEditingGoal, setIsEditingGoal] = useState(() => Boolean(initialEditMode || !activeShare));
+
   // Campos do formulário
-  const [title, setTitle] = useState(() => (activeShare?.payload?.title as string) || category.name);
+  const [title, setTitle] = useState(() => (activeShare?.payload?.title as string) || category?.name || "");
   const [targetCents, setTargetCents] = useState<number>(() => {
     if (activeShare?.payload?.target_cents) {
       return Number(activeShare.payload.target_cents);
@@ -103,11 +123,18 @@ export function ShareGoalDialog({
   const [selectedKeyType, setSelectedKeyType] = useState<string>(() => (activeShare?.payload?.pix_key_type as string) || "auto");
   const [merchantName, setMerchantName] = useState<string>(() => (activeShare?.payload?.organizer_name as string) || profileDefaultName);
   const [merchantCity, setMerchantCity] = useState<string>(() => (activeShare?.payload?.organizer_city as string) || "SAO PAULO");
+  const [showContributionsPublicly, setShowContributionsPublicly] = useState<boolean>(() => {
+    if (activeShare?.payload?.show_contributions_publicly !== undefined) {
+      return Boolean(activeShare.payload.show_contributions_publicly);
+    }
+    return true;
+  });
 
   const [copied, setCopied] = useState(false);
   const [showQrPreview, setShowQrPreview] = useState(false);
   const [isRevokeModalOpen, setIsRevokeModalOpen] = useState(false);
   const [isRegenerateModalOpen, setIsRegenerateModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const shareUrl = activeShare ? `${origin}/meta/${activeShare.token}` : "";
@@ -185,8 +212,8 @@ export function ShareGoalDialog({
         });
 
       const payload: GoalTrackerSharePayload = {
-        title: title.trim() || category.name,
-        category_id: category.id,
+        title: title.trim() || category?.name || "Meta Coletiva",
+        category_id: category?.id ?? null,
         month,
         target_cents: targetCents,
         current_cents: initialCollectedCents,
@@ -196,6 +223,8 @@ export function ShareGoalDialog({
         pix_key: pixKey.trim(),
         pix_key_type: keyType ?? "unknown",
         pix_br_code: brCode,
+        status: "active",
+        show_contributions_publicly: showContributionsPublicly,
       };
 
       const result = await createPublicShareMutation.mutateAsync({
@@ -224,6 +253,63 @@ export function ShareGoalDialog({
     }
   };
 
+  const handleSaveGoalChanges = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeShare || !pixKey.trim() || targetCents <= 0) return;
+
+    try {
+      const detected = detectPixKeyType(pixKey);
+      const keyType =
+        selectedKeyType === "auto"
+          ? (detected !== "unknown" ? detected : undefined)
+          : (selectedKeyType as PixKeyType);
+
+      const brCode =
+        effectivePixBrCode ||
+        generatePixBrCode({
+          pixKey: pixKey.trim(),
+          keyType,
+          merchantName: merchantName.trim() || "Organizador",
+          merchantCity: merchantCity.trim() || "SAO PAULO",
+          txId: "***",
+        });
+
+      const updatedPayload: GoalTrackerSharePayload = {
+        ...activeShare.payload,
+        title: title.trim() || "Meta Coletiva",
+        target_cents: targetCents,
+        current_cents: initialCollectedCents,
+        deadline: deadline.trim() || null,
+        organizer_name: merchantName.trim() || "Organizador",
+        organizer_city: merchantCity.trim() || "SAO PAULO",
+        pix_key: pixKey.trim(),
+        pix_key_type: keyType ?? "unknown",
+        pix_br_code: brCode,
+        show_contributions_publicly: showContributionsPublicly,
+      };
+
+      await updatePublicShareMutation.mutateAsync({
+        id: activeShare.id,
+        payload: updatedPayload as unknown as Record<string, unknown>,
+      });
+
+      setIsEditingGoal(false);
+      triggerSensory("action");
+      pushToast({
+        title: "Dados da meta atualizados!",
+        description: "As alterações já estão ativas e refletidas no link público.",
+        variant: "success",
+      });
+    } catch {
+      triggerSensory("destructive");
+      pushToast({
+        title: "Erro ao salvar alterações da meta",
+        description: "Tente novamente em instantes.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleConfirmRevoke = async () => {
     if (!activeShare) return;
     try {
@@ -231,9 +317,68 @@ export function ShareGoalDialog({
       setIsRevokeModalOpen(false);
       triggerSensory("action");
       pushToast({
-        title: "Link do termômetro revogado.",
-        description: "A página pública agora exibe aviso de link inativo.",
+        title: "Link do termômetro pausado.",
+        description: "A página pública agora exibe aviso de link inativo. Você pode reativar quando desejar.",
         variant: "default",
+      });
+    } catch {
+      triggerSensory("destructive");
+    }
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!activeShare) return;
+    try {
+      await restorePublicShareMutation.mutateAsync(activeShare.id);
+      triggerSensory("action");
+      pushToast({
+        title: "Link público reativado com sucesso!",
+        description: "A arrecadação pública volta a estar acessível.",
+        variant: "success",
+      });
+    } catch {
+      triggerSensory("destructive");
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!activeShare) return;
+    try {
+      await deletePublicShareMutation.mutateAsync(activeShare.id);
+      setIsDeleteModalOpen(false);
+      onOpenChange(false);
+      triggerSensory("action");
+      pushToast({
+        title: "Meta excluída com sucesso!",
+        description: "A meta coletiva e seus registros foram removidos definitivamente.",
+        variant: "default",
+      });
+    } catch {
+      triggerSensory("destructive");
+    }
+  };
+
+  const isCompleted = activeShare?.payload?.status === "completed";
+
+  const handleToggleStatus = async () => {
+    if (!activeShare) return;
+    try {
+      const nextStatus: GoalTrackerStatus = isCompleted ? "active" : "completed";
+      await updatePublicShareMutation.mutateAsync({
+        id: activeShare.id,
+        payload: {
+          ...activeShare.payload,
+          status: nextStatus,
+        },
+      });
+      triggerSensory("action");
+      pushToast({
+        title: nextStatus === "completed" ? "Meta marcada como concluída!" : "Meta reaberta como ativa!",
+        description:
+          nextStatus === "completed"
+            ? "O termômetro web agora exibe aviso de meta conquistada com sucesso."
+            : "A arrecadação foi reativada.",
+        variant: "success",
       });
     } catch {
       triggerSensory("destructive");
@@ -260,9 +405,8 @@ export function ShareGoalDialog({
         });
 
       const payload: GoalTrackerSharePayload = {
-        title: title.trim() || category.name,
-        category_id: category.id,
-        month,
+        ...activeShare.payload,
+        title: title.trim() || category?.name || "Meta Coletiva",
         target_cents: targetCents,
         current_cents: initialCollectedCents,
         deadline: deadline.trim() || null,
@@ -271,6 +415,8 @@ export function ShareGoalDialog({
         pix_key: pixKey.trim(),
         pix_key_type: keyType ?? "unknown",
         pix_br_code: brCode,
+        status: (activeShare.payload?.status as GoalTrackerStatus) || "active",
+        show_contributions_publicly: showContributionsPublicly,
       };
 
       const result = await regeneratePublicShareMutation.mutateAsync({
@@ -300,7 +446,10 @@ export function ShareGoalDialog({
 
   const isPending =
     createPublicShareMutation.isPending ||
+    updatePublicShareMutation.isPending ||
     revokePublicShareMutation.isPending ||
+    restorePublicShareMutation.isPending ||
+    deletePublicShareMutation.isPending ||
     regeneratePublicShareMutation.isPending;
 
   return (
@@ -308,35 +457,66 @@ export function ShareGoalDialog({
       <Modal
         open={open}
         onOpenChange={onOpenChange}
-        title="Compartilhar Progresso da Meta"
-        description="Gere um termômetro público transparente com Pix para arrecadação coletiva."
+        title={activeShare ? "Gerenciar Termômetro da Meta" : "Compartilhar Progresso da Meta"}
+        description={
+          activeShare
+            ? "Edite os dados da meta, ajuste a chave Pix e controle a visibilidade das doações."
+            : "Gere um termômetro público transparente com Pix para arrecadação coletiva."
+        }
         size="lg"
       >
-        {activeShare ? (
+        {activeShare && !isEditingGoal ? (
           <div className="flex flex-col gap-5 py-2">
             <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <Badge variant="default" size="sm" className="gap-1 border border-primary/40 text-primary">
-                    <Share2 className="size-3.5" aria-hidden="true" />
-                    <span>Termômetro Público Ativo</span>
-                  </Badge>
+                  {activeShare.is_revoked ? (
+                    <Badge variant="warning" size="sm" className="gap-1">
+                      <EyeOff className="size-3.5" aria-hidden="true" />
+                      <span>Link Público Pausado</span>
+                    </Badge>
+                  ) : (
+                    <Badge variant="default" size="sm" className="gap-1 border border-primary/40 text-primary">
+                      <Share2 className="size-3.5" aria-hidden="true" />
+                      <span>Termômetro Público Ativo</span>
+                    </Badge>
+                  )}
+                  {isCompleted && (
+                    <Badge variant="positive" size="xs">
+                      Concluída
+                    </Badge>
+                  )}
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleOpenPublicPage}
-                  className="gap-1.5 text-xs text-primary hover:text-primary-strong"
-                >
-                  <ExternalLink className="size-3.5" aria-hidden="true" />
-                  <span>Abrir página</span>
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      triggerSensory("action");
+                      setIsEditingGoal(true);
+                    }}
+                    className="gap-1.5 text-xs border-border/80 bg-surface hover:bg-surface-hover"
+                  >
+                    <Edit2 className="size-3 text-muted-foreground" aria-hidden="true" />
+                    <span>Editar Meta</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleOpenPublicPage}
+                    className="gap-1.5 text-xs text-primary hover:text-primary-strong"
+                  >
+                    <ExternalLink className="size-3.5" aria-hidden="true" />
+                    <span>Abrir página</span>
+                  </Button>
+                </div>
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <p className="text-sm font-semibold text-foreground">
-                  {String(activeShare.payload?.title || category.name)}
+                  {String(activeShare.payload?.title || category?.name || "Meta Coletiva")}
                 </p>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                   <span className="flex items-center gap-1">
@@ -351,6 +531,19 @@ export function ShareGoalDialog({
                     <span>Data Alvo: {String(activeShare.payload.deadline)}</span>
                   ) : null}
                   <span>Chave Pix: {String(activeShare.payload?.pix_key || pixKey)}</span>
+                  <span className="flex items-center gap-1">
+                    {showContributionsPublicly ? (
+                      <>
+                        <Eye className="size-3 text-positive-strong" aria-hidden="true" />
+                        <span>Doações visíveis publicamente</span>
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff className="size-3 text-muted-foreground" aria-hidden="true" />
+                        <span>Doações ocultas publicamente</span>
+                      </>
+                    )}
+                  </span>
                 </div>
               </div>
             </div>
@@ -426,36 +619,102 @@ export function ShareGoalDialog({
             </div>
 
             <ModalFooter className="flex-col-reverse sm:flex-row sm:justify-between gap-2.5">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   className="text-critical hover:text-critical"
-                  onClick={() => setIsRevokeModalOpen(true)}
+                  onClick={() => setIsDeleteModalOpen(true)}
                   disabled={isPending}
                 >
                   <Trash2 className="size-3.5 mr-1.5" aria-hidden="true" />
-                  <span>Revogar link</span>
+                  <span>Excluir meta</span>
                 </Button>
+                {activeShare.is_revoked ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void handleConfirmRestore()}
+                    disabled={isPending}
+                    className="gap-1.5 text-xs"
+                  >
+                    <Eye className="size-3.5" aria-hidden="true" />
+                    <span>Reativar link público</span>
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-foreground text-xs"
+                    onClick={() => setIsRevokeModalOpen(true)}
+                    disabled={isPending}
+                  >
+                    <EyeOff className="size-3.5 mr-1.5" aria-hidden="true" />
+                    <span>Pausar link público</span>
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsRegenerateModalOpen(true)}
                   disabled={isPending}
+                  className="text-xs"
                 >
                   <RotateCw className="size-3.5 mr-1.5" aria-hidden="true" />
                   <span>Regenerar link</span>
                 </Button>
               </div>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Fechar
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleToggleStatus()}
+                  disabled={isPending}
+                  className="gap-1.5"
+                >
+                  <Check className="size-3.5" aria-hidden="true" />
+                  <span>{isCompleted ? "Reabrir Meta" : "Marcar como Concluída"}</span>
+                </Button>
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Fechar
+                </Button>
+              </div>
             </ModalFooter>
           </div>
         ) : (
-          <form onSubmit={(e) => void handleCreateShare(e)} className="flex flex-col gap-4 py-2">
+          <form
+            onSubmit={(e) => {
+              if (activeShare && isEditingGoal) {
+                void handleSaveGoalChanges(e);
+              } else {
+                void handleCreateShare(e);
+              }
+            }}
+            className="flex flex-col gap-4 py-2"
+          >
+            {activeShare && isEditingGoal && (
+              <div className="flex items-center justify-between pb-1 border-b border-border/60">
+                <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                  <Edit2 className="size-3.5" aria-hidden="true" />
+                  <span>Editando Parâmetros da Meta</span>
+                </p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditingGoal(false)}
+                  className="text-xs text-muted-foreground"
+                >
+                  Cancelar Edição
+                </Button>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {/* Título da Meta */}
               <div className="flex flex-col gap-1.5">
@@ -491,10 +750,10 @@ export function ShareGoalDialog({
                 </p>
               </div>
 
-              {/* Valor Já Arrecadado / Inicial */}
+              {/* Valor Já Arrecadado */}
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="goal-collected-amount" className="text-xs font-semibold text-foreground">
-                  Valor Já Arrecadado (Inicial)
+                  Valor Já Arrecadado {activeShare ? "(Atual)" : "(Inicial)"}
                 </label>
                 <MoneyInput
                   id="goal-collected-amount"
@@ -503,7 +762,7 @@ export function ShareGoalDialog({
                   placeholder="Ex.: R$ 0,00"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Depósitos lançados na meta no app atualizam o termômetro.
+                  Valor já computado no termômetro e no progresso da arrecadação.
                 </p>
               </div>
 
@@ -585,24 +844,77 @@ export function ShareGoalDialog({
               </div>
             </div>
 
+            {/* Controle de Visibilidade Pública das Doações */}
+            <div className="rounded-xl border border-border/80 bg-surface p-3.5 flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <p className="text-xs font-semibold text-foreground">
+                  Exibir lista de doadores na página pública
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Permite que qualquer pessoa com o link veja os nomes e quantias arrecadadas. Se desativado, apenas você visualiza a lista no app.
+                </p>
+              </div>
+              <Switch
+                checked={showContributionsPublicly}
+                onCheckedChange={setShowContributionsPublicly}
+                aria-label="Exibir lista de doadores na página pública"
+              />
+            </div>
+
             {/* Aviso de Privacidade e Segurança */}
             <div className="rounded-xl border border-border/80 bg-surface/70 p-3 text-xs text-muted-foreground">
               O link gerado é público e somente de leitura. Nenhuma conta bancária, saldo pessoal ou
               transação privada é exposta aos participantes.
             </div>
 
-            <ModalFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2.5">
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={targetCents <= 0 || !pixKey.trim() || isPending}
-                className="gap-2"
-              >
-                <Share2 className="size-4" aria-hidden="true" />
-                <span>{isPending ? "Gerando link…" : "Gerar Termômetro Público & Copiar Link"}</span>
-              </Button>
+            <ModalFooter className="flex-col-reverse sm:flex-row sm:justify-between gap-2.5">
+              {activeShare && isEditingGoal ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-critical hover:text-critical self-start sm:self-auto"
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  disabled={isPending}
+                >
+                  <Trash2 className="size-3.5 mr-1.5" aria-hidden="true" />
+                  <span>Excluir meta</span>
+                </Button>
+              ) : (
+                <div />
+              )}
+              <div className="flex items-center gap-2 justify-end">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    if (activeShare && isEditingGoal) {
+                      setIsEditingGoal(false);
+                    } else {
+                      onOpenChange(false);
+                    }
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={targetCents <= 0 || !pixKey.trim() || isPending}
+                  className="gap-2"
+                >
+                  {activeShare && isEditingGoal ? (
+                    <>
+                      <Check className="size-4" aria-hidden="true" />
+                      <span>{isPending ? "Salvando…" : "Salvar Alterações da Meta"}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Share2 className="size-4" aria-hidden="true" />
+                      <span>{isPending ? "Gerando link…" : "Gerar Termômetro Público & Copiar Link"}</span>
+                    </>
+                  )}
+                </Button>
+              </div>
             </ModalFooter>
           </form>
         )}
@@ -612,13 +924,13 @@ export function ShareGoalDialog({
       <Modal
         open={isRevokeModalOpen}
         onOpenChange={setIsRevokeModalOpen}
-        title="Revogar Link do Termômetro"
-        description="Esta ação desativa imediatamente o acesso público à página desta meta."
+        title="Pausar Link do Termômetro"
+        description="Esta ação pausa temporariamente o acesso público à página desta meta."
         size="sm"
       >
         <p className="text-xs text-muted-foreground py-2">
           Os participantes não conseguirão mais consultar o progresso ou a chave Pix por este endereço.
-          Você poderá gerar um novo link a qualquer momento.
+          Você poderá reativar o link público a qualquer momento sem perder seus dados.
         </p>
         <ModalFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
           <Button type="button" variant="ghost" onClick={() => setIsRevokeModalOpen(false)}>
@@ -626,11 +938,11 @@ export function ShareGoalDialog({
           </Button>
           <Button
             type="button"
-            variant="destructive"
+            variant="outline"
             onClick={() => void handleConfirmRevoke()}
             disabled={isPending}
           >
-            {isPending ? "Revogando…" : "Confirmar revogação"}
+            {isPending ? "Pausando…" : "Pausar link"}
           </Button>
         </ModalFooter>
       </Modal>
@@ -659,6 +971,18 @@ export function ShareGoalDialog({
           </Button>
         </ModalFooter>
       </Modal>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDialog
+        open={isDeleteModalOpen}
+        onOpenChange={setIsDeleteModalOpen}
+        title="Excluir Meta de Arrecadação?"
+        description="Esta ação excluirá permanentemente a meta de arrecadação, o link público e todas as contribuições registradas. Esta ação não poderá ser desfeita."
+        confirmLabel={isPending ? "Excluindo…" : "Excluir Meta"}
+        variant="destructive"
+        confirmPending={isPending}
+        onConfirm={() => void handleConfirmDelete()}
+      />
     </>
   );
 }

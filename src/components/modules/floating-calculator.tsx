@@ -265,7 +265,7 @@ export function FloatingCalculator() {
           </div>
 
           {/* Display */}
-          <div className="flex flex-col gap-1 rounded-xl border border-border bg-muted p-4">
+          <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-muted/60 p-4">
             <p className="num text-right text-3xl font-semibold text-foreground" aria-live="polite">
               {state.error
                 ? "Erro"
@@ -296,7 +296,7 @@ export function FloatingCalculator() {
 
           {/* Divisão de parcelas — apenas no modo money */}
           {!isDecimalMode && (
-            <div className="flex flex-col gap-2 rounded-xl border border-border p-3">
+            <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface-raised p-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-medium text-muted-foreground">Dividir em parcelas</p>
                 <NumberStepper

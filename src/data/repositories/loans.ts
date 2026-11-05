@@ -39,13 +39,11 @@ export async function getLoan(id: string): Promise<Loan | null> {
   return data ? mapLoan(data) : null;
 }
 
-/** Exclusão de contrato de empréstimo. */
-export async function deleteLoan(id: string): Promise<void> {
-  const { error } = await getSupabase().from("loans").delete().eq("id", id);
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
+import { deleteLoanContract } from "@/data/rpc";
+
+/** Exclusão transacional de contrato de empréstimo (opcionalmente excluindo as parcelas vinculadas). */
+export async function deleteLoan(id: string, deleteDebts: boolean = true): Promise<void> {
+  await deleteLoanContract(id, deleteDebts);
 }
 
 /** Atualização segura de metadados do contrato (nome, tipo). */

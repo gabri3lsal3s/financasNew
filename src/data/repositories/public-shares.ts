@@ -132,12 +132,78 @@ export async function revokePublicShare(id: string): Promise<void> {
 }
 
 /**
+ * Reativa um link público previamente revogado (is_revoked: false).
+ */
+export async function restorePublicShare(id: string): Promise<void> {
+  const { error } = await resolveQuery(
+    getSupabase()
+      .from("public_shares")
+      .update({ is_revoked: false, updated_at: new Date().toISOString() })
+      .eq("id", id),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
+/**
+ * Exclui permanentemente um registro de compartilhamento público.
+ */
+export async function deletePublicShare(id: string): Promise<void> {
+  const { error } = await resolveQuery(
+    getSupabase()
+      .from("public_shares")
+      .delete()
+      .eq("id", id),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
+/**
+ * Atualiza o payload de um compartilhamento público existente (ex.: registrar contribuições ou alterar status).
+ */
+export async function updatePublicSharePayload(
+  id: string,
+  payload: Record<string, unknown>,
+): Promise<PublicShare> {
+  const { data, error } = await resolveQuery<Record<string, unknown>[]>(
+    getSupabase()
+      .from("public_shares")
+      .update({ payload, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .select("*"),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+
+  const row = data?.[0];
+  if (!row) {
+    throw new AppError("unknown", "Falha ao atualizar compartilhamento público.", null);
+  }
+
+  return mapPublicShare(row);
+}
+
+
+
+/**
  * Lista todos os links públicos gerados pelo usuário autenticado.
  */
 export async function listMyPublicShares(kind?: PublicShareKind): Promise<PublicShare[]> {
+  const user_id = await currentUserId();
   let query = getSupabase()
     .from("public_shares")
     .select("*")
+    .eq("user_id", user_id)
     .order("created_at", { ascending: false });
 
   if (kind) {

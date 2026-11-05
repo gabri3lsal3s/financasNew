@@ -52,6 +52,10 @@ describe("SplitOnboardingModal", () => {
       mutateAsync: mockSaveSplit,
       isPending: false,
     } as unknown as ReturnType<typeof stateModule.useSaveSplitExpense>);
+    vi.mocked(stateModule.useSignalSplitPayment).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue({}),
+      isPending: false,
+    } as unknown as ReturnType<typeof stateModule.useSignalSplitPayment>);
   });
 
   it("renderiza cabeçalho, resumo da despesa e formulário de auto-cadastro", () => {

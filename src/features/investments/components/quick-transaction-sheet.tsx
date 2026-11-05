@@ -722,7 +722,7 @@ export function QuickTransactionSheet({
 
                 {targetAsset?.asset_class === "Ações" && (
                   <div className="flex items-center gap-1.5 pt-1 text-[11px] text-muted-foreground">
-                    <Info className="size-3.5 text-primary shrink-0" aria-hidden="true" />
+                    <Info className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                     <span>Isenção de IRPF se o total de vendas de ações no mês for até R$ 20.000,00.</span>
                   </div>
                 )}

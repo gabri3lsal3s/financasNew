@@ -1,5 +1,21 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.91** registra o **Ciclo Completo de Gestão de Racha de Despesas (Rateio Sob Demanda 100% Inicial, Abatimento Progressivo, Sinalização Pix e Exclusão Granular)** (2026-11-05):
+> - **(1) Rateio Contábil Sob Demanda & Trava Anti-Conflito no Lançamento (`LaunchWizard`)**:
+>   - Bloqueio automático do seletor de peso em 100% (`report_weight = 1.0`) ao ligar o toggle de rachar despesa, impedindo duplo abatimento prematuro;
+>   - Exibição de banner educativo informando que a despesa começa integral e é abatida conforme os amigos pagam;
+>   - Cálculo contábil progressivo: o custo líquido decresce proporcionalmente a cada baixa confirmada ($\text{Custo Líquido} = \text{Total} - \text{Total Recebido}$);
+>   - Sincronização em tempo real com a dívida vinculada em `debts` (decremento do saldo a receber e quitação automática ao atingir 100%).
+> - **(2) Gestão Granular de Baixa Parcial e Calotes (`ManageSplitDialog`)**:
+>   - Ações individuais por participante ("Recebi Tudo" e "Outro Valor" com suporte a valores menores e R$ 0,00 para calote total);
+>   - Modal de exclusão granular com checkboxes independentes: Link e dados do racha (obrigatório), Cobrança a receber vinculada (opcional, default true) e Despesa original no extrato (opcional, default false com restauração de 100% integral caso mantida).
+> - **(3) Detecção de Pagamento via Link Público & Sinalização Transacional (`PendingSplitSignalsCard`)**:
+>   - RPC `signal_split_payment` para registro de aviso quando amigos salvam via link `/r/:token` (`SelectParticipantDialog` e `SelectSplitCategoryDialog`);
+>   - Card de sugestões de abatimento na Home com 1 toque: "Abater R$ XX" (baixa imediata com recálculo de rateio) e "Ainda não recebi" (`dismiss_split_payment_signal`).
+> - **(4) Otimização Visual Mobile-First & Carrossel da Home (`ActiveSplitsCard` & `SplitPendingBanner`)**:
+>   - Bloco de rachas ativos com exibição de 2 itens por vez, navegação paginada por setas, ordenação por vencimento próximo e layout ultra-compacto;
+>   - Banner consolidado no carrossel da Home com o total de valores pendentes a receber e chips de resumo das divisões em aberto.
+>
 > **v2.90** registra a **Decomposição Holística de Carteira (4 Pilares: FIIs, Renda Fixa, Ações e Internacional), Benchmarks Especializados e Refatoração Granular da Reserva de Emergência** (2026-11-05):
 > - **(1) Benchmarks Especializados por Classe & Decomposição Holística de Exposição (`src/domain/portfolio/class-breakdown.ts` e `tickers-catalog.ts`)**:
 >   - Comparação especializada de Ações vs IBOVESPA (alfa em p.p.), Fundos Imobiliários vs IFIX, Renda Fixa vs CDI e Poupança (regra oficial Bacen), Internacional vs S&P 500, e Carteira Consolidada vs CDI, IBOVESPA e IFIX simultaneamente;

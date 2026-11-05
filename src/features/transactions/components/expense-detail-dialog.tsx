@@ -14,6 +14,7 @@ import {
   useCreateExpense,
   useDeleteExpense,
   useDeleteRecurrenceOccurrences,
+  useFamilyMode,
   useUpdateExpense,
   useUpdateExpenseGrouped,
   useUpdateRecurrenceOccurrences,
@@ -121,6 +122,7 @@ function ExpenseEditForm({
     Math.round(expense.value * expense.report_weight * 100),
   );
   const [formError, setFormError] = useState<string | null>(null);
+  const { isFamilyModeEnabled } = useFamilyMode();
 
   /**
    * Data mudou: mantém a competência automática em sincronia com o fechamento
@@ -198,7 +200,7 @@ function ExpenseEditForm({
         card_id: paymentMethod === "credit_card" ? cardId || null : null,
         bill_competence: effectiveCompetence,
         report_weight: calculatedWeight,
-        is_family: isFamily,
+        is_family: isFamilyModeEnabled ? isFamily : Boolean(expense.is_family),
       });
     } catch (err) {
       setFormError(getErrorMessage(err));
@@ -361,15 +363,17 @@ function ExpenseEditForm({
         ariaLabelCustom="Sua cota considerada no relatório"
       />
 
-      <div className="rounded-xl border border-border/80 bg-surface p-3">
-        <Switch
-          id="edit-expense-family"
-          checked={isFamily}
-          onCheckedChange={setIsFamily}
-          label="Despesa da Casa / Familiar"
-          description="Visível no Painel Familiar compartilhado"
-        />
-      </div>
+      {isFamilyModeEnabled && (
+        <div className="rounded-xl border border-border/80 bg-surface p-3">
+          <Switch
+            id="edit-expense-family"
+            checked={isFamily}
+            onCheckedChange={setIsFamily}
+            label="Despesa da Casa / Familiar"
+            description="Visível no Painel Familiar compartilhado"
+          />
+        </div>
+      )}
 
       <ModalFooter>
         <Button
@@ -415,6 +419,7 @@ export function ExpenseDetailDialog({
 
   const categoriesQuery = useCategories("expense");
   const cardsQuery = useCreditCards();
+  const { isFamilyModeEnabled } = useFamilyMode();
   const deleteExpense = useDeleteExpense();
   const deleteRecurrence = useDeleteRecurrenceOccurrences();
   const updateExpense = useUpdateExpense();
@@ -505,6 +510,23 @@ export function ExpenseDetailDialog({
         },
       });
     }
+
+    const familyChanged = isFamilyModeEnabled && payload.is_family !== undefined && payload.is_family !== expense.is_family;
+    if (familyChanged) {
+      pushToast({
+        title: "Despesa atualizada com sucesso",
+        description: payload.is_family
+          ? "Esta despesa foi marcada como Familiar e agora pertence à visão Familiar."
+          : "Esta despesa foi marcada como Individual e agora pertence à visão Pessoal.",
+        variant: "success",
+      });
+    } else {
+      pushToast({
+        title: "Despesa atualizada com sucesso",
+        variant: "success",
+      });
+    }
+
     setIsEditing(false);
     onOpenChange(false);
   };
@@ -648,18 +670,20 @@ export function ExpenseDetailDialog({
                       )}
                     </dd>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <dt className="text-xs text-muted-foreground">Orçamento</dt>
-                    <dd className="font-medium text-foreground text-xs">
-                      {expense.is_family ? (
-                        <Badge variant="muted" size="xs">
-                          Familiar
-                        </Badge>
-                      ) : (
-                        "Individual"
-                      )}
-                    </dd>
-                  </div>
+                  {isFamilyModeEnabled && (
+                    <div className="flex items-center justify-between">
+                      <dt className="text-xs text-muted-foreground">Orçamento</dt>
+                      <dd className="font-medium text-foreground text-xs">
+                        {expense.is_family ? (
+                          <Badge variant="muted" size="xs">
+                            Familiar
+                          </Badge>
+                        ) : (
+                          "Individual"
+                        )}
+                      </dd>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <dt className="text-xs text-muted-foreground">Data</dt>
                     <dd className="font-medium text-foreground text-xs">{expense.date}</dd>
@@ -745,11 +769,13 @@ export function ExpenseDetailDialog({
         ) : null}
       </Modal>
 
-      {splitOpen ? (
+      {splitOpen && expense ? (
         <SplitExpenseDialog
           open={splitOpen}
           onOpenChange={setSplitOpen}
           expense={expense}
+          categoryName={categories.find((c) => c.id === expense.category_id)?.name}
+          categoryIcon={categories.find((c) => c.id === expense.category_id)?.icon ?? undefined}
         />
       ) : null}
 

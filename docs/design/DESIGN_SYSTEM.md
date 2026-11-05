@@ -143,10 +143,12 @@ Regra: cards sempre ≥ `xl`; inputs `md`; badges `pill`. Nunca radius diferente
 | `--shadow-xs` | `0 1px 2px rgb(0 0 0/5%)` | Micro-elevação padrão de cards e contêineres de dados |
 | `--shadow-sm` | `0 1px 2px rgb(0 0 0/4%)` | Cards em estado padrão, linhas elevadas |
 | `--shadow-md` | `0 2px 8px rgb(0 0 0/6%)` | Cards flutuantes, dropdowns |
-| `--shadow-lg` | `0 8px 24px rgb(0 0 0/10%)` | Modais, command palette (⌘K) |
+| `--shadow-lg` | `0 8px 24px rgb(0 0 0/10%)` | Popovers, tooltips densos |
+| `--shadow-xl` | `0 20px 25px rgb(0 0 0/10%)` | Diálogos e painéis flutuantes |
+| `--shadow-2xl` | `0 25px 50px rgb(0 0 0/18%)` | **Modais canônicos** e Command Palette (⌘K) |
 | `--shadow-kpi` | anel accent + glow suave | **KPI principal** por tela (1 no máx.) |
 
-**Regras:** elevação por sombra, nunca por cor escura; dark/oled dependem mais de bordas do que de sombras (alpha maior); o **glow de KPI** é reservado a um único número-chave por tela (ex.: saldo do mês) — nunca vários. No estilo *Flat*, 100% dos tokens de sombra (`--shadow-xs` a `--shadow-lg`) são zerados; no estilo *Elevated*, a dispersão é aumentada proporcionalmente.
+**Regras:** elevação por sombra, nunca por cor escura; dark/oled dependem mais de bordas do que de sombras (alpha maior); o **glow de KPI** é reservado a um único número-chave por tela (ex.: saldo do mês) — nunca vários. No estilo *Flat*, 100% dos tokens de sombra (`--shadow-xs` a `--shadow-2xl`) são zerados; no estilo *Elevated*, a dispersão é aumentada proporcionalmente.
 
 **OLED refinado (F5.2 + F10):** sobre o true black `#000`, bordas são a principal pista de elevação — `--border` ardósia `#1C2E3D` e `--input` 22% garantem definição sem acender pixels; hover/pressed mais perceptíveis (`8%`/`12%`); `--muted-foreground` 50% assegura AA (5.3:1) para texto secundário; `--overlay` 70% escurece o conteúdo atrás de modais sem perder o preto puro; scrollbar com polegar ardósia `22%` discreto. Acentos luminosos (teal vivo/ouro) dão o caráter "Órbitas Douradas".
 
@@ -202,7 +204,10 @@ $$\text{dropdowns (20)} < \text{tooltips (25)} < \text{bottom bar (30)} < \text{
 - **Proibido:** glass em cards de dados (prejudica legibilidade), múltiplas camadas de blur empilhadas.
 - Transparências de cor sempre via token: `bg-primary/10`, `bg-negative/10` etc.
 - **Estilos de superfície (F11):** são oferecidos exclusivamente dois estilos:
-  - **Glassmorphism ("Glass", padrão):** quando `data-surface-style` está ausente, o chrome — **modais, paleta de busca e painéis flutuantes** (`rounded-xl/2xl + bg-surface` com `z-modal`/`z-floating-tools`) — fica translúcido (`surface/82` + `backdrop-filter: blur(12px)`); o fundo do app (`body`) permanece limpo e uniforme com a cor de fundo padrão (`bg-background`), garantindo foco e zero distrações visuais ou halos. **Cards de dados permanecem opacos** (regra de legibilidade acima).
+  - **Glassmorphism ("Glass", padrão):** quando `data-surface-style` está ausente, o chrome — **modais, paleta de busca e painéis flutuantes** (`rounded-xl/2xl + bg-surface` com `z-modal`/`z-floating-tools`) — é calibrado de acordo com o tema:
+    - **No Modo Claro:** adota superfície branca pura límpida (`surface/98` + `backdrop-filter: blur(16px)` + `shadow-2xl`), eliminando a névoa acinzentada sobre o overlay e garantindo contraste estrito com inputs e botões internos. O token `--surface-raised` provê relevo harmônico para cards de sugestão interna.
+    - **Nos Modos Dark e OLED:** mantém acabamento translúcido fosco sofisticado (`surface/82` + `backdrop-filter: blur(12px)`).
+    - O fundo do app (`body`) permanece limpo e uniforme com a cor de fundo padrão (`bg-background`), garantindo foco e zero distrações visuais ou halos. **Cards de dados permanecem opacos** (regra de legibilidade acima).
   - **Minimalista Flat ("Flat"):** com `data-surface-style="flat"`, o chrome permanece 100% opaco e todas as sombras em cards/superfícies são zeradas (`--shadow-*: none`), proporcionando estética plana ultra-limpa. (O antigo estilo 3D `elevated` foi descontinuado).
 - **Modos de Experiência e Sensorial:** simplificados exclusivamente às 3 predefinições canônicas: **Dinâmico** (`dynamic`), **Foco** (`minimal`) e **Discreto** (`discreet`), sem controles manuais avulsos de áudio/vibração. Todos os widgets da Visão Geral (KPIs, Fluxo Diário, Distribuição por Categorias, Orçamentos e Resumo Financeiro) são exibidos de forma permanente.
 - **Níveis de movimento (F11):** `fluid` (tudo ligado) · `eco` (`data-motion="eco"` — mantém fades, desliga shimmer/pulso/spring/ripple) · `reduced` (`data-motion="reduced"` — mesmas animações/transições zeradas do `prefers-reduced-motion`).
@@ -478,17 +483,26 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 - **Assets Gráficos:** Gerados com fundo transparente com anti-aliasing e alta nitidez em `public/brand/` (`logo-teal-dark.*`, `logo-teal-light.*`, `logo-amber-dark.*`, `logo-amber-light.*` em PNG e WebP de 16px a 512px; favicons `favicon-32.png`, `favicon-16.png`, `favicon.ico`, `favicon-pro-32.png`, `favicon-pro.ico`) e `public/pwa/icons/` (`icon-192.png`, `icon-512.png`, `apple-touch-icon-180.png`), além dos mipmaps nativos do Android (`ic_launcher.png`, `ic_launcher_round.png`, `ic_launcher_foreground.png`, `ic_launcher_pro.png`, `ic_launcher_pro_round.png`, `ic_launcher_pro_foreground.png`).
 - **Padrão de Uso:** O `BrandLogo` é o ponto de entrada unificado com suporte a modos símbolo único, wordmark e lockup completo com subtítulo ("Finance"), integrado na Sidebar desktop, Header mobile, AuthShell, Telas de Checkout/Upgrade, Splash Screen e PWA.
 
-### 14.11 Iconografia Sem Fundo ("Icon-Only") & Hierarquia Balanceada de Ícones em Cards
-- **Diretriz Global:** Todos os ícones da aplicação seguem o padrão *icon-only* limpo, sem containers visuais decorativos atrás (sem classes `bg-primary/10`, `rounded-full`, `rounded-lg`, `p-2` ou sombras/bordas ao redor do ícone). Contêineres de fundo (`size-7`/`size-8 rounded-lg bg-surface-hover`) são restritos exclusivamente a **botões com ação de clique direta** (ex.: fechar, editar inline, excluir).
-- **Matriz de Hierarquia Semântica (Prevenção de Fadiga de Acento):**
-  - **Informativo / Estrutural / Cabeçalhos (`CardTitle` / `CardHeader`):** Ícone em tom **neutro suave (`text-muted-foreground`)** no padrão *icon-only* (`size-4` / 16px). É expressamente proibido aplicar `text-primary` arbitrariamente em ícones descritivos estáticos para evitar sobrecarga e fadiga visual (*accent fatigue*).
-  - **Fluxo Financeiro Direto:** Cores semânticas exclusivas:
-    - *Receitas / Entradas / Saldo Positivo:* `text-positive-strong` (Teal / Verde);
-    - *Despesas / Saídas / Saldo Negativo:* `text-negative-strong` (Coral / Vermelho);
-    - *Investimentos / Carteira / Aportes:* `text-portfolio` (Sky / Azul Petróleo).
-  - **Risco & Atenção:** `text-warning-strong` (Atenção / Desvio) ou `text-critical-strong` (Atraso / Estouro).
-  - **Cor de Destaque (*Accent / Primary*):** Reservada estritamente para **interatividade ativa** (botões de comando/CTA, abas ativas, switches ligados, radio buttons selecionados e anel de foco `--ring`).
-- **Dimensões & Stroke Padronizados:** Ícones utilizam tamanhos da escala (`size-3.5`, `size-4`, `size-5`, `size-6` em empty states) com stroke uniforme (`lucide-react`) e `aria-hidden="true"`, garantindo coerência visual, contraste WCAG AA e alinhamento impecável em todos os módulos e dispositivos.
+### 14.11 Hierarquia Canônica de Ícones: Padrão Sóbrio ("Icon-Only") vs. Ícones de Destaque ("Prominent Badge Icons")
+- **Fundamento de Design & Equilíbrio Cognitivo:** O sistema visual diferencia de forma estrita onde os ícones devem ser sóbrios e desprovidos de caixas (para não poluir a leitura de dados nem gerar falsas affordances de clique) e onde os ícones **devem possuir destaque visual padronizado** (para servir como âncora visual imediata em alertas, decisões e telas editoriais).
+- **Nível 1 — Ícones Sóbrios Padronizados (*Icon-Only*, sem container):**
+  - **Onde se aplica:** Cabeçalhos de cards comuns de dados (`CardTitle`/`CardHeader`), cartões de oportunidade/rebalanceamento, métricas secundárias, fichas de ativos, formulários, diálogos e títulos de seções regulares.
+  - **Anatomia Estrita:** Padrão *icon-only* limpo (`size-4` / 16px) em tom neutro suave (`text-muted-foreground`) ou semântica financeira direta pura (`text-positive-strong` para receitas, `text-negative-strong` para despesas, `text-portfolio` para investimentos/carteira).
+  - **Proibições:** Proibido criar caixas decorativas soltas (`<span>`/`<div>` com `size-7/size-8/size-9`, `bg-*/10`, `border`) ao redor de ícones em cabeçalhos de cards comuns (evitando concorrência com badges de status e a falsa impressão de que se trata de um botão clicável) e proibido aplicar `text-primary` arbitrariamente em ícones estáticos descritivos.
+- **Nível 2 — Ícones de Destaque Padronizados (*Prominent Badge Icons*, com container):**
+  - **Onde é OBRIGATÓRIO ter destaque:**
+    1. *Banners de Alerta e Carrossel da Home (`DashboardAlertsCarousel` / `CashGapAlert`, `PaceAlert`, `TrialEndingBanner`, `AndroidProBanner`, `AutoRegisteredBanner`):* Onde a caixinha colorida funciona como semáforo visual de severidade/estado antes da leitura textual.
+    2. *Linhas de Seleção Semântica Interativa (`QualifiedDismissPopover`):* Onde cada opção é uma ação de decisão rápida e o ícone em caixa facilita a distinção entre as alternativas.
+    3. *Heróis Editoriais e Telas de Estado Geral (`LoginPage`, `RegisterPage`, `PendingApprovalPage`, Sucesso de Campanha):* Onde o ícone ampliado compõe a apresentação da marca e da mensagem central.
+  - **Matriz Canônica de Escala e Anatomia dos Ícones de Destaque:**
+    - **Padrão Alertas & Banners de Sistema:** Contêiner `flex size-9 shrink-0 items-center justify-center rounded-xl border` com ícone interno `size-4.5`. Cores:
+      * *Risco / Atenção Crítica:* `bg-critical/10 border-critical/20 text-critical-strong`
+      * *Aviso / Prazo / Atenção:* `bg-warning/15 border-warning/20 text-warning-strong`
+      * *Sucesso / Economia / Positivo:* `bg-positive/10 border-positive/20 text-positive-strong`
+      * *Investimentos / Aporte / Carteira:* `bg-portfolio/10 border-portfolio/20 text-portfolio`
+      * *Informativo / Sistema / Novidade:* `bg-primary/10 border-primary/20 text-primary-strong`
+    - **Padrão Seleção Semântica Interativa:** Contêiner compacto `flex size-6 sm:size-7 shrink-0 items-center justify-center rounded-lg border` com ícone `size-3.5`.
+    - **Padrão Herói Editorial / Telas de Estado:** Contêiner amplo `flex size-12 sm:size-14 items-center justify-center rounded-2xl border` com ícone `size-6` a `size-7`.
 
 ### 14.12 Micro-Interações "Obsidian Glass" & Indicadores Reativos de Ação
 - **Morphing Action Buttons (`InsightList`):** Em Assinaturas & Recorrências, a ação de ignorar ou confirmar é unificada em botões de ação que transmitem transição imediata de estado com micro-animação física (`animate-spring-pop`) e remoção de badges redundantes.
@@ -743,7 +757,25 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
   - ZERO emojis e ZERO caracteres decorativos no produto.
   - Governança sensorial: sem duplicidade de vibração tátil em botões.
 
+---
 
+## 15. ANATOMIA CANÔNICA DE CARDS DO CARROSSEL DE ALERTAS (`DashboardAlertsCarousel`)
 
+Para assegurar **altura 100% uniforme**, eliminar saltos de layout (*layout jumps*) e prevenir desalinhamento visual durante rotação ou autoplay, todo card/banner hospedado no carrossel da Home adota a seguinte anatomia estrita:
 
-
+1. **Preenchimento de Altura Total:**
+   - Casca externa obrigatória com `w-full h-full min-h-[104px] sm:min-h-[72px] flex-1`.
+   - Slide wrapper no carrossel garantindo `w-full min-w-full shrink-0 flex items-stretch px-1 sm:px-1.5`, propagando estiramento transversal (`align-items: stretch`) incondicional aos filhos.
+2. **Distribuição e Superfície:**
+   - Layout responsivo flexível: `flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4`.
+   - Padding canônico compacto e confortável: `p-3.5 sm:p-4` (preservando a pegada vertical enxuta do carrossel na Visão Geral sem inflar a página).
+   - Raio de borda canônico: `rounded-2xl` (sem uso divergente de `rounded-xl`).
+   - Elevação: `shadow-xs border transition-all`.
+3. **Tipografia, Badges e Teto de 2 Linhas Textuais:**
+   - Teto estrito de 2 linhas textuais:
+     - Linha 1: Título primário `text-sm font-semibold text-foreground truncate` + Badges de apoio primitivo `<Badge size="xs" />`.
+     - Linha 2: Texto descritivo objetivo `text-xs text-muted-foreground leading-relaxed truncate` (ou `line-clamp-1`).
+   - Proibido renderizar fitas de chips secundários internos no carrossel de alertas.
+4. **Botão de Ação (CTA):**
+   - Tamanho padronizado: `Button size="sm"` (`h-8`).
+   - Ancoragem responsiva: `self-stretch sm:self-center mt-auto sm:mt-0` (garante que, no mobile com orientação vertical, o botão permaneça encostado no fundo mesmo diante de variações de comprimento de texto entre os slides).

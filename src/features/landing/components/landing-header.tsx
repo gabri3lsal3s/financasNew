@@ -132,6 +132,18 @@ export function LandingHeader() {
           </button>
           <button
             type="button"
+            onClick={() => scrollToSection("ferramentas")}
+            className={cn(
+              "px-3 py-1.5 rounded-lg transition-all cursor-pointer",
+              activeSection === "ferramentas"
+                ? "bg-primary/10 text-primary font-semibold"
+                : "text-muted-foreground hover:text-foreground hover:bg-surface-hover/60",
+            )}
+          >
+            Simuladores
+          </button>
+          <button
+            type="button"
             onClick={() => scrollToSection("precos")}
             className={cn(
               "px-3 py-1.5 rounded-lg transition-all cursor-pointer",
@@ -308,6 +320,18 @@ export function LandingHeader() {
               )}
             >
               Simulador Patrimonial
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection("ferramentas")}
+              className={cn(
+                "flex items-center py-2 px-2.5 rounded-lg text-left transition-colors cursor-pointer",
+                activeSection === "ferramentas"
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-foreground hover:text-primary",
+              )}
+            >
+              Simuladores Gratuitos
             </button>
             <button
               type="button"

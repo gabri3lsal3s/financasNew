@@ -134,6 +134,18 @@ export function calculatePortfolioTotalReturn(
  *   Σ (pct_i × valueBRL_i) ÷ Σ valueBRL_i
  * sobre os ativos com custo (caixa/sem custo ficam fora — `unrealizedPct` null).
  * Retorna `null` quando não há base (carteira vazia ou só caixa).
+ *
+ * @deprecated Esta função calcula média ponderada de percentuais pelo valor de mercado final,
+ * o que introduz distorção matemática (ativos mais valorizados recebem peso desproporcional
+ * e a base de capital original investido é ignorada).
+ *
+ * Para novas implementações e apurações financeiras canônicas:
+ * 1. Posição / Custódia Viva Consolidada: utilize `calculatePortfolioTotalReturn` (calcula
+ *    `totalReturnPct` e `capitalGainPct` com base estrita no custo investido).
+ * 2. Fechamento Mensal / Snapshots Isolados: utilize `calculateMonthlyStatement` (calcula
+ *    `monthRatePct` pelo método Modified Dietz / padrão ANBIMA/GIPS).
+ * 3. Série Histórica Ponderada no Tempo: utilize `calculateTwrSeries` (calcula a série
+ *    TWR encadeada por cotas teóricas).
  */
 export function portfolioReturnPct(
   rows: readonly { valueBRL: number; unrealizedPct?: number | null; totalReturnPct?: number | null }[],

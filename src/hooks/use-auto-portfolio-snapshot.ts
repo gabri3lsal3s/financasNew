@@ -13,14 +13,17 @@ import { calculatePointInTimePosition } from "@/domain/portfolio";
 /**
  * Rotina autônoma de materialização de snapshots patrimoniais mensais (§F50/F51).
  *
+ * Centraliza com exclusividade a materialização autônoma de snapshots patrimoniais (§2.2 PLANO_AUDITORIA):
  * 1. Ao carregar a posição da carteira, verifica se o mês corrente possui snapshot.
  *    Se houver patrimônio em custódia e nenhum snapshot para o mês, materializa
- *    automaticamente o `total_value` e `total_cost`, garantindo série histórica
- *    contínua sem exigir ações manuais.
+ *    automaticamente o `total_value` e `total_cost` segundo a regra canônica:
+ *    - total_value: Ativos valorados + Saldo de Caixa
+ *    - total_cost: Custo de aquisição dos ativos + Saldo de Caixa (paridade 1:1)
+ *    garantindo série histórica contínua sem concorrência ou mutações duplicadas.
  * 2. Recálculo automático retroativo: se foram identificadas movimentações ou
  *    proventos em meses retroativos (< mês corrente) que não possuem snapshot gravado
  *    ou que demandem reconciliação, recalcula a posição no ponto-de-tempo em background
- *    e grava o snapshot, com trava de deduplicação via `useRef`.
+ *    e grava o snapshot com a mesma regra canônica, com trava de deduplicação via `useRef`.
  */
 export function useAutoPortfolioSnapshot() {
   const position = usePortfolioPosition();
@@ -46,13 +49,18 @@ export function useAutoPortfolioSnapshot() {
     const existingSnapshots = snapshotsQuery.data ?? [];
     const hasThisMonthSnapshot = existingSnapshots.some((s) => s.month === thisMonth);
 
-    // 1. Mês corrente
-    if (!isTriggeredRef.current && !hasThisMonthSnapshot && (position.totalBRL > 0 || position.totalCostBRL > 0)) {
+    // 1. Mês corrente: aplica a regra canônica de total_value e total_cost
+    const currentCost = Math.round((position.totalCostBRL + position.cashBRL) * 100) / 100;
+    if (
+      !isTriggeredRef.current &&
+      !hasThisMonthSnapshot &&
+      (position.totalBRL > 0 || currentCost > 0)
+    ) {
       isTriggeredRef.current = true;
       upsertMutation.mutate({
         month: thisMonth,
         total_value: position.totalBRL,
-        total_cost: position.totalCostBRL,
+        total_cost: currentCost,
       });
       return;
     }
@@ -107,11 +115,12 @@ export function useAutoPortfolioSnapshot() {
         dividends: dividendsQuery.data ?? [],
       });
 
-      if (pointInTime.totalValueBRL > 0 || pointInTime.totalCostBRL > 0) {
+      const retroCost = Math.round((pointInTime.totalCostBRL + pointInTime.cashQuantity) * 100) / 100;
+      if (pointInTime.totalValueBRL > 0 || retroCost > 0) {
         upsertMutation.mutate({
           month: nextRetroMonth,
           total_value: pointInTime.totalValueBRL,
-          total_cost: pointInTime.totalCostBRL,
+          total_cost: retroCost,
         });
       }
     }

@@ -17,6 +17,7 @@ import {
   ReadOnlyBanner,
   TrialEndingBanner,
   PendingSuggestionsCard,
+  PendingSplitSignalsCard,
   AutoRegisteredBanner,
   AndroidProBanner,
   SmartAdvisorCard,
@@ -62,6 +63,7 @@ import {
   useDebts,
   useExpenses,
   useIncomes,
+  useMyPublicShares,
   usePortfolioContributions,
   useRealCashBalance,
   useUserSubscription,
@@ -72,7 +74,14 @@ import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { useVisualCustomization, useApkPromo, useOnboardingDismissed, usePendingSplitExpense, usePendingSimulation } from "@/hooks";
 import { CashCheckpointDialog } from "@/components/modules/cash-checkpoint-dialog";
 import { cn } from "@/lib/utils";
-import { CategoryBreakdownDialog, OtherBudgetsDialog, OtherCategoriesDialog } from "../components";
+import {
+  CategoryBreakdownDialog,
+  OtherBudgetsDialog,
+  OtherCategoriesDialog,
+  SplitPendingBanner,
+  CampaignsSummaryBanner,
+} from "../components";
+import type { SplitSharePayload } from "@/types";
 
 export function OverviewPage() {
   const { showPromo: showApkPromo, dismiss: dismissApkPromo } = useApkPromo();
@@ -107,6 +116,8 @@ export function OverviewPage() {
   const cardExpensesQuery = useAllCardExpenses();
   const cardPaymentsQuery = useAllCardPayments();
   const contributionsQuery = usePortfolioContributions();
+  const splitSharesQuery = useMyPublicShares("split");
+  const goalSharesQuery = useMyPublicShares("goal_tracker");
   const realCashData = useRealCashBalance(today);
   const onboardingQuery = useOnboardingCounts();
   const { isDismissed: isOnboardingDismissed, dismiss: dismissOnboarding } = useOnboardingDismissed();
@@ -457,6 +468,97 @@ export function OverviewPage() {
     ],
   );
 
+  // Apuração de Rachas a receber pendentes
+  const splitPendingData = useMemo(() => {
+    const debts = debtsQuery.data ?? [];
+    const splitShares = splitSharesQuery.data ?? [];
+    if (splitShares.length === 0) return { count: 0, pendingCents: 0, totalExpensesCents: 0, items: [] };
+
+    let count = 0;
+    let pendingCents = 0;
+    let totalExpensesCents = 0;
+    const items: Array<{
+      id: string;
+      title: string;
+      pendingCents: number;
+      pendingFriendsCount: number;
+      totalFriendsCount: number;
+    }> = [];
+
+    // Mapa de dívidas por expense_id e debt_id
+    const debtMap = new Map(debts.map((d) => [d.id, d]));
+    const expenseDebtMap = new Map(
+      debts.filter((d) => d.type === "receivable" && d.expense_id).map((d) => [d.expense_id!, d]),
+    );
+
+    for (const share of splitShares) {
+      if (share.is_revoked) continue;
+      const payload = (share.payload ?? {}) as unknown as SplitSharePayload;
+      const debtId = payload?.debt_id;
+      const expenseId = payload?.expense_id;
+      const isCompleted = Boolean(payload?.is_completed);
+
+      const debt = (debtId ? debtMap.get(debtId) : null) || (expenseId ? expenseDebtMap.get(expenseId) : null);
+      const isSettled = isCompleted || (debt ? Boolean(debt.paid_at) : false);
+
+      if (isSettled) continue;
+
+      const participants = payload.participants ?? [];
+      const friends = participants.filter((p) => !p.is_host);
+      const guestCount = Math.max(1, Number(payload.people_count ?? 2) - 1);
+      const guestShareCents = Number(payload.guest_share_cents ?? 0);
+
+      const totalFriendsCount = friends.length > 0 ? friends.length : guestCount;
+      const pendingFriendsCount =
+        friends.length > 0
+          ? friends.filter((f) => !f.is_settled).length
+          : guestCount;
+      const pendingForThisSplit =
+        friends.length > 0
+          ? friends.reduce((acc, f) => acc + (f.is_settled ? 0 : Number(f.share_cents)), 0)
+          : guestShareCents * guestCount;
+
+      if (pendingForThisSplit > 0) {
+        count += 1;
+        pendingCents += pendingForThisSplit;
+        totalExpensesCents += Number(payload.total_cents ?? (guestShareCents * Number(payload.people_count ?? 2)));
+        items.push({
+          id: share.id,
+          title: payload.title?.trim() || "Despesa",
+          pendingCents: pendingForThisSplit,
+          pendingFriendsCount,
+          totalFriendsCount,
+        });
+      }
+    }
+
+    return { count, pendingCents, totalExpensesCents, items };
+  }, [debtsQuery.data, splitSharesQuery.data]);
+
+  // Apuração de campanhas / metas coletivas ativas
+  const activeCampaignData = useMemo(() => {
+    const goalShares = goalSharesQuery.data ?? [];
+    if (goalShares.length === 0) return null;
+
+    const activeList = goalShares.filter((s) => !s.is_revoked);
+    if (activeList.length === 0) return null;
+
+    // Pega a primeira campanha com maior progresso ou mais recente
+    const topCampaign = activeList[0]!;
+    const payload = topCampaign.payload as Record<string, unknown>;
+    const targetCents = Number(payload.target_cents ?? 0);
+    const currentCents = Number(payload.current_cents ?? 0);
+    const percentage = targetCents > 0 ? Math.round((currentCents / targetCents) * 100) : 0;
+
+    return {
+      title: (payload.title as string) || "Meta Coletiva",
+      targetCents,
+      currentCents,
+      percentage,
+      activeCount: activeList.length,
+    };
+  }, [goalSharesQuery.data]);
+
   const alertItems: (DashboardAlertItem | null | undefined | false)[] = [
     isCurrentMonth && cashGapResult.isCashGapDetected && {
       id: "cash-gap-alert",
@@ -474,6 +576,31 @@ export function OverviewPage() {
           daysRemaining={daily.daysRemaining}
           surplusCents={projection.surplusCents}
           onNavigateInsights={() => navigate("/insights")}
+        />
+      ),
+    },
+    splitPendingData.count > 0 && {
+      id: "split-pending-banner",
+      priority: 2,
+      content: (
+        <SplitPendingBanner
+          pendingCents={splitPendingData.pendingCents}
+          activeCount={splitPendingData.count}
+          totalExpensesCents={splitPendingData.totalExpensesCents}
+          items={splitPendingData.items}
+        />
+      ),
+    },
+    Boolean(activeCampaignData) && {
+      id: "campaigns-summary-banner",
+      priority: 3,
+      content: (
+        <CampaignsSummaryBanner
+          title={activeCampaignData!.title}
+          targetCents={activeCampaignData!.targetCents}
+          currentCents={activeCampaignData!.currentCents}
+          percentage={activeCampaignData!.percentage}
+          activeCount={activeCampaignData!.activeCount}
         />
       ),
     },
@@ -520,6 +647,8 @@ export function OverviewPage() {
       <AutoRegisteredBanner />
 
       <PendingSuggestionsCard />
+
+      <PendingSplitSignalsCard />
 
       {error ? (
         <ErrorState

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
+  batchUpsertPortfolioSnapshots,
   createPortfolioAsset,
   createPortfolioContribution,
   createPortfolioDividend,
@@ -47,7 +48,14 @@ function makeBuilder(result: unknown): Builder {
   });
   builder.upsert.mockImplementation((input: unknown) => {
     lastUpsertInput = input;
-    return { ...builder, select: () => ({ ...builder, single: () => ({ then: (cb: (v: unknown) => unknown) => Promise.resolve(result).then(cb) }) }) };
+    return {
+      ...builder,
+      select: () => ({
+        ...builder,
+        single: () => ({ then: (cb: (v: unknown) => unknown) => Promise.resolve(result).then(cb) }),
+        then: (cb: (v: unknown) => unknown) => Promise.resolve(result).then(cb),
+      }),
+    };
   });
   builder.delete.mockImplementation(() => {
     const deleteChain = {
@@ -123,6 +131,64 @@ describe("portfolio repository (Fase 36 — Posição Consolidada)", () => {
     const snap = await upsertPortfolioSnapshot({ month: "2026-08", total_value: 50000, total_cost: 42000 });
     expect(lastUpsertInput).toMatchObject({ user_id: "u1", month: "2026-08", total_value: 50000, total_cost: 42000 });
     expect(snap.total_value).toBe(50000);
+  });
+
+  it("upsertPortfolioSnapshot normaliza centavos e valida formato da competência", async () => {
+    builder = makeBuilder({
+      data: { id: "s1", user_id: "u1", month: "2026-08", total_value: 50000.56, total_cost: 42000.12 },
+    });
+    await upsertPortfolioSnapshot({
+      month: "2026-08",
+      total_value: 50000.559,
+      total_cost: 42000.123,
+    });
+    expect(lastUpsertInput).toMatchObject({
+      user_id: "u1",
+      month: "2026-08",
+      total_value: 50000.56,
+      total_cost: 42000.12,
+    });
+  });
+
+  it("upsertPortfolioSnapshot rejeita competência inválida", async () => {
+    await expect(
+      upsertPortfolioSnapshot({ month: "2026-8", total_value: 1000, total_cost: 1000 }),
+    ).rejects.toThrow("Competência inválida");
+  });
+
+  it("upsertPortfolioSnapshot rejeita total_value negativo", async () => {
+    await expect(
+      upsertPortfolioSnapshot({ month: "2026-08", total_value: -10, total_cost: 1000 }),
+    ).rejects.toThrow("total_value");
+  });
+
+  it("upsertPortfolioSnapshot rejeita total_cost negativo", async () => {
+    await expect(
+      upsertPortfolioSnapshot({ month: "2026-08", total_value: 1000, total_cost: -5 }),
+    ).rejects.toThrow("total_cost");
+  });
+
+  it("batchUpsertPortfolioSnapshots grava múltiplos snapshots mensais normalizados", async () => {
+    builder = makeBuilder({
+      data: [
+        { id: "s1", user_id: "u1", month: "2026-07", total_value: 40000, total_cost: 38000 },
+        { id: "s2", user_id: "u1", month: "2026-08", total_value: 45000, total_cost: 41000 },
+      ],
+    });
+    const results = await batchUpsertPortfolioSnapshots([
+      { month: "2026-07", total_value: 40000, total_cost: 38000 },
+      { month: "2026-08", total_value: 45000, total_cost: 41000 },
+    ]);
+    expect(results).toHaveLength(2);
+    expect(lastUpsertInput).toEqual([
+      { user_id: "u1", month: "2026-07", total_value: 40000, total_cost: 38000 },
+      { user_id: "u1", month: "2026-08", total_value: 45000, total_cost: 41000 },
+    ]);
+  });
+
+  it("batchUpsertPortfolioSnapshots retorna array vazio quando inputs for vazio", async () => {
+    const results = await batchUpsertPortfolioSnapshots([]);
+    expect(results).toEqual([]);
   });
 
   it("createPortfolioContribution insere contribuição com user_id", async () => {

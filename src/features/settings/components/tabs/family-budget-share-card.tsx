@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Share2,
   Loader2,
+  Info,
 } from "lucide-react";
 import {
   Card,
@@ -21,7 +22,9 @@ import {
   MoneyInput,
   Modal,
   ModalFooter,
+  Switch,
 } from "@/components/ui";
+import { useFamilyMode } from "@/state";
 import { useMyPublicShares } from "@/state/queries/use-public-shares";
 import {
   useCreatePublicShare,
@@ -32,6 +35,7 @@ import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 
 export function FamilyBudgetShareCard() {
+  const { isFamilyModeEnabled, toggleFamilyMode, isPending: isUpdatingFamilyMode } = useFamilyMode();
   const { data: shares, isLoading } = useMyPublicShares("family_budget");
   const createShareMutation = useCreatePublicShare();
   const revokeShareMutation = useRevokePublicShare();
@@ -132,22 +136,61 @@ export function FamilyBudgetShareCard() {
               <Users className="size-4 text-muted-foreground" aria-hidden="true" />
               <span>Orçamento Familiar &amp; Link do Cônjuge</span>
             </span>
-            {activeShare ? (
-              <Badge variant="positive" size="xs">
-                Link Ativo
-              </Badge>
+            {isFamilyModeEnabled ? (
+              activeShare ? (
+                <Badge variant="positive" size="xs">
+                  Link Ativo
+                </Badge>
+              ) : (
+                <Badge variant="muted" size="xs">
+                  Sem Link Ativo
+                </Badge>
+              )
             ) : (
               <Badge variant="muted" size="xs">
-                Sem Link Ativo
+                Modo Desativado
               </Badge>
             )}
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            Compartilhe um link seguro de leitura para o seu cônjuge ou membros da casa acompanharem o teto mensal, total gasto e despesas familiares em tempo real, sem expor contas ou cartões.
+            Controle a visibilidade de transações familiares, abas de divisão de visão e o compartilhamento de leitura para o seu cônjuge ou membros da casa.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isLoading ? (
+          {/* Switch Mestre: Habilitar Modo Familiar */}
+          <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/80 bg-muted/20 gap-3">
+            <div className="space-y-0.5">
+              <label
+                htmlFor="family-mode-toggle"
+                className="text-xs font-semibold text-foreground cursor-pointer block"
+              >
+                Habilitar Modo Familiar
+              </label>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                {isFamilyModeEnabled
+                  ? "Ativo. Exibe filtros de visão (Todos, Pessoais, Familiar) e opções para marcar lançamentos como do lar."
+                  : "Desativado por padrão. Deixa o aplicativo limpo para uso pessoal individual, sem perder nenhum dado já salvo."}
+              </p>
+            </div>
+            <Switch
+              id="family-mode-toggle"
+              checked={isFamilyModeEnabled}
+              disabled={isUpdatingFamilyMode}
+              onCheckedChange={(checked) => {
+                void toggleFamilyMode(checked);
+              }}
+              aria-label="Habilitar Modo Familiar"
+            />
+          </div>
+
+          {!isFamilyModeEnabled ? (
+            <div className="flex items-start gap-2.5 p-3 rounded-xl border border-border/60 bg-surface text-muted-foreground">
+              <Info className="size-4 shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="text-[11px] leading-relaxed">
+                Ao desativar o modo familiar, todas as transações continuam disponíveis de forma consolidada no extrato. Nenhum lançamento familiar anterior é excluído e você pode reativar a qualquer momento.
+              </p>
+            </div>
+          ) : isLoading ? (
             <div className="p-4 rounded-xl border border-border/80 bg-muted/20 animate-pulse text-xs text-muted-foreground">
               Carregando preferências de compartilhamento...
             </div>

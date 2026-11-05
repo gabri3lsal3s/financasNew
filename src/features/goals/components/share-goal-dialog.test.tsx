@@ -15,7 +15,10 @@ const mockCategory: Category = {
 };
 
 const mutateAsyncCreateMock = vi.fn();
+const mutateAsyncUpdateMock = vi.fn();
 const mutateAsyncRevokeMock = vi.fn();
+const mutateAsyncRestoreMock = vi.fn();
+const mutateAsyncDeleteMock = vi.fn();
 const mutateAsyncRegenerateMock = vi.fn();
 let mockMyShares: PublicShare[] = [];
 
@@ -41,8 +44,20 @@ vi.mock("@/state/mutations/use-public-share-mutations", () => ({
     mutateAsync: mutateAsyncCreateMock,
     isPending: false,
   }),
+  useUpdatePublicShare: () => ({
+    mutateAsync: mutateAsyncUpdateMock,
+    isPending: false,
+  }),
   useRevokePublicShare: () => ({
     mutateAsync: mutateAsyncRevokeMock,
+    isPending: false,
+  }),
+  useRestorePublicShare: () => ({
+    mutateAsync: mutateAsyncRestoreMock,
+    isPending: false,
+  }),
+  useDeletePublicShare: () => ({
+    mutateAsync: mutateAsyncDeleteMock,
     isPending: false,
   }),
   useRegeneratePublicShare: () => ({
@@ -183,7 +198,7 @@ describe("ShareGoalDialog", () => {
     });
   });
 
-  it("permite revogar link ativo com confirmação em modal dedicado", async () => {
+  it("permite pausar link ativo com confirmação em modal dedicado", async () => {
     mockMyShares = [
       {
         id: "share-to-revoke",
@@ -212,16 +227,145 @@ describe("ShareGoalDialog", () => {
       />,
     );
 
-    const revokeBtn = screen.getByRole("button", { name: /Revogar link/i });
-    fireEvent.click(revokeBtn);
+    const pauseBtn = screen.getByRole("button", { name: /Pausar link público/i });
+    fireEvent.click(pauseBtn);
 
-    expect(screen.getByText("Revogar Link do Termômetro")).toBeInTheDocument();
+    expect(screen.getByText("Pausar Link do Termômetro")).toBeInTheDocument();
 
-    const confirmRevokeBtn = screen.getByRole("button", { name: "Confirmar revogação" });
-    fireEvent.click(confirmRevokeBtn);
+    const confirmPauseBtn = screen.getByRole("button", { name: "Pausar link" });
+    fireEvent.click(confirmPauseBtn);
 
     await waitFor(() => {
       expect(mutateAsyncRevokeMock).toHaveBeenCalledWith("share-to-revoke");
+    });
+  });
+
+  it("permite excluir permanentemente a meta de arrecadação pelo anfitrião", async () => {
+    const handleOpenChange = vi.fn();
+    mockMyShares = [
+      {
+        id: "share-to-delete",
+        user_id: "user-1",
+        kind: "goal_tracker",
+        token: "gt_delete_link",
+        payload: {
+          title: "Meta para Excluir",
+          target_cents: 500000,
+          pix_key: "123.456.789-00",
+        },
+        created_at: "2026-11-01T00:00:00Z",
+        expires_at: "2026-12-01T00:00:00Z",
+        is_revoked: false,
+        updated_at: "2026-11-01T00:00:00Z",
+      },
+    ];
+
+    render(
+      <ShareGoalDialog
+        open={true}
+        onOpenChange={handleOpenChange}
+        existingShare={mockMyShares[0]}
+      />,
+    );
+
+    const deleteBtn = screen.getByRole("button", { name: /Excluir meta/i });
+    fireEvent.click(deleteBtn);
+
+    expect(screen.getByText("Excluir Meta de Arrecadação?")).toBeInTheDocument();
+
+    const confirmDeleteBtn = screen.getByRole("button", { name: "Excluir Meta" });
+    fireEvent.click(confirmDeleteBtn);
+
+    await waitFor(() => {
+      expect(mutateAsyncDeleteMock).toHaveBeenCalledWith("share-to-delete");
+      expect(handleOpenChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  it("permite reativar link público previamente pausado", async () => {
+    mockMyShares = [
+      {
+        id: "share-revoked",
+        user_id: "user-1",
+        kind: "goal_tracker",
+        token: "gt_paused_link",
+        payload: {
+          title: "Meta Pausada",
+          target_cents: 500000,
+          pix_key: "123.456.789-00",
+        },
+        created_at: "2026-11-01T00:00:00Z",
+        expires_at: "2026-12-01T00:00:00Z",
+        is_revoked: true,
+        updated_at: "2026-11-01T00:00:00Z",
+      },
+    ];
+
+    render(
+      <ShareGoalDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        existingShare={mockMyShares[0]}
+      />,
+    );
+
+    expect(screen.getByText("Link Público Pausado")).toBeInTheDocument();
+
+    const restoreBtn = screen.getByRole("button", { name: /Reativar link público/i });
+    fireEvent.click(restoreBtn);
+
+    await waitFor(() => {
+      expect(mutateAsyncRestoreMock).toHaveBeenCalledWith("share-revoked");
+    });
+  });
+
+  it("permite abrir diretamente em modo de edição e atualizar todos os parâmetros da meta", async () => {
+    const existingShare: PublicShare = {
+      id: "share-to-edit",
+      user_id: "user-1",
+      kind: "goal_tracker",
+      token: "gt_edit_link",
+      payload: {
+        title: "Viagem Antiga",
+        target_cents: 100000,
+        current_cents: 20000,
+        deadline: "2026-12-31",
+        pix_key: "123.456.789-00",
+        show_contributions_publicly: true,
+      },
+      created_at: "2026-11-01T00:00:00Z",
+      expires_at: "2026-12-01T00:00:00Z",
+      is_revoked: false,
+      updated_at: "2026-11-01T00:00:00Z",
+    };
+
+    render(
+      <ShareGoalDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        existingShare={existingShare}
+        initialEditMode={true}
+      />,
+    );
+
+    expect(screen.getByText("Editando Parâmetros da Meta")).toBeInTheDocument();
+
+    // Título e valor arrecadado editáveis
+    const titleInput = screen.getByDisplayValue("Viagem Antiga");
+    fireEvent.change(titleInput, { target: { value: "Viagem Renovada 2027" } });
+
+    const saveBtn = screen.getByRole("button", { name: /Salvar Alterações da Meta/i });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(mutateAsyncUpdateMock).toHaveBeenCalledWith({
+        id: "share-to-edit",
+        payload: expect.objectContaining({
+          title: "Viagem Renovada 2027",
+          current_cents: 20000,
+          deadline: "2026-12-31",
+        }),
+      });
     });
   });
 });

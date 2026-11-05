@@ -65,11 +65,11 @@ begin
   if (v_share.payload ? 'monthly_ceiling_cents') and ((v_share.payload->>'monthly_ceiling_cents')::bigint > 0) then
     v_monthly_ceiling_cents := (v_share.payload->>'monthly_ceiling_cents')::bigint;
   else
-    select coalesce(sum(round(limit * 100)::bigint), 0)
+    select coalesce(sum(round(b."limit" * 100)::bigint), 0)
     into v_monthly_ceiling_cents
-    from public.budgets
-    where user_id = v_share.user_id
-      and month = v_month;
+    from public.budgets b
+    where b.user_id = v_share.user_id
+      and b.month = v_month;
   end if;
 
   -- 5. Calcular o total gasto com despesas familiares no mês

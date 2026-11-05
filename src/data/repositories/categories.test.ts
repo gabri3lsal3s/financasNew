@@ -1,11 +1,17 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { listCategories, createCategory } from "./categories";
+import {
+  listCategories,
+  createCategory,
+  seedDefaultCategories,
+  ensureDefaultCategories,
+} from "./categories";
 
 interface Builder {
   select: ReturnType<typeof vi.fn>;
   eq: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
   insert: ReturnType<typeof vi.fn>;
+  upsert: ReturnType<typeof vi.fn>;
   single: ReturnType<typeof vi.fn>;
   then: (onFulfilled: (value: unknown) => unknown) => Promise<unknown>;
 }
@@ -16,6 +22,7 @@ function makeBuilder(result: unknown): Builder {
     eq: vi.fn(),
     order: vi.fn(),
     insert: vi.fn(),
+    upsert: vi.fn(),
     single: vi.fn(),
     then: (onFulfilled: (value: unknown) => unknown) => Promise.resolve(result).then(onFulfilled),
   } as Builder;
@@ -23,15 +30,18 @@ function makeBuilder(result: unknown): Builder {
   builder.eq.mockReturnValue(builder);
   builder.order.mockReturnValue(builder);
   builder.insert.mockReturnValue(builder);
+  builder.upsert.mockReturnValue(builder);
   builder.single.mockReturnValue(builder);
   return builder;
 }
 
 let builder: Builder;
+const mockRpc = vi.fn();
 
 vi.mock("@/data/client", () => ({
   getSupabase: () => ({
     from: () => builder,
+    rpc: (...args: unknown[]) => mockRpc(...args),
   }),
 }));
 
@@ -41,6 +51,7 @@ vi.mock("@/data/session", () => ({
 
 describe("categories repository", () => {
   beforeEach(() => {
+    mockRpc.mockReset();
     builder = makeBuilder({
       data: [
         {
@@ -110,4 +121,64 @@ describe("categories repository", () => {
       }),
     );
   });
+
+  describe("seedDefaultCategories", () => {
+    it("delega ao RPC seed_default_categories quando disponível", async () => {
+      mockRpc.mockResolvedValueOnce({ data: 11, error: null });
+
+      const count = await seedDefaultCategories();
+      expect(mockRpc).toHaveBeenCalledWith("seed_default_categories");
+      expect(count).toBe(11);
+      expect(builder.upsert).not.toHaveBeenCalled();
+    });
+
+    it("utiliza fallback batch upsert se o RPC retornar erro (banco não migrado)", async () => {
+      mockRpc.mockResolvedValueOnce({ data: null, error: { message: "function not found" } });
+      builder = makeBuilder({
+        data: Array.from({ length: 11 }, (_, i) => ({ id: `cat-${i}` })),
+        error: null,
+      });
+
+      const count = await seedDefaultCategories();
+      expect(count).toBe(11);
+      expect(builder.upsert).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ name: "Alimentação", type: "expense" }),
+          expect.objectContaining({ name: "Salário", type: "income" }),
+        ]),
+        expect.objectContaining({
+          onConflict: "user_id,type,name",
+          ignoreDuplicates: true,
+        }),
+      );
+    });
+  });
+
+  describe("ensureDefaultCategories", () => {
+    it("não executa seed se o usuário já possuir categorias não-reservadas", async () => {
+      builder = makeBuilder({
+        count: 5,
+        data: null,
+        error: null,
+      });
+
+      const seeded = await ensureDefaultCategories("user-123");
+      expect(seeded).toBe(false);
+      expect(mockRpc).not.toHaveBeenCalled();
+    });
+
+    it("executa seed se o usuário tiver 0 categorias não-reservadas", async () => {
+      builder = makeBuilder({
+        count: 0,
+        data: null,
+        error: null,
+      });
+      mockRpc.mockResolvedValueOnce({ data: 11, error: null });
+
+      const seeded = await ensureDefaultCategories("user-123");
+      expect(seeded).toBe(true);
+      expect(mockRpc).toHaveBeenCalledWith("seed_default_categories");
+    });
+  });
 });
+

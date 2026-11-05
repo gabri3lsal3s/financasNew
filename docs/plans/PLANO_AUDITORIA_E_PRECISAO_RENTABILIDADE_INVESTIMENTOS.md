@@ -96,7 +96,7 @@ flowchart TD
 ### FASE 1: Motor Matemático do Extrato Mensal Isolado
 > **Objetivo:** Implementar no domínio puro (`src/domain/portfolio/`) a apuração exata dos indicadores isolados da competência (variação do mês, P&L financeiro do mês, proventos do mês e movimentações do mês).
 
-- [ ] **Tarefa 1.1: Função Pura de Apuração da Competência Mensal (`monthly-statement.ts`)**
+- [x] **Tarefa 1.1: Função Pura de Apuração da Competência Mensal (`monthly-statement.ts`)**
   - **Novo Arquivo:** `src/domain/portfolio/monthly-statement.ts` + `monthly-statement.test.ts`
   - **Responsabilidades:**
     1. Receber o mês ($M$), saldo anterior ($M-1$), saldo final ($M$), fluxos externos com data, proventos do mês e transações do mês.
@@ -109,13 +109,13 @@ flowchart TD
        - `monthNetContributionBRL`: Saldo líquido de aportes externos do mês.
     3. Garantir imunidade a contaminações de anos anteriores.
 
-- [ ] **Tarefa 1.2: Integração com o Motor Point-in-Time (`point-in-time.ts`)**
+- [x] **Tarefa 1.2: Integração com o Motor Point-in-Time (`point-in-time.ts`)**
   - **Arquivo:** `src/domain/portfolio/point-in-time.ts`
   - **Ação:**
     - Incorporar o resultado de `monthly-statement.ts` no `PointInTimeResult`.
     - Eliminar o fallback que substituía cotações ausentes por `average_price`, sinalizando claramente quando o mês for derivado de saldo consolidado de snapshot (TWA).
 
-- [ ] **Tarefa 1.3: Depreciação Formal de `portfolioReturnPct` (`summary.ts`)**
+- [x] **Tarefa 1.3: Depreciação Formal de `portfolioReturnPct` (`summary.ts`)**
   - **Arquivo:** `src/domain/portfolio/summary.ts`
   - **Ação:** Marcar `portfolioReturnPct` como `@deprecated`. Redirecionar usos para as funções canônicas baseadas em custo investido e Modified Dietz.
 
@@ -130,7 +130,7 @@ flowchart TD
 ### FASE 2: Harmonização de Snapshots e Persistência de Fechamento
 > **Objetivo:** Unificar a semântica da tabela `portfolio_snapshots` e eliminar concorrência entre hooks na gravação de dados.
 
-- [ ] **Tarefa 2.1: Regra Canônica de Patrimônio e Custo no Snapshot**
+- [x] **Tarefa 2.1: Regra Canônica de Patrimônio e Custo no Snapshot**
   - **Arquivos:** `src/types/schema.ts`, `src/data/repositories/portfolio.ts`
   - **Definição Canônica:**
     - `total_value`: Saldo patrimonial total na data de corte (Ativos valorados + Saldo de Caixa).

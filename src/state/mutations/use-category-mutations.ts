@@ -1,5 +1,10 @@
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { createCategory, deleteCategory, updateCategory } from "@/data/repositories/categories";
+import {
+  createCategory,
+  deleteCategory,
+  seedDefaultCategories,
+  updateCategory,
+} from "@/data/repositories/categories";
 import { categoriesKey } from "@/state/queries/use-categories";
 import { expensesKey } from "@/state/queries/use-expenses";
 import { incomesKey } from "@/state/queries/use-incomes";
@@ -47,3 +52,12 @@ export function useDeleteCategory() {
     onSuccess: () => invalidateFinance(queryClient),
   });
 }
+
+export function useSeedDefaultCategories() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => seedDefaultCategories(),
+    onSuccess: () => invalidateFinance(queryClient),
+  });
+}
+

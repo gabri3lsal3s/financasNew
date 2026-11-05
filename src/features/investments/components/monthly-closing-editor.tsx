@@ -156,10 +156,12 @@ export function MonthlyClosingEditor({
     const totalInvestedBRL = itemsList.reduce((acc, it) => acc + it.editedValueBRL, 0);
     const cashBRL = cashBalanceCents / 100;
     const totalValueBRL = Math.round((totalInvestedBRL + cashBRL) * 100) / 100;
-    const totalCostBRL =
+    const assetsCostBRL =
       historicalPosition.totalCostBRL > 0
         ? historicalPosition.totalCostBRL
         : totalInvestedBRL;
+    // Regra canônica (§2.1 / §2.2 PLANO_AUDITORIA): Custo dos Ativos + Saldo de Caixa (paridade 1:1)
+    const totalCostBRL = Math.round((assetsCostBRL + cashBRL) * 100) / 100;
     const gainBRL = Math.round((totalValueBRL - totalCostBRL) * 100) / 100;
     const gainPct = totalCostBRL > 0 ? (gainBRL / totalCostBRL) * 100 : 0;
 

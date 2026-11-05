@@ -172,6 +172,8 @@
     │   │   │                      #   smart-advisor-card (assistente proativo de insights com confirmação de renda em 1 toque),
     │   │   │                      #   quick-aporte-card (bloco de aporte rápido direcionado na Home com rebalanceamento em lote),
     │   │   │                      #   pending-suggestions-card (card discreto de transações capturadas do assistente passivo),
+    │   │   │                      #   pending-split-signals-card (card de sugestões de abatimento de racha com 1 toque),
+    │   │   │                      #   manage-split-dialog (gestão granular de participantes, baixas parciais e calotes de racha),
     │   │   │                      #   paste-receipt-dialog (modal universal de colagem de comprovantes e notificações bancárias),
     │   │   │                      #   prediction-suggestions (F21 — autopreenchimento preditivo),
     │   │   │                      #   export-data-hub (F22),
@@ -239,7 +241,8 @@
     │   │
     │   ├── public-share/          #   Compartilhamento Público (/r/:token, /orcamento-familiar/:token, /meta/:token)
     │   │                          #     pages: split-public-page, family-budget-page, goal-tracker-public-page
-    │   │                          #     components: pix-copy-block, share-public-shell, family-budget-category-list
+    │   │                          #     components: pix-copy-block, share-public-shell, family-budget-category-list,
+    │   │                          #                 split-onboarding-modal, select-participant-dialog, select-split-category-dialog
     │   │
     │   ├── tools/                 #   Simuladores Financeiros Abertos & Hub (/ferramentas, /ferramentas/simulador-dividas, /ferramentas/rebalanceamento, /ferramentas/juros-compostos)
     │   │                          #     pages: tools-hub-page, debt-simulator-page, rebalance-simulator-page, compound-interest-page

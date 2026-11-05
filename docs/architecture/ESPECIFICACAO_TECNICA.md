@@ -166,6 +166,7 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
 | `class_targets` / `sector_targets` | id, user_id, group_type (`class \| sector`), name, target_percentage | Metas opcionais por classe/setor |
 | `asset_prices` | id, **user_id (nullable — NULL = cache global da edge function; preenchido = override manual do usuário)**, ticker, price, currency, source (`api \| fallback \| manual`), manual_price (nullable), updated_at | Cache servidor; override manual prevalece; RLS: dono quando `user_id` presente, leitura global quando NULL |
 | `portfolio_monthly_prices` | id, user_id (FK), ticker, month (`YYYY-MM`), price, currency (`BRL \| USD`), source (`api \| manual \| fallback`), created_at, updated_at | Cotações mensais auditadas por competência; Unique (user_id, ticker, month); RLS: dono |
+| `portfolio_snapshots` | id, user_id (FK), month (`YYYY-MM`), total_value (≥ 0), total_cost (≥ 0), created_at, updated_at | Snapshots patrimoniais consolidados; total_value = Ativos + Caixa; total_cost = Custo Ativos + Caixa (1:1); Unique (user_id, month); RLS: dono |
 | `public_shares` | id (UUID PK), user_id (FK auth.users), kind (`split \| family_budget \| goal_tracker`), token (text unique), payload jsonb, created_at, expires_at, is_revoked (boolean default false), updated_at | RLS: leitura pública de compartilhamentos válidos (não revogados e não expirados); proprietário (`user_id = auth.uid()`) possui CRUD integral; tokens criptográficos (nanoid) |
 | `audit_events` | id, user_id, entity_type, entity_id, action, payload jsonb, created_at | **Imutável** (RLS: insert + select; sem update/delete) |
 
@@ -477,6 +478,10 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
   - Fluxos de caixa compostos por múltiplos marcos históricos de aportes e resgates do bolso (`portfolio_contributions`), onde retiradas (tag `[Resgate]`) contam como devolução antecipada de capital ao investidor.
 - **Snapshots Patrimoniais, Carrossel Horizontal e Tabela Analítica (`PortfolioSnapshotsCarousel` e `PortfolioSnapshotsDialog`):**
   - Histórico mensal gravado na tabela `portfolio_snapshots` (`month`, `total_value`, `total_cost`), enriquecido com proventos acumulados e cotas TWR.
+  - **Regra Canônica de Patrimônio e Custo no Snapshot (`portfolio_snapshots`):**
+    - `total_value`: Saldo patrimonial total na data de corte (Ativos valorados a mercado/curva + Saldo de Caixa da carteira).
+    - `total_cost`: Custo de aquisição total aplicado sob custódia (Custo dos Ativos + Saldo de Caixa na paridade 1:1).
+    - **Invariante de Consistência e Fidelidade Contábil:** O caixa em moeda local possui rentabilidade intrínseca nula ($\text{Valor} = \text{Custo}$). Ao consolidar tanto `total_value` quanto `total_cost` com inclusão integral do caixa sob paridade 1:1, preserva-se rigorosamente a proporcionalidade do retorno contábil histórico e a consistência entre extratos mensais e relatórios gerenciais, sem inflar artificialmente a base de cálculo nem distorcer a variação real da carteira.
   - **Carrossel Horizontal de Snapshots:** Fita deslizante na página com os meses recentes ordenados do mais recente ao mais antigo, checkpoints com patrimônio e mini-grid 2x2 interno (custo, proventos, retorno, TWR), além de navegação por setas no desktop/tablet.
   - **Diálogo Modal da Tabela Analítica (`PortfolioSnapshotsDialog`):** Modal amplo (`size="2xl"`) acessível pelo cabeçalho ou card final do carrossel, com auditoria detalhada de 12 a 32+ meses, filtro rápido por ano, KPIs de resumo do período e suporte a impressão/PDF.
 - **Assistente de Importação de Extratos & Deduplicação (`statement-parser.ts`):**
@@ -641,7 +646,25 @@ O módulo de compartilhamento e crescimento orgânico foi projetado para permiti
 - **Precisão Matemática em Centavos (`src/domain/finance/split-math.ts`):** os valores são processados exclusivamente em centavos inteiros (BRL). A distribuição do resto euclidiano adota as políticas `"balanced"` (distribuição de centavos residuais aos primeiros participantes) e `"host"` (resto absorvido pelo titular para que convidados tenham cotas rigorosamente idênticas), garantindo a invariante $\sum \text{cotas} = \text{valor original}$.
 - **Padrão Pix BACEN EMV QRCPS-MPM (`src/domain/pix/pix-br-code.ts`):** gerador puro do padrão normativo do Banco Central do Brasil para arranjos Pix. Constrói payloads TLV (Tag-Length-Value) incluindo Payload Format Indicator (00), Point of Initiation Method (01), Merchant Account Information (26 com GUI `br.gov.bcb.pix`), Merchant Category Code (52: "0000"), Moeda BRL (53: "986"), Valor da Transação (54 formatado com 2 decimais), País (58: "BR"), Nome do Titular (59 sanitizado sem acentos), Cidade (60), Campo Adicional/txid (62) e CRC16-CCITT Kermit (63 com polinômio 0x1021). Suporta chaves CPF, CNPJ, E-mail, Celular e Chave Aleatória (EVP).
 - **Página Pública `/r/:token` (`SplitPublicPage`):** rota aberta desautenticada consumida via token de `public_shares` (`kind = 'split'`). Renderiza o resumo da conta dividida, card de cota de cada pessoa, botão de 1 toque **[Copiar Código Pix]**, renderização de QR Code canvas dinâmico via `QrCodeCanvas` e marcação local em memória/localStorage de "Já paguei".
-- **Auto-Onboarding com Pré-Preenchimento (`SplitOnboardingModal` & `usePendingSplitExpense`):** convidados que abrem o link do racha encontram o CTA *"Salvar despesa no Áxis Finance"*. Ao clicar, a cota individual e descrição são armazenadas em sessão e injetadas automaticamente no wizard de lançamento (`LaunchWizard`) após a criação da conta.
+- **Auto-Onboarding com Pré-Preenchimento & Categorização Inteligente (`SplitOnboardingModal`, `SelectSplitCategoryDialog` & `usePendingSplitExpense`):** convidados que abrem o link do racha encontram o CTA *"Salvar despesa no Áxis Finance"*. O sistema tenta associar automaticamente a categoria original do anfitrião; caso o usuário não possua categoria equivalente, o diálogo `SelectSplitCategoryDialog` permite a escolha imediata. A cota e os metadados são injetados automaticamente no fluxo de criação.
+- **Sinalização Transacional de Pagamento & Proteção contra Falsos Recebimentos (`signal_split_payment` RPC & `PendingSplitSignalsCard`):** ao clicar em salvar ou avisar pagamento via link público, gera-se um sinal pendente associado ao participante (`SelectParticipantDialog`). No dashboard da Home, o anfitrião visualiza o card de sugestões de abatimento com as opções de 1 toque:
+  - **"Abater cota":** confirma o Pix recebido, quita o participante e abate o valor do custo líquido da despesa original.
+  - **"Ainda não recebi":** aciona `dismiss_split_payment_signal`, protegendo o anfitrião contra cliques acidentais ou sem envio de Pix.
+- **Rateio Contábil Sob Demanda (100% Inicial no Racha) & Abatimento Progressivo:**
+  - No lançamento (`LaunchWizard`), ao ativar o toggle "Rachar despesa", o seletor manual de rateio é bloqueado automaticamente em 100% (`report_weight = 1.0`), acompanhado de banner explicativo, prevenindo distorção de duplo desconto.
+  - O custo líquido do anfitrião diminui dinamicamente à medida que baixas são registradas:
+    $$\text{Custo Líquido} = \text{Total} - \text{Total Recebido}, \quad \text{report\_weight} = \frac{\text{Custo Líquido}}{\text{Total}}$$
+  - Se ninguém pagar (calote total), a despesa permanece integral no extrato (sem falsas economias).
+  - O saldo da conta a receber vinculada em `debts` é sincronizado em tempo real, sendo liquidado automaticamente ao atingir 100% de arrecadação.
+- **Gestão Granular de Baixa e Exclusão (`ManageSplitDialog`):**
+  - Permite baixa individual integral ("Recebi Tudo") ou personalizada com valor parcial / calote ("Outro Valor", inclusive R$ 0,00).
+  - Ao excluir um racha, o usuário seleciona seletivamente:
+    1. *Link e dados do racha* (obrigatório);
+    2. *Conta a receber vinculada* (opcional, default marcado);
+    3. *Despesa original no extrato* (opcional, default desmarcado; se mantida, restaura o rateio para 100% integral).
+- **Cards Otimizados de Rachas Ativos & Carrossel da Home (`ActiveSplitsCard` & `SplitPendingBanner`):**
+  - Em transações, os rachas são exibidos em blocos de 2 por vez com paginação por setas, ordenação por vencimento próximo e antiguidade, e layout de altura reduzida.
+  - Na Home, o carrossel consolida a soma das divisões pendentes, quantidade de despesas a receber e atalho rápido para gestão.
 
 #### 3.13.2 Orçamento Familiar Compartilhado (Visão Cônjuge/Parceiro)
 - **Segregação de Despesas e Receitas Familiares:** campo booleano `is_family` nas tabelas `expenses` e `incomes`. Permite que o titular marque lançamentos que compõem o custo de vida conjunto da casa.
@@ -666,7 +689,7 @@ O módulo de compartilhamento e crescimento orgânico foi projetado para permiti
 #### 3.13.5 Chancela Institucional em Relatórios e Extratos PDF
 - **Rodapé Contábil Padronizado (`ReportFooter`):** aplicado em todas as exportações e relatórios analíticos impressos com tipografia sóbria:
   `Relatório estruturado via Áxis Finance · Gestão Financeira Pessoal & Automação | axis.app`
-- **Micro QR Code de Autenticidade:** componente `QrCodeCanvas` embutido no rodapé do documento permitindo validação e reforçando o posicionamento executivo perante contadores, cônjuges e parceiros.
+- **Chancela Oficial com Link Discreto de Apresentação:** hiperlink elegante na chancela oficial direcionando o leitor do PDF digital para a página de apresentação da plataforma (`/apresentacao` via `getPublicAppUrl`), preservando acabamento executivo sem poluição visual (micro QR Code mantido apenas como prop opcional desativada por padrão).
 
 ---
 

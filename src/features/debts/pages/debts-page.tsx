@@ -76,6 +76,9 @@ function DebtRow({ debt, onSettle, onUnsettle, onEdit }: DebtRowProps) {
           {debt.expense_id ? (
             <span className="hidden sm:inline text-muted-foreground/60">· vinculada a despesa</span>
           ) : null}
+          {debt.installment_group_id ? (
+            <span className="hidden sm:inline text-muted-foreground/60">· parcelamento/contrato</span>
+          ) : null}
         </div>
 
         <div className="flex shrink-0 items-center">
@@ -611,8 +614,8 @@ export function DebtsPage() {
           setFormOpen(next);
           if (!next) setEditingDebt(null);
         }}
-        onDelete={async (debt) => {
-          await deleteDebt.mutateAsync(debt.id);
+        onDelete={async (debt, mode) => {
+          await deleteDebt.mutateAsync({ id: debt.id, mode });
         }}
       />
 

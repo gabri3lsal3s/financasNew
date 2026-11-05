@@ -8,7 +8,10 @@ const updateIncomeMock = vi.fn();
 const deleteIncomeMock = vi.fn();
 const createIncomeMock = vi.fn();
 
+let mockIsFamilyModeEnabled = true;
+
 vi.mock("@/state", () => ({
+  useFamilyMode: () => ({ isFamilyModeEnabled: mockIsFamilyModeEnabled }),
   useUserSubscription: () => ({
     canWrite: true,
     isReadOnly: false,
@@ -152,6 +155,32 @@ describe("IncomeDetailDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
 
+    expect(updateIncomeMock).toHaveBeenCalledWith({
+      id: "i1",
+      input: expect.objectContaining({
+        is_family: true,
+      }),
+    });
+  });
+
+  it("oculta metadados e switch familiares quando o modo familiar está desabilitado, preservando is_family na edição", async () => {
+    mockIsFamilyModeEnabled = false;
+    updateIncomeMock.mockClear();
+    updateIncomeMock.mockResolvedValue({});
+    const user = userEvent.setup();
+
+    render(<IncomeDetailDialog income={baseIncome({ is_family: true })} open={true} onOpenChange={vi.fn()} />);
+
+    // Na visualização: não exibe a linha/badge de Orçamento Familiar
+    expect(screen.queryByText("Orçamento")).not.toBeInTheDocument();
+    expect(screen.queryByText("Familiar")).not.toBeInTheDocument();
+
+    // Na edição: não exibe o switch
+    await user.click(screen.getByRole("button", { name: /editar/i }));
+    expect(screen.queryByRole("switch", { name: "Receita da Casa / Familiar" })).not.toBeInTheDocument();
+
+    // Ao salvar: preserva o valor is_family: true original
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
     expect(updateIncomeMock).toHaveBeenCalledWith({
       id: "i1",
       input: expect.objectContaining({

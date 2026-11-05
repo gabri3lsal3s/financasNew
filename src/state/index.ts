@@ -39,6 +39,7 @@ export {
   useEarlyAmortizeLoan,
   useDeleteLoan,
   useUpdateLoan,
+  useRenegotiateLoanContract,
 } from "./mutations/use-loan-mutations";
 export {
   useCreateDebt,
@@ -60,6 +61,7 @@ export {
   useCreateCategory,
   useUpdateCategory,
   useDeleteCategory,
+  useSeedDefaultCategories,
 } from "./mutations/use-category-mutations";
 export { useFeedback, useSetFeedback } from "./queries/use-insight-feedback";
 export {
@@ -68,6 +70,7 @@ export {
   useMarkAllRemindersAsRead,
 } from "./queries/use-reminder-states";
 export { useUserPreferences } from "./queries/use-user-preferences";
+export { useFamilyMode } from "./queries/use-family-mode";
 export { useUpdateReminderPreferences, useUpdateCustomSettings } from "./mutations/use-preference-mutations";
 export { useUpdateProfile } from "./mutations/use-profile-mutations";
 export { useReminders } from "./queries/use-reminders";
@@ -254,10 +257,15 @@ export { useUpdateTelegramSettingsMutation } from "./mutations/use-telegram-muta
 export { useFeatureUsageMetrics, analyticsRankingKey } from "./queries/use-analytics-metrics";
 export {
   useCreatePublicShare,
+  useUpdatePublicShare,
+  useDeletePublicShare,
   useRevokePublicShare,
+  useRestorePublicShare,
   useRegeneratePublicShare,
   useSaveSplitExpense,
   useSaveSimulationToAccount,
+  useSignalSplitPayment,
+  useDismissSplitPaymentSignal,
   publicSharesQueryKey,
 } from "./mutations/use-public-share-mutations";
 export {

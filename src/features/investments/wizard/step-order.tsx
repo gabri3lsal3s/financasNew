@@ -248,7 +248,7 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
           ) : !isCash && parsedQty > 0 && state.priceCents > 0 ? (
             <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/90 p-4">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                <Calculator className="size-3.5 text-primary" aria-hidden="true" />
+                <Calculator className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                 <span>Impacto no Preço Médio e Posição</span>
               </div>
 
@@ -473,7 +473,7 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
 
               {state.assetClass === "Ações" && state.currency === "BRL" && (
                 <div className="flex items-center gap-1.5 pt-1 text-[11px] text-muted-foreground">
-                  <Info className="size-3.5 text-primary shrink-0" aria-hidden="true" />
+                  <Info className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                   <span>Isenção de IRPF se o total de vendas de ações no mês for até R$ 20.000,00.</span>
                 </div>
               )}

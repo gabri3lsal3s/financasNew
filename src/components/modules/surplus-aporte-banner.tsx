@@ -36,7 +36,7 @@ export function SurplusAporteBanner({
   return (
       <div
         className={cn(
-          "w-full flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border",
+          "w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs transition-all hover:border-border",
           className,
         )}
       >
@@ -47,19 +47,19 @@ export function SurplusAporteBanner({
           >
             <Sparkles className="size-4.5" />
           </span>
-          <div className="flex flex-col min-w-0">
+          <div className="flex flex-col gap-0.5 min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold tracking-tight text-foreground break-words">
+              <h2 className="text-sm font-semibold tracking-tight text-foreground break-words truncate">
                 Capacidade de Aporte Estimada
               </h2>
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Você possui uma sobra líquida calculada no ciclo pronta para rebalancear sua carteira.
+            <p className="text-xs text-muted-foreground leading-relaxed truncate">
+              Sobra de caixa calculada disponível para aporte na carteira.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center justify-between sm:justify-end gap-3 pt-1.5 sm:pt-0 border-t border-border/40 sm:border-t-0 shrink-0 w-full sm:w-auto">
+        <div className="flex items-center justify-between sm:justify-end gap-3 pt-1.5 sm:pt-0 border-t border-border/40 sm:border-t-0 shrink-0 w-full sm:w-auto self-stretch sm:self-center mt-auto sm:mt-0">
           <div className="flex flex-col sm:items-end">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
               Disponível

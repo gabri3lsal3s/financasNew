@@ -185,6 +185,7 @@ describe("StepQuick (Lançamento Rápido em Tela Única)", () => {
     render(
       <StepQuick
         {...defaultProps}
+        isFamilyModeEnabled={true}
         onFamilyChange={onFamilyChange}
       />,
     );

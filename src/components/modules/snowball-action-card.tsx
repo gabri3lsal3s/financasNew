@@ -34,12 +34,7 @@ export function SnowballActionCard({
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <span
-            className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio"
-            aria-hidden="true"
-          >
-            <Coins className="size-4" />
-          </span>
+          <Coins className="size-4 text-portfolio shrink-0" aria-hidden="true" />
           <h3 className="text-sm font-semibold tracking-tight text-foreground truncate">
             Efeito Bola de Neve em Ação
           </h3>

@@ -22,6 +22,13 @@ import type {
 } from "@/types";
 import { calculateFixedIncomeBalance } from "./fixed-income";
 import { resolveHistoricalQuotePriority, type ResolvedHistoricalQuote } from "./historical-quotes";
+import {
+  calculateMonthlyStatement,
+  type MonthlyStatementCashFlow,
+  type MonthlyStatementDividend,
+  type MonthlyStatementResult,
+  type MonthlyStatementTransaction,
+} from "./monthly-statement";
 
 export type PointInTimeFidelityStatus = "complete" | "balance_only" | "insufficient";
 
@@ -38,6 +45,8 @@ export interface PointInTimeFidelity {
   calibratedQuotesCount: number;
   apiQuotesCount: number;
   fallbackQuotesCount: number;
+  /** Sinaliza se a competência é derivada de saldo consolidado de snapshot (TWA/Marco Zero) */
+  isDerivedFromSnapshot?: boolean;
 }
 
 export interface PointInTimeAssetPosition {
@@ -86,6 +95,10 @@ export interface PointInTimeResult {
   fidelity: PointInTimeFidelity;
   /** Ativos existentes na carteira que não tiveram movimentações retroativas apuradas na competência */
   candidateAssets?: PointInTimeCandidateAsset[];
+  /** Apuração da competência mensal isolada (Modified Dietz, P&L do mês, fluxos e proventos) */
+  monthlyStatement?: MonthlyStatementResult;
+  /** Sinaliza se o resultado patrimonial da competência é derivado do saldo consolidado de snapshot (TWA) */
+  isDerivedFromSnapshot?: boolean;
 }
 
 export interface PointInTimeCalculationParams {
@@ -97,14 +110,28 @@ export interface PointInTimeCalculationParams {
   monthlyPrices?: PortfolioMonthlyPrice[];
   /** Snapshot consolidado gravado no banco de dados para a competência (se houver) */
   snapshot?: PortfolioSnapshot | null;
+  /** Snapshot da competência anterior M-1 (se disponível) */
+  previousSnapshot?: PortfolioSnapshot | null;
+  /** Lista de todos os snapshots históricos (permite resolução automática do mês anterior M-1) */
+  snapshots?: PortfolioSnapshot[];
+  /** Saldo patrimonial inicial de fechamento do mês anterior M-1 em BRL */
+  startBalanceBRL?: number;
   /** Cotações de fechamento retornadas via API de mercado para o mês (ticker -> cotação) */
   apiPrices?: Record<string, number>;
+  /** Cotações atuais de mercado sob demanda para estimativa (ticker -> cotação) */
+  livePrices?: Record<string, number>;
   /** Taxa de câmbio USD/BRL na data de fechamento (padrão 5.25) */
   usdRate?: number;
   /** Taxa CDI anualizada vigente no mês para Renda Fixa (padrão 10.5) */
   annualCdiRate?: number;
   /** Saldo de caixa na competência (se registrado) */
   cashBalance?: number;
+  /** Fluxos externos de caixa do bolso (aportes e resgates) no mês */
+  externalFlows?: readonly MonthlyStatementCashFlow[];
+  /** Fluxo líquido externo consolidado de caixa no mês em BRL (fallback caso externalFlows não seja detalhado) */
+  netExternalCashFlowBRL?: number;
+  /** Taxa de retorno oficial explícita do mês (% informada pelo extrato da corretora) */
+  explicitRatePct?: number | null;
 }
 
 /**
@@ -121,6 +148,20 @@ export function getMonthEndCutoffDate(month: string): string {
   return `${yearStr}-${monthStr}-${padDay}`;
 }
 
+/**
+ * Retorna a competência anterior no calendário civil (YYYY-MM).
+ */
+export function getPreviousMonth(month: string): string {
+  const parts = month.split("-");
+  const year = Number.parseInt(parts[0] ?? "2026", 10);
+  const m = Number.parseInt(parts[1] ?? "01", 10);
+  if (m <= 1) {
+    return `${year - 1}-12`;
+  }
+  const prevM = String(m - 1).padStart(2, "0");
+  return `${year}-${prevM}`;
+}
+
 export function calculatePointInTimePosition(
   params: PointInTimeCalculationParams,
 ): PointInTimeResult {
@@ -131,10 +172,17 @@ export function calculatePointInTimePosition(
     dividends = [],
     monthlyPrices = [],
     snapshot = null,
+    previousSnapshot = null,
+    snapshots,
+    startBalanceBRL,
     apiPrices = {},
+    livePrices = {},
     usdRate = 5.25,
     annualCdiRate = 10.5,
     cashBalance,
+    externalFlows,
+    netExternalCashFlowBRL,
+    explicitRatePct,
   } = params;
 
   const cutoffDate = getMonthEndCutoffDate(month);
@@ -296,6 +344,7 @@ export function calculatePointInTimePosition(
     // Resolução de Cotação Histórica
     const savedMonthlyPrice = monthlyPriceMap.get(tickerUpper) ?? null;
     const apiPrice = apiPrices[tickerUpper] ?? null;
+    const livePrice = livePrices[tickerUpper] ?? null;
 
     const resolvedQuote = resolveHistoricalQuotePriority({
       ticker: tickerUpper,
@@ -303,7 +352,7 @@ export function calculatePointInTimePosition(
       savedMonthlyPrice,
       apiClosePrice: apiPrice,
       lastTransactionPriceInMonth: lastTxPriceInMonth,
-      currentLivePrice: asset.average_price > 0 ? asset.average_price : null,
+      currentLivePrice: livePrice,
     });
 
     let valueBRL: number;
@@ -336,8 +385,8 @@ export function calculatePointInTimePosition(
         priceQuote = valueBRL;
         priceBRL = valueBRL;
       } else {
-        // Sem metadados de juros, utiliza a cotação resolvida ou o custo como valor
-        const unitPrice = priceQuote > 0 ? priceQuote : averagePrice;
+        // Sem metadados de juros, utiliza estritamente a cotação resolvida (sem fallback arbitrário para preço médio de aquisição)
+        const unitPrice = priceQuote > 0 ? priceQuote : 0;
         priceQuote = unitPrice;
         priceBRL = Math.round(unitPrice * fxRate * 100) / 100;
         valueBRL = Math.round(runningQty * priceBRL * 100) / 100;
@@ -509,6 +558,81 @@ export function calculatePointInTimePosition(
     }
   }
 
+  const isDerivedFromSnapshot = Boolean(
+    snapshot &&
+      (fidelityStatus === "balance_only" ||
+        positions.length === 0 ||
+        (savedPricesInMonthCount === 0 && fallbackQuotesCount > 0)),
+  );
+
+  if (
+    isDerivedFromSnapshot &&
+    !reasons.some((r) => r.includes("TWA") || r.includes("saldo consolidado"))
+  ) {
+    reasons.push(
+      "Esta competência possui apenas registro consolidado de saldo patrimonial (histórico TWA/Marco Zero). Não há arquivo auditado de ativos e cotações para este mês.",
+    );
+  }
+
+  // Resolução do saldo inicial M-1 para apuração da competência
+  const prevMonth = getPreviousMonth(month);
+  const resolvedPrevSnapshot =
+    previousSnapshot ??
+    (snapshots ? snapshots.find((s) => s.month === prevMonth) ?? null : null);
+
+  const effectiveStartBalance =
+    startBalanceBRL !== undefined
+      ? startBalanceBRL
+      : resolvedPrevSnapshot &&
+          resolvedPrevSnapshot.total_value !== undefined &&
+          resolvedPrevSnapshot.total_value !== null
+        ? Number(resolvedPrevSnapshot.total_value) || 0
+        : 0;
+
+  // Saldo final M: se derivado de saldo consolidado de snapshot (TWA), adota o saldo registrado no snapshot;
+  // caso contrário, adota o saldo total reconstruído da carteira
+  const effectiveEndBalance =
+    isDerivedFromSnapshot &&
+    snapshot &&
+    snapshot.total_value !== undefined &&
+    snapshot.total_value !== null
+      ? Number(snapshot.total_value) || 0
+      : totalValueBRL;
+
+  const statementDividends: MonthlyStatementDividend[] = (dividends ?? []).map((d) => ({
+    date: d.date,
+    amount: Number(d.amount) || 0,
+    ticker: d.ticker,
+    notes: d.notes,
+  }));
+
+  const assetTickerMap = new Map<string, string>(assets.map((a) => [a.id, a.ticker]));
+
+  const statementTransactions: MonthlyStatementTransaction[] = (transactions ?? []).map((t) => ({
+    date: t.date,
+    type: t.type,
+    quantity: Number(t.quantity) || 0,
+    price: Number(t.price) || 0,
+    total: Number(t.total) || 0,
+    ticker: assetTickerMap.get(t.asset_id) ?? null,
+  }));
+
+  const effectiveExplicitRate =
+    explicitRatePct !== undefined && explicitRatePct !== null
+      ? explicitRatePct
+      : null;
+
+  const monthlyStatement = calculateMonthlyStatement({
+    month,
+    startBalanceBRL: effectiveStartBalance,
+    endBalanceBRL: effectiveEndBalance,
+    externalFlows,
+    netExternalCashFlowBRL,
+    dividends: statementDividends,
+    transactions: statementTransactions,
+    explicitRatePct: effectiveExplicitRate,
+  });
+
   const fidelity: PointInTimeFidelity = {
     status: fidelityStatus,
     canGenerateExecutiveReport,
@@ -522,6 +646,7 @@ export function calculatePointInTimePosition(
     calibratedQuotesCount,
     apiQuotesCount,
     fallbackQuotesCount,
+    isDerivedFromSnapshot,
   };
 
   return {
@@ -536,5 +661,7 @@ export function calculatePointInTimePosition(
     accumulatedDividendsTotalBRL: Math.round(accumulatedDividendsTotalBRL * 100) / 100,
     fidelity,
     candidateAssets,
+    monthlyStatement,
+    isDerivedFromSnapshot,
   };
 }

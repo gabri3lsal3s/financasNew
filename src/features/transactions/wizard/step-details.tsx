@@ -1,16 +1,19 @@
-import { Sparkles } from "lucide-react";
+import { Sparkles, Users } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge, NumberStepper, RadioGroup, Select, Switch } from "@/components/ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
+import { MoneyText } from "@/components/ui/money-text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsBRL } from "@/services/masks";
 import { RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import { MAX_RECURRENCE_OCCURRENCES, RECURRENCE_FREQUENCIES } from "@/domain/recurrences";
+import { calculateSplitSummary } from "@/domain/finance/split-math";
+import { cn } from "@/lib/utils";
 import type { RecurrenceFrequency } from "@/domain/recurrences";
 import type { DescriptionSuggestion } from "@/domain/predictions";
 import type { DebtType, PaymentMethod, ReceiveType } from "@/types";
@@ -26,8 +29,11 @@ export interface StepDetailsProps {
   onReceiveTypeChange: (type: ReceiveType) => void;
   onDescriptionChange: (description: string) => void;
   onFamilyChange: (isFamily: boolean) => void;
+  isFamilyModeEnabled?: boolean;
   onReportWeightChange: (weight: number) => void;
   onReportCustomAmountChange: (cents: number) => void;
+  onSplitToggle?: (enabled: boolean) => void;
+  onSplitPeopleCountChange?: (count: number) => void;
   onDebtToggle: (enabled: boolean) => void;
   onDebtTypeChange: (type: DebtType) => void;
   onDebtAmountChange: (cents: number) => void;
@@ -76,8 +82,11 @@ export function StepDetails({
   onReceiveTypeChange,
   onDescriptionChange,
   onFamilyChange,
+  isFamilyModeEnabled = false,
   onReportWeightChange,
   onReportCustomAmountChange,
+  onSplitToggle,
+  onSplitPeopleCountChange,
   onDebtToggle,
   onDebtTypeChange,
   onDebtAmountChange,
@@ -194,32 +203,40 @@ export function StepDetails({
       </div>
 
       {/* Switch Discreto: Despesa Familiar (Fase 3 — Tarefa 3.2) */}
-      <div className="rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs">
-        <Switch
-          id="details-family-switch"
-          checked={state.isFamily}
-          onCheckedChange={onFamilyChange}
-          label={isExpense ? "Despesa da Casa / Familiar" : "Receita da Casa / Familiar"}
-          description="Visível no Painel Familiar compartilhado"
-        />
-      </div>
+      {isFamilyModeEnabled && (
+        <div className="rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs">
+          <Switch
+            id="details-family-switch"
+            checked={state.isFamily}
+            onCheckedChange={onFamilyChange}
+            label={isExpense ? "Despesa da Casa / Familiar" : "Receita da Casa / Familiar"}
+            description="Visível no Painel Familiar compartilhado"
+          />
+        </div>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <span className="text-sm font-medium">Sua Participação / Rateio</span>
         <Select
-          value={isPresetWeight(state.reportWeight) ? String(state.reportWeight) : "custom"}
+          disabled={state.splitEnabled}
+          value={state.splitEnabled ? "1" : (isPresetWeight(state.reportWeight) ? String(state.reportWeight) : "custom")}
           onValueChange={(value) =>
             onReportWeightChange(value === "custom" ? CUSTOM_WEIGHT_VALUE : Number(value))
           }
           options={REPORT_WEIGHT_OPTIONS}
           ariaLabel="Sua Participação / Rateio"
         />
-        {effectiveReportWeight(state) < 1 ? (
+        {state.splitEnabled ? (
+          <div className="rounded-md border border-portfolio/20 bg-portfolio/5 px-2.5 py-2 text-[11px] text-muted-foreground space-y-0.5">
+            <span className="font-semibold text-portfolio block">Racha de despesa ativado:</span>
+            <span>A despesa inicia em 100% no seu extrato ({formatCentsAsBRL(state.valueCents)}). O rateio será abatido dinamicamente conforme os amigos forem pagando.</span>
+          </div>
+        ) : effectiveReportWeight(state) < 1 ? (
           <div className="rounded-md border border-border/80 bg-surface px-2.5 py-2 text-[11px] text-muted-foreground">
             <span className="font-medium text-foreground">Aviso de Rateio:</span> O valor bancário cobrado permanece 100% ({formatCentsAsBRL(state.valueCents)}). Nos relatórios entrará apenas a sua cota.
           </div>
         ) : null}
-        {!isPresetWeight(state.reportWeight) ? (
+        {!state.splitEnabled && !isPresetWeight(state.reportWeight) ? (
           <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-surface-raised p-3">
             <span className="text-xs font-medium text-foreground">Sua cota considerada no relatório</span>
             <MoneyInput
@@ -292,6 +309,109 @@ export function StepDetails({
           </>
         ) : null}
       </div>
+
+      {isExpense && !state.recurring ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="size-4 text-muted-foreground" aria-hidden="true" />
+              <div>
+                <span className="text-sm font-semibold text-foreground block">
+                  Rachar despesa com amigos
+                </span>
+                <span className="text-xs text-muted-foreground block">
+                  Gera código Pix Copia e Cola e registra cobrança a receber
+                </span>
+              </div>
+            </div>
+            <Switch
+              id="split-switch"
+              checked={state.splitEnabled}
+              onCheckedChange={(checked) => onSplitToggle?.(checked)}
+              aria-label="Rachar despesa com amigos"
+            />
+          </div>
+
+          {state.splitEnabled ? (
+            <div className="flex flex-col gap-3 pt-2 border-t border-border/60">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-foreground">Número de participantes</span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {[2, 3, 4, 5].map((count) => {
+                    const isSelected = state.splitPeopleCount === count;
+                    return (
+                      <button
+                        key={count}
+                        type="button"
+                        onClick={() => {
+                          triggerSensory("selection");
+                          onSplitPeopleCountChange?.(count);
+                        }}
+                        className={cn(
+                          "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer",
+                          isSelected
+                            ? "border-primary bg-primary/10 text-primary font-semibold"
+                            : "border-border/80 bg-surface-raised hover:bg-surface-hover text-foreground",
+                        )}
+                      >
+                        {count} pessoas
+                      </button>
+                    );
+                  })}
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <span className="text-xs text-muted-foreground">Outro:</span>
+                    <Input
+                      type="number"
+                      min={2}
+                      max={50}
+                      value={state.splitPeopleCount}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        if (!isNaN(val) && val >= 2 && val <= 50) {
+                          onSplitPeopleCountChange?.(val);
+                        }
+                      }}
+                      className="w-16 h-8 text-center text-xs"
+                      aria-label="Outra quantidade de pessoas"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {state.valueCents > 0 ? (
+                (() => {
+                  const splitMath = calculateSplitSummary(state.valueCents, state.splitPeopleCount, {
+                    remainderPolicy: "host",
+                  });
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-border/80 bg-surface-raised p-3">
+                      <div>
+                        <span className="text-[11px] text-muted-foreground block">Sua Parte (Anfitrião)</span>
+                        <MoneyText cents={splitMath.hostShareCents} variant="value" className="font-semibold text-sm" />
+                      </div>
+                      <div>
+                        <span className="text-[11px] text-muted-foreground block">
+                          Cada Convidado ({splitMath.guestCount})
+                        </span>
+                        <MoneyText
+                          cents={splitMath.guestShareCents}
+                          tone="portfolio"
+                          variant="value"
+                          className="font-semibold text-sm"
+                        />
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : null}
+
+              <p className="text-[11px] text-muted-foreground">
+                Ao salvar, a despesa será criada e o Pix Copia e Cola / QR Code será gerado automaticamente para você enviar aos seus amigos.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {isExpense && !state.recurring ? (
         <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">

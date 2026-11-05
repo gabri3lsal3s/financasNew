@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { CalendarDays, Edit2, Trash2 } from "lucide-react";
-import { Badge, Button, ConfirmDialog } from "@/components/ui";
+import { Badge, Button, Checkbox, ConfirmDialog } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { AMORTIZATION_SYSTEM_LABELS, LOAN_TYPE_LABELS, calculateLoanProgress } from "@/domain/loans";
 import { useDeleteLoan } from "@/state";
@@ -20,6 +20,7 @@ export function LoanCard({ loan, debts }: LoanCardProps) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteDebts, setDeleteDebts] = useState(true);
   const deleteLoan = useDeleteLoan();
 
   const contractDebts = debts.filter((d) => d.installment_group_id === loan.installment_group_id);
@@ -28,9 +29,8 @@ export function LoanCard({ loan, debts }: LoanCardProps) {
     loan.total_installments,
   );
 
-
   const handleConfirmDelete = async () => {
-    await deleteLoan.mutateAsync(loan.id);
+    await deleteLoan.mutateAsync({ id: loan.id, deleteDebts });
     setDeleteConfirmOpen(false);
   };
 
@@ -146,6 +146,7 @@ export function LoanCard({ loan, debts }: LoanCardProps) {
 
       <LoanEditDialog
         loan={loan}
+        debts={debts}
         open={editOpen}
         onOpenChange={setEditOpen}
       />
@@ -154,12 +155,27 @@ export function LoanCard({ loan, debts }: LoanCardProps) {
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         title={`Excluir contrato "${loan.name}"?`}
-        description="As parcelas pendentes serão mantidas como avulsas na lista de contas a pagar."
+        description={
+          deleteDebts
+            ? `O contrato e todas as suas ${contractDebts.length} parcelas vinculadas serão excluídos da lista de contas a pagar.`
+            : "As parcelas pendentes serão mantidas como avulsas na lista de contas a pagar."
+        }
         confirmLabel="Excluir contrato"
         variant="destructive"
         confirmPending={deleteLoan.isPending}
         onConfirm={handleConfirmDelete}
-      />
+      >
+        {contractDebts.length > 0 ? (
+          <div className="mt-4 flex items-center gap-2 rounded-xl border border-border/80 bg-surface-hover/30 p-3">
+            <Checkbox
+              id={`delete-debts-${loan.id}`}
+              checked={deleteDebts}
+              onCheckedChange={setDeleteDebts}
+              label={`Excluir também as ${contractDebts.length} parcelas vinculadas`}
+            />
+          </div>
+        ) : null}
+      </ConfirmDialog>
     </>
   );
 }

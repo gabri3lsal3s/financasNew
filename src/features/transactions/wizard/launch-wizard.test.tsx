@@ -28,6 +28,8 @@ vi.mock("@/services/merchant-learning", async (importOriginal) => {
   };
 });
 
+let mockIsFamilyModeEnabled = true;
+
 vi.mock("@/state", () => ({
   useCategories: () => ({
     data: [
@@ -45,6 +47,32 @@ vi.mock("@/state", () => ({
   useCreateIncomeInstallments: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateRecurrence: () => ({ mutateAsync: vi.fn(), isPending: false }),
   usePredictionHistory: () => ({ entries: predictionHistoryMock(), isLoading: false, error: null, refetch: vi.fn() }),
+  useFamilyMode: () => ({ isFamilyModeEnabled: mockIsFamilyModeEnabled }),
+}));
+
+vi.mock("@/state/queries/use-user-access", () => ({
+  useUserAccess: () => ({
+    profile: {
+      id: "user-123",
+      name: "Gabriel Silva",
+      email: "gabriel@example.com",
+      cpf: "12345678901",
+    },
+  }),
+}));
+
+vi.mock("@/state/queries/use-user-preferences", () => ({
+  useUserPreferences: () => ({
+    data: null,
+    isLoading: false,
+  }),
+}));
+
+vi.mock("@/state/mutations/use-public-share-mutations", () => ({
+  useCreatePublicShare: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ id: "share-1", token: "tok123" }),
+    isPending: false,
+  }),
 }));
 
 const activeCreditCardsMock = vi.fn(() => [] as unknown[]);
@@ -703,7 +731,8 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
       });
     });
 
-    it("envia isFamily: true ao marcar o switch de despesa familiar no lançamento rápido", async () => {
+    it("envia isFamily: true ao marcar o switch de despesa familiar no lançamento rápido quando modo familiar habilitado", async () => {
+      mockIsFamilyModeEnabled = true;
       const user = userEvent.setup();
 
       render(
@@ -731,6 +760,66 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
             isFamily: true,
           }),
         );
+      });
+    });
+
+    it("não renderiza o switch de despesa familiar no lançamento rápido quando modo familiar está desabilitado (padrão)", () => {
+      mockIsFamilyModeEnabled = false;
+
+      render(
+        <LaunchWizard
+          initialMode="quick"
+          initialValues={{
+            valueCents: 4500,
+            categoryId: "c1",
+            paymentMethod: "pix",
+          }}
+        />,
+      );
+
+      expect(screen.queryByRole("switch", { name: "Despesa da Casa / Familiar" })).not.toBeInTheDocument();
+    });
+
+    it("ao habilitar o switch de Rachar Despesa, registra cobrança a receber e abre SplitExpenseDialog pós-salvamento", async () => {
+      const user = userEvent.setup();
+
+      render(
+        <LaunchWizard
+          initialMode="quick"
+          initialValues={{
+            valueCents: 10000,
+            categoryId: "c1",
+            paymentMethod: "pix",
+            description: "Almoço com amigos",
+          }}
+        />,
+      );
+
+      const splitSwitch = screen.getByRole("switch", { name: "Rachar com amigos" });
+      expect(splitSwitch).toHaveAttribute("aria-checked", "false");
+      await user.click(splitSwitch);
+      expect(splitSwitch).toHaveAttribute("aria-checked", "true");
+
+      // Mostra o resumo do rateio
+      expect(screen.getByText(/1x de/i)).toBeInTheDocument();
+
+      const saveBtn = screen.getByRole("button", { name: /salvar transação/i });
+      await user.click(saveBtn);
+
+      await waitFor(() => {
+        expect(createExpenseMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            value: 100,
+            reportWeight: 1,
+            debtType: "receivable",
+            debtAmount: 50,
+          }),
+        );
+      });
+
+      // SplitExpenseDialog é aberto em sequência
+      await waitFor(() => {
+        expect(screen.getByText("Rachar Despesa")).toBeInTheDocument();
       });
     });
 

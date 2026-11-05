@@ -40,6 +40,10 @@ vi.mock("@/data/session", () => ({
   currentUserId: () => Promise.resolve("u1"),
 }));
 
+vi.mock("@/data/rpc", () => ({
+  deleteDebtInstallments: vi.fn().mockResolvedValue(3),
+}));
+
 describe("debts repository (entrega 6)", () => {
   beforeEach(() => {
     builder = makeBuilder({
@@ -89,5 +93,10 @@ describe("debts repository (entrega 6)", () => {
     await deleteDebt("d1");
     expect(builder.delete).toHaveBeenCalled();
     expect(builder.eq).toHaveBeenCalledWith("id", "d1");
+  });
+
+  it("exclui parcelas de dívida em lote via RPC", async () => {
+    const deletedCount = await deleteDebt("d1", "all");
+    expect(deletedCount).toBe(3);
   });
 });

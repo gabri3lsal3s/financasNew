@@ -63,10 +63,18 @@ export async function updateDebt(id: string, input: DbUpdate<Debt>): Promise<Deb
   return mapDebt(data);
 }
 
-export async function deleteDebt(id: string): Promise<void> {
+import { deleteDebtInstallments } from "@/data/rpc";
+import type { InstallmentDeleteMode } from "@/types";
+
+export async function deleteDebt(id: string, mode: InstallmentDeleteMode = "single"): Promise<number> {
+  if (mode !== "single") {
+    return deleteDebtInstallments(id, mode);
+  }
+
   const { error } = await getSupabase().from("debts").delete().eq("id", id);
   if (error) {
     const classified = classifyError(error);
     throw new AppError(classified.kind, classified.message, error);
   }
+  return 1;
 }

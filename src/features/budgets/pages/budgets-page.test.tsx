@@ -17,10 +17,10 @@ const removeBudgetLimitMock = vi.fn();
 const setIncomeGoalMock = vi.fn();
 const reallocateMock = vi.fn();
 
-const baseCategories = [
-  { id: "c1", name: "Moradia", icon: "moradia", color: null, type: "expense" },
-  { id: "c2", name: "Lazer", icon: "lazer", color: null, type: "expense" },
-  { id: "i1", name: "Salário", icon: "salario", color: null, type: "income" },
+let baseCategories = [
+  { id: "c1", name: "Moradia", icon: "moradia", color: null, type: "expense", is_reserved: false },
+  { id: "c2", name: "Lazer", icon: "lazer", color: null, type: "expense", is_reserved: false },
+  { id: "i1", name: "Salário", icon: "salario", color: null, type: "income", is_reserved: false },
 ];
 
 let mockExpenses = [
@@ -68,6 +68,7 @@ vi.mock("@/state", () => ({
   useCreateCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSeedDefaultCategories: () => ({ mutateAsync: vi.fn(), isPending: false, isError: false }),
   useExpenses: () => ({
     data: mockExpenses,
     isLoading: false,
@@ -89,12 +90,18 @@ vi.mock("@/state", () => ({
   useRemoveIncomeGoal: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useReallocateBudget: () => ({ mutateAsync: reallocateMock, isPending: false }),
   useMyPublicShares: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useDeletePublicShare: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
+    baseCategories = [
+      { id: "c1", name: "Moradia", icon: "moradia", color: null, type: "expense", is_reserved: false },
+      { id: "c2", name: "Lazer", icon: "lazer", color: null, type: "expense", is_reserved: false },
+      { id: "i1", name: "Salário", icon: "salario", color: null, type: "income", is_reserved: false },
+    ];
     mockExpenses = [
       { id: "e1", category_id: "c1", value: 1200, report_weight: 1 },
       { id: "e2", category_id: "c2", value: 100, report_weight: 1 },
@@ -158,7 +165,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
   it("metas de renda: compara realizado × esperado", async () => {
     const user = userEvent.setup();
     renderBudgetsPage();
-    await user.click(screen.getByRole("tab", { name: /Rendas/ }));
+    await user.click(screen.getByRole("tab", { name: /Metas & Campanhas/i }));
 
     expect(screen.getByText("Salário")).toBeInTheDocument();
     // Realizado R$ 5.000 = meta R$ 5.000 → na meta
@@ -170,7 +177,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     setIncomeGoalMock.mockResolvedValue(undefined);
     const user = userEvent.setup();
     renderBudgetsPage();
-    await user.click(screen.getByRole("tab", { name: /Rendas/ }));
+    await user.click(screen.getByRole("tab", { name: /Metas & Campanhas/i }));
 
     await user.click(screen.getAllByRole("button", { name: "Editar meta de renda de Salário" })[0]!);
     const goalInput = screen.getByRole("textbox", { name: "Expectativa de renda mensal da categoria" });
@@ -188,7 +195,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     setIncomeGoalMock.mockRejectedValue(new Error("Falha de rede"));
     const user = userEvent.setup();
     renderBudgetsPage();
-    await user.click(screen.getByRole("tab", { name: /Rendas/ }));
+    await user.click(screen.getByRole("tab", { name: /Metas & Campanhas/i }));
 
     await user.click(screen.getAllByRole("button", { name: "Editar meta de renda de Salário" })[0]!);
     const goalInput = screen.getByRole("textbox", { name: "Expectativa de renda mensal da categoria" });
@@ -272,6 +279,22 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     expect(screen.getAllByText("Total Bruto").length).toBeGreaterThanOrEqual(1);
     // Exibe badge informando a sua parte pessoal para Moradia
     expect(screen.getByText(/Sua parte:/)).toBeInTheDocument();
+  });
+
+  it("aba categorias: exibe EmptyState com ação de carregar categorias pré-prontas quando houver apenas categorias de sistema", async () => {
+    baseCategories = [
+      { id: "res-1", name: "Estorno", icon: "rotate-ccw", color: null, type: "income", is_reserved: true },
+    ];
+    const user = userEvent.setup();
+    renderBudgetsPage();
+    await user.click(screen.getByRole("tab", { name: "Categorias" }));
+
+    expect(screen.getByText("Nenhuma categoria pronta encontrada")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Sua conta ainda não possui categorias de receitas e despesas./),
+    ).toBeInTheDocument();
+    const seedBtn = screen.getByRole("button", { name: "Carregar categorias pré-prontas" });
+    expect(seedBtn).toBeInTheDocument();
   });
 });
 

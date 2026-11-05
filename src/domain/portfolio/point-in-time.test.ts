@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { calculatePointInTimePosition, getMonthEndCutoffDate } from "./point-in-time";
+import {
+  calculatePointInTimePosition,
+  getMonthEndCutoffDate,
+  getPreviousMonth,
+} from "./point-in-time";
 import type {
   PortfolioAsset,
   PortfolioDividend,
@@ -645,6 +649,252 @@ describe("point-in-time portfolio calculation engine", () => {
       expect(itubPos.averagePrice).toBe(15); // 3000 / 200 = 15
       expect(itubPos.totalCostBRL).toBe(3000);
       expect(itubPos.valueBRL).toBe(3600); // 200 * 18
+    });
+
+    it("eliminates average_price fallback for missing quotes, preserving fidelity audit", () => {
+      // Ativo em custódia com preço médio de aquisição R$ 35,00
+      // Sem cotação salva, sem cotação de API e sem transação no mês
+      const assetPetr: PortfolioAsset = {
+        id: "asset-petr",
+        user_id: "user-1",
+        ticker: "PETR4",
+        asset_class: "Ações",
+        currency: "BRL",
+        quantity: 100,
+        average_price: 35,
+      };
+
+      const txPast: PortfolioTransaction = {
+        id: "tx-past",
+        user_id: "user-1",
+        asset_id: "asset-petr",
+        type: "buy",
+        date: "2025-10-10",
+        quantity: 100,
+        price: 35,
+        total: 3500,
+      };
+
+      const result = calculatePointInTimePosition({
+        month: "2026-08",
+        assets: [assetPetr],
+        transactions: [txPast],
+        // Nenhuma cotação informada
+      });
+
+      expect(result.positions).toHaveLength(1);
+      const pos = result.positions[0]!;
+      // Não cai mais arbitrariamente para average_price (35)
+      expect(pos.priceQuote).toBe(0);
+      expect(pos.priceBRL).toBe(0);
+      expect(pos.valueBRL).toBe(0);
+      expect(pos.quoteSource).toBe("fallback");
+      expect(pos.isEstimate).toBe(true);
+      expect(result.fidelity.fallbackQuotesCount).toBe(1);
+      expect(result.fidelity.status).toBe("insufficient");
+      expect(result.fidelity.canGenerateExecutiveReport).toBe(false);
+    });
+
+    it("clearly signals when a month is derived from consolidated snapshot balance (TWA)", () => {
+      // Marco Zero / Snapshot histórico consolidado
+      const snapshot = {
+        id: "snap-twa",
+        user_id: "user-1",
+        month: "2026-06",
+        total_value: 106700,
+        total_cost: 95000,
+      };
+
+      const result = calculatePointInTimePosition({
+        month: "2026-06",
+        assets: [],
+        transactions: [],
+        snapshot,
+        startBalanceBRL: 100000,
+      });
+
+      expect(result.isDerivedFromSnapshot).toBe(true);
+      expect(result.fidelity.isDerivedFromSnapshot).toBe(true);
+      expect(result.fidelity.status).toBe("balance_only");
+      expect(result.fidelity.canGenerateExecutiveReport).toBe(false);
+      expect(result.fidelity.snapshotTotalValue).toBe(106700);
+      expect(result.fidelity.reasons.some((r) => r.includes("TWA") || r.includes("saldo consolidado"))).toBe(true);
+
+      // No extrato mensal, adota o saldo do snapshot como endBalance
+      expect(result.monthlyStatement).toBeDefined();
+      expect(result.monthlyStatement?.endBalanceBRL).toBe(106700);
+      expect(result.monthlyStatement?.startBalanceBRL).toBe(100000);
+      expect(result.monthlyStatement?.monthNetPnlBRL).toBe(6700);
+    });
+
+    it("automatically resolves previous snapshot M-1 when snapshots list is provided", () => {
+      const snapJuly = {
+        id: "snap-jul",
+        user_id: "user-1",
+        month: "2026-07",
+        total_value: 100000,
+        total_cost: 90000,
+      };
+      const snapAug = {
+        id: "snap-aug",
+        user_id: "user-1",
+        month: "2026-08",
+        total_value: 105000,
+        total_cost: 90000,
+      };
+
+      const result = calculatePointInTimePosition({
+        month: "2026-08",
+        assets: [],
+        transactions: [],
+        snapshot: snapAug,
+        snapshots: [snapJuly, snapAug],
+      });
+
+      expect(result.monthlyStatement).toBeDefined();
+      expect(result.monthlyStatement?.startBalanceBRL).toBe(100000);
+      expect(result.monthlyStatement?.endBalanceBRL).toBe(105000);
+      expect(result.monthlyStatement?.monthNetPnlBRL).toBe(5000);
+      expect(result.monthlyStatement?.monthRatePct).toBe(5.0);
+    });
+
+    describe("Quality Gate 1 (QG1) Mathematical Verification", () => {
+      it("Cenário A (Queda no mês): Saldo M-1 = 112.000, Saldo M = 110.000 sem aportes -> rate = -1.79%, pnl = -R$ 2.000,00", () => {
+        const snapMMinus1 = {
+          id: "snap-prev",
+          user_id: "user-1",
+          month: "2026-07",
+          total_value: 112000,
+          total_cost: 100000,
+        };
+        const snapM = {
+          id: "snap-curr",
+          user_id: "user-1",
+          month: "2026-08",
+          total_value: 110000,
+          total_cost: 100000,
+        };
+
+        const result = calculatePointInTimePosition({
+          month: "2026-08",
+          assets: [],
+          transactions: [],
+          snapshot: snapM,
+          previousSnapshot: snapMMinus1,
+        });
+
+        expect(result.monthlyStatement).toBeDefined();
+        const stmt = result.monthlyStatement!;
+        expect(stmt.startBalanceBRL).toBe(112000);
+        expect(stmt.endBalanceBRL).toBe(110000);
+        expect(stmt.monthNetContributionBRL).toBe(0);
+        expect(stmt.monthNetPnlBRL).toBe(-2000.0);
+        expect(stmt.monthRatePct).toBe(-1.79);
+      });
+
+      it("Cenário B (Aporte no mês com ganho): Saldo M-1 = 100.000, Aporte no dia 15 = 10.000, Saldo M = 115.000 -> Ganho real de R$ 5.000, rate positivo ponderado", () => {
+        const snapMMinus1 = {
+          id: "snap-prev",
+          user_id: "user-1",
+          month: "2026-07",
+          total_value: 100000,
+          total_cost: 90000,
+        };
+        const snapM = {
+          id: "snap-curr",
+          user_id: "user-1",
+          month: "2026-08",
+          total_value: 115000,
+          total_cost: 100000,
+        };
+
+        const externalFlows = [
+          {
+            date: "2026-08-15",
+            amount: 10000,
+          },
+        ];
+
+        const result = calculatePointInTimePosition({
+          month: "2026-08",
+          assets: [],
+          transactions: [],
+          snapshot: snapM,
+          previousSnapshot: snapMMinus1,
+          externalFlows,
+        });
+
+        expect(result.monthlyStatement).toBeDefined();
+        const stmt = result.monthlyStatement!;
+        expect(stmt.startBalanceBRL).toBe(100000);
+        expect(stmt.endBalanceBRL).toBe(115000);
+        expect(stmt.monthNetContributionBRL).toBe(10000);
+        // Ganho real da carteira = (115.000 - 100.000) - 10.000 = 5.000,00
+        expect(stmt.monthNetPnlBRL).toBe(5000.0);
+        // Taxa positiva ponderada pelo Modified Dietz ANBIMA
+        expect(stmt.monthRatePct).toBeGreaterThan(0);
+        expect(stmt.monthRatePct).toBe(4.74);
+      });
+
+      it("garante zero contaminação com rentabilidades de meses anteriores", () => {
+        // Transações de compras efetuadas em anos/meses anteriores
+        const assetPetr: PortfolioAsset = {
+          id: "asset-petr",
+          user_id: "user-1",
+          ticker: "PETR4",
+          asset_class: "Ações",
+          currency: "BRL",
+          quantity: 100,
+          average_price: 20, // Comprado a R$ 20 no passado distante (retorno histórico de +100%)
+        };
+
+        const txPast: PortfolioTransaction = {
+          id: "tx-old",
+          user_id: "user-1",
+          asset_id: "asset-petr",
+          type: "buy",
+          date: "2024-01-10",
+          quantity: 100,
+          price: 20,
+          total: 2000,
+        };
+
+        const monthlyPricesAug: PortfolioMonthlyPrice[] = [
+          {
+            id: "mp-petr-aug",
+            user_id: "user-1",
+            ticker: "PETR4",
+            month: "2026-08",
+            price: 40, // Em 2026-08 fechou a R$ 40
+            currency: "BRL",
+            source: "manual",
+          },
+        ];
+
+        // No mês anterior (2026-07) a cotação era 42 (ou seja, no mês de agosto o ativo caiu de 42 para 40)
+        const result = calculatePointInTimePosition({
+          month: "2026-08",
+          assets: [assetPetr],
+          transactions: [txPast],
+          monthlyPrices: monthlyPricesAug,
+          startBalanceBRL: 4200, // 100 * 42
+        });
+
+        expect(result.monthlyStatement).toBeDefined();
+        const stmt = result.monthlyStatement!;
+        // P&L do mês deve ser estritamente negativo (-R$ 200), ignorando o ganho histórico de R$ 2000 desde 2024
+        expect(stmt.monthNetPnlBRL).toBe(-200);
+        expect(stmt.monthRatePct).toBe(-4.76); // -200 / 4200 = -4.76%
+      });
+    });
+  });
+
+  describe("getPreviousMonth", () => {
+    it("correctly decrements month across year boundary and regular months", () => {
+      expect(getPreviousMonth("2026-01")).toBe("2025-12");
+      expect(getPreviousMonth("2026-08")).toBe("2026-07");
+      expect(getPreviousMonth("2026-10")).toBe("2026-09");
+      expect(getPreviousMonth("2026-12")).toBe("2026-11");
     });
   });
 });

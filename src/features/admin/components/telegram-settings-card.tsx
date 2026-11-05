@@ -61,9 +61,7 @@ export function TelegramSettingsCard() {
     <div className="rounded-2xl border border-border/80 bg-surface p-5 sm:p-6 shadow-xs space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-surface-hover text-muted-foreground border border-border/60">
-            <Bot className="size-4.5" aria-hidden="true" />
-          </div>
+          <Bot className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
           <div>
             <h3 className="text-sm font-bold text-foreground">Central de Alertas & Bot Telegram</h3>
             <p className="text-xs text-muted-foreground">
@@ -94,9 +92,7 @@ export function TelegramSettingsCard() {
                 className="flex items-start justify-between gap-3 p-3.5 rounded-xl border border-border/80 bg-surface-subtle/40 hover:bg-surface-hover/20 transition-colors"
               >
                 <div className="flex items-start gap-3 min-w-0">
-                  <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover text-muted-foreground mt-0.5">
-                    <Icon className="size-3.5" aria-hidden="true" />
-                  </div>
+                  <Icon className="size-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
                   <div className="space-y-0.5 min-w-0">
                     <div className="text-xs font-semibold text-foreground truncate">{label}</div>
                     <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">

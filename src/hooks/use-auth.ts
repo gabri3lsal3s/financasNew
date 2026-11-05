@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getSupabase } from "@/data/client";
 import { ensureOwnProfile } from "@/data/repositories/profiles";
+import { ensureDefaultCategories } from "@/data/repositories/categories";
 import { getErrorMessage } from "@/services/errors";
 import { reportError, setObservabilityUser } from "@/services/observability";
 import { setActiveUserId } from "@/services/user-storage";
@@ -160,14 +161,16 @@ export function useAuth(): AuthState {
     void setObservabilityUser(snapshot.user ? { id: snapshot.user.id, email: snapshot.user.email } : null);
   }, [snapshot.user, snapshot.loading]);
 
-  // Auto-cura do perfil (F11): conta órfã sem linha em `profiles`
+  // Auto-cura do perfil (F11) e categorias padrão: contas órfãs sem profiles ou categorias
   useEffect(() => {
     const user = snapshot.user;
     if (!user || ensuredProfiles.has(user.id)) return;
     ensuredProfiles.add(user.id);
-    void ensureOwnProfile(user.id, user.email, user.user_metadata?.name).catch((err) => {
-      void reportError(err, { source: "ensureOwnProfile" });
-    });
+    void ensureOwnProfile(user.id, user.email, user.user_metadata?.name)
+      .then(() => ensureDefaultCategories(user.id))
+      .catch((err) => {
+        void reportError(err, { source: "ensureOwnProfile_ensureDefaultCategories" });
+      });
   }, [snapshot.user]);
 
   return {

@@ -6,14 +6,15 @@ import { incomesKey } from "@/state/queries/use-incomes";
 import { expensesKey } from "@/state/queries/use-expenses";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
-import type { DbUpdate, Debt } from "@/types";
+import { LOANS_QUERY_KEY } from "@/state/queries/use-loans";
+import type { DbUpdate, Debt, InstallmentDeleteMode } from "@/types";
 
 /**
  * Mutations de dívidas. Quitação SEMPRE via RPC transacional (D1):
  * cria o lançamento (despesa/renda) na mesma transação da quitação.
  */
 
-const FINANCE_KEYS = [debtsKey, incomesKey, expensesKey, ["overview"], ["insights"]] as const;
+const FINANCE_KEYS = [debtsKey, incomesKey, expensesKey, LOANS_QUERY_KEY, ["overview"], ["insights"]] as const;
 
 function invalidateFinance(queryClient: QueryClient) {
   for (const key of FINANCE_KEYS) void queryClient.invalidateQueries({ queryKey: key });
@@ -35,10 +36,16 @@ export function useUpdateDebt() {
   });
 }
 
+export type DeleteDebtParams = string | { id: string; mode?: InstallmentDeleteMode };
+
 export function useDeleteDebt() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => deleteDebt(id),
+    mutationFn: (param: DeleteDebtParams) => {
+      const id = typeof param === "string" ? param : param.id;
+      const mode = typeof param === "string" ? "single" : (param.mode ?? "single");
+      return deleteDebt(id, mode);
+    },
     onSuccess: () => invalidateFinance(queryClient),
     // Falha de rede/banco na exclusão: feedback explícito (antes a promise
     // rejeitada ficava sem tratamento e o usuário não via nada).

@@ -1,10 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   createPublicShare,
+  deletePublicShare,
   getPublicShareByToken,
   getSharedFamilyBudgetByToken,
   listMyPublicShares,
   regeneratePublicShare,
+  restorePublicShare,
   revokePublicShare,
   saveSplitExpenseToAccount,
   saveSimulationToAccount,
@@ -159,6 +161,38 @@ describe("data/repositories/public-shares", () => {
     expect(mockEq).toHaveBeenCalledWith("id", "share-uuid-to-revoke");
   });
 
+  it("restorePublicShare atualiza is_revoked para false", async () => {
+    const mockEq = vi.fn().mockResolvedValue({ data: null, error: null });
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq });
+    const mockFrom = vi.fn().mockReturnValue({ update: mockUpdate });
+
+    vi.mocked(getSupabase).mockReturnValue({
+      from: mockFrom,
+    } as unknown as ReturnType<typeof getSupabase>);
+
+    await restorePublicShare("share-uuid-to-restore");
+    expect(mockFrom).toHaveBeenCalledWith("public_shares");
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ is_revoked: false }),
+    );
+    expect(mockEq).toHaveBeenCalledWith("id", "share-uuid-to-restore");
+  });
+
+  it("deletePublicShare executa delete no banco", async () => {
+    const mockEq = vi.fn().mockResolvedValue({ data: null, error: null });
+    const mockDelete = vi.fn().mockReturnValue({ eq: mockEq });
+    const mockFrom = vi.fn().mockReturnValue({ delete: mockDelete });
+
+    vi.mocked(getSupabase).mockReturnValue({
+      from: mockFrom,
+    } as unknown as ReturnType<typeof getSupabase>);
+
+    await deletePublicShare("share-uuid-to-delete");
+    expect(mockFrom).toHaveBeenCalledWith("public_shares");
+    expect(mockDelete).toHaveBeenCalled();
+    expect(mockEq).toHaveBeenCalledWith("id", "share-uuid-to-delete");
+  });
+
   it("listMyPublicShares retorna lista de compartilhamentos do usuário", async () => {
     const mockRows = [
       {
@@ -175,7 +209,8 @@ describe("data/repositories/public-shares", () => {
     ];
 
     const mockOrder = vi.fn().mockResolvedValue({ data: mockRows, error: null });
-    const mockSelect = vi.fn().mockReturnValue({ order: mockOrder });
+    const mockEq = vi.fn().mockReturnValue({ order: mockOrder });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
     const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
 
     vi.mocked(getSupabase).mockReturnValue({
@@ -185,6 +220,7 @@ describe("data/repositories/public-shares", () => {
     const result = await listMyPublicShares();
     expect(result).toHaveLength(1);
     expect(result[0]?.token).toBe("tok1");
+    expect(mockEq).toHaveBeenCalledWith("user_id", "user-test-uuid");
   });
 
   describe("saveSplitExpenseToAccount", () => {

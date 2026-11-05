@@ -13,7 +13,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { Check, CreditCard, Sparkles, SlidersHorizontal } from "lucide-react";
+import { Check, CreditCard, Sparkles, SlidersHorizontal, Users } from "lucide-react";
 import { Badge, Button, Input, MoneyInput, Select, Switch, Tabs } from "@/components/ui";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import {
@@ -21,6 +21,7 @@ import {
   matchCategoryBySlug,
   type CanonicalCategorySlug,
 } from "@/domain/notifications";
+import { calculateSplitSummary } from "@/domain/finance/split-math";
 import { useMerchantLearning } from "@/services/merchant-learning";
 import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsCurrency } from "@/services/masks";
@@ -40,6 +41,9 @@ export interface StepQuickProps {
   onReceiveTypeChange: (type: ReceiveType) => void;
   onDescriptionChange: (description: string) => void;
   onFamilyChange?: (isFamily: boolean) => void;
+  isFamilyModeEnabled?: boolean;
+  onSplitToggle?: (enabled: boolean) => void;
+  onSplitPeopleCountChange?: (count: number) => void;
   onSwitchToGuided: () => void;
   categories: Category[] | undefined;
   categoriesLoading?: boolean;
@@ -80,6 +84,9 @@ export function StepQuick({
   onReceiveTypeChange,
   onDescriptionChange,
   onFamilyChange,
+  isFamilyModeEnabled = false,
+  onSplitToggle,
+  onSplitPeopleCountChange,
   onSwitchToGuided,
   categories,
   categoriesLoading = false,
@@ -402,15 +409,91 @@ export function StepQuick({
       </div>
 
       {/* 6. Switch Discreto: Despesa Familiar (Fase 3 — Tarefa 3.2) */}
-      <div className="rounded-xl border border-border/80 bg-surface p-3">
-        <Switch
-          id="quick-family-switch"
-          checked={state.isFamily}
-          onCheckedChange={(checked) => onFamilyChange?.(checked)}
-          label={isExpense ? "Despesa da Casa / Familiar" : "Receita da Casa / Familiar"}
-          description="Visível no Painel Familiar compartilhado"
-        />
-      </div>
+      {isFamilyModeEnabled && (
+        <div className="rounded-xl border border-border/80 bg-surface p-3">
+          <Switch
+            id="quick-family-switch"
+            checked={state.isFamily}
+            onCheckedChange={(checked) => onFamilyChange?.(checked)}
+            label={isExpense ? "Despesa da Casa / Familiar" : "Receita da Casa / Familiar"}
+            description="Visível no Painel Familiar compartilhado"
+          />
+        </div>
+      )}
+
+      {/* 6.1. Rachar Despesa com Amigos (Modo Rápido) */}
+      {isExpense ? (
+        <div className="rounded-xl border border-border/80 bg-surface p-3 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="size-4 text-muted-foreground" aria-hidden="true" />
+              <div>
+                <span className="text-xs font-semibold text-foreground block">
+                  Rachar com amigos
+                </span>
+                <span className="text-[11px] text-muted-foreground block">
+                  Gera Pix Copia e Cola e cobrança a receber
+                </span>
+              </div>
+            </div>
+            <Switch
+              id="quick-split-switch"
+              checked={state.splitEnabled}
+              onCheckedChange={(checked) => onSplitToggle?.(checked)}
+              aria-label="Rachar com amigos"
+            />
+          </div>
+
+          {state.splitEnabled ? (
+            <div className="pt-2 border-t border-border/60 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-foreground">Participantes:</span>
+                <div className="flex items-center gap-1">
+                  {[2, 3, 4, 5].map((count) => {
+                    const isSelected = state.splitPeopleCount === count;
+                    return (
+                      <button
+                        key={count}
+                        type="button"
+                        onClick={() => {
+                          triggerSensory("selection");
+                          onSplitPeopleCountChange?.(count);
+                        }}
+                        className={cn(
+                          "rounded-md border px-2 py-1 text-xs font-medium transition-colors cursor-pointer",
+                          isSelected
+                            ? "border-primary bg-primary/10 text-primary font-semibold"
+                            : "border-border/80 bg-surface-raised hover:bg-surface-hover text-foreground",
+                        )}
+                      >
+                        {count}p
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {state.valueCents > 0 ? (
+                (() => {
+                  const splitMath = calculateSplitSummary(state.valueCents, state.splitPeopleCount, {
+                    remainderPolicy: "host",
+                  });
+                  return (
+                    <div className="flex items-center justify-between rounded-lg border border-border/80 bg-surface-raised px-2.5 py-1.5 text-xs">
+                      <span className="text-muted-foreground">
+                        Sua parte: <strong className="text-foreground">{(splitMath.hostShareCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
+                      </span>
+                      <span className="text-portfolio font-medium">
+                        {splitMath.guestCount}x de {(splitMath.guestShareCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </span>
+                    </div>
+                  );
+                })()
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* 7. Botão de Alternância para o Modo Guiado */}
       <div className="pt-2 border-t border-border/80 flex items-center justify-between">

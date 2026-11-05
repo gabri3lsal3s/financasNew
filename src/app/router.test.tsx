@@ -31,6 +31,11 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useCategories: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
 }));
 
 vi.mock("@/state/queries/use-public-shares", () => ({

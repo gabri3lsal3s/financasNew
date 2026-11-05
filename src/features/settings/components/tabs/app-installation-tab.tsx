@@ -163,7 +163,7 @@ export function AppInstallationTab() {
                 <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Sparkles className="size-4 text-primary" aria-hidden="true" />
+                      <Sparkles className="size-4 text-primary-strong shrink-0" aria-hidden="true" />
                       <span className="text-sm font-semibold text-foreground">
                         Nova versão disponível: v{updateInfo?.latestVersion}
                       </span>
@@ -310,7 +310,7 @@ export function AppInstallationTab() {
                   aria-expanded={showGuide}
                 >
                   <div className="flex items-center gap-2.5">
-                    <ShieldCheck className="size-4 text-primary" aria-hidden="true" />
+                    <ShieldCheck className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
                     <span className="text-xs sm:text-sm font-semibold">
                       Passo a passo: como instalar o APK com segurança no Android
                     </span>

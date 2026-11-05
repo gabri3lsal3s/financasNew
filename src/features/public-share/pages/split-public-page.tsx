@@ -26,14 +26,18 @@ import {
   QrCodeCanvas,
 } from "@/components/ui";
 import { usePublicShare } from "@/state/queries/use-public-shares";
-import { useSaveSplitExpense } from "@/state";
+import { useCategories, useSaveSplitExpense, useSignalSplitPayment } from "@/state";
 import { useAuth } from "@/hooks/use-auth";
 import { formatCentsAsCurrency } from "@/services/masks";
 import { formatDateBR } from "@/lib/date";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
-import { SplitOnboardingModal } from "../components/split-onboarding-modal";
-import type { SplitSharePayload } from "@/types";
+import {
+  SelectParticipantDialog,
+  SelectSplitCategoryDialog,
+  SplitOnboardingModal,
+} from "../components";
+import type { SplitParticipantItem, SplitSharePayload } from "@/types";
 
 export function SplitPublicPage() {
   const { token } = useParams<{ token: string }>();
@@ -41,6 +45,7 @@ export function SplitPublicPage() {
   const navigate = useNavigate();
   const { session } = useAuth();
   const saveSplitMutation = useSaveSplitExpense();
+  const signalSplitPaymentMutation = useSignalSplitPayment();
 
   const { data: share, isLoading, error } = usePublicShare(token);
 
@@ -48,40 +53,181 @@ export function SplitPublicPage() {
   const [copiedKey, setCopiedKey] = useState(false);
   const [showQrCode, setShowQrCode] = useState(false);
   const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
+  const [isSelectCategoryOpen, setIsSelectCategoryOpen] = useState(false);
+  const [isSelectParticipantOpen, setIsSelectParticipantOpen] = useState(false);
+  const [selectedParticipant, setSelectedParticipant] = useState<SplitParticipantItem | null>(null);
   const [isSavingDirectly, setIsSavingDirectly] = useState(false);
+  const categoriesQuery = useCategories(session?.user ? "expense" : undefined);
 
   // Payload tipado com fallback seguro
   const payload = (share?.payload ?? null) as SplitSharePayload | null;
 
   const hasTriggeredActionRef = useRef(false);
 
-  const handleSaveExpenseClick = useCallback(async () => {
-    if (!payload) return;
-    const guestShareCents =
-      payload.guest_share_cents ??
-      (payload.people_count > 0
-        ? Math.round(payload.total_cents / payload.people_count)
-        : payload.total_cents);
+  const executeSaveAndSignal = useCallback(
+    async (participant?: SplitParticipantItem | null, categoryId?: string) => {
+      if (!payload) return;
+      const guestShareCents =
+        participant?.share_cents ??
+        payload.guest_share_cents ??
+        (payload.people_count > 0
+          ? Math.round(payload.total_cents / payload.people_count)
+          : payload.total_cents);
 
-    if (session?.user) {
       setIsSavingDirectly(true);
       try {
         await saveSplitMutation.mutateAsync({
           title: payload.title,
           amountCents: guestShareCents,
           date: payload.date,
+          categoryId,
         });
+
+        if (token) {
+          try {
+            await signalSplitPaymentMutation.mutateAsync({
+              token,
+              participantName:
+                participant?.name ||
+                session?.user?.user_metadata?.name ||
+                session?.user?.user_metadata?.full_name ||
+                session?.user?.email?.split("@")[0] ||
+                "Participante",
+              amountCents: guestShareCents,
+              participantId: participant?.id,
+            });
+          } catch (signalErr) {
+            console.warn("Nao foi possivel sinalizar o pagamento:", signalErr);
+          }
+        }
+
         triggerSensory("success");
-        navigate("/");
+        pushToast({
+          title: "Despesa registrada!",
+          description: "Avisamos o anfitrião sobre o seu pagamento para conferência.",
+          variant: "success",
+        });
+        navigate("/transacoes");
       } catch {
         triggerSensory("destructive");
       } finally {
         setIsSavingDirectly(false);
       }
-    } else {
+    },
+    [payload, saveSplitMutation, signalSplitPaymentMutation, token, session, navigate],
+  );
+
+  const handleSaveExpenseClick = useCallback(async () => {
+    if (!payload) return;
+
+    if (!session?.user) {
       setIsOnboardingModalOpen(true);
+      return;
     }
-  }, [payload, session?.user, saveSplitMutation, navigate]);
+
+    // 1. Identificar participante se houver múltiplos participantes não quitados
+    const guestParticipants = (payload.participants ?? []).filter((p) => !p.is_host);
+    const unsettledGuests = guestParticipants.filter((p) => !p.is_settled);
+
+    let activeParticipant: SplitParticipantItem | null = selectedParticipant;
+    if (!activeParticipant) {
+      if (unsettledGuests.length === 1) {
+        activeParticipant = unsettledGuests[0] ?? null;
+        setSelectedParticipant(activeParticipant);
+      } else if (unsettledGuests.length > 1) {
+        const userName = (
+          session.user.user_metadata?.name ||
+          session.user.user_metadata?.full_name ||
+          ""
+        ).toLowerCase().trim();
+
+        const matched = userName
+          ? unsettledGuests.find(
+              (p) =>
+                p.name.toLowerCase().includes(userName) ||
+                userName.includes(p.name.toLowerCase()),
+            )
+          : null;
+
+        if (matched) {
+          activeParticipant = matched;
+          setSelectedParticipant(matched);
+        } else {
+          setIsSelectParticipantOpen(true);
+          return;
+        }
+      }
+    }
+
+    // 2. Resolver categoria
+    const userCategories = categoriesQuery.data ?? [];
+    const sentCategoryName = payload.category_name?.trim().toLowerCase();
+
+    let matchedCategory = null;
+    if (sentCategoryName && userCategories.length > 0) {
+      matchedCategory =
+        userCategories.find((c) => c.name.trim().toLowerCase() === sentCategoryName) ||
+        userCategories.find(
+          (c) =>
+            c.name.toLowerCase().includes(sentCategoryName) ||
+            sentCategoryName.includes(c.name.toLowerCase()),
+        ) ||
+        null;
+    }
+
+    if (matchedCategory) {
+      await executeSaveAndSignal(activeParticipant, matchedCategory.id);
+    } else if (userCategories.length > 0) {
+      setIsSelectCategoryOpen(true);
+    } else {
+      await executeSaveAndSignal(activeParticipant);
+    }
+  }, [
+    payload,
+    session,
+    selectedParticipant,
+    categoriesQuery.data,
+    executeSaveAndSignal,
+  ]);
+
+  const handleConfirmParticipant = useCallback(
+    async (participant: SplitParticipantItem) => {
+      setSelectedParticipant(participant);
+      setIsSelectParticipantOpen(false);
+
+      const userCategories = categoriesQuery.data ?? [];
+      const sentCategoryName = payload?.category_name?.trim().toLowerCase();
+
+      let matchedCategory = null;
+      if (sentCategoryName && userCategories.length > 0) {
+        matchedCategory =
+          userCategories.find((c) => c.name.trim().toLowerCase() === sentCategoryName) ||
+          userCategories.find(
+            (c) =>
+              c.name.toLowerCase().includes(sentCategoryName) ||
+              sentCategoryName.includes(c.name.toLowerCase()),
+          ) ||
+          null;
+      }
+
+      if (matchedCategory) {
+        await executeSaveAndSignal(participant, matchedCategory.id);
+      } else if (userCategories.length > 0) {
+        setIsSelectCategoryOpen(true);
+      } else {
+        await executeSaveAndSignal(participant);
+      }
+    },
+    [payload?.category_name, categoriesQuery.data, executeSaveAndSignal],
+  );
+
+  const handleConfirmCategorySave = useCallback(
+    async (chosenCategoryId: string) => {
+      setIsSelectCategoryOpen(false);
+      await executeSaveAndSignal(selectedParticipant, chosenCategoryId);
+    },
+    [executeSaveAndSignal, selectedParticipant],
+  );
 
   useEffect(() => {
     if (payload?.title) {
@@ -390,6 +536,25 @@ export function SplitPublicPage() {
                   title={payload.title}
                   date={payload.date}
                   token={token || ""}
+                />
+
+                <SelectSplitCategoryDialog
+                  open={isSelectCategoryOpen}
+                  onOpenChange={setIsSelectCategoryOpen}
+                  title={payload.title}
+                  amountCents={guestShareCents}
+                  sentCategoryName={payload.category_name}
+                  categories={categoriesQuery.data ?? []}
+                  isPending={isSavingDirectly}
+                  onConfirm={handleConfirmCategorySave}
+                />
+
+                <SelectParticipantDialog
+                  open={isSelectParticipantOpen}
+                  onOpenChange={setIsSelectParticipantOpen}
+                  participants={(payload.participants ?? []).filter((p) => !p.is_host && !p.is_settled)}
+                  isPending={isSavingDirectly}
+                  onConfirm={handleConfirmParticipant}
                 />
               </div>
             );

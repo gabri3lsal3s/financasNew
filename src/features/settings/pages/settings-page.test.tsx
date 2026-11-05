@@ -105,6 +105,11 @@ vi.mock("@/state", () => ({
   useCreateSupportTicketMutation: () => ({ mutate: vi.fn(), isPending: false }),
   useMySupportTickets: () => ({ data: [], isLoading: false }),
   useMarkTicketAsReadMutation: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useFamilyMode: () => ({
+    isFamilyModeEnabled: false,
+    toggleFamilyMode: vi.fn().mockResolvedValue(true),
+    isUpdating: false,
+  }),
 }));
 
 function renderSettings(initialEntries: string[] = ["/configuracoes"]) {

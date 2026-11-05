@@ -39,7 +39,7 @@ export function CashGapAlert({ result, className, onResolve }: CashGapAlertProps
     <div
       role="alert"
       className={cn(
-        "w-full flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-4 sm:p-5 shadow-xs transition-all",
+        "w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 shadow-xs transition-all",
         isCritical
           ? "border-critical/40 bg-critical/5 text-foreground"
           : "border-warning/40 bg-warning/5 text-foreground",
@@ -59,7 +59,7 @@ export function CashGapAlert({ result, className, onResolve }: CashGapAlertProps
             {isCritical ? <ShieldAlert className="size-4.5" /> : <AlertTriangle className="size-4.5" />}
           </span>
 
-          <div className="flex flex-col gap-1 min-w-0">
+          <div className="flex flex-col gap-0.5 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-sm font-semibold text-foreground">
                 {isCritical ? "Alerta de Iminência de Saldo Insuficiente" : "Radar de Descasamento de Fluxo"}
@@ -72,7 +72,7 @@ export function CashGapAlert({ result, className, onResolve }: CashGapAlertProps
               </Badge>
             </div>
 
-            <p className="text-xs text-muted-foreground leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed truncate">
               {result.recommendationMessage}
             </p>
           </div>
@@ -83,7 +83,7 @@ export function CashGapAlert({ result, className, onResolve }: CashGapAlertProps
           variant={isCritical ? "destructive" : "warning"}
           size="sm"
           onClick={handleAction}
-          className="gap-1.5 text-xs h-8 shrink-0 font-medium cursor-pointer w-full sm:w-auto justify-center self-stretch sm:self-center"
+          className="gap-1.5 text-xs h-8 shrink-0 font-medium cursor-pointer w-full sm:w-auto justify-center self-stretch sm:self-center mt-auto sm:mt-0"
         >
           <span>Ver Contas e Vencimentos</span>
           <ArrowRight className="size-3.5" aria-hidden="true" />

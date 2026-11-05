@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Check,
   Copy,
   ExternalLink,
+  MessageCircle,
   Plus,
   Share2,
   Trash2,
@@ -27,6 +28,7 @@ import {
 import { generateShareToken } from "@/domain/share/token";
 import { useUserAccess } from "@/state/queries/use-user-access";
 import { useCreatePublicShare } from "@/state/mutations/use-public-share-mutations";
+import { useSplitPreferences } from "@/services/split-preferences";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { todayISO } from "@/domain/debts";
@@ -36,13 +38,21 @@ export interface SplitExpenseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Despesa original opcional a ser dividida */
-  expense?: Expense | null;
+  expense?: Partial<Expense> | null;
   /** Valor total alternativo em centavos (caso aberto sem objeto Expense) */
   initialAmountCents?: number;
   /** Descrição alternativa */
   initialDescription?: string;
   /** Data alternativa da despesa (ISO YYYY-MM-DD) */
   initialDate?: string;
+  /** Quantidade inicial de participantes (ex.: definido na criação da despesa) */
+  initialPeopleCount?: number;
+  /** Nome da categoria da despesa (para correspondência ao salvar via link) */
+  categoryName?: string;
+  /** Ícone da categoria */
+  categoryIcon?: string;
+  /** Se true e os dados Pix estiverem disponíveis, gera o link automaticamente ao abrir */
+  autoGenerate?: boolean;
 }
 
 const PIX_KEY_OPTIONS: SelectOption[] = [
@@ -68,34 +78,44 @@ export function SplitExpenseDialog({
   initialAmountCents,
   initialDescription,
   initialDate,
+  initialPeopleCount,
+  categoryName,
+  categoryIcon,
+  autoGenerate = false,
 }: SplitExpenseDialogProps) {
   const { profile } = useUserAccess();
+  const { preferences, updatePreferences } = useSplitPreferences();
   const createPublicShareMutation = useCreatePublicShare();
 
-  // Sugestão de Pix do perfil do usuário
-  const profileDefaultPix = profile?.cpf || profile?.email || "";
-  const profileDefaultName = profile?.name || "Anfitriao";
+  // Sugestão de Pix a partir das preferências salvas ou perfil do usuário
+  const effectiveDefaultPix = preferences.pixKey || profile?.cpf || profile?.email || "";
+  const effectiveDefaultName = preferences.merchantName || profile?.name || "Anfitriao";
+  const effectiveDefaultCity = preferences.merchantCity || "";
+  const effectiveDefaultRemainder = preferences.remainderPolicy || "host";
+  const effectiveDefaultKeyType = preferences.pixKeyType || "auto";
+  const effectiveInitialCount = initialPeopleCount ?? preferences.defaultPeopleCount ?? 2;
 
-  const initialBaseCents = expense
+  const initialBaseCents = expense && typeof expense.value === "number"
     ? Math.round(expense.value * 100)
     : (initialAmountCents ?? 0);
   const initialDesc = expense?.description || initialDescription || "";
 
   const [totalCents, setTotalCents] = useState<number>(initialBaseCents);
   const [description, setDescription] = useState<string>(initialDesc);
-  const [peopleCount, setPeopleCount] = useState<number>(2);
+  const [peopleCount, setPeopleCount] = useState<number>(effectiveInitialCount);
   const [isCustomMode, setIsCustomMode] = useState<boolean>(false);
-  const [participants, setParticipants] = useState<string[]>([
-    "Você (Anfitrião)",
-    "Participante 2",
-  ]);
-  const [remainderPolicy, setRemainderPolicy] = useState<SplitRemainderPolicy>("host");
+  const [participants, setParticipants] = useState<string[]>(() =>
+    Array.from({ length: effectiveInitialCount }, (_, i) =>
+      i === 0 ? "Você (Anfitrião)" : `Participante ${i + 1}`,
+    ),
+  );
+  const [remainderPolicy, setRemainderPolicy] = useState<SplitRemainderPolicy>(effectiveDefaultRemainder);
 
-  // Configuração Pix
-  const [pixKey, setPixKey] = useState<string>(profileDefaultPix);
-  const [selectedKeyType, setSelectedKeyType] = useState<string>("auto");
-  const [merchantName, setMerchantName] = useState<string>(profileDefaultName);
-  const [merchantCity, setMerchantCity] = useState<string>("SAO PAULO");
+  // Configuração Pix memorizada
+  const [pixKey, setPixKey] = useState<string>(effectiveDefaultPix);
+  const [selectedKeyType, setSelectedKeyType] = useState<string>(effectiveDefaultKeyType);
+  const [merchantName, setMerchantName] = useState<string>(effectiveDefaultName);
+  const [merchantCity, setMerchantCity] = useState<string>(effectiveDefaultCity);
 
   // Estado de link gerado
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
@@ -108,18 +128,21 @@ export function SplitExpenseDialog({
     if (open) {
       setTotalCents(initialBaseCents);
       setDescription(initialDesc);
-      setPeopleCount(2);
+      const count = initialPeopleCount ?? preferences.defaultPeopleCount ?? 2;
+      setPeopleCount(count);
       setIsCustomMode(false);
-      setParticipants(["Você (Anfitrião)", "Participante 2"]);
-      setRemainderPolicy("host");
+      setParticipants(
+        Array.from({ length: count }, (_, i) =>
+          i === 0 ? "Você (Anfitrião)" : `Participante ${i + 1}`,
+        ),
+      );
+      setRemainderPolicy(preferences.remainderPolicy || "host");
       setGeneratedLink(null);
       setCopied(false);
-      if (!pixKey && profileDefaultPix) {
-        setPixKey(profileDefaultPix);
-      }
-      if (!merchantName && profileDefaultName) {
-        setMerchantName(profileDefaultName);
-      }
+      setPixKey(preferences.pixKey || profile?.cpf || profile?.email || "");
+      setSelectedKeyType(preferences.pixKeyType || "auto");
+      setMerchantName(preferences.merchantName || profile?.name || "Anfitriao");
+      setMerchantCity(preferences.merchantCity || "");
     }
   }
 
@@ -177,12 +200,13 @@ export function SplitExpenseDialog({
   };
 
   // Criação do Racha e Cópia do Link
-  const handleGenerateAndCopy = async () => {
+  const handleGenerateAndCopy = useCallback(async () => {
     if (totalCents <= 0 || peopleCount < 2 || !pixKey.trim()) return;
 
     try {
       const cleanMerchant = merchantName.trim() || profile?.name || "Anfitriao";
-      const cleanCity = merchantCity.trim() || "SAO PAULO";
+      const cleanCity = merchantCity.trim();
+      if (!cleanCity) return;
 
       const pixBrCode = generatePixBrCode({
         pixKey: pixKey.trim(),
@@ -204,9 +228,13 @@ export function SplitExpenseDialog({
         guest_share_cents: summary.guestShareCents,
         host_share_cents: summary.hostShareCents,
         participants: participants.map((name, i) => ({
+          id: `p_${i + 1}`,
           name: name.trim() || (i === 0 ? "Você (Anfitrião)" : `Participante ${i + 1}`),
           share_cents: summary.shares[i] ?? summary.guestShareCents,
           is_host: i === 0,
+          is_settled: i === 0,
+          settled_cents: i === 0 ? (summary.shares[i] ?? summary.hostShareCents) : 0,
+          settled_at: i === 0 ? new Date().toISOString() : null,
         })),
         remainder_policy: remainderPolicy,
         host_name: cleanMerchant,
@@ -215,6 +243,11 @@ export function SplitExpenseDialog({
         pix_key_type: detectedType,
         pix_br_code: pixBrCode,
         expense_id: expense?.id,
+        category_id: expense?.category_id,
+        category_name: categoryName,
+        category_icon: categoryIcon,
+        is_completed: false,
+        total_settled_cents: summary.hostShareCents,
       };
 
       const share = await createPublicShareMutation.mutateAsync({
@@ -236,6 +269,16 @@ export function SplitExpenseDialog({
         }
       }
 
+      // Salva e aprende as preferências Pix do usuário
+      updatePreferences({
+        pixKey: pixKey.trim(),
+        pixKeyType: detectedType,
+        merchantName: cleanMerchant,
+        merchantCity: cleanCity,
+        remainderPolicy,
+        defaultPeopleCount: peopleCount,
+      });
+
       triggerSensory("success");
       pushToast({
         title: "Link do racha gerado e copiado!",
@@ -244,6 +287,40 @@ export function SplitExpenseDialog({
       });
     } catch {
       // Erro tratado pela mutation e exibido via toast
+    }
+  }, [
+    totalCents,
+    peopleCount,
+    pixKey,
+    merchantName,
+    merchantCity,
+    profile,
+    detectedType,
+    summary.guestShareCents,
+    summary.hostShareCents,
+    summary.shares,
+    description,
+    expense,
+    initialDate,
+    participants,
+    remainderPolicy,
+    categoryName,
+    categoryIcon,
+    createPublicShareMutation,
+    updatePreferences,
+  ]);
+
+  const handleShareWhatsApp = () => {
+    if (!generatedLink) return;
+    const guestFormatted = (summary.guestShareCents / 100).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+    const cleanTitle = description.trim() || "Despesa";
+    const msg = `Oi! Segue o link para o racha da conta de ${cleanTitle} (${guestFormatted} para cada): ${generatedLink}\nVocê pode pagar direto copiando o Pix!`;
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+    if (typeof window !== "undefined") {
+      window.open(url, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -285,6 +362,29 @@ export function SplitExpenseDialog({
     pixKey.trim().length > 0 &&
     merchantName.trim().length > 0 &&
     merchantCity.trim().length > 0;
+
+  // Auto-geração suave quando solicitado pelo fluxo de criação integrada
+  useEffect(() => {
+    if (
+      open &&
+      autoGenerate &&
+      !generatedLink &&
+      isFormValid &&
+      !createPublicShareMutation.isPending
+    ) {
+      const timer = setTimeout(() => {
+        void handleGenerateAndCopy();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [
+    open,
+    autoGenerate,
+    generatedLink,
+    isFormValid,
+    createPublicShareMutation.isPending,
+    handleGenerateAndCopy,
+  ]);
 
   return (
     <Modal
@@ -367,6 +467,16 @@ export function SplitExpenseDialog({
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto gap-1.5"
+                onClick={handleShareWhatsApp}
+              >
+                <MessageCircle className="size-3.5 text-positive-strong" aria-hidden="true" />
+                <span>WhatsApp</span>
+              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -648,12 +758,12 @@ export function SplitExpenseDialog({
                   <Input
                     value={merchantCity}
                     onChange={(e) => setMerchantCity(e.target.value.toUpperCase())}
-                    placeholder="Ex.: SAO PAULO"
-                    maxLength={15}
+                    placeholder="Sua cidade (ex.: Nossa Senhora da Glória)"
+                    maxLength={60}
                     aria-label="Cidade do titular da chave Pix"
                   />
                   <span className="text-[11px] text-muted-foreground block">
-                    Exigido pela norma do Banco Central (BACEN)
+                    Salva automaticamente para os próximos rachas
                   </span>
                 </div>
               </div>

@@ -101,7 +101,7 @@ export function StepSelect({
       <div className="flex flex-col gap-2">
         <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           {!isSearching && hasTargets && aporteSuggestions.length > 0 && (
-            <Sparkles className="size-3 text-primary" aria-hidden="true" />
+            <Sparkles className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
           )}
           {isSearching
             ? "Resultados sugeridos"
@@ -115,7 +115,7 @@ export function StepSelect({
           !hasTargets ? (
             <div className="flex flex-col gap-3">
               <div className="flex items-start gap-2.5 rounded-xl border border-border/70 bg-surface/80 p-3 text-xs text-muted-foreground">
-                <Sparkles className="size-4 shrink-0 text-primary mt-0.5" aria-hidden="true" />
+                <Sparkles className="size-4 shrink-0 text-muted-foreground mt-0.5" aria-hidden="true" />
                 <span>
                   Sugestões automáticas de rebalanceamento só aparecem quando há metas configuradas. Defina suas metas na aba <strong>Metas de Alocação</strong> para calcular a distribuição do aporte.
                 </span>

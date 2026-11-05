@@ -9,12 +9,12 @@ import { PORTFOLIO_QUERY_KEYS } from "./use-portfolio-mutations";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
-import type { DbInsert, PortfolioAsset } from "@/types";
+import type { DbInsert, PortfolioAsset, PortfolioSnapshotInput } from "@/types";
 
 export function useUpsertPortfolioSnapshot() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { month: string; total_value: number; total_cost: number }) =>
+    mutationFn: (input: PortfolioSnapshotInput) =>
       upsertPortfolioSnapshot(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
@@ -26,7 +26,7 @@ export function useUpsertPortfolioSnapshot() {
 export function useBatchUpsertPortfolioSnapshots() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (inputs: { month: string; total_value: number; total_cost: number }[]) =>
+    mutationFn: (inputs: PortfolioSnapshotInput[]) =>
       batchUpsertPortfolioSnapshots(inputs),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });

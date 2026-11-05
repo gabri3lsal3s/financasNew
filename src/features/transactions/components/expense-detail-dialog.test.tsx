@@ -23,6 +23,7 @@ const stateMocks = vi.hoisted(() => ({
     },
   ] as unknown[],
   isReadOnly: false,
+  isFamilyModeEnabled: true,
 }));
 
 vi.mock("@/state", () => ({
@@ -44,6 +45,7 @@ vi.mock("@/state", () => ({
   useDeleteRecurrenceOccurrences: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateRecurrenceOccurrences: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateExpenseGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useFamilyMode: () => ({ isFamilyModeEnabled: stateMocks.isFamilyModeEnabled }),
 }));
 
 vi.mock("@/components/modules/split-expense-dialog", () => ({
@@ -359,6 +361,29 @@ describe("ExpenseDetailDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
 
+    expect(updateExpenseMock).toHaveBeenCalledTimes(1);
+    const payload = updateExpenseMock.mock.calls[0]?.[0] as { input: { is_family: boolean } };
+    expect(payload.input.is_family).toBe(true);
+  });
+
+  it("oculta metadados e switch familiares quando modo familiar está desabilitado, preservando is_family na edição", async () => {
+    stateMocks.isFamilyModeEnabled = false;
+    updateExpenseMock.mockClear();
+    updateExpenseMock.mockResolvedValue({});
+    const user = userEvent.setup();
+
+    render(<ExpenseDetailDialog expense={{ ...baseExpense, is_family: true }} open={true} onOpenChange={vi.fn()} />);
+
+    // Na visualização: não exibe a linha/badge de Orçamento Familiar
+    expect(screen.queryByText("Orçamento")).not.toBeInTheDocument();
+    expect(screen.queryByText("Familiar")).not.toBeInTheDocument();
+
+    // Na edição: não exibe o switch
+    await user.click(screen.getByRole("button", { name: /editar/i }));
+    expect(screen.queryByRole("switch", { name: "Despesa da Casa / Familiar" })).not.toBeInTheDocument();
+
+    // Ao salvar: preserva o valor is_family: true original
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
     expect(updateExpenseMock).toHaveBeenCalledTimes(1);
     const payload = updateExpenseMock.mock.calls[0]?.[0] as { input: { is_family: boolean } };
     expect(payload.input.is_family).toBe(true);

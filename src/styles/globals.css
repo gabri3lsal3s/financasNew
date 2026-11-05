@@ -14,6 +14,7 @@
 @theme inline {
   --color-background: hsl(var(--background));
   --color-surface: hsl(var(--surface));
+  --color-surface-raised: hsl(var(--surface-raised));
   --color-surface-hover: hsl(var(--surface-hover));
   --color-surface-active: hsl(var(--surface-active));
   --color-border: hsl(var(--border));
@@ -66,6 +67,8 @@
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
   --shadow-kpi: var(--shadow-kpi);
 
   --color-ring: hsl(var(--ring));
@@ -508,16 +511,36 @@
     border: 1px solid hsl(var(--border) / 0.7);
   }
 
-  /* F11 — Estilo de superfície "Glass" (padrão): glassmorphism no CHROME —
-     modais (z-modal), painéis flutuantes (z-floating-tools) e paleta de busca
-     ficam translúcidos com blur (permitido pelo DESIGN_SYSTEM §8). Cards de
-     dados permanecem OPACOS (regra §8: glass em cards prejudica legibilidade).
-     flat (data-surface-style) mantém o chrome opaco. */
+  /* F11 — Estilo de superfície "Glass" (padrão): glassmorphism calibrado no CHROME —
+     modais (z-modal), painéis flutuantes (z-floating-tools) e paleta de busca.
+     No Modo Claro: superfície branca pura límpida (surface / 0.98) com elevação
+     e sombra profunda (shadow-2xl), eliminando a névoa cinzenta sobre o overlay e
+     garantindo contraste estrito com inputs e botões internos.
+     No Modo Dark & OLED: translúcido sofisticado (surface / 0.82) com blur de 12px.
+     Cards de dados permanecem OPACOS (regra DESIGN_SYSTEM §8).
+     flat (data-surface-style) mantém o chrome 100% opaco sem sombras. */
   @supports (backdrop-filter: blur(1px)) {
-    html:not([data-surface-style]) :where(.rounded-xl, .rounded-2xl, .rounded-t-2xl).bg-surface:is(.z-modal, .z-floating-tools) {
+    /* Temas escuros (Dark e OLED): translúcido sofisticado com blur */
+    html:not([data-surface-style]):is([data-theme="dark"], [data-theme="oled"]) :where(.rounded-xl, .rounded-2xl, .rounded-t-2xl).bg-surface:is(.z-modal, .z-floating-tools) {
       background-color: hsl(var(--surface) / 0.82);
       -webkit-backdrop-filter: blur(12px);
       backdrop-filter: blur(12px);
+    }
+
+    /* Tema claro (padrão / :root / light): superfície branca límpida de alto contraste sem névoa cinzenta */
+    html:not([data-surface-style]):not([data-theme="dark"]):not([data-theme="oled"]) :where(.rounded-xl, .rounded-2xl, .rounded-t-2xl).bg-surface:is(.z-modal, .z-floating-tools) {
+      background-color: hsl(var(--surface) / 0.98);
+      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px);
+      box-shadow: var(--shadow-2xl);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      html:not([data-theme]):not([data-surface-style]) :where(.rounded-xl, .rounded-2xl, .rounded-t-2xl).bg-surface:is(.z-modal, .z-floating-tools) {
+        background-color: hsl(var(--surface) / 0.82);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+      }
     }
   }
 

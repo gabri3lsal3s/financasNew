@@ -159,8 +159,8 @@ describe("calculatePortfolioTotalReturn — Retorno Total consolidado da carteir
   });
 });
 
-describe("portfolioReturnPct — rentabilidade ponderada pelo valor (§F17)", () => {
-  it("pondera os percentuais pelo valor de mercado e ignora caixa", () => {
+describe("portfolioReturnPct (deprecated) — rentabilidade ponderada pelo valor (§F17)", () => {
+  it("pondera os percentuais pelo valor de mercado e ignora caixa (legado)", () => {
     const pct = portfolioReturnPct([
       { valueBRL: 6000, unrealizedPct: 20 },
       { valueBRL: 2000, unrealizedPct: 5 },

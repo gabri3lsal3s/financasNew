@@ -21,6 +21,7 @@ html[data-theme="light"] {
   /* Neutros (família ardósia-teal) */
   --background: 204 29% 97%;        /* #F4F7F9 */
   --surface: 0 0% 100%;             /* #FFFFFF */
+  --surface-raised: 204 25% 97%;     /* #F3F7FA — cards internos em modais/wizards */
   --surface-hover: 200 22% 94%;     /* #EDF2F4 */
   --surface-active: 200 20% 90%;    /* #E0E8EC */
   --border: 200 18% 87%;            /* #D7E1E6 */
@@ -79,6 +80,8 @@ html[data-theme="light"] {
   --shadow-sm: 0 1px 2px 0 rgb(20 37 49 / 0.05);
   --shadow-md: 0 2px 8px -1px rgb(20 37 49 / 0.07), 0 1px 2px 0 rgb(20 37 49 / 0.04);
   --shadow-lg: 0 8px 24px -6px rgb(20 37 49 / 0.12), 0 2px 6px -2px rgb(20 37 49 / 0.06);
+  --shadow-xl: 0 20px 25px -5px rgb(20 37 49 / 0.10), 0 8px 10px -6px rgb(20 37 49 / 0.05);
+  --shadow-2xl: 0 25px 50px -12px rgb(20 37 49 / 0.18);
   --shadow-kpi: 0 0 0 1px hsl(var(--accent) / 0.20), 0 4px 16px -4px hsl(var(--accent) / 0.32);
 
   /* Foco */
@@ -112,6 +115,7 @@ html[data-theme="dark"] {
   /* Neutros */
   --background: 206 49% 9%;         /* #0C1923 — Abissal */
   --surface: 206 42% 15%;           /* #162836 — ardósia escuro */
+  --surface-raised: 206 38% 19%;    /* #1D3445 — cards internos em modais/wizards */
   --surface-hover: 206 41% 19%;     /* #1D3445 */
   --surface-active: 204 39% 23%;    /* #244053 */
   --border: 208 36% 21%;            /* #23384A — ardósia-teal */
@@ -157,6 +161,8 @@ html[data-theme="dark"] {
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.30);
   --shadow-md: 0 2px 8px -1px rgb(0 0 0 / 0.40), 0 1px 2px 0 rgb(0 0 0 / 0.30);
   --shadow-lg: 0 8px 24px -6px rgb(0 0 0 / 0.50), 0 2px 6px -2px rgb(0 0 0 / 0.40);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.60), 0 8px 10px -6px rgb(0 0 0 / 0.50);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.75);
   --shadow-kpi: 0 0 0 1px hsl(var(--accent) / 0.28), 0 4px 20px -4px hsl(var(--accent) / 0.38);
 
   --ring: 173 66% 50%;
@@ -175,6 +181,7 @@ html[data-theme="oled"] {
 
   --background: 0 0% 0%;            /* #000000 — true black (AMOLED) */
   --surface: 0 0% 4%;               /* #0A0A0A */
+  --surface-raised: 0 0% 8%;        /* #141414 — cards internos em modais/wizards */
   --surface-hover: 0 0% 8%;         /* #141414 — hover perceptível sobre true black */
   --surface-active: 0 0% 12%;       /* #1F1F1F — pressed */
   --border: 0 0% 18%;               /* #2E2E2E — cinza neutro puro P&B (sem matiz azulada) */
@@ -212,9 +219,12 @@ html[data-theme="oled"] {
   --cat-9: 286 80% 68%;             /* orquídea */
   --cat-10: 215 35% 65%;            /* ardósia claro */
 
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.40);
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.50);
   --shadow-md: 0 2px 8px -1px rgb(0 0 0 / 0.60), 0 1px 2px 0 rgb(0 0 0 / 0.50);
   --shadow-lg: 0 8px 24px -6px rgb(0 0 0 / 0.70), 0 2px 6px -2px rgb(0 0 0 / 0.60);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.70), 0 8px 10px -6px rgb(0 0 0 / 0.60);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.85);
   --shadow-kpi: 0 0 0 1px hsl(var(--accent) / 0.32), 0 4px 20px -4px hsl(var(--accent) / 0.45);
 
   --ring: 173 66% 50%;
@@ -229,7 +239,7 @@ html[data-theme="oled"] {
    ---------------------------------------------------------------- */
 :root,
 html[data-theme="light"] {
-  --overlay: 12 40% 10% / 40%;     /* escurecimento de modais/palette sobre light */
+  --overlay: 205 28% 14% / 32%;     /* escurecimento neutro e suave sobre light */
   --scrollbar-thumb: 200 16% 74%;  /* polegar discreto (light) */
   --scrollbar-track: 204 29% 95%;  /* trilho alinhado ao fundo */
 }
@@ -255,6 +265,7 @@ html[data-theme="oled"] {
     color-scheme: dark;
     --background: 206 49% 9%;
     --surface: 206 42% 15%;
+    --surface-raised: 206 38% 19%;
     --surface-hover: 206 41% 19%;
     --surface-active: 204 39% 23%;
     --border: 208 36% 21%;

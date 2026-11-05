@@ -208,7 +208,6 @@ export function CardInvoicePrintView({
         accountHolder={accountHolder}
         disclaimer="Documento gerado automaticamente — valores em reais (BRL). Confira com a fatura enviada pelo banco."
         documentId={`FAT-${competenceMonth.replace("-", "")}-${cardName.slice(0, 3).toUpperCase()}`}
-        showQrCode
       />
     </div>
   );

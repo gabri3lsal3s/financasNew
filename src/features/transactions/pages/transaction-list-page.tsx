@@ -16,11 +16,12 @@ import { getErrorMessage } from "@/services/errors";
 import { downloadCsv } from "@/services/export-actions";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import { setStepIndex, startDemo, useCategories, useCreditCards, useExpenses, useIncomes, usePermission, useRecurrences } from "@/state";
+import { setStepIndex, startDemo, useCategories, useCreditCards, useExpenses, useFamilyMode, useIncomes, usePermission, useRecurrences } from "@/state";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS, RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import { sumGrossCents, sumWeightedCents } from "@/domain/money";
 import { buildUnifiedFeedItems, filterByVisionScope, groupFeedByDay, type FeedFilter, type VisionScope } from "@/domain/expenses";
 import { serializeUnifiedTransactionsCsv, type ExportUnifiedTransactionRow } from "@/domain/export";
+import { ActiveSplitsCard } from "@/features/transactions/components/active-splits-card";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import { IncomeDetailDialog } from "@/features/transactions/components/income-detail-dialog";
 import type { Category, Expense, Income } from "@/types";
@@ -30,12 +31,14 @@ function ExpenseRow({
   expense,
   category,
   recurrenceLabel,
+  isFamilyModeEnabled,
   onClick,
 }: {
   expense: Expense;
   category?: Category | null;
   /** Rótulo de frequência quando recorrente (Fase 32). */
   recurrenceLabel?: string;
+  isFamilyModeEnabled?: boolean;
   onClick?: () => void;
 }) {
   const title = expense.description || category?.name || "Despesa";
@@ -56,7 +59,7 @@ function ExpenseRow({
       icon={category?.icon}
       iconColor={category?.color}
       badges={
-        expense.is_family ? (
+        expense.is_family && isFamilyModeEnabled ? (
           <Badge variant="muted" size="xs" className="shrink-0 font-medium">
             Familiar
           </Badge>
@@ -73,12 +76,14 @@ function IncomeRow({
   income,
   category,
   recurrenceLabel,
+  isFamilyModeEnabled,
   onClick,
 }: {
   income: Income;
   category?: Category | null;
   /** Rótulo de frequência quando recorrente (Fase 32). */
   recurrenceLabel?: string;
+  isFamilyModeEnabled?: boolean;
   onClick?: () => void;
 }) {
   const title = income.description || category?.name || "Receita";
@@ -94,7 +99,7 @@ function IncomeRow({
       icon={category?.icon}
       iconColor={category?.color}
       badges={
-        income.is_family ? (
+        income.is_family && isFamilyModeEnabled ? (
           <Badge variant="muted" size="xs" className="shrink-0 font-medium">
             Familiar
           </Badge>
@@ -113,6 +118,7 @@ export function TransactionListPage() {
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [selectedIncome, setSelectedIncome] = useState<Income | null>(null);
   const { highlightId } = useHighlightTarget("q");
+  const { isFamilyModeEnabled } = useFamilyMode();
 
   // Mês derivado: deep-link ?month= (busca §3.9) prevalece; sem param,
   // usa a escolha manual (MonthPicker) ou o mês corrente. Sem setState em
@@ -144,6 +150,7 @@ export function TransactionListPage() {
     paramScope === "personal" || paramScope === "family" ? paramScope : "all",
   );
   const visionScope: VisionScope = paramScope ? validParamScope : localScope;
+  const effectiveVisionScope: VisionScope = isFamilyModeEnabled ? visionScope : "all";
 
   const handleScopeChange = (next: VisionScope) => {
     setLocalScope(next);
@@ -176,12 +183,12 @@ export function TransactionListPage() {
   );
 
   const scopedExpenses = useMemo(
-    () => filterByVisionScope(expensesQuery.data ?? [], visionScope),
-    [expensesQuery.data, visionScope],
+    () => filterByVisionScope(expensesQuery.data ?? [], effectiveVisionScope),
+    [expensesQuery.data, effectiveVisionScope],
   );
   const scopedIncomes = useMemo(
-    () => filterByVisionScope(incomesQuery.data ?? [], visionScope),
-    [incomesQuery.data, visionScope],
+    () => filterByVisionScope(incomesQuery.data ?? [], effectiveVisionScope),
+    [incomesQuery.data, effectiveVisionScope],
   );
 
   const incomesTotalCents = useMemo(() => sumGrossCents(scopedIncomes), [scopedIncomes]);
@@ -339,19 +346,21 @@ export function TransactionListPage() {
       <MonthPicker value={month} onValueChange={handleMonthChange} />
 
       {/* Filtro rápido de visão (Fase 3 — Tarefa 3.3): Todos | Pessoais | Familiar */}
-      <Tabs
-        value={visionScope}
-        onValueChange={(val) => handleScopeChange(val as VisionScope)}
-        variant="pills"
-        fullWidth
-        className="w-full"
-        ariaLabel="Visão do extrato"
-        items={[
-          { value: "all", label: "Todos" },
-          { value: "personal", label: "Pessoais" },
-          { value: "family", label: "Familiar" },
-        ]}
-      />
+      {isFamilyModeEnabled && (
+        <Tabs
+          value={visionScope}
+          onValueChange={(val) => handleScopeChange(val as VisionScope)}
+          variant="pills"
+          fullWidth
+          className="w-full"
+          ariaLabel="Visão do extrato"
+          items={[
+            { value: "all", label: "Todos" },
+            { value: "personal", label: "Pessoais" },
+            { value: "family", label: "Familiar" },
+          ]}
+        />
+      )}
 
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         <KpiCard
@@ -415,6 +424,8 @@ export function TransactionListPage() {
           <span className="hidden sm:inline">Exportar </span>CSV
         </Button>
       </div>
+
+      <ActiveSplitsCard month={month} />
 
       <div className="flex flex-col gap-3">
         <Tabs
@@ -546,6 +557,7 @@ export function TransactionListPage() {
                         income={item.rawIncome}
                         category={categoryById.get(item.categoryId)}
                         recurrenceLabel={recurrenceLabel(item.recurrenceId)}
+                        isFamilyModeEnabled={isFamilyModeEnabled}
                         onClick={() => setSelectedIncome(item.rawIncome!)}
                       />
                     ) : item.rawExpense ? (
@@ -553,6 +565,7 @@ export function TransactionListPage() {
                         expense={item.rawExpense}
                         category={categoryById.get(item.categoryId)}
                         recurrenceLabel={recurrenceLabel(item.recurrenceId)}
+                        isFamilyModeEnabled={isFamilyModeEnabled}
                         onClick={() => setSelectedExpense(item.rawExpense!)}
                       />
                     ) : null}
@@ -610,25 +623,39 @@ export function TransactionListPage() {
         </div>
       )}
 
-      <ExpenseDetailDialog
-        expense={selectedExpense}
-        open={selectedExpense !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSelectedExpense(null);
-          }
-        }}
-      />
+      {(() => {
+        const activeExpense = selectedExpense
+          ? (expensesQuery.data ?? []).find((e) => e.id === selectedExpense.id) ?? selectedExpense
+          : null;
+        return (
+          <ExpenseDetailDialog
+            expense={activeExpense}
+            open={selectedExpense !== null}
+            onOpenChange={(open) => {
+              if (!open) {
+                setSelectedExpense(null);
+              }
+            }}
+          />
+        );
+      })()}
 
-      <IncomeDetailDialog
-        income={selectedIncome}
-        open={selectedIncome !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSelectedIncome(null);
-          }
-        }}
-      />
+      {(() => {
+        const activeIncome = selectedIncome
+          ? (incomesQuery.data ?? []).find((i) => i.id === selectedIncome.id) ?? selectedIncome
+          : null;
+        return (
+          <IncomeDetailDialog
+            income={activeIncome}
+            open={selectedIncome !== null}
+            onOpenChange={(open) => {
+              if (!open) {
+                setSelectedIncome(null);
+              }
+            }}
+          />
+        );
+      })()}
 
       <UpgradeDialog
         open={upgradeOpen}

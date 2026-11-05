@@ -391,9 +391,9 @@ export function analyzeCashGap(params: CashGapParams): CashGapAnalysisResult {
     const formattedGapDate = `${firstGapDate.slice(8, 10)}/${firstGapDate.slice(5, 7)}`;
     if (nextInflowDate) {
       const formattedInflowDate = `${nextInflowDate.slice(8, 10)}/${nextInflowDate.slice(5, 7)}`;
-      recommendationMessage = `Risco de saldo insuficiente a partir de ${formattedGapDate} antes do recebimento previsto para ${formattedInflowDate}. Considere transferir da reserva ou ajustar pagamentos.`;
+      recommendationMessage = `Risco de saldo negativo em ${formattedGapDate} antes do recebimento de ${formattedInflowDate}.`;
     } else {
-      recommendationMessage = `Risco de saldo insuficiente a partir de ${formattedGapDate}. Considere transferir da reserva de liquidez ou postergar despesas flexíveis.`;
+      recommendationMessage = `Risco de saldo negativo a partir de ${formattedGapDate}. Ajuste pagamentos ou use a reserva.`;
     }
   }
 

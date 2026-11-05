@@ -175,6 +175,8 @@ describe("MonthlyClosingEditor", () => {
       expect(mockSaveClosing).toHaveBeenCalledWith(
         expect.objectContaining({
           month: "2026-08",
+          totalValueBRL: 6225,
+          totalCostBRL: 7600,
           prices: expect.arrayContaining([
             expect.objectContaining({ ticker: "VOO", currency: "USD" }),
             expect.objectContaining({ ticker: "PETR4", currency: "BRL" }),

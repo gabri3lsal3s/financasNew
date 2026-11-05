@@ -127,7 +127,7 @@ export { ApkInstallGuideDialog } from "./apk-install-guide-dialog";
 export type { ApkInstallGuideDialogProps } from "./apk-install-guide-dialog";
 export { SplitExpenseDialog } from "./split-expense-dialog";
 export type { SplitExpenseDialogProps } from "./split-expense-dialog";
-
-
-
-
+export { ManageSplitDialog } from "./manage-split-dialog";
+export type { ManageSplitDialogProps } from "./manage-split-dialog";
+export { PendingSplitSignalsCard } from "./pending-split-signals-card";
+export type { PendingSplitSignalsCardProps } from "./pending-split-signals-card";

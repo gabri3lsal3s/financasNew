@@ -18,7 +18,7 @@ import {
   PasswordInput,
 } from "@/components/ui";
 import { signUpWithEmail, signInWithEmail } from "@/hooks/use-auth";
-import { useSaveSplitExpense } from "@/state";
+import { useSaveSplitExpense, useSignalSplitPayment } from "@/state";
 import { classifyError } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { formatDateBR } from "@/lib/date";
@@ -45,6 +45,7 @@ export function SplitOnboardingModal({
 }: SplitOnboardingModalProps) {
   const navigate = useNavigate();
   const saveSplitMutation = useSaveSplitExpense();
+  const signalSplitPaymentMutation = useSignalSplitPayment();
 
   const [mode, setMode] = useState<"register" | "login">("register");
   const [name, setName] = useState("");
@@ -124,6 +125,18 @@ export function SplitOnboardingModal({
         amountCents: guestShareCents,
         date,
       });
+
+      if (token) {
+        try {
+          await signalSplitPaymentMutation.mutateAsync({
+            token,
+            participantName: name.trim() || cleanEmail.split("@")[0] || "Participante",
+            amountCents: guestShareCents,
+          });
+        } catch (signalErr) {
+          console.warn("Nao foi possivel sinalizar o pagamento:", signalErr);
+        }
+      }
 
       triggerSensory("success");
       onOpenChange(false);

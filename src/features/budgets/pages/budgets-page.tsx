@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigate, useSearchParams } from "react-router";
-import { ArrowRight, Edit3, HelpCircle, Info, PiggyBank, Plus, SlidersHorizontal, Sparkles, Target, TrendingDown, TrendingUp, User, Users } from "lucide-react";
+import { ArrowRight, Edit3, HelpCircle, Info, PiggyBank, Plus, SlidersHorizontal, Sparkles, Target, TrendingDown, User, Users } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Popover, PopoverContent, PopoverTrigger, Skeleton, Tabs } from "@/components/ui";
+import { pushToast } from "@/services/toast";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon, MonthPicker, ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
@@ -30,12 +31,14 @@ import {
   useBudgets,
   useCategories,
   useCategoryUsage,
+  useDeletePublicShare,
   useExpenses,
   useIncomeGoals,
   useIncomes,
   useMyPublicShares,
   usePermission,
   useReallocateBudget,
+  useSeedDefaultCategories,
 } from "@/state";
 import {
   BudgetAdjustDialog,
@@ -44,8 +47,14 @@ import {
   LimitDialog,
   type BudgetAdjustCategoryItem,
 } from "@/features/budgets/components";
-import { GoalCard, ShareGoalDialog } from "@/features/goals";
-import type { Category } from "@/types";
+import {
+  AddContributionDialog,
+  CampaignCard,
+  GoalCard,
+  ManageContributionsDialog,
+  ShareGoalDialog,
+} from "@/features/goals";
+import type { Category, PublicShare } from "@/types";
 
 /** Categorias & Orçamentos (§3.5.2) e metas de renda (§3.5.3) — Opção C unificada. */
 export function BudgetsPage() {
@@ -57,11 +66,22 @@ export function BudgetsPage() {
 
   const [month, setMonth] = useState(currentMonth());
   const [tab, setTab] = useState<"limits" | "goals" | "categories">(() =>
-    targetType === "income" ? "goals" : targetType === "category" ? "categories" : "limits",
+    targetType === "income" || searchParams.get("tab") === "goals" || searchParams.get("aba") === "metas"
+      ? "goals"
+      : targetType === "category"
+        ? "categories"
+        : "limits",
   );
   const [limitFor, setLimitFor] = useState<Category | null>(null);
   const [goalFor, setGoalFor] = useState<Category | null>(null);
   const [sharingGoalFor, setSharingGoalFor] = useState<Category | null>(null);
+  const [depositShare, setDepositShare] = useState<PublicShare | null>(null);
+  const [manageContributionsShare, setManageContributionsShare] = useState<PublicShare | null>(null);
+  const [editingShare, setEditingShare] = useState<PublicShare | null>(null);
+  const [editingShareInitialEdit, setEditingShareInitialEdit] = useState(false);
+  const [deletingShare, setDeletingShare] = useState<PublicShare | null>(null);
+  const [createStandaloneCampaignOpen, setCreateStandaloneCampaignOpen] = useState(false);
+  const [showArchivedCampaigns, setShowArchivedCampaigns] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const { open: categoryFormOpen, setOpen: setCategoryFormOpen } = useCreateDeepLink("categoria");
   const [showAllCategories, setShowAllCategories] = useState(false);
@@ -81,6 +101,25 @@ export function BudgetsPage() {
   const usageQuery = useCategoryUsage(editingCategory ? editingCategory.id : null);
 
   const reallocate = useReallocateBudget();
+  const deleteShareMutation = useDeletePublicShare();
+  const seedCategoriesMutation = useSeedDefaultCategories();
+  const [seedFeedback, setSeedFeedback] = useState<string | null>(null);
+
+  const handleConfirmDeleteCampaign = async () => {
+    if (!deletingShare) return;
+    try {
+      await deleteShareMutation.mutateAsync(deletingShare.id);
+      setDeletingShare(null);
+      triggerSensory("action");
+      pushToast({
+        title: "Meta de arrecadação excluída!",
+        description: "A meta e todas as suas contribuições foram excluídas com sucesso.",
+        variant: "default",
+      });
+    } catch {
+      triggerSensory("destructive");
+    }
+  };
 
   const error = budgetsQuery.error ?? goalsQuery.error ?? expensesQuery.error ?? incomesQuery.error ?? allCategoriesQuery.error;
 
@@ -207,6 +246,28 @@ export function BudgetsPage() {
     }
     setEditingCategory(category);
     setCategoryFormOpen(true);
+  };
+
+  const handleSeedCategories = async () => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Carregar Categorias Padrão");
+      setUpgradeOpen(true);
+      return;
+    }
+    setSeedFeedback(null);
+    try {
+      triggerSensory("action");
+      const count = await seedCategoriesMutation.mutateAsync();
+      triggerSensory("success");
+      setSeedFeedback(
+        count > 0
+          ? `${count} categorias padrão carregadas com sucesso.`
+          : "Todas as categorias padrão já estão presentes no seu catálogo.",
+      );
+    } catch (err) {
+      triggerSensory("error");
+      setSeedFeedback(getErrorMessage(err));
+    }
   };
 
   const handleOpenReallocate = () => {
@@ -396,8 +457,8 @@ export function BudgetsPage() {
       {suggestion && fromCategory && toCategory ? (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border border-primary/25 bg-primary/5 p-4 shadow-xs">
           <div className="flex items-start gap-3 min-w-0">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/15 border border-primary/30 text-primary-strong">
-              <Sparkles className="size-4" aria-hidden="true" />
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary-strong">
+              <Sparkles className="size-4.5" aria-hidden="true" />
             </span>
             <div className="text-sm min-w-0">
               <p className="font-semibold text-foreground">Sugestão de Realocação de Limite</p>
@@ -575,110 +636,266 @@ export function BudgetsPage() {
     </div>
   );
 
-  const renderGoalsContent = () => (
-    <div className="flex flex-col gap-6">
-      <MonthPicker value={month} onValueChange={setMonth} />
+  const renderGoalsContent = () => {
+    const allGoalShares = goalSharesQuery.data ?? [];
+    const standaloneCampaigns = allGoalShares.filter((s) => !s.payload?.category_id);
+    const activeCampaigns = standaloneCampaigns.filter((s) => s.payload?.status !== "archived" && !s.is_revoked);
+    const archivedCampaigns = standaloneCampaigns.filter((s) => s.payload?.status === "archived" || s.is_revoked);
 
-      <div className="flex items-center justify-between gap-2">
-        <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
-          Defina a expectativa mensal por categoria de renda para comparar com os recebimentos realizados.
-        </p>
-      </div>
+    return (
+      <div className="flex flex-col gap-6">
+        <MonthPicker value={month} onValueChange={setMonth} />
 
-      {(incomeCategories.data ?? []).length === 0 ? (
-        <EmptyState
-          icon={<PiggyBank className="size-6" aria-hidden="true" />}
-          title="Sem categorias de renda"
-          description="Crie categorias de renda para definir metas mensais."
-          action={
-            <Button size="sm" onClick={handleOpenCreateCategory}>
-              <Plus className="size-4" aria-hidden="true" />
-              Nova categoria
-            </Button>
-          }
-        />
-      ) : (
-        <div className="flex flex-col gap-2.5">
-          {(incomeCategories.data ?? []).map((category) => {
-            const realizedCents = realizedByCategory.get(category.id) ?? 0;
-            const expectedCents = goalsByCategory.get(category.id) ?? 0;
-            const status = incomeGoalStatus(realizedCents, expectedCents);
-            const percent = expectedCents > 0 ? Math.min(100, (realizedCents / expectedCents) * 100) : 0;
-            const activeShare = (goalSharesQuery.data ?? []).find(
-              (s) =>
-                !s.is_revoked &&
-                (!s.expires_at || new Date(s.expires_at).getTime() > nowMs) &&
-                s.payload?.category_id === category.id,
-            );
-
-            return (
-              <GoalCard
-                key={category.id}
-                category={category}
-                month={month}
-                realizedCents={realizedCents}
-                expectedCents={expectedCents}
-                status={status}
-                percent={percent}
-                highlightId={effectiveHighlightId}
-                activeShare={activeShare}
-                onOpenGoal={handleOpenGoal}
-                onEditCategory={handleEditCategory}
-                onShareGoal={(cat) => setSharingGoalFor(cat)}
-              />
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderCategoriesContent = () => (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          Catálogo com todas as categorias do sistema e personalizadas.
-        </p>
-        <Button size="sm" onClick={handleOpenCreateCategory} className="gap-1.5">
-          <Plus className="size-4" aria-hidden="true" />
-          <span>Nova categoria</span>
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {allCategories.map((category) => (
-          <div
-            key={category.id}
-            className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-surface/70 p-3 sm:p-3.5 shadow-2xs transition-all hover:border-border hover:bg-surface min-w-0"
+        {/* Banner de Metas & Campanhas Coletivas */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border border-primary/25 bg-primary/5 p-4 shadow-xs">
+          <div className="flex items-start gap-3 min-w-0">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary-strong">
+              <Target className="size-4.5" aria-hidden="true" />
+            </span>
+            <div className="text-sm min-w-0">
+              <p className="font-semibold text-foreground">Metas & Termômetro Coletivo com Pix</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                Crie vaquinhas e arrecadações temporárias para viagens, presentes e eventos com link público transparente e chave Pix oficial.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => {
+              triggerSensory("action");
+              setSharingGoalFor(null);
+              setEditingShare(null);
+              setEditingShareInitialEdit(false);
+              setCreateStandaloneCampaignOpen(true);
+            }}
+            className="shrink-0 self-start sm:self-auto gap-1.5 cursor-pointer"
           >
-            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-              <CategoryIcon icon={category.icon} color={category.color} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-foreground">
-                  {category.name}
-                </p>
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                  {category.type === "income" ? "Receita" : "Despesa"}
-                </span>
+            <Plus className="size-4" aria-hidden="true" />
+            <span>Nova Meta Coletiva</span>
+          </Button>
+        </div>
+
+        {/* Seção de Campanhas & Vaquinhas Ativas */}
+        {activeCampaigns.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-semibold text-foreground">Campanhas & Vaquinhas Coletivas</h2>
+                <Badge variant="portfolio" size="xs">
+                  {activeCampaigns.length} ativa{activeCampaigns.length > 1 ? "s" : ""}
+                </Badge>
               </div>
             </div>
+            <div className="flex flex-col gap-2.5">
+              {activeCampaigns.map((share) => (
+                <CampaignCard
+                  key={share.id}
+                  share={share}
+                  onOpenDeposit={(s) => setDepositShare(s)}
+                  onManageShare={(s) => {
+                    setEditingShare(s);
+                    setEditingShareInitialEdit(false);
+                  }}
+                  onEditShare={(s) => {
+                    setEditingShare(s);
+                    setEditingShareInitialEdit(true);
+                  }}
+                  onDeleteShare={(s) => setDeletingShare(s)}
+                  onManageContributions={(s) => setManageContributionsShare(s)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
+        {/* Seção de Campanhas Concluídas/Arquivadas */}
+        {archivedCampaigns.length > 0 && (
+          <div className="flex flex-col gap-2 pt-1">
             <Button
               type="button"
-              size="icon"
               variant="ghost"
-              className="size-7 text-muted-foreground hover:text-foreground"
-              aria-label={`Editar cadastro de ${category.name}`}
-              title={`Editar cadastro de ${category.name}`}
-              onClick={() => handleEditCategory(category)}
+              size="sm"
+              onClick={() => setShowArchivedCampaigns((prev) => !prev)}
+              className="self-center text-xs text-muted-foreground hover:text-foreground"
             >
-              <Edit3 className="size-3.5" aria-hidden="true" />
+              {showArchivedCampaigns
+                ? "Ocultar metas arquivadas ou pausadas"
+                : `Ver ${archivedCampaigns.length} meta${archivedCampaigns.length > 1 ? "s" : ""} arquivada${archivedCampaigns.length > 1 ? "s" : ""} ou pausada${archivedCampaigns.length > 1 ? "s" : ""}`}
+            </Button>
+            {showArchivedCampaigns && (
+              <div className="flex flex-col gap-2.5 opacity-80">
+                {archivedCampaigns.map((share) => (
+                  <CampaignCard
+                    key={share.id}
+                    share={share}
+                    onOpenDeposit={(s) => setDepositShare(s)}
+                    onManageShare={(s) => {
+                      setEditingShare(s);
+                      setEditingShareInitialEdit(false);
+                    }}
+                    onEditShare={(s) => {
+                      setEditingShare(s);
+                      setEditingShareInitialEdit(true);
+                    }}
+                    onDeleteShare={(s) => setDeletingShare(s)}
+                    onManageContributions={(s) => setManageContributionsShare(s)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Seção de Metas Mensais por Categoria de Renda */}
+        <div className="flex flex-col gap-3 pt-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">Metas Mensais por Categoria de Renda</h2>
+            <p className="hidden text-xs text-muted-foreground sm:block">
+              Expectativa mensal por categoria para comparar com recebimentos.
+            </p>
+          </div>
+
+          {(incomeCategories.data ?? []).length === 0 ? (
+            <EmptyState
+              icon={<PiggyBank className="size-6" aria-hidden="true" />}
+              title="Sem categorias de renda"
+              description="Crie categorias de renda para definir metas mensais ou crie uma Meta Coletiva acima."
+              action={
+                <Button size="sm" onClick={handleOpenCreateCategory}>
+                  <Plus className="size-4" aria-hidden="true" />
+                  Nova categoria
+                </Button>
+              }
+            />
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {(incomeCategories.data ?? []).map((category) => {
+                const realizedCents = realizedByCategory.get(category.id) ?? 0;
+                const expectedCents = goalsByCategory.get(category.id) ?? 0;
+                const status = incomeGoalStatus(realizedCents, expectedCents);
+                const percent = expectedCents > 0 ? Math.min(100, (realizedCents / expectedCents) * 100) : 0;
+                const activeShare = (goalSharesQuery.data ?? []).find(
+                  (s) =>
+                    !s.is_revoked &&
+                    (!s.expires_at || new Date(s.expires_at).getTime() > nowMs) &&
+                    s.payload?.category_id === category.id,
+                );
+
+                return (
+                  <GoalCard
+                    key={category.id}
+                    category={category}
+                    month={month}
+                    realizedCents={realizedCents}
+                    expectedCents={expectedCents}
+                    status={status}
+                    percent={percent}
+                    highlightId={effectiveHighlightId}
+                    activeShare={activeShare}
+                    onOpenGoal={handleOpenGoal}
+                    onEditCategory={handleEditCategory}
+                    onShareGoal={(cat) => setSharingGoalFor(cat)}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderCategoriesContent = () => {
+    const userCategories = allCategories.filter((c) => !c.is_reserved);
+
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            Catálogo com todas as categorias do sistema e personalizadas.
+          </p>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleSeedCategories}
+              disabled={seedCategoriesMutation.isPending}
+              className="gap-1.5"
+              title="Carrega ou completa as 11 categorias padrão brasileiras sem duplicar as existentes"
+            >
+              <Sparkles className="size-4" aria-hidden="true" />
+              <span>{seedCategoriesMutation.isPending ? "Carregando..." : "Restaurar padrões"}</span>
+            </Button>
+            <Button size="sm" onClick={handleOpenCreateCategory} className="gap-1.5">
+              <Plus className="size-4" aria-hidden="true" />
+              <span>Nova categoria</span>
             </Button>
           </div>
-        ))}
+        </div>
+
+        {seedFeedback && (
+          <Alert variant={seedCategoriesMutation.isError ? "error" : "info"}>
+            {seedFeedback}
+          </Alert>
+        )}
+
+        {userCategories.length === 0 ? (
+          <EmptyState
+            icon={<Sparkles className="size-6 text-muted-foreground" aria-hidden="true" />}
+            title="Nenhuma categoria pronta encontrada"
+            description="Sua conta ainda não possui categorias de receitas e despesas. Carregue o catálogo pré-pronto oficial com as 11 categorias brasileiras para começar imediatamente."
+            action={
+              <Button
+                size="sm"
+                onClick={handleSeedCategories}
+                disabled={seedCategoriesMutation.isPending}
+                className="gap-1.5"
+              >
+                <Sparkles className="size-4" aria-hidden="true" />
+                <span>{seedCategoriesMutation.isPending ? "Carregando..." : "Carregar categorias pré-prontas"}</span>
+              </Button>
+            }
+          />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {allCategories.map((category) => (
+              <div
+                key={category.id}
+                className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-surface/70 p-3 sm:p-3.5 shadow-2xs transition-all hover:border-border hover:bg-surface min-w-0"
+              >
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <CategoryIcon icon={category.icon} color={category.color} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {category.name}
+                    </p>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                      {category.type === "income" ? "Receita" : "Despesa"}
+                      {category.is_reserved ? " · Sistema" : ""}
+                    </span>
+                  </div>
+                </div>
+
+                {!category.is_reserved && (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="size-7 text-muted-foreground hover:text-foreground"
+                    aria-label={`Editar cadastro de ${category.name}`}
+                    title={`Editar cadastro de ${category.name}`}
+                    onClick={() => handleEditCategory(category)}
+                  >
+                    <Edit3 className="size-3.5" aria-hidden="true" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -739,8 +956,8 @@ export function BudgetsPage() {
           },
           {
             value: "goals",
-            label: "Rendas",
-            icon: <TrendingUp className="size-4" aria-hidden="true" />,
+            label: "Metas & Campanhas",
+            icon: <Target className="size-4" aria-hidden="true" />,
             content: renderGoalsContent(),
           },
           {
@@ -787,6 +1004,62 @@ export function BudgetsPage() {
           currentRealizedCents={realizedByCategory.get(sharingGoalFor.id) ?? 0}
           open={sharingGoalFor !== null}
           onOpenChange={(next) => !next && setSharingGoalFor(null)}
+        />
+      ) : null}
+
+      {createStandaloneCampaignOpen ? (
+        <ShareGoalDialog
+          key="share:new-standalone"
+          category={null}
+          month={month}
+          open={createStandaloneCampaignOpen}
+          onOpenChange={setCreateStandaloneCampaignOpen}
+        />
+      ) : null}
+
+      {editingShare ? (
+        <ShareGoalDialog
+          key={`share:edit:${editingShare.id}:${editingShareInitialEdit ? "edit" : "view"}`}
+          category={null}
+          existingShare={editingShare}
+          month={month}
+          open={editingShare !== null}
+          initialEditMode={editingShareInitialEdit}
+          onOpenChange={(next) => {
+            if (!next) {
+              setEditingShare(null);
+              setEditingShareInitialEdit(false);
+            }
+          }}
+        />
+      ) : null}
+
+      <ConfirmDialog
+        open={deletingShare !== null}
+        onOpenChange={(next) => !next && setDeletingShare(null)}
+        title="Excluir Meta de Arrecadação?"
+        description={`Tem certeza que deseja excluir permanentemente a meta "${(deletingShare?.payload?.title as string) || "Meta Coletiva"}"? Todos os registros de depósitos e a página pública serão removidos permanentemente.`}
+        confirmLabel={deleteShareMutation.isPending ? "Excluindo…" : "Excluir Meta"}
+        variant="destructive"
+        confirmPending={deleteShareMutation.isPending}
+        onConfirm={() => void handleConfirmDeleteCampaign()}
+      />
+
+      {depositShare ? (
+        <AddContributionDialog
+          key={`deposit:${depositShare.id}`}
+          share={depositShare}
+          open={depositShare !== null}
+          onOpenChange={(next) => !next && setDepositShare(null)}
+        />
+      ) : null}
+
+      {manageContributionsShare ? (
+        <ManageContributionsDialog
+          key={`manage-contribs:${manageContributionsShare.id}`}
+          share={manageContributionsShare}
+          open={manageContributionsShare !== null}
+          onOpenChange={(next) => !next && setManageContributionsShare(null)}
         />
       ) : null}
 

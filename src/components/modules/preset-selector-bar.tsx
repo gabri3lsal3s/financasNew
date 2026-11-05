@@ -68,7 +68,7 @@ export function PresetSelectorBar({
         {/* Seletor de Cenários */}
         <div className="flex flex-1 items-center gap-2 min-w-0">
           <div className="flex items-center gap-1.5 shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            <Compass className="size-4 text-primary" aria-hidden="true" />
+            <Compass className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
             <span className="hidden sm:inline">Cenário:</span>
           </div>
           <div className="flex-1 min-w-[200px] max-w-md">

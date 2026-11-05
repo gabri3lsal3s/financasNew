@@ -72,9 +72,7 @@ export function DiagnosticsTab({
         </div>
         {warnings.length === 0 ? (
           <div className="flex items-center gap-3 rounded-xl border border-positive/30 bg-positive/5 p-4 text-xs">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-positive/10 text-positive-strong">
-              <CheckCircle2 className="size-4" aria-hidden="true" />
-            </span>
+            <CheckCircle2 className="size-4 text-positive-strong shrink-0" aria-hidden="true" />
             <div className="flex flex-col gap-0.5">
               <p className="font-medium text-foreground">Nenhum aviso no momento.</p>
               <p className="text-muted-foreground">Seu ritmo de gastos e orçamentos estão equilibrados neste mês.</p>

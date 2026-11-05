@@ -44,6 +44,10 @@ export interface LaunchState {
   recurrenceCount: number;
   /** Lançamento da casa / familiar compartilhado (Fase 3). */
   isFamily: boolean;
+  /** Se o usuário marcou para rachar a despesa com amigos (gerar Pix e cobrança vinculada) */
+  splitEnabled: boolean;
+  /** Quantidade de participantes na divisão (mínimo 2) */
+  splitPeopleCount: number;
 }
 
 export const WIZARD_STEPS = ["Valor", "Categoria", "Detalhes", "Revisão"] as const;
@@ -75,6 +79,8 @@ export function defaultLaunchState(
     recurrenceEndDate: "",
     recurrenceCount: 12,
     isFamily: overrides?.isFamily ?? false,
+    splitEnabled: overrides?.splitEnabled ?? false,
+    splitPeopleCount: overrides?.splitPeopleCount ?? 2,
   };
   return overrides ? { ...base, ...overrides } : base;
 }
@@ -120,10 +126,15 @@ export function reportWeightLabel(weight: number, baseValueCents?: number): stri
 
 
 /**
- * Peso efetivo para persistência: presets são usados direto; peso personalizado
- * calcula a fração real `reportCustomAmountCents / valueCents` (0–1).
+ * Peso efetivo para persistência:
+ * - Se rachar despesa estiver ativo, a despesa no relatório conta apenas com a cota do anfitrião (hostShareCents / valueCents);
+ * - Presets são usados direto;
+ * - Peso personalizado calcula a fração real `reportCustomAmountCents / valueCents` (0–1).
  */
 export function effectiveReportWeight(state: LaunchState): number {
+  if (state.type === "expense" && state.splitEnabled) {
+    return 1;
+  }
   if (isPresetWeight(state.reportWeight)) return state.reportWeight;
   if (state.valueCents <= 0) return 1;
   const ratio = state.reportCustomAmountCents / state.valueCents;

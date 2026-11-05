@@ -26,9 +26,7 @@ export function FeatureUsageSection() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-surface-hover text-muted-foreground border border-border/60">
-            <BarChart3 className="size-4.5" aria-hidden="true" />
-          </div>
+          <BarChart3 className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
           <div>
             <h3 className="text-sm font-bold text-foreground">Engajamento & Uso de Funcionalidades</h3>
             <p className="text-xs text-muted-foreground">

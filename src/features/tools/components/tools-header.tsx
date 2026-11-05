@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router";
 import { BrandLogo } from "@/components/layout";
 import { buttonVariants } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { Layers, ShieldAlert, PieChart, TrendingUp } from "lucide-react";
+import { ArrowLeft, Layers, ShieldAlert, PieChart, TrendingUp } from "lucide-react";
 
 export interface ToolNavTab {
   path: string;
@@ -40,13 +40,20 @@ export function ToolsHeader() {
     <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/95 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         {/* Marca & Início */}
-        <div className="flex items-center gap-6 shrink-0">
+        <div className="flex items-center gap-4 shrink-0">
           <Link
             to="/apresentacao"
             className="inline-flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0"
-            aria-label="Ir para a página inicial do Áxis Finance"
+            aria-label="Ir para a página de apresentação do Áxis Finance"
           >
             <BrandLogo showWordmark showSubtitle />
+          </Link>
+          <Link
+            to="/apresentacao"
+            className="hidden xl:inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-medium px-2 py-1 rounded-lg hover:bg-surface-hover/70 transition-colors"
+          >
+            <ArrowLeft className="size-3 text-muted-foreground" aria-hidden="true" />
+            <span>Conhecer a Plataforma</span>
           </Link>
         </div>
 
@@ -77,7 +84,13 @@ export function ToolsHeader() {
         </nav>
 
         {/* Acesso e Conversão */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
+          <Link
+            to="/apresentacao"
+            className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "text-xs font-medium text-muted-foreground hover:text-foreground md:inline-flex xl:hidden")}
+          >
+            Apresentação
+          </Link>
           <Link
             to="/entrar"
             className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "text-xs font-medium")}

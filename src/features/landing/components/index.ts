@@ -18,3 +18,5 @@ export type { ScrollRevealProviderProps } from "./scroll-reveal-context";
 export { ScrollRevealContext } from "./scroll-reveal-context-def";
 export type { ScrollRevealContextValue } from "./scroll-reveal-context-def";
 export { SpotlightCard } from "./spotlight-card";
+export { ToolsShowcase } from "./tools-showcase";
+

@@ -20,6 +20,7 @@ const payDebtMock = vi.fn();
 const receiveDebtMock = vi.fn();
 const settleMock = vi.fn();
 const mockDownloadCsv = vi.fn();
+const deleteLoanMock = vi.fn();
 
 vi.mock("@/services/export-actions", () => ({
   downloadCsv: (...args: unknown[]) => mockDownloadCsv(...args),
@@ -43,6 +44,7 @@ vi.mock("@/state", () => ({
         due_date: "2026-09-30",
         paid_at: null,
         expense_id: null,
+        installment_group_id: null,
       },
       {
         id: "d2",
@@ -52,6 +54,7 @@ vi.mock("@/state", () => ({
         due_date: "2026-08-10",
         paid_at: null,
         expense_id: null,
+        installment_group_id: null,
       },
       {
         id: "d3",
@@ -61,6 +64,7 @@ vi.mock("@/state", () => ({
         due_date: "2026-07-01",
         paid_at: "2026-07-02T00:00:00Z",
         expense_id: null,
+        installment_group_id: null,
       },
       {
         id: "d4",
@@ -70,6 +74,17 @@ vi.mock("@/state", () => ({
         due_date: "2026-08-25",
         paid_at: null,
         expense_id: "e1",
+        installment_group_id: null,
+      },
+      {
+        id: "d5",
+        name: "Financiamento Carro (1/12)",
+        type: "payable",
+        amount: 800,
+        due_date: "2026-10-10",
+        paid_at: null,
+        expense_id: null,
+        installment_group_id: "ig-car-1",
       },
     ],
     isLoading: false,
@@ -103,7 +118,7 @@ vi.mock("@/state", () => ({
   }),
   useCreateLoanContract: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useEarlyAmortizeLoan: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useDeleteLoan: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteLoan: () => ({ mutateAsync: deleteLoanMock, isPending: false }),
 }));
 
 describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
@@ -122,7 +137,7 @@ describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
     const user = userEvent.setup();
     render(<DebtsPage />);
     expect(screen.getByText("Conta de luz")).toBeInTheDocument();
-    expect(screen.getByText("Pendente")).toBeInTheDocument();
+    expect(screen.getAllByText("Pendente").length).toBeGreaterThanOrEqual(1);
 
     const togglePaid = screen.getByRole("button", { name: /Quitadas \(1\)/i });
     await user.click(togglePaid);
@@ -252,7 +267,34 @@ describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
     const confirmButtons = screen.getAllByRole("button", { name: "Excluir" });
     await user.click(confirmButtons[confirmButtons.length - 1]!);
 
-    await waitFor(() => expect(deleteDebtMock).toHaveBeenCalledWith("d1"));
+    await waitFor(() => expect(deleteDebtMock).toHaveBeenCalledWith({ id: "d1", mode: "single" }));
+  });
+
+  it("permite excluir dívida parcelada em lote selecionando o modo desejado", async () => {
+    deleteDebtMock.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(<DebtsPage />);
+
+    // d5 é uma dívida parcelada ("Financiamento Carro (1/12)") com installment_group_id
+    await user.click(screen.getByRole("button", { name: "Editar Financiamento Carro (1/12)" }));
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+    // Diálogo exibe o título de parcela e o select de escopo
+    expect(screen.getByText("Excluir parcela da dívida?")).toBeInTheDocument();
+    expect(screen.getByText("O que excluir?")).toBeInTheDocument();
+
+    const selectTrigger = screen.getByRole("combobox", { name: "Modo de exclusão" });
+    await user.click(selectTrigger);
+
+    const allOption = await screen.findByRole("option", { name: "Todas as parcelas" });
+    await user.click(allOption);
+
+    const confirmButtons = screen.getAllByRole("button", { name: "Excluir" });
+    await user.click(confirmButtons[confirmButtons.length - 1]!);
+
+    await waitFor(() =>
+      expect(deleteDebtMock).toHaveBeenCalledWith({ id: "d5", mode: "all" }),
+    );
   });
 
   it("falha ao excluir mantém o formulário aberto com o erro visível", async () => {
@@ -325,6 +367,45 @@ describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
     expect(screen.getByText(/Tabela SAC/)).toBeInTheDocument();
     expect(screen.getByText("Progresso de quitação")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cronograma" })).toBeInTheDocument();
+  });
+
+  it("exclui contrato e suas parcelas vinculadas na aba Contratos", async () => {
+    deleteLoanMock.mockResolvedValue(undefined);
+    debtsStateMocks.loans = [
+      {
+        id: "l1",
+        user_id: "u1",
+        name: "Financiamento Imóvel",
+        loan_type: "financing",
+        principal_amount: 200000,
+        interest_rate_monthly: 0.8,
+        amortization_system: "sac",
+        total_installments: 120,
+        start_date: "2026-01-10",
+        installment_group_id: "ig-car-1",
+        created_at: "2026-01-01T00:00:00Z",
+      },
+    ];
+
+    const user = userEvent.setup();
+    render(<DebtsPage />);
+
+    const loansTab = screen.getByRole("tab", { name: /contratos/i });
+    await user.click(loansTab);
+
+    const deleteBtn = screen.getByRole("button", { name: "Excluir contrato" });
+    await user.click(deleteBtn);
+
+    // Diálogo exibe a opção de excluir parcelas vinculadas
+    expect(screen.getByText(/Excluir contrato "Financiamento Imóvel"\?/)).toBeInTheDocument();
+    expect(screen.getByText(/Excluir também as 1 parcelas vinculadas/)).toBeInTheDocument();
+
+    const confirmBtn = screen.getByRole("button", { name: "Excluir contrato" });
+    await user.click(confirmBtn);
+
+    await waitFor(() =>
+      expect(deleteLoanMock).toHaveBeenCalledWith({ id: "l1", deleteDebts: true }),
+    );
   });
 });
 

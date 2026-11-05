@@ -1,6 +1,8 @@
 import { describe, expect, it, vi, beforeEach, afterAll } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SplitExpenseDialog } from "./split-expense-dialog";
+import { storeSplitPreferences } from "@/services/split-preferences";
 import type { Expense } from "@/types";
 
 const mockMutateAsync = vi.fn();
@@ -33,6 +35,19 @@ vi.mock("@/services/toast", () => ({
   pushToast: vi.fn(),
 }));
 
+function renderWithClient(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      {ui}
+    </QueryClientProvider>,
+  );
+}
+
 const mockExpense: Expense = {
   id: "exp-123",
   user_id: "user-123",
@@ -57,6 +72,7 @@ describe("SplitExpenseDialog", () => {
   const originalClipboard = navigator.clipboard;
 
   beforeEach(() => {
+    localStorage.clear();
     vi.clearAllMocks();
     mockMutateAsync.mockResolvedValue({
       id: "share-123",
@@ -81,7 +97,7 @@ describe("SplitExpenseDialog", () => {
   });
 
   it("renderiza campos com dados preenchidos a partir da despesa e perfil", () => {
-    render(
+    renderWithClient(
       <SplitExpenseDialog
         open={true}
         onOpenChange={vi.fn()}
@@ -107,7 +123,7 @@ describe("SplitExpenseDialog", () => {
   });
 
   it("calcula rateio inicial de 2 pessoas corretamente", () => {
-    render(
+    renderWithClient(
       <SplitExpenseDialog
         open={true}
         onOpenChange={vi.fn()}
@@ -122,7 +138,7 @@ describe("SplitExpenseDialog", () => {
   });
 
   it("atualiza rateio quando o número de participantes é alterado pelos botões rápidos", () => {
-    render(
+    renderWithClient(
       <SplitExpenseDialog
         open={true}
         onOpenChange={vi.fn()}
@@ -140,7 +156,7 @@ describe("SplitExpenseDialog", () => {
   });
 
   it("permite alternar para modo de nomes customizados e adicionar participante", () => {
-    render(
+    renderWithClient(
       <SplitExpenseDialog
         open={true}
         onOpenChange={vi.fn()}
@@ -162,14 +178,38 @@ describe("SplitExpenseDialog", () => {
     expect(screen.getByLabelText("Nome do participante 3")).toBeInTheDocument();
   });
 
-  it("gera racha, chama mutation, copia link e exibe tela de sucesso", async () => {
-    render(
+  it("respeita preferências salvas de Pix e cidade em vez dos dados do perfil", () => {
+    storeSplitPreferences({
+      pixKey: "minhachave@salva.com",
+      pixKeyType: "email",
+      merchantName: "Gabriel Personalizado",
+      merchantCity: "CURITIBA",
+    });
+
+    renderWithClient(
       <SplitExpenseDialog
         open={true}
         onOpenChange={vi.fn()}
         expense={mockExpense}
       />,
     );
+
+    expect(screen.getByLabelText("Chave Pix do anfitrião")).toHaveValue("minhachave@salva.com");
+    expect(screen.getByLabelText("Nome do titular da chave Pix")).toHaveValue("Gabriel Personalizado");
+    expect(screen.getByLabelText("Cidade do titular da chave Pix")).toHaveValue("CURITIBA");
+  });
+
+  it("gera racha, chama mutation, copia link e exibe tela de sucesso com botão WhatsApp", async () => {
+    renderWithClient(
+      <SplitExpenseDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        expense={mockExpense}
+      />,
+    );
+
+    const cityInput = screen.getByLabelText("Cidade do titular da chave Pix");
+    fireEvent.change(cityInput, { target: { value: "NOSSA SENHORA DA GLORIA" } });
 
     const submitBtn = screen.getByRole("button", { name: /Gerar Racha & Copiar Link/i });
     expect(submitBtn).not.toBeDisabled();
@@ -185,6 +225,7 @@ describe("SplitExpenseDialog", () => {
     expect(callArg.kind).toBe("split");
     expect(callArg.payload.total_cents).toBe(9000);
     expect(callArg.payload.guest_share_cents).toBe(4500);
+    expect(callArg.payload.host_city).toBe("NOSSA SENHORA DA GLORIA");
     expect(callArg.payload.pix_br_code).toBeDefined();
 
     // Link copiado para clipboard
@@ -194,12 +235,33 @@ describe("SplitExpenseDialog", () => {
 
     // Tela de sucesso exibida
     expect(screen.getByText("Link de Racha Gerado")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "WhatsApp" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Concluir" })).toBeInTheDocument();
+  });
+
+  it("auto-gera o racha quando autoGenerate for true e cidade estiver preenchida", async () => {
+    storeSplitPreferences({
+      merchantCity: "ARACAJU",
+    });
+
+    renderWithClient(
+      <SplitExpenseDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        expense={mockExpense}
+        autoGenerate={true}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(mockMutateAsync).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.getByText("Link de Racha Gerado")).toBeInTheDocument();
   });
 
   it("fecha o diálogo ao clicar em Cancelar", () => {
     const onOpenChange = vi.fn();
-    render(
+    renderWithClient(
       <SplitExpenseDialog
         open={true}
         onOpenChange={onOpenChange}

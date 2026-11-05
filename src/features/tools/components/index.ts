@@ -4,3 +4,6 @@ export { ToolsFooterCta } from "./tools-footer-cta";
 export type { ToolsFooterCtaProps } from "./tools-footer-cta";
 export { ShareSimulationButton } from "./share-simulation-button";
 export type { ShareSimulationButtonProps } from "./share-simulation-button";
+export { ToolsQuickDialog } from "./tools-quick-dialog";
+export type { ToolsQuickDialogProps } from "./tools-quick-dialog";
+

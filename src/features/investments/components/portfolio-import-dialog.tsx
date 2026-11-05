@@ -538,7 +538,7 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
                   >
                     <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-2">
                       <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                        <Pencil className="size-3.5 text-primary" aria-hidden="true" />
+                        <Pencil className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                         Editando ativo #{idx + 1} ({row.ticker})
                       </span>
                       <Button

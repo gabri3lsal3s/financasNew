@@ -6,6 +6,7 @@ import { ProductNarratives } from "@/features/landing/components/product-narrati
 import { PlatformComparison } from "@/features/landing/components/platform-comparison";
 import { InvestmentsShowcase } from "@/features/landing/components/investments-showcase";
 import { MinimalWealthSimulator } from "@/features/landing/components/minimal-wealth-simulator";
+import { ToolsShowcase } from "@/features/landing/components/tools-showcase";
 import { PricingSection } from "@/features/landing/components/pricing-section";
 import { FaqSection } from "@/features/landing/components/faq-section";
 import { CtaBanner } from "@/features/landing/components/cta-banner";
@@ -58,6 +59,7 @@ export function LandingPage() {
           <PlatformComparison />
           <InvestmentsShowcase />
           <MinimalWealthSimulator />
+          <ToolsShowcase />
           <PricingSection />
           <FaqSection />
           <CtaBanner />

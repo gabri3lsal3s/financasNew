@@ -2,12 +2,16 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   createPublicShare,
   regeneratePublicShare,
+  deletePublicShare,
   revokePublicShare,
+  restorePublicShare,
+  updatePublicSharePayload,
   saveSplitExpenseToAccount,
   saveSimulationToAccount,
   type CreatePublicShareInput,
   type SaveSplitExpenseInput,
 } from "@/data/repositories/public-shares";
+import { signalSplitPayment, dismissSplitPaymentSignal } from "@/data/rpc";
 import type { PendingSimulation } from "@/domain/share";
 import { pushToast } from "@/services/toast";
 import { getErrorMessage } from "@/services/errors";
@@ -30,6 +34,22 @@ export function useCreatePublicShare() {
   });
 }
 
+export function useUpdatePublicShare() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) =>
+      updatePublicSharePayload(id, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
+      void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
+    },
+    onError: (error) => {
+      pushToast({ title: getErrorMessage(error), variant: "destructive" });
+    },
+  });
+}
+
 export function useRevokePublicShare() {
   const queryClient = useQueryClient();
 
@@ -39,6 +59,38 @@ export function useRevokePublicShare() {
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
       void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
       pushToast({ title: "Compartilhamento revogado.", variant: "default" });
+    },
+    onError: (error) => {
+      pushToast({ title: getErrorMessage(error), variant: "destructive" });
+    },
+  });
+}
+
+export function useRestorePublicShare() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => restorePublicShare(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
+      void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
+      pushToast({ title: "Link público reativado com sucesso!", variant: "success" });
+    },
+    onError: (error) => {
+      pushToast({ title: getErrorMessage(error), variant: "destructive" });
+    },
+  });
+}
+
+export function useDeletePublicShare() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => deletePublicShare(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
+      void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
+      pushToast({ title: "Excluído com sucesso.", variant: "default" });
     },
     onError: (error) => {
       pushToast({ title: getErrorMessage(error), variant: "destructive" });
@@ -114,6 +166,48 @@ export function useSaveSimulationToAccount() {
     onError: (error) => {
       pushToast({
         title: "Não foi possível salvar a simulação",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useSignalSplitPayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: {
+      token: string;
+      participantName: string;
+      amountCents: number;
+      participantId?: string | null;
+    }) => signalSplitPayment(params),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
+      void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
+    },
+  });
+}
+
+export function useDismissSplitPaymentSignal() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { shareId: string; signalId: string }) =>
+      dismissSplitPaymentSignal(params),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
+      void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
+      pushToast({
+        title: "Aviso de pagamento dispensado",
+        description: "A cota do amigo permanece pendente de recebimento.",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      pushToast({
+        title: "Não foi possível dispensar o aviso",
         description: getErrorMessage(error),
         variant: "destructive",
       });

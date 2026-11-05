@@ -276,7 +276,7 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
 
             {/* Dica de inteligência de fechamento / melhor dia de compra */}
             <div className="w-full max-w-[340px] sm:max-w-none mx-auto sm:mx-0 rounded-lg bg-surface border border-border/80 px-3 py-2 text-xs text-muted-foreground flex items-center gap-2 shadow-2xs">
-              <Sparkles className="size-3.5 text-primary shrink-0" aria-hidden="true" />
+              <Sparkles className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
               <span>
                 Melhor dia para compras: <strong className="text-foreground font-semibold">dia {bestPurchaseDay(closingDay)}</strong>
               </span>

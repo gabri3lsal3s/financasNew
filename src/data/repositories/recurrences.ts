@@ -18,7 +18,12 @@ import type { CreditCard, Recurrence, RecurrenceKind } from "@/types";
  */
 
 function mapRecurrence(row: Recurrence): Recurrence {
-  return { ...row, value: Number(row.value), report_weight: Number(row.report_weight) };
+  return {
+    ...row,
+    value: Number(row.value),
+    report_weight: Number(row.report_weight),
+    is_family: Boolean(row.is_family),
+  };
 }
 
 /** Regra de domínio a partir da linha do banco (moeda em centavos no motor). */

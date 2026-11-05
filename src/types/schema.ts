@@ -260,6 +260,18 @@ export type UserCustomSettings = {
   advisorDismissals?: Record<string, number>;
   advisorLastDismissedDay?: string | null;
   emergencyFundConfig?: EmergencyFundConfig;
+  splitPreferences?: SplitPreferences;
+  familyModeEnabled?: boolean;
+};
+
+export type SplitPreferences = {
+  pixKey?: string;
+  pixKeyType?: "auto" | "cpf" | "phone" | "email" | "random" | "cnpj";
+  merchantName?: string;
+  merchantCity?: string;
+  remainderPolicy?: "balanced" | "host";
+  defaultPeopleCount?: number;
+  autoCreateDebt?: boolean;
 };
 
 export type EmergencySelectionMode = "auto_cash" | "selected_assets" | "selected_classes" | "entire_portfolio";
@@ -382,6 +394,7 @@ export type Recurrence = {
   description: string | null;
   report_weight: number;
   charge_kind?: ChargeKind;
+  is_family?: boolean;
   is_active: boolean;
   created_at: string;
 };
@@ -553,14 +566,38 @@ export type FixedIncomeMetadata = {
   issuer_type?: FixedIncomeIssuerType | null;
 };
 
+/**
+ * Snapshot patrimonial mensal da carteira (§F36/F50).
+ * Fotografia financeira consolidada no fechamento da competência (último dia do mês).
+ *
+ * Invariantes Canônicas (§2.1 PLANO_AUDITORIA):
+ * - `total_value`: Saldo patrimonial total na data de corte (Ativos valorados + Saldo de Caixa).
+ * - `total_cost`: Custo de aquisição total aplicado sob custódia (Custo dos Ativos + Saldo de Caixa 1:1).
+ *   O caixa possui paridade 1:1 (valor = custo), eliminando distorções de rentabilidade contábil.
+ */
 export type PortfolioSnapshot = {
   id: string;
   user_id: string;
+  /** Competência no formato YYYY-MM. */
   month: string;
+  /** Saldo patrimonial total na data de corte (Ativos valorados + Saldo de Caixa). */
   total_value: number;
+  /** Custo de aquisição total aplicado sob custódia (Custo dos Ativos + Saldo de Caixa 1:1). */
   total_cost: number;
   created_at?: string;
   updated_at?: string;
+};
+
+/**
+ * Payload canônico de entrada para criação ou atualização de snapshot patrimonial.
+ */
+export type PortfolioSnapshotInput = {
+  /** Competência no formato YYYY-MM. */
+  month: string;
+  /** Saldo patrimonial total na data de corte (Ativos valorados + Saldo de Caixa). */
+  total_value: number;
+  /** Custo de aquisição total aplicado sob custódia (Custo dos Ativos + Saldo de Caixa 1:1). */
+  total_cost: number;
 };
 
 export type PortfolioMonthlyPrice = {
@@ -796,9 +833,26 @@ export const PUBLIC_SHARE_KINDS = ["split", "family_budget", "goal_tracker"] as 
 export type PublicShareKind = (typeof PUBLIC_SHARE_KINDS)[number];
 
 export type SplitParticipantItem = {
+  id?: string;
   name: string;
   share_cents: number;
   is_host: boolean;
+  is_settled?: boolean;
+  settled_cents?: number;
+  settled_at?: string | null;
+  has_payment_signal?: boolean;
+  payment_signaled_at?: string | null;
+};
+
+export type SplitPaymentSignal = {
+  id: string;
+  participant_id?: string | null;
+  participant_name: string;
+  amount_cents: number;
+  status: "pending" | "confirmed" | "dismissed";
+  created_at: string;
+  confirmed_at?: string | null;
+  dismissed_at?: string | null;
 };
 
 export type SplitSharePayload = {
@@ -816,6 +870,13 @@ export type SplitSharePayload = {
   pix_key_type: string;
   pix_br_code: string;
   expense_id?: string;
+  debt_id?: string;
+  category_id?: string;
+  category_name?: string;
+  category_icon?: string;
+  is_completed?: boolean;
+  total_settled_cents?: number;
+  payment_signals?: SplitPaymentSignal[];
 };
 
 export type PublicShare = {
@@ -856,9 +917,18 @@ export type FamilyBudgetSharePayload = {
   title?: string;
 };
 
+export type GoalContribution = {
+  id: string;
+  amount_cents: number;
+  contributor_name?: string;
+  date: string;
+};
+
+export type GoalTrackerStatus = "active" | "completed" | "archived";
+
 export type GoalTrackerSharePayload = {
   title: string;
-  category_id?: string;
+  category_id?: string | null;
   month?: string;
   target_cents: number;
   current_cents?: number;
@@ -868,6 +938,10 @@ export type GoalTrackerSharePayload = {
   pix_key: string;
   pix_key_type: string;
   pix_br_code: string;
+  status?: GoalTrackerStatus;
+  notes?: string;
+  contributions?: GoalContribution[];
+  show_contributions_publicly?: boolean;
 };
 
 export type SharedGoalTrackerResult = {
@@ -887,6 +961,10 @@ export type SharedGoalTrackerResult = {
   pix_br_code: string;
   is_revoked: boolean;
   expires_at: string | null;
+  status?: GoalTrackerStatus;
+  notes?: string | null;
+  contributions?: GoalContribution[];
+  show_contributions_publicly?: boolean;
 };
 
 

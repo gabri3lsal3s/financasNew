@@ -107,6 +107,35 @@ export function LandingFooter() {
               >
                 Planos & Preços
               </a>
+              <div className="pt-1.5 mt-1 border-t border-border/40 flex flex-col gap-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Ferramentas Abertas
+                </span>
+                <Link
+                  to="/ferramentas"
+                  className="text-xs text-primary font-medium hover:underline py-0.5 inline-block"
+                >
+                  Hub de Simuladores
+                </Link>
+                <Link
+                  to="/ferramentas/simulador-dividas"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors py-0.5 inline-block"
+                >
+                  Simulador de Dívidas
+                </Link>
+                <Link
+                  to="/ferramentas/rebalanceamento"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors py-0.5 inline-block"
+                >
+                  Simulador de Rebalanceamento
+                </Link>
+                <Link
+                  to="/ferramentas/juros-compostos"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors py-0.5 inline-block"
+                >
+                  Juros Compostos & FIRE
+                </Link>
+              </div>
             </div>
 
             {/* Coluna 3: Institucional, Legal & DPO */}

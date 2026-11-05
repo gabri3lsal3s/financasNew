@@ -99,6 +99,28 @@ export interface Database {
 
     Views: Record<string, never>;
     Functions: {
+      signal_split_payment: {
+        Args: {
+          p_token: string;
+          p_participant_name: string;
+          p_amount_cents: number;
+          p_participant_id?: string | null;
+        };
+        Returns: {
+          success: boolean;
+          signal_id: string;
+          participant_matched: boolean;
+        };
+      };
+      dismiss_split_payment_signal: {
+        Args: {
+          p_share_id: string;
+          p_signal_id: string;
+        };
+        Returns: {
+          success: boolean;
+        };
+      };
       get_shared_goal_tracker: {
         Args: {
           p_token: string;
@@ -179,8 +201,32 @@ export interface Database {
           p_receive_type: string | null;
           p_description: string | null;
           p_report_weight: number;
+          p_is_family?: boolean;
         };
         Returns: string;
+      };
+      delete_debt_installments: {
+        Args: { p_debt_id: string; p_mode: "single" | "all" | "subsequent" };
+        Returns: number;
+      };
+      delete_loan_contract: {
+        Args: { p_loan_id: string; p_delete_debts?: boolean };
+        Returns: boolean;
+      };
+      renegotiate_loan_contract: {
+        Args: {
+          p_loan_id: string;
+          p_name: string;
+          p_loan_type: string;
+          p_principal_amount: number;
+          p_interest_rate_monthly: number;
+          p_amortization_system: string;
+          p_total_installments: number;
+          p_start_date: string;
+          p_strategy: string;
+          p_installments: unknown;
+        };
+        Returns: boolean;
       };
       materialize_recurrences: {
         Args: { p_items: unknown };
