@@ -84,6 +84,14 @@ export function SplitPublicPage() {
   }, [payload, session?.user, saveSplitMutation, navigate]);
 
   useEffect(() => {
+    if (payload?.title) {
+      document.title = `${payload.title} — Racha de Despesas | Áxis Finance`;
+    } else {
+      document.title = "Racha de Despesa — Áxis Finance";
+    }
+  }, [payload?.title]);
+
+  useEffect(() => {
     const action = searchParams.get("action");
     if (action === "save" && payload && !isLoading && !hasTriggeredActionRef.current) {
       hasTriggeredActionRef.current = true;
@@ -289,7 +297,7 @@ export function SplitPublicPage() {
                             Chave Pix ({payload.pix_key_type || "cadastrada"}):
                           </span>
                           <div className="flex items-center gap-2 max-w-full">
-                            <code className="text-xs font-mono bg-surface px-2 py-1 rounded border border-border/60 text-foreground truncate max-w-[220px]">
+                            <code className="text-xs font-mono bg-surface px-2 py-1 rounded border border-border/60 text-foreground truncate max-w-[160px] sm:max-w-[240px]">
                               {payload.pix_key}
                             </code>
                             <Button

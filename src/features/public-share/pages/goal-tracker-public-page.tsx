@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router";
 import {
   ShieldCheck,
@@ -60,6 +60,14 @@ export function GoalTrackerPublicPage() {
   const [copiedKey, setCopiedKey] = useState(false);
   const [showQrCode, setShowQrCode] = useState(false);
   const [showIosGuide, setShowIosGuide] = useState(false);
+
+  useEffect(() => {
+    if (goalData?.title) {
+      document.title = `Termômetro: ${goalData.title} — Áxis Finance`;
+    } else {
+      document.title = "Termômetro de Meta Coletiva — Áxis Finance";
+    }
+  }, [goalData?.title]);
 
   const handlePwaAction = () => {
     if (isIOS) {

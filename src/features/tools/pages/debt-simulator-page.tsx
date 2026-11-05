@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router";
 import {
   Flame,
@@ -77,6 +77,11 @@ export function DebtSimulatorPage() {
   const [activeTab, setActiveTab] = useState<DebtPayoffStrategy>(
     () => sharedState?.strategy ?? "avalanche",
   );
+
+  useEffect(() => {
+    document.title =
+      "Simulador de Quitação de Dívidas: Avalanche vs Bola de Neve — Áxis Finance";
+  }, []);
 
   const comparison = useMemo(() => {
     return compareDebtStrategies(debts, extraBudgetCents);
@@ -389,30 +394,26 @@ export function DebtSimulatorPage() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-bold">Estratégia Selecionada</CardTitle>
                   <div className="inline-flex rounded-lg border border-border/80 bg-background/50 p-0.5">
-                    <button
+                    <Button
                       type="button"
+                      variant={activeTab === "avalanche" ? "default" : "ghost"}
+                      size="xs"
                       onClick={() => setActiveTab("avalanche")}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
-                        activeTab === "avalanche"
-                          ? "bg-primary text-primary-foreground shadow-xs"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
+                      className="gap-1.5 font-semibold text-xs h-7 px-3"
                     >
                       <Flame className="size-3" aria-hidden="true" />
                       <span>Avalanche</span>
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant={activeTab === "snowball" ? "default" : "ghost"}
+                      size="xs"
                       onClick={() => setActiveTab("snowball")}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
-                        activeTab === "snowball"
-                          ? "bg-primary text-primary-foreground shadow-xs"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
+                      className="gap-1.5 font-semibold text-xs h-7 px-3"
                     >
                       <Snowflake className="size-3" aria-hidden="true" />
                       <span>Bola de Neve</span>
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground pt-1">

@@ -313,6 +313,7 @@
     │   ├── session.ts             #   currentUserId() — usuário autenticado (RLS auth.uid())
     │   ├── repositories/          #   expenses.ts, incomes.ts, cards.ts, debts.ts,
     │   │                          #   budgets.ts, portfolio.ts, portfolio-monthly-prices.ts (F51: cotações mensais auditadas), categories.ts,
+    │   │                          #   public-shares.ts (links públicos, tokens criptográficos, rateio Pix e orçamentos familiares),
     │   │                          #   billing.ts (adaptadores agnósticos Stripe/Asaas, checkout e portal de faturamento),
     │   │                          #   subscriptions.ts (status SaaS, planos e gestão administrativa de permissões modulares),
     │   │                          #   support-tickets.ts (registro de tickets de suporte, feedback, respostas e despacho ao Telegram),

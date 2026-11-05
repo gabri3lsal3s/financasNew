@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router";
 import {
   Plus,
@@ -104,6 +104,11 @@ export function RebalanceSimulatorPage() {
   const [selectedPreset, setSelectedPreset] = useState<string>(
     () => sharedState?.selectedPreset ?? (sharedState ? "custom" : "dividendos"),
   );
+
+  useEffect(() => {
+    document.title =
+      "Simulador de Rebalanceamento Inteligente de Carteira — Áxis Finance";
+  }, []);
 
   const handleApplyPreset = (presetId: string) => {
     const found = PRESETS.find((p) => p.id === presetId);

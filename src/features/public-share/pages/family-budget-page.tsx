@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router";
 import {
   ShieldCheck,
@@ -38,6 +38,14 @@ export function FamilyBudgetPage() {
   const { data: budgetData, isLoading, isError } = useSharedFamilyBudget(token);
   const { canInstall, isIOS, isInstalled, install } = usePWAInstall();
   const [showIosGuide, setShowIosGuide] = useState(false);
+
+  useEffect(() => {
+    if (budgetData?.owner_name) {
+      document.title = `Orçamento Familiar · ${budgetData.owner_name} — Áxis Finance`;
+    } else {
+      document.title = "Orçamento Familiar — Áxis Finance";
+    }
+  }, [budgetData?.owner_name]);
 
   const handlePwaAction = () => {
     if (isIOS) {

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "react-router";
 import {
   ShieldAlert,
@@ -71,6 +72,10 @@ const TOOLS_LIST: ToolCardInfo[] = [
 ];
 
 export function ToolsHubPage() {
+  useEffect(() => {
+    document.title =
+      "Simuladores e Ferramentas Financeiras Gratuitas — Áxis Finance";
+  }, []);
   return (
     <div className="min-h-dvh bg-background text-foreground flex flex-col justify-between">
       <ToolsHeader />

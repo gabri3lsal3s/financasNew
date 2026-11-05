@@ -230,13 +230,15 @@ export function SplitOnboardingModal({
                 {mode === "register" ? "Auto-cadastro em 1 minuto" : "Acesse sua conta"}
               </span>
             </div>
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="xs"
               onClick={() => handleModeChange(mode === "register" ? "login" : "register")}
-              className="text-xs text-primary hover:underline font-medium cursor-pointer"
+              className="h-auto p-0 text-xs text-primary hover:underline font-medium hover:bg-transparent cursor-pointer"
             >
               {mode === "register" ? "Já tenho conta" : "Criar nova conta"}
-            </button>
+            </Button>
           </div>
 
           {error && <Alert variant="error">{error}</Alert>}

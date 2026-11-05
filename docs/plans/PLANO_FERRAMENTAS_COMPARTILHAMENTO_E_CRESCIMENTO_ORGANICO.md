@@ -231,27 +231,27 @@ Garantir que documentos contábeis e extratos exportados pelo usuário transmita
 
 Fase final de consolidação, homologação visual nas 3 plataformas (Desktop Web, Mobile PWA e Android Nativo), build dos artefatos de produção e envio do relatório ao fundador.
 
-- [ ] **Tarefa 7.1: Varredura de Qualidade, Bugs e Fricções de UI/UX**
+- [x] **Tarefa 7.1: Varredura de Qualidade, Bugs e Fricções de UI/UX**
   - Verificar ergonomia e tempo de carregamento de todas as páginas públicas (`/r/:token`, `/orcamento-familiar/:token`, `/meta/:token`, `/ferramentas/*`).
   - Garantir responsividade perfeita em smartphones (< 400px), tablets e desktops.
   - Assegurar conformidade com as regras DRY e zero controles HTML nativos crus (`AGENTS.md`).
 
-- [ ] **Tarefa 7.2: Atualização Completa da Documentação de Arquitetura**
-  - Atualizar `docs/architecture/ESPECIFICACAO_TECNICA.md` documentando o módulo de compartilhamento, a tabela `public_shares` e as regras de Racha e Orçamento Familiar.
-  - Atualizar `docs/architecture/ARCHITECTURE.md` refletindo as novas rotas públicas e o gerador de Pix BACEN.
+- [x] **Tarefa 7.2: Atualização Completa da Documentação de Arquitetura**
+  - [x] Atualizar `docs/architecture/ESPECIFICACAO_TECNICA.md` documentando o módulo de compartilhamento, a tabela `public_shares` e as regras de Racha e Orçamento Familiar.
+  - [x] Atualizar `docs/architecture/ARCHITECTURE.md` refletindo as novas rotas públicas e o gerador de Pix BACEN.
 
-- [ ] **Tarefa 7.3: Compilação Web de Produção & Sincronização Capacitor**
-  - Executar: `npm run build`.
-  - Executar: `npx cap sync android`.
+- [x] **Tarefa 7.3: Compilação Web de Produção & Sincronização Capacitor**
+  - [x] Executar: `npm run build`.
+  - [x] Executar: `npx cap sync android`.
 
-- [ ] **Tarefa 7.4: Compilação dos APKs Android de Produção (Debug & Release Assinado)**
-  - Executar o script oficial de empacotamento:
+- [x] **Tarefa 7.4: Compilação dos APKs Android de Produção (Debug & Release Assinado)**
+  - [x] Executar o script oficial de empacotamento:
     ```bash
     bash scripts/build-apk.sh
     ```
-  - Validar a integridade dos artefatos em `android/app/build/outputs/apk/` e a geração de `version.json` com SHA-256 e tamanho.
+  - [x] Validar a integridade dos artefatos em `android/app/build/outputs/apk/` e a geração de `version.json` com SHA-256 e tamanho.
 
-- [ ] **Tarefa 7.5: Commit e Push Final da Homologação**
+- [x] **Tarefa 7.5: Commit e Push Final da Homologação**
   - Sincronizar todos os arquivos na branch principal (`git push origin main`).
 
 - [ ] **Tarefa 7.6: Despacho do Relatório Executivo ao Fundador via Bot ARGOS (Telegram)**

@@ -27,6 +27,10 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useSaveSimulationToAccount: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }));
 
 vi.mock("@/state/queries/use-public-shares", () => ({

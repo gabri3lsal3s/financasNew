@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router";
 import {
   Flame,
@@ -52,6 +52,11 @@ export function CompoundInterestPage() {
   const [monthlyLivingCostCents, setMonthlyLivingCostCents] = useState<number>(
     () => sharedState?.monthlyLivingCostCents ?? 500000, // R$ 5.000,00/mês
   );
+
+  useEffect(() => {
+    document.title =
+      "Simulador de Juros Compostos & FIRE — Áxis Finance";
+  }, []);
 
   const result = useMemo(() => {
     return calculateCompoundInterest({
@@ -369,8 +374,8 @@ export function CompoundInterestPage() {
                 Acompanhe o crescimento ano a ano do patrimônio, aportes acumulados e juros.
               </p>
             </CardHeader>
-            <CardContent className="pt-4 overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+            <CardContent className="pt-4 overflow-x-auto no-scrollbar scroll-smooth">
+              <table className="w-full min-w-[560px] text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-border/80 text-muted-foreground">
                     <th className="py-2.5 px-3 font-semibold">Ano</th>

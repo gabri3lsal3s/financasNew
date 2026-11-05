@@ -40,10 +40,10 @@ export function ToolsHeader() {
     <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/95 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         {/* Marca & Início */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-6 shrink-0">
           <Link
             to="/apresentacao"
-            className="inline-flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="inline-flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0"
             aria-label="Ir para a página inicial do Áxis Finance"
           >
             <BrandLogo showWordmark showSubtitle />
@@ -102,7 +102,7 @@ export function ToolsHeader() {
               key={tab.path}
               to={tab.path}
               className={cn(
-                "shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                "shrink-0 min-w-fit inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 isActive
                   ? "bg-primary text-primary-foreground font-semibold"
                   : "bg-surface text-muted-foreground hover:text-foreground border border-border/60",
