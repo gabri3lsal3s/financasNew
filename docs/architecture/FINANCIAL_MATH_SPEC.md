@@ -46,6 +46,20 @@ Para relatórios com ponderação de despesas e receitas (`report_weight` de 0 a
 - Itens com peso unitário (`weight === 1`) utilizam conversão direta sem multiplicação por floats;
 - **Regra de Ouro Contábil:** O valor Bruto Nominal (100%) é sempre a métrica financeira primária de caixa (extratos, boletos, faturas e dívidas); o valor ponderado é estritamente analítico para despesas pessoais e orçamento.
 
+### 2.3. Rateio Equitativo de Despesas e Balanceamento de Sobra (`split-math.ts`)
+
+Na divisão de contas compartilhadas entre $P$ participantes ($P \ge 1$), a divisão exata opera sobre centavos inteiros com duas políticas determinísticas de distribuição do resto euclidiano:
+
+$$\text{base} = \lfloor \text{totalCents} / P \rfloor, \quad \text{resto} = \text{totalCents} \pmod P$$
+
+1. **Política Balanceada (`balanced` — padrão):**
+   $$\text{fatia}_i = \begin{cases} \text{base} + 1, & \text{se } i < \text{resto} \\ \text{base}, & \text{se } i \ge \text{resto} \end{cases} \quad (\forall i \in \{0, \dots, P-1\})$$
+   Garante que a discrepância máxima entre quaisquer dois participantes não ultrapasse $1$ centavo.
+2. **Política Anfitrião (`host`):**
+   $$\text{fatia}_0 = \text{base} + \text{resto}, \quad \text{fatia}_i = \text{base} \quad (\forall i \in \{1, \dots, P-1\})$$
+   Atribui toda a sobra ao anfitrião (responsável pelo pagamento), garantindo que todos os convidados paguem valores rigorosamente idênticos (essencial para chave Pix e QR Code de valor único).
+3. **Invariante Fundamental:** Em qualquer modalidade, $\sum_{i=0}^{P-1} \text{fatia}_i \equiv \text{totalCents}$.
+
 ---
 
 ## 3. CUSTÓDIA E LEDGER DE ATIVOS (`src/domain/portfolio/`)

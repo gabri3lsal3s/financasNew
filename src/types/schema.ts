@@ -755,6 +755,22 @@ export type FeatureUsageMetric = {
   lastUsedAt: string | null;
 };
 
+export const PUBLIC_SHARE_KINDS = ["split", "family_budget", "goal_tracker"] as const;
+export type PublicShareKind = (typeof PUBLIC_SHARE_KINDS)[number];
+
+export type PublicShare = {
+  id: string;
+  user_id: string;
+  kind: PublicShareKind;
+  token: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+  expires_at: string | null;
+  is_revoked: boolean;
+  updated_at: string;
+};
+
+
 
 
 

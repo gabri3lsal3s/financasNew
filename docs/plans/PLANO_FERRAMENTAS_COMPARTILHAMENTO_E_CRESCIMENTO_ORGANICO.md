@@ -59,7 +59,7 @@ flowchart TD
 
 Estruturar a camada pura de dados e o motor de geração de Pix Copia e Cola compatível com qualquer banco do Brasil.
 
-- [ ] **Tarefa 1.1: Migração PostgreSQL para Tokens de Compartilhamento Público**
+- [x] **Tarefa 1.1: Migração PostgreSQL para Tokens de Compartilhamento Público**
   - Criar migração `supabase/migrations/20260101000065_create_public_shares_table.sql`:
     - Tabela `public_shares` com colunas:
       - `id uuid primary key default gen_random_uuid()`
@@ -72,22 +72,22 @@ Estruturar a camada pura de dados e o motor de geração de Pix Copia e Cola com
       - `is_revoked boolean default false`
     - RLS: inserção/atualização/exclusão exclusiva para o `user_id` autenticado; `select` público liberado para registros não expirados e não revogados via token.
 
-- [ ] **Tarefa 1.2: Motor Puro de Geração de Pix Copia e Cola Padrão BACEN (`pix-br-code.ts`)**
+- [x] **Tarefa 1.2: Motor Puro de Geração de Pix Copia e Cola Padrão BACEN (`pix-br-code.ts`)**
   - Criar `src/domain/pix/pix-br-code.ts`:
     - Formatação do payload padrão EMV QRCPS-MPM (Payload Format Indicator, Merchant Account Info com Chave Pix, Merchant Category Code 0000, Transaction Currency 986 para BRL, Transaction Amount com 2 casas decimais, Country Code BR, Merchant Name, Merchant City, Additional Data Field com TXID).
     - Cálculo matemático estrito do polinômio CRC16-CCITT (0x1021) conforme especificação do Banco Central.
     - Testes unitários com casos de teste oficiais do BACEN em `src/domain/pix/pix-br-code.test.ts`.
 
-- [ ] **Tarefa 1.3: Algoritmo Puro de Rateio de Centavos com Balanceamento de Sobra (`split-math.ts`)**
+- [x] **Tarefa 1.3: Algoritmo Puro de Rateio de Centavos com Balanceamento de Sobra (`split-math.ts`)**
   - Criar `src/domain/finance/split-math.ts`:
     - Função `splitAmountEqually(totalCents: number, peopleCount: number): number[]` que calcula a fatia de cada participante e atribui eventuais restos de centavos de forma balanceada sem perder nenhum centavo da despesa original.
     - Testes colocalizados em `src/domain/finance/split-math.test.ts`.
 
-- [ ] **Portão de Qualidade 1:**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/domain/pix/pix-br-code.test.ts src/domain/finance/split-math.test.ts`
-  - [ ] **Commit & Push da Fase 1:** `git commit -m "feat(share): motor pix bacen br code e schema de compartilhamento publico"`
+- [x] **Portão de Qualidade 1:**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/domain/pix/pix-br-code.test.ts src/domain/finance/split-math.test.ts`
+  - [x] **Commit & Push da Fase 1:** `git commit -m "feat(share): motor pix bacen br code e schema de compartilhamento publico"`
 
 ---
 

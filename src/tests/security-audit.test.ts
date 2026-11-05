@@ -50,12 +50,12 @@ function statements(): string[] {
 }
 
 describe("F6.2 — RLS: cobertura total (D4 — multiusuário isolado)", () => {
-  it("toda tabela criada nas migrations tem RLS habilitado (38 tabelas)", () => {
+  it("toda tabela criada nas migrations tem RLS habilitado (39 tabelas)", () => {
     const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(38);
+    expect(created.length).toBe(39);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
@@ -820,14 +820,14 @@ describe("Tarefa 3.3 — Criação do Índice Composto Complementar em portfolio
 });
 
 describe("Tarefa 3.4 — Expansão da Suíte de Auditoria Integral de Banco & Governança InitPlan", () => {
-  it("todas as 38 tabelas possuem RLS habilitado e nenhuma migração contém disable row level security", () => {
+  it("todas as 39 tabelas possuem RLS habilitado e nenhuma migração contém disable row level security", () => {
     expect(ALL_SQL).not.toMatch(/disable\s+row\s+level\s+security/i);
 
     const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(38);
+    expect(created.length).toBe(39);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
@@ -968,6 +968,31 @@ describe("SECURITY_GOVERNANCE §5 — Checklist de Conformidade para Novas Tabel
     // Valida que todas usam (select auth.uid()) = user_id
     expect(content).toContain("with check ((select auth.uid()) = user_id)");
     expect(content).toContain("using ((select auth.uid()) = user_id)");
+  });
+
+  it("a nova tabela public_shares possui colunas canônicas, chave estrangeira e RLS ativado (0065)", () => {
+    const migrationPath = resolve(root, "supabase/migrations/20260101000065_create_public_shares_table.sql");
+    expect(existsSync(migrationPath)).toBe(true);
+    const content = readFileSync(migrationPath, "utf8");
+
+    // Valida colunas estruturais
+    expect(content).toMatch(/user_id\s+uuid\s+not\s+null\s+references\s+auth\.users\(id\)\s+on\s+delete\s+cascade/i);
+    expect(content).toMatch(/kind\s+text\s+not\s+null\s+check\s*\(kind\s+in\s*\('split',\s*'family_budget',\s*'goal_tracker'\)\)/i);
+    expect(content).toMatch(/token\s+text\s+unique\s+not\s+null/i);
+    expect(content).toMatch(/payload\s+jsonb\s+not\s+null/i);
+    expect(content).toMatch(/is_revoked\s+boolean\s+not\s+null\s+default\s+false/i);
+
+    // Valida RLS
+    expect(content).toMatch(/alter\s+table\s+public\.public_shares\s+enable\s+row\s+level\s+security\s*;/i);
+
+    // Valida policies dedicadas
+    expect(content).toMatch(/create\s+policy\s+"public_shares_select"\s+on\s+public\.public_shares\s+for\s+select/i);
+    expect(content).toMatch(/create\s+policy\s+"public_shares_insert"\s+on\s+public\.public_shares\s+for\s+insert/i);
+    expect(content).toMatch(/create\s+policy\s+"public_shares_update"\s+on\s+public\.public_shares\s+for\s+update/i);
+    expect(content).toMatch(/create\s+policy\s+"public_shares_delete"\s+on\s+public\.public_shares\s+for\s+delete/i);
+
+    // Valida nós InitPlan
+    expect(content).toContain("((select auth.uid()) = user_id)");
   });
 
   it("nenhum dado de cartão de crédito além dos últimos 4 dígitos e da bandeira é persistido", () => {

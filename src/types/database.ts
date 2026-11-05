@@ -28,6 +28,7 @@ import type {
   ReminderState,
   PortfolioTransaction,
   Profile,
+  PublicShare,
   Recurrence,
   RecurrenceSkip,
   SupportTicket,
@@ -91,6 +92,7 @@ export interface Database {
       support_tickets: Table<SupportTicket>;
       admin_telegram_settings: Table<AdminTelegramSettings>;
       app_analytics_events: Table<AppAnalyticsEvent>;
+      public_shares: Table<PublicShare>;
     };
 
     Views: Record<string, never>;

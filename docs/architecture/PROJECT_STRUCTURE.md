@@ -230,6 +230,8 @@
     │   │                          #     components: legal-page-shell (com components/index.ts e index.ts)
     │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
+    │   ├── finance/               #   motor puro de rateio de despesas e divisão equitativa em centavos (split-math.ts, balanceamento de sobra)
+    │   ├── pix/                   #   motor puro de Pix Copia e Cola padrão BACEN (pix-br-code.ts, CRC16-CCITT 0x1021, normalização)
     │   ├── validation/            #   validação pura e defensiva com Zod: sanitization.ts (XSS/control chars/money limits), password.ts, cpf.ts
     │   ├── admin/                 #   F43: RBAC, hierarquia de papéis, resolução de Feature Flags, schemas.ts e validação de convites
     │   ├── navigation/            #   F43: Resolução dinâmica de slots BottomNav e rota de fallback (landing route)
