@@ -113,35 +113,37 @@ export function ReportAllocationDonuts({
             </div>
             <div className="flex-1 w-full min-w-0">
               <div className="rounded-lg border border-border/70 overflow-hidden text-xs">
-                <div className="bg-surface-hover/60 px-2.5 py-1 font-semibold text-muted-foreground flex justify-between items-center border-b border-border/70 text-[10.5px]">
-                  <span className="truncate pr-1">Classe de Ativo</span>
-                  <div className="flex items-center gap-2.5 shrink-0 text-right font-medium">
-                    <span className="w-20 text-right">Saldo (R$)</span>
-                    <span className="w-10 text-right">Peso</span>
-                  </div>
-                </div>
-                <div className="divide-y divide-border/50">
-                  {classSegments.map((seg) => (
-                    <div key={seg.key} className="px-2.5 py-1 flex items-center justify-between text-[10.5px]">
-                      <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
-                        <span
-                          className="size-2 rounded-full shrink-0"
-                          style={{ backgroundColor: seg.color }}
-                          aria-hidden="true"
-                        />
-                        <span className="font-medium text-foreground truncate">{seg.label}</span>
-                      </div>
-                      <div className="flex items-center gap-2.5 shrink-0 font-mono text-right">
-                        <span className="w-20 text-right font-medium text-foreground tabular-nums tracking-tight whitespace-nowrap">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="bg-surface-hover/60 border-b border-border/70 text-[10.5px] font-semibold text-muted-foreground">
+                      <th className="py-1 px-2.5 font-semibold text-left">Classe de Ativo</th>
+                      <th className="py-1 px-2.5 text-right font-medium w-28 whitespace-nowrap">Saldo (R$)</th>
+                      <th className="py-1 px-2.5 text-right font-medium w-16 whitespace-nowrap">Peso</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {classSegments.map((seg) => (
+                      <tr key={seg.key} className="hover:bg-surface-hover/30 text-[10.5px]">
+                        <td className="py-1 px-2.5">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className="size-2 rounded-full shrink-0"
+                              style={{ backgroundColor: seg.color }}
+                              aria-hidden="true"
+                            />
+                            <span className="font-medium text-foreground truncate">{seg.label}</span>
+                          </div>
+                        </td>
+                        <td className="py-1 px-2.5 text-right font-mono font-medium text-foreground tabular-nums tracking-tight whitespace-nowrap">
                           <MoneyText cents={numberToCents(seg.value)} />
-                        </span>
-                        <span className="w-10 text-right font-semibold text-muted-foreground tabular-nums">
+                        </td>
+                        <td className="py-1 px-2.5 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
                           {seg.pct.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -179,35 +181,37 @@ export function ReportAllocationDonuts({
             </div>
             <div className="flex-1 w-full min-w-0">
               <div className="rounded-lg border border-border/70 overflow-hidden text-xs">
-                <div className="bg-surface-hover/60 px-2.5 py-1 font-semibold text-muted-foreground flex justify-between items-center border-b border-border/70 text-[10.5px]">
-                  <span className="truncate pr-1">Segmento / Indexador</span>
-                  <div className="flex items-center gap-2.5 shrink-0 text-right font-medium">
-                    <span className="w-20 text-right">Saldo (R$)</span>
-                    <span className="w-10 text-right">Peso</span>
-                  </div>
-                </div>
-                <div className="divide-y divide-border/50">
-                  {sectorSegments.map((seg) => (
-                    <div key={seg.key} className="px-2.5 py-1 flex items-center justify-between text-[10.5px]">
-                      <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
-                        <span
-                          className="size-2 rounded-full shrink-0"
-                          style={{ backgroundColor: seg.color }}
-                          aria-hidden="true"
-                        />
-                        <span className="font-medium text-foreground truncate">{seg.label}</span>
-                      </div>
-                      <div className="flex items-center gap-2.5 shrink-0 font-mono text-right">
-                        <span className="w-20 text-right font-medium text-foreground tabular-nums tracking-tight whitespace-nowrap">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="bg-surface-hover/60 border-b border-border/70 text-[10.5px] font-semibold text-muted-foreground">
+                      <th className="py-1 px-2.5 font-semibold text-left">Segmento / Indexador</th>
+                      <th className="py-1 px-2.5 text-right font-medium w-28 whitespace-nowrap">Saldo (R$)</th>
+                      <th className="py-1 px-2.5 text-right font-medium w-16 whitespace-nowrap">Peso</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {sectorSegments.map((seg) => (
+                      <tr key={seg.key} className="hover:bg-surface-hover/30 text-[10.5px]">
+                        <td className="py-1 px-2.5">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className="size-2 rounded-full shrink-0"
+                              style={{ backgroundColor: seg.color }}
+                              aria-hidden="true"
+                            />
+                            <span className="font-medium text-foreground truncate">{seg.label}</span>
+                          </div>
+                        </td>
+                        <td className="py-1 px-2.5 text-right font-mono font-medium text-foreground tabular-nums tracking-tight whitespace-nowrap">
                           <MoneyText cents={numberToCents(seg.value)} />
-                        </span>
-                        <span className="w-10 text-right font-semibold text-muted-foreground tabular-nums">
+                        </td>
+                        <td className="py-1 px-2.5 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
                           {seg.pct.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -264,42 +268,44 @@ export function ReportAllocationDonuts({
           {/* Tabela de Decomposição Analítica */}
           <div className="flex-1 w-full min-w-0 flex flex-col gap-2">
             <div className="rounded-xl border border-border/70 overflow-hidden text-xs">
-              <div className="bg-surface-hover/60 px-3 py-2 font-semibold text-muted-foreground flex justify-between items-center border-b border-border/70">
-                <span className="truncate pr-2">Classe de Ativo</span>
-                <div className="flex items-center gap-4 shrink-0 text-right font-medium">
-                  <span className="w-24 text-right">Saldo (R$)</span>
-                  <span className="w-12 text-right">Peso</span>
-                </div>
-              </div>
-              <div className="divide-y divide-border/50">
-                {classSegments.map((seg) => (
-                  <div
-                    key={seg.key}
-                    onClick={onClassClick ? () => onClassClick(seg.label) : undefined}
-                    className={cn(
-                      "px-3 py-2 flex items-center justify-between hover:bg-surface-hover/30 transition-colors",
-                      onClassClick && "cursor-pointer",
-                    )}
-                  >
-                    <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
-                      <span
-                        className="size-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: seg.color }}
-                        aria-hidden="true"
-                      />
-                      <span className="font-medium text-foreground truncate">{seg.label}</span>
-                    </div>
-                    <div className="flex items-center gap-4 shrink-0 font-mono text-right">
-                      <span className="w-24 text-right font-medium text-foreground tabular-nums tracking-tight whitespace-nowrap">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="bg-surface-hover/60 border-b border-border/70 text-[11px] font-semibold text-muted-foreground">
+                    <th className="py-2 px-3 font-semibold text-left">Classe de Ativo</th>
+                    <th className="py-2 px-3 text-right font-medium w-28 whitespace-nowrap">Saldo (R$)</th>
+                    <th className="py-2 px-3 text-right font-medium w-16 whitespace-nowrap">Peso</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {classSegments.map((seg) => (
+                    <tr
+                      key={seg.key}
+                      onClick={onClassClick ? () => onClassClick(seg.label) : undefined}
+                      className={cn(
+                        "hover:bg-surface-hover/30 transition-colors text-xs",
+                        onClassClick && "cursor-pointer",
+                      )}
+                    >
+                      <td className="py-2 px-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="size-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: seg.color }}
+                            aria-hidden="true"
+                          />
+                          <span className="font-medium text-foreground truncate">{seg.label}</span>
+                        </div>
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono font-medium text-foreground tabular-nums tracking-tight whitespace-nowrap">
                         <MoneyText cents={numberToCents(seg.value)} />
-                      </span>
-                      <span className="w-12 text-right font-semibold text-muted-foreground tabular-nums">
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
                         {seg.pct.toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -344,43 +350,45 @@ export function ReportAllocationDonuts({
 
           {/* Tabela de Decomposição Analítica */}
           <div className="flex-1 w-full min-w-0 flex flex-col gap-2">
-            <div className="rounded-xl border border-border/70 overflow-hidden text-xs">
-              <div className="bg-surface-hover/60 px-3 py-2 font-semibold text-muted-foreground flex justify-between items-center border-b border-border/70">
-                <span className="truncate pr-2">Segmento / Indexador</span>
-                <div className="flex items-center gap-4 shrink-0 text-right font-medium">
-                  <span className="w-24 text-right">Saldo (R$)</span>
-                  <span className="w-12 text-right">Peso</span>
-                </div>
-              </div>
-              <div className="divide-y divide-border/50 max-h-72 overflow-y-auto">
-                {sectorSegments.map((seg) => (
-                  <div
-                    key={seg.key}
-                    onClick={onSectorClick ? () => onSectorClick(seg.label) : undefined}
-                    className={cn(
-                      "px-3 py-2 flex items-center justify-between hover:bg-surface-hover/30 transition-colors",
-                      onSectorClick && "cursor-pointer",
-                    )}
-                  >
-                    <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
-                      <span
-                        className="size-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: seg.color }}
-                        aria-hidden="true"
-                      />
-                      <span className="font-medium text-foreground truncate">{seg.label}</span>
-                    </div>
-                    <div className="flex items-center gap-4 shrink-0 font-mono text-right">
-                      <span className="w-24 text-right font-medium text-foreground tabular-nums tracking-tight whitespace-nowrap">
+            <div className="rounded-xl border border-border/70 overflow-hidden text-xs max-h-72 overflow-y-auto">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="bg-surface-hover/60 border-b border-border/70 text-[11px] font-semibold text-muted-foreground sticky top-0 bg-surface">
+                    <th className="py-2 px-3 font-semibold text-left">Segmento / Indexador</th>
+                    <th className="py-2 px-3 text-right font-medium w-28 whitespace-nowrap">Saldo (R$)</th>
+                    <th className="py-2 px-3 text-right font-medium w-16 whitespace-nowrap">Peso</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {sectorSegments.map((seg) => (
+                    <tr
+                      key={seg.key}
+                      onClick={onSectorClick ? () => onSectorClick(seg.label) : undefined}
+                      className={cn(
+                        "hover:bg-surface-hover/30 transition-colors text-xs",
+                        onSectorClick && "cursor-pointer",
+                      )}
+                    >
+                      <td className="py-2 px-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="size-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: seg.color }}
+                            aria-hidden="true"
+                          />
+                          <span className="font-medium text-foreground truncate">{seg.label}</span>
+                        </div>
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono font-medium text-foreground tabular-nums tracking-tight whitespace-nowrap">
                         <MoneyText cents={numberToCents(seg.value)} />
-                      </span>
-                      <span className="w-12 text-right font-semibold text-muted-foreground tabular-nums">
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
                         {seg.pct.toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

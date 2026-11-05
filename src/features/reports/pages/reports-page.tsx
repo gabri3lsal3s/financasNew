@@ -1038,8 +1038,9 @@ export function ReportsPage() {
             periodLabel="Posição Atual Consolidada"
             rows={positionRows.map((r) => {
               const effectiveDivs = r.currency === "USD" ? (r.dividendsNative ?? (r.usdRate && r.usdRate > 0 ? (r.dividends ?? 0) / r.usdRate : (r.dividends ?? 0))) : (r.dividends ?? 0);
-              const effectiveCost = (r.currency === "USD" ? (r.totalCost ?? (r.usdRate && r.usdRate > 0 && r.totalCostBRL ? r.totalCostBRL / r.usdRate : r.totalCostBRL)) : r.totalCostBRL) ?? 0;
-              const yoc = effectiveCost > 0 && effectiveDivs > 0 ? (effectiveDivs / effectiveCost) * 100 : 0;
+              const effectiveCostNative = (r.currency === "USD" ? (r.totalCost ?? (r.usdRate && r.usdRate > 0 && r.totalCostBRL ? r.totalCostBRL / r.usdRate : r.totalCostBRL)) : r.totalCostBRL) ?? 0;
+              const effectiveCostBRL = (r.currency === "USD" ? (r.totalCostBRL ?? (r.usdRate && r.usdRate > 0 && r.totalCost ? r.totalCost * r.usdRate : r.totalCost)) : r.totalCostBRL) ?? (r.valueBRL - (r.unrealizedPnl ?? 0));
+              const yoc = effectiveCostNative > 0 && effectiveDivs > 0 ? (effectiveDivs / effectiveCostNative) * 100 : 0;
               return {
                 ticker: r.ticker,
                 name: r.ticker,
@@ -1050,7 +1051,7 @@ export function ReportsPage() {
                 averagePrice: r.averageCost,
                 currentPrice: r.priceQuote ?? r.priceBRL,
                 valueBRL: r.valueBRL,
-                totalCostBRL: r.totalCostBRL,
+                totalCostBRL: effectiveCostBRL,
                 unrealizedPnlBRL: r.unrealizedPnl,
                 unrealizedPnlPct: r.unrealizedPct ?? 0,
                 totalReturnPnlBRL: r.totalReturnPnl,

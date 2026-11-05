@@ -163,7 +163,7 @@ export function ReportInternationalBreakdownCard({
               <MapPin className="size-3.5 text-muted-foreground" aria-hidden="true" />
               <span className="text-xs font-semibold text-foreground">Região Geográfica</span>
             </div>
-            <div className="flex flex-col sm:flex-row items-center gap-3">
+            <div className="flex flex-col items-center gap-2">
               <div className="shrink-0 flex justify-center py-1">
                 <ReportDonutChart
                   segments={regionSegments}
@@ -171,48 +171,48 @@ export function ReportInternationalBreakdownCard({
                   centerValue={
                     <MoneyText
                       cents={numberToCents(exposure.totalValueBRL)}
-                      className="text-[11px] font-bold tabular-nums tracking-tight whitespace-nowrap"
+                      className="text-[10px] font-bold tabular-nums tracking-tight whitespace-nowrap"
                     />
                   }
-                  size={115}
-                  strokeWidth={13}
+                  size={96}
+                  strokeWidth={12}
                   showLegend={false}
                 />
               </div>
-              <div className="flex-1 w-full min-w-0">
+              <div className="w-full min-w-0">
                 <div className="rounded-lg border border-border/70 overflow-hidden text-xs">
-                  <div className="bg-surface-hover/60 px-2.5 py-1.5 font-semibold text-muted-foreground flex justify-between items-center border-b border-border/70 text-[11px]">
-                    <span className="truncate pr-1">Região</span>
-                    <div className="flex items-center gap-2.5 shrink-0 text-right font-medium">
-                      <span className="w-20 text-right">Saldo (R$)</span>
-                      <span className="w-10 text-right">Peso</span>
-                    </div>
-                  </div>
-                  <div className="divide-y divide-border/50">
-                    {exposure.orderedRegions.map((grp) => (
-                      <div key={grp.key} className="px-2.5 py-1.5 flex items-center justify-between hover:bg-surface-hover/30 transition-colors">
-                        <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
-                          <span
-                            className="size-2 rounded-full shrink-0"
-                            style={{ backgroundColor: REGION_COLORS[grp.key] ?? "#64748b" }}
-                            aria-hidden="true"
-                          />
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-medium text-foreground truncate text-[11px]">{grp.label}</span>
-                            <span className="text-[9.5px] text-muted-foreground">{grp.count} ativo(s)</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2.5 shrink-0 font-mono text-right text-[11px]">
-                          <span className="w-20 text-right font-medium text-foreground tabular-nums tracking-tight whitespace-nowrap">
+                  <table className="w-full border-collapse text-left text-xs">
+                    <thead>
+                      <tr className="bg-surface-hover/60 border-b border-border/70 text-[10.5px] font-semibold text-muted-foreground">
+                        <th className="py-1 px-2.5 font-semibold text-left">Região</th>
+                        <th className="py-1 px-2 text-right font-medium w-24">Saldo (R$)</th>
+                        <th className="py-1 px-2 text-right font-medium w-14">Peso</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {exposure.orderedRegions.map((grp) => (
+                        <tr key={grp.key} className="hover:bg-surface-hover/30 text-[10.5px]">
+                          <td className="py-1 px-2.5">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span
+                                className="size-2 rounded-full shrink-0"
+                                style={{ backgroundColor: REGION_COLORS[grp.key] ?? "#64748b" }}
+                                aria-hidden="true"
+                              />
+                              <span className="font-medium text-foreground truncate">{grp.label}</span>
+                              <span className="text-[9.5px] text-muted-foreground shrink-0">({grp.count})</span>
+                            </div>
+                          </td>
+                          <td className="py-1 px-2 text-right font-mono font-medium text-foreground tabular-nums tracking-tight whitespace-nowrap">
                             <MoneyText cents={numberToCents(grp.valueBRL)} />
-                          </span>
-                          <span className="w-10 text-right font-semibold text-muted-foreground tabular-nums">
+                          </td>
+                          <td className="py-1 px-2 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
                             {grp.pct.toFixed(1)}%
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -224,7 +224,7 @@ export function ReportInternationalBreakdownCard({
               <DollarSign className="size-3.5 text-muted-foreground" aria-hidden="true" />
               <span className="text-xs font-semibold text-foreground">Veículo de Custódia (Dólar vs. BDR)</span>
             </div>
-            <div className="flex flex-col sm:flex-row items-center gap-3">
+            <div className="flex flex-col items-center gap-2">
               <div className="shrink-0 flex justify-center py-1">
                 <ReportDonutChart
                   segments={vehicleSegments}
@@ -232,48 +232,48 @@ export function ReportInternationalBreakdownCard({
                   centerValue={
                     <MoneyText
                       cents={numberToCents(exposure.totalValueBRL)}
-                      className="text-[11px] font-bold tabular-nums tracking-tight whitespace-nowrap"
+                      className="text-[10px] font-bold tabular-nums tracking-tight whitespace-nowrap"
                     />
                   }
-                  size={115}
-                  strokeWidth={13}
+                  size={96}
+                  strokeWidth={12}
                   showLegend={false}
                 />
               </div>
-              <div className="flex-1 w-full min-w-0">
+              <div className="w-full min-w-0">
                 <div className="rounded-lg border border-border/70 overflow-hidden text-xs">
-                  <div className="bg-surface-hover/60 px-2.5 py-1.5 font-semibold text-muted-foreground flex justify-between items-center border-b border-border/70 text-[11px]">
-                    <span className="truncate pr-1">Veículo</span>
-                    <div className="flex items-center gap-2.5 shrink-0 text-right font-medium">
-                      <span className="w-20 text-right">Saldo (R$)</span>
-                      <span className="w-10 text-right">Peso</span>
-                    </div>
-                  </div>
-                  <div className="divide-y divide-border/50">
-                    {exposure.orderedVehicles.map((grp) => (
-                      <div key={grp.key} className="px-2.5 py-1.5 flex items-center justify-between hover:bg-surface-hover/30 transition-colors">
-                        <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
-                          <span
-                            className="size-2 rounded-full shrink-0"
-                            style={{ backgroundColor: VEHICLE_COLORS[grp.key] ?? "#64748b" }}
-                            aria-hidden="true"
-                          />
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-medium text-foreground truncate text-[11px]">{grp.label}</span>
-                            <span className="text-[9.5px] text-muted-foreground">{grp.count} ativo(s)</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2.5 shrink-0 font-mono text-right text-[11px]">
-                          <span className="w-20 text-right font-medium text-foreground tabular-nums tracking-tight whitespace-nowrap">
+                  <table className="w-full border-collapse text-left text-xs">
+                    <thead>
+                      <tr className="bg-surface-hover/60 border-b border-border/70 text-[10.5px] font-semibold text-muted-foreground">
+                        <th className="py-1 px-2.5 font-semibold text-left">Veículo</th>
+                        <th className="py-1 px-2 text-right font-medium w-24">Saldo (R$)</th>
+                        <th className="py-1 px-2 text-right font-medium w-14">Peso</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {exposure.orderedVehicles.map((grp) => (
+                        <tr key={grp.key} className="hover:bg-surface-hover/30 text-[10.5px]">
+                          <td className="py-1 px-2.5">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span
+                                className="size-2 rounded-full shrink-0"
+                                style={{ backgroundColor: VEHICLE_COLORS[grp.key] ?? "#64748b" }}
+                                aria-hidden="true"
+                              />
+                              <span className="font-medium text-foreground truncate">{grp.label}</span>
+                              <span className="text-[9.5px] text-muted-foreground shrink-0">({grp.count})</span>
+                            </div>
+                          </td>
+                          <td className="py-1 px-2 text-right font-mono font-medium text-foreground tabular-nums tracking-tight whitespace-nowrap">
                             <MoneyText cents={numberToCents(grp.valueBRL)} />
-                          </span>
-                          <span className="w-10 text-right font-semibold text-muted-foreground tabular-nums">
+                          </td>
+                          <td className="py-1 px-2 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
                             {grp.pct.toFixed(1)}%
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -301,47 +301,49 @@ export function ReportInternationalBreakdownCard({
           {/* Tabela de Decomposição */}
           <div className="flex-1 w-full min-w-0 flex flex-col gap-2">
             <div className="rounded-xl border border-border/70 overflow-hidden text-xs">
-              <div className="bg-surface-hover/60 px-3 py-2 font-semibold text-muted-foreground flex justify-between items-center border-b border-border/70">
-                <span className="truncate pr-2">
-                  {activeView === "region" ? "Região Geográfica" : "Veículo de Custódia"}
-                </span>
-                <div className="flex items-center gap-4 shrink-0 text-right font-medium">
-                  <span className="w-24 text-right">Saldo (R$)</span>
-                  <span className="w-12 text-right">Peso</span>
-                </div>
-              </div>
-              <div className="divide-y divide-border/50">
-                {currentOrderedList.map((grp) => {
-                  const color =
-                    activeView === "region"
-                      ? REGION_COLORS[grp.key] ?? "#64748b"
-                      : VEHICLE_COLORS[grp.key] ?? "#64748b";
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="bg-surface-hover/60 border-b border-border/70 text-[11px] font-semibold text-muted-foreground">
+                    <th className="py-2 px-3 font-semibold text-left">
+                      {activeView === "region" ? "Região Geográfica" : "Veículo de Custódia"}
+                    </th>
+                    <th className="py-2 px-3 text-right font-medium w-28">Saldo (R$)</th>
+                    <th className="py-2 px-3 text-right font-medium w-16">Peso</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {currentOrderedList.map((grp) => {
+                    const color =
+                      activeView === "region"
+                        ? REGION_COLORS[grp.key] ?? "#64748b"
+                        : VEHICLE_COLORS[grp.key] ?? "#64748b";
 
-                  return (
-                    <div key={grp.key} className="px-3 py-2 flex items-center justify-between hover:bg-surface-hover/30 transition-colors">
-                      <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
-                        <span
-                          className="size-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: color }}
-                          aria-hidden="true"
-                        />
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-medium text-foreground truncate">{grp.label}</span>
-                          <span className="text-[10px] text-muted-foreground">{grp.count} ativo(s)</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 shrink-0 font-mono text-right">
-                        <span className="w-24 text-right font-medium text-foreground tabular-nums tracking-tight whitespace-nowrap">
+                    return (
+                      <tr key={grp.key} className="hover:bg-surface-hover/30 transition-colors text-xs">
+                        <td className="py-2 px-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className="size-2.5 rounded-full shrink-0"
+                              style={{ backgroundColor: color }}
+                              aria-hidden="true"
+                            />
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-medium text-foreground truncate">{grp.label}</span>
+                              <span className="text-[10px] text-muted-foreground">{grp.count} ativo(s)</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-2 px-3 text-right font-mono font-medium text-foreground tabular-nums tracking-tight whitespace-nowrap">
                           <MoneyText cents={numberToCents(grp.valueBRL)} />
-                        </span>
-                        <span className="w-12 text-right font-semibold text-muted-foreground tabular-nums">
+                        </td>
+                        <td className="py-2 px-3 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
                           {grp.pct.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

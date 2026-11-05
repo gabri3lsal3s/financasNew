@@ -25,6 +25,7 @@ export interface ReportClassGroup {
   totalCents: number;
   sharePct: number;
   pnlPct: number;
+  subtotalPriceVarPct?: number;
   totalCostCents?: number;
   totalDividendsCents?: number;
   topAssetTicker?: string;
@@ -95,9 +96,11 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                   : "#64748b");
 
         const subtotalPriceVarPct =
-          group.totalCostCents && group.totalCostCents > 0
-            ? ((group.totalCents - group.totalCostCents) / group.totalCostCents) * 100
-            : null;
+          group.subtotalPriceVarPct !== undefined
+            ? group.subtotalPriceVarPct
+            : group.totalCostCents && group.totalCostCents > 0
+              ? ((group.totalCents - group.totalCostCents) / group.totalCostCents) * 100
+              : null;
 
         return (
           <section

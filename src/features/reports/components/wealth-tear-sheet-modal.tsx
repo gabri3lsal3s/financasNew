@@ -629,7 +629,7 @@ export function WealthTearSheetModal({
 
       {/* 3. Sumário de Movimentação do Mês Vigente */}
       {monthSummary && (
-        <div className="bg-muted/30 rounded-xl border border-border/80 px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 text-xs print:bg-white print:border-slate-200/90 shadow-2xs">
+        <div className="bg-muted/30 rounded-xl border border-border/80 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2.5 text-xs print:bg-white print:border-slate-200/90 shadow-2xs">
           <div className="flex items-center gap-1.5 text-foreground font-bold uppercase tracking-wider text-[10px]">
             <Calendar className="size-3.5 text-primary-strong" aria-hidden="true" />
             <span>Movimentação do Período ({monthSummary.monthLabel}):</span>
@@ -639,7 +639,7 @@ export function WealthTearSheetModal({
               Sem movimentações financeiras registradas na competência
             </span>
           ) : (
-            <div className="flex items-center gap-4 font-mono text-[11px] num">
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-4 font-mono text-[11px] num w-full sm:w-auto">
               <span>Aportes: <strong className="text-foreground"><MoneyText cents={numberToCents(monthSummary.buysBRL)} /></strong></span>
               <span>Vendas: <strong className="text-foreground"><MoneyText cents={numberToCents(monthSummary.sellsBRL)} /></strong></span>
               <span>Proventos: <strong className="text-positive-strong"><MoneyText cents={numberToCents(monthSummary.dividendsBRL)} /></strong></span>
@@ -767,6 +767,7 @@ export function WealthTearSheetModal({
               totalCents: numberToCents(group.subtotalBRL),
               sharePct: group.pctOfTotal,
               pnlPct: group.subtotalTotalReturnPct,
+              subtotalPriceVarPct: group.subtotalUnrealizedPct,
               totalCostCents: numberToCents(group.subtotalCostBRL),
               totalDividendsCents: numberToCents(group.subtotalDividendsBRL),
               topAssetTicker: group.topAssetTicker,
@@ -831,9 +832,9 @@ export function WealthTearSheetModal({
         </section>
       )}
 
-      {/* 8. Raios-X de Subalocação Profunda (Organizados logo abaixo dos gráficos de distribuição) */}
+      {/* 8. Raios-X de Subalocação Profunda: Renda Variável (Ações B3 & Fundos Imobiliários) */}
       <section
-        aria-label="Raios-X de Subalocação"
+        aria-label="Raios-X de Renda Variável"
         className="flex flex-col gap-3 pt-2 print:pt-1 print-break-before-page print:break-before-page break-inside-avoid print:break-inside-avoid"
       >
         <div className="report-section-header flex items-center justify-between border-b border-border/70 pb-1.5">
@@ -844,31 +845,52 @@ export function WealthTearSheetModal({
             </h3>
           </div>
           <span className="text-[10px] text-muted-foreground font-mono">
-            Decomposição Analítica Especializada
+            Renda Variável (Ações B3 & Fundos Imobiliários)
           </span>
         </div>
 
-        <div className="flex flex-col gap-4 w-full">
+        <div className="flex flex-col gap-3.5 w-full">
           <ReportStocksBreakdownCard
             positions={breakdownRows}
             mode="print_all"
-            className="print:border-border print:bg-white print:p-3.5 print:shadow-none break-inside-avoid print:break-inside-avoid"
+            className="print:border-border print:bg-white print:p-3 print:shadow-none break-inside-avoid print:break-inside-avoid"
           />
           <ReportFiiBreakdownCard
             positions={breakdownRows}
             mode="print_all"
-            className="print:border-border print:bg-white print:p-3.5 print:shadow-none break-inside-avoid print:break-inside-avoid"
+            className="print:border-border print:bg-white print:p-3 print:shadow-none break-inside-avoid print:break-inside-avoid"
           />
+        </div>
+      </section>
+
+      {/* 8B. Raios-X de Renda Fixa & Exposição Internacional */}
+      <section
+        aria-label="Raios-X de Renda Fixa e Internacional"
+        className="flex flex-col gap-3 pt-2 print:pt-1 print-break-before-page print:break-before-page break-inside-avoid print:break-inside-avoid"
+      >
+        <div className="report-section-header flex items-center justify-between border-b border-border/70 pb-1.5">
+          <div className="flex items-center gap-1.5">
+            <Layers className="size-3.5 text-primary-strong" aria-hidden="true" />
+            <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
+              Raios-X de Renda Fixa & Exposição Internacional
+            </h3>
+          </div>
+          <span className="text-[10px] text-muted-foreground font-mono">
+            Indexadores, Emissores, Geografia e Veículos de Dólar
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-3.5 w-full">
           <ReportFixedIncomeBreakdownCard
             positions={breakdownRows}
             assetsMetadata={assetsMetadata}
             mode="print_all"
-            className="print:border-border print:bg-white print:p-3.5 print:shadow-none break-inside-avoid print:break-inside-avoid"
+            className="print:border-border print:bg-white print:p-3 print:shadow-none break-inside-avoid print:break-inside-avoid"
           />
           <ReportInternationalBreakdownCard
             positions={breakdownRows}
             mode="print_all"
-            className="print:border-border print:bg-white print:p-3.5 print:shadow-none break-inside-avoid print:break-inside-avoid"
+            className="print:border-border print:bg-white print:p-3 print:shadow-none break-inside-avoid print:break-inside-avoid"
           />
         </div>
       </section>
@@ -878,7 +900,7 @@ export function WealthTearSheetModal({
         <ReportPerformanceChart
           series={performanceSeries}
           title="Comparativo Histórico de Rentabilidade & Patrimônio Mês a Mês"
-          className="print-break-inside-avoid"
+          className="print-break-before-page print:break-before-page print-break-inside-avoid"
           annualCdiRate={annualCdiRate}
           annualSelicRate={annualSelicRate}
           annualIpcaRate={annualIpcaRate}
