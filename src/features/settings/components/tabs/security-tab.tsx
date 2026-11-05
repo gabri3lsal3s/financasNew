@@ -197,6 +197,11 @@ export function SecurityTab() {
     const { data: payload } = await exportDataQuery.refetch();
     if (payload) {
       downloadJson(`financas_backup_${todayLocalIso()}.json`, payload);
+      pushToast({
+        title: "Backup exportado",
+        description: "O arquivo JSON contendo seus dados foi baixado com sucesso.",
+        variant: "success",
+      });
     }
   };
 

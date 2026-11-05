@@ -106,7 +106,7 @@ describe("services/observability (F6.3 — Sentry)", () => {
     });
   });
 
-  it("beforeSend do Sentry higieniza extras, breadcrumbs e mensagem de eventos", async () => {
+  it("beforeSend do Sentry higieniza extras, breadcrumbs, mensagem e URLs/query de requisição", async () => {
     vi.stubEnv("VITE_SENTRY_DSN", "https://exemplo@ingest.sentry.io/1");
     const obs = await import("@/services/observability");
     await obs.initObservability();
@@ -120,6 +120,10 @@ describe("services/observability (F6.3 — Sentry)", () => {
       breadcrumbs: [
         { message: "Tentou pagar com 4111 2222 3333 4444", data: { token: "abc" } },
       ],
+      request: {
+        url: "https://api.exemplo.com/auth/callback?token=supersecret123&code=456",
+        query_string: "token=supersecret123&cpf=123.456.789-00",
+      },
     };
     const scrubbedEvent = initCall.beforeSend(rawEvent);
     expect(scrubbedEvent.message).toBe("Falha ao processar [REDACTED_CPF]");
@@ -133,13 +137,43 @@ describe("services/observability (F6.3 — Sentry)", () => {
         data: { token: "[REDACTED]" },
       },
     ]);
+    expect(scrubbedEvent.request).toEqual({
+      url: "https://api.exemplo.com/auth/callback?token=[REDACTED]&code=456",
+      query_string: "token=[REDACTED]&cpf=[REDACTED]",
+    });
   });
 
-  it("setObservabilityUser correlaciona o usuário e limpa com null", async () => {
+  it("beforeSend do Sentry higieniza query_string quando fornecido como objeto", async () => {
+    vi.stubEnv("VITE_SENTRY_DSN", "https://exemplo@ingest.sentry.io/1");
+    const obs = await import("@/services/observability");
+    await obs.initObservability();
+    const initCall = initMock.mock.calls[0]?.[0];
+    const rawEvent = {
+      request: {
+        url: "https://api.exemplo.com/transacoes",
+        query_string: {
+          token: "secret123",
+          email: "usuario@teste.com",
+          page: "2",
+        },
+      },
+    };
+    const scrubbedEvent = initCall.beforeSend(rawEvent);
+    expect(scrubbedEvent.request).toEqual({
+      url: "https://api.exemplo.com/transacoes",
+      query_string: {
+        token: "[REDACTED]",
+        email: "[REDACTED]",
+        page: "2",
+      },
+    });
+  });
+
+  it("setObservabilityUser correlaciona apenas o UUID opaco anônimo sem expor e-mail pessoal (LGPD)", async () => {
     vi.stubEnv("VITE_SENTRY_DSN", "https://exemplo@ingest.sentry.io/1");
     const obs = await import("@/services/observability");
     await obs.setObservabilityUser({ id: "u1", email: "a@b.com" });
-    expect(setUserMock).toHaveBeenCalledWith({ id: "u1", email: "a@b.com" });
+    expect(setUserMock).toHaveBeenCalledWith({ id: "u1" });
     await obs.setObservabilityUser(null);
     expect(setUserMock).toHaveBeenLastCalledWith(null);
   });

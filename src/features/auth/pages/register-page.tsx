@@ -77,6 +77,8 @@ export function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState(
     searchParams.get("convite") || searchParams.get("invite") || "",
   );
@@ -121,12 +123,23 @@ export function RegisterPage() {
       );
       return;
     }
+    if (password !== confirmPassword) {
+      setError("As senhas digitadas não coincidem.");
+      triggerSensory("destructive");
+      return;
+    }
     setError(null);
     setErrorKind(null);
     setConfirmationSent(false);
     setPending(true);
     try {
-      const result = await signUpWithEmail(email, password, name, inviteCode);
+      const result = await signUpWithEmail(
+        email,
+        password,
+        name,
+        inviteCode,
+        captchaToken ?? undefined,
+      );
       triggerSensory("success");
       if (result.needsEmailConfirmation) {
         setConfirmationSent(true);
@@ -381,6 +394,25 @@ export function RegisterPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="register-confirm-password"
+              className="text-xs font-semibold text-foreground"
+            >
+              Confirmar Senha
+            </label>
+            <PasswordInput
+              id="register-confirm-password"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              placeholder="Confirme sua senha"
+              className="h-10 text-sm rounded-xl"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
               <label
                 htmlFor="register-invite"
@@ -437,7 +469,7 @@ export function RegisterPage() {
             </label>
           </div>
 
-          <Turnstile className="my-0.5" />
+          <Turnstile className="my-0.5" onVerify={(tok) => setCaptchaToken(tok)} />
 
           <Button
             type="submit"

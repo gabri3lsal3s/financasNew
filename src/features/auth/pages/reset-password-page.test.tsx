@@ -8,16 +8,24 @@ import * as toastModule from "@/services/toast";
 import * as sensoryModule from "@/services/sensory";
 
 const mockUnsubscribe = vi.fn();
-const mockOnAuthStateChange = vi.fn(() => ({
-  data: { subscription: { unsubscribe: mockUnsubscribe } },
-}));
+type AuthListener = (event: string, session: unknown) => void;
+let authListener: AuthListener | null = null;
+
+const mockOnAuthStateChange = vi.fn((callback: AuthListener) => {
+  authListener = callback;
+  return {
+    data: { subscription: { unsubscribe: mockUnsubscribe } },
+  };
+});
 const mockGetSession = vi.fn().mockResolvedValue({ data: { session: null } });
+const mockSignOut = vi.fn().mockResolvedValue({ error: null });
 
 vi.mock("@/data/client", () => ({
   getSupabase: () => ({
     auth: {
       onAuthStateChange: mockOnAuthStateChange,
       getSession: mockGetSession,
+      signOut: mockSignOut,
     },
   }),
 }));
@@ -45,15 +53,18 @@ function renderResetPasswordPage() {
 describe("ResetPasswordPage - Redefinição de Senha", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    authListener = null;
     mockGetSession.mockResolvedValue({
       data: { session: { user: { id: "user-123" } } as never },
     });
+    mockSignOut.mockResolvedValue({ error: null });
     Object.defineProperty(window, "location", {
       writable: true,
       configurable: true,
       value: {
         search: "",
         hash: "",
+        pathname: "/redefinir-senha",
         origin: "http://localhost:3000",
       },
     });
@@ -77,7 +88,7 @@ describe("ResetPasswordPage - Redefinição de Senha", () => {
     expect(screen.getByText("As senhas digitadas não coincidem.")).toBeInTheDocument();
   });
 
-  it("atualiza a senha com sucesso e exibe tela de confirmação", async () => {
+  it("atualiza a senha com sucesso, invalida outras sessões e exibe tela de confirmação", async () => {
     const user = userEvent.setup();
     vi.mocked(authData.updateUserPassword).mockResolvedValueOnce();
 
@@ -90,6 +101,7 @@ describe("ResetPasswordPage - Redefinição de Senha", () => {
 
     await waitFor(() => {
       expect(authData.updateUserPassword).toHaveBeenCalledWith("SenhaForte123");
+      expect(mockSignOut).toHaveBeenCalledWith({ scope: "others" });
       expect(sensoryModule.triggerSensory).toHaveBeenCalledWith("success");
       expect(toastModule.pushToast).toHaveBeenCalledWith(
         expect.objectContaining({ variant: "success" }),
@@ -99,6 +111,64 @@ describe("ResetPasswordPage - Redefinição de Senha", () => {
     });
   });
 
+  it("invalida outras sessões ativas com fail-safe caso signOut lance erro", async () => {
+    const user = userEvent.setup();
+    vi.mocked(authData.updateUserPassword).mockResolvedValueOnce();
+    mockSignOut.mockRejectedValueOnce(new Error("Supabase auth error"));
+
+    renderResetPasswordPage();
+
+    await user.type(screen.getByLabelText("Nova senha"), "SenhaForte123");
+    await user.type(screen.getByLabelText("Confirmar nova senha"), "SenhaForte123");
+
+    await user.click(screen.getByRole("button", { name: "Salvar nova senha" }));
+
+    await waitFor(() => {
+      expect(authData.updateUserPassword).toHaveBeenCalledWith("SenhaForte123");
+      expect(mockSignOut).toHaveBeenCalledWith({ scope: "others" });
+      expect(screen.getByText("Tudo pronto! Senha atualizada")).toBeInTheDocument();
+    });
+  });
+
+  it("higieniza a URL removendo tokens do histórico ao inicializar com parâmetros de recuperação", () => {
+    const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+    Object.defineProperty(window, "location", {
+      writable: true,
+      configurable: true,
+      value: {
+        search: "",
+        hash: "#access_token=token-xyz&type=recovery&refresh_token=refresh-xyz",
+        pathname: "/redefinir-senha",
+        origin: "http://localhost:3000",
+      },
+    });
+
+    renderResetPasswordPage();
+
+    expect(replaceStateSpy).toHaveBeenCalledWith({}, document.title, "/redefinir-senha");
+  });
+
+  it("higieniza a URL ao capturar o evento PASSWORD_RECOVERY via onAuthStateChange", () => {
+    const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+    Object.defineProperty(window, "location", {
+      writable: true,
+      configurable: true,
+      value: {
+        search: "",
+        hash: "#type=recovery",
+        pathname: "/redefinir-senha",
+        origin: "http://localhost:3000",
+      },
+    });
+
+    renderResetPasswordPage();
+
+    expect(authListener).toBeDefined();
+    authListener?.("PASSWORD_RECOVERY", { user: { id: "user-123" } });
+
+    expect(replaceStateSpy).toHaveBeenCalledWith({}, document.title, "/redefinir-senha");
+  });
+
   it("trata erro ou expiração do link passado na URL", async () => {
     Object.defineProperty(window, "location", {
       writable: true,
@@ -106,6 +176,7 @@ describe("ResetPasswordPage - Redefinição de Senha", () => {
       value: {
         search: "?error_code=otp_expired&error_description=Token%20expirou",
         hash: "",
+        pathname: "/redefinir-senha",
         origin: "http://localhost:3000",
       },
     });

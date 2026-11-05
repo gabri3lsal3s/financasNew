@@ -27,3 +27,10 @@ export { useSensory, type SensoryDispatcher } from "./use-sensory";
 export { useAppUpdate, type UseAppUpdateOptions, type UseAppUpdateReturn } from "./use-app-update";
 export { useApkPromo } from "./use-apk-promo";
 export { useActiveOverlays, type ActiveOverlaysResult } from "./use-active-overlays";
+export {
+  useIdleSessionTimeout,
+  DEFAULT_IDLE_TIMEOUT_MS,
+  IDLE_ACTIVITY_EVENTS,
+  type UseIdleSessionTimeoutOptions,
+  type UseIdleSessionTimeoutResult,
+} from "./use-idle-session-timeout";

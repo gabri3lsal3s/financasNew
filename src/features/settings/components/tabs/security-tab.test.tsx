@@ -40,10 +40,13 @@ vi.mock("@/data/repositories/billing", () => ({
 }));
 
 const mockUpdateCustomSettings = vi.fn();
+const mockExportDataRefetch = vi.fn().mockResolvedValue({
+  data: { version: 1, exported_at: "", data: {} },
+});
 
 vi.mock("@/state", () => ({
   usePortfolioPosition: () => ({ rows: [] }),
-  useExportData: () => ({ refetch: vi.fn() }),
+  useExportData: () => ({ refetch: mockExportDataRefetch }),
   useRestoreBackup: () => ({ mutateAsync: vi.fn() }),
   useUserAccess: () => ({
     role: "admin",
@@ -168,6 +171,21 @@ describe("SecurityTab - Bloqueio do Aplicativo & Privacidade", () => {
 
     expect(await screen.findByText("Assistente de Restauração de Backup")).toBeInTheDocument();
     expect(await screen.findByText("Validação")).toBeInTheDocument();
+  });
+
+  it("exige confirmação biométrica em ambiente nativo ao acionar a exportação do backup JSON", async () => {
+    const user = userEvent.setup();
+    renderSecurityTab();
+
+    const exportBtn = screen.getByRole("button", { name: "Exportar JSON" });
+    await user.click(exportBtn);
+
+    expect(nativeServices.authenticateWithBiometrics).toHaveBeenCalledWith(
+      "Confirme sua identidade para exportar seus dados financeiros",
+    );
+    await waitFor(() => {
+      expect(mockExportDataRefetch).toHaveBeenCalled();
+    });
   });
 
   describe("Ambiente Web / PWA (Ocultação de Recursos Nativos - Tarefa 1.1)", () => {

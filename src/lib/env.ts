@@ -41,3 +41,6 @@ export function getSupabaseEnv(): SupabaseEnv {
     anonKey,
   };
 }
+
+export { getPublicAppUrl } from "@/services/app-url";
+

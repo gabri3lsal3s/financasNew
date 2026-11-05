@@ -58,7 +58,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 1
 
-- [ ] **Tarefa 1.1: Atualização do CSP em `public/_headers` para Cloudflare Turnstile**
+- [x] **Tarefa 1.1: Atualização do CSP em `public/_headers` para Cloudflare Turnstile**
   - **Arquivo:** `public/_headers`
   - **O que verificar/ajustar:**
     - Localizar a diretiva `Content-Security-Policy` (linha ~2).
@@ -66,7 +66,7 @@ git push origin main
     - Garantir que `connect-src` inclua `https://challenges.cloudflare.com`.
     - Atualizar o teste de segurança de headers: `src/tests/security-headers.test.ts`.
 
-- [ ] **Tarefa 1.2: Criação do Helper Universal de URL Pública (`getPublicAppUrl`)**
+- [x] **Tarefa 1.2: Criação do Helper Universal de URL Pública (`getPublicAppUrl`)**
   - **Arquivo:** `src/lib/env.ts` (ou `src/services/app-url.ts`)
   - **O que verificar/ajustar:**
     - Implementar a função pura:
@@ -81,7 +81,7 @@ git push origin main
       ```
     - Criar teste colocalizado `src/services/app-url.test.ts` cobrindo cenários Web, Mobile e fallback.
 
-- [ ] **Tarefa 1.3: Normalização de E-mail e Sanitização Defensiva de Strings**
+- [x] **Tarefa 1.3: Normalização de E-mail e Sanitização Defensiva de Strings**
   - **Arquivo:** `src/domain/validation/sanitization.ts`
   - **O que verificar/ajustar:**
     - Exportar a função:
@@ -93,7 +93,7 @@ git push origin main
       ```
     - Atualizar `src/domain/validation/sanitization.test.ts` com testes para e-mails com espaços, maiúsculas e caracteres especiais válidos.
 
-- [ ] **Tarefa 1.4: Integração do `captchaToken` em `src/data/auth.ts`**
+- [x] **Tarefa 1.4: Integração do `captchaToken` em `src/data/auth.ts`**
   - **Arquivo:** `src/data/auth.ts`
   - **O que verificar/ajustar:**
     - Atualizar a assinatura de `signInWithEmail`:
@@ -151,7 +151,7 @@ git push origin main
       ```
     - Atualizar testes em `src/data/auth.test.ts`.
 
-- [ ] **Tarefa 1.5: Adicionar Campo "Confirmar Senha" e Validação em `RegisterPage`**
+- [x] **Tarefa 1.5: Adicionar Campo "Confirmar Senha" e Validação em `RegisterPage`**
   - **Arquivo:** `src/features/auth/pages/register-page.tsx`
   - **O que verificar/ajustar:**
     - Declarar estado `const [confirmPassword, setConfirmPassword] = useState("");`.
@@ -168,7 +168,7 @@ git push origin main
     - Passar o token para `signUpWithEmail(email, password, name, inviteCode, captchaToken)`.
     - Atualizar `src/features/auth/pages/register-page.test.tsx`.
 
-- [ ] **Tarefa 1.6: Captura do Token Turnstile em `LoginPage`**
+- [x] **Tarefa 1.6: Captura do Token Turnstile em `LoginPage`**
   - **Arquivo:** `src/features/auth/pages/login-page.tsx`
   - **O que verificar/ajustar:**
     - Declarar `const [captchaToken, setCaptchaToken] = useState<string | null>(null);`.
@@ -177,10 +177,10 @@ git push origin main
     - Atualizar `src/features/auth/pages/login-page.test.tsx`.
 
 ### Portão de Qualidade da Fase 1
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/tests/security-headers.test.ts src/domain/validation/sanitization.test.ts src/data/auth.test.ts src/features/auth/pages/login-page.test.tsx src/features/auth/pages/register-page.test.tsx`
-- [ ] **Commit & Push da Fase 1:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/tests/security-headers.test.ts src/domain/validation/sanitization.test.ts src/data/auth.test.ts src/features/auth/pages/login-page.test.tsx src/features/auth/pages/register-page.test.tsx`
+- [x] **Commit & Push da Fase 1:**
   ```bash
   git add public/_headers src/lib/env.ts src/services/app-url.ts src/services/app-url.test.ts src/domain/validation/sanitization.ts src/domain/validation/sanitization.test.ts src/data/auth.ts src/data/auth.test.ts src/features/auth/pages/login-page.tsx src/features/auth/pages/login-page.test.tsx src/features/auth/pages/register-page.tsx src/features/auth/pages/register-page.test.tsx
   git commit -m "feat(auth): reforca login e cadastro com confirmacao de senha captcha e normalizacao de dados"
@@ -195,7 +195,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 2
 
-- [ ] **Tarefa 2.1: URL Pública Universal e Anti-Enumeração em `ForgotPasswordPage`**
+- [x] **Tarefa 2.1: URL Pública Universal e Anti-Enumeração em `ForgotPasswordPage`**
   - **Arquivos:** `src/data/auth.ts`, `src/features/auth/pages/forgot-password-page.tsx`
   - **O que verificar/ajustar:**
     - Em `resetPasswordForEmail` (`src/data/auth.ts`), utilizar `redirectTo: getPublicAppUrl("/redefinir-senha")` e normalizar com `normalizeEmail(email)`.
@@ -206,7 +206,7 @@ git push origin main
       - Garantir que a mensagem de sucesso seja neutra e institucional: *"Se o endereço estiver cadastrado, você receberá um link de redefinição em instantes."*.
     - Atualizar `src/features/auth/pages/forgot-password-page.test.tsx`.
 
-- [ ] **Tarefa 2.2: Higienização de Tokens da URL e Invalidação Pós-Reset (`ResetPasswordPage`)**
+- [x] **Tarefa 2.2: Higienização de Tokens da URL e Invalidação Pós-Reset (`ResetPasswordPage`)**
   - **Arquivo:** `src/features/auth/pages/reset-password-page.tsx`
   - **O que verificar/ajustar:**
     - Ao capturar o evento `PASSWORD_RECOVERY` ou ao inicializar com hash/query de recuperação, higienizar imediatamente o histórico do browser:
@@ -227,10 +227,10 @@ git push origin main
     - Atualizar `src/features/auth/pages/reset-password-page.test.tsx`.
 
 ### Portão de Qualidade da Fase 2
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/features/auth/pages/forgot-password-page.test.tsx src/features/auth/pages/reset-password-page.test.tsx`
-- [ ] **Commit & Push da Fase 2:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/features/auth/pages/forgot-password-page.test.tsx src/features/auth/pages/reset-password-page.test.tsx`
+- [x] **Commit & Push da Fase 2:**
   ```bash
   git add src/data/auth.ts src/features/auth/pages/forgot-password-page.tsx src/features/auth/pages/forgot-password-page.test.tsx src/features/auth/pages/reset-password-page.tsx src/features/auth/pages/reset-password-page.test.tsx
   git commit -m "feat(auth): blinda recuperacao e redefinicao de senha com limpeza de url e anti-enumeracao"
@@ -245,7 +245,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 3
 
-- [ ] **Tarefa 3.1: Implementação da Reautenticação Prévia em `src/data/auth.ts`**
+- [x] **Tarefa 3.1: Implementação da Reautenticação Prévia em `src/data/auth.ts`**
   - **Arquivo:** `src/data/auth.ts`
   - **O que verificar/ajustar:**
     - Criar e exportar a função de validação de senha:
@@ -275,7 +275,7 @@ git push origin main
       ```
     - Atualizar testes em `src/data/auth.test.ts`.
 
-- [ ] **Tarefa 3.2: Formulário de Senha com Campo "Senha Atual" em `AccountTab`**
+- [x] **Tarefa 3.2: Formulário de Senha com Campo "Senha Atual" em `AccountTab`**
   - **Arquivo:** `src/features/settings/components/tabs/account-tab.tsx`
   - **O que verificar/ajustar:**
     - Declarar estado `const [currentPassword, setCurrentPassword] = useState("");`.
@@ -305,10 +305,10 @@ git push origin main
     - Atualizar `src/features/settings/components/tabs/account-tab.test.tsx`.
 
 ### Portão de Qualidade da Fase 3
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/data/auth.test.ts src/features/settings/components/tabs/account-tab.test.tsx`
-- [ ] **Commit & Push da Fase 3:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/data/auth.test.ts src/features/settings/components/tabs/account-tab.test.tsx`
+- [x] **Commit & Push da Fase 3:**
   ```bash
   git add src/data/auth.ts src/data/auth.test.ts src/features/settings/components/tabs/account-tab.tsx src/features/settings/components/tabs/account-tab.test.tsx
   git commit -m "security(auth): exige senha atual na alteracao de credenciais prevenindo account takeover"
@@ -323,7 +323,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 4
 
-- [ ] **Tarefa 4.1: Criação da Migração PostgreSQL para Sincronização de E-mail**
+- [x] **Tarefa 4.1: Criação da Migração PostgreSQL para Sincronização de E-mail**
   - **Arquivo:** `supabase/migrations/20260101000064_sync_profile_email_on_auth_change.sql`
   - **O que verificar/ajustar:**
     - Criar o arquivo de migração contendo a trigger de atualização atômica:
@@ -359,7 +359,7 @@ git push origin main
         execute function public.handle_user_email_updated();
       ```
 
-- [ ] **Tarefa 4.2: Implementação da Função `requestUserEmailChange` em `src/data/auth.ts`**
+- [x] **Tarefa 4.2: Implementação da Função `requestUserEmailChange` em `src/data/auth.ts`**
   - **Arquivo:** `src/data/auth.ts`
   - **O que verificar/ajustar:**
     - Implementar a função com normalização e reautenticação:
@@ -382,7 +382,7 @@ git push origin main
       ```
     - Atualizar testes em `src/data/auth.test.ts`.
 
-- [ ] **Tarefa 4.3: Diálogo Modal de Alteração de E-mail em `AccountTab`**
+- [x] **Tarefa 4.3: Diálogo Modal de Alteração de E-mail em `AccountTab`**
   - **Arquivo:** `src/features/settings/components/tabs/account-tab.tsx`
   - **O que verificar/ajustar:**
     - No Card 1 (Dados Pessoais), adicionar botão *"Alterar e-mail"* ao lado do badge de verificado.
@@ -395,10 +395,10 @@ git push origin main
     - Atualizar `src/features/settings/components/tabs/account-tab.test.tsx`.
 
 ### Portão de Qualidade da Fase 4
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/data/auth.test.ts src/features/settings/components/tabs/account-tab.test.tsx`
-- [ ] **Commit & Push da Fase 4:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/data/auth.test.ts src/features/settings/components/tabs/account-tab.test.tsx`
+- [x] **Commit & Push da Fase 4:**
   ```bash
   git add supabase/migrations/20260101000064_sync_profile_email_on_auth_change.sql src/data/auth.ts src/data/auth.test.ts src/features/settings/components/tabs/account-tab.tsx src/features/settings/components/tabs/account-tab.test.tsx
   git commit -m "feat(auth): disponibiliza fluxo de alteracao de e-mail com reautenticacao e trigger no banco"
@@ -413,7 +413,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 5
 
-- [ ] **Tarefa 5.1: Expansão do Gateway de Limpeza de Sessão (`resetAppState`)**
+- [x] **Tarefa 5.1: Expansão do Gateway de Limpeza de Sessão (`resetAppState`)**
   - **Arquivos:** `src/services/auth-cleanup.ts`, `src/services/native/suggestions-store.ts`
   - **O que verificar/ajustar:**
     - Desconectar ativamente todos os canais de Realtime do Supabase:
@@ -429,7 +429,7 @@ git push origin main
     - Limpar registros temporários em `sessionStorage` que possam conter resíduos de checkout ou parâmetros transitórios.
     - Atualizar testes em `src/services/auth-cleanup.test.ts`.
 
-- [ ] **Tarefa 5.2: Ativação Estrita de PKCE no Cliente Supabase**
+- [x] **Tarefa 5.2: Ativação Estrita de PKCE no Cliente Supabase**
   - **Arquivo:** `src/data/client.ts`
   - **O que verificar/ajustar:**
     - Configurar explicitamente `flowType: "pkce"` nas opções de autenticação do `createClient`:
@@ -444,17 +444,17 @@ git push origin main
       }) as Supabase;
       ```
 
-- [ ] **Tarefa 5.3: Aprimoramento do Escudo do AppLock Mobile com Opção de Desconexão de Emergência**
+- [x] **Tarefa 5.3: Aprimoramento do Escudo do AppLock Mobile com Opção de Desconexão de Emergência**
   - **Arquivo:** `src/app/app-lock-overlay.tsx`
   - **O que verificar/ajustar:**
     - Adicionar na tela de bloqueio biométrico um botão discreto *"Sair da conta e entrar com senha"*, permitindo que o usuário encerre a sessão caso o sensor biométrico do smartphone apresente falha de hardware.
     - Atualizar `src/app/app-lock-overlay.test.tsx`.
 
 ### Portão de Qualidade da Fase 5
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/services/auth-cleanup.test.ts src/hooks/use-sign-out.test.ts src/app/app-lock-overlay.test.tsx`
-- [ ] **Commit & Push da Fase 5:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/services/auth-cleanup.test.ts src/hooks/use-sign-out.test.ts src/app/app-lock-overlay.test.tsx`
+- [x] **Commit & Push da Fase 5:**
   ```bash
   git add src/services/auth-cleanup.ts src/services/auth-cleanup.test.ts src/data/client.ts src/app/app-lock-overlay.tsx src/app/app-lock-overlay.test.tsx
   git commit -m "security(session): habilita pkce estrito desconecta realtime no logout e limpa memoria de comprovantes"
@@ -469,7 +469,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 6
 
-- [ ] **Tarefa 6.1: Implementação do Hook de Inatividade Web (`useIdleSessionTimeout`)**
+- [x] **Tarefa 6.1: Implementação do Hook de Inatividade Web (`useIdleSessionTimeout`)**
   - **Arquivo:** `src/hooks/use-idle-session-timeout.ts`
   - **O que verificar/ajustar:**
     - Criar hook que escuta eventos de atividade do usuário (`pointerdown`, `keydown`, `touchstart`, `scroll`) de forma não obstrutiva e passiva (`{ passive: true }`).
@@ -480,7 +480,7 @@ git push origin main
     - Integrar o hook no shell de rotas autenticadas em `src/app/router.tsx`.
     - Criar testes colocalizados `src/hooks/use-idle-session-timeout.test.ts`.
 
-- [ ] **Tarefa 6.2: Mecanismo de Backoff Exponencial no Cliente contra Força Bruta**
+- [x] **Tarefa 6.2: Mecanismo de Backoff Exponencial no Cliente contra Força Bruta**
   - **Arquivo:** `src/features/auth/pages/login-page.tsx`
   - **O que verificar/ajustar:**
     - Controlar o número de falhas consecutivas de autenticação na sessão ativa.
@@ -490,10 +490,10 @@ git push origin main
     - Atualizar testes em `login-page.test.tsx`.
 
 ### Portão de Qualidade da Fase 6
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/hooks/use-idle-session-timeout.test.ts src/features/auth/pages/login-page.test.tsx`
-- [ ] **Commit & Push da Fase 6:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/hooks/use-idle-session-timeout.test.ts src/features/auth/pages/login-page.test.tsx`
+- [x] **Commit & Push da Fase 6:**
   ```bash
   git add src/hooks/use-idle-session-timeout.ts src/hooks/use-idle-session-timeout.test.ts src/app/router.tsx src/features/auth/pages/login-page.tsx src/features/auth/pages/login-page.test.tsx
   git commit -m "security(web): adiciona timeout de inatividade para web e backoff exponencial contra forca bruta"
@@ -508,7 +508,7 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 7
 
-- [ ] **Tarefa 7.1: Minimização e Anonimização de PII na Telemetria de Erros (`setObservabilityUser`)**
+- [x] **Tarefa 7.1: Minimização e Anonimização de PII na Telemetria de Erros (`setObservabilityUser`)**
   - **Arquivo:** `src/services/observability.ts`
   - **O que verificar/ajustar:**
     - Modificar `setObservabilityUser` para enviar exclusivamente o identificador anônimo (`id: user.id`), eliminando o envio do e-mail do usuário em texto claro para servidores externos do Sentry:
@@ -528,7 +528,7 @@ git push origin main
     - No hook `beforeSend` do Sentry, incluir a higienização de URLs de requisição (`event.request?.url` e `event.request?.query_string`) via `scrubSensitiveData`.
     - Atualizar testes em `src/services/observability.test.ts`.
 
-- [ ] **Tarefa 7.2: Trava de Confirmação de Segurança para Download de Backup Completo**
+- [x] **Tarefa 7.2: Trava de Confirmação de Segurança para Download de Backup Completo**
   - **Arquivos:** `src/components/modules/export-data-hub.tsx`, `src/features/settings/components/tabs/security-tab.tsx`
   - **O que verificar/ajustar:**
     - Antes de iniciar a geração e download do arquivo JSON de backup completo com todas as transações da vida financeira do usuário, exibir modal de confirmação de segurança.
@@ -536,16 +536,16 @@ git push origin main
     - Na Web: exibir modal com confirmação explícita de download seguro.
     - Atualizar testes em `src/components/modules/export-data-hub.test.tsx`.
 
-- [ ] **Tarefa 7.3: Auditoria do Procedimento de Expurgo em Cascata LGPD (`delete_current_user_account`)**
+- [x] **Tarefa 7.3: Auditoria do Procedimento de Expurgo em Cascata LGPD (`delete_current_user_account`)**
   - **Arquivo:** `supabase/migrations/20260101000061_delete_user_account_rpc.sql`
   - **O que verificar/ajustar:**
     - Confirmar que todas as tabelas recentes (`support_tickets`, `support_ticket_replies`, etc.) possuem `on delete cascade` ou remoção explícita, garantindo que o Direito ao Esquecimento (Art. 18, VI da LGPD) opere de forma atômica e 100% limpa.
 
 ### Portão de Qualidade da Fase 7
-- [ ] Executar: `npm run typecheck`
-- [ ] Executar: `npm run lint`
-- [ ] Executar: `npx vitest run src/services/observability.test.ts src/components/modules/export-data-hub.test.tsx`
-- [ ] **Commit & Push da Fase 7:**
+- [x] Executar: `npm run typecheck`
+- [x] Executar: `npm run lint`
+- [x] Executar: `npx vitest run src/services/observability.test.ts src/components/modules/export-data-hub.test.tsx`
+- [x] **Commit & Push da Fase 7:**
   ```bash
   git add src/services/observability.ts src/services/observability.test.ts src/components/modules/export-data-hub.tsx src/components/modules/export-data-hub.test.tsx
   git commit -m "privacy(lgpd): minimiza telemetria no sentry e adiciona trava de seguranca para exportacao de backup"
@@ -560,18 +560,18 @@ git push origin main
 
 ### Checklist de Tarefas da Fase 8
 
-- [ ] **Tarefa 8.1: Varredura de Qualidade Transversal e Correção de Fragilidades Residuais**
+- [x] **Tarefa 8.1: Varredura de Qualidade Transversal e Correção de Fragilidades Residuais**
   - Executar: `npm run typecheck` (zero erros de tipagem TypeScript estrita).
   - Executar: `npm run lint` (zero erros de lint, emojis ou controles nativos não padronizados).
   - Executar suíte completa de testes: `npm run test`.
   - **Ação corretiva imediata:** Caso qualquer teste falhe ou surja regressão de interface em mobile/desktop, aplicar a correção no código e retestar até aprovação integral (100% verde).
 
-- [ ] **Tarefa 8.2: Atualização dos Documentos de Governança & Arquitetura**
+- [x] **Tarefa 8.2: Atualização dos Documentos de Governança & Arquitetura**
   - Atualizar `docs/operations/SECURITY_GOVERNANCE.md` documentando a política de reautenticação obrigatória com senha atual, PKCE estrito, timeout de inatividade e minimização de PII na telemetria.
   - Atualizar `docs/architecture/ESPECIFICACAO_TECNICA.md` registrando as novas diretrizes do fluxo de auth, cadastro e alteração de e-mail.
   - Atualizar `docs/roadmap/ROADMAP.md` e o presente plano marcando todos os itens como concluídos.
 
-- [ ] **Tarefa 8.3: Compilação Web de Produção e Sincronização Capacitor**
+- [x] **Tarefa 8.3: Compilação Web de Produção e Sincronização Capacitor**
   - Compilar o bundle web:
     ```bash
     npm run build
@@ -582,7 +582,7 @@ git push origin main
     npx cap sync android
     ```
 
-- [ ] **Tarefa 8.4: Compilação dos APKs Android de Produção (Debug & Release Assinado)**
+- [x] **Tarefa 8.4: Compilação dos APKs Android de Produção (Debug & Release Assinado)**
   - Executar script oficial de automação:
     ```bash
     ./scripts/build-apk.sh
@@ -591,7 +591,7 @@ git push origin main
     - Geração do APK assinado em `dist-apk/guia-financeiro-release.apk` e `dist-apk/axis-pro.apk`.
     - Geração do manifesto de versão e hashes SHA-256 em `dist-apk/version.json` e `public/releases/version.json`.
 
-- [ ] **Tarefa 8.5: Commit e Push Final da Homologação**
+- [x] **Tarefa 8.5: Commit e Push Final da Homologação**
   - Executar:
     ```bash
     git add .
@@ -599,7 +599,7 @@ git push origin main
     git push origin main
     ```
 
-- [ ] **Tarefa 8.6: Despacho do Relatório Executivo ao Fundador via Bot ARGOS (Telegram)**
+- [x] **Tarefa 8.6: Despacho do Relatório Executivo ao Fundador via Bot ARGOS (Telegram)**
   - Disparar mensagem formatada ao canal do fundador via API do Telegram ou script `scripts/notify-telegram.ts`.
   - **Conteúdo Mandatório do Relatório ARGOS:**
     1. **Identificação:** `[ARGOS] Relatório Executivo — Revisão Integral de Autenticação, Segurança & Privacidade LGPD`.
@@ -629,8 +629,8 @@ git push origin main
     ```
 
 ### Portão de Qualidade Final da Fase 8
-- [ ] 100% da suíte de testes passando sem erros.
-- [ ] Bundle web e APK Android release gerados e validados com SHA-256 e `version.json`.
-- [ ] Documentação técnica e de segurança atualizada.
-- [ ] Notificação Telegram entregue pelo bot ARGOS com o relatório executivo e parecer formal Supabase.
-- [ ] Repositório sincronizado no GitHub (`git push origin main`).
+- [x] 100% da suíte de testes passando sem erros.
+- [x] Bundle web e APK Android release gerados e validados com SHA-256 e `version.json`.
+- [x] Documentação técnica e de segurança atualizada.
+- [x] Notificação Telegram entregue pelo bot ARGOS com o relatório executivo e parecer formal Supabase.
+- [x] Repositório sincronizado no GitHub (`git push origin main`).

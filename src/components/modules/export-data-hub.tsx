@@ -13,6 +13,7 @@ import { triggerSensory } from "@/services/sensory";
 import { currentMonth, monthRange } from "@/lib/date";
 import { addDaysISO } from "@/domain/debts";
 import type { RestoreSummary } from "@/domain/export";
+import { authenticateWithBiometrics, isNativePlatform } from "@/services/native";
 
 export type ExportCsvKind = "expenses" | "incomes" | "invoices" | "positions";
 
@@ -89,6 +90,7 @@ export function ExportDataHub({
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [restore, setRestore] = useState<RestoreStep>({ step: "idle" });
+  const [showConfirmJsonExport, setShowConfirmJsonExport] = useState(false);
 
   const periodValid =
     periodMode === "month" ||
@@ -106,7 +108,7 @@ export function ExportDataHub({
     };
   };
 
-  const handleExportJson = async () => {
+  const executeExportJson = async () => {
     setExportingJson(true);
     setJsonError(null);
     try {
@@ -118,6 +120,31 @@ export function ExportDataHub({
     } finally {
       setExportingJson(false);
     }
+  };
+
+  const handleExportJsonClick = async () => {
+    if (busy) return;
+    setJsonError(null);
+
+    if (isNativePlatform()) {
+      const auth = await authenticateWithBiometrics(
+        "Confirme sua identidade para exportar seus dados financeiros",
+      );
+      if (!auth.success) {
+        if (auth.error) {
+          setJsonError(auth.error);
+        }
+        return;
+      }
+      await executeExportJson();
+    } else {
+      setShowConfirmJsonExport(true);
+    }
+  };
+
+  const handleConfirmJsonExport = () => {
+    setShowConfirmJsonExport(false);
+    void executeExportJson();
   };
 
   const handleExportCsv = async (kind: ExportCsvKind) => {
@@ -201,13 +228,15 @@ export function ExportDataHub({
               size="sm"
               loading={exportingJson}
               disabled={busy && !exportingJson}
-              onClick={handleExportJson}
+              onClick={handleExportJsonClick}
               className="gap-2 shrink-0"
             >
               <Download className="size-4" aria-hidden="true" />
               <span>Exportar JSON</span>
             </Button>
           </div>
+
+          {jsonError && <Alert variant="error">{jsonError}</Alert>}
 
           <div className="flex flex-col gap-3 p-3.5 rounded-xl border border-border bg-surface">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
@@ -324,10 +353,20 @@ export function ExportDataHub({
             </div>
 
             {csvError && <Alert variant="error">{csvError}</Alert>}
-            {jsonError && <Alert variant="error">{jsonError}</Alert>}
           </CardContent>
         </Card>
       )}
+
+      <ConfirmDialog
+        open={showConfirmJsonExport}
+        onOpenChange={setShowConfirmJsonExport}
+        title="Confirmar download do backup"
+        description="O arquivo JSON exportado conterá todo o seu histórico financeiro, transações, contas e cartões em texto legível. Certifique-se de salvá-lo em um local seguro."
+        confirmLabel="Exportar backup"
+        cancelLabel="Cancelar"
+        confirmPending={exportingJson}
+        onConfirm={handleConfirmJsonExport}
+      />
 
       {previewSummary && (
         <ConfirmDialog

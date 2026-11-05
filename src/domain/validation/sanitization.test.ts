@@ -5,8 +5,41 @@ import {
   MAX_MONEY_CENTS,
   moneyAmountSchema,
   moneyCentsSchema,
+  normalizeEmail,
   sanitizeString,
 } from "./sanitization";
+
+describe("normalizeEmail — Normalizacao Defensiva de E-mails", () => {
+  it("converte enderecos em maiusculas para minusculas", () => {
+    expect(normalizeEmail("USUARIO@DOMINIO.COM")).toBe("usuario@dominio.com");
+    expect(normalizeEmail("Gabriel.Sales@Empresa.COM.BR")).toBe("gabriel.sales@empresa.com.br");
+  });
+
+  it("remove espacos em branco nas extremidades (trim)", () => {
+    expect(normalizeEmail("   usuario@dominio.com   ")).toBe("usuario@dominio.com");
+    expect(normalizeEmail("\tuser@domain.org\n")).toBe("user@domain.org");
+  });
+
+  it("preserva caracteres especiais validos em e-mails (subenderecamento, pontos, hifens, underscores)", () => {
+    expect(normalizeEmail("usuario+tag@gmail.com")).toBe("usuario+tag@gmail.com");
+    expect(normalizeEmail("primeiro.ultimo@provedor.co.uk")).toBe("primeiro.ultimo@provedor.co.uk");
+    expect(normalizeEmail("contato-financeiro@empresa-holding.com")).toBe("contato-financeiro@empresa-holding.com");
+    expect(normalizeEmail("dev_teste@provedor.org")).toBe("dev_teste@provedor.org");
+  });
+
+  it("combina remocao de espacos, conversao para minusculas e caracteres especiais", () => {
+    expect(normalizeEmail("  Usuario.Dev+Faturas@Holding-Corp.COM  ")).toBe("usuario.dev+faturas@holding-corp.com");
+  });
+
+  it("retorna string vazia para entradas nao-string ou vazias", () => {
+    expect(normalizeEmail("")).toBe("");
+    expect(normalizeEmail("   ")).toBe("");
+    expect(normalizeEmail(null as unknown as string)).toBe("");
+    expect(normalizeEmail(undefined as unknown as string)).toBe("");
+    expect(normalizeEmail(12345 as unknown as string)).toBe("");
+    expect(normalizeEmail({} as unknown as string)).toBe("");
+  });
+});
 
 describe("sanitization — Prevenção de XSS e Caracteres de Controle", () => {
   it("remove tags HTML perigosas para prevenir XSS", () => {

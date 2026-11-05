@@ -11,7 +11,17 @@ vi.mock("@/hooks/use-auth", () => ({
 }));
 
 vi.mock("@/components/ui/turnstile", () => ({
-  Turnstile: () => <div data-testid="turnstile-stub" />,
+  Turnstile: ({ onVerify }: { onVerify?: (token: string) => void }) => (
+    <div data-testid="turnstile-stub">
+      <button
+        type="button"
+        data-testid="turnstile-trigger"
+        onClick={() => onVerify?.("mock-turnstile-token-xyz")}
+      >
+        Simular Captcha
+      </button>
+    </div>
+  ),
 }));
 
 function renderRegisterPage() {
@@ -43,6 +53,7 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
     expect(screen.getByLabelText("Nome")).toBeInTheDocument();
     expect(screen.getByLabelText("E-mail")).toBeInTheDocument();
     expect(screen.getByLabelText("Senha")).toBeInTheDocument();
+    expect(screen.getByLabelText("Confirmar Senha")).toBeInTheDocument();
     expect(screen.getByLabelText("Código de Convite")).toBeInTheDocument();
     const checkbox = screen.getByRole("checkbox", {
       name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,
@@ -137,7 +148,9 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
     const passwordInput = screen.getByLabelText("Senha") as HTMLInputElement;
     expect(passwordInput.type).toBe("password");
 
-    const toggleBtn = screen.getByRole("button", { name: "Ver senha" });
+    const [toggleBtn] = screen.getAllByRole("button", { name: "Ver senha" });
+    expect(toggleBtn).toBeDefined();
+    if (!toggleBtn) throw new Error("Botão de alternar visibilidade não encontrado");
     await user.click(toggleBtn);
     expect(passwordInput.type).toBe("text");
 
@@ -157,6 +170,7 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
     await user.type(screen.getByLabelText("Nome"), "Gabriel");
     await user.type(screen.getByLabelText("E-mail"), "gabriel@exemplo.com");
     await user.type(screen.getByLabelText("Senha"), "MinhaSenhaForte123!");
+    await user.type(screen.getByLabelText("Confirmar Senha"), "MinhaSenhaForte123!");
     await user.click(
       screen.getByRole("checkbox", {
         name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,
@@ -171,6 +185,60 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
       "MinhaSenhaForte123!",
       "Gabriel",
       "",
+      undefined,
+    );
+  });
+
+  it("bloqueia o envio e exibe erro quando as senhas não coincidem", async () => {
+    const user = userEvent.setup();
+    renderRegisterPage();
+
+    await user.type(screen.getByLabelText("Nome"), "Gabriel");
+    await user.type(screen.getByLabelText("E-mail"), "gabriel@exemplo.com");
+    await user.type(screen.getByLabelText("Senha"), "MinhaSenhaForte123!");
+    await user.type(screen.getByLabelText("Confirmar Senha"), "OutraSenhaDiferente123!");
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,
+      }),
+    );
+
+    const submitBtn = screen.getByRole("button", { name: "Criar conta" });
+    await user.click(submitBtn);
+
+    expect(screen.getByText("As senhas digitadas não coincidem.")).toBeInTheDocument();
+    expect(authHook.signUpWithEmail).not.toHaveBeenCalled();
+  });
+
+  it("repassa o captchaToken retornado pelo Turnstile ao submeter o cadastro", async () => {
+    const user = userEvent.setup();
+    vi.mocked(authHook.signUpWithEmail).mockResolvedValue({
+      needsEmailConfirmation: false,
+    });
+
+    renderRegisterPage();
+
+    await user.type(screen.getByLabelText("Nome"), "Gabriel");
+    await user.type(screen.getByLabelText("E-mail"), "gabriel@exemplo.com");
+    await user.type(screen.getByLabelText("Senha"), "MinhaSenhaForte123!");
+    await user.type(screen.getByLabelText("Confirmar Senha"), "MinhaSenhaForte123!");
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,
+      }),
+    );
+
+    await user.click(screen.getByTestId("turnstile-trigger"));
+
+    const submitBtn = screen.getByRole("button", { name: "Criar conta" });
+    await user.click(submitBtn);
+
+    expect(authHook.signUpWithEmail).toHaveBeenCalledWith(
+      "gabriel@exemplo.com",
+      "MinhaSenhaForte123!",
+      "Gabriel",
+      "",
+      "mock-turnstile-token-xyz",
     );
   });
 
@@ -186,6 +254,7 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
     await user.type(screen.getByLabelText("Nome"), "Gabriel");
     await user.type(screen.getByLabelText("E-mail"), "existente@exemplo.com");
     await user.type(screen.getByLabelText("Senha"), "MinhaSenhaForte123!");
+    await user.type(screen.getByLabelText("Confirmar Senha"), "MinhaSenhaForte123!");
     await user.click(
       screen.getByRole("checkbox", {
         name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,
@@ -214,6 +283,7 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
     await user.type(screen.getByLabelText("Nome"), "Gabriel");
     await user.type(screen.getByLabelText("E-mail"), "existente@exemplo.com");
     await user.type(screen.getByLabelText("Senha"), "MinhaSenhaForte123!");
+    await user.type(screen.getByLabelText("Confirmar Senha"), "MinhaSenhaForte123!");
     await user.click(
       screen.getByRole("checkbox", {
         name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,
@@ -234,6 +304,7 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
     await user.type(screen.getByLabelText("Nome"), "Gabriel");
     await user.type(screen.getByLabelText("E-mail"), "novo@exemplo.com");
     await user.type(screen.getByLabelText("Senha"), "MinhaSenhaForte123!");
+    await user.type(screen.getByLabelText("Confirmar Senha"), "MinhaSenhaForte123!");
     await user.click(
       screen.getByRole("checkbox", {
         name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,
@@ -255,6 +326,7 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
     await user.type(screen.getByLabelText("Nome"), "Gabriel");
     await user.type(screen.getByLabelText("E-mail"), "confirmar@exemplo.com");
     await user.type(screen.getByLabelText("Senha"), "MinhaSenhaForte123!");
+    await user.type(screen.getByLabelText("Confirmar Senha"), "MinhaSenhaForte123!");
     await user.click(
       screen.getByRole("checkbox", {
         name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,

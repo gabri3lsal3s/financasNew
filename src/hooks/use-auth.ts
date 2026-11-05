@@ -30,9 +30,9 @@ export interface AuthState {
   loading: boolean;
   /** Erro de configuração (ex.: env incompleto) — exposto em vez de crashar. */
   configError: string | null;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name?: string, inviteCode?: string) => Promise<SignUpResult>;
-  resetPassword: (email: string) => Promise<void>;
+  signIn: (email: string, password: string, captchaToken?: string) => Promise<void>;
+  signUp: (email: string, password: string, name?: string, inviteCode?: string, captchaToken?: string) => Promise<SignUpResult>;
+  resetPassword: (email: string, captchaToken?: string) => Promise<void>;
   resendConfirmation: (email: string) => Promise<void>;
 }
 

@@ -16,14 +16,16 @@
  * Regex para identificação e mascaramento de dados sensíveis em telemetria:
  * • CPFs (formatados ou apenas dígitos contíguos de 11 dígitos);
  * • Números de cartão de crédito (16 dígitos com ou sem separador);
- * • Chaves de autorização e tokens em strings.
+ * • Chaves de autorização e tokens em strings;
+ * • Parâmetros confidenciais em query strings e URLs.
  */
 const CPF_REGEX = /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g;
 const CREDIT_CARD_REGEX = /\b(?:\d{4}[ -]?){3}\d{4}\b/g;
 const BEARER_TOKEN_REGEX = /\b(Bearer\s+)[a-zA-Z0-9_.-]{20,}\b/gi;
+const QUERY_PARAM_REGEX = /((?:^|[?&])(?:password|senha|secret|token|authorization|apikey|api_key|cvv|cvc|cpf|email)=)[^&#\s]+/gi;
 
 /** Chaves de contexto que contêm senhas, tokens, credenciais ou dados restritos. */
-const SENSITIVE_KEYS_REGEX = /^(?:password|senha|secret|token|authorization|apikey|api_key|cvv|cvc|cpf|credit_card|card_number|account_number)$/i;
+const SENSITIVE_KEYS_REGEX = /^(?:password|senha|secret|token|authorization|apikey|api_key|cvv|cvc|cpf|credit_card|card_number|account_number|email)$/i;
 
 /**
  * Higieniza recursivamente qualquer payload de contexto antes de enviar à telemetria:
@@ -36,7 +38,8 @@ export function scrubSensitiveData<T>(input: T): T {
     return input
       .replace(CPF_REGEX, "[REDACTED_CPF]")
       .replace(CREDIT_CARD_REGEX, "[REDACTED_CARD]")
-      .replace(BEARER_TOKEN_REGEX, "$1[REDACTED_TOKEN]") as unknown as T;
+      .replace(BEARER_TOKEN_REGEX, "$1[REDACTED_TOKEN]")
+      .replace(QUERY_PARAM_REGEX, "$1[REDACTED]") as unknown as T;
   }
 
   if (Array.isArray(input)) {
@@ -94,6 +97,14 @@ export function initObservability(): Promise<void> {
         if (event.message) {
           event.message = scrubSensitiveData(event.message) as string;
         }
+        if (event.request) {
+          if (event.request.url) {
+            event.request.url = scrubSensitiveData(event.request.url);
+          }
+          if (event.request.query_string) {
+            event.request.query_string = scrubSensitiveData(event.request.query_string);
+          }
+        }
         return event;
       },
     });
@@ -114,8 +125,11 @@ export async function reportError(error: unknown, context?: Record<string, unkno
 }
 
 /**
- * Correlaciona os erros ao usuário autenticado (id/e-mail) — chamar após o
+ * Correlaciona os erros ao usuário autenticado (apenas id anônimo) — chamar após o
  * login. Sem DSN → no-op.
+ *
+ * Em conformidade com a LGPD e Privacy by Design, nunca enviamos e-mail ou
+ * outros dados de identificação pessoal em texto claro para a telemetria externa.
  */
 export async function setObservabilityUser(user: { id: string; email?: string | null } | null): Promise<void> {
   if (!sentryDsn()) return;
@@ -125,6 +139,7 @@ export async function setObservabilityUser(user: { id: string; email?: string | 
     Sentry.setUser(null);
     return;
   }
-  Sentry.setUser({ id: user.id, email: user.email ?? undefined });
+  // LGPD Privacy by Design: correlaciona apenas por UUID opaco sem expor e-mail pessoal
+  Sentry.setUser({ id: user.id });
 }
 

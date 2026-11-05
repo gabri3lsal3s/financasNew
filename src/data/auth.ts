@@ -1,4 +1,6 @@
 import { getSupabase } from "@/data/client";
+import { normalizeEmail, sanitizeString } from "@/domain/validation";
+import { getPublicAppUrl } from "@/lib/env";
 import { AppError, classifyError, MESSAGES } from "@/services/errors";
 
 /**
@@ -11,8 +13,17 @@ export interface SignUpResult {
   needsEmailConfirmation: boolean;
 }
 
-export async function signInWithEmail(email: string, password: string): Promise<void> {
-  const { error } = await getSupabase().auth.signInWithPassword({ email, password });
+export async function signInWithEmail(
+  email: string,
+  password: string,
+  captchaToken?: string,
+): Promise<void> {
+  const normalized = normalizeEmail(email);
+  const { error } = await getSupabase().auth.signInWithPassword({
+    email: normalized,
+    password,
+    options: captchaToken ? { captchaToken } : undefined,
+  });
   if (error) {
     const classified = classifyError(error);
     throw new AppError(classified.kind, classified.message, error);
@@ -24,16 +35,21 @@ export async function signUpWithEmail(
   password: string,
   name?: string,
   inviteCode?: string,
+  captchaToken?: string,
 ): Promise<SignUpResult> {
+  const normalized = normalizeEmail(email);
+  const cleanName = name ? sanitizeString(name) : "";
+  const cleanInvite = inviteCode ? sanitizeString(inviteCode).toUpperCase() : "";
   const { data, error } = await getSupabase().auth.signUp({
-    email,
+    email: normalized,
     password,
     options: {
       data: {
-        name: name ?? "",
-        invite_code: inviteCode?.trim().toUpperCase() ?? "",
+        name: cleanName,
+        invite_code: cleanInvite,
       },
-      emailRedirectTo: `${window.location.origin}/entrar`,
+      emailRedirectTo: getPublicAppUrl("/entrar"),
+      captchaToken: captchaToken || undefined,
     },
   });
   if (error) {
@@ -55,9 +71,18 @@ export async function signUpWithEmail(
 }
 
 
-export async function resetPasswordForEmail(email: string): Promise<void> {
-  const { error } = await getSupabase().auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/redefinir-senha`,
+/**
+ * Solicita o envio de link de recuperação/redefinição de senha para o e-mail informado (Fase 2.1).
+ * Utiliza URL universal de retorno via getPublicAppUrl e validação anti-bot (captchaToken).
+ */
+export async function resetPasswordForEmail(
+  email: string,
+  captchaToken?: string,
+): Promise<void> {
+  const normalized = normalizeEmail(email);
+  const { error } = await getSupabase().auth.resetPasswordForEmail(normalized, {
+    redirectTo: getPublicAppUrl("/redefinir-senha"),
+    captchaToken: captchaToken || undefined,
   });
   if (error) {
     const classified = classifyError(error);
@@ -69,11 +94,12 @@ export async function resetPasswordForEmail(email: string): Promise<void> {
  * Reenvia o e-mail de confirmação de cadastro para contas pendentes de ativação (Fase 2.1).
  */
 export async function resendConfirmationEmail(email: string): Promise<void> {
+  const normalized = normalizeEmail(email);
   const { error } = await getSupabase().auth.resend({
     type: "signup",
-    email,
+    email: normalized,
     options: {
-      emailRedirectTo: `${window.location.origin}/entrar`,
+      emailRedirectTo: getPublicAppUrl("/entrar"),
     },
   });
   if (error) {
@@ -92,5 +118,61 @@ export async function updateUserPassword(newPassword: string): Promise<void> {
     throw new AppError(classified.kind, classified.message, error);
   }
 }
+
+/**
+ * Valida a senha atual do usuário ativo antes de operações sensíveis (Fase 3.1).
+ * Reautentica via signInWithPassword com o e-mail da sessão atual.
+ */
+export async function verifyCurrentPassword(password: string): Promise<boolean> {
+  const supabase = getSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || !user.email) {
+    throw new AppError("session-expired", MESSAGES["session-expired"]);
+  }
+  const { error } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password,
+  });
+  return !error;
+}
+
+/**
+ * Altera a senha do usuário autenticado exigindo comprovação prévia da senha atual (Fase 3.1).
+ * Proteção contra sequestro de conta (Account Takeover).
+ */
+export async function changeUserPassword(currentPassword: string, newPassword: string): Promise<void> {
+  const isValid = await verifyCurrentPassword(currentPassword);
+  if (!isValid) {
+    throw new AppError("invalid-credentials", "A senha atual informada está incorreta.");
+  }
+  await updateUserPassword(newPassword);
+}
+
+/**
+ * Solicita a alteração do e-mail do usuário autenticado exigindo comprovação prévia da senha atual (Fase 4.2).
+ * Envia e-mails de confirmação com link duplo e redirecionamento universal para a aba Minha Conta.
+ */
+export async function requestUserEmailChange(
+  currentPassword: string,
+  newEmail: string,
+): Promise<void> {
+  const normalized = normalizeEmail(newEmail);
+  const isValid = await verifyCurrentPassword(currentPassword);
+  if (!isValid) {
+    throw new AppError("invalid-credentials", "A senha atual informada está incorreta.");
+  }
+  const { error } = await getSupabase().auth.updateUser(
+    { email: normalized },
+    { emailRedirectTo: getPublicAppUrl("/configuracoes?tab=conta") },
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
+
 
 

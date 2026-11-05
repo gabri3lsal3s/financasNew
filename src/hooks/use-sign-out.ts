@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useContext } from "react";
+import { QueryClientContext } from "@tanstack/react-query";
 import { getSupabase } from "@/data/client";
 import { resetAppState } from "@/services/auth-cleanup";
 
@@ -9,7 +9,7 @@ import { resetAppState } from "@/services/auth-cleanup";
  * e desconexão segura no Supabase Auth.
  */
 export function useSignOut() {
-  const queryClient = useQueryClient();
+  const queryClient = useContext(QueryClientContext);
 
   const signOut = useCallback(async (): Promise<void> => {
     try {

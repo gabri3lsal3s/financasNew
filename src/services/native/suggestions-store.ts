@@ -263,8 +263,9 @@ function ensureLoaded(): void {
   }
 }
 
-// Ao trocar de usuário ativo, recarrega o store
+// Ao trocar de usuário ativo, recarrega o store e limpa registros em memória
 subscribeActiveUserId(() => {
+  clearRecentReceipts();
   loadFromStorage();
   notify();
 });

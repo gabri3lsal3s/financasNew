@@ -113,6 +113,31 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 
 > **Decisão do usuário (2026-08-15):** o storage de arquivos (Cloudflare R2) foi **removido do escopo** — nenhuma tela usa upload hoje e anexos não participam do fluxo financeiro core. O primitivo `Dropzone` (`components/ui`) permanece disponível caso a feature (comprovantes, avatar) seja retomada no futuro; nesse caso, retomar a abstração `services/storage` + endpoint de presigned URLs.
 
+### 1.9 Governança de Autenticação, Cadastro e Sessão (Segurança & LGPD)
+
+Diretrizes canônicas para autenticação, controle de credenciais, gestão de sessão e salvaguardas de privacidade:
+- **Fluxo de Cadastro e Verificação:**
+  - O cadastro (`/cadastro`) exige validação em dois campos de senha (Senha e Confirmação de Senha) com regras estritas de complexidade no cliente (Zod);
+  - Formulários públicos de autenticação integram o desafio de borda **Cloudflare Turnstile** anti-bot real;
+  - Disparos de confirmação de e-mail e redefinição de senha utilizam `getPublicAppUrl(path)` (`src/services/app-url.ts`), garantindo resolução para a URL pública oficial do aplicativo e eliminando redirecionamentos inválidos para esquemas móveis (`capacitor://localhost`).
+- **Reautenticação Obrigatória contra Account Takeover:**
+  - Toda operação de atualização de credencial sensível — alteração de senha (`changeUserPassword`) e solicitação de troca de e-mail (`requestUserEmailChange`) — exige comprovação atômica da posse da senha atual via `verifyCurrentPassword`;
+  - Tentativas com senha incorreta falham de forma fechada (*fail-closed*) lançando `AppError("invalid-credentials", "A senha atual informada está incorreta.")` sem realizar modificações parciais.
+- **Alteração de E-mail com Sincronização Automática em `public.profiles`:**
+  - Diálogo modal seguro em Configurações (`AccountTab`) com solicitação do novo e-mail e senha atual;
+  - Após confirmação pelo usuário através do link de duplo fator, a trigger PostgreSQL `on_auth_user_email_updated` em `auth.users` (migração 0064) sincroniza automaticamente o campo `email` em `public.profiles`.
+- **Governança de Sessão & Teardown de Memória:**
+  - Cliente Supabase instanciado com **PKCE estrito** (`flowType: "pkce"`);
+  - Encerramento de sessão (`resetAppState` / `useSignOut`) executa desconexão forçada de canais WebSockets Realtime (`supabase.removeAllChannels()`), purga o buffer volátil de comprovantes/OCR (`clearRecentReceipts()`), limpa chaves de `sessionStorage` e reseta o cache do TanStack Query;
+  - Timeout de inatividade web de 20 minutos (`useIdleSessionTimeout`) encerrando suavemente sessões abandonadas em navegadores desktop/laptops;
+  - Backoff exponencial progressivo no login (3 falhas: 15s; 5 falhas: 60s);
+  - Saída de emergência no `AppLockOverlay` nativo permitindo deslogar caso o sensor biométrico do smartphone apresente falha de hardware.
+- **Privacidade por Design (LGPD):**
+  - Minimização estrita de PII na telemetria de erros Sentry (`setObservabilityUser` transmite exclusivamente `id: user.id`, sem e-mail ou nome);
+  - Higienização de URLs e query strings no `beforeSend` do Sentry via `scrubSensitiveData`;
+  - Trava de segurança (biometria no mobile / confirmação modal na Web) antes de liberar download de backup financeiro completo (`ExportDataHub`);
+  - Expurgo em cascata no Direito ao Esquecimento via RPC `delete_current_user_account`.
+
 ---
 
 ## 2. MODELO DE DADOS (SCHEMA LÓGICO)
@@ -121,7 +146,7 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 
 | Tabela | Colunas-chave | Constraints / Notas |
 |---|---|---|
-| `profiles` | id (PK = auth.users.id), name, email, created_at | Criada no signup (trigger) |
+| `profiles` | id (PK = auth.users.id), name, email, created_at | Criada no signup (trigger) e sincronizada na alteração de e-mail via trigger `on_auth_user_email_updated` (0064) |
 | `user_preferences` | user_id (PK), theme (`light \| dark \| oled \| system`), reminders_enabled, reminder_days_before_debt, reminder_days_before_bill, report_weights_enabled | — |
 | `categories` | id, user_id, type (`expense \| income`), name, icon, color, is_reserved (ex.: "Estorno"), is_active | Nome único por (user, type); reservadas não são editáveis/excluíveis nos fluxos normais |
 | `incomes` | id, user_id, value, date, category_id (FK), receive_type (`cash \| pix \| transfer \| other`), description, report_weight (default 1, 0–1), source_ref (para rendas automáticas `[REFUND]`), created_at | Check: value > 0; date ≥ APP_START_DATE; report_weight 0–1; rendas com `source_ref` = somente-leitura |
@@ -657,7 +682,7 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
 
 | Tela | Prioridade | Notas |
 |---|---|---|
-| Auth (login/registro/recuperação) | P0 | Supabase auth + gateway de erros |
+| Auth (login/registro/recuperação) | P0 | Supabase auth (PKCE) + confirmação de senha + Turnstile + timeout de inatividade + gateway de erros |
 | Início / Visão Geral | P0 | KPIs, fluxo diário, orçamentos, alertas |
 | Lançamento guiado (wizard) | P0 | §5.5 |
 | Transações (lista por mês) | P0 | filtros, busca, deep-link |
@@ -714,7 +739,7 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
 **Objetivo:** dados seguros, atômicos e auditáveis — o alicerce Online First.
 
 1. Projeto Supabase + cliente único + módulo de env; estado de conexão/erro explícito.
-2. Auth: login, registro, recuperação de senha, sessão, perfil (`profiles` via trigger).
+2. Auth: login, registro com confirmação de senha, recuperação de senha com URL canônica pública (`getPublicAppUrl`), sessão PKCE com timeout de inatividade web (20 min), troca de e-mail com reautenticação e perfil (`profiles` via triggers).
 3. **Schema completo** (§2) com migrations versionadas: constraints (parcelas 1–60, card no crédito, pesos 0–1, soma de metas ≤ 100% via trigger/RPC) e índices.
 4. **RLS** por `auth.uid()` em todas as tabelas (incl. `audit_events` imutável).
 5. **RPCs transacionais** (D1): catálogo inicial — `create_expense_with_debt`, `create_refund`, `delete_expense_installments`, `pay_debt`, `receive_debt`, `settle_integrated_receivable`, `delete_category_migrate`, `set_budget_limit`, `set_income_goal`, `recalculate_bill_competences`. **Recebem parcelas calculadas no cliente (`domain/money`) e validam invariantes no servidor** (D12).

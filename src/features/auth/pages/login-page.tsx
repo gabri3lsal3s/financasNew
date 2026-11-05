@@ -19,6 +19,29 @@ import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 
 // ---------------------------------------------------------------------------
+// Cálculo de backoff exponencial contra força bruta
+// ---------------------------------------------------------------------------
+
+/**
+ * Calcula o atraso de bloqueio temporário (em segundos) contra ataques de força bruta
+ * baseado no número de falhas consecutivas de autenticação na sessão ativa.
+ *
+ * - Menos de 3 falhas consecutivas: sem atraso (0s)
+ * - 3 a 4 falhas consecutivas: atraso temporário de 15 segundos
+ * - 5 ou mais falhas consecutivas: atraso temporário de 60 segundos
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function calculateLoginBackoff(consecutiveFailures: number): number {
+  if (consecutiveFailures >= 5) {
+    return 60;
+  }
+  if (consecutiveFailures >= 3) {
+    return 15;
+  }
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
 // Painel lateral de marketing (desktop ≥ lg)
 // ---------------------------------------------------------------------------
 const LOGIN_BENEFITS = [
@@ -116,11 +139,14 @@ export function LoginPage() {
 
   const [email, setEmail] = useState(emailParam || "");
   const [password, setPassword] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isEmailUnconfirmed, setIsEmailUnconfirmed] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [isResending, setIsResending] = useState(false);
   const [pending, setPending] = useState(false);
+  const [consecutiveFailures, setConsecutiveFailures] = useState(0);
+  const [lockoutSeconds, setLockoutSeconds] = useState(0);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -129,6 +155,14 @@ export function LoginPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, [cooldown]);
+
+  useEffect(() => {
+    if (lockoutSeconds <= 0) return;
+    const timer = setInterval(() => {
+      setLockoutSeconds((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lockoutSeconds]);
 
   if (!loading && session) {
     return <Navigate to={from} replace />;
@@ -160,15 +194,25 @@ export function LoginPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (pending || lockoutSeconds > 0) return;
     setError(null);
     setIsEmailUnconfirmed(false);
     setPending(true);
     try {
-      await signInWithEmail(email, password);
+      await signInWithEmail(email, password, captchaToken ?? undefined);
       triggerSensory("success");
+      setConsecutiveFailures(0);
+      setLockoutSeconds(0);
       // onAuthStateChange atualiza a sessão → o guard/redirect acima conduz.
     } catch (err) {
       triggerSensory("destructive");
+      const nextFailures = consecutiveFailures + 1;
+      setConsecutiveFailures(nextFailures);
+      const delay = calculateLoginBackoff(nextFailures);
+      if (delay > 0) {
+        setLockoutSeconds(delay);
+      }
+
       const classified = classifyError(err);
       if (classified.kind === "email-not-confirmed") {
         setIsEmailUnconfirmed(true);
@@ -188,6 +232,11 @@ export function LoginPage() {
     >
       <div className="flex flex-col gap-4">
         {configError ? <Alert variant="error">{configError}</Alert> : null}
+        {consecutiveFailures >= 5 && lockoutSeconds > 0 ? (
+          <Alert variant="warning">
+            Proteção ativa contra tentativas excessivas. Por segurança, aguarde {lockoutSeconds}s para tentar novamente.
+          </Alert>
+        ) : null}
         {error ? <Alert variant="error">{error}</Alert> : null}
 
         {isEmailUnconfirmed ? (
@@ -255,14 +304,22 @@ export function LoginPage() {
               className="h-10 text-sm rounded-xl"
             />
           </div>
-          <Turnstile className="my-0.5" />
+          <Turnstile
+            className="my-0.5"
+            onVerify={setCaptchaToken}
+            onExpire={() => setCaptchaToken(null)}
+          />
 
           <Button
             type="submit"
-            disabled={pending || Boolean(configError)}
+            disabled={pending || Boolean(configError) || lockoutSeconds > 0}
             className="h-10 text-sm font-semibold rounded-xl bg-primary-strong hover:bg-primary text-primary-foreground shadow-xs transition-colors"
           >
-            {pending ? "Entrando…" : "Entrar"}
+            {pending
+              ? "Entrando…"
+              : lockoutSeconds > 0
+                ? `Aguarde ${lockoutSeconds}s para tentar novamente`
+                : "Entrar"}
           </Button>
         </form>
 
