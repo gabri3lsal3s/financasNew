@@ -57,26 +57,31 @@
 │   ├── roadmap/                   # Ciclo de vida, histórico de releases e metas
 │   │   ├── ROADMAP.md             #   Plano canônico de execução, histórico de versões v2.0–v2.78+
 │   │   └── RELEASE.md             #   Checklist de release e homologação
-│   ├── plans/                     # Planos de implementação ativos e pendentes (atualmente 100% executados)
-│   │   └── completed/             # Histórico de planos executados com sucesso (100% concluídos — 18 planos)
-│   │       ├── CAPACITOR_ANDROID_PLAN.md
-│   │       ├── PLANO_ADEQUACAO_LEGAL_E_REGULATORIA.md
-│   │       ├── PLANO_AUDITORIA_CONGRUENCIA.md
-│   │       ├── PLANO_CONFIGURACOES_INICIAIS_E_EXPERIENCIA_NOVO_USUARIO.md
-│   │       ├── PLANO_CORRECAO_E_OTIMIZACAO_TOUR_INTERATIVO.md
-│   │       ├── PLANO_FINALIZACAO_PRODUCAO_E_PRIMEIROS_CLIENTES.md
-│   │       ├── PLANO_GESTAO_CONTA_AUTH_E_EXPERIENCIA_SAAS.md
-│   │       ├── PLANO_IMPLEMENTACAO_ALTA_CONCORRENCIA_SEGURANCA.md
-│   │       ├── PLANO_IMPLEMENTACAO_ASSISTENTE_PASSIVO.md
-│   │       ├── PLANO_IMPLEMENTACAO_CAPTURA_INTELIGENTE_E_FRICCAO_MINIMA.md
-│   │       ├── PLANO_IMPLEMENTACAO_MODULOS_E_SAAS.md
-│   │       ├── PLANO_IMPLEMENTACAO_TOUR_INTERATIVO_E_SIMULACAO.md
-│   │       ├── PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md
-│   │       ├── PLANO_MELHORIA_NOTIFICACOES_BANCOS.md
-│   │       ├── PLANO_PWA_FIRST_APK_BETA_E_NOTIFICACOES_REFINADAS.md
-│   │       ├── PLANO_REFATORACAO_TOUR_SPOTLIGHT_E_EXPERIENCIA_GUIADA.md
-│   │       ├── PLANO_REFINAMENTO_CAPTURA_COMPROVANTES_E_OCR.md
-│   │       └── PLANO_RELATORIO_RETROATIVO_INVESTIMENTOS_E_FECHAMENTO.md
+│   ├── plans/                     # Planos de implementação ativos e pendentes
+│   │   ├── completed/             # Histórico de planos executados com sucesso (100% concluídos — 21 planos)
+│   │   │   ├── CAPACITOR_ANDROID_PLAN.md
+│   │   │   ├── PLANO_ADEQUACAO_LEGAL_E_REGULATORIA.md
+│   │   │   ├── PLANO_AUDITORIA_CONGRUENCIA.md
+│   │   │   ├── PLANO_CONFIGURACOES_INICIAIS_E_EXPERIENCIA_NOVO_USUARIO.md
+│   │   │   ├── PLANO_CORRECAO_E_OTIMIZACAO_TOUR_INTERATIVO.md
+│   │   │   ├── PLANO_FINALIZACAO_PRODUCAO_E_PRIMEIROS_CLIENTES.md
+│   │   │   ├── PLANO_GESTAO_CONTA_AUTH_E_EXPERIENCIA_SAAS.md
+│   │   │   ├── PLANO_IMPLEMENTACAO_ALTA_CONCORRENCIA_SEGURANCA.md
+│   │   │   ├── PLANO_IMPLEMENTACAO_ASSISTENTE_PASSIVO.md
+│   │   │   ├── PLANO_IMPLEMENTACAO_CAPTURA_INTELIGENTE_E_FRICCAO_MINIMA.md
+│   │   │   ├── PLANO_IMPLEMENTACAO_MODULOS_E_SAAS.md
+│   │   │   ├── PLANO_IMPLEMENTACAO_TOUR_INTERATIVO_E_SIMULACAO.md
+│   │   │   ├── PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md
+│   │   │   ├── PLANO_MELHORIA_NOTIFICACOES_BANCOS.md
+│   │   │   ├── PLANO_PWA_FIRST_APK_BETA_E_NOTIFICACOES_REFINADAS.md
+│   │   │   ├── PLANO_REFATORACAO_TOUR_SPOTLIGHT_E_EXPERIENCIA_GUIADA.md
+│   │   │   ├── PLANO_REFINAMENTO_CAPTURA_COMPROVANTES_E_OCR.md
+│   │   │   ├── PLANO_REFINAMENTO_NOTIFICACOES_E_COMPROVANTES_OCR.md
+│   │   │   ├── PLANO_RELATORIO_RETROATIVO_INVESTIMENTOS_E_FECHAMENTO.md
+│   │   │   ├── PLANO_REVISAO_AUTH_SESSAO_E_SEGURANCA.md
+│   │   │   └── PLANO_SANEAMENTO_CODIGO_MORTO_E_LEGADO.md
+│   │   ├── PLANO_FECHAMENTO_AUTOMATICO_SNAPSHOTS_E_COTACAO.md
+│   │   └── PLANO_FERRAMENTAS_COMPARTILHAMENTO_E_CRESCIMENTO_ORGANICO.md
 │   ├── diagnostics/               # Diagnósticos técnicos e relatórios de avaliação arquitetural
 │   │   └── DIAGNOSTICO_SEGURANCA_PERFORMANCE_ESCALA.md # Diagnóstico de concorrência, velocidade e blindagem
 │   └── reports/                   # Relatórios de auditoria e logs de homologação (.gitkeep)
@@ -171,13 +176,16 @@
     │   │   │                      #   prediction-suggestions (F21 — autopreenchimento preditivo),
     │   │   │                      #   export-data-hub (F22),
     │   │   │                      #   emergency-thermometer (Reserva de Emergência e Autonomia),
+│   │   │                      #   emergency-fund-config-dialog (Modal de configuração da composição e parâmetros da Reserva de Emergência),
     │   │   │                      #   help-modal (Central de Ajuda, FAQ e atalhos para modo simulação),
     │   │   │                      #   welcome-modal, demo-track-select-modal, demo-tour-spotlight,
     │   │   │                      #   aporte-result (F4/F31 — checklist interativo de aportes),
     │   │   │                      #   cash-kpi-card (card exclusivo de saldo em Caixa & Liquidez com variantes banner e card),
     │   │   │                      #   reports/ (report-document-layout, report-header, report-footer, report-kpi-grid,
     │   │   │                      #     report-donut-chart, report-stacked-bar, report-risk-gauge, report-class-tables,
-    │   │   │                      #     report-redemptions-table F80, report-allocation-donuts F84),
+    │   │   │                      #     report-redemptions-table F80, report-allocation-donuts F84,
+│   │   │                      #     report-fii-breakdown-card, report-fixed-income-breakdown-card,
+│   │   │                      #     report-stocks-breakdown-card, report-international-breakdown-card, wealth-tear-sheet-modal),
     │   │   │                      #   support/ (support-chat-dialog, support-chat-trigger — atendimento nativo via Telegram)…
     │   │   └── index.ts
     │   └── layout/                # Estrutura de página: sidebar (collapsible F7), bottom-nav (5 slots F7),
@@ -265,7 +273,7 @@
     │   │                          #     contrastRatio/isAANormalText/isAALargeText
     │   ├── preferences/           #   F11: Modos de Experiência (presets, detecção, metadados)
     │   ├── projection/            #   gasto disponível, ritmo, fim de mês, pendências,
-    │   │                          #     emergency-fund.ts (Reserva de Emergência)
+    │   │                          #     emergency-fund.ts (Reserva de Emergência, autonomia dinâmica e composição de fontes)
     │   ├── search/                #   busca global: normalização, scoring, bônus de recência
     │   ├── calculator/            #   motor puro de operações e divisão de parcelas (F9)
     │   ├── predictions/           #   predição de entrada (F21): similaridade de descrição,
@@ -290,7 +298,9 @@
     │   │                          #   summary.ts (F17: rentabilidade, alocação),
     │   │                          #   import-parser.ts (F35: sniffer de CSV e Quick-Paste),
     │   │                          #   xlsx-parser.ts (parser puro de planilhas Excel .xlsx/.xls),
-    │   │                          #   statement-parser.ts (parser inteligente de extratos de bancos/corretoras, cálculo de deltas e deduplicação)
+    │   │                          #   statement-parser.ts (parser inteligente de extratos de bancos/corretoras, cálculo de deltas e deduplicação),
+    │   │                          #   class-breakdown.ts (F85: decomposição holística dos 4 pilares FIIs/RF/Ações/Internacional e benchmarks IBOV/IFIX/CDI/S&P500),
+    │   │                          #   tickers-catalog.ts (catálogo ampliado de tickers e inferência setorial, macroestratégia e risco)
     │   └── subscription/          #   Regras puras de planos, trial 30 dias (trial.ts), precificação, CDC 7 dias, estorno pró-rata (plans.ts) e adaptadores agnósticos de faturamento SaaS (billing.ts)
     │
 
@@ -316,6 +326,7 @@
     │   ├── cache-policy.ts        #   F23: STALE_TIMES/gcTime por tipo de dado
     │   │                          #     (estático 5 min, analítico, cotações, transacional)
     │   ├── queries/               #   useExpenses({month}), useInvoices(cardId), useMacroIndicators (CDI/Selic BCB),
+    │   │                          #     use-emergency-fund-composition.ts (composição dinâmica da reserva de emergência),
     │   │                          #     use-insight-feedback.ts (aprendizado do usuário com persistência e atualização otimista),
     │   │                          #     use-range-queries.test.tsx (cancelamento cooperativo via AbortSignal),
     │   │                          #     concurrent-queries.test.tsx (estabilidade sob alta concorrência)…

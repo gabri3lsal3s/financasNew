@@ -1,5 +1,25 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.90** registra a **Decomposição Holística de Carteira (4 Pilares: FIIs, Renda Fixa, Ações e Internacional), Benchmarks Especializados e Refatoração Granular da Reserva de Emergência** (2026-11-05):
+> - **(1) Benchmarks Especializados por Classe & Decomposição Holística de Exposição (`src/domain/portfolio/class-breakdown.ts` e `tickers-catalog.ts`)**:
+>   - Comparação especializada de Ações vs IBOVESPA (alfa em p.p.), Fundos Imobiliários vs IFIX, Renda Fixa vs CDI e Poupança (regra oficial Bacen), Internacional vs S&P 500, e Carteira Consolidada vs CDI, IBOVESPA e IFIX simultaneamente;
+>   - Status semântico determinístico (`outperforming`, `matching`, `underperforming` e `neutral`);
+>   - Matriz de exposição de FIIs em 5 macroestratégias (Tijolo, Papel/Dívida, FOF, Híbrido, Agro/Infra) com alerta de concentração (> 70%);
+>   - Matriz bivalente de Renda Fixa: Dimensão 1 (Indexador: Pós-fixado, IPCA+, Prefixado) e Dimensão 2 (Emissor: Títulos Públicos/Soberano, Bancário com FGC, Crédito Privado sem FGC), com cálculo de isenção de IR (`taxExemptValueBRL` / `taxExemptPct`);
+>   - Matriz bivalente de Ações Brasil: Dimensão 1 (Resiliência Cíclica BESST, Commodities/Exportação, Cíclico Doméstico, Outros/ETFs) e Dimensão 2 (Cap Size: Large Caps, Mid Caps, Small/Micro Caps) com alerta de concentração (> 60%);
+>   - Matriz bivalente Internacional: Dimensão 1 (Geografia: EUA, Desenvolvidos Ex-EUA, Emergentes, Neutro Global) e Dimensão 2 (Veículo: Moeda Forte USD direto vs BDRs B3) com cálculo de exposição líquida em Moeda Forte;
+>   - Autocompletar heurístico e inferência imediata de setor, emissor e risco no formulário de ativos (`asset-form-dialog.tsx`) com badges informativos de categorização patrimonial em tempo real;
+>   - Componentes modulares dedicados nos relatórios: `ReportFiiBreakdownCard`, `ReportFixedIncomeBreakdownCard`, `ReportStocksBreakdownCard`, `ReportInternationalBreakdownCard` e integração no Dossiê Executivo (`wealth-tear-sheet-modal.tsx`).
+> - **(2) Refatoração e Segregação da Reserva de Emergência (`src/domain/projection/emergency-fund.ts`)**:
+>   - Cálculo dinâmico de cobertura e autonomia segregada em meses de custo de vida;
+>   - Composição granular configurável: seleção de contas bancárias de alta liquidez e ativos de renda fixa elegíveis para a reserva;
+>   - Novo diálogo interativo de configuração (`EmergencyFundConfigDialog`) e enriquecimento do termômetro visual (`EmergencyThermometer`);
+>   - Persistência das preferências de reserva no repositório do usuário (`user-preferences.ts`, `schema.ts`, `use-preference-mutations.ts`).
+> - **(3) Sincronização da Documentação Viva e Governança**:
+>   - Adição da seção §3.11.5 em `docs/architecture/ESPECIFICACAO_TECNICA.md`;
+>   - Atualização completa de `docs/architecture/PROJECT_STRUCTURE.md`;
+>   - Conclusão e arquivamento formal do plano `PLANO_REFINAMENTO_NOTIFICACOES_E_COMPROVANTES_OCR.md` em `docs/plans/completed/`.
+>
 > **v2.89** registra o **Saneamento Estrutural de Código Morto & Módulos Legados Substituídos** (2026-11-04):
 > - **(1) Erradicação Cirúrgica de Componentes e Motores Órfãos**:
 >   - Exclusão do motor de encargos legado `src/domain/charges/` e remoção do campo isolado de natureza de despesa em `ExpenseDetailDialog`;

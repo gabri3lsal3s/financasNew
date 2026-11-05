@@ -128,12 +128,12 @@ describe("InvestmentWizard (Fase 41)", () => {
     expect(screen.getByText(/PETR4/i)).toBeInTheDocument();
   });
 
-  it("deixa quantidade vazia ao selecionar ativo recomendado quando não há saldo em caixa", () => {
+  it("deixa quantidade vazia ao selecionar ativo sugerido quando não há saldo em caixa", () => {
     mockTargets = [{ asset_id: "asset-1", target_percentage: 80 }];
     mockAssetsList = [mockAsset]; // Sem ativo de CAIXA
 
     render(<InvestmentWizard open={true} onOpenChange={vi.fn()} />);
-    expect(screen.getByText("Recomendados para aporte")).toBeInTheDocument();
+    expect(screen.getByText("Sugeridos para rebalanceamento")).toBeInTheDocument();
     expect(screen.getByText(/Meta: 80%/i)).toBeInTheDocument();
 
     const suggestionCard = screen.getByText("PETR4").closest("button");
@@ -159,7 +159,7 @@ describe("InvestmentWizard (Fase 41)", () => {
     mockAssetsList = [mockAsset, cashAsset]; // PETR4 custa R$ 50 no mock, logo 150 / 50 = 3 cotas
 
     render(<InvestmentWizard open={true} onOpenChange={vi.fn()} />);
-    expect(screen.getByText("Recomendados para aporte")).toBeInTheDocument();
+    expect(screen.getByText("Sugeridos para rebalanceamento")).toBeInTheDocument();
     expect(screen.getByText(/Cabe no caixa: 3 cotas/i)).toBeInTheDocument();
 
     const suggestionCard = screen.getByText("PETR4").closest("button");
@@ -171,7 +171,7 @@ describe("InvestmentWizard (Fase 41)", () => {
     expect(qtyInput.value).toBe("3");
   });
 
-  it("permite editar a quantidade após recomendação e submete total = parsedQty * price", async () => {
+  it("permite editar a quantidade após sugestão e submete total = parsedQty * price", async () => {
     mockTargets = [{ asset_id: "asset-1", target_percentage: 80 }];
     const cashAsset: PortfolioAsset = {
       id: "cash-1",

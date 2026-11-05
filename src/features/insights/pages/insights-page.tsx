@@ -28,7 +28,6 @@ import { dailyBudget, endOfMonthProjection, pendingProjection, spendingPace } fr
 import { budgetLimitsByCategory, budgetStatus, realizedByCategoryMap, resolveEffectiveLimit, spentByCategoryMap } from "@/domain/budgets";
 import { computeOverview } from "@/domain/overview";
 import { aggregateByWeekday } from "@/domain/reports";
-import { isCashAssetClass } from "@/domain/portfolio";
 import { numberToCents, sumGrossCents } from "@/domain/money";
 
 import { currentMonth, monthLabel, shiftMonth } from "@/lib/date";
@@ -38,6 +37,7 @@ import {
   useCategories,
   useCreditCards,
   useDebts,
+  useEmergencyFundComposition,
   useExpenses,
   useFeedback,
   useIncomes,
@@ -45,6 +45,7 @@ import {
   useRealCashBalance,
   useSetFeedback,
 } from "@/state";
+import { EmergencyFundConfigDialog } from "@/components/modules";
 import { DiagnosticsTab, ProjectionTab, RecurrencesTab, type WarningItem } from "../components";
 
 export type InsightFilter = "diagnostics" | "recurrences" | "occurrences" | "projection" | "all";
@@ -102,7 +103,9 @@ export function InsightsPage({
   const effectiveFilter = rawTab ? resolveTab(rawTab) : filter;
   const [showIgnored, setShowIgnored] = useState(false);
   const [expandedWarnings, setExpandedWarnings] = useState(false);
+  const [isEmergencyConfigOpen, setIsEmergencyConfigOpen] = useState(false);
   const month = currentMonth();
+  const emergencyFund = useEmergencyFundComposition();
 
   const month0 = useExpenses(month);
   const month1 = useExpenses(shiftMonth(month, -1));
@@ -383,20 +386,22 @@ export function InsightsPage({
         variant: "success" as const,
         message: `Otimização Fiscal: A alíquota de IR de ${r.ticker} reduzirá para ${r.fixedIncomeResult!.taxCountdown!.nextRatePct}% em ${r.fixedIncomeResult!.taxCountdown!.daysRemaining} dia(s). Aguarde para resgatar com menor retenção.`,
       })),
+    // Diagnósticos da Reserva de Emergência (Liquidez e Volatilidade)
+    ...emergencyFund.composition.warnings.map((w) => ({
+      id: w.id,
+      variant: "warning" as const,
+      message: w.message,
+    })),
   ];
-
-  // Reserva de Emergência e Autonomia Financeira
-  const portfolioCashCents = (position.rows ?? [])
-    .filter((r) => r.isCash || isCashAssetClass(r.assetClass))
-    .reduce((acc, r) => acc + Math.round((r.valueBRL ?? 0) * 100), 0);
-  const realCashCents = Math.max(0, realCashQuery.cashBalance?.currentBalanceCents ?? 0);
-  const detectedReserveCents = (realCashCents + portfolioCashCents) > 0
-    ? (realCashCents + portfolioCashCents)
-    : Math.max(0, balanceCents);
 
   const baselineMonthlyExpensesCents = averagePastExpensesCents > 0
     ? averagePastExpensesCents
     : (projection.projectedExpensesCents ?? expenseCents);
+
+  // Reserva de Emergência e Autonomia Financeira (Sincronizada via Composição)
+  const detectedReserveCents = emergencyFund.composition.totalReserveCents > 0
+    ? emergencyFund.composition.totalReserveCents
+    : Math.max(0, balanceCents);
 
   const runwayMonths = baselineMonthlyExpensesCents > 0
     ? detectedReserveCents / baselineMonthlyExpensesCents
@@ -471,6 +476,8 @@ export function InsightsPage({
       baselineMonthlyExpensesCents={baselineMonthlyExpensesCents}
       monthlySavingsVelocityCents={Math.max(0, balanceCents)}
       referenceMonth={month}
+      composition={emergencyFund.composition}
+      onOpenEmergencyConfig={() => setIsEmergencyConfigOpen(true)}
     />
   );
 
@@ -548,6 +555,16 @@ export function InsightsPage({
           {effectiveFilter === "projection" && projectionContent}
         </div>
       )}
+
+      <EmergencyFundConfigDialog
+        open={isEmergencyConfigOpen}
+        onOpenChange={setIsEmergencyConfigOpen}
+        config={emergencyFund.config}
+        onSave={emergencyFund.updateConfig}
+        realCashCents={Math.max(0, realCashQuery.cashBalance?.currentBalanceCents ?? 0)}
+        portfolioRows={emergencyFund.portfolioRows}
+        monthlyExpensesCents={baselineMonthlyExpensesCents}
+      />
     </div>
   );
 }

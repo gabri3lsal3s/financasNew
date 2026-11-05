@@ -89,7 +89,7 @@ describe("LandingPage", () => {
     const aporte6k = screen.getByRole("button", { name: "R$ 6k" });
     await user.click(aporte6k);
 
-    expect(screen.getByText(/Direcionamento Recomendado para R\$ 6.000/i)).toBeInTheDocument();
+    expect(screen.getByText(/Direcionamento Calculado para R\$ 6.000/i)).toBeInTheDocument();
 
     const globalStrategy = screen.getByRole("button", { name: "Global" });
     await user.click(globalStrategy);

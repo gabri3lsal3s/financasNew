@@ -143,6 +143,10 @@ export interface PortfolioPosition {
   monthlyContributionCents: number;
   /** Indica se há um Marco Zero do Bolso registrado para o usuário (para UI contextual). */
   hasMarcoZeroContribution: boolean;
+  /** Mês de origem (Marco Zero) do cadastro da carteira no aplicativo */
+  marcoZeroMonth: string | null;
+  /** Quantidade de fechamentos mensais de snapshots persistidos (excluindo mês corrente em aberto) */
+  closedSnapshotsCount: number;
   isLoading: boolean;
   error: unknown;
   /** Reexecuta as consultas. */
@@ -615,7 +619,15 @@ export function usePortfolioPosition(): PortfolioPosition {
     contributions: rawContributionsForSeries,
     initialAccumulatedDividends,
     limit: 0,
-    });
+  });
+
+  // Mapeamento Canônico do Marco Zero dos Snapshots
+  const validSnapshotMonths = snapshots
+    .filter((s) => Number(s.total_value) > 0 || Number(s.total_cost) > 0)
+    .map((s) => s.month)
+    .sort();
+  const marcoZeroMonth: string | null = validSnapshotMonths.length > 0 ? (validSnapshotMonths[0] ?? null) : (assets.length > 0 ? thisMonth : null);
+  const closedSnapshotsCount = snapshots.filter((s) => s.month < thisMonth && (Number(s.total_value) > 0 || Number(s.total_cost) > 0)).length;
 
     return {
       rows,
@@ -628,6 +640,8 @@ export function usePortfolioPosition(): PortfolioPosition {
       portfolioIrr,
       portfolioTwr,
       hasMarcoZeroContribution,
+      marcoZeroMonth,
+      closedSnapshotsCount,
       monthlySeries,
       allMonthlySeries,
       contributionBRL,
@@ -653,6 +667,8 @@ export function usePortfolioPosition(): PortfolioPosition {
     portfolioIrr,
     portfolioTwr,
     hasMarcoZeroContribution,
+    marcoZeroMonth,
+    closedSnapshotsCount,
     monthlySeries,
     allMonthlySeries,
     contributionBRL,
@@ -715,6 +731,8 @@ export function usePortfolioPosition(): PortfolioPosition {
     portfolioIrr,
     portfolioTwr,
     hasMarcoZeroContribution,
+    marcoZeroMonth,
+    closedSnapshotsCount,
     monthlySeries,
     allMonthlySeries,
     monthlyContributionCents: Math.round(contributionBRL * 100),

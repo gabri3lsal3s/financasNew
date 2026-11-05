@@ -259,7 +259,25 @@ export type UserCustomSettings = {
   cardOrder?: string[];
   advisorDismissals?: Record<string, number>;
   advisorLastDismissedDay?: string | null;
+  emergencyFundConfig?: EmergencyFundConfig;
 };
+
+export type EmergencySelectionMode = "auto_cash" | "selected_assets" | "selected_classes" | "entire_portfolio";
+
+export interface EmergencyFundConfig {
+  /** Se deve somar o saldo em contas correntes / caixa real. Padrão: true. */
+  includeCheckingAccounts: boolean;
+  /** Modo de seleção de investimentos. Padrão: "auto_cash". */
+  selectionMode: EmergencySelectionMode;
+  /** IDs de ativos específicos em portfolio_assets. */
+  selectedAssetIds: string[];
+  /** Nomes das classes de ativos elegíveis (ex: ["Tesouro Direto", "Renda Fixa"]). */
+  selectedClasses: string[];
+  /** Se deve calcular a reserva pelo valor líquido pós-IR (quando disponível). Padrão: true. */
+  useNetValue?: boolean;
+  /** Meta personalizada de autonomia do usuário em meses (3, 6 ou 12). Padrão: 6. */
+  targetMonths?: 3 | 6 | 12;
+}
 
 export type UserPreferences = {
   user_id: string;
@@ -502,6 +520,16 @@ export type PortfolioAsset = {
 
 export type FixedIncomeRateType = "cdi" | "selic" | "pre" | "ipca";
 
+export type FixedIncomeIssuerType = "tesouro" | "bancario_fgc" | "credito_privado";
+
+export type FiiMacroCategory =
+  | "tijolo"
+  | "papel"
+  | "fof"
+  | "hibrido"
+  | "agro_infra"
+  | "outros";
+
 export type FixedIncomeMetadata = {
   rate_type: FixedIncomeRateType;
   rate_value: number;
@@ -515,6 +543,8 @@ export type FixedIncomeMetadata = {
   is_tax_exempt?: boolean;
   /** Alíquota manual de IR fixada pelo usuário (ex: 15, 17.5, 20, 22.5) ou null para cálculo automático. */
   manual_tax_rate_pct?: number | null;
+  /** Classificação do emissor/risco de crédito (soberano, bancário com FGC ou crédito privado). */
+  issuer_type?: FixedIncomeIssuerType | null;
 };
 
 export type PortfolioSnapshot = {

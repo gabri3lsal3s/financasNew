@@ -80,6 +80,27 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     expect(screen.getByText("60,0%")).toBeInTheDocument();
   });
 
+  it("renderiza ReportDonutChart sem legenda quando showLegend é false", () => {
+    render(
+      <ReportDonutChart
+        title="Alocação por Classe"
+        segments={[
+          { key: "acoes", label: "Ações Brasil", value: 40000, pct: 40, color: "#1b6b62" },
+          { key: "fiis", label: "Fundos Imobiliários", value: 60000, pct: 60, color: "#dda726" },
+        ]}
+        centerLabel="Ações Brasil"
+        centerValue="R$ 40k"
+        showLegend={false}
+      />,
+    );
+
+    expect(screen.getByText("Ações Brasil")).toBeInTheDocument();
+    expect(screen.getByText("R$ 40k")).toBeInTheDocument();
+    // Legenda lateral e título não devem ser renderizados
+    expect(screen.queryByText("Fundos Imobiliários")).not.toBeInTheDocument();
+    expect(screen.queryByText("40,0%")).not.toBeInTheDocument();
+  });
+
   it("renderiza ReportStackedBar com distribuição proporcional", () => {
     render(
       <ReportStackedBar

@@ -302,7 +302,7 @@ export function MinimalWealthSimulator() {
                     <span>Cálculo de Aporte em Tempo Real</span>
                   </div>
                   <h3 className="text-base sm:text-xl font-bold text-foreground mt-1">
-                    Direcionamento Recomendado para {formatBRL(aporteAmount)}:
+                    Direcionamento Calculado para {formatBRL(aporteAmount)}:
                   </h3>
                 </div>
 
@@ -374,14 +374,19 @@ export function MinimalWealthSimulator() {
 
             {/* CTA Rodapé do Simulador */}
             <div className="pt-3 sm:pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 border-t border-border/50">
-              <span className="text-xs text-muted-foreground text-center sm:text-left">
-                Zero giro de carteira e zero DARF: o algoritmo equilibra seu patrimônio apenas direcionando novos aportes.
-              </span>
+              <div className="flex flex-col text-center sm:text-left">
+                <span className="text-xs text-muted-foreground">
+                  Zero giro de carteira e zero DARF: o algoritmo equilibra seu patrimônio apenas direcionando novos aportes.
+                </span>
+                <span className="text-[10px] text-muted-foreground/80 mt-0.5">
+                  Simulação ilustrativa e matemática parametrizada. Não constitui análise ou recomendação de investimentos (Resoluções CVM nº 19 e 20/2021).
+                </span>
+              </div>
               <Link
                 to={trialUrl}
                 className={cn(
                   buttonVariants({ size: "default" }),
-                  "w-full sm:w-auto px-6 font-semibold inline-flex items-center justify-center gap-2 group shadow-xs rounded-xl",
+                  "w-full sm:w-auto px-6 font-semibold inline-flex items-center justify-center gap-2 group shadow-xs rounded-xl shrink-0",
                 )}
               >
                 <span>Organizar Meus Investimentos</span>

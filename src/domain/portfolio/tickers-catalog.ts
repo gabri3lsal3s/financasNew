@@ -1,4 +1,11 @@
-import type { AssetCurrency, PortfolioAsset } from "@/types";
+import type {
+  AssetCurrency,
+  PortfolioAsset,
+  FiiMacroCategory,
+  FixedIncomeIssuerType,
+  FixedIncomeMetadata,
+  FixedIncomeRateType,
+} from "@/types";
 import { inferAssetClassFromTicker } from "./import-parser";
 import { inferCurrencyFromTicker, normalizeClassName } from "./valuation";
 
@@ -674,7 +681,7 @@ export function buildAporteSuggestions(
     const hasClassTarget = (classTargetMap.get(normClass) ?? 0) > 0;
     const classDeficit = classDeficitMap.get(className) ?? 0;
 
-    // Trava Hierárquica Estrita: se a classe possui meta definida e já atingiu/superou o alvo, nenhum membro da classe recebe recomendação
+    // Trava Hierárquica Estrita: se a classe possui meta definida e já atingiu/superou o alvo, nenhum membro da classe recebe sugestão de aporte
     if (hasClassTarget && classDeficit <= 0) {
       continue;
     }
@@ -722,5 +729,422 @@ export function buildAporteSuggestions(
       currentPercentage: item.currentPercentage,
     }));
 }
+
+// ---------------------------------------------------------------------------
+// Rótulos Institucionais & Taxonomia Canônica (FIIs & Renda Fixa)
+// ---------------------------------------------------------------------------
+
+export const FII_MACRO_CATEGORY_LABELS: Record<FiiMacroCategory, string> = {
+  tijolo: "Tijolo (Renda Real)",
+  papel: "Papel & Dívida (CRIs)",
+  fof: "Fundos de Fundos (FOF)",
+  hibrido: "Híbrido / Multiestratégia",
+  agro_infra: "Agro & Infra (FIAGRO / FI-Infra)",
+  outros: "Outros FIIs",
+};
+
+export const FIXED_INCOME_INDEXER_LABELS: Record<FixedIncomeRateType, string> = {
+  cdi: "Pós-fixado (CDI / Selic)",
+  selic: "Pós-fixado (Selic)",
+  ipca: "Inflação (IPCA+)",
+  pre: "Prefixado",
+};
+
+export const FIXED_INCOME_ISSUER_LABELS: Record<FixedIncomeIssuerType, string> = {
+  tesouro: "Tesouro Direto (Soberano)",
+  bancario_fgc: "Bancário (Garantia FGC)",
+  credito_privado: "Crédito Privado (Sem FGC)",
+};
+
+/**
+ * Determina deterministicamente a macrocategoria do FII (Tijolo, Papel/Dívida, FOF, etc.)
+ * a partir do setor associado ou ticker.
+ */
+export function getFiiMacroCategory(
+  sectorOrTicker?: string | null,
+  ticker?: string,
+): FiiMacroCategory {
+  const norm = (str?: string | null) =>
+    (str ?? "")
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+  const sectorUpper = norm(sectorOrTicker);
+  const tickerUpper = norm(ticker);
+  const combined = `${sectorUpper} ${tickerUpper}`;
+
+  // 1. Papel & Dívida (CRIs / Recebíveis)
+  if (
+    combined.includes("PAPEL") ||
+    combined.includes("CRI") ||
+    combined.includes("RECEBIVEL") ||
+    combined.includes("RECEBIVEIS") ||
+    combined.includes("DIVIDA") ||
+    combined.includes("CREDITO IMOBILIARIO")
+  ) {
+    return "papel";
+  }
+
+  // 2. Agro & Infra
+  if (
+    combined.includes("AGRO") ||
+    combined.includes("FIAGRO") ||
+    combined.includes("INFRA") ||
+    combined.includes("FI-INFRA")
+  ) {
+    return "agro_infra";
+  }
+
+  // 3. Fundos de Fundos
+  if (
+    combined.includes("FOF") ||
+    combined.includes("FOFS") ||
+    combined.includes("FUNDO DE FUNDOS") ||
+    combined.includes("COTAS")
+  ) {
+    return "fof";
+  }
+
+  // 4. Tijolo (Ativos Reais de Renda)
+  if (
+    combined.includes("LOGISTICA") ||
+    combined.includes("SHOPPING") ||
+    combined.includes("SHOPPINGS") ||
+    combined.includes("LAJES") ||
+    combined.includes("CORPORATIVAS") ||
+    combined.includes("RENDA URBANA") ||
+    combined.includes("TIJOLO") ||
+    combined.includes("HOSPITALAR") ||
+    combined.includes("HOTEL") ||
+    combined.includes("RESIDENCIAL") ||
+    combined.includes("GALPOES") ||
+    combined.includes("GALPAO") ||
+    combined.includes("IMOVEIS") ||
+    combined.includes("EDUCACIONAL")
+  ) {
+    return "tijolo";
+  }
+
+  // 5. Híbridos / Multiestratégia
+  if (
+    combined.includes("HIBRIDO") ||
+    combined.includes("MULTI") ||
+    combined.includes("MISTO")
+  ) {
+    return "hibrido";
+  }
+
+  // 6. Consulta no catálogo curado caso o ticker tenha sido fornecido
+  if (tickerUpper) {
+    const item = CURATED_TICKERS_CATALOG.find((c) => c.ticker === tickerUpper);
+    if (item?.sector) {
+      return getFiiMacroCategory(item.sector);
+    }
+  }
+
+  return "outros";
+}
+
+export interface InferredFixedIncomeCategories {
+  indexer: FixedIncomeRateType;
+  issuer: FixedIncomeIssuerType;
+  isTaxExempt: boolean;
+}
+
+/**
+ * Infere as categorias canônicas de Renda Fixa (Indexador, Emissor e Isenção de IR)
+ * a partir dos metadados e ticker.
+ */
+export function inferFixedIncomeCategories(input: {
+  ticker: string;
+  sector?: string | null;
+  fixed_income_metadata?: FixedIncomeMetadata | null;
+}): InferredFixedIncomeCategories {
+  const norm = (str?: string | null) =>
+    (str ?? "")
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+  const tickerUpper = norm(input.ticker);
+  const sectorUpper = norm(input.sector);
+  const combined = `${tickerUpper} ${sectorUpper}`;
+
+  // 1. Indexador
+  let indexer: FixedIncomeRateType = "cdi";
+  if (input.fixed_income_metadata?.rate_type) {
+    indexer = input.fixed_income_metadata.rate_type;
+  } else if (
+    combined.includes("IPCA") ||
+    combined.includes("INFLACAO") ||
+    combined.includes("RENDA+") ||
+    combined.includes("EDUCA+") ||
+    combined.includes("NTN-B") ||
+    combined.includes("NTNB")
+  ) {
+    indexer = "ipca";
+  } else if (
+    combined.includes("PREFIXADO") ||
+    combined.includes("PRE") ||
+    combined.includes("LTN") ||
+    combined.includes("NTN-F") ||
+    combined.includes("NTNF")
+  ) {
+    indexer = "pre";
+  } else if (combined.includes("SELIC")) {
+    indexer = "selic";
+  }
+
+  // 2. Emissor / Risco de Crédito
+  let issuer: FixedIncomeIssuerType = "bancario_fgc";
+  if (input.fixed_income_metadata?.issuer_type) {
+    issuer = input.fixed_income_metadata.issuer_type;
+  } else if (
+    combined.includes("TESOURO") ||
+    combined.includes("LFT") ||
+    combined.includes("LTN") ||
+    combined.includes("NTN") ||
+    combined.includes("SOBERANO") ||
+    combined.includes("PUBLICO")
+  ) {
+    issuer = "tesouro";
+  } else if (
+    combined.includes("CRI") ||
+    combined.includes("CRA") ||
+    combined.includes("DEBENTURE") ||
+    combined.includes("FIDC") ||
+    combined.includes("NOTA COMERCIAL") ||
+    combined.includes("CREDITO PRIVADO")
+  ) {
+    issuer = "credito_privado";
+  } else if (
+    combined.includes("CDB") ||
+    combined.includes("LCI") ||
+    combined.includes("LCA") ||
+    combined.includes("RDB") ||
+    combined.includes("DPGE") ||
+    combined.includes("BANCO")
+  ) {
+    issuer = "bancario_fgc";
+  }
+
+  // 3. Isenção de IR
+  let isTaxExempt = Boolean(input.fixed_income_metadata?.is_tax_exempt);
+  if (input.fixed_income_metadata?.is_tax_exempt === undefined) {
+    if (
+      combined.includes("LCI") ||
+      combined.includes("LCA") ||
+      combined.includes("CRI") ||
+      combined.includes("CRA") ||
+      combined.includes("DEBENTURE INCENTIVADA") ||
+      combined.includes("INCENTIVADA")
+    ) {
+      isTaxExempt = true;
+    }
+  }
+
+  return { indexer, issuer, isTaxExempt };
+}
+
+// ---------------------------------------------------------------------------
+// Rótulos Institucionais & Taxonomia Canônica (Ações Brasil & Internacional)
+// ---------------------------------------------------------------------------
+
+export type StocksCyclingProfile =
+  | "defensivo_besst"
+  | "commodities"
+  | "ciclico_domestico"
+  | "outros_indices";
+
+export type StocksCapSize = "large_cap" | "mid_cap" | "small_cap";
+
+export const STOCKS_CYCLING_LABELS: Record<StocksCyclingProfile, string> = {
+  defensivo_besst: "Defensivo / Dividendos (BESST)",
+  commodities: "Commodities & Mercado Externo",
+  ciclico_domestico: "Cíclico Doméstico & Consumo",
+  outros_indices: "Outros / Índices Diversificados",
+};
+
+export const STOCKS_CAP_SIZE_LABELS: Record<StocksCapSize, string> = {
+  large_cap: "Large Caps (Blue Chips)",
+  mid_cap: "Mid Caps (Médio Porte)",
+  small_cap: "Small / Micro Caps",
+};
+
+export type InternationalRegion = "eua" | "desenvolvidos_ex_us" | "emergentes" | "global";
+export type InternationalVehicle = "moeda_forte_usd" | "bdr_brl";
+
+export const INTERNATIONAL_REGION_LABELS: Record<InternationalRegion, string> = {
+  eua: "Estados Unidos (US Equity)",
+  desenvolvidos_ex_us: "Mercados Desenvolvidos Ex-EUA",
+  emergentes: "Mercados Emergentes",
+  global: "Neutro Global (All-World)",
+};
+
+export const INTERNATIONAL_VEHICLE_LABELS: Record<InternationalVehicle, string> = {
+  moeda_forte_usd: "Moeda Forte Direta (USD)",
+  bdr_brl: "BDRs Custodiados na B3 (BRL)",
+};
+
+const KNOWN_LARGE_CAPS = new Set([
+  "PETR4", "PETR3", "VALE3", "ITUB4", "BBDC4", "BBAS3", "WEGE3", "ABEV3",
+  "RENT3", "ELET3", "ELET6", "ITSA4", "PRIO3", "GGBR4", "CSNA3", "SUZB3",
+  "JBSS3", "RADL3", "VIVT3", "EQTL3", "SBSP3", "CPLE6", "CMIG4", "TAEE11",
+  "EGIE3", "BBSE3", "CXSE3", "KLBN11", "TOTS3", "B3SA3", "BOVA11",
+]);
+
+/**
+ * Determina deterministicamente o perfil de resiliência cíclica e o porte da ação B3.
+ */
+export function getStocksProfile(
+  sectorOrTicker?: string | null,
+  ticker?: string,
+): { profile: StocksCyclingProfile; capSize: StocksCapSize } {
+  const norm = (str?: string | null) =>
+    (str ?? "")
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+  const sectorUpper = norm(sectorOrTicker);
+  const tickerUpper = norm(ticker);
+  const combined = `${sectorUpper} ${tickerUpper}`;
+
+  // 1. Perfil Cíclico / Econômico
+  let profile: StocksCyclingProfile = "outros_indices";
+
+  if (
+    combined.includes("BANCO") ||
+    combined.includes("FINANCEIRO") ||
+    combined.includes("ENERGIA") ||
+    combined.includes("ELETRICA") ||
+    combined.includes("SANEAMENTO") ||
+    combined.includes("UTILIDADE") ||
+    combined.includes("SEGURO") ||
+    combined.includes("PREVIDENCIA") ||
+    combined.includes("TELECOM") ||
+    combined.includes("COMUNICACAO")
+  ) {
+    profile = "defensivo_besst";
+  } else if (
+    combined.includes("PETROLEO") ||
+    combined.includes("PETRO") ||
+    combined.includes("GAS") ||
+    combined.includes("MINERACAO") ||
+    combined.includes("SIDERURGIA") ||
+    combined.includes("PAPEL") ||
+    combined.includes("CELULOSE") ||
+    combined.includes("COMMODITY") ||
+    combined.includes("COMMODITIES") ||
+    combined.includes("AGRO") ||
+    combined.includes("CARNE") ||
+    combined.includes("ALIMENTOS") ||
+    combined.includes("VALE")
+  ) {
+    profile = "commodities";
+  } else if (
+    combined.includes("VAREJO") ||
+    combined.includes("CONSUMO") ||
+    combined.includes("CONSTRUCAO") ||
+    combined.includes("INCORPORACAO") ||
+    combined.includes("SAUDE") ||
+    combined.includes("FARMACIA") ||
+    combined.includes("TRANSPORTE") ||
+    combined.includes("LOGISTICA") ||
+    combined.includes("TECNOLOGIA") ||
+    combined.includes("SOFTWARE") ||
+    combined.includes("EDUCACAO")
+  ) {
+    profile = "ciclico_domestico";
+  }
+
+  // Fallback inteligente: consulta catálogo se não identificou e ticker foi fornecido
+  if (profile === "outros_indices" && tickerUpper) {
+    const item = CURATED_TICKERS_CATALOG.find((c) => c.ticker === tickerUpper);
+    if (item?.sector) {
+      // Resolve o perfil pelo setor do catálogo sem reenviar ticker para evitar recursão infinita
+      profile = getStocksProfile(item.sector).profile;
+    }
+  }
+
+  // 2. Porte / Capitalização
+  let capSize: StocksCapSize = "mid_cap";
+  if (KNOWN_LARGE_CAPS.has(tickerUpper) || combined.includes("BOVA11")) {
+    capSize = "large_cap";
+  } else if (combined.includes("SMALL") || combined.includes("SMAL11") || combined.includes("MICRO")) {
+    capSize = "small_cap";
+  }
+
+  return { profile, capSize };
+}
+
+/**
+ * Determina deterministicamente a região geográfica e o veículo de custódia da carteira internacional.
+ */
+export function getInternationalProfile(input: {
+  ticker: string;
+  sector?: string | null;
+  currency?: string;
+}): { region: InternationalRegion; vehicle: InternationalVehicle } {
+  const norm = (str?: string | null) =>
+    (str ?? "")
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+  const tickerUpper = norm(input.ticker);
+  const sectorUpper = norm(input.sector);
+  const combined = `${tickerUpper} ${sectorUpper}`;
+
+  // 1. Veículo de Custódia (USD vs BDR)
+  const isBdr =
+    tickerUpper.endsWith("34") ||
+    tickerUpper.endsWith("35") ||
+    tickerUpper.endsWith("39") ||
+    input.currency === "BRL";
+  const vehicle: InternationalVehicle = isBdr ? "bdr_brl" : "moeda_forte_usd";
+
+  // 2. Região Geográfica
+  let region: InternationalRegion = "eua";
+  if (
+    combined.includes("GLOBAL") ||
+    combined.includes("ALL-WORLD") ||
+    combined.includes("WORLD") ||
+    tickerUpper === "VT" ||
+    tickerUpper === "ACWI" ||
+    tickerUpper === "WRLD11"
+  ) {
+    region = "global";
+  } else if (
+    combined.includes("EMERGENTE") ||
+    combined.includes("EMERGING") ||
+    combined.includes("CHINA") ||
+    combined.includes("INDIA") ||
+    combined.includes("ASIA") ||
+    tickerUpper === "VWO" ||
+    tickerUpper === "EEM"
+  ) {
+    region = "emergentes";
+  } else if (
+    combined.includes("EUROPA") ||
+    combined.includes("JAPAO") ||
+    combined.includes("JAPAN") ||
+    combined.includes("UK") ||
+    combined.includes("DEVELOPED") ||
+    tickerUpper === "VEA" ||
+    tickerUpper === "IEFA"
+  ) {
+    region = "desenvolvidos_ex_us";
+  }
+
+  return { region, vehicle };
+}
+
+
 
 

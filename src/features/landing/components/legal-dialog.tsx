@@ -114,10 +114,10 @@ export function LegalDialog({
                     </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                        Isenção de Custódia e Intermediação Financeira
+                        Isenção de Custódia e Consultoria CVM
                       </h3>
                       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                        O Áxis é exclusivamente uma plataforma de inteligência, organização financeira pessoal e rebalanceamento de aportes. O sistema não realiza custódia de moeda, não opera como banco e não executa ordens de corretagem em seu nome.
+                        O Áxis é exclusivamente uma plataforma de inteligência, organização financeira pessoal e rebalanceamento de aportes. O sistema não realiza custódia de moeda, não opera como banco, não executa ordens de corretagem e não emite recomendações ou consultoria de valores mobiliários (Resoluções CVM nº 19 e nº 20/2021). Todas as alocações decorrem de metas parametrizadas pelo usuário.
                       </p>
                     </div>
                   </div>

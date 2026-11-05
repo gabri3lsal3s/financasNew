@@ -921,7 +921,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             </div>
             <div className="pt-1.5 border-t border-border/80 flex items-center justify-between">
               <Badge variant="muted" size="xs">
-                Recomendado para: Posições em custódia ativa
+                Indicado para: Posições em custódia ativa
               </Badge>
             </div>
           </div>
@@ -947,7 +947,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             </div>
             <div className="pt-1.5 border-t border-border/80 flex items-center justify-between">
               <Badge variant="muted" size="xs">
-                Recomendado para: Comparação com CDI e Ibovespa
+                Indicado para: Comparação com CDI e Ibovespa
               </Badge>
             </div>
           </div>
@@ -973,7 +973,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             </div>
             <div className="pt-1.5 border-t border-border/80 flex items-center justify-between">
               <Badge variant="muted" size="xs">
-                Recomendado para: Dimensão financeira total e caixa
+                Indicado para: Dimensão financeira total e caixa
               </Badge>
             </div>
           </div>
@@ -999,7 +999,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             </div>
             <div className="pt-1.5 border-t border-border/80 flex items-center justify-between">
               <Badge variant="muted" size="xs">
-                Recomendado para: Eficiência do timing de aportes
+                Indicado para: Eficiência do timing de aportes
               </Badge>
             </div>
           </div>
@@ -1025,7 +1025,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             </div>
             <div className="pt-1.5 border-t border-border/80 flex items-center justify-between">
               <Badge variant="muted" size="xs">
-                Recomendado para: Comparação justa e alinhamento metodológico
+                Indicado para: Comparação justa e alinhamento metodológico
               </Badge>
             </div>
           </div>

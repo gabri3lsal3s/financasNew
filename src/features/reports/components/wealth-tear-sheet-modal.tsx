@@ -11,6 +11,10 @@ import {
   ReportRedemptionsTable,
   ReportAllocationDonuts,
   ReportPerformanceChart,
+  ReportStocksBreakdownCard,
+  ReportFiiBreakdownCard,
+  ReportFixedIncomeBreakdownCard,
+  ReportInternationalBreakdownCard,
 } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +29,13 @@ import {
   type ConcentrationRiskResult,
   type PeriodRedemptionItem,
 } from "@/domain/reports";
-import type { XIRRResult, TwrConsolidatedResult, PortfolioMonthlySeriesPoint } from "@/domain/portfolio";
+import type {
+  XIRRResult,
+  TwrConsolidatedResult,
+  PortfolioMonthlySeriesPoint,
+  PositionLikeItem,
+} from "@/domain/portfolio";
+import type { PortfolioAsset } from "@/types";
 
 export interface WealthPositionRow {
   ticker: string;
@@ -82,6 +92,7 @@ export interface WealthTearSheetModalProps {
   annualSelicRate?: number;
   annualIpcaRate?: number;
   ibovPeriodReturnPct?: number;
+  assetsMetadata?: readonly PortfolioAsset[];
   periodLabel?: string;
   appName?: string;
   accountHolder?: string;
@@ -111,8 +122,13 @@ const CLASS_COLORS: Record<string, string> = {
  * 4. Sumário de Movimentação do Mês Vigente (Aportes, Vendas e Proventos);
  * 5. Matriz de Alocação por Classe & Setor (Target vs. Actual) com Barras de Desvio (Gaps);
  * 6. Termômetro de Concentração e Risco da Carteira;
- * 7. Tabela Completa de Custódia com Variação de Cota e Retorno Total Real;
- * 8. Rodapé de Confidencialidade e Autenticidade.
+ * 7. Matriz Comparativa por Tipo de Ativo vs. Benchmarks (CDI, Ibovespa, IFIX, S&P 500);
+ * 8. Raios-X de Subalocação Profunda (Ações Brasil, FIIs, Renda Fixa e Internacional);
+ * 9. Tabela Completa de Custódia com Variação de Cota e Retorno Total Real;
+ * 10. Detalhamento Gráfico da Alocação & Exposição Setorial (Donuts);
+ * 11. Comparativo Histórico de Rentabilidade Mês a Mês;
+ * 12. Metodologias & Métricas de Rentabilidade (TWR, TIR);
+ * 13. Rodapé de Confidencialidade e Autenticidade.
  */
 export function WealthTearSheetModal({
   open,
@@ -139,6 +155,7 @@ export function WealthTearSheetModal({
   annualSelicRate,
   annualIpcaRate,
   ibovPeriodReturnPct,
+  assetsMetadata = [],
   periodLabel = "Posição Atual Consolidada",
   appName = "Áxis Finance",
   accountHolder,
@@ -267,7 +284,27 @@ export function WealthTearSheetModal({
     [concentrationRisk.singleAssetDominance, investmentRows, totalBRL],
   );
 
-  // Agrupamento por classe de ativos para a tabela de custódia com subtotais e Retorno Total por classe
+  // Posições normalizadas para cálculo de Raio-X e Retornos por Classe
+  const breakdownRows: PositionLikeItem[] = useMemo(() => {
+    return rows.map((r) => ({
+      ticker: r.ticker,
+      name: r.name,
+      assetClass: r.assetClass,
+      sector: r.sector,
+      valueBRL: r.valueBRL,
+      quantity: r.quantity,
+      averageCost: r.averagePrice,
+      currentPrice: r.currentPrice,
+      totalCostBRL: r.totalCostBRL,
+      unrealizedPnl: r.unrealizedPnlBRL,
+      unrealizedPct: r.unrealizedPnlPct,
+      totalReturnPnl: r.totalReturnPnlBRL,
+      totalReturnPct: r.totalReturnPct ?? r.unrealizedPnlPct,
+      currency: r.currency,
+      isCash: r.isCash ?? false,
+    }));
+  }, [rows]);
+
   const groupedRows = useMemo(() => {
     const groups = new Map<string, WealthPositionRow[]>();
     for (const row of activeInvestmentRows) {
@@ -766,7 +803,7 @@ export function WealthTearSheetModal({
         ) : null}
       </section>
 
-      {/* 7. Detalhamento Gráfico da Alocação & Exposição Setorial (Donuts em Largura Total ao Final) */}
+      {/* 7. Detalhamento Gráfico da Alocação & Exposição Setorial */}
       {donutData.classSegments.length > 0 && (
         <section
           aria-label="Detalhamento Gráfico de Alocação e Setores"
@@ -794,7 +831,49 @@ export function WealthTearSheetModal({
         </section>
       )}
 
-      {/* 8. Comparativo Histórico de Rentabilidade Mês a Mês (Renderizado apenas com >= 2 meses) */}
+      {/* 8. Raios-X de Subalocação Profunda (Organizados logo abaixo dos gráficos de distribuição) */}
+      <section
+        aria-label="Raios-X de Subalocação"
+        className="flex flex-col gap-3 pt-2 print:pt-1 print-break-before-page print:break-before-page break-inside-avoid print:break-inside-avoid"
+      >
+        <div className="report-section-header flex items-center justify-between border-b border-border/70 pb-1.5">
+          <div className="flex items-center gap-1.5">
+            <PieChart className="size-3.5 text-primary-strong" aria-hidden="true" />
+            <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
+              Raios-X de Subalocação Setorial, Cíclica & Risco de Emissão
+            </h3>
+          </div>
+          <span className="text-[10px] text-muted-foreground font-mono">
+            Decomposição Analítica Especializada
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-4 w-full">
+          <ReportStocksBreakdownCard
+            positions={breakdownRows}
+            mode="print_all"
+            className="print:border-border print:bg-white print:p-3.5 print:shadow-none break-inside-avoid print:break-inside-avoid"
+          />
+          <ReportFiiBreakdownCard
+            positions={breakdownRows}
+            mode="print_all"
+            className="print:border-border print:bg-white print:p-3.5 print:shadow-none break-inside-avoid print:break-inside-avoid"
+          />
+          <ReportFixedIncomeBreakdownCard
+            positions={breakdownRows}
+            assetsMetadata={assetsMetadata}
+            mode="print_all"
+            className="print:border-border print:bg-white print:p-3.5 print:shadow-none break-inside-avoid print:break-inside-avoid"
+          />
+          <ReportInternationalBreakdownCard
+            positions={breakdownRows}
+            mode="print_all"
+            className="print:border-border print:bg-white print:p-3.5 print:shadow-none break-inside-avoid print:break-inside-avoid"
+          />
+        </div>
+      </section>
+
+      {/* 9. Comparativo Histórico de Rentabilidade Mês a Mês (Renderizado apenas com >= 2 meses) */}
       {performanceSeries.length >= 2 && (
         <ReportPerformanceChart
           series={performanceSeries}
@@ -807,7 +886,7 @@ export function WealthTearSheetModal({
         />
       )}
 
-      {/* 9. Tópico Final: Metodologias & Métricas de Rentabilidade da Carteira */}
+      {/* 10. Tópico Final: Metodologias & Métricas de Rentabilidade da Carteira */}
       <section
         aria-label="Metodologias de Rentabilidade"
         className="flex flex-col gap-3 pt-2 print:pt-1 break-inside-avoid print:break-inside-avoid w-full"
@@ -858,7 +937,7 @@ export function WealthTearSheetModal({
             </div>
             <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
               <Badge variant="muted" size="xs" className="font-medium text-muted-foreground">
-                Recomendado para: Comparação com CDI e Ibovespa
+                Indicado para: Comparação com CDI e Ibovespa
               </Badge>
             </div>
           </div>
@@ -896,7 +975,7 @@ export function WealthTearSheetModal({
             </div>
             <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
               <Badge variant="muted" size="xs" className="font-medium text-muted-foreground">
-                Recomendado para: Eficiência do timing de aportes
+                Indicado para: Eficiência do timing de aportes
               </Badge>
             </div>
           </div>
@@ -934,7 +1013,7 @@ export function WealthTearSheetModal({
             </div>
             <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
               <Badge variant="muted" size="xs" className="font-medium text-muted-foreground">
-                Recomendado para: Posições em custódia ativa
+                Indicado para: Posições em custódia ativa
               </Badge>
             </div>
           </div>
@@ -968,7 +1047,7 @@ export function WealthTearSheetModal({
             </div>
             <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
               <Badge variant="muted" size="xs" className="font-medium text-muted-foreground">
-                Recomendado para: Dimensão financeira total e caixa
+                Indicado para: Dimensão financeira total e caixa
               </Badge>
             </div>
           </div>

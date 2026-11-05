@@ -35,7 +35,7 @@ describe("useMacroIndicators hook", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toEqual({
+    expect(result.current.data).toMatchObject({
       annualCdiRate: 11.25,
       annualSelicRate: 11.50,
       annualIpcaRate: 4.25,

@@ -90,7 +90,7 @@ export function AllocationDriftCard({ analysis, className, onSimulateAporte }: A
       {!isBalanced && underweightItems.length > 0 && (
         <div className="flex flex-col gap-2 pt-2 border-t border-border/40">
           <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-            Ativos/Classes com Aporte Recomendado
+            Ativos/Classes com Déficit de Alocação
           </span>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {underweightItems.slice(0, 4).map((item) => (

@@ -18,6 +18,7 @@ vi.mock("@/state", () => ({
     rows: [],
     totalBRL: 50000,
     totalCostBRL: 40000,
+    consolidatedReturn: { totalReturnPct: 5.0 },
   }),
   usePortfolioAssets: () => ({
     data: [],
@@ -25,11 +26,31 @@ vi.mock("@/state", () => ({
   useGroupTargets: () => ({
     data: [],
   }),
+  useMacroIndicators: () => ({
+    data: {
+      annualCdiRate: 10.75,
+      annualSelicRate: 10.75,
+      annualIpcaRate: 4.0,
+      monthlyCdiRate: 0.85,
+      monthlyPoupancaRate: 0.58,
+      ibovPeriodReturnPct: 1.0,
+      ifixPeriodReturnPct: 0.8,
+      sp500PeriodReturnPct: 1.2,
+    },
+  }),
 }));
 
-vi.mock("@/components/modules/reports", () => ({
-  ReportAllocationDonuts: () => <div data-testid="allocation-donuts" />,
-}));
+vi.mock("@/components/modules/reports", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    ReportAllocationDonuts: () => <div data-testid="allocation-donuts" />,
+    ReportFiiBreakdownCard: () => <div data-testid="fii-breakdown-card" />,
+    ReportFixedIncomeBreakdownCard: () => <div data-testid="fixed-income-breakdown-card" />,
+    ReportStocksBreakdownCard: () => <div data-testid="stocks-breakdown-card" />,
+    ReportInternationalBreakdownCard: () => <div data-testid="international-breakdown-card" />,
+  };
+});
 
 vi.mock("@/features/investments/components", () => ({
   AllocationBreakdownDialog: () => null,

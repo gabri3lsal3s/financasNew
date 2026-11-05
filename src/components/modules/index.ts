@@ -61,6 +61,8 @@ export { SavePresetDialog } from "./save-preset-dialog";
 export type { SavePresetDialogProps } from "./save-preset-dialog";
 export { EmergencyThermometer } from "./emergency-thermometer";
 export type { EmergencyThermometerProps } from "./emergency-thermometer";
+export { EmergencyFundConfigDialog } from "./emergency-fund-config-dialog";
+export type { EmergencyFundConfigDialogProps } from "./emergency-fund-config-dialog";
 export { NotificationsPopover } from "./notifications-popover";
 export type { NotificationsPopoverProps } from "./notifications-popover";
 export { PaceAlertBanner } from "./pace-alert-banner";

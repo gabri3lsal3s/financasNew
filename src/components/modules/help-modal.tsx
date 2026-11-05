@@ -41,7 +41,7 @@ const FAQ_ITEMS: FaqItem[] = [
     icon: TrendingUp,
     question: "Como funciona o Rebalanceamento de Carteira?",
     answer:
-      "O motor de rebalanceamento calcula a distância percentual entre sua posição atual e os pesos-alvo que você configurou. Ao simular um aporte, o sistema calcula a alocação exata para direcionar o capital prioritariamente aos ativos mais distantes da meta ideal.",
+      "O motor de rebalanceamento calcula a distância percentual entre sua posição atual e os pesos-alvo que você configurou. Ao simular um aporte, o sistema calcula a alocação exata para direcionar o capital prioritariamente aos ativos mais distantes da meta ideal. O cálculo é estritamente matemático e não constitui recomendação de ativos ou consultoria financeira.",
   },
   {
     id: "invoices",

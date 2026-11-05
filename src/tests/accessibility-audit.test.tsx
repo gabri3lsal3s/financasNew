@@ -355,6 +355,30 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn().mockResolvedValue({}),
     isPending: false,
   }),
+  useEmergencyFundComposition: () => ({
+    composition: {
+      targetMonths: 6,
+      currentMonths: 3,
+      targetCents: 1200000,
+      totalCurrentBalanceCents: 600000,
+      shortfallCents: 600000,
+      completionRate: 50,
+      status: "partial" as const,
+      cashOnHandCents: 300000,
+      immediateFixedIncomeCents: 300000,
+      averageMonthlyExpenseCents: 200000,
+      burnRateMonthlyCents: 200000,
+      hasEmergencyAssets: true,
+      hasSpendingHistory: true,
+      assets: [],
+      warnings: [],
+      breakdown: [],
+    },
+    config: { selectedAssetIds: [] },
+    portfolioRows: [],
+    isLoading: false,
+    isConfigured: true,
+  }),
 }));
 
 

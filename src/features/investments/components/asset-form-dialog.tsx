@@ -8,12 +8,22 @@ import {
   buildInitialPositionOperations,
   calculateWeightedAveragePrice,
   DEFAULT_SECTORS_BY_CLASS,
+  FII_MACRO_CATEGORY_LABELS,
+  FIXED_INCOME_ISSUER_LABELS,
+  getFiiMacroCategory,
+  getInternationalProfile,
+  getStocksProfile,
+  inferFixedIncomeCategories,
   inferSectorFromTicker,
+  INTERNATIONAL_REGION_LABELS,
+  INTERNATIONAL_VEHICLE_LABELS,
   isCashAssetClass,
   isFixedIncomeClass,
   isPrivateFixedIncomeTicker,
   isTesouroAsset,
   sellAssetPosition,
+  STOCKS_CAP_SIZE_LABELS,
+  STOCKS_CYCLING_LABELS,
 } from "@/domain/portfolio";
 import { fetchOnlineQuote } from "@/services/quotes";
 import { useDebounce } from "@/hooks";
@@ -30,6 +40,7 @@ import {
   usePortfolioPosition,
   useSetManualPrice,
   useUpdatePortfolioAsset,
+  useEmergencyFundComposition,
 } from "@/state";
 import { todayISO } from "@/domain/debts";
 import type { AssetCurrency, FixedIncomeMetadata, FixedIncomeRateType, PortfolioAsset } from "@/types";
@@ -127,6 +138,18 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
   const isCash = isCashAssetClass(assetClass) || ticker.trim().toUpperCase() === "CAIXA";
   const isTesouro = isTesouroAsset(ticker, assetClass);
   const isFixedIncome = isFixedIncomeClass(assetClass) || isTesouro;
+
+  const emergencyFund = useEmergencyFundComposition();
+  const [isEmergencyReserve, setIsEmergencyReserve] = useState(() => {
+    if (asset?.id) {
+      return (emergencyFund.config.selectedAssetIds ?? []).includes(asset.id);
+    }
+    return (
+      isCash ||
+      ticker.toUpperCase().includes("SELIC") ||
+      ticker.toUpperCase().includes("CDI")
+    );
+  });
 
   /** Moeda só é editável para BDRs e Internacional */
   const needsCurrencyField = CLASSES_WITH_CURRENCY.has(assetClass);
@@ -400,6 +423,15 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
       if (isFixedIncome && !isCash) {
         const existingFi = asset?.fixed_income_metadata;
         const currentBalance = currentPriceCents > 0 ? currentPriceCents / 100 : initialPriceCents / 100;
+        const inferred = inferFixedIncomeCategories({
+          ticker: normalizedTicker,
+          sector,
+          fixed_income_metadata: {
+            rate_type: fixedIncomeRateType,
+            rate_value: fixedIncomeRateValue,
+            base_date: fixedIncomeBaseDate,
+          },
+        });
         fiMetadata = {
           rate_type: fixedIncomeRateType,
           rate_value: fixedIncomeRateValue,
@@ -408,6 +440,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
           initial_investment_date: fixedIncomeInitialInvestmentDate ? fixedIncomeInitialInvestmentDate.slice(0, 10) : (existingFi?.initial_investment_date ?? null),
           maturity_date: fixedIncomeMaturityDate ? fixedIncomeMaturityDate.slice(0, 10) : null,
           is_tax_exempt: fixedIncomeIsTaxExempt,
+          issuer_type: existingFi?.issuer_type ?? inferred.issuer,
         };
       }
 
@@ -422,10 +455,14 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
         notes: finalNotes,
       };
 
+      let savedAssetId: string | null = null;
+
       if (isEdit && asset) {
         await updateAsset.mutateAsync({ id: asset.id, patch: payload });
+        savedAssetId = asset.id;
       } else {
         const created = await createAsset.mutateAsync(payload);
+        savedAssetId = created.id;
 
         // Se o ativo foi criado com posição inicial, registra a transação inicial de compra no ledger e o aporte
         const ops = buildInitialPositionOperations({
@@ -456,6 +493,22 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
           });
         } else if (ops.contribution) {
           await createContribution.mutateAsync(ops.contribution);
+        }
+      }
+
+      // Sincroniza vínculo com a Reserva de Emergência
+      if (savedAssetId) {
+        const currentSelected = emergencyFund.config.selectedAssetIds ?? [];
+        let nextSelected: string[];
+        if (isEmergencyReserve) {
+          nextSelected = currentSelected.includes(savedAssetId)
+            ? currentSelected
+            : [...currentSelected, savedAssetId];
+        } else {
+          nextSelected = currentSelected.filter((id) => id !== savedAssetId);
+        }
+        if (nextSelected.length !== currentSelected.length) {
+          void emergencyFund.updateConfig({ selectedAssetIds: nextSelected });
         }
       }
 
@@ -703,7 +756,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
               {recommendedSectors.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5">
                   {!isSectorChipsOnly && (
-                    <span className="text-[11px] text-muted-foreground">Setores recomendados:</span>
+                    <span className="text-[11px] text-muted-foreground">Setores sugeridos:</span>
                   )}
                   {recommendedSectors.slice(0, 4).map((s) => (
                     <button
@@ -719,6 +772,52 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
                       {s}
                     </button>
                   ))}
+                </div>
+              )}
+
+              {/* Feedback de Estratégia de FII */}
+              {(assetClass === "FIIs" || assetClass === "FII") && (
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <span className="text-[11px] text-muted-foreground">Estratégia para Raio-X:</span>
+                  <Badge variant="muted" size="xs">
+                    {FII_MACRO_CATEGORY_LABELS[getFiiMacroCategory(sector, ticker)]}
+                  </Badge>
+                </div>
+              )}
+
+              {/* Feedback de Emissor de Renda Fixa */}
+              {isFixedIncome && !isCash && (
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <span className="text-[11px] text-muted-foreground">Emissor para Raio-X:</span>
+                  <Badge variant="muted" size="xs">
+                    {FIXED_INCOME_ISSUER_LABELS[inferFixedIncomeCategories({ ticker, sector }).issuer]}
+                  </Badge>
+                </div>
+              )}
+
+              {/* Feedback de Ações Brasil (Perfil Cíclico & Porte) */}
+              {(assetClass === "Ações" || assetClass === "Ação" || assetClass === "Stocks") && (
+                <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                  <span className="text-[11px] text-muted-foreground">Perfil para Raio-X:</span>
+                  <Badge variant="muted" size="xs">
+                    {STOCKS_CYCLING_LABELS[getStocksProfile(sector, ticker).profile]}
+                  </Badge>
+                  <Badge variant="muted" size="xs">
+                    {STOCKS_CAP_SIZE_LABELS[getStocksProfile(sector, ticker).capSize]}
+                  </Badge>
+                </div>
+              )}
+
+              {/* Feedback de Ativos Internacionais (Região & Custódia) */}
+              {(assetClass === "Internacional" || assetClass === "BDRs" || assetClass === "BDR") && (
+                <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                  <span className="text-[11px] text-muted-foreground">Raio-X Global:</span>
+                  <Badge variant="muted" size="xs">
+                    {INTERNATIONAL_REGION_LABELS[getInternationalProfile({ ticker, sector, currency }).region]}
+                  </Badge>
+                  <Badge variant="muted" size="xs">
+                    {INTERNATIONAL_VEHICLE_LABELS[getInternationalProfile({ ticker, sector, currency }).vehicle]}
+                  </Badge>
                 </div>
               )}
             </div>
@@ -946,6 +1045,23 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
               isTesouro={isTesouro}
             />
           )}
+
+          {/* Vínculo com a Reserva de Emergência */}
+          <div className="flex items-center justify-between p-3 rounded-lg border border-border/70 bg-surface-hover/30">
+            <div className="flex flex-col gap-0.5 min-w-0 pr-2">
+              <span className="text-xs font-semibold text-foreground">
+                Reserva de Emergência
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                Contabilizar este ativo como capital de segurança e autonomia nos Insights.
+              </span>
+            </div>
+            <Checkbox
+              checked={isEmergencyReserve}
+              onCheckedChange={(checked) => setIsEmergencyReserve(Boolean(checked))}
+              aria-label="Contabilizar ativo na reserva de emergência"
+            />
+          </div>
 
           <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
             Notas / Observações (opcional)

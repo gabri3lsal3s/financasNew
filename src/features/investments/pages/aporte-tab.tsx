@@ -341,6 +341,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
                 Todas as sugestões de rebalanceamento e alocação são derivadas puramente de formulações algorítmicas
                 parametrizadas pelas metas e percentuais definidos discricionariamente por você, não configurando
                 análise de valores mobiliários, consultoria financeira ou recomendação de compra e venda de ativos.
+                A decisão de alocação e a transmissão de ordens cabem exclusivamente ao titular perante sua respectiva corretora.
               </p>
             </div>
           </aside>

@@ -25,6 +25,8 @@ export interface ProjectionTabProps {
   baselineMonthlyExpensesCents?: number;
   monthlySavingsVelocityCents?: number;
   referenceMonth?: string;
+  composition?: import("@/domain/projection").EmergencyFundComposition;
+  onOpenEmergencyConfig?: () => void;
 }
 
 export function ProjectionTab({
@@ -45,6 +47,8 @@ export function ProjectionTab({
   baselineMonthlyExpensesCents,
   monthlySavingsVelocityCents,
   referenceMonth,
+  composition,
+  onOpenEmergencyConfig,
 }: ProjectionTabProps) {
   return (
     <div className="flex flex-col gap-6">
@@ -97,6 +101,8 @@ export function ProjectionTab({
           monthlyExpensesCents={baselineMonthlyExpensesCents ?? monthlyExpensesCents ?? 0}
           monthlySavingsVelocityCents={monthlySavingsVelocityCents}
           referenceMonth={referenceMonth}
+          composition={composition}
+          onOpenConfig={onOpenEmergencyConfig}
         />
       </section>
 

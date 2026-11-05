@@ -272,4 +272,33 @@ describe("tickers-catalog — Autocomplete e Sugestões Preditivas (Fase 41)", (
       expect(suggestions.find((s) => s.ticker === "AAPL")).toBeUndefined();
     });
   });
+
+  describe("getStocksProfile e getFiiMacroCategory — Estabilidade e Proteção contra Recursão", () => {
+    it("resolve perfil de ações sem cair em recursão infinita mesmo quando setor não é informado ou é genérico", async () => {
+      const { getStocksProfile } = await import("./tickers-catalog");
+
+      // Ticker com setor não mapeado diretamente na string mas presente no catálogo (ex: VALE3 com setor Mineração)
+      const resVale = getStocksProfile(null, "VALE3");
+      expect(resVale.profile).toBe("commodities");
+      expect(resVale.capSize).toBe("large_cap");
+
+      // Ação com setor explicitado diretamente
+      const resItub = getStocksProfile("Financeiro / Bancos", "ITUB4");
+      expect(resItub.profile).toBe("defensivo_besst");
+      expect(resItub.capSize).toBe("large_cap");
+
+      // Ticker desconhecido e setor desconhecido não entra em loop infinito
+      const resDesconhecido = getStocksProfile("Setor Desconhecido", "UNKNOWN3");
+      expect(resDesconhecido.profile).toBe("outros_indices");
+      expect(resDesconhecido.capSize).toBe("mid_cap");
+    });
+
+    it("resolve macrocategoria de FIIs sem recursão", async () => {
+      const { getFiiMacroCategory } = await import("./tickers-catalog");
+
+      expect(getFiiMacroCategory(null, "HGLG11")).toBe("tijolo");
+      expect(getFiiMacroCategory(null, "MXRF11")).toBe("papel");
+      expect(getFiiMacroCategory(null, "UNKNOWN11")).toBe("outros");
+    });
+  });
 });

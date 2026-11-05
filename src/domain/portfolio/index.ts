@@ -478,5 +478,6 @@ export * from "./contributions";
 export * from "./simulation";
 export * from "./historical-quotes";
 export * from "./point-in-time";
+export * from "./class-breakdown";
 
 

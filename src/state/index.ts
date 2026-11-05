@@ -187,6 +187,11 @@ export {
   type UseRealCashBalanceResult,
 } from "./queries/use-real-cash-balance";
 export {
+  useEmergencyFundComposition,
+  type UseEmergencyFundCompositionOptions,
+  type UseEmergencyFundCompositionResult,
+} from "./queries/use-emergency-fund-composition";
+export {
   useCreateCashCheckpoint,
   useDeleteCashCheckpoint,
 } from "./mutations/use-cash-checkpoint-mutations";

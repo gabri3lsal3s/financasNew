@@ -27,6 +27,28 @@ vi.mock("@/state", () => ({
   usePortfolioAssets: () => usePortfolioAssetsMock(),
   useAssetPrices: () => ({ data: [], isLoading: false }),
   usePortfolioPosition: () => ({ rows: [] }),
+  useEmergencyFundComposition: () => ({
+    composition: {
+      targetMonths: 6,
+      currentMonths: 6,
+      targetCents: 1000000,
+      totalCurrentBalanceCents: 1000000,
+      shortfallCents: 0,
+      completionRate: 100,
+      status: "completed" as const,
+      cashOnHandCents: 500000,
+      immediateFixedIncomeCents: 500000,
+      averageMonthlyExpenseCents: 166666,
+      burnRateMonthlyCents: 166666,
+      hasEmergencyAssets: true,
+      hasSpendingHistory: true,
+      assets: [],
+      warnings: [],
+    },
+    config: { selectedAssetIds: [] },
+    isLoading: false,
+    isConfigured: true,
+  }),
 }));
 
 const existingAsset = {

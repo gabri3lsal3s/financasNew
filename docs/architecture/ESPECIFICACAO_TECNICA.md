@@ -570,6 +570,63 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
 - **Acessibilidade WCAG 2.1 AA & Teclado Completo:** foco inicial automático no popover, preservação e restauração determinística do `document.activeElement`, focus trap (ciclo de Tab/Shift+Tab confinado no card popover), suporte a teclas de atalho (`Escape`, setas `ArrowLeft` / `ArrowRight`, `Enter`, `Espaço`), camada SVG marcada com `role="presentation"` e `aria-hidden="true"`, e anúncios em sintetizadores de tela via `aria-live="polite"`.
 - **Governança de Modais e Prevenção de Conflitos:** supressão coordenada de banners de atualização (`NativeUpdateToast`) via hook `useActiveOverlays` durante a exibição de modais, tours e wizards, com adiamento persistido por sessão e timer de 12 horas.
 
+#### 3.11.5 Benchmarks Especializados por Classe & Decomposição Holística de Exposição (Os 4 Pilares da Carteira)
+
+- **Motor Puro de Benchmarks Especializados (`calculateClassBenchmarkComparisons`):**
+  * **Ações:** comparadas com o **IBOVESPA** (apuração de alfa em pontos percentuais);
+  * **Fundos Imobiliários:** comparados com o **IFIX** (benchmark oficial da indústria imobiliária da B3);
+  * **Renda Fixa:** comparada com o **CDI** (taxa livre de risco com apuração de % do CDI) e a **Poupança** (regra oficial Bacen);
+  * **Internacional:** comparada com o **S&P 500** (moeda nativa USD e conversão cambial BRL);
+  * **Carteira Total Consolidada:** comparada simultaneamente com os três pilares de mercado (**CDI**, **IBOVESPA** e **IFIX**).
+  * **Status Semântico:** Classificação determinística em `outperforming` ($\alpha > +0{,}05$ p.p.), `matching` ($\pm 0{,}05$ p.p.), `underperforming` ($\alpha < -0{,}05$ p.p.) ou `neutral` (classe sem ativos em custódia).
+
+- **Matriz de Exposição Profunda de Fundos Imobiliários (`calculateFiiExposure`):**
+  * Agregação canônica em 5 macroestratégias imobiliárias:
+    1. **Tijolo (Renda Real):** Imóveis físicos (Logística, Shoppings, Lajes Corporativas, Renda Urbana, Hospitalar, Residencial);
+    2. **Papel & Dívida (CRIs):** Recebíveis imobiliários, crédito estruturado High Grade e High Yield;
+    3. **Fundos de Fundos (FOF):** Cotas de fundos e alocação multiestratégia;
+    4. **Híbridos:** Mandato misto e ativos de desenvolvimento;
+    5. **Agro & Infra:** FIAGROs e fundos de infraestrutura (FI-Infra).
+  * **Métricas de Risco:** Apuração de patrimônio em R$, percentual sobre a subcarteira de FIIs e alerta automático de concentração caso uma única estratégia ultrapasse $70\%$ do patrimônio imobiliário.
+
+- **Matriz Bivalente de Renda Fixa (`calculateFixedIncomeExposure`):**
+  * **Dimensão 1 — Risco de Taxa de Juros / Indexador:**
+    * Pós-fixado (CDI / Selic);
+    * Inflação (IPCA+ / NTN-B / Renda+ / Educa+);
+    * Prefixado (LTN / NTN-F / Taxa Pré).
+  * **Dimensão 2 — Risco de Crédito / Emissor & Garantia:**
+    * Títulos Públicos / Soberano (Tesouro Direto);
+    * Bancário com FGC (CDB, LCI, LCA, RDB — cobertura de até R$ 250k por conglomerado);
+    * Crédito Privado sem FGC (Debêntures Incentivadas, CRI, CRA, FIDC).
+  * **Eficiência Fiscal:** Cálculo da parcela alocada em títulos isentos de Imposto de Renda (`taxExemptValueBRL` e `taxExemptPct`).
+
+- **Matriz Bivalente de Ações Brasil (`calculateStocksExposure`):**
+  * **Dimensão 1 — Resiliência Cíclica & Macroeconômica:**
+    * **Defensivo / Dividendos (BESST):** Bancos, Energia Elétrica, Saneamento, Seguros e Telecomunicações — fluxo previsível e alta proteção inflacionária;
+    * **Commodities & Mercado Externo:** Petróleo, Mineração, Siderurgia, Papel & Celulose e Agronegócio — proteção cambial e sensibilidade ao ciclo global;
+    * **Cíclico Doméstico & Consumo:** Varejo, Construção Civil, Saúde, Tecnologia, Educação e Logística — sensibilidade à taxa de juros e demanda interna;
+    * **Outros / Índices Diversificados:** ETFs e empresas de setores mistos.
+  * **Dimensão 2 — Porte & Liquidez de Mercado (Cap Size):**
+    * **Large Caps (Blue Chips):** Empresas de altíssima liquidez e consolidadas no Ibovespa;
+    * **Mid Caps:** Empresas de médio porte em fase de maturidade e expansão;
+    * **Small / Micro Caps:** Empresas menores de alto potencial de crescimento com maior volatilidade.
+  * **Alerta de Concentração:** Alerta ativo caso um perfil cíclico ultrapasse $60\%$ da carteira de ações.
+
+- **Matriz Bivalente da Carteira Internacional (`calculateInternationalExposure`):**
+  * **Dimensão 1 — Descentralização Geográfica Global:**
+    * **Estados Unidos (US Equity):** Mercado americano amplo (S&P 500, Nasdaq, Russell);
+    * **Mercados Desenvolvidos Ex-EUA:** Europa, Japão, Reino Unido, Canadá e Oceania;
+    * **Mercados Emergentes:** China, Índia, Sudeste Asiático e América Latina;
+    * **Neutro Global (All-World):** Índices ponderados globais (ACWI / VT).
+  * **Dimensão 2 — Veículo de Custódia & Risco Jurisdicional:**
+    * **Moeda Forte Direta (USD):** Ativos custodiados em corretoras internacionais em dólar americano;
+    * **BDRs Custodiados na B3 (BRL):** Recibos negociados na bolsa brasileira.
+  * **Destaque Patrimonial:** Cálculo explícito de exposição líquida em Moeda Forte no exterior (`usdDirectValueBRL` e `usdDirectPct`).
+
+- **Experiência Sem Fricção (Zero Friction UX):**
+  * Autocompletar heurístico e inferência imediata de setor, estratégia imobiliária, perfil cíclico de ações, emissor de renda fixa e jurisdição internacional ao digitar tickers no formulário de ativos (`inferSectorFromTicker`, `getFiiMacroCategory`, `inferFixedIncomeCategories`, `getStocksProfile` e `getInternationalProfile`);
+  * Badges de feedback em tempo real no formulário orientando o investidor com transparência visual sobre a classificação patrimonial instantaneamente.
+
 ---
 
 ## 4. DATAS, MOEDA E VALIDAÇÕES

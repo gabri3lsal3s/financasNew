@@ -21,6 +21,7 @@ export interface ReportDonutChartProps {
   strokeWidth?: number;
   className?: string;
   legendClassName?: string;
+  showLegend?: boolean;
   onSegmentClick?: (segment: ReportDonutSegment) => void;
 }
 
@@ -66,6 +67,7 @@ export function ReportDonutChart({
   strokeWidth = 14,
   className,
   legendClassName,
+  showLegend = true,
   onSegmentClick,
 }: ReportDonutChartProps) {
   const radius = (size - strokeWidth) / 2;
@@ -103,6 +105,64 @@ export function ReportDonutChart({
     };
   });
 
+  const donutElement = (
+    <div className="relative shrink-0 flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        className="transform -rotate-90"
+        aria-hidden="true"
+      >
+        {/* Fatias proporcionais com extremidades arredondadas flutuantes sem trilha cinza */}
+        {preparedSegments
+          .filter((s) => s.dash > 0)
+          .map((segment) => (
+            <circle
+              key={segment.key}
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="transparent"
+              stroke={segment.color}
+              strokeWidth={strokeWidth}
+              strokeDasharray={segment.strokeDasharray}
+              strokeDashoffset={segment.strokeDashoffset}
+              strokeLinecap={segment.strokeLinecap}
+              onClick={onSegmentClick ? () => onSegmentClick(segment) : undefined}
+              className={cn(
+                "transition-opacity",
+                onSegmentClick && "cursor-pointer hover:opacity-80",
+              )}
+            />
+          ))}
+      </svg>
+
+      {/* Centro com rótulo/valor */}
+      {(centerLabel || centerValue) && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2 pointer-events-none">
+          {centerLabel && (
+            <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider leading-none">
+              {centerLabel}
+            </span>
+          )}
+          {centerValue && (
+            <span className="num font-mono text-xs sm:text-sm font-bold text-foreground mt-0.5 leading-tight">
+              {centerValue}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  if (!showLegend) {
+    return (
+      <div className={cn("inline-flex items-center justify-center shrink-0", className)}>
+        {donutElement}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -111,55 +171,7 @@ export function ReportDonutChart({
         className,
       )}
     >
-      {/* SVG Donut */}
-      <div className="relative shrink-0 flex items-center justify-center" style={{ width: size, height: size }}>
-        <svg
-          width={size}
-          height={size}
-          viewBox={`0 0 ${size} ${size}`}
-          className="transform -rotate-90"
-          aria-hidden="true"
-        >
-          {/* Fatias proporcionais com extremidades arredondadas flutuantes sem trilha cinza */}
-          {preparedSegments
-            .filter((s) => s.dash > 0)
-            .map((segment) => (
-              <circle
-                key={segment.key}
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                fill="transparent"
-                stroke={segment.color}
-                strokeWidth={strokeWidth}
-                strokeDasharray={segment.strokeDasharray}
-                strokeDashoffset={segment.strokeDashoffset}
-                strokeLinecap={segment.strokeLinecap}
-                onClick={onSegmentClick ? () => onSegmentClick(segment) : undefined}
-                className={cn(
-                  "transition-opacity",
-                  onSegmentClick && "cursor-pointer hover:opacity-80",
-                )}
-              />
-            ))}
-        </svg>
-
-        {/* Centro com rótulo/valor */}
-        {(centerLabel || centerValue) && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2 pointer-events-none">
-            {centerLabel && (
-              <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider leading-none">
-                {centerLabel}
-              </span>
-            )}
-            {centerValue && (
-              <span className="num font-mono text-xs sm:text-sm font-bold text-foreground mt-0.5 leading-tight">
-                {centerValue}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+      {donutElement}
 
       {/* Legenda com Cores e Percentuais */}
       <div className="flex-1 w-full flex flex-col gap-2">

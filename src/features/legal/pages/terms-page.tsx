@@ -234,6 +234,9 @@ export function TermsPage() {
           <p>
             <strong>7.3.</strong> O software não presta serviços de consultoria de valores mobiliários (Resolução CVM nº 19/2021) nem elabora relatórios de análise, recomendações de investimento ou juízos de valor sobre ativos financeiros (Resolução CVM nº 20/2021). A rentabilidade pretérita demonstrada em consolidações não constitui garantia de retorno futuro.
           </p>
+          <p>
+            <strong>7.4.</strong> O usuário reconhece expressamente que qualquer cálculo de rebalanceamento, defasagem ou alocação numérica de aportes gerado pela plataforma tem natureza estritamente instrumental, contábil e ilustrativa. A decisão final de investimento, seleção de ativos e transmissão de quaisquer ordens de compra e venda constitui prerrogativa exclusiva e indelegável do usuário perante sua respectiva corretora de valores autorizada.
+          </p>
         </div>
       </section>
 

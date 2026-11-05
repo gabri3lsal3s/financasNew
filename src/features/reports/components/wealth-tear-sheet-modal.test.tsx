@@ -338,5 +338,66 @@ describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executi
     expect(printSheetEl).toBeInTheDocument();
     expect(printSheetEl?.querySelector(".print-document")).toBeInTheDocument();
   });
+
+  it("renderiza os 4 Raios-X de Subalocação profunda e não renderiza mais o comparativo fatiado de benchmarks", () => {
+    render(
+      <WealthTearSheetModal
+        open={true}
+        onOpenChange={vi.fn()}
+        rows={[
+          {
+            ticker: "ITUB4",
+            name: "Itaú Unibanco",
+            assetClass: "Ações",
+            sector: "Financeiro",
+            currency: "BRL",
+            quantity: 100,
+            averagePrice: 30,
+            currentPrice: 35,
+            valueBRL: 3500,
+            totalCostBRL: 3000,
+            unrealizedPnlBRL: 500,
+            unrealizedPnlPct: 16.67,
+            totalReturnPnlBRL: 600,
+            totalReturnPct: 20,
+            isCash: false,
+          },
+          {
+            ticker: "HGLG11",
+            name: "CSHG Logística",
+            assetClass: "FIIs",
+            sector: "Logística",
+            currency: "BRL",
+            quantity: 50,
+            averagePrice: 150,
+            currentPrice: 160,
+            valueBRL: 8000,
+            totalCostBRL: 7500,
+            unrealizedPnlBRL: 500,
+            unrealizedPnlPct: 6.67,
+            totalReturnPnlBRL: 800,
+            totalReturnPct: 10.67,
+            isCash: false,
+          },
+        ]}
+        totalBRL={11500}
+        totalCostBRL={10500}
+        allocationAnalysis={mockAllocation}
+        concentrationRisk={mockConcentration}
+      />,
+    );
+
+    // Não deve mais renderizar o comparativo fragmentado de benchmarks por classe
+    expect(screen.queryByText(/Comparativo por Tipo de Ativo vs. Benchmarks/i)).not.toBeInTheDocument();
+
+    // Deve renderizar o título da seção de Raios-X
+    expect(screen.getAllByText(/Raios-X de Subalocação Setorial, Cíclica & Risco de Emissão/i).length).toBeGreaterThan(0);
+
+    // Deve renderizar os cards de Raio-X
+    expect(screen.getAllByText(/Raio-X de Ações Brasil/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Raio-X de Fundos Imobiliários/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Raio-X de Renda Fixa/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Raio-X Internacional/i).length).toBeGreaterThan(0);
+  });
 });
 

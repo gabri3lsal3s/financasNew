@@ -12,4 +12,7 @@ export * from "./report-class-tables";
 export * from "./report-redemptions-table";
 export * from "./report-allocation-donuts";
 export * from "./report-performance-chart";
-
+export * from "./report-stocks-breakdown-card";
+export * from "./report-fii-breakdown-card";
+export * from "./report-fixed-income-breakdown-card";
+export * from "./report-international-breakdown-card";

@@ -2,7 +2,13 @@ import { Fragment, useMemo, useState, type Dispatch, type SetStateAction } from 
 import { ChevronDown, ChevronRight, PieChart, Printer, TrendingUp, History, ArrowRight } from "lucide-react";
 import { Badge, Button, EmptyState } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
-import { ReportAllocationDonuts } from "@/components/modules";
+import {
+  ReportAllocationDonuts,
+  ReportFiiBreakdownCard,
+  ReportFixedIncomeBreakdownCard,
+  ReportInternationalBreakdownCard,
+  ReportStocksBreakdownCard,
+} from "@/components/modules";
 import { AllocationBreakdownDialog, AssetDetailSheet } from "@/features/investments/components";
 import { useGroupTargets, usePortfolioAssets, usePortfolioPosition } from "@/state";
 import { numberToCents } from "@/domain/money";
@@ -79,6 +85,7 @@ export function InvestmentsTab({
       source: r.source ?? "manual",
       pricingMode: r.pricingMode ?? "unit_price",
       isCash: r.isCash ?? false,
+      fixedIncomeMetadata: r.fixedIncomeMetadata ?? null,
     }));
   }, [rows, position.rows]);
 
@@ -425,6 +432,17 @@ export function InvestmentsTab({
           onSectorClick={(sectorName) => setBreakdownGroup({ type: "sector", name: sectorName })}
         />
       ) : null}
+
+      {/* Raios-X de Subalocação Profunda: Ações Brasil, FIIs, Renda Fixa e Internacional */}
+      <div className="flex flex-col gap-4.5 w-full">
+        <ReportStocksBreakdownCard positions={breakdownRows} />
+        <ReportFiiBreakdownCard positions={breakdownRows} />
+        <ReportFixedIncomeBreakdownCard
+          positions={breakdownRows}
+          assetsMetadata={assetsQuery.data ?? []}
+        />
+        <ReportInternationalBreakdownCard positions={breakdownRows} />
+      </div>
 
       {/* Raio-X Analítico de Classe e Setor */}
       <AllocationBreakdownDialog

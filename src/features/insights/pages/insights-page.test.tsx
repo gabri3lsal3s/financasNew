@@ -78,6 +78,30 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  useEmergencyFundComposition: () => ({
+    composition: {
+      totalReserveCents: 1_200_000,
+      cashInAccountsCents: 1_200_000,
+      portfolioReserveCents: 0,
+      breakdown: [],
+      warnings: [],
+      targetMonths: 6,
+      targetMonthsProgressPercent: 100,
+      targetMonthsCents: 1_200_000,
+    },
+    config: {
+      includeCheckingAccounts: true,
+      selectionMode: "auto_cash",
+      selectedAssetIds: [],
+      selectedClasses: [],
+      useNetValue: true,
+      targetMonths: 6,
+    },
+    updateConfig: vi.fn(),
+    isLoading: false,
+    isUpdating: false,
+    portfolioRows: [],
+  }),
 }));
 
 describe("InsightsPage (motor de insights §3.7)", () => {

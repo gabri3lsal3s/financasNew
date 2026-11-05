@@ -89,6 +89,12 @@ export async function updateCustomSettings(patch: Partial<UserCustomSettings>): 
       ...(current?.custom_settings?.cardDigitsMapping ?? {}),
       ...(patch.cardDigitsMapping ?? {}),
     },
+    emergencyFundConfig: patch.emergencyFundConfig !== undefined
+      ? {
+          ...(current?.custom_settings?.emergencyFundConfig ?? {}),
+          ...patch.emergencyFundConfig,
+        }
+      : current?.custom_settings?.emergencyFundConfig,
   };
 
   const input: DbUpdate<UserPreferences> = {

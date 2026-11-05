@@ -41,6 +41,7 @@ import {
   useMacroIndicators,
   useUserAccess,
   useUserPreferences,
+  useEmergencyFundComposition,
 } from "@/state";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { ExpenseDetailDialog } from "@/features/transactions";
@@ -221,6 +222,7 @@ export function ReportsPage() {
 
   // Queries de Investimentos & Patrimônio
   const positionQuery = usePortfolioPosition();
+  const emergencyFund = useEmergencyFundComposition();
   const snapshotsQuery = usePortfolioSnapshots();
   const macroIndicatorsQuery = useMacroIndicators();
   const assetsQuery = usePortfolioAssets();
@@ -530,10 +532,15 @@ export function ReportsPage() {
         ? monthlyExpenses.data.reduce((acc, e) => acc + e.value, 0)
         : 3000;
 
+    const liquidReservesBRL =
+      emergencyFund.composition.totalReserveCents > 0
+        ? emergencyFund.composition.totalReserveCents / 100
+        : cashBalanceBRL;
+
     return calculateFreedomIndex(
       monthlyDivs,
       monthlyExp,
-      cashBalanceBRL,
+      liquidReservesBRL,
       assets.map((a) => {
         const isUSD = a.currency === "USD";
         const rate = isUSD ? usdRate : 1;
@@ -546,7 +553,7 @@ export function ReportsPage() {
         };
       }),
     );
-  }, [yearDividendsBRL, monthlyExpenses.data, cashBalanceBRL, assets, usdRate]);
+  }, [yearDividendsBRL, monthlyExpenses.data, emergencyFund.composition.totalReserveCents, cashBalanceBRL, assets, usdRate]);
 
   // Conversão de dados da aba finanças
   const expenseEntries = useMemo(() => {
@@ -1076,6 +1083,7 @@ export function ReportsPage() {
             annualSelicRate={macroIndicatorsQuery.data?.annualSelicRate}
             annualIpcaRate={macroIndicatorsQuery.data?.annualIpcaRate}
             ibovPeriodReturnPct={macroIndicatorsQuery.data?.ibovPeriodReturnPct}
+            assetsMetadata={assetsQuery.data ?? []}
           />
         </Suspense>
       )}

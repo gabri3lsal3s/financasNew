@@ -58,6 +58,12 @@ export function useUpdateCustomSettings() {
                 ...(old.custom_settings?.bankAssistant ?? {}),
                 ...(patch.bankAssistant ?? {}),
               },
+              emergencyFundConfig: patch.emergencyFundConfig !== undefined
+                ? {
+                    ...(old.custom_settings?.emergencyFundConfig ?? {}),
+                    ...patch.emergencyFundConfig,
+                  }
+                : old.custom_settings?.emergencyFundConfig,
             },
           };
         });

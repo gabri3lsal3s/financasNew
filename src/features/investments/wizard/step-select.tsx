@@ -60,7 +60,7 @@ export function StepSelect({
 
   const hasTargets = targets.length > 0 || (classTargets && classTargets.length > 0) || (sectorTargets && sectorTargets.length > 0);
 
-  // Top 3 recomendações baseadas no motor hierárquico (só são calculadas se houver metas)
+  // Top 3 sugestões baseadas no motor hierárquico (só são calculadas se houver metas)
   const aporteSuggestions = useMemo(
     () =>
       hasTargets
@@ -106,7 +106,7 @@ export function StepSelect({
           {isSearching
             ? "Resultados sugeridos"
             : hasTargets && aporteSuggestions.length > 0
-              ? "Recomendados para aporte"
+              ? "Sugeridos para rebalanceamento"
               : "Seus ativos em carteira"}
         </p>
 
@@ -117,7 +117,7 @@ export function StepSelect({
               <div className="flex items-start gap-2.5 rounded-xl border border-border/70 bg-surface/80 p-3 text-xs text-muted-foreground">
                 <Sparkles className="size-4 shrink-0 text-primary mt-0.5" aria-hidden="true" />
                 <span>
-                  Recomendações automáticas de aporte só aparecem quando há metas configuradas. Defina suas metas na aba <strong>Metas de Alocação</strong> para receber sugestões de rebalanceamento.
+                  Sugestões automáticas de rebalanceamento só aparecem quando há metas configuradas. Defina suas metas na aba <strong>Metas de Alocação</strong> para calcular a distribuição do aporte.
                 </span>
               </div>
 

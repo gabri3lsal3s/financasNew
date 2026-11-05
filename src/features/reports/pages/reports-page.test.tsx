@@ -229,6 +229,26 @@ vi.mock("@/state", () => ({
     hasFeature: (key: string) => mockHasFeature(key),
     isLoading: false,
   }),
+  useEmergencyFundComposition: () => ({
+    composition: {
+      compositionItems: [],
+      targetMonths: 6,
+      targetMonthsDerived: false,
+      monthlyBaselineCents: 0,
+      targetFundCents: 0,
+      totalReserveCents: 0,
+      surplusOrDeficitCents: 0,
+      currentCoverageMonths: 0,
+      targetCoverageMonths: 6,
+      effectiveCoveragePct: 0,
+      isFullyFunded: true,
+      coverageStatus: "confortavel",
+      hasManualAssignments: false,
+      hasExplicitCoverageTarget: false,
+    },
+    isLoading: false,
+    error: null,
+  }),
 }));
 
 
