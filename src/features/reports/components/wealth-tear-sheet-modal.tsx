@@ -979,6 +979,7 @@ export function WealthTearSheetModal({
       <ReportFooter
         accountHolder={accountHolder}
         disclaimer={OFFICIAL_WEALTH_TEAR_SHEET_DISCLAIMER}
+        showQrCode
       />
     </ReportDocumentLayout>
   );

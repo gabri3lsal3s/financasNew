@@ -237,6 +237,7 @@ export function ConsolidatedWealthModal({
       <ReportFooter
         accountHolder={accountHolder}
         disclaimer={OFFICIAL_CVM_DISCLAIMER}
+        showQrCode
       />
     </ReportDocumentLayout>
   );

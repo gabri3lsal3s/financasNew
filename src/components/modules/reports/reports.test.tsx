@@ -32,7 +32,7 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     expect(screen.getByText(/Gabriel Sales/)).toBeInTheDocument();
   });
 
-  it("renderiza ReportFooter com termos de confidencialidade", () => {
+  it("renderiza ReportFooter com termos de confidencialidade, chancela tipográfica e micro QR Code", () => {
     render(
       <ReportFooter
         accountHolder="Gabriel Sales"
@@ -42,6 +42,36 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
 
     expect(screen.getByText(/Documento estritamente confidencial/)).toBeInTheDocument();
     expect(screen.getByText(/DOC-202608-XYZ/)).toBeInTheDocument();
+    expect(screen.getByText("Relatório estruturado via Áxis Finance · Gestão Financeira Pessoal & Automação | axis.app")).toBeInTheDocument();
+    expect(screen.getByText("Chancela Oficial · Validação em axis.app")).toBeInTheDocument();
+    expect(screen.getByLabelText(/QR Code de validação do documento DOC-202608-XYZ/i)).toBeInTheDocument();
+  });
+
+  it("permite ocultar o micro QR Code no ReportFooter via showQrCode={false}", () => {
+    render(
+      <ReportFooter
+        accountHolder="Gabriel Sales"
+        documentId="DOC-202608-XYZ"
+        showQrCode={false}
+      />,
+    );
+
+    expect(screen.queryByLabelText(/QR Code de validação/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Relatório estruturado via Áxis Finance · Gestão Financeira Pessoal & Automação | axis.app")).toBeInTheDocument();
+  });
+
+  it("permite customizar a URL de validação e o texto da chancela no ReportFooter", () => {
+    render(
+      <ReportFooter
+        accountHolder="Gabriel Sales"
+        creditText="Relatório Customizado · Contabilidade Alpha | alpha.com"
+        validationUrl="https://alpha.com/cert/123"
+        showQrCode={true}
+      />,
+    );
+
+    expect(screen.getByText("Relatório Customizado · Contabilidade Alpha | alpha.com")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /QR Code de validação do documento/i })).toBeInTheDocument();
   });
 
   it("renderiza ReportKpiGrid com múltiplos indicadores e ícones", () => {

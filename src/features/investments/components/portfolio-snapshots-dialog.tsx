@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { Calendar, Printer, Trash2, FileText } from "lucide-react";
 import { Badge, Button, ConfirmDialog, EmptyState, Modal, usePrint } from "@/components/ui";
+import { ReportFooter } from "@/components/modules/reports";
+import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import type { PortfolioMonthlySeriesPoint } from "@/domain/portfolio";
@@ -411,6 +413,13 @@ export function PortfolioSnapshotsDialog({
             </table>
           </div>
         )}
+
+        {/* Rodapé Contábil e Institucional Padronizado */}
+        <ReportFooter
+          disclaimer={OFFICIAL_CVM_DISCLAIMER}
+          showQrCode
+          className="mt-4"
+        />
       </div>
 
       <ConfirmDialog

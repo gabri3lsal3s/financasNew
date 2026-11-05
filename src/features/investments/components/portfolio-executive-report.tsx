@@ -636,6 +636,7 @@ export function PortfolioExecutiveReport({
             <ReportFooter
               accountHolder={accountHolder}
               disclaimer={OFFICIAL_CVM_DISCLAIMER}
+              showQrCode
             />
           </div>
         )}

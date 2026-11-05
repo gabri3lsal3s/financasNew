@@ -143,6 +143,12 @@ export const OFFICIAL_TAX_FACILITATOR_DISCLAIMER =
   "Documento auxiliar e orientativo gerado pelo Áxis Finance para facilitar o preenchimento do programa da Receita Federal. O cálculo tem caráter estimativo e não substitui o trabalho de um contador habilitado nem a Declaração de Ajuste Anual. A conferência final com os informes oficiais de custódia e o recolhimento tempestivo de tributos cabem exclusivamente ao contribuinte.";
 
 /**
+ * Chancela contábil e institucional padronizada para rodapés de relatórios, dossiês e extratos PDF (§F6 — Tarefa 6.1).
+ */
+export const OFFICIAL_REPORT_FOOTER_CREDIT =
+  "Relatório estruturado via Áxis Finance · Gestão Financeira Pessoal & Automação | axis.app";
+
+/**
  * Divulgação destacada oficial (Prominent Disclosure — Contrato 4) para permissão de leitura
  * de notificações no Android (BIND_NOTIFICATION_LISTENER_SERVICE), em conformidade estrita com as
  * Políticas de Privacidade e Serviços Financeiros da Google Play Store.

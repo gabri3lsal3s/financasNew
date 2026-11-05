@@ -214,16 +214,16 @@ Transformar os motores de amortização e alocação de carteira em ferramentas 
 
 Garantir que documentos contábeis e extratos exportados pelo usuário transmitam alto padrão executivo e apresentem o Áxis Finance discretamente para cônjuges, contadores e sócios.
 
-- [ ] **Tarefa 6.1: Padronização do Rodapé Contábil nos Relatórios Exportados**
+- [x] **Tarefa 6.1: Padronização do Rodapé Contábil nos Relatórios Exportados**
   - Atualizar os templates de exportação e impressão de PDF:
     - Inclusão de rodapé tipográfico minimalista:  
       `Relatório estruturado via Áxis Finance · Gestão Financeira Pessoal & Automação | axis.app`
     - Inclusão opcional de micro QR Code no canto com link de validação.
 
-- [ ] **Portão de Qualidade 6:**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] **Commit & Push da Fase 6:** `git commit -m "feat(export): chancela institucional sobria em relatorios pdf"`
+- [x] **Portão de Qualidade 6:**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] **Commit & Push da Fase 6:** `git commit -m "feat(export): chancela institucional sobria em relatorios pdf"`
 
 ---
 
