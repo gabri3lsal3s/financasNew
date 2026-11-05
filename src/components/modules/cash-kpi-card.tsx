@@ -18,8 +18,6 @@ export interface CashKpiCardProps {
   hasCashAsset?: boolean;
   /** Chamado ao clicar em "Ajustar caixa" ou "Cadastrar saldo em caixa". */
   onEdit: () => void;
-  /** @deprecated O ativo de caixa não é mais excluído via card; ajuste para R$ 0 para zerar. */
-  onDelete?: () => void;
   /** Ação contextual para navegar ou simular aporte com o caixa disponível. */
   onAporte?: () => void;
   /**

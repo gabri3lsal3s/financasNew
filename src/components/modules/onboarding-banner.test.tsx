@@ -90,7 +90,7 @@ describe("OnboardingBanner — banner compacto de configuração inicial (§5.7)
   it("modal exibe a dica de contingência", () => {
     render(<OnboardingBanner counts={empty} onDismiss={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
-    expect(screen.getByText("Dica de contingência")).toBeInTheDocument();
+    expect(screen.getByText("Comprovantes e Cupons Fiscais")).toBeInTheDocument();
   });
 
   it("modal não exibe botão Configurar para passos já concluídos", () => {

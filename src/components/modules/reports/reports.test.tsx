@@ -10,7 +10,6 @@ import {
   ReportRiskGauge,
   ReportDividendSparkline,
   ReportWaterfallBar,
-  ReportGapPinBar,
   ReportClassTables,
   ReportDocumentLayout,
   ReportPerformanceChart,
@@ -147,21 +146,6 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     expect(screen.getByText("Receita Bruta")).toBeInTheDocument();
     expect(screen.getByText("Despesas")).toBeInTheDocument();
     expect(screen.getByText("Poupança Líquida")).toBeInTheDocument();
-  });
-
-  it("renderiza ReportGapPinBar para comparativo meta vs realizado", () => {
-    render(
-      <ReportGapPinBar
-        items={[
-          { key: "acoes", label: "Ações", actualPct: 35, targetPct: 40, gapPct: -5, color: "#1b6b62" },
-        ]}
-      />,
-    );
-
-    expect(screen.getByText("Ações")).toBeInTheDocument();
-    expect(screen.getByText("35,0%")).toBeInTheDocument();
-    expect(screen.getByText("40,0%")).toBeInTheDocument();
-    expect(screen.getByText("-5,0%")).toBeInTheDocument();
   });
 
   it("renderiza ReportClassTables com cabeçalho leve e linha de subtotal contábil no tfoot", () => {

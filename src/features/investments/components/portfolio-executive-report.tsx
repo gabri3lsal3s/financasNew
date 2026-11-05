@@ -302,12 +302,12 @@ export function PortfolioExecutiveReport({
     >
       <div className="flex flex-col gap-4 w-full">
         {/* Barra Superior Interativa: Seletor de Competencia e Abas de Modo */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border border-border/80 bg-surface/80 shadow-2xs print:hidden">
-          <div className="flex items-center gap-2.5">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 p-3 rounded-xl border border-border/80 bg-surface/80 shadow-2xs print:hidden min-w-0">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 min-w-0">
             <span className="text-xs font-semibold text-foreground whitespace-nowrap">
               Competência:
             </span>
-            <div className="w-48">
+            <div className="w-36 sm:w-44 min-w-[130px]">
               <Select
                 value={selectedMonth}
                 onValueChange={(val) => setSelectedMonth(val)}
@@ -329,7 +329,7 @@ export function PortfolioExecutiveReport({
                 variant="ghost"
                 size="xs"
                 onClick={() => setDeleteModalOpen(true)}
-                className="text-muted-foreground hover:text-negative-strong hover:bg-negative/10 gap-1.5 h-6 px-2 text-[11px] cursor-pointer"
+                className="text-muted-foreground hover:text-negative-strong hover:bg-negative/10 gap-1.5 h-6 px-2 text-[11px] cursor-pointer shrink-0"
                 title="Excluir snapshot gravado deste mês"
               >
                 <Trash2 className="size-3 text-muted-foreground" aria-hidden="true" />
@@ -338,20 +338,23 @@ export function PortfolioExecutiveReport({
             ) : null}
           </div>
 
-          <div className="w-full sm:w-auto">
+          <div className="w-full xl:w-auto shrink-0 overflow-x-auto no-scrollbar">
             <Tabs
               value={activeTab}
               onValueChange={(val) => setActiveTab(val as "report" | "closing")}
               variant="pills"
+              className="w-full sm:w-auto"
               items={[
                 {
                   value: "report",
                   label: "Relatório Executivo (A4)",
+                  shortLabel: "Relatório (A4)",
                   icon: <FileText className="size-3.5" aria-hidden="true" />,
                 },
                 {
                   value: "closing",
                   label: "Conferir & Ajustar",
+                  shortLabel: "Conferir & Ajustar",
                   icon: <SlidersHorizontal className="size-3.5" aria-hidden="true" />,
                 },
               ]}

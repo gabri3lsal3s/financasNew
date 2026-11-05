@@ -152,12 +152,12 @@
     │   │   │                      #   icon-picker, live-pulse-beacon (F11), popover,
     │   │   │                      #   number-stepper-input, error-state (v1.25 — Alert + "Tentar novamente")…
     │   │   └── index.ts
-    │   ├── modules/               # Componentes de DOMÍNIO reutilizáveis: stat-card (F56 — auto-fit 7+ dígitos),
-    │   │   │                      #   kpi-card, portfolio/ (position-types, position-table-header, subcomponentes F57),
+    │   ├── modules/               # Componentes de DOMÍNIO reutilizáveis: kpi-card, cash-kpi-card,
+    │   │   │                      #   portfolio/ (position-types, position-table-header, subcomponentes F57),
     │   │   │                      #   subscription/ (subscription-badge, upgrade-dialog, checkout-sheet),
     │   │   │                      #   category-icon(+icons), month-picker, year-picker, transaction-row,
     │   │   │                      #   budget-progress-bar, debt-status-badge,
-    │   │   │                      #   invoice-status-badge, onboarding-card, pwa-update-toast,
+    │   │   │                      #   invoice-status-badge, onboarding-banner, pwa-update-toast,
     │   │   │                      #   notifications-popover, install-app-button,
     │   │   │                      #   category-donut, interactive-target-donut, daily-flow-chart (F8),
     │   │   │                      #   floating-calculator, calculator-keypad (F9),
@@ -169,10 +169,10 @@
     │   │   │                      #   pending-suggestions-card (card discreto de transações capturadas do assistente passivo),
     │   │   │                      #   paste-receipt-dialog (modal universal de colagem de comprovantes e notificações bancárias),
     │   │   │                      #   prediction-suggestions (F21 — autopreenchimento preditivo),
-    │   │   │                      #   export-data-hub (F22), monthly-close-print-view (F22),
+    │   │   │                      #   export-data-hub (F22),
     │   │   │                      #   emergency-thermometer (Reserva de Emergência e Autonomia),
     │   │   │                      #   help-modal (Central de Ajuda, FAQ e atalhos para modo simulação),
-    │   │   │                      #   welcome-modal, demo-track-select-modal, demo-tour-spotlight, demo-tour-bar, demo-exit-confirm-dialog,
+    │   │   │                      #   welcome-modal, demo-track-select-modal, demo-tour-spotlight,
     │   │   │                      #   aporte-result (F4/F31 — checklist interativo de aportes),
     │   │   │                      #   cash-kpi-card (card exclusivo de saldo em Caixa & Liquidez com variantes banner e card),
     │   │   │                      #   reports/ (report-document-layout, report-header, report-footer, report-kpi-grid,
@@ -246,7 +246,6 @@
     │   │                          #     (single/all/subsequent — resolveExpenseDeleteIds,
     │   │                          #     espelha o RPC p/ atualizações otimistas F30)
     │   ├── cards/                 #   saldo/status de fatura, schemas.ts (Zod) + refinancing (parcelamento sem double-counting)
-    │   ├── charges/               #   agregação por natureza (regular/juros/multas/impostos/taxas) e Dinheiro Queimado
     │   ├── loans/                 #   cronogramas Price/SAC, saldo devedor, amortização extraordinária a valor presente e progresso do contrato
     │   ├── recurrences/           #   F32: geração de ocorrências por frequência
     │   │                          #     (monthly/weekly/quarterly/yearly, fim por data ou

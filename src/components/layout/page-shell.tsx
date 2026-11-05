@@ -1,7 +1,8 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useSearchParams } from "react-router";
 import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { trackFeatureUse } from "@/services/analytics";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { BackToTop } from "@/components/layout/back-to-top";
 import { CalculatorButton } from "@/components/layout/calculator-button";
@@ -99,6 +100,27 @@ export function PageShell() {
     }
     return Object.keys(vals).length > 0 ? vals : undefined;
   }, [valorParam, descParam, dataParam, formaParam, cartaoParam, categoriaParam, parcelasParam]);
+
+  // Telemetria leve de engajamento para a tela /admin (respeita anonimização e modo simulação)
+  useEffect(() => {
+    const pathToModule: Record<string, string> = {
+      "/": "expenses",
+      "/transacoes": "expenses",
+      "/cartoes": "cards",
+      "/dividas": "debts",
+      "/orcamentos": "budgets",
+      "/relatorios": "reports",
+      "/investments": "investments",
+      "/configuracoes": "settings",
+      "/insights": "expenses",
+      "/lembretes": "expenses",
+      "/admin": "settings",
+    };
+    const targetModule = pathToModule[location.pathname];
+    if (targetModule && !isDemoActive) {
+      trackFeatureUse(targetModule, "view_page");
+    }
+  }, [location.pathname, isDemoActive]);
 
   const handleWizardOpenChange = (next: boolean) => {
     setLocalWizardOpen(next);

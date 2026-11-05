@@ -1,5 +1,17 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.89** registra o **Saneamento Estrutural de Código Morto & Módulos Legados Substituídos** (2026-11-04):
+> - **(1) Erradicação Cirúrgica de Componentes e Motores Órfãos**:
+>   - Exclusão do motor de encargos legado `src/domain/charges/` e remoção do campo isolado de natureza de despesa em `ExpenseDetailDialog`;
+>   - Exclusão da barra protótipo de desvio de alocação `ReportGapPinBar` e limpeza dos testes em `reports.test.tsx`;
+>   - Exclusão de 6 componentes de UI legados 100% substituídos por implementações modernas: `AlertCard` (substituído por `SmartAdvisorCard`), `StatCard` (padronizado em `KpiCard`), `DemoTourBar` e `DemoExitConfirmDialog` (substituídos por `DemoTourSpotlight`), `OnboardingCard` (substituído por `OnboardingBanner`) e `MonthlyClosePrintView` (substituído pelo formato A4 consultivo `FinancialCloseReportModal`);
+>   - Purga e desduplicação de exports em barrels `src/components/modules/index.ts` e `reports/index.ts`; remoção da prop depreciada `onDelete` em `CashKpiCardProps`.
+> - **(2) Ativação da Telemetria Leve Resiliente (`src/services/analytics/`)**:
+>   - Conexão do coletor `tracker.ts` (`trackFeatureUse`) no ciclo de navegação do `PageShell`, alimentando o ranking real de uso em `/admin` com buffer em memória (60s / pagehide / visibilitychange), conformidade estrita à LGPD (zero PII ou saldos) e suíte unitária `tracker.test.ts`.
+> - **(3) Sincronização da Documentação Viva e Governança**:
+>   - Atualização completa de `docs/architecture/ARCHITECTURE.md`, `docs/architecture/PROJECT_STRUCTURE.md` e `docs/design/DESIGN_SYSTEM.md`;
+>   - Registro formal do plano canônico em `docs/plans/completed/PLANO_SANEAMENTO_CODIGO_MORTO_E_LEGADO.md`.
+>
 > **v2.88** registra a **Conclusão Integral da Revisão de Autenticação, Segurança de Sessão & Conformidade LGPD** (2026-11-04):
 > - **(1) Blindagem contra Account Takeover & Reautenticação Obrigatória**:
 >   - Exigência atômica da senha atual em `changeUserPassword` e no novo fluxo `requestUserEmailChange` via `verifyCurrentPassword`;
@@ -5946,7 +5958,7 @@ flowchart TD
 
 ### Fase 100 — Revisão Integral de Autenticação, Segurança de Sessão & Conformidade LGPD
 
-> **Status:** ✅ Concluída e Auditada — **Governança de Autenticação, Proteção contra Account Takeover, PKCE Estrito, Teardown de Sessão e Privacidade por Design**: Conclusão integral do plano `docs/plans/PLANO_REVISAO_AUTH_SESSAO_E_SEGURANCA.md`. Implementação de salvaguardas rigorosas contra sequestro de contas com reautenticação obrigatória por senha atual em alterações de credenciais (`changeUserPassword` e `requestUserEmailChange`), novo fluxo modal de alteração de e-mail com trigger PostgreSQL atômica em `auth.users` (`20260101000064_sync_profile_email_on_auth_change.sql`) sincronizando `public.profiles`, confirmação de senha no formulário de cadastro, integração real anti-bot com Cloudflare Turnstile, resolução universal de URLs públicas (`getPublicAppUrl`), ativação de PKCE estrito no cliente Supabase, desconexão atômica de WebSockets Realtime e purga de memória volátil de comprovantes/OCR no logout (`resetAppState`), timeout de inatividade de 20 minutos na Web (`useIdleSessionTimeout`), backoff exponencial no login, escudo biométrico com botão de emergência no Android Pro, minimização estrita de PII na telemetria Sentry (apenas UUID anônimo, zero e-mails), trava de segurança para exportação de backup financeiro completo e garantia do Direito ao Esquecimento via RPC `delete_current_user_account`.
+> **Status:** ✅ Concluída e Auditada — **Governança de Autenticação, Proteção contra Account Takeover, PKCE Estrito, Teardown de Sessão e Privacidade por Design**: Conclusão integral do plano `docs/plans/completed/PLANO_REVISAO_AUTH_SESSAO_E_SEGURANCA.md`. Implementação de salvaguardas rigorosas contra sequestro de contas com reautenticação obrigatória por senha atual em alterações de credenciais (`changeUserPassword` e `requestUserEmailChange`), novo fluxo modal de alteração de e-mail com trigger PostgreSQL atômica em `auth.users` (`20260101000064_sync_profile_email_on_auth_change.sql`) sincronizando `public.profiles`, confirmação de senha no formulário de cadastro, integração real anti-bot com Cloudflare Turnstile, resolução universal de URLs públicas (`getPublicAppUrl`), ativação de PKCE estrito no cliente Supabase, desconexão atômica de WebSockets Realtime e purga de memória volátil de comprovantes/OCR no logout (`resetAppState`), timeout de inatividade de 20 minutos na Web (`useIdleSessionTimeout`), backoff exponencial no login, escudo biométrico com botão de emergência no Android Pro, minimização estrita de PII na telemetria Sentry (apenas UUID anônimo, zero e-mails), trava de segurança para exportação de backup financeiro completo e garantia do Direito ao Esquecimento via RPC `delete_current_user_account`.
 
 #### 1. Entregas Concluídas
 - **Blindagem contra Account Takeover & Reautenticação Obrigatória (Fases 3 e 4):**
@@ -5970,4 +5982,15 @@ flowchart TD
   - Sanitização de URLs de requisição e query strings no gancho `beforeSend` do Sentry via `scrubSensitiveData`;
   - Trava de confirmação de segurança para download de backup integral JSON em `ExportDataHub` (biometria obrigatória no Android Pro ou modal com confirmação explícita na Web);
   - Auditoria e validação da RPC de expurgo integral `delete_current_user_account`.
+
+---
+
+### Fase 101 — Saneamento Estrutural de Código Morto & Módulos Legados Substituídos (v2.89)
+
+> **Status:** ✅ Concluída e Auditada — **Saneamento Cirúrgico Anti-Regressão**: Conclusão integral do plano `docs/plans/completed/PLANO_SANEAMENTO_CODIGO_MORTO_E_LEGADO.md`. Erradicação cirúrgica de componentes e motores órfãos legados sem consumidores de produção:
+> - **Exclusão de Domínio e Relatórios:** Remoção do motor `src/domain/charges/` e seus testes, e da barra de pinos de desvios `ReportGapPinBar` e casos associados em `reports.test.tsx`.
+> - **Exclusão de Componentes Legados Substituídos:** Exclusão de `AlertCard` (substituído por `SmartAdvisorCard`), `StatCard` (padronizado em `KpiCard`), `DemoTourBar` e `DemoExitConfirmDialog` (substituídos por `DemoTourSpotlight`), `OnboardingCard` (substituído por `OnboardingBanner`) e `MonthlyClosePrintView` (substituído por `FinancialCloseReportModal`).
+> - **Limpeza de Barrels:** Barrels `src/components/modules/index.ts` e `reports/index.ts` higienizados e desduplicados; remoção da prop depreciada `onDelete` em `CashKpiCardProps`.
+> - **Ativação da Telemetria Leve Resiliente:** Ativação de `trackFeatureUse` em `PageShell` para telemetria funcional LGPD-compliant em `/admin`, com suíte de testes `src/services/analytics/tracker.test.ts`.
+> - **Build & Distribuição Mobile:** Compilação do APK Release v0.1.0 (versionCode 27) com Gradle 8.14.3 e upload automatizado para Cloudflare R2 com hash SHA-256 e manifesto `version.json`.
 

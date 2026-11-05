@@ -326,7 +326,7 @@ export function RecurrencesTab({
   ]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div data-tour="insights-recurrences-content" className="flex flex-col gap-4">
       {/* Card de Resumo de Recorrências com KPI de Comprometimento Fixo (Tarefa 7.10) */}
       <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs">
         <div className={cn("grid gap-4 sm:gap-6 w-full", gridColsClass)}>

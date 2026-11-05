@@ -545,11 +545,11 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
       const user = userEvent.setup();
       render(<LaunchWizard initialMode="quick" />);
 
-      const attachBtn = screen.getByRole("button", { name: "Anexar comprovante" });
+      const attachBtn = screen.getByRole("button", { name: /Anexar comprovante/i });
       await user.click(attachBtn);
 
       // Deve abrir o diálogo de anexar comprovante
-      expect(await screen.findByText("Anexar Comprovante")).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: /Anexar Comprovante/i })).toBeInTheDocument();
       expect(screen.getByText(/Arraste o comprovante aqui/i)).toBeInTheDocument();
     });
   });
@@ -615,10 +615,10 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
       render(<LaunchWizard initialMode="guided" onSuccess={onSuccess} />);
 
       // Abre modal de anexar comprovante
-      const attachBtn = screen.getByRole("button", { name: "Anexar comprovante" });
+      const attachBtn = screen.getByRole("button", { name: /Anexar comprovante/i });
       await user.click(attachBtn);
 
-      expect(await screen.findByText("Anexar Comprovante")).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: /Anexar Comprovante/i })).toBeInTheDocument();
 
       // Simula upload do arquivo
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;

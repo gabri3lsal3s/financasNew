@@ -161,10 +161,10 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Protecao contra account takeover com exigencia de senha atual nas alteracoes",
-    "Fluxo seguro de alteracao de e-mail com reautenticacao e confirmacao",
-    "Blindagem de sessao com PKCE estrito, purga de buffers e timeout web",
-    "Minimizacao de PII no Sentry e trava de seguranca para exportacao de backup"
+    "Saneamento estrutural de codigo morto e componentes legados substituidos",
+    "Remocao do motor de encargos e relatorios orfaos",
+    "Padronizacao de KpiCard, OnboardingBanner e DemoTourSpotlight",
+    "Ativacao de telemetria leve e resiliente com protecao LGPD"
   ]
 }
 EOF

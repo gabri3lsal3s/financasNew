@@ -16,8 +16,6 @@ export { DebtStatusBadge } from "./debt-status-badge";
 export type { DebtStatusBadgeProps } from "./debt-status-badge";
 export { InvoiceStatusBadge } from "./invoice-status-badge";
 export type { InvoiceStatusBadgeProps } from "./invoice-status-badge";
-export { AlertCard } from "./alert-card";
-export type { AlertCardProps, AlertPriority } from "./alert-card";
 export { ReminderItem } from "./reminder-item";
 export type { ReminderItemProps } from "./reminder-item";
 export { ProjectionLine } from "./projection-line";
@@ -34,8 +32,6 @@ export { AporteResult } from "./aporte-result";
 export type { AporteResultProps, AporteRouteRow, CustomAporteExecutionItem } from "./aporte-result";
 export { HighlightRow } from "./highlight-row";
 export type { HighlightRowProps } from "./highlight-row";
-export { OnboardingCard } from "./onboarding-card";
-export type { OnboardingCardProps } from "./onboarding-card";
 export { OnboardingBanner } from "./onboarding-banner";
 export type { OnboardingBannerProps } from "./onboarding-banner";
 export { CategoryDonut } from "./category-donut";
@@ -51,12 +47,6 @@ export { CreditCardWallet } from "./credit-card-wallet";
 export type { CreditCardWalletProps } from "./credit-card-wallet";
 export { ExportDataHub } from "./export-data-hub";
 export type { ExportDataHubProps, ExportCsvKind, ExportRange } from "./export-data-hub";
-export { MonthlyClosePrintView } from "./monthly-close-print-view";
-export type {
-  MonthlyClosePrintViewProps,
-  MonthlyCloseCategory,
-  MonthlyCloseInvoice,
-} from "./monthly-close-print-view";
 export { CardInvoicePrintView } from "./card-invoice-print-view";
 export type {
   CardInvoicePrintViewProps,
@@ -87,8 +77,6 @@ export { CashGapAlert } from "./cash-gap-alert";
 export type { CashGapAlertProps } from "./cash-gap-alert";
 export { AllocationDriftCard } from "./allocation-drift-card";
 export type { AllocationDriftCardProps } from "./allocation-drift-card";
-export { StatCard } from "./stat-card";
-export type { StatCardProps, StatCardTrend } from "./stat-card";
 export { InteractiveTargetDonut } from "./interactive-target-donut";
 export type { InteractiveTargetDonutProps, TargetDonutItem } from "./interactive-target-donut";
 export { DashboardAlertsCarousel } from "./dashboard-alerts-carousel";
@@ -125,12 +113,8 @@ export { WelcomeModal } from "./welcome-modal";
 export type { WelcomeModalProps } from "./welcome-modal";
 export { DemoTrackSelectModal } from "./demo-track-select-modal";
 export type { DemoTrackSelectModalProps } from "./demo-track-select-modal";
-export { DemoTourBar } from "./demo-tour-bar";
-export type { DemoTourBarProps } from "./demo-tour-bar";
 export { DemoTourSpotlight } from "./demo-tour-spotlight";
 export type { DemoTourSpotlightProps } from "./demo-tour-spotlight";
-export { DemoExitConfirmDialog } from "./demo-exit-confirm-dialog";
-export type { DemoExitConfirmDialogProps } from "./demo-exit-confirm-dialog";
 export { NativeOnboardingDialog } from "./native-onboarding-dialog";
 export type { NativeOnboardingDialogProps } from "./native-onboarding-dialog";
 export { HelpModal } from "./help-modal";

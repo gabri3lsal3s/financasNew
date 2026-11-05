@@ -148,7 +148,6 @@ O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma
     │   ├── search/                #   busca global: normalização, scoring, bônus de recência
     │   ├── gestures/              #   F20: swipe (axis-lock, thresholds); overscroll removido (F26, 2026-08-16)
     │   ├── export/                #   F22: CSV pt-BR + backup versionado com Zod
-    │   ├── charges/               #   agregação de natureza (juros, multas, impostos, taxas)
     │   ├── loans/                 #   sistemas de amortização (Price/SAC), saldo devedor e valor presente
     │   ├── cards/                 #   faturas, fechamento e refinanciamento sem double-counting
     │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,

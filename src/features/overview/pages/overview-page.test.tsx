@@ -660,11 +660,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
 
     await user.click(screen.getByRole("button", { name: /Continuar/i }));
     expect(screen.getByText("Ativar Leitor Automático de Notificações")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Seu banco não notificou uma transferência? Basta tocar em Compartilhar Comprovante para o Áxis Finance.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Comprovantes e Cupons Fiscais")).toBeInTheDocument();
   });
 
   it("não renderiza OnboardingBanner quando o usuário já for ativo (smart dismiss)", () => {

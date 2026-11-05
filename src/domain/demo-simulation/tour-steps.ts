@@ -407,9 +407,9 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       order: 2,
       title: "Radar de Assinaturas e Recorrências",
       description:
-        "Identifique cobranças recorrentes e assinaturas ativas na sua fatura para evitar gastos esquecidos.",
-      targetRoute: "/cartoes",
-      targetSelector: '[data-tour="cards-invoice-summary"]',
+        "Identifique cobranças recorrentes, assinaturas ativas e acompanhe o impacto na sua fatura e orçamento anual.",
+      targetRoute: "/insights?aba=recurrences",
+      targetSelector: '[data-tour="insights-recurrences-content"]',
       preferredPlacement: "bottom",
       spotlightPadding: 10,
       badgeLabel: "Passo 2 de 3",

@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NotificationsTab } from "./notifications-tab";
 import * as nativeServices from "@/services/native";
-import { DEFAULT_BANK_ASSISTANT_PREFERENCES } from "@/domain/notifications";
+import { DEFAULT_BANK_ASSISTANT_PREFERENCES, HOMOLOGATED_INSTITUTIONS } from "@/domain/notifications";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 
@@ -162,7 +162,7 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
       await user.click(selectAllBtn);
 
       prefs = nativeServices.getBankAssistantPreferences();
-      expect(prefs.monitoredBanks.length).toBe(27);
+      expect(prefs.monitoredBanks.length).toBe(HOMOLOGATED_INSTITUTIONS.length);
     });
 
     it("permite alternar o monitoramento de um banco individual pelo catálogo", async () => {

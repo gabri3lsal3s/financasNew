@@ -705,7 +705,7 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
   - No desktop (`>= sm`), preserva-se o layout horizontal compacto em pills (`role="group"`) alinhado às ações de fatura.
 
 ### 14.29 Módulos de Onboarding, Boas-Vindas e Tour Guiado Interativo em Memória (Fase 3 & v2.79)
-- **Componentes:** `src/components/modules/welcome-modal.tsx`, `src/components/modules/demo-track-select-modal.tsx`, `src/components/modules/demo-tour-spotlight.tsx`, `src/components/modules/demo-tour-bar.tsx` (legado), `src/components/modules/demo-exit-confirm-dialog.tsx`, `src/components/modules/onboarding-banner.tsx`.
+- **Componentes:** `src/components/modules/welcome-modal.tsx`, `src/components/modules/demo-track-select-modal.tsx`, `src/components/modules/demo-tour-spotlight.tsx`, `src/components/modules/onboarding-banner.tsx`.
 - **Arquitetura de Demonstração em Memória (Zero Injeção Física de Banco):**
   - Eliminação total do mecanismo legado de injeção e exclusão física de dados falsos (`demo-data.ts`, `use-demo-data.ts`).
   - O tour opera com sandbox puramente em memória no TanStack Query (`use-simulated-queries.ts`), fornecendo transições instantâneas (< 100ms) sem nenhum risco de poluição de dados reais no Supabase.

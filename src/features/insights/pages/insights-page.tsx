@@ -99,6 +99,7 @@ export function InsightsPage({
   const [filter, setFilter] = useState<ActiveTab>(() =>
     rawTab ? resolveTab(rawTab) : resolveTab(initialFilter),
   );
+  const effectiveFilter = rawTab ? resolveTab(rawTab) : filter;
   const [showIgnored, setShowIgnored] = useState(false);
   const [expandedWarnings, setExpandedWarnings] = useState(false);
   const month = currentMonth();
@@ -503,7 +504,7 @@ export function InsightsPage({
         className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth pb-1 -mx-1 px-1"
       >
         {FILTER_ITEMS.map((item) => {
-          const isSelected = filter === item.value;
+          const isSelected = effectiveFilter === item.value;
           return (
             <Button
               key={item.value}
@@ -542,9 +543,9 @@ export function InsightsPage({
         </div>
       ) : (
         <div className="flex flex-col gap-4 min-w-0">
-          {filter === "diagnostics" && diagnosticsContent}
-          {filter === "recurrences" && recurrencesContent}
-          {filter === "projection" && projectionContent}
+          {effectiveFilter === "diagnostics" && diagnosticsContent}
+          {effectiveFilter === "recurrences" && recurrencesContent}
+          {effectiveFilter === "projection" && projectionContent}
         </div>
       )}
     </div>

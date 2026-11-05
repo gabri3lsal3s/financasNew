@@ -126,9 +126,9 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
       expect(steps[0]?.targetSelector).toBe('[data-tour="overview-kpis"]');
       expect(steps[0]?.targetRoute).toBe("/");
 
-      // Passo 2: Radar de Assinaturas ou Resumo da Fatura na tela de Cartões
-      expect(steps[1]?.targetSelector).toBe('[data-tour="cards-invoice-summary"]');
-      expect(steps[1]?.targetRoute).toBe("/cartoes");
+      // Passo 2: Radar de Assinaturas e Recorrências na tela de Insights
+      expect(steps[1]?.targetSelector).toBe('[data-tour="insights-recurrences-content"]');
+      expect(steps[1]?.targetRoute).toBe("/insights?aba=recurrences");
 
       // Passo 3: Fechamento mensal em Relatórios
       expect(steps[2]?.targetSelector).toBe('[data-tour="reports-content"]');

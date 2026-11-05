@@ -5,7 +5,6 @@ import { CashKpiCard } from "./cash-kpi-card";
 describe("CashKpiCard", () => {
   it("renderiza o formato banner por padrão com saldo, badge de Pólvora Seca e ações de ajustar e aportar", () => {
     const onEdit = vi.fn();
-    const onDelete = vi.fn();
     const onAporte = vi.fn();
 
     render(
@@ -14,7 +13,6 @@ describe("CashKpiCard", () => {
         cashPct={25}
         hasCashAsset={true}
         onEdit={onEdit}
-        onDelete={onDelete}
         onAporte={onAporte}
       />,
     );
@@ -62,7 +60,6 @@ describe("CashKpiCard", () => {
 
   it("renderiza o formato card clássico quando variant='card'", () => {
     const onEdit = vi.fn();
-    const onDelete = vi.fn();
 
     render(
       <CashKpiCard
@@ -71,7 +68,6 @@ describe("CashKpiCard", () => {
         cashPct={15}
         hasCashAsset={true}
         onEdit={onEdit}
-        onDelete={onDelete}
       />,
     );
 
