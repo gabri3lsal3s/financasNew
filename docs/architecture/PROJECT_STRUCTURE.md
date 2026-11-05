@@ -72,6 +72,7 @@
 │   │   │   ├── PLANO_IMPLEMENTACAO_MODULOS_E_SAAS.md
 │   │   │   ├── PLANO_IMPLEMENTACAO_TOUR_INTERATIVO_E_SIMULACAO.md
 │   │   │   ├── PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md
+│   │   │   ├── PLANO_FERRAMENTAS_COMPARTILHAMENTO_E_CRESCIMENTO_ORGANICO.md
 │   │   │   ├── PLANO_MELHORIA_NOTIFICACOES_BANCOS.md
 │   │   │   ├── PLANO_PWA_FIRST_APK_BETA_E_NOTIFICACOES_REFINADAS.md
 │   │   │   ├── PLANO_REFATORACAO_TOUR_SPOTLIGHT_E_EXPERIENCIA_GUIADA.md
@@ -80,8 +81,7 @@
 │   │   │   ├── PLANO_RELATORIO_RETROATIVO_INVESTIMENTOS_E_FECHAMENTO.md
 │   │   │   ├── PLANO_REVISAO_AUTH_SESSAO_E_SEGURANCA.md
 │   │   │   └── PLANO_SANEAMENTO_CODIGO_MORTO_E_LEGADO.md
-│   │   ├── PLANO_FECHAMENTO_AUTOMATICO_SNAPSHOTS_E_COTACAO.md
-│   │   └── PLANO_FERRAMENTAS_COMPARTILHAMENTO_E_CRESCIMENTO_ORGANICO.md
+│   │   └── PLANO_FECHAMENTO_AUTOMATICO_SNAPSHOTS_E_COTACAO.md
 │   ├── diagnostics/               # Diagnósticos técnicos e relatórios de avaliação arquitetural
 │   │   └── DIAGNOSTICO_SEGURANCA_PERFORMANCE_ESCALA.md # Diagnóstico de concorrência, velocidade e blindagem
 │   └── reports/                   # Relatórios de auditoria e logs de homologação (.gitkeep)

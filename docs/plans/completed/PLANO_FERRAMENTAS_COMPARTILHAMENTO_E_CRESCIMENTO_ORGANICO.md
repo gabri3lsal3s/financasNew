@@ -1,7 +1,7 @@
 # Plano de Implementação — Ferramentas Utilitárias de Compartilhamento & Crescimento Orgânico
 
 > **Data de Criação:** 04/11/2026  
-> **Status:** Pronto para Execução (Night Shift / Argos Sandbox)  
+> **Status:** Concluído e Homologado (Merge na main realizado em 05/11/2026)  
 > **Escopo:**  
 > 1. Racha de Conta & Pix Copia e Cola BACEN (BR Code EMV QRCPS-MPM) com valor embutido e auto-cadastro.  
 > 2. Painel de Orçamento Familiar Dinâmico (Distinção `is_family` no formulário e link somente leitura seguro).  
