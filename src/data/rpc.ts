@@ -1143,7 +1143,12 @@ export async function signalSplitPayment(params: {
   participantName: string;
   amountCents: number;
   participantId?: string | null;
-}): Promise<{ success: boolean; signal_id: string; participant_matched: boolean }> {
+}): Promise<{
+  success: boolean;
+  signal_id: string;
+  participant_matched: boolean;
+  deduplicated?: boolean;
+}> {
   return unwrapRpc(
     callRpc("signal_split_payment", {
       p_token: params.token,

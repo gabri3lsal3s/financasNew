@@ -110,6 +110,7 @@ export interface Database {
           success: boolean;
           signal_id: string;
           participant_matched: boolean;
+          deduplicated?: boolean;
         };
       };
       dismiss_split_payment_signal: {

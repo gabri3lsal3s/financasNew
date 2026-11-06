@@ -81,7 +81,11 @@
 │   │   │   ├── PLANO_RELATORIO_RETROATIVO_INVESTIMENTOS_E_FECHAMENTO.md
 │   │   │   ├── PLANO_REVISAO_AUTH_SESSAO_E_SEGURANCA.md
 │   │   │   └── PLANO_SANEAMENTO_CODIGO_MORTO_E_LEGADO.md
-│   │   └── PLANO_FECHAMENTO_AUTOMATICO_SNAPSHOTS_E_COTACAO.md
+│   │   ├── 01_PLANO_CORRECOES_AUDITORIA_SEGURANCA_E_ESTABILIZACAO.md
+│   │   ├── 02_PLANO_PRECISAO_RENTABILIDADE_E_SNAPSHOTS_INVESTIMENTOS.md
+│   │   ├── 03_PLANO_MODO_FAMILIA_COLABORATIVO_MULTI_CONTAS.md
+│   │   ├── 04_PLANO_EXPANSAO_APRESENTACAO_E_TOUR_GUIADO.md
+│   │   └── 05_PLANO_FECHAMENTO_AUTOMATICO_SNAPSHOTS_E_COTACAO.md
 │   ├── diagnostics/               # Diagnósticos técnicos e relatórios de avaliação arquitetural
 │   │   └── DIAGNOSTICO_SEGURANCA_PERFORMANCE_ESCALA.md # Diagnóstico de concorrência, velocidade e blindagem
 │   └── reports/                   # Relatórios de auditoria e logs de homologação (.gitkeep)
