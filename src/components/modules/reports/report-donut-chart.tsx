@@ -105,13 +105,25 @@ export function ReportDonutChart({
     };
   });
 
+  const isCompact = size <= 125;
+
   const donutElement = (
-    <div className="relative shrink-0 flex items-center justify-center" style={{ width: size, height: size }}>
+    <div
+      className={cn(
+        "relative shrink-0 flex items-center justify-center",
+        isCompact ? "size-28 sm:size-32" : "size-32 sm:size-36 md:size-40",
+      )}
+      style={{
+        maxWidth: size,
+        maxHeight: size,
+        width: "100%",
+        height: "auto",
+        aspectRatio: "1 / 1",
+      }}
+    >
       <svg
-        width={size}
-        height={size}
         viewBox={`0 0 ${size} ${size}`}
-        className="transform -rotate-90"
+        className="w-full h-full transform -rotate-90"
         aria-hidden="true"
       >
         {/* Fatias proporcionais com extremidades arredondadas flutuantes sem trilha cinza */}
@@ -141,15 +153,15 @@ export function ReportDonutChart({
       {/* Centro com rótulo/valor e Safe Zone concêntrica protegida */}
       {(centerLabel || centerValue) && (
         <div
-          className="absolute inset-[11%] flex flex-col items-center justify-center text-center p-1.5 rounded-full pointer-events-none select-none overflow-hidden"
+          className="absolute inset-[10%] flex flex-col items-center justify-center text-center p-1 rounded-full pointer-events-none select-none overflow-hidden"
           aria-hidden="true"
         >
-          <div className="flex flex-col items-center justify-center w-full max-w-[82%] min-w-0">
+          <div className="flex flex-col items-center justify-center w-full max-w-[88%] min-w-0">
             {centerLabel && (
               <span
                 className={cn(
                   "uppercase font-semibold text-muted-foreground tracking-wider leading-none truncate max-w-full",
-                  size <= 112 ? "text-[8.5px]" : "text-[9.5px]",
+                  size <= 112 ? "text-[8px] sm:text-[8.5px]" : "text-[8.5px] sm:text-[9.5px]",
                 )}
               >
                 {centerLabel}
@@ -158,12 +170,12 @@ export function ReportDonutChart({
             {centerValue && (
               <span
                 className={cn(
-                  "num font-mono font-bold text-foreground mt-0.5 leading-tight tracking-tight whitespace-nowrap truncate max-w-full",
+                  "num font-mono font-bold text-foreground mt-0.5 leading-tight tracking-tight whitespace-nowrap",
                   size <= 112
-                    ? "text-[10px] sm:text-[10.5px]"
+                    ? "text-[9.5px] sm:text-[10px]"
                     : size <= 125
-                      ? "text-[11px] sm:text-xs"
-                      : "text-xs sm:text-sm",
+                      ? "text-[10.5px] sm:text-[11px]"
+                      : "text-xs sm:text-[13px] md:text-sm",
                 )}
               >
                 {centerValue}

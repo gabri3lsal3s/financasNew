@@ -3,6 +3,7 @@ import {
   calculateFamilyEmergencyReserveHealth,
   calculateFamilyPassiveIncomeRunrate,
   calculateGoalProgress,
+  isAssetCashLike,
   isAssetSharedWithFamily,
 } from "./wealth";
 
@@ -133,6 +134,36 @@ describe("Motor Puro de Patrimônio & Metas Familiares (wealth.ts)", () => {
           is_family: false,
         }),
       ).toBe(false);
+    });
+  });
+
+  describe("isAssetCashLike", () => {
+    it("reconhece classes de caixa e reserva (imune a maiúsculas e acentos)", () => {
+      expect(isAssetCashLike("FUNDO-RESERVA", "Caixa")).toBe(true);
+      expect(isAssetCashLike("POUPANCA", "Reserva")).toBe(true);
+      expect(isAssetCashLike("EMERGENCIA", "Reserva de Emergência")).toBe(true);
+      expect(isAssetCashLike("EMERGENCIA", "reserva de emergencia")).toBe(true);
+    });
+
+    it("reconhece ticker exatamente CAIXA", () => {
+      expect(isAssetCashLike("CAIXA", "Outros")).toBe(true);
+      expect(isAssetCashLike("caixa", null)).toBe(true);
+    });
+
+    it("reconhece tickers com SELIC ou CDI independente da classe", () => {
+      expect(isAssetCashLike("TESOURO-SELIC", "Renda Fixa")).toBe(true);
+      expect(isAssetCashLike("TESOURO SELIC 2029", "Títulos Públicos")).toBe(true);
+      expect(isAssetCashLike("CDB BANCO INTER 100% CDI", "Renda Fixa")).toBe(true);
+      expect(isAssetCashLike("LCI DI", "Renda Fixa")).toBe(false);
+      expect(isAssetCashLike("CDB 110% CDI", null)).toBe(true);
+    });
+
+    it("rejeita ativos voláteis ou de longo prazo que não são reserva", () => {
+      expect(isAssetCashLike("TESOURO-IPCA", "Renda Fixa")).toBe(false);
+      expect(isAssetCashLike("CDB ORIGINAL", "Renda Fixa")).toBe(false);
+      expect(isAssetCashLike("PETR4", "Ações")).toBe(false);
+      expect(isAssetCashLike("HGLG11", "FIIs")).toBe(false);
+      expect(isAssetCashLike("BTC", "Cripto")).toBe(false);
     });
   });
 });

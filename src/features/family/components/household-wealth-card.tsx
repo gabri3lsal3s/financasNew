@@ -37,6 +37,7 @@ export function HouseholdWealthCard({
   const totalInvestedCents = portfolioSummary?.total_invested_cents ?? 0;
   const dividends12mCents = portfolioSummary?.dividends_12m_cents ?? 0;
   const assetsCount = portfolioSummary?.assets_count ?? 0;
+  const otherInvestedCents = Math.max(0, totalInvestedCents - totalCashCents);
 
   const isCeiling = monthlyCeilingCents > 0;
   const effectiveReferenceCents = isCeiling ? monthlyCeilingCents : monthlyExpensesCents;
@@ -95,38 +96,56 @@ export function HouseholdWealthCard({
           )}
         >
           {/* Reserva de Emergência Conjunta */}
-          <div className="p-3 rounded-xl bg-surface-subtle/50 border border-border/50 space-y-1">
-            <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
-              <ShieldCheck className="size-3.5 text-positive-strong shrink-0" aria-hidden="true" />
-              <span>Reserva da Casa</span>
-            </span>
-            <div className="text-base font-bold tracking-tight text-foreground">
-              <MoneyText cents={totalCashCents} />
+          <div className="p-3 rounded-xl bg-surface-subtle/50 border border-border/50 space-y-1.5 flex flex-col justify-between">
+            <div className="space-y-1">
+              <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
+                <ShieldCheck className="size-3.5 text-positive-strong shrink-0" aria-hidden="true" />
+                <span>Reserva da Casa</span>
+              </span>
+              <div className="text-base font-bold tracking-tight text-foreground">
+                <MoneyText cents={totalCashCents} />
+              </div>
+              <span className="text-[10px] text-muted-foreground block truncate">
+                {isCeiling ? (
+                  <>
+                    {reserveHealth.months_covered}m do teto (<MoneyText cents={monthlyCeilingCents} />/mês)
+                  </>
+                ) : (
+                  reserveHealth.label
+                )}
+              </span>
             </div>
-            <span className="text-[10px] text-muted-foreground block truncate">
-              {isCeiling ? (
-                <>
-                  {reserveHealth.months_covered}m do teto (<MoneyText cents={monthlyCeilingCents} />/mês)
-                </>
-              ) : (
-                reserveHealth.label
-              )}
+            <span className="text-[10px] text-muted-foreground/80 block pt-1 border-t border-border/40">
+              Liquidez imediata (Caixa, Selic e CDI)
             </span>
           </div>
 
           {/* Total Investido Familiar */}
-          <div className="p-3 rounded-xl bg-surface-subtle/50 border border-border/50 space-y-1">
-            <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
-              <TrendingUp className="size-3.5 text-portfolio shrink-0" aria-hidden="true" />
-              <span>Patrimônio Total Compartilhado</span>
-            </span>
-            <div className="text-base font-bold tracking-tight text-foreground">
-              <MoneyText cents={totalInvestedCents} />
+          <div className="p-3 rounded-xl bg-surface-subtle/50 border border-border/50 space-y-1.5 flex flex-col justify-between">
+            <div className="space-y-1">
+              <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
+                <TrendingUp className="size-3.5 text-portfolio shrink-0" aria-hidden="true" />
+                <span>Patrimônio Total Compartilhado</span>
+              </span>
+              <div className="text-base font-bold tracking-tight text-foreground">
+                <MoneyText cents={totalInvestedCents} />
+              </div>
+              <span className="text-[10px] text-muted-foreground block truncate">
+                {assetsCount} {assetsCount === 1 ? "ativo compartilhado" : "ativos compartilhados"}
+                {!hasDividends && " · Sem proventos 12m"}
+              </span>
             </div>
-            <span className="text-[10px] text-muted-foreground block truncate">
-              {assetsCount} {assetsCount === 1 ? "ativo compartilhado" : "ativos compartilhados"}
-              {!hasDividends && " · Sem proventos 12m"}
-            </span>
+            <div className="text-[10px] text-muted-foreground/80 pt-1 border-t border-border/40 flex items-center gap-1 flex-wrap">
+              {otherInvestedCents > 0 ? (
+                <>
+                  <span>Reserva +</span>
+                  <MoneyText cents={otherInvestedCents} className="font-medium text-foreground/80" />
+                  <span>em outros ativos</span>
+                </>
+              ) : (
+                <span>100% alocado na reserva da casa</span>
+              )}
+            </div>
           </div>
 
           {/* Proventos Anuais (exibido apenas se > 0) */}
@@ -204,9 +223,14 @@ export function HouseholdWealthCard({
         )}
 
         {/* Rodapé explicativo com contexto e privacidade */}
-        <p className="text-[11px] text-muted-foreground pt-0.5">
-          Os investimentos e caixas exibidos são compostos exclusivamente pelos ativos que você e os membros da casa escolheram compartilhar como patrimônio familiar. Seus outros investimentos particulares permanecem 100% privados.
-        </p>
+        <div className="space-y-1 pt-0.5">
+          <p className="text-[11px] text-muted-foreground">
+            Os valores refletem o saldo atualizado a mercado (com rendimentos acumulados) dos ativos que você e os membros da casa escolheram compartilhar.
+          </p>
+          <p className="text-[10px] text-muted-foreground/75">
+            Seus outros investimentos particulares e contas bancárias pessoais permanecem 100% privados.
+          </p>
+        </div>
       </CardContent>
     </Card>
   );

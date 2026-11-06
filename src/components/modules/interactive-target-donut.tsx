@@ -229,10 +229,10 @@ function computeVisualTargetShares(items: readonly TargetDonutItem[], denominato
 
           {/* Conteúdo central do Donut com Safe Zone concêntrica protegida */}
           <div
-            className="absolute inset-[11%] flex flex-col items-center justify-center pointer-events-none text-center p-1.5 rounded-full select-none overflow-hidden"
+            className="absolute inset-[10%] flex flex-col items-center justify-center pointer-events-none text-center p-1.5 rounded-full select-none overflow-hidden"
             aria-live="polite"
           >
-            <div className="flex flex-col items-center justify-center w-full max-w-[82%] min-w-0">
+            <div className="flex flex-col items-center justify-center w-full max-w-[88%] min-w-0">
               {selectedItem ? (
                 <>
                   <span

@@ -1,5 +1,28 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.98** registra a **Conclusão e Homologação do Plano 03.1 — Refinamento, Integridade e Expansão Patrimonial do Modo Família** (2026-11-06):
+> - **(1) Modelos de Gestão Flexíveis (Finanças Conjuntas / Caixa Único vs. Divisão de Despesas)**:
+>   - Suporte nativo ao modo `combined` (Caixa Único) em `reconciliation.ts`, zerando formalmente desequilíbrios individuais (`netBalanceCents = 0`) e transferências forçadas;
+>   - Novo card do cockpit operacional `HouseholdCombinedFlowCard` exibindo Receitas da Casa, Gastos Totais, Sobra Líquida e Taxa de Poupança Conjunta;
+>   - Divisão proporcional à renda assistida com botão de sugestão inteligente (`get_family_income_ratio_suggestion`) baseada na média móvel das receitas dos últimos 3 meses.
+> - **(2) Integração Patrimonial e Reserva Familiar em 3 Níveis de Granularidade**:
+>   - Compartilhamento de ativos via Carteira Integral (`share_all_portfolio`), Classes Específicas (`shared_asset_classes`) ou Ativo Individual (`is_family`);
+>   - Motor puro `src/domain/family/wealth.ts` com união sem conflitos e função `isAssetCashLike`;
+>   - RPC `get_family_portfolio_summary` corrigida e homologada diretamente no Postgres, agregando ativos investidos, reserva de emergência familiar líquida e proventos de 12 meses;
+>   - Componente `HouseholdWealthCard` integrado à página `/familia` e modal `FamilyShareAssetsDialog` para gerenciamento em 1 toque;
+>   - Badge discreto `<Badge variant="portfolio" size="xs">Patrimônio Familiar</Badge>` no drawer de detalhes de ativos (`AssetDetailSheet`).
+> - **(3) Reorganização e Hierarquização Ergonômica da Página Familiar (`/familia`)**:
+>   - Eliminação da grade rígida de 2 colunas; adoção de seções full-width priorizadas por modo de gestão (`combined` vs `equal`/`proportional`);
+>   - Barra temporal `<MonthPicker />` padronizada como barra horizontal no topo;
+>   - Empty state canônico com CTA de criação imediata (`FamilyCreateModal`) na própria página.
+> - **(4) Governança de Visibilidade e Invariante de Preservação (Zero Data Loss)**:
+>   - Ocultação imediata e estrita de todos os switches e toggles de compartilhamento familiar (despesas, receitas, categorias e investimentos) quando o Modo Familiar estiver desligado em Configurações (`isFamilyModeEnabled = false`);
+>   - Ocultação de badges "Familiar" e "Patrimônio Familiar" em extratos e fichas quando o modo estiver inativo, preservando 100% dos dados pré-existentes no Supabase.
+> - **(5) Quality Gates QG1–QG7 Aprovados & Arquivamento**:
+>   - Suíte de testes de família e investimentos 100% verde (138 testes em `src/features/family/` e `src/domain/family/`);
+>   - 0 erros em `tsc --noEmit` e 0 violações em `npm run lint`;
+>   - Arquivamento formal do plano canônico em `docs/plans/completed/03.1_PLANO_PATRIMONIO_INVESTIMENTOS_E_METAS_FAMILIARES.md`.
+>
 > **v2.97** registra a **Padronização Visual, Safe Zone Concêntrica e Respiro Perimétrico em Gráficos Donut (Relatórios & Investimentos)** (2026-11-06):
 > - **(1) Safe Zone Concêntrica Circular & Eliminação de Colisão Perimétrica**:
 >   - Atualização do container central em `ReportDonutChart` e `InteractiveTargetDonut` para a casca geométrica `inset-[11%] rounded-full` com wrapper interno `max-w-[82%]`, garantindo folga mínima de **10px a 14px** entre o texto central e o traçado interno dos arcos;

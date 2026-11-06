@@ -11,6 +11,7 @@ import {
   useUpdateFamilyWealthSharing,
   useTogglePortfolioAssetFamily,
 } from "@/state";
+import { isAssetCashLike } from "@/domain/family";
 import type { FamilyMemberWithProfile } from "@/data/repositories/families";
 import { cn } from "@/lib/utils";
 
@@ -152,6 +153,16 @@ function FamilyShareAssetsContent({ currentMember, familyId, onClose }: DialogCo
             </span>
           </div>
 
+          {/* Dica de Governança e Diferenciação Patrimônio vs. Reserva */}
+          <div className="p-3 rounded-xl border border-border/70 bg-surface-subtle/30 space-y-1 text-[11px] text-muted-foreground">
+            <p>
+              <strong className="text-foreground font-medium">Como a Reserva da Casa é calculada:</strong> Apenas ativos com perfil de liquidez imediata (Caixa, Tesouro Selic ou títulos com &ldquo;CDI&rdquo; no código ou classe Caixa) compõem a Reserva da Casa.
+            </p>
+            <p className="text-[10px] text-muted-foreground/80">
+              Ativos de longo prazo (Tesouro IPCA, Ações, FIIs ou títulos com carência) entram no Patrimônio Total Compartilhado a valor atual de mercado.
+            </p>
+          </div>
+
           {userAssets.length === 0 ? (
             <div className="p-4 rounded-xl border border-dashed border-border/70 text-center text-xs text-muted-foreground">
               Nenhum ativo cadastrado na sua carteira pessoal de investimentos.
@@ -163,6 +174,7 @@ function FamilyShareAssetsContent({ currentMember, familyId, onClose }: DialogCo
                   asset.asset_class && selectedClasses.includes(asset.asset_class),
                 );
                 const isShared = shareAll || isAutoByClass || Boolean(asset.is_family);
+                const isCashLike = isAssetCashLike(asset.ticker, asset.asset_class);
 
                 return (
                   <div
@@ -170,7 +182,7 @@ function FamilyShareAssetsContent({ currentMember, familyId, onClose }: DialogCo
                     className="flex items-center justify-between p-2.5 rounded-xl border border-border/70 bg-surface"
                   >
                     <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-xs font-semibold text-foreground">
                           {asset.ticker}
                         </span>
@@ -180,8 +192,13 @@ function FamilyShareAssetsContent({ currentMember, familyId, onClose }: DialogCo
                           </Badge>
                         )}
                         {isAutoByClass && !shareAll && (
-                          <Badge variant="positive" size="xs">
+                          <Badge variant="default" size="xs">
                             Via classe
+                          </Badge>
+                        )}
+                        {isShared && (
+                          <Badge variant={isCashLike ? "positive" : "muted"} size="xs">
+                            {isCashLike ? "Conta como Reserva" : "Patrimônio Investido"}
                           </Badge>
                         )}
                       </div>

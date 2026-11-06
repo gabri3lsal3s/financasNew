@@ -29,9 +29,17 @@ describe("HouseholdWealthCard", () => {
     // Deve exibir o badge de 0.5 meses de reserva (2570 / 5000 = 0.5)
     expect(screen.getByText("0.5 meses de reserva")).toBeInTheDocument();
 
-    // Deve identificar a reserva e o patrimônio total
+    // Deve identificar a reserva e o patrimônio total com descritivos claros de liquidez e composição
     expect(screen.getByText("Reserva da Casa")).toBeInTheDocument();
+    expect(screen.getByText("Liquidez imediata (Caixa, Selic e CDI)")).toBeInTheDocument();
     expect(screen.getByText("Patrimônio Total Compartilhado")).toBeInTheDocument();
+    expect(screen.getByText("Reserva +")).toBeInTheDocument();
+    expect(screen.getByText("em outros ativos")).toBeInTheDocument();
+
+    // Deve explicitar que os valores refletem saldo atualizado a mercado
+    expect(
+      screen.getByText(/Os valores refletem o saldo atualizado a mercado/i),
+    ).toBeInTheDocument();
 
     // Deve renderizar a régua da meta de 6 meses de segurança (6 * 5000 = R$ 30.000)
     expect(screen.getByText("Meta de Segurança (6 meses do teto)")).toBeInTheDocument();

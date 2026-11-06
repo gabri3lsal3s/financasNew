@@ -78,9 +78,9 @@ describe("InteractiveTargetDonut", () => {
 
   it("renderiza o centro com safe zone concêntrica e respiro perimétrico", () => {
     const { container } = render(<InteractiveTargetDonut items={sampleItems} />);
-    const centerZone = container.querySelector(".inset-\\[11\\%\\]");
+    const centerZone = container.querySelector(".inset-\\[10\\%\\]");
     expect(centerZone).toBeInTheDocument();
     expect(centerZone).toHaveClass("rounded-full");
-    expect(centerZone?.querySelector(".max-w-\\[82\\%\\]")).toBeInTheDocument();
+    expect(centerZone?.querySelector(".max-w-\\[88\\%\\]")).toBeInTheDocument();
   });
 });
