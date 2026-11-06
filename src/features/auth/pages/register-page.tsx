@@ -106,6 +106,10 @@ export function RegisterPage() {
       if (metodoParam) checkoutQuery.set("metodo", metodoParam);
       return <Navigate to={`/assinatura?${checkoutQuery.toString()}`} replace />;
     }
+    const redirectParam = searchParams.get("redirect") || searchParams.get("returnUrl");
+    if (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")) {
+      return <Navigate to={redirectParam} replace />;
+    }
     return <Navigate to="/" replace />;
   }
 

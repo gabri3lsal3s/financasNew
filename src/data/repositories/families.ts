@@ -18,12 +18,14 @@ import {
   getFamilyConsolidation as getFamilyConsolidationRpc,
   createFamily as createFamilyRpc,
   inviteFamilyMember as inviteFamilyMemberRpc,
+  getFamilyInvitePreview as getFamilyInvitePreviewRpc,
   acceptFamilyInvite as acceptFamilyInviteRpc,
   leaveFamily as leaveFamilyRpc,
   recordFamilySettlement as recordFamilySettlementRpc,
   type GetFamilyConsolidationParams,
   type CreateFamilyParams,
   type InviteFamilyMemberParams,
+  type GetFamilyInvitePreviewParams,
   type AcceptFamilyInviteParams,
   type LeaveFamilyParams,
   type RecordFamilySettlementParams,
@@ -49,6 +51,7 @@ export type {
   GetFamilyConsolidationParams,
   CreateFamilyParams,
   InviteFamilyMemberParams,
+  GetFamilyInvitePreviewParams,
   AcceptFamilyInviteParams,
   LeaveFamilyParams,
   RecordFamilySettlementParams,
@@ -408,6 +411,32 @@ export async function getFamilyInviteByToken(
   const cleanToken = token.trim();
   if (!cleanToken) return null;
 
+  // 1. Tentar via RPC segura pública get_family_invite_preview
+  try {
+    const preview = await getFamilyInvitePreviewRpc({ token: cleanToken });
+    if (preview) {
+      return {
+        id: String(preview.id),
+        family_id: String(preview.family_id),
+        invited_by: String(preview.invited_by),
+        invited_email: preview.invited_email ? String(preview.invited_email) : null,
+        token: String(preview.token),
+        status: (preview.status as FamilyInviteStatus) ?? "pending",
+        role: (preview.role as FamilyMemberRole) ?? "member",
+        created_at: String(preview.created_at),
+        expires_at: String(preview.expires_at),
+        accepted_by: preview.accepted_by ? String(preview.accepted_by) : null,
+        accepted_at: preview.accepted_at ? String(preview.accepted_at) : null,
+        family_name: preview.family_name ? String(preview.family_name) : null,
+        family_owner_id: null,
+        inviter_name: preview.inviter_name ? String(preview.inviter_name) : null,
+      };
+    }
+  } catch {
+    // Fallback gracioso para a consulta direta no banco
+  }
+
+  // 2. Consulta direta de fallback para compatibilidade e testes locais
   const { data: inviteData, error: inviteError } = await resolveQuery<Record<string, unknown> | null>(
     getSupabase()
       .from("family_invites")

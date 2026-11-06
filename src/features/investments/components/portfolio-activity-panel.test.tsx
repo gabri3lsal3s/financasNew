@@ -34,7 +34,7 @@ vi.mock("@/state", () => ({
   }),
   usePortfolioDividends: () => ({
     data: [
-      { id: "d-1", user_id: "u-1", asset_id: "a-1", date: "2026-08-20", amount: 50.25, notes: "Dividendo PETR4" },
+      { id: "d-1", user_id: "u-1", asset_id: "a-1", date: "2026-08-20", amount: 50.25, notes: "Dividendo PETR4", sync_cash: true, cash_amount: 50.25 },
     ],
     isLoading: false,
   }),
@@ -67,10 +67,10 @@ describe("PortfolioActivityPanel", () => {
   it("renderiza o extrato completo com compras, vendas/resgates, aportes e proventos", () => {
     render(<PortfolioActivityPanel defaultMonth="2026-08" />);
 
-    expect(screen.getByText("Aportes / Compras")).toBeInTheDocument();
+    expect(screen.getByText("Compras de Ativos")).toBeInTheDocument();
     expect(screen.getByText("Vendas / Resgates")).toBeInTheDocument();
-    expect(screen.getAllByText("Proventos").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Fluxo Líquido")).toBeInTheDocument();
+    expect(screen.getAllByText(/Proventos/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Aportes do Bolso")).toBeInTheDocument();
 
     expect(screen.getAllByText("PETR4").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("CDB-FACTA")).toBeInTheDocument();
@@ -80,13 +80,27 @@ describe("PortfolioActivityPanel", () => {
   it("filtra movimentações pelos botões de tipo", () => {
     render(<PortfolioActivityPanel defaultMonth="2026-08" />);
 
-    const sellFilterBtn = screen.getByRole("button", { name: "Vendas/Resgates" });
+    const sellFilterBtn = screen.getByRole("button", { name: /Vendas/i });
     fireEvent.click(sellFilterBtn);
 
     expect(screen.getByText("CDB-FACTA")).toBeInTheDocument();
     expect(screen.queryByText("PETR4")).not.toBeInTheDocument();
 
-    const dividendFilterBtn = screen.getByRole("button", { name: "Proventos" });
+    const buyFilterBtn = screen.getByRole("button", { name: /^Compras/i });
+    fireEvent.click(buyFilterBtn);
+
+    expect(screen.getAllByText("PETR4").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("CDB-FACTA")).not.toBeInTheDocument();
+    expect(screen.queryByText("Aporte Financeiro")).not.toBeInTheDocument();
+
+    const contribFilterBtn = screen.getByRole("button", { name: /^Aportes/i });
+    fireEvent.click(contribFilterBtn);
+
+    expect(screen.getByText("Aporte Financeiro")).toBeInTheDocument();
+    expect(screen.getByText("Aporte em Caixa")).toBeInTheDocument();
+    expect(screen.queryByText("CDB-FACTA")).not.toBeInTheDocument();
+
+    const dividendFilterBtn = screen.getByRole("button", { name: /Proventos/i });
     fireEvent.click(dividendFilterBtn);
 
     expect(screen.getAllByText("Provento").length).toBeGreaterThan(0);
@@ -146,6 +160,40 @@ describe("PortfolioActivityPanel", () => {
     // Injeção de capital com asset_id null exibe Aporte Financeiro com badge Aporte
     expect(screen.getByText("Aporte Financeiro")).toBeInTheDocument();
     expect(screen.getByText("Aporte")).toBeInTheDocument();
+  });
+
+  it("renderiza selo 'Creditado no Caixa' para proventos que aumentaram o saldo de liquidez", () => {
+    render(<PortfolioActivityPanel defaultMonth="2026-08" />);
+
+    expect(screen.getByText("Creditado no Caixa")).toBeInTheDocument();
+  });
+
+  it("ao excluir provento vinculado ao Caixa, oferece estorno e chama deleteDividend com rollbackCash", async () => {
+    mockDeleteDividend.mockClear();
+    render(<PortfolioActivityPanel defaultMonth="2026-08" />);
+
+    // Filtra por proventos para isolar o botão de exclusão
+    const provFilterBtn = screen.getByRole("button", { name: /^Proventos/i });
+    fireEvent.click(provFilterBtn);
+
+    // Clica no botão de lixeira do provento PETR4 d-1 (que possui sync_cash: true)
+    const deleteButtons = screen.getAllByRole("button", { name: /Excluir movimentação de PETR4/i });
+    expect(deleteButtons[1]).toBeDefined();
+    fireEvent.click(deleteButtons[1]!);
+
+    // O modal deve ser exibido com a opção de estorno do Caixa
+    expect(screen.getByText("Estornar valor do Caixa")).toBeInTheDocument();
+
+    // Confirma a exclusão
+    const confirmButton = screen.getByRole("button", { name: "Excluir movimentação" });
+    fireEvent.click(confirmButton);
+
+    expect(mockDeleteDividend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "d-1",
+        rollbackCash: true,
+      }),
+    );
   });
 });
 

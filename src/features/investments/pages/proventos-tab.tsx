@@ -5,12 +5,14 @@ import {
   CalendarDays,
   Coins,
   Layers,
+  Pencil,
   Plus,
   Sparkles,
   Trash2,
   TrendingUp,
+  Wallet,
 } from "lucide-react";
-import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, SkeletonTable } from "@/components/ui";
+import { Badge, Button, Checkbox, ConfirmDialog, EmptyState, ErrorState, SkeletonTable } from "@/components/ui";
 import { MonthPicker, SnowballActionCard } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
@@ -103,6 +105,8 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
   const subTab: ProventosSubTab = validSubTab ?? selectedSubTab;
   const [month, setMonth] = useState(() => defaultMonth ?? currentMonth());
   const [dividendToDelete, setDividendToDelete] = useState<PortfolioDividend | null>(null);
+  const [editingDividend, setEditingDividend] = useState<PortfolioDividend | null>(null);
+  const [rollbackCash, setRollbackCash] = useState(true);
   const [dividendFormOpen, setDividendFormOpen] = useState(false);
 
   const handleSubTabChange = (nextTab: ProventosSubTab) => {
@@ -129,6 +133,11 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
   const assets = useMemo(() => rawAssets ?? [], [rawAssets]);
   const assetById = useMemo(() => new Map(assets.map((asset) => [asset.id, asset])), [assets]);
   const rowByAssetId = useMemo(() => new Map(position.rows.map((row) => [row.assetId, row])), [position.rows]);
+  const cashAsset = useMemo(
+    () => assets.find((a) => a.ticker.toUpperCase() === "CAIXA" || isCashAssetClass(a.asset_class)),
+    [assets],
+  );
+  const cashBalance = typeof cashAsset?.quantity === "number" ? cashAsset.quantity : 0;
   const year = month.slice(0, 4);
 
   const getDividendAmountBRL = useCallback((d: PortfolioDividend) => {
@@ -354,8 +363,12 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
   const handleDelete = async () => {
     if (!dividendToDelete) return;
     try {
-      await deleteDividend.mutateAsync(dividendToDelete);
+      await deleteDividend.mutateAsync({
+        ...dividendToDelete,
+        rollbackCash: Boolean(dividendToDelete.sync_cash && rollbackCash),
+      });
       setDividendToDelete(null);
+      setRollbackCash(true);
     } catch {
       // Toast disparado pelo hook
     }
@@ -481,11 +494,17 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
                   className="flex items-center justify-between gap-3 px-3.5 py-3 hover:bg-surface-hover/40 transition-colors"
                 >
                   <div className="flex min-w-0 flex-col gap-0.5">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="truncate text-sm font-bold font-mono text-foreground">{ticker}</span>
                       {asset?.asset_class && (
                         <Badge variant="muted" size="xs" className="font-medium">
                           {asset.asset_class}
+                        </Badge>
+                      )}
+                      {Boolean(entry.sync_cash) && (
+                        <Badge variant="portfolio" size="xs" className="gap-1 border-portfolio/30 text-portfolio font-medium">
+                          <Wallet className="size-2.5" aria-hidden="true" />
+                          <span>Creditado no Caixa</span>
                         </Badge>
                       )}
                     </div>
@@ -504,6 +523,17 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
                         </span>
                       )}
                     </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                      title="Editar lançamento de provento"
+                      aria-label={`Editar provento de ${asset?.ticker ?? entry.ticker ?? "Ativo"}`}
+                      onClick={() => setEditingDividend(entry)}
+                    >
+                      <Pencil className="size-3.5" aria-hidden="true" />
+                    </Button>
                     <Button
                       type="button"
                       variant="ghost"
@@ -971,23 +1001,52 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
         </div>
       )}
 
-      {/* Diálogo de Novo Provento */}
+      {/* Diálogo de Provento (Criação ou Edição) */}
       <DividendFormDialog
-        open={dividendFormOpen}
-        onOpenChange={setDividendFormOpen}
+        open={dividendFormOpen || editingDividend !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDividendFormOpen(false);
+            setEditingDividend(null);
+          }
+        }}
+        dividend={editingDividend}
       />
 
       {/* Diálogo de Confirmação de Exclusão */}
       <ConfirmDialog
         open={dividendToDelete !== null}
-        onOpenChange={(next) => !next && setDividendToDelete(null)}
+        onOpenChange={(next) => {
+          if (!next) {
+            setDividendToDelete(null);
+            setRollbackCash(true);
+          }
+        }}
         title="Excluir provento?"
-        description="O registro deste provento será removido da carteira."
+        description={`O registro deste provento de ${dividendToDelete ? (assetById.get(dividendToDelete.asset_id ?? "")?.ticker ?? dividendToDelete.ticker ?? "Ativo") : ""} no valor de R$ ${dividendToDelete?.amount.toFixed(2) ?? ""} será removido da carteira.`}
         confirmLabel="Excluir"
         variant="destructive"
         confirmPending={deleteDividend.isPending}
         onConfirm={() => void handleDelete()}
-      />
+      >
+        {dividendToDelete && Boolean(dividendToDelete.sync_cash) && (
+          <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-surface-subtle p-3 text-xs text-left">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-foreground">Estornar valor do Caixa</span>
+              <Checkbox
+                checked={rollbackCash}
+                onCheckedChange={(checked) => setRollbackCash(Boolean(checked))}
+                aria-label="Estornar valor do Caixa"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {cashBalance < (dividendToDelete.cash_amount ?? dividendToDelete.amount)
+                ? `Saldo atual em Caixa (R$ ${cashBalance.toFixed(2)}) é menor que o provento. Ao estornar, o saldo do Caixa será ajustado para R$ 0,00.`
+                : `Abaterá R$ ${(dividendToDelete.cash_amount ?? dividendToDelete.amount).toFixed(2)} do saldo atual de Caixa (R$ ${cashBalance.toFixed(2)}).`}
+            </p>
+          </div>
+        )}
+      </ConfirmDialog>
     </div>
   );
 }

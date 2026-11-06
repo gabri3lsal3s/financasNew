@@ -11,5 +11,6 @@ export { SubscriptionTab } from "./subscription-tab";
 export { AppInstallationTab } from "./app-installation-tab";
 export { DeleteAccountCard } from "./delete-account-card";
 export { FamilyBudgetShareCard } from "./family-budget-share-card";
+export { FamilyTab } from "./family-tab";
 export { SupportTab } from "./support-tab";
 

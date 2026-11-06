@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
   User,
+  Users,
   Palette,
   Bell,
   ShieldCheck,
@@ -21,6 +22,7 @@ import {
   SubscriptionTab,
   AppInstallationTab,
   SupportTab,
+  FamilyTab,
 } from "../components/tabs";
 import { DemoTrackSelectModal, HelpModal, SupportChatDialog } from "@/components/modules";
 import { forceAppUpdate } from "@/app/pwa";
@@ -89,6 +91,18 @@ function resolveSettingsTab(param: string | null): string {
     ].includes(p)
   ) {
     return "notifications";
+  }
+  if (
+    [
+      "family",
+      "familia",
+      "família",
+      "casal",
+      "membros",
+      "compartilhado",
+    ].includes(p)
+  ) {
+    return "family";
   }
   if (
     [
@@ -229,6 +243,13 @@ export function SettingsPage() {
         shortLabel: "Plano",
         icon: <Zap className="size-4" />,
         content: <SubscriptionTab />,
+      },
+      {
+        value: "family",
+        label: "Família & Cônjuge",
+        shortLabel: "Família",
+        icon: <Users className="size-4" />,
+        content: <FamilyTab />,
       },
       {
         value: "account",

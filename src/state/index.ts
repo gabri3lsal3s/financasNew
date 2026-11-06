@@ -96,6 +96,7 @@ export {
   useBatchCreateHistoricalContributions,
   usePortfolioDividends,
   useCreatePortfolioDividend,
+  useUpdatePortfolioDividend,
   useDeletePortfolioDividend,
   useCreatePortfolioTransaction,
   useCreatePortfolioTransactionsBatch,

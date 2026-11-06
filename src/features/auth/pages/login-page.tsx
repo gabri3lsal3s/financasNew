@@ -118,7 +118,13 @@ export function LoginPage() {
   if (planoParam) checkoutQuery.set("plano", planoParam);
   if (metodoParam) checkoutQuery.set("metodo", metodoParam);
 
-  const fallbackFrom = planoParam ? `/assinatura?${checkoutQuery.toString()}` : "/";
+  const redirectParam = searchParams.get("redirect") || searchParams.get("returnUrl");
+  const safeRedirect =
+    redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+      ? redirectParam
+      : null;
+
+  const fallbackFrom = safeRedirect || (planoParam ? `/assinatura?${checkoutQuery.toString()}` : "/");
   const rawFrom =
     (location.state as { from?: { pathname?: string; search?: string } } | null)?.from
       ? `${(location.state as { from: { pathname?: string; search?: string } }).from.pathname ?? "/"}${(location.state as { from: { pathname?: string; search?: string } }).from.search ?? ""}`

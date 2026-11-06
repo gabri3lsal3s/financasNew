@@ -55,6 +55,9 @@ function mapDividend(row: PortfolioDividend): PortfolioDividend {
   return {
     ...row,
     amount: Number(row.amount),
+    sync_cash: row.sync_cash ? Boolean(row.sync_cash) : false,
+    cash_amount:
+      row.cash_amount !== undefined && row.cash_amount !== null ? Number(row.cash_amount) : null,
   };
 }
 
@@ -419,6 +422,23 @@ export async function createPortfolioDividend(
   return mapDividend(data);
 }
 
+export async function updatePortfolioDividend(
+  id: string,
+  patch: Partial<Omit<PortfolioDividend, "id" | "user_id" | "created_at">>,
+): Promise<PortfolioDividend> {
+  const { data, error } = await resolveQuery<PortfolioDividend>(
+    getSupabase().from("portfolio_dividends").update(patch).eq("id", id).select().single(),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  if (!data) {
+    throw new AppError("unknown", "Resposta vazia ao atualizar provento.", null);
+  }
+  return mapDividend(data);
+}
+
 export async function deletePortfolioDividend(id: string): Promise<void> {
   const { error } = await resolveQuery(getSupabase().from("portfolio_dividends").delete().eq("id", id));
   if (error) {
@@ -577,4 +597,6 @@ export async function deletePortfolioContributionsMatching(filter: {
     throw new AppError(classified.kind, classified.message, error);
   }
 }
+
+export type { PortfolioDividend };
 

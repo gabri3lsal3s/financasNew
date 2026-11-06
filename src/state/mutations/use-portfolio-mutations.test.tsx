@@ -10,7 +10,7 @@ import {
   PORTFOLIO_QUERY_KEYS,
 } from "./use-portfolio-mutations";
 import * as repo from "@/data/repositories/portfolio";
-import type { PortfolioAsset, PortfolioTransaction } from "@/types";
+import type { PortfolioAsset, PortfolioDividend, PortfolioTransaction } from "@/types";
 
 vi.mock("@/data/repositories/portfolio", () => ({
   createPortfolioAsset: vi.fn(),
@@ -271,6 +271,116 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
           average_price: 1,
         }),
       );
+    });
+
+    it("em provento com syncCash persiste sync_cash e cash_amount e credita Caixa", async () => {
+      vi.mocked(repo.createPortfolioTransaction).mockResolvedValue({ id: "tx-div-1" } as unknown as PortfolioTransaction);
+      vi.mocked(repo.createPortfolioDividend).mockResolvedValue({ id: "div-1", amount: 50 } as unknown as PortfolioDividend);
+      vi.mocked(repo.updatePortfolioAsset).mockResolvedValue({ id: "cash-1" } as unknown as PortfolioAsset);
+
+      const { result } = renderHook(() => useRecordOrder(), { wrapper });
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          asset: mockStockAsset,
+          type: "dividend",
+          date: "2026-08-27",
+          quantity: 0,
+          price: 0,
+          total: 50,
+          syncCash: true,
+          cashAsset: mockCashAsset,
+        });
+      });
+
+      expect(repo.createPortfolioDividend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: 50,
+          sync_cash: true,
+          cash_amount: 50,
+        }),
+      );
+
+      expect(repo.updatePortfolioAsset).toHaveBeenCalledWith(
+        "cash-1",
+        expect.objectContaining({
+          quantity: 1050,
+          average_price: 1,
+        }),
+      );
+    });
+
+    it("ao excluir provento com rollbackCash debita Caixa sem deixar saldo negativo", async () => {
+      vi.mocked(repo.deletePortfolioDividend).mockResolvedValue(undefined);
+      vi.mocked(repo.updatePortfolioAsset).mockResolvedValue({ id: "cash-1" } as unknown as PortfolioAsset);
+
+      queryClient.setQueryData(PORTFOLIO_QUERY_KEYS.assets, [mockCashAsset]);
+      queryClient.setQueryData(PORTFOLIO_QUERY_KEYS.dividends, [
+        {
+          id: "div-1",
+          asset_id: "stock-1",
+          date: "2026-08-27",
+          amount: 50,
+          sync_cash: true,
+          cash_amount: 50,
+        },
+      ]);
+
+      const { result } = renderHook(() => useDeletePortfolioDividend(), { wrapper });
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          id: "div-1",
+          asset_id: "stock-1",
+          date: "2026-08-27",
+          amount: 50,
+          sync_cash: true,
+          cash_amount: 50,
+          rollbackCash: true,
+        });
+      });
+
+      expect(repo.deletePortfolioDividend).toHaveBeenCalledWith("div-1");
+      expect(repo.updatePortfolioAsset).toHaveBeenCalledWith(
+        "cash-1",
+        expect.objectContaining({
+          quantity: 950, // 1000 - 50 = 950
+          average_price: 1,
+        }),
+      );
+    });
+
+    it("ao excluir provento com rollbackCash: false preserva o saldo de Caixa intacto", async () => {
+      vi.mocked(repo.deletePortfolioDividend).mockResolvedValue(undefined);
+
+      queryClient.setQueryData(PORTFOLIO_QUERY_KEYS.assets, [mockCashAsset]);
+      queryClient.setQueryData(PORTFOLIO_QUERY_KEYS.dividends, [
+        {
+          id: "div-2",
+          asset_id: "stock-1",
+          date: "2026-08-27",
+          amount: 50,
+          sync_cash: true,
+          cash_amount: 50,
+        },
+      ]);
+
+      const { result } = renderHook(() => useDeletePortfolioDividend(), { wrapper });
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          id: "div-2",
+          asset_id: "stock-1",
+          date: "2026-08-27",
+          amount: 50,
+          sync_cash: true,
+          cash_amount: 50,
+          rollbackCash: false,
+        });
+      });
+
+      expect(repo.deletePortfolioDividend).toHaveBeenCalledWith("div-2");
+      expect(repo.updatePortfolioAsset).not.toHaveBeenCalled();
     });
   });
 });

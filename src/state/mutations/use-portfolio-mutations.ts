@@ -18,6 +18,7 @@ import {
   listPortfolioTransactions,
   updatePortfolioAsset,
   updatePortfolioContribution,
+  updatePortfolioDividend,
   updatePortfolioTransaction,
   upsertMarcoZero,
 } from "@/data/repositories/portfolio";
@@ -589,6 +590,71 @@ export function useCreatePortfolioDividend() {
   });
 }
 
+export function useUpdatePortfolioDividend() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      id: string;
+      patch: Partial<Omit<PortfolioDividend, "id" | "user_id" | "created_at">>;
+      syncCash?: boolean;
+      previousSyncCash?: boolean;
+      previousCashAmount?: number;
+    }) => {
+      const { id, patch, syncCash, previousSyncCash, previousCashAmount = 0 } = params;
+      const updated = await updatePortfolioDividend(id, patch);
+
+      // Sincronização inteligente com Caixa
+      if (syncCash !== undefined) {
+        const cachedAssets = queryClient.getQueryData<PortfolioAsset[]>(PORTFOLIO_QUERY_KEYS.assets) ?? [];
+        const cashAsset = cachedAssets.find(
+          (a) => a.ticker.toUpperCase() === "CAIXA" || isCashAssetClass(a.asset_class),
+        );
+        if (cashAsset) {
+          const newAmount = patch.amount !== undefined ? patch.amount : (patch.cash_amount ?? 0);
+          let delta = 0;
+          if (syncCash && previousSyncCash) {
+            delta = newAmount - previousCashAmount;
+          } else if (syncCash && !previousSyncCash) {
+            delta = newAmount;
+          } else if (!syncCash && previousSyncCash) {
+            delta = -previousCashAmount;
+          }
+
+          if (delta !== 0) {
+            const newQty = Math.max(0, Math.round((cashAsset.quantity + delta) * 100) / 100);
+            await updatePortfolioAsset(cashAsset.id, {
+              quantity: newQty,
+              average_price: 1,
+            });
+          }
+        }
+      }
+
+      return updated;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividends });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      pushToast({
+        title: "Provento atualizado",
+        description: "As alterações foram salvas com sucesso.",
+        variant: "info",
+      });
+      triggerSensory("success");
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao atualizar provento",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 export type DeletePortfolioDividendInput =
   | string
   | {
@@ -597,6 +663,9 @@ export type DeletePortfolioDividendInput =
       assetId?: string | null;
       date?: string | null;
       amount?: number | null;
+      sync_cash?: boolean | null;
+      cash_amount?: number | null;
+      rollbackCash?: boolean;
     };
 
 export function useDeletePortfolioDividend() {
@@ -607,14 +676,17 @@ export function useDeletePortfolioDividend() {
       let assetId = typeof input !== "string" ? (input.asset_id ?? input.assetId) : undefined;
       let date = typeof input !== "string" ? input.date : undefined;
       let amount = typeof input !== "string" ? input.amount : undefined;
+      const rollbackCash = typeof input !== "string" ? Boolean(input.rollbackCash) : false;
+      let cashAmount = typeof input !== "string" ? (input.cash_amount ?? amount) : undefined;
 
-      if (!assetId || !date) {
-        const cached = queryClient.getQueryData<PortfolioDividend[]>(PORTFOLIO_QUERY_KEYS.dividends) ?? [];
-        const match = cached.find((d) => d.id === id);
-        if (match) {
-          assetId = assetId ?? match.asset_id;
-          date = date ?? match.date;
-          amount = amount ?? match.amount;
+      const cached = queryClient.getQueryData<PortfolioDividend[]>(PORTFOLIO_QUERY_KEYS.dividends) ?? [];
+      const match = cached.find((d) => d.id === id);
+      if (match) {
+        assetId = assetId ?? match.asset_id;
+        date = date ?? match.date;
+        amount = amount ?? match.amount;
+        if (cashAmount === undefined) {
+          cashAmount = match.cash_amount ?? match.amount;
         }
       }
 
@@ -629,6 +701,21 @@ export function useDeletePortfolioDividend() {
           types: ["dividend", "jcp", "fii_yield"],
           total: amount,
         });
+      }
+
+      // 3. Estorno inteligente no saldo de Caixa se solicitado
+      if (rollbackCash && cashAmount !== undefined && cashAmount !== null && cashAmount > 0) {
+        const cachedAssets = queryClient.getQueryData<PortfolioAsset[]>(PORTFOLIO_QUERY_KEYS.assets) ?? [];
+        const cashAsset = cachedAssets.find(
+          (a) => a.ticker.toUpperCase() === "CAIXA" || isCashAssetClass(a.asset_class),
+        );
+        if (cashAsset) {
+          const newQty = Math.max(0, Math.round((cashAsset.quantity - cashAmount) * 100) / 100);
+          await updatePortfolioAsset(cashAsset.id, {
+            quantity: newQty,
+            average_price: 1,
+          });
+        }
       }
     },
     onSuccess: () => {
@@ -977,6 +1064,8 @@ export function useRecordOrder() {
           asset_id: asset.id,
           ticker: asset.ticker,
           notes: notes ?? `Rendimento de ${asset.ticker}`,
+          sync_cash: Boolean(syncCash && totalBRL > 0),
+          cash_amount: syncCash && totalBRL > 0 ? totalBRL : null,
         });
 
         // Credita no caixa em BRL se solicitado

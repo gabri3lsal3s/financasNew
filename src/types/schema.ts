@@ -636,6 +636,8 @@ export type PortfolioDividend = {
   date: string;
   amount: number;
   notes?: string | null;
+  sync_cash?: boolean | null;
+  cash_amount?: number | null;
   created_at?: string;
 };
 

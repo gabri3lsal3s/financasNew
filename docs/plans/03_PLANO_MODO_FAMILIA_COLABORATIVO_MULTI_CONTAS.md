@@ -146,17 +146,17 @@ flowchart TD
 
 ## Fase 4: Fluxo de Convite & Onboarding do Parceiro
 
-- [ ] **Tarefa 4.1: Rota Pública de Convite (`/convite-familiar/:token`)**
+- [x] **Tarefa 4.1: Rota Pública de Convite (`/convite-familiar/:token`)**
   - Página segura que recepciona o parceiro, exibe o nome de quem convidou e permite vincular a conta em 1 clique (com redirecionamento inteligente pós-login).
 
-- [ ] **Tarefa 4.2: Card de Gestão da Família em Configurações (`src/features/settings/components/tabs/family-tab.tsx`)**
+- [x] **Tarefa 4.2: Card de Gestão da Família em Configurações (`src/features/settings/components/tabs/family-tab.tsx`)**
   - Gerenciamento de membros, link de convite, link público passivo opcional e teto mensal compartilhado.
 
-- [ ] **Portão de Qualidade 4 (QG4):**
-  - [ ] Executar: `npx vitest run src/features/settings/components/tabs/family-tab.test.tsx`
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] **Commit & Push da Fase 4:** `git commit -m "feat(family): fluxo de convite e onboarding do parceiro"`
+- [x] **Portão de Qualidade 4 (QG4):**
+  - [x] Executar: `npx vitest run src/features/settings/components/tabs/family-tab.test.tsx`
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] **Commit & Push da Fase 4:** `git commit -m "feat(family): fluxo de convite e onboarding do parceiro"`
 
 ---
 

@@ -71,6 +71,22 @@ vi.mock("@/state/queries/use-public-shares", () => ({
   }),
 }));
 
+vi.mock("@/state/queries/use-family", () => ({
+  useFamilyInvite: () => ({
+    data: null,
+    isLoading: false,
+    isError: false,
+  }),
+  useMyFamily: () => ({
+    data: null,
+    isLoading: false,
+  }),
+  useAcceptFamilyInvite: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+}));
+
 
 describe("AppRouter (Code Splitting e Lazy Routes)", () => {
   it("renderiza a rota /entrar com Suspense e lazy loading para visitantes", async () => {
@@ -268,6 +284,24 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
     render(<AppRouter />);
 
     expect(await screen.findByText(/Meta não encontrada/i)).toBeInTheDocument();
+  });
+
+  it("renderiza a rota pública /convite-familiar/:token (FamilyInvitePage) para visitantes", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/convite-familiar/tok-abc");
+    render(<AppRouter />);
+
+    expect(await screen.findByText(/Convite não encontrado ou inválido/i)).toBeInTheDocument();
   });
 
   it("renderiza o hub público /ferramentas para visitantes", async () => {

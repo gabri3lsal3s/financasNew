@@ -110,6 +110,23 @@ vi.mock("@/state", () => ({
     toggleFamilyMode: vi.fn().mockResolvedValue(true),
     isUpdating: false,
   }),
+  useMyFamily: () => ({
+    data: null,
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useCreateFamily: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useInviteFamilyMember: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRevokeFamilyInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useLeaveFamily: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateFamily: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateFamilyMember: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useMyPublicShares: () => ({ data: [], isLoading: false }),
+  useCreatePublicShare: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRevokePublicShare: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRegeneratePublicShare: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 function renderSettings(initialEntries: string[] = ["/configuracoes"]) {
@@ -158,6 +175,7 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     expect(screen.getByRole("tab", { name: "Segurança" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Dispositivos & App" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Plano" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Família & Cônjuge" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Minha Conta" })).toBeInTheDocument();
     expect(screen.getByText("Modo de Experiência do Aplicativo")).toBeInTheDocument();
   });
@@ -318,6 +336,12 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
   it("ativa a aba Dispositivos quando acessado via ?tab=dispositivos ou ?tab=app", () => {
     renderSettings(["/configuracoes?tab=dispositivos"]);
     expect(screen.getByText("Plataforma em Uso")).toBeInTheDocument();
+  });
+
+  it("ativa a aba Família quando acessado via ?tab=familia ou ?tab=family", () => {
+    renderSettings(["/configuracoes?tab=familia"]);
+    expect(screen.getByRole("tab", { name: "Família & Cônjuge" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("family-tab-empty")).toBeInTheDocument();
   });
 
   it("renderiza a seção canônica de suporte e ajuda com o seletor do tour", () => {

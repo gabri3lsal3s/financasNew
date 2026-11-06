@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { DividendFormDialog } from "./dividend-form-dialog";
 
 const recordOrderMock = vi.fn();
+const updateDividendMock = vi.fn();
 
 vi.mock("@/state", () => ({
   usePortfolioAssets: () => ({
@@ -12,6 +13,10 @@ vi.mock("@/state", () => ({
   }),
   useRecordOrder: () => ({
     mutateAsync: recordOrderMock,
+    isPending: false,
+  }),
+  useUpdatePortfolioDividend: () => ({
+    mutateAsync: updateDividendMock,
     isPending: false,
   }),
 }));
@@ -81,5 +86,40 @@ describe("DividendFormDialog — Fase 39 Inteligência de Proventos", () => {
       }),
     );
   });
+
+  it("renderiza o formulário em modo de edição com dados pré-preenchidos e salva alterações", async () => {
+    updateDividendMock.mockResolvedValue({});
+    const user = userEvent.setup();
+    const existingDividend = {
+      id: "div-123",
+      user_id: "u-1",
+      asset_id: "a-1",
+      ticker: "MXRF11",
+      date: "2026-10-15",
+      amount: 45.5,
+      sync_cash: true,
+      cash_amount: 45.5,
+      notes: "Provento de outubro",
+      created_at: "2026-10-15T10:00:00Z",
+    };
+
+    render(<DividendFormDialog open={true} onOpenChange={vi.fn()} dividend={existingDividend} />);
+
+    expect(screen.getByText("Editar Provento Recebido")).toBeInTheDocument();
+    expect(screen.getByText("Adicionar / Manter valor no ativo Caixa")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Salvar Alterações" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Salvar Alterações" }));
+
+    expect(updateDividendMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "div-123",
+        syncCash: true,
+        previousSyncCash: true,
+        previousCashAmount: 45.5,
+      }),
+    );
+  });
 });
+
 

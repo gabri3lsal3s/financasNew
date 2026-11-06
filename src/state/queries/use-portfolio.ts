@@ -135,6 +135,7 @@ export {
   useUpdatePortfolioContribution,
   useBatchCreateHistoricalContributions,
   useCreatePortfolioDividend,
+  useUpdatePortfolioDividend,
   useDeletePortfolioDividend,
   useRecordOrder,
   useExecutePortfolioBatchAporte,

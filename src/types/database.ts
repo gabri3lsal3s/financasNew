@@ -177,6 +177,12 @@ export interface Database {
         };
         Returns: InviteFamilyMemberResult;
       };
+      get_family_invite_preview: {
+        Args: {
+          p_token: string;
+        };
+        Returns: Record<string, unknown> | null;
+      };
       accept_family_invite: {
         Args: {
           p_token: string;

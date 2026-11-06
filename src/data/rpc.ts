@@ -1265,6 +1265,42 @@ export async function inviteFamilyMember(
   );
 }
 
+export interface GetFamilyInvitePreviewParams {
+  token: string;
+}
+
+export interface FamilyInvitePreviewResult {
+  id: string;
+  family_id: string;
+  invited_by: string;
+  invited_email?: string | null;
+  token: string;
+  status: string;
+  role: string;
+  created_at: string;
+  expires_at: string;
+  accepted_by?: string | null;
+  accepted_at?: string | null;
+  family_name: string;
+  inviter_name: string;
+}
+
+/**
+ * Consulta pública e segura das informações de um convite familiar via token criptográfico.
+ * Retorna dados de recepção do parceiro (Zero Data Bleed).
+ */
+export async function getFamilyInvitePreview(
+  params: GetFamilyInvitePreviewParams,
+): Promise<FamilyInvitePreviewResult | null> {
+  const result = await unwrapRpc(
+    callRpc("get_family_invite_preview", {
+      p_token: params.token,
+    }),
+    true,
+  );
+  return result as FamilyInvitePreviewResult | null;
+}
+
 export interface AcceptFamilyInviteParams {
   token: string;
   displayName?: string | null;

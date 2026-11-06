@@ -93,6 +93,11 @@ const GoalTrackerPublicPage = lazy(() =>
     default: m.GoalTrackerPublicPage,
   })),
 );
+const FamilyInvitePage = lazy(() =>
+  import("@/features/family/pages/family-invite-page").then((m) => ({
+    default: m.FamilyInvitePage,
+  })),
+);
 const ToolsHubPage = lazy(() =>
   import("@/features/tools/pages/tools-hub-page").then((m) => ({ default: m.ToolsHubPage })),
 );
@@ -277,6 +282,7 @@ export function AppRouter() {
           <Route path="/r/:token" element={<SplitPublicPage />} />
           <Route path="/orcamento-familiar/:token" element={<FamilyBudgetPage />} />
           <Route path="/meta/:token" element={<GoalTrackerPublicPage />} />
+          <Route path="/convite-familiar/:token" element={<FamilyInvitePage />} />
 
           {/* Rotas públicas de simuladores financeiros abertos (Fase 5) */}
           <Route path="/ferramentas" element={<ToolsHubPage />} />

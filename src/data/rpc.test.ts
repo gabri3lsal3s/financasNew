@@ -6,6 +6,7 @@ import {
   getFamilyConsolidation,
   createFamily,
   inviteFamilyMember,
+  getFamilyInvitePreview,
   acceptFamilyInvite,
   leaveFamily,
   recordFamilySettlement,
@@ -296,6 +297,39 @@ describe("RPC: Exclusão de Contas e Usuários", () => {
       });
 
       await expect(inviteFamilyMember()).rejects.toThrow(AppError);
+    });
+  });
+
+  describe("getFamilyInvitePreview", () => {
+    it("deve consultar preview de convite via token com sucesso", async () => {
+      const mockPreview = {
+        id: "inv-1",
+        family_id: "fam-1",
+        invited_by: "user-1",
+        token: "tok-abc",
+        status: "pending",
+        role: "member",
+        created_at: "2026-11-01T10:00:00Z",
+        expires_at: "2026-11-08T10:00:00Z",
+        family_name: "Família Silva",
+        inviter_name: "Carlos",
+      };
+      rpcMock.mockResolvedValueOnce({ data: mockPreview, error: null });
+
+      const result = await getFamilyInvitePreview({ token: "tok-abc" });
+
+      expect(result).toEqual(mockPreview);
+      expect(rpcMock).toHaveBeenCalledWith("get_family_invite_preview", {
+        p_token: "tok-abc",
+      });
+    });
+
+    it("retorna null se a RPC retornar nulo (convite inexistente)", async () => {
+      rpcMock.mockResolvedValueOnce({ data: null, error: null });
+
+      const result = await getFamilyInvitePreview({ token: "invalid-tok" });
+
+      expect(result).toBeNull();
     });
   });
 

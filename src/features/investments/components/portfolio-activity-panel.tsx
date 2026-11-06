@@ -15,6 +15,7 @@ import {
 import {
   Badge,
   Button,
+  Checkbox,
   ConfirmDialog,
   EmptyState,
   Input,
@@ -31,6 +32,7 @@ import { downloadCsv } from "@/services/export-actions";
 import { serializePortfolioActivitiesCsv, type ExportPortfolioActivityRow } from "@/domain/export";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { DividendFormDialog } from "./dividend-form-dialog";
 import { TransactionFormDialog } from "./transaction-form-dialog";
 import {
   useAllPortfolioTransactions,
@@ -44,7 +46,7 @@ import {
 } from "@/state";
 import type { PortfolioAsset, PortfolioContribution, PortfolioDividend, PortfolioTransaction } from "@/types";
 
-export type ActivityFilterType = "all" | "buy" | "sell" | "dividend";
+export type ActivityFilterType = "all" | "buy" | "contribution" | "sell" | "dividend";
 
 export interface ActivityItem {
   id: string;
@@ -77,7 +79,9 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
   const [filterType, setFilterType] = useState<ActivityFilterType>("all");
   const [search, setSearch] = useState("");
   const [itemToDelete, setItemToDelete] = useState<ActivityItem | null>(null);
+  const [rollbackCash, setRollbackCash] = useState(true);
   const [editingTx, setEditingTx] = useState<{ transaction: PortfolioTransaction; asset: PortfolioAsset } | null>(null);
+  const [editingDividend, setEditingDividend] = useState<PortfolioDividend | null>(null);
 
   const transactionsQuery = useAllPortfolioTransactions();
   const contributionsQuery = usePortfolioContributions();
@@ -85,6 +89,12 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
   const assetsQuery = usePortfolioAssets();
   const positionQuery = usePortfolioPosition();
   const usdRate = positionQuery.rows.find((r) => r.currency === "USD")?.usdRate ?? 5.25;
+
+  const cashAsset = useMemo(
+    () => (assetsQuery.data ?? []).find((a) => a.ticker.toUpperCase() === "CAIXA" || isCashAssetClass(a.asset_class)),
+    [assetsQuery.data],
+  );
+  const cashBalance = typeof cashAsset?.quantity === "number" ? cashAsset.quantity : 0;
 
   const deleteTransaction = useDeletePortfolioTransaction();
   const deleteContribution = useDeletePortfolioContribution();
@@ -107,6 +117,14 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
       }
     }
 
+    // Mapeia proventos por (asset_id, date) para vincular rawDividend às transações
+    const dividendMap = new Map<string, PortfolioDividend>();
+    for (const d of dividendsQuery.data ?? []) {
+      if (d.asset_id) {
+        dividendMap.set(`${d.asset_id}_${d.date}`, d);
+      }
+    }
+
     // 1. Transações do Ledger (Compras, Vendas, Splits, etc.)
     for (const t of transactionsQuery.data ?? []) {
       const asset = assetMap.get(t.asset_id);
@@ -118,6 +136,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
       const linkedNote = contributionNotesMap.get(`${t.asset_id}_${t.date}`) ?? (t as { notes?: string | null }).notes ?? null;
 
       const isDiv = isDividendType(t.type);
+      const linkedDiv = isDiv && t.asset_id ? dividendMap.get(`${t.asset_id}_${t.date}`) : undefined;
       const activityType: ActivityItem["type"] =
         t.type === "buy" || t.type === "subscription"
           ? "buy"
@@ -141,6 +160,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
         total: totalAmount,
         notes: linkedNote,
         rawTransaction: t,
+        rawDividend: linkedDiv,
       });
     }
 
@@ -215,8 +235,9 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
 
   // Métricas do Mês
   const monthStats = useMemo(() => {
-    let totalBought = 0;
-    let totalSold = 0;
+    let totalBoughtAssets = 0;
+    let totalContributions = 0;
+    let totalSoldAssets = 0;
     let totalDividends = 0;
 
     for (const item of monthActivities) {
@@ -231,8 +252,8 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
       const isCash = asset
         ? isCashAssetClass(asset.asset_class) || asset.ticker.toUpperCase() === "CAIXA"
         : item.assetClass
-          ? isCashAssetClass(item.assetClass)
-          : false;
+          ? isCashAssetClass(item.assetClass) || item.ticker.toUpperCase() === "CAIXA"
+          : item.ticker.toUpperCase() === "CAIXA";
 
       const isUSD = asset?.currency === "USD";
       const rate = isUSD ? usdRate : 1;
@@ -240,34 +261,50 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
 
       if (item.type === "buy") {
         if (!isCash) {
-          totalBought += totalBRL;
+          totalBoughtAssets += totalBRL;
         }
       } else if (item.type === "contribution") {
-        // Aportes de capital externo
-        totalBought += totalBRL;
+        // Aportes de capital externo (do bolso para Caixa ou direto em ativo)
+        totalContributions += totalBRL;
       } else if (item.type === "sell") {
         if (!isCash) {
-          totalSold += totalBRL;
+          totalSoldAssets += totalBRL;
         }
       } else if (item.type === "dividend") {
         totalDividends += totalBRL;
       }
     }
 
-    const netFlow = totalBought + totalDividends - totalSold;
-
     return {
-      boughtCents: numberToCents(totalBought),
-      soldCents: numberToCents(totalSold),
+      boughtCents: numberToCents(totalBoughtAssets),
+      contributionsCents: numberToCents(totalContributions),
+      soldCents: numberToCents(totalSoldAssets),
       dividendsCents: numberToCents(totalDividends),
-      netFlowCents: numberToCents(netFlow),
     };
   }, [monthActivities, assetMap, usdRate]);
+
+  // Contadores para os botões de filtro
+  const typeCounts = useMemo(() => {
+    let buys = 0;
+    let contributions = 0;
+    let sells = 0;
+    let dividends = 0;
+
+    for (const item of monthActivities) {
+      if (item.type === "buy") buys++;
+      else if (item.type === "contribution") contributions++;
+      else if (item.type === "sell") sells++;
+      else if (item.type === "dividend") dividends++;
+    }
+
+    return { buys, contributions, sells, dividends };
+  }, [monthActivities]);
 
   // Filtros de Tipo e Busca
   const filteredActivities = useMemo(() => {
     return monthActivities.filter((item) => {
-      if (filterType === "buy" && item.type !== "buy" && item.type !== "contribution") return false;
+      if (filterType === "buy" && item.type !== "buy") return false;
+      if (filterType === "contribution" && item.type !== "contribution") return false;
       if (filterType === "sell" && item.type !== "sell") return false;
       if (filterType === "dividend" && item.type !== "dividend") return false;
 
@@ -319,12 +356,31 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
   const handleDeleteItem = async () => {
     if (!itemToDelete) return;
     try {
-      if (itemToDelete.source === "transaction" && itemToDelete.rawTransaction) {
+      if (itemToDelete.type === "dividend") {
+        if (itemToDelete.rawDividend) {
+          await deleteDividend.mutateAsync({
+            ...itemToDelete.rawDividend,
+            rollbackCash: Boolean(itemToDelete.rawDividend.sync_cash && rollbackCash),
+          });
+        } else if (itemToDelete.rawTransaction) {
+          await deleteDividend.mutateAsync({
+            id: itemToDelete.rawTransaction.id,
+            asset_id: itemToDelete.rawTransaction.asset_id,
+            date: itemToDelete.date,
+            amount: itemToDelete.total,
+            rollbackCash: false,
+          });
+          await deleteTransaction.mutateAsync(itemToDelete.rawTransaction);
+        }
+      } else if (itemToDelete.source === "transaction" && itemToDelete.rawTransaction) {
         await deleteTransaction.mutateAsync(itemToDelete.rawTransaction);
       } else if (itemToDelete.source === "contribution" && itemToDelete.rawContribution) {
         await deleteContribution.mutateAsync(itemToDelete.rawContribution);
       } else if (itemToDelete.source === "dividend" && itemToDelete.rawDividend) {
-        await deleteDividend.mutateAsync(itemToDelete.rawDividend.id);
+        await deleteDividend.mutateAsync({
+          ...itemToDelete.rawDividend,
+          rollbackCash: Boolean(itemToDelete.rawDividend.sync_cash && rollbackCash),
+        });
       }
 
       triggerSensory("destructive");
@@ -333,6 +389,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
         description: "A movimentação foi removida e os saldos recalculados.",
       });
       setItemToDelete(null);
+      setRollbackCash(true);
     } catch (err) {
       pushToast({
         title: "Erro ao excluir movimentação",
@@ -357,7 +414,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-4">
           <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/90 p-3.5 shadow-2xs">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Aportes / Compras</span>
+              <span>Compras de Ativos</span>
               <ArrowDownLeft className="size-3.5 text-positive-strong" aria-hidden="true" />
             </div>
             <span className="text-base font-semibold text-foreground">
@@ -377,7 +434,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
 
           <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/90 p-3.5 shadow-2xs">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Proventos</span>
+              <span>Proventos do Mês</span>
               <Coins className="size-3.5 text-portfolio" aria-hidden="true" />
             </div>
             <span className="text-base font-semibold text-foreground">
@@ -387,11 +444,11 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
 
           <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/90 p-3.5 shadow-2xs">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Fluxo Líquido</span>
-              <Layers className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <span>Aportes do Bolso</span>
+              <Wallet className="size-3.5 text-portfolio" aria-hidden="true" />
             </div>
             <span className="text-base font-semibold text-foreground">
-              <MoneyText cents={monthStats.netFlowCents} tone="default" sign="auto" />
+              <MoneyText cents={monthStats.contributionsCents} tone="portfolio" />
             </span>
           </div>
         </div>
@@ -442,7 +499,19 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                   : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
               )}
             >
-              Aportes/Compras
+              Compras ({typeCounts.buys})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType("contribution")}
+              className={cn(
+                "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0",
+                filterType === "contribution"
+                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                  : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Aportes ({typeCounts.contributions})
             </button>
             <button
               type="button"
@@ -454,7 +523,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                   : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
               )}
             >
-              Vendas/Resgates
+              Vendas ({typeCounts.sells})
             </button>
             <button
               type="button"
@@ -466,7 +535,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                   : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
               )}
             >
-              Proventos
+              Proventos ({typeCounts.dividends})
             </button>
             <Button
               type="button"
@@ -585,6 +654,12 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                                         ? "Provento"
                                         : "Split"}
                           </Badge>
+                          {isDividend && Boolean(item.rawDividend?.sync_cash) && (
+                            <Badge variant="portfolio" size="xs" className="gap-1 border-portfolio/30 text-portfolio font-medium">
+                              <Wallet className="size-2.5" aria-hidden="true" />
+                              <span>Creditado no Caixa</span>
+                            </Badge>
+                          )}
                           <span className="text-[11px] text-muted-foreground whitespace-nowrap">
                             {formatDateBR(item.date)}
                           </span>
@@ -634,7 +709,30 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                         </span>
                       </div>
 
-                      {item.source === "transaction" && item.rawTransaction && assetMap.get(item.rawTransaction.asset_id) ? (
+                      {item.type === "dividend" ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const divToEdit: PortfolioDividend = item.rawDividend ?? {
+                              id: item.id.replace(/^div-/, "").replace(/^tx-/, ""),
+                              user_id: item.rawTransaction?.user_id ?? "",
+                              asset_id: item.rawTransaction?.asset_id ?? null,
+                              ticker: item.ticker,
+                              date: item.date,
+                              amount: item.total,
+                              sync_cash: false,
+                            };
+                            setEditingDividend(divToEdit);
+                          }}
+                          className="size-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                          title="Editar provento"
+                          aria-label={`Editar provento de ${item.ticker}`}
+                        >
+                          <Pencil className="size-3.5" aria-hidden="true" />
+                        </Button>
+                      ) : item.source === "transaction" && item.rawTransaction && assetMap.get(item.rawTransaction.asset_id) ? (
                         <Button
                           type="button"
                           variant="ghost"
@@ -675,14 +773,37 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
 
       <ConfirmDialog
         open={itemToDelete !== null}
-        onOpenChange={(open) => !open && setItemToDelete(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setItemToDelete(null);
+            setRollbackCash(true);
+          }
+        }}
         title="Excluir movimentação?"
         description={`O lançamento de ${itemToDelete?.ticker ?? ""} no valor de R$ ${itemToDelete?.total.toFixed(2) ?? ""} será excluído permanentemente.`}
         confirmLabel="Excluir movimentação"
         variant="destructive"
         confirmPending={deleteTransaction.isPending || deleteContribution.isPending || deleteDividend.isPending}
         onConfirm={handleDeleteItem}
-      />
+      >
+        {itemToDelete?.type === "dividend" && Boolean(itemToDelete.rawDividend?.sync_cash) && (
+          <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-surface-subtle p-3 text-xs text-left">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-foreground">Estornar valor do Caixa</span>
+              <Checkbox
+                checked={rollbackCash}
+                onCheckedChange={(checked) => setRollbackCash(Boolean(checked))}
+                aria-label="Estornar valor do Caixa"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {cashBalance < (itemToDelete.rawDividend?.cash_amount ?? itemToDelete.total)
+                ? `Saldo atual em Caixa (R$ ${cashBalance.toFixed(2)}) é menor que o provento. Ao estornar, o saldo do Caixa será ajustado para R$ 0,00.`
+                : `Abaterá R$ ${(itemToDelete.rawDividend?.cash_amount ?? itemToDelete.total).toFixed(2)} do saldo atual de Caixa (R$ ${cashBalance.toFixed(2)}).`}
+            </p>
+          </div>
+        )}
+      </ConfirmDialog>
 
       {editingTx && (
         <TransactionFormDialog
@@ -690,6 +811,14 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
           onOpenChange={(open) => !open && setEditingTx(null)}
           asset={editingTx.asset}
           transaction={editingTx.transaction}
+        />
+      )}
+
+      {editingDividend && (
+        <DividendFormDialog
+          open={editingDividend !== null}
+          onOpenChange={(open) => !open && setEditingDividend(null)}
+          dividend={editingDividend}
         />
       )}
     </>
