@@ -81,13 +81,13 @@ flowchart TD
 
 - [x] **Tarefa 2.1: Saneamento dos Componentes de Split / Racha Pix** (`tsc -b` verde).
 - [x] **Tarefa 2.2: Correção nos Diálogos de Transações e Wizard** (`launch-wizard.tsx` e `expense-detail-dialog.tsx` ajustados).
-- [ ] **Tarefa 2.3: Checagem Final de Linter**
+- [x] **Tarefa 2.3: Checagem Final de Linter**
   - Execução de `npm run lint` assegurando 0 erros e 0 warnings, com conformidade absoluta à regra `local/no-decorative-unicode`.
 
-- [ ] **Portão de Qualidade 2 (QG2):**
+- [x] **Portão de Qualidade 2 (QG2):**
   - [x] Executar: `npm run typecheck` (`tsc -b` 0 erros)
-  - [ ] Executar: `npm run lint` (0 erros e 0 warnings)
-  - [ ] **Commit & Push da Fase 2:** `git commit -m "fix(types): saneamento integral de tipagem e linter estrito"`
+  - [x] Executar: `npm run lint` (0 erros e 0 warnings)
+  - [x] **Commit & Push da Fase 2:** `git commit -m "fix(types): saneamento integral de tipagem e linter estrito"`
 
 ---
 
