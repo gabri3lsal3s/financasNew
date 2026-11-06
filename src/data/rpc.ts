@@ -10,6 +10,13 @@ import type {
   RecurrenceKind,
   SharedFamilyBudgetResult,
   SharedGoalTrackerResult,
+  FamilyConsolidationResult,
+  AcceptFamilyInviteResult,
+  FamilyPixKeyType,
+  FamilySettlementPaymentMethod,
+  FamilySplitRule,
+  InviteFamilyMemberResult,
+  LeaveFamilyResult,
 } from "@/types";
 
 /**
@@ -1173,6 +1180,166 @@ export async function dismissSplitPaymentSignal(params: {
     }),
   );
 }
+
+// ---------------------------------------------------------------------------
+// Modo Família Colaborativo Multi-Contas (Plano 03 / Tarefa 1.2)
+// ---------------------------------------------------------------------------
+
+export interface GetFamilyConsolidationParams {
+  familyId?: string | null;
+  month?: string | null;
+}
+
+/**
+ * RPC Transacional de Consolidação Familiar Multi-Contas (D4 / F1).
+ *
+ * Agrega e consolida com blindagem RLS:
+ *   • Total gasto e teto orçamentário da casa;
+ *   • Fatias de contribuição de cada participante;
+ *   • Despesas enriquecidas com categoria e pagador (omitindo contas e cartões bancários — F3);
+ *   • Status de liquidação/acerto de contas do mês e aviso de movimentações pós-acerto (F5).
+ */
+export async function getFamilyConsolidation(
+  params?: GetFamilyConsolidationParams,
+): Promise<FamilyConsolidationResult | null> {
+  return unwrapRpc(
+    callRpc("get_family_consolidation", {
+      p_family_id: params?.familyId ?? null,
+      p_month: params?.month ?? null,
+    }),
+    true,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Modo Família Colaborativo Multi-Contas — Gestão de Família (Plano 03 / Tarefa 1.3)
+// ---------------------------------------------------------------------------
+
+export interface CreateFamilyParams {
+  name: string;
+  monthlyBudget?: number | null;
+  splitRule?: FamilySplitRule;
+  displayName?: string | null;
+  pixKey?: string | null;
+  pixKeyType?: FamilyPixKeyType | null;
+}
+
+/**
+ * Cria uma nova unidade familiar e vincula o criador atomicamente como proprietário (D1).
+ * Invariante: participante único em família ativa (uq_family_members_user).
+ */
+export async function createFamily(params: CreateFamilyParams): Promise<string> {
+  return unwrapRpc(
+    callRpc("create_family", {
+      p_name: params.name,
+      p_monthly_budget: params.monthlyBudget ?? null,
+      p_split_rule: params.splitRule ?? "equal",
+      p_display_name: params.displayName ?? null,
+      p_pix_key: params.pixKey ?? null,
+      p_pix_key_type: params.pixKeyType ?? null,
+    }),
+  );
+}
+
+export interface InviteFamilyMemberParams {
+  familyId?: string | null;
+  invitedEmail?: string | null;
+  role?: "member" | "admin";
+  token?: string | null;
+}
+
+/**
+ * Gera um convite seguro com token criptográfico e validade de 7 dias para novo parceiro/membro.
+ * Autorização restrita a proprietário ou administrador da família.
+ */
+export async function inviteFamilyMember(
+  params?: InviteFamilyMemberParams,
+): Promise<InviteFamilyMemberResult> {
+  return unwrapRpc(
+    callRpc("invite_family_member", {
+      p_family_id: params?.familyId ?? null,
+      p_invited_email: params?.invitedEmail ?? null,
+      p_role: params?.role ?? "member",
+      p_token: params?.token ?? null,
+    }),
+  );
+}
+
+export interface AcceptFamilyInviteParams {
+  token: string;
+  displayName?: string | null;
+  pixKey?: string | null;
+  pixKeyType?: FamilyPixKeyType | null;
+}
+
+/**
+ * Vincula atomicamente o parceiro autenticado à família via token de convite.
+ * Invariante: participante único em família ativa (rejeita se já for membro de qualquer família).
+ */
+export async function acceptFamilyInvite(
+  params: AcceptFamilyInviteParams,
+): Promise<AcceptFamilyInviteResult> {
+  return unwrapRpc(
+    callRpc("accept_family_invite", {
+      p_token: params.token,
+      p_display_name: params.displayName ?? null,
+      p_pix_key: params.pixKey ?? null,
+      p_pix_key_type: params.pixKeyType ?? null,
+    }),
+  );
+}
+
+export interface LeaveFamilyParams {
+  familyId?: string | null;
+  transferToUserId?: string | null;
+  disband?: boolean;
+}
+
+/**
+ * Desvincula o usuário da família ou dissolve a unidade caso seja o proprietário.
+ * Sanitiza lançamentos e categorias para garantir Zero Data Bleed pós-saída.
+ */
+export async function leaveFamily(params?: LeaveFamilyParams): Promise<LeaveFamilyResult> {
+  return unwrapRpc(
+    callRpc("leave_family", {
+      p_family_id: params?.familyId ?? null,
+      p_transfer_to_user_id: params?.transferToUserId ?? null,
+      p_disband: params?.disband ?? false,
+    }),
+  );
+}
+
+export interface RecordFamilySettlementParams {
+  month: string;
+  payerId: string;
+  receiverId: string;
+  amount: number;
+  familyId?: string | null;
+  paymentMethod?: FamilySettlementPaymentMethod;
+  notes?: string | null;
+  snapshot?: Record<string, unknown>;
+}
+
+/**
+ * Registra o acerto de contas auditável entre membros da família para uma competência (mês).
+ */
+export async function recordFamilySettlement(
+  params: RecordFamilySettlementParams,
+): Promise<string> {
+  return unwrapRpc(
+    callRpc("record_family_settlement", {
+      p_month: params.month,
+      p_payer_id: params.payerId,
+      p_receiver_id: params.receiverId,
+      p_amount: params.amount,
+      p_family_id: params.familyId ?? null,
+      p_payment_method: params.paymentMethod ?? "pix",
+      p_notes: params.notes ?? null,
+      p_snapshot: params.snapshot ?? {},
+    }),
+  );
+}
+
 
 
 

@@ -14,10 +14,21 @@ import type {
   DbUpdate,
   Debt,
   Expense,
+  Family,
+  FamilyConsolidationResult,
+  FamilyInvite,
+  FamilyMember,
+  FamilyPixKeyType,
+  FamilySettlement,
+  FamilySettlementPaymentMethod,
+  FamilySplitRule,
   GroupTarget,
   Income,
   IncomeGoal,
   InsightFeedback,
+  InviteFamilyMemberResult,
+  AcceptFamilyInviteResult,
+  LeaveFamilyResult,
   Loan,
   Plan,
   PortfolioAsset,
@@ -95,6 +106,10 @@ export interface Database {
       admin_telegram_settings: Table<AdminTelegramSettings>;
       app_analytics_events: Table<AppAnalyticsEvent>;
       public_shares: Table<PublicShare>;
+      families: Table<Family>;
+      family_members: Table<FamilyMember>;
+      family_invites: Table<FamilyInvite>;
+      family_settlements: Table<FamilySettlement>;
     };
 
     Views: Record<string, never>;
@@ -134,6 +149,63 @@ export interface Database {
           p_month?: string | null;
         };
         Returns: SharedFamilyBudgetResult | null;
+      };
+      get_family_consolidation: {
+        Args: {
+          p_family_id?: string | null;
+          p_month?: string | null;
+        };
+        Returns: FamilyConsolidationResult | null;
+      };
+      create_family: {
+        Args: {
+          p_name: string;
+          p_monthly_budget?: number | null;
+          p_split_rule?: FamilySplitRule;
+          p_display_name?: string | null;
+          p_pix_key?: string | null;
+          p_pix_key_type?: FamilyPixKeyType | null;
+        };
+        Returns: string;
+      };
+      invite_family_member: {
+        Args: {
+          p_family_id?: string | null;
+          p_invited_email?: string | null;
+          p_role?: "member" | "admin";
+          p_token?: string | null;
+        };
+        Returns: InviteFamilyMemberResult;
+      };
+      accept_family_invite: {
+        Args: {
+          p_token: string;
+          p_display_name?: string | null;
+          p_pix_key?: string | null;
+          p_pix_key_type?: FamilyPixKeyType | null;
+        };
+        Returns: AcceptFamilyInviteResult;
+      };
+      leave_family: {
+        Args: {
+          p_family_id?: string | null;
+          p_transfer_to_user_id?: string | null;
+          p_disband?: boolean;
+        };
+        Returns: LeaveFamilyResult;
+      };
+      record_family_settlement: {
+        Args: {
+          p_month: string;
+          p_payer_id: string;
+          p_receiver_id: string;
+          p_amount: number;
+          p_family_id?: string | null;
+          p_payment_method?: FamilySettlementPaymentMethod;
+          p_notes?: string | null;
+          p_snapshot?: Record<string, unknown>;
+        };
+        Returns: string;
       };
       delete_current_user_account: {
         Args: Record<string, never>;

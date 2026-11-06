@@ -61,6 +61,8 @@ class PostgresRlsDatabase {
       "portfolio_monthly_prices",
       "cash_checkpoints",
       "audit_events",
+      "families",
+      "family_members",
     ];
     for (const name of tableNames) {
       this.tables.set(name, new Map());
@@ -264,6 +266,97 @@ class RpcSecurityGuardSimulator {
 
     return { restored: true };
   }
+
+  getFamilyConsolidation(
+    sessionUid: string | null,
+    familyId: string,
+  ): { success: boolean; data: Record<string, unknown> } {
+    if (!sessionUid) throw new Error("Usuário não autenticado");
+    const members = this.db.select("family_members", sessionUid);
+    const isMember = members.some(
+      (m) => m.family_id === familyId && m.user_id === sessionUid,
+    );
+    if (!isMember) {
+      throw new Error("Acesso negado: usuário não pertence à família");
+    }
+    return { success: true, data: {} };
+  }
+
+  createFamily(
+    sessionUid: string | null,
+    name: string,
+  ): { success: boolean; familyId: string } {
+    if (!sessionUid) throw new Error("Usuário não autenticado");
+    if (!name || name.trim() === "") throw new Error("Nome da família obrigatório");
+    const members = this.db.select("family_members", sessionUid);
+    if (members.some((m) => m.user_id === sessionUid)) {
+      throw new Error("Usuário já pertence a uma família ativa");
+    }
+    return { success: true, familyId: "fam_new" };
+  }
+
+  inviteFamilyMember(
+    sessionUid: string | null,
+    familyId: string,
+  ): { success: boolean; token: string } {
+    if (!sessionUid) throw new Error("Usuário não autenticado");
+    const members = this.db.select("family_members", sessionUid);
+    const isMember = members.some(
+      (m) => m.family_id === familyId && m.user_id === sessionUid && (m.role === "owner" || m.role === "admin"),
+    );
+    if (!isMember) {
+      throw new Error("Apenas administradores podem convidar membros para a família");
+    }
+    return { success: true, token: "tok_123" };
+  }
+
+  acceptFamilyInvite(
+    sessionUid: string | null,
+    token: string,
+  ): { success: boolean } {
+    if (!sessionUid) throw new Error("Usuário não autenticado");
+    if (!token || token.trim() === "") throw new Error("Token de convite obrigatório");
+    const members = this.db.select("family_members", sessionUid);
+    if (members.some((m) => m.user_id === sessionUid)) {
+      throw new Error("Você já pertence a uma família ativa");
+    }
+    return { success: true };
+  }
+
+  leaveFamily(
+    sessionUid: string | null,
+    familyId: string,
+  ): { success: boolean } {
+    if (!sessionUid) throw new Error("Usuário não autenticado");
+    const members = this.db.select("family_members", sessionUid);
+    const isMember = members.some(
+      (m) => m.family_id === familyId && m.user_id === sessionUid,
+    );
+    if (!isMember) {
+      throw new Error("Usuário não pertence a esta família");
+    }
+    return { success: true };
+  }
+
+  recordFamilySettlement(
+    sessionUid: string | null,
+    familyId: string,
+    payerId: string,
+    receiverId: string,
+  ): { success: boolean; settlementId: string } {
+    if (!sessionUid) throw new Error("Usuário não autenticado");
+    if (!payerId || !receiverId || payerId === receiverId) {
+      throw new Error("Pagador e recebedor devem ser membros diferentes");
+    }
+    const members = this.db.select("family_members", sessionUid);
+    const isMember = members.some(
+      (m) => m.family_id === familyId && m.user_id === sessionUid,
+    );
+    if (!isMember) {
+      throw new Error("Acesso negado: usuário não pertence à família");
+    }
+    return { success: true, settlementId: "set_123" };
+  }
 }
 
 describe("Fase 5.1 — Suíte Automatizada de Penetração Cross-Tenant & RLS Isolation", () => {
@@ -354,6 +447,17 @@ describe("Fase 5.1 — Suíte Automatizada de Penetração Cross-Tenant & RLS Is
     database.seed("audit_events", [
       { id: "aud_a_1", user_id: USER_A, action: "INSERT", entity_type: "expense" },
       { id: "aud_b_1", user_id: USER_B, action: "INSERT", entity_type: "expense" },
+    ]);
+
+    // Famílias & Membresia
+    database.seed("families", [
+      { id: "fam_a_1", user_id: USER_A, owner_id: USER_A, name: "Família A" },
+      { id: "fam_b_1", user_id: USER_B, owner_id: USER_B, name: "Família B" },
+    ]);
+
+    database.seed("family_members", [
+      { id: "fm_a_1", user_id: USER_A, family_id: "fam_a_1", role: "owner" },
+      { id: "fm_b_1", user_id: USER_B, family_id: "fam_b_1", role: "owner" },
     ]);
 
     return database;
@@ -666,6 +770,29 @@ describe("Fase 5.1 — Suíte Automatizada de Penetração Cross-Tenant & RLS Is
         });
       }).toThrow(/ativo inválido/i);
     });
+
+    it("get_family_consolidation rejeita consulta se o usuário não pertencer à família", () => {
+      expect(() => {
+        rpc.getFamilyConsolidation(USER_A, "fam_b_1");
+      }).toThrow(/usuário não pertence à família/i);
+    });
+
+    it("RPCs de família barram membros de outras famílias (cross-tenant)", () => {
+      // USER_A não pode convidar para a família B
+      expect(() => {
+        rpc.inviteFamilyMember(USER_A, "fam_b_1");
+      }).toThrow(/apenas administradores podem convidar/i);
+
+      // USER_A não pode sair da família B (não é membro)
+      expect(() => {
+        rpc.leaveFamily(USER_A, "fam_b_1");
+      }).toThrow(/usuário não pertence a esta família/i);
+
+      // USER_A não pode registrar acerto para a família B
+      expect(() => {
+        rpc.recordFamilySettlement(USER_A, "fam_b_1", USER_B, USER_A);
+      }).toThrow(/usuário não pertence à família/i);
+    });
   });
 
   describe("6. Isolamento Estrito para Sessão Anônima (Fail-Closed Total)", () => {
@@ -696,6 +823,12 @@ describe("Fase 5.1 — Suíte Automatizada de Penetração Cross-Tenant & RLS Is
       expect(() => rpc.earlyAmortizeLoan(ANONYMOUS, "loan_a_1", 1000)).toThrow(/não autenticado/i);
       expect(() => rpc.setBudgetLimit(ANONYMOUS, "cat_a_1", "2026-10", 1000)).toThrow(/não autenticado/i);
       expect(() => rpc.restoreBackup(ANONYMOUS, {})).toThrow(/não autenticado/i);
+      expect(() => rpc.getFamilyConsolidation(ANONYMOUS, "fam_a_1")).toThrow(/não autenticado/i);
+      expect(() => rpc.createFamily(ANONYMOUS, "Família X")).toThrow(/não autenticado/i);
+      expect(() => rpc.inviteFamilyMember(ANONYMOUS, "fam_a_1")).toThrow(/não autenticado/i);
+      expect(() => rpc.acceptFamilyInvite(ANONYMOUS, "tok_1")).toThrow(/não autenticado/i);
+      expect(() => rpc.leaveFamily(ANONYMOUS, "fam_a_1")).toThrow(/não autenticado/i);
+      expect(() => rpc.recordFamilySettlement(ANONYMOUS, "fam_a_1", USER_A, USER_B)).toThrow(/não autenticado/i);
     });
   });
 
@@ -781,6 +914,12 @@ describe("Fase 5.1 — Suíte Automatizada de Penetração Cross-Tenant & RLS Is
         "create_refund",
         "import_bank_transactions",
         "restore_backup",
+        "get_family_consolidation",
+        "create_family",
+        "invite_family_member",
+        "accept_family_invite",
+        "leave_family",
+        "record_family_settlement",
       ];
 
       for (const rpcName of writeRpcs) {

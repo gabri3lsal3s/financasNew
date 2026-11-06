@@ -86,22 +86,22 @@ flowchart TD
 
 > **Objetivo:** Criar a estrutura relacional de famílias com RLS à prova de vazamento de dados pessoais e suporte a acertos auditáveis.
 
-- [ ] **Tarefa 1.1: Migration de Famílias (`supabase/migrations/20260101000076_create_families_and_multi_account_collaboration.sql`)**
+- [x] **Tarefa 1.1: Migration de Famílias (`supabase/migrations/20260101000076_create_families_and_multi_account_collaboration.sql`)**
   - Criação de `families`, `family_members`, `family_invites`, `family_settlements` e adição de `family_id` em `expenses`, `incomes` e `categories`.
   - Habilitação de RLS em todas as novas tabelas com isolamento por usuário e verificação de membresia na família.
 
-- [ ] **Tarefa 1.2: RPC Transacional `get_family_consolidation`**
+- [x] **Tarefa 1.2: RPC Transacional `get_family_consolidation`**
   - Valida se `auth.uid()` pertence à família.
   - Retorna total gasto pela casa, fatias de cada participante, percentual de consumo do teto, lista de despesas enriquecidas com categoria e nome do pagador (omitindo contas e cartões) e status de acerto do mês.
 
-- [ ] **Tarefa 1.3: RPC de Gestão de Família (`create_family`, `invite_family_member`, `accept_family_invite`, `leave_family`, `record_family_settlement`)**
+- [x] **Tarefa 1.3: RPC de Gestão de Família (`create_family`, `invite_family_member`, `accept_family_invite`, `leave_family`, `record_family_settlement`)**
   - Operações atômicas com validação de participante único.
 
-- [ ] **Portão de Qualidade 1 (QG1):**
-  - [ ] Executar: `npx vitest run src/tests/cross-tenant-penetration.test.ts src/tests/security-audit.test.ts`
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] **Commit & Push da Fase 1:** `git commit -m "feat(family): schema de familias, membros, convites e rpc de consolidacao"`
+- [x] **Portão de Qualidade 1 (QG1):**
+  - [x] Executar: `npx vitest run src/tests/cross-tenant-penetration.test.ts src/tests/security-audit.test.ts`
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] **Commit & Push da Fase 1:** `git commit -m "feat(family): schema de familias, membros, convites e rpc de consolidacao"`
 
 ---
 

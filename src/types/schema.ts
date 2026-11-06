@@ -314,6 +314,8 @@ export type Category = {
   is_active: boolean;
   /** Sugere marcar lançamentos desta categoria como despesa familiar por padrão (Fase 3). */
   is_family?: boolean;
+  /** Identificador da família vinculada se for categoria compartilhada. */
+  family_id?: string | null;
 };
 
 export type Income = {
@@ -341,6 +343,8 @@ export type Income = {
   imported_from_statement?: boolean;
   /** Flag que indica se o lançamento pertence ao orçamento familiar compartilhado (Fase 3). */
   is_family?: boolean;
+  /** Identificador da família vinculada se for receita familiar. */
+  family_id?: string | null;
   created_at: string;
 };
 
@@ -373,6 +377,8 @@ export type Expense = {
   imported_from_statement?: boolean;
   /** Flag que indica se a despesa pertence ao orçamento familiar compartilhado (Fase 3). */
   is_family?: boolean;
+  /** Identificador da família vinculada se for despesa familiar. */
+  family_id?: string | null;
   created_at: string;
 };
 
@@ -966,6 +972,161 @@ export type SharedGoalTrackerResult = {
   contributions?: GoalContribution[];
   show_contributions_publicly?: boolean;
 };
+
+// ===========================================================================
+// Modo Família Colaborativo Multi-Contas (Plano 03)
+// ===========================================================================
+
+export type FamilySplitRule = "equal" | "proportional";
+
+export type Family = {
+  id: string;
+  name: string;
+  owner_id: string;
+  monthly_budget?: number | null;
+  split_rule: FamilySplitRule;
+  created_at: string;
+  updated_at: string;
+};
+
+export type FamilyMemberRole = "owner" | "admin" | "member";
+export type FamilyPixKeyType = "cpf" | "email" | "phone" | "random";
+
+export type FamilyMember = {
+  id: string;
+  family_id: string;
+  user_id: string;
+  role: FamilyMemberRole;
+  display_name?: string | null;
+  pix_key?: string | null;
+  pix_key_type?: FamilyPixKeyType | null;
+  split_ratio?: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type FamilyInviteStatus = "pending" | "accepted" | "revoked" | "expired";
+
+export type FamilyInvite = {
+  id: string;
+  family_id: string;
+  invited_by: string;
+  invited_email?: string | null;
+  token: string;
+  status: FamilyInviteStatus;
+  role: FamilyMemberRole;
+  created_at: string;
+  expires_at: string;
+  accepted_by?: string | null;
+  accepted_at?: string | null;
+};
+
+export type FamilySettlementPaymentMethod = "pix" | "transfer" | "cash" | "other";
+
+export type FamilySettlement = {
+  id: string;
+  family_id: string;
+  month: string;
+  payer_id: string;
+  receiver_id: string;
+  amount: number;
+  settled_at: string;
+  payment_method: FamilySettlementPaymentMethod;
+  notes?: string | null;
+  snapshot: Record<string, unknown>;
+  created_at: string;
+  created_by: string;
+};
+
+export type InviteFamilyMemberResult = {
+  id: string;
+  family_id: string;
+  token: string;
+  role: FamilyMemberRole;
+  invited_email: string | null;
+  status: FamilyInviteStatus;
+  expires_at: string;
+  created_at: string;
+};
+
+export type AcceptFamilyInviteResult = {
+  success: boolean;
+  family_id: string;
+  role: FamilyMemberRole;
+};
+
+export type LeaveFamilyResult = {
+  success: boolean;
+  family_id: string;
+  disbanded: boolean;
+};
+
+// ===========================================================================
+// Consolidação Familiar Multi-Contas (Tarefa 1.2 / RPC get_family_consolidation)
+// ===========================================================================
+
+export type FamilyConsolidationMember = {
+  user_id: string;
+  role: FamilyMemberRole;
+  display_name: string;
+  pix_key: string | null;
+  pix_key_type: FamilyPixKeyType | null;
+  split_ratio: number | null;
+  spent_cents: number;
+  percentage_of_total: number;
+};
+
+export type FamilyConsolidationExpense = {
+  id: string;
+  description: string;
+  date: string;
+  amount_cents: number;
+  category_id: string;
+  category_name: string;
+  category_icon: string | null;
+  category_color: string | null;
+  user_id: string;
+  payer_name: string;
+  is_own: boolean;
+  created_at: string;
+};
+
+export type FamilyConsolidationSettlement = {
+  id: string;
+  month: string;
+  payer_id: string;
+  payer_name: string;
+  receiver_id: string;
+  receiver_name: string;
+  amount_cents: number;
+  settled_at: string;
+  payment_method: FamilySettlementPaymentMethod;
+  notes: string | null;
+  created_at: string;
+};
+
+export type FamilyConsolidationResult = {
+  family: {
+    id: string;
+    name: string;
+    owner_id: string;
+    monthly_budget_cents: number;
+    split_rule: FamilySplitRule;
+  };
+  month: string;
+  monthly_ceiling_cents: number;
+  total_spent_cents: number;
+  total_income_cents: number;
+  remaining_cents: number;
+  spent_percentage: number;
+  members: FamilyConsolidationMember[];
+  expenses: FamilyConsolidationExpense[];
+  is_settled: boolean;
+  settlement: FamilyConsolidationSettlement | null;
+  has_post_settlement_expenses: boolean;
+};
+
+
 
 
 

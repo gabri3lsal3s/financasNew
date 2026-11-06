@@ -50,12 +50,12 @@ function statements(): string[] {
 }
 
 describe("F6.2 — RLS: cobertura total (D4 — multiusuário isolado)", () => {
-  it("toda tabela criada nas migrations tem RLS habilitado (39 tabelas)", () => {
+  it("toda tabela criada nas migrations tem RLS habilitado (43 tabelas)", () => {
     const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(39);
+    expect(created.length).toBe(43);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
@@ -833,14 +833,14 @@ describe("Tarefa 3.3 — Criação do Índice Composto Complementar em portfolio
 });
 
 describe("Tarefa 3.4 — Expansão da Suíte de Auditoria Integral de Banco & Governança InitPlan", () => {
-  it("todas as 39 tabelas possuem RLS habilitado e nenhuma migração contém disable row level security", () => {
+  it("todas as 43 tabelas possuem RLS habilitado e nenhuma migração contém disable row level security", () => {
     expect(ALL_SQL).not.toMatch(/disable\s+row\s+level\s+security/i);
 
     const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(39);
+    expect(created.length).toBe(43);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
@@ -1006,6 +1006,32 @@ describe("SECURITY_GOVERNANCE §5 — Checklist de Conformidade para Novas Tabel
 
     // Valida nós InitPlan
     expect(content).toContain("((select auth.uid()) = user_id)");
+  });
+
+  it("as novas tabelas families, family_members, family_invites e family_settlements possuem chaves estrangeiras, índices e RLS ativado (0076)", () => {
+    const migrationPath = resolve(root, "supabase/migrations/20260101000076_create_families_and_multi_account_collaboration.sql");
+    expect(existsSync(migrationPath)).toBe(true);
+    const content = readFileSync(migrationPath, "utf8");
+
+    // Valida RLS em todas as novas tabelas
+    expect(content).toMatch(/alter\s+table\s+public\.families\s+enable\s+row\s+level\s+security\s*;/i);
+    expect(content).toMatch(/alter\s+table\s+public\.family_members\s+enable\s+row\s+level\s+security\s*;/i);
+    expect(content).toMatch(/alter\s+table\s+public\.family_invites\s+enable\s+row\s+level\s+security\s*;/i);
+    expect(content).toMatch(/alter\s+table\s+public\.family_settlements\s+enable\s+row\s+level\s+security\s*;/i);
+
+    // Valida colunas de vinculação e constraints
+    expect(content).toMatch(/owner_id\s+uuid\s+not\s+null\s+references\s+auth\.users\(id\)\s+on\s+delete\s+cascade/i);
+    expect(content).toMatch(/family_id\s+uuid\s+not\s+null\s+references\s+public\.families\(id\)\s+on\s+delete\s+cascade/i);
+    expect(content).toMatch(/payer_id\s+uuid\s+not\s+null\s+references\s+auth\.users\(id\)\s+on\s+delete\s+cascade/i);
+    expect(content).toMatch(/receiver_id\s+uuid\s+not\s+null\s+references\s+auth\.users\(id\)\s+on\s+delete\s+cascade/i);
+
+    // Valida alteração de tabelas existentes
+    expect(content).toMatch(/alter\s+table\s+public\.expenses\s+add\s+column\s+if\s+not\s+exists\s+family_id/i);
+    expect(content).toMatch(/alter\s+table\s+public\.incomes\s+add\s+column\s+if\s+not\s+exists\s+family_id/i);
+    expect(content).toMatch(/alter\s+table\s+public\.categories\s+add\s+column\s+if\s+not\s+exists\s+family_id/i);
+
+    // Valida InitPlan em policies
+    expect(content).toContain("(select auth.uid())");
   });
 
   it("nenhum dado de cartão de crédito além dos últimos 4 dígitos e da bandeira é persistido", () => {
@@ -1430,6 +1456,92 @@ describe("Fase 1 — Hardening & Teste de Penetração da RPC Pública signal_sp
     );
     expect(successResult.success).toBe(true);
     expect(successResult.participant_matched).toBe(true);
+  });
+
+  it("RPC get_family_consolidation possui security definer, valida auth.uid(), sanitiza dados bancários e revoga anon (0077)", () => {
+    const migrationPath = resolve(root, "supabase/migrations/20260101000077_create_get_family_consolidation_rpc.sql");
+    expect(existsSync(migrationPath)).toBe(true);
+    const content = readFileSync(migrationPath, "utf8");
+
+    // 1. Função criada com security definer e search_path fixo
+    expect(content).toMatch(/create\s+or\s+replace\s+function\s+public\.get_family_consolidation/i);
+    expect(content).toContain("security definer");
+    expect(content).toContain("set search_path = public, pg_temp");
+
+    // 2. Validação fail-closed de autenticação
+    expect(content).toMatch(/if\s+v_user_id\s+is\s+null\s+then\s+raise\s+exception\s+'não autenticado\.'/i);
+
+    // 3. Validação de membresia e rejeição cross-tenant
+    expect(content).toMatch(/public\.is_family_member\(v_family_id,\s*v_user_id\)/i);
+    expect(content).toContain("42501");
+
+    // 4. Sanitização estrita de colunas bancárias (F3: zero account_id, zero card_id na agregação)
+    expect(content).not.toMatch(/'account_id'/i);
+    expect(content).not.toMatch(/'card_id'/i);
+    expect(content).not.toMatch(/'credit_limit'/i);
+
+    // 5. Suporte a detecção de movimentações pós-acerto (F5)
+    expect(content).toContain("e.created_at > v_settlement.settled_at");
+    expect(content).toContain("'has_post_settlement_expenses'");
+
+    // 6. Privilégios de execução restritos
+    expect(content).toMatch(/revoke\s+execute\s+on\s+function\s+public\.get_family_consolidation\([^)]*\)\s+from\s+public,\s*anon\s*;/i);
+    expect(content).toMatch(/grant\s+execute\s+on\s+function\s+public\.get_family_consolidation\([^)]*\)\s+to\s+authenticated,\s*service_role\s*;/i);
+  });
+
+  it("RPCs de Gestão Familiar (create_family, invite_family_member, accept_family_invite, leave_family, record_family_settlement) possuem security definer, participante único, Zero Data Bleed e revogam anon (0078)", () => {
+    const migrationPath = resolve(root, "supabase/migrations/20260101000078_create_family_management_rpcs.sql");
+    expect(existsSync(migrationPath)).toBe(true);
+    const content = readFileSync(migrationPath, "utf8");
+
+    // 1. Todas as 5 funções declaradas
+    const rpcs = [
+      "create_family",
+      "invite_family_member",
+      "accept_family_invite",
+      "leave_family",
+      "record_family_settlement",
+    ];
+
+    for (const rpc of rpcs) {
+      const regex = new RegExp(`create\\s+or\\s+replace\\s+function\\s+public\\.${rpc}`, "i");
+      expect(content).toMatch(regex);
+    }
+
+    // 2. Security Definer e Search Path estrito em todas
+    const secDefCount = (content.match(/security\s+definer/gi) || []).length;
+    expect(secDefCount).toBe(5);
+
+    const searchPathCount = (content.match(/set\s+search_path\s*=\s*public,\s*pg_temp/gi) || []).length;
+    expect(searchPathCount).toBe(5);
+
+    // 3. Validação fail-closed de autenticação e usuário ativo em todas
+    const authCheckCount = (content.match(/if\s+v_user_id\s+is\s+null\s+then\s+raise\s+exception\s+'não autenticado\.'/gi) || []).length;
+    expect(authCheckCount).toBe(5);
+
+    const activeUserCount = (content.match(/public\.is_current_user_active\(\)/gi) || []).length;
+    expect(activeUserCount).toBeGreaterThanOrEqual(5);
+
+    // 4. Invariante de participante único (uq_family_members_user)
+    expect(content).toContain("Usuário já pertence a uma família ativa.");
+    expect(content).toContain("Você já pertence a uma família ativa.");
+
+    // 5. Blindagem contra concorrência na aceitação de convite
+    expect(content).toMatch(/for\s+update\s*;/i);
+
+    // 6. Zero Data Bleed na saída da família: desvinculação de lançamentos
+    expect(content).toContain("update public.expenses");
+    expect(content).toContain("set family_id = null, is_family = false");
+    expect(content).toContain("update public.incomes");
+    expect(content).toContain("update public.categories");
+
+    // 7. Revogação de acesso anônimo e concessão a autenticados
+    for (const rpc of rpcs) {
+      const revokeRegex = new RegExp(`revoke\\s+execute\\s+on\\s+function\\s+public\\.${rpc}\\([^)]*\\)\\s+from\\s+public,\\s*anon\\s*;`, "i");
+      const grantRegex = new RegExp(`grant\\s+execute\\s+on\\s+function\\s+public\\.${rpc}\\([^)]*\\)\\s+to\\s+authenticated,\\s*service_role\\s*;`, "i");
+      expect(content).toMatch(revokeRegex);
+      expect(content).toMatch(grantRegex);
+    }
   });
 });
 
