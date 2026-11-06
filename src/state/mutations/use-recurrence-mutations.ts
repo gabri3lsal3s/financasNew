@@ -36,6 +36,8 @@ const FINANCE_KEYS = [
   ["debts"],
   ["insights"],
   ["overview"],
+  ["family"],
+  ["shared-family-budget"],
 ] as const satisfies readonly (readonly string[])[];
 
 function invalidateFinanceAggregates(queryClient: QueryClient) {

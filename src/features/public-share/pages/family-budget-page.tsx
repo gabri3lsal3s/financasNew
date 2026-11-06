@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router";
+import { useParams, useSearchParams, Link } from "react-router";
 import {
   ShieldAlert,
   Wallet,
@@ -26,8 +26,9 @@ import {
   Skeleton,
   EmptyState,
 } from "@/components/ui";
+import { MonthPicker } from "@/components/modules/month-picker";
 import { useSharedFamilyBudget } from "@/state/queries/use-public-shares";
-import { formatDateBR, monthLabel } from "@/lib/date";
+import { formatDateBR, currentMonth, isValidMonth } from "@/lib/date";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { IosPwaInstallDialog } from "@/components/modules/ios-pwa-install-dialog";
 import { cn } from "@/lib/utils";
@@ -35,9 +36,30 @@ import { SharedLinkHeaderNav } from "../components";
 
 export function FamilyBudgetPage() {
   const { token } = useParams<{ token: string }>();
-  const { data: budgetData, isLoading, isError } = useSharedFamilyBudget(token);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const paramMonth = searchParams.get("month");
+  const initialMonth = paramMonth && isValidMonth(paramMonth) ? paramMonth : currentMonth();
+  const [selectedMonth, setSelectedMonth] = useState<string>(initialMonth);
+
+  const { data: budgetData, isLoading, isError } = useSharedFamilyBudget(token, selectedMonth);
   const { canInstall, isIOS, isInstalled, install } = usePWAInstall();
   const [showIosGuide, setShowIosGuide] = useState(false);
+
+  const handleMonthChange = (nextMonth: string) => {
+    setSelectedMonth(nextMonth);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (nextMonth === currentMonth()) {
+          next.delete("month");
+        } else {
+          next.set("month", nextMonth);
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  };
 
   useEffect(() => {
     if (budgetData?.owner_name) {
@@ -143,12 +165,11 @@ export function FamilyBudgetPage() {
             badgeLabel="Orçamento Familiar"
             targetPath={`orcamento-familiar/${token || ""}`}
           />
-          <div className="flex items-center justify-end">
-            <Badge variant="muted" size="sm" className="w-fit border border-border/80 text-muted-foreground capitalize">
-              <Calendar className="size-3 mr-1" aria-hidden="true" />
-              <span>{monthLabel(budgetData.month)}</span>
-            </Badge>
-          </div>
+          <MonthPicker
+            value={selectedMonth}
+            onValueChange={handleMonthChange}
+            className="w-full"
+          />
         </div>
 
         {/* Hero Card: Cabeçalho do Orçamento Familiar & Barra de Progresso */}
@@ -311,10 +332,26 @@ export function FamilyBudgetPage() {
                       <p className="font-semibold text-foreground text-sm truncate">
                         {expense.description}
                       </p>
-                      <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                        <Calendar className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
-                        <span>{formatDateBR(expense.date)}</span>
-                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                        {expense.category_name && (
+                          <>
+                            <span className="truncate">{expense.category_name}</span>
+                            <span>•</span>
+                          </>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <Calendar className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
+                          <span>{formatDateBR(expense.date)}</span>
+                        </span>
+                        {expense.payer_name && (
+                          <>
+                            <span>•</span>
+                            <Badge variant="muted" size="xs">
+                              {expense.payer_name}
+                            </Badge>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <div className="tabular-nums font-semibold text-foreground shrink-0 text-sm">
                       <MoneyText cents={expense.amount_cents} variant="value" />

@@ -539,6 +539,11 @@ export type PortfolioAsset = {
    * Taxa, indexador, marco zero, vencimento e regime de isenção de IR.
    */
   fixed_income_metadata?: FixedIncomeMetadata | null;
+  /** Indica se o ativo pertence ao patrimônio compartilhado com a família */
+  is_family?: boolean;
+  family_id?: string | null;
+  family_share_mode?: "full" | "percentage";
+  family_share_percentage?: number;
   notes?: string | null;
   updated_at?: string;
 };
@@ -904,6 +909,10 @@ export type SharedFamilyExpenseItem = {
   description: string;
   date: string;
   amount_cents: number;
+  category_name?: string | null;
+  category_icon?: string | null;
+  category_color?: string | null;
+  payer_name?: string | null;
 };
 
 export type SharedFamilyBudgetResult = {
@@ -979,7 +988,7 @@ export type SharedGoalTrackerResult = {
 // Modo Família Colaborativo Multi-Contas (Plano 03)
 // ===========================================================================
 
-export type FamilySplitRule = "equal" | "proportional";
+export type FamilySplitRule = "equal" | "proportional" | "combined";
 
 export type Family = {
   id: string;
@@ -1003,6 +1012,8 @@ export type FamilyMember = {
   pix_key?: string | null;
   pix_key_type?: FamilyPixKeyType | null;
   split_ratio?: number | null;
+  share_all_portfolio?: boolean;
+  shared_asset_classes?: string[] | null;
   created_at: string;
   updated_at: string;
 };
@@ -1061,6 +1072,12 @@ export type LeaveFamilyResult = {
   success: boolean;
   family_id: string;
   disbanded: boolean;
+};
+
+export type RemoveFamilyMemberResult = {
+  success: boolean;
+  family_id: string;
+  removed_user_id: string;
 };
 
 // ===========================================================================
@@ -1126,6 +1143,37 @@ export type FamilyConsolidationResult = {
   is_settled: boolean;
   settlement: FamilyConsolidationSettlement | null;
   has_post_settlement_expenses: boolean;
+};
+
+// ===========================================================================
+// Sugestão Inteligente de Rateio & Resumo Patrimonial Familiar
+// ===========================================================================
+
+export type FamilyIncomeRatioSuggestionItem = {
+  user_id: string;
+  display_name: string;
+  average_monthly_income_cents: number;
+  suggested_percentage: number;
+};
+
+export type FamilySharedAssetSummary = {
+  id: string;
+  user_id: string;
+  ticker: string;
+  asset_class: string;
+  quantity: number;
+  total_value_cents: number;
+  owner_name: string;
+  is_cash_like: boolean;
+};
+
+export type FamilyPortfolioSummary = {
+  family_id: string;
+  total_invested_cents: number;
+  total_cash_cents: number;
+  dividends_12m_cents: number;
+  assets_count: number;
+  assets: FamilySharedAssetSummary[];
 };
 
 

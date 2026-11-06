@@ -32,6 +32,8 @@ import {
   useAssetPosition,
   useDeletePortfolioAsset,
   useDeletePortfolioTransaction,
+  useFamilyMode,
+  useMyFamily,
   usePortfolioAssets,
   usePortfolioPosition,
 } from "@/state";
@@ -62,6 +64,10 @@ export function AssetDetailSheet({
   const deleteAsset = useDeletePortfolioAsset();
   const deleteTx = useDeletePortfolioTransaction();
 
+  const { isFamilyModeEnabled } = useFamilyMode();
+  const { data: myFamilyData } = useMyFamily();
+  const currentMember = myFamilyData?.currentMember;
+
   const [editOpen, setEditOpen] = useState(false);
   const [calibrateOpen, setCalibrateOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -73,6 +79,13 @@ export function AssetDetailSheet({
 
   // Busca a versão mais recente do ativo e a linha consolidada de posição
   const currentAsset = (assetsQuery.data ?? []).find((a) => a.id === asset.id) ?? asset;
+  const isSharedWithFamily = Boolean(
+    isFamilyModeEnabled &&
+      (Boolean(currentAsset.is_family) ||
+        Boolean(currentMember?.share_all_portfolio) ||
+        (currentAsset.asset_class &&
+          (currentMember?.shared_asset_classes ?? []).includes(currentAsset.asset_class))),
+  );
   const positionRow = position.rows.find((r) => r.assetId === currentAsset.id);
 
   const pricingMode = getAssetPricingMode({
@@ -190,6 +203,11 @@ export function AssetDetailSheet({
           {/* Header de Metadados & Ações Rápidas */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/80 pb-4">
             <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+              {isSharedWithFamily && (
+                <Badge variant="portfolio" size="xs">
+                  Patrimônio Familiar
+                </Badge>
+              )}
               {isClosed ? (
                 <Badge variant="muted" size="xs">
                   Posição Encerrada

@@ -61,8 +61,8 @@ export function HouseholdExpenseFeed({
     },
     {
       value: "partner",
-      label: `Pagas pelo Parceiro (${partnerExpenses.length})`,
-      shortLabel: `Parceiro (${partnerExpenses.length})`,
+      label: `Demais Membros (${partnerExpenses.length})`,
+      shortLabel: `Outros (${partnerExpenses.length})`,
     },
   ];
 
@@ -93,7 +93,7 @@ export function HouseholdExpenseFeed({
               filter === "own"
                 ? "Nenhuma despesa paga por você neste mês"
                 : filter === "partner"
-                  ? "Nenhuma despesa paga pelo parceiro neste mês"
+                  ? "Nenhuma despesa paga por outros membros neste mês"
                   : "Nenhuma despesa familiar registrada neste mês"
             }
             description="Os gastos atribuídos à família aparecerão consolidados aqui com o pagador identificado."
@@ -134,7 +134,7 @@ export function HouseholdExpenseFeed({
                           </Badge>
                         ) : (
                           <Badge variant="portfolio" size="xs">
-                            {expense.payer_name || "Parceiro"}
+                            {expense.payer_name || "Membro"}
                           </Badge>
                         )}
                       </div>

@@ -6,7 +6,8 @@ import type { FamilyConsolidationResult } from "@/types";
 
 let mockFamilyData: {
   family?: { id: string; name: string };
-  currentMember?: { user_id: string };
+  currentMember?: { user_id: string; role?: string };
+  members?: Array<{ user_id: string; role?: string }>;
 } | null = null;
 let mockIsFamilyLoading = false;
 let mockIsFamilyModeEnabled = false;
@@ -35,6 +36,50 @@ vi.mock("@/state", () => ({
   useRecordFamilySettlement: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
+  }),
+  useCreateFamily: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useInviteFamilyMember: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useUpdateFamily: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useUpdateFamilyMember: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useRevokeFamilyInvite: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useRemoveFamilyMember: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useLeaveFamily: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useDeleteFamily: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useSuggestedSplitRatio: () => ({
+    data: null,
+    isLoading: false,
+  }),
+  useFamilyIncomeRatioSuggestion: () => ({
+    data: null,
+    isLoading: false,
+  }),
+  useFamilyPortfolioSummary: () => ({
+    data: null,
+    isLoading: false,
   }),
 }));
 
@@ -109,15 +154,25 @@ const sampleConsolidation: FamilyConsolidationResult = {
   has_post_settlement_expenses: false,
 };
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
 function renderPage(initialEntry = "/familia") {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  });
+
   return render(
-    <MemoryRouter initialEntries={[initialEntry]}>
-      <Routes>
-        <Route path="/familia" element={<FamilyPage />} />
-        <Route path="/" element={<div data-testid="home-page">Página Inicial</div>} />
-        <Route path="/configuracoes" element={<div data-testid="settings-page">Configurações</div>} />
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[initialEntry]}>
+        <Routes>
+          <Route path="/familia" element={<FamilyPage />} />
+          <Route path="/" element={<div data-testid="home-page">Página Inicial</div>} />
+          <Route path="/configuracoes" element={<div data-testid="settings-page">Configurações</div>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -141,7 +196,7 @@ describe("FamilyPage (/familia)", () => {
     expect(screen.queryByText("Orçamento Familiar")).not.toBeInTheDocument();
   });
 
-  it("redireciona para a home (/) quando não houver família ativa", () => {
+  it("redireciona para a home (/) quando o modo familiar estiver desativado", () => {
     mockFamilyData = null;
     mockIsFamilyModeEnabled = false;
     renderPage();
@@ -150,7 +205,18 @@ describe("FamilyPage (/familia)", () => {
     expect(screen.queryByText("Orçamento Familiar")).not.toBeInTheDocument();
   });
 
+  it("renderiza empty state com botão de criar família quando o modo estiver ativo mas sem família criada", () => {
+    mockFamilyData = null;
+    mockIsFamilyModeEnabled = true;
+    renderPage();
+
+    expect(screen.getByRole("heading", { name: "Orçamento Familiar" })).toBeInTheDocument();
+    expect(screen.getByText("Nenhuma família criada ainda")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Criar Família" })).toBeInTheDocument();
+  });
+
   it("renderiza o estado de erro da consolidação com botão de retry", () => {
+    mockIsFamilyModeEnabled = true;
     mockFamilyData = {
       family: { id: "fam-1", name: "Família Silva" },
       currentMember: { user_id: "user-1" },
@@ -169,6 +235,7 @@ describe("FamilyPage (/familia)", () => {
   });
 
   it("renderiza os cards analíticos e extrato quando a consolidação carregar", () => {
+    mockIsFamilyModeEnabled = true;
     mockFamilyData = {
       family: { id: "fam-1", name: "Família Silva" },
       currentMember: { user_id: "user-1" },
@@ -192,6 +259,7 @@ describe("FamilyPage (/familia)", () => {
   });
 
   it("abre o diálogo de acerto de contas ao clicar em 'Acertar Contas'", () => {
+    mockIsFamilyModeEnabled = true;
     mockFamilyData = {
       family: { id: "fam-1", name: "Família Silva" },
       currentMember: { user_id: "user-1" },
@@ -205,4 +273,52 @@ describe("FamilyPage (/familia)", () => {
     expect(screen.getByRole("heading", { name: "Acerto de Contas Familiar" })).toBeInTheDocument();
     expect(screen.getByText("Proposta de Compensação")).toBeInTheDocument();
   });
+
+  it("exibe o botão Convidar para o titular quando a família não estiver cheia", () => {
+    mockIsFamilyModeEnabled = true;
+    mockFamilyData = {
+      family: { id: "fam-1", name: "Família Silva" },
+      currentMember: { user_id: "user-1", role: "owner" },
+      members: [{ user_id: "user-1", role: "owner" }],
+    };
+    mockConsolidationData = sampleConsolidation;
+    renderPage();
+
+    expect(screen.getByRole("button", { name: /Convidar novo membro da família/i })).toBeInTheDocument();
+  });
+
+  it("abre o diálogo de configurações ao clicar no botão de engrenagem", () => {
+    mockIsFamilyModeEnabled = true;
+    mockFamilyData = {
+      family: { id: "fam-1", name: "Família Silva" },
+      currentMember: { user_id: "user-1", role: "owner" },
+      members: [{ user_id: "user-1", role: "owner" }],
+    };
+    mockConsolidationData = sampleConsolidation;
+    renderPage();
+
+    const configBtn = screen.getByRole("button", { name: "Abrir configurações da família" });
+    fireEvent.click(configBtn);
+
+    expect(screen.getByRole("heading", { name: "Configurações da Família" })).toBeInTheDocument();
+    expect(screen.getByText("Regras da Casa")).toBeInTheDocument();
+  });
+
+  it("abre o diálogo de configurações na aba de membros ao clicar em 'Convidar'", () => {
+    mockIsFamilyModeEnabled = true;
+    mockFamilyData = {
+      family: { id: "fam-1", name: "Família Silva" },
+      currentMember: { user_id: "user-1", role: "owner" },
+      members: [{ user_id: "user-1", role: "owner" }],
+    };
+    mockConsolidationData = sampleConsolidation;
+    renderPage();
+
+    const inviteBtn = screen.getByRole("button", { name: /Convidar novo membro da família/i });
+    fireEvent.click(inviteBtn);
+
+    expect(screen.getByRole("heading", { name: "Configurações da Família" })).toBeInTheDocument();
+    expect(screen.getByText("Convidar Familiar ou Parceiro")).toBeInTheDocument();
+  });
 });
+

@@ -258,6 +258,9 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useFamilyMode: () => ({ isFamilyModeEnabled: false, toggleFamilyMode: vi.fn() }),
+  useMyFamily: () => ({ data: null, isLoading: false, isError: false }),
+  useUpdateFamilyMemberShareMode: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
 }));
 
 function renderResumo(entry = "/investments") {

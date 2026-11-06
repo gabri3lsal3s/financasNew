@@ -131,6 +131,22 @@ describe("quotes service", () => {
     vi.unstubAllGlobals();
   });
 
+  it("syncQuoteForTicker e fetchOnlineQuote não disparam chamadas para a Brapi com tickers de Tesouro Direto", async () => {
+    const globalFetch = vi.fn();
+    vi.stubGlobal("fetch", globalFetch);
+
+    mockInvoke.mockResolvedValueOnce({
+      data: { quotes: [] },
+      error: null,
+    });
+
+    const quote = await syncQuoteForTicker("TESOURO SELIC 2026", "Renda Fixa");
+    expect(quote).toBeNull();
+    expect(globalFetch).not.toHaveBeenCalled();
+
+    vi.unstubAllGlobals();
+  });
+
   it("fetchBcbIndicator busca taxa CDI com fallback e converte para % anual", async () => {
     clearBcbCache();
     const globalFetch = vi.fn().mockResolvedValue({

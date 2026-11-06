@@ -13,3 +13,4 @@ export type {
 export * from "./billing";
 export * from "./app-update";
 export * from "./portfolio";
+export * from "./family-wealth";

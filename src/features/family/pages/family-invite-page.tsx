@@ -13,6 +13,7 @@ import {
   Copy,
   Check,
   Lock,
+  Loader2,
 } from "lucide-react";
 import {
   Card,
@@ -27,10 +28,12 @@ import {
   type SelectOption,
   Skeleton,
   EmptyState,
+  Modal,
+  ModalFooter,
 } from "@/components/ui";
 import { SharedLinkHeaderNav } from "@/features/public-share/components";
 import { useAuth } from "@/hooks/use-auth";
-import { useFamilyInvite, useMyFamily, useAcceptFamilyInvite } from "@/state/queries/use-family";
+import { useFamilyInvite, useMyFamily, useAcceptFamilyInvite, useLeaveFamily } from "@/state/queries/use-family";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
@@ -50,6 +53,22 @@ export function FamilyInvitePage() {
   const { data: myFamilyData } = useMyFamily();
   const { data: invite, isLoading: inviteLoading, isError: inviteError } = useFamilyInvite(token);
   const acceptInviteMutation = useAcceptFamilyInvite();
+  const leaveFamilyMutation = useLeaveFamily();
+  const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
+
+  const handleConfirmSwitchFamily = async () => {
+    if (!myFamilyData?.family) return;
+    try {
+      const isOwner = myFamilyData.currentMember?.role === "owner";
+      await leaveFamilyMutation.mutateAsync({
+        familyId: myFamilyData.family.id,
+        disband: isOwner,
+      });
+      setIsSwitchModalOpen(false);
+    } catch {
+      // Tratado na mutation
+    }
+  };
 
   const defaultDisplayName = String(session?.user?.user_metadata?.name ?? "");
   const [customDisplayName, setCustomDisplayName] = useState<string | null>(null);
@@ -382,21 +401,75 @@ export function FamilyInvitePage() {
             <EmptyState
               icon={<AlertTriangle className="size-10 text-warning-strong" aria-hidden="true" />}
               title="Você já pertence a outra família ativa"
-              description={`Para entrar na família ${invite.family_name || "convidada"}, você deve primeiro desvincular sua conta da família atual (${myFamilyData.family.name}) nas configurações.`}
+              description={`Para entrar na família ${invite.family_name || "convidada"}, é necessário desvincular sua conta da família atual (${myFamilyData.family.name}). Seus lançamentos pessoais, contas bancárias e cartões continuarão 100% seguros e intactos.`}
               action={
-                <Button
-                  type="button"
-                  variant="default"
-                  size="sm"
-                  onClick={() => navigate("/configuracoes?tab=family")}
-                  className="rounded-xl cursor-pointer"
-                >
-                  Gerenciar Minha Família
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2.5 justify-center w-full">
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    onClick={() => setIsSwitchModalOpen(true)}
+                    className="rounded-xl cursor-pointer"
+                  >
+                    Sair de {myFamilyData.family.name} e Entrar Nesta
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate("/familia")}
+                    className="rounded-xl cursor-pointer"
+                  >
+                    Permanecer na Minha Família
+                  </Button>
+                </div>
               }
             />
           </Card>
         </div>
+
+        {/* Modal: Confirmar Troca de Família */}
+        <Modal
+          open={isSwitchModalOpen}
+          onOpenChange={setIsSwitchModalOpen}
+          title="Confirmar Troca de Família"
+          description={`Deseja se desvincular de "${myFamilyData.family.name}" para ingressar em "${invite.family_name || "nova família"}"?`}
+          size="sm"
+        >
+          <div className="space-y-3 pt-2">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Suas despesas, receitas e contas bancárias continuarão totalmente intactas na sua conta. Apenas a visualização e divisão com a família anterior serão desfeitas.
+            </p>
+
+            <ModalFooter className="pt-3 border-t border-border/80 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsSwitchModalOpen(false)}
+                disabled={leaveFamilyMutation.isPending}
+                className="rounded-xl cursor-pointer"
+              >
+                Voltar
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleConfirmSwitchFamily}
+                disabled={leaveFamilyMutation.isPending}
+                className="rounded-xl cursor-pointer"
+              >
+                {leaveFamilyMutation.isPending ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
+                    <span>Desvinculando…</span>
+                  </>
+                ) : (
+                  <span>Confirmar e Entrar</span>
+                )}
+              </Button>
+            </ModalFooter>
+          </div>
+        </Modal>
       </main>
     );
   }

@@ -130,7 +130,61 @@ describe("FinancialCloseReportModal (F42)", () => {
     expect(screen.getAllByText("FATURAS DE CARTÃO QUITADAS NO PERÍODO").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Nubank Ultravioleta").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Itaú Personnalité").length).toBeGreaterThan(0);
+  });
 
+  it("renderiza colunas de Orçado e Desvio quando categorias possuem budgetLimitCents", () => {
+    const categoriesWithBudget = [
+      { name: "Alimentação", totalCents: 350000, pct: 70.0, budgetLimitCents: 300000, variancePct: 17 },
+      { name: "Transporte", totalCents: 150000, pct: 30.0, budgetLimitCents: 200000, variancePct: -25 },
+    ];
+
+    render(
+      <FinancialCloseReportModal
+        open={true}
+        onOpenChange={vi.fn()}
+        periodLabel="Agosto de 2026"
+        dre={mockDRE}
+        categories={categoriesWithBudget}
+        paymentMethods={mockPaymentMethods}
+        expenseCount={10}
+        incomeCount={2}
+      />,
+    );
+
+    expect(screen.getAllByText("Orçado")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Desvio")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("+17%")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("-25%")[0]).toBeInTheDocument();
+  });
+
+  it("renderiza seção de Consolidação Residencial quando householdSummary for fornecido", () => {
+    const householdSummary = {
+      familyTitle: "Família Silva",
+      monthlyCeilingCents: 800000,
+      totalSpentCents: 750000,
+      spentPercentage: 94,
+      userContributionCents: 450000,
+      userPercentageOfTotal: 60.0,
+    };
+
+    render(
+      <FinancialCloseReportModal
+        open={true}
+        onOpenChange={vi.fn()}
+        periodLabel="Agosto de 2026"
+        dre={mockDRE}
+        categories={mockCategories}
+        paymentMethods={mockPaymentMethods}
+        expenseCount={10}
+        incomeCount={2}
+        householdSummary={householdSummary}
+      />,
+    );
+
+    expect(screen.getAllByText(/CONSOLIDAÇÃO RESIDENCIAL/i)[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Teto Familiar")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("94%")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("(60,0%)")[0]).toBeInTheDocument();
   });
 });
 

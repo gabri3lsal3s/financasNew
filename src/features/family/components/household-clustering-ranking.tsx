@@ -53,7 +53,12 @@ export function HouseholdClusteringRanking({
             className="py-8"
           />
         ) : (
-          <div className="space-y-4">
+          <div
+            className={cn(
+              "grid gap-3",
+              clusters.length >= 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
+            )}
+          >
             {clusters.map((cluster) => {
               const clampedPercent = Math.min(100, Math.max(0, cluster.percentage));
 

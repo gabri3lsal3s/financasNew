@@ -90,6 +90,14 @@ vi.mock("@/state", () => ({
     isReadOnly: false,
     tier: "pro_annual",
   }),
+  useFamilyMode: () => ({
+    isFamilyModeEnabled: false,
+    isLoading: false,
+  }),
+  useMyFamily: () => ({
+    data: null,
+    isLoading: false,
+  }),
 }));
 
 

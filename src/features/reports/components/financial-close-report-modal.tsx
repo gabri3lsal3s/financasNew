@@ -2,6 +2,7 @@ import {
   Landmark,
   PieChart,
   ReceiptText,
+  Users,
   Wallet,
 } from "lucide-react";
 import {
@@ -14,6 +15,7 @@ import {
 import { MoneyText } from "@/components/ui/money-text";
 import { formatPercent } from "@/services/masks/percent";
 import { sanitizeReportText } from "@/domain/reports";
+import { cn } from "@/lib/utils";
 
 export interface FinancialDREData {
   grossIncomeCents: number;
@@ -34,6 +36,10 @@ export interface FinancialReportCategoryItem {
   ponderadoCents?: number;
   totalCents: number;
   pct: number;
+  /** Limite orçado para o período (em centavos), quando configurado. */
+  budgetLimitCents?: number | null;
+  /** Desvio percentual (+15 para 15% acima, -10 para 10% abaixo). */
+  variancePct?: number | null;
 }
 
 export interface FinancialReportPaymentMethodItem {
@@ -52,6 +58,15 @@ export interface FinancialReportPaidInvoiceItem {
   date: string;
 }
 
+export interface FinancialReportHouseholdSummary {
+  familyTitle: string;
+  monthlyCeilingCents: number;
+  totalSpentCents: number;
+  spentPercentage: number;
+  userContributionCents: number;
+  userPercentageOfTotal: number;
+}
+
 export interface FinancialCloseReportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -66,6 +81,8 @@ export interface FinancialCloseReportModalProps {
   incomeCount: number;
   /** Quando true, exibe linha de bruto vs. ponderado na DRE. */
   showWeightedNote?: boolean;
+  /** Resumo do orçamento familiar (quando ativo). */
+  householdSummary?: FinancialReportHouseholdSummary | null;
 }
 
 function formatDateBR(isoDate: string): string {
@@ -92,6 +109,7 @@ export function FinancialCloseReportModal({
   expenseCount,
   incomeCount,
   showWeightedNote = false,
+  householdSummary = null,
 }: FinancialCloseReportModalProps) {
   const effectiveGrossIncomeBruto = dre.grossIncomeBrutoCents ?? dre.grossIncomeCents;
   const effectiveTotalExpensesBruto = dre.totalExpensesBrutoCents ?? dre.totalExpensesCents;
@@ -102,6 +120,8 @@ export function FinancialCloseReportModal({
   const hasBrutoRef =
     showWeightedNote &&
     (dre.grossIncomeBrutoCents !== undefined || dre.totalExpensesBrutoCents !== undefined);
+
+  const hasBudgets = categories.some((c) => c.budgetLimitCents != null && c.budgetLimitCents > 0);
 
   // Passos para o gráfico visual em cascata de DRE
   const waterfallSteps = [
@@ -315,27 +335,51 @@ export function FinancialCloseReportModal({
                 <thead>
                   <tr className="border-b border-border/60 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left bg-muted/40">
                     <th className="py-1 px-1.5 font-bold">Categoria</th>
-                    <th className="py-1 px-1.5 text-right font-bold">Total Bruto</th>
-                    <th className="py-1 px-1.5 text-right font-bold">%</th>
+                    {hasBudgets && <th className="py-1 px-1.5 text-right font-bold">Orçado</th>}
+                    <th className="py-1 px-1.5 text-right font-bold">Realizado</th>
+                    <th className="py-1 px-1.5 text-right font-bold">{hasBudgets ? "Desvio" : "%"}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">
-                  {categories.map((cat) => (
-                    <tr key={cat.name} className="even:bg-muted/20 print:even:bg-slate-50/50">
-                      <td className="py-1.5 px-1.5 font-medium text-foreground">{sanitizeReportText(cat.name)}</td>
-                      <td className="py-1.5 px-1.5 text-right num font-mono">
-                        <MoneyText cents={cat.brutoCents ?? cat.totalCents} tone="negative" className="font-bold" />
-                        {hasBrutoRef && cat.brutoCents !== undefined && cat.ponderadoCents !== undefined && cat.brutoCents !== cat.ponderadoCents && (
-                          <span className="block text-[10px] text-muted-foreground font-normal">
-                            Ponderado: <MoneyText cents={cat.ponderadoCents} tone="default" className="inline text-[10px]" />
-                          </span>
+                  {categories.map((cat) => {
+                    const hasLimit = cat.budgetLimitCents != null && cat.budgetLimitCents > 0;
+                    return (
+                      <tr key={cat.name} className="even:bg-muted/20 print:even:bg-slate-50/50">
+                        <td className="py-1.5 px-1.5 font-medium text-foreground">{sanitizeReportText(cat.name)}</td>
+                        {hasBudgets && (
+                          <td className="py-1.5 px-1.5 text-right num font-mono text-muted-foreground">
+                            {hasLimit ? <MoneyText cents={cat.budgetLimitCents!} /> : "—"}
+                          </td>
                         )}
-                      </td>
-                      <td className="py-1.5 px-1.5 text-right num font-mono text-muted-foreground">
-                        {cat.pct.toFixed(1).replace(".", ",")}%
-                      </td>
-                    </tr>
-                  ))}
+                        <td className="py-1.5 px-1.5 text-right num font-mono">
+                          <MoneyText cents={cat.brutoCents ?? cat.totalCents} tone="negative" className="font-bold" />
+                          {hasBrutoRef && cat.brutoCents !== undefined && cat.ponderadoCents !== undefined && cat.brutoCents !== cat.ponderadoCents && (
+                            <span className="block text-[10px] text-muted-foreground font-normal">
+                              Ponderado: <MoneyText cents={cat.ponderadoCents} tone="default" className="inline text-[10px]" />
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-1.5 px-1.5 text-right num font-mono">
+                          {hasBudgets ? (
+                            hasLimit && cat.variancePct != null ? (
+                              <span
+                                className={cn(
+                                  "font-semibold tabular-nums text-[11px]",
+                                  cat.variancePct > 0 ? "text-critical-strong" : "text-positive-strong",
+                                )}
+                              >
+                                {cat.variancePct > 0 ? `+${cat.variancePct}%` : `${cat.variancePct}%`}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">{cat.pct.toFixed(1).replace(".", ",")}%</span>
+                            )
+                          ) : (
+                            <span className="text-muted-foreground">{cat.pct.toFixed(1).replace(".", ",")}%</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -418,7 +462,36 @@ export function FinancialCloseReportModal({
         </section>
       )}
 
-      {/* 7. Rodapé Institucional */}
+      {/* 7. Seção: Consolidação Residencial (quando disponível) */}
+      {householdSummary && (
+        <section aria-label="Consolidação Residencial" className="break-inside-avoid flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 shadow-2xs">
+          <div className="flex items-center gap-1.5 pb-1 border-b border-border/80 text-xs font-bold text-foreground">
+            <Users className="size-3.5 text-primary-strong" aria-hidden="true" />
+            <span>CONSOLIDAÇÃO RESIDENCIAL ({sanitizeReportText(householdSummary.familyTitle).toUpperCase()})</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="p-2.5 rounded-lg bg-muted/20 border border-border/60">
+              <span className="text-[10px] text-muted-foreground block uppercase">Teto Familiar</span>
+              <MoneyText cents={householdSummary.monthlyCeilingCents} className="font-bold text-sm" />
+            </div>
+            <div className="p-2.5 rounded-lg bg-muted/20 border border-border/60">
+              <span className="text-[10px] text-muted-foreground block uppercase">Gasto Total da Casa</span>
+              <MoneyText cents={householdSummary.totalSpentCents} tone={householdSummary.spentPercentage > 100 ? "negative" : "default"} className="font-bold text-sm" />
+            </div>
+            <div className="p-2.5 rounded-lg bg-muted/20 border border-border/60">
+              <span className="text-[10px] text-muted-foreground block uppercase">Consumo do Teto</span>
+              <span className="font-bold text-sm block font-mono">{householdSummary.spentPercentage}%</span>
+            </div>
+            <div className="p-2.5 rounded-lg bg-muted/20 border border-border/60">
+              <span className="text-[10px] text-muted-foreground block uppercase">Sua Participação</span>
+              <MoneyText cents={householdSummary.userContributionCents} className="font-bold text-sm" />
+              <span className="text-[10px] text-muted-foreground ml-1">({householdSummary.userPercentageOfTotal.toFixed(1).replace(".", ",")}%)</span>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 8. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
         disclaimer="Documento estritamente informativo emitido automaticamente com base nos registros financeiros e contábeis inseridos pelo titular da conta."

@@ -85,6 +85,7 @@ vi.mock("@/state", () => ({
   useDeleteIncomeGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateIncomeGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useFamilyMode: () => ({ isFamilyModeEnabled: false, setFamilyModeEnabled: vi.fn(), isLoading: false }),
+  useMyFamily: () => ({ data: null, isLoading: false }),
   useMyPublicShares: () => ({ data: [], isLoading: false }),
   useDebts: () => ({ data: [], isLoading: false }),
   useSettleIntegratedReceivable: () => ({ mutateAsync: vi.fn(), isPending: false }),

@@ -30,13 +30,12 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useUserAccess, useUserSubscription, useUpdateProfile } from "@/state";
-import { changeUserPassword, requestUserEmailChange } from "@/data/auth";
-import { checkPasswordRequirements } from "@/domain/validation";
+import { requestUserEmailChange } from "@/data/auth";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
+import { ChangePasswordModal } from "./change-password-modal";
 import { DeleteAccountCard } from "./delete-account-card";
-import { FamilyBudgetShareCard } from "./family-budget-share-card";
 
 function formatAccountDate(dateString?: string | null): string {
   if (!dateString) return "Data indisponível";
@@ -80,8 +79,11 @@ export function AccountTab() {
     }
   }
 
-  // Estado da alteração de e-mail
+  // Modais de Credenciais
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+
+  // Estado da alteração de e-mail
   const [newEmail, setNewEmail] = useState("");
   const [emailCurrentPassword, setEmailCurrentPassword] = useState("");
   const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
@@ -128,13 +130,6 @@ export function AccountTab() {
     }
   };
 
-  // Estado da troca de senha
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-
   // Estado do botão de cópia do ID
   const [copiedId, setCopiedId] = useState(false);
 
@@ -164,13 +159,6 @@ export function AccountTab() {
     }
   };
 
-  const passwordRequirements = checkPasswordRequirements(newPassword);
-  const isPasswordSufficient =
-    passwordRequirements.minLength &&
-    (passwordRequirements.hasUppercase || passwordRequirements.hasNumber);
-  const isPasswordMatching = newPassword.length > 0 && newPassword === confirmPassword;
-  const showPasswordMismatch = confirmPassword.length > 0 && !isPasswordMatching;
-
   const isNameChanged = name.trim().length > 0 && name.trim() !== currentName.trim();
 
   const handleSaveProfile = async (e: FormEvent) => {
@@ -185,42 +173,6 @@ export function AccountTab() {
       setIsNameDirty(false);
     } catch {
       // O tratamento de erro e toast já são geridos pela mutation
-    }
-  };
-
-  const handleUpdatePassword = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!currentPassword) {
-      setPasswordError("Informe sua senha atual.");
-      return;
-    }
-    if (!isPasswordSufficient) {
-      setPasswordError("A nova senha deve atender aos critérios de segurança mínimos.");
-      return;
-    }
-    if (!isPasswordMatching) {
-      setPasswordError("As senhas digitadas não coincidem.");
-      return;
-    }
-
-    setPasswordError(null);
-    setIsUpdatingPassword(true);
-    try {
-      await changeUserPassword(currentPassword, newPassword);
-      triggerSensory("success");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      pushToast({
-        title: "Senha atualizada",
-        description: "Sua senha de acesso foi alterada com sucesso.",
-        variant: "success",
-      });
-    } catch (err) {
-      triggerSensory("destructive");
-      setPasswordError(getErrorMessage(err));
-    } finally {
-      setIsUpdatingPassword(false);
     }
   };
 
@@ -251,29 +203,30 @@ export function AccountTab() {
 
   return (
     <div className="space-y-6">
-      {/* Card 1: Dados Pessoais */}
+      {/* Card 1: Dados Pessoais & Credenciais de Acesso */}
       <Card className="border-border/80 bg-surface shadow-xs">
         <CardHeader>
           <CardTitle className="text-base flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
             <span className="flex items-center gap-2">
               <User className="size-4 text-muted-foreground" aria-hidden="true" />
-              <span>Dados Pessoais</span>
+              <span>Dados Pessoais &amp; Acesso</span>
             </span>
             <Badge variant="muted" size="xs" className="font-mono uppercase w-fit">
               {getRoleLabel(userAccess.role)}
             </Badge>
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            Gerencie o seu nome de exibição e confira os dados da sua identidade de acesso.
+            Gerencie seu nome de exibição, endereço de e-mail e credenciais de segurança da conta.
           </p>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSaveProfile} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="space-y-1.5">
-                <label htmlFor="account-name" className="text-xs font-semibold text-foreground">
-                  Nome completo
-                </label>
+        <CardContent className="space-y-5">
+          {/* Formulário de Nome Completo */}
+          <form onSubmit={handleSaveProfile} className="space-y-3.5">
+            <div className="space-y-1.5">
+              <label htmlFor="account-name" className="text-xs font-semibold text-foreground">
+                Nome completo
+              </label>
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                 <Input
                   id="account-name"
                   type="text"
@@ -284,205 +237,103 @@ export function AccountTab() {
                     setIsNameDirty(true);
                   }}
                   placeholder="Seu nome completo"
-                  className="h-10 text-sm rounded-xl"
+                  className="h-10 text-sm rounded-xl flex-1"
                 />
+                <Button
+                  type="submit"
+                  disabled={!isNameChanged || updateProfileMutation.isPending}
+                  className="h-10 px-4 text-xs font-semibold rounded-xl shrink-0 cursor-pointer"
+                >
+                  {updateProfileMutation.isPending ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
+                      <span>Salvando…</span>
+                    </>
+                  ) : (
+                    <span>Salvar Alterações</span>
+                  )}
+                </Button>
               </div>
+            </div>
+          </form>
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <label htmlFor="account-email" className="text-xs font-semibold text-foreground">
-                    Endereço de e-mail
+          {/* Seção de Credenciais de Acesso (E-mail e Senha em formato compacto com Modais) */}
+          <div className="pt-3 border-t border-border/60 space-y-3">
+            <span className="text-xs font-semibold text-foreground block">
+              Credenciais de Autenticação
+            </span>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Linha de E-mail */}
+              <div className="p-3.5 rounded-xl border border-border/80 bg-muted/20 flex flex-col justify-between gap-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <label htmlFor="account-email" className="text-xs text-muted-foreground flex items-center gap-1.5 cursor-default">
+                    <Mail className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    <span>Endereço de e-mail</span>
                   </label>
-                  <div className="flex items-center gap-1.5">
-                    <Badge variant="positive" size="xs" className="gap-1">
-                      <Check className="size-3" aria-hidden="true" />
-                      <span>Verificado</span>
-                    </Badge>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="xs"
-                      onClick={() => {
-                        setEmailChangeError(null);
-                        setNewEmail("");
-                        setEmailCurrentPassword("");
-                        setIsEmailModalOpen(true);
-                      }}
-                      className="rounded-lg cursor-pointer"
-                    >
-                      Alterar e-mail
-                    </Button>
-                  </div>
+                  <Badge variant="positive" size="xs" className="gap-1">
+                    <Check className="size-3" aria-hidden="true" />
+                    <span>Verificado</span>
+                  </Badge>
                 </div>
-                <div className="relative">
-                  <Input
+                <div className="flex items-center justify-between gap-2">
+                  <input
                     id="account-email"
                     type="email"
                     readOnly
                     disabled
                     value={user?.email || ""}
-                    className="h-10 text-sm rounded-xl pl-9 bg-muted/40 text-muted-foreground cursor-not-allowed select-all"
+                    className="text-xs font-medium text-foreground bg-transparent border-0 p-0 focus:outline-none truncate select-all flex-1 cursor-default"
                   />
-                  <Mail
-                    className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                    aria-hidden="true"
-                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    onClick={() => {
+                      setEmailChangeError(null);
+                      setNewEmail("");
+                      setEmailCurrentPassword("");
+                      setIsEmailModalOpen(true);
+                    }}
+                    className="rounded-lg cursor-pointer shrink-0"
+                  >
+                    Alterar e-mail
+                  </Button>
+                </div>
+              </div>
+
+              {/* Linha de Senha */}
+              <div className="p-3.5 rounded-xl border border-border/80 bg-muted/20 flex flex-col justify-between gap-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <KeyRound className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    <span>Senha de acesso</span>
+                  </span>
+                  <Badge variant="muted" size="xs">
+                    Protegida
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-xs text-muted-foreground tracking-widest">
+                    ••••••••••••
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    onClick={() => setIsPasswordModalOpen(true)}
+                    className="rounded-lg cursor-pointer shrink-0"
+                  >
+                    Alterar senha
+                  </Button>
                 </div>
               </div>
             </div>
-
-            <div className="flex justify-end pt-2">
-              <Button
-                type="submit"
-                disabled={!isNameChanged || updateProfileMutation.isPending}
-                className="h-9 px-4 text-xs font-semibold rounded-xl"
-              >
-                {updateProfileMutation.isPending ? (
-                  <>
-                    <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
-                    <span>Salvando…</span>
-                  </>
-                ) : (
-                  <span>Salvar Alterações</span>
-                )}
-              </Button>
-            </div>
-          </form>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Card 2: Segurança & Senha */}
-      <Card className="border-border/80 bg-surface shadow-xs">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <KeyRound className="size-4 text-muted-foreground" aria-hidden="true" />
-            <span>Segurança &amp; Senha</span>
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Altere sua senha de acesso periodicamente para manter sua conta protegida.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleUpdatePassword} className="space-y-4">
-            {passwordError ? <Alert variant="error">{passwordError}</Alert> : null}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="space-y-1.5 sm:col-span-2">
-                <label htmlFor="account-current-password" className="text-xs font-semibold text-foreground">
-                  Senha atual
-                </label>
-                <PasswordInput
-                  id="account-current-password"
-                  autoComplete="current-password"
-                  required
-                  value={currentPassword}
-                  onChange={(e) => {
-                    setCurrentPassword(e.target.value);
-                    if (passwordError) setPasswordError(null);
-                  }}
-                  placeholder="Digite sua senha atual"
-                  className="h-10 text-sm rounded-xl"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="account-new-password" className="text-xs font-semibold text-foreground">
-                  Nova senha
-                </label>
-                <PasswordInput
-                  id="account-new-password"
-                  autoComplete="new-password"
-                  required
-                  value={newPassword}
-                  onChange={(e) => {
-                    setNewPassword(e.target.value);
-                    if (passwordError) setPasswordError(null);
-                  }}
-                  placeholder="Mínimo de 8 caracteres"
-                  className="h-10 text-sm rounded-xl"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="account-confirm-password"
-                  className="text-xs font-semibold text-foreground"
-                >
-                  Confirmar nova senha
-                </label>
-                <PasswordInput
-                  id="account-confirm-password"
-                  autoComplete="new-password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => {
-                    setConfirmPassword(e.target.value);
-                    if (passwordError) setPasswordError(null);
-                  }}
-                  placeholder="Repita a nova senha"
-                  className="h-10 text-sm rounded-xl"
-                />
-                {showPasswordMismatch && (
-                  <span className="text-[11px] text-critical-strong block">
-                    As senhas digitadas não coincidem.
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {newPassword.length > 0 && (
-              <div className="rounded-xl bg-muted/20 border border-border/80 p-3 space-y-1.5">
-                <span className="text-[11px] font-semibold text-foreground">
-                  Critérios de segurança da senha:
-                </span>
-                <ul className="text-[11px] space-y-1 text-muted-foreground">
-                  <li
-                    className={
-                      passwordRequirements.minLength ? "text-positive-strong font-medium" : ""
-                    }
-                  >
-                    • Pelo menos 8 caracteres
-                  </li>
-                  <li
-                    className={
-                      passwordRequirements.hasUppercase || passwordRequirements.hasNumber
-                        ? "text-positive-strong font-medium"
-                        : ""
-                    }
-                  >
-                    • Letras maiúsculas ou números
-                  </li>
-                </ul>
-              </div>
-            )}
-
-            <div className="flex justify-end pt-2">
-              <Button
-                type="submit"
-                disabled={
-                  isUpdatingPassword ||
-                  !isPasswordSufficient ||
-                  !isPasswordMatching ||
-                  newPassword.length === 0 ||
-                  currentPassword.length === 0
-                }
-                className="h-9 px-4 text-xs font-semibold rounded-xl"
-              >
-                {isUpdatingPassword ? (
-                  <>
-                    <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
-                    <span>Atualizando…</span>
-                  </>
-                ) : (
-                  <span>Atualizar Senha</span>
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Card 3: Informações da Conta & Assinatura */}
+      {/* Card 2: Informações da Conta & SaaS */}
       <Card className="border-border/80 bg-surface shadow-xs">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -493,7 +344,7 @@ export function AccountTab() {
             Informações cadastrais, identificador exclusivo e status do plano ativo.
           </p>
         </CardHeader>
-        <CardContent className="space-y-3.5">
+        <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Bloco 1: Identificador Único */}
             <div className="p-3.5 rounded-xl border border-border/80 bg-muted/20 flex flex-col justify-between gap-2">
@@ -508,7 +359,7 @@ export function AccountTab() {
                   size="sm"
                   onClick={handleCopyAccountId}
                   title="Copiar ID da conta"
-                  className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground"
+                  className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   {copiedId ? (
                     <Check className="size-3.5 text-positive-strong" aria-hidden="true" />
@@ -538,7 +389,7 @@ export function AccountTab() {
                   <span>Plano Ativo</span>
                 </span>
                 <Link
-                  to="/configuracoes?aba=assinatura"
+                  to="/configuracoes?tab=subscription"
                   className="text-[11px] text-primary hover:underline font-medium inline-flex items-center gap-0.5"
                 >
                   <span>Gerenciar</span>
@@ -565,10 +416,7 @@ export function AccountTab() {
         </CardContent>
       </Card>
 
-      {/* Card 4: Orçamento Familiar & Link do Cônjuge */}
-      <FamilyBudgetShareCard />
-
-      {/* Card 5: Sessão & Desconexão */}
+      {/* Card 3: Sessão & Desconexão */}
       <Card className="border-border/80 bg-surface shadow-xs">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -602,6 +450,14 @@ export function AccountTab() {
         </CardContent>
       </Card>
 
+      {/* Card 4: Zona de Perigo / Exclusão de Conta */}
+      <DeleteAccountCard
+        title="Zona de Perigo"
+        description="Ações irreversíveis que afetam permanentemente sua conta e histórico financeiro."
+        actionTitle="Excluir conta permanentemente"
+        actionDescription="Exclui todas as transações, cartões, metas, investimentos e desvincula seu e-mail do sistema."
+      />
+
       {/* Modal de Alteração de E-mail */}
       <Modal
         open={isEmailModalOpen}
@@ -620,7 +476,7 @@ export function AccountTab() {
         size="md"
       >
         <form onSubmit={handleRequestEmailChange} className="space-y-4 pt-2">
-          {emailChangeError ? <Alert variant="error">{emailChangeError}</Alert> : null}
+          {emailChangeError && <Alert variant="error">{emailChangeError}</Alert>}
 
           <div className="rounded-xl bg-muted/20 border border-border/80 p-3.5 space-y-1.5">
             <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
@@ -680,13 +536,8 @@ export function AccountTab() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => {
-                setIsEmailModalOpen(false);
-                setNewEmail("");
-                setEmailCurrentPassword("");
-                setEmailChangeError(null);
-              }}
               disabled={isUpdatingEmail}
+              onClick={() => setIsEmailModalOpen(false)}
               className="h-9 px-4 text-xs font-semibold rounded-xl cursor-pointer"
             >
               Cancelar
@@ -694,11 +545,7 @@ export function AccountTab() {
             <Button
               type="submit"
               variant="default"
-              disabled={
-                isUpdatingEmail ||
-                !newEmail.trim() ||
-                !emailCurrentPassword.trim()
-              }
+              disabled={isUpdatingEmail || !newEmail.trim() || !emailCurrentPassword.trim()}
               className="h-9 px-4 text-xs font-semibold rounded-xl cursor-pointer gap-1.5"
             >
               {isUpdatingEmail ? (
@@ -714,7 +561,13 @@ export function AccountTab() {
         </form>
       </Modal>
 
-      {/* Modal de Confirmação de Saída */}
+      {/* Modal de Alteração de Senha */}
+      <ChangePasswordModal
+        open={isPasswordModalOpen}
+        onOpenChange={setIsPasswordModalOpen}
+      />
+
+      {/* Modal de Confirmação de Desconexão */}
       <Modal
         open={isSignOutModalOpen}
         onOpenChange={(open) => {
@@ -732,8 +585,8 @@ export function AccountTab() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setIsSignOutModalOpen(false)}
               disabled={isSigningOut}
+              onClick={() => setIsSignOutModalOpen(false)}
               className="h-9 px-4 text-xs font-semibold rounded-xl cursor-pointer"
             >
               Cancelar
@@ -741,15 +594,15 @@ export function AccountTab() {
             <Button
               type="button"
               variant="default"
+              disabled={isSigningOut}
               onClick={() => {
                 void handleSignOut();
               }}
-              disabled={isSigningOut}
               className="h-9 px-4 text-xs font-semibold rounded-xl cursor-pointer gap-1.5"
             >
               {isSigningOut ? (
                 <>
-                  <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                  <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
                   <span>Saindo…</span>
                 </>
               ) : (
@@ -762,14 +615,6 @@ export function AccountTab() {
           </ModalFooter>
         </div>
       </Modal>
-
-      {/* Card 5: Zona de Perigo / Exclusão de Conta */}
-      <DeleteAccountCard
-        title="Zona de Perigo"
-        description="Ações irreversíveis que afetam permanentemente sua conta e histórico financeiro."
-        actionTitle="Excluir conta permanentemente"
-        actionDescription="Exclui todas as transações, cartões, metas, investimentos e desvincula seu e-mail do sistema."
-      />
     </div>
   );
 }

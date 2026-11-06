@@ -288,12 +288,19 @@ export {
   useInviteFamilyMember,
   useAcceptFamilyInvite,
   useLeaveFamily,
+  useDeleteFamily,
+  useRemoveFamilyMember,
   useRecordFamilySettlement,
   useUpdateFamily,
   useUpdateFamilyMember,
   useRevokeFamilyInvite,
+  useFamilyIncomeRatioSuggestion,
+  useFamilyPortfolioSummary,
+  useUpdateFamilyWealthSharing,
+  useTogglePortfolioAssetFamily,
   familyQueryKeys,
 } from "./queries/use-family";
+export type { RemoveFamilyMemberInput } from "./queries/use-family";
 
 
 

@@ -6126,3 +6126,16 @@ flowchart TD
 > - **Ativação da Telemetria Leve Resiliente:** Ativação de `trackFeatureUse` em `PageShell` para telemetria funcional LGPD-compliant em `/admin`, com suíte de testes `src/services/analytics/tracker.test.ts`.
 > - **Build & Distribuição Mobile:** Compilação do APK Release v0.1.0 (versionCode 27) com Gradle 8.14.3 e upload automatizado para Cloudflare R2 com hash SHA-256 e manifesto `version.json`.
 
+---
+
+### Fase 102 — Blindagem de Cotações Client-Side, Resolução de CORS 410 no Tesouro Direto & Higienização de Snapshots (v2.90)
+
+> **Status:** ✅ Concluída e Auditada — **Blindagem de Cotações & Resolução de Snapshots Órfãos**:
+> - **Resolução de Erros de Rede no Console:** Erradicação de chamadas direct browser para o endpoint descontinuado B3/Tesouro Direto (`treasurybondsinfo.json`), eliminando falha de CORS e HTTP 410 Gone.
+> - **Isolamento de Títulos Públicos da Brapi:** Atualização dos normalizadores de ticker (`normalizeTickerForBrapi` e `normalizeTickerForApi` em `src/domain/portfolio/quotes.ts`) para ignorar Tesouro Direto (`isTesouroAsset` e `normalizeTesouroTicker`) e strings com espaços, eliminando requisições espúrias que resultavam em HTTP 401 Unauthorized na Brapi.
+> - **Eliminação de Fallback Espúrio:** Em `src/services/quotes.ts`, garantia de que títulos públicos e renda fixa privada sejam precificados exclusivamente pelo motor interno de matemática financeira (`calculateFixedIncomeBalance`) ou Edge Function, sem jamais repassar ativos não cotados em bolsa para a Brapi no client.
+> - **Reforço de CSP em Borda:** Remoção do domínio obsoleto `https://www.tesourodireto.com.br` da diretiva `connect-src` em `public/_headers`.
+> - **Higienização de Banco de Dados:** Exclusão de registro histórico órfão residual em `portfolio_snapshots` (`Out/2026: R$ 414.712,21`), restaurando a visualização fidedigna de contas recém-inicializadas e preservando a continuidade matemática do TWR.
+> - **Qualidade e Testes:** Suíte de 42 testes de cotações 100% verde (`quotes.test.ts`), typecheck estrito com 0 erros (`tsc -b`) e conformidade integral no ESLint.
+
+

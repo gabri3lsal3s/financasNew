@@ -66,6 +66,8 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn().mockResolvedValue({ id: "cb1" }),
     isPending: false,
   }),
+  useFamilyMode: () => ({ isFamilyModeEnabled: false, toggleFamilyMode: vi.fn() }),
+  useMyFamily: () => ({ data: null, isLoading: false, isError: false }),
 }));
 
 describe("InvestmentWizard (Fase 41)", () => {

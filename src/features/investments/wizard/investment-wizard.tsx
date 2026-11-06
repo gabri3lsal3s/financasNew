@@ -18,6 +18,8 @@ import {
   useRecordOrder,
   useSaveAllocationTargets,
   useSetManualPrice,
+  useFamilyMode,
+  useMyFamily,
 } from "@/state";
 import type { AllocationTargetInput, FixedIncomeMetadata, PortfolioAsset } from "@/types";
 
@@ -70,6 +72,8 @@ function InvestmentWizardContent({
   const recordOrder = useRecordOrder();
   const saveTargets = useSaveAllocationTargets();
   const setManualPrice = useSetManualPrice();
+  const { isFamilyModeEnabled } = useFamilyMode();
+  const { data: myFamilyData } = useMyFamily();
 
   const existingAssets = assetsQuery.data ?? [];
   const targets = targetsQuery.data ?? [];
@@ -364,6 +368,8 @@ function InvestmentWizardContent({
           accumulated_dividends: state.accumulatedDividendsCents / 100,
           estimated_monthly_dividend_per_share: state.estimatedDividendPerShareCents / 100,
           fixed_income_metadata: fixedIncomeMetadata,
+          is_family: isFamilyModeEnabled ? state.isFamily : false,
+          family_id: isFamilyModeEnabled && state.isFamily ? (myFamilyData?.family?.id ?? null) : null,
           notes: finalNotes,
         });
 

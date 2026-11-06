@@ -102,6 +102,10 @@ vi.mock("@/state", () => ({
     isUpdating: false,
     portfolioRows: [],
   }),
+  useFamilyMode: () => ({ isFamilyModeEnabled: false, isLoading: false }),
+  useMyFamily: () => ({ data: null, isLoading: false }),
+  useFamilyConsolidation: () => ({ data: null, isLoading: false, isError: false, error: null }),
+  useIncomeGoals: () => ({ data: [], isLoading: false, isError: false, error: null }),
 }));
 
 describe("InsightsPage (motor de insights §3.7)", () => {

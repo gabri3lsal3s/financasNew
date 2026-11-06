@@ -212,6 +212,20 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useFamilyMode: () => ({
+    isFamilyModeEnabled: false,
+    toggleFamilyMode: vi.fn(),
+  }),
+  useMyFamily: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+  }),
+  useFamilyConsolidation: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+  }),
   useFeedback: () => ({
     data: [],
     isLoading: false,

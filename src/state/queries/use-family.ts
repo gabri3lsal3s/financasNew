@@ -22,12 +22,17 @@ import {
   inviteFamilyMember,
   acceptFamilyInvite,
   leaveFamily,
+  deleteFamily,
+  removeFamilyMember,
   recordFamilySettlement,
   updateFamily,
   updateFamilyMember,
   revokeFamilyInvite,
   getFamilyInviteByToken,
   listFamilySettlements,
+  getFamilyIncomeRatioSuggestion,
+  getFamilyPortfolioSummary,
+  togglePortfolioAssetFamily,
   type MyFamilyData,
   type UpdateFamilyInput,
   type UpdateFamilyMemberInput,
@@ -50,6 +55,9 @@ import type {
   InviteFamilyMemberResult,
   AcceptFamilyInviteResult,
   LeaveFamilyResult,
+  RemoveFamilyMemberResult,
+  FamilyIncomeRatioSuggestionItem,
+  FamilyPortfolioSummary,
 } from "@/types";
 
 // ---------------------------------------------------------------------------
@@ -65,6 +73,10 @@ export const familyQueryKeys = {
     [...familyQueryKeys.all, "settlements", familyId ?? "current"] as const,
   inviteToken: (token: string) =>
     [...familyQueryKeys.all, "invite", token] as const,
+  incomeRatioSuggestion: (familyId?: string | null, lookback?: number) =>
+    [...familyQueryKeys.all, "income-ratio-suggestion", familyId ?? "current", lookback ?? 3] as const,
+  portfolioSummary: (familyId?: string | null) =>
+    [...familyQueryKeys.all, "portfolio-summary", familyId ?? "current"] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -88,10 +100,14 @@ export function useMyFamily() {
  * Consulta a consolidação familiar detalhada para a competência (mês YYYY-MM).
  * Cache transacional de 30 segundos para refletir gastos e acertos recentes.
  */
-export function useFamilyConsolidation(month?: string | null) {
+export function useFamilyConsolidation(
+  month?: string | null,
+  options?: { enabled?: boolean },
+) {
   return useQuery<FamilyConsolidationResult | null>({
     queryKey: familyQueryKeys.consolidation(month),
     queryFn: () => getFamilyConsolidation({ month }),
+    enabled: options?.enabled ?? true,
     staleTime: STALE_TIMES.transactional,
   });
 }
@@ -141,6 +157,7 @@ export function useCreateFamily() {
         variant: "default",
       });
       void queryClient.invalidateQueries({ queryKey: familyQueryKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["shared-family-budget"] });
       void queryClient.invalidateQueries({ queryKey: ["categories"] });
     },
     onError: (error) => {
@@ -239,6 +256,73 @@ export function useLeaveFamily() {
 }
 
 /**
+ * Exclusão e dissolução completa da unidade familiar (ação do titular/owner).
+ */
+export function useDeleteFamily() {
+  const queryClient = useQueryClient();
+
+  return useMutation<LeaveFamilyResult, Error, string | undefined>({
+    mutationFn: (familyId?: string) => deleteFamily(familyId),
+    onSuccess: () => {
+      triggerSensory("destructive");
+      pushToast({
+        title: "Família excluída com sucesso",
+        description: "A unidade foi encerrada. Seus dados pessoais continuam preservados com segurança.",
+        variant: "default",
+      });
+      void queryClient.invalidateQueries({ queryKey: familyQueryKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["categories"] });
+      void queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      void queryClient.invalidateQueries({ queryKey: ["incomes"] });
+    },
+    onError: (error) => {
+      triggerSensory("destructive");
+      pushToast({
+        title: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export interface RemoveFamilyMemberInput {
+  familyId: string;
+  targetUserId: string;
+}
+
+/**
+ * Remoção de um membro do grupo familiar (ação exclusiva do titular/owner).
+ * Assegura Zero Data Bleed e revoga vínculos compartilhados.
+ */
+export function useRemoveFamilyMember() {
+  const queryClient = useQueryClient();
+
+  return useMutation<RemoveFamilyMemberResult, Error, RemoveFamilyMemberInput>({
+    mutationFn: ({ familyId, targetUserId }: RemoveFamilyMemberInput) =>
+      removeFamilyMember(familyId, targetUserId),
+    onSuccess: () => {
+      triggerSensory("destructive");
+      pushToast({
+        title: "Membro removido da família",
+        description: "O participante foi desvinculado da casa. Seus lançamentos pessoais permanecem intactos.",
+        variant: "default",
+      });
+      void queryClient.invalidateQueries({ queryKey: familyQueryKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["categories"] });
+      void queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      void queryClient.invalidateQueries({ queryKey: ["incomes"] });
+    },
+    onError: (error) => {
+      triggerSensory("destructive");
+      pushToast({
+        title: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+/**
  * Registro de acerto financeiro auditado do mês (via Pix/transferência).
  */
 export function useRecordFamilySettlement() {
@@ -282,6 +366,7 @@ export function useUpdateFamily() {
         variant: "default",
       });
       void queryClient.invalidateQueries({ queryKey: familyQueryKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["shared-family-budget"] });
     },
     onError: (error) => {
       triggerSensory("destructive");
@@ -345,3 +430,109 @@ export function useRevokeFamilyInvite() {
     },
   });
 }
+
+/**
+ * Consulta a sugestão inteligente de proporção de rateio baseada na média de receitas dos membros nos últimos meses.
+ */
+export function useFamilyIncomeRatioSuggestion(
+  familyId?: string | null,
+  lookbackMonths = 3,
+  options?: { enabled?: boolean },
+) {
+  return useQuery<FamilyIncomeRatioSuggestionItem[]>({
+    queryKey: familyQueryKeys.incomeRatioSuggestion(familyId, lookbackMonths),
+    queryFn: () => getFamilyIncomeRatioSuggestion({ familyId, lookbackMonths }),
+    enabled: options?.enabled ?? true,
+    staleTime: STALE_TIMES.transactional,
+    gcTime: STATIC_GC_TIME,
+  });
+}
+
+/**
+ * Consulta o resumo consolidado do patrimônio e reserva de emergência compartilhados com a família.
+ */
+export function useFamilyPortfolioSummary(
+  familyId?: string | null,
+  options?: { enabled?: boolean },
+) {
+  return useQuery<FamilyPortfolioSummary | null>({
+    queryKey: familyQueryKeys.portfolioSummary(familyId),
+    queryFn: () => getFamilyPortfolioSummary({ familyId }),
+    enabled: options?.enabled ?? true,
+    staleTime: STALE_TIMES.transactional,
+    gcTime: STATIC_GC_TIME,
+  });
+}
+
+/**
+ * Mutação para salvar configurações de compartilhamento de carteira do membro com a família
+ * (compartilhar toda a carteira ou classes específicas).
+ */
+export function useUpdateFamilyWealthSharing() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    FamilyMemberWithProfile,
+    Error,
+    { memberId: string; shareAllPortfolio?: boolean; sharedAssetClasses?: string[] | null }
+  >({
+    mutationFn: ({ memberId, shareAllPortfolio, sharedAssetClasses }) =>
+      updateFamilyMember(memberId, {
+        share_all_portfolio: shareAllPortfolio,
+        shared_asset_classes: sharedAssetClasses,
+      }),
+    onSuccess: () => {
+      triggerSensory("success");
+      pushToast({
+        title: "Preferências de patrimônio familiar atualizadas.",
+        variant: "default",
+      });
+      void queryClient.invalidateQueries({ queryKey: familyQueryKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["portfolio_assets"] });
+      void queryClient.invalidateQueries({ queryKey: ["portfolio_snapshots"] });
+      void queryClient.invalidateQueries({ queryKey: ["portfolio-position"] });
+    },
+    onError: (error) => {
+      triggerSensory("destructive");
+      pushToast({
+        title: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+/**
+ * Mutação para alternar se um ativo individual específico é compartilhado com a família.
+ */
+export function useTogglePortfolioAssetFamily() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    void,
+    Error,
+    { assetId: string; isFamily: boolean; familyId?: string | null }
+  >({
+    mutationFn: ({ assetId, isFamily, familyId }) =>
+      togglePortfolioAssetFamily(assetId, isFamily, familyId),
+    onSuccess: (_, { isFamily }) => {
+      triggerSensory("toggle");
+      pushToast({
+        title: isFamily ? "Ativo compartilhado com a família." : "Ativo tornado estritamente pessoal.",
+        variant: "default",
+      });
+      void queryClient.invalidateQueries({ queryKey: familyQueryKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["portfolio_assets"] });
+      void queryClient.invalidateQueries({ queryKey: ["portfolio_snapshots"] });
+      void queryClient.invalidateQueries({ queryKey: ["portfolio-position"] });
+    },
+    onError: (error) => {
+      triggerSensory("destructive");
+      pushToast({
+        title: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+}
+

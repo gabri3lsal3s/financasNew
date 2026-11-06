@@ -166,6 +166,7 @@ describe("BottomNav Dinâmica & Adaptativa", () => {
     mockFamilyData = {
       family: { id: "fam-1", name: "Família Carvalho" },
     };
+    mockIsFamilyModeEnabled = true;
     renderNav();
     const moreBtn = screen.getByRole("button", { name: "Mais opções" });
     fireEvent.click(moreBtn);

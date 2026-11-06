@@ -22,10 +22,26 @@ let activeUserId: string | null = null;
 let subscriberCount = 0;
 
 /**
+ * Indica se a subscrição de canais WebSockets Realtime está habilitada.
+ * Desabilitada por padrão (fail-safe) para evitar falhas de conexão (HTTP 500 / Cloudflare error 1101),
+ * rejeição de cookies __cf_bm e loops de reconexão em navegadores onde o serviço de Realtime não está ativo.
+ */
+export function isRealtimeAccessEnabled(): boolean {
+  if (typeof import.meta !== "undefined" && import.meta.env) {
+    return import.meta.env.VITE_ENABLE_REALTIME === "true";
+  }
+  return false;
+}
+
+/**
  * Gerenciador singleton de canais Supabase Realtime para evitar duplicação de canais
  * e erro de múltiplos `.subscribe()` / `.on()` na mesma sessão de usuário.
  */
-function subscribeUserAccessRealtime(userId: string, queryClient: QueryClient): () => void {
+export function subscribeUserAccessRealtime(userId: string, queryClient: QueryClient): () => void {
+  if (!isRealtimeAccessEnabled()) {
+    return () => {};
+  }
+
   subscriberCount++;
 
   // Se já existe um canal ativo para o mesmo usuário, compartilha a inscrição
@@ -34,7 +50,11 @@ function subscribeUserAccessRealtime(userId: string, queryClient: QueryClient): 
       subscriberCount--;
       if (subscriberCount <= 0 && activeChannel) {
         const supabase = getSupabase();
-        void supabase.removeChannel(activeChannel);
+        try {
+          void supabase.removeChannel(activeChannel);
+        } catch {
+          // Fallback defensivo
+        }
         activeChannel = null;
         activeUserId = null;
         subscriberCount = 0;
@@ -44,7 +64,11 @@ function subscribeUserAccessRealtime(userId: string, queryClient: QueryClient): 
 
   const supabase = getSupabase();
   if (activeChannel) {
-    void supabase.removeChannel(activeChannel);
+    try {
+      void supabase.removeChannel(activeChannel);
+    } catch {
+      // Fallback defensivo
+    }
     activeChannel = null;
   }
 
@@ -100,13 +124,33 @@ function subscribeUserAccessRealtime(userId: string, queryClient: QueryClient): 
         void queryClient.invalidateQueries({ queryKey: USER_FEATURES_KEY });
       },
     )
-    .subscribe();
+    .subscribe((status) => {
+      // Se a conexão falhar ou expirar por indisponibilidade do backend Realtime,
+      // encerra defensivamente o canal para evitar loops infinitos de reconexão e poluição do console
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        if (activeChannel) {
+          const sb = getSupabase();
+          try {
+            void sb.removeChannel(activeChannel);
+          } catch {
+            // Fallback silencioso
+          }
+          activeChannel = null;
+          activeUserId = null;
+          subscriberCount = 0;
+        }
+      }
+    });
 
   return () => {
     subscriberCount--;
     if (subscriberCount <= 0 && activeChannel) {
       const sb = getSupabase();
-      void sb.removeChannel(activeChannel);
+      try {
+        void sb.removeChannel(activeChannel);
+      } catch {
+        // Fallback defensivo
+      }
       activeChannel = null;
       activeUserId = null;
       subscriberCount = 0;

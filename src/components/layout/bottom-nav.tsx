@@ -6,7 +6,7 @@ import { filterNavItems, navItems } from "@/components/layout/nav-items";
 import type { NavItem } from "@/components/layout/nav-items";
 import { resolveBottomNavSlots } from "@/domain/navigation";
 import { triggerSensory } from "@/services/sensory";
-import { useFamilyMode, useMyFamily, useReminders, useUserAccess } from "@/state";
+import { useFamilyMode, useReminders, useUserAccess } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { MoreMenuSheet } from "./more-menu-sheet";
 
@@ -104,9 +104,8 @@ function SlotLink({ item, end = false }: { item: NavItem; end?: boolean }) {
 export function BottomNav() {
   const location = useLocation();
   const { hasFeature, isAdmin } = useUserAccess();
-  const { data: myFamilyData } = useMyFamily();
   const { isFamilyModeEnabled } = useFamilyMode();
-  const isFamilyActive = Boolean(myFamilyData?.family || isFamilyModeEnabled);
+  const isFamilyActive = Boolean(isFamilyModeEnabled);
   const { totalCount, urgentCount } = useReminders();
   const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard();
 

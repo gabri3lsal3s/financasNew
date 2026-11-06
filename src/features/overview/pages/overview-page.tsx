@@ -69,6 +69,9 @@ import {
   useUserSubscription,
   useOnboardingCounts,
   hasSeenWelcomeModal,
+  useFamilyConsolidation,
+  useFamilyMode,
+  useMyFamily,
 } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { useVisualCustomization, useApkPromo, useOnboardingDismissed, usePendingSplitExpense, usePendingSimulation } from "@/hooks";
@@ -80,6 +83,7 @@ import {
   OtherCategoriesDialog,
   SplitPendingBanner,
   CampaignsSummaryBanner,
+  HouseholdAlertBanner,
 } from "../components";
 import type { SplitSharePayload } from "@/types";
 
@@ -118,6 +122,14 @@ export function OverviewPage() {
   const contributionsQuery = usePortfolioContributions();
   const splitSharesQuery = useMyPublicShares("split");
   const goalSharesQuery = useMyPublicShares("goal_tracker");
+
+  const { isFamilyModeEnabled } = useFamilyMode();
+  const myFamilyQuery = useMyFamily();
+  const hasFamily = Boolean(isFamilyModeEnabled && myFamilyQuery.data?.family);
+  const familyConsolidationQuery = useFamilyConsolidation(month, { enabled: hasFamily });
+  const householdData = hasFamily ? familyConsolidationQuery.data : null;
+  const currentUserId = myFamilyQuery.data?.currentMember?.user_id;
+
   const realCashData = useRealCashBalance(today);
   const onboardingQuery = useOnboardingCounts();
   const { isDismissed: isOnboardingDismissed, dismiss: dismissOnboarding } = useOnboardingDismissed();
@@ -560,10 +572,37 @@ export function OverviewPage() {
   }, [goalSharesQuery.data]);
 
   const alertItems: (DashboardAlertItem | null | undefined | false)[] = [
+    Boolean(householdData && householdData.monthly_ceiling_cents > 0 && householdData.spent_percentage >= 100) && {
+      id: "household-ceiling-exceeded",
+      priority: 1,
+      content: (
+        <HouseholdAlertBanner
+          variant="ceiling_exceeded"
+          totalSpentCents={householdData!.total_spent_cents}
+          ceilingCents={householdData!.monthly_ceiling_cents}
+          spentPercentage={householdData!.spent_percentage}
+          daysRemaining={daily.daysRemaining ?? undefined}
+        />
+      ),
+    },
     isCurrentMonth && cashGapResult.isCashGapDetected && {
       id: "cash-gap-alert",
       priority: cashGapResult.severity === "critical" ? 1 : 3,
       content: <CashGapAlert result={cashGapResult} />,
+    },
+    Boolean(householdData && !householdData.is_settled && householdData.settlement && householdData.settlement.amount_cents > 0) && {
+      id: "household-settlement-pending",
+      priority: 2,
+      content: (
+        <HouseholdAlertBanner
+          variant="settlement_pending"
+          settlementAmountCents={householdData!.settlement!.amount_cents}
+          settlementPayerName={householdData!.settlement!.payer_name}
+          settlementReceiverName={householdData!.settlement!.receiver_name}
+          isCurrentUserPayer={currentUserId ? householdData!.settlement!.payer_id === currentUserId : false}
+          isCurrentUserReceiver={currentUserId ? householdData!.settlement!.receiver_id === currentUserId : false}
+        />
+      ),
     },
     showPaceAlert && {
       id: "pace-alert-banner",
@@ -576,6 +615,19 @@ export function OverviewPage() {
           daysRemaining={daily.daysRemaining}
           surplusCents={projection.surplusCents}
           onNavigateInsights={() => navigate("/insights")}
+        />
+      ),
+    },
+    Boolean(householdData && householdData.monthly_ceiling_cents > 0 && householdData.spent_percentage >= 85 && householdData.spent_percentage < 100) && {
+      id: "household-ceiling-warning",
+      priority: 3,
+      content: (
+        <HouseholdAlertBanner
+          variant="ceiling_warning"
+          totalSpentCents={householdData!.total_spent_cents}
+          ceilingCents={householdData!.monthly_ceiling_cents}
+          spentPercentage={householdData!.spent_percentage}
+          daysRemaining={daily.daysRemaining ?? undefined}
         />
       ),
     },

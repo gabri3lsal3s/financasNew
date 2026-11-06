@@ -465,6 +465,55 @@ describe("reconciliation — Motor Puro de Reconciliação Familiar em Centavos"
       expect(validation.valid).toBe(true);
     });
 
+    it("reconcilia sob regra 'combined' (Finanças Conjuntas) com saldos devedor/credor zerados", () => {
+      const members: ReconciliationMemberInput[] = [
+        { user_id: "u1", display_name: "Gabriel" },
+        { user_id: "u2", display_name: "Mariana" },
+      ];
+
+      const expenses: ReconciliationExpenseInput[] = [
+        { id: "e1", user_id: "u1", amount_cents: 60000, date: "2026-11-01", description: "Aluguel" },
+        { id: "e2", user_id: "u2", amount_cents: 20000, date: "2026-11-02", description: "Feira" },
+      ];
+
+      const result = reconcileHouseholdSpending({
+        monthly_ceiling_cents: 100000,
+        members,
+        expenses,
+        options: {
+          splitRule: "combined",
+        },
+      });
+
+      expect(result.total_spent_cents).toBe(80000);
+      expect(result.remaining_ceiling_cents).toBe(20000);
+      expect(result.split_rule_applied).toBe("combined");
+      expect(result.is_balanced).toBe(true);
+
+      const m1 = result.members.find((m) => m.user_id === "u1")!;
+      const m2 = result.members.find((m) => m.user_id === "u2")!;
+
+      // No modo combinado, cota devida é igual ao gasto, sem devedores ou credores
+      expect(m1.spent_cents).toBe(60000);
+      expect(m1.fair_share_cents).toBe(60000);
+      expect(m1.net_balance_cents).toBe(0);
+      expect(m1.is_creditor).toBe(false);
+      expect(m1.is_debtor).toBe(false);
+      expect(m1.is_balanced).toBe(true);
+
+      expect(m2.spent_cents).toBe(20000);
+      expect(m2.fair_share_cents).toBe(20000);
+      expect(m2.net_balance_cents).toBe(0);
+      expect(m2.is_creditor).toBe(false);
+      expect(m2.is_debtor).toBe(false);
+      expect(m2.is_balanced).toBe(true);
+
+      // Invariantes estritas devem ser 100% satisfeitas
+      const validation = validateHouseholdReconciliationInvariants(result);
+      expect(validation.valid).toBe(true);
+      expect(validation.errors).toHaveLength(0);
+    });
+
     it("validador detecta violação intencional de invariantes", () => {
       const validResult = reconcileHouseholdSpending({
         monthly_ceiling_cents: 50000,

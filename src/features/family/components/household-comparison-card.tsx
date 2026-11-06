@@ -98,7 +98,12 @@ export function HouseholdComparisonCard({
             className="py-8"
           />
         ) : (
-          <div className="space-y-4">
+          <div
+            className={cn(
+              "grid gap-3.5",
+              reconciliation.members.length >= 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
+            )}
+          >
             {reconciliation.members.map((member, index) => {
               const colorClass = MEMBER_COLORS[index % MEMBER_COLORS.length] ?? "bg-primary";
               const clampedSpentPercent = Math.min(100, Math.max(0, member.percentage_of_spent));

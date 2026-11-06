@@ -125,7 +125,7 @@ function ExpenseEditForm({
   const [formError, setFormError] = useState<string | null>(null);
   const { isFamilyModeEnabled } = useFamilyMode();
   const { data: myFamilyData } = useMyFamily();
-  const isFamilyActive = Boolean(isFamilyModeEnabled || myFamilyData?.family);
+  const isFamilyActive = Boolean(isFamilyModeEnabled);
 
   /**
    * Data mudou: mantém a competência automática em sincronia com o fechamento
@@ -424,7 +424,7 @@ export function ExpenseDetailDialog({
   const cardsQuery = useCreditCards();
   const { isFamilyModeEnabled } = useFamilyMode();
   const { data: myFamilyData } = useMyFamily();
-  const isFamilyActive = Boolean(isFamilyModeEnabled || myFamilyData?.family);
+  const isFamilyActive = Boolean(isFamilyModeEnabled);
   const deleteExpense = useDeleteExpense();
   const deleteRecurrence = useDeleteRecurrenceOccurrences();
   const updateExpense = useUpdateExpense();
@@ -501,16 +501,27 @@ export function ExpenseDetailDialog({
         is_family: payload.is_family,
         ...(editScope === "single" ? { bill_competence: payload.bill_competence } : {}),
       };
+      const resolvedFamilyId = payload.is_family ? (myFamilyData?.family?.id ?? null) : null;
       if (isRecurring) {
-        await updateRecurrence.mutateAsync({ occurrenceId: expense.id, mode: editScope, fields });
+        await updateRecurrence.mutateAsync({
+          occurrenceId: expense.id,
+          mode: editScope,
+          fields: { ...fields, family_id: resolvedFamilyId },
+        });
       } else {
-        await updateExpenseGrouped.mutateAsync({ id: expense.id, mode: editScope, fields });
+        await updateExpenseGrouped.mutateAsync({
+          id: expense.id,
+          mode: editScope,
+          fields: { ...fields, family_id: resolvedFamilyId },
+        });
       }
     } else {
+      const resolvedFamilyId = payload.is_family ? (myFamilyData?.family?.id ?? null) : null;
       await updateExpense.mutateAsync({
         id: expense.id,
         input: {
           ...payload,
+          family_id: resolvedFamilyId,
           charge_kind: expense.charge_kind ?? "regular",
         },
       });

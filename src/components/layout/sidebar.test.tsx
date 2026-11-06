@@ -167,6 +167,7 @@ describe("Sidebar colapsável (F7.2)", () => {
     mockFamilyData = {
       family: { id: "fam-1", name: "Família Carvalho" },
     };
+    mockIsFamilyModeEnabled = true;
     renderSidebar();
     expect(screen.getByRole("link", { name: "Orçamento Familiar" })).toBeInTheDocument();
   });

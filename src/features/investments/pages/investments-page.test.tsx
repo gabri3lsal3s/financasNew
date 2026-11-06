@@ -108,6 +108,9 @@ vi.mock("@/state", () => ({
   useSyncQuotes: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useSetManualPrice: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
   useExecutePortfolioBatchAporte: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useFamilyMode: () => ({ isFamilyModeEnabled: false }),
+  useMyFamily: () => ({ data: null, isLoading: false }),
+  useUpdateFamilyMemberShareMode: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 function renderPage(entry = "/investments") {

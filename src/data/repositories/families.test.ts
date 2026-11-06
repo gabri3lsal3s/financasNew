@@ -6,6 +6,7 @@ import {
   inviteFamilyMember,
   acceptFamilyInvite,
   leaveFamily,
+  removeFamilyMember,
   recordFamilySettlement,
   updateFamily,
   updateFamilyMember,
@@ -32,6 +33,7 @@ vi.mock("@/data/rpc", () => ({
   inviteFamilyMember: vi.fn(),
   acceptFamilyInvite: vi.fn(),
   leaveFamily: vi.fn(),
+  removeFamilyMember: vi.fn(),
   recordFamilySettlement: vi.fn(),
 }));
 
@@ -169,7 +171,7 @@ describe("data/repositories/families", () => {
       const result = await getMyFamily();
       expect(result).not.toBeNull();
       expect(result?.family.name).toBe("Família Sales");
-      expect(result?.family.monthly_budget).toBe(15000);
+      expect(result?.family.monthly_budget).toBe(1500000);
       expect(result?.members).toHaveLength(2);
       expect(result?.currentMember.role).toBe("owner");
       expect(result?.invites).toHaveLength(1);
@@ -292,7 +294,10 @@ describe("data/repositories/families", () => {
 
       const result = await createFamily({ name: "Nova Família" });
       expect(result).toBe("fam-new-id");
-      expect(rpcModule.createFamily).toHaveBeenCalledWith({ name: "Nova Família" });
+      expect(rpcModule.createFamily).toHaveBeenCalledWith({
+        name: "Nova Família",
+        monthlyBudget: null,
+      });
     });
 
     it("inviteFamilyMember delega para inviteFamilyMemberRpc", async () => {
@@ -311,7 +316,12 @@ describe("data/repositories/families", () => {
 
       const result = await inviteFamilyMember({ invitedEmail: "parceiro@exemplo.com" });
       expect(result).toEqual(mockInviteResult);
-      expect(rpcModule.inviteFamilyMember).toHaveBeenCalledWith({ invitedEmail: "parceiro@exemplo.com" });
+      expect(rpcModule.inviteFamilyMember).toHaveBeenCalledWith(
+        expect.objectContaining({
+          invitedEmail: "parceiro@exemplo.com",
+          token: expect.any(String),
+        }),
+      );
     });
 
     it("acceptFamilyInvite delega para acceptFamilyInviteRpc", async () => {
@@ -330,6 +340,18 @@ describe("data/repositories/families", () => {
       const result = await leaveFamily({ familyId: "fam-1" });
       expect(result).toEqual(mockLeave);
       expect(rpcModule.leaveFamily).toHaveBeenCalledWith({ familyId: "fam-1" });
+    });
+
+    it("removeFamilyMember delega para removeFamilyMemberRpc", async () => {
+      const mockResult = { success: true, family_id: "fam-1", removed_user_id: "u-2" };
+      vi.mocked(rpcModule.removeFamilyMember).mockResolvedValueOnce(mockResult);
+
+      const result = await removeFamilyMember("fam-1", "u-2");
+      expect(result).toEqual(mockResult);
+      expect(rpcModule.removeFamilyMember).toHaveBeenCalledWith({
+        familyId: "fam-1",
+        targetUserId: "u-2",
+      });
     });
 
     it("recordFamilySettlement delega para recordFamilySettlementRpc", async () => {
@@ -372,12 +394,12 @@ describe("data/repositories/families", () => {
 
       const result = await updateFamily("fam-1", {
         name: " Família Renovada ",
-        monthly_budget: 18000,
+        monthly_budget: 1800000,
         split_rule: "proportional",
       });
 
       expect(result.name).toBe("Família Renovada");
-      expect(result.monthly_budget).toBe(18000);
+      expect(result.monthly_budget).toBe(1800000);
       expect(result.split_rule).toBe("proportional");
       expect(mockUpdate).toHaveBeenCalledWith({
         name: "Família Renovada",

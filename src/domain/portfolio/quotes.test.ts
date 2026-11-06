@@ -72,6 +72,13 @@ describe("normalizeTickerForBrapi", () => {
     expect(normalizeTickerForBrapi("CDB-FACTA")).toBe("");
   });
 
+  it("Tesouro Direto e tickers com espaços retornam vazio para a Brapi", () => {
+    expect(normalizeTickerForBrapi("TESOURO SELIC 2026")).toBe("");
+    expect(normalizeTickerForBrapi("Tesouro IPCA+ 2035")).toBe("");
+    expect(normalizeTickerForBrapi("LFT 2029")).toBe("");
+    expect(normalizeTickerForBrapi("INVALID TICKER WITH SPACES")).toBe("");
+  });
+
   it("mantém ticker limpo", () => {
     expect(normalizeTickerForBrapi("PETR4")).toBe("PETR4");
   });

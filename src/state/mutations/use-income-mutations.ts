@@ -30,6 +30,8 @@ function invalidateIncomeAggregates(queryClient: QueryClient) {
   void queryClient.invalidateQueries({ queryKey: expensesKey });
   void queryClient.invalidateQueries({ queryKey: ["insights"] });
   void queryClient.invalidateQueries({ queryKey: ["overview"] });
+  void queryClient.invalidateQueries({ queryKey: ["family"] });
+  void queryClient.invalidateQueries({ queryKey: ["shared-family-budget"] });
 }
 
 function invalidateIncomeOverview(queryClient: QueryClient) {

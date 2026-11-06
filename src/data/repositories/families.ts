@@ -21,7 +21,10 @@ import {
   getFamilyInvitePreview as getFamilyInvitePreviewRpc,
   acceptFamilyInvite as acceptFamilyInviteRpc,
   leaveFamily as leaveFamilyRpc,
+  removeFamilyMember as removeFamilyMemberRpc,
   recordFamilySettlement as recordFamilySettlementRpc,
+  getFamilyIncomeRatioSuggestion as getFamilyIncomeRatioSuggestionRpc,
+  getFamilyPortfolioSummary as getFamilyPortfolioSummaryRpc,
   type GetFamilyConsolidationParams,
   type CreateFamilyParams,
   type InviteFamilyMemberParams,
@@ -29,6 +32,8 @@ import {
   type AcceptFamilyInviteParams,
   type LeaveFamilyParams,
   type RecordFamilySettlementParams,
+  type GetFamilyIncomeRatioSuggestionParams,
+  type GetFamilyPortfolioSummaryParams,
 } from "@/data/rpc";
 import { AppError, classifyError } from "@/services/errors";
 import type {
@@ -45,6 +50,9 @@ import type {
   InviteFamilyMemberResult,
   AcceptFamilyInviteResult,
   LeaveFamilyResult,
+  RemoveFamilyMemberResult,
+  FamilyIncomeRatioSuggestionItem,
+  FamilyPortfolioSummary,
 } from "@/types";
 
 export type {
@@ -55,6 +63,8 @@ export type {
   AcceptFamilyInviteParams,
   LeaveFamilyParams,
   RecordFamilySettlementParams,
+  GetFamilyIncomeRatioSuggestionParams,
+  GetFamilyPortfolioSummaryParams,
 };
 
 export interface FamilyMemberWithProfile extends FamilyMember {
@@ -80,6 +90,8 @@ export interface UpdateFamilyMemberInput {
   pix_key?: string | null;
   pix_key_type?: FamilyPixKeyType | null;
   split_ratio?: number | null;
+  share_all_portfolio?: boolean;
+  shared_asset_classes?: string[] | null;
 }
 
 export interface FamilyInviteWithDetails extends FamilyInvite {
@@ -97,7 +109,7 @@ function mapFamily(row: Record<string, unknown>): Family {
     id: String(row.id),
     name: String(row.name),
     owner_id: String(row.owner_id),
-    monthly_budget: row.monthly_budget != null ? Number(row.monthly_budget) : null,
+    monthly_budget: row.monthly_budget != null ? Math.round(Number(row.monthly_budget) * 100) : null,
     split_rule: (row.split_rule as FamilySplitRule) ?? "equal",
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
@@ -114,6 +126,10 @@ function mapFamilyMember(row: Record<string, unknown>): FamilyMemberWithProfile 
     pix_key: row.pix_key ? String(row.pix_key) : null,
     pix_key_type: (row.pix_key_type as FamilyPixKeyType) ?? null,
     split_ratio: row.split_ratio != null ? Number(row.split_ratio) : null,
+    share_all_portfolio: Boolean(row.share_all_portfolio),
+    shared_asset_classes: Array.isArray(row.shared_asset_classes)
+      ? (row.shared_asset_classes as string[])
+      : null,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
   };
@@ -266,19 +282,34 @@ export async function getFamilyConsolidation(
 /**
  * Cria atomicamente uma nova unidade familiar, tornando o criador proprietário (owner).
  * Delega para a RPC transacional create_family.
+ * Converte o teto mensal de centavos (domínio) para reais (Postgres).
  */
 export async function createFamily(params: CreateFamilyParams): Promise<string> {
-  return createFamilyRpc(params);
+  const payload: CreateFamilyParams = {
+    ...params,
+    monthlyBudget: params.monthlyBudget != null ? params.monthlyBudget / 100 : null,
+  };
+  return createFamilyRpc(payload);
 }
 
 /**
  * Gera um convite seguro com token criptográfico de 7 dias.
  * Delega para a RPC transacional invite_family_member.
+ * Gera token seguro no client via Web Crypto API para máxima resiliência.
  */
 export async function inviteFamilyMember(
   params?: InviteFamilyMemberParams,
 ): Promise<InviteFamilyMemberResult> {
-  return inviteFamilyMemberRpc(params);
+  const generatedToken =
+    params?.token ??
+    (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID().replace(/-/g, "")
+      : Math.random().toString(36).substring(2) + Date.now().toString(36));
+
+  return inviteFamilyMemberRpc({
+    ...params,
+    token: generatedToken,
+  });
 }
 
 /**
@@ -300,6 +331,25 @@ export async function leaveFamily(params?: LeaveFamilyParams): Promise<LeaveFami
 }
 
 /**
+ * Dissolve completamente a unidade familiar (ação exclusiva do titular/owner).
+ * Exclui a família e desassocia lançamentos individuais com Zero Data Bleed.
+ */
+export async function deleteFamily(familyId?: string): Promise<LeaveFamilyResult> {
+  return leaveFamilyRpc({ familyId, disband: true });
+}
+
+/**
+ * Remove um membro da unidade familiar (ação exclusiva do titular/owner).
+ * Desvincula os dados do participante com garantia de Zero Data Bleed.
+ */
+export async function removeFamilyMember(
+  familyId: string,
+  targetUserId: string,
+): Promise<RemoveFamilyMemberResult> {
+  return removeFamilyMemberRpc({ familyId, targetUserId });
+}
+
+/**
  * Registra o acerto financeiro auditável do mês entre os parceiros.
  * Delega para a RPC transacional record_family_settlement.
  */
@@ -311,6 +361,7 @@ export async function recordFamilySettlement(
 
 /**
  * Atualiza os metadados cadastrais da família (nome, teto, regra de rateio).
+ * Converte o teto de centavos (domínio) para reais (Postgres).
  */
 export async function updateFamily(
   familyId: string,
@@ -318,7 +369,9 @@ export async function updateFamily(
 ): Promise<Family> {
   const payload: Partial<Family> = {};
   if (updates.name !== undefined) payload.name = updates.name.trim();
-  if (updates.monthly_budget !== undefined) payload.monthly_budget = updates.monthly_budget;
+  if (updates.monthly_budget !== undefined) {
+    payload.monthly_budget = updates.monthly_budget != null ? updates.monthly_budget / 100 : null;
+  }
   if (updates.split_rule !== undefined) payload.split_rule = updates.split_rule;
 
   const { data, error } = await resolveQuery<Record<string, unknown>>(
@@ -361,6 +414,12 @@ export async function updateFamilyMember(
   }
   if (updates.split_ratio !== undefined) {
     payload.split_ratio = updates.split_ratio;
+  }
+  if (updates.share_all_portfolio !== undefined) {
+    payload.share_all_portfolio = updates.share_all_portfolio;
+  }
+  if (updates.shared_asset_classes !== undefined) {
+    payload.shared_asset_classes = updates.shared_asset_classes;
   }
 
   const { data, error } = await resolveQuery<Record<string, unknown>>(
@@ -502,4 +561,46 @@ export async function listFamilySettlements(
   }
 
   return (data ?? []).map(mapFamilySettlement);
+}
+
+/**
+ * Consulta a sugestão inteligente de rateio baseada na média de receitas dos membros nos últimos meses.
+ */
+export async function getFamilyIncomeRatioSuggestion(
+  params?: GetFamilyIncomeRatioSuggestionParams,
+): Promise<FamilyIncomeRatioSuggestionItem[]> {
+  return getFamilyIncomeRatioSuggestionRpc(params);
+}
+
+/**
+ * Consulta o resumo do patrimônio e reserva de emergência compartilhados com a família.
+ */
+export async function getFamilyPortfolioSummary(
+  params?: GetFamilyPortfolioSummaryParams,
+): Promise<FamilyPortfolioSummary | null> {
+  return getFamilyPortfolioSummaryRpc(params);
+}
+
+/**
+ * Alterna a marcação familiar de um ativo individual da carteira do usuário.
+ */
+export async function togglePortfolioAssetFamily(
+  assetId: string,
+  isFamily: boolean,
+  familyId?: string | null,
+): Promise<void> {
+  const { error } = await resolveQuery(
+    getSupabase()
+      .from("portfolio_assets")
+      .update({
+        is_family: isFamily,
+        family_id: isFamily ? (familyId ?? null) : null,
+      })
+      .eq("id", assetId),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
 }

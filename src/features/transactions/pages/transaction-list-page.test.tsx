@@ -273,7 +273,7 @@ describe("TransactionListPage — listagem por mês", () => {
     expect(mockSetStepIndex).toHaveBeenCalledWith(1);
   });
 
-  describe("Filtro Rápido de Visão no Extrato (Fase 3 — Tarefa 3.3)", () => {
+  describe("Extrato Geral e Identificação de Gastos Familiares", () => {
     beforeEach(() => {
       mockIsFamilyModeEnabled = true;
       expensesMock = [
@@ -314,235 +314,63 @@ describe("TransactionListPage — listagem por mês", () => {
       ];
     });
 
-    it("não renderiza as abas de visão e oculta badges quando o modo familiar está desabilitado (padrão)", () => {
-      mockIsFamilyModeEnabled = false;
+    it("não renderiza abas de divisão de visão (Todos, Pessoais, Familiar) no extrato de transações", () => {
       render(<TransactionListPage />);
       expect(screen.queryByRole("tab", { name: "Todos" })).not.toBeInTheDocument();
       expect(screen.queryByRole("tab", { name: "Pessoais" })).not.toBeInTheDocument();
       expect(screen.queryByRole("tab", { name: "Familiar" })).not.toBeInTheDocument();
-      // Transações continuam perfeitamente visíveis (nada é perdido ou apagado)
-      expect(screen.getByText("Supermercado da Família")).toBeInTheDocument();
-      expect(screen.getByText("Cinema Individual")).toBeInTheDocument();
-      expect(screen.queryByText("Familiar")).not.toBeInTheDocument();
+      // O extrato continua com suas abas normais de tipo (Tudo, Receitas, Despesas...)
+      expect(screen.getByRole("tab", { name: "Tudo" })).toBeInTheDocument();
     });
 
-    it("renderiza as abas de visão: Todos, Pessoais e Familiar quando habilitado", () => {
-      render(<TransactionListPage />);
-      expect(screen.getByRole("tab", { name: "Todos" })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: "Pessoais" })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: "Familiar" })).toBeInTheDocument();
-    });
-
-    it("exibe badge 'Familiar' para transações da casa na visão 'Todos'", () => {
+    it("exibe todas as transações de forma unificada no extrato geral", () => {
       render(<TransactionListPage />);
       expect(screen.getByText("Supermercado da Família")).toBeInTheDocument();
-      expect(screen.getByText("Cinema Individual")).toBeInTheDocument();
-      // Deve haver badges Familiar para a despesa e receita familiares
-      const badges = screen.getAllByText("Familiar");
-      expect(badges.length).toBeGreaterThan(0);
-    });
-
-    it("ao clicar em 'Familiar', isola as transações e recalcula quanto o lar consumiu", async () => {
-      const user = userEvent.setup();
-      render(<TransactionListPage />);
-
-      const familyTab = screen.getByRole("tab", { name: "Familiar" });
-      await user.click(familyTab);
-
-      // Deve exibir apenas os lançamentos familiares
-      expect(screen.getByText("Supermercado da Família")).toBeInTheDocument();
-      expect(screen.getByText("Ajuda de Custo Familiar")).toBeInTheDocument();
-      expect(screen.queryByText("Cinema Individual")).not.toBeInTheDocument();
-      expect(screen.queryByText("Salário Individual")).not.toBeInTheDocument();
-
-      // Despesa familiar total (R$ 800,00) nos KPIs e no dia
-      expect(screen.getAllByText("−R$ 800,00").length).toBeGreaterThan(0);
-      // Receita familiar total (R$ 1.000,00) nos KPIs e no dia
-      expect(screen.getAllByText("+R$ 1.000,00").length).toBeGreaterThan(0);
-    });
-
-    it("ao clicar em 'Pessoais', isola as transações individuais", async () => {
-      const user = userEvent.setup();
-      render(<TransactionListPage />);
-
-      const personalTab = screen.getByRole("tab", { name: "Pessoais" });
-      await user.click(personalTab);
-
-      // Deve exibir apenas os lançamentos pessoais
       expect(screen.getByText("Cinema Individual")).toBeInTheDocument();
       expect(screen.getByText("Salário Individual")).toBeInTheDocument();
-      expect(screen.queryByText("Supermercado da Família")).not.toBeInTheDocument();
-      expect(screen.queryByText("Ajuda de Custo Familiar")).not.toBeInTheDocument();
+      expect(screen.getByText("Ajuda de Custo Familiar")).toBeInTheDocument();
     });
 
-    it("exibe EmptyState dedicado quando não há lançamentos familiares", async () => {
-      expensesMock = [
-        {
-          id: "e-only-personal",
-          value: 150,
-          date: "2026-08-10",
-          description: "Despesa Individual",
-          installments_total: 1,
-          installment_number: 1,
-          is_family: false,
-        },
-      ];
-      incomesMock = [];
+    it("exibe badge 'Familiar' exclusivamente para lançamentos marcados como familiares", () => {
+      render(<TransactionListPage />);
+
+      const familyExpRow = screen.getByText("Supermercado da Família").closest("button")!;
+      expect(within(familyExpRow).getByText("Familiar")).toBeInTheDocument();
+
+      const personalExpRow = screen.getByText("Cinema Individual").closest("button")!;
+      expect(within(personalExpRow).queryByText("Familiar")).toBeNull();
+
+      const familyIncRow = screen.getByText("Ajuda de Custo Familiar").closest("button")!;
+      expect(within(familyIncRow).getByText("Familiar")).toBeInTheDocument();
+
+      const personalIncRow = screen.getByText("Salário Individual").closest("button")!;
+      expect(within(personalIncRow).queryByText("Familiar")).toBeNull();
+    });
+
+    it("soma todos os lançamentos gerais nos KPIs", () => {
+      render(<TransactionListPage />);
+      // Despesas: 200 + 800 = 1000
+      expect(screen.getAllByText("R$ 1.000,00").length).toBeGreaterThan(0);
+      // Receitas: 3000 + 1000 = 4000
+      expect(screen.getAllByText("R$ 4.000,00").length).toBeGreaterThan(0);
+      // Saldo: 4000 - 1000 = 3000
+      expect(screen.getAllByText("R$ 3.000,00").length).toBeGreaterThan(0);
+    });
+
+    it("exporta CSV unificado sem segmentação por escopo de visão", async () => {
       const user = userEvent.setup();
       render(<TransactionListPage />);
 
-      const familyTab = screen.getByRole("tab", { name: "Familiar" });
-      await user.click(familyTab);
-
-      expect(screen.getByText("Nenhum lançamento familiar registrado neste mês.")).toBeInTheDocument();
-    });
-
-    it("Tarefa 5.2: ativa visão familiar e exibe badge [Familiar] quando usuário pertence a uma família ativa (useMyFamily)", () => {
-      mockIsFamilyModeEnabled = false;
-      mockMyFamilyData = {
-        family: { id: "fam-1", name: "Família Santos", monthly_budget_cents: 500000 },
-        membership: { id: "mem-1", family_id: "fam-1", user_id: "u1", role: "owner" },
-      };
-      render(<TransactionListPage />);
-
-      // Abas de visão devem estar presentes porque o usuário tem família ativa
-      expect(screen.getByRole("tab", { name: "Todos" })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: "Pessoais" })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: "Familiar" })).toBeInTheDocument();
-
-      // Transações familiares do próprio usuário devem exibir o badge [Familiar]
-      expect(screen.getByText("Supermercado da Família")).toBeInTheDocument();
-      expect(screen.getByText("Cinema Individual")).toBeInTheDocument();
-      const badges = screen.getAllByText("Familiar");
-      expect(badges.length).toBeGreaterThan(0);
-    });
-
-    it("Tarefa 5.2: preservação do extrato pessoal (/transacoes) — exibe estritamente os gastos do próprio usuário com badge [Familiar]", () => {
-      mockIsFamilyModeEnabled = true;
-      // Garante que o feed contém apenas lançamentos com user_id do titular (sem bleed do parceiro)
-      expensesMock = [
-        {
-          id: "e-own-personal",
-          value: 120,
-          date: "2026-08-10",
-          description: "Farmácia Individual",
-          installments_total: 1,
-          installment_number: 1,
-          is_family: false,
-        },
-        {
-          id: "e-own-family",
-          value: 450,
-          date: "2026-08-12",
-          description: "Conta de Energia da Casa",
-          installments_total: 1,
-          installment_number: 1,
-          is_family: true,
-        },
-      ];
-      incomesMock = [];
-
-      render(<TransactionListPage />);
-
-      // Apenas os gastos do próprio usuário são renderizados
-      expect(screen.getByText("Farmácia Individual")).toBeInTheDocument();
-      expect(screen.getByText("Conta de Energia da Casa")).toBeInTheDocument();
-
-      // Badge [Familiar] aparece estritamente na linha da despesa familiar do próprio usuário
-      const ownFamilyRow = screen.getByText("Conta de Energia da Casa").closest("button");
-      expect(ownFamilyRow).not.toBeNull();
-      expect(within(ownFamilyRow!).getByText("Familiar")).toBeInTheDocument();
-
-      // Na linha da despesa individual, o badge [Familiar] NÃO existe
-      const ownPersonalRow = screen.getByText("Farmácia Individual").closest("button");
-      expect(ownPersonalRow).not.toBeNull();
-      expect(within(ownPersonalRow!).queryByText("Familiar")).toBeNull();
-
-      // Soma de Despesas do KPI reflete estritamente o gasto pessoal + gasto familiar do próprio titular (R$ 570,00)
-      expect(screen.getAllByText("R$ 570,00").length).toBeGreaterThan(0);
-      expect(screen.getAllByText("−R$ 450,00").length).toBeGreaterThan(0);
-      expect(screen.getAllByText("−R$ 120,00").length).toBeGreaterThan(0);
-    });
-
-    it("Tarefa 5.2: suporta receitas e despesas com badge [Familiar] e exporta CSV no escopo familiar com isolamento estrito", async () => {
-      const user = userEvent.setup();
-      mockIsFamilyModeEnabled = true;
-
-      expensesMock = [
-        {
-          id: "e-pessoal",
-          value: 80,
-          date: "2026-08-05",
-          description: "Café Individual",
-          installments_total: 1,
-          installment_number: 1,
-          is_family: false,
-        },
-        {
-          id: "e-familiar",
-          value: 300,
-          date: "2026-08-08",
-          description: "Supermercado Casa",
-          installments_total: 1,
-          installment_number: 1,
-          is_family: true,
-        },
-      ];
-
-      incomesMock = [
-        {
-          id: "i-pessoal",
-          value: 4000,
-          date: "2026-08-01",
-          description: "Salário CLT Próprio",
-          is_family: false,
-        },
-        {
-          id: "i-familiar",
-          value: 1200,
-          date: "2026-08-02",
-          description: "Aluguel Imóvel Casal",
-          is_family: true,
-        },
-      ];
-
-      render(<TransactionListPage />);
-
-      // Linhas familiares possuem o badge [Familiar]
-      const famExpRow = screen.getByText("Supermercado Casa").closest("button")!;
-      expect(within(famExpRow).getByText("Familiar")).toBeInTheDocument();
-
-      const famIncRow = screen.getByText("Aluguel Imóvel Casal").closest("button")!;
-      expect(within(famIncRow).getByText("Familiar")).toBeInTheDocument();
-
-      // Linhas individuais NÃO possuem o badge [Familiar]
-      const persExpRow = screen.getByText("Café Individual").closest("button")!;
-      expect(within(persExpRow).queryByText("Familiar")).toBeNull();
-
-      const persIncRow = screen.getByText("Salário CLT Próprio").closest("button")!;
-      expect(within(persIncRow).queryByText("Familiar")).toBeNull();
-
-      // Alterna para a visão Familiar
-      const familyScopeTab = screen.getByRole("tab", { name: "Familiar" });
-      await user.click(familyScopeTab);
-
-      // Apenas itens familiares do próprio usuário devem constar
-      expect(screen.getByText("Supermercado Casa")).toBeInTheDocument();
-      expect(screen.getByText("Aluguel Imóvel Casal")).toBeInTheDocument();
-      expect(screen.queryByText("Café Individual")).not.toBeInTheDocument();
-      expect(screen.queryByText("Salário CLT Próprio")).not.toBeInTheDocument();
-
-      // Exporta CSV sob a visão familiar
       const exportButton = screen.getByRole("button", { name: "Exportar CSV" });
       await user.click(exportButton);
 
       expect(mockDownloadCsv).toHaveBeenCalledTimes(1);
       const [filename, content] = mockDownloadCsv.mock.calls[0] as [string, string];
-      expect(filename).toContain("_family_");
-      expect(content).toContain("Supermercado Casa");
-      expect(content).toContain("Aluguel Imóvel Casal");
-      expect(content).not.toContain("Café Individual");
-      expect(content).not.toContain("Salário CLT Próprio");
+      expect(filename).toMatch(/^transacoes_\d{4}-\d{2}_todas\.csv$/);
+      expect(content).toContain("Supermercado da Família");
+      expect(content).toContain("Cinema Individual");
+      expect(content).toContain("Salário Individual");
+      expect(content).toContain("Ajuda de Custo Familiar");
     });
   });
 });

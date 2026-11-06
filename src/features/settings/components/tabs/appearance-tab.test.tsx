@@ -135,8 +135,11 @@ describe("AppearanceTab - Aparência & Identidade Visual (Fase 1 — Tarefa 1.3)
     const user = userEvent.setup();
     renderAppearanceTab();
 
-    const resetBtn = screen.getByRole("button", { name: /Redefinir/i });
+    const resetBtn = screen.getByRole("button", { name: /Restaurar Padrões/i });
     await user.click(resetBtn);
+
+    const confirmBtn = screen.getByRole("button", { name: /Confirmar Restauração/i });
+    await user.click(confirmBtn);
 
     expect(mockMutate).toHaveBeenCalledWith(
       expect.objectContaining({

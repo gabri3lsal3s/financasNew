@@ -41,6 +41,10 @@ vi.mock("@/state", () => ({
   useDeleteExpense: () => ({ mutateAsync: mutateDeleteExpenseMock }),
   useUserPreferences: () => ({ data: { custom_settings: {} }, isLoading: false, isError: false, error: null }),
   useUpdateCustomSettings: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useFamilyMode: () => ({ isFamilyModeEnabled: false, toggleFamilyMode: vi.fn() }),
+  useMyFamily: () => ({ data: null, isLoading: false, isError: false }),
+  useFamilyConsolidation: () => ({ data: null, isLoading: false, isError: false }),
+  useIncomeGoals: () => ({ data: [], isLoading: false, isError: false, error: null }),
 }));
 
 describe("useSmartAdvisorInsights", () => {

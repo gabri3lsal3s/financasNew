@@ -59,6 +59,7 @@ export function useCreatePortfolioAsset() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void queryClient.invalidateQueries({ queryKey: ["family"] });
       pushToast({
         title: "Ativo criado",
         description: "O novo ativo foi adicionado à sua carteira.",
@@ -85,6 +86,7 @@ export function useUpdatePortfolioAsset() {
     onSuccess: (updated) => {
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void queryClient.invalidateQueries({ queryKey: ["family"] });
       if (updated?.ticker) {
         void import("@/services/quotes")
           .then(({ syncQuoteForTicker }) => syncQuoteForTicker(updated.ticker, updated.asset_class))

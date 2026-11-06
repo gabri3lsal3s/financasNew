@@ -23,7 +23,7 @@ import { MAX_MONEY_CENTS } from "../validation/sanitization";
 // 1. Tipos e Contratos de Domínio
 // ===========================================================================
 
-export type HouseholdSplitRule = "equal" | "proportional";
+export type HouseholdSplitRule = "equal" | "proportional" | "combined";
 
 export type HouseholdHealthStatus = "comfort" | "warning" | "danger" | "exceeded";
 
@@ -835,12 +835,13 @@ export function reconcileHouseholdSpending(
     const normPct = pctMap.get(m.user_id) ?? { pct: 0, display: "0,0%" };
     const targetRatio = targetRatioMap.get(m.user_id) ?? (1 / Math.max(1, effectiveMembers.length));
     const targetPercentage = Number((targetRatio * 100).toFixed(1));
-    const fairShareCents = fairShares[m.user_id] ?? 0;
-    const netBalanceCents = spentCents - fairShareCents;
+    const isCombined = splitRule === "combined";
+    const fairShareCents = isCombined ? spentCents : (fairShares[m.user_id] ?? 0);
+    const netBalanceCents = isCombined ? 0 : (spentCents - fairShareCents);
 
-    const isCreditor = netBalanceCents > 0;
-    const isDebtor = netBalanceCents < 0;
-    const isBalanced = netBalanceCents === 0;
+    const isCreditor = !isCombined && netBalanceCents > 0;
+    const isDebtor = !isCombined && netBalanceCents < 0;
+    const isBalanced = isCombined || netBalanceCents === 0;
 
     return {
       user_id: m.user_id,

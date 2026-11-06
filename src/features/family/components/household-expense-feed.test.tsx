@@ -55,8 +55,8 @@ describe("HouseholdExpenseFeed", () => {
     expect(screen.getByText("Compras do Mercado")).toBeInTheDocument();
     expect(screen.queryByText("Internet Fibra")).not.toBeInTheDocument();
 
-    // Filtra para 'Pagas pelo Parceiro'
-    const partnerTab = screen.getByRole("tab", { name: /Pagas pelo Parceiro/i });
+    // Filtra para 'Demais Membros'
+    const partnerTab = screen.getByRole("tab", { name: /Demais Membros/i });
     await user.click(partnerTab);
 
     expect(screen.queryByText("Compras do Mercado")).not.toBeInTheDocument();

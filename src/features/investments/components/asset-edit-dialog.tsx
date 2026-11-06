@@ -7,7 +7,13 @@ import { assetMetadataSchema } from "@/domain/portfolio/schemas";
 import { DEFAULT_SECTORS_BY_CLASS, inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
 import { todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
-import { useAssetPrices, useSetManualPrice, useUpdatePortfolioAsset } from "@/state";
+import {
+  useAssetPrices,
+  useSetManualPrice,
+  useUpdatePortfolioAsset,
+  useFamilyMode,
+  useMyFamily,
+} from "@/state";
 import type { AssetCurrency, FixedIncomeMetadata, FixedIncomeRateType, PortfolioAsset } from "@/types";
 import { cn } from "@/lib/utils";
 import { FixedIncomeFormFields } from "./fixed-income-form-fields";
@@ -49,9 +55,12 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
   const updateAsset = useUpdatePortfolioAsset();
   const pricesQuery = useAssetPrices();
   const setManualPrice = useSetManualPrice();
+  const { isFamilyModeEnabled } = useFamilyMode();
+  const { data: myFamilyData } = useMyFamily();
   const isSubmittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [isFamily, setIsFamily] = useState(Boolean(asset.is_family));
   const [ticker, setTicker] = useState(asset.ticker);
   const [assetClass, setAssetClass] = useState(asset.asset_class ?? "Ações");
   const [sector, setSector] = useState(asset.sector ?? inferSectorFromTicker(asset.ticker, asset.asset_class));
@@ -264,6 +273,10 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
           estimated_monthly_dividend_per_share: validation.data.estimated_monthly_dividend_per_share,
           fixed_income_metadata: validation.data.fixed_income_metadata,
           notes: validation.data.notes,
+          is_family: isFamilyModeEnabled ? isFamily : Boolean(asset.is_family),
+          family_id: (isFamilyModeEnabled ? isFamily : Boolean(asset.is_family))
+            ? (myFamilyData?.family?.id ?? asset.family_id ?? null)
+            : null,
         },
       });
 
@@ -652,6 +665,26 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
               />
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Bloco de Compartilhamento Familiar — Contextual ao Modo Familiar */}
+      {isFamilyModeEnabled && (
+        <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/80 bg-surface/50">
+          <div className="space-y-0.5">
+            <span className="text-xs font-semibold text-foreground block">
+              Compartilhar com a Família / Reserva
+            </span>
+            <span className="text-[11px] text-muted-foreground block">
+              Inclui este ativo na consolidação patrimonial e reserva de emergência da casa.
+            </span>
+          </div>
+          <Checkbox
+            id="edit-asset-is-family"
+            checked={isFamily}
+            onCheckedChange={(checked) => setIsFamily(Boolean(checked))}
+            aria-label="Compartilhar este ativo com o Modo Família"
+          />
         </div>
       )}
 

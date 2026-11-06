@@ -3,6 +3,7 @@ import { Badge, Checkbox, Input, MoneyInput, NumericInput, Select } from "@/comp
 import { isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
 import { DEFAULT_SECTORS_BY_CLASS } from "@/domain/portfolio/tickers-catalog";
 import type { AssetCurrency } from "@/types";
+import { useFamilyMode } from "@/state";
 import { FixedIncomeFormFields } from "../components/fixed-income-form-fields";
 import type { InvestmentWizardState } from "./wizard-state";
 
@@ -20,6 +21,7 @@ const CURRENCY_OPTIONS: { value: AssetCurrency; label: string }[] = [
 ];
 
 export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
+  const { isFamilyModeEnabled } = useFamilyMode();
   const isCash = isCashAssetClass(state.assetClass) || state.ticker.toUpperCase() === "CAIXA";
   const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
   const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
@@ -365,6 +367,26 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
             value={state.notes}
             onChange={(e) => onChange({ notes: e.target.value })}
             placeholder="Ex: Tese de investimento, corretora..."
+          />
+        </div>
+      )}
+
+      {/* Bloco de Compartilhamento Familiar — Contextual ao Modo Familiar */}
+      {isFamilyModeEnabled && (
+        <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/80 bg-surface/80">
+          <div className="space-y-0.5">
+            <span className="text-xs font-semibold text-foreground block">
+              Compartilhar com a Família / Reserva
+            </span>
+            <span className="text-[11px] text-muted-foreground block">
+              Inclui esta nova posição no patrimônio familiar e reserva de emergência da casa.
+            </span>
+          </div>
+          <Checkbox
+            id="wizard-asset-is-family"
+            checked={state.isFamily}
+            onCheckedChange={(checked) => onChange({ isFamily: Boolean(checked) })}
+            aria-label="Compartilhar este ativo com o Modo Família"
           />
         </div>
       )}

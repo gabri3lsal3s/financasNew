@@ -12,6 +12,8 @@ import {
   QrCode,
   LogOut,
   Edit3,
+  Sparkles,
+  UserMinus,
 } from "lucide-react";
 import {
   Card,
@@ -37,8 +39,11 @@ import {
   useInviteFamilyMember,
   useRevokeFamilyInvite,
   useLeaveFamily,
+  useDeleteFamily,
+  useRemoveFamilyMember,
   useUpdateFamily,
   useUpdateFamilyMember,
+  useFamilyIncomeRatioSuggestion,
 } from "@/state";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
@@ -48,6 +53,7 @@ import type {
   FamilyPixKeyType,
   FamilySplitRule,
   FamilyInvite,
+  FamilyMember,
 } from "@/types";
 
 const FAMILY_PIX_KEY_LABELS: Record<FamilyPixKeyType, string> = {
@@ -65,6 +71,7 @@ const PIX_KEY_OPTIONS: SelectOption[] = [
 ];
 
 const SPLIT_RULE_OPTIONS: SelectOption[] = [
+  { value: "combined", label: "Finanças Conjuntas (Caixa Único)" },
   { value: "equal", label: "Divisão Igualitária (50% / 50%)" },
   { value: "proportional", label: "Divisão Proporcional à Renda" },
 ];
@@ -87,20 +94,28 @@ export function FamilyTab() {
   const inviteMemberMutation = useInviteFamilyMember();
   const revokeInviteMutation = useRevokeFamilyInvite();
   const leaveFamilyMutation = useLeaveFamily();
+  const deleteFamilyMutation = useDeleteFamily();
+  const removeFamilyMemberMutation = useRemoveFamilyMember();
   const updateFamilyMutation = useUpdateFamily();
   const updateMemberMutation = useUpdateFamilyMember();
+
+  const { data: incomeSuggestions } = useFamilyIncomeRatioSuggestion(
+    myFamilyData?.family?.id,
+    3,
+    { enabled: Boolean(myFamilyData?.family) },
+  );
 
   // Modais de Criação e Gestão
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createName, setCreateName] = useState("");
   const [createBudgetCents, setCreateBudgetCents] = useState<number | null>(null);
-  const [createSplitRule, setCreateSplitRule] = useState<FamilySplitRule>("equal");
+  const [createSplitRule, setCreateSplitRule] = useState<FamilySplitRule>("combined");
 
   // Edição dos Parâmetros da Família
   const [isEditFamilyModalOpen, setIsEditFamilyModalOpen] = useState(false);
   const [editName, setEditName] = useState("");
   const [editBudgetCents, setEditBudgetCents] = useState<number | null>(null);
-  const [editSplitRule, setEditSplitRule] = useState<FamilySplitRule>("equal");
+  const [editSplitRule, setEditSplitRule] = useState<FamilySplitRule>("combined");
 
   // Edição dos Dados Pix do Usuário Autenticado
   const [isEditMemberModalOpen, setIsEditMemberModalOpen] = useState(false);
@@ -109,7 +124,7 @@ export function FamilyTab() {
   const [memberPixKey, setMemberPixKey] = useState("");
   const [memberSplitRatioPercent, setMemberSplitRatioPercent] = useState<number>(50);
 
-  // Convite para Parceiro(a)
+  // Convite para Familiar
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [generatedInviteUrl, setGeneratedInviteUrl] = useState<string | null>(null);
@@ -118,6 +133,9 @@ export function FamilyTab() {
   const [isRevokeModalOpen, setIsRevokeModalOpen] = useState(false);
   const [inviteToRevoke, setInviteToRevoke] = useState<FamilyInvite | null>(null);
   const [isLeaveFamilyModalOpen, setIsLeaveFamilyModalOpen] = useState(false);
+  const [isDeleteFamilyModalOpen, setIsDeleteFamilyModalOpen] = useState(false);
+  const [isRemoveMemberModalOpen, setIsRemoveMemberModalOpen] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<FamilyMember | null>(null);
 
   // Feedback de Cópia
   const [copiedInviteToken, setCopiedInviteToken] = useState<string | null>(null);
@@ -296,6 +314,30 @@ export function FamilyTab() {
     try {
       await leaveFamilyMutation.mutateAsync(undefined);
       setIsLeaveFamilyModalOpen(false);
+    } catch {
+      // toast tratado na mutation
+    }
+  };
+
+  const handleConfirmDeleteFamily = async () => {
+    if (!myFamilyData?.family) return;
+    try {
+      await deleteFamilyMutation.mutateAsync(myFamilyData.family.id);
+      setIsDeleteFamilyModalOpen(false);
+    } catch {
+      // toast tratado na mutation
+    }
+  };
+
+  const handleConfirmRemoveMember = async () => {
+    if (!memberToRemove || !myFamilyData?.family) return;
+    try {
+      await removeFamilyMemberMutation.mutateAsync({
+        familyId: myFamilyData.family.id,
+        targetUserId: memberToRemove.user_id,
+      });
+      setIsRemoveMemberModalOpen(false);
+      setMemberToRemove(null);
     } catch {
       // toast tratado na mutation
     }
@@ -574,13 +616,14 @@ export function FamilyTab() {
             </span>
             <div className="flex items-center gap-2">
               <Badge variant="muted" size="xs">
-                {members.length} {members.length === 1 ? "membro" : "membros"}
+                {members.length} de 6 membros
               </Badge>
               {isOwner && (
                 <Button
                   type="button"
                   variant="default"
                   size="xs"
+                  disabled={members.length >= 6}
                   onClick={() => {
                     setGeneratedInviteUrl(null);
                     setInviteEmail("");
@@ -589,7 +632,7 @@ export function FamilyTab() {
                   className="gap-1 rounded-lg cursor-pointer shadow-xs ml-1"
                 >
                   <Plus className="size-3" aria-hidden="true" />
-                  <span>Convidar Parceiro(a)</span>
+                  <span>{members.length >= 6 ? "Limite Atingido (6/6)" : "Convidar Membro"}</span>
                 </Button>
               )}
             </div>
@@ -675,18 +718,37 @@ export function FamilyTab() {
                     </div>
                   </div>
 
-                  {isMe && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="xs"
-                      onClick={handleOpenEditMember}
-                      className="self-start sm:self-center text-xs border-border/80 bg-surface rounded-lg cursor-pointer"
-                    >
-                      <Edit3 className="size-3 mr-1" aria-hidden="true" />
-                      <span>Editar Meus Dados Pix</span>
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-2 self-start sm:self-center flex-wrap">
+                    {isMe && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        onClick={handleOpenEditMember}
+                        className="text-xs border-border/80 bg-surface rounded-lg cursor-pointer"
+                      >
+                        <Edit3 className="size-3 mr-1" aria-hidden="true" />
+                        <span>Editar Meus Dados Pix</span>
+                      </Button>
+                    )}
+
+                    {!isMe && isOwner && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        onClick={() => {
+                          setMemberToRemove(member);
+                          setIsRemoveMemberModalOpen(true);
+                        }}
+                        className="text-xs border-border/80 bg-surface text-critical-strong hover:bg-critical/10 hover:border-critical/30 rounded-lg cursor-pointer"
+                        aria-label={`Remover ${displayName} da família`}
+                      >
+                        <UserMinus className="size-3 mr-1" aria-hidden="true" />
+                        <span>Remover</span>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -803,28 +865,52 @@ export function FamilyTab() {
       {/* Card 3: Link Público Passivo Opcional (Somente Leitura) */}
       <FamilyBudgetShareCard />
 
-      {/* Card 4: Gestão da Unidade & Sair da Família */}
+      {/* Card 4: Gestão da Unidade & Sair/Excluir Família */}
       <Card className="border-border/80 bg-surface shadow-xs">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <LogOut className="size-4 text-muted-foreground" aria-hidden="true" />
-            <span>Sair ou Encerrar Família</span>
+            {isOwner ? (
+              <>
+                <Trash2 className="size-4 text-critical" aria-hidden="true" />
+                <span>Excluir Unidade Familiar</span>
+              </>
+            ) : (
+              <>
+                <LogOut className="size-4 text-muted-foreground" aria-hidden="true" />
+                <span>Sair da Família</span>
+              </>
+            )}
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            Ao sair da família, suas contas bancárias, cartões, despesas e receitas continuam 100% protegidos e privados na sua conta pessoal. {isOwner && members.length === 1 ? "Como você é o único membro, a unidade familiar será encerrada." : "Você deixará de visualizar os gastos consolidados da casa."}
+            {isOwner
+              ? "Como titular, você pode excluir a família a qualquer momento. A unidade será encerrada para todos os participantes. Suas contas bancárias, cartões, despesas e receitas particulares continuam 100% protegidos e intactos na sua conta pessoal."
+              : "Ao sair da família, suas contas bancárias, cartões, despesas e receitas continuam 100% protegidos e privados na sua conta pessoal. Você apenas deixará de visualizar os gastos consolidados da casa."}
           </p>
         </CardHeader>
         <CardContent>
-          <Button
-            type="button"
-            variant="destructive"
-            size="sm"
-            onClick={() => setIsLeaveFamilyModalOpen(true)}
-            className="rounded-xl cursor-pointer"
-          >
-            <LogOut className="size-3.5 mr-1.5" aria-hidden="true" />
-            <span>Sair da Família</span>
-          </Button>
+          {isOwner ? (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={() => setIsDeleteFamilyModalOpen(true)}
+              className="rounded-xl cursor-pointer"
+            >
+              <Trash2 className="size-3.5 mr-1.5" aria-hidden="true" />
+              <span>Excluir Família</span>
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={() => setIsLeaveFamilyModalOpen(true)}
+              className="rounded-xl cursor-pointer"
+            >
+              <LogOut className="size-3.5 mr-1.5" aria-hidden="true" />
+              <span>Sair da Família</span>
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -957,19 +1043,60 @@ export function FamilyTab() {
           </div>
 
           {family.split_rule === "proportional" && (
-            <div className="space-y-1.5">
-              <label htmlFor="member-split-ratio" className="text-xs font-semibold text-foreground">
-                Cota proporcional de contribuição
-              </label>
-              <PercentInput
-                id="member-split-ratio"
-                value={memberSplitRatioPercent}
-                onValueChange={(val) => setMemberSplitRatioPercent(val)}
-                className="h-10 text-sm rounded-xl"
-              />
-              <span className="text-[11px] text-muted-foreground block">
-                Percentual da despesa do lar atribuído à sua responsabilidade financeira.
-              </span>
+            <div className="space-y-2">
+              <div className="space-y-1.5">
+                <label htmlFor="member-split-ratio" className="text-xs font-semibold text-foreground">
+                  Cota proporcional de contribuição
+                </label>
+                <PercentInput
+                  id="member-split-ratio"
+                  value={memberSplitRatioPercent}
+                  onValueChange={(val) => setMemberSplitRatioPercent(val)}
+                  className="h-10 text-sm rounded-xl"
+                />
+                <span className="text-[11px] text-muted-foreground block">
+                  Percentual da despesa do lar atribuído à sua responsabilidade financeira.
+                </span>
+              </div>
+
+              {/* Assistente Inteligente de Média de Receitas */}
+              {incomeSuggestions && incomeSuggestions.length > 0 && (
+                <div className="p-3 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-primary-strong">
+                    <Sparkles className="size-3.5" aria-hidden="true" />
+                    <span>Sugestão Inteligente (média dos últimos 3 meses)</span>
+                  </div>
+                  <div className="space-y-1 text-[11px] text-muted-foreground">
+                    {incomeSuggestions.map((item) => (
+                      <div key={item.user_id} className="flex justify-between items-center">
+                        <span>{item.display_name}:</span>
+                        <span className="font-medium text-foreground">
+                          <MoneyText cents={item.average_monthly_income_cents} /> /mês ({item.suggested_percentage}%)
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  {(() => {
+                    const mySuggestion = incomeSuggestions.find((s) => s.user_id === currentMember?.user_id);
+                    if (!mySuggestion) return null;
+                    return (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setMemberSplitRatioPercent(mySuggestion.suggested_percentage);
+                          triggerSensory("toggle");
+                        }}
+                        className="w-full h-7 text-xs rounded-lg gap-1 border-primary/30 text-primary-strong hover:bg-primary/10 cursor-pointer"
+                      >
+                        <Sparkles className="size-3" aria-hidden="true" />
+                        <span>Aplicar Sugestão ({mySuggestion.suggested_percentage}%)</span>
+                      </Button>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           )}
 
@@ -1213,6 +1340,106 @@ export function FamilyTab() {
                 </>
               ) : (
                 <span>Confirmar Saída</span>
+              )}
+            </Button>
+          </ModalFooter>
+        </div>
+      </Modal>
+
+      {/* Modal: Confirmar Exclusão da Família (Ação do Titular) */}
+      <Modal
+        open={isDeleteFamilyModalOpen}
+        onOpenChange={setIsDeleteFamilyModalOpen}
+        title="Excluir Família"
+        description={`Tem certeza de que deseja excluir a família ${myFamilyData?.family?.name || ""}?`}
+        size="sm"
+      >
+        <div className="space-y-3 pt-2">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            A unidade familiar será encerrada para todos os participantes. Seus lançamentos pessoais, contas bancárias e cartões permanecerão 100% seguros e intactos na sua conta. Apenas o vínculo e a visualização compartilhada serão desfeitos.
+          </p>
+
+          <ModalFooter className="pt-3 border-t border-border/80 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDeleteFamilyModalOpen(false)}
+              disabled={deleteFamilyMutation.isPending}
+              className="rounded-xl cursor-pointer"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirmDeleteFamily}
+              disabled={deleteFamilyMutation.isPending}
+              className="rounded-xl cursor-pointer"
+            >
+              {deleteFamilyMutation.isPending ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
+                  <span>Excluindo…</span>
+                </>
+              ) : (
+                <span>Confirmar Exclusão</span>
+              )}
+            </Button>
+          </ModalFooter>
+        </div>
+      </Modal>
+
+      {/* Modal: Confirmar Remoção de Membro (Ação Exclusiva do Titular) */}
+      <Modal
+        open={isRemoveMemberModalOpen}
+        onOpenChange={(open) => {
+          setIsRemoveMemberModalOpen(open);
+          if (!open) setMemberToRemove(null);
+        }}
+        title="Remover Membro da Família"
+        description={`Tem certeza de que deseja remover ${
+          memberToRemove?.display_name ||
+          (memberToRemove as (FamilyMember & { profile_name?: string | null; profile_email?: string | null }))?.profile_name ||
+          (memberToRemove as (FamilyMember & { profile_name?: string | null; profile_email?: string | null }))?.profile_email ||
+          "este participante"
+        } da unidade familiar?`}
+        size="sm"
+      >
+        <div className="space-y-3 pt-2">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            O participante deixará de ter acesso aos gastos e consolidações do lar. Todas as contas bancárias, cartões, despesas e receitas particulares dele continuarão 100% protegidas e intactas na conta pessoal dele (Zero Data Bleed).
+          </p>
+
+          <ModalFooter className="pt-3 border-t border-border/80 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsRemoveMemberModalOpen(false);
+                setMemberToRemove(null);
+              }}
+              disabled={removeFamilyMemberMutation.isPending}
+              className="rounded-xl cursor-pointer"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirmRemoveMember}
+              disabled={removeFamilyMemberMutation.isPending}
+              className="rounded-xl cursor-pointer"
+            >
+              {removeFamilyMemberMutation.isPending ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
+                  <span>Removendo…</span>
+                </>
+              ) : (
+                <>
+                  <UserMinus className="size-3.5 mr-1.5" aria-hidden="true" />
+                  <span>Confirmar Remoção</span>
+                </>
               )}
             </Button>
           </ModalFooter>

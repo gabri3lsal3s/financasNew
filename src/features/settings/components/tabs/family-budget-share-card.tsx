@@ -24,7 +24,8 @@ import {
   ModalFooter,
   Switch,
 } from "@/components/ui";
-import { useFamilyMode } from "@/state";
+import { MoneyText } from "@/components/ui/money-text";
+import { useFamilyMode, useMyFamily } from "@/state";
 import { useMyPublicShares } from "@/state/queries/use-public-shares";
 import {
   useCreatePublicShare,
@@ -36,10 +37,16 @@ import { triggerSensory } from "@/services/sensory";
 
 export function FamilyBudgetShareCard() {
   const { isFamilyModeEnabled, toggleFamilyMode, isPending: isUpdatingFamilyMode } = useFamilyMode();
+  const { data: myFamilyData } = useMyFamily();
   const { data: shares, isLoading } = useMyPublicShares("family_budget");
   const createShareMutation = useCreatePublicShare();
   const revokeShareMutation = useRevokePublicShare();
   const regenerateShareMutation = useRegeneratePublicShare();
+
+  const hasGroupFamily = Boolean(myFamilyData?.family);
+  const groupMonthlyBudgetCents = myFamilyData?.family?.monthly_budget
+    ? Math.round(myFamilyData.family.monthly_budget * 100)
+    : 0;
 
   const [copied, setCopied] = useState(false);
   const [isRevokeModalOpen, setIsRevokeModalOpen] = useState(false);
@@ -94,11 +101,18 @@ export function FamilyBudgetShareCard() {
   const handleConfirmRegenerate = async () => {
     if (!activeShare) return;
     try {
+      let payload = activeShare.payload as Record<string, unknown> | undefined;
+      // Se houver família ativa, removemos qualquer monthly_ceiling_cents manual do payload para que sincronize com a entidade families
+      if (hasGroupFamily && payload && "monthly_ceiling_cents" in payload) {
+        const nextPayload = { ...payload };
+        delete nextPayload.monthly_ceiling_cents;
+        payload = nextPayload;
+      }
       await regenerateShareMutation.mutateAsync({
         oldId: activeShare.id,
         input: {
           kind: "family_budget",
-          payload: activeShare.payload,
+          payload: payload ?? {},
         },
       });
       setIsRegenerateModalOpen(false);
@@ -112,7 +126,9 @@ export function FamilyBudgetShareCard() {
     e.preventDefault();
     try {
       const payload: Record<string, unknown> = {};
-      if (ceilingCents && ceilingCents > 0) {
+      // Se o usuário pertencer a um grupo familiar, o teto é centralmente governado
+      // pela entidade families.monthly_budget, não enviamos monthly_ceiling_cents no payload.
+      if (!hasGroupFamily && ceilingCents && ceilingCents > 0) {
         payload.monthly_ceiling_cents = ceilingCents;
       }
       await createShareMutation.mutateAsync({
@@ -254,6 +270,14 @@ export function FamilyBudgetShareCard() {
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
                   Apenas despesas marcadas como &ldquo;Familiar&rdquo; são exibidas. Suas contas bancárias, cartões de crédito e lançamentos particulares permanecem estritamente privados.
                 </p>
+
+                {hasGroupFamily && groupMonthlyBudgetCents > 0 && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground pt-1 border-t border-border/60">
+                    <Users className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
+                    <span>Teto da casa vinculado:</span>
+                    <MoneyText cents={groupMonthlyBudgetCents} className="font-semibold text-foreground" />
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-1">
@@ -324,21 +348,41 @@ export function FamilyBudgetShareCard() {
             </p>
           </div>
 
-          <div className="space-y-1.5">
-            <label htmlFor="family-ceiling-input" className="text-xs font-semibold text-foreground">
-              Teto mensal personalizado <span className="text-muted-foreground font-normal">(opcional)</span>
-            </label>
-            <MoneyInput
-              id="family-ceiling-input"
-              cents={ceilingCents ?? 0}
-              onCentsChange={(cents) => setCeilingCents(cents > 0 ? cents : null)}
-              placeholder="Ex: R$ 5.000,00"
-              className="h-10 text-sm rounded-xl"
-            />
-            <span className="text-[11px] text-muted-foreground block">
-              Se deixar em branco, o teto será calculado automaticamente a partir dos seus orçamentos ativos do mês.
-            </span>
-          </div>
+          {hasGroupFamily ? (
+            <div className="rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-1.5">
+              <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Users className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                <span>Teto Vinculado ao Grupo Familiar</span>
+              </span>
+              {groupMonthlyBudgetCents > 0 ? (
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  O link herdará automaticamente o teto estabelecido para o seu lar (
+                  <MoneyText cents={groupMonthlyBudgetCents} className="font-semibold text-foreground" />
+                  ). Qualquer alteração no teto da família será refletida em tempo real neste link.
+                </p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Sua família ainda não possui um teto cadastrado nos parâmetros. O link calculará o orçamento automaticamente a partir dos limites mensais de categorias do mês.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <label htmlFor="family-ceiling-input" className="text-xs font-semibold text-foreground">
+                Teto mensal personalizado <span className="text-muted-foreground font-normal">(opcional)</span>
+              </label>
+              <MoneyInput
+                id="family-ceiling-input"
+                cents={ceilingCents ?? 0}
+                onCentsChange={(cents) => setCeilingCents(cents > 0 ? cents : null)}
+                placeholder="Ex: R$ 5.000,00"
+                className="h-10 text-sm rounded-xl"
+              />
+              <span className="text-[11px] text-muted-foreground block">
+                Se deixar em branco, o teto será calculado automaticamente a partir dos seus orçamentos ativos do mês.
+              </span>
+            </div>
+          )}
 
           <ModalFooter className="mt-4 pt-3 border-t border-border/80">
             <Button

@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   TrendingDown,
   TrendingUp,
+  Users,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -366,10 +367,35 @@ export function SmartAdvisorCard({
       navigate?.(`/insights?aba=recurrences&item=${encodeURIComponent(itemKey)}`);
       return;
     }
+
+    // 5. Família / Orçamento Compartilhado
+    if (activeInsight.primaryAction?.kind === "navigate_family") {
+      navigate?.("/familia");
+      return;
+    }
+
+    if (activeInsight.primaryAction?.kind === "open_family_settlement") {
+      navigate?.("/familia");
+      return;
+    }
+
+    // 6. Metas de Renda
+    if (activeInsight.primaryAction?.kind === "open_income_goals") {
+      navigate?.("/orcamentos?tab=goals");
+      return;
+    }
   };
 
   // Ícones e badges de acordo com a categoria canônica
   const { categoryIcon, categoryBadgeVariant, categoryBadgeLabel } = (() => {
+    if (activeInsight.themeKey.startsWith("household:")) {
+      return {
+        categoryIcon: <Users className="size-4 text-primary shrink-0" aria-hidden="true" />,
+        categoryBadgeVariant: activeInsight.category === "critical" ? ("critical" as const) : ("muted" as const),
+        categoryBadgeLabel: "Família",
+      };
+    }
+
     if (activeInsight.primaryAction?.kind === "navigate_aporte" || activeInsight.themeKey.startsWith("aporte:")) {
       return {
         categoryIcon: <TrendingUp className="size-4 text-portfolio shrink-0" aria-hidden="true" />,

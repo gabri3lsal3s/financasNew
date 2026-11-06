@@ -21,7 +21,6 @@ import {
   parseAwesomeApiResponse,
   parseBcbSgsResponse,
   parseBrapiResponse,
-  parseTesouroDiretoResponse,
   type ParsedQuote,
 } from "@/domain/portfolio";
 import { setAssetPriceFromApi, setAssetPricesBatchFromApi } from "@/data/repositories/asset-prices";
@@ -81,42 +80,10 @@ export async function fetchBcbIndicator(indicator: "CDI" | "SELIC" | "IPCA"): Pr
   return null;
 }
 
-/**
- * Busca a cotação oficial (Preço Unitário / PU) de títulos do Tesouro Direto.
- */
-async function fetchTesouroDireto(ticker: string): Promise<ParsedQuote | null> {
-  const tesouroCanon = normalizeTesouroTicker(ticker);
-  if (!tesouroCanon) return null;
-
-  const targetUrl =
-    "https://www.tesourodireto.com.br/json/br/com/b3/tesourodireto/service/api/treasurybondsinfo.json";
-
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-    const response = await fetch(targetUrl, { signal: controller.signal });
-    clearTimeout(timer);
-    if (!response.ok) return null;
-    const payload: unknown = await response.json();
-    const parsed = parseTesouroDiretoResponse(tesouroCanon, payload);
-    if (parsed && parsed.price > 0) {
-      return {
-        ticker,
-        price: parsed.price,
-        currency: "BRL",
-      };
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
 /** Busca cotação na API Brapi (ações/FIIs/BDRs). */
 async function fetchBrapi(ticker: string): Promise<ParsedQuote | null> {
   const cleanTicker = normalizeTickerForBrapi(ticker);
-  if (!cleanTicker || cleanTicker.includes("=")) return null;
+  if (!cleanTicker || cleanTicker.includes("=") || cleanTicker.includes(" ")) return null;
 
   const token =
     typeof import.meta !== "undefined" && import.meta.env?.VITE_BRAPI_TOKEN
@@ -202,13 +169,12 @@ export async function fetchOnlineQuote(ticker: string): Promise<ParsedQuote | nu
   const awesome = await fetchAwesomeApi(normalized);
   if (awesome) return awesome;
 
-  // 3. Tesouro Direto oficial
-  if (normalizeTesouroTicker(normalized)) {
-    const tesouro = await fetchTesouroDireto(normalized);
-    if (tesouro) return tesouro;
+  // 3. Tesouro Direto e Renda Fixa não são cotados via Brapi/bolsa
+  if (isTesouroAsset(normalized) || Boolean(normalizeTesouroTicker(normalized))) {
+    return null;
   }
 
-  // 4. Brapi para B3
+  // 4. Brapi para ações/FIIs/BDRs B3
   return await fetchBrapi(ticker);
 }
 
@@ -220,8 +186,23 @@ export async function syncQuoteForTicker(
   assetClass?: string | null,
 ): Promise<ParsedQuote | null> {
   if (isCashAssetClass(assetClass ?? null)) return null;
-  if (isFixedIncomeClass(assetClass ?? null) && !isTesouroAsset(ticker, assetClass)) return null;
   if (isPrivateFixedIncomeTicker(ticker)) return null;
+  if (isFixedIncomeClass(assetClass ?? null) && !isTesouroAsset(ticker, assetClass)) return null;
+
+  // Tesouro Direto: precificado pelo motor de renda fixa ou Edge Function, nunca via Brapi
+  if (isTesouroAsset(ticker, assetClass) || Boolean(normalizeTesouroTicker(ticker))) {
+    const fromEdge = await fetchViaEdgeFunction([ticker.trim().toUpperCase()]);
+    const hit = fromEdge.find((q) => q.ticker.toUpperCase() === ticker.trim().toUpperCase() && q.price > 0);
+    if (hit) {
+      try {
+        await setAssetPriceFromApi(hit.ticker, hit.price, hit.currency);
+      } catch {
+        // Ignora erro de persistência (degradação graciosa)
+      }
+      return hit;
+    }
+    return null;
+  }
 
   const quote = await fetchOnlineQuote(ticker);
   if (quote && quote.price > 0) {

@@ -22,6 +22,8 @@ import type {
   FamilySettlement,
   FamilySettlementPaymentMethod,
   FamilySplitRule,
+  FamilyIncomeRatioSuggestionItem,
+  FamilyPortfolioSummary,
   GroupTarget,
   Income,
   IncomeGoal,
@@ -29,6 +31,7 @@ import type {
   InviteFamilyMemberResult,
   AcceptFamilyInviteResult,
   LeaveFamilyResult,
+  RemoveFamilyMemberResult,
   Loan,
   Plan,
   PortfolioAsset,
@@ -200,6 +203,13 @@ export interface Database {
         };
         Returns: LeaveFamilyResult;
       };
+      remove_family_member: {
+        Args: {
+          p_family_id: string;
+          p_target_user_id: string;
+        };
+        Returns: RemoveFamilyMemberResult;
+      };
       record_family_settlement: {
         Args: {
           p_month: string;
@@ -212,6 +222,19 @@ export interface Database {
           p_snapshot?: Record<string, unknown>;
         };
         Returns: string;
+      };
+      get_family_income_ratio_suggestion: {
+        Args: {
+          p_family_id?: string | null;
+          p_lookback_months?: number;
+        };
+        Returns: FamilyIncomeRatioSuggestionItem[];
+      };
+      get_family_portfolio_summary: {
+        Args: {
+          p_family_id?: string | null;
+        };
+        Returns: FamilyPortfolioSummary | null;
       };
       delete_current_user_account: {
         Args: Record<string, never>;

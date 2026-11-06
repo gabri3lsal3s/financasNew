@@ -74,6 +74,10 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  useMyFamily: () => ({
+    data: null,
+    isLoading: false,
+  }),
 }));
 
 function renderAccountTab() {
@@ -189,6 +193,9 @@ describe("AccountTab", () => {
 
     renderAccountTab();
 
+    const openPasswordModalButton = screen.getByRole("button", { name: "Alterar senha" });
+    await user.click(openPasswordModalButton);
+
     const currentPasswordInput = screen.getByLabelText("Senha atual");
     const newPasswordInput = screen.getByLabelText("Nova senha");
     const confirmPasswordInput = screen.getByLabelText("Confirmar nova senha");
@@ -214,19 +221,17 @@ describe("AccountTab", () => {
       );
       expect(sensoryModule.triggerSensory).toHaveBeenCalledWith("success");
       expect(toastModule.pushToast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "success", title: "Senha atualizada" }),
+        expect.objectContaining({ variant: "success", title: "Senha atualizada com sucesso" }),
       );
     });
-
-    // Confirma que os 3 campos foram limpos pós-sucesso
-    expect(currentPasswordInput).toHaveValue("");
-    expect(newPasswordInput).toHaveValue("");
-    expect(confirmPasswordInput).toHaveValue("");
   });
 
   it("exibe aviso visual quando as senhas digitadas divergem", async () => {
     const user = userEvent.setup();
     renderAccountTab();
+
+    const openPasswordModalButton = screen.getByRole("button", { name: "Alterar senha" });
+    await user.click(openPasswordModalButton);
 
     const currentPasswordInput = screen.getByLabelText("Senha atual");
     const newPasswordInput = screen.getByLabelText("Nova senha");
@@ -237,7 +242,7 @@ describe("AccountTab", () => {
     await user.type(newPasswordInput, "NovaSenhaForte123");
     await user.type(confirmPasswordInput, "Diferente123");
 
-    expect(screen.getByText("As senhas digitadas não coincidem.")).toBeInTheDocument();
+    expect(screen.getByText("As senhas não coincidem.")).toBeInTheDocument();
     expect(updatePasswordButton).toBeDisabled();
   });
 
@@ -248,6 +253,9 @@ describe("AccountTab", () => {
     );
 
     renderAccountTab();
+
+    const openPasswordModalButton = screen.getByRole("button", { name: "Alterar senha" });
+    await user.click(openPasswordModalButton);
 
     const currentPasswordInput = screen.getByLabelText("Senha atual");
     const newPasswordInput = screen.getByLabelText("Nova senha");
@@ -273,6 +281,9 @@ describe("AccountTab", () => {
     );
 
     renderAccountTab();
+
+    const openPasswordModalButton = screen.getByRole("button", { name: "Alterar senha" });
+    await user.click(openPasswordModalButton);
 
     const currentPasswordInput = screen.getByLabelText("Senha atual");
     const newPasswordInput = screen.getByLabelText("Nova senha");

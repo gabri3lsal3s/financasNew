@@ -39,8 +39,11 @@ import {
   useDebts,
   useEmergencyFundComposition,
   useExpenses,
+  useFamilyConsolidation,
+  useFamilyMode,
   useFeedback,
   useIncomes,
+  useMyFamily,
   usePortfolioPosition,
   useRealCashBalance,
   useSetFeedback,
@@ -120,6 +123,13 @@ export function InsightsPage({
   const setFeedback = useSetFeedback();
   const position = usePortfolioPosition();
   const realCashQuery = useRealCashBalance();
+
+  const { isFamilyModeEnabled } = useFamilyMode();
+  const myFamilyQuery = useMyFamily();
+  const hasFamily = Boolean(isFamilyModeEnabled && myFamilyQuery.data?.family);
+  const familyConsolidationQuery = useFamilyConsolidation(month, { enabled: hasFamily });
+  const householdData = hasFamily ? familyConsolidationQuery.data : null;
+  const currentUserId = myFamilyQuery.data?.currentMember?.user_id;
 
   const loading =
     month0.isLoading ||
@@ -265,6 +275,25 @@ export function InsightsPage({
       kind: d.type === "receivable" ? ("receivable" as const) : ("payable" as const),
       remainingCents: numberToCents(d.amount),
     }));
+
+  if (householdData && !householdData.is_settled && householdData.settlement && householdData.settlement.amount_cents > 0) {
+    const isPayer = currentUserId ? householdData.settlement.payer_id === currentUserId : false;
+    const isReceiver = currentUserId ? householdData.settlement.receiver_id === currentUserId : false;
+    if (isPayer) {
+      pending.push({
+        id: "family-settlement-payable",
+        kind: "payable" as const,
+        remainingCents: householdData.settlement.amount_cents,
+      });
+    } else if (isReceiver) {
+      pending.push({
+        id: "family-settlement-receivable",
+        kind: "receivable" as const,
+        remainingCents: householdData.settlement.amount_cents,
+      });
+    }
+  }
+
   const pendingSummary = pendingProjection(pending);
 
   // Desafios e sugestões de corte
@@ -392,6 +421,27 @@ export function InsightsPage({
       variant: "warning" as const,
       message: w.message,
     })),
+    // Alertas do Orçamento Familiar
+    ...(householdData && householdData.monthly_ceiling_cents > 0 && householdData.spent_percentage >= 100
+      ? [{
+          id: "household-ceiling-exceeded",
+          variant: "error" as const,
+          message: `Teto Familiar: A casa ultrapassou o teto estipulado em R$ ${((householdData.total_spent_cents - householdData.monthly_ceiling_cents) / 100).toFixed(2).replace(".", ",")} (${householdData.spent_percentage}% consumido).`,
+        }]
+      : householdData && householdData.monthly_ceiling_cents > 0 && householdData.spent_percentage >= 85
+        ? [{
+            id: "household-ceiling-warning",
+            variant: "warning" as const,
+            message: `Teto Familiar: A casa consumiu ${householdData.spent_percentage}% do teto mensal. Faltam ${Math.max(0, daysInMonth - dayOfMonth)} dias para fechar a competência.`,
+          }]
+        : []),
+    ...(householdData && !householdData.is_settled && householdData.settlement && householdData.settlement.amount_cents > 0
+      ? [{
+          id: "household-settlement-pending",
+          variant: "warning" as const,
+          message: `Acerto Familiar: Compensação Pix de R$ ${(householdData.settlement.amount_cents / 100).toFixed(2).replace(".", ",")} pendente no rateio do mês.`,
+        }]
+      : []),
   ];
 
   const baselineMonthlyExpensesCents = averagePastExpensesCents > 0

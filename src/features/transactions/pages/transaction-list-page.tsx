@@ -16,10 +16,10 @@ import { getErrorMessage } from "@/services/errors";
 import { downloadCsv } from "@/services/export-actions";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import { setStepIndex, startDemo, useCategories, useCreditCards, useExpenses, useFamilyMode, useIncomes, useMyFamily, usePermission, useRecurrences } from "@/state";
+import { setStepIndex, startDemo, useCategories, useCreditCards, useExpenses, useFamilyMode, useIncomes, usePermission, useRecurrences } from "@/state";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS, RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import { sumGrossCents, sumWeightedCents } from "@/domain/money";
-import { buildUnifiedFeedItems, filterByVisionScope, groupFeedByDay, type FeedFilter, type VisionScope } from "@/domain/expenses";
+import { buildUnifiedFeedItems, groupFeedByDay, type FeedFilter } from "@/domain/expenses";
 import { serializeUnifiedTransactionsCsv, type ExportUnifiedTransactionRow } from "@/domain/export";
 import { ActiveSplitsCard } from "@/features/transactions/components/active-splits-card";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
@@ -31,14 +31,14 @@ function ExpenseRow({
   expense,
   category,
   recurrenceLabel,
-  isFamilyActive,
+  isFamilyModeEnabled,
   onClick,
 }: {
   expense: Expense;
   category?: Category | null;
   /** Rótulo de frequência quando recorrente (Fase 32). */
   recurrenceLabel?: string;
-  isFamilyActive?: boolean;
+  isFamilyModeEnabled?: boolean;
   onClick?: () => void;
 }) {
   const title = expense.description || category?.name || "Despesa";
@@ -59,7 +59,7 @@ function ExpenseRow({
       icon={category?.icon}
       iconColor={category?.color}
       badges={
-        expense.is_family && isFamilyActive ? (
+        isFamilyModeEnabled && expense.is_family ? (
           <Badge variant="muted" size="xs" className="shrink-0 font-medium">
             Familiar
           </Badge>
@@ -76,14 +76,14 @@ function IncomeRow({
   income,
   category,
   recurrenceLabel,
-  isFamilyActive,
+  isFamilyModeEnabled,
   onClick,
 }: {
   income: Income;
   category?: Category | null;
   /** Rótulo de frequência quando recorrente (Fase 32). */
   recurrenceLabel?: string;
-  isFamilyActive?: boolean;
+  isFamilyModeEnabled?: boolean;
   onClick?: () => void;
 }) {
   const title = income.description || category?.name || "Receita";
@@ -99,7 +99,7 @@ function IncomeRow({
       icon={category?.icon}
       iconColor={category?.color}
       badges={
-        income.is_family && isFamilyActive ? (
+        isFamilyModeEnabled && income.is_family ? (
           <Badge variant="muted" size="xs" className="shrink-0 font-medium">
             Familiar
           </Badge>
@@ -118,9 +118,6 @@ export function TransactionListPage() {
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [selectedIncome, setSelectedIncome] = useState<Income | null>(null);
   const { highlightId } = useHighlightTarget("q");
-  const { data: myFamilyData } = useMyFamily();
-  const { isFamilyModeEnabled } = useFamilyMode();
-  const isFamilyActive = Boolean(isFamilyModeEnabled || myFamilyData?.family);
 
   // Mês derivado: deep-link ?month= (busca §3.9) prevalece; sem param,
   // usa a escolha manual (MonthPicker) ou o mês corrente. Sem setState em
@@ -142,34 +139,7 @@ export function TransactionListPage() {
     );
   };
 
-  // Filtro de visão do extrato (Fase 3 — Tarefa 3.3): Todos | Pessoais | Familiar
-  const paramScope = searchParams.get("scope");
-  const validParamScope: VisionScope =
-    paramScope === "personal" || paramScope === "family"
-      ? paramScope
-      : "all";
-  const [localScope, setLocalScope] = useState<VisionScope>(
-    paramScope === "personal" || paramScope === "family" ? paramScope : "all",
-  );
-  const visionScope: VisionScope = paramScope ? validParamScope : localScope;
-  const effectiveVisionScope: VisionScope = isFamilyActive ? visionScope : "all";
-
-  const handleScopeChange = (next: VisionScope) => {
-    setLocalScope(next);
-    setSearchParams(
-      (prev) => {
-        const updated = new URLSearchParams(prev);
-        if (next === "all") {
-          updated.delete("scope");
-        } else {
-          updated.set("scope", next);
-        }
-        return updated;
-      },
-      { replace: true },
-    );
-  };
-
+  const { isFamilyModeEnabled } = useFamilyMode();
   const expensesQuery = useExpenses(month);
   const incomesQuery = useIncomes(month);
   const categoriesQuery = useCategories();
@@ -184,38 +154,31 @@ export function TransactionListPage() {
     [categoriesQuery.data],
   );
 
-  const scopedExpenses = useMemo(
-    () => filterByVisionScope(expensesQuery.data ?? [], effectiveVisionScope),
-    [expensesQuery.data, effectiveVisionScope],
-  );
-  const scopedIncomes = useMemo(
-    () => filterByVisionScope(incomesQuery.data ?? [], effectiveVisionScope),
-    [incomesQuery.data, effectiveVisionScope],
-  );
+  const expenses = useMemo(() => expensesQuery.data ?? [], [expensesQuery.data]);
+  const incomes = useMemo(() => incomesQuery.data ?? [], [incomesQuery.data]);
 
-  const incomesTotalCents = useMemo(() => sumGrossCents(scopedIncomes), [scopedIncomes]);
-  const expensesTotalCents = useMemo(() => sumGrossCents(scopedExpenses), [scopedExpenses]);
-  const incomesWeightedCents = useMemo(() => sumWeightedCents(scopedIncomes), [scopedIncomes]);
-  const expensesWeightedCents = useMemo(() => sumWeightedCents(scopedExpenses), [scopedExpenses]);
+  const incomesTotalCents = useMemo(() => sumGrossCents(incomes), [incomes]);
+  const expensesTotalCents = useMemo(() => sumGrossCents(expenses), [expenses]);
+  const incomesWeightedCents = useMemo(() => sumWeightedCents(incomes), [incomes]);
+  const expensesWeightedCents = useMemo(() => sumWeightedCents(expenses), [expenses]);
   const balanceCents = incomesTotalCents - expensesTotalCents;
   const balanceWeightedCents = incomesWeightedCents - expensesWeightedCents;
-
 
   const [filter, setFilter] = useState<FeedFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(TRANSACTIONS_PAGE_SIZE);
-  const [prevFilterKey, setPrevFilterKey] = useState(() => `${month}-${visionScope}-${filter}-${searchQuery}`);
+  const [prevFilterKey, setPrevFilterKey] = useState(() => `${month}-${filter}-${searchQuery}`);
 
   // Redefine a paginação durante a renderização se os filtros mudarem (React: adjusting state during render)
-  const currentFilterKey = `${month}-${visionScope}-${filter}-${searchQuery}`;
+  const currentFilterKey = `${month}-${filter}-${searchQuery}`;
   if (currentFilterKey !== prevFilterKey) {
     setPrevFilterKey(currentFilterKey);
     setVisibleCount(TRANSACTIONS_PAGE_SIZE);
   }
 
   const feedItems = useMemo(
-    () => buildUnifiedFeedItems(scopedExpenses, scopedIncomes, filter),
-    [scopedExpenses, scopedIncomes, filter],
+    () => buildUnifiedFeedItems(expenses, incomes, filter),
+    [expenses, incomes, filter],
   );
 
   const filteredFeedItems = useMemo(() => {
@@ -325,8 +288,7 @@ export function TransactionListPage() {
     });
 
     const filterSlug = filter === "all" ? "todas" : filter;
-    const scopeSlug = visionScope === "all" ? "" : `_${visionScope}`;
-    downloadCsv(`transacoes_${month}${scopeSlug}_${filterSlug}.csv`, serializeUnifiedTransactionsCsv(rows));
+    downloadCsv(`transacoes_${month}_${filterSlug}.csv`, serializeUnifiedTransactionsCsv(rows));
   };
 
   return (
@@ -346,23 +308,6 @@ export function TransactionListPage() {
       )}
 
       <MonthPicker value={month} onValueChange={handleMonthChange} />
-
-      {/* Filtro rápido de visão (Fase 3 — Tarefa 3.3): Todos | Pessoais | Familiar */}
-      {isFamilyActive && (
-        <Tabs
-          value={visionScope}
-          onValueChange={(val) => handleScopeChange(val as VisionScope)}
-          variant="pills"
-          fullWidth
-          className="w-full"
-          ariaLabel="Visão do extrato"
-          items={[
-            { value: "all", label: "Todos" },
-            { value: "personal", label: "Pessoais" },
-            { value: "family", label: "Familiar" },
-          ]}
-        />
-      )}
 
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         <KpiCard
@@ -483,27 +428,15 @@ export function TransactionListPage() {
           description={
             isSearching
               ? `Nenhum lançamento corresponde ao termo "${searchQuery.trim()}". Tente buscar por outro termo ou limpe a busca.`
-              : visionScope === "family"
-                ? filter === "expenses"
-                  ? "Nenhuma despesa familiar registrada neste mês."
-                  : filter === "incomes"
-                    ? "Nenhuma receita familiar registrada neste mês."
-                    : "Nenhum lançamento familiar registrado neste mês."
-                : visionScope === "personal"
-                  ? filter === "expenses"
-                    ? "Nenhuma despesa pessoal registrada neste mês."
-                    : filter === "incomes"
-                      ? "Nenhuma receita pessoal registrada neste mês."
-                      : "Nenhum lançamento pessoal registrado neste mês."
-                  : filter === "incomes"
-                    ? "Nenhuma receita registrada neste mês."
-                    : filter === "expenses"
-                      ? "Nenhuma despesa registrada neste mês."
-                      : filter === "recurring"
-                        ? "Nenhum lançamento recorrente neste mês."
-                        : filter === "installments"
-                          ? "Nenhum lançamento parcelado neste mês."
-                          : "Registre sua primeira transação para acompanhar suas finanças neste mês."
+              : filter === "incomes"
+                ? "Nenhuma receita registrada neste mês."
+                : filter === "expenses"
+                  ? "Nenhuma despesa registrada neste mês."
+                  : filter === "recurring"
+                    ? "Nenhum lançamento recorrente neste mês."
+                    : filter === "installments"
+                      ? "Nenhum lançamento parcelado neste mês."
+                      : "Registre sua primeira transação para acompanhar suas finanças neste mês."
           }
           action={
             isSearching ? (
@@ -559,7 +492,7 @@ export function TransactionListPage() {
                         income={item.rawIncome}
                         category={categoryById.get(item.categoryId)}
                         recurrenceLabel={recurrenceLabel(item.recurrenceId)}
-                        isFamilyActive={isFamilyActive}
+                        isFamilyModeEnabled={isFamilyModeEnabled}
                         onClick={() => setSelectedIncome(item.rawIncome!)}
                       />
                     ) : item.rawExpense ? (
@@ -567,7 +500,7 @@ export function TransactionListPage() {
                         expense={item.rawExpense}
                         category={categoryById.get(item.categoryId)}
                         recurrenceLabel={recurrenceLabel(item.recurrenceId)}
-                        isFamilyActive={isFamilyActive}
+                        isFamilyModeEnabled={isFamilyModeEnabled}
                         onClick={() => setSelectedExpense(item.rawExpense!)}
                       />
                     ) : null}

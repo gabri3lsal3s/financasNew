@@ -160,7 +160,7 @@ export function LaunchWizard({
   const cardsQuery = useActiveCreditCards();
   const { isFamilyModeEnabled } = useFamilyMode();
   const { data: myFamilyData } = useMyFamily();
-  const isFamilyActive = Boolean(isFamilyModeEnabled || myFamilyData?.family);
+  const isFamilyActive = Boolean(isFamilyModeEnabled);
   const createExpense = useCreateExpense();
   const createIncome = useCreateIncome();
   const createIncomeInstallments = useCreateIncomeInstallments();
@@ -769,7 +769,7 @@ export function LaunchWizard({
               set("categoryId", categoryId);
               setIsCategoryUnconfirmed(false);
               const cat = categoriesQuery.data?.find((c) => c.id === categoryId);
-              if (cat?.is_family) {
+              if (isFamilyActive && cat?.is_family) {
                 set("isFamily", true);
               }
             }}
@@ -846,7 +846,7 @@ export function LaunchWizard({
                 onSelect={(categoryId) => {
                   set("categoryId", categoryId);
                   const cat = categoriesQuery.data?.find((c) => c.id === categoryId);
-                  if (cat?.is_family) {
+                  if (isFamilyActive && cat?.is_family) {
                     set("isFamily", true);
                   }
                 }}

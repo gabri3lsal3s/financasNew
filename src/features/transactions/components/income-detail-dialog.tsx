@@ -106,7 +106,7 @@ function IncomeEditForm({
   const [formError, setFormError] = useState<string | null>(null);
   const { isFamilyModeEnabled } = useFamilyMode();
   const { data: myFamilyData } = useMyFamily();
-  const isFamilyActive = Boolean(isFamilyModeEnabled || myFamilyData?.family);
+  const isFamilyActive = Boolean(isFamilyModeEnabled);
 
   const handleSubmit = async () => {
     if (valueCents <= 0) {

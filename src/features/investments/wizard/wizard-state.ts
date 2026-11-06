@@ -72,6 +72,7 @@ export interface InvestmentWizardState {
   targetPercentage: number | null;
   syncCash: boolean;
   recordContribution: boolean;
+  isFamily: boolean;
   notes: string;
 }
 
@@ -112,6 +113,7 @@ export const defaultWizardState: InvestmentWizardState = {
   targetPercentage: null,
   syncCash: false,
   recordContribution: true,
+  isFamily: false,
   notes: "",
 };
 

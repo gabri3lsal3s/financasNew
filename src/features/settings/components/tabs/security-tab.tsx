@@ -1,11 +1,12 @@
 import { useState, useEffect, lazy, Suspense } from "react";
-import { Database, Fingerprint } from "lucide-react";
+import { Database, Fingerprint, RefreshCw, Smartphone, Download } from "lucide-react";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   Badge,
+  Button,
   Checkbox,
   Select,
 } from "@/components/ui";
@@ -58,6 +59,8 @@ import {
   useUpdateCustomSettings,
 } from "@/state";
 import { useDemoSession } from "@/state/demo-mode";
+import { useAppUpdate } from "@/hooks/use-app-update";
+import { cn } from "@/lib/utils";
 
 interface BackupExpenseItem {
   date: string;
@@ -113,13 +116,6 @@ export function SecurityTab() {
   const showPrivacyShield = isNative;
   const showAppLockCard = showBiometrics || showPrivacyShield;
 
-
-
-
-
-
-
-
   const [localPrivacyOverride, setLocalPrivacyOverride] = useState<boolean | null>(null);
   const cloudPrivacyShield = userPreferencesQuery.data?.custom_settings?.privacyShieldEnabled;
   const privacyEnabled =
@@ -128,6 +124,15 @@ export function SecurityTab() {
       : cloudPrivacyShield !== undefined
         ? cloudPrivacyShield
         : isPrivacyShieldEnabled();
+
+  // Verificação de versão e atualizações do app
+  const {
+    isChecking,
+    hasUpdate,
+    updateInfo,
+    checkForUpdates,
+    installUpdate,
+  } = useAppUpdate({ autoCheck: false });
 
   useEffect(() => {
     checkBiometricsAvailability().then((res) => {
@@ -185,6 +190,59 @@ export function SecurityTab() {
     });
   };
 
+  const handleManualCheckUpdate = async () => {
+    const res = await checkForUpdates(false);
+    if (res.hasUpdate) {
+      pushToast({
+        title: "Nova versão encontrada!",
+        description: `A versão ${res.latestVersion} está disponível para atualização.`,
+        variant: "info",
+      });
+    } else if (res.error) {
+      pushToast({
+        title: "Falha na verificação",
+        description: res.error,
+        variant: "destructive",
+      });
+    } else {
+      pushToast({
+        title: "Aplicativo atualizado",
+        description: "Você já está na versão mais recente disponível.",
+        variant: "success",
+      });
+    }
+  };
+
+  const defaultApkUrl = "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk";
+  const activeApkUrl = updateInfo?.manifest?.apkUrl || defaultApkUrl;
+
+  const handleDownloadApk = async () => {
+    try {
+      if (updateInfo?.manifest) {
+        await installUpdate();
+      } else {
+        const link = document.createElement("a");
+        link.href = activeApkUrl;
+        link.download = "axis-pro.apk";
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      pushToast({
+        title: "Download iniciado",
+        description: "O download do instalador Android foi iniciado.",
+        variant: "info",
+      });
+    } catch {
+      pushToast({
+        title: "Falha ao baixar",
+        description: "Não foi possível iniciar o download do APK.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const portfolioPosition = usePortfolioPosition();
   const exportDataQuery = useExportData({ enabled: false });
@@ -313,7 +371,7 @@ export function SecurityTab() {
 
   return (
     <div className="space-y-6">
-      {/* Card 1: Bloqueio do Aplicativo & Privacidade */}
+      {/* Card 1: Bloqueio do Aplicativo & Privacidade (Contextual para Nativo/Biometria) */}
       {showAppLockCard ? (
         <Card data-tour="settings-app-lock">
           <CardHeader>
@@ -400,7 +458,7 @@ export function SecurityTab() {
         </Card>
       ) : null}
 
-      {/* Card 3: Gestão de Dados & Backup */}
+      {/* Card 2: Gestão de Dados & Backup */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -424,6 +482,66 @@ export function SecurityTab() {
         </CardContent>
       </Card>
 
+      {/* Card 3: Sobre o Aplicativo & Atualizações */}
+      <Card className="border-border/80 bg-surface shadow-xs">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Smartphone className="size-4 text-muted-foreground" aria-hidden="true" />
+              <span>Sobre o Aplicativo</span>
+            </span>
+            <Badge variant="muted" size="xs">
+              {isNative ? "Android Nativo" : "Web / PWA"}
+            </Badge>
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Informações sobre a versão do sistema e verificação de atualizações.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-xl border border-border/80 bg-muted/20">
+            <div className="space-y-0.5">
+              <span className="text-xs font-semibold text-foreground block">
+                {updateInfo?.manifest?.version ? `Versão ${updateInfo.manifest.version}` : "Versão atualizada"}
+              </span>
+              <span className="text-[11px] text-muted-foreground block">
+                {hasUpdate
+                  ? `Nova versão ${updateInfo?.latestVersion} disponível para atualização.`
+                  : "Você está utilizando a versão estável mais recente."}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isChecking}
+                onClick={handleManualCheckUpdate}
+                className="h-8 px-3 text-xs font-semibold rounded-xl cursor-pointer gap-1.5"
+              >
+                <RefreshCw
+                  className={cn("size-3 text-muted-foreground", isChecking && "animate-spin text-primary")}
+                  aria-hidden="true"
+                />
+                <span>{isChecking ? "Verificando..." : "Verificar atualizações"}</span>
+              </Button>
+              {!isNative && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadApk}
+                  className="h-8 px-3 text-xs font-semibold rounded-xl cursor-pointer gap-1.5"
+                >
+                  <Download className="size-3 text-muted-foreground" aria-hidden="true" />
+                  <span>Baixar APK</span>
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Card 4: Zona de Perigo / Exclusão de Conta (LGPD) */}
       <DeleteAccountCard />
 
@@ -438,4 +556,3 @@ export function SecurityTab() {
     </div>
   );
 }
-

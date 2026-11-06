@@ -24,6 +24,8 @@ vi.mock("@/state", () => ({
       },
     ],
   }),
+  useFamilyMode: () => ({ isFamilyModeEnabled: false, toggleFamilyMode: vi.fn() }),
+  useMyFamily: () => ({ data: null, isLoading: false, isError: false }),
 }));
 
 const mockFixedIncomeAsset: PortfolioAsset = {

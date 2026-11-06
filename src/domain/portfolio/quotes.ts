@@ -45,7 +45,7 @@ export function isPrivateFixedIncomeTicker(raw: string): boolean {
  */
 export function normalizeTickerForApi(raw: string): string {
   const ticker = raw.trim().toUpperCase();
-  if (!ticker || isPrivateFixedIncomeTicker(ticker)) return "";
+  if (!ticker || isPrivateFixedIncomeTicker(ticker) || ticker.includes(" ") || ticker.startsWith("TESOURO") || Boolean(normalizeTesouroTicker(ticker))) return "";
   if (ticker.endsWith(".SA")) return ticker;
   if (ticker.includes("=") || ticker.includes("-") || ticker.includes(".")) return ticker;
   if (/^[A-Za-z]{1,5}$/.test(ticker)) return ticker;
@@ -54,11 +54,11 @@ export function normalizeTickerForApi(raw: string): string {
 
 /**
  * Normaliza o ticker para a API Brapi (remove sufixo `.SA` se presente).
- * Retorna "" para Renda Fixa Privada ou ticker inválido.
+ * Retorna "" para Renda Fixa Privada, Tesouro Direto, tickers com espaços ou ticker inválido.
  */
 export function normalizeTickerForBrapi(raw: string): string {
   const ticker = raw.trim().toUpperCase();
-  if (!ticker || isPrivateFixedIncomeTicker(ticker)) return "";
+  if (!ticker || isPrivateFixedIncomeTicker(ticker) || ticker.includes(" ") || ticker.startsWith("TESOURO") || Boolean(normalizeTesouroTicker(ticker))) return "";
   if (ticker.endsWith(".SA")) return ticker.slice(0, -3);
   return ticker;
 }

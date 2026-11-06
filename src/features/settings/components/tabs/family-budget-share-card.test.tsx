@@ -11,6 +11,10 @@ import type { PublicShare } from "@/types";
 
 let mockIsFamilyModeEnabled = true;
 const mockToggleFamilyMode = vi.fn().mockResolvedValue(true);
+let mockFamilyData: {
+  family?: { id: string; name: string; monthly_budget?: number | null };
+  currentMember?: { user_id: string; role?: string };
+} | null = null;
 
 vi.mock("@/state", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/state")>();
@@ -20,6 +24,10 @@ vi.mock("@/state", async (importOriginal) => {
       isFamilyModeEnabled: mockIsFamilyModeEnabled,
       toggleFamilyMode: mockToggleFamilyMode,
       isUpdating: false,
+    }),
+    useMyFamily: () => ({
+      data: mockFamilyData,
+      isLoading: false,
     }),
   };
 });
@@ -66,6 +74,7 @@ describe("FamilyBudgetShareCard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsFamilyModeEnabled = true;
+    mockFamilyData = null;
 
     vi.spyOn(publicShareMutations, "useCreatePublicShare").mockReturnValue({
       mutateAsync: mockMutateCreate,
@@ -235,5 +244,50 @@ describe("FamilyBudgetShareCard", () => {
         }),
       }),
     );
+  });
+
+  it("oculta campo de teto manual e vincula teto da casa quando usuário pertence a um grupo familiar", async () => {
+    const user = userEvent.setup();
+    mockFamilyData = {
+      family: { id: "fam-1", name: "Família Silva", monthly_budget: 5000 },
+      currentMember: { user_id: "user-2", role: "member" },
+    };
+    vi.spyOn(publicShareQueries, "useMyPublicShares").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof publicShareQueries.useMyPublicShares>);
+
+    renderCard();
+
+    await user.click(screen.getByRole("button", { name: "Gerar Link Familiar" }));
+
+    expect(screen.getByText("Teto Vinculado ao Grupo Familiar")).toBeInTheDocument();
+    expect(screen.getByText(/O link herdará automaticamente o teto estabelecido para o seu lar/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Teto mensal personalizado/i)).not.toBeInTheDocument();
+
+    const submitBtn = screen.getByRole("button", { name: "Gerar Link" });
+    await user.click(submitBtn);
+
+    // Quando pertence a uma família, o payload não deve conter monthly_ceiling_cents
+    expect(mockMutateCreate).toHaveBeenCalledWith({
+      kind: "family_budget",
+      payload: {},
+    });
+  });
+
+  it("renderiza indicação de teto da casa vinculado no card de link ativo quando pertence a uma família", () => {
+    mockFamilyData = {
+      family: { id: "fam-1", name: "Família Silva", monthly_budget: 5000 },
+      currentMember: { user_id: "user-2", role: "member" },
+    };
+    vi.spyOn(publicShareQueries, "useMyPublicShares").mockReturnValue({
+      data: [mockActiveShare],
+      isLoading: false,
+    } as unknown as ReturnType<typeof publicShareQueries.useMyPublicShares>);
+
+    renderCard();
+
+    expect(screen.getByText(/Teto da casa vinculado:/i)).toBeInTheDocument();
+    expect(screen.getByText("R$ 5.000,00")).toBeInTheDocument();
   });
 });

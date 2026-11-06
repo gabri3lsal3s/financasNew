@@ -13,6 +13,7 @@ import { formatBRL } from "./recurrences";
 import { learnBrokerAportePattern } from "./aporte-learning";
 import { detectAnnualCommitments, detectWeeklyCommitments } from "./extended-periodicity";
 import { getNextInvoiceClosingDate } from "./card-radar";
+import type { FamilyConsolidationResult, IncomeGoal } from "@/types";
 
 export type SmartAdvisorCategory = "critical" | "income" | "savings" | "calibration";
 
@@ -51,6 +52,9 @@ export interface SmartAdvisorAction {
     | "confirm_recurrence"
     | "ignore_recurrence"
     | "navigate_aporte"
+    | "navigate_family"
+    | "open_family_settlement"
+    | "open_income_goals"
     | "dismiss"
     | "mark_essential";
   payload?: Record<string, unknown>;
@@ -111,6 +115,14 @@ export interface GenerateSmartAdvisorInsightsInput {
   allExpenses?: readonly ExpenseLike[];
   /** Lista de cartões cadastrados para enriquecer despesas e assinaturas com contexto de fatura e limite disponível (F28 / Tarefa 8.4). */
   cards?: readonly CardForAdvisorContext[];
+  /** Dados consolidados do orçamento familiar (quando modo família ativo). */
+  household?: FamilyConsolidationResult | null;
+  /** Metas de receita cadastradas para o período. */
+  incomeGoals?: readonly IncomeGoal[];
+  /** Receitas realizadas mapeadas por categoria para conferência de metas. */
+  realizedIncomeByCategory?: ReadonlyMap<string, number>;
+  /** ID do usuário autenticado para personalizar mensagens familiares (ex: pagar vs receber). */
+  currentUserId?: string;
 }
 
 /**
@@ -211,11 +223,45 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
     currentMonthAportesCents,
     allExpenses = [],
     cards = [],
+    household,
+    incomeGoals = [],
+    realizedIncomeByCategory,
+    currentUserId,
   } = input;
   const candidates: SmartAdvisorInsight[] = [];
 
   // 1. PRIORIDADE 1: CRÍTICA
-  // 1.1 Cobranças duplicadas no mês
+  // 1.1 Teto familiar estourado (> 100% do limite da casa)
+  if (
+    household &&
+    household.monthly_ceiling_cents > 0 &&
+    household.spent_percentage >= 100 &&
+    !isOccurrenceIgnored(feedbackMap["household:ceiling_exceeded"])
+  ) {
+    const excessCents = Math.max(0, household.total_spent_cents - household.monthly_ceiling_cents);
+    candidates.push({
+      id: "household:ceiling_exceeded",
+      themeKey: "household:ceiling_exceeded",
+      priority: 1,
+      category: "critical",
+      title: "Teto familiar estourado",
+      description: `A casa ultrapassou o teto em ${formatBRL(excessCents)} (${household.spent_percentage}% consumido).`,
+      iconName: "alert-triangle",
+      primaryAction: {
+        label: "Ver gastos da casa",
+        kind: "navigate_family",
+      },
+      secondaryAction: {
+        label: "Dispensar por 30 dias",
+        kind: "dismiss",
+      },
+      metadata: {
+        valueCents: household.total_spent_cents,
+      },
+    });
+  }
+
+  // 1.2 Cobranças duplicadas no mês
   for (const occ of occurrences) {
     if (isOccurrenceIgnored(feedbackMap[`dup:${occ.key}`]) || isOccurrenceIgnored(feedbackMap[occ.key])) {
       continue;
@@ -432,6 +478,80 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
     }
   }
 
+  // 2.2 Acerto justo Pix familiar pendente
+  if (
+    household &&
+    !household.is_settled &&
+    household.settlement &&
+    household.settlement.amount_cents > 0 &&
+    !isOccurrenceIgnored(feedbackMap["household:settlement_pending"])
+  ) {
+    const isPayer = currentUserId ? household.settlement.payer_id === currentUserId : false;
+    const isReceiver = currentUserId ? household.settlement.receiver_id === currentUserId : false;
+    const desc = isPayer
+      ? `Compensação de ${formatBRL(household.settlement.amount_cents)} pendente para ${household.settlement.receiver_name}.`
+      : isReceiver
+        ? `Você tem ${formatBRL(household.settlement.amount_cents)} a receber de ${household.settlement.payer_name}.`
+        : `Compensação de ${formatBRL(household.settlement.amount_cents)} pendente entre ${household.settlement.payer_name} e ${household.settlement.receiver_name}.`;
+
+    candidates.push({
+      id: "household:settlement_pending",
+      themeKey: "household:settlement_pending",
+      priority: 2,
+      category: "income",
+      title: "Acerto familiar pendente",
+      description: desc,
+      iconName: "arrow-down-left",
+      primaryAction: {
+        label: isPayer ? "Compensar Pix" : "Ver acerto",
+        kind: "open_family_settlement",
+      },
+      secondaryAction: {
+        label: "Dispensar por 30 dias",
+        kind: "dismiss",
+      },
+      metadata: {
+        valueCents: household.settlement.amount_cents,
+      },
+    });
+  }
+
+  // 2.3 Metas de receita em atraso no fim do mês
+  if (incomeGoals && incomeGoals.length > 0 && realizedIncomeByCategory) {
+    const day = Number(todayISO.slice(8, 10));
+    if (day >= 20) {
+      for (const goal of incomeGoals) {
+        const expectedCents = Math.round(goal.expected * 100);
+        const realizedCents = realizedIncomeByCategory.get(goal.category_id) ?? 0;
+        const themeKey = `income_goal:${goal.id}`;
+        if (expectedCents > 0 && realizedCents < expectedCents * 0.7 && !isOccurrenceIgnored(feedbackMap[themeKey])) {
+          const pct = Math.round((realizedCents / expectedCents) * 100);
+          candidates.push({
+            id: themeKey,
+            themeKey,
+            priority: 2,
+            category: "income",
+            title: "Meta de receita abaixo do ritmo",
+            description: `Realizado ${formatBRL(realizedCents)} de ${formatBRL(expectedCents)} (${pct}% da meta).`,
+            iconName: "arrow-down-left",
+            primaryAction: {
+              label: "Ver orçamentos",
+              kind: "open_income_goals",
+            },
+            secondaryAction: {
+              label: "Dispensar por 30 dias",
+              kind: "dismiss",
+            },
+            metadata: {
+              valueCents: expectedCents - realizedCents,
+            },
+          });
+          break; // exibe no máximo 1 meta para não inundar
+        }
+      }
+    }
+  }
+
   // 3. PRIORIDADE 3: ECONOMIA & APORTES (Reajustes de preço, corte de gastos e rebalanceamento de aportes)
   // 3.1 Oportunidade de aporte e rebalanceamento de carteira (§Eixo 3)
   if (savingsSurplusCents !== undefined && savingsSurplusCents > 0) {
@@ -587,6 +707,65 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
         },
       });
     }
+  }
+
+  // 3.4 Teto familiar em ritmo acelerado
+  if (
+    household &&
+    household.monthly_ceiling_cents > 0 &&
+    household.spent_percentage >= 85 &&
+    household.spent_percentage < 100 &&
+    !isOccurrenceIgnored(feedbackMap["household:ceiling_warning"])
+  ) {
+    candidates.push({
+      id: "household:ceiling_warning",
+      themeKey: "household:ceiling_warning",
+      priority: 3,
+      category: "savings",
+      title: "Atenção ao teto familiar",
+      description: `A casa consumiu ${household.spent_percentage}% do teto mensal (${formatBRL(household.total_spent_cents)} de ${formatBRL(household.monthly_ceiling_cents)}).`,
+      iconName: "trending-down",
+      primaryAction: {
+        label: "Ver fatias da casa",
+        kind: "navigate_family",
+      },
+      secondaryAction: {
+        label: "Dispensar por 30 dias",
+        kind: "dismiss",
+      },
+      metadata: {
+        valueCents: household.total_spent_cents,
+      },
+    });
+  }
+
+  // 3.5 Despesas pós-acerto familiar
+  if (
+    household &&
+    household.is_settled &&
+    household.has_post_settlement_expenses &&
+    !isOccurrenceIgnored(feedbackMap["household:post_settlement"])
+  ) {
+    candidates.push({
+      id: "household:post_settlement",
+      themeKey: "household:post_settlement",
+      priority: 3,
+      category: "savings",
+      title: "Novos gastos após acerto",
+      description: "Despesas familiares foram cadastradas após o acerto do mês. Um novo rateio pode ser necessário.",
+      iconName: "help-circle",
+      primaryAction: {
+        label: "Revisar acerto",
+        kind: "open_family_settlement",
+      },
+      secondaryAction: {
+        label: "Dispensar por 30 dias",
+        kind: "dismiss",
+      },
+      metadata: {
+        valueCents: household.total_spent_cents,
+      },
+    });
   }
 
   // 4. PRIORIDADE 4: CALIBRAÇÃO (Pergunta simples para ensinar o motor)

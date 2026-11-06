@@ -8,3 +8,4 @@
 export * from "./category-clustering";
 export * from "./reconciliation";
 export * from "./settlement";
+export * from "./wealth";

@@ -230,6 +230,10 @@ vi.mock("@/state", () => ({
   useSetFeedback: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUserPreferences: () => ({ data: null, isLoading: false, isError: false, error: null }),
   useUpdateCustomSettings: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+  useFamilyMode: () => ({ isFamilyModeEnabled: false, isLoading: false }),
+  useMyFamily: () => ({ data: null, isLoading: false }),
+  useFamilyConsolidation: () => ({ data: null, isLoading: false, isError: false, error: null }),
+  useIncomeGoals: () => ({ data: [], isLoading: false, isError: false, error: null }),
   hasSeenWelcomeModal: () => {
     try {
       return typeof window !== "undefined" && window.localStorage.getItem("financas:welcome_modal_seen") === "true";

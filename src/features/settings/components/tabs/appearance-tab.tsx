@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { RotateCcw } from "lucide-react";
 import { useTheme } from "@/app/theme-provider";
 import type { ThemePreference } from "@/app/theme-provider";
 import {
@@ -10,15 +12,16 @@ import { EXPERIENCE_PRESETS } from "@/domain/preferences";
 import { triggerSensory } from "@/services/sensory";
 import { useUpdateCustomSettings } from "@/state";
 import { pushToast } from "@/services/toast";
+import { Button, ConfirmDialog } from "@/components/ui";
 import { ExperiencePresetsCard } from "./experience-presets-card";
 import { VisualIdentityCard } from "./visual-identity-card";
 import { InterfaceShortcutsCard } from "./interface-shortcuts-card";
-import { ResetDefaultsCard } from "./reset-defaults-card";
 
 export function AppearanceTab() {
   const { preference: themePref, setPreference: setThemePref } = useTheme();
   const visual = useVisualCustomization();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
   const handleSelectPreset = (preset: ExperiencePreset) => {
     triggerSensory("action");
@@ -151,8 +154,36 @@ export function AppearanceTab() {
         onToggleHeaderButton={handleToggleHeaderButton}
       />
 
-      {/* --- CARD 4: REDEFINIÇÃO DE PADRÕES --- */}
-      <ResetDefaultsCard onReset={handleResetDefaults} />
+      {/* --- AÇÃO DE RODAPÉ: REDEFINIÇÃO DE PADRÕES --- */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-border/80 bg-muted/20">
+        <div className="space-y-0.5">
+          <span className="text-xs font-semibold text-foreground block">
+            Restaurar Padrões de Personalização
+          </span>
+          <span className="text-[11px] text-muted-foreground block">
+            Restaura o modo de experiência Dinâmico, tema oficial Teal Vital e disposição padrão do cabeçalho.
+          </span>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setIsResetConfirmOpen(true)}
+          className="h-8 px-3 text-xs font-semibold rounded-xl shrink-0 cursor-pointer gap-1.5"
+        >
+          <RotateCcw className="size-3 text-muted-foreground" aria-hidden="true" />
+          <span>Restaurar Padrões</span>
+        </Button>
+      </div>
+
+      <ConfirmDialog
+        open={isResetConfirmOpen}
+        onOpenChange={setIsResetConfirmOpen}
+        title="Restaurar padrões de personalização?"
+        description="Isso restaurará o tema oficial Teal Vital, o modo Dinâmico e as configurações padrão do cabeçalho. Seus dados e transações não serão alterados."
+        confirmLabel="Confirmar Restauração"
+        onConfirm={handleResetDefaults}
+      />
     </div>
   );
 }

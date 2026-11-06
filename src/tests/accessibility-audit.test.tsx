@@ -391,6 +391,13 @@ vi.mock("@/state", () => ({
     isError: false,
     error: null,
   }),
+  useFamilyConsolidation: () => ({
+    data: null,
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
   useMyPublicShares: () => ({
     data: [],
     isLoading: false,

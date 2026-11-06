@@ -142,7 +142,7 @@ function renderSettings(initialEntries: string[] = ["/configuracoes"]) {
   );
 }
 
-describe("SettingsPage (F11 — Centro de Personalização)", () => {
+describe("SettingsPage (Centro de Configurações Otimizado)", () => {
   beforeEach(() => {
     window.localStorage.clear();
     mockUpdateReminderPreferences.mockClear();
@@ -166,24 +166,36 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     cleanup();
   });
 
-  it("renderiza o cabeçalho e os pilares consolidados de navegação", () => {
+  it("renderiza o cabeçalho e os 6 pilares canônicos de navegação", () => {
     renderSettings();
 
     expect(screen.getByRole("heading", { level: 1, name: "Configurações" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Minha Conta/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Aparência" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Notificações" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Segurança" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Dispositivos & App" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Dados & Privacidade" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Plano" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Família & Cônjuge" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Minha Conta" })).toBeInTheDocument();
-    expect(screen.getByText("Modo de Experiência do Aplicativo")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Suporte & Ajuda" })).toBeInTheDocument();
+    // Aba padrão é Minha Conta
+    expect(screen.getByText("Dados Pessoais & Acesso")).toBeInTheDocument();
   });
 
-  it("ativa a aba Aparência por padrão ao acessar /configuracoes sem parâmetros", () => {
+  it("ativa a aba Minha Conta por padrão ao acessar /configuracoes sem parâmetros", () => {
     renderSettings(["/configuracoes"]);
-    expect(screen.getByText("Modo de Experiência do Aplicativo")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Aparência" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Dados Pessoais & Acesso")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Minha Conta/i })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("permite abrir o modal de alteração de senha a partir da aba Minha Conta", async () => {
+    const user = userEvent.setup();
+    renderSettings(["/configuracoes"]);
+
+    const alterarSenhaButton = screen.getByRole("button", { name: "Alterar senha" });
+    await user.click(alterarSenhaButton);
+
+    expect(screen.getByRole("heading", { name: "Alterar Senha de Acesso" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Senha atual")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nova senha")).toBeInTheDocument();
   });
 
   it("permite alternar entre os Modos de Experiência na aba Aparência", async () => {
@@ -248,20 +260,17 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     });
   });
 
-  it("permite acessar a aba de Segurança e visualizar proteção e exportação", async () => {
+  it("permite acessar a aba Dados & Privacidade e visualizar backup e sobre o app", async () => {
     const user = userEvent.setup();
     renderSettings();
 
-    const securityTab = screen.getByRole("tab", { name: "Segurança" });
+    const securityTab = screen.getByRole("tab", { name: "Dados & Privacidade" });
     await user.click(securityTab);
 
-    // Conteúdo de Dados e Backup
     expect(screen.getByText("Gestão de Dados & Backup")).toBeInTheDocument();
+    expect(screen.getByText("Sobre o Aplicativo")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Verificar atualizações/i })).toBeInTheDocument();
     expect(screen.queryByText("Conta & Sessão")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Sair da Conta/i })).not.toBeInTheDocument();
-    expect(screen.queryByText("Autenticação em Duas Etapas (2FA / TOTP)")).not.toBeInTheDocument();
-    expect(screen.queryByText("Aplicativo Autenticador (TOTP)")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Gerenciar 2FA/i })).not.toBeInTheDocument();
   });
 
   it("permite acessar a aba Plano e visualizar status de assinatura e comparativo", async () => {
@@ -285,77 +294,65 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
 
-  it("ativa a aba Minha Conta quando acessado via ?tab=perfil", () => {
+  it("ativa a aba Minha Conta quando acessado via ?tab=perfil ou ?tab=conta", () => {
     renderSettings(["/configuracoes?tab=perfil"]);
-    expect(screen.getByText("Dados Pessoais")).toBeInTheDocument();
-  });
+    expect(screen.getByText("Dados Pessoais & Acesso")).toBeInTheDocument();
 
-  it("ativa a aba Minha Conta quando acessado via ?tab=conta", () => {
+    cleanup();
+
     renderSettings(["/configuracoes?tab=conta"]);
-    expect(screen.getByText("Dados Pessoais")).toBeInTheDocument();
+    expect(screen.getByText("Dados Pessoais & Acesso")).toBeInTheDocument();
   });
 
-  it("ativa a aba de Segurança quando acessado via ?subtab=dados", () => {
+  it("ativa a aba Dados & Privacidade quando acessado via ?subtab=dados ou ?tab=seguranca", () => {
     renderSettings(["/configuracoes?subtab=dados"]);
     expect(screen.getByText("Gestão de Dados & Backup")).toBeInTheDocument();
-  });
 
-  it("ativa a aba de Segurança quando acessado via ?tab=seguranca", () => {
+    cleanup();
+
     renderSettings(["/configuracoes?tab=seguranca"]);
     expect(screen.getByText("Gestão de Dados & Backup")).toBeInTheDocument();
-    expect(screen.queryByText("Conta & Sessão")).not.toBeInTheDocument();
-    expect(screen.queryByText("Autenticação em Duas Etapas (2FA / TOTP)")).not.toBeInTheDocument();
   });
 
-  it("ativa a aba de Aparência quando acessado via ?tab=aparencia", () => {
+  it("ativa a aba Dados & Privacidade quando acessado via ?tab=devices ou ?tab=app", () => {
+    renderSettings(["/configuracoes?tab=devices"]);
+    expect(screen.getByText("Sobre o Aplicativo")).toBeInTheDocument();
+
+    cleanup();
+
+    renderSettings(["/configuracoes?tab=app"]);
+    expect(screen.getByText("Sobre o Aplicativo")).toBeInTheDocument();
+  });
+
+  it("ativa a aba de Aparência quando acessado via ?tab=aparencia ou ?tab=widgets", () => {
     renderSettings(["/configuracoes?tab=aparencia"]);
     expect(screen.getByText("Modo de Experiência do Aplicativo")).toBeInTheDocument();
-  });
 
-  it("ativa a aba de Aparência quando acessado via ?tab=widgets", () => {
+    cleanup();
+
     renderSettings(["/configuracoes?tab=widgets"]);
     expect(screen.getByText("Interface & Composição")).toBeInTheDocument();
   });
 
-  it("ativa a aba de Notificações quando acessado via ?tab=lembretes", () => {
+  it("ativa a aba de Notificações quando acessado via ?tab=lembretes ou ?tab=notificacoes", () => {
     renderSettings(["/configuracoes?tab=lembretes"]);
     expect(screen.getByText("Lembretes & Notificações")).toBeInTheDocument();
-  });
 
-  it("ativa a aba de Notificações quando acessado via ?tab=notificacoes", () => {
+    cleanup();
+
     renderSettings(["/configuracoes?tab=notificacoes"]);
     expect(screen.getByText("Lembretes & Notificações")).toBeInTheDocument();
   });
 
-  it("permite acessar a aba Dispositivos & App e exibe status de plataforma", () => {
-    renderSettings(["/configuracoes?tab=devices"]);
-    expect(screen.getByText("Plataforma em Uso")).toBeInTheDocument();
-    expect(screen.getByText("O Tripé de Plataformas do Áxis")).toBeInTheDocument();
-  });
-
-  it("ativa a aba Dispositivos quando acessado via ?tab=dispositivos ou ?tab=app", () => {
-    renderSettings(["/configuracoes?tab=dispositivos"]);
-    expect(screen.getByText("Plataforma em Uso")).toBeInTheDocument();
-  });
-
-  it("ativa a aba Família quando acessado via ?tab=familia ou ?tab=family", () => {
-    renderSettings(["/configuracoes?tab=familia"]);
-    expect(screen.getByRole("tab", { name: "Família & Cônjuge" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByTestId("family-tab-empty")).toBeInTheDocument();
-  });
-
-  it("renderiza a seção canônica de suporte e ajuda com o seletor do tour", () => {
+  it("não renderiza o card fixo redundante de suporte no rodapé (Opção B)", () => {
     renderSettings();
-
-    const supportSection = document.querySelector('[data-tour="settings-support-card"]');
-    expect(supportSection).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: /Central de Ajuda & Suporte Técnico/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Ver Ajuda & FAQ/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Falar com Suporte/i })).toBeInTheDocument();
+    // O card duplicado de suporte no rodapé foi completamente excluído
+    const supportFooterCard = document.querySelector('[data-tour="settings-support-card"]');
+    expect(supportFooterCard).not.toBeInTheDocument();
   });
 
-  it("renderiza os seletores semânticos do tour de configurações em suas respectivas abas", () => {
-    // Aba Aparência (padrão)
+  it("renderiza os seletores semânticos do tour em suas respectivas abas", () => {
+    // Aba Aparência
     renderSettings(["/configuracoes?tab=appearance"]);
     expect(document.querySelector('[data-tour="settings-experience-presets"]')).toBeInTheDocument();
     expect(document.querySelector('[data-tour="settings-visual-identity"]')).toBeInTheDocument();
@@ -369,14 +366,7 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
 
     cleanup();
 
-    // Aba Dispositivos & App (Tripé de Plataformas e Status do APK)
-    renderSettings(["/configuracoes?tab=devices"]);
-    expect(document.querySelector('[data-tour="settings-platform-status"]')).toBeInTheDocument();
-    expect(document.querySelector('[data-tour="settings-platforms-triptych"]')).toBeInTheDocument();
-
-    cleanup();
-
-    // Aba Segurança (Biometria e Escudo de Privacidade durante o tour do APK)
+    // Aba Dados & Privacidade (Biometria durante tour APK)
     startDemo("app_native_apk");
     renderSettings(["/configuracoes?tab=security"]);
     expect(document.querySelector('[data-tour="settings-app-lock"]')).toBeInTheDocument();
@@ -385,7 +375,7 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
 
   it("renderiza a aba de Suporte & Chamados via deep-link ?tab=suporte sem abrir modal invasivo", () => {
     renderSettings(["/configuracoes?tab=suporte"]);
-    expect(screen.getByRole("tab", { name: /Suporte/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Suporte & Ajuda" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("Central de Suporte & Chamados")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Falar com o Suporte" })).not.toBeInTheDocument();
   });
@@ -394,24 +384,5 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     renderSettings(["/configuracoes?modal=suporte"]);
     expect(screen.getByRole("heading", { name: "Falar com o Suporte" })).toBeInTheDocument();
     expect(screen.getByText(/Envie sua dúvida, sugestão ou relate um problema/i)).toBeInTheDocument();
-  });
-
-  it("abre a Central de Ajuda e permite iniciar a simulação pelo botão 'Rever Tour Guiado'", async () => {
-    const user = userEvent.setup();
-    renderSettings(["/configuracoes"]);
-
-    const helpBtn = screen.getByRole("button", { name: /Ver Ajuda & FAQ/i });
-    await user.click(helpBtn);
-
-    expect(screen.getByRole("heading", { name: "Central de Ajuda & Suporte" })).toBeInTheDocument();
-    expect(screen.getByText("Tour Guiado & Modo Simulação")).toBeInTheDocument();
-
-    const tourBtn = screen.getByRole("button", { name: /Rever Tour Guiado/i });
-    expect(tourBtn).toBeInTheDocument();
-
-    await user.click(tourBtn);
-
-    expect(screen.getByRole("heading", { name: "Escolha sua Trilha de Demonstração" })).toBeInTheDocument();
-    expect(screen.getByText(/Explore os recursos do aplicativo com dados simulados em memória/i)).toBeInTheDocument();
   });
 });

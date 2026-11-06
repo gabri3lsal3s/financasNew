@@ -15,6 +15,7 @@ vi.mock("@/state/queries/use-family", () => ({
   useFamilyInvite: vi.fn(),
   useMyFamily: vi.fn(),
   useAcceptFamilyInvite: vi.fn(),
+  useLeaveFamily: vi.fn(),
 }));
 
 vi.mock("@/services/toast", () => ({
@@ -60,6 +61,11 @@ describe("FamilyInvitePage (/convite-familiar/:token)", () => {
       mutateAsync: mutateAsyncMock,
       isPending: false,
     } as unknown as ReturnType<typeof familyHooks.useAcceptFamilyInvite>);
+
+    vi.mocked(familyHooks.useLeaveFamily).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as unknown as ReturnType<typeof familyHooks.useLeaveFamily>);
   });
 
   function renderPage(token = "tok-123") {

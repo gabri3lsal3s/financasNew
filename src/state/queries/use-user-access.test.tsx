@@ -10,6 +10,8 @@ import {
   userAccessQueryKey,
   userFeaturesQueryKey,
   userSubscriptionQueryKey,
+  isRealtimeAccessEnabled,
+  subscribeUserAccessRealtime,
 } from "./use-user-access";
 import * as accessRepo from "@/data/repositories/access";
 import * as subscriptionsRepo from "@/data/repositories/subscriptions";
@@ -322,5 +324,18 @@ describe("useUserAccess hook", () => {
     expect(result.current.hasFeature("investments")).toBe(true);
     expect(result.current.hasFeature("transactions")).toBe(false);
     expect(result.current.hasFeature("overview")).toBe(false);
+  });
+
+  describe("Governança e Resiliência de Realtime", () => {
+    it("mantém Realtime desabilitado por padrão evitando conexões WebSocket indevidas", () => {
+      expect(isRealtimeAccessEnabled()).toBe(false);
+    });
+
+    it("retorna no-op e não cria canal quando Realtime está desabilitado", () => {
+      const queryClient = new QueryClient();
+      const unsubscribe = subscribeUserAccessRealtime("user-1", queryClient);
+      expect(typeof unsubscribe).toBe("function");
+      unsubscribe();
+    });
   });
 });

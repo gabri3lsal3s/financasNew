@@ -619,4 +619,116 @@ describe("filterAndRankAdvisorInsights", () => {
 
     expect(result).toBeNull();
   });
+
+  it("gera insight de prioridade 1 (Crítica) para teto familiar estourado", () => {
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [],
+      todayISO: "2026-10-15",
+      household: {
+        family: { id: "fam-1", name: "Família Silva", owner_id: "user-1", monthly_budget_cents: 500000, split_rule: "equal" },
+        month: "2026-10",
+        monthly_ceiling_cents: 500000,
+        total_spent_cents: 550000,
+        total_income_cents: 800000,
+        remaining_cents: -50000,
+        spent_percentage: 110,
+        members: [],
+        expenses: [],
+        is_settled: false,
+        settlement: null,
+        has_post_settlement_expenses: false,
+      },
+    });
+
+    const ceilingInsight = insights.find((i) => i.id === "household:ceiling_exceeded");
+    expect(ceilingInsight).toBeDefined();
+    expect(ceilingInsight?.priority).toBe(1);
+    expect(ceilingInsight?.category).toBe("critical");
+    expect(ceilingInsight?.primaryAction?.kind).toBe("navigate_family");
+  });
+
+  it("gera insight de prioridade 2 (Entrada) para acerto Pix familiar pendente", () => {
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [],
+      todayISO: "2026-10-28",
+      currentUserId: "user-1",
+      household: {
+        family: { id: "fam-1", name: "Família Silva", owner_id: "user-1", monthly_budget_cents: 500000, split_rule: "equal" },
+        month: "2026-10",
+        monthly_ceiling_cents: 500000,
+        total_spent_cents: 300000,
+        total_income_cents: 800000,
+        remaining_cents: 200000,
+        spent_percentage: 60,
+        members: [],
+        expenses: [],
+        is_settled: false,
+        settlement: {
+          id: "set-1",
+          month: "2026-10",
+          payer_id: "user-2",
+          payer_name: "Mariana",
+          receiver_id: "user-1",
+          receiver_name: "Gabriel",
+          amount_cents: 45000,
+          settled_at: "2026-10-28",
+          payment_method: "pix",
+          notes: null,
+          created_at: "2026-10-28",
+        },
+        has_post_settlement_expenses: false,
+      },
+    });
+
+    const setInsight = insights.find((i) => i.id === "household:settlement_pending");
+    expect(setInsight).toBeDefined();
+    expect(setInsight?.priority).toBe(2);
+    expect(setInsight?.category).toBe("income");
+    expect(setInsight?.description).toContain("450,00 a receber de Mariana");
+    expect(setInsight?.primaryAction?.kind).toBe("open_family_settlement");
+  });
+
+  it("gera insight de prioridade 2 (Entrada) para meta de receita em atraso no fim do mês", () => {
+    const realizedMap = new Map([["cat-pj", 100000]]);
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [],
+      todayISO: "2026-10-25",
+      incomeGoals: [
+        { id: "g1", user_id: "u1", category_id: "cat-pj", month: "2026-10", expected: 3000 },
+      ],
+      realizedIncomeByCategory: realizedMap,
+    });
+
+    const goalInsight = insights.find((i) => i.id === "income_goal:g1");
+    expect(goalInsight).toBeDefined();
+    expect(goalInsight?.priority).toBe(2);
+    expect(goalInsight?.category).toBe("income");
+    expect(goalInsight?.title).toBe("Meta de receita abaixo do ritmo");
+  });
+
+  it("gera insight de prioridade 3 (Economia) para teto familiar em ritmo acelerado", () => {
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [],
+      todayISO: "2026-10-15",
+      household: {
+        family: { id: "fam-1", name: "Família Silva", owner_id: "user-1", monthly_budget_cents: 500000, split_rule: "equal" },
+        month: "2026-10",
+        monthly_ceiling_cents: 500000,
+        total_spent_cents: 450000,
+        total_income_cents: 800000,
+        remaining_cents: 50000,
+        spent_percentage: 90,
+        members: [],
+        expenses: [],
+        is_settled: false,
+        settlement: null,
+        has_post_settlement_expenses: false,
+      },
+    });
+
+    const paceInsight = insights.find((i) => i.id === "household:ceiling_warning");
+    expect(paceInsight).toBeDefined();
+    expect(paceInsight?.priority).toBe(3);
+    expect(paceInsight?.category).toBe("savings");
+  });
 });

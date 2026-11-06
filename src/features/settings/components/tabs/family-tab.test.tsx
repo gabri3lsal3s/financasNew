@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FamilyTab } from "./family-tab";
@@ -182,6 +182,12 @@ describe("FamilyTab", () => {
   });
   const mockRevokeInvite = vi.fn().mockResolvedValue(undefined);
   const mockLeaveFamily = vi.fn().mockResolvedValue({ success: true, disbanded: false });
+  const mockDeleteFamily = vi.fn().mockResolvedValue(true);
+  const mockRemoveMember = vi.fn().mockResolvedValue({
+    success: true,
+    family_id: "fam-100",
+    removed_user_id: "user-2",
+  });
   const mockUpdateFamily = vi.fn().mockResolvedValue({
     id: "fam-100",
     name: "Família Silva Santos",
@@ -217,6 +223,16 @@ describe("FamilyTab", () => {
       mutateAsync: mockLeaveFamily,
       isPending: false,
     } as unknown as ReturnType<typeof familyHooks.useLeaveFamily>);
+
+    vi.spyOn(familyHooks, "useDeleteFamily").mockReturnValue({
+      mutateAsync: mockDeleteFamily,
+      isPending: false,
+    } as unknown as ReturnType<typeof familyHooks.useDeleteFamily>);
+
+    vi.spyOn(familyHooks, "useRemoveFamilyMember").mockReturnValue({
+      mutateAsync: mockRemoveMember,
+      isPending: false,
+    } as unknown as ReturnType<typeof familyHooks.useRemoveFamilyMember>);
 
     vi.spyOn(familyHooks, "useUpdateFamily").mockReturnValue({
       mutateAsync: mockUpdateFamily,
@@ -292,7 +308,7 @@ describe("FamilyTab", () => {
       expect(mockCreateFamily).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "Casa Nova",
-          splitRule: "equal",
+          splitRule: "combined",
         }),
       );
     });
@@ -488,7 +504,13 @@ describe("FamilyTab", () => {
 
   it("abre modal de confirmação e executa a saída da família", async () => {
     vi.spyOn(familyHooks, "useMyFamily").mockReturnValue({
-      data: mockFamilyDataWithTwoMembers,
+      data: {
+        ...mockFamilyDataWithTwoMembers,
+        currentMember: {
+          ...mockFamilyDataWithTwoMembers.currentMember,
+          role: "member",
+        },
+      },
       isLoading: false,
       isError: false,
       error: null,
@@ -508,5 +530,79 @@ describe("FamilyTab", () => {
     await waitFor(() => {
       expect(mockLeaveFamily).toHaveBeenCalled();
     });
+  });
+
+  it("abre modal de confirmação e executa a exclusão da família pelo titular", async () => {
+    vi.spyOn(familyHooks, "useMyFamily").mockReturnValue({
+      data: mockFamilyDataWithTwoMembers,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof familyHooks.useMyFamily>);
+
+    renderFamilyTab();
+
+    const deleteBtn = screen.getByRole("button", { name: /^Excluir Família$/i });
+    fireEvent.click(deleteBtn);
+
+    expect(screen.getByText(/Tem certeza de que deseja excluir a família/i)).toBeInTheDocument();
+
+    const confirmDeleteBtn = screen.getByRole("button", { name: /Confirmar Exclusão/i });
+    fireEvent.click(confirmDeleteBtn);
+
+    await waitFor(() => {
+      expect(mockDeleteFamily).toHaveBeenCalled();
+    });
+  });
+
+  it("exibe botão de remover membro para o titular e executa remoção via modal", async () => {
+    vi.spyOn(familyHooks, "useMyFamily").mockReturnValue({
+      data: mockFamilyDataWithTwoMembers,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof familyHooks.useMyFamily>);
+
+    renderFamilyTab();
+
+    // Mariana Silva é user-2, Gabriel é o titular (user-1)
+    const removeBtn = screen.getByRole("button", { name: /Remover Mariana/i });
+    expect(removeBtn).toBeInTheDocument();
+    fireEvent.click(removeBtn);
+
+    expect(await screen.findByRole("heading", { name: "Remover Membro da Família" })).toBeInTheDocument();
+    expect(screen.getByText(/Tem certeza de que deseja remover Mariana/i)).toBeInTheDocument();
+
+    const confirmRemoveBtn = screen.getByRole("button", { name: /Confirmar Remoção/i });
+    fireEvent.click(confirmRemoveBtn);
+
+    await waitFor(() => {
+      expect(mockRemoveMember).toHaveBeenCalledWith({
+        familyId: "fam-100",
+        targetUserId: "user-2",
+      });
+    });
+  });
+
+  it("NÃO exibe botão de remover membro para participantes que não são titulares", () => {
+    vi.spyOn(familyHooks, "useMyFamily").mockReturnValue({
+      data: {
+        ...mockFamilyDataWithTwoMembers,
+        currentMember: {
+          ...mockFamilyDataWithTwoMembers.currentMember,
+          role: "member",
+        },
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof familyHooks.useMyFamily>);
+
+    renderFamilyTab();
+
+    expect(screen.queryByRole("button", { name: /Remover/i })).not.toBeInTheDocument();
   });
 });

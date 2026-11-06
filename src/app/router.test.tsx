@@ -85,6 +85,10 @@ vi.mock("@/state/queries/use-family", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useLeaveFamily: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }));
 
 

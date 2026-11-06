@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { currentMonth, shiftMonth, todayLocalIso } from "@/lib/date";
-import { budgetLimitsByCategory, resolveEffectiveLimit } from "@/domain/budgets";
+import { budgetLimitsByCategory, realizedByCategoryMap, resolveEffectiveLimit } from "@/domain/budgets";
 import { numberToCents, sumGrossCents } from "@/domain/money";
 import {
   detectIncomeRecurrences,
@@ -28,8 +28,12 @@ import {
   useDeleteExpense,
   useDeleteIncome,
   useExpenses,
+  useFamilyConsolidation,
+  useFamilyMode,
   useFeedback,
+  useIncomeGoals,
   useIncomes,
+  useMyFamily,
   useSetFeedback,
   useUpdateCustomSettings,
   useUserPreferences,
@@ -270,6 +274,12 @@ export function useSmartAdvisorInsights(
   const feedbackQuery = useFeedback();
   const creditCardsQuery = useCreditCards({ enabled: queryEnabled });
 
+  const { isFamilyModeEnabled } = useFamilyMode();
+  const myFamilyQuery = useMyFamily();
+  const hasFamily = Boolean(isFamilyModeEnabled && myFamilyQuery.data?.family);
+  const familyConsolidationQuery = useFamilyConsolidation(refMonth, { enabled: hasFamily });
+  const incomeGoalsQuery = useIncomeGoals();
+
   const setFeedbackMutation = useSetFeedback();
   const createIncomeMutation = useCreateIncome();
   const deleteIncomeMutation = useDeleteIncome();
@@ -476,6 +486,8 @@ export function useSmartAdvisorInsights(
       todayISO: todayISOStr,
     });
 
+    const realizedIncomeByCategory = realizedByCategoryMap(month0Incomes.data ?? []);
+
     const candidates = generateSmartAdvisorInsights({
       occurrences,
       incomes: incomeOccurrences,
@@ -486,6 +498,10 @@ export function useSmartAdvisorInsights(
       currentMonthAportesCents: options.currentMonthAportesCents,
       allExpenses,
       cards,
+      household: hasFamily ? familyConsolidationQuery.data ?? null : null,
+      incomeGoals: incomeGoalsQuery.data ?? [],
+      realizedIncomeByCategory,
+      currentUserId: myFamilyQuery.data?.currentMember?.user_id,
     });
 
     const eligible = filterAndRankAllAdvisorInsights(candidates, {
@@ -515,6 +531,11 @@ export function useSmartAdvisorInsights(
     effectiveLastDismissedDay,
     nowMs,
     cards,
+    hasFamily,
+    familyConsolidationQuery.data,
+    incomeGoalsQuery.data,
+    month0Incomes.data,
+    myFamilyQuery.data?.currentMember?.user_id,
   ]);
 
   const totalCount = eligibleInsights.length;

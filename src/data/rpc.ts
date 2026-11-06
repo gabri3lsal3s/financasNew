@@ -17,6 +17,9 @@ import type {
   FamilySplitRule,
   InviteFamilyMemberResult,
   LeaveFamilyResult,
+  RemoveFamilyMemberResult,
+  FamilyIncomeRatioSuggestionItem,
+  FamilyPortfolioSummary,
 } from "@/types";
 
 /**
@@ -154,6 +157,7 @@ export type RecurrenceGroupFields = {
   receive_type?: string | null;
   bill_competence?: string | null;
   is_family?: boolean | null;
+  family_id?: string | null;
 };
 
 export interface CreateRecurrenceParams {
@@ -1345,6 +1349,26 @@ export async function leaveFamily(params?: LeaveFamilyParams): Promise<LeaveFami
   );
 }
 
+export interface RemoveFamilyMemberParams {
+  familyId: string;
+  targetUserId: string;
+}
+
+/**
+ * Remove um membro da unidade familiar exclusivamente pelo titular.
+ * Desvincula lançamentos e categorias do membro removido para garantir Zero Data Bleed.
+ */
+export async function removeFamilyMember(
+  params: RemoveFamilyMemberParams,
+): Promise<RemoveFamilyMemberResult> {
+  return unwrapRpc(
+    callRpc("remove_family_member", {
+      p_family_id: params.familyId,
+      p_target_user_id: params.targetUserId,
+    }),
+  );
+}
+
 export interface RecordFamilySettlementParams {
   month: string;
   payerId: string;
@@ -1373,6 +1397,45 @@ export async function recordFamilySettlement(
       p_notes: params.notes ?? null,
       p_snapshot: params.snapshot ?? {},
     }),
+  );
+}
+
+export interface GetFamilyIncomeRatioSuggestionParams {
+  familyId?: string | null;
+  lookbackMonths?: number;
+}
+
+/**
+ * Consulta a sugestão inteligente de rateio baseada na média de receitas dos membros nos últimos meses.
+ */
+export async function getFamilyIncomeRatioSuggestion(
+  params?: GetFamilyIncomeRatioSuggestionParams,
+): Promise<FamilyIncomeRatioSuggestionItem[]> {
+  const result = await unwrapRpc(
+    callRpc("get_family_income_ratio_suggestion", {
+      p_family_id: params?.familyId ?? null,
+      p_lookback_months: params?.lookbackMonths ?? 3,
+    }),
+    true,
+  );
+  return (result ?? []) as FamilyIncomeRatioSuggestionItem[];
+}
+
+export interface GetFamilyPortfolioSummaryParams {
+  familyId?: string | null;
+}
+
+/**
+ * Consolida o patrimônio e a reserva de emergência compartilhados com a família.
+ */
+export async function getFamilyPortfolioSummary(
+  params?: GetFamilyPortfolioSummaryParams,
+): Promise<FamilyPortfolioSummary | null> {
+  return unwrapRpc(
+    callRpc("get_family_portfolio_summary", {
+      p_family_id: params?.familyId ?? null,
+    }),
+    true,
   );
 }
 
