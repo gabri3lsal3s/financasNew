@@ -800,10 +800,15 @@ export function QuickTransactionSheet({
               )}
             </div>
 
-            <label className="flex items-center gap-2 cursor-pointer text-xs rounded-xl border border-border/60 bg-surface/40 p-3">
-              <Checkbox checked={syncCash} onCheckedChange={(c) => setSyncCash(!!c)} />
-              <span>Creditar o rendimento diretamente no Caixa da carteira</span>
-            </label>
+            <div className="flex flex-col gap-1 rounded-xl border border-border/60 bg-surface/40 p-3 text-xs">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox checked={syncCash} onCheckedChange={(c) => setSyncCash(!!c)} />
+                <span className="font-medium text-foreground">Creditar o rendimento diretamente no Caixa da carteira</span>
+              </label>
+              <p className="text-[11px] text-muted-foreground pl-6">
+                Aumenta a liquidez em caixa para reinvestimentos sem registrar novo aporte financeiro do bolso.
+              </p>
+            </div>
           </div>
         )}
 

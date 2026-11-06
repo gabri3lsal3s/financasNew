@@ -239,12 +239,13 @@ export function calculateMonthlyStatement(params: MonthlyStatementParams): Month
   let monthDividendsBRL = 0;
   let dividendsCount = 0;
 
-  if (eligibleDividends.length > 0) {
-    for (const d of eligibleDividends) {
-      monthDividendsBRL += Math.max(0, sanitizeNumber(d.amount));
-      dividendsCount++;
-    }
-  } else if (transactions && transactions.length > 0) {
+  for (const d of eligibleDividends) {
+    monthDividendsBRL += Math.max(0, sanitizeNumber(d.amount));
+    dividendsCount++;
+  }
+
+  // Agrega também proventos lançados via transação no ledger não cobertos pela tabela de dividendos
+  if (transactions && transactions.length > 0) {
     for (const tx of transactions) {
       if (tx.date && tx.date.slice(0, 7) === monthPrefix && isDividendType(tx.type)) {
         const val = Math.max(
@@ -252,8 +253,24 @@ export function calculateMonthlyStatement(params: MonthlyStatementParams): Month
           sanitizeNumber(tx.total) ||
             sanitizeNumber(tx.quantity) * sanitizeNumber(tx.price),
         );
-        monthDividendsBRL += val;
-        dividendsCount++;
+        const txTicker = (tx.ticker ?? "").toUpperCase().trim();
+        const txDate = tx.date.slice(0, 10);
+
+        const alreadyCovered = eligibleDividends.some((d) => {
+          const dTicker = (d.ticker ?? "").toUpperCase().trim();
+          const dDate = d.date.slice(0, 10);
+          const sameTicker = Boolean(txTicker && dTicker && txTicker === dTicker);
+          return (
+            dDate === txDate &&
+            (sameTicker || !txTicker || !dTicker) &&
+            Math.abs(sanitizeNumber(d.amount) - val) < 0.01
+          );
+        });
+
+        if (!alreadyCovered) {
+          monthDividendsBRL += val;
+          dividendsCount++;
+        }
       }
     }
   }
@@ -268,6 +285,11 @@ export function calculateMonthlyStatement(params: MonthlyStatementParams): Month
   if (transactions && transactions.length > 0) {
     for (const tx of transactions) {
       if (!tx.date || tx.date.slice(0, 7) !== monthPrefix) {
+        continue;
+      }
+
+      const ticker = (tx.ticker || "").toUpperCase().trim();
+      if (ticker === "CAIXA") {
         continue;
       }
 

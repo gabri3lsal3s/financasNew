@@ -6,7 +6,7 @@ import { filterNavItems, navItems } from "@/components/layout/nav-items";
 import type { NavItem } from "@/components/layout/nav-items";
 import { resolveBottomNavSlots } from "@/domain/navigation";
 import { triggerSensory } from "@/services/sensory";
-import { useReminders, useUserAccess } from "@/state";
+import { useFamilyMode, useMyFamily, useReminders, useUserAccess } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { MoreMenuSheet } from "./more-menu-sheet";
 
@@ -104,10 +104,13 @@ function SlotLink({ item, end = false }: { item: NavItem; end?: boolean }) {
 export function BottomNav() {
   const location = useLocation();
   const { hasFeature, isAdmin } = useUserAccess();
+  const { data: myFamilyData } = useMyFamily();
+  const { isFamilyModeEnabled } = useFamilyMode();
+  const isFamilyActive = Boolean(myFamilyData?.family || isFamilyModeEnabled);
   const { totalCount, urgentCount } = useReminders();
   const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard();
 
-  const allowedItems = filterNavItems(navItems, isAdmin, hasFeature);
+  const allowedItems = filterNavItems(navItems, isAdmin, hasFeature, isFamilyActive);
   const { primarySlots, moreMenuSlots } = resolveBottomNavSlots(allowedItems);
 
   const create = getFabAction(location.pathname, location.search, hasFeature);

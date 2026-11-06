@@ -19,6 +19,7 @@ vi.mock("@/state", () => ({
       { id: "tx-1", user_id: "u-1", asset_id: "a-1", type: "buy", date: "2026-08-05", quantity: 10, price: 38.5, total: 385, notes: "Compra PETR4" },
       { id: "tx-2", user_id: "u-1", asset_id: "a-2", type: "sell", date: "2026-08-12", quantity: 1, price: 1400, total: 1400, notes: "Resgate CDB-FACTA" },
       { id: "tx-3", user_id: "u-1", asset_id: "a-1", type: "buy", date: "2026-08-02", quantity: 100, price: 30, total: 3000 },
+      { id: "tx-div", user_id: "u-1", asset_id: "a-1", type: "dividend", date: "2026-08-25", quantity: 0, price: 0, total: 12.5, notes: "Dividendo PETR4 via ledger" },
       { id: "tx-cash", user_id: "u-1", asset_id: "a-cash", type: "buy", date: "2026-08-10", quantity: 500, price: 1, total: 500, notes: "Pseudo-compra de Caixa" },
     ],
     isLoading: false,
@@ -27,6 +28,7 @@ vi.mock("@/state", () => ({
     data: [
       { id: "c-1", user_id: "u-1", asset_id: null, date: "2026-08-01", amount: 500, notes: "Injeção de capital" },
       { id: "c-2", user_id: "u-1", asset_id: "a-1", date: "2026-08-02", amount: 3000, notes: "Aporte inicial · Compra de PETR4" },
+      { id: "c-3", user_id: "u-1", asset_id: "a-cash", date: "2026-08-03", amount: 250, notes: "Aporte em Caixa · Depósito" },
     ],
     isLoading: false,
   }),
@@ -83,6 +85,13 @@ describe("PortfolioActivityPanel", () => {
 
     expect(screen.getByText("CDB-FACTA")).toBeInTheDocument();
     expect(screen.queryByText("PETR4")).not.toBeInTheDocument();
+
+    const dividendFilterBtn = screen.getByRole("button", { name: "Proventos" });
+    fireEvent.click(dividendFilterBtn);
+
+    expect(screen.getAllByText("Provento").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Dividendo PETR4 via ledger/i)).toBeInTheDocument();
+    expect(screen.queryByText("CDB-FACTA")).not.toBeInTheDocument();
   });
 
   it("abre diálogo de confirmação ao clicar no botão de exclusão", () => {
@@ -125,6 +134,18 @@ describe("PortfolioActivityPanel", () => {
 
     // Não deve listar a transação espúria de CAIXA
     expect(screen.queryByText("Pseudo-compra de Caixa")).not.toBeInTheDocument();
+  });
+
+  it("renderiza contribuições para Caixa com badge 'Aporte em Caixa' em vez de 'Compra'", () => {
+    render(<PortfolioActivityPanel defaultMonth="2026-08" />);
+
+    // Contribuição para CAIXA exibe o badge Aporte em Caixa
+    expect(screen.getByText("Aporte em Caixa")).toBeInTheDocument();
+    expect(screen.getByText(/Aporte em Caixa · Depósito/i)).toBeInTheDocument();
+
+    // Injeção de capital com asset_id null exibe Aporte Financeiro com badge Aporte
+    expect(screen.getByText("Aporte Financeiro")).toBeInTheDocument();
+    expect(screen.getByText("Aporte")).toBeInTheDocument();
   });
 });
 

@@ -43,6 +43,7 @@ import {
   useCreateIncomeInstallments,
   useCreateRecurrence,
   useFamilyMode,
+  useMyFamily,
   usePredictionHistory,
 } from "@/state";
 import { useDemoSession } from "@/state/demo-mode";
@@ -158,6 +159,8 @@ export function LaunchWizard({
   const categoriesQuery = useCategories(state.type);
   const cardsQuery = useActiveCreditCards();
   const { isFamilyModeEnabled } = useFamilyMode();
+  const { data: myFamilyData } = useMyFamily();
+  const isFamilyActive = Boolean(isFamilyModeEnabled || myFamilyData?.family);
   const createExpense = useCreateExpense();
   const createIncome = useCreateIncome();
   const createIncomeInstallments = useCreateIncomeInstallments();
@@ -468,7 +471,7 @@ export function LaunchWizard({
       if (savedExpenseData) {
         setCreatedSplitExpense(savedExpenseData);
       } else {
-        if (isFamilyModeEnabled && state.isFamily) {
+        if (isFamilyActive && state.isFamily) {
           pushToast({
             title: state.type === "expense" ? "Despesa registrada" : "Receita registrada",
             description: "Lançamento adicionado à visão Familiar.",
@@ -766,7 +769,7 @@ export function LaunchWizard({
               set("categoryId", categoryId);
               setIsCategoryUnconfirmed(false);
               const cat = categoriesQuery.data?.find((c) => c.id === categoryId);
-              if (isFamilyModeEnabled && cat?.is_family) {
+              if (cat?.is_family) {
                 set("isFamily", true);
               }
             }}
@@ -780,7 +783,7 @@ export function LaunchWizard({
             onReceiveTypeChange={(receiveType: ReceiveType) => set("receiveType", receiveType)}
             onDescriptionChange={(description) => set("description", description)}
             onFamilyChange={(isFamily) => set("isFamily", isFamily)}
-            isFamilyModeEnabled={isFamilyModeEnabled}
+            isFamilyModeEnabled={isFamilyActive}
             onSplitToggle={handleSplitToggle}
             onSplitPeopleCountChange={handleSplitPeopleCountChange}
             onSwitchToGuided={handleSwitchToGuided}
@@ -843,7 +846,7 @@ export function LaunchWizard({
                 onSelect={(categoryId) => {
                   set("categoryId", categoryId);
                   const cat = categoriesQuery.data?.find((c) => c.id === categoryId);
-                  if (isFamilyModeEnabled && cat?.is_family) {
+                  if (cat?.is_family) {
                     set("isFamily", true);
                   }
                 }}
@@ -862,7 +865,7 @@ export function LaunchWizard({
                 onReceiveTypeChange={(receiveType: ReceiveType) => set("receiveType", receiveType)}
                 onDescriptionChange={(description) => set("description", description)}
                 onFamilyChange={(isFamily) => set("isFamily", isFamily)}
-                isFamilyModeEnabled={isFamilyModeEnabled}
+                isFamilyModeEnabled={isFamilyActive}
                 descriptionSuggestions={descriptionSuggestions}
                 onReportWeightChange={(weight) => {
                   set("reportWeight", weight);
@@ -902,7 +905,7 @@ export function LaunchWizard({
                 state={state}
                 categoryName={selectedCategory?.name}
                 closingDay={selectedCard?.closing_day}
-                isFamilyModeEnabled={isFamilyModeEnabled}
+                isFamilyModeEnabled={isFamilyActive}
               />
             ) : null}
           </>

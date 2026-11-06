@@ -6,7 +6,7 @@ import { resolveBottomNavSlots } from "@/domain/navigation";
 import { InstallAppButton } from "@/components/modules/install-app-button";
 import { DemoTrackSelectModal, HelpModal } from "@/components/modules";
 import { isAndroidDevice, isNativePlatform } from "@/services/native/platform";
-import { useReminders, useUserAccess } from "@/state";
+import { useFamilyMode, useMyFamily, useReminders, useUserAccess } from "@/state";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
@@ -21,9 +21,12 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
   const [helpModalOpen, setHelpModalOpen] = useState(false);
   const { totalCount, urgentCount } = useReminders();
   const { isAdmin, hasFeature } = useUserAccess();
+  const { data: myFamilyData } = useMyFamily();
+  const { isFamilyModeEnabled } = useFamilyMode();
+  const isFamilyActive = Boolean(myFamilyData?.family || isFamilyModeEnabled);
 
   const groups = useMemo(() => {
-    const allowedItems = filterNavItems(navItems, isAdmin, hasFeature);
+    const allowedItems = filterNavItems(navItems, isAdmin, hasFeature, isFamilyActive);
     const { primarySlots } = resolveBottomNavSlots(allowedItems);
     const bottomNavPaths = new Set(primarySlots.map((s) => s.path));
 
@@ -34,10 +37,11 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
           group.items.filter((item) => !bottomNavPaths.has(item.path)),
           isAdmin,
           hasFeature,
+          isFamilyActive,
         ),
       }))
       .filter((group) => group.items.length > 0);
-  }, [isAdmin, hasFeature]);
+  }, [isAdmin, hasFeature, isFamilyActive]);
 
   return (
     <>

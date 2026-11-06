@@ -20,6 +20,7 @@ import type {
   PortfolioSnapshot,
   PortfolioTransaction,
 } from "@/types";
+import { isDividendType } from "./dividends";
 import { calculateFixedIncomeBalance } from "./fixed-income";
 import { resolveHistoricalQuotePriority, type ResolvedHistoricalQuote } from "./historical-quotes";
 import {
@@ -409,6 +410,24 @@ export function calculatePointInTimePosition(
       accumulatedDividendsNative += divAmount;
       if (divDate.startsWith(monthPrefix)) {
         monthDividendsNative += divAmount;
+      }
+    }
+
+    // Agrega também proventos lançados no ledger que não constem na tabela de proventos
+    for (const tx of eligibleAssetTxs) {
+      if (isDividendType(tx.type)) {
+        const txAmount = Number(tx.total) || (Number(tx.quantity) || 0) * (Number(tx.price) || 0);
+        if (txAmount <= 0) continue;
+        const txDate = tx.date.slice(0, 10);
+        const alreadyCovered = assetDividends.some(
+          (d) => d.date.slice(0, 10) === txDate && Math.abs(Number(d.amount) - txAmount) < 0.01,
+        );
+        if (!alreadyCovered) {
+          accumulatedDividendsNative += txAmount;
+          if (txDate.startsWith(monthPrefix)) {
+            monthDividendsNative += txAmount;
+          }
+        }
       }
     }
 

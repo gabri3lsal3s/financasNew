@@ -6,7 +6,7 @@ import { CATEGORY_ICON_MAP } from "@/components/modules/category-icons";
 import { categoryFormSchema, suggestCategory } from "@/domain/budgets";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
-import { useCreateCategory, useFamilyMode, useUpdateCategory } from "@/state";
+import { useCreateCategory, useFamilyMode, useMyFamily, useUpdateCategory } from "@/state";
 import { DeleteCategoryDialog } from "@/features/budgets/components/delete-category-dialog";
 import type { Category, CategoryType } from "@/types";
 
@@ -53,6 +53,8 @@ function CategoryFormContent({
   const [error, setError] = useState<string | null>(null);
 
   const { isFamilyModeEnabled } = useFamilyMode();
+  const { data: myFamilyData } = useMyFamily();
+  const isFamilyActive = Boolean(isFamilyModeEnabled || myFamilyData?.family);
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const pending = createCategory.isPending || updateCategory.isPending;
@@ -72,7 +74,7 @@ function CategoryFormContent({
       type,
       icon: icon || null,
       color: color || null,
-      is_family: isFamilyModeEnabled ? isFamily : Boolean(category?.is_family),
+      is_family: isFamilyActive ? isFamily : Boolean(category?.is_family),
     };
     const parsed = categoryFormSchema.safeParse(rawForm);
     if (!parsed.success) {
@@ -89,6 +91,7 @@ function CategoryFormContent({
             icon: parsed.data.icon ?? null,
             color: parsed.data.color ?? null,
             is_family: parsed.data.is_family,
+            family_id: parsed.data.is_family ? (category.family_id ?? myFamilyData?.family.id ?? null) : null,
           },
         });
       } else {
@@ -98,6 +101,7 @@ function CategoryFormContent({
           icon: parsed.data.icon ?? null,
           color: parsed.data.color ?? null,
           is_family: parsed.data.is_family,
+          family_id: parsed.data.is_family ? (myFamilyData?.family.id ?? null) : null,
         });
       }
       triggerSensory("success");
@@ -177,7 +181,7 @@ function CategoryFormContent({
         </div>
       </div>
 
-      {isFamilyModeEnabled && (
+      {isFamilyActive && (
         <div className="rounded-xl border border-border/80 bg-surface-raised p-3">
           <Switch
             id="category-is-family"

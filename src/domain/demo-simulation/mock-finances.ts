@@ -34,6 +34,7 @@ export function generateMockFinances(referenceMonth: string = currentMonth()): D
       color: "#10b981",
       is_reserved: false,
       is_active: true,
+      is_family: true,
     },
     {
       id: "cat-demo-moradia",
@@ -44,6 +45,7 @@ export function generateMockFinances(referenceMonth: string = currentMonth()): D
       color: "#3b82f6",
       is_reserved: false,
       is_active: true,
+      is_family: true,
     },
     {
       id: "cat-demo-transporte",

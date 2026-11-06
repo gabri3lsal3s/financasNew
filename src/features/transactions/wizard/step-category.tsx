@@ -1,4 +1,4 @@
-import { Tags } from "lucide-react";
+import { Tags, Users } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -51,12 +51,21 @@ export function StepCategory({ categories, isLoading, isError, error, selectedId
           onClick={() => onSelect(category.id)}
           aria-pressed={selectedId === category.id}
           className={cn(
-            "flex flex-col items-center gap-2 rounded-xl border p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring select-none cursor-pointer",
+            "relative flex flex-col items-center gap-2 rounded-xl border p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring select-none cursor-pointer",
             selectedId === category.id
               ? "border-primary bg-primary/10"
               : "border-border bg-surface hover:bg-surface-hover",
           )}
         >
+          {category.is_family ? (
+            <span
+              className="absolute top-2 right-2 flex items-center justify-center text-muted-foreground"
+              title="Categoria Familiar Compartilhada"
+              aria-label="Categoria Familiar Compartilhada"
+            >
+              <Users className="size-3.5" aria-hidden="true" />
+            </span>
+          ) : null}
           <span className="flex size-10 items-center justify-center">
             <CategoryIcon icon={category.icon} color={category.color} className="size-5" />
           </span>

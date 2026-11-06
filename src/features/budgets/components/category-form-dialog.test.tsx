@@ -13,6 +13,7 @@ let mockIsFamilyModeEnabled = true;
 
 vi.mock("@/state", () => ({
   useFamilyMode: () => ({ isFamilyModeEnabled: mockIsFamilyModeEnabled }),
+  useMyFamily: () => ({ data: null, isLoading: false }),
   useCreateCategory: () => ({ mutateAsync: createCategoryMock, isPending: false }),
   useUpdateCategory: () => ({ mutateAsync: updateCategoryMock, isPending: false }),
   useDeleteCategory: () => ({ mutateAsync: deleteCategoryMock, isPending: false }),

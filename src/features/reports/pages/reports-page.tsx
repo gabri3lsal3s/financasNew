@@ -18,6 +18,7 @@ import {
 } from "@/domain/reports";
 import {
   isCashAssetClass,
+  isDividendType,
 } from "@/domain/portfolio";
 import { addDaysISO, todayISO } from "@/domain/debts";
 import { currentMonth, currentYear, monthRange, shiftMonth, yearRange } from "@/lib/date";
@@ -353,15 +354,37 @@ export function ReportsPage() {
       }),
     [transactions, isDateInPeriod, assets],
   );
-  const periodDividendsList = useMemo(
-    () => dividends.filter((d) => isDateInPeriod(d.date)),
-    [dividends, isDateInPeriod],
-  );
+  const periodDividendsList = useMemo(() => {
+    const list: Array<{ id?: string; asset_id: string | null; date: string; amount: number }> = [];
+
+    for (const d of dividends) {
+      if (isDateInPeriod(d.date)) {
+        list.push({ id: d.id, asset_id: d.asset_id, date: d.date, amount: d.amount });
+      }
+    }
+
+    // Agrega proventos de transações que não estejam duplicados na lista
+    for (const t of periodTransactions) {
+      if (isDividendType(t.type)) {
+        const amt = t.total > 0 ? t.total : (t.quantity > 0 && t.price > 0 ? t.quantity * t.price : 0);
+        if (amt <= 0) continue;
+        const tDate = t.date ? t.date.slice(0, 10) : "";
+        const alreadyInList = list.some(
+          (d) => d.asset_id === t.asset_id && d.date.slice(0, 10) === tDate && Math.abs(d.amount - amt) < 0.01,
+        );
+        if (!alreadyInList) {
+          list.push({ id: t.id, asset_id: t.asset_id, date: t.date, amount: amt });
+        }
+      }
+    }
+
+    return list;
+  }, [dividends, isDateInPeriod, periodTransactions]);
 
   const periodBuysBRL = useMemo(
     () =>
       periodTransactions
-        .filter((t) => t.type === "buy")
+        .filter((t) => t.type === "buy" || t.type === "subscription")
         .reduce((acc, t) => {
           const curr = assetCurrencyMap.get(t.asset_id);
           const rate = curr === "USD" ? usdRate : 1;

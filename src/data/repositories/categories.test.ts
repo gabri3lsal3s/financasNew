@@ -122,6 +122,44 @@ describe("categories repository", () => {
     );
   });
 
+  it("persiste family_id ao chamar createCategory para categoria familiar compartilhada", async () => {
+    builder = makeBuilder({
+      data: {
+        id: "cat-4",
+        user_id: "user-123",
+        type: "expense",
+        name: "Supermercado Compartilhado",
+        icon: "shopping-cart",
+        color: "#10B981",
+        is_reserved: false,
+        is_active: true,
+        is_family: true,
+        family_id: "fam-100",
+      },
+      error: null,
+    });
+
+    const created = await createCategory({
+      type: "expense",
+      name: "Supermercado Compartilhado",
+      icon: "shopping-cart",
+      color: "#10B981",
+      is_family: true,
+      family_id: "fam-100",
+    });
+
+    expect(created.id).toBe("cat-4");
+    expect(created.is_family).toBe(true);
+    expect(created.family_id).toBe("fam-100");
+    expect(builder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        is_family: true,
+        family_id: "fam-100",
+        name: "Supermercado Compartilhado",
+      }),
+    );
+  });
+
   describe("seedDefaultCategories", () => {
     it("delega ao RPC seed_default_categories quando disponível", async () => {
       mockRpc.mockResolvedValueOnce({ data: 11, error: null });

@@ -300,6 +300,45 @@ describe("point-in-time portfolio calculation engine", () => {
       expect(pos.totalReturnPnl).toBe(330); // Unrealized 200 + Acc Divs 130
     });
 
+    it("calculates received dividends from transactions when not present in dividends table", () => {
+      const transactions: PortfolioTransaction[] = [
+        {
+          id: "tx-1",
+          user_id: "user-1",
+          asset_id: "asset-petr4",
+          type: "buy",
+          date: "2025-12-01",
+          quantity: 100,
+          price: 30,
+          total: 3000,
+        },
+        {
+          id: "tx-div-1",
+          user_id: "user-1",
+          asset_id: "asset-petr4",
+          type: "dividend",
+          date: "2026-01-20",
+          quantity: 0,
+          price: 0,
+          total: 45.5,
+        },
+      ];
+
+      const result = calculatePointInTimePosition({
+        month: "2026-01",
+        assets: [assetPetr4],
+        transactions,
+        dividends: [],
+        apiPrices: { PETR4: 30 },
+      });
+
+      expect(result.monthDividendsTotalBRL).toBe(45.5);
+      expect(result.accumulatedDividendsTotalBRL).toBe(45.5);
+      const pos = result.positions[0]!;
+      expect(pos.monthDividendsBRL).toBe(45.5);
+      expect(pos.accumulatedDividendsBRL).toBe(45.5);
+    });
+
     it("converts USD assets to BRL using specified PTAX rate", () => {
       const assetAapl: PortfolioAsset = {
         id: "asset-aapl",

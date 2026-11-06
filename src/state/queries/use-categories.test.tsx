@@ -66,6 +66,49 @@ describe("useCategories Hook — Calibração de Cache (Tarefa 1.2)", () => {
     expect(observers[0]?.options.gcTime).toBe(STATIC_GC_TIME);
   });
 
+  it("lista categorias pessoais e categorias familiares compartilhadas da família ativa (Tarefa 3.2)", async () => {
+    const combinedCategories: Category[] = [
+      {
+        id: "cat-personal",
+        user_id: "user-1",
+        name: "Academia",
+        type: "expense",
+        color: "#3b82f6",
+        icon: "Dumbbell",
+        is_reserved: false,
+        is_active: true,
+        is_family: false,
+      },
+      {
+        id: "cat-shared-partner",
+        user_id: "user-partner-2",
+        name: "Supermercado Casa",
+        type: "expense",
+        color: "#10b981",
+        icon: "ShoppingCart",
+        is_reserved: false,
+        is_active: true,
+        is_family: true,
+        family_id: "fam-active-123",
+      },
+    ];
+
+    vi.mocked(categoriesRepo.listCategories).mockResolvedValueOnce(combinedCategories);
+
+    const { result } = renderHook(() => useCategories("expense"), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toHaveLength(2);
+    expect(result.current.data?.[0]?.is_family).toBe(false);
+    expect(result.current.data?.[1]?.is_family).toBe(true);
+    expect(result.current.data?.[1]?.family_id).toBe("fam-active-123");
+  });
+
   it("carrega todas as categorias com staleTime de 5 minutos", async () => {
     vi.mocked(categoriesRepo.listAllCategories).mockResolvedValueOnce(mockCategories);
 

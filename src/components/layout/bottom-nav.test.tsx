@@ -9,6 +9,8 @@ let mockSubscription = {
 };
 
 let mockHasFeature: (key: string) => boolean = () => true;
+let mockFamilyData: { family?: { id: string; name: string } } | null = null;
+let mockIsFamilyModeEnabled = false;
 
 vi.mock("@/state", () => ({
   useUserSubscription: () => mockSubscription,
@@ -26,6 +28,15 @@ vi.mock("@/state", () => ({
     isSuperAdmin: false,
     hasFeature: (key: string) => mockHasFeature(key),
     isLoading: false,
+  }),
+  useMyFamily: () => ({
+    data: mockFamilyData,
+    isLoading: false,
+  }),
+  useFamilyMode: () => ({
+    isFamilyModeEnabled: mockIsFamilyModeEnabled,
+    isLoading: false,
+    toggleFamilyMode: vi.fn(),
   }),
 }));
 
@@ -140,5 +151,24 @@ describe("BottomNav Dinâmica & Adaptativa", () => {
 
     const fab = screen.getByRole("link", { name: "Nova transação" });
     expect(fab).toHaveAttribute("href", "/relatorios?novo=transacao");
+  });
+
+  it("não exibe o item Orçamento Familiar na gaveta Mais quando o usuário não possui família ativa", () => {
+    mockFamilyData = null;
+    mockIsFamilyModeEnabled = false;
+    renderNav();
+    const moreBtn = screen.getByRole("button", { name: "Mais opções" });
+    fireEvent.click(moreBtn);
+    expect(screen.queryByRole("link", { name: /Orçamento Familiar/i })).not.toBeInTheDocument();
+  });
+
+  it("exibe o item Orçamento Familiar na gaveta Mais quando o usuário pertencer a uma família ativa", () => {
+    mockFamilyData = {
+      family: { id: "fam-1", name: "Família Carvalho" },
+    };
+    renderNav();
+    const moreBtn = screen.getByRole("button", { name: "Mais opções" });
+    fireEvent.click(moreBtn);
+    expect(screen.getByRole("link", { name: /Orçamento Familiar/i })).toBeInTheDocument();
   });
 });

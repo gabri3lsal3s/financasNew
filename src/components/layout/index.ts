@@ -15,7 +15,7 @@ export { navItems } from "./nav-items";
 export { PageShell } from "./page-shell";
 export type { LoadingScreenProps } from "./loading-screen";
 export { LoadingScreen } from "./loading-screen";
-export { Sidebar } from "./sidebar";
+export { Sidebar, Sidebar as AppSidebar } from "./sidebar";
 export type { SidebarProps } from "./sidebar";
 export { BottomNav } from "./bottom-nav";
 export { GlobalSearch } from "./global-search";

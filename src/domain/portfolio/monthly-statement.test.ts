@@ -247,5 +247,34 @@ describe("monthly-statement — Apuração da Competência Mensal", () => {
       expect(result.monthRatePct).toBe(0);
       expect(result.monthNetPnlBRL).toBe(0);
     });
+
+    it("consolida proventos de forma deduplicada quando presentes em portfolio_dividends e em transactions", () => {
+      const result = calculateMonthlyStatement({
+        month: "2026-10",
+        startBalanceBRL: 100000,
+        endBalanceBRL: 102000,
+        dividends: [
+          // Provento registrado na tabela de dividendos
+          { date: "2026-10-15", amount: 150, ticker: "XPML11" },
+          // Provento duplicado na tabela de dividendos e em transactions
+          { date: "2026-10-23", amount: 22.08, ticker: "XPML11" },
+        ],
+        transactions: [
+          // Compra normal
+          { date: "2026-10-13", type: "buy", quantity: 2, price: 50.47, total: 100.94, ticker: "TGAR11" },
+          // Provento duplicado em transactions (não deve duplicar)
+          { date: "2026-10-23", type: "dividend", quantity: 0, price: 0, total: 22.08, ticker: "XPML11" },
+          // Provento registrado apenas em transactions (deve ser somado)
+          { date: "2026-10-30", type: "fii_yield", quantity: 0, price: 0, total: 12.96, ticker: "BTLG11" },
+        ],
+      });
+
+      // 150 (XPML11) + 22.08 (XPML11 duplicado, contado 1x) + 12.96 (BTLG11 de transactions) = 185.04
+      expect(result.monthDividendsBRL).toBe(185.04);
+      expect(result.dividendsCount).toBe(3);
+      // Compras continuam sendo apenas a compra real de 100.94
+      expect(result.monthBuysBRL).toBe(100.94);
+      expect(result.transactionsCount).toBe(1);
+    });
   });
 });

@@ -9,6 +9,7 @@ import {
   Pencil,
   Search,
   Trash2,
+  Wallet,
   X,
 } from "lucide-react";
 import {
@@ -22,7 +23,7 @@ import {
 import { MonthPicker } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import { isCashAssetClass } from "@/domain/portfolio";
+import { isCashAssetClass, isDividendType } from "@/domain/portfolio";
 import { currentMonth, formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
@@ -114,12 +115,24 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
       }
       const ticker = asset?.ticker ?? "Ativo";
       const totalAmount = t.total > 0 ? t.total : (t.quantity > 0 && t.price > 0 ? t.quantity * t.price : 0);
-      const linkedNote = contributionNotesMap.get(`${t.asset_id}_${t.date}`);
+      const linkedNote = contributionNotesMap.get(`${t.asset_id}_${t.date}`) ?? (t as { notes?: string | null }).notes ?? null;
+
+      const isDiv = isDividendType(t.type);
+      const activityType: ActivityItem["type"] =
+        t.type === "buy" || t.type === "subscription"
+          ? "buy"
+          : t.type === "sell"
+            ? "sell"
+            : t.type === "split" || t.type === "reverse_split"
+              ? "split"
+              : isDiv
+                ? "dividend"
+                : "buy";
 
       list.push({
         id: `tx-${t.id}`,
         source: "transaction",
-        type: t.type === "buy" ? "buy" : t.type === "sell" ? "sell" : t.type === "split" ? "split" : "buy",
+        type: activityType,
         date: t.date,
         ticker,
         assetClass: asset?.asset_class,
@@ -138,7 +151,11 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
 
       // Evita duplicar se a transação do provento já veio pelo ledger
       const alreadyInList = list.some(
-        (item) => item.source === "transaction" && item.date === d.date && item.ticker === ticker && Math.abs(item.total - d.amount) < 0.01,
+        (item) =>
+          item.type === "dividend" &&
+          item.date === d.date &&
+          (item.ticker === ticker || ticker === "Provento") &&
+          Math.abs(item.total - d.amount) < 0.01,
       );
 
       if (!alreadyInList) {
@@ -270,10 +287,18 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
     if (filteredActivities.length === 0) return;
     const rows: ExportPortfolioActivityRow[] = filteredActivities.map((item) => {
       let typeLabel = "Operação";
-      if (item.type === "buy" || item.type === "contribution") typeLabel = "Compra / Aporte";
-      else if (item.type === "sell") typeLabel = "Venda / Resgate";
-      else if (item.type === "dividend") typeLabel = "Provento";
-      else if (item.type === "split") typeLabel = "Desdobramento";
+      const isCash = item.ticker.toUpperCase() === "CAIXA" || isCashAssetClass(item.assetClass);
+      if (item.type === "contribution") {
+        typeLabel = isCash ? "Aporte em Caixa" : "Aporte";
+      } else if (item.type === "buy") {
+        typeLabel = "Compra";
+      } else if (item.type === "sell") {
+        typeLabel = "Venda / Resgate";
+      } else if (item.type === "dividend") {
+        typeLabel = "Provento";
+      } else if (item.type === "split") {
+        typeLabel = "Desdobramento";
+      }
 
       return {
         date: item.date,
@@ -431,6 +456,18 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
             >
               Vendas/Resgates
             </button>
+            <button
+              type="button"
+              onClick={() => setFilterType("dividend")}
+              className={cn(
+                "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0",
+                filterType === "dividend"
+                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                  : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Proventos
+            </button>
             <Button
               type="button"
               variant="outline"
@@ -461,15 +498,27 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
         ) : (
           <div className="flex flex-col divide-y divide-border/60 rounded-xl border border-border/80 overflow-hidden bg-surface/70">
             {filteredActivities.map((item) => {
-              const isBuy = item.type === "buy" || item.type === "contribution";
-              const isSell = item.type === "sell";
-              const isDividend = item.type === "dividend";
-              const isSplit = item.type === "split";
               const itemAsset = item.rawTransaction
                 ? assetMap.get(item.rawTransaction.asset_id)
                 : item.rawDividend?.asset_id
                   ? assetMap.get(item.rawDividend.asset_id)
-                  : null;
+                  : item.rawContribution?.asset_id
+                    ? assetMap.get(item.rawContribution.asset_id)
+                    : null;
+
+              const isCash = itemAsset
+                ? isCashAssetClass(itemAsset.asset_class) || itemAsset.ticker.toUpperCase() === "CAIXA"
+                : item.assetClass
+                  ? isCashAssetClass(item.assetClass) || item.ticker.toUpperCase() === "CAIXA"
+                  : item.ticker.toUpperCase() === "CAIXA";
+
+              const isContribution = item.type === "contribution";
+              const isCashContribution = isContribution && isCash;
+              const isRegularContribution = isContribution && !isCash;
+              const isBuy = item.type === "buy";
+              const isSell = item.type === "sell";
+              const isDividend = item.type === "dividend";
+              const isSplit = item.type === "split";
               const itemCurrency = itemAsset?.currency ?? "BRL";
 
               return (
@@ -483,13 +532,16 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                       <div
                         className={cn(
                           "flex size-8 shrink-0 items-center justify-center rounded-lg ring-1",
-                          isBuy && "bg-positive/10 text-positive-strong ring-positive/20",
+                          (isBuy || isRegularContribution) && "bg-positive/10 text-positive-strong ring-positive/20",
+                          isCashContribution && "bg-portfolio/10 text-portfolio ring-portfolio/20",
                           isSell && "bg-destructive/10 text-critical-strong ring-destructive/20",
                           isDividend && "bg-portfolio/10 text-portfolio ring-portfolio/20",
                           isSplit && "bg-surface-hover text-muted-foreground ring-border/60",
                         )}
                       >
-                        {isBuy ? (
+                        {isCashContribution ? (
+                          <Wallet className="size-4" aria-hidden="true" />
+                        ) : isBuy || isRegularContribution ? (
                           <ArrowDownLeft className="size-4" aria-hidden="true" />
                         ) : isSell ? (
                           <ArrowUpRight className="size-4" aria-hidden="true" />
@@ -506,18 +558,32 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                             {item.ticker}
                           </span>
                           <Badge
-                            variant={isBuy ? "positive" : isSell ? "critical" : isDividend ? "portfolio" : "muted"}
+                            variant={
+                              isCashContribution
+                                ? "portfolio"
+                                : isBuy || isRegularContribution
+                                  ? "positive"
+                                  : isSell
+                                    ? "critical"
+                                    : isDividend
+                                      ? "portfolio"
+                                      : "muted"
+                            }
                             size="xs"
                           >
-                            {item.notes?.toLowerCase().includes("aporte inicial")
-                              ? "Aporte Inicial"
-                              : isBuy
-                                ? "Compra"
-                                : isSell
-                                  ? "Venda / Resgate"
-                                  : isDividend
-                                    ? "Provento"
-                                    : "Split"}
+                            {isCashContribution
+                              ? "Aporte em Caixa"
+                              : item.notes?.toLowerCase().includes("aporte inicial")
+                                ? "Aporte Inicial"
+                                : isRegularContribution
+                                  ? "Aporte"
+                                  : isBuy
+                                    ? "Compra"
+                                    : isSell
+                                      ? "Venda / Resgate"
+                                      : isDividend
+                                        ? "Provento"
+                                        : "Split"}
                           </Badge>
                           <span className="text-[11px] text-muted-foreground whitespace-nowrap">
                             {formatDateBR(item.date)}
@@ -531,7 +597,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                       <span
                         className={cn(
                           "text-xs font-bold whitespace-nowrap tabular-nums",
-                          isBuy && "text-foreground",
+                          (isBuy || isContribution) && "text-foreground",
                           isSell && "text-critical-strong",
                           isDividend && "text-positive-strong",
                         )}
@@ -545,7 +611,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                   <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto pl-10.5 sm:pl-0 pt-0.5 sm:pt-0">
                     {/* Quantidade e Preço Unitário com respiro */}
                     <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono min-w-0">
-                      {item.quantity && item.quantity > 0 && item.price && item.price > 0 ? (
+                      {!isCashContribution && item.quantity && item.quantity > 0 && item.price && item.price > 0 ? (
                         <span className="whitespace-nowrap">
                           {item.quantity} un @ <MoneyText cents={numberToCents(item.price)} currency={itemCurrency} tone="default" />
                         </span>
@@ -559,7 +625,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                         <span
                           className={cn(
                             "text-xs font-semibold whitespace-nowrap tabular-nums",
-                            isBuy && "text-foreground",
+                            (isBuy || isContribution) && "text-foreground",
                             isSell && "text-critical-strong",
                             isDividend && "text-positive-strong",
                           )}

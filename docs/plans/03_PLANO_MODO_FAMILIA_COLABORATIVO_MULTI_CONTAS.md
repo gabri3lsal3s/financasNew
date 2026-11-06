@@ -127,20 +127,20 @@ flowchart TD
 
 ## Fase 3: Repositórios, Estado & Navegação Condicional
 
-- [ ] **Tarefa 3.1: Repositório e Queries TanStack (`src/data/repositories/families.ts` e `src/state/queries/use-family.ts`)**
-  - Hooks `useMyFamily()`, `useFamilyConsolidation(month)` e mutações de convite/acerto.
+- [x] **Tarefa 3.1: Repositório e Queries TanStack (`src/data/repositories/families.ts` e `src/state/queries/use-family.ts`)**
+  - [x] Hooks `useMyFamily()`, `useFamilyConsolidation(month)` e mutações de convite/acerto.
 
-- [ ] **Tarefa 3.2: Compartilhamento de Categorias no Wizard**
-  - O `useCategories()` lista categorias pessoais + categorias marcadas com `is_family = true` da família ativa.
+- [x] **Tarefa 3.2: Compartilhamento de Categorias no Wizard**
+  - [x] O `useCategories()` lista categorias pessoais + categorias marcadas com `is_family = true` da família ativa.
 
-- [ ] **Tarefa 3.3: Injeção Condicional da Rota `/familia`**
+- [x] **Tarefa 3.3: Injeção Condicional da Rota `/familia`**
   - Exibição de item "Orçamento Familiar" no menu lateral (`AppSidebar`) e navegação mobile quando o usuário pertencer a uma família ativa.
 
-- [ ] **Portão de Qualidade 3 (QG3):**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/state/queries/use-family.test.ts`
-  - [ ] **Commit & Push da Fase 3:** `git commit -m "feat(family): repositorio, estado reativo e navegacao condicional"`
+- [x] **Portão de Qualidade 3 (QG3):**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/state/queries/use-family.test.ts`
+  - [x] **Commit & Push da Fase 3:** `git commit -m "feat(family): repositorio, estado reativo e navegacao condicional"`
 
 ---
 

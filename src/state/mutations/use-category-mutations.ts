@@ -32,6 +32,7 @@ export function useCreateCategory() {
       icon?: string | null;
       color?: string | null;
       is_family?: boolean;
+      family_id?: string | null;
     }) => createCategory(input),
     onSuccess: () => invalidateFinance(queryClient),
   });

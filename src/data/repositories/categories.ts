@@ -53,6 +53,7 @@ export async function createCategory(input: {
   icon?: string | null;
   color?: string | null;
   is_family?: boolean;
+  family_id?: string | null;
 }): Promise<Category> {
   const user_id = await currentUserId();
   const { data, error } = await resolveQuery<Category>(
@@ -63,6 +64,7 @@ export async function createCategory(input: {
         icon: input.icon ?? null,
         color: input.color ?? null,
         is_family: Boolean(input.is_family),
+        family_id: input.family_id ?? null,
         user_id,
         is_active: true,
         is_reserved: false,

@@ -29,6 +29,7 @@ vi.mock("@/services/merchant-learning", async (importOriginal) => {
 });
 
 let mockIsFamilyModeEnabled = true;
+let mockMyFamily: unknown = null;
 
 vi.mock("@/state", () => ({
   useCategories: () => ({
@@ -48,6 +49,7 @@ vi.mock("@/state", () => ({
   useCreateRecurrence: () => ({ mutateAsync: vi.fn(), isPending: false }),
   usePredictionHistory: () => ({ entries: predictionHistoryMock(), isLoading: false, error: null, refetch: vi.fn() }),
   useFamilyMode: () => ({ isFamilyModeEnabled: mockIsFamilyModeEnabled }),
+  useMyFamily: () => ({ data: mockMyFamily, isLoading: false }),
 }));
 
 vi.mock("@/state/queries/use-user-access", () => ({
@@ -80,6 +82,8 @@ const predictionHistoryMock = vi.fn(() => [] as unknown[]);
 
 describe("LaunchWizard — fluxo de lançamento (D10)", () => {
   beforeEach(() => {
+    mockIsFamilyModeEnabled = true;
+    mockMyFamily = null;
     createExpenseMock.mockReset().mockResolvedValue("expense-1");
     navigateMock.mockReset();
     activeCreditCardsMock.mockReset().mockReturnValue([]);
@@ -827,6 +831,92 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
       render(<LaunchWizard />);
       const dialog = document.querySelector('[data-tour="launch-wizard-dialog"]');
       expect(dialog).toBeInTheDocument();
+    });
+
+    it("auto-ativa isFamily ao selecionar uma categoria familiar compartilhada no Modo Rápido (Tarefa 3.2)", async () => {
+      const user = userEvent.setup();
+
+      render(
+        <LaunchWizard
+          initialMode="quick"
+          initialValues={{
+            valueCents: 5000,
+            categoryId: "c1",
+            paymentMethod: "pix",
+          }}
+        />,
+      );
+
+      const familySwitch = screen.getByRole("switch", { name: "Despesa da Casa / Familiar" });
+      expect(familySwitch).toHaveAttribute("aria-checked", "false");
+
+      // Clica na categoria familiar "Supermercado" (c3, is_family: true)
+      const supermarketBtn = screen.getByRole("button", { name: /supermercado/i });
+      await user.click(supermarketBtn);
+
+      // O switch de despesa familiar deve ser ativado automaticamente
+      expect(familySwitch).toHaveAttribute("aria-checked", "true");
+
+      const saveBtn = screen.getByRole("button", { name: /salvar transação/i });
+      await user.click(saveBtn);
+
+      await waitFor(() => {
+        expect(createExpenseMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            categoryId: "c3",
+            isFamily: true,
+          }),
+        );
+      });
+    });
+
+    it("habilita controles familiares quando o usuário pertence a uma família ativa mesmo com preferência desligada (Tarefa 3.2)", () => {
+      mockIsFamilyModeEnabled = false;
+      mockMyFamily = {
+        family: { id: "fam-1", name: "Família Silva", owner_id: "user-123", split_rule: "equal" },
+        membership: { role: "owner" },
+      };
+
+      render(
+        <LaunchWizard
+          initialMode="quick"
+          initialValues={{
+            valueCents: 4500,
+            categoryId: "c1",
+            paymentMethod: "pix",
+          }}
+        />,
+      );
+
+      // Como o usuário pertence a uma família ativa, os controles familiares devem estar presentes
+      expect(screen.getByRole("switch", { name: "Despesa da Casa / Familiar" })).toBeInTheDocument();
+    });
+
+    it("auto-ativa isFamily ao selecionar categoria familiar no modo guiado e exibe indicador visual (Tarefa 3.2)", async () => {
+      const user = userEvent.setup();
+
+      render(<LaunchWizard initialMode="guided" />);
+
+      // Passo 1: Informa o valor
+      const valueInput = screen.getByLabelText(/valor/i);
+      await user.type(valueInput, "12000");
+
+      const nextBtn = screen.getByRole("button", { name: /continuar/i });
+      await user.click(nextBtn);
+
+      // Passo 2: Seleção de Categoria — verifica indicador da categoria familiar
+      expect(screen.getAllByLabelText("Categoria Familiar Compartilhada").length).toBeGreaterThan(0);
+
+      // Seleciona categoria familiar "Supermercado"
+      const supermarketBtn = screen.getByRole("button", { name: /supermercado/i });
+      await user.click(supermarketBtn);
+
+      // Avança para o Passo 3 (Detalhes)
+      await user.click(screen.getByRole("button", { name: /continuar/i }));
+
+      // No passo 3, o switch familiar deve estar marcado
+      const familySwitch = screen.getByRole("switch", { name: "Despesa da Casa / Familiar" });
+      expect(familySwitch).toHaveAttribute("aria-checked", "true");
     });
   });
 });

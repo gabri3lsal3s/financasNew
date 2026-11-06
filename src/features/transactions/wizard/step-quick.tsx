@@ -286,12 +286,21 @@ export function StepQuick({
                   }}
                   aria-pressed={isSelected}
                   className={cn(
-                    "flex flex-col items-center justify-center gap-1.5 rounded-xl border p-2.5 transition-colors cursor-pointer select-none",
+                    "relative flex flex-col items-center justify-center gap-1.5 rounded-xl border p-2.5 transition-colors cursor-pointer select-none",
                     isSelected
                       ? "border-primary bg-primary/10 text-primary shadow-xs"
                       : "border-border/80 bg-surface hover:bg-surface-hover text-foreground",
                   )}
                 >
+                  {cat.is_family ? (
+                    <span
+                      className="absolute top-1.5 right-1.5 flex items-center justify-center text-muted-foreground"
+                      title="Categoria Familiar Compartilhada"
+                      aria-label="Categoria Familiar Compartilhada"
+                    >
+                      <Users className="size-2.5" aria-hidden="true" />
+                    </span>
+                  ) : null}
                   <span className="flex size-7 items-center justify-center shrink-0">
                     <CategoryIcon icon={cat.icon} color={cat.color} className="size-4" />
                   </span>

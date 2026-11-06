@@ -306,13 +306,16 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
           />
         </div>
 
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex flex-col gap-1 pt-1">
           <Checkbox
             id="dividend-sync-cash"
             checked={syncCash}
             onCheckedChange={(checked) => setSyncCash(Boolean(checked))}
             label="Creditar provento no saldo em caixa (corretora)"
           />
+          <p className="text-[11px] text-muted-foreground pl-6">
+            Aumenta a liquidez em caixa para reinvestimentos sem registrar novo aporte financeiro do bolso.
+          </p>
         </div>
 
         <ModalFooter>

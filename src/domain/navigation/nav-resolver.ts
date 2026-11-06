@@ -4,6 +4,7 @@ export interface NavItemConfig {
   path: string;
   featureKey?: string;
   adminOnly?: boolean;
+  familyOnly?: boolean;
 }
 
 export interface BottomNavResolution<T extends NavItemConfig> {
@@ -23,6 +24,7 @@ export const BOTTOM_NAV_PRIORITY_ORDER = [
   "/investments",
   "/dividas",
   "/orcamentos",
+  "/familia",
   "/relatorios",
   "/insights",
   "/lembretes",

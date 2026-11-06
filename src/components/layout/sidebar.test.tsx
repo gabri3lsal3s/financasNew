@@ -6,6 +6,9 @@ import { axe } from "vitest-axe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./sidebar";
 
+let mockFamilyData: { family?: { id: string; name: string } } | null = null;
+let mockIsFamilyModeEnabled = false;
+
 vi.mock("@/state", () => ({
   useReminders: () => ({
     totalCount: 0,
@@ -21,6 +24,15 @@ vi.mock("@/state", () => ({
     isSuperAdmin: false,
     hasFeature: () => true,
     isLoading: false,
+  }),
+  useMyFamily: () => ({
+    data: mockFamilyData,
+    isLoading: false,
+  }),
+  useFamilyMode: () => ({
+    isFamilyModeEnabled: mockIsFamilyModeEnabled,
+    isLoading: false,
+    toggleFamilyMode: vi.fn(),
   }),
   useUserSubscription: () => ({
     isPro: true,
@@ -50,6 +62,8 @@ function renderSidebar(isCollapsed = false, onToggle = () => {}) {
 
 beforeEach(() => {
   window.localStorage.clear();
+  mockFamilyData = null;
+  mockIsFamilyModeEnabled = false;
 });
 
 describe("Sidebar colapsável (F7.2)", () => {
@@ -140,6 +154,21 @@ describe("Sidebar colapsável (F7.2)", () => {
     expect(screen.getByRole("button", { name: /Segurança & Perfil/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Aparência & Tema/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Sair da Conta/i })).toBeInTheDocument();
+  });
+
+  it("não exibe o item Orçamento Familiar quando o usuário não possui família ativa", () => {
+    mockFamilyData = null;
+    mockIsFamilyModeEnabled = false;
+    renderSidebar();
+    expect(screen.queryByRole("link", { name: "Orçamento Familiar" })).not.toBeInTheDocument();
+  });
+
+  it("exibe o item Orçamento Familiar quando o usuário pertencer a uma família ativa", () => {
+    mockFamilyData = {
+      family: { id: "fam-1", name: "Família Carvalho" },
+    };
+    renderSidebar();
+    expect(screen.getByRole("link", { name: "Orçamento Familiar" })).toBeInTheDocument();
   });
 });
 

@@ -24,6 +24,7 @@ import {
   calculateXIRR,
   calculateTwrSeries,
   extractExplicitRateFromNotes,
+  isDividendType,
   isHistoricalWithdrawal,
   type AssetPricingMode,
   type FixedIncomeBalanceResult,
@@ -204,6 +205,21 @@ export function usePortfolioPosition(): PortfolioPosition {
   for (const d of dividends) {
     if (d.asset_id) {
       dividendsByAsset.set(d.asset_id, (dividendsByAsset.get(d.asset_id) ?? 0) + d.amount);
+    }
+  }
+
+  // Agrega proventos lançados no ledger (portfolio_transactions) evitando duplicatas com portfolio_dividends
+  for (const t of transactions) {
+    if (t.asset_id && isDividendType(t.type)) {
+      const amount = t.total > 0 ? t.total : (t.quantity > 0 && t.price > 0 ? t.quantity * t.price : 0);
+      if (amount <= 0) continue;
+      const tDate = t.date ? t.date.slice(0, 10) : "";
+      const alreadyInDividends = dividends.some(
+        (d) => d.asset_id === t.asset_id && d.date && d.date.slice(0, 10) === tDate && Math.abs(d.amount - amount) < 0.01,
+      );
+      if (!alreadyInDividends) {
+        dividendsByAsset.set(t.asset_id, (dividendsByAsset.get(t.asset_id) ?? 0) + amount);
+      }
     }
   }
   // Soma proventos acumulados históricos (anteriores ao extrato periódico).

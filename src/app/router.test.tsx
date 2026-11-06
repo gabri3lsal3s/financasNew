@@ -42,6 +42,10 @@ vi.mock("@/state", () => ({
     isLoading: false,
     isPending: false,
   }),
+  useMyFamily: () => ({
+    data: null,
+    isLoading: false,
+  }),
   useCategories: () => ({
     data: [],
     isLoading: false,

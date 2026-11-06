@@ -57,6 +57,31 @@ describe("navigation domain resolver", () => {
     expect(moreMenuSlots).toHaveLength(0);
   });
 
+  it("deve posicionar /familia respeitando a ordem canônica nos slots secundários (Mais)", () => {
+    const itemsWithFamily: NavItemConfig[] = [
+      { label: "Início", path: "/", featureKey: "overview" },
+      { label: "Transações", path: "/transacoes", featureKey: "transactions" },
+      { label: "Cartões", path: "/cartoes", featureKey: "cards" },
+      { label: "Orçamentos", path: "/orcamentos", featureKey: "budgets" },
+      { label: "Orçamento Familiar", path: "/familia", familyOnly: true },
+      { label: "Configurações", path: "/configuracoes" },
+    ];
+
+    const { primarySlots, moreMenuSlots } = resolveBottomNavSlots(itemsWithFamily);
+
+    expect(primarySlots.map((i) => i.path)).toEqual([
+      "/",
+      "/transacoes",
+      "/cartoes",
+    ]);
+
+    expect(moreMenuSlots.map((i) => i.path)).toEqual([
+      "/orcamentos",
+      "/familia",
+      "/configuracoes",
+    ]);
+  });
+
 
   it("deve resolver a rota inicial landing correta para cada perfil de permissões", () => {
     // 1. Perfil completo com overview (Home)

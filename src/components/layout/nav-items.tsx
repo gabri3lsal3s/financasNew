@@ -10,6 +10,7 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { SystemFeatureKey } from "@/types";
@@ -21,6 +22,7 @@ export interface NavItem {
   icon: LucideIcon;
   featureKey?: SystemFeatureKey | string;
   adminOnly?: boolean;
+  familyOnly?: boolean;
 }
 
 export interface NavGroup {
@@ -36,6 +38,7 @@ export const navItems: NavItem[] = [
   { label: "Contas & Dívidas", shortLabel: "Contas", path: "/dividas", icon: HandCoins, featureKey: "debts" },
   { label: "Investimentos", shortLabel: "Carteira", path: "/investments", icon: ChartLine, featureKey: "investments" },
   { label: "Orçamentos", shortLabel: "Orçamentos", path: "/orcamentos", icon: PiggyBank, featureKey: "budgets" },
+  { label: "Orçamento Familiar", shortLabel: "Família", path: "/familia", icon: Users, familyOnly: true },
   { label: "Relatórios", shortLabel: "Relatórios", path: "/relatorios", icon: ChartPie, featureKey: "reports" },
   { label: "Insights", shortLabel: "Insights", path: "/insights", icon: Sparkles, featureKey: "insights" },
   { label: "Lembretes", shortLabel: "Lembretes", path: "/lembretes", icon: Bell, featureKey: "reminders" },
@@ -59,6 +62,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { label: "Investimentos", shortLabel: "Carteira", path: "/investments", icon: ChartLine, featureKey: "investments" },
       { label: "Orçamentos", shortLabel: "Orçamentos", path: "/orcamentos", icon: PiggyBank, featureKey: "budgets" },
+      { label: "Orçamento Familiar", shortLabel: "Família", path: "/familia", icon: Users, familyOnly: true },
       { label: "Relatórios", shortLabel: "Relatórios", path: "/relatorios", icon: ChartPie, featureKey: "reports" },
       { label: "Insights", shortLabel: "Insights", path: "/insights", icon: Sparkles, featureKey: "insights" },
     ],
@@ -74,15 +78,17 @@ export const navGroups: NavGroup[] = [
 ];
 
 /**
- * Filtra itens de navegação baseado no status administrativo e nas Feature Flags ativas.
+ * Filtra itens de navegação baseado no status administrativo, presença de família ativa e nas Feature Flags ativas.
  */
 export function filterNavItems(
   items: readonly NavItem[],
   isAdmin: boolean,
   hasFeature: (key: string) => boolean,
+  isFamilyActive = false,
 ): NavItem[] {
   return items.filter((item) => {
     if (item.adminOnly && !isAdmin) return false;
+    if (item.familyOnly && !isFamilyActive) return false;
     if (item.featureKey && !hasFeature(item.featureKey)) return false;
     return true;
   });

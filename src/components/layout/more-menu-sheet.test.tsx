@@ -10,6 +10,8 @@ vi.mock("@/state", () => ({
     isAdmin: false,
     hasFeature: () => true,
   }),
+  useMyFamily: () => ({ data: null }),
+  useFamilyMode: () => ({ isFamilyModeEnabled: false }),
 }));
 
 describe("MoreMenuSheet", () => {

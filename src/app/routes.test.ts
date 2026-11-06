@@ -17,6 +17,7 @@ describe("app/routes", () => {
     expect(paths).toContain("/relatorios");
     expect(paths).toContain("/investments");
     expect(paths).toContain("/carteira");
+    expect(paths).toContain("/familia");
   });
 
   it("registra as rotas públicas legais em publicLegalRoutes", () => {

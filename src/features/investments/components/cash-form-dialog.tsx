@@ -172,10 +172,10 @@ function CashFormContent({ asset = null, onClose }: CashFormContentProps) {
               id="cash-record-external-contribution"
               checked={recordAsContribution}
               onCheckedChange={setRecordAsContribution}
-              label="Registrar como novo aporte financeiro vindo de fora"
+              label="Registrar como Aporte do Bolso (Depósito em Caixa)"
             />
             <p className="pl-6 text-[11px] text-muted-foreground">
-              Desligado por padrão (reconciliação contábil pura). Ao ativar, o acréscimo de saldo será contabilizado como aporte financeiro no fluxo da carteira.
+              Desligado por padrão (reconciliação contábil pura). Ao ativar, registra um <strong>Aporte em Caixa</strong> nas movimentações e no fluxo do mês (dinheiro novo transferido da sua conta corrente para a corretora).
             </p>
           </div>
         )}
