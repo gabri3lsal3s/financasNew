@@ -111,6 +111,8 @@ Referência completa (ajustar nomes à marca final):
   ]
   ```
 - `display_override`: `["window-controls-overlay", "standalone"]` — ativa a **Window Controls Overlay** (WCO) em Chrome/Edge, permitindo pintar a barra de título da janela do PWA com o tema do app (ver §4.1). Fallback `standalone` para browsers sem suporte a WCO.
+- `launch_handler`: `{ "client_mode": ["navigate-existing", "auto"] }` — reutiliza janelas abertas do PWA ao clicar em links compartilhados ou notificações, evitando duplicatas da aplicação.
+- `handle_links`: `"preferred"` — instrui navegadores e launchers do SO a abrirem URLs do escopo diretamente na instância do PWA instalada em vez de abas normais do navegador.
 
 ---
 

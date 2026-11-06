@@ -1,5 +1,35 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.93** registra os **Deep Links Universais, PWA Launch Handling, Fila de Salvamento com Tolerância Biométrica & Navegação Ergonômica em Links Compartilhados** (2026-11-05):
+> - **(1) Deep Links Universais & PWA Launch Handling (`AndroidManifest.xml` & `manifest.webmanifest`)**:
+>   - Mapeamento de `<intent-filter android:autoVerify="true">` no APK Android para captura direta de URLs compartilhadas (`/r`, `/meta`, `/orcamento-familiar`, `/ferramentas`) sob `https://axisfinance.app` e esquema `com.guiafinanceiro.app://`;
+>   - Ativação de `launch_handler: { "client_mode": ["navigate-existing", "auto"] }` e `handle_links: "preferred"` no manifesto PWA, eliminando duplicidade de janelas abertas e reusando a instância já em execução.
+> - **(2) Fila de Salvamento Resiliente com Tolerância a Bloqueio Biométrico (`usePendingSplitExpense`)**:
+>   - Persistência e transporte seguro de cota, participante e categorização quando usuários salvam via `/r/:token` desautenticados;
+>   - Acoplamento à guarda de autenticação global (`RequireAuth` em `router.tsx`) com suspensão e espera reativa caso o app esteja bloqueado por biometria (`isAppLocked()` / `subscribeAppLock`);
+>   - Resolução pós-desbloqueio biométrico: persistência atômica da despesa (`createExpense`), disparo automático de sinalização Pix ao anfitrião (`signal_split_payment`), feedback tátil (`triggerSensory("success")`) e confirmação por toast.
+> - **(3) Barra de Navegação Compartilhada Ergonômica (`SharedLinkHeaderNav`)**:
+>   - Cabeçalho padronizado em todas as páginas públicas compartilhadas (`SplitPublicPage`, `GoalTrackerPublicPage`, `FamilyBudgetPage`);
+>   - Exibição de botão ergonômico **[ ← Voltar ao Início ]** quando executado em modo PWA Standalone ou app nativo, permitindo retorno imediato ao painel financeiro principal sem atrito;
+>   - Botão inteligente **[ Abrir no App ]** em navegadores convencionais com disparo via URI scheme e atalho direto para **[ Meu Painel ]** se autenticado.
+> - **(4) Portões de Qualidade & Testes Automatizados**:
+>   - 100% dos testes unitários verdes em `use-pending-split-expense.test.ts`, `shared-link-header-nav.test.tsx`, `split-public-page.test.tsx` e `goal-card.test.tsx`;
+>   - 0 erros em `tsc --noEmit`, 0 violações em `npm run lint` e build de produção concluído com sucesso.
+>
+> **v2.92** registra a **Gestão Integral de Ciclo de Vida de Metas Coletivas / Vaquinhas e Saneamento Ergonômico de Categorias e Metas** (2026-11-05):
+> - **(1) Ciclo Completo de Gestão e Edição Irrestrita de Metas Coletivas (`ShareGoalDialog` & `CampaignCard`)**:
+>   - Remodelação ergonômica de `CampaignCard`: eliminação de botões externos soltos de editar e excluir, tornando o card interativo e acionador do modal de gerenciamento centralizado;
+>   - Edição pós-criação de todos os parâmetros no modal (`ShareGoalDialog`): recalibração de meta alvo (`target_cents`), saldo acumulado em tempo real (`current_cents`), prazo (`deadline` com suporte a remoção para metas abertas), chave Pix, tipo de chave e visibilidade pública de doações;
+>   - Exclusão atômica com diálogo de confirmação (`ConfirmDialog` / `useDeletePublicShare`), expurgando com segurança a meta, o link público e as contribuições;
+>   - Ciclo de link público: alternância instantânea entre pausar (`useRevokePublicShare`) e restaurar (`useRestorePublicShare`), preservando a visibilidade no aplicativo para o anfitrião com badge informativo "Link Desativado".
+> - **(2) Saneamento Visual e Ergonomia Unificada de Categorias e Metas (`BudgetsPage`, `LimitDialog` & `GoalCard`)**:
+>   - Remoção de botões soltos `Edit3` nos cards de limites de despesas (`BudgetsPage`), metas de renda (`GoalCard`) e catálogo geral de categorias;
+>   - Acesso à customização de categoria (nome, cor e ícone) contextualizado e integrado dentro dos modais de gerenciamento (`LimitDialog` e `IncomeGoalDialog`), eliminando sobreposição e fadiga visual;
+>   - No catálogo geral de categorias, o toque direto no card abre o formulário cadastral com suporte a foco acessível e feedback sensorial.
+> - **(3) Bateria de Testes Vitest & Portões de Qualidade 100% Verdes**:
+>   - Suíte unitária atualizada e validada em `campaign-card.test.tsx`, `goal-card.test.tsx`, `share-goal-dialog.test.tsx` e `budgets-page.test.tsx`;
+>   - 0 erros em `tsc --noEmit` e 0 violações em `npm run lint`.
+>
 > **v2.91** registra o **Ciclo Completo de Gestão de Racha de Despesas (Rateio Sob Demanda 100% Inicial, Abatimento Progressivo, Sinalização Pix e Exclusão Granular)** (2026-11-05):
 > - **(1) Rateio Contábil Sob Demanda & Trava Anti-Conflito no Lançamento (`LaunchWizard`)**:
 >   - Bloqueio automático do seletor de peso em 100% (`report_weight = 1.0`) ao ligar o toggle de rachar despesa, impedindo duplo abatimento prematuro;

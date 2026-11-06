@@ -302,6 +302,7 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
 - CRUD de categorias de despesa e renda (nome, ícone, cor).
 - **Sugestão inteligente por nome:** infere ícone/cor e limite sugerido por regra de nome (moradia, alimentação, transporte, saúde, educação, lazer, compras, outros).
 - **Exclusão com migração** (RPC `delete_category_migrate`): mover lançamentos para outra categoria antes de excluir.
+- **Ergonomia e Saneamento Visual:** ausência de botões externos soltos de edição nos cards de limites de gastos (`LimitDialog`) e metas de renda (`GoalCard`); a interação primária de clique no card abre o respectivo modal operacional, de onde o usuário acessa diretamente o editor detalhado da categoria (`CategoryFormDialog`) via ação contextual "Editar detalhes da categoria (nome, cor, ícone)". No catálogo de categorias, o toque direto no card abre o formulário cadastral, preservando a interface limpa e sem ruído de botões duplicados.
 
 #### 3.5.2 Orçamentos (despesas)
 
@@ -672,10 +673,22 @@ O módulo de compartilhamento e crescimento orgânico foi projetado para permiti
 - **Blindagem de Dados via RPC `get_shared_family_budget`:** executada com `SECURITY DEFINER` e sanitização estrita, a função consolida apenas os tetos orçamentários das categorias familiares e as despesas com `is_family = true` para o mês solicitado. Contas bancárias, investimentos, patrimônio líquido ou despesas pessoais (`is_family = false`) do titular jamais são expostos.
 - **Página Pública `FamilyBudgetPage`:** interface mobile-first e responsiva com cards do teto orçamentário do mês, valor gasto conjunto, percentual de consumo, gráfico de distribuição e lista detalhada das despesas familiares do período.
 
-#### 3.13.3 Termômetro de Meta Coletiva (`/meta/:token`)
-- **Ativação no Módulo de Metas (`GoalCard` & `ShareGoalDialog`):** o usuário pode marcar qualquer meta financeira para arrecadação coletiva (viagens, eventos, festas, presentes ou reformas), associando sua chave Pix.
-- **RPC `get_shared_goal_tracker`:** consulta pública via token que retorna exclusivamente o título da meta, valor alvo, valor já arrecadado, data limite e chave Pix do organizador.
-- **Página Pública `GoalTrackerPublicPage`:** exibe barra de termômetro animada com o percentual atingido, dias restantes para o encerramento da campanha e botão de 1 clique para copiar o Pix do organizador. Conforme o organizador registra depósitos pelo app, o termômetro atualiza automaticamente para todos os participantes na web.
+#### 3.13.3 Termômetro de Meta Coletiva (`/meta/:token`) & Gestão de Ciclo de Vida
+- **Ativação e Visualização no App (`CampaignCard` & `ShareGoalDialog`):**
+  - O card da campanha (`CampaignCard`) adota visual limpo e sem poluição de ícones soltos (sem botão externo de editar ou excluir); o clique no card ou em suas informações aciona diretamente o modal `ShareGoalDialog`.
+  - Ações diretas no card preservadas: registro de aporte/depósito (`+ Depósito`), conferência de participantes (`Participantes`), cópia rápida do link público (`Link`) e abertura em nova aba (`ExternalLink`).
+- **Edição Completa Pós-Criação (`ShareGoalDialog`):**
+  - No modal, o anfitrião pode acionar "Editar Meta" a qualquer momento, alterando o título, meta alvo (`target_cents`), saldo arrecadado (`current_cents`), prazo (`deadline`, com suporte a exclusão/data aberta), chave Pix (`pix_key`), tipo de chave Pix (`pix_key_type`), dados do titular e visibilidade pública de doadores (`show_contributions_publicly`).
+- **Exclusão Atômica Definitiva:**
+  - Botão "Excluir meta" disponível dentro do modal (tanto em modo de visualização quanto em edição), acionando `ConfirmDialog` de proteção e expurgando permanentemente a meta, o compartilhamento público e as contribuições via mutação `deletePublicShare`.
+- **Pausar e Reativar Link Público:**
+  - O anfitrião pode pausar o link público (`revokePublicShare`), desativando o acesso web externo sem perder os dados da meta, e reativar a qualquer momento (`restorePublicShare`).
+- **Preservação de Visibilidade do Anfitrião:**
+  - Metas coletivas pausadas permanecem visíveis para o anfitrião na listagem do app com badge informativo "Link Desativado", prevenindo estados órfãos e garantindo gestão contínua.
+- **RPC `get_shared_goal_tracker`:**
+  - Consulta pública via token que retorna exclusivamente título da meta, valor alvo, valor já arrecadado, data limite, chave Pix do organizador e lista de contribuições públicas quando habilitado.
+- **Página Pública `GoalTrackerPublicPage`:**
+  - Exibe barra de termômetro animada com o percentual atingido, dias restantes para o encerramento da campanha e botão de 1 clique para copiar o Pix do organizador. Conforme o organizador registra depósitos pelo app, o termômetro atualiza automaticamente para todos os participantes na web.
 
 #### 3.13.4 Hub de Simuladores Financeiros Abertos & Stateful URLs
 - **Simuladores Públicos Client-Side (Custo Zero de Servidor):** rotas abertas indexáveis executadas 100% no cliente sem autenticação e sem requisições ao banco de dados:
@@ -690,6 +703,21 @@ O módulo de compartilhamento e crescimento orgânico foi projetado para permiti
 - **Rodapé Contábil Padronizado (`ReportFooter`):** aplicado em todas as exportações e relatórios analíticos impressos com tipografia sóbria:
   `Relatório estruturado via Áxis Finance · Gestão Financeira Pessoal & Automação | axis.app`
 - **Chancela Oficial com Link Discreto de Apresentação:** hiperlink elegante na chancela oficial direcionando o leitor do PDF digital para a página de apresentação da plataforma (`/apresentacao` via `getPublicAppUrl`), preservando acabamento executivo sem poluição visual (micro QR Code mantido apenas como prop opcional desativada por padrão).
+
+#### 3.13.6 Deep Links Universais, PWA Launch Handler, Fila de Salvamento com Tolerância Biométrica & Navegação Ergonômica
+- **Deep Links Universais no APK Nativo (`AndroidManifest.xml`):**
+  - Configuração de `<intent-filter android:autoVerify="true">` mapeando domínios verificados (`https://axisfinance.app`, `https://www.axisfinance.app`) e esquema nativo (`com.guiafinanceiro.app://`) para os prefixos canônicos de compartilhamento: `/r`, `/meta`, `/orcamento-familiar` e `/ferramentas`.
+- **PWA Launch Handling (`manifest.webmanifest`):**
+  - Ativação de `launch_handler: { "client_mode": ["navigate-existing", "auto"] }` e `handle_links: "preferred"` no manifest PWA, garantindo que o sistema operacional direcione links compartilhados à janela já ativa do PWA instalado sem recargas abruptas ou múltiplas abas concorrentes.
+- **Barra de Navegação Compartilhada Ergonômica (`SharedLinkHeaderNav`):**
+  - Cabeçalho padronizado em todas as páginas públicas compartilhadas (`/r/:token`, `/meta/:token`, `/orcamento-familiar/:token`).
+  - No modo PWA Standalone ou app nativo, exibe o botão ergonômico **[ ← Voltar ao Início ]** (`navigate("/")`), permitindo que o usuário saia suavemente do link compartilhado e retorne ao seu painel financeiro principal sem atrito.
+  - Em navegadores web convencionais, disponibiliza o botão inteligente **[ Abrir no App ]** (com fallback de detecção e disparo do esquema nativo `com.guiafinanceiro.app://${cleanPath}`) e **[ Meu Painel ]** se autenticado.
+- **Fila de Salvamento Resiliente com Tolerância Biométrica (`usePendingSplitExpense`):**
+  - Convidados desautenticados que clicam em *"Salvar despesa no Áxis Finance"* têm os dados completos da cota (valor, participante, categoria e metadados) preservados em armazenamento local.
+  - Ao concluir o cadastro ou login, o hook global acoplado à rota protegida detecta a pendência.
+  - Caso o aplicativo esteja bloqueado por biometria (`isAppLocked()`), a mutação aguarda reativamente o desbloqueio biométrico do usuário (`subscribeAppLock`) via `useSyncExternalStore`.
+  - Após o desbloqueio seguro, a despesa é persistida via `createExpense`, o sinal de pagamento via Pix é despachado automaticamente ao anfitrião (`signal_split_payment`), o feedback tátil de sucesso é acionado (`triggerSensory("success")`) e um toast informativo confirma o registro imediato.
 
 ---
 

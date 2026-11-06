@@ -19,11 +19,17 @@
             android:launchMode="singleTask"
             android:exported="true">
 
-            <intent-filter>
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="axisfinance.app" />
+                <data android:scheme="https" android:host="www.axisfinance.app" />
                 <data android:scheme="https" android:host="com.guiafinanceiro.app" />
+                <data android:pathPrefix="/r" />
+                <data android:pathPrefix="/meta" />
+                <data android:pathPrefix="/orcamento-familiar" />
+                <data android:pathPrefix="/ferramentas" />
             </intent-filter>
 
             <intent-filter>

@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router";
 import {
-  ShieldCheck,
   ShieldAlert,
   Target,
   TrendingUp,
@@ -40,6 +39,7 @@ import { IosPwaInstallDialog } from "@/components/modules/ios-pwa-install-dialog
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { cn } from "@/lib/utils";
+import { SharedLinkHeaderNav } from "../components";
 
 const PIX_KEY_TYPE_LABELS: Record<string, string> = {
   cpf: "CPF",
@@ -217,33 +217,30 @@ export function GoalTrackerPublicPage() {
   return (
     <main className="min-h-screen bg-background text-foreground flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto w-full space-y-6">
-        {/* Topo / Barra de Navegação Pública */}
-        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-border/80">
-          <div className="flex items-center gap-3">
-            <BrandLogo />
-            <Badge variant="muted" size="xs" className="gap-1 font-mono uppercase">
-              <ShieldCheck className="size-3 text-positive-strong" aria-hidden="true" />
-              <span>Termômetro Público</span>
-            </Badge>
-          </div>
-          <div className="flex items-center gap-2">
+        {/* Topo / Barra de Navegação Pública Unificada */}
+        <div className="space-y-3">
+          <SharedLinkHeaderNav
+            badgeLabel="Termômetro de Meta"
+            targetPath={`meta/${token || ""}`}
+          />
+          <div className="flex items-center justify-end">
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size="xs"
               onClick={handleRefresh}
               disabled={isRefetching}
-              className="gap-1.5 border-border/80 bg-surface hover:bg-surface-hover rounded-xl cursor-pointer text-xs"
+              className="gap-1.5 border-border/80 bg-surface hover:bg-surface-hover rounded-lg cursor-pointer text-xs h-7"
               aria-label="Atualizar dados do termômetro"
             >
               <RefreshCw
                 className={cn("size-3 text-muted-foreground", isRefetching && "animate-spin")}
                 aria-hidden="true"
               />
-              <span>Atualizar</span>
+              <span>Atualizar dados</span>
             </Button>
           </div>
-        </header>
+        </div>
 
         {/* Hero Card: Termômetro Visual de Progresso Dinâmico */}
         <Card className="border-border/80 bg-surface shadow-xs">

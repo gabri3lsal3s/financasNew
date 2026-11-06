@@ -12,7 +12,6 @@ import {
   Calendar,
   User,
 } from "lucide-react";
-import { BrandLogo } from "@/components/layout";
 import {
   Button,
   Badge,
@@ -35,6 +34,7 @@ import { triggerSensory } from "@/services/sensory";
 import {
   SelectParticipantDialog,
   SelectSplitCategoryDialog,
+  SharedLinkHeaderNav,
   SplitOnboardingModal,
 } from "../components";
 import type { SplitParticipantItem, SplitSharePayload } from "@/types";
@@ -293,19 +293,13 @@ export function SplitPublicPage() {
 
   return (
     <div className="min-h-dvh bg-background text-foreground flex flex-col justify-between p-4 sm:p-6 md:p-8">
-      {/* Header Institucional Superior */}
-      <header className="w-full max-w-md mx-auto flex items-center justify-between pb-6">
-        <Link
-          to="/apresentacao"
-          className="inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-lg"
-          aria-label="Ir para a página inicial do Áxis Finance"
-        >
-          <BrandLogo showWordmark showSubtitle />
-        </Link>
-        <Badge variant="muted" size="xs">
-          Racha de Conta
-        </Badge>
-      </header>
+      {/* Header Institucional Superior Unificado */}
+      <div className="w-full max-w-md mx-auto pb-4">
+        <SharedLinkHeaderNav
+          badgeLabel="Racha de Conta"
+          targetPath={`r/${token || ""}`}
+        />
+      </div>
 
       {/* Conteúdo Central */}
       <main className="w-full max-w-md mx-auto my-auto space-y-4">

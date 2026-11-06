@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useIdleSessionTimeout } from "@/hooks/use-idle-session-timeout";
 import { useMinimumLoading } from "@/hooks/use-minimum-loading";
 import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
+import { usePendingSplitExpense } from "@/hooks/use-pending-split-expense";
 import { useUserAccess } from "@/state";
 import {
   getPendingRouteAfterUnlock,
@@ -141,6 +142,7 @@ function RequireAuth() {
   const { session, loading: authLoading, configError } = useAuth();
   const userAccess = useUserAccess(session?.user?.id);
   const location = useLocation();
+  usePendingSplitExpense();
 
   // F23 — pre-fetching discreto dos chunks das rotas vizinhas (idle).
   useRoutePrefetch();

@@ -241,8 +241,9 @@
     │   │
     │   ├── public-share/          #   Compartilhamento Público (/r/:token, /orcamento-familiar/:token, /meta/:token)
     │   │                          #     pages: split-public-page, family-budget-page, goal-tracker-public-page
-    │   │                          #     components: pix-copy-block, share-public-shell, family-budget-category-list,
-    │   │                          #                 split-onboarding-modal, select-participant-dialog, select-split-category-dialog
+    │   │                          #     components: pix-copy-block, share-public-shell, shared-link-header-nav,
+    │   │                          #                 family-budget-category-list, split-onboarding-modal,
+    │   │                          #                 select-participant-dialog, select-split-category-dialog
     │   │
     │   ├── tools/                 #   Simuladores Financeiros Abertos & Hub (/ferramentas, /ferramentas/simulador-dividas, /ferramentas/rebalanceamento, /ferramentas/juros-compostos)
     │   │                          #     pages: tools-hub-page, debt-simulator-page, rebalance-simulator-page, compound-interest-page

@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 import { useNavigate, useSearchParams } from "react-router";
 import { ArrowRight, Edit3, HelpCircle, Info, PiggyBank, Plus, SlidersHorizontal, Sparkles, Target, TrendingDown, User, Users } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Popover, PopoverContent, PopoverTrigger, Skeleton, Tabs } from "@/components/ui";
-import { pushToast } from "@/services/toast";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon, MonthPicker, ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
@@ -31,7 +30,6 @@ import {
   useBudgets,
   useCategories,
   useCategoryUsage,
-  useDeletePublicShare,
   useExpenses,
   useIncomeGoals,
   useIncomes,
@@ -79,7 +77,6 @@ export function BudgetsPage() {
   const [manageContributionsShare, setManageContributionsShare] = useState<PublicShare | null>(null);
   const [editingShare, setEditingShare] = useState<PublicShare | null>(null);
   const [editingShareInitialEdit, setEditingShareInitialEdit] = useState(false);
-  const [deletingShare, setDeletingShare] = useState<PublicShare | null>(null);
   const [createStandaloneCampaignOpen, setCreateStandaloneCampaignOpen] = useState(false);
   const [showArchivedCampaigns, setShowArchivedCampaigns] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -101,25 +98,8 @@ export function BudgetsPage() {
   const usageQuery = useCategoryUsage(editingCategory ? editingCategory.id : null);
 
   const reallocate = useReallocateBudget();
-  const deleteShareMutation = useDeletePublicShare();
   const seedCategoriesMutation = useSeedDefaultCategories();
   const [seedFeedback, setSeedFeedback] = useState<string | null>(null);
-
-  const handleConfirmDeleteCampaign = async () => {
-    if (!deletingShare) return;
-    try {
-      await deleteShareMutation.mutateAsync(deletingShare.id);
-      setDeletingShare(null);
-      triggerSensory("action");
-      pushToast({
-        title: "Meta de arrecadação excluída!",
-        description: "A meta e todas as suas contribuições foram excluídas com sucesso.",
-        variant: "default",
-      });
-    } catch {
-      triggerSensory("destructive");
-    }
-  };
 
   const error = budgetsQuery.error ?? goalsQuery.error ?? expensesQuery.error ?? incomesQuery.error ?? allCategoriesQuery.error;
 
@@ -700,7 +680,6 @@ export function BudgetsPage() {
                     setEditingShare(s);
                     setEditingShareInitialEdit(true);
                   }}
-                  onDeleteShare={(s) => setDeletingShare(s)}
                   onManageContributions={(s) => setManageContributionsShare(s)}
                 />
               ))}
@@ -737,7 +716,6 @@ export function BudgetsPage() {
                       setEditingShare(s);
                       setEditingShareInitialEdit(true);
                     }}
-                    onDeleteShare={(s) => setDeletingShare(s)}
                     onManageContributions={(s) => setManageContributionsShare(s)}
                   />
                 ))}
@@ -861,12 +839,31 @@ export function BudgetsPage() {
             {allCategories.map((category) => (
               <div
                 key={category.id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-surface/70 p-3 sm:p-3.5 shadow-2xs transition-all hover:border-border hover:bg-surface min-w-0"
+                role={category.is_reserved ? undefined : "button"}
+                tabIndex={category.is_reserved ? undefined : 0}
+                aria-label={category.is_reserved ? undefined : `Editar cadastro de ${category.name}`}
+                onClick={() => {
+                  if (!category.is_reserved) {
+                    triggerSensory("action");
+                    handleEditCategory(category);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (!category.is_reserved && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
+                    triggerSensory("action");
+                    handleEditCategory(category);
+                  }
+                }}
+                className={cn(
+                  "group flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-surface/70 p-3 sm:p-3.5 shadow-2xs transition-all hover:border-border hover:bg-surface min-w-0",
+                  !category.is_reserved && "cursor-pointer hover:border-primary/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40",
+                )}
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   <CategoryIcon icon={category.icon} color={category.color} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-foreground">
+                    <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
                       {category.name}
                     </p>
                     <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
@@ -875,20 +872,6 @@ export function BudgetsPage() {
                     </span>
                   </div>
                 </div>
-
-                {!category.is_reserved && (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="size-7 text-muted-foreground hover:text-foreground"
-                    aria-label={`Editar cadastro de ${category.name}`}
-                    title={`Editar cadastro de ${category.name}`}
-                    onClick={() => handleEditCategory(category)}
-                  >
-                    <Edit3 className="size-3.5" aria-hidden="true" />
-                  </Button>
-                )}
               </div>
             ))}
           </div>
@@ -1033,17 +1016,6 @@ export function BudgetsPage() {
           }}
         />
       ) : null}
-
-      <ConfirmDialog
-        open={deletingShare !== null}
-        onOpenChange={(next) => !next && setDeletingShare(null)}
-        title="Excluir Meta de Arrecadação?"
-        description={`Tem certeza que deseja excluir permanentemente a meta "${(deletingShare?.payload?.title as string) || "Meta Coletiva"}"? Todos os registros de depósitos e a página pública serão removidos permanentemente.`}
-        confirmLabel={deleteShareMutation.isPending ? "Excluindo…" : "Excluir Meta"}
-        variant="destructive"
-        confirmPending={deleteShareMutation.isPending}
-        onConfirm={() => void handleConfirmDeleteCampaign()}
-      />
 
       {depositShare ? (
         <AddContributionDialog

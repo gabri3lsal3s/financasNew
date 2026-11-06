@@ -44,40 +44,40 @@ describe("CampaignCard", () => {
     expect(screen.getByText("25%")).toBeInTheDocument();
   });
 
-  it("dispara onEditShare ao clicar no botão de edição", () => {
-    const handleEditShare = vi.fn();
+  it("dispara onManageShare ao clicar no card da meta para abrir o modal de gerenciamento", () => {
+    const handleManageShare = vi.fn();
     render(
       <CampaignCard
         share={mockShare}
         onOpenDeposit={vi.fn()}
-        onManageShare={vi.fn()}
-        onEditShare={handleEditShare}
+        onManageShare={handleManageShare}
       />,
     );
 
-    const editBtn = screen.getByRole("button", { name: /Editar parâmetros da meta/i });
-    fireEvent.click(editBtn);
+    const card = screen.getByRole("button", { name: /Gerenciar meta Viagem dos Sonhos/i });
+    fireEvent.click(card);
 
-    expect(handleEditShare).toHaveBeenCalledTimes(1);
-    expect(handleEditShare).toHaveBeenCalledWith(mockShare);
+    expect(handleManageShare).toHaveBeenCalledTimes(1);
+    expect(handleManageShare).toHaveBeenCalledWith(mockShare);
   });
 
-  it("dispara onDeleteShare ao clicar no botão de exclusão", () => {
-    const handleDeleteShare = vi.fn();
+  it("dispara onOpenDeposit ao clicar em Depósito sem disparar onManageShare", () => {
+    const handleOpenDeposit = vi.fn();
+    const handleManageShare = vi.fn();
     render(
       <CampaignCard
         share={mockShare}
-        onOpenDeposit={vi.fn()}
-        onManageShare={vi.fn()}
-        onDeleteShare={handleDeleteShare}
+        onOpenDeposit={handleOpenDeposit}
+        onManageShare={handleManageShare}
       />,
     );
 
-    const deleteBtn = screen.getByRole("button", { name: /Excluir meta/i });
-    fireEvent.click(deleteBtn);
+    const depositBtn = screen.getByRole("button", { name: /Depósito/i });
+    fireEvent.click(depositBtn);
 
-    expect(handleDeleteShare).toHaveBeenCalledTimes(1);
-    expect(handleDeleteShare).toHaveBeenCalledWith(mockShare);
+    expect(handleOpenDeposit).toHaveBeenCalledTimes(1);
+    expect(handleOpenDeposit).toHaveBeenCalledWith(mockShare);
+    expect(handleManageShare).not.toHaveBeenCalled();
   });
 
   it("exibe badge de Link Desativado quando is_revoked for true", () => {

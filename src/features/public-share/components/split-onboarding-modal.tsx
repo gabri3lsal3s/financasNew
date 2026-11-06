@@ -108,6 +108,7 @@ export function SplitOnboardingModal({
                 title,
                 amountCents: guestShareCents,
                 date,
+                participantName: name.trim() || cleanEmail.split("@")[0] || "Participante",
               }),
             );
           } catch {

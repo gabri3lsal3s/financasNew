@@ -4,15 +4,12 @@ import {
   CheckCircle2,
   Clock,
   Copy,
-  Edit2,
   ExternalLink,
   Eye,
   EyeOff,
   Plus,
-  Share2,
   Sparkles,
   Target,
-  Trash2,
   Users,
 } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
@@ -25,9 +22,9 @@ export interface CampaignCardProps {
   share: PublicShare;
   onOpenDeposit: (share: PublicShare) => void;
   onManageShare: (share: PublicShare) => void;
-  onManageContributions?: (share: PublicShare) => void;
   onEditShare?: (share: PublicShare) => void;
   onDeleteShare?: (share: PublicShare) => void;
+  onManageContributions?: (share: PublicShare) => void;
 }
 
 export function CampaignCard({
@@ -35,8 +32,6 @@ export function CampaignCard({
   onOpenDeposit,
   onManageShare,
   onManageContributions,
-  onEditShare,
-  onDeleteShare,
 }: CampaignCardProps) {
   const [copied, setCopied] = useState(false);
 
@@ -92,11 +87,27 @@ export function CampaignCard({
   };
 
   return (
-    <div className="group flex flex-col gap-3 rounded-2xl border border-border/80 bg-surface/90 p-3.5 sm:p-4 shadow-xs transition-all hover:border-border hover:bg-surface min-w-0">
+    <div
+      onClick={() => {
+        triggerSensory("action");
+        onManageShare(share);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          triggerSensory("action");
+          onManageShare(share);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Gerenciar meta ${title}`}
+      className="group flex flex-col gap-3 rounded-2xl border border-border/80 bg-surface/90 p-3.5 sm:p-4 shadow-xs transition-all hover:border-primary/40 hover:bg-surface cursor-pointer min-w-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40"
+    >
       {/* Cabeçalho do Card */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 min-w-0">
         <div className="flex items-center gap-2.5 min-w-0">
-          <Target className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+          <Target className="size-4 text-muted-foreground shrink-0 group-hover:text-primary transition-colors" aria-hidden="true" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
@@ -155,13 +166,17 @@ export function CampaignCard({
         </div>
 
         {/* Botões de Ação */}
-        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto flex-wrap">
+        <div
+          className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto flex-wrap"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Button
             type="button"
             size="sm"
             variant="outline"
             className="h-8 gap-1 text-xs"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               triggerSensory("action");
               onOpenDeposit(share);
             }}
@@ -176,7 +191,8 @@ export function CampaignCard({
               size="sm"
               variant="outline"
               className="h-8 gap-1 text-xs"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 triggerSensory("action");
                 onManageContributions(share);
               }}
@@ -197,7 +213,10 @@ export function CampaignCard({
             size="sm"
             variant={copied ? "default" : "outline"}
             className="h-8 gap-1 text-xs"
-            onClick={() => void handleCopyLink()}
+            onClick={(e) => {
+              e.stopPropagation();
+              void handleCopyLink();
+            }}
             title="Copiar Link Público do Termômetro"
           >
             {copied ? (
@@ -213,61 +232,15 @@ export function CampaignCard({
             size="icon"
             variant="ghost"
             className="size-8 text-muted-foreground hover:text-foreground"
-            onClick={handleOpenPage}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenPage();
+            }}
             title="Abrir Página Pública Web"
             aria-label={`Abrir página pública da meta ${title}`}
           >
             <ExternalLink className="size-3.5" aria-hidden="true" />
           </Button>
-
-          {onEditShare && (
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="size-8 text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                triggerSensory("action");
-                onEditShare(share);
-              }}
-              title="Editar Parâmetros da Meta"
-              aria-label={`Editar parâmetros da meta ${title}`}
-            >
-              <Edit2 className="size-3.5" aria-hidden="true" />
-            </Button>
-          )}
-
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="size-8 text-muted-foreground hover:text-foreground"
-            onClick={() => {
-              triggerSensory("action");
-              onManageShare(share);
-            }}
-            title="Gerenciar e Editar Parâmetros da Meta"
-            aria-label={`Gerenciar parâmetros e Pix da meta ${title}`}
-          >
-            <Share2 className="size-3.5" aria-hidden="true" />
-          </Button>
-
-          {onDeleteShare && (
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="size-8 text-muted-foreground hover:text-critical"
-              onClick={() => {
-                triggerSensory("destructive");
-                onDeleteShare(share);
-              }}
-              title="Excluir Meta de Arrecadação"
-              aria-label={`Excluir meta ${title}`}
-            >
-              <Trash2 className="size-3.5" aria-hidden="true" />
-            </Button>
-          )}
         </div>
       </div>
 

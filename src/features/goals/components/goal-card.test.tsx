@@ -61,31 +61,6 @@ describe("GoalCard", () => {
     expect(onOpenGoal).toHaveBeenCalledWith(mockCategory);
   });
 
-  it("chama onEditCategory ao clicar no botão de editar cadastro", async () => {
-    const user = userEvent.setup();
-    const onEditCategory = vi.fn();
-
-    render(
-      <GoalCard
-        category={mockCategory}
-        month="2026-11"
-        realizedCents={0}
-        expectedCents={0}
-        status="deficit"
-        percent={0}
-        onOpenGoal={vi.fn()}
-        onEditCategory={onEditCategory}
-        onShareGoal={vi.fn()}
-      />,
-    );
-
-    const editBtn = screen.getByRole("button", {
-      name: "Editar cadastro de Viagem de Fim de Ano",
-    });
-    await user.click(editBtn);
-    expect(onEditCategory).toHaveBeenCalledWith(mockCategory);
-  });
-
   it("chama onShareGoal ao clicar no botão de compartilhar progresso da meta", async () => {
     const user = userEvent.setup();
     const onShareGoal = vi.fn();

@@ -735,11 +735,16 @@ A arquitetura de compartilhamento e ferramentas abertas foi construída sobre tr
    - Dashboard exclusivo e limpo para o cônjuge: teto orçamentário total, total gasto no mês, percentual atingido, saldo restante e lista categorizada das despesas da casa.
    - Suporte a filtros de competência (mês anterior / próximo mês).
 
-### 16.4 Termômetro de Meta Coletiva com Chave Pix (`/meta/:token`)
+### 16.4 Termômetro de Meta Coletiva com Chave Pix (`/meta/:token`) & Ciclo de Vida
 1. **Arrecadação e Objetivos em Grupo:**
-   - Em `ShareGoalDialog` (integrado ao `GoalCard`), o organizador ativa a página pública da meta e cadastra sua chave Pix para receber os aportes dos participantes.
+   - Em `ShareGoalDialog` (integrado ao `GoalCard` e `CampaignCard`), o organizador ativa a página pública da meta e cadastra sua chave Pix para receber os aportes dos participantes.
    - Salvo em `public_shares` com `kind = 'goal_tracker'` e payload estruturado.
-2. **Página Pública `GoalTrackerPublicPage`:**
+2. **Arquitetura de Gestão Centralizada no Modal (`ShareGoalDialog`):**
+   - O card da campanha (`CampaignCard`) é otimizado para escaneabilidade e foco, sem ícones externos de editar ou excluir; o clique no card aciona o modal central de gerenciamento.
+   - **Edição Completa Pós-Criação:** Alternância direta para o formulário completo de edição, permitindo recalibrar alvo (`target_cents`), saldo arrecadado (`current_cents`), data limite (`deadline`), chave Pix e visibilidade pública de participantes sem recriar o link.
+   - **Exclusão Definitiva via `ConfirmDialog`:** Expurgo atômico da meta e de seus vínculos via mutação `useDeletePublicShare` (`deletePublicShare` no repositório `public-shares.ts`).
+   - **Pausa e Reativação de Link:** Suporte nativo a `useRevokePublicShare` e `useRestorePublicShare`, permitindo suspender o link público sem perda de histórico e sem remover o card da visão do anfitrião (`BudgetsPage` preserva metas com badge "Link Desativado").
+3. **Página Pública `GoalTrackerPublicPage`:**
    - Visualização em tempo real do progresso da meta coletiva: barra dinâmica com preenchimento percentual, valor acumulado vs alvo financeiro, contagem regressiva de dias até a data final e nome do organizador.
    - Botão de 1 toque **[Copiar Chave Pix]** com detecção automática do tipo de chave para facilitar transferências diretas pelos participantes.
    - Conforme o organizador cadastra depósitos na meta no aplicativo, o termômetro reflete os novos totais na web sem intervenção manual.

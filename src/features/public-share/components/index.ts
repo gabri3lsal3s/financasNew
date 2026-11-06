@@ -7,3 +7,7 @@ export {
   SelectParticipantDialog,
   type SelectParticipantDialogProps,
 } from "./select-participant-dialog";
+export {
+  SharedLinkHeaderNav,
+  type SharedLinkHeaderNavProps,
+} from "./shared-link-header-nav";

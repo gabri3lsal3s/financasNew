@@ -114,7 +114,7 @@ describe("FamilyBudgetPage (/orcamento-familiar/:token)", () => {
     renderPage();
 
     expect(screen.getByText("Orçamento Familiar · Gabriel")).toBeInTheDocument();
-    expect(screen.getByText("Modo Leitura")).toBeInTheDocument();
+    expect(screen.getAllByText("Orçamento Familiar").length).toBeGreaterThan(0);
     expect(screen.getByText("Dentro do Teto (70%)")).toBeInTheDocument();
     expect(screen.getByText("70% consumido")).toBeInTheDocument();
 

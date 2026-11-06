@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router";
 import {
-  ShieldCheck,
   ShieldAlert,
   Wallet,
   TrendingDown,
@@ -32,6 +31,7 @@ import { formatDateBR, monthLabel } from "@/lib/date";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { IosPwaInstallDialog } from "@/components/modules/ios-pwa-install-dialog";
 import { cn } from "@/lib/utils";
+import { SharedLinkHeaderNav } from "../components";
 
 export function FamilyBudgetPage() {
   const { token } = useParams<{ token: string }>();
@@ -137,20 +137,19 @@ export function FamilyBudgetPage() {
   return (
     <main className="min-h-screen bg-background text-foreground flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto w-full space-y-6">
-        {/* Topo / Barra de Navegação Pública */}
-        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-border/80">
-          <div className="flex items-center gap-3">
-            <BrandLogo />
-            <Badge variant="muted" size="xs" className="gap-1 font-mono uppercase">
-              <ShieldCheck className="size-3 text-positive-strong" aria-hidden="true" />
-              <span>Modo Leitura</span>
+        {/* Topo / Barra de Navegação Pública Unificada */}
+        <div className="space-y-3">
+          <SharedLinkHeaderNav
+            badgeLabel="Orçamento Familiar"
+            targetPath={`orcamento-familiar/${token || ""}`}
+          />
+          <div className="flex items-center justify-end">
+            <Badge variant="muted" size="sm" className="w-fit border border-border/80 text-muted-foreground capitalize">
+              <Calendar className="size-3 mr-1" aria-hidden="true" />
+              <span>{monthLabel(budgetData.month)}</span>
             </Badge>
           </div>
-          <Badge variant="muted" size="sm" className="w-fit border border-border/80 text-muted-foreground capitalize">
-            <Calendar className="size-3 mr-1" aria-hidden="true" />
-            <span>{monthLabel(budgetData.month)}</span>
-          </Badge>
-        </header>
+        </div>
 
         {/* Hero Card: Cabeçalho do Orçamento Familiar & Barra de Progresso */}
         <Card className="border-border/80 bg-surface shadow-xs">

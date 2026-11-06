@@ -18,7 +18,7 @@ export interface GoalCardProps {
   highlightId?: string | null;
   activeShare?: PublicShare | null;
   onOpenGoal: (category: Category) => void;
-  onEditCategory: (category: Category) => void;
+  onEditCategory?: (category: Category) => void;
   onShareGoal: (category: Category) => void;
 }
 
@@ -103,6 +103,23 @@ export function GoalCard({
               {expectedCents > 0 ? INCOME_GOAL_LABELS[status] : "Sem meta"}
             </Badge>
 
+            {onEditCategory && (
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="size-7 text-muted-foreground hover:text-foreground"
+                aria-label={`Editar cadastro de ${category.name}`}
+                title={`Editar cadastro de ${category.name}`}
+                onClick={() => {
+                  triggerSensory("action");
+                  onEditCategory(category);
+                }}
+              >
+                <Edit3 className="size-3.5" aria-hidden="true" />
+              </Button>
+            )}
+
             <Button
               type="button"
               size="icon"
@@ -116,21 +133,6 @@ export function GoalCard({
               }}
             >
               <Share2 className="size-3.5" aria-hidden="true" />
-            </Button>
-
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="size-7 text-muted-foreground hover:text-foreground"
-              aria-label={`Editar cadastro de ${category.name}`}
-              title={`Editar cadastro de ${category.name}`}
-              onClick={() => {
-                triggerSensory("action");
-                onEditCategory(category);
-              }}
-            >
-              <Edit3 className="size-3.5" aria-hidden="true" />
             </Button>
           </div>
         </div>
