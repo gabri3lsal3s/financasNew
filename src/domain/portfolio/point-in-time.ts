@@ -475,7 +475,6 @@ export function calculatePointInTimePosition(
 
   const totalInvestedBRL = positions.reduce((acc, p) => acc + p.valueBRL, 0);
   const totalCostBRL = positions.reduce((acc, p) => acc + p.totalCostBRL, 0);
-  const monthDividendsTotalBRL = positions.reduce((acc, p) => acc + p.monthDividendsBRL, 0);
   const accumulatedDividendsTotalBRL = positions.reduce(
     (acc, p) => acc + p.accumulatedDividendsBRL,
     0,
@@ -618,23 +617,35 @@ export function calculatePointInTimePosition(
       ? Number(snapshot.total_value) || 0
       : totalValueBRL;
 
-  const statementDividends: MonthlyStatementDividend[] = (dividends ?? []).map((d) => ({
-    date: d.date,
-    amount: Number(d.amount) || 0,
-    ticker: d.ticker,
-    notes: d.notes,
-  }));
+  const assetMap = new Map<string, PortfolioAsset>(assets.map((a) => [a.id, a]));
 
-  const assetTickerMap = new Map<string, string>(assets.map((a) => [a.id, a.ticker]));
+  const statementDividends: MonthlyStatementDividend[] = (dividends ?? []).map((d) => {
+    const asset = d.asset_id ? assetMap.get(d.asset_id) : undefined;
+    const isUSD = asset?.currency === "USD";
+    const fx = isUSD ? usdRate : 1;
+    const rawAmount = Number(d.amount) || 0;
+    return {
+      date: d.date,
+      amount: Math.round(rawAmount * fx * 100) / 100,
+      ticker: d.ticker,
+      notes: d.notes,
+    };
+  });
 
-  const statementTransactions: MonthlyStatementTransaction[] = (transactions ?? []).map((t) => ({
-    date: t.date,
-    type: t.type,
-    quantity: Number(t.quantity) || 0,
-    price: Number(t.price) || 0,
-    total: Number(t.total) || 0,
-    ticker: assetTickerMap.get(t.asset_id) ?? null,
-  }));
+  const statementTransactions: MonthlyStatementTransaction[] = (transactions ?? []).map((t) => {
+    const asset = assetMap.get(t.asset_id);
+    const isUSD = asset?.currency === "USD";
+    const fx = isUSD ? usdRate : 1;
+    const rawTotal = Number(t.total) || (Number(t.quantity) || 0) * (Number(t.price) || 0);
+    return {
+      date: t.date,
+      type: t.type,
+      quantity: Number(t.quantity) || 0,
+      price: Number(t.price) || 0,
+      total: Math.round(rawTotal * fx * 100) / 100,
+      ticker: asset?.ticker ?? null,
+    };
+  });
 
   const effectiveExplicitRate =
     explicitRatePct !== undefined && explicitRatePct !== null
@@ -676,7 +687,7 @@ export function calculatePointInTimePosition(
     totalInvestedBRL: Math.round(totalInvestedBRL * 100) / 100,
     totalCostBRL: Math.round(totalCostBRL * 100) / 100,
     totalValueBRL,
-    monthDividendsTotalBRL: Math.round(monthDividendsTotalBRL * 100) / 100,
+    monthDividendsTotalBRL: monthlyStatement.monthDividendsBRL,
     accumulatedDividendsTotalBRL: Math.round(accumulatedDividendsTotalBRL * 100) / 100,
     fidelity,
     candidateAssets,

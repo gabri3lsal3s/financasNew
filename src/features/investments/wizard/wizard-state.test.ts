@@ -294,6 +294,91 @@ describe("wizard-state — Máquina de Estados do Investment Wizard (Fase 41 & M
       expect(preview.realizedPnl).toBeGreaterThan(0);
     });
 
+    it("respeita customTaxAmountCents no preview de resgate de Renda Fixa", () => {
+      const tesouroAsset: PortfolioAsset = {
+        id: "rf-tesouro",
+        user_id: "u-1",
+        ticker: "Tesouro Selic 2029",
+        asset_class: "Tesouro Direto",
+        currency: "BRL",
+        quantity: 1,
+        average_price: 1426.79,
+        notes: "",
+        fixed_income_metadata: {
+          base_value: 1426.79,
+          base_date: "2024-01-01",
+          initial_investment_value: 1426.79,
+          initial_investment_date: "2024-01-01",
+          rate_type: "selic",
+          rate_value: 100,
+          is_tax_exempt: false,
+        },
+      };
+
+      const state: InvestmentWizardState = {
+        ...defaultWizardState,
+        mode: "sell",
+        step: 2,
+        selectedAsset: tesouroAsset,
+        ticker: "Tesouro Selic 2029",
+        assetClass: "Tesouro Direto",
+        date: "2026-09-02",
+        syncCash: true,
+        totalCents: 165317, // R$ 1.653,17
+        appliedCostCents: 142679, // R$ 1.426,79
+        customTaxAmountCents: 4267, // R$ 42,67 (conforme informado na nota da corretora)
+      };
+
+      const preview = calculateInvestmentPreview(state);
+      expect(preview.totalOrderValueBRL).toBe(1653.17);
+      expect(preview.realizedPnl).toBe(226.38);
+      expect(preview.taxAmountBRL).toBe(42.67);
+      expect(preview.isTaxCustomized).toBe(true);
+      // Crédito em caixa: 1.653,17 - 42,67 = 1.610,50
+      expect(preview.cashCreditBRL).toBe(1610.50);
+    });
+
+    it("calcula preview de resgate parcial de Renda Fixa com saldo bruto > custo preservando saldo bruto e custo residual proporcionais", () => {
+      const fiAsset: PortfolioAsset = {
+        id: "rf-td-gain",
+        user_id: "u-1",
+        ticker: "Tesouro IPCA+ 2029",
+        asset_class: "Tesouro Direto",
+        currency: "BRL",
+        quantity: 1,
+        average_price: 8000,
+        notes: "",
+        fixed_income_metadata: {
+          base_value: 9000,
+          base_date: "2026-08-26",
+          initial_investment_value: 8000,
+          initial_investment_date: "2024-01-01",
+          rate_type: "ipca",
+          rate_value: 6,
+          is_tax_exempt: false,
+        },
+      };
+
+      const state: InvestmentWizardState = {
+        ...defaultWizardState,
+        mode: "sell",
+        step: 2,
+        selectedAsset: fiAsset,
+        ticker: "Tesouro IPCA+ 2029",
+        assetClass: "Tesouro Direto",
+        date: "2026-08-26",
+        syncCash: true,
+        totalCents: 160000, // R$ 1.600,00 resgatados
+        appliedCostCents: 800000, // R$ 8.000,00 custo original
+      };
+
+      const preview = calculateInvestmentPreview(state);
+      expect(preview.totalOrderValueBRL).toBe(1600.00);
+      expect(preview.remainingGrossValue).toBe(7400.00); // 9000 - 1600 = 7400
+      expect(preview.newAveragePrice).toBe(6577.78); // Custo residual: 8000 * (1 - (1600 / 9000))
+      expect(preview.remainingCostBasis).toBe(6577.78);
+    });
+
     it("calcula preview de compra de ativo em USD convertendo impacto em caixa e aporte para BRL", () => {
       const usdAsset: PortfolioAsset = {
         id: "usd-1",

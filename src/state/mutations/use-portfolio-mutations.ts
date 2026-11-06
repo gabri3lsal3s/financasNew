@@ -757,6 +757,12 @@ export interface RecordOrderParams {
   usdRate?: number;
   /** Custo original aplicado na compra/lote resgatado (especialmente relevante para Renda Fixa). */
   appliedCostBasis?: number;
+  /** Valor de IRRF retido na fonte customizado pelo usuário (em moeda nativa / BRL). */
+  customTaxAmount?: number;
+  /** Alíquota de IR informada/customizada pelo usuário (em %). */
+  customTaxRatePct?: number;
+  /** Valor líquido a ser creditado em Caixa (após todas as deduções de IRRF/taxas). */
+  netCreditAmount?: number;
 }
 
 /**
@@ -774,7 +780,22 @@ export function useRecordOrder() {
 
   return useMutation({
     mutationFn: async (params: RecordOrderParams) => {
-      const { asset, type, date, quantity, price, total, syncCash, cashAsset, recordContribution, notes, usdRate, appliedCostBasis } = params;
+      const {
+        asset,
+        type,
+        date,
+        quantity,
+        price,
+        total,
+        syncCash,
+        cashAsset,
+        recordContribution,
+        notes,
+        usdRate,
+        appliedCostBasis,
+        customTaxAmount,
+        netCreditAmount,
+      } = params;
 
       // Impede ordens de mercado (compra/venda/provento) diretas sobre o ativo de Caixa
       if (isCashAssetClass(asset.asset_class) || asset.ticker.toUpperCase() === "CAIXA") {
@@ -811,21 +832,25 @@ export function useRecordOrder() {
                 : currentCost
               : currentCost;
 
-        // Se o ativo tinha custo > 0 no momento da venda, registramos a compra inicial correspondente no ledger
+        // Se o ativo tinha custo > 0 no momento da venda, registramos a compra inicial correspondente no ledger se ainda não houver compras
         if (baseValue > 0) {
-          const initialDate =
-            asset.fixed_income_metadata?.initial_investment_date ||
-            asset.fixed_income_metadata?.base_date ||
-            date;
+          const existingTxs = await listPortfolioTransactions(asset.id);
+          const hasPriorBuy = existingTxs.some((t) => t.type === "buy" || t.type === "subscription");
+          if (!hasPriorBuy) {
+            const initialDate =
+              asset.fixed_income_metadata?.initial_investment_date ||
+              asset.fixed_income_metadata?.base_date ||
+              date;
 
-          await createTx.mutateAsync({
-            asset_id: asset.id,
-            type: "buy",
-            date: initialDate,
-            quantity: isTotalValue ? 1 : asset.quantity,
-            price: isTotalValue ? baseValue : asset.average_price,
-            total: isTotalValue ? baseValue : Math.round(asset.quantity * asset.average_price * 100) / 100,
-          });
+            await createTx.mutateAsync({
+              asset_id: asset.id,
+              type: "buy",
+              date: initialDate,
+              quantity: isTotalValue ? 1 : asset.quantity,
+              price: isTotalValue ? baseValue : asset.average_price,
+              total: isTotalValue ? baseValue : Math.round(asset.quantity * asset.average_price * 100) / 100,
+            });
+          }
         }
       }
 
@@ -930,7 +955,7 @@ export function useRecordOrder() {
         const pricingMode = getAssetPricingMode(asset);
         const isTotalValue = !isCash && pricingMode === "total_value";
 
-        let netCreditBRL = totalBRL;
+        let netCreditBRL = netCreditAmount !== undefined ? Math.max(0, netCreditAmount) : totalBRL;
 
         if (isCash) {
           await updateAsset.mutateAsync({
@@ -941,15 +966,22 @@ export function useRecordOrder() {
             },
           });
         } else if (isTotalValue) {
-          const currentCost =
-            asset.quantity > 1 && asset.average_price > 0
-              ? Math.round(asset.quantity * asset.average_price * 100) / 100
-              : asset.average_price > 0
-                ? asset.average_price
-                : asset.quantity;
+          const effectiveAppliedCost =
+            appliedCostBasis !== undefined && appliedCostBasis > 0
+              ? appliedCostBasis
+              : asset.fixed_income_metadata?.initial_investment_value !== undefined &&
+                asset.fixed_income_metadata?.initial_investment_value !== null &&
+                asset.fixed_income_metadata.initial_investment_value > 0
+                ? asset.fixed_income_metadata.initial_investment_value
+                : asset.quantity > 1 && asset.average_price > 0
+                  ? Math.round(asset.quantity * asset.average_price * 100) / 100
+                  : asset.average_price > 0
+                    ? asset.average_price
+                    : (asset.fixed_income_metadata?.base_value ?? asset.quantity);
           const orderAmount = total > 0 ? total : price;
 
-          let newTotalApplied: number;
+          let remainingGrossBalance: number;
+          let remainingCost: number;
 
           if (asset.fixed_income_metadata) {
             const baseValue =
@@ -957,7 +989,7 @@ export function useRecordOrder() {
               asset.fixed_income_metadata.base_value !== null &&
               asset.fixed_income_metadata.base_value > 0
                 ? asset.fixed_income_metadata.base_value
-                : currentCost;
+                : effectiveAppliedCost;
 
             const fiRes = calculateFixedIncomeBalance({
               baseValue,
@@ -968,52 +1000,56 @@ export function useRecordOrder() {
               rateValue: asset.fixed_income_metadata.rate_value,
               isTaxExempt: asset.fixed_income_metadata.is_tax_exempt,
               manualTaxRatePct: asset.fixed_income_metadata.manual_tax_rate_pct,
-              totalCost: currentCost,
+              totalCost: effectiveAppliedCost,
               today: date,
             });
 
-            const grossBalance = Math.max(fiRes.grossValue, currentCost);
-            const isFullRedemption = orderAmount >= grossBalance || orderAmount >= currentCost;
+            const grossBalance = Math.max(fiRes.grossValue, effectiveAppliedCost);
+            const isFullRedemption = grossBalance > 0
+              ? orderAmount >= grossBalance - 0.01
+              : orderAmount >= effectiveAppliedCost - 0.01;
 
             const proportion = grossBalance > 0 ? Math.min(1, orderAmount / grossBalance) : 1;
-            const estimatedTax = asset.fixed_income_metadata.is_tax_exempt
+            const projectedTax = asset.fixed_income_metadata.is_tax_exempt
               ? 0
               : Math.round(fiRes.taxAmount * proportion * 100) / 100;
+            const effectiveTax =
+              customTaxAmount !== undefined ? Math.max(0, customTaxAmount) : projectedTax;
 
-            netCreditBRL = Math.max(0, Math.round((totalBRL - estimatedTax) * 100) / 100);
+            netCreditBRL =
+              netCreditAmount !== undefined
+                ? Math.max(0, netCreditAmount)
+                : Math.max(0, Math.round((totalBRL - effectiveTax) * 100) / 100);
 
-            newTotalApplied = isFullRedemption
+            remainingGrossBalance = isFullRedemption
               ? 0
-              : Math.max(0, Math.round(currentCost * (1 - proportion) * 100) / 100);
+              : Math.max(0, Math.round((grossBalance - orderAmount) * 100) / 100);
+            remainingCost = isFullRedemption
+              ? 0
+              : Math.max(0, Math.round(effectiveAppliedCost * (1 - proportion) * 100) / 100);
           } else {
-            newTotalApplied = Math.round(Math.max(0, currentCost - orderAmount) * 100) / 100;
+            const isFullRedemption = orderAmount >= effectiveAppliedCost;
+            remainingGrossBalance = isFullRedemption
+              ? 0
+              : Math.round(Math.max(0, effectiveAppliedCost - orderAmount) * 100) / 100;
+            remainingCost = remainingGrossBalance;
           }
-
-          const baseValue =
-            appliedCostBasis !== undefined && appliedCostBasis > 0
-              ? appliedCostBasis
-              : asset.fixed_income_metadata?.base_value !== undefined &&
-                  asset.fixed_income_metadata?.base_value !== null &&
-                  asset.fixed_income_metadata.base_value > 0
-                ? asset.fixed_income_metadata.base_value
-                : currentCost;
 
           const updatedFiMetadata =
             asset.fixed_income_metadata
               ? {
                   ...asset.fixed_income_metadata,
-                  base_date: newTotalApplied > 0 ? date : asset.fixed_income_metadata.base_date,
-                  base_value: newTotalApplied,
-                  initial_investment_value:
-                    asset.fixed_income_metadata.initial_investment_value ?? baseValue,
+                  base_date: remainingGrossBalance > 0 ? date : asset.fixed_income_metadata.base_date,
+                  base_value: remainingGrossBalance,
+                  initial_investment_value: remainingCost,
                 }
               : null;
 
           await updateAsset.mutateAsync({
             id: asset.id,
             patch: {
-              quantity: newTotalApplied > 0 ? 1 : 0,
-              average_price: newTotalApplied,
+              quantity: remainingGrossBalance > 0 ? 1 : 0,
+              average_price: remainingCost,
               ...(updatedFiMetadata ? { fixed_income_metadata: updatedFiMetadata } : {}),
             },
           });

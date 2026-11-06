@@ -476,8 +476,8 @@ export function PortfolioExecutiveReport({
               const monthRatePct = stmt?.monthRatePct ?? null;
               const monthNetPnlBRL = stmt?.monthNetPnlBRL ?? 0;
               const monthDividendsBRL =
-                monthlyPositionQuery.data?.monthDividendsTotalBRL ??
                 stmt?.monthDividendsBRL ??
+                monthlyPositionQuery.data?.monthDividendsTotalBRL ??
                 0;
               const isPositivePnl = monthNetPnlBRL >= 0;
 
@@ -576,8 +576,8 @@ export function PortfolioExecutiveReport({
               const monthBuysBRL = stmt?.monthBuysBRL ?? 0;
               const monthSellsBRL = stmt?.monthSellsBRL ?? 0;
               const monthDividendsBRL =
-                monthlyPositionQuery.data?.monthDividendsTotalBRL ??
                 stmt?.monthDividendsBRL ??
+                monthlyPositionQuery.data?.monthDividendsTotalBRL ??
                 0;
               const monthNetContributionBRL = stmt?.monthNetContributionBRL ?? 0;
 

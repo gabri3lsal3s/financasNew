@@ -32,6 +32,7 @@ import { downloadCsv } from "@/services/export-actions";
 import { serializePortfolioActivitiesCsv, type ExportPortfolioActivityRow } from "@/domain/export";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { ContributionFormDialog } from "./contribution-form-dialog";
 import { DividendFormDialog } from "./dividend-form-dialog";
 import { TransactionFormDialog } from "./transaction-form-dialog";
 import {
@@ -43,6 +44,7 @@ import {
   usePortfolioContributions,
   usePortfolioDividends,
   usePortfolioPosition,
+  useUpdatePortfolioAsset,
 } from "@/state";
 import type { PortfolioAsset, PortfolioContribution, PortfolioDividend, PortfolioTransaction } from "@/types";
 
@@ -63,6 +65,7 @@ export interface ActivityItem {
   rawTransaction?: PortfolioTransaction;
   rawContribution?: PortfolioContribution;
   rawDividend?: PortfolioDividend;
+  linkedContribution?: PortfolioContribution;
 }
 
 export interface PortfolioActivityPanelProps {
@@ -80,8 +83,13 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
   const [search, setSearch] = useState("");
   const [itemToDelete, setItemToDelete] = useState<ActivityItem | null>(null);
   const [rollbackCash, setRollbackCash] = useState(true);
-  const [editingTx, setEditingTx] = useState<{ transaction: PortfolioTransaction; asset: PortfolioAsset } | null>(null);
+  const [editingTx, setEditingTx] = useState<{
+    transaction: PortfolioTransaction;
+    asset: PortfolioAsset;
+    linkedContribution?: PortfolioContribution;
+  } | null>(null);
   const [editingDividend, setEditingDividend] = useState<PortfolioDividend | null>(null);
+  const [editingContribution, setEditingContribution] = useState<PortfolioContribution | null>(null);
 
   const transactionsQuery = useAllPortfolioTransactions();
   const contributionsQuery = usePortfolioContributions();
@@ -99,6 +107,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
   const deleteTransaction = useDeletePortfolioTransaction();
   const deleteContribution = useDeletePortfolioContribution();
   const deleteDividend = useDeletePortfolioDividend();
+  const updateAsset = useUpdatePortfolioAsset();
 
   const assetMap = useMemo(
     () => new Map((assetsQuery.data ?? []).map((a) => [a.id, a])),
@@ -109,11 +118,15 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
   const allActivities = useMemo(() => {
     const list: ActivityItem[] = [];
 
-    // Mapeia notas de aportes vinculados por (asset_id, date)
+    // Mapeia notas e aportes vinculados por (asset_id, date)
     const contributionNotesMap = new Map<string, string>();
+    const contributionByAssetDateMap = new Map<string, PortfolioContribution>();
     for (const c of contributionsQuery.data ?? []) {
-      if (c.asset_id && c.notes) {
-        contributionNotesMap.set(`${c.asset_id}_${c.date}`, c.notes);
+      if (c.asset_id) {
+        contributionByAssetDateMap.set(`${c.asset_id}_${c.date}`, c);
+        if (c.notes) {
+          contributionNotesMap.set(`${c.asset_id}_${c.date}`, c.notes);
+        }
       }
     }
 
@@ -134,6 +147,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
       const ticker = asset?.ticker ?? "Ativo";
       const totalAmount = t.total > 0 ? t.total : (t.quantity > 0 && t.price > 0 ? t.quantity * t.price : 0);
       const linkedNote = contributionNotesMap.get(`${t.asset_id}_${t.date}`) ?? (t as { notes?: string | null }).notes ?? null;
+      const linkedContrib = t.asset_id ? contributionByAssetDateMap.get(`${t.asset_id}_${t.date}`) : undefined;
 
       const isDiv = isDividendType(t.type);
       const linkedDiv = isDiv && t.asset_id ? dividendMap.get(`${t.asset_id}_${t.date}`) : undefined;
@@ -160,7 +174,9 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
         total: totalAmount,
         notes: linkedNote,
         rawTransaction: t,
+        rawContribution: linkedContrib,
         rawDividend: linkedDiv,
+        linkedContribution: linkedContrib,
       });
     }
 
@@ -236,7 +252,6 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
   // Métricas do Mês
   const monthStats = useMemo(() => {
     let totalBoughtAssets = 0;
-    let totalContributions = 0;
     let totalSoldAssets = 0;
     let totalDividends = 0;
 
@@ -263,9 +278,6 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
         if (!isCash) {
           totalBoughtAssets += totalBRL;
         }
-      } else if (item.type === "contribution") {
-        // Aportes de capital externo (do bolso para Caixa ou direto em ativo)
-        totalContributions += totalBRL;
       } else if (item.type === "sell") {
         if (!isCash) {
           totalSoldAssets += totalBRL;
@@ -275,36 +287,51 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
       }
     }
 
+    // Aportes de capital externo do bolso apurados no mês (injetados em Caixa ou direto em ativos)
+    let totalContributions = 0;
+    for (const c of contributionsQuery.data ?? []) {
+      if (c.date && c.date.startsWith(month)) {
+        totalContributions += Number(c.amount) || 0;
+      }
+    }
+
     return {
       boughtCents: numberToCents(totalBoughtAssets),
       contributionsCents: numberToCents(totalContributions),
       soldCents: numberToCents(totalSoldAssets),
       dividendsCents: numberToCents(totalDividends),
     };
-  }, [monthActivities, assetMap, usdRate]);
+  }, [monthActivities, contributionsQuery.data, month, assetMap, usdRate]);
 
   // Contadores para os botões de filtro
   const typeCounts = useMemo(() => {
     let buys = 0;
-    let contributions = 0;
     let sells = 0;
     let dividends = 0;
 
     for (const item of monthActivities) {
       if (item.type === "buy") buys++;
-      else if (item.type === "contribution") contributions++;
       else if (item.type === "sell") sells++;
       else if (item.type === "dividend") dividends++;
     }
 
+    // Total de aportes externos registrados na competência
+    const contributions = (contributionsQuery.data ?? []).filter(
+      (c) => Boolean(c.date && c.date.startsWith(month)),
+    ).length;
+
     return { buys, contributions, sells, dividends };
-  }, [monthActivities]);
+  }, [monthActivities, contributionsQuery.data, month]);
 
   // Filtros de Tipo e Busca
   const filteredActivities = useMemo(() => {
     return monthActivities.filter((item) => {
       if (filterType === "buy" && item.type !== "buy") return false;
-      if (filterType === "contribution" && item.type !== "contribution") return false;
+      if (filterType === "contribution") {
+        const isDirect = item.type === "contribution";
+        const isFunded = item.type === "buy" && Boolean(item.linkedContribution);
+        if (!isDirect && !isFunded) return false;
+      }
       if (filterType === "sell" && item.type !== "sell") return false;
       if (filterType === "dividend" && item.type !== "dividend") return false;
 
@@ -374,8 +401,33 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
         }
       } else if (itemToDelete.source === "transaction" && itemToDelete.rawTransaction) {
         await deleteTransaction.mutateAsync(itemToDelete.rawTransaction);
+        // Se a compra foi paga com saldo de Caixa (sem aporte vinculado) e o usuário optou por estornar ao Caixa:
+        const isFundedByPocket = Boolean(itemToDelete.linkedContribution);
+        if (!isFundedByPocket && rollbackCash && cashAsset && itemToDelete.total > 0) {
+          const currentCashBalance = Number(cashAsset.quantity ?? 0);
+          await updateAsset.mutateAsync({
+            id: cashAsset.id,
+            patch: {
+              quantity: Math.round((currentCashBalance + itemToDelete.total) * 100) / 100,
+              average_price: 1,
+            },
+          });
+        }
       } else if (itemToDelete.source === "contribution" && itemToDelete.rawContribution) {
         await deleteContribution.mutateAsync(itemToDelete.rawContribution);
+        // Se o aporte foi direto em Caixa e pediu estorno:
+        const isCashContrib = cashAsset && itemToDelete.rawContribution.asset_id === cashAsset.id;
+        if (isCashContrib && rollbackCash && cashAsset && itemToDelete.total > 0) {
+          const currentCashBalance = Number(cashAsset.quantity ?? 0);
+          const newBal = Math.max(0, Math.round((currentCashBalance - itemToDelete.total) * 100) / 100);
+          await updateAsset.mutateAsync({
+            id: cashAsset.id,
+            patch: {
+              quantity: newBal,
+              average_price: 1,
+            },
+          });
+        }
       } else if (itemToDelete.source === "dividend" && itemToDelete.rawDividend) {
         await deleteDividend.mutateAsync({
           ...itemToDelete.rawDividend,
@@ -660,6 +712,11 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                               <span>Creditado no Caixa</span>
                             </Badge>
                           )}
+                          {isBuy && Boolean(item.linkedContribution) && (
+                            <Badge variant="muted" size="xs" className="gap-1 border-muted-foreground/30 text-muted-foreground font-medium">
+                              <span>Via Aporte</span>
+                            </Badge>
+                          )}
                           <span className="text-[11px] text-muted-foreground whitespace-nowrap">
                             {formatDateBR(item.date)}
                           </span>
@@ -732,6 +789,28 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                         >
                           <Pencil className="size-3.5" aria-hidden="true" />
                         </Button>
+                      ) : item.type === "contribution" ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const contribToEdit: PortfolioContribution = item.rawContribution ?? {
+                              id: item.id.replace(/^contrib-/, ""),
+                              user_id: "",
+                              asset_id: item.rawTransaction?.asset_id ?? null,
+                              date: item.date,
+                              amount: item.total,
+                              notes: item.notes ?? null,
+                            };
+                            setEditingContribution(contribToEdit);
+                          }}
+                          className="size-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                          title="Editar aporte"
+                          aria-label={`Editar aporte de ${item.ticker}`}
+                        >
+                          <Pencil className="size-3.5" aria-hidden="true" />
+                        </Button>
                       ) : item.source === "transaction" && item.rawTransaction && assetMap.get(item.rawTransaction.asset_id) ? (
                         <Button
                           type="button"
@@ -740,7 +819,11 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                           onClick={() => {
                             const asset = assetMap.get(item.rawTransaction!.asset_id);
                             if (asset) {
-                              setEditingTx({ transaction: item.rawTransaction!, asset });
+                              setEditingTx({
+                                transaction: item.rawTransaction!,
+                                asset,
+                                linkedContribution: item.linkedContribution,
+                              });
                             }
                           }}
                           className="size-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
@@ -803,6 +886,40 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
             </p>
           </div>
         )}
+
+        {itemToDelete?.source === "transaction" && itemToDelete.type === "buy" && !itemToDelete.linkedContribution && cashAsset && (
+          <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-surface-subtle p-3 text-xs text-left">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-foreground">Devolver valor para o Caixa</span>
+              <Checkbox
+                checked={rollbackCash}
+                onCheckedChange={(checked) => setRollbackCash(Boolean(checked))}
+                aria-label="Devolver valor para o Caixa"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Esta compra foi liquidada com saldo da corretora. Ao estornar, R$ {itemToDelete.total.toFixed(2)} retornarão ao seu Ativo Caixa.
+            </p>
+          </div>
+        )}
+
+        {itemToDelete?.source === "contribution" && cashAsset && itemToDelete.rawContribution?.asset_id === cashAsset.id && (
+          <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-surface-subtle p-3 text-xs text-left">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-foreground">Estornar valor do Caixa</span>
+              <Checkbox
+                checked={rollbackCash}
+                onCheckedChange={(checked) => setRollbackCash(Boolean(checked))}
+                aria-label="Estornar valor do Caixa"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {cashBalance < itemToDelete.total
+                ? `Saldo atual em Caixa (R$ ${cashBalance.toFixed(2)}) é menor que o aporte. Ao estornar, o saldo será zerado.`
+                : `Abaterá R$ ${itemToDelete.total.toFixed(2)} do saldo atual de Caixa (R$ ${cashBalance.toFixed(2)}).`}
+            </p>
+          </div>
+        )}
       </ConfirmDialog>
 
       {editingTx && (
@@ -811,6 +928,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
           onOpenChange={(open) => !open && setEditingTx(null)}
           asset={editingTx.asset}
           transaction={editingTx.transaction}
+          linkedContribution={editingTx.linkedContribution}
         />
       )}
 
@@ -819,6 +937,14 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
           open={editingDividend !== null}
           onOpenChange={(open) => !open && setEditingDividend(null)}
           dividend={editingDividend}
+        />
+      )}
+
+      {editingContribution && (
+        <ContributionFormDialog
+          open={editingContribution !== null}
+          onOpenChange={(open) => !open && setEditingContribution(null)}
+          contribution={editingContribution}
         />
       )}
     </>

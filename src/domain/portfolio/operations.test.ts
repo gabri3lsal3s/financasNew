@@ -130,6 +130,43 @@ describe("domain/portfolio/operations — Vendas e Desinvestimentos", () => {
     expect(resultLci.netCreditAmount).toBe(11500); // 100% creditado no caixa
   });
 
+  it("permite ajuste manual de IRRF retido na fonte corrigindo o crédito líquido no caixa", () => {
+    // Exemplo real: Resgate bruto R$ 1.653,17, Custo R$ 1.426,79, Lucro R$ 226,38
+    // IRRF da corretora = R$ 42,67 (divergindo da projeção padrão de 22.5% = R$ 50,93)
+    const result = sellAssetPosition({
+      currentQuantity: 1,
+      currentAveragePrice: 1426.79,
+      sellQuantity: 1,
+      sellPrice: 1653.17,
+      assetClass: "Tesouro Direto",
+      customTaxAmount: 42.67,
+    });
+
+    expect(result.grossAmount).toBe(1653.17);
+    expect(result.costOfSoldQuantity).toBe(1426.79);
+    expect(result.realizedPnl).toBe(226.38);
+    expect(result.taxInfo.estimatedTaxPayable).toBe(42.67);
+    expect(result.taxInfo.isCustomized).toBe(true);
+    expect(result.netCreditAmount).toBe(1610.50); // R$ 1.653,17 - R$ 42,67 exatamente
+  });
+
+  it("permite ajuste manual da alíquota de IR recalculando o imposto retido e crédito no caixa", () => {
+    const result = sellAssetPosition({
+      currentQuantity: 1,
+      currentAveragePrice: 1000,
+      sellQuantity: 1,
+      sellPrice: 1200, // Lucro R$ 200
+      assetClass: "CDB",
+      customTaxRatePct: 15, // Usuário ajusta para 15%
+    });
+
+    expect(result.realizedPnl).toBe(200);
+    expect(result.taxInfo.taxRate).toBe(0.15);
+    expect(result.taxInfo.estimatedTaxPayable).toBe(30); // 15% de 200 = 30
+    expect(result.taxInfo.isCustomized).toBe(true);
+    expect(result.netCreditAmount).toBe(1170); // 1200 - 30
+  });
+
   it("reconhece classes compostas de Ações (ex.: 'Ações Nacionais', 'Ações B3', 'Stocks') aplicando a regra de isenção de 20k", () => {
     const resAcoesNacionais = sellAssetPosition({
       currentQuantity: 100,

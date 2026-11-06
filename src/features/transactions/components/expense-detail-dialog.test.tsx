@@ -24,6 +24,7 @@ const stateMocks = vi.hoisted(() => ({
   ] as unknown[],
   isReadOnly: false,
   isFamilyModeEnabled: true,
+  myFamily: null as unknown,
 }));
 
 vi.mock("@/state", () => ({
@@ -46,6 +47,7 @@ vi.mock("@/state", () => ({
   useUpdateRecurrenceOccurrences: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateExpenseGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useFamilyMode: () => ({ isFamilyModeEnabled: stateMocks.isFamilyModeEnabled }),
+  useMyFamily: () => ({ data: stateMocks.myFamily ?? null, isLoading: false }),
 }));
 
 vi.mock("@/components/modules/split-expense-dialog", () => ({

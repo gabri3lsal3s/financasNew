@@ -96,10 +96,14 @@ function InvestmentWizardContent({
   const [state, setState] = useState<InvestmentWizardState>(() => {
     if (initialAsset) {
       const mode: WizardMode = initialMode && initialMode !== "select" ? initialMode : "buy";
-      const initialCost = initialAsset.fixed_income_metadata?.initial_investment_value
-        ?? initialAsset.fixed_income_metadata?.base_value
-        ?? initialAsset.average_price
-        ?? 0;
+      const initialCost =
+        (initialAsset.fixed_income_metadata?.initial_investment_value !== undefined &&
+          initialAsset.fixed_income_metadata.initial_investment_value !== null &&
+          initialAsset.fixed_income_metadata.initial_investment_value > 0)
+          ? initialAsset.fixed_income_metadata.initial_investment_value
+          : (initialAsset.average_price !== undefined && initialAsset.average_price > 0)
+            ? initialAsset.average_price
+            : (initialAsset.fixed_income_metadata?.base_value ?? 0);
       return {
         ...defaultWizardState,
         mode,
@@ -264,6 +268,14 @@ function InvestmentWizardContent({
           notes: state.notes,
           usdRate,
           appliedCostBasis: isTotalValue && state.appliedCostCents > 0 ? state.appliedCostCents / 100 : undefined,
+          customTaxAmount:
+            isTotalValue && state.customTaxAmountCents !== null && state.customTaxAmountCents !== undefined
+              ? state.customTaxAmountCents / 100
+              : undefined,
+          customTaxRatePct:
+            isTotalValue && state.customTaxRatePct !== null && state.customTaxRatePct !== undefined
+              ? state.customTaxRatePct
+              : undefined,
         });
       } else if (state.mode === "dividend") {
         if (!state.selectedAsset) throw new Error("Selecione um ativo");
@@ -584,6 +596,14 @@ function InvestmentWizardContent({
                 const isCash = isCashAssetClass(res.assetClass);
                 if (res.isExisting && res.existingAssetId) {
                   const asset = existingAssets.find((a) => a.id === res.existingAssetId);
+                  const initialCost =
+                    (asset?.fixed_income_metadata?.initial_investment_value !== undefined &&
+                      asset.fixed_income_metadata.initial_investment_value !== null &&
+                      asset.fixed_income_metadata.initial_investment_value > 0)
+                      ? asset.fixed_income_metadata.initial_investment_value
+                      : (asset?.average_price !== undefined && asset.average_price > 0)
+                        ? asset.average_price
+                        : (asset?.fixed_income_metadata?.base_value ?? 0);
                   setState((prev) => ({
                     ...prev,
                     mode: "buy",
@@ -596,6 +616,7 @@ function InvestmentWizardContent({
                     sector: res.sector ?? asset?.sector ?? "",
                     currency: res.currency,
                     isCash,
+                    appliedCostCents: numberToCents(initialCost),
                   }));
                 } else {
                   setState((prev) => ({

@@ -12,6 +12,7 @@ let mockIsFamilyModeEnabled = true;
 
 vi.mock("@/state", () => ({
   useFamilyMode: () => ({ isFamilyModeEnabled: mockIsFamilyModeEnabled }),
+  useMyFamily: () => ({ data: null, isLoading: false }),
   useUserSubscription: () => ({
     canWrite: true,
     isReadOnly: false,

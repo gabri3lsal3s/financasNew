@@ -204,11 +204,18 @@ export function StepReview({ state, cashAvailableBRL = 0, usdRate }: StepReviewP
 
               <div className="flex flex-col text-right">
                 <span className="text-muted-foreground">
-                  {isTotalValue ? "Saldo Anterior" : "Preço de Venda"}
+                  {isTotalValue ? "Saldo Bruto Anterior" : "Preço de Venda"}
                 </span>
                 <span className="font-mono text-sm font-semibold text-foreground">
                   {isTotalValue ? (
-                    <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} currency={state.currency} />
+                    <MoneyText
+                      cents={numberToCents(
+                        preview.remainingGrossValue !== undefined
+                          ? (preview.remainingGrossValue + (state.totalCents || state.priceCents) / 100)
+                          : (state.selectedAsset?.fixed_income_metadata?.base_value ?? state.selectedAsset?.average_price ?? 0),
+                      )}
+                      currency={state.currency}
+                    />
                   ) : (
                     <MoneyText cents={state.priceCents} currency={state.currency} />
                   )}
@@ -219,18 +226,28 @@ export function StepReview({ state, cashAvailableBRL = 0, usdRate }: StepReviewP
             <div className="grid grid-cols-2 gap-3 py-3 text-xs bg-surface-hover/30 -mx-4 px-4">
               <div className="flex flex-col">
                 <span className="text-muted-foreground">
-                  {isTotalValue ? "Saldo Restante" : "Custódia Restante"}
+                  {isTotalValue ? "Saldo Bruto Restante" : "Custódia Restante"}
                 </span>
                 <span className="font-mono text-sm font-bold text-foreground">
                   {isTotalValue ? (
-                    <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} />
+                    <MoneyText
+                      cents={numberToCents(preview.remainingGrossValue ?? preview.newAveragePrice)}
+                      currency={state.currency}
+                    />
                   ) : (
                     `${preview.newQuantity} cotas`
                   )}
                 </span>
               </div>
 
-              {!isTotalValue && (
+              {isTotalValue ? (
+                <div className="flex flex-col text-right">
+                  <span className="text-muted-foreground">Custo Original Restante</span>
+                  <span className="font-mono text-sm font-bold text-foreground">
+                    <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} />
+                  </span>
+                </div>
+              ) : (
                 <div className="flex flex-col text-right">
                   <span className="text-muted-foreground">Resultado Realizado</span>
                   <span
@@ -266,9 +283,18 @@ export function StepReview({ state, cashAvailableBRL = 0, usdRate }: StepReviewP
                 </div>
               </div>
 
+              {preview.taxAmountBRL !== undefined && preview.taxAmountBRL > 0 && (
+                <div className="flex items-center justify-between text-warning-strong text-[11px]">
+                  <span>IRRF Retido na Fonte ({preview.taxRatePct ?? 0}%):</span>
+                  <span className="font-mono font-medium">
+                    − <MoneyText cents={numberToCents(preview.taxAmountBRL)} currency="BRL" />
+                  </span>
+                </div>
+              )}
+
               {state.syncCash && (
                 <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                  <span>Crédito em Caixa (R$):</span>
+                  <span>Crédito Líquido em Caixa (R$):</span>
                   <span className="font-mono text-positive-strong">
                     + <MoneyText cents={numberToCents(preview.cashCreditBRL ?? preview.totalOrderValueBRL)} currency="BRL" />
                   </span>

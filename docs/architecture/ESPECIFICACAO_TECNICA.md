@@ -503,8 +503,17 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
   - Parser inteligente que converte colunas de extrato (Mês, Ano, Valor Aplicado, Saldo Bruto, Rentabilidade %) em deltas mensais automáticos.
   - Filtro tolerante a linhas de rodapé e sumário (totais, consolidados, metadados).
   - Deduplicação inteligente (`deduplicateStatementRows`): na importação incremental, preserva meses já cadastrados e adiciona somente marcos inéditos.
-- **Aportes Mensais (`portfolio_contributions`):** registros independentes de aportes financeiros integrados aos fluxos de caixa da Overview e dos Insights (sempre em BRL).
+- **Aportes Mensais (`portfolio_contributions`) & Segregação de Origem de Recursos:**
+  - Registros independentes de aportes financeiros externos em BRL integrados aos fluxos de caixa da Overview, Dossiê e Central de Relatórios.
+  - **Segregação Estrita de Origem dos Recursos na Compra:** A compra de ativos adota **exclusão mútua** entre:
+    1. *Dinheiro Novo (Aporte do Bolso):* Injeção de capital novo vindo de fora da corretora. Alimenta os indicadores de aportes externos da competência (`portfolio_contributions`) e não consome saldo de caixa.
+    2. *Saldo da Corretora (Caixa / Reinvestimento):* Reinvestimento de proventos acumulados ou sobras de vendas. Consome o ativo `CAIXA` e **não** infla a métrica de "Aporte do Bolso", separando com clareza contábil o dinheiro novo injetado do dinheiro que já estava em circulação interna.
+  - **Edição e Exclusão Reconciliada de Aportes (`ContributionFormDialog`):**
+    - Permite editar valor, data e notas de aportes existentes com sincronização atômica do delta de Caixa (`syncCashDelta`).
+    - Permite a exclusão de aportes com estorno opcional/proporcional de Caixa.
+  - **Reconfiguração Bidirecional na Edição de Compras:** Ao editar uma transação de compra (`TransactionFormDialog`), o usuário pode alterar a origem entre "Bolso" e "Caixa". O sistema ajusta atômica e bidirecionalmente a existência do aporte em `portfolio_contributions` e o saldo do ativo `CAIXA`.
 - **Proventos (`portfolio_dividends`):** lançamentos desacoplados para extrato mensal e calendário anual, integrados ao Retorno Total e YoC (convertidos para BRL no consolidado quando o ativo for USD).
+  - Opção nativa `sync_cash` para creditar automaticamente o valor do provento no saldo de Caixa da corretora na data de recebimento, com estorno atômico em caso de exclusão ou retificação.
 - **Yield on Cost (YoC) em Moeda Nativa USD:** para ativos internacionais em USD, o percentual de YoC é apurado na moeda nativa ($\text{YoC} = (\text{Proventos USD} / \text{Custo Total USD}) \times 100$) antes da conversão cambial consolidada, prevenindo distorções provocadas por oscilações na taxa de câmbio PTAX/USD-BRL entre as datas de aporte e recebimento de proventos.
 - **Normalização de Classes em Desinvestimento (`sellAssetPosition`):** o processamento de ordens de venda utiliza `normalizeClassName` e funções auxiliares canônicas (`isStockClass`, `isFiiClass`, `isFixedIncomeClass`), garantindo que sinônimos de classes (ex.: "Ações", "Ações Nacionais", "FII") sigam regras homogêneas de custódia e tributação.
 - **Apuração de DARF Mensal e Isenções Fiscais (`calculateMonthlyDarf`):**

@@ -216,23 +216,38 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
       prevSnapshot && prevSnapshot.total_value !== undefined && prevSnapshot.total_value !== null
         ? Number(prevSnapshot.total_value) || 0
         : 0;
-    const currentDividends = (dividendsQuery.data ?? []).map((d) => ({
-      date: d.date,
-      amount: Number(d.amount) || 0,
-      ticker: d.ticker,
-      notes: d.notes,
-    }));
-    const assetTickerMap = new Map<string, string>(
-      (assetsQuery.data ?? []).map((a) => [a.id, a.ticker]),
+    const assetMap = new Map<string, PortfolioAsset>(
+      (assetsQuery.data ?? []).map((a) => [a.id, a]),
     );
-    const currentTransactions = (transactionsQuery.data ?? []).map((t) => ({
-      date: t.date,
-      type: t.type,
-      quantity: Number(t.quantity) || 0,
-      price: Number(t.price) || 0,
-      total: Number(t.total) || 0,
-      ticker: assetTickerMap.get(t.asset_id) ?? null,
-    }));
+    const usdRateCurrent = currentPos.rows.find((r) => r.currency === "USD")?.usdRate ?? 5.25;
+
+    const currentDividends = (dividendsQuery.data ?? []).map((d) => {
+      const asset = d.asset_id ? assetMap.get(d.asset_id) : undefined;
+      const isUSD = asset?.currency === "USD";
+      const fx = isUSD ? usdRateCurrent : 1;
+      const rawAmount = Number(d.amount) || 0;
+      return {
+        date: d.date,
+        amount: Math.round(rawAmount * fx * 100) / 100,
+        ticker: d.ticker,
+        notes: d.notes,
+      };
+    });
+
+    const currentTransactions = (transactionsQuery.data ?? []).map((t) => {
+      const asset = assetMap.get(t.asset_id);
+      const isUSD = asset?.currency === "USD";
+      const fx = isUSD ? usdRateCurrent : 1;
+      const rawTotal = Number(t.total) || (Number(t.quantity) || 0) * (Number(t.price) || 0);
+      return {
+        date: t.date,
+        type: t.type,
+        quantity: Number(t.quantity) || 0,
+        price: Number(t.price) || 0,
+        total: Math.round(rawTotal * fx * 100) / 100,
+        ticker: asset?.ticker ?? null,
+      };
+    });
 
     const currentMonthContributions = (contributionsQuery.data ?? []).filter(
       (c) => Boolean(c.date && c.date.startsWith(month)),

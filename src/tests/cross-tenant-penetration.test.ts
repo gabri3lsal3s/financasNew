@@ -484,6 +484,23 @@ describe("Fase 5.1 — Suíte Automatizada de Penetração Cross-Tenant & RLS Is
       expect(bExpense).toBeNull();
     });
 
+    it("Salvaguarda F1: despesas familiares de membros da mesma família NÃO vazam para o SELECT direto de expenses (Preservação Sagrada do Extrato Pessoal)", () => {
+      // Ambos USER_A e USER_B possuem despesas com is_family = true e o mesmo family_id
+      db.seed("expenses", [
+        { id: "exp_a_fam", user_id: USER_A, family_id: "fam_shared_1", is_family: true, value: 300 },
+        { id: "exp_b_fam", user_id: USER_B, family_id: "fam_shared_1", is_family: true, value: 500 },
+      ]);
+
+      const expensesA = db.select("expenses", USER_A);
+      // USER_A vê suas despesas pessoais e sua despesa familiar, mas NUNCA a despesa familiar do parceiro
+      expect(expensesA.some((e) => e.id === "exp_a_fam")).toBe(true);
+      expect(expensesA.some((e) => e.id === "exp_b_fam")).toBe(false);
+      expect(expensesA.every((e) => e.user_id === USER_A)).toBe(true);
+
+      // Leitura pontual por ID da despesa familiar do parceiro continua barrada (null)
+      expect(db.selectById("expenses", USER_A, "exp_b_fam")).toBeNull();
+    });
+
     it("Usuário A é categoricamente incapaz de listar receitas do Usuário B", () => {
       const incomesA = db.select("incomes", USER_A);
       expect(incomesA.length).toBe(1);

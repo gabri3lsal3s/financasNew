@@ -141,7 +141,7 @@ describe("CashFormDialog", () => {
     await user.type(moneyInput, "200000");
 
     // Marca o checkbox de aporte vindo de fora
-    const checkbox = screen.getByLabelText(/Registrar como novo aporte financeiro vindo de fora/i);
+    const checkbox = screen.getByLabelText(/Registrar como Aporte do Bolso/i);
     expect(checkbox).toBeInTheDocument();
     await user.click(checkbox);
 

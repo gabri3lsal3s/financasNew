@@ -38,6 +38,7 @@ import {
   useDeletePortfolioAsset,
   usePortfolioAssets,
   usePortfolioPosition,
+  useRecordOrder,
   useSetManualPrice,
   useUpdatePortfolioAsset,
   useEmergencyFundComposition,
@@ -90,6 +91,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
   const createTransaction = useCreatePortfolioTransaction();
   const createContribution = useCreatePortfolioContribution();
   const setManualPrice = useSetManualPrice();
+  const recordOrder = useRecordOrder();
   const allAssetsQuery = usePortfolioAssets();
   const pricesQuery = useAssetPrices();
   const position = usePortfolioPosition();
@@ -229,6 +231,8 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
   const [sellPriceCents, setSellPriceCents] = useState(asset?.average_price !== undefined ? numberToCents(asset.average_price) : 0);
   const [sellDate, setSellDate] = useState(() => todayISO());
   const [creditToCash, setCreditToCash] = useState(true);
+  const [sellCustomTaxRatePct, setSellCustomTaxRatePct] = useState<number | null>(null);
+  const [sellCustomTaxAmountCents, setSellCustomTaxAmountCents] = useState<number | null>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -238,7 +242,8 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
     updateAsset.isPending ||
     deleteAsset.isPending ||
     createContribution.isPending ||
-    setManualPrice.isPending;
+    setManualPrice.isPending ||
+    recordOrder.isPending;
 
   const parsedQuantity = parseDecimalNumber(quantityStr);
   const parsedAvgPrice = averagePriceCents / 100;
@@ -277,6 +282,8 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
     sellQuantity: parsedSellQty,
     sellPrice: parsedSellPrice,
     assetClass: asset?.asset_class,
+    customTaxRatePct: sellCustomTaxRatePct,
+    customTaxAmount: sellCustomTaxAmountCents !== null ? sellCustomTaxAmountCents / 100 : null,
   });
 
   const debouncedTicker = useDebounce(ticker, 500);
@@ -545,29 +552,19 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
     setIsSubmitting(true);
     setError(null);
     try {
-      // 1. Atualiza a posição do ativo com a quantidade remanescente e PM inalterado
-      await updateAsset.mutateAsync({
-        id: asset.id,
-        patch: {
-          quantity: sellResult.remainingQuantity,
-          average_price: sellResult.remainingAveragePrice,
-        },
+      await recordOrder.mutateAsync({
+        type: "sell",
+        asset,
+        quantity: parsedSellQty,
+        price: parsedSellPrice,
+        total: isTotalValueMode ? parsedSellQty : parsedSellQty * parsedSellPrice,
+        date: sellDate,
+        syncCash: creditToCash,
+        appliedCostBasis: asset.average_price,
+        customTaxAmount: sellCustomTaxAmountCents !== null ? sellCustomTaxAmountCents / 100 : undefined,
+        customTaxRatePct: sellCustomTaxRatePct !== null ? sellCustomTaxRatePct : undefined,
+        netCreditAmount: sellResult.netCreditAmount,
       });
-
-      // 2. Se optou por creditar em Caixa, localiza o ativo Caixa ou atualiza o saldo
-      if (creditToCash && sellResult.netCreditAmount > 0) {
-        const cashAsset = (allAssetsQuery.data ?? []).find((a) => isCashAssetClass(a.asset_class) || a.ticker.toUpperCase() === "CAIXA");
-        if (cashAsset) {
-          const currentCashBalance = Number(cashAsset.quantity ?? 0);
-          await updateAsset.mutateAsync({
-            id: cashAsset.id,
-            patch: {
-              quantity: Math.round((currentCashBalance + sellResult.netCreditAmount) * 100) / 100,
-              average_price: 1,
-            },
-          });
-        }
-      }
 
       triggerSensory("destructive");
       pushToast({
@@ -658,6 +655,10 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
           error={error}
           onClose={onClose}
           onConfirmSell={handleConfirmSell}
+          customTaxRatePct={sellCustomTaxRatePct}
+          setCustomTaxRatePct={setSellCustomTaxRatePct}
+          customTaxAmountCents={sellCustomTaxAmountCents}
+          setCustomTaxAmountCents={setSellCustomTaxAmountCents}
         />
       ) : (
 

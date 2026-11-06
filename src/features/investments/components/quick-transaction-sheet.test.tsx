@@ -14,11 +14,30 @@ const mockAsset: PortfolioAsset = {
   average_price: 60.0,
 };
 
+const mockTesouroAsset: PortfolioAsset = {
+  id: "asset-tesouro-1",
+  user_id: "user-1",
+  ticker: "Tesouro Selic 2029",
+  asset_class: "Tesouro Direto",
+  currency: "BRL",
+  quantity: 1,
+  average_price: 1426.79,
+  fixed_income_metadata: {
+    base_value: 1426.79,
+    base_date: "2024-01-01",
+    initial_investment_value: 1426.79,
+    initial_investment_date: "2024-01-01",
+    rate_type: "selic",
+    rate_value: 100,
+    is_tax_exempt: false,
+  },
+};
+
 const mockRecordOrder = vi.fn().mockResolvedValue({ success: true });
 
 vi.mock("@/state", () => ({
   usePortfolioAssets: () => ({
-    data: [mockAsset],
+    data: [mockAsset, mockTesouroAsset],
     isLoading: false,
     error: null,
   }),
@@ -45,5 +64,34 @@ describe("QuickTransactionSheet (Fase 41)", () => {
     const sellTab = screen.getByRole("tab", { name: /Venda/i });
     await user.click(sellTab);
     expect(screen.getByText("Quantidade a Vender")).toBeInTheDocument();
+  });
+
+  it("exibe Discriminação do Resgate para Tesouro Direto e permite ajustar IRRF retido", async () => {
+    const user = userEvent.setup();
+    render(
+      <QuickTransactionSheet
+        open={true}
+        asset={mockTesouroAsset}
+        initialType="sell"
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Custo Original da Aplicação (R$)")).toBeInTheDocument();
+
+    // Preenche valor de resgate clicando no atalho 100%
+    const totalShortcutBtn = screen.getByRole("button", { name: /100% \(Total\)/i });
+    await user.click(totalShortcutBtn);
+
+    expect(screen.getByText("Discriminação do Resgate")).toBeInTheDocument();
+
+    // Clica no botão de ajuste de alíquota/IRRF
+    const adjustBtn = screen.getByRole("button", { name: /Ajustar alíquota e imposto de renda retido na fonte/i });
+    expect(adjustBtn).toBeInTheDocument();
+    await user.click(adjustBtn);
+
+    expect(screen.getByText("Ajuste Fiscal Manual (Nota de Corretagem)")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Alíquota personalizada de imposto de renda/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Valor de imposto de renda retido na fonte/i)).toBeInTheDocument();
   });
 });

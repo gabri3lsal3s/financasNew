@@ -14,6 +14,13 @@ vi.mock("@/state", () => ({
   useCreatePortfolioTransaction: () => ({ mutateAsync: createTxMock, isPending: false }),
   useUpdatePortfolioTransaction: () => ({ mutateAsync: updateTxMock, isPending: false }),
   useDeletePortfolioTransaction: () => ({ mutateAsync: deleteTxMock, isPending: false }),
+  useCreatePortfolioContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdatePortfolioContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeletePortfolioContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  usePortfolioAssets: () => ({ data: [], isLoading: false }),
+  usePortfolioContributions: () => ({ data: [], isLoading: false }),
+  usePortfolioPosition: () => ({ rows: [] }),
 }));
 
 const asset = {

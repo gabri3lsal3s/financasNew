@@ -63,6 +63,10 @@ export interface InvestmentWizardState {
   estimatedDividendPerShareCents: number;
   /** Custo original aplicado da posição/lote (especialmente para Renda Fixa). */
   appliedCostCents: number;
+  /** Alíquota customizada de IR em % para resgate de Renda Fixa. */
+  customTaxRatePct?: number | null;
+  /** Valor de IRRF retido na fonte customizado em centavos. */
+  customTaxAmountCents?: number | null;
 
   // Metas e Opções
   targetPercentage: number | null;
@@ -95,6 +99,8 @@ export const defaultWizardState: InvestmentWizardState = {
   priceCents: 0,
   totalCents: 0,
   appliedCostCents: 0,
+  customTaxRatePct: null,
+  customTaxAmountCents: null,
   date: todayISO(),
   month: currentMonth(),
   dividendEntryMode: "daily",
@@ -132,11 +138,15 @@ export function getFixedIncomeRedemptionInfo(
   }
 
   const appliedCost =
-    asset.quantity > 1 && asset.average_price > 0
-      ? Math.round(asset.quantity * asset.average_price * 100) / 100
-      : asset.average_price > 0
-        ? asset.average_price
-        : asset.quantity;
+    (asset.fixed_income_metadata?.initial_investment_value !== undefined &&
+      asset.fixed_income_metadata.initial_investment_value !== null &&
+      asset.fixed_income_metadata.initial_investment_value > 0)
+      ? asset.fixed_income_metadata.initial_investment_value
+      : asset.quantity > 1 && asset.average_price > 0
+        ? Math.round(asset.quantity * asset.average_price * 100) / 100
+        : asset.average_price > 0
+          ? asset.average_price
+          : asset.quantity;
 
   if (!asset.fixed_income_metadata) {
     return {
@@ -327,6 +337,8 @@ export interface InvestmentPreviewResult {
   currentAveragePrice: number;
   newQuantity: number;
   newAveragePrice: number;
+  remainingGrossValue?: number;
+  remainingCostBasis?: number;
   totalOrderValueNative?: number;
   totalOrderValueBRL: number;
   cashDebitBRL: number;
@@ -334,6 +346,9 @@ export interface InvestmentPreviewResult {
   contributionBRL: number;
   realizedPnl?: number;
   realizedPnlPct?: number;
+  taxAmountBRL?: number;
+  taxRatePct?: number;
+  isTaxCustomized?: boolean;
 }
 
 export function calculateInvestmentPreview(
@@ -374,34 +389,56 @@ export function calculateInvestmentPreview(
     const amountNative = inputTotal > 0 ? inputTotal : inputPrice;
     const amountBRL = Math.round(amountNative * rate * 100) / 100;
     if (state.mode === "sell") {
-      const { grossValue, appliedCost, taxAmount } = getFixedIncomeRedemptionInfo(
+      const { grossValue, appliedCost, taxAmount, taxRatePct } = getFixedIncomeRedemptionInfo(
         state.selectedAsset,
         state.date,
       );
       const effectiveAppliedCost =
         state.appliedCostCents > 0 ? state.appliedCostCents / 100 : appliedCost;
-      const isFullRedemption = amountNative >= grossValue || amountNative >= effectiveAppliedCost;
+      const isFullRedemption = grossValue > 0
+        ? amountNative >= grossValue - 0.01
+        : amountNative >= effectiveAppliedCost - 0.01;
+      const proportion = grossValue > 0 ? Math.min(1, amountNative / grossValue) : 1;
+      const costBasis = isFullRedemption ? effectiveAppliedCost : Math.round(effectiveAppliedCost * proportion * 100) / 100;
+      const realizedProfit = Math.round((amountBRL - costBasis) * 100) / 100;
 
       let estimatedTax = 0;
-      if (taxAmount > 0) {
-        const proportion = grossValue > 0 ? Math.min(1, amountNative / grossValue) : 1;
+      let effectiveTaxRatePct = taxRatePct;
+      const isTaxCustomized =
+        (state.customTaxAmountCents !== null && state.customTaxAmountCents !== undefined) ||
+        (state.customTaxRatePct !== null && state.customTaxRatePct !== undefined);
+
+      if (state.customTaxAmountCents !== null && state.customTaxAmountCents !== undefined) {
+        estimatedTax = Math.max(0, state.customTaxAmountCents / 100);
+        effectiveTaxRatePct =
+          realizedProfit > 0
+            ? Math.round((estimatedTax / realizedProfit) * 10000) / 100
+            : (state.customTaxRatePct ?? taxRatePct);
+      } else if (state.customTaxRatePct !== null && state.customTaxRatePct !== undefined) {
+        effectiveTaxRatePct = Math.max(0, state.customTaxRatePct);
+        estimatedTax =
+          effectiveTaxRatePct === 0
+            ? 0
+            : Math.max(0, Math.round(Math.max(0, realizedProfit) * (effectiveTaxRatePct / 100) * 100) / 100);
+      } else if (taxAmount > 0) {
         estimatedTax = Math.round(taxAmount * proportion * 100) / 100;
       }
 
       const netCreditBRL = Math.max(0, Math.round((amountBRL - estimatedTax) * 100) / 100);
-      const proportion = grossValue > 0 ? Math.min(1, amountNative / grossValue) : 1;
-      const newAveragePrice = isFullRedemption
+      const remainingCostBasis = isFullRedemption
         ? 0
         : Math.max(0, Math.round(effectiveAppliedCost * (1 - proportion) * 100) / 100);
-
-      const costBasis = isFullRedemption ? effectiveAppliedCost : Math.round(effectiveAppliedCost * proportion * 100) / 100;
-      const realizedProfit = Math.round((amountBRL - costBasis) * 100) / 100;
+      const remainingGrossValue = isFullRedemption
+        ? 0
+        : Math.max(0, Math.round((grossValue - amountNative) * 100) / 100);
 
       return {
         currentQuantity: 1,
         currentAveragePrice: currentAvgPrice,
         newQuantity: isFullRedemption ? 0 : 1,
-        newAveragePrice,
+        newAveragePrice: remainingCostBasis,
+        remainingGrossValue,
+        remainingCostBasis,
         totalOrderValueNative: amountNative,
         totalOrderValueBRL: amountBRL,
         cashDebitBRL: 0,
@@ -409,6 +446,9 @@ export function calculateInvestmentPreview(
         contributionBRL: 0,
         realizedPnl: realizedProfit,
         realizedPnlPct: costBasis > 0 ? Math.round((realizedProfit / costBasis) * 10000) / 100 : 0,
+        taxAmountBRL: estimatedTax,
+        taxRatePct: effectiveTaxRatePct,
+        isTaxCustomized,
       };
     }
     let cashDebitBRL = 0;

@@ -162,10 +162,10 @@ flowchart TD
 
 ## Fase 5: Página Dedicada `/familia` & Homologação
 
-- [ ] **Tarefa 5.1: Construção da Página `/familia`**
-  - Cards de Teto da Casa, Equilíbrio do Mês, Gráfico Comparativo e Ranking de Consumo.
-  - Extrato da casa com filtros fluidos (`Todas da Casa`, `Pagas por Você`, `Pagas pelo Parceiro`).
-  - Botão de Acerto de Contas com cópia de Chave Pix e botão "Registrar Acerto Realizado".
+- [x] **Tarefa 5.1: Construção da Página `/familia`**
+  - [x] Cards de Teto da Casa, Equilíbrio do Mês, Gráfico Comparativo e Ranking de Consumo.
+  - [x] Extrato da casa com filtros fluidos (`Todas da Casa`, `Pagas por Você`, `Pagas pelo Parceiro`).
+  - [x] Botão de Acerto de Contas com cópia de Chave Pix e botão "Registrar Acerto Realizado".
 
 - [ ] **Tarefa 5.2: Preservação do Extrato Pessoal (`/transacoes`)**
   - Confirmação de que `/transacoes` exibe estritamente os gastos do próprio usuário com badge `[Familiar]`.

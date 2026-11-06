@@ -58,6 +58,18 @@ vi.mock("@/state", () => ({
     mutateAsync: mockDeleteDividend,
     isPending: false,
   }),
+  useCreatePortfolioContribution: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useUpdatePortfolioContribution: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useUpdatePortfolioAsset: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   usePortfolioPosition: () => ({
     rows: [],
   }),
@@ -194,6 +206,20 @@ describe("PortfolioActivityPanel", () => {
         rollbackCash: true,
       }),
     );
+  });
+
+  it("renderiza botão de edição para aporte financeiro e abre ContributionFormDialog", () => {
+    render(<PortfolioActivityPanel defaultMonth="2026-08" />);
+
+    // Filtra por aportes
+    const contribFilterBtn = screen.getByRole("button", { name: /^Aportes/i });
+    fireEvent.click(contribFilterBtn);
+
+    const editContribButtons = screen.getAllByRole("button", { name: /Editar aporte/i });
+    expect(editContribButtons.length).toBeGreaterThan(0);
+    fireEvent.click(editContribButtons[0]!);
+
+    expect(screen.getByText("Editar Aporte Financeiro")).toBeInTheDocument();
   });
 });
 

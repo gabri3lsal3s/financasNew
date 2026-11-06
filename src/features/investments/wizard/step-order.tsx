@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { ArrowDownLeft, ArrowRight, ArrowUpRight, Calculator, GitFork, Info, Receipt } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowDownLeft, ArrowRight, ArrowUpRight, Calculator, GitFork, Info, Receipt, RotateCcw } from "lucide-react";
 import { Badge, Checkbox, DatePicker, Input, MoneyInput, NumericInput } from "@/components/ui";
 import { MonthPicker } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
@@ -25,6 +25,7 @@ export interface StepOrderProps {
 
 export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProps) {
   const cashAvailableBRL = cashAsset?.quantity ?? 0;
+  const [showTaxEditor, setShowTaxEditor] = useState(false);
 
   const preview = useMemo(
     () => calculateInvestmentPreview(state, cashAvailableBRL, usdRate),
@@ -146,7 +147,16 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                 type="button"
                 role="tab"
                 aria-selected={isSelected}
-                onClick={() => onChange({ mode: op.id as WizardMode })}
+                onClick={() => {
+                  const patch: Partial<InvestmentWizardState> = { mode: op.id as WizardMode };
+                  if (op.id === "sell" && state.appliedCostCents <= 0) {
+                    const cost = fiInfo?.appliedCost ?? state.selectedAsset?.average_price ?? 0;
+                    if (cost > 0) {
+                      patch.appliedCostCents = numberToCents(cost);
+                    }
+                  }
+                  onChange(patch);
+                }}
                 className={cn(
                   "flex items-center justify-center gap-1.5 rounded-xl border p-2.5 text-xs font-medium transition-all duration-150 cursor-pointer select-none active:scale-[0.98]",
                   isSelected
@@ -325,6 +335,18 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                   placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                   aria-label="Valor a resgatar em renda fixa"
                 />
+                {(() => {
+                  const withdrawVal = (state.totalCents || state.priceCents) / 100;
+                  const maxVal = fiInfo?.grossValue || state.selectedAsset?.average_price || 0;
+                  if (withdrawVal > 0 && maxVal > 0 && withdrawVal > maxVal * 1.005) {
+                    return (
+                      <span className="text-[11px] font-medium text-critical">
+                        O valor informado excede o saldo bruto acumulado disponível (R$ {maxVal.toFixed(2)}).
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
 
                 {/* Atalhos rápidos de percentual do saldo total */}
                 <div className="flex items-center gap-2 pt-1">
@@ -430,31 +452,129 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                   />
                 </span>
               </div>
-              {preview.cashCreditBRL !== undefined && state.syncCash && (
+              {preview.realizedPnl !== undefined && (
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Crédito Líquido no Caixa:</span>
-                  <span className="font-mono font-bold text-sm text-positive-strong">
+                  <span className="text-muted-foreground">Rendimento Realizado:</span>
+                  <span className={cn("font-mono font-bold text-xs", preview.realizedPnl >= 0 ? "text-positive-strong" : "text-critical-strong")}>
+                    {preview.realizedPnl >= 0 ? "+" : ""}
+                    <MoneyText cents={numberToCents(preview.realizedPnl)} currency={state.currency} /> ({preview.realizedPnlPct?.toFixed(1)}%)
+                  </span>
+                </div>
+              )}
+
+              {/* IRRF Retido na Fonte */}
+              <div className={cn("flex items-center justify-between text-xs", (preview.taxAmountBRL ?? 0) > 0 ? "text-warning-strong" : "text-muted-foreground")}>
+                <div className="flex items-center gap-1.5">
+                  <span>IRRF Retido ({preview.taxRatePct ?? fiInfo?.taxRatePct ?? 0}%):</span>
+                  {preview.isTaxCustomized && (
+                    <Badge variant="warning" size="xs">Ajustado</Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono font-medium">
+                    {(preview.taxAmountBRL ?? 0) > 0 ? "−" : ""}
+                    <MoneyText cents={numberToCents(preview.taxAmountBRL ?? 0)} currency="BRL" />
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowTaxEditor((prev) => !prev)}
+                    className="text-[10px] underline text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    {showTaxEditor ? "Fechar" : "Ajustar"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Editor expansível de Alíquota e IRRF */}
+              {showTaxEditor && (
+                <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-surface-hover/50 p-2.5 my-1 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-foreground">Ajuste Fiscal Manual</span>
+                    {preview.isTaxCustomized && (
+                      <button
+                        type="button"
+                        onClick={() => onChange({ customTaxAmountCents: null, customTaxRatePct: null })}
+                        className="flex items-center gap-1 text-[10px] text-primary hover:underline cursor-pointer"
+                      >
+                        <RotateCcw className="size-2.5" aria-hidden="true" />
+                        <span>Restaurar</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="wizard-tax-rate" className="text-[11px] text-muted-foreground">Alíquota de IR (%):</label>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {[
+                        { label: "22,5%", rate: 22.5 },
+                        { label: "20%", rate: 20 },
+                        { label: "17,5%", rate: 17.5 },
+                        { label: "15%", rate: 15 },
+                        { label: "Isento", rate: 0 },
+                      ].map((item) => (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => onChange({ customTaxRatePct: item.rate, customTaxAmountCents: null })}
+                          className={cn(
+                            "rounded px-1.5 py-0.5 text-[10px] font-medium border cursor-pointer",
+                            preview.taxRatePct === item.rate && state.customTaxAmountCents == null
+                              ? "border-primary bg-primary/10 text-primary-strong font-bold"
+                              : "border-border/60 bg-surface text-foreground",
+                          )}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1 pt-1 border-t border-border/40">
+                    <label htmlFor="wizard-tax-irrf" className="text-[11px] text-muted-foreground">IRRF Retido ({state.currency}):</label>
+                    <MoneyInput
+                      id="wizard-tax-irrf"
+                      cents={state.customTaxAmountCents ?? numberToCents(preview.taxAmountBRL ?? 0)}
+                      currency={state.currency}
+                      onCentsChange={(cents) => {
+                        const patch: Partial<InvestmentWizardState> = { customTaxAmountCents: cents };
+                        if ((preview.realizedPnl ?? 0) > 0) {
+                          patch.customTaxRatePct = Math.round(((cents / 100) / preview.realizedPnl!) * 10000) / 100;
+                        }
+                        onChange(patch);
+                      }}
+                      placeholder="R$ 0,00"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {preview.cashCreditBRL !== undefined && state.syncCash && (
+                <div className="flex items-center justify-between text-xs font-bold border-t border-border/40 pt-2">
+                  <span className="text-foreground">Crédito Líquido no Caixa:</span>
+                  <span className="font-mono text-sm text-positive-strong">
                     <MoneyText cents={numberToCents(preview.cashCreditBRL)} currency="BRL" />
                   </span>
                 </div>
               )}
-              {preview.realizedPnl !== undefined && preview.realizedPnl > 0 && (
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Rendimento Realizado:</span>
-                  <span className="font-mono font-bold text-xs text-positive-strong">
-                    +<MoneyText cents={numberToCents(preview.realizedPnl)} currency={state.currency} /> ({preview.realizedPnlPct?.toFixed(1)}%)
+              <div className="flex flex-col gap-1.5 text-xs border-t border-border/60 pt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Saldo bruto restante:</span>
+                  <span className="font-mono font-bold text-xs text-foreground">
+                    {preview.newQuantity === 0 ? (
+                      <Badge variant="muted" size="xs">Posição Encerrada</Badge>
+                    ) : (
+                      <MoneyText cents={numberToCents(preview.remainingGrossValue ?? 0)} currency={state.currency} />
+                    )}
                   </span>
                 </div>
-              )}
-              <div className="flex items-center justify-between text-xs border-t border-border/60 pt-2">
-                <span className="text-muted-foreground">Saldo aplicado residual:</span>
-                <span className="font-mono font-bold text-xs text-foreground">
-                  {preview.newQuantity === 0 ? (
-                    <Badge variant="muted" size="xs">Posição Encerrada</Badge>
-                  ) : (
-                    <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} />
-                  )}
-                </span>
+                {preview.newQuantity > 0 && preview.newAveragePrice > 0 && (
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>Custo original remanescente:</span>
+                    <span className="font-mono text-foreground">
+                      <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} />
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           ) : parsedQty > 0 && state.priceCents > 0 && preview.realizedPnl !== undefined ? (

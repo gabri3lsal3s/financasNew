@@ -18,6 +18,7 @@ vi.mock("@/data/repositories/portfolio", () => ({
   deletePortfolioAsset: vi.fn(),
   createPortfolioTransaction: vi.fn(),
   createPortfolioTransactionsBatch: vi.fn(),
+  listPortfolioTransactions: vi.fn().mockResolvedValue([]),
   updatePortfolioTransaction: vi.fn(),
   deletePortfolioTransaction: vi.fn().mockResolvedValue(undefined),
   deletePortfolioTransactionsMatching: vi.fn().mockResolvedValue(undefined),
@@ -269,6 +270,215 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
         expect.objectContaining({
           quantity: 1130,
           average_price: 1,
+        }),
+      );
+    });
+
+    it("em resgate de renda fixa com customTaxAmount credita Caixa com o líquido exato", async () => {
+      const mockFiAsset: PortfolioAsset = {
+        id: "rf-1",
+        user_id: "u-1",
+        ticker: "Tesouro Selic 2029",
+        asset_class: "Tesouro Direto",
+        quantity: 1,
+        average_price: 1426.79,
+        currency: "BRL",
+        fixed_income_metadata: {
+          base_value: 1426.79,
+          base_date: "2024-01-01",
+          initial_investment_value: 1426.79,
+          initial_investment_date: "2024-01-01",
+          rate_type: "selic",
+          rate_value: 100,
+          is_tax_exempt: false,
+        },
+      };
+
+      vi.mocked(repo.createPortfolioTransaction).mockResolvedValue({ id: "tx-rf-sell" } as unknown as PortfolioTransaction);
+      vi.mocked(repo.updatePortfolioAsset).mockResolvedValue({ id: "rf-1" } as unknown as PortfolioAsset);
+
+      const { result } = renderHook(() => useRecordOrder(), { wrapper });
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          asset: mockFiAsset,
+          type: "sell",
+          date: "2026-08-26",
+          quantity: 1,
+          price: 1653.17,
+          total: 1653.17,
+          syncCash: true,
+          cashAsset: mockCashAsset,
+          customTaxAmount: 42.67,
+          customTaxRatePct: 18.85,
+        });
+      });
+
+      // Caixa deve ser incrementado com 1.653,17 - 42,67 = 1.610,50 (1000 + 1610.50 = 2610.50)
+      expect(repo.updatePortfolioAsset).toHaveBeenCalledWith(
+        "cash-1",
+        expect.objectContaining({
+          quantity: 2610.5,
+          average_price: 1,
+        }),
+      );
+    });
+
+    it("em resgate parcial de renda fixa com valor bruto > custo, preserva saldo bruto residual no base_value e recalcula custo residual proporcional", async () => {
+      const mockFiAssetWithGain: PortfolioAsset = {
+        id: "rf-td-1",
+        user_id: "u-1",
+        ticker: "Tesouro Selic 2029",
+        asset_class: "Tesouro Direto",
+        quantity: 1,
+        average_price: 8000, // Custo original aplicado
+        currency: "BRL",
+        fixed_income_metadata: {
+          base_value: 9000, // Saldo bruto acumulado
+          base_date: "2026-08-26",
+          initial_investment_value: 8000, // Custo histórico
+          initial_investment_date: "2024-01-01",
+          rate_type: "selic",
+          rate_value: 100,
+          is_tax_exempt: false,
+        },
+      };
+
+      vi.mocked(repo.createPortfolioTransaction).mockResolvedValue({ id: "tx-rf-partial" } as unknown as PortfolioTransaction);
+      vi.mocked(repo.updatePortfolioAsset).mockResolvedValue({ id: "rf-td-1" } as unknown as PortfolioAsset);
+
+      const { result } = renderHook(() => useRecordOrder(), { wrapper });
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          asset: mockFiAssetWithGain,
+          type: "sell",
+          date: "2026-08-26",
+          quantity: 1,
+          price: 1600,
+          total: 1600,
+          syncCash: false,
+        });
+      });
+
+      // Saldo bruto restante: 9000 - 1600 = 7400
+      // Proporção resgatada: 1600 / 9000 = 0.177777...
+      // Custo residual: 8000 * (1 - 0.177777...) = 6577.78
+      expect(repo.updatePortfolioAsset).toHaveBeenCalledWith(
+        "rf-td-1",
+        expect.objectContaining({
+          quantity: 1,
+          average_price: 6577.78,
+          fixed_income_metadata: expect.objectContaining({
+            base_value: 7400,
+            base_date: "2026-08-26",
+            initial_investment_value: 6577.78,
+          }),
+        }),
+      );
+    });
+
+    it("resgate com valor superior ao custo mas inferior ao saldo bruto NÃO encerra a posição (mantém saldo residual)", async () => {
+      const mockFiAssetWithGain: PortfolioAsset = {
+        id: "rf-td-large-partial",
+        user_id: "u-1",
+        ticker: "Tesouro IPCA+ 2035",
+        asset_class: "Tesouro Direto",
+        quantity: 1,
+        average_price: 8000, // Custo
+        currency: "BRL",
+        fixed_income_metadata: {
+          base_value: 9000, // Saldo bruto
+          base_date: "2026-08-26",
+          initial_investment_value: 8000,
+          initial_investment_date: "2024-01-01",
+          rate_type: "ipca",
+          rate_value: 6,
+          is_tax_exempt: false,
+        },
+      };
+
+      vi.mocked(repo.createPortfolioTransaction).mockResolvedValue({ id: "tx-large-sell" } as unknown as PortfolioTransaction);
+      vi.mocked(repo.updatePortfolioAsset).mockResolvedValue({ id: "rf-td-large-partial" } as unknown as PortfolioAsset);
+
+      const { result } = renderHook(() => useRecordOrder(), { wrapper });
+
+      // Resgata R$ 8.200 (maior que o custo de R$ 8.000, mas menor que o saldo de R$ 9.000)
+      await act(async () => {
+        await result.current.mutateAsync({
+          asset: mockFiAssetWithGain,
+          type: "sell",
+          date: "2026-08-26",
+          quantity: 1,
+          price: 8200,
+          total: 8200,
+          syncCash: false,
+        });
+      });
+
+      // Saldo bruto restante deve ser 9000 - 8200 = 800 (NÃO 0!)
+      // Proporção: 8200 / 9000 = 0.911111...
+      // Custo restante: 8000 * (1 - 0.911111...) = 711.11
+      expect(repo.updatePortfolioAsset).toHaveBeenCalledWith(
+        "rf-td-large-partial",
+        expect.objectContaining({
+          quantity: 1,
+          average_price: 711.11,
+          fixed_income_metadata: expect.objectContaining({
+            base_value: 800,
+            base_date: "2026-08-26",
+            initial_investment_value: 711.11,
+          }),
+        }),
+      );
+    });
+
+    it("não insere compra duplicada no ledger se o ativo já possui compras anteriores", async () => {
+      vi.mocked(repo.listPortfolioTransactions).mockResolvedValue([
+        { id: "tx-existing-buy", asset_id: "rf-td-1", type: "buy", date: "2024-01-01", quantity: 1, price: 8000, total: 8000 } as PortfolioTransaction,
+      ]);
+      vi.mocked(repo.createPortfolioTransaction).mockResolvedValue({ id: "tx-sell-only" } as unknown as PortfolioTransaction);
+      vi.mocked(repo.updatePortfolioAsset).mockResolvedValue({ id: "rf-td-1" } as unknown as PortfolioAsset);
+
+      const mockFiAsset: PortfolioAsset = {
+        id: "rf-td-1",
+        user_id: "u-1",
+        ticker: "Tesouro Selic 2029",
+        asset_class: "Tesouro Direto",
+        quantity: 1,
+        average_price: 8000,
+        currency: "BRL",
+        fixed_income_metadata: {
+          base_value: 9000,
+          base_date: "2026-08-26",
+          initial_investment_value: 8000,
+          initial_investment_date: "2024-01-01",
+          rate_type: "selic",
+          rate_value: 100,
+          is_tax_exempt: false,
+        },
+      };
+
+      const { result } = renderHook(() => useRecordOrder(), { wrapper });
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          asset: mockFiAsset,
+          type: "sell",
+          date: "2026-08-26",
+          quantity: 1,
+          price: 1600,
+          total: 1600,
+          syncCash: false,
+        });
+      });
+
+      // Apenas 1 transação (a própria venda) deve ser criada no ledger, sem duplicar a compra!
+      expect(repo.createPortfolioTransaction).toHaveBeenCalledTimes(1);
+      expect(repo.createPortfolioTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "sell",
+          total: 1600,
         }),
       );
     });

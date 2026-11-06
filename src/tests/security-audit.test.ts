@@ -233,6 +233,15 @@ describe("F6.2 — RPCs transacionais endurecidos (D1)", () => {
           continue;
         }
 
+        // Exceção fundamentada: RPC pública de preview de convite familiar (/convite-familiar/:token).
+        // Por ser acessível por convidados (inclusive deslogados/anon), não exige auth.uid(), mas valida
+        // sanitização de token (6 a 64 chars) e apenas realiza update lazy para 'expired' se expirado.
+        if (fn.cleanName === "get_family_invite_preview") {
+          expect(fn.body).toMatch(/length\s*\(\s*v_clean_token\s*\)\s*not\s*between\s*6\s*and\s*64/i);
+          expect(fn.body).toMatch(/expires_at\s*<=\s*now\(\)/i);
+          continue;
+        }
+
         expect(
           /auth\.uid\(\)/i.test(fn.body),
           `escrita sem ownership (auth.uid()) no RPC ${fn.cleanName} em ${fn.file}`,

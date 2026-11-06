@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Coins, Trash2 } from "lucide-react";
+import { Coins, Pencil, Trash2 } from "lucide-react";
 import {
   Badge,
   Button,
@@ -13,7 +13,7 @@ import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { sumContributionsCents } from "@/domain/portfolio";
 import { currentMonth, formatDateBR } from "@/lib/date";
-
+import { ContributionFormDialog } from "./contribution-form-dialog";
 
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
@@ -38,6 +38,7 @@ export function ContributionsListDialog({
 }: ContributionsListDialogProps) {
   const [month, setMonth] = useState(() => defaultMonth ?? currentMonth());
   const [contributionToDelete, setContributionToDelete] = useState<PortfolioContribution | null>(null);
+  const [editingContribution, setEditingContribution] = useState<PortfolioContribution | null>(null);
 
   const contributionsQuery = usePortfolioContributions();
   const assetsQuery = usePortfolioAssets();
@@ -138,6 +139,17 @@ export function ContributionsListDialog({
                         type="button"
                         variant="ghost"
                         size="sm"
+                        onClick={() => setEditingContribution(item)}
+                        className="size-7 p-0 text-muted-foreground hover:text-foreground"
+                        title="Editar lançamento de aporte"
+                        aria-label={`Editar aporte de R$ ${item.amount}`}
+                      >
+                        <Pencil className="size-3.5" aria-hidden="true" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setContributionToDelete(item)}
                         className="size-7 p-0 text-muted-foreground hover:text-negative-strong"
                         title="Excluir lançamento de aporte"
@@ -164,6 +176,14 @@ export function ContributionsListDialog({
         confirmPending={deleteContribution.isPending}
         onConfirm={handleDeleteContribution}
       />
+
+      {editingContribution && (
+        <ContributionFormDialog
+          open={editingContribution !== null}
+          onOpenChange={(open) => !open && setEditingContribution(null)}
+          contribution={editingContribution}
+        />
+      )}
     </>
   );
 }

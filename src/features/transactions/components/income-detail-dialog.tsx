@@ -14,6 +14,7 @@ import {
   useDeleteIncomeGrouped,
   useDeleteRecurrenceOccurrences,
   useFamilyMode,
+  useMyFamily,
   useUpdateIncome,
   useUpdateIncomeGrouped,
   useUpdateRecurrenceOccurrences,
@@ -104,6 +105,8 @@ function IncomeEditForm({
   );
   const [formError, setFormError] = useState<string | null>(null);
   const { isFamilyModeEnabled } = useFamilyMode();
+  const { data: myFamilyData } = useMyFamily();
+  const isFamilyActive = Boolean(isFamilyModeEnabled || myFamilyData?.family);
 
   const handleSubmit = async () => {
     if (valueCents <= 0) {
@@ -138,7 +141,7 @@ function IncomeEditForm({
         category_id: categoryId,
         receive_type: receiveType,
         report_weight: calculatedWeight,
-        is_family: isFamilyModeEnabled ? isFamily : Boolean(income.is_family),
+        is_family: isFamilyActive ? isFamily : Boolean(income.is_family),
       });
     } catch (err) {
       setFormError(getErrorMessage(err));
@@ -250,7 +253,7 @@ function IncomeEditForm({
         ariaLabelCustom="Sua cota considerada no relatório"
       />
 
-      {isFamilyModeEnabled && (
+      {isFamilyActive && (
         <div className="rounded-xl border border-border/80 bg-surface p-3">
           <Switch
             id="edit-income-family"
@@ -309,6 +312,8 @@ export function IncomeDetailDialog({
 
   const categoriesQuery = useCategories("income");
   const { isFamilyModeEnabled } = useFamilyMode();
+  const { data: myFamilyData } = useMyFamily();
+  const isFamilyActive = Boolean(isFamilyModeEnabled || myFamilyData?.family);
   const deleteIncome = useDeleteIncome();
   const deleteIncomeGrouped = useDeleteIncomeGrouped();
   const deleteRecurrence = useDeleteRecurrenceOccurrences();
@@ -398,7 +403,7 @@ export function IncomeDetailDialog({
       });
     }
 
-    const familyChanged = isFamilyModeEnabled && payload.is_family !== undefined && payload.is_family !== income.is_family;
+    const familyChanged = isFamilyActive && payload.is_family !== undefined && payload.is_family !== income.is_family;
     if (familyChanged) {
       pushToast({
         title: "Receita atualizada com sucesso",
@@ -544,7 +549,7 @@ export function IncomeDetailDialog({
                       )}
                     </dd>
                   </div>
-                  {isFamilyModeEnabled && (
+                  {isFamilyActive && (
                     <div className="flex items-center justify-between">
                       <dt className="text-xs text-muted-foreground">Orçamento</dt>
                       <dd className="font-medium text-foreground text-xs">

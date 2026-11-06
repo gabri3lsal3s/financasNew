@@ -16,7 +16,7 @@ import { getErrorMessage } from "@/services/errors";
 import { downloadCsv } from "@/services/export-actions";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import { setStepIndex, startDemo, useCategories, useCreditCards, useExpenses, useFamilyMode, useIncomes, usePermission, useRecurrences } from "@/state";
+import { setStepIndex, startDemo, useCategories, useCreditCards, useExpenses, useFamilyMode, useIncomes, useMyFamily, usePermission, useRecurrences } from "@/state";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS, RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import { sumGrossCents, sumWeightedCents } from "@/domain/money";
 import { buildUnifiedFeedItems, filterByVisionScope, groupFeedByDay, type FeedFilter, type VisionScope } from "@/domain/expenses";
@@ -31,14 +31,14 @@ function ExpenseRow({
   expense,
   category,
   recurrenceLabel,
-  isFamilyModeEnabled,
+  isFamilyActive,
   onClick,
 }: {
   expense: Expense;
   category?: Category | null;
   /** Rótulo de frequência quando recorrente (Fase 32). */
   recurrenceLabel?: string;
-  isFamilyModeEnabled?: boolean;
+  isFamilyActive?: boolean;
   onClick?: () => void;
 }) {
   const title = expense.description || category?.name || "Despesa";
@@ -59,7 +59,7 @@ function ExpenseRow({
       icon={category?.icon}
       iconColor={category?.color}
       badges={
-        expense.is_family && isFamilyModeEnabled ? (
+        expense.is_family && isFamilyActive ? (
           <Badge variant="muted" size="xs" className="shrink-0 font-medium">
             Familiar
           </Badge>
@@ -76,14 +76,14 @@ function IncomeRow({
   income,
   category,
   recurrenceLabel,
-  isFamilyModeEnabled,
+  isFamilyActive,
   onClick,
 }: {
   income: Income;
   category?: Category | null;
   /** Rótulo de frequência quando recorrente (Fase 32). */
   recurrenceLabel?: string;
-  isFamilyModeEnabled?: boolean;
+  isFamilyActive?: boolean;
   onClick?: () => void;
 }) {
   const title = income.description || category?.name || "Receita";
@@ -99,7 +99,7 @@ function IncomeRow({
       icon={category?.icon}
       iconColor={category?.color}
       badges={
-        income.is_family && isFamilyModeEnabled ? (
+        income.is_family && isFamilyActive ? (
           <Badge variant="muted" size="xs" className="shrink-0 font-medium">
             Familiar
           </Badge>
@@ -118,7 +118,9 @@ export function TransactionListPage() {
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [selectedIncome, setSelectedIncome] = useState<Income | null>(null);
   const { highlightId } = useHighlightTarget("q");
+  const { data: myFamilyData } = useMyFamily();
   const { isFamilyModeEnabled } = useFamilyMode();
+  const isFamilyActive = Boolean(isFamilyModeEnabled || myFamilyData?.family);
 
   // Mês derivado: deep-link ?month= (busca §3.9) prevalece; sem param,
   // usa a escolha manual (MonthPicker) ou o mês corrente. Sem setState em
@@ -150,7 +152,7 @@ export function TransactionListPage() {
     paramScope === "personal" || paramScope === "family" ? paramScope : "all",
   );
   const visionScope: VisionScope = paramScope ? validParamScope : localScope;
-  const effectiveVisionScope: VisionScope = isFamilyModeEnabled ? visionScope : "all";
+  const effectiveVisionScope: VisionScope = isFamilyActive ? visionScope : "all";
 
   const handleScopeChange = (next: VisionScope) => {
     setLocalScope(next);
@@ -346,7 +348,7 @@ export function TransactionListPage() {
       <MonthPicker value={month} onValueChange={handleMonthChange} />
 
       {/* Filtro rápido de visão (Fase 3 — Tarefa 3.3): Todos | Pessoais | Familiar */}
-      {isFamilyModeEnabled && (
+      {isFamilyActive && (
         <Tabs
           value={visionScope}
           onValueChange={(val) => handleScopeChange(val as VisionScope)}
@@ -557,7 +559,7 @@ export function TransactionListPage() {
                         income={item.rawIncome}
                         category={categoryById.get(item.categoryId)}
                         recurrenceLabel={recurrenceLabel(item.recurrenceId)}
-                        isFamilyModeEnabled={isFamilyModeEnabled}
+                        isFamilyActive={isFamilyActive}
                         onClick={() => setSelectedIncome(item.rawIncome!)}
                       />
                     ) : item.rawExpense ? (
@@ -565,7 +567,7 @@ export function TransactionListPage() {
                         expense={item.rawExpense}
                         category={categoryById.get(item.categoryId)}
                         recurrenceLabel={recurrenceLabel(item.recurrenceId)}
-                        isFamilyModeEnabled={isFamilyModeEnabled}
+                        isFamilyActive={isFamilyActive}
                         onClick={() => setSelectedExpense(item.rawExpense!)}
                       />
                     ) : null}

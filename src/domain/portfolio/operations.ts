@@ -28,6 +28,10 @@ export interface SellAssetInput {
   calendarDays?: number;
   /** Indica se o título de Renda Fixa é isento de IR (LCI, LCA, CRI, CRA). */
   isTaxExemptFixedIncome?: boolean;
+  /** Alíquota customizada de IR em % (ex: 22.5, 20, 15, 0). */
+  customTaxRatePct?: number | null;
+  /** Valor de imposto retido customizado em moeda. */
+  customTaxAmount?: number | null;
 }
 
 export interface SellAssetResult {
@@ -49,6 +53,7 @@ export interface SellAssetResult {
     isTaxExempt: boolean;
     taxRate: number;
     estimatedTaxPayable: number;
+    isCustomized?: boolean;
   };
 }
 
@@ -104,9 +109,25 @@ export function sellAssetPosition(input: SellAssetInput): SellAssetResult {
     }
   }
 
-  // Para Renda Fixa tributada, o IR é retido na fonte no resgate e o valor líquido é creditado no caixa.
-  // Para Renda Variável (Ações/FIIs), o valor bruto é creditado no caixa e o DARF é apurado no mês seguinte.
-  const netCreditAmount = isFixedIncome
+  // Sobrescreve com valores customizados pelo usuário se informados
+  const isCustomized =
+    (input.customTaxAmount !== undefined && input.customTaxAmount !== null) ||
+    (input.customTaxRatePct !== undefined && input.customTaxRatePct !== null);
+
+  if (input.customTaxAmount !== undefined && input.customTaxAmount !== null) {
+    estimatedTaxPayable = Math.max(0, input.customTaxAmount);
+    if (realizedPnl > 0) {
+      taxRate = Math.round((estimatedTaxPayable / realizedPnl) * 10000) / 10000;
+    }
+  } else if (input.customTaxRatePct !== undefined && input.customTaxRatePct !== null) {
+    taxRate = Math.max(0, input.customTaxRatePct) / 100;
+    estimatedTaxPayable =
+      isTaxExempt || taxRate === 0 ? 0 : Math.round(Math.max(0, realizedPnl) * taxRate * 100) / 100;
+  }
+
+  // Para Renda Fixa tributada (ou caso haja retenção na fonte customizada), o IR é retido no resgate e o valor líquido é creditado no caixa.
+  // Para Renda Variável padrão sem retenção customizada, o valor bruto é creditado no caixa.
+  const netCreditAmount = isFixedIncome || isCustomized
     ? Math.max(0, Math.round((grossAmount - estimatedTaxPayable) * 100) / 100)
     : grossAmount;
 
@@ -128,6 +149,7 @@ export function sellAssetPosition(input: SellAssetInput): SellAssetResult {
       isTaxExempt,
       taxRate,
       estimatedTaxPayable,
+      isCustomized,
     },
   };
 }

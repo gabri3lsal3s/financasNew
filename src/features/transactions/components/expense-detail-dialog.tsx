@@ -15,6 +15,7 @@ import {
   useDeleteExpense,
   useDeleteRecurrenceOccurrences,
   useFamilyMode,
+  useMyFamily,
   useUpdateExpense,
   useUpdateExpenseGrouped,
   useUpdateRecurrenceOccurrences,
@@ -123,6 +124,8 @@ function ExpenseEditForm({
   );
   const [formError, setFormError] = useState<string | null>(null);
   const { isFamilyModeEnabled } = useFamilyMode();
+  const { data: myFamilyData } = useMyFamily();
+  const isFamilyActive = Boolean(isFamilyModeEnabled || myFamilyData?.family);
 
   /**
    * Data mudou: mantém a competência automática em sincronia com o fechamento
@@ -200,7 +203,7 @@ function ExpenseEditForm({
         card_id: paymentMethod === "credit_card" ? cardId || null : null,
         bill_competence: effectiveCompetence,
         report_weight: calculatedWeight,
-        is_family: isFamilyModeEnabled ? isFamily : Boolean(expense.is_family),
+        is_family: isFamilyActive ? isFamily : Boolean(expense.is_family),
       });
     } catch (err) {
       setFormError(getErrorMessage(err));
@@ -363,7 +366,7 @@ function ExpenseEditForm({
         ariaLabelCustom="Sua cota considerada no relatório"
       />
 
-      {isFamilyModeEnabled && (
+      {isFamilyActive && (
         <div className="rounded-xl border border-border/80 bg-surface p-3">
           <Switch
             id="edit-expense-family"
@@ -420,6 +423,8 @@ export function ExpenseDetailDialog({
   const categoriesQuery = useCategories("expense");
   const cardsQuery = useCreditCards();
   const { isFamilyModeEnabled } = useFamilyMode();
+  const { data: myFamilyData } = useMyFamily();
+  const isFamilyActive = Boolean(isFamilyModeEnabled || myFamilyData?.family);
   const deleteExpense = useDeleteExpense();
   const deleteRecurrence = useDeleteRecurrenceOccurrences();
   const updateExpense = useUpdateExpense();
@@ -511,7 +516,7 @@ export function ExpenseDetailDialog({
       });
     }
 
-    const familyChanged = isFamilyModeEnabled && payload.is_family !== undefined && payload.is_family !== expense.is_family;
+    const familyChanged = isFamilyActive && payload.is_family !== undefined && payload.is_family !== expense.is_family;
     if (familyChanged) {
       pushToast({
         title: "Despesa atualizada com sucesso",
@@ -670,7 +675,7 @@ export function ExpenseDetailDialog({
                       )}
                     </dd>
                   </div>
-                  {isFamilyModeEnabled && (
+                  {isFamilyActive && (
                     <div className="flex items-center justify-between">
                       <dt className="text-xs text-muted-foreground">Orçamento</dt>
                       <dd className="font-medium text-foreground text-xs">

@@ -10,6 +10,7 @@ const updateAssetMock = vi.fn();
 const deleteAssetMock = vi.fn();
 const setManualPriceMock = vi.fn();
 const fetchOnlineQuoteMock = vi.fn();
+const recordOrderMock = vi.fn();
 const usePortfolioAssetsMock = vi.fn(() => ({ data: [] as PortfolioAsset[], isLoading: false, isError: false, error: null }));
 
 vi.mock("@/services/sensory", () => ({ triggerSensory: vi.fn() }));
@@ -24,6 +25,7 @@ vi.mock("@/state", () => ({
   useCreatePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreatePortfolioContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSetManualPrice: () => ({ mutateAsync: setManualPriceMock, isPending: false }),
+  useRecordOrder: () => ({ mutateAsync: recordOrderMock, isPending: false }),
   usePortfolioAssets: () => usePortfolioAssetsMock(),
   useAssetPrices: () => ({ data: [], isLoading: false }),
   usePortfolioPosition: () => ({ rows: [] }),
@@ -69,6 +71,7 @@ describe("AssetFormDialog — feedback de escrita (F15 e F36)", () => {
     setManualPriceMock.mockReset();
     fetchOnlineQuoteMock.mockReset();
     fetchOnlineQuoteMock.mockResolvedValue(null);
+    recordOrderMock.mockReset();
     vi.mocked(triggerSensory).mockClear();
   });
 
@@ -132,7 +135,7 @@ describe("AssetFormDialog — feedback de escrita (F15 e F36)", () => {
   });
 
   it("permite alternar para a aba de venda e registrar desinvestimento com PM inalterado", async () => {
-    updateAssetMock.mockResolvedValue({});
+    recordOrderMock.mockResolvedValue({});
     const user = userEvent.setup();
     render(<AssetFormDialog open={true} onOpenChange={vi.fn()} asset={existingAsset} />);
 
@@ -150,13 +153,14 @@ describe("AssetFormDialog — feedback de escrita (F15 e F36)", () => {
     // Confirma a venda
     await user.click(screen.getByRole("button", { name: /Confirmar Venda \/ Resgate/i }));
 
-    expect(updateAssetMock).toHaveBeenCalledWith({
-      id: "a1",
-      patch: {
+    expect(recordOrderMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "sell",
+        asset: existingAsset,
         quantity: 50,
-        average_price: 30, // PM mantido inalterado
-      },
-    });
+        appliedCostBasis: 30,
+      }),
+    );
     expect(triggerSensory).toHaveBeenCalledWith("destructive");
   });
 
