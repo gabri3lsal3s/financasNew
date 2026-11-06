@@ -167,8 +167,8 @@ flowchart TD
   - [x] Extrato da casa com filtros fluidos (`Todas da Casa`, `Pagas por Você`, `Pagas pelo Parceiro`).
   - [x] Botão de Acerto de Contas com cópia de Chave Pix e botão "Registrar Acerto Realizado".
 
-- [ ] **Tarefa 5.2: Preservação do Extrato Pessoal (`/transacoes`)**
-  - Confirmação de que `/transacoes` exibe estritamente os gastos do próprio usuário com badge `[Familiar]`.
+- [x] **Tarefa 5.2: Preservação do Extrato Pessoal (`/transacoes`)**
+  - [x] Confirmação de que `/transacoes` exibe estritamente os gastos do próprio usuário com badge `[Familiar]`.
 
 - [ ] **Tarefa 5.3: Homologação e Build de Produção**
   - Testes E2E, typecheck, lint e build de produção. Mover plano para `docs/plans/completed/`.

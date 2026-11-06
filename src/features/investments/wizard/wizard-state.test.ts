@@ -263,11 +263,12 @@ describe("wizard-state — Máquina de Estados do Investment Wizard (Fase 41 & M
         fixed_income_metadata: {
           rate_type: "pre",
           rate_value: 15.0, // 15% a.a. pré
-          base_date: "2025-01-01",
+          base_date: "2026-09-02",
           initial_investment_date: "2025-01-01",
           maturity_date: "2026-09-02",
           is_tax_exempt: false,
-          base_value: 1236.27,
+          base_value: 1400.0,
+          initial_investment_value: 1236.27,
         },
       };
 
@@ -305,8 +306,8 @@ describe("wizard-state — Máquina de Estados do Investment Wizard (Fase 41 & M
         average_price: 1426.79,
         notes: "",
         fixed_income_metadata: {
-          base_value: 1426.79,
-          base_date: "2024-01-01",
+          base_value: 1653.17,
+          base_date: "2026-09-02",
           initial_investment_value: 1426.79,
           initial_investment_date: "2024-01-01",
           rate_type: "selic",

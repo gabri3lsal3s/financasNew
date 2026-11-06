@@ -385,6 +385,12 @@ vi.mock("@/state", () => ({
     isLoading: false,
     isPending: false,
   }),
+  useMyFamily: () => ({
+    data: null,
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
   useMyPublicShares: () => ({
     data: [],
     isLoading: false,
