@@ -592,12 +592,16 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
   - A lista de legendas completa mantém todos os itens acessíveis e navegáveis.
 - **Layout de Legendas em 2 Colunas (`grid-cols-1 sm:grid-cols-2`):**
   - Quando a lista possui mais de 4 itens, ela se organiza automaticamente em **2 colunas** no tablet e desktop, reduzindo a altura vertical pela metade.
-- **Centro Dinâmico e Governança Tipográfica:**
+- **Centro Dinâmico, Safe Zone Concêntrica e Governança Tipográfica:**
   - O miolo do Donut alterna fluidamente entre `"TOTAL"` e a fatia ativa (ao passar o mouse ou clicar), com feedback tátil sensorial centralizado (`triggerSensory("selection")`).
+  - **Safe Zone Concêntrica Circular:** O miolo central utiliza obrigatoriamente uma casca circular com `inset-[11%]`, `rounded-full` e wrapper interno com `max-w-[82%]` (em `CategoryDonut`, `InteractiveTargetDonut` e `ReportDonutChart`), garantindo folga perimétrica mínima de **10px a 14px** entre o texto central e o traçado interno dos arcos. É proibido usar `inset-0` cru ou sem delimitação de largura máxima radial.
+  - **Proporção Áurea de Furo Central:** O furo interno útil deve ocupar entre **80% e 83%** do diâmetro total do gráfico (razão de traçado `strokeWidth` entre 8% e 9% do diâmetro), prevenindo o estrangulamento de valores monetários centrais.
   - O rótulo e o ponto indicador ficam alinhados em **linha única** com truncamento elegante no nome para preservar a simetria central.
-  - Valores monetários são sempre 100% visíveis em linha (`whitespace-nowrap tabular-nums tracking-tight`) com auto-fit dinâmico, sem reticências (Regra 11).
-- **Dimensionamento Responsivo Fluido:**
-  - Escala progressiva do anel: `size-44` (mobile 176px) $\rightarrow$ `sm:size-48` (192px) $\rightarrow$ `md:size-52` (208px) $\rightarrow$ `lg:size-56` (224px) $\rightarrow$ `xl:size-60` (240px no desktop), centralizado verticalmente no card (`self-center md:items-center`).
+  - Valores monetários são sempre 100% visíveis em linha (`whitespace-nowrap tabular-nums tracking-tight`) com auto-fit dinâmico e escala tipográfica adaptativa baseada nas dimensões do gráfico (`text-[10px]` a `text-xs/text-sm`), sem reticências (Regra 11).
+- **Dimensionamento Responsivo e Padronização de Relatórios:**
+  - `CategoryDonut` / `AllocationDonut`: escala progressiva fluida `size-36 sm:size-40 md:size-44 lg:size-48` no padrão ou `size-32 sm:size-36 md:size-40` no compacto.
+  - `InteractiveTargetDonut`: container SVG com escala `size-40 sm:size-48 md:size-52 lg:size-56` e safe zone interna para acomodar com folga as 3 linhas de telemetria de meta.
+  - `ReportDonutChart` (Relatórios e Balanço): padrão tela `size={136}` com `strokeWidth={12}` (ou `size={140}` com `strokeWidth={13}`); padrão impressão/compacto `size={112}` com `strokeWidth={10}` (cards analíticos) e `size={120}` com `strokeWidth={11}` (dossiê A4), eliminando qualquer sobreposição do traçado em impressão ou telas pequenas.
 
 ### 14.22 Harmonização de Espaçamentos e Sub-blocos na Gestão de Faturas (Cartões)
 - **Descompressão de Layout:** A hierarquia entre blocos principais (Carteira 3D $\rightarrow$ Seletor/Status/KPIs $\rightarrow$ Extrato de Despesas $\rightarrow$ Pagamentos e Estornos) utiliza espaçamentos desobstruídos (`gap-6` na página; `gap-4 sm:gap-5` dentro de seções; `gap-6 sm:gap-7` entre os grupos de compras *Parceladas* e *À vista*).

@@ -20,19 +20,23 @@ import {
   isCashAssetClass,
   isDividendType,
 } from "@/domain/portfolio";
+import { budgetLimitsByCategory, resolveEffectiveLimit } from "@/domain/budgets";
 import { addDaysISO, todayISO } from "@/domain/debts";
 import { currentMonth, currentYear, monthRange, shiftMonth, yearRange } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import {
-
   useAllocationTargets,
+  useBudgets,
   useCategories,
   useDebts,
   useExpenses,
   useExpensesByRange,
+  useFamilyConsolidation,
+  useFamilyMode,
   useGroupTargets,
   useIncomes,
   useIncomesByRange,
+  useMyFamily,
   useAllPortfolioTransactions,
   usePortfolioAssets,
   usePortfolioContributions,
@@ -220,6 +224,13 @@ export function ReportsPage() {
   const debtsQuery = useDebts({ enabled: hasFinanceFeatures });
   const categoriesQuery = useCategories(undefined, { enabled: hasFinanceFeatures });
   const contributionsQuery = usePortfolioContributions();
+  const budgetsQuery = useBudgets();
+  const { isFamilyModeEnabled } = useFamilyMode();
+  const myFamilyQuery = useMyFamily();
+  const hasFamily = Boolean(myFamilyQuery.data?.family?.id);
+  const familyConsolidationQuery = useFamilyConsolidation(mode === "month" ? month : currentMonth(), {
+    enabled: hasFamily && isFamilyModeEnabled && mode === "month",
+  });
 
   // Queries de Investimentos & Patrimônio
   const positionQuery = usePortfolioPosition();
@@ -616,6 +627,27 @@ export function ReportsPage() {
   const byCategory = useMemo(() => aggregateByCategory(expenseEntries), [expenseEntries]);
   const byMethod = useMemo(() => aggregateByPaymentMethod(expenseEntries), [expenseEntries]);
   const byWeekday = useMemo(() => aggregateByWeekday(expenseEntries), [expenseEntries]);
+
+  const limitsByCategory = useMemo(
+    () => budgetLimitsByCategory(budgetsQuery.data ?? []),
+    [budgetsQuery.data],
+  );
+
+  const currentUserId = myFamilyQuery.data?.currentMember?.user_id;
+  const householdData = isFamilyModeEnabled && mode === "month" ? familyConsolidationQuery.data : null;
+
+  const householdSummary = useMemo(() => {
+    if (!householdData || householdData.monthly_ceiling_cents <= 0) return null;
+    const currentMemberSpent = householdData.members.find((m) => m.user_id === currentUserId);
+    return {
+      familyTitle: householdData.family.name,
+      monthlyCeilingCents: householdData.monthly_ceiling_cents,
+      totalSpentCents: householdData.total_spent_cents,
+      spentPercentage: householdData.spent_percentage,
+      userContributionCents: currentMemberSpent?.spent_cents ?? 0,
+      userPercentageOfTotal: currentMemberSpent?.percentage_of_total ?? 0,
+    };
+  }, [householdData, currentUserId]);
 
   const grossExpenseBrutoCents = useMemo(
     () => expenseEntries.reduce((acc, e) => acc + e.baseCents, 0),
@@ -1031,13 +1063,26 @@ export function ReportsPage() {
             onOpenChange={setFinancialReportOpen}
             periodLabel={periodLabel}
             dre={financialDRE}
-            categories={byCategory.map((c) => ({
-              name: c.name,
-              brutoCents: c.brutoCents,
-              ponderadoCents: c.ponderadoCents,
-              totalCents: c.brutoCents,
-              pct: grossExpenseBrutoCents > 0 ? (c.brutoCents / grossExpenseBrutoCents) * 100 : 0,
-            }))}
+            categories={byCategory.map((c) => {
+              const targetMonth = mode === "month" ? month : null;
+              const limitCents = targetMonth
+                ? resolveEffectiveLimit(limitsByCategory.get(c.categoryId) ?? [], targetMonth)
+                : 0;
+              const variancePct =
+                limitCents > 0
+                  ? Math.round(((c.brutoCents - limitCents) / limitCents) * 100)
+                  : null;
+
+              return {
+                name: c.name,
+                brutoCents: c.brutoCents,
+                ponderadoCents: c.ponderadoCents,
+                totalCents: c.brutoCents,
+                pct: grossExpenseBrutoCents > 0 ? (c.brutoCents / grossExpenseBrutoCents) * 100 : 0,
+                budgetLimitCents: limitCents > 0 ? limitCents : null,
+                variancePct,
+              };
+            })}
             paymentMethods={byMethod.map((m) => ({
               method: m.method,
               label: PAYMENT_METHOD_LABELS[m.method as keyof typeof PAYMENT_METHOD_LABELS] ?? m.method,
@@ -1049,6 +1094,7 @@ export function ReportsPage() {
             expenseCount={expenseEntries.length}
             incomeCount={incomeEntries.length}
             showWeightedNote={weightsEnabled}
+            householdSummary={householdSummary}
           />
         </Suspense>
       )}

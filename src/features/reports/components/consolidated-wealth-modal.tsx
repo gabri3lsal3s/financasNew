@@ -126,6 +126,8 @@ export function ConsolidatedWealthModal({
           segments={assetSegments}
           centerLabel="Ativos"
           centerValue={<MoneyText cents={numberToCents(balanceSheet.totalAssetsBRL)} />}
+          size={136}
+          strokeWidth={12}
         />
       )}
 

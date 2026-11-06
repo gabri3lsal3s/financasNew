@@ -75,4 +75,12 @@ describe("InteractiveTargetDonut", () => {
     expect(screen.getByText("110.0")).toBeInTheDocument();
     expect(screen.getByText("+10.0%")).toBeInTheDocument();
   });
+
+  it("renderiza o centro com safe zone concêntrica e respiro perimétrico", () => {
+    const { container } = render(<InteractiveTargetDonut items={sampleItems} />);
+    const centerZone = container.querySelector(".inset-\\[11\\%\\]");
+    expect(centerZone).toBeInTheDocument();
+    expect(centerZone).toHaveClass("rounded-full");
+    expect(centerZone?.querySelector(".max-w-\\[82\\%\\]")).toBeInTheDocument();
+  });
 });

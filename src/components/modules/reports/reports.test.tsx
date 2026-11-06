@@ -147,6 +147,23 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     expect(screen.queryByText("40,0%")).not.toBeInTheDocument();
   });
 
+  it("renderiza ReportDonutChart com safe zone circular concêntrica e respiro interno", () => {
+    const { container } = render(
+      <ReportDonutChart
+        segments={[{ key: "ativos", label: "Ativos", value: 18215, pct: 100, color: "#1b6b62" }]}
+        centerLabel="Ativos"
+        centerValue="R$ 18.215,13"
+        size={136}
+      />,
+    );
+
+    const centerContainer = container.querySelector(".inset-\\[11\\%\\]");
+    expect(centerContainer).toBeInTheDocument();
+    expect(centerContainer).toHaveClass("rounded-full");
+    expect(screen.getAllByText("Ativos")).toHaveLength(2);
+    expect(screen.getByText("R$ 18.215,13")).toBeInTheDocument();
+  });
+
   it("renderiza ReportStackedBar com distribuição proporcional", () => {
     render(
       <ReportStackedBar

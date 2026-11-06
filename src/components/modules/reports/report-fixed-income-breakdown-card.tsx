@@ -163,8 +163,8 @@ export function ReportFixedIncomeBreakdownCard({
                       className="text-[10px] font-bold tabular-nums tracking-tight whitespace-nowrap"
                     />
                   }
-                  size={96}
-                  strokeWidth={12}
+                  size={112}
+                  strokeWidth={10}
                   showLegend={false}
                 />
               </div>
@@ -224,8 +224,8 @@ export function ReportFixedIncomeBreakdownCard({
                       className="text-[10px] font-bold tabular-nums tracking-tight whitespace-nowrap"
                     />
                   }
-                  size={96}
-                  strokeWidth={12}
+                  size={112}
+                  strokeWidth={10}
                   showLegend={false}
                 />
               </div>
@@ -282,7 +282,7 @@ export function ReportFixedIncomeBreakdownCard({
                 />
               }
               size={140}
-              strokeWidth={16}
+              strokeWidth={13}
               showLegend={false}
             />
           </div>

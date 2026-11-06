@@ -227,58 +227,61 @@ function computeVisualTargetShares(items: readonly TargetDonutItem[], denominato
           </svg>
 
 
-          {/* Conteúdo central do Donut */}
+          {/* Conteúdo central do Donut com Safe Zone concêntrica protegida */}
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-3 sm:px-4"
+            className="absolute inset-[11%] flex flex-col items-center justify-center pointer-events-none text-center p-1.5 rounded-full select-none overflow-hidden"
             aria-live="polite"
           >
-            {selectedItem ? (
-              <>
-                <span
-                  className="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider truncate max-w-[110px] sm:max-w-[140px]"
-                  style={{ color: selectedColor }}
-                >
-                  {selectedItem.label}
-                </span>
-                <span className="num font-mono text-sm sm:text-base md:text-lg font-bold text-foreground leading-tight mt-0.5">
-                  {selectedItem.targetPercent.toFixed(1)}
-                  <span className="text-xs text-muted-foreground font-normal ml-0.5">{unitLabel}</span>
-                </span>
-                {selectedItem.currentPercent !== undefined ? (
-                  <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium mt-0.5">
-                    Atual: <strong className="text-foreground">{selectedItem.currentPercent.toFixed(1)}{unitLabel}</strong>
+            <div className="flex flex-col items-center justify-center w-full max-w-[82%] min-w-0">
+              {selectedItem ? (
+                <>
+                  <span
+                    className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate max-w-full"
+                    style={{ color: selectedColor }}
+                    title={selectedItem.label}
+                  >
+                    {selectedItem.label}
                   </span>
-                ) : (
-                  <span className="text-[10px] sm:text-xs text-muted-foreground font-medium mt-0.5">selecionado</span>
-                )}
-              </>
-            ) : (
-              <>
-                <span className="text-[10px] sm:text-xs font-semibold tracking-wider uppercase text-muted-foreground">
-                  Alocado
-                </span>
-                <span
-                  className={cn(
-                    "num font-mono text-sm sm:text-base md:text-lg font-bold leading-tight mt-0.5",
-                    isOverflow ? "text-critical-strong" : "text-foreground",
+                  <span className="num font-mono text-sm sm:text-base md:text-lg font-bold text-foreground leading-tight mt-0.5 whitespace-nowrap">
+                    {selectedItem.targetPercent.toFixed(1)}
+                    <span className="text-xs text-muted-foreground font-normal ml-0.5">{unitLabel}</span>
+                  </span>
+                  {selectedItem.currentPercent !== undefined ? (
+                    <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium mt-0.5 whitespace-nowrap">
+                      Atual: <strong className="text-foreground">{selectedItem.currentPercent.toFixed(1)}{unitLabel}</strong>
+                    </span>
+                  ) : (
+                    <span className="text-[10px] sm:text-xs text-muted-foreground font-medium mt-0.5 whitespace-nowrap">selecionado</span>
                   )}
-                >
-                  {roundedSum.toFixed(1)}
-                  <span className="text-xs text-muted-foreground font-normal ml-0.5">{unitLabel}</span>
-                </span>
-                {freePercent > 0 ? (
-                  <span className="text-[10px] sm:text-xs text-muted-foreground font-medium mt-0.5">
-                    {freePercent.toFixed(1)}{unitLabel} livre
+                </>
+              ) : (
+                <>
+                  <span className="text-[10px] sm:text-xs font-semibold tracking-wider uppercase text-muted-foreground truncate max-w-full">
+                    Alocado
                   </span>
-                ) : isOverflow ? (
-                  <span className="text-[10px] sm:text-xs text-critical-strong font-semibold mt-0.5">
-                    +{overflowPercent.toFixed(1)}{unitLabel}
+                  <span
+                    className={cn(
+                      "num font-mono text-sm sm:text-base md:text-lg font-bold leading-tight mt-0.5 whitespace-nowrap",
+                      isOverflow ? "text-critical-strong" : "text-foreground",
+                    )}
+                  >
+                    {roundedSum.toFixed(1)}
+                    <span className="text-xs text-muted-foreground font-normal ml-0.5">{unitLabel}</span>
                   </span>
-                ) : (
-                  <span className="text-[10px] sm:text-xs text-positive-strong font-medium mt-0.5">100% calibrado</span>
-                )}
-              </>
-            )}
+                  {freePercent > 0 ? (
+                    <span className="text-[10px] sm:text-xs text-muted-foreground font-medium mt-0.5 whitespace-nowrap">
+                      {freePercent.toFixed(1)}{unitLabel} livre
+                    </span>
+                  ) : isOverflow ? (
+                    <span className="text-[10px] sm:text-xs text-critical-strong font-semibold mt-0.5 whitespace-nowrap">
+                      +{overflowPercent.toFixed(1)}{unitLabel}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] sm:text-xs text-positive-strong font-medium mt-0.5 whitespace-nowrap">100% calibrado</span>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
 

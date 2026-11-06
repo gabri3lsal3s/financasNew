@@ -63,8 +63,8 @@ export function ReportDonutChart({
   segments,
   centerLabel,
   centerValue,
-  size = 130,
-  strokeWidth = 14,
+  size = 136,
+  strokeWidth = 12,
   className,
   legendClassName,
   showLegend = true,
@@ -138,19 +138,38 @@ export function ReportDonutChart({
           ))}
       </svg>
 
-      {/* Centro com rótulo/valor */}
+      {/* Centro com rótulo/valor e Safe Zone concêntrica protegida */}
       {(centerLabel || centerValue) && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2 pointer-events-none">
-          {centerLabel && (
-            <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider leading-none">
-              {centerLabel}
-            </span>
-          )}
-          {centerValue && (
-            <span className="num font-mono text-xs sm:text-sm font-bold text-foreground mt-0.5 leading-tight">
-              {centerValue}
-            </span>
-          )}
+        <div
+          className="absolute inset-[11%] flex flex-col items-center justify-center text-center p-1.5 rounded-full pointer-events-none select-none overflow-hidden"
+          aria-hidden="true"
+        >
+          <div className="flex flex-col items-center justify-center w-full max-w-[82%] min-w-0">
+            {centerLabel && (
+              <span
+                className={cn(
+                  "uppercase font-semibold text-muted-foreground tracking-wider leading-none truncate max-w-full",
+                  size <= 112 ? "text-[8.5px]" : "text-[9.5px]",
+                )}
+              >
+                {centerLabel}
+              </span>
+            )}
+            {centerValue && (
+              <span
+                className={cn(
+                  "num font-mono font-bold text-foreground mt-0.5 leading-tight tracking-tight whitespace-nowrap truncate max-w-full",
+                  size <= 112
+                    ? "text-[10px] sm:text-[10.5px]"
+                    : size <= 125
+                      ? "text-[11px] sm:text-xs"
+                      : "text-xs sm:text-sm",
+                )}
+              >
+                {centerValue}
+              </span>
+            )}
+          </div>
         </div>
       )}
     </div>

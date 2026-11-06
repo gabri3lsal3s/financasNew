@@ -103,8 +103,8 @@ export function ReportFiiBreakdownCard(props: ReportFiiBreakdownCardProps) {
                   className="text-[11px] font-bold tabular-nums tracking-tight whitespace-nowrap"
                 />
               }
-              size={115}
-              strokeWidth={13}
+              size={120}
+              strokeWidth={11}
               showLegend={false}
             />
           </div>
@@ -159,7 +159,7 @@ export function ReportFiiBreakdownCard(props: ReportFiiBreakdownCardProps) {
                 />
               }
               size={140}
-              strokeWidth={16}
+              strokeWidth={13}
               showLegend={false}
             />
           </div>

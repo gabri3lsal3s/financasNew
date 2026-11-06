@@ -106,8 +106,8 @@ export function ReportAllocationDonuts({
                     className="text-[10px] font-bold whitespace-nowrap"
                   />
                 }
-                size={115}
-                strokeWidth={13}
+                size={120}
+                strokeWidth={11}
                 showLegend={false}
               />
             </div>
@@ -174,8 +174,8 @@ export function ReportAllocationDonuts({
                 segments={preparedSectorSegments}
                 centerLabel="Setores"
                 centerValue={<span className="text-[10px] font-bold text-foreground">{numSectors}</span>}
-                size={115}
-                strokeWidth={13}
+                size={120}
+                strokeWidth={11}
                 showLegend={false}
               />
             </div>
@@ -259,7 +259,7 @@ export function ReportAllocationDonuts({
                 />
               }
               size={140}
-              strokeWidth={16}
+              strokeWidth={13}
               showLegend={false}
               onSegmentClick={onClassClick ? (seg) => onClassClick(seg.label) : undefined}
             />
@@ -342,7 +342,7 @@ export function ReportAllocationDonuts({
               centerLabel="Setores"
               centerValue={<span className="text-xs font-bold text-foreground">{numSectors}</span>}
               size={140}
-              strokeWidth={16}
+              strokeWidth={13}
               showLegend={false}
               onSegmentClick={onSectorClick ? (seg) => onSectorClick(seg.label) : undefined}
             />

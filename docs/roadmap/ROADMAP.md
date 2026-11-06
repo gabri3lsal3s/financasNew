@@ -1,5 +1,20 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.97** registra a **Padronização Visual, Safe Zone Concêntrica e Respiro Perimétrico em Gráficos Donut (Relatórios & Investimentos)** (2026-11-06):
+> - **(1) Safe Zone Concêntrica Circular & Eliminação de Colisão Perimétrica**:
+>   - Atualização do container central em `ReportDonutChart` e `InteractiveTargetDonut` para a casca geométrica `inset-[11%] rounded-full` com wrapper interno `max-w-[82%]`, garantindo folga mínima de **10px a 14px** entre o texto central e o traçado interno dos arcos;
+>   - Eliminação de sobreposições visuais em valores monetários extensos (ex.: `R$ 18.215,13` ou maiores) e em nomes longos de classes e setores econômicos.
+> - **(2) Recalibração de Furo Central e Proporções de Traço**:
+>   - Expansão do diâmetro interno útil em mais de 15% via traçado esbelto na faixa áurea de 8% a 9% do diâmetro (`strokeWidth=12` para `size=136`; `strokeWidth=13` para `size=140`);
+>   - Elevação dos gráficos compactos de impressão A4 em `ReportStocksBreakdownCard`, `ReportFixedIncomeBreakdownCard` e `ReportInternationalBreakdownCard` de `size={96}` para `size={112}` (`strokeWidth=10`), prevenindo o colapso dos números do centro;
+>   - Calibração de `ReportAllocationDonuts` e `ReportFiiBreakdownCard` para `size={120}` e `strokeWidth={11}` no dossiê de impressão.
+> - **(3) Tipografia Adaptativa e Governança no Design System (§14.21)**:
+>   - Auto-fit dinâmico de fonte para o `centerValue` (`text-[10px]` a `text-xs/text-sm`) e `truncate max-w-full` em rótulos, mantendo a simetria radial perfeita;
+>   - Atualização da especificação de governança visual em `docs/design/DESIGN_SYSTEM.md` §14.21.
+> - **(4) Homologação Integrada**:
+>   - 100% dos testes da suíte de relatórios e gráficos donut aprovados (64 testes verdes);
+>   - 0 erros em `tsc -b` e 0 violações de lint (`local/no-decorative-unicode`).
+>
 > **v2.96** registra o **Modo Família Colaborativo Multi-Contas & Consolidação Orçamentária Segura (Plano 03)** (2026-11-06):
 > - **(1) Infraestrutura Postgres, RLS Hermético & RPCs Transacionais (Migração 0076)**:
 >   - Modelagem relacional completa com `families`, `family_members`, `family_invites` e `family_settlements`;
