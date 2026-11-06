@@ -13,6 +13,7 @@ import {
   ReportClassTables,
   ReportDocumentLayout,
   ReportPerformanceChart,
+  ReportMonthlyMovements,
 } from "./index";
 
 describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () => {
@@ -294,6 +295,30 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     expect(
       screen.getByText(/o mês incompleto é automaticamente segregado do cálculo da volatilidade anualizada e do Índice de Sharpe/),
     ).toBeInTheDocument();
+  });
+
+  it("renderiza ReportMonthlyMovements com os 4 quadrantes de fluxo e contadores", () => {
+    render(
+      <ReportMonthlyMovements
+        monthBuysBRL={2500}
+        monthSellsBRL={800}
+        monthDividendsBRL={350}
+        monthNetContributionBRL={1700}
+        transactionsCount={4}
+        dividendsCount={3}
+      />,
+    );
+
+    expect(screen.getByText("MOVIMENTAÇÕES DA COMPETÊNCIA")).toBeInTheDocument();
+    expect(screen.getByText("4 operações · 3 proventos")).toBeInTheDocument();
+    expect(screen.getByText("Compras do Mês")).toBeInTheDocument();
+    expect(screen.getByText("Vendas do Mês")).toBeInTheDocument();
+    expect(screen.getByText("Proventos do Mês")).toBeInTheDocument();
+    expect(screen.getByText("Aporte Líquido Injetado")).toBeInTheDocument();
+    expect(screen.getByText(/2\.500,00/)).toBeInTheDocument();
+    expect(screen.getByText(/800,00/)).toBeInTheDocument();
+    expect(screen.getByText(/350,00/)).toBeInTheDocument();
+    expect(screen.getByText(/\+\s*R\$[\s\u00a0]*1\.700,00/i)).toBeInTheDocument();
   });
 });
 

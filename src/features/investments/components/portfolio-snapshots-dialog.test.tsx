@@ -76,13 +76,29 @@ describe("PortfolioSnapshotsDialog", () => {
     // KPIs de resumo
     expect(screen.getByText("3 meses")).toBeInTheDocument();
     expect(screen.getAllByText(/108\.000,00/).length).toBeGreaterThan(0);
+    expect(screen.getByText("Proventos no Período")).toBeInTheDocument();
 
     // Colunas da tabela
     expect(screen.getByText("Competência")).toBeInTheDocument();
     expect(screen.getByText("Patrimônio")).toBeInTheDocument();
+    expect(screen.getByText("Custo")).toBeInTheDocument();
+    expect(screen.getByText("Proventos Mês")).toBeInTheDocument();
+    expect(screen.getByText("Proventos Acum.")).toBeInTheDocument();
     expect(screen.getByText("Mês (TWR %)")).toBeInTheDocument();
+    expect(screen.getByText("Retorno Total")).toBeInTheDocument();
     expect(screen.getByText("TWR Acum.")).toBeInTheDocument();
+    expect(screen.getByText("Cota (R$)")).toBeInTheDocument();
     expect(screen.getByText("Ações")).toBeInTheDocument();
+
+    // Proventos auferidos no respectivo mês exibidos na tabela
+    expect(screen.getByText(/R\$[\s\u00a0]500,00$/)).toBeInTheDocument();
+    expect(screen.getByText(/R\$[\s\u00a0]450,00$/)).toBeInTheDocument();
+    expect(screen.getByText(/R\$[\s\u00a0]300,00$/)).toBeInTheDocument();
+
+    // Mês (TWR %) destacado como performance periódica isolada
+    expect(screen.getByText("+2.50%")).toBeInTheDocument();
+    expect(screen.getByText("+1.20%")).toBeInTheDocument();
+    expect(screen.getByText("+0.50%")).toBeInTheDocument();
 
     // Linhas de dados formatadas
     expect(screen.getByText("Set/2026")).toBeInTheDocument();
@@ -149,6 +165,40 @@ describe("PortfolioSnapshotsDialog", () => {
     fireEvent.click(confirmBtn);
 
     expect(onDeleteSnapshot).toHaveBeenCalledWith("2026-08");
+  });
+
+  it("renderiza corretamente valores negativos e nulos de proventos e rentabilidade", () => {
+    const negativeSeries: PortfolioMonthlySeriesPoint[] = [
+      {
+        month: "2026-07",
+        valueBRL: 70000,
+        costBRL: 72000,
+        monthDividendsBRL: 0,
+        accumulatedDividendsBRL: 2500,
+        capitalGainPnl: -2000,
+        capitalGainPct: -2.78,
+        totalReturnPnl: 500,
+        totalReturnPct: 0.69,
+        twrMonthPct: -1.75,
+        twrAccumulatedPct: 10.0,
+        sharePrice: 110.0,
+      },
+    ];
+
+    renderWithClient(
+      <PortfolioSnapshotsDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        series={negativeSeries}
+        currentMonthStr="2026-07"
+      />,
+    );
+
+    // Mês (TWR %) negativo destacado com sinal e formatação
+    expect(screen.getByText("-1.75%")).toBeInTheDocument();
+
+    // Proventos zerados no mês exibidos sem erro (resumo e linha da tabela)
+    expect(screen.getAllByText(/R\$[\s\u00a0]0,00$/).length).toBe(2);
   });
 });
 

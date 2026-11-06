@@ -165,7 +165,7 @@ export function PortfolioSnapshotsDialog({
         ) : null}
 
         {/* Painel de Resumo do Período Filtrado */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 rounded-xl border border-border/80 bg-surface/70 p-3 sm:p-4 shadow-2xs">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 rounded-xl border border-border/80 bg-surface/70 p-3 sm:p-4 shadow-2xs">
           <div className="flex flex-col gap-0.5">
             <span className="text-[11px] font-medium text-muted-foreground">Período</span>
             <span className="text-sm sm:text-base font-semibold text-foreground">
@@ -192,6 +192,15 @@ export function PortfolioSnapshotsDialog({
           </div>
 
           <div className="flex flex-col gap-0.5">
+            <span className="text-[11px] font-medium text-muted-foreground">Proventos no Período</span>
+            <MoneyText
+              cents={numberToCents(summary.periodDividendsBRL)}
+              tone="positive"
+              className="text-sm sm:text-base font-bold tabular-nums whitespace-nowrap"
+            />
+          </div>
+
+          <div className="flex flex-col gap-0.5 col-span-2 sm:col-span-1">
             <span className="text-[11px] font-medium text-muted-foreground">TWR Acumulado</span>
             <span
               className={cn(
@@ -229,9 +238,15 @@ export function PortfolioSnapshotsDialog({
                     Custo
                   </th>
                   <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">
-                    Proventos Acum.
+                    Proventos Mês
                   </th>
                   <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">
+                    Proventos Acum.
+                  </th>
+                  <th
+                    scope="col"
+                    className="py-2.5 px-3 text-right whitespace-nowrap font-semibold text-foreground bg-surface-hover/70 border-x border-border/60"
+                  >
                     Mês (TWR %)
                   </th>
                   <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">
@@ -304,6 +319,20 @@ export function PortfolioSnapshotsDialog({
                         />
                       </td>
 
+                      {/* Proventos do Mês */}
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                        <MoneyText
+                          cents={numberToCents(pt.monthDividendsBRL ?? 0)}
+                          tone={(pt.monthDividendsBRL ?? 0) > 0 ? "positive" : "default"}
+                          className={cn(
+                            "tabular-nums",
+                            (pt.monthDividendsBRL ?? 0) > 0
+                              ? "font-semibold text-positive-strong"
+                              : "text-muted-foreground font-normal",
+                          )}
+                        />
+                      </td>
+
                       {/* Proventos Acumulados */}
                       <td className="py-2.5 px-3 text-right whitespace-nowrap">
                         <MoneyText
@@ -313,15 +342,16 @@ export function PortfolioSnapshotsDialog({
                         />
                       </td>
 
-                      {/* Rentabilidade no Mês (TWR %) */}
-                      <td className="py-2.5 px-3 text-right whitespace-nowrap font-mono font-semibold">
+                      {/* Rentabilidade no Mês (TWR %) - DESTACADA */}
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap font-mono font-bold bg-surface-hover/30 border-x border-border/40">
                         {pt.twrMonthPct !== null && pt.twrMonthPct !== undefined ? (
                           <span
-                            className={
+                            className={cn(
+                              "inline-flex items-center justify-end px-2 py-0.5 rounded-md text-xs font-bold font-mono tabular-nums",
                               pt.twrMonthPct >= 0
-                                ? "text-positive-strong"
-                                : "text-negative-strong"
-                            }
+                                ? "bg-positive/10 text-positive-strong"
+                                : "bg-negative/10 text-negative-strong",
+                            )}
                           >
                             {pt.twrMonthPct >= 0 ? "+" : ""}
                             {pt.twrMonthPct.toFixed(2)}%

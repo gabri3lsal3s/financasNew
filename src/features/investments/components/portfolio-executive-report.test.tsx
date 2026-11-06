@@ -185,4 +185,284 @@ describe("PortfolioExecutiveReport — Ausência de Flash e Estado de Carregamen
     // Deve exibir a rentabilidade realista calculada sobre o custo em BRL (+48,9%)
     expect(screen.getAllByText(/\+48,9%/)[0]).toBeInTheDocument();
   });
+
+  describe("Tarefa 3.1: 4 KPIs da Síntese Executiva focados na Competência", () => {
+    it("exibe os 4 KPIs com dados de competência isolada e subtextos padronizados", () => {
+      mockMonthlyPositionLoading = false;
+      mockMonthlyPositionIsError = false;
+      mockMonthlyPositionData = {
+        month: "2026-07",
+        totalValueBRL: 125000,
+        totalCostBRL: 110000,
+        cashQuantity: 15000,
+        monthDividendsTotalBRL: 450,
+        positions: [
+          {
+            assetId: "a1",
+            ticker: "ITUB4",
+            assetClass: "acoes",
+            quantity: 100,
+            averagePrice: 30,
+            totalCost: 3000,
+            totalCostBRL: 3000,
+            priceBRL: 35,
+            valueBRL: 3500,
+            unrealizedPnl: 500,
+            unrealizedPct: 16.67,
+            accumulatedDividendsBRL: 50,
+            monthDividendsBRL: 50,
+            totalReturnPnl: 550,
+            totalReturnPct: 18.33,
+          },
+        ],
+        fidelity: {
+          status: "complete",
+          canGenerateExecutiveReport: true,
+          reasons: [],
+        },
+        monthlyStatement: {
+          month: "2026-07",
+          startBalanceBRL: 120000,
+          endBalanceBRL: 125000,
+          monthRatePct: 3.25,
+          monthNetPnlBRL: 3900,
+          monthDividendsBRL: 450,
+          monthBuysBRL: 1100,
+          monthSellsBRL: 0,
+          monthNetContributionBRL: 1100,
+          monthGrossContributionsBRL: 1100,
+          monthGrossWithdrawalsBRL: 0,
+          weightedCapitalBaseBRL: 120550,
+          weightedCashFlowBRL: 550,
+          transactionsCount: 1,
+          dividendsCount: 2,
+        },
+      };
+
+      render(
+        <PortfolioExecutiveReport
+          {...defaultProps}
+          initialMonth="2026-07"
+        />,
+      );
+
+      // KPI 1: Patrimônio no Fechamento
+      expect(screen.getAllByText("Patrimônio no Fechamento").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("1 ativo em custódia").length).toBeGreaterThan(0);
+
+      // KPI 2: Rentabilidade da Competência (TWR)
+      expect(screen.getAllByText("Rentabilidade da Competência (TWR)").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("+3,3%").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Variação isolada do mês (Padrão CVM)").length).toBeGreaterThan(0);
+
+      // KPI 3: Resultado Líquido do Mês (P&L)
+      expect(screen.getAllByText("Resultado Líquido do Mês (P&L)").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("P&L líquido da competência").length).toBeGreaterThan(0);
+
+      // KPI 4: Proventos da Competência
+      expect(screen.getAllByText("Proventos da Competência").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Recebidos no mês").length).toBeGreaterThan(0);
+    });
+
+    it("renderiza rentabilidade e resultado líquido negativos com semântica de alerta quando o mês é de queda", () => {
+      mockMonthlyPositionLoading = false;
+      mockMonthlyPositionIsError = false;
+      mockMonthlyPositionData = {
+        month: "2026-07",
+        totalValueBRL: 95000,
+        totalCostBRL: 100000,
+        cashQuantity: 5000,
+        monthDividendsTotalBRL: 120,
+        positions: [
+          {
+            assetId: "a1",
+            ticker: "VALE3",
+            assetClass: "acoes",
+            quantity: 100,
+            averagePrice: 60,
+            totalCost: 6000,
+            totalCostBRL: 6000,
+            priceBRL: 50,
+            valueBRL: 5000,
+            unrealizedPnl: -1000,
+            unrealizedPct: -16.67,
+            accumulatedDividendsBRL: 120,
+            monthDividendsBRL: 120,
+            totalReturnPnl: -880,
+            totalReturnPct: -14.67,
+          },
+        ],
+        fidelity: {
+          status: "complete",
+          canGenerateExecutiveReport: true,
+          reasons: [],
+        },
+        monthlyStatement: {
+          month: "2026-07",
+          startBalanceBRL: 98000,
+          endBalanceBRL: 95000,
+          monthRatePct: -3.06,
+          monthNetPnlBRL: -3000,
+          monthDividendsBRL: 120,
+          monthBuysBRL: 0,
+          monthSellsBRL: 0,
+          monthNetContributionBRL: 0,
+          monthGrossContributionsBRL: 0,
+          monthGrossWithdrawalsBRL: 0,
+          weightedCapitalBaseBRL: 98000,
+          weightedCashFlowBRL: 0,
+          transactionsCount: 0,
+          dividendsCount: 1,
+        },
+      };
+
+      render(
+        <PortfolioExecutiveReport
+          {...defaultProps}
+          initialMonth="2026-07"
+        />,
+      );
+
+      // Rentabilidade negativa (-3,1%)
+      const rateElements = screen.getAllByText("-3,1%");
+      expect(rateElements.length).toBeGreaterThan(0);
+      expect(rateElements[0]?.className).toContain("text-negative-strong");
+
+      // P&L negativo (-R$ 3.000,00)
+      expect(screen.getAllByText("Resultado Líquido do Mês (P&L)").length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/[−-]\s*R\$[\s\u00a0]*3\.000,00/i).length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("Tarefa 3.2: Inclusão do Painel de Movimentações da Competência", () => {
+    it("exibe o bloco de movimentações da competência consumindo monthBuysBRL, monthSellsBRL, monthDividendsBRL e monthNetContributionBRL", () => {
+      mockMonthlyPositionLoading = false;
+      mockMonthlyPositionIsError = false;
+      mockMonthlyPositionData = {
+        month: "2026-07",
+        totalValueBRL: 125000,
+        totalCostBRL: 110000,
+        cashQuantity: 15000,
+        monthDividendsTotalBRL: 450,
+        positions: [
+          {
+            assetId: "a1",
+            ticker: "ITUB4",
+            assetClass: "acoes",
+            quantity: 100,
+            averagePrice: 30,
+            totalCost: 3000,
+            totalCostBRL: 3000,
+            priceBRL: 35,
+            valueBRL: 3500,
+            unrealizedPnl: 500,
+            unrealizedPct: 16.67,
+            accumulatedDividendsBRL: 50,
+            monthDividendsBRL: 50,
+            totalReturnPnl: 550,
+            totalReturnPct: 18.33,
+          },
+        ],
+        fidelity: {
+          status: "complete",
+          canGenerateExecutiveReport: true,
+          reasons: [],
+        },
+        monthlyStatement: {
+          month: "2026-07",
+          startBalanceBRL: 120000,
+          endBalanceBRL: 125000,
+          monthRatePct: 3.25,
+          monthNetPnlBRL: 3900,
+          monthDividendsBRL: 450,
+          monthBuysBRL: 1100,
+          monthSellsBRL: 0,
+          monthNetContributionBRL: 1100,
+          monthGrossContributionsBRL: 1100,
+          monthGrossWithdrawalsBRL: 0,
+          weightedCapitalBaseBRL: 120550,
+          weightedCashFlowBRL: 550,
+          transactionsCount: 1,
+          dividendsCount: 2,
+        },
+      };
+
+      render(
+        <PortfolioExecutiveReport
+          {...defaultProps}
+          initialMonth="2026-07"
+        />,
+      );
+
+      // Título e contadores do painel de movimentações
+      expect(screen.getAllByText("MOVIMENTAÇÕES DA COMPETÊNCIA").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("1 operação · 2 proventos").length).toBeGreaterThan(0);
+
+      // 4 Quadrantes de Movimentação
+      expect(screen.getAllByText("Compras do Mês").length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/1\.100,00/).length).toBeGreaterThan(0);
+
+      expect(screen.getAllByText("Vendas do Mês").length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/0,00/).length).toBeGreaterThan(0);
+
+      expect(screen.getAllByText("Proventos do Mês").length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/450,00/).length).toBeGreaterThan(0);
+
+      expect(screen.getAllByText("Aporte Líquido Injetado").length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/\+\s*R\$[\s\u00a0]*1\.100,00/i).length).toBeGreaterThan(0);
+    });
+
+    it("renderiza fluxo de vendas e resgate com aporte líquido negativo quando houver desinvestimento no mês", () => {
+      mockMonthlyPositionLoading = false;
+      mockMonthlyPositionIsError = false;
+      mockMonthlyPositionData = {
+        month: "2026-07",
+        totalValueBRL: 95000,
+        totalCostBRL: 90000,
+        cashQuantity: 5000,
+        monthDividendsTotalBRL: 200,
+        positions: [],
+        fidelity: {
+          status: "complete",
+          canGenerateExecutiveReport: true,
+          reasons: [],
+        },
+        monthlyStatement: {
+          month: "2026-07",
+          startBalanceBRL: 100000,
+          endBalanceBRL: 95000,
+          monthRatePct: -0.5,
+          monthNetPnlBRL: -500,
+          monthDividendsBRL: 200,
+          monthBuysBRL: 500,
+          monthSellsBRL: 3000,
+          monthNetContributionBRL: -2500,
+          monthGrossContributionsBRL: 500,
+          monthGrossWithdrawalsBRL: 3000,
+          weightedCapitalBaseBRL: 98500,
+          weightedCashFlowBRL: -1500,
+          transactionsCount: 3,
+          dividendsCount: 1,
+        },
+      };
+
+      render(
+        <PortfolioExecutiveReport
+          {...defaultProps}
+          initialMonth="2026-07"
+        />,
+      );
+
+      // Contadores
+      expect(screen.getAllByText("3 operações · 1 provento").length).toBeGreaterThan(0);
+
+      // Vendas de R$ 3.000,00
+      expect(screen.getAllByText(/3\.000,00/).length).toBeGreaterThan(0);
+
+      // Aporte líquido negativo de -R$ 2.500,00 com semântica de alerta negativo
+      const netContributionText = screen.getAllByText(/[−-]\s*R\$[\s\u00a0]*2\.500,00/i);
+      expect(netContributionText.length).toBeGreaterThan(0);
+      expect(netContributionText[0]?.className).toContain("text-negative-strong");
+    });
+  });
 });

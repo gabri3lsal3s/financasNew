@@ -12,12 +12,14 @@ import {
   ReportHeader,
   ReportFooter,
   ReportExecutiveSummary,
+  ReportMonthlyMovements,
   ReportClassTables,
 } from "@/components/modules/reports";
 import { MonthlyClosingEditor } from "./monthly-closing-editor";
 import { usePortfolioMonthlyPosition, usePortfolioSnapshots, useDeletePortfolioSnapshot } from "@/state";
 import { numberToCents } from "@/domain/money";
 import { formatFixedIncomeRateLabel } from "@/domain/portfolio/fixed-income";
+import { formatSignedPct } from "@/services/masks";
 import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
 import { currentMonth, formatMonthYear } from "@/lib/date";
 import type { PositionRow } from "@/components/modules/position-table";
@@ -50,12 +52,6 @@ export function PortfolioExecutiveReport({
   rows,
   totalBRL,
   cashBRL,
-  yearDividendsBRL,
-  portfolioIrr,
-  portfolioTwr,
-  totalReturnPct,
-  totalReturnPnlBRL,
-  allTimeEconomicPnlBRL,
   appName = "Áxis Finance",
   accountHolder,
   initialMonth,
@@ -182,26 +178,6 @@ export function PortfolioExecutiveReport({
     }
     return monthlyPositionQuery.data.totalCostBRL;
   }, [isCurrentSelected, monthlyPositionQuery.data, rows]);
-
-  const effectiveReturnPnlBRL = useMemo(() => {
-    if (isCurrentSelected || !monthlyPositionQuery.data) {
-      return totalReturnPnlBRL ?? (allTimeEconomicPnlBRL ?? 0);
-    }
-    return monthlyPositionQuery.data.positions.reduce((acc, p) => acc + p.totalReturnPnl, 0);
-  }, [isCurrentSelected, monthlyPositionQuery.data, totalReturnPnlBRL, allTimeEconomicPnlBRL]);
-
-  const effectiveReturnPct = useMemo(() => {
-    if (isCurrentSelected || !monthlyPositionQuery.data) {
-      return totalReturnPct;
-    }
-    const cost = monthlyPositionQuery.data.totalCostBRL;
-    return cost > 0 ? (effectiveReturnPnlBRL / cost) * 100 : 0;
-  }, [isCurrentSelected, monthlyPositionQuery.data, effectiveReturnPnlBRL, totalReturnPct]);
-
-  const effectiveDividendsBRL = useMemo(() => {
-    if (isCurrentSelected || !monthlyPositionQuery.data) return yearDividendsBRL;
-    return monthlyPositionQuery.data.accumulatedDividendsTotalBRL;
-  }, [isCurrentSelected, monthlyPositionQuery.data, yearDividendsBRL]);
 
   const effectivePeriodLabel = useMemo(() => {
     if (isCurrentSelected) return "Posição Atual Consolidada";
@@ -494,108 +470,75 @@ export function PortfolioExecutiveReport({
               accountHolder={accountHolder}
             />
 
-            {/* Sintese Executiva em Linha Unica */}
+            {/* Síntese Executiva em Linha Única — 4 KPIs da Competência */}
             {(() => {
-              const isTwrActive = Boolean(
-                isCurrentSelected &&
-                  portfolioTwr &&
-                  portfolioTwr.status === "ok" &&
-                  portfolioTwr.accumulatedRatePct !== null,
-              );
-              const isCustodyActive =
-                !isTwrActive && effectiveReturnPct !== null && effectiveReturnPct !== undefined;
-
-              const rentabilidadeItem =
-                isCurrentSelected && portfolioTwr && isTwrActive
-                  ? {
-                      label: "Rentabilidade (TWR)",
-                      value: (
-                        <span
-                          className={
-                            portfolioTwr.accumulatedRatePct >= 0
-                              ? "text-positive-strong"
-                              : "text-negative-strong"
-                          }
-                        >
-                          {portfolioTwr.accumulatedRatePct >= 0 ? "+" : ""}
-                          {portfolioTwr.accumulatedRatePct.toFixed(1)}%
-                        </span>
-                      ),
-                      subtext:
-                        portfolioTwr.annualizedRatePct !== null
-                          ? `${portfolioTwr.annualizedRatePct >= 0 ? "+" : ""}${portfolioTwr.annualizedRatePct.toFixed(1)}% a.a. (Padrão CVM)`
-                          : `Por cotas (${portfolioTwr.monthsElapsed}m)`,
-                    }
-                  : isCustodyActive
-                    ? {
-                        label: isCurrentSelected ? "Rentabilidade da Carteira" : "Retorno na Competência",
-                        value: (
-                          <span
-                            className={
-                              (effectiveReturnPct ?? 0) >= 0
-                                ? "text-positive-strong"
-                                : "text-negative-strong"
-                            }
-                          >
-                            {(effectiveReturnPct ?? 0) >= 0 ? "+" : ""}
-                            {(effectiveReturnPct ?? 0).toFixed(1)}%
-                          </span>
-                        ),
-                        subtext: isCurrentSelected ? "Custódia aberta sobre custo" : "Retorno total sobre custo",
-                      }
-                    : {
-                        label: "Rentabilidade da Carteira",
-                        value: "Em formação",
-                        subtext: "Requer histórico",
-                      };
+              const stmt = monthlyPositionQuery.data?.monthlyStatement;
+              const monthRatePct = stmt?.monthRatePct ?? null;
+              const monthNetPnlBRL = stmt?.monthNetPnlBRL ?? 0;
+              const monthDividendsBRL =
+                monthlyPositionQuery.data?.monthDividendsTotalBRL ??
+                stmt?.monthDividendsBRL ??
+                0;
+              const isPositivePnl = monthNetPnlBRL >= 0;
 
               return (
                 <ReportExecutiveSummary
                   title="SÍNTESE PATRIMONIAL & DESEMPENHO"
                   items={[
                     {
-                      label: "Patrimônio Total",
+                      label: "Patrimônio no Fechamento",
                       value: (
                         <MoneyText cents={numberToCents(effectiveTotalBRL)} tone="portfolio" />
                       ),
-                      subtext: `${investmentRows.length} ativos em custódia`,
+                      subtext: `${investmentRows.length} ${investmentRows.length === 1 ? "ativo" : "ativos"} em custódia`,
                     },
-                    rentabilidadeItem,
                     {
-                      label: "Retorno do Bolso (TIR)",
+                      label: "Rentabilidade da Competência (TWR)",
                       value:
-                        portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
-                          ? `${portfolioIrr.annualizedRatePct >= 0 ? "+" : ""}${portfolioIrr.annualizedRatePct.toFixed(1)}% a.a.`
-                          : "Em formação",
-                      subtext: portfolioIrr?.isEligible
-                        ? `Ponderada (${portfolioIrr.daysElapsed}d)`
-                        : "Requer histórico",
-                    },
-                    {
-                      label: "Resultado Histórico",
-                      value: (() => {
-                        const finalPnl = isCurrentSelected
-                          ? (allTimeEconomicPnlBRL ?? totalReturnPnlBRL ?? 0)
-                          : effectiveReturnPnlBRL;
-                        return (
+                        monthRatePct !== null && monthRatePct !== undefined ? (
                           <span
                             className={
-                              finalPnl >= 0 ? "text-positive-strong" : "text-negative-strong"
+                              monthRatePct >= 0 ? "text-positive-strong" : "text-negative-strong"
                             }
                           >
-                            <MoneyText
-                              cents={numberToCents(finalPnl)}
-                              tone={finalPnl >= 0 ? "positive" : "negative"}
-                            />
+                            {formatSignedPct(monthRatePct)}
                           </span>
-                        );
-                      })(),
-                      subtext: isCurrentSelected ? "P&L Econômico Total" : "P&L Total da Competência",
+                        ) : (
+                          "0,0%"
+                        ),
+                      subtext: "Variação isolada do mês (Padrão CVM)",
+                    },
+                    {
+                      label: "Resultado Líquido do Mês (P&L)",
+                      value: (
+                        <span
+                          className={
+                            isPositivePnl ? "text-positive-strong" : "text-negative-strong"
+                          }
+                        >
+                          <MoneyText
+                            cents={numberToCents(monthNetPnlBRL)}
+                            tone={isPositivePnl ? "positive" : "negative"}
+                            sign="explicit"
+                          />
+                        </span>
+                      ),
+                      subtext: "P&L líquido da competência",
+                    },
+                    {
+                      label: "Proventos da Competência",
+                      value: (
+                        <MoneyText
+                          cents={numberToCents(monthDividendsBRL)}
+                          tone={monthDividendsBRL > 0 ? "positive" : "portfolio"}
+                        />
+                      ),
+                      subtext: "Recebidos no mês",
                     },
                   ]}
                   narrative={
                     <span>
-                      A carteira encerra o período com{" "}
+                      A carteira encerra a competência com{" "}
                       <strong>
                         <MoneyText
                           cents={numberToCents(effectiveTotalBRL)}
@@ -615,14 +558,37 @@ export function PortfolioExecutiveReport({
                         cents={numberToCents(effectiveCashBRL)}
                         className="inline font-bold"
                       />{" "}
-                      e os proventos acumulados no exercício somam{" "}
+                      e os proventos creditados na competência somam{" "}
                       <MoneyText
-                        cents={numberToCents(effectiveDividendsBRL)}
+                        cents={numberToCents(monthDividendsBRL)}
                         className="inline font-bold text-positive-strong"
                       />
                       .
                     </span>
                   }
+                />
+              );
+            })()}
+
+            {/* Painel de Movimentações da Competência — Fluxo de Caixa do Período */}
+            {(() => {
+              const stmt = monthlyPositionQuery.data?.monthlyStatement;
+              const monthBuysBRL = stmt?.monthBuysBRL ?? 0;
+              const monthSellsBRL = stmt?.monthSellsBRL ?? 0;
+              const monthDividendsBRL =
+                monthlyPositionQuery.data?.monthDividendsTotalBRL ??
+                stmt?.monthDividendsBRL ??
+                0;
+              const monthNetContributionBRL = stmt?.monthNetContributionBRL ?? 0;
+
+              return (
+                <ReportMonthlyMovements
+                  monthBuysBRL={monthBuysBRL}
+                  monthSellsBRL={monthSellsBRL}
+                  monthDividendsBRL={monthDividendsBRL}
+                  monthNetContributionBRL={monthNetContributionBRL}
+                  transactionsCount={stmt?.transactionsCount}
+                  dividendsCount={stmt?.dividendsCount}
                 />
               );
             })()}

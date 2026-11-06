@@ -1,7 +1,7 @@
 # PLANO DE IMPLEMENTAÇÃO 02 — PRECISÃO MATEMÁTICA, EXTRATOS MENSAIS DE SNAPSHOTS E GOVERNANÇA DE RELATÓRIOS
 
 > **Documento Canônico de Engenharia Financeira, Arquitetura e Governança de Software**  
-> **Status:** Em Andamento · Fases 1 e 2.1 Concluídas (Domínio e Schema) · Prioridade 2 de Execução (Fases 3, 4 e 5)  
+> **Status:** Em Andamento · Fases 1, 2 e 3 Concluídas (Domínio, Schema e Extrato Mensal) · Prioridade 2 de Execução (Fases 4 e 5)  
 > **Arquivo:** `docs/plans/02_PLANO_PRECISAO_RENTABILIDADE_E_SNAPSHOTS_INVESTIMENTOS.md`  
 > **Ordem de Implementação:** **2º (Precisão Matemática & Experiência de Investimentos)**  
 > **Módulos Afetados:** `src/domain/portfolio/`, `src/features/investments/`, `src/features/reports/`, `docs/architecture/`  
@@ -111,7 +111,7 @@ flowchart TD
 
 > **Objetivo:** Fazer com que o `PortfolioExecutiveReport` seja 100% focado na fotografia daquele mês específico, exibindo os dados daquele mês sem misturar com métricas globais.
 
-- [ ] **Tarefa 3.1: Reestruturação dos 4 KPIs da Síntese Executiva (`portfolio-executive-report.tsx`)**
+- [x] **Tarefa 3.1: Reestruturação dos 4 KPIs da Síntese Executiva (`portfolio-executive-report.tsx`)**
   - **Arquivo:** `src/features/investments/components/portfolio-executive-report.tsx`.
   - Conectar os KPIs aos campos de competência isolada de `monthlyPositionQuery.data`:
     1. **Patrimônio no Fechamento:** `effectiveTotalBRL` consolidado no último dia daquele mês com subtexto de ativos em custódia.
@@ -119,7 +119,7 @@ flowchart TD
     3. **Resultado Líquido do Mês (P&L):** `monthlyPositionQuery.data?.monthlyStatement?.monthNetPnlBRL` (em R$ com cor semântica verde/vermelho).
     4. **Proventos da Competência:** `monthlyPositionQuery.data?.monthDividendsTotalBRL` (recebidos estritamente naquele mês).
 
-- [ ] **Tarefa 3.2: Inclusão do Painel de Movimentações da Competência**
+- [x] **Tarefa 3.2: Inclusão do Painel de Movimentações da Competência**
   - **Arquivo:** `src/features/investments/components/portfolio-executive-report.tsx`.
   - Exibir bloco de fluxo de caixa da competência consumindo:
     * `monthlyStatement.monthBuysBRL` (Compras do mês)
@@ -127,16 +127,16 @@ flowchart TD
     * `monthlyStatement.monthDividendsBRL` (Proventos do mês)
     * `monthlyStatement.monthNetContributionBRL` (Aporte líquido injetado no mês)
 
-- [ ] **Tarefa 3.3: Ajustes no Extrato Analítico Tabular (`portfolio-snapshots-dialog.tsx`)**
+- [x] **Tarefa 3.3: Ajustes no Extrato Analítico Tabular (`portfolio-snapshots-dialog.tsx`)**
   - **Arquivo:** `src/features/investments/components/portfolio-snapshots-dialog.tsx`.
   - Coluna `Mês (TWR %)` destacada como a performance periódica isolada.
   - Coluna de proventos auferidos no respectivo mês (`monthDividendsBRL`).
 
-- [ ] **Portão de Qualidade 3 (QG3):**
-  - [ ] Executar: `npx vitest run src/features/investments/components/portfolio-executive-report.test.tsx`
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] **Commit & Push da Fase 3:** `git commit -m "feat(portfolio): extrato mensal focado na competencia e kpis isolados"`
+- [x] **Portão de Qualidade 3 (QG3):**
+  - [x] Executar: `npx vitest run src/features/investments/components/portfolio-executive-report.test.tsx`
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] **Commit & Push da Fase 3:** `git commit -m "feat(portfolio): extrato mensal focado na competencia e kpis isolados"`
 
 ---
 

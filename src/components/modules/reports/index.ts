@@ -16,3 +16,4 @@ export * from "./report-stocks-breakdown-card";
 export * from "./report-fii-breakdown-card";
 export * from "./report-fixed-income-breakdown-card";
 export * from "./report-international-breakdown-card";
+export * from "./report-monthly-movements";

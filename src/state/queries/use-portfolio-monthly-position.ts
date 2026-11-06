@@ -246,7 +246,7 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
       totalInvestedBRL: currentPos.totalBRL - currentPos.cashBRL,
       totalCostBRL: currentPos.totalCostBRL,
       totalValueBRL: currentPos.totalBRL,
-      monthDividendsTotalBRL: 0,
+      monthDividendsTotalBRL: currentStatement.monthDividendsBRL,
       accumulatedDividendsTotalBRL: currentPos.rows.reduce((acc, r) => acc + (r.dividends ?? 0), 0),
       fidelity: {
         status: "complete",
