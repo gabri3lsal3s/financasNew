@@ -14,6 +14,7 @@ import { currentMonth } from "@/lib/date";
 import {
   useAllPortfolioTransactions,
   usePortfolioAssets,
+  usePortfolioContributions,
   usePortfolioDividends,
   usePortfolioSnapshots,
 } from "./use-portfolio";
@@ -24,7 +25,10 @@ import { fetchHistoricalMonthlyQuotes } from "@/services/quotes";
 import {
   calculateMonthlyStatement,
   calculatePointInTimePosition,
+  extractExplicitRateFromNotes,
   getPreviousMonth,
+  isHistoricalWithdrawal,
+  type MonthlyStatementCashFlow,
   type PointInTimeResult,
 } from "@/domain/portfolio";
 
@@ -51,6 +55,7 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
   const assetsQuery = usePortfolioAssets();
   const transactionsQuery = useAllPortfolioTransactions();
   const dividendsQuery = usePortfolioDividends();
+  const contributionsQuery = usePortfolioContributions();
   const monthlyPricesQuery = usePortfolioMonthlyPrices(month);
   const snapshotsQuery = usePortfolioSnapshots();
   const macroQuery = useMacroIndicators();
@@ -153,6 +158,25 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
     );
     const cashBalance = cashAsset ? cashAsset.quantity : undefined;
 
+    // Localiza aportes e resgates externos do bolso para a competência
+    const monthContributions = (contributionsQuery.data ?? []).filter(
+      (c) => Boolean(c.date && c.date.startsWith(month)),
+    );
+    const explicitRate =
+      monthContributions
+        .map((c) => extractExplicitRateFromNotes(c.notes))
+        .find((r) => r !== null) ?? null;
+
+    const externalFlows: MonthlyStatementCashFlow[] = monthContributions.map((c) => {
+      const isWithdrawal = isHistoricalWithdrawal(c);
+      const signedAmount = isWithdrawal ? -Math.abs(c.amount) : Math.abs(c.amount);
+      return {
+        date: c.date,
+        amount: signedAmount,
+        notes: c.notes,
+      };
+    });
+
     return calculatePointInTimePosition({
       month,
       assets,
@@ -164,6 +188,8 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
       apiPrices: apiQuotesMap,
       annualCdiRate,
       cashBalance,
+      externalFlows,
+      explicitRatePct: explicitRate,
     });
   }, [
     isCurrent,
@@ -174,6 +200,7 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
     transactionsQuery.isLoading,
     dividendsQuery.data,
     dividendsQuery.isLoading,
+    contributionsQuery.data,
     monthlyPricesQuery.data,
     monthlyPricesQuery.isLoading,
     snapshotsQuery.data,
@@ -206,12 +233,33 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
       total: Number(t.total) || 0,
       ticker: assetTickerMap.get(t.asset_id) ?? null,
     }));
+
+    const currentMonthContributions = (contributionsQuery.data ?? []).filter(
+      (c) => Boolean(c.date && c.date.startsWith(month)),
+    );
+    const explicitRateCurrent =
+      currentMonthContributions
+        .map((c) => extractExplicitRateFromNotes(c.notes))
+        .find((r) => r !== null) ?? null;
+
+    const currentExternalFlows: MonthlyStatementCashFlow[] = currentMonthContributions.map((c) => {
+      const isWithdrawal = isHistoricalWithdrawal(c);
+      const signedAmount = isWithdrawal ? -Math.abs(c.amount) : Math.abs(c.amount);
+      return {
+        date: c.date,
+        amount: signedAmount,
+        notes: c.notes,
+      };
+    });
+
     const currentStatement = calculateMonthlyStatement({
       month,
       startBalanceBRL: prevStartBalance,
       endBalanceBRL: currentPos.totalBRL,
+      externalFlows: currentExternalFlows,
       dividends: currentDividends,
       transactions: currentTransactions,
+      explicitRatePct: explicitRateCurrent,
     });
 
     // Mapeia usePortfolioPosition para a estrutura unificada PointInTimeResult
@@ -283,6 +331,7 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
     assetsQuery.isLoading ||
     transactionsQuery.isLoading ||
     dividendsQuery.isLoading ||
+    contributionsQuery.isLoading ||
     monthlyPricesQuery.isLoading ||
     snapshotsQuery.isLoading;
 
@@ -290,6 +339,7 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
     assetsQuery.isError ||
     transactionsQuery.isError ||
     dividendsQuery.isError ||
+    contributionsQuery.isError ||
     monthlyPricesQuery.isError ||
     snapshotsQuery.isError;
 
@@ -297,6 +347,7 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
     (assetsQuery.error as Error | null) ??
     (transactionsQuery.error as Error | null) ??
     (dividendsQuery.error as Error | null) ??
+    (contributionsQuery.error as Error | null) ??
     (monthlyPricesQuery.error as Error | null) ??
     (snapshotsQuery.error as Error | null);
 
@@ -312,6 +363,7 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
       void assetsQuery.refetch();
       void transactionsQuery.refetch();
       void dividendsQuery.refetch();
+      void contributionsQuery.refetch();
       void monthlyPricesQuery.refetch();
       void snapshotsQuery.refetch();
     },
