@@ -1,11 +1,11 @@
 {
   "version": "0.1.0",
-  "versionCode": 28,
-  "releaseDate": "2026-11-05T18:45:56Z",
+  "versionCode": 29,
+  "releaseDate": "2026-11-06T21:51:46Z",
   "minSupportedVersion": "0.1.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "923cba2560f335edfe29e56ec73da4a7a3e563973bc07985058f8e163d9f11f8",
-  "fileSizeBytes": 11915771,
+  "sha256": "5d1f9fb691047f2707e9d86dea4560a4eb1e48b9340d9786f740357ecbf645fe",
+  "fileSizeBytes": 11998189,
   "changelog": [
     "Modulo de compartilhamento publico (Racha Pix, Orcamento Familiar e Metas)",
     "Simuladores financeiros abertos (Juros Compostos, Bola de Neve de Dividas e Rebalanceamento)",
