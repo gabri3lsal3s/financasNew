@@ -58,7 +58,7 @@
 │   │   ├── ROADMAP.md             #   Plano canônico de execução, histórico de versões v2.0–v2.78+
 │   │   └── RELEASE.md             #   Checklist de release e homologação
 │   ├── plans/                     # Planos de implementação ativos e pendentes
-│   │   ├── completed/             # Histórico de planos executados com sucesso (100% concluídos — 22 planos)
+│   │   ├── completed/             # Histórico de planos executados com sucesso (100% concluídos — 23 planos)
 │   │   │   ├── CAPACITOR_ANDROID_PLAN.md
 │   │   │   ├── PLANO_ADEQUACAO_LEGAL_E_REGULATORIA.md
 │   │   │   ├── PLANO_AUDITORIA_CONGRUENCIA.md
@@ -81,8 +81,8 @@
 │   │   │   ├── PLANO_RELATORIO_RETROATIVO_INVESTIMENTOS_E_FECHAMENTO.md
 │   │   │   ├── PLANO_REVISAO_AUTH_SESSAO_E_SEGURANCA.md
 │   │   │   ├── PLANO_SANEAMENTO_CODIGO_MORTO_E_LEGADO.md
-│   │   │   └── 01_PLANO_CORRECOES_AUDITORIA_SEGURANCA_E_ESTABILIZACAO.md
-│   │   ├── 02_PLANO_PRECISAO_RENTABILIDADE_E_SNAPSHOTS_INVESTIMENTOS.md
+│   │   │   ├── 01_PLANO_CORRECOES_AUDITORIA_SEGURANCA_E_ESTABILIZACAO.md
+│   │   │   └── 02_PLANO_PRECISAO_RENTABILIDADE_E_SNAPSHOTS_INVESTIMENTOS.md
 │   │   ├── 03_PLANO_MODO_FAMILIA_COLABORATIVO_MULTI_CONTAS.md
 │   │   ├── 04_PLANO_EXPANSAO_APRESENTACAO_E_TOUR_GUIADO.md
 │   │   └── 05_PLANO_FECHAMENTO_AUTOMATICO_SNAPSHOTS_E_COTACAO.md

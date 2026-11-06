@@ -1,8 +1,8 @@
 # PLANO DE IMPLEMENTAÇÃO 02 — PRECISÃO MATEMÁTICA, EXTRATOS MENSAIS DE SNAPSHOTS E GOVERNANÇA DE RELATÓRIOS
 
 > **Documento Canônico de Engenharia Financeira, Arquitetura e Governança de Software**  
-> **Status:** Em Andamento · Fases 1, 2 e 3 Concluídas (Domínio, Schema e Extrato Mensal) · Prioridade 2 de Execução (Fases 4 e 5)  
-> **Arquivo:** `docs/plans/02_PLANO_PRECISAO_RENTABILIDADE_E_SNAPSHOTS_INVESTIMENTOS.md`  
+> **Status:** Concluído · Quality Gate QG5 Atingido · 100% Homologado  
+> **Arquivo:** `docs/plans/completed/02_PLANO_PRECISAO_RENTABILIDADE_E_SNAPSHOTS_INVESTIMENTOS.md`  
 > **Ordem de Implementação:** **2º (Precisão Matemática & Experiência de Investimentos)**  
 > **Módulos Afetados:** `src/domain/portfolio/`, `src/features/investments/`, `src/features/reports/`, `docs/architecture/`  
 > **Governança:** TypeScript Estrito (Zero `any`/`@ts-ignore`) · Funções Puras no Domínio · Moeda em Centavos · Padrões CVM/ANBIMA (TWR / Modified Dietz) · Zero Controles Nativos · Zero Emojis (`local/no-decorative-unicode`) · Portões de Qualidade por Fase  
@@ -163,21 +163,21 @@ flowchart TD
 
 ## Fase 5: Homologação Fim-a-Fim, Testes & Governança
 
-- [ ] **Tarefa 5.1: Suíte Completa de Testes de Portfólio (Vitest)**
-  - Rodar Vitest em todos os arquivos de `src/domain/portfolio/`, `src/features/investments/` e `src/features/reports/`.
+- [x] **Tarefa 5.1: Suíte Completa de Testes de Portfólio (Vitest)**
+  - Rodar Vitest em todos os arquivos de `src/domain/portfolio/`, `src/features/investments/` e `src/features/reports/` (65 arquivos, 668 testes aprovados).
 
-- [ ] **Tarefa 5.2: Typecheck e Lint**
+- [x] **Tarefa 5.2: Typecheck e Lint**
   - `npm run typecheck` e `npm run lint` 100% verdes.
 
-- [ ] **Tarefa 5.3: Sincronização Documental**
-  - Atualizar `ESPECIFICACAO_TECNICA.md`, `FINANCIAL_MATH_SPEC.md` e mover este plano para `docs/plans/completed/`.
+- [x] **Tarefa 5.3: Sincronização Documental**
+  - Atualizar `ESPECIFICACAO_TECNICA.md`, `FINANCIAL_MATH_SPEC.md`, `PROJECT_STRUCTURE.md`, `ROADMAP.md` e mover este plano para `docs/plans/completed/`.
 
-- [ ] **Portão de Qualidade 5 (QG5):**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/domain/portfolio/ src/features/investments/ src/features/reports/`
-  - [ ] Executar: `npm run build`
-  - [ ] **Commit & Push da Fase 5:** `git commit -m "chore(release): homologacao e conclusao do plano 02 de precisao matematica de investimentos"`
+- [x] **Portão de Qualidade 5 (QG5):**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/domain/portfolio/ src/features/investments/ src/features/reports/`
+  - [x] Executar: `npm run build`
+  - [x] **Commit & Push da Fase 5:** `git commit -m "chore(release): homologacao e conclusao do plano 02 de precisao matematica de investimentos"`
 
 ---
 

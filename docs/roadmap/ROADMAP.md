@@ -1,5 +1,21 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.95** registra a **Precisão Matemática de Rentabilidade, Extratos Mensais de Snapshots e Segregação Dual de Relatórios (Plano 02)** (2026-11-06):
+> - **(1) Motor Matemático do Extrato Mensal Isolado (`monthly-statement.ts` / Modified Dietz ANBIMA/GIPS)**:
+>   - Cálculo contábil da rentabilidade periódica da competência ($r_M$) imune a aportes e resgates externos com ponderação diária de permanência de fluxos ($W_i$);
+>   - Tratamento de singularidades matemáticas: marco zero com capital médio ponderado, salvaguarda de denominador mínimo (< R$ 10,00) e depreciação de retorno contábil estático sobre custo;
+>   - Suíte unitária matemática 100% aprovada em `src/domain/portfolio/monthly-statement.test.ts` e `point-in-time.test.ts`.
+> - **(2) Arquitetura Dual de Relatórios Patrimoniais & 4 KPIs de Competência**:
+>   - Segregação conceitual estrita: `PortfolioExecutiveReport` focado na fotografia periódica isolada daquele mês; `WealthTearSheetModal` consolidado como Dossiê Executivo da Posição Vigente Global;
+>   - Redesenho do Relatório Executivo com 4 KPIs de competência (Patrimônio no Fechamento, Rentabilidade TWR do Mês, Resultado Líquido P&L em R$ e Proventos da Competência);
+>   - Inclusão do painel de fluxo de caixa mensal (`ReportMonthlyMovements`) com compras, vendas, proventos e aporte líquido do período;
+>   - Extrato tabular analítico (`PortfolioSnapshotsDialog`) com destaque visual para o Mês (TWR %) e coluna dedicada de proventos auferidos no mês.
+> - **(3) Blindagem da Central de Relatórios Gerais (`WealthTearSheetModal`)**:
+>   - Gráfico comparativo mês a mês consumindo estritamente taxas periódicas mensais (`twrMonthPct`), eliminando contaminações de retorno acumulado de anos em colunas de mês;
+>   - Empty state calmo na ausência de histórico (< 2 fechamentos) e banner direcionando para o extrato de competência.
+> - **(4) Homologação Integrada**:
+>   - 65 arquivos de teste e 668 testes de domínio e componentes de investimentos/relatórios 100% aprovados, zero erros de linter e compilação limpa.
+>
 > **v2.94** registra a **Blindagem de Segurança em `signal_split_payment`, Saneamento Estrito de Tipagem e Estabilização dos Mocks Globais de Teste (Plano 01)** (2026-11-05):
 > - **(1) Blindagem e Hardening de Segurança em `signal_split_payment` (Migração 0075)**:
 >   - Proteção estrita contra DoS/inundação em links públicos de rateio (`/r/:token`), estabelecendo teto defensivo de 50 sinais pendentes por link ativo;

@@ -144,6 +144,28 @@ $$\text{VPL}(r) = \sum_{k=1}^{K} \frac{C_k}{(1 + r)^{\frac{d_k - d_0}{365}}} = 0
   3. **Histórico $\ge 365$ dias:** Exibe tanto o retorno no período quanto a taxa anualizada ponderada no tempo (`annualizedRatePct` em % a.a.).
   4. **Imunidade ao Turnover:** Reinvestimentos internos (venda de um ativo seguida de compra de outro na mesma corretora) têm fluxo líquido do bolso zero, impactando a carteira apenas pela valorização dos ativos e não como novos aportes externos.
 
+### 4.3. Extrato Mensal da Competência Isolada (`monthly-statement.ts`)
+
+Regra canônica para cálculo do resultado financeiro e rentabilidade periódica estritamente isolada de um determinado mês $M$ (Modified Dietz ANBIMA/GIPS):
+
+$$r_M = \frac{\text{Saldo}_{\text{Fim}} - \text{Saldo}_{\text{Início}} - \text{FluxoLíquido}_M}{\text{Saldo}_{\text{Início}} + \sum_{i} (W_i \cdot \text{Fluxo}_i)}$$
+
+Onde:
+- $\text{Saldo}_{\text{Fim}}$ = Saldo de fechamento da carteira no último dia do mês $M$ (ativos valorados + caixa + reserva elegível).
+- $\text{Saldo}_{\text{Início}}$ = Saldo de fechamento do mês anterior $M-1$.
+- $\text{FluxoLíquido}_M = \text{Aportes Externos}_M - \text{Resgates Externos}_M$ ocorridos no mês $M$.
+- $W_i = \frac{\text{DiasNoMês} - \text{DiaDoFluxo} + 1}{\text{DiasNoMês}}$ = Ponderação diária do fluxo pelo tempo de permanência na competência.
+
+#### Equações Auxiliares & P&L Líquido do Mês:
+- **Resultado Líquido Financeiro (P&L):**
+  $$\text{P\&L}_M = \text{Saldo}_{\text{Fim}} - \text{Saldo}_{\text{Início}} - \text{FluxoLíquido}_M$$
+- **Proventos da Competência:** Soma dos proventos auferidos exclusivamente no mês de competência $M$.
+
+#### Tratamento de Casos de Borda e Singularidades:
+1. **Marco Zero / Mês Inaugural ($\text{Saldo}_{\text{Início}} = 0$):** O denominador adota o capital médio ponderado dos fluxos de entrada daquele mês ($\sum W_i \cdot \text{Fluxo}_i$).
+2. **Salvaguarda de Colapso de Denominador:** Se resgates massivos reduzirem o denominador para valor inferior a $\text{R\$} 10,00$, o motor neutraliza a taxa percentual (`monthRatePct = null`) e prioriza a apresentação do P&L financeiro em reais, prevenindo taxas assintóticas absurdas.
+3. **Mês Corrente em Andamento (MTD Parcial):** O extrato considera os proventos efetivamente creditados e os fluxos realizados até a data corrente.
+
 ---
 
 ## 5. REBALANCEAMENTO INTELIGENTE DE APORTES (`aporte.ts`)
