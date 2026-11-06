@@ -149,7 +149,7 @@ export function InvestmentsTab({
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <TrendingUp className="size-5 text-muted-foreground shrink-0" aria-hidden="true" />
-            <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê Executivo de Alocação & Patrimônio (A4/PDF)</h3>
+            <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê Executivo da Posição Vigente Consolidada (A4/PDF)</h3>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
             Documento de consultoria patrimonial com diagnóstico de defasagem de metas (Target vs. Actual), risco de concentração e custódia.

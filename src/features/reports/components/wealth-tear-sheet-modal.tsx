@@ -1,5 +1,16 @@
 import { useMemo } from "react";
-import { Layers, PieChart, Landmark, Calendar, TrendingUp, Scale, Activity, Briefcase, CircleDollarSign } from "lucide-react";
+import {
+  Layers,
+  PieChart,
+  Landmark,
+  Calendar,
+  TrendingUp,
+  Scale,
+  Activity,
+  Briefcase,
+  CircleDollarSign,
+  BarChart3,
+} from "lucide-react";
 import {
   ReportDocumentLayout,
   ReportHeader,
@@ -18,6 +29,7 @@ import {
 } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import { OFFICIAL_WEALTH_TEAR_SHEET_DISCLAIMER } from "@/lib/institutional";
 import { numberToCents } from "@/domain/money";
@@ -113,7 +125,7 @@ const CLASS_COLORS: Record<string, string> = {
 };
 
 /**
- * Dossiê Executivo de Investimentos & Tear Sheet Patrimonial.
+ * Dossiê Executivo da Posição Vigente Consolidada & Tear Sheet Patrimonial.
  *
  * Estrutura institucional completa:
  * 1. Header Oficial com Monograma e Metadados;
@@ -234,7 +246,7 @@ export function WealthTearSheetModal({
       });
     }
 
-    // 2. Fallback: série mensal de snapshots patrimoniais
+    // 2. Fallback: série mensal de snapshots patrimoniais (estritamente taxas mensais periódicas twrMonthPct)
     if (monthlySeries && monthlySeries.length >= 2) {
       return monthlySeries.map((item) => {
         const [y, m] = item.month.split("-");
@@ -243,7 +255,7 @@ export function WealthTearSheetModal({
           month: item.month,
           monthLabel,
           patrimonyBRL: item.valueBRL,
-          ratePct: item.twrMonthPct ?? item.totalReturnPct ?? item.capitalGainPct ?? 0,
+          ratePct: item.twrMonthPct ?? 0,
           dividendsBRL: item.monthDividendsBRL,
           costBRL: item.costBRL,
         };
@@ -536,10 +548,10 @@ export function WealthTearSheetModal({
     <ReportDocumentLayout
       open={open}
       onOpenChange={onOpenChange}
-      title="Dossiê de Alocação & Risco da Carteira"
+      title="Dossiê Executivo da Posição Vigente Consolidada"
     >
       <ReportHeader
-        title="Dossiê Executivo de Investimentos & Custódia"
+        title="Dossiê Executivo da Posição Vigente Consolidada"
         subtitle="Posição Patrimonial Consolidada & Diagnóstico de Metas"
         periodLabel={periodLabel}
         appName={appName}
@@ -895,8 +907,8 @@ export function WealthTearSheetModal({
         </div>
       </section>
 
-      {/* 9. Comparativo Histórico de Rentabilidade Mês a Mês (Renderizado apenas com >= 2 meses) */}
-      {performanceSeries.length >= 2 && (
+      {/* 9. Comparativo Histórico de Rentabilidade Mês a Mês */}
+      {performanceSeries.length >= 2 ? (
         <ReportPerformanceChart
           series={performanceSeries}
           title="Comparativo Histórico de Rentabilidade & Patrimônio Mês a Mês"
@@ -906,6 +918,31 @@ export function WealthTearSheetModal({
           annualIpcaRate={annualIpcaRate}
           ibovPeriodReturnPct={ibovPeriodReturnPct}
         />
+      ) : (
+        <section
+          aria-label="Comparativo Histórico de Rentabilidade & Patrimônio Mês a Mês"
+          className="flex flex-col gap-3 pt-2 print:pt-1 break-inside-avoid print:break-inside-avoid w-full"
+        >
+          <div className="report-section-header flex items-center justify-between border-b border-border/70 pb-1.5">
+            <div className="flex items-center gap-1.5">
+              <BarChart3 className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
+                Comparativo Histórico de Rentabilidade & Patrimônio Mês a Mês
+              </h3>
+            </div>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              Histórico em Formação
+            </span>
+          </div>
+
+          <EmptyState
+            icon={<Calendar className="size-6 text-muted-foreground" aria-hidden="true" />}
+            title="Histórico Mensal em Formação"
+            description="São necessários ao menos 2 fechamentos mensais registrados para traçar a evolução temporal da rentabilidade e calcular os indicadores de consistência da carteira."
+            tone="default"
+            className="py-8 bg-surface/40 print:bg-transparent print:border-border"
+          />
+        </section>
       )}
 
       {/* 10. Tópico Final: Metodologias & Métricas de Rentabilidade da Carteira */}

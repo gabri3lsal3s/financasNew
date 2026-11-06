@@ -219,7 +219,7 @@ describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executi
     expect(screen.getAllByText(/4\. Resultado Histórico \(P&L Total em R\$\)/i).length).toBeGreaterThan(0);
   });
 
-  it("renderiza o gráfico comparativo de rentabilidade mês a mês quando há >= 2 competências e oculta quando < 2", () => {
+  it("renderiza o gráfico comparativo de rentabilidade mês a mês quando há >= 2 competências e exibe empty state calmo quando < 2", () => {
     const { rerender } = render(
       <WealthTearSheetModal
         open={true}
@@ -280,7 +280,7 @@ describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executi
     expect(screen.getAllByText("Max Drawdown").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Consistência").length).toBeGreaterThan(0);
 
-    // Rerenderiza com apenas 1 competência (deve ocultar o gráfico para evitar gráfico quebrado)
+    // Rerenderiza com apenas 1 competência (deve exibir empty state calmo informando a necessidade de histórico)
     rerender(
       <WealthTearSheetModal
         open={true}
@@ -310,9 +310,70 @@ describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executi
       />,
     );
 
+    // O gráfico SVG e as métricas de risco avançadas não devem ser renderizados
+    expect(screen.queryByText("Índice Sharpe")).not.toBeInTheDocument();
+
+    // Deve exibir o empty state calmo com aviso de necessidade de histórico mensal
+    expect(screen.getAllByText("Histórico Mensal em Formação").length).toBeGreaterThan(0);
     expect(
-      screen.queryByText("Comparativo Histórico de Rentabilidade & Patrimônio Mês a Mês"),
-    ).not.toBeInTheDocument();
+      screen.getAllByText(/São necessários ao menos 2 fechamentos mensais registrados/i).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("utiliza estritamente twrMonthPct no fallback de monthlySeries e nunca atribui totalReturnPct acumulado", () => {
+    render(
+      <WealthTearSheetModal
+        open={true}
+        onOpenChange={vi.fn()}
+        rows={[]}
+        totalBRL={100000}
+        totalCostBRL={90000}
+        monthlySeries={[
+          {
+            month: "2026-08",
+            valueBRL: 95000,
+            costBRL: 90000,
+            monthDividendsBRL: 500,
+            accumulatedDividendsBRL: 500,
+            capitalGainPnl: 5000,
+            capitalGainPct: 5.5,
+            totalReturnPnl: 5500,
+            totalReturnPct: 25.0, // Taxa acumulada de 25% que NUNCA deve ser usada no gráfico mensal
+            twrMonthPct: -1.5,     // Taxa periódica mensal real (-1,5%)
+            twrAccumulatedPct: -1.5,
+            sharePrice: 98.5,
+          },
+          {
+            month: "2026-09",
+            valueBRL: 100000,
+            costBRL: 90000,
+            monthDividendsBRL: 600,
+            accumulatedDividendsBRL: 1100,
+            capitalGainPnl: 10000,
+            capitalGainPct: 11.1,
+            totalReturnPnl: 10600,
+            totalReturnPct: 28.0, // Taxa acumulada de 28% que NUNCA deve ser usada no gráfico mensal
+            twrMonthPct: 2.3,      // Taxa periódica mensal real (+2,3%)
+            twrAccumulatedPct: 0.8,
+            sharePrice: 100.8,
+          },
+        ]}
+        allocationAnalysis={mockAllocation}
+        concentrationRisk={mockConcentration}
+      />,
+    );
+
+    // Deve exibir o gráfico com os rótulos das competências
+    expect(screen.getAllByText("08/26").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("09/26").length).toBeGreaterThan(0);
+
+    // Deve exibir as taxas periódicas mensais (-1,5% e +2,3%)
+    expect(screen.getAllByText("-1,5%").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("+2,3%").length).toBeGreaterThan(0);
+
+    // Jamais deve exibir as taxas acumuladas de 25,0% ou 28,0%
+    expect(screen.queryByText("+25,0%")).not.toBeInTheDocument();
+    expect(screen.queryByText("+28,0%")).not.toBeInTheDocument();
   });
 
   it("renderiza a estrutura de portal de impressão A4 no body através do PrintSheet sem botões de tela", () => {
@@ -398,6 +459,24 @@ describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executi
     expect(screen.getAllByText(/Raio-X de Fundos Imobiliários/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Raio-X de Renda Fixa/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Raio-X Internacional/i).length).toBeGreaterThan(0);
+  });
+
+  it("identifica formalmente o documento como Dossiê Executivo da Posição Vigente Consolidada", () => {
+    render(
+      <WealthTearSheetModal
+        open={true}
+        onOpenChange={vi.fn()}
+        rows={[]}
+        totalBRL={50000}
+        totalCostBRL={45000}
+        allocationAnalysis={mockAllocation}
+        concentrationRisk={mockConcentration}
+      />,
+    );
+
+    // Deve renderizar o título formal do documento institucional
+    expect(screen.getAllByText("Dossiê Executivo da Posição Vigente Consolidada").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Posição Patrimonial Consolidada & Diagnóstico de Metas").length).toBeGreaterThan(0);
   });
 });
 

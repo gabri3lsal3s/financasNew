@@ -287,7 +287,7 @@ describe("ReportsPage (Central Unificada §F42)", () => {
     const investTab = screen.getByRole("tab", { name: /Investimentos & Carteira/i });
     await user.click(investTab);
 
-    expect(screen.getByText("Dossiê Executivo de Alocação & Patrimônio (A4/PDF)")).toBeInTheDocument();
+    expect(screen.getByText("Dossiê Executivo da Posição Vigente Consolidada (A4/PDF)")).toBeInTheDocument();
     expect(screen.getByText("Patrimônio Consolidado")).toBeInTheDocument();
     expect(screen.getByText("Defasagem de Metas Hierárquica (Classe ➔ Setor ➔ Ativos)")).toBeInTheDocument();
     expect(screen.getByText("Top Setor Dominante")).toBeInTheDocument();

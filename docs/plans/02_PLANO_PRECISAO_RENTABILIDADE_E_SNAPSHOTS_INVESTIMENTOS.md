@@ -144,20 +144,20 @@ flowchart TD
 
 > **Objetivo:** Manter a Central de Relatórios (`WealthTearSheetModal`) como o Dossiê Geral robusto de toda a carteira viva, corrigindo o fallback de gráficos históricos.
 
-- [ ] **Tarefa 4.1: Correção do Fallback de Gráfico no Tear Sheet (`wealth-tear-sheet-modal.tsx`)**
+- [x] **Tarefa 4.1: Correção do Fallback de Gráfico no Tear Sheet (`wealth-tear-sheet-modal.tsx`)**
   - No gráfico comparativo mês a mês (`performanceSeries`), utilizar estritamente taxas mensais periódicas (`twrMonthPct`).
   - Nunca mais atribuir `totalReturnPct` (taxa acumulada de 20%+) como fallback em colunas mensais.
   - Caso haja menos de 2 fechamentos registrados, exibir empty state calmo informando a necessidade de histórico mensal.
 
-- [ ] **Tarefa 4.2: Confirmação da Separação Estrutural na UI**
+- [x] **Tarefa 4.2: Confirmação da Separação Estrutural na UI**
   - Títulos da Central de Relatórios identificam formalmente o documento como *"Dossiê Executivo da Posição Vigente Consolidada"*.
   - Manter banner informativo direcionando para Fechamentos & Snapshots para quem deseja auditar fotografias mensais isoladas.
 
-- [ ] **Portão de Qualidade 4 (QG4):**
-  - [ ] Executar: `npx vitest run src/features/reports/components/wealth-tear-sheet-modal.test.tsx`
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] **Commit & Push da Fase 4:** `git commit -m "fix(reports): segregacao estrita entre dossie historico e extrato de fechamento"`
+- [x] **Portão de Qualidade 4 (QG4):**
+  - [x] Executar: `npx vitest run src/features/reports/components/wealth-tear-sheet-modal.test.tsx`
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] **Commit & Push da Fase 4:** `git commit -m "fix(reports): segregacao estrita entre dossie historico e extrato de fechamento"`
 
 ---
 

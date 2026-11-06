@@ -116,7 +116,7 @@ describe("InvestmentsTab — Sincronização Temporal e Empty State", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/investimentos");
 
     // Não deve renderizar o card de dossiê ou métricas
-    expect(screen.queryByText(/Dossiê Executivo de Alocação/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Dossiê Executivo da Posição Vigente Consolidada/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Patrimônio Consolidado/i)).not.toBeInTheDocument();
   });
 
@@ -142,7 +142,7 @@ describe("InvestmentsTab — Sincronização Temporal e Empty State", () => {
     await user.click(historyButton);
     expect(mockNavigate).toHaveBeenCalledWith("/investimentos");
 
-    expect(screen.getByText(/Dossiê Executivo de Alocação & Patrimônio/i)).toBeInTheDocument();
+    expect(screen.getByText(/Dossiê Executivo da Posição Vigente Consolidada/i)).toBeInTheDocument();
     expect(screen.getByText("Patrimônio Consolidado")).toBeInTheDocument();
     expect(screen.getByText("85%")).toBeInTheDocument();
     expect(screen.getByText("35.5%")).toBeInTheDocument();
