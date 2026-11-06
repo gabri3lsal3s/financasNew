@@ -26,6 +26,7 @@ O **Áxis** processa dados financeiros e transacionais sensíveis. A governança
 | **Exfiltração de Backup Financeiro** | Download indevido de histórico completo por clique acidental ou invasão rápida. | **Trava de Confirmação de Segurança**: validação biométrica nativa ou modal de confirmação explícita na Web. |
 | **Vazamento via DevTools** | Inspeção de memória ou logs em computadores compartilhados. | **Remoção de logs de console e debugger** via minifier Oxc/Rolldown (`rolldownOptions.output.minify.compress`) no build de produção do Vite. |
 | **Exposição em Auditoria** | Vazamento involuntário de senhas, chaves de API ou CPFs na trilha histórica. | **Trigger de sanitização automática** (`trg_sanitize_audit_events_payload`) antes da gravação em `audit_events`. |
+| **DoS em RPCs Públicas Desautenticadas** | Ataques repetitivos de inundação para saturar colunas JSONB e causar negação de serviço. | **Hardening de RPCs Públicas** (`signal_split_payment`): teto de 50 sinais pendentes por link, deduplicação em janela de 10 min, validação de tokens hexadecimais (64 chars), limites estritos de caracteres (1–80) e teto monetário defensivo (R$ 10 mi). |
 
 ---
 
@@ -158,3 +159,4 @@ Ao implementar novas telas, repositórios ou tabelas:
 - [x] Nenhum log de dados sensíveis foi introduzido sem mascaramento?
 - [x] Novas ações de alteração de credenciais exigem reautenticação atômica prévia (`verifyCurrentPassword`)?
 - [x] Nenhuma informação de PII (e-mail, nome) é enviada em eventos de telemetria ou analytics?
+- [x] Toda RPC pública desautenticada (`grant execute ... to anon`) possui blindagem contra DoS (teto de registros, deduplicação temporal, validação de token e sanitização estrita de payload)?

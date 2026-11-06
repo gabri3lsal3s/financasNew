@@ -249,6 +249,7 @@ vi.mock("@/state", () => ({
   endDemo: vi.fn(),
   useMyPublicShares: () => ({ data: [], isLoading: false, isError: false, error: null }),
   useSaveSplitExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSignalSplitPayment: () => ({ mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false }),
   useSaveSimulationToAccount: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdatePublicShare: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
   useUpdateExpense: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),

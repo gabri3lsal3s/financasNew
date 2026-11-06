@@ -651,6 +651,12 @@ O módulo de compartilhamento e crescimento orgânico foi projetado para permiti
 - **Sinalização Transacional de Pagamento & Proteção contra Falsos Recebimentos (`signal_split_payment` RPC & `PendingSplitSignalsCard`):** ao clicar em salvar ou avisar pagamento via link público, gera-se um sinal pendente associado ao participante (`SelectParticipantDialog`). No dashboard da Home, o anfitrião visualiza o card de sugestões de abatimento com as opções de 1 toque:
   - **"Abater cota":** confirma o Pix recebido, quita o participante e abate o valor do custo líquido da despesa original.
   - **"Ainda não recebi":** aciona `dismiss_split_payment_signal`, protegendo o anfitrião contra cliques acidentais ou sem envio de Pix.
+  - **Hardening e Blindagem de Segurança (Migração 0075 / Plano 01):**
+    - *Validação de Entradas Sanitizadas:* `p_token` estritamente alfanumérico em formato canônico (64 hexadecimais); `p_participant_name` com tamanho entre 1 e 80 caracteres (após `trim`); `p_amount_cents` estritamente positivo com teto de proteção contra overflow/corrupção de R$ 10.000.000,00 (`1000000000` centavos).
+    - *Proteção contra DoS e Inundação:* limite de segurança de no máximo 50 sinais pendentes em `payment_signals` por link. Requisições excedentes são rejeitadas preventivamente.
+    - *Idempotência e Deduplicação Inteligente:* requisições repetidas nos últimos 10 minutos para o mesmo participante/nome são deduplicadas sem inflar o JSONB, retornando `{ "success": true, "deduplicated": true }`.
+    - *Validação de Revogação e Expiração:* links com `is_revoked = true` ou `expires_at < now()` são sumariamente bloqueados com exceções amigáveis.
+    - *Auditoria:* exceção autorizada e validada nos testes automatizados de segurança de RPCs (`src/tests/security-audit.test.ts`).
 - **Rateio Contábil Sob Demanda (100% Inicial no Racha) & Abatimento Progressivo:**
   - No lançamento (`LaunchWizard`), ao ativar o toggle "Rachar despesa", o seletor manual de rateio é bloqueado automaticamente em 100% (`report_weight = 1.0`), acompanhado de banner explicativo, prevenindo distorção de duplo desconto.
   - O custo líquido do anfitrião diminui dinamicamente à medida que baixas são registradas:

@@ -1,5 +1,22 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.94** registra a **Blindagem de Segurança em `signal_split_payment`, Saneamento Estrito de Tipagem e Estabilização dos Mocks Globais de Teste (Plano 01)** (2026-11-05):
+> - **(1) Blindagem e Hardening de Segurança em `signal_split_payment` (Migração 0075)**:
+>   - Proteção estrita contra DoS/inundação em links públicos de rateio (`/r/:token`), estabelecendo teto defensivo de 50 sinais pendentes por link ativo;
+>   - Mecanismo inteligente de idempotência e deduplicação em janela móvel de 10 minutos para o mesmo participante;
+>   - Sanitização de entrada com limites rígidos: token canônico de 64 hexadecimais, nome de participante entre 1 e 80 caracteres (após `trim`), e teto monetário defensivo de R$ 10.000.000,00 (`1000000000` centavos);
+>   - Validação imediata de expiração (`expires_at < now()`) e revogação (`is_revoked = true`);
+>   - Suíte de auditoria e testes de penetração 100% aprovada em `src/tests/security-audit.test.ts`.
+> - **(2) Saneamento Integral de Tipagem TypeScript Estrito e Linter**:
+>   - Correção contratual nos componentes de rateio e links públicos (`split-public-page.tsx`, `split-public-page-shell.tsx`, `launch-wizard.tsx` e `expense-detail-dialog.tsx`);
+>   - 0 erros em `tsc -b` e 0 violações de lint sob a regra estrita `local/no-decorative-unicode`.
+> - **(3) Estabilização de Mocks Globais de Estado e Alinhamento à Regra 19**:
+>   - Inclusão dos hooks globais (`useFamilyMode`, `useMyPublicShares`, `useSignalSplitPayment`) nos mocks de `@/state` nos 12 arquivos de teste afetados;
+>   - Fornecimento de contexto de query nos testes de subcomponentes de aparência (`appearance-subcomponents.test.tsx`);
+>   - Alinhamento das asserções de texto nos banners do carrossel com a Regra 19 do `AGENTS.md` (`pace-alert-banner.test.tsx`, `android-pro-banner.test.tsx`).
+> - **(4) Homologação Integrada e Build**:
+>   - Suíte completa de testes aprovada e build de produção executado com sucesso.
+>
 > **v2.93** registra os **Deep Links Universais, PWA Launch Handling, Fila de Salvamento com Tolerância Biométrica & Navegação Ergonômica em Links Compartilhados** (2026-11-05):
 > - **(1) Deep Links Universais & PWA Launch Handling (`AndroidManifest.xml` & `manifest.webmanifest`)**:
 >   - Mapeamento de `<intent-filter android:autoVerify="true">` no APK Android para captura direta de URLs compartilhadas (`/r`, `/meta`, `/orcamento-familiar`, `/ferramentas`) sob `https://axisfinance.app` e esquema `com.guiafinanceiro.app://`;
