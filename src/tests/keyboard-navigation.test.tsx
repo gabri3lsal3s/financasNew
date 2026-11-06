@@ -157,6 +157,40 @@ vi.mock("@/state", () => ({
   useCreateLoanContract: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useEarlyAmortizeLoan: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteLoan: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useFamilyMode: () => ({
+    isFamilyModeEnabled: false,
+    toggleFamilyMode: vi.fn(),
+    isLoading: false,
+    isPending: false,
+  }),
+  useMyPublicShares: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useSaveSplitExpense: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useSignalSplitPayment: () => ({
+    mutateAsync: vi.fn(),
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+  useUpdatePublicShare: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useDismissSplitPaymentSignal: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useSeedDefaultCategories: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }));
 
 /** Foco inicial é o primeiro campo (auth) — ordem de tabulação natural. */
@@ -213,11 +247,11 @@ describe("Navegação por teclado — telas P0 (F5.3 DoD)", () => {
     const user = userEvent.setup();
     render(<BudgetsPage />);
 
-    const tab = screen.getByRole("tab", { name: /rendas/i });
+    const tab = screen.getByRole("tab", { name: /metas & campanhas/i });
     tab.focus();
     expect(tab).toHaveFocus();
     await user.keyboard("{Enter}");
-    expect(screen.getByRole("tab", { name: /rendas/i })).toHaveAttribute("data-state", "active");
+    expect(screen.getByRole("tab", { name: /metas & campanhas/i })).toHaveAttribute("data-state", "active");
   });
 
   it("DebtsPage: ações por linha alcançáveis por teclado", async () => {

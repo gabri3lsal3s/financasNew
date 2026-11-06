@@ -14,6 +14,19 @@ vi.mock("@/state", () => ({
     role: "admin",
     hasFeature: () => true,
   }),
+  useFamilyMode: () => ({
+    isFamilyModeEnabled: false,
+    toggleFamilyMode: vi.fn(),
+    isLoading: false,
+    isPending: false,
+  }),
+  useMyPublicShares: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
 }));
 
 vi.mock("@/services/native", async () => {

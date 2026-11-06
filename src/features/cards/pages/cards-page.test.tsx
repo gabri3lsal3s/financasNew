@@ -189,6 +189,19 @@ vi.mock("@/state", () => ({
   useUpdateCustomSettings: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateRecurrenceOccurrences: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateExpenseGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useFamilyMode: () => ({
+    isFamilyModeEnabled: false,
+    toggleFamilyMode: vi.fn(),
+    isLoading: false,
+    isPending: false,
+  }),
+  useMyPublicShares: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
 }));
 
 describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => {

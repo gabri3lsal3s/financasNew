@@ -158,7 +158,15 @@ export function Tabs({
             </TabsPrimitive.Content>
           ))}
         </div>
-      ) : null}
+      ) : (
+        items.map((item) => (
+          <TabsPrimitive.Content
+            key={item.value}
+            value={item.value}
+            className="hidden"
+          />
+        ))
+      )}
     </TabsPrimitive.Root>
   );
 }

@@ -61,6 +61,19 @@ vi.mock("@/state", () => ({
     mutateAsync: mockMutateAsync,
     isPending: false,
   }),
+  useFamilyMode: () => ({
+    isFamilyModeEnabled: false,
+    toggleFamilyMode: vi.fn(),
+    isLoading: false,
+    isPending: false,
+  }),
+  useMyPublicShares: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
 }));
 
 function renderAccountTab() {

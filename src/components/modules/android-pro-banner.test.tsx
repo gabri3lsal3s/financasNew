@@ -23,7 +23,14 @@ describe("AndroidProBanner", () => {
 
     expect(screen.getByText("Experimente a Leitura Automática de Gastos")).toBeInTheDocument();
     expect(screen.getByText("App Android Pro")).toBeInTheDocument();
-    expect(screen.getByText(/Detecta compras no cartão/i)).toBeInTheDocument();
+    expect(
+      screen.getByText((_content, element) => {
+        return (
+          element?.tagName.toLowerCase() === "p" &&
+          Boolean(element?.textContent?.includes("Importação automática de compras no cartão"))
+        );
+      }),
+    ).toBeInTheDocument();
   });
 
   it("chama onDismiss ao clicar no botão de fechar", () => {

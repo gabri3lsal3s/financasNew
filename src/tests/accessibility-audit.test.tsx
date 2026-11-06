@@ -379,6 +379,44 @@ vi.mock("@/state", () => ({
     isLoading: false,
     isConfigured: true,
   }),
+  useFamilyMode: () => ({
+    isFamilyModeEnabled: false,
+    toggleFamilyMode: vi.fn(),
+    isLoading: false,
+    isPending: false,
+  }),
+  useMyPublicShares: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useSaveSplitExpense: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useSaveSimulationToAccount: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useUpdatePublicShare: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useDismissSplitPaymentSignal: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useSeedDefaultCategories: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useSignalSplitPayment: () => ({
+    mutateAsync: vi.fn(),
+    mutate: vi.fn(),
+    isPending: false,
+  }),
 }));
 
 

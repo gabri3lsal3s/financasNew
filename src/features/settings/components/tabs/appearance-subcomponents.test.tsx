@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -5,6 +7,22 @@ import { ExperiencePresetsCard } from "./experience-presets-card";
 import { VisualIdentityCard } from "./visual-identity-card";
 import { InterfaceShortcutsCard } from "./interface-shortcuts-card";
 import { ResetDefaultsCard } from "./reset-defaults-card";
+
+function renderWithProviders(ui: ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      {ui}
+    </QueryClientProvider>,
+  );
+}
 
 describe("Appearance Subcomponents (Fase 1 — Tarefa 1.3)", () => {
   describe("ExperiencePresetsCard", () => {
@@ -101,7 +119,7 @@ describe("Appearance Subcomponents (Fase 1 — Tarefa 1.3)", () => {
       const user = userEvent.setup();
       const onToggle = vi.fn();
 
-      render(
+      renderWithProviders(
         <InterfaceShortcutsCard
           headerButtons={{
             logo: true,

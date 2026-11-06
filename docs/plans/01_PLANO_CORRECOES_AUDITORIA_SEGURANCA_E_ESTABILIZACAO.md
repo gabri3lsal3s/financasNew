@@ -95,11 +95,11 @@ flowchart TD
 
 > **Objetivo:** Atualizar os mocks de estado, contextos de QueryClient e asserções visuais para que todos os 12 arquivos de teste fiquem 100% verdes.
 
-- [ ] **Tarefa 3.1: Resolução do QueryClient em Subcomponentes de Aparência**
+- [x] **Tarefa 3.1: Resolução do QueryClient em Subcomponentes de Aparência**
   - **Arquivo:** `src/features/settings/components/tabs/appearance-subcomponents.test.tsx`.
   - Envolver a renderização com `renderWithProviders` ou fornecer um wrapper de `QueryClientProvider` nos testes do `InterfaceShortcutsCard`.
 
-- [ ] **Tarefa 3.2: Atualização dos Mocks de `@/state` com Novos Hooks Globais**
+- [x] **Tarefa 3.2: Atualização dos Mocks de `@/state` com Novos Hooks Globais**
   - **Arquivos a Atualizar:**
     - `src/features/settings/components/tabs/appearance-tab.test.tsx`: incluir `useFamilyMode` e `useMyPublicShares` no mock de `@/state`.
     - `src/app/router.test.tsx`: incluir `useSignalSplitPayment` e `useFamilyMode` no mock de `@/state`.
@@ -109,17 +109,17 @@ flowchart TD
     - `src/tests/keyboard-navigation.test.tsx`: incluir `useFamilyMode` e `useMyPublicShares`.
     - `src/features/insights/components/recurrence-audit-modal.test.tsx`: incluir `useFamilyMode` no mock de `@/state`.
 
-- [ ] **Tarefa 3.3: Alinhamento dos Testes de Banners do Carrossel com a Regra 19**
+- [x] **Tarefa 3.3: Alinhamento dos Testes de Banners do Carrossel com a Regra 19**
   - **Arquivos:**
     - `src/components/modules/pace-alert-banner.test.tsx`
     - `src/components/modules/android-pro-banner.test.tsx`
   - Adequar as asserções de texto para matchers funcionais flexíveis (`(content, element) => ...` ou regex), acomodando a divisão de texto e valores em nós `<span>` distintos imposta pela Regra 19 do `AGENTS.md`.
 
-- [ ] **Portão de Qualidade 3 (QG3):**
-  - [ ] Executar: `npx vitest run src/features/settings/components/tabs/appearance-subcomponents.test.tsx src/features/settings/components/tabs/appearance-tab.test.tsx src/app/router.test.tsx src/features/cards/pages/cards-page.test.tsx src/features/settings/components/tabs/account-tab.test.tsx src/tests/accessibility-audit.test.tsx src/tests/keyboard-navigation.test.tsx src/features/insights/components/recurrence-audit-modal.test.tsx src/components/modules/pace-alert-banner.test.tsx src/components/modules/android-pro-banner.test.tsx`
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] **Commit & Push da Fase 3:** `git commit -m "test(mocks): estabilizacao de mocks de estado global e banners da regra 19"`
+- [x] **Portão de Qualidade 3 (QG3):**
+  - [x] Executar: `npx vitest run src/features/settings/components/tabs/appearance-subcomponents.test.tsx src/features/settings/components/tabs/appearance-tab.test.tsx src/app/router.test.tsx src/features/cards/pages/cards-page.test.tsx src/features/settings/components/tabs/account-tab.test.tsx src/tests/accessibility-audit.test.tsx src/tests/keyboard-navigation.test.tsx src/features/insights/components/recurrence-audit-modal.test.tsx src/components/modules/pace-alert-banner.test.tsx src/components/modules/android-pro-banner.test.tsx`
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] **Commit & Push da Fase 3:** `git commit -m "test(mocks): estabilizacao de mocks de estado global e banners da regra 19"`
 
 ---
 

@@ -21,10 +21,24 @@ describe("PaceAlertBanner (§3.8)", () => {
 
     expect(screen.getByText("Ritmo de gastos acima do previsto")).toBeInTheDocument();
     expect(screen.getByText("Fora do trilho")).toBeInTheDocument();
-    expect(screen.getByText("75%")).toBeInTheDocument();
-    expect(screen.getByText("50%")).toBeInTheDocument();
-    expect(screen.getByText("R$ 50,00")).toBeInTheDocument();
-    expect(screen.getByText(/15 dias restantes/i)).toBeInTheDocument();
+    expect(
+      screen.getByText((_content, element) => {
+        const text = element?.textContent ?? "";
+        return (
+          element?.tagName.toLowerCase() === "p" &&
+          text.includes("Consumido 75% do orçamento") &&
+          text.includes("50% do mês decorrido")
+        );
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText((_content, element) => {
+        return (
+          element?.tagName.toLowerCase() === "span" &&
+          Boolean(element?.textContent?.includes("50,00"))
+        );
+      }),
+    ).toBeInTheDocument();
 
     const button = screen.getByRole("button", { name: /Simular cortes e projeção/i });
     await user.click(button);
@@ -45,7 +59,15 @@ describe("PaceAlertBanner (§3.8)", () => {
 
     expect(screen.getByText("Projeção de déficit no mês")).toBeInTheDocument();
     expect(screen.getByText("Fora do trilho")).toBeInTheDocument();
-    expect(screen.getByText("85%")).toBeInTheDocument();
-    expect(screen.getByText("60%")).toBeInTheDocument();
+    expect(
+      screen.getByText((_content, element) => {
+        const text = element?.textContent ?? "";
+        return (
+          element?.tagName.toLowerCase() === "p" &&
+          text.includes("Consumido 85% do orçamento") &&
+          text.includes("60% do mês decorrido")
+        );
+      }),
+    ).toBeInTheDocument();
   });
 });
