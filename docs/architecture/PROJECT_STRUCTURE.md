@@ -255,6 +255,7 @@
     │   │
     │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
+    │   ├── family/                #   Modo Família Colaborativo: category-clustering.ts (agrupamento e semântica de categorias da casa), reconciliation.ts e settlement.ts
     │   ├── share/                 #   tokens públicos URL-safe (token.ts), motor de serialização stateful URL comprimida (stateful-url.ts) e transporte de simulação (simulation-transport.ts)
     │   ├── finance/               #   motor puro de rateio de despesas e divisão equitativa em centavos (split-math.ts, balanceamento de sobra)
     │   ├── pix/                   #   motor puro de Pix Copia e Cola padrão BACEN (pix-br-code.ts, CRC16-CCITT 0x1021, normalização)

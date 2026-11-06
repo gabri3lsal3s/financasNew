@@ -107,21 +107,21 @@ flowchart TD
 
 ## Fase 2: Domínio Puro & Matemática de Compensação
 
-- [ ] **Tarefa 2.1: Agrupamento de Categorias (`src/domain/family/category-clustering.ts`)**
-  - Normalização e agrupamento de categorias da casa.
+- [x] **Tarefa 2.1: Agrupamento de Categorias (`src/domain/family/category-clustering.ts`)**
+  - [x] Normalização e agrupamento de categorias da casa.
 
-- [ ] **Tarefa 2.2: Reconciliação em Centavos (`src/domain/family/reconciliation.ts`)**
-  - Cálculo de totais por pagador, saldo da casa e percentuais de consumo.
+- [x] **Tarefa 2.2: Reconciliação em Centavos (`src/domain/family/reconciliation.ts`)**
+  - [x] Cálculo de totais por pagador, saldo da casa e percentuais de consumo.
 
-- [ ] **Tarefa 2.3: Compensação Justa via Pix (`src/domain/family/settlement.ts`)**
-  - Calcula a diferença entre o valor pago e a cota devida (50/50 ou proporcional à renda).
-  - Gera chave Pix com valor exato de transferência e payload EMVCo para pagamento instantâneo.
+- [x] **Tarefa 2.3: Compensação Justa via Pix (`src/domain/family/settlement.ts`)**
+  - [x] Calcula a diferença entre o valor pago e a cota devida (50/50 ou proporcional à renda).
+  - [x] Gera chave Pix com valor exato de transferência e payload EMVCo para pagamento instantâneo.
 
-- [ ] **Portão de Qualidade 2 (QG2):**
-  - [ ] Executar: `npx vitest run src/domain/family/`
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] **Commit & Push da Fase 2:** `git commit -m "feat(family): motor puro de reconciliacao familiar e compensacao pix"`
+- [x] **Portão de Qualidade 2 (QG2):**
+  - [x] Executar: `npx vitest run src/domain/family/`
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] **Commit & Push da Fase 2:** `git commit -m "feat(family): motor puro de reconciliacao familiar e compensacao pix"`
 
 ---
 
