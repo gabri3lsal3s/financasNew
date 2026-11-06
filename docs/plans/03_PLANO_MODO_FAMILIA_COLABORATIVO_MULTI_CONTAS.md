@@ -170,15 +170,15 @@ flowchart TD
 - [x] **Tarefa 5.2: Preservação do Extrato Pessoal (`/transacoes`)**
   - [x] Confirmação de que `/transacoes` exibe estritamente os gastos do próprio usuário com badge `[Familiar]`.
 
-- [ ] **Tarefa 5.3: Homologação e Build de Produção**
+- [x] **Tarefa 5.3: Homologação e Build de Produção**
   - Testes E2E, typecheck, lint e build de produção. Mover plano para `docs/plans/completed/`.
 
-- [ ] **Portão de Qualidade 5 (QG5):**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/features/family/`
-  - [ ] Executar: `npm run build`
-  - [ ] **Commit & Push da Fase 5:** `git commit -m "chore(release): homologacao e conclusao do plano 03 de modo familia colaborativo"`
+- [x] **Portão de Qualidade 5 (QG5):**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/features/family/`
+  - [x] Executar: `npm run build`
+  - [x] **Commit & Push da Fase 5:** `git commit -m "chore(release): homologacao e conclusao do plano 03 de modo familia colaborativo"`
 
 ---
 

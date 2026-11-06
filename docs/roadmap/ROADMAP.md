@@ -1,5 +1,23 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.96** registra o **Modo Família Colaborativo Multi-Contas & Consolidação Orçamentária Segura (Plano 03)** (2026-11-06):
+> - **(1) Infraestrutura Postgres, RLS Hermético & RPCs Transacionais (Migração 0076)**:
+>   - Modelagem relacional completa com `families`, `family_members`, `family_invites` e `family_settlements`;
+>   - RLS hermético com isolamento total de gastos pessoais (Zero Data Bleed) e compartilhamento seguro de categorias familiares ativas;
+>   - RPCs dedicadas de consolidação sanitizada (`get_family_consolidation`) e gestão atômica (`create_family`, `invite_family_member`, `accept_family_invite`, `leave_family`, `record_family_settlement`).
+> - **(2) Domínio Puro, Reconciliação Matemática em Centavos e Compensação Pix**:
+>   - Motores puros em `src/domain/family/` (`category-clustering.ts`, `reconciliation.ts`, `settlement.ts`) com testes unitários matemáticos abrangentes;
+>   - Rateio e compensação justa (50/50 ou proporcional à renda) com geração de payload EMVCo Pix instantâneo para liquidação sem atrito.
+> - **(3) Estado Reativo TanStack, Repositórios e Navegação Condicional**:
+>   - Hooks em `src/state/queries/use-family.ts` com invalidação cirúrgica de cache e feedback sensorial padronizado;
+>   - Roteamento dinâmico e menu condicional com ativação da rota `/familia` para membros de família ativa.
+> - **(4) Hub do Orçamento Familiar (`/familia`) e Onboarding do Parceiro**:
+>   - Painel analítico com teto orçamentário compartilhado, equilíbrio mensal com barra bicolor, gráfico comparativo de fatias, extrato enriquecido com filtros por pagador e modal de acerto de contas;
+>   - Fluxo de recepção e onboarding ágil de convites (`/convite-familiar/:token`) e aba dedicada em Configurações.
+> - **(5) Homologação Integrada e Build de Produção**:
+>   - 100% dos testes unitários e de integração verdes (30 testes em `src/features/family/`, 82 testes em `src/domain/family/`, 14 testes em `src/state/queries/use-family.ts`, 10 testes em `family-tab`);
+>   - 0 erros em `tsc -b`, 0 violações de lint (`local/no-decorative-unicode`) e build de produção Vite/PWA concluído com sucesso.
+>
 > **v2.95** registra a **Precisão Matemática de Rentabilidade, Extratos Mensais de Snapshots e Segregação Dual de Relatórios (Plano 02)** (2026-11-06):
 > - **(1) Motor Matemático do Extrato Mensal Isolado (`monthly-statement.ts` / Modified Dietz ANBIMA/GIPS)**:
 >   - Cálculo contábil da rentabilidade periódica da competência ($r_M$) imune a aportes e resgates externos com ponderação diária de permanência de fluxos ($W_i$);

@@ -212,6 +212,10 @@
     │   ├── cards/                 #   Cartões (faturas, pagamentos, estornos, refinanciamento)
     │   ├── debts/                 #   Dívidas (status, quitação com juros/multa/desconto, empréstimos Price/SAC, loan-schedule-dialog, loan-edit-dialog F72)
     │   ├── budgets/               #   Orçamentos (limites, realocação)
+    │   ├── family/                #   Modo Família Colaborativo Multi-Contas (/familia, /convite-familiar/:token)
+    │   │                          #     pages: family-page, family-invite-page
+    │   │                          #     components: household-ceiling-card, household-balance-card, household-comparison-card,
+    │   │                          #                 household-clustering-ranking, household-expense-feed, family-settlement-dialog
     │   ├── reports/               #   Central Unificada de Relatórios (§F42: Finanças & DRE A4, Investimentos & Metas, Balanço 360°, Fiscal IRPF, Excel XLSX)
     │   │                          #     components/tabs/ (financial-tab, investments-tab, balance-tab, tax-tab F61)
     │   ├── insights/              #   Insights, radar de vencimentos RF (F72), projeção e corte
