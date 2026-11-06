@@ -698,11 +698,19 @@ O módulo de compartilhamento e crescimento orgânico foi projetado para permiti
   - Em transações, os rachas são exibidos em blocos de 2 por vez com paginação por setas, ordenação por vencimento próximo e antiguidade, e layout de altura reduzida.
   - Na Home, o carrossel consolida a soma das divisões pendentes, quantidade de despesas a receber e atalho rápido para gestão.
 
-#### 3.13.2 Orçamento Familiar Compartilhado (Visão Cônjuge/Parceiro)
-- **Segregação de Despesas e Receitas Familiares:** campo booleano `is_family` nas tabelas `expenses` e `incomes`. Permite que o titular marque lançamentos que compõem o custo de vida conjunto da casa.
+#### 3.13.2 Orçamento Familiar Compartilhado & Modo Família Colaborativo Multi-Contas
+- **Segregação de Despesas e Receitas Familiares:** campo booleano `is_family` nas tabelas `expenses`, `incomes` e `portfolio_assets`. Permite que os membros marquem lançamentos e ativos que compõem o custo de vida e o patrimônio conjunto da casa.
+- **Governança do Switch do Modo Familiar em Configurações (`isFamilyModeEnabled`):**
+  - **Visibilidade Estrita de Toggles e Badges:** Quando o usuário desativa o Modo Familiar nas preferências da conta (`isFamilyModeEnabled = false`), todos os controles e switches de compartilhamento familiar desaparecem completamente da interface (criação/edição de despesas, receitas, categorias e investimentos).
+  - **Ocultação de Badges em Extratos e Fichas:** Lançamentos ou ativos com a flag `is_family = true` pré-existente só exibem os badges visuais "Familiar" ou "Patrimônio Familiar" quando o Modo Familiar estiver expressamente **ativado**.
+  - **Princípio de Zero Data Loss:** Desativar o switch de preferências não altera nem apaga dados do banco de dados; a persistência de vínculos permanece íntegra, aguardando reativação sem perda histórica.
+- **Modelos de Divisão & Gestão Financeira Familiar:**
+  - *Caixa Único / Gastos Combinados (`combined_finances`):* Consolidação unificada de despesas e receitas da casa sem comparação individual ou necessidade de transferências Pix compensatórias entre os membros.
+  - *Divisão Igualitária (50/50):* Divisão paritária do custo de vida doméstico entre os membros.
+  - *Divisão Proporcional à Renda / Personalizada:* Permite pesos customizados entre os membros ou sugestão assistida baseada na média móvel de receitas líquidas dos últimos 3 meses (`get_family_income_ratio_suggestion`).
 - **Link Somente-Leitura Seguro (`/orcamento-familiar/:token`):** ativado e gerenciado pelo titular em Configurações (`FamilyBudgetShareCard`). O titular pode visualizar, copiar, revogar ou regenerar o token a qualquer momento.
-- **Blindagem de Dados via RPC `get_shared_family_budget`:** executada com `SECURITY DEFINER` e sanitização estrita, a função consolida apenas os tetos orçamentários das categorias familiares e as despesas com `is_family = true` para o mês solicitado. Contas bancárias, investimentos, patrimônio líquido ou despesas pessoais (`is_family = false`) do titular jamais são expostos.
-- **Página Pública `FamilyBudgetPage`:** interface mobile-first e responsiva com cards do teto orçamentário do mês, valor gasto conjunto, percentual de consumo, gráfico de distribuição e lista detalhada das despesas familiares do período.
+- **Blindagem de Dados via RPC `get_shared_family_budget` & `get_family_consolidation`:** executadas com `SECURITY DEFINER` e sanitização estrita, as funções consolidam apenas os tetos orçamentários, despesas e receitas com `is_family = true` para o mês solicitado. Contas bancárias, investimentos pessoais, patrimônio líquido privado ou despesas individuais (`is_family = false`) jamais são expostos.
+- **Página Pública `FamilyBudgetPage` & Painel Interno `/familia`:** interfaces mobile-first e responsivas com teto orçamentário do mês, valor gasto conjunto, taxa de poupança, gráficos de categorias e lista detalhada das transações familiares.
 
 #### 3.13.3 Termômetro de Meta Coletiva (`/meta/:token`) & Gestão de Ciclo de Vida
 - **Ativação e Visualização no App (`CampaignCard` & `ShareGoalDialog`):**

@@ -54,7 +54,7 @@ function CategoryFormContent({
 
   const { isFamilyModeEnabled } = useFamilyMode();
   const { data: myFamilyData } = useMyFamily();
-  const isFamilyActive = Boolean(isFamilyModeEnabled || myFamilyData?.family);
+  const isFamilyActive = Boolean(isFamilyModeEnabled);
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const pending = createCategory.isPending || updateCategory.isPending;

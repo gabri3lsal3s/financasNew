@@ -347,6 +347,17 @@ describe("TransactionListPage — listagem por mês", () => {
       expect(within(personalIncRow).queryByText("Familiar")).toBeNull();
     });
 
+    it("não exibe badge 'Familiar' para nenhuma transação quando o Modo Familiar está desativado", () => {
+      mockIsFamilyModeEnabled = false;
+      render(<TransactionListPage />);
+
+      const familyExpRow = screen.getByText("Supermercado da Família").closest("button")!;
+      expect(within(familyExpRow).queryByText("Familiar")).toBeNull();
+
+      const familyIncRow = screen.getByText("Ajuda de Custo Familiar").closest("button")!;
+      expect(within(familyIncRow).queryByText("Familiar")).toBeNull();
+    });
+
     it("soma todos os lançamentos gerais nos KPIs", () => {
       render(<TransactionListPage />);
       // Despesas: 200 + 800 = 1000

@@ -162,3 +162,35 @@ export function isAssetSharedWithFamily(params: IsAssetSharedParams): boolean {
   }
   return Boolean(params.is_family);
 }
+
+/**
+ * Determina se um ativo possui perfil de liquidez imediata (caixa/reserva)
+ * para fins de consolidação da Reserva de Emergência da Família.
+ *
+ * Espelha fielmente a regra SQL da RPC get_family_portfolio_summary:
+ * 1. Classe 'caixa', 'reserva' ou 'reserva de emergência';
+ * 2. OU ticker exatamente 'CAIXA';
+ * 3. OU ticker contendo 'selic' ou 'cdi'.
+ */
+export function isAssetCashLike(ticker: string, assetClass?: string | null): boolean {
+  const normClass = (assetClass ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (
+    normClass === "caixa" ||
+    normClass === "reserva" ||
+    normClass === "reserva de emergencia"
+  ) {
+    return true;
+  }
+
+  const normTicker = ticker.trim().toLowerCase();
+  if (normTicker === "caixa") {
+    return true;
+  }
+
+  return normTicker.includes("selic") || normTicker.includes("cdi");
+}

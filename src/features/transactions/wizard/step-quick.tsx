@@ -292,7 +292,7 @@ export function StepQuick({
                       : "border-border/80 bg-surface hover:bg-surface-hover text-foreground",
                   )}
                 >
-                  {cat.is_family ? (
+                  {isFamilyModeEnabled && cat.is_family ? (
                     <span
                       className="absolute top-1.5 right-1.5 flex items-center justify-center text-muted-foreground"
                       title="Categoria Familiar Compartilhada"

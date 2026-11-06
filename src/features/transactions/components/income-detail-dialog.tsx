@@ -14,7 +14,6 @@ import {
   useDeleteIncomeGrouped,
   useDeleteRecurrenceOccurrences,
   useFamilyMode,
-  useMyFamily,
   useUpdateIncome,
   useUpdateIncomeGrouped,
   useUpdateRecurrenceOccurrences,
@@ -105,7 +104,6 @@ function IncomeEditForm({
   );
   const [formError, setFormError] = useState<string | null>(null);
   const { isFamilyModeEnabled } = useFamilyMode();
-  const { data: myFamilyData } = useMyFamily();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
 
   const handleSubmit = async () => {
@@ -312,8 +310,7 @@ export function IncomeDetailDialog({
 
   const categoriesQuery = useCategories("income");
   const { isFamilyModeEnabled } = useFamilyMode();
-  const { data: myFamilyData } = useMyFamily();
-  const isFamilyActive = Boolean(isFamilyModeEnabled || myFamilyData?.family);
+  const isFamilyActive = Boolean(isFamilyModeEnabled);
   const deleteIncome = useDeleteIncome();
   const deleteIncomeGrouped = useDeleteIncomeGrouped();
   const deleteRecurrence = useDeleteRecurrenceOccurrences();

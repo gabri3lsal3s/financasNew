@@ -870,7 +870,7 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
       });
     });
 
-    it("habilita controles familiares quando o usuário pertence a uma família ativa mesmo com preferência desligada (Tarefa 3.2)", () => {
+    it("oculta controles familiares quando a preferência do modo familiar está desligada, mesmo pertencendo a uma família", () => {
       mockIsFamilyModeEnabled = false;
       mockMyFamily = {
         family: { id: "fam-1", name: "Família Silva", owner_id: "user-123", split_rule: "equal" },
@@ -888,8 +888,8 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
         />,
       );
 
-      // Como o usuário pertence a uma família ativa, os controles familiares devem estar presentes
-      expect(screen.getByRole("switch", { name: "Despesa da Casa / Familiar" })).toBeInTheDocument();
+      // Quando a preferência do modo familiar está desativada, os controles familiares devem ficar ocultos
+      expect(screen.queryByRole("switch", { name: "Despesa da Casa / Familiar" })).not.toBeInTheDocument();
     });
 
     it("auto-ativa isFamily ao selecionar categoria familiar no modo guiado e exibe indicador visual (Tarefa 3.2)", async () => {

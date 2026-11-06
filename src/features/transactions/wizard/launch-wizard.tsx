@@ -43,7 +43,6 @@ import {
   useCreateIncomeInstallments,
   useCreateRecurrence,
   useFamilyMode,
-  useMyFamily,
   usePredictionHistory,
 } from "@/state";
 import { useDemoSession } from "@/state/demo-mode";
@@ -159,7 +158,6 @@ export function LaunchWizard({
   const categoriesQuery = useCategories(state.type);
   const cardsQuery = useActiveCreditCards();
   const { isFamilyModeEnabled } = useFamilyMode();
-  const { data: myFamilyData } = useMyFamily();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
   const createExpense = useCreateExpense();
   const createIncome = useCreateIncome();
@@ -843,6 +841,7 @@ export function LaunchWizard({
                 isError={categoriesQuery.isError}
                 error={categoriesQuery.error}
                 selectedId={state.categoryId}
+                isFamilyModeEnabled={isFamilyActive}
                 onSelect={(categoryId) => {
                   set("categoryId", categoryId);
                   const cat = categoriesQuery.data?.find((c) => c.id === categoryId);

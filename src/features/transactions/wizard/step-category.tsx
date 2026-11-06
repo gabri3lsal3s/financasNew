@@ -14,10 +14,19 @@ export interface StepCategoryProps {
   error: unknown;
   selectedId: string;
   onSelect: (categoryId: string) => void;
+  isFamilyModeEnabled?: boolean;
 }
 
 /** Passo 2 — seleção visual de categoria (grid de botões com ícones). */
-export function StepCategory({ categories, isLoading, isError, error, selectedId, onSelect }: StepCategoryProps) {
+export function StepCategory({
+  categories,
+  isLoading,
+  isError,
+  error,
+  selectedId,
+  onSelect,
+  isFamilyModeEnabled = false,
+}: StepCategoryProps) {
   if (isError) {
     return <Alert variant="error">{getErrorMessage(error)}</Alert>;
   }
@@ -57,7 +66,7 @@ export function StepCategory({ categories, isLoading, isError, error, selectedId
               : "border-border bg-surface hover:bg-surface-hover",
           )}
         >
-          {category.is_family ? (
+          {isFamilyModeEnabled && category.is_family ? (
             <span
               className="absolute top-2 right-2 flex items-center justify-center text-muted-foreground"
               title="Categoria Familiar Compartilhada"

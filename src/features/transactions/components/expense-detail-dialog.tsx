@@ -124,7 +124,6 @@ function ExpenseEditForm({
   );
   const [formError, setFormError] = useState<string | null>(null);
   const { isFamilyModeEnabled } = useFamilyMode();
-  const { data: myFamilyData } = useMyFamily();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
 
   /**
