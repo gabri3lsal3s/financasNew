@@ -1,8 +1,23 @@
 import { currentMonth, shiftMonth } from "@/lib/date";
-import type { Budget, CardPayment, Category, CreditCard, Expense, Income } from "@/types";
+import type {
+  Budget,
+  CardPayment,
+  Category,
+  CreditCard,
+  Expense,
+  FamilyConsolidationExpense,
+  FamilyConsolidationMember,
+  FamilyConsolidationResult,
+  FamilyMemberWithProfile,
+  Income,
+  MyFamilyData,
+  PublicShare,
+} from "@/types";
 import type { DailyFinancesDataset } from "./types";
 
 export const DEMO_USER_ID = "demo-simulation-user";
+export const DEMO_FAMILY_ID = "family-demo-simulada";
+export const DEMO_PARTNER_USER_ID = "demo-partner-user";
 
 /**
  * Formata com segurança uma data ISO YYYY-MM-DD baseada no mês YYYY-MM e no dia,
@@ -13,6 +28,319 @@ export function formatIsoDate(month: string, day: number): string {
   const maxDays = new Date(year ?? 2026, monthNum ?? 1, 0).getDate();
   const clampedDay = Math.min(Math.max(1, day), maxDays);
   return `${month}-${String(clampedDay).padStart(2, "0")}`;
+}
+
+/**
+ * Gera os compartilhamentos públicos simulados (rachas com Pix e termômetros de metas coletivas).
+ */
+export function generateMockPublicShares(
+  referenceMonth: string = currentMonth(),
+): PublicShare[] {
+  return [
+    // 1. Racha de despesas ativo com 4 participantes e 2 pagamentos já sinalizados via Pix
+    {
+      id: "share-demo-split-churrasco",
+      user_id: DEMO_USER_ID,
+      kind: "split",
+      token: "demo-token-split-churrasco",
+      created_at: `${formatIsoDate(referenceMonth, 12)}T19:30:00.000Z`,
+      updated_at: `${formatIsoDate(referenceMonth, 13)}T12:00:00.000Z`,
+      expires_at: null,
+      is_revoked: false,
+      payload: {
+        title: "Churrasco de Confraternização",
+        total_cents: 48000,
+        date: formatIsoDate(referenceMonth, 12),
+        people_count: 4,
+        guest_share_cents: 12000,
+        host_share_cents: 12000,
+        remainder_policy: "host",
+        host_name: "Você",
+        host_city: "São Paulo",
+        pix_key: "financeiro.demo@exemplo.com",
+        pix_key_type: "email",
+        pix_br_code:
+          "00020126360014BR.GOV.BCB.PIX0114demo@exemplo.com5204000053039865406120.005802BR5904Voce6009Sao Paulo62070503***6304ABCD",
+        expense_id: "exp-demo-ref-restaurante",
+        category_id: "cat-demo-lazer",
+        category_name: "Lazer & Assinaturas",
+        category_icon: "lazer",
+        is_completed: false,
+        total_settled_cents: 12000,
+        participants: [
+          {
+            id: "part-demo-host",
+            name: "Você (Anfitrião)",
+            share_cents: 12000,
+            is_host: true,
+            is_settled: true,
+            settled_cents: 12000,
+            settled_at: `${formatIsoDate(referenceMonth, 12)}T19:30:00.000Z`,
+          },
+          {
+            id: "part-demo-mariana",
+            name: "Mariana Costa",
+            share_cents: 12000,
+            is_host: false,
+            is_settled: false,
+            has_payment_signal: true,
+            payment_signaled_at: `${formatIsoDate(referenceMonth, 13)}T10:15:00.000Z`,
+          },
+          {
+            id: "part-demo-lucas",
+            name: "Lucas Oliveira",
+            share_cents: 12000,
+            is_host: false,
+            is_settled: false,
+            has_payment_signal: true,
+            payment_signaled_at: `${formatIsoDate(referenceMonth, 13)}T11:45:00.000Z`,
+          },
+          {
+            id: "part-demo-beatriz",
+            name: "Beatriz Souza",
+            share_cents: 12000,
+            is_host: false,
+            is_settled: false,
+            has_payment_signal: false,
+          },
+        ],
+        payment_signals: [
+          {
+            id: "sig-demo-mariana",
+            participant_id: "part-demo-mariana",
+            participant_name: "Mariana Costa",
+            amount_cents: 12000,
+            status: "pending",
+            created_at: `${formatIsoDate(referenceMonth, 13)}T10:15:00.000Z`,
+          },
+          {
+            id: "sig-demo-lucas",
+            participant_id: "part-demo-lucas",
+            participant_name: "Lucas Oliveira",
+            amount_cents: 12000,
+            status: "pending",
+            created_at: `${formatIsoDate(referenceMonth, 13)}T11:45:00.000Z`,
+          },
+        ],
+      },
+    },
+
+    // 2. Meta pública coletiva com arrecadação em 75% e chave Pix mockada
+    {
+      id: "share-demo-goal-viagem",
+      user_id: DEMO_USER_ID,
+      kind: "goal_tracker",
+      token: "demo-token-goal-viagem",
+      created_at: `${formatIsoDate(referenceMonth, 1)}T09:00:00.000Z`,
+      updated_at: `${formatIsoDate(referenceMonth, 15)}T18:00:00.000Z`,
+      expires_at: null,
+      is_revoked: false,
+      payload: {
+        title: "Viagem de Fim de Ano em Família",
+        category_id: null,
+        month: referenceMonth,
+        target_cents: 800000,
+        current_cents: 600000,
+        deadline: formatIsoDate(referenceMonth, 28),
+        organizer_name: "Você",
+        organizer_city: "São Paulo",
+        pix_key: "viagem.familia@exemplo.com",
+        pix_key_type: "email",
+        pix_br_code:
+          "00020126360014BR.GOV.BCB.PIX0123viagem.familia@exemplo.com5204000053039865802BR5904Voce6009Sao Paulo62070503***6304E1F2",
+        status: "active",
+        notes: "Vaquinha para hospedagem e passagens da viagem de férias em família.",
+        show_contributions_publicly: true,
+        contributions: [
+          {
+            id: "contrib-demo-1",
+            amount_cents: 300000,
+            contributor_name: "Você",
+            date: formatIsoDate(referenceMonth, 2),
+          },
+          {
+            id: "contrib-demo-2",
+            amount_cents: 200000,
+            contributor_name: "Camila",
+            date: formatIsoDate(referenceMonth, 8),
+          },
+          {
+            id: "contrib-demo-3",
+            amount_cents: 100000,
+            contributor_name: "Mariana",
+            date: formatIsoDate(referenceMonth, 14),
+          },
+        ],
+      },
+    },
+  ];
+}
+
+/**
+ * Gera a unidade familiar simulada com 2 membros e perfil completo.
+ */
+export function generateMockFamily(): MyFamilyData {
+  const nowIso = new Date().toISOString();
+
+  const currentMember: FamilyMemberWithProfile = {
+    id: "mem-demo-1",
+    family_id: DEMO_FAMILY_ID,
+    user_id: DEMO_USER_ID,
+    role: "owner",
+    display_name: "Você",
+    profile_name: "Gabriel Sales",
+    profile_email: "gabriel@exemplo.com",
+    pix_key: "financeiro.demo@exemplo.com",
+    pix_key_type: "email",
+    split_ratio: 0.5,
+    share_all_portfolio: false,
+    shared_asset_classes: ["Renda Fixa"],
+    created_at: nowIso,
+    updated_at: nowIso,
+  };
+
+  const partnerMember: FamilyMemberWithProfile = {
+    id: "mem-demo-2",
+    family_id: DEMO_FAMILY_ID,
+    user_id: DEMO_PARTNER_USER_ID,
+    role: "member",
+    display_name: "Camila",
+    profile_name: "Camila Santos",
+    profile_email: "camila@exemplo.com",
+    pix_key: "camila.demo@exemplo.com",
+    pix_key_type: "email",
+    split_ratio: 0.5,
+    share_all_portfolio: false,
+    shared_asset_classes: ["Renda Fixa"],
+    created_at: nowIso,
+    updated_at: nowIso,
+  };
+
+  return {
+    family: {
+      id: DEMO_FAMILY_ID,
+      name: "Família Silva",
+      owner_id: DEMO_USER_ID,
+      monthly_budget: 6000,
+      split_rule: "equal",
+      created_at: nowIso,
+      updated_at: nowIso,
+    },
+    members: [currentMember, partnerMember],
+    currentMember,
+    invites: [],
+  };
+}
+
+/**
+ * Gera a consolidação familiar simulada para o mês de referência,
+ * com 2 membros e acerto de contas perfeitamente equilibrado (50% / 50%).
+ */
+export function generateMockFamilyConsolidation(
+  referenceMonth: string = currentMonth(),
+): FamilyConsolidationResult {
+  const nowIso = new Date().toISOString();
+
+  const expenses: FamilyConsolidationExpense[] = [
+    {
+      id: "fexp-demo-aluguel",
+      description: "Aluguel & Condomínio",
+      date: formatIsoDate(referenceMonth, 1),
+      amount_cents: 180000,
+      category_id: "cat-demo-moradia",
+      category_name: "Moradia & Contas Básicas",
+      category_icon: "moradia",
+      category_color: "#3b82f6",
+      user_id: DEMO_USER_ID,
+      payer_name: "Você",
+      is_own: true,
+      created_at: `${formatIsoDate(referenceMonth, 1)}T10:00:00.000Z`,
+    },
+    {
+      id: "fexp-demo-mercado",
+      description: "Supermercado Mensal",
+      date: formatIsoDate(referenceMonth, 5),
+      amount_cents: 120000,
+      category_id: "cat-demo-alimentacao",
+      category_name: "Alimentação & Supermercado",
+      category_icon: "alimentacao",
+      category_color: "#10b981",
+      user_id: DEMO_PARTNER_USER_ID,
+      payer_name: "Camila",
+      is_own: false,
+      created_at: `${formatIsoDate(referenceMonth, 5)}T14:30:00.000Z`,
+    },
+    {
+      id: "fexp-demo-energia",
+      description: "Contas de Consumo & Energia",
+      date: formatIsoDate(referenceMonth, 10),
+      amount_cents: 60000,
+      category_id: "cat-demo-moradia",
+      category_name: "Moradia & Contas Básicas",
+      category_icon: "moradia",
+      category_color: "#3b82f6",
+      user_id: DEMO_PARTNER_USER_ID,
+      payer_name: "Camila",
+      is_own: false,
+      created_at: `${formatIsoDate(referenceMonth, 10)}T16:00:00.000Z`,
+    },
+  ];
+
+  const members: FamilyConsolidationMember[] = [
+    {
+      user_id: DEMO_USER_ID,
+      role: "owner",
+      display_name: "Você",
+      pix_key: "financeiro.demo@exemplo.com",
+      pix_key_type: "email",
+      split_ratio: 0.5,
+      spent_cents: 180000,
+      percentage_of_total: 50,
+    },
+    {
+      user_id: DEMO_PARTNER_USER_ID,
+      role: "member",
+      display_name: "Camila",
+      pix_key: "camila.demo@exemplo.com",
+      pix_key_type: "email",
+      split_ratio: 0.5,
+      spent_cents: 180000,
+      percentage_of_total: 50,
+    },
+  ];
+
+  return {
+    family: {
+      id: DEMO_FAMILY_ID,
+      name: "Família Silva",
+      owner_id: DEMO_USER_ID,
+      monthly_budget_cents: 600000,
+      split_rule: "equal",
+    },
+    month: referenceMonth,
+    monthly_ceiling_cents: 600000,
+    total_spent_cents: 360000,
+    total_income_cents: 930000,
+    remaining_cents: 240000,
+    spent_percentage: 60,
+    members,
+    expenses,
+    is_settled: true,
+    settlement: {
+      id: "set-demo-ref",
+      month: referenceMonth,
+      payer_id: DEMO_PARTNER_USER_ID,
+      payer_name: "Camila",
+      receiver_id: DEMO_USER_ID,
+      receiver_name: "Você",
+      amount_cents: 0,
+      settled_at: `${formatIsoDate(referenceMonth, 15)}T18:00:00.000Z`,
+      payment_method: "pix",
+      notes: "Contas perfeitamente equilibradas no mês (50% / 50%)",
+      created_at: nowIso,
+    },
+    has_post_settlement_expenses: false,
+  };
 }
 
 /**
@@ -275,6 +603,8 @@ export function generateMockFinances(referenceMonth: string = currentMonth()): D
       base_amount: 2400,
       description: "Aluguel & Taxa de Condomínio",
       charge_kind: "regular",
+      is_family: true,
+      family_id: DEMO_FAMILY_ID,
       created_at: nowIso,
     },
     {
@@ -293,6 +623,8 @@ export function generateMockFinances(referenceMonth: string = currentMonth()): D
       base_amount: 620.5,
       description: "Supermercado Semanal",
       charge_kind: "regular",
+      is_family: true,
+      family_id: DEMO_FAMILY_ID,
       created_at: nowIso,
     },
     {
@@ -483,6 +815,10 @@ export function generateMockFinances(referenceMonth: string = currentMonth()): D
     },
   ];
 
+  const publicShares = generateMockPublicShares(referenceMonth);
+  const family = generateMockFamily();
+  const familyConsolidation = generateMockFamilyConsolidation(referenceMonth);
+
   return {
     referenceMonth,
     previousMonth: prevMonth,
@@ -492,5 +828,8 @@ export function generateMockFinances(referenceMonth: string = currentMonth()): D
     cards,
     budgets,
     cardPayments,
+    publicShares,
+    family,
+    familyConsolidation,
   };
 }

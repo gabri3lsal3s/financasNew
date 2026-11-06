@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { currentMonth, shiftMonth } from "@/lib/date";
+import type { GoalTrackerSharePayload, SplitSharePayload } from "@/types";
 import {
+  DEMO_FAMILY_ID,
+  DEMO_PARTNER_USER_ID,
+  DEMO_USER_ID,
   formatIsoDate,
+  generateMockFamily,
+  generateMockFamilyConsolidation,
   generateMockFinances,
   generateMockInvestments,
+  generateMockPublicShares,
   getTourSteps,
   TOUR_STEPS,
 } from "./index";
@@ -121,6 +128,147 @@ describe("demo-simulation — Datasets Puros e Dinâmicos em Memória (Fase 2)",
       expect(installmentExpense?.installment_number).toBeLessThanOrEqual(
         installmentExpense?.installments_total ?? 1,
       );
+    });
+
+    it("inclui despesas familiares com is_family: true e family_id consistente", () => {
+      const dataset = generateMockFinances();
+      const familyExpenses = dataset.expenses.filter((e) => e.is_family);
+
+      expect(familyExpenses.length).toBeGreaterThanOrEqual(1);
+      for (const exp of familyExpenses) {
+        expect(exp.is_family).toBe(true);
+        expect(exp.family_id).toBe(DEMO_FAMILY_ID);
+        expect(exp.user_id).toBe(DEMO_USER_ID);
+      }
+    });
+
+    it("agrega compartilhamentos públicos, unidade familiar e consolidação no dataset diário", () => {
+      const dataset = generateMockFinances();
+
+      expect(dataset.publicShares).toBeDefined();
+      expect(dataset.publicShares.length).toBeGreaterThanOrEqual(2);
+      expect(dataset.family).toBeDefined();
+      expect(dataset.family?.family.id).toBe(DEMO_FAMILY_ID);
+      expect(dataset.familyConsolidation).toBeDefined();
+      expect(dataset.familyConsolidation?.family.id).toBe(DEMO_FAMILY_ID);
+    });
+  });
+
+  describe("Finanças Compartilhadas Mock (Plano 04 — Tarefa 1.2)", () => {
+    describe("generateMockPublicShares", () => {
+      it("gera racha ativo com 4 participantes e 2 pagamentos já sinalizados via Pix", () => {
+        const shares = generateMockPublicShares("2026-11");
+        const splitShare = shares.find((s) => s.kind === "split");
+
+        expect(splitShare).toBeDefined();
+        expect(splitShare?.is_revoked).toBe(false);
+
+        const payload = splitShare?.payload as unknown as SplitSharePayload;
+        expect(payload).toBeDefined();
+        expect(payload.is_completed).toBe(false);
+        expect(payload.people_count).toBe(4);
+        expect(payload.participants).toHaveLength(4);
+
+        // Anfitrião
+        const host = payload.participants.find((p) => p.is_host);
+        expect(host).toBeDefined();
+        expect(host?.is_settled).toBe(true);
+
+        // Participantes convidados
+        const guests = payload.participants.filter((p) => !p.is_host);
+        expect(guests).toHaveLength(3);
+
+        // 2 pagamentos sinalizados
+        const signaledGuests = guests.filter((g) => g.has_payment_signal);
+        expect(signaledGuests).toHaveLength(2);
+
+        // Sinalizações em payment_signals
+        expect(payload.payment_signals).toBeDefined();
+        expect(payload.payment_signals).toHaveLength(2);
+        for (const signal of payload.payment_signals ?? []) {
+          expect(signal.status).toBe("pending");
+          expect(signal.amount_cents).toBeGreaterThan(0);
+        }
+
+        // Chave Pix válida mockada
+        expect(payload.pix_key).toBeTruthy();
+        expect(payload.pix_key_type).toBe("email");
+        expect(payload.pix_br_code).toContain("BR.GOV.BCB.PIX");
+      });
+
+      it("gera meta pública coletiva com arrecadação em exatos 75% e chave Pix mockada", () => {
+        const shares = generateMockPublicShares("2026-11");
+        const goalShare = shares.find((s) => s.kind === "goal_tracker");
+
+        expect(goalShare).toBeDefined();
+        expect(goalShare?.is_revoked).toBe(false);
+
+        const payload = goalShare?.payload as unknown as GoalTrackerSharePayload;
+        expect(payload).toBeDefined();
+        expect(payload.status).toBe("active");
+        expect(payload.target_cents).toBe(800000);
+        expect(payload.current_cents).toBe(600000);
+
+        // Taxa de arrecadação exatamente 75%
+        const percentage = (payload.current_cents ?? 0) / payload.target_cents;
+        expect(percentage).toBe(0.75);
+
+        // Chave Pix mockada e BR Code
+        expect(payload.pix_key).toBe("viagem.familia@exemplo.com");
+        expect(payload.pix_key_type).toBe("email");
+        expect(payload.pix_br_code).toContain("BR.GOV.BCB.PIX");
+
+        // Contribuições transparentes mockadas
+        expect(payload.contributions).toBeDefined();
+        expect(payload.contributions?.length).toBeGreaterThanOrEqual(3);
+        const sumContribs = (payload.contributions ?? []).reduce((acc, c) => acc + c.amount_cents, 0);
+        expect(sumContribs).toBe(payload.current_cents);
+      });
+    });
+
+    describe("generateMockFamily e generateMockFamilyConsolidation", () => {
+      it("gera unidade familiar simulada com 2 membros", () => {
+        const familyData = generateMockFamily();
+
+        expect(familyData.family.id).toBe(DEMO_FAMILY_ID);
+        expect(familyData.family.owner_id).toBe(DEMO_USER_ID);
+        expect(familyData.family.split_rule).toBe("equal");
+        expect(familyData.members).toHaveLength(2);
+
+        const owner = familyData.members.find((m) => m.role === "owner");
+        const partner = familyData.members.find((m) => m.role === "member");
+
+        expect(owner?.user_id).toBe(DEMO_USER_ID);
+        expect(partner?.user_id).toBe(DEMO_PARTNER_USER_ID);
+        expect(owner?.split_ratio).toBe(0.5);
+        expect(partner?.split_ratio).toBe(0.5);
+      });
+
+      it("gera consolidação familiar com 2 membros e acerto de contas perfeitamente equilibrado", () => {
+        const month = "2026-11";
+        const consolidation = generateMockFamilyConsolidation(month);
+
+        expect(consolidation.family.id).toBe(DEMO_FAMILY_ID);
+        expect(consolidation.month).toBe(month);
+        expect(consolidation.members).toHaveLength(2);
+
+        const [m1, m2] = consolidation.members;
+        expect(m1).toBeDefined();
+        expect(m2).toBeDefined();
+
+        // Equilíbrio perfeito: ambos pagaram exatamente 50%
+        expect(m1?.spent_cents).toBe(m2?.spent_cents);
+        expect(m1?.percentage_of_total).toBe(50);
+        expect(m2?.percentage_of_total).toBe(50);
+        expect(consolidation.total_spent_cents).toBe((m1?.spent_cents ?? 0) + (m2?.spent_cents ?? 0));
+
+        // Acerto de contas auditado sem pendências
+        expect(consolidation.is_settled).toBe(true);
+        expect(consolidation.has_post_settlement_expenses).toBe(false);
+        expect(consolidation.settlement).toBeDefined();
+        expect(consolidation.settlement?.amount_cents).toBe(0);
+        expect(consolidation.settlement?.notes).toContain("50% / 50%");
+      });
     });
   });
 

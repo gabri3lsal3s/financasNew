@@ -1034,6 +1034,18 @@ export type FamilyInvite = {
   accepted_at?: string | null;
 };
 
+export interface FamilyMemberWithProfile extends FamilyMember {
+  profile_name?: string | null;
+  profile_email?: string | null;
+}
+
+export interface MyFamilyData {
+  family: Family;
+  members: FamilyMemberWithProfile[];
+  currentMember: FamilyMemberWithProfile;
+  invites: FamilyInvite[];
+}
+
 export type FamilySettlementPaymentMethod = "pix" | "transfer" | "cash" | "other";
 
 export type FamilySettlement = {

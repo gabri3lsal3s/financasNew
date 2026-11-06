@@ -40,6 +40,8 @@ import type {
   Family,
   FamilySplitRule,
   FamilyMember,
+  FamilyMemberWithProfile,
+  MyFamilyData,
   FamilyMemberRole,
   FamilyPixKeyType,
   FamilyInvite,
@@ -67,17 +69,7 @@ export type {
   GetFamilyPortfolioSummaryParams,
 };
 
-export interface FamilyMemberWithProfile extends FamilyMember {
-  profile_name?: string | null;
-  profile_email?: string | null;
-}
-
-export interface MyFamilyData {
-  family: Family;
-  members: FamilyMemberWithProfile[];
-  currentMember: FamilyMemberWithProfile;
-  invites: FamilyInvite[];
-}
+export type { FamilyMemberWithProfile, MyFamilyData };
 
 export interface UpdateFamilyInput {
   name?: string;

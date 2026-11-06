@@ -57,24 +57,24 @@ flowchart TD
 
 > **Objetivo:** Preparar dados simulados em memória realistas para o Modo Família, Racha de Despesas com Pix e Termômetro de Metas.
 
-- [ ] **Tarefa 1.1: Expansão dos Tipos de Trilha (`src/domain/demo-simulation/types.ts`)**
+- [x] **Tarefa 1.1: Expansão dos Tipos de Trilha (`src/domain/demo-simulation/types.ts`)**
   - Adicionar a união `SharedTourTrackId = "shared_finances" | "finances_split" | "finances_family" | "finances_goals"`.
   - Categoria `"shared"` com rótulo "Compartilhadas".
 
-- [ ] **Tarefa 1.2: Enriquecimento do Dataset Mock (`src/domain/demo-simulation/mock-finances.ts`)**
+- [x] **Tarefa 1.2: Enriquecimento do Dataset Mock (`src/domain/demo-simulation/mock-finances.ts`)**
   - Despesa com `is_family: true` e `family_id` simulado.
   - Racha ativo com 4 participantes e 2 pagamentos já sinalizados via Pix.
   - Meta pública com arrecadação em 75% e chave Pix mockada.
   - Hub familiar simulado com 2 membros e acerto de contas equilibrado.
 
-- [ ] **Tarefa 1.3: Metadados Textuais (`src/domain/demo-simulation/metadata.ts`)**
+- [x] **Tarefa 1.3: Metadados Textuais (`src/domain/demo-simulation/metadata.ts`)**
   - Rótulos contextuais e descrições amigáveis em pt-BR.
 
-- [ ] **Portão de Qualidade 1 (QG1):**
-  - [ ] Executar: `npx vitest run src/domain/demo-simulation/`
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] **Commit & Push da Fase 1:** `git commit -m "feat(demo): tipagem e mock data para financas compartilhadas"`
+- [x] **Portão de Qualidade 1 (QG1):**
+  - [x] Executar: `npx vitest run src/domain/demo-simulation/`
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] **Commit & Push da Fase 1:** `git commit -m "feat(demo): tipagem e mock data para financas compartilhadas"`
 
 ---
 

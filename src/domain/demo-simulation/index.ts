@@ -1,7 +1,9 @@
 export type {
+  AnyTourTrackId,
   TourTrackCategory,
   LegacyTourTrackId,
   MicroTourTrackId,
+  SharedTourTrackId,
   TourTrackId,
   TourIconName,
   TourTrackMeta,
@@ -17,11 +19,19 @@ export type { TourTrackLabelOptions } from "./metadata";
 
 export {
   TOUR_CATEGORY_LABELS,
+  TOUR_CATEGORY_DESCRIPTIONS,
   TOUR_TRACK_CATEGORY_LABELS,
   TOUR_TRACK_CONTEXTUAL_LABELS,
+  TOUR_TRACK_TITLES,
+  TOUR_TRACK_SHORT_TITLES,
+  TOUR_TRACK_DESCRIPTIONS,
   getTourTrackCategory,
   getTourTrackCategoryLabel,
   getTourTrackContextualLabel,
+  getTourCategoryDescription,
+  getTourTrackDescription,
+  getTourTrackTitle,
+  getTourTrackShortTitle,
 } from "./metadata";
 
 export {
@@ -34,8 +44,13 @@ export {
 
 export {
   DEMO_USER_ID,
+  DEMO_FAMILY_ID,
+  DEMO_PARTNER_USER_ID,
   formatIsoDate,
   generateMockFinances,
+  generateMockPublicShares,
+  generateMockFamily,
+  generateMockFamilyConsolidation,
 } from "./mock-finances";
 
 export {
