@@ -1,5 +1,22 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.00** registra a **Conclusão e Homologação do Plano 04 — Expansão e Modernização da Apresentação, Vitrine de Conversão e Tour Guiado de Finanças Compartilhadas** (2026-11-07):
+> - **(1) Trilha de Finanças Compartilhadas & Simulação em Memória (`src/domain/demo-simulation/`)**:
+>   - Contratos canônicos com união `SharedTourTrackId` e categoria `"shared"` em `types.ts`;
+>   - Mock data familiar rico em `mock-finances.ts` com unidade familiar ("Família Silva"), teto mensal, despesas familiares ativas, racha com 3 participantes e meta coletiva pública em 75%;
+>   - Catálogo `tour-catalog.ts` e passos guiados `tour-steps.ts` com seletores DOM estáveis e micro-tours (`finances_split`, `finances_family`, `finances_goals`);
+>   - Interceptação de dados no TanStack Query com isolamento estrito de chamadas Supabase durante o modo demo.
+> - **(2) Hub de Demonstração & Modal de Trilhas (`DemoTrackSelectModal.tsx`)**:
+>   - Seletor moderno com grupo dedicado a "Finanças Compartilhadas", badge de destaque e ícone `Users`;
+>   - Aderência estrita à Regra 18 do AGENTS.md (modal canônico sem larguras arbitrárias) e integração direta com `HelpModal.tsx`.
+> - **(3) Vitrine Editorial da Landing Page (`/apresentacao`)**:
+>   - Novo pilar narrativo em `ProductNarratives.tsx` (Eixo 4: Vida Compartilhada & Modo Família) com o componente `SharedFinancesShowcase.tsx` e 3 mockups visuais ricos (Racha com Pix, Orçamento Familiar e Reserva da Casa);
+>   - Pílulas interativas de acesso rápido no Hero Editorial (`hero-editorial.tsx`) e conexão orgânica com o hub aberto de ferramentas gratuitas (`/ferramentas`).
+> - **(4) Quality Gates QG1–QG5 Aprovados & Arquivamento**:
+>   - 100% dos testes da suíte de tour, landing e simulação verdes (24 arquivos, 287 testes, incluindo 13 testes E2E em `src/tests/demo-simulation-e2e.test.tsx`);
+>   - Zero erros em `tsc -b`, zero violações em `npm run lint` (`local/no-decorative-unicode`) e build Vite de produção gerado com sucesso;
+>   - Arquivamento formal do plano em `docs/plans/completed/04_PLANO_EXPANSAO_APRESENTACAO_E_TOUR_GUIADO.md`.
+>
 > **v2.99** registra a **Conclusão e Homologação do Plano 05 — Fechamento Automático de Snapshots Patrimoniais, Sincronização de Cotações & Motor Inteligente de Proventos e Insights em Carrossel** (2026-11-06):
 > - **(1) Infraestrutura Postgres, RPCs Atômicos & RLS Hermético (Migração 0087)**:
 >   - Adição de `corporate_dividends` (leitura apenas para usuários ativos com módulo `investments`; escrita restrita a `service_role`) e `portfolio_dividend_dismissals` (RLS próprio);
