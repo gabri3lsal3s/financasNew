@@ -1,7 +1,11 @@
 import { toISODate } from "@/domain/money";
 import type { PaymentMethod } from "@/types/schema";
 import { inferCategoryKeyword } from "./category-inference";
-import { cleanAcquirerPrefixes, findCanonicalMerchant } from "./merchant-catalog";
+import {
+  cleanAcquirerPrefixes,
+  cleanBranchAndStoreSuffixes,
+  findCanonicalMerchant,
+} from "./merchant-catalog";
 import { parsePixEMVPayload } from "./pix-emv-parser";
 import { resolvePaymentMethod } from "./payment-method-resolver";
 import { resolveIncomeCategory } from "./income-category-resolver";
