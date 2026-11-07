@@ -16,8 +16,8 @@ vi.mock("@/state", () => ({
   useFamilyMode: () => ({ isFamilyModeEnabled: false }),
   useAppMode: () => ({
     appMode: mockAppMode,
-    isInvestorMode: mockAppMode === "investor",
-    isEssentialMode: mockAppMode === "essential",
+    isInvestorMode: true,
+    isEssentialMode: false,
     setAppMode: vi.fn(),
     isUpdating: false,
     isLoading: false,

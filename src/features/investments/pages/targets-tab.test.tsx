@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TargetsTab } from "./targets-tab";
 
@@ -84,8 +85,16 @@ describe("TargetsTab — Fase 39 Normalização de Metas & Ações Rápidas", ()
     saveTargetsMock.mockClear();
   });
 
+  function renderTargetsTab() {
+    return render(
+      <MemoryRouter>
+        <TargetsTab />
+      </MemoryRouter>,
+    );
+  }
+
   it("renderiza a aba Classes como padrão e permite salvar todas as classes", async () => {
-    render(<TargetsTab />);
+    renderTargetsTab();
 
     expect(screen.getByText("Metas por classe de ativo")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Normalizar classes para 100%" })).toBeInTheDocument();
@@ -96,7 +105,7 @@ describe("TargetsTab — Fase 39 Normalização de Metas & Ações Rápidas", ()
   it("renderiza a tabela de metas por ativo e exibe os botões de ações rápidas ao abrir a aba Ativos", async () => {
     saveTargetsMock.mockResolvedValue({});
     const user = userEvent.setup();
-    render(<TargetsTab />);
+    renderTargetsTab();
 
     // Clica na aba Ativos
     await user.click(screen.getByRole("tab", { name: "Ativos" }));
@@ -124,7 +133,7 @@ describe("TargetsTab — Fase 39 Normalização de Metas & Ações Rápidas", ()
   it("permite distribuir igualmente (1/N) entre todos os ativos", async () => {
     saveTargetsMock.mockResolvedValue({});
     const user = userEvent.setup();
-    render(<TargetsTab />);
+    renderTargetsTab();
 
     await user.click(screen.getByRole("tab", { name: "Ativos" }));
     await user.click(screen.getByRole("button", { name: "Distribuir igualmente (1/N)" }));
@@ -142,7 +151,7 @@ describe("TargetsTab — Fase 39 Normalização de Metas & Ações Rápidas", ()
   it("permite espelhar a carteira atual", async () => {
     saveTargetsMock.mockResolvedValue({});
     const user = userEvent.setup();
-    render(<TargetsTab />);
+    renderTargetsTab();
 
     await user.click(screen.getByRole("tab", { name: "Ativos" }));
     await user.click(screen.getByRole("button", { name: "Espelhar carteira atual" }));
@@ -160,7 +169,7 @@ describe("TargetsTab — Fase 39 Normalização de Metas & Ações Rápidas", ()
   it("respeita o filtro de classe ao normalizar a classe selecionada", async () => {
     saveTargetsMock.mockResolvedValue({});
     const user = userEvent.setup();
-    render(<TargetsTab />);
+    renderTargetsTab();
 
     await user.click(screen.getByRole("tab", { name: "Ativos" }));
 
@@ -185,7 +194,7 @@ describe("TargetsTab — Fase 39 Normalização de Metas & Ações Rápidas", ()
 
   it("renderiza a barra de cenários e permite abrir o modal de salvar cenário", async () => {
     const user = userEvent.setup();
-    render(<TargetsTab />);
+    renderTargetsTab();
 
     expect(screen.getByText(/Salvar como cenário/i)).toBeInTheDocument();
     await user.click(screen.getByText(/Salvar como cenário/i));

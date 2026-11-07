@@ -4,4 +4,3 @@ export * from "./other-categories-dialog";
 export * from "./split-pending-banner";
 export * from "./campaigns-summary-banner";
 export * from "./household-alert-banner";
-export * from "./investor-mode-surplus-banner";

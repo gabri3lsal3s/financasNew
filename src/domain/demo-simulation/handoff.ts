@@ -161,7 +161,7 @@ export function getBlockHandoffInfo(
   if (track === "settings" || track === "settings_support") {
     return {
       actionLabel: "Explorar Configurações",
-      actionDestination: "/configuracoes",
+      actionDestination: "/configuracoes?tab=suporte",
       nextTrackId: undefined,
       nextTrackLabel: undefined,
     };

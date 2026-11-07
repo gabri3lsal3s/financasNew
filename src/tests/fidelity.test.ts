@@ -306,6 +306,7 @@ describe("§3.7 — Motor de análise (insights)", () => {
       overspentBudgets: 2,
       burnRatePercent: 90,
       projectedDeficit: true,
+      cycleSavingsRatePercent: 20,
     });
     const priorities = alerts.map((a) => a.priority);
     expect(priorities).toEqual([1, 2, 3, 4, 5, 6]);

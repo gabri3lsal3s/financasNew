@@ -93,6 +93,7 @@ describe("data/auth — operações de autenticação", () => {
           data: {
             name: "alert(1)Gabriel Sales",
             invite_code: "CONVITE-VIP",
+            app_mode: "investor",
           },
           emailRedirectTo: getPublicAppUrl("/entrar"),
           captchaToken: "turnstile-token-xyz",
@@ -115,6 +116,7 @@ describe("data/auth — operações de autenticação", () => {
           data: {
             name: "",
             invite_code: "",
+            app_mode: "investor",
           },
           emailRedirectTo: getPublicAppUrl("/entrar"),
           captchaToken: undefined,

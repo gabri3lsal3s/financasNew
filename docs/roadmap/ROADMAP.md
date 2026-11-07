@@ -25,9 +25,11 @@
 >     1. *Ação Real no Wizard / Assistente* (leva para a prática na conta com dados reais);
 >     2. *Avanço para o Próximo Bloco* (continuidade fluida da jornada de aprendizado);
 >     3. *Concluir e Explorar* (saída limpa com URL higienizada).
-> - **(7) Quality Gates QG0–QG7 Aprovados & Homologação**:
->   - 100% dos testes aprovados (58/58 em segurança/RLS, 94/94 em spotlight, 26/26 em tour-steps, 34/34 em overview);
->   - Typecheck estrito (`tsc -b`), lint (`eslint .`) com zero erros/warnings e build de produção executado com sucesso em 2.05s.
+> - **(7) Quality Gates QG0–QG7 Aprovados, Saneamento de Código Morto & Homologação**:
+>   - Saneamento cirúrgico e erradicação de componentes órfãos do Plano 07 (`InvestorModePromoView`, `AppModeCard` e `InvestorModeSurplusBanner`), com barrels despoluídos;
+>   - Resolução das pendências de asserção de mocks e wrappers de teste (`auth.test.ts`, `accessibility-audit.test.tsx`, `targets-tab.test.tsx`, `demo-tour-manual-verification.test.tsx`, `fidelity.test.ts`);
+>   - Correção de erros de narrowing em testes de layout (`TS2367` em `bottom-nav.test.tsx` e `more-menu-sheet.test.tsx`);
+>   - 100% dos testes aprovados, typecheck estrito (`tsc -b`), lint (`eslint .`) com zero erros/warnings e build de produção executado com sucesso em 2.05s.
 >
 > **v3.06** registra a **Conclusão e Homologação do Plano 10 — Motor Universal de Comprovantes, Cupons Fiscais e Aprendizado Contínuo** (2026-11-07):
 > - **(1) Limpeza e Normalização Óptica de OCR (`ocr-cleaner.ts` & `web-ocr.ts`)**:

@@ -41,8 +41,8 @@ vi.mock("@/state", () => ({
   }),
   useAppMode: () => ({
     appMode: mockAppMode,
-    isInvestorMode: mockAppMode === "investor",
-    isEssentialMode: mockAppMode === "essential",
+    isInvestorMode: true,
+    isEssentialMode: false,
     setAppMode: vi.fn(),
     isUpdating: false,
     isLoading: false,
