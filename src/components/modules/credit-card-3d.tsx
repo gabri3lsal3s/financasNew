@@ -284,7 +284,7 @@ export function CreditCard3D({
           <div className="flex items-center gap-1 sm:gap-2 whitespace-nowrap shrink-0">
             <span className="text-white/60">•••• {card.last_four_digits || "••••"}</span>
             <span className="text-white/40">·</span>
-            <span>Melhor dia: {bestDay}</span>
+            <span data-tour="cards-best-day">Melhor dia: {bestDay}</span>
             <span className="text-white/40">·</span>
             <span>Fech.: {card.closing_day}</span>
             <span className="text-white/40">·</span>

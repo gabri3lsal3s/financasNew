@@ -10,6 +10,7 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
     "finances_overview",
     "finances_wizard",
     "finances_cards",
+    "finances_debts",
     "finances_budgets",
     "finances_insights",
     "finances_split",
@@ -24,7 +25,7 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
     "app_native_apk",
   ];
 
-  it("contém todas as 17 trilhas e micro-tours mapeados em TOUR_STEPS", () => {
+  it("contém todas as 18 trilhas e micro-tours mapeados em TOUR_STEPS", () => {
     for (const trackId of allTrackIds) {
       expect(TOUR_STEPS[trackId]).toBeDefined();
       expect(Array.isArray(TOUR_STEPS[trackId])).toBe(true);
@@ -111,12 +112,39 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
       expect(steps[0]?.targetRoute).toBe("/cartoes");
 
       // Passo 2: Melhor Dia de Compra
-      expect(steps[1]?.targetSelector).toBe('[data-tour="cards-content"]');
+      expect(steps[1]?.targetSelector).toBe('[data-tour="cards-best-day"]');
       expect(steps[1]?.targetRoute).toBe("/cartoes");
 
       // Passo 3: Comprometimento com Parcelas Futuras
       expect(steps[2]?.targetSelector).toBe('[data-tour="cards-installments-section"]');
       expect(steps[2]?.targetRoute).toBe("/cartoes");
+    });
+  });
+
+  describe("Micro-Tour Contas, Dívidas e Contratos (finances_debts)", () => {
+    const steps = getTourSteps("finances_debts");
+
+    it("possui 3 passos mapeando Contas a Pagar, Contas a Receber e Contratos de Crédito", () => {
+      expect(steps).toHaveLength(3);
+
+      // Passo 1: Contas a Pagar & Urgências
+      expect(steps[0]?.id).toBe("debts-payable-step");
+      expect(steps[0]?.targetSelector).toBe('[data-tour="debts-payable-section"]');
+      expect(steps[0]?.targetRoute).toBe("/dividas?type=payable");
+      expect(steps[0]?.badgeLabel).toBe("Passo 1 de 3");
+
+      // Passo 2: Contas a Receber
+      expect(steps[1]?.id).toBe("debts-receivable-step");
+      expect(steps[1]?.targetSelector).toBe('[data-tour="debts-receivable-section"]');
+      expect(steps[1]?.targetRoute).toBe("/dividas?type=receivable");
+      expect(steps[1]?.badgeLabel).toBe("Passo 2 de 3");
+
+      // Passo 3: Contratos de Crédito & Financiamentos
+      expect(steps[2]?.id).toBe("debts-loans-step");
+      expect(steps[2]?.targetSelector).toBe('[data-tour="debts-loans-section"]');
+      expect(steps[2]?.targetRoute).toBe("/dividas?type=loans");
+      expect(steps[2]?.badgeLabel).toBe("Passo 3 de 3");
+      expect(steps[2]?.actionLabel).toBe("Concluir");
     });
   });
 
@@ -230,6 +258,44 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
       // Passo 2: Saldo em Caixa de corretora
       expect(steps[1]?.targetSelector).toBe('[data-tour="investments-summary"]');
       expect(steps[1]?.targetRoute).toBe("/investments");
+    });
+  });
+
+  describe("Micro-Tour Metas por Classe e Ativo (investments_targets)", () => {
+    const steps = getTourSteps("investments_targets");
+
+    it("possui 2 passos mapeando Metas por Classe e Metas por Ativo Individual", () => {
+      expect(steps).toHaveLength(2);
+
+      // Passo 1: Metas por Classe
+      expect(steps[0]?.id).toBe("invest-targets-classes");
+      expect(steps[0]?.targetSelector).toBe('[data-tour="targets-classes-card"]');
+      expect(steps[0]?.targetRoute).toBe("/investments?tab=metas&subtab=classes");
+
+      // Passo 2: Metas por Ativo Individual
+      expect(steps[1]?.id).toBe("invest-targets-individual");
+      expect(steps[1]?.targetSelector).toBe('[data-tour="targets-assets-card"]');
+      expect(steps[1]?.targetRoute).toBe("/investments?tab=metas&subtab=assets");
+      expect(steps[1]?.actionLabel).toBe("Concluir");
+    });
+  });
+
+  describe("Micro-Tour Calculadora de Aporte Inteligente (investments_aporte)", () => {
+    const steps = getTourSteps("investments_aporte");
+
+    it("possui 2 passos mapeando Valor do Aporte e Alocação Otimizada pelo Motor", () => {
+      expect(steps).toHaveLength(2);
+
+      // Passo 1: Input do Aporte
+      expect(steps[0]?.id).toBe("invest-aporte-input");
+      expect(steps[0]?.targetSelector).toBe('[data-tour="investments-rebalance"]');
+      expect(steps[0]?.targetRoute).toBe("/investments?tab=aporte");
+
+      // Passo 2: Alocação Otimizada
+      expect(steps[1]?.id).toBe("invest-aporte-recommendation");
+      expect(steps[1]?.targetSelector).toBe('[data-tour="aporte-result-section"]');
+      expect(steps[1]?.targetRoute).toBe("/investments?tab=aporte&valor=500000");
+      expect(steps[1]?.actionLabel).toBe("Concluir");
     });
   });
 

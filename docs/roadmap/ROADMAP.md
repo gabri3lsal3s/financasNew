@@ -1,5 +1,26 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.05** registra o **Aprimoramento Pedagógico Global dos Tours Guiados, Blindagem de Seletores e Adição do Tour de Contas & Dívidas** (2026-11-07):
+> - **(1) Racha de Despesas com Pix (`finances_split`)**:
+>   - Abertura direta do assistente no Passo 3 (`passo=3&racha=1`), revelando os controles de divisão, cadastro de chave Pix e titularidade;
+>   - Expansão para 6 passos didáticos cobrindo chave Pix, link de cobrança, acesso do convidado via web browser (sem login/app), notificação de pagamento e baixa contábil com um clique;
+>   - Inserção de seletores determinísticos `[data-tour="split-pix-config"]`, `[data-tour="split-link-actions"]` e `[data-tour="active-splits-card"]`.
+> - **(2) Suporte ao Usuário em Configurações (`settings_support`)**:
+>   - Redirecionamento explícito para a aba correta (`/configuracoes?tab=support`) com ancoragem no card `[data-tour="settings-support-card"]`.
+> - **(3) Cartões, Faturas e Parcelas (`finances_cards`)**:
+>   - Ancoragem direta no indicador `[data-tour="cards-best-day"]` dentro do `CreditCard3D`, destacando o ganho de até 40 dias sem juros;
+>   - Blindagem com `[data-tour="cards-installments-section"]` preservada mesmo no fallback de faturas sem compras.
+> - **(4) Metas de Alocação e Rebalanceamento (`investments_targets` & `investments_aporte`)**:
+>   - Suporte a deep-link e derivação de sub-aba (`?subtab=classes` e `?subtab=assets`) em `TargetsTab`, permitindo ao tour exibir o editor de ativos individuais sem bloquear o usuário na visão macro;
+>   - Simulação algorítmica ativa no tour de aporte (`/investments?tab=aporte&valor=500000`), renderizando a recomendação de compra do motor matemático no seletor `[data-tour="aporte-result-section"]`.
+> - **(5) Sincronização Reativa em Orçamentos (`BudgetsPage`)**:
+>   - Derivação reativa limpa de `tab` via `searchParams` (`?tab=goals` / `?tab=limits`), eliminando cascading renders e garantindo troca imediata durante a simulação.
+> - **(6) Novo Micro-Tour Canônico de Dívidas & Contratos (`finances_debts`)**:
+>   - Trilha com 3 passos didáticos mapeando Contas a Pagar (`[data-tour="debts-payable-section"]`), Contas a Receber (`[data-tour="debts-receivable-section"]`) e Contratos de Crédito Price/SAC (`[data-tour="debts-loans-section"]`);
+>   - Catálogo atualizado para 18 trilhas e micro-tours (6 micro-tours no grupo Finanças Diárias).
+> - **(7) Verificação e Conformidade**:
+>   - 100% dos testes aprovados (67 testes nas suítes de tour e simulação), typecheck limpo (`tsc --noEmit`) e lint com zero advertências.
+>
 > **v3.04** registra a **Conclusão e Homologação do Plano 09 — Inteligência Adaptativa Multi-Bancos, Resolução Universal de Pagamentos & Paginação no Lançamento Rápido** (2026-11-07):
 > - **(1) Schema de Cartões & Identificação por 4 Dígitos (`credit_cards`)**:
 >   - Adição da coluna `last_four_digits VARCHAR(4)` com constraint de integridade no banco `CHECK (last_four_digits IS NULL OR last_four_digits ~ '^[0-9]{4}$'`;

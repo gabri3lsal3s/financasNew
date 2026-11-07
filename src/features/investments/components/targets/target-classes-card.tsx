@@ -59,6 +59,7 @@ export function TargetClassesCard({
   return (
     <section
       aria-label="Metas por classe"
+      data-tour="targets-classes-card"
       className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden"
     >
       <div className="flex items-center justify-between min-w-0">

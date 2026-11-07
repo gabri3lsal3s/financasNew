@@ -289,7 +289,10 @@ export function DebtsPage() {
       showPaid || !hasPending || Boolean(highlightId && paidList.some((d) => d.id === highlightId));
 
     return (
-      <div className="flex flex-col gap-6">
+      <div
+        data-tour={type === "payable" ? "debts-payable-section" : "debts-receivable-section"}
+        className="flex flex-col gap-6"
+      >
         {/* Resumo financeiro consolidado */}
         {!debtsQuery.isLoading && debts.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
@@ -491,7 +494,7 @@ export function DebtsPage() {
   };
 
   const renderLoansContent = () => (
-    <div className="flex flex-col gap-4">
+    <div data-tour="debts-loans-section" className="flex flex-col gap-4">
       {loansQuery.isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Skeleton className="h-40 w-full rounded-2xl" />

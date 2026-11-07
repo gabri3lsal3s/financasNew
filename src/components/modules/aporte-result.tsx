@@ -501,7 +501,11 @@ export function AporteResult({
   const canToggleSectors = sortedSectors.length > displayedSectors.length || showAllSectors;
 
   return (
-    <section aria-label="Resultado da simulação de aporte" className="flex flex-col gap-4 min-w-0">
+    <section
+      aria-label="Resultado da simulação de aporte"
+      data-tour="aporte-result-section"
+      className="flex flex-col gap-4 min-w-0"
+    >
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-0">
         <ResultStat icon={<PiggyBank className="size-4 shrink-0" aria-hidden="true" />} label="Aporte informado" cents={numberToCents(aporte)} />
         <ResultStat

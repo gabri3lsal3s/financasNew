@@ -905,12 +905,14 @@ export function CardsPage() {
             </div>
 
             {competenceExpenses.length === 0 ? (
-              <EmptyState
-                icon={<WalletCards className="size-6" aria-hidden="true" />}
-                title="Sem despesas nesta fatura"
-                description="As compras no cartão aparecem aqui de acordo com o fechamento da fatura."
-                className="py-10 sm:py-12 px-4"
-              />
+              <div data-tour="cards-installments-section">
+                <EmptyState
+                  icon={<WalletCards className="size-6" aria-hidden="true" />}
+                  title="Sem despesas nesta fatura"
+                  description="As compras no cartão aparecem aqui de acordo com o fechamento da fatura."
+                  className="py-10 sm:py-12 px-4"
+                />
+              </div>
             ) : (
               <div className="flex flex-col gap-6 sm:gap-7">
                 {/* Parceladas — compras herdadas de meses anteriores (topo) */}

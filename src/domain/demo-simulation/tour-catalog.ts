@@ -61,6 +61,18 @@ export const TOUR_TRACK_METAS: Record<AnyTourTrackId, TourTrackMeta> = {
     startRoute: "/cartoes",
     badgeLabel: "3 passos",
   },
+  finances_debts: {
+    id: "finances_debts",
+    title: "Contas, Dívidas e Contratos",
+    shortTitle: "Contas & Dívidas",
+    description:
+      "Controle de contas a pagar, recebíveis pendentes e simulação de contratos de crédito.",
+    category: "finances",
+    stepsCount: 3,
+    iconName: "coins",
+    startRoute: "/dividas?type=payable",
+    badgeLabel: "3 passos",
+  },
   finances_budgets: {
     id: "finances_budgets",
     title: "Categorias e Tetos de Gastos",
@@ -248,11 +260,12 @@ export const TOUR_TRACK_GROUPS: readonly TourTrackGroup[] = [
     description:
       "Gestão de despesas, receitas, faturas de cartões e tetos de gastos.",
     iconName: "wallet",
-    badgeLabel: "5 micro-tours",
+    badgeLabel: "6 micro-tours",
     tracks: [
       TOUR_TRACK_METAS.finances_overview,
       TOUR_TRACK_METAS.finances_wizard,
       TOUR_TRACK_METAS.finances_cards,
+      TOUR_TRACK_METAS.finances_debts,
       TOUR_TRACK_METAS.finances_budgets,
       TOUR_TRACK_METAS.finances_insights,
     ],

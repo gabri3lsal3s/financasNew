@@ -44,7 +44,7 @@ export function TargetAssetsCard({
   onSave,
 }: TargetAssetsCardProps) {
   return (
-    <div className="flex flex-col gap-4">
+    <div data-tour="targets-assets-card" className="flex flex-col gap-4">
       {classes.length > 1 ? (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
           <div className="flex flex-wrap items-center gap-1.5">

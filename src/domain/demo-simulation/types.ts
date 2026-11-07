@@ -39,6 +39,7 @@ export type MicroTourTrackId =
   | "finances_overview"
   | "finances_wizard"
   | "finances_cards"
+  | "finances_debts"
   | "finances_budgets"
   | "finances_insights"
   | "investments_overview"

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router";
 import { Save } from "lucide-react";
 import { Alert, Button, EmptyState, ErrorState, SkeletonList, SkeletonTable, Tabs } from "@/components/ui";
 import { PresetSelectorBar, SavePresetDialog } from "@/components/modules";
@@ -610,7 +611,32 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     sectorTargetsQuery.error ??
     presetsQuery.error;
 
-  const [subTab, setSubTab] = useState<"classes" | "sectors" | "assets">("classes");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const paramSubTab = searchParams.get("subtab");
+
+  const [pickedSubTab, setPickedSubTab] = useState<"classes" | "sectors" | "assets">("classes");
+  const subTab: "classes" | "sectors" | "assets" =
+    paramSubTab === "assets" || paramSubTab === "ativos"
+      ? "assets"
+      : paramSubTab === "sectors" || paramSubTab === "setores"
+        ? "sectors"
+        : paramSubTab === "classes"
+          ? "classes"
+          : pickedSubTab;
+
+  const handleSubTabChange = (next: "classes" | "sectors" | "assets") => {
+    setPickedSubTab(next);
+    if (paramSubTab) {
+      setSearchParams(
+        (prev) => {
+          const updated = new URLSearchParams(prev);
+          updated.delete("subtab");
+          return updated;
+        },
+        { replace: true },
+      );
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -679,7 +705,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
         <div data-tour="investments-targets" className="w-full">
           <Tabs
           value={subTab}
-          onValueChange={(val: string) => setSubTab(val as "classes" | "sectors" | "assets")}
+          onValueChange={(val: string) => handleSubTabChange(val as "classes" | "sectors" | "assets")}
           variant="pills"
           items={[
             {

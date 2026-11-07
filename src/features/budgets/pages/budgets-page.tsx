@@ -63,13 +63,34 @@ export function BudgetsPage() {
   const effectiveHighlightId = highlightId ?? targetCategory;
 
   const [month, setMonth] = useState(currentMonth());
-  const [tab, setTab] = useState<"limits" | "goals" | "categories">(() =>
-    targetType === "income" || searchParams.get("tab") === "goals" || searchParams.get("aba") === "metas"
+  const paramTab = searchParams.get("tab");
+  const paramAba = searchParams.get("aba");
+
+  const [pickedTab, setPickedTab] = useState<"limits" | "goals" | "categories">("limits");
+  const tab: "limits" | "goals" | "categories" =
+    targetType === "income" || paramTab === "goals" || paramAba === "metas"
       ? "goals"
-      : targetType === "category"
+      : targetType === "category" || paramTab === "categories" || paramAba === "categorias"
         ? "categories"
-        : "limits",
-  );
+        : paramTab === "limits" || paramAba === "limites"
+          ? "limits"
+          : pickedTab;
+
+  const handleTabChange = (next: "limits" | "goals" | "categories") => {
+    setPickedTab(next);
+    if (paramTab || paramAba || targetType) {
+      setSearchParams(
+        (prev) => {
+          const updated = new URLSearchParams(prev);
+          updated.delete("tab");
+          updated.delete("aba");
+          updated.delete("type");
+          return updated;
+        },
+        { replace: true },
+      );
+    }
+  };
   const [limitFor, setLimitFor] = useState<Category | null>(null);
   const [goalFor, setGoalFor] = useState<Category | null>(null);
   const [sharingGoalFor, setSharingGoalFor] = useState<Category | null>(null);
@@ -992,7 +1013,7 @@ export function BudgetsPage() {
 
       <Tabs
         value={tab}
-        onValueChange={(value) => setTab(value as "limits" | "goals" | "categories")}
+        onValueChange={(value) => handleTabChange(value as "limits" | "goals" | "categories")}
         variant="underline"
         swipeable
         items={[

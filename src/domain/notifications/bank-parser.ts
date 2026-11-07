@@ -3,7 +3,6 @@ import type { PaymentMethod } from "@/types/schema";
 import { inferCategoryKeyword } from "./category-inference";
 import {
   cleanAcquirerPrefixes,
-  cleanBranchAndStoreSuffixes,
   findCanonicalMerchant,
 } from "./merchant-catalog";
 import { parsePixEMVPayload } from "./pix-emv-parser";
