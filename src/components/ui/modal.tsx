@@ -196,13 +196,21 @@ export function Modal({
           data-tour={resolvedDataTour}
           onPointerDownOutside={(e) => {
             const target = e.target as HTMLElement | null;
-            if (target?.closest?.('[data-tour-spotlight-card], [data-tour-spotlight-root]')) {
+            if (
+              target?.closest?.(
+                '[data-tour-spotlight-card], [data-tour-spotlight-root], [data-radix-popper-content-wrapper], [data-radix-select-content], [data-radix-popover-content], [data-radix-dropdown-menu-content]',
+              )
+            ) {
               e.preventDefault();
             }
           }}
           onInteractOutside={(e) => {
             const target = e.target as HTMLElement | null;
-            if (target?.closest?.('[data-tour-spotlight-card], [data-tour-spotlight-root]')) {
+            if (
+              target?.closest?.(
+                '[data-tour-spotlight-card], [data-tour-spotlight-root], [data-radix-popper-content-wrapper], [data-radix-select-content], [data-radix-popover-content], [data-radix-dropdown-menu-content]',
+              )
+            ) {
               e.preventDefault();
             }
           }}

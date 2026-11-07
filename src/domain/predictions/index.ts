@@ -496,3 +496,49 @@ export function buildDescriptionSuggestions(
     .sort((a, b) => b.frequency - a.frequency || b.recency - a.recency)
     .slice(0, limit);
 }
+
+// ---------------------------------------------------------------------------
+// Ranking de Categorias por Frequência Histórica Real (§Plano 09 — Tarefa 7.1)
+// ---------------------------------------------------------------------------
+
+export interface RankableCategory {
+  id: string;
+  name: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Ordena as categorias do usuário priorizando as que possuem maior frequência
+ * histórica de lançamentos (com base em `predictionEntries`).
+ * Categorias sem lançamentos são posicionadas ao final ordenadas alfabeticamente.
+ */
+export function rankCategoriesByFrequency<T extends RankableCategory>(
+  categories: readonly T[],
+  entries?: readonly PredictionEntry[] | null,
+): T[] {
+  if (!categories || categories.length === 0) return [];
+  if (!entries || entries.length === 0) {
+    return [...categories].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  }
+
+  // Contagem de frequência por categoryId
+  const frequencyMap = new Map<string, number>();
+  for (const entry of entries) {
+    if (entry.categoryId) {
+      const current = frequencyMap.get(entry.categoryId) ?? 0;
+      frequencyMap.set(entry.categoryId, current + 1);
+    }
+  }
+
+  return [...categories].sort((a, b) => {
+    const freqA = frequencyMap.get(a.id) ?? 0;
+    const freqB = frequencyMap.get(b.id) ?? 0;
+
+    if (freqA !== freqB) {
+      return freqB - freqA; // Mais frequente primeiro
+    }
+
+    return a.name.localeCompare(b.name, "pt-BR");
+  });
+}
+

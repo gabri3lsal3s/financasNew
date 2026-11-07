@@ -235,18 +235,20 @@ export function resolvePaymentMethod(
   }
 
   // =========================================================================
-  // 6. PIX ENVIADO / COMPRA PIX (pix)
+  // 6. PIX ENVIADO / COMPRA PIX / VIA PIX (pix)
   // =========================================================================
   const hasPixSignals =
     combined.includes("voce enviou um pix") ||
     combined.includes("pix enviado") ||
+    combined.includes("via pix") ||
     combined.includes("pagamento via pix") ||
     combined.includes("copia e cola") ||
     combined.includes("qr code pix") ||
     combined.includes("voce pagou com pix") ||
     combined.includes("chave pix") ||
     combined.includes("pix de r$") ||
-    combined.includes("pix para");
+    combined.includes("pix para") ||
+    combined.includes("pix");
 
   if (hasPixSignals) {
     return {

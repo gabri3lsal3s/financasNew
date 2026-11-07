@@ -249,8 +249,10 @@ if (typeof window !== "undefined") {
   subscribeActiveUserId(() => {
     memoryCache = null;
     cardDigitsCache = null;
+    bankCardCache = null;
     notifyListeners(getMerchantLearningMemory());
     notifyCardDigitsListeners(getCardDigitsMapping());
+    notifyBankCardListeners(getBankCardMapping());
   });
 }
 
@@ -578,6 +580,213 @@ export function useCardDigitsMapping() {
 }
 
 // =========================================================================
+// SERVIÇO E PERSISTÊNCIA DE MAPEAMENTO DE PACOTE BANCÁRIO -> CARTÃO (§Plano 09 — Fase 5)
+// =========================================================================
+
+const BANK_CARD_STORAGE_KEY = "bank_card_memory";
+const bankCardListeners = new Set<(mapping: Record<string, string>) => void>();
+let bankCardCache: Record<string, string> | null = null;
+let bankCardSyncTimeout: NodeJS.Timeout | null = null;
+let isSyncingBankCardToCloud = false;
+const bankCardSyncStatusListeners = new Set<(syncing: boolean) => void>();
+
+function sanitizeBankCardMapping(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return {};
+  }
+  const result: Record<string, string> = {};
+  for (const [key, val] of Object.entries(raw as Record<string, unknown>)) {
+    const cleanKey = String(key || "").trim().toLowerCase();
+    const cleanVal = typeof val === "string" ? val.trim() : "";
+    if (cleanKey && cleanVal) {
+      result[cleanKey] = cleanVal;
+    }
+  }
+  return result;
+}
+
+/**
+ * Lê o mapa de banco/pacote -> cartão do cache ou storage isolado por usuário.
+ */
+export function getBankCardMapping(): Record<string, string> {
+  if (bankCardCache !== null) {
+    return bankCardCache;
+  }
+  try {
+    const raw = getUserStorageItem(BANK_CARD_STORAGE_KEY);
+    if (!raw) {
+      bankCardCache = {};
+      return bankCardCache;
+    }
+    const parsed = JSON.parse(raw);
+    bankCardCache = sanitizeBankCardMapping(parsed);
+    return bankCardCache;
+  } catch {
+    bankCardCache = {};
+    return bankCardCache;
+  }
+}
+
+/**
+ * Atualiza o cache local de mapeamento bancário e emite notificação aos ouvintes.
+ */
+export function setBankCardMapping(
+  mapping: Record<string, string>,
+  scheduleCloud = true,
+): void {
+  bankCardCache = mapping;
+  try {
+    setUserStorageItem(BANK_CARD_STORAGE_KEY, JSON.stringify(mapping));
+  } catch {
+    // Quota ou iframe restrito
+  }
+
+  notifyBankCardListeners(mapping);
+
+  if (scheduleCloud) {
+    triggerBankCardCloudSync(mapping);
+  }
+}
+
+/**
+ * Registra a associação entre um pacote bancário Android (ou identificador de banco) e um cartão.
+ */
+export function recordBankCardFeedback(
+  packageName: string,
+  cardId: string,
+): Record<string, string> {
+  const cleanPackage = packageName.trim().toLowerCase();
+  const cleanCardId = cardId.trim();
+  if (!cleanPackage || !cleanCardId) return getBankCardMapping();
+
+  const current = getBankCardMapping();
+  const next = { ...current, [cleanPackage]: cleanCardId };
+  setBankCardMapping(next, true);
+  return next;
+}
+
+/**
+ * Remove a associação de um pacote bancário da memória do usuário.
+ */
+export function forgetBankCardFeedback(packageName: string): Record<string, string> {
+  const cleanPackage = packageName.trim().toLowerCase();
+  const current = getBankCardMapping();
+  if (!(cleanPackage in current)) return current;
+
+  const next = { ...current };
+  delete next[cleanPackage];
+  setBankCardMapping(next, true);
+  return next;
+}
+
+/**
+ * Mescla o mapa bancário da nuvem (Supabase) com a memória local.
+ */
+export function syncBankCardMappingFromCloud(
+  cloudMappingRaw?: Record<string, unknown> | null,
+): void {
+  if (!cloudMappingRaw) return;
+  const cloudMapping = sanitizeBankCardMapping(cloudMappingRaw);
+  const localMapping = getBankCardMapping();
+
+  const merged: Record<string, string> = { ...cloudMapping, ...localMapping };
+  setBankCardMapping(merged, false);
+}
+
+function triggerBankCardCloudSync(mapping: Record<string, string>): void {
+  if (bankCardSyncTimeout) {
+    clearTimeout(bankCardSyncTimeout);
+  }
+
+  setBankCardSyncingState(true);
+  bankCardSyncTimeout = setTimeout(async () => {
+    try {
+      await updateCustomSettings({
+        bankCardMapping: mapping,
+      });
+    } catch {
+      // Offline fallback
+    } finally {
+      setBankCardSyncingState(false);
+    }
+  }, 1000);
+}
+
+function setBankCardSyncingState(syncing: boolean): void {
+  if (isSyncingBankCardToCloud !== syncing) {
+    isSyncingBankCardToCloud = syncing;
+    bankCardSyncStatusListeners.forEach((l) => l(syncing));
+  }
+}
+
+export function subscribeBankCardMapping(
+  callback: (mapping: Record<string, string>) => void,
+): () => void {
+  bankCardListeners.add(callback);
+  return () => {
+    bankCardListeners.delete(callback);
+  };
+}
+
+function notifyBankCardListeners(mapping: Record<string, string>): void {
+  bankCardListeners.forEach((listener) => {
+    try {
+      listener(mapping);
+    } catch {
+      // no-op
+    }
+  });
+}
+
+/**
+ * Hook reativo para consultar e registrar mapeamento de pacotes bancários para cartões.
+ */
+export function useBankCardMapping() {
+  const [mapping, setMapping] = useState<Record<string, string>>(() =>
+    getBankCardMapping(),
+  );
+  const [isSyncing, setIsSyncing] = useState<boolean>(isSyncingBankCardToCloud);
+
+  useEffect(() => {
+    const unsub = subscribeBankCardMapping((next) => {
+      setMapping(next);
+    });
+    const unsubSync = (syncing: boolean) => setIsSyncing(syncing);
+    bankCardSyncStatusListeners.add(unsubSync);
+
+    return () => {
+      unsub();
+      bankCardSyncStatusListeners.delete(unsubSync);
+    };
+  }, []);
+
+  const recordFeedback = useCallback((pkg: string, cardId: string) => {
+    return recordBankCardFeedback(pkg, cardId);
+  }, []);
+
+  const forgetFeedback = useCallback((pkg: string) => {
+    return forgetBankCardFeedback(pkg);
+  }, []);
+
+  const lookupCard = useCallback(
+    (pkg: string | undefined | null) => {
+      if (!pkg) return undefined;
+      return mapping[pkg.trim().toLowerCase()];
+    },
+    [mapping],
+  );
+
+  return {
+    mapping,
+    bankCardMapping: mapping,
+    recordFeedback,
+    forgetFeedback,
+    lookupCard,
+    isSyncing,
+  };
+}
+
+// =========================================================================
 // HELPER UNIFICADO DE FEEDBACK DE TRANSAÇÃO (Tarefa 3.3)
 // =========================================================================
 
@@ -588,14 +797,16 @@ export interface RecordTransactionLearningParams {
   cardId?: string;
   cardLastDigits?: string;
   taxId?: string;
+  packageName?: string;
 }
 
 /**
  * Helper unificado que atualiza a memória semântica do estabelecimento (categoria habitual,
- * método de pagamento e cartão preferencial) e os dígitos aprendidos do cartão simultaneamente.
+ * método de pagamento e cartão preferencial), os dígitos aprendidos do cartão e a associação
+ * com o app bancário emissor simultaneamente.
  */
 export function recordTransactionLearning(params: RecordTransactionLearningParams): void {
-  const { merchant, categoryId, paymentMethod, cardId, cardLastDigits, taxId } = params;
+  const { merchant, categoryId, paymentMethod, cardId, cardLastDigits, taxId, packageName } = params;
 
   try {
     const trimmedMerchant = merchant?.trim();
@@ -616,7 +827,12 @@ export function recordTransactionLearning(params: RecordTransactionLearningParam
       recordCardDigitFeedback(cardLastDigits, cardId);
     }
 
-    // 3. Dispara reavaliação de insights
+    // 3. Memoriza vínculo de pacote bancário -> cartão se ambos estiverem disponíveis
+    if (cardId && packageName) {
+      recordBankCardFeedback(packageName, cardId);
+    }
+
+    // 4. Dispara reavaliação de insights
     triggerSessionInsightsReevaluation();
   } catch {
     // Aprendizado em background nunca bloqueia a experiência do usuário

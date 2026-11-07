@@ -131,7 +131,6 @@ export function QuickBalanceAdjustmentModal({
             id="quick-balance-input"
             cents={realBalanceCents}
             onCentsChange={(c) => setRealBalanceCents(c)}
-            autoFocus
           />
           <span className="text-[11px] text-muted-foreground">
             Soma dos saldos disponíveis em suas contas correntes e carteiras digitais.

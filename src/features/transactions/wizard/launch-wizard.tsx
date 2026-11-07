@@ -32,6 +32,7 @@ import {
 } from "@/services/native";
 import {
   recordTransactionLearning,
+  useBankCardMapping,
   useCardDigitsMapping,
   useMerchantLearning,
 } from "@/services/merchant-learning";
@@ -104,10 +105,12 @@ export function LaunchWizard({
   const [isCategoryUnconfirmed, setIsCategoryUnconfirmed] = useState(false);
   const merchantLearning = useMerchantLearning();
   const cardDigits = useCardDigitsMapping();
+  const bankCard = useBankCardMapping();
   const [receiptMeta, setReceiptMeta] = useState<{
     merchant?: string;
     cardLastDigits?: string;
     taxId?: string;
+    packageName?: string;
   } | null>(null);
 
   // Transição suave para o modo guiado sem perda de dados
@@ -165,9 +168,8 @@ export function LaunchWizard({
   const createIncomeInstallments = useCreateIncomeInstallments();
   const createRecurrence = useCreateRecurrence();
 
-  // F21 — histórico preditivo: ativo apenas nos passos de entrada (1 e 3),
-  // zero custo nos demais (Online First — sugestões 100% locais).
-  const predictionActive = state.step === 1 || state.step === 3;
+  // F21 — histórico preditivo: ativo nos passos de entrada (1 e 3) e no modo rápido (Plano 09).
+  const predictionActive = mode === "quick" || state.step === 1 || state.step === 3;
   const prediction = usePredictionHistory(predictionActive);
   const today = todayISO();
   const selectedCategory = categoriesQuery.data?.find((category) => category.id === state.categoryId);
@@ -444,6 +446,7 @@ export function LaunchWizard({
               : undefined,
           cardLastDigits: resolvedLastDigits,
           taxId: receiptMeta?.taxId,
+          packageName: receiptMeta?.packageName,
         });
       }
 
@@ -523,20 +526,23 @@ export function LaunchWizard({
         ? parsed.installments
         : parsed.installments?.count;
 
-    // 3. Resolução precisa do cartão de crédito através de 5 camadas e mapa de 4 dígitos
+    // 3. Resolução precisa do cartão de crédito através de 6 camadas e mapa de 4 dígitos / pacote
     const cardLastDigits = parsed.cardLastDigits;
     const bankName = parsed.bankName;
-    const issuerBank = "issuerBank" in parsed ? parsed.issuerBank : undefined;
+    const packageName = "packageName" in parsed && typeof parsed.packageName === "string" ? parsed.packageName : undefined;
+    const issuerBank = "issuerBank" in parsed && typeof parsed.issuerBank === "string" ? parsed.issuerBank : undefined;
     const cardBrand = parsed.cardBrand;
-    const cardId = "cardId" in parsed ? parsed.cardId : undefined;
+    const cardId = "cardId" in parsed && typeof parsed.cardId === "string" ? parsed.cardId : undefined;
 
     const matchedCard = resolveBestMatchingCard(cardsQuery.data, {
       cardId: cardId || identity.preferredCardId,
       cardLastDigits,
       bankName,
+      packageName,
       issuerBank,
       cardBrand,
       cardDigitsMapping: cardDigits.cardDigitsMapping,
+      bankCardMapping: bankCard.bankCardMapping,
     });
 
     // 4. Salva metadados do comprovante para o aprendizado no submit
@@ -544,6 +550,7 @@ export function LaunchWizard({
       merchant: identity.friendlyName || rawMerchant,
       cardLastDigits,
       taxId: parsed.taxId || identity.taxId,
+      packageName,
     });
 
     setState((prev) => {
@@ -819,6 +826,7 @@ export function LaunchWizard({
             onSwitchToGuided={handleSwitchToGuided}
             categories={categoriesQuery.data}
             categoriesLoading={categoriesQuery.isLoading}
+            predictionEntries={prediction.entries}
             cards={cardsQuery.data}
             cardsLoading={cardsQuery.isLoading}
             onSubmit={() => {

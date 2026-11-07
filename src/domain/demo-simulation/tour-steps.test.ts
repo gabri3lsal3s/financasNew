@@ -143,18 +143,41 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
   describe("Micro-Tour Racha de Despesas com Pix (finances_split)", () => {
     const steps = getTourSteps("finances_split");
 
-    it("possui 2 passos mapeando o Wizard Toggle e Cobrança Pix", () => {
-      expect(steps).toHaveLength(2);
+    it("possui 6 passos mapeando Lançamento, Cadastro Pix, Link, Acesso Convidado, Gestão e Baixa", () => {
+      expect(steps).toHaveLength(6);
 
       // Passo 1: Toggle de Racha no Wizard
       expect(steps[0]?.targetSelector).toBe('[data-tour="wizard-split-toggle"]');
-      expect(steps[0]?.targetRoute).toBe("/transacoes?novo=despesa");
+      expect(steps[0]?.targetRoute).toBe(
+        "/transacoes?novo=despesa&passo=3&racha=1&valor=48000&descricao=Churrasco+de+Confraternizacao",
+      );
       expect(steps[0]?.preferredPlacement).toBe("top");
+      expect(steps[0]?.badgeLabel).toBe("Passo 1 de 6");
 
-      // Passo 2: Extrato com Card de Sinalizações Pendentes Pix
-      expect(steps[1]?.targetSelector).toBe('[data-tour="split-pending-card"]');
-      expect(steps[1]?.targetRoute).toBe("/");
-      expect(steps[1]?.preferredPlacement).toBe("bottom");
+      // Passo 2: Cadastro de Chave Pix
+      expect(steps[1]?.targetSelector).toBe('[data-tour="split-pix-config"]');
+      expect(steps[1]?.targetRoute).toBe("/transacoes?racha_modal=1");
+      expect(steps[1]?.badgeLabel).toBe("Passo 2 de 6");
+
+      // Passo 3: Geração e Ações de Link
+      expect(steps[2]?.targetSelector).toBe('[data-tour="split-link-actions"]');
+      expect(steps[2]?.targetRoute).toBe("/transacoes?racha_modal=1&link=1");
+      expect(steps[2]?.badgeLabel).toBe("Passo 3 de 6");
+
+      // Passo 4: Acesso do Convidado pelo Link
+      expect(steps[3]?.targetSelector).toBe('[data-tour="active-splits-card"]');
+      expect(steps[3]?.targetRoute).toBe("/transacoes");
+      expect(steps[3]?.badgeLabel).toBe("Passo 4 de 6");
+
+      // Passo 5: Gestão de Cotas e Rachas Ativos
+      expect(steps[4]?.targetSelector).toBe('[data-tour="active-splits-card"]');
+      expect(steps[4]?.targetRoute).toBe("/transacoes");
+      expect(steps[4]?.badgeLabel).toBe("Passo 5 de 6");
+
+      // Passo 6: Sinalizações Pendentes Pix na Home
+      expect(steps[5]?.targetSelector).toBe('[data-tour="split-pending-card"]');
+      expect(steps[5]?.targetRoute).toBe("/");
+      expect(steps[5]?.badgeLabel).toBe("Passo 6 de 6");
     });
   });
 
@@ -243,7 +266,7 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
       // Passo 5: Central de Ajuda & Suporte Direto
       expect(steps[4]?.id).toBe("settings-support-channel");
       expect(steps[4]?.targetSelector).toBe('[data-tour="settings-support-card"]');
-      expect(steps[4]?.targetRoute).toBe("/configuracoes");
+      expect(steps[4]?.targetRoute).toBe("/configuracoes?tab=support");
       expect(steps[4]?.badgeLabel).toBe("Passo 5 de 5");
       expect(steps[4]?.actionLabel).toBe("Concluir");
     });
@@ -454,7 +477,7 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
         { order: 2, id: "settings-experience-presets", route: "/configuracoes?tab=appearance", selector: '[data-tour="settings-experience-presets"]', badge: "Passo 2 de 5" },
         { order: 3, id: "settings-visual-identity", route: "/configuracoes?tab=appearance", selector: '[data-tour="settings-visual-identity"]', badge: "Passo 3 de 5" },
         { order: 4, id: "settings-notifications", route: "/configuracoes?tab=notifications", selector: '[data-tour="settings-notifications-card"]', badge: "Passo 4 de 5" },
-        { order: 5, id: "settings-support-channel", route: "/configuracoes", selector: '[data-tour="settings-support-card"]', badge: "Passo 5 de 5" },
+        { order: 5, id: "settings-support-channel", route: "/configuracoes?tab=support", selector: '[data-tour="settings-support-card"]', badge: "Passo 5 de 5" },
       ];
 
       expectedSequence.forEach((expected, idx) => {
@@ -478,7 +501,8 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
         {
           order: 1,
           id: "shared-wizard-split-toggle",
-          route: "/transacoes?novo=despesa",
+          route:
+            "/transacoes?novo=despesa&passo=3&racha=1&valor=48000&descricao=Churrasco+de+Confraternizacao",
           selector: '[data-tour="wizard-split-toggle"]',
           badge: "Passo 1 de 4",
         },

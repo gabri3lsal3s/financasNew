@@ -637,12 +637,17 @@ O Assistente Passivo opera em modelo híbrido entre o cliente Android nativo e o
 ## 15. ASSISTENTE PROATIVO NA HOME & APRENDIZADO ATIVO (F4–F5)
 
 ### 15.1 Motor de Insights Bidirecional (`src/domain/insights/`)
-1. **Classificação Dual de Rendas (`IncomeLike`)**:
+1. **Arquitetura Dual-Track (Contratos vs Hábitos)**:
+   - *Trilho de Custos Fixos & Assinaturas:* `detectRecurrences` identifica assinaturas com dia de cobrança típico, reajustes percentuais (+15%) e detecção antirruído de cobranças duplicadas.
+   - *Trilho de Hábitos de Consumo & Microvazamentos:* `detectSpendingHabits` e `extractHabitClusterKey` (`intent-semantics.ts`) agrupam transações de rotina com descrições dispersas (como trajetos de transporte e refeições diárias) por categoria + intenção canônica (`habit:categoryId:intentKind`).
+2. **Classificação Dual de Rendas (`IncomeLike`)**:
    - Identifica rendas previsíveis (fixas e rendas recorrentes de clientes habituais) analisando o histórico dos últimos 3 a 6 meses com tolerância temporal para fins de semana e feriados (1 a 3 dias úteis).
-2. **Gastos Vampiros & Impacto Orçamentário**:
+3. **Gastos Vampiros, Microvazamentos & Impacto Orçamentário**:
    - Mapeia micro-assinaturas e cobranças recorrentes (`vampireScore`), calculando o peso percentual relativo sobre o orçamento total da categoria ou receitas líquidas.
-3. **Filtro Estrito Antirruído**:
+   - Identifica *micro-leakages* (gastos de valor baixo $\le \text{R\$} 30,00$ que acumulam impacto relevante no mês).
+4. **Filtro Estrito Antirruído e Desduplicação**:
    - Supressão de cobranças duplicadas falsas por meio de comparação estrita de valores em centavos, descrição normalizada e janela temporal de verificação.
+   - Quando um hábito consolidado de rotina é detectado e exibido, o motor suprime automaticamente micro-cortes e perguntas de calibração atômicas redundantes para despesas daquela categoria.
 
 ### 15.2 Assistente Proativo (`SmartAdvisorCard` & `useSmartAdvisorInsights`)
 - **Matriz de Prioridade Canônica**:

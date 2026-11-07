@@ -446,8 +446,7 @@ export function FamilyTab() {
                 value={createName}
                 onChange={(e) => setCreateName(e.target.value)}
                 placeholder="Ex: Família Silva ou Casa &amp; Casal"
-                className="h-10 text-sm rounded-xl"
-                autoFocus
+                className="h-10 text-base sm:text-sm rounded-xl"
                 required
               />
             </div>

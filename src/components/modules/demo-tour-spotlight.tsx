@@ -191,12 +191,20 @@ export function DemoTourSpotlight({
     triggerSensory("action");
     restoreFocus();
     endDemo();
-    // Limpa parâmetros de modal assistido (?novo=...) se o tour for encerrado prematuramente (Fase 8 — Tarefa 8.3)
+    // Limpa parâmetros de modal assistido (?novo=..., ?racha_modal=...) se o tour for encerrado prematuramente (Fase 8 — Tarefa 8.3)
     const currentSearch = location?.search ?? "";
-    if (currentSearch.includes("novo=")) {
+    if (currentSearch.includes("novo=") || currentSearch.includes("racha_modal=")) {
       const cleanParams = new URLSearchParams(currentSearch);
       cleanParams.delete("novo");
       cleanParams.delete("modo");
+      cleanParams.delete("passo");
+      cleanParams.delete("step");
+      cleanParams.delete("racha");
+      cleanParams.delete("split");
+      cleanParams.delete("pessoas");
+      cleanParams.delete("participantes");
+      cleanParams.delete("racha_modal");
+      cleanParams.delete("link");
       const cleanSearch = cleanParams.toString();
       navigate(`${location?.pathname ?? "/"}${cleanSearch ? `?${cleanSearch}` : ""}`, { replace: true });
     }

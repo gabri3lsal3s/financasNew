@@ -16,6 +16,8 @@ export interface CardResolutionParams {
   cardLastDigits?: string | null;
   /** Nome da instituição bancária de origem (ex.: "Rico", "Nubank", "BTG") */
   bankName?: string | null;
+  /** Pacote do aplicativo Android (ex.: "com.nomadfinancial.app", "com.nu.production") */
+  packageName?: string | null;
   /** Banco emissor específico (ex.: "Rico", "XP Investimentos", "Itaú") */
   issuerBank?: string | null;
   /** Bandeira do cartão (ex.: "Visa", "Mastercard", "Elo", "Amex") para desempate */
@@ -24,6 +26,8 @@ export interface CardResolutionParams {
   isVirtual?: boolean | null;
   /** Mapa dinâmico de 4 dígitos aprendidos para IDs de cartões (§11.4 / Fase 3) */
   cardDigitsMapping?: CardDigitsMapping | null;
+  /** Mapa dinâmico de pacote bancário para ID de cartão memorizado (§Plano 09 — Fase 5) */
+  bankCardMapping?: Record<string, string> | null;
   /** ID do cartão preferencial memorizado para o estabelecimento */
   preferredCardId?: string | null;
 }
@@ -239,22 +243,29 @@ export function resolveBestMatchingCard(
     extractLastFourDigits(params.cardId);
 
   // =========================================================================
-  // 1ª Prioridade: Dígitos Aprendidos na Memória Contínua (cardDigitsMapping)
-  // =========================================================================
-  if (digits && params.cardDigitsMapping) {
-    const learnedCardId = lookupCardByDigits(digits, params.cardDigitsMapping);
-    if (learnedCardId) {
-      const learnedCard = activeCards.find((c) => c.id === learnedCardId);
-      if (learnedCard) {
-        return learnedCard;
-      }
-    }
-  }
-
-  // =========================================================================
-  // 2ª Prioridade: Dígitos no Nome do Cartão Cadastrado
+  // NÍVEL 1: Match por 4 dígitos (last_four_digits cadastrado, aprendidos ou nome)
   // =========================================================================
   if (digits) {
+    // 1a. last_four_digits cadastrado explicitamente no cartão
+    const exactDigitsMatch = activeCards.find(
+      (c) => c.last_four_digits && c.last_four_digits === digits,
+    );
+    if (exactDigitsMatch) {
+      return exactDigitsMatch;
+    }
+
+    // 1b. Dígitos aprendidos na memória contínua (cardDigitsMapping)
+    if (params.cardDigitsMapping) {
+      const learnedCardId = lookupCardByDigits(digits, params.cardDigitsMapping);
+      if (learnedCardId) {
+        const learnedCard = activeCards.find((c) => c.id === learnedCardId);
+        if (learnedCard) {
+          return learnedCard;
+        }
+      }
+    }
+
+    // 1c. Dígitos contidos no nome do cartão cadastrado
     const digitMatches = activeCards.filter((c) => {
       const normName = c.name.toLowerCase();
       return (
@@ -266,7 +277,6 @@ export function resolveBestMatchingCard(
     if (digitMatches.length === 1) {
       return digitMatches[0];
     }
-
     if (digitMatches.length > 1) {
       const broken = tieBreakCards(digitMatches, params);
       if (broken) return broken;
@@ -274,7 +284,44 @@ export function resolveBestMatchingCard(
   }
 
   // =========================================================================
-  // 3ª Prioridade: Emissor / Banco + Desempate por Bandeira / Virtual
+  // NÍVEL 2: Cartão Preferencial Memorizado do Estabelecimento (Merchant Learning)
+  // =========================================================================
+  if (params.preferredCardId) {
+    const preferredMatch = activeCards.find((c) => c.id === params.preferredCardId);
+    if (preferredMatch) {
+      return preferredMatch;
+    }
+  }
+
+  // =========================================================================
+  // NÍVEL 3: Vínculo por Instituição / App Emissor (bankCardMapping ou banco único)
+  // =========================================================================
+  const bankPackageOrName = params.packageName || params.bankName || params.issuerBank;
+  if (bankPackageOrName) {
+    // 3a. Consulta na memória adaptativa de pacote/banco
+    if (params.bankCardMapping) {
+      const mappedId = params.bankCardMapping[bankPackageOrName];
+      if (mappedId) {
+        const mappedCard = activeCards.find((c) => c.id === mappedId);
+        if (mappedCard) return mappedCard;
+      }
+    }
+
+    // 3b. Se o usuário possui exatamente 1 cartão daquela instituição
+    const bankMatchingCards = activeCards.filter((c) =>
+      cardMatchesBankTerm(c.name, bankPackageOrName),
+    );
+    if (bankMatchingCards.length === 1) {
+      return bankMatchingCards[0];
+    }
+    if (bankMatchingCards.length > 1) {
+      const broken = tieBreakCards(bankMatchingCards, params);
+      if (broken) return broken;
+    }
+  }
+
+  // =========================================================================
+  // NÍVEL 4: Match Semântico por Emissor / Nome / Bandeira
   // =========================================================================
   const bankCandidates = [params.issuerBank, params.bankName, params.cardId].filter(
     (b): b is string => Boolean(b && b.trim() && !extractLastFourDigits(b)),
@@ -317,22 +364,15 @@ export function resolveBestMatchingCard(
   }
 
   // =========================================================================
-  // 4ª Prioridade: Cartão Preferencial do Estabelecimento (preferredCardId)
-  // =========================================================================
-  if (params.preferredCardId) {
-    const preferredMatch = activeCards.find((c) => c.id === params.preferredCardId);
-    if (preferredMatch) {
-      return preferredMatch;
-    }
-  }
-
-  // =========================================================================
-  // 5ª Prioridade: Fallback Seguro (Exatamente 1 Cartão Ativo)
+  // NÍVEL 5: Fallback Seguro para Cartão Ativo Único
   // =========================================================================
   if (activeCards.length === 1) {
     return activeCards[0];
   }
 
+  // =========================================================================
+  // NÍVEL 6: Retorna undefined se nenhum critério casar em carteira multi-cartão
+  // =========================================================================
   return undefined;
 }
 

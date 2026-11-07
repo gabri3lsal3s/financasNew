@@ -127,6 +127,15 @@ vi.mock("@/state", () => ({
   useCreatePublicShare: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useRevokePublicShare: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useRegeneratePublicShare: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAppMode: () => ({
+    appMode: "personal",
+    isInvestorMode: false,
+    setAppMode: vi.fn().mockResolvedValue(true),
+    isUpdating: false,
+  }),
+  useQuickTokens: () => ({ data: [], isLoading: false }),
+  useCreateQuickToken: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRevokeQuickToken: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 function renderSettings(initialEntries: string[] = ["/configuracoes"]) {

@@ -8,7 +8,11 @@ import { PWAUpdateToast } from "@/components/modules/pwa-update-toast";
 import { NativeUpdateToast } from "@/components/modules/native-update-toast";
 import { getSupabase } from "@/data/client";
 import { resetAppState } from "@/services/auth-cleanup";
-import { syncMerchantLearningFromCloud } from "@/services/merchant-learning";
+import {
+  syncMerchantLearningFromCloud,
+  syncCardDigitsMappingFromCloud,
+  syncBankCardMappingFromCloud,
+} from "@/services/merchant-learning";
 import { useUserPreferences } from "@/state/queries/use-user-preferences";
 import { syncVisualWithCloud } from "@/hooks/use-visual-customization";
 import { useDynamicFavicon } from "@/hooks/use-dynamic-favicon";
@@ -90,6 +94,12 @@ function CloudPreferencesSyncInner({ children }: { children: ReactNode }) {
       }
       if (preferences.custom_settings.merchantLearning) {
         syncMerchantLearningFromCloud(preferences.custom_settings.merchantLearning);
+      }
+      if (preferences.custom_settings.cardDigitsMapping) {
+        syncCardDigitsMappingFromCloud(preferences.custom_settings.cardDigitsMapping);
+      }
+      if (preferences.custom_settings.bankCardMapping) {
+        syncBankCardMappingFromCloud(preferences.custom_settings.bankCardMapping);
       }
     }
   }, [preferences?.custom_settings]);

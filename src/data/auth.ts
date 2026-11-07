@@ -2,6 +2,7 @@ import { getSupabase } from "@/data/client";
 import { normalizeEmail, sanitizeString } from "@/domain/validation";
 import { getPublicAppUrl } from "@/lib/env";
 import { AppError, classifyError, MESSAGES } from "@/services/errors";
+import type { AppMode } from "@/types";
 
 /**
  * Operações de autenticação — camada data (integração remota).
@@ -36,10 +37,12 @@ export async function signUpWithEmail(
   name?: string,
   inviteCode?: string,
   captchaToken?: string,
+  appMode?: AppMode,
 ): Promise<SignUpResult> {
   const normalized = normalizeEmail(email);
   const cleanName = name ? sanitizeString(name) : "";
   const cleanInvite = inviteCode ? sanitizeString(inviteCode).toUpperCase() : "";
+  const selectedMode: AppMode = appMode === "essential" ? "essential" : "investor";
   const { data, error } = await getSupabase().auth.signUp({
     email: normalized,
     password,
@@ -47,6 +50,7 @@ export async function signUpWithEmail(
       data: {
         name: cleanName,
         invite_code: cleanInvite,
+        app_mode: selectedMode,
       },
       emailRedirectTo: getPublicAppUrl("/entrar"),
       captchaToken: captchaToken || undefined,

@@ -99,8 +99,7 @@ export function FamilyCreateModal({
             placeholder="Ex: Família Silva ou Casa 104"
             maxLength={100}
             required
-            autoFocus
-            className="h-10 text-sm rounded-xl"
+            className="h-10 text-base sm:text-sm rounded-xl"
           />
           <span className="text-[11px] text-muted-foreground block">
             Identificador compartilhado visível para todos os membros da família.

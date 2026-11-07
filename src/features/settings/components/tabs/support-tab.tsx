@@ -58,7 +58,7 @@ export function SupportTab() {
   return (
     <div className="space-y-6">
       {/* Card Principal: Central de Suporte & Chamados */}
-      <Card className="border-border/80 bg-surface shadow-xs">
+      <Card data-tour="settings-support-card" className="border-border/80 bg-surface shadow-xs">
         <CardHeader>
           <CardTitle className="text-base flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
             <span className="flex items-center gap-2">

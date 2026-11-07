@@ -90,6 +90,10 @@ export async function updateCustomSettings(patch: Partial<UserCustomSettings>): 
       ...(current?.custom_settings?.cardDigitsMapping ?? {}),
       ...(patch.cardDigitsMapping ?? {}),
     },
+    bankCardMapping: {
+      ...(current?.custom_settings?.bankCardMapping ?? {}),
+      ...(patch.bankCardMapping ?? {}),
+    },
     emergencyFundConfig: patch.emergencyFundConfig !== undefined
       ? {
           ...(current?.custom_settings?.emergencyFundConfig ?? {}),

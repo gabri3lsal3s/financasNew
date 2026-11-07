@@ -13,6 +13,7 @@ import { triggerSensory } from "@/services/sensory";
 import { useUpdateCustomSettings } from "@/state";
 import { pushToast } from "@/services/toast";
 import { Button, ConfirmDialog } from "@/components/ui";
+import { AppModeCard } from "./app-mode-card";
 import { ExperiencePresetsCard } from "./experience-presets-card";
 import { VisualIdentityCard } from "./visual-identity-card";
 import { InterfaceShortcutsCard } from "./interface-shortcuts-card";
@@ -132,6 +133,9 @@ export function AppearanceTab() {
 
   return (
     <div className="space-y-6">
+      {/* --- CARD 0: PERFIL DE VISUALIZAÇÃO (MODO ESSENCIAL VS INVESTIDOR - PLANO 07) --- */}
+      <AppModeCard />
+
       {/* --- CARD 1: MODO DE EXPERIÊNCIA & SENSORIAL --- */}
       <ExperiencePresetsCard
         activePreset={visual.experiencePreset}

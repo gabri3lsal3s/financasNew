@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
-import { ArrowLeft, ArrowRight, CheckCircle2, Layers, MailCheck, PieChart, Shield, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Layers, MailCheck, PieChart, Shield, Sparkles, TrendingUp } from "lucide-react";
 import { Alert, Button, Checkbox, Input, PasswordInput, Turnstile, buttonVariants } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { useAuth, signUpWithEmail } from "@/hooks/use-auth";
@@ -13,6 +13,7 @@ import { BrandLogo } from "@/components/layout";
 import { cn } from "@/lib/utils";
 import { useAttributeReferral } from "@/state";
 import { clearStoredReferralCode, getStoredReferralCode } from "@/services/referral";
+import type { AppMode } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Painel lateral de marketing (desktop ≥ lg)
@@ -90,6 +91,7 @@ export function RegisterPage() {
   const [errorKind, setErrorKind] = useState<string | null>(null);
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [pending, setPending] = useState(false);
+  const [initialFocus, setInitialFocus] = useState<AppMode>("investor");
 
   const planoParam = searchParams.get("plano");
   const metodoParam = searchParams.get("metodo");
@@ -152,6 +154,7 @@ export function RegisterPage() {
         name,
         inviteCode,
         captchaToken ?? undefined,
+        initialFocus,
       );
       triggerSensory("success");
       if (referralCode) {
@@ -465,6 +468,69 @@ export function RegisterPage() {
               placeholder="Ex: GF-XXXX-XXXX"
               className="h-10 text-xs font-mono uppercase rounded-xl"
             />
+          </div>
+
+          {/* Seletor de Foco Inicial (§Plano 07 — Onboarding Leve) */}
+          <div className="flex flex-col gap-2 pt-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-foreground">
+                Qual é o seu objetivo inicial?
+              </span>
+              <span className="text-[11px] text-muted-foreground font-normal">
+                Você pode alterar depois
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerSensory("selection");
+                  setInitialFocus("essential");
+                }}
+                disabled={pending}
+                className={cn(
+                  "flex flex-col items-start gap-1 p-3 rounded-xl border text-left transition-all select-none cursor-pointer",
+                  initialFocus === "essential"
+                    ? "border-primary bg-primary/10 ring-1 ring-primary/40 text-foreground"
+                    : "border-border/80 bg-surface/80 hover:border-border text-muted-foreground hover:text-foreground",
+                  pending && "opacity-60 cursor-not-allowed",
+                )}
+                aria-pressed={initialFocus === "essential"}
+              >
+                <div className="flex items-center gap-1.5">
+                  <Layers className={cn("size-3.5", initialFocus === "essential" ? "text-primary" : "text-muted-foreground")} aria-hidden="true" />
+                  <span className="text-xs font-semibold">Organizar Contas</span>
+                </div>
+                <span className="text-[10px] leading-tight text-muted-foreground">
+                  Foco em gastos, cartões e orçamentos do mês.
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerSensory("selection");
+                  setInitialFocus("investor");
+                }}
+                disabled={pending}
+                className={cn(
+                  "flex flex-col items-start gap-1 p-3 rounded-xl border text-left transition-all select-none cursor-pointer",
+                  initialFocus === "investor"
+                    ? "border-portfolio bg-portfolio/10 ring-1 ring-portfolio/40 text-foreground"
+                    : "border-border/80 bg-surface/80 hover:border-border text-muted-foreground hover:text-foreground",
+                  pending && "opacity-60 cursor-not-allowed",
+                )}
+                aria-pressed={initialFocus === "investor"}
+              >
+                <div className="flex items-center gap-1.5">
+                  <TrendingUp className={cn("size-3.5", initialFocus === "investor" ? "text-portfolio" : "text-muted-foreground")} aria-hidden="true" />
+                  <span className="text-xs font-semibold">Gerenciar Carteira</span>
+                </div>
+                <span className="text-[10px] leading-tight text-muted-foreground">
+                  Contas + Aportes, metas e investimentos.
+                </span>
+              </button>
+            </div>
           </div>
 
           <div className="flex items-start gap-2.5 pt-1">

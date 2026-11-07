@@ -792,7 +792,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
 
       // InvestorModeSurplusBanner deve estar visível no carrossel (duplicado para scroll contínuo)
       expect(screen.getAllByText("Capacidade de Aporte Identificada").length).toBeGreaterThan(0);
-      expect(screen.getAllByRole("button", { name: /Ativar Modo Investidor/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole("button", { name: /Ativar Modo Investidor/i, hidden: true }).length).toBeGreaterThan(0);
     });
   });
 });

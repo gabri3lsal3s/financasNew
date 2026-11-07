@@ -748,6 +748,11 @@ export const CANONICAL_MERCHANT_CATALOG: CanonicalMerchantEntry[] = [
   // 8. Restaurantes, Redes Rápidas e Delivery (16)
   // ==========================================
   {
+    friendlyName: "Restaurante Fogão",
+    categorySlug: "alimentacao",
+    keywords: ["restaurante fogao", "restaurante fogão", "fogao", "fogão"],
+  },
+  {
     friendlyName: "iFood",
     categorySlug: "alimentacao",
     keywords: ["ifood", "ifood com br", "ifood pedido"],

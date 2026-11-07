@@ -316,4 +316,88 @@ describe("card-resolution — Motor Puro de Resolução e Auto-Vínculo de Cart�
       expect(resolveBestMatchingBankAccount(allAccounts, { bankName: "Banco Safra" })).toBeUndefined();
     });
   });
+
+  describe("Cascata de Desempate de Cartões em 6 Níveis (§Plano 09 — Fase 5)", () => {
+    const cardNomadFisico = makeCard({
+      id: "nomad-fisico",
+      name: "Nomad Infinite",
+      last_four_digits: "7756",
+      brand: "visa",
+    });
+    const cardNomadVirtual = makeCard({
+      id: "nomad-virtual",
+      name: "Nomad Virtual",
+      last_four_digits: "1234",
+      brand: "visa",
+    });
+    const cardXpInfinite = makeCard({
+      id: "xp-infinite",
+      name: "XP Infinite",
+      last_four_digits: "1234",
+      brand: "visa",
+    });
+    const cardBradesco = makeCard({
+      id: "bradesco-cartoes",
+      name: "Bradesco Elo",
+      brand: "elo",
+    });
+
+    const multiCards = [cardNomadFisico, cardNomadVirtual, cardXpInfinite, cardBradesco];
+
+    it("Nível 1: resolve exatamente pelo campo last_four_digits cadastrado no cartão", () => {
+      const resolved = resolveBestMatchingCard(multiCards, {
+        cardLastDigits: "7756",
+      });
+      expect(resolved?.id).toBe("nomad-fisico");
+    });
+
+    it("Nível 1: desempata entre cartões do mesmo banco (Físico vs Virtual) por last_four_digits", () => {
+      const resolvedFisico = resolveBestMatchingCard(multiCards, {
+        cardLastDigits: "7756",
+        bankName: "Nomad",
+      });
+      expect(resolvedFisico?.id).toBe("nomad-fisico");
+
+      const resolvedVirtual = resolveBestMatchingCard(multiCards, {
+        cardLastDigits: "1234",
+        bankName: "Nomad",
+      });
+      expect(resolvedVirtual?.id).toBe("nomad-virtual");
+    });
+
+    it("Nível 2: resolve por preferredCardId memorizado para o estabelecimento quando sem dígitos", () => {
+      const resolved = resolveBestMatchingCard(multiCards, {
+        preferredCardId: "bradesco-cartoes",
+      });
+      expect(resolved?.id).toBe("bradesco-cartoes");
+    });
+
+    it("Nível 3: resolve por bankCardMapping quando o pacote Android for conhecido", () => {
+      const bankMapping = {
+        "com.nomadfinancial.app": "nomad-fisico",
+        "com.bradesco": "bradesco-cartoes",
+      };
+
+      const resolved = resolveBestMatchingCard(multiCards, {
+        packageName: "com.bradesco",
+        bankCardMapping: bankMapping,
+      });
+      expect(resolved?.id).toBe("bradesco-cartoes");
+    });
+
+    it("Nível 3: vincula diretamente se o usuário tiver apenas 1 cartão daquele banco", () => {
+      const cardsSubset = [cardNomadFisico, cardBradesco];
+      const resolved = resolveBestMatchingCard(cardsSubset, {
+        bankName: "Bradesco",
+      });
+      expect(resolved?.id).toBe("bradesco-cartoes");
+    });
+
+    it("Nível 4: resolve por correspondência semântica de bandeira quando banco empata", () => {
+      const resolved = resolveBestMatchingCard(multiCards, {
+        cardBrand: "Elo",
+      });
+      expect(resolved?.id).toBe("bradesco-cartoes");
+    });
+  });
 });

@@ -17,6 +17,7 @@ import {
   timeOfDayFactor,
   tokenize,
   weekdayFactor,
+  rankCategoriesByFrequency,
   type PredictionEntry,
 } from "./index";
 
@@ -486,5 +487,37 @@ describe("predictions — motor preditivo de entrada (F21 + hotfix)", () => {
     expect(byToken.some((s) => /uber/i.test(s.description))).toBe(true);
     // Query sem casamento → vazio
     expect(buildDescriptionSuggestions(history, "expense", { query: "zzzqqq" })).toEqual([]);
+  });
+
+  describe("rankCategoriesByFrequency (§Plano 09 — Tarefa 7.1)", () => {
+    const cats = [
+      { id: "c-saude", name: "Saúde" },
+      { id: "c-mercado", name: "Mercado" },
+      { id: "c-transporte", name: "Transporte" },
+      { id: "c-lazer", name: "Lazer" },
+      { id: "c-educacao", name: "Educação" },
+    ];
+
+    it("ordena categorias priorizando a frequência histórica de lançamentos", () => {
+      // No histórico: 2 Mercado, 1 Transporte, 0 Saúde, 0 Lazer, 0 Educação
+      const ranked = rankCategoriesByFrequency(cats, history);
+      expect(ranked[0]?.id).toBe("c-mercado"); // 2x
+      expect(ranked[1]?.id).toBe("c-transporte"); // 1x
+      // As demais (0x) vêm ordenadas alfabeticamente: Educação, Lazer, Saúde
+      expect(ranked[2]?.id).toBe("c-educacao");
+      expect(ranked[3]?.id).toBe("c-lazer");
+      expect(ranked[4]?.id).toBe("c-saude");
+    });
+
+    it("retorna alfabeticamente quando histórico for vazio ou nulo", () => {
+      const ranked = rankCategoriesByFrequency(cats, []);
+      expect(ranked.map((c) => c.name)).toEqual([
+        "Educação",
+        "Lazer",
+        "Mercado",
+        "Saúde",
+        "Transporte",
+      ]);
+    });
   });
 });

@@ -72,27 +72,7 @@ export function resolveIncomeCategory(text: string, title = ""): IncomeCategoryM
     };
   }
 
-  // 3. Proventos, Dividendos, JCP e Rendimentos Financeiros
-  const isYield =
-    combined.includes("proventos") ||
-    combined.includes("dividendos") ||
-    combined.includes("jcp") ||
-    combined.includes("rendimento de saldo") ||
-    combined.includes("esta rendendo") ||
-    combined.includes("rendeu na conta");
-
-  if (isYield) {
-    return {
-      categorySlug: "rendimentos",
-      categoryName: "Rendimentos / Dividendos",
-      isAutoDeposit: false,
-      isSalary: false,
-      isInvestmentYield: true,
-      isRefund: false,
-    };
-  }
-
-  // 4. Auto-Depósito / Mesma Titularidade / Aportes em Conta
+  // 3. Auto-Depósito / Mesma Titularidade / Aportes em Conta (prioridade antes de rendimentos passivos)
   const isAutoDeposit =
     combined.includes("voce depositou") ||
     combined.includes("depositou") ||
@@ -111,6 +91,26 @@ export function resolveIncomeCategory(text: string, title = ""): IncomeCategoryM
       isAutoDeposit: true,
       isSalary: false,
       isInvestmentYield: false,
+      isRefund: false,
+    };
+  }
+
+  // 4. Proventos, Dividendos, JCP e Rendimentos Financeiros
+  const isYield =
+    combined.includes("proventos") ||
+    combined.includes("dividendos") ||
+    combined.includes("jcp") ||
+    combined.includes("rendimento de saldo") ||
+    combined.includes("esta rendendo") ||
+    combined.includes("rendeu na conta");
+
+  if (isYield) {
+    return {
+      categorySlug: "rendimentos",
+      categoryName: "Rendimentos / Dividendos",
+      isAutoDeposit: false,
+      isSalary: false,
+      isInvestmentYield: true,
       isRefund: false,
     };
   }

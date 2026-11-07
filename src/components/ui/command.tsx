@@ -53,7 +53,16 @@ export function Command({
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-modal bg-overlay backdrop-blur-sm transition-opacity duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <DialogPrimitive.Content className="fixed left-1/2 top-[max(1rem,calc(max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))+0.75rem))] z-modal max-h-[calc(85dvh-max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 overflow-hidden rounded-2xl border border-primary/25 bg-surface shadow-2xl backdrop-blur-md focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:top-[15%] sm:max-h-[85dvh]">
+        <DialogPrimitive.Content
+          onOpenAutoFocus={(e) => {
+            // Em dispositivos de toque (mobile/tablet), evita abrir o teclado automaticamente antes que o usuário veja a lista
+            if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) {
+              e.preventDefault();
+            }
+          }}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          className="fixed left-1/2 top-[max(1rem,calc(max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))+0.75rem))] z-modal max-h-[calc(85dvh-max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 overflow-hidden rounded-2xl border border-primary/25 bg-surface shadow-2xl backdrop-blur-md focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:top-[15%] sm:max-h-[85dvh]"
+        >
           <CommandPrimitive className="overflow-hidden">
             <div className="flex items-center gap-2 border-b border-primary/20 px-4">
               <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />

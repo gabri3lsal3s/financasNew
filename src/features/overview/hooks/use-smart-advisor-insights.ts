@@ -19,6 +19,7 @@ import {
   type CardForAdvisorContext,
   type SmartAdvisorInsight,
 } from "@/domain/insights/advisor";
+import type { SpendingHabit } from "@/domain/insights";
 import { calculateSurplusCapacity } from "@/domain/overview";
 import {
   useBudgets,
@@ -192,6 +193,8 @@ export interface UseSmartAdvisorInsightsOptions {
   safeToSpendCents?: number;
   /** Total de compromissos pendentes no ciclo (faturas abertas + dívidas a pagar em centavos). */
   committedObligationsCents?: number;
+  /** Hábitos de consumo frequentes e microvazamentos pré-calculados (F30). */
+  spendingHabits?: readonly SpendingHabit[];
 }
 
 export interface UseSmartAdvisorInsightsResult {
@@ -539,6 +542,7 @@ export function useSmartAdvisorInsights(
       currentUserId: myFamilyQuery.data?.currentMember?.user_id,
       safeToSpendCents: effectiveSafeToSpendCents,
       committedObligationsCents: effectiveCommittedObligationsCents,
+      spendingHabits: options.spendingHabits,
     });
 
     const eligible = filterAndRankAllAdvisorInsights(candidates, {
@@ -574,6 +578,7 @@ export function useSmartAdvisorInsights(
     myFamilyQuery.data?.currentMember?.user_id,
     effectiveSafeToSpendCents,
     effectiveCommittedObligationsCents,
+    options.spendingHabits,
     effectiveDismissals,
     effectiveLastDismissedDay,
     nowMs,

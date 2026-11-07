@@ -426,9 +426,10 @@ describe("Tarefa 5.1: Testes E2E de Simulação (Vitest) — Trilha de Finanças
     }> = [
       {
         track: "finances_split",
-        expectedSteps: 2,
-        expectedFirstTitle: "Divisão Inteligente de Despesas",
-        expectedFirstRoute: "/transacoes?novo=despesa",
+        expectedSteps: 6,
+        expectedFirstTitle: "Onde Fica o Racha & Divisão no Lançamento",
+        expectedFirstRoute:
+          "/transacoes?novo=despesa&passo=3&racha=1&valor=48000&descricao=Churrasco+de+Confraternizacao",
       },
       {
         track: "finances_family",

@@ -13,7 +13,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { Check, CreditCard, Sparkles, SlidersHorizontal, Users } from "lucide-react";
+import { Check, CreditCard, Sparkles, SlidersHorizontal, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge, Button, Input, MoneyInput, Select, Switch, Tabs } from "@/components/ui";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import {
@@ -22,6 +22,7 @@ import {
   type CanonicalCategorySlug,
 } from "@/domain/notifications";
 import { calculateSplitSummary } from "@/domain/finance/split-math";
+import { rankCategoriesByFrequency, type PredictionEntry } from "@/domain/predictions";
 import { useMerchantLearning } from "@/services/merchant-learning";
 import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsCurrency } from "@/services/masks";
@@ -47,6 +48,7 @@ export interface StepQuickProps {
   onSwitchToGuided: () => void;
   categories: Category[] | undefined;
   categoriesLoading?: boolean;
+  predictionEntries?: readonly PredictionEntry[] | null;
   cards: { id: string; name: string }[] | undefined;
   cardsLoading?: boolean;
   onSubmit?: () => void;
@@ -90,6 +92,7 @@ export function StepQuick({
   onSwitchToGuided,
   categories,
   categoriesLoading = false,
+  predictionEntries,
   cards,
   cardsLoading = false,
   onSubmit,
@@ -97,6 +100,40 @@ export function StepQuick({
   const isExpense = state.type === "expense";
   const { memory } = useMerchantLearning();
   const [descriptionFocused, setDescriptionFocused] = useState(false);
+  const PAGE_SIZE = 8;
+  const [categoryPage, setCategoryPage] = useState(() => {
+    if (!state.categoryId || !categories || categories.length === 0) return 1;
+    const initialRanked = rankCategoriesByFrequency(categories, predictionEntries);
+    const catIndex = initialRanked.findIndex((c) => c.id === state.categoryId);
+    return catIndex !== -1 ? Math.floor(catIndex / PAGE_SIZE) + 1 : 1;
+  });
+  const [prevCategoryId, setPrevCategoryId] = useState(state.categoryId);
+
+  // 1. Ordenação por frequência histórica real (§Plano 09 — Tarefas 7.1 e 7.2)
+  const rankedCategories = useMemo(() => {
+    return rankCategoriesByFrequency(categories ?? [], predictionEntries);
+  }, [categories, predictionEntries]);
+
+  const totalPages = Math.max(1, Math.ceil(rankedCategories.length / PAGE_SIZE));
+
+  // 2. Auto-posicionamento na página da categoria inferida/selecionada (§Plano 09 — Tarefa 7.3)
+  // Padrão React: ajustar state durante a renderização quando prop muda (sem efeito em cascata)
+  if (state.categoryId !== prevCategoryId) {
+    setPrevCategoryId(state.categoryId);
+    if (state.categoryId && rankedCategories.length > 0) {
+      const catIndex = rankedCategories.findIndex((c) => c.id === state.categoryId);
+      if (catIndex !== -1) {
+        setCategoryPage(Math.floor(catIndex / PAGE_SIZE) + 1);
+      }
+    }
+  }
+
+  // Garante que a página atual seja válida ao alterar tipo ou categorias
+  const currentPage = Math.min(categoryPage, totalPages);
+  const displayedCategories = useMemo(() => {
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    return rankedCategories.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [rankedCategories, currentPage]);
 
   // Opções de parcelamento calculadas dinamicamente com base no valor atual
   const installmentOptions = useMemo(() => {
@@ -274,7 +311,7 @@ export function StepQuick({
           </div>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-            {(categories ?? []).slice(0, 8).map((cat) => {
+            {displayedCategories.map((cat) => {
               const isSelected = state.categoryId === cat.id;
               return (
                 <button
@@ -310,6 +347,53 @@ export function StepQuick({
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-1 px-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              sensoryIntent="selection"
+              disabled={currentPage <= 1}
+              onClick={() => {
+                setCategoryPage((p) => Math.max(1, p - 1));
+              }}
+              aria-label="Página anterior de categorias"
+            >
+              <ChevronLeft className="size-3.5" aria-hidden="true" />
+              <span className="sr-only">Anterior</span>
+            </Button>
+            <div className="flex items-center gap-1.5" aria-current="page">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <span
+                  key={i}
+                  className={cn(
+                    "size-1.5 rounded-full transition-colors",
+                    currentPage === i + 1 ? "bg-primary" : "bg-muted-foreground/30",
+                  )}
+                />
+              ))}
+              <span className="text-[10px] text-muted-foreground ml-1">
+                {currentPage} de {totalPages}
+              </span>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              sensoryIntent="selection"
+              disabled={currentPage >= totalPages}
+              onClick={() => {
+                setCategoryPage((p) => Math.min(totalPages, p + 1));
+              }}
+              aria-label="Próxima página de categorias"
+            >
+              <ChevronRight className="size-3.5" aria-hidden="true" />
+              <span className="sr-only">Próxima</span>
+            </Button>
           </div>
         )}
       </div>

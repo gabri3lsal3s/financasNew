@@ -94,10 +94,11 @@ export const TOUR_TRACK_METAS: Record<AnyTourTrackId, TourTrackMeta> = {
     description:
       "Divisão inteligente de contas e eventos com amigos, cobrança por Pix e recibos automáticos via WhatsApp.",
     category: "shared",
-    stepsCount: 2,
+    stepsCount: 6,
     iconName: "share-2",
-    startRoute: "/",
-    badgeLabel: "2 passos",
+    startRoute:
+      "/transacoes?novo=despesa&passo=3&racha=1&valor=48000&descricao=Churrasco+de+Confraternizacao",
+    badgeLabel: "6 passos",
   },
   finances_family: {
     id: "finances_family",

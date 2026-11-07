@@ -1,5 +1,30 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.03** registra a **Conclusão e Homologação do Plano 07 — Experiência Adaptativa, Divulgação Progressiva & Perfis de Visualização (Modo Essencial vs Modo Investidor)** (2026-11-07):
+> - **(1) Persistência de Esquema & Contratos TypeScript Estritos**:
+>   - Migration Postgres `20260101000090_app_mode_progressive_disclosure.sql` com coluna `app_mode in ('essential', 'investor')` na tabela `user_preferences` (default `'investor'`);
+>   - Atualização atômica dos triggers `handle_new_user()` e `restore_user_data()` para inicialização e backup consistentes;
+>   - Tipagem canônica `export type AppMode = "essential" | "investor"` em `src/types/schema.ts` e `database.ts`.
+> - **(2) Repositório & Camada de Estado Reativo (Zero Page Reload)**:
+>   - Repositório `src/data/repositories/user-preferences.ts` com `updateAppMode(appMode: AppMode)`;
+>   - Mutação `useUpdateAppMode` com atualização otimista imediata no cache TanStack Query, rollback defensivo e feedback via toast;
+>   - Hook de conveniência `useAppMode` em `src/state/queries/use-app-mode.ts` com flags booleanas (`isInvestorMode`, `isEssentialMode`) e sincronização global.
+> - **(3) Navegação Adaptativa & Blindagem de Rota Gráfica (Zero 404)**:
+>   - `filterNavItems` ocultando a rota `/investments` na Sidebar, Bottom Navigation e More Menu Sheet quando em Modo Essencial;
+>   - `resolveLandingPath` em `src/domain/navigation/nav-resolver.ts` ignorando `/investments` em Modo Essencial e ancorando na Home;
+>   - Rota direta `/investments` renderiza a tela editorial de acolhimento `InvestorModePromoView` quando acessada em Modo Essencial, apresentando os 3 pilares da carteira com botão de ativação com 1 clique e retorno seguro.
+> - **(4) Adaptação da Visão Geral (Dashboard) & Subida de Nível ("Sobra de Caixa")**:
+>   - Grid de métricas responsivo (`grid-cols-1 sm:grid-cols-3` no Modo Essencial vs `grid-cols-2 lg:grid-cols-4` no Modo Investidor);
+>   - Ocultação limpa do KPI de Investimentos, QuickAporteCard e ponto de legenda no Modo Essencial;
+>   - Componente `InvestorModeSurplusBanner` integrado ao `DashboardAlertsCarousel` exibindo convite para habilitar investimentos quando o usuário encerra o mês com sobra de caixa.
+> - **(5) Configurações de Aparência & Onboarding Leve no Cadastro**:
+>   - Componente `AppModeCard` integrado no topo da aba de Aparência (`/configuracoes?tab=appearance`) para alternância instantânea com feedback sensorial;
+>   - Seletor de foco inicial no formulário de cadastro (`RegisterPage` & `data/auth.ts`) permitindo ao novo usuário iniciar em "Organizar Contas" ou "Gerenciar Carteira".
+> - **(6) Quality Gates QG1–QG5 Aprovados & Arquivamento**:
+>   - 100% dos testes verdes (12 arquivos de teste, 117 testes unitários e de integração aprovados);
+>   - 0 erros em `tsc -b` (typecheck), 0 violações de ESLint (`local/no-decorative-unicode`);
+>   - Arquivamento formal em `docs/plans/completed/07_PLANO_EXPERIENCIA_ADAPTATIVA_E_PROGRESSIVE_DISCLOSURE.md`.
+>
 > **v3.02** registra a **Conclusão e Homologação do Plano 08 — Modernização Ergonômica, Área Útil e Padronização de Modais & Bottom Sheets Mobile** (2026-11-07):
 > - **(1) Barra de Controle Minimalista Mobile (`GrabberBar` `h-10` / 40px)**:
 >   - Contêiner superior fixo com alça de arrasto centralizada e botões de utilidade (`headerActions`, calculadora e botão fechar `X` com `size-8`) perfeitamente alinhados à direita;

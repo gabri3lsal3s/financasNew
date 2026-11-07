@@ -233,7 +233,10 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
   };
 
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-border/80 bg-surface p-3 sm:p-3.5 shadow-xs min-w-0">
+    <div
+      data-tour="active-splits-card"
+      className="flex flex-col gap-2 rounded-2xl border border-border/80 bg-surface p-3 sm:p-3.5 shadow-xs min-w-0"
+    >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
           <Users className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />

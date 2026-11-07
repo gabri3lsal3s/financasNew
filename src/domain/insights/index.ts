@@ -133,6 +133,25 @@ export {
   MEMORIZED_FEEDBACK_LABELS,
 } from "./assistant-memory";
 export type { FormattedThemeKey } from "./assistant-memory";
+export {
+  extractHabitClusterKey,
+  inferIntentFromDescription,
+  INTENT_DESCRIPTORS,
+} from "./intent-semantics";
+export type {
+  IntentKind,
+  IntentDescriptor,
+  HabitClusterResult,
+} from "./intent-semantics";
+export {
+  detectSpendingHabits,
+  MICRO_LEAKAGE_TICKET_CEILING_CENTS,
+  MICRO_LEAKAGE_MIN_TOTAL_CENTS,
+} from "./habits";
+export type {
+  SpendingHabit,
+  DetectSpendingHabitsOptions,
+} from "./habits";
 
 
 

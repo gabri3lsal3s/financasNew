@@ -27,6 +27,14 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  useAppMode: () => ({
+    appMode: "investor",
+    isInvestorMode: true,
+    isEssentialMode: false,
+    setAppMode: vi.fn(),
+    isUpdating: false,
+    isLoading: false,
+  }),
 }));
 
 vi.mock("@/services/native", async () => {
@@ -153,4 +161,10 @@ describe("AppearanceTab - Aparência & Identidade Visual (Fase 1 — Tarefa 1.3)
     );
   });
 
+  it("renderiza o AppModeCard para governança de Perfil de Visualização (§Plano 07)", () => {
+    renderAppearanceTab();
+
+    expect(screen.getByText("Perfil de Visualização do Aplicativo")).toBeInTheDocument();
+    expect(screen.getByText("Modo Investidor Ativo")).toBeInTheDocument();
+  });
 });

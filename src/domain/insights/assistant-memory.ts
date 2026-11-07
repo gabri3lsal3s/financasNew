@@ -48,6 +48,24 @@ export function formatAdvisorThemeKey(themeKey: string): FormattedThemeKey {
       return { name: "Aporte mensal", detail: "Sugestão de aporte" };
     case "calib":
       return { name: capitalizedName, detail: "Calibração de recorrência" };
+    case "habit": {
+      if (themeKey.includes("commute") || themeKey.includes("mobility")) {
+        return { name: "Deslocamentos e transporte", detail: "Hábito frequente" };
+      }
+      if (themeKey.includes("daily_meals")) {
+        return { name: "Refeições de rotina", detail: "Hábito frequente" };
+      }
+      if (themeKey.includes("delivery")) {
+        return { name: "Entregas e delivery", detail: "Hábito frequente" };
+      }
+      if (themeKey.includes("coffee_snacks")) {
+        return { name: "Cafés e pequenos lanches", detail: "Microvazamento" };
+      }
+      if (themeKey.includes("groceries")) {
+        return { name: "Mercado e feira", detail: "Hábito frequente" };
+      }
+      return { name: capitalizedName, detail: "Hábito de consumo" };
+    }
     default:
       return { name: capitalizedName };
   }

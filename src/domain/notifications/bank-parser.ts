@@ -34,6 +34,8 @@ export interface ParsedBankTransaction {
   installmentAmountCents?: number;
   issuerBank?: string;
   isRefund?: boolean;
+  isVirtual?: boolean;
+  packageName?: string;
   status?: "completed" | "scheduled";
   isScheduled?: boolean;
   scheduledFor?: string;
@@ -97,6 +99,7 @@ const BANK_PACKAGE_MAP: Record<string, string> = {
   "com.itau": "Itaú",
   "com.itau.personnalite": "Itaú Personnalité",
   "com.bradesco": "Bradesco",
+  "com.bradesco.cartoes": "Bradesco",
   "com.santander.app": "Santander",
   "br.com.santander.way": "Santander",
   "br.gov.caixa.tem": "Caixa Tem",

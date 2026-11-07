@@ -140,6 +140,48 @@ export async function setupInteractiveNotificationActions(): Promise<void> {
   }
 }
 
+// Janela de idempotência de 5 minutos para descarte de notificações duplicadas (§Plano 09 — Tarefa 8.2)
+const DEDUPLICATION_WINDOW_MS = 5 * 60 * 1000;
+const recentDispatches = new Map<string, number>();
+
+function cleanExpiredDispatches(now: number): void {
+  for (const [key, timestamp] of recentDispatches.entries()) {
+    if (now - timestamp > DEDUPLICATION_WINDOW_MS) {
+      recentDispatches.delete(key);
+    }
+  }
+}
+
+export function isDuplicateNotification(transaction: {
+  bankName?: string;
+  amountCents?: number;
+  date?: string;
+  description?: string;
+}): boolean {
+  const now = Date.now();
+  cleanExpiredDispatches(now);
+
+  const dedupeKey = `${transaction.bankName || ""}:${transaction.amountCents || 0}:${transaction.date || ""}:${transaction.description || ""}`;
+  const lastTime = recentDispatches.get(dedupeKey);
+  return Boolean(lastTime && now - lastTime < DEDUPLICATION_WINDOW_MS);
+}
+
+export function markNotificationDispatched(transaction: {
+  bankName?: string;
+  amountCents?: number;
+  date?: string;
+  description?: string;
+}): void {
+  const now = Date.now();
+  cleanExpiredDispatches(now);
+  const dedupeKey = `${transaction.bankName || ""}:${transaction.amountCents || 0}:${transaction.date || ""}:${transaction.description || ""}`;
+  recentDispatches.set(dedupeKey, now);
+}
+
+export function clearNotificationDeduplication(): void {
+  recentDispatches.clear();
+}
+
 /**
  * Emite uma notificação local interativa rica com botões [Conferir e Salvar] e [Adicionar Rápido].
  */
@@ -147,6 +189,11 @@ export async function scheduleInteractiveBankNotification(
   transaction: ParsedBankTransaction,
 ): Promise<number | null> {
   if (!isNativePlatform()) return null;
+
+  // Trava de idempotência contra disparos duplicados em menos de 5 minutos
+  if (isDuplicateNotification(transaction)) {
+    return null;
+  }
 
   try {
     await setupInteractiveNotificationActions();
@@ -179,6 +226,8 @@ export async function scheduleInteractiveBankNotification(
         },
       ],
     });
+
+    markNotificationDispatched(transaction);
 
     return notifId;
   } catch {

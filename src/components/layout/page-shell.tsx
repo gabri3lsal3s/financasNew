@@ -75,6 +75,9 @@ export function PageShell() {
   const parcelasParam = searchParams.get("parcelas");
   const categoriaParam = searchParams.get("categoria") || undefined;
   const sugIdParam = searchParams.get("sug_id") || undefined;
+  const passoParam = searchParams.get("passo") || searchParams.get("step");
+  const rachaParam = searchParams.get("racha") || searchParams.get("split");
+  const pessoasParam = searchParams.get("pessoas") || searchParams.get("participantes");
 
   const initialValues = useMemo(() => {
     const vals: Partial<LaunchState> = {};
@@ -98,8 +101,34 @@ export function PageShell() {
         vals.installments = parsedParcelas;
       }
     }
+    if (passoParam) {
+      const parsedStep = parseInt(passoParam, 10);
+      if (Number.isFinite(parsedStep) && parsedStep >= 1 && parsedStep <= 4) {
+        vals.step = parsedStep;
+      }
+    }
+    if (rachaParam === "1" || rachaParam === "true" || rachaParam === "sim") {
+      vals.splitEnabled = true;
+    }
+    if (pessoasParam) {
+      const parsedPessoas = parseInt(pessoasParam, 10);
+      if (Number.isFinite(parsedPessoas) && parsedPessoas >= 2 && parsedPessoas <= 50) {
+        vals.splitPeopleCount = parsedPessoas;
+      }
+    }
     return Object.keys(vals).length > 0 ? vals : undefined;
-  }, [valorParam, descParam, dataParam, formaParam, cartaoParam, categoriaParam, parcelasParam]);
+  }, [
+    valorParam,
+    descParam,
+    dataParam,
+    formaParam,
+    cartaoParam,
+    categoriaParam,
+    parcelasParam,
+    passoParam,
+    rachaParam,
+    pessoasParam,
+  ]);
 
   // Telemetria leve de engajamento para a tela /admin (respeita anonimização e modo simulação)
   useEffect(() => {
@@ -142,6 +171,12 @@ export function PageShell() {
             updated.delete("categoria");
             updated.delete("parcelas");
             updated.delete("sug_id");
+            updated.delete("passo");
+            updated.delete("step");
+            updated.delete("racha");
+            updated.delete("split");
+            updated.delete("pessoas");
+            updated.delete("participantes");
             return updated;
           },
           { replace: true },

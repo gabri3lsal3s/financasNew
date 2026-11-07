@@ -81,6 +81,10 @@ public class BankNotificationActionReceiver extends BroadcastReceiver {
             combined.contains("transferência recebida") || combined.contains("transferencia recebida") ||
             combined.contains("depósito recebido") || combined.contains("deposito recebido") ||
             combined.contains("depósito em conta") || combined.contains("deposito em conta") ||
+            combined.contains("você depositou") || combined.contains("voce depositou") ||
+            combined.contains("já está rendendo") || combined.contains("ja esta rendendo") ||
+            combined.contains("já está disponível") || combined.contains("ja esta disponivel") ||
+            combined.contains("adicionou dinheiro") ||
             combined.contains("ted recebida") || combined.contains("doc recebido") ||
             combined.contains("creditado em conta") || combined.contains("creditada em conta") ||
             combined.contains("creditado na sua conta") || combined.contains("creditada na sua conta") ||

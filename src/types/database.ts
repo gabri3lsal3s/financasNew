@@ -489,6 +489,7 @@ export interface Database {
           p_due_day: number;
           p_color: string | null;
           p_is_active: boolean;
+          p_last_four_digits?: string | null;
         };
         Returns: void;
       };

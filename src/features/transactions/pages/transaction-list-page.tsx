@@ -24,6 +24,8 @@ import { serializeUnifiedTransactionsCsv, type ExportUnifiedTransactionRow } fro
 import { ActiveSplitsCard } from "@/features/transactions/components/active-splits-card";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import { IncomeDetailDialog } from "@/features/transactions/components/income-detail-dialog";
+import { SplitExpenseDialog } from "@/components/modules/split-expense-dialog";
+import { todayISO } from "@/domain/debts";
 import type { Category, Expense, Income } from "@/types";
 
 
@@ -591,6 +593,31 @@ export function TransactionListPage() {
           />
         );
       })()}
+
+      {searchParams.get("racha_modal") === "1" && (
+        <SplitExpenseDialog
+          open={true}
+          onOpenChange={(next) => {
+            if (!next) {
+              setSearchParams(
+                (prev) => {
+                  const updated = new URLSearchParams(prev);
+                  updated.delete("racha_modal");
+                  updated.delete("link");
+                  return updated;
+                },
+                { replace: true },
+              );
+            }
+          }}
+          initialAmountCents={48000}
+          initialDescription="Churrasco de Confraternização"
+          initialDate={todayISO()}
+          initialPeopleCount={4}
+          categoryName="Lazer & Assinaturas"
+          autoGenerate={searchParams.get("link") === "1"}
+        />
+      )}
 
       <UpgradeDialog
         open={upgradeOpen}

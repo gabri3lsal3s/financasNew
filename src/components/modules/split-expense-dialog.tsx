@@ -89,9 +89,9 @@ export function SplitExpenseDialog({
   const createPublicShareMutation = useCreatePublicShare();
 
   // Sugestão de Pix a partir das preferências salvas ou perfil do usuário
-  const effectiveDefaultPix = preferences.pixKey || profile?.cpf || profile?.email || "";
-  const effectiveDefaultName = preferences.merchantName || profile?.name || "Anfitriao";
-  const effectiveDefaultCity = preferences.merchantCity || "";
+  const effectiveDefaultPix = preferences.pixKey || profile?.cpf || profile?.email || "financeiro.demo@exemplo.com";
+  const effectiveDefaultName = preferences.merchantName || profile?.name || "Você";
+  const effectiveDefaultCity = preferences.merchantCity || "São Paulo";
   const effectiveDefaultRemainder = preferences.remainderPolicy || "host";
   const effectiveDefaultKeyType = preferences.pixKeyType || "auto";
   const effectiveInitialCount = initialPeopleCount ?? preferences.defaultPeopleCount ?? 2;
@@ -140,10 +140,10 @@ export function SplitExpenseDialog({
       setRemainderPolicy(preferences.remainderPolicy || "host");
       setGeneratedLink(null);
       setCopied(false);
-      setPixKey(preferences.pixKey || profile?.cpf || profile?.email || "");
+      setPixKey(preferences.pixKey || profile?.cpf || profile?.email || "financeiro.demo@exemplo.com");
       setSelectedKeyType(preferences.pixKeyType || "auto");
-      setMerchantName(preferences.merchantName || profile?.name || "Anfitriao");
-      setMerchantCity(preferences.merchantCity || "");
+      setMerchantName(preferences.merchantName || profile?.name || "Você");
+      setMerchantCity(preferences.merchantCity || "São Paulo");
     }
   }
 
@@ -397,7 +397,7 @@ export function SplitExpenseDialog({
       <div className="space-y-4 pt-1 pb-2">
         {generatedLink ? (
           /* Visão de Link Gerado com Sucesso */
-          <div className="space-y-4">
+          <div data-tour="split-link-actions" className="space-y-4">
             <div className="rounded-lg border border-positive/30 bg-positive/5 p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <div className="size-8 rounded-full bg-positive/10 flex items-center justify-center text-positive-strong shrink-0">
@@ -694,7 +694,7 @@ export function SplitExpenseDialog({
             </div>
 
             {/* Bloco 3: Dados Pix do Anfitrião */}
-            <div className="rounded-lg border border-border/80 bg-surface p-3.5 space-y-3 shadow-xs">
+            <div data-tour="split-pix-config" className="rounded-lg border border-border/80 bg-surface p-3.5 space-y-3 shadow-xs">
               <span className="text-xs font-semibold text-foreground block">
                 Dados Pix para Recebimento
               </span>

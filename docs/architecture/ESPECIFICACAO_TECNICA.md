@@ -159,7 +159,7 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
 | Tabela | Colunas-chave | Constraints / Notas |
 |---|---|---|
 | `profiles` | id (PK = auth.users.id), name, email, created_at | Criada no signup (trigger) e sincronizada na alteração de e-mail via trigger `on_auth_user_email_updated` (0064) |
-| `user_preferences` | user_id (PK), theme (`light \| dark \| oled \| system`), reminders_enabled, reminder_days_before_debt, reminder_days_before_bill, report_weights_enabled | — |
+| `user_preferences` | user_id (PK), theme (`light \| dark \| oled \| system`), reminders_enabled, reminder_days_before_debt, reminder_days_before_bill, report_weights_enabled, app_mode (`essential \| investor`, default `investor`) | — |
 | `categories` | id, user_id, type (`expense \| income`), name, icon, color, is_reserved (ex.: "Estorno"), is_active, is_family (boolean default false), family_id (FK nullable) | Nome único por (user, type); reservadas não são editáveis/excluíveis nos fluxos normais; compartilhamento de categorias familiares ativas |
 | `incomes` | id, user_id, value, date, category_id (FK), receive_type (`cash \| pix \| transfer \| other`), description, report_weight (default 1, 0–1), source_ref (para rendas automáticas `[REFUND]`), is_family (boolean default false), family_id (FK nullable), created_at | Check: value > 0; date ≥ APP_START_DATE; report_weight 0–1; rendas com `source_ref` = somente-leitura |
 | `expenses` | id, user_id, value, date, category_id, payment_method (`cash \| debit \| credit_card \| pix \| transfer \| other`), card_id (FK nullable), installments_total (1–60), installment_number, installment_group_id (UUID, nullable), bill_competence (`YYYY-MM` snapshot, nullable), report_weight, base_amount (valor original p/ auditoria de pesos), description, is_family (boolean default false), family_id (FK nullable), created_at | Check: value > 0; date ≥ APP_START_DATE; installments 1–60; **card_id NOT NULL quando payment_method = `credit_card`**; `installment_group_id` presente sse installments_total > 1 |
@@ -375,14 +375,23 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
 - Árvore de decisão com **confiança 0.40–0.98**.
 - **Tiers de corte:** `essential` (não sugere corte) · `discretionary` · `can_cut`; cada ocorrência reporta `savingsIfCut`.
 
-#### 3.7.3 Detecção de recorrências (3 níveis)
+#### 3.7.3 Detecção de recorrências, assinaturas e hábitos de consumo (Arquitetura Dual-Track)
 
-- `subscription` — mesmo nome + valor/categoria estável;
-- `recurring` — mesma descrição, valor com tolerância ±50%;
-- `similar` — mesma categoria com total ±30%; **categorias agregadoras excluídas** (supermercado, combustível, farmácia…), checagem de dispersão interna, 2+ meses quando há 3+ meses de histórico.
-- Parcelas (`installment_group_id`) são **filtradas** — parcelamento não é recorrência.
-- **Janela de Recência Ativa e Detecção de Churn:** Uma recorrência só é considerada `active` e elegível a projeções futuras no ciclo corrente se o seu último lançamento ocorreu no mês atual ($M$) ou no mês imediatamente anterior ($M-1$). Ocorrências sem cobrança há $\ge 2$ meses recebem `lifecycle: "lapsed"` (descontinuadas/encerradas), não projetam data futura no mês atual nem geram falso alerta de pendência (`missingThisMonth`).
-- **Desduplicação Inteligente no Radar de Faturas:** Se a fatura aberta do cartão já contém um lançamento faturado para o mesmo serviço (ex.: transição de assinatura mensal para plano parcelado em 12x), a previsão avulsa inferida é suprimida para evitar dupla contagem do limite e distorção da projeção.
+A inteligência de repetição do sistema opera em dois trilhos expressos e desacoplados:
+1. **Trilho 1 — Contratos e Custos Fixos (Assinaturas e Mensalidades):**
+   - `subscription` — mesmo nome + valor/categoria estável;
+   - `recurring` — mesma descrição, valor com tolerância ±50%;
+   - Foco em fornecedor exato, dia típico de vencimento, reajustes percentuais (+15%) e detecção antirruído de cobrança duplicada.
+   - Parcelas (`installment_group_id`) são **filtradas** — parcelamento não é recorrência.
+   - **Janela de Recência Ativa e Detecção de Churn:** Uma recorrência só é considerada `active` e elegível a projeções futuras no ciclo corrente se o seu último lançamento ocorreu no mês atual ($M$) ou no mês imediatamente anterior ($M-1$). Ocorrências sem cobrança há $\ge 2$ meses recebem `lifecycle: "lapsed"` (descontinuadas/encerradas), não projetam data futura no mês atual nem geram falso alerta de pendência (`missingThisMonth`).
+   - **Desduplicação Inteligente no Radar de Faturas:** Se a fatura aberta do cartão já contém um lançamento faturado para o mesmo serviço (ex.: transição de assinatura mensal para plano parcelado em 12x), a previsão avulsa inferida é suprimida para evitar dupla contagem do limite e distorção da projeção.
+
+2. **Trilho 2 — Hábitos de Consumo e Microvazamentos (`intent-semantics.ts` e `habits.ts`):**
+   - **Normalização por Radicais de Intenção (*Intent Stems*):** Mapeia variações de rotina livres (*"ida para Caju"*, *"ida para Glória"*, *"volta Unic"*, *"almoço PF"*, *"café"*, *"lanche"*, *"ifood"*) para intenções canônicas (`mobility:commute`, `food:daily_meals`, `food:delivery`, `food:coffee_snacks`, `pantry:groceries`, `personal_care:routine`).
+   - **Chave de Agrupamento Comportamental:** $\text{HabitClusterKey} = \text{habit:categoryId:intentKind}$. Permite unificar dezenas de transações com descrições dispersas ou notas diárias sob um único hábito de consumo representativo.
+   - **Métricas do Hábito:** Frequência mensal, total acumulado, tíquete médio por evento (ex.: R$ 22,50/corrida) e projeção de impacto anual.
+   - **Microvazamentos (*Micro-leakages*):** Identifica pequenos gastos repetitivos ($\le \text{R\$} 30,00$) que, isolados, parecem insignificantes mas acumulam impacto $\ge \text{R\$} 150,00$ ou $\ge 5\%$ da renda.
+   - **Consolidação e Desduplicação no SmartAdvisor:** Emite 1 card macro consolidado para o hábito e suprime automaticamente cards de corte atômicos redundantes para gastos individuais daquela categoria.
 
 #### 3.7.4 Confiança e aprendizado
 

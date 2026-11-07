@@ -282,7 +282,7 @@ export function DemoTrackSelectModal({
                   id="finances_split"
                   title="Racha de Despesas com Pix"
                   description="Divisão inteligente de contas e eventos com amigos, cobrança por Pix e recibos automáticos via WhatsApp."
-                  stepsCount={2}
+                  stepsCount={6}
                   icon={Share2}
                   iconColorClass="text-positive-strong"
                   isCompleted={hasCompletedDemoTour("finances_split")}

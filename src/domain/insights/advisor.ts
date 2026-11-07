@@ -13,6 +13,8 @@ import { formatBRL } from "./recurrences";
 import { learnBrokerAportePattern } from "./aporte-learning";
 import { detectAnnualCommitments, detectWeeklyCommitments } from "./extended-periodicity";
 import { getNextInvoiceClosingDate } from "./card-radar";
+import { detectSpendingHabits, type SpendingHabit } from "./habits";
+import { findMatchingServiceKey } from "./subscriptions";
 import type { FamilyConsolidationResult, IncomeGoal } from "@/types";
 
 export type SmartAdvisorCategory = "critical" | "income" | "savings" | "calibration";
@@ -127,6 +129,8 @@ export interface GenerateSmartAdvisorInsightsInput {
   safeToSpendCents?: number;
   /** Total de compromissos pendentes no ciclo (faturas abertas + dívidas a pagar em centavos). */
   committedObligationsCents?: number;
+  /** Hábitos de consumo frequentes e microvazamentos pré-calculados (F30). */
+  spendingHabits?: readonly SpendingHabit[];
 }
 
 /**
@@ -233,6 +237,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
     currentUserId,
     safeToSpendCents,
     committedObligationsCents,
+    spendingHabits,
   } = input;
   const candidates: SmartAdvisorInsight[] = [];
 
@@ -628,9 +633,69 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
     }
   }
 
+  // 3.2 Hábitos de consumo frequentes e microvazamentos consolidados (F30)
+  const effectiveHabits =
+    spendingHabits ??
+    (allExpenses.length > 0 ? detectSpendingHabits(allExpenses, { todayISO }) : []);
+
+  const habitCategoryIds = new Set(effectiveHabits.map((h) => h.categoryId));
+
+  for (const habit of effectiveHabits) {
+    if (isOccurrenceIgnored(feedbackMap[habit.key])) continue;
+    if (feedbackMap[habit.key] === "essential") continue;
+    if (candidates.some((c) => c.themeKey === habit.key)) continue;
+
+    const title = habit.isMicroLeakage
+      ? `Atenção a microgastos: ${habit.name}`
+      : `Hábito frequente: ${habit.name}`;
+
+    const description = `Você realizou ${habit.occurrencesCount} despesas neste mês totalizando ${formatBRL(habit.totalMonthCents)} (média de ${formatBRL(habit.averageTicketCents)} por gasto). Projeção de ${formatBRL(habit.annualProjectedCents)} ao ano.`;
+
+    candidates.push({
+      id: habit.key,
+      themeKey: habit.key,
+      priority: 3,
+      category: "savings",
+      title,
+      description,
+      iconName: "trending-down",
+      primaryAction: {
+        label: habit.actionLabel,
+        kind: "cut_subscription",
+        payload: {
+          key: habit.key,
+          name: habit.name,
+          categoryId: habit.categoryId,
+          annualSavingsCents: habit.annualProjectedCents,
+          isHabit: true,
+        },
+      },
+      secondaryAction: {
+        label: "Dispensar por 30 dias",
+        kind: "dismiss",
+      },
+      metadata: {
+        annualSavingsCents: habit.annualProjectedCents,
+        valueCents: habit.totalMonthCents,
+        categoryId: habit.categoryId,
+      },
+    });
+  }
+
   for (const occ of occurrences) {
     if (isOccurrenceIgnored(feedbackMap[occ.key])) continue;
     if (candidates.some((c) => c.themeKey.includes(occ.key))) continue;
+
+    // Se esta ocorrência pertence a uma categoria com hábito consolidado já exibido e não for assinatura de serviço único,
+    // não polui a fila com micro-cortes fragmentados (dedup de comportamento)
+    if (
+      occ.categoryId &&
+      habitCategoryIds.has(occ.categoryId) &&
+      occ.level !== "subscription" &&
+      !findMatchingServiceKey(occ.name)
+    ) {
+      continue;
+    }
 
     // 3.1 Reajuste de preço detectado
     if (occ.priceAdjustment) {
@@ -799,6 +864,17 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
 
   // 4. PRIORIDADE 4: CALIBRAÇÃO (Pergunta simples para ensinar o motor)
   for (const occ of occurrences) {
+    // Se esta ocorrência pertence a uma categoria com hábito consolidado já ativo e não for assinatura de serviço único,
+    // não polui com perguntas de calibração para gastos pontuais de rotina
+    if (
+      occ.categoryId &&
+      habitCategoryIds.has(occ.categoryId) &&
+      occ.level !== "subscription" &&
+      !findMatchingServiceKey(occ.name)
+    ) {
+      continue;
+    }
+
     // Apenas despesas recorrentes ainda não avaliadas pelo usuário
     if (feedbackMap[occ.key] == null && occ.level === "recurring") {
       const alreadyCovered = candidates.some((c) => c.themeKey.includes(occ.key));

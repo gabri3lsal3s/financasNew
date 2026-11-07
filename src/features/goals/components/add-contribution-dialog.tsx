@@ -110,7 +110,6 @@ export function AddContributionDialog({
             cents={amountCents}
             onCentsChange={setAmountCents}
             placeholder="R$ 0,00"
-            autoFocus
           />
           <p className="text-[11px] text-muted-foreground">
             Quantia arrecadada via Pix, dinheiro ou transferência para somar ao termômetro.

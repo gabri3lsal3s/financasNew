@@ -133,6 +133,9 @@ describe("user-preferences repository", () => {
         bankAssistant: {},
         merchantLearning: {},
         cardDigitsMapping: {},
+        bankCardMapping: {},
+        emergencyFundConfig: undefined,
+        splitPreferences: undefined,
       },
     });
   });

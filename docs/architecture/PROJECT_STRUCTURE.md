@@ -222,7 +222,7 @@
     │   │                          #     components/ (diagnostic-card, diagnostics-tab, recurrences-tab, projection-tab F61)
     │   ├── reminders/             #   Lembretes (central de notificações)
     │   ├── settings/              #   Configurações consolidadas em 6 abas especializadas: Minha Conta & Identidade (AccountTab), Aparência & Identidade Visual, Notificações & Automações, Segurança & Gestão de Dados, Plano & Assinatura, Dispositivos & App (App Pro)
-    │   │                          #     components/tabs/ (account-tab, appearance-tab, notifications-tab, security-tab, subscription-tab, app-installation-tab, delete-account-card, notifications/ [reminders-card, banking-assistant-card, banking-catalog-accordion, prominent-disclosure-modal])
+    │   │                          #     components/tabs/ (account-tab, appearance-tab, app-mode-card, notifications-tab, security-tab, subscription-tab, app-installation-tab, delete-account-card, notifications/ [reminders-card, banking-assistant-card, banking-catalog-accordion, prominent-disclosure-modal])
     │   ├── admin/                 #   Painel Administrativo SaaS /admin (F43: 4 pilares consolidados — Visão Geral & KPIs SaaS, Gestão de Usuários, Convites & Allowlist, Sistema & Auditoria, whitelist-quick-actions.tsx)
     │   ├── subscription/          #   Fluxos de Assinatura & Checkout (/assinatura, /assinar, /assinatura/sucesso)
     │   │                          #     pages: subscription-checkout-page, subscription-success-page
@@ -291,7 +291,7 @@
     │   │                          #     freedom-index.ts, period-redemptions.ts (F80: resgates da competência),
     │   │                          #     distribution.ts (F51: normalização de percentuais a 100,0% pelo algoritmo do maior resto),
     │   │                          #     allocation-donuts.ts (F84: distribuição donut classes e setores com reserva de caixa desacoplada)
-    │   ├── insights/              #   advisor.ts (SmartAdvisor proativo e cooldown), recurrences.ts (rendas habituais, classificação dual e gastos vampiros), alertas, assinaturas, feedback.ts
+    │   ├── insights/              #   advisor.ts (SmartAdvisor proativo e cooldown), intent-semantics.ts (inferência de intenções), habits.ts (hábitos e microvazamentos), recurrences.ts, alertas, assinaturas, feedback.ts
     │   ├── savings/               #   F27: desafios de economia (média mensal típica, corte
     │   │                          #     discricionário 10/20/30% — typicalMonthlySpendCents)
     │   ├── reminders/             #   agregação de lembretes (conta/dívida) e preferências

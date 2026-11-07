@@ -22,6 +22,7 @@ import {
   scheduleInteractiveBankNotification,
   setupInteractiveNotificationActions,
   undoQuickAddTransaction,
+  clearNotificationDeduplication,
 } from "./interactive-notifications";
 
 vi.mock("@capacitor/local-notifications", () => ({
@@ -54,8 +55,22 @@ vi.mock("@/data/repositories/incomes", () => ({
 }));
 
 describe("interactive-notifications service", () => {
+  const sampleExpense: ParsedBankTransaction = {
+    id: "sug_dedupe_test",
+    bankName: "Nubank",
+    nature: "expense",
+    type: "expense",
+    amountCents: 5000,
+    description: "Mercado Pão de Açúcar",
+    date: "2026-10-16",
+    paymentMethod: "credit_card",
+    rawText: "Compra de R$ 50,00 aprovada",
+    timestamp: 1729000000000,
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    clearNotificationDeduplication();
     vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
   });
 
@@ -309,6 +324,35 @@ describe("interactive-notifications service", () => {
           }),
         ],
       });
+    });
+  });
+
+  describe("deduplicação de notificações (idempotência 5 minutos)", () => {
+    it("descarta notificações idênticas disparadas dentro da janela de 5 minutos", async () => {
+      const notif1 = await scheduleInteractiveBankNotification(sampleExpense);
+      expect(notif1).not.toBeNull();
+      expect(LocalNotifications.schedule).toHaveBeenCalledTimes(1);
+
+      // Segundo disparo imediato com mesmo banco, valor, data e descrição
+      const notif2 = await scheduleInteractiveBankNotification(sampleExpense);
+      expect(notif2).toBeNull();
+      // Não deve ter agendado nova notificação
+      expect(LocalNotifications.schedule).toHaveBeenCalledTimes(1);
+    });
+
+    it("permite notificações com valor ou descrição diferentes", async () => {
+      const notif1 = await scheduleInteractiveBankNotification(sampleExpense);
+      expect(notif1).not.toBeNull();
+
+      const diffExpense: ParsedBankTransaction = {
+        ...sampleExpense,
+        id: "diff-id",
+        amountCents: 9999,
+      };
+
+      const notif2 = await scheduleInteractiveBankNotification(diffExpense);
+      expect(notif2).not.toBeNull();
+      expect(LocalNotifications.schedule).toHaveBeenCalledTimes(2);
     });
   });
 });

@@ -5,7 +5,7 @@ import {
   generateSmartAdvisorInsights,
   type SmartAdvisorInsight,
 } from "./advisor";
-import type { RecurrenceOccurrence, RecurringIncomeOccurrence } from "./recurrences";
+import type { ExpenseLike, RecurrenceOccurrence, RecurringIncomeOccurrence } from "./recurrences";
 
 function makeOccurrence(overrides: Partial<RecurrenceOccurrence> = {}): RecurrenceOccurrence {
   return {
@@ -773,4 +773,96 @@ describe("filterAndRankAdvisorInsights", () => {
     expect(paceInsight?.priority).toBe(3);
     expect(paceInsight?.category).toBe("savings");
   });
+
+  it("gera insight consolidado de hábito de transporte e não duplica cortes para trajetos isolados", () => {
+    const allExpenses: ExpenseLike[] = [
+      {
+        id: "1",
+        description: "Ida para Caju",
+        month: "2026-11",
+        date: "2026-11-02",
+        valueCents: 2500,
+        categoryId: "cat_transporte",
+        categoryName: "Transporte",
+        categoryIcon: "transporte",
+      },
+      {
+        id: "2",
+        description: "Ida para Glória",
+        month: "2026-11",
+        date: "2026-11-03",
+        valueCents: 3000,
+        categoryId: "cat_transporte",
+        categoryName: "Transporte",
+        categoryIcon: "transporte",
+      },
+      {
+        id: "3",
+        description: "Volta da Unic",
+        month: "2026-11",
+        date: "2026-11-04",
+        valueCents: 2200,
+        categoryId: "cat_transporte",
+        categoryName: "Transporte",
+        categoryIcon: "transporte",
+      },
+      {
+        id: "4",
+        description: "Ida para Unic",
+        month: "2026-11",
+        date: "2026-11-05",
+        valueCents: 2200,
+        categoryId: "cat_transporte",
+        categoryName: "Transporte",
+        categoryIcon: "transporte",
+      },
+    ];
+
+    // Simula ocorrências atômicas que o motor de recorrência tradicional poderia gerar
+    const occurrences: RecurrenceOccurrence[] = [
+      {
+        key: "ida para caju",
+        name: "Ida para Caju",
+        level: "recurring",
+        months: ["2026-10", "2026-11"],
+        averageCents: 2500,
+        confidence: 0.8,
+        categoryId: "cat_transporte",
+        tier: "can_cut",
+      },
+      {
+        key: "ida para gloria",
+        name: "Ida para Glória",
+        level: "recurring",
+        months: ["2026-10", "2026-11"],
+        averageCents: 3000,
+        confidence: 0.8,
+        categoryId: "cat_transporte",
+        tier: "can_cut",
+      },
+    ];
+
+    const insights = generateSmartAdvisorInsights({
+      occurrences,
+      allExpenses,
+      todayISO: "2026-11-07",
+    });
+
+    // 1. Deve haver exatamente 1 insight macro consolidado para o hábito de transporte
+    const habitInsight = insights.find((i) => i.id === "habit:cat_transporte:mobility:commute");
+    expect(habitInsight).toBeDefined();
+    expect(habitInsight?.priority).toBe(3);
+    expect(habitInsight?.category).toBe("savings");
+    expect(habitInsight?.title).toBe("Hábito frequente: Deslocamentos e transporte");
+    expect(habitInsight?.description).toContain("4 despesas");
+    expect(habitInsight?.description).toContain("R$ 99,00"); // 25 + 30 + 22 + 22 = 99
+    expect(habitInsight?.primaryAction?.label).toBe("Definir teto para transporte");
+
+    // 2. Não deve haver cards atômicos duplicados de corte para "ida para caju" ou "ida para gloria"
+    const cajuCard = insights.find((i) => i.id.includes("caju"));
+    const gloriaCard = insights.find((i) => i.id.includes("gloria"));
+    expect(cajuCard).toBeUndefined();
+    expect(gloriaCard).toBeUndefined();
+  });
 });
+
