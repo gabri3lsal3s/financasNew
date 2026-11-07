@@ -59,9 +59,6 @@ import type {
   PortfolioDividendDismissal,
   ApproveDividendsBatchResult,
   MonthlyClosingResult,
-  QuickToken,
-  AffiliatePartner,
-  AffiliateDashboardData,
 } from "./schema";
 
 /**
@@ -122,15 +119,6 @@ export interface Database {
       family_settlements: Table<FamilySettlement>;
       corporate_dividends: Table<CorporateDividend>;
       portfolio_dividend_dismissals: Table<PortfolioDividendDismissal>;
-      user_quick_tokens: Table<QuickToken>;
-      affiliate_partners: Table<AffiliatePartner>;
-      referral_attributions: Table<{
-        id: string;
-        affiliate_id: string;
-        referred_user_id: string;
-        attributed_at: string;
-        status: string;
-      }>;
     };
 
     Views: Record<string, never>;
@@ -730,49 +718,6 @@ export interface Database {
           p_items: readonly { categoryId: string; limit: number }[];
         };
         Returns: void;
-      };
-      create_user_quick_token: {
-        Args: {
-          p_name: string;
-          p_token_hash: string;
-          p_token_prefix: string;
-          p_scopes?: string[];
-        };
-        Returns: Record<string, unknown>;
-      };
-      revoke_user_quick_token: {
-        Args: {
-          p_token_id: string;
-        };
-        Returns: boolean;
-      };
-      list_user_quick_tokens: {
-        Args: Record<string, never>;
-        Returns: QuickToken[];
-      };
-      get_or_create_affiliate_partner: {
-        Args: {
-          p_pix_key?: string | null;
-          p_pix_key_type?: string | null;
-        };
-        Returns: AffiliatePartner;
-      };
-      update_affiliate_pix: {
-        Args: {
-          p_pix_key: string;
-          p_pix_key_type: string;
-        };
-        Returns: boolean;
-      };
-      attribute_referral: {
-        Args: {
-          p_referral_code: string;
-        };
-        Returns: boolean;
-      };
-      get_affiliate_dashboard_data: {
-        Args: Record<string, never>;
-        Returns: AffiliateDashboardData | null;
       };
     };
   };

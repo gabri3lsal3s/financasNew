@@ -14,6 +14,4 @@ export { FamilyBudgetShareCard } from "./family-budget-share-card";
 export { FamilyTab } from "./family-tab";
 export { SupportTab } from "./support-tab";
 export { ChangePasswordModal } from "./change-password-modal";
-export { QuickShortcutsCard } from "./quick-shortcuts-card";
-export { AffiliateTab } from "./affiliate-tab";
 

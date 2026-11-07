@@ -1,11 +1,11 @@
 {
   "version": "3.0.7",
-  "versionCode": 31,
-  "releaseDate": "2026-11-07T21:33:44Z",
+  "versionCode": 32,
+  "releaseDate": "2026-11-07T22:25:34Z",
   "minSupportedVersion": "3.0.7",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "3dbdc7a49a4578cae8a9db33717bf5c86ae587e9d5d5d4c256ff619802d598c6",
-  "fileSizeBytes": 12034035,
+  "sha256": "3ae4d36ae1dc1b7ddb1e7b4091f6e4746e95edf04f61f1003caef77cbdfeab00",
+  "fileSizeBytes": 12030247,
   "changelog": [
     "Experiência canônica unificada: cadastro direto e acesso irrestrito ao módulo de Investimentos",
     "Tour guiado modernizado com spotlight adaptativo suave e zero oscilação",

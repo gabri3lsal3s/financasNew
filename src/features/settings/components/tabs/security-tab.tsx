@@ -11,7 +11,7 @@ import {
   Select,
 } from "@/components/ui";
 import type { SelectOption } from "@/components/ui";
-import { ExportDataHub } from "@/components/modules";
+import { ExportDataHub, ApkInstallGuideDialog } from "@/components/modules";
 import type { ExportCsvKind, ExportRange } from "@/components/modules";
 const RestoreWizardDialog = lazy(() =>
   import("../restore-wizard").then((m) => ({ default: m.RestoreWizardDialog }))
@@ -213,23 +213,20 @@ export function SecurityTab() {
     }
   };
 
+  const [showApkGuide, setShowApkGuide] = useState(false);
   const defaultApkUrl = "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk";
   const activeApkUrl = updateInfo?.manifest?.apkUrl || defaultApkUrl;
 
-  const handleDownloadApk = async () => {
+  const handleDownloadApk = () => {
     try {
-      if (updateInfo?.manifest) {
-        await installUpdate();
-      } else {
-        const link = document.createElement("a");
-        link.href = activeApkUrl;
-        link.download = "axis-pro.apk";
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
+      const link = document.createElement("a");
+      link.href = activeApkUrl;
+      link.download = "axis-pro.apk";
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       pushToast({
         title: "Download iniciado",
         description: "O download do instalador Android foi iniciado.",
@@ -239,6 +236,23 @@ export function SecurityTab() {
       pushToast({
         title: "Falha ao baixar",
         description: "Não foi possível iniciar o download do APK.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleInstallUpdate = async () => {
+    try {
+      await installUpdate();
+      pushToast({
+        title: "Atualização iniciada",
+        description: "O instalador in-app foi acionado no dispositivo.",
+        variant: "info",
+      });
+    } catch (err) {
+      pushToast({
+        title: "Falha na atualização",
+        description: err instanceof Error ? err.message : "Não foi possível atualizar automaticamente.",
         variant: "destructive",
       });
     }
@@ -483,31 +497,36 @@ export function SecurityTab() {
       </Card>
 
       {/* Card 3: Sobre o Aplicativo & Atualizações */}
-      <Card className="border-border/80 bg-surface shadow-xs">
+      <Card data-tour="settings-platform-status" className="border-border/80 bg-surface shadow-xs">
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between">
             <span className="flex items-center gap-2">
               <Smartphone className="size-4 text-muted-foreground" aria-hidden="true" />
               <span>Sobre o Aplicativo</span>
             </span>
-            <Badge variant="muted" size="xs">
+            <Badge variant={isNative ? "positive" : "muted"} size="xs">
               {isNative ? "Android Nativo" : "Web / PWA"}
             </Badge>
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            Informações sobre a versão do sistema e verificação de atualizações.
+            Informações sobre a versão do sistema, download de instaladores e verificação de atualizações.
           </p>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-xl border border-border/80 bg-muted/20">
             <div className="space-y-0.5">
-              <span className="text-xs font-semibold text-foreground block">
-                {updateInfo?.manifest?.version ? `Versão ${updateInfo.manifest.version}` : "Versão atualizada"}
-              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-foreground block">
+                  {updateInfo?.manifest?.version ? `Versão ${updateInfo.manifest.version}` : "Versão 3.0.7"}
+                </span>
+                <Badge variant="default" size="xs">
+                  Build {updateInfo?.manifest?.versionCode || 31}
+                </Badge>
+              </div>
               <span className="text-[11px] text-muted-foreground block">
                 {hasUpdate
-                  ? `Nova versão ${updateInfo?.latestVersion} disponível para atualização.`
-                  : "Você está utilizando a versão estável mais recente."}
+                  ? `Nova versão ${updateInfo?.latestVersion} disponível para atualização imediata.`
+                  : "Você está utilizando a versão estável mais recente do sistema."}
               </span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -525,18 +544,37 @@ export function SecurityTab() {
                 />
                 <span>{isChecking ? "Verificando..." : "Verificar atualizações"}</span>
               </Button>
-              {!isNative && (
+              {hasUpdate && (
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="default"
                   size="sm"
-                  onClick={handleDownloadApk}
+                  onClick={handleInstallUpdate}
                   className="h-8 px-3 text-xs font-semibold rounded-xl cursor-pointer gap-1.5"
                 >
-                  <Download className="size-3 text-muted-foreground" aria-hidden="true" />
-                  <span>Baixar APK</span>
+                  <Download className="size-3 text-primary-foreground" aria-hidden="true" />
+                  <span>Atualizar agora</span>
                 </Button>
               )}
+              <Button
+                type="button"
+                variant={hasUpdate ? "outline" : "default"}
+                size="sm"
+                onClick={handleDownloadApk}
+                className="h-8 px-3 text-xs font-semibold rounded-xl cursor-pointer gap-1.5"
+              >
+                <Download className="size-3" aria-hidden="true" />
+                <span>Baixar APK</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowApkGuide(true)}
+                className="h-8 px-3 text-xs font-semibold rounded-xl cursor-pointer gap-1.5"
+              >
+                <span>Como instalar</span>
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -544,6 +582,14 @@ export function SecurityTab() {
 
       {/* Card 4: Zona de Perigo / Exclusão de Conta (LGPD) */}
       <DeleteAccountCard />
+
+      {/* Modal interativo com guia de 3 passos e QR Code */}
+      <ApkInstallGuideDialog
+        open={showApkGuide}
+        onOpenChange={setShowApkGuide}
+        onDownloadApk={handleDownloadApk}
+        apkUrl={activeApkUrl}
+      />
 
       {restoreWizardOpen && (
         <Suspense fallback={null}>

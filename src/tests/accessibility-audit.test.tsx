@@ -444,10 +444,6 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
-  useAttributeReferral: () => ({
-    mutateAsync: vi.fn(),
-    isPending: false,
-  }),
 }));
 
 

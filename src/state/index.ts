@@ -316,19 +316,6 @@ export {
   familyQueryKeys,
 } from "./queries/use-family";
 export type { RemoveFamilyMemberInput } from "./queries/use-family";
-export {
-  useQuickTokens,
-  useCreateQuickToken,
-  useRevokeQuickToken,
-  QUICK_TOKENS_QUERY_KEY,
-} from "./queries/use-quick-tokens";
-export {
-  useAffiliateDashboard,
-  useGetOrCreateAffiliatePartner,
-  useUpdateAffiliatePix,
-  useAttributeReferral,
-  AFFILIATE_DASHBOARD_QUERY_KEY,
-} from "./queries/use-affiliates";
 
 
 

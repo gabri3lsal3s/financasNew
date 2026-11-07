@@ -1,6 +1,18 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **v3.07** registra a **Conclusão e Homologação do Plano 11 — Unificação da Experiência Canônica, Erradicação de Modos Artificiais e Blindagem Integral do Tour Guiado** (2026-11-07):
+> **v3.07 (Build 32)** registra o **Saneamento de Escopo & Reconstrução do Fluxo de Atualização e Download do APK Android Pro** (2026-11-07):
+> - **(1) Erradicação Completa de Funcionalidades Não Solicitadas**:
+>   - Exclusão integral do Programa de Afiliados e Parcerias (tabelas `affiliate_partners`, `referral_attributions`, RPCs, interfaces visuais, rotas e hooks);
+>   - Exclusão integral de Atalhos no Apple / Quick Tokens iOS (tabelas `user_quick_tokens`, Edge Functions `quick-expense`, cartões visuais, RPCs e hooks);
+>   - Migração determinística de banco `20260101000092_drop_affiliates_and_quick_tokens.sql` com expurgo em cascade e preservação dos 58/58 testes de auditoria de segurança.
+> - **(2) Reconstrução do Fluxo de Atualização e Download do APK**:
+>   - Eliminação dos bloqueios que ocultavam o botão de download no Web/PWA e a ausência de botão in-app no nativo;
+>   - Botão universal destacado de download direto: "Baixar APK Android Pro (v3.0.7)" com metadados claros (Build 32, 11.47 MB, SHA-256);
+>   - Botão permanente de download direto como fallback no ambiente nativo, garantindo que o usuário nunca fique impossibilitado de atualizar;
+>   - Integração completa na aba Dados & Privacidade (`SecurityTab`), Configurações e `AppInstallationTab`;
+>   - Compilação do APK Release assinado com keystore oficial e upload automático para o Cloudflare R2 (`axis-pro.apk`, `guia-financeiro-release.apk`, `version.json`).
+>
+> **v3.07 (Build 31)** registra a **Conclusão e Homologação do Plano 11 — Unificação da Experiência Canônica, Erradicação de Modos Artificiais e Blindagem Integral do Tour Guiado** (2026-11-07):
 > - **(1) Experiência Canônica Unificada & Extinção da Bifurcação de Modos**:
 >   - Extinção completa da divisão artificial entre "Modo Essencial" e "Modo Investidor";
 >   - Cadastro rápido e despoluído (`RegisterPage` & `data/auth.ts`) sem perguntas precoces de "objetivo inicial", eliminando o fardo cognitivo e a fricção de entrada;

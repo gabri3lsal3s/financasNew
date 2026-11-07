@@ -7,12 +7,10 @@ import {
   ShieldCheck,
   Zap,
   LifeBuoy,
-  Gift,
 } from "lucide-react";
 import { Tabs } from "@/components/ui";
 import {
   AccountTab,
-  AffiliateTab,
   AppearanceTab,
   NotificationsTab,
   SecurityTab,
@@ -135,22 +133,6 @@ function resolveSettingsTab(param: string | null): string {
     return "support";
   }
 
-  if (
-    [
-      "affiliate",
-      "afiliados",
-      "afiliado",
-      "parceiro",
-      "parceiros",
-      "indicacao",
-      "indicação",
-      "comissoes",
-      "comissões",
-    ].includes(p)
-  ) {
-    return "affiliate";
-  }
-
   return "account";
 }
 
@@ -236,13 +218,6 @@ export function SettingsPage() {
         shortLabel: "Suporte",
         icon: <LifeBuoy className="size-4" />,
         content: <SupportTab />,
-      },
-      {
-        value: "affiliate",
-        label: "Afiliados & Parcerias",
-        shortLabel: "Afiliados",
-        icon: <Gift className="size-4" />,
-        content: <AffiliateTab />,
       },
     ],
     [],

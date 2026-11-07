@@ -65,20 +65,16 @@ export function AppInstallationTab() {
   const defaultApkUrl = "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk";
   const activeApkUrl = updateInfo?.manifest?.apkUrl || defaultApkUrl;
 
-  const handleDownloadApk = async () => {
+  const handleDownloadApk = () => {
     try {
-      if (updateInfo?.manifest) {
-        await installUpdate();
-      } else {
-        const link = document.createElement("a");
-        link.href = activeApkUrl;
-        link.download = "axis-pro.apk";
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
+      const link = document.createElement("a");
+      link.href = activeApkUrl;
+      link.download = "axis-pro.apk";
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       pushToast({
         title: "Download iniciado",
         description: "O download do instalador Android foi iniciado.",
@@ -184,24 +180,48 @@ export function AppInstallationTab() {
                     </ul>
                   )}
 
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="sm"
-                    onClick={installUpdate}
-                    disabled={status === "downloading"}
-                    className="w-full sm:w-auto gap-2"
-                  >
-                    <Download className="size-4" aria-hidden="true" />
-                    <span>{status === "downloading" ? "Baixando atualização..." : "Atualizar agora (sem desinstalar)"}</span>
-                  </Button>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      onClick={installUpdate}
+                      disabled={status === "downloading"}
+                      className="gap-2"
+                    >
+                      <Download className="size-4" aria-hidden="true" />
+                      <span>{status === "downloading" ? "Baixando atualização..." : "Atualizar agora (sem desinstalar)"}</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDownloadApk}
+                      className="gap-2 border-border/80 bg-surface"
+                    >
+                      <Download className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                      <span>Baixar instalador APK direto</span>
+                    </Button>
+                  </div>
                 </div>
               )}
 
               {!hasUpdate && !isChecking && !error && (
-                <div className="flex items-center gap-2 text-xs text-positive">
-                  <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
-                  <span>Seu aplicativo Android está atualizado com a versão mais recente.</span>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
+                  <div className="flex items-center gap-2 text-xs text-positive">
+                    <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
+                    <span>Seu aplicativo Android está atualizado com a versão mais recente.</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadApk}
+                    className="gap-1.5 text-xs border-border/80 bg-surface cursor-pointer self-start sm:self-auto"
+                  >
+                    <Download className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    <span>Baixar APK (v3.0.7)</span>
+                  </Button>
                 </div>
               )}
 
@@ -243,6 +263,14 @@ export function AppInstallationTab() {
                       eliminando a necessidade de anotação manual. Tudo local no seu celular, sem
                       Open Banking invasivo.
                     </p>
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
+                      <Badge variant="default" size="xs">
+                        Versão 3.0.7 (Build 31)
+                      </Badge>
+                      <span className="text-[11px] text-muted-foreground">
+                        Pacote oficial (~11.5 MB) • Atualizações automáticas inclusas
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-2.5 shrink-0">
@@ -250,10 +278,20 @@ export function AppInstallationTab() {
                       type="button"
                       variant="default"
                       size="sm"
-                      onClick={() => setShowApkDialog(true)}
+                      onClick={handleDownloadApk}
                       className="gap-2"
                     >
                       <Download className="size-4" aria-hidden="true" />
+                      <span>Baixar APK Android Pro (v3.0.7)</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowApkDialog(true)}
+                      className="gap-2 border-border/80 bg-surface"
+                    >
+                      <Info className="size-4 text-muted-foreground" aria-hidden="true" />
                       <span>Conhecer o App Android (Beta)</span>
                     </Button>
                     <Button

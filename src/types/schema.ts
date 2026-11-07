@@ -1269,44 +1269,6 @@ export type FamilyPortfolioSummary = {
   assets: FamilySharedAssetSummary[];
 };
 
-// ===========================================================================
-// Captura Rápida Universal & Tokens de Atalho iOS
-// ===========================================================================
-
-export type QuickToken = {
-  id: string;
-  token_prefix: string;
-  name: string;
-  scopes: string[];
-  last_used_at: string | null;
-  created_at: string;
-};
-
-// ===========================================================================
-// Crescimento B2B2C & Parceiros Afiliados
-// ===========================================================================
-
-export type AffiliatePartner = {
-  id: string;
-  referral_code: string;
-  commission_rate: number;
-  pix_key: string | null;
-  pix_key_type: string | null;
-  status: string;
-  created_at: string;
-};
-
-export type AffiliateMetrics = {
-  total_referred_users: number;
-  active_pro_users: number;
-  estimated_commission_cents: number;
-};
-
-export type AffiliateDashboardData = {
-  partner: AffiliatePartner;
-  metrics: AffiliateMetrics;
-};
-
 
 
 

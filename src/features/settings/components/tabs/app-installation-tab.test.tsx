@@ -160,4 +160,70 @@ describe("AppInstallationTab", () => {
 
     expect(screen.getByRole("heading", { name: "Instalação do Aplicativo Android (Beta)" })).toBeInTheDocument();
   });
+
+  it("renderiza botão 'Baixar APK Android Pro (v3.0.7)' na web e inicia o download", () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+    vi.spyOn(appUpdateHookModule, "useAppUpdate").mockReturnValue({
+      status: "idle",
+      isChecking: false,
+      hasUpdate: false,
+      updateInfo: null,
+      error: null,
+      checkForUpdates: vi.fn(),
+      installUpdate: vi.fn(),
+    });
+
+    render(<AppInstallationTab />);
+
+    const downloadButton = screen.getByRole("button", { name: /Baixar APK Android Pro/i });
+    expect(downloadButton).toBeInTheDocument();
+    fireEvent.click(downloadButton);
+
+    expect(pushToastSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Download iniciado",
+        variant: "info",
+      }),
+    );
+  });
+
+  it("renderiza botão de download direto de APK no ambiente nativo quando há atualização", () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+    vi.spyOn(appUpdateHookModule, "useAppUpdate").mockReturnValue({
+      status: "available",
+      isChecking: false,
+      hasUpdate: true,
+      updateInfo: {
+        hasUpdate: true,
+        isMandatory: false,
+        currentVersion: "0.1.0",
+        currentVersionCode: 4,
+        latestVersion: "3.0.7",
+        latestVersionCode: 31,
+        manifest: {
+          version: "3.0.7",
+          versionCode: 31,
+          releaseDate: "2026-11-07T21:33:44Z",
+          apkUrl: "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
+          changelog: ["Hardening"],
+        },
+      },
+      error: null,
+      checkForUpdates: vi.fn(),
+      installUpdate: vi.fn(),
+    });
+
+    render(<AppInstallationTab />);
+
+    const directDownloadButton = screen.getByText("Baixar instalador APK direto");
+    expect(directDownloadButton).toBeInTheDocument();
+    fireEvent.click(directDownloadButton);
+
+    expect(pushToastSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Download iniciado",
+        variant: "info",
+      }),
+    );
+  });
 });

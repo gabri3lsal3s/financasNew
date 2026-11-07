@@ -133,9 +133,6 @@ vi.mock("@/state", () => ({
     setAppMode: vi.fn().mockResolvedValue(true),
     isUpdating: false,
   }),
-  useQuickTokens: () => ({ data: [], isLoading: false }),
-  useCreateQuickToken: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useRevokeQuickToken: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 function renderSettings(initialEntries: string[] = ["/configuracoes"]) {

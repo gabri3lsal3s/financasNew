@@ -308,6 +308,23 @@ describe("SecurityTab - Bloqueio do Aplicativo & Privacidade", () => {
       expect(mockNavigate).not.toHaveBeenCalled();
     });
   });
+
+  describe("SecurityTab - Atualizações e Download de APK", () => {
+    it("permite clicar em Baixar APK e abrir o diálogo Como instalar", async () => {
+      const user = userEvent.setup();
+      renderSecurityTab();
+
+      const downloadBtn = screen.getByRole("button", { name: /Baixar APK/i });
+      expect(downloadBtn).toBeInTheDocument();
+      await user.click(downloadBtn);
+
+      const howToInstallBtn = screen.getByRole("button", { name: /Como instalar/i });
+      expect(howToInstallBtn).toBeInTheDocument();
+      await user.click(howToInstallBtn);
+
+      expect(screen.getByRole("heading", { name: "Instalação do Aplicativo Android (Beta)" })).toBeInTheDocument();
+    });
+  });
 });
 
 
