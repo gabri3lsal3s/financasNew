@@ -24,6 +24,18 @@
 >   - 100% dos testes verdes (12 arquivos de teste, 117 testes unitários e de integração aprovados);
 >   - 0 erros em `tsc -b` (typecheck), 0 violações de ESLint (`local/no-decorative-unicode`);
 >   - Arquivamento formal em `docs/plans/completed/07_PLANO_EXPERIENCIA_ADAPTATIVA_E_PROGRESSIVE_DISCLOSURE.md`.
+> **v3.03** registra a **Auditoria e Erradicação de AutoFocus Involuntário, Blindagem de Portais e Ergonomia de Inputs Mobile** (2026-11-07):
+> - **(1) Eliminação de AutoFocus Involuntário em Modais e Diálogos**:
+>   - Remoção de focos automáticos compulsórios em `QuickBalanceAdjustmentModal`, `AddContributionDialog`, `FamilyCreateModal` e `FamilyTab`;
+>   - Prevenção da abertura espontânea do teclado virtual no mobile, garantindo autonomia deliberada de toque ao usuário.
+> - **(2) Blindagem contra Fechamento Acidental por Portais Radix no `Modal`**:
+>   - Proteção em `onPointerDownOutside` e `onInteractOutside` contra dismiss incorreto ao selecionar itens em Selects, Popovers, DatePickers e DropdownMenus renderizados no `document.body`.
+> - **(3) Auto-Zoom Shield no iOS WebKit & Formulários Mobile**:
+>   - Ajuste de tipografia em `Textarea` e formulários de família para `text-base sm:text-sm` ($\ge 16\text{px}$ no mobile), prevenindo o zoom-in compulsório do Safari no iPhone.
+> - **(4) Foco Condicional Inteligente na Busca Global (`CommandDialog`)**:
+>   - Inibição de autofoco automático no campo de busca para telas sensíveis ao toque (`pointer: coarse`), reservando o foco automático exclusivo para atalhos de teclado no desktop.
+> - **(5) Formalização da Regra 20 na Governança**:
+>   - Inclusão canônica da **Regra 20 (Zero Auto-Focus e Ergonomia de Entradas no Mobile)** em `AGENTS.md` e Seção 13.3 do `docs/design/DESIGN_SYSTEM.md`.
 >
 > **v3.02** registra a **Conclusão e Homologação do Plano 08 — Modernização Ergonômica, Área Útil e Padronização de Modais & Bottom Sheets Mobile** (2026-11-07):
 > - **(1) Barra de Controle Minimalista Mobile (`GrabberBar` `h-10` / 40px)**:

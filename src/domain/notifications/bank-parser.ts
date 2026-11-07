@@ -1469,8 +1469,7 @@ export function detectTransactionNature(
     bankName === "Rico" ||
     bankName === "XP" ||
     bankName === "XP Investimentos" ||
-    bankName === "BTG Investimentos" ||
-    bankName === "BTG Pactual";
+    bankName === "BTG Investimentos";
 
   // 1. Proventos / Dividendos / JCP
   if (
