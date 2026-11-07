@@ -1,15 +1,16 @@
 {
-  "version": "0.1.0",
-  "versionCode": 29,
-  "releaseDate": "2026-11-06T21:51:46Z",
-  "minSupportedVersion": "0.1.0",
+  "version": "3.0.6",
+  "versionCode": 30,
+  "releaseDate": "2026-11-07T17:54:35Z",
+  "minSupportedVersion": "3.0.6",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "5d1f9fb691047f2707e9d86dea4560a4eb1e48b9340d9786f740357ecbf645fe",
-  "fileSizeBytes": 11998189,
+  "sha256": "0b86083d864188d407e69858c138d9f3c827411d5ee93b515035cf79e7a68709",
+  "fileSizeBytes": 12035699,
   "changelog": [
-    "Modulo de compartilhamento publico (Racha Pix, Orcamento Familiar e Metas)",
-    "Simuladores financeiros abertos (Juros Compostos, Bola de Neve de Dividas e Rebalanceamento)",
-    "Gerador de Pix copia-e-cola conforme padrao BACEN EMV-BR",
-    "Chancela institucional sobria em relatorios PDF"
+    "Motor Universal de Comprovantes e Cupons Fiscais (NFC-e, SAT, ECF, PDV)",
+    "Priorização Bottom-Up de totais liquidados soberanos com matriz multicritério",
+    "Extração estruturada de itens de cupom fiscal com visualização tabular em notas",
+    "Memória adaptativa de aprendizado contínuo para estabelecimentos e categorias",
+    "Suporte a comprovantes e quitação de faturas de cartão de crédito"
   ]
 }

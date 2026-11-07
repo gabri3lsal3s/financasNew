@@ -161,10 +161,11 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Modulo de compartilhamento publico (Racha Pix, Orcamento Familiar e Metas)",
-    "Simuladores financeiros abertos (Juros Compostos, Bola de Neve de Dividas e Rebalanceamento)",
-    "Gerador de Pix copia-e-cola conforme padrao BACEN EMV-BR",
-    "Chancela institucional sobria em relatorios PDF"
+    "Motor Universal de Comprovantes e Cupons Fiscais (NFC-e, SAT, ECF, PDV)",
+    "Priorização Bottom-Up de totais liquidados soberanos com matriz multicritério",
+    "Extração estruturada de itens de cupom fiscal com visualização tabular em notas",
+    "Memória adaptativa de aprendizado contínuo para estabelecimentos e categorias",
+    "Suporte a comprovantes e quitação de faturas de cartão de crédito"
   ]
 }
 EOF
