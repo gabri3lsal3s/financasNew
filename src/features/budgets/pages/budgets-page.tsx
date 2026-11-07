@@ -627,7 +627,10 @@ export function BudgetsPage() {
         <MonthPicker value={month} onValueChange={setMonth} />
 
         {/* Banner de Metas & Campanhas Coletivas */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border border-primary/25 bg-primary/5 p-4 shadow-xs">
+        <div
+          data-tour="shared-goals-banner"
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border border-primary/25 bg-primary/5 p-4 shadow-xs"
+        >
           <div className="flex items-start gap-3 min-w-0">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary-strong">
               <Target className="size-4.5" aria-hidden="true" />
@@ -657,7 +660,7 @@ export function BudgetsPage() {
 
         {/* Seção de Campanhas & Vaquinhas Ativas */}
         {activeCampaigns.length > 0 && (
-          <div className="flex flex-col gap-3">
+          <div data-tour="shared-goals-card" className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-semibold text-foreground">Campanhas & Vaquinhas Coletivas</h2>

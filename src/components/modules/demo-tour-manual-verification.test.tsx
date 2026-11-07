@@ -1489,13 +1489,13 @@ describe("Teste Manual de Conclusão: Conclusão dos Tours Completos e Encerrame
     expect(mockNavigate).toHaveBeenCalledWith("/configuracoes?tab=suporte");
   });
 
-  it("conclui todos os 10 micro-tours individuais comprovando encerramento limpo sem nenhum parâmetro invasivo e sem abertura de modais", async () => {
+  it("conclui todos os 13 micro-tours individuais comprovando encerramento limpo sem nenhum parâmetro invasivo e sem abertura de modais", async () => {
     window.innerWidth = 1024;
     window.innerHeight = 768;
 
     const allTrackIds = Object.keys(TOUR_TRACK_METAS) as TourTrackId[];
-    const microTours = allTrackIds.filter((t) => !isCompleteTourTrack(t));
-    expect(microTours).toHaveLength(10);
+    const microTours = allTrackIds.filter((t) => !isCompleteTourTrack(t) && getTourSteps(t).length > 0);
+    expect(microTours).toHaveLength(13);
 
     for (const trackId of microTours) {
       vi.clearAllMocks();

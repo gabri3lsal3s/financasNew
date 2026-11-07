@@ -6,7 +6,7 @@ import {
   INVASIVE_QUERY_PARAMS,
   isCompleteTourTrack,
 } from "./handoff";
-import type { TourTrackId } from "./types";
+import type { AnyTourTrackId } from "./types";
 
 describe("cleanPathWithoutInvasiveParams", () => {
   it("retorna '/' quando a rota de entrada for vazia, nula ou undefined", () => {
@@ -107,6 +107,13 @@ describe("getTourHandoffDestination", () => {
         "/configuracoes?tab=suporte",
       );
     });
+
+    it("No Tour Completo de Finanças Compartilhadas ('shared_finances'), direciona para /familia", () => {
+      expect(getTourHandoffDestination("shared_finances", "/")).toBe("/familia");
+      expect(getTourHandoffDestination("shared_finances", "/transacoes")).toBe("/familia");
+      expect(getTourHandoffDestination("shared_finances", "/familia")).toBe("/familia");
+      expect(getTourHandoffDestination("shared_finances", undefined)).toBe("/familia");
+    });
   });
 
   describe("Micro-Tours Individuais (Regra de Ouro: Zero Interrupção / Zero Modais Invasivos)", () => {
@@ -187,13 +194,13 @@ describe("getTourHandoffDestination", () => {
   });
 
   describe("Testar Conclusão Limpa de Todos os Tours (Fase 8 — Tarefa 8.11)", () => {
-    const allTrackIds = Object.keys(TOUR_TRACK_METAS) as TourTrackId[];
+    const allTrackIds = Object.keys(TOUR_TRACK_METAS) as AnyTourTrackId[];
 
     const microTours = allTrackIds.filter((t) => !isCompleteTourTrack(t));
     const completeTours = allTrackIds.filter((t) => isCompleteTourTrack(t));
 
-    it("valida que todos os micro-tours (10 trilhas) encerram com URL 100% limpa sem nenhum parâmetro invasivo", () => {
-      expect(microTours).toHaveLength(10);
+    it("valida que todos os micro-tours (13 trilhas) encerram com URL 100% limpa sem nenhum parâmetro invasivo", () => {
+      expect(microTours).toHaveLength(13);
 
       const dirtyQueryString = INVASIVE_QUERY_PARAMS.map((param, i) => `${param}=val_${i}`).join("&");
       const sampleDirtyUrl = `/painel?tab=geral&${dirtyQueryString}`;
@@ -212,14 +219,16 @@ describe("getTourHandoffDestination", () => {
       }
     });
 
-    it("valida que todos os tours completos (3 trilhas) direcionam para seus modais de partida de conta real", () => {
-      expect(completeTours).toHaveLength(3);
+    it("valida que todos os tours completos (4 trilhas) direcionam para seus modais de partida de conta real", () => {
+      expect(completeTours).toHaveLength(4);
 
       for (const trackId of completeTours) {
         const destination = getTourHandoffDestination(trackId, "/qualquer-rota-previa");
 
         if (trackId === "finances") {
           expect(destination).toBe("/?novo=despesa");
+        } else if (trackId === "shared_finances") {
+          expect(destination).toBe("/familia");
         } else if (trackId === "investments") {
           expect(destination).toBe("/investments?novo=investimento");
         } else if (trackId === "settings_support") {
@@ -228,8 +237,8 @@ describe("getTourHandoffDestination", () => {
       }
     });
 
-    it("assegura que 100% das 13 trilhas do catálogo possuem tratamento determinístico em getTourHandoffDestination", () => {
-      expect(allTrackIds).toHaveLength(13);
+    it("assegura que 100% das 17 trilhas do catálogo possuem tratamento determinístico em getTourHandoffDestination", () => {
+      expect(allTrackIds).toHaveLength(17);
 
       for (const trackId of allTrackIds) {
         const destFromRoot = getTourHandoffDestination(trackId, "/");

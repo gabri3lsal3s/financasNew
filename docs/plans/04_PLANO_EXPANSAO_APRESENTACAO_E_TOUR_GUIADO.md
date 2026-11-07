@@ -82,21 +82,21 @@ flowchart TD
 
 > **Objetivo:** Registrar formalmente as novas jornadas no catálogo com seletores DOM estáveis e coordenadas anti-colisão.
 
-- [ ] **Tarefa 2.1: Registro Canônico (`src/domain/demo-simulation/tour-catalog.ts`)**
-  - `shared_finances`: Trilha completa com 4 passos.
-  - Micro-tours dedicados para Racha, Família e Metas.
+- [x] **Tarefa 2.1: Registro Canônico (`src/domain/demo-simulation/tour-catalog.ts`)**
+  - [x] `shared_finances`: Trilha completa com 4 passos.
+  - [x] Micro-tours dedicados para Racha, Família e Metas.
 
-- [ ] **Tarefa 2.2: Passos Detalhados (`src/domain/demo-simulation/tour-steps.ts`)**
+- [x] **Tarefa 2.2: Passos Detalhados (`src/domain/demo-simulation/tour-steps.ts`)**
   1. *Passo 1 (Wizard de Lançamento):* Toggle de Racha e Modo Família (`[data-tour="wizard-split-toggle"]`).
   2. *Passo 2 (Extrato de Rachas):* Card de divisões ativas e cobrança Pix (`[data-tour="split-pending-card"]`).
   3. *Passo 3 (Hub da Família):* Teto compartilhado da casa e equilíbrio do mês (`/familia`).
   4. *Passo 4 (Metas Coletivas):* Termômetro de arrecadação e link de doação (`/orcamentos`).
 
-- [ ] **Portão de Qualidade 2 (QG2):**
-  - [ ] Executar: `npx vitest run src/domain/demo-simulation/tour-steps.test.ts src/domain/demo-simulation/tour-catalog.test.ts`
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] **Commit & Push da Fase 2:** `git commit -m "feat(demo): catalogo e passos guiados de financas compartilhadas"`
+- [x] **Portão de Qualidade 2 (QG2):**
+  - [x] Executar: `npx vitest run src/domain/demo-simulation/tour-steps.test.ts src/domain/demo-simulation/tour-catalog.test.ts`
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] **Commit & Push da Fase 2:** `git commit -m "feat(demo): catalogo e passos guiados de financas compartilhadas"`
 
 ---
 

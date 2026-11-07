@@ -60,12 +60,15 @@ export type SharedTourTrackId =
 /**
  * Identificador unificado de todas as trilhas e micro-tours suportados.
  */
-export type TourTrackId = LegacyTourTrackId | MicroTourTrackId;
+export type TourTrackId =
+  | LegacyTourTrackId
+  | MicroTourTrackId
+  | SharedTourTrackId;
 
 /**
  * Identificador abrangente de qualquer trilha ou micro-tour (pessoal, investimentos, nativa ou compartilhada).
  */
-export type AnyTourTrackId = TourTrackId | SharedTourTrackId;
+export type AnyTourTrackId = TourTrackId;
 
 /**
  * Nomes semânticos dos ícones Lucide associados às trilhas.
@@ -91,7 +94,7 @@ export type TourIconName =
  */
 export interface TourTrackMeta {
   /** Identificador único da trilha / micro-tour */
-  id: TourTrackId;
+  id: AnyTourTrackId;
   /** Título legível da trilha */
   title: string;
   /** Título conciso para badges e cards compactos */
