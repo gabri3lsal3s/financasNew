@@ -9,9 +9,11 @@ import {
   Sparkles,
   ShieldCheck,
   FileText,
+  Users,
 } from "lucide-react";
 import { Badge, Card } from "@/components/ui";
 import { ScrollReveal } from "@/features/landing/components/scroll-reveal";
+import { SharedFinancesShowcase } from "./shared-finances-showcase";
 
 export function ProductNarratives() {
   return (
@@ -23,10 +25,10 @@ export function ProductNarratives() {
             Engenharia Financeira com Clareza Absoluta
           </span>
           <h2 className="mt-3 sm:mt-4 font-display text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
-            Três eixos coordenados para sustentação e expansão do seu patrimônio
+            Quatro eixos coordenados para sustentação e expansão do seu patrimônio
           </h2>
           <p className="mt-4 sm:mt-5 text-sm sm:text-lg lg:text-xl text-muted-foreground leading-relaxed">
-            Sem fórmulas frágeis de planilhas e sem relatórios opacos. Uma arquitetura concebida para fornecer estabilidade imediata de caixa, horizonte seguro de compromissos futuros e disciplina matemática de investimentos.
+            Sem fórmulas frágeis de planilhas e sem relatórios opacos. Uma arquitetura concebida para fornecer estabilidade imediata de caixa, horizonte seguro de compromissos futuros, cooperação financeira sem atrito e disciplina matemática de investimentos.
           </p>
         </ScrollReveal>
 
@@ -274,6 +276,49 @@ export function ProductNarratives() {
                 </Badge>
               </div>
             </Card>
+          </ScrollReveal>
+        </div>
+
+        {/* História 4: Finanças Compartilhadas & Pix */}
+        <div id="financas-compartilhadas" className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-16 xl:gap-20 items-center scroll-mt-24">
+          {/* Visual Demonstrativo (Esquerda no Desktop) */}
+          <ScrollReveal delay={150} className="lg:col-span-6 order-2 lg:order-1">
+            <SharedFinancesShowcase />
+          </ScrollReveal>
+
+          {/* Texto Explicativo (Direita no Desktop) */}
+          <ScrollReveal delay={50} className="lg:col-span-6 space-y-4 sm:space-y-6 order-1 lg:order-2">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-primary">
+              <Users className="size-3.5 sm:size-4" aria-hidden="true" />
+              <span>Eixo 4 · Finanças Compartilhadas & Pix</span>
+            </div>
+
+            <h3 className="font-display text-xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-snug">
+              Vida financeira compartilhada sem constrangimento e sem planilhas
+            </h3>
+
+            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
+              Cobrar amigos após um evento ou alinhar despesas domésticas em casal costuma gerar desconforto, mensagens perdidas e esquecimento de quem pagou o quê.
+            </p>
+
+            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
+              O Áxis transforma finanças compartilhadas em um fluxo natural: <strong>Racha de Despesas com Pix Copia e Cola</strong> e lembretes automáticos no WhatsApp, <strong>Termômetro de Vaquinhas Coletivas</strong> com arrecadação pública transparente e o <strong>Modo Família</strong> com divisão 50/50 e acerto de contas sem atrito — preservando a privacidade estrita dos seus gastos individuais.
+            </p>
+
+            <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
+                <span>Card de Racha de Despesas com cópia de Pix e botão de WhatsApp</span>
+              </div>
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
+                <span>Card de Termômetro de Vaquinha Coletiva em tempo real</span>
+              </div>
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
+                <span>Card de Orçamento Familiar Seguro (divisão 50/50 e acerto sem atrito)</span>
+              </div>
+            </div>
           </ScrollReveal>
         </div>
 

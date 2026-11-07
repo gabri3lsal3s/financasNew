@@ -54,7 +54,10 @@ export function HouseholdBalanceCard({
   const totalSpentCents = members.reduce((sum, m) => sum + m.spent_cents, 0);
 
   return (
-    <Card className={cn("border-border/80 bg-surface shadow-xs rounded-2xl", className)}>
+    <Card
+      data-tour="family-balance-card"
+      className={cn("border-border/80 bg-surface shadow-xs rounded-2xl", className)}
+    >
       <CardHeader className="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Scale className="size-4 text-muted-foreground" aria-hidden="true" />

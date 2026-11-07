@@ -17,6 +17,8 @@ export { ScrollRevealProvider } from "./scroll-reveal-context";
 export type { ScrollRevealProviderProps } from "./scroll-reveal-context";
 export { ScrollRevealContext } from "./scroll-reveal-context-def";
 export type { ScrollRevealContextValue } from "./scroll-reveal-context-def";
+export { SharedFinancesShowcase } from "./shared-finances-showcase";
+export type { SharedFinancesShowcaseProps } from "./shared-finances-showcase";
 export { SpotlightCard } from "./spotlight-card";
 export { ToolsShowcase } from "./tools-showcase";
 

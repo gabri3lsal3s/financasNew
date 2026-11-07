@@ -8,6 +8,7 @@ import {
   TrendingUp,
   ChevronDown,
   MessageSquare,
+  Users,
 } from "lucide-react";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { SupportChatDialog } from "@/components/modules/support";
 import { startDemo } from "@/state/demo-mode";
 import { triggerSensory } from "@/services/sensory";
+import { getTourTrackMeta } from "@/domain/demo-simulation";
 import { cn } from "@/lib/utils";
 
 export interface HelpModalProps {
@@ -26,6 +28,8 @@ export interface HelpModalProps {
   onOpenDemoSelect?: () => void;
   /** Callback opcional acionado para abrir diretamente o diálogo de suporte */
   onOpenSupport?: () => void;
+  /** Callback opcional acionado para iniciar diretamente o tour compartilhado */
+  onStartSharedTour?: () => void;
 }
 
 interface FaqItem {
@@ -49,6 +53,13 @@ const FAQ_ITEMS: FaqItem[] = [
     question: "Como são organizadas as Faturas de Cartão?",
     answer:
       "As transações feitas com cartão de crédito são agrupadas por competência e vencimento com base no dia de fechamento cadastrado para o cartão, respeitando o regime financeiro da fatura.",
+  },
+  {
+    id: "shared",
+    icon: Users,
+    question: "Como funciona a divisão de despesas e o Modo Família?",
+    answer:
+      "No lançamento ou detalhe de uma despesa, você pode dividi-la entre participantes com cobranças Pix Copia e Cola automáticas para envio direto. No Modo Família, é possível definir um teto compartilhado para o lar e acompanhar o equilíbrio de contribuições entre os membros.",
   },
   {
     id: "security",
@@ -76,6 +87,7 @@ export function HelpModal({
   onOpenChange,
   onOpenDemoSelect,
   onOpenSupport,
+  onStartSharedTour,
 }: HelpModalProps) {
   const navigate = useNavigate();
   const [expandedFaq, setExpandedFaq] = useState<string | null>("rebalance");
@@ -93,6 +105,18 @@ export function HelpModal({
       triggerSensory("action");
       startDemo("finances");
       navigate("/");
+    }
+  };
+
+  const handleStartSharedTour = () => {
+    onOpenChange(false);
+    if (onStartSharedTour) {
+      onStartSharedTour();
+    } else {
+      triggerSensory("action");
+      startDemo("shared_finances");
+      const meta = getTourTrackMeta("shared_finances");
+      navigate(meta?.startRoute ?? "/");
     }
   };
 
@@ -130,19 +154,31 @@ export function HelpModal({
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
                   Explore as telas e motores do aplicativo com dados realistas em memória.
-                  Você pode experimentar o rebalanceamento de carteira e gestão de faturas
-                  sem alterar nenhum dos seus registros reais.
+                  Você pode experimentar o rebalanceamento de carteira, faturas e finanças
+                  compartilhadas sem alterar nenhum dos seus registros reais.
                 </p>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleStartTour}
-                className="gap-2 shrink-0 self-start sm:self-center font-medium"
-              >
-                <Compass className="size-4" aria-hidden="true" />
-                <span>Rever Tour Guiado</span>
-              </Button>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleStartSharedTour}
+                  className="gap-2 shrink-0 font-medium cursor-pointer"
+                >
+                  <Users className="size-4 text-primary" aria-hidden="true" />
+                  <span>Tour Compartilhado</span>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleStartTour}
+                  className="gap-2 shrink-0 font-medium cursor-pointer"
+                >
+                  <Compass className="size-4" aria-hidden="true" />
+                  <span>Rever Tour Guiado</span>
+                </Button>
+              </div>
             </div>
           </div>
 

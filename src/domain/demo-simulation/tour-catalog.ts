@@ -1,14 +1,14 @@
 import type {
+  AnyTourTrackId,
   TourTrackCategory,
   TourTrackGroup,
-  TourTrackId,
   TourTrackMeta,
 } from "./types";
 
 /**
  * Catálogo canônico de metadados para todas as trilhas e micro-tours suportados.
  */
-export const TOUR_TRACK_METAS: Record<TourTrackId, TourTrackMeta> = {
+export const TOUR_TRACK_METAS: Record<AnyTourTrackId, TourTrackMeta> = {
   // Trilha 0: Recursos Nativos (Exclusivo APK Android)
   app_native_apk: {
     id: "app_native_apk",
@@ -86,7 +86,45 @@ export const TOUR_TRACK_METAS: Record<TourTrackId, TourTrackMeta> = {
     badgeLabel: "3 passos",
   },
 
-  // Trilha 2: Investimentos & Rebalanceamento
+  // Trilha 2: Finanças Compartilhadas, Modo Família & Metas Coletivas (Micro-tours)
+  finances_split: {
+    id: "finances_split",
+    title: "Racha de Despesas com Pix",
+    shortTitle: "Racha com Pix",
+    description:
+      "Divisão inteligente de contas e eventos com amigos, cobrança por Pix e recibos automáticos via WhatsApp.",
+    category: "shared",
+    stepsCount: 2,
+    iconName: "share-2",
+    startRoute: "/",
+    badgeLabel: "2 passos",
+  },
+  finances_family: {
+    id: "finances_family",
+    title: "Modo Família Multi-Contas",
+    shortTitle: "Modo Família",
+    description:
+      "Gestão orçamentária para casais e famílias com cartões independentes, teto conjunto e equilíbrio sem atrito.",
+    category: "shared",
+    stepsCount: 2,
+    iconName: "users",
+    startRoute: "/familia",
+    badgeLabel: "2 passos",
+  },
+  finances_goals: {
+    id: "finances_goals",
+    title: "Metas Coletivas & Vaquinha Pix",
+    shortTitle: "Metas Coletivas",
+    description:
+      "Vaquinha colaborativa com termômetro em tempo real, chave Pix para arrecadação e prestação de contas pública.",
+    category: "shared",
+    stepsCount: 2,
+    iconName: "target",
+    startRoute: "/orcamentos?tab=goals",
+    badgeLabel: "2 passos",
+  },
+
+  // Trilha 3: Investimentos & Rebalanceamento
   investments_overview: {
     id: "investments_overview",
     title: "Visão Geral da Carteira",
@@ -136,7 +174,7 @@ export const TOUR_TRACK_METAS: Record<TourTrackId, TourTrackMeta> = {
     badgeLabel: "2 passos",
   },
 
-  // Trilha 3: Personalização, Visual & Suporte
+  // Trilha 4: Personalização, Visual & Suporte
   settings_support: {
     id: "settings_support",
     title: "Personalização, Modos Visuais e Suporte",
@@ -162,6 +200,18 @@ export const TOUR_TRACK_METAS: Record<TourTrackId, TourTrackMeta> = {
     iconName: "wallet",
     startRoute: "/",
     badgeLabel: "8 passos",
+  },
+  shared_finances: {
+    id: "shared_finances",
+    title: "Finanças Compartilhadas & Modo Família",
+    shortTitle: "Compartilhadas Completo",
+    description:
+      "Jornada completa de finanças colaborativas, divisão de despesas via Pix, termômetro de metas e orçamento familiar unificado.",
+    category: "shared",
+    stepsCount: 4,
+    iconName: "users",
+    startRoute: "/",
+    badgeLabel: "4 passos",
   },
   investments: {
     id: "investments",
@@ -207,6 +257,19 @@ export const TOUR_TRACK_GROUPS: readonly TourTrackGroup[] = [
     ],
   },
   {
+    category: "shared",
+    title: "Finanças Compartilhadas",
+    description:
+      "Racha de despesas com Pix, vaquinha coletiva e gestão colaborativa familiar.",
+    iconName: "users",
+    badgeLabel: "3 micro-tours",
+    tracks: [
+      TOUR_TRACK_METAS.finances_split,
+      TOUR_TRACK_METAS.finances_family,
+      TOUR_TRACK_METAS.finances_goals,
+    ],
+  },
+  {
     category: "investments",
     title: "Investimentos & Rebalanceamento",
     description:
@@ -234,7 +297,7 @@ export const TOUR_TRACK_GROUPS: readonly TourTrackGroup[] = [
 /**
  * Retorna os metadados de uma trilha específica.
  */
-export function getTourTrackMeta(trackId: TourTrackId): TourTrackMeta | undefined {
+export function getTourTrackMeta(trackId: AnyTourTrackId): TourTrackMeta | undefined {
   return TOUR_TRACK_METAS[trackId];
 }
 

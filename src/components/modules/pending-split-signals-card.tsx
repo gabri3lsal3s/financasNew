@@ -220,7 +220,10 @@ export function PendingSplitSignalsCard({ className }: PendingSplitSignalsCardPr
   };
 
   return (
-    <Card className={`border-border/80 bg-surface shadow-xs p-4 sm:p-5 space-y-4 ${className ?? ""}`}>
+    <Card
+      data-tour="split-pending-card"
+      className={`border-border/80 bg-surface shadow-xs p-4 sm:p-5 space-y-4 ${className ?? ""}`}
+    >
       {/* Cabeçalho de Destaque */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="flex items-center gap-3">

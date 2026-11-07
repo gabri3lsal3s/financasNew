@@ -1,4 +1,4 @@
-import type { TourTrackId } from "./types";
+import type { AnyTourTrackId } from "./types";
 
 /**
  * Parâmetros de busca (query params) que disparam abertura de modais ou assistentes guiados.
@@ -49,14 +49,15 @@ export function cleanPathWithoutInvasiveParams(currentPath?: string): string {
  * Identifica se a trilha informada corresponde a um Tour Completo / Jornada Consolidada.
  */
 export function isCompleteTourTrack(
-  track: TourTrackId | string | null | undefined,
+  track: AnyTourTrackId | string | null | undefined,
 ): boolean {
   if (!track) return false;
   return (
     track === "finances" ||
     track === "investments" ||
     track === "settings" ||
-    track === "settings_support"
+    track === "settings_support" ||
+    track === "shared_finances"
   );
 }
 
@@ -69,6 +70,8 @@ export function isCompleteTourTrack(
  *    - Tour Completo de Finanças Diárias ("finances"):
  *      Direciona para "/?novo=despesa", abrindo sobre o Dashboard o modal central
  *      LaunchWizard (inserção guiada do 1º lançamento de despesa/renda para iniciar a conta real).
+ *    - Tour Completo de Finanças Compartilhadas ("shared_finances"):
+ *      Direciona para "/familia", abrindo o painel compartilhado para iniciar a colaboração.
  *    - Tour Completo de Investimentos & Rebalanceamento ("investments"):
  *      Direciona para "/investments?novo=investimento", abrindo o modal de inserção de operação
  *      para cadastrar o primeiro ativo patrimonial.
@@ -77,13 +80,13 @@ export function isCompleteTourTrack(
  *
  * 2. Micro-Tours Individuais e Saída Exploratória sem Trilha (track === null):
  *    - Nos micro-tours pontuais (finances_overview, finances_wizard, finances_cards, finances_budgets,
- *      finances_insights, investments_overview, investments_assets, investments_targets, investments_aporte,
- *      app_native_apk):
+ *      finances_insights, finances_split, finances_family, finances_goals, investments_overview,
+ *      investments_assets, investments_targets, investments_aporte, app_native_apk):
  *      O usuário buscou uma consulta didática pontual. Ao concluir ("Começar" ou [X]), encerra SEM nenhum
  *      modal, permanecendo estritamente na rota atual limpa (sem query params invasivos como ?novo=...).
  */
 export function getTourHandoffDestination(
-  track: TourTrackId | string | null,
+  track: AnyTourTrackId | string | null,
   currentPath?: string,
 ): string {
   // Trilha 1 Completa: Finanças Diárias & Cartões Consolidado
@@ -91,12 +94,17 @@ export function getTourHandoffDestination(
     return "/?novo=despesa";
   }
 
-  // Trilha 2 Completa: Investimentos & Rebalanceamento Consolidado
+  // Trilha 2 Completa: Finanças Compartilhadas & Modo Família
+  if (track === "shared_finances") {
+    return "/familia";
+  }
+
+  // Trilha 3 Completa: Investimentos & Rebalanceamento Consolidado
   if (track === "investments") {
     return "/investments?novo=investimento";
   }
 
-  // Trilha 3 Completa: Configurações, Personalização & Suporte
+  // Trilha 4 Completa: Configurações, Personalização & Suporte
   if (track === "settings" || track === "settings_support") {
     return "/configuracoes?tab=suporte";
   }

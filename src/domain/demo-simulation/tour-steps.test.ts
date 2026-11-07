@@ -12,6 +12,10 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
     "finances_cards",
     "finances_budgets",
     "finances_insights",
+    "finances_split",
+    "finances_family",
+    "finances_goals",
+    "shared_finances",
     "investments_overview",
     "investments_assets",
     "investments_targets",
@@ -20,7 +24,7 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
     "app_native_apk",
   ];
 
-  it("contém todas as 13 trilhas e micro-tours mapeados em TOUR_STEPS", () => {
+  it("contém todas as 17 trilhas e micro-tours mapeados em TOUR_STEPS", () => {
     for (const trackId of allTrackIds) {
       expect(TOUR_STEPS[trackId]).toBeDefined();
       expect(Array.isArray(TOUR_STEPS[trackId])).toBe(true);
@@ -133,6 +137,60 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
       // Passo 3: Fechamento mensal em Relatórios
       expect(steps[2]?.targetSelector).toBe('[data-tour="reports-content"]');
       expect(steps[2]?.targetRoute).toBe("/relatorios");
+    });
+  });
+
+  describe("Micro-Tour Racha de Despesas com Pix (finances_split)", () => {
+    const steps = getTourSteps("finances_split");
+
+    it("possui 2 passos mapeando o Wizard Toggle e Cobrança Pix", () => {
+      expect(steps).toHaveLength(2);
+
+      // Passo 1: Toggle de Racha no Wizard
+      expect(steps[0]?.targetSelector).toBe('[data-tour="wizard-split-toggle"]');
+      expect(steps[0]?.targetRoute).toBe("/transacoes?novo=despesa");
+      expect(steps[0]?.preferredPlacement).toBe("top");
+
+      // Passo 2: Extrato com Card de Sinalizações Pendentes Pix
+      expect(steps[1]?.targetSelector).toBe('[data-tour="split-pending-card"]');
+      expect(steps[1]?.targetRoute).toBe("/");
+      expect(steps[1]?.preferredPlacement).toBe("bottom");
+    });
+  });
+
+  describe("Micro-Tour Modo Família Multi-Contas (finances_family)", () => {
+    const steps = getTourSteps("finances_family");
+
+    it("possui 2 passos mapeando Teto Compartilhado e Equilíbrio de Contas", () => {
+      expect(steps).toHaveLength(2);
+
+      // Passo 1: Card de Teto Orçamentário da Casa
+      expect(steps[0]?.targetSelector).toBe('[data-tour="family-ceiling-card"]');
+      expect(steps[0]?.targetRoute).toBe("/familia");
+      expect(steps[0]?.preferredPlacement).toBe("bottom");
+
+      // Passo 2: Card de Equilíbrio das Contas do Mês
+      expect(steps[1]?.targetSelector).toBe('[data-tour="family-balance-card"]');
+      expect(steps[1]?.targetRoute).toBe("/familia");
+      expect(steps[1]?.preferredPlacement).toBe("bottom");
+    });
+  });
+
+  describe("Micro-Tour Metas Coletivas & Vaquinha Pix (finances_goals)", () => {
+    const steps = getTourSteps("finances_goals");
+
+    it("possui 2 passos mapeando Banner de Metas Coletivas e Termômetro", () => {
+      expect(steps).toHaveLength(2);
+
+      // Passo 1: Banner de Nova Meta Coletiva
+      expect(steps[0]?.targetSelector).toBe('[data-tour="shared-goals-banner"]');
+      expect(steps[0]?.targetRoute).toBe("/orcamentos?tab=goals");
+      expect(steps[0]?.preferredPlacement).toBe("bottom");
+
+      // Passo 2: Card de Termômetro de Arrecadação
+      expect(steps[1]?.targetSelector).toBe('[data-tour="shared-goals-card"]');
+      expect(steps[1]?.targetRoute).toBe("/orcamentos?tab=goals");
+      expect(steps[1]?.preferredPlacement).toBe("top");
     });
   });
 
@@ -412,8 +470,63 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
       expect(new Set(ids).size).toBe(5);
     });
 
+    it("encadeia com precisão a sequência lógica do Tour Geral de Finanças Compartilhadas (4 passos)", () => {
+      const steps = getTourSteps("shared_finances");
+      expect(steps).toHaveLength(4);
+
+      const expectedSequence = [
+        {
+          order: 1,
+          id: "shared-wizard-split-toggle",
+          route: "/transacoes?novo=despesa",
+          selector: '[data-tour="wizard-split-toggle"]',
+          badge: "Passo 1 de 4",
+        },
+        {
+          order: 2,
+          id: "shared-split-pending-card",
+          route: "/",
+          selector: '[data-tour="split-pending-card"]',
+          badge: "Passo 2 de 4",
+        },
+        {
+          order: 3,
+          id: "shared-family-hub",
+          route: "/familia",
+          selector: '[data-tour="family-ceiling-card"]',
+          badge: "Passo 3 de 4",
+        },
+        {
+          order: 4,
+          id: "shared-goals-thermometer",
+          route: "/orcamentos?tab=goals",
+          selector: '[data-tour="shared-goals-card"]',
+          badge: "Passo 4 de 4",
+        },
+      ];
+
+      expectedSequence.forEach((expected, idx) => {
+        const step = steps[idx];
+        expect(step?.order).toBe(expected.order);
+        expect(step?.id).toBe(expected.id);
+        expect(step?.targetRoute).toBe(expected.route);
+        expect(step?.targetSelector).toBe(expected.selector);
+        expect(step?.badgeLabel).toBe(expected.badge);
+        expect(step?.title.length).toBeGreaterThan(0);
+        expect(step?.description.length).toBeGreaterThan(0);
+      });
+
+      const ids = steps.map((s) => s.id);
+      expect(new Set(ids).size).toBe(4);
+    });
+
     it("assegura que todos os passos possuem rotas válidas e seletores data-tour formatados", () => {
-      const generalTracks: TourTrackId[] = ["finances", "investments", "settings_support"];
+      const generalTracks: TourTrackId[] = [
+        "finances",
+        "investments",
+        "settings_support",
+        "shared_finances",
+      ];
 
       for (const trackId of generalTracks) {
         const steps = getTourSteps(trackId);

@@ -181,4 +181,19 @@ describe("Tabs", () => {
     expect(screen.getByText("Conteúdo de gastos")).toBeInTheDocument();
     expect(screen.getByText("Conteúdo de rendas")).toBeInTheDocument();
   });
+
+  it("renderiza badge opcional dentro do trigger da aba", () => {
+    const itemsWithBadge = [
+      {
+        value: "tab1",
+        label: "Aba 1",
+        badge: <span data-testid="test-badge">Destaque</span>,
+        content: <p>Conteúdo 1</p>,
+      },
+    ];
+
+    render(<Tabs value="tab1" onValueChange={vi.fn()} items={itemsWithBadge} />);
+    expect(screen.getByTestId("test-badge")).toBeInTheDocument();
+    expect(screen.getByText("Destaque")).toBeInTheDocument();
+  });
 });

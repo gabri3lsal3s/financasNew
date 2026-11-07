@@ -196,6 +196,78 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
     },
   ],
 
+  // Trilha Principal 3: Finanças Compartilhadas & Modo Família Consolidado (4 passos integrados)
+  shared_finances: [
+    {
+      id: "shared-wizard-split-toggle",
+      track: "shared_finances",
+      order: 1,
+      title: "Lançamento Compartilhado e Modo Família",
+      titleDesktop: "Lançamento Compartilhado e Modo Família",
+      description:
+        "No assistente de lançamento, divida contas com amigos gerando Pix Copia e Cola ou vincule despesas ao orçamento conjunto da família.",
+      contentDesktop:
+        "No assistente de lançamento inteligente, ative a divisão com amigos ou direcione o lançamento diretamente para a prestação de contas familiar.",
+      targetRoute: "/transacoes?novo=despesa",
+      targetSelector: '[data-tour="wizard-split-toggle"]',
+      preferredPlacement: "top",
+      spotlightPadding: 10,
+      badgeLabel: "Passo 1 de 4",
+      actionLabel: "Ver Rachas",
+    },
+    {
+      id: "shared-split-pending-card",
+      track: "shared_finances",
+      order: 2,
+      title: "Rachas Ativos e Cobrança Pix",
+      titleDesktop: "Divisões Pendentes e Cobrança Pix",
+      description:
+        "Monitore quem já pagou e abata cotas com um toque. Envie lembretes com link Pix dinâmico e mantenha os acertos em dia sem atrito.",
+      contentDesktop:
+        "Acompanhe o status de quitação de cada participante, envie lembretes com link Pix dinâmico e abata valores automaticamente no extrato.",
+      targetRoute: "/",
+      targetSelector: '[data-tour="split-pending-card"]',
+      preferredPlacement: "bottom",
+      spotlightPadding: 10,
+      badgeLabel: "Passo 2 de 4",
+      actionLabel: "Ver Modo Família",
+    },
+    {
+      id: "shared-family-hub",
+      track: "shared_finances",
+      order: 3,
+      title: "Teto Compartilhado e Equilíbrio da Casa",
+      titleDesktop: "Teto Compartilhado e Equilíbrio Familiar",
+      description:
+        "Acompanhe o teto de gastos do lar, a regra de equilíbrio proporcional de renda entre os membros e liquide acertos via Pix sem expor gastos privados.",
+      contentDesktop:
+        "Painel integrado com teto de despesas da casa, cálculo proporcional de compensação mensal e quitação rápida sem violação de privacidade.",
+      targetRoute: "/familia",
+      targetSelector: '[data-tour="family-ceiling-card"]',
+      preferredPlacement: "bottom",
+      spotlightPadding: 10,
+      badgeLabel: "Passo 3 de 4",
+      actionLabel: "Ver Metas Coletivas",
+    },
+    {
+      id: "shared-goals-thermometer",
+      track: "shared_finances",
+      order: 4,
+      title: "Termômetro Coletivo e Vaquinha Pix",
+      titleDesktop: "Metas Coletivas e Arrecadação Pix",
+      description:
+        "Crie vaquinhas com termômetro em tempo real, chave Pix oficial e página pública para arrecadações transparentes de viagens e eventos.",
+      contentDesktop:
+        "Acompanhe o termômetro de arrecadação em tempo real, compartilhe links públicos de doação e centralize o progresso financeiro das metas do grupo.",
+      targetRoute: "/orcamentos?tab=goals",
+      targetSelector: '[data-tour="shared-goals-card"]',
+      preferredPlacement: "top",
+      spotlightPadding: 10,
+      badgeLabel: "Passo 4 de 4",
+      actionLabel: "Concluir",
+    },
+  ],
+
   // Micro-Tour 1.0: Visão Geral Finanças & Saldo Livre (3 passos)
   finances_overview: [
     {
@@ -643,6 +715,102 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       preferredPlacement: "top",
       spotlightPadding: 10,
       badgeLabel: "Passo 5 de 5",
+      actionLabel: "Concluir",
+    },
+  ],
+
+  // Micro-Tour 2.0: Racha de Despesas com Pix (2 passos)
+  finances_split: [
+    {
+      id: "split-wizard-toggle",
+      track: "finances_split",
+      order: 1,
+      title: "Divisão Inteligente de Despesas",
+      description:
+        "Ative a divisão de contas no lançamento para calcular a cota de cada pessoa por centavo e gerar cobrança instantânea com Pix.",
+      targetRoute: "/transacoes?novo=despesa",
+      targetSelector: '[data-tour="wizard-split-toggle"]',
+      preferredPlacement: "top",
+      spotlightPadding: 10,
+      badgeLabel: "Passo 1 de 2",
+      actionLabel: "Ver Cobranças",
+    },
+    {
+      id: "split-pending-signals",
+      track: "finances_split",
+      order: 2,
+      title: "Gestão de Cotas e Cobrança Pix",
+      description:
+        "Acompanhe pagamentos sinalizados pelos amigos e confirme o recebimento para abater a sua parte contábil de forma automática.",
+      targetRoute: "/",
+      targetSelector: '[data-tour="split-pending-card"]',
+      preferredPlacement: "bottom",
+      spotlightPadding: 10,
+      badgeLabel: "Passo 2 de 2",
+      actionLabel: "Concluir",
+    },
+  ],
+
+  // Micro-Tour 2.1: Modo Família Multi-Contas (2 passos)
+  finances_family: [
+    {
+      id: "family-ceiling-tracking",
+      track: "finances_family",
+      order: 1,
+      title: "Teto Orçamentário da Família",
+      description:
+        "Defina o limite conjunto mensal da residência e monitore o ritmo consolidado de consumo para evitar surpresas no fim do mês.",
+      targetRoute: "/familia",
+      targetSelector: '[data-tour="family-ceiling-card"]',
+      preferredPlacement: "bottom",
+      spotlightPadding: 10,
+      badgeLabel: "Passo 1 de 2",
+      actionLabel: "Ver Equilíbrio",
+    },
+    {
+      id: "family-balance-settlement",
+      track: "finances_family",
+      order: 2,
+      title: "Equilíbrio de Contas e Compensação",
+      description:
+        "Visualize a proporção de gastos de cada participante, a divisão justa por renda e liquide as compensações com um clique via Pix.",
+      targetRoute: "/familia",
+      targetSelector: '[data-tour="family-balance-card"]',
+      preferredPlacement: "bottom",
+      spotlightPadding: 10,
+      badgeLabel: "Passo 2 de 2",
+      actionLabel: "Concluir",
+    },
+  ],
+
+  // Micro-Tour 2.2: Metas Coletivas & Vaquinha Pix (2 passos)
+  finances_goals: [
+    {
+      id: "goals-standalone-banner",
+      track: "finances_goals",
+      order: 1,
+      title: "Metas Coletivas e Vaquinhas Pix",
+      description:
+        "Crie campanhas colaborativas para viagens, presentes e eventos com link público transparente e prestação de contas aberta.",
+      targetRoute: "/orcamentos?tab=goals",
+      targetSelector: '[data-tour="shared-goals-banner"]',
+      preferredPlacement: "bottom",
+      spotlightPadding: 10,
+      badgeLabel: "Passo 1 de 2",
+      actionLabel: "Ver Termômetro",
+    },
+    {
+      id: "goals-thermometer-card",
+      track: "finances_goals",
+      order: 2,
+      title: "Termômetro em Tempo Real e Apoio Pix",
+      description:
+        "Acompanhe o termômetro de arrecadação da campanha, compartilhe a chave Pix e visualize as contribuições recebidas.",
+      targetRoute: "/orcamentos?tab=goals",
+      targetSelector: '[data-tour="shared-goals-card"]',
+      preferredPlacement: "top",
+      spotlightPadding: 10,
+      badgeLabel: "Passo 2 de 2",
       actionLabel: "Concluir",
     },
   ],

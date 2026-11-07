@@ -28,6 +28,17 @@ import {
   useSimulatedAllCardPayments,
   useSimulatedBudgets,
   useSimulatedPortfolioAssets,
+  useMyFamily,
+  useFamilyConsolidation,
+  useFamilyPortfolioSummary,
+  useMyPublicShares,
+  useDebts,
+  useFamilyMode,
+  useSimulatedFamily,
+  useSimulatedFamilyConsolidation,
+  useSimulatedPublicShares,
+  useSimulatedFamilyPortfolioSummary,
+  useSimulatedDebts,
 } from "@/state";
 
 // Mock das funções reais de repositório para verificar que NÃO são chamadas quando isDemoActive === true
@@ -41,6 +52,11 @@ const mockListExpensesByCard = vi.fn().mockResolvedValue([]);
 const mockListAllCardExpenses = vi.fn().mockResolvedValue([]);
 const mockListCardPayments = vi.fn().mockResolvedValue([]);
 const mockListAllCardPayments = vi.fn().mockResolvedValue([]);
+const mockGetMyFamily = vi.fn().mockResolvedValue(null);
+const mockGetFamilyConsolidation = vi.fn().mockResolvedValue(null);
+const mockGetFamilyPortfolioSummary = vi.fn().mockResolvedValue(null);
+const mockListMyPublicShares = vi.fn().mockResolvedValue([]);
+const mockListDebts = vi.fn().mockResolvedValue([]);
 
 vi.mock("@/data/repositories/expenses", () => ({
   listExpensesByMonth: (...args: unknown[]) => mockListExpensesByMonth(...args),
@@ -82,6 +98,20 @@ vi.mock("@/data/repositories/portfolio", () => ({
   listPortfolioSnapshots: vi.fn().mockResolvedValue([]),
   listPortfolioContributions: vi.fn().mockResolvedValue([]),
   listPortfolioDividends: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock("@/data/repositories/families", () => ({
+  getMyFamily: (...args: unknown[]) => mockGetMyFamily(...args),
+  getFamilyConsolidation: (...args: unknown[]) => mockGetFamilyConsolidation(...args),
+  getFamilyPortfolioSummary: (...args: unknown[]) => mockGetFamilyPortfolioSummary(...args),
+}));
+
+vi.mock("@/data/repositories/public-shares", () => ({
+  listMyPublicShares: (...args: unknown[]) => mockListMyPublicShares(...args),
+}));
+
+vi.mock("@/data/repositories/debts", () => ({
+  listDebts: (...args: unknown[]) => mockListDebts(...args),
 }));
 
 function createWrapper() {
@@ -206,6 +236,38 @@ describe("use-simulated-queries — Interceptação Segura de Queries no TanStac
 
       expect(result.current.data?.length).toBeGreaterThanOrEqual(6);
       expect(result.current.data?.some((a) => a.asset_class === "Renda Fixa")).toBe(true);
+    });
+
+    it("useSimulatedFamily, useSimulatedFamilyConsolidation, useSimulatedPublicShares, useSimulatedFamilyPortfolioSummary e useSimulatedDebts retornam dados consistentes", () => {
+      const { result: familyResult } = renderHook(() => useSimulatedFamily(), {
+        wrapper: createWrapper(),
+      });
+      const { result: consolidationResult } = renderHook(() => useSimulatedFamilyConsolidation("2026-11"), {
+        wrapper: createWrapper(),
+      });
+      const { result: splitSharesResult } = renderHook(() => useSimulatedPublicShares("split"), {
+        wrapper: createWrapper(),
+      });
+      const { result: goalSharesResult } = renderHook(() => useSimulatedPublicShares("goal_tracker"), {
+        wrapper: createWrapper(),
+      });
+      const { result: wealthResult } = renderHook(() => useSimulatedFamilyPortfolioSummary(), {
+        wrapper: createWrapper(),
+      });
+      const { result: debtsResult } = renderHook(() => useSimulatedDebts(), {
+        wrapper: createWrapper(),
+      });
+
+      expect(familyResult.current.data?.family.name).toBe("Família Silva");
+      expect(familyResult.current.data?.members.length).toBe(2);
+      expect(consolidationResult.current.data?.month).toBe("2026-11");
+      expect(consolidationResult.current.data?.expenses.length).toBeGreaterThan(0);
+      expect(splitSharesResult.current.data?.length).toBe(1);
+      expect(splitSharesResult.current.data?.[0]?.kind).toBe("split");
+      expect(goalSharesResult.current.data?.length).toBe(1);
+      expect(goalSharesResult.current.data?.[0]?.kind).toBe("goal_tracker");
+      expect(wealthResult.current.data?.total_invested_cents).toBeGreaterThan(0);
+      expect(debtsResult.current.data).toEqual([]);
     });
   });
 
@@ -399,6 +461,59 @@ describe("use-simulated-queries — Interceptação Segura de Queries no TanStac
 
       expect(allExp.current.data?.length).toBeGreaterThan(0);
       expect(allPay.current.data?.length).toBeGreaterThan(0);
+    });
+
+    it("useMyFamily, useFamilyConsolidation, useFamilyPortfolioSummary, useMyPublicShares, useDebts e useFamilyMode interceptam e retornam mocks sem chamar repositórios quando isDemoActive === true", () => {
+      act(() => {
+        startDemo("shared_finances");
+      });
+
+      const { result: family } = renderHook(() => useMyFamily(), {
+        wrapper: createWrapper(),
+      });
+      const { result: consolidation } = renderHook(() => useFamilyConsolidation("2026-11"), {
+        wrapper: createWrapper(),
+      });
+      const { result: portfolioSummary } = renderHook(() => useFamilyPortfolioSummary("fam-demo-silva"), {
+        wrapper: createWrapper(),
+      });
+      const { result: publicShares } = renderHook(() => useMyPublicShares("split"), {
+        wrapper: createWrapper(),
+      });
+      const { result: debts } = renderHook(() => useDebts(), {
+        wrapper: createWrapper(),
+      });
+      const { result: familyMode } = renderHook(() => useFamilyMode(), {
+        wrapper: createWrapper(),
+      });
+
+      expect(mockGetMyFamily).not.toHaveBeenCalled();
+      expect(mockGetFamilyConsolidation).not.toHaveBeenCalled();
+      expect(mockGetFamilyPortfolioSummary).not.toHaveBeenCalled();
+      expect(mockListMyPublicShares).not.toHaveBeenCalled();
+      expect(mockListDebts).not.toHaveBeenCalled();
+
+      expect(family.current.isLoading).toBe(false);
+      expect(family.current.isSuccess).toBe(true);
+      expect(family.current.data?.family.name).toBe("Família Silva");
+
+      expect(consolidation.current.isLoading).toBe(false);
+      expect(consolidation.current.isSuccess).toBe(true);
+      expect(consolidation.current.data?.expenses.length).toBeGreaterThan(0);
+
+      expect(portfolioSummary.current.isLoading).toBe(false);
+      expect(portfolioSummary.current.isSuccess).toBe(true);
+      expect(portfolioSummary.current.data?.total_invested_cents).toBeGreaterThan(0);
+
+      expect(publicShares.current.isLoading).toBe(false);
+      expect(publicShares.current.isSuccess).toBe(true);
+      expect(publicShares.current.data?.length).toBe(1);
+
+      expect(debts.current.isLoading).toBe(false);
+      expect(debts.current.isSuccess).toBe(true);
+      expect(debts.current.data).toEqual([]);
+
+      expect(familyMode.current.isFamilyModeEnabled).toBe(true);
     });
 
     it("transição em tempo de execução: desativar demo restaura reatividade para as queries reais", () => {

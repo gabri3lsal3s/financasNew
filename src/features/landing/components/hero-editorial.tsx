@@ -9,6 +9,8 @@ import {
   Zap,
   Smartphone,
   PieChart,
+  Share2,
+  Users,
 } from "lucide-react";
 import { Badge, buttonVariants } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -27,10 +29,54 @@ export function HeroEditorial() {
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
         <div className="flex flex-col items-center text-center">
-          {/* Badge de Destaque */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-semibold text-primary transition-all duration-200">
-            <Sparkles className="size-3.5 sm:size-4" aria-hidden="true" />
-            <span>Controle Financeiro Real · Faturas, Cobranças e Aportes sem Planilhas</span>
+          {/* Badge de Destaque & Pílulas de Recursos no Topo */}
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-semibold text-primary transition-all duration-200">
+              <Sparkles className="size-3.5 sm:size-4" aria-hidden="true" />
+              <span>Controle Financeiro Real · Faturas, Cobranças e Aportes sem Planilhas</span>
+            </div>
+
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <a
+                href="#financas-compartilhadas"
+                data-testid="hero-pill-racha"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById("financas-compartilhadas")?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="group focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-pill cursor-pointer"
+                title="Conhecer o Racha de Despesas com Pix"
+              >
+                <Badge
+                  variant="muted"
+                  size="md"
+                  className="border border-border/80 text-muted-foreground group-hover:text-foreground group-hover:border-primary/40 transition-colors cursor-pointer"
+                >
+                  <Share2 className="size-3 text-primary" aria-hidden="true" />
+                  <span>Racha com Pix</span>
+                </Badge>
+              </a>
+
+              <a
+                href="#financas-compartilhadas"
+                data-testid="hero-pill-family"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById("financas-compartilhadas")?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="group focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-pill cursor-pointer"
+                title="Conhecer o Modo Família Multi-Contas"
+              >
+                <Badge
+                  variant="muted"
+                  size="md"
+                  className="border border-border/80 text-muted-foreground group-hover:text-foreground group-hover:border-primary/40 transition-colors cursor-pointer"
+                >
+                  <Users className="size-3 text-primary" aria-hidden="true" />
+                  <span>Modo Família</span>
+                </Badge>
+              </a>
+            </div>
           </div>
 
           {/* Headline Principal Editorial Ampliada */}

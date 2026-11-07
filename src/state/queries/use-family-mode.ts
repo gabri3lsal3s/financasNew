@@ -1,5 +1,6 @@
 import { useUserPreferences } from "@/state/queries/use-user-preferences";
 import { useUpdateCustomSettings } from "@/state/mutations/use-preference-mutations";
+import { useDemoSession } from "@/state/demo-mode";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 
@@ -9,6 +10,7 @@ import { pushToast } from "@/services/toast";
  * Por padrão, o Modo Familiar inicia desabilitado (`false`).
  * Quando desabilitado, as divisões familiares (abas, filtros e switches) são
  * ocultadas na interface, simplificando o fluxo para uso estritamente individual.
+ * No modo demo / simulação, é automaticamente mantido ativo (`true`) para apresentação completa.
  *
  * Invariante de Dados:
  * Desativar o Modo Familiar NÃO remove nem altera despesas ou receitas previamente
@@ -16,14 +18,16 @@ import { pushToast } from "@/services/toast";
  * totalmente visíveis no extrato consolidado.
  */
 export function useFamilyMode() {
+  const { isDemoActive } = useDemoSession();
   const preferencesQuery = useUserPreferences();
   const updateSettingsMutation = useUpdateCustomSettings();
 
-  const isFamilyModeEnabled = Boolean(
-    preferencesQuery.data?.custom_settings?.familyModeEnabled,
-  );
+  const isFamilyModeEnabled = isDemoActive
+    ? true
+    : Boolean(preferencesQuery.data?.custom_settings?.familyModeEnabled);
 
   const toggleFamilyMode = async (enabled: boolean): Promise<void> => {
+    if (isDemoActive) return;
     triggerSensory("toggle");
     try {
       await updateSettingsMutation.mutateAsync({

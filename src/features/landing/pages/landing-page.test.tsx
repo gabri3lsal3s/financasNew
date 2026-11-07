@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "@/app/theme-provider";
 import { LandingPage } from "@/features/landing";
 
@@ -43,18 +43,92 @@ describe("LandingPage", () => {
     expect(screen.getAllByText("Aporte Calibrado do Mês").length).toBeGreaterThan(0);
   });
 
-  it("renderiza as histórias editoriais do produto (Caixa Real, Cartões e Aportes)", () => {
+  it("renderiza as pílulas de destaque no topo do Hero (Racha com Pix e Modo Família) e permite navegar até o Eixo 4", async () => {
+    const user = userEvent.setup();
+    const scrollIntoViewMock = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
+
+    renderLanding();
+    const pillRacha = screen.getByTestId("hero-pill-racha");
+    const pillFamilia = screen.getByTestId("hero-pill-family");
+
+    expect(pillRacha).toBeInTheDocument();
+    expect(pillRacha).toHaveTextContent("Racha com Pix");
+    expect(pillRacha).toHaveAttribute("href", "#financas-compartilhadas");
+
+    expect(pillFamilia).toBeInTheDocument();
+    expect(pillFamilia).toHaveTextContent("Modo Família");
+    expect(pillFamilia).toHaveAttribute("href", "#financas-compartilhadas");
+
+    await user.click(pillRacha);
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: "smooth" });
+
+    scrollIntoViewMock.mockClear();
+    await user.click(pillFamilia);
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: "smooth" });
+  });
+
+  it("renderiza as histórias editoriais do produto (Caixa Real, Cartões, Aportes e Finanças Compartilhadas)", () => {
     renderLanding();
 
     expect(
-      screen.getByRole("heading", { name: /Três eixos coordenados para sustentação e expansão do seu patrimônio/i }),
+      screen.getByRole("heading", { name: /Quatro eixos coordenados para sustentação e expansão do seu patrimônio/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Eixo 1 · Liquidez & Caixa Real/i)).toBeInTheDocument();
     expect(screen.getByText(/Eixo 2 · Linha Temporal & Cartões/i)).toBeInTheDocument();
     expect(screen.getByText(/Eixo 3 · Vetor Patrimonial & Aportes/i)).toBeInTheDocument();
+    expect(screen.getByText(/Eixo 4 · Finanças Compartilhadas & Pix/i)).toBeInTheDocument();
     expect(screen.getByText(/O fim da ilusão de saldo e da ansiedade de fim de mês/i)).toBeInTheDocument();
     expect(screen.getByText(/Nunca mais seja pego de surpresa por parcelas esquecidas/i)).toBeInTheDocument();
     expect(screen.getByText(/Alocação matemática de aportes e blindagem contra impostos/i)).toBeInTheDocument();
+    expect(screen.getByText(/Vida financeira compartilhada sem constrangimento e sem planilhas/i)).toBeInTheDocument();
+  });
+
+  it("renderiza o Eixo 4 — Finanças Compartilhadas & Pix com os 3 cards visuais ricos e permite alternar abas", async () => {
+    const user = userEvent.setup();
+    renderLanding();
+
+    // Valida os 3 itens do bloco editorial
+    expect(screen.getByText(/Card de Racha de Despesas com cópia de Pix e botão de WhatsApp/i)).toBeInTheDocument();
+    expect(screen.getByText(/Card de Termômetro de Vaquinha Coletiva em tempo real/i)).toBeInTheDocument();
+    expect(screen.getByText(/Card de Orçamento Familiar Seguro \(divisão 50\/50 e acerto sem atrito\)/i)).toBeInTheDocument();
+
+    // 1. Card de Racha de Despesas ativo inicialmente
+    expect(screen.getByTestId("card-racha")).toBeVisible();
+    expect(screen.getByText("Churrasco de Confraternização")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Copiar Pix/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Cobrar no WhatsApp/i })).toBeInTheDocument();
+
+    // Interação de cópia do Pix e WhatsApp
+    await user.click(screen.getByRole("button", { name: /Copiar Pix/i }));
+    expect(screen.getByText("Pix Copiado")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Cobrar no WhatsApp/i }));
+    expect(screen.getByText("Lembrete Enviado")).toBeInTheDocument();
+
+    // 2. Alterna para Card de Termômetro de Vaquinha Coletiva
+    const vaquinhaTab = screen.getByRole("tab", { name: /Vaquinha Coletiva/i });
+    await user.click(vaquinhaTab);
+
+    expect(screen.getByTestId("card-vaquinha")).toBeVisible();
+    expect(screen.getByText("Viagem de Fim de Ano em Família")).toBeInTheDocument();
+    expect(screen.getByText("75% Concluído")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Copiar Chave Pix/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Copiar Chave Pix/i }));
+    expect(screen.getByText("Chave Pix Copiada")).toBeInTheDocument();
+
+    // 3. Alterna para Card de Orçamento Familiar Seguro
+    const familiaTab = screen.getByRole("tab", { name: /Orçamento Familiar/i });
+    await user.click(familiaTab);
+
+    expect(screen.getByTestId("card-familia")).toBeVisible();
+    expect(screen.getByText("Gestão do Lar · Família Silva")).toBeInTheDocument();
+    expect(screen.getByText("Divisão 50% / 50%")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Liquidar Acerto Pix/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Liquidar Acerto Pix/i }));
+    expect(screen.getByText("Acerto Quitado")).toBeInTheDocument();
   });
 
   it("renderiza o bloco de narrativa editorial 'Captura Invisível com Inteligência Local' com os caminhos 1, 2 e mágica semântica (Fase 6 — Tarefa 6.1)", () => {

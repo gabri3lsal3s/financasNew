@@ -12,12 +12,20 @@ import type {
   PortfolioContribution,
   PortfolioDividend,
   PortfolioTransaction,
+  PublicShare,
+  FamilyConsolidationResult,
+  MyFamilyData,
 } from "@/types";
 
 /**
  * Categorias principais dos grupos de trilhas e micro-tours de demonstração.
  */
-export type TourTrackCategory = "native" | "finances" | "investments" | "settings";
+export type TourTrackCategory =
+  | "native"
+  | "finances"
+  | "investments"
+  | "settings"
+  | "shared";
 
 /**
  * Trilhas consolidadas originais mantidas para compatibilidade retroativa.
@@ -41,9 +49,26 @@ export type MicroTourTrackId =
   | "app_native_apk";
 
 /**
+ * Trilhas e micro-tours focados em finanças compartilhadas, racha de despesas, metas coletivas e modo família.
+ */
+export type SharedTourTrackId =
+  | "shared_finances"
+  | "finances_split"
+  | "finances_family"
+  | "finances_goals";
+
+/**
  * Identificador unificado de todas as trilhas e micro-tours suportados.
  */
-export type TourTrackId = LegacyTourTrackId | MicroTourTrackId;
+export type TourTrackId =
+  | LegacyTourTrackId
+  | MicroTourTrackId
+  | SharedTourTrackId;
+
+/**
+ * Identificador abrangente de qualquer trilha ou micro-tour (pessoal, investimentos, nativa ou compartilhada).
+ */
+export type AnyTourTrackId = TourTrackId;
 
 /**
  * Nomes semânticos dos ícones Lucide associados às trilhas.
@@ -60,14 +85,16 @@ export type TourIconName =
   | "target"
   | "calculator"
   | "settings"
-  | "shield";
+  | "shield"
+  | "users"
+  | "share-2";
 
 /**
  * Metadados descritivos canônicos de cada micro-tour ou trilha.
  */
 export interface TourTrackMeta {
   /** Identificador único da trilha / micro-tour */
-  id: TourTrackId;
+  id: AnyTourTrackId;
   /** Título legível da trilha */
   title: string;
   /** Título conciso para badges e cards compactos */
@@ -144,6 +171,9 @@ export interface DailyFinancesDataset {
   cards: CreditCard[];
   budgets: Budget[];
   cardPayments: CardPayment[];
+  publicShares: PublicShare[];
+  family: MyFamilyData | null;
+  familyConsolidation: FamilyConsolidationResult | null;
 }
 
 export interface InvestmentsDataset {

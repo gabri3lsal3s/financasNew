@@ -311,7 +311,10 @@ export function StepDetails({
       </div>
 
       {isExpense && !state.recurring ? (
-        <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-4">
+        <div
+          data-tour="wizard-split-toggle"
+          className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-4"
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users className="size-4 text-muted-foreground" aria-hidden="true" />

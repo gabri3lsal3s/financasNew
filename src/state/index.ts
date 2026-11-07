@@ -243,6 +243,12 @@ export {
   useSimulatedAllocationTargets,
   useSimulatedGroupTargets,
   useSimulatedOnboardingCounts,
+  useSimulatedFamily,
+  useSimulatedFamilyConsolidation,
+  useSimulatedPublicShares,
+  useSimulatedFamilyPortfolioSummary,
+  useSimulatedDebts,
+  useSimulatedIncomeGoals,
 } from "./queries/use-simulated-queries";
 
 export { useUserSubscription } from "./queries/use-user-subscription";
