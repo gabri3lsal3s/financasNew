@@ -1,16 +1,16 @@
 {
-  "version": "3.0.6",
-  "versionCode": 30,
-  "releaseDate": "2026-11-07T17:54:35Z",
-  "minSupportedVersion": "3.0.6",
+  "version": "3.0.7",
+  "versionCode": 31,
+  "releaseDate": "2026-11-07T21:33:44Z",
+  "minSupportedVersion": "3.0.7",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "0b86083d864188d407e69858c138d9f3c827411d5ee93b515035cf79e7a68709",
-  "fileSizeBytes": 12035699,
+  "sha256": "3dbdc7a49a4578cae8a9db33717bf5c86ae587e9d5d5d4c256ff619802d598c6",
+  "fileSizeBytes": 12034035,
   "changelog": [
-    "Motor Universal de Comprovantes e Cupons Fiscais (NFC-e, SAT, ECF, PDV)",
-    "Priorização Bottom-Up de totais liquidados soberanos com matriz multicritério",
-    "Extração estruturada de itens de cupom fiscal com visualização tabular em notas",
-    "Memória adaptativa de aprendizado contínuo para estabelecimentos e categorias",
-    "Suporte a comprovantes e quitação de faturas de cartão de crédito"
+    "Experiência canônica unificada: cadastro direto e acesso irrestrito ao módulo de Investimentos",
+    "Tour guiado modernizado com spotlight adaptativo suave e zero oscilação",
+    "Simulação pedagógica com isolamento estrito de dados e apresentação ilustrada de divisão de despesas",
+    "Motor de Handoff com avanço modular contínuo entre blocos temáticos",
+    "Saneamento completo de pendências técnicas e hardening de estabilidade"
   ]
 }

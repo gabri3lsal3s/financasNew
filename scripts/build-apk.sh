@@ -161,11 +161,11 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Motor Universal de Comprovantes e Cupons Fiscais (NFC-e, SAT, ECF, PDV)",
-    "Priorização Bottom-Up de totais liquidados soberanos com matriz multicritério",
-    "Extração estruturada de itens de cupom fiscal com visualização tabular em notas",
-    "Memória adaptativa de aprendizado contínuo para estabelecimentos e categorias",
-    "Suporte a comprovantes e quitação de faturas de cartão de crédito"
+    "Experiência canônica unificada: cadastro direto e acesso irrestrito ao módulo de Investimentos",
+    "Tour guiado modernizado com spotlight adaptativo suave e zero oscilação",
+    "Simulação pedagógica com isolamento estrito de dados e apresentação ilustrada de divisão de despesas",
+    "Motor de Handoff com avanço modular contínuo entre blocos temáticos",
+    "Saneamento completo de pendências técnicas e hardening de estabilidade"
   ]
 }
 EOF
