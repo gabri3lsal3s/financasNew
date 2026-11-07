@@ -30,6 +30,14 @@ export interface ParsedInstallmentData {
   isNewFinancedPurchase: boolean;
 }
 
+export interface ReceiptItem {
+  code?: string;
+  description: string;
+  quantity: number;
+  unitPriceCents: number;
+  totalPriceCents: number;
+}
+
 export interface UniversalReceiptData {
   id: string;
   kind: ReceiptKind;
@@ -57,5 +65,9 @@ export interface UniversalReceiptData {
   barcodeOrDigitableLine?: string;
   dueDate?: string;
   nfeAccessKey?: string;
+  items?: ReceiptItem[];
+  discountCents?: number;
+  netAmountCents?: number;
+  feeCents?: number;
   rawCleanText: string;
 }

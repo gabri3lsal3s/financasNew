@@ -190,24 +190,90 @@ export function parsePixReceipt(rawText: string): UniversalReceiptData | null {
   }
 
   // 1. Extração do recebedor / favorecido
-  const recipientMatch =
-    /(?:(?:Dados\s+(?:do\s+Recebedor|de\s+quem\s+recebeu|de\s+destino|do\s+destino|do\s+favorecido|do\s+benefici[áa]rio)|Destino|Dados\s+do\s+Destinat[áa]rio)[\s\S]*?(?:Nome|Raz[ãa]o\s+Social):\s*([^\n\r,]+)|(?:Para|Destinat[áa]rio|Nome\s+do\s+recebedor|Recebedor|Pago\s+para|Benefici[áa]rio|Favorecido|Quem\s+recebeu|Destino)\s*[:=]\s*([^\n\r,]+))/i.exec(
+  let rawRecipient = "";
+
+  // 1.1 Bloco com quebra de linha (ex: "Favorecido:\nNome: FULANO" ou "Para:\nNome: FULANO")
+  const recipientBlockMatch =
+    /(?:^|\n)\s*(?:(?:Dados\s+(?:do\s+Recebedor|de\s+quem\s+recebeu|de\s+destino|do\s+destino|do\s+favorecido|do\s+benefici[áa]rio)|Destino|Dados\s+do\s+Destinat[áa]rio|Quem\s+recebeu|Favorecido|Benefici[áa]rio|Destinat[áa]rio|Recebedor|Para)\s*[:=]?)\s*\n\s*(?:Nome(?:\s+completo)?|Raz[ãa]o\s+Social)\s*[:=]\s*([^\n\r,]+)/i.exec(
       rawText,
     );
-  let rawRecipient = recipientMatch
-    ? (recipientMatch[1] || recipientMatch[2] || "").trim()
-    : "";
-  rawRecipient = rawRecipient.replace(/^(?:Nome|Raz[ãa]o\s+Social)\s*[:=]?\s*/i, "").trim();
+  if (recipientBlockMatch && recipientBlockMatch[1]) {
+    rawRecipient = recipientBlockMatch[1].trim();
+  }
+
+  // 1.2 Linha direta (ex: "Favorecido: FULANO", "Para: FULANO", "Recebedor: FULANO")
+  if (!rawRecipient) {
+    const directRecipientMatch =
+      /(?:^|\n)\s*(?:Nome\s+do\s+recebedor|Recebedor|Pago\s+para|Benefici[áa]rio|Favorecido|Destinat[áa]rio|Para)\s*[:=]\s*([^\n\r,]+)/i.exec(
+        rawText,
+      );
+    if (directRecipientMatch && directRecipientMatch[1]) {
+      const candidate = directRecipientMatch[1].trim();
+      if (!/^(?:d[ée]bito|cr[ée]dito|conta|ag[êe]ncia)/i.test(candidate)) {
+        rawRecipient = candidate;
+      }
+    }
+  }
+
+  // 1.3 Fallback abrangente
+  if (!rawRecipient) {
+    const recipientMatch =
+      /(?:(?:Dados\s+(?:do\s+Recebedor|de\s+quem\s+recebeu|de\s+destino|do\s+destino|do\s+favorecido|do\s+benefici[áa]rio)|Destino|Dados\s+do\s+Destinat[áa]rio|Quem\s+recebeu)[\s\S]*?(?:Nome|Raz[ãa]o\s+Social)\s*[:=\n\s]\s*([^\n\r,]+)|(?:Destinat[áa]rio|Nome\s+do\s+recebedor|Recebedor|Pago\s+para|Benefici[áa]rio|Favorecido|Quem\s+recebeu)\s*[:=\n]\s*([^\n\r,]+))/i.exec(
+        rawText,
+      );
+    rawRecipient = recipientMatch ? (recipientMatch[1] || recipientMatch[2] || "").trim() : "";
+  }
+  rawRecipient = rawRecipient.replace(/^(?:Nome|Raz[ãa]o\s+Social)\s*[:=\s]?\s*/i, "").trim();
 
   // 2. Extração do pagador / remetente
-  const payerMatch =
-    /(?:(?:Dados\s+(?:do\s+Pagador|de\s+quem\s+(?:pagou|enviou)|de\s+origem|da\s+origem)|Origem|Quem\s+te\s+enviou)[\s\S]*?(?:Nome|Raz[ãa]o\s+Social):\s*([^\n\r,]+)|(?:Quem\s+te\s+enviou|Pagador|De|Origem|Nome\s+do\s+pagador|Remetente)\s*[:=]\s*([^\n\r,]+))/i.exec(
+  let rawPayer = "";
+
+  // 2.1 Bloco com quebra de linha (ex: "Pagador:\nNome: FULANO" ou "De:\nNome: FULANO")
+  const payerBlockMatch =
+    /(?:^|\n)\s*(?:(?:Dados\s+(?:do\s+Pagador|de\s+quem\s+(?:pagou|enviou)|de\s+origem|da\s+origem)|Origem|Quem\s+te\s+enviou|Quem\s+pagou|Pagador|Remetente|De)\s*[:=]?)\s*\n\s*(?:Nome(?:\s+completo)?|Raz[ãa]o\s+Social)\s*[:=]\s*([^\n\r,]+)/i.exec(
       rawText,
     );
-  let rawPayer = payerMatch
-    ? (payerMatch[1] || payerMatch[2] || "").trim()
-    : "";
-  rawPayer = rawPayer.replace(/^(?:Nome|Raz[ãa]o\s+Social)\s*[:=]?\s*/i, "").trim();
+  if (payerBlockMatch && payerBlockMatch[1]) {
+    rawPayer = payerBlockMatch[1].trim();
+  }
+
+  // 2.2 Linha direta (ex: "Pagador: FULANO", "Remetente: FULANO", "De: FULANO")
+  if (!rawPayer) {
+    const directPayerMatch =
+      /(?:^|\n)\s*(?:Quem\s+te\s+enviou|Nome\s+do\s+pagador|Pagador|Remetente|Origem|De)\s*[:=]\s*([^\n\r,]+)/i.exec(
+        rawText,
+      );
+    if (directPayerMatch && directPayerMatch[1]) {
+      const candidate = directPayerMatch[1].trim();
+      if (!/^(?:d[ée]bito|cr[ée]dito|conta|ag[êe]ncia)/i.test(candidate)) {
+        rawPayer = candidate;
+      }
+    }
+  }
+
+  // 2.3 Fallback abrangente
+  if (!rawPayer) {
+    const payerMatch =
+      /(?:(?:Dados\s+(?:do\s+Pagador|de\s+quem\s+(?:pagou|enviou)|de\s+origem|da\s+origem)|Origem|Quem\s+te\s+enviou|Quem\s+pagou)[\s\S]*?(?:Nome|Raz[ãa]o\s+Social)\s*[:=\n\s]\s*([^\n\r,]+)|(?:Quem\s+te\s+enviou|Pagador|Origem|Nome\s+do\s+pagador|Remetente)\s*[:=\n]\s*([^\n\r,]+))/i.exec(
+        rawText,
+      );
+    rawPayer = payerMatch ? (payerMatch[1] || payerMatch[2] || "").trim() : "";
+  }
+  rawPayer = rawPayer.replace(/^(?:Nome|Raz[ãa]o\s+Social)\s*[:=\s]?\s*/i, "").trim();
+
+  // Tratamento especial para formato Iti ("de\nAna Paula...\npara\nAna Paula...")
+  if (!rawRecipient) {
+    const itiParaMatch = /(?:^|\n)para\s*\n\s*([A-Za-zÀ-ÿ\s]{3,40})/i.exec(rawText);
+    if (itiParaMatch && itiParaMatch[1]) {
+      rawRecipient = itiParaMatch[1].trim();
+    }
+  }
+  if (!rawPayer) {
+    const itiDeMatch = /(?:^|\n)de\s*\n\s*([A-Za-zÀ-ÿ\s]{3,40})/i.exec(rawText);
+    if (itiDeMatch && itiDeMatch[1]) {
+      rawPayer = itiDeMatch[1].trim();
+    }
+  }
 
   const recipient = cleanMerchantName(
     rawRecipient || (nature === "expense" ? extractMerchantOrRecipient(rawText) : ""),

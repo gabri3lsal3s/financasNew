@@ -48,6 +48,7 @@ export interface ParsedBankTransaction {
   taxId?: string;
   payerName?: string;
   recipientName?: string;
+  notes?: string;
   source?: "receipt" | "notification";
 }
 
@@ -467,6 +468,7 @@ export function extractCardLastDigits(text: string): string | undefined {
 
   const patterns = [
     /\b(?:final|terminad[ao]\s+em|terminando\s+em)\s*(?:n[ºo°.]\s*|n[ºo°]?\.?\s*)?[:.-]?\s*\(?(\d{4})\)?(?!\s*,\d{2})/i,
+    /(?:n[úu]mero\s+do\s+cart[ãa]o|n[ºo°]\s+do\s+cart[ãa]o)\s*(?:[A-Za-z*•\s.-]{0,15})\s*(\d{4})\b(?!\s*,\d{2})/i,
     /(?:cart[ãa]o|card|[•*.-]{2,4})\s*(?:final\s*)?(?:n[ºo°.]\s*|n[ºo°]?\.?\s*)?[:.-]?\s*\(?(\d{4})\)?(?!\s*,\d{2})/i,
     /(?:mastercard|visa|elo|amex|american\s+express)\s*(?:[A-Za-zÀ-ÿ]+\s+)?(?:[•*.-]{2,4}\s*)?[:.-]?\s*\(?(\d{4})\)?(?!\s*,\d{2})/i,
     /\b(\d{4})\b(?!\s*,\d{2})\s*(?:aprovad[ao]|utilizad[ao]|usad[ao])/i,
@@ -2005,14 +2007,22 @@ export function parseBankNotification(
  * Blacklist semântica específica para comprovantes compartilhados.
  * Descarta recusas, falhas, cancelamentos, 2FA e propagandas,
  * mas preserva agendamentos legítimos de pagamentos.
+ * Quando isManualUpload for true, permite comprovantes de faturas e recibos manuais.
  */
-export function isBlacklistedReceipt(rawText: string): boolean {
+export function isBlacklistedReceipt(rawText: string, isManualUpload = false): boolean {
   if (!rawText) return true;
 
-  // Rejeita falhas, recusas, cancelamentos e tentativas não autorizadas
+  // Rejeita falhas, recusas, bloqueios e saldo insuficiente
   const failureRegex =
-    /\b(?:recusad[ao]|n[ãa]o\s+autorizad[ao]|bloquead[ao]|cancelad[ao]|transa[çc][ãa]o\s+cancelada|saldo\s+insuficiente|limite\s+insuficiente|falha\s+no\s+pagamento)\b/i;
+    /\b(?:recusad[ao]|n[ãa]o\s+autorizad[ao]|bloquead[ao]|saldo\s+insuficiente|limite\s+insuficiente|falha\s+no\s+pagamento)\b/i;
   if (failureRegex.test(rawText)) return true;
+
+  // Se não for upload manual, também rejeita cancelamentos
+  if (!isManualUpload) {
+    if (/\b(?:cancelad[ao]|transa[çc][ãa]o\s+cancelada)\b/i.test(rawText)) {
+      return true;
+    }
+  }
 
   // Rejeita códigos de verificação / 2FA / tokens
   const authRegex =

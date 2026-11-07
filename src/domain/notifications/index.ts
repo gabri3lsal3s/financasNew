@@ -15,5 +15,7 @@ export * from "./bank-slip-parser";
 export * from "./danfe-nfc-parser";
 export * from "./wire-transfer-parser";
 export * from "./universal-receipt-parser";
+export * from "./receipt-item-extractor";
+export * from "./receipt-learning";
 export * from "./payment-method-resolver";
 export * from "./income-category-resolver";

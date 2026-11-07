@@ -62,7 +62,7 @@ describe("danfe-nfc-parser — Parser Especializado de Cupons Fiscais (NFC-e / S
     expect(parsed?.amountCents).toBe(24890);
     expect(parsed?.paymentMethod).toBe("credit_card");
     expect(parsed?.date).toBe("2026-10-24");
-    expect(parsed?.merchantOrBeneficiary).toContain("SUPERMERCADOS BH");
+    expect(parsed?.merchantOrBeneficiary).toMatch(/supermercados bh/i);
     expect(parsed?.taxId).toBe("04641376000136");
     expect(parsed?.nfeAccessKey).toBe(
       "31261004641376000136650010000543211001234567",
@@ -102,7 +102,7 @@ describe("danfe-nfc-parser — Parser Especializado de Cupons Fiscais (NFC-e / S
 
       const parsed = parseDanfeNfcReceipt(multiItemReceipt);
       expect(parsed?.amountCents).toBe(9000);
-      expect(parsed?.merchantOrBeneficiary).toBe("DROGARIA SAO PAULO");
+      expect(parsed?.merchantOrBeneficiary).toMatch(/drogaria s[ãa]o paulo/i);
       expect(parsed?.taxId).toBe("61412110000155");
     });
 
@@ -139,6 +139,99 @@ describe("danfe-nfc-parser — Parser Especializado de Cupons Fiscais (NFC-e / S
         VALOR A PAGAR R$ 35,50
       `;
       expect(extractDanfeIssuer(raw)).toBe("PANIFICADORA BELLA VISTA");
+    });
+  });
+
+  describe("Portão de Qualidade 2 & 3 — Casos Reais Críticos de Cupons Fiscais", () => {
+    it("Rede Moleza: prioriza 27000 centavos sobre itens de 19,90 e identifica dinheiro", () => {
+      const raw = `
+        ]
+        | o AA
+        CNPJ 88 709 S63/0001-02 | E.. 0962841714
+        AVASSIS BRASIL, 2090 - CRISTO REDENTOR - Porto Alegre - RS
+        Documento Auxiliar da Nota Fiscal Eletronica de Consumidor
+        código qtde UN VI Unie VI. Total
+        3834 BOLAS COURO 2UN 1990 3980
+        Gbi69 FILTROLINHASTOM 6UN 3590 21540
+        5501 PULVERIZADOR 3UN 786 2397
+        Quantidade Total de Itens: 3
+        Valor Total R$. 27917
+        Desconto R$ 217
+        Valor a Pagar R$: 270,00
+        FORMA PAGAMENTO VALOR PAGO R$
+        Dinheiro 270,00
+      `;
+
+      const cents = extractDanfeTotalCents(raw);
+      expect(cents).toBe(27000); // R$ 270,00
+
+      const parsed = parseDanfeNfcReceipt(raw);
+      expect(parsed?.amountCents).toBe(27000);
+      expect(parsed?.paymentMethod).toBe("cash");
+      expect(parsed?.items?.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("Comprovante Adicional: prioriza 4300 centavos sobre cerveja de 6,00", () => {
+      const raw = `
+        EMPRESA TESTE
+        RUA DAS OLIVEIRAS, 1234
+        COMPROVANTE ADICIONAL DE VENDA
+        38 CERVEJA LONGNECK UN
+        1,000 x R$ 6,000 => R$ 6,000
+        139 GATORADE UN
+        1,000 x R$ 4,500 => R$ 4,500
+        Total R$ 43,00
+        Descontos R$ ---> 9,0
+        Liquido R$ > 43,00
+        DINHEIRO 43,0
+      `;
+
+      const cents = extractDanfeTotalCents(raw);
+      expect(cents).toBe(4300); // R$ 43,00
+
+      const parsed = parseDanfeNfcReceipt(raw);
+      expect(parsed?.amountCents).toBe(4300);
+      expect(parsed?.paymentMethod).toBe("cash");
+    });
+
+    it("Popularmed: prioriza valor líquido 139,52 sobre total bruto de 213,17 e desconto de 73,65", () => {
+      const raw = `
+        sf POPULARES, FARMACIAS
+        MELLO E SIMON COMERCIO DE MEDICAMENTOS LTDA
+        DOCUMENTO AUXILIAR DA NOTA FISCAL DE CONSUMIDOR ELETRÔNICA
+        QTD TOTAL DE ITENS 3
+        VALOR TOTAL R$ 213,17
+        DESCONTO R$ 73,65
+        TOTAL APAGAR R$ 139,52
+        FORMA DE PAGAMENTO VALOR PAGO
+        Cartão de débito 139,52
+      `;
+
+      const cents = extractDanfeTotalCents(raw);
+      expect(cents).toBe(13952); // R$ 139,52
+
+      const parsed = parseDanfeNfcReceipt(raw);
+      expect(parsed?.amountCents).toBe(13952);
+      expect(parsed?.paymentMethod).toBe("debit");
+    });
+
+    it("Cásiopea Beauty: ticket de PDV com cifrão simples e cartão de crédito", () => {
+      const raw = `
+        PDV Teste 1
+        Cásiopea Beauty
+        Juramento 5100, BH
+        Subtotal (1 produto): $3.990,00
+        TOTAL $3.990,00
+        Meio de pagamento
+        Cartão de crédito $3.990,00
+      `;
+
+      const cents = extractDanfeTotalCents(raw);
+      expect(cents).toBe(399000); // R$ 3.990,00
+
+      const parsed = parseDanfeNfcReceipt(raw);
+      expect(parsed?.amountCents).toBe(399000);
+      expect(parsed?.paymentMethod).toBe("credit_card");
     });
   });
 });

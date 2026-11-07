@@ -1,5 +1,28 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.06** registra a **Conclusão e Homologação do Plano 10 — Motor Universal de Comprovantes, Cupons Fiscais e Aprendizado Contínuo** (2026-11-07):
+> - **(1) Limpeza e Normalização Óptica de OCR (`ocr-cleaner.ts` & `web-ocr.ts`)**:
+>   - Binarização adaptativa de Otsu (`calculateOtsuThreshold`) para maximização de variância interclasses em fotos de celular com sombras ou iluminação irregular;
+>   - Higienização profunda de ruídos de fitas térmicas, prefixos monetários danificados (`B$`, `RS`, `P$`, `8$`), reparo de quantias fraturadas (`1. 250, 00` $\rightarrow$ `1.250,00`), termos aglutinados (`ValoraPagar R$` $\rightarrow$ `Valor a Pagar R$`) e conectores de PDV (`-->`, `::`, `Total = R$`).
+> - **(2) Priorização Bottom-Up e Matriz de Pontuação Multicritério Ponderada (`danfe-nfc-parser.ts`)**:
+>   - Varredura estrita do fim para o início (Bottom-Up) com pontuação multicritério ponderada: Peso 100 (Liquidação Máxima: `VALOR A PAGAR`, `TOTAL A PAGAR`, `VALOR LIQUIDO`), Peso 90 (Total Geral: `VALOR TOTAL`, `TOTAL R$`), Peso 80 (Formas de Pagamento: `Dinheiro`, `Cartão Débito/Crédito`, `Pix`), Peso 50 (Subtotal);
+>   - Bônus posicional progressivo de 0 a 30 pontos para o rodapé oficial;
+>   - Descarte categórico de tributos incidentes (Lei Federal 12.741/2012, IBPT), descontos parciais, acréscimos e subtotais parciais de produtos, eliminando o erro de capturar o valor de itens individuais em cupons de múltiplos produtos.
+> - **(3) Resolução de Slips de Cartão e Meios de Pagamento (`card-slip-parser.ts`)**:
+>   - Extração detalhada de taxas de adquirente (`feeCents`), valor líquido soberano (`netAmountCents`), descontos (`discountCents`), bandeiras e modalidades de parcelamento;
+>   - Proteção estrita contra falsos parcelamentos originados de quantidades multiplicadas no PDV (`3X 2,29` como quantidade de item e nunca parcelamento de cartão).
+> - **(4) Extrator Estruturado de Cesta de Produtos em Cupons Fiscais (`receipt-item-extractor.ts`)**:
+>   - Extração determinística de itens (`ReceiptItem`: código, descrição, quantidade, valor unitário, valor total);
+>   - Formatação tabular humanizada com injeção automática no campo de observações (`notes`) da transação (`"Itens do Cupom Fiscal:\n• 2x Produto A - R$ 10,00\n..."`), permitindo auditoria completa sem inflar a descrição principal.
+> - **(5) Memória Adaptativa de Aprendizado Contínuo (`receipt-learning.ts`)**:
+>   - Dicionário local persistente (`receipt_learning_memory`) que aprende com as correções manuais do usuário (CNPJ ou nome fantasia $\rightarrow$ estabelecimento amigável, categoria preferida, meio de pagamento e cartão), aplicando automaticamente os ajustes memorizados em futuros escaneamentos e uploads.
+> - **(6) Desacoplamento de Faturas em Anexos Manuais (`attach-receipt-dialog.tsx`)**:
+>   - Suporte a comprovantes e quitações de fatura de cartão de crédito quando enviados manualmente (`isManualUpload = true`), extraindo banco emissor, valor e últimos dígitos do cartão, e preenchendo o campo de notas com a cesta de itens formatada.
+> - **(7) Matriz E2E das 18 Amostras Reais & Homologação Completa**:
+>   - 100% de aprovação nos 18 comprovantes reais da pasta `exemplos_comprovantes/ocr_results.json` (`comprovantes-real-matrix.test.ts`);
+>   - 508 testes aprovados na suíte de notificações (`src/domain/notifications/`) e 3 testes em `web-ocr.test.ts`;
+>   - Quality Gates QG1 a QG7 aprovados sem regressões.
+
 > **v3.05** registra o **Aprimoramento Pedagógico Global dos Tours Guiados, Blindagem de Seletores e Adição do Tour de Contas & Dívidas** (2026-11-07):
 > - **(1) Racha de Despesas com Pix (`finances_split`)**:
 >   - Abertura direta do assistente no Passo 3 (`passo=3&racha=1`), revelando os controles de divisão, cadastro de chave Pix e titularidade;

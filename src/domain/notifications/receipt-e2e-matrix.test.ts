@@ -420,7 +420,7 @@ PROTOCOLO DE AUTORIZACAO: 135260012345678
       expect(parsed?.paymentMethod).toBe("credit_card");
       expect(parsed?.amountCents).toBe(34560);
       expect(parsed?.date).toBe("2026-10-24");
-      expect(parsed?.merchantOrBeneficiary).toContain("PAO DE ACUCAR");
+      expect(parsed?.merchantOrBeneficiary).toMatch(/p[ãa]o de a[çc][úu]car/i);
       expect(parsed?.taxId).toBe("47508411000156");
       expect(parsed?.nfeAccessKey).toBe("35261047508411000156650010000123451009876543");
       expect(getReceiptKindLabel(parsed?.kind)).toBe("Cupom Fiscal");

@@ -111,4 +111,49 @@ describe("cleanOcrText", () => {
       expect(cleaned).toContain("VOLTE SEMPRE");
     });
   });
+
+  describe("Plano 10 - Normalização Óptica de Entrada & Cupons Fiscais (Fase 1)", () => {
+    it("remove artefatos de corte mecânico e guilhotina no topo do cupom", () => {
+      const raw = [
+        "]",
+        "| o AA",
+        "REDE MOLEZA DISTRIBUICAO LTDA",
+        "CNPJ: 12.345.678/0001-90",
+        "TOTAL R$ 270,00",
+      ].join("\n");
+      const cleaned = cleanOcrText(raw);
+      expect(cleaned).not.toContain("]");
+      expect(cleaned).not.toContain("| o AA");
+      expect(cleaned).toContain("REDE MOLEZA DISTRIBUICAO LTDA");
+      expect(cleaned).toContain("CNPJ/CPF: 12.345.678/0001-90");
+    });
+
+    it("trata setas e conectores típicos de PDV unificando para delimitadores limpos", () => {
+      expect(cleanOcrText("Total R$ --> 43,00")).toContain("Total R$ 43,00");
+      expect(cleanOcrText("Total = R$> 43,00")).toContain("Total R$ 43,00");
+      expect(cleanOcrText("Descontos R$ ---> 9,00")).toContain("Descontos R$ 9,00");
+      expect(cleanOcrText("VALOR:: 50,00")).toContain("VALOR: 50,00");
+    });
+
+    it("trata dois-pontos colados em R$ e converte cifrão isolado sem R", () => {
+      expect(cleanOcrText("Valor a Pagar R$: 270,00")).toContain("Valor a Pagar R$ 270,00");
+      expect(cleanOcrText("Total R$. 139,52")).toContain("Total R$ 139,52");
+      expect(cleanOcrText("SUBTOTAL $3.990,00\nTOTAL $3.990,00")).toContain("SUBTOTAL R$ 3.990,00\nTOTAL R$ 3.990,00");
+    });
+
+    it("normaliza valores com 3 decimais de atacado para 2 decimais", () => {
+      expect(cleanOcrText("1 UN x R$ 6,000")).toContain("1 UN x R$ 6,00");
+    });
+
+    it("repara erros frequentes de reconhecimento óptico em palavras-chave fiscais", () => {
+      expect(cleanOcrText("Bocumento Auxiliar da NFC-e")).toContain("Documento Auxiliar da NFC-e");
+      expect(cleanOcrText("Docunento Auxiliar")).toContain("Documento Auxiliar");
+      expect(cleanOcrText("CUPON FISCAL")).toContain("CUPOM FISCAL");
+      expect(cleanOcrText("CUPOM FISCA1")).toContain("CUPOM FISCAL");
+      expect(cleanOcrText("Ct Credito")).toContain("Cartão de Crédito");
+      expect(cleanOcrText("Dcbito a Vista")).toContain("Débito a Vista");
+      expect(cleanOcrText("FORMA DE PAGTO")).toContain("FORMA DE PAGAMENTO");
+      expect(cleanOcrText("FORMA PAGAMENTO")).toContain("FORMA DE PAGAMENTO");
+    });
+  });
 });

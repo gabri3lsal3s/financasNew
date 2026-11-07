@@ -155,5 +155,52 @@ describe("card-slip-parser", () => {
       expect(parsed?.installments?.count).toBe(3);
       expect(parsed?.installments?.installmentAmountCents).toBe(15000);
     });
+
+    it("faz parsing de resumo de venda PagBank com taxas e valor líquido (Tarefa 3.4)", () => {
+      const pagBankSummary = `
+        PagBank
+        Resumo da venda
+        Valor da venda R$ 1.800,00
+        Taxas (-) R$ 12,87
+        Valor líquido (=) R$ 1.287,13
+        Forma de pagamento
+        MasterCard - final 5585
+        Tipo de compra
+        Débito à vista
+        Código de transação: CBED9EDCOF7449BC859D264346A286E3
+      `;
+
+      const parsed = parseCardSlipReceipt(pagBankSummary);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.amountCents).toBe(180000);
+      expect(parsed?.feeCents).toBe(1287);
+      expect(parsed?.netAmountCents).toBe(128713);
+      expect(parsed?.paymentMethod).toBe("debit");
+      expect(parsed?.cardBrand).toBe("Mastercard");
+      expect(parsed?.cardLastDigits).toBe("5585");
+      expect(parsed?.terminalAcquirer).toBe("PagBank");
+    });
+
+    it("faz parsing de slip Stone parcelado com 5 parcelas de R$ 5.000,00", () => {
+      const stoneInstallments = `
+        STONE
+        LOJA DE ELETRONICOS
+        MASTERCARD ****1111
+        CRÉDITO R$ 25.000,00
+        5X SEM JUROS DE R$ 5.000,00
+        AUT: 654321
+        VIA CLIENTE
+      `;
+
+      const parsed = parseCardSlipReceipt(stoneInstallments);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.amountCents).toBe(2500000);
+      expect(parsed?.paymentMethod).toBe("credit_card");
+      expect(parsed?.cardBrand).toBe("Mastercard");
+      expect(parsed?.cardLastDigits).toBe("1111");
+      expect(parsed?.installments?.count).toBe(5);
+      expect(parsed?.installments?.installmentAmountCents).toBe(500000);
+      expect(parsed?.terminalAcquirer).toBe("Stone");
+    });
   });
 });

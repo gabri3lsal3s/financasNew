@@ -15,10 +15,53 @@ interface TerminableWorker {
 }
 
 /**
+ * Calcula o limiar ótimo de binarização pelo método de Otsu a partir do histograma de luminância.
+ * Função pura e determinística.
+ */
+export function calculateOtsuThreshold(histogram: number[], totalPixels: number): number {
+  if (totalPixels <= 0 || histogram.length < 256) {
+    return 128;
+  }
+
+  let sum = 0;
+  for (let i = 0; i < 256; i++) {
+    sum += i * (histogram[i] ?? 0);
+  }
+
+  let sumB = 0;
+  let weightBackground = 0;
+  let maximumVariance = 0;
+  let threshold = 128;
+
+  for (let t = 0; t < 256; t++) {
+    const count = histogram[t] ?? 0;
+    weightBackground += count;
+    if (weightBackground === 0) continue;
+
+    const weightForeground = totalPixels - weightBackground;
+    if (weightForeground === 0) break;
+
+    sumB += t * count;
+    const meanBackground = sumB / weightBackground;
+    const meanForeground = (sum - sumB) / weightForeground;
+
+    const diff = meanBackground - meanForeground;
+    const betweenClassVariance = weightBackground * weightForeground * diff * diff;
+
+    if (betweenClassVariance > maximumVariance) {
+      maximumVariance = betweenClassVariance;
+      threshold = t;
+    }
+  }
+
+  return threshold;
+}
+
+/**
  * Pré-processa a imagem no navegador via <canvas> antes de enviar ao Tesseract:
  * - Redimensiona suavemente imagens com dimensão > 2500px, acelerando o OCR sem perda de nitidez.
  * - Converte os pixels para escala de cinza (grayscale).
- * - Aplica realce de contraste para destacar caracteres impressos em papel térmico.
+ * - Calcula histograma e aplica binarização adaptativa pelo método de Otsu para isolar caracteres térmicos.
  */
 export async function preprocessImageForOcr(file: File | Blob): Promise<Blob | File> {
   if (typeof window === "undefined" || typeof document === "undefined") {
@@ -84,24 +127,40 @@ export async function preprocessImageForOcr(file: File | Blob): Promise<Blob | F
     ctx.drawImage(sourceDrawable, 0, 0, targetWidth, targetHeight);
     closeBitmap?.();
 
-    // Conversão para Grayscale e Realce de Contraste
+    // Conversão para Grayscale e Binarização Adaptativa (Otsu)
     const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
     const data = imageData.data;
-    const contrast = 30; // Realce moderado de contraste
-    const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+    const totalPixels = targetWidth * targetHeight;
+    const histogram = new Array<number>(256).fill(0);
+    const grays = new Uint8Array(totalPixels);
 
+    // Passo 1: Construção do histograma de luminância em escala de cinza
+    let pixelIdx = 0;
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i]!;
       const g = data[i + 1]!;
       const b = data[i + 2]!;
+      // Luminância padronizada NTSC / ITU-R BT.601
+      const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+      grays[pixelIdx] = gray;
+      histogram[gray] = (histogram[gray] ?? 0) + 1;
+      pixelIdx++;
+    }
 
-      // Luminância NTSC / sRGB
-      const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-      const adjusted = Math.min(255, Math.max(0, factor * (gray - 128) + 128));
+    // Passo 2: Cálculo do limiar ideal por Otsu
+    const otsuThreshold = calculateOtsuThreshold(histogram, totalPixels);
 
-      data[i] = adjusted;
-      data[i + 1] = adjusted;
-      data[i + 2] = adjusted;
+    // Passo 3: Aplicação de binarização com realce para leitura óptica
+    pixelIdx = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const gray = grays[pixelIdx]!;
+      // Pixels mais escuros que o limiar viram texto escuro (0), mais claros viram fundo branco (255)
+      const binary = gray < otsuThreshold ? 0 : 255;
+
+      data[i] = binary;
+      data[i + 1] = binary;
+      data[i + 2] = binary;
+      pixelIdx++;
     }
 
     ctx.putImageData(imageData, 0, 0);

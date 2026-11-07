@@ -26,7 +26,7 @@ describe("universal-receipt-parser (Orquestrador Universal)", () => {
       expect(result?.date).toBe("2026-04-15");
       expect(result?.paymentMethod).toBe("credit_card");
       expect(result?.taxId).toBe("47508411000156");
-      expect(result?.merchantOrBeneficiary).toContain("PÃO DE AÇÚCAR");
+      expect(result?.merchantOrBeneficiary).toMatch(/p[ãa]o de a[çc][úu]car/i);
     });
 
     it("deve orquestrar DANFE NFC-e de farmácia com desconto", () => {
@@ -538,6 +538,47 @@ describe("universal-receipt-parser (Orquestrador Universal)", () => {
       );
       expect(getReceiptKindLabel("desconhecido")).toBe("Comprovante");
       expect(getReceiptKindLabel(undefined)).toBe("Comprovante");
+    });
+  });
+
+  describe("9. Desacoplamento de Faturas & Anexos Manuais (Plano 10 — Fase 6)", () => {
+    it("deve permitir e extrair comprovante de pagamento de fatura Itaú em anexo manual", () => {
+      const itauInvoiceReceipt = `
+        comprovante de pagamento
+        cartão de crédito
+        identificação no extrato Cartão 01
+        nome VINICIUS VARELO GALDENCIO
+        número do cartão FR RE 4866
+        valor do documento R$ 583,88
+        pagamento efetuado em 26/06/2023 às 22:31:42
+        autenticação 867C91D8B33749F48169146FC13F8824
+      `;
+
+      const result = parseUniversalReceipt(itauInvoiceReceipt, true);
+      expect(result).not.toBeNull();
+      expect(result?.amountCents).toBe(58388);
+      expect(result?.paymentMethod).toBe("credit_card");
+      expect(result?.cardLastDigits).toBe("4866");
+      expect(result?.payerOrSource).toBe("VINICIUS VARELO GALDENCIO");
+    });
+
+    it("deve permitir e extrair comprovante de fatura Nubank em anexo manual", () => {
+      const nubankInvoiceReceipt = `
+        NU
+        Comprovante de pagamento
+        05 MAI 2022
+        Valor R$ 1.806,56
+        Documento Fatura do cartão Nubank
+        Pagador Marlene Maria da Silva
+        Nu Pagamentos S.A.
+        CNPJ 18.236.120/0001-58
+      `;
+
+      const result = parseUniversalReceipt(nubankInvoiceReceipt, true);
+      expect(result).not.toBeNull();
+      expect(result?.amountCents).toBe(180656);
+      expect(result?.paymentMethod).toBe("credit_card");
+      expect(result?.payerOrSource).toBe("Marlene Maria da Silva");
     });
   });
 });

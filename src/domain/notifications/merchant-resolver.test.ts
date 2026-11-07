@@ -258,7 +258,7 @@ describe("merchant-resolver — Fallback Seguro", () => {
       userMemory: {},
     });
 
-    expect(resolved.friendlyName).toBe("Empresa Xpto Servicos 123");
+    expect(resolved.friendlyName).toBe("Empresa Xpto Servicos");
     expect(resolved.categorySlug).toBe("compras");
     expect(resolved.confidence).toBe("fallback");
     expect(resolved.isLearned).toBe(false);

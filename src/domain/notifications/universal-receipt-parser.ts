@@ -16,6 +16,7 @@ import { toISODate } from "@/domain/money";
 import type { PaymentMethod } from "@/types/schema";
 import {
   cleanMerchantName,
+  extractCardLastDigits,
   extractCentsFromText,
   extractDateFromReceipt,
   extractMerchantOrRecipient,
@@ -33,6 +34,7 @@ import { isDanfeNfcReceipt, parseDanfeNfcReceipt } from "./danfe-nfc-parser";
 import { extractDetailedInstallments } from "./installment-extractor";
 import { cleanOcrText } from "./ocr-cleaner";
 import { isPixReceipt, parsePixReceipt } from "./pix-receipt-parser";
+import { getLearnedReceiptPreferences } from "./receipt-learning";
 import type { ReceiptKind, UniversalReceiptData } from "./receipt-types";
 import { isWireTransferReceipt, parseWireTransferReceipt } from "./wire-transfer-parser";
 
@@ -74,12 +76,12 @@ function extractGenericRecipient(text: string): string {
  */
 function extractGenericPayer(text: string): string | undefined {
   const payerMatch =
-    /(?:PAGADOR|CLIENTE|DEVEDOR|RECEBI\s+DE)\s*[:=]?\s*([A-Za-zÀ-ÿ\s]{3,40})(?:\s+a\s+quantia|\s+o\s+valor|[\n\r]|$)/i.exec(
+    /(?:PAGADOR|CLIENTE|DEVEDOR|RECEBI\s+DE|CONTA\s+DEBITADA[\s\S]*?NOME|DADOS\s+DA\s+CONTA[\s\S]*?NOME|NOME)\s*[:=\n]?\s*([A-Za-zÀ-ÿ\s]{3,40})(?:\s+a\s+quantia|\s+o\s+valor|ag[êe]ncia|[\n\r]|$)/i.exec(
       text,
     );
   if (payerMatch && payerMatch[1]) {
     const candidate = payerMatch[1].trim();
-    if (candidate.length >= 2) {
+    if (candidate.length >= 2 && !/^(?:do\s+documento|da\s+conta|do\s+cart[ãa]o)/i.test(candidate)) {
       return cleanMerchantName(candidate);
     }
   }
@@ -170,14 +172,84 @@ function parseGenericReceipt(cleanedText: string): UniversalReceiptData | null {
 }
 
 /**
- * Pós-processamento que garante acoplamento de parcelamento e consistência final.
+ * Verifica se o comprovante se refere explicitamente a pagamento de fatura de cartão de crédito.
+ */
+export function isInvoicePaymentReceipt(text: string): boolean {
+  if (!text) return false;
+  return (
+    /\b(?:fatura\s+(?:do\s+)?cart[ãa]o|comprovante\s+de\s+pagamento\s+cart[ãa]o\s+de\s+cr[ée]dito|fatura\s+nubank|fatura\s+ita[úu])\b/i.test(
+      text,
+    )
+  );
+}
+
+/**
+ * Realiza o parsing de comprovante de pagamento de fatura de cartão de crédito.
+ */
+export function parseCreditCardInvoicePayment(cleanedText: string): UniversalReceiptData | null {
+  const cents = extractGenericReceiptTotalCents(cleanedText) || extractCentsFromText(cleanedText);
+  if (!cents || cents <= 0) return null;
+
+  const { date: txDate } = extractDateFromReceipt(cleanedText, false);
+  const taxId = extractTaxId(cleanedText);
+  const bankName = resolveBankName(undefined, undefined, cleanedText) || "Cartão de Crédito";
+  const cardLastDigits = extractCardLastDigits(cleanedText);
+  const payer = extractGenericPayer(cleanedText);
+
+  const description = `Fatura do Cartão (${bankName})`;
+  const id = `invoice_payment_${Date.now()}_${cents}`;
+
+  return {
+    id,
+    kind: "card_slip",
+    nature: "expense",
+    amountCents: cents,
+    date: txDate || toISODate(new Date()),
+    description,
+    paymentMethod: "credit_card",
+    merchantOrBeneficiary: description,
+    payerOrSource: payer || undefined,
+    bankName,
+    cardLastDigits,
+    taxId,
+    rawCleanText: cleanedText,
+  };
+}
+
+/**
+ * Pós-processamento que garante acoplamento de parcelamento, memória adaptativa e consistência final.
  */
 function postProcessReceipt(
   receipt: UniversalReceiptData,
   cleanedText: string,
 ): UniversalReceiptData {
-  // Se ainda não tiver parcelamento detectado, tenta extrair do texto limpo
-  if (!receipt.installments) {
+  // 1. Tenta enriquecer com aprendizado histórico do usuário se disponível
+  const learned = getLearnedReceiptPreferences({
+    cnpj: receipt.taxId,
+    merchantName: receipt.merchantOrBeneficiary,
+    rawText: cleanedText,
+  });
+
+  if (learned) {
+    if (learned.merchantName && (!receipt.merchantOrBeneficiary || receipt.merchantOrBeneficiary.length < 3)) {
+      receipt.merchantOrBeneficiary = learned.merchantName;
+      receipt.description = learned.merchantName;
+    }
+    if (learned.paymentMethod && receipt.paymentMethod === "other") {
+      receipt.paymentMethod = learned.paymentMethod;
+    }
+    if (learned.cardLastDigits && !receipt.cardLastDigits) {
+      receipt.cardLastDigits = learned.cardLastDigits;
+    }
+    if (learned.cardBrand && !receipt.cardBrand) {
+      receipt.cardBrand = learned.cardBrand;
+    }
+  }
+
+  // 2. Se ainda não tiver parcelamento detectado, tenta extrair do texto limpo
+  // Em cupons fiscais (invoice_danfe), o total apurado é soberano e expressões como "3X 2,29"
+  // representam multiplicação de itens no PDV, nunca parcelamento de cartão.
+  if (!receipt.installments && receipt.kind !== "invoice_danfe") {
     const installments = extractDetailedInstallments(cleanedText, receipt.amountCents);
     if (installments && installments.count > 1) {
       receipt.installments = installments;
@@ -193,12 +265,13 @@ function postProcessReceipt(
   return receipt;
 }
 
-
-
 /**
  * Função orquestradora que limpa, analisa e extrai dados consolidados de qualquer comprovante.
  */
-export function parseUniversalReceipt(rawText: string): UniversalReceiptData | null {
+export function parseUniversalReceipt(
+  rawText: string,
+  isManualUpload = false,
+): UniversalReceiptData | null {
   if (!rawText || typeof rawText !== "string") {
     return null;
   }
@@ -210,43 +283,49 @@ export function parseUniversalReceipt(rawText: string): UniversalReceiptData | n
   }
 
   // 2. Descarta falhas, 2FA, spam e mensagens que não são transações financeiras
-  if (isBlacklistedReceipt(cleaned)) {
+  if (isBlacklistedReceipt(cleaned, isManualUpload)) {
     return null;
   }
 
   // 3. Orquestração determinística por ordem de especificidade e assinatura
 
-  // A. Cupons fiscais eletrônicos ao consumidor (DANFE NFC-e / SAT)
+  // A. Comprovantes de pagamento de faturas de cartão de crédito
+  if (isInvoicePaymentReceipt(cleaned)) {
+    const invoice = parseCreditCardInvoicePayment(cleaned);
+    if (invoice) return postProcessReceipt(invoice, cleaned);
+  }
+
+  // B. Cupons fiscais eletrônicos ao consumidor (DANFE NFC-e / SAT / ECF / PDV)
   if (isDanfeNfcReceipt(cleaned)) {
     const parsed = parseDanfeNfcReceipt(cleaned);
     if (parsed) return postProcessReceipt(parsed, cleaned);
   }
 
-  // B. Boletos bancários, títulos e tributos (DARF / GPS / Concessionárias)
+  // C. Boletos bancários, títulos e tributos (DARF / GPS / Concessionárias)
   if (isBankSlipReceipt(cleaned)) {
     const parsed = parseBankSlipReceipt(cleaned);
     if (parsed) return postProcessReceipt(parsed, cleaned);
   }
 
-  // C. Comprovantes de transferências e pagamentos Pix
+  // D. Comprovantes de transferências e pagamentos Pix
   if (isPixReceipt(cleaned)) {
     const parsed = parsePixReceipt(cleaned);
     if (parsed) return postProcessReceipt(parsed, cleaned);
   }
 
-  // D. Slips de maquininhas de cartão (POS / TEF)
+  // E. Slips de maquininhas de cartão (POS / TEF)
   if (isCardSlipReceipt(cleaned) || extractTerminalAcquirer(cleaned)) {
     const parsed = parseCardSlipReceipt(cleaned);
     if (parsed) return postProcessReceipt(parsed, cleaned);
   }
 
-  // E. Transferências bancárias tradicionais (TED / DOC / Entre Contas)
+  // F. Transferências bancárias tradicionais (TED / DOC / Entre Contas)
   if (isWireTransferReceipt(cleaned)) {
     const parsed = parseWireTransferReceipt(cleaned);
     if (parsed) return postProcessReceipt(parsed, cleaned);
   }
 
-  // F. Fallback semântico para recibos avulsos ou não-estruturados
+  // G. Fallback semântico para recibos avulsos ou não-estruturados
   const generic = parseGenericReceipt(cleaned);
   if (generic) return postProcessReceipt(generic, cleaned);
 

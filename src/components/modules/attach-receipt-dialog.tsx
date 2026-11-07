@@ -7,6 +7,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import {
+  formatReceiptItemsObservation,
   getReceiptKindLabel,
   parseBankNotification,
   parsePixShareText,
@@ -86,8 +87,8 @@ export function AttachReceiptDialog({
     triggerSensory("action");
 
     try {
-      // 1. Processa primariamente via Orquestrador Universal
-      const universal = parseUniversalReceipt(trimmed);
+      // 1. Processa primariamente via Orquestrador Universal com flag de anexo manual
+      const universal = parseUniversalReceipt(trimmed, true);
       let resolvedParsed: ParsedBankTransaction | null = null;
 
       if (universal) {
@@ -116,6 +117,12 @@ export function AttachReceiptDialog({
           identity.preferredPaymentMethod ||
           (matchedCard ? "credit_card" : "pix");
 
+        // Formatação refinada de itens do cupom fiscal para observações
+        const itemsNotes =
+          universal.items && universal.items.length > 0
+            ? formatReceiptItemsObservation(universal.items)
+            : undefined;
+
         resolvedParsed = {
           id: universal.id,
           bankName: universal.bankName || matchedCard?.name || "Banco",
@@ -139,6 +146,7 @@ export function AttachReceiptDialog({
           taxId: universal.taxId,
           payerName: universal.payerOrSource,
           recipientName: universal.merchantOrBeneficiary,
+          notes: itemsNotes,
           source: "receipt",
         };
       } else {

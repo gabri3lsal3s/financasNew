@@ -181,8 +181,10 @@ export function isCardSlipReceipt(text: string): boolean {
     /\b(?:cielo|rede\s+card|stone|pagseguro|pagbank|getnet|safrapay|vero)\b/i,
     /\b(?:cr[ée]dito\s+(?:a\s+vista|parcelado|loja|adm)|d[ée]bito\s+(?:a\s+vista)?)\b/i,
     /\b(?:parc(?:elas?)?:\s*\d{1,2}|qtde\s+parc(?:elas?)?:\s*\d{1,2})\b/i,
-    /\b(?:autoriza[çc][ãa]o|nsu|cod\s+aut):\s*[A-Za-z0-9]+\b/i,
+    /\b(?:autoriza[çc][ãa]o|nsu|cod\s+aut|c[óo]digo\s+de\s+transa[çc][ãa]o):\s*[A-Za-z0-9]+\b/i,
     /\b(?:mastercard|visa|elo|hipercard|american\s+express)\s+(?:cr[ée]dito|d[ée]bito)\b/i,
+    /\bresumo\s+da\s+venda\b/i,
+    /\bvalor\s+(?:l[íi]quido|da\s+venda)\b/i,
   ];
 
   let matches = 0;
@@ -202,15 +204,43 @@ export function isCardSlipReceipt(text: string): boolean {
 export function parseCardSlipReceipt(rawText: string): UniversalReceiptData | null {
   if (!rawText) return null;
 
-  // Prioriza valor total explícito quando presente no slip
+  // 1. Extrai taxa do intermediador / adquirente (ex: "Taxas (-) R$ 12,87")
+  let feeCents: number | undefined;
+  const feeMatch = /(?:taxas?|taxa\s+adquirente)\s*(?:\([+-]\))?\s*[:=]?\s*(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})/i.exec(
+    rawText,
+  );
+  if (feeMatch && feeMatch[1] && feeMatch[2]) {
+    feeCents = parseInt(feeMatch[1].replace(/\./g, ""), 10) * 100 + parseInt(feeMatch[2], 10);
+  }
+
+  // 2. Extrai valor líquido recebido (ex: "Valor líquido (=) R$ 1.287,13")
+  let netAmountCents: number | undefined;
+  const netMatch = /(?:valor\s+l[íi]quido|l[íi]quido)\s*(?:\(=\))?\s*[:=]?\s*(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})/i.exec(
+    rawText,
+  );
+  if (netMatch && netMatch[1] && netMatch[2]) {
+    netAmountCents = parseInt(netMatch[1].replace(/\./g, ""), 10) * 100 + parseInt(netMatch[2], 10);
+  }
+
+  // 3. Extrai valor bruto / valor total da venda
+  const saleMatch = /(?:valor\s+da\s+venda|venda)\s*[:=]?\s*(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})/i.exec(
+    rawText,
+  );
   const totalMatch =
-    /(?:VALOR\s+TOTAL|TOTAL(?:\s+A\s+PAGAR)?|VALOR\s+DA\s+OPERA[ÇC][ÃA]O)\s*[:=]?\s*(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})/i.exec(
+    /(?:VALOR\s+TOTAL|TOTAL(?:\s+A\s+PAGAR)?|VALOR\s+DA\s+OPERA[ÇC][ÃA]O|VALOR(?:\s+VENDA)?)\s*[:=]?\s*(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})/i.exec(
       rawText,
     );
-  const cents =
-    totalMatch && totalMatch[1] && totalMatch[2]
-      ? parseInt(totalMatch[1].replace(/\./g, ""), 10) * 100 + parseInt(totalMatch[2], 10)
-      : (extractCentsFromText(rawText) ?? 0);
+
+  let cents: number;
+  if (saleMatch && saleMatch[1] && saleMatch[2]) {
+    cents = parseInt(saleMatch[1].replace(/\./g, ""), 10) * 100 + parseInt(saleMatch[2], 10);
+  } else if (totalMatch && totalMatch[1] && totalMatch[2]) {
+    cents = parseInt(totalMatch[1].replace(/\./g, ""), 10) * 100 + parseInt(totalMatch[2], 10);
+  } else if (netAmountCents) {
+    cents = netAmountCents;
+  } else {
+    cents = extractCentsFromText(rawText) ?? 0;
+  }
 
   if (!cents || cents <= 0) return null;
 
@@ -236,7 +266,7 @@ export function parseCardSlipReceipt(rawText: string): UniversalReceiptData | nu
   const id = `card_slip_${Date.now()}_${finalAmountCents}${authPart}`;
 
   let description: string;
-  const merchantLabel = merchant || "Estabelecimento";
+  const merchantLabel = merchant || (acquirer ? `Venda ${acquirer}` : "Estabelecimento");
   if (installments && installments.count > 1) {
     description = `${merchantLabel} (${installments.count}x)`;
   } else {
@@ -262,6 +292,8 @@ export function parseCardSlipReceipt(rawText: string): UniversalReceiptData | nu
     authorizationCode,
     terminalAcquirer: acquirer,
     installments: installments || undefined,
+    feeCents,
+    netAmountCents,
     rawCleanText: rawText,
   };
 }

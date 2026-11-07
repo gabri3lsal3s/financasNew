@@ -248,7 +248,13 @@ export const CANONICAL_MERCHANT_CATALOG: CanonicalMerchantEntry[] = [
   {
     friendlyName: "Savegnago Supermercados",
     categorySlug: "mercado",
-    keywords: ["savegnago", "savegnago supermercados"],
+    keywords: ["savegnago", "supermercados savegnago"],
+  },
+  {
+    friendlyName: "Mart Minas",
+    categorySlug: "mercado",
+    cnpjs: ["04737552001886", "04737552000186"],
+    keywords: ["mart minas", "mart minas distribuicao"],
   },
   {
     friendlyName: "Angeloni Supermercados",
@@ -308,6 +314,12 @@ export const CANONICAL_MERCHANT_CATALOG: CanonicalMerchantEntry[] = [
     categorySlug: "saude",
     cnpjs: ["06626253000151"],
     keywords: ["pague menos", "farmacias pague menos"],
+  },
+  {
+    friendlyName: "Popularmed Farmácias",
+    categorySlug: "saude",
+    cnpjs: ["13735058000125"],
+    keywords: ["popularmed", "populares farmacias", "mello e simon"],
   },
   {
     friendlyName: "Panvel Farmácias",
@@ -677,6 +689,29 @@ export const CANONICAL_MERCHANT_CATALOG: CanonicalMerchantEntry[] = [
     friendlyName: "Shopee",
     categorySlug: "compras",
     keywords: ["shopee", "shopee brasil", "shopee com br", "shopee br"],
+  },
+  {
+    friendlyName: "Rede Moleza",
+    categorySlug: "lazer",
+    cnpjs: ["88709563000102"],
+    keywords: ["rede moleza", "moleza", "polasek"],
+  },
+  {
+    friendlyName: "Lara Acessórios",
+    categorySlug: "compras",
+    cnpjs: ["28663093000153"],
+    keywords: ["lara acessorios"],
+  },
+  {
+    friendlyName: "Cásiopea Beauty",
+    categorySlug: "compras",
+    keywords: ["casiopea beauty", "casiopea"],
+  },
+  {
+    friendlyName: "Pagsmile",
+    categorySlug: "compras",
+    cnpjs: ["23010551000131"],
+    keywords: ["pagsmile"],
   },
   {
     friendlyName: "Magazine Luiza",
