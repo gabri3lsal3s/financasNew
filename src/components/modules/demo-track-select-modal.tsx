@@ -10,9 +10,11 @@ import {
   PieChart,
   PlusCircle,
   Settings,
+  Share2,
   Smartphone,
   Target,
   TrendingUp,
+  Users,
   Wallet,
 } from "lucide-react";
 import { Badge, Button, Modal, Tabs, type TabItem } from "@/components/ui";
@@ -27,6 +29,8 @@ export interface DemoTrackSelectModalProps {
   open: boolean;
   /** Callback acionado ao alterar a visibilidade do modal. */
   onOpenChange: (open: boolean) => void;
+  /** Aba inicialmente ativa no hub de demonstração (padrão: "finances"). */
+  defaultTab?: string;
   /** Callback opcional acionado quando o usuário seleciona e inicia uma trilha. */
   onSelectTrack?: (track: TourTrackId) => void;
   /** Callback opcional acionado quando o usuário decide pular a simulação e ir para a conta real. */
@@ -42,6 +46,8 @@ interface TourCardItemProps {
   iconColorClass?: string;
   isCompleted: boolean;
   isPrimary?: boolean;
+  badge?: string;
+  badgeVariant?: "default" | "muted" | "positive" | "negative" | "warning" | "critical" | "portfolio";
   onSelect: (track: TourTrackId) => void;
 }
 
@@ -54,6 +60,8 @@ function TourCardItem({
   iconColorClass,
   isCompleted,
   isPrimary,
+  badge,
+  badgeVariant,
   onSelect,
 }: TourCardItemProps) {
   return (
@@ -78,9 +86,16 @@ function TourCardItem({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <h4 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-            {title}
-          </h4>
+          <div className="flex items-center gap-1.5 min-w-0 flex-wrap sm:flex-nowrap">
+            <h4 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+              {title}
+            </h4>
+            {badge && (
+              <Badge variant={badgeVariant ?? "default"} size="xs" className="shrink-0">
+                {badge}
+              </Badge>
+            )}
+          </div>
           {isCompleted ? (
             <Badge variant="positive" size="xs" className="gap-1 shrink-0">
               <Check className="size-3" aria-hidden="true" />
@@ -113,11 +128,12 @@ function TourCardItem({
 export function DemoTrackSelectModal({
   open,
   onOpenChange,
+  defaultTab,
   onSelectTrack,
   onSkipToReal,
 }: DemoTrackSelectModalProps) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<string>("finances");
+  const [activeTab, setActiveTab] = useState<string>(defaultTab ?? "finances");
   const isNative = isNativePlatform();
 
   const handleSelectTrack = useCallback(
@@ -150,6 +166,7 @@ export function DemoTrackSelectModal({
   const nativeCompleted = hasCompletedDemoTour("app_native_apk");
   const financesOverviewCompleted =
     hasCompletedDemoTour("finances") || hasCompletedDemoTour("finances_overview");
+  const sharedFinancesCompleted = hasCompletedDemoTour("shared_finances");
   const investmentsOverviewCompleted =
     hasCompletedDemoTour("investments") || hasCompletedDemoTour("investments_overview");
 
@@ -218,6 +235,77 @@ export function DemoTrackSelectModal({
                   icon={Lightbulb}
                   iconColorClass="text-primary"
                   isCompleted={hasCompletedDemoTour("finances_insights")}
+                  onSelect={handleSelectTrack}
+                />
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        value: "shared",
+        label: "Finanças Compartilhadas",
+        shortLabel: "Compartilhadas",
+        icon: <Users className="size-4 text-primary" aria-hidden="true" />,
+        badge: (
+          <Badge variant="default" size="xs">
+            Destaque
+          </Badge>
+        ),
+        content: (
+          <div className="space-y-4 pt-3 pb-1">
+            {/* Visão Geral Finanças Compartilhadas */}
+            <TourCardItem
+              id="shared_finances"
+              title="Finanças Compartilhadas & Modo Família"
+              description="Jornada completa de finanças colaborativas, divisão de despesas via Pix, termômetro de metas e orçamento familiar unificado."
+              stepsCount={4}
+              icon={Users}
+              iconColorClass="text-primary"
+              isCompleted={sharedFinancesCompleted}
+              isPrimary={true}
+              badge="Destaque"
+              onSelect={handleSelectTrack}
+            />
+
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-2.5 px-0.5">
+                <h5 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Micro-Tours Específicos
+                </h5>
+                <Badge variant="default" size="xs">
+                  Finanças Compartilhadas
+                </Badge>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <TourCardItem
+                  id="finances_split"
+                  title="Racha de Despesas com Pix"
+                  description="Divisão inteligente de contas e eventos com amigos, cobrança por Pix e recibos automáticos via WhatsApp."
+                  stepsCount={2}
+                  icon={Share2}
+                  iconColorClass="text-positive-strong"
+                  isCompleted={hasCompletedDemoTour("finances_split")}
+                  onSelect={handleSelectTrack}
+                />
+                <TourCardItem
+                  id="finances_family"
+                  title="Modo Família Multi-Contas"
+                  description="Gestão orçamentária para casais e famílias com cartões independentes, teto conjunto e equilíbrio sem atrito."
+                  stepsCount={2}
+                  icon={Users}
+                  iconColorClass="text-primary"
+                  isCompleted={hasCompletedDemoTour("finances_family")}
+                  onSelect={handleSelectTrack}
+                />
+                <TourCardItem
+                  id="finances_goals"
+                  title="Metas Coletivas & Vaquinha Pix"
+                  description="Vaquinha colaborativa com termômetro em tempo real, chave Pix para arrecadação e prestação de contas pública."
+                  stepsCount={2}
+                  icon={Target}
+                  iconColorClass="text-portfolio"
+                  isCompleted={hasCompletedDemoTour("finances_goals")}
                   onSelect={handleSelectTrack}
                 />
               </div>
@@ -309,6 +397,7 @@ export function DemoTrackSelectModal({
     ],
     [
       financesOverviewCompleted,
+      sharedFinancesCompleted,
       investmentsOverviewCompleted,
       handleSelectTrack,
     ],

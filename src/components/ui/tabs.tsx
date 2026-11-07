@@ -10,6 +10,7 @@ export interface TabItem {
   label: string;
   shortLabel?: string;
   icon?: ReactNode;
+  badge?: ReactNode;
   content?: ReactNode;
 }
 
@@ -125,6 +126,7 @@ export function Tabs({
             {item.icon}
             <span className={cn(item.shortLabel && "hidden sm:inline")}>{item.label}</span>
             {item.shortLabel && <span aria-hidden="true" className="sm:hidden">{item.shortLabel}</span>}
+            {item.badge}
           </TabsPrimitive.Trigger>
         ))}
       </TabsPrimitive.List>

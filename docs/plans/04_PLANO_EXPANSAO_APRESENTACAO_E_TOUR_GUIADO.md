@@ -102,17 +102,17 @@ flowchart TD
 
 ## Fase 3: Hub de Trilhas & Modais de Acolhimento
 
-- [ ] **Tarefa 3.1: Modernização do Seletor de Trilhas (`DemoTrackSelectModal.tsx`)**
-  - Exibição do grupo "Finanças Compartilhadas" com badge de destaque.
+- [x] **Tarefa 3.1: Modernização do Seletor de Trilhas (`DemoTrackSelectModal.tsx`)**
+  - [x] Exibição do grupo "Finanças Compartilhadas" com badge de destaque.
 
-- [ ] **Tarefa 3.2: Integração com a Central de Ajuda (`HelpModal.tsx`)**
-  - Atalho direto para rever o tour compartilhado.
+- [x] **Tarefa 3.2: Integração com a Central de Ajuda (`HelpModal.tsx`)**
+  - [x] Atalho direto para rever o tour compartilhado.
 
-- [ ] **Portão de Qualidade 3 (QG3):**
-  - [ ] Executar: `npx vitest run src/components/modules/demo-track-select-modal.test.tsx`
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] **Commit & Push da Fase 3:** `git commit -m "feat(demo): seletor de trilhas com grupo de financas compartilhadas"`
+- [x] **Portão de Qualidade 3 (QG3):**
+  - [x] Executar: `npx vitest run src/components/modules/demo-track-select-modal.test.tsx`
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] **Commit & Push da Fase 3:** `git commit -m "feat(demo): seletor de trilhas com grupo de financas compartilhadas"`
 
 ---
 

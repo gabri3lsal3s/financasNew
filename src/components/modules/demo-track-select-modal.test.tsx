@@ -35,6 +35,7 @@ describe("DemoTrackSelectModal — Hub de Aprendizado & Micro-Tours (§3.4)", ()
 
     // Abas de navegação
     expect(screen.getByRole("tab", { name: "Finanças" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Finanças Compartilhadas" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Investimentos" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Ajustes & Suporte" })).toBeInTheDocument();
 
@@ -228,6 +229,154 @@ describe("DemoTrackSelectModal — Hub de Aprendizado & Micro-Tours (§3.4)", ()
 
     const session = getDemoSessionState();
     expect(session.isDemoActive).toBe(false);
+  });
+
+  it("renderiza o grupo de Finanças Compartilhadas com badge de destaque e seus micro-tours", async () => {
+    const user = userEvent.setup();
+    render(<DemoTrackSelectModal open={true} onOpenChange={vi.fn()} />);
+
+    // Aba possui o badge de destaque
+    const sharedTab = screen.getByRole("tab", { name: "Finanças Compartilhadas" });
+    expect(sharedTab).toBeInTheDocument();
+    expect(sharedTab).toHaveTextContent("Destaque");
+
+    // Alterna para a aba de Finanças Compartilhadas
+    await user.click(sharedTab);
+
+    // Card principal da trilha consolidada
+    expect(screen.getByText("Finanças Compartilhadas & Modo Família")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Jornada completa de finanças colaborativas, divisão de despesas via Pix, termômetro de metas e orçamento familiar unificado.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("4 passos")).toBeInTheDocument();
+
+    // Micro-tours específicos de finanças compartilhadas
+    expect(screen.getByText("Racha de Despesas com Pix")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Divisão inteligente de contas e eventos com amigos, cobrança por Pix e recibos automáticos via WhatsApp.",
+      ),
+    ).toBeInTheDocument();
+
+    expect(screen.getByText("Modo Família Multi-Contas")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Gestão orçamentária para casais e famílias com cartões independentes, teto conjunto e equilíbrio sem atrito.",
+      ),
+    ).toBeInTheDocument();
+
+    expect(screen.getByText("Metas Coletivas & Vaquinha Pix")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Vaquinha colaborativa com termômetro em tempo real, chave Pix para arrecadação e prestação de contas pública.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("inicia a trilha de Finanças Compartilhadas geral, navega para '/' e fecha o modal", async () => {
+    const user = userEvent.setup();
+    const handleOpenChange = vi.fn();
+    const handleSelectTrack = vi.fn();
+
+    render(
+      <DemoTrackSelectModal
+        open={true}
+        onOpenChange={handleOpenChange}
+        onSelectTrack={handleSelectTrack}
+      />,
+    );
+
+    const sharedTab = screen.getByRole("tab", { name: "Finanças Compartilhadas" });
+    await user.click(sharedTab);
+
+    const sharedTrackBtn = screen
+      .getByText("Finanças Compartilhadas & Modo Família")
+      .closest("button");
+    expect(sharedTrackBtn).not.toBeNull();
+    await user.click(sharedTrackBtn!);
+
+    expect(mockNavigate).toHaveBeenCalledWith("/");
+    expect(handleSelectTrack).toHaveBeenCalledWith("shared_finances");
+    expect(handleOpenChange).toHaveBeenCalledWith(false);
+
+    const session = getDemoSessionState();
+    expect(session.isDemoActive).toBe(true);
+    expect(session.activeTrack).toBe("shared_finances");
+  });
+
+  it("inicia os micro-tours compartilhados nas rotas corretas (racha, família, metas)", async () => {
+    const user = userEvent.setup();
+    const handleOpenChange = vi.fn();
+    const handleSelectTrack = vi.fn();
+
+    const { unmount } = render(
+      <DemoTrackSelectModal
+        open={true}
+        defaultTab="shared"
+        onOpenChange={handleOpenChange}
+        onSelectTrack={handleSelectTrack}
+      />,
+    );
+
+    // 1. Racha de Despesas -> "/"
+    const splitBtn = screen.getByText("Racha de Despesas com Pix").closest("button");
+    expect(splitBtn).not.toBeNull();
+    await user.click(splitBtn!);
+    expect(mockNavigate).toHaveBeenCalledWith("/");
+    expect(handleSelectTrack).toHaveBeenCalledWith("finances_split");
+
+    unmount();
+    resetDemoSession();
+    mockNavigate.mockClear();
+    handleSelectTrack.mockClear();
+
+    // 2. Modo Família -> "/familia"
+    const { unmount: unmountFamily } = render(
+      <DemoTrackSelectModal
+        open={true}
+        defaultTab="shared"
+        onOpenChange={handleOpenChange}
+        onSelectTrack={handleSelectTrack}
+      />,
+    );
+    const familyBtn = screen.getByText("Modo Família Multi-Contas").closest("button");
+    expect(familyBtn).not.toBeNull();
+    await user.click(familyBtn!);
+    expect(mockNavigate).toHaveBeenCalledWith("/familia");
+    expect(handleSelectTrack).toHaveBeenCalledWith("finances_family");
+
+    unmountFamily();
+    resetDemoSession();
+    mockNavigate.mockClear();
+    handleSelectTrack.mockClear();
+
+    // 3. Metas Coletivas -> "/orcamentos?tab=goals"
+    render(
+      <DemoTrackSelectModal
+        open={true}
+        defaultTab="shared"
+        onOpenChange={handleOpenChange}
+        onSelectTrack={handleSelectTrack}
+      />,
+    );
+    const goalsBtn = screen.getByText("Metas Coletivas & Vaquinha Pix").closest("button");
+    expect(goalsBtn).not.toBeNull();
+    await user.click(goalsBtn!);
+    expect(mockNavigate).toHaveBeenCalledWith("/orcamentos?tab=goals");
+    expect(handleSelectTrack).toHaveBeenCalledWith("finances_goals");
+  });
+
+  it("exibe badge 'Concluído' nas trilhas compartilhadas finalizadas", () => {
+    markTourCompleted("shared_finances");
+    markTourCompleted("finances_split");
+
+    render(<DemoTrackSelectModal open={true} defaultTab="shared" onOpenChange={vi.fn()} />);
+
+    // Deve encontrar badges de Concluído na aba compartilhada
+    const completedBadges = screen.getAllByText("Concluído");
+    expect(completedBadges.length).toBeGreaterThanOrEqual(2);
   });
 
   it("não apresenta violações de acessibilidade (axe)", async () => {
