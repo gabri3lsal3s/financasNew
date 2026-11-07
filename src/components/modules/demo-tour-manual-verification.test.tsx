@@ -49,7 +49,7 @@ describe("Teste de Validação Manual: Navegação Bidirecional Mobile (375x667 
   });
 
   const runBidirectionalTrackTest = async (
-    track: "finances" | "investments",
+    track: "finances" | "investments" | "shared_finances",
     viewport: { width: number; height: number },
   ) => {
     window.innerWidth = viewport.width;
@@ -75,12 +75,19 @@ describe("Teste de Validação Manual: Navegação Bidirecional Mobile (375x667 
           { selector: "budgets-content", y: 400, height: 150, route: "/orcamentos" }, // Lower half (centerY = 475) -> Topo
           { selector: "reports-content", y: 80, height: 140, route: "/relatorios" }, // Upper half (centerY = 150) -> Base
         ]
-      : [
+      : track === "investments"
+      ? [
           { selector: "investments-summary", y: 90, height: 130, route: "/investments" }, // Upper half -> Base
           { selector: "investments-new-op", y: 80, height: 120, route: "/investments" }, // Upper half -> Base
           { selector: "investments-targets", y: 390, height: 140, route: "/investments?tab=metas" }, // Lower half -> Topo
           { selector: "investments-rebalance", y: 410, height: 160, route: "/investments?tab=aporte" }, // Lower half -> Topo
           { selector: "investments-dividends", y: 400, height: 140, route: "/investments?tab=proventos" }, // Lower half -> Topo
+        ]
+      : [
+          { selector: "wizard-split-toggle", y: 80, height: 160, route: "/transacoes?novo=despesa" }, // Upper half -> Base
+          { selector: "split-pending-card", y: 420, height: 140, route: "/" }, // Lower half -> Topo
+          { selector: "family-ceiling-card", y: 80, height: 140, route: "/familia" }, // Upper half -> Base
+          { selector: "shared-goals-card", y: 400, height: 150, route: "/orcamentos?tab=goals" }, // Lower half -> Topo
         ];
 
     const elementMap = new Map<string, HTMLElement>();
@@ -196,6 +203,14 @@ describe("Teste de Validação Manual: Navegação Bidirecional Mobile (375x667 
 
   it("iPhone 12/13/14 (390x844): navega para frente e para trás em Investimentos sem oscilação e sem colisão", async () => {
     await runBidirectionalTrackTest("investments", { width: 390, height: 844 });
+  });
+
+  it("iPhone SE (375x667): navega para frente e para trás em Finanças Compartilhadas sem oscilação e sem colisão", async () => {
+    await runBidirectionalTrackTest("shared_finances", { width: 375, height: 667 });
+  });
+
+  it("iPhone 12/13/14 (390x844): navega para frente e para trás em Finanças Compartilhadas sem oscilação e sem colisão", async () => {
+    await runBidirectionalTrackTest("shared_finances", { width: 390, height: 844 });
   });
 });
 

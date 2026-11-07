@@ -12,6 +12,8 @@ import type {
   SharedGoalTrackerResult,
 } from "@/types";
 import { STALE_TIMES } from "@/state/cache-policy";
+import { useDemoSession } from "@/state/demo-mode";
+import { useSimulatedPublicShares } from "./use-simulated-queries";
 
 export const publicShareTokenQueryKey = (token: string) => ["public-share", token] as const;
 export const myPublicSharesQueryKey = (kind?: PublicShareKind) => ["my-public-shares", kind ?? "all"] as const;
@@ -48,11 +50,15 @@ export function useSharedGoalTracker(token: string | undefined | null) {
 }
 
 
-export function useMyPublicShares(kind?: PublicShareKind) {
-  return useQuery<PublicShare[]>({
+export function useMyPublicShares(kind?: PublicShareKind, options?: { enabled?: boolean }) {
+  const { isDemoActive } = useDemoSession();
+  const simulated = useSimulatedPublicShares(kind);
+  const real = useQuery<PublicShare[]>({
     queryKey: myPublicSharesQueryKey(kind),
     queryFn: () => listMyPublicShares(kind),
+    enabled: (options?.enabled ?? true) && !isDemoActive,
     staleTime: STALE_TIMES.transactional,
   });
+  return isDemoActive ? simulated : real;
 }
 

@@ -45,6 +45,12 @@ import {
   type RecordFamilySettlementParams,
 } from "@/data/repositories/families";
 import { STALE_TIMES, STATIC_GC_TIME } from "@/state/cache-policy";
+import { useDemoSession } from "@/state/demo-mode";
+import {
+  useSimulatedFamily,
+  useSimulatedFamilyConsolidation,
+  useSimulatedFamilyPortfolioSummary,
+} from "./use-simulated-queries";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { getErrorMessage } from "@/services/errors";
@@ -87,13 +93,17 @@ export const familyQueryKeys = {
  * Consulta a família e membresia do usuário autenticado.
  * Cache estático de 5 minutos com invalidação automática em mutações.
  */
-export function useMyFamily() {
-  return useQuery<MyFamilyData | null>({
+export function useMyFamily(options?: { enabled?: boolean }) {
+  const { isDemoActive } = useDemoSession();
+  const simulated = useSimulatedFamily();
+  const real = useQuery<MyFamilyData | null>({
     queryKey: familyQueryKeys.myFamily(),
     queryFn: () => getMyFamily(),
+    enabled: (options?.enabled ?? true) && !isDemoActive,
     staleTime: STALE_TIMES.static,
     gcTime: STATIC_GC_TIME,
   });
+  return isDemoActive ? simulated : real;
 }
 
 /**
@@ -104,12 +114,15 @@ export function useFamilyConsolidation(
   month?: string | null,
   options?: { enabled?: boolean },
 ) {
-  return useQuery<FamilyConsolidationResult | null>({
+  const { isDemoActive } = useDemoSession();
+  const simulated = useSimulatedFamilyConsolidation(month ?? undefined);
+  const real = useQuery<FamilyConsolidationResult | null>({
     queryKey: familyQueryKeys.consolidation(month),
-    queryFn: () => getFamilyConsolidation({ month }),
-    enabled: options?.enabled ?? true,
+    queryFn: () => getFamilyConsolidation({ month: month ?? undefined }),
+    enabled: (options?.enabled ?? true) && !isDemoActive,
     staleTime: STALE_TIMES.transactional,
   });
+  return isDemoActive ? simulated : real;
 }
 
 /**
@@ -455,13 +468,16 @@ export function useFamilyPortfolioSummary(
   familyId?: string | null,
   options?: { enabled?: boolean },
 ) {
-  return useQuery<FamilyPortfolioSummary | null>({
+  const { isDemoActive } = useDemoSession();
+  const simulated = useSimulatedFamilyPortfolioSummary();
+  const real = useQuery<FamilyPortfolioSummary | null>({
     queryKey: familyQueryKeys.portfolioSummary(familyId),
     queryFn: () => getFamilyPortfolioSummary({ familyId }),
-    enabled: options?.enabled ?? true,
+    enabled: Boolean(familyId) && (options?.enabled ?? true) && !isDemoActive,
     staleTime: STALE_TIMES.transactional,
     gcTime: STATIC_GC_TIME,
   });
+  return isDemoActive ? simulated : real;
 }
 
 /**

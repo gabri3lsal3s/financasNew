@@ -1,7 +1,13 @@
 import { useMemo } from "react";
-import { generateMockFinances, generateMockInvestments } from "@/domain/demo-simulation";
+import {
+  generateMockFinances,
+  generateMockInvestments,
+  generateMockFamily,
+  generateMockFamilyConsolidation,
+  generateMockPublicShares,
+} from "@/domain/demo-simulation";
 import type { OnboardingCounts } from "@/domain/onboarding";
-import type { CategoryType } from "@/types";
+import type { CategoryType, Debt, FamilyPortfolioSummary, IncomeGoal, PublicShareKind } from "@/types";
 
 /**
  * Cria uma estrutura de retorno compatível com UseQueryResult do TanStack Query,
@@ -227,4 +233,61 @@ export function useSimulatedOnboardingCounts() {
   );
 
   return makeSimulatedQueryResult<OnboardingCounts>(data);
+}
+
+/** Unidade familiar simulada com 2 membros e perfil completo. */
+export function useSimulatedFamily() {
+  const data = useMemo(() => {
+    return generateMockFamily();
+  }, []);
+
+  return makeSimulatedQueryResult(data);
+}
+
+/** Consolidação de gastos da família simulada por mês. */
+export function useSimulatedFamilyConsolidation(month?: string) {
+  const data = useMemo(() => {
+    return generateMockFamilyConsolidation(month);
+  }, [month]);
+
+  return makeSimulatedQueryResult(data);
+}
+
+/** Compartilhamentos públicos simulados (rachas com Pix e vaquinhas/metas). */
+export function useSimulatedPublicShares(kind?: PublicShareKind) {
+  const data = useMemo(() => {
+    const shares = generateMockPublicShares();
+    return kind ? shares.filter((s) => s.kind === kind) : shares;
+  }, [kind]);
+
+  return makeSimulatedQueryResult(data);
+}
+
+/** Resumo patrimonial familiar simulado. */
+export function useSimulatedFamilyPortfolioSummary() {
+  const data = useMemo<FamilyPortfolioSummary>(
+    () => ({
+      family_id: "fam-demo-silva",
+      total_invested_cents: 408863,
+      total_cash_cents: 257057,
+      dividends_12m_cents: 0,
+      assets_count: 4,
+      assets: [],
+    }),
+    [],
+  );
+
+  return makeSimulatedQueryResult(data);
+}
+
+/** Lista de dívidas simuladas (vazia no modo demo por padrão). */
+export function useSimulatedDebts() {
+  const data = useMemo<Debt[]>(() => [], []);
+  return makeSimulatedQueryResult(data);
+}
+
+/** Metas de renda simuladas (vazia no modo demo por padrão). */
+export function useSimulatedIncomeGoals() {
+  const data = useMemo<IncomeGoal[]>(() => [], []);
+  return makeSimulatedQueryResult(data);
 }

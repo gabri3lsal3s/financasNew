@@ -137,13 +137,13 @@ flowchart TD
 
 ## Fase 5: Homologação Integrada, Testes & Governança
 
-- [ ] **Tarefa 5.1: Testes E2E de Simulação (Vitest)**
+- [x] **Tarefa 5.1: Testes E2E de Simulação (Vitest)**
   - Validação de fluxo de ponta a ponta sem erros de console ou chamadas de rede indesejadas no modo demo.
 
-- [ ] **Tarefa 5.2: Verificação de Build e Types**
+- [x] **Tarefa 5.2: Verificação de Build e Types**
   - `npm run typecheck` e `npm run build` 100% verdes.
 
-- [ ] **Tarefa 5.3: Arquivamento em `docs/plans/completed/`**
+- [x] **Tarefa 5.3: Arquivamento em `docs/plans/completed/`**
   - Mover este plano para `docs/plans/completed/04_PLANO_EXPANSAO_APRESENTACAO_E_TOUR_GUIADO.md`.
 
 - [ ] **Portão de Qualidade 5 (QG5):**
