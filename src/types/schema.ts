@@ -595,8 +595,83 @@ export type PortfolioSnapshot = {
   total_value: number;
   /** Custo de aquisição total aplicado sob custódia (Custo dos Ativos + Saldo de Caixa 1:1). */
   total_cost: number;
+  /** Status do snapshot: provisional (em aberto/estimado) ou closed (fechamento consolidado). */
+  status?: "provisional" | "closed";
+  /** Data efetiva do último dia útil de mercado do fechamento mensal. */
+  closing_date?: string | null;
+  /** Data/hora exata do processamento do fechamento. */
+  closed_at?: string | null;
   created_at?: string;
   updated_at?: string;
+};
+
+export type CorporateDividendType = "DIVIDENDO" | "JCP" | "RENDIMENTO" | "SOBRA" | "AMORTIZACAO" | "OUTROS";
+
+export type CorporateDividend = {
+  id: string;
+  ticker: string;
+  type: CorporateDividendType;
+  com_date: string;
+  payment_date: string;
+  rate: number;
+  currency: "BRL" | "USD";
+  net_rate: number;
+  created_at?: string;
+};
+
+export type PortfolioDividendDismissalReason = "already_received" | "not_applicable" | "manual_ignore";
+
+export type PortfolioDividendDismissal = {
+  id: string;
+  user_id: string;
+  corporate_dividend_id: string;
+  reason: PortfolioDividendDismissalReason;
+  dismissed_at?: string;
+};
+
+export type ApproveDividendsBatchItem = {
+  asset_id?: string | null;
+  ticker: string;
+  date: string;
+  amount: number;
+  notes?: string | null;
+  corporate_dividend_id?: string | null;
+};
+
+export type ApproveDividendsBatchPayload = {
+  dividends: ApproveDividendsBatchItem[];
+  sync_cash?: boolean;
+};
+
+export type ApproveDividendsBatchResult = {
+  success: boolean;
+  inserted_count: number;
+  total_cash: number;
+  cash_asset_id: string | null;
+  inserted_ids: string[];
+};
+
+export type MonthlyClosingPriceItem = {
+  ticker: string;
+  price: number;
+  currency?: "BRL" | "USD";
+  source?: "api" | "manual" | "fallback";
+};
+
+export type MonthlyClosingPayload = {
+  month: string;
+  closing_date: string;
+  prices: MonthlyClosingPriceItem[];
+  total_value: number;
+  total_cost: number;
+};
+
+export type MonthlyClosingResult = {
+  success: boolean;
+  month: string;
+  total_value: number;
+  total_cost: number;
+  prices_count: number;
 };
 
 /**

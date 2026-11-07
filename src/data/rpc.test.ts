@@ -10,6 +10,8 @@ import {
   acceptFamilyInvite,
   leaveFamily,
   recordFamilySettlement,
+  commitMonthlyClosingRpc,
+  approveDividendsBatchRpc,
 } from "./rpc";
 import { AppError } from "@/services/errors";
 import type { FamilyConsolidationResult } from "@/types";
@@ -498,4 +500,124 @@ describe("RPC: Exclusão de Contas e Usuários", () => {
       ).rejects.toThrow(AppError);
     });
   });
+
+  describe("commitMonthlyClosingRpc", () => {
+    it("deve chamar commit_monthly_closing_atomic com sucesso", async () => {
+      const mockResult = {
+        success: true,
+        month: "2026-10",
+        total_value: 15400.5,
+        total_cost: 14000,
+        prices_count: 3,
+      };
+      rpcMock.mockResolvedValueOnce({ data: mockResult, error: null });
+
+      const result = await commitMonthlyClosingRpc({
+        month: "2026-10",
+        closing_date: "2026-10-30",
+        prices: [
+          { ticker: "PETR4", price: 38.5, currency: "BRL", source: "api" },
+          { ticker: "VALE3", price: 62.1, currency: "BRL", source: "api" },
+          { ticker: "CAIXA", price: 1.0, currency: "BRL", source: "fallback" },
+        ],
+        total_value: 15400.5,
+        total_cost: 14000,
+      });
+
+      expect(result).toEqual(mockResult);
+      expect(rpcMock).toHaveBeenCalledWith("commit_monthly_closing_atomic", {
+        p_month: "2026-10",
+        p_closing_date: "2026-10-30",
+        p_prices: [
+          { ticker: "PETR4", price: 38.5, currency: "BRL", source: "api" },
+          { ticker: "VALE3", price: 62.1, currency: "BRL", source: "api" },
+          { ticker: "CAIXA", price: 1.0, currency: "BRL", source: "fallback" },
+        ],
+        p_total_value: 15400.5,
+        p_total_cost: 14000,
+      });
+    });
+
+    it("deve lançar AppError se a RPC de fechamento falhar", async () => {
+      rpcMock.mockResolvedValueOnce({
+        data: null,
+        error: { message: "Cotação inválida para o ativo PETR4", code: "22023" },
+      });
+
+      await expect(
+        commitMonthlyClosingRpc({
+          month: "2026-10",
+          closing_date: "2026-10-30",
+          prices: [{ ticker: "PETR4", price: -1 }],
+          total_value: 100,
+          total_cost: 100,
+        }),
+      ).rejects.toThrow(AppError);
+    });
+  });
+
+  describe("approveDividendsBatchRpc", () => {
+    it("deve chamar approve_dividends_batch_atomic com sucesso", async () => {
+      const mockResult = {
+        success: true,
+        inserted_count: 2,
+        total_cash: 150.8,
+        cash_asset_id: "cash-asset-uuid",
+        inserted_ids: ["div-1", "div-2"],
+      };
+      rpcMock.mockResolvedValueOnce({ data: mockResult, error: null });
+
+      const result = await approveDividendsBatchRpc({
+        dividends: [
+          {
+            ticker: "HGLG11",
+            date: "2026-11-14",
+            amount: 110.0,
+            corporate_dividend_id: "corp-1",
+          },
+          {
+            ticker: "XPML11",
+            date: "2026-11-18",
+            amount: 40.8,
+            corporate_dividend_id: "corp-2",
+          },
+        ],
+        sync_cash: true,
+      });
+
+      expect(result).toEqual(mockResult);
+      expect(rpcMock).toHaveBeenCalledWith("approve_dividends_batch_atomic", {
+        p_dividends: [
+          {
+            ticker: "HGLG11",
+            date: "2026-11-14",
+            amount: 110.0,
+            corporate_dividend_id: "corp-1",
+          },
+          {
+            ticker: "XPML11",
+            date: "2026-11-18",
+            amount: 40.8,
+            corporate_dividend_id: "corp-2",
+          },
+        ],
+        p_sync_cash: true,
+      });
+    });
+
+    it("deve lançar AppError caso a RPC de aprovação em lote retorne erro", async () => {
+      rpcMock.mockResolvedValueOnce({
+        data: null,
+        error: { message: "Ativo não encontrado.", code: "P0002" },
+      });
+
+      await expect(
+        approveDividendsBatchRpc({
+          dividends: [{ ticker: "DESCONHECIDO", date: "2026-11-14", amount: 50 }],
+          sync_cash: false,
+        }),
+      ).rejects.toThrow(AppError);
+    });
+  });
 });
+

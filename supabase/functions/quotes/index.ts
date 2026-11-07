@@ -1,9 +1,10 @@
 /**
- * Edge function de cotações (F1.7 — ESPECIFICAÇÃO §1.6 D5).
+ * Edge function de cotações e inteligência de mercado (F1.7 — ESPECIFICAÇÃO §1.6 D5).
  *
- * - Service role (cron): atualiza o CACHE GLOBAL (`asset_prices.user_id` NULL).
- * - Usuário autenticado (JWT): apenas calcula e devolve cotações (sem gravar
- *   cache global) — o cliente persiste override próprio via repositório.
+ * Suporta três ações canônicas:
+ *  1. 'quotes' (default): sincroniza cotações oficiais e atualiza cache global (`asset_prices`);
+ *  2. 'sync_corporate_dividends': ingere proventos corporativos B3 via Brapi para tickers sob custódia;
+ *  3. 'close_month': fecha a competência do mês e persiste snapshots via `commit_monthly_closing_atomic`.
  *
  * Deploy: supabase functions deploy quotes --no-verify-jwt
  */
@@ -16,8 +17,10 @@ import {
   normalizeTickerForApi,
   normalizeTickerForBrapi,
   parseAwesomeApiResponse,
+  parseBrapiDividends,
   parseBrapiResponse,
   parseYahooChartResponse,
+  type ParsedCorporateDividend,
   type ParsedQuote,
   type QuoteUpsertRow,
 } from "../_shared/quotes-core.ts";
@@ -73,6 +76,42 @@ async function fetchBrapiQuote(ticker: string): Promise<ParsedQuote | null> {
     return parseBrapiResponse(ticker, payload);
   } catch {
     return null;
+  }
+}
+
+/** Busca proventos corporativos na Brapi para um lote de tickers. */
+async function fetchBrapiDividendsForTickers(tickers: string[]): Promise<ParsedCorporateDividend[]> {
+  const cleanTickers = tickers
+    .map(normalizeTickerForBrapi)
+    .filter((t) => t && !t.includes("="));
+  if (cleanTickers.length === 0) return [];
+
+  const url = `https://brapi.dev/api/quote/${encodeURIComponent(cleanTickers.join(","))}?dividends=true`;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS * 2);
+    const response = await fetch(url, {
+      headers: { "User-Agent": USER_AGENT },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!response.ok) return [];
+    const payload: unknown = await response.json();
+    if (!payload || typeof payload !== "object") return [];
+    const results = (payload as Record<string, unknown>).results;
+    if (!Array.isArray(results)) return [];
+
+    const allDividends: ParsedCorporateDividend[] = [];
+    for (const item of results) {
+      const sym = (item as Record<string, unknown>)?.symbol as string;
+      if (sym) {
+        const itemDivs = parseBrapiDividends(sym, { results: [item] });
+        allDividends.push(...itemDivs);
+      }
+    }
+    return allDividends;
+  } catch {
+    return [];
   }
 }
 
@@ -156,10 +195,19 @@ Deno.serve(async (req) => {
     callerUserId = userData.user.id;
   }
 
+  let action = "quotes";
   let requestedTickers: string[] = [];
+  let requestedMonth: string | null = null;
+
   if (req.method === "POST") {
     try {
       const body = await req.json();
+      if (body && typeof body.action === "string") {
+        action = body.action;
+      }
+      if (body && typeof body.month === "string") {
+        requestedMonth = body.month;
+      }
       if (body && Array.isArray(body.tickers)) {
         requestedTickers = body.tickers
           .map((t: string) => String(t).trim().toUpperCase())
@@ -171,6 +219,70 @@ Deno.serve(async (req) => {
     }
   }
 
+  // AÇÃO 1: Sincronização de proventos corporativos B3
+  if (action === "sync_corporate_dividends") {
+    let assetsQuery = supabase.from("portfolio_assets").select("ticker, asset_class").gt("quantity", 0);
+    if (callerUserId && !isServiceRole) {
+      assetsQuery = assetsQuery.eq("user_id", callerUserId);
+    }
+
+    const { data: activeAssets, error: assetsErr } = await assetsQuery;
+    if (assetsErr) {
+      return safeErrorResponse(req, 500, "Falha ao carregar ativos para proventos.", assetsErr);
+    }
+
+    const uniqueTickers = [
+      ...new Set(
+        (activeAssets ?? [])
+          .filter((a) => !isCashClass(a.asset_class))
+          .map((a) => a.ticker.trim().toUpperCase())
+          .filter((t) => t.length > 0),
+      ),
+    ];
+
+    if (uniqueTickers.length === 0) {
+      return jsonResponse(req, { ok: true, synced_dividends: 0, tickers: [] });
+    }
+
+    const chunkSize = 15;
+    const allCorporateDividends: ParsedCorporateDividend[] = [];
+    for (let i = 0; i < uniqueTickers.length; i += chunkSize) {
+      const chunk = uniqueTickers.slice(i, i + chunkSize);
+      const chunkDividends = await fetchBrapiDividendsForTickers(chunk);
+      allCorporateDividends.push(...chunkDividends);
+    }
+
+    let inserted = 0;
+    if (allCorporateDividends.length > 0) {
+      const upsertRows = allCorporateDividends.map((d) => ({
+        ticker: d.ticker,
+        type: d.type,
+        com_date: d.com_date,
+        payment_date: d.payment_date,
+        rate: d.rate,
+        net_rate: d.net_rate,
+        currency: d.currency,
+      }));
+
+      const { error: divUpsertError } = await supabase
+        .from("corporate_dividends")
+        .upsert(upsertRows, { onConflict: "ticker, com_date, type, payment_date" });
+
+      if (divUpsertError) {
+        return safeErrorResponse(req, 500, "Falha ao gravar proventos corporativos.", divUpsertError);
+      }
+      inserted = upsertRows.length;
+    }
+
+    return jsonResponse(req, {
+      ok: true,
+      action: "sync_corporate_dividends",
+      synced_dividends: inserted,
+      tickers: uniqueTickers,
+    });
+  }
+
+  // AÇÃO 2 & 3: Cotações padrão ou Fechamento Mensal
   let tickers: string[] = requestedTickers;
 
   if (tickers.length === 0) {
@@ -246,6 +358,8 @@ Deno.serve(async (req) => {
 
   return jsonResponse(req, {
     ok: true,
+    action,
+    month: requestedMonth,
     updated: isServiceRole ? rows.length : 0,
     guarded,
     failed,

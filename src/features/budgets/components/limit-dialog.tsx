@@ -54,9 +54,13 @@ function LimitDialogContent({
 
   const handleSave = async () => {
     setError(null);
-    if (cents <= 0) return;
     try {
-      await setLimit.mutateAsync({ categoryId: category.id, month, limit: cents / 100 });
+      if (cents <= 0) {
+        // Salvar zero explícito para remover o limite e quebrar herança (§3.5.2)
+        await setLimit.mutateAsync({ categoryId: category.id, month, limit: 0 });
+      } else {
+        await setLimit.mutateAsync({ categoryId: category.id, month, limit: cents / 100 });
+      }
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -66,7 +70,13 @@ function LimitDialogContent({
   const handleRemove = async () => {
     setError(null);
     try {
-      await removeLimit.mutateAsync({ categoryId: category.id, month });
+      if (inherited) {
+        // Se veio herdado do mês anterior, salvar limite 0 neste mês quebra a herança
+        await setLimit.mutateAsync({ categoryId: category.id, month, limit: 0 });
+      } else {
+        // Se era próprio deste mês, remove o registro
+        await removeLimit.mutateAsync({ categoryId: category.id, month });
+      }
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -77,7 +87,7 @@ function LimitDialogContent({
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        if (cents > 0 && !pending) {
+        if (!pending) {
           void handleSave();
         }
       }}
@@ -86,10 +96,22 @@ function LimitDialogContent({
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="limit-amount" className="text-xs font-semibold text-foreground">
-          Limite mensal
-        </label>
+        <div className="flex items-center justify-between">
+          <label htmlFor="limit-amount" className="text-xs font-semibold text-foreground">
+            Limite mensal
+          </label>
+          {currentLimitCents === 0 && (
+            <span className="text-[11px] text-muted-foreground font-medium">
+              Categoria sem limite ativo
+            </span>
+          )}
+        </div>
         <MoneyInput id="limit-amount" cents={cents} onCentsChange={setCents} aria-label="Limite mensal da categoria" />
+        <p className="text-[11px] text-muted-foreground">
+          {cents === 0
+            ? "Ao salvar com valor R$ 0,00, a categoria fica livre de orçamento neste mês."
+            : "Defina o valor máximo que você planeja gastar com esta categoria no mês."}
+        </p>
       </div>
 
       {rule && suggestionCents > 0 ? (
@@ -130,19 +152,29 @@ function LimitDialogContent({
       ) : null}
 
       <ModalFooter className="sm:justify-between">
-        {!inherited && currentLimitCents > 0 ? (
-          <Button type="button" variant="ghost" className="text-critical hover:text-critical" onClick={() => void handleRemove()}>
-            Remover limite
+        {currentLimitCents > 0 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className="text-critical hover:text-critical"
+            onClick={() => void handleRemove()}
+            disabled={pending}
+          >
+            {inherited ? "Deixar sem limite" : "Remover limite"}
           </Button>
         ) : (
           <span />
         )}
         <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="ghost" onClick={onClose} disabled={pending}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={cents <= 0 || pending}>
-            {pending ? "Salvando…" : "Salvar limite"}
+          <Button type="submit" disabled={pending}>
+            {pending
+              ? "Salvando…"
+              : cents === 0
+                ? "Salvar sem limite"
+                : "Salvar limite"}
           </Button>
         </div>
       </ModalFooter>
@@ -166,7 +198,7 @@ export function LimitDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={`Limite — ${category.name}`}
-      description={`Mês ${month}${inherited ? " · herdado do mês anterior (ao salvar, vira limite próprio)" : ""}`}
+      description={`Mês ${month}${inherited ? " · herdado do mês anterior (ao salvar ou remover, aplica-se a este mês)" : currentLimitCents === 0 ? " · sem limite configurado" : ""}`}
       size="md"
       showCalculator
     >

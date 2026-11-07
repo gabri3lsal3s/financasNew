@@ -481,5 +481,10 @@ export * from "./point-in-time";
 export * from "./class-breakdown";
 export * from "./compound-interest";
 export * from "./monthly-statement";
+export * from "./market-calendar";
+export * from "./closing-validator";
+export * from "./dividend-deduplication";
+export * from "./dividend-suggester";
+export * from "./dividend-cash-governance";
 
 

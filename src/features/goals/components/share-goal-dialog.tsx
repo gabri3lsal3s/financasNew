@@ -43,6 +43,7 @@ import {
 } from "@/state/mutations/use-public-share-mutations";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { getPublicAppUrl } from "@/services/app-url";
 import type { Category, GoalTrackerSharePayload, GoalTrackerStatus, PublicShare } from "@/types";
 
 export interface ShareGoalDialogProps {
@@ -136,8 +137,7 @@ export function ShareGoalDialog({
   const [isRegenerateModalOpen, setIsRegenerateModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const shareUrl = activeShare ? `${origin}/meta/${activeShare.token}` : "";
+  const shareUrl = activeShare ? getPublicAppUrl(`meta/${activeShare.token}`) : "";
 
   // Pré-computação segura do Pix BACEN
   const effectivePixBrCode = useMemo(() => {
@@ -232,7 +232,7 @@ export function ShareGoalDialog({
         payload: payload as unknown as Record<string, unknown>,
       });
 
-      const generatedUrl = `${origin}/meta/${result.token}`;
+      const generatedUrl = getPublicAppUrl(`meta/${result.token}`);
       if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(generatedUrl).catch(() => {});
       }
@@ -428,7 +428,7 @@ export function ShareGoalDialog({
       });
 
       setIsRegenerateModalOpen(false);
-      const generatedUrl = `${origin}/meta/${result.token}`;
+      const generatedUrl = getPublicAppUrl(`meta/${result.token}`);
       if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(generatedUrl).catch(() => {});
       }
@@ -618,13 +618,13 @@ export function ShareGoalDialog({
               )}
             </div>
 
-            <ModalFooter className="flex-col-reverse sm:flex-row sm:justify-between gap-2.5">
-              <div className="flex items-center gap-2 flex-wrap">
+            <ModalFooter className="sm:justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto order-last sm:order-first">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="text-critical hover:text-critical"
+                  className="text-critical hover:text-critical w-full sm:w-auto"
                   onClick={() => setIsDeleteModalOpen(true)}
                   disabled={isPending}
                 >
@@ -638,7 +638,7 @@ export function ShareGoalDialog({
                     size="sm"
                     onClick={() => void handleConfirmRestore()}
                     disabled={isPending}
-                    className="gap-1.5 text-xs"
+                    className="gap-1.5 text-xs w-full sm:w-auto"
                   >
                     <Eye className="size-3.5" aria-hidden="true" />
                     <span>Reativar link público</span>
@@ -648,7 +648,7 @@ export function ShareGoalDialog({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="text-muted-foreground hover:text-foreground text-xs"
+                    className="text-muted-foreground hover:text-foreground text-xs w-full sm:w-auto"
                     onClick={() => setIsRevokeModalOpen(true)}
                     disabled={isPending}
                   >
@@ -662,16 +662,19 @@ export function ShareGoalDialog({
                   size="sm"
                   onClick={() => setIsRegenerateModalOpen(true)}
                   disabled={isPending}
-                  className="text-xs"
+                  className="text-xs w-full sm:w-auto"
                 >
                   <RotateCw className="size-3.5 mr-1.5" aria-hidden="true" />
                   <span>Regenerar link</span>
                 </Button>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Fechar
+                </Button>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="default"
                   size="sm"
                   onClick={() => void handleToggleStatus()}
                   disabled={isPending}
@@ -679,9 +682,6 @@ export function ShareGoalDialog({
                 >
                   <Check className="size-3.5" aria-hidden="true" />
                   <span>{isCompleted ? "Reabrir Meta" : "Marcar como Concluída"}</span>
-                </Button>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                  Fechar
                 </Button>
               </div>
             </ModalFooter>
@@ -867,13 +867,13 @@ export function ShareGoalDialog({
               transação privada é exposta aos participantes.
             </div>
 
-            <ModalFooter className="flex-col-reverse sm:flex-row sm:justify-between gap-2.5">
+            <ModalFooter className="sm:justify-between">
               {activeShare && isEditingGoal ? (
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="text-critical hover:text-critical self-start sm:self-auto"
+                  className="text-critical hover:text-critical order-last sm:order-first w-full sm:w-auto"
                   onClick={() => setIsDeleteModalOpen(true)}
                   disabled={isPending}
                 >
@@ -881,9 +881,9 @@ export function ShareGoalDialog({
                   <span>Excluir meta</span>
                 </Button>
               ) : (
-                <div />
+                <span />
               )}
-              <div className="flex items-center gap-2 justify-end">
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
                 <Button
                   type="button"
                   variant="ghost"

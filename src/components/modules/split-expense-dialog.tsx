@@ -31,6 +31,7 @@ import { useCreatePublicShare } from "@/state/mutations/use-public-share-mutatio
 import { useSplitPreferences } from "@/services/split-preferences";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { getPublicAppUrl } from "@/services/app-url";
 import { todayISO } from "@/domain/debts";
 import type { Expense, SplitSharePayload } from "@/types";
 
@@ -256,8 +257,7 @@ export function SplitExpenseDialog({
         payload: payload as unknown as Record<string, unknown>,
       });
 
-      const origin = typeof window !== "undefined" ? window.location.origin : "";
-      const url = `${origin}/r/${share.token}`;
+      const url = getPublicAppUrl(`r/${share.token}`);
       setGeneratedLink(url);
 
       if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
@@ -466,7 +466,7 @@ export function SplitExpenseDialog({
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-3 border-t border-border/80">
               <Button
                 type="button"
                 variant="outline"

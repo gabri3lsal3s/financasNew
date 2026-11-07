@@ -1,5 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { executePortfolioBatchAporte, type ExecutePortfolioBatchAporteParams } from "@/data/rpc";
+import {
+  approveDividendsBatchRpc,
+  executePortfolioBatchAporte,
+  type ExecutePortfolioBatchAporteParams,
+} from "@/data/rpc";
 import {
   createPortfolioAsset,
   createPortfolioContribution,
@@ -13,8 +17,11 @@ import {
   deletePortfolioContributionsMatching,
   deletePortfolioDividend,
   deletePortfolioDividendsMatching,
+  deletePortfolioDividendsByIds,
   deletePortfolioTransaction,
   deletePortfolioTransactionsMatching,
+  dismissCorporateDividend,
+  removeDividendDismissal,
   listPortfolioTransactions,
   updatePortfolioAsset,
   updatePortfolioContribution,
@@ -30,10 +37,20 @@ import {
   getAssetPricingMode,
   isCashAssetClass,
 } from "@/domain/portfolio/valuation";
+import { validateDividendReversalSafeguard } from "@/domain/portfolio/dividend-cash-governance";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import type { DbInsert, DbUpdate, PortfolioAsset, PortfolioContribution, PortfolioDividend, PortfolioTransaction } from "@/types";
+import type {
+  ApproveDividendsBatchPayload,
+  DbInsert,
+  DbUpdate,
+  PortfolioAsset,
+  PortfolioContribution,
+  PortfolioDividend,
+  PortfolioDividendDismissalReason,
+  PortfolioTransaction,
+} from "@/types";
 
 export const PORTFOLIO_QUERY_KEYS = {
   assets: ["portfolio_assets"] as const,
@@ -44,6 +61,8 @@ export const PORTFOLIO_QUERY_KEYS = {
   snapshots: ["portfolio_snapshots"] as const,
   allocationTargets: ["allocation_targets"] as const,
   assetPrices: ["asset_prices"] as const,
+  corporateDividends: ["corporate_dividends"] as const,
+  dividendDismissals: ["portfolio_dividend_dismissals"] as const,
 };
 
 export function useCreatePortfolioAsset() {
@@ -1202,6 +1221,145 @@ export function useExecutePortfolioBatchAporte() {
         variant: "destructive",
       });
       triggerSensory("destructive");
+    },
+  });
+}
+
+/**
+ * Hook de aprovação atômica em lote de proventos corporativos com UPSERT de Caixa
+ * e suporte a estorno seguro (Undo) com salvaguarda de reinvestimento.
+ */
+export function useApproveDividendsBatch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: ApproveDividendsBatchPayload) => {
+      return approveDividendsBatchRpc(payload);
+    },
+    onSuccess: (result, variables) => {
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividends });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.corporateDividends });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividendDismissals });
+      void queryClient.invalidateQueries({ queryKey: ["portfolio_position"] });
+
+      triggerSensory("success");
+
+      const count = result.inserted_count;
+      const totalFormatted = result.total_cash.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      });
+
+      pushToast({
+        title: count === 1 ? "Provento creditado com sucesso" : `${count} proventos creditados com sucesso`,
+        description: variables.sync_cash
+          ? `${totalFormatted} creditados no ativo Caixa da carteira.`
+          : `${totalFormatted} registrados em proventos recebidos.`,
+        variant: "success",
+        duration: 5000,
+        action: {
+          label: "Desfazer",
+          onClick: async () => {
+            try {
+              if (result.inserted_ids && result.inserted_ids.length > 0) {
+                await deletePortfolioDividendsByIds(result.inserted_ids);
+              }
+
+              for (const div of variables.dividends) {
+                if (div.corporate_dividend_id) {
+                  await removeDividendDismissal(div.corporate_dividend_id).catch(() => undefined);
+                }
+              }
+
+              if (variables.sync_cash && result.cash_asset_id && result.total_cash > 0) {
+                const assets = queryClient.getQueryData<PortfolioAsset[]>(PORTFOLIO_QUERY_KEYS.assets) ?? [];
+                const cashAsset = assets.find((a) => a.id === result.cash_asset_id || a.ticker.toUpperCase() === "CAIXA");
+                if (cashAsset) {
+                  const reversal = validateDividendReversalSafeguard(cashAsset.quantity, result.total_cash);
+                  await updatePortfolioAsset(cashAsset.id, {
+                    quantity: reversal.newBalance,
+                  });
+                  if (!reversal.isSafe) {
+                    pushToast({
+                      title: "Atenção ao estorno de Caixa",
+                      description: reversal.warningMessage,
+                      variant: "warning",
+                      duration: 6000,
+                    });
+                  }
+                }
+              }
+
+              void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
+              void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividends });
+              void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+              void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.corporateDividends });
+              void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividendDismissals });
+              void queryClient.invalidateQueries({ queryKey: ["portfolio_position"] });
+
+              triggerSensory("warning");
+              pushToast({
+                title: "Aprovação desfeita",
+                description: "Os lançamentos foram removidos com sucesso.",
+                variant: "default",
+              });
+            } catch (undoErr) {
+              pushToast({
+                title: "Erro ao desfazer",
+                description: getErrorMessage(undoErr),
+                variant: "destructive",
+              });
+            }
+          },
+        },
+      });
+    },
+    onError: (err) => {
+      triggerSensory("error");
+      pushToast({
+        title: "Erro ao aprovar proventos",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+/**
+ * Hook para ignorar / dispensar um provento corporativo sugerido.
+ */
+export function useDismissCorporateDividend() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      corporateDividendId,
+      reason = "manual_ignore",
+    }: {
+      corporateDividendId: string;
+      reason?: PortfolioDividendDismissalReason;
+    }) => {
+      return dismissCorporateDividend(corporateDividendId, reason);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.corporateDividends });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividendDismissals });
+      triggerSensory("action");
+      pushToast({
+        title: "Provento ignorado",
+        description: "O provento não será mais sugerido na carteira.",
+        variant: "default",
+      });
+    },
+    onError: (err) => {
+      triggerSensory("error");
+      pushToast({
+        title: "Erro ao ignorar provento",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
     },
   });
 }

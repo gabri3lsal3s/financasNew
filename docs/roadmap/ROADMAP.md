@@ -1,5 +1,27 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.99** registra a **Conclusão e Homologação do Plano 05 — Fechamento Automático de Snapshots Patrimoniais, Sincronização de Cotações & Motor Inteligente de Proventos e Insights em Carrossel** (2026-11-06):
+> - **(1) Infraestrutura Postgres, RPCs Atômicos & RLS Hermético (Migração 0087)**:
+>   - Adição de `corporate_dividends` (leitura apenas para usuários ativos com módulo `investments`; escrita restrita a `service_role`) e `portfolio_dividend_dismissals` (RLS próprio);
+>   - RPC `commit_monthly_closing_atomic` consolidando snapshots (`portfolio_snapshots`) e cotações mensais (`portfolio_monthly_prices`) numa única transação protegida contra preços $\le 0$;
+>   - RPC `approve_dividends_batch_atomic` com **UPSERT garantido do ativo CAIXA** (criação automática caso o usuário ainda não possua o ativo Caixa, eliminando saldos órfãos);
+>   - Extensão da Edge Function `quotes` com ações `sync_corporate_dividends` e `close_month`.
+> - **(2) Motores Puros de Domínio Financeiro (`src/domain/portfolio/`)**:
+>   - `market-calendar.ts`: cálculo do último dia útil da B3 com feriados bancários da ANBIMA, anos bissextos e trava pré-19h BRT (`isMarketClosedForMonth`);
+>   - `closing-validator.ts`: validador pré-flight com isenção do ativo Caixa ($1,00$ estático sem requisição externa);
+>   - `dividend-deduplication.ts`: fuzzy matching inteligente prevenindo créditos duplicados contra lançamentos manuais;
+>   - `dividend-suggester.ts`: cálculo retroativo da custódia na Data COM (`getCustodyAtComDate`) considerando compras e vendas passadas;
+>   - `dividend-cash-governance.ts`: segregação temporal estrita entre proventos creditados (`payment_date <= today`) e futuros/previstos (`payment_date > today`).
+> - **(3) Repositórios, Queries e Mutações TanStack Query**:
+>   - Métodos de repositório e hooks reativos `useCorporateDividends` e `useApproveDividendsBatch` com feedback sensorial (`triggerSensory`), invalidação de cache e salvaguarda de estorno (Undo).
+> - **(4) Interface de Usuário Alinhada às Regras de Ouro (AGENTS.md)**:
+>   - `PortfolioInsightsCarousel.tsx`: carrossel de insights na Home de Investimentos rigorosamente em conformidade com a **Regra 19 do AGENTS.md** (altura total unificada sem saltos de layout, ícones de Nível 2 em container canônico, botão `size="sm"` de aprovação em 1 clique e trava de autoplay em interação/toque);
+>   - `PendingDividendsDialog.tsx`: diálogo modal detalhado e responsivo (Regra 18) com seleção por checkbox e dispensas individuais.
+> - **(5) Quality Gates QG1–QG7 Aprovados & Arquivamento**:
+>   - 100% dos testes unitários e de integração verdes (incluindo testes de segurança RLS, acessibilidade axe-core e isolamento cross-tenant);
+>   - 0 erros em `tsc -b`, 0 violações de lint (`local/no-decorative-unicode`) e build de produção Vite/PWA concluído com sucesso;
+>   - Arquivamento formal do plano canônico em `docs/plans/completed/05_PLANO_FECHAMENTO_AUTOMATICO_SNAPSHOTS_E_COTACAO.md`.
+>
 > **v2.98** registra a **Conclusão e Homologação do Plano 03.1 — Refinamento, Integridade e Expansão Patrimonial do Modo Família** (2026-11-06):
 > - **(1) Modelos de Gestão Flexíveis (Finanças Conjuntas / Caixa Único vs. Divisão de Despesas)**:
 >   - Suporte nativo ao modo `combined` (Caixa Único) em `reconciliation.ts`, zerando formalmente desequilíbrios individuais (`netBalanceCents = 0`) e transferências forçadas;

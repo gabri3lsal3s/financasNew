@@ -16,6 +16,7 @@ import { Badge, Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { getPublicAppUrl } from "@/services/app-url";
 import type { GoalContribution, PublicShare } from "@/types";
 
 export interface CampaignCardProps {
@@ -54,8 +55,7 @@ export function CampaignCard({
     daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
   }
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const publicUrl = `${origin}/meta/${share.token}`;
+  const publicUrl = getPublicAppUrl(`meta/${share.token}`);
 
   const handleCopyLink = async () => {
     try {

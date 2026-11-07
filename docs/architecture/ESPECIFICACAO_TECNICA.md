@@ -77,6 +77,8 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 | `get_family_income_ratio_suggestion` | Sugestão assistida de divisão de despesas baseada na média de receitas de 3 meses | Retorno de média móvel auditada por membro com RLS estrito de família; zero cálculo dinâmico forçado |
 | `get_family_portfolio_summary` | Consolidação patrimonial familiar multi-nível (carteira integral, classes e ativos específicos) | Agrega ativos compartilhados, reserva familiar (caixa) e proventos sem expor ativos pessoais não compartilhados |
 | `get_shared_goal_tracker` | Leitura pública do progresso de meta coletiva via token | Retorno exclusivo de dados da meta (título, alvo, arrecadado, prazo e chave Pix); isolamento total do restante da conta do usuário |
+| `commit_monthly_closing_atomic` | Consolidação atômica de fechamento patrimonial mensal (Plano 05) | Grava snapshot (`portfolio_snapshots`) e cotações da competência (`portfolio_monthly_prices`) na mesma transação; valida integridade e faz rollback se qualquer preço for $\le 0$ |
+| `approve_dividends_batch_atomic` | Aprovação em lote de proventos corporativos com garantia de Caixa (Plano 05) | Grava proventos em `portfolio_dividends`, registra dispensas em `portfolio_dividend_dismissals` e executa o **UPSERT garantido do ativo CAIXA** (cria o ativo caso o usuário não possua, eliminando saldos órfãos) |
 
 > **Regra de ouro:** se a ação toca 2+ tabelas, é RPC transacional. O cliente **nunca** faz chamadas sequenciais compensatórias.
 
@@ -318,8 +320,11 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
 
 #### 3.5.2 Orçamentos (despesas)
 
-- **Limite mensal por categoria:** valor por `(categoria, mês)`, upsert; limpar o campo remove o limite.
-- **Herança de limite vs. Limite zero explícito:** sem limite cadastrado no mês atual, herda o do mês anterior (fallback de exibição/alerta). Caso o usuário cadastre explicitamente `0,00`, o sistema trava o teto da categoria em zero e não herda valores anteriores.
+- **Limite mensal por categoria:** valor por `(categoria, mês)`, upsert; salvar `0,00` ou acionar a remoção de limite torna a categoria livre/sem limite ativo no mês atual.
+- **Herança de limite vs. Limite zero explícito:** sem limite cadastrado no mês atual, herda o do mês anterior mais recente (fallback de exibição/alerta). Caso o usuário cadastre explicitamente `0,00` ou clique em *"Deixar sem limite"* em uma categoria herdada, o sistema grava o teto em zero (`limit = 0.00`, restrição `check ("limit" >= 0)`), interrompendo a herança de meses anteriores e tratando a categoria como livre de orçamento no mês. A ação de remoção/anulação está sempre disponível no modal `LimitDialog` (inclusive para limites herdados).
+- **Coerência de Escopo e Resumo Geral:**
+  - O **Teto Planejado** e o **Consumo do Teto** comparam **exclusivamente as despesas das categorias orçadas** (`limitCents > 0`) contra a soma dos seus limites. Despesas de categorias sem limite não são somadas contra o teto alheio, sendo apresentadas de forma transparente como *"Despesas livres (sem teto)"*.
+  - **Estado calmo na ausência de tetos:** quando não há nenhum limite configurado no mês (`totalLimits === 0`), a interface adota estado calmo e neutro (*"Livre de teto"* / *"Sem limites ativos"*), sem barras de preenchimento críticas ou falsos alarmes de *"Excedido"*. Na Home (`overview-page`), a régua de orçamentos compacta adota a mesma coerência estrita de escopo (`totalBudgetedSpent`).
 - **Dupla métrica de visualização:** alternância direta na UI entre **Gasto Pessoal (Ponderado)** e **Gasto Total da Família/Casa (Bruto)** com tooltips informativos do percentual de consumo.
 - **Faixas de atenção:** ≥ 85% → Atenção; ≥ 90% → Alta; ≥ 95% → Crítica; > 100% → **Excedida** (alerta com valor excedido).
 - **KPIs:** total de limites do mês, % global usado (`min(100, despesas ÷ (totalLimites || rendas))`), cor de progresso (≥85% vermelho, ≥70% amarelo, senão verde).

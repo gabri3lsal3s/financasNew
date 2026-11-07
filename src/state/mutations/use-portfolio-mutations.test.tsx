@@ -7,10 +7,18 @@ import {
   useDeletePortfolioContribution,
   useDeletePortfolioDividend,
   useRecordOrder,
+  useApproveDividendsBatch,
+  useDismissCorporateDividend,
   PORTFOLIO_QUERY_KEYS,
 } from "./use-portfolio-mutations";
 import * as repo from "@/data/repositories/portfolio";
+import * as rpc from "@/data/rpc";
 import type { PortfolioAsset, PortfolioDividend, PortfolioTransaction } from "@/types";
+
+vi.mock("@/data/rpc", () => ({
+  approveDividendsBatchRpc: vi.fn(),
+  executePortfolioBatchAporte: vi.fn(),
+}));
 
 vi.mock("@/data/repositories/portfolio", () => ({
   createPortfolioAsset: vi.fn(),
@@ -28,6 +36,9 @@ vi.mock("@/data/repositories/portfolio", () => ({
   createPortfolioDividend: vi.fn(),
   deletePortfolioDividend: vi.fn().mockResolvedValue(undefined),
   deletePortfolioDividendsMatching: vi.fn().mockResolvedValue(undefined),
+  deletePortfolioDividendsByIds: vi.fn().mockResolvedValue(undefined),
+  dismissCorporateDividend: vi.fn().mockResolvedValue({}),
+  removeDividendDismissal: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/services/toast", () => ({
@@ -593,4 +604,56 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
       expect(repo.updatePortfolioAsset).not.toHaveBeenCalled();
     });
   });
+
+  describe("useApproveDividendsBatch & useDismissCorporateDividend", () => {
+    it("deve executar approveDividendsBatchRpc e invalidar queries", async () => {
+      vi.mocked(rpc.approveDividendsBatchRpc).mockResolvedValueOnce({
+        success: true,
+        inserted_count: 2,
+        total_cash: 250,
+        cash_asset_id: "cash-asset-id",
+        inserted_ids: ["div-1", "div-2"],
+      });
+
+      const { result } = renderHook(() => useApproveDividendsBatch(), { wrapper });
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          dividends: [
+            { ticker: "PETR4", date: "2026-11-20", amount: 150 },
+            { ticker: "VALE3", date: "2026-11-20", amount: 100 },
+          ],
+          sync_cash: true,
+        });
+      });
+
+      expect(rpc.approveDividendsBatchRpc).toHaveBeenCalledWith({
+        dividends: [
+          { ticker: "PETR4", date: "2026-11-20", amount: 150 },
+          { ticker: "VALE3", date: "2026-11-20", amount: 100 },
+        ],
+        sync_cash: true,
+      });
+    });
+
+    it("deve executar dismissCorporateDividend e invalidar queries", async () => {
+      vi.mocked(repo.dismissCorporateDividend).mockResolvedValueOnce({
+        id: "d1",
+        user_id: "u1",
+        corporate_dividend_id: "corp-1",
+        reason: "manual_ignore",
+      });
+
+      const { result } = renderHook(() => useDismissCorporateDividend(), { wrapper });
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          corporateDividendId: "corp-1",
+        });
+      });
+
+      expect(repo.dismissCorporateDividend).toHaveBeenCalledWith("corp-1", "manual_ignore");
+    });
+  });
 });
+

@@ -20,6 +20,10 @@ import type {
   RemoveFamilyMemberResult,
   FamilyIncomeRatioSuggestionItem,
   FamilyPortfolioSummary,
+  ApproveDividendsBatchPayload,
+  ApproveDividendsBatchResult,
+  MonthlyClosingPayload,
+  MonthlyClosingResult,
 } from "@/types";
 
 /**
@@ -1436,6 +1440,39 @@ export async function getFamilyPortfolioSummary(
       p_family_id: params?.familyId ?? null,
     }),
     true,
+  );
+}
+
+/**
+ * Consolida atômica e transacionalmente o fechamento mensal da carteira.
+ * Persiste cotações em portfolio_monthly_prices e o snapshot consolidado em portfolio_snapshots.
+ */
+export async function commitMonthlyClosingRpc(
+  payload: MonthlyClosingPayload,
+): Promise<MonthlyClosingResult> {
+  return unwrapRpc(
+    callRpc("commit_monthly_closing_atomic", {
+      p_month: payload.month,
+      p_closing_date: payload.closing_date,
+      p_prices: payload.prices,
+      p_total_value: payload.total_value,
+      p_total_cost: payload.total_cost,
+    }),
+  );
+}
+
+/**
+ * Aprova múltiplos proventos de forma atômica no banco de dados.
+ * Se sync_cash = true, realiza o UPSERT garantido no ativo CAIXA, criando-o caso inexista.
+ */
+export async function approveDividendsBatchRpc(
+  payload: ApproveDividendsBatchPayload,
+): Promise<ApproveDividendsBatchResult> {
+  return unwrapRpc(
+    callRpc("approve_dividends_batch_atomic", {
+      p_dividends: payload.dividends,
+      p_sync_cash: payload.sync_cash ?? false,
+    }),
   );
 }
 

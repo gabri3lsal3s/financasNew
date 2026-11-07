@@ -97,6 +97,83 @@ export function parseBrapiResponse(ticker: string, payload: unknown): ParsedQuot
   };
 }
 
+export interface ParsedCorporateDividend {
+  ticker: string;
+  type: "DIVIDENDO" | "JCP" | "RENDIMENTO" | "SOBRA" | "AMORTIZACAO" | "OUTROS";
+  com_date: string;
+  payment_date: string;
+  rate: number;
+  net_rate: number;
+  currency: "BRL" | "USD";
+}
+
+/**
+ * Normaliza o tipo de provento para o domínio da B3.
+ */
+function normalizeDividendType(rawLabel: string | undefined): ParsedCorporateDividend["type"] {
+  if (!rawLabel) return "DIVIDENDO";
+  const upper = rawLabel.trim().toUpperCase();
+  if (upper.includes("JCP") || upper.includes("JUROS")) return "JCP";
+  if (upper.includes("RENDIMENTO")) return "RENDIMENTO";
+  if (upper.includes("SOBRA")) return "SOBRA";
+  if (upper.includes("AMORTIZ")) return "AMORTIZACAO";
+  return "DIVIDENDO";
+}
+
+/**
+ * Extrai a lista de proventos corporativos do payload da Brapi (`/api/quote/{ticker}?dividends=true`).
+ */
+export function parseBrapiDividends(ticker: string, payload: unknown): ParsedCorporateDividend[] {
+  if (!payload || typeof payload !== "object") return [];
+  const results = (payload as Record<string, unknown>).results;
+  if (!Array.isArray(results) || results.length === 0) return [];
+
+  const item = results[0];
+  if (!item || typeof item !== "object") return [];
+
+  const dividendsData = (item as Record<string, unknown>).dividendsData;
+  if (!dividendsData || typeof dividendsData !== "object") return [];
+
+  const cashDividends = (dividendsData as Record<string, unknown>).cashDividends;
+  if (!Array.isArray(cashDividends)) return [];
+
+  const list: ParsedCorporateDividend[] = [];
+  const cleanTicker = ticker.trim().toUpperCase();
+
+  for (const div of cashDividends) {
+    if (!div || typeof div !== "object") continue;
+    const divRecord = div as Record<string, unknown>;
+
+    const rawRate = divRecord.rate;
+    const rate = typeof rawRate === "number" ? rawRate : Number(rawRate);
+    if (!Number.isFinite(rate) || rate <= 0) continue;
+
+    const paymentRaw = divRecord.paymentDate;
+    const paymentDate = typeof paymentRaw === "string" ? paymentRaw.slice(0, 10) : "";
+    if (!paymentDate || paymentDate.length < 10) continue;
+
+    const comRaw = divRecord.lastDatePrior ?? divRecord.approvedOn;
+    const comDate = typeof comRaw === "string" ? comRaw.slice(0, 10) : paymentDate;
+
+    const divType = normalizeDividendType(divRecord.label as string | undefined);
+    // JCP sofre retenção na fonte de 15% de IR
+    const netRate = divType === "JCP" ? Math.round(rate * 0.85 * 100000000) / 100000000 : rate;
+
+    list.push({
+      ticker: cleanTicker,
+      type: divType,
+      com_date: comDate,
+      payment_date: paymentDate,
+      rate,
+      net_rate: netRate,
+      currency: "BRL",
+    });
+  }
+
+  return list;
+}
+
+
 /**
  * Extrai a cotação cambial da AwesomeAPI (`/last/USD-BRL`).
  * Payload típico: { USDBRL: { bid: "5.45" } }

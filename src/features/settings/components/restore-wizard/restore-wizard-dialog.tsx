@@ -295,7 +295,7 @@ export function RestoreWizardDialog({
 
         {/* Rodapé unificado de ações do Wizard */}
         <ModalFooter className="sm:justify-between">
-          <div>
+          <div className="w-full sm:w-auto">
             {!state.isDone && (
               <Button
                 type="button"
@@ -310,7 +310,7 @@ export function RestoreWizardDialog({
             )}
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
             {state.step > 1 && !state.isDone && (
               <Button
                 type="button"
@@ -324,7 +324,7 @@ export function RestoreWizardDialog({
                   }))
                 }
                 disabled={state.isRestoring || fetchingExisting}
-                className="gap-1.5 flex-1 sm:flex-initial"
+                className="gap-1.5 w-full sm:w-auto"
               >
                 <ArrowLeft className="size-4" aria-hidden="true" />
                 <span>Voltar</span>
@@ -338,7 +338,7 @@ export function RestoreWizardDialog({
                 size="sm"
                 onClick={handleGoToStep2}
                 disabled={!state.parsedPayload || state.isRestoring}
-                className="gap-1.5 flex-1 sm:flex-initial"
+                className="gap-1.5 w-full sm:w-auto"
               >
                 <span>Avançar para Módulos</span>
                 <ArrowRight className="size-4" aria-hidden="true" />
@@ -352,7 +352,7 @@ export function RestoreWizardDialog({
                 size="sm"
                 onClick={handleGoToStep3}
                 disabled={state.selectedModules.size === 0 || fetchingExisting}
-                className="gap-1.5 flex-1 sm:flex-initial"
+                className="gap-1.5 w-full sm:w-auto"
               >
                 <span>{fetchingExisting ? "Analisando dados..." : "Avançar para Desduplicação"}</span>
                 <ArrowRight className="size-4" aria-hidden="true" />
@@ -365,7 +365,7 @@ export function RestoreWizardDialog({
                 variant="default"
                 size="sm"
                 onClick={handleGoToStep4}
-                className="gap-1.5 flex-1 sm:flex-initial"
+                className="gap-1.5 w-full sm:w-auto"
               >
                 <span>Avançar para Confirmação</span>
                 <ArrowRight className="size-4" aria-hidden="true" />
@@ -379,7 +379,7 @@ export function RestoreWizardDialog({
                 size="sm"
                 onClick={handleExecuteRestore}
                 disabled={state.isRestoring}
-                className="gap-1.5 flex-1 sm:flex-initial"
+                className="gap-1.5 w-full sm:w-auto"
               >
                 <Check className="size-4" aria-hidden="true" />
                 <span>{state.isRestoring ? "Restaurando..." : "Confirmar Restauração"}</span>

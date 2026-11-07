@@ -55,6 +55,10 @@ import type {
   UserModulePermission,
   UserPreferences,
   UserSubscription,
+  CorporateDividend,
+  PortfolioDividendDismissal,
+  ApproveDividendsBatchResult,
+  MonthlyClosingResult,
 } from "./schema";
 
 /**
@@ -113,10 +117,29 @@ export interface Database {
       family_members: Table<FamilyMember>;
       family_invites: Table<FamilyInvite>;
       family_settlements: Table<FamilySettlement>;
+      corporate_dividends: Table<CorporateDividend>;
+      portfolio_dividend_dismissals: Table<PortfolioDividendDismissal>;
     };
 
     Views: Record<string, never>;
     Functions: {
+      commit_monthly_closing_atomic: {
+        Args: {
+          p_month: string;
+          p_closing_date: string;
+          p_prices: unknown;
+          p_total_value: number;
+          p_total_cost: number;
+        };
+        Returns: MonthlyClosingResult;
+      };
+      approve_dividends_batch_atomic: {
+        Args: {
+          p_dividends: unknown;
+          p_sync_cash?: boolean;
+        };
+        Returns: ApproveDividendsBatchResult;
+      };
       signal_split_payment: {
         Args: {
           p_token: string;

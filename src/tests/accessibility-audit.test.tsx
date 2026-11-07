@@ -430,6 +430,20 @@ vi.mock("@/state", () => ({
     mutate: vi.fn(),
     isPending: false,
   }),
+  useCorporateDividends: () => ({
+    available: [],
+    projected: [],
+    totalAvailableAmount: 0,
+    totalProjectedAmount: 0,
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  useApproveDividendsBatch: () => ({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }));
 
 

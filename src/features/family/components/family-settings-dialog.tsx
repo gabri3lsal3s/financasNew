@@ -45,6 +45,7 @@ import {
 } from "@/state";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
+import { getPublicAppUrl } from "@/services/app-url";
 import { FamilyBudgetShareCard } from "@/features/settings/components/tabs/family-budget-share-card";
 import type {
   FamilyPixKeyType,
@@ -243,8 +244,7 @@ export function FamilySettingsDialog({
         invitedEmail: cleanEmail,
       });
 
-      const origin = typeof window !== "undefined" ? window.location.origin : "";
-      const url = `${origin}/convite-familiar/${invite.token}`;
+      const url = getPublicAppUrl(`convite-familiar/${invite.token}`);
       setGeneratedInviteUrl(url);
       setInviteEmail("");
       triggerSensory("success");
@@ -749,8 +749,7 @@ export function FamilySettingsDialog({
                     </span>
                     <div className="space-y-2">
                       {pendingInvites.map((inv) => {
-                        const origin = typeof window !== "undefined" ? window.location.origin : "";
-                        const url = `${origin}/convite-familiar/${inv.token}`;
+                        const url = getPublicAppUrl(`convite-familiar/${inv.token}`);
 
                         return (
                           <div

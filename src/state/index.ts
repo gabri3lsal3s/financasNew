@@ -104,9 +104,12 @@ export {
   useDeletePortfolioTransaction,
   useRecordOrder,
   useExecutePortfolioBatchAporte,
+  useApproveDividendsBatch,
+  useDismissCorporateDividend,
   reconcileAssetCustody,
   PORTFOLIO_QUERY_KEYS,
 } from "./queries/use-portfolio";
+export { useCorporateDividends } from "./queries/use-corporate-dividends";
 export { useAssetPrices, useSetManualPrice, useRemoveManualPrice, useSyncQuotes } from "./queries/use-asset-prices";
 export { usePortfolioPosition } from "./queries/use-portfolio-position";
 export type { PortfolioPosition, PortfolioPositionRow } from "./queries/use-portfolio-position";

@@ -139,6 +139,8 @@ export {
   useDeletePortfolioDividend,
   useRecordOrder,
   useExecutePortfolioBatchAporte,
+  useApproveDividendsBatch,
+  useDismissCorporateDividend,
   reconcileAssetCustody,
   PORTFOLIO_QUERY_KEYS,
 } from "@/state/mutations/use-portfolio-mutations";

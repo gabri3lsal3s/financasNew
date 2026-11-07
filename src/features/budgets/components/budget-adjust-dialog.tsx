@@ -112,9 +112,13 @@ function BudgetAdjustDialogContent({
     setIsPending(true);
     setError(null);
     try {
+      const itemsToSave =
+        totalCurrentCents === 0
+          ? result.items
+          : result.items.filter((item) => item.currentLimitCents > 0 || item.newLimitCents > 0);
       await setBatchLimits.mutateAsync({
         month,
-        items: result.items.map((item) => ({
+        items: itemsToSave.map((item) => ({
           categoryId: item.categoryId,
           limit: item.newLimitCents / 100,
         })),
@@ -252,25 +256,33 @@ function BudgetAdjustDialogContent({
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 tabular-nums shrink-0">
-                    <span className="text-muted-foreground">
-                      <MoneyText cents={item.currentLimitCents} tone="default" />
-                    </span>
-                    <span className="text-muted-foreground/60">→</span>
-                    <span className="font-semibold text-foreground">
-                      <MoneyText cents={item.newLimitCents} tone="default" />
-                    </span>
-                    <span
-                      className={`text-[11px] font-medium ${
-                        item.diffCents > 0
-                          ? "text-positive-strong"
-                          : item.diffCents < 0
-                            ? "text-negative-strong"
-                            : "text-muted-foreground"
-                      }`}
-                    >
-                      ({item.diffCents > 0 ? "+" : item.diffCents < 0 ? "−" : ""}
-                      <MoneyText cents={Math.abs(item.diffCents)} tone="default" />)
-                    </span>
+                    {item.currentLimitCents === 0 && item.newLimitCents === 0 ? (
+                      <span className="text-[11px] text-muted-foreground italic">
+                        Livre (sem limite)
+                      </span>
+                    ) : (
+                      <>
+                        <span className="text-muted-foreground">
+                          <MoneyText cents={item.currentLimitCents} tone="default" />
+                        </span>
+                        <span className="text-muted-foreground/60">→</span>
+                        <span className="font-semibold text-foreground">
+                          <MoneyText cents={item.newLimitCents} tone="default" />
+                        </span>
+                        <span
+                          className={`text-[11px] font-medium ${
+                            item.diffCents > 0
+                              ? "text-positive-strong"
+                              : item.diffCents < 0
+                                ? "text-negative-strong"
+                                : "text-muted-foreground"
+                          }`}
+                        >
+                          ({item.diffCents > 0 ? "+" : item.diffCents < 0 ? "−" : ""}
+                          <MoneyText cents={Math.abs(item.diffCents)} tone="default" />)
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               );

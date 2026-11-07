@@ -155,7 +155,12 @@ export function BudgetsPage() {
   const shouldShowAll = showAllCategories || isHighlightedUnbudgeted;
   const rows = shouldShowAll ? allExpenseRows : activeRows;
 
-  const totalLimitsCents = activeRows.reduce((acc, row) => acc + row.limitCents, 0);
+  const budgetedRows = allExpenseRows.filter((row) => row.limitCents > 0);
+  const totalLimitsCents = budgetedRows.reduce((acc, row) => acc + row.limitCents, 0);
+  const totalBudgetedExpensesCents = budgetedRows.reduce((acc, row) => acc + row.spentCents, 0);
+  const totalUnbudgetedExpensesCents = Math.max(0, totalExpensesCents - totalBudgetedExpensesCents);
+  const hasBudgetLimits = totalLimitsCents > 0;
+  const hasPartialBudgets = hasBudgetLimits && totalUnbudgetedExpensesCents > 0;
 
   // Realocação opera sobre limites efetivos no mês (com herança)
   const suggestion = reallocationSuggestion(
@@ -380,54 +385,111 @@ export function BudgetsPage() {
               )}
             </div>
             <MoneyText
-              cents={totalExpensesCents}
+              cents={hasBudgetLimits ? totalBudgetedExpensesCents : totalExpensesCents}
               tone="default"
               animated
               className="text-base sm:text-lg font-bold text-foreground whitespace-nowrap tabular-nums block mt-0.5"
             />
+            {hasPartialBudgets && (
+              <span className="text-[10px] text-muted-foreground truncate block">
+                de {formatCentsAsBRL(totalExpensesCents)} gastos no total do mês
+              </span>
+            )}
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">Teto Planejado</p>
-            <MoneyText
-              cents={totalLimitsCents}
-              tone="default"
-              animated
-              className="text-base sm:text-lg font-semibold text-muted-foreground whitespace-nowrap tabular-nums block mt-0.5"
-            />
+            <div className="flex items-center gap-1.5">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">Teto Planejado</p>
+              {!hasBudgetLimits && (
+                <Badge variant="muted" size="xs">
+                  Sem limites
+                </Badge>
+              )}
+            </div>
+            {hasBudgetLimits ? (
+              <MoneyText
+                cents={totalLimitsCents}
+                tone="default"
+                animated
+                className="text-base sm:text-lg font-semibold text-muted-foreground whitespace-nowrap tabular-nums block mt-0.5"
+              />
+            ) : (
+              <span className="text-base sm:text-lg font-semibold text-muted-foreground tabular-nums block mt-0.5">
+                —
+              </span>
+            )}
+            {!hasBudgetLimits && (
+              <span className="text-[10px] text-muted-foreground truncate block">
+                Nenhum limite ativo no mês
+              </span>
+            )}
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">
-              {totalLimitsCents >= totalExpensesCents ? "Disponível" : "Excedido"}
+              {hasBudgetLimits
+                ? totalLimitsCents >= totalBudgetedExpensesCents
+                  ? "Disponível no Teto"
+                  : "Excedido no Teto"
+                : "Status do Mês"}
             </p>
-            <MoneyText
-              cents={Math.abs(totalLimitsCents - totalExpensesCents)}
-              tone={totalLimitsCents >= totalExpensesCents ? "positive" : "negative"}
-              animated
-              className="text-base sm:text-lg font-bold whitespace-nowrap tabular-nums block mt-0.5"
-            />
+            {hasBudgetLimits ? (
+              <MoneyText
+                cents={Math.abs(totalLimitsCents - totalBudgetedExpensesCents)}
+                tone={totalLimitsCents >= totalBudgetedExpensesCents ? "positive" : "negative"}
+                animated
+                className="text-base sm:text-lg font-bold whitespace-nowrap tabular-nums block mt-0.5"
+              />
+            ) : (
+              <span className="text-base sm:text-lg font-semibold text-muted-foreground whitespace-nowrap block mt-0.5">
+                Livre de teto
+              </span>
+            )}
+            {hasBudgetLimits && hasPartialBudgets && (
+              <span className="text-[10px] text-muted-foreground truncate block">
+                {budgetedRows.length} de {categories.length} categorias orçadas
+              </span>
+            )}
           </div>
         </div>
 
-        {totalLimitsCents > 0 && (
+        {hasBudgetLimits ? (
           <div className="mt-3.5 pt-3 border-t border-border/50">
             <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-              <span>Consumo Geral do Teto ({spendMetric === "personal" ? "Minha Parte" : "Total Bruto"})</span>
+              <span>Consumo do Teto ({spendMetric === "personal" ? "Minha Parte" : "Total Bruto"})</span>
               <span className="font-semibold text-foreground tabular-nums">
-                {Math.round((totalExpensesCents / totalLimitsCents) * 100)}%
+                {Math.round((totalBudgetedExpensesCents / totalLimitsCents) * 100)}%
               </span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-muted/70">
               <div
                 className={
-                  totalExpensesCents > totalLimitsCents
+                  totalBudgetedExpensesCents > totalLimitsCents
                     ? "h-full rounded-full transition-all duration-300 bg-critical"
-                    : totalExpensesCents / totalLimitsCents >= 0.85
+                    : totalBudgetedExpensesCents / totalLimitsCents >= 0.85
                       ? "h-full rounded-full transition-all duration-300 bg-warning"
                       : "h-full rounded-full transition-all duration-300 bg-primary"
                 }
-                style={{ width: `${Math.min(100, (totalExpensesCents / totalLimitsCents) * 100)}%` }}
+                style={{ width: `${Math.min(100, (totalBudgetedExpensesCents / totalLimitsCents) * 100)}%` }}
               />
             </div>
+            {hasPartialBudgets && (
+              <p className="mt-2 text-[11px] text-muted-foreground leading-relaxed">
+                Despesas em categorias livres (sem teto): <MoneyText cents={totalUnbudgetedExpensesCents} tone="default" className="font-medium text-foreground" />
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="mt-3.5 pt-3 border-t border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-muted-foreground">
+            <span>Você não possui tetos de gastos configurados para este mês. Todas as suas categorias estão livres de limites.</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleOpenAdjustBudget}
+              className="text-xs shrink-0 self-start sm:self-auto h-8 gap-1.5"
+            >
+              <SlidersHorizontal className="size-3.5" aria-hidden="true" />
+              <span>Definir limites</span>
+            </Button>
           </div>
         )}
       </div>

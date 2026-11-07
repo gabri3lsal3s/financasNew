@@ -6,6 +6,7 @@ import { useAdminInvites, useAdminRevokeInvite } from "@/state";
 import { CreateInviteDialog } from "../components";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
+import { getPublicAppUrl } from "@/services/app-url";
 
 export function InvitesTab() {
   const [createOpen, setCreateOpen] = useState(false);
@@ -15,7 +16,7 @@ export function InvitesTab() {
   const invites = invitesQuery.data ?? [];
 
   const handleCopyLink = async (code: string) => {
-    const link = `${window.location.origin}/criar-conta?convite=${code}`;
+    const link = getPublicAppUrl(`criar-conta?convite=${code}`);
     try {
       await navigator.clipboard.writeText(link);
       triggerSensory("action");

@@ -20,6 +20,7 @@ import {
   useDeleteDebt,
   useDeleteExpense,
   useDeletePublicShare,
+  useExpense,
   useSettleIntegratedReceivable,
   useUpdateDebt,
   useUpdateExpense,
@@ -54,6 +55,8 @@ export function ManageSplitDialog({
   const settleDebtMutation = useSettleIntegratedReceivable();
 
   const payload = (share.payload ?? {}) as unknown as SplitSharePayload;
+  const { data: linkedExpense, isFetched: isExpenseFetched } = useExpense(payload.expense_id ?? null);
+  const hasLinkedExpense = Boolean(payload.expense_id && (!isExpenseFetched || linkedExpense));
 
   // Estado dos participantes
   const [participants, setParticipants] = useState<SplitParticipantItem[]>(() => {
@@ -164,33 +167,41 @@ export function ManageSplitDialog({
     });
 
     // Se o racha for completado ou se houver despesa vinculada, sincroniza o peso contábil
-    if (payload.expense_id) {
-      const netCost = Math.max(0, totalCents - updatedSettledTotal);
-      const weight = totalCents > 0 ? netCost / totalCents : 1;
-      await updateExpenseMutation.mutateAsync({
-        id: payload.expense_id,
-        input: {
-          report_weight: weight,
-        },
-      });
+    if (payload.expense_id && hasLinkedExpense) {
+      try {
+        const netCost = Math.max(0, totalCents - updatedSettledTotal);
+        const weight = totalCents > 0 ? netCost / totalCents : 1;
+        await updateExpenseMutation.mutateAsync({
+          id: payload.expense_id,
+          input: {
+            report_weight: weight,
+          },
+        });
+      } catch (err) {
+        console.warn("Não foi possível atualizar o peso contábil da despesa vinculada:", err);
+      }
     }
 
     if (linkedDebt && !linkedDebt.paid_at) {
-      const totalFriendsExpectedCents = friends.reduce((acc, f) => acc + f.share_cents, 0);
-      const remainingReceivableCents = Math.max(0, totalFriendsExpectedCents - updatedSettledTotal);
+      try {
+        const totalFriendsExpectedCents = friends.reduce((acc, f) => acc + f.share_cents, 0);
+        const remainingReceivableCents = Math.max(0, totalFriendsExpectedCents - updatedSettledTotal);
 
-      if (completed || remainingReceivableCents === 0) {
-        await settleDebtMutation.mutateAsync({
-          debtId: linkedDebt.id,
-          result: hostNetCostCents / 100,
-        });
-      } else {
-        await updateDebtMutation.mutateAsync({
-          id: linkedDebt.id,
-          input: {
-            amount: remainingReceivableCents / 100,
-          },
-        });
+        if (completed || remainingReceivableCents === 0) {
+          await settleDebtMutation.mutateAsync({
+            debtId: linkedDebt.id,
+            result: hostNetCostCents / 100,
+          });
+        } else {
+          await updateDebtMutation.mutateAsync({
+            id: linkedDebt.id,
+            input: {
+              amount: remainingReceivableCents / 100,
+            },
+          });
+        }
+      } catch (err) {
+        console.warn("Não foi possível sincronizar a dívida vinculada:", err);
       }
     }
   };
@@ -324,20 +335,32 @@ export function ManageSplitDialog({
   const handleDeleteSplit = async () => {
     setIsDeleting(true);
     try {
-      if (deleteOriginalExpense && payload.expense_id) {
-        await deleteExpenseMutation.mutateAsync({ expenseId: payload.expense_id, mode: "single" });
-      } else if (!deleteOriginalExpense && payload.expense_id) {
+      if (deleteOriginalExpense && payload.expense_id && hasLinkedExpense) {
+        try {
+          await deleteExpenseMutation.mutateAsync({ expenseId: payload.expense_id, mode: "single" });
+        } catch (err) {
+          console.warn("Não foi possível excluir despesa vinculada (pode já ter sido excluída):", err);
+        }
+      } else if (!deleteOriginalExpense && payload.expense_id && hasLinkedExpense) {
         // Restaura a despesa original para 100% caso seja mantida
-        await updateExpenseMutation.mutateAsync({
-          id: payload.expense_id,
-          input: {
-            report_weight: 1,
-          },
-        });
+        try {
+          await updateExpenseMutation.mutateAsync({
+            id: payload.expense_id,
+            input: {
+              report_weight: 1,
+            },
+          });
+        } catch (err) {
+          console.warn("Não foi possível restaurar peso da despesa vinculada (pode já ter sido excluída):", err);
+        }
       }
 
       if (deleteLinkedDebt && linkedDebt) {
-        await deleteDebtMutation.mutateAsync(linkedDebt.id);
+        try {
+          await deleteDebtMutation.mutateAsync(linkedDebt.id);
+        } catch (err) {
+          console.warn("Não foi possível excluir dívida vinculada (pode já ter sido excluída):", err);
+        }
       }
 
       await deleteShareMutation.mutateAsync(share.id);
@@ -346,9 +369,11 @@ export function ManageSplitDialog({
       setConfirmDeleteOpen(false);
       pushToast({
         title: "Racha excluído com sucesso!",
-        description: deleteOriginalExpense
+        description: deleteOriginalExpense && hasLinkedExpense
           ? "O racha e a despesa vinculada foram removidos."
-          : "O racha foi removido e a despesa original foi restaurada para 100%.",
+          : hasLinkedExpense
+          ? "O racha foi removido e a despesa original foi restaurada para 100%."
+          : "O racha foi removido.",
         variant: "default",
       });
       onSuccess?.();
@@ -380,8 +405,11 @@ export function ManageSplitDialog({
             <div className="rounded-xl border border-border/80 bg-surface/80 p-3 space-y-1">
               <span className="text-[11px] font-medium text-muted-foreground">Total da Despesa</span>
               <div>
-                <MoneyText cents={totalCents} variant="value" className="text-base font-semibold" />
+                <MoneyText cents={totalCents} tone="default" variant="value" className="text-base font-semibold" />
               </div>
+              <p className="text-[10px] text-muted-foreground">
+                Valor original do racha
+              </p>
             </div>
 
             <div className="rounded-xl border border-portfolio/30 bg-portfolio/5 p-3 space-y-1">
@@ -626,18 +654,18 @@ export function ManageSplitDialog({
           </div>
         </div>
 
-        <ModalFooter className="flex-col sm:flex-row sm:justify-between gap-2">
+        <ModalFooter className="sm:justify-between">
           <Button
             type="button"
             variant="ghost"
             onClick={handleOpenDeleteConfirm}
-            className="gap-1.5 text-negative-strong hover:text-negative-strong/90 self-start sm:self-center"
+            className="gap-1.5 text-negative-strong hover:text-negative-strong/90 order-last sm:order-first"
           >
             <Trash2 className="size-3.5" aria-hidden="true" />
             <span>Excluir Racha</span>
           </Button>
 
-          <div className="flex items-center gap-2 self-end">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
             <Button
               type="button"
               variant="outline"
@@ -656,7 +684,7 @@ export function ManageSplitDialog({
                 <span>Finalizar Racha</span>
               </Button>
             ) : (
-              <Badge variant="positive" className="px-2.5 py-1 text-xs">
+              <Badge variant="positive" className="px-2.5 py-1 text-xs justify-center w-full sm:w-auto">
                 Racha Finalizado
               </Badge>
             )}
@@ -734,8 +762,8 @@ export function ManageSplitDialog({
               </div>
             )}
 
-            {/* Opção 3: Despesa original no extrato (se existir) */}
-            {payload.expense_id && (
+            {/* Opção 3: Despesa original no extrato (se existir e estiver no banco) */}
+            {payload.expense_id && hasLinkedExpense && (
               <div
                 className={`flex items-start gap-3 p-3 rounded-xl border transition-colors cursor-pointer ${
                   deleteOriginalExpense
@@ -767,9 +795,17 @@ export function ManageSplitDialog({
                 </div>
               </div>
             )}
+
+            {/* Aviso quando a despesa vinculada já foi excluída isoladamente */}
+            {payload.expense_id && isExpenseFetched && !linkedExpense && (
+              <div className="rounded-xl border border-border/70 bg-surface/60 p-3 text-[11px] text-muted-foreground">
+                <span className="font-medium text-foreground block mb-0.5">Despesa vinculada já excluída</span>
+                A despesa original vinculada a este racha já foi removida do seu extrato. Apenas o link e os dados do racha serão excluídos.
+              </div>
+            )}
           </div>
 
-          {!deleteOriginalExpense && payload.expense_id && (
+          {!deleteOriginalExpense && payload.expense_id && hasLinkedExpense && (
             <div className="rounded-lg border border-border/70 bg-surface px-3 py-2 text-[11px] text-muted-foreground">
               <span className="font-medium text-foreground">Aviso contábil:</span> A despesa original permanecerá no seu extrato e terá seu rateio restaurado para 100% ({formatCentsAsCurrency(totalCents)}).
             </div>

@@ -10,8 +10,15 @@ const mockDeleteExpense = vi.fn();
 const mockUpdateDebt = vi.fn();
 const mockDeleteDebt = vi.fn();
 const mockSettleDebt = vi.fn();
+let mockLinkedExpenseData: unknown = { id: "exp-1", value: 100 };
+let mockLinkedExpenseIsFetched = true;
 
 vi.mock("@/state", () => ({
+  useExpense: () => ({
+    data: mockLinkedExpenseData,
+    isFetched: mockLinkedExpenseIsFetched,
+    isLoading: false,
+  }),
   useUpdatePublicShare: () => ({
     mutateAsync: mockUpdatePublicShare,
     isPending: false,
@@ -93,6 +100,8 @@ describe("ManageSplitDialog", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLinkedExpenseData = { id: "exp-1", value: 100 };
+    mockLinkedExpenseIsFetched = true;
   });
 
   it("renderiza participantes e resumo contábil", () => {
@@ -260,6 +269,68 @@ describe("ManageSplitDialog", () => {
     await waitFor(() => {
       expect(mockDeleteExpense).toHaveBeenCalledWith({ expenseId: "exp-1", mode: "single" });
       expect(mockDeleteDebt).toHaveBeenCalledWith("debt-1");
+      expect(mockDeletePublicShare).toHaveBeenCalledWith("share-123");
+    });
+  });
+
+  it("permite excluir o racha quando a despesa vinculada ja foi excluida isoladamente", async () => {
+    mockDeletePublicShare.mockResolvedValueOnce({});
+    mockLinkedExpenseData = null; // Despesa nao existe mais no banco
+    mockLinkedExpenseIsFetched = true;
+    const onOpenChange = vi.fn();
+
+    render(
+      <ManageSplitDialog
+        open={true}
+        onOpenChange={onOpenChange}
+        share={baseShare}
+        linkedDebt={null} // Divida tambem ja nao existe
+      />
+    );
+
+    const deleteBtn = screen.getByRole("button", { name: /excluir racha/i });
+    fireEvent.click(deleteBtn);
+
+    // Nao exibe checkbox para a despesa original ja que ela nao existe mais
+    expect(screen.queryByRole("checkbox", { name: /despesa original no extrato/i })).not.toBeInTheDocument();
+    // Exibe nota informativa de que a despesa vinculada ja foi removida
+    expect(screen.getByText("Despesa vinculada já excluída")).toBeInTheDocument();
+
+    const confirmDeleteBtn = screen.getByRole("button", { name: /confirmar exclusão/i });
+    fireEvent.click(confirmDeleteBtn);
+
+    await waitFor(() => {
+      // Nao tenta restaurar despesa inexistente
+      expect(mockUpdateExpense).not.toHaveBeenCalled();
+      expect(mockDeleteExpense).not.toHaveBeenCalled();
+      // O racha publico e excluido com sucesso
+      expect(mockDeletePublicShare).toHaveBeenCalledWith("share-123");
+    });
+  });
+
+  it("permite excluir o racha mesmo se a restauracao da despesa ou exclusao da divida falhar", async () => {
+    mockDeletePublicShare.mockResolvedValueOnce({});
+    mockUpdateExpense.mockRejectedValueOnce(new Error("Despesa nao encontrada"));
+    mockDeleteDebt.mockRejectedValueOnce(new Error("Divida nao encontrada"));
+    const onOpenChange = vi.fn();
+
+    render(
+      <ManageSplitDialog
+        open={true}
+        onOpenChange={onOpenChange}
+        share={baseShare}
+        linkedDebt={baseDebt}
+      />
+    );
+
+    const deleteBtn = screen.getByRole("button", { name: /excluir racha/i });
+    fireEvent.click(deleteBtn);
+
+    const confirmDeleteBtn = screen.getByRole("button", { name: /confirmar exclusão/i });
+    fireEvent.click(confirmDeleteBtn);
+
+    await waitFor(() => {
+      // Mesmo com rejeicao nas operacoes secundarias, o racha principal e removido
       expect(mockDeletePublicShare).toHaveBeenCalledWith("share-123");
     });
   });

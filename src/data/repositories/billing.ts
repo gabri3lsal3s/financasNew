@@ -1,5 +1,6 @@
 import { getSupabase } from "@/data/client";
 import { AppError } from "@/services/errors";
+import { getPublicAppUrl } from "@/services/app-url";
 import type {
   BillingProviderAdapter,
   BillingProviderName,
@@ -136,8 +137,8 @@ export const stripeBillingAdapter: BillingProviderAdapter = {
       customer: params.customer,
       trialDaysRemaining: params.trialDaysRemaining,
       firstBillingDate: params.firstBillingDate,
-      successUrl: params.successUrl || `${window.location.origin}/assinatura/sucesso?plano=${params.plan}`,
-      cancelUrl: params.cancelUrl || `${window.location.origin}/assinatura?status=cancelado`,
+      successUrl: params.successUrl || getPublicAppUrl(`assinatura/sucesso?plano=${params.plan}`),
+      cancelUrl: params.cancelUrl || getPublicAppUrl("assinatura?status=cancelado"),
     };
 
     const { data, error } = await getSupabase().functions.invoke("stripe-checkout", {
@@ -186,7 +187,7 @@ export const stripeBillingAdapter: BillingProviderAdapter = {
         action: "update-payment-method",
         subscriptionId: params.subscriptionId,
         card: params.card,
-        returnUrl: params.returnUrl || `${window.location.origin}/configuracoes`,
+        returnUrl: params.returnUrl || getPublicAppUrl("configuracoes"),
       },
     });
 
@@ -201,7 +202,7 @@ export const stripeBillingAdapter: BillingProviderAdapter = {
       body: {
         action: "portal",
         customerId,
-        returnUrl: returnUrl || `${window.location.origin}/configuracoes`,
+        returnUrl: returnUrl || getPublicAppUrl("configuracoes"),
       },
     });
 

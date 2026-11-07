@@ -11,7 +11,7 @@ import { ProventosTab } from "./proventos-tab";
 import { AporteTab } from "./aporte-tab";
 import { TargetsTab } from "./targets-tab";
 import { MovimentacoesTab } from "./movimentacoes-tab";
-import { CashFormDialog } from "../components";
+import { CashFormDialog, PortfolioInsightsCarousel } from "../components";
 import { InvestmentWizard } from "../wizard";
 import type { WizardMode } from "../wizard/wizard-state";
 import type { PortfolioAsset } from "@/types";
@@ -142,6 +142,8 @@ export function InvestmentsPage() {
           }}
         />
       )}
+
+      <PortfolioInsightsCarousel />
 
       <Tabs
         value={tab}

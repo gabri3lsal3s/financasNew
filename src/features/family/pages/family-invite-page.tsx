@@ -36,6 +36,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useFamilyInvite, useMyFamily, useAcceptFamilyInvite, useLeaveFamily } from "@/state/queries/use-family";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
+import { getPublicAppUrl } from "@/services/app-url";
 import { cn } from "@/lib/utils";
 import type { FamilyPixKeyType } from "@/types";
 
@@ -89,9 +90,11 @@ export function FamilyInvitePage() {
     }
   }, [invite?.family_name]);
 
+  const canonicalInviteUrl = getPublicAppUrl(`convite-familiar/${token ?? ""}`);
+
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(canonicalInviteUrl);
       setCopiedLink(true);
       triggerSensory("selection");
       pushToast({
@@ -313,7 +316,7 @@ export function FamilyInvitePage() {
 
             <div className="flex flex-col sm:flex-row items-center gap-2 max-w-md mx-auto w-full">
               <Input
-                value={window.location.href}
+                value={canonicalInviteUrl}
                 readOnly
                 className="text-xs font-mono text-muted-foreground select-all bg-surface-hover/50"
                 aria-label="Link de convite para cópia"

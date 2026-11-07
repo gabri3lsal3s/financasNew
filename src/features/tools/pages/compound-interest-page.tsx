@@ -27,6 +27,7 @@ import {
   type CompoundInterestShareState,
   type PendingCompoundInterestSimulation,
 } from "@/domain/share";
+import { getPublicAppUrl } from "@/services/app-url";
 
 export function CompoundInterestPage() {
   const [searchParams] = useSearchParams();
@@ -87,8 +88,7 @@ export function CompoundInterestPage() {
       periodYears,
       monthlyLivingCostCents,
     };
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    return buildStatefulUrl(`${origin}/ferramentas/juros-compostos`, state);
+    return buildStatefulUrl(getPublicAppUrl("ferramentas/juros-compostos"), state);
   };
 
   const simulationPayload: PendingCompoundInterestSimulation = useMemo(

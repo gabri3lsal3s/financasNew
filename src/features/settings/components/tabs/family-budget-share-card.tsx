@@ -34,6 +34,7 @@ import {
 } from "@/state/mutations/use-public-share-mutations";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
+import { getPublicAppUrl } from "@/services/app-url";
 
 export function FamilyBudgetShareCard() {
   const { isFamilyModeEnabled, toggleFamilyMode, isPending: isUpdatingFamilyMode } = useFamilyMode();
@@ -62,8 +63,7 @@ export function FamilyBudgetShareCard() {
     );
   }, [shares, nowMs]);
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const shareUrl = activeShare ? `${origin}/orcamento-familiar/${activeShare.token}` : "";
+  const shareUrl = activeShare ? getPublicAppUrl(`orcamento-familiar/${activeShare.token}`) : "";
 
   const handleCopyLink = async () => {
     if (!shareUrl) return;

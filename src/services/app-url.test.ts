@@ -72,6 +72,19 @@ describe("services/app-url — getPublicAppUrl", () => {
       expect(getPublicAppUrl("/redefinir-senha")).toBe("https://axisfinance.app/redefinir-senha");
       expect(getPublicAppUrl()).toBe("https://axisfinance.app");
     });
+
+    it("deve ignorar origin https://localhost (esquema padrao Android Pro) e resolver links sociais", () => {
+      vi.stubEnv("VITE_PUBLIC_SITE_URL", "");
+      mockOrigin("https://localhost");
+
+      // Links de Racha, Familia, Metas e Orcamento nunca devem conter localhost
+      expect(getPublicAppUrl("r/tok-split-99")).toBe("https://axisfinance.app/r/tok-split-99");
+      expect(getPublicAppUrl("/convite-familiar/tok-fam-88")).toBe("https://axisfinance.app/convite-familiar/tok-fam-88");
+      expect(getPublicAppUrl("meta/tok-meta-77")).toBe("https://axisfinance.app/meta/tok-meta-77");
+      expect(getPublicAppUrl("orcamento-familiar/tok-orc-66")).toBe("https://axisfinance.app/orcamento-familiar/tok-orc-66");
+      expect(getPublicAppUrl("ferramentas/juros-compostos")).toBe("https://axisfinance.app/ferramentas/juros-compostos");
+      expect(getPublicAppUrl("criar-conta?convite=VIP2026")).toBe("https://axisfinance.app/criar-conta?convite=VIP2026");
+    });
   });
 
   describe("em ambiente Localhost / Desenvolvimento local", () => {
@@ -81,6 +94,7 @@ describe("services/app-url — getPublicAppUrl", () => {
 
       expect(getPublicAppUrl("/entrar")).toBe("https://axisfinance.app/entrar");
       expect(getPublicAppUrl()).toBe("https://axisfinance.app");
+      expect(getPublicAppUrl("r/racha123")).toBe("https://axisfinance.app/r/racha123");
     });
 
     it("deve ignorar http://127.0.0.1 e utilizar fallback canonico https://axisfinance.app", () => {
@@ -89,6 +103,7 @@ describe("services/app-url — getPublicAppUrl", () => {
 
       expect(getPublicAppUrl("/entrar")).toBe("https://axisfinance.app/entrar");
       expect(getPublicAppUrl()).toBe("https://axisfinance.app");
+      expect(getPublicAppUrl("convite-familiar/fam123")).toBe("https://axisfinance.app/convite-familiar/fam123");
     });
   });
 });

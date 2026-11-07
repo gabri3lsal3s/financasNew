@@ -252,11 +252,12 @@ export function OverviewPage() {
       })
       .filter((row) => row.limitCents > 0);
     const totalLimits = rows.reduce((acc, row) => acc + row.limitCents, 0);
-    const totalRemaining = totalLimits - expenseCents;
-    const gPercent = totalLimits > 0 ? (expenseCents / totalLimits) * 100 : 0;
+    const totalBudgetedSpent = rows.reduce((acc, row) => acc + row.spentCents, 0);
+    const totalRemaining = totalLimits - totalBudgetedSpent;
+    const gPercent = totalLimits > 0 ? (totalBudgetedSpent / totalLimits) * 100 : 0;
 
     // Segmentos da Barra Única:
-    const segmentBaseCents = Math.max(1, totalLimits, expenseCents);
+    const segmentBaseCents = Math.max(1, totalLimits, totalBudgetedSpent);
     const activeBudgetSpentRows = [...rows]
       .filter((r) => r.spentCents > 0)
       .sort((a, b) => b.spentCents - a.spentCents);
@@ -295,7 +296,7 @@ export function OverviewPage() {
       globalPercent: gPercent,
       budgetSegments: segments,
     };
-  }, [budgetsQuery.data, expensesQuery.data, expenseCategories.data, month, expenseCents]);
+  }, [budgetsQuery.data, expensesQuery.data, expenseCategories.data, month]);
 
   // Donut de categorias: Top 5 individuais + grupo 'Demais categorias' para fechar 100% das despesas brutas
   const { donutSlices, otherCategoriesRows, totalActiveCategoriesCount } = useMemo(() => {

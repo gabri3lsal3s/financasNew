@@ -18,6 +18,7 @@ import { ManageSplitDialog } from "@/components/modules/manage-split-dialog";
 import { useDebts, useMyPublicShares, useSettleIntegratedReceivable } from "@/state";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { getPublicAppUrl } from "@/services/app-url";
 import type { Debt, PublicShare, SplitSharePayload } from "@/types";
 
 function formatShortDate(isoDate: string): string {
@@ -199,8 +200,7 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
   };
 
   const handleCopyLink = async (share: PublicShare) => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const url = `${origin}/r/${share.token}`;
+    const url = getPublicAppUrl(`r/${share.token}`);
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
       try {
         await navigator.clipboard.writeText(url);
@@ -219,8 +219,7 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
   };
 
   const handleShareWhatsApp = (share: PublicShare, payload: SplitSharePayload) => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const url = `${origin}/r/${share.token}`;
+    const url = getPublicAppUrl(`r/${share.token}`);
     const guestFormatted = (payload.guest_share_cents / 100).toLocaleString("pt-BR", {
       style: "currency",
       currency: "BRL",
@@ -475,7 +474,7 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
                     variant="ghost"
                     onClick={() => {
                       if (typeof window !== "undefined") {
-                        window.open(`/r/${item.share.token}`, "_blank", "noopener,noreferrer");
+                        window.open(getPublicAppUrl(`r/${item.share.token}`), "_blank", "noopener,noreferrer");
                       }
                     }}
                     className="px-1.5 h-7 text-muted-foreground hover:text-foreground cursor-pointer"

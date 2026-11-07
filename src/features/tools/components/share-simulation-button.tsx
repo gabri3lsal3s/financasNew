@@ -46,9 +46,14 @@ export function ShareSimulationButton({
         document.body.removeChild(textArea);
       }
 
-      // Atualiza a URL na barra de endereço sem recarregar a página
+      // Atualiza a URL na barra de endereço sem recarregar a página (com segurança de mesma origem)
       if (typeof window !== "undefined" && window.history?.replaceState) {
-        window.history.replaceState(null, "", url);
+        try {
+          const parsed = new URL(url, window.location.origin);
+          window.history.replaceState(null, "", parsed.pathname + parsed.search + parsed.hash);
+        } catch {
+          // No-op seguro caso replaceState falhe
+        }
       }
 
       setCopied(true);

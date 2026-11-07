@@ -47,5 +47,10 @@ export type { PortfolioSnapshotsDialogProps } from "./portfolio-snapshots-dialog
 export type { MonthlyClosingEditorProps } from "./monthly-closing-editor";
 
 export * from "./targets";
+export { PortfolioInsightsCarousel } from "./portfolio-insights-carousel";
+export type { PortfolioInsightsCarouselProps } from "./portfolio-insights-carousel";
+export { PendingDividendsDialog } from "./pending-dividends-dialog";
+export type { PendingDividendsDialogProps } from "./pending-dividends-dialog";
+
 
 

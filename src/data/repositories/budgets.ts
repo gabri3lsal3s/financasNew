@@ -60,7 +60,7 @@ export async function setBatchBudgets(
     if (isRpcMissing) {
       await Promise.all(
         entries.map((entry) =>
-          entry.limit > 0 ? setBudget(entry.categoryId, month, entry.limit) : removeBudget(entry.categoryId, month),
+          entry.limit >= 0 ? setBudget(entry.categoryId, month, entry.limit) : removeBudget(entry.categoryId, month),
         ),
       );
     } else {

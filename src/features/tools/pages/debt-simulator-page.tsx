@@ -34,6 +34,7 @@ import {
   type DebtSimulatorShareState,
   type PendingDebtSimulation,
 } from "@/domain/share";
+import { getPublicAppUrl } from "@/services/app-url";
 
 const INITIAL_SAMPLE_DEBTS: SimulatorDebtInput[] = [
   {
@@ -126,8 +127,7 @@ export function DebtSimulatorPage() {
       extraBudgetCents,
       strategy: activeTab,
     };
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    return buildStatefulUrl(`${origin}/ferramentas/simulador-dividas`, state);
+    return buildStatefulUrl(getPublicAppUrl("ferramentas/simulador-dividas"), state);
   };
 
   const simulationPayload: PendingDebtSimulation = useMemo(

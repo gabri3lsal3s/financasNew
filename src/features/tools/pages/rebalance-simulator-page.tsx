@@ -32,6 +32,7 @@ import {
   type RebalanceSimulatorShareState,
   type PendingRebalanceSimulation,
 } from "@/domain/share";
+import { getPublicAppUrl } from "@/services/app-url";
 
 interface PresetConfig {
   id: string;
@@ -177,8 +178,7 @@ export function RebalanceSimulatorPage() {
       classes,
       selectedPreset,
     };
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    return buildStatefulUrl(`${origin}/ferramentas/rebalanceamento`, state);
+    return buildStatefulUrl(getPublicAppUrl("ferramentas/rebalanceamento"), state);
   };
 
   const simulationPayload: PendingRebalanceSimulation = useMemo(

@@ -13,6 +13,7 @@ import {
   normalizeTickerForBrapi,
   parseAwesomeApiResponse,
   parseBrapiResponse,
+  parseBrapiDividends,
   parseYahooChartResponse,
 } from "../../supabase/functions/_shared/quotes-core";
 
@@ -240,3 +241,61 @@ describe("isCashClass — caixa/reserva não vão à API", () => {
     expect(isCashClass("reserva de emergência")).toBe(false);
   });
 });
+
+describe("parseBrapiDividends — extração de proventos B3", () => {
+  it("extrai dividendos e JCP com retenção de 15% de IR", () => {
+    const payload = {
+      results: [
+        {
+          symbol: "PETR4",
+          dividendsData: {
+            cashDividends: [
+              {
+                rate: 1.0,
+                paymentDate: "2026-11-20T00:00:00.000Z",
+                lastDatePrior: "2026-10-30",
+                label: "DIVIDENDO",
+              },
+              {
+                rate: 0.5,
+                paymentDate: "2026-12-15T00:00:00.000Z",
+                lastDatePrior: "2026-11-30",
+                label: "JCP",
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const divs = parseBrapiDividends("PETR4", payload);
+    expect(divs).toHaveLength(2);
+
+    expect(divs[0]).toEqual({
+      ticker: "PETR4",
+      type: "DIVIDENDO",
+      com_date: "2026-10-30",
+      payment_date: "2026-11-20",
+      rate: 1.0,
+      net_rate: 1.0,
+      currency: "BRL",
+    });
+
+    expect(divs[1]).toEqual({
+      ticker: "PETR4",
+      type: "JCP",
+      com_date: "2026-11-30",
+      payment_date: "2026-12-15",
+      rate: 0.5,
+      net_rate: 0.425, // 0.5 * 0.85
+      currency: "BRL",
+    });
+  });
+
+  it("retorna lista vazia para payload inválido ou sem dividendos", () => {
+    expect(parseBrapiDividends("PETR4", null)).toEqual([]);
+    expect(parseBrapiDividends("PETR4", {})).toEqual([]);
+    expect(parseBrapiDividends("PETR4", { results: [] })).toEqual([]);
+  });
+});
+

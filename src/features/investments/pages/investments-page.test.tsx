@@ -111,6 +111,29 @@ vi.mock("@/state", () => ({
   useFamilyMode: () => ({ isFamilyModeEnabled: false }),
   useMyFamily: () => ({ data: null, isLoading: false }),
   useUpdateFamilyMemberShareMode: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCorporateDividends: () => ({
+    available: [],
+    projected: [],
+    totalAvailableAmount: 0,
+    totalProjectedAmount: 0,
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  useApproveDividendsBatch: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useDismissCorporateDividend: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+}));
+
+vi.mock("@/state/queries/use-corporate-dividends", () => ({
+  useCorporateDividends: () => ({
+    available: [],
+    projected: [],
+    totalAvailableAmount: 0,
+    totalProjectedAmount: 0,
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
 }));
 
 function renderPage(entry = "/investments") {

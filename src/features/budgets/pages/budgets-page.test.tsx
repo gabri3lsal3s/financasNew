@@ -28,13 +28,15 @@ let mockExpenses = [
   { id: "e2", category_id: "c2", value: 100, report_weight: 1 },
 ];
 
+let mockBudgets = [
+  { category_id: "c1", month: "2026-08", limit: 1000 },
+  { category_id: "c2", month: "2026-08", limit: 1000 },
+];
+
 vi.mock("@/state", () => ({
   usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
   useBudgets: () => ({
-    data: [
-      { category_id: "c1", month: "2026-08", limit: 1000 },
-      { category_id: "c2", month: "2026-08", limit: 1000 },
-    ],
+    data: mockBudgets,
     isLoading: false,
     isError: false,
     error: null,
@@ -105,6 +107,10 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     mockExpenses = [
       { id: "e1", category_id: "c1", value: 1200, report_weight: 1 },
       { id: "e2", category_id: "c2", value: 100, report_weight: 1 },
+    ];
+    mockBudgets = [
+      { category_id: "c1", month: "2026-08", limit: 1000 },
+      { category_id: "c2", month: "2026-08", limit: 1000 },
     ];
   });
 
@@ -295,6 +301,53 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     ).toBeInTheDocument();
     const seedBtn = screen.getByRole("button", { name: "Carregar categorias pré-prontas" });
     expect(seedBtn).toBeInTheDocument();
+  });
+
+  it("quando não há limites configurados no mês, exibe estado calmo sem alerta vermelho de excedido", () => {
+    mockBudgets = [];
+    renderBudgetsPage();
+
+    expect(screen.getByText("Sem limites")).toBeInTheDocument();
+    expect(screen.getByText("Livre de teto")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum limite ativo no mês")).toBeInTheDocument();
+    expect(
+      screen.getByText("Você não possui tetos de gastos configurados para este mês. Todas as suas categorias estão livres de limites."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Excedido")).not.toBeInTheDocument();
+    expect(screen.queryByText("Excedido no Teto")).not.toBeInTheDocument();
+  });
+
+  it("com limite em apenas uma categoria, compara somente o gasto orçado contra o teto", () => {
+    // Apenas c2 (Lazer) tem limite de R$ 1.000 (gasto R$ 100).
+    // c1 (Moradia gasto R$ 1.200) fica sem limite.
+    // Gasto sob teto = R$ 100. Teto = R$ 1.000. Disponível no Teto = R$ 900.
+    mockBudgets = [{ category_id: "c2", month: "2026-08", limit: 1000 }];
+    renderBudgetsPage();
+
+    expect(screen.getByText("Disponível no Teto")).toBeInTheDocument();
+    expect(screen.getAllByText("R$ 900,00").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Despesas em categorias livres \(sem teto\):/)).toBeInTheDocument();
+    expect(screen.queryByText("Excedido no Teto")).not.toBeInTheDocument();
+  });
+
+  it("salvar limite com R$ 0,00 no LimitDialog envia limit: 0 para registrar categoria sem limite", async () => {
+    setBudgetLimitMock.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderBudgetsPage();
+
+    await user.click(screen.getAllByRole("button", { name: "Editar limite de Moradia" })[0]!);
+    const input = screen.getByRole("textbox", { name: "Limite mensal da categoria" });
+    await user.clear(input);
+
+    const saveBtn = screen.getByRole("button", { name: "Salvar sem limite" });
+    expect(saveBtn).not.toBeDisabled();
+    await user.click(saveBtn);
+
+    expect(setBudgetLimitMock).toHaveBeenCalledWith({
+      categoryId: "c1",
+      month: "2026-08",
+      limit: 0,
+    });
   });
 });
 

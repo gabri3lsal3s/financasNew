@@ -11,6 +11,9 @@ import type {
   PortfolioSnapshot,
   PortfolioSnapshotInput,
   PortfolioTransaction,
+  CorporateDividend,
+  PortfolioDividendDismissal,
+  PortfolioDividendDismissalReason,
 } from "@/types";
 
 /**
@@ -598,5 +601,121 @@ export async function deletePortfolioContributionsMatching(filter: {
   }
 }
 
+/**
+ * Consulta a lista global de proventos corporativos capturados da B3.
+ */
+export async function listCorporateDividends(limit = 200): Promise<CorporateDividend[]> {
+  const { data, error } = await resolveQuery(
+    getSupabase()
+      .from("corporate_dividends")
+      .select("*")
+      .order("payment_date", { ascending: false })
+      .limit(limit),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+
+  return ((data ?? []) as CorporateDividend[]).map((row) => ({
+    ...row,
+    rate: Number(row.rate),
+    net_rate: Number(row.net_rate),
+  }));
+}
+
+/**
+ * Consulta as dispensas de proventos do usuário autenticado.
+ */
+export async function listPortfolioDividendDismissals(): Promise<PortfolioDividendDismissal[]> {
+  const uid = await currentUserId();
+  const { data, error } = await resolveQuery(
+    getSupabase()
+      .from("portfolio_dividend_dismissals")
+      .select("*")
+      .eq("user_id", uid),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+
+  return (data ?? []) as PortfolioDividendDismissal[];
+}
+
+/**
+ * Registra a dispensa de um provento corporativo para não ser sugerido ao usuário.
+ */
+export async function dismissCorporateDividend(
+  corporateDividendId: string,
+  reason: PortfolioDividendDismissalReason = "manual_ignore",
+): Promise<PortfolioDividendDismissal> {
+  const uid = await currentUserId();
+  const { data, error } = await resolveQuery(
+    getSupabase()
+      .from("portfolio_dividend_dismissals")
+      .upsert(
+        {
+          user_id: uid,
+          corporate_dividend_id: corporateDividendId,
+          reason,
+          dismissed_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id, corporate_dividend_id" },
+      )
+      .select()
+      .single(),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+
+  return data as PortfolioDividendDismissal;
+}
+
+/**
+ * Remove a dispensa de um provento corporativo (revertendo para o status sugerido).
+ */
+export async function removeDividendDismissal(corporateDividendId: string): Promise<void> {
+  const uid = await currentUserId();
+  const { error } = await resolveQuery(
+    getSupabase()
+      .from("portfolio_dividend_dismissals")
+      .delete()
+      .eq("user_id", uid)
+      .eq("corporate_dividend_id", corporateDividendId),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
+/**
+ * Remove múltiplos proventos por IDs (utilizado no Rollback/Undo de aprovação em lote).
+ */
+export async function deletePortfolioDividendsByIds(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const uid = await currentUserId();
+  const { error } = await resolveQuery(
+    getSupabase()
+      .from("portfolio_dividends")
+      .delete()
+      .eq("user_id", uid)
+      .in("id", ids),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
 export type { PortfolioDividend };
+
 

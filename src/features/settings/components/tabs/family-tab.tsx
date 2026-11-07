@@ -48,6 +48,7 @@ import {
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
+import { getPublicAppUrl } from "@/services/app-url";
 import { FamilyBudgetShareCard } from "./family-budget-share-card";
 import type {
   FamilyPixKeyType,
@@ -142,10 +143,8 @@ export function FamilyTab() {
   const [copiedPix, setCopiedPix] = useState<string | null>(null);
   const [nowMs] = useState(() => Date.now());
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-
   const handleCopyInviteUrl = async (token: string) => {
-    const url = `${origin}/convite-familiar/${token}`;
+    const url = getPublicAppUrl(`convite-familiar/${token}`);
     try {
       if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(url);
@@ -291,7 +290,7 @@ export function FamilyTab() {
         invitedEmail: inviteEmail.trim() || null,
         role: "member",
       });
-      const inviteUrl = `${origin}/convite-familiar/${result.token}`;
+      const inviteUrl = getPublicAppUrl(`convite-familiar/${result.token}`);
       setGeneratedInviteUrl(inviteUrl);
       setInviteEmail("");
     } catch {
@@ -762,7 +761,7 @@ export function FamilyTab() {
                 <span>Convites Pendentes de Aceite</span>
               </span>
               {pendingInvites.map((invite) => {
-                const inviteUrl = `${origin}/convite-familiar/${invite.token}`;
+                const inviteUrl = getPublicAppUrl(`convite-familiar/${invite.token}`);
                 const isCopied = copiedInviteToken === invite.token;
 
                 return (

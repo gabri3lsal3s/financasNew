@@ -132,16 +132,20 @@ export function PendingSplitSignalsCard({ className }: PendingSplitSignalsCardPr
 
       // 3. Recalcula o peso contábil da despesa no extrato se houver despesa vinculada
       if (payload.expense_id) {
-        const totalCents = Number(payload.total_cents ?? 0);
-        const netCost = Math.max(0, totalCents - totalSettledFromFriends);
-        const weight = totalCents > 0 ? netCost / totalCents : 1;
+        try {
+          const totalCents = Number(payload.total_cents ?? 0);
+          const netCost = Math.max(0, totalCents - totalSettledFromFriends);
+          const weight = totalCents > 0 ? netCost / totalCents : 1;
 
-        await updateExpenseMutation.mutateAsync({
-          id: payload.expense_id,
-          input: {
-            report_weight: weight,
-          },
-        });
+          await updateExpenseMutation.mutateAsync({
+            id: payload.expense_id,
+            input: {
+              report_weight: weight,
+            },
+          });
+        } catch (err) {
+          console.warn("Não foi possível atualizar peso contábil da despesa vinculada:", err);
+        }
       }
 
       // 4. Sincroniza a dívida a receber vinculada
@@ -149,21 +153,25 @@ export function PendingSplitSignalsCard({ className }: PendingSplitSignalsCardPr
         (d) => d.expense_id === payload.expense_id || d.id === payload.debt_id,
       );
       if (linkedDebt && !linkedDebt.paid_at) {
-        const totalFriendsExpectedCents = friends.reduce((acc, f) => acc + f.share_cents, 0);
-        const remainingReceivableCents = Math.max(0, totalFriendsExpectedCents - totalSettledFromFriends);
+        try {
+          const totalFriendsExpectedCents = friends.reduce((acc, f) => acc + f.share_cents, 0);
+          const remainingReceivableCents = Math.max(0, totalFriendsExpectedCents - totalSettledFromFriends);
 
-        if (allSettled || remainingReceivableCents === 0) {
-          await settleDebtMutation.mutateAsync({
-            debtId: linkedDebt.id,
-            result: linkedDebt.amount,
-          });
-        } else {
-          await updateDebtMutation.mutateAsync({
-            id: linkedDebt.id,
-            input: {
-              amount: remainingReceivableCents / 100,
-            },
-          });
+          if (allSettled || remainingReceivableCents === 0) {
+            await settleDebtMutation.mutateAsync({
+              debtId: linkedDebt.id,
+              result: linkedDebt.amount,
+            });
+          } else {
+            await updateDebtMutation.mutateAsync({
+              id: linkedDebt.id,
+              input: {
+                amount: remainingReceivableCents / 100,
+              },
+            });
+          }
+        } catch (err) {
+          console.warn("Não foi possível sincronizar dívida vinculada ao abater racha:", err);
         }
       }
 
