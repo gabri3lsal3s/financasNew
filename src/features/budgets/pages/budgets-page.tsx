@@ -56,7 +56,7 @@ import type { Category, PublicShare } from "@/types";
 
 /** Categorias & Orçamentos (§3.5.2) e metas de renda (§3.5.3) — Opção C unificada. */
 export function BudgetsPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { highlightId } = useHighlightTarget("q");
   const targetCategory = searchParams.get("category");
   const targetType = searchParams.get("type");

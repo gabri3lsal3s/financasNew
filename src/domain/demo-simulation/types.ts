@@ -88,7 +88,8 @@ export type TourIconName =
   | "settings"
   | "shield"
   | "users"
-  | "share-2";
+  | "share-2"
+  | "coins";
 
 /**
  * Metadados descritivos canônicos de cada micro-tour ou trilha.

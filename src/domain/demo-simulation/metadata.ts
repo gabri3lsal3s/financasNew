@@ -50,6 +50,7 @@ export const TOUR_TRACK_CATEGORY_LABELS: Record<AnyTourTrackId, string> = {
   finances_overview: "Finanças Diárias",
   finances_wizard: "Finanças Diárias",
   finances_cards: "Finanças Diárias",
+  finances_debts: "Finanças Diárias",
   finances_budgets: "Finanças Diárias",
   finances_insights: "Finanças Diárias",
 
@@ -82,6 +83,7 @@ export const TOUR_TRACK_CONTEXTUAL_LABELS: Record<AnyTourTrackId, string> = {
   finances_overview: "Finanças · Visão Geral",
   finances_wizard: "Finanças · Lançamentos",
   finances_cards: "Finanças · Cartões",
+  finances_debts: "Finanças · Contas & Dívidas",
   finances_budgets: "Finanças · Orçamentos",
   finances_insights: "Finanças · Insights",
 
@@ -114,6 +116,7 @@ export const TOUR_TRACK_TITLES: Record<AnyTourTrackId, string> = {
   finances_overview: "Visão Geral Finanças & Saldo Livre",
   finances_wizard: "Botão Wizard (+) e Lançamento Rápido",
   finances_cards: "Cartões, Faturas e Limites",
+  finances_debts: "Contas, Dívidas e Contratos",
   finances_budgets: "Categorias e Tetos de Gastos",
   finances_insights: "Smart Advisor e Relatórios",
 
@@ -146,6 +149,7 @@ export const TOUR_TRACK_SHORT_TITLES: Record<AnyTourTrackId, string> = {
   finances_overview: "Visão Geral",
   finances_wizard: "Wizard (+)",
   finances_cards: "Cartões & Faturas",
+  finances_debts: "Contas & Dívidas",
   finances_budgets: "Tetos & Orçamentos",
   finances_insights: "Advisor & Insights",
 
@@ -182,6 +186,8 @@ export const TOUR_TRACK_DESCRIPTIONS: Record<AnyTourTrackId, string> = {
     "Lançamento ultra-rápido de despesas, receitas, Pix e parcelamento inteligente.",
   finances_cards:
     "Faturas abertas, limite disponível, melhor dia de compra e parcelas futuras.",
+  finances_debts:
+    "Controle de contas a pagar, recebíveis pendentes e simulação de contratos de crédito.",
   finances_budgets:
     "Definição de tetos por categoria e alertas automáticos de ritmo de consumo.",
   finances_insights:

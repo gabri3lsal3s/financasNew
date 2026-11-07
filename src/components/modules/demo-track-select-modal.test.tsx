@@ -116,6 +116,32 @@ describe("DemoTrackSelectModal — Hub de Aprendizado & Micro-Tours (§3.4)", ()
     expect(session.activeTrack).toBe("finances_wizard");
   });
 
+  it("inicia o micro-tour de contas e dívidas navegando para '/dividas?type=payable' e fecha o modal", async () => {
+    const user = userEvent.setup();
+    const handleOpenChange = vi.fn();
+    const handleSelectTrack = vi.fn();
+
+    render(
+      <DemoTrackSelectModal
+        open={true}
+        onOpenChange={handleOpenChange}
+        onSelectTrack={handleSelectTrack}
+      />,
+    );
+
+    const debtsBtn = screen.getByText("Contas, Dívidas e Contratos").closest("button");
+    expect(debtsBtn).not.toBeNull();
+    await user.click(debtsBtn!);
+
+    expect(mockNavigate).toHaveBeenCalledWith("/dividas?type=payable");
+    expect(handleSelectTrack).toHaveBeenCalledWith("finances_debts");
+    expect(handleOpenChange).toHaveBeenCalledWith(false);
+
+    const session = getDemoSessionState();
+    expect(session.isDemoActive).toBe(true);
+    expect(session.activeTrack).toBe("finances_debts");
+  });
+
   it("inicia a trilha de investimentos geral, navega para '/investimentos' e fecha o modal", async () => {
     const user = userEvent.setup();
     const handleOpenChange = vi.fn();
@@ -320,11 +346,13 @@ describe("DemoTrackSelectModal — Hub de Aprendizado & Micro-Tours (§3.4)", ()
       />,
     );
 
-    // 1. Racha de Despesas -> "/"
+    // 1. Racha de Despesas -> "/transacoes?novo=despesa&passo=3&racha=1&valor=48000&descricao=Churrasco+de+Confraternizacao"
     const splitBtn = screen.getByText("Racha de Despesas com Pix").closest("button");
     expect(splitBtn).not.toBeNull();
     await user.click(splitBtn!);
-    expect(mockNavigate).toHaveBeenCalledWith("/");
+    expect(mockNavigate).toHaveBeenCalledWith(
+      "/transacoes?novo=despesa&passo=3&racha=1&valor=48000&descricao=Churrasco+de+Confraternizacao",
+    );
     expect(handleSelectTrack).toHaveBeenCalledWith("finances_split");
 
     unmount();

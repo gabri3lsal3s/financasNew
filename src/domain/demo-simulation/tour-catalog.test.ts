@@ -14,6 +14,7 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
     "finances_overview",
     "finances_wizard",
     "finances_cards",
+    "finances_debts",
     "finances_budgets",
     "finances_insights",
     "finances_split",
@@ -30,8 +31,8 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
   ];
 
   describe("TOUR_TRACK_METAS", () => {
-    it("contém metadados válidos para todos os 17 identificadores de trilha", () => {
-      expect(Object.keys(TOUR_TRACK_METAS)).toHaveLength(17);
+    it("contém metadados válidos para todos os 18 identificadores de trilha", () => {
+      expect(Object.keys(TOUR_TRACK_METAS)).toHaveLength(18);
 
       for (const trackId of allTrackIds) {
         const meta = TOUR_TRACK_METAS[trackId];
@@ -52,9 +53,10 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
       expect(TOUR_TRACK_METAS.finances_overview.stepsCount).toBe(3);
       expect(TOUR_TRACK_METAS.finances_wizard.stepsCount).toBe(3);
       expect(TOUR_TRACK_METAS.finances_cards.stepsCount).toBe(3);
+      expect(TOUR_TRACK_METAS.finances_debts.stepsCount).toBe(3);
       expect(TOUR_TRACK_METAS.finances_budgets.stepsCount).toBe(3);
       expect(TOUR_TRACK_METAS.finances_insights.stepsCount).toBe(3);
-      expect(TOUR_TRACK_METAS.finances_split.stepsCount).toBe(2);
+      expect(TOUR_TRACK_METAS.finances_split.stepsCount).toBe(6);
       expect(TOUR_TRACK_METAS.finances_family.stepsCount).toBe(2);
       expect(TOUR_TRACK_METAS.finances_goals.stepsCount).toBe(2);
       expect(TOUR_TRACK_METAS.investments_overview.stepsCount).toBe(3);
@@ -69,7 +71,9 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
 
     it("configura rotas iniciais válidas para as trilhas de finanças compartilhadas", () => {
       expect(TOUR_TRACK_METAS.shared_finances.startRoute).toBe("/");
-      expect(TOUR_TRACK_METAS.finances_split.startRoute).toBe("/");
+      expect(TOUR_TRACK_METAS.finances_split.startRoute).toBe(
+        "/transacoes?novo=despesa&passo=3&racha=1&valor=48000&descricao=Churrasco+de+Confraternizacao",
+      );
       expect(TOUR_TRACK_METAS.finances_family.startRoute).toBe("/familia");
       expect(TOUR_TRACK_METAS.finances_goals.startRoute).toBe("/orcamentos?tab=goals");
     });
@@ -123,6 +127,7 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
         "finances_overview",
         "finances_wizard",
         "finances_cards",
+        "finances_debts",
         "finances_budgets",
         "finances_insights",
       ]);
@@ -170,7 +175,7 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
       expect(metaSplit).toBeDefined();
       expect(metaSplit?.title).toBe("Racha de Despesas com Pix");
       expect(metaSplit?.category).toBe("shared");
-      expect(metaSplit?.stepsCount).toBe(2);
+      expect(metaSplit?.stepsCount).toBe(6);
     });
 
     it("retorna undefined para identificador inexistente", () => {
@@ -205,7 +210,7 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
 
   describe("getTourTracksByCategory", () => {
     it("retorna a lista de trilhas correspondente a cada categoria", () => {
-      expect(getTourTracksByCategory("finances")).toHaveLength(5);
+      expect(getTourTracksByCategory("finances")).toHaveLength(6);
       expect(getTourTracksByCategory("shared")).toHaveLength(3);
       expect(getTourTracksByCategory("investments")).toHaveLength(4);
       expect(getTourTracksByCategory("settings")).toHaveLength(1);

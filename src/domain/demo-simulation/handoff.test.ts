@@ -199,8 +199,8 @@ describe("getTourHandoffDestination", () => {
     const microTours = allTrackIds.filter((t) => !isCompleteTourTrack(t));
     const completeTours = allTrackIds.filter((t) => isCompleteTourTrack(t));
 
-    it("valida que todos os micro-tours (13 trilhas) encerram com URL 100% limpa sem nenhum parâmetro invasivo", () => {
-      expect(microTours).toHaveLength(13);
+    it("valida que todos os micro-tours (14 trilhas) encerram com URL 100% limpa sem nenhum parâmetro invasivo", () => {
+      expect(microTours).toHaveLength(14);
 
       const dirtyQueryString = INVASIVE_QUERY_PARAMS.map((param, i) => `${param}=val_${i}`).join("&");
       const sampleDirtyUrl = `/painel?tab=geral&${dirtyQueryString}`;
@@ -237,8 +237,8 @@ describe("getTourHandoffDestination", () => {
       }
     });
 
-    it("assegura que 100% das 17 trilhas do catálogo possuem tratamento determinístico em getTourHandoffDestination", () => {
-      expect(allTrackIds).toHaveLength(17);
+    it("assegura que 100% das 18 trilhas do catálogo possuem tratamento determinístico em getTourHandoffDestination", () => {
+      expect(allTrackIds).toHaveLength(18);
 
       for (const trackId of allTrackIds) {
         const destFromRoot = getTourHandoffDestination(trackId, "/");

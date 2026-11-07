@@ -5,6 +5,7 @@ import {
   Calculator,
   Check,
   ChevronRight,
+  Coins,
   CreditCard,
   Lightbulb,
   PieChart,
@@ -215,6 +216,16 @@ export function DemoTrackSelectModal({
                   icon={CreditCard}
                   iconColorClass="text-warning-strong"
                   isCompleted={hasCompletedDemoTour("finances_cards")}
+                  onSelect={handleSelectTrack}
+                />
+                <TourCardItem
+                  id="finances_debts"
+                  title="Contas, Dívidas e Contratos"
+                  description="Controle de contas a pagar, recebíveis e contratos de crédito Price/SAC."
+                  stepsCount={3}
+                  icon={Coins}
+                  iconColorClass="text-negative-strong"
+                  isCompleted={hasCompletedDemoTour("finances_debts")}
                   onSelect={handleSelectTrack}
                 />
                 <TourCardItem
