@@ -605,17 +605,29 @@ O Assistente Passivo opera em modelo híbrido entre o cliente Android nativo e o
    - Roteamento determinístico por ordem de especificidade e assinatura, garantindo alta precisão sem falsos positivos.
    - Acoplamento automático do motor de parcelamento e rotulação amigável em pt-BR via `getReceiptKindLabel`.
 
-### 14.3 Resolução Avançada e Memória Contínua de Cartões (Fase 3)
-1. **Hierarquia de Resolução em 5 Níveis (`src/domain/notifications/card-resolution.ts`)**:
-   - *1ª Prioridade (Dígitos Aprendidos):* Consulta direta ao mapa adaptativo `cardDigitsMapping` (`"4821" -> cardId`).
-   - *2ª Prioridade (Dígitos no Nome):* Localização dos 4 dígitos no nome cadastrado do cartão.
-   - *3ª Prioridade (Emissor/Banco + Bandeira):* Cruzamento de aliases de instituição e desempate por bandeira.
-   - *4ª Prioridade (Preferência por Estabelecimento):* Associação ao cartão preferencial habitual do comerciante (`preferredCardId`).
-   - *5ª Prioridade (Fallback Seguro):* Seleção automática caso haja exatamente 1 cartão de crédito ativo cadastrado.
+### 14.3 Resolução Avançada e Memória Contínua de Cartões (Fase 3 & Plano 09)
+1. **Hierarquia de Resolução em 6 Níveis (`src/domain/notifications/card-resolution.ts`)**:
+   - *1ª Prioridade (Match Exato por 4 Dígitos):* Consulta direta aos 4 dígitos cadastrados no cartão (`card.last_four_digits === targetDigits`) ou mapa adaptativo `cardDigitsMapping`.
+   - *2ª Prioridade (Preferência por Estabelecimento):* Associação ao cartão preferencial habitual memorizado para aquele estabelecimento (`preferredCardId` do Merchant Learning).
+   - *3ª Prioridade (Origem Institucional / Pacote Bancário):* Associação por aplicativo emissor: se o usuário possui apenas 1 cartão daquele banco, vincula diretamente; se possui múltiplos, consulta a associação memorizada (`bankCardMapping[packageName]`).
+   - *4ª Prioridade (Emissor/Banco + Bandeira no Nome):* Cruzamento de aliases da instituição ou bandeira presentes no texto e no nome do cartão.
+   - *5ª Prioridade (Previsão Contextual 5D):* Desempate por ticket médio histórico e faixa horária de utilização.
+   - *6ª Prioridade (Fallback Seguro e Transparente):* Seleção do cartão com maior volume de uso recente ou primeiro cartão ativo cadastrado.
 2. **Aprendizado Contínuo e Sincronização em Duas Camadas (`src/services/merchant-learning.ts`)**:
    - **Armazenamento Local:** Cache isolado por usuário no `localStorage` (`card_digits_memory_${userId}`) para predição imediata offline.
-   - **Sincronização em Nuvem:** Persistência no Supabase em `user_preferences.custom_settings.cardDigitsMapping`.
+   - **Sincronização em Nuvem:** Persistência no Supabase em `user_preferences.custom_settings.cardDigitsMapping` e `bankCardMapping`.
    - **Extensão do Perfil de Aprendizado:** `MerchantLearningRecord` memoriza `preferredPaymentMethod` e `preferredCardId` a cada transação confirmada pelo usuário.
+
+### 14.4 Motor Determinístico Universal de Pagamentos & Funil de Rendas (Plano 09)
+1. **Resolvedor Universal de Métodos de Pagamento (`src/domain/notifications/payment-method-resolver.ts`)**:
+   - Função 100% pura mapeando deterministamente entre os 6 métodos do schema: `credit_card`, `debit`, `pix`, `transfer`, `cash` e `other`.
+   - Desambiguação léxica estrita: `"crédito em conta"` / `"creditado na conta"` resolve para transferência/renda (nunca cartão de crédito); `"débito automático"` de contas de consumo resolve para `other`; saques em terminais/caixas eletrônicos resolvem para `cash` com rótulo semântico `"Saque em Dinheiro"`.
+2. **Funil Hierárquico Descendente de Descrição de Rendas & Auto-Depósitos (`src/domain/notifications/bank-parser.ts` & `income-category-resolver.ts`)**:
+   - Trava de precedência anti-falso Pix: termos como `"depositou"`, `"adicionou dinheiro"`, `"seu dinheiro já está disponível"` classificam a transação imediatamente como `nature: "income"`.
+   - Funil de descrições em 5 etapas para receitas: Auto-Depósito / Mesma Titularidade (`"Depósito via Pix (Mercado Pago)"`) $\rightarrow$ Pagador Identificado (`"Pix Recebido: Nome"`) $\rightarrow$ Folha / Salário $\rightarrow$ Rendimentos / Dividendos $\rightarrow$ Fallback seguro. Trava categórica impedindo o rótulo errôneo `"Pix Enviado"` para entradas.
+3. **Deduplicação de Push e Idempotência Nativa (`BankNotificationActionReceiver.java` & `interactive-notifications.ts`)**:
+   - Canal único de feedback: o receptor nativo gerencia a notificação com ação de desfazer no Android, silenciando disparos duplicados do Capacitor.
+   - Trava de idempotência temporal de 5 minutos por hash de evento (`packageName + title + amount + 5m_window`).
 
 ### 14.4 Integração de UI, Lançamento Rápido & Auto-Cadastro Transacional (Fases 4 e 5)
 1. **Modal de Anexo Rico (`src/components/modules/attach-receipt-dialog.tsx`)**:

@@ -460,7 +460,23 @@ A inteligência de repetição do sistema opera em dois trilhos expressos e desa
   - **Pix Universal:** matriz especializada cobrindo 11 instituições (Nubank, Inter, Itaú, Bradesco, Santander, BB, Caixa, C6 Bank, BTG Pactual, Mercado Pago, PicPay) com extração de recebedor, chave Pix, EndToEndId e banco de destino (`destinationBank`).
   - **Slips de Maquininhas (POS/TEF):** extração de adquirente (Cielo, Rede, Stone, PagBank, Getnet), últimos 4 dígitos do cartão, bandeira e distinção entre 4 modalidades (`credit_sight`, `credit_store_installments`, `credit_issuer_installments`, `debit`).
   - **Boletos e Carnês:** extração de código de barras / linha digitável (47/48 dígitos contínuos ou formatados), data de vencimento e parcelas de carnês de lojas (`PARCELA 03 DE 12`).
-  - **Resolução de Cartões e Contas:** auto-resolução em 5 etapas via `resolveBestMatchingCard` e `resolveBestMatchingBankAccount`, com aprendizado contínuo (`cardDigitsMapping`) memorizado por estabelecimento.
+- **Resolução de Cartões e Contas (Cascata de Desempate em 6 Níveis — Plano 09):**
+  - **Identificação por 4 Dígitos (`credit_cards.last_four_digits`):** Suporte nativo a 4 dígitos numéricos nos cartões com constraint de banco (`CHECK ~ '^[0-9]{4}$'`) e validação zod sanitizada, renderizado no cartão virtual 3D (`CreditCard3D`).
+  - **Cascata Determinística em 6 Níveis (`card-resolution.ts`):** 1º Match exato por 4 dígitos $\rightarrow$ 2º Preferência memorizada do estabelecimento (`preferredCardId`) $\rightarrow$ 3º Vínculo de instituição emissora / pacote bancário (`bankCardMapping`) $\rightarrow$ 4º Match semântico por emissor/bandeira no nome do cartão $\rightarrow$ 5º Previsão contextual 5D por horário e ticket médio $\rightarrow$ 6º Fallback seguro para o cartão com maior volume recente.
+- **Motor Determinístico Universal de Métodos de Pagamento (`payment-method-resolver.ts` — Plano 09):**
+  - Resolução 100% pura entre `credit_card`, `debit`, `pix`, `transfer`, `cash` e `other`.
+  - Desambiguação estrita: termos de crédito em conta direcionam para renda/transferência (nunca cartão); débito automático de concessionárias direciona para `other`; saques em terminais Banco24Horas/caixas direcionam para `cash` com rótulo "Saque em Dinheiro".
+- **Motor Especializado de Rendas, Auto-Depósitos e Funil de Descrições (`bank-parser.ts`, `income-category-resolver.ts` — Plano 09):**
+  - Reconhecimento automático de depósitos e auto-transferências (`depositou`, `adicionou dinheiro`, `já está disponível`) como natureza `income`.
+  - Funil de descrições em 5 etapas para receitas: Auto-Depósito / Mesma Titularidade (`"Depósito via Pix (Mercado Pago)"`) $\rightarrow$ Pagador Identificado (`"Pix Recebido: Nome"`) $\rightarrow$ Salário $\rightarrow$ Rendimentos $\rightarrow$ Fallback seguro, eliminando categoricamente o rótulo errôneo `"Pix Enviado"`.
+  - Trava anti-supermercado: categorias de receita nunca caem no catálogo de despesas.
+- **Governança de Notificações Push & Idempotência Temporal (Plano 09):**
+  - Canal único de feedback nativo via `BankNotificationActionReceiver` com ação de desfazer, silenciando disparos duplicados do Capacitor.
+  - Janela de idempotência de 5 minutos por hash de evento (`packageName + title + amount + 5m_window`), impedindo reprocessamento após cold start ou reinicialização.
+- **Paginação e Ranking no Lançamento Rápido (`StepQuick.tsx` — Plano 09):**
+  - Paginação fluida com `pageSize = 8` (`grid-cols-2 sm:grid-cols-4`) e navegação tátil por setas.
+  - Ranking dinâmico por frequência histórica real (`rankCategoriesByFrequency`).
+  - Auto-posicionamento automático na página da categoria inferida pela notificação ou histórico.
 
 ### 3.11 Motor de Rebalanceamento de Carteira
 

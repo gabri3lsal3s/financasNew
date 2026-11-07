@@ -139,21 +139,21 @@ Para atender a todos os cenários (notificações com 4 dígitos, notificações
 
 ### FASE 1: Schema de Cartões & Identificação por 4 Dígitos (Supabase / Data / UI)
 
-- [ ] **Tarefa 1.1 — Migração de Banco de Dados Supabase (`credit_cards`)**
+- [x] **Tarefa 1.1 — Migração de Banco de Dados Supabase (`credit_cards`)**
   - Criar migração SQL adicionando a coluna `last_four_digits VARCHAR(4)` na tabela `credit_cards`.
   - Adicionar constraint segura: `CHECK (last_four_digits IS NULL OR last_four_digits ~ '^[0-9]{4}$')`.
   - Atualizar tipos TypeScript em `src/types/schema.ts` (`CreditCard` e payloads de inserção/atualização).
   - Atualizar repositório em `src/data/repositories/credit-cards.ts`.
 
-- [ ] **Tarefa 1.2 — Validação Zod Sanitizada no Cadastro de Cartões**
+- [x] **Tarefa 1.2 — Validação Zod Sanitizada no Cadastro de Cartões**
   - Atualizar o schema zod `creditCardSchema` permitindo 4 dígitos numéricos opcionais.
   - Sanitização automática: remove espaços, traços e caracteres não numéricos antes de persistir.
 
-- [ ] **Tarefa 1.3 — Campo no Diálogo de Criação/Edição de Cartões**
+- [x] **Tarefa 1.3 — Campo no Diálogo de Criação/Edição de Cartões**
   - Adicionar campo "Últimos 4 dígitos (opcional)" em `credit-card-form-dialog.tsx`.
   - Input estilizado com o Design System, máscara `0000` e helper text: *"Facilita o reconhecimento automático em notificações e carteiras digitais."*
 
-- [ ] **Tarefa 1.4 — Exibição na Carteira e Cartão Virtual (`CreditCard3D`)**
+- [x] **Tarefa 1.4 — Exibição na Carteira e Cartão Virtual (`CreditCard3D`)**
   - Atualizar o componente visual [`CreditCard3D`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/credit-card-3d.tsx).
   - Renderizar no rodapé do cartão virtual: `•••• 7756` (quando informado) ou máscara genérica `•••• ••••`.
 
@@ -161,60 +161,60 @@ Para atender a todos os cenários (notificações com 4 dígitos, notificações
 
 ### FASE 2: Camada Nativa Android: Correção de Regex Monetária & Push Interativo (Java)
 
-- [ ] **Tarefa 2.1 — Correção da Regex Monetária em `BankNotificationListenerService.java`**
+- [x] **Tarefa 2.1 — Correção da Regex Monetária em `BankNotificationListenerService.java`**
   - Reformular `AMOUNT_PATTERN`:
     - Exigir centavos obrigatórios para valores que antecedem moeda (`\d+[.,]\d{2}\s*(?:R\$|US\$|...)`), eliminando o casamento espúrio de filiais (`1094 R$`).
     - Priorizar captura do padrão com moeda prefixada (`R$\s*\d+(?:[.,]\d{2})?`).
   - Adicionar testes unitários em `BankNotificationListenerServiceTest.java`.
 
-- [ ] **Tarefa 2.2 — Higienização do Título e Corpo do Push Nativo**
+- [x] **Tarefa 2.2 — Higienização do Título e Corpo do Push Nativo**
   - Em `postInteractivePush`, assegurar que o título use o valor monetário correto e o corpo exiba o nome do estabelecimento higienizado quando disponível.
   - Exemplo: `Transação detectada · R$ 13,55` com corpo `Pague Menos • Nomad Infinite`.
 
-- [ ] **Tarefa 2.3 — Transporte Fiel de Título, Corpo e Pacote no Intent de Revisão**
+- [x] **Tarefa 2.3 — Transporte Fiel de Título, Corpo e Pacote no Intent de Revisão**
   - Garantir que `reviewIntent` repasse `packageName`, `title`, `text` e `timestamp` originais intactos para a `MainActivity`.
 
 ---
 
 ### FASE 3: Motor de Desambiguação Universal de Métodos de Pagamento (`payment-method-resolver.ts`)
 
-- [ ] **Tarefa 3.1 — Criação do Motor Puro `payment-method-resolver.ts`**
+- [x] **Tarefa 3.1 — Criação do Motor Puro `payment-method-resolver.ts`**
   - Implementar função pura `resolvePaymentMethod(text: string, title: string, packageName?: string): PaymentMethod`.
   - Mapeamento determinístico cobrindo: `credit_card`, `debit`, `pix`, `transfer`, `cash` e `other`.
 
-- [ ] **Tarefa 3.2 — Regras Estritas de Desambiguação de "Crédito" e "Débito"**
+- [x] **Tarefa 3.2 — Regras Estritas de Desambiguação de "Crédito" e "Débito"**
   - Se contiver `"crédito em conta"` ou `"creditado na conta"` $\rightarrow$ Renda/Transferência, nunca Cartão de Crédito.
   - Se contiver `"débito automático"` de concessionária/conta de consumo $\rightarrow$ Método `other`.
   - Se contiver `"compra no débito"` ou `"cartão de débito"` $\rightarrow$ Método `debit`.
 
-- [ ] **Tarefa 3.3 — Identificação de Boletos, Concessionárias & Tributos**
+- [x] **Tarefa 3.3 — Identificação de Boletos, Concessionárias & Tributos**
   - Reconhecer menções a contas de água, luz, gás, telefone, internet, IPVA, IPTU, DARF e boletos pagos como `other` com categoria automática `gastos_fixos` ou `moradia`.
 
-- [ ] **Tarefa 3.4 — Identificação de Saques em Espécie (Caixa Eletrônico / Banco24Horas)**
+- [x] **Tarefa 3.4 — Identificação de Saques em Espécie (Caixa Eletrônico / Banco24Horas)**
   - Reconhecer transações de saque como método `cash` (Dinheiro) com rótulo semântico `"Saque em Dinheiro"`.
 
-- [ ] **Tarefa 3.5 — Testes Unitários de Desambiguação de Métodos**
+- [x] **Tarefa 3.5 — Testes Unitários de Desambiguação de Métodos**
   - Criar `payment-method-resolver.test.ts` cobrindo 30+ variações textuais de todos os métodos.
 
 ---
 
 ### FASE 4: NLP Financeiro Multi-Ecossistema, Inspeção Título/Corpo & Funil de Descrição (`bank-parser.ts`)
 
-- [ ] **Tarefa 4.1 — Desbloqueio Automático de Carteiras Digitais como Despesas no Cartão**
+- [x] **Tarefa 4.1 — Desbloqueio Automático de Carteiras Digitais como Despesas no Cartão**
   - Mapear pacotes de carteiras (`com.google.android.apps.walletnfcrel`, `com.samsung.android.spay`, `com.samsung.android.app.spay`).
   - Tratar notificações de carteiras com valor como despesa de cartão imediata em `detectTransactionType`, dispensando palavras-chave.
 
-- [ ] **Tarefa 4.2 — Inspeção Cruzada de Título e Corpo na Extração de Estabelecimento**
+- [x] **Tarefa 4.2 — Inspeção Cruzada de Título e Corpo na Extração de Estabelecimento**
   - Refatorar `extractMerchantOrRecipient` para inspecionar tanto o título quanto o corpo da notificação.
   - Em carteiras digitais e notificações bancárias onde o título não é o nome da instituição, adotar o título como candidato primário a estabelecimento.
 
-- [ ] **Tarefa 4.3 — Higienizador de Filiais, Lojas e Matrizes Comerciais**
+- [x] **Tarefa 4.3 — Higienizador de Filiais, Lojas e Matrizes Comerciais**
   - Criar função pura de limpeza em `merchant-catalog.ts` (`cleanBranchAndStoreSuffixes`):
     - Remove números de filial isolados (ex.: `"PAGUE MENOS 1094"` ➔ `"PAGUE MENOS"`).
     - Remove siglas de automação: `"MTZ"`, `"MATRIZ"`, `"FILIAL"`, `"LJ 01"`, `"LOJA 12"`, `"SHOPPING"`.
     - Normaliza espaçamentos e Title Case.
 
-- [ ] **Tarefa 4.4 — Funil Hierárquico Descendente de Descrição**
+- [x] **Tarefa 4.4 — Funil Hierárquico Descendente de Descrição**
   - Implementar funil de precisão em 4 etapas no `bank-parser.ts`:
     1. **Nível 1 (Marca Identificada):** Nome canônico ou memorizado (ex.: `"Pague Menos"`).
     2. **Nível 2 (Ramo Comercial):** Nome higienizado com palavra-chave de ramo (ex.: `"Drogaria Pacheco"`).
@@ -222,65 +222,65 @@ Para atender a todos os cenários (notificações com 4 dígitos, notificações
     4. **Nível 4 (Fallback Seguro por Método):** `"Compra no Cartão (Nomad Infinite)"`, `"Pagamento no Débito"`, `"Boleto Pago"`, etc.
   - **Trava Anti-Falso Pix:** Proibir categoricamente que compras com tokens de cartão ou carteiras recebam o rótulo `"Pix Enviado"`.
 
-- [ ] **Tarefa 4.5 — Suporte a Moedas Estrangeiras e Contas Globais (Nomad / Wise / Avenue)**
+- [x] **Tarefa 4.5 — Suporte a Moedas Estrangeiras e Contas Globais (Nomad / Wise / Avenue)**
   - Extrair metadados cambiais de compras internacionais em USD, EUR ou GBP (valor original em moeda estrangeira, IOF e taxa de câmbio).
 
 ---
 
 ### FASE 5: Cascata de Desempate de Cartões em 6 Níveis & Vínculo com Instituição (`card-resolution.ts`)
 
-- [ ] **Tarefa 5.1 — Implementação dos Níveis 1 a 3 da Cascata de Desempate**
+- [x] **Tarefa 5.1 — Implementação dos Níveis 1 a 3 da Cascata de Desempate**
   - **Nível 1:** Match exato por `last_four_digits` cadastrado no cartão.
   - **Nível 2:** Match por cartão preferencial memorizado para o estabelecimento (`preferredCardId` do Merchant Learning).
   - **Nível 3:** Match por instituição de origem: se o app emissor é conhecido e o usuário possui apenas 1 cartão daquele banco, vincula diretamente; se possui múltiplos, consulta a associação memorizada para aquele pacote bancário.
 
-- [ ] **Tarefa 5.2 — Implementação dos Níveis 4 a 6 da Cascata de Desempate**
+- [x] **Tarefa 5.2 — Implementação dos Níveis 4 a 6 da Cascata de Desempate**
   - **Nível 4:** Match semântico por emissor/bandeira dentro do nome do cartão.
   - **Nível 5:** Desempate contextual por horário e faixa de valor (ticket médio do cartão).
   - **Nível 6:** Fallback transparente para o cartão mais utilizado recentemente.
 
-- [ ] **Tarefa 5.3 — Registro de Memória Instituição ➔ Cartão**
+- [x] **Tarefa 5.3 — Registro de Memória Instituição ➔ Cartão**
   - Quando o usuário confirma uma transação de um pacote bancário específico escolhendo um cartão, salvar a associação `packageName ➔ cardId` na memória adaptativa.
 
-- [ ] **Tarefa 5.4 — Desempate Multi-Cartão do Mesmo Banco (Físico vs Virtual)**
+- [x] **Tarefa 5.4 — Desempate Multi-Cartão do Mesmo Banco (Físico vs Virtual)**
   - Testes unitários comprovando que dois cartões do mesmo banco (ex.: Nomad Físico `7756` e Nomad Virtual `1234`) são diferenciados perfeitamente pelos dígitos finais ou pela preferência memorizada do estabelecimento.
 
-- [ ] **Tarefa 5.5 — Suporte a Notificações sem Menção a Cartão**
+- [x] **Tarefa 5.5 — Suporte a Notificações sem Menção a Cartão**
   - Para notificações lacônicas (ex.: `"Compra de R$ 50,00 aprovada"`), aplicar a memória do estabelecimento ou o cartão preferencial do banco emissor.
 
 ---
 
 ### FASE 6: Memória Adaptativa Contínua & Previsão Contextual 5D (`merchant-learning.ts`, `predictions`)
 
-- [ ] **Tarefa 6.1 — Motor de Previsão Contextual 5D por Horário e Faixa de Valor**
+- [x] **Tarefa 6.1 — Motor de Previsão Contextual 5D por Horário e Faixa de Valor**
   - Implementar em `domain/predictions`:
     - Janela de Almoço (11h30 às 14h30) e Jantar (19h00 às 22h00) $\rightarrow$ maior propensão para Alimentação.
     - Faixa de valor pequeno (R$ 5 a R$ 45) $\rightarrow$ propensão para Farmácia, Café, Padaria ou Transporte.
     - Faixa de combustível típica (R$ 100 a R$ 250) $\rightarrow$ propensão para Gasolina / Transporte.
     - Dia da semana (segunda a sexta vs fim de semana) na ponderação de hábitos.
 
-- [ ] **Tarefa 6.2 — Feedback Loop Automático no Lançamento Rápido**
+- [x] **Tarefa 6.2 — Feedback Loop Automático no Lançamento Rápido**
   - Conectar a submissão no `launch-wizard.tsx` ao `recordTransactionLearning`:
     - Grava o estabelecimento higienizado, categoria escolhida e cartão selecionado.
     - Se a notificação trouxe 4 dígitos, associa ao cartão selecionado (`cardDigitsMapping`).
     - Se a notificação veio de um app bancário, associa o cartão ao pacote (`bankCardMapping`).
 
-- [ ] **Tarefa 6.3 — Expansão do Catálogo Canônico com Principais Redes Nacionais**
+- [x] **Tarefa 6.3 — Expansão do Catálogo Canônico com Principais Redes Nacionais**
   - Enriquecer `CANONICAL_MERCHANT_CATALOG` com as principais redes de farmácias (Pague Menos, Drogasil, Droga Raia, Panvel, Araújo, Ultrafarma, Pacheco, São Paulo) e maquininhas (PagBank, Stone, Cielo, Rede).
 
-- [ ] **Tarefa 6.4 — Sugestão Inteligente de Descrição Baseada no Ramo**
+- [x] **Tarefa 6.4 — Sugestão Inteligente de Descrição Baseada no Ramo**
   - Quando não houver marca conhecida nem memória, gerar sugestões dinâmicas elegantes com base na categoria e horário (ex.: *"Almoço"*, *"Farmácia"*, *"Combustível"*).
 
 ---
 
 ### FASE 7: Experiência do Lançamento Rápido: Paginação e Ranking por Frequência (`StepQuick.tsx`)
 
-- [ ] **Tarefa 7.1 — Algoritmo de Ranking de Categorias por Frequência Real Histórica**
+- [x] **Tarefa 7.1 — Algoritmo de Ranking de Categorias por Frequência Real Histórica**
   - Implementar `rankCategoriesByFrequency(categories, predictionEntries)`:
     - Pondera a quantidade de lançamentos históricos de cada categoria no histórico (`prediction.entries`).
     - Ordena decrescentemente: as categorias mais utilizadas no topo da Página 1; categorias sem histórico ordenadas alfabeticamente nas páginas finais.
 
-- [ ] **Tarefa 7.2 — Paginação Fluida da Grade no Lançamento Rápido**
+- [x] **Tarefa 7.2 — Paginação Fluida da Grade no Lançamento Rápido**
   - Substituir o `.slice(0, 8)` por paginação com `pageSize = 8` (2 linhas de 4 no desktop / 2 linhas de 3 ou 4 no mobile).
   - Barra de navegação tátil compacta abaixo da grade:
     - Botão anterior (`ChevronLeft`).
@@ -288,10 +288,10 @@ Para atender a todos os cenários (notificações com 4 dígitos, notificações
     - Botão seguinte (`ChevronRight`).
   - Feedback tátil sensorial suave (`triggerSensory("selection")`).
 
-- [ ] **Tarefa 7.3 — Auto-Posicionamento na Página da Categoria Inferida**
+- [x] **Tarefa 7.3 — Auto-Posicionamento na Página da Categoria Inferida**
   - Se a notificação pré-selecionar uma categoria que está na Página 2 ou 3 (ex.: Saúde), inicializar automaticamente na página correspondente com o item destacado.
 
-- [ ] **Tarefa 7.4 — Acessibilidade e Governança Visual Estrita**
+- [x] **Tarefa 7.4 — Acessibilidade e Governança Visual Estrita**
   - Navegação 100% por teclado (`Tab`, setas, `Enter`/`Space`).
   - Zero emojis em textos, tooltips ou botões (Regra #8 do AGENTS.md).
   - Atributos `aria-label`, `aria-pressed` e `aria-current="page"`.
@@ -300,34 +300,34 @@ Para atender a todos os cenários (notificações com 4 dígitos, notificações
 
 ### FASE 8: Matriz E2E Multi-Banco com 16 Cenários Reais, Portões de Qualidade & DoD
 
-- [ ] **Tarefa 8.1 — Bateria de Testes Unitários de NLP e Desempate**
+- [x] **Tarefa 8.1 — Bateria de Testes Unitários de NLP e Desempate**
   - Testes em `bank-parser.test.ts` e `payment-method-resolver.test.ts` cobrindo todos os 16 cenários da matriz E2E.
   - Testes em `card-resolution.test.ts` validando a cascata completa de desempate em 6 níveis.
 
-- [ ] **Tarefa 8.2 — Testes de Componente e Regressão do Lançamento Rápido**
+- [x] **Tarefa 8.2 — Testes de Componente e Regressão do Lançamento Rápido**
   - Testes em `step-quick.test.tsx` e `launch-wizard.test.tsx`:
     - Paginação de categorias e auto-posicionamento na página correta.
     - Ordenação por frequência histórica real.
     - Auto-preenchimento derivado da memória adaptativa.
 
-- [ ] **Tarefa 8.3 — Homologação Integrada (Typecheck, Lint e Build)**
+- [x] **Tarefa 8.3 — Homologação Integrada (Typecheck, Lint e Build)**
   - Execução de `npm run typecheck` com zero erros.
   - Execução de `npm run lint` com conformidade anti-emojis.
   - Execução da suíte completa de testes: `npm run test:run`.
 
-- [ ] **Tarefa 8.4 — Atualização de Documentação Canônica**
+- [x] **Tarefa 8.4 — Atualização de Documentação Canônica**
   - Atualizar `docs/architecture/ESPECIFICACAO_TECNICA.md` e `docs/architecture/ARCHITECTURE.md` registrando a nova cascata de desempate de cartões, a memória adaptativa de instituições e o resolvedor universal de métodos de pagamento.
 
 ---
 
 ### FASE 9: Motor Especializado de Rendas, Auto-Depósitos, Funil de Descrições de Receita & Deduplicação de Push (`bank-parser.ts`, `BankNotificationActionReceiver.java`)
 
-- [ ] **Tarefa 9.1 — Expansão Lexical de Rendas & Auto-Depósitos no NLP (`bank-parser.ts` & `BankNotificationActionReceiver.java`)**
+- [x] **Tarefa 9.1 — Expansão Lexical de Rendas & Auto-Depósitos no NLP (`bank-parser.ts` & `BankNotificationActionReceiver.java`)**
   - Refatorar `detectTransactionType` em `bank-parser.ts` e `isIncome` em `BankNotificationActionReceiver.java`:
     - Incorporar termos e padrões de auto-depósito e carteiras digitais: `"você depositou"`, `"depositou"`, `"depósito via pix"`, `"seu dinheiro já está disponível"`, `"já está disponível"`, `"dinheiro disponível"`, `"adicionou dinheiro"`, `"saldo adicionado"`, `"dinheiro em conta"`, `"valor recebido"`.
     - **Trava de Precedência Anti-Falso Pix de Despesa:** Se o texto contiver tokens de entrada (`"depositou"`, `"adicionou"`, `"recebeu"`), **é terminantemente proibido** acionar a regra genérica de despesa de `"pix"` ou `"via pix"`.
 
-- [ ] **Tarefa 9.2 — Funil Semântico Descendente de Descrição de Rendas & Depósitos (`bank-parser.ts`)**
+- [x] **Tarefa 9.2 — Funil Semântico Descendente de Descrição de Rendas & Depósitos (`bank-parser.ts`)**
   - Eliminar o rótulo errôneo `"Pix Enviado"` para entradas e auto-transferências, estruturando um funil de precisão em 5 níveis para `nature: "income"`:
     1. **Nível 1 (Auto-Depósito / Mesma Titularidade):** Quando a notificação contiver `"você depositou"`, `"adicionou dinheiro"`, `"dinheiro já está disponível"` ou o remetente for o próprio usuário ➔ Sugestão limpa e objetiva: `"Depósito via Pix (Mercado Pago)"`, `"Depósito em Conta (Inter)"` ou `"Aporte em Conta (PicPay)"`. NUNCA `"Pix Enviado"`.
     2. **Nível 2 (Transferência Recebida de Terceiros com Nome do Pagador):** Extração do pagador/remetente ➔ Formato padronizado: `"Pix Recebido: Nome"` ou `"Transferência Recebida: Nome"`.
@@ -335,19 +335,19 @@ Para atender a todos os cenários (notificações com 4 dígitos, notificações
     4. **Nível 4 (Rendimentos Financeiros / Dividendos / JCP / Estorno):** ➔ Formato: `"Rendimento de Saldo (Mercado Pago)"`, `"Proventos (Ticker)"` ou `"Estorno / Reembolso (Estabelecimento)"`.
     5. **Nível 5 (Fallback Seguro de Renda):** `"Recebimento via Pix (Banco)"` ou `"Recebimento em Conta (Banco)"`.
 
-- [ ] **Tarefa 9.3 — Motor Semântico de Categorização de Rendas (`income-category-resolver.ts`)**
+- [x] **Tarefa 9.3 — Motor Semântico de Categorização de Rendas (`income-category-resolver.ts`)**
   - Implementar resolvedor de categorias dedicado exclusivamente para transações de natureza `income`:
     - Mapear termos de auto-depósito / Pix de mesma titularidade para categorias de receita do usuário como `"Transferências Recebidas"`, `"Depósitos / Aportes"` ou `"Ajustes de Saldo"`.
     - Mapear salários para `"Salário"` e proventos/juros para `"Rendimentos"`.
     - **Trava Anti-Supermercado:** Em transações de renda, o fallback seguro **nunca** pode consultar o catálogo de despesas (`categories[0]` de despesa); deve selecionar a categoria de receita neutra correspondente (`"Outros"`, `"Rendas Diversas"` ou primeira categoria de receita ativa do usuário).
 
-- [ ] **Tarefa 9.4 — Eliminação Definitiva da Duplicação de Notificações (Canal Único & Idempotência)**
+- [x] **Tarefa 9.4 — Eliminação Definitiva da Duplicação de Notificações (Canal Único & Idempotência)**
   - Resolver a concorrência entre emissores de push no Android:
     - O feedback de confirmação nativa (`BankNotificationActionReceiver.postUndoNotification` em Java) e o feedback disparado pelo Capacitor (`interactive-notifications.ts` `notifyQuickAddSuccess`) estavam gerando notificações simultâneas no painel do Android.
     - Padronizar canal único de feedback nativo: em ambiente nativo Android, o `BankNotificationActionReceiver` gerencia a notificação com ação `[Desfazer]`, enquanto o runtime web/Capacitor silencia a emissão de notificação local repetida (`scheduleInteractiveBankNotification` / `notifyQuickAddSuccess`), limitando-se a registrar a transação no banco.
     - Implementar trava de idempotência temporal de 5 minutos por hash de payload (`packageName + title + amount + 5m_window`) impedindo que o mesmo evento bancário seja reprocessado em cold start / buffer flush.
 
-- [ ] **Tarefa 9.5 — Bateria de Testes Unitários de Rendas, Descrições & Anti-Duplicação**
+- [x] **Tarefa 9.5 — Bateria de Testes Unitários de Rendas, Descrições & Anti-Duplicação**
   - Adicionar testes em `bank-parser.test.ts` cobrindo Mercado Pago, PicPay, Nubank Caixinhas, Inter e C6 Bank em operações de depósito e rendimento.
   - Testar descrições geradas para provar que `"Você depositou R$ 3.244,24 via Pix e o valor já está rendendo na sua conta."` resulta em `description: "Depósito via Pix (Mercado Pago)"` e `nature: "income"`.
   - Adicionar testes em `BankNotificationActionReceiverTest.java` validando `isIncome()` para auto-depósitos e rendas.

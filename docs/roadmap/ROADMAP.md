@@ -1,5 +1,32 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.04** registra a **Conclusão e Homologação do Plano 09 — Inteligência Adaptativa Multi-Bancos, Resolução Universal de Pagamentos & Paginação no Lançamento Rápido** (2026-11-07):
+> - **(1) Schema de Cartões & Identificação por 4 Dígitos (`credit_cards`)**:
+>   - Adição da coluna `last_four_digits VARCHAR(4)` com constraint de integridade no banco `CHECK (last_four_digits IS NULL OR last_four_digits ~ '^[0-9]{4}$'`;
+>   - Atualização da tipagem TypeScript em `CreditCard` e sanitização automática via schema zod `creditCardSchema`;
+>   - Campo com máscara no diálogo de cartões (`credit-card-form-dialog.tsx`) e renderização real de dígitos no cartão virtual 3D (`CreditCard3D`).
+> - **(2) Motor Determinístico Universal de Métodos de Pagamento (`payment-method-resolver.ts`)**:
+>   - Função 100% pura mapeando deterministamente entre os 6 métodos canônicos (`credit_card`, `debit`, `pix`, `transfer`, `cash`, `other`);
+>   - Desambiguação léxica rigorosa: *"crédito em conta"* direciona para renda/transferência (nunca cartão de crédito); *"débito automático"* de concessionárias para `other`; saques em espécie para `cash` com rótulo semântico *"Saque em Dinheiro"*.
+> - **(3) Cascata de Desempate de Cartões em 6 Níveis (`card-resolution.ts`)**:
+>   - N1 (match exato por 4 dígitos) $\rightarrow$ N2 (cartão preferencial do comerciante) $\rightarrow$ N3 (origem por app emissor e associação aprendida de pacote bancário) $\rightarrow$ N4 (emissor/bandeira no nome) $\rightarrow$ N5 (previsão contextual 5D por horário e ticket médio) $\rightarrow$ N6 (fallback transparente para o mais recente).
+> - **(4) Motor Especializado de Rendas, Depósitos & Funil de Descrições (`bank-parser.ts` & `income-category-resolver.ts`)**:
+>   - Trava de precedência de depósitos/auto-Pix (`depositou`, `adicionou dinheiro`, `já está disponível`) classificando como `nature: "income"`;
+>   - Funil descendente de descrições de receitas em 5 etapas eliminando o rótulo errôneo *"Pix Enviado"*;
+>   - Trava anti-supermercado: categorias de receita nunca caem no catálogo de despesas.
+> - **(5) Experiência do Lançamento Rápido: Paginação e Ranking (`StepQuick.tsx`)**:
+>   - Paginação tátil em grade (`pageSize = 8`) com navegação por setas e indicadores de página;
+>   - Ranking dinâmico por frequência histórica real (`rankCategoriesByFrequency`);
+>   - Auto-posicionamento reativo na página da categoria pré-selecionada/inferida;
+>   - Acessibilidade completa, zero emojis e zero controles nativos crus.
+> - **(6) Governança de Push Nativo & Idempotência Temporal**:
+>   - Canal único de feedback nativo (`BankNotificationActionReceiver.java`) com ação de desfazer, silenciando o push local redundante do Capacitor;
+>   - Janela de idempotência temporal de 5 minutos por hash de evento (`packageName + title + amount + 5m_window`).
+> - **(7) Matriz E2E Multi-Bancos & Homologação Completa**:
+>   - 100% de aprovação nos 19 cenários reais da matriz E2E (Google Wallet, Nomad BRL/USD, Nubank Débito/Virtual, Itaú, Bradesco, Santander, Inter, BB, C6, Caixa, Mercado Pago, PicPay);
+>   - 469 testes aprovados na suíte de notificações (`src/domain/notifications/`), 48 testes aprovados em UI e integrações;
+>   - Typecheck estrito (`tsc -b`), lint (`eslint .`) com zero erros, build de produção em 2.35s e sincronização Capacitor limpa.
+>
 > **v3.03** registra a **Conclusão e Homologação do Plano 07 — Experiência Adaptativa, Divulgação Progressiva & Perfis de Visualização (Modo Essencial vs Modo Investidor)** (2026-11-07):
 > - **(1) Persistência de Esquema & Contratos TypeScript Estritos**:
 >   - Migration Postgres `20260101000090_app_mode_progressive_disclosure.sql` com coluna `app_mode in ('essential', 'investor')` na tabela `user_preferences` (default `'investor'`);
