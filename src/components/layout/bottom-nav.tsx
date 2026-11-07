@@ -6,7 +6,7 @@ import { filterNavItems, navItems } from "@/components/layout/nav-items";
 import type { NavItem } from "@/components/layout/nav-items";
 import { resolveBottomNavSlots } from "@/domain/navigation";
 import { triggerSensory } from "@/services/sensory";
-import { useAppMode, useFamilyMode, useReminders, useUserAccess } from "@/state";
+import { useFamilyMode, useReminders, useUserAccess } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { MoreMenuSheet } from "./more-menu-sheet";
 
@@ -21,7 +21,6 @@ function getFabAction(
   pathname: string,
   search: string,
   hasFeature: (key: string) => boolean,
-  isInvestorMode = true,
 ): { to: string; label: string } | null {
   const params = new URLSearchParams(search);
 
@@ -41,7 +40,6 @@ function getFabAction(
 
   // Página de Investimentos & Carteira
   if (
-    isInvestorMode &&
     (pathname === "/investments" || pathname === "/investimentos" || pathname === "/carteira") &&
     hasFeature("investments")
   ) {
@@ -64,7 +62,7 @@ function getFabAction(
   }
 
   // 2º Prioridade: Investimentos (redireciona para o hub de investimentos com o wizard aberto)
-  if (isInvestorMode && hasFeature("investments")) {
+  if (hasFeature("investments")) {
     return { to: "/investments?novo=investimento", label: "Novo investimento" };
   }
 
@@ -107,15 +105,14 @@ export function BottomNav() {
   const location = useLocation();
   const { hasFeature, isAdmin } = useUserAccess();
   const { isFamilyModeEnabled } = useFamilyMode();
-  const { isInvestorMode } = useAppMode();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
   const { totalCount, urgentCount } = useReminders();
   const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard();
 
-  const allowedItems = filterNavItems(navItems, isAdmin, hasFeature, isFamilyActive, isInvestorMode);
+  const allowedItems = filterNavItems(navItems, isAdmin, hasFeature, isFamilyActive);
   const { primarySlots, moreMenuSlots } = resolveBottomNavSlots(allowedItems);
 
-  const create = getFabAction(location.pathname, location.search, hasFeature, isInvestorMode);
+  const create = getFabAction(location.pathname, location.search, hasFeature);
 
   // Divide os slots primários ao redor do FAB
   const leftSlots = primarySlots.slice(0, 2);

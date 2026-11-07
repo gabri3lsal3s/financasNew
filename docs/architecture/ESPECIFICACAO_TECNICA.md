@@ -634,17 +634,22 @@ A inteligência de repetição do sistema opera em dois trilhos expressos e desa
 
 ---
 
-### 3.12 Tour Interativo, Micro-Tours & Modo Simulação em Memória
+### 3.12 Tour Interativo, Micro-Tours, Modo Simulação em Memória & Unificação Canônica
 
-- **Modo Simulação 100% em Memória:** isolamento total do banco de dados relacional. Toda a experiência guiada é mantida em memória (`src/state/demo-mode/` e `src/domain/demo-simulation/`), com interceptação dinâmica em queries do TanStack Query (`use-simulated-queries.ts`, `use-card-payments.ts`, `use-overview.ts`) utilizando identificadores canônicos compatíveis com UUID (`uuid-mock-...`), impedindo erros de sintaxe relacional no PostgreSQL.
-- **Motor de Apresentação Guiada (Spotlight):** componente `DemoTourSpotlight` com máscara fullscreen SVG recortada (`fill="rgba(0, 0, 0, 0.60)"`), cantos arredondados (`rx={16}`, `ry={16}` / `rounded-2xl`) e moldura pontilhada com cor primária (`stroke="hsl(var(--primary))"`, `strokeDasharray="4 2"`) e pulsação suave temporizada por 3 segundos.
-- **Algoritmo Anti-Colisão Mobile Adaptativo:** se o centro vertical do elemento alvo estiver na metade inferior da viewport (`top > 45%`), o card popover ancora no topo; caso contrário, ancora na base. Rolagem contextual no container `#main-content` respeitando a barra superior fixa (offset de 64px) e margem de respiro de 16px.
-- **Catálogo Canônico de 18 Trilhas e Micro-Tours:**
-  1. *Trilha 0 — Bem-vindo ao App Nativo Android (`app_native_apk`):* exclusivo para o APK Android (`isNative()`), apresentando o Leitor de Notificações Bancárias em tempo real, Biometria e Escudo de Privacidade.
-  2. *Trilha 1 — Finanças Diárias & Cartões:* Home (`finances_overview`), Botão Wizard (`finances_wizard`), Cartões e Melhor Dia de Compra (`finances_cards`), Contas e Dívidas (`finances_debts`), Categorias e Tetos (`finances_budgets`), Smart Advisor e Relatórios (`finances_insights`) e Tour Geral Sequencial (`finances` - 8 passos).
-  3. *Trilha 2 — Finanças Compartilhadas:* Racha de Despesas com Pix (`finances_split` - 6 passos cobrindo chave Pix, link de compartilhamento, acesso web guest, notificação e baixa contábil), Modo Família (`finances_family`), Metas Coletivas (`finances_goals`) e Tour Geral Compartilhado (`shared_finances` - 4 passos).
-  4. *Trilha 3 — Investimentos & Rebalanceamento:* Carteira Global (`investments_overview`), Nova Operação (`investments_assets`), Metas por Classe/Ativo (`investments_targets` com chaveamento de sub-abas), Calculadora de Aporte Inteligente (`investments_aporte` com simulação ativa do motor matemático) e Tour Geral Patrimonial (`investments` - 5 passos).
-  5. *Trilha 4 — Personalização & Suporte:* Configurações, Modo Privacidade, Temas, Presets Sensoriais e Canal de Suporte Direto (`settings_support` - 5 passos com ancoragem na aba de suporte).
+- **Unificação Canônica da Aplicação (v3.07 / Plano 11):** o aplicativo é entregue completo para 100% dos usuários. A antiga divisão artificial entre "Modo Essencial" e "Modo Investidor" (Plano 07) foi erradicada: o cadastro é direto e sem perguntas de objetivo inicial, a navegação principal (Sidebar e BottomNav) exibe permanentemente o módulo de Investimentos e a área de investimentos é acessada de forma imediata com *Empty State* acolhedor nativo, eliminando qualquer tela promocional interna (`InvestorModePromoView`). O Dashboard mantém 4 KPIs fixos e simétricos (`Receitas`, `Despesas`, `Investimentos`, `Resultado do mês`).
+- **Modo Simulação 100% em Memória & Zero DB Mutations:** isolamento total do banco de dados relacional. Toda a experiência guiada é mantida em memória (`src/state/demo-mode/` e `src/domain/demo-simulation/`), com interceptação dinâmica em queries do TanStack Query (`use-simulated-queries.ts`, `use-card-payments.ts`, `use-overview.ts`) e supressão de mutações em `public_shares` (`SplitExpenseDialog` com `isSimulation`), garantindo zero linhas espúrias no Supabase durante o tour.
+- **Sanitização Rigorosa de Dados Pessoais (Zero PII Leak):** durante o tour, quaisquer formulários ou modais abertos utilizam dados fictícios pedagógicos (Titular: `"Gabriel (Demonstração)"`, Chave Pix: `"pix.demo@exemplo.com"`), impedindo o vazamento do e-mail real, CPF ou chave Pix do usuário logado.
+- **Apresentação Didática Ilustrada para Recursos Compartilhados (`SplitPreviewMockupCard`):** o micro-tour de Racha de Despesas com Pix utiliza um componente de mockup estático e ilustrado acionado via `?racha_preview=1`, demonstrando a divisão de valores, a chave Pix e o QR Code sem abrir formulários reais nem disputar foco.
+- **Motor Visual de Spotlight com Morfagem Suave (Zero Flicker):** componente `DemoTourSpotlight` com transição fluida por CSS, preservando as coordenadas do elemento anterior durante a troca de passos e eliminando apagões estroboscópicos da iluminação.
+- **Modularização em 4 Blocos Canônicos com Handoff de Ação Tripla:**
+  1. *Bloco 1 — Finanças Diárias & Cartões* (`finances`);
+  2. *Bloco 2 — Finanças Compartilhadas* (`shared_finances`);
+  3. *Bloco 3 — Investimentos & Rebalanceamento* (`investments`);
+  4. *Bloco 4 — Personalização & Suporte* (`settings_support`).
+  No último passo de cada bloco, o card popover oferece 3 opções determinísticas:
+  - **Ação 1 (Prática Real):** Botão primário para abrir o assistente correspondente na conta real com rota limpa;
+  - **Ação 2 (Próximo Bloco):** Botão de continuidade fluida para a próxima trilha temática;
+  - **Ação 3 (Sair e Explorar):** Botão discreto para encerrar o tour e navegar livremente.
 - **Acessibilidade WCAG 2.1 AA & Teclado Completo:** foco inicial automático no popover, preservação e restauração determinística do `document.activeElement`, focus trap (ciclo de Tab/Shift+Tab confinado no card popover), suporte a teclas de atalho (`Escape`, setas `ArrowLeft` / `ArrowRight`, `Enter`, `Espaço`), camada SVG marcada com `role="presentation"` e `aria-hidden="true"`, e anúncios em sintetizadores de tela via `aria-live="polite"`.
 - **Governança de Modais e Prevenção de Conflitos:** supressão coordenada de banners de atualização (`NativeUpdateToast`) via hook `useActiveOverlays` durante a exibição de modais, tours e wizards, com adiamento persistido por sessão e timer de 12 horas.
 

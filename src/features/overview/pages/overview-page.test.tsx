@@ -773,26 +773,19 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     });
   });
 
-  describe("Modo Essencial vs Modo Investidor (Plano 07)", () => {
-    it("no Modo Essencial, oculta o KPI de Investimentos e o QuickAporteCard", () => {
-      mockAppMode = "essential";
+  describe("Experiência Unificada & Governança Canônica (§Plano 11)", () => {
+    it("mantém os 4 KPIs executivos estáveis e o QuickAporteCard para todos os usuários", () => {
       render(<OverviewPage />);
 
-      // Não exibe o KPI de Investimentos
-      expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
+      // Exibe os 4 KPIs principais
+      expect(screen.getAllByText("Receitas").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Despesas").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Investimentos").length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Resultado/i).length).toBeGreaterThan(0);
 
-      // Não exibe o QuickAporteCard
-      expect(screen.queryByText("Investimentos do mês")).not.toBeInTheDocument();
-      expect(screen.queryByText("Aporte rápido")).not.toBeInTheDocument();
-    });
-
-    it("no Modo Essencial com sobra de caixa, renderiza o InvestorModeSurplusBanner no carrossel", () => {
-      mockAppMode = "essential";
-      render(<OverviewPage />);
-
-      // InvestorModeSurplusBanner deve estar visível no carrossel (duplicado para scroll contínuo)
-      expect(screen.getAllByText("Capacidade de Aporte Identificada").length).toBeGreaterThan(0);
-      expect(screen.getAllByRole("button", { name: /Ativar Modo Investidor/i, hidden: true }).length).toBeGreaterThan(0);
+      // Exibe o QuickAporteCard
+      expect(screen.getByText("Investimentos do mês")).toBeInTheDocument();
+      expect(screen.getByText("Aportes realizados no período")).toBeInTheDocument();
     });
   });
 });

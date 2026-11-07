@@ -11,7 +11,7 @@ let mockSubscription = {
 let mockHasFeature: (key: string) => boolean = () => true;
 let mockFamilyData: { family?: { id: string; name: string } } | null = null;
 let mockIsFamilyModeEnabled = false;
-let mockAppMode = "investor";
+const mockAppMode = "investor";
 
 vi.mock("@/state", () => ({
   useUserSubscription: () => mockSubscription,
@@ -182,12 +182,10 @@ describe("BottomNav Dinâmica & Adaptativa", () => {
     expect(screen.getByRole("link", { name: /Orçamento Familiar/i })).toBeInTheDocument();
   });
 
-  it("oculta Investimentos da navegação e menu Mais quando em modo essencial (§Plano 07)", () => {
-    mockAppMode = "essential";
+  it("mantém Investimentos sempre acessível na navegação para todos os usuários (§Plano 11)", () => {
     renderNav();
-    expect(screen.queryByRole("link", { name: /Investimentos|Carteira/i })).not.toBeInTheDocument();
     const moreBtn = screen.getByRole("button", { name: "Mais opções" });
     fireEvent.click(moreBtn);
-    expect(screen.queryByRole("link", { name: /Investimentos|Carteira/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Investimentos|Carteira/i })).toBeInTheDocument();
   });
 });

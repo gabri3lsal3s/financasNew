@@ -28,6 +28,7 @@ import {
 import { generateShareToken } from "@/domain/share/token";
 import { useUserAccess } from "@/state/queries/use-user-access";
 import { useCreatePublicShare } from "@/state/mutations/use-public-share-mutations";
+import { useDemoSession } from "@/state/demo-mode";
 import { useSplitPreferences } from "@/services/split-preferences";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
@@ -54,6 +55,8 @@ export interface SplitExpenseDialogProps {
   categoryIcon?: string;
   /** Se true e os dados Pix estiverem disponíveis, gera o link automaticamente ao abrir */
   autoGenerate?: boolean;
+  /** Se true, opera em modo sandbox seguro em memória sem mutações no banco (§Plano 11) */
+  isSimulation?: boolean;
 }
 
 const PIX_KEY_OPTIONS: SelectOption[] = [
@@ -83,15 +86,25 @@ export function SplitExpenseDialog({
   categoryName,
   categoryIcon,
   autoGenerate = false,
+  isSimulation = false,
 }: SplitExpenseDialogProps) {
+  const { isDemoActive } = useDemoSession();
+  const isSimulationActive = Boolean(isSimulation || isDemoActive);
+
   const { profile } = useUserAccess();
   const { preferences, updatePreferences } = useSplitPreferences();
   const createPublicShareMutation = useCreatePublicShare();
 
-  // Sugestão de Pix a partir das preferências salvas ou perfil do usuário
-  const effectiveDefaultPix = preferences.pixKey || profile?.cpf || profile?.email || "financeiro.demo@exemplo.com";
-  const effectiveDefaultName = preferences.merchantName || profile?.name || "Você";
-  const effectiveDefaultCity = preferences.merchantCity || "São Paulo";
+  // Sugestão de Pix a partir das preferências salvas ou perfil do usuário (Blindado contra PII leak no tour)
+  const effectiveDefaultPix = isSimulationActive
+    ? "pix.demo@exemplo.com"
+    : preferences.pixKey || profile?.cpf || profile?.email || "financeiro.demo@exemplo.com";
+  const effectiveDefaultName = isSimulationActive
+    ? "Gabriel (Demonstração)"
+    : preferences.merchantName || profile?.name || "Você";
+  const effectiveDefaultCity = isSimulationActive
+    ? "São Paulo"
+    : preferences.merchantCity || "São Paulo";
   const effectiveDefaultRemainder = preferences.remainderPolicy || "host";
   const effectiveDefaultKeyType = preferences.pixKeyType || "auto";
   const effectiveInitialCount = initialPeopleCount ?? preferences.defaultPeopleCount ?? 2;
@@ -251,6 +264,26 @@ export function SplitExpenseDialog({
         total_settled_cents: summary.hostShareCents,
       };
 
+      if (isSimulationActive) {
+        const demoUrl = getPublicAppUrl("r/demo-racha-480");
+        setGeneratedLink(demoUrl);
+        if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+          try {
+            await navigator.clipboard.writeText(demoUrl);
+            setCopied(true);
+          } catch {
+            // Fallback silencioso de permissão de clipboard
+          }
+        }
+        triggerSensory("success");
+        pushToast({
+          title: "Demonstração de link do racha",
+          description: "Link demonstrativo gerado em memória para apresentação didática.",
+          variant: "success",
+        });
+        return;
+      }
+
       const share = await createPublicShareMutation.mutateAsync({
         kind: "split",
         token,
@@ -308,6 +341,7 @@ export function SplitExpenseDialog({
     categoryIcon,
     createPublicShareMutation,
     updatePreferences,
+    isSimulationActive,
   ]);
 
   const handleShareWhatsApp = () => {

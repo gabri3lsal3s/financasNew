@@ -161,10 +161,10 @@ describe("AppearanceTab - Aparência & Identidade Visual (Fase 1 — Tarefa 1.3)
     );
   });
 
-  it("renderiza o AppModeCard para governança de Perfil de Visualização (§Plano 07)", () => {
+  it("renderiza a aba de aparência sem bifurcação de modos (§Plano 11)", () => {
     renderAppearanceTab();
 
-    expect(screen.getByText("Perfil de Visualização do Aplicativo")).toBeInTheDocument();
-    expect(screen.getByText("Modo Investidor Ativo")).toBeInTheDocument();
+    expect(screen.getByText("Modo de Experiência do Aplicativo")).toBeInTheDocument();
+    expect(screen.queryByText("Perfil de Visualização do Aplicativo")).not.toBeInTheDocument();
   });
 });

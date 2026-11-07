@@ -263,12 +263,11 @@ describe("InvestmentsPage — F17 unificada", () => {
     unmountProventos();
   });
 
-  it("renderiza a tela de acolhimento InvestorModePromoView quando em modo essencial (§Plano 07)", () => {
-    mockMode.isEssential = true;
+  it("carrega a página de investimentos diretamente com as abas e cabeçalho para todos os usuários (§Plano 11)", () => {
+    mockMode.isEssential = false;
     renderPage();
-    expect(screen.getByText("Gestão Patrimonial & Carteira de Ativos")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Ativar Módulo de Investimentos" })).toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "Carteira" })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Carteira" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Nova Operação" })).toBeInTheDocument();
   });
 });
 

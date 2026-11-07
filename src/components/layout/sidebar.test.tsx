@@ -187,10 +187,9 @@ describe("Sidebar colapsável (F7.2)", () => {
     expect(screen.getByRole("link", { name: "Orçamento Familiar" })).toBeInTheDocument();
   });
 
-  it("oculta o item Investimentos da sidebar quando em modo essencial (§Plano 07)", () => {
-    mockState.appMode = "essential";
+  it("mantém o item Investimentos sempre acessível na sidebar para todos os usuários (§Plano 11)", () => {
     renderSidebar();
-    expect(screen.queryByRole("link", { name: "Investimentos" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Investimentos" })).toBeInTheDocument();
   });
 });
 

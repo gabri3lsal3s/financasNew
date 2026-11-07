@@ -192,7 +192,6 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
       "Gabriel",
       "",
       undefined,
-      "investor",
     );
   });
 
@@ -246,7 +245,6 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
       "Gabriel",
       "",
       "mock-turnstile-token-xyz",
-      "investor",
     );
   });
 
@@ -347,36 +345,11 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
     expect(screen.getByRole("link", { name: /Ir para o login/i })).toBeInTheDocument();
   });
 
-  it("permite ao usuário escolher o foco inicial 'Organizar Contas' (Modo Essencial - Plano 07)", async () => {
-    const user = userEvent.setup();
-    vi.mocked(authHook.signUpWithEmail).mockResolvedValueOnce({
-      needsEmailConfirmation: false,
-    });
-
+  it("renderiza o formulário de cadastro direto sem perguntas de modo (§Plano 11)", () => {
     renderRegisterPage();
 
-    expect(screen.getByText("Qual é o seu objetivo inicial?")).toBeInTheDocument();
-    const essentialBtn = screen.getByRole("button", { name: /Organizar Contas/i });
-    await user.click(essentialBtn);
-
-    await user.type(screen.getByLabelText("Nome"), "Gabriel");
-    await user.type(screen.getByLabelText("E-mail"), "essencial@exemplo.com");
-    await user.type(screen.getByLabelText("Senha"), "MinhaSenhaForte123!");
-    await user.type(screen.getByLabelText("Confirmar Senha"), "MinhaSenhaForte123!");
-    await user.click(
-      screen.getByRole("checkbox", {
-        name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,
-      }),
-    );
-    await user.click(screen.getByRole("button", { name: "Criar conta" }));
-
-    expect(authHook.signUpWithEmail).toHaveBeenCalledWith(
-      "essencial@exemplo.com",
-      "MinhaSenhaForte123!",
-      "Gabriel",
-      "",
-      undefined,
-      "essential",
-    );
+    expect(screen.queryByText("Qual é o seu objetivo inicial?")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Nome")).toBeInTheDocument();
+    expect(screen.getByLabelText("E-mail")).toBeInTheDocument();
   });
 });

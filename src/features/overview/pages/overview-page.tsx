@@ -73,7 +73,6 @@ import {
   useFamilyConsolidation,
   useFamilyMode,
   useMyFamily,
-  useAppMode,
 } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { useVisualCustomization, useApkPromo, useOnboardingDismissed, usePendingSplitExpense, usePendingSimulation } from "@/hooks";
@@ -86,7 +85,6 @@ import {
   SplitPendingBanner,
   CampaignsSummaryBanner,
   HouseholdAlertBanner,
-  InvestorModeSurplusBanner,
 } from "../components";
 import type { SplitSharePayload } from "@/types";
 
@@ -104,7 +102,6 @@ export function OverviewPage() {
   const [checkpointOpen, setCheckpointOpen] = useState(false);
   const { guardAction, upgradeModal } = useMutationGuard();
   const visual = useVisualCustomization();
-  const { isInvestorMode } = useAppMode();
 
   const prevMonth = shiftMonth(month, -1);
   const rangeEnd = `${shiftMonth(month, 1)}-01`;
@@ -723,10 +720,8 @@ export function OverviewPage() {
     surplusCapacity.hasSurplus && isCurrentMonth && {
       id: "surplus-aporte-banner",
       priority: 4,
-      content: isInvestorMode ? (
+      content: (
         <SurplusAporteBanner surplusCents={surplusCapacity.suggestedAporteCents} />
-      ) : (
-        <InvestorModeSurplusBanner surplusCents={surplusCapacity.suggestedAporteCents} />
       ),
     },
     subscription.isTrial &&
@@ -784,10 +779,10 @@ export function OverviewPage() {
       ) : loading ? (
         <div className="flex flex-col gap-3" aria-hidden="true" data-testid="overview-loading-skeleton">
           {isCurrentMonth ? <SkeletonHeroCard /> : null}
-          <div className={cn("grid gap-3", isInvestorMode ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-1 sm:grid-cols-3")}>
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
             <SkeletonKpi />
             <SkeletonKpi />
-            {isInvestorMode && <SkeletonKpi />}
+            <SkeletonKpi />
             <SkeletonKpi />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -822,7 +817,7 @@ export function OverviewPage() {
           ) : null}
 
           {/* KPIs fundamentais (§3.6) com sparkline */}
-          <div className={cn("grid gap-3 min-w-0", isInvestorMode ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-1 sm:grid-cols-3")} data-tour="overview-kpis">
+          <div className="grid gap-3 min-w-0 grid-cols-2 lg:grid-cols-4" data-tour="overview-kpis">
               <KpiCard
                 label="Receitas"
                 cents={totals.incomeCents}
@@ -861,16 +856,14 @@ export function OverviewPage() {
                 }
                 spark={dailySeries.expenseSeries}
               />
-              {isInvestorMode && (
-                <KpiCard
-                  label="Investimentos"
-                  cents={totals.investmentCents}
-                  tone="portfolio"
-                  icon={<TrendingUp className="size-4" aria-hidden="true" />}
-                  spark={dailySeries.investmentSeries}
-                  onClick={() => navigate("/investments")}
-                />
-              )}
+              <KpiCard
+                label="Investimentos"
+                cents={totals.investmentCents}
+                tone="portfolio"
+                icon={<TrendingUp className="size-4" aria-hidden="true" />}
+                spark={dailySeries.investmentSeries}
+                onClick={() => navigate("/investments")}
+              />
               <KpiCard
                 label={
                   <>
@@ -903,7 +896,7 @@ export function OverviewPage() {
                   <span className="flex items-center gap-1 text-muted-foreground">
                     <span className="size-1.5 rounded-full bg-negative-strong shrink-0" /> Despesas
                   </span>
-                  {isInvestorMode && totals.investmentCents > 0 && (
+                  {totals.investmentCents > 0 && (
                     <span className="flex items-center gap-1 text-muted-foreground">
                       <span className="size-1.5 rounded-full bg-portfolio shrink-0" /> Investimentos
                     </span>
@@ -1070,17 +1063,15 @@ export function OverviewPage() {
             )}
           </section>
 
-          {/* Bloco de Investimentos do Mês & Aporte Direcionado (Fase 5 — Tarefa 5.4) */}
-          {isInvestorMode && (
-            <QuickAporteCard
-              currentMonthAporteCents={totals.investmentCents}
-              suggestedAporteCents={
-                surplusCapacity.hasSurplus && isCurrentMonth
-                  ? surplusCapacity.suggestedAporteCents
-                  : 0
-              }
-            />
-          )}
+          {/* Bloco de Investimentos do Mês & Aporte Direcionado */}
+          <QuickAporteCard
+            currentMonthAporteCents={totals.investmentCents}
+            suggestedAporteCents={
+              surplusCapacity.hasSurplus && isCurrentMonth
+                ? surplusCapacity.suggestedAporteCents
+                : 0
+            }
+          />
 
           {/* Diálogo Raio-X de Categoria (Responsivo / BottomSheet no mobile / Modal no desktop) */}
           <CategoryBreakdownDialog

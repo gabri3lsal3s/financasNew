@@ -1,5 +1,34 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.07** registra a **Conclusão e Homologação do Plano 11 — Unificação da Experiência Canônica, Erradicação de Modos Artificiais e Blindagem Integral do Tour Guiado** (2026-11-07):
+> - **(1) Experiência Canônica Unificada & Extinção da Bifurcação de Modos**:
+>   - Extinção completa da divisão artificial entre "Modo Essencial" e "Modo Investidor";
+>   - Cadastro rápido e despoluído (`RegisterPage` & `data/auth.ts`) sem perguntas precoces de "objetivo inicial", eliminando o fardo cognitivo e a fricção de entrada;
+>   - Menu principal estável e permanentemente completo (`sidebar.tsx`, `bottom-nav.tsx`, `more-menu-sheet.tsx`, `nav-items.tsx`): o módulo de Investimentos fica acessível e visível para 100% dos usuários em todas as plataformas;
+>   - Remoção de telas promocionais invasivas internas (`InvestorModePromoView`): a rota `/investments` abre diretamente com o *Empty State* nativo acolhedor e didático da carteira;
+>   - Estabilização da Visão Geral (Dashboard) com grade executiva simétrica de 4 KPIs (`Receitas`, `Despesas`, `Investimentos`, `Resultado do mês`) e atalho permanente de Aporte Rápido (`QuickAporteCard`);
+>   - Despoluição das Configurações (`appearance-tab.tsx`), eliminando cards concorrentes de modo e concentrando-se em Presets de Experiência e Identidade Visual.
+> - **(2) Sandbox Estrita no Tour & Zero Mutações em Banco de Dados**:
+>   - Bloqueio integral de mutações reais no Supabase durante a simulação (`isDemoActive === true`);
+>   - Interceptação graciosa em memória no `SplitExpenseDialog`, gerando link simulado sem gravar linhas em `public_shares`.
+> - **(3) Sanitização de Dados Pessoais (Zero PII Leak)**:
+>   - Erradicação de vazamentos de credenciais pessoais do usuário logado durante o tour;
+>   - Utilização de dados pedagógicos e fictícios padronizados (Titular: `"Gabriel (Demonstração)"`, Chave Pix: `"pix.demo@exemplo.com"`).
+> - **(4) Apresentação Ilustrada para Recursos Compartilhados (`SplitPreviewMockupCard`)**:
+>   - Criação de componente visual de demonstração pedagógica com valores didáticos, chave Pix e QR Code simulado;
+>   - Integração segura com o parâmetro `?racha_preview=1` na rota de transações, eliminando a concorrência de foco e formulários reais abertos durante a apresentação.
+> - **(5) Mapeamento Cirúrgico de Seletores no DOM & Morfagem Suave de Spotlight**:
+>   - Inserção de seletores semânticos em `transaction-list-page.tsx` (`data-tour="transactions-feed-card"`) e `debts-page.tsx` (`data-tour="debts-payable-section"`, `data-tour="debts-receivable-section"`), eliminando timeouts e telas pretas órfãs;
+>   - Erradicação de flickers estroboscópicos em `demo-tour-spotlight.tsx`, preservando o rect anterior com transição contínua fluida via CSS durante a navegação entre passos.
+> - **(6) Modularização dos 4 Blocos & Handoff de Ação Tripla**:
+>   - Estruturação modular dos 4 blocos canônicos com Handoff de Ação Tripla no popover do último passo:
+>     1. *Ação Real no Wizard / Assistente* (leva para a prática na conta com dados reais);
+>     2. *Avanço para o Próximo Bloco* (continuidade fluida da jornada de aprendizado);
+>     3. *Concluir e Explorar* (saída limpa com URL higienizada).
+> - **(7) Quality Gates QG0–QG7 Aprovados & Homologação**:
+>   - 100% dos testes aprovados (58/58 em segurança/RLS, 94/94 em spotlight, 26/26 em tour-steps, 34/34 em overview);
+>   - Typecheck estrito (`tsc -b`), lint (`eslint .`) com zero erros/warnings e build de produção executado com sucesso em 2.05s.
+>
 > **v3.06** registra a **Conclusão e Homologação do Plano 10 — Motor Universal de Comprovantes, Cupons Fiscais e Aprendizado Contínuo** (2026-11-07):
 > - **(1) Limpeza e Normalização Óptica de OCR (`ocr-cleaner.ts` & `web-ocr.ts`)**:
 >   - Binarização adaptativa de Otsu (`calculateOtsuThreshold`) para maximização de variância interclasses em fotos de celular com sombras ou iluminação irregular;

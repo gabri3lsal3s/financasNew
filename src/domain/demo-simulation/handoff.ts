@@ -113,3 +113,60 @@ export function getTourHandoffDestination(
   // Retorna estritamente a rota atual limpa sem query params invasivos de modais
   return cleanPathWithoutInvasiveParams(currentPath);
 }
+
+export interface BlockHandoffInfo {
+  /** Rótulo da ação principal real no assistente/wizard */
+  actionLabel: string;
+  /** Destino da ação real */
+  actionDestination: string;
+  /** Identificador da próxima trilha/bloco temático */
+  nextTrackId?: AnyTourTrackId;
+  /** Rótulo da próxima trilha para avanço contínuo */
+  nextTrackLabel?: string;
+}
+
+/**
+ * Retorna as informações do Handoff de Ação Tripla ao concluir um dos 4 blocos canônicos (§Plano 11).
+ */
+export function getBlockHandoffInfo(
+  track: AnyTourTrackId | string | null | undefined,
+): BlockHandoffInfo | null {
+  if (track === "finances") {
+    return {
+      actionLabel: "Lançar na Conta Real",
+      actionDestination: "/?novo=despesa",
+      nextTrackId: "shared_finances",
+      nextTrackLabel: "Finanças Compartilhadas",
+    };
+  }
+
+  if (track === "shared_finances") {
+    return {
+      actionLabel: "Abrir Painel Familiar",
+      actionDestination: "/familia",
+      nextTrackId: "investments",
+      nextTrackLabel: "Investimentos & Carteira",
+    };
+  }
+
+  if (track === "investments") {
+    return {
+      actionLabel: "Cadastrar Primeiro Ativo",
+      actionDestination: "/investments?novo=investimento",
+      nextTrackId: "settings_support",
+      nextTrackLabel: "Personalização & Suporte",
+    };
+  }
+
+  if (track === "settings" || track === "settings_support") {
+    return {
+      actionLabel: "Explorar Configurações",
+      actionDestination: "/configuracoes",
+      nextTrackId: undefined,
+      nextTrackLabel: undefined,
+    };
+  }
+
+  return null;
+}
+

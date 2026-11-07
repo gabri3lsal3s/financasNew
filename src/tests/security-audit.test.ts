@@ -50,12 +50,12 @@ function statements(): string[] {
 }
 
 describe("F6.2 — RLS: cobertura total (D4 — multiusuário isolado)", () => {
-  it("toda tabela criada nas migrations tem RLS habilitado (46 tabelas)", () => {
+  it("toda tabela criada nas migrations tem RLS habilitado (49 tabelas)", () => {
     const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(46);
+    expect(created.length).toBe(49);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
@@ -64,7 +64,7 @@ describe("F6.2 — RLS: cobertura total (D4 — multiusuário isolado)", () => {
     }
   });
 
-  it("100% das 36 tabelas possuem policies ativas e nenhuma possui policies residuais", () => {
+  it("100% das 49 tabelas possuem policies ativas e nenhuma possui policies residuais", () => {
     const files = readdirSync(resolve(root, "supabase/migrations")).filter((f) => f.endsWith(".sql")).sort();
     const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
       .map((m) => m[1]?.toLowerCase())
@@ -86,11 +86,11 @@ describe("F6.2 — RLS: cobertura total (D4 — multiusuário isolado)", () => {
           }
         }
 
-        const createMatches = [...s.matchAll(/create\s+policy\s+"([^"]+)"\s+on\s+public\.([a-zA-Z0-9_]+)\s+([^;]+)/gi)];
+        const createMatches = [...s.matchAll(/create\s+policy\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))\s+on\s+public\.([a-zA-Z0-9_]+)\s+([^;]+)/gi)];
         for (const cm of createMatches) {
-          const pName = cm[1];
-          const tbl = cm[2]?.toLowerCase();
-          const rest = cm[3] ?? "";
+          const pName = cm[1] || cm[2];
+          const tbl = cm[3]?.toLowerCase();
+          const rest = cm[4] ?? "";
           if (pName && tbl) {
             activePolicies.get(tbl)?.set(pName, rest);
           }
@@ -843,14 +843,14 @@ describe("Tarefa 3.3 — Criação do Índice Composto Complementar em portfolio
 });
 
 describe("Tarefa 3.4 — Expansão da Suíte de Auditoria Integral de Banco & Governança InitPlan", () => {
-  it("todas as 46 tabelas possuem RLS habilitado e nenhuma migração contém disable row level security", () => {
+  it("todas as 49 tabelas possuem RLS habilitado e nenhuma migração contém disable row level security", () => {
     expect(ALL_SQL).not.toMatch(/disable\s+row\s+level\s+security/i);
 
     const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(46);
+    expect(created.length).toBe(49);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),

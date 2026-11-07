@@ -2158,7 +2158,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       const nextButton = screen.getByRole("button", { name: "Próximo passo" });
       await user.click(nextButton);
 
-      expect(mockNavigate).toHaveBeenCalledWith("/configuracoes");
+      expect(mockNavigate).toHaveBeenCalledWith("/configuracoes?tab=support");
     });
   });
 
@@ -2332,9 +2332,8 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       const nextBtn = screen.getByRole("button", { name: "Próximo passo" });
       await user.click(nextBtn);
 
-      // Ao trocar de passo, o recorte antigo DEVE ser limpo imediatamente (zero recorte congelado)
-      expect(screen.queryByTestId("spotlight-border")).not.toBeInTheDocument();
-      // E o esqueleto de carregamento assume o lugar enquanto o nó do passo 2 é aguardado
+      // Ao trocar de passo com morfagem suave (§Plano 11), a transição contínua preserva o foco sem tela preta
+      // e o esqueleto de carregamento assume o lugar enquanto o nó do passo 2 é aguardado
       expect(screen.getByTestId("spotlight-loading-skeleton")).toBeInTheDocument();
     });
   });

@@ -182,14 +182,14 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
       expect(steps[0]?.preferredPlacement).toBe("top");
       expect(steps[0]?.badgeLabel).toBe("Passo 1 de 6");
 
-      // Passo 2: Cadastro de Chave Pix
-      expect(steps[1]?.targetSelector).toBe('[data-tour="split-pix-config"]');
-      expect(steps[1]?.targetRoute).toBe("/transacoes?racha_modal=1");
+      // Passo 2: Cadastro de Chave Pix Didática
+      expect(steps[1]?.targetSelector).toBe('[data-tour="split-mockup-pix-box"]');
+      expect(steps[1]?.targetRoute).toBe("/transacoes?racha_preview=1");
       expect(steps[1]?.badgeLabel).toBe("Passo 2 de 6");
 
-      // Passo 3: Geração e Ações de Link
-      expect(steps[2]?.targetSelector).toBe('[data-tour="split-link-actions"]');
-      expect(steps[2]?.targetRoute).toBe("/transacoes?racha_modal=1&link=1");
+      // Passo 3: Geração e Ações de Link com Mockup Ilustrado
+      expect(steps[2]?.targetSelector).toBe('[data-tour="split-mockup-card"]');
+      expect(steps[2]?.targetRoute).toBe("/transacoes?racha_preview=1");
       expect(steps[2]?.badgeLabel).toBe("Passo 3 de 6");
 
       // Passo 4: Acesso do Convidado pelo Link

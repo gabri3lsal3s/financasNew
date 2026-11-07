@@ -4,7 +4,7 @@ import { BrowserRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { MoreMenuSheet } from "./more-menu-sheet";
 
-let mockAppMode = "investor";
+const mockAppMode = "investor";
 
 vi.mock("@/state", () => ({
   useReminders: () => ({ totalCount: 2, urgentCount: 1 }),
@@ -91,14 +91,13 @@ describe("MoreMenuSheet", () => {
     expect(screen.getByText("Tour Guiado & Modo Simulação")).toBeInTheDocument();
   });
 
-  it("oculta Investimentos do menu Mais quando em modo essencial (§Plano 07)", () => {
-    mockAppMode = "essential";
+  it("mantém Investimentos acessível no menu Mais para todos os usuários (§Plano 11)", () => {
     render(
       <BrowserRouter>
         <MoreMenuSheet open={true} onOpenChange={vi.fn()} />
       </BrowserRouter>,
     );
 
-    expect(screen.queryByRole("link", { name: "Investimentos" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Investimentos" })).toBeInTheDocument();
   });
 });

@@ -67,7 +67,9 @@ export {
   cleanPathWithoutInvasiveParams,
   isCompleteTourTrack,
   getTourHandoffDestination,
+  getBlockHandoffInfo,
 } from "./handoff";
+export type { BlockHandoffInfo } from "./handoff";
 
 export type {
   CalculateFreeViewportOptions,

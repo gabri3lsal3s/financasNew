@@ -4,13 +4,14 @@ import { ArrowLeftRight, Calendar, ChevronDown, Download, Plus, Search, Sparkles
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Modal } from "@/components/ui/modal";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { MoneyText } from "@/components/ui/money-text";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
-import { HighlightRow, KpiCard, MonthPicker, ReadOnlyBanner, TransactionRow, UpgradeDialog } from "@/components/modules";
+import { HighlightRow, KpiCard, MonthPicker, ReadOnlyBanner, SplitPreviewMockupCard, TransactionRow, UpgradeDialog } from "@/components/modules";
 import { currentMonth, formatDateBR, isValidMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { downloadCsv } from "@/services/export-actions";
@@ -424,50 +425,52 @@ export function TransactionListPage() {
           <SkeletonList rows={4} />
         </div>
       ) : feedGroups.length === 0 ? (
-        <EmptyState
-          icon={<ArrowLeftRight className="size-6" aria-hidden="true" />}
-          title={isSearching ? "Nenhum resultado encontrado" : "Nenhum lançamento encontrado"}
-          description={
-            isSearching
-              ? `Nenhum lançamento corresponde ao termo "${searchQuery.trim()}". Tente buscar por outro termo ou limpe a busca.`
-              : filter === "incomes"
-                ? "Nenhuma receita registrada neste mês."
-                : filter === "expenses"
-                  ? "Nenhuma despesa registrada neste mês."
-                  : filter === "recurring"
-                    ? "Nenhum lançamento recorrente neste mês."
-                    : filter === "installments"
-                      ? "Nenhum lançamento parcelado neste mês."
-                      : "Registre sua primeira transação para acompanhar suas finanças neste mês."
-          }
-          action={
-            isSearching ? (
-              <Button size="sm" variant="outline" onClick={() => setSearchQuery("")} className="mt-2 cursor-pointer gap-1.5">
-                <X className="size-3.5" aria-hidden="true" />
-                Limpar busca
-              </Button>
-            ) : (
-              <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
-                <Button size="sm" onClick={handleNewTransaction} className="gap-1.5 cursor-pointer">
-                  <Plus className="size-4" aria-hidden="true" />
-                  Novo lançamento
+        <div data-tour="transactions-feed-card" className="w-full">
+          <EmptyState
+            icon={<ArrowLeftRight className="size-6" aria-hidden="true" />}
+            title={isSearching ? "Nenhum resultado encontrado" : "Nenhum lançamento encontrado"}
+            description={
+              isSearching
+                ? `Nenhum lançamento corresponde ao termo "${searchQuery.trim()}". Tente buscar por outro termo ou limpe a busca.`
+                : filter === "incomes"
+                  ? "Nenhuma receita registrada neste mês."
+                  : filter === "expenses"
+                    ? "Nenhuma despesa registrada neste mês."
+                    : filter === "recurring"
+                      ? "Nenhum lançamento recorrente neste mês."
+                      : filter === "installments"
+                        ? "Nenhum lançamento parcelado neste mês."
+                        : "Registre sua primeira transação para acompanhar suas finanças neste mês."
+            }
+            action={
+              isSearching ? (
+                <Button size="sm" variant="outline" onClick={() => setSearchQuery("")} className="mt-2 cursor-pointer gap-1.5">
+                  <X className="size-3.5" aria-hidden="true" />
+                  Limpar busca
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    startDemo("finances");
-                    setStepIndex(1);
-                  }}
-                  className="gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
-                >
-                  <Sparkles className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                  Ver exemplo na Simulação
-                </Button>
-              </div>
-            )
-          }
-        />
+              ) : (
+                <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+                  <Button size="sm" onClick={handleNewTransaction} className="gap-1.5 cursor-pointer">
+                    <Plus className="size-4" aria-hidden="true" />
+                    Novo lançamento
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      startDemo("finances");
+                      setStepIndex(1);
+                    }}
+                    className="gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
+                  >
+                    <Sparkles className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    Ver exemplo na Simulação
+                  </Button>
+                </div>
+              )
+            }
+          />
+        </div>
       ) : (
         <div className="flex flex-col gap-3.5 sm:gap-4" data-tour="transactions-content">
           {feedGroups.map((group, index) => (
@@ -594,8 +597,9 @@ export function TransactionListPage() {
         );
       })()}
 
-      {searchParams.get("racha_modal") === "1" && (
-        <SplitExpenseDialog
+      {(searchParams.get("racha_preview") === "1" ||
+        (searchParams.get("racha_modal") === "1" && searchParams.get("link") === "1")) && (
+        <Modal
           open={true}
           onOpenChange={(next) => {
             if (!next) {
@@ -603,6 +607,33 @@ export function TransactionListPage() {
                 (prev) => {
                   const updated = new URLSearchParams(prev);
                   updated.delete("racha_modal");
+                  updated.delete("racha_preview");
+                  updated.delete("link");
+                  return updated;
+                },
+                { replace: true },
+              );
+            }
+          }}
+          title="Demonstração do Racha com Pix"
+          description="Visualização didática de como amigos visualizam a cobrança compartilhada e efetuam o pagamento."
+          size="md"
+        >
+          <SplitPreviewMockupCard />
+        </Modal>
+      )}
+
+      {searchParams.get("racha_modal") === "1" && searchParams.get("link") !== "1" && (
+        <SplitExpenseDialog
+          open={true}
+          isSimulation={true}
+          onOpenChange={(next) => {
+            if (!next) {
+              setSearchParams(
+                (prev) => {
+                  const updated = new URLSearchParams(prev);
+                  updated.delete("racha_modal");
+                  updated.delete("racha_preview");
                   updated.delete("link");
                   return updated;
                 },
@@ -615,7 +646,7 @@ export function TransactionListPage() {
           initialDate={todayISO()}
           initialPeopleCount={4}
           categoryName="Lazer & Assinaturas"
-          autoGenerate={searchParams.get("link") === "1"}
+          autoGenerate={false}
         />
       )}
 

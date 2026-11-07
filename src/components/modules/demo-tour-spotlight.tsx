@@ -15,11 +15,13 @@ import {
   DEFAULT_SEARCH_TIMEOUT_MS,
   getDesktopSidebarWidth,
   getTourHandoffDestination,
+  getBlockHandoffInfo,
   getTourSteps,
   getTourTrackCategoryLabel,
   resolveTourStepContent,
   resolveTourStepTargetSelector,
   resolveTourStepTitle,
+  type AnyTourTrackId,
 } from "@/domain/demo-simulation";
 import {
   endDemo,
@@ -27,6 +29,7 @@ import {
   goToPrevStep,
   markTourCompleted,
   setStepIndex,
+  startDemo,
   useDemoSession,
 } from "@/state/demo-mode";
 
@@ -151,7 +154,7 @@ export function DemoTourSpotlight({
   if (prevStepIndex !== currentStepIndex) {
     setPrevStepIndex(currentStepIndex);
     setIsPulsing(true);
-    setRect(null);
+    // Preserva o rect anterior durante a busca para transição contínua sem tela preta/flicker (§Plano 11)
     const sel = resolveTourStepTargetSelector(currentStep, !isMobile);
     setIsTargetLoading(Boolean(isDemoActive && sel));
   }
@@ -211,7 +214,7 @@ export function DemoTourSpotlight({
     onClose?.();
   }, [location.pathname, location.search, navigate, onClose, restoreFocus]);
 
-  // Hand-off direto para o primeiro uso na conta real com restauração de foco (Fase 4 — Tarefa 4.1)
+  // Hand-off direto para o primeiro uso na conta real com restauração de foco (Fase 4 — Tarefa 4.1, Fase 6 — Plano 11)
   const handleStartRealAccount = useCallback(() => {
     triggerSensory("action");
     restoreFocus();
@@ -222,13 +225,34 @@ export function DemoTourSpotlight({
     if (onClose) {
       onClose();
     } else {
-      const destination = getTourHandoffDestination(
-        activeTrack,
-        `${location.pathname}${location.search ?? ""}`,
-      );
+      const handoffInfo = isLastStep ? getBlockHandoffInfo(activeTrack) : null;
+      const destination =
+        handoffInfo?.actionDestination ??
+        getTourHandoffDestination(
+          activeTrack,
+          `${location.pathname}${location.search ?? ""}`,
+        );
       navigate(destination);
     }
-  }, [activeTrack, location.pathname, location.search, navigate, onClose, restoreFocus]);
+  }, [activeTrack, isLastStep, location.pathname, location.search, navigate, onClose, restoreFocus]);
+
+  const blockHandoff = isLastStep ? getBlockHandoffInfo(activeTrack) : null;
+
+  const handleStartNextBlock = useCallback(
+    (nextTrackId: AnyTourTrackId) => {
+      triggerSensory("action");
+      if (activeTrack) {
+        markTourCompleted(activeTrack);
+      }
+      const nextSteps = getTourSteps(nextTrackId);
+      const firstStep = nextSteps[0];
+      startDemo(nextTrackId);
+      if (firstStep?.targetRoute) {
+        navigate(firstStep.targetRoute);
+      }
+    },
+    [activeTrack, navigate],
+  );
 
   const currentRoute = `${location.pathname}${location.search}`;
   const previousRouteRef = useRef<string>(currentRoute);
@@ -928,7 +952,7 @@ export function DemoTourSpotlight({
         )}
 
         {/* Esqueleto discreto de foco enquanto elemento com montagem tardia carrega (Fase 8 — Tarefa 8.7) */}
-        {!rect && isTargetLoading && loadingSkeletonRect && (
+        {isTargetLoading && loadingSkeletonRect && (
           <rect
             x={loadingSkeletonRect.x}
             y={loadingSkeletonRect.y}
@@ -1051,20 +1075,52 @@ export function DemoTourSpotlight({
           </div>
 
           {isLastStep ? (
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              onClick={handleStartRealAccount}
-              aria-label="Começar Conta Real"
-              className="h-8 px-3 text-xs font-semibold cursor-pointer gap-1.5 shrink-0 max-w-fit"
-            >
-              <Check className="size-3.5 shrink-0" aria-hidden="true" />
-              <span className="sm:hidden truncate">Começar</span>
-              <span className="hidden sm:inline truncate">
-                {isNarrowCard ? "Começar" : "Começar Conta Real"}
-              </span>
-            </Button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {blockHandoff?.nextTrackId ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleStartRealAccount}
+                    aria-label="Começar Conta Real"
+                    className="h-8 px-2 text-xs font-semibold cursor-pointer gap-1 shrink-0 max-w-fit"
+                  >
+                    <Check className="size-3 text-positive-strong shrink-0" aria-hidden="true" />
+                    <span className="sm:hidden truncate">Começar</span>
+                    <span className="hidden sm:inline truncate">
+                      {isNarrowCard ? "Começar" : "Começar Conta Real"}
+                    </span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    onClick={() => handleStartNextBlock(blockHandoff.nextTrackId!)}
+                    aria-label={`Avançar para ${blockHandoff.nextTrackLabel ?? "Próximo Bloco"}`}
+                    className="h-8 px-2.5 text-xs font-semibold cursor-pointer gap-1 shrink-0 max-w-fit"
+                  >
+                    <span className="truncate">{blockHandoff.nextTrackLabel ?? "Próximo Bloco"}</span>
+                    <ArrowRight className="size-3 shrink-0" aria-hidden="true" />
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  onClick={handleStartRealAccount}
+                  aria-label="Começar Conta Real"
+                  className="h-8 px-3 text-xs font-semibold cursor-pointer gap-1.5 shrink-0 max-w-fit"
+                >
+                  <Check className="size-3.5 shrink-0" aria-hidden="true" />
+                  <span className="sm:hidden truncate">Começar</span>
+                  <span className="hidden sm:inline truncate">
+                    {blockHandoff?.actionLabel ?? (isNarrowCard ? "Começar" : "Começar Conta Real")}
+                  </span>
+                </Button>
+              )}
+            </div>
           ) : (
             <Button
               type="button"
