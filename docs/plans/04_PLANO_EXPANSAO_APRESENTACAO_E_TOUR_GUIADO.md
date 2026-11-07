@@ -118,20 +118,20 @@ flowchart TD
 
 ## Fase 4: Expansão Editorial da Landing Page (`/apresentacao`)
 
-- [ ] **Tarefa 4.1: Inclusão do Eixo 4 — Finanças Compartilhadas & Pix**
+- [x] **Tarefa 4.1: Inclusão do Eixo 4 — Finanças Compartilhadas & Pix**
   - Novo bloco editorial com cards visuais ricos:
     1. Card de Racha de Despesas com cópia de Pix e botão de WhatsApp.
     2. Card de Termômetro de Vaquinha Coletiva em tempo real.
     3. Card de Orçamento Familiar Seguro (divisão 50/50 e acerto sem atrito).
 
-- [ ] **Tarefa 4.2: Pílulas de Destaque no Hero**
-  - Adição de tags discretas no topo: `[ Racha com Pix ]` e `[ Modo Família ]`.
+- [x] **Tarefa 4.2: Pílulas de Destaque no Hero**
+  - [x] Adição de tags discretas no topo: `[ Racha com Pix ]` e `[ Modo Família ]`.
 
-- [ ] **Portão de Qualidade 4 (QG4):**
-  - [ ] Executar: `npx vitest run src/features/landing/`
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] **Commit & Push da Fase 4:** `git commit -m "feat(landing): eixo 4 de financas compartilhadas e racha pix"`
+- [x] **Portão de Qualidade 4 (QG4):**
+  - [x] Executar: `npx vitest run src/features/landing/`
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] **Commit & Push da Fase 4:** `git commit -m "feat(landing): eixo 4 de financas compartilhadas e racha pix"`
 
 ---
 
