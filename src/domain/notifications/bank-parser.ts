@@ -1,8 +1,10 @@
 import { toISODate } from "@/domain/money";
 import type { PaymentMethod } from "@/types/schema";
 import { inferCategoryKeyword } from "./category-inference";
-import { cleanAcquirerPrefixes } from "./merchant-catalog";
+import { cleanAcquirerPrefixes, findCanonicalMerchant } from "./merchant-catalog";
 import { parsePixEMVPayload } from "./pix-emv-parser";
+import { resolvePaymentMethod } from "./payment-method-resolver";
+import { resolveIncomeCategory } from "./income-category-resolver";
 
 export type TransactionNature = "expense" | "income" | "investment";
 export type InvestmentSubtype = "contribution" | "dividend" | "trade" | "redemption";
@@ -1144,6 +1146,10 @@ export const EXPENSE_KEYWORDS = [
   "payment",
   "paid",
   "sent",
+  "cartão",
+  "cartao",
+  "cartão final",
+  "cartao final",
 ];
 
 /**
@@ -1151,10 +1157,20 @@ export const EXPENSE_KEYWORDS = [
  * suportando salários, reembolsos, estornos, devoluções Pix e transferências (TED/DOC).
  * Retorna null se não houver termos inequívocos (anti-fallback de despesa).
  */
-export function detectTransactionType(text: string, title: string): "expense" | "income" | null {
+export function detectTransactionType(
+  text: string,
+  title: string,
+  packageName?: string,
+): "expense" | "income" | null {
   const combined = `${title} ${text}`.toLowerCase();
 
   if (isRefundTransaction(text, title)) {
+    return "income";
+  }
+
+  // 1. Checa auto-depósito ou receita primeiro
+  const incomeCategory = resolveIncomeCategory(text, title);
+  if (incomeCategory.isAutoDeposit || incomeCategory.isSalary || incomeCategory.isInvestmentYield) {
     return "income";
   }
 
@@ -1215,6 +1231,21 @@ export function detectTransactionType(text: string, title: string): "expense" | 
     }
   }
 
+  // Se o pacote pertencer explicitamente a uma carteira digital (Google Wallet, Samsung Pay), é despesa
+  const isWalletPkg =
+    packageName === "com.google.android.apps.walletnfcrel" ||
+    packageName === "com.samsung.android.spay" ||
+    packageName === "com.samsung.android.raja.spay" ||
+    packageName === "com.samsung.android.app.spay";
+  if (isWalletPkg) {
+    return "expense";
+  }
+
+  // Se contiver menção a cartão ou dígitos de cartão (ex: Santander Way "Cartao final 9988", "••1234"), é despesa
+  if (/(?:••|\*{2,4}|cart[ãa]o\s+final|final\s*[:.-]?\s*\d{4})\s*\d{4}/i.test(combined)) {
+    return "expense";
+  }
+
   for (const keyword of EXPENSE_KEYWORDS) {
     if (combined.includes(keyword)) {
       return "expense";
@@ -1238,59 +1269,12 @@ export function isRefundTransaction(text: string, title?: string): boolean {
  * Detecta o meio de pagamento provável da notificação, alinhado com PAYMENT_METHODS.
  */
 
-export function detectPaymentMethod(text: string, title: string): PaymentMethod {
-  const combined = `${title} ${text}`.toLowerCase();
-
-  if (combined.includes("pix")) {
-    return "pix";
-  }
-
-  // Débito é avaliado antes de crédito genérico para evitar falsos "cartão de crédito"
-  if (
-    combined.includes("débito") ||
-    combined.includes("debito") ||
-    combined.includes("cartão de débito") ||
-    combined.includes("cartao de debito")
-  ) {
-    return "debit";
-  }
-
-  if (
-    combined.includes("crédito") ||
-    combined.includes("credito") ||
-    combined.includes("cartão") ||
-    combined.includes("cartao") ||
-    combined.includes("carteira google") ||
-    combined.includes("google pay") ||
-    combined.includes("google wallet") ||
-    combined.includes("gpay") ||
-    combined.includes("samsung pay") ||
-    combined.includes("samsung wallet") ||
-    combined.includes("spay") ||
-    combined.includes("itaucard") ||
-    combined.includes("ourocard") ||
-    combined.includes("parcela") ||
-    combined.includes("parcelad") ||
-    /\b\d{1,2}\s*x\b/.test(combined)
-  ) {
-    return "credit_card";
-  }
-
-  if (
-    combined.includes("ted") ||
-    combined.includes("doc") ||
-    combined.includes("transferência") ||
-    combined.includes("transferencia") ||
-    combined.includes("entre contas")
-  ) {
-    return "transfer";
-  }
-
-  if (combined.includes("boleto")) {
-    return "other";
-  }
-
-  return "other";
+export function detectPaymentMethod(
+  text: string,
+  title: string,
+  packageName?: string,
+): PaymentMethod {
+  return resolvePaymentMethod(text, title, packageName).method;
 }
 
 /**
@@ -1632,6 +1616,15 @@ const IGNORED_MERCHANT_TOKENS = new Set([
   "de sua conta",
   "em sua conta",
   "na sua conta",
+  "seu cartão de crédito",
+  "seu cartao de credito",
+  "seu cartão",
+  "seu cartao",
+  "seu crédito",
+  "seu credito",
+  "terminal banco24horas",
+  "terminal",
+  "banco24horas",
 ]);
 
 function isValidCandidate(candidate: string): boolean {
@@ -1723,10 +1716,39 @@ export function extractPixParty(text: string, type?: "income" | "expense"): stri
  * Extrai o nome do estabelecimento ou destinatário do texto da notificação,
  * com suporte multibanco (travessão, vírgulas, preposições contraídas).
  */
-export function extractMerchantOrRecipient(text: string): string {
+export function extractMerchantOrRecipient(
+  text: string,
+  title?: string,
+  packageName?: string,
+): string {
+  if (!text && !title) return "";
+
+  // 0. Se o título tiver cara de estabelecimento comercial (ex.: Google Wallet com título da loja ou Nomad com "Pague menos 1094 mtz")
+  // e não for nome de banco/carteira conhecido nem o banco do pacote:
+  if (title && typeof title === "string" && title.trim().length >= 2) {
+    const trimmedTitle = title.trim();
+    const bankForTitle = resolveBankName(undefined, trimmedTitle);
+    const bankForPkg = packageName ? resolveBankName(packageName) : null;
+    const isGenericBankName =
+      bankForTitle !== null ||
+      (bankForPkg && trimmedTitle.toLowerCase() === bankForPkg.toLowerCase()) ||
+      /^(?:compra|pagamento|transferência|pix|fatura|notificação|aviso|alerta|cartão)\b/i.test(trimmedTitle);
+
+    if (!isGenericBankName) {
+      const canonicalFromTitle = findCanonicalMerchant(trimmedTitle);
+      if (canonicalFromTitle) {
+        return canonicalFromTitle.friendlyName;
+      }
+      const cleanedTitle = cleanMerchantName(trimmedTitle);
+      if (isValidCandidate(cleanedTitle)) {
+        return cleanedTitle;
+      }
+    }
+  }
+
   if (!text || typeof text !== "string") return "";
 
-  // 0. Se for notificação Pix, prioriza o extrator semântico especializado
+  // 0b. Se for notificação Pix, prioriza o extrator semântico especializado
   if (/pix\b/i.test(text)) {
     const pixParty = extractPixParty(text);
     if (pixParty) return pixParty;
@@ -1768,7 +1790,7 @@ export function extractMerchantOrRecipient(text: string): string {
   // Ex: "em Padaria Estrela aprovada", "no Restaurante Fogão", "na Droga Raia", "na Tok&Stok"
   // Ignora preposições seguidas de valores (de R$, de 50), dígitos ou palavras de forma de pagamento/parcelamento
   const prepRegex =
-    /\b(?:em|no|na|nos|nas|para|de|do|da|pelo|pela|ao|à|at)\s+(?!(?:R\$\s*|US\$\s*|\$\s*|EUR\s*|€\s*|\d|parcela\b|cr[ée]dito\b|d[ée]bito\b|cart[ãa]o\b|conta\b|valor\b))([A-Za-zÀ-ÿ0-9&.*_\s'-]{2,35}?)(?:\s+(?:aprovada|aprovado|approved|realizada|realizado|com|via|usando|pelo|pela|no\s+valor|de\s+r\$|no\s+total|no\s+cartão|no\s+cartao|no\s+crédito|no\s+credito|no\s+débito|no\s+debito|cart[aã]o\s+final|final\s*[:.-]?\s*\d{4}|em\s+\d+x|\.|$)|$)/gi;
+    /\b(?:em|no|na|nos|nas|para|de|do|da|pelo|pela|ao|à|at)\s+(?!(?:R\$\s*|US\$\s*|\$\s*|EUR\s*|€\s*|\d|parcela\b|cr[ée]dito\b|d[ée]bito\b|cart[ãa]o\b|conta\b|valor\b|seu\s+cart[ãa]o|seu\s+cr[ée]dito|terminal))([A-Za-zÀ-ÿ0-9&.*_\s'-]{2,35}?)(?:\s+(?:aprovada|aprovado|approved|realizada|realizado|com|via|usando|pelo|pela|no\s+valor|de\s+r\$|no\s+total|no\s+cartão|no\s+cartao|no\s+crédito|no\s+credito|no\s+débito|no\s+debito|cart[aã]o\s+final|final\s*[:.-]?\s*\d{4}|em\s+\d+x|\.|$)|$)/gi;
   const matches = Array.from(text.matchAll(prepRegex));
 
   for (const match of matches) {
@@ -1817,7 +1839,7 @@ export function parseBankNotification(
   const cents = installmentInfo?.totalAmountCents ?? rawCents;
   if (!cents) return null;
 
-  const type = detectTransactionType(payload.text, payload.title);
+  const type = detectTransactionType(payload.text, payload.title, payload.packageName);
   const natureResult = detectTransactionNature(payload.text, payload.title, bankName);
   if (!type && !natureResult) {
     return null;
@@ -1825,7 +1847,7 @@ export function parseBankNotification(
   const nature = natureResult?.nature ?? (type === "income" ? "income" : "expense");
   const subtype = natureResult?.subtype;
   const effectiveType: "expense" | "income" = type ?? (nature === "income" ? "income" : "expense");
-  let paymentMethod = detectPaymentMethod(payload.text, payload.title);
+  let paymentMethod = detectPaymentMethod(payload.text, payload.title, payload.packageName);
   if (
     paymentMethod === "other" &&
     (bankName === "Carteira Google" || bankName === "Samsung Pay")
@@ -1850,7 +1872,7 @@ export function parseBankNotification(
   const exchangeMeta = extractNomadExchangeMetadata(combinedText);
   const currency = exchangeMeta.currency;
 
-  let merchant = extractMerchantOrRecipient(payload.text);
+  let merchant = extractMerchantOrRecipient(payload.text, payload.title, payload.packageName);
   if (nature === "investment" && merchant) {
     const lowerMerchant = merchant.toLowerCase();
     if (
@@ -1878,10 +1900,22 @@ export function parseBankNotification(
     issuerBank = bankName;
   }
 
-  let defaultDesc = merchant;
-  if (paymentMethod === "pix" && merchant) {
-    defaultDesc = `Pix: ${merchant}`;
+  const isVirtual = /\b(?:cart[ãa]o\s+virtual|virtual)\b/i.test(combinedText) || undefined;
+
+  let defaultDesc = "";
+  if (paymentMethod === "cash" || /saque/i.test(combinedText)) {
+    defaultDesc = "Saque em Dinheiro";
+  } else if (nature === "investment") {
+    // Para investimentos, as descrições padronizadas de aporte/resgate/dividendos têm precedência
+    defaultDesc = "";
+  } else if (effectiveType === "income") {
+    if (merchant) {
+      defaultDesc = paymentMethod === "pix" ? `Pix: ${merchant}` : `Transferência: ${merchant}`;
+    }
+  } else if (merchant) {
+    defaultDesc = paymentMethod === "pix" ? `Pix: ${merchant}` : merchant;
   }
+
   if (!defaultDesc) {
     if (nature === "investment") {
       if (subtype === "dividend") {
@@ -1913,6 +1947,8 @@ export function parseBankNotification(
       defaultDesc = `Parcela ${installmentInfo.currentInstallment}/${installmentInfo.installments} (${bankName})`;
     } else if (installmentInfo?.installments) {
       defaultDesc = `Compra em ${installmentInfo.installments}x (${bankName})`;
+    } else if (effectiveType === "expense" && paymentMethod === "credit_card") {
+      defaultDesc = `Compra no Crédito (${bankName})`;
     } else {
       defaultDesc =
         effectiveType === "income"
@@ -1957,6 +1993,8 @@ export function parseBankNotification(
     cardBrand,
     issuerBank,
     isRefund: isRefundTransaction(combinedText, payload.title) || undefined,
+    isVirtual,
+    packageName: payload.packageName,
     source: "notification",
   };
 }

@@ -34,6 +34,13 @@ vi.mock("@/state", () => ({
     role: "admin",
     hasFeature: () => true,
   }),
+  useQuickTokens: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
+  useCreateQuickToken: () => ({ mutate: vi.fn(), isPending: false }),
+  useRevokeQuickToken: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 vi.mock("@/services/native", async () => {
