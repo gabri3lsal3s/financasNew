@@ -9,14 +9,16 @@ import { detectRecurrences, type ExpenseLike } from "@/domain/insights/recurrenc
 import { partitionFeedback, type FeedbackDecision, type FeedbackMap } from "@/domain/insights/feedback";
 import {
   calculateRecurringTotals,
+} from "@/domain/insights/recurrences";
+import { ESSENTIAL_CATEGORY_ICONS } from "@/domain/insights/shared";
+import {
+  calculateProRataTrend,
   calculateWeekdayWeekendDailyAverages,
   essentialSpendingRatio,
-  ESSENTIAL_CATEGORY_ICONS,
   incomeConcentration,
-  isSignificantTrend,
   savingsHealth,
   weekendSpendingRatio,
-} from "@/domain/insights";
+} from "@/domain/insights/diagnostics";
 import {
   buildChallengeOptions,
   discretionaryChallenge,
@@ -211,6 +213,12 @@ export function InsightsPage({
   });
   const projectedDeficit = dayOfMonth >= 10 && projection.onTrack === false;
 
+  const isCurrentMonth = month === currentMonth();
+  const committedObligationsCents = isCurrentMonth ? (realCashQuery.safeToSpend.committedObligationsCents ?? 0) : 0;
+  const cycleBalanceCents = balanceCents - committedObligationsCents;
+  const cycleSavingsRate = incomeCents > 0 ? (cycleBalanceCents / incomeCents) * 100 : 0;
+  const effectiveSavingsRateForHealth = isCurrentMonth ? cycleSavingsRate : savingsRate;
+
   const alerts = criticalAlerts({
     balanceCents,
     incomeCents,
@@ -220,6 +228,10 @@ export function InsightsPage({
     burnRatePercent: burnRate,
     projectedDeficit,
     savingsRatePercent: savingsRate,
+    dayOfMonth: isCurrentMonth ? dayOfMonth : undefined,
+    daysInMonth: isCurrentMonth ? daysInMonth : undefined,
+    committedObligationsCents,
+    cycleSavingsRatePercent: cycleSavingsRate,
   });
 
   // Assinaturas e recorrências: despesas dos últimos 4 meses (sem parcelas).
@@ -294,6 +306,17 @@ export function InsightsPage({
     }
   }
 
+  if (isCurrentMonth) {
+    const openInvoicesCents = realCashQuery.safeToSpend.openInvoicesCents ?? 0;
+    if (openInvoicesCents > 0) {
+      pending.push({
+        id: "card-invoices-cycle-pending",
+        kind: "payable" as const,
+        remainingCents: openInvoicesCents,
+      });
+    }
+  }
+
   const pendingSummary = pendingProjection(pending);
 
   // Desafios e sugestões de corte
@@ -316,7 +339,7 @@ export function InsightsPage({
   // Se houver apenas 1 fonte e ela for a única cadastrada, não gerar alerta punitivo
   const isSingleSalarySource = incomeEntries.length === 1;
   const concentration = incomeConcentration([...incomeByCategory.values()], { isSingleSalarySource });
-  const health = savingsHealth(savingsRate);
+  const health = savingsHealth(effectiveSavingsRateForHealth);
 
   // Contagem calibrada de dias decorridos de cada tipo no mês atual até hoje
   let elapsedWeekdaysCount = 0;
@@ -354,9 +377,24 @@ export function InsightsPage({
   const weekendRatio = weekendSpendingRatio(weekdayDaily, weekendDaily);
   const weekendComparable = weekdayDaily > 0;
 
-  const prevExpenseCents = sumGrossCents(month1.data ?? []);
-  const trendSignificant = isSignificantTrend(expenseCents, prevExpenseCents);
-  const trendPercent = prevExpenseCents > 0 ? ((expenseCents - prevExpenseCents) / prevExpenseCents) * 100 : 0;
+  const prevExpensesList = month1.data ?? [];
+  const prevExpenseTotalCents = sumGrossCents(prevExpensesList);
+
+  let prevComparableCents = prevExpenseTotalCents;
+  if (isCurrentMonth) {
+    // Filtra os gastos do mês anterior apenas até o mesmo dia decorrido (1..dayOfMonth)
+    prevComparableCents = prevExpensesList
+      .filter((e) => {
+        if (!e.date) return false;
+        const d = Number(e.date.slice(8, 10));
+        return !Number.isNaN(d) && d <= dayOfMonth;
+      })
+      .reduce((acc, e) => acc + numberToCents(e.value * (e.report_weight ?? 1.0)), 0);
+  }
+
+  const trend = calculateProRataTrend(expenseCents, prevComparableCents);
+  const trendSignificant = trend.isSignificant;
+  const trendPercent = trend.percentChange;
 
   // Comprometimento Essencial (Regra 50/30/20) baseado no total bruto real
   const essentialExpensesCents = (month0.data ?? [])
@@ -476,7 +514,7 @@ export function InsightsPage({
       expandedWarnings={expandedWarnings}
       setExpandedWarnings={setExpandedWarnings}
       health={health}
-      savingsRate={savingsRate}
+      savingsRate={effectiveSavingsRateForHealth}
       burnRate={burnRate}
       concentration={concentration}
       weekendComparable={weekendComparable}

@@ -2,12 +2,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   updateReminderPreferences,
   updateCustomSettings,
+  updateAppMode,
   type ReminderPreferencesInput,
 } from "@/data/repositories/user-preferences";
 import { userPreferencesKey } from "@/state/queries/use-user-preferences";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
-import type { UserCustomSettings, UserPreferences } from "@/types";
+import type { AppMode, UserCustomSettings, UserPreferences } from "@/types";
 
 export function useUpdateReminderPreferences() {
   const queryClient = useQueryClient();
@@ -76,6 +77,55 @@ export function useUpdateCustomSettings() {
       }
       pushToast({
         title: "Não foi possível salvar as configurações na nuvem",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: userPreferencesKey });
+    },
+  });
+}
+
+export function useUpdateAppMode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (nextMode: AppMode) => updateAppMode(nextMode),
+    onMutate: async (nextMode: AppMode) => {
+      await queryClient.cancelQueries({ queryKey: userPreferencesKey });
+      const previous = queryClient.getQueryData<UserPreferences | null>(userPreferencesKey);
+      if (previous) {
+        queryClient.setQueryData<UserPreferences | null>(userPreferencesKey, (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            app_mode: nextMode,
+          };
+        });
+      }
+      return { previous };
+    },
+    onSuccess: (_data, nextMode) => {
+      if (nextMode === "investor") {
+        pushToast({
+          title: "Módulo de Investimentos ativado",
+          description: "Carteira de ativos, rebalanceamento e proventos agora estão disponíveis.",
+          variant: "default",
+        });
+      } else {
+        pushToast({
+          title: "Modo Essencial ativado",
+          description: "Visualização simplificada focada em contas, faturas e orçamentos do mês.",
+          variant: "default",
+        });
+      }
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(userPreferencesKey, context.previous);
+      }
+      pushToast({
+        title: "Não foi possível alterar o modo de visualização",
         description: getErrorMessage(error),
         variant: "destructive",
       });

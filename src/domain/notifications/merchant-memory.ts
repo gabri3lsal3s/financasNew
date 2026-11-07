@@ -429,3 +429,32 @@ export function forgetCardDigitsLearning(
 
   return next;
 }
+
+/**
+ * Mapeamento dinâmico aprendido de pacote bancário/instituição para ID de cartão preferencial (§Plano 09 — Fase 5).
+ * Ex: { "com.nomadfinancial.app": "card-nomad-uuid", "com.bradesco": "card-bradesco-uuid" }
+ */
+export type BankCardMapping = Record<string, string>;
+
+export function recordBankCardLearning(
+  packageNameOrBank: string,
+  cardId: string,
+  current: BankCardMapping = {},
+): BankCardMapping {
+  const normKey = packageNameOrBank.trim().toLowerCase();
+  if (!normKey || !cardId) return current;
+  return {
+    ...current,
+    [normKey]: cardId,
+  };
+}
+
+export function lookupCardByBank(
+  packageNameOrBank: string | undefined | null,
+  mapping: BankCardMapping = {},
+): string | undefined {
+  if (!packageNameOrBank || !mapping) return undefined;
+  const normKey = packageNameOrBank.trim().toLowerCase();
+  return mapping[normKey];
+}
+

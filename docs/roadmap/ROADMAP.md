@@ -1,5 +1,45 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.02** registra a **Conclusão e Homologação do Plano 08 — Modernização Ergonômica, Área Útil e Padronização de Modais & Bottom Sheets Mobile** (2026-11-07):
+> - **(1) Barra de Controle Minimalista Mobile (`GrabberBar` `h-10` / 40px)**:
+>   - Contêiner superior fixo com alça de arrasto centralizada e botões de utilidade (`headerActions`, calculadora e botão fechar `X` com `size-8`) perfeitamente alinhados à direita;
+>   - No desktop (`md:`), a barra converte-se em âncora absoluta (`md:h-0 md:overflow-visible`) mantendo os botões de controle na posição canônica (`top-5 right-5`).
+> - **(2) Cabeçalho Fluido Integrado ao Scroll (Zero Duplicação de Nós no DOM)**:
+>   - Título editorial (`DialogTitle`) e descrição (`DialogDescription`) renderizados no topo do corpo de rolagem (`scrollRef`), subindo naturalmente com o scroll no mobile e liberando mais de 120px a 150px de viewport livre;
+>   - No desktop (`md:`), tornam-se sticky no topo (`md:sticky md:top-0 md:bg-surface md:z-10 md:pr-24`), preservando 100% da apresentação clássica e estática dos diálogos de desktop;
+>   - Zero duplicação de texto no DOM: conformidade estrita com Radix Dialog A11y AA (`aria-labelledby` e `aria-describedby`) e queries do Testing Library (`screen.getByText`).
+> - **(3) Micro-Título Reativo no Scroll & Alívio Adaptativo Anti-Corte**:
+>   - Listener leve de rolagem com detecção de limiar (`scrollTop > 32px`), ativando o micro-título reativo no topo com `aria-hidden="true"` e transição suave;
+>   - Barra superior com `bg-surface/95 backdrop-blur-xs border-border/80 shadow-xs` ativada durante a rolagem, eliminando o corte reto de cards e formulários (*hard edge clipping*).
+> - **(4) Padronização e Compactação de Rodapés (`ModalFooter`)**:
+>   - Em conjuntos de 2 botões ("Cancelar" e "Confirmar"), adoção de layout horizontal simétrico no mobile (`grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center sm:justify-end`), reduzindo o footprint vertical de ~120px para ~54px;
+>   - Safe area inferior dinâmica compacta: `pb-[max(0.5rem,calc(env(safe-area-inset-bottom,0px))+0.25rem))] sm:pb-4`.
+> - **(5) Quality Gates QG1–QG5 Aprovados & Governança**:
+>   - 68 testes de modais aprovados (incluindo `modal.test.tsx`, `responsive-dialog.test.tsx`, `welcome-modal.test.tsx`, `help-modal.test.tsx`, `demo-track-select-modal.test.tsx`, `split-onboarding-modal.test.tsx`, `financial-close-report-modal.test.tsx`, `wealth-tear-sheet-modal.test.tsx`);
+>   - Zero erros em `npm run typecheck` (`tsc -b`), zero violações em `npm run lint` (`local/no-decorative-unicode`);
+>   - Atualização das Regras 15 e 18 do `AGENTS.md`, Seção 13.2 do `docs/design/DESIGN_SYSTEM.md`, `docs/architecture/ARCHITECTURE.md` e arquivamento formal em `docs/plans/completed/08_PLANO_MODERNIZACAO_ERGONOMICA_MODAIS_E_BOTTOM_SHEETS.md`.
+>
+> **v3.01** registra a **Conclusão e Homologação do Plano 06 — Engenharia de Conversão, Retenção Anti-Churn, Captura Rápida Universal & Monetização SaaS** (2026-11-07):
+> - **(1) Captura Rápida Universal (iOS Shortcuts & Ação "Colar Pix")**:
+>   - Edge Function `quick-expense` com autenticação por token SHA-256 e parsing de comprovante com inserção server-authoritative;
+>   - Botão "Colar Comprovante Pix" no modal de transações com leitura do clipboard e parser unificado (`pix-receipt-parser.ts`);
+>   - Painel de gerenciamento de tokens rápidos em `/configuracoes?tab=notifications` com gerador/revogador de tokens e documentação do fluxo do Atalho iOS.
+> - **(2) Motor de Retenção Anti-Churn ("Zero Culpa" em 60s & Sunday Digest)**:
+>   - Modal de alinhamento rápido `QuickBalanceAdjustmentModal` para conciliação em lote com 1 clique;
+>   - Detector de inatividade ($\ge 4$ dias sem registro) integrado ao carrossel de alertas da Home (`overview-page.tsx`) com abertura do fluxo acolhedor de saldo real;
+>   - Edge Function `sunday-digest` para disparo semanal de fechamento dominical e engajamento.
+> - **(3) Loops de Viralidade Orgânica nas Telas Públicas**:
+>   - Banners de conversão elegantes com oferta de 30 dias Pro grátis em páginas públicas de Racha Pix ([`/r/:token`](file:///home/gabrielsales/meus_apps/financasnew/src/features/public-share/pages/split-public-page.tsx)) e Metas Coletivas ([`/meta/:token`](file:///home/gabrielsales/meus_apps/financasnew/src/features/public-share/pages/goal-tracker-public-page.tsx));
+>   - Suporte a onboarding direto salvando a despesa/meta na conta do convidado.
+> - **(4) Sistema de Afiliados B2B2C & Indicação Recorrente (30%)**:
+>   - Migração `20260101000089_affiliate_partners_and_referrals.sql` criando `affiliate_partners` e `referral_attributions` com RPCs atômicas de comissão e repasse;
+>   - Atribuição automática de links de indicação (`?ref=` / `?parceiro=`) no signup com persistência segura em localStorage;
+>   - Nova aba dedicada "Afiliados & Parcerias" em `/configuracoes` com métricas em tempo real, link com botão de cópia, QR Code client-side e cadastro de chave Pix para repasse.
+> - **(5) Quality Gates QG1–QG5 Aprovados & Arquivamento**:
+>   - Suítes unitárias e de integração 100% verdes (`quick-tokens.test.ts`, `referral.test.ts`, `quick-shortcuts-card.test.tsx`, `quick-balance-adjustment-modal.test.tsx`, `affiliate-tab.test.tsx`, `split-public-page.test.tsx`);
+>   - 0 erros em `tsc -b`, 0 violações de lint (`npm run lint`), build Vite de produção gerado com sucesso;
+>   - Arquivamento formal do plano em `docs/plans/completed/06_PLANO_EXPERIENCIA_CONVERSAO_RETENCAO_E_RENTABILIDADE.md`.
+>
 > **v3.00** registra a **Conclusão e Homologação do Plano 04 — Expansão e Modernização da Apresentação, Vitrine de Conversão e Tour Guiado de Finanças Compartilhadas** (2026-11-07):
 > - **(1) Trilha de Finanças Compartilhadas & Simulação em Memória (`src/domain/demo-simulation/`)**:
 >   - Contratos canônicos com união `SharedTourTrackId` e categoria `"shared"` em `types.ts`;

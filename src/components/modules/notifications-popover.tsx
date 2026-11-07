@@ -483,10 +483,10 @@ export function NotificationsPopover({
           <Button
             variant="ghost"
             size="sm"
-            className="w-full h-8 text-xs font-medium text-primary hover:text-primary-hover hover:bg-primary/10"
+            className="w-full h-8 text-xs font-medium text-primary hover:text-primary-hover hover:bg-primary/10 cursor-pointer"
             onClick={handleViewAll}
           >
-            Ver todos os lembretes
+            Ver todos os lembretes e avisos
             <ExternalLink className="size-3 ml-1.5" aria-hidden="true" />
           </Button>
         </footer>

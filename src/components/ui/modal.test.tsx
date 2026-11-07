@@ -181,7 +181,7 @@ describe("ConfirmDialog", () => {
 });
 
 describe("ModalFooter e Slot de Footer", () => {
-  it("renderiza o rodapé responsivo com layout empilhado seguro no mobile, horizontal no desktop e botões padronizados", () => {
+  it("renderiza o rodapé responsivo com layout horizontal compacto em pares de botões (grid-cols-2) no mobile e alinhado à direita no desktop", () => {
     render(
       <Modal open onOpenChange={vi.fn()} title="Teste">
         <ModalFooter>
@@ -192,12 +192,27 @@ describe("ModalFooter e Slot de Footer", () => {
     );
     const footer = screen.getByText("Salvar").parentElement;
     expect(footer).toBeInTheDocument();
-    expect(footer).toHaveClass("flex-col-reverse", "sm:flex-row", "sm:justify-end", "border-border/80", "w-full");
+    expect(footer).toHaveClass("grid-cols-2", "sm:flex", "sm:flex-row", "sm:justify-end", "border-border/80", "w-full");
     expect(footer?.className).toContain("[&_button]:w-full");
     expect(footer?.className).toContain("[&_button]:sm:min-w-[110px]");
   });
 
-  it("renderiza o slot footer canônico no Modal fora do corpo rolável com safe area", () => {
+  it("renderiza layout empilhado seguro (flex-col-reverse) quando houver 3 ou mais botões no rodapé", () => {
+    render(
+      <Modal open onOpenChange={vi.fn()} title="Teste 3 botões">
+        <ModalFooter>
+          <button type="button">Excluir</button>
+          <button type="button">Cancelar</button>
+          <button type="button">Salvar</button>
+        </ModalFooter>
+      </Modal>,
+    );
+    const footer = screen.getByText("Salvar").parentElement;
+    expect(footer).toBeInTheDocument();
+    expect(footer).toHaveClass("flex-col-reverse", "sm:flex-row", "sm:justify-end", "border-border/80", "w-full");
+  });
+
+  it("renderiza o slot footer canônico no Modal fora do corpo rolável com safe area compacta", () => {
     render(
       <Modal
         open
@@ -213,7 +228,31 @@ describe("ModalFooter e Slot de Footer", () => {
     const footerSlot = actionBtn.parentElement;
     expect(footerSlot?.className).toContain("shrink-0");
     expect(footerSlot?.className).toContain("border-t");
-    expect(footerSlot?.className).toContain("pb-[max(0.75rem,calc(max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px))+0.5rem))]");
+    expect(footerSlot?.className).toContain("pb-[max(0.5rem,calc(max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px))+0.25rem))]");
+  });
+});
+
+describe("Plano 08: Micro-título reativo e rolagem fluida", () => {
+  it("exibe micro-título reativo no topo ao rolar além do threshold (32px)", () => {
+    render(
+      <Modal open onOpenChange={vi.fn()} title="Gerenciar Racha" description="Descrição longa">
+        <div style={{ height: "1000px" }}>Conteúdo longo</div>
+      </Modal>,
+    );
+
+    // Inicialmente o micro-título não está montado no topo
+    expect(screen.getByRole("heading", { name: "Gerenciar Racha" })).toBeInTheDocument();
+
+    const scrollContainer = screen.getByText("Conteúdo longo").parentElement;
+    expect(scrollContainer).toBeInTheDocument();
+
+    if (scrollContainer) {
+      fireEvent.scroll(scrollContainer, { target: { scrollTop: 50 } });
+      // Agora o micro-título reativo no topo deve estar presente com aria-hidden
+      const microTitles = screen.getAllByText("Gerenciar Racha");
+      expect(microTitles.length).toBe(2);
+      expect(microTitles[0]).toHaveAttribute("aria-hidden", "true");
+    }
   });
 });
 

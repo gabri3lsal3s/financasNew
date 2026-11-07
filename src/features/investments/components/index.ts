@@ -51,6 +51,8 @@ export { PortfolioInsightsCarousel } from "./portfolio-insights-carousel";
 export type { PortfolioInsightsCarouselProps } from "./portfolio-insights-carousel";
 export { PendingDividendsDialog } from "./pending-dividends-dialog";
 export type { PendingDividendsDialogProps } from "./pending-dividends-dialog";
+export { InvestorModePromoView } from "./investor-mode-promo-view";
+export type { InvestorModePromoViewProps } from "./investor-mode-promo-view";
 
 
 

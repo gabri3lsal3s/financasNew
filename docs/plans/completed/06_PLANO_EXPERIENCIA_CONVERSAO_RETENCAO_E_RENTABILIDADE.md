@@ -105,31 +105,31 @@ O objetivo central é eliminar as maiores barreiras de tração:
 ## 4. FASES DETALHADAS DE IMPLEMENTAÇÃO
 
 ### FASE 1: Motor de Entrada Rápida iOS & Parser Pix (Semana 1)
-- [ ] Criar a Edge Function `supabase/functions/quick-expense/` com token de autorização individual com hash SHA-256.
-- [ ] Adicionar botão "Colar Comprovante Pix" no formulário de transações conectado a `pix-receipt-parser.ts`.
-- [ ] Gerador e revogador de `quick_token` na aba de Configurações do usuário.
-- [ ] Documentar o fluxo de configuração do Atalho da Apple (iOS Shortcut) no guia de suporte do usuário.
-- [ ] **Portão de Qualidade 1 (QG1 + QG2):** `npx vitest run src/domain/notifications/pix-receipt-parser.test.ts` e `npm run typecheck`.
+- [x] Criar a Edge Function `supabase/functions/quick-expense/` com token de autorização individual com hash SHA-256.
+- [x] Adicionar botão "Colar Comprovante Pix" no formulário de transações conectado a `pix-receipt-parser.ts`.
+- [x] Gerador e revogador de `quick_token` na aba de Configurações do usuário.
+- [x] Documentar o fluxo de configuração do Atalho da Apple (iOS Shortcut) no guia de suporte do usuário.
+- [x] **Portão de Qualidade 1 (QG1 + QG2):** `npx vitest run src/domain/notifications/pix-receipt-parser.test.ts` e `npm run typecheck`.
 
 ### FASE 2: Motor de Retenção & Assistente de Alinhamento de Saldo (Semana 2)
-- [ ] Criar o componente `QuickBalanceAdjustmentModal` para conciliação em lote com 1 clique.
-- [ ] Integrar detector de inatividade no Dashboard ($\ge 4$ dias sem registro) para oferecer alinhamento amigável ("Zero Culpa").
-- [ ] Criar a Edge Function de fechamento dominical (Sunday Digest) via e-mail e push notification.
-- [ ] **Portão de Qualidade 2 (QG3 + QG4):** `npm run typecheck` e `npm run lint`.
+- [x] Criar o componente `QuickBalanceAdjustmentModal` para conciliação em lote com 1 clique.
+- [x] Integrar detector de inatividade no Dashboard ($\ge 4$ dias sem registro) para oferecer alinhamento amigável ("Zero Culpa").
+- [x] Criar a Edge Function de fechamento dominical (Sunday Digest) via e-mail e push notification.
+- [x] **Portão de Qualidade 2 (QG3 + QG4):** `npm run typecheck` e `npm run lint`.
 
 ### FASE 3: Viralidade nas Páginas Públicas (Semana 3)
-- [ ] Enriquecer o layout público do Racha Pix ([`/r/:token`](file:///home/gabrielsales/meus_apps/financasnew/src/features/public-share/pages/split-public-page.tsx)) com badges de marca e convite de 30 dias de trial.
-- [ ] Enriquecer o layout público das Metas Coletivas ([`/meta/:token`](file:///home/gabrielsales/meus_apps/financasnew/src/features/public-share/pages/goal-tracker-public-page.tsx)) com chamada de conversão.
-- [ ] **Portão de Qualidade 3 (QG5):** `npx vitest run src/features/public-share/` e validação responsiva.
+- [x] Enriquecer o layout público do Racha Pix ([`/r/:token`](file:///home/gabrielsales/meus_apps/financasnew/src/features/public-share/pages/split-public-page.tsx)) com badges de marca e convite de 30 dias de trial.
+- [x] Enriquecer o layout público das Metas Coletivas ([`/meta/:token`](file:///home/gabrielsales/meus_apps/financasnew/src/features/public-share/pages/goal-tracker-public-page.tsx)) com chamada de conversão.
+- [x] **Portão de Qualidade 3 (QG5):** `npx vitest run src/features/public-share/` e validação responsiva.
 
 ### FASE 4: Sistema de Afiliados B2B2C & Indicação (Semana 4)
-- [ ] Migration criando tabelas `affiliate_partners` e `referral_attributions`.
-- [ ] Rastreamento de código de indicação no cadastro de novos usuários.
-- [ ] Aba simplificada de afiliados em `/configuracoes` para monitoramento de comissões e chave Pix de repasse.
-- [ ] **Portão de Qualidade 4:** `npm run typecheck` e `npm run lint`.
+- [x] Migration criando tabelas `affiliate_partners` e `referral_attributions`.
+- [x] Rastreamento de código de indicação no cadastro de novos usuários.
+- [x] Aba simplificada de afiliados em `/configuracoes` para monitoramento de comissões e chave Pix de repasse.
+- [x] **Portão de Qualidade 4:** `npm run typecheck` e `npm run lint`.
 
 ### FASE 5: Homologação Integrada & Conclusão (Semana 5)
-- [ ] Validação ponta a ponta do fluxo iOS Shortcut -> Edge Function -> Dashboard.
-- [ ] Verificação de compliance com AGENTS.md (zero emojis, design tokens canônicos).
-- [ ] Arquivamento formal do plano em `docs/plans/completed/`.
-- [ ] **Portão de Qualidade 5:** `npm run test:run` e `npm run build`.
+- [x] Validação ponta a ponta do fluxo iOS Shortcut -> Edge Function -> Dashboard.
+- [x] Verificação de compliance com AGENTS.md (zero emojis, design tokens canônicos).
+- [x] Arquivamento formal do plano em `docs/plans/completed/`.
+- [x] **Portão de Qualidade 5:** `npm run test:run` e `npm run build`.

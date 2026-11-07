@@ -34,6 +34,18 @@ export const creditCardFormSchema = z.object({
     .optional()
     .transform((val) => (val && val.trim().length > 0 ? val.trim().slice(0, 30) : null)),
   is_active: z.boolean().default(true),
+  last_four_digits: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((val) => {
+      if (!val) return null;
+      const digitsOnly = val.replace(/\D/g, "");
+      return digitsOnly.length > 0 ? digitsOnly : null;
+    })
+    .refine((val) => val === null || val.length === 4, {
+      message: "Os últimos dígitos devem conter exatamente 4 números.",
+    }),
 });
 
 export type CreditCardFormInput = z.infer<typeof creditCardFormSchema>;

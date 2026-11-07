@@ -63,6 +63,7 @@ export interface CreditCardForm {
   due_day: number;
   color: string | null;
   is_active: boolean;
+  last_four_digits?: string | null;
 }
 
 /** Alteração de regras do cartão — RPC auditado (D2). */
@@ -76,6 +77,7 @@ export async function updateCreditCard(id: string, input: CreditCardForm): Promi
     dueDay: input.due_day,
     color: input.color,
     isActive: input.is_active,
+    lastFourDigits: input.last_four_digits,
   });
 }
 

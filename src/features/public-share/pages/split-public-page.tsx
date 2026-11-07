@@ -493,34 +493,50 @@ export function SplitPublicPage() {
                   </CardContent>
                 </Card>
 
-                {/* Bloco de Auto-Onboarding (Tarefa 2.3) */}
-                <Card className="border-border/80 bg-gradient-to-r from-primary/10 via-surface to-surface shadow-xs p-4 sm:p-5 space-y-2.5">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="size-4 text-primary shrink-0" aria-hidden="true" />
-                    <span className="text-xs font-bold text-foreground">
-                      Controle financeiro pessoal inteligente
-                    </span>
+                {/* Bloco de Auto-Onboarding & Conversão Viral (Plano 06) */}
+                <Card className="border-border/80 bg-gradient-to-r from-primary/10 via-surface to-surface shadow-xs p-4 sm:p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="size-4 text-primary shrink-0" aria-hidden="true" />
+                      <span className="text-xs font-bold text-foreground">
+                        Divida despesas com elegância
+                      </span>
+                    </div>
+                    <Badge variant="muted" size="xs">
+                      30 Dias Grátis
+                    </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Gostou da facilidade do racha? Organize suas contas, metas e gastos diários sem planilhas complicadas.
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Gostou da facilidade da divisão de contas? Organize suas finanças, cartões, metas e Safe-to-Spend em tempo real sem planilhas complicadas.
                   </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="w-full gap-2 border-border/80 bg-surface font-semibold text-foreground cursor-pointer"
-                    onClick={handleSaveExpenseClick}
-                    disabled={isSavingDirectly}
-                    sensoryIntent="action"
-                    aria-label="Salvar esta despesa no meu controle financeiro"
-                  >
-                    <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-                    <span>
-                      {isSavingDirectly
-                        ? "Salvando despesa…"
-                        : "Salvar esta despesa no meu controle financeiro"}
-                    </span>
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-2 border-border/80 bg-surface font-semibold text-foreground cursor-pointer"
+                      onClick={handleSaveExpenseClick}
+                      disabled={isSavingDirectly}
+                      sensoryIntent="action"
+                      aria-label="Salvar esta despesa no meu controle financeiro"
+                    >
+                      <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
+                      <span>
+                        {isSavingDirectly
+                          ? "Salvando despesa…"
+                          : "Salvar esta despesa"}
+                      </span>
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="flex-1 gap-1.5 font-semibold cursor-pointer"
+                      onClick={() => navigate("/cadastrar?ref=split")}
+                    >
+                      <ArrowRight className="size-3.5" aria-hidden="true" />
+                      <span>Testar 30 dias grátis</span>
+                    </Button>
+                  </div>
                 </Card>
 
                 <SplitOnboardingModal

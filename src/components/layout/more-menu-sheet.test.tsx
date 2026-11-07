@@ -4,6 +4,8 @@ import { BrowserRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { MoreMenuSheet } from "./more-menu-sheet";
 
+let mockAppMode = "investor";
+
 vi.mock("@/state", () => ({
   useReminders: () => ({ totalCount: 2, urgentCount: 1 }),
   useUserAccess: () => ({
@@ -12,6 +14,14 @@ vi.mock("@/state", () => ({
   }),
   useMyFamily: () => ({ data: null }),
   useFamilyMode: () => ({ isFamilyModeEnabled: false }),
+  useAppMode: () => ({
+    appMode: mockAppMode,
+    isInvestorMode: mockAppMode === "investor",
+    isEssentialMode: mockAppMode === "essential",
+    setAppMode: vi.fn(),
+    isUpdating: false,
+    isLoading: false,
+  }),
 }));
 
 describe("MoreMenuSheet", () => {
@@ -79,5 +89,16 @@ describe("MoreMenuSheet", () => {
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(screen.getByText("Tour Guiado & Modo Simulação")).toBeInTheDocument();
+  });
+
+  it("oculta Investimentos do menu Mais quando em modo essencial (§Plano 07)", () => {
+    mockAppMode = "essential";
+    render(
+      <BrowserRouter>
+        <MoreMenuSheet open={true} onOpenChange={vi.fn()} />
+      </BrowserRouter>,
+    );
+
+    expect(screen.queryByRole("link", { name: "Investimentos" })).not.toBeInTheDocument();
   });
 });

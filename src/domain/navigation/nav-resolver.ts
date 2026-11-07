@@ -88,12 +88,18 @@ export function resolveBottomNavSlots<T extends NavItemConfig>(
 export function resolveLandingPath(
   hasFeature: (featureKey: string) => boolean,
   isAdmin = false,
+  isInvestorMode = true,
 ): string {
-  const routesPreference: Array<{ path: string; featureKey?: string; adminOnly?: boolean }> = [
+  const routesPreference: Array<{
+    path: string;
+    featureKey?: string;
+    adminOnly?: boolean;
+    investorOnly?: boolean;
+  }> = [
     { path: "/", featureKey: "overview" },
     { path: "/transacoes", featureKey: "transactions" },
     { path: "/cartoes", featureKey: "cards" },
-    { path: "/investments", featureKey: "investments" },
+    { path: "/investments", featureKey: "investments", investorOnly: true },
     { path: "/dividas", featureKey: "debts" },
     { path: "/orcamentos", featureKey: "budgets" },
     { path: "/relatorios", featureKey: "reports" },
@@ -105,6 +111,7 @@ export function resolveLandingPath(
 
   for (const route of routesPreference) {
     if (route.adminOnly && !isAdmin) continue;
+    if (route.investorOnly && !isInvestorMode) continue;
     if (route.featureKey && !hasFeature(route.featureKey)) continue;
     return route.path;
   }

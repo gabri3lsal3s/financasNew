@@ -291,6 +291,8 @@ export interface EmergencyFundConfig {
   targetMonths?: 3 | 6 | 12;
 }
 
+export type AppMode = "essential" | "investor";
+
 export type UserPreferences = {
   user_id: string;
   theme: ThemePreference;
@@ -300,6 +302,7 @@ export type UserPreferences = {
   report_weights_enabled: boolean;
   max_sector_acoes: number | null;
   max_sector_fiis: number | null;
+  app_mode: AppMode;
   custom_settings?: UserCustomSettings;
 };
 
@@ -421,6 +424,7 @@ export type CreditCard = {
   due_day: number;
   color: string | null;
   is_active: boolean;
+  last_four_digits?: string | null;
 };
 
 export type CardCompetenceOverride = {
@@ -838,6 +842,7 @@ export type CreditCardForm = {
   due_day: number;
   color: string | null;
   is_active: boolean;
+  last_four_digits?: string | null;
 };
 
 export type AllocationTargetInput = {
@@ -1262,6 +1267,45 @@ export type FamilyPortfolioSummary = {
   assets_count: number;
   assets: FamilySharedAssetSummary[];
 };
+
+// ===========================================================================
+// Captura Rápida Universal & Tokens de Atalho iOS
+// ===========================================================================
+
+export type QuickToken = {
+  id: string;
+  token_prefix: string;
+  name: string;
+  scopes: string[];
+  last_used_at: string | null;
+  created_at: string;
+};
+
+// ===========================================================================
+// Crescimento B2B2C & Parceiros Afiliados
+// ===========================================================================
+
+export type AffiliatePartner = {
+  id: string;
+  referral_code: string;
+  commission_rate: number;
+  pix_key: string | null;
+  pix_key_type: string | null;
+  status: string;
+  created_at: string;
+};
+
+export type AffiliateMetrics = {
+  total_referred_users: number;
+  active_pro_users: number;
+  estimated_commission_cents: number;
+};
+
+export type AffiliateDashboardData = {
+  partner: AffiliatePartner;
+  metrics: AffiliateMetrics;
+};
+
 
 
 

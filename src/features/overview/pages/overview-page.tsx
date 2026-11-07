@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { Activity, ChevronRight, DollarSign, Inbox, PieChart, Plus, Target, TrendingDown, TrendingUp } from "lucide-react";
+import { Activity, ChevronRight, DollarSign, HeartHandshake, Inbox, PieChart, Plus, Target, TrendingDown, TrendingUp } from "lucide-react";
 import { Badge, Button, DashboardCentsProvider, EmptyState, ErrorState, MoneyText, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
 import {
   CategoryDonut,
@@ -22,6 +22,7 @@ import {
   AndroidProBanner,
   SmartAdvisorCard,
   QuickAporteCard,
+  QuickBalanceAdjustmentModal,
   OnboardingBanner,
   WelcomeFeatureModal,
   WelcomeModal,
@@ -72,6 +73,7 @@ import {
   useFamilyConsolidation,
   useFamilyMode,
   useMyFamily,
+  useAppMode,
 } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { useVisualCustomization, useApkPromo, useOnboardingDismissed, usePendingSplitExpense, usePendingSimulation } from "@/hooks";
@@ -84,6 +86,7 @@ import {
   SplitPendingBanner,
   CampaignsSummaryBanner,
   HouseholdAlertBanner,
+  InvestorModeSurplusBanner,
 } from "../components";
 import type { SplitSharePayload } from "@/types";
 
@@ -101,6 +104,7 @@ export function OverviewPage() {
   const [checkpointOpen, setCheckpointOpen] = useState(false);
   const { guardAction, upgradeModal } = useMutationGuard();
   const visual = useVisualCustomization();
+  const { isInvestorMode } = useAppMode();
 
   const prevMonth = shiftMonth(month, -1);
   const rangeEnd = `${shiftMonth(month, 1)}-01`;
@@ -572,7 +576,66 @@ export function OverviewPage() {
     };
   }, [goalSharesQuery.data]);
 
+  const [zeroGuiltModalOpen, setZeroGuiltModalOpen] = useState(false);
+
+  // Detector de Inatividade (>= 4 dias sem lançar no mês corrente)
+  const isInactive = useMemo(() => {
+    if (!isCurrentMonth) return false;
+    const allExpenses = expensesQuery.data ?? [];
+    const allIncomes = incomesQuery.data ?? [];
+    if (allExpenses.length === 0 && allIncomes.length === 0) return false;
+
+    let latestTimestamp = 0;
+    for (const exp of allExpenses) {
+      const ts = new Date(exp.date).getTime();
+      if (ts > latestTimestamp) latestTimestamp = ts;
+    }
+    for (const inc of allIncomes) {
+      const ts = new Date(inc.date).getTime();
+      if (ts > latestTimestamp) latestTimestamp = ts;
+    }
+
+    if (latestTimestamp === 0) return false;
+    const currentDayTs = new Date(`${todayISO()}T12:00:00Z`).getTime();
+    const diffDays = Math.floor((currentDayTs - latestTimestamp) / (1000 * 60 * 60 * 24));
+    return diffDays >= 4;
+  }, [isCurrentMonth, expensesQuery.data, incomesQuery.data]);
+
   const alertItems: (DashboardAlertItem | null | undefined | false)[] = [
+    isInactive && {
+      id: "zero-guilt-balance-alignment",
+      priority: 2,
+      content: (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 p-3.5 sm:p-4 rounded-2xl border border-primary/20 bg-primary/5 shadow-xs">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary-strong">
+              <HeartHandshake className="size-4.5" aria-hidden="true" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-foreground truncate">
+                  Alinhamento de Saldo em 60s
+                </span>
+                <Badge variant="muted" size="xs">
+                  Zero Culpa
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground truncate">
+                Sem tempo para lançar tudo? Sincronize seu saldo e Safe-to-Spend em 1 clique.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setZeroGuiltModalOpen(true)}
+            className="shrink-0 self-stretch sm:self-center font-semibold cursor-pointer"
+          >
+            Alinhar Saldo
+          </Button>
+        </div>
+      ),
+    },
     Boolean(householdData && householdData.monthly_ceiling_cents > 0 && householdData.spent_percentage >= 100) && {
       id: "household-ceiling-exceeded",
       priority: 1,
@@ -660,7 +723,11 @@ export function OverviewPage() {
     surplusCapacity.hasSurplus && isCurrentMonth && {
       id: "surplus-aporte-banner",
       priority: 4,
-      content: <SurplusAporteBanner surplusCents={surplusCapacity.suggestedAporteCents} />,
+      content: isInvestorMode ? (
+        <SurplusAporteBanner surplusCents={surplusCapacity.suggestedAporteCents} />
+      ) : (
+        <InvestorModeSurplusBanner surplusCents={surplusCapacity.suggestedAporteCents} />
+      ),
     },
     subscription.isTrial &&
       subscription.trialDaysRemaining !== null &&
@@ -717,10 +784,10 @@ export function OverviewPage() {
       ) : loading ? (
         <div className="flex flex-col gap-3" aria-hidden="true" data-testid="overview-loading-skeleton">
           {isCurrentMonth ? <SkeletonHeroCard /> : null}
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className={cn("grid gap-3", isInvestorMode ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-1 sm:grid-cols-3")}>
             <SkeletonKpi />
             <SkeletonKpi />
-            <SkeletonKpi />
+            {isInvestorMode && <SkeletonKpi />}
             <SkeletonKpi />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -732,7 +799,14 @@ export function OverviewPage() {
         <>
           <DashboardAlertsCarousel items={alertItems} />
 
-          {isCurrentMonth ? <SmartAdvisorCard month={month} /> : null}
+          {isCurrentMonth ? (
+            <SmartAdvisorCard
+              month={month}
+              savingsSurplusCents={surplusCapacity.suggestedAporteCents}
+              safeToSpendCents={realCashData.safeToSpend.safeToSpendCents}
+              committedObligationsCents={realCashData.safeToSpend.committedObligationsCents}
+            />
+          ) : null}
 
           {showOnboarding && onboardingQuery?.data ? (
             <OnboardingBanner counts={onboardingQuery.data} onDismiss={dismissOnboarding} />
@@ -748,7 +822,7 @@ export function OverviewPage() {
           ) : null}
 
           {/* KPIs fundamentais (§3.6) com sparkline */}
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 min-w-0" data-tour="overview-kpis">
+          <div className={cn("grid gap-3 min-w-0", isInvestorMode ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-1 sm:grid-cols-3")} data-tour="overview-kpis">
               <KpiCard
                 label="Receitas"
                 cents={totals.incomeCents}
@@ -787,14 +861,16 @@ export function OverviewPage() {
                 }
                 spark={dailySeries.expenseSeries}
               />
-              <KpiCard
-                label="Investimentos"
-                cents={totals.investmentCents}
-                tone="portfolio"
-                icon={<TrendingUp className="size-4" aria-hidden="true" />}
-                spark={dailySeries.investmentSeries}
-                onClick={() => navigate("/investments")}
-              />
+              {isInvestorMode && (
+                <KpiCard
+                  label="Investimentos"
+                  cents={totals.investmentCents}
+                  tone="portfolio"
+                  icon={<TrendingUp className="size-4" aria-hidden="true" />}
+                  spark={dailySeries.investmentSeries}
+                  onClick={() => navigate("/investments")}
+                />
+              )}
               <KpiCard
                 label={
                   <>
@@ -827,7 +903,7 @@ export function OverviewPage() {
                   <span className="flex items-center gap-1 text-muted-foreground">
                     <span className="size-1.5 rounded-full bg-negative-strong shrink-0" /> Despesas
                   </span>
-                  {totals.investmentCents > 0 && (
+                  {isInvestorMode && totals.investmentCents > 0 && (
                     <span className="flex items-center gap-1 text-muted-foreground">
                       <span className="size-1.5 rounded-full bg-portfolio shrink-0" /> Investimentos
                     </span>
@@ -995,14 +1071,16 @@ export function OverviewPage() {
           </section>
 
           {/* Bloco de Investimentos do Mês & Aporte Direcionado (Fase 5 — Tarefa 5.4) */}
-          <QuickAporteCard
-            currentMonthAporteCents={totals.investmentCents}
-            suggestedAporteCents={
-              surplusCapacity.hasSurplus && isCurrentMonth
-                ? surplusCapacity.suggestedAporteCents
-                : 0
-            }
-          />
+          {isInvestorMode && (
+            <QuickAporteCard
+              currentMonthAporteCents={totals.investmentCents}
+              suggestedAporteCents={
+                surplusCapacity.hasSurplus && isCurrentMonth
+                  ? surplusCapacity.suggestedAporteCents
+                  : 0
+              }
+            />
+          )}
 
           {/* Diálogo Raio-X de Categoria (Responsivo / BottomSheet no mobile / Modal no desktop) */}
           <CategoryBreakdownDialog
@@ -1060,6 +1138,12 @@ export function OverviewPage() {
           <CashCheckpointDialog
             open={checkpointOpen}
             onOpenChange={setCheckpointOpen}
+            currentBalanceCents={realCashData.cashBalance.currentBalanceCents}
+          />
+
+          <QuickBalanceAdjustmentModal
+            open={zeroGuiltModalOpen}
+            onOpenChange={setZeroGuiltModalOpen}
             currentBalanceCents={realCashData.cashBalance.currentBalanceCents}
           />
 

@@ -34,6 +34,14 @@ export interface CriticalAlertInput {
   projectedDeficit: boolean;
   /** Taxa de poupança (saldo ÷ rendas × 100). */
   savingsRatePercent: number;
+  /** Dia atual do mês (1..31) para contextualizar a temporalidade. */
+  dayOfMonth?: number;
+  /** Total de dias do mês (28..31). */
+  daysInMonth?: number;
+  /** Obrigações pendentes contratadas do ciclo (faturas abertas + dívidas a pagar em centavos). */
+  committedObligationsCents?: number;
+  /** Taxa de poupança efetiva do ciclo (considerando compromissos pendentes). */
+  cycleSavingsRatePercent?: number;
 }
 
 const CRITICAL_RITMO = 1.05; // > 5% acima do esperado
@@ -106,13 +114,31 @@ export function criticalAlerts(input: CriticalAlertInput): InsightAlert[] {
     });
   }
 
-  if (input.incomeCents > 0 && input.savingsRatePercent >= PRAISE_MIN_SAVINGS) {
+  const effectiveCommitted = Math.max(0, input.committedObligationsCents ?? 0);
+  const cycleBalanceCents = input.balanceCents - effectiveCommitted;
+  const effectiveSavingsRate =
+    input.cycleSavingsRatePercent !== undefined
+      ? input.cycleSavingsRatePercent
+      : input.incomeCents > 0
+        ? (cycleBalanceCents / input.incomeCents) * 100
+        : 0;
+
+  const isIntraMonth =
+    input.dayOfMonth !== undefined &&
+    input.daysInMonth !== undefined &&
+    input.dayOfMonth < Math.min(25, input.daysInMonth);
+
+  if (input.incomeCents > 0 && effectiveSavingsRate >= PRAISE_MIN_SAVINGS) {
+    const description = isIntraMonth
+      ? `Ritmo de poupança saudável: Projetando poupar ${effectiveSavingsRate.toFixed(0)}% da renda após as obrigações do ciclo.`
+      : `Você poupou ${effectiveSavingsRate.toFixed(0)}% da renda — acima de 20%. Continue assim!`;
+
     alerts.push({
       id: "poupanca_saudavel",
       priority: 6,
       severity: "praise",
       title: "Poupança saudável",
-      description: `Você poupou ${input.savingsRatePercent.toFixed(0)}% da renda — acima de 20%. Continue assim!`,
+      description,
     });
   }
 

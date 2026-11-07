@@ -38,6 +38,7 @@ export async function ensureOwnProfile(
       {
         user_id: userId,
         theme: "system",
+        app_mode: "investor",
         reminders_enabled: true,
         reminder_days_before_debt: 3,
         reminder_days_before_bill: 3,

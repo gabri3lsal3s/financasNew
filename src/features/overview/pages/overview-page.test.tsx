@@ -24,6 +24,7 @@ vi.mock("react-router", () => ({
 }));
 
 const navigateMock = vi.fn();
+let mockAppMode = "investor";
 let portfolioContributionsMock: { id: string; asset_id: string | null; date: string; amount: number; notes: string | null }[] = [];
 let onboardingCountsMock = {
   expenseCategories: 2,
@@ -260,6 +261,14 @@ vi.mock("@/state", () => ({
   useUpdateDebt: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
   useSettleIntegratedReceivable: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
   useDismissSplitPaymentSignal: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+  useAppMode: () => ({
+    appMode: mockAppMode,
+    isInvestorMode: mockAppMode === "investor",
+    isEssentialMode: mockAppMode === "essential",
+    setAppMode: vi.fn(),
+    isUpdating: false,
+    isLoading: false,
+  }),
 }));
 
 describe("OverviewPage — visão consolidada (§3.6)", () => {
@@ -269,6 +278,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     resetVisualCustomization(null);
     localStorage.setItem(WELCOME_MODAL_STORAGE_KEY, "true");
     navigateMock.mockReset();
+    mockAppMode = "investor";
     expenseCategories = [...defaultExpenseCategories];
     portfolioContributionsMock = [];
     onboardingCountsMock = {
@@ -760,6 +770,29 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       expect(
         screen.queryByText("Boas-vindas ao seu novo centro financeiro"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Modo Essencial vs Modo Investidor (Plano 07)", () => {
+    it("no Modo Essencial, oculta o KPI de Investimentos e o QuickAporteCard", () => {
+      mockAppMode = "essential";
+      render(<OverviewPage />);
+
+      // Não exibe o KPI de Investimentos
+      expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
+
+      // Não exibe o QuickAporteCard
+      expect(screen.queryByText("Investimentos do mês")).not.toBeInTheDocument();
+      expect(screen.queryByText("Aporte rápido")).not.toBeInTheDocument();
+    });
+
+    it("no Modo Essencial com sobra de caixa, renderiza o InvestorModeSurplusBanner no carrossel", () => {
+      mockAppMode = "essential";
+      render(<OverviewPage />);
+
+      // InvestorModeSurplusBanner deve estar visível no carrossel (duplicado para scroll contínuo)
+      expect(screen.getAllByText("Capacidade de Aporte Identificada").length).toBeGreaterThan(0);
+      expect(screen.getAllByRole("button", { name: /Ativar Modo Investidor/i }).length).toBeGreaterThan(0);
     });
   });
 });

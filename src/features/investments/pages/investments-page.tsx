@@ -5,13 +5,13 @@ import { Button, Tabs } from "@/components/ui";
 import { ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useAutoPortfolioSnapshot } from "@/hooks/use-auto-portfolio-snapshot";
-import { usePermission } from "@/state";
+import { useAppMode, usePermission } from "@/state";
 import { ResumoTab } from "./resumo-tab";
 import { ProventosTab } from "./proventos-tab";
 import { AporteTab } from "./aporte-tab";
 import { TargetsTab } from "./targets-tab";
 import { MovimentacoesTab } from "./movimentacoes-tab";
-import { CashFormDialog, PortfolioInsightsCarousel } from "../components";
+import { CashFormDialog, InvestorModePromoView, PortfolioInsightsCarousel } from "../components";
 import { InvestmentWizard } from "../wizard";
 import type { WizardMode } from "../wizard/wizard-state";
 import type { PortfolioAsset } from "@/types";
@@ -96,6 +96,12 @@ export function InvestmentsPage() {
     }
     setCashDialogOpen(true);
   };
+
+  const { isEssentialMode } = useAppMode();
+
+  if (isEssentialMode) {
+    return <InvestorModePromoView />;
+  }
 
   return (
     <div className="flex flex-col gap-6">

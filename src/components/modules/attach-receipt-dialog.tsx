@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
-import { Camera, FileUp, Loader2, UploadCloud } from "lucide-react";
+import { Camera, ClipboardPaste, FileUp, Loader2, UploadCloud } from "lucide-react";
 import {
   Alert,
   Button,
   ResponsiveDialog,
+  Textarea,
 } from "@/components/ui";
 import {
   getReceiptKindLabel,
@@ -53,6 +54,8 @@ export function AttachReceiptDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [manualText, setManualText] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -63,29 +66,26 @@ export function AttachReceiptDialog({
     if (loading) return;
     setError(null);
     setDragOver(false);
+    setShowTextInput(false);
+    setManualText("");
     onOpenChange(false);
   };
 
-  const handleProcessFile = async (file: File) => {
-    if (!file) return;
+  const handleProcessText = async (trimmed: string) => {
+    if (!trimmed) {
+      triggerSensory("warning");
+      setError(
+        "Não foi possível ler o texto informado. Certifique-se de que contenha informações de pagamento Pix ou bancário.",
+      );
+      setLoading(false);
+      return;
+    }
 
     setError(null);
     setLoading(true);
     triggerSensory("action");
 
     try {
-      const extractedText = await extractReceiptTextFromFile(file);
-      const trimmed = extractedText.trim();
-
-      if (!trimmed) {
-        triggerSensory("warning");
-        setError(
-          "Não foi possível ler o texto deste arquivo. Certifique-se de que o comprovante esteja nítido ou seja um PDF digital emitido pelo banco.",
-        );
-        setLoading(false);
-        return;
-      }
-
       // 1. Processa primariamente via Orquestrador Universal
       const universal = parseUniversalReceipt(trimmed);
       let resolvedParsed: ParsedBankTransaction | null = null;
@@ -215,6 +215,58 @@ export function AttachReceiptDialog({
     }
   };
 
+  const handleProcessFile = async (file: File) => {
+    if (!file) return;
+
+    setError(null);
+    setLoading(true);
+    triggerSensory("action");
+
+    try {
+      const extractedText = await extractReceiptTextFromFile(file);
+      const trimmed = extractedText.trim();
+
+      if (!trimmed) {
+        triggerSensory("warning");
+        setError(
+          "Não foi possível ler o texto deste arquivo. Certifique-se de que o comprovante esteja nítido ou seja um PDF digital emitido pelo banco.",
+        );
+        setLoading(false);
+        return;
+      }
+
+      await handleProcessText(trimmed);
+    } catch {
+      triggerSensory("warning");
+      setError("Ocorreu uma falha inesperada ao ler o arquivo do comprovante. Tente novamente.");
+      setLoading(false);
+    }
+  };
+
+  const handlePasteFromClipboard = async () => {
+    setError(null);
+    try {
+      if (!navigator.clipboard?.readText) {
+        setShowTextInput(true);
+        return;
+      }
+      const clipText = await navigator.clipboard.readText();
+      if (clipText && clipText.trim()) {
+        await handleProcessText(clipText.trim());
+      } else {
+        setShowTextInput(true);
+      }
+    } catch {
+      // Caso a permissão do clipboard seja bloqueada pelo navegador, abre a caixa de texto
+      setShowTextInput(true);
+    }
+  };
+
+  const handleProcessManualText = async () => {
+    if (!manualText.trim()) return;
+    await handleProcessText(manualText.trim());
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -336,6 +388,17 @@ export function AttachReceiptDialog({
                 type="button"
                 variant="outline"
                 size="sm"
+                onClick={() => void handlePasteFromClipboard()}
+                className="gap-1.5 cursor-pointer border-primary/30 text-primary-strong hover:bg-primary/5"
+              >
+                <ClipboardPaste className="size-3.5" aria-hidden="true" />
+                <span>Colar comprovante Pix</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 className="gap-1.5 cursor-pointer"
               >
@@ -352,6 +415,41 @@ export function AttachReceiptDialog({
               >
                 <Camera className="size-3.5" aria-hidden="true" />
                 <span>Tirar foto</span>
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {showTextInput && !loading && (
+          <div className="flex flex-col gap-2 p-3.5 rounded-xl border border-border/80 bg-surface">
+            <span className="text-xs font-semibold text-foreground">
+              Cole o texto do comprovante ou notificação bancária
+            </span>
+            <Textarea
+              value={manualText}
+              onChange={(e) => setManualText(e.target.value)}
+              placeholder="Cole aqui o texto do Pix, boleto ou notificação..."
+              rows={4}
+              className="text-xs font-mono resize-none"
+            />
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                onClick={() => setShowTextInput(false)}
+              >
+                Ocultar
+              </Button>
+              <Button
+                type="button"
+                size="xs"
+                disabled={!manualText.trim()}
+                onClick={() => void handleProcessManualText()}
+                className="gap-1.5 font-semibold"
+              >
+                <ClipboardPaste className="size-3.5" aria-hidden="true" />
+                <span>Reconhecer Pix</span>
               </Button>
             </div>
           </div>

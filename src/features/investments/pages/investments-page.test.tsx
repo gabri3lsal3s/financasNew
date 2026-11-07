@@ -4,6 +4,8 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InvestmentsPage } from "./investments-page";
 
+const mockMode = { isEssential: false };
+
 let positionMock = {
   rows: [] as unknown[],
   totalBRL: 0,
@@ -122,6 +124,14 @@ vi.mock("@/state", () => ({
   }),
   useApproveDividendsBatch: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useDismissCorporateDividend: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useAppMode: () => ({
+    appMode: mockMode.isEssential ? "essential" : "investor",
+    isInvestorMode: !mockMode.isEssential,
+    isEssentialMode: mockMode.isEssential,
+    setAppMode: vi.fn(),
+    isUpdating: false,
+    isLoading: false,
+  }),
 }));
 
 vi.mock("@/state/queries/use-corporate-dividends", () => ({
@@ -160,6 +170,7 @@ describe("InvestmentsPage — F17 unificada", () => {
       error: null,
       refetch: vi.fn(),
     };
+    mockMode.isEssential = false;
   });
 
   it("renderiza o header com os botões de ação e abas de navegação", () => {
@@ -250,6 +261,14 @@ describe("InvestmentsPage — F17 unificada", () => {
     expect(screen.getByRole("tab", { name: "Proventos", selected: true })).toBeInTheDocument();
     expect(document.querySelector('[data-tour="investments-dividends"]')).toBeInTheDocument();
     unmountProventos();
+  });
+
+  it("renderiza a tela de acolhimento InvestorModePromoView quando em modo essencial (§Plano 07)", () => {
+    mockMode.isEssential = true;
+    renderPage();
+    expect(screen.getByText("Gestão Patrimonial & Carteira de Ativos")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ativar Módulo de Investimentos" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Carteira" })).not.toBeInTheDocument();
   });
 });
 

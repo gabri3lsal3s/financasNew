@@ -70,8 +70,14 @@ export {
   useMarkAllRemindersAsRead,
 } from "./queries/use-reminder-states";
 export { useUserPreferences } from "./queries/use-user-preferences";
+export { useAppMode } from "./queries/use-app-mode";
+export type { UseAppModeResult } from "./queries/use-app-mode";
 export { useFamilyMode } from "./queries/use-family-mode";
-export { useUpdateReminderPreferences, useUpdateCustomSettings } from "./mutations/use-preference-mutations";
+export {
+  useUpdateReminderPreferences,
+  useUpdateCustomSettings,
+  useUpdateAppMode,
+} from "./mutations/use-preference-mutations";
 export { useUpdateProfile } from "./mutations/use-profile-mutations";
 export { useReminders } from "./queries/use-reminders";
 export type { RemindersData } from "./queries/use-reminders";
@@ -310,6 +316,19 @@ export {
   familyQueryKeys,
 } from "./queries/use-family";
 export type { RemoveFamilyMemberInput } from "./queries/use-family";
+export {
+  useQuickTokens,
+  useCreateQuickToken,
+  useRevokeQuickToken,
+  QUICK_TOKENS_QUERY_KEY,
+} from "./queries/use-quick-tokens";
+export {
+  useAffiliateDashboard,
+  useGetOrCreateAffiliatePartner,
+  useUpdateAffiliatePix,
+  useAttributeReferral,
+  AFFILIATE_DASHBOARD_QUERY_KEY,
+} from "./queries/use-affiliates";
 
 
 

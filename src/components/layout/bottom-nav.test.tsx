@@ -11,6 +11,7 @@ let mockSubscription = {
 let mockHasFeature: (key: string) => boolean = () => true;
 let mockFamilyData: { family?: { id: string; name: string } } | null = null;
 let mockIsFamilyModeEnabled = false;
+let mockAppMode = "investor";
 
 vi.mock("@/state", () => ({
   useUserSubscription: () => mockSubscription,
@@ -37,6 +38,14 @@ vi.mock("@/state", () => ({
     isFamilyModeEnabled: mockIsFamilyModeEnabled,
     isLoading: false,
     toggleFamilyMode: vi.fn(),
+  }),
+  useAppMode: () => ({
+    appMode: mockAppMode,
+    isInvestorMode: mockAppMode === "investor",
+    isEssentialMode: mockAppMode === "essential",
+    setAppMode: vi.fn(),
+    isUpdating: false,
+    isLoading: false,
   }),
 }));
 
@@ -171,5 +180,14 @@ describe("BottomNav Dinâmica & Adaptativa", () => {
     const moreBtn = screen.getByRole("button", { name: "Mais opções" });
     fireEvent.click(moreBtn);
     expect(screen.getByRole("link", { name: /Orçamento Familiar/i })).toBeInTheDocument();
+  });
+
+  it("oculta Investimentos da navegação e menu Mais quando em modo essencial (§Plano 07)", () => {
+    mockAppMode = "essential";
+    renderNav();
+    expect(screen.queryByRole("link", { name: /Investimentos|Carteira/i })).not.toBeInTheDocument();
+    const moreBtn = screen.getByRole("button", { name: "Mais opções" });
+    fireEvent.click(moreBtn);
+    expect(screen.queryByRole("link", { name: /Investimentos|Carteira/i })).not.toBeInTheDocument();
   });
 });

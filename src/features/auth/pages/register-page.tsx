@@ -11,6 +11,8 @@ import { checkPasswordRequirements } from "@/domain/validation";
 import { getPendingSimulation } from "@/domain/share";
 import { BrandLogo } from "@/components/layout";
 import { cn } from "@/lib/utils";
+import { useAttributeReferral } from "@/state";
+import { clearStoredReferralCode, getStoredReferralCode } from "@/services/referral";
 
 // ---------------------------------------------------------------------------
 // Painel lateral de marketing (desktop ≥ lg)
@@ -92,6 +94,11 @@ export function RegisterPage() {
   const planoParam = searchParams.get("plano");
   const metodoParam = searchParams.get("metodo");
   const isFromSimulator = searchParams.get("from") === "simulador" || !!getPendingSimulation();
+  const attributeReferralMutation = useAttributeReferral();
+
+  const referralCode = useMemo(() => {
+    return searchParams.get("ref") || searchParams.get("parceiro") || getStoredReferralCode() || "";
+  }, [searchParams]);
 
   const requirements = useMemo(() => checkPasswordRequirements(password), [password]);
   const metCount = useMemo(
@@ -147,6 +154,10 @@ export function RegisterPage() {
         captchaToken ?? undefined,
       );
       triggerSensory("success");
+      if (referralCode) {
+        void attributeReferralMutation.mutateAsync(referralCode).catch(() => {});
+        clearStoredReferralCode();
+      }
       if (result.needsEmailConfirmation) {
         setConfirmationSent(true);
       }
@@ -195,6 +206,15 @@ export function RegisterPage() {
             <p className="leading-relaxed">
               Sua simulação será automaticamente transportada e integrada à sua conta no primeiro acesso.
             </p>
+          </div>
+        ) : null}
+
+        {referralCode ? (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs text-foreground flex items-center gap-2">
+            <Sparkles className="size-3.5 text-primary shrink-0" aria-hidden="true" />
+            <span>
+              Indicado por parceiro credenciado: <strong>{referralCode}</strong>
+            </span>
           </div>
         ) : null}
 

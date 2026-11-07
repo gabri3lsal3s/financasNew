@@ -30,6 +30,10 @@ public class BankNotificationListenerServiceTest {
         assertEquals("15.00 €", BankNotificationListenerService.extractAmountText("Wise", "Pagamento de 15.00 € realizado"));
         assertEquals("EUR 50,00", BankNotificationListenerService.extractAmountText("Wise", "Transferência EUR 50,00 concluída"));
         assertEquals("15.00 EUR", BankNotificationListenerService.extractAmountText("Wise", "Pagamento de 15.00 EUR realizado"));
+
+        // Cenários com número de filial no título (C1 / C4) não devem capturar o número da loja
+        assertEquals("R$ 13,55", BankNotificationListenerService.extractAmountText("PAGUE MENOS 1094", "R$ 13,55 com Nomad Infinite ••7756"));
+        assertEquals("R$ 150,00", BankNotificationListenerService.extractAmountText("POSTO IPIRANGA 05", "R$ 150,00 com XP Infinite ••1234"));
     }
 
     @Test

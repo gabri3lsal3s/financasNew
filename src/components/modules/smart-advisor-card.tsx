@@ -94,6 +94,12 @@ export interface SmartAdvisorCardProps {
    * Callback ao marcar despesa recorrente como essencial (sincronizada na nuvem).
    */
   onMarkEssential?: (occurrenceKey: string, displayName?: string) => void | Promise<void>;
+  /** Poupança ou sobra líquida em centavos para cálculo do aporte. */
+  savingsSurplusCents?: number;
+  /** Saldo Livre Real da conta corrente hoje (Safe-to-Spend em centavos). */
+  safeToSpendCents?: number;
+  /** Total de compromissos pendentes no ciclo (faturas abertas + contas a pagar). */
+  committedObligationsCents?: number;
 }
 
 /**
@@ -118,6 +124,9 @@ export function SmartAdvisorCard({
   onMarkEssential,
   onConfirmIncome,
   onConfirmExpense,
+  savingsSurplusCents,
+  safeToSpendCents,
+  committedObligationsCents,
 }: SmartAdvisorCardProps) {
   const navigate = useNavigate();
   const isCurrentMonth = month ? month === currentMonth() : true;
@@ -126,6 +135,9 @@ export function SmartAdvisorCard({
   const hook = useSmartAdvisorInsights({
     month,
     enabled: controlledInsight === undefined && isCurrentMonth,
+    savingsSurplusCents,
+    safeToSpendCents,
+    committedObligationsCents,
   });
 
   const activeInsight = controlledInsight !== undefined ? controlledInsight : hook.insight;

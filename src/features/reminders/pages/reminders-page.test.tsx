@@ -96,9 +96,11 @@ vi.mock("@/state", () => ({
 
     const allItems = [...bills, ...debts];
     const items = allItems.filter((i) => i.key !== "debt:d1");
+    const readHistoryItems = allItems.filter((i) => i.key === "debt:d1");
     return {
       items,
       allItems,
+      readHistoryItems,
       totalCount: items.length,
       overdueCount: items.filter((i) => i.status === "overdue").length,
       dueTodayCount: 0,
@@ -114,6 +116,25 @@ vi.mock("@/state", () => ({
     canWrite: true,
     isReadOnly: false,
     tier: "pro_annual",
+  }),
+}));
+
+const mockAdvisorInsights = vi.hoisted(() => ({
+  insights: [] as Array<{
+    id: string;
+    themeKey: string;
+    priority: number;
+    category: string;
+    title: string;
+    description: string;
+    primaryAction?: { label: string; kind: string; payload?: unknown };
+  }>,
+}));
+
+vi.mock("@/features/overview/hooks", () => ({
+  useSmartAdvisorInsights: () => ({
+    insights: mockAdvisorInsights.insights,
+    dismiss: vi.fn(),
   }),
 }));
 
@@ -222,5 +243,39 @@ describe("RemindersPage (central de lembretes §3.10)", () => {
     } finally {
       stateMocks.debts = stateMocks.debts.filter((debt) => debt.id !== "d5");
     }
+  });
+
+  it("exibe avisos prioritários do Smart Advisor como Renda habitual prevista", async () => {
+    mockAdvisorInsights.insights = [
+      {
+        id: "income:salary",
+        themeKey: "income:salary",
+        priority: 2,
+        category: "income",
+        title: "Renda habitual prevista",
+        description: "Recebimento habitual de Salário previsto.",
+        primaryAction: {
+          label: "Informar valor",
+          kind: "open_income",
+          payload: { name: "Salário" },
+        },
+      },
+    ];
+
+    try {
+      render(<RemindersPage />);
+      expect(screen.getByText("Renda habitual prevista")).toBeInTheDocument();
+      expect(screen.getByText(/Recebimento habitual de Salário previsto/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Informar valor" })).toBeInTheDocument();
+      expect(screen.getByText("Avisos & Renda (1)")).toBeInTheDocument();
+    } finally {
+      mockAdvisorInsights.insights = [];
+    }
+  });
+
+  it("exibe nota informativa sobre a janela de monitoramento de faturas e dívidas", () => {
+    render(<RemindersPage />);
+    expect(screen.getByText(/Monitorando faturas e dívidas com vencimento nos próximos/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Ajustar antecedência/i })).toBeInTheDocument();
   });
 });

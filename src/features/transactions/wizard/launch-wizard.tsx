@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { Paperclip, Zap } from "lucide-react";
+import { ClipboardPaste, Paperclip, Zap } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -19,6 +19,7 @@ import {
   getReceiptKindLabel,
   inferCategoryKeyword,
   matchCategoryBySlug,
+  parseUniversalReceipt,
   resolveBestMatchingCard,
   resolveMerchantIdentity,
   type CanonicalCategorySlug,
@@ -648,6 +649,26 @@ export function LaunchWizard({
     });
   };
 
+  const handlePastePixFromClipboard = async () => {
+    try {
+      if (!navigator.clipboard?.readText) {
+        setAttachOpen(true);
+        return;
+      }
+      const clipText = await navigator.clipboard.readText();
+      if (clipText && clipText.trim()) {
+        const universal = parseUniversalReceipt(clipText.trim());
+        if (universal) {
+          handleReceiptParsed(universal);
+          return;
+        }
+      }
+      setAttachOpen(true);
+    } catch {
+      setAttachOpen(true);
+    }
+  };
+
   const isLastStep = state.step === WIZARD_STEPS.length;
   const canSubmitQuick =
     state.valueCents > 0 &&
@@ -687,12 +708,23 @@ export function LaunchWizard({
             type="button"
             variant="outline"
             size="xs"
+            onClick={() => void handlePastePixFromClipboard()}
+            className="h-7 text-xs border-primary/30 bg-surface-raised hover:bg-primary/5 text-primary-strong gap-1 px-2.5 font-medium shadow-xs cursor-pointer"
+            aria-label="Colar comprovante Pix"
+          >
+            <ClipboardPaste className="size-3.5 text-primary" aria-hidden="true" />
+            <span className="hidden sm:inline">Colar Pix</span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
             onClick={() => setAttachOpen(true)}
             className="h-7 text-xs border-border/80 bg-surface-raised hover:bg-surface-hover text-foreground gap-1.5 px-2.5 font-medium shadow-xs cursor-pointer"
             aria-label="Anexar comprovante ou cupom fiscal"
           >
             <Paperclip className="size-3.5 text-foreground" aria-hidden="true" />
-            <span className="hidden sm:inline">Anexar comprovante / cupom</span>
+            <span className="hidden sm:inline">Anexar</span>
           </Button>
         </div>
       }

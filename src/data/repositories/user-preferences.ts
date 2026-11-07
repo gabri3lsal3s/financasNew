@@ -2,7 +2,7 @@ import { getSupabase } from "@/data/client";
 import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
 import { AppError, classifyError } from "@/services/errors";
-import type { DbUpdate, UserCustomSettings, UserPreferences } from "@/types";
+import type { AppMode, DbUpdate, UserCustomSettings, UserPreferences } from "@/types";
 
 /**
  * Preferências do usuário (§3.10 / §3.11).
@@ -11,6 +11,7 @@ import type { DbUpdate, UserCustomSettings, UserPreferences } from "@/types";
 function mapPreferences(row: UserPreferences): UserPreferences {
   return {
     ...row,
+    app_mode: row.app_mode ?? "investor",
     custom_settings: row.custom_settings ?? {},
   };
 }
@@ -105,6 +106,20 @@ export async function updateCustomSettings(patch: Partial<UserCustomSettings>): 
 
   const input: DbUpdate<UserPreferences> = {
     custom_settings: mergedSettings,
+  };
+
+  const { error } = await getSupabase().from("user_preferences").update(input).eq("user_id", user_id);
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
+/** Atualiza o perfil de visualização da aplicação (Modo Essencial vs Modo Investidor) (§Plano 07). */
+export async function updateAppMode(appMode: AppMode): Promise<void> {
+  const user_id = await currentUserId();
+  const input: DbUpdate<UserPreferences> = {
+    app_mode: appMode,
   };
 
   const { error } = await getSupabase().from("user_preferences").update(input).eq("user_id", user_id);

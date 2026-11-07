@@ -263,6 +263,7 @@ O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma
   - **Nuvem (Supabase `user_preferences` + `custom_settings`):** lembretes, travas setoriais, densidade de tabelas, widgets do dashboard, atalhos do cabeçalho, animações, feedback sonoro/háptico e contadores animados são sincronizados multidispositivo via `useUserPreferences` e `useUpdateCustomSettings`.
   - **Dispositivo (Local por Usuário):** tema visual (`light`/`dark`/`oled`/`system`) e cor de destaque (`accent`) são mantidos isolados no `localStorage` por `userId`, respeitando as características físicas de cada tela/dispositivo.
 - **Estado de tela** (wizard, modais, filtros): hooks locais de `features/`. **Sem** store global de dados de negócio — dados de negócio vivem no servidor, nunca em memória de cliente.
+- **Ergonomia e Ciclo de Vida de Modais (Plano 08):** o primitivo `Modal` adota arquitetura híbrida de nós únicos no DOM, eliminando duplicações de acessibilidade (`DialogPrimitive.Title`/`Description`) e colisões em testes de query text. O estado de rolagem para o micro-título reativo no mobile opera via threshold de 32px com listener de evento local desacoplado de stores globais, garantindo zero re-renders desnecessários e preservação de fluidez a 60fps/120fps tanto em browsers modernos quanto em webviews Capacitor Android e PWA iOS.
 - **Sessão expirada (401):** redirect para login **preservando a rota pretendida** (retorno pós-login); mensagem via gateway.
 
 ### 5.4 Arquitetura de Gestão de Contas, Autenticação Blindada e Ciclo de Vida do Usuário SaaS

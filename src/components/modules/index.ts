@@ -131,3 +131,6 @@ export { ManageSplitDialog } from "./manage-split-dialog";
 export type { ManageSplitDialogProps } from "./manage-split-dialog";
 export { PendingSplitSignalsCard } from "./pending-split-signals-card";
 export type { PendingSplitSignalsCardProps } from "./pending-split-signals-card";
+export { QuickBalanceAdjustmentModal } from "./quick-balance-adjustment-modal";
+export type { QuickBalanceAdjustmentModalProps } from "./quick-balance-adjustment-modal";
+

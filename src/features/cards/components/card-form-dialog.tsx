@@ -58,6 +58,7 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
   const [closingDay, setClosingDay] = useState(card?.closing_day ?? 10);
   const [dueDay, setDueDay] = useState(card?.due_day ?? 15);
   const [color, setColor] = useState(card?.color ?? "");
+  const [lastFourDigits, setLastFourDigits] = useState(card?.last_four_digits ?? "");
   const [isActive, setIsActive] = useState(card?.is_active ?? true);
   const [isPrimary, setIsPrimary] = useState(card ? card.id === primaryCardId : false);
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +83,7 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
       due_day: dueDay,
       color: color.trim() || null,
       is_active: isActive,
+      last_four_digits: lastFourDigits.trim() || null,
     };
     const parsed = creditCardFormSchema.safeParse(rawForm);
     if (!parsed.success) {
@@ -244,7 +246,7 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
               {/* Centro: Número virtual pontilhado + Nome do titular + Pílulas de datas */}
               <div className="relative z-10 my-auto flex flex-col gap-1.5 py-1">
                 <div className="font-mono text-xs sm:text-sm tracking-[0.22em] text-white/50 select-none drop-shadow-xs font-semibold">
-                  •••• •••• •••• {card?.id ? card.id.slice(-4) : "••••"}
+                  •••• •••• •••• {lastFourDigits ? lastFourDigits : (card?.last_four_digits || (card?.id ? card.id.slice(-4) : "••••"))}
                 </div>
                 <p className="font-display font-bold text-base sm:text-lg tracking-wide text-white drop-shadow-xs truncate">
                   {name.trim() || "Nome do Cartão"}
@@ -362,19 +364,43 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
               </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <label htmlFor="card-limit" className="text-xs font-semibold text-foreground">
-                  Limite total
-                </label>
-                <span className="text-[11px] text-muted-foreground">(opcional)</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="card-limit" className="text-xs font-semibold text-foreground">
+                    Limite total
+                  </label>
+                  <span className="text-[11px] text-muted-foreground">(opcional)</span>
+                </div>
+                <MoneyInput
+                  id="card-limit"
+                  cents={limitCents}
+                  onCentsChange={setLimitCents}
+                  aria-label="Limite total do cartão"
+                />
               </div>
-              <MoneyInput
-                id="card-limit"
-                cents={limitCents}
-                onCentsChange={setLimitCents}
-                aria-label="Limite total do cartão"
-              />
+
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="card-last-four-digits" className="text-xs font-semibold text-foreground">
+                    Últimos 4 dígitos
+                  </label>
+                  <span className="text-[11px] text-muted-foreground">(opcional)</span>
+                </div>
+                <Input
+                  id="card-last-four-digits"
+                  value={lastFourDigits}
+                  maxLength={4}
+                  onChange={(event) => {
+                    const val = event.target.value.replace(/\D/g, "").slice(0, 4);
+                    setLastFourDigits(val);
+                  }}
+                  placeholder="Ex.: 7756"
+                />
+                <span className="text-[11px] text-muted-foreground">
+                  Facilita o reconhecimento automático em notificações e carteiras digitais.
+                </span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">

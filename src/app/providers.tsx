@@ -20,6 +20,7 @@ import { initAppLockListener, setPrivacyShieldEnabled, syncDueReminderNotificati
 import { useReminders } from "@/state";
 import { useDemoSession } from "@/state/demo-mode";
 import { useAuth } from "@/hooks/use-auth";
+import { captureReferralFromUrl } from "@/services/referral";
 
 /**
  * Sincroniza o ciclo de vida do TanStack Query e das stores locais
@@ -156,6 +157,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    captureReferralFromUrl();
     const cleanup = initAppLockListener();
     return cleanup;
   }, []);

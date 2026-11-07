@@ -427,7 +427,9 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
 
 ### 3.10 Lembretes e Central de Notificações
 
-- Consolida alertas de **faturas** (saldo aberto por competência: vencida/em breve) e **dívidas** (pendentes: vence em X dias/vencida).
+- **Central Unificada de Lembretes & Avisos:** consolida alertas de **faturas** (saldo aberto por competência: vencida/em breve), **dívidas** (pendentes: vence em X dias/vencida) e **avisos inteligentes do Smart Advisor** (prioridades 1 e 2, como *Renda habitual prevista* e alertas críticos).
+- **Casca Permanente de Abas e Transparência:** as abas "Pendentes" e "Lidas" permanecem sempre acessíveis e visíveis para consulta. Quando não há pendências ativas, o empty state calmamente informa o status em dia dentro da própria aba e exibe a janela de dias de antecedência configurada pelo usuário, com atalho rápido para as Configurações.
+- **Reconstituição do Histórico de Lidos e Concluídos:** a aba de lidos não se limita aos itens da janela ativa; ela reconstitui o histórico persistido em `reminder_states` cruzando com os metadados de faturas e dívidas cadastradas (mesmo quitadas), permitindo reabrir ou auditar compromissos passados.
 - **Consolidação Anti-Flood de Notificações Locais/Push:** quando houver $\ge 2$ contas pendentes na sincronização diária, o sistema agrupa os avisos em uma notificação única executiva com o montante total pendente, evitando disparos repetitivos ou múltiplos alertas.
 - **Janela Máxima de Alerta para Vencidos:** notificações de atraso são limitadas a contas vencidas há no máximo 30 dias (`MAX_OVERDUE_DAYS_FOR_NOTIFICATION = 30`), impedindo a renotificação contínua de pendências antigas.
 - **Isolamento de Modo Demonstração & Tour Guiado:** o motor de notificações nativas (`LocalNotifications`) e push é estritamente desabilitado durante o Tour Guiado ou sessões demo (`isDemoActive === true` ou `userId === DEMO_USER_ID`), impedindo que faturas sintéticas (ex.: "Mastercard Black Principal") gerem notificações reais no sistema operacional.

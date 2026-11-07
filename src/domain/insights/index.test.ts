@@ -16,6 +16,7 @@ import {
   historyBonus,
   incomeConcentration,
   isSignificantTrend,
+  calculateProRataTrend,
   partitionFeedback,
   savingsHealth,
   varianceOf,
@@ -116,6 +117,37 @@ describe("criticalAlerts (§3.7.1 — prioridade)", () => {
     expect(alert?.description).toContain("sem nenhuma entrada de renda registrada");
     // Não deve disparar elogio de poupança com renda zero
     expect(alerts.some((a) => a.id === "poupanca_saudavel")).toBe(false);
+  });
+
+  it("não emite elogio de poupança saudável quando as obrigações do ciclo consomem a sobra líquida", () => {
+    // Cenário do usuário: Renda 3.244,24, Despesas pagas 469,69 (saldo 2.774,55)
+    // Mas obrigações pendentes do ciclo: 2.959,81 (saldo real do ciclo = -185,26)
+    const alerts = criticalAlerts({
+      ...base,
+      balanceCents: 277455,
+      incomeCents: 324424,
+      savingsRatePercent: 85.5,
+      committedObligationsCents: 295981,
+      dayOfMonth: 7,
+      daysInMonth: 30,
+    });
+
+    expect(alerts.some((a) => a.id === "poupanca_saudavel")).toBe(false);
+  });
+
+  it("adapta a descrição de poupança saudável para ritmo projetado durante o mês", () => {
+    const alerts = criticalAlerts({
+      ...base,
+      balanceCents: 200000,
+      incomeCents: 500000,
+      committedObligationsCents: 50000, // sobra do ciclo: 150000 (30% da renda)
+      dayOfMonth: 7,
+      daysInMonth: 30,
+    });
+
+    const praise = alerts.find((a) => a.id === "poupanca_saudavel");
+    expect(praise).toBeDefined();
+    expect(praise?.description).toContain("Ritmo de poupança saudável: Projetando poupar 30% da renda");
   });
 });
 
@@ -426,6 +458,24 @@ describe("diagnósticos (§3.7.6)", () => {
   it("tendência significativa acima de 15%", () => {
     expect(isSignificantTrend(120000, 100000)).toBe(true);
     expect(isSignificantTrend(110000, 100000)).toBe(false);
+  });
+
+  it("calcula tendência pro-rata comparando períodos equivalentes", () => {
+    // 7 dias atuais (R$ 469,69) vs 7 dias do mês anterior (R$ 450,00)
+    const trend = calculateProRataTrend(46969, 45000);
+    expect(trend.percentChange).toBeCloseTo(4.37, 1);
+    expect(trend.isSignificant).toBe(false);
+    expect(trend.previousComparableCents).toBe(45000);
+
+    // Quando não há despesas anteriores pro-rata
+    const trendZero = calculateProRataTrend(10000, 0);
+    expect(trendZero.percentChange).toBe(100);
+    expect(trendZero.isSignificant).toBe(true);
+
+    // Variação de mais de 15% (significativa)
+    const trendBig = calculateProRataTrend(60000, 40000);
+    expect(trendBig.percentChange).toBe(50);
+    expect(trendBig.isSignificant).toBe(true);
   });
 
   it("calcula médias diárias de dia útil e fim de semana com dias reais decorridos", () => {

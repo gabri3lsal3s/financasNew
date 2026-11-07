@@ -325,6 +325,48 @@ describe("generateSmartAdvisorInsights", () => {
     expect(aporteInsight).toBeUndefined();
   });
 
+  it("não sugere aporte quando as obrigações do ciclo superam a sobra operacional (cenário do dia 7)", () => {
+    // Renda R$ 3.244,24 - Despesas pagas R$ 469,69 = sobra de R$ 2.774,55
+    // Mas faturas a pagar = R$ 2.959,81
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [],
+      todayISO: "2026-11-07",
+      savingsSurplusCents: 277455,
+      committedObligationsCents: 295981,
+      safeToSpendCents: 71534,
+    });
+
+    const aporteInsight = insights.find((i) => i.id === "aporte:rebalance");
+    expect(aporteInsight).toBeUndefined();
+  });
+
+  it("limita o aporte sugerido ao Saldo Livre Real e adapta a descrição para obrigações do ciclo", () => {
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [],
+      todayISO: "2026-11-07",
+      savingsSurplusCents: 200000, // R$ 2.000,00 de sobra
+      committedObligationsCents: 50000, // R$ 500,00 de obrigações -> sobra líquida = R$ 1.500,00
+      safeToSpendCents: 71534, // Saldo Livre Real de R$ 715,34
+    });
+
+    const aporteInsight = insights.find((i) => i.id === "aporte:rebalance");
+    expect(aporteInsight).toBeDefined();
+    expect(aporteInsight?.description).toContain("Você possui R$ 715,34 de saldo livre real após cobrir as obrigações do ciclo.");
+    expect(aporteInsight?.primaryAction?.payload).toEqual({ valorCents: 71534 });
+  });
+
+  it("não sugere aporte quando o Saldo Livre Real em conta é zero ou negativo", () => {
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [],
+      todayISO: "2026-11-07",
+      savingsSurplusCents: 150000,
+      safeToSpendCents: -50000, // conta no vermelho
+    });
+
+    const aporteInsight = insights.find((i) => i.id === "aporte:rebalance");
+    expect(aporteInsight).toBeUndefined();
+  });
+
   it("gera insight de prioridade 3 (Economia) para reajuste de preço e oportunidade de corte", () => {
     const occWithAdjustment = makeOccurrence({
       key: "adobe",

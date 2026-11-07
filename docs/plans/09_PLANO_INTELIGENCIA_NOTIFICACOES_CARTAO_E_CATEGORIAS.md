@@ -24,7 +24,8 @@
 | **Fase 5** | Cascata de Desempate de Cartões em 6 Níveis & Vínculo com Instituição (`card-resolution.ts`) | Pronto para Execução | 0 / 5 |
 | **Fase 6** | Memória Adaptativa Contínua & Previsão Contextual 5D (`merchant-learning.ts`, `predictions`) | Pronto para Execução | 0 / 4 |
 | **Fase 7** | Experiência do Lançamento Rápido: Paginação e Ranking por Frequência (`StepQuick.tsx`) | Pronto para Execução | 0 / 4 |
-| **Fase 8** | Matriz E2E Multi-Banco com 16 Cenários Reais, Portões de Qualidade & DoD | Pronto para Execução | 0 / 4 |
+| **Fase 8** | Matriz E2E Multi-Banco com 19 Cenários Reais, Portões de Qualidade & DoD | Pronto para Execução | 0 / 4 |
+| **Fase 9** | Motor Especializado de Rendas, Auto-Depósitos & Deduplicação de Push (`bank-parser.ts`, `BankNotificationActionReceiver.java`) | Pronto para Execução | 0 / 5 |
 
 ---
 
@@ -74,8 +75,9 @@ Para impedir categoricamente que métodos de pagamento sejam confundidos (como o
 |---|---|---|---|
 | **Cartão de Crédito (`credit_card`)** | `"crédito"`, `"no crédito"`, `"crédito à vista"`, `"parcelado"`, `\d+x\b`, `"infinite"`, `"black"`, `"platinum"`, `"itaucard"`, `"ourocard"`, `"cartão virtual"`, Carteira Google/Samsung Pay com cartão de crédito. | **Proibição:** Se contiver `"crédito em conta"` ou `"creditado na conta"` $\rightarrow$ Trata-se de Renda/TED/Pix, NUNCA Cartão de Crédito! | Conforme o estabelecimento |
 | **Cartão de Débito (`debit`)** | `"débito"`, `"no débito"`, `"cartão de débito"`, `"compra no débito"`, Contas Globais (Nomad/Wise) em compras cotidianas sem indicação de crédito. | **Proibição:** Se contiver `"débito automático"` de contas de consumo $\rightarrow$ Método é `other` (Concessionária)! | Conforme o estabelecimento |
-| **Pix (`pix`)** | `"pix"`, `"chave pix"`, `"via pix"`, `"pix recebido"`, `"pix enviado"`, `"copia e cola"`, `"qr code pix"`, `"devolução pix"`. | **Proibição:** Se a notificação contiver tokens de cartão (`••\d{4}`, `"cartão"`, `"crédito"`), é PROIBIDO classificar como Pix. | Conforme favorecido / memória |
-| **Transferência TED/DOC (`transfer`)** | `"ted"`, `"doc"`, `"transferência entre contas"`, `"transferência recebida"`, `"transferência enviada"`, `"depósito em conta"`, `"depósito recebido"`. | Distingue transferência entre contas próprias de transferências a terceiros. | Outros / Salário / Ajustes |
+| **Pix Recebido / Auto-Depósito (`pix` / Renda)** | `"você depositou"`, `"depositou"`, `"depósito via pix"`, `"seu dinheiro já está disponível"`, `"já está disponível"`, `"adicionou dinheiro"`, `"você recebeu um pix"`, `"pix recebido"`, `"transferência recebida"`. | **Regra Absoluta:** Transação é **Renda (`nature: "income"`)**, NUNCA Despesa! Proibido categorizar como Supermercado ou fallback de gastos. | `Transferências Recebidas` / `Depósitos` / `Rendimentos` |
+| **Pix Enviado / Compra Pix (`pix` / Despesa)** | `"você enviou um pix"`, `"pix enviado"`, `"pagamento via pix"`, `"copia e cola"`, `"qr code pix"`, `"você pagou com pix"`. | **Proibição:** Se contiver `"depositou"`, `"já está disponível"` ou `"recebeu"` $\rightarrow$ É Renda! Se contiver tokens de cartão (`••\d{4}`, `"crédito"`), é Cartão de Crédito. | Conforme favorecido / memória |
+| **Transferência TED/DOC (`transfer`)** | `"ted"`, `"doc"`, `"transferência entre contas"`, `"transferência recebida"`, `"transferência enviada"`, `"depósito em conta"`, `"depósito recebido"`. | Distingue transferência entre contas próprias de transferências a terceiros. Se recebida/depósito, classifica como Renda. | Outros / Salário / Ajustes |
 | **Boleto & Contas de Consumo (`other`)** | `"boleto"`, `"boleto pago"`, `"código de barras"`, `"débito automático"`, `"conta de luz"`, `"conta de água"`, `"enel"`, `"sabesp"`, `"comgas"`, `"claro"`, `"vivo"`, `"tim"`, `"tributo"`, `"ipva"`, `"iptu"`, `"darf"`. | Se for débito automático de concessionária, a categoria é fixada em `gastos_fixos` ou `moradia`. | `gastos_fixos` / `moradia` |
 | **Saque em Dinheiro (`cash`)** | `"saque"`, `"saque realizado"`, `"retirada"`, `"terminal banco24horas"`, `"saque caixa eletrônico"`, `"banco 24 horas"`, `"em espécie"`. | Saque não é despesa de compra de produto; é conversão de saldo de conta para dinheiro em espécie. | `outros` / Dinheiro |
 
@@ -318,7 +320,42 @@ Para atender a todos os cenários (notificações com 4 dígitos, notificações
 
 ---
 
-## 6. Matriz Expandida de Cenários de Teste E2E Multi-Banco (16 Cenários Reais)
+### FASE 9: Motor Especializado de Rendas, Auto-Depósitos, Funil de Descrições de Receita & Deduplicação de Push (`bank-parser.ts`, `BankNotificationActionReceiver.java`)
+
+- [ ] **Tarefa 9.1 — Expansão Lexical de Rendas & Auto-Depósitos no NLP (`bank-parser.ts` & `BankNotificationActionReceiver.java`)**
+  - Refatorar `detectTransactionType` em `bank-parser.ts` e `isIncome` em `BankNotificationActionReceiver.java`:
+    - Incorporar termos e padrões de auto-depósito e carteiras digitais: `"você depositou"`, `"depositou"`, `"depósito via pix"`, `"seu dinheiro já está disponível"`, `"já está disponível"`, `"dinheiro disponível"`, `"adicionou dinheiro"`, `"saldo adicionado"`, `"dinheiro em conta"`, `"valor recebido"`.
+    - **Trava de Precedência Anti-Falso Pix de Despesa:** Se o texto contiver tokens de entrada (`"depositou"`, `"adicionou"`, `"recebeu"`), **é terminantemente proibido** acionar a regra genérica de despesa de `"pix"` ou `"via pix"`.
+
+- [ ] **Tarefa 9.2 — Funil Semântico Descendente de Descrição de Rendas & Depósitos (`bank-parser.ts`)**
+  - Eliminar o rótulo errôneo `"Pix Enviado"` para entradas e auto-transferências, estruturando um funil de precisão em 5 níveis para `nature: "income"`:
+    1. **Nível 1 (Auto-Depósito / Mesma Titularidade):** Quando a notificação contiver `"você depositou"`, `"adicionou dinheiro"`, `"dinheiro já está disponível"` ou o remetente for o próprio usuário ➔ Sugestão limpa e objetiva: `"Depósito via Pix (Mercado Pago)"`, `"Depósito em Conta (Inter)"` ou `"Aporte em Conta (PicPay)"`. NUNCA `"Pix Enviado"`.
+    2. **Nível 2 (Transferência Recebida de Terceiros com Nome do Pagador):** Extração do pagador/remetente ➔ Formato padronizado: `"Pix Recebido: Nome"` ou `"Transferência Recebida: Nome"`.
+    3. **Nível 3 (Salário / Folha de Pagamento / Empregador):** Menção a proventos de trabalho ➔ Formato: `"Salário (Empresa)"` ou `"Folha de Pagamento"`.
+    4. **Nível 4 (Rendimentos Financeiros / Dividendos / JCP / Estorno):** ➔ Formato: `"Rendimento de Saldo (Mercado Pago)"`, `"Proventos (Ticker)"` ou `"Estorno / Reembolso (Estabelecimento)"`.
+    5. **Nível 5 (Fallback Seguro de Renda):** `"Recebimento via Pix (Banco)"` ou `"Recebimento em Conta (Banco)"`.
+
+- [ ] **Tarefa 9.3 — Motor Semântico de Categorização de Rendas (`income-category-resolver.ts`)**
+  - Implementar resolvedor de categorias dedicado exclusivamente para transações de natureza `income`:
+    - Mapear termos de auto-depósito / Pix de mesma titularidade para categorias de receita do usuário como `"Transferências Recebidas"`, `"Depósitos / Aportes"` ou `"Ajustes de Saldo"`.
+    - Mapear salários para `"Salário"` e proventos/juros para `"Rendimentos"`.
+    - **Trava Anti-Supermercado:** Em transações de renda, o fallback seguro **nunca** pode consultar o catálogo de despesas (`categories[0]` de despesa); deve selecionar a categoria de receita neutra correspondente (`"Outros"`, `"Rendas Diversas"` ou primeira categoria de receita ativa do usuário).
+
+- [ ] **Tarefa 9.4 — Eliminação Definitiva da Duplicação de Notificações (Canal Único & Idempotência)**
+  - Resolver a concorrência entre emissores de push no Android:
+    - O feedback de confirmação nativa (`BankNotificationActionReceiver.postUndoNotification` em Java) e o feedback disparado pelo Capacitor (`interactive-notifications.ts` `notifyQuickAddSuccess`) estavam gerando notificações simultâneas no painel do Android.
+    - Padronizar canal único de feedback nativo: em ambiente nativo Android, o `BankNotificationActionReceiver` gerencia a notificação com ação `[Desfazer]`, enquanto o runtime web/Capacitor silencia a emissão de notificação local repetida (`scheduleInteractiveBankNotification` / `notifyQuickAddSuccess`), limitando-se a registrar a transação no banco.
+    - Implementar trava de idempotência temporal de 5 minutos por hash de payload (`packageName + title + amount + 5m_window`) impedindo que o mesmo evento bancário seja reprocessado em cold start / buffer flush.
+
+- [ ] **Tarefa 9.5 — Bateria de Testes Unitários de Rendas, Descrições & Anti-Duplicação**
+  - Adicionar testes em `bank-parser.test.ts` cobrindo Mercado Pago, PicPay, Nubank Caixinhas, Inter e C6 Bank em operações de depósito e rendimento.
+  - Testar descrições geradas para provar que `"Você depositou R$ 3.244,24 via Pix e o valor já está rendendo na sua conta."` resulta em `description: "Depósito via Pix (Mercado Pago)"` e `nature: "income"`.
+  - Adicionar testes em `BankNotificationActionReceiverTest.java` validando `isIncome()` para auto-depósitos e rendas.
+  - Adicionar testes de deduplicação e trava de idempotência em `interactive-notifications.test.ts`.
+
+---
+
+## 6. Matriz Expandida de Cenários de Teste E2E Multi-Banco (19 Cenários Reais)
 
 | # | Ecossistema / App | Título da Notificação | Texto da Notificação | Método Esperado | Cartão / Conta | Categoria Esperada | Descrição Sugerida |
 |---|---|---|---|:---:|---|---|---|
@@ -338,6 +375,9 @@ Para atender a todos os cenários (notificações com 4 dígitos, notificações
 | **C14**| Caixa (Débito Auto)| `Débito em conta` | `Débito automático efetuado Sabesp R$ 82,30` | `other` | Conta Caixa | Gastos Fixos | "Débito Automático: Sabesp" |
 | **C15**| Banco24Horas (Saque)| `Banco do Brasil` | `Saque realizado no terminal Banco24Horas no valor de R$ 200,00` | `cash` | Conta BB | Dinheiro / Outros | "Saque em Dinheiro" |
 | **C16**| Mercado Pago (QR Code)| `Mercado Pago` | `Você pagou R$ 38,00 com saldo da conta em Mercado Central via QR` | `other`/Saldo | Saldo Mercado Pago | Compras / Alimentação | "Mercado Central" |
+| **C17**| Mercado Pago (Auto-Pix / Depósito)| `Seu dinheiro já está disponível` | `Você depositou R$ 3.244,24 via Pix e o valor já está rendendo na sua conta.` | `pix` (Renda) | Sem Cartão | Transferências Recebidas / Depósitos | "Depósito via Pix (Mercado Pago)" |
+| **C18**| PicPay (Adicionar Dinheiro)| `Dinheiro na conta!` | `Você adicionou R$ 500,00 via Pix à sua carteira.` | `pix` (Renda) | Sem Cartão | Transferências Recebidas / Depósitos | "Depósito via Pix (PicPay)" |
+| **C19**| Nubank (Transferência Própria)| `Transferência recebida` | `Você recebeu uma transferência de R$ 1.000,00 de Gabriel Sales.` | `pix` (Renda) | Sem Cartão | Transferências Recebidas | "Pix Recebido: Gabriel Sales" |
 
 ---
 
@@ -350,9 +390,12 @@ Para que a implementação seja considerada concluída e pronta para entrega:
    - Zero exposição de dados sensíveis (apenas 4 últimos dígitos).
    - Tipagem TypeScript estrita com zero erros em `tsc --noEmit`.
 
-2. **Gate 2 — Robustez de Resolução de Cartões e Anti-Regressão:**
-   - 100% dos 16 cenários da matriz E2E aprovados em testes automatizados.
+2. **Gate 2 — Robustez de Resolução de Cartões, Rendas, Descrições e Anti-Regressão:**
+   - 100% dos 19 cenários da matriz E2E aprovados em testes automatizados.
    - Zero ocorrências de falsos positivos de Pix para compras no cartão.
+   - Zero ocorrências de falsas despesas para notificações de depósitos, auto-pix e rendas (`depositou`, `dinheiro já está disponível`, `adicionou dinheiro`).
+   - Zero ocorrências de descrições espúrias como `"Pix Enviado"` para auto-depósitos ou transferências recebidas.
+   - Zero notificações push duplicadas no Android (garantia de canal único de confirmação e idempotência de 5 minutos).
    - Zero distorções de valores monetários causados por números de loja/filial.
 
 3. **Gate 3 — Eficiência e Ergonomia no Lançamento Rápido:**

@@ -102,6 +102,11 @@ describe("navigation domain resolver", () => {
       resolveLandingPath((key) => key === "investments" || key === "reports"),
     ).toBe("/investments");
 
+    // 4.1 Modo consultoria pura mas em modo essencial (isInvestorMode=false) -> pula /investments para /relatorios
+    expect(
+      resolveLandingPath((key) => key === "investments" || key === "reports", false, false),
+    ).toBe("/relatorios");
+
     // 5. Apenas dívidas -> primeira disponível é /dividas
     expect(
       resolveLandingPath((key) => key === "debts"),

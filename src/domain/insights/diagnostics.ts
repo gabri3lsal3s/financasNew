@@ -142,3 +142,42 @@ export function isSignificantTrend(currentCents: number, previousCents: number, 
   const change = Math.abs((currentCents - previousCents) / previousCents) * 100;
   return change > thresholdPercent;
 }
+
+export interface ProRataTrendResult {
+  /** Variação percentual pro-rata: ((atual - anteriorProRata) / anteriorProRata) * 100 */
+  percentChange: number;
+  /** Se a variação é estatisticamente significativa (> thresholdPercent). */
+  isSignificant: boolean;
+  /** Valor comparativo base do mês anterior pro-rata (centavos). */
+  previousComparableCents: number;
+}
+
+/**
+ * Calcula a tendência de gastos comparando períodos equivalentes (pro-rata).
+ * Por exemplo, do dia 1 ao dia D do mês atual vs. do dia 1 ao dia D do mês anterior,
+ * evitando falsas anomalias causadas pela diferença de dias decorridos.
+ */
+export function calculateProRataTrend(
+  currentExpensesToDateCents: number,
+  previousExpensesToSameDateCents: number,
+  thresholdPercent = 15,
+): ProRataTrendResult {
+  if (previousExpensesToSameDateCents <= 0) {
+    return {
+      percentChange: currentExpensesToDateCents > 0 ? 100 : 0,
+      isSignificant: currentExpensesToDateCents > 0,
+      previousComparableCents: 0,
+    };
+  }
+
+  const percentChange =
+    ((currentExpensesToDateCents - previousExpensesToSameDateCents) / previousExpensesToSameDateCents) * 100;
+  const isSignificant = Math.abs(percentChange) > thresholdPercent;
+
+  return {
+    percentChange,
+    isSignificant,
+    previousComparableCents: previousExpensesToSameDateCents,
+  };
+}
+

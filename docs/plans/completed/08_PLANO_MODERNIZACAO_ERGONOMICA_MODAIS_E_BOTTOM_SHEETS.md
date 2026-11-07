@@ -150,22 +150,22 @@ Como todos os 85 modais do sistema herdam diretamente do primitivo [`Modal`](fil
 
 ### FASE 1: NÚCLEO DOS PRIMITIVOS — `Modal.tsx` & `ResponsiveDialog.tsx`
 
-- [ ] **Etapa 1.1: Barra de Controle Minimalista (Grabber Bar `h-10`)**
+- [x] **Etapa 1.1: Barra de Controle Minimalista (Grabber Bar `h-10`)**
   - No arquivo [`src/components/ui/modal.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/ui/modal.tsx), reestruturar o contêiner de topo para mobile:
     * Criar a barra fixa superior com altura contida (`h-10 md:hidden flex items-center justify-between px-3.5 shrink-0 relative`).
     * Alça do bottom sheet posicionada centralmente com área de toque ergonômica (`h-1 w-10 rounded-full bg-primary/30`).
     * Botões de ação contextual (`headerActions`, calculadora e fechar) posicionados à direita na barra minimalista com tamanho compacto (`size-8`).
-- [ ] **Etapa 1.2: Cabeçalho Fluido Integrado ao Scroll (Inline Header Único)**
+- [x] **Etapa 1.2: Cabeçalho Fluido Integrado ao Scroll (Inline Header Único)**
   - No corpo rolável (`scrollRef`), posicionar o bloco de título e descrição para visualização mobile:
     * Renderizar `<DialogPrimitive.Title>` e `<DialogPrimitive.Description>` no topo do corpo de rolagem no mobile (`md:hidden`).
     * Manter a renderização do cabeçalho clássico estático exclusivamente para desktop (`hidden md:block shrink-0 p-6 pb-3`).
     * Garantir que as tags acessíveis do Radix (`Title` e `Description`) permaneçam montadas e vinculadas aos IDs de acessibilidade (`aria-labelledby` e `aria-describedby`) com zero duplicação de texto no DOM.
-- [ ] **Etapa 1.3: Micro-Título de Contexto Dinâmico no Scroll**
+- [x] **Etapa 1.3: Micro-Título de Contexto Dinâmico no Scroll**
   - Implementar hook ou listener leve de scroll em `scrollRef`:
     * Quando `scrollTop > 32px`, ativar flag de estado `isScrolled`.
     * Na barra superior fixa do mobile, exibir o título resumido com transição de opacidade e corte gracioso (`text-xs font-semibold text-foreground truncate max-w-[60vw]`).
     * Respeitar rigorosamente `prefers-reduced-motion` e evitar re-renders desnecessários usando throttling ou ref direta.
-- [ ] **Etapa 1.4: Máscara & Borda Adaptativa Anti-Corte**
+- [x] **Etapa 1.4: Máscara & Borda Adaptativa Anti-Corte**
   - Adicionar transição visual na barra de controle superior:
     * Quando `isScrolled === false`: fundo limpo e borda transparente.
     * Quando `isScrolled === true`: `bg-surface/95 backdrop-blur-xs border-b border-border/80 shadow-xs`, eliminando o corte reto de cards como visto em "Recebido dos Amigos".
@@ -174,16 +174,16 @@ Como todos os 85 modais do sistema herdam diretamente do primitivo [`Modal`](fil
 
 ### FASE 2: PADRONIZAÇÃO & COMPACTAÇÃO DE RODAPÉS (`ModalFooter`)
 
-- [ ] **Etapa 2.1: Layout Horizontal Compacto no Mobile**
+- [x] **Etapa 2.1: Layout Horizontal Compacto no Mobile**
   - Refatorar [`ModalFooter`](file:///home/gabrielsales/meus_apps/financasnew/src/components/ui/modal.tsx#L300-L312):
     * Substituir o layout empilhado vertical de 2 botões grandes (`flex-col-reverse [&_button]:w-full`) por layout horizontal equilibrado no mobile: `grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center sm:justify-end`.
     * Padronizar altura de botões em rodapés de diálogos para `size="default"` (`h-9 sm:h-9.5`), liberando ~60px de tela útil no mobile.
     * Nos casos de 3 botões (ex.: "Excluir" + "Cancelar" + "Salvar"), o botão destrutivo assume largura total ou ícone com confirmação, mantendo Cancelar e Confirmar emparelhados.
-- [ ] **Etapa 2.2: Otimização para Teclado Virtual & Safe-Area**
+- [x] **Etapa 2.2: Otimização para Teclado Virtual & Safe-Area**
   - No contêiner de rodapé fixo da prop `footer`:
     * Ajustar o padding inferior para usar padding dinâmico seguro `pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]`.
     * Garantir que o contêiner `DialogPrimitive.Content` use `max-h-[calc(100dvh-1.5rem)]` ou `h-auto max-h-[92dvh]` evitando saltos bruscos ao abrir teclados em navegadores modernos (`interactive-widget=resizes-content`).
-- [ ] **Etapa 2.3: Unificação de Contratos entre `footer` Prop e `<ModalFooter>` Inline**
+- [x] **Etapa 2.3: Unificação de Contratos entre `footer` Prop e `<ModalFooter>` Inline**
   - Estabelecer diretriz clara e canônica:
     * Modais de formulário simples com $\le 4$ campos e ações de confirmação: utilizar a prop `footer={...}` (rodapé fixo e compacto).
     * Modais longos com listas dinâmicas, tabelas e feeds de auditoria (ex.: `ManageSplitDialog`, extratos): o rodapé pode rolar no final do conteúdo para maximizar 100% da área útil durante a leitura.
@@ -192,47 +192,47 @@ Como todos os 85 modais do sistema herdam diretamente do primitivo [`Modal`](fil
 
 ### FASE 3: VALIDAÇÃO NOS 16 MÓDULOS E 85 MODAIS DO ECOSSISTEMA
 
-- [ ] **Etapa 3.1: Componentes Centrais (`src/components/modules/` e `layout/` — 18 modais)**
+- [x] **Etapa 3.1: Componentes Centrais (`src/components/modules/` e `layout/` — 18 modais)**
   - Validar [`manage-split-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/manage-split-dialog.tsx) (Racha de Despesa): conferir que os cards métricos ("Recebido dos Amigos", "Cota Líquida") sobem suavemente sem corte seco.
   - Validar [`split-expense-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/split-expense-dialog.tsx), [`cash-checkpoint-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/cash-checkpoint-dialog.tsx), [`attach-receipt-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/attach-receipt-dialog.tsx), [`more-menu-sheet.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/layout/more-menu-sheet.tsx), [`help-modal.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/help-modal.tsx) e [`upgrade-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/subscription/upgrade-dialog.tsx).
-- [ ] **Etapa 3.2: Investimentos (`src/features/investments/` — 21 modais)**
+- [x] **Etapa 3.2: Investimentos (`src/features/investments/` — 21 modais)**
   - Validar [`investment-wizard.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/investments/wizard/investment-wizard.tsx): garantir que os passos do assistente de ativos tenham área útil de rolagem.
   - Validar [`portfolio-snapshots-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/investments/components/portfolio-snapshots-dialog.tsx) e [`allocation-breakdown-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/investments/components/allocation-breakdown-dialog.tsx): assegurar visualização tabular fluida.
   - Validar [`asset-form-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/investments/components/asset-form-dialog.tsx), [`dividend-form-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/investments/components/dividend-form-dialog.tsx) e [`contribution-form-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/investments/components/contribution-form-dialog.tsx).
-- [ ] **Etapa 3.3: Transações (`src/features/transactions/` — 3 modais)**
+- [x] **Etapa 3.3: Transações (`src/features/transactions/` — 3 modais)**
   - Validar [`launch-wizard.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/transactions/wizard/launch-wizard.tsx): o assistente de lançamento rápido principal precisa respirar livremente mesmo quando o teclado numérico progressivo Nubank estiver ativo.
   - Validar [`expense-detail-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/transactions/components/expense-detail-dialog.tsx) e [`income-detail-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/transactions/components/income-detail-dialog.tsx).
-- [ ] **Etapa 3.4: Cartões de Crédito (`src/features/cards/` — 7 modais)**
+- [x] **Etapa 3.4: Cartões de Crédito (`src/features/cards/` — 7 modais)**
   - Validar [`card-form-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/cards/components/card-form-dialog.tsx): assegurar que o preview virtual 3D do cartão não esmague os inputs de limite e fechamento no mobile.
   - Validar [`payment-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/cards/components/payment-dialog.tsx), [`batch-invoice-payment-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/cards/components/batch-invoice-payment-dialog.tsx) e [`invoice-details-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/cards/components/invoice-details-dialog.tsx).
-- [ ] **Etapa 3.5: Dívidas, Família, Orçamentos e Metas (20 modais)**
+- [x] **Etapa 3.5: Dívidas, Família, Orçamentos e Metas (20 modais)**
   - Validar [`category-form-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/budgets/components/category-form-dialog.tsx) (grade de ícones com rolagem suave).
   - Validar [`debt-form-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/debts/components/debt-form-dialog.tsx), [`early-amortization-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/debts/components/early-amortization-dialog.tsx) e [`family-settlement-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/family/components/family-settlement-dialog.tsx).
   - Validar [`share-goal-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/goals/components/share-goal-dialog.tsx) e [`category-breakdown-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/overview/components/category-breakdown-dialog.tsx).
-- [ ] **Etapa 3.6: Relatórios Executivos & Dossiês A4 (`ReportDocumentLayout` — 6 modais)**
+- [x] **Etapa 3.6: Relatórios Executivos & Dossiês A4 (`ReportDocumentLayout` — 6 modais)**
   - Validar [`report-document-layout.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-document-layout.tsx), [`financial-close-report-modal.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/reports/components/financial-close-report-modal.tsx) e [`wealth-tear-sheet-modal.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/reports/components/wealth-tear-sheet-modal.tsx): assegurar que o botão de "Imprimir / Salvar PDF" e customActions permaneçam perfeitamente operacionais na barra de topo minimalista.
 
 ---
 
 ### FASE 4: GOVERNANÇA DE DOCUMENTAÇÃO & DESIGN SYSTEM
 
-- [ ] **Etapa 4.1: Atualização da Regra 18 do `AGENTS.md`**
+- [x] **Etapa 4.1: Atualização da Regra 18 do `AGENTS.md`**
   - Incorporar no item 18 do [`AGENTS.md`](file:///home/gabrielsales/meus_apps/financasnew/AGENTS.md) a regra canônica de cabeçalho fluido no mobile: proibição de cabeçalhos estáticos descritivos de grande porte no mobile e diretrizes de rodapé compacto.
-- [ ] **Etapa 4.2: Atualização do `DESIGN_SYSTEM.md`**
+- [x] **Etapa 4.2: Atualização do `DESIGN_SYSTEM.md`**
   - Atualizar a Seção 13.2 do [`docs/design/DESIGN_SYSTEM.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/design/DESIGN_SYSTEM.md) documentando a anatomia móvel de barra minimalista (`GrabberBar`) + cabeçalho integrado no scroll + micro-título reativo.
-- [ ] **Etapa 4.3: Atualização do `ARCHITECTURE.md`**
+- [x] **Etapa 4.3: Atualização do `ARCHITECTURE.md`**
   - Registrar as diretrizes de performance e prevenção de re-renders no ciclo de vida de modais no [`docs/architecture/ARCHITECTURE.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/architecture/ARCHITECTURE.md).
 
 ---
 
 ### FASE 5: QUALITY GATES, BATERIA DE TESTES & HOMOLOGAÇÃO
 
-- [ ] **Etapa 5.1: Testes Unitários dos Primitivos (`Vitest`)**
+- [x] **Etapa 5.1: Testes Unitários dos Primitivos (`Vitest`)**
   - Atualizar [`src/components/ui/modal.test.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/ui/modal.test.tsx) e [`src/components/ui/responsive-dialog.test.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/ui/responsive-dialog.test.tsx) para garantir que títulos, descrições e botões de fechar continuem acessíveis nas queries de teste do Testing Library.
   - Validar drag-to-close e ausência de vazamento de gestos.
-- [ ] **Etapa 5.2: Validação de Acessibilidade Radix (A11y AA)**
+- [x] **Etapa 5.2: Validação de Acessibilidade Radix (A11y AA)**
   - Garantir que `aria-labelledby` aponte corretamente para o `DialogTitle` montado, sem violações no console do navegador ou falhas no leitor de tela.
-- [ ] **Etapa 5.3: Validação Visual Multi-Viewport**
+- [x] **Etapa 5.3: Validação Visual Multi-Viewport**
   - Homologar nas resoluções:
     * Mobile pequeno: 360x640px (ex.: Galaxy A / iPhone SE);
     * Mobile padrão: 390x844px (ex.: iPhone 13/14/15);

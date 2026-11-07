@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { Bell, CheckCheck } from "lucide-react";
-import { Badge, Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
+import { AlertTriangle, ArrowDownLeft, Bell, CheckCheck, CreditCard, X } from "lucide-react";
+import { Badge, Button, EmptyState, ErrorState, MoneyText, Skeleton, Tabs } from "@/components/ui";
 import { HighlightRow, ReadOnlyBanner, ReminderItem } from "@/components/modules";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { addDaysISO, todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
+import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 import {
   useMarkAllRemindersAsRead,
@@ -15,14 +16,16 @@ import {
   useReminderStates,
   useSetReminderState,
 } from "@/state";
+import { useSmartAdvisorInsights } from "@/features/overview/hooks";
+import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
 
 type MainTab = "pending" | "read";
-type SubFilter = "all" | "overdue" | "bills" | "debts";
+type SubFilter = "all" | "overdue" | "bills" | "debts" | "advisor";
 
 /**
- * Central de lembretes (§3.10) — consolida faturas (saldo aberto por
- * competência) e dívidas pendentes; ações de lido/snooze/restaurar
- * persistidas em `reminder_states` e preferências em `user_preferences`.
+ * Central de Lembretes & Avisos (§3.10) — consolida faturas, dívidas pendentes
+ * e avisos inteligentes (Smart Advisor, ex.: renda habitual prevista).
+ * Preserva o histórico de lidos/quitados em `reminder_states`.
  */
 export function RemindersPage() {
   const navigate = useNavigate();
@@ -33,10 +36,14 @@ export function RemindersPage() {
   const [mainTabOverride, setMainTabOverride] = useState<MainTab | null>(null);
   const [subFilter, setSubFilter] = useState<SubFilter>("all");
 
-  const { allItems, totalCount, overdueCount, isLoading, error, preferences } = useReminders(today);
+  const { allItems, readHistoryItems, totalCount, overdueCount, isLoading, error, preferences } =
+    useReminders(today);
   const statesQuery = useReminderStates();
   const setState = useSetReminderState();
   const markAllMutation = useMarkAllRemindersAsRead();
+
+  const advisor = useSmartAdvisorInsights();
+  const advisorAlerts = advisor.insights.filter((i) => i.priority === 1 || i.priority === 2);
 
   const stateMap = useMemo(
     () => new Map((statesQuery.data ?? []).map((s) => [s.key, s.kind])),
@@ -45,11 +52,12 @@ export function RemindersPage() {
 
   const isTargetRead = useMemo(() => {
     if (!highlightId) return false;
-    const target = allItems.find(
+    const all = [...allItems, ...readHistoryItems];
+    const target = all.find(
       (it) => it.key === highlightId || it.link?.params?.q === highlightId || it.link?.params?.debt === highlightId,
     );
     return Boolean(target && stateMap.get(target.key) === "read");
-  }, [highlightId, allItems, stateMap]);
+  }, [highlightId, allItems, readHistoryItems, stateMap]);
 
   const mainTab: MainTab = mainTabOverride ?? (isTargetRead ? "read" : "pending");
 
@@ -72,6 +80,88 @@ export function RemindersPage() {
     navigate(`${item.link.path}?${params.toString()}`);
   };
 
+  const handleOpenAdvisorAlert = (item: SmartAdvisorInsight) => {
+    triggerSensory("action");
+
+    // 1. Aporte para rebalanceamento
+    if (item.primaryAction?.kind === "navigate_aporte" || item.themeKey.startsWith("aporte:")) {
+      const p = item.primaryAction?.payload as { valorCents?: number } | undefined;
+      const valor = p?.valorCents;
+      if (valor && valor > 0) {
+        navigate(`/investments?tab=aporte&valor=${valor}`);
+      } else {
+        navigate("/investments?tab=aporte");
+      }
+      return;
+    }
+
+    // 2. Revisão de recorrências / assinaturas / duplicidades
+    if (
+      item.category === "savings" ||
+      item.primaryAction?.kind === "cut_subscription" ||
+      item.id.startsWith("dup:")
+    ) {
+      const p = item.primaryAction?.payload as { key?: string } | undefined;
+      const itemKey = p?.key ?? item.themeKey.replace(/^(dup:|savings:|price_adj:)/, "");
+      navigate(`/insights?aba=recurrences&item=${encodeURIComponent(itemKey)}`);
+      return;
+    }
+
+    // 3. Entrada / Receita
+    if (
+      item.category === "income" ||
+      item.primaryAction?.kind === "open_income" ||
+      item.primaryAction?.kind === "confirm_income"
+    ) {
+      const p = item.primaryAction?.payload as
+        | { name?: string; categoryId?: string; date?: string; valueCents?: number }
+        | undefined;
+      const params = new URLSearchParams(window.location.search);
+      params.set("novo", "receita");
+      params.set("modo", "rapido");
+      if (p?.name) params.set("descricao", p.name);
+      if (p?.categoryId) params.set("categoria", p.categoryId);
+      if (p?.date) params.set("data", p.date);
+      if (p?.valueCents) params.set("valor", String(p.valueCents));
+      else if (item.metadata?.valueCents) params.set("valor", String(item.metadata.valueCents));
+
+      navigate(`?${params.toString()}`);
+      return;
+    }
+
+    // 4. Despesa crítica / conta a pagar pré-preenchida
+    const p = item.primaryAction?.payload as
+      | {
+          name?: string;
+          valueCents?: number;
+          categoryId?: string;
+          date?: string;
+          forma?: string;
+          cardId?: string;
+        }
+      | undefined;
+
+    const params = new URLSearchParams(window.location.search);
+    params.set("novo", "despesa");
+    params.set("modo", "rapido");
+    const name = p?.name ?? item.title;
+    const valueCents = p?.valueCents ?? item.metadata?.valueCents;
+    const categoryId = p?.categoryId ?? item.metadata?.categoryId;
+    const date = p?.date ?? item.metadata?.expectedDate;
+
+    if (name) params.set("descricao", name);
+    if (valueCents) params.set("valor", String(valueCents));
+    if (categoryId) params.set("categoria", categoryId);
+    if (date) params.set("data", date);
+    navigate(`?${params.toString()}`);
+  };
+
+  const handleDismissAdvisor = (e: React.MouseEvent, themeKey: string) => {
+    e.stopPropagation();
+    triggerSensory("action");
+    advisor.dismiss(themeKey, 30);
+  };
+
   const filteredItems = allItems
     .filter((item) => {
       const stateKind = stateMap.get(item.key) ?? null;
@@ -80,6 +170,7 @@ export function RemindersPage() {
         if (subFilter === "overdue") return item.status === "overdue";
         if (subFilter === "bills") return item.kind === "bill";
         if (subFilter === "debts") return item.kind === "debt";
+        if (subFilter === "advisor") return false;
         return true;
       }
       return stateKind === "read";
@@ -109,13 +200,97 @@ export function RemindersPage() {
 
   const billsCount = allItems.filter((i) => i.kind === "bill" && stateMap.get(i.key) !== "read").length;
   const debtsCount = allItems.filter((i) => i.kind === "debt" && stateMap.get(i.key) !== "read").length;
+  const advisorCount = advisorAlerts.length;
+  const totalPendingEffective = totalCount + advisorCount;
+  const hasUrgentPending = overdueCount > 0 || advisorAlerts.some((i) => i.priority === 1);
 
   const getEmptyDescription = () => {
-    if (mainTab === "read") return "Nenhum lembrete no histórico de lidos.";
     if (subFilter === "overdue") return "Nenhuma fatura ou dívida atrasada.";
     if (subFilter === "bills") return "Nenhuma fatura pendente no momento.";
     if (subFilter === "debts") return "Nenhuma dívida pendente no momento.";
-    return "Nenhuma pendência no momento. Todas as faturas e dívidas estão em dia.";
+    if (subFilter === "advisor") return "Nenhum aviso inteligente no momento.";
+    return "Nenhuma pendência no momento. Todas as faturas, dívidas e avisos estão em dia.";
+  };
+
+  const renderAdvisorAlert = (advisorItem: SmartAdvisorInsight) => {
+    const isCritical = advisorItem.priority === 1;
+    const isIncome = advisorItem.category === "income";
+    const badgeVariant = isCritical ? "critical" : isIncome ? "positive" : "warning";
+    const badgeLabel = isCritical ? "Crítico" : isIncome ? "Entrada" : "Vence hoje";
+    const cardName = advisorItem.cardContext?.cardName ?? advisorItem.metadata?.cardName;
+
+    return (
+      <article
+        key={advisorItem.id}
+        className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4 min-w-0 overflow-hidden"
+      >
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          <span
+            className={cn(
+              "flex size-9 shrink-0 items-center justify-center rounded-xl border",
+              isCritical
+                ? "bg-critical/10 border-critical/20 text-critical-strong"
+                : isIncome
+                  ? "bg-positive/10 border-positive/20 text-positive-strong"
+                  : "bg-warning/15 border-warning/20 text-warning-strong",
+            )}
+          >
+            {isCritical ? (
+              <AlertTriangle className="size-4.5" aria-hidden="true" />
+            ) : isIncome ? (
+              <ArrowDownLeft className="size-4.5" aria-hidden="true" />
+            ) : (
+              <CreditCard className="size-4.5" aria-hidden="true" />
+            )}
+          </span>
+          <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
+              <h3 className="text-sm font-semibold text-foreground truncate min-w-0">
+                {advisorItem.title}
+              </h3>
+              <Badge variant={badgeVariant} size="xs" className="shrink-0">
+                {badgeLabel}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground line-clamp-2">
+              {advisorItem.description}
+            </p>
+            <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
+              {advisorItem.metadata?.valueCents !== undefined && (
+                <MoneyText
+                  cents={advisorItem.metadata.valueCents}
+                  className="font-semibold text-foreground text-xs"
+                />
+              )}
+              {cardName && <span>• {cardName}</span>}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2 self-end sm:self-center">
+          <Button
+            type="button"
+            size="sm"
+            variant={isIncome ? "default" : "outline"}
+            onClick={() => handleOpenAdvisorAlert(advisorItem)}
+            className="h-8 text-xs font-medium"
+          >
+            {advisorItem.primaryAction?.label ?? (isIncome ? "Informar valor" : "Ver detalhe")}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0 text-muted-foreground hover:text-foreground hover:bg-surface-active"
+            onClick={(e) => handleDismissAdvisor(e, advisorItem.themeKey)}
+            title="Dispensar aviso por 30 dias"
+            aria-label={`Dispensar ${advisorItem.title}`}
+          >
+            <X className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
+      </article>
+    );
   };
 
   const renderPendingContent = () => {
@@ -138,10 +313,16 @@ export function RemindersPage() {
       );
     }
 
+    const showAdvisor = subFilter === "all" || subFilter === "advisor";
+    const showReminders = subFilter !== "advisor";
+    const visibleAdvisorAlerts = showAdvisor ? advisorAlerts : [];
+    const visibleReminders = showReminders ? filteredItems : [];
+    const hasAnyVisibleItem = visibleAdvisorAlerts.length > 0 || visibleReminders.length > 0;
+
     return (
       <div className="flex flex-col gap-4">
-        {/* Sub-filtros secundários compactos quando em Pendentes e há itens */}
-        {totalCount > 0 && (
+        {/* Sub-filtros secundários quando há pendências de qualquer tipo */}
+        {totalPendingEffective > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
             <Button
               type="button"
@@ -152,7 +333,7 @@ export function RemindersPage() {
               }}
               className="text-xs h-7 px-2.5"
             >
-              Todas ({totalCount})
+              Todas ({totalPendingEffective})
             </Button>
             {overdueCount > 0 && (
               <Button
@@ -196,10 +377,23 @@ export function RemindersPage() {
                 Dívidas ({debtsCount})
               </Button>
             )}
+            {advisorCount > 0 && (
+              <Button
+                type="button"
+                variant={subFilter === "advisor" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setSubFilter("advisor");
+                }}
+                className="text-xs h-7 px-2.5"
+              >
+                Avisos & Renda ({advisorCount})
+              </Button>
+            )}
           </div>
         )}
 
-        {filteredItems.length === 0 ? (
+        {!hasAnyVisibleItem ? (
           <EmptyState
             icon={<Bell className="size-6" aria-hidden="true" />}
             title="Tudo em dia"
@@ -208,7 +402,11 @@ export function RemindersPage() {
           />
         ) : (
           <div className="flex flex-col gap-2.5">
-            {filteredItems.map((item) => {
+            {/* Alertas do Smart Advisor (ex.: Renda habitual prevista) */}
+            {visibleAdvisorAlerts.map(renderAdvisorAlert)}
+
+            {/* Lembretes de Faturas e Dívidas */}
+            {visibleReminders.map((item) => {
               const isMatch =
                 highlightId &&
                 (highlightId === item.key ||
@@ -234,6 +432,23 @@ export function RemindersPage() {
             })}
           </div>
         )}
+
+        {/* Nota informativa transparente sobre a janela de monitoramento */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-border/80 bg-surface/50 px-3.5 py-2.5 text-xs text-muted-foreground mt-2">
+          <span>
+            Monitorando faturas e dívidas com vencimento nos próximos{" "}
+            <strong className="text-foreground font-semibold">{preferences.billDaysBefore} dias</strong>.
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-auto p-0 text-xs text-primary self-start sm:self-auto cursor-pointer"
+            onClick={() => navigate("/configuracoes?tab=notifications")}
+          >
+            Ajustar antecedência
+          </Button>
+        </div>
       </div>
     );
   };
@@ -247,20 +462,19 @@ export function RemindersPage() {
         </div>
       );
     }
-    const readItems = allItems.filter((it) => stateMap.get(it.key) === "read");
-    if (readItems.length === 0) {
+    if (readHistoryItems.length === 0) {
       return (
         <EmptyState
-          icon={<Bell className="size-6" aria-hidden="true" />}
-          title="Tudo em dia"
-          description="Nenhum lembrete no histórico de lidos."
-          tone="positive"
+          icon={<CheckCheck className="size-6" aria-hidden="true" />}
+          title="Histórico vazio"
+          description="Nenhuma fatura ou dívida arquivada no histórico de lidos."
+          tone="default"
         />
       );
     }
     return (
       <div className="flex flex-col gap-2.5">
-        {readItems.map((item) => {
+        {readHistoryItems.map((item) => {
           const isMatch =
             highlightId &&
             (highlightId === item.key ||
@@ -294,25 +508,25 @@ export function RemindersPage() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-              Lembretes
+              Lembretes e Avisos
             </h1>
-            {totalCount > 0 && (
-              <Badge variant={overdueCount > 0 ? "critical" : "default"} size="sm">
-                {totalCount} {totalCount === 1 ? "pendência" : "pendências"}
+            {totalPendingEffective > 0 && (
+              <Badge variant={hasUrgentPending ? "critical" : "default"} size="sm">
+                {totalPendingEffective} {totalPendingEffective === 1 ? "pendência" : "pendências"}
               </Badge>
             )}
           </div>
           <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
-            Faturas e compromissos que precisam da sua atenção
+            Faturas, compromissos e avisos inteligentes que precisam da sua atenção
           </p>
         </div>
 
-        {allItems.length > 0 && (
+        {unreadFilteredItems.length > 0 && (
           <Button
             variant="outline"
             size="sm"
             onClick={handleMarkAllRead}
-            disabled={markAllMutation.isPending || unreadFilteredItems.length === 0}
+            disabled={markAllMutation.isPending}
             className="self-start sm:self-auto shrink-0"
           >
             <CheckCheck className="size-4 mr-1.5 text-muted-foreground" aria-hidden="true" />
@@ -325,31 +539,7 @@ export function RemindersPage() {
 
       {error ? <ErrorState message={getErrorMessage(error)} /> : null}
 
-      {allItems.length > 0 ? (
-        <Tabs
-          value={mainTab}
-          onValueChange={(val) => {
-            setMainTabOverride(val as MainTab);
-            setSubFilter("all");
-          }}
-          variant="underline"
-          swipeable
-          items={[
-            {
-              value: "pending",
-              label: "Pendentes",
-              icon: <Bell className="size-4" aria-hidden="true" />,
-              content: renderPendingContent(),
-            },
-            {
-              value: "read",
-              label: "Lidas",
-              icon: <CheckCheck className="size-4" aria-hidden="true" />,
-              content: renderReadContent(),
-            },
-          ]}
-        />
-      ) : isLoading ? (
+      {isLoading ? (
         <div className="flex flex-col gap-2">
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
@@ -362,11 +552,28 @@ export function RemindersPage() {
           tone="default"
         />
       ) : (
-        <EmptyState
-          icon={<Bell className="size-6" aria-hidden="true" />}
-          title="Tudo em dia"
-          description="Nenhuma pendência no momento. Todas as faturas e dívidas estão em dia."
-          tone="positive"
+        <Tabs
+          value={mainTab}
+          onValueChange={(val) => {
+            setMainTabOverride(val as MainTab);
+            setSubFilter("all");
+          }}
+          variant="underline"
+          swipeable
+          items={[
+            {
+              value: "pending",
+              label: totalPendingEffective > 0 ? `Pendentes (${totalPendingEffective})` : "Pendentes",
+              icon: <Bell className="size-4" aria-hidden="true" />,
+              content: renderPendingContent(),
+            },
+            {
+              value: "read",
+              label: readHistoryItems.length > 0 ? `Lidas (${readHistoryItems.length})` : "Lidas",
+              icon: <CheckCheck className="size-4" aria-hidden="true" />,
+              content: renderReadContent(),
+            },
+          ]}
         />
       )}
 

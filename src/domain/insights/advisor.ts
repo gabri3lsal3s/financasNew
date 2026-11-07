@@ -123,6 +123,10 @@ export interface GenerateSmartAdvisorInsightsInput {
   realizedIncomeByCategory?: ReadonlyMap<string, number>;
   /** ID do usuário autenticado para personalizar mensagens familiares (ex: pagar vs receber). */
   currentUserId?: string;
+  /** Saldo Livre Real da conta corrente hoje (Safe-to-Spend em centavos). */
+  safeToSpendCents?: number;
+  /** Total de compromissos pendentes no ciclo (faturas abertas + dívidas a pagar em centavos). */
+  committedObligationsCents?: number;
 }
 
 /**
@@ -227,6 +231,8 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
     incomeGoals = [],
     realizedIncomeByCategory,
     currentUserId,
+    safeToSpendCents,
+    committedObligationsCents,
   } = input;
   const candidates: SmartAdvisorInsight[] = [];
 
@@ -554,7 +560,23 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
 
   // 3. PRIORIDADE 3: ECONOMIA & APORTES (Reajustes de preço, corte de gastos e rebalanceamento de aportes)
   // 3.1 Oportunidade de aporte e rebalanceamento de carteira (§Eixo 3)
-  if (savingsSurplusCents !== undefined && savingsSurplusCents > 0) {
+  let effectiveSavingsSurplusCents = savingsSurplusCents ?? 0;
+
+  // Se foram informadas obrigações pendentes contratadas, a sobra de caixa disponível deve deduzi-las
+  if (committedObligationsCents !== undefined && committedObligationsCents > 0) {
+    effectiveSavingsSurplusCents = Math.max(0, effectiveSavingsSurplusCents - committedObligationsCents);
+  }
+
+  // Teto inegociável de liquidez: não sugere aporte maior que o Saldo Livre Real em conta bancária
+  if (safeToSpendCents !== undefined) {
+    if (safeToSpendCents <= 0) {
+      effectiveSavingsSurplusCents = 0;
+    } else {
+      effectiveSavingsSurplusCents = Math.min(effectiveSavingsSurplusCents, safeToSpendCents);
+    }
+  }
+
+  if (effectiveSavingsSurplusCents > 0) {
     const brokerPattern = allExpenses.length > 0
       ? learnBrokerAportePattern({ expenses: allExpenses, incomes, todayISO })
       : undefined;
@@ -569,8 +591,15 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
       (currentMonthAportesCents ?? 0) < plannedAporteCents;
 
     if ((!alreadyAported || aporteUnderTarget) && !isOccurrenceIgnored(feedbackMap["aporte:rebalance"])) {
-      const suggestedValueCents =
-        plannedAporteCents || brokerPattern?.averageAporteCents || savingsSurplusCents;
+      const rawSuggested = plannedAporteCents || brokerPattern?.averageAporteCents || effectiveSavingsSurplusCents;
+      const suggestedValueCents = Math.min(rawSuggested, effectiveSavingsSurplusCents);
+
+      const day = Number(todayISO.slice(8, 10));
+      const hasPendingObligations = (committedObligationsCents ?? 0) > 0;
+      const description =
+        day < 25 && hasPendingObligations
+          ? `Você possui ${formatBRL(effectiveSavingsSurplusCents)} de saldo livre real após cobrir as obrigações do ciclo. Deseja realizar o aporte planejado para rebalancear sua carteira?`
+          : `Você poupou ${formatBRL(effectiveSavingsSurplusCents)} neste mês. Deseja realizar o aporte planejado para rebalancear sua carteira?`;
 
       candidates.push({
         id: "aporte:rebalance",
@@ -578,7 +607,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
         priority: 3,
         category: "savings",
         title: "Aporte para rebalanceamento",
-        description: `Você poupou ${formatBRL(savingsSurplusCents)} neste mês. Deseja realizar o aporte planejado para rebalancear sua carteira?`,
+        description,
         iconName: "trending-down",
         primaryAction: {
           label: "Realizar aporte",
@@ -593,7 +622,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
         },
         metadata: {
           valueCents: suggestedValueCents,
-          annualSavingsCents: savingsSurplusCents,
+          annualSavingsCents: effectiveSavingsSurplusCents,
         },
       });
     }

@@ -28,7 +28,7 @@ public class BankNotificationListenerService extends NotificationListenerService
     private static final int MAX_BUFFER_SIZE = 30;
 
     private static final Pattern AMOUNT_PATTERN = Pattern.compile(
-        "(?i)(?:(?:R\\$|US\\$|USD|BRL|\\$|EUR|€)\\s*(\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2}|\\d+(?:[.,]\\d{2})?)|(\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2}|\\d+(?:[.,]\\d{2})?)\\s*(?:US\\$|USD|BRL|EUR|€|R\\$|\\$))"
+        "(?i)(?:(?:R\\$|US\\$|USD|BRL|\\$|EUR|€)\\s*(\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2}|\\d+(?:[.,]\\d{2})?)|(\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2}|\\d+[.,]\\d{2})\\s*(?:US\\$|USD|BRL|EUR|€|R\\$|\\$))"
     );
 
     private static final Pattern BLACKLIST_MARKETING_PATTERN = Pattern.compile(
@@ -250,6 +250,18 @@ public class BankNotificationListenerService extends NotificationListenerService
      * Extrai valor monetário presente no título ou texto da notificação (ex: "R$ 10,00").
      */
     static String extractAmountText(String title, String text) {
+        if (text != null && !text.trim().isEmpty()) {
+            Matcher m = AMOUNT_PATTERN.matcher(text);
+            if (m.find()) {
+                return m.group(0).trim();
+            }
+        }
+        if (title != null && !title.trim().isEmpty()) {
+            Matcher m = AMOUNT_PATTERN.matcher(title);
+            if (m.find()) {
+                return m.group(0).trim();
+            }
+        }
         String combined = (title != null ? title : "") + " " + (text != null ? text : "");
         Matcher m = AMOUNT_PATTERN.matcher(combined);
         if (m.find()) {

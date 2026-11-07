@@ -105,6 +105,24 @@ describe("useReminders", () => {
     expect(result.current.items).toHaveLength(0);
     expect(result.current.allItems).toHaveLength(0);
     expect(result.current.totalCount).toBe(0);
+    expect(result.current.readHistoryItems).toHaveLength(0);
     mockCardPayments.isLoading = false;
+  });
+
+  it("reconstitui histórico de itens lidos mesmo quando faturas foram quitadas ou passaram da janela", () => {
+    // Simula fatura quitada de mês anterior marcada como lida
+    mockStates.data = [
+      { key: "bill:c1:2026-07", kind: "read" },
+      { key: "debt:d1", kind: "read" },
+    ] as never;
+
+    const { result } = renderHook(() => useReminders("2026-08-08"));
+
+    expect(result.current.readHistoryItems).toHaveLength(2);
+    expect(result.current.readCount).toBe(2);
+    expect(result.current.readHistoryItems.some((i) => i.key === "bill:c1:2026-07")).toBe(true);
+    expect(result.current.readHistoryItems.some((i) => i.key === "debt:d1")).toBe(true);
+
+    mockStates.data = [];
   });
 });

@@ -15,6 +15,7 @@ vi.mock("@/data/repositories/user-preferences", () => ({
 const mockPreferences: UserPreferences = {
   user_id: "user-1",
   theme: "dark",
+  app_mode: "investor",
   reminders_enabled: true,
   reminder_days_before_bill: 3,
   reminder_days_before_debt: 2,

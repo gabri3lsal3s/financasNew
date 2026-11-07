@@ -19,6 +19,7 @@ import {
   type CardForAdvisorContext,
   type SmartAdvisorInsight,
 } from "@/domain/insights/advisor";
+import { calculateSurplusCapacity } from "@/domain/overview";
 import {
   useBudgets,
   useCategories,
@@ -34,6 +35,7 @@ import {
   useIncomeGoals,
   useIncomes,
   useMyFamily,
+  useRealCashBalance,
   useSetFeedback,
   useUpdateCustomSettings,
   useUserPreferences,
@@ -186,6 +188,10 @@ export interface UseSmartAdvisorInsightsOptions {
   currentMonthAportesCents?: number;
   /** Cartões pré-carregados ou mockados com contexto de fatura/limite (F28 / Tarefa 8.4). */
   cards?: readonly CardForAdvisorContext[];
+  /** Saldo Livre Real da conta corrente hoje (Safe-to-Spend em centavos). */
+  safeToSpendCents?: number;
+  /** Total de compromissos pendentes no ciclo (faturas abertas + dívidas a pagar em centavos). */
+  committedObligationsCents?: number;
 }
 
 export interface UseSmartAdvisorInsightsResult {
@@ -273,6 +279,22 @@ export function useSmartAdvisorInsights(
   const categoriesQuery = useCategories();
   const feedbackQuery = useFeedback();
   const creditCardsQuery = useCreditCards({ enabled: queryEnabled });
+  const isCurrentMonth = refMonth === currentMonth();
+  const realCashData = useRealCashBalance(isCurrentMonth ? todayISOStr : `${refMonth}-01`);
+
+  const effectiveSafeToSpendCents =
+    options.safeToSpendCents !== undefined
+      ? options.safeToSpendCents
+      : queryEnabled
+        ? realCashData.safeToSpend.safeToSpendCents
+        : undefined;
+
+  const effectiveCommittedObligationsCents =
+    options.committedObligationsCents !== undefined
+      ? options.committedObligationsCents
+      : queryEnabled
+        ? realCashData.safeToSpend.committedObligationsCents
+        : undefined;
 
   const { isFamilyModeEnabled } = useFamilyMode();
   const myFamilyQuery = useMyFamily();
@@ -449,9 +471,22 @@ export function useSmartAdvisorInsights(
     if (options.savingsSurplusCents !== undefined) {
       return options.savingsSurplusCents;
     }
-    const diff = monthlyIncomeCents - monthlyExpensesCents;
-    return diff > 0 ? diff : 0;
-  }, [options.savingsSurplusCents, monthlyIncomeCents, monthlyExpensesCents]);
+    const surplusCap = calculateSurplusCapacity({
+      incomeCents: monthlyIncomeCents,
+      expenseCents: monthlyExpensesCents,
+      openInvoicesCents: effectiveCommittedObligationsCents,
+      safeToSpendCents: effectiveSafeToSpendCents,
+      contributionsAlreadyMadeCents: options.currentMonthAportesCents,
+    });
+    return surplusCap.suggestedAporteCents;
+  }, [
+    options.savingsSurplusCents,
+    monthlyIncomeCents,
+    monthlyExpensesCents,
+    effectiveCommittedObligationsCents,
+    effectiveSafeToSpendCents,
+    options.currentMonthAportesCents,
+  ]);
 
   // Feedback do usuário
   const feedbackMap: FeedbackMap = useMemo(() => {
@@ -466,7 +501,7 @@ export function useSmartAdvisorInsights(
     // Prevenção de condição de corrida e flashes efêmeros (ghost insights):
     // Não avalia nem emite candidatos com dados parciais enquanto consultas cadastrais,
     // de feedback ou despesas recentes ainda estão em carregamento inicial.
-    if (queryEnabled && (feedbackQuery.isLoading || categoriesQuery.isLoading || month0Expenses.isLoading)) {
+    if (queryEnabled && (feedbackQuery.isLoading || categoriesQuery.isLoading || month0Expenses.isLoading || (isCurrentMonth && realCashData.isLoading))) {
       return { allCandidates: [], eligibleInsights: [] };
     }
 
@@ -502,6 +537,8 @@ export function useSmartAdvisorInsights(
       incomeGoals: incomeGoalsQuery.data ?? [],
       realizedIncomeByCategory,
       currentUserId: myFamilyQuery.data?.currentMember?.user_id,
+      safeToSpendCents: effectiveSafeToSpendCents,
+      committedObligationsCents: effectiveCommittedObligationsCents,
     });
 
     const eligible = filterAndRankAllAdvisorInsights(candidates, {
@@ -517,25 +554,29 @@ export function useSmartAdvisorInsights(
     feedbackQuery.isLoading,
     categoriesQuery.isLoading,
     month0Expenses.isLoading,
+    isCurrentMonth,
+    realCashData.isLoading,
     allExpenses,
-    allIncomes,
     refMonth,
     todayISOStr,
     monthlyIncomeCents,
+    categoryBudgetsMap,
+    feedbackMap,
+    allIncomes,
+    month0Incomes.data,
     effectiveSurplusCents,
     options.plannedAporteCents,
     options.currentMonthAportesCents,
-    categoryBudgetsMap,
-    feedbackMap,
-    effectiveDismissals,
-    effectiveLastDismissedDay,
-    nowMs,
     cards,
     hasFamily,
     familyConsolidationQuery.data,
     incomeGoalsQuery.data,
-    month0Incomes.data,
     myFamilyQuery.data?.currentMember?.user_id,
+    effectiveSafeToSpendCents,
+    effectiveCommittedObligationsCents,
+    effectiveDismissals,
+    effectiveLastDismissedDay,
+    nowMs,
   ]);
 
   const totalCount = eligibleInsights.length;

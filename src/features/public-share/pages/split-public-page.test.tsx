@@ -199,7 +199,8 @@ describe("SplitPublicPage (/r/:token)", () => {
 
     renderPage();
 
-    expect(screen.getByText("Controle financeiro pessoal inteligente")).toBeInTheDocument();
-    expect(screen.getByText("Salvar esta despesa no meu controle financeiro")).toBeInTheDocument();
+    expect(screen.getByText("Divida despesas com elegância")).toBeInTheDocument();
+    expect(screen.getByText("Salvar esta despesa")).toBeInTheDocument();
+    expect(screen.getByText("Testar 30 dias grátis")).toBeInTheDocument();
   });
 });

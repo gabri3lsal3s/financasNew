@@ -78,18 +78,23 @@ export const navGroups: NavGroup[] = [
 ];
 
 /**
- * Filtra itens de navegação baseado no status administrativo, presença de família ativa e nas Feature Flags ativas.
+ * Filtra itens de navegação baseado no status administrativo, presença de família ativa,
+ * modo da aplicação (investidor vs essencial) e nas Feature Flags ativas (§Plano 07).
  */
 export function filterNavItems(
   items: readonly NavItem[],
   isAdmin: boolean,
   hasFeature: (key: string) => boolean,
   isFamilyActive = false,
+  isInvestorMode = true,
 ): NavItem[] {
   return items.filter((item) => {
     if (item.adminOnly && !isAdmin) return false;
     if (item.familyOnly && !isFamilyActive) return false;
     if (item.featureKey && !hasFeature(item.featureKey)) return false;
+    if (!isInvestorMode && (item.path === "/investments" || item.featureKey === "investments")) {
+      return false;
+    }
     return true;
   });
 }

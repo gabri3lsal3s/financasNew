@@ -16,6 +16,8 @@ import {
   Share,
   Download,
   ExternalLink,
+  ArrowRight,
+  Sparkles,
 } from "lucide-react";
 import { BrandLogo } from "@/components/layout";
 import {
@@ -600,6 +602,40 @@ export function GoalTrackerPublicPage() {
             </div>
           </section>
         )}
+
+        {/* Banner de Conversão Viral (Plano 06) */}
+        <section aria-label="Experimentar Áxis Finance">
+          <div className="rounded-2xl border border-border/80 bg-gradient-to-r from-primary/10 via-surface to-surface shadow-xs p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary-strong">
+                <Sparkles className="size-5" aria-hidden="true" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground">
+                    Crie Vaquinhas & Metas Financeiras Coletivas
+                  </span>
+                  <Badge variant="muted" size="xs">
+                    30 Dias Grátis
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Organize arrecadações com amigos, casamento, viagens ou projetos pessoais com link público e Pix integrado.
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/cadastrar?ref=meta"
+              className={cn(
+                buttonVariants({ size: "sm" }),
+                "gap-1.5 shrink-0 font-semibold text-xs cursor-pointer rounded-xl",
+              )}
+            >
+              <span>Criar Minha Meta Grátis</span>
+              <ArrowRight className="size-3.5" aria-hidden="true" />
+            </Link>
+          </div>
+        </section>
 
         {/* Modal de Instruções iOS Safari */}
         <IosPwaInstallDialog open={showIosGuide} onOpenChange={setShowIosGuide} />

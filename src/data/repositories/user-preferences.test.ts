@@ -3,6 +3,7 @@ import {
   getUserPreferences,
   updateReminderPreferences,
   updateCustomSettings,
+  updateAppMode,
 } from "./user-preferences";
 
 interface Builder {
@@ -72,6 +73,32 @@ describe("user-preferences repository", () => {
     expect(prefs).not.toBeNull();
     expect(prefs?.reminders_enabled).toBe(true);
     expect(prefs?.reminder_days_before_bill).toBe(5);
+    expect(prefs?.app_mode).toBe("investor");
+  });
+
+  it("getUserPreferences preserva app_mode quando fornecido como essential", async () => {
+    builder = makeBuilder({
+      data: {
+        user_id: "u1",
+        theme: "system",
+        reminders_enabled: true,
+        reminder_days_before_debt: 3,
+        reminder_days_before_bill: 5,
+        report_weights_enabled: false,
+        app_mode: "essential",
+      },
+    });
+
+    const prefs = await getUserPreferences();
+    expect(prefs?.app_mode).toBe("essential");
+  });
+
+  it("updateAppMode atualiza o modo da aplicação", async () => {
+    builder = makeBuilder({ error: null });
+    await updateAppMode("essential");
+    expect(lastUpdateInput).toEqual({
+      app_mode: "essential",
+    });
   });
 
   it("updateReminderPreferences atualiza preferências de lembretes", async () => {

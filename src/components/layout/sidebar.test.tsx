@@ -6,6 +6,12 @@ import { axe } from "vitest-axe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./sidebar";
 
+const { mockState } = vi.hoisted(() => ({
+  mockState: {
+    appMode: "investor" as "essential" | "investor",
+  },
+}));
+
 let mockFamilyData: { family?: { id: string; name: string } } | null = null;
 let mockIsFamilyModeEnabled = false;
 
@@ -46,6 +52,14 @@ vi.mock("@/state", () => ({
     cancelAtPeriodEnd: false,
     isFullAccess: true,
   }),
+  useAppMode: () => ({
+    appMode: mockState.appMode,
+    isInvestorMode: mockState.appMode === "investor",
+    isEssentialMode: mockState.appMode === "essential",
+    setAppMode: vi.fn(),
+    isUpdating: false,
+    isLoading: false,
+  }),
 }));
 
 
@@ -64,6 +78,7 @@ beforeEach(() => {
   window.localStorage.clear();
   mockFamilyData = null;
   mockIsFamilyModeEnabled = false;
+  mockState.appMode = "investor";
 });
 
 describe("Sidebar colapsável (F7.2)", () => {
@@ -170,6 +185,12 @@ describe("Sidebar colapsável (F7.2)", () => {
     mockIsFamilyModeEnabled = true;
     renderSidebar();
     expect(screen.getByRole("link", { name: "Orçamento Familiar" })).toBeInTheDocument();
+  });
+
+  it("oculta o item Investimentos da sidebar quando em modo essencial (§Plano 07)", () => {
+    mockState.appMode = "essential";
+    renderSidebar();
+    expect(screen.queryByRole("link", { name: "Investimentos" })).not.toBeInTheDocument();
   });
 });
 

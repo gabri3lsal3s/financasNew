@@ -45,6 +45,13 @@ vi.mock("@/state", () => ({
   useMyFamily: () => ({ data: null, isLoading: false, isError: false }),
   useFamilyConsolidation: () => ({ data: null, isLoading: false, isError: false }),
   useIncomeGoals: () => ({ data: [], isLoading: false, isError: false, error: null }),
+  useRealCashBalance: () => ({
+    cashBalance: { currentBalanceCents: 500000 },
+    safeToSpend: { safeToSpendCents: 300000, committedObligationsCents: 100000 },
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
 }));
 
 describe("useSmartAdvisorInsights", () => {
@@ -921,6 +928,53 @@ describe("useSmartAdvisorInsights", () => {
       expect(result.current.totalCount).toBe(initialCount - 1);
       // Não marca o dia como silenciado pois ainda há itens na fila
       expect(localStorage.getItem(SMART_ADVISOR_LAST_DISMISSED_DAY_KEY)).toBeNull();
+    });
+  });
+
+  describe("Sincronia Holística com Safe-to-Spend & Obrigações do Ciclo", () => {
+    it("não sugere aporte no dia 7 quando as faturas/obrigações superam o saldo bruto", () => {
+      // Receitas R$ 3.244,24 vs Despesas pagas R$ 469,69 (diferença aparente R$ 2.774,55)
+      // Mas faturas pendentes do ciclo: R$ 2.959,81
+      const incomeSample: IncomeLike = {
+        id: "inc-1",
+        description: "Salário",
+        date: "2026-11-05",
+        month: "2026-11",
+        valueCents: 324424,
+        categoryId: "cat-salario",
+        categoryName: "Salário",
+        categoryIcon: "salary",
+        installmentGroupId: null,
+        recurrenceId: null,
+      };
+
+      const expenseSample: ExpenseLike = {
+        id: "exp-1",
+        description: "Padaria",
+        date: "2026-11-02",
+        month: "2026-11",
+        valueCents: 46969,
+        categoryId: "cat-alim",
+        categoryName: "Alimentação",
+        categoryIcon: "food",
+        installmentGroupId: null,
+        recurrenceId: null,
+      };
+
+      const { result } = renderHook(() =>
+        useSmartAdvisorInsights({
+          month: "2026-11",
+          expenses: [expenseSample] as unknown as import("@/domain/insights/recurrences").ExpenseLike[],
+          incomes: [incomeSample] as unknown as import("@/domain/insights/recurrences").IncomeLike[],
+          todayISO: "2026-11-07",
+          committedObligationsCents: 295981,
+          safeToSpendCents: 71534,
+        }),
+      );
+
+      // Não deve sugerir aporte de R$ 2.774,55 pois as obrigações engolem a sobra
+      expect(result.current.allCandidates.some((c) => c.id === "aporte:rebalance")).toBe(false);
+      expect(result.current.insight?.id).not.toBe("aporte:rebalance");
     });
   });
 });

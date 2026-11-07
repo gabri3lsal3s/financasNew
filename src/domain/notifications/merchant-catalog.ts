@@ -137,7 +137,36 @@ export function cleanAcquirerPrefixes(text: string): string {
   );
   cleaned = cleaned.replace(/[,.-]?\s*(?:cart[aã]o\s*)?final\s*[:.-]?\s*\d{4}\b.*$/i, "");
 
-  // 11. Remoção de pontuações soltas nas bordas e espaços múltiplos
+  // 11. Limpeza de filiais, matrizes e números de loja comercial (§Plano 09 — Tarefa 4.3)
+  cleaned = cleanBranchAndStoreSuffixes(cleaned);
+
+  // 12. Remoção de pontuações soltas nas bordas e espaços múltiplos
+  cleaned = cleaned.replace(/^[\s,.:;/*_-]+|[\s,.:;/*_-]+$/g, "").replace(/\s{2,}/g, " ").trim();
+
+  return cleaned;
+}
+
+/**
+ * Higieniza sufixos de filiais, lojas, matrizes e números de estabelecimento comercial (§Plano 09 — Tarefa 4.3).
+ * Ex: "PAGUE MENOS 1094" -> "PAGUE MENOS"
+ *     "Pague menos 1094 mtz" -> "Pague menos"
+ *     "POSTO IPIRANGA 05" -> "POSTO IPIRANGA"
+ *     "Starbucks Store 4432" -> "Starbucks"
+ */
+export function cleanBranchAndStoreSuffixes(text: string): string {
+  if (!text) return "";
+  let cleaned = text.trim();
+
+  // 1. Remove menções como "Store 4432", "Loja 12", "Lj 01", "Filial 02"
+  cleaned = cleaned.replace(/\b(?:store|loja|lj|filial)\s*\d+\b/gi, "").trim();
+
+  // 2. Remove siglas de matriz e filial isoladas
+  cleaned = cleaned.replace(/\b(?:mtz|matriz|filial|shopping)\b/gi, "").trim();
+
+  // 3. Remove número de loja/filial no final (ex: "PAGUE MENOS 1094" -> "PAGUE MENOS", "POSTO IPIRANGA 05" -> "POSTO IPIRANGA")
+  cleaned = cleaned.replace(/(?<=\D)\s+\d{2,6}$/g, "").trim();
+
+  // 4. Limpeza de pontuação residual e espaços
   cleaned = cleaned.replace(/^[\s,.:;/*_-]+|[\s,.:;/*_-]+$/g, "").replace(/\s{2,}/g, " ").trim();
 
   return cleaned;

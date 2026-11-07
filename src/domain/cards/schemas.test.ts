@@ -62,6 +62,41 @@ describe("schemas — Módulo de Cartões", () => {
 
       expect(parsed.name).toBe("alert(1)Cartão XP");
     });
+
+    it("sanitiza e valida os últimos 4 dígitos do cartão", () => {
+      const valid = creditCardFormSchema.parse({
+        name: "Nomad",
+        closing_day: 5,
+        due_day: 12,
+        last_four_digits: " 7756 ",
+      });
+      expect(valid.last_four_digits).toBe("7756");
+
+      const masked = creditCardFormSchema.parse({
+        name: "Nomad",
+        closing_day: 5,
+        due_day: 12,
+        last_four_digits: "•• 7756",
+      });
+      expect(masked.last_four_digits).toBe("7756");
+
+      const empty = creditCardFormSchema.parse({
+        name: "Nomad",
+        closing_day: 5,
+        due_day: 12,
+        last_four_digits: "",
+      });
+      expect(empty.last_four_digits).toBeNull();
+
+      expect(() =>
+        creditCardFormSchema.parse({
+          name: "Nomad",
+          closing_day: 5,
+          due_day: 12,
+          last_four_digits: "123",
+        }),
+      ).toThrow();
+    });
   });
 
   describe("cardPaymentInputSchema", () => {

@@ -98,6 +98,15 @@ describe("merchant-catalog — cleanAcquirerPrefixes (Higienização Especializa
     expect(cleanAcquirerPrefixes("   ")).toBe("");
     expect(cleanAcquirerPrefixes("Padaria Flor de Trigo")).toBe("Padaria Flor de Trigo");
   });
+
+  it("elimina sufixos de filiais, lojas, matrizes e números de filiais comerciais (§Plano 09 — Tarefa 4.3)", () => {
+    expect(cleanAcquirerPrefixes("PAGUE MENOS 1094")).toBe("PAGUE MENOS");
+    expect(cleanAcquirerPrefixes("Pague menos 1094 mtz")).toBe("Pague menos");
+    expect(cleanAcquirerPrefixes("POSTO IPIRANGA 05")).toBe("POSTO IPIRANGA");
+    expect(cleanAcquirerPrefixes("Starbucks Store 4432")).toBe("Starbucks");
+    expect(cleanAcquirerPrefixes("Drogaria São Paulo Filial 12")).toBe("Drogaria São Paulo");
+    expect(cleanAcquirerPrefixes("Lojas Americanas Shopping")).toBe("Lojas Americanas");
+  });
 });
 
 describe("merchant-catalog — CANONICAL_MERCHANT_CATALOG e findCanonicalMerchant", () => {

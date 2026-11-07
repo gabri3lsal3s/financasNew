@@ -24,6 +24,9 @@ import type {
   ApproveDividendsBatchResult,
   MonthlyClosingPayload,
   MonthlyClosingResult,
+  QuickToken,
+  AffiliatePartner,
+  AffiliateDashboardData,
 } from "@/types";
 
 /**
@@ -594,6 +597,7 @@ export interface UpdateCreditCardParams {
   dueDay: number;
   color: string | null;
   isActive: boolean;
+  lastFourDigits?: string | null;
 }
 
 /** Alteração de regras do cartão — RPC auditado (D2). */
@@ -608,6 +612,7 @@ export async function updateCreditCardRpc(params: UpdateCreditCardParams): Promi
       p_due_day: params.dueDay,
       p_color: params.color,
       p_is_active: params.isActive,
+      p_last_four_digits: params.lastFourDigits ?? null,
     }),
     true,
   );
@@ -1475,6 +1480,93 @@ export async function approveDividendsBatchRpc(
     }),
   );
 }
+
+/**
+ * Cria um novo token de atalho rápido (iOS / Webhook) com hash criptográfico.
+ */
+export async function createUserQuickTokenRpc(
+  name: string,
+  tokenHash: string,
+  tokenPrefix: string,
+  scopes?: string[],
+): Promise<Record<string, unknown>> {
+  return unwrapRpc(
+    callRpc("create_user_quick_token", {
+      p_name: name,
+      p_token_hash: tokenHash,
+      p_token_prefix: tokenPrefix,
+      p_scopes: scopes ?? ["expense:write"],
+    }),
+  );
+}
+
+/**
+ * Revoga um token rápido ativo do usuário.
+ */
+export async function revokeUserQuickTokenRpc(tokenId: string): Promise<boolean> {
+  return unwrapRpc(
+    callRpc("revoke_user_quick_token", {
+      p_token_id: tokenId,
+    }),
+  );
+}
+
+/**
+ * Lista todos os tokens rápidos ativos do usuário autenticado.
+ */
+export async function listUserQuickTokensRpc(): Promise<QuickToken[]> {
+  const result = await unwrapRpc(callRpc("list_user_quick_tokens", {}), true);
+  return result ?? [];
+}
+
+/**
+ * Obtém ou cria o cadastro de parceiro afiliado B2B2C do usuário autenticado.
+ */
+export async function getOrCreateAffiliatePartnerRpc(
+  pixKey?: string | null,
+  pixKeyType?: string | null,
+): Promise<AffiliatePartner> {
+  return unwrapRpc(
+    callRpc("get_or_create_affiliate_partner", {
+      p_pix_key: pixKey ?? null,
+      p_pix_key_type: pixKeyType ?? null,
+    }),
+  );
+}
+
+/**
+ * Atualiza a chave Pix de recebimento de comissões do afiliado.
+ */
+export async function updateAffiliatePixRpc(
+  pixKey: string,
+  pixKeyType: string,
+): Promise<boolean> {
+  return unwrapRpc(
+    callRpc("update_affiliate_pix", {
+      p_pix_key: pixKey,
+      p_pix_key_type: pixKeyType,
+    }),
+  );
+}
+
+/**
+ * Atribui a indicação ao parceiro afiliado correspondente pelo cupom/código.
+ */
+export async function attributeReferralRpc(referralCode: string): Promise<boolean> {
+  return unwrapRpc(
+    callRpc("attribute_referral", {
+      p_referral_code: referralCode,
+    }),
+  );
+}
+
+/**
+ * Busca dados consolidados do painel de afiliado (indicados, Pro ativos, comissão estimada).
+ */
+export async function getAffiliateDashboardDataRpc(): Promise<AffiliateDashboardData | null> {
+  return unwrapRpc(callRpc("get_affiliate_dashboard_data", {}), true);
+}
+
 
 
 
