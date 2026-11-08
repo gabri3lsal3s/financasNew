@@ -6,9 +6,13 @@ import {
   type AccountCompositionItem,
   type PortfolioAssetCompositionItem,
 } from "@/domain/goals";
-import { usePortfolioAssets, useRealCashBalance } from "@/state";
+import { usePortfolioPosition, useRealCashBalance } from "@/state";
 import { triggerSensory } from "@/services/sensory";
-import type { GoalCompositionConfig, GoalInvestmentSelectionMode } from "@/types/goals";
+import type {
+  GoalCompositionConfig,
+  GoalCompositionResult,
+  GoalInvestmentSelectionMode,
+} from "@/types/goals";
 
 export interface GoalCompositionDialogProps {
   open: boolean;
@@ -17,7 +21,7 @@ export interface GoalCompositionDialogProps {
   targetCents: number;
   goalTitle?: string;
   isCompleted?: boolean;
-  onSave: (config: GoalCompositionConfig) => void;
+  onSave: (config: GoalCompositionConfig, resolvedResult: GoalCompositionResult) => void;
 }
 
 export function GoalCompositionDialog({
@@ -30,8 +34,7 @@ export function GoalCompositionDialog({
   onSave,
 }: GoalCompositionDialogProps) {
   const { cashBalance } = useRealCashBalance();
-  const assetsQuery = usePortfolioAssets();
-  const rawAssets = useMemo(() => assetsQuery.data ?? [], [assetsQuery.data]);
+  const { rows: positionRows, isLoading: isPositionLoading } = usePortfolioPosition();
 
   // Estado interno do formulário de composição
   const [includeCheckingAccounts, setIncludeCheckingAccounts] = useState(
@@ -69,28 +72,30 @@ export function GoalCompositionDialog({
     ];
   }, [cashBalance]);
 
-  // Mapeamento dos ativos da carteira
+  // Mapeamento dos ativos da carteira com quantidades e valores de mercado reais em centavos
   const portfolioAssets: PortfolioAssetCompositionItem[] = useMemo(() => {
-    return rawAssets.map((a) => ({
-      id: a.id,
-      ticker: a.ticker,
-      assetClass: a.asset_class,
-      quantity: 1,
-      valueCents: 0, // calculado pelo motor ou herdado
-      totalCostCents: 0,
-    }));
-  }, [rawAssets]);
+    return positionRows
+      .filter((r) => r.quantity > 0 || r.valueBRL > 0)
+      .map((r) => ({
+        id: r.assetId,
+        ticker: r.ticker,
+        assetClass: r.assetClass,
+        quantity: r.quantity > 0 ? r.quantity : 1,
+        valueCents: Math.round(r.valueBRL * 100),
+        totalCostCents: Math.round(r.totalCostBRL * 100),
+      }));
+  }, [positionRows]);
 
-  // Lista única de classes disponíveis
+  // Lista única de classes disponíveis a partir dos ativos com saldo
   const availableClasses = useMemo(() => {
     const set = new Set<string>();
-    for (const a of rawAssets) {
-      if (a.asset_class && a.asset_class.trim().length > 0) {
-        set.add(a.asset_class.trim());
+    for (const r of positionRows) {
+      if ((r.quantity > 0 || r.valueBRL > 0) && r.assetClass && r.assetClass.trim().length > 0) {
+        set.add(r.assetClass.trim());
       }
     }
     return Array.from(set).sort();
-  }, [rawAssets]);
+  }, [positionRows]);
 
   // Preview em tempo real da composição patrimonial
   const preview = useMemo(() => {
@@ -152,7 +157,7 @@ export function GoalCompositionDialog({
       allocationCapCents: allocationCapCents && allocationCapCents > 0 ? allocationCapCents : null,
       isCompletedLocked,
     };
-    onSave(updated);
+    onSave(updated, preview);
     onOpenChange(false);
   };
 
@@ -328,29 +333,51 @@ export function GoalCompositionDialog({
                   </Button>
                 </div>
 
+                {investmentMode === "entire_portfolio" && (
+                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-surface/80 border border-border/60 text-xs">
+                    <span className="text-muted-foreground">Total da carteira em custódia:</span>
+                    <MoneyText
+                      cents={portfolioAssets.reduce((acc, a) => acc + a.valueCents, 0)}
+                      tone="portfolio"
+                      className="font-semibold tabular-nums"
+                    />
+                  </div>
+                )}
+
                 {investmentMode === "selected_assets" && (
                   <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto pr-1">
-                    {rawAssets.length === 0 ? (
-                      <p className="text-[11px] text-muted-foreground italic">
-                        Nenhum ativo cadastrado na carteira.
+                    {isPositionLoading ? (
+                      <p className="text-[11px] text-muted-foreground italic py-2">
+                        Carregando investimentos da carteira...
+                      </p>
+                    ) : portfolioAssets.length === 0 ? (
+                      <p className="text-[11px] text-muted-foreground italic py-2">
+                        Nenhum ativo com saldo positivo cadastrado na carteira.
                       </p>
                     ) : (
-                      rawAssets.map((asset) => (
+                      portfolioAssets.map((asset) => (
                         <div
                           key={asset.id}
                           className="flex items-center justify-between p-2 rounded-lg bg-surface hover:bg-surface-muted transition-colors cursor-pointer"
                           onClick={() => handleToggleAsset(asset.id)}
                         >
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
                             <Checkbox
                               checked={selectedAssetIds.includes(asset.id)}
                               onCheckedChange={() => handleToggleAsset(asset.id)}
                             />
-                            <span className="font-semibold text-foreground">{asset.ticker}</span>
-                            <span className="text-muted-foreground text-[10px]">
-                              {asset.asset_class}
-                            </span>
+                            <span className="font-semibold text-foreground truncate">{asset.ticker}</span>
+                            {asset.assetClass ? (
+                              <span className="text-muted-foreground text-[10px] truncate">
+                                {asset.assetClass}
+                              </span>
+                            ) : null}
                           </div>
+                          <MoneyText
+                            cents={asset.valueCents}
+                            tone="default"
+                            className="text-xs font-semibold tabular-nums shrink-0 ml-2"
+                          />
                         </div>
                       ))
                     )}
@@ -359,17 +386,23 @@ export function GoalCompositionDialog({
 
                 {investmentMode === "selected_classes" && (
                   <div className="flex flex-wrap gap-2">
-                    {availableClasses.map((cls) => (
-                      <Badge
-                        key={cls}
-                        variant={selectedClasses.includes(cls) ? "default" : "muted"}
-                        size="sm"
-                        className="cursor-pointer"
-                        onClick={() => handleToggleClass(cls)}
-                      >
-                        {cls}
-                      </Badge>
-                    ))}
+                    {availableClasses.length === 0 ? (
+                      <p className="text-[11px] text-muted-foreground italic py-2">
+                        Nenhuma classe de ativo com saldo identificada.
+                      </p>
+                    ) : (
+                      availableClasses.map((cls) => (
+                        <Badge
+                          key={cls}
+                          variant={selectedClasses.includes(cls) ? "default" : "muted"}
+                          size="sm"
+                          className="cursor-pointer"
+                          onClick={() => handleToggleClass(cls)}
+                        >
+                          {cls}
+                        </Badge>
+                      ))
+                    )}
                   </div>
                 )}
               </div>

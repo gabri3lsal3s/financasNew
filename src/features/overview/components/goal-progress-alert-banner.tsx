@@ -7,6 +7,7 @@ import type { PublicShare } from "@/types";
 
 export interface GoalProgressAlertBannerProps {
   goalShare: PublicShare;
+  liveCurrentCents?: number;
   surplusCents?: number | null;
   onOpenDeposit: (share: PublicShare) => void;
   onNavigateGoals?: () => void;
@@ -15,6 +16,7 @@ export interface GoalProgressAlertBannerProps {
 
 export function GoalProgressAlertBanner({
   goalShare,
+  liveCurrentCents,
   surplusCents,
   onOpenDeposit,
   onNavigateGoals,
@@ -23,7 +25,8 @@ export function GoalProgressAlertBanner({
   const payload = goalShare.payload ?? {};
   const title = (payload.title as string) || "Meta Financeira";
   const targetCents = Number(payload.target_cents ?? 0);
-  const currentCents = Number(payload.current_cents ?? 0);
+  const currentCents =
+    liveCurrentCents !== undefined ? liveCurrentCents : Number(payload.current_cents ?? 0);
   const percentage = targetCents > 0 ? Math.round((currentCents / targetCents) * 100) : 0;
   const isCompleted = payload.status === "completed" || percentage >= 100;
   const isFinalStretch = percentage >= 80 && !isCompleted;

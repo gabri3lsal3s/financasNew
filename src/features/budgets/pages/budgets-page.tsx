@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigate, useSearchParams } from "react-router";
 import { ArrowRight, Edit3, HelpCircle, Info, PiggyBank, Plus, SlidersHorizontal, Sparkles, Target, TrendingDown, User, Users } from "lucide-react";
@@ -20,9 +20,15 @@ import {
   spentGrossByCategoryMap,
 } from "@/domain/budgets";
 import { numberToCents, sumGrossCents, sumWeightedCents } from "@/domain/money";
+import {
+  resolveGoalComposition,
+  type AccountCompositionItem,
+  type PortfolioAssetCompositionItem,
+} from "@/domain/goals";
 
 import { currentMonth } from "@/lib/date";
 import { triggerSensory } from "@/services/sensory";
+import { pushToast } from "@/services/toast";
 import { formatCentsAsBRL } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
 import {
@@ -35,6 +41,8 @@ import {
   useIncomes,
   useMyPublicShares,
   usePermission,
+  usePortfolioPosition,
+  useRealCashBalance,
   useReallocateBudget,
   useSeedDefaultCategories,
   useUpdatePublicShare,
@@ -54,7 +62,7 @@ import {
   ManageContributionsDialog,
   ShareGoalDialog,
 } from "@/features/goals";
-import type { Category, PublicShare } from "@/types";
+import type { Category, GoalCompositionConfig, PublicShare } from "@/types";
 
 /** Categorias & Orçamentos (§3.5.2) e metas de renda (§3.5.3) — Opção C unificada. */
 export function BudgetsPage() {
@@ -127,6 +135,61 @@ export function BudgetsPage() {
   const [seedFeedback, setSeedFeedback] = useState<string | null>(null);
 
   const error = budgetsQuery.error ?? goalsQuery.error ?? expensesQuery.error ?? incomesQuery.error ?? allCategoriesQuery.error;
+
+  const { cashBalance } = useRealCashBalance();
+  const { rows: positionRows } = usePortfolioPosition();
+
+  // Cálculo reativo e instantâneo do progresso de metas patrimoniais (§Plano 12)
+  const liveGoalProgress = useMemo(() => {
+    const currentBalance = Math.max(0, cashBalance?.currentBalanceCents ?? 0);
+    const accounts: AccountCompositionItem[] = [
+      {
+        id: "main_cash",
+        name: "Saldo em Conta Corrente / Caixa Geral",
+        balanceCents: currentBalance,
+        pendingObligationsCents: 0,
+      },
+    ];
+
+    const assets: PortfolioAssetCompositionItem[] = positionRows
+      .filter((r) => r.quantity > 0 || r.valueBRL > 0)
+      .map((r) => ({
+        id: r.assetId,
+        ticker: r.ticker,
+        assetClass: r.assetClass,
+        quantity: r.quantity > 0 ? r.quantity : 1,
+        valueCents: Math.round(r.valueBRL * 100),
+        totalCostCents: Math.round(r.totalCostBRL * 100),
+      }));
+
+    const map = new Map<string, { currentCents: number; percentage: number; isCompleted: boolean }>();
+    const allShares = goalSharesQuery.data ?? [];
+
+    for (const share of allShares) {
+      const payload = share.payload ?? {};
+      const config = payload.composition_config as GoalCompositionConfig | undefined;
+      const targetCents = Number(payload.target_cents ?? 0);
+      const isCompleted = payload.status === "completed";
+
+      if (config) {
+        const resolved = resolveGoalComposition({
+          config,
+          targetCents,
+          accounts,
+          assets,
+          previouslyLockedAsCompleted: isCompleted,
+        });
+
+        map.set(share.id, {
+          currentCents: resolved.currentCents,
+          percentage: Math.round(resolved.progressPercent),
+          isCompleted: resolved.isReached || isCompleted,
+        });
+      }
+    }
+
+    return map;
+  }, [cashBalance, positionRows, goalSharesQuery.data]);
 
   const budgets = budgetsQuery.data ?? [];
 
@@ -761,6 +824,7 @@ export function BudgetsPage() {
                 <CampaignCard
                   key={share.id}
                   share={share}
+                  liveCurrentCents={liveGoalProgress.get(share.id)?.currentCents}
                   onOpenDeposit={(s) => setDepositShare(s)}
                   onManageShare={(s) => {
                     setEditingShare(s);
@@ -798,6 +862,7 @@ export function BudgetsPage() {
                   <CampaignCard
                     key={share.id}
                     share={share}
+                    liveCurrentCents={liveGoalProgress.get(share.id)?.currentCents}
                     onOpenDeposit={(s) => setDepositShare(s)}
                     onManageShare={(s) => {
                       setEditingShare(s);
@@ -1145,15 +1210,31 @@ export function BudgetsPage() {
             (compositionShare.payload as Record<string, unknown> | undefined)?.status ===
             "completed"
           }
-          onSave={(newConfig) => {
+          onSave={(newConfig, previewResult) => {
             const currentPayload =
               (compositionShare.payload as Record<string, unknown>) ?? {};
+            const isNowCompleted =
+              previewResult.isReached ||
+              (previewResult.targetCents > 0 &&
+                previewResult.currentCents >= previewResult.targetCents);
+
             updatePublicShareMutation.mutate({
               id: compositionShare.id,
               payload: {
                 ...currentPayload,
                 composition_config: newConfig,
+                current_cents: previewResult.currentCents,
+                status: isNowCompleted
+                  ? "completed"
+                  : currentPayload.status === "completed"
+                    ? "active"
+                    : (currentPayload.status ?? "active"),
               },
+            });
+            pushToast({
+              title: "Termômetro patrimonial sincronizado!",
+              description: "O saldo em conta e os investimentos foram vinculados à meta com sucesso.",
+              variant: "success",
             });
             setCompositionShare(null);
           }}

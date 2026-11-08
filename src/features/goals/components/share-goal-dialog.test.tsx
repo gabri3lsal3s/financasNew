@@ -368,4 +368,47 @@ describe("ShareGoalDialog", () => {
       });
     });
   });
+
+  it("renderiza rodapé responsivo com ações compactas e botão de concluir/reabrir sem cortes", () => {
+    mockMyShares = [
+      {
+        id: "share-active",
+        user_id: "user-1",
+        kind: "goal_tracker",
+        token: "gt_active",
+        payload: {
+          title: "Meta Ativa",
+          target_cents: 100000,
+          current_cents: 100000,
+          pix_key: "gabriel@axis.app",
+        },
+        created_at: "2026-11-01T00:00:00Z",
+        expires_at: "2026-12-01T00:00:00Z",
+        is_revoked: false,
+        updated_at: "2026-11-01T00:00:00Z",
+      },
+    ];
+
+    render(
+      <ShareGoalDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        existingShare={mockMyShares[0]}
+        currentRealizedCents={100000}
+        currentExpectedCents={100000}
+      />,
+    );
+
+    // Botões utilitários no rodapé
+    expect(screen.getByRole("button", { name: "Excluir meta" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pausar link público" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Regenerar link público" })).toBeInTheDocument();
+
+    // Botões de diálogo no rodapé
+    expect(screen.getAllByRole("button", { name: "Fechar" })).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Marcar como concluída" })).toBeInTheDocument();
+  });
 });
+
+
+

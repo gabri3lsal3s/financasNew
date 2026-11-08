@@ -56,6 +56,11 @@ import {
 } from "@/domain/overview";
 import { numberToCents, sumGrossCents, sumWeightedCents } from "@/domain/money";
 import { contributionsInMonthCents } from "@/domain/portfolio";
+import {
+  resolveGoalComposition,
+  type AccountCompositionItem,
+  type PortfolioAssetCompositionItem,
+} from "@/domain/goals";
 
 import { currentMonth, monthLabel, shiftMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
@@ -70,6 +75,7 @@ import {
   useIncomes,
   useMyPublicShares,
   usePortfolioContributions,
+  usePortfolioPosition,
   useRealCashBalance,
   useUserSubscription,
   useOnboardingCounts,
@@ -80,6 +86,7 @@ import {
   useUserPreferences,
   useUpdateCustomSettings,
 } from "@/state";
+import type { GoalCompositionConfig } from "@/types";
 import {
   usePermissionsStatus,
   isNativePlatform,
@@ -146,6 +153,7 @@ export function OverviewPage() {
   const currentUserId = myFamilyQuery.data?.currentMember?.user_id;
 
   const realCashData = useRealCashBalance(today);
+  const { rows: positionRows } = usePortfolioPosition();
   const onboardingQuery = useOnboardingCounts();
   const { isDismissed: isOnboardingDismissed, dismiss: dismissOnboarding } = useOnboardingDismissed();
 
@@ -687,6 +695,58 @@ export function OverviewPage() {
     return { count, pendingCents, totalExpensesCents, items };
   }, [debtsQuery.data, splitSharesQuery.data]);
 
+  // Cálculo reativo e instantâneo do progresso de metas patrimoniais (§Plano 12)
+  const liveGoalProgress = useMemo(() => {
+    const currentBalance = Math.max(0, realCashData.cashBalance.currentBalanceCents);
+    const accounts: AccountCompositionItem[] = [
+      {
+        id: "main_cash",
+        name: "Saldo em Conta Corrente / Caixa Geral",
+        balanceCents: currentBalance,
+        pendingObligationsCents: 0,
+      },
+    ];
+
+    const assets: PortfolioAssetCompositionItem[] = positionRows
+      .filter((r) => r.quantity > 0 || r.valueBRL > 0)
+      .map((r) => ({
+        id: r.assetId,
+        ticker: r.ticker,
+        assetClass: r.assetClass,
+        quantity: r.quantity > 0 ? r.quantity : 1,
+        valueCents: Math.round(r.valueBRL * 100),
+        totalCostCents: Math.round(r.totalCostBRL * 100),
+      }));
+
+    const map = new Map<string, { currentCents: number; percentage: number; isCompleted: boolean }>();
+    const allShares = goalSharesQuery.data ?? [];
+
+    for (const share of allShares) {
+      const payload = (share.payload as Record<string, unknown> | null) ?? {};
+      const config = payload.composition_config as GoalCompositionConfig | undefined;
+      const targetCents = Number(payload.target_cents ?? 0);
+      const isCompleted = payload.status === "completed";
+
+      if (config) {
+        const resolved = resolveGoalComposition({
+          config,
+          targetCents,
+          accounts,
+          assets,
+          previouslyLockedAsCompleted: isCompleted,
+        });
+
+        map.set(share.id, {
+          currentCents: resolved.currentCents,
+          percentage: Math.round(resolved.progressPercent),
+          isCompleted: resolved.isReached || isCompleted,
+        });
+      }
+    }
+
+    return map;
+  }, [realCashData.cashBalance.currentBalanceCents, positionRows, goalSharesQuery.data]);
+
   // Apuração de metas prioritárias e ativas (§Plano 12)
   const topGoalShare = useMemo(() => {
     const goalShares = goalSharesQuery.data ?? [];
@@ -702,9 +762,11 @@ export function OverviewPage() {
       const pldA = (a.payload as Record<string, unknown> | null) ?? {};
       const pldB = (b.payload as Record<string, unknown> | null) ?? {};
       const tA = Number(pldA.target_cents ?? 0);
-      const cA = Number(pldA.current_cents ?? 0);
+      const liveA = liveGoalProgress.get(a.id)?.currentCents;
+      const cA = liveA !== undefined ? liveA : Number(pldA.current_cents ?? 0);
       const tB = Number(pldB.target_cents ?? 0);
-      const cB = Number(pldB.current_cents ?? 0);
+      const liveB = liveGoalProgress.get(b.id)?.currentCents;
+      const cB = liveB !== undefined ? liveB : Number(pldB.current_cents ?? 0);
       const pctA = tA > 0 ? cA / tA : 0;
       const pctB = tB > 0 ? cB / tB : 0;
       const isFinalA = pctA >= 0.8 && pctA < 1 ? 1 : 0;
@@ -712,7 +774,7 @@ export function OverviewPage() {
       if (isFinalA !== isFinalB) return isFinalB - isFinalA;
       return pctB - pctA;
     })[0] ?? null;
-  }, [goalSharesQuery.data]);
+  }, [goalSharesQuery.data, liveGoalProgress]);
 
   const [zeroGuiltModalOpen, setZeroGuiltModalOpen] = useState(false);
 
@@ -862,6 +924,7 @@ export function OverviewPage() {
       content: (
         <GoalProgressAlertBanner
           goalShare={topGoalShare!}
+          liveCurrentCents={liveGoalProgress.get(topGoalShare!.id)?.currentCents}
           surplusCents={surplusCapacity.hasSurplus ? surplusCapacity.suggestedAporteCents : null}
           onOpenDeposit={(share) => setDepositGoalShare(share)}
           onNavigateGoals={() => navigate("/orcamentos?tab=goals")}

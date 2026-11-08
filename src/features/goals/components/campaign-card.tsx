@@ -25,6 +25,7 @@ import type { GoalCompositionConfig, GoalContribution, PublicShare } from "@/typ
 
 export interface CampaignCardProps {
   share: PublicShare;
+  liveCurrentCents?: number;
   onOpenDeposit: (share: PublicShare) => void;
   onManageShare: (share: PublicShare) => void;
   onEditShare?: (share: PublicShare) => void;
@@ -35,6 +36,7 @@ export interface CampaignCardProps {
 
 export function CampaignCard({
   share,
+  liveCurrentCents,
   onOpenDeposit,
   onManageShare,
   onManageContributions,
@@ -46,7 +48,8 @@ export function CampaignCard({
   const composition = payload.composition_config as GoalCompositionConfig | undefined;
   const title = (payload.title as string) || "Meta Coletiva";
   const targetCents = Number(payload.target_cents ?? 0);
-  const currentCents = Number(payload.current_cents ?? 0);
+  const currentCents =
+    liveCurrentCents !== undefined ? liveCurrentCents : Number(payload.current_cents ?? 0);
   const percentage = targetCents > 0 ? Math.round((currentCents / targetCents) * 100) : 0;
   const isCompleted = payload.status === "completed" || percentage >= 100;
   const deadline = payload.deadline as string | undefined;
