@@ -591,28 +591,28 @@ export function IncomeDetailDialog({
 
                 {!isReadOnly ? (
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-3.5 border-t border-border/80 mt-2">
-                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                    <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:w-auto sm:items-center">
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="shrink-0 gap-1.5"
+                        className="gap-1.5 px-2 sm:px-3 text-xs justify-center"
                         onClick={() => void handleShare()}
                       >
-                        <Share2 className="size-3.5" aria-hidden="true" />
-                        <span>Compartilhar</span>
+                        <Share2 className="size-3.5 shrink-0" aria-hidden="true" />
+                        <span className="truncate">Compartilhar</span>
                       </Button>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="shrink-0 gap-1.5"
+                        className="gap-1.5 px-2 sm:px-3 text-xs justify-center"
                         onClick={() => guardAction(() => void handleRepeat(), "Duplicar Receita")}
                         disabled={createIncome.isPending}
                         aria-label="Repetir no mês atual"
                       >
-                        <Copy className="size-3.5" aria-hidden="true" />
-                        <span>{createIncome.isPending ? "Repetindo…" : "Repetir no mês atual"}</span>
+                        <Copy className="size-3.5 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{createIncome.isPending ? "Repetindo…" : "Repetir"}</span>
                       </Button>
                     </div>
                     <Button
@@ -622,7 +622,7 @@ export function IncomeDetailDialog({
                       className="w-full sm:w-auto text-critical hover:bg-critical/10 hover:text-critical gap-1.5"
                       onClick={() => guardAction(() => setConfirmOpen(true), "Excluir Receita")}
                     >
-                      <Trash2 className="size-3.5" aria-hidden="true" />
+                      <Trash2 className="size-3.5 shrink-0" aria-hidden="true" />
                       <span>Excluir</span>
                     </Button>
                   </div>

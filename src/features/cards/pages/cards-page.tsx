@@ -526,10 +526,10 @@ export function CardsPage() {
           }}
         />
       ) : loading ? (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4" data-tour="cards-content">
           <Skeleton className="h-64 w-full rounded-2xl max-w-[440px] mx-auto" />
           <Skeleton className="h-12 w-full rounded-xl" />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4" data-tour="cards-invoice-summary">
             <Skeleton className="h-24 w-full rounded-xl" />
             <Skeleton className="h-24 w-full rounded-xl" />
             <Skeleton className="h-24 w-full rounded-xl" />
