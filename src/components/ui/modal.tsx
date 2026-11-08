@@ -247,7 +247,7 @@ export function Modal({
           {/* Barra de controle superior: micro-título reativo no mobile e ações contextuais à direita */}
           <div
             className={cn(
-              "h-9 md:h-0 md:overflow-visible flex items-center justify-between px-4 md:px-0 shrink-0 relative transition-all duration-200 border-b md:border-b-0",
+              "h-9 md:h-0 md:overflow-visible flex items-center justify-between px-4 md:px-0 shrink-0 relative z-20 md:pointer-events-none md:bg-transparent md:border-b-0 md:shadow-none transition-all duration-200 border-b",
               isScrolled
                 ? "bg-surface/95 backdrop-blur-xs border-border/80 shadow-xs"
                 : "bg-surface border-transparent",
@@ -266,7 +266,7 @@ export function Modal({
             </div>
 
             {/* Ações contextuais e botão fechar: à direita na barra minimalista mobile; top-right absoluto no desktop */}
-            <div className="flex shrink-0 items-center gap-1 z-10 md:absolute md:top-5 md:right-5 md:gap-1.5">
+            <div className="flex shrink-0 items-center gap-1 z-20 md:pointer-events-auto md:absolute md:top-4 md:right-6 md:gap-1.5">
               {headerActions}
               {displayCalculator ? (
                 <Button
@@ -310,7 +310,12 @@ export function Modal({
             )}
           >
             {/* Cabeçalho editorial único (F25 / Plano 08 — fluido no mobile, sticky no desktop com espaço para ações) */}
-            <div className="pt-2 pb-3 md:pt-4 md:pb-3 md:pr-24 shrink-0 md:sticky md:top-0 md:bg-surface md:z-10">
+            <div
+              className={cn(
+                "pt-2 pb-3 md:pt-4 md:pb-3 shrink-0 md:sticky md:top-0 md:bg-surface md:z-10",
+                headerActions ? "md:pr-[380px]" : "md:pr-24",
+              )}
+            >
               <DialogPrimitive.Title className="font-display text-lg font-bold text-foreground tracking-tight">
                 {title}
               </DialogPrimitive.Title>
