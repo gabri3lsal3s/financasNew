@@ -75,20 +75,24 @@ export function CreateTripDialog({
     e.preventDefault();
     if (!title.trim() || !startDate || !endDate) return;
 
-    const created = await createTripMutation.mutateAsync({
-      title: title.trim(),
-      destination: destination.trim() || null,
-      start_date: startDate,
-      end_date: endDate,
-      initial_members: members,
-    });
+    try {
+      const created = await createTripMutation.mutateAsync({
+        title: title.trim(),
+        destination: destination.trim() || null,
+        start_date: startDate,
+        end_date: endDate,
+        initial_members: members,
+      });
 
-    // Reset
-    setTitle("");
-    setDestination("");
-    setMembers([]);
-    onOpenChange(false);
-    onSuccess?.(created.id);
+      // Reset
+      setTitle("");
+      setDestination("");
+      setMembers([]);
+      onOpenChange(false);
+      onSuccess?.(created.id);
+    } catch {
+      // O erro já é tratado e exibido via toast destrutivo no onError do useCreateTripMutation
+    }
   };
 
   return (

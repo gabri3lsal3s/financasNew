@@ -5,6 +5,7 @@ import {
   Monitor,
   Eye,
   Users,
+  Plane,
 } from "lucide-react";
 import {
   Card,
@@ -14,7 +15,7 @@ import {
   Checkbox,
   Switch,
 } from "@/components/ui";
-import { useFamilyMode } from "@/state";
+import { useFamilyMode, useTripMode } from "@/state";
 import type { HeaderButtonsConfig } from "@/hooks/use-visual-customization";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,7 @@ export function InterfaceShortcutsCard({
   onToggleHeaderButton,
 }: InterfaceShortcutsCardProps) {
   const { isFamilyModeEnabled, toggleFamilyMode, isPending: isUpdatingFamilyMode } = useFamilyMode();
+  const { isTripModeEnabled, toggleTripMode, isPending: isUpdatingTripMode } = useTripMode();
   return (
     <Card>
       <CardHeader>
@@ -174,47 +176,94 @@ export function InterfaceShortcutsCard({
             <span className="text-[11px] text-muted-foreground font-normal">Personalização do fluxo</span>
           </div>
 
-          <div
-            role="button"
-            tabIndex={isUpdatingFamilyMode ? -1 : 0}
-            onClick={() => {
-              if (!isUpdatingFamilyMode) {
-                void toggleFamilyMode(!isFamilyModeEnabled);
-              }
-            }}
-            onKeyDown={(e) => {
-              if (isUpdatingFamilyMode) return;
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                void toggleFamilyMode(!isFamilyModeEnabled);
-              }
-            }}
-            className={cn(
-              "flex items-center justify-between p-3.5 rounded-xl border transition-colors select-none cursor-pointer",
-              isFamilyModeEnabled
-                ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-                : "border-border bg-surface hover:bg-surface-hover",
-            )}
-          >
-            <div className="flex items-center gap-3 pr-2 min-w-0">
-              <Users className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-              <div className="min-w-0">
-                <div className="font-semibold text-xs text-foreground">Modo Familiar</div>
-                <div className="text-[11px] text-muted-foreground">
-                  {isFamilyModeEnabled
-                    ? "Ativo. Exibe abas de visão e botões para separar gastos pessoais e familiares."
-                    : "Desativado por padrão. Mantém o visual mais limpo para uso pessoal, sem perder dados."}
+          <div className="grid grid-cols-1 gap-2.5">
+            {/* Modo Familiar */}
+            <div
+              role="button"
+              tabIndex={isUpdatingFamilyMode ? -1 : 0}
+              onClick={() => {
+                if (!isUpdatingFamilyMode) {
+                  void toggleFamilyMode(!isFamilyModeEnabled);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (isUpdatingFamilyMode) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  void toggleFamilyMode(!isFamilyModeEnabled);
+                }
+              }}
+              className={cn(
+                "flex items-center justify-between p-3.5 rounded-xl border transition-colors select-none cursor-pointer",
+                isFamilyModeEnabled
+                  ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+                  : "border-border bg-surface hover:bg-surface-hover",
+              )}
+            >
+              <div className="flex items-center gap-3 pr-2 min-w-0">
+                <Users className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                <div className="min-w-0">
+                  <div className="font-semibold text-xs text-foreground">Modo Familiar</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {isFamilyModeEnabled
+                      ? "Ativo. Exibe abas de visão e botões para separar gastos pessoais e familiares."
+                      : "Desativado por padrão. Mantém o visual mais limpo para uso pessoal, sem perder dados."}
+                  </div>
                 </div>
               </div>
+              <Switch
+                checked={isFamilyModeEnabled}
+                disabled={isUpdatingFamilyMode}
+                onCheckedChange={(checked) => {
+                  void toggleFamilyMode(checked);
+                }}
+                aria-label="Modo Familiar"
+              />
             </div>
-            <Switch
-              checked={isFamilyModeEnabled}
-              disabled={isUpdatingFamilyMode}
-              onCheckedChange={(checked) => {
-                void toggleFamilyMode(checked);
+
+            {/* Modo Viagem */}
+            <div
+              role="button"
+              tabIndex={isUpdatingTripMode ? -1 : 0}
+              onClick={() => {
+                if (!isUpdatingTripMode) {
+                  void toggleTripMode(!isTripModeEnabled);
+                }
               }}
-              aria-label="Modo Familiar"
-            />
+              onKeyDown={(e) => {
+                if (isUpdatingTripMode) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  void toggleTripMode(!isTripModeEnabled);
+                }
+              }}
+              className={cn(
+                "flex items-center justify-between p-3.5 rounded-xl border transition-colors select-none cursor-pointer",
+                isTripModeEnabled
+                  ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+                  : "border-border bg-surface hover:bg-surface-hover",
+              )}
+            >
+              <div className="flex items-center gap-3 pr-2 min-w-0">
+                <Plane className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                <div className="min-w-0">
+                  <div className="font-semibold text-xs text-foreground">Modo Viagem</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {isTripModeEnabled
+                      ? "Ativo. Exibe grupos de viagens compartilhadas, extrato multi-pagadores e liquidação Pix."
+                      : "Desativado por padrão. Mantém o foco no dia a dia sem perder o histórico das suas viagens."}
+                  </div>
+                </div>
+              </div>
+              <Switch
+                checked={isTripModeEnabled}
+                disabled={isUpdatingTripMode}
+                onCheckedChange={(checked) => {
+                  void toggleTripMode(checked);
+                }}
+                aria-label="Modo Viagem"
+              />
+            </div>
           </div>
         </div>
       </CardContent>

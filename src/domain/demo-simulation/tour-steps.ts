@@ -882,6 +882,52 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
     },
   ],
 
+  // Micro-Tour 2.3: Modo Viagem & Rateio em Grupo (3 passos)
+  finances_trips: [
+    {
+      id: "trips-hub",
+      track: "finances_trips",
+      order: 1,
+      title: "Hub de Viagens & Grupos",
+      description:
+        "Centralize roteiros e eventos compartilhados. Cada viagem funciona como um grupo temporário seguro com link de convite.",
+      targetRoute: "/viagens",
+      targetSelector: '[data-tour="trips-hub"]',
+      preferredPlacement: "bottom",
+      spotlightPadding: 10,
+      badgeLabel: "Passo 1 de 3",
+      actionLabel: "Ver Viagem",
+    },
+    {
+      id: "trips-balances",
+      track: "finances_trips",
+      order: 2,
+      title: "Extrato Coletivo & Balanço Individual",
+      description:
+        "Veja quem pagou o quê e quanto cada participante gastou no total, com saldos positivos e negativos calculados em tempo real.",
+      targetRoute: "/viagens/trip-demo-floripa",
+      targetSelector: '[data-tour="trip-balances"]',
+      preferredPlacement: "bottom",
+      spotlightPadding: 10,
+      badgeLabel: "Passo 2 de 3",
+      actionLabel: "Ver Liquidação",
+    },
+    {
+      id: "trips-settlement",
+      track: "finances_trips",
+      order: 3,
+      title: "Liquidação Mínima & Pix Copia e Cola",
+      description:
+        "O algoritmo inteligente calcula o menor número de transferências para zerar as pendências. Basta copiar a chave Pix e liquidar.",
+      targetRoute: "/viagens/trip-demo-floripa",
+      targetSelector: '[data-tour="trip-settlement-card"]',
+      preferredPlacement: "top",
+      spotlightPadding: 10,
+      badgeLabel: "Passo 3 de 3",
+      actionLabel: "Concluir",
+    },
+  ],
+
   // Trilha 0: Recursos Nativos do APK Android (4 passos didáticos)
   app_native_apk: [
     {

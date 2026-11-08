@@ -61,7 +61,11 @@ export function TripSettlementDialog({
       amount_cents: s.amountCents,
     }));
 
-    await recordMutation.mutateAsync(payload);
+    try {
+      await recordMutation.mutateAsync(payload);
+    } catch {
+      // O erro já é tratado e exibido via toast destrutivo no onError do useRecordTripSettlementsMutation
+    }
   };
 
   const handleShareWhatsApp = () => {

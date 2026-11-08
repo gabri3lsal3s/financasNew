@@ -23,6 +23,7 @@ vi.mock("@/data/rpc", () => ({
   getPublicTripLedger: vi.fn(),
   addPublicTripExpense: vi.fn(),
   recordTripSettlementsRpc: vi.fn(),
+  createTripRpc: vi.fn(),
 }));
 
 describe("data/repositories/trips", () => {
@@ -79,8 +80,32 @@ describe("data/repositories/trips", () => {
   });
 
   describe("createTrip", () => {
-    it("cria a viagem e adiciona o host como membro inicial", async () => {
+    it("delega prioritariamente para createTripRpc", async () => {
       vi.mocked(currentUserId).mockResolvedValueOnce("user-1");
+      const createdTrip = { id: "trip-rpc", title: "Viagem RPC" };
+      vi.mocked(rpcModule.createTripRpc).mockResolvedValueOnce(createdTrip as never);
+
+      const result = await createTrip({
+        title: "Viagem RPC",
+        start_date: "2027-01-10",
+        end_date: "2027-01-15",
+      });
+
+      expect(result).toEqual(createdTrip);
+      expect(rpcModule.createTripRpc).toHaveBeenCalledWith({
+        title: "Viagem RPC",
+        destination: null,
+        startDate: "2027-01-10",
+        endDate: "2027-01-15",
+        currency: "BRL",
+        coverPhotoUrl: null,
+        initialMembers: undefined,
+      });
+    });
+
+    it("utiliza fallback direto se a RPC falhar com erro genérico", async () => {
+      vi.mocked(currentUserId).mockResolvedValueOnce("user-1");
+      vi.mocked(rpcModule.createTripRpc).mockRejectedValueOnce(new Error("RPC not found"));
 
       const createdTrip = { id: "trip-new", title: "Mochilão" };
       const mockSingle = vi.fn().mockResolvedValue({ data: createdTrip, error: null });

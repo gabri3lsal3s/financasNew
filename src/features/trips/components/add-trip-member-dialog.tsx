@@ -41,16 +41,20 @@ export function AddTripMemberDialog({
     e.preventDefault();
     if (!name.trim()) return;
 
-    await addMemberMutation.mutateAsync({
-      trip_id: tripId,
-      name: name.trim(),
-      pix_key: pixKey.trim() || null,
-      pix_key_type: pixKey.trim() ? pixKeyType : null,
-    });
+    try {
+      await addMemberMutation.mutateAsync({
+        trip_id: tripId,
+        name: name.trim(),
+        pix_key: pixKey.trim() || null,
+        pix_key_type: pixKey.trim() ? pixKeyType : null,
+      });
 
-    setName("");
-    setPixKey("");
-    onOpenChange(false);
+      setName("");
+      setPixKey("");
+      onOpenChange(false);
+    } catch {
+      // O erro já é tratado e exibido via toast destrutivo no onError do useAddTripMemberMutation
+    }
   };
 
   return (

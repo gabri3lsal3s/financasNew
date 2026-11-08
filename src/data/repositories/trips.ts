@@ -13,6 +13,7 @@ import {
   getPublicTripLedger,
   addPublicTripExpense as addPublicTripExpenseRpc,
   recordTripSettlementsRpc,
+  createTripRpc,
 } from "@/data/rpc";
 import type {
   Trip,
@@ -159,53 +160,72 @@ export async function createTrip(input: CreateTripInput): Promise<Trip> {
   const uid = await currentUserId();
   if (!uid) throw new Error("Usuário não autenticado");
 
-  const supabase = getSupabase();
-  const token =
-    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-      ? crypto.randomUUID().replace(/-/g, "")
-      : `trip_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  // Tentativa primária: RPC atômica transacional (Regra 5 AGENTS.md)
+  try {
+    return await createTripRpc({
+      title: input.title.trim(),
+      destination: input.destination ? input.destination.trim() : null,
+      startDate: input.start_date,
+      endDate: input.end_date,
+      currency: input.currency ?? "BRL",
+      coverPhotoUrl: input.cover_photo_url ?? null,
+      initialMembers: input.initial_members,
+    });
+  } catch (rpcErr) {
+    // Se for erro de validação ou regra de negócio, propaga imediatamente
+    if (rpcErr instanceof AppError && rpcErr.kind !== "unknown") {
+      throw rpcErr;
+    }
 
-  const { data: tripRow, error: tripError } = await resolveQuery<Trip>(
-    supabase
-      .from("trips" as never)
-      .insert({
-        host_user_id: uid,
-        title: input.title.trim(),
-        destination: input.destination ? input.destination.trim() : null,
-        start_date: input.start_date,
-        end_date: input.end_date,
-        currency: input.currency ?? "BRL",
-        cover_photo_url: input.cover_photo_url ?? null,
-        public_token: token,
-      } as never)
-      .select()
-      .single() as never
-  );
+    // Se a RPC não existir ou houver falha de rede/transporte, tenta o fallback direto
+    const supabase = getSupabase();
+    const token =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID().replace(/-/g, "")
+        : `trip_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-  if (tripError || !tripRow) handleDbError(tripError, "Erro ao criar viagem");
+    const { data: tripRow, error: tripError } = await resolveQuery<Trip>(
+      supabase
+        .from("trips" as never)
+        .insert({
+          host_user_id: uid,
+          title: input.title.trim(),
+          destination: input.destination ? input.destination.trim() : null,
+          start_date: input.start_date,
+          end_date: input.end_date,
+          currency: input.currency ?? "BRL",
+          cover_photo_url: input.cover_photo_url ?? null,
+          public_token: token,
+        } as never)
+        .select()
+        .single() as never
+    );
 
-  // Cadastra o host como primeiro membro
-  await supabase.from("trip_members" as never).insert({
-    trip_id: tripRow.id,
-    name: "Você",
-    user_id: uid,
-    is_host: true,
-  } as never);
+    if (tripError || !tripRow) handleDbError(tripError, "Erro ao criar viagem");
 
-  // Cadastra membros iniciais, se informados
-  if (input.initial_members && input.initial_members.length > 0) {
-    const memberInserts = input.initial_members.map((m) => ({
+    // Cadastra o host como primeiro membro
+    await supabase.from("trip_members" as never).insert({
       trip_id: tripRow.id,
-      name: m.name.trim(),
-      pix_key: m.pix_key ? m.pix_key.trim() : null,
-      pix_key_type: m.pix_key_type ?? null,
-      is_host: false,
-    }));
+      name: "Você",
+      user_id: uid,
+      is_host: true,
+    } as never);
 
-    await supabase.from("trip_members" as never).insert(memberInserts as never);
+    // Cadastra membros iniciais, se informados
+    if (input.initial_members && input.initial_members.length > 0) {
+      const memberInserts = input.initial_members.map((m) => ({
+        trip_id: tripRow.id,
+        name: m.name.trim(),
+        pix_key: m.pix_key ? m.pix_key.trim() : null,
+        pix_key_type: m.pix_key_type ?? null,
+        is_host: false,
+      }));
+
+      await supabase.from("trip_members" as never).insert(memberInserts as never);
+    }
+
+    return tripRow;
   }
-
-  return tripRow;
 }
 
 export async function updateTrip(

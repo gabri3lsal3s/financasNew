@@ -16,6 +16,12 @@ import type {
   MyFamilyData,
   PublicShare,
 } from "@/types";
+import type {
+  Trip,
+  TripMember,
+  TripExpense,
+  TripSettlement,
+} from "@/types/trips";
 import type { DailyFinancesDataset } from "./types";
 
 export const DEMO_USER_ID = "demo-simulation-user";
@@ -824,6 +830,7 @@ export function generateMockFinances(referenceMonth: string = currentMonth()): D
   const debts = generateMockDebts(referenceMonth);
   const loans = generateMockLoans(referenceMonth);
   const incomeGoals = generateMockIncomeGoals(referenceMonth);
+  const mockTripsData = generateMockTrips(referenceMonth);
 
   return {
     referenceMonth,
@@ -840,6 +847,10 @@ export function generateMockFinances(referenceMonth: string = currentMonth()): D
     debts,
     loans,
     incomeGoals,
+    trips: mockTripsData.trips,
+    tripMembers: mockTripsData.tripMembers,
+    tripExpenses: mockTripsData.tripExpenses,
+    tripSettlements: mockTripsData.tripSettlements,
   };
 }
 
@@ -1105,4 +1116,182 @@ export function generateMockIncomeGoals(
     },
   ];
 }
+
+/**
+ * Gera os dados simulados do Modo Viagem ("Viagem Florianópolis / Réveillon").
+ * Inclui anfitrião + 3 amigos, rateios de despesas reais e liquidação líquida.
+ */
+export function generateMockTrips(referenceMonth: string = currentMonth()): {
+  trips: Trip[];
+  tripMembers: TripMember[];
+  tripExpenses: TripExpense[];
+  tripSettlements: TripSettlement[];
+} {
+  const tripId = "trip-demo-floripa";
+  const nowIso = `${formatIsoDate(referenceMonth, 15)}T14:00:00.000Z`;
+
+  const trips: Trip[] = [
+    {
+      id: tripId,
+      host_user_id: DEMO_USER_ID,
+      title: "Viagem Florianópolis / Réveillon",
+      destination: "Florianópolis, SC",
+      start_date: formatIsoDate(referenceMonth, 10),
+      end_date: formatIsoDate(referenceMonth, 18),
+      status: "active",
+      currency: "BRL",
+      public_token: "demo-token-floripa-2026",
+      passcode_hash: null,
+      cover_photo_url: null,
+      created_at: nowIso,
+      updated_at: nowIso,
+    },
+  ];
+
+  const tripMembers: TripMember[] = [
+    {
+      id: "member-demo-host",
+      trip_id: tripId,
+      name: "Você (Anfitrião)",
+      user_id: DEMO_USER_ID,
+      pix_key: "voce@email.com",
+      pix_key_type: "email",
+      is_host: true,
+      created_at: nowIso,
+    },
+    {
+      id: "member-demo-lucas",
+      trip_id: tripId,
+      name: "Lucas Silva",
+      user_id: "demo-user-lucas",
+      pix_key: "11987654321",
+      pix_key_type: "phone",
+      is_host: false,
+      created_at: nowIso,
+    },
+    {
+      id: "member-demo-mariana",
+      trip_id: tripId,
+      name: "Mariana Costa",
+      user_id: null,
+      pix_key: "mariana.costa@pix.me",
+      pix_key_type: "email",
+      is_host: false,
+      created_at: nowIso,
+    },
+    {
+      id: "member-demo-pedro",
+      trip_id: tripId,
+      name: "Pedro Alves",
+      user_id: null,
+      pix_key: "pedro.alves@banco.com",
+      pix_key_type: "email",
+      is_host: false,
+      created_at: nowIso,
+    },
+  ];
+
+  // Despesas:
+  // 1. Casa de Praia (R$ 3.200,00) paga pelo Host, dividida entre os 4 (R$ 800 cada)
+  // 2. Compras Supermercado (R$ 960,00) paga por Lucas, dividida entre os 4 (R$ 240 cada)
+  // 3. Passeio de Barco (R$ 600,00) paga por Mariana, dividida entre os 4 (R$ 150 cada)
+  // 4. Jantar de Frutos do Mar (R$ 480,00) paga pelo Host, dividida entre os 4 (R$ 120 cada)
+  const tripExpenses: TripExpense[] = [
+    {
+      id: "exp-trip-casa",
+      trip_id: tripId,
+      paid_by_member_id: "member-demo-host",
+      amount_cents: 320000,
+      description: "Aluguel Casa de Praia (Airbnb)",
+      category_name: "Hospedagem",
+      expense_date: formatIsoDate(referenceMonth, 10),
+      split_type: "equal",
+      receipt_url: null,
+      created_by_member_id: "member-demo-host",
+      linked_personal_expense_id: null,
+      created_at: nowIso,
+      updated_at: nowIso,
+      splits: [
+        { id: "split-casa-1", expense_id: "exp-trip-casa", member_id: "member-demo-host", share_cents: 80000 },
+        { id: "split-casa-2", expense_id: "exp-trip-casa", member_id: "member-demo-lucas", share_cents: 80000 },
+        { id: "split-casa-3", expense_id: "exp-trip-casa", member_id: "member-demo-mariana", share_cents: 80000 },
+        { id: "split-casa-4", expense_id: "exp-trip-casa", member_id: "member-demo-pedro", share_cents: 80000 },
+      ],
+    },
+    {
+      id: "exp-trip-mercado",
+      trip_id: tripId,
+      paid_by_member_id: "member-demo-lucas",
+      amount_cents: 96000,
+      description: "Compras de Alimentos e Bebidas (Atacadão)",
+      category_name: "Alimentação",
+      expense_date: formatIsoDate(referenceMonth, 11),
+      split_type: "equal",
+      receipt_url: null,
+      created_by_member_id: "member-demo-lucas",
+      linked_personal_expense_id: null,
+      created_at: nowIso,
+      updated_at: nowIso,
+      splits: [
+        { id: "split-mercado-1", expense_id: "exp-trip-mercado", member_id: "member-demo-host", share_cents: 24000 },
+        { id: "split-mercado-2", expense_id: "exp-trip-mercado", member_id: "member-demo-lucas", share_cents: 24000 },
+        { id: "split-mercado-3", expense_id: "exp-trip-mercado", member_id: "member-demo-mariana", share_cents: 24000 },
+        { id: "split-mercado-4", expense_id: "exp-trip-mercado", member_id: "member-demo-pedro", share_cents: 24000 },
+      ],
+    },
+    {
+      id: "exp-trip-barco",
+      trip_id: tripId,
+      paid_by_member_id: "member-demo-mariana",
+      amount_cents: 60000,
+      description: "Passeio de Escuna Ilha do Campeche",
+      category_name: "Lazer",
+      expense_date: formatIsoDate(referenceMonth, 13),
+      split_type: "equal",
+      receipt_url: null,
+      created_by_member_id: "member-demo-mariana",
+      linked_personal_expense_id: null,
+      created_at: nowIso,
+      updated_at: nowIso,
+      splits: [
+        { id: "split-barco-1", expense_id: "exp-trip-barco", member_id: "member-demo-host", share_cents: 15000 },
+        { id: "split-barco-2", expense_id: "exp-trip-barco", member_id: "member-demo-lucas", share_cents: 15000 },
+        { id: "split-barco-3", expense_id: "exp-trip-barco", member_id: "member-demo-mariana", share_cents: 15000 },
+        { id: "split-barco-4", expense_id: "exp-trip-barco", member_id: "member-demo-pedro", share_cents: 15000 },
+      ],
+    },
+    {
+      id: "exp-trip-jantar",
+      trip_id: tripId,
+      paid_by_member_id: "member-demo-host",
+      amount_cents: 48000,
+      description: "Jantar de Frutos do Mar",
+      category_name: "Restaurante",
+      expense_date: formatIsoDate(referenceMonth, 14),
+      split_type: "equal",
+      receipt_url: null,
+      created_by_member_id: "member-demo-host",
+      linked_personal_expense_id: null,
+      created_at: nowIso,
+      updated_at: nowIso,
+      splits: [
+        { id: "split-jantar-1", expense_id: "exp-trip-jantar", member_id: "member-demo-host", share_cents: 12000 },
+        { id: "split-jantar-2", expense_id: "exp-trip-jantar", member_id: "member-demo-lucas", share_cents: 12000 },
+        { id: "split-jantar-3", expense_id: "exp-trip-jantar", member_id: "member-demo-mariana", share_cents: 12000 },
+        { id: "split-jantar-4", expense_id: "exp-trip-jantar", member_id: "member-demo-pedro", share_cents: 12000 },
+      ],
+    },
+  ];
+
+  // Liquidação simulada confirmada ou vazia
+  const tripSettlements: TripSettlement[] = [];
+
+  return {
+    trips,
+    tripMembers,
+    tripExpenses,
+    tripSettlements,
+  };
+}
+
 

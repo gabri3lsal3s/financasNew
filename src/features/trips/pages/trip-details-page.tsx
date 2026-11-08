@@ -33,13 +33,17 @@ import {
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { useNavigate } from "react-router";
+import { useTripMode } from "@/state";
 import {
   AddTripMemberDialog,
   TripSettlementDialog,
 } from "../components";
 
 export function TripDetailsPage() {
+  const navigate = useNavigate();
   const { id: tripId } = useParams<{ id: string }>();
+  const { isTripModeEnabled, toggleTripMode, isPending: isTogglingTripMode } = useTripMode();
   const { data, isLoading } = useTripDetails(tripId);
 
   const [activeTab, setActiveTab] = useState<string>("expenses");
@@ -57,6 +61,56 @@ export function TripDetailsPage() {
         <Skeleton className="h-28 w-full rounded-2xl" />
         <Skeleton className="h-20 w-full rounded-xl" />
         <Skeleton className="h-64 w-full rounded-2xl" />
+      </div>
+    );
+  }
+
+  if (!isTripModeEnabled) {
+    return (
+      <div className="space-y-6" data-testid="trip-mode-inactive">
+        <header className="flex flex-col gap-2">
+          <div className="flex items-center gap-2.5">
+            <Receipt className="size-5 text-muted-foreground" aria-hidden="true" />
+            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+              Modo Viagem
+            </h1>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Grupos temporários de despesas compartilhadas com compensação líquida e acerto Pix.
+          </p>
+        </header>
+
+        <Card className="border-border/80 bg-surface shadow-xs p-6 sm:p-10 rounded-2xl text-center">
+          <EmptyState
+            icon={<Receipt className="size-10 text-muted-foreground" aria-hidden="true" />}
+            title="Modo Viagem desativado"
+            description="Ative o Modo Viagem para acessar os detalhes, balanços e acertos desta viagem. Seus dados continuam salvos com segurança."
+            action={
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  disabled={isTogglingTripMode}
+                  onClick={() => toggleTripMode(true)}
+                  className="gap-2 rounded-xl cursor-pointer"
+                >
+                  <Plus className="size-4" aria-hidden="true" />
+                  <span>{isTogglingTripMode ? "Ativando..." : "Ativar Modo Viagem"}</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/viagens")}
+                  className="rounded-xl cursor-pointer"
+                >
+                  Voltar para Viagens
+                </Button>
+              </div>
+            }
+          />
+        </Card>
       </div>
     );
   }
@@ -339,6 +393,7 @@ export function TripDetailsPage() {
             <Button
               size="sm"
               variant="default"
+              data-tour="trip-settlement-card"
               onClick={() => setIsSettlementOpen(true)}
               className="h-8 text-xs gap-1.5"
             >
@@ -349,7 +404,7 @@ export function TripDetailsPage() {
         </div>
 
         {/* Trinca de Métricas */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-border/80">
+        <div data-tour="trip-balances" className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-border/80">
           <div className="p-3 rounded-xl bg-surface-raised border border-border/60">
             <p className="text-[11px] text-muted-foreground font-medium">Total do Grupo</p>
             <p className="text-base sm:text-lg font-bold tabular-nums text-foreground">

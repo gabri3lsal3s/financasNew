@@ -54,6 +54,7 @@ export {
   generateMockLoans,
   generateMockDebts,
   generateMockIncomeGoals,
+  generateMockTrips,
 } from "./mock-finances";
 
 export {

@@ -8,6 +8,7 @@ import {
   CreditCard,
   Lightbulb,
   PieChart,
+  Plane,
   PlusCircle,
   Settings,
   Share2,
@@ -269,6 +270,14 @@ export function DemoTrackSelectModal({
                   description="Vaquinha colaborativa com termômetro em tempo real, chave Pix para arrecadação e prestação de contas pública."
                   icon={Target}
                   iconColorClass="text-portfolio"
+                  onSelect={handleSelectTrack}
+                />
+                <TourCardItem
+                  id="finances_trips"
+                  title="Modo Viagem & Rateio em Grupo"
+                  description="Controle compartilhado de viagens com amigos, múltiplos pagadores, compensação mínima de saldos e acerto via Pix sem atrito."
+                  icon={Plane}
+                  iconColorClass="text-warning-strong"
                   onSelect={handleSelectTrack}
                 />
               </div>

@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoProfileButton } from "@/components/layout/logo-profile-button";
 import { navGroups, filterNavItems } from "@/components/layout/nav-items";
-import { useFamilyMode, useReminders, useUserAccess } from "@/state";
+import { useFamilyMode, useTripMode, useReminders, useUserAccess } from "@/state";
 
 
 /** Atraso do hover-expand: evita disparos acidentais com mouse rápido (F25). */
@@ -63,17 +63,19 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
   const { isAdmin, hasFeature } = useUserAccess();
   const { isFamilyModeEnabled } = useFamilyMode();
+  const { isTripModeEnabled } = useTripMode();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
+  const isTripActive = Boolean(isTripModeEnabled);
   const expanded = !isCollapsed || hoverExpanded;
 
   const visibleGroups = useMemo(() => {
     return navGroups
       .map((g) => ({
         title: g.title,
-        items: filterNavItems(g.items, isAdmin, hasFeature, isFamilyActive),
+        items: filterNavItems(g.items, isAdmin, hasFeature, isFamilyActive, isTripActive),
       }))
       .filter((g) => g.items.length > 0);
-  }, [isAdmin, hasFeature, isFamilyActive]);
+  }, [isAdmin, hasFeature, isFamilyActive, isTripActive]);
 
 
   return (

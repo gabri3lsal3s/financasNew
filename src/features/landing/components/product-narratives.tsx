@@ -302,7 +302,7 @@ export function ProductNarratives() {
             </p>
 
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              O Áxis transforma finanças compartilhadas em um fluxo natural: <strong>Racha de Despesas com Pix Copia e Cola</strong> e lembretes automáticos no WhatsApp, <strong>Termômetro de Vaquinhas Coletivas</strong> com arrecadação pública transparente e o <strong>Modo Família</strong> com divisão 50/50 e acerto de contas sem atrito — preservando a privacidade estrita dos seus gastos individuais.
+              O Áxis transforma finanças compartilhadas em um fluxo natural: <strong>Racha de Despesas com Pix Copia e Cola</strong> e lembretes automáticos no WhatsApp, <strong>Termômetro de Vaquinhas Coletivas</strong> com arrecadação pública transparente, <strong>Modo Viagem</strong> com livro-razão em grupo e liquidação mínima inteligente, e o <strong>Modo Família</strong> com divisão 50/50 e acerto de contas sem atrito — preservando a privacidade estrita dos seus gastos individuais.
             </p>
 
             <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
@@ -313,6 +313,10 @@ export function ProductNarratives() {
               <div className="flex items-center gap-2.5 sm:gap-3">
                 <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
                 <span>Card de Termômetro de Vaquinha Coletiva em tempo real</span>
+              </div>
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
+                <span>Modo Viagem com múltiplos pagadores e liquidação mínima com Pix</span>
               </div>
               <div className="flex items-center gap-2.5 sm:gap-3">
                 <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />

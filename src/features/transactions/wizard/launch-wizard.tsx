@@ -46,6 +46,7 @@ import {
   useCreateRecurrence,
   useFamilyMode,
   usePredictionHistory,
+  useTripMode,
 } from "@/state";
 import { useUserTrips, useTripDetails } from "@/state/queries/use-trips";
 import { addTripExpense } from "@/data/repositories/trips";
@@ -164,8 +165,11 @@ export function LaunchWizard({
 
   const categoriesQuery = useCategories(state.type);
   const cardsQuery = useActiveCreditCards();
+  const { isTripModeEnabled } = useTripMode();
   const userTripsQuery = useUserTrips();
-  const activeTrips = (userTripsQuery.data ?? []).filter((t) => t.status === "active" || t.status === "planning");
+  const activeTrips = isTripModeEnabled
+    ? (userTripsQuery.data ?? []).filter((t) => t.status === "active" || t.status === "planning")
+    : [];
   const selectedTripDetails = useTripDetails(state.tripId ?? "");
   const { isFamilyModeEnabled } = useFamilyMode();
   const isFamilyActive = Boolean(isFamilyModeEnabled);

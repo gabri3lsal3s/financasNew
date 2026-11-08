@@ -14,6 +14,7 @@ import {
   generateMockDebts,
   generateMockLoans,
   generateMockIncomeGoals,
+  generateMockTrips,
   getTourSteps,
   TOUR_STEPS,
 } from "./index";
@@ -446,6 +447,30 @@ describe("demo-simulation — Datasets Puros e Dinâmicos em Memória (Fase 2)",
         expect(g.expected).toBeGreaterThan(0);
         expect(g.month).toMatch(/^\d{4}-\d{2}$/);
       }
+    });
+
+    it("generateMockTrips gera dados de viagem consistentes com anfitrião e rateios", () => {
+      const tripData = generateMockTrips();
+      expect(tripData.trips.length).toBe(1);
+      expect(tripData.tripMembers.length).toBe(4);
+      expect(tripData.tripExpenses.length).toBeGreaterThan(0);
+      const host = tripData.tripMembers.find((m) => m.is_host);
+      expect(host).toBeDefined();
+      expect(host?.user_id).toBe(DEMO_USER_ID);
+
+      // Toda despesa deve ter splits somando exatamente o amount_cents
+      for (const exp of tripData.tripExpenses) {
+        const sumSplits = (exp.splits ?? []).reduce((acc, s) => acc + s.share_cents, 0);
+        expect(sumSplits).toBe(exp.amount_cents);
+      }
+    });
+
+    it("TOUR_STEPS possui os passos do Modo Viagem (finances_trips) configurados", () => {
+      const tripSteps = getTourSteps("finances_trips");
+      expect(tripSteps.length).toBe(3);
+      expect(tripSteps[0]?.targetSelector).toBe('[data-tour="trips-hub"]');
+      expect(tripSteps[1]?.targetSelector).toBe('[data-tour="trip-balances"]');
+      expect(tripSteps[2]?.targetSelector).toBe('[data-tour="trip-settlement-card"]');
     });
   });
 });

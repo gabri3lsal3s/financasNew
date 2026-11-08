@@ -11,6 +11,7 @@ import {
   Share2,
   Check,
   MessageCircle,
+  Plane,
 } from "lucide-react";
 import { Badge, Button, Card, MoneyText } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -19,7 +20,7 @@ export interface SharedFinancesShowcaseProps {
   className?: string;
 }
 
-type SharedTab = "split" | "goal" | "family";
+type SharedTab = "split" | "goal" | "family" | "trip";
 
 export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProps) {
   const [activeTab, setActiveTab] = useState<SharedTab>("split");
@@ -27,6 +28,8 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
   const [whatsAppShared, setWhatsAppShared] = useState(false);
   const [copiedGoalPix, setCopiedGoalPix] = useState(false);
   const [settledFamily, setSettledFamily] = useState(false);
+  const [copiedTripPix, setCopiedTripPix] = useState(false);
+  const [settledTrip, setSettledTrip] = useState(false);
 
   const handleCopyPix = async () => {
     try {
@@ -125,6 +128,24 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
         >
           <Scale className="size-3.5 shrink-0" aria-hidden="true" />
           <span>Orçamento Familiar</span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          id="tab-trip"
+          aria-selected={activeTab === "trip"}
+          aria-controls="panel-trip"
+          onClick={() => setActiveTab("trip")}
+          className={cn(
+            "shrink-0 flex-initial min-w-fit px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+            activeTab === "trip"
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
+          )}
+        >
+          <Plane className="size-3.5 shrink-0" aria-hidden="true" />
+          <span>Modo Viagem</span>
         </button>
       </div>
 
@@ -461,6 +482,157 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
           <ShieldCheck className="size-4 text-positive-strong shrink-0" aria-hidden="true" />
           <span>
             Privacidade absoluta: compras individuais, presentes e faturas pessoais permanecem 100% invisíveis para os outros membros da família.
+          </span>
+        </div>
+      </div>
+
+      {/* 4. Card Visual: Modo Viagem com multi-pagadores e algoritmo de compensação mínima */}
+      <div
+        id="panel-trip"
+        role="tabpanel"
+        aria-labelledby="tab-trip"
+        data-testid="card-viagem"
+        className={cn("space-y-4", activeTab === "trip" ? "block" : "hidden")}
+      >
+        <div className="flex justify-between items-center border-b border-border/50 pb-3 sm:pb-3.5">
+          <div>
+            <div className="text-xs sm:text-sm font-bold text-foreground">
+              Viagem Florianópolis / Réveillon
+            </div>
+            <div className="text-[11px] sm:text-xs text-muted-foreground">
+              4 amigos · Livro-razão compartilhado · Link público com senha
+            </div>
+          </div>
+          <Badge variant="warning" size="xs" className="font-mono">
+            4 despesas · 2 acertos
+          </Badge>
+        </div>
+
+        {/* Resumo de Gastos Totais */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 text-xs font-mono">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-background/50 border border-border/50">
+            <span className="text-muted-foreground block text-[11px] font-sans">Total da Viagem:</span>
+            <MoneyText cents={524000} className="font-bold text-foreground text-sm sm:text-base" />
+          </div>
+          <div className="p-2.5 sm:p-3 rounded-xl bg-positive/10 border border-positive/30">
+            <span className="text-positive-strong block text-[11px] font-sans font-semibold">Você Pagou:</span>
+            <MoneyText cents={368000} className="font-bold text-positive-strong text-sm sm:text-base" />
+          </div>
+          <div className="p-2.5 sm:p-3 rounded-xl bg-primary/10 border border-primary/30 col-span-2 sm:col-span-1">
+            <span className="text-primary-strong block text-[11px] font-sans font-semibold">Seu Saldo Líquido:</span>
+            <span className="font-bold text-primary-strong text-sm sm:text-base">+R$ 2.370,00</span>
+          </div>
+        </div>
+
+        {/* Balanço dos Participantes */}
+        <div className="p-3 sm:p-4 rounded-xl border border-border/60 bg-background/40 space-y-2.5">
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            Balanço Individual em Tempo Real
+          </div>
+
+          <div className="space-y-2 text-xs">
+            <div className="flex justify-between items-center py-1 border-b border-border/30">
+              <span className="font-medium text-foreground">Você (Anfitrião)</span>
+              <div className="text-right">
+                <span className="text-positive-strong font-mono font-bold">+R$ 2.370,00</span>
+                <span className="text-[10px] text-muted-foreground block">a receber</span>
+              </div>
+            </div>
+            <div className="flex justify-between items-center py-1 border-b border-border/30">
+              <span className="font-medium text-foreground">Lucas Silva</span>
+              <div className="text-right">
+                <span className="text-negative-strong font-mono font-bold">-R$ 350,00</span>
+                <span className="text-[10px] text-muted-foreground block">a pagar</span>
+              </div>
+            </div>
+            <div className="flex justify-between items-center py-1 border-b border-border/30">
+              <span className="font-medium text-foreground">Mariana Costa</span>
+              <div className="text-right">
+                <span className="text-negative-strong font-mono font-bold">-R$ 710,00</span>
+                <span className="text-[10px] text-muted-foreground block">a pagar</span>
+              </div>
+            </div>
+            <div className="flex justify-between items-center py-1">
+              <span className="font-medium text-foreground">Pedro Alves</span>
+              <div className="text-right">
+                <span className="text-negative-strong font-mono font-bold">-R$ 1.310,00</span>
+                <span className="text-[10px] text-muted-foreground block">a pagar</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Liquidação Mínima Recomendada com Pix */}
+        <div className="p-3 sm:p-3.5 rounded-xl border border-warning/30 bg-warning/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <ArrowRightLeft className="size-4 text-warning-strong shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="text-xs">
+              <div className="font-semibold text-foreground">Liquidação Otimizada (2 transferências em vez de 6):</div>
+              <div className="text-muted-foreground mt-0.5">
+                Pedro transfere <MoneyText cents={131000} className="font-bold text-foreground" /> e Mariana transfere <MoneyText cents={71000} className="font-bold text-foreground" /> direto via Pix.
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-stretch sm:self-auto">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard?.writeText?.("voce@email.com");
+                } catch {
+                  // Fallback
+                }
+                setCopiedTripPix(true);
+                setTimeout(() => setCopiedTripPix(false), 2500);
+              }}
+              className="gap-1.5 flex-1 sm:flex-none text-xs"
+            >
+              {copiedTripPix ? (
+                <>
+                  <Check className="size-3.5 text-positive-strong" aria-hidden="true" />
+                  <span>Pix Copiado!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="size-3.5" aria-hidden="true" />
+                  <span>Copiar Chave Pix</span>
+                </>
+              )}
+            </Button>
+
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={() => {
+                setSettledTrip(true);
+                setTimeout(() => setSettledTrip(false), 3000);
+              }}
+              className="gap-1.5 flex-1 sm:flex-none text-xs"
+            >
+              {settledTrip ? (
+                <>
+                  <Check className="size-3.5" aria-hidden="true" />
+                  <span>Confirmado</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                  <span>Confirmar Recebimento</span>
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Link Público para Amigos Sem Conta */}
+        <div className="flex items-center gap-2 p-2.5 rounded-xl border border-border/50 bg-background/50 text-[11px] sm:text-xs text-muted-foreground">
+          <Share2 className="size-4 text-primary shrink-0" aria-hidden="true" />
+          <span>
+            Zero atrito: compartilhe o link seguro da viagem. Seus amigos lançam gastos e conferem o acerto pelo navegador, sem necessidade de baixar o app ou criar conta.
           </span>
         </div>
       </div>

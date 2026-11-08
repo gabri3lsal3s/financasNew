@@ -25,6 +25,7 @@ import type {
   MonthlyClosingPayload,
   MonthlyClosingResult,
 } from "@/types";
+import type { Trip } from "@/types/trips";
 
 /**
  * Wrappers tipados dos RPCs transacionais (D1).
@@ -1566,3 +1567,33 @@ export async function recordTripSettlementsRpc(
     } as never),
   );
 }
+
+/**
+ * Cria uma viagem e cadastra o host e participantes de forma atômica via RPC create_trip.
+ */
+export async function createTripRpc(input: {
+  title: string;
+  destination?: string | null;
+  startDate: string;
+  endDate: string;
+  currency?: string;
+  coverPhotoUrl?: string | null;
+  initialMembers?: readonly {
+    name: string;
+    pix_key?: string | null;
+    pix_key_type?: string | null;
+  }[];
+}): Promise<Trip> {
+  return unwrapRpc(
+    callRpc("create_trip" as never, {
+      p_title: input.title,
+      p_destination: input.destination ?? null,
+      p_start_date: input.startDate,
+      p_end_date: input.endDate,
+      p_currency: input.currency ?? "BRL",
+      p_cover_photo_url: input.coverPhotoUrl ?? null,
+      p_initial_members: input.initialMembers ?? [],
+    } as never),
+  );
+}
+

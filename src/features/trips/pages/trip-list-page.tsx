@@ -15,10 +15,12 @@ import {
   Skeleton,
 } from "@/components/ui";
 import { useUserTrips } from "@/state/queries/use-trips";
+import { useTripMode } from "@/state";
 import { CreateTripDialog } from "../components";
 
 export function TripListPage() {
   const navigate = useNavigate();
+  const { isTripModeEnabled, toggleTripMode, isPending: isTogglingTripMode } = useTripMode();
   const { data: trips, isLoading } = useUserTrips();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("active");
@@ -29,6 +31,56 @@ export function TripListPage() {
         <Skeleton className="h-10 w-48" />
         <Skeleton className="h-32 w-full rounded-2xl" />
         <Skeleton className="h-32 w-full rounded-2xl" />
+      </div>
+    );
+  }
+
+  if (!isTripModeEnabled) {
+    return (
+      <div className="space-y-6" data-testid="trip-mode-inactive">
+        <header className="flex flex-col gap-2">
+          <div className="flex items-center gap-2.5">
+            <Plane className="size-5 text-muted-foreground" aria-hidden="true" />
+            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+              Modo Viagem
+            </h1>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Grupos temporários de despesas compartilhadas com compensação líquida e acerto Pix.
+          </p>
+        </header>
+
+        <Card className="border-border/80 bg-surface shadow-xs p-6 sm:p-10 rounded-2xl text-center">
+          <EmptyState
+            icon={<Plane className="size-10 text-muted-foreground" aria-hidden="true" />}
+            title="Modo Viagem desativado"
+            description="O Modo Viagem permite criar grupos temporários de despesas para viagens com amigos, simplifica acertos pelo algoritmo de menor esforço e gera links de colaboração sem exigir cadastro dos convidados."
+            action={
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  disabled={isTogglingTripMode}
+                  onClick={() => toggleTripMode(true)}
+                  className="gap-2 rounded-xl cursor-pointer"
+                >
+                  <Plus className="size-4" aria-hidden="true" />
+                  <span>{isTogglingTripMode ? "Ativando..." : "Ativar Modo Viagem"}</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/")}
+                  className="rounded-xl cursor-pointer"
+                >
+                  Voltar ao Início
+                </Button>
+              </div>
+            }
+          />
+        </Card>
       </div>
     );
   }
@@ -139,7 +191,7 @@ export function TripListPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-tour="trips-hub">
       {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>

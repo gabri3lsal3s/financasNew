@@ -73,6 +73,7 @@ export { useUserPreferences } from "./queries/use-user-preferences";
 export { useAppMode } from "./queries/use-app-mode";
 export type { UseAppModeResult } from "./queries/use-app-mode";
 export { useFamilyMode } from "./queries/use-family-mode";
+export { useTripMode } from "./queries/use-trip-mode";
 export {
   useUpdateReminderPreferences,
   useUpdateCustomSettings,

@@ -19,6 +19,12 @@ import type {
   Loan,
   IncomeGoal,
 } from "@/types";
+import type {
+  Trip,
+  TripMember,
+  TripExpense,
+  TripSettlement,
+} from "@/types/trips";
 
 /**
  * Categorias principais dos grupos de trilhas e micro-tours de demonstração.
@@ -59,6 +65,7 @@ export type SharedTourTrackId =
   | "shared_finances"
   | "finances_split"
   | "finances_family"
+  | "finances_trips"
   | "finances_goals";
 
 /**
@@ -92,7 +99,8 @@ export type TourIconName =
   | "shield"
   | "users"
   | "share-2"
-  | "coins";
+  | "coins"
+  | "plane";
 
 /**
  * Metadados descritivos canônicos de cada micro-tour ou trilha.
@@ -186,6 +194,10 @@ export interface DailyFinancesDataset {
   debts: Debt[];
   loans: Loan[];
   incomeGoals: IncomeGoal[];
+  trips: Trip[];
+  tripMembers: TripMember[];
+  tripExpenses: TripExpense[];
+  tripSettlements: TripSettlement[];
 }
 
 export interface InvestmentsDataset {

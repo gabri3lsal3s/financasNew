@@ -265,6 +265,7 @@ export type UserCustomSettings = {
   emergencyFundConfig?: EmergencyFundConfig;
   splitPreferences?: SplitPreferences;
   familyModeEnabled?: boolean;
+  tripModeEnabled?: boolean;
 };
 
 export type GoalAlertStage = "completed" | "final_stretch" | "has_surplus" | "regular";

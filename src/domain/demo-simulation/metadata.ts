@@ -72,6 +72,7 @@ export const TOUR_TRACK_CATEGORY_LABELS: Record<AnyTourTrackId, string> = {
   finances_split: "Compartilhadas",
   finances_family: "Compartilhadas",
   finances_goals: "Compartilhadas",
+  finances_trips: "Compartilhadas",
 } as const;
 
 /**
@@ -105,6 +106,7 @@ export const TOUR_TRACK_CONTEXTUAL_LABELS: Record<AnyTourTrackId, string> = {
   finances_split: "Compartilhadas · Racha com Pix",
   finances_family: "Compartilhadas · Modo Família",
   finances_goals: "Compartilhadas · Metas Coletivas",
+  finances_trips: "Compartilhadas · Modo Viagem",
 } as const;
 
 /**
@@ -138,6 +140,7 @@ export const TOUR_TRACK_TITLES: Record<AnyTourTrackId, string> = {
   finances_split: "Racha de Despesas com Pix",
   finances_family: "Modo Família Multi-Contas",
   finances_goals: "Metas Coletivas & Vaquinha Pix",
+  finances_trips: "Modo Viagem & Rateio em Grupo",
 } as const;
 
 /**
@@ -171,6 +174,7 @@ export const TOUR_TRACK_SHORT_TITLES: Record<AnyTourTrackId, string> = {
   finances_split: "Racha com Pix",
   finances_family: "Modo Família",
   finances_goals: "Metas Coletivas",
+  finances_trips: "Modo Viagem",
 } as const;
 
 /**
@@ -222,6 +226,8 @@ export const TOUR_TRACK_DESCRIPTIONS: Record<AnyTourTrackId, string> = {
     "Gestão orçamentária para casais e famílias com cartões independentes, teto conjunto e equilíbrio sem atrito.",
   finances_goals:
     "Vaquinha colaborativa com termômetro em tempo real, chave Pix para arrecadação e prestação de contas pública.",
+  finances_trips:
+    "Controle compartilhado de viagens com amigos, múltiplos pagadores, compensação mínima de saldos e acerto via Pix sem atrito.",
 } as const;
 
 /**
@@ -248,7 +254,8 @@ export function getTourTrackCategory(
       trackId.startsWith("shared") ||
       trackId === "finances_split" ||
       trackId === "finances_family" ||
-      trackId === "finances_goals"
+      trackId === "finances_goals" ||
+      trackId === "finances_trips"
     ) {
       return "shared";
     }
@@ -295,7 +302,8 @@ export function getTourTrackCategoryLabel(
       trackId.startsWith("shared") ||
       trackId === "finances_split" ||
       trackId === "finances_family" ||
-      trackId === "finances_goals"
+      trackId === "finances_goals" ||
+      trackId === "finances_trips"
     ) {
       return "Compartilhadas";
     }

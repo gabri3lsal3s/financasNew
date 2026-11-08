@@ -8,6 +8,9 @@ import {
 } from "@/domain/demo-simulation";
 import type { OnboardingCounts } from "@/domain/onboarding";
 import type { CategoryType, Debt, FamilyPortfolioSummary, IncomeGoal, Loan, PublicShareKind } from "@/types";
+import type { Trip } from "@/types/trips";
+import type { TripAggregatedDetails } from "./use-trips";
+import { calculateMemberBalances, calculateSimplifiedSettlements } from "@/domain/trips/trip-math";
 
 /**
  * Cria uma estrutura de retorno compatível com UseQueryResult do TanStack Query,
@@ -306,3 +309,68 @@ export function useSimulatedIncomeGoals() {
   }, []);
   return makeSimulatedQueryResult(data);
 }
+
+/** Lista de viagens simuladas (Modo Viagem). */
+export function useSimulatedTrips() {
+  const data = useMemo<Trip[]>(() => {
+    const mock = generateMockFinances();
+    return mock.trips;
+  }, []);
+  return makeSimulatedQueryResult(data);
+}
+
+/** Detalhes agregados da viagem simulada. */
+export function useSimulatedTripDetails(tripId: string | null | undefined) {
+  const data = useMemo<TripAggregatedDetails | null>(() => {
+    if (!tripId) return null;
+    const mock = generateMockFinances();
+    const trip = mock.trips.find((t) => t.id === tripId) ?? mock.trips[0];
+    if (!trip) return null;
+
+    const members = mock.tripMembers.filter((m) => m.trip_id === trip.id);
+    const expenses = mock.tripExpenses.filter((e) => e.trip_id === trip.id);
+    const settlements = mock.tripSettlements.filter((s) => s.trip_id === trip.id);
+
+    const balances = calculateMemberBalances(
+      members.map((m) => ({
+        id: m.id,
+        name: m.name,
+        pix_key: m.pix_key,
+        pix_key_type: m.pix_key_type,
+      })),
+      expenses.map((e) => ({
+        paid_by_member_id: e.paid_by_member_id,
+        amount_cents: e.amount_cents,
+        splits: (e.splits ?? []).map((s) => ({
+          member_id: s.member_id,
+          share_cents: s.share_cents,
+        })),
+      }))
+    );
+
+    const suggestedSettlements = calculateSimplifiedSettlements(
+      balances,
+      members.map((m) => ({
+        id: m.id,
+        name: m.name,
+        pix_key: m.pix_key,
+        pix_key_type: m.pix_key_type,
+      }))
+    );
+
+    const totalExpensesCents = expenses.reduce((acc, e) => acc + e.amount_cents, 0);
+
+    return {
+      trip,
+      members,
+      expenses,
+      settlements,
+      balances,
+      suggestedSettlements,
+      totalExpensesCents,
+    };
+  }, [tripId]);
+
+  return makeSimulatedQueryResult(data);
+}
+

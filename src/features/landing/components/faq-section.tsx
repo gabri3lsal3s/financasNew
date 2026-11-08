@@ -59,6 +59,11 @@ const faqs: FaqItem[] = [
     answer:
       "Sim, perfeitamente. No iPhone, você utiliza a versão PWA moderna (adicionada à tela inicial pelo Safari). Você terá acesso a 100% dos motores de cálculo, orçamentos, carteira de investimentos e relatórios executivos. Para registrar transações em segundos sem digitação manual, o Áxis conta com o Leitor Inteligente de Pix e Comprovantes: basta copiar o código Pix Copia e Cola ou o texto do comprovante do seu banco e colar no app para aprovar em 1 toque. Apenas a leitura passiva em segundo plano de notificações de outros apps fica restrita ao Android Pro, devido a limitações de arquitetura do iOS da Apple.",
   },
+  {
+    question: "Como funciona o Modo Viagem com amigos que não têm o aplicativo?",
+    answer:
+      "Funciona sem nenhum atrito. Ao criar uma viagem em grupo, o Áxis gera um link público seguro (com senha opcional). Seus amigos abrem a página pelo navegador do celular, conferem o livro-razão em tempo real e podem lançar os gastos que pagaram. No final da viagem, o algoritmo calcula o menor número possível de transferências Pix para zerar todos os saldos, sem que seus amigos precisem criar conta ou baixar qualquer aplicativo.",
+  },
 ];
 
 export function FaqSection() {

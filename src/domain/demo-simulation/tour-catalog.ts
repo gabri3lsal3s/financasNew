@@ -136,6 +136,18 @@ export const TOUR_TRACK_METAS: Record<AnyTourTrackId, TourTrackMeta> = {
     startRoute: "/orcamentos?tab=goals",
     badgeLabel: "2 passos",
   },
+  finances_trips: {
+    id: "finances_trips",
+    title: "Modo Viagem & Rateio em Grupo",
+    shortTitle: "Modo Viagem",
+    description:
+      "Controle compartilhado de viagens com amigos, múltiplos pagadores, compensação mínima de saldos e acerto via Pix sem atrito.",
+    category: "shared",
+    stepsCount: 3,
+    iconName: "plane",
+    startRoute: "/viagens",
+    badgeLabel: "3 passos",
+  },
 
   // Trilha 3: Investimentos & Rebalanceamento
   investments_overview: {
@@ -274,13 +286,14 @@ export const TOUR_TRACK_GROUPS: readonly TourTrackGroup[] = [
     category: "shared",
     title: "Finanças Compartilhadas",
     description:
-      "Racha de despesas com Pix, vaquinha coletiva e gestão colaborativa familiar.",
+      "Racha de despesas com Pix, vaquinha coletiva, modo viagem e gestão colaborativa familiar.",
     iconName: "users",
-    badgeLabel: "3 micro-tours",
+    badgeLabel: "4 micro-tours",
     tracks: [
       TOUR_TRACK_METAS.finances_split,
       TOUR_TRACK_METAS.finances_family,
       TOUR_TRACK_METAS.finances_goals,
+      TOUR_TRACK_METAS.finances_trips,
     ],
   },
   {

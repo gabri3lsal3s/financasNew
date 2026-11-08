@@ -124,6 +124,13 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  useExpenses: () => ({
+    data: stateMocks.expenses,
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
   useCreditCards: () => ({
     data: stateMocks.cards,
     isLoading: false,

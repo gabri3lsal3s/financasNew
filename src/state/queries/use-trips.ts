@@ -35,6 +35,8 @@ import {
   calculateSimplifiedSettlements,
 } from "@/domain/trips/trip-math";
 import { STALE_TIMES } from "@/state/cache-policy";
+import { useDemoSession } from "@/state/demo-mode";
+import { useSimulatedTrips, useSimulatedTripDetails } from "./use-simulated-queries";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { getErrorMessage } from "@/services/errors";
@@ -57,11 +59,15 @@ export const TRIP_QUERY_KEYS = {
 };
 
 export function useUserTrips() {
-  return useQuery<Trip[]>({
+  const { isDemoActive } = useDemoSession();
+  const simulated = useSimulatedTrips();
+  const real = useQuery<Trip[]>({
     queryKey: TRIP_QUERY_KEYS.lists(),
     queryFn: () => getUserTrips(),
+    enabled: !isDemoActive,
     staleTime: STALE_TIMES.transactional,
   });
+  return isDemoActive ? simulated : real;
 }
 
 export interface TripAggregatedDetails {
@@ -75,7 +81,9 @@ export interface TripAggregatedDetails {
 }
 
 export function useTripDetails(tripId: string | null | undefined) {
-  return useQuery<TripAggregatedDetails | null>({
+  const { isDemoActive } = useDemoSession();
+  const simulated = useSimulatedTripDetails(tripId);
+  const real = useQuery<TripAggregatedDetails | null>({
     queryKey: TRIP_QUERY_KEYS.detail(tripId ?? ""),
     queryFn: async () => {
       if (!tripId) return null;
@@ -128,9 +136,11 @@ export function useTripDetails(tripId: string | null | undefined) {
         totalExpensesCents,
       };
     },
-    enabled: Boolean(tripId),
+    enabled: Boolean(tripId) && !isDemoActive,
     staleTime: STALE_TIMES.transactional,
   });
+
+  return isDemoActive ? simulated : real;
 }
 
 export function usePublicTrip(token: string | null | undefined, passcode?: string) {

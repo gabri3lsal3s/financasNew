@@ -120,57 +120,102 @@ alter table public.trip_expenses enable row level security;
 alter table public.trip_expense_splits enable row level security;
 alter table public.trip_settlements enable row level security;
 
+-- Funções auxiliares SECURITY DEFINER para evitar recursão infinita (42P17)
+create or replace function public.is_trip_member(p_trip_id uuid, p_user_id uuid default auth.uid())
+returns boolean
+language sql
+security definer
+set search_path = public, pg_temp
+stable
+as $$
+  select exists (
+    select 1
+    from public.trip_members
+    where trip_id = p_trip_id
+      and user_id = coalesce(p_user_id, auth.uid())
+  );
+$$;
+
+create or replace function public.is_trip_host(p_trip_id uuid, p_user_id uuid default auth.uid())
+returns boolean
+language sql
+security definer
+set search_path = public, pg_temp
+stable
+as $$
+  select exists (
+    select 1
+    from public.trips
+    where id = p_trip_id
+      and host_user_id = coalesce(p_user_id, auth.uid())
+  );
+$$;
+
+create or replace function public.can_access_trip_expense(p_expense_id uuid, p_user_id uuid default auth.uid())
+returns boolean
+language sql
+security definer
+set search_path = public, pg_temp
+stable
+as $$
+  select exists (
+    select 1
+    from public.trip_expenses te
+    where te.id = p_expense_id
+      and (
+        public.is_trip_host(te.trip_id, coalesce(p_user_id, auth.uid()))
+        or public.is_trip_member(te.trip_id, coalesce(p_user_id, auth.uid()))
+      )
+  );
+$$;
+
+grant execute on function public.is_trip_member(uuid, uuid) to authenticated, anon, service_role;
+grant execute on function public.is_trip_host(uuid, uuid) to authenticated, anon, service_role;
+grant execute on function public.can_access_trip_expense(uuid, uuid) to authenticated, anon, service_role;
+
 -- Políticas trips
 drop policy if exists "trips_select_policy" on public.trips;
 create policy "trips_select_policy" on public.trips
   for select to authenticated
   using (
-    host_user_id = auth.uid()
-    or exists (
-      select 1 from public.trip_members tm
-      where tm.trip_id = trips.id and tm.user_id = auth.uid()
-    )
+    host_user_id = (select auth.uid())
+    or public.is_trip_member(id, (select auth.uid()))
   );
 
 drop policy if exists "trips_insert_policy" on public.trips;
 create policy "trips_insert_policy" on public.trips
   for insert to authenticated
-  with check (host_user_id = auth.uid());
+  with check (host_user_id = (select auth.uid()));
 
 drop policy if exists "trips_update_policy" on public.trips;
 create policy "trips_update_policy" on public.trips
   for update to authenticated
-  using (host_user_id = auth.uid())
-  with check (host_user_id = auth.uid());
+  using (host_user_id = (select auth.uid()))
+  with check (host_user_id = (select auth.uid()));
 
 drop policy if exists "trips_delete_policy" on public.trips;
 create policy "trips_delete_policy" on public.trips
   for delete to authenticated
-  using (host_user_id = auth.uid());
+  using (host_user_id = (select auth.uid()));
 
 -- Políticas trip_members
 drop policy if exists "trip_members_select_policy" on public.trip_members;
 create policy "trip_members_select_policy" on public.trip_members
   for select to authenticated
   using (
-    exists (
-      select 1 from public.trips t
-      where t.id = trip_members.trip_id
-      and (
-        t.host_user_id = auth.uid()
-        or exists (select 1 from public.trip_members tm where tm.trip_id = t.id and tm.user_id = auth.uid())
-      )
-    )
+    user_id = (select auth.uid())
+    or public.is_trip_host(trip_id, (select auth.uid()))
+    or public.is_trip_member(trip_id, (select auth.uid()))
   );
 
 drop policy if exists "trip_members_write_policy" on public.trip_members;
 create policy "trip_members_write_policy" on public.trip_members
   for all to authenticated
   using (
-    exists (
-      select 1 from public.trips t
-      where t.id = trip_members.trip_id and t.host_user_id = auth.uid()
-    )
+    public.is_trip_host(trip_id, (select auth.uid()))
+  )
+  with check (
+    public.is_trip_host(trip_id, (select auth.uid()))
   );
 
 -- Políticas trip_expenses
@@ -178,28 +223,20 @@ drop policy if exists "trip_expenses_select_policy" on public.trip_expenses;
 create policy "trip_expenses_select_policy" on public.trip_expenses
   for select to authenticated
   using (
-    exists (
-      select 1 from public.trips t
-      where t.id = trip_expenses.trip_id
-      and (
-        t.host_user_id = auth.uid()
-        or exists (select 1 from public.trip_members tm where tm.trip_id = t.id and tm.user_id = auth.uid())
-      )
-    )
+    public.is_trip_host(trip_id, (select auth.uid()))
+    or public.is_trip_member(trip_id, (select auth.uid()))
   );
 
 drop policy if exists "trip_expenses_write_policy" on public.trip_expenses;
 create policy "trip_expenses_write_policy" on public.trip_expenses
   for all to authenticated
   using (
-    exists (
-      select 1 from public.trips t
-      where t.id = trip_expenses.trip_id
-      and (
-        t.host_user_id = auth.uid()
-        or exists (select 1 from public.trip_members tm where tm.trip_id = t.id and tm.user_id = auth.uid())
-      )
-    )
+    public.is_trip_host(trip_id, (select auth.uid()))
+    or public.is_trip_member(trip_id, (select auth.uid()))
+  )
+  with check (
+    public.is_trip_host(trip_id, (select auth.uid()))
+    or public.is_trip_member(trip_id, (select auth.uid()))
   );
 
 -- Políticas trip_expense_splits
@@ -207,30 +244,17 @@ drop policy if exists "trip_expense_splits_select_policy" on public.trip_expense
 create policy "trip_expense_splits_select_policy" on public.trip_expense_splits
   for select to authenticated
   using (
-    exists (
-      select 1 from public.trip_expenses te
-      join public.trips t on t.id = te.trip_id
-      where te.id = trip_expense_splits.expense_id
-      and (
-        t.host_user_id = auth.uid()
-        or exists (select 1 from public.trip_members tm where tm.trip_id = t.id and tm.user_id = auth.uid())
-      )
-    )
+    public.can_access_trip_expense(expense_id, (select auth.uid()))
   );
 
 drop policy if exists "trip_expense_splits_write_policy" on public.trip_expense_splits;
 create policy "trip_expense_splits_write_policy" on public.trip_expense_splits
   for all to authenticated
   using (
-    exists (
-      select 1 from public.trip_expenses te
-      join public.trips t on t.id = te.trip_id
-      where te.id = trip_expense_splits.expense_id
-      and (
-        t.host_user_id = auth.uid()
-        or exists (select 1 from public.trip_members tm where tm.trip_id = t.id and tm.user_id = auth.uid())
-      )
-    )
+    public.can_access_trip_expense(expense_id, (select auth.uid()))
+  )
+  with check (
+    public.can_access_trip_expense(expense_id, (select auth.uid()))
   );
 
 -- Políticas trip_settlements
@@ -238,28 +262,20 @@ drop policy if exists "trip_settlements_select_policy" on public.trip_settlement
 create policy "trip_settlements_select_policy" on public.trip_settlements
   for select to authenticated
   using (
-    exists (
-      select 1 from public.trips t
-      where t.id = trip_settlements.trip_id
-      and (
-        t.host_user_id = auth.uid()
-        or exists (select 1 from public.trip_members tm where tm.trip_id = t.id and tm.user_id = auth.uid())
-      )
-    )
+    public.is_trip_host(trip_id, (select auth.uid()))
+    or public.is_trip_member(trip_id, (select auth.uid()))
   );
 
 drop policy if exists "trip_settlements_write_policy" on public.trip_settlements;
 create policy "trip_settlements_write_policy" on public.trip_settlements
   for all to authenticated
   using (
-    exists (
-      select 1 from public.trips t
-      where t.id = trip_settlements.trip_id
-      and (
-        t.host_user_id = auth.uid()
-        or exists (select 1 from public.trip_members tm where tm.trip_id = t.id and tm.user_id = auth.uid())
-      )
-    )
+    public.is_trip_host(trip_id, (select auth.uid()))
+    or public.is_trip_member(trip_id, (select auth.uid()))
+  )
+  with check (
+    public.is_trip_host(trip_id, (select auth.uid()))
+    or public.is_trip_member(trip_id, (select auth.uid()))
   );
 
 -- Permissões básicas

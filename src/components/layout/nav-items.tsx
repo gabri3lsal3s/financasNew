@@ -24,6 +24,7 @@ export interface NavItem {
   featureKey?: SystemFeatureKey | string;
   adminOnly?: boolean;
   familyOnly?: boolean;
+  tripOnly?: boolean;
 }
 
 export interface NavGroup {
@@ -37,7 +38,7 @@ export const navItems: NavItem[] = [
   { label: "Transações", shortLabel: "Extrato", path: "/transacoes", icon: ArrowLeftRight, featureKey: "transactions" },
   { label: "Cartões", shortLabel: "Cartões", path: "/cartoes", icon: CreditCard, featureKey: "cards" },
   { label: "Contas & Dívidas", shortLabel: "Contas", path: "/dividas", icon: HandCoins, featureKey: "debts" },
-  { label: "Modo Viagem", shortLabel: "Viagens", path: "/viagens", icon: Plane },
+  { label: "Modo Viagem", shortLabel: "Viagens", path: "/viagens", icon: Plane, tripOnly: true },
   { label: "Investimentos", shortLabel: "Carteira", path: "/investments", icon: ChartLine, featureKey: "investments" },
   { label: "Orçamentos", shortLabel: "Orçamentos", path: "/orcamentos", icon: PiggyBank, featureKey: "budgets" },
   { label: "Orçamento Familiar", shortLabel: "Família", path: "/familia", icon: Users, familyOnly: true },
@@ -57,7 +58,7 @@ export const navGroups: NavGroup[] = [
       { label: "Transações", shortLabel: "Extrato", path: "/transacoes", icon: ArrowLeftRight, featureKey: "transactions" },
       { label: "Cartões", shortLabel: "Cartões", path: "/cartoes", icon: CreditCard, featureKey: "cards" },
       { label: "Contas & Dívidas", shortLabel: "Contas", path: "/dividas", icon: HandCoins, featureKey: "debts" },
-      { label: "Modo Viagem", shortLabel: "Viagens", path: "/viagens", icon: Plane },
+      { label: "Modo Viagem", shortLabel: "Viagens", path: "/viagens", icon: Plane, tripOnly: true },
     ],
   },
   {
@@ -81,18 +82,20 @@ export const navGroups: NavGroup[] = [
 ];
 
 /**
- * Filtra itens de navegação baseado no status administrativo, presença de família ativa
- * e nas Feature Flags ativas.
+ * Filtra itens de navegação baseado no status administrativo, presença de família ativa,
+ * modo viagem ativo e nas Feature Flags ativas.
  */
 export function filterNavItems(
   items: readonly NavItem[],
   isAdmin: boolean,
   hasFeature: (key: string) => boolean,
   isFamilyActive = false,
+  isTripActive = false,
 ): NavItem[] {
   return items.filter((item) => {
     if (item.adminOnly && !isAdmin) return false;
     if (item.familyOnly && !isFamilyActive) return false;
+    if (item.tripOnly && !isTripActive) return false;
     if (item.featureKey && !hasFeature(item.featureKey)) return false;
     return true;
   });

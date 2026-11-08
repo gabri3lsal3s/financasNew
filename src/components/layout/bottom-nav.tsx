@@ -6,7 +6,7 @@ import { filterNavItems, navItems } from "@/components/layout/nav-items";
 import type { NavItem } from "@/components/layout/nav-items";
 import { resolveBottomNavSlots } from "@/domain/navigation";
 import { triggerSensory } from "@/services/sensory";
-import { useFamilyMode, useReminders, useUserAccess } from "@/state";
+import { useFamilyMode, useTripMode, useReminders, useUserAccess } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { MoreMenuSheet } from "./more-menu-sheet";
 
@@ -105,11 +105,13 @@ export function BottomNav() {
   const location = useLocation();
   const { hasFeature, isAdmin } = useUserAccess();
   const { isFamilyModeEnabled } = useFamilyMode();
+  const { isTripModeEnabled } = useTripMode();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
+  const isTripActive = Boolean(isTripModeEnabled);
   const { totalCount, urgentCount } = useReminders();
   const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard();
 
-  const allowedItems = filterNavItems(navItems, isAdmin, hasFeature, isFamilyActive);
+  const allowedItems = filterNavItems(navItems, isAdmin, hasFeature, isFamilyActive, isTripActive);
   const { primarySlots, moreMenuSlots } = resolveBottomNavSlots(allowedItems);
 
   const create = getFabAction(location.pathname, location.search, hasFeature);
