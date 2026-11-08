@@ -505,6 +505,64 @@ describe("ShareGoalDialog", () => {
     expect(screen.getAllByRole("button", { name: "Fechar" })).toHaveLength(2);
     expect(screen.getByRole("button", { name: "Marcar como concluída" })).toBeInTheDocument();
   });
+
+  it("regenera o link público da mesma meta sem criar nova meta e copia o novo endereço", async () => {
+    mutateAsyncRegenerateMock.mockResolvedValueOnce({
+      id: "share-to-regen",
+      token: "gt_brand_new_token",
+      kind: "goal_tracker",
+      payload: {
+        title: "Meta com Link Renovado",
+      },
+    });
+
+    mockMyShares = [
+      {
+        id: "share-to-regen",
+        user_id: "user-1",
+        kind: "goal_tracker",
+        token: "gt_old_token",
+        payload: {
+          title: "Meta com Link Renovado",
+          target_cents: 100000,
+          current_cents: 50000,
+          pix_key: "123.456.789-00",
+        },
+        created_at: "2026-11-01T00:00:00Z",
+        expires_at: "2026-12-01T00:00:00Z",
+        is_revoked: false,
+        updated_at: "2026-11-01T00:00:00Z",
+      },
+    ];
+
+    render(
+      <ShareGoalDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        existingShare={mockMyShares[0]}
+      />,
+    );
+
+    const regenBtn = screen.getByRole("button", { name: "Regenerar link público" });
+    fireEvent.click(regenBtn);
+
+    expect(screen.getByText("Regenerar Link do Termômetro")).toBeInTheDocument();
+
+    const confirmRegenBtn = screen.getByRole("button", { name: "Regenerar e copiar" });
+    fireEvent.click(confirmRegenBtn);
+
+    await waitFor(() => {
+      expect(mutateAsyncRegenerateMock).toHaveBeenCalledWith({
+        oldId: "share-to-regen",
+        input: expect.objectContaining({
+          kind: "goal_tracker",
+        }),
+      });
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        expect.stringContaining("/meta/gt_brand_new_token"),
+      );
+    });
+  });
 });
 
 

@@ -802,8 +802,17 @@ O módulo de compartilhamento e crescimento orgânico foi projetado para permiti
 - **Ativação e Visualização no App (`CampaignCard` & `ShareGoalDialog`):**
   - O card da campanha (`CampaignCard`) adota visual limpo e sem poluição de ícones soltos (sem botão externo de editar ou excluir); o clique no card ou em suas informações aciona diretamente o modal `ShareGoalDialog`.
   - Ações diretas no card preservadas: registro de aporte/depósito (`+ Depósito`), conferência de participantes (`Participantes`), cópia rápida do link público (`Link`) e abertura em nova aba (`ExternalLink`).
-- **Edição Completa Pós-Criação (`ShareGoalDialog`):**
+- **Edição Completa Pós-Criação & Escolha de Privacidade (`ShareGoalDialog`):**
   - No modal, o anfitrião pode acionar "Editar Meta" a qualquer momento, alterando o título, meta alvo (`target_cents`), saldo arrecadado (`current_cents`), prazo (`deadline`, com suporte a exclusão/data aberta), chave Pix (`pix_key`), tipo de chave Pix (`pix_key_type`), dados do titular e visibilidade pública de doadores (`show_contributions_publicly`).
+  - **Meta Privada vs Pública:** O compartilhamento via link e Pix é opcional. O usuário pode criar metas exclusivamente privadas para controle pessoal ou ativar o link sob demanda. O arquivamento da meta e o bloqueio de link são escolhas deliberadas e desacopladas do usuário.
+- **Regeneração de Link In-Place Sem Duplicação (`regeneratePublicShare`):**
+  - Ao regenerar o link público da campanha, a operação realiza um `UPDATE` transacional na mesma linha do banco de dados (`public_shares` onde `id = oldId`), atribuindo novo token criptográfico seguro, redefinindo `is_revoked = false` e atualizando a data de expiração (`expires_at`), sem invocar `INSERT` e sem duplicar o registro da meta ou poluir listagens.
+  - O cache do TanStack Query (`myPublicSharesMutationKey`) aplica mutação otimista imediata, substituindo o registro com feedback tátil e cópia instantânea do novo endereço para a área de transferência.
+- **Ciclo de Vida Otimista & Recálculo Reativo de Conclusão:**
+  - O modal atualiza reativamente o estado visual de link ativo/pausado de forma otimista, dispensando recarregamento ou fechamento forçado da janela.
+  - O status de conclusão é derivado dinamicamente (`current_cents >= target_cents && target_cents > 0`). Se uma meta anteriormente concluída tiver sua meta financeira ampliada na edição (`target_cents > current_cents`), o status reabre automaticamente para "Em andamento" em tempo real em todas as telas.
+- **Governança de Metas Arquivadas & Supressão de Alertas no Carrossel:**
+  - Quando uma meta é arquivada, todas as notificações e cards equivalentes de progresso no carrossel da Home (`DashboardAlertsCarousel`), na visão geral e na listagem de orçamentos são suprimidos imediatamente, prevenindo poluição cognitiva e garantindo que apenas objetivos ativos demandem atenção.
 - **Exclusão Atômica Definitiva:**
   - Botão "Excluir meta" disponível dentro do modal (tanto em modo de visualização quanto em edição), acionando `ConfirmDialog` de proteção e expurgando permanentemente a meta, o compartilhamento público e as contribuições via mutação `deletePublicShare`.
 - **Pausar e Reativar Link Público:**

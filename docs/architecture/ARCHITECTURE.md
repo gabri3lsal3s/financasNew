@@ -773,7 +773,10 @@ A arquitetura de compartilhamento e ferramentas abertas foi construída sobre tr
    - Salvo em `public_shares` com `kind = 'goal_tracker'` e payload estruturado.
 2. **Arquitetura de Gestão Centralizada no Modal (`ShareGoalDialog`):**
    - O card da campanha (`CampaignCard`) é otimizado para escaneabilidade e foco, sem ícones externos de editar ou excluir; o clique no card aciona o modal central de gerenciamento.
-   - **Edição Completa Pós-Criação:** Alternância direta para o formulário completo de edição, permitindo recalibrar alvo (`target_cents`), saldo arrecadado (`current_cents`), data limite (`deadline`), chave Pix e visibilidade pública de participantes sem recriar o link.
+   - **Edição Completa Pós-Criação & Escolha de Privacidade:** Alternância direta para o formulário completo de edição, permitindo recalibrar alvo (`target_cents`), saldo arrecadado (`current_cents`), data limite (`deadline`), chave Pix e visibilidade pública de participantes sem recriar o link. O usuário pode optar por manter a meta puramente privada sem link público, ou ativá-lo sob demanda.
+   - **Regeneração In-Place Sem Duplicação (`regeneratePublicShare`):** Atualização atômica direta na mesma linha (`id = oldId`), invalidando o token anterior e emitindo um novo endereço seguro sem chamar `insert` e sem duplicar o registro da meta no Supabase ou no TanStack Query.
+   - **Ciclo de Vida Otimista & Recálculo Reativo:** Alternância instantânea de pausa/reativação no diálogo sem exigir reload da página, e recálculo dinâmico do estado de conclusão da meta (`current_cents >= target_cents && target_cents > 0`) ao editar valores.
+   - **Governança de Metas Arquivadas:** Metas arquivadas não alimentam cards de aviso no carrossel da Home (`DashboardAlertsCarousel`), respeitando o foco do usuário.
    - **Exclusão Definitiva via `ConfirmDialog`:** Expurgo atômico da meta e de seus vínculos via mutação `useDeletePublicShare` (`deletePublicShare` no repositório `public-shares.ts`).
    - **Pausa e Reativação de Link:** Suporte nativo a `useRevokePublicShare` e `useRestorePublicShare`, permitindo suspender o link público sem perda de histórico e sem remover o card da visão do anfitrião (`BudgetsPage` preserva metas com badge "Link Desativado").
 3. **Página Pública `GoalTrackerPublicPage`:**

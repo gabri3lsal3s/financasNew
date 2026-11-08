@@ -18,6 +18,7 @@ import type {
   PublicShare,
   PublicShareKind,
   DbInsert,
+  DbUpdate,
   SharedFamilyBudgetResult,
   SharedGoalTrackerResult,
 } from "@/types";
@@ -317,16 +318,13 @@ export async function regeneratePublicShare(
   const days = input.expiresInDays ?? 30;
   const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 
-  const updateData: Record<string, unknown> = {
+  const updateData: DbUpdate<PublicShare> = {
     token,
     is_revoked: false,
     expires_at: expiresAt,
     updated_at: new Date().toISOString(),
+    ...(input.payload ? { payload: input.payload } : {}),
   };
-
-  if (input.payload) {
-    updateData.payload = input.payload;
-  }
 
   const { data, error } = await resolveQuery<Record<string, unknown>[]>(
     getSupabase()
