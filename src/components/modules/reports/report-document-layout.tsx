@@ -50,6 +50,7 @@ export function ReportDocumentLayout({
         open={open}
         onOpenChange={onOpenChange}
         title={title}
+        hideTitle
         size={size}
         contentClassName="p-3 sm:p-5 lg:p-6"
         headerActions={

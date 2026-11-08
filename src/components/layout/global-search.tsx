@@ -141,13 +141,12 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
       <Button
         type="button"
         variant="ghost"
-        size="icon"
         data-tour="desktop-new-transaction"
         aria-label="Buscar ou executar comando (Ctrl+K)"
         title="Buscar ou executar comando (Ctrl+K)"
         onClick={() => setOpen(true)}
         className={cn(
-          "min-w-0 size-auto h-10 w-full justify-between gap-2 rounded-lg border border-input bg-surface px-3 text-sm text-muted-foreground shadow-xs hover:bg-surface-hover",
+          "min-w-0 h-10 w-full justify-between gap-2 rounded-lg border border-input bg-surface px-3 text-sm text-muted-foreground shadow-xs hover:bg-surface-hover",
           className,
         )}
       >

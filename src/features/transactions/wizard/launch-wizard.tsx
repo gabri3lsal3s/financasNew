@@ -696,6 +696,7 @@ export function LaunchWizard({
       title={mode === "quick" ? "Lançamento rápido" : "Novo lançamento"}
       size={mode === "quick" ? "lg" : "xl"}
       showCalculator
+      wideHeaderActions
       headerActions={
         <div className="flex items-center gap-1">
           {mode === "guided" ? (

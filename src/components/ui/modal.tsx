@@ -40,6 +40,10 @@ export interface ModalProps {
   showCalculator?: boolean;
   /** Ações contextuais adicionais renderizadas no cabeçalho antes do botão fechar. */
   headerActions?: ReactNode;
+  /** Indica que o cabeçalho possui ações largas (múltiplos botões), reservando espaço horizontal adequado no desktop. */
+  wideHeaderActions?: boolean;
+  /** Oculta o cabeçalho de título visual do modal (preserva para acessibilidade via sr-only). Útil em layouts de documento/relatório com cabeçalho próprio. */
+  hideTitle?: boolean;
   /** Se false, o modal opera em modo não-bloqueante (sem focus-trap agressivo ou lock de cliques externos). Útil em tours assistidos. */
   modal?: boolean;
   /** Identificador para foco em tours guiados e automação. */
@@ -83,6 +87,8 @@ export function Modal({
   elevated = false,
   showCalculator = false,
   headerActions,
+  wideHeaderActions = false,
+  hideTitle = false,
   modal = true,
   dataTour,
   "data-tour": dataTourAttr,
@@ -244,58 +250,100 @@ export function Modal({
             />
           </div>
 
-          {/* Barra de controle superior: micro-título reativo no mobile e ações contextuais à direita */}
-          <div
-            className={cn(
-              "h-9 md:h-0 md:overflow-visible flex items-center justify-between px-4 md:px-0 shrink-0 relative z-20 md:pointer-events-none md:bg-transparent md:border-b-0 md:shadow-none transition-all duration-200 border-b",
-              isScrolled
-                ? "bg-surface/95 backdrop-blur-xs border-border/80 shadow-xs"
-                : "bg-surface border-transparent",
-            )}
-          >
-            {/* Micro-título reativo no mobile (aparece quando o título principal rola para fora no scroll > 32px) */}
-            <div className="flex-1 min-w-0 pr-2 md:hidden">
-              {isScrolled ? (
-                <span
-                  aria-hidden="true"
-                  className="block text-xs font-semibold text-foreground truncate transition-opacity duration-150 animate-in fade-in-0"
-                >
-                  {title}
-                </span>
+          {hideTitle ? (
+            <div className="h-11 md:h-12 px-4 md:px-6 flex items-center justify-between shrink-0 border-b border-border/80 bg-surface/95 backdrop-blur-xs shadow-xs z-20">
+              <DialogPrimitive.Title className="sr-only">
+                {title}
+              </DialogPrimitive.Title>
+              {description ? (
+                <DialogPrimitive.Description className="sr-only">
+                  {description}
+                </DialogPrimitive.Description>
               ) : null}
+              <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                {headerActions}
+                {displayCalculator ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Abrir calculadora"
+                    title="Calculadora"
+                    className="size-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                    onClick={() => {
+                      setCalculatorOpen(true);
+                    }}
+                  >
+                    <Calculator className="size-4" aria-hidden="true" />
+                  </Button>
+                ) : null}
+                <DialogPrimitive.Close asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Fechar"
+                    className="size-8 text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors"
+                  >
+                    <X className="size-4" aria-hidden="true" />
+                  </Button>
+                </DialogPrimitive.Close>
+              </div>
             </div>
+          ) : (
+            /* Barra de controle superior: micro-título reativo no mobile e ações contextuais à direita */
+            <div
+              className={cn(
+                "h-9 md:h-0 md:overflow-visible flex items-center justify-between px-4 md:px-0 shrink-0 relative z-20 md:pointer-events-none md:bg-transparent md:border-b-0 md:shadow-none transition-all duration-200 border-b",
+                isScrolled
+                  ? "bg-surface/95 backdrop-blur-xs border-border/80 shadow-xs"
+                  : "bg-surface border-transparent",
+              )}
+            >
+              {/* Micro-título reativo no mobile (aparece quando o título principal rola para fora no scroll > 32px) */}
+              <div className="flex-1 min-w-0 pr-2 md:hidden">
+                {isScrolled ? (
+                  <span
+                    aria-hidden="true"
+                    className="block text-xs font-semibold text-foreground truncate transition-opacity duration-150 animate-in fade-in-0"
+                  >
+                    {title}
+                  </span>
+                ) : null}
+              </div>
 
-            {/* Ações contextuais e botão fechar: à direita na barra minimalista mobile; top-right absoluto no desktop */}
-            <div className="flex shrink-0 items-center gap-1 z-20 md:pointer-events-auto md:absolute md:top-4 md:right-6 md:gap-1.5">
-              {headerActions}
-              {displayCalculator ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Abrir calculadora"
-                  title="Calculadora"
-                  className="size-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                  onClick={() => {
-                    setCalculatorOpen(true);
-                  }}
-                >
-                  <Calculator className="size-4" aria-hidden="true" />
-                </Button>
-              ) : null}
-              <DialogPrimitive.Close asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Fechar"
-                  className="size-8 text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors"
-                >
-                  <X className="size-4" aria-hidden="true" />
-                </Button>
-              </DialogPrimitive.Close>
+              {/* Ações contextuais e botão fechar: à direita na barra minimalista mobile; top-right absoluto no desktop */}
+              <div className="flex shrink-0 items-center gap-1 z-20 md:pointer-events-auto md:absolute md:top-4 md:right-6 md:gap-1.5">
+                {headerActions}
+                {displayCalculator ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Abrir calculadora"
+                    title="Calculadora"
+                    className="size-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                    onClick={() => {
+                      setCalculatorOpen(true);
+                    }}
+                  >
+                    <Calculator className="size-4" aria-hidden="true" />
+                  </Button>
+                ) : null}
+                <DialogPrimitive.Close asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Fechar"
+                    className="size-8 text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors"
+                  >
+                    <X className="size-4" aria-hidden="true" />
+                  </Button>
+                </DialogPrimitive.Close>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Corpo rolável isolado (o conteúdo rola aqui dentro e NUNCA é sobreposto pelo rodapé) */}
           <div
@@ -310,21 +358,29 @@ export function Modal({
             )}
           >
             {/* Cabeçalho editorial único (F25 / Plano 08 — fluido no mobile, sticky no desktop com espaço para ações) */}
-            <div
-              className={cn(
-                "pt-2 pb-3 md:pt-4 md:pb-3 shrink-0 md:sticky md:top-0 md:bg-surface md:z-10",
-                headerActions ? "md:pr-[380px]" : "md:pr-24",
-              )}
-            >
-              <DialogPrimitive.Title className="font-display text-lg font-bold text-foreground tracking-tight">
-                {title}
-              </DialogPrimitive.Title>
-              {description ? (
-                <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground leading-relaxed">
-                  {description}
-                </DialogPrimitive.Description>
-              ) : null}
-            </div>
+            {!hideTitle ? (
+              <div
+                className={cn(
+                  "pt-2 pb-3 md:pt-4 md:pb-3 shrink-0 md:sticky md:top-0 md:bg-surface md:z-10",
+                  wideHeaderActions
+                    ? "md:pr-[360px]"
+                    : headerActions
+                      ? "md:pr-40"
+                      : displayCalculator
+                        ? "md:pr-24"
+                        : "md:pr-16",
+                )}
+              >
+                <DialogPrimitive.Title className="font-display text-lg font-bold text-foreground tracking-tight">
+                  {title}
+                </DialogPrimitive.Title>
+                {description ? (
+                  <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground leading-relaxed">
+                    {description}
+                  </DialogPrimitive.Description>
+                ) : null}
+              </div>
+            ) : null}
 
             {children}
           </div>

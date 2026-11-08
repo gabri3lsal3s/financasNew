@@ -13,6 +13,8 @@ export interface ResponsiveDialogProps {
   elevated?: boolean;
   showCalculator?: boolean;
   headerActions?: ReactNode;
+  wideHeaderActions?: boolean;
+  hideTitle?: boolean;
   className?: string;
   contentClassName?: string;
   footerClassName?: string;
@@ -37,6 +39,8 @@ export function ResponsiveDialog({
   elevated = false,
   showCalculator = false,
   headerActions,
+  wideHeaderActions = false,
+  hideTitle = false,
   className,
   contentClassName,
   footerClassName,
@@ -51,6 +55,8 @@ export function ResponsiveDialog({
       elevated={elevated}
       showCalculator={showCalculator}
       headerActions={headerActions}
+      wideHeaderActions={wideHeaderActions}
+      hideTitle={hideTitle}
       className={className}
       contentClassName={contentClassName}
       footer={

@@ -277,6 +277,71 @@ describe("Plano 08: Micro-título reativo e rolagem fluida", () => {
       expect(microTitles[0]).toHaveAttribute("aria-hidden", "true");
     }
   });
+
+  it("renderiza título como sr-only e barra de topo dedicada quando hideTitle=true", () => {
+    render(
+      <Modal
+        open
+        onOpenChange={vi.fn()}
+        title="Relatório Executivo"
+        hideTitle
+        headerActions={<button type="button">Ação</button>}
+      >
+        <p>Conteúdo do relatório</p>
+      </Modal>,
+    );
+
+    const heading = screen.getByRole("heading", { name: "Relatório Executivo" });
+    expect(heading).toHaveClass("sr-only");
+    expect(screen.getByRole("button", { name: "Ação" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fechar" })).toBeInTheDocument();
+  });
+
+  it("aplica classe adaptativa de padding-right no desktop de acordo com headerActions e wideHeaderActions", () => {
+    const { rerender } = render(
+      <Modal open onOpenChange={vi.fn()} title="Título Normal">
+        <p>Conteúdo</p>
+      </Modal>,
+    );
+    let titleContainer = screen.getByRole("heading", { name: "Título Normal" }).parentElement;
+    expect(titleContainer).toHaveClass("md:pr-16");
+
+    rerender(
+      <Modal open onOpenChange={vi.fn()} title="Título Normal" showCalculator>
+        <p>Conteúdo</p>
+      </Modal>,
+    );
+    titleContainer = screen.getByRole("heading", { name: "Título Normal" }).parentElement;
+    expect(titleContainer).toHaveClass("md:pr-24");
+
+    rerender(
+      <Modal
+        open
+        onOpenChange={vi.fn()}
+        title="Título Compacto"
+        headerActions={<span>Badge</span>}
+      >
+        <p>Conteúdo</p>
+      </Modal>,
+    );
+    titleContainer = screen.getByRole("heading", { name: "Título Compacto" }).parentElement;
+    expect(titleContainer).toHaveClass("md:pr-40");
+
+    rerender(
+      <Modal
+        open
+        onOpenChange={vi.fn()}
+        title="Título Largo"
+        wideHeaderActions
+        headerActions={<span>Vários botões</span>}
+      >
+        <p>Conteúdo</p>
+      </Modal>,
+    );
+    titleContainer = screen.getByRole("heading", { name: "Título Largo" }).parentElement;
+    expect(titleContainer).toHaveClass("md:pr-[360px]");
+  });
 });
+
 
 
