@@ -444,7 +444,7 @@ export function FamilyInvitePage() {
               Suas despesas, receitas e contas bancárias continuarão totalmente intactas na sua conta. Apenas a visualização e divisão com a família anterior serão desfeitas.
             </p>
 
-            <ModalFooter className="pt-3 border-t border-border/80 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <ModalFooter>
               <Button
                 type="button"
                 variant="outline"

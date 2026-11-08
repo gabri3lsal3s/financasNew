@@ -867,54 +867,54 @@ export function ShareGoalDialog({
               transação privada é exposta aos participantes.
             </div>
 
-            <ModalFooter className="sm:justify-between">
-              {activeShare && isEditingGoal ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-critical hover:text-critical order-last sm:order-first w-full sm:w-auto"
-                  onClick={() => setIsDeleteModalOpen(true)}
-                  disabled={isPending}
-                >
-                  <Trash2 className="size-3.5 mr-1.5" aria-hidden="true" />
-                  <span>Excluir meta</span>
-                </Button>
-              ) : (
-                <span />
-              )}
-              <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    if (activeShare && isEditingGoal) {
-                      setIsEditingGoal(false);
-                    } else {
-                      onOpenChange(false);
-                    }
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={targetCents <= 0 || !pixKey.trim() || isPending}
-                  className="gap-2"
-                >
-                  {activeShare && isEditingGoal ? (
-                    <>
-                      <Check className="size-4" aria-hidden="true" />
-                      <span>{isPending ? "Salvando…" : "Salvar Alterações da Meta"}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Share2 className="size-4" aria-hidden="true" />
-                      <span>{isPending ? "Gerando link…" : "Gerar Termômetro Público & Copiar Link"}</span>
-                    </>
-                  )}
-                </Button>
-              </div>
+            <ModalFooter
+              destructiveAction={
+                activeShare && isEditingGoal ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-critical hover:bg-critical/10"
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    disabled={isPending}
+                  >
+                    <Trash2 className="size-3.5 mr-1.5" aria-hidden="true" />
+                    <span>Excluir meta</span>
+                  </Button>
+                ) : null
+              }
+            >
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (activeShare && isEditingGoal) {
+                    setIsEditingGoal(false);
+                  } else {
+                    onOpenChange(false);
+                  }
+                }}
+                disabled={isPending}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={targetCents <= 0 || !pixKey.trim() || isPending}
+                className="gap-2"
+              >
+                {activeShare && isEditingGoal ? (
+                  <>
+                    <Check className="size-4" aria-hidden="true" />
+                    <span>{isPending ? "Salvando…" : "Salvar Alterações"}</span>
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="size-4" aria-hidden="true" />
+                    <span>{isPending ? "Gerando link…" : "Gerar Link Público"}</span>
+                  </>
+                )}
+              </Button>
             </ModalFooter>
           </form>
         )}
@@ -932,13 +932,13 @@ export function ShareGoalDialog({
           Os participantes não conseguirão mais consultar o progresso ou a chave Pix por este endereço.
           Você poderá reativar o link público a qualquer momento sem perder seus dados.
         </p>
-        <ModalFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={() => setIsRevokeModalOpen(false)}>
+        <ModalFooter>
+          <Button type="button" variant="outline" onClick={() => setIsRevokeModalOpen(false)}>
             Manter ativo
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="destructive"
             onClick={() => void handleConfirmRevoke()}
             disabled={isPending}
           >
@@ -958,7 +958,7 @@ export function ShareGoalDialog({
         <p className="text-xs text-muted-foreground py-2">
           Recomendado caso você tenha compartilhado o link por engano com pessoas não autorizadas.
         </p>
-        <ModalFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
+        <ModalFooter>
           <Button type="button" variant="ghost" onClick={() => setIsRegenerateModalOpen(false)}>
             Cancelar
           </Button>

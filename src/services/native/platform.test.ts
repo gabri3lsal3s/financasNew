@@ -1,6 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getPlatform, isAndroidNative, isIOSNative, isNativePlatform, isWebPlatform } from "./platform";
+import { getPlatform, getActivePlatform, isAndroidNative, isIOSDevice, isIOSNative, isMobileDevice, isNativePlatform, isStandaloneDisplay, isWebPlatform } from "./platform";
 
 describe("Gateway Nativo — platform", () => {
   beforeEach(() => {
@@ -46,4 +46,68 @@ describe("Gateway Nativo — platform", () => {
 
     expect(getPlatform()).toBe("web");
   });
+
+  it("detecta getActivePlatform como 'android_pro' quando isNativePlatform for true", () => {
+    vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
+    expect(getActivePlatform()).toBe("android_pro");
+  });
+
+  it("detecta getActivePlatform como 'web_desktop' em navegador desktop padrão", () => {
+    vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(false);
+    vi.spyOn(Capacitor, "getPlatform").mockReturnValue("web");
+    vi.spyOn(window, "matchMedia").mockReturnValue({ matches: false } as MediaQueryList);
+
+    const originalUa = navigator.userAgent;
+    Object.defineProperty(navigator, "userAgent", {
+      value: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+      configurable: true,
+    });
+
+    try {
+      expect(isMobileDevice()).toBe(false);
+      expect(getActivePlatform()).toBe("web_desktop");
+    } finally {
+      Object.defineProperty(navigator, "userAgent", {
+        value: originalUa,
+        configurable: true,
+      });
+    }
+  });
+
+  it("detecta getActivePlatform como 'mobile_pwa' em dispositivo móvel ou PWA standalone", () => {
+    vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(false);
+
+    const originalUa = navigator.userAgent;
+    Object.defineProperty(navigator, "userAgent", {
+      value: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
+      configurable: true,
+    });
+
+    try {
+      expect(isIOSDevice()).toBe(true);
+      expect(isMobileDevice()).toBe(true);
+      expect(getActivePlatform()).toBe("mobile_pwa");
+    } finally {
+      Object.defineProperty(navigator, "userAgent", {
+        value: originalUa,
+        configurable: true,
+      });
+    }
+  });
+
+  it("detecta isStandaloneDisplay via matchMedia", () => {
+    vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
+      matches: query === "(display-mode: standalone)",
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    expect(isStandaloneDisplay()).toBe(true);
+  });
 });
+

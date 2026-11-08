@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAppUpdate } from "@/hooks/use-app-update";
 import { isNativePlatform } from "@/services/native/platform";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
-import { ApkInstallGuideDialog } from "@/components/modules";
+import { ApkInstallGuideDialog, PlatformsTriptychCard } from "@/components/modules";
 import { pushToast } from "@/services/toast";
 import { cn } from "@/lib/utils";
 
@@ -388,42 +388,11 @@ export function AppInstallationTab() {
       </Card>
 
       {/* Card 2: Comparativo do Tripé de Plataformas */}
-      <Card data-tour="settings-platforms-triptych" className="border-border/80 bg-surface shadow-xs">
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Info className="size-4 text-muted-foreground" aria-hidden="true" />
-            <span>O Tripé de Plataformas do Áxis</span>
-          </CardTitle>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Sua assinatura concede acesso simultâneo a todos os formatos sem custo extra.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-            <div className="p-3.5 rounded-xl border border-border/70 bg-background/50 space-y-1.5">
-              <span className="font-bold text-foreground block">Web Desktop</span>
-              <p className="text-muted-foreground leading-relaxed">
-                Ideal para relatórios em tela ampla, simulações de independência financeira (FIRE),
-                conciliação bancária e rebalanceamento de carteira.
-              </p>
-            </div>
-            <div className="p-3.5 rounded-xl border border-border/70 bg-background/50 space-y-1.5">
-              <span className="font-bold text-foreground block">Mobile PWA (Web App)</span>
-              <p className="text-muted-foreground leading-relaxed">
-                Acesso leve e instantâneo no iPhone ou Android. Não consome espaço na memória, não
-                exige downloads pesados e abre em tela cheia.
-              </p>
-            </div>
-            <div className="p-3.5 rounded-xl border border-primary/30 bg-primary/5 space-y-1.5">
-              <span className="font-bold text-primary-strong block">Android Pro Nativo</span>
-              <p className="text-muted-foreground leading-relaxed">
-                Leitor passivo inteligente de notificações bancárias (Pix e cartões em tempo real),
-                biometria física, atalhos rápidos e atualizações automáticas.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <PlatformsTriptychCard
+        title="O Tripé de Plataformas do Áxis"
+        subtitle="Sua assinatura concede acesso simultâneo a todos os formatos sem custo extra."
+      />
+
 
       {/* Diálogo interativo com guia de 3 passos e alternativa PWA */}
       <ApkInstallGuideDialog

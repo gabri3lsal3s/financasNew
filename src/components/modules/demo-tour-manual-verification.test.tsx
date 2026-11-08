@@ -68,12 +68,9 @@ describe("Teste de Validação Manual: Navegação Bidirecional Mobile (375x667 
       ? [
           { selector: "overview-kpis", y: 80, height: 120, route: "/" }, // Upper half (centerY = 140 <= 0.45 * height) -> Base
           { selector: "bottom-nav-wizard", y: 550, height: 56, route: "/" }, // Lower half (centerY = 578 > 0.45 * height) -> Topo
-          { selector: "launch-wizard-dialog", y: 80, height: 160, route: "/transacoes?novo=despesa" }, // Upper half (centerY = 160) -> Base
-          { selector: "transactions-feed-card", y: 420, height: 140, route: "/transacoes" }, // Lower half (centerY = 490 > 0.45 * height) -> Topo
+          { selector: "transactions-feed-card", y: 80, height: 140, route: "/transacoes" }, // Upper half (centerY = 150) -> Base
           { selector: "cards-invoice-summary", y: 80, height: 140, route: "/cartoes" }, // Upper half (centerY = 150) -> Base
-          { selector: "cards-installments-section", y: 420, height: 160, route: "/cartoes" }, // Lower half (centerY = 500) -> Topo
           { selector: "budgets-content", y: 400, height: 150, route: "/orcamentos" }, // Lower half (centerY = 475) -> Topo
-          { selector: "reports-content", y: 80, height: 140, route: "/relatorios" }, // Upper half (centerY = 150) -> Base
         ]
       : track === "investments"
       ? [
@@ -311,11 +308,11 @@ describe("Teste Manual Mobile (iPhone/Android Viewport): Passos Longos (Passo 1 
         expect(borderBottom).toBeLessThan(bottomNavTop - 100);
 
         // Comprova que o elemento NÃO fica colado no card nem escondido
-        expect(screen.getByText("Passo 1 de 8")).toBeInTheDocument();
+        expect(screen.getByText("Passo 1 de 5")).toBeInTheDocument();
         expect(screen.getByText("Dashboard & Saldo Livre Real")).toBeInTheDocument();
       });
 
-      it("Passo 6 (Parceladas): elemento longo na metade inferior rola para zona central livre, card ancora no TOPO, NUNCA fica atrás da BottomNav", async () => {
+      it("Passo 5 (Orçamentos): elemento longo na metade inferior rola para zona central livre, card ancora no TOPO, NUNCA fica atrás da BottomNav", async () => {
         window.innerWidth = width;
         window.innerHeight = height;
 
@@ -328,39 +325,39 @@ describe("Teste Manual Mobile (iPhone/Android Viewport): Passos Longos (Passo 1 
         mainContainer.scrollTop = 200;
         document.body.appendChild(mainContainer);
 
-        // Mock dos elementos anteriores e do Passo 6
-        const installmentsEl = document.createElement("div");
-        installmentsEl.setAttribute("data-tour", "cards-installments-section");
-        mainContainer.appendChild(installmentsEl);
+        // Mock dos elementos anteriores e do Passo 5
+        const budgetsEl = document.createElement("div");
+        budgetsEl.setAttribute("data-tour", "budgets-content");
+        mainContainer.appendChild(budgetsEl);
 
-        const installmentsHeight = 160;
+        const budgetsHeight = 160;
         // Posicionado na metade inferior da viewport (y > 0.45 * height)
-        const installmentsTop = Math.round(height * 0.55);
-        const installmentsCenterY = installmentsTop + installmentsHeight / 2;
-        expect(installmentsCenterY).toBeGreaterThan(height * 0.45);
+        const budgetsTop = Math.round(height * 0.55);
+        const budgetsCenterY = budgetsTop + budgetsHeight / 2;
+        expect(budgetsCenterY).toBeGreaterThan(height * 0.45);
 
-        vi.spyOn(installmentsEl, "getBoundingClientRect").mockReturnValue({
+        vi.spyOn(budgetsEl, "getBoundingClientRect").mockReturnValue({
           x: 16,
-          y: installmentsTop,
+          y: budgetsTop,
           left: 16,
-          top: installmentsTop,
+          top: budgetsTop,
           right: width - 16,
-          bottom: installmentsTop + installmentsHeight,
+          bottom: budgetsTop + budgetsHeight,
           width: width - 32,
-          height: installmentsHeight,
+          height: budgetsHeight,
           toJSON: () => ({}),
         });
 
-        // Configura a rota ativa de cartões para o Passo 6
-        mockPathname = "/cartoes";
+        // Configura a rota ativa de orçamentos para o Passo 5
+        mockPathname = "/orcamentos";
         mockSearch = "";
 
         const user = userEvent.setup();
         const { container } = render(<DemoTourSpotlight />);
 
-        // Avança até o Passo 6 (index 5)
-        for (let i = 0; i < 5; i++) {
-          const nextBtn = screen.getByRole("button", { name: /Próximo/i });
+        // Avança até o Passo 5 (index 4)
+        for (let i = 0; i < 4; i++) {
+          const nextBtn = screen.getByRole("button", { name: /Próximo|Ver/i });
           await user.click(nextBtn);
         }
 
@@ -368,10 +365,10 @@ describe("Teste Manual Mobile (iPhone/Android Viewport): Passos Longos (Passo 1 
           window.dispatchEvent(new Event("resize"));
         });
 
-        expect(screen.getByText("Passo 6 de 8")).toBeInTheDocument();
-        expect(screen.getByText("Parcelamentos Fixos e Futuros")).toBeInTheDocument();
+        expect(screen.getByText("Passo 5 de 5")).toBeInTheDocument();
+        expect(screen.getByText("Categorias & Tetos Mensais")).toBeInTheDocument();
 
-        // 1. O card popover deve ancorar no TOPO para não encobrir a seção parceladas
+        // 1. O card popover deve ancorar no TOPO para não encobrir a seção orçamentos
         const aside = container.querySelector("aside");
         expect(aside).not.toBeNull();
         expect(aside?.getAttribute("data-placement")).toBe("top");
@@ -419,14 +416,11 @@ describe("Teste Manual Mobile (iPhone/Android Viewport): Passos Longos (Passo 1 
 
     // Lista de passos completos com posições e rotas
     const stepsData = [
-      { id: "finances-overview-kpis", selector: "overview-kpis", y: 80, height: 140, route: "/", expectedPlacement: "bottom" },
+      { id: "finances-overview", selector: "overview-kpis", y: 80, height: 140, route: "/", expectedPlacement: "bottom" },
       { id: "finances-wizard-btn", selector: "bottom-nav-wizard", y: 770, height: 56, route: "/", expectedPlacement: "top" },
-      { id: "finances-wizard-modal", selector: "launch-wizard-dialog", y: 120, height: 180, route: "/transacoes?novo=despesa", expectedPlacement: "bottom" },
-      { id: "finances-transactions-feed", selector: "transactions-feed-card", y: 440, height: 160, route: "/transacoes", expectedPlacement: "top" },
-      { id: "finances-cards-summary", selector: "cards-invoice-summary", y: 90, height: 140, route: "/cartoes", expectedPlacement: "bottom" },
-      { id: "finances-installments", selector: "cards-installments-section", y: 450, height: 170, route: "/cartoes", expectedPlacement: "top" },
-      { id: "finances-budgets-ceilings", selector: "budgets-content", y: 460, height: 150, route: "/orcamentos", expectedPlacement: "top" },
-      { id: "finances-smart-reports", selector: "reports-content", y: 90, height: 150, route: "/relatorios", expectedPlacement: "bottom" },
+      { id: "finances-transactions", selector: "transactions-feed-card", y: 120, height: 180, route: "/transacoes", expectedPlacement: "bottom" },
+      { id: "finances-cards", selector: "cards-invoice-summary", y: 90, height: 140, route: "/cartoes", expectedPlacement: "bottom" },
+      { id: "finances-budgets", selector: "budgets-content", y: 460, height: 150, route: "/orcamentos", expectedPlacement: "top" },
     ];
 
     for (const step of stepsData) {
@@ -460,7 +454,7 @@ describe("Teste Manual Mobile (iPhone/Android Viewport): Passos Longos (Passo 1 
     for (let i = 0; i < stepsData.length; i++) {
       const step = stepsData[i]!;
 
-      expect(screen.getByText(`Passo ${i + 1} de 8`)).toBeInTheDocument();
+      expect(screen.getByText(`Passo ${i + 1} de 5`)).toBeInTheDocument();
 
       const aside = container.querySelector("aside");
       expect(aside).not.toBeNull();
@@ -535,31 +529,21 @@ describe("Teste Manual de Lançamentos: Demonstração do Modal com Campos Didá
     document.body.innerHTML = "";
   });
 
-  it("comprova que a definição de passos prioriza o modal LaunchWizard ([data-tour='launch-wizard-dialog']) com campos didáticos e não um item solto do extrato", () => {
+  it("comprova que a definição de passos prioriza o modal LaunchWizard ([data-tour='launch-wizard-dialog']) no micro-tour do Wizard e o Extrato Unificado em Finanças", () => {
     // 1. Tour Geral de Finanças Diárias (finances)
     const financesSteps = getTourSteps("finances");
-    const launchStep = financesSteps.find((s) => s.id === "finances-wizard-dialog");
-    expect(launchStep).toBeDefined();
-    expect(launchStep?.order).toBe(3);
-    expect(launchStep?.badgeLabel).toBe("Passo 3 de 8");
-    expect(launchStep?.targetRoute).toBe("/transacoes?novo=despesa");
-    expect(launchStep?.targetSelector).toBe('[data-tour="launch-wizard-dialog"]');
-    expect(launchStep?.title).toBe("Modal de Lançamento Inteligente");
-    expect(launchStep?.description).toContain("Alterne com facilidade entre Despesa, Receita e Pix");
-    expect(launchStep?.description).toContain("categorias preditivas");
-    expect(launchStep?.description).toContain("anexar comprovantes");
+    const wizardBtnStep = financesSteps.find((s) => s.id === "finances-wizard-btn");
+    expect(wizardBtnStep).toBeDefined();
+    expect(wizardBtnStep?.order).toBe(2);
+    expect(wizardBtnStep?.badgeLabel).toBe("Passo 2 de 5");
+    expect(wizardBtnStep?.targetRoute).toBe("/");
+    expect(wizardBtnStep?.targetSelector).toBe('[data-tour="bottom-nav-wizard"]');
 
-    // Comprova que o passo de lançamento NÃO aponta para uma linha/item do extrato
-    expect(launchStep?.targetSelector).not.toBe('[data-tour="transactions-feed-card"]');
-    expect(launchStep?.targetSelector).not.toBe('[data-tour="transactions-content"]');
-    expect(launchStep?.targetSelector).not.toContain("feed");
-    expect(launchStep?.targetSelector).not.toContain("item");
-
-    // Comprova que o extrato só é focado no passo seguinte (Passo 4: Extrato Unificado & Filtros)
+    // Comprova que o extrato é focado no passo seguinte (Passo 3 de 5: Extrato Unificado & Filtros)
     const statementStep = financesSteps.find((s) => s.id === "finances-transactions");
     expect(statementStep).toBeDefined();
-    expect(statementStep?.order).toBe(4);
-    expect(statementStep?.badgeLabel).toBe("Passo 4 de 8");
+    expect(statementStep?.order).toBe(3);
+    expect(statementStep?.badgeLabel).toBe("Passo 3 de 5");
     expect(statementStep?.targetRoute).toBe("/transacoes");
     expect(statementStep?.targetSelector).toBe('[data-tour="transactions-feed-card"]');
     expect(statementStep?.title).toBe("Extrato Unificado & Filtros");
@@ -661,9 +645,9 @@ describe("Teste Manual de Lançamentos: Demonstração do Modal com Campos Didá
     });
     mainContainer.appendChild(wizardDialog);
 
-    // Inicia tour de Finanças no Passo 3 (Modal de Lançamento)
-    startDemo("finances");
-    setStepIndex(2);
+    // Inicia micro-tour do Wizard no Passo 2 (Modal de Lançamento)
+    startDemo("finances_wizard");
+    setStepIndex(1);
 
     const { container } = render(<DemoTourSpotlight />);
 
@@ -675,8 +659,8 @@ describe("Teste Manual de Lançamentos: Demonstração do Modal com Campos Didá
     expect(aside).not.toBeNull();
 
     // 1. Comprova que os badges e orientações didáticas refletem o modal de lançamento
-    expect(screen.getByText("Passo 3 de 8")).toBeInTheDocument();
-    expect(screen.getByText("Modal de Lançamento Inteligente")).toBeInTheDocument();
+    expect(screen.getByText("Passo 2 de 3")).toBeInTheDocument();
+    expect(screen.getByText("Lançamento de Despesa, Receita e Pix")).toBeInTheDocument();
     expect(
       screen.getByText(/Alterne com facilidade entre Despesa, Receita e Pix/i),
     ).toBeInTheDocument();
@@ -722,9 +706,9 @@ describe("Teste Manual de Lançamentos: Demonstração do Modal com Campos Didá
     });
     mainContainer.appendChild(wizardDialog);
 
-    const statementFeed = document.createElement("div");
-    statementFeed.setAttribute("data-tour", "transactions-feed-card");
-    vi.spyOn(statementFeed, "getBoundingClientRect").mockReturnValue({
+    const installmentsSection = document.createElement("div");
+    installmentsSection.setAttribute("data-tour", "cards-installments-section");
+    vi.spyOn(installmentsSection, "getBoundingClientRect").mockReturnValue({
       x: 32,
       y: 120,
       left: 32,
@@ -735,10 +719,12 @@ describe("Teste Manual de Lançamentos: Demonstração do Modal com Campos Didá
       height: 140,
       toJSON: () => ({}),
     });
-    mainContainer.appendChild(statementFeed);
+    mainContainer.appendChild(installmentsSection);
 
-    startDemo("finances");
-    setStepIndex(2); // Passo 3 de 8
+    startDemo("finances_wizard");
+    setStepIndex(1); // Passo 2 de 3
+    mockPathname = "/transacoes";
+    mockSearch = "?novo=despesa";
 
     const { rerender } = render(<DemoTourSpotlight />);
 
@@ -746,18 +732,18 @@ describe("Teste Manual de Lançamentos: Demonstração do Modal com Campos Didá
       window.dispatchEvent(new Event("resize"));
     });
 
-    expect(screen.getByText("Passo 3 de 8")).toBeInTheDocument();
-    expect(screen.getByText("Modal de Lançamento Inteligente")).toBeInTheDocument();
+    expect(screen.getByText("Passo 2 de 3")).toBeInTheDocument();
+    expect(screen.getByText("Lançamento de Despesa, Receita e Pix")).toBeInTheDocument();
 
-    // Usuário clica no botão de avançar para ir para o Extrato
-    const advanceBtn = screen.getByRole("button", { name: /Ver Extrato|Próximo/i });
+    // Usuário clica no botão de avançar para ir para Parcelamentos
+    const advanceBtn = screen.getByRole("button", { name: /Ver Parcelas|Próximo/i });
     await user.click(advanceBtn);
 
-    // Comprova que navegou para /transacoes (sem o parâmetro ?novo=despesa)
-    expect(mockNavigate).toHaveBeenCalledWith("/transacoes");
+    // Comprova que navegou para /cartoes
+    expect(mockNavigate).toHaveBeenCalledWith("/cartoes");
 
-    // Simula atualização de rota no React Router para o Passo 4
-    mockPathname = "/transacoes";
+    // Simula atualização de rota no React Router para o Passo 3
+    mockPathname = "/cartoes";
     mockSearch = "";
     rerender(<DemoTourSpotlight />);
 
@@ -765,16 +751,16 @@ describe("Teste Manual de Lançamentos: Demonstração do Modal com Campos Didá
       window.dispatchEvent(new Event("resize"));
     });
 
-    // Agora o Spotlight recorta o Extrato Unificado (Passo 4 de 8)
-    expect(screen.getByText("Passo 4 de 8")).toBeInTheDocument();
-    expect(screen.getByText("Extrato Unificado & Filtros")).toBeInTheDocument();
+    // Agora o Spotlight recorta a Seção de Parcelamentos (Passo 3 de 3)
+    expect(screen.getByText("Passo 3 de 3")).toBeInTheDocument();
+    expect(screen.getByText("Parcelamento Inteligente")).toBeInTheDocument();
 
-    const borderStep4 = screen.getByTestId("spotlight-border");
-    // Coordenadas do statementFeed (x: 32, y: 120, width: 960, height: 140, padding: 10)
-    expect(borderStep4.getAttribute("x")).toBe("22");
-    expect(borderStep4.getAttribute("y")).toBe("110");
-    expect(borderStep4.getAttribute("width")).toBe("980");
-    expect(borderStep4.getAttribute("height")).toBe("160");
+    const borderStep3 = screen.getByTestId("spotlight-border");
+    // Coordenadas do installmentsSection (x: 32, y: 120, width: 960, height: 140, padding: 10)
+    expect(borderStep3.getAttribute("x")).toBe("22");
+    expect(borderStep3.getAttribute("y")).toBe("110");
+    expect(borderStep3.getAttribute("width")).toBe("980");
+    expect(borderStep3.getAttribute("height")).toBe("160");
 
     // Usuário clica no botão Anterior para retornar ao Modal
     const prevBtn = screen.getByRole("button", { name: /Passo anterior|Anterior/i });
@@ -792,8 +778,8 @@ describe("Teste Manual de Lançamentos: Demonstração do Modal com Campos Didá
     });
 
     // Retorna perfeitamente ao Modal de Lançamento
-    expect(screen.getByText("Passo 3 de 8")).toBeInTheDocument();
-    expect(screen.getByText("Modal de Lançamento Inteligente")).toBeInTheDocument();
+    expect(screen.getByText("Passo 2 de 3")).toBeInTheDocument();
+    expect(screen.getByText("Lançamento de Despesa, Receita e Pix")).toBeInTheDocument();
   });
 
   it("comprova encerramento limpo no modal de lançamento via [X] sanitizando parâmetros de URL sem poluir o extrato", async () => {
@@ -848,13 +834,13 @@ describe("Teste Manual do Tour Geral: Jornada Lógica e Completa de Finanças e 
     document.body.innerHTML = "";
   });
 
-  it("Tour Geral de Finanças Diárias (finances): percorre a jornada sequencial lógica e completa de todas as funcionalidades (8 passos)", async () => {
+  it("Tour Geral de Finanças Diárias (finances): percorre a jornada sequencial lógica e completa de todas as funcionalidades (5 passos)", async () => {
     window.innerWidth = 390;
     window.innerHeight = 844;
 
     const user = userEvent.setup();
 
-    // 1. Monta todos os 8 seletores representativos das funcionalidades do módulo de Finanças
+    // 1. Monta todos os 5 seletores representativos das funcionalidades do módulo de Finanças
     const financesStepsConfig = [
       {
         order: 1,
@@ -872,19 +858,10 @@ describe("Teste Manual do Tour Geral: Jornada Lógica e Completa de Finanças e 
         route: "/",
         title: "O Botão Wizard (+) e Atalhos",
         expectedKeyword: "barra inferior",
-        nextRoute: "/transacoes?novo=despesa",
-      },
-      {
-        order: 3,
-        id: "finances-wizard-dialog",
-        selector: "launch-wizard-dialog",
-        route: "/transacoes?novo=despesa",
-        title: "Modal de Lançamento Inteligente",
-        expectedKeyword: "Despesa, Receita e Pix",
         nextRoute: "/transacoes",
       },
       {
-        order: 4,
+        order: 3,
         id: "finances-transactions",
         selector: "transactions-feed-card",
         route: "/transacoes",
@@ -893,39 +870,21 @@ describe("Teste Manual do Tour Geral: Jornada Lógica e Completa de Finanças e 
         nextRoute: "/cartoes",
       },
       {
-        order: 5,
+        order: 4,
         id: "finances-cards",
         selector: "cards-invoice-summary",
         route: "/cartoes",
-        title: "Cartões & Faturas Abertas",
+        title: "Cartões, Faturas e Limites",
         expectedKeyword: "faturas abertas",
-        nextRoute: "/cartoes",
-      },
-      {
-        order: 6,
-        id: "finances-installments",
-        selector: "cards-installments-section",
-        route: "/cartoes",
-        title: "Parcelamentos Fixos e Futuros",
-        expectedKeyword: "faturas futuras",
         nextRoute: "/orcamentos",
       },
       {
-        order: 7,
+        order: 5,
         id: "finances-budgets",
         selector: "budgets-content",
         route: "/orcamentos",
         title: "Categorias & Tetos Mensais",
         expectedKeyword: "limites por categoria",
-        nextRoute: "/relatorios",
-      },
-      {
-        order: 8,
-        id: "finances-insights",
-        selector: "reports-content",
-        route: "/relatorios",
-        title: "Smart Advisor & Relatórios",
-        expectedKeyword: "corte de gastos",
         nextRoute: null,
       },
     ];
@@ -955,12 +914,12 @@ describe("Teste Manual do Tour Geral: Jornada Lógica e Completa de Finanças e 
       window.dispatchEvent(new Event("resize"));
     });
 
-    // Jornada de Avanço: Passos 1 ao 8
+    // Jornada de Avanço: Passos 1 ao 5
     for (let i = 0; i < financesStepsConfig.length; i++) {
       const step = financesStepsConfig[i]!;
 
       // Valida badge de passo
-      expect(screen.getByText(`Passo ${i + 1} de 8`)).toBeInTheDocument();
+      expect(screen.getByText(`Passo ${i + 1} de 5`)).toBeInTheDocument();
 
       // Valida taxonomia canônica rigorosa: Finanças Diárias
       expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
@@ -976,13 +935,13 @@ describe("Teste Manual do Tour Geral: Jornada Lógica e Completa de Finanças e 
       const aside = container.querySelector("aside");
       expect(aside).not.toBeNull();
 
-      // Valida os dots de progresso (8 dots)
+      // Valida os dots de progresso (5 dots)
       const dots = container.querySelectorAll('button[aria-label^="Ir para o passo"]');
-      expect(dots).toHaveLength(8);
+      expect(dots).toHaveLength(5);
 
       // Avança para o próximo passo se não for o último
       if (i < financesStepsConfig.length - 1) {
-        const nextBtn = screen.getByRole("button", { name: /Próximo passo|Próximo/i });
+        const nextBtn = screen.getByRole("button", { name: /Próximo passo|Próximo|Ver/i });
         expect(nextBtn).toBeInTheDocument();
 
         await user.click(nextBtn);
@@ -1002,13 +961,13 @@ describe("Teste Manual do Tour Geral: Jornada Lógica e Completa de Finanças e 
       }
     }
 
-    // No Passo 8: Botão Anterior está ativo e botão final de ação está presente
-    expect(screen.getByText("Passo 8 de 8")).toBeInTheDocument();
-    expect(screen.getByText("Smart Advisor & Relatórios")).toBeInTheDocument();
+    // No Passo 5: Botão Anterior está ativo e botão final de ação está presente
+    expect(screen.getByText("Passo 5 de 5")).toBeInTheDocument();
+    expect(screen.getByText("Categorias & Tetos Mensais")).toBeInTheDocument();
     const finishBtn = screen.getByRole("button", { name: /Começar Conta Real|Começar/i });
     expect(finishBtn).toBeInTheDocument();
 
-    // Jornada de Retorno: Passos 8 retrocedendo até 1
+    // Jornada de Retorno: Passos 5 retrocedendo até 1
     for (let i = financesStepsConfig.length - 1; i > 0; i--) {
       const prevStep = financesStepsConfig[i - 1]!;
       const prevBtn = screen.getByRole("button", { name: /Passo anterior|Anterior/i });
@@ -1030,13 +989,13 @@ describe("Teste Manual do Tour Geral: Jornada Lógica e Completa de Finanças e 
         window.dispatchEvent(new Event("resize"));
       });
 
-      expect(screen.getByText(`Passo ${i} de 8`)).toBeInTheDocument();
+      expect(screen.getByText(`Passo ${i} de 5`)).toBeInTheDocument();
       expect(screen.getByText(prevStep.title)).toBeInTheDocument();
       expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
     }
 
     // Ao retornar ao Passo 1, o botão Anterior deve estar desabilitado
-    expect(screen.getByText("Passo 1 de 8")).toBeInTheDocument();
+    expect(screen.getByText("Passo 1 de 5")).toBeInTheDocument();
     const firstPrevBtn = screen.getByRole("button", { name: /Passo anterior|Anterior/i });
     expect(firstPrevBtn).toBeDisabled();
   });
@@ -1237,7 +1196,7 @@ describe("Teste Manual do Tour Geral: Jornada Lógica e Completa de Finanças e 
       window.dispatchEvent(new Event("resize"));
     });
 
-    expect(screen.getByText("Passo 2 de 8")).toBeInTheDocument();
+    expect(screen.getByText("Passo 2 de 5")).toBeInTheDocument();
     expect(screen.getByText("Comandos Rápidos & Atalho (Ctrl+K)")).toBeInTheDocument();
     expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
     expect(
@@ -1257,7 +1216,7 @@ describe("Teste Manual do Tour Geral: Jornada Lógica e Completa de Finanças e 
 
     const user = userEvent.setup();
 
-    // 1. Tour de Finanças: Salto direto do Passo 1 para o Passo 5 (Cartões) e retorno direto ao Passo 1
+    // 1. Tour de Finanças: Salto direto do Passo 1 para o Passo 4 (Cartões) e retorno direto ao Passo 1
     const cardsSummary = document.createElement("div");
     cardsSummary.setAttribute("data-tour", "cards-invoice-summary");
     vi.spyOn(cardsSummary, "getBoundingClientRect").mockReturnValue({
@@ -1276,18 +1235,18 @@ describe("Teste Manual do Tour Geral: Jornada Lógica e Completa de Finanças e 
     startDemo("finances");
     const { rerender } = render(<DemoTourSpotlight />);
 
-    expect(screen.getByText("Passo 1 de 8")).toBeInTheDocument();
+    expect(screen.getByText("Passo 1 de 5")).toBeInTheDocument();
 
-    // Clica no Dot do Passo 5 (índice 4)
-    const dot5 = screen.getByRole("button", { name: "Ir para o passo 5" });
-    await user.click(dot5);
+    // Clica no Dot do Passo 4 (índice 3)
+    const dot4 = screen.getByRole("button", { name: "Ir para o passo 4" });
+    await user.click(dot4);
 
     expect(mockNavigate).toHaveBeenCalledWith("/cartoes");
     mockPathname = "/cartoes";
     rerender(<DemoTourSpotlight />);
 
-    expect(screen.getByText("Passo 5 de 8")).toBeInTheDocument();
-    expect(screen.getByText("Cartões & Faturas Abertas")).toBeInTheDocument();
+    expect(screen.getByText("Passo 4 de 5")).toBeInTheDocument();
+    expect(screen.getByText("Cartões, Faturas e Limites")).toBeInTheDocument();
 
     // Clica no Dot do Passo 1 (índice 0)
     const dot1 = screen.getByRole("button", { name: "Ir para o passo 1" });
@@ -1297,7 +1256,7 @@ describe("Teste Manual do Tour Geral: Jornada Lógica e Completa de Finanças e 
     mockPathname = "/";
     rerender(<DemoTourSpotlight />);
 
-    expect(screen.getByText("Passo 1 de 8")).toBeInTheDocument();
+    expect(screen.getByText("Passo 1 de 5")).toBeInTheDocument();
     expect(screen.getByText("Dashboard & Saldo Livre Real")).toBeInTheDocument();
 
     // 2. Tour de Investimentos: Salto direto do Passo 1 para o Passo 4 (Aporte) e retorno
@@ -1357,10 +1316,10 @@ describe("Teste Manual de Conclusão: Conclusão dos Tours Completos e Encerrame
 
     const user = userEvent.setup();
 
-    // Elemento do Passo 8 (Smart Advisor & Relatórios)
-    const reportsEl = document.createElement("div");
-    reportsEl.setAttribute("data-tour", "reports-content");
-    vi.spyOn(reportsEl, "getBoundingClientRect").mockReturnValue({
+    // Elemento do Passo 5 (Categorias & Tetos Mensais)
+    const budgetsEl = document.createElement("div");
+    budgetsEl.setAttribute("data-tour", "budgets-content");
+    vi.spyOn(budgetsEl, "getBoundingClientRect").mockReturnValue({
       x: 32,
       y: 100,
       left: 32,
@@ -1371,11 +1330,11 @@ describe("Teste Manual de Conclusão: Conclusão dos Tours Completos e Encerrame
       height: 200,
       toJSON: () => ({}),
     });
-    mainContainer.appendChild(reportsEl);
+    mainContainer.appendChild(budgetsEl);
 
     startDemo("finances");
-    setStepIndex(7); // Passo 8 de 8 (último passo)
-    mockPathname = "/relatorios";
+    setStepIndex(4); // Passo 5 de 5 (último passo)
+    mockPathname = "/orcamentos";
     mockSearch = "";
 
     render(<DemoTourSpotlight />);
@@ -1384,10 +1343,10 @@ describe("Teste Manual de Conclusão: Conclusão dos Tours Completos e Encerrame
       window.dispatchEvent(new Event("resize"));
     });
 
-    expect(screen.getByText("Passo 8 de 8")).toBeInTheDocument();
-    expect(screen.getByText("Smart Advisor & Relatórios")).toBeInTheDocument();
+    expect(screen.getByText("Passo 5 de 5")).toBeInTheDocument();
+    expect(screen.getByText("Categorias & Tetos Mensais")).toBeInTheDocument();
 
-    const finishBtn = screen.getByRole("button", { name: /Começar Conta Real|Começar/i });
+    const finishBtn = screen.getByRole("button", { name: /Começar Conta Real|Lançar na Conta Real|Começar/i });
     expect(finishBtn).toBeInTheDocument();
 
     await user.click(finishBtn);

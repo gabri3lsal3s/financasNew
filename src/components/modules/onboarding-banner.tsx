@@ -27,13 +27,13 @@ const STEP_META: Record<
   "expense-category": {
     label: "Crie categorias de despesa",
     description: "Classifique seus gastos desde o início.",
-    href: "/categorias?type=expense",
+    href: "/orcamentos?tab=categories&novo=categoria",
     icon: Tag,
   },
   "income-category": {
     label: "Crie categorias de renda",
     description: "Separe salário, freelas e outras entradas.",
-    href: "/categorias?type=income",
+    href: "/orcamentos?tab=categories&novo=categoria",
     icon: TrendingUp,
   },
   card: {

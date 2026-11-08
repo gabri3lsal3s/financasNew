@@ -117,6 +117,16 @@ vi.mock("@/state", () => ({
     isReadOnly: false,
     tier: "pro_annual",
   }),
+  useUserAccess: () => ({
+    hasFeature: () => true,
+    canAccess: () => true,
+  }),
+  useUpdateReminderPreferences: () => ({
+    mutate: vi.fn(),
+  }),
+  useUpdateCustomSettings: () => ({
+    mutate: vi.fn(),
+  }),
 }));
 
 const mockAdvisorInsights = vi.hoisted(() => ({
@@ -273,9 +283,19 @@ describe("RemindersPage (central de lembretes §3.10)", () => {
     }
   });
 
-  it("exibe nota informativa sobre a janela de monitoramento de faturas e dívidas", () => {
+  it("exibe nota informativa sobre a janela de monitoramento de faturas e dívidas e abre modal de configurações", async () => {
+    const user = userEvent.setup();
     render(<RemindersPage />);
+
     expect(screen.getByText(/Monitorando faturas e dívidas com vencimento nos próximos/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Ajustar antecedência/i })).toBeInTheDocument();
+
+    const adjustBtn = screen.getByRole("button", { name: /Ajustar antecedência/i });
+    expect(adjustBtn).toBeInTheDocument();
+
+    const headerSettingsBtn = screen.getByRole("button", { name: /Ajustes/i });
+    expect(headerSettingsBtn).toBeInTheDocument();
+
+    await user.click(adjustBtn);
+    expect(screen.getByText("Configurações de Lembretes")).toBeInTheDocument();
   });
 });

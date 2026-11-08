@@ -166,7 +166,12 @@ export function InvestmentsPage() {
             value: "aporte",
             label: "Aporte",
             icon: <TrendingUp className="size-4" aria-hidden="true" />,
-            content: <AporteTab onGoToPosition={() => handleTabChange("resumo")} />,
+            content: (
+              <AporteTab
+                onGoToPosition={() => handleTabChange("resumo")}
+                onGoToTargets={() => handleTabChange("metas")}
+              />
+            ),
           },
           {
             value: "metas",

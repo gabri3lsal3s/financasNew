@@ -212,6 +212,29 @@ describe("ModalFooter e Slot de Footer", () => {
     expect(footer).toHaveClass("flex-col-reverse", "sm:flex-row", "sm:justify-end", "border-border/80", "w-full");
   });
 
+  it("renderiza destructiveAction isolada à esquerda no desktop e abaixo no mobile com par de botões simétricos", () => {
+    render(
+      <Modal open onOpenChange={vi.fn()} title="Teste Destructive">
+        <ModalFooter
+          destructiveAction={<button type="button">Excluir Item</button>}
+        >
+          <button type="button">Cancelar</button>
+          <button type="button">Confirmar</button>
+        </ModalFooter>
+      </Modal>,
+    );
+    const deleteBtn = screen.getByText("Excluir Item");
+    const confirmBtn = screen.getByText("Confirmar");
+    expect(deleteBtn).toBeInTheDocument();
+    expect(confirmBtn).toBeInTheDocument();
+
+    const deleteContainer = deleteBtn.parentElement;
+    expect(deleteContainer).toHaveClass("order-last", "sm:order-first");
+
+    const pairContainer = confirmBtn.parentElement;
+    expect(pairContainer).toHaveClass("grid-cols-2", "sm:flex");
+  });
+
   it("renderiza o slot footer canônico no Modal fora do corpo rolável com safe area compacta", () => {
     render(
       <Modal

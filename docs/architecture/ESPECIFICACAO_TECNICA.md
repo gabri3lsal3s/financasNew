@@ -640,7 +640,23 @@ A inteligência de repetição do sistema opera em dois trilhos expressos e desa
 - **Modo Simulação 100% em Memória & Zero DB Mutations:** isolamento total do banco de dados relacional. Toda a experiência guiada é mantida em memória (`src/state/demo-mode/` e `src/domain/demo-simulation/`), com interceptação dinâmica em queries do TanStack Query (`use-simulated-queries.ts`, `use-card-payments.ts`, `use-overview.ts`) e supressão de mutações em `public_shares` (`SplitExpenseDialog` com `isSimulation`), garantindo zero linhas espúrias no Supabase durante o tour.
 - **Sanitização Rigorosa de Dados Pessoais (Zero PII Leak):** durante o tour, quaisquer formulários ou modais abertos utilizam dados fictícios pedagógicos (Titular: `"Gabriel (Demonstração)"`, Chave Pix: `"pix.demo@exemplo.com"`), impedindo o vazamento do e-mail real, CPF ou chave Pix do usuário logado.
 - **Apresentação Didática Ilustrada para Recursos Compartilhados (`SplitPreviewMockupCard`):** o micro-tour de Racha de Despesas com Pix utiliza um componente de mockup estático e ilustrado acionado via `?racha_preview=1`, demonstrando a divisão de valores, a chave Pix e o QR Code sem abrir formulários reais nem disputar foco.
-- **Motor Visual de Spotlight com Morfagem Suave (Zero Flicker):** componente `DemoTourSpotlight` com transição fluida por CSS, preservando as coordenadas do elemento anterior durante a troca de passos e eliminando apagões estroboscópicos da iluminação.
+- **Trilha Principal de Finanças em 5 Passos Essenciais Canônicos:** a trilha `finances` foi otimizada de 8 para 5 passos integrados, focando no fluxo real de alto valor:
+  1. *Dashboard & Saldo Livre Real* (`overview-kpis`, `/`);
+  2. *O Botão Wizard (+) e Atalhos* (`bottom-nav-wizard`, `/`);
+  3. *Extrato Unificado & Filtros* (`transactions-feed-card`, `/transacoes`);
+  4. *Cartões, Faturas e Limites* (`cards-invoice-summary`, `/cartoes`);
+  5. *Categorias & Tetos Mensais* (`budgets-content`, `/orcamentos`).
+  Cenários granulares adicionais (como conciliação de faturas, parcelamentos detalhados e radar de relatórios) são cobertos pelos respectivos micro-tours sob demanda (`finances_cards`, `finances_wizard`, etc.).
+- **Motor Visual de Spotlight com Morfagem Suave e Zero Caixa Fantasma:**
+  - Componente `DemoTourSpotlight` com transição fluida por CSS (`transition-all duration-300 ease-out`), preservando as coordenadas do elemento anterior durante a troca de passos e eliminando apagões estroboscópicos da iluminação.
+  - Eliminação definitiva da caixa centralizadora temporária de carregamento (`loadingSkeletonRect`), prevenindo que um foco aleatório retangular surja no meio da página antes do render do elemento real.
+  - Resolução resiliente com lista ordenada de seletores candidatos e fallbacks determinísticos (`resolveTourStepCandidateSelectors`), erradicando seletores genéricos que apontavam para contêineres vazios.
+  - Layout móvel em dois níveis para o passo de conclusão (`isLastStep`), organizando os dots de paginação na linha superior e as ações em grade simétrica horizontal, evitando estouro de tela em viewports estreitos.
+- **Onboarding de Primeiro Uso & Resiliência sem Bloqueio (§5.7):**
+  - **Identificação de Conta Virgem (`isFirstUse`):** a validação de primeiro uso verifica a ausência de movimentações efetivas (`counts.cards === 0 && counts.transactions === 0`). As categorias de despesas pré-populadas pelo sistema no cadastro (`ensureDefaultCategories`) não anulam o primeiro uso, garantindo que o `WelcomeModal` e o checklist inicial sejam exibidos normalmente a todo novo usuário cadastrado.
+  - **Links Precisos no Checklist de Configuração:** links de criação de categorias apontam diretamente para a aba correta com formulário engatilhado (`/orcamentos?tab=categories&novo=categoria`), eliminando redirecionamentos erráticos.
+  - **Ativação Acolhedora no Hub Familiar (`/familia`):** usuários com o Modo Familiar desativado recebem um cartão explicativo com botão de ativação com um toque (`toggleFamilyMode(true)`), substituindo o redirecionamento silencioso anterior.
+  - **Empty States Calmos e Direcionados:** adição de `EmptyState` com ação dupla na calculadora de aportes de investimentos ("Definir Metas" e "Ver Carteira") e no detalhamento de despesas em relatórios ("Novo Lançamento").
 - **Modularização em 4 Blocos Canônicos com Handoff de Ação Tripla:**
   1. *Bloco 1 — Finanças Diárias & Cartões* (`finances`);
   2. *Bloco 2 — Finanças Compartilhadas* (`shared_finances`);

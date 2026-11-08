@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { AlertTriangle, ArrowDownLeft, Bell, CheckCheck, CreditCard, X } from "lucide-react";
+import { AlertTriangle, ArrowDownLeft, Bell, CheckCheck, CreditCard, SlidersHorizontal, X } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, MoneyText, Skeleton, Tabs } from "@/components/ui";
 import { HighlightRow, ReadOnlyBanner, ReminderItem } from "@/components/modules";
+import { RemindersSettingsModal } from "../components/reminders-settings-modal";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { addDaysISO, todayISO } from "@/domain/debts";
@@ -35,6 +36,7 @@ export function RemindersPage() {
   const { highlightId } = useHighlightTarget("q");
   const [mainTabOverride, setMainTabOverride] = useState<MainTab | null>(null);
   const [subFilter, setSubFilter] = useState<SubFilter>("all");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const { allItems, readHistoryItems, totalCount, overdueCount, isLoading, error, preferences } =
     useReminders(today);
@@ -444,7 +446,10 @@ export function RemindersPage() {
             variant="ghost"
             size="sm"
             className="h-auto p-0 text-xs text-primary self-start sm:self-auto cursor-pointer"
-            onClick={() => navigate("/configuracoes?tab=notifications")}
+            onClick={() => {
+              triggerSensory("action");
+              setIsSettingsOpen(true);
+            }}
           >
             Ajustar antecedência
           </Button>
@@ -521,18 +526,32 @@ export function RemindersPage() {
           </p>
         </div>
 
-        {unreadFilteredItems.length > 0 && (
+        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
+          {unreadFilteredItems.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleMarkAllRead}
+              disabled={markAllMutation.isPending}
+            >
+              <CheckCheck className="size-4 mr-1.5 text-muted-foreground" aria-hidden="true" />
+              Marcar todas como lidas
+            </Button>
+          )}
+
           <Button
             variant="outline"
             size="sm"
-            onClick={handleMarkAllRead}
-            disabled={markAllMutation.isPending}
-            className="self-start sm:self-auto shrink-0"
+            onClick={() => {
+              triggerSensory("action");
+              setIsSettingsOpen(true);
+            }}
+            title="Configurar Lembretes e Antecedência"
           >
-            <CheckCheck className="size-4 mr-1.5 text-muted-foreground" aria-hidden="true" />
-            Marcar todas como lidas
+            <SlidersHorizontal className="size-4 mr-1.5 text-muted-foreground" aria-hidden="true" />
+            Ajustes
           </Button>
-        )}
+        </div>
       </header>
 
       {permission.isReadOnlyMode && <ReadOnlyBanner />}
@@ -550,6 +569,18 @@ export function RemindersPage() {
           title="Lembretes desativados"
           description="Você desativou os lembretes automáticos nas configurações."
           tone="default"
+          action={
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => {
+                triggerSensory("action");
+                setIsSettingsOpen(true);
+              }}
+            >
+              Ativar lembretes
+            </Button>
+          }
         />
       ) : (
         <Tabs
@@ -576,6 +607,11 @@ export function RemindersPage() {
           ]}
         />
       )}
+
+      <RemindersSettingsModal
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+      />
 
       {upgradeModal}
     </div>

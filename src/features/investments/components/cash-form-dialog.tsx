@@ -181,41 +181,39 @@ function CashFormContent({ asset = null, onClose }: CashFormContentProps) {
         )}
 
         {/* Rodapé de Ações */}
-        <ModalFooter className="sm:justify-between">
-          {isEdit ? (
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={() => setConfirmDelete(true)}
-              disabled={pending}
-              className="gap-1.5"
-            >
-              <Trash2 className="size-3.5" aria-hidden="true" />
-              Excluir caixa
-            </Button>
-          ) : (
-            <div />
-          )}
-
-          <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onClose}
-              disabled={pending}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              size="sm"
-              disabled={pending}
-            >
-              {pending ? "Salvando…" : isEdit ? "Atualizar saldo" : "Cadastrar caixa"}
-            </Button>
-          </div>
+        <ModalFooter
+          destructiveAction={
+            isEdit ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmDelete(true)}
+                disabled={pending}
+                className="text-critical hover:bg-critical/10 gap-1.5"
+              >
+                <Trash2 className="size-3.5" aria-hidden="true" />
+                Excluir caixa
+              </Button>
+            ) : null
+          }
+        >
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onClose}
+            disabled={pending}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={pending}
+          >
+            {pending ? "Salvando…" : isEdit ? "Atualizar saldo" : "Cadastrar caixa"}
+          </Button>
         </ModalFooter>
       </form>
 

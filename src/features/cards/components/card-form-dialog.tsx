@@ -458,33 +458,31 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
           </div>
         </div>
 
-        <ModalFooter className="sm:justify-between">
-          {card ? (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setDeleteConfirmOpen(true)}
-              disabled={pending}
-              className="text-critical hover:bg-critical/10 gap-1.5 px-2.5"
-            >
-              <Trash2 className="size-4" aria-hidden="true" />
-              Excluir
-            </Button>
-          ) : (
-            <div />
-          )}
-
-          <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
-            <Button type="button" variant="ghost" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={name.trim() === "" || pending}
-            >
-              {pending ? "Salvando…" : card ? "Salvar alterações" : "Criar cartão"}
-            </Button>
-          </div>
+        <ModalFooter
+          destructiveAction={
+            card ? (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setDeleteConfirmOpen(true)}
+                disabled={pending}
+                className="text-critical hover:bg-critical/10 gap-1.5 px-2.5"
+              >
+                <Trash2 className="size-4" aria-hidden="true" />
+                Excluir
+              </Button>
+            ) : null
+          }
+        >
+          <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            disabled={name.trim() === "" || pending}
+          >
+            {pending ? "Salvando…" : card ? "Salvar alterações" : "Criar cartão"}
+          </Button>
         </ModalFooter>
       </form>
 

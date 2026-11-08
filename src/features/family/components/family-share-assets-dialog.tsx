@@ -224,7 +224,7 @@ function FamilyShareAssetsContent({ currentMember, familyId, onClose }: DialogCo
         </div>
       </div>
 
-      <ModalFooter className="pt-3 border-t border-border/80 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+      <ModalFooter>
         <Button
           type="button"
           variant="outline"

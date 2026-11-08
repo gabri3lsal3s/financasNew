@@ -17,6 +17,7 @@ let mockConsolidationData: FamilyConsolidationResult | null = null;
 let mockIsConsolidationLoading = false;
 let mockConsolidationError: Error | null = null;
 const mockRefetch = vi.fn();
+const mockToggleFamilyMode = vi.fn();
 
 vi.mock("@/state", () => ({
   useMyFamily: () => ({
@@ -26,6 +27,8 @@ vi.mock("@/state", () => ({
   useFamilyMode: () => ({
     isFamilyModeEnabled: mockIsFamilyModeEnabled,
     isLoading: mockIsModeLoading,
+    toggleFamilyMode: mockToggleFamilyMode,
+    isPending: false,
   }),
   useFamilyConsolidation: () => ({
     data: mockConsolidationData,
@@ -196,13 +199,17 @@ describe("FamilyPage (/familia)", () => {
     expect(screen.queryByText("Orçamento Familiar")).not.toBeInTheDocument();
   });
 
-  it("redireciona para a home (/) quando o modo familiar estiver desativado", () => {
+  it("renderiza tela explicativa para ativar o modo familiar quando estiver desativado", () => {
     mockFamilyData = null;
     mockIsFamilyModeEnabled = false;
     renderPage();
 
-    expect(screen.getByTestId("home-page")).toBeInTheDocument();
-    expect(screen.queryByText("Orçamento Familiar")).not.toBeInTheDocument();
+    expect(screen.getByTestId("family-mode-inactive")).toBeInTheDocument();
+    expect(screen.getByText("Modo Familiar desativado")).toBeInTheDocument();
+    const activateButton = screen.getByRole("button", { name: "Ativar Modo Familiar" });
+    expect(activateButton).toBeInTheDocument();
+    fireEvent.click(activateButton);
+    expect(mockToggleFamilyMode).toHaveBeenCalledWith(true);
   });
 
   it("renderiza empty state com botão de criar família quando o modo estiver ativo mas sem família criada", () => {

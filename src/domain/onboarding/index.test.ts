@@ -69,10 +69,14 @@ describe("isOnboardingComplete / isFirstUse", () => {
     expect(isOnboardingComplete({ ...full, notificationsEnabled: false })).toBe(false);
   });
 
-  it("primeiro uso é falso com qualquer dado presente", () => {
+  it("primeiro uso é falso se houver movimentações cadastradas", () => {
     expect(isFirstUse({ ...empty, cards: 1 })).toBe(false);
     expect(isFirstUse({ ...empty, transactions: 1 })).toBe(false);
     expect(isFirstUse({ ...empty, notificationsEnabled: true })).toBe(false);
+  });
+
+  it("primeiro uso permanece verdadeiro com categorias pré-populadas do sistema", () => {
+    expect(isFirstUse({ ...empty, expenseCategories: 10, incomeCategories: 3 })).toBe(true);
   });
 });
 

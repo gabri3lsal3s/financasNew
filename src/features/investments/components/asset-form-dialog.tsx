@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowDownLeft, Calculator, ChevronDown, ChevronUp, Loader2, Sparkles } from "lucide-react";
+import { ArrowDownLeft, Calculator, ChevronDown, ChevronUp, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { Alert, Badge, Button, Checkbox, ConfirmDialog, Input, Modal, ModalFooter, MoneyInput, MoneyText, NumericInput, Select } from "@/components/ui";
 
 
@@ -1077,28 +1077,28 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
 
           {error ? <Alert variant="error">{error}</Alert> : null}
 
-          <ModalFooter className="sm:justify-between">
-            {isEdit ? (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setConfirmDelete(true)}
-                disabled={pending}
-                className="text-negative-strong hover:text-negative-strong w-full sm:w-auto"
-              >
-                Excluir ativo
-              </Button>
-            ) : (
-              <span className="hidden sm:block" />
-            )}
-            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 w-full sm:w-auto">
-              <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={!canSubmit || pending || isSubmitting} className="w-full sm:w-auto">
-                {pending || isSubmitting ? "Salvando…" : isEdit ? "Salvar alterações" : "Adicionar à carteira"}
-              </Button>
-            </div>
+          <ModalFooter
+            destructiveAction={
+              isEdit ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setConfirmDelete(true)}
+                  disabled={pending}
+                  className="text-critical hover:bg-critical/10"
+                >
+                  <Trash2 className="size-4 mr-1.5" aria-hidden="true" />
+                  Excluir ativo
+                </Button>
+              ) : null
+            }
+          >
+            <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={!canSubmit || pending || isSubmitting}>
+              {pending || isSubmitting ? "Salvando…" : isEdit ? "Salvar alterações" : "Adicionar à carteira"}
+            </Button>
           </ModalFooter>
         </form>
       )}

@@ -11,7 +11,7 @@ import {
   Select,
 } from "@/components/ui";
 import type { SelectOption } from "@/components/ui";
-import { ExportDataHub, ApkInstallGuideDialog } from "@/components/modules";
+import { ExportDataHub, ApkInstallGuideDialog, PlatformsTriptychCard } from "@/components/modules";
 import type { ExportCsvKind, ExportRange } from "@/components/modules";
 import { downloadCsv } from "@/services/export-actions";
 import { pushToast } from "@/services/toast";
@@ -434,39 +434,8 @@ export function SecurityTab() {
       />
 
       {/* Card 2.5: Comparativo do Tripé de Plataformas */}
-      <Card data-tour="settings-platforms-triptych" className="border-border/80 bg-surface shadow-xs">
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Smartphone className="size-4 text-muted-foreground" aria-hidden="true" />
-            <span>O Tripé de Plataformas: Web, PWA e Android Pro</span>
-          </CardTitle>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Sua conta funciona em qualquer lugar com sincronização e recursos adaptados a cada formato.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-            <div className="p-3.5 rounded-xl border border-border/70 bg-background/50 space-y-1.5">
-              <span className="font-bold text-foreground block">Web Desktop</span>
-              <p className="text-muted-foreground leading-relaxed">
-                Ideal para relatórios em tela ampla, simulações de independência financeira (FIRE) e rebalanceamento.
-              </p>
-            </div>
-            <div className="p-3.5 rounded-xl border border-border/70 bg-background/50 space-y-1.5">
-              <span className="font-bold text-foreground block">Mobile PWA</span>
-              <p className="text-muted-foreground leading-relaxed">
-                Acesso leve e instantâneo no iPhone ou Android, sem downloads pesados e com abertura em tela cheia.
-              </p>
-            </div>
-            <div className="p-3.5 rounded-xl border border-primary/30 bg-primary/5 space-y-1.5">
-              <span className="font-bold text-primary-strong block">Android Pro Nativo</span>
-              <p className="text-muted-foreground leading-relaxed">
-                Leitor passivo de notificações bancárias (Pix e cartões em tempo real), biometria física e escudo anti-print.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <PlatformsTriptychCard />
+
 
       {/* Card 3: Sobre o Aplicativo & Atualizações */}
       <Card data-tour="settings-platform-status" className="border-border/80 bg-surface shadow-xs">

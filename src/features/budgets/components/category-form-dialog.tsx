@@ -193,19 +193,22 @@ function CategoryFormContent({
         </div>
       )}
 
-      <ModalFooter className="sm:justify-end">
-        {category && siblings !== undefined ? (
-          <Button
-            type="button"
-            variant="ghost"
-            className="sm:mr-auto text-negative hover:bg-negative/10 hover:text-negative"
-            onClick={onOpenDelete}
-          >
-            <Trash2 className="size-4" aria-hidden="true" />
-            Excluir
-          </Button>
-        ) : null}
-        <Button type="button" variant="ghost" onClick={onClose}>
+      <ModalFooter
+        destructiveAction={
+          category && siblings !== undefined ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-critical hover:bg-critical/10"
+              onClick={onOpenDelete}
+            >
+              <Trash2 className="size-4" aria-hidden="true" />
+              Excluir
+            </Button>
+          ) : null
+        }
+      >
+        <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
           Cancelar
         </Button>
         <Button type="submit" disabled={name.trim() === "" || pending}>

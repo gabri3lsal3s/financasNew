@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate } from "react-router";
+import { useNavigate } from "react-router";
 import { AlertCircle, Plus, RotateCcw, Settings, UserPlus, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,8 +36,14 @@ import {
  * Suporta até 6 participantes por família com Zero Data Bleed.
  */
 export function FamilyPage() {
+  const navigate = useNavigate();
   const { data: myFamilyData, isLoading: isFamilyLoading } = useMyFamily();
-  const { isFamilyModeEnabled, isLoading: isModeLoading } = useFamilyMode();
+  const {
+    isFamilyModeEnabled,
+    toggleFamilyMode,
+    isLoading: isModeLoading,
+    isPending: isTogglingMode,
+  } = useFamilyMode();
 
   const [month, setMonth] = useState<string>(() => currentMonth());
   const [isSettlementOpen, setIsSettlementOpen] = useState(false);
@@ -78,9 +84,55 @@ export function FamilyPage() {
     );
   }
 
-  // Se o Modo Familiar estiver desativado nas preferências, redireciona para a raiz
+  // Se o Modo Familiar estiver desativado nas preferências, exibe o card explicativo de ativação
   if (!isFamilyModeEnabled) {
-    return <Navigate to="/" replace />;
+    return (
+      <div className="space-y-6" data-testid="family-mode-inactive">
+        <header className="flex flex-col gap-2">
+          <div className="flex items-center gap-2.5">
+            <Users className="size-5 text-muted-foreground" aria-hidden="true" />
+            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+              Orçamento Familiar
+            </h1>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa.
+          </p>
+        </header>
+
+        <Card className="border-border/80 bg-surface shadow-xs p-6 sm:p-10 rounded-2xl text-center">
+          <EmptyState
+            icon={<Users className="size-10 text-muted-foreground" aria-hidden="true" />}
+            title="Modo Familiar desativado"
+            description="O Modo Familiar consolida os gastos da residência, calcula o teto de gastos da casa e realiza acertos justos de contas via Pix, mantendo suas contas e compras pessoais sob total privacidade."
+            action={
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  disabled={isTogglingMode}
+                  onClick={() => toggleFamilyMode(true)}
+                  className="gap-2 rounded-xl cursor-pointer"
+                >
+                  <Plus className="size-4" aria-hidden="true" />
+                  <span>{isTogglingMode ? "Ativando..." : "Ativar Modo Familiar"}</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/")}
+                  className="rounded-xl cursor-pointer"
+                >
+                  Voltar ao Início
+                </Button>
+              </div>
+            }
+          />
+        </Card>
+      </div>
+    );
   }
 
   // Se não houver família criada ainda, exibe o EmptyState explicativo com criação direta

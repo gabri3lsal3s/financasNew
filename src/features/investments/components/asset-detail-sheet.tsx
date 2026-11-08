@@ -633,22 +633,24 @@ export function AssetDetailSheet({
           </div>
 
           {/* Rodapé: Exclusão do Ativo da Carteira */}
-          <ModalFooter className="sm:justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                guardAction(() => {
-                  setDeleteConfirmOpen(true);
-                }, "Excluir Ativo da Carteira")
-              }
-              className="text-xs text-negative-strong hover:bg-negative-surface/40"
-            >
-              <Trash2 className="size-3.5 mr-1" aria-hidden="true" />
-              Excluir Ativo da Carteira
-            </Button>
-
+          <ModalFooter
+            destructiveAction={
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  guardAction(() => {
+                    setDeleteConfirmOpen(true);
+                  }, "Excluir Ativo da Carteira")
+                }
+                className="text-critical hover:bg-critical/10"
+              >
+                <Trash2 className="size-3.5 mr-1" aria-hidden="true" />
+                Excluir Ativo da Carteira
+              </Button>
+            }
+          >
             <Button
               type="button"
               variant="outline"

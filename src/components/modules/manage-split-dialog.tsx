@@ -654,41 +654,41 @@ export function ManageSplitDialog({
           </div>
         </div>
 
-        <ModalFooter className="sm:justify-between">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={handleOpenDeleteConfirm}
-            className="gap-1.5 text-negative-strong hover:text-negative-strong/90 order-last sm:order-first"
-          >
-            <Trash2 className="size-3.5" aria-hidden="true" />
-            <span>Excluir Racha</span>
-          </Button>
-
-          <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
+        <ModalFooter
+          destructiveAction={
             <Button
               type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
+              variant="ghost"
+              onClick={handleOpenDeleteConfirm}
+              className="gap-1.5 text-critical hover:bg-critical/10"
             >
-              Fechar
+              <Trash2 className="size-3.5" aria-hidden="true" />
+              <span>Excluir Racha</span>
             </Button>
-            {!isCompleted ? (
-              <Button
-                type="button"
-                variant="default"
-                onClick={() => setConfirmFinalizeOpen(true)}
-                className="gap-1.5"
-              >
-                <Lock className="size-3.5 text-primary-foreground" aria-hidden="true" />
-                <span>Finalizar Racha</span>
-              </Button>
-            ) : (
-              <Badge variant="positive" className="px-2.5 py-1 text-xs justify-center w-full sm:w-auto">
-                Racha Finalizado
-              </Badge>
-            )}
-          </div>
+          }
+        >
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
+            Fechar
+          </Button>
+          {!isCompleted ? (
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => setConfirmFinalizeOpen(true)}
+              className="gap-1.5"
+            >
+              <Lock className="size-3.5 text-primary-foreground" aria-hidden="true" />
+              <span>Finalizar Racha</span>
+            </Button>
+          ) : (
+            <Badge variant="positive" className="px-2.5 py-1 text-xs justify-center w-full sm:w-auto">
+              Racha Finalizado
+            </Badge>
+          )}
         </ModalFooter>
       </Modal>
 

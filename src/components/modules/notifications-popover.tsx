@@ -177,10 +177,8 @@ export function NotificationsPopover({
   const handleOpenOnboarding = () => {
     triggerSensory("action");
     onOpenChange?.(false);
-    if (!onboardingQuery.data?.expenseCategories) {
-      navigate("/categorias?type=expense");
-    } else if (!onboardingQuery.data?.incomeCategories) {
-      navigate("/categorias?type=income");
+    if (!onboardingQuery.data?.expenseCategories || !onboardingQuery.data?.incomeCategories) {
+      navigate("/orcamentos?tab=categories&novo=categoria");
     } else if (!onboardingQuery.data?.cards) {
       navigate("/cartoes");
     } else {

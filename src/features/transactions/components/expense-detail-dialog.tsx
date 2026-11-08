@@ -733,49 +733,49 @@ export function ExpenseDetailDialog({
                   ) : null}
                 </dl>
 
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-border/80 mt-2">
-                  <div className="flex flex-wrap items-center gap-1">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-3.5 border-t border-border/80 mt-2">
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      className="shrink-0"
+                      className="shrink-0 gap-1.5"
                       onClick={() => setSplitOpen(true)}
                     >
                       <Users className="size-3.5" aria-hidden="true" />
-                      Rachar Despesa
+                      <span>Rachar</span>
                     </Button>
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      className="shrink-0"
+                      className="shrink-0 gap-1.5"
                       onClick={() => void handleShare()}
                     >
                       <Share2 className="size-3.5" aria-hidden="true" />
-                      Compartilhar
+                      <span>Compartilhar</span>
                     </Button>
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      className="shrink-0"
+                      className="shrink-0 gap-1.5"
                       onClick={() => guardAction(() => void handleRepeat(), "Duplicar Despesa")}
                       disabled={createExpense.isPending}
                     >
                       <Copy className="size-3.5" aria-hidden="true" />
-                      {createExpense.isPending ? "Repetindo…" : "Repetir no mês atual"}
+                      <span>{createExpense.isPending ? "Repetindo…" : "Repetir"}</span>
                     </Button>
                   </div>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="gap-1 text-xs font-medium text-critical hover:bg-critical/10 hover:text-critical cursor-pointer"
+                    className="w-full sm:w-auto text-critical hover:bg-critical/10 hover:text-critical gap-1.5"
                     onClick={() => guardAction(() => setConfirmOpen(true), "Excluir Despesa")}
                   >
                     <Trash2 className="size-3.5" aria-hidden="true" />
-                    Excluir
+                    <span>Excluir</span>
                   </Button>
                 </div>
               </div>

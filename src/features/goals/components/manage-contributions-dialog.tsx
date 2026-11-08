@@ -405,7 +405,7 @@ export function ManageContributionsDialog({
           )}
         </div>
 
-        <ModalFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+        <ModalFooter>
           <Button
             type="button"
             variant="outline"
@@ -427,7 +427,7 @@ export function ManageContributionsDialog({
         <p className="text-xs text-muted-foreground py-2">
           O total acumulado no termômetro e na página pública será reduzido pelo valor deste depósito.
         </p>
-        <ModalFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
+        <ModalFooter>
           <Button type="button" variant="ghost" onClick={() => setDeletingContribId(null)}>
             Cancelar
           </Button>

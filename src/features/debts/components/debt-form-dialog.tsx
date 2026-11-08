@@ -142,26 +142,27 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
         )
       ) : null}
 
-      <ModalFooter className="sm:justify-between">
-        {debt && onDelete ? (
-          <Button
-            type="button"
-            variant="ghost"
-            className="text-negative hover:bg-negative/10 hover:text-negative"
-            onClick={() => setConfirmDelete(true)}
-          >
-            <Trash2 className="size-4" aria-hidden="true" />
-            Excluir
-          </Button>
-        ) : null}
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto sm:ml-auto">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={!valid || pending}>
-            {pending ? "Salvando…" : debt ? "Salvar alterações" : "Criar dívida"}
-          </Button>
-        </div>
+      <ModalFooter
+        destructiveAction={
+          debt && onDelete ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-critical hover:bg-critical/10"
+              onClick={() => setConfirmDelete(true)}
+            >
+              <Trash2 className="size-4" aria-hidden="true" />
+              Excluir
+            </Button>
+          ) : null
+        }
+      >
+        <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+          Cancelar
+        </Button>
+        <Button type="submit" disabled={!valid || pending}>
+          {pending ? "Salvando…" : debt ? "Salvar alterações" : "Criar dívida"}
+        </Button>
       </ModalFooter>
 
       {debt && onDelete ? (

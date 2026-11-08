@@ -26,7 +26,13 @@ import {
  * Ao aplicar o lote, executa a transação atômica via RPC (`execute_portfolio_batch_aporte`)
  * atualizando posições, registrando compras em `portfolio_transactions` e histórico em `portfolio_contributions`.
  */
-export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
+export function AporteTab({
+  onGoToPosition,
+  onGoToTargets,
+}: {
+  onGoToPosition?: () => void;
+  onGoToTargets?: () => void;
+}) {
   const [searchParams, setSearchParams] = useSearchParams();
   const position = usePortfolioPosition();
   const targetsQuery = useAllocationTargets();
@@ -269,11 +275,26 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
         <EmptyState
           icon={<Calculator className="size-6" />}
           title="Nenhum ativo investido para simular aporte"
-          description="Cadastre ativos e metas na aba 'Metas' para que a calculadora distribua seu aporte de forma ideal."
+          description="Cadastre ativos e defina suas metas na aba de Metas para que o motor distribua seu aporte de forma ideal."
           action={
-            <Button variant="default" onClick={() => onGoToPosition?.()}>
-              Ver Carteira
-            </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => (onGoToTargets ? onGoToTargets() : onGoToPosition?.())}
+                className="cursor-pointer rounded-xl"
+              >
+                Definir Metas
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onGoToPosition?.()}
+                className="cursor-pointer rounded-xl"
+              >
+                Ver Carteira
+              </Button>
+            </div>
           }
         />
       ) : (

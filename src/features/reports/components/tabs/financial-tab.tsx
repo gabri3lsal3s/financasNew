@@ -1,7 +1,7 @@
 import { type Dispatch, type SetStateAction } from "react";
 import { Link } from "react-router";
-import { ArrowRight, Landmark, Printer, Sparkles } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui";
+import { ArrowRight, Landmark, Plus, Printer, Sparkles } from "lucide-react";
+import { Button, buttonVariants, EmptyState } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MoneyText } from "@/components/ui/money-text";
 import { MonthPicker, YearPicker, ReportTable } from "@/components/modules";
@@ -267,7 +267,22 @@ export function FinancialTab({
           </div>
         </div>
 
-        {aggregationTab === "category" ? (
+        {expenses.length === 0 ? (
+          <EmptyState
+            icon={<Landmark className="size-8 text-muted-foreground" aria-hidden="true" />}
+            title="Nenhum lançamento no período"
+            description="Registre receitas e despesas para gerar o detalhamento de consumo, DRE pessoal e análises por categoria."
+            action={
+              <Link
+                to="/transacoes?novo=transacao"
+                className={cn(buttonVariants({ variant: "default", size: "sm" }), "rounded-xl gap-2 cursor-pointer")}
+              >
+                <Plus className="size-4" aria-hidden="true" />
+                <span>Novo Lançamento</span>
+              </Link>
+            }
+          />
+        ) : aggregationTab === "category" ? (
           <ReportTable
             title="Por Categoria"
             totalBrutoCents={grossExpenseBrutoCents}

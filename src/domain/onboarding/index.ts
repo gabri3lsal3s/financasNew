@@ -111,13 +111,15 @@ export function isOnboardingComplete(counts: OnboardingCounts): boolean {
   return onboardingSteps(counts).every((step) => step.done);
 }
 
-/** Primeiro uso: nenhum dado registrado ainda (conta recém-criada). */
+/**
+ * Primeiro uso: conta recém-criada sem movimentações (sem cartões nem lançamentos).
+ * Categorias pré-populadas pelo sistema no cadastro não descaracterizam o primeiro uso.
+ */
 export function isFirstUse(counts: OnboardingCounts): boolean {
   return (
-    counts.expenseCategories === 0 &&
-    counts.incomeCategories === 0 &&
     counts.cards === 0 &&
     counts.transactions === 0 &&
     !counts.notificationsEnabled
   );
 }
+

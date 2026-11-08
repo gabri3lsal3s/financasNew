@@ -137,4 +137,6 @@ export { QuickBalanceAdjustmentModal } from "./quick-balance-adjustment-modal";
 export type { QuickBalanceAdjustmentModalProps } from "./quick-balance-adjustment-modal";
 export { SplitPreviewMockupCard } from "./split-preview-mockup-card";
 export type { SplitPreviewMockupCardProps } from "./split-preview-mockup-card";
+export { PlatformsTriptychCard } from "./platforms-triptych-card";
+export type { PlatformsTriptychCardProps, PlatformTriptychItem } from "./platforms-triptych-card";
 

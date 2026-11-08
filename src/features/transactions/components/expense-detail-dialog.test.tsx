@@ -329,7 +329,7 @@ describe("ExpenseDetailDialog", () => {
     const user = userEvent.setup();
     render(<ExpenseDetailDialog expense={baseExpense} open={true} onOpenChange={vi.fn()} />);
 
-    const splitBtn = screen.getByRole("button", { name: /Rachar Despesa/i });
+    const splitBtn = screen.getByRole("button", { name: /Rachar/i });
     expect(splitBtn).toBeInTheDocument();
     await user.click(splitBtn);
 
