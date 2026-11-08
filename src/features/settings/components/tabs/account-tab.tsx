@@ -35,7 +35,6 @@ import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
 import { ChangePasswordModal } from "./change-password-modal";
-import { DeleteAccountCard } from "./delete-account-card";
 
 function formatAccountDate(dateString?: string | null): string {
   if (!dateString) return "Data indisponível";
@@ -449,14 +448,6 @@ export function AccountTab() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Card 4: Zona de Perigo / Exclusão de Conta */}
-      <DeleteAccountCard
-        title="Zona de Perigo"
-        description="Ações irreversíveis que afetam permanentemente sua conta e histórico financeiro."
-        actionTitle="Excluir conta permanentemente"
-        actionDescription="Exclui todas as transações, cartões, metas, investimentos e desvincula seu e-mail do sistema."
-      />
 
       {/* Modal de Alteração de E-mail */}
       <Modal

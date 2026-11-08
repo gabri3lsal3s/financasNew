@@ -363,57 +363,39 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
   });
 
   describe("Tours gerais consolidados e didáticos (finances e investments) — Fase 8.5", () => {
-    it("estrutura a trilha finances com 8 passos integrados em sequência lógica e didática", () => {
+    it("estrutura a trilha finances com 5 passos essenciais integrados em sequência lógica e didática", () => {
       const steps = getTourSteps("finances");
-      expect(steps).toHaveLength(8);
+      expect(steps).toHaveLength(5);
 
       // Passo 1: Dashboard & Saldo Livre Real
       expect(steps[0]?.id).toBe("finances-overview");
       expect(steps[0]?.targetSelector).toBe('[data-tour="overview-kpis"]');
       expect(steps[0]?.targetRoute).toBe("/");
-      expect(steps[0]?.badgeLabel).toBe("Passo 1 de 8");
+      expect(steps[0]?.badgeLabel).toBe("Passo 1 de 5");
 
       // Passo 2: O Botão Wizard (+) e Atalhos
       expect(steps[1]?.id).toBe("finances-wizard-btn");
       expect(steps[1]?.targetSelector).toBe('[data-tour="bottom-nav-wizard"]');
       expect(steps[1]?.targetRoute).toBe("/");
-      expect(steps[1]?.badgeLabel).toBe("Passo 2 de 8");
+      expect(steps[1]?.badgeLabel).toBe("Passo 2 de 5");
 
-      // Passo 3: Modal de Lançamento Inteligente
-      expect(steps[2]?.id).toBe("finances-wizard-dialog");
-      expect(steps[2]?.targetSelector).toBe('[data-tour="launch-wizard-dialog"]');
-      expect(steps[2]?.targetRoute).toBe("/transacoes?novo=despesa");
-      expect(steps[2]?.badgeLabel).toBe("Passo 3 de 8");
+      // Passo 3: Extrato Unificado & Filtros
+      expect(steps[2]?.id).toBe("finances-transactions");
+      expect(steps[2]?.targetSelector).toBe('[data-tour="transactions-feed-card"]');
+      expect(steps[2]?.targetRoute).toBe("/transacoes");
+      expect(steps[2]?.badgeLabel).toBe("Passo 3 de 5");
 
-      // Passo 4: Extrato Unificado & Filtros
-      expect(steps[3]?.id).toBe("finances-transactions");
-      expect(steps[3]?.targetSelector).toBe('[data-tour="transactions-feed-card"]');
-      expect(steps[3]?.targetRoute).toBe("/transacoes");
-      expect(steps[3]?.badgeLabel).toBe("Passo 4 de 8");
+      // Passo 4: Cartões, Faturas e Limites
+      expect(steps[3]?.id).toBe("finances-cards");
+      expect(steps[3]?.targetSelector).toBe('[data-tour="cards-invoice-summary"]');
+      expect(steps[3]?.targetRoute).toBe("/cartoes");
+      expect(steps[3]?.badgeLabel).toBe("Passo 4 de 5");
 
-      // Passo 5: Cartões & Faturas Abertas
-      expect(steps[4]?.id).toBe("finances-cards");
-      expect(steps[4]?.targetSelector).toBe('[data-tour="cards-invoice-summary"]');
-      expect(steps[4]?.targetRoute).toBe("/cartoes");
-      expect(steps[4]?.badgeLabel).toBe("Passo 5 de 8");
-
-      // Passo 6: Parcelamentos Fixos e Futuros
-      expect(steps[5]?.id).toBe("finances-installments");
-      expect(steps[5]?.targetSelector).toBe('[data-tour="cards-installments-section"]');
-      expect(steps[5]?.targetRoute).toBe("/cartoes");
-      expect(steps[5]?.badgeLabel).toBe("Passo 6 de 8");
-
-      // Passo 7: Categorias & Tetos Mensais
-      expect(steps[6]?.id).toBe("finances-budgets");
-      expect(steps[6]?.targetSelector).toBe('[data-tour="budgets-content"]');
-      expect(steps[6]?.targetRoute).toBe("/orcamentos");
-      expect(steps[6]?.badgeLabel).toBe("Passo 7 de 8");
-
-      // Passo 8: Smart Advisor & Relatórios
-      expect(steps[7]?.id).toBe("finances-insights");
-      expect(steps[7]?.targetSelector).toBe('[data-tour="reports-content"]');
-      expect(steps[7]?.targetRoute).toBe("/relatorios");
-      expect(steps[7]?.badgeLabel).toBe("Passo 8 de 8");
+      // Passo 5: Categorias & Tetos Mensais
+      expect(steps[4]?.id).toBe("finances-budgets");
+      expect(steps[4]?.targetSelector).toBe('[data-tour="budgets-content"]');
+      expect(steps[4]?.targetRoute).toBe("/orcamentos");
+      expect(steps[4]?.badgeLabel).toBe("Passo 5 de 5");
     });
 
     it("estrutura a trilha investments com 5 passos integrados de aprendizado patrimonial", () => {
@@ -478,19 +460,16 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
   });
 
   describe("Testar Encadeamento dos Passos dos Novos Tours Gerais (Fase 8 — Tarefa 8.11)", () => {
-    it("encadeia com precisão a sequência lógica do Tour Geral de Finanças Diárias (8 passos)", () => {
+    it("encadeia com precisão a sequência lógica do Tour Geral de Finanças Diárias (5 passos essenciais)", () => {
       const steps = getTourSteps("finances");
-      expect(steps).toHaveLength(8);
+      expect(steps).toHaveLength(5);
 
       const expectedSequence = [
-        { order: 1, id: "finances-overview", route: "/", selector: '[data-tour="overview-kpis"]', badge: "Passo 1 de 8" },
-        { order: 2, id: "finances-wizard-btn", route: "/", selector: '[data-tour="bottom-nav-wizard"]', badge: "Passo 2 de 8" },
-        { order: 3, id: "finances-wizard-dialog", route: "/transacoes?novo=despesa", selector: '[data-tour="launch-wizard-dialog"]', badge: "Passo 3 de 8" },
-        { order: 4, id: "finances-transactions", route: "/transacoes", selector: '[data-tour="transactions-feed-card"]', badge: "Passo 4 de 8" },
-        { order: 5, id: "finances-cards", route: "/cartoes", selector: '[data-tour="cards-invoice-summary"]', badge: "Passo 5 de 8" },
-        { order: 6, id: "finances-installments", route: "/cartoes", selector: '[data-tour="cards-installments-section"]', badge: "Passo 6 de 8" },
-        { order: 7, id: "finances-budgets", route: "/orcamentos", selector: '[data-tour="budgets-content"]', badge: "Passo 7 de 8" },
-        { order: 8, id: "finances-insights", route: "/relatorios", selector: '[data-tour="reports-content"]', badge: "Passo 8 de 8" },
+        { order: 1, id: "finances-overview", route: "/", selector: '[data-tour="overview-kpis"]', badge: "Passo 1 de 5" },
+        { order: 2, id: "finances-wizard-btn", route: "/", selector: '[data-tour="bottom-nav-wizard"]', badge: "Passo 2 de 5" },
+        { order: 3, id: "finances-transactions", route: "/transacoes", selector: '[data-tour="transactions-feed-card"]', badge: "Passo 3 de 5" },
+        { order: 4, id: "finances-cards", route: "/cartoes", selector: '[data-tour="cards-invoice-summary"]', badge: "Passo 4 de 5" },
+        { order: 5, id: "finances-budgets", route: "/orcamentos", selector: '[data-tour="budgets-content"]', badge: "Passo 5 de 5" },
       ];
 
       expectedSequence.forEach((expected, idx) => {
@@ -506,7 +485,7 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
 
       // Valida unicidade de IDs na trilha
       const ids = steps.map((s) => s.id);
-      expect(new Set(ids).size).toBe(8);
+      expect(new Set(ids).size).toBe(5);
     });
 
     it("encadeia com precisão a sequência lógica do Tour Geral de Investimentos (5 passos)", () => {

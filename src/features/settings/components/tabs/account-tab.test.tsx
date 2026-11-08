@@ -7,7 +7,6 @@ import { AccountTab } from "./account-tab";
 import * as authHook from "@/hooks/use-auth";
 import * as stateModule from "@/state";
 import * as authData from "@/data/auth";
-import * as rpcData from "@/data/rpc";
 import * as toastModule from "@/services/toast";
 import * as sensoryModule from "@/services/sensory";
 
@@ -562,94 +561,11 @@ describe("AccountTab", () => {
       });
     });
 
-    it("permanece com o card Zona de Perigo como o último card da aba", () => {
-      const { container } = renderAccountTab();
-
-      const cards = container.querySelectorAll(".space-y-6 > div");
-      expect(cards.length).toBeGreaterThanOrEqual(2);
-      const lastCard = cards[cards.length - 1];
-      expect(lastCard).toHaveTextContent("Zona de Perigo");
-      expect(lastCard).toHaveTextContent("Excluir conta permanentemente");
-    });
-  });
-
-  describe("Zona de Perigo e Exclusão de Conta", () => {
-    it("renderiza o card Zona de Perigo com aviso e botão de exclusão", () => {
+    it("não renderiza o card de Zona de Perigo na aba Conta (centralizado em Privacidade)", () => {
       renderAccountTab();
 
-      expect(screen.getByText("Zona de Perigo")).toBeInTheDocument();
-      expect(screen.getByText("Excluir conta permanentemente")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Excluir Minha Conta" })).toBeInTheDocument();
-    });
-
-    it("abre o modal de confirmação e mantém o botão de confirmação desabilitado sem a frase exata", async () => {
-      const user = userEvent.setup();
-      renderAccountTab();
-
-      const openModalButton = screen.getByRole("button", { name: "Excluir Minha Conta" });
-      await user.click(openModalButton);
-
-      expect(screen.getByText("Atenção: Ação Irreversível")).toBeInTheDocument();
-      const confirmButton = screen.getByRole("button", { name: "Confirmar Exclusão" });
-      expect(confirmButton).toBeDisabled();
-
-      const phraseInput = screen.getByPlaceholderText("EXCLUIR");
-      await user.type(phraseInput, "OUTRA");
-      expect(confirmButton).toBeDisabled();
-
-      await user.clear(phraseInput);
-      await user.type(phraseInput, "EXCLUIR");
-      expect(confirmButton).not.toBeDisabled();
-    });
-
-    it("executa a exclusão da conta, encerra a sessão e redireciona para login ao confirmar com a frase exata", async () => {
-      const user = userEvent.setup();
-      vi.mocked(rpcData.deleteCurrentUserAccount).mockResolvedValueOnce(undefined);
-
-      renderAccountTab();
-
-      const openModalButton = screen.getByRole("button", { name: "Excluir Minha Conta" });
-      await user.click(openModalButton);
-
-      const phraseInput = screen.getByPlaceholderText("EXCLUIR");
-      await user.type(phraseInput, "EXCLUIR");
-
-      const confirmButton = screen.getByRole("button", { name: "Confirmar Exclusão" });
-      await user.click(confirmButton);
-
-      await waitFor(() => {
-        expect(rpcData.deleteCurrentUserAccount).toHaveBeenCalledTimes(1);
-        expect(sensoryModule.triggerSensory).toHaveBeenCalledWith("destructive");
-        expect(mockSignOut).toHaveBeenCalledTimes(1);
-        expect(mockNavigate).toHaveBeenCalledWith("/entrar", { replace: true });
-        expect(toastModule.pushToast).toHaveBeenCalledWith(
-          expect.objectContaining({ title: "Conta excluída" }),
-        );
-      });
-    });
-
-    it("exibe mensagem de erro na modal caso a exclusão falhe", async () => {
-      const user = userEvent.setup();
-      vi.mocked(rpcData.deleteCurrentUserAccount).mockRejectedValueOnce(
-        new Error("Erro interno ao deletar registros."),
-      );
-
-      renderAccountTab();
-
-      const openModalButton = screen.getByRole("button", { name: "Excluir Minha Conta" });
-      await user.click(openModalButton);
-
-      const phraseInput = screen.getByPlaceholderText("EXCLUIR");
-      await user.type(phraseInput, "EXCLUIR");
-
-      const confirmButton = screen.getByRole("button", { name: "Confirmar Exclusão" });
-      await user.click(confirmButton);
-
-      await waitFor(() => {
-        expect(screen.getByText("Erro interno ao deletar registros.")).toBeInTheDocument();
-        expect(sensoryModule.triggerSensory).toHaveBeenCalledWith("destructive");
-        expect(mockNavigate).not.toHaveBeenCalled();
-      });
+      expect(screen.queryByText("Zona de Perigo")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Excluir Minha Conta" })).not.toBeInTheDocument();
     });
   });
 });

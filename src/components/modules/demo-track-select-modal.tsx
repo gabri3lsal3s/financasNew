@@ -143,7 +143,7 @@ export function DemoTrackSelectModal({
       startDemo(track);
 
       if (track === "investments") {
-        navigate("/investimentos");
+        navigate("/investments");
       } else {
         const meta = getTourTrackMeta(track);
         navigate(meta?.startRoute ?? "/");

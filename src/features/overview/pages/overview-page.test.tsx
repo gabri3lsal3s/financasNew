@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SubscriptionStatus } from "@/types";
 import * as nativeModule from "@/services/native";
-import { updateVisualCustomization, resetVisualCustomization } from "@/hooks/use-visual-customization";
+import { resetVisualCustomization } from "@/hooks/use-visual-customization";
 import { WELCOME_MODAL_STORAGE_KEY } from "@/components/modules";
 import { OverviewPage } from "./overview-page";
 
@@ -644,12 +644,6 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(screen.getByText("R$ 2.500.000,00")).toBeInTheDocument();
   });
 
-  it("renderiza valores sem centavos no dashboard quando hideDashboardCents for ativado", () => {
-    updateVisualCustomization({ hideDashboardCents: true });
-    render(<OverviewPage />);
-    // Saldo disponível em conta de 450000 (R$ 4.500,00) deve ser exibido como R$ 4.500
-    expect(screen.getByText("R$ 4.500")).toBeInTheDocument();
-  });
 
   it("renderiza o bloco de Investimentos do mês com campo rápido de aporte e navega para /investments?tab=aporte&valor=... (Fase 5 — Tarefa 5.4)", async () => {
     const user = userEvent.setup();

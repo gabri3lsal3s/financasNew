@@ -25,17 +25,19 @@ export interface ExportRange {
 
 export interface ExportDataHubProps {
   /** Gera e baixa o backup JSON completo. */
-  onExportJson: () => Promise<void>;
+  onExportJson?: () => Promise<void>;
   /** Gera e baixa o CSV do tipo solicitado no período. */
   onExportCsv: (kind: ExportCsvKind, range: ExportRange) => Promise<void>;
   /** Valida o arquivo e devolve o resumo; lança erro pt-BR se inválido. */
-  onRestore: (file: File) => Promise<RestoreSummary>;
+  onRestore?: (file: File) => Promise<RestoreSummary>;
   /** Executa a restauração (2ª etapa, após confirmação). */
-  onConfirmRestore: (file: File) => Promise<void>;
+  onConfirmRestore?: (file: File) => Promise<void>;
   /** Abre o assistente interativo de restauração com desduplicação. */
   onOpenRestoreWizard?: () => void;
   /** Tipos de CSV disponíveis para exportação de acordo com os módulos permitidos. */
   availableCsvKinds?: ExportCsvKind[];
+  /** Exibe exclusivamente o painel de Extratos CSV, ocultando o bloco de backup/restore JSON. */
+  csvOnly?: boolean;
 }
 
 
@@ -80,6 +82,7 @@ export function ExportDataHub({
   onConfirmRestore,
   onOpenRestoreWizard,
   availableCsvKinds,
+  csvOnly = false,
 }: ExportDataHubProps) {
   const [exportingJson, setExportingJson] = useState(false);
   const [csvBusy, setCsvBusy] = useState<ExportCsvKind | null>(null);
@@ -109,6 +112,7 @@ export function ExportDataHub({
   };
 
   const executeExportJson = async () => {
+    if (!onExportJson) return;
     setExportingJson(true);
     setJsonError(null);
     try {
@@ -164,7 +168,7 @@ export function ExportDataHub({
 
   const handleFiles = async (files: File[]) => {
     const file = files[0];
-    if (!file) return;
+    if (!file || !onRestore) return;
     setRestore({ step: "validating" });
     try {
       const summary = await onRestore(file);
@@ -176,7 +180,7 @@ export function ExportDataHub({
   };
 
   const handleConfirmRestore = async (): Promise<void> => {
-    if (restore.step !== "preview") return;
+    if (restore.step !== "preview" || !onConfirmRestore) return;
     const { file, summary } = restore;
     setRestore({ step: "restoring", file, summary });
     try {
@@ -205,6 +209,78 @@ export function ExportDataHub({
   const renderedCsvActions = availableCsvKinds
     ? CSV_ACTIONS.filter((action) => availableCsvKinds.includes(action.kind))
     : CSV_ACTIONS;
+
+  if (csvOnly) {
+    if (renderedCsvActions.length === 0) return null;
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileSpreadsheet className="size-4 text-muted-foreground" aria-hidden="true" />
+            <span>Extratos CSV</span>
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Exporte relatórios financeiros estruturados por mês ou período customizado para planilhas.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <RadioGroup
+            value={periodMode}
+            onValueChange={(value) => setPeriodMode(value as "month" | "custom")}
+            name="periodo-exportacao"
+            options={[
+              { value: "month", label: "Por mês" },
+              { value: "custom", label: "Intervalo customizado" },
+            ]}
+            className="flex-row gap-4"
+          />
+
+          <div className="flex flex-col gap-3">
+            {periodMode === "month" ? (
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-medium text-muted-foreground">Mês</span>
+                <MonthPicker value={month} onValueChange={setMonth} disabled={busy} />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-muted-foreground">De</span>
+                  <DatePicker value={customStart} onValueChange={setCustomStart} ariaLabel="Data inicial" disabled={busy} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-muted-foreground">Até</span>
+                  <DatePicker value={customEnd} onValueChange={setCustomEnd} ariaLabel="Data final" disabled={busy} />
+                </div>
+              </div>
+            )}
+            {!periodValid ? (
+              <p className="text-xs text-critical">Informe um intervalo válido (início antes ou igual ao fim).</p>
+            ) : null}
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {renderedCsvActions.map(({ kind, label }) => (
+              <Button
+                key={kind}
+                type="button"
+                variant="outline"
+                size="sm"
+                loading={csvBusy === kind}
+                disabled={!periodValid || (busy && csvBusy !== kind)}
+                onClick={() => void handleExportCsv(kind)}
+                className="justify-start gap-2"
+              >
+                <Download className="size-4" aria-hidden="true" />
+                <span>CSV de {label}</span>
+              </Button>
+            ))}
+          </div>
+
+          {csvError && <Alert variant="error">{csvError}</Alert>}
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">

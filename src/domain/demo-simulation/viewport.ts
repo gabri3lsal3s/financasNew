@@ -323,6 +323,20 @@ export function resolveTourStepTargetSelector(
 }
 
 /**
+ * Retorna uma lista de seletores candidatos em ordem de prioridade (alvo principal seguido por fallbacks).
+ */
+export function resolveTourStepCandidateSelectors(
+  step?: TourStep | null,
+  isDesktop = false,
+): string[] {
+  if (!step) return [];
+  const primary = resolveTourStepTargetSelector(step, isDesktop);
+  const fallbacks = step.fallbackSelectors ?? [];
+  const all = [primary, ...fallbacks].filter((s): s is string => Boolean(s && s.trim().length > 0));
+  return Array.from(new Set(all));
+}
+
+/**
  * Resolve dinamicamente o título a ser exibido no card popover,
  * priorizando `titleDesktop` em telas desktop (>= 768px).
  */

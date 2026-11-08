@@ -12,7 +12,7 @@ import { EXPERIENCE_PRESETS } from "@/domain/preferences";
 import { triggerSensory } from "@/services/sensory";
 import { useUpdateCustomSettings } from "@/state";
 import { pushToast } from "@/services/toast";
-import { Button, ConfirmDialog } from "@/components/ui";
+import { Button, Card, ConfirmDialog } from "@/components/ui";
 import { ExperiencePresetsCard } from "./experience-presets-card";
 import { VisualIdentityCard } from "./visual-identity-card";
 import { InterfaceShortcutsCard } from "./interface-shortcuts-card";
@@ -74,21 +74,6 @@ export function AppearanceTab() {
     });
   };
 
-  const handleToggleHideDashboardCents = (enabled: boolean) => {
-    triggerSensory("toggle");
-    visual.setHideDashboardCents(enabled);
-    updateCustomSettingsMutation.mutate({
-      hideDashboardCents: enabled,
-    });
-    pushToast({
-      title: "Preferências salvas",
-      description: enabled
-        ? "Valores do Dashboard serão exibidos sem centavos."
-        : "Valores do Dashboard serão exibidos com centavos completos.",
-      duration: 2200,
-    });
-  };
-
   const handleToggleHeaderButton = (
     key: keyof HeaderButtonsConfig,
     label: string,
@@ -113,9 +98,7 @@ export function AppearanceTab() {
     handleSelectPreset("dynamic");
     handleSelectTheme("system", "Automático");
     handleSelectAccent("teal", "Teal Vital (Oficial)");
-    visual.setHideDashboardCents(false);
     updateCustomSettingsMutation.mutate({
-      hideDashboardCents: false,
       headerButtons: {
         logo: true,
         calculatorButton: true,
@@ -144,8 +127,6 @@ export function AppearanceTab() {
         onSelectTheme={handleSelectTheme}
         accent={visual.accent}
         onSelectAccent={handleSelectAccent}
-        hideDashboardCents={visual.hideDashboardCents}
-        onToggleHideDashboardCents={handleToggleHideDashboardCents}
       />
 
       {/* --- CARD 3: INTERFACE, HEADER & COMPOSIÇÃO --- */}
@@ -155,7 +136,7 @@ export function AppearanceTab() {
       />
 
       {/* --- AÇÃO DE RODAPÉ: REDEFINIÇÃO DE PADRÕES --- */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-border/80 bg-muted/20">
+      <Card className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 sm:p-4">
         <div className="space-y-0.5">
           <span className="text-xs font-semibold text-foreground block">
             Restaurar Padrões de Personalização
@@ -174,7 +155,7 @@ export function AppearanceTab() {
           <RotateCcw className="size-3 text-muted-foreground" aria-hidden="true" />
           <span>Restaurar Padrões</span>
         </Button>
-      </div>
+      </Card>
 
       <ConfirmDialog
         open={isResetConfirmOpen}

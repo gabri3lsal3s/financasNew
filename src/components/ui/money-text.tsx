@@ -1,32 +1,8 @@
-import { createContext, useContext, type HTMLAttributes, type ReactNode } from "react";
+import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import { formatCentsAsCurrency } from "@/services/masks";
 import type { AssetCurrency } from "@/types";
 import { NumberTicker } from "./number-ticker";
-
-const DashboardCentsContext = createContext<boolean>(false);
-
-export interface DashboardCentsProviderProps {
-  hideCents: boolean;
-  children: ReactNode;
-}
-
-/**
- * Provedor de contexto para ocultação de centavos no Dashboard.
- * Permite que cards e KPIs da Visão Geral herdem a preferência sem prop-drilling.
- */
-export function DashboardCentsProvider({ hideCents, children }: DashboardCentsProviderProps) {
-  return (
-    <DashboardCentsContext.Provider value={hideCents}>
-      {children}
-    </DashboardCentsContext.Provider>
-  );
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function useDashboardCents(): boolean {
-  return useContext(DashboardCentsContext);
-}
 
 /**
  * MoneyText — primitivo de valor monetário (F12, hierarquia tipográfica).
@@ -58,7 +34,7 @@ export interface MoneyTextProps extends Omit<HTMLAttributes<HTMLSpanElement>, "c
   animated?: boolean;
   /**
    * Se true, oculta a fração de centavos (ex: "R$ 1.250").
-   * Quando omitido, herda automaticamente do DashboardCentsProvider.
+   * Padrão false (exibição integral com centavos).
    */
   hideCents?: boolean;
 }
@@ -100,12 +76,11 @@ export function MoneyText({
   tone = "auto",
   sign = "auto",
   animated = false,
-  hideCents,
+  hideCents = false,
   className,
   ...props
 }: MoneyTextProps) {
-  const contextHideCents = useDashboardCents();
-  const shouldHideCents = hideCents !== undefined ? hideCents : contextHideCents;
+  const shouldHideCents = hideCents;
 
   const resolvedTone = resolveTone(tone, cents);
   const prefix = signPrefix(sign, cents);

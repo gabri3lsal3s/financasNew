@@ -64,9 +64,9 @@ export function Select({
             // Evita que o fechamento transfira o foco ou acione outros controles indesejados
             e.preventDefault();
           }}
-          className="z-floating-tools max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-y-auto rounded-lg border border-primary/25 bg-surface p-1 shadow-xl backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+          className="z-floating-tools max-h-72 w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border border-primary/25 bg-surface p-1 shadow-xl backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         >
-          <SelectPrimitive.Viewport>
+          <SelectPrimitive.Viewport className="w-full">
             {options.map((option) => (
               <SelectPrimitive.Item
                 key={option.value}
@@ -74,10 +74,12 @@ export function Select({
                 onPointerDown={(e) => e.stopPropagation()}
                 onPointerUp={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
-                className="relative flex cursor-pointer select-none items-center rounded-md px-3 py-2 pr-8 text-sm text-foreground outline-none transition-colors focus:bg-primary/10 data-[state=checked]:font-medium data-[state=checked]:text-primary"
+                className="relative flex w-full cursor-pointer select-none items-center rounded-md px-3 py-2.5 pr-8 text-sm text-foreground outline-none transition-colors focus:bg-primary/10 data-[state=checked]:font-medium data-[state=checked]:text-primary"
               >
-                <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
-                <SelectPrimitive.ItemIndicator className="absolute right-2">
+                <span className="whitespace-normal break-words leading-snug text-left">
+                  <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
+                </span>
+                <SelectPrimitive.ItemIndicator className="absolute right-2 top-3">
                   <Check className="size-4 text-primary-strong" aria-hidden="true" />
                 </SelectPrimitive.ItemIndicator>
               </SelectPrimitive.Item>

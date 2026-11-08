@@ -97,6 +97,7 @@ export {
   isElementInsideFreeViewport,
   isDesktopViewport,
   resolveTourStepTargetSelector,
+  resolveTourStepCandidateSelectors,
   resolveTourStepTitle,
   resolveTourStepContent,
   calculateDesktopCardPosition,

@@ -160,32 +160,14 @@ describe("SecurityTab - Bloqueio do Aplicativo & Privacidade", () => {
     expect(nativeServices.setAppLockGraceMinutes).toHaveBeenCalledWith(5);
   });
 
-  it("permite abrir o assistente de restauração modular ao acionar a importação guiada", async () => {
-    const user = userEvent.setup();
+  it("renderiza o painel de Extratos CSV com foco em exportação de dados", () => {
     renderSecurityTab();
 
-    const openWizardBtn = screen.getByRole("button", { name: /Restaurar com Assistente/i });
-    expect(openWizardBtn).toBeInTheDocument();
-
-    await user.click(openWizardBtn);
-
-    expect(await screen.findByText("Assistente de Restauração de Backup")).toBeInTheDocument();
-    expect(await screen.findByText("Validação")).toBeInTheDocument();
-  });
-
-  it("exige confirmação biométrica em ambiente nativo ao acionar a exportação do backup JSON", async () => {
-    const user = userEvent.setup();
-    renderSecurityTab();
-
-    const exportBtn = screen.getByRole("button", { name: "Exportar JSON" });
-    await user.click(exportBtn);
-
-    expect(nativeServices.authenticateWithBiometrics).toHaveBeenCalledWith(
-      "Confirme sua identidade para exportar seus dados financeiros",
-    );
-    await waitFor(() => {
-      expect(mockExportDataRefetch).toHaveBeenCalled();
-    });
+    expect(screen.getByRole("heading", { name: "Extratos CSV" })).toBeInTheDocument();
+    expect(screen.getByText("CSV de Despesas")).toBeInTheDocument();
+    expect(screen.getByText("CSV de Receitas")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Restaurar com Assistente/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Exportar JSON" })).not.toBeInTheDocument();
   });
 
   describe("Ambiente Web / PWA (Ocultação de Recursos Nativos - Tarefa 1.1)", () => {

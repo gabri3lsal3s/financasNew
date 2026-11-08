@@ -319,6 +319,16 @@ Todo controle de interface é um **componente do próprio app** (`components/ui/
 
 **Tamanhos de Modais no Desktop (`size`):** o componente `Modal` expõe a prop `size?: ModalSize` (`"sm"`: 384px, `"md"`: 448px [default], `"lg"`: 512px, `"xl"`: 768px, `"2xl"`: 1024px, `"3xl"`: 1152px, `"full"`: 1280px). Modais com tabelas analíticas, dossiês executivos A4 e relatórios contábeis utilizam `"2xl"` ou `"3xl"` para garantir excelente respiro e leitura fluida no desktop.
 
+**Cabeçalho e Alça Tátil de Modais (Ergonomia Móvel):**
+- **Alça deslizante independente (*Pill Handle*):** renderizada em container dedicado no topo superior do mobile (`pt-2.5 pb-1 flex justify-center md:hidden pointer-events-none`), separada da linha de controles e títulos, prevenindo que concorra com botões ou cause quebras visuais.
+- **Barra de Controle Minimalista:** barra compacta de 40px (`h-10`) com micro-título reativo discreto que emerge suavemente após 32px de scroll, acompanhado de backdrop-blur para evitar cortes secos de cards e tabelas.
+
+**Rodapé Modernizado de Modais (`ModalFooter`):**
+- **Superfície & Efeito:** utiliza `bg-surface/95 backdrop-blur-xs` integrado, oferecendo alívio elegante sobre o conteúdo do modal.
+- **Borda Adaptativa (`borderless`):** a prop opcional `borderless={true}` suprime a borda superior `border-t border-border/80` quando o modal já possui divisores visuais naturais em seu conteúdo.
+- **Ergonomia e Área Segura:** padding canônico compacto `p-3.5 sm:p-4` com suporte nativo e compensação da área segura do iOS (`pb-[max(0.5rem,calc(max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px))+0.25rem))]`).
+- **Simetria Responsiva:** pares de 2 botões organizam-se horizontalmente em 2 colunas simétricas no mobile (`grid grid-cols-2 gap-2 sm:flex sm:justify-end`), preservando o toque confortável e a estabilidade dimensional.
+
 **Calculadora em modais (`showCalculator`):** o componente `Modal` expõe a prop `showCalculator` (default `false`). O botão de calculadora **só deve aparecer em modais com campo de valor monetário** (i.e., que contêm `MoneyInput`). Modais de confirmação, exclusão, visualização, importação e configuração **nunca passam `showCalculator`**. Modais com `elevated={true}` ignoram a prop (a calculadora não abre sobre si mesma).
 
 **Ações no Cabeçalho de Modais (`headerActions`):** o componente `Modal` expõe a prop `headerActions?: ReactNode`, permitindo injetar ações de topo (como botões de imprimir PDF, exportar, compartilhar) diretamente ao lado do botão de fechar nativo do Radix Dialog, eliminando cabeçalhos redundantes internos.

@@ -459,7 +459,7 @@ export function TransactionListPage() {
                     variant="outline"
                     onClick={() => {
                       startDemo("finances");
-                      setStepIndex(1);
+                      setStepIndex(2);
                     }}
                     className="gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
                   >

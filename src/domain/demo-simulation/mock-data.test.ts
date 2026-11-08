@@ -337,15 +337,15 @@ describe("demo-simulation — Datasets Puros e Dinâmicos em Memória (Fase 2)",
   });
 
   describe("TOUR_STEPS e getTourSteps", () => {
-    it("fornece 8 passos na trilha de finanças e 5 na de investimentos", () => {
+    it("fornece 5 passos na trilha de finanças e 5 na de investimentos", () => {
       const financesSteps = getTourSteps("finances");
       const investmentsSteps = getTourSteps("investments");
 
-      expect(financesSteps).toHaveLength(8);
+      expect(financesSteps).toHaveLength(5);
       expect(investmentsSteps).toHaveLength(5);
 
       // Ordem sequencial
-      expect(financesSteps.map((s) => s.order)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+      expect(financesSteps.map((s) => s.order)).toEqual([1, 2, 3, 4, 5]);
       expect(investmentsSteps.map((s) => s.order)).toEqual([1, 2, 3, 4, 5]);
 
       // Todas as rotas iniciam com '/'

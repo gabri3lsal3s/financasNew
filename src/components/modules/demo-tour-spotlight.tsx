@@ -8,7 +8,6 @@ import {
   calculateDeadCenterScrollTop,
   calculateDesktopCardPosition,
   calculateFreeViewportWindow,
-  calculateSkeletonSpotlightGeometry,
   calculateSpotlightGeometry,
   DEFAULT_CARD_HEIGHT,
   DEFAULT_POLLING_INTERVAL_MS,
@@ -20,6 +19,7 @@ import {
   getTourTrackCategoryLabel,
   resolveTourStepContent,
   resolveTourStepTargetSelector,
+  resolveTourStepCandidateSelectors,
   resolveTourStepTitle,
   type AnyTourTrackId,
 } from "@/domain/demo-simulation";
@@ -326,14 +326,25 @@ export function DemoTourSpotlight({
     setIsMobile(mobile);
     const desktop = !mobile;
 
-    const activeSelector = resolveTourStepTargetSelector(currentStep, desktop);
-    if (!activeSelector) {
+    const candidateSelectors = resolveTourStepCandidateSelectors(currentStep, desktop);
+    if (candidateSelectors.length === 0) {
       setRect(null);
       setIsPositionReady(true);
       return;
     }
 
-    const element = document.querySelector(activeSelector);
+    let element: Element | null = null;
+    let activeSelector: string | undefined;
+
+    for (const sel of candidateSelectors) {
+      const found = document.querySelector(sel);
+      if (found) {
+        element = found;
+        activeSelector = sel;
+        break;
+      }
+    }
+
     if (!element) {
       setRect(null);
       return;
@@ -377,9 +388,9 @@ export function DemoTourSpotlight({
   // Scroll suave contextual, busca híbrida resiliente e observação de redimensionamento do alvo (Fase 8 — Tarefa 8.7 e 8.8)
   useEffect(() => {
     const isDesktop = typeof window !== "undefined" ? window.innerWidth >= 768 : !isMobile;
-    const targetSelector = resolveTourStepTargetSelector(currentStep, isDesktop);
+    const candidateSelectors = resolveTourStepCandidateSelectors(currentStep, isDesktop);
 
-    if (!isDemoActive || !targetSelector) {
+    if (!isDemoActive || candidateSelectors.length === 0) {
       return;
     }
 
@@ -396,7 +407,7 @@ export function DemoTourSpotlight({
     if (previousRouteRef.current !== activeRoute) {
       previousRouteRef.current = activeRoute;
       const container = document.getElementById("main-content");
-      if (container && targetSelector !== '[data-tour="settings-support-card"]') {
+      if (container && !candidateSelectors.includes('[data-tour="settings-support-card"]')) {
         container.scrollTop = 0;
       }
     }
@@ -454,7 +465,7 @@ export function DemoTourSpotlight({
 
       // Se for o card de suporte no rodapé ou elemento explicitamente configurado para rolagem ao fim (Fase 8 — Diagnóstico Passo 5)
       const isBottomElement =
-        targetSelector === '[data-tour="settings-support-card"]' ||
+        candidateSelectors.includes('[data-tour="settings-support-card"]') ||
         element.getAttribute("data-tour") === "settings-support-card";
 
       // Elementos com posicionamento fixo (ex: FAB central da BottomNav ou ações do Header)
@@ -644,10 +655,12 @@ export function DemoTourSpotlight({
 
     const checkTarget = (): boolean => {
       if (resolved || isCleanedUp) return true;
-      const el = document.querySelector(targetSelector);
-      if (el && hasValidDimensions(el)) {
-        handleTargetResolved(el);
-        return true;
+      for (const sel of candidateSelectors) {
+        const el = document.querySelector(sel);
+        if (el && hasValidDimensions(el)) {
+          handleTargetResolved(el);
+          return true;
+        }
       }
       return false;
     };
@@ -801,36 +814,6 @@ export function DemoTourSpotlight({
     return spaceBelow < cardHeight + 20 && spaceAbove > spaceBelow ? "top" : "bottom";
   }, [currentStep, measuredCardHeight, rect]);
 
-  // Geometria calculada para o esqueleto de carregamento com pulso suave enquanto o elemento assíncrono é montado (Fase 8 — Tarefa 8.7)
-  const loadingSkeletonRect = useMemo(() => {
-    const targetSel = resolveTourStepTargetSelector(currentStep, !isMobile);
-    if (!isTargetLoading || !targetSel || typeof window === "undefined") {
-      return null;
-    }
-    const anchor = isMobile
-      ? isAnchorTopMobile
-        ? "top"
-        : "bottom"
-      : desktopPlacement === "top"
-        ? "top"
-        : "bottom";
-
-    return calculateSkeletonSpotlightGeometry({
-      windowWidth: window.innerWidth,
-      windowHeight: window.innerHeight,
-      isMobile,
-      cardHeight: measuredCardHeight,
-      anchorPosition: anchor,
-    });
-  }, [
-    currentStep,
-    desktopPlacement,
-    isAnchorTopMobile,
-    isMobile,
-    isTargetLoading,
-    measuredCardHeight,
-  ]);
-
   if (!isDemoActive || !activeTrack || !currentStep) {
     return null;
   }
@@ -904,16 +887,7 @@ export function DemoTourSpotlight({
                 rx={rect.borderRadius}
                 ry={rect.borderRadius}
                 fill="black"
-              />
-            ) : isTargetLoading && loadingSkeletonRect ? (
-              <rect
-                x={loadingSkeletonRect.x}
-                y={loadingSkeletonRect.y}
-                width={loadingSkeletonRect.width}
-                height={loadingSkeletonRect.height}
-                rx={loadingSkeletonRect.borderRadius}
-                ry={loadingSkeletonRect.borderRadius}
-                fill="black"
+                className="transition-all duration-300 ease-out"
               />
             ) : null}
           </mask>
@@ -930,7 +904,7 @@ export function DemoTourSpotlight({
           data-testid="spotlight-backdrop"
         />
 
-        {/* Borda pontilhada suave em volta da área recortada (Fase 3 — Tarefa 3.3) */}
+        {/* Borda pontilhada suave em volta da área recortada com transição fluida */}
         {rect && (
           <rect
             x={rect.x}
@@ -945,27 +919,9 @@ export function DemoTourSpotlight({
             strokeDasharray="4 2"
             data-testid="spotlight-border"
             className={cn(
-              "transition-opacity duration-700",
+              "transition-all duration-300 ease-out",
               isPulsing ? "animate-pulse opacity-90" : "opacity-75",
             )}
-          />
-        )}
-
-        {/* Esqueleto discreto de foco enquanto elemento com montagem tardia carrega (Fase 8 — Tarefa 8.7) */}
-        {isTargetLoading && loadingSkeletonRect && (
-          <rect
-            x={loadingSkeletonRect.x}
-            y={loadingSkeletonRect.y}
-            width={loadingSkeletonRect.width}
-            height={loadingSkeletonRect.height}
-            rx={loadingSkeletonRect.borderRadius}
-            ry={loadingSkeletonRect.borderRadius}
-            fill="none"
-            stroke="hsl(var(--primary))"
-            strokeWidth="1.5"
-            strokeDasharray="4 4"
-            data-testid="spotlight-loading-skeleton"
-            className="animate-pulse opacity-70"
           />
         )}
       </svg>
@@ -1033,108 +989,191 @@ export function DemoTourSpotlight({
         </div>
 
         {/* Rodapé com Navegação Adaptativa e Hand-off (Fase 3 — Tarefa 3.1, Fase 8 — Tarefa 8.10) */}
-        <div className="mt-4 pt-3 border-t border-border/80 flex items-center justify-between gap-2 min-w-0">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handlePrev}
-            disabled={isFirstStep}
-            aria-label="Passo anterior"
-            className="h-8 px-2.5 text-xs cursor-pointer gap-1 shrink-0 max-w-fit"
-          >
-            <ArrowLeft className="size-3.5 shrink-0" aria-hidden="true" />
-            <span className="hidden sm:inline truncate">Anterior</span>
-          </Button>
+        {isMobile && isLastStep ? (
+          <div className="mt-3.5 pt-3 border-t border-border/80 flex flex-col gap-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handlePrev}
+                disabled={isFirstStep}
+                aria-label="Passo anterior"
+                className="h-8 px-2.5 text-xs cursor-pointer gap-1 shrink-0"
+              >
+                <ArrowLeft className="size-3.5 shrink-0" aria-hidden="true" />
+                <span>Anterior</span>
+              </Button>
 
-          {/* Indicadores de progresso interativos com suporte a clique e A11y (Fase 4 — Tarefa 4.2) */}
-          <div
-            role="tablist"
-            aria-label="Progresso do tour demonstrativo"
-            className="flex items-center justify-center gap-1.5 shrink-0"
-          >
-            {steps.map((step, idx) => {
-              const isActive = idx === currentStepIndex;
-              return (
-                <button
-                  key={step.id}
-                  type="button"
-                  role="button"
-                  onClick={() => handleGoToStep(idx)}
-                  aria-label={`Ir para o passo ${idx + 1}`}
-                  aria-current={isActive ? "step" : undefined}
-                  className={cn(
-                    "h-1.5 rounded-full transition-all duration-200 cursor-pointer p-0 border-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0",
-                    isActive
-                      ? "bg-primary w-3.5"
-                      : "bg-muted-foreground/30 hover:bg-muted-foreground/50 w-1.5",
-                  )}
-                />
-              );
-            })}
-          </div>
+              <div
+                role="tablist"
+                aria-label="Progresso do tour demonstrativo"
+                className="flex items-center justify-center gap-1.5 shrink-0"
+              >
+                {steps.map((step, idx) => {
+                  const isActive = idx === currentStepIndex;
+                  return (
+                    <button
+                      key={step.id}
+                      type="button"
+                      role="button"
+                      onClick={() => handleGoToStep(idx)}
+                      aria-label={`Ir para o passo ${idx + 1}`}
+                      aria-current={isActive ? "step" : undefined}
+                      className={cn(
+                        "h-1.5 rounded-full transition-all duration-200 cursor-pointer p-0 border-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0",
+                        isActive
+                          ? "bg-primary w-3.5"
+                          : "bg-muted-foreground/30 hover:bg-muted-foreground/50 w-1.5",
+                      )}
+                    />
+                  );
+                })}
+              </div>
 
-          {isLastStep ? (
-            <div className="flex items-center gap-1.5 shrink-0">
-              {blockHandoff?.nextTrackId ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleStartRealAccount}
-                    aria-label="Começar Conta Real"
-                    className="h-8 px-2 text-xs font-semibold cursor-pointer gap-1 shrink-0 max-w-fit"
-                  >
-                    <Check className="size-3 text-positive-strong shrink-0" aria-hidden="true" />
-                    <span className="sm:hidden truncate">Começar</span>
-                    <span className="hidden sm:inline truncate">
-                      {isNarrowCard ? "Começar" : "Começar Conta Real"}
-                    </span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="sm"
-                    onClick={() => handleStartNextBlock(blockHandoff.nextTrackId!)}
-                    aria-label={`Avançar para ${blockHandoff.nextTrackLabel ?? "Próximo Bloco"}`}
-                    className="h-8 px-2.5 text-xs font-semibold cursor-pointer gap-1 shrink-0 max-w-fit"
-                  >
-                    <span className="truncate">{blockHandoff.nextTrackLabel ?? "Próximo Bloco"}</span>
-                    <ArrowRight className="size-3 shrink-0" aria-hidden="true" />
-                  </Button>
-                </>
-              ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClose}
+                aria-label="Encerrar tour"
+                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <span>Fechar</span>
+              </Button>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-0.5">
+              <Button
+                type="button"
+                variant={blockHandoff?.nextTrackId ? "outline" : "default"}
+                size="sm"
+                onClick={handleStartRealAccount}
+                aria-label="Começar Conta Real"
+                className="h-8.5 px-3 text-xs font-semibold cursor-pointer gap-1.5 w-full justify-center"
+              >
+                <Check className="size-3.5 text-positive-strong shrink-0" aria-hidden="true" />
+                <span>Começar Conta Real</span>
+              </Button>
+              {blockHandoff?.nextTrackId && (
                 <Button
                   type="button"
                   variant="default"
                   size="sm"
-                  onClick={handleStartRealAccount}
-                  aria-label="Começar Conta Real"
-                  className="h-8 px-3 text-xs font-semibold cursor-pointer gap-1.5 shrink-0 max-w-fit"
+                  onClick={() => handleStartNextBlock(blockHandoff.nextTrackId!)}
+                  aria-label={`Avançar para ${blockHandoff.nextTrackLabel ?? "Próxima Trilha"}`}
+                  className="h-8.5 px-3 text-xs font-semibold cursor-pointer gap-1.5 w-full justify-center"
                 >
-                  <Check className="size-3.5 shrink-0" aria-hidden="true" />
-                  <span className="sm:hidden truncate">Começar</span>
-                  <span className="hidden sm:inline truncate">
-                    {blockHandoff?.actionLabel ?? (isNarrowCard ? "Começar" : "Começar Conta Real")}
-                  </span>
+                  <span className="truncate">{blockHandoff.nextTrackLabel ?? "Próxima Trilha"}</span>
+                  <ArrowRight className="size-3.5 shrink-0" aria-hidden="true" />
                 </Button>
               )}
             </div>
-          ) : (
+          </div>
+        ) : (
+          <div className="mt-4 pt-3 border-t border-border/80 flex items-center justify-between gap-2 min-w-0">
             <Button
               type="button"
-              variant="default"
+              variant="outline"
               size="sm"
-              onClick={handleNext}
-              aria-label="Próximo passo"
-              className="h-8 px-3 text-xs font-semibold cursor-pointer gap-1 shrink-0 max-w-fit"
+              onClick={handlePrev}
+              disabled={isFirstStep}
+              aria-label="Passo anterior"
+              className="h-8 px-2.5 text-xs cursor-pointer gap-1 shrink-0 max-w-fit"
             >
-              <span className="truncate">Próximo</span>
-              <ArrowRight className="size-3.5 shrink-0" aria-hidden="true" />
+              <ArrowLeft className="size-3.5 shrink-0" aria-hidden="true" />
+              <span className="hidden sm:inline truncate">Anterior</span>
             </Button>
-          )}
-        </div>
+
+            {/* Indicadores de progresso interativos com suporte a clique e A11y (Fase 4 — Tarefa 4.2) */}
+            <div
+              role="tablist"
+              aria-label="Progresso do tour demonstrativo"
+              className="flex items-center justify-center gap-1.5 shrink-0"
+            >
+              {steps.map((step, idx) => {
+                const isActive = idx === currentStepIndex;
+                return (
+                  <button
+                    key={step.id}
+                    type="button"
+                    role="button"
+                    onClick={() => handleGoToStep(idx)}
+                    aria-label={`Ir para o passo ${idx + 1}`}
+                    aria-current={isActive ? "step" : undefined}
+                    className={cn(
+                      "h-1.5 rounded-full transition-all duration-200 cursor-pointer p-0 border-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0",
+                      isActive
+                        ? "bg-primary w-3.5"
+                        : "bg-muted-foreground/30 hover:bg-muted-foreground/50 w-1.5",
+                    )}
+                  />
+                );
+              })}
+            </div>
+
+            {isLastStep ? (
+              <div className="flex items-center gap-1.5 shrink-0">
+                {blockHandoff?.nextTrackId ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleStartRealAccount}
+                      aria-label="Começar Conta Real"
+                      className="h-8 px-2 text-xs font-semibold cursor-pointer gap-1 shrink-0 max-w-fit"
+                    >
+                      <Check className="size-3 text-positive-strong shrink-0" aria-hidden="true" />
+                      <span className="sm:hidden truncate">Começar</span>
+                      <span className="hidden sm:inline truncate">
+                        {isNarrowCard ? "Começar" : "Começar Conta Real"}
+                      </span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleStartNextBlock(blockHandoff.nextTrackId!)}
+                      aria-label={`Avançar para ${blockHandoff.nextTrackLabel ?? "Próximo Bloco"}`}
+                      className="h-8 px-2.5 text-xs font-semibold cursor-pointer gap-1 shrink-0 max-w-fit"
+                    >
+                      <span className="truncate">{blockHandoff.nextTrackLabel ?? "Próximo Bloco"}</span>
+                      <ArrowRight className="size-3 shrink-0" aria-hidden="true" />
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    onClick={handleStartRealAccount}
+                    aria-label="Começar Conta Real"
+                    className="h-8 px-3 text-xs font-semibold cursor-pointer gap-1.5 shrink-0 max-w-fit"
+                  >
+                    <Check className="size-3.5 shrink-0" aria-hidden="true" />
+                    <span className="sm:hidden truncate">Começar</span>
+                    <span className="hidden sm:inline truncate">
+                      {blockHandoff?.actionLabel ?? (isNarrowCard ? "Começar" : "Começar Conta Real")}
+                    </span>
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={handleNext}
+                aria-label="Próximo passo"
+                className="h-8 px-3 text-xs font-semibold cursor-pointer gap-1 shrink-0 max-w-fit"
+              >
+                <span className="truncate">Próximo</span>
+                <ArrowRight className="size-3.5 shrink-0" aria-hidden="true" />
+              </Button>
+            )}
+          </div>
+        )}
       </aside>
     </div>
   );

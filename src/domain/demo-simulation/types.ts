@@ -148,6 +148,10 @@ export interface TourStep {
   targetRoute: string;
   /** Seletor CSS do elemento alvo a ser destacado pelo Spotlight (ex: '[data-tour="overview-kpis"]') */
   targetSelector?: string;
+  /** Seletores CSS de fallback em ordem de prioridade caso o alvo principal não esteja no DOM */
+  fallbackSelectors?: string[];
+  /** Aba obrigatória da página que deve ser ativada para o elemento ser exibido (ex: 'devices', 'metas') */
+  requiredTab?: string;
   /** Seletor CSS alternativo para telas desktop (>= 768px), substituindo targetSelector */
   targetSelectorDesktop?: string;
   /** Título adaptativo opcional para exibição em telas desktop (>= 768px) */

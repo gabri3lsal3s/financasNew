@@ -31,7 +31,6 @@ describe("useVisualCustomization (F11)", () => {
     expect(config.numberTickerEnabled).toBe(true);
     expect(config.dashboardWidgets.kpis).toBe(true);
     expect(config.dashboardWidgets.contextBanners).toBe(true);
-    expect(config.hideDashboardCents).toBe(false);
   });
 
   it("aplica presets de experiência e reflete nos atributos do DOM e storage", () => {
@@ -129,17 +128,6 @@ describe("useVisualCustomization (F11)", () => {
     expect(document.documentElement.getAttribute("data-surface-style")).toBeNull();
   });
 
-  it("permite alternar e sincronizar a preferência hideDashboardCents", () => {
-    setActiveUserId("user-cents");
-    expect(getVisualCustomization().hideDashboardCents).toBe(false);
-
-    updateVisualCustomization({ hideDashboardCents: true }, "user-cents");
-    expect(getVisualCustomization().hideDashboardCents).toBe(true);
-    expect(window.localStorage.getItem(getUserStorageKey("hide_dashboard_cents", "user-cents"))).toBe("true");
-
-    syncVisualWithCloud({ hideDashboardCents: false }, "user-cents");
-    expect(getVisualCustomization().hideDashboardCents).toBe(false);
-  });
 
   it("aplica fallback para teal e dynamic quando o storage contém valores ausentes ou inválidos", () => {
     setActiveUserId("user-fallback");

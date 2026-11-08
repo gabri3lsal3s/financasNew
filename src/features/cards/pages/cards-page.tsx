@@ -40,7 +40,6 @@ import { triggerSensory } from "@/services/sensory";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import {
-  setStepIndex,
   startDemo,
   useAllCardExpenses,
   useAllCardPayments,
@@ -552,8 +551,7 @@ export function CardsPage() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  startDemo("finances");
-                  setStepIndex(2);
+                  startDemo("finances_cards");
                 }}
                 className="gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
               >

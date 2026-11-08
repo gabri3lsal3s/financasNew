@@ -167,10 +167,9 @@ export function QuickAporteCard({
 
             <Button
               type="submit"
-              variant="portfolio"
               size="default"
               aria-label="Calcular Rebalanceamento"
-              className="h-10 gap-1.5 px-3 sm:px-4 shrink-0 font-medium cursor-pointer"
+              className="h-10 gap-1.5 px-3 sm:px-4 shrink-0 font-semibold rounded-xl cursor-pointer"
             >
               <span className="hidden sm:inline">Calcular Rebalanceamento</span>
               <span className="sm:hidden">Calcular</span>

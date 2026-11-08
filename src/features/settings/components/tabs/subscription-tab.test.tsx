@@ -72,7 +72,7 @@ describe("SubscriptionTab", () => {
     expect(screen.queryByText(/Licença Modular Personalizada/i)).not.toBeInTheDocument();
   });
 
-  it("renderiza o card de Licença Modular Personalizada quando o usuário possui moduleAccess", () => {
+  it("não renderiza o card de Licença Modular Personalizada para o usuário comum mesmo quando houver moduleAccess", () => {
     mockSubscription = {
       ...mockSubscription,
       tier: "lifetime",
@@ -86,17 +86,7 @@ describe("SubscriptionTab", () => {
 
     renderSubscriptionTab();
 
-    // Card de licença modular DEVE aparecer
-    expect(screen.getByRole("heading", { name: /Licença Modular Personalizada/i })).toBeInTheDocument();
-
-    // Verifica badges dos módulos concedidos e bloqueados
-    expect(screen.getByText("Investimentos & Carteira")).toBeInTheDocument();
-    expect(screen.getByText("Acesso Total")).toBeInTheDocument();
-    expect(screen.getByText("Somente Leitura")).toBeInTheDocument();
-
-    // Módulos omitidos na Whitelist ou com 'none' devem estar com badge Bloqueado
-    const blockedBadges = screen.getAllByText("Bloqueado");
-    expect(blockedBadges.length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Licença Modular Personalizada/i)).not.toBeInTheDocument();
   });
 
   it("não renderiza o card de Licença Modular Personalizada quando moduleAccess for vazio", () => {

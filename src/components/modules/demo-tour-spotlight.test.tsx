@@ -50,7 +50,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       screen.getByRole("dialog", { name: /Tour guiado interativo/i }),
     ).toBeInTheDocument();
 
-    expect(screen.getByText("Passo 1 de 8")).toBeInTheDocument();
+    expect(screen.getByText("Passo 1 de 5")).toBeInTheDocument();
     expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
     expect(screen.getByText("Dashboard & Saldo Livre Real")).toBeInTheDocument();
 
@@ -1168,7 +1168,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
       render(<DemoTourSpotlight />);
 
-      const stepText = screen.getByText("Passo 1 de 8");
+      const stepText = screen.getByText("Passo 1 de 5");
       const badge = stepText.closest("span.inline-flex");
       expect(badge).not.toBeNull();
       expect(badge?.className).toContain("bg-muted");
@@ -1361,7 +1361,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
           expect(aside?.className).toContain("border-border/80");
 
           // Hierarquia semântica de cores com tokens adaptativos ao tema
-          const stepBadge = screen.getByText(/Passo 1 de 8/i).closest("span.inline-flex");
+          const stepBadge = screen.getByText(/Passo 1 de 5/i).closest("span.inline-flex");
           expect(stepBadge).not.toBeNull();
           expect(stepBadge?.className).toContain("bg-muted");
           expect(stepBadge?.className).toContain("text-muted-foreground");
@@ -1919,7 +1919,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
       const stepBadgeText = container.querySelector("span.animate-fade-in");
       expect(stepBadgeText).not.toBeNull();
-      expect(stepBadgeText?.textContent).toContain("Passo 1 de 8");
+      expect(stepBadgeText?.textContent).toContain("Passo 1 de 5");
     });
   });
 
@@ -2163,27 +2163,25 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
   });
 
   describe("Resiliência de Carregamento e Foco de Elementos com Montagem Tardia (Fase 8 — Tarefa 8.7)", () => {
-    it("exibe esqueleto discreto de foco com pulso suave enquanto o elemento assíncrono não foi montado no DOM", () => {
+    it("mantém backdrop limpo sem esqueleto fantasma no centro enquanto o elemento assíncrono não foi montado no DOM", () => {
       startDemo("finances"); // Passo 1: targetSelector = '[data-tour="overview-kpis"]'
 
       render(<DemoTourSpotlight />);
 
-      // Elemento ainda não foi montado: esqueleto de loading deve estar presente com pulso suave
-      const skeleton = screen.getByTestId("spotlight-loading-skeleton");
-      expect(skeleton).toBeInTheDocument();
-      expect(skeleton).toHaveAttribute("stroke-dasharray", "4 4");
-      expect(skeleton.getAttribute("class")).toContain("animate-pulse");
+      // Elemento ainda não foi montado: esqueleto fantasma de centro NÃO deve ser renderizado
+      expect(screen.queryByTestId("spotlight-loading-skeleton")).not.toBeInTheDocument();
 
-      // Borda do elemento real NÃO deve existir enquanto estiver carregando
+      // Borda do elemento real NÃO deve existir enquanto estiver buscando
       expect(screen.queryByTestId("spotlight-border")).not.toBeInTheDocument();
     });
 
-    it("detecta montagem tardia de elemento via MutationObserver, remove o esqueleto e ativa o spotlight real", async () => {
+    it("detecta montagem tardia de elemento via MutationObserver e ativa o spotlight real", async () => {
       startDemo("finances");
 
       render(<DemoTourSpotlight />);
 
-      expect(screen.getByTestId("spotlight-loading-skeleton")).toBeInTheDocument();
+      expect(screen.queryByTestId("spotlight-border")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("spotlight-loading-skeleton")).not.toBeInTheDocument();
 
       // Monta o elemento assincronamente no DOM após a renderização inicial
       const targetEl = document.createElement("div");
@@ -2206,9 +2204,8 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
         document.body.appendChild(targetEl);
       });
 
-      // MutationObserver detecta a inserção, remove o esqueleto e exibe a borda real do spotlight
+      // MutationObserver detecta a inserção e exibe a borda real do spotlight
       await waitFor(() => {
-        expect(screen.queryByTestId("spotlight-loading-skeleton")).not.toBeInTheDocument();
         expect(screen.getByTestId("spotlight-border")).toBeInTheDocument();
       });
     });
@@ -2253,8 +2250,8 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
         render(<DemoTourSpotlight />);
 
-        // Inicialmente com dimensões 0, o esqueleto de carregamento continua ativo
-        expect(screen.getByTestId("spotlight-loading-skeleton")).toBeInTheDocument();
+        // Inicialmente com dimensões 0, a borda do elemento real ainda não é desenhada
+        expect(screen.queryByTestId("spotlight-loading-skeleton")).not.toBeInTheDocument();
         expect(screen.queryByTestId("spotlight-border")).not.toBeInTheDocument();
 
         // Dados assíncronos chegam e o elemento ganha dimensões reais
@@ -2265,8 +2262,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
           vi.advanceTimersByTime(120);
         });
 
-        // Polling adaptativo detectou dimensões válidas: remove esqueleto e ativa borda real
-        expect(screen.queryByTestId("spotlight-loading-skeleton")).not.toBeInTheDocument();
+        // Polling adaptativo detectou dimensões válidas: ativa borda real
         expect(screen.getByTestId("spotlight-border")).toBeInTheDocument();
       } finally {
         vi.useRealTimers();
@@ -2280,21 +2276,21 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
         render(<DemoTourSpotlight />);
 
-        // Inicialmente buscando: esqueleto de loading visível
-        expect(screen.getByTestId("spotlight-loading-skeleton")).toBeInTheDocument();
+        // Inicialmente buscando: sem esqueleto fantasma
+        expect(screen.queryByTestId("spotlight-loading-skeleton")).not.toBeInTheDocument();
 
         // Avança o timeout de 2.5s (2500ms)
         act(() => {
           vi.advanceTimersByTime(2500);
         });
 
-        // Fallback gracioso acionado: esqueleto removido, rect nulo, card funcional no centro
+        // Fallback gracioso acionado: sem esqueleto fantasma, rect nulo, card funcional no centro
         expect(screen.queryByTestId("spotlight-loading-skeleton")).not.toBeInTheDocument();
         expect(screen.queryByTestId("spotlight-border")).not.toBeInTheDocument();
 
         const card = screen.getByRole("dialog");
         expect(card).toBeInTheDocument();
-        expect(screen.getByText("Passo 1 de 8")).toBeInTheDocument();
+        expect(screen.getByText("Passo 1 de 5")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Próximo passo" })).toBeInTheDocument();
       } finally {
         vi.useRealTimers();
@@ -2332,9 +2328,8 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       const nextBtn = screen.getByRole("button", { name: "Próximo passo" });
       await user.click(nextBtn);
 
-      // Ao trocar de passo com morfagem suave (§Plano 11), a transição contínua preserva o foco sem tela preta
-      // e o esqueleto de carregamento assume o lugar enquanto o nó do passo 2 é aguardado
-      expect(screen.getByTestId("spotlight-loading-skeleton")).toBeInTheDocument();
+      // Ao trocar de passo, não exibe esqueleto fantasma no centro da tela
+      expect(screen.queryByTestId("spotlight-loading-skeleton")).not.toBeInTheDocument();
     });
   });
 
@@ -2495,7 +2490,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       const nextBtn = screen.getByRole("button", { name: "Próximo passo" });
       await user.click(nextBtn);
 
-      expect(screen.getByText("Passo 2 de 8")).toBeInTheDocument();
+      expect(screen.getByText("Passo 2 de 5")).toBeInTheDocument();
       expect(
         screen.getByText("Comandos Rápidos & Atalho (Ctrl+K)"),
       ).toBeInTheDocument();
@@ -2675,8 +2670,8 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
         render(<DemoTourSpotlight />);
 
-        // Inicialmente em estado de busca com esqueleto de pulso ativo
-        expect(screen.getByTestId("spotlight-loading-skeleton")).toBeInTheDocument();
+        // Inicialmente em estado de busca: sem esqueleto fantasma e sem borda
+        expect(screen.queryByTestId("spotlight-loading-skeleton")).not.toBeInTheDocument();
         expect(screen.queryByTestId("spotlight-border")).not.toBeInTheDocument();
 
         // Cria estrutura aninhada com atraso assíncrono (simulando montagem de tabela/card após query)
@@ -2711,7 +2706,6 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
         // MutationObserver com subtree: true intercepta a inserção e ativa o spotlight real
         await waitFor(() => {
-          expect(screen.queryByTestId("spotlight-loading-skeleton")).not.toBeInTheDocument();
           expect(screen.getByTestId("spotlight-border")).toBeInTheDocument();
         });
       });
@@ -2787,7 +2781,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
     });
 
     describe("Teste Manual Desktop e Mobile — Percurso dos Tours de Finanças e Orçamentos (Portão de Qualidade 8)", () => {
-      it("no Desktop (1024x768), percorre todos os 8 passos do tour de Finanças e confirma que todos os badges exibem 'Finanças Diárias' e nunca 'Investimentos'", async () => {
+      it("no Desktop (1024x768), percorre todos os 5 passos do tour de Finanças e confirma que todos os badges exibem 'Finanças Diárias' e nunca 'Investimentos'", async () => {
         const user = userEvent.setup();
         window.innerWidth = 1024;
         window.innerHeight = 768;
@@ -2795,24 +2789,24 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
         startDemo("finances");
         render(<DemoTourSpotlight />);
 
-        // Percorre para frente: passos 1 a 8
-        for (let step = 1; step <= 8; step++) {
-          expect(screen.getByText(`Passo ${step} de 8`)).toBeInTheDocument();
+        // Percorre para frente: passos 1 a 5
+        for (let step = 1; step <= 5; step++) {
+          expect(screen.getByText(`Passo ${step} de 5`)).toBeInTheDocument();
           expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
           expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
 
-          if (step < 8) {
+          if (step < 5) {
             const nextBtn = screen.getByRole("button", { name: /Próximo passo/i });
             await user.click(nextBtn);
           }
         }
 
-        // Percorre para trás: passos 7 a 1
-        for (let step = 7; step >= 1; step--) {
+        // Percorre para trás: passos 4 a 1
+        for (let step = 4; step >= 1; step--) {
           const prevBtn = screen.getByRole("button", { name: /Passo anterior/i });
           await user.click(prevBtn);
 
-          expect(screen.getByText(`Passo ${step} de 8`)).toBeInTheDocument();
+          expect(screen.getByText(`Passo ${step} de 5`)).toBeInTheDocument();
           expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
           expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
         }
@@ -2849,7 +2843,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
         }
       });
 
-      it("no Mobile (375x667), percorre todos os 8 passos do tour de Finanças e confirma que todos os badges exibem 'Finanças Diárias' e layout mobile", async () => {
+      it("no Mobile (375x667), percorre todos os 5 passos do tour de Finanças e confirma que todos os badges exibem 'Finanças Diárias' e layout mobile", async () => {
         const user = userEvent.setup();
         window.innerWidth = 375;
         window.innerHeight = 667;
@@ -2860,24 +2854,24 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
         const aside = container.querySelector("aside[data-tour-spotlight-card='true']");
         expect(aside?.className).toContain("inset-x-3");
 
-        // Percorre para frente: passos 1 a 8
-        for (let step = 1; step <= 8; step++) {
-          expect(screen.getByText(`Passo ${step} de 8`)).toBeInTheDocument();
+        // Percorre para frente: passos 1 a 5
+        for (let step = 1; step <= 5; step++) {
+          expect(screen.getByText(`Passo ${step} de 5`)).toBeInTheDocument();
           expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
           expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
 
-          if (step < 8) {
+          if (step < 5) {
             const nextBtn = screen.getByRole("button", { name: /Próximo passo/i });
             await user.click(nextBtn);
           }
         }
 
-        // Percorre para trás: passos 7 a 1
-        for (let step = 7; step >= 1; step--) {
+        // Percorre para trás: passos 4 a 1
+        for (let step = 4; step >= 1; step--) {
           const prevBtn = screen.getByRole("button", { name: /Passo anterior/i });
           await user.click(prevBtn);
 
-          expect(screen.getByText(`Passo ${step} de 8`)).toBeInTheDocument();
+          expect(screen.getByText(`Passo ${step} de 5`)).toBeInTheDocument();
           expect(screen.getByText("Finanças Diárias")).toBeInTheDocument();
           expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
         }

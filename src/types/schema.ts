@@ -254,7 +254,6 @@ export type UserCustomSettings = {
   merchantLearning?: Record<string, unknown>;
   cardDigitsMapping?: Record<string, string>;
   bankCardMapping?: Record<string, string>;
-  hideDashboardCents?: boolean;
   privacyShieldEnabled?: boolean;
   primaryCardId?: string | null;
   cardOrder?: string[];

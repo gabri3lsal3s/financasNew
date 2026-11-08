@@ -1,5 +1,5 @@
-import { useState, useEffect, lazy, Suspense } from "react";
-import { Database, Fingerprint, RefreshCw, Smartphone, Download } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Fingerprint, RefreshCw, Smartphone, Download } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -13,10 +13,7 @@ import {
 import type { SelectOption } from "@/components/ui";
 import { ExportDataHub, ApkInstallGuideDialog } from "@/components/modules";
 import type { ExportCsvKind, ExportRange } from "@/components/modules";
-const RestoreWizardDialog = lazy(() =>
-  import("../restore-wizard").then((m) => ({ default: m.RestoreWizardDialog }))
-);
-import { downloadCsv, downloadJson } from "@/services/export-actions";
+import { downloadCsv } from "@/services/export-actions";
 import { pushToast } from "@/services/toast";
 import { DeleteAccountCard } from "./delete-account-card";
 import {
@@ -31,16 +28,13 @@ import {
   setPrivacyShieldEnabled,
   isNativePlatform,
 } from "@/services/native";
-import { todayLocalIso } from "@/lib/date";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS } from "@/lib/labels";
 import { numberToCents } from "@/domain/money";
-import { BACKUP_TABLE_KEYS, parseBackupPayload } from "@/domain/export";
 import type {
   ExportExpenseRow,
   ExportIncomeRow,
   ExportInvoiceRow,
   ExportPositionRow,
-  RestoreSummary,
 } from "@/domain/export";
 import {
   serializeExpensesCsv,
@@ -50,7 +44,6 @@ import {
 } from "@/domain/export";
 import {
   useExportData,
-  useRestoreBackup,
   usePortfolioPosition,
   useUserAccess,
   useCategories,
@@ -260,22 +253,8 @@ export function SecurityTab() {
 
   const portfolioPosition = usePortfolioPosition();
   const exportDataQuery = useExportData({ enabled: false });
-  const restoreBackupMutation = useRestoreBackup();
-  const [restoreWizardOpen, setRestoreWizardOpen] = useState(false);
   const categoriesQuery = useCategories();
   const creditCardsQuery = useCreditCards();
-
-  const handleExportJson = async (): Promise<void> => {
-    const { data: payload } = await exportDataQuery.refetch();
-    if (payload) {
-      downloadJson(`financas_backup_${todayLocalIso()}.json`, payload);
-      pushToast({
-        title: "Backup exportado",
-        description: "O arquivo JSON contendo seus dados foi baixado com sucesso.",
-        variant: "success",
-      });
-    }
-  };
 
   const rangeStamp = (range: ExportRange): string =>
     `${range.start.slice(0, 10)}_a_${range.end.slice(0, 10)}`;
@@ -352,35 +331,6 @@ export function SecurityTab() {
       pct: r.pct,
     }));
     downloadCsv(`posicoes_${stamp}.csv`, serializePositionsCsv(csvRows));
-  };
-
-  const handleRestoreFile = async (file: File): Promise<RestoreSummary> => {
-    const text = await file.text();
-    let raw: unknown;
-    try {
-      raw = JSON.parse(text);
-    } catch {
-      throw new Error("Arquivo inválido: não é um JSON válido.");
-    }
-    const validation = parseBackupPayload(raw);
-    if (!validation.ok) {
-      throw new Error(validation.errors.join("\n"));
-    }
-    const summary: RestoreSummary = {};
-    for (const key of BACKUP_TABLE_KEYS) {
-      summary[key] = validation.payload.data[key].length;
-    }
-    return summary;
-  };
-
-  const handleConfirmRestore = async (file: File): Promise<void> => {
-    const text = await file.text();
-    const raw: unknown = JSON.parse(text);
-    const validation = parseBackupPayload(raw);
-    if (!validation.ok) {
-      throw new Error(validation.errors.join("\n"));
-    }
-    await restoreBackupMutation.mutateAsync(validation.payload);
   };
 
   return (
@@ -472,27 +422,49 @@ export function SecurityTab() {
         </Card>
       ) : null}
 
-      {/* Card 2: Gestão de Dados & Backup */}
-      <Card>
+      {/* Card 2: Exportação de Dados Financeiros (Extratos CSV) */}
+      <ExportDataHub
+        csvOnly
+        onExportCsv={handleExportCsv}
+        availableCsvKinds={[
+          ...(userAccess.hasFeature("transactions") ? (["expenses", "incomes"] as const) : []),
+          ...(userAccess.hasFeature("cards") ? (["invoices"] as const) : []),
+          ...(userAccess.hasFeature("investments") ? (["positions"] as const) : []),
+        ]}
+      />
+
+      {/* Card 2.5: Comparativo do Tripé de Plataformas */}
+      <Card data-tour="settings-platforms-triptych" className="border-border/80 bg-surface shadow-xs">
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Database className="size-4 text-muted-foreground" aria-hidden="true" />
-            <span>Gestão de Dados &amp; Backup</span>
+          <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Smartphone className="size-4 text-muted-foreground" aria-hidden="true" />
+            <span>O Tripé de Plataformas: Web, PWA e Android Pro</span>
           </CardTitle>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Sua conta funciona em qualquer lugar com sincronização e recursos adaptados a cada formato.
+          </p>
         </CardHeader>
-        <CardContent className="space-y-4 pt-2">
-          <ExportDataHub
-            onExportJson={handleExportJson}
-            onExportCsv={handleExportCsv}
-            onRestore={handleRestoreFile}
-            onConfirmRestore={handleConfirmRestore}
-            onOpenRestoreWizard={() => setRestoreWizardOpen(true)}
-            availableCsvKinds={[
-              ...(userAccess.hasFeature("transactions") ? (["expenses", "incomes"] as const) : []),
-              ...(userAccess.hasFeature("cards") ? (["invoices"] as const) : []),
-              ...(userAccess.hasFeature("investments") ? (["positions"] as const) : []),
-            ]}
-          />
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="p-3.5 rounded-xl border border-border/70 bg-background/50 space-y-1.5">
+              <span className="font-bold text-foreground block">Web Desktop</span>
+              <p className="text-muted-foreground leading-relaxed">
+                Ideal para relatórios em tela ampla, simulações de independência financeira (FIRE) e rebalanceamento.
+              </p>
+            </div>
+            <div className="p-3.5 rounded-xl border border-border/70 bg-background/50 space-y-1.5">
+              <span className="font-bold text-foreground block">Mobile PWA</span>
+              <p className="text-muted-foreground leading-relaxed">
+                Acesso leve e instantâneo no iPhone ou Android, sem downloads pesados e com abertura em tela cheia.
+              </p>
+            </div>
+            <div className="p-3.5 rounded-xl border border-primary/30 bg-primary/5 space-y-1.5">
+              <span className="font-bold text-primary-strong block">Android Pro Nativo</span>
+              <p className="text-muted-foreground leading-relaxed">
+                Leitor passivo de notificações bancárias (Pix e cartões em tempo real), biometria física e escudo anti-print.
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -590,15 +562,6 @@ export function SecurityTab() {
         onDownloadApk={handleDownloadApk}
         apkUrl={activeApkUrl}
       />
-
-      {restoreWizardOpen && (
-        <Suspense fallback={null}>
-          <RestoreWizardDialog
-            open={restoreWizardOpen}
-            onOpenChange={setRestoreWizardOpen}
-          />
-        </Suspense>
-      )}
     </div>
   );
 }

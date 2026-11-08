@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Activity, ChevronRight, DollarSign, HeartHandshake, Inbox, PieChart, Plus, Target, TrendingDown, TrendingUp } from "lucide-react";
-import { Badge, Button, DashboardCentsProvider, EmptyState, ErrorState, MoneyText, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
+import { Badge, Button, EmptyState, ErrorState, MoneyText, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
 import {
   CategoryDonut,
   DailyFlowChart,
@@ -19,7 +19,6 @@ import {
   PendingSuggestionsCard,
   PendingSplitSignalsCard,
   AutoRegisteredBanner,
-  AndroidProBanner,
   SmartAdvisorCard,
   QuickAporteCard,
   QuickBalanceAdjustmentModal,
@@ -75,7 +74,7 @@ import {
   useMyFamily,
 } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
-import { useVisualCustomization, useApkPromo, useOnboardingDismissed, usePendingSplitExpense, usePendingSimulation } from "@/hooks";
+import { useOnboardingDismissed, usePendingSplitExpense, usePendingSimulation } from "@/hooks";
 import { CashCheckpointDialog } from "@/components/modules/cash-checkpoint-dialog";
 import { cn } from "@/lib/utils";
 import {
@@ -89,7 +88,6 @@ import {
 import type { SplitSharePayload } from "@/types";
 
 export function OverviewPage() {
-  const { showPromo: showApkPromo, dismiss: dismissApkPromo } = useApkPromo();
   usePendingSplitExpense();
   usePendingSimulation();
 
@@ -101,7 +99,6 @@ export function OverviewPage() {
   const subscription = useUserSubscription();
   const [checkpointOpen, setCheckpointOpen] = useState(false);
   const { guardAction, upgradeModal } = useMutationGuard();
-  const visual = useVisualCustomization();
 
   const prevMonth = shiftMonth(month, -1);
   const rangeEnd = `${shiftMonth(month, 1)}-01`;
@@ -731,15 +728,10 @@ export function OverviewPage() {
         priority: 2,
         content: <TrialEndingBanner daysRemaining={subscription.trialDaysRemaining} />,
       },
-    showApkPromo && {
-      id: "android-pro-banner",
-      priority: 5,
-      content: <AndroidProBanner onDismiss={() => dismissApkPromo(7)} />,
-    },
   ];
 
   return (
-    <DashboardCentsProvider hideCents={visual.hideDashboardCents}>
+    <>
       <WelcomeModal
         open={welcomeModalOpen}
         onOpenChange={(nextOpen) => {
@@ -1142,6 +1134,6 @@ export function OverviewPage() {
         </>
       )}
       </div>
-    </DashboardCentsProvider>
+    </>
   );
 }

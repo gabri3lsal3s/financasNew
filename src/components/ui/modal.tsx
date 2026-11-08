@@ -233,10 +233,21 @@ export function Modal({
             className,
           )}
         >
-          {/* Barra de controle superior: minimalista (h-10) no mobile com alça e micro-título reativo; no desktop atua como âncora absoluta das ações contextuais */}
+          {/* Faixa superior dedicada para a alça no mobile (limite físico superior do bottom sheet) */}
+          <div className="pt-2.5 pb-1 flex items-center justify-center shrink-0 md:hidden pointer-events-none select-none">
+            <div
+              aria-hidden="true"
+              className={cn(
+                "h-1 w-10 shrink-0 rounded-full bg-primary/30 transition-opacity duration-200 md:hidden",
+                isScrolled ? "opacity-30" : "opacity-100",
+              )}
+            />
+          </div>
+
+          {/* Barra de controle superior: micro-título reativo no mobile e ações contextuais à direita */}
           <div
             className={cn(
-              "h-10 md:h-0 md:overflow-visible flex items-center justify-between px-3.5 md:px-0 shrink-0 relative transition-all duration-200 border-b md:border-b-0",
+              "h-9 md:h-0 md:overflow-visible flex items-center justify-between px-4 md:px-0 shrink-0 relative transition-all duration-200 border-b md:border-b-0",
               isScrolled
                 ? "bg-surface/95 backdrop-blur-xs border-border/80 shadow-xs"
                 : "bg-surface border-transparent",
@@ -253,15 +264,6 @@ export function Modal({
                 </span>
               ) : null}
             </div>
-
-            {/* Alça do bottom sheet (F25 / Plano 08) — centralizada no mobile com micro-interação */}
-            <div
-              aria-hidden="true"
-              className={cn(
-                "absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 h-1 w-10 shrink-0 rounded-full bg-primary/30 transition-opacity duration-200 pointer-events-none md:hidden",
-                isScrolled ? "opacity-30" : "opacity-100",
-              )}
-            />
 
             {/* Ações contextuais e botão fechar: à direita na barra minimalista mobile; top-right absoluto no desktop */}
             <div className="flex shrink-0 items-center gap-1 z-10 md:absolute md:top-5 md:right-5 md:gap-1.5">
@@ -324,7 +326,7 @@ export function Modal({
 
           {/* Rodapé Pinned Canônico (quando passado via prop footer) */}
           {footer ? (
-            <div className="shrink-0 border-t border-border/80 bg-surface px-4 py-3 sm:px-6 sm:py-4 pb-[max(0.5rem,calc(max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px))+0.25rem))] sm:pb-4">
+            <div className="shrink-0 border-t border-border/80 bg-surface/95 backdrop-blur-xs px-4 py-3 sm:px-6 sm:py-3.5 pb-[max(0.5rem,calc(max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px))+0.25rem))] sm:pb-3.5 shadow-xs">
               {footer}
             </div>
           ) : null}
@@ -337,18 +339,21 @@ export function Modal({
 export interface ModalFooterProps {
   children: ReactNode;
   className?: string;
+  /** Remove margens e bordas extras (útil quando renderizado dentro de slot de rodapé já delimitado). */
+  borderless?: boolean;
 }
 
-export function ModalFooter({ children, className }: ModalFooterProps) {
+export function ModalFooter({ children, className, borderless = false }: ModalFooterProps) {
   const count = Children.count(children);
   const isPair = count === 2;
 
   return (
     <div
       className={cn(
-        "pt-4 mt-6 border-t border-border/80 w-full",
+        "w-full",
+        !borderless && "pt-4 mt-6 border-t border-border/80",
         isPair
-          ? "grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center sm:justify-end"
+          ? "grid grid-cols-2 gap-2.5 sm:flex sm:flex-row sm:items-center sm:justify-end"
           : "flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5",
         "[&_button]:w-full [&_button]:sm:w-auto [&_button]:sm:min-w-[110px]",
         className,

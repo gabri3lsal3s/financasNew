@@ -205,14 +205,14 @@ export const TOUR_TRACK_METAS: Record<AnyTourTrackId, TourTrackMeta> = {
   finances: {
     id: "finances",
     title: "Finanças Diárias & Cartões",
-    shortTitle: "Finanças Completo",
+    shortTitle: "Finanças Essencial",
     description:
-      "Jornada sequencial completa com saldo livre, botão wizard, lançamentos, extrato, faturas, parcelamentos, tetos e relatórios.",
+      "Jornada rápida de primeiros passos com saldo livre real, botão wizard (+), extrato unificado, cartões e tetos mensais.",
     category: "finances",
-    stepsCount: 8,
+    stepsCount: 5,
     iconName: "wallet",
     startRoute: "/",
-    badgeLabel: "8 passos",
+    badgeLabel: "5 passos",
   },
   shared_finances: {
     id: "shared_finances",
