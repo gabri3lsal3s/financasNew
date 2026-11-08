@@ -28,6 +28,7 @@ import {
   DemoTrackSelectModal,
   PermissionsAlertBanner,
   type PermissionAlertBannerType,
+  WeeklyDueRadarCard,
 } from "@/components/modules";
 import { isFirstUse, shouldShowOnboardingBanner } from "@/domain/onboarding";
 import {
@@ -40,6 +41,7 @@ import {
 import { todayISO } from "@/domain/debts";
 import {
   analyzeCashGap,
+  computeWeeklyDueRadar,
   dailyBudget,
   endOfMonthProjection,
   projectCardInvoiceObligations,
@@ -548,6 +550,31 @@ export function OverviewPage() {
     ],
   );
 
+  const weeklyRadarSummary = useMemo(
+    () =>
+      computeWeeklyDueRadar({
+        today,
+        realCashCents: realCashData.cashBalance.currentBalanceCents,
+        debts: debtsQuery.data ?? [],
+        invoices: projectCardInvoiceObligations({
+          cards: cardsQuery.data ?? [],
+          expenses: cardExpensesQuery.data ?? [],
+          payments: cardPaymentsQuery.data ?? [],
+          today,
+          currentMonth: month,
+        }),
+      }),
+    [
+      today,
+      realCashData.cashBalance.currentBalanceCents,
+      debtsQuery.data,
+      cardsQuery.data,
+      cardExpensesQuery.data,
+      cardPaymentsQuery.data,
+      month,
+    ],
+  );
+
   // Apuração de Rachas a receber pendentes
   const splitPendingData = useMemo(() => {
     const debts = debtsQuery.data ?? [];
@@ -887,6 +914,8 @@ export function OverviewPage() {
               onCalibrate={() => guardAction(() => setCheckpointOpen(true), "Calibrar Saldo com o Banco")}
             />
           ) : null}
+
+          {isCurrentMonth ? <WeeklyDueRadarCard summary={weeklyRadarSummary} /> : null}
 
           {/* KPIs fundamentais (§3.6) com sparkline */}
           <div className="grid gap-3 min-w-0 grid-cols-2 lg:grid-cols-4" data-tour="overview-kpis">

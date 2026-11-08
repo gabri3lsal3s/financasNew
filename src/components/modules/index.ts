@@ -139,4 +139,6 @@ export { SplitPreviewMockupCard } from "./split-preview-mockup-card";
 export type { SplitPreviewMockupCardProps } from "./split-preview-mockup-card";
 export { PlatformsTriptychCard } from "./platforms-triptych-card";
 export type { PlatformsTriptychCardProps, PlatformTriptychItem } from "./platforms-triptych-card";
+export { WeeklyDueRadarCard } from "./weekly-due-radar-card";
+export type { WeeklyDueRadarCardProps } from "./weekly-due-radar-card";
 

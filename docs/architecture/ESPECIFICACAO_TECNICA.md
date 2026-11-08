@@ -352,6 +352,8 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
 - **Agrupamentos temporais:** dia/mês/ano; navegação de mês/ano com clamp no APP_START_DATE.
 - **Orçamentos:** progresso vs limite, lista de atenção, recomendação de realocação.
 - **Limite de período customizado:** máximo 366 dias.
+- **Radar dos Próximos 7 Dias (Horizonte Semanal Iminente):** card inteligente dinâmico renderizado na Visão Geral logo abaixo do *RealCashHeroCard* com cálculo de compromissos financeiros entre hoje e $D+7$ (`computeWeeklyDueRadar`). Exibe o total devido na semana, contas e faturas discriminadas com badges de urgência (*Hoje*, *Amanhã*, *Em X dias*), margem de liquidez pós-obrigações semanais (`freeBalanceCents`) e indicador de segurança (*Liquidez Preservada* vs *Risco de Déficit Iminente*). **Regra de Ouro:** em empty state (quando não houver nenhuma obrigação a vencer nos próximos 7 dias), o card é estritamente auto-ocultado (`return null`), mantendo o dashboard 100% limpo e calmo.
+
 
 
 ### 3.7 Motor de Análise e Diagnóstico (Insights)
@@ -1105,6 +1107,12 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
 5. QA final multi-dispositivo + documento de release.
 
 **✅ DoD:** suíte de fidelidade 100% verde; revisão RLS auditada (nenhuma leitura cross-user); deploy de produção funcional com variáveis protegidas; checklist de QA aprovado em desktop + mobile (3 temas).
+
+### 3.14 Governança de Tours Guiados e Spotlight Interativo (§Plano 11 e Build 36)
+
+1. **Zero Retenção Residual de Foco**: Ao alternar de etapa (`currentStepIndex`), o estado de retângulo geométrico (`rect`) do spotlight deve ser imediatamente resetado para `null` e a prontidão posicional (`isPositionReady`) para `false`. É expressamente proibido reter o recorte geométrico de uma etapa anterior enquanto o novo elemento-alvo está sendo procurado ou carregado.
+2. **Proteção de Renderização Visual na Máscara SVG**: O recorte da máscara SVG (`mask`) e a borda pulsante de destaque (`spotlight-border`) só podem ser desenhados se `rect && !isTargetLoading`. Enquanto o alvo assíncrono estiver sendo localizado, a tela exibe o backdrop escuro uniforme calmo, sem halos ou recortes fantasmas em elementos desconexos.
+3. **Resiliência de Seletores em Skeletons**: Telas e abas com elementos-alvo referenciados em tours guiados (`data-tour="..."`) devem incorporar os atributos correspondentes nos contêineres de loading/esqueleto estrutural (`SkeletonList`, `SkeletonTable`, `SkeletonKpi`), assegurando ancoragem e medição imediatas sem depender do término de requisições de rede.
 
 ---
 

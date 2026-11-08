@@ -256,4 +256,5 @@ export function pendingProjection(debts: readonly PendingDebt[]): PendingProject
 
 export * from "./cash-gap";
 export * from "./emergency-fund";
+export * from "./weekly-radar";
 

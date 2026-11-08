@@ -87,6 +87,7 @@ export function DemoTourSpotlight({
   const [measuredCardHeight, setMeasuredCardHeight] = useState<number>(220);
   const [prevStepIndex, setPrevStepIndex] = useState<number>(currentStepIndex);
   const [prevIsDemoActive, setPrevIsDemoActive] = useState<boolean>(isDemoActive);
+  const [prevActiveTrack, setPrevActiveTrack] = useState<typeof activeTrack>(activeTrack);
   const [isPulsing, setIsPulsing] = useState<boolean>(true);
   const [isPositionReady, setIsPositionReady] = useState<boolean>(false);
   const [isTargetLoading, setIsTargetLoading] = useState<boolean>(() => {
@@ -97,13 +98,19 @@ export function DemoTourSpotlight({
   const cardRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
 
-  // Ajusta estados sincronizados durante a fase de render (padrão oficial React para ajuste de estado por prop/store)
-  if (prevIsDemoActive !== isDemoActive) {
+  // Ajusta estados sincronizados durante a fase de render ao iniciar/parar demo ou trocar de trilha
+  if (prevIsDemoActive !== isDemoActive || prevActiveTrack !== activeTrack) {
     setPrevIsDemoActive(isDemoActive);
+    setPrevActiveTrack(activeTrack);
+    setPrevStepIndex(currentStepIndex);
+    setRect(null);
+    setIsPositionReady(false);
     if (!isDemoActive) {
-      setIsPositionReady(false);
       setIsTargetLoading(false);
-      setRect(null);
+    } else {
+      const isDesk = typeof window !== "undefined" ? window.innerWidth >= 768 : false;
+      const sel = resolveTourStepTargetSelector(currentStep, isDesk);
+      setIsTargetLoading(Boolean(sel));
     }
   }
 
@@ -150,20 +157,13 @@ export function DemoTourSpotlight({
     };
   }, [restoreFocus]);
 
-  // Reinicia o pulso e sincroniza estado de busca ao trocar de etapa durante o render (padrão oficial React para ajuste de estado por prop/store)
+  // Reinicia o pulso, limpa o rect residual e sincroniza estado de busca ao trocar de etapa durante o render
   if (prevStepIndex !== currentStepIndex) {
-    const prevStep = steps[prevStepIndex];
-    const isDifferentRoute = Boolean(
-      prevStep?.targetRoute &&
-        currentStep?.targetRoute &&
-        prevStep.targetRoute !== currentStep.targetRoute,
-    );
     setPrevStepIndex(currentStepIndex);
     setIsPulsing(true);
-    // Limpa o rect se a etapa pertencer a outra rota para evitar spotlight preso em elementos residuais (§Plano 11)
-    if (isDifferentRoute) {
-      setRect(null);
-    }
+    // Limpa incondicionalmente o rect para evitar spotlight preso em elementos residuais da etapa anterior
+    setRect(null);
+    setIsPositionReady(false);
     const sel = resolveTourStepTargetSelector(currentStep, !isMobile);
     setIsTargetLoading(Boolean(isDemoActive && sel));
   }
@@ -887,7 +887,7 @@ export function DemoTourSpotlight({
             {/* Fundo branco: opaco na máscara */}
             <rect x="0" y="0" width="100%" height="100%" fill="white" />
             {/* Retângulo preto: fura a máscara deixando o elemento 100% visível */}
-            {rect ? (
+            {rect && !isTargetLoading ? (
               <rect
                 x={rect.x}
                 y={rect.y}
@@ -914,7 +914,7 @@ export function DemoTourSpotlight({
         />
 
         {/* Borda pontilhada suave em volta da área recortada com transição fluida */}
-        {rect && (
+        {rect && !isTargetLoading && (
           <rect
             x={rect.x}
             y={rect.y}

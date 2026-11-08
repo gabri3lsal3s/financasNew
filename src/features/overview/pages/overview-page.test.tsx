@@ -277,6 +277,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
     resetVisualCustomization(null);
     localStorage.setItem(WELCOME_MODAL_STORAGE_KEY, "true");
+    localStorage.setItem("financas:welcome_modal_seen", "true");
     navigateMock.mockReset();
     mockAppMode = "investor";
     expenseCategories = [...defaultExpenseCategories];

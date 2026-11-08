@@ -2893,5 +2893,109 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
         }
       });
     });
+
+    describe("Saneamento de Transição e Zero Retenção Residual de Foco entre Etapas", () => {
+      it("ao mudar de passo na trilha de investimentos, limpa imediatamente o recorte anterior e não mantém foco no botão Nova Operação", async () => {
+        const user = userEvent.setup();
+        window.innerWidth = 1024;
+        window.innerHeight = 768;
+
+        // Monta o botão do passo 2 (investments-new-op)
+        const newOpBtn = document.createElement("button");
+        newOpBtn.setAttribute("data-tour", "investments-new-op");
+        document.body.appendChild(newOpBtn);
+        vi.spyOn(newOpBtn, "getBoundingClientRect").mockReturnValue({
+          x: 800,
+          y: 40,
+          left: 800,
+          top: 40,
+          right: 950,
+          bottom: 80,
+          width: 150,
+          height: 40,
+          toJSON: () => ({}),
+        });
+
+        startDemo("investments");
+        setStepIndex(1); // Passo 2: investments-new-op
+        const { rerender } = render(<DemoTourSpotlight />);
+
+        // No passo 2, o spotlight aponta para investments-new-op
+        expect(screen.getByText("Cadastro de Ativo (Nova Operação)")).toBeInTheDocument();
+
+        // Agora avança para o Passo 3 (investments-targets) sem que o container de metas exista ainda
+        const nextBtn = screen.getByRole("button", { name: /Próximo passo/i });
+        await user.click(nextBtn);
+
+        expect(screen.getByText("Metas Estratégicas de Alocação")).toBeInTheDocument();
+
+        // Comprova que o recorte e a borda não mantêm o botão do passo anterior
+        const spotlightBorder = screen.queryByTestId("spotlight-border");
+        expect(spotlightBorder).toBeNull();
+
+        // Agora simula o elemento de metas montando no DOM
+        const targetsCard = document.createElement("div");
+        targetsCard.setAttribute("data-tour", "investments-targets");
+        document.body.appendChild(targetsCard);
+        vi.spyOn(targetsCard, "getBoundingClientRect").mockReturnValue({
+          x: 200,
+          y: 200,
+          left: 200,
+          top: 200,
+          right: 800,
+          bottom: 500,
+          width: 600,
+          height: 300,
+          toJSON: () => ({}),
+        });
+
+        rerender(<DemoTourSpotlight />);
+
+        // O spotlight agora se ancora no elemento correto
+        await waitFor(() => {
+          const border = screen.queryByTestId("spotlight-border");
+          expect(border).toBeInTheDocument();
+          expect(border).toHaveAttribute("x", expect.any(String));
+        });
+      });
+
+      it("ao mudar para o Passo 3 de finanças sem feed carregado, não retém recorte na barra de busca superior", async () => {
+        const user = userEvent.setup();
+        window.innerWidth = 1024;
+        window.innerHeight = 768;
+
+        // Barra de busca do topo (Passo 2)
+        const desktopSearch = document.createElement("button");
+        desktopSearch.setAttribute("data-tour", "desktop-new-transaction");
+        document.body.appendChild(desktopSearch);
+        vi.spyOn(desktopSearch, "getBoundingClientRect").mockReturnValue({
+          x: 300,
+          y: 12,
+          left: 300,
+          top: 12,
+          right: 600,
+          bottom: 52,
+          width: 300,
+          height: 40,
+          toJSON: () => ({}),
+        });
+
+        startDemo("finances");
+        setStepIndex(1); // Passo 2
+        render(<DemoTourSpotlight />);
+
+        expect(screen.getByText("Comandos Rápidos & Atalho (Ctrl+K)")).toBeInTheDocument();
+
+        // Avança para o Passo 3 (Extrato Unificado)
+        const nextBtn = screen.getByRole("button", { name: /Próximo passo/i });
+        await user.click(nextBtn);
+
+        expect(screen.getByText("Extrato Unificado & Filtros")).toBeInTheDocument();
+
+        // O spotlight não mantém o recorte da barra de busca do passo 2
+        const border = screen.queryByTestId("spotlight-border");
+        expect(border).toBeNull();
+      });
+    });
   });
 });

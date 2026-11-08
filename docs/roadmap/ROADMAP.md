@@ -1,5 +1,30 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.07 (Build 36)** registra a **Eliminação de Retângulos Fantasmas, Foco Residual e Sincronização Precisa do Spotlight nos Tours Guiados** (2026-11-08):
+> - **(1) Eliminação Incondicional de Retângulos Residuais (`DemoTourSpotlight`)**:
+>   - Reset imediato e incondicional de `rect = null` e `isPositionReady = false` ao mudar de etapa (`prevStepIndex !== currentStepIndex`) ou ao alternar trilhas/iniciar tour, extinguindo a retenção do seletor da etapa anterior (ex: botão "+ Nova Operação" em Metas ou barra de busca em Extrato);
+>   - Proteção de renderização na máscara SVG e na borda do spotlight com `rect && !isTargetLoading`, impedindo recortes fantasmas ou halos circulares no topo da tela enquanto o novo elemento-alvo está sendo montado ou medido;
+> - **(2) Resiliência com `data-tour` em Skeletons e Containers de Loading**:
+>   - Inclusão dos atributos `data-tour="transactions-feed-card"` e `data-tour="transactions-content"` no esqueleto de carregamento de `TransactionListPage`, permitindo ancoragem instantânea do foco sem esperar consultas assíncronas;
+>   - Posicionamento de `data-tour="investments-targets"` no contêiner raiz de `TargetsTab` e `data-tour="targets-classes-card"` no bloco de skeleton de classes, assegurando detecção imediata na transição para a aba de Metas;
+>   - Inclusão de `data-tour="investments-rebalance"` no bloco de skeleton de `AporteTab`;
+> - **(3) Qualidade 100% Verde e Testes de Não-Regressão**:
+>   - Novos testes unitários em `demo-tour-spotlight.test.tsx` auditando a ausência de resíduo de foco ao navegar entre passos de investimentos e finanças;
+>   - 148/148 testes de tours aprovados, 51/51 testes de páginas afetadas verdes, typecheck (`tsc -b`) e lint (`eslint .`) com zero advertências.
+>
+> **v3.07 (Build 35)** registra o **Widget "Radar dos Próximos 7 Dias" no Dashboard com Margem de Liquidez Semanal e Auto-Ocultação em Empty State** (2026-11-08):
+> - **(1) Motor Matemático Puro de Antecipação Semanal (`computeWeeklyDueRadar`)**:
+>   - Mapeamento determinístico de dívidas a pagar e faturas de cartão no horizonte móvel $[D, D+7]$;
+>   - Cálculo de dias restantes com `diffDaysISO` em timezone local, discriminando prazos em *Hoje*, *Amanhã* e *Em X dias*;
+>   - Apuração do Saldo Livre Semanal (`freeBalanceCents = currentBalanceCents - totalDueWeeklyCents`) e detecção de risco de déficit iminente (`freeBalanceCents < 0`);
+> - **(2) Componente Visual de Alta Precisão (`WeeklyDueRadarCard`)**:
+>   - Renderização limpa abaixo do `RealCashHeroCard` com resumo executivo do montante semanal e badges de liquidez;
+>   - Lista compacta das obrigações com badges de urgência e atalho resolutivo para `/debts`;
+>   - **Regra de Ouro da Home**: Ocultação estrita via `return null` quando não houver obrigações a vencer na semana (`!summary.hasObligations`), eliminando poluição visual em dias calmos;
+> - **(3) Qualidade 100% Verde e Testes Automatizados**:
+>   - Testes unitários puros em `weekly-radar.test.ts` e de componente em `weekly-due-radar-card.test.tsx`;
+>   - Suíte de 33 testes em `overview-page.test.tsx` 100% aprovada, typecheck estrito (`tsc -b`) e lint sem violações.
+>
 > **v3.07 (Build 34)** registra a **Quitação & Baixa Contábil Direta In-Loco na Central de Lembretes com Diálogo de Confirmação Obrigatório** (2026-11-08):
 > - **(1) Quitação Direta In-Loco sem Perda de Contexto**:
 >   - Adição da ação resolutiva direta no `ReminderItem`: botão primário `[Pagar Fatura]` para faturas de cartão e `[Dar Baixa]` para dívidas e contas a pagar;
