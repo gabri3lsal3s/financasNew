@@ -1,5 +1,20 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.07 (Build 37)** registra a **Correção Definitiva da Apuração de Faturas no Radar Semanal da Home e o Planejamento Canônico das Fases 3 a 6** (2026-11-08):
+> - **(1) Correção da Apuração de Faturas no Radar Semanal (`WeeklyDueRadarCard` / `OverviewPage`)**:
+>   - Alinhamento estrito com o motor canônico `buildCompetenceSummaries` e `invoiceDueDate` de `@/domain/cards`, filtrando apenas saldos em aberto positivos (`saldoCents > 0`);
+>   - Erradicação de falsos positivos com faturas já quitadas que apareciam como "Vence hoje" com valores antigos;
+>   - Inserção de salvaguarda de hidratação estrita: o radar só calcula obrigações após o término do carregamento de todas as queries essenciais (`cards`, `cardExpenses`, `cardPayments`, `debts`), evitando transientes com `payments = []`;
+>   - Novos testes unitários em `weekly-radar.test.ts` cobrindo faturas pagas e faturas com vencimento antigo fora do horizonte semanal;
+> - **(2) Planejamento Executivo Canônico das Fases 3 a 6 (`docs/roadmap/PLANO_FUNCIONALIDADES_FUTURAS.md`)**:
+>   - Estruturação completa em etapas, regras de domínio, contratos de dados e portões de qualidade (QG) para:
+>     - *Fase 3:* Destinar Sobra do Mês para Metas com Vínculo Patrimonial a Ativos da Carteira;
+>     - *Fase 4:* Auditoria de Assinaturas e Planos Fixos no Extrato com Alerta de Reajuste;
+>     - *Fase 5:* Busca Global Universal com Intenções Determinísticas Rápidas (< 15ms);
+>     - *Fase 6:* Ações Diretas em Notificações Nativas do Android APK (`[Pagar no App]`, `[Adiar 3 Dias]`).
+> - **(3) Qualidade 100% Verde e Governança**:
+>   - 43/43 testes automatizados aprovados, typecheck estrito (`tsc -b`) e lint sem advertências.
+>
 > **v3.07 (Build 36)** registra a **Eliminação de Retângulos Fantasmas, Foco Residual e Sincronização Precisa do Spotlight nos Tours Guiados** (2026-11-08):
 > - **(1) Eliminação Incondicional de Retângulos Residuais (`DemoTourSpotlight`)**:
 >   - Reset imediato e incondicional de `rect = null` e `isPositionReady = false` ao mudar de etapa (`prevStepIndex !== currentStepIndex`) ou ao alternar trilhas/iniciar tour, extinguindo a retenção do seletor da etapa anterior (ex: botão "+ Nova Operação" em Metas ou barra de busca em Extrato);
