@@ -24,7 +24,7 @@ describe("CashCheckpointDialog", () => {
     expect(screen.getByText("Calibrar Saldo com o Banco")).toBeInTheDocument();
     expect(screen.getByLabelText(/Saldo Real no Banco/i)).toBeInTheDocument();
 
-    const submitBtn = screen.getByRole("button", { name: /Salvar Saldo Real/i });
+    const submitBtn = screen.getByRole("button", { name: /Salvar/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {

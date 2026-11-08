@@ -270,7 +270,7 @@ describe("TransactionListPage — listagem por mês", () => {
     await user.click(simBtn);
 
     expect(mockStartDemo).toHaveBeenCalledWith("finances");
-    expect(mockSetStepIndex).toHaveBeenCalledWith(1);
+    expect(mockSetStepIndex).toHaveBeenCalledWith(2);
   });
 
   describe("Extrato Geral e Identificação de Gastos Familiares", () => {

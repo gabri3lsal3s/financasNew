@@ -113,7 +113,7 @@ function CashCheckpointForm({
           className="gap-1.5"
         >
           <Check className="size-4" aria-hidden="true" />
-          {isPending ? "Salvando..." : "Salvar Saldo Real"}
+          {isPending ? "Salvando..." : "Salvar"}
         </Button>
       </ModalFooter>
     </form>

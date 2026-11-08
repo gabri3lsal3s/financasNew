@@ -55,12 +55,12 @@ describe("DemoTrackSelectModal — Hub de Aprendizado & Micro-Tours (§3.4)", ()
     ).toBeInTheDocument();
   });
 
-  it("exibe badge 'Concluído' nas trilhas que já foram finalizadas", () => {
+  it("não exibe badge 'Concluído' nas trilhas que já foram finalizadas (mantém contagem de passos)", () => {
     markTourCompleted("finances_wizard");
 
     render(<DemoTrackSelectModal open={true} onOpenChange={vi.fn()} />);
 
-    expect(screen.getByText("Concluído")).toBeInTheDocument();
+    expect(screen.queryByText("Concluído")).not.toBeInTheDocument();
     expect(screen.getAllByText("3 passos").length).toBeGreaterThan(0);
   });
 
@@ -161,7 +161,7 @@ describe("DemoTrackSelectModal — Hub de Aprendizado & Micro-Tours (§3.4)", ()
     expect(investmentsBtn).not.toBeNull();
     await user.click(investmentsBtn!);
 
-    expect(mockNavigate).toHaveBeenCalledWith("/investimentos");
+    expect(mockNavigate).toHaveBeenCalledWith("/investments");
     expect(handleSelectTrack).toHaveBeenCalledWith("investments");
     expect(handleOpenChange).toHaveBeenCalledWith(false);
 
@@ -257,14 +257,14 @@ describe("DemoTrackSelectModal — Hub de Aprendizado & Micro-Tours (§3.4)", ()
     expect(session.isDemoActive).toBe(false);
   });
 
-  it("renderiza o grupo de Finanças Compartilhadas com badge de destaque e seus micro-tours", async () => {
+  it("renderiza o grupo de Finanças Compartilhadas sem badge de destaque e seus micro-tours", async () => {
     const user = userEvent.setup();
     render(<DemoTrackSelectModal open={true} onOpenChange={vi.fn()} />);
 
-    // Aba possui o badge de destaque
+    // Aba sem o badge de destaque
     const sharedTab = screen.getByRole("tab", { name: "Finanças Compartilhadas" });
     expect(sharedTab).toBeInTheDocument();
-    expect(sharedTab).toHaveTextContent("Destaque");
+    expect(sharedTab).not.toHaveTextContent("Destaque");
 
     // Alterna para a aba de Finanças Compartilhadas
     await user.click(sharedTab);
@@ -396,15 +396,14 @@ describe("DemoTrackSelectModal — Hub de Aprendizado & Micro-Tours (§3.4)", ()
     expect(handleSelectTrack).toHaveBeenCalledWith("finances_goals");
   });
 
-  it("exibe badge 'Concluído' nas trilhas compartilhadas finalizadas", () => {
+  it("não exibe badge 'Concluído' nas trilhas compartilhadas finalizadas", () => {
     markTourCompleted("shared_finances");
     markTourCompleted("finances_split");
 
     render(<DemoTrackSelectModal open={true} defaultTab="shared" onOpenChange={vi.fn()} />);
 
-    // Deve encontrar badges de Concluído na aba compartilhada
-    const completedBadges = screen.getAllByText("Concluído");
-    expect(completedBadges.length).toBeGreaterThanOrEqual(2);
+    // Não deve encontrar badges de Concluído na aba compartilhada
+    expect(screen.queryByText("Concluído")).not.toBeInTheDocument();
   });
 
   it("não apresenta violações de acessibilidade (axe)", async () => {

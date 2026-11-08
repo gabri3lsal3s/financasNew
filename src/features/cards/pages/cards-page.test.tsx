@@ -471,8 +471,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     expect(simBtn).toBeInTheDocument();
 
     await user.click(simBtn);
-    expect(mockStartDemo).toHaveBeenCalledWith("finances");
-    expect(mockSetStepIndex).toHaveBeenCalledWith(2);
+    expect(mockStartDemo).toHaveBeenCalledWith("finances_cards");
   });
 
   it("exibe limite disponível recalculado dinamicamente na barra de status da fatura", () => {

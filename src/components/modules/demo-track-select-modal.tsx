@@ -3,7 +3,6 @@ import { useNavigate } from "react-router";
 import {
   Briefcase,
   Calculator,
-  Check,
   ChevronRight,
   Coins,
   CreditCard,
@@ -23,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
 import { isNativePlatform } from "@/services/native/platform";
 import { getTourTrackMeta, type TourTrackId } from "@/domain/demo-simulation";
-import { hasCompletedDemoTour, startDemo } from "@/state/demo-mode";
+import { startDemo } from "@/state/demo-mode";
 
 export interface DemoTrackSelectModalProps {
   /** Se o diálogo seletor de trilha está visível. */
@@ -45,7 +44,6 @@ interface TourCardItemProps {
   stepsCount: number;
   icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean | "true" | "false" }>;
   iconColorClass?: string;
-  isCompleted: boolean;
   isPrimary?: boolean;
   badge?: string;
   badgeVariant?: "default" | "muted" | "positive" | "negative" | "warning" | "critical" | "portfolio";
@@ -59,7 +57,6 @@ function TourCardItem({
   stepsCount,
   icon: Icon,
   iconColorClass,
-  isCompleted,
   isPrimary,
   badge,
   badgeVariant,
@@ -97,16 +94,9 @@ function TourCardItem({
               </Badge>
             )}
           </div>
-          {isCompleted ? (
-            <Badge variant="positive" size="xs" className="gap-1 shrink-0">
-              <Check className="size-3" aria-hidden="true" />
-              <span>Concluído</span>
-            </Badge>
-          ) : (
-            <Badge variant="muted" size="xs" className="shrink-0">
-              {stepsCount} passos
-            </Badge>
-          )}
+          <Badge variant="muted" size="xs" className="shrink-0">
+            {stepsCount} passos
+          </Badge>
         </div>
         <p className="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2">
           {description}
@@ -164,13 +154,6 @@ export function DemoTrackSelectModal({
     }
   }, [navigate, onOpenChange, onSkipToReal]);
 
-  const nativeCompleted = hasCompletedDemoTour("app_native_apk");
-  const financesOverviewCompleted =
-    hasCompletedDemoTour("finances") || hasCompletedDemoTour("finances_overview");
-  const sharedFinancesCompleted = hasCompletedDemoTour("shared_finances");
-  const investmentsOverviewCompleted =
-    hasCompletedDemoTour("investments") || hasCompletedDemoTour("investments_overview");
-
   const tabItems: TabItem[] = useMemo(
     () => [
       {
@@ -188,7 +171,6 @@ export function DemoTrackSelectModal({
               stepsCount={8}
               icon={Wallet}
               iconColorClass="text-positive-strong"
-              isCompleted={financesOverviewCompleted}
               isPrimary={true}
               onSelect={handleSelectTrack}
             />
@@ -205,7 +187,6 @@ export function DemoTrackSelectModal({
                   stepsCount={3}
                   icon={PlusCircle}
                   iconColorClass="text-primary"
-                  isCompleted={hasCompletedDemoTour("finances_wizard")}
                   onSelect={handleSelectTrack}
                 />
                 <TourCardItem
@@ -215,7 +196,6 @@ export function DemoTrackSelectModal({
                   stepsCount={3}
                   icon={CreditCard}
                   iconColorClass="text-warning-strong"
-                  isCompleted={hasCompletedDemoTour("finances_cards")}
                   onSelect={handleSelectTrack}
                 />
                 <TourCardItem
@@ -225,7 +205,6 @@ export function DemoTrackSelectModal({
                   stepsCount={3}
                   icon={Coins}
                   iconColorClass="text-negative-strong"
-                  isCompleted={hasCompletedDemoTour("finances_debts")}
                   onSelect={handleSelectTrack}
                 />
                 <TourCardItem
@@ -235,7 +214,6 @@ export function DemoTrackSelectModal({
                   stepsCount={3}
                   icon={PieChart}
                   iconColorClass="text-negative-strong"
-                  isCompleted={hasCompletedDemoTour("finances_budgets")}
                   onSelect={handleSelectTrack}
                 />
                 <TourCardItem
@@ -245,7 +223,6 @@ export function DemoTrackSelectModal({
                   stepsCount={3}
                   icon={Lightbulb}
                   iconColorClass="text-primary"
-                  isCompleted={hasCompletedDemoTour("finances_insights")}
                   onSelect={handleSelectTrack}
                 />
               </div>
@@ -258,11 +235,6 @@ export function DemoTrackSelectModal({
         label: "Finanças Compartilhadas",
         shortLabel: "Compartilhadas",
         icon: <Users className="size-4 text-primary" aria-hidden="true" />,
-        badge: (
-          <Badge variant="default" size="xs">
-            Destaque
-          </Badge>
-        ),
         content: (
           <div className="space-y-4 pt-3 pb-1">
             {/* Visão Geral Finanças Compartilhadas */}
@@ -273,9 +245,7 @@ export function DemoTrackSelectModal({
               stepsCount={4}
               icon={Users}
               iconColorClass="text-primary"
-              isCompleted={sharedFinancesCompleted}
               isPrimary={true}
-              badge="Destaque"
               onSelect={handleSelectTrack}
             />
 
@@ -296,7 +266,6 @@ export function DemoTrackSelectModal({
                   stepsCount={6}
                   icon={Share2}
                   iconColorClass="text-positive-strong"
-                  isCompleted={hasCompletedDemoTour("finances_split")}
                   onSelect={handleSelectTrack}
                 />
                 <TourCardItem
@@ -306,7 +275,6 @@ export function DemoTrackSelectModal({
                   stepsCount={2}
                   icon={Users}
                   iconColorClass="text-primary"
-                  isCompleted={hasCompletedDemoTour("finances_family")}
                   onSelect={handleSelectTrack}
                 />
                 <TourCardItem
@@ -316,7 +284,6 @@ export function DemoTrackSelectModal({
                   stepsCount={2}
                   icon={Target}
                   iconColorClass="text-portfolio"
-                  isCompleted={hasCompletedDemoTour("finances_goals")}
                   onSelect={handleSelectTrack}
                 />
               </div>
@@ -339,7 +306,6 @@ export function DemoTrackSelectModal({
               stepsCount={5}
               icon={TrendingUp}
               iconColorClass="text-portfolio"
-              isCompleted={investmentsOverviewCompleted}
               isPrimary={true}
               onSelect={handleSelectTrack}
             />
@@ -356,7 +322,6 @@ export function DemoTrackSelectModal({
                   stepsCount={2}
                   icon={Briefcase}
                   iconColorClass="text-portfolio"
-                  isCompleted={hasCompletedDemoTour("investments_assets")}
                   onSelect={handleSelectTrack}
                 />
                 <TourCardItem
@@ -366,7 +331,6 @@ export function DemoTrackSelectModal({
                   stepsCount={2}
                   icon={Target}
                   iconColorClass="text-positive-strong"
-                  isCompleted={hasCompletedDemoTour("investments_targets")}
                   onSelect={handleSelectTrack}
                 />
                 <TourCardItem
@@ -376,7 +340,6 @@ export function DemoTrackSelectModal({
                   stepsCount={2}
                   icon={Calculator}
                   iconColorClass="text-primary"
-                  isCompleted={hasCompletedDemoTour("investments_aporte")}
                   onSelect={handleSelectTrack}
                 />
               </div>
@@ -398,7 +361,6 @@ export function DemoTrackSelectModal({
               stepsCount={5}
               icon={Settings}
               iconColorClass="text-muted-foreground"
-              isCompleted={hasCompletedDemoTour("settings_support")}
               isPrimary={true}
               onSelect={handleSelectTrack}
             />
@@ -406,12 +368,7 @@ export function DemoTrackSelectModal({
         ),
       },
     ],
-    [
-      financesOverviewCompleted,
-      sharedFinancesCompleted,
-      investmentsOverviewCompleted,
-      handleSelectTrack,
-    ],
+    [handleSelectTrack],
   );
 
   return (
@@ -457,16 +414,9 @@ export function DemoTrackSelectModal({
                       Exclusivo APK
                     </Badge>
                   </div>
-                  {nativeCompleted ? (
-                    <Badge variant="positive" size="xs" className="gap-1 shrink-0">
-                      <Check className="size-3" aria-hidden="true" />
-                      <span>Concluído</span>
-                    </Badge>
-                  ) : (
-                    <Badge variant="muted" size="xs" className="shrink-0">
-                      4 passos
-                    </Badge>
-                  )}
+                  <Badge variant="muted" size="xs" className="shrink-0">
+                    4 passos
+                  </Badge>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2">
                   O Tripé de Plataformas, leitor passivo de notificações bancárias, biometria física e escudo anti-print.
