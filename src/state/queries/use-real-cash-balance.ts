@@ -4,22 +4,24 @@ import { shiftMonth } from "@/lib/date";
 import {
   calculateRealCashBalance,
   calculateSafeToSpend,
+  breakdownCycleObligations,
   type CashCheckpointData,
   type RealCashBalanceResult,
   type SafeToSpendResult,
+  type CycleObligationsBreakdown,
 } from "@/domain/cash";
-import { openInvoicesTotal } from "@/domain/overview";
-import { numberToCents } from "@/domain/money";
 import { useLatestCashCheckpoint } from "./use-cash-checkpoints";
 import { useIncomesByRange } from "./use-incomes";
 import { useExpensesByRange } from "./use-expenses";
 import { useAllCardPayments, useAllCardExpenses } from "./use-overview";
+import { useCreditCards } from "./use-credit-cards";
 import { useDebts } from "./use-debts";
 import { usePortfolioContributions } from "./use-portfolio";
 
 export interface UseRealCashBalanceResult {
   cashBalance: RealCashBalanceResult;
   safeToSpend: SafeToSpendResult;
+  cycleBreakdown: CycleObligationsBreakdown;
   isLoading: boolean;
   error: unknown;
   refetch: () => Promise<void>;
@@ -39,6 +41,7 @@ export function useRealCashBalance(referenceDate: string = todayISO()): UseRealC
 
   const incomesQuery = useIncomesByRange(startDate, endDate);
   const expensesQuery = useExpensesByRange(startDate, endDate);
+  const cardsQuery = useCreditCards();
   const cardPaymentsQuery = useAllCardPayments();
   const cardExpensesQuery = useAllCardExpenses();
   const debtsQuery = useDebts();
@@ -48,6 +51,7 @@ export function useRealCashBalance(referenceDate: string = todayISO()): UseRealC
     checkpointQuery.isLoading ||
     incomesQuery.isLoading ||
     expensesQuery.isLoading ||
+    cardsQuery.isLoading ||
     cardPaymentsQuery.isLoading ||
     cardExpensesQuery.isLoading ||
     debtsQuery.isLoading ||
@@ -57,6 +61,7 @@ export function useRealCashBalance(referenceDate: string = todayISO()): UseRealC
     checkpointQuery.error ??
     incomesQuery.error ??
     expensesQuery.error ??
+    cardsQuery.error ??
     cardPaymentsQuery.error ??
     cardExpensesQuery.error ??
     debtsQuery.error ??
@@ -93,47 +98,34 @@ export function useRealCashBalance(referenceDate: string = todayISO()): UseRealC
     referenceDate,
   ]);
 
-  const safeToSpend = useMemo(() => {
-    const debts = debtsQuery.data ?? [];
-    const currentMonthRangeEnd = `${shiftMonth(currentMonthStr, 1)}-01`;
-
-    const payablePendingCents = debts
-      .filter(
-        (d) =>
-          d.type === "payable" &&
-          d.paid_at === null &&
-          d.due_date <= currentMonthRangeEnd,
-      )
-      .reduce((acc, d) => acc + numberToCents(d.amount), 0);
-
-    const receivablePendingCents = debts
-      .filter(
-        (d) =>
-          d.type === "receivable" &&
-          d.paid_at === null &&
-          d.due_date <= currentMonthRangeEnd,
-      )
-      .reduce((acc, d) => acc + numberToCents(d.amount), 0);
-
-    const openInvoicesCents = openInvoicesTotal(
-      cardExpensesQuery.data ?? [],
-      cardPaymentsQuery.data ?? [],
+  const cycleBreakdown = useMemo(() => {
+    return breakdownCycleObligations({
+      cards: cardsQuery.data ?? [],
+      cardExpenses: cardExpensesQuery.data ?? [],
+      cardPayments: cardPaymentsQuery.data ?? [],
+      debts: debtsQuery.data ?? [],
       referenceDate,
-    );
-
-    return calculateSafeToSpend({
-      realCashBalanceCents: cashBalance.currentBalanceCents,
-      openInvoicesCents,
-      payablePendingCents,
-      receivablePendingCents,
     });
   }, [
-    debtsQuery.data,
-    currentMonthStr,
+    cardsQuery.data,
     cardExpensesQuery.data,
     cardPaymentsQuery.data,
+    debtsQuery.data,
     referenceDate,
+  ]);
+
+  const safeToSpend = useMemo(() => {
+    return calculateSafeToSpend({
+      realCashBalanceCents: cashBalance.currentBalanceCents,
+      openInvoicesCents: cycleBreakdown.openInvoicesCents,
+      payablePendingCents: cycleBreakdown.payableDebtsCents,
+      receivablePendingCents: cycleBreakdown.receivablePendingCents,
+    });
+  }, [
     cashBalance.currentBalanceCents,
+    cycleBreakdown.openInvoicesCents,
+    cycleBreakdown.payableDebtsCents,
+    cycleBreakdown.receivablePendingCents,
   ]);
 
   const refetch = async () => {
@@ -141,6 +133,7 @@ export function useRealCashBalance(referenceDate: string = todayISO()): UseRealC
       checkpointQuery.refetch(),
       incomesQuery.refetch(),
       expensesQuery.refetch(),
+      cardsQuery.refetch(),
       cardPaymentsQuery.refetch(),
       cardExpensesQuery.refetch(),
       debtsQuery.refetch(),
@@ -151,6 +144,7 @@ export function useRealCashBalance(referenceDate: string = todayISO()): UseRealC
   return {
     cashBalance,
     safeToSpend,
+    cycleBreakdown,
     isLoading,
     error,
     refetch,

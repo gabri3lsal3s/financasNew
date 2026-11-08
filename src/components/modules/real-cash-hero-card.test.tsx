@@ -3,6 +3,16 @@ import { describe, expect, it, vi } from "vitest";
 import { RealCashHeroCard } from "./real-cash-hero-card";
 import type { UseRealCashBalanceResult } from "@/state";
 
+const navigateMock = vi.fn();
+
+vi.mock("react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router")>();
+  return {
+    ...actual,
+    useNavigate: () => navigateMock,
+  };
+});
+
 vi.mock("@/state", () => ({
   useUserSubscription: () => ({
     canWrite: true,
@@ -41,6 +51,34 @@ describe("RealCashHeroCard", () => {
       safeToSpendWithBudgetsCents: 392000,
       safeToSpendWithReceivablesCents: 392000,
     },
+    cycleBreakdown: {
+      invoices: [
+        {
+          cardId: "c1",
+          cardName: "Nubank",
+          cardColor: "#8A05BE",
+          competenceMonth: "2026-08",
+          dueDate: "2026-08-25",
+          saldoCents: 120000,
+        },
+      ],
+      openInvoicesCents: 120000,
+      payableDebts: [
+        {
+          id: "d1",
+          name: "Boleto de Energia",
+          dueDate: "2026-08-28",
+          amountCents: 30000,
+          isOverdue: false,
+          type: "payable",
+        },
+      ],
+      payableDebtsCents: 30000,
+      committedObligationsCents: 150000,
+      receivableDebts: [],
+      receivablePendingCents: 0,
+      futureDebts: { count: 1, totalCents: 50000 },
+    },
     isLoading: false,
     error: null,
     refetch: vi.fn(),
@@ -56,6 +94,19 @@ describe("RealCashHeroCard", () => {
     expect(screen.getByText(/1\.500,00/)).toBeInTheDocument();
     expect(screen.getByText("Saldo Livre Real:")).toBeInTheDocument();
     expect(screen.getByText(/3\.920,00/)).toBeInTheDocument();
+  });
+
+  it("abre o diálogo de detalhamento das obrigações do ciclo ao clicar no botão de obrigações", () => {
+    render(<RealCashHeroCard realCashData={mockRealCashData} />);
+
+    const obligationsBtn = screen.getByRole("button", {
+      name: "Ver detalhamento das faturas e contas a pagar do ciclo",
+    });
+    fireEvent.click(obligationsBtn);
+
+    expect(screen.getByText("Obrigações do Ciclo Atual")).toBeInTheDocument();
+    expect(screen.getByText("Nubank")).toBeInTheDocument();
+    expect(screen.getByText("Boleto de Energia")).toBeInTheDocument();
   });
 
   it("abre o diálogo de calibração ao clicar em 'Calibrar com o banco'", () => {

@@ -69,6 +69,8 @@ export { PaceAlertBanner } from "./pace-alert-banner";
 export type { PaceAlertBannerProps } from "./pace-alert-banner";
 export { RealCashHeroCard } from "./real-cash-hero-card";
 export type { RealCashHeroCardProps } from "./real-cash-hero-card";
+export { CycleObligationsDialog } from "./cycle-obligations-dialog";
+export type { CycleObligationsDialogProps } from "./cycle-obligations-dialog";
 export { CashCheckpointDialog } from "./cash-checkpoint-dialog";
 export type { CashCheckpointDialogProps } from "./cash-checkpoint-dialog";
 export { SurplusAporteBanner } from "./surplus-aporte-banner";

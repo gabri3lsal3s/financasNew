@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Landmark, Scale, ShieldCheck, ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { Landmark, Scale, ShieldCheck, ArrowDownRight, ArrowUpRight, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { UseRealCashBalanceResult } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { CashCheckpointDialog } from "./cash-checkpoint-dialog";
+import { CycleObligationsDialog } from "./cycle-obligations-dialog";
 
 export interface RealCashHeroCardProps {
   realCashData: UseRealCashBalanceResult;
@@ -23,6 +24,7 @@ export interface RealCashHeroCardProps {
  */
 export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealCashHeroCardProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
   const { guardAction, upgradeModal } = useMutationGuard();
   const { cashBalance, safeToSpend } = realCashData;
 
@@ -97,19 +99,28 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
             hasReceivables ? "sm:grid-cols-3" : "sm:grid-cols-2",
           )}
         >
-          <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0">
-            <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
+          <button
+            type="button"
+            onClick={() => setBreakdownOpen(true)}
+            className="flex items-center justify-between sm:justify-start gap-2 min-w-0 -m-1 p-1 rounded-lg hover:bg-surface/80 active:bg-surface transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group"
+            aria-label="Ver detalhamento das faturas e contas a pagar do ciclo"
+            title="Clique para ver o detalhamento das obrigações do ciclo"
+          >
+            <div className="flex items-center gap-1.5 text-muted-foreground group-hover:text-foreground transition-colors min-w-0">
               <ArrowDownRight className="size-3.5 shrink-0 text-negative" aria-hidden="true" />
               <span className="truncate hidden sm:inline">Faturas e contas a pagar do ciclo (bruto):</span>
               <span className="truncate sm:hidden">Obrigações do ciclo:</span>
             </div>
-            <MoneyText
-              cents={safeToSpend.committedObligationsCents}
-              tone="negative"
-              animated
-              className="font-medium shrink-0"
-            />
-          </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <MoneyText
+                cents={safeToSpend.committedObligationsCents}
+                tone="negative"
+                animated
+                className="font-medium shrink-0 group-hover:underline decoration-negative/40 underline-offset-2"
+              />
+              <ChevronRight className="size-3 text-muted-foreground/60 group-hover:text-foreground transition-colors shrink-0" aria-hidden="true" />
+            </div>
+          </button>
 
           {hasReceivables && (
             <div className="flex items-center justify-between sm:justify-center gap-2 pt-1.5 sm:pt-0 border-t border-border/40 sm:border-t-0 min-w-0">
@@ -141,6 +152,12 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
           </div>
         </div>
       </div>
+
+      <CycleObligationsDialog
+        open={breakdownOpen}
+        onOpenChange={setBreakdownOpen}
+        breakdown={realCashData.cycleBreakdown}
+      />
 
       {!onCalibrate && (
         <CashCheckpointDialog
