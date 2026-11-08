@@ -52,7 +52,7 @@ export function TripDetailsPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto space-y-4 p-4 sm:p-6">
+      <div className="space-y-6">
         <Skeleton className="h-8 w-32" />
         <Skeleton className="h-28 w-full rounded-2xl" />
         <Skeleton className="h-20 w-full rounded-xl" />
@@ -267,7 +267,7 @@ export function TripDetailsPage() {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5 p-4 sm:p-6 pb-20">
+    <div className="space-y-6">
       {/* Botão de Retorno */}
       <Link
         to="/viagens"
