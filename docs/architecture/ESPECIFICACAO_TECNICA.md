@@ -356,7 +356,7 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
   - *Apuração Canônica e Auditada de Faturas:* faturas de cartão utilizam estritamente o motor canônico `buildCompetenceSummaries` de `@/domain/cards` cruzando despesas e pagamentos, filtrando apenas saldos em aberto (`saldoCents > 0`) e mantendo suas datas nominais reais via `invoiceDueDate(competence, dueDay)`. Faturas já quitadas são excluídas do radar e faturas passadas fora da janela semanal de 7 dias não são forçadas para hoje.
   - *Salvaguarda Estrita de Hidratação:* enquanto queries essenciais (`cards`, `cardExpenses`, `cardPayments`, `debts`) estiverem carregando ou nulas, o radar retorna resumo vazio seguro, impedindo falsos positivos por pagamentos ainda não carregados.
   - *Regra de Ouro da Home:* em empty state (quando não houver nenhuma obrigação a vencer nos próximos 7 dias), o card é estritamente auto-ocultado (`return null`), mantendo o dashboard 100% limpo e calmo.
-  - *Planejamento Futuro (Fases 3 a 6):* especificação detalhada de Metas com Vínculo Patrimonial, Auditoria de Assinaturas com Reajuste, Busca Global e Ações em Notificações Nativas disponível no documento canônico `docs/roadmap/PLANO_FUNCIONALIDADES_FUTURAS.md`.
+  - *Planejamento Futuro (Plano 12):* especificação detalhada de Metas com Vínculo Patrimonial, Auditoria de Assinaturas com Reajuste, Busca Global e Ações em Notificações Nativas disponível no documento canônico `planos/12_PLANO_EXPANSAO_AUTOMACAO_RADAR_METAS_E_BUSCA_UNIVERSAL.md`.
 
 
 

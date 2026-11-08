@@ -6,12 +6,12 @@
 >   - Erradicação de falsos positivos com faturas já quitadas que apareciam como "Vence hoje" com valores antigos;
 >   - Inserção de salvaguarda de hidratação estrita: o radar só calcula obrigações após o término do carregamento de todas as queries essenciais (`cards`, `cardExpenses`, `cardPayments`, `debts`), evitando transientes com `payments = []`;
 >   - Novos testes unitários em `weekly-radar.test.ts` cobrindo faturas pagas e faturas com vencimento antigo fora do horizonte semanal;
-> - **(2) Planejamento Executivo Canônico das Fases 3 a 6 (`docs/roadmap/PLANO_FUNCIONALIDADES_FUTURAS.md`)**:
->   - Estruturação completa em etapas, regras de domínio, contratos de dados e portões de qualidade (QG) para:
->     - *Fase 3:* Destinar Sobra do Mês para Metas com Vínculo Patrimonial a Ativos da Carteira;
->     - *Fase 4:* Auditoria de Assinaturas e Planos Fixos no Extrato com Alerta de Reajuste;
->     - *Fase 5:* Busca Global Universal com Intenções Determinísticas Rápidas (< 15ms);
->     - *Fase 6:* Ações Diretas em Notificações Nativas do Android APK (`[Pagar no App]`, `[Adiar 3 Dias]`).
+> - **(2) Planejamento Executivo Canônico das Próximas Fases (`planos/12_PLANO_EXPANSAO_AUTOMACAO_RADAR_METAS_E_BUSCA_UNIVERSAL.md`)**:
+>   - Estruturação completa em checklists, regras de domínio, contratos de dados, análise de fragilidades/soluções e portões de qualidade (QG0 a QG6) para:
+>     - *Fase 1:* Destinar Sobra do Mês para Metas com Vínculo Patrimonial a Ativos da Carteira;
+>     - *Fase 2:* Auditoria de Assinaturas e Planos Fixos no Extrato com Alerta de Reajuste;
+>     - *Fase 3:* Busca Global Universal com Intenções Determinísticas Rápidas (< 15ms);
+>     - *Fase 4:* Ações Diretas em Notificações Nativas do Android APK (`[Pagar no App]`, `[Adiar 3 Dias]`).
 > - **(3) Qualidade 100% Verde e Governança**:
 >   - 43/43 testes automatizados aprovados, typecheck estrito (`tsc -b`) e lint sem advertências.
 >
