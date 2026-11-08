@@ -93,7 +93,21 @@ vi.mock("@/state", () => ({
   useReallocateBudget: () => ({ mutateAsync: reallocateMock, isPending: false }),
   useMyPublicShares: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useDeletePublicShare: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdatePublicShare: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRealCashBalance: () => ({
+    cashBalance: { currentBalanceCents: 0, pendingExpensesCents: 0, freeCashCents: 0 },
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
+  usePortfolioPosition: () => ({
+    rows: [],
+    isLoading: false,
+    summary: null,
+  }),
 }));
+
+
 
 describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
   beforeEach(() => {

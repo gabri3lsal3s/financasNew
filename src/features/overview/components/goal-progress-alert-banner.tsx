@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle2, Plus, Sparkles, Target } from "lucide-react";
+import { ArrowRight, CheckCircle2, Plus, Sparkles, Target, X } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ export interface GoalProgressAlertBannerProps {
   surplusCents?: number | null;
   onOpenDeposit: (share: PublicShare) => void;
   onNavigateGoals?: () => void;
+  onDismiss?: () => void;
   className?: string;
 }
 
@@ -20,6 +21,7 @@ export function GoalProgressAlertBanner({
   surplusCents,
   onOpenDeposit,
   onNavigateGoals,
+  onDismiss,
   className,
 }: GoalProgressAlertBannerProps) {
   const payload = goalShare.payload ?? {};
@@ -38,12 +40,18 @@ export function GoalProgressAlertBanner({
     onOpenDeposit(goalShare);
   };
 
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    triggerSensory("action");
+    onDismiss?.();
+  };
+
   return (
     <div
       role="region"
       aria-label={`Alerta da meta ${title}`}
       className={cn(
-        "w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 shadow-xs transition-all text-foreground",
+        "relative w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 shadow-xs transition-all text-foreground",
         isCompleted
           ? "border-positive/30 bg-positive/5"
           : isFinalStretch
@@ -52,7 +60,7 @@ export function GoalProgressAlertBanner({
         className,
       )}
     >
-      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+      <div className="flex items-start sm:items-center gap-3 min-w-0 pr-6 sm:pr-0 flex-1">
         <span
           className={cn(
             "flex size-9 shrink-0 items-center justify-center rounded-xl border",
@@ -144,6 +152,18 @@ export function GoalProgressAlertBanner({
             <span>Ver Meta</span>
             <ArrowRight className="size-3.5" aria-hidden="true" />
           </Button>
+        )}
+
+        {onDismiss && (
+          <button
+            type="button"
+            onClick={handleDismiss}
+            className="absolute top-3 right-3 sm:static flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors cursor-pointer shrink-0"
+            aria-label={`Dispensar alerta da meta ${title}`}
+            title="Dispensar aviso"
+          >
+            <X className="size-4" aria-hidden="true" />
+          </button>
         )}
       </div>
     </div>

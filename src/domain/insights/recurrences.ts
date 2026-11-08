@@ -235,13 +235,38 @@ export function detectDuplicateChargesInMonth(
 
 export type RecurrenceLifecycle = "active" | "lapsed";
 
+export type RecurrenceCadence =
+  | "weekly"
+  | "monthly"
+  | "bimonthly"
+  | "quarterly"
+  | "quadrimonthly"
+  | "semiannual"
+  | "annual";
+
+export const RECURRENCE_CADENCE_LABELS: Record<RecurrenceCadence, string> = {
+  weekly: "Semanal",
+  monthly: "Mensal",
+  bimonthly: "Bimestral",
+  quarterly: "Trimestral",
+  quadrimonthly: "Quadrimestral",
+  semiannual: "Semestral",
+  annual: "Anual",
+};
+
 export interface RecurrenceOccurrence {
   /** Chave estável para aprendizado/feedback (nome normalizado). */
   key: string;
   name: string;
   level: RecurrenceKind;
-  /** Cadência temporal da recorrência (padrão mensal; suporta semanal e anual F21). */
-  cadence?: "monthly" | "weekly" | "annual";
+  /** Cadência temporal da recorrência (padrão mensal; suporta semanal, bimestral, trimestral, semestral e anual). */
+  cadence?: RecurrenceCadence;
+  /** Intervalo em meses entre cobranças sucessivas (1 para mensal, 2 para bimestral, 3 para trimestral, etc.). */
+  intervalMonths?: number;
+  /** Valor médio por ciclo de cobrança (centavos). */
+  cycleValueCents?: number;
+  /** Custo mensal amortizado/proporcional (centavos) para planejamento orçamentário. */
+  monthlyAmortizedCents?: number;
   /** Custo mensal consolidado quando a periodicidade for semanal (F21). */
   monthlyConsolidatedCents?: number;
   /** Segmento do serviço (streaming, fitness, cloud_ai, etc.). */
@@ -426,7 +451,8 @@ export function calculateRecurringTotals(
     savingsIfCutCents?: number;
     level?: string;
     lifecycle?: RecurrenceLifecycle;
-    cadence?: "monthly" | "weekly" | "annual";
+    cadence?: RecurrenceCadence;
+    monthlyAmortizedCents?: number;
     monthlyConsolidatedCents?: number;
   }[],
 ): RecurringTotalsResult {
@@ -441,7 +467,7 @@ export function calculateRecurringTotals(
     const effectiveMonthly =
       o.cadence === "weekly" && o.monthlyConsolidatedCents != null
         ? o.monthlyConsolidatedCents
-        : o.averageCents;
+        : (o.monthlyAmortizedCents ?? o.averageCents);
 
     totalRecurringCents += effectiveMonthly;
     if (o.tier === "can_cut") {
@@ -627,35 +653,106 @@ export function calculateTypicalDay(dates: readonly (string | undefined)[]): num
 }
 
 /**
+ * Calcula a diferença em meses entre duas competências no formato YYYY-MM (to - from).
+ */
+export function diffMonths(fromYearMonth: string, toYearMonth: string): number {
+  if (!fromYearMonth || !toYearMonth) return 0;
+  const [y1, m1] = fromYearMonth.slice(0, 7).split("-").map(Number);
+  const [y2, m2] = toYearMonth.slice(0, 7).split("-").map(Number);
+  if (!y1 || !m1 || !y2 || !m2) return 0;
+  return (y2 - y1) * 12 + (m2 - m1);
+}
+
+/**
+ * Calcula a lista de intervalos em meses entre meses sucessivos ordenados cronologicamente.
+ */
+export function calculateMonthIntervals(months: readonly string[]): number[] {
+  if (months.length < 2) return [];
+  const sorted = [...new Set(months.map((m) => m.slice(0, 7)))].sort();
+  const intervals: number[] = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const diff = diffMonths(sorted[i - 1]!, sorted[i]!);
+    if (diff > 0) {
+      intervals.push(diff);
+    }
+  }
+  return intervals;
+}
+
+/**
+ * Infere determinísticamente a cadência temporal da recorrência com base na mediana dos intervalos de meses.
+ */
+export function inferRecurrenceCadence(intervals: readonly number[]): {
+  cadence: RecurrenceCadence;
+  intervalMonths: number;
+} {
+  if (intervals.length === 0) {
+    return { cadence: "monthly", intervalMonths: 1 };
+  }
+  const med = medianOf(intervals);
+  if (med <= 1) {
+    return { cadence: "monthly", intervalMonths: 1 };
+  }
+  if (med === 2) {
+    return { cadence: "bimonthly", intervalMonths: 2 };
+  }
+  if (med === 3) {
+    return { cadence: "quarterly", intervalMonths: 3 };
+  }
+  if (med === 4) {
+    return { cadence: "quadrimonthly", intervalMonths: 4 };
+  }
+  if (med >= 5 && med <= 8) {
+    return { cadence: "semiannual", intervalMonths: 6 };
+  }
+  if (med >= 9 && med <= 14) {
+    return { cadence: "annual", intervalMonths: 12 };
+  }
+  return { cadence: "monthly", intervalMonths: Math.max(1, med) };
+}
+
+/**
  * Estima a próxima data de cobrança e a contagem de dias restantes.
- * Identifica também o ciclo de vida da recorrência (active vs lapsed).
+ * Identifica também o ciclo de vida da recorrência (active vs lapsed)
+ * com base na cadência esperada (intervalMonths).
  */
 export function estimateNextDueDate(
   typicalDay: number,
   latestMonthCharged: string,
   todayISO?: string,
+  intervalMonths: number = 1,
 ): { nextDueDate?: string; daysUntilNextDue?: number; missingThisMonth?: boolean; lifecycle?: RecurrenceLifecycle } {
   if (!todayISO || todayISO.length < 10) return { lifecycle: "active" };
   const currentMonth = todayISO.slice(0, 7);
   const currentDay = parseInt(todayISO.slice(8, 10), 10);
 
-  // Se a última cobrança ocorreu antes do mês imediatamente anterior (M-1),
-  // a despesa cessou/parou há 2+ meses (lapsed/churned).
+  // Distância em meses entre a última cobrança e o mês atual
+  const elapsedMonths = diffMonths(latestMonthCharged, currentMonth);
+
+  // Se a última cobrança ocorreu há mais de (intervalMonths + 1) meses,
+  // a despesa cessou/parou (lapsed/churned).
   // Não projeta cobrança futura no mês atual nem gera falso alerta de pendência.
-  const prevMonth = shiftMonth(currentMonth, -1);
-  if (latestMonthCharged && latestMonthCharged < prevMonth) {
+  if (latestMonthCharged && elapsedMonths > intervalMonths + 1) {
     return {
       lifecycle: "lapsed",
       missingThisMonth: false,
     };
   }
 
-  let targetYearMonth = currentMonth;
+  let targetYearMonth: string;
   const alreadyChargedThisMonth = latestMonthCharged >= currentMonth;
 
   if (alreadyChargedThisMonth) {
-    // Já cobrada neste mês -> próxima cobrança é no mês seguinte
-    targetYearMonth = shiftMonth(currentMonth, 1);
+    // Já cobrada neste ciclo/mês -> próxima cobrança é no ciclo seguinte
+    targetYearMonth = shiftMonth(latestMonthCharged, intervalMonths);
+  } else {
+    // Se a última cobrança ocorreu dentro do intervalo esperado, projeta a próxima data a partir da última
+    const nextProjected = shiftMonth(latestMonthCharged, intervalMonths);
+    if (nextProjected >= currentMonth) {
+      targetYearMonth = nextProjected;
+    } else {
+      targetYearMonth = currentMonth;
+    }
   }
 
   const [targetYearStr, targetMonthStr] = targetYearMonth.split("-");
@@ -670,8 +767,9 @@ export function estimateNextDueDate(
   const nextDate = new Date(`${nextDueDate}T00:00:00`);
   const daysUntilNextDue = Math.round((nextDate.getTime() - todayDate.getTime()) / 86_400_000);
 
-  // Considera ausente/pendente se não foi cobrada neste mês e o dia típico já passou
-  const missingThisMonth = !alreadyChargedThisMonth && currentDay > typicalDay;
+  // Considera ausente/pendente se não foi cobrada no ciclo atual, a cobrança prevista é para este mês e o dia típico já passou
+  const isDueInCurrentMonth = targetYearMonth === currentMonth;
+  const missingThisMonth = !alreadyChargedThisMonth && isDueInCurrentMonth && currentDay > typicalDay;
 
   return { nextDueDate, daysUntilNextDue, missingThisMonth, lifecycle: "active" };
 }
@@ -753,17 +851,25 @@ export function detectRecurrences(
     const averageMonthlyCents = Math.round(monthlyTotals.reduce((acc, v) => acc + v, 0) / monthlyTotals.length);
     const categoryIcons = [...new Set(group.map((e) => e.categoryIcon))];
 
+    // Cálculo dos intervalos entre meses e inferência determinística da cadência
+    const intervals = calculateMonthIntervals(months);
+    const { cadence: detectedCadence, intervalMonths } = inferRecurrenceCadence(intervals);
+
+    // Amortização contábil mensal (custo por mês para o orçamento)
+    const monthlyAmortizedCents = Math.round(averageMonthlyCents / intervalMonths);
+
     // Diagnóstico de cobranças duplicadas e reajustes no mês mais recente (Fase 4, Tarefa 4.3).
     const latestMonth = months[months.length - 1];
     const latestExpenses = latestMonth ? (monthMap.get(latestMonth) ?? []) : [];
 
-    // Previsão temporal de próximo vencimento e dia típico
+    // Previsão temporal de próximo vencimento e dia típico com respeito à cadência
     const dates = group.map((e) => e.date).filter(Boolean);
     const typicalDayOfMonth = calculateTypicalDay(dates);
     const { nextDueDate, daysUntilNextDue, missingThisMonth, lifecycle } = estimateNextDueDate(
       typicalDayOfMonth,
       latestMonth ?? "",
       todayISO,
+      intervalMonths,
     );
 
     // subscription: usa a árvore de decisão de assinaturas (nome conhecido
@@ -872,6 +978,10 @@ export function detectRecurrences(
         key: subKey,
         name: cleanDisplayName,
         level: "subscription",
+        cadence: detectedCadence,
+        intervalMonths,
+        cycleValueCents: averageMonthlyCents,
+        monthlyAmortizedCents,
         segment: subscription.segment,
         lifecycle,
         latestMonthCharged: latestMonth,
@@ -918,6 +1028,10 @@ export function detectRecurrences(
         key: recurringKey,
         name: cleanDisplayName,
         level: "recurring",
+        cadence: detectedCadence,
+        intervalMonths,
+        cycleValueCents: averageMonthlyCents,
+        monthlyAmortizedCents,
         segment,
         lifecycle,
         latestMonthCharged: latestMonth,
@@ -1174,5 +1288,147 @@ export function detectIncomeRecurrences(
   }
 
   return occurrences.sort((a, b) => b.confidence - a.confidence);
+}
+
+export interface ExpensePriceEvolutionItem {
+  id: string;
+  date: string;
+  amountCents: number;
+}
+
+export interface ExpensePriceEvolution {
+  currentCents: number;
+  previousCents: number | null;
+  deltaPreviousCents: number | null;
+  deltaPreviousPercent: number | null;
+  historicalMedianCents: number | null;
+  deltaMedianCents: number | null;
+  deltaMedianPercent: number | null;
+  firstOccurrenceDate: string | null;
+  firstOccurrenceCents: number | null;
+  deltaFirstCents: number | null;
+  deltaFirstPercent: number | null;
+  hasPriceIncrease: boolean;
+  history: ExpensePriceEvolutionItem[];
+}
+
+export function toExpenseLike(item: ExpenseLike | Expense): ExpenseLike {
+  if ("valueCents" in item && "month" in item) {
+    return item;
+  }
+  const exp = item as Expense;
+  return {
+    id: exp.id,
+    description: exp.description,
+    month: exp.date.slice(0, 7),
+    date: exp.date,
+    valueCents: exp.value,
+    categoryId: exp.category_id,
+    installmentGroupId: exp.installment_group_id,
+    recurrenceId: exp.recurrence_id,
+    paymentMethod: exp.payment_method,
+    cardId: exp.card_id,
+    rawExpense: exp,
+  };
+}
+
+/**
+ * Avalia puramente a evolução temporal de preços de um lançamento em relação ao seu histórico:
+ * 1. vs. Lançamento anterior imediato (ciclo anterior)
+ * 2. vs. Mediana histórica dos ciclos anteriores
+ * 3. vs. Primeira ocorrência registrada (marco zero)
+ */
+export function evaluateExpensePriceEvolution(
+  targetExpenseInput: ExpenseLike | Expense,
+  allExpensesInput: readonly (ExpenseLike | Expense)[],
+): ExpensePriceEvolution | null {
+  const targetExpense = toExpenseLike(targetExpenseInput);
+  if (!targetExpense || targetExpense.valueCents <= 0) return null;
+
+  const rawDesc = (targetExpense.description ?? "").trim();
+  if (!rawDesc) return null;
+
+  const targetServiceKey = findMatchingServiceKey(rawDesc);
+  const targetCleanKey = targetServiceKey ?? normalizeText(stripTemporalSuffixes(rawDesc));
+  if (!targetCleanKey) return null;
+
+  // Filtra lançamentos com a mesma chave normalizada, sem parcelamento e valor > 0
+  const related = allExpensesInput.map(toExpenseLike).filter((e) => {
+    if (e.valueCents <= 0) return false;
+    if (e.installmentGroupId != null) return false;
+    const desc = (e.description ?? "").trim();
+    if (!desc) return false;
+    const serviceKey = findMatchingServiceKey(desc);
+    const cleanKey = serviceKey ?? normalizeText(stripTemporalSuffixes(desc));
+    return cleanKey === targetCleanKey;
+  });
+
+  if (related.length < 2) return null;
+
+  // Ordena cronologicamente por data asc
+  const sorted = [...related].sort((a, b) => {
+    const dateA = a.date ?? `${a.month}-01`;
+    const dateB = b.date ?? `${b.month}-01`;
+    return dateA.localeCompare(dateB);
+  });
+
+  const history: ExpensePriceEvolutionItem[] = sorted.map((e) => ({
+    id: e.id,
+    date: e.date ?? `${e.month}-01`,
+    amountCents: e.valueCents,
+  }));
+
+  const targetIndex = sorted.findIndex((e) => e.id === targetExpense.id);
+  const currentIndex = targetIndex >= 0 ? targetIndex : sorted.length - 1;
+  if (currentIndex <= 0) return null;
+
+  const current = sorted[currentIndex]!;
+  const currentCents = current.valueCents;
+
+  const previousExpenses = sorted.slice(0, currentIndex);
+  const previous = previousExpenses[previousExpenses.length - 1]!;
+  const previousCents = previous.valueCents;
+  const deltaPreviousCents = currentCents - previousCents;
+  const deltaPreviousPercent =
+    previousCents > 0
+      ? Number((((currentCents - previousCents) / previousCents) * 100).toFixed(1))
+      : 0;
+
+  const previousValues = previousExpenses.map((e) => e.valueCents);
+  const historicalMedianCents = medianOf(previousValues);
+  const deltaMedianCents = currentCents - historicalMedianCents;
+  const deltaMedianPercent =
+    historicalMedianCents > 0
+      ? Number((((currentCents - historicalMedianCents) / historicalMedianCents) * 100).toFixed(1))
+      : 0;
+
+  const first = previousExpenses[0]!;
+  const firstOccurrenceDate = first.date ?? `${first.month}-01`;
+  const firstOccurrenceCents = first.valueCents;
+  const deltaFirstCents = currentCents - firstOccurrenceCents;
+  const deltaFirstPercent =
+    firstOccurrenceCents > 0
+      ? Number((((currentCents - firstOccurrenceCents) / firstOccurrenceCents) * 100).toFixed(1))
+      : 0;
+
+  // Limiar anti-câmbio/IOF: aumento real se deltaPreviousCents > 0 E (>= 3% OU >= R$ 3,00)
+  const hasPriceIncrease =
+    deltaPreviousCents > 0 && (deltaPreviousPercent >= 3 || deltaPreviousCents >= 300);
+
+  return {
+    currentCents,
+    previousCents,
+    deltaPreviousCents,
+    deltaPreviousPercent,
+    historicalMedianCents,
+    deltaMedianCents,
+    deltaMedianPercent,
+    firstOccurrenceDate,
+    firstOccurrenceCents,
+    deltaFirstCents,
+    deltaFirstPercent,
+    hasPriceIncrease,
+    history,
+  };
 }
 

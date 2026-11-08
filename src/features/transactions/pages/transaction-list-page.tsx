@@ -27,23 +27,21 @@ import {
   useIncomes,
   usePermission,
   useRecurrences,
-  useSubscriptionsAudit,
 } from "@/state";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS, RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import { sumGrossCents, sumWeightedCents } from "@/domain/money";
 import { buildUnifiedFeedItems, groupFeedByDay, type FeedFilter } from "@/domain/expenses";
 import { serializeUnifiedTransactionsCsv, type ExportUnifiedTransactionRow } from "@/domain/export";
+import { evaluateExpensePriceEvolution, type ExpensePriceEvolution } from "@/domain/insights";
 import {
   ActiveSplitsCard,
   ExpenseDetailDialog,
   IncomeDetailDialog,
   PriceIncreaseBadge,
-  SubscriptionsAuditCard,
 } from "@/features/transactions/components";
-import { SplitExpenseDialog, SubscriptionAdjustmentModal } from "@/components/modules";
+import { SplitExpenseDialog } from "@/components/modules";
 import { todayISO } from "@/domain/debts";
 import type { Category, Expense, Income } from "@/types";
-import type { AuditedSubscription } from "@/domain/subscriptions";
 
 
 function ExpenseRow({
@@ -51,8 +49,7 @@ function ExpenseRow({
   category,
   recurrenceLabel,
   isFamilyModeEnabled,
-  increaseSubscription,
-  onOpenIncreaseModal,
+  priceEvolution,
   onClick,
 }: {
   expense: Expense;
@@ -60,8 +57,7 @@ function ExpenseRow({
   /** Rótulo de frequência quando recorrente (Fase 32). */
   recurrenceLabel?: string;
   isFamilyModeEnabled?: boolean;
-  increaseSubscription?: AuditedSubscription;
-  onOpenIncreaseModal?: (sub: AuditedSubscription) => void;
+  priceEvolution?: ExpensePriceEvolution | null;
   onClick?: () => void;
 }) {
   const title = expense.description || category?.name || "Despesa";
@@ -88,11 +84,11 @@ function ExpenseRow({
               Familiar
             </Badge>
           )}
-          {increaseSubscription && (
+          {priceEvolution?.hasPriceIncrease && priceEvolution.deltaPreviousPercent != null && (
             <PriceIncreaseBadge
-              deltaPercent={increaseSubscription.deltaPercent}
-              annualizedImpactCents={increaseSubscription.annualizedImpactCents}
-              onClick={() => onOpenIncreaseModal?.(increaseSubscription)}
+              deltaPercent={priceEvolution.deltaPreviousPercent}
+              annualizedImpactCents={(priceEvolution.deltaPreviousCents ?? 0) * 12}
+              onClick={onClick}
             />
           )}
         </div>
@@ -201,22 +197,16 @@ export function TransactionListPage() {
   const [visibleCount, setVisibleCount] = useState(TRANSACTIONS_PAGE_SIZE);
   const [prevFilterKey, setPrevFilterKey] = useState(() => `${month}-${filter}-${searchQuery}`);
 
-  const subscriptionsAudit = useSubscriptionsAudit();
-  const [selectedSubscriptionForModal, setSelectedSubscriptionForModal] =
-    useState<AuditedSubscription | null>(null);
-
-  const increaseByExpenseId = useMemo(() => {
-    const map = new Map<string, AuditedSubscription>();
-    for (const sub of subscriptionsAudit.subscriptions) {
-      if (sub.hasPriceIncrease) {
-        const latestHistory = sub.history[sub.history.length - 1];
-        if (latestHistory) {
-          map.set(latestHistory.id, sub);
-        }
+  const priceEvolutionByExpenseId = useMemo(() => {
+    const map = new Map<string, ExpensePriceEvolution>();
+    for (const exp of expenses) {
+      const evo = evaluateExpensePriceEvolution(exp, expenses);
+      if (evo?.hasPriceIncrease) {
+        map.set(exp.id, evo);
       }
     }
     return map;
-  }, [subscriptionsAudit.subscriptions]);
+  }, [expenses]);
 
   // Redefine a paginação durante a renderização se os filtros mudarem (React: adjusting state during render)
   const currentFilterKey = `${month}-${filter}-${searchQuery}`;
@@ -521,15 +511,6 @@ export function TransactionListPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-3.5 sm:gap-4" data-tour="transactions-content">
-          {!isSearching && filter === "all" && subscriptionsAudit.subscriptions.length > 0 && (
-            <SubscriptionsAuditCard
-              subscriptions={subscriptionsAudit.subscriptions}
-              totalMonthlyCents={subscriptionsAudit.totalMonthlyCents}
-              totalAnnualizedIncreaseCents={subscriptionsAudit.totalAnnualizedIncreaseCents}
-              onSelectSubscription={(sub) => setSelectedSubscriptionForModal(sub)}
-            />
-          )}
-
           {feedGroups.map((group, index) => (
             <section
               key={group.date}
@@ -563,8 +544,7 @@ export function TransactionListPage() {
                         category={categoryById.get(item.categoryId)}
                         recurrenceLabel={recurrenceLabel(item.recurrenceId)}
                         isFamilyModeEnabled={isFamilyModeEnabled}
-                        increaseSubscription={increaseByExpenseId.get(item.rawExpense.id)}
-                        onOpenIncreaseModal={(sub) => setSelectedSubscriptionForModal(sub)}
+                        priceEvolution={priceEvolutionByExpenseId.get(item.rawExpense.id)}
                         onClick={() => setSelectedExpense(item.rawExpense!)}
                       />
                     ) : null}
@@ -706,16 +686,6 @@ export function TransactionListPage() {
           initialPeopleCount={4}
           categoryName="Lazer & Assinaturas"
           autoGenerate={false}
-        />
-      )}
-
-      {selectedSubscriptionForModal && (
-        <SubscriptionAdjustmentModal
-          open={selectedSubscriptionForModal !== null}
-          onOpenChange={(open) => {
-            if (!open) setSelectedSubscriptionForModal(null);
-          }}
-          subscription={selectedSubscriptionForModal}
         />
       )}
 

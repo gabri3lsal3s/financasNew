@@ -3,4 +3,4 @@ export { ExpenseDetailDialog } from "./expense-detail-dialog";
 export { IncomeDetailDialog } from "./income-detail-dialog";
 export { ReportWeightField } from "./report-weight-field";
 export { PriceIncreaseBadge } from "./price-increase-badge";
-export { SubscriptionsAuditCard } from "./subscriptions-audit-card";
+

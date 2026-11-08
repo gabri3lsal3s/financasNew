@@ -261,9 +261,45 @@ export type UserCustomSettings = {
   cardOrder?: string[];
   advisorDismissals?: Record<string, number>;
   advisorLastDismissedDay?: string | null;
+  dashboardAlertDismissals?: DashboardAlertDismissals;
   emergencyFundConfig?: EmergencyFundConfig;
   splitPreferences?: SplitPreferences;
   familyModeEnabled?: boolean;
+};
+
+export type GoalAlertStage = "completed" | "final_stretch" | "has_surplus" | "regular";
+
+export type GoalAlertDismissalCheckpoint = {
+  dismissedAt: string;
+  currentCents: number;
+  targetCents: number;
+  stage: GoalAlertStage;
+  percentage: number;
+  status?: string;
+};
+
+export type PaceAlertDismissalCheckpoint = {
+  dismissedAt: string;
+  month: string;
+  spentPercent: number;
+  surplusCents: number | null;
+};
+
+export type SurplusAlertDismissalCheckpoint = {
+  dismissedAt: string;
+  month: string;
+  surplusCents: number;
+};
+
+export type ZeroGuiltDismissalCheckpoint = {
+  dismissedAtDate: string;
+};
+
+export type DashboardAlertDismissals = {
+  goals?: Record<string, GoalAlertDismissalCheckpoint>;
+  pace?: PaceAlertDismissalCheckpoint;
+  surplus?: SurplusAlertDismissalCheckpoint;
+  zeroGuilt?: ZeroGuiltDismissalCheckpoint;
 };
 
 export type DeviceNotificationsCustomSettings = {

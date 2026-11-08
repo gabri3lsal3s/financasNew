@@ -150,8 +150,24 @@ function PaymentDialogContent({
         <Button type="button" variant="ghost" onClick={onClose}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={cents <= 0 || pending}>
-          {pending ? "Salvando…" : isRefund ? "Confirmar estorno" : "Confirmar pagamento"}
+        <Button
+          type="submit"
+          disabled={cents <= 0 || pending}
+          aria-label={isRefund ? "Confirmar estorno" : "Confirmar pagamento"}
+        >
+          {pending ? (
+            "Salvando…"
+          ) : isRefund ? (
+            <>
+              <span className="hidden sm:inline">Confirmar estorno</span>
+              <span className="sm:hidden">Estornar</span>
+            </>
+          ) : (
+            <>
+              <span className="hidden sm:inline">Confirmar pagamento</span>
+              <span className="sm:hidden">Pagar</span>
+            </>
+          )}
         </Button>
       </ModalFooter>
     </form>

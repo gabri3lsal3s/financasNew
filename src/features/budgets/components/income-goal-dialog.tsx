@@ -106,27 +106,38 @@ function IncomeGoalDialogContent({
         </div>
       ) : null}
 
-      <ModalFooter className="sm:justify-between">
-        {currentExpectedCents > 0 ? (
-          <Button
-            type="button"
-            variant="ghost"
-            className="text-critical hover:text-critical"
-            onClick={() => void handleRemove()}
-          >
-            Remover meta
-          </Button>
-        ) : (
-          <span />
-        )}
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={cents <= 0 || pending}>
-            {pending ? "Salvando…" : "Salvar meta"}
-          </Button>
-        </div>
+      <ModalFooter
+        destructiveAction={
+          currentExpectedCents > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-critical hover:text-critical"
+              onClick={() => void handleRemove()}
+              disabled={pending}
+            >
+              Remover meta
+            </Button>
+          ) : null
+        }
+      >
+        <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+          Cancelar
+        </Button>
+        <Button
+          type="submit"
+          disabled={cents <= 0 || pending}
+          aria-label={pending ? "Salvando…" : "Salvar meta"}
+        >
+          {pending ? (
+            "Salvando…"
+          ) : (
+            <>
+              <span className="hidden sm:inline">Salvar meta</span>
+              <span className="sm:hidden">Salvar</span>
+            </>
+          )}
+        </Button>
       </ModalFooter>
     </form>
   );

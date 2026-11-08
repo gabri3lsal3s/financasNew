@@ -161,7 +161,12 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
           Cancelar
         </Button>
         <Button type="submit" disabled={!valid || pending}>
-          {pending ? "Salvando…" : debt ? "Salvar alterações" : "Criar dívida"}
+          {pending ? "Salvando…" : (
+            <>
+              <span className="hidden sm:inline">{debt ? "Salvar alterações" : "Criar dívida"}</span>
+              <span className="sm:hidden">Salvar</span>
+            </>
+          )}
         </Button>
       </ModalFooter>
 

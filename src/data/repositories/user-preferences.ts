@@ -114,6 +114,16 @@ export async function updateCustomSettings(patch: Partial<UserCustomSettings>): 
           ...patch.splitPreferences,
         }
       : current?.custom_settings?.splitPreferences,
+    dashboardAlertDismissals: patch.dashboardAlertDismissals !== undefined
+      ? {
+          ...(current?.custom_settings?.dashboardAlertDismissals ?? {}),
+          ...patch.dashboardAlertDismissals,
+          goals: {
+            ...(current?.custom_settings?.dashboardAlertDismissals?.goals ?? {}),
+            ...(patch.dashboardAlertDismissals?.goals ?? {}),
+          },
+        }
+      : current?.custom_settings?.dashboardAlertDismissals,
   };
 
   const input: DbUpdate<UserPreferences> = {

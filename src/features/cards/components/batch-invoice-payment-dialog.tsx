@@ -197,13 +197,15 @@ export function BatchInvoicePaymentDialog({
             variant="default"
             onClick={handleSubmit}
             disabled={selectedSummaries.length === 0 || batchMutation.isPending}
+            aria-label={`Quitar ${selectedSummaries.length} fatura(s)`}
           >
             {batchMutation.isPending ? (
-              "Quitando faturas..."
+              "Quitando..."
             ) : (
               <>
-                <CheckCircle2 className="size-4 mr-1.5" aria-hidden="true" />
-                Quitar {selectedSummaries.length} fatura(s)
+                <CheckCircle2 className="size-4 mr-1.5 shrink-0" aria-hidden="true" />
+                <span className="hidden sm:inline">Quitar {selectedSummaries.length} fatura(s)</span>
+                <span className="sm:hidden">Quitar ({selectedSummaries.length})</span>
               </>
             )}
           </Button>

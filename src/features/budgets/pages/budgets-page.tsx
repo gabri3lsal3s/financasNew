@@ -136,8 +136,13 @@ export function BudgetsPage() {
 
   const error = budgetsQuery.error ?? goalsQuery.error ?? expensesQuery.error ?? incomesQuery.error ?? allCategoriesQuery.error;
 
-  const { cashBalance } = useRealCashBalance();
-  const { rows: positionRows } = usePortfolioPosition();
+  const realCashQuery = useRealCashBalance();
+  const cashBalance = realCashQuery?.cashBalance;
+  const portfolioPositionQuery = usePortfolioPosition();
+  const rawPositionRows = portfolioPositionQuery?.rows;
+  const positionRows = useMemo(() => rawPositionRows ?? [], [rawPositionRows]);
+
+
 
   // Cálculo reativo e instantâneo do progresso de metas patrimoniais (§Plano 12)
   const liveGoalProgress = useMemo(() => {

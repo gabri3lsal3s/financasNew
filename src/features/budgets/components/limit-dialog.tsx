@@ -151,32 +151,46 @@ function LimitDialogContent({
         </div>
       ) : null}
 
-      <ModalFooter className="sm:justify-between">
-        {currentLimitCents > 0 ? (
-          <Button
-            type="button"
-            variant="ghost"
-            className="text-critical hover:text-critical"
-            onClick={() => void handleRemove()}
-            disabled={pending}
-          >
-            {inherited ? "Deixar sem limite" : "Remover limite"}
-          </Button>
-        ) : (
-          <span />
-        )}
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
-          <Button type="button" variant="ghost" onClick={onClose} disabled={pending}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={pending}>
-            {pending
+      <ModalFooter
+        destructiveAction={
+          currentLimitCents > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-critical hover:text-critical"
+              onClick={() => void handleRemove()}
+              disabled={pending}
+            >
+              {inherited ? "Deixar sem limite" : "Remover limite"}
+            </Button>
+          ) : null
+        }
+      >
+        <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+          Cancelar
+        </Button>
+        <Button
+          type="submit"
+          disabled={pending}
+          aria-label={
+            pending
               ? "Salvando…"
               : cents === 0
                 ? "Salvar sem limite"
-                : "Salvar limite"}
-          </Button>
-        </div>
+                : "Salvar limite"
+          }
+        >
+          {pending ? (
+            "Salvando…"
+          ) : (
+            <>
+              <span className="hidden sm:inline">
+                {cents === 0 ? "Salvar sem limite" : "Salvar limite"}
+              </span>
+              <span className="sm:hidden">Salvar</span>
+            </>
+          )}
+        </Button>
       </ModalFooter>
     </form>
   );

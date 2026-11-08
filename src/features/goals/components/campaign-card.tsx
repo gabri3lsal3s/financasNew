@@ -297,22 +297,22 @@ export function CampaignCard({
 
       {/* Barra de Progresso e Métricas */}
       <div className="flex flex-col gap-2 pt-1">
-        <div className="flex items-baseline justify-between gap-2 text-xs">
-          <div className="flex items-baseline gap-1.5 min-w-0">
-            <span className="text-muted-foreground">Arrecadado:</span>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 text-xs">
+          <div className="flex flex-wrap items-baseline gap-1.5 min-w-0">
+            <span className="text-muted-foreground shrink-0">Arrecadado:</span>
             <MoneyText
               cents={currentCents}
               tone={isCompleted ? "positive" : "default"}
               className="font-bold text-foreground"
             />
-            <span className="text-muted-foreground">de</span>
+            <span className="text-muted-foreground shrink-0">de</span>
             <MoneyText
               cents={targetCents}
               tone="default"
               className="font-medium text-muted-foreground"
             />
           </div>
-          <span className="text-xs font-semibold tabular-nums text-foreground shrink-0">
+          <span className="text-xs font-semibold tabular-nums text-foreground shrink-0 ml-auto">
             {percentage}%
           </span>
         </div>

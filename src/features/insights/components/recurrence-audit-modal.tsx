@@ -1,11 +1,15 @@
 import { useState } from "react";
 import {
   AlertTriangle,
+  Ban,
   Calendar,
   CalendarPlus,
+  Check,
+  Clock,
   CreditCard,
   Pencil,
   ShieldCheck,
+  Sparkles,
   TrendingUp,
 } from "lucide-react";
 import { Badge, Button, Modal } from "@/components/ui";
@@ -14,9 +18,12 @@ import { CategoryIcon } from "@/components/modules/category-icon";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import { formatDateBR } from "@/lib/date";
 import { PAYMENT_METHOD_LABELS, RECURRENCE_LEVEL_LABELS } from "@/lib/labels";
-import { SERVICE_SEGMENT_LABELS } from "@/domain/insights";
+import { RECURRENCE_CADENCE_LABELS, SERVICE_SEGMENT_LABELS } from "@/domain/insights";
 import type { ExpenseLike, RecurrenceOccurrence } from "@/domain/insights/recurrences";
+import type { FeedbackDecision } from "@/domain/insights/feedback";
 import type { Expense, PaymentMethod } from "@/types";
+import { triggerSensory } from "@/services/sensory";
+import { pushToast } from "@/services/toast";
 
 export interface RecurrenceAuditModalProps {
   occurrence: RecurrenceOccurrence | null;
@@ -25,6 +32,8 @@ export interface RecurrenceAuditModalProps {
   onEditExpense?: (expense: Expense) => void;
   onConvert?: (occurrence: RecurrenceOccurrence) => void;
   isEssential?: boolean;
+  currentFeedbackDecision?: FeedbackDecision | null;
+  onFeedbackDecision?: (key: string, decision: FeedbackDecision | null) => void;
   onToggleEssential?: (key: string, nextEssential: boolean) => void;
 }
 
@@ -60,6 +69,8 @@ export function RecurrenceAuditModal({
   onEditExpense,
   onConvert,
   isEssential = false,
+  currentFeedbackDecision,
+  onFeedbackDecision,
   onToggleEssential,
 }: RecurrenceAuditModalProps) {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -71,6 +82,23 @@ export function RecurrenceAuditModal({
   const hasDuplicates =
     Boolean(occurrence.duplicateChargesThisMonth) &&
     (occurrence.duplicateChargesThisMonth ?? 0) >= 2;
+
+  const isMultiMonth = Boolean(occurrence.intervalMonths && occurrence.intervalMonths > 1);
+  const cadenceLabel = occurrence.cadence ? RECURRENCE_CADENCE_LABELS[occurrence.cadence] : undefined;
+
+  const handleApplyDecision = (decision: FeedbackDecision | null, successMsg: string) => {
+    triggerSensory("action");
+    if (onFeedbackDecision) {
+      onFeedbackDecision(occurrence.key, decision);
+    } else if (onToggleEssential && (decision === "essential" || decision === null)) {
+      onToggleEssential(occurrence.key, decision === "essential");
+    }
+    pushToast({
+      title: "Classificação salva",
+      description: successMsg,
+      variant: "info",
+    });
+  };
 
   const handleEdit = (item: ExpenseLike) => {
     const expense = toExpense(item);
@@ -90,12 +118,18 @@ export function RecurrenceAuditModal({
         description="Auditoria detalhada e histórico de cobranças"
       >
         <div className="flex flex-col gap-4">
-          {/* Header de Badges de Classificação e Ação Rápida de Essencial */}
+          {/* Header de Badges de Classificação */}
           <div className="flex flex-wrap items-center justify-between gap-1.5">
             <div className="flex flex-wrap items-center gap-1.5">
               <Badge variant="default" size="sm">
                 {RECURRENCE_LEVEL_LABELS[occurrence.level]}
               </Badge>
+
+              {cadenceLabel && occurrence.cadence !== "monthly" ? (
+                <Badge variant="default" size="sm" className="font-semibold">
+                  {cadenceLabel}
+                </Badge>
+              ) : null}
 
               {occurrence.segment && occurrence.segment !== "other" ? (
                 <Badge variant="default" size="sm">
@@ -117,9 +151,13 @@ export function RecurrenceAuditModal({
                 </Badge>
               ) : null}
 
-              {occurrence.missingThisMonth ? (
+              {occurrence.lifecycle === "lapsed" ? (
+                <Badge variant="muted" size="sm">
+                  Interrompida
+                </Badge>
+              ) : occurrence.missingThisMonth ? (
                 <Badge variant="warning" size="sm">
-                  Pendente no mês
+                  Pendente no ciclo
                 </Badge>
               ) : occurrence.daysUntilNextDue !== undefined ? (
                 occurrence.daysUntilNextDue === 0 ? (
@@ -137,53 +175,176 @@ export function RecurrenceAuditModal({
                 ) : null
               ) : null}
             </div>
+          </div>
 
-            {onToggleEssential ? (
+          {/* Régua de Classificação e Memória do Usuário (Plano 13) */}
+          <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface-muted/30 p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-foreground">
+                Classificação e Memória do Assistente
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                Suas decisões calibram projeções e relatórios
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <Button
                 type="button"
-                variant={isEssential ? "default" : "outline"}
+                variant={isEssential || currentFeedbackDecision === "essential" ? "default" : "outline"}
                 size="xs"
-                onClick={() => onToggleEssential(occurrence.key, !isEssential)}
-                className="gap-1 text-xs h-6.5 cursor-pointer shrink-0"
-                aria-label={isEssential ? "Remover classificação de essencial" : "Classificar como gasto essencial"}
+                onClick={() =>
+                  handleApplyDecision(
+                    isEssential || currentFeedbackDecision === "essential" ? null : "essential",
+                    isEssential || currentFeedbackDecision === "essential"
+                      ? "Classificação de essencial removida."
+                      : "Gasto fixado como essencial (sem sugestões de corte).",
+                  )
+                }
+                className="gap-1.5 h-8 text-xs cursor-pointer justify-start"
+                title="Mantém na lista de custos fixos essenciais e silencia sugestões de corte"
               >
-                <ShieldCheck className="size-3.5" aria-hidden="true" />
-                <span>{isEssential ? "Gasto Essencial" : "Marcar essencial"}</span>
+                {isEssential || currentFeedbackDecision === "essential" ? (
+                  <Check className="size-3.5 shrink-0" aria-hidden="true" />
+                ) : (
+                  <ShieldCheck className="size-3.5 shrink-0" aria-hidden="true" />
+                )}
+                <span className="truncate">
+                  {isEssential || currentFeedbackDecision === "essential" ? "É Essencial" : "Essencial"}
+                </span>
               </Button>
-            ) : null}
+
+              <Button
+                type="button"
+                variant={currentFeedbackDecision === "already_cancelled" ? "default" : "outline"}
+                size="xs"
+                onClick={() =>
+                  handleApplyDecision(
+                    currentFeedbackDecision === "already_cancelled" ? null : "already_cancelled",
+                    currentFeedbackDecision === "already_cancelled"
+                      ? "Item desmarcado de cancelado."
+                      : "Marcado como cancelado (celebra economia anual e remove dos custos ativos).",
+                  )
+                }
+                className="gap-1.5 h-8 text-xs cursor-pointer justify-start"
+                title="Celebra a economia anual e remove dos custos fixos mensais"
+              >
+                {currentFeedbackDecision === "already_cancelled" ? (
+                  <Check className="size-3.5 shrink-0" aria-hidden="true" />
+                ) : (
+                  <Sparkles className="size-3.5 shrink-0" aria-hidden="true" />
+                )}
+                <span className="truncate">Já Cancelei</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant={currentFeedbackDecision === "one_off" ? "default" : "outline"}
+                size="xs"
+                onClick={() =>
+                  handleApplyDecision(
+                    currentFeedbackDecision === "one_off" ? null : "one_off",
+                    currentFeedbackDecision === "one_off"
+                      ? "Marcação de pontual removida."
+                      : "Marcado como gasto pontual (não tratado como compromisso fixo).",
+                  )
+                }
+                className="gap-1.5 h-8 text-xs cursor-pointer justify-start"
+                title="Silencia o gasto como despesa pontual sem penalizar o classificador"
+              >
+                {currentFeedbackDecision === "one_off" ? (
+                  <Check className="size-3.5 shrink-0" aria-hidden="true" />
+                ) : (
+                  <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+                )}
+                <span className="truncate">
+                  {currentFeedbackDecision === "one_off" ? "É Pontual" : "Gasto Pontual"}
+                </span>
+              </Button>
+
+              <Button
+                type="button"
+                variant={currentFeedbackDecision === "not_subscription" ? "default" : "outline"}
+                size="xs"
+                onClick={() =>
+                  handleApplyDecision(
+                    currentFeedbackDecision === "not_subscription" ? null : "not_subscription",
+                    currentFeedbackDecision === "not_subscription"
+                      ? "Marcação removida."
+                      : "Classificado como despesa comum (não é assinatura contínua).",
+                  )
+                }
+                className="gap-1.5 h-8 text-xs cursor-pointer justify-start"
+                title="Informa que este estabelecimento não é uma assinatura contínua"
+              >
+                {currentFeedbackDecision === "not_subscription" ? (
+                  <Check className="size-3.5 shrink-0" aria-hidden="true" />
+                ) : (
+                  <Ban className="size-3.5 shrink-0" aria-hidden="true" />
+                )}
+                <span className="truncate">Não é Assinatura</span>
+              </Button>
+            </div>
           </div>
 
           {/* Grid de Métricas Resumo */}
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
             <div className="flex flex-col gap-0.5 rounded-xl border border-border/80 bg-surface p-3 shadow-xs">
-              <span className="text-[11px] font-medium text-muted-foreground">Valor médio</span>
+              <span className="text-[11px] font-medium text-muted-foreground">
+                {isMultiMonth ? "Valor por ciclo" : "Valor médio"}
+              </span>
               <div className="flex items-baseline gap-1">
                 <MoneyText
                   cents={occurrence.averageCents}
                   tone="default"
                   className="text-base font-semibold"
                 />
-                <span className="text-[10px] text-muted-foreground">/mês</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {isMultiMonth ? `/${occurrence.intervalMonths}m` : "/mês"}
+                </span>
               </div>
             </div>
 
             <div className="flex flex-col gap-0.5 rounded-xl border border-border/80 bg-surface p-3 shadow-xs">
-              <span className="text-[11px] font-medium text-muted-foreground">Custo anual</span>
+              <span className="text-[11px] font-medium text-muted-foreground">
+                {isMultiMonth ? "Amortizado/mês" : "Custo anual"}
+              </span>
               <div className="flex items-baseline gap-1">
                 <MoneyText
-                  cents={occurrence.averageCents * 12}
+                  cents={
+                    isMultiMonth
+                      ? occurrence.monthlyAmortizedCents ?? Math.round(occurrence.averageCents / (occurrence.intervalMonths || 1))
+                      : occurrence.averageCents * 12
+                  }
                   tone="default"
                   className="text-base font-semibold"
                 />
-                <span className="text-[10px] text-muted-foreground">/ano</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {isMultiMonth ? "/mês" : "/ano"}
+                </span>
               </div>
             </div>
 
             <div className="flex flex-col gap-0.5 rounded-xl border border-border/80 bg-surface p-3 shadow-xs">
-              <span className="text-[11px] font-medium text-muted-foreground">Dia típico</span>
-              <span className="text-base font-semibold text-foreground tabular-nums">
-                {occurrence.typicalDayOfMonth ? `Dia ~${occurrence.typicalDayOfMonth}` : "Variável"}
+              <span className="text-[11px] font-medium text-muted-foreground">
+                {isMultiMonth ? "Custo anual" : "Dia típico"}
               </span>
+              {isMultiMonth ? (
+                <div className="flex items-baseline gap-1">
+                  <MoneyText
+                    cents={
+                      (occurrence.monthlyAmortizedCents ?? Math.round(occurrence.averageCents / (occurrence.intervalMonths || 1))) * 12
+                    }
+                    tone="default"
+                    className="text-base font-semibold"
+                  />
+                  <span className="text-[10px] text-muted-foreground">/ano</span>
+                </div>
+              ) : (
+                <span className="text-base font-semibold text-foreground tabular-nums">
+                  {occurrence.typicalDayOfMonth ? `Dia ~${occurrence.typicalDayOfMonth}` : "Variável"}
+                </span>
+              )}
             </div>
 
             <div className="flex flex-col gap-0.5 rounded-xl border border-border/80 bg-surface p-3 shadow-xs">

@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { Activity, ChevronRight, DollarSign, HeartHandshake, Inbox, PieChart, Plus, Target, TrendingDown, TrendingUp } from "lucide-react";
+import { Activity, ChevronRight, DollarSign, HeartHandshake, Inbox, PieChart, Plus, Target, TrendingDown, TrendingUp, X } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, MoneyText, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
 import {
   CategoryDonut,
@@ -53,6 +53,14 @@ import {
   buildDailyCumulativeSeries,
   calculateSurplusCapacity,
   computeOverview,
+  createGoalDismissalCheckpoint,
+  createPaceDismissalCheckpoint,
+  createSurplusDismissalCheckpoint,
+  createZeroGuiltDismissalCheckpoint,
+  shouldShowGoalAlert,
+  shouldShowPaceAlert,
+  shouldShowSurplusAlert,
+  shouldShowZeroGuiltAlert,
 } from "@/domain/overview";
 import { numberToCents, sumGrossCents, sumWeightedCents } from "@/domain/money";
 import { contributionsInMonthCents } from "@/domain/portfolio";
@@ -107,8 +115,30 @@ import {
   GoalProgressAlertBanner,
   HouseholdAlertBanner,
 } from "../components";
+import { triggerSensory } from "@/services/sensory";
 import { AddContributionDialog } from "@/features/goals";
-import type { PublicShare, SplitSharePayload } from "@/types";
+import type { DashboardAlertDismissals, GoalAlertStage, PublicShare, SplitSharePayload } from "@/types";
+
+const DASHBOARD_ALERT_DISMISSALS_KEY = "financasnew:dashboard_alert_dismissals";
+
+function loadLocalAlertDismissals(): DashboardAlertDismissals {
+  try {
+    const raw = typeof window !== "undefined" ? window.localStorage.getItem(DASHBOARD_ALERT_DISMISSALS_KEY) : null;
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLocalAlertDismissals(dismissals: DashboardAlertDismissals): void {
+  try {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(DASHBOARD_ALERT_DISMISSALS_KEY, JSON.stringify(dismissals));
+    }
+  } catch {
+    // noop
+  }
+}
 
 export function OverviewPage() {
   usePendingSplitExpense();
@@ -153,9 +183,13 @@ export function OverviewPage() {
   const currentUserId = myFamilyQuery.data?.currentMember?.user_id;
 
   const realCashData = useRealCashBalance(today);
-  const { rows: positionRows } = usePortfolioPosition();
+  const portfolioPositionQuery = usePortfolioPosition();
+  const rawPositionRows = portfolioPositionQuery?.rows;
+  const positionRows = useMemo(() => rawPositionRows ?? [], [rawPositionRows]);
   const onboardingQuery = useOnboardingCounts();
+
   const { isDismissed: isOnboardingDismissed, dismiss: dismissOnboarding } = useOnboardingDismissed();
+
 
   // Acolhimento no primeiro login (§4.1): detecta conta virgem e abre o WelcomeModal sem cascading render
   const isVirginAccount = Boolean(onboardingQuery?.data && isFirstUse(onboardingQuery.data));
@@ -174,6 +208,37 @@ export function OverviewPage() {
   const { preferences: bankPrefs } = useBankAssistantPreferences();
   const userPreferencesQuery = useUserPreferences();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
+
+  const [localAlertDismissals, setLocalAlertDismissals] = useState<DashboardAlertDismissals>(() =>
+    loadLocalAlertDismissals(),
+  );
+
+  const cloudAlertDismissals = userPreferencesQuery.data?.custom_settings?.dashboardAlertDismissals;
+
+  const alertDismissals = useMemo<DashboardAlertDismissals>(() => {
+    return {
+      ...cloudAlertDismissals,
+      ...localAlertDismissals,
+      goals: {
+        ...(cloudAlertDismissals?.goals ?? {}),
+        ...(localAlertDismissals?.goals ?? {}),
+      },
+    };
+  }, [cloudAlertDismissals, localAlertDismissals]);
+
+  const updateAlertDismissals = useCallback(
+    (updater: (prev: DashboardAlertDismissals) => DashboardAlertDismissals) => {
+      setLocalAlertDismissals((prev) => {
+        const next = updater(prev);
+        saveLocalAlertDismissals(next);
+        updateCustomSettingsMutation.mutate({
+          dashboardAlertDismissals: next,
+        });
+        return next;
+      });
+    },
+    [updateCustomSettingsMutation],
+  );
 
   const cloudDeviceNotifs = userPreferencesQuery.data?.custom_settings?.deviceNotifications;
   const dueNotificationsActive = cloudDeviceNotifs?.dueNotificationsEnabled ?? isDueNotificationsEnabled();
@@ -757,8 +822,38 @@ export function OverviewPage() {
     );
     if (activeList.length === 0) return null;
 
+    // Filtra metas que foram dispensadas e não tiveram mudança relevante
+    const eligibleList = activeList.filter((s) => {
+      const pld = (s.payload as Record<string, unknown> | null) ?? {};
+      const targetCents = Number(pld.target_cents ?? 0);
+      const live = liveGoalProgress.get(s.id)?.currentCents;
+      const currentCents = live !== undefined ? live : Number(pld.current_cents ?? 0);
+      const percentage = targetCents > 0 ? Math.round((currentCents / targetCents) * 100) : 0;
+      const isCompleted = pld.status === "completed" || percentage >= 100;
+      const isFinalStretch = percentage >= 80 && !isCompleted;
+      const stage: GoalAlertStage = isCompleted
+        ? "completed"
+        : isFinalStretch
+          ? "final_stretch"
+          : surplusCapacity.hasSurplus
+            ? "has_surplus"
+            : "regular";
+
+      const checkpoint = alertDismissals.goals?.[s.id];
+      return shouldShowGoalAlert(checkpoint, {
+        goalId: s.id,
+        currentCents,
+        targetCents,
+        percentage,
+        stage,
+        status: pld.status as string | undefined,
+      });
+    });
+
+    if (eligibleList.length === 0) return null;
+
     // Prioriza metas na reta final (>= 80% e < 100%), depois maior percentual
-    return [...activeList].sort((a, b) => {
+    return [...eligibleList].sort((a, b) => {
       const pldA = (a.payload as Record<string, unknown> | null) ?? {};
       const pldB = (b.payload as Record<string, unknown> | null) ?? {};
       const tA = Number(pldA.target_cents ?? 0);
@@ -774,7 +869,76 @@ export function OverviewPage() {
       if (isFinalA !== isFinalB) return isFinalB - isFinalA;
       return pctB - pctA;
     })[0] ?? null;
-  }, [goalSharesQuery.data, liveGoalProgress]);
+  }, [goalSharesQuery.data, liveGoalProgress, surplusCapacity.hasSurplus, alertDismissals.goals]);
+
+  const handleDismissGoal = useCallback(
+    (share: PublicShare) => {
+      const pld = (share.payload as Record<string, unknown> | null) ?? {};
+      const targetCents = Number(pld.target_cents ?? 0);
+      const live = liveGoalProgress.get(share.id)?.currentCents;
+      const currentCents = live !== undefined ? live : Number(pld.current_cents ?? 0);
+      const percentage = targetCents > 0 ? Math.round((currentCents / targetCents) * 100) : 0;
+      const isCompleted = pld.status === "completed" || percentage >= 100;
+      const isFinalStretch = percentage >= 80 && !isCompleted;
+      const stage: GoalAlertStage = isCompleted
+        ? "completed"
+        : isFinalStretch
+          ? "final_stretch"
+          : surplusCapacity.hasSurplus
+            ? "has_surplus"
+            : "regular";
+
+      const checkpoint = createGoalDismissalCheckpoint({
+        goalId: share.id,
+        currentCents,
+        targetCents,
+        percentage,
+        stage,
+        status: pld.status as string | undefined,
+      });
+
+      updateAlertDismissals((prev) => ({
+        ...prev,
+        goals: {
+          ...(prev.goals ?? {}),
+          [share.id]: checkpoint,
+        },
+      }));
+    },
+    [liveGoalProgress, surplusCapacity.hasSurplus, updateAlertDismissals],
+  );
+
+  const handleDismissPace = useCallback(() => {
+    const checkpoint = createPaceDismissalCheckpoint({
+      month,
+      spentPercent: pace.spentPercent,
+      surplusCents: projection.surplusCents,
+    });
+    updateAlertDismissals((prev) => ({
+      ...prev,
+      pace: checkpoint,
+    }));
+  }, [month, pace.spentPercent, projection.surplusCents, updateAlertDismissals]);
+
+  const handleDismissSurplus = useCallback(() => {
+    const checkpoint = createSurplusDismissalCheckpoint({
+      month,
+      surplusCents: surplusCapacity.suggestedAporteCents,
+    });
+    updateAlertDismissals((prev) => ({
+      ...prev,
+      surplus: checkpoint,
+    }));
+  }, [month, surplusCapacity.suggestedAporteCents, updateAlertDismissals]);
+
+  const handleDismissZeroGuilt = useCallback(() => {
+    triggerSensory("action");
+    const checkpoint = createZeroGuiltDismissalCheckpoint(todayISO());
+    updateAlertDismissals((prev) => ({
+      ...prev,
+      zeroGuilt: checkpoint,
+    }));
+  }, [updateAlertDismissals]);
 
   const [zeroGuiltModalOpen, setZeroGuiltModalOpen] = useState(false);
 
@@ -801,6 +965,17 @@ export function OverviewPage() {
     return diffDays >= 4;
   }, [isCurrentMonth, expensesQuery.data, incomesQuery.data]);
 
+  const isZeroGuiltEligible = shouldShowZeroGuiltAlert(alertDismissals.zeroGuilt, todayISO());
+  const isPaceEligible = shouldShowPaceAlert(alertDismissals.pace, {
+    month,
+    spentPercent: pace.spentPercent,
+    surplusCents: projection.surplusCents,
+  });
+  const isSurplusEligible = shouldShowSurplusAlert(alertDismissals.surplus, {
+    month,
+    surplusCents: surplusCapacity.suggestedAporteCents,
+  });
+
   const alertItems: (DashboardAlertItem | null | undefined | false)[] = [
     shouldShowPermissionsBanner && {
       id: "permissions-health-banner",
@@ -813,12 +988,12 @@ export function OverviewPage() {
         />
       ),
     },
-    isInactive && {
+    isInactive && isZeroGuiltEligible && {
       id: "zero-guilt-balance-alignment",
       priority: 2,
       content: (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 p-3.5 sm:p-4 rounded-2xl border border-primary/20 bg-primary/5 shadow-xs">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 p-3.5 sm:p-4 rounded-2xl border border-primary/20 bg-primary/5 shadow-xs">
+          <div className="flex items-center gap-3 min-w-0 pr-6 sm:pr-0">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary-strong">
               <HeartHandshake className="size-4.5" aria-hidden="true" />
             </div>
@@ -836,14 +1011,25 @@ export function OverviewPage() {
               </p>
             </div>
           </div>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => setZeroGuiltModalOpen(true)}
-            className="shrink-0 self-stretch sm:self-center font-semibold cursor-pointer"
-          >
-            Alinhar Saldo
-          </Button>
+          <div className="flex items-center gap-2 shrink-0 self-stretch sm:self-center mt-auto sm:mt-0">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setZeroGuiltModalOpen(true)}
+              className="shrink-0 self-stretch sm:self-center font-semibold cursor-pointer"
+            >
+              Alinhar Saldo
+            </Button>
+            <button
+              type="button"
+              onClick={handleDismissZeroGuilt}
+              className="absolute top-3 right-3 sm:static flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors cursor-pointer shrink-0"
+              aria-label="Dispensar aviso de alinhamento"
+              title="Dispensar aviso"
+            >
+              <X className="size-4" aria-hidden="true" />
+            </button>
+          </div>
         </div>
       ),
     },
@@ -879,7 +1065,7 @@ export function OverviewPage() {
         />
       ),
     },
-    showPaceAlert && {
+    showPaceAlert && isPaceEligible && {
       id: "pace-alert-banner",
       priority: projection.surplusCents !== null && projection.surplusCents < 0 ? 2 : 3,
       content: (
@@ -890,6 +1076,7 @@ export function OverviewPage() {
           daysRemaining={daily.daysRemaining}
           surplusCents={projection.surplusCents}
           onNavigateInsights={() => navigate("/insights")}
+          onDismiss={handleDismissPace}
         />
       ),
     },
@@ -928,14 +1115,18 @@ export function OverviewPage() {
           surplusCents={surplusCapacity.hasSurplus ? surplusCapacity.suggestedAporteCents : null}
           onOpenDeposit={(share) => setDepositGoalShare(share)}
           onNavigateGoals={() => navigate("/orcamentos?tab=goals")}
+          onDismiss={() => handleDismissGoal(topGoalShare!)}
         />
       ),
     },
-    surplusCapacity.hasSurplus && isCurrentMonth && {
+    surplusCapacity.hasSurplus && isCurrentMonth && isSurplusEligible && {
       id: "surplus-aporte-banner",
       priority: 4,
       content: (
-        <SurplusAporteBanner surplusCents={surplusCapacity.suggestedAporteCents} />
+        <SurplusAporteBanner
+          surplusCents={surplusCapacity.suggestedAporteCents}
+          onDismiss={handleDismissSurplus}
+        />
       ),
     },
     subscription.isTrial &&

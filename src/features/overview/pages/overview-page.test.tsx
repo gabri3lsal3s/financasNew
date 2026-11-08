@@ -26,6 +26,7 @@ vi.mock("react-router", () => ({
 const navigateMock = vi.fn();
 let mockAppMode = "investor";
 let portfolioContributionsMock: { id: string; asset_id: string | null; date: string; amount: number; notes: string | null }[] = [];
+let publicSharesMock: unknown[] = [];
 let onboardingCountsMock = {
   expenseCategories: 2,
   incomeCategories: 1,
@@ -230,7 +231,7 @@ vi.mock("@/state", () => ({
   useFeedback: () => ({ data: {}, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSetFeedback: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUserPreferences: () => ({ data: null, isLoading: false, isError: false, error: null }),
-  useUpdateCustomSettings: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+  useUpdateCustomSettings: () => ({ mutate: vi.fn(), mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
   useFamilyMode: () => ({ isFamilyModeEnabled: false, isLoading: false }),
   useMyFamily: () => ({ data: null, isLoading: false }),
   useFamilyConsolidation: () => ({ data: null, isLoading: false, isError: false, error: null }),
@@ -252,7 +253,12 @@ vi.mock("@/state", () => ({
   useDemoSession: () => ({ isDemoActive: false, activeTrack: null, currentStepIndex: 0 }),
   startDemo: vi.fn(),
   endDemo: vi.fn(),
-  useMyPublicShares: () => ({ data: [], isLoading: false, isError: false, error: null }),
+  useMyPublicShares: (kind?: string) => ({
+    data: kind === "goal_tracker" ? publicSharesMock : [],
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
   useSaveSplitExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSignalSplitPayment: () => ({ mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false }),
   useSaveSimulationToAccount: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -269,7 +275,13 @@ vi.mock("@/state", () => ({
     isUpdating: false,
     isLoading: false,
   }),
+  usePortfolioPosition: () => ({
+    rows: [],
+    isLoading: false,
+    summary: null,
+  }),
 }));
+
 
 describe("OverviewPage — visão consolidada (§3.6)", () => {
   beforeEach(() => {
@@ -282,6 +294,8 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     mockAppMode = "investor";
     expenseCategories = [...defaultExpenseCategories];
     portfolioContributionsMock = [];
+    publicSharesMock = [];
+    localStorage.removeItem("financasnew:dashboard_alert_dismissals");
     onboardingCountsMock = {
       expenseCategories: 2,
       incomeCategories: 1,
@@ -783,7 +797,109 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       expect(screen.getByText("Aportes realizados no período")).toBeInTheDocument();
     });
   });
+
+  describe("Descarte Inteligente de Cards e Alertas na Home", () => {
+    it("permite dispensar card de Meta Conquistada e o oculta da tela", () => {
+      publicSharesMock = [
+        {
+          id: "goal-share-1",
+          user_id: "user-1",
+          resource_type: "goal_tracker",
+          resource_id: "goal-1",
+          permission: "view",
+          token: "tok-1",
+          expires_at: null,
+          created_at: "2026-01-01T00:00:00Z",
+          is_revoked: false,
+          revoked_at: null,
+          access_count: 0,
+          last_accessed_at: null,
+          payload: {
+            title: "Reserva de Emergência",
+            target_cents: 100000,
+            current_cents: 100000,
+            status: "completed",
+          },
+        },
+      ];
+
+      render(<OverviewPage />);
+
+      expect(screen.getByText("Meta Conquistada: Reserva de Emergência")).toBeInTheDocument();
+      expect(screen.getByText("100% Batido")).toBeInTheDocument();
+
+      const dismissBtn = screen.getByRole("button", {
+        name: /Dispensar alerta da meta Reserva de Emergência/i,
+        hidden: true,
+      });
+      fireEvent.click(dismissBtn);
+
+      expect(screen.queryByText("Meta Conquistada: Reserva de Emergência")).not.toBeInTheDocument();
+    });
+
+    it("ao dispensar a meta prioritária, promove e exibe a próxima meta elegível", () => {
+      publicSharesMock = [
+        {
+          id: "goal-share-1",
+          user_id: "user-1",
+          resource_type: "goal_tracker",
+          resource_id: "goal-1",
+          permission: "view",
+          token: "tok-1",
+          expires_at: null,
+          created_at: "2026-01-01T00:00:00Z",
+          is_revoked: false,
+          revoked_at: null,
+          access_count: 0,
+          last_accessed_at: null,
+          payload: {
+            title: "Viagem Europa",
+            target_cents: 100000,
+            current_cents: 90000,
+            status: "in_progress",
+          },
+        },
+        {
+          id: "goal-share-2",
+          user_id: "user-1",
+          resource_type: "goal_tracker",
+          resource_id: "goal-2",
+          permission: "view",
+          token: "tok-2",
+          expires_at: null,
+          created_at: "2026-01-01T00:00:00Z",
+          is_revoked: false,
+          revoked_at: null,
+          access_count: 0,
+          last_accessed_at: null,
+          payload: {
+            title: "Carro Novo",
+            target_cents: 100000,
+            current_cents: 85000,
+            status: "in_progress",
+          },
+        },
+      ];
+
+      render(<OverviewPage />);
+
+      // Primeira meta (Viagem Europa - 90%) está ativa
+      expect(screen.getByText("Reta Final: Viagem Europa")).toBeInTheDocument();
+
+      // Clica em dispensar Viagem Europa
+      const dismissBtn = screen.getByRole("button", {
+        name: /Dispensar alerta da meta Viagem Europa/i,
+        hidden: true,
+      });
+      fireEvent.click(dismissBtn);
+
+      // Viagem Europa some, e Carro Novo assume o carrossel
+      expect(screen.queryByText("Reta Final: Viagem Europa")).not.toBeInTheDocument();
+      expect(screen.getByText("Reta Final: Carro Novo")).toBeInTheDocument();
+    });
+  });
 });
+
 
 
 

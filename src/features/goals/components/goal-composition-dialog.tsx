@@ -293,43 +293,46 @@ export function GoalCompositionDialog({
             </div>
 
             {includeInvestments && (
-              <div className="ml-7 pt-2 flex flex-col gap-3 border-t border-border/60">
-                <div className="flex items-center gap-2">
+              <div className="ml-0 sm:ml-7 pt-2 flex flex-col gap-3 border-t border-border/60">
+                <div className="grid grid-cols-3 gap-1.5 w-full sm:flex sm:items-center sm:w-auto">
                   <Button
                     type="button"
                     variant={investmentMode === "selected_assets" ? "default" : "outline"}
                     size="sm"
-                    className="h-7 text-xs"
+                    className="h-8 sm:h-7 px-1.5 sm:px-3 text-[11px] sm:text-xs justify-center"
                     onClick={() => {
                       triggerSensory("selection");
                       setInvestmentMode("selected_assets");
                     }}
                   >
-                    Ativos Selecionados
+                    <span className="hidden sm:inline">Ativos Selecionados</span>
+                    <span className="sm:hidden">Ativos</span>
                   </Button>
                   <Button
                     type="button"
                     variant={investmentMode === "selected_classes" ? "default" : "outline"}
                     size="sm"
-                    className="h-7 text-xs"
+                    className="h-8 sm:h-7 px-1.5 sm:px-3 text-[11px] sm:text-xs justify-center"
                     onClick={() => {
                       triggerSensory("selection");
                       setInvestmentMode("selected_classes");
                     }}
                   >
-                    Por Classes
+                    <span className="hidden sm:inline">Por Classes</span>
+                    <span className="sm:hidden">Classes</span>
                   </Button>
                   <Button
                     type="button"
                     variant={investmentMode === "entire_portfolio" ? "default" : "outline"}
                     size="sm"
-                    className="h-7 text-xs"
+                    className="h-8 sm:h-7 px-1.5 sm:px-3 text-[11px] sm:text-xs justify-center"
                     onClick={() => {
                       triggerSensory("selection");
                       setInvestmentMode("entire_portfolio");
                     }}
                   >
-                    Toda a Carteira
+                    <span className="hidden sm:inline">Toda a Carteira</span>
+                    <span className="sm:hidden">Toda</span>
                   </Button>
                 </div>
 
@@ -469,7 +472,7 @@ export function GoalCompositionDialog({
           size="sm"
           onClick={handleSave}
         >
-          Salvar Termômetro
+          Salvar
         </Button>
       </ModalFooter>
     </Modal>

@@ -111,17 +111,6 @@ vi.mock("@/state", () => ({
   useMyPublicShares: () => ({ data: [], isLoading: false }),
   useDebts: () => ({ data: [], isLoading: false }),
   useSettleIntegratedReceivable: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useSubscriptionsAudit: () => ({
-    subscriptions: [],
-    totalMonthlyCents: 0,
-    totalAnnualizedIncreaseCents: 0,
-    hasPriceIncreases: false,
-    servicesWithIncreaseCount: 0,
-    isLoading: false,
-    isError: false,
-    error: null,
-    refetch: vi.fn(),
-  }),
 }));
 
 describe("TransactionListPage — listagem por mês", () => {

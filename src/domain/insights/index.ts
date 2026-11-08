@@ -7,6 +7,10 @@ export {
   detectIncomeRecurrences,
   calculateTypicalDay,
   estimateNextDueDate,
+  diffMonths,
+  calculateMonthIntervals,
+  inferRecurrenceCadence,
+  RECURRENCE_CADENCE_LABELS,
   calculateRecurringTotals,
   calculateFixedCommitmentRate,
   filterRecurrencesByTab,
@@ -17,6 +21,7 @@ export {
   classifyPriceAdjustment,
   detectDuplicateChargesInMonth,
   formatBRL,
+  evaluateExpensePriceEvolution,
   VAMPIRE_INCOME_IMPACT_THRESHOLD_PERCENT,
   VAMPIRE_CATEGORY_BUDGET_IMPACT_THRESHOLD_PERCENT,
 } from "./recurrences";
@@ -31,11 +36,15 @@ export type {
   PriceAdjustment,
   PriceAdjustmentKind,
   RecurrenceOccurrence,
+  RecurrenceCadence,
+  RecurrenceLifecycle,
   DetectRecurrencesOptions,
   RecurringTotalsResult,
   BudgetImpactOccurrence,
   BudgetImpactEvaluation,
   RecurrenceFilterTab,
+  ExpensePriceEvolution,
+  ExpensePriceEvolutionItem,
 } from "./recurrences";
 export { confidenceScore, historyBonus, varianceOf } from "./confidence";
 export type { ConfidenceParams, RecurrenceKind } from "./confidence";

@@ -159,8 +159,16 @@ export function EarlyAmortizationDialog({ loan, debts, open, onOpenChange }: Ear
           <Button
             type="submit"
             disabled={pending || result.eliminatedInstallmentIds.length === 0 || (withExpense && !categoryId)}
+            aria-label="Confirmar amortização"
           >
-            {pending ? "Processando…" : "Confirmar amortização"}
+            {pending ? (
+              "Processando…"
+            ) : (
+              <>
+                <span className="hidden sm:inline">Confirmar amortização</span>
+                <span className="sm:hidden">Amortizar</span>
+              </>
+            )}
           </Button>
         </ModalFooter>
       </form>

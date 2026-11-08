@@ -481,7 +481,12 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
             type="submit"
             disabled={name.trim() === "" || pending}
           >
-            {pending ? "Salvando…" : card ? "Salvar alterações" : "Criar cartão"}
+            {pending ? "Salvando…" : (
+              <>
+                <span className="hidden sm:inline">{card ? "Salvar alterações" : "Criar cartão"}</span>
+                <span className="sm:hidden">Salvar</span>
+              </>
+            )}
           </Button>
         </ModalFooter>
       </form>

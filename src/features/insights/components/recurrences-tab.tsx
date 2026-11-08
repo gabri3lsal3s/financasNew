@@ -17,6 +17,7 @@ import {
   calculateFixedCommitmentRate,
   filterRecurrencesByTab,
   getDismissReason,
+  RECURRENCE_CADENCE_LABELS,
   SERVICE_SEGMENT_LABELS,
   type CalibrationDecision,
   type RecurrenceFilterTab,
@@ -41,6 +42,8 @@ export interface RecurrencesTabProps {
   canCutAnnualCents: number;
   activeOccurrences: RecurrenceOccurrence[];
   ignoredOccurrences: RecurrenceOccurrence[];
+  /** Recorrências cessadas/inativas há mais de um ciclo (ex.: almoço encerrado há meses) */
+  lapsedOccurrences?: RecurrenceOccurrence[];
   feedbackMap: FeedbackMap;
   showIgnored: boolean;
   setShowIgnored: (val: boolean | ((prev: boolean) => boolean)) => void;
@@ -61,6 +64,14 @@ function mapOccurrenceToInsightItem(o: RecurrenceOccurrence) {
 
   if (o.cadence === "weekly") {
     badges.push({ label: "Semanal", tone: "default" });
+  } else if (o.cadence === "bimonthly") {
+    badges.push({ label: "Bimestral", tone: "default" });
+  } else if (o.cadence === "quarterly") {
+    badges.push({ label: "Trimestral", tone: "default" });
+  } else if (o.cadence === "quadrimonthly") {
+    badges.push({ label: "Quadrimestral", tone: "default" });
+  } else if (o.cadence === "semiannual") {
+    badges.push({ label: "Semestral", tone: "default" });
   } else if (o.cadence === "annual") {
     badges.push({ label: "Anual", tone: "default" });
   }
@@ -82,7 +93,7 @@ function mapOccurrenceToInsightItem(o: RecurrenceOccurrence) {
   }
 
   if (o.missingThisMonth) {
-    badges.push({ label: "Pendente no mês", tone: "warning" });
+    badges.push({ label: "Pendente no ciclo", tone: "warning" });
   } else if (o.daysUntilNextDue !== undefined) {
     if (o.daysUntilNextDue === 0) {
       badges.push({ label: "Vence hoje", tone: "warning" });
@@ -101,15 +112,20 @@ function mapOccurrenceToInsightItem(o: RecurrenceOccurrence) {
     badges.push({ label: `${o.duplicateChargesThisMonth}x no mês`, tone: "warning" });
   }
 
+  const isMultiMonth = Boolean(o.intervalMonths && o.intervalMonths > 1);
+  const cadenceLabel = o.cadence ? RECURRENCE_CADENCE_LABELS[o.cadence] : RECURRENCE_LEVEL_LABELS[o.level];
+
   const subtitle =
     o.cadence === "weekly"
       ? `Semanal (~4x/mês) · Custo consolidado de ${formatCentsAsBRL(o.monthlyConsolidatedCents ?? o.averageCents)}/mês`
-      : `${RECURRENCE_LEVEL_LABELS[o.level]} · ${o.months.length} mês(es)`;
+      : isMultiMonth
+        ? `${cadenceLabel} · ${formatCentsAsBRL(o.averageCents)} a cada ${o.intervalMonths}m · Amortizado ${formatCentsAsBRL(o.monthlyAmortizedCents ?? Math.round(o.averageCents / (o.intervalMonths || 1)))}/mês`
+        : `${RECURRENCE_LEVEL_LABELS[o.level]} · ${o.months.length} mês(es)`;
 
   const amountCents =
     o.cadence === "weekly" && o.monthlyConsolidatedCents != null
       ? o.monthlyConsolidatedCents
-      : o.averageCents;
+      : (o.monthlyAmortizedCents ?? o.averageCents);
 
   return {
     key: o.key,
@@ -129,6 +145,7 @@ export function RecurrencesTab({
   canCutAnnualCents,
   activeOccurrences,
   ignoredOccurrences,
+  lapsedOccurrences = [],
   feedbackMap,
   showIgnored,
   setShowIgnored,
@@ -153,6 +170,7 @@ export function RecurrencesTab({
   );
   const [convertingOccurrence, setConvertingOccurrence] = useState<RecurrenceOccurrence | null>(null);
   const [filterTab, setFilterTab] = useState<RecurrenceFilterTab>("all");
+  const [showLapsed, setShowLapsed] = useState(false);
 
   const cancelledAnnualSavingsCents = useMemo(() => {
     return ignoredOccurrences
@@ -220,9 +238,10 @@ export function RecurrencesTab({
     return (
       activeOccurrences.find((o) => o.key === selectedOccurrenceKey) ??
       ignoredOccurrences.find((o) => o.key === selectedOccurrenceKey) ??
+      lapsedOccurrences.find((o) => o.key === selectedOccurrenceKey) ??
       null
     );
-  }, [activeOccurrences, ignoredOccurrences, selectedOccurrenceKey]);
+  }, [activeOccurrences, ignoredOccurrences, lapsedOccurrences, selectedOccurrenceKey]);
 
   const handleStartConversion = useCallback(
     (keyOrOccurrence: string | RecurrenceOccurrence) => {
@@ -476,6 +495,50 @@ export function RecurrencesTab({
         </section>
       ) : null}
 
+      {/* Seção colapsável de Recorrências Encerradas / Histórico (Plano 13) */}
+      {lapsedOccurrences.length > 0 ? (
+        <section aria-label="Recorrências interrompidas" className="flex flex-col gap-2 pt-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setShowLapsed((prev) => !prev);
+            }}
+            className="flex items-center justify-between gap-2 self-start text-xs text-muted-foreground hover:text-foreground"
+            aria-expanded={showLapsed}
+          >
+            <span className="flex items-center gap-1.5 font-medium">
+              <Repeat className="size-3.5 opacity-60" aria-hidden="true" />
+              Recorrências interrompidas / histórico ({lapsedOccurrences.length})
+            </span>
+            {showLapsed ? (
+              <ChevronUp className="size-3.5" aria-hidden="true" />
+            ) : (
+              <ChevronDown className="size-3.5" aria-hidden="true" />
+            )}
+          </Button>
+
+          {showLapsed ? (
+            <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border/80 p-3 bg-surface/30">
+              <p className="text-xs text-muted-foreground">
+                Gastos que não se repetiram nos últimos ciclos. Não somam no custo mensal ativo nem geram alertas.
+              </p>
+              <InsightList
+                items={lapsedOccurrences.map(mapOccurrenceToInsightItem)}
+                feedback={feedbackMap}
+                onIgnore={(key) => onFeedback(key, "ignore")}
+                onIgnoreWithReason={handleIgnoreWithReason}
+                onConfirm={(key) => onFeedback(key, "confirm")}
+                onRestore={(key) => onFeedback(key, null)}
+                onItemClick={(key) => setSelectedOccurrenceKey(key)}
+                onConvert={handleStartConversion}
+              />
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       {/* Seção de Memória e Aprendizado do Assistente (F30 / Tarefa 8.6) */}
       <AssistantMemorySection
         feedbackMap={feedbackMap}
@@ -494,6 +557,10 @@ export function RecurrencesTab({
         }}
         occurrence={selectedOccurrence}
         onConvert={handleStartConversion}
+        currentFeedbackDecision={selectedOccurrence ? (feedbackMap[selectedOccurrence.key] ?? null) : null}
+        onFeedbackDecision={(key, decision) => {
+          onFeedback(key, decision);
+        }}
         isEssential={
           selectedOccurrence
             ? feedbackMap[selectedOccurrence.key] === "essential" || selectedOccurrence.tier === "essential"

@@ -1,8 +1,9 @@
-import { ArrowRight, TrendingDown } from "lucide-react";
+import { ArrowRight, TrendingDown, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { cn } from "@/lib/utils";
+import { triggerSensory } from "@/services/sensory";
 
 export interface PaceAlertBannerProps {
   /** % do orçamento já gasto (0–100+). */
@@ -17,6 +18,7 @@ export interface PaceAlertBannerProps {
   surplusCents: number | null;
   /** Callback para navegar à tela de Insights/Projeção. */
   onNavigateInsights: () => void;
+  onDismiss?: () => void;
   className?: string;
 }
 
@@ -30,22 +32,29 @@ export function PaceAlertBanner({
   dailyCents,
   surplusCents,
   onNavigateInsights,
+  onDismiss,
   className,
 }: PaceAlertBannerProps) {
   const isDeficit = surplusCents !== null && surplusCents < 0;
+
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    triggerSensory("action");
+    onDismiss?.();
+  };
 
   return (
     <section
       aria-label="Atenção ao ritmo de gastos"
       className={cn(
-        "w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 transition-all shadow-xs",
+        "relative w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 transition-all shadow-xs",
         isDeficit
           ? "border-critical/40 bg-critical/5 text-foreground"
           : "border-warning/40 bg-warning/5 text-foreground",
         className,
       )}
     >
-      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+      <div className="flex items-start sm:items-center gap-3 min-w-0 pr-6 sm:pr-0 flex-1">
         <span
           className={cn(
             "flex size-9 shrink-0 items-center justify-center rounded-xl border",
@@ -80,17 +89,29 @@ export function PaceAlertBanner({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center w-full sm:w-auto self-stretch sm:self-center mt-auto sm:mt-0">
+      <div className="flex shrink-0 items-center gap-2 w-full sm:w-auto self-stretch sm:self-center mt-auto sm:mt-0">
         <Button
           type="button"
           size="sm"
           variant={isDeficit ? "destructive" : "warning"}
           onClick={onNavigateInsights}
-          className="gap-1.5 text-xs h-8 shrink-0 font-medium cursor-pointer w-full sm:w-auto justify-center"
+          className="gap-1.5 text-xs h-8 shrink-0 font-medium cursor-pointer flex-1 sm:flex-initial justify-center"
         >
           <span>Simular cortes e projeção</span>
           <ArrowRight className="size-3.5" aria-hidden="true" />
         </Button>
+
+        {onDismiss && (
+          <button
+            type="button"
+            onClick={handleDismiss}
+            className="absolute top-3 right-3 sm:static flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors cursor-pointer shrink-0"
+            aria-label="Dispensar aviso de ritmo de gastos"
+            title="Dispensar aviso"
+          >
+            <X className="size-4" aria-hidden="true" />
+          </button>
+        )}
       </div>
     </section>
   );

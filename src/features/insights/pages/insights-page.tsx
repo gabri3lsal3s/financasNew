@@ -256,9 +256,13 @@ export function InsightsPage({
         rawExpense: e,
       })),
     );
-  const occurrences = detectRecurrences(allExpenses, { todayISO: todayISOStr });
   const feedbackMap: FeedbackMap = (feedbackQuery.data ?? {}) as Record<string, FeedbackDecision>;
-  const { active: activeOccurrences, ignored: ignoredOccurrences } = partitionFeedback(occurrences, feedbackMap);
+  const occurrences = detectRecurrences(allExpenses, { todayISO: todayISOStr, feedbackMap });
+  const { active: partitionedActive, ignored: ignoredOccurrences } = partitionFeedback(occurrences, feedbackMap);
+
+  // Isola despesas que cessaram/lapsaram há mais de 1 ciclo esperado (ex.: almoço encerrado há meses)
+  const activeOccurrences = partitionedActive.filter((o) => o.lifecycle !== "lapsed");
+  const lapsedOccurrences = partitionedActive.filter((o) => o.lifecycle === "lapsed");
 
   const {
     totalRecurringCents,
@@ -534,6 +538,7 @@ export function InsightsPage({
       canCutAnnualCents={canCutAnnualCents}
       activeOccurrences={activeOccurrences}
       ignoredOccurrences={ignoredOccurrences}
+      lapsedOccurrences={lapsedOccurrences}
       feedbackMap={feedbackMap}
       showIgnored={showIgnored}
       setShowIgnored={setShowIgnored}

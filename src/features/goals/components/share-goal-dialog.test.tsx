@@ -354,7 +354,7 @@ describe("ShareGoalDialog", () => {
     const titleInput = screen.getByDisplayValue("Viagem Antiga");
     fireEvent.change(titleInput, { target: { value: "Viagem Renovada 2027" } });
 
-    const saveBtn = screen.getByRole("button", { name: /Salvar Alterações da Meta/i });
+    const saveBtn = screen.getByRole("button", { name: /^Salvar/i });
     fireEvent.click(saveBtn);
 
     await waitFor(() => {

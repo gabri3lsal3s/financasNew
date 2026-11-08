@@ -143,6 +143,5 @@ export { PlatformsTriptychCard } from "./platforms-triptych-card";
 export type { PlatformsTriptychCardProps, PlatformTriptychItem } from "./platforms-triptych-card";
 export { WeeklyDueRadarCard } from "./weekly-due-radar-card";
 export type { WeeklyDueRadarCardProps } from "./weekly-due-radar-card";
-export { SubscriptionAdjustmentModal } from "./subscription-adjustment-modal";
-export type { SubscriptionAdjustmentModalProps } from "./subscription-adjustment-modal";
+
 

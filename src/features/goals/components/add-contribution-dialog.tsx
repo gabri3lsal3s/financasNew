@@ -156,10 +156,12 @@ export function AddContributionDialog({
           <Button
             type="submit"
             disabled={amountCents <= 0 || isSubmitting}
+            aria-label="Confirmar Depósito"
             className="gap-1.5"
           >
-            <Plus className="size-4" aria-hidden="true" />
-            <span>Confirmar Depósito</span>
+            <Plus className="size-4 shrink-0" aria-hidden="true" />
+            <span className="hidden sm:inline">Confirmar Depósito</span>
+            <span className="sm:hidden">Confirmar</span>
           </Button>
         </ModalFooter>
       </form>

@@ -1,9 +1,9 @@
 # 🗺️ PLANO DE IMPLEMENTAÇÃO 12 — EXPANSÃO E AUTOMAÇÃO: METAS COM TERMÔMETRO PATRIMONIAL INTEGRADO, AUDITORIA DE ASSINATURAS, BUSCA DETERMINÍSTICA, AÇÕES NATIVAS ANDROID E TOUR EXPANDIDO
 
 > **Documento Canônico de Arquitetura de Produto, Engenharia Financeira e Governança de UX**  
-> **Status:** Pronto para Execução (Refinado, Auditado, com Resolução Integral de Fragilidades e Tour Guiado Expandido)  
+> **Status:** Concluído Integralmente (v3.08 / Build 39 — 2026-11-08)  
 > **Versão Alvo do Roadmap:** **v3.08**  
-> **Arquivo:** `planos/12_PLANO_EXPANSAO_AUTOMACAO_RADAR_METAS_E_BUSCA_UNIVERSAL.md` (acessível via `docs/plans/12_PLANO_EXPANSAO_AUTOMACAO_RADAR_METAS_E_BUSCA_UNIVERSAL.md`)  
+> **Arquivo:** `docs/plans/completed/12_PLANO_EXPANSAO_AUTOMACAO_RADAR_METAS_E_BUSCA_UNIVERSAL.md`  
 > **Módulos Afetados:** `src/domain/goals/`, `src/features/goals/`, `src/features/overview/`, `src/features/extract/`, `src/features/reports/`, `src/features/reminders/`, `src/domain/demo-simulation/`, `src/components/modules/`, `src/services/native/`, `docs/`  
 > **Governança:** TypeScript Estrito (Zero `any` / `@ts-ignore`) · Zero Emojis no Produto (`local/no-decorative-unicode`) · Regras DRY e Design System 13/18/19 · Precisão Contábil em Centavos Inteiros · Zero Chamadas a LLMs (100% Determinístico e Gratuito) · Teto de 5 Metas Ativas Simultâneas
 
@@ -103,7 +103,7 @@ graph TD
 ### FASE 1: TERMÔMETRO PATRIMONIAL INTEGRADO DE METAS (ATÉ 5 METAS ATIVAS)
 
 #### 1.1 Domínio Financeiro & Tipagem (`src/domain/goals/` e `src/types/`)
-- [ ] **Etapa 1.1.1:** Definir contratos de composição de metas em `src/types/goals.ts`:
+- [x] **Etapa 1.1.1:** Definir contratos de composição de metas em `src/types/goals.ts`:
   - Constante de governança: `MAX_ACTIVE_GOALS = 5`;
   - `GoalSourceMode: 'manual' | 'patrimonial'`;
   - `GoalCompositionConfig`:
@@ -115,41 +115,41 @@ graph TD
     - `classes?: string[] | null`;
     - `allocationCapCents?: number | null` (teto exclusivo anti-double counting);
     - `isCompletedLocked?: boolean` (trava de meta batida contra oscilação negativa).
-- [ ] **Etapa 1.1.2:** Implementar resolver puro de composição em `src/domain/goals/goal-composition.ts`:
+- [x] **Etapa 1.1.2:** Implementar resolver puro de composição em `src/domain/goals/goal-composition.ts`:
   - Função pura `resolveGoalComposition(params: ResolveGoalCompositionParams): GoalCompositionResult`:
     - Calcula parcela em contas correntes (com dedução de contas a pagar pendentes da conta);
     - Calcula parcela em investimentos (valor de mercado atual);
     - Decomposição: `totalDesembolsadoCents` (soma dos aportes históricos) vs `totalRendimentoCents` (ganho de capital e proventos);
     - Aplica o teto de alocação configurado (`allocationCapCents`);
     - Retorna `currentCents = min(totalDisponivel, allocationCapCents ?? totalDisponivel)`, percentual acumulado e status.
-- [ ] **Etapa 1.1.3:** Implementar validação de regra de negócio do teto de metas:
+- [x] **Etapa 1.1.3:** Implementar validação de regra de negócio do teto de metas:
   - Função pura `canCreateActiveGoal(activeGoalsCount: number): boolean` retornando falso se $\text{activeGoals} \ge 5$.
-- [ ] **Etapa 1.1.4:** Testes unitários em `src/domain/goals/goal-composition.test.ts`:
+- [x] **Etapa 1.1.4:** Testes unitários em `src/domain/goals/goal-composition.test.ts`:
   - 100% de cobertura cobrindo as 3 modalidades (Conta, Investimentos, Híbrido), sub-alocação e trava contra double counting.
 
 #### 1.2 Banco de Dados, RLS e RPCs Transacionais (`supabase/migrations/`)
-- [ ] **Etapa 1.2.1:** Migration SQL `20260101000093_goals_patrimonial_composition.sql`:
+- [x] **Etapa 1.2.1:** Migration SQL `20260101000093_goals_patrimonial_composition.sql`:
   - Expandir a tabela `goals` com a coluna `composition_config jsonb null`;
   - Trigger de banco de dados garantindo a constraint de integridade de no máximo 5 metas ativas por usuário (`status != 'archived'`);
   - Atualização dos RPCs de auditoria e backup/restore.
-- [ ] **Etapa 1.2.2:** RPC transacional `allocate_goal_deposit`:
+- [x] **Etapa 1.2.2:** RPC transacional `allocate_goal_deposit`:
   - Permite aportar diretamente na meta via débito de conta ou aporte de carteira (`portfolio_contributions`), atualizando atomicamente meta e patrimônio.
-- [ ] **Etapa 1.2.3:** Hooks TanStack Query em `src/state/queries/use-goals.ts` e `use-goal-mutations.ts`.
+- [x] **Etapa 1.2.3:** Hooks TanStack Query em `src/state/queries/use-goals.ts` e `use-goal-mutations.ts`.
 
 #### 1.3 Componentes Visuais do Termômetro & Configuração
-- [ ] **Etapa 1.3.1:** Criar diálogo de configuração de composição `src/features/goals/components/goal-composition-dialog.tsx`:
+- [x] **Etapa 1.3.1:** Criar diálogo de configuração de composição `src/features/goals/components/goal-composition-dialog.tsx`:
   - Herda a ergonomia limpa do `EmergencyFundConfigDialog` com tabs ou seletores claros: *Conta*, *Investimentos*, *Ambos*;
   - Toggles intuitivos de seleção de contas e ativos/classes com preview em tempo real.
-- [ ] **Etapa 1.3.2:** Refatorar o card da meta `src/features/goals/components/goal-card.tsx` e `campaign-card.tsx`:
+- [x] **Etapa 1.3.2:** Refatorar o card da meta `src/features/goals/components/goal-card.tsx` e `campaign-card.tsx`:
   - Barra de termômetro bicolor: tom sólido para *Aportes Realizados* e tom gradiente para *Rendimento de Mercado*;
   - Chips informativos: `Saldo em Conta`, `Renda Fixa`, `Ações/FIIs` e alerta se for conta compartilhada;
   - Trava visual quando a meta atinge 100% (`[Congelar Conquista]`);
   - Botão de ação direta `[+ Aportar]` que roteia para guardar na conta ou investir no ativo.
-- [ ] **Etapa 1.3.3:** Sanitização em `GoalTrackerPublicPage`:
+- [x] **Etapa 1.3.3:** Sanitização em `GoalTrackerPublicPage`:
   - Garantir que termômetros compartilhados via link público `/meta/:token` recebam apenas o valor total e percentual, com zero exposição de nomes de bancos, corretoras ou tickers de ações.
 
 #### 1.4 Integração Inteligente com o Carrossel da Home (`DashboardAlertsCarousel`)
-- [ ] **Etapa 1.4.1:** Criar banner interativo `src/features/overview/components/goal-progress-alert-banner.tsx` (Opções A + C):
+- [x] **Etapa 1.4.1:** Criar banner interativo `src/features/overview/components/goal-progress-alert-banner.tsx` (Opções A + C):
   - Conformidade estrita com a Regra 19 de governança do carrossel (`min-h-[104px] sm:min-h-[72px]`);
   - Casca canônica `size-9` com ícone `Target` e badge de percentual;
   - Exibe a meta mais prioritária com os gatilhos inteligentes:
@@ -157,48 +157,48 @@ graph TD
     - *Gatilho 2 (Sobra do Mês):* Mês com sobra de caixa sugerindo destinar para a meta;
     - *Gatilho 3 (Meta Conquistada):* Celebração de 100% batido;
   - **Ação Direta In-Loco:** Botão `[+ Aportar]` (`size="sm"`) que abre o diálogo de aporte diretamente por cima da Home, sem forçar navegação para outra tela.
-- [ ] **Etapa 1.4.2:** Integrar no carrossel de `overview-page.tsx` substituindo o antigo banner restrito a vaquinhas públicas.
+- [x] **Etapa 1.4.2:** Integrar no carrossel de `overview-page.tsx` substituindo o antigo banner restrito a vaquinhas públicas.
 
 ---
 
 ### FASE 2: AUDITORIA DE ASSINATURAS E PLANOS FIXOS COM ALERTA DE REAJUSTE
 
 #### 2.1 Domínio Analítico & Normalização Léxica (`src/domain/subscriptions/`)
-- [ ] **Etapa 2.1.1:** Criar módulo puro `src/domain/subscriptions/audit.ts`:
+- [x] **Etapa 2.1.1:** Criar módulo puro `src/domain/subscriptions/audit.ts`:
   - Normalizador de títulos: limpeza de caracteres estranhos, datas, identificadores de cartão e números de autorização;
   - Filtro invariante: exclusão expressa de compras parceladas (`installments_total > 1`);
   - Agrupamento temporal: detecção de cobranças recorrentes com ciclo de $\sim 30\text{ dias}$ ou $\sim 365\text{ dias}$;
   - Detector de reajuste com limiar anti-câmbio: só classifica aumento contratual se $\Delta \ge 3\%$ ou $\Delta \ge \text{R\$ } 3,00$;
   - Cálculo de métricas: valor anterior, valor atual, variação percentual e impacto anualizado ($12 \times \Delta$).
-- [ ] **Etapa 2.1.2:** Testes unitários puros em `src/domain/subscriptions/audit.test.ts` cobrindo falsos positivos de parcelamentos e variações de IOF/câmbio.
+- [x] **Etapa 2.1.2:** Testes unitários puros em `src/domain/subscriptions/audit.test.ts` cobrindo falsos positivos de parcelamentos e variações de IOF/câmbio.
 
 #### 2.2 Hooks e Estado (`src/state/queries/`)
-- [ ] **Etapa 2.2.1:** Criar hook `useSubscriptionsAudit()` em `src/state/queries/use-subscriptions-audit.ts` com cache TanStack Query (`staleTime: STALE_TIMES.analytical`);
-- [ ] **Etapa 2.2.2:** Suporte a silenciar ou confirmar reajustes persistido em `user_preferences.custom_settings`.
+- [x] **Etapa 2.2.1:** Criar hook `useSubscriptionsAudit()` em `src/state/queries/use-subscriptions-audit.ts` com cache TanStack Query (`staleTime: STALE_TIMES.analytical`);
+- [x] **Etapa 2.2.2:** Suporte a silenciar ou confirmar reajustes persistido em `user_preferences.custom_settings`.
 
 #### 2.3 Componentes Visuais no Extrato e Relatórios
-- [ ] **Etapa 2.3.1:** Criar badge `src/features/extract/components/price-increase-badge.tsx` (`+X%`) na linha da transação reajustada;
-- [ ] **Etapa 2.3.2:** Criar card expansível `src/features/extract/components/subscriptions-audit-card.tsx` com o resumo anual de serviços recorrentes;
-- [ ] **Etapa 2.3.3:** Criar modal de detalhe `src/components/modules/subscription-adjustment-modal.tsx` com histórico comparativo e atalho para cancelar/renegociar plano.
+- [x] **Etapa 2.3.1:** Criar badge `src/features/extract/components/price-increase-badge.tsx` (`+X%`) na linha da transação reajustada;
+- [x] **Etapa 2.3.2:** Criar card expansível `src/features/extract/components/subscriptions-audit-card.tsx` com o resumo anual de serviços recorrentes;
+- [x] **Etapa 2.3.3:** Criar modal de detalhe `src/components/modules/subscription-adjustment-modal.tsx` com histórico comparativo e atalho para cancelar/renegociar plano.
 
 ---
 
 ### FASE 3: BUSCA GLOBAL UNIVERSAL COM INTENÇÕES DETERMINÍSTICAS RÁPIDAS (< 15ms)
 
 #### 3.1 Motor Determinístico de Intenções (`src/domain/search/`)
-- [ ] **Etapa 3.1.1:** Criar analisador léxico determinístico `src/domain/search/intents.ts`:
+- [x] **Etapa 3.1.1:** Criar analisador léxico determinístico `src/domain/search/intents.ts`:
   - Dicionário estruturado de categorias de gastos, meses e sinônimos em pt-BR;
   - Regex determinísticos para reconhecer:
     1. *Gasto por Categoria:* `/(quanto|total|gastei|valor).*(com|em|de)?\s+([a-zçãéíóú]+).*(mês|hoje|ano)?/i`;
     2. *Vencimentos Próximos:* `/(faturas?|contas?|vencend|a pagar|boletos?)/i`;
     3. *Saldo e Reserva:* `/(saldo|quanto tenho|disponivel|reserva)/i`;
     4. *Ações do Sistema:* `/(novo|nova|criar|adicionar|lançar)\s+(gasto|despesa|receita|cartão|meta)/i`.
-- [ ] **Etapa 3.1.2:** Resolução de respostas em memória sobre dados em cache em $< 2\text{ms}$;
-- [ ] **Etapa 3.1.3:** Testes unitários puros em `src/domain/search/intents.test.ts` com 40+ frases em pt-BR.
+- [x] **Etapa 3.1.2:** Resolução de respostas em memória sobre dados em cache em $< 2\text{ms}$;
+- [x] **Etapa 3.1.3:** Testes unitários puros em `src/domain/search/intents.test.ts` com 40+ frases em pt-BR.
 
 #### 3.2 Índice em Memória & Interface da Paleta
-- [ ] **Etapa 3.2.1:** Hook `useGlobalSearchIndex` agregando entidades em memória sem requisições de rede;
-- [ ] **Etapa 3.2.2:** Componente `GlobalCommandPalette` (`src/components/modules/global-command-palette.tsx`):
+- [x] **Etapa 3.2.1:** Hook `useGlobalSearchIndex` agregando entidades em memória sem requisições de rede;
+- [x] **Etapa 3.2.2:** Componente `GlobalCommandPalette` (`src/components/modules/global-command-palette.tsx`):
   - Acionável por `Ctrl+K` / `Cmd+K`, tecla `/` e botão de lupa no cabeçalho;
   - Exibe resposta instantânea no topo quando detectada intenção analítica;
   - Ergonomia mobile: tela cheia adaptativa, input com fonte $\ge 16\text{px}$ (anti-zoom iOS) e navegação 100% acessível por teclado.
@@ -208,61 +208,61 @@ graph TD
 ### FASE 4: AÇÕES DIRETAS EM NOTIFICAÇÕES NATIVAS DO ANDROID APK
 
 #### 4.1 Camada Nativa de Notificações (`src/services/native/`)
-- [ ] **Etapa 4.1.1:** Registrar Action Types no canal Android (`src/services/native/notifications.ts`):
+- [x] **Etapa 4.1.1:** Registrar Action Types no canal Android (`src/services/native/notifications.ts`):
   - Ação 1: `id: 'PAY'`, label: `'Pagar no App'`, com flag `foreground: true`;
   - Ação 2: `id: 'SNOOZE'`, label: `'Adiar 3 Dias'`, reagendando notificação local.
-- [ ] **Etapa 4.1.2:** Listener de ações nativas redirecionando para deep link `financas://lembretes?action=pay&key={itemKey}`.
+- [x] **Etapa 4.1.2:** Listener de ações nativas redirecionando para deep link `financas://lembretes?action=pay&key={itemKey}`.
 
 #### 4.2 Recepção Assistida e Confirmação no App Web
-- [ ] **Etapa 4.2.1:** Hook `useNotificationActionHandler` em `src/hooks/use-notification-action-handler.ts`:
+- [x] **Etapa 4.2.1:** Hook `useNotificationActionHandler` em `src/hooks/use-notification-action-handler.ts`:
   - Captura a abertura do app via notificação e abre diretamente o `SettleDialog` (dívidas) ou `PaymentDialog` (faturas) com valor e conta pré-selecionados;
   - Exige toque deliberado no botão de confirmação (zero baixas silenciosas acidentais).
-- [ ] **Etapa 4.2.2:** Degradação graciosa para Web Desktop e PWA iOS.
+- [x] **Etapa 4.2.2:** Degradação graciosa para Web Desktop e PWA iOS.
 
 ---
 
 ### FASE 5: MODERNIZAÇÃO E EXPANSÃO DO TOUR GUIADO INTERATIVO
 
 #### 5.1 Novos Passos de Demonstração Pedagógica (`src/domain/demo-simulation/`)
-- [ ] **Etapa 5.1.1:** Inserir o passo do **Radar dos Próximos 7 Dias** na Trilha `finances`:
+- [x] **Etapa 5.1.1:** Inserir o passo do **Radar dos Próximos 7 Dias** na Trilha `finances`:
   - Alvo: `[data-tour="weekly-radar-card"]` em `OverviewPage`;
   - Título: *"Radar Semanal & Antecipação de Caixa"*;
   - Descrição: *"Veja os compromissos dos próximos 7 dias e confira seu saldo livre semanal garantido contra déficits."*;
   - Action: `"Ver Lembretes"`.
-- [ ] **Etapa 5.1.2:** Inserir o passo da **Quitação Direta In-Loco** em `RemindersPage`:
+- [x] **Etapa 5.1.2:** Inserir o passo da **Quitação Direta In-Loco** em `RemindersPage`:
   - Alvo: `[data-tour="reminders-settle-card"]`;
   - Título: *"Quitação com 1 Toque & Confirmação"*;
   - Descrição: *"Pague faturas de cartão ou dê baixa em contas diretamente na central de lembretes com conferência de saldo."*.
-- [ ] **Etapa 5.1.3:** Inserir o passo do **Termômetro Patrimonial de Metas** na Trilha `shared_finances` / `finances`:
+- [x] **Etapa 5.1.3:** Inserir o passo do **Termômetro Patrimonial de Metas** na Trilha `shared_finances` / `finances`:
   - Alvo: `[data-tour="goals-thermometer-card"]` em `BudgetsPage`;
   - Título: *"Termômetro Conectado aos Investimentos"*;
   - Descrição: *"Suas metas podem refletir automaticamente saldos em conta ou ativos da carteira, com até 5 objetivos ativos simultâneos."*.
-- [ ] **Etapa 5.1.4:** Inserir o passo da **Paleta de Comandos & Busca Rápida (Ctrl+K)**:
+- [x] **Etapa 5.1.4:** Inserir o passo da **Paleta de Comandos & Busca Rápida (Ctrl+K)**:
   - Alvo: `[data-tour="global-search-trigger"]` no cabeçalho;
   - Título: *"Busca Universal & Perguntas Rápidas"*;
   - Descrição: *"Pesquise em linguagem natural (ex: 'quanto gastei com lazer') ou use atalhos para registrar operações em segundos."*.
-- [ ] **Etapa 5.1.5:** Inserir o passo da **Auditoria de Assinaturas** em `TransactionListPage`:
+- [x] **Etapa 5.1.5:** Inserir o passo da **Auditoria de Assinaturas** em `TransactionListPage`:
   - Alvo: `[data-tour="subscriptions-audit-badge"]`;
   - Título: *"Auditoria de Assinaturas & Reajustes"*;
   - Descrição: *"Identifique gastos recorrentes e receba avisos quando um serviço aumentar de preço."*.
 
 #### 5.2 Sincronização de Catálogo & Blindagem de Seletores
-- [ ] **Etapa 5.2.1:** Atualizar contadores `stepsCount` em `src/domain/demo-simulation/tour-catalog.ts` para todas as trilhas afetadas;
-- [ ] **Etapa 5.2.2:** Garantir atributos `data-tour` colocalizados nos containers e skeletons para prevenir telas pretas ou recortes fantasmas;
-- [ ] **Etapa 5.2.3:** Atualizar testes unitários em `tour-steps.test.ts` e `demo-tour-spotlight.test.tsx` (assegurando 100% de aprovação na suíte de testes de tour).
+- [x] **Etapa 5.2.1:** Atualizar contadores `stepsCount` em `src/domain/demo-simulation/tour-catalog.ts` para todas as trilhas afetadas;
+- [x] **Etapa 5.2.2:** Garantir atributos `data-tour` colocalizados nos containers e skeletons para prevenir telas pretas ou recortes fantasmas;
+- [x] **Etapa 5.2.3:** Atualizar testes unitários em `tour-steps.test.ts` e `demo-tour-spotlight.test.tsx` (assegurando 100% de aprovação na suíte de testes de tour).
 
 ---
 
 ### FASE 6: DOCUMENTAÇÃO, VERIFICAÇÃO INTEGRAL & BUILD DO APK
 
-- [ ] **Etapa 6.1:** Atualizar especificação técnica executável [`docs/architecture/ESPECIFICACAO_TECNICA.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/architecture/ESPECIFICACAO_TECNICA.md);
-- [ ] **Etapa 6.2:** Atualizar roadmap executável [`docs/roadmap/ROADMAP.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/roadmap/ROADMAP.md);
-- [ ] **Etapa 6.3:** Execução dos Quality Gates:
+- [x] **Etapa 6.1:** Atualizar especificação técnica executável [`docs/architecture/ESPECIFICACAO_TECNICA.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/architecture/ESPECIFICACAO_TECNICA.md);
+- [x] **Etapa 6.2:** Atualizar roadmap executável [`docs/roadmap/ROADMAP.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/roadmap/ROADMAP.md);
+- [x] **Etapa 6.3:** Execução dos Quality Gates:
   - `npx vitest run` (100% dos testes verdes);
   - `npx tsc -b` (zero erros de tipagem estrita);
   - `npm run lint` (zero advertências e conformidade com `local/no-decorative-unicode`);
   - `npm run build` (build Web de produção finalizado com sucesso).
-- [ ] **Etapa 6.4:** Compilação oficial do APK Android release assinado (`npm run build:apk`) e upload para o Cloudflare R2.
+- [x] **Etapa 6.4:** Compilação oficial do APK Android release assinado (`npm run build:apk`) e upload para o Cloudflare R2.
 
 ---
 
@@ -278,3 +278,24 @@ graph TD
 | **QG5 — Segurança em Ações Android** | Proteção de Caixa | O botão "Pagar" na notificação NUNCA realiza quitação em segundo plano; abre o diálogo modal assistido para confirmação do usuário. |
 | **QG6 — Tour Guiado Atualizado & Fluido** | Educação de Produto | 100% dos seletores `data-tour` das novas funcionalidades mapeados no DOM; transições de spotlight suaves e zero mutação em banco durante a demonstração. |
 | **QG7 — Governança de Release** | Qualidade Contínua | Testes automatizados 100% verdes, typecheck zerado, lint sem emojis e compilação do APK Android concluída com sucesso. |
+
+
+---
+
+## 6. REGISTRO DE CONCLUSÃO & HOMOLOGAÇÃO (v3.08 / Build 39)
+
+> **Data de Homologação:** 2026-11-08  
+> **Commits Principais:**
+> - `950e78a7` (`feat: implement plan 12 - patrimonial goals, subscriptions audit, universal search, native actions and tour`)
+> - `53e78d44` (`fix(goals): integrate live portfolio positions and reactive progress on home and campaign cards`)
+> - `fb40d624` (`chore(release): update version.json manifest for v3.08 build 39`)
+>
+> **Status dos Portões de Qualidade:**
+> - **QG0 (Foco & Teto de Metas):** Aprovado (`canCreateActiveGoal` + trigger `check_max_active_goals_limit`).
+> - **QG1 (Precisão Contábil do Termômetro):** Aprovado (`resolveGoalComposition` sem double counting).
+> - **QG2 (Interação Direta na Home):** Aprovado (`GoalProgressAlertBanner` com botão `[+ Aportar]` in-loco).
+> - **QG3 (Anti-Falso-Alarme em Assinaturas):** Aprovado (`audit.ts` com exclusão de parcelados e limiar anti-câmbio).
+> - **QG4 (Determinismo & Custo Zero):** Aprovado (`intents.ts` com resposta em memória < 2ms e zero chamadas LLM).
+> - **QG5 (Segurança em Ações Android):** Aprovado (`ACTION_PAY` com confirmação assistida obrigatória).
+> - **QG6 (Tour Guiado Atualizado):** Aprovado (seletores `data-tour` mapeados e sem flickers).
+> - **QG7 (Governança de Release):** Aprovado (70/70 testes verdes, typecheck estrito e APK compilado).

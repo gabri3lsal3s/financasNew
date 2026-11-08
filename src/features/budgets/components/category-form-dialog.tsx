@@ -212,7 +212,12 @@ function CategoryFormContent({
           Cancelar
         </Button>
         <Button type="submit" disabled={name.trim() === "" || pending}>
-          {pending ? "Salvando…" : category ? "Salvar alterações" : "Criar categoria"}
+          {pending ? "Salvando…" : (
+            <>
+              <span className="hidden sm:inline">{category ? "Salvar alterações" : "Criar categoria"}</span>
+              <span className="sm:hidden">Salvar</span>
+            </>
+          )}
         </Button>
       </ModalFooter>
     </form>

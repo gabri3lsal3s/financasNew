@@ -18,6 +18,7 @@ vi.mock("@/state", () => ({
   useUpdateExpenseGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateRecurrenceOccurrences: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useExpenses: () => ({ data: [], isLoading: false, error: null }),
   useFamilyMode: () => ({
     isFamilyModeEnabled: false,
     toggleFamilyMode: vi.fn(),

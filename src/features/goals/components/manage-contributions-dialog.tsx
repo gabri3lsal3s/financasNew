@@ -260,9 +260,11 @@ export function ManageContributionsDialog({
                 size="sm"
                 disabled={newAmountCents <= 0 || updateShareMutation.isPending}
                 className="gap-1.5"
+                aria-label="Adicionar à Meta"
               >
-                <Check className="size-3.5" aria-hidden="true" />
-                <span>Adicionar à Meta</span>
+                <Check className="size-3.5 shrink-0" aria-hidden="true" />
+                <span className="hidden sm:inline">Adicionar à Meta</span>
+                <span className="sm:hidden">Adicionar</span>
               </Button>
             </div>
           </form>
@@ -338,9 +340,11 @@ export function ManageContributionsDialog({
                           disabled={editAmountCents <= 0 || updateShareMutation.isPending}
                           onClick={() => void handleSaveEdit(c.id)}
                           className="gap-1.5"
+                          aria-label="Salvar Alterações"
                         >
-                          <Check className="size-3.5" aria-hidden="true" />
-                          <span>Salvar Alterações</span>
+                          <Check className="size-3.5 shrink-0" aria-hidden="true" />
+                          <span className="hidden sm:inline">Salvar Alterações</span>
+                          <span className="sm:hidden">Salvar</span>
                         </Button>
                       </div>
                     </div>
@@ -436,8 +440,16 @@ export function ManageContributionsDialog({
             variant="destructive"
             onClick={() => deletingContribId && void handleDelete(deletingContribId)}
             disabled={updateShareMutation.isPending}
+            aria-label="Confirmar Exclusão"
           >
-            {updateShareMutation.isPending ? "Excluindo…" : "Confirmar Exclusão"}
+            {updateShareMutation.isPending ? (
+              "Excluindo…"
+            ) : (
+              <>
+                <span className="hidden sm:inline">Confirmar Exclusão</span>
+                <span className="sm:hidden">Excluir</span>
+              </>
+            )}
           </Button>
         </ModalFooter>
       </Modal>

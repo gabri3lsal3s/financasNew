@@ -1,19 +1,24 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateFixedCommitmentRate,
+  calculateMonthIntervals,
   calculateRecurringTotals,
   calculateTypicalDay,
   classifyPriceAdjustment,
   detectDuplicateChargesInMonth,
   detectIncomeRecurrences,
   detectRecurrences,
+  diffMonths,
   estimateNextDueDate,
   evaluateBudgetImpact,
+  evaluateExpensePriceEvolution,
   filterRecurrencesByTab,
   formatBRL,
+  inferRecurrenceCadence,
   isFixedBillRecurrence,
   isRecurrenceAlert,
   isSubscriptionRecurrence,
+  RECURRENCE_CADENCE_LABELS,
   VAMPIRE_CATEGORY_BUDGET_IMPACT_THRESHOLD_PERCENT,
   VAMPIRE_INCOME_IMPACT_THRESHOLD_PERCENT,
   type ExpenseLike,
@@ -1220,6 +1225,196 @@ describe("domain/insights/recurrences — Detecção Dual de Rendas (Fase 4, Tar
         const alertas = filterRecurrencesByTab(occurrences, "with_alerts");
         expect(alertas).toHaveLength(1);
         expect(alertas[0]?.name).toBe("Spotify");
+      });
+    });
+  });
+
+  describe("Cadências Multi-Meses, Amortização e Evolução de Preço (Plano 13)", () => {
+    describe("diffMonths, calculateMonthIntervals e inferRecurrenceCadence", () => {
+      it("calcula a diferença exata em meses entre duas competências", () => {
+        expect(diffMonths("2026-01", "2026-01")).toBe(0);
+        expect(diffMonths("2026-01", "2026-03")).toBe(2);
+        expect(diffMonths("2025-10", "2026-02")).toBe(4);
+        expect(diffMonths("2025-06", "2026-06")).toBe(12);
+      });
+
+      it("calcula a lista de intervalos em meses entre meses sucessivos ordenados", () => {
+        const months = ["2026-02", "2026-04", "2026-06", "2026-08"];
+        expect(calculateMonthIntervals(months)).toEqual([2, 2, 2]);
+      });
+
+      it("infere corretamente cadências bimestrais, trimestrais e anuais", () => {
+        expect(inferRecurrenceCadence([1, 1, 1])).toEqual({ cadence: "monthly", intervalMonths: 1 });
+        expect(inferRecurrenceCadence([2, 2, 2])).toEqual({ cadence: "bimonthly", intervalMonths: 2 });
+        expect(inferRecurrenceCadence([3, 3])).toEqual({ cadence: "quarterly", intervalMonths: 3 });
+        expect(inferRecurrenceCadence([4, 4])).toEqual({ cadence: "quadrimonthly", intervalMonths: 4 });
+        expect(inferRecurrenceCadence([6, 6])).toEqual({ cadence: "semiannual", intervalMonths: 6 });
+        expect(inferRecurrenceCadence([12])).toEqual({ cadence: "annual", intervalMonths: 12 });
+      });
+
+      it("exporta rótulos amigáveis em RECURRENCE_CADENCE_LABELS", () => {
+        expect(RECURRENCE_CADENCE_LABELS.bimonthly).toBe("Bimestral");
+        expect(RECURRENCE_CADENCE_LABELS.quarterly).toBe("Trimestral");
+        expect(RECURRENCE_CADENCE_LABELS.annual).toBe("Anual");
+      });
+    });
+
+    describe("detectRecurrences com Cadência Bimestral e Trimestral", () => {
+      it("identifica serviço bimestral, atribui cadence bimonthly e amortiza o custo mensal", () => {
+        const expenses: ExpenseLike[] = [
+          {
+            id: "g1",
+            description: "Gás Encanado Comgás",
+            date: "2026-04-10",
+            month: "2026-04",
+            valueCents: 16000,
+            categoryId: "moradia",
+          },
+          {
+            id: "g2",
+            description: "Gás Encanado Comgás",
+            date: "2026-06-10",
+            month: "2026-06",
+            valueCents: 16000,
+            categoryId: "moradia",
+          },
+          {
+            id: "g3",
+            description: "Gás Encanado Comgás",
+            date: "2026-08-10",
+            month: "2026-08",
+            valueCents: 16000,
+            categoryId: "moradia",
+          },
+        ];
+
+        // Hoje é 2026-09-15. A última cobrança foi em 2026-08 (1 mês atrás). Em cadência bimestral, é perfeitamente ativa!
+        const occurrences = detectRecurrences(expenses, { todayISO: "2026-09-15" });
+        const gas = occurrences.find((o) => o.name.includes("Comgás"));
+
+        expect(gas).toBeDefined();
+        expect(gas?.cadence).toBe("bimonthly");
+        expect(gas?.intervalMonths).toBe(2);
+        expect(gas?.cycleValueCents).toBe(16000);
+        expect(gas?.monthlyAmortizedCents).toBe(8000); // R$ 80,00 por mês
+        expect(gas?.lifecycle).toBe("active");
+        expect(gas?.missingThisMonth).toBe(false);
+        expect(gas?.nextDueDate).toBe("2026-10-10"); // Próxima em outubro (08 + 2)
+
+        // calculateRecurringTotals usa a amortização contábil (R$ 80/mês)
+        const totals = calculateRecurringTotals(occurrences);
+        expect(totals.totalRecurringCents).toBe(8000);
+        expect(totals.totalAnnualRecurringCents).toBe(96000); // 80 * 12 = 960
+      });
+
+      it("identifica serviço trimestral e só o considera lapsed se ultrapassar delta + 1 meses", () => {
+        const expenses: ExpenseLike[] = [
+          {
+            id: "s1",
+            description: "Plano Trimestral Playstation",
+            date: "2026-01-15",
+            month: "2026-01",
+            valueCents: 12000,
+            categoryId: "lazer",
+          },
+          {
+            id: "s2",
+            description: "Plano Trimestral Playstation",
+            date: "2026-04-15",
+            month: "2026-04",
+            valueCents: 12000,
+            categoryId: "lazer",
+          },
+          {
+            id: "s3",
+            description: "Plano Trimestral Playstation",
+            date: "2026-07-15",
+            month: "2026-07",
+            valueCents: 12000,
+            categoryId: "lazer",
+          },
+        ];
+
+        // Hoje é 2026-09-20. 2 meses após julho. Trimestral: próxima prevista em 2026-10! Não deve estar lapsed.
+        const occurrencesActive = detectRecurrences(expenses, { todayISO: "2026-09-20" });
+        const psActive = occurrencesActive.find((o) => o.name.includes("Playstation"));
+        expect(psActive?.lifecycle).toBe("active");
+        expect(psActive?.cadence).toBe("quarterly");
+        expect(psActive?.monthlyAmortizedCents).toBe(4000); // 120 / 3 = R$ 40/mês
+        expect(psActive?.nextDueDate).toBe("2026-10-15");
+
+        // Mas se hoje fosse 2026-12-20 (5 meses sem cobrança, > 3 + 1) -> torna-se lapsed!
+        const occurrencesLapsed = detectRecurrences(expenses, { todayISO: "2026-12-20" });
+        const psLapsed = occurrencesLapsed.find((o) => o.name.includes("Playstation"));
+        expect(psLapsed?.lifecycle).toBe("lapsed");
+      });
+    });
+
+    describe("evaluateExpensePriceEvolution", () => {
+      it("calcula a evolução de preço de 3 níveis: vs anterior, vs mediana e vs primeiro lançamento", () => {
+        const allExpenses: ExpenseLike[] = [
+          {
+            id: "exp-1",
+            description: "Spotify Premium",
+            date: "2026-01-10",
+            month: "2026-01",
+            valueCents: 2190, // R$ 21,90
+            categoryId: "servicos",
+          },
+          {
+            id: "exp-2",
+            description: "Spotify Premium",
+            date: "2026-02-10",
+            month: "2026-02",
+            valueCents: 2190,
+            categoryId: "servicos",
+          },
+          {
+            id: "exp-3",
+            description: "Spotify Premium",
+            date: "2026-03-10",
+            month: "2026-03",
+            valueCents: 2190,
+            categoryId: "servicos",
+          },
+          {
+            id: "exp-4",
+            description: "Spotify Premium",
+            date: "2026-04-10",
+            month: "2026-04",
+            valueCents: 2790, // Aumento para R$ 27,90 (+R$ 6,00 / +27.4%)
+            categoryId: "servicos",
+          },
+        ];
+
+        const target = allExpenses[3]!;
+        const evolution = evaluateExpensePriceEvolution(target, allExpenses);
+
+        expect(evolution).not.toBeNull();
+        expect(evolution?.currentCents).toBe(2790);
+        expect(evolution?.previousCents).toBe(2190);
+        expect(evolution?.deltaPreviousCents).toBe(600);
+        expect(evolution?.deltaPreviousPercent).toBe(27.4);
+        expect(evolution?.historicalMedianCents).toBe(2190);
+        expect(evolution?.deltaMedianCents).toBe(600);
+        expect(evolution?.firstOccurrenceDate).toBe("2026-01-10");
+        expect(evolution?.firstOccurrenceCents).toBe(2190);
+        expect(evolution?.deltaFirstCents).toBe(600);
+        expect(evolution?.hasPriceIncrease).toBe(true);
+        expect(evolution?.history).toHaveLength(4);
+      });
+
+      it("retorna null se a despesa for única ou não tiver histórico anterior", () => {
+        const singleExpense: ExpenseLike = {
+          id: "exp-single",
+          description: "Compra Única",
+          date: "2026-04-10",
+          month: "2026-04",
+          valueCents: 5000,
+          categoryId: "compras",
+        };
+
+        expect(evaluateExpensePriceEvolution(singleExpense, [singleExpense])).toBeNull();
       });
     });
   });

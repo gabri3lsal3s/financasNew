@@ -1,11 +1,28 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.09 (Build 40)** registra a **Conclusão Integral do Plano 13: Reestruturação da Auditoria de Recorrências, Memória do Usuário e Evolução de Preços no Lançamento** (2026-11-08):
+> - **(1) Unificação Canônica do Motor de Recorrências (`src/domain/insights/recurrences.ts`)**:
+>   - Eliminação do motor paralelo `domain/subscriptions/audit.ts` e do hook `useSubscriptionsAudit()`;
+>   - SSOT integral: todas as recorrências e aprendizados são governados por `detectRecurrences` e calibrados via tabela `insight_feedback`;
+>   - Expansão de cadências multi-meses (bimestral, trimestral, quadrimestral, semestral e anual) via `inferRecurrenceCadence` e `calculateMonthIntervals`;
+>   - Amortização contábil canônica mensal (`monthlyAmortizedCents`) e anual para compromissos com espaçamento;
+> - **(2) Blindagem Anti-Falsos-Positivos e Isolamento de Lapsados**:
+>   - Distinção dinâmica de ciclo de vida: despesas sem cobrança há $> \Delta + 1$ meses tornam-se `lapsed` (inativas) e são isoladas em gaveta colapsável dedicada, não poluindo as projeções de custos fixos ativos;
+> - **(3) Controle de Memória e Calibração de 1 Toque em Insights**:
+>   - 4 botões diretos de calibração no modal de auditoria (`Essencial`, `Já Cancelei`, `Gasto Pontual`, `Não é Assinatura`) conectados a `insight_feedback` com persistência imediata;
+> - **(4) Extrato de Transações Desobstruído e Inteligência de Preço Contextual**:
+>   - Remoção do card expansível intrusivo do topo da página de transações;
+>   - Aumentos reais destacados na própria linha da despesa via `PriceIncreaseBadge` e detalhados na seção *Evolução do Gasto* (`evaluateExpensePriceEvolution`) do diálogo de detalhes (vs mês anterior, vs média histórica e marco zero);
+> - **(5) Qualidade 100% Verde e Governança**:
+>   - Suíte de 77 testes de domínio de recorrências e todos os testes de UI/Páginas aprovados;
+>   - Typecheck (`tsc --noEmit`) e ESLint limpos sem violações de unicode decorativo.
+>
 > **v3.08 (Build 39)** registra a **Conclusão Integral do Plano 12: Termômetro Patrimonial de Metas, Auditoria de Assinaturas, Busca Universal Determinística, Ações Android & Expansão do Tour** (2026-11-08):
 > - **(1) Metas com Termômetro Patrimonial Integrado (Fase 1 & QG0/QG1/QG2)**:
 >   - Limite estrito de no máximo 5 metas ativas simultâneas (`canCreateActiveGoal`), com validação no cliente e trigger de banco (`check_max_active_goals_limit`);
 >   - Resolução de composição em três modalidades (`checking_only`, `investments_only`, `hybrid_portfolio`) com desconto de obrigações pendentes e teto de alocação;
 >   - Diálogo de Composição Patrimonial (`GoalCompositionDialog`) com barra bicolor de progresso e badges informativos nos cards de meta;
->   - Banner proativo no carrossel da Home (`GoalProgressAlertBanner`) com botão in-loco `[+ Aportar]` que abre o diálogo de depósito sem trocar de tela;
+>   - Banner proativo no carrossel da Home (`GoalProgressAlertBanner`) com botão in-loco `[+ Aportar]` que abre o diálogo de depósito sem trocar de tela e descarte inteligente com retorno automático por mudanças relevantes (aportes, bater 100%, redefinição de alvo ou promoção da próxima meta);
 > - **(2) Auditoria de Assinaturas e Detecção Anti-Reajuste no Extrato (Fase 2 & QG3)**:
 >   - Algoritmo $O(N \log N)$ em `domain/subscriptions/audit.ts` agrupando recorrências por descrição canônica;
 >   - Exclusão estrita de compras parceladas (`installments_total > 1`) e filtro de oscilações cambiais/IOF ($< 3\%$ e $< \text{R\$ } 3,00$);
@@ -40,7 +57,7 @@
 >   - Erradicação de falsos positivos com faturas já quitadas que apareciam como "Vence hoje" com valores antigos;
 >   - Inserção de salvaguarda de hidratação estrita: o radar só calcula obrigações após o término do carregamento de todas as queries essenciais (`cards`, `cardExpenses`, `cardPayments`, `debts`), evitando transientes com `payments = []`;
 >   - Novos testes unitários em `weekly-radar.test.ts` cobrindo faturas pagas e faturas com vencimento antigo fora do horizonte semanal;
-> - **(2) Planejamento Executivo Canônico das Próximas Fases (`planos/12_PLANO_EXPANSAO_AUTOMACAO_RADAR_METAS_E_BUSCA_UNIVERSAL.md`)**:
+> - **(2) Planejamento Executivo Canônico das Próximas Fases (`planos/completed/12_PLANO_EXPANSAO_AUTOMACAO_RADAR_METAS_E_BUSCA_UNIVERSAL.md`)**:
 >   - Estruturação completa em checklists, regras de domínio, contratos de dados, análise profunda de fragilidades/soluções e portões de qualidade (QG0 a QG7) para:
 >     - *Fase 1:* Termômetro Patrimonial Integrado de Metas (Até 5 Metas Ativas com Composição em Conta, Investimentos ou Ambos e Carrossel da Home);
 >     - *Fase 2:* Auditoria de Assinaturas e Planos Fixos no Extrato com Alerta de Reajuste;

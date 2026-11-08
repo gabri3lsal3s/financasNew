@@ -618,90 +618,93 @@ export function ShareGoalDialog({
               )}
             </div>
 
-            <ModalFooter className="flex-col sm:flex-row sm:items-center sm:justify-between gap-3 [&_button]:sm:min-w-0">
-              {/* Grupo de Ações Secundárias / Administrativas (à esquerda no desktop, segunda linha no mobile) */}
-              <div className="grid grid-cols-3 sm:flex sm:items-center gap-1.5 sm:gap-2 w-full sm:w-auto order-last sm:order-first pt-2 sm:pt-0 border-t border-border/60 sm:border-t-0">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  aria-label="Excluir meta"
-                  title="Excluir meta"
-                  className="text-critical hover:text-critical hover:bg-critical/10 text-xs px-2 sm:px-2.5 h-8"
-                  onClick={() => setIsDeleteModalOpen(true)}
-                  disabled={isPending}
-                >
-                  <Trash2 className="size-3.5 sm:mr-1.5 shrink-0" aria-hidden="true" />
-                  <span className="truncate">Excluir</span>
-                </Button>
-                {activeShare.is_revoked ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    aria-label="Reativar link público"
-                    title="Reativar link público"
-                    onClick={() => void handleConfirmRestore()}
-                    disabled={isPending}
-                    className="gap-1.5 text-xs px-2 sm:px-2.5 h-8"
-                  >
-                    <Eye className="size-3.5 shrink-0" aria-hidden="true" />
-                    <span className="truncate">Reativar<span className="hidden md:inline"> link</span></span>
-                  </Button>
-                ) : (
+            <ModalFooter borderless className="block w-full [&_button]:sm:min-w-0 p-0">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-3 w-full">
+                {/* Grupo de Ações Secundárias / Administrativas (à esquerda no desktop, segunda linha no mobile) */}
+                <div className="grid grid-cols-3 sm:flex sm:items-center gap-1.5 sm:gap-2 w-full sm:w-auto order-last sm:order-first pt-2 sm:pt-0 border-t border-border/60 sm:border-t-0">
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    aria-label="Pausar link público"
-                    title="Pausar link público"
-                    className="text-muted-foreground hover:text-foreground text-xs px-2 sm:px-2.5 h-8 gap-1.5"
-                    onClick={() => setIsRevokeModalOpen(true)}
+                    aria-label="Excluir meta"
+                    title="Excluir meta"
+                    className="text-critical hover:text-critical hover:bg-critical/10 text-xs px-2 sm:px-2.5 h-8 gap-1.5 justify-center"
+                    onClick={() => setIsDeleteModalOpen(true)}
                     disabled={isPending}
                   >
-                    <EyeOff className="size-3.5 shrink-0" aria-hidden="true" />
-                    <span className="truncate">Pausar<span className="hidden md:inline"> link</span></span>
+                    <Trash2 className="size-3.5 shrink-0" aria-hidden="true" />
+                    <span className="hidden min-[400px]:inline">Excluir</span>
                   </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  aria-label="Regenerar link público"
-                  title="Regenerar link público"
-                  onClick={() => setIsRegenerateModalOpen(true)}
-                  disabled={isPending}
-                  className="text-xs px-2 sm:px-2.5 h-8 gap-1.5 text-muted-foreground hover:text-foreground"
-                >
-                  <RotateCw className="size-3.5 shrink-0" aria-hidden="true" />
-                  <span className="truncate">Regenerar<span className="hidden md:inline"> link</span></span>
-                </Button>
-              </div>
+                  {activeShare.is_revoked ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      aria-label="Reativar link público"
+                      title="Reativar link público"
+                      onClick={() => void handleConfirmRestore()}
+                      disabled={isPending}
+                      className="gap-1.5 text-xs px-2 sm:px-2.5 h-8 justify-center"
+                    >
+                      <Eye className="size-3.5 shrink-0" aria-hidden="true" />
+                      <span className="hidden min-[400px]:inline">Reativar<span className="hidden md:inline"> link</span></span>
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      aria-label="Pausar link público"
+                      title="Pausar link público"
+                      className="text-muted-foreground hover:text-foreground text-xs px-2 sm:px-2.5 h-8 gap-1.5 justify-center"
+                      onClick={() => setIsRevokeModalOpen(true)}
+                      disabled={isPending}
+                    >
+                      <EyeOff className="size-3.5 shrink-0" aria-hidden="true" />
+                      <span className="hidden min-[400px]:inline">Pausar<span className="hidden md:inline"> link</span></span>
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Regenerar link público"
+                    title="Regenerar link público"
+                    onClick={() => setIsRegenerateModalOpen(true)}
+                    disabled={isPending}
+                    className="text-xs px-2 sm:px-2.5 h-8 gap-1.5 text-muted-foreground hover:text-foreground justify-center"
+                  >
+                    <RotateCw className="size-3.5 shrink-0" aria-hidden="true" />
+                    <span className="hidden min-[400px]:inline">Regenerar<span className="hidden md:inline"> link</span></span>
+                  </Button>
+                </div>
 
-              {/* Grupo de Ações Primárias / Diálogo (à direita no desktop, primeira linha no mobile) */}
-              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto order-first sm:order-last">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onOpenChange(false)}
-                  className="h-8 text-xs px-3"
-                >
-                  Fechar
-                </Button>
-                <Button
-                  type="button"
-                  variant="default"
-                  size="sm"
-                  aria-label={isCompleted ? "Reabrir meta" : "Marcar como concluída"}
-                  title={isCompleted ? "Reabrir meta" : "Marcar como concluída"}
-                  onClick={() => void handleToggleStatus()}
-                  disabled={isPending}
-                  className="gap-1.5 h-8 text-xs font-semibold px-3"
-                >
-                  <Check className="size-3.5 shrink-0" aria-hidden="true" />
-                  <span className="truncate">{isCompleted ? "Reabrir Meta" : "Concluir Meta"}</span>
-                </Button>
+                {/* Grupo de Ações Primárias / Diálogo (à direita no desktop, primeira linha no mobile) */}
+                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto order-first sm:order-last">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onOpenChange(false)}
+                    className="h-8 text-xs px-3"
+                  >
+                    Fechar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    aria-label={isCompleted ? "Reabrir meta" : "Marcar como concluída"}
+                    title={isCompleted ? "Reabrir meta" : "Marcar como concluída"}
+                    onClick={() => void handleToggleStatus()}
+                    disabled={isPending}
+                    className="gap-1.5 h-8 text-xs font-semibold px-3"
+                  >
+                    <Check className="size-3.5 shrink-0" aria-hidden="true" />
+                    <span className="hidden min-[380px]:inline">{isCompleted ? "Reabrir Meta" : "Concluir Meta"}</span>
+                    <span className="min-[380px]:hidden">{isCompleted ? "Reabrir" : "Concluir"}</span>
+                  </Button>
+                </div>
               </div>
             </ModalFooter>
           </div>
@@ -920,17 +923,28 @@ export function ShareGoalDialog({
               <Button
                 type="submit"
                 disabled={targetCents <= 0 || !pixKey.trim() || isPending}
+                aria-label={
+                  activeShare && isEditingGoal
+                    ? isPending ? "Salvando alterações da meta…" : "Salvar Alterações da Meta"
+                    : isPending ? "Gerando link público…" : "Gerar Termômetro Público & Copiar Link"
+                }
+                title={
+                  activeShare && isEditingGoal
+                    ? "Salvar alterações da meta"
+                    : "Gerar termômetro público e copiar link"
+                }
                 className="gap-2"
               >
                 {activeShare && isEditingGoal ? (
                   <>
-                    <Check className="size-4" aria-hidden="true" />
-                    <span>{isPending ? "Salvando…" : "Salvar Alterações da Meta"}</span>
+                    <Check className="size-4 shrink-0" aria-hidden="true" />
+                    <span>{isPending ? "Salvando…" : "Salvar"}</span>
                   </>
                 ) : (
                   <>
-                    <Share2 className="size-4" aria-hidden="true" />
-                    <span>{isPending ? "Gerando link…" : "Gerar Termômetro Público & Copiar Link"}</span>
+                    <Share2 className="size-4 shrink-0" aria-hidden="true" />
+                    <span className="hidden sm:inline">{isPending ? "Gerando link…" : "Gerar Termômetro"}</span>
+                    <span className="sm:hidden">{isPending ? "Gerando…" : "Ativar"}</span>
                   </>
                 )}
               </Button>

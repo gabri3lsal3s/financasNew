@@ -244,8 +244,16 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
         <Button
           type="submit"
           disabled={pending || (withTransaction && categoryId === "")}
+          aria-label="Confirmar quitação"
         >
-          {pending ? "Quitando…" : "Confirmar quitação"}
+          {pending ? (
+            "Quitando…"
+          ) : (
+            <>
+              <span className="hidden sm:inline">Confirmar quitação</span>
+              <span className="sm:hidden">Quitar</span>
+            </>
+          )}
         </Button>
       </ModalFooter>
     </form>

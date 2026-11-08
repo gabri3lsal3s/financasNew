@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Copy, Pencil, Share2, Trash2, Users } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Copy, Minus, Pencil, Share2, Trash2, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, DatePicker, Input, Modal, ModalFooter, MoneyInput, Select, Switch } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
@@ -14,6 +14,7 @@ import {
   useCreateExpense,
   useDeleteExpense,
   useDeleteRecurrenceOccurrences,
+  useExpenses,
   useFamilyMode,
   useMyFamily,
   useUpdateExpense,
@@ -27,6 +28,7 @@ import type { Category, CreditCard, Expense, InstallmentDeleteMode, PaymentMetho
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { resolveBillCompetence } from "@/domain/competence";
 import { todayISO } from "@/domain/debts";
+import { evaluateExpensePriceEvolution } from "@/domain/insights";
 import { REPORT_WEIGHT_PRESETS } from "./report-weight-constants";
 import { ReportWeightField } from "./report-weight-field";
 
@@ -434,6 +436,13 @@ export function ExpenseDetailDialog({
   const categories = categoriesQuery.data ?? [];
   const cards = cardsQuery.data ?? [];
   const currentCategory = categories.find((c) => c.id === expense?.category_id);
+  const expenseMonth = expense ? expense.date.slice(0, 7) : "";
+  const expensesQuery = useExpenses(expenseMonth, { enabled: Boolean(expense) });
+
+  const priceEvolution = useMemo(() => {
+    if (!expense) return null;
+    return evaluateExpensePriceEvolution(expense, expensesQuery.data ?? []);
+  }, [expense, expensesQuery.data]);
 
   const isInstallment = expense != null && expense.installments_total > 1;
   const isRecurring = expense?.recurrence_id != null;
@@ -732,6 +741,76 @@ export function ExpenseDetailDialog({
                     </div>
                   ) : null}
                 </dl>
+
+                {priceEvolution && (
+                  <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/60 p-3.5 text-xs shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                        {priceEvolution.hasPriceIncrease ? (
+                          <TrendingUp className="size-3.5 text-warning-strong" aria-hidden="true" />
+                        ) : priceEvolution.deltaPreviousCents !== null && priceEvolution.deltaPreviousCents < 0 ? (
+                          <TrendingDown className="size-3.5 text-positive-strong" aria-hidden="true" />
+                        ) : (
+                          <Minus className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                        )}
+                        <span>Evolução do Gasto</span>
+                      </div>
+                      {priceEvolution.hasPriceIncrease && priceEvolution.deltaPreviousPercent !== null && (
+                        <Badge variant="warning" size="xs">
+                          Reajuste +{priceEvolution.deltaPreviousPercent}%
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px]">
+                      <div className="flex flex-col gap-0.5 rounded-lg border border-border/60 bg-surface p-2">
+                        <span className="text-muted-foreground">vs Mês Anterior</span>
+                        <div className="flex items-center gap-1 font-semibold tabular-nums">
+                          <MoneyText
+                            cents={priceEvolution.deltaPreviousCents ?? 0}
+                            tone={(priceEvolution.deltaPreviousCents ?? 0) > 0 ? "negative" : (priceEvolution.deltaPreviousCents ?? 0) < 0 ? "positive" : "default"}
+                            sign="explicit"
+                          />
+                          {priceEvolution.deltaPreviousPercent !== null && (
+                            <span className="text-muted-foreground">
+                              ({priceEvolution.deltaPreviousPercent > 0 ? `+${priceEvolution.deltaPreviousPercent}%` : `${priceEvolution.deltaPreviousPercent}%`})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-0.5 rounded-lg border border-border/60 bg-surface p-2">
+                        <span className="text-muted-foreground">vs Média Histórica</span>
+                        <div className="flex items-center gap-1 font-semibold tabular-nums">
+                          <MoneyText
+                            cents={priceEvolution.deltaMedianCents ?? 0}
+                            tone={(priceEvolution.deltaMedianCents ?? 0) > 0 ? "negative" : (priceEvolution.deltaMedianCents ?? 0) < 0 ? "positive" : "default"}
+                            sign="explicit"
+                          />
+                          {priceEvolution.deltaMedianPercent !== null && (
+                            <span className="text-muted-foreground">
+                              ({priceEvolution.deltaMedianPercent > 0 ? `+${priceEvolution.deltaMedianPercent}%` : `${priceEvolution.deltaMedianPercent}%`})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-0.5 rounded-lg border border-border/60 bg-surface p-2">
+                        <span className="text-muted-foreground">
+                          1º Registro{priceEvolution.firstOccurrenceDate ? ` (${priceEvolution.firstOccurrenceDate.slice(0, 7)})` : ""}
+                        </span>
+                        <div className="flex items-center gap-1 font-semibold tabular-nums">
+                          <MoneyText cents={priceEvolution.firstOccurrenceCents ?? 0} tone="default" />
+                          {priceEvolution.deltaFirstPercent !== null && (
+                            <span className="text-muted-foreground">
+                              ({priceEvolution.deltaFirstPercent >= 0 ? `+${priceEvolution.deltaFirstPercent}%` : `${priceEvolution.deltaFirstPercent}%`})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-3.5 border-t border-border/80 mt-2">
                   <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:w-auto sm:items-center">
