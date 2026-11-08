@@ -15,3 +15,4 @@ export * from "./app-update";
 export * from "./portfolio";
 export * from "./family-wealth";
 export * from "./goals";
+export * from "./trips";

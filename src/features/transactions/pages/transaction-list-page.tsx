@@ -84,6 +84,11 @@ function ExpenseRow({
               Familiar
             </Badge>
           )}
+          {Boolean(expense.trip_id) && (
+            <Badge variant="default" size="xs" className="shrink-0 font-medium">
+              Viagem
+            </Badge>
+          )}
           {priceEvolution?.hasPriceIncrease && priceEvolution.deltaPreviousPercent != null && (
             <PriceIncreaseBadge
               deltaPercent={priceEvolution.deltaPreviousPercent}

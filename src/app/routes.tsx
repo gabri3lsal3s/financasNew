@@ -25,6 +25,9 @@ const pageLoaders: Record<string, () => Promise<PageModule>> = {
   "/configuracoes": () =>
     import("@/features/settings/pages/settings-page").then((m) => ({ default: m.SettingsPage })),
   "/admin": () => import("@/features/admin/pages/admin-page").then((m) => ({ default: m.AdminPage })),
+  "/viagens": () => import("@/features/trips/pages/trip-list-page").then((m) => ({ default: m.TripListPage })),
+  "/viagens/:id": () =>
+    import("@/features/trips/pages/trip-details-page").then((m) => ({ default: m.TripDetailsPage })),
 };
 
 

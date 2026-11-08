@@ -48,6 +48,8 @@ export interface LaunchState {
   splitEnabled: boolean;
   /** Quantidade de participantes na divisão (mínimo 2) */
   splitPeopleCount: number;
+  /** Vínculo com viagem ativa (Modo Viagem) */
+  tripId: string | null;
 }
 
 export const WIZARD_STEPS = ["Valor", "Categoria", "Detalhes", "Revisão"] as const;
@@ -81,6 +83,7 @@ export function defaultLaunchState(
     isFamily: overrides?.isFamily ?? false,
     splitEnabled: overrides?.splitEnabled ?? false,
     splitPeopleCount: overrides?.splitPeopleCount ?? 2,
+    tripId: overrides?.tripId ?? null,
   };
   return overrides ? { ...base, ...overrides } : base;
 }
@@ -175,6 +178,7 @@ export const step3DetailsSchema = z
     recurrenceEndDate: z.string(),
     recurrenceCount: z.number().int(),
     isFamily: z.boolean().default(false).optional(),
+    tripId: z.string().nullable().optional(),
     valueCents: moneyCentsSchema({ allowZero: true }),
   })
   .superRefine((data, ctx) => {
@@ -243,6 +247,7 @@ export const launchStateSchema = z
     recurrenceEndDate: z.string(),
     recurrenceCount: z.number().int(),
     isFamily: z.boolean().default(false).optional(),
+    tripId: z.string().nullable().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.type === "expense" && data.paymentMethod === "credit_card" && (!data.cardId || data.cardId.trim() === "")) {

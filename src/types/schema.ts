@@ -430,6 +430,8 @@ export type Expense = {
   is_family?: boolean;
   /** Identificador da família vinculada se for despesa familiar. */
   family_id?: string | null;
+  /** Identificador do grupo de viagem vinculado se pertencer a uma viagem. */
+  trip_id?: string | null;
   created_at: string;
 };
 

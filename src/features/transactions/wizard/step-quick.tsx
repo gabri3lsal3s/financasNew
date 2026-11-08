@@ -45,6 +45,8 @@ export interface StepQuickProps {
   isFamilyModeEnabled?: boolean;
   onSplitToggle?: (enabled: boolean) => void;
   onSplitPeopleCountChange?: (count: number) => void;
+  activeTrips?: { id: string; title: string; destination?: string | null }[];
+  onTripChange?: (tripId: string | null) => void;
   onSwitchToGuided: () => void;
   categories: Category[] | undefined;
   categoriesLoading?: boolean;
@@ -89,6 +91,8 @@ export function StepQuick({
   isFamilyModeEnabled = false,
   onSplitToggle,
   onSplitPeopleCountChange,
+  activeTrips,
+  onTripChange,
   onSwitchToGuided,
   categories,
   categoriesLoading = false,
@@ -510,6 +514,27 @@ export function StepQuick({
             onCheckedChange={(checked) => onFamilyChange?.(checked)}
             label={isExpense ? "Despesa da Casa / Familiar" : "Receita da Casa / Familiar"}
             description="Visível no Painel Familiar compartilhado"
+          />
+        </div>
+      )}
+
+      {/* 6.0. Vínculo com Modo Viagem */}
+      {isExpense && activeTrips && activeTrips.length > 0 && (
+        <div className="flex flex-col gap-1.5 rounded-xl border border-border/80 bg-surface p-3">
+          <span className="text-xs font-semibold text-foreground">
+            Vincular à Viagem (opcional)
+          </span>
+          <Select
+            ariaLabel="Vincular à viagem"
+            value={state.tripId ?? "none"}
+            onValueChange={(val) => onTripChange?.(val === "none" ? null : val)}
+            options={[
+              { value: "none", label: "Nenhuma viagem vinculada" },
+              ...activeTrips.map((t) => ({
+                value: t.id,
+                label: t.destination ? `${t.title} (${t.destination})` : t.title,
+              })),
+            ]}
           />
         </div>
       )}

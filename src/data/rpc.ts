@@ -1504,3 +1504,65 @@ export async function allocateGoalDeposit(input: {
     } as never),
   );
 }
+
+/**
+ * Retorna os dados públicos sanitizados do ledger da viagem via RPC get_public_trip_ledger.
+ */
+export async function getPublicTripLedger(
+  token: string,
+  passcode?: string,
+): Promise<unknown> {
+  return unwrapRpc(
+    callRpc("get_public_trip_ledger" as never, {
+      p_token: token,
+      p_passcode: passcode ?? null,
+    } as never),
+    true,
+  );
+}
+
+/**
+ * Adiciona uma despesa via link público da viagem via RPC add_public_trip_expense.
+ */
+export async function addPublicTripExpense(input: {
+  token: string;
+  paidByMemberId: string;
+  amountCents: number;
+  description: string;
+  categoryName?: string;
+  expenseDate?: string;
+  splitType?: string;
+  splits: readonly { member_id: string; share_cents: number }[];
+  receiptUrl?: string | null;
+  createdByMemberId?: string | null;
+}): Promise<{ success: boolean; expense_id: string }> {
+  return unwrapRpc(
+    callRpc("add_public_trip_expense" as never, {
+      p_token: input.token,
+      p_paid_by_member_id: input.paidByMemberId,
+      p_amount_cents: input.amountCents,
+      p_description: input.description,
+      p_category_name: input.categoryName ?? "Geral",
+      p_expense_date: input.expenseDate ?? new Date().toISOString().split("T")[0],
+      p_split_type: input.splitType ?? "equal",
+      p_splits: input.splits,
+      p_receipt_url: input.receiptUrl ?? null,
+      p_created_by_member_id: input.createdByMemberId ?? null,
+    } as never),
+  );
+}
+
+/**
+ * Grava a liquidação líquida da viagem via RPC record_trip_settlements.
+ */
+export async function recordTripSettlementsRpc(
+  tripId: string,
+  settlements: readonly { from_member_id: string; to_member_id: string; amount_cents: number }[],
+): Promise<{ success: boolean }> {
+  return unwrapRpc(
+    callRpc("record_trip_settlements" as never, {
+      p_trip_id: tripId,
+      p_settlements: settlements,
+    } as never),
+  );
+}

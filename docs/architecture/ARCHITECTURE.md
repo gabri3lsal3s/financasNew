@@ -124,16 +124,18 @@ O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma
     │   ├── budgets/               #   Orçamentos (limites, realocação)
     │   ├── reports/               #   Relatórios
     │   ├── insights/              #   Insights, projeção e corte
+    │   ├── trips/                 #   Modo Viagem (/viagens, /viagens/:id - grupos temporários & ledger)
     │   ├── reminders/             #   Lembretes (central de notificações)
     │   ├── settings/              #   Configurações (preferências, perfil)
     │   ├── investments/           #   Investimentos (Hub 5 abas: Resumo, Proventos, Metas, Aporte, Relatórios & IR)
     │   ├── landing/               #   Landing page pública e simulador patrimonial
-    │   ├── public-share/          #   Compartilhamento público (/r/:token, /orcamento-familiar/:token, /meta/:token)
+    │   ├── public-share/          #   Compartilhamento público (/r/:token, /orcamento-familiar/:token, /meta/:token, /viagem/:token)
     │   └── tools/                 #   Simuladores abertos client-side (/ferramentas/*)
     │
     ├── domain/                    # ⭐ MOTORES DE CÁLCULO PUROS (testáveis, sem deps)
     │   ├── pix/                   #   gerador EMV QRCPS-MPM BACEN, CRC16, chave Pix e QR Code
     │   ├── finance/               #   rateio de despesas em centavos e políticas de sobra (split-math.ts)
+    │   ├── trips/                 #   algoritmo de liquidação líquida ótima e divisão de cotas (trip-math.ts)
     │   ├── share/                 #   tokens crypto, stateful URLs comprimidas (?s=...) e transporte de simulação
     │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing
     │   ├── competence/            #   resolveBillCompetence, clampDay, overrides

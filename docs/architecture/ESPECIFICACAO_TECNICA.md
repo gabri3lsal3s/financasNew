@@ -1135,6 +1135,23 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
 2. **Proteção de Renderização Visual na Máscara SVG**: O recorte da máscara SVG (`mask`) e a borda pulsante de destaque (`spotlight-border`) só podem ser desenhados se `rect && !isTargetLoading`. Enquanto o alvo assíncrono estiver sendo localizado, a tela exibe o backdrop escuro uniforme calmo, sem halos ou recortes fantasmas em elementos desconexos.
 3. **Resiliência de Seletores em Skeletons**: Telas e abas com elementos-alvo referenciados em tours guiados (`data-tour="..."`) devem incorporar os atributos correspondentes nos contêineres de loading/esqueleto estrutural (`SkeletonList`, `SkeletonTable`, `SkeletonKpi`), assegurando ancoragem e medição imediatas sem depender do término de requisições de rede.
 
+### 3.15 Modo Viagem Compartilhado e Liquidação Mútua (§Plano 14)
+
+1. **Objetivo & Ciclo de Vida**: Grupos temporários de despesas compartilhadas para viagens de amigos, férias ou viagens em família. Estados: `planning` → `active` → `settling` → `completed` → `archived`.
+2. **Ledger Multi-Pagador & Cotas**:
+   - Cada despesa pode ser paga por qualquer membro do grupo (`paid_by_member_id`) e dividida de forma igual (`equal`) ou customizada (`custom`/`shares`).
+   - Todos os valores monetários são manipulados em centavos inteiros (`amount_cents`, `share_cents`).
+   - Invariante de soma estrita validada: `soma(cotas) == valor_total`. O resto de centavos é atribuído determinísticamente ao pagador.
+3. **Algoritmo de Liquidação Líquida Ótima (`resolveNetSettlements`)**:
+   - Calcula o saldo líquido de cada membro: $S_i = \text{Pago}_i - \text{Devido}_i$.
+   - Separa devedores ($S_i < 0$) e credores ($S_j > 0$) e resolve as compensações em ordem decrescente, minimizando o número total de transações entre os membros.
+4. **Vínculo com Despesas Pessoais (`linked_personal_expense_id` e `expenses.trip_id`)**:
+   - Usuários do aplicativo podem lançar despesas no seu cartão/conta e vinculá-las à viagem no LaunchWizard.
+   - A despesa pessoal é sinalizada no extrato e integrada ao histórico da viagem.
+5. **Acesso Público Desacoplado (`/viagem/:token`)**:
+   - Convidados sem conta podem visualizar o saldo do grupo, suas dívidas e registrar despesas pagas sem necessidade de login.
+   - Segurança estrita via RPCs `SECURITY DEFINER` com token aleatório de 64 caracteres.
+
 ---
 
 ## ANEXO A — GLOSSÁRIO

@@ -77,6 +77,19 @@ vi.mock("@/state/mutations/use-public-share-mutations", () => ({
   }),
 }));
 
+vi.mock("@/state/queries/use-trips", () => ({
+  useUserTrips: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+  }),
+  useTripDetails: () => ({
+    data: null,
+    isLoading: false,
+    isError: false,
+  }),
+}));
+
 const activeCreditCardsMock = vi.fn(() => [] as unknown[]);
 const predictionHistoryMock = vi.fn(() => [] as unknown[]);
 

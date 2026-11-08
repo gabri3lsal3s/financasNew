@@ -47,6 +47,9 @@ import {
   useFamilyMode,
   usePredictionHistory,
 } from "@/state";
+import { useUserTrips, useTripDetails } from "@/state/queries/use-trips";
+import { addTripExpense } from "@/data/repositories/trips";
+import { calculateEqualSplits } from "@/domain/trips";
 import { useDemoSession } from "@/state/demo-mode";
 import type { RecurrenceFrequency } from "@/domain/recurrences";
 import type { DbInsert, Income, PaymentMethod, ReceiveType } from "@/types";
@@ -161,6 +164,9 @@ export function LaunchWizard({
 
   const categoriesQuery = useCategories(state.type);
   const cardsQuery = useActiveCreditCards();
+  const userTripsQuery = useUserTrips();
+  const activeTrips = (userTripsQuery.data ?? []).filter((t) => t.status === "active" || t.status === "planning");
+  const selectedTripDetails = useTripDetails(state.tripId ?? "");
   const { isFamilyModeEnabled } = useFamilyMode();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
   const createExpense = useCreateExpense();
@@ -401,6 +407,41 @@ export function LaunchWizard({
           debtType: state.debtEnabled ? state.debtType : null,
           isFamily: state.isFamily,
         });
+
+        // Se uma viagem estiver vinculada, associa a despesa pessoal à viagem e adiciona ao ledger do grupo
+        if (state.tripId && createdExpenseId) {
+          try {
+            const { updateExpense: updateExpenseRepo } = await import("@/data/repositories/expenses");
+            await updateExpenseRepo(createdExpenseId, { trip_id: state.tripId });
+
+            const tripMembers = selectedTripDetails.data?.members ?? [];
+            const hostMember = tripMembers.find((m) => m.is_host) || tripMembers[0];
+            const currentCat = (categoriesQuery.data ?? []).find((c) => c.id === state.categoryId);
+            if (hostMember && tripMembers.length > 0) {
+              const equalSplits = calculateEqualSplits({
+                totalAmountCents: state.valueCents,
+                memberIds: tripMembers.map((m) => m.id),
+                payerMemberId: hostMember.id,
+              });
+              await addTripExpense({
+                trip_id: state.tripId,
+                paid_by_member_id: hostMember.id,
+                amount_cents: state.valueCents,
+                description: state.description || "Despesa da viagem",
+                category_name: currentCat?.name ?? "Geral",
+                expense_date: state.date,
+                split_type: "equal",
+                linked_personal_expense_id: createdExpenseId,
+                splits: equalSplits.map((s: { memberId: string; shareCents: number }) => ({
+                  member_id: s.memberId,
+                  share_cents: s.shareCents,
+                })),
+              });
+            }
+          } catch {
+            // Continua sem quebrar o fluxo do lançamento principal
+          }
+        }
       } else if (state.installments > 1) {
         await createIncomeInstallments.mutateAsync({
           value: state.valueCents / 100,
@@ -830,6 +871,8 @@ export function LaunchWizard({
             predictionEntries={prediction.entries}
             cards={cardsQuery.data}
             cardsLoading={cardsQuery.isLoading}
+            activeTrips={activeTrips}
+            onTripChange={(tripId) => set("tripId", tripId)}
             onSubmit={() => {
               if (canSubmitQuick && !pending) {
                 void handleSubmit();
@@ -932,6 +975,8 @@ export function LaunchWizard({
                 cards={cardsQuery.data}
                 cardsLoading={cardsQuery.isLoading}
                 cardsError={cardsQuery.error}
+                activeTrips={activeTrips}
+                onTripChange={(tripId) => set("tripId", tripId)}
                 onNext={() => {
                   if (canProceed(state)) {
                     goTo(4);
@@ -946,6 +991,7 @@ export function LaunchWizard({
                 categoryName={selectedCategory?.name}
                 closingDay={selectedCard?.closing_day}
                 isFamilyModeEnabled={isFamilyActive}
+                tripName={activeTrips.find((t) => t.id === state.tripId)?.title}
               />
             ) : null}
           </>

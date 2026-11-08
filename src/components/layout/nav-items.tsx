@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Sparkles,
   Users,
+  Plane,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { SystemFeatureKey } from "@/types";
@@ -36,6 +37,7 @@ export const navItems: NavItem[] = [
   { label: "Transações", shortLabel: "Extrato", path: "/transacoes", icon: ArrowLeftRight, featureKey: "transactions" },
   { label: "Cartões", shortLabel: "Cartões", path: "/cartoes", icon: CreditCard, featureKey: "cards" },
   { label: "Contas & Dívidas", shortLabel: "Contas", path: "/dividas", icon: HandCoins, featureKey: "debts" },
+  { label: "Modo Viagem", shortLabel: "Viagens", path: "/viagens", icon: Plane },
   { label: "Investimentos", shortLabel: "Carteira", path: "/investments", icon: ChartLine, featureKey: "investments" },
   { label: "Orçamentos", shortLabel: "Orçamentos", path: "/orcamentos", icon: PiggyBank, featureKey: "budgets" },
   { label: "Orçamento Familiar", shortLabel: "Família", path: "/familia", icon: Users, familyOnly: true },
@@ -55,6 +57,7 @@ export const navGroups: NavGroup[] = [
       { label: "Transações", shortLabel: "Extrato", path: "/transacoes", icon: ArrowLeftRight, featureKey: "transactions" },
       { label: "Cartões", shortLabel: "Cartões", path: "/cartoes", icon: CreditCard, featureKey: "cards" },
       { label: "Contas & Dívidas", shortLabel: "Contas", path: "/dividas", icon: HandCoins, featureKey: "debts" },
+      { label: "Modo Viagem", shortLabel: "Viagens", path: "/viagens", icon: Plane },
     ],
   },
   {

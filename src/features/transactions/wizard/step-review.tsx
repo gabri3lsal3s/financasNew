@@ -17,10 +17,11 @@ export interface StepReviewProps {
   categoryName?: string;
   closingDay?: number | null;
   isFamilyModeEnabled?: boolean;
+  tripName?: string;
 }
 
 /** Passo 4 — revisão antes de confirmar (parcelas calculadas no cliente, D12). */
-export function StepReview({ state, categoryName, closingDay, isFamilyModeEnabled }: StepReviewProps) {
+export function StepReview({ state, categoryName, closingDay, isFamilyModeEnabled, tripName }: StepReviewProps) {
   const isExpense = state.type === "expense";
   const installments =
     !state.recurring && state.installments > 1
@@ -49,6 +50,16 @@ export function StepReview({ state, categoryName, closingDay, isFamilyModeEnable
         <Row label="Valor" value={<MoneyText cents={state.valueCents} tone="default" />} />
         <Row label="Sua Participação / Rateio" value={reportWeightLabel(effectiveReportWeight(state), state.valueCents)} />
         <Row label="Categoria" value={categoryName ?? "—"} />
+        {tripName && (
+          <Row
+            label="Viagem Vinculada"
+            value={
+              <Badge variant="muted" size="xs">
+                {tripName}
+              </Badge>
+            }
+          />
+        )}
         {isFamilyModeEnabled && (
           <Row
             label="Orçamento Familiar"

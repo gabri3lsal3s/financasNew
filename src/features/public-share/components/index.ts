@@ -11,3 +11,7 @@ export {
   SharedLinkHeaderNav,
   type SharedLinkHeaderNavProps,
 } from "./shared-link-header-nav";
+export {
+  AddPublicTripExpenseDialog,
+  type AddPublicTripExpenseDialogProps,
+} from "./add-public-trip-expense-dialog";

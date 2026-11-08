@@ -48,6 +48,9 @@ export interface StepDetailsProps {
   cards: { id: string; name: string }[] | undefined;
   cardsLoading: boolean;
   cardsError: unknown;
+  /** Viagens ativas para vinculação */
+  activeTrips?: { id: string; title: string; destination?: string | null }[];
+  onTripChange?: (tripId: string | null) => void;
   /** Callback para avançar no Enter */
   onNext?: () => void;
 }
@@ -100,6 +103,8 @@ export function StepDetails({
   cards,
   cardsLoading,
   cardsError,
+  activeTrips,
+  onTripChange,
   onNext,
 }: StepDetailsProps) {
   const isExpense = state.type === "expense";
@@ -134,6 +139,25 @@ export function StepDetails({
           </div>
         )}
       </div>
+
+      {/* Vínculo com Modo Viagem */}
+      {isExpense && activeTrips && activeTrips.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium">Vincular a uma Viagem (opcional)</span>
+          <Select
+            value={state.tripId ?? "none"}
+            onValueChange={(val) => onTripChange?.(val === "none" ? null : val)}
+            options={[
+              { value: "none", label: "Nenhuma viagem vinculada" },
+              ...activeTrips.map((t) => ({
+                value: t.id,
+                label: t.destination ? `${t.title} (${t.destination})` : t.title,
+              })),
+            ]}
+            ariaLabel="Vincular a uma viagem"
+          />
+        </div>
+      )}
 
       {isExpense && state.paymentMethod === "credit_card" ? (
         <div className="flex flex-col gap-1.5">
