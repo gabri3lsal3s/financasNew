@@ -326,6 +326,7 @@ Todo controle de interface é um **componente do próprio app** (`components/ui/
 **Rodapé Modernizado de Modais (`ModalFooter`):**
 - **Superfície & Efeito:** utiliza `bg-surface/95 backdrop-blur-xs` integrado, oferecendo alívio elegante sobre o conteúdo do modal.
 - **Borda Adaptativa (`borderless`):** a prop opcional `borderless={true}` suprime a borda superior `border-t border-border/80` quando o modal já possui divisores visuais naturais em seu conteúdo.
+- **Ação Destrutiva/Secundária Isolada (`destructiveAction`):** prop semântica dedicada para ações como *Excluir*, *Arquivar* ou *Desvincular*. No desktop, posiciona-se à extrema esquerda (`justify-between`); no mobile, posiciona-se isoladamente na linha inferior com largura total (`order-last`), mantendo o par principal de ações (*Cancelar* e *Confirmar*) simétrico e confortável na linha superior e prevenindo toques acidentais (*fat-finger error*).
 - **Ergonomia e Área Segura:** padding canônico compacto `p-3.5 sm:p-4` com suporte nativo e compensação da área segura do iOS (`pb-[max(0.5rem,calc(max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px))+0.25rem))]`).
 - **Simetria Responsiva:** pares de 2 botões organizam-se horizontalmente em 2 colunas simétricas no mobile (`grid grid-cols-2 gap-2 sm:flex sm:justify-end`), preservando o toque confortável e a estabilidade dimensional.
 

@@ -840,6 +840,11 @@ O módulo de compartilhamento e crescimento orgânico foi projetado para permiti
 - **Banner Proativo na Home com Respeito à Escolha do Usuário (`PermissionsAlertBanner`):**
   - Integrado ao carrossel de alertas executivos da Home (`DashboardAlertsCarousel`) com prioridade máxima quando em APK nativo e com pendências de permissão para funcionalidades ativas.
   - Oferece o CTA primário de ativação rápida e o botão neutro *"Não ativar agora"*, gravando a dispensa consciente do usuário na nuvem (`dismissedPermissionAlerts`) para respeitar sua decisão sem incômodos repetitivos.
+- **Configuração In-Loco de Antecedência e Lembretes (`RemindersSettingsModal`):**
+  - Elimina a fricção de navegação para a aba geral de configurações ao ajustar parâmetros de lembretes.
+  - Acessível diretamente em `/lembretes` através do link de rodapé *"Ajustar antecedência"* e pelo botão de cabeçalho **`[Ajustes]`**.
+  - Componentização compartilhada (`RemindersPreferencesForm`) entre a página de Lembretes e a aba em Configurações, garantindo estrita aderência à regra DRY (§4).
+  - Valores padrão canônicos (*defaults*): Lembretes no App = Ativado (`true`), Antecedência de Faturas = `3 dias`, Antecedência de Dívidas = `3 dias`, Push no Dispositivo = `false` (aguarda permissão nativa), Fechamento Diário = `false` (sugerindo `20:00` quando ativado).
 
 ---
 

@@ -13,8 +13,13 @@
 > - **(4) Banner Proativo na Home com Respeito à Escolha do Usuário (`PermissionsAlertBanner`)**:
 >   - Card integrado ao carrossel da Home (`DashboardAlertsCarousel`) com prioridade máxima para alertar sobre permissões pendentes em funcionalidades ativas no APK;
 >   - Opção de descarte definitivo ("Não ativar agora") persistida na nuvem (`dismissedPermissionAlerts`).
-> - **(5) Suíte de Testes 100% Verde**:
->   - 8 novos testes unitários dedicados em `use-permissions-status.test.ts` e `permissions-alert-banner.test.tsx`, além de 100% de aprovação em `local-notifications.test.ts`, `notifications-tab.test.tsx` e `overview-page.test.tsx`.
+> - **(5) Configuração In-Loco via Modal em Lembretes (`RemindersSettingsModal`)**:
+>   - Eliminação da perda de contexto ao clicar em "Ajustar antecedência", abrindo o modal diretamente na página `/lembretes`;
+>   - Novo botão `[Ajustes]` no cabeçalho de Lembretes colocalizado com "Marcar todas como lidas";
+>   - Formulário compartilhado `RemindersPreferencesForm` entre `/lembretes` e a aba em Configurações (DRY §4);
+>   - Padronização dos defaults oficiais: 3 dias de antecedência para contas e faturas, lembretes no app ativos e lembrete diário opcional às 20h.
+> - **(6) Suíte de Testes 100% Verde**:
+>   - Testes unitários dedicados em `reminders-settings-modal.test.tsx` e `reminders-page.test.tsx`, além de 100% de aprovação em `notifications-tab.test.tsx`.
 >
 > **v3.07 (Build 32)** registra o **Saneamento de Escopo & Reconstrução do Fluxo de Atualização e Download do APK Android Pro** (2026-11-07):
 > - **(1) Erradicação Completa de Funcionalidades Não Solicitadas**:

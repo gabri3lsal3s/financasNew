@@ -906,12 +906,12 @@ export function ShareGoalDialog({
                 {activeShare && isEditingGoal ? (
                   <>
                     <Check className="size-4" aria-hidden="true" />
-                    <span>{isPending ? "Salvando…" : "Salvar Alterações"}</span>
+                    <span>{isPending ? "Salvando…" : "Salvar Alterações da Meta"}</span>
                   </>
                 ) : (
                   <>
                     <Share2 className="size-4" aria-hidden="true" />
-                    <span>{isPending ? "Gerando link…" : "Gerar Link Público"}</span>
+                    <span>{isPending ? "Gerando link…" : "Gerar Termômetro Público & Copiar Link"}</span>
                   </>
                 )}
               </Button>

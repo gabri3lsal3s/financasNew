@@ -762,9 +762,10 @@ export function ExpenseDetailDialog({
                       className="shrink-0 gap-1.5"
                       onClick={() => guardAction(() => void handleRepeat(), "Duplicar Despesa")}
                       disabled={createExpense.isPending}
+                      aria-label="Repetir no mês atual"
                     >
                       <Copy className="size-3.5" aria-hidden="true" />
-                      <span>{createExpense.isPending ? "Repetindo…" : "Repetir"}</span>
+                      <span>{createExpense.isPending ? "Repetindo…" : "Repetir no mês atual"}</span>
                     </Button>
                   </div>
                   <Button

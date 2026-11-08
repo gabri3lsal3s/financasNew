@@ -609,9 +609,10 @@ export function IncomeDetailDialog({
                         className="shrink-0 gap-1.5"
                         onClick={() => guardAction(() => void handleRepeat(), "Duplicar Receita")}
                         disabled={createIncome.isPending}
+                        aria-label="Repetir no mês atual"
                       >
                         <Copy className="size-3.5" aria-hidden="true" />
-                        <span>{createIncome.isPending ? "Repetindo…" : "Repetir"}</span>
+                        <span>{createIncome.isPending ? "Repetindo…" : "Repetir no mês atual"}</span>
                       </Button>
                     </div>
                     <Button
