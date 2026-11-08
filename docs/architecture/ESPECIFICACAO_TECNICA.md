@@ -439,6 +439,9 @@ A inteligência de repetição do sistema opera em dois trilhos expressos e desa
 - **Bônus de recência logarítmico:** mês atual +25; 1–2m +20; 3–4m +15; 5–6m +10; 7–12m +5; 12m+ +0.
 - **Limites:** máx. 5 por tipo e 12 no total; ordenação por score desc.
 - **Deep-link:** navega ao registro com destaque visual (highlight + scroll) e mês correto.
+- **Layout & Proporções (Desktop & Mobile):**
+  - No cabeçalho (`PageShell` / `GlobalSearch`), a barra de busca é elástica (`flex-1 min-w-0 w-full`), ocupando todo o espaço horizontal disponível entre a marca e as ações contextuais do topo.
+  - A janela modal Command Palette (`Command`) adota proporção responsiva generosa (`sm:max-w-xl md:max-w-2xl` = 672px no desktop), eliminando esmagamento do placeholder longo e garantindo leitura confortável dos itens e atalhos.
 
 ### 3.10 Lembretes e Central de Notificações
 

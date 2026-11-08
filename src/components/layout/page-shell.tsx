@@ -264,10 +264,7 @@ export function PageShell() {
             {visual.headerButtons.logo && (
               <div className="h-5 w-px bg-border shrink-0 lg:hidden" aria-hidden="true" />
             )}
-            <div className="flex-1 min-w-0 sm:flex-initial sm:w-full sm:max-w-sm lg:max-w-md">
-              <GlobalSearch className="w-full" />
-            </div>
-            <div className="hidden sm:block sm:flex-1" aria-hidden="true" />
+            <GlobalSearch className="flex-1 min-w-0" />
             {isDemoActive && (
               <div
                 className="flex items-center gap-1.5 shrink-0 animate-fade-in"

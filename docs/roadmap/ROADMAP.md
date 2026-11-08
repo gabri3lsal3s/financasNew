@@ -1,5 +1,16 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.07 (Build 38)** registra o **Dimensionamento Canônico da Busca Global: Elasticidade no Cabeçalho e Expansão da Command Palette no Desktop** (2026-11-08):
+> - **(1) Elasticidade Plena da Barra de Busca no Cabeçalho (`PageShell` / `GlobalSearch`)**:
+>   - Remoção de containers restritivos (`max-w-md`) e espaçadores fantasmas que travavam a barra de busca no canto esquerdo e geravam vácuo visual no desktop;
+>   - Restauração do comportamento elástico fluido (`<GlobalSearch className="flex-1 min-w-0" />` com `w-full`), permitindo que a barra ocupe harmoniosamente todo o espaço disponível entre o logo e as ações contextuais da direita;
+>   - Eliminação da variante conflitante `size="icon"` no botão de gatilho, extinguindo o bug de compressão para 40px no breakpoint `sm:` e garantindo o alinhamento perfeito do ícone de busca e da tag `⌘K`;
+> - **(2) Expansão Canônica da Janela Modal Command Palette (`Command`)**:
+>   - Ampliação da largura do diálogo de `max-w-lg` (512px) para `sm:max-w-xl md:max-w-2xl` (672px no desktop), eliminando a sensação de janela miniaturizada e permitindo leitura desafogada do placeholder longo e dos resultados agrupados;
+> - **(3) Qualidade 100% Verde e Governança**:
+>   - Suíte de 22 testes unitários e de integração aprovados em `global-search.test.tsx`, `page-shell.test.tsx` e `command.test.tsx`;
+>   - Typecheck estrito (`tsc -b`) e lint (`eslint .`) sem violações.
+>
 > **v3.07 (Build 37)** registra a **Correção Definitiva da Apuração de Faturas no Radar Semanal da Home e o Planejamento Canônico das Fases 3 a 6** (2026-11-08):
 > - **(1) Correção da Apuração de Faturas no Radar Semanal (`WeeklyDueRadarCard` / `OverviewPage`)**:
 >   - Alinhamento estrito com o motor canônico `buildCompetenceSummaries` e `invoiceDueDate` de `@/domain/cards`, filtrando apenas saldos em aberto positivos (`saldoCents > 0`);
