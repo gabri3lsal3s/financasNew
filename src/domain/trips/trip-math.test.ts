@@ -112,6 +112,98 @@ describe("trip-math: calculateMemberBalances", () => {
     const netSum = balances.reduce((acc, b) => acc + b.netBalanceCents, 0);
     expect(netSum).toBe(0);
   });
+
+  it("recalcula cotas igualitárias dinamicamente quando um membro entra após despesa lançada (caso Você e Ítalo)", () => {
+    // Cenário relatado pelo usuário:
+    // 1. "Você" pagou R$ 50,00 quando ainda estava sozinho na viagem
+    // 2. "Ítalo" entrou no grupo e pagou R$ 5,00
+    const members = [
+      { id: "m1", name: "Você" },
+      { id: "m2", name: "Ítalo" },
+    ];
+
+    // Despesa 1: R$ 50,00 paga por Você (split_type: "equal", originalmente gravada com cota só para Você)
+    // Despesa 2: R$ 5,00 paga por Ítalo (split_type: "equal")
+    const expenses = [
+      {
+        paid_by_member_id: "m1",
+        amount_cents: 5000,
+        split_type: "equal" as const,
+        splits: [{ member_id: "m1", share_cents: 5000 }],
+      },
+      {
+        paid_by_member_id: "m2",
+        amount_cents: 500,
+        split_type: "equal" as const,
+        splits: [
+          { member_id: "m1", share_cents: 250 },
+          { member_id: "m2", share_cents: 250 },
+        ],
+      },
+    ];
+
+    const balances = calculateMemberBalances(members, expenses);
+
+    // Custo total da viagem = R$ 55,00 (5500 centavos)
+    // Cota igualitária para cada um:
+    // - Despesa 1 (5000): 2500 para Você, 2500 para Ítalo
+    // - Despesa 2 (500): 250 para Você, 250 para Ítalo (com resto se houver)
+    // Total devido por Você = 2750 centavos. Pagou 5000 -> Saldo: +2250 centavos (+ R$ 22,50)
+    // Total devido por Ítalo = 2750 centavos. Pagou 500 -> Saldo: -2250 centavos (- R$ 22,50)
+    const bVoce = balances.find((b) => b.memberId === "m1");
+    const bItalo = balances.find((b) => b.memberId === "m2");
+
+    expect(bVoce?.totalPaidCents).toBe(5000);
+    expect(bVoce?.totalOwedCents).toBe(2750);
+    expect(bVoce?.netBalanceCents).toBe(2250);
+
+    expect(bItalo?.totalPaidCents).toBe(500);
+    expect(bItalo?.totalOwedCents).toBe(2750);
+    expect(bItalo?.netBalanceCents).toBe(-2250);
+
+    // Na liquidação sugerida: Ítalo deve pagar R$ 22,50 para Você (e NÃO Você dever para Ítalo!)
+    const settlements = calculateSimplifiedSettlements(balances);
+    expect(settlements).toHaveLength(1);
+    expect(settlements[0]).toEqual({
+      fromMemberId: "m2",
+      fromMemberName: "Ítalo",
+      toMemberId: "m1",
+      toMemberName: "Você",
+      toPixKey: null,
+      toPixKeyType: null,
+      amountCents: 2250,
+    });
+  });
+
+  it("respeita divisões customizadas (split_type: 'custom') informadas explicitamente", () => {
+    const members = [
+      { id: "m1", name: "Gabriel" },
+      { id: "m2", name: "Pedro" },
+      { id: "m3", name: "Tiago" },
+    ];
+
+    // Despesa customizada: Gabriel pagou R$ 60,00 apenas para Gabriel (R$ 40) e Pedro (R$ 20). Tiago não participou.
+    const expenses = [
+      {
+        paid_by_member_id: "m1",
+        amount_cents: 6000,
+        split_type: "custom" as const,
+        splits: [
+          { member_id: "m1", share_cents: 4000 },
+          { member_id: "m2", share_cents: 2000 },
+        ],
+      },
+    ];
+
+    const balances = calculateMemberBalances(members, expenses);
+    const bTiago = balances.find((b) => b.memberId === "m3");
+    const bPedro = balances.find((b) => b.memberId === "m2");
+    const bGabriel = balances.find((b) => b.memberId === "m1");
+
+    expect(bTiago?.totalOwedCents).toBe(0);
+    expect(bPedro?.totalOwedCents).toBe(2000);
+    expect(bGabriel?.totalOwedCents).toBe(4000);
+  });
 });
 
 describe("trip-math: calculateSimplifiedSettlements", () => {
@@ -173,6 +265,75 @@ describe("trip-math: calculateSimplifiedSettlements", () => {
 
     // O número de liquidações deve ser estritamente <= N-1 (ou seja, <= 3)
     expect(settlements.length).toBeLessThanOrEqual(3);
+  });
+
+  it("particiona grupos independentes gerando o número mínimo de transações (2 transferências em vez de 3)", () => {
+    // 4 participantes particionáveis em 2 subconjuntos com soma zero:
+    // Subconjunto 1: A (-50) e B (+50)
+    // Subconjunto 2: C (-30) e D (+30)
+    const balances = [
+      { memberId: "A", name: "A", totalPaidCents: 0, totalOwedCents: 5000, netBalanceCents: -5000 },
+      { memberId: "B", name: "B", totalPaidCents: 5000, totalOwedCents: 0, netBalanceCents: 5000 },
+      { memberId: "C", name: "C", totalPaidCents: 0, totalOwedCents: 3000, netBalanceCents: -3000 },
+      { memberId: "D", name: "D", totalPaidCents: 3000, totalOwedCents: 0, netBalanceCents: 3000 },
+    ];
+
+    const settlements = calculateSimplifiedSettlements(balances);
+
+    // Deve gerar exatamente 2 transferências: A -> B (50) e C -> D (30)
+    expect(settlements).toHaveLength(2);
+    expect(settlements.some((s) => s.fromMemberId === "A" && s.toMemberId === "B" && s.amountCents === 5000)).toBe(true);
+    expect(settlements.some((s) => s.fromMemberId === "C" && s.toMemberId === "D" && s.amountCents === 3000)).toBe(true);
+  });
+
+  it("liquida perfeitamente um grupo complexo de 10 participantes com soma zero", () => {
+    // 10 participantes no Modo Viagem com saldos variados
+    const balances = [
+      { memberId: "m1", name: "P1", totalPaidCents: 10000, totalOwedCents: 5000, netBalanceCents: 5000 },
+      { memberId: "m2", name: "P2", totalPaidCents: 0, totalOwedCents: 5000, netBalanceCents: -5000 },
+      { memberId: "m3", name: "P3", totalPaidCents: 12000, totalOwedCents: 4000, netBalanceCents: 8000 },
+      { memberId: "m4", name: "P4", totalPaidCents: 0, totalOwedCents: 4000, netBalanceCents: -4000 },
+      { memberId: "m5", name: "P5", totalPaidCents: 0, totalOwedCents: 4000, netBalanceCents: -4000 },
+      { memberId: "m6", name: "P6", totalPaidCents: 6000, totalOwedCents: 3000, netBalanceCents: 3000 },
+      { memberId: "m7", name: "P7", totalPaidCents: 0, totalOwedCents: 3000, netBalanceCents: -3000 },
+      { memberId: "m8", name: "P8", totalPaidCents: 15000, totalOwedCents: 5000, netBalanceCents: 10000 },
+      { memberId: "m9", name: "P9", totalPaidCents: 0, totalOwedCents: 6000, netBalanceCents: -6000 },
+      { memberId: "m10", name: "P10", totalPaidCents: 0, totalOwedCents: 4000, netBalanceCents: -4000 },
+    ];
+
+    // Soma dos saldos: +5000 -5000 +8000 -4000 -4000 +3000 -3000 +10000 -6000 -4000 = 0
+    const sum = balances.reduce((acc, b) => acc + b.netBalanceCents, 0);
+    expect(sum).toBe(0);
+
+    const settlements = calculateSimplifiedSettlements(balances);
+
+    // O total transferído deve cobrir exatamente o total positivo (26000 centavos)
+    const totalTransferred = settlements.reduce((acc, s) => acc + s.amountCents, 0);
+    expect(totalTransferred).toBe(26000);
+
+    // Com 10 participantes particionáveis, o total de liquidações deve ser muito menor que 9
+    expect(settlements.length).toBeLessThan(9);
+
+    // Verifica que cada participante devedor pagou exatamente o que devia e cada credor recebeu o devido
+    const paidByDebtor = new Map<string, number>();
+    const receivedByCreditor = new Map<string, number>();
+
+    for (const s of settlements) {
+      paidByDebtor.set(s.fromMemberId, (paidByDebtor.get(s.fromMemberId) ?? 0) + s.amountCents);
+      receivedByCreditor.set(s.toMemberId, (receivedByCreditor.get(s.toMemberId) ?? 0) + s.amountCents);
+    }
+
+    expect(paidByDebtor.get("m2")).toBe(5000);
+    expect(paidByDebtor.get("m4")).toBe(4000);
+    expect(paidByDebtor.get("m5")).toBe(4000);
+    expect(paidByDebtor.get("m7")).toBe(3000);
+    expect(paidByDebtor.get("m9")).toBe(6000);
+    expect(paidByDebtor.get("m10")).toBe(4000);
+
+    expect(receivedByCreditor.get("m1")).toBe(5000);
+    expect(receivedByCreditor.get("m3")).toBe(8000);
+    expect(receivedByCreditor.get("m6")).toBe(3000);
+    expect(receivedByCreditor.get("m8")).toBe(10000);
   });
 });
 

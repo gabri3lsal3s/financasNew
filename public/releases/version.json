@@ -1,11 +1,11 @@
 {
   "version": "3.0.9",
-  "versionCode": 37,
-  "releaseDate": "2026-11-08T19:54:35Z",
+  "versionCode": 38,
+  "releaseDate": "2026-11-08T22:05:39Z",
   "minSupportedVersion": "3.0.9",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "3cc3dc6aac08e6aa025f272cdb3c0933bc78a159710286046cfaa641eba9a520",
-  "fileSizeBytes": 12064897,
+  "sha256": "1902086aa947cfacf1fda6391d40c58b4925b2657040b918e13e26c3860ffd08",
+  "fileSizeBytes": 12066761,
   "changelog": [
     "Novo Modo Viagem Compartilhada: divisão em grupo, acerto simplificado de contas e links públicos",
     "Links canônicos unificados hospedados via Cloudflare Workers (Modo Viagem, Família, Racha e Metas)",

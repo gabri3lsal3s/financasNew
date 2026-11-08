@@ -38,6 +38,7 @@ import { useNavigate } from "react-router";
 import { useTripMode } from "@/state";
 import {
   AddTripMemberDialog,
+  AddTripExpenseDialog,
   TripSettlementDialog,
 } from "../components";
 
@@ -48,6 +49,7 @@ export function TripDetailsPage() {
   const { data, isLoading } = useTripDetails(tripId);
 
   const [activeTab, setActiveTab] = useState<string>("expenses");
+  const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isSettlementOpen, setIsSettlementOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -155,12 +157,38 @@ export function TripDetailsPage() {
       label: `Despesas (${expenses.length})`,
       content: (
         <div className="space-y-2.5 mt-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-foreground">
+              Gastos do Grupo
+            </span>
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => setIsAddExpenseOpen(true)}
+              className="h-8 text-xs gap-1"
+            >
+              <Plus className="size-3" aria-hidden="true" />
+              Nova Despesa
+            </Button>
+          </div>
+
           {expenses.length === 0 ? (
             <Card className="p-8 border-border/80 bg-surface text-center">
               <EmptyState
                 icon={<Receipt className="size-8" />}
                 title="Nenhuma despesa lançada"
-                description="Compartilhe o link da viagem ou lance uma despesa pelo aplicativo."
+                description="Adicione o primeiro gasto da viagem para dividir com os amigos ou compartilhe o link público."
+                action={
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => setIsAddExpenseOpen(true)}
+                    className="gap-1.5 mt-2"
+                  >
+                    <Plus className="size-3.5" aria-hidden="true" />
+                    Adicionar Despesa
+                  </Button>
+                }
               />
             </Card>
           ) : (
@@ -232,40 +260,64 @@ export function TripDetailsPage() {
           </div>
 
           <div className="space-y-2">
-            {members.map((member) => (
-              <Card
-                key={member.id}
-                className="p-3.5 rounded-xl border border-border/80 bg-surface shadow-xs flex items-center justify-between gap-3 text-xs"
-              >
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-semibold text-foreground">{member.name}</span>
-                    {member.is_host && (
-                      <Badge size="xs" variant="default">
-                        Organizador
-                      </Badge>
-                    )}
-                  </div>
-                  {member.pix_key && (
-                    <span className="text-[11px] text-muted-foreground font-mono block">
-                      Pix: {member.pix_key}
-                    </span>
-                  )}
-                </div>
+            {members.map((member) => {
+              const memBalance = balances.find((b) => b.memberId === member.id);
+              const paid = memBalance?.totalPaidCents ?? 0;
+              const net = memBalance?.netBalanceCents ?? 0;
 
-                {!member.is_host && (
-                  <button
-                    type="button"
-                    onClick={() => removeMemberMutation.mutate(member.id)}
-                    className="text-muted-foreground hover:text-critical p-1 transition-colors"
-                    title="Remover membro"
-                    aria-label={`Remover ${member.name}`}
-                  >
-                    <Trash2 className="size-3.5" aria-hidden="true" />
-                  </button>
-                )}
-              </Card>
-            ))}
+              return (
+                <Card
+                  key={member.id}
+                  className="p-3.5 rounded-xl border border-border/80 bg-surface shadow-xs flex items-center justify-between gap-3 text-xs"
+                >
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-semibold text-foreground truncate">{member.name}</span>
+                      {member.is_host && (
+                        <Badge size="xs" variant="default">
+                          Organizador
+                        </Badge>
+                      )}
+                      {net > 0 && (
+                        <Badge size="xs" variant="positive">
+                          A receber: +{formatCentsAsBRL(net)}
+                        </Badge>
+                      )}
+                      {net < 0 && (
+                        <Badge size="xs" variant="warning">
+                          A pagar: {formatCentsAsBRL(Math.abs(net))}
+                        </Badge>
+                      )}
+                      {net === 0 && (
+                        <Badge size="xs" variant="muted">
+                          Equilibrado
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
+                      <span>
+                        Total pago: <strong className="text-foreground">{formatCentsAsBRL(paid)}</strong>
+                      </span>
+                      {member.pix_key && (
+                        <span className="font-mono">Pix: {member.pix_key}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {!member.is_host && (
+                    <button
+                      type="button"
+                      onClick={() => removeMemberMutation.mutate(member.id)}
+                      className="text-muted-foreground hover:text-critical p-1 transition-colors shrink-0"
+                      title="Remover membro"
+                      aria-label={`Remover ${member.name}`}
+                    >
+                      <Trash2 className="size-3.5" aria-hidden="true" />
+                    </button>
+                  )}
+                </Card>
+              );
+            })}
           </div>
         </div>
       ),
@@ -375,6 +427,15 @@ export function TripDetailsPage() {
           <div className="flex flex-wrap items-center gap-2">
             <Button
               size="sm"
+              variant="default"
+              onClick={() => setIsAddExpenseOpen(true)}
+              className="h-8 text-xs gap-1.5"
+            >
+              <Plus className="size-3.5" aria-hidden="true" />
+              Adicionar Despesa
+            </Button>
+            <Button
+              size="sm"
               variant="outline"
               onClick={handleCopyPublicLink}
               className="h-8 text-xs gap-1.5"
@@ -393,7 +454,7 @@ export function TripDetailsPage() {
             </Button>
             <Button
               size="sm"
-              variant="default"
+              variant="outline"
               data-tour="trip-settlement-card"
               onClick={() => setIsSettlementOpen(true)}
               className="h-8 text-xs gap-1.5"
@@ -443,6 +504,13 @@ export function TripDetailsPage() {
       />
 
       {/* Diálogos */}
+      <AddTripExpenseDialog
+        open={isAddExpenseOpen}
+        onOpenChange={setIsAddExpenseOpen}
+        tripId={trip.id}
+        members={members}
+      />
+
       <AddTripMemberDialog
         open={isAddMemberOpen}
         onOpenChange={setIsAddMemberOpen}

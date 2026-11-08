@@ -107,6 +107,7 @@ export function useTripDetails(tripId: string | null | undefined) {
         expenses.map((e) => ({
           paid_by_member_id: e.paid_by_member_id,
           amount_cents: e.amount_cents,
+          split_type: e.split_type,
           splits: (e.splits ?? []).map((s) => ({
             member_id: s.member_id,
             share_cents: s.share_cents,
@@ -168,6 +169,7 @@ export function usePublicTrip(token: string | null | undefined, passcode?: strin
         data.expenses.map((e) => ({
           paid_by_member_id: e.paid_by_member_id,
           amount_cents: e.amount_cents,
+          split_type: e.split_type,
           splits: e.splits.map((s) => ({
             member_id: s.member_id,
             share_cents: s.share_cents,

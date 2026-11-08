@@ -254,10 +254,10 @@ flowchart TD
   - Definição dos tipos de domínio: `Trip`, `TripMember`, `TripExpense`, `TripExpenseSplit`, `TripSettlement`, `TripStatus`, `SplitMode`.
   - Schemas zod para validação de entrada de dados no cliente e na borda da API.
 
-- [ ] **Tarefa 1.4: Motor Matemático Puro em Centavos (`src/domain/trips/trip-math.ts`)**
+- [x] **Tarefa 1.4: Motor Matemático Puro em Centavos (`src/domain/trips/trip-math.ts`)**
   - Função pura `calculateEqualSplits(totalCents, memberIds, payerId)` com alocação determinística de centavos residuais ao pagador.
-  - Função pura `calculateMemberBalances(members, expenses, splits)`: computa o saldo líquido de cada membro em centavos inteiros ($\sum \text{pago} - \sum \text{devido}$).
-  - Função pura `calculateSimplifiedSettlements(balances)`: algoritmo ganancioso de minimização de fluxo de caixa (*Greedy Min-Cash-Flow*), gerando a menor quantidade de transferências Pix possíveis.
+  - Função pura `calculateMemberBalances(members, expenses, splits)`: computa o saldo líquido de cada membro em centavos inteiros ($\sum \text{pago} - \sum \text{devido}$), com recalculo dinâmico para despesas de divisão igualitária (`split_type !== 'custom'`) para garantir equilíbrio justo mesmo quando novos membros entram após despesas anteriores.
+  - Função pura `calculateSimplifiedSettlements(balances)`: algoritmo ótimo de minimização de fluxo de caixa (*Min-Cash-Flow via Zero-Sum Subset Partitioning com Bitmask DP* para até 15 integrantes e fallback greedy), gerando o menor número absoluto de transferências Pix possíveis entre os integrantes.
   - Testes unitários colocalizados em `src/domain/trips/trip-math.test.ts` cobrindo cenários com 2 a 15 participantes, restos de centavos, participantes zerados e conferência da invariante $\sum \text{créditos} = \sum \text{débitos}$.
 
 - [ ] **Portão de Qualidade 1 (QG1):**
@@ -335,8 +335,9 @@ flowchart TD
   - Card ativo na Home (`ActiveTripHomeBanner`): exibido durante as datas da viagem com saldo em tempo real e botão de atalho.
   - Acesso pelo Menu Mais (`more-menu-sheet.tsx`) e atalho no topo do extrato.
 
-- [ ] **Tarefa 4.2: Tela de Gestão Granular (`TripDetailsPage`)**
-  - Visão geral de métricas: Total gasto, gráfico por categoria, maiores pagadores e lista cronológica de despesas.
+- [x] **Tarefa 4.2: Tela de Gestão Granular (`TripDetailsPage`)**
+  - Visão geral de métricas: Total gasto, saldo individual de cada participante com badge semântico, maiores pagadores e lista cronológica de despesas.
+  - Diálogo nativo `AddTripExpenseDialog` para lançamento direto de gastos na viagem com seleção flexível de participantes ou divisão igualitária.
   - Gerenciamento de participantes: adicionar amigo, vincular conta Áxis existente, editar chave Pix.
   - Botão de compartilhamento de link público com QR Code e botão de cópia.
 

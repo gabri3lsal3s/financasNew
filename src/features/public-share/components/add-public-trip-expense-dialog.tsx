@@ -45,13 +45,21 @@ export function AddPublicTripExpenseDialog({
   const [amountCents, setAmountCents] = useState<number>(0);
   const [description, setDescription] = useState("");
   const [categoryName, setCategoryName] = useState("Alimentação");
-  const [paidByMemberId, setPaidByMemberId] = useState(
-    defaultPayerId || members[0]?.id || ""
-  );
+  const [selectedPayerId, setSelectedPayerId] = useState<string>("");
   const [splitMode, setSplitMode] = useState<"all" | "selected">("all");
-  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(
-    members.map((m) => m.id)
-  );
+  const [customMemberIds, setCustomMemberIds] = useState<string[]>([]);
+
+  const effectivePayerId =
+    selectedPayerId && members.some((m) => m.id === selectedPayerId)
+      ? selectedPayerId
+      : defaultPayerId && members.some((m) => m.id === defaultPayerId)
+      ? defaultPayerId
+      : members.find((m) => m.is_host)?.id || members[0]?.id || "";
+
+  const activeSelectedMemberIds =
+    customMemberIds.length > 0 && customMemberIds.some((id) => members.some((m) => m.id === id))
+      ? customMemberIds
+      : members.map((m) => m.id);
 
   const submitMutation = useSubmitPublicTripExpenseMutation(token);
 
@@ -61,31 +69,31 @@ export function AddPublicTripExpenseDialog({
   }));
 
   const handleToggleMember = (memberId: string) => {
-    setSelectedMemberIds((prev) => {
-      if (prev.includes(memberId)) {
-        if (prev.length === 1) return prev; // Não permite zerar
-        return prev.filter((id) => id !== memberId);
-      }
-      return [...prev, memberId];
-    });
+    const currentList = activeSelectedMemberIds;
+    if (currentList.includes(memberId)) {
+      if (currentList.length === 1) return; // Não permite zerar
+      setCustomMemberIds(currentList.filter((id) => id !== memberId));
+    } else {
+      setCustomMemberIds([...currentList, memberId]);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (amountCents <= 0 || !description.trim() || !paidByMemberId) return;
+    if (amountCents <= 0 || !description.trim() || !effectivePayerId) return;
 
     const participatingMembers =
-      splitMode === "all" ? members.map((m) => m.id) : selectedMemberIds;
+      splitMode === "all" ? members.map((m) => m.id) : activeSelectedMemberIds;
 
     const calculatedSplits = calculateEqualSplits({
       totalAmountCents: amountCents,
       memberIds: participatingMembers,
-      payerMemberId: paidByMemberId,
+      payerMemberId: effectivePayerId,
     });
 
     await submitMutation.mutateAsync({
       token,
-      paidByMemberId,
+      paidByMemberId: effectivePayerId,
       amountCents,
       description: description.trim(),
       categoryName,
@@ -99,6 +107,9 @@ export function AddPublicTripExpenseDialog({
     // Reset
     setAmountCents(0);
     setDescription("");
+    setSelectedPayerId("");
+    setCustomMemberIds([]);
+    setSplitMode("all");
     onOpenChange(false);
     onSuccess?.();
   };
@@ -165,8 +176,8 @@ export function AddPublicTripExpenseDialog({
                 Quem pagou?
               </label>
               <Select
-                value={paidByMemberId}
-                onValueChange={setPaidByMemberId}
+                value={effectivePayerId}
+                onValueChange={setSelectedPayerId}
                 options={memberOptions}
                 placeholder="Selecione o pagador"
               />
@@ -207,7 +218,7 @@ export function AddPublicTripExpenseDialog({
                 onClick={() => setSplitMode("selected")}
                 className="w-full text-xs"
               >
-                Apenas alguns ({selectedMemberIds.length})
+                Apenas alguns ({activeSelectedMemberIds.length})
               </Button>
             </div>
 
@@ -218,7 +229,7 @@ export function AddPublicTripExpenseDialog({
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {members.map((m) => {
-                    const isSelected = selectedMemberIds.includes(m.id);
+                    const isSelected = activeSelectedMemberIds.includes(m.id);
                     return (
                       <button
                         key={m.id}
