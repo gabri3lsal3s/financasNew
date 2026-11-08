@@ -33,6 +33,7 @@ import {
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { getPublicAppUrl } from "@/services/app-url";
 import { useNavigate } from "react-router";
 import { useTripMode } from "@/state";
 import {
@@ -137,7 +138,7 @@ export function TripDetailsPage() {
   const myBalance = balances.find((b) => b.name === "Você") ?? balances[0];
 
   const handleCopyPublicLink = () => {
-    const url = `${window.location.origin}/viagem/${trip.public_token}`;
+    const url = getPublicAppUrl(`viagem/${trip.public_token}`);
     navigator.clipboard.writeText(url);
     setCopiedLink(true);
     triggerSensory("success");
@@ -453,6 +454,7 @@ export function TripDetailsPage() {
         onOpenChange={setIsSettlementOpen}
         tripId={trip.id}
         tripTitle={trip.title}
+        publicToken={trip.public_token}
         suggestedSettlements={suggestedSettlements}
         existingSettlements={settlements}
       />

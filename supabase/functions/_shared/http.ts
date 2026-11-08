@@ -34,8 +34,8 @@ export function isOriginAllowed(origin: string | null): boolean {
   try {
     const url = new URL(origin);
     if (url.protocol !== "https:") return false;
-    // Cloudflare Pages preview/produção
-    if (url.hostname.endsWith(".pages.dev")) return true;
+    // Cloudflare Pages e Workers preview/produção
+    if (url.hostname.endsWith(".pages.dev") || url.hostname.endsWith(".workers.dev")) return true;
     return false;
   } catch {
     return false;

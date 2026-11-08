@@ -161,10 +161,10 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Radar de Vencimentos dos Próximos 7 Dias no Dashboard com cálculo de liquidez semanal",
-    "Quitação e baixa contábil direta in-loco na Central de Lembretes com confirmação obrigatória",
-    "Apuração canônica de faturas de cartão com salvaguarda estrita de hidratação",
-    "Melhorias contínuas de estabilidade e desempenho no aplicativo Android"
+    "Novo Modo Viagem Compartilhada: divisão em grupo, acerto simplificado de contas e links públicos",
+    "Links canônicos unificados hospedados via Cloudflare Workers (Modo Viagem, Família, Racha e Metas)",
+    "Suporte nativo a deep links e abertura direta no aplicativo Android instalado",
+    "Detalhamento sob demanda das obrigações do ciclo no RealCashHeroCard e melhorias de estabilidade"
   ]
 }
 EOF

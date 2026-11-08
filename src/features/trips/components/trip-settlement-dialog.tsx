@@ -15,6 +15,7 @@ import { Check, Copy, Share2, ShieldCheck } from "lucide-react";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { getPublicAppUrl } from "@/services/app-url";
 import {
   useRecordTripSettlementsMutation,
   useConfirmTripSettlementMutation,
@@ -26,6 +27,7 @@ export interface TripSettlementDialogProps {
   onOpenChange: (open: boolean) => void;
   tripId: string;
   tripTitle: string;
+  publicToken?: string;
   suggestedSettlements: readonly SuggestedSettlement[];
   existingSettlements: TripSettlement[];
 }
@@ -35,6 +37,7 @@ export function TripSettlementDialog({
   onOpenChange,
   tripId,
   tripTitle,
+  publicToken,
   suggestedSettlements,
   existingSettlements,
 }: TripSettlementDialogProps) {
@@ -78,6 +81,9 @@ export function TripSettlementDialog({
       });
     } else {
       msg += `Todas as contas estão perfeitamente equilibradas!\n`;
+    }
+    if (publicToken) {
+      msg += `\nVer extrato completo: ${getPublicAppUrl(`viagem/${publicToken}`)}\n`;
     }
     const encoded = encodeURIComponent(msg);
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, "_blank");

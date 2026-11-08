@@ -50,12 +50,12 @@ function statements(): string[] {
 }
 
 describe("F6.2 — RLS: cobertura total (D4 — multiusuário isolado)", () => {
-  it("toda tabela criada nas migrations tem RLS habilitado (49 tabelas)", () => {
+  it("toda tabela criada nas migrations tem RLS habilitado (54 tabelas)", () => {
     const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(49);
+    expect(created.length).toBe(54);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
@@ -239,6 +239,14 @@ describe("F6.2 — RPCs transacionais endurecidos (D1)", () => {
         if (fn.cleanName === "get_family_invite_preview") {
           expect(fn.body).toMatch(/length\s*\(\s*v_clean_token\s*\)\s*not\s*between\s*6\s*and\s*64/i);
           expect(fn.body).toMatch(/expires_at\s*<=\s*now\(\)/i);
+          continue;
+        }
+
+        // Exceção fundamentada: RPC pública de despesa em Modo Viagem (/viagem/:token).
+        // Por ser acessível por convidados sem conta/anon, valida token da viagem e membros da viagem.
+        if (fn.cleanName === "add_public_trip_expense") {
+          expect(fn.body).toMatch(/p_token\s+is\s+null/i);
+          expect(fn.body).toMatch(/p_amount_cents\s+is\s+null/i);
           continue;
         }
 
@@ -843,14 +851,14 @@ describe("Tarefa 3.3 — Criação do Índice Composto Complementar em portfolio
 });
 
 describe("Tarefa 3.4 — Expansão da Suíte de Auditoria Integral de Banco & Governança InitPlan", () => {
-  it("todas as 49 tabelas possuem RLS habilitado e nenhuma migração contém disable row level security", () => {
+  it("todas as 54 tabelas possuem RLS habilitado e nenhuma migração contém disable row level security", () => {
     expect(ALL_SQL).not.toMatch(/disable\s+row\s+level\s+security/i);
 
     const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(49);
+    expect(created.length).toBe(54);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),

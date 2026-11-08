@@ -55,11 +55,11 @@ describe("services/app-url — getPublicAppUrl", () => {
   describe("em ambiente Web de cloud ou producao (sem VITE_PUBLIC_SITE_URL)", () => {
     it("deve usar window.location.origin quando for um endereco HTTP(S) publico", () => {
       vi.stubEnv("VITE_PUBLIC_SITE_URL", "");
-      mockOrigin("https://financasnew.pages.dev");
+      mockOrigin("https://financasnew.gabrielisaacsales.workers.dev");
 
-      expect(getPublicAppUrl("/entrar")).toBe("https://financasnew.pages.dev/entrar");
-      expect(getPublicAppUrl("redefinir-senha")).toBe("https://financasnew.pages.dev/redefinir-senha");
-      expect(getPublicAppUrl()).toBe("https://financasnew.pages.dev");
+      expect(getPublicAppUrl("/entrar")).toBe("https://financasnew.gabrielisaacsales.workers.dev/entrar");
+      expect(getPublicAppUrl("redefinir-senha")).toBe("https://financasnew.gabrielisaacsales.workers.dev/redefinir-senha");
+      expect(getPublicAppUrl()).toBe("https://financasnew.gabrielisaacsales.workers.dev");
     });
 
     it("deve usar dominio proprio customizado automaticamente quando configurado", () => {
@@ -73,26 +73,27 @@ describe("services/app-url — getPublicAppUrl", () => {
   });
 
   describe("em ambiente Mobile Nativo (Capacitor)", () => {
-    it("deve ignorar origin capacitor://localhost e utilizar fallback canonico https://financasnew.pages.dev", () => {
+    it("deve ignorar origin capacitor://localhost e utilizar fallback canonico https://financasnew.gabrielisaacsales.workers.dev", () => {
       vi.stubEnv("VITE_PUBLIC_SITE_URL", "");
       mockOrigin("capacitor://localhost");
 
-      expect(getPublicAppUrl("/entrar")).toBe("https://financasnew.pages.dev/entrar");
-      expect(getPublicAppUrl("/redefinir-senha")).toBe("https://financasnew.pages.dev/redefinir-senha");
-      expect(getPublicAppUrl()).toBe("https://financasnew.pages.dev");
+      expect(getPublicAppUrl("/entrar")).toBe("https://financasnew.gabrielisaacsales.workers.dev/entrar");
+      expect(getPublicAppUrl("/redefinir-senha")).toBe("https://financasnew.gabrielisaacsales.workers.dev/redefinir-senha");
+      expect(getPublicAppUrl()).toBe("https://financasnew.gabrielisaacsales.workers.dev");
     });
 
     it("deve ignorar origin https://localhost (esquema padrao Android Pro) e resolver links sociais", () => {
       vi.stubEnv("VITE_PUBLIC_SITE_URL", "");
       mockOrigin("https://localhost");
 
-      // Links de Racha, Familia, Metas e Orcamento nunca devem conter localhost
-      expect(getPublicAppUrl("r/tok-split-99")).toBe("https://financasnew.pages.dev/r/tok-split-99");
-      expect(getPublicAppUrl("/convite-familiar/tok-fam-88")).toBe("https://financasnew.pages.dev/convite-familiar/tok-fam-88");
-      expect(getPublicAppUrl("meta/tok-meta-77")).toBe("https://financasnew.pages.dev/meta/tok-meta-77");
-      expect(getPublicAppUrl("orcamento-familiar/tok-orc-66")).toBe("https://financasnew.pages.dev/orcamento-familiar/tok-orc-66");
-      expect(getPublicAppUrl("ferramentas/juros-compostos")).toBe("https://financasnew.pages.dev/ferramentas/juros-compostos");
-      expect(getPublicAppUrl("criar-conta?convite=VIP2026")).toBe("https://financasnew.pages.dev/criar-conta?convite=VIP2026");
+      // Links de Viagem, Racha, Familia, Metas e Orcamento nunca devem conter localhost
+      expect(getPublicAppUrl("viagem/tok-viagem-55")).toBe("https://financasnew.gabrielisaacsales.workers.dev/viagem/tok-viagem-55");
+      expect(getPublicAppUrl("r/tok-split-99")).toBe("https://financasnew.gabrielisaacsales.workers.dev/r/tok-split-99");
+      expect(getPublicAppUrl("/convite-familiar/tok-fam-88")).toBe("https://financasnew.gabrielisaacsales.workers.dev/convite-familiar/tok-fam-88");
+      expect(getPublicAppUrl("meta/tok-meta-77")).toBe("https://financasnew.gabrielisaacsales.workers.dev/meta/tok-meta-77");
+      expect(getPublicAppUrl("orcamento-familiar/tok-orc-66")).toBe("https://financasnew.gabrielisaacsales.workers.dev/orcamento-familiar/tok-orc-66");
+      expect(getPublicAppUrl("ferramentas/juros-compostos")).toBe("https://financasnew.gabrielisaacsales.workers.dev/ferramentas/juros-compostos");
+      expect(getPublicAppUrl("criar-conta?convite=VIP2026")).toBe("https://financasnew.gabrielisaacsales.workers.dev/criar-conta?convite=VIP2026");
     });
   });
 

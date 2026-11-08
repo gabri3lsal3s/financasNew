@@ -22,7 +22,7 @@
 - **Segurança de Borda e Headers HTTP (`public/_headers`):**
   - **Content-Security-Policy (CSP):** política estrita que restringe a execução de scripts e conexões a origens homologadas (`default-src 'self'`, `script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com`, `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`, `img-src 'self' data: blob: https://*.supabase.co`, `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://challenges.cloudflare.com https://brapi.dev`, `font-src 'self' data: https://fonts.gstatic.com`, `frame-src 'self' https://challenges.cloudflare.com`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`);
   - **Defesa em Profundidade:** `Strict-Transport-Security` (HSTS preload), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`;
-  - **CORS das Edge Functions:** allowlist (`ALLOWED_ORIGINS` + `*.pages.dev` + localhost/Capacitor); webhook Asaas sem CORS de browser; `quotes` só grava cache global com service role.
+  - **CORS das Edge Functions:** allowlist (`ALLOWED_ORIGINS` + `*.workers.dev` + `*.pages.dev` + localhost/Capacitor); webhook Asaas sem CORS de browser; `quotes` só grava cache global com service role.
   - **Estratégia de Cache de Borda:** assets estáticos versionados (`/assets/*`) com cache imutável de 1 ano (`max-age=31536000, immutable`), e artefatos dinâmicos de ciclo de vida (`/index.html`, `/sw.js`, `/pwa/*`) com validação imediata (`max-age=0, must-revalidate`).
 - **Backend:** Supabase — migrations em `supabase/migrations/` (0001–0010: schema, RLS, RPCs, overrides, metas, metas de alocação, backfill de perfis, restauração de backup F22).
 - **Auth:** Supabase Auth (email/senha) + trigger `handle_new_user` (cria `profiles` e `user_preferences` automaticamente).
@@ -48,9 +48,9 @@
 1. Crie o projeto em [supabase.com/dashboard](https://supabase.com/dashboard) (anote `Project URL` e `anon key` em **Settings → API**).
 2. Aplique as migrations **na ordem** (0001 → 0052).
 3. **Auth — configurar URLs de redirect** (Settings → Auth → URL Configuration):
-   - `Site URL`: `https://<SEU-DOMINIO-CLOUDFLARE>` (ex.: `https://financasnew.pages.dev` ou domínio próprio)
-   - `Redirect URLs`: adicionar `https://<SEU-DOMINIO-CLOUDFLARE>/**`
-   - O arquivo `supabase/config.toml` já contém a wildcard `"https://*.pages.dev"`.
+   - `Site URL`: `https://financasnew.gabrielisaacsales.workers.dev` (ou domínio próprio customizado)
+   - `Redirect URLs`: adicionar `https://financasnew.gabrielisaacsales.workers.dev/**`, `https://*.workers.dev/**` e `https://*.pages.dev/**`
+   - O arquivo `supabase/config.toml` já contém as entradas `"https://*.workers.dev"` e `"https://financasnew.gabrielisaacsales.workers.dev"`.
 
 ### 3.2 Supabase Auth: Checklist de Rate Limits & Proteção contra Força Bruta
 

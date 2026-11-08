@@ -1,5 +1,24 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.0.9 (Build 37)** registra a **Unificação Canônica de Links Públicos Compartilháveis via Cloudflare Workers (`*.workers.dev`), Modo Viagem Nativo e Build da Nova Versão do APK Android** (2026-11-08):
+> - **(1) Correção Universal de URLs e Links Públicos Compartilhados**:
+>   - Atualização do domínio raiz oficial canônico para `https://financasnew.gabrielisaacsales.workers.dev` em `src/services/app-url.ts`, `.env`, `.env.example` e documentação de deploy;
+>   - Resolução determinística em ambiente Mobile Nativo (Capacitor Android APK) e Web para todas as funcionalidades de colaboração social:
+>     - *Modo Viagem (`/viagem/:token`):* cópia de link no detalhes da viagem (`TripDetailsPage`), compartilhamento via WhatsApp e inclusão de link público no diálogo de acerto de contas (`TripSettlementDialog`);
+>     - *Modo Família (`/convite-familiar/:token`, `/orcamento-familiar/:token`):* geração de convites, QR codes e compartilhamento de orçamento familiar;
+>     - *Racha de Despesas (`/r/:token`):* geração e envio via WhatsApp de cobrança Pix compartilhada;
+>     - *Metas Compartilhadas (`/meta/:token`):* termômetro público coletivo de arrecadação;
+>     - *Simuladores e Ferramentas Financeiras (`/ferramentas/*`):* compartilhamento com estado preservado em URL;
+> - **(2) Deep Links e Navegação Nativa no Android APK (`AndroidManifest.xml`)**:
+>   - Registro do host `financasnew.gabrielisaacsales.workers.dev` no `intent-filter` com autoVerify do Android;
+>   - Inclusão dos prefixos `/viagem` e `/convite-familiar` junto aos já existentes `/r`, `/meta`, `/orcamento-familiar` e `/ferramentas`;
+>   - Suporte completo ao cabeçalho `SharedLinkHeaderNav` com `badgeLabel="Modo Viagem"` e intent nativo `com.guiafinanceiro.app://viagem/:token`;
+> - **(3) CORS e Redirects no Supabase**:
+>   - Inclusão de `*.workers.dev` e `https://financasnew.gabrielisaacsales.workers.dev` em `supabase/config.toml` (`additional_redirect_urls`) e `supabase/functions/_shared/http.ts` (`isOriginAllowed`);
+> - **(4) Qualidade 100% Verde e Compilação do APK**:
+>   - Suíte de testes aprovada, typecheck estrito (`tsc -b`), lint sem violações e compilação do APK Release v3.0.9 (Build 37).
+>
+
 > **v3.09 (Build 40)** registra a **Conclusão Integral do Plano 13: Reestruturação da Auditoria de Recorrências, Memória do Usuário e Evolução de Preços no Lançamento** (2026-11-08):
 > - **(1) Unificação Canônica do Motor de Recorrências (`src/domain/insights/recurrences.ts`)**:
 >   - Eliminação do motor paralelo `domain/subscriptions/audit.ts` e do hook `useSubscriptionsAudit()`;

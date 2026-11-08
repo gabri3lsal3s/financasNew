@@ -171,4 +171,27 @@ describe("TripPublicPage", () => {
 
     expect(screen.getByText("Você deve R$ 100,00")).toBeInTheDocument();
   });
+
+  it("dispara compartilhamento via WhatsApp com URL canônica da aplicação", async () => {
+    const user = userEvent.setup();
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+
+    vi.mocked(tripsQuery.usePublicTrip).mockReturnValue({
+      data: mockTripData,
+      isLoading: false,
+      error: null,
+    } as never);
+
+    renderPage();
+
+    const shareButton = screen.getByRole("button", { name: /Compartilhar/i });
+    await user.click(shareButton);
+
+    expect(openSpy).toHaveBeenCalledWith(
+      expect.stringContaining("financasnew.gabrielisaacsales.workers.dev%2Fviagem%2Ftoken123"),
+      "_blank"
+    );
+
+    openSpy.mockRestore();
+  });
 });

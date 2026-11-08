@@ -6,13 +6,13 @@ import { isNativePlatform } from "@/services/native/platform";
  * Garante que redirecionamentos de autenticação (confirmação de e-mail,
  * redefinição de senha), links públicos compartilháveis (Racha de Contas /r/:token,
  * Convites Familiares /convite-familiar/:token, Metas Coletivas /meta/:token,
- * Orçamento Familiar /orcamento-familiar/:token e Simuladores) apontem para
+ * Orçamento Familiar /orcamento-familiar/:token, Modo Viagem /viagem/:token e Simuladores) apontem para
  * uma URL pública acessível de acordo com o ambiente ativo:
  *
  * 1. Web Localhost (http://localhost:* ou 127.0.0.1:*): usa a própria origem do dev server.
- * 2. Web Cloud / Domínio Próprio (*.pages.dev ou domínio customizado): adota dinamicamente a origem do navegador.
+ * 2. Web Cloud / Domínio Próprio (*.workers.dev, *.pages.dev ou domínio customizado): adota dinamicamente a origem do navegador.
  * 3. Mobile Nativo (Capacitor Android): como a origem interna é capacitor://localhost ou https://localhost,
- *    prioriza VITE_PUBLIC_SITE_URL ou adota o fallback canônico de nuvem (https://financasnew.pages.dev).
+ *    prioriza VITE_PUBLIC_SITE_URL ou adota o fallback canônico de nuvem (https://financasnew.gabrielisaacsales.workers.dev).
  */
 export function getPublicAppUrl(path = ""): string {
   const publicSiteUrl = (import.meta.env.VITE_PUBLIC_SITE_URL ?? "").trim();
@@ -38,7 +38,7 @@ export function getPublicAppUrl(path = ""): string {
 
   // 2. Ambiente Mobile Nativo (Capacitor) ou runtime sem window (testes/SSR)
   if (!base) {
-    base = "https://financasnew.pages.dev";
+    base = "https://financasnew.gabrielisaacsales.workers.dev";
   }
 
   const cleanBase = base.replace(/\/+$/, "");

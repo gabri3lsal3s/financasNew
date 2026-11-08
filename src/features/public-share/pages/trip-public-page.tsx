@@ -30,6 +30,7 @@ import { usePublicTrip } from "@/state/queries/use-trips";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { getPublicAppUrl } from "@/services/app-url";
 import {
   SharedLinkHeaderNav,
   AddPublicTripExpenseDialog,
@@ -113,7 +114,7 @@ export function TripPublicPage() {
       message += `Todas as despesas estão balanceadas!\n`;
     }
 
-    message += `\nVer extrato completo: ${window.location.href}`;
+    message += `\nVer extrato completo: ${getPublicAppUrl(`viagem/${trip.public_token}`)}`;
 
     const encoded = encodeURIComponent(message);
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, "_blank");
@@ -240,7 +241,7 @@ export function TripPublicPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col pb-16">
-      <SharedLinkHeaderNav />
+      <SharedLinkHeaderNav badgeLabel="Modo Viagem" targetPath={`viagem/${token ?? ""}`} />
 
       <main className="flex-1 w-full max-w-2xl mx-auto px-4 pt-4 space-y-4">
         {/* Card Hero da Viagem */}
