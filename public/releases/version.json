@@ -1,15 +1,15 @@
 {
-  "version": "3.0.8",
-  "versionCode": 36,
-  "releaseDate": "2026-11-08T16:34:06Z",
-  "minSupportedVersion": "3.0.8",
+  "version": "3.0.9",
+  "versionCode": 37,
+  "releaseDate": "2026-11-08T19:54:35Z",
+  "minSupportedVersion": "3.0.9",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "1077328cd5e7b52f7aabf4b117c727f5fbe65edaa15649b4e6a0df6ae466b4af",
-  "fileSizeBytes": 12040231,
+  "sha256": "3cc3dc6aac08e6aa025f272cdb3c0933bc78a159710286046cfaa641eba9a520",
+  "fileSizeBytes": 12064897,
   "changelog": [
-    "Radar de Vencimentos dos Próximos 7 Dias no Dashboard com cálculo de liquidez semanal",
-    "Quitação e baixa contábil direta in-loco na Central de Lembretes com confirmação obrigatória",
-    "Apuração canônica de faturas de cartão com salvaguarda estrita de hidratação",
-    "Melhorias contínuas de estabilidade e desempenho no aplicativo Android"
+    "Novo Modo Viagem Compartilhada: divisão em grupo, acerto simplificado de contas e links públicos",
+    "Links canônicos unificados hospedados via Cloudflare Workers (Modo Viagem, Família, Racha e Metas)",
+    "Suporte nativo a deep links e abertura direta no aplicativo Android instalado",
+    "Detalhamento sob demanda das obrigações do ciclo no RealCashHeroCard e melhorias de estabilidade"
   ]
 }
