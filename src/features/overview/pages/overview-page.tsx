@@ -39,6 +39,7 @@ import {
   spentGrossByCategoryMap,
 } from "@/domain/budgets";
 import { todayISO } from "@/domain/debts";
+import { buildCompetenceSummaries, invoiceDueDate } from "@/domain/cards";
 import {
   analyzeCashGap,
   computeWeeklyDueRadar,
@@ -550,30 +551,72 @@ export function OverviewPage() {
     ],
   );
 
-  const weeklyRadarSummary = useMemo(
-    () =>
-      computeWeeklyDueRadar({
-        today,
+  const weeklyRadarSummary = useMemo(() => {
+    // Salvaguarda estrita de hidratação: nunca processa o radar de vencimentos se as queries
+    // essenciais de cartões, despesas, pagamentos e dívidas estiverem carregando ou com dados nulos
+    // (evitando que faturas quitadas apareçam como vencidas com o saldo nominal original).
+    if (
+      cardsQuery.isLoading ||
+      cardExpensesQuery.isLoading ||
+      cardPaymentsQuery.isLoading ||
+      debtsQuery.isLoading ||
+      !cardsQuery.data ||
+      !cardExpensesQuery.data ||
+      !cardPaymentsQuery.data ||
+      !debtsQuery.data
+    ) {
+      return {
+        items: [],
+        totalDueCents: 0,
         realCashCents: realCashData.cashBalance.currentBalanceCents,
-        debts: debtsQuery.data ?? [],
-        invoices: projectCardInvoiceObligations({
-          cards: cardsQuery.data ?? [],
-          expenses: cardExpensesQuery.data ?? [],
-          payments: cardPaymentsQuery.data ?? [],
-          today,
-          currentMonth: month,
-        }),
-      }),
-    [
+        freeBalanceCents: realCashData.cashBalance.currentBalanceCents,
+        isDeficitRisk: false,
+        hasObligations: false,
+      };
+    }
+
+    const cards = cardsQuery.data;
+    const allExpenses = cardExpensesQuery.data;
+    const allPayments = cardPaymentsQuery.data;
+    const allDebts = debtsQuery.data;
+
+    // Apuração canônica e auditada de faturas em aberto (§3.3.3 / §4.3)
+    const invoices = cards
+      .filter((card) => card.is_active)
+      .flatMap((card) => {
+        const expenses = allExpenses.filter((e) => e.card_id === card.id);
+        const payments = allPayments.filter((p) => p.card_id === card.id);
+        return buildCompetenceSummaries(expenses, payments)
+          .filter((summary) => summary.saldoCents > 0)
+          .map((summary) => ({
+            id: `bill:${card.id}:${summary.month}`,
+            name: summary.month === month ? `Fatura ${card.name}` : `Fatura ${card.name} (${summary.month})`,
+            dueDate: invoiceDueDate(summary.month, card.due_day),
+            amountCents: summary.saldoCents,
+            cardId: card.id,
+            competenceMonth: summary.month,
+          }));
+      });
+
+    return computeWeeklyDueRadar({
       today,
-      realCashData.cashBalance.currentBalanceCents,
-      debtsQuery.data,
-      cardsQuery.data,
-      cardExpensesQuery.data,
-      cardPaymentsQuery.data,
-      month,
-    ],
-  );
+      realCashCents: realCashData.cashBalance.currentBalanceCents,
+      debts: allDebts,
+      invoices,
+    });
+  }, [
+    today,
+    realCashData.cashBalance.currentBalanceCents,
+    cardsQuery.isLoading,
+    cardExpensesQuery.isLoading,
+    cardPaymentsQuery.isLoading,
+    debtsQuery.isLoading,
+    cardsQuery.data,
+    cardExpensesQuery.data,
+    cardPaymentsQuery.data,
+    debtsQuery.data,
+    month,
+  ]);
 
   // Apuração de Rachas a receber pendentes
   const splitPendingData = useMemo(() => {

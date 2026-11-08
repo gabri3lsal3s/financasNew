@@ -83,4 +83,52 @@ describe("computeWeeklyDueRadar — Motor Puro de Projeção Semanal", () => {
     expect(res.items[0]!.status).toBe("due_today");
     expect(res.items[0]!.daysUntilDue).toBe(0);
   });
+
+  it("ignora faturas com saldo zerado ou negativo (faturas já quitadas)", () => {
+    const res = computeWeeklyDueRadar({
+      debts: [],
+      invoices: [
+        { id: "inv-paid-1", name: "Fatura Rico (2026-07)", dueDate: baseDate, amountCents: 0 },
+        { id: "inv-paid-2", name: "Fatura Rico (2026-05)", dueDate: baseDate, amountCents: -500 },
+      ],
+      realCashCents: 200000,
+      today: baseDate,
+    });
+
+    expect(res.hasObligations).toBe(false);
+    expect(res.items).toHaveLength(0);
+    expect(res.totalDueCents).toBe(0);
+  });
+
+  it("ignora faturas antigas com vencimento fora do horizonte semanal (mesmo que com saldo)", () => {
+    const res = computeWeeklyDueRadar({
+      debts: [],
+      invoices: [
+        { id: "inv-old-1", name: "Fatura Rico (2026-05)", dueDate: "2026-05-15", amountCents: 3144 },
+        { id: "inv-old-2", name: "Fatura Rico (2026-06)", dueDate: "2026-06-15", amountCents: 580 },
+      ],
+      realCashCents: 200000,
+      today: baseDate, // 2026-08-10
+    });
+
+    expect(res.hasObligations).toBe(false);
+    expect(res.items).toHaveLength(0);
+  });
+
+  it("classifica corretamente fatura recentemente vencida como overdue com dias negativos", () => {
+    const res = computeWeeklyDueRadar({
+      debts: [],
+      invoices: [
+        { id: "inv-recent-1", name: "Fatura Rico (2026-08)", dueDate: "2026-08-07", amountCents: 15000 },
+      ],
+      realCashCents: 200000,
+      today: baseDate, // 2026-08-10 (venceu há 3 dias)
+    });
+
+    expect(res.hasObligations).toBe(true);
+    expect(res.items).toHaveLength(1);
+    expect(res.items[0]!.status).toBe("overdue");
+    expect(res.items[0]!.daysUntilDue).toBe(-3);
+  });
 });
+
