@@ -1158,6 +1158,9 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
 7. **Simulação e Tour Onboarding**:
    - Suporte completo ao Modo Simulação com mock dinâmico em memória e tour interativo em 3 passos (`trips-hub`, `trip-balances`, `trip-settlement-card`).
    - Showcase demonstrativo integrado na Landing Page (Eixo 4 de Finanças Compartilhadas).
+8. **Criação Atômica via RPC e Políticas RLS Não-Recursivas**:
+   - Criação de viagens e participantes iniciais realizada de forma atômica via RPC transacional `create_trip` (Regra 5 AGENTS.md), garantindo integridade ACID em uma única transação no banco.
+   - Políticas de Row Level Security (RLS) estruturadas com funções auxiliares `SECURITY DEFINER` (`is_trip_member`, `is_trip_host`, `can_access_trip_expense`), eliminando qualquer risco de recursão cíclica entre `trips` e `trip_members` (código Postgres 42P17).
 
 ---
 

@@ -1,6 +1,6 @@
 # 15_PLANO_MODO_VIAGEM_TOGGLE_TOUR_E_APRESENTACAO.md
 
-> **Status:** Proposto / Planejado — v1.0  
+> **Status:** Concluído / Implementado — v1.0  
 > **Objetivo:** Adicionar governança de ativação/desativação modular (Toggle) do **Modo Viagem**, integrar a funcionalidade à experiência guiada de novos usuários (**Tour Interativo & Onboarding**) e expandir a **Apresentação do Produto** na Landing Page com visual interativo e narrativas de liquidação em grupo.
 
 ---
