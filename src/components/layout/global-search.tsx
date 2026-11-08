@@ -168,7 +168,7 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
         query={query}
         onQueryChange={setQuery}
         groups={groups}
-        placeholder="Buscar páginas, ações, investimentos, despesas, cartões…"
+        placeholder="Buscar páginas, ações, investimentos, despesas…"
         emptyMessage={
           query.trim().length < 2
             ? "Digite ao menos 2 caracteres para buscar."

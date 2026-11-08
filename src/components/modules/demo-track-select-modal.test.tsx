@@ -55,13 +55,13 @@ describe("DemoTrackSelectModal — Hub de Aprendizado & Micro-Tours (§3.4)", ()
     ).toBeInTheDocument();
   });
 
-  it("não exibe badge 'Concluído' nas trilhas que já foram finalizadas (mantém contagem de passos)", () => {
+  it("não exibe badge 'Concluído' nem contagem de passos nas trilhas que já foram finalizadas", () => {
     markTourCompleted("finances_wizard");
 
     render(<DemoTrackSelectModal open={true} onOpenChange={vi.fn()} />);
 
     expect(screen.queryByText("Concluído")).not.toBeInTheDocument();
-    expect(screen.getAllByText("3 passos").length).toBeGreaterThan(0);
+    expect(screen.queryByText("3 passos")).not.toBeInTheDocument();
   });
 
   it("inicia a trilha de finanças geral ao clicar no card de finanças", async () => {
@@ -276,7 +276,7 @@ describe("DemoTrackSelectModal — Hub de Aprendizado & Micro-Tours (§3.4)", ()
         "Jornada completa de finanças colaborativas, divisão de despesas via Pix, termômetro de metas e orçamento familiar unificado.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("4 passos")).toBeInTheDocument();
+    expect(screen.queryByText("4 passos")).not.toBeInTheDocument();
 
     // Micro-tours específicos de finanças compartilhadas
     expect(screen.getByText("Racha de Despesas com Pix")).toBeInTheDocument();

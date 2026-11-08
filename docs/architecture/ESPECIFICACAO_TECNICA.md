@@ -444,7 +444,11 @@ A inteligência de repetição do sistema opera em dois trilhos expressos e desa
 - **Isolamento de Modo Demonstração & Tour Guiado:** o motor de notificações nativas (`LocalNotifications`) e push é estritamente desabilitado durante o Tour Guiado ou sessões demo (`isDemoActive === true` ou `userId === DEMO_USER_ID`), impedindo que faturas sintéticas (ex.: "Mastercard Black Principal") gerem notificações reais no sistema operacional.
 - **Salvaguarda contra Condição de Corrida no Carregamento:** as queries de lembretes e sincronizadores de notificação aguardam a conclusão de todas as queries essenciais (`cards`, `cardExpenses`, `cardPayments`, `debts`). O cálculo de saldo em aberto nunca é derivado enquanto queries estiverem em estado `isLoading`, evitando que atrasos de rede simulem falsos saldos não quitados.
 - **Cancelamento Reativo Imediato no SO:** ao quitar uma fatura (avulsa ou em lote) ou marcar um lembrete como lido, a notificação correspondente é instantaneamente cancelada e removida da gaveta de notificações do Android via `LocalNotifications.cancel` e `LocalNotifications.removeDeliveredNotifications`.
-- Ações: **marcar como lido** e **snooze** (adiar); snooze **expira automaticamente** ao vencer/atrasar.
+- **Quitação & Baixa Contábil Direta In-Loco com Confirmação Obrigatória:**
+  - Em vez de forçar o usuário a navegar para `/dividas` ou `/cartoes` para registrar pagamentos após consultar os lembretes, a listagem de pendências oferece ações resolutivas diretas: `[Pagar Fatura]` para cartões e `[Dar Baixa]` para contas a pagar e receber.
+  - **Zero baixas silenciosas:** o clique abre obrigatoriamente o diálogo de confirmação financeira (`SettleDialog` para dívidas ou `PaymentDialog` para faturas), permitindo conferir e ajustar a data de liquidação, eventuais juros, multas ou descontos e o impacto no saldo bancário.
+  - Ao confirmar com sucesso, a baixa contábil é gravada via RPC no Supabase, as queries financeiras são invalidadas, o saldo é atualizado e o lembrete é arquivado automaticamente. O botão secundário `[Arquivar]` permanece disponível para quem deseja apenas marcar como lido sem registrar movimentação financeira.
+- Ações: **quitar/pagar com confirmação**, **arquivar/marcar como lido** e **snooze** (adiar); snooze **expira automaticamente** ao vencer/atrasar.
 - Ordenação: atrasados primeiro; depois por vencimento.
 - Ativação: somente com preferência habilitada; janelas configuráveis.
 

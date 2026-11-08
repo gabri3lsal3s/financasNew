@@ -1,5 +1,5 @@
-import { AlarmClock, Bell, Check, CreditCard, HandCoins, RotateCcw } from "lucide-react";
-import { Badge } from "@/components/ui";
+import { AlarmClock, Bell, Check, CheckCircle2, CreditCard, HandCoins, RotateCcw } from "lucide-react";
+import { Badge, Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import type { ReminderItem as ReminderItemData, ReminderStatus } from "@/domain/reminders";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,8 @@ export interface ReminderItemProps {
   onMarkRead?: (key: string) => void;
   onSnooze?: (key: string) => void;
   onRestore?: (key: string) => void;
+  /** Ação de baixa/quitação contábil in-loco (com diálogo de confirmação). */
+  onSettle?: (item: ReminderItemData) => void;
   /** Abre o item na tela de destino (deep-link do lembrete). */
   onOpen?: () => void;
   /** Estado atual (para rotular os botões). */
@@ -31,7 +33,7 @@ export interface ReminderItemProps {
 }
 
 /** Item de lembrete da central (§3.10) — status + ações lido/snooze/reabrir. */
-export function ReminderItem({ item, onMarkRead, onSnooze, onRestore, onOpen, stateKind }: ReminderItemProps) {
+export function ReminderItem({ item, onMarkRead, onSnooze, onRestore, onSettle, onOpen, stateKind }: ReminderItemProps) {
   const Icon = item.kind === "bill" ? CreditCard : HandCoins;
   const isRead = stateKind === "read";
   const clickable = onOpen !== undefined;
@@ -92,7 +94,7 @@ export function ReminderItem({ item, onMarkRead, onSnooze, onRestore, onOpen, st
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex flex-wrap sm:flex-nowrap shrink-0 items-center gap-1.5 self-end sm:self-auto">
         {stateKind === "snoozed" ? (
           <button
             type="button"
@@ -121,6 +123,22 @@ export function ReminderItem({ item, onMarkRead, onSnooze, onRestore, onOpen, st
           </button>
         ) : (
           <>
+            {onSettle && (
+              <Button
+                type="button"
+                variant="default"
+                size="xs"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSettle(item);
+                }}
+                className="h-7 px-2.5 text-xs font-semibold gap-1.5 cursor-pointer shrink-0"
+                aria-label={`${item.kind === "bill" ? "Pagar fatura" : "Dar baixa"} ${item.title}`}
+              >
+                <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                <span>{item.kind === "bill" ? "Pagar Fatura" : "Dar Baixa"}</span>
+              </Button>
+            )}
             <button
               type="button"
               onClick={(e) => {
@@ -139,11 +157,12 @@ export function ReminderItem({ item, onMarkRead, onSnooze, onRestore, onOpen, st
                 e.stopPropagation();
                 onMarkRead?.(item.key);
               }}
-              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               aria-label={`Marcar como lido ${item.title}`}
+              title="Apenas marcar como lido sem liquidar financeiramente"
             >
               <Check className="size-3.5" aria-hidden="true" />
-              Concluído
+              Arquivar
             </button>
           </>
         )}

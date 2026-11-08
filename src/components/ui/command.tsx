@@ -1,6 +1,6 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Command as CommandPrimitive } from "cmdk";
-import { Search } from "lucide-react";
+import { ArrowUpDown, CornerDownLeft, Search } from "lucide-react";
 import type { ReactNode } from "react";
 
 export interface CommandItem {
@@ -61,20 +61,23 @@ export function Command({
             }
           }}
           onCloseAutoFocus={(e) => e.preventDefault()}
-          className="fixed left-1/2 top-[max(1rem,calc(max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))+0.75rem))] z-modal max-h-[calc(85dvh-max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 overflow-hidden rounded-2xl border border-primary/25 bg-surface shadow-2xl backdrop-blur-md focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:top-[15%] sm:max-h-[85dvh]"
+          className="fixed left-1/2 top-[max(1rem,calc(max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))+0.75rem))] z-modal max-h-[calc(85dvh-max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] w-[calc(100vw-2rem)] max-w-lg sm:max-w-xl md:max-w-2xl -translate-x-1/2 overflow-hidden rounded-2xl border border-primary/25 bg-surface shadow-2xl backdrop-blur-md focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:top-[12%] sm:max-h-[82dvh]"
         >
-          <CommandPrimitive className="overflow-hidden">
-            <div className="flex items-center gap-2 border-b border-primary/20 px-4">
-              <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <CommandPrimitive className="flex flex-col overflow-hidden">
+            <div className="flex items-center gap-2.5 border-b border-border/80 px-4 sm:px-5">
+              <Search className="size-4.5 shrink-0 text-muted-foreground" aria-hidden="true" />
               <CommandPrimitive.Input
                 value={query}
                 onValueChange={onQueryChange}
                 placeholder={placeholder}
-                className="h-12 w-full bg-transparent text-base text-foreground outline-none placeholder:text-muted-foreground"
+                className="h-13 sm:h-14 w-full bg-transparent text-base text-foreground outline-none placeholder:text-muted-foreground/80"
               />
+              <kbd className="hidden sm:inline-flex items-center rounded border border-border/80 bg-surface-hover/80 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground shrink-0 shadow-2xs">
+                ESC
+              </kbd>
             </div>
-            <CommandPrimitive.List className="max-h-80 overflow-y-auto p-2">
-              <CommandPrimitive.Empty className="py-6 text-center text-sm text-muted-foreground">
+            <CommandPrimitive.List className="max-h-80 sm:max-h-96 overflow-y-auto p-2 sm:p-2.5">
+              <CommandPrimitive.Empty className="py-8 sm:py-10 text-center text-sm text-muted-foreground">
                 {emptyMessage}
               </CommandPrimitive.Empty>
               {groupList.map((group) => (
@@ -98,6 +101,29 @@ export function Command({
                 </CommandPrimitive.Group>
               ))}
             </CommandPrimitive.List>
+            <div className="hidden sm:flex items-center justify-between border-t border-border/80 bg-surface-hover/30 px-4 py-2 text-xs text-muted-foreground select-none">
+              <div className="flex items-center gap-3.5">
+                <span className="flex items-center gap-1.5 text-[11px]">
+                  <kbd className="inline-flex items-center justify-center rounded border border-border/80 bg-surface px-1 py-0.5 font-mono text-[10px] shadow-2xs">
+                    <ArrowUpDown className="size-2.5" aria-hidden="true" />
+                  </kbd>
+                  Navegar
+                </span>
+                <span className="flex items-center gap-1.5 text-[11px]">
+                  <kbd className="inline-flex items-center justify-center rounded border border-border/80 bg-surface px-1 py-0.5 font-mono text-[10px] shadow-2xs">
+                    <CornerDownLeft className="size-2.5" aria-hidden="true" />
+                  </kbd>
+                  Selecionar
+                </span>
+                <span className="flex items-center gap-1.5 text-[11px]">
+                  <kbd className="inline-flex items-center justify-center rounded border border-border/80 bg-surface px-1.5 py-0.5 font-mono text-[10px] shadow-2xs">
+                    ESC
+                  </kbd>
+                  Fechar
+                </span>
+              </div>
+              <span className="text-[11px] text-muted-foreground/75 font-medium">Busca Global Áxis</span>
+            </div>
           </CommandPrimitive>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

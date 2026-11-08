@@ -1,5 +1,17 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.07 (Build 34)** registra a **Quitação & Baixa Contábil Direta In-Loco na Central de Lembretes com Diálogo de Confirmação Obrigatório** (2026-11-08):
+> - **(1) Quitação Direta In-Loco sem Perda de Contexto**:
+>   - Adição da ação resolutiva direta no `ReminderItem`: botão primário `[Pagar Fatura]` para faturas de cartão e `[Dar Baixa]` para dívidas e contas a pagar;
+>   - Renomeação semântica do botão secundário para `[Arquivar]` (com tooltip explicativo de marcação como lido sem alteração financeira);
+> - **(2) Diálogo Obrigatório de Confirmação Financeira (Zero Baixas Silenciosas)**:
+>   - O acionamento de `[Dar Baixa]` abre in-loco o `SettleDialog` da dívida, permitindo ajustar a data de liquidação, juros, multas, descontos e conferir o impacto no saldo bancário;
+>   - O acionamento de `[Pagar Fatura]` abre in-loco o `PaymentDialog` pré-preenchido com o cartão, competência e valor de saldo aberto da fatura;
+>   - Cancelamento limpo sem efeitos colaterais e invalidação automática das queries financeiras em caso de sucesso;
+> - **(3) Cobertura de Testes e Qualidade 100% Verde**:
+>   - Novos testes unitários em `reminders-page.test.tsx` cobrindo o fluxo de quitação de faturas e baixa de dívidas;
+>   - Suíte de testes passando com 100% de sucesso, typecheck (`tsc -b`) e lint (`eslint .`) com zero erros.
+>
 > **v3.07 (Build 33)** registra a **Governança Reativa de Permissões Android APK, Persistência Híbrida em Nuvem e Consistência Honestidade do Assistente Bancário** (2026-11-07):
 > - **(1) Eliminação do Reset de Bancos e Preferências Locais**:
 >   - Sincronização automática multidispositivo das preferências do Assistente Bancário (`monitoredBanks`, `autoRegisterExpenses`, `smartCategorizationEnabled`) e Lembretes do Dispositivo (`dueNotificationsEnabled`, `dailyReminderEnabled`, `dailyReminderTime`) no Supabase (`user_preferences.custom_settings`);

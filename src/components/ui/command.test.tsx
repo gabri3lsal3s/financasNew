@@ -36,15 +36,16 @@ describe("Primitivo Command — Busca Global e Safe Area", () => {
     const dialogContent = input.closest("[role='dialog']");
     expect(dialogContent).toBeInTheDocument();
 
-    // Blindagem de Safe Area superior no mobile e centralização a 15% no desktop (sm)
+    // Blindagem de Safe Area superior no mobile, largura canônica max-w-2xl e posicionamento desktop
     expect(dialogContent?.className).toContain(
       "top-[max(1rem,calc(max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))+0.75rem))]",
     );
-    expect(dialogContent?.className).toContain("sm:top-[15%]");
+    expect(dialogContent?.className).toContain("sm:top-[12%]");
     expect(dialogContent?.className).toContain(
       "max-h-[calc(85dvh-max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))]",
     );
-    expect(dialogContent?.className).toContain("sm:max-h-[85dvh]");
+    expect(dialogContent?.className).toContain("sm:max-h-[82dvh]");
+    expect(dialogContent?.className).toContain("md:max-w-2xl");
   });
 
   it("dispara onSelect ao selecionar um item", async () => {

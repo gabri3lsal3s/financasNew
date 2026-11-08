@@ -41,7 +41,6 @@ interface TourCardItemProps {
   id: TourTrackId;
   title: string;
   description: string;
-  stepsCount: number;
   icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean | "true" | "false" }>;
   iconColorClass?: string;
   isPrimary?: boolean;
@@ -54,7 +53,6 @@ function TourCardItem({
   id,
   title,
   description,
-  stepsCount,
   icon: Icon,
   iconColorClass,
   isPrimary,
@@ -94,9 +92,6 @@ function TourCardItem({
               </Badge>
             )}
           </div>
-          <Badge variant="muted" size="xs" className="shrink-0">
-            {stepsCount} passos
-          </Badge>
         </div>
         <p className="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2">
           {description}
@@ -168,7 +163,6 @@ export function DemoTrackSelectModal({
               id="finances"
               title="Finanças Diárias & Cartões"
               description="Jornada sequencial completa com saldo livre, wizard, lançamentos, cartões, parcelas, tetos e relatórios."
-              stepsCount={8}
               icon={Wallet}
               iconColorClass="text-positive-strong"
               isPrimary={true}
@@ -184,7 +178,6 @@ export function DemoTrackSelectModal({
                   id="finances_wizard"
                   title="Botão Wizard (+) e Lançamento"
                   description="Registro rápido de despesas, receitas, Pix e parcelamentos inteligentes."
-                  stepsCount={3}
                   icon={PlusCircle}
                   iconColorClass="text-primary"
                   onSelect={handleSelectTrack}
@@ -193,7 +186,6 @@ export function DemoTrackSelectModal({
                   id="finances_cards"
                   title="Cartões, Faturas e Limites"
                   description="Faturas abertas, limite disponível, melhor dia de compra e parcelas futuras."
-                  stepsCount={3}
                   icon={CreditCard}
                   iconColorClass="text-warning-strong"
                   onSelect={handleSelectTrack}
@@ -202,7 +194,6 @@ export function DemoTrackSelectModal({
                   id="finances_debts"
                   title="Contas, Dívidas e Contratos"
                   description="Controle de contas a pagar, recebíveis e contratos de crédito Price/SAC."
-                  stepsCount={3}
                   icon={Coins}
                   iconColorClass="text-negative-strong"
                   onSelect={handleSelectTrack}
@@ -211,7 +202,6 @@ export function DemoTrackSelectModal({
                   id="finances_budgets"
                   title="Categorias e Tetos de Gastos"
                   description="Definição de tetos por categoria e alertas automáticos de ritmo de consumo."
-                  stepsCount={3}
                   icon={PieChart}
                   iconColorClass="text-negative-strong"
                   onSelect={handleSelectTrack}
@@ -220,7 +210,6 @@ export function DemoTrackSelectModal({
                   id="finances_insights"
                   title="Smart Advisor e Relatórios"
                   description="Recomendações automáticas de economia, radar de assinaturas e fechamento do mês."
-                  stepsCount={3}
                   icon={Lightbulb}
                   iconColorClass="text-primary"
                   onSelect={handleSelectTrack}
@@ -242,7 +231,6 @@ export function DemoTrackSelectModal({
               id="shared_finances"
               title="Finanças Compartilhadas & Modo Família"
               description="Jornada completa de finanças colaborativas, divisão de despesas via Pix, termômetro de metas e orçamento familiar unificado."
-              stepsCount={4}
               icon={Users}
               iconColorClass="text-primary"
               isPrimary={true}
@@ -263,7 +251,6 @@ export function DemoTrackSelectModal({
                   id="finances_split"
                   title="Racha de Despesas com Pix"
                   description="Divisão inteligente de contas e eventos com amigos, cobrança por Pix e recibos automáticos via WhatsApp."
-                  stepsCount={6}
                   icon={Share2}
                   iconColorClass="text-positive-strong"
                   onSelect={handleSelectTrack}
@@ -272,7 +259,6 @@ export function DemoTrackSelectModal({
                   id="finances_family"
                   title="Modo Família Multi-Contas"
                   description="Gestão orçamentária para casais e famílias com cartões independentes, teto conjunto e equilíbrio sem atrito."
-                  stepsCount={2}
                   icon={Users}
                   iconColorClass="text-primary"
                   onSelect={handleSelectTrack}
@@ -281,7 +267,6 @@ export function DemoTrackSelectModal({
                   id="finances_goals"
                   title="Metas Coletivas & Vaquinha Pix"
                   description="Vaquinha colaborativa com termômetro em tempo real, chave Pix para arrecadação e prestação de contas pública."
-                  stepsCount={2}
                   icon={Target}
                   iconColorClass="text-portfolio"
                   onSelect={handleSelectTrack}
@@ -303,7 +288,6 @@ export function DemoTrackSelectModal({
               id="investments"
               title="Investimentos & Rebalanceamento"
               description="Jornada patrimonial completa com visão geral, nova operação, metas de alocação, aportes e proventos."
-              stepsCount={5}
               icon={TrendingUp}
               iconColorClass="text-portfolio"
               isPrimary={true}
@@ -319,7 +303,6 @@ export function DemoTrackSelectModal({
                   id="investments_assets"
                   title="Cadastro de Ativos / Nova Operação"
                   description="Cadastre ativos, registre operações e controle saldo em caixa."
-                  stepsCount={2}
                   icon={Briefcase}
                   iconColorClass="text-portfolio"
                   onSelect={handleSelectTrack}
@@ -328,7 +311,6 @@ export function DemoTrackSelectModal({
                   id="investments_targets"
                   title="Metas por Classe e Ativo"
                   description="Percentuais ideais por classe e ativo para calibrar a exposição ao risco."
-                  stepsCount={2}
                   icon={Target}
                   iconColorClass="text-positive-strong"
                   onSelect={handleSelectTrack}
@@ -337,7 +319,6 @@ export function DemoTrackSelectModal({
                   id="investments_aporte"
                   title="Calculadora de Aporte Inteligente"
                   description="Motor matemático que calcula onde alocar cada centavo para rebalancear."
-                  stepsCount={2}
                   icon={Calculator}
                   iconColorClass="text-primary"
                   onSelect={handleSelectTrack}
@@ -358,7 +339,6 @@ export function DemoTrackSelectModal({
               id="settings_support"
               title="Personalização, Modos Visuais e Suporte"
               description="Atalhos de privacidade, modos de experiência, identidade visual, notificações e canal direto de atendimento."
-              stepsCount={5}
               icon={Settings}
               iconColorClass="text-muted-foreground"
               isPrimary={true}
@@ -414,9 +394,6 @@ export function DemoTrackSelectModal({
                       Exclusivo APK
                     </Badge>
                   </div>
-                  <Badge variant="muted" size="xs" className="shrink-0">
-                    4 passos
-                  </Badge>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2">
                   O Tripé de Plataformas, leitor passivo de notificações bancárias, biometria física e escudo anti-print.

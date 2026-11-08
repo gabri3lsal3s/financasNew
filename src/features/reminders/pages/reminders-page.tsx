@@ -4,6 +4,8 @@ import { AlertTriangle, ArrowDownLeft, Bell, CheckCheck, CreditCard, SlidersHori
 import { Badge, Button, EmptyState, ErrorState, MoneyText, Skeleton, Tabs } from "@/components/ui";
 import { HighlightRow, ReadOnlyBanner, ReminderItem } from "@/components/modules";
 import { RemindersSettingsModal } from "../components/reminders-settings-modal";
+import { SettleDialog } from "@/features/debts/components/settle-dialog";
+import { PaymentDialog } from "@/features/cards/components/payment-dialog";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { addDaysISO, todayISO } from "@/domain/debts";
@@ -11,6 +13,7 @@ import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 import {
+  useDebts,
   useMarkAllRemindersAsRead,
   usePermission,
   useReminders,
@@ -19,6 +22,8 @@ import {
 } from "@/state";
 import { useSmartAdvisorInsights } from "@/features/overview/hooks";
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
+import type { ReminderItem as ReminderItemData } from "@/domain/reminders";
+import type { Debt } from "@/types";
 
 type MainTab = "pending" | "read";
 type SubFilter = "all" | "overdue" | "bills" | "debts" | "advisor";
@@ -37,7 +42,14 @@ export function RemindersPage() {
   const [mainTabOverride, setMainTabOverride] = useState<MainTab | null>(null);
   const [subFilter, setSubFilter] = useState<SubFilter>("all");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settleDebt, setSettleDebt] = useState<Debt | null>(null);
+  const [billPayment, setBillPayment] = useState<{
+    cardId: string;
+    competenceMonth: string;
+    openBalanceCents: number;
+  } | null>(null);
 
+  const debtsQuery = useDebts();
   const { allItems, readHistoryItems, totalCount, overdueCount, isLoading, error, preferences } =
     useReminders(today);
   const statesQuery = useReminderStates();
@@ -80,6 +92,33 @@ export function RemindersPage() {
     if (!item.link) return;
     const params = new URLSearchParams(item.link.params ?? {});
     navigate(`${item.link.path}?${params.toString()}`);
+  };
+
+  /** Ação de baixa/quitação in-loco com confirmação explícita. */
+  const handleSettle = (item: ReminderItemData) => {
+    triggerSensory("action");
+    if (item.kind === "debt") {
+      const debtId = item.key.replace(/^debt:/, "");
+      const target = debtsQuery.data?.find((d) => d.id === debtId);
+      if (target) {
+        setSettleDebt(target);
+      } else {
+        openReminder(item);
+      }
+    } else if (item.kind === "bill") {
+      const parts = item.key.split(":");
+      const cardId = parts[1] || item.link?.params?.card;
+      const month = parts[2] || item.link?.params?.month;
+      if (cardId && month) {
+        setBillPayment({
+          cardId,
+          competenceMonth: month,
+          openBalanceCents: item.amountCents,
+        });
+      } else {
+        openReminder(item);
+      }
+    }
   };
 
   const handleOpenAdvisorAlert = (item: SmartAdvisorInsight) => {
@@ -427,6 +466,7 @@ export function RemindersPage() {
                     onMarkRead={(key) => handle(key, { kind: "read" })}
                     onSnooze={snooze}
                     onRestore={(key) => handle(key, null)}
+                    onSettle={handleSettle}
                     onOpen={() => openReminder(item)}
                   />
                 </HighlightRow>
@@ -612,6 +652,33 @@ export function RemindersPage() {
         open={isSettingsOpen}
         onOpenChange={setIsSettingsOpen}
       />
+
+      {settleDebt && (
+        <SettleDialog
+          open={Boolean(settleDebt)}
+          debt={settleDebt}
+          onOpenChange={(next) => {
+            if (!next) {
+              setSettleDebt(null);
+            }
+          }}
+        />
+      )}
+
+      {billPayment && (
+        <PaymentDialog
+          open={Boolean(billPayment)}
+          cardId={billPayment.cardId}
+          competenceMonth={billPayment.competenceMonth}
+          mode="payment"
+          openBalanceCents={billPayment.openBalanceCents}
+          onOpenChange={(next) => {
+            if (!next) {
+              setBillPayment(null);
+            }
+          }}
+        />
+      )}
 
       {upgradeModal}
     </div>

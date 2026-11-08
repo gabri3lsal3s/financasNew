@@ -25,6 +25,16 @@ const stateMocks = vi.hoisted(() => ({
   ],
 }));
 
+vi.mock("@/features/debts/components/settle-dialog", () => ({
+  SettleDialog: ({ open, debt }: { open: boolean; debt: { name: string } }) =>
+    open ? <div data-testid="settle-dialog">Modal Quitar: {debt.name}</div> : null,
+}));
+
+vi.mock("@/features/cards/components/payment-dialog", () => ({
+  PaymentDialog: ({ open, competenceMonth }: { open: boolean; competenceMonth: string }) =>
+    open ? <div data-testid="payment-dialog">Modal Pagar Fatura: {competenceMonth}</div> : null,
+}));
+
 vi.mock("@/state", () => ({
   usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
   useCreditCards: () => ({
@@ -297,5 +307,42 @@ describe("RemindersPage (central de lembretes §3.10)", () => {
 
     await user.click(adjustBtn);
     expect(screen.getByText("Configurações de Lembretes")).toBeInTheDocument();
+  });
+
+  it("abre diálogo de confirmação para pagar fatura diretamente na lista de lembretes", async () => {
+    const user = userEvent.setup();
+    render(<RemindersPage />);
+
+    const payBillBtn = screen.getByRole("button", { name: /Pagar fatura Fatura Nubank/i });
+    expect(payBillBtn).toBeInTheDocument();
+
+    await user.click(payBillBtn);
+    expect(screen.getByTestId("payment-dialog")).toBeInTheDocument();
+    expect(screen.getByText(/Modal Pagar Fatura: 2026-08/i)).toBeInTheDocument();
+  });
+
+  it("abre diálogo de confirmação para dar baixa em dívida diretamente na lista de lembretes", async () => {
+    const user = userEvent.setup();
+    stateMocks.debts.push({
+      id: "d99",
+      name: "Boleto Internet",
+      type: "payable",
+      amount: 150,
+      due_date: "2026-08-03",
+      paid_at: null,
+    });
+
+    try {
+      render(<RemindersPage />);
+
+      const settleDebtBtn = screen.getByRole("button", { name: /Dar baixa Boleto Internet/i });
+      expect(settleDebtBtn).toBeInTheDocument();
+
+      await user.click(settleDebtBtn);
+      expect(screen.getByTestId("settle-dialog")).toBeInTheDocument();
+      expect(screen.getByText(/Modal Quitar: Boleto Internet/i)).toBeInTheDocument();
+    } finally {
+      stateMocks.debts = stateMocks.debts.filter((d) => d.id !== "d99");
+    }
   });
 });
