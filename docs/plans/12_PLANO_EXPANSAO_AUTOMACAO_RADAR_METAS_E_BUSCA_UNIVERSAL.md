@@ -1,17 +1,17 @@
-# 🗺️ PLANO DE IMPLEMENTAÇÃO 12 — EXPANSÃO E AUTOMAÇÃO: METAS COM TERMÔMETRO PATRIMONIAL INTEGRADO, AUDITORIA DE ASSINATURAS, BUSCA DETERMINÍSTICA E AÇÕES NATIVAS ANDROID
+# 🗺️ PLANO DE IMPLEMENTAÇÃO 12 — EXPANSÃO E AUTOMAÇÃO: METAS COM TERMÔMETRO PATRIMONIAL INTEGRADO, AUDITORIA DE ASSINATURAS, BUSCA DETERMINÍSTICA, AÇÕES NATIVAS ANDROID E TOUR EXPANDIDO
 
 > **Documento Canônico de Arquitetura de Produto, Engenharia Financeira e Governança de UX**  
-> **Status:** Pronto para Execução (Refinado, Auditado e com Resolução Integral de Fragilidades)  
+> **Status:** Pronto para Execução (Refinado, Auditado, com Resolução Integral de Fragilidades e Tour Guiado Expandido)  
 > **Versão Alvo do Roadmap:** **v3.08**  
-> **Arquivo:** `planos/12_PLANO_EXPANSAO_AUTOMACAO_RADAR_METAS_E_BUSCA_UNIVERSAL.md`  
-> **Módulos Afetados:** `src/domain/goals/`, `src/features/goals/`, `src/features/overview/`, `src/features/extract/`, `src/features/reports/`, `src/components/modules/`, `src/services/native/`, `docs/`  
+> **Arquivo:** `planos/12_PLANO_EXPANSAO_AUTOMACAO_RADAR_METAS_E_BUSCA_UNIVERSAL.md` (acessível via `docs/plans/12_PLANO_EXPANSAO_AUTOMACAO_RADAR_METAS_E_BUSCA_UNIVERSAL.md`)  
+> **Módulos Afetados:** `src/domain/goals/`, `src/features/goals/`, `src/features/overview/`, `src/features/extract/`, `src/features/reports/`, `src/features/reminders/`, `src/domain/demo-simulation/`, `src/components/modules/`, `src/services/native/`, `docs/`  
 > **Governança:** TypeScript Estrito (Zero `any` / `@ts-ignore`) · Zero Emojis no Produto (`local/no-decorative-unicode`) · Regras DRY e Design System 13/18/19 · Precisão Contábil em Centavos Inteiros · Zero Chamadas a LLMs (100% Determinístico e Gratuito) · Teto de 5 Metas Ativas Simultâneas
 
 ---
 
 ## 1. SUMÁRIO EXECUTIVO & DIAGNÓSTICO PROFUNDO
 
-Após a entrega bem-sucedida das **Fases 1 (Quitação e Baixa Direta na Central de Lembretes)** e **Fase 2 (Radar de Vencimentos dos Próximos 7 Dias no Dashboard)**, este plano executivo consolida a evolução das 4 novas capacidades de alto impacto no aplicativo:
+Após a entrega bem-sucedida das **Fases 1 (Quitação e Baixa Direta na Central de Lembretes)** e **Fase 2 (Radar de Vencimentos dos Próximos 7 Dias no Dashboard)**, este plano executivo consolida a evolução de 5 grandes capacidades de alto impacto no aplicativo:
 
 1. **Termômetro Patrimonial Integrado de Metas (Até 5 Metas Ativas):**
    - Transposição da arquitetura comprovada do Termômetro da Reserva (`EmergencyFundConfigDialog`) para a funcionalidade de Metas;
@@ -31,6 +31,9 @@ Após a entrega bem-sucedida das **Fases 1 (Quitação e Baixa Direta na Central
 4. **Ações Diretas em Notificações Nativas do Android APK:**
    - Botões de ação rápida no sistema operacional Android: `[Pagar no App]` e `[Adiar 3 Dias]`;
    - Regra inegociável de segurança: o botão `[Pagar no App]` NUNCA efetua baixa silenciosa em background — ele abre o app diretamente no diálogo modal de confirmação assistida.
+5. **Modernização & Expansão do Tour Guiado Interativo:**
+   - Inclusão dos novos passos pedagógicos de demonstração explicando o Radar Semanal, a Quitação Direta em Lembretes, o Termômetro Patrimonial de Metas, a Paleta de Comandos e a Auditoria de Assinaturas;
+   - Preservação da sandbox estrita (`isDemoActive === true`), zero mutação em banco, zero vazamento de PII e morfagem suave no spotlight sem flickers.
 
 ---
 
@@ -48,6 +51,7 @@ Após a entrega bem-sucedida das **Fases 1 (Quitação e Baixa Direta na Central
 | **8** | **Assinaturas** | **Alarme Falso por Câmbio / IOF:** Planos em dólar oscilando centavos. | Variações cambiais de R$ 110 para R$ 112 simulando reajuste contratual. | **Limiar Anti-Câmbio:** Apenas variações $\ge 3\%$ ou $\ge \text{R\$ } 3,00$ disparam alerta crítico. Pequenas oscilações recebem badge neutro e opção de silenciar. |
 | **9** | **Busca Global** | **Latência e Alucinação por LLM:** Consultas de gastos demoradas ou erradas. | Chamadas a APIs de IA generativa para responder perguntas numéricas. | **Zero LLM / Parser Léxico Determinístico:** Reconhecimento em $< 10\text{ms}$ por Regex + Dicionário de Categorias sobre o cache local do TanStack Query. 100% exato e gratuito. |
 | **10** | **Ações Android** | **Baixa Silenciosa Acidental:** Quitar dívida com 1 toque por engano. | Disparo de mutação de baixa em background sem abrir a tela. | **Regra Inegociável de Confirmação:** O botão `[Pagar no App]` NUNCA dá baixa silenciosa. Abre o modal de quitação assistida (`SettleDialog` / `PaymentDialog`) para confirmação explícita. |
+| **11** | **Tour Guiado** | **Descompasso Educacional / Recursos Ocultos:** Usuários não descobrirem novidades. | Novas funcionalidades criadas sem atualização nos passos do tour de acolhimento. | **Trilhas Atualizadas com Seletores Garantidos:** Novos passos dedicados no tour com seletores semânticos `data-tour` colocalizados nos containers e skeletons. |
 
 ---
 
@@ -80,9 +84,16 @@ graph TD
         F4_2 --> F4_4["Abertura Assistida no SettleDialog/PaymentDialog"]
     end
 
+    subgraph Fase5 ["Fase 5: Expansão do Tour Guiado Interativo"]
+        F5_1["Passos de Tour do Radar Semanal & Quitação em Lembretes"] --> F5_2["Passo do Termômetro Patrimonial de Metas"]
+        F5_2 --> F5_3["Passo da Paleta de Comandos (Ctrl+K) e Assinaturas"]
+        F5_3 --> F5_4["Atualização de tour-catalog.ts e tour-steps.ts"]
+    end
+
     Fase1 --> Fase3
     Fase2 --> Fase3
     Fase3 --> Fase4
+    Fase4 --> Fase5
 ```
 
 ---
@@ -93,7 +104,7 @@ graph TD
 
 #### 1.1 Domínio Financeiro & Tipagem (`src/domain/goals/` e `src/types/`)
 - [ ] **Etapa 1.1.1:** Definir contratos de composição de metas em `src/types/goals.ts`:
-  - `MAX_ACTIVE_GOALS = 5`;
+  - Constante de governança: `MAX_ACTIVE_GOALS = 5`;
   - `GoalSourceMode: 'manual' | 'patrimonial'`;
   - `GoalCompositionConfig`:
     - `includeCheckingAccounts: boolean`;
@@ -210,16 +221,48 @@ graph TD
 
 ---
 
-### FASE 5: DOCUMENTAÇÃO, VERIFICAÇÃO INTEGRAL & BUILD DO APK
+### FASE 5: MODERNIZAÇÃO E EXPANSÃO DO TOUR GUIADO INTERATIVO
 
-- [ ] **Etapa 5.1:** Atualizar especificação técnica executável [`docs/architecture/ESPECIFICACAO_TECNICA.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/architecture/ESPECIFICACAO_TECNICA.md);
-- [ ] **Etapa 5.2:** Atualizar roadmap executável [`docs/roadmap/ROADMAP.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/roadmap/ROADMAP.md);
-- [ ] **Etapa 5.3:** Execução dos Quality Gates:
+#### 5.1 Novos Passos de Demonstração Pedagógica (`src/domain/demo-simulation/`)
+- [ ] **Etapa 5.1.1:** Inserir o passo do **Radar dos Próximos 7 Dias** na Trilha `finances`:
+  - Alvo: `[data-tour="weekly-radar-card"]` em `OverviewPage`;
+  - Título: *"Radar Semanal & Antecipação de Caixa"*;
+  - Descrição: *"Veja os compromissos dos próximos 7 dias e confira seu saldo livre semanal garantido contra déficits."*;
+  - Action: `"Ver Lembretes"`.
+- [ ] **Etapa 5.1.2:** Inserir o passo da **Quitação Direta In-Loco** em `RemindersPage`:
+  - Alvo: `[data-tour="reminders-settle-card"]`;
+  - Título: *"Quitação com 1 Toque & Confirmação"*;
+  - Descrição: *"Pague faturas de cartão ou dê baixa em contas diretamente na central de lembretes com conferência de saldo."*.
+- [ ] **Etapa 5.1.3:** Inserir o passo do **Termômetro Patrimonial de Metas** na Trilha `shared_finances` / `finances`:
+  - Alvo: `[data-tour="goals-thermometer-card"]` em `BudgetsPage`;
+  - Título: *"Termômetro Conectado aos Investimentos"*;
+  - Descrição: *"Suas metas podem refletir automaticamente saldos em conta ou ativos da carteira, com até 5 objetivos ativos simultâneos."*.
+- [ ] **Etapa 5.1.4:** Inserir o passo da **Paleta de Comandos & Busca Rápida (Ctrl+K)**:
+  - Alvo: `[data-tour="global-search-trigger"]` no cabeçalho;
+  - Título: *"Busca Universal & Perguntas Rápidas"*;
+  - Descrição: *"Pesquise em linguagem natural (ex: 'quanto gastei com lazer') ou use atalhos para registrar operações em segundos."*.
+- [ ] **Etapa 5.1.5:** Inserir o passo da **Auditoria de Assinaturas** em `TransactionListPage`:
+  - Alvo: `[data-tour="subscriptions-audit-badge"]`;
+  - Título: *"Auditoria de Assinaturas & Reajustes"*;
+  - Descrição: *"Identifique gastos recorrentes e receba avisos quando um serviço aumentar de preço."*.
+
+#### 5.2 Sincronização de Catálogo & Blindagem de Seletores
+- [ ] **Etapa 5.2.1:** Atualizar contadores `stepsCount` em `src/domain/demo-simulation/tour-catalog.ts` para todas as trilhas afetadas;
+- [ ] **Etapa 5.2.2:** Garantir atributos `data-tour` colocalizados nos containers e skeletons para prevenir telas pretas ou recortes fantasmas;
+- [ ] **Etapa 5.2.3:** Atualizar testes unitários em `tour-steps.test.ts` e `demo-tour-spotlight.test.tsx` (assegurando 100% de aprovação na suíte de testes de tour).
+
+---
+
+### FASE 6: DOCUMENTAÇÃO, VERIFICAÇÃO INTEGRAL & BUILD DO APK
+
+- [ ] **Etapa 6.1:** Atualizar especificação técnica executável [`docs/architecture/ESPECIFICACAO_TECNICA.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/architecture/ESPECIFICACAO_TECNICA.md);
+- [ ] **Etapa 6.2:** Atualizar roadmap executável [`docs/roadmap/ROADMAP.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/roadmap/ROADMAP.md);
+- [ ] **Etapa 6.3:** Execução dos Quality Gates:
   - `npx vitest run` (100% dos testes verdes);
   - `npx tsc -b` (zero erros de tipagem estrita);
   - `npm run lint` (zero advertências e conformidade com `local/no-decorative-unicode`);
   - `npm run build` (build Web de produção finalizado com sucesso).
-- [ ] **Etapa 5.4:** Compilação oficial do APK Android release assinado (`npm run build:apk`) e upload para o Cloudflare R2.
+- [ ] **Etapa 6.4:** Compilação oficial do APK Android release assinado (`npm run build:apk`) e upload para o Cloudflare R2.
 
 ---
 
@@ -228,9 +271,10 @@ graph TD
 | Portão | Foco | Critério de Aceite Inegociável |
 |---|---|---|
 | **QG0 — Foco & Teto de Metas** | Disciplina Financeira | O sistema impede a criação de mais de 5 metas ativas simultâneas (`canCreateActiveGoal`). |
-| **QG1 — Precisão Contábil do Termômetro** | Integridade de Centavos | A composição de saldo em conta + investimentos bate em 100% dos centavos, sem double counting em contas compartilhadas. |
+| **QG1 — Precisão Contábil do Termômetro** | Integridade de Centavos | A composição de saldo em conta + investimentos fecha em 100% dos centavos, sem double counting em contas compartilhadas. |
 | **QG2 — Interação Direta na Home** | Ergonomia de Uso | O card do carrossel na Home permite acionar o modal de aporte diretamente com 1 toque sem troca de tela. |
 | **QG3 — Anti-Falso-Alarme em Assinaturas** | Qualidade Analítica | Zero compras parceladas classificadas como assinaturas; oscilações cambiais $< 3\%$ não emitem alerta crítico de reajuste. |
 | **QG4 — Determinismo & Custo Zero** | Desempenho da Busca | Perguntas analíticas respondidas em menos de 15ms sobre o cache local, com zero chamadas a LLMs e sem custo de tokens. |
 | **QG5 — Segurança em Ações Android** | Proteção de Caixa | O botão "Pagar" na notificação NUNCA realiza quitação em segundo plano; abre o diálogo modal assistido para confirmação do usuário. |
-| **QG6 — Governança de Release** | Qualidade Contínua | Testes automatizados 100% verdes, typecheck zerado, lint sem emojis e compilação do APK Android concluída com sucesso. |
+| **QG6 — Tour Guiado Atualizado & Fluido** | Educação de Produto | 100% dos seletores `data-tour` das novas funcionalidades mapeados no DOM; transições de spotlight suaves e zero mutação em banco durante a demonstração. |
+| **QG7 — Governança de Release** | Qualidade Contínua | Testes automatizados 100% verdes, typecheck zerado, lint sem emojis e compilação do APK Android concluída com sucesso. |

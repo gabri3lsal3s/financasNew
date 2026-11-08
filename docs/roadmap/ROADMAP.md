@@ -18,11 +18,13 @@
 >   - Inserção de salvaguarda de hidratação estrita: o radar só calcula obrigações após o término do carregamento de todas as queries essenciais (`cards`, `cardExpenses`, `cardPayments`, `debts`), evitando transientes com `payments = []`;
 >   - Novos testes unitários em `weekly-radar.test.ts` cobrindo faturas pagas e faturas com vencimento antigo fora do horizonte semanal;
 > - **(2) Planejamento Executivo Canônico das Próximas Fases (`planos/12_PLANO_EXPANSAO_AUTOMACAO_RADAR_METAS_E_BUSCA_UNIVERSAL.md`)**:
->   - Estruturação completa em checklists, regras de domínio, contratos de dados, análise de fragilidades/soluções e portões de qualidade (QG0 a QG6) para:
->     - *Fase 1:* Destinar Sobra do Mês para Metas com Vínculo Patrimonial a Ativos da Carteira;
+>   - Estruturação completa em checklists, regras de domínio, contratos de dados, análise profunda de fragilidades/soluções e portões de qualidade (QG0 a QG7) para:
+>     - *Fase 1:* Termômetro Patrimonial Integrado de Metas (Até 5 Metas Ativas com Composição em Conta, Investimentos ou Ambos e Carrossel da Home);
 >     - *Fase 2:* Auditoria de Assinaturas e Planos Fixos no Extrato com Alerta de Reajuste;
 >     - *Fase 3:* Busca Global Universal com Intenções Determinísticas Rápidas (< 15ms);
->     - *Fase 4:* Ações Diretas em Notificações Nativas do Android APK (`[Pagar no App]`, `[Adiar 3 Dias]`).
+>     - *Fase 4:* Ações Diretas em Notificações Nativas do Android APK (`[Pagar no App]`, `[Adiar 3 Dias]`);
+>     - *Fase 5:* Modernização e Expansão do Tour Guiado Interativo com as Novas Capacidades;
+>     - *Fase 6:* Documentação, Verificação Integral e Release do APK Android.
 > - **(3) Qualidade 100% Verde e Governança**:
 >   - 43/43 testes automatizados aprovados, typecheck estrito (`tsc -b`) e lint sem advertências.
 >
