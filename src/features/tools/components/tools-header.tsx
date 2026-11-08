@@ -37,7 +37,7 @@ export function ToolsHeader() {
   const location = useLocation();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/95 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/95 backdrop-blur-md pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         {/* Marca & Início */}
         <div className="flex items-center gap-4 shrink-0">

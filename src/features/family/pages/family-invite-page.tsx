@@ -130,12 +130,14 @@ export function FamilyInvitePage() {
   // 1. Estado de Carregamento (Skeleton estruturado)
   if (inviteLoading || (authLoading && !invite)) {
     return (
-      <main className="min-h-screen bg-background text-foreground flex flex-col justify-between p-4 sm:p-6 lg:p-8">
-        <div className="max-w-xl mx-auto w-full space-y-6">
-          <header className="flex items-center justify-between pb-3 border-b border-border/80">
-            <Skeleton className="h-8 w-28 rounded-lg" />
+      <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
+        <header className="sticky top-0 z-30 w-full bg-surface/90 backdrop-blur-md border-b border-border/80 pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]">
+          <div className="mx-auto max-w-2xl px-3 sm:px-6 h-14 flex items-center justify-between">
+            <Skeleton className="h-7 w-28 rounded-lg" />
             <Skeleton className="h-6 w-24 rounded-full" />
-          </header>
+          </div>
+        </header>
+        <main className="flex-1 max-w-xl mx-auto w-full p-4 sm:p-6 lg:p-8 space-y-6">
           <Card className="border-border/80 bg-surface shadow-xs p-6 space-y-6 rounded-2xl">
             <div className="flex flex-col items-center gap-3">
               <Skeleton className="size-14 rounded-2xl" />
@@ -148,23 +150,24 @@ export function FamilyInvitePage() {
             </div>
             <Skeleton className="h-11 w-full rounded-xl" />
           </Card>
-        </div>
-        <footer className="text-center text-xs text-muted-foreground pt-6">
+        </main>
+        <footer className="text-center text-xs text-muted-foreground pb-6">
           <Skeleton className="h-4 w-48 mx-auto" />
         </footer>
-      </main>
+      </div>
     );
   }
 
   // 2. Estado de Erro ou Convite Não Localizado
   if (inviteError || !invite) {
     return (
-      <main className="min-h-screen bg-background text-foreground flex flex-col justify-between p-4 sm:p-6 lg:p-8">
-        <div className="max-w-xl mx-auto w-full space-y-6">
-          <SharedLinkHeaderNav
-            badgeLabel="Convite Familiar"
-            targetPath={`convite-familiar/${token ?? ""}`}
-          />
+      <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
+        <SharedLinkHeaderNav
+          badgeLabel="Convite Familiar"
+          targetPath={`convite-familiar/${token ?? ""}`}
+          maxWidth="2xl"
+        />
+        <main className="flex-1 max-w-xl mx-auto w-full p-4 sm:p-6 lg:p-8 space-y-6">
           <Card className="border-border/80 bg-surface shadow-xs text-center p-6 sm:p-8 rounded-2xl">
             <EmptyState
               icon={<ShieldAlert className="size-10 text-muted-foreground" aria-hidden="true" />}
@@ -183,20 +186,21 @@ export function FamilyInvitePage() {
               }
             />
           </Card>
-        </div>
-      </main>
+        </main>
+      </div>
     );
   }
 
   // 3. Convite Revogado pelo Titular
   if (invite.status === "revoked") {
     return (
-      <main className="min-h-screen bg-background text-foreground flex flex-col justify-between p-4 sm:p-6 lg:p-8">
-        <div className="max-w-xl mx-auto w-full space-y-6">
-          <SharedLinkHeaderNav
-            badgeLabel="Convite Familiar"
-            targetPath={`convite-familiar/${token ?? ""}`}
-          />
+      <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
+        <SharedLinkHeaderNav
+          badgeLabel="Convite Familiar"
+          targetPath={`convite-familiar/${token ?? ""}`}
+          maxWidth="2xl"
+        />
+        <main className="flex-1 max-w-xl mx-auto w-full p-4 sm:p-6 lg:p-8 space-y-6">
           <Card className="border-border/80 bg-surface shadow-xs text-center p-6 sm:p-8 rounded-2xl">
             <EmptyState
               icon={<ShieldAlert className="size-10 text-muted-foreground" aria-hidden="true" />}
@@ -215,8 +219,8 @@ export function FamilyInvitePage() {
               }
             />
           </Card>
-        </div>
-      </main>
+        </main>
+      </div>
     );
   }
 
@@ -226,12 +230,13 @@ export function FamilyInvitePage() {
 
   if (isExpired && invite.status !== "accepted") {
     return (
-      <main className="min-h-screen bg-background text-foreground flex flex-col justify-between p-4 sm:p-6 lg:p-8">
-        <div className="max-w-xl mx-auto w-full space-y-6">
-          <SharedLinkHeaderNav
-            badgeLabel="Convite Familiar"
-            targetPath={`convite-familiar/${token ?? ""}`}
-          />
+      <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
+        <SharedLinkHeaderNav
+          badgeLabel="Convite Familiar"
+          targetPath={`convite-familiar/${token ?? ""}`}
+          maxWidth="2xl"
+        />
+        <main className="flex-1 max-w-xl mx-auto w-full p-4 sm:p-6 lg:p-8 space-y-6">
           <Card className="border-border/80 bg-surface shadow-xs text-center p-6 sm:p-8 rounded-2xl">
             <EmptyState
               icon={<Clock className="size-10 text-muted-foreground" aria-hidden="true" />}
@@ -250,20 +255,21 @@ export function FamilyInvitePage() {
               }
             />
           </Card>
-        </div>
-      </main>
+        </main>
+      </div>
     );
   }
 
   // 5. Convite Já Utilizado Anteriormente
   if (invite.status === "accepted") {
     return (
-      <main className="min-h-screen bg-background text-foreground flex flex-col justify-between p-4 sm:p-6 lg:p-8">
-        <div className="max-w-xl mx-auto w-full space-y-6">
-          <SharedLinkHeaderNav
-            badgeLabel="Convite Familiar"
-            targetPath={`convite-familiar/${token ?? ""}`}
-          />
+      <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
+        <SharedLinkHeaderNav
+          badgeLabel="Convite Familiar"
+          targetPath={`convite-familiar/${token ?? ""}`}
+          maxWidth="2xl"
+        />
+        <main className="flex-1 max-w-xl mx-auto w-full p-4 sm:p-6 lg:p-8 space-y-6">
           <Card className="border-border/80 bg-surface shadow-xs text-center p-6 sm:p-8 rounded-2xl">
             <EmptyState
               icon={<CheckCircle2 className="size-10 text-positive-strong" aria-hidden="true" />}
@@ -282,20 +288,21 @@ export function FamilyInvitePage() {
               }
             />
           </Card>
-        </div>
-      </main>
+        </main>
+      </div>
     );
   }
 
   // 6. Usuário Autenticado é o Criador do Convite
   if (session?.user && invite.invited_by === session.user.id) {
     return (
-      <main className="min-h-screen bg-background text-foreground flex flex-col justify-between p-4 sm:p-6 lg:p-8">
-        <div className="max-w-xl mx-auto w-full space-y-6">
-          <SharedLinkHeaderNav
-            badgeLabel="Convite Familiar"
-            targetPath={`convite-familiar/${token ?? ""}`}
-          />
+      <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
+        <SharedLinkHeaderNav
+          badgeLabel="Convite Familiar"
+          targetPath={`convite-familiar/${token ?? ""}`}
+          maxWidth="2xl"
+        />
+        <main className="flex-1 max-w-xl mx-auto w-full p-4 sm:p-6 lg:p-8 space-y-6">
           <Card className="border-border/80 bg-surface shadow-xs p-6 sm:p-8 rounded-2xl text-center space-y-6">
             <div className="flex flex-col items-center gap-3">
               <div className="flex size-14 items-center justify-center rounded-2xl border bg-primary/10 border-primary/20 text-primary-strong">
@@ -354,20 +361,21 @@ export function FamilyInvitePage() {
               </Button>
             </div>
           </Card>
-        </div>
-      </main>
+        </main>
+      </div>
     );
   }
 
   // 7. Usuário Já Pertence à Mesma Família
   if (myFamilyData?.family && myFamilyData.family.id === invite.family_id) {
     return (
-      <main className="min-h-screen bg-background text-foreground flex flex-col justify-between p-4 sm:p-6 lg:p-8">
-        <div className="max-w-xl mx-auto w-full space-y-6">
-          <SharedLinkHeaderNav
-            badgeLabel="Convite Familiar"
-            targetPath={`convite-familiar/${token ?? ""}`}
-          />
+      <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
+        <SharedLinkHeaderNav
+          badgeLabel="Convite Familiar"
+          targetPath={`convite-familiar/${token ?? ""}`}
+          maxWidth="2xl"
+        />
+        <main className="flex-1 max-w-xl mx-auto w-full p-4 sm:p-6 lg:p-8 space-y-6">
           <Card className="border-border/80 bg-surface shadow-xs text-center p-6 sm:p-8 rounded-2xl">
             <EmptyState
               icon={<CheckCircle2 className="size-10 text-positive-strong" aria-hidden="true" />}
@@ -386,20 +394,21 @@ export function FamilyInvitePage() {
               }
             />
           </Card>
-        </div>
-      </main>
+        </main>
+      </div>
     );
   }
 
   // 8. Usuário Já Pertence a OUTRA Família Ativa (Princípio de Participante Único)
   if (myFamilyData?.family && myFamilyData.family.id !== invite.family_id) {
     return (
-      <main className="min-h-screen bg-background text-foreground flex flex-col justify-between p-4 sm:p-6 lg:p-8">
-        <div className="max-w-xl mx-auto w-full space-y-6">
-          <SharedLinkHeaderNav
-            badgeLabel="Convite Familiar"
-            targetPath={`convite-familiar/${token ?? ""}`}
-          />
+      <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
+        <SharedLinkHeaderNav
+          badgeLabel="Convite Familiar"
+          targetPath={`convite-familiar/${token ?? ""}`}
+          maxWidth="2xl"
+        />
+        <main className="flex-1 max-w-xl mx-auto w-full p-4 sm:p-6 lg:p-8 space-y-6">
           <Card className="border-border/80 bg-surface shadow-xs text-center p-6 sm:p-8 rounded-2xl">
             <EmptyState
               icon={<AlertTriangle className="size-10 text-warning-strong" aria-hidden="true" />}
@@ -429,7 +438,7 @@ export function FamilyInvitePage() {
               }
             />
           </Card>
-        </div>
+        </main>
 
         {/* Modal: Confirmar Troca de Família */}
         <Modal
@@ -473,7 +482,7 @@ export function FamilyInvitePage() {
             </ModalFooter>
           </div>
         </Modal>
-      </main>
+      </div>
     );
   }
 
@@ -484,10 +493,14 @@ export function FamilyInvitePage() {
     const registerUrl = `/cadastro?redirect=${encodeURIComponent(returnPath)}`;
 
     return (
-      <main className="min-h-screen bg-background text-foreground flex flex-col justify-between p-4 sm:p-6 lg:p-8">
-        <div className="max-w-xl mx-auto w-full space-y-6">
-          <SharedLinkHeaderNav badgeLabel="Convite Familiar" targetPath={`convite-familiar/${token}`} />
+      <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
+        <SharedLinkHeaderNav
+          badgeLabel="Convite Familiar"
+          targetPath={`convite-familiar/${token}`}
+          maxWidth="2xl"
+        />
 
+        <main className="flex-1 max-w-xl mx-auto w-full p-4 sm:p-6 lg:p-8 space-y-6">
           <Card className="border-border/80 bg-surface shadow-xs p-6 sm:p-8 rounded-2xl space-y-6">
             <div className="text-center space-y-3">
               <div className="inline-flex size-14 items-center justify-center rounded-2xl border bg-primary/10 border-primary/20 text-primary-strong mx-auto">
@@ -582,21 +595,25 @@ export function FamilyInvitePage() {
               </Link>
             </div>
           </Card>
-        </div>
+        </main>
 
-        <footer className="text-center text-xs text-muted-foreground pt-6">
+        <footer className="text-center text-xs text-muted-foreground pb-6">
           <span>Áxis Finance · Gestão Financeira Inteligente e Colaborativa</span>
         </footer>
-      </main>
+      </div>
     );
   }
 
   // 10. Visitante Autenticado e Elegível para Aceitar o Convite
   return (
-    <main className="min-h-screen bg-background text-foreground flex flex-col justify-between p-4 sm:p-6 lg:p-8">
-      <div className="max-w-xl mx-auto w-full space-y-6">
-        <SharedLinkHeaderNav badgeLabel="Convite Familiar" targetPath={`convite-familiar/${token}`} />
+    <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
+      <SharedLinkHeaderNav
+        badgeLabel="Convite Familiar"
+        targetPath={`convite-familiar/${token}`}
+        maxWidth="2xl"
+      />
 
+      <main className="flex-1 max-w-xl mx-auto w-full p-4 sm:p-6 lg:p-8 space-y-6">
         <Card className="border-border/80 bg-surface shadow-xs p-6 sm:p-8 rounded-2xl space-y-6">
           <CardHeader className="p-0 text-center space-y-2">
             <div className="inline-flex size-14 items-center justify-center rounded-2xl border bg-primary/10 border-primary/20 text-primary-strong mx-auto">
@@ -696,11 +713,11 @@ export function FamilyInvitePage() {
             </Button>
           </div>
         </Card>
-      </div>
+      </main>
 
-      <footer className="text-center text-xs text-muted-foreground pt-6">
+      <footer className="text-center text-xs text-muted-foreground pb-6">
         <span>Áxis Finance · Gestão Financeira Inteligente e Colaborativa</span>
       </footer>
-    </main>
+    </div>
   );
 }

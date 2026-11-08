@@ -1,5 +1,21 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.0.12 (Build 41)** registra o **Aperfeiçoamento Ergonômico de Headers no Mobile, Eliminação de Sobreposição pela Barra de Notificações Nativa e Responsividade Sem Colisões em Telas Estreitas** (2026-11-08):
+> - **(1) Compensação de Safe Area Top Universal no `SharedLinkHeaderNav` e `ToolsHeader`**:
+>   - Injeção da fórmula de área segura `pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]` sob casca translúcida `bg-surface/90 backdrop-blur-md sticky top-0 z-30`;
+>   - Proteção completa contra sobreposição da status bar nativa do Android/iOS, entalhes (notches) e câmeras perfuradas em visualizações PWA, APK nativo e navegadores móveis com `viewport-fit=cover`;
+> - **(2) Responsividade e Arranjo Visual Despoluído em Telas Móveis (< 390px)**:
+>   - Logotipo adaptativo no mobile: símbolo nítido `size-7` com wordmark "Áxis" colapsável (`hidden xs:inline`), liberando espaço horizontal precioso;
+>   - Badge de contexto com auto-truncamento inteligente (`max-w-[110px] xs:max-w-[160px] sm:max-w-none text-[11px]`) impedindo empurrões de layout;
+>   - Botões contextuais de ação compactos e adaptativos: rótulos "Abrir no App" colapsando para "App" (`hidden sm:inline` / `sm:hidden`) e "Meu Painel" colapsando para "Painel" em telas estreitas;
+>   - Botão "Voltar ao Início" em PWA/App shell adaptando-se para "Início" em smartphones;
+>   - Alternador de tema (`ThemeToggle`) com container `size-8` padronizado e alvo tátil de toque confortável;
+> - **(3) Reestruturação de Casca em `FamilyInvitePage`**:
+>   - Movimentação do `SharedLinkHeaderNav` para o nível raiz da página em todos os 10 estados da rota `/convite-familiar/:token`, eliminando confinamentos em contêineres de padding rígido e assegurando header sticky de ponta a ponta (`w-full`);
+> - **(4) Compilação e Publicação do APK Android v3.0.12 (Build 41)**:
+>   - Typecheck (`tsc -b`), lint sem violações, testes 100% aprovados e compilação do APK Release.
+>
+
 > **v3.0.11 (Build 40)** registra a **Padronização Mobile Universal de Páginas Públicas Compartilhadas, Troca de Tema Integrada e Extrato Detalhado para Convidados do Modo Viagem** (2026-11-08):
 > - **(1) Header Universal Sticky com Alternância de Temas (`SharedLinkHeaderNav`)**:
 >   - Casca translúcida fixa com `bg-surface/85 backdrop-blur-md border-b border-border/80 h-14`;

@@ -59,10 +59,10 @@ export function SharedLinkHeaderNav({
       : "max-w-2xl";
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-surface/85 backdrop-blur-md border-b border-border/80 transition-colors">
-      <div className={cn("mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-2.5", maxWidthClass)}>
+    <header className="sticky top-0 z-30 w-full bg-surface/90 backdrop-blur-md border-b border-border/80 transition-colors pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]">
+      <div className={cn("mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-2", maxWidthClass)}>
         {/* Lado Esquerdo: Logo / Voltar + Badge */}
-        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
           {isAppShell ? (
             <Button
               type="button"
@@ -73,19 +73,30 @@ export function SharedLinkHeaderNav({
               aria-label="Voltar para a página inicial"
             >
               <ArrowLeft className="size-3.5" aria-hidden="true" />
-              <span className="hidden xs:inline font-medium">Voltar ao Início</span>
+              <span className="hidden sm:inline font-medium">Voltar ao Início</span>
+              <span className="sm:hidden font-medium">Início</span>
             </Button>
           ) : (
             <Link
               to={session?.user ? "/" : "/apresentacao"}
-              className="inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-lg shrink-0"
+              className="inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-lg shrink-0"
               aria-label="Ir para a página inicial do Áxis Finance"
             >
-              <BrandLogo showWordmark showSubtitle={false} />
+              <BrandLogo
+                showWordmark
+                showSubtitle={false}
+                markClassName="size-7"
+                wordmarkClassName="text-sm font-bold tracking-tight hidden xs:inline"
+              />
             </Link>
           )}
 
-          <Badge variant="muted" size="xs" className="shrink-0 font-medium">
+          <Badge
+            variant="muted"
+            size="xs"
+            className="shrink-0 font-medium truncate max-w-[110px] xs:max-w-[160px] sm:max-w-none text-[11px]"
+            title={badgeLabel}
+          >
             {badgeLabel}
           </Badge>
         </div>
@@ -98,30 +109,34 @@ export function SharedLinkHeaderNav({
               variant="outline"
               size="xs"
               onClick={handleOpenInApp}
-              className="gap-1.5 h-7 px-2 sm:px-2.5 text-xs text-primary-strong border-primary/30 hover:bg-primary/5 cursor-pointer"
+              className="gap-1.5 h-8 px-2 sm:px-2.5 text-xs text-primary-strong border-primary/30 hover:bg-primary/5 cursor-pointer shrink-0"
               title="Abrir no aplicativo instalado no dispositivo"
+              aria-label="Abrir no aplicativo instalado no dispositivo"
             >
-              <Smartphone className="size-3" aria-hidden="true" />
-              <span className="hidden xs:inline">{appOpenAttempted ? "Abrindo…" : "Abrir no App"}</span>
-              <span className="xs:hidden">{appOpenAttempted ? "…" : "App"}</span>
+              <Smartphone className="size-3.5" aria-hidden="true" />
+              <span className="hidden sm:inline">{appOpenAttempted ? "Abrindo…" : "Abrir no App"}</span>
+              <span className="sm:hidden">{appOpenAttempted ? "…" : "App"}</span>
             </Button>
           ) : null}
 
           {!isAppShell && session?.user ? (
-            <Link to="/">
+            <Link to="/" className="shrink-0">
               <Button
                 type="button"
                 variant="ghost"
                 size="xs"
-                className="gap-1 h-7 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                className="gap-1.5 h-8 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                title="Acessar Meu Painel"
+                aria-label="Acessar Meu Painel"
               >
-                <span className="hidden xs:inline">Meu Painel</span>
-                <ExternalLink className="size-3" aria-hidden="true" />
+                <span className="hidden sm:inline">Meu Painel</span>
+                <span className="sm:hidden text-xs">Painel</span>
+                <ExternalLink className="size-3.5" aria-hidden="true" />
               </Button>
             </Link>
           ) : null}
 
-          <ThemeToggle className="size-8" />
+          <ThemeToggle className="size-8 shrink-0 rounded-lg border border-border/60 hover:bg-surface-hover text-muted-foreground hover:text-foreground" />
         </div>
       </div>
     </header>
