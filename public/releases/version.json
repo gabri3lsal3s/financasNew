@@ -1,11 +1,11 @@
 {
-  "version": "3.0.7",
-  "versionCode": 33,
-  "releaseDate": "2026-11-08T04:09:30Z",
-  "minSupportedVersion": "3.0.7",
+  "version": "3.0.8",
+  "versionCode": 34,
+  "releaseDate": "2026-11-08T13:18:46Z",
+  "minSupportedVersion": "3.0.8",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "2a921b0b9034cbdf36966497ffbf11cfd29ec8debe4e7fdde19791d7727fd462",
-  "fileSizeBytes": 12025021,
+  "sha256": "019afcd8a1fb7876d313fe589053c59fcb7b8bb54f43aa12f1c4f027489ebf79",
+  "fileSizeBytes": 12036661,
   "changelog": [
     "Radar de Vencimentos dos Próximos 7 Dias no Dashboard com cálculo de liquidez semanal",
     "Quitação e baixa contábil direta in-loco na Central de Lembretes com confirmação obrigatória",
