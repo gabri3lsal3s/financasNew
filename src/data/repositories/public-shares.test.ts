@@ -309,32 +309,26 @@ describe("data/repositories/public-shares", () => {
       expect(res).toEqual(mockResult);
     });
 
-    it("regeneratePublicShare revoga o token anterior e cria um novo compartilhamento", async () => {
-      const mockEq = vi.fn().mockResolvedValue({ error: null });
+    it("regeneratePublicShare atualiza o token do compartilhamento existente sem criar novo registro", async () => {
+      const mockUpdatedRow = {
+        id: "share-existing-id",
+        user_id: "user-test-uuid",
+        kind: "family_budget",
+        token: "brandnewtoken",
+        payload: { monthly_ceiling_cents: 500000 },
+        created_at: "2026-11-05T12:00:00Z",
+        expires_at: null,
+        is_revoked: false,
+        updated_at: "2026-11-08T12:00:00Z",
+      };
+
+      const mockSelect = vi.fn().mockResolvedValue({ data: [mockUpdatedRow], error: null });
+      const mockEq = vi.fn().mockReturnValue({ select: mockSelect });
       const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq });
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: {
-          id: "new-share-id",
-          user_id: "user-test-uuid",
-          kind: "family_budget",
-          token: "brandnewtoken",
-          payload: { monthly_ceiling_cents: 500000 },
-          created_at: "2026-11-05T12:00:00Z",
-          expires_at: null,
-          is_revoked: false,
-          updated_at: "2026-11-05T12:00:00Z",
-        },
-        error: null,
-      });
-      const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
-      const mockInsert = vi.fn().mockReturnValue({ select: mockSelect });
 
       const mockFrom = vi.fn().mockImplementation((table: string) => {
         if (table === "public_shares") {
-          return {
-            update: mockUpdate,
-            insert: mockInsert,
-          };
+          return { update: mockUpdate };
         }
         return {};
       });
@@ -343,18 +337,20 @@ describe("data/repositories/public-shares", () => {
         from: mockFrom,
       } as unknown as ReturnType<typeof getSupabase>);
 
-      const result = await regeneratePublicShare("old-share-id", {
+      const result = await regeneratePublicShare("share-existing-id", {
         kind: "family_budget",
         payload: { monthly_ceiling_cents: 500000 },
       });
 
+      expect(mockFrom).toHaveBeenCalledWith("public_shares");
       expect(mockUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
-          is_revoked: true,
+          token: expect.any(String),
+          is_revoked: false,
         }),
       );
-      expect(mockEq).toHaveBeenCalledWith("id", "old-share-id");
-      expect(result.id).toBe("new-share-id");
+      expect(mockEq).toHaveBeenCalledWith("id", "share-existing-id");
+      expect(result.id).toBe("share-existing-id");
       expect(result.token).toBe("brandnewtoken");
     });
   });

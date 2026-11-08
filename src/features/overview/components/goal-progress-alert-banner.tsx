@@ -30,7 +30,8 @@ export function GoalProgressAlertBanner({
   const currentCents =
     liveCurrentCents !== undefined ? liveCurrentCents : Number(payload.current_cents ?? 0);
   const percentage = targetCents > 0 ? Math.round((currentCents / targetCents) * 100) : 0;
-  const isCompleted = payload.status === "completed" || percentage >= 100;
+  const hasTarget = targetCents > 0;
+  const isCompleted = hasTarget ? currentCents >= targetCents : payload.status === "completed";
   const isFinalStretch = percentage >= 80 && !isCompleted;
   const hasSurplus = surplusCents !== null && surplusCents !== undefined && surplusCents > 0;
   const remainingCents = Math.max(0, targetCents - currentCents);
@@ -136,7 +137,7 @@ export function GoalProgressAlertBanner({
             className="gap-1.5 flex-1 sm:flex-initial text-xs font-medium cursor-pointer"
           >
             <Plus className="size-3.5" aria-hidden="true" />
-            <span>+ Aportar</span>
+            <span>Aportar</span>
           </Button>
         )}
 

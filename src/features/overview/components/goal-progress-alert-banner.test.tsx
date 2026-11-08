@@ -21,7 +21,7 @@ const mockGoalShare: PublicShare = {
 };
 
 describe("GoalProgressAlertBanner", () => {
-  it("renderiza reta final com botão + Aportar e Ver Meta", () => {
+  it("renderiza reta final com botão Aportar e Ver Meta", () => {
     const handleDeposit = vi.fn();
     const handleNavigate = vi.fn();
 
@@ -35,11 +35,11 @@ describe("GoalProgressAlertBanner", () => {
 
     expect(screen.getByText("Reta Final: Viagem dos Sonhos")).toBeInTheDocument();
     expect(screen.getByText("85% alcançado")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /\+ Aportar/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Aportar/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Ver Meta/i })).toBeInTheDocument();
   });
 
-  it("renderiza Meta Conquistada quando 100% batido sem botão + Aportar", () => {
+  it("renderiza Meta Conquistada quando 100% batido sem botão Aportar", () => {
     const completedShare: PublicShare = {
       ...mockGoalShare,
       payload: {
@@ -60,7 +60,7 @@ describe("GoalProgressAlertBanner", () => {
     expect(screen.getByText("Meta Conquistada: Viagem dos Sonhos")).toBeInTheDocument();
     expect(screen.getByText("100% Batido")).toBeInTheDocument();
     expect(screen.getByText(/Parabéns! Você alcançou o valor planejado com sucesso/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /\+ Aportar/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Aportar/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Ver Meta/i })).toBeInTheDocument();
   });
 
@@ -97,5 +97,32 @@ describe("GoalProgressAlertBanner", () => {
     expect(
       screen.queryByRole("button", { name: /Dispensar alerta da meta/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("responde ao real estado da meta: não exibe 100% Batido se current_cents < target_cents mesmo se payload.status for completed", () => {
+    const incompleteShareWithCompletedStatus: PublicShare = {
+      ...mockGoalShare,
+      payload: {
+        ...mockGoalShare.payload,
+        title: "Investimentos",
+        target_cents: 5000000,
+        current_cents: 1809547,
+        status: "completed",
+      },
+    };
+
+    render(
+      <GoalProgressAlertBanner
+        goalShare={incompleteShareWithCompletedStatus}
+        onOpenDeposit={vi.fn()}
+        onNavigateGoals={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("100% Batido")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Meta Conquistada:/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Meta: Investimentos")).toBeInTheDocument();
+    expect(screen.getByText("36% alcançado")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Aportar/i })).toBeInTheDocument();
   });
 });

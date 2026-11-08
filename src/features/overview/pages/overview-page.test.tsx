@@ -837,7 +837,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       expect(screen.queryByText("Meta Conquistada: Reserva de Emergência")).not.toBeInTheDocument();
     });
 
-    it("ao dispensar a meta prioritária, promove e exibe a próxima meta elegível", () => {
+    it("organiza múltiplas metas elegíveis no carrossel de alertas", () => {
       publicSharesMock = [
         {
           id: "goal-share-1",
@@ -883,8 +883,9 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
 
       render(<OverviewPage />);
 
-      // Primeira meta (Viagem Europa - 90%) está ativa
+      // Ambas as metas estão organizadas nos slides do carrossel
       expect(screen.getByText("Reta Final: Viagem Europa")).toBeInTheDocument();
+      expect(screen.getByText("Reta Final: Carro Novo")).toBeInTheDocument();
 
       // Clica em dispensar Viagem Europa
       const dismissBtn = screen.getByRole("button", {
@@ -893,9 +894,41 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       });
       fireEvent.click(dismissBtn);
 
-      // Viagem Europa some, e Carro Novo assume o carrossel
+      // Viagem Europa é removida do carrossel, mantendo Carro Novo
       expect(screen.queryByText("Reta Final: Viagem Europa")).not.toBeInTheDocument();
       expect(screen.getByText("Reta Final: Carro Novo")).toBeInTheDocument();
+    });
+
+    it("responde ao real estado da meta: exibe percentual real e não Meta Conquistada se saldo < alvo", () => {
+      publicSharesMock = [
+        {
+          id: "goal-share-inv",
+          user_id: "user-1",
+          resource_type: "goal_tracker",
+          resource_id: "goal-inv",
+          permission: "view",
+          token: "tok-inv",
+          expires_at: null,
+          created_at: "2026-01-01T00:00:00Z",
+          is_revoked: false,
+          revoked_at: null,
+          access_count: 0,
+          last_accessed_at: null,
+          payload: {
+            title: "Investimentos",
+            target_cents: 5000000,
+            current_cents: 1809547,
+            status: "completed",
+          },
+        },
+      ];
+
+      render(<OverviewPage />);
+
+      expect(screen.queryByText("100% Batido")).not.toBeInTheDocument();
+      expect(screen.queryByText(/Meta Conquistada: Investimentos/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/(Meta|Aporte Sugerido): Investimentos/)).toBeInTheDocument();
+      expect(screen.getByText("36% alcançado")).toBeInTheDocument();
     });
   });
 });

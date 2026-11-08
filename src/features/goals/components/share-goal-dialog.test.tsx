@@ -235,6 +235,10 @@ describe("ShareGoalDialog", () => {
     const confirmPauseBtn = screen.getByRole("button", { name: "Pausar link" });
     fireEvent.click(confirmPauseBtn);
 
+    // Atualização otimista imediata no modal aberto
+    expect(screen.getByText("Link Público Pausado")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reativar link público agora" })).toBeInTheDocument();
+
     await waitFor(() => {
       expect(mutateAsyncRevokeMock).toHaveBeenCalledWith("share-to-revoke");
     });
@@ -282,7 +286,7 @@ describe("ShareGoalDialog", () => {
     });
   });
 
-  it("permite reativar link público previamente pausado", async () => {
+  it("permite reativar link público previamente pausado com atualização otimista imediata", async () => {
     mockMyShares = [
       {
         id: "share-revoked",
@@ -311,8 +315,11 @@ describe("ShareGoalDialog", () => {
 
     expect(screen.getByText("Link Público Pausado")).toBeInTheDocument();
 
-    const restoreBtn = screen.getByRole("button", { name: /Reativar link público/i });
+    const restoreBtn = screen.getByRole("button", { name: "Reativar link público agora" });
     fireEvent.click(restoreBtn);
+
+    // Atualização otimista imediata no modal aberto
+    expect(screen.getByText("Termômetro Público Ativo")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(mutateAsyncRestoreMock).toHaveBeenCalledWith("share-revoked");
@@ -369,6 +376,95 @@ describe("ShareGoalDialog", () => {
     });
   });
 
+  it("reabre status de concluída para ativa quando o valor alvo é editado para cima do valor arrecadado", async () => {
+    const completedShare: PublicShare = {
+      id: "share-completed",
+      user_id: "user-1",
+      kind: "goal_tracker",
+      token: "gt_completed",
+      payload: {
+        title: "Reserva de Emergência",
+        target_cents: 100000,
+        current_cents: 100000,
+        status: "completed",
+        pix_key: "123.456.789-00",
+      },
+      created_at: "2026-11-01T00:00:00Z",
+      expires_at: "2026-12-01T00:00:00Z",
+      is_revoked: false,
+      updated_at: "2026-11-01T00:00:00Z",
+    };
+
+    render(
+      <ShareGoalDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        existingShare={completedShare}
+        initialEditMode={true}
+      />,
+    );
+
+    // Aumenta o valor alvo para 200.000 centavos
+    const targetInput = screen.getByLabelText(/Valor Alvo/);
+    fireEvent.change(targetInput, { target: { value: "200000" } });
+
+    const saveBtn = screen.getByRole("button", { name: /^Salvar/i });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(mutateAsyncUpdateMock).toHaveBeenCalledWith({
+        id: "share-completed",
+        payload: expect.objectContaining({
+          target_cents: 200000,
+          current_cents: 100000,
+          status: "active",
+        }),
+      });
+    });
+  });
+
+  it("permite arquivar meta através do rodapé", async () => {
+    mockMyShares = [
+      {
+        id: "share-to-archive",
+        user_id: "user-1",
+        kind: "goal_tracker",
+        token: "gt_to_archive",
+        payload: {
+          title: "Meta para Arquivar",
+          target_cents: 100000,
+          current_cents: 20000,
+          status: "active",
+          pix_key: "123.456.789-00",
+        },
+        created_at: "2026-11-01T00:00:00Z",
+        expires_at: "2026-12-01T00:00:00Z",
+        is_revoked: false,
+        updated_at: "2026-11-01T00:00:00Z",
+      },
+    ];
+
+    render(
+      <ShareGoalDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        existingShare={mockMyShares[0]}
+      />,
+    );
+
+    const archiveBtn = screen.getByRole("button", { name: "Arquivar meta" });
+    fireEvent.click(archiveBtn);
+
+    await waitFor(() => {
+      expect(mutateAsyncUpdateMock).toHaveBeenCalledWith({
+        id: "share-to-archive",
+        payload: expect.objectContaining({
+          status: "archived",
+        }),
+      });
+    });
+  });
+
   it("renderiza rodapé responsivo com ações compactas e botão de concluir/reabrir sem cortes", () => {
     mockMyShares = [
       {
@@ -379,7 +475,7 @@ describe("ShareGoalDialog", () => {
         payload: {
           title: "Meta Ativa",
           target_cents: 100000,
-          current_cents: 100000,
+          current_cents: 50000,
           pix_key: "gabriel@axis.app",
         },
         created_at: "2026-11-01T00:00:00Z",
@@ -394,7 +490,7 @@ describe("ShareGoalDialog", () => {
         open={true}
         onOpenChange={vi.fn()}
         existingShare={mockMyShares[0]}
-        currentRealizedCents={100000}
+        currentRealizedCents={50000}
         currentExpectedCents={100000}
       />,
     );
@@ -403,6 +499,7 @@ describe("ShareGoalDialog", () => {
     expect(screen.getByRole("button", { name: "Excluir meta" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pausar link público" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Regenerar link público" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Arquivar meta" })).toBeInTheDocument();
 
     // Botões de diálogo no rodapé
     expect(screen.getAllByRole("button", { name: "Fechar" })).toHaveLength(2);

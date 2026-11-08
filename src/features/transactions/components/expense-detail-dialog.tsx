@@ -28,6 +28,7 @@ import type { Category, CreditCard, Expense, InstallmentDeleteMode, PaymentMetho
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { resolveBillCompetence } from "@/domain/competence";
 import { todayISO } from "@/domain/debts";
+import { shiftMonth } from "@/lib/date";
 import { evaluateExpensePriceEvolution } from "@/domain/insights";
 import { REPORT_WEIGHT_PRESETS } from "./report-weight-constants";
 import { ReportWeightField } from "./report-weight-field";
@@ -437,12 +438,22 @@ export function ExpenseDetailDialog({
   const cards = cardsQuery.data ?? [];
   const currentCategory = categories.find((c) => c.id === expense?.category_id);
   const expenseMonth = expense ? expense.date.slice(0, 7) : "";
-  const expensesQuery = useExpenses(expenseMonth, { enabled: Boolean(expense) });
+  const isDetailOpen = open && Boolean(expense);
+  const expensesQuery = useExpenses(expenseMonth, { enabled: isDetailOpen });
+  const prevMonth1Query = useExpenses(shiftMonth(expenseMonth, -1), { enabled: isDetailOpen && Boolean(expenseMonth) });
+  const prevMonth2Query = useExpenses(shiftMonth(expenseMonth, -2), { enabled: isDetailOpen && Boolean(expenseMonth) });
+  const prevMonth3Query = useExpenses(shiftMonth(expenseMonth, -3), { enabled: isDetailOpen && Boolean(expenseMonth) });
 
   const priceEvolution = useMemo(() => {
     if (!expense) return null;
-    return evaluateExpensePriceEvolution(expense, expensesQuery.data ?? []);
-  }, [expense, expensesQuery.data]);
+    const allExpenses = [
+      ...(expensesQuery.data ?? []),
+      ...(prevMonth1Query.data ?? []),
+      ...(prevMonth2Query.data ?? []),
+      ...(prevMonth3Query.data ?? []),
+    ];
+    return evaluateExpensePriceEvolution(expense, allExpenses);
+  }, [expense, expensesQuery.data, prevMonth1Query.data, prevMonth2Query.data, prevMonth3Query.data]);
 
   const isInstallment = expense != null && expense.installments_total > 1;
   const isRecurring = expense?.recurrence_id != null;

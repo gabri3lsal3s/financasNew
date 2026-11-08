@@ -13,6 +13,7 @@ import {
 } from "@/data/repositories/public-shares";
 import { signalSplitPayment, dismissSplitPaymentSignal, allocateGoalDeposit } from "@/data/rpc";
 import type { PendingSimulation } from "@/domain/share";
+import type { PublicShare } from "@/types";
 import { pushToast } from "@/services/toast";
 import { getErrorMessage } from "@/services/errors";
 
@@ -40,12 +41,35 @@ export function useUpdatePublicShare() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) =>
       updatePublicSharePayload(id, payload),
-    onSuccess: () => {
+    onMutate: async ({ id, payload }) => {
+      await queryClient.cancelQueries({ queryKey: myPublicSharesMutationKey });
+      const previous = queryClient.getQueriesData<PublicShare[]>({
+        queryKey: myPublicSharesMutationKey,
+      });
+
+      queryClient.setQueriesData<PublicShare[]>(
+        { queryKey: myPublicSharesMutationKey },
+        (old) => {
+          if (!old) return old;
+          return old.map((share) =>
+            share.id === id ? { ...share, payload: { ...share.payload, ...payload } } : share,
+          );
+        },
+      );
+
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous) {
+        for (const [key, data] of context.previous) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+      pushToast({ title: getErrorMessage(error), variant: "destructive" });
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
       void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
-    },
-    onError: (error) => {
-      pushToast({ title: getErrorMessage(error), variant: "destructive" });
     },
   });
 }
@@ -55,13 +79,35 @@ export function useRevokePublicShare() {
 
   return useMutation({
     mutationFn: (id: string) => revokePublicShare(id),
-    onSuccess: () => {
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: myPublicSharesMutationKey });
+      const previous = queryClient.getQueriesData<PublicShare[]>({
+        queryKey: myPublicSharesMutationKey,
+      });
+
+      queryClient.setQueriesData<PublicShare[]>(
+        { queryKey: myPublicSharesMutationKey },
+        (old) => {
+          if (!old) return old;
+          return old.map((share) =>
+            share.id === id ? { ...share, is_revoked: true } : share,
+          );
+        },
+      );
+
+      return { previous };
+    },
+    onError: (error, _id, context) => {
+      if (context?.previous) {
+        for (const [key, data] of context.previous) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+      pushToast({ title: getErrorMessage(error), variant: "destructive" });
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
       void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
-      pushToast({ title: "Compartilhamento revogado.", variant: "default" });
-    },
-    onError: (error) => {
-      pushToast({ title: getErrorMessage(error), variant: "destructive" });
     },
   });
 }
@@ -71,13 +117,35 @@ export function useRestorePublicShare() {
 
   return useMutation({
     mutationFn: (id: string) => restorePublicShare(id),
-    onSuccess: () => {
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: myPublicSharesMutationKey });
+      const previous = queryClient.getQueriesData<PublicShare[]>({
+        queryKey: myPublicSharesMutationKey,
+      });
+
+      queryClient.setQueriesData<PublicShare[]>(
+        { queryKey: myPublicSharesMutationKey },
+        (old) => {
+          if (!old) return old;
+          return old.map((share) =>
+            share.id === id ? { ...share, is_revoked: false } : share,
+          );
+        },
+      );
+
+      return { previous };
+    },
+    onError: (error, _id, context) => {
+      if (context?.previous) {
+        for (const [key, data] of context.previous) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+      pushToast({ title: getErrorMessage(error), variant: "destructive" });
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
       void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
-      pushToast({ title: "Link público reativado com sucesso!", variant: "success" });
-    },
-    onError: (error) => {
-      pushToast({ title: getErrorMessage(error), variant: "destructive" });
     },
   });
 }
@@ -87,13 +155,33 @@ export function useDeletePublicShare() {
 
   return useMutation({
     mutationFn: (id: string) => deletePublicShare(id),
-    onSuccess: () => {
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: myPublicSharesMutationKey });
+      const previous = queryClient.getQueriesData<PublicShare[]>({
+        queryKey: myPublicSharesMutationKey,
+      });
+
+      queryClient.setQueriesData<PublicShare[]>(
+        { queryKey: myPublicSharesMutationKey },
+        (old) => {
+          if (!old) return old;
+          return old.filter((share) => share.id !== id);
+        },
+      );
+
+      return { previous };
+    },
+    onError: (error, _id, context) => {
+      if (context?.previous) {
+        for (const [key, data] of context.previous) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+      pushToast({ title: getErrorMessage(error), variant: "destructive" });
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
       void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
-      pushToast({ title: "Excluído com sucesso.", variant: "default" });
-    },
-    onError: (error) => {
-      pushToast({ title: getErrorMessage(error), variant: "destructive" });
     },
   });
 }
@@ -104,13 +192,51 @@ export function useRegeneratePublicShare() {
   return useMutation({
     mutationFn: ({ oldId, input }: { oldId: string; input: CreatePublicShareInput }) =>
       regeneratePublicShare(oldId, input),
-    onSuccess: () => {
+    onMutate: async ({ oldId, input }) => {
+      await queryClient.cancelQueries({ queryKey: myPublicSharesMutationKey });
+      const previous = queryClient.getQueriesData<PublicShare[]>({
+        queryKey: myPublicSharesMutationKey,
+      });
+
+      queryClient.setQueriesData<PublicShare[]>(
+        { queryKey: myPublicSharesMutationKey },
+        (old) => {
+          if (!old) return old;
+          return old.map((share) => {
+            if (share.id === oldId) {
+              return {
+                ...share,
+                token: input.token || `${share.token}_regenerating`,
+                is_revoked: false,
+                payload: input.payload ?? share.payload,
+                updated_at: new Date().toISOString(),
+              };
+            }
+            return share;
+          });
+        },
+      );
+
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous) {
+        for (const [key, data] of context.previous) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+      pushToast({ title: getErrorMessage(error), variant: "destructive" });
+    },
+    onSuccess: (data) => {
+      queryClient.setQueriesData<PublicShare[]>(
+        { queryKey: myPublicSharesMutationKey },
+        (old) => {
+          if (!old) return old;
+          return old.map((share) => (share.id === data.id ? data : share));
+        },
+      );
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
       void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
-      pushToast({ title: "Link regenerado com sucesso!", variant: "success" });
-    },
-    onError: (error) => {
-      pushToast({ title: getErrorMessage(error), variant: "destructive" });
     },
   });
 }

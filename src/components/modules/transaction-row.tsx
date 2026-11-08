@@ -109,7 +109,7 @@ export function TransactionRow({
             <Badge
               variant="muted"
               size="xs"
-              className="shrink-0 font-medium"
+              className="hidden sm:inline-flex shrink-0 font-medium"
               title={
                 Math.round((effectiveWeight ?? 0) * 100) === 0
                   ? "Despesa 100% reembolsada/estornada (R$ 0 no relatório)"

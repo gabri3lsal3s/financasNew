@@ -195,7 +195,10 @@ export function GoalTrackerPublicPage() {
 
   // 3. Cálculos de progresso e resolução de status
   const isArchived = goalData.status === "archived";
-  const isCompleted = goalData.status === "completed" || goalData.percentage >= 100;
+  const isCompleted =
+    goalData.target_cents > 0
+      ? goalData.current_cents >= goalData.target_cents
+      : goalData.status === "completed";
   const progressTone = isCompleted ? "positive" : "portfolio";
   const hasDeadline = Boolean(goalData.deadline);
 

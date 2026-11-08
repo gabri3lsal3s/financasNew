@@ -211,7 +211,11 @@ function CategoryFormContent({
         <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={name.trim() === "" || pending}>
+        <Button
+          type="submit"
+          aria-label={category ? "Salvar alterações" : "Criar categoria"}
+          disabled={name.trim() === "" || pending}
+        >
           {pending ? "Salvando…" : (
             <>
               <span className="hidden sm:inline">{category ? "Salvar alterações" : "Criar categoria"}</span>

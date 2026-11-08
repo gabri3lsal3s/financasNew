@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Archive,
   Check,
   CheckCircle2,
   Clock,
@@ -10,6 +11,7 @@ import {
   Lock,
   PieChart,
   Plus,
+  Share2,
   SlidersHorizontal,
   Sparkles,
   Target,
@@ -51,7 +53,12 @@ export function CampaignCard({
   const currentCents =
     liveCurrentCents !== undefined ? liveCurrentCents : Number(payload.current_cents ?? 0);
   const percentage = targetCents > 0 ? Math.round((currentCents / targetCents) * 100) : 0;
-  const isCompleted = payload.status === "completed" || percentage >= 100;
+  const hasTarget = targetCents > 0;
+  const isCompleted = hasTarget ? currentCents >= targetCents : payload.status === "completed";
+  const isArchived = payload.status === "archived";
+  const isPersonalPrivate = payload.is_shared === false;
+  const isPubliclyShared = !isPersonalPrivate && !share.is_revoked;
+  const isLinkPaused = !isPersonalPrivate && share.is_revoked;
   const deadline = payload.deadline as string | undefined;
   const contributions: GoalContribution[] = (payload.contributions as GoalContribution[] | undefined) ?? [];
   const showContributionsPublicly = payload.show_contributions_publicly !== false;
@@ -123,26 +130,44 @@ export function CampaignCard({
               <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
                 {title}
               </p>
-              <Badge
-                variant={isCompleted ? "positive" : "portfolio"}
-                size="xs"
-                className="gap-1"
-              >
-                {isCompleted ? (
-                  <>
-                    <CheckCircle2 className="size-3 text-positive-strong" aria-hidden="true" />
-                    <span>Concluída</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="size-3 text-portfolio" aria-hidden="true" />
-                    <span>Em Arrecadação</span>
-                  </>
-                )}
-              </Badge>
-              {share.is_revoked && (
-                <Badge variant="warning" size="xs">
-                  Link Desativado
+              {isArchived ? (
+                <Badge variant="muted" size="xs" className="gap-1">
+                  <Archive className="size-3 text-muted-foreground" aria-hidden="true" />
+                  <span>Arquivada</span>
+                </Badge>
+              ) : (
+                <Badge
+                  variant={isCompleted ? "positive" : "portfolio"}
+                  size="xs"
+                  className="gap-1"
+                >
+                  {isCompleted ? (
+                    <>
+                      <CheckCircle2 className="size-3 text-positive-strong" aria-hidden="true" />
+                      <span>Concluída</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="size-3 text-portfolio" aria-hidden="true" />
+                      <span>{isPubliclyShared ? "Em Arrecadação" : "Em Andamento"}</span>
+                    </>
+                  )}
+                </Badge>
+              )}
+              {isPersonalPrivate ? (
+                <Badge variant="muted" size="xs" className="gap-1">
+                  <Lock className="size-3 text-muted-foreground" aria-hidden="true" />
+                  <span>Privada</span>
+                </Badge>
+              ) : isLinkPaused ? (
+                <Badge variant="warning" size="xs" className="gap-1">
+                  <Lock className="size-3 text-warning-strong" aria-hidden="true" />
+                  <span>Link Desativado</span>
+                </Badge>
+              ) : (
+                <Badge variant="default" size="xs" className="gap-1 border border-primary/40 text-primary">
+                  <Share2 className="size-3" aria-hidden="true" />
+                  <span>Link Público</span>
                 </Badge>
               )}
               {composition?.includeCheckingAccounts && (
@@ -181,41 +206,44 @@ export function CampaignCard({
                 </span>
               )}
 
-              <span className="flex items-center gap-1" title={showContributionsPublicly ? "Nomes e valores visíveis no link público" : "Lista de doadores visível apenas para você"}>
-                {showContributionsPublicly ? (
-                  <>
-                    <Eye className="size-3 text-positive-strong" aria-hidden="true" />
-                    <span>Transparência aberta</span>
-                  </>
-                ) : (
-                  <>
-                    <EyeOff className="size-3 text-muted-foreground" aria-hidden="true" />
-                    <span>Doações restritas</span>
-                  </>
-                )}
-              </span>
+              {!isPersonalPrivate && (
+                <span className="flex items-center gap-1" title={showContributionsPublicly ? "Nomes e valores visíveis no link público" : "Lista de doadores visível apenas para você"}>
+                  {showContributionsPublicly ? (
+                    <>
+                      <Eye className="size-3 text-positive-strong" aria-hidden="true" />
+                      <span>Transparência aberta</span>
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="size-3 text-muted-foreground" aria-hidden="true" />
+                      <span>Doações restritas</span>
+                    </>
+                  )}
+                </span>
+              )}
             </div>
           </div>
         </div>
 
         {/* Botões de Ação */}
         <div
-          className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto flex-wrap"
+          className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto"
           onClick={(e) => e.stopPropagation()}
         >
           <Button
             type="button"
             size="sm"
             variant="outline"
-            className="h-8 gap-1 text-xs"
+            className="h-8 gap-1.5 text-xs px-2 sm:px-3"
             onClick={(e) => {
               e.stopPropagation();
               triggerSensory("action");
               onOpenDeposit(share);
             }}
+            title="Registrar depósito"
           >
             <Plus className="size-3.5" aria-hidden="true" />
-            <span>Depósito</span>
+            <span className="hidden sm:inline">Depósito</span>
           </Button>
 
           {onOpenComposition && (
@@ -223,7 +251,7 @@ export function CampaignCard({
               type="button"
               size="sm"
               variant="outline"
-              className="h-8 gap-1 text-xs"
+              className="h-8 gap-1.5 text-xs px-2 sm:px-3"
               onClick={(e) => {
                 e.stopPropagation();
                 triggerSensory("action");
@@ -241,7 +269,7 @@ export function CampaignCard({
               type="button"
               size="sm"
               variant="outline"
-              className="h-8 gap-1 text-xs"
+              className="h-8 gap-1.5 text-xs px-2 sm:px-3"
               onClick={(e) => {
                 e.stopPropagation();
                 triggerSensory("action");
@@ -250,48 +278,52 @@ export function CampaignCard({
               title="Gerenciar lista de depósitos e participantes"
             >
               <Users className="size-3.5" aria-hidden="true" />
-              <span>Participantes</span>
+              <span className="hidden sm:inline">Participantes</span>
               {contributions.length > 0 && (
-                <Badge variant="muted" size="xs" className="ml-0.5 px-1 py-0">
+                <Badge variant="muted" size="xs" className="ml-0.5">
                   {contributions.length}
                 </Badge>
               )}
             </Button>
           )}
 
-          <Button
-            type="button"
-            size="sm"
-            variant={copied ? "default" : "outline"}
-            className="h-8 gap-1 text-xs"
-            onClick={(e) => {
-              e.stopPropagation();
-              void handleCopyLink();
-            }}
-            title="Copiar Link Público do Termômetro"
-          >
-            {copied ? (
-              <Check className="size-3.5" aria-hidden="true" />
-            ) : (
-              <Copy className="size-3.5" aria-hidden="true" />
-            )}
-            <span>{copied ? "Copiado" : "Link"}</span>
-          </Button>
+          {isPubliclyShared && (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                variant={copied ? "default" : "outline"}
+                className="h-8 gap-1.5 text-xs px-2 sm:px-3"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleCopyLink();
+                }}
+                title="Copiar Link Público do Termômetro"
+              >
+                {copied ? (
+                  <Check className="size-3.5" aria-hidden="true" />
+                ) : (
+                  <Copy className="size-3.5" aria-hidden="true" />
+                )}
+                <span className="hidden sm:inline">{copied ? "Copiado" : "Link"}</span>
+              </Button>
 
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="size-8 text-muted-foreground hover:text-foreground"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleOpenPage();
-            }}
-            title="Abrir Página Pública Web"
-            aria-label={`Abrir página pública da meta ${title}`}
-          >
-            <ExternalLink className="size-3.5" aria-hidden="true" />
-          </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1.5 text-xs px-2 sm:px-3"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenPage();
+                }}
+                title="Abrir Página Pública Web"
+                aria-label={`Abrir página pública da meta ${title}`}
+              >
+                <ExternalLink className="size-3.5" aria-hidden="true" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

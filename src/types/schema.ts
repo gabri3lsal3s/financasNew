@@ -1078,11 +1078,12 @@ export type GoalTrackerSharePayload = {
   target_cents: number;
   current_cents?: number;
   deadline?: string | null;
-  organizer_name: string;
-  organizer_city: string;
-  pix_key: string;
-  pix_key_type: string;
-  pix_br_code: string;
+  organizer_name?: string;
+  organizer_city?: string;
+  pix_key?: string;
+  pix_key_type?: string;
+  pix_br_code?: string;
+  is_shared?: boolean;
   status?: GoalTrackerStatus;
   notes?: string;
   contributions?: GoalContribution[];

@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Landmark, TrendingUp } from "lucide-react";
+import { getPublicAppUrl } from "@/services/app-url";
 import {
   ReportHeader,
   ReportFooter,
@@ -51,13 +52,13 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     // Chancela Oficial é link discreto para a página de apresentação
     const chancelaLink = screen.getByRole("link", { name: "Chancela Oficial · axis.app" });
     expect(chancelaLink).toBeInTheDocument();
-    expect(chancelaLink).toHaveAttribute("href", "https://axisfinance.app/apresentacao");
+    expect(chancelaLink).toHaveAttribute("href", getPublicAppUrl("/apresentacao"));
     expect(chancelaLink).toHaveAttribute("target", "_blank");
 
     // Marca no bloco superior também possui link para a página de apresentação
     const brandLink = screen.getByRole("link", { name: "Áxis Finance" });
     expect(brandLink).toBeInTheDocument();
-    expect(brandLink).toHaveAttribute("href", "https://axisfinance.app/apresentacao");
+    expect(brandLink).toHaveAttribute("href", getPublicAppUrl("/apresentacao"));
   });
 
   it("permite exibir o micro QR Code no ReportFooter via showQrCode={true}", () => {

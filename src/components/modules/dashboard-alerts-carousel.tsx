@@ -163,10 +163,22 @@ export function DashboardAlertsCarousel({
     return null;
   }
 
-  // Se houver apenas 1 alerta ativo, renderiza diretamente sem controles ou overhead de carrossel
+  // Se houver apenas 1 alerta ativo, renderiza dentro da moldura canônica sem indicador de contagem
   const firstItem = validItems[0];
   if (total === 1 && firstItem) {
-    return <div className={cn("w-full min-w-0", className)}>{firstItem.content}</div>;
+    return (
+      <section
+        aria-label="Alertas e avisos contextuais"
+        aria-roledescription="carousel"
+        className={cn("flex flex-col gap-2 w-full min-w-0 relative group", className)}
+      >
+        <div className="w-full min-w-0 py-0.5">
+          <div className="w-full px-1 sm:px-1.5">
+            {firstItem.content}
+          </div>
+        </div>
+      </section>
+    );
   }
 
   // Índice blindado que nunca excede o range de extendedItems (Zero tela preta)

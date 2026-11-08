@@ -790,7 +790,7 @@ export function OverviewPage() {
       const payload = (share.payload as Record<string, unknown> | null) ?? {};
       const config = payload.composition_config as GoalCompositionConfig | undefined;
       const targetCents = Number(payload.target_cents ?? 0);
-      const isCompleted = payload.status === "completed";
+      const isCompletedInDb = payload.status === "completed";
 
       if (config) {
         const resolved = resolveGoalComposition({
@@ -798,13 +798,27 @@ export function OverviewPage() {
           targetCents,
           accounts,
           assets,
-          previouslyLockedAsCompleted: isCompleted,
+          previouslyLockedAsCompleted: isCompletedInDb && targetCents > 0 ? false : isCompletedInDb,
         });
+
+        const isActuallyCompleted =
+          targetCents > 0 ? resolved.currentCents >= targetCents : isCompletedInDb;
 
         map.set(share.id, {
           currentCents: resolved.currentCents,
           percentage: Math.round(resolved.progressPercent),
-          isCompleted: resolved.isReached || isCompleted,
+          isCompleted: isActuallyCompleted,
+        });
+      } else {
+        const currentCents = Number(payload.current_cents ?? 0);
+        const percentage = targetCents > 0 ? Math.round((currentCents / targetCents) * 100) : 0;
+        const isActuallyCompleted =
+          targetCents > 0 ? currentCents >= targetCents : isCompletedInDb;
+
+        map.set(share.id, {
+          currentCents,
+          percentage,
+          isCompleted: isActuallyCompleted,
         });
       }
     }
@@ -812,15 +826,15 @@ export function OverviewPage() {
     return map;
   }, [realCashData.cashBalance.currentBalanceCents, positionRows, goalSharesQuery.data]);
 
-  // Apuração de metas prioritárias e ativas (§Plano 12)
-  const topGoalShare = useMemo(() => {
+  // Apuração de metas ativas e elegíveis organizadas no carrossel (§Plano 12)
+  const eligibleGoalShares = useMemo(() => {
     const goalShares = goalSharesQuery.data ?? [];
-    if (goalShares.length === 0) return null;
+    if (goalShares.length === 0) return [];
 
     const activeList = goalShares.filter(
-      (s) => !s.is_revoked && (s.payload as Record<string, unknown> | null)?.status !== "archived",
+      (s) => (s.payload as Record<string, unknown> | null)?.status !== "archived",
     );
-    if (activeList.length === 0) return null;
+    if (activeList.length === 0) return [];
 
     // Filtra metas que foram dispensadas e não tiveram mudança relevante
     const eligibleList = activeList.filter((s) => {
@@ -829,7 +843,7 @@ export function OverviewPage() {
       const live = liveGoalProgress.get(s.id)?.currentCents;
       const currentCents = live !== undefined ? live : Number(pld.current_cents ?? 0);
       const percentage = targetCents > 0 ? Math.round((currentCents / targetCents) * 100) : 0;
-      const isCompleted = pld.status === "completed" || percentage >= 100;
+      const isCompleted = targetCents > 0 ? currentCents >= targetCents : pld.status === "completed";
       const isFinalStretch = percentage >= 80 && !isCompleted;
       const stage: GoalAlertStage = isCompleted
         ? "completed"
@@ -850,9 +864,7 @@ export function OverviewPage() {
       });
     });
 
-    if (eligibleList.length === 0) return null;
-
-    // Prioriza metas na reta final (>= 80% e < 100%), depois maior percentual
+    // Ordena: reta final (>= 80% e < 100%) primeiro, depois maior percentual
     return [...eligibleList].sort((a, b) => {
       const pldA = (a.payload as Record<string, unknown> | null) ?? {};
       const pldB = (b.payload as Record<string, unknown> | null) ?? {};
@@ -868,7 +880,7 @@ export function OverviewPage() {
       const isFinalB = pctB >= 0.8 && pctB < 1 ? 1 : 0;
       if (isFinalA !== isFinalB) return isFinalB - isFinalA;
       return pctB - pctA;
-    })[0] ?? null;
+    });
   }, [goalSharesQuery.data, liveGoalProgress, surplusCapacity.hasSurplus, alertDismissals.goals]);
 
   const handleDismissGoal = useCallback(
@@ -878,7 +890,7 @@ export function OverviewPage() {
       const live = liveGoalProgress.get(share.id)?.currentCents;
       const currentCents = live !== undefined ? live : Number(pld.current_cents ?? 0);
       const percentage = targetCents > 0 ? Math.round((currentCents / targetCents) * 100) : 0;
-      const isCompleted = pld.status === "completed" || percentage >= 100;
+      const isCompleted = targetCents > 0 ? currentCents >= targetCents : pld.status === "completed";
       const isFinalStretch = percentage >= 80 && !isCompleted;
       const stage: GoalAlertStage = isCompleted
         ? "completed"
@@ -1105,20 +1117,21 @@ export function OverviewPage() {
         />
       ),
     },
-    Boolean(topGoalShare) && {
-      id: "goal-progress-alert-banner",
+    ...eligibleGoalShares.map((share) => ({
+      id: `goal-progress-${share.id}`,
       priority: 3,
       content: (
         <GoalProgressAlertBanner
-          goalShare={topGoalShare!}
-          liveCurrentCents={liveGoalProgress.get(topGoalShare!.id)?.currentCents}
+          key={share.id}
+          goalShare={share}
+          liveCurrentCents={liveGoalProgress.get(share.id)?.currentCents}
           surplusCents={surplusCapacity.hasSurplus ? surplusCapacity.suggestedAporteCents : null}
-          onOpenDeposit={(share) => setDepositGoalShare(share)}
+          onOpenDeposit={(s) => setDepositGoalShare(s)}
           onNavigateGoals={() => navigate("/orcamentos?tab=goals")}
-          onDismiss={() => handleDismissGoal(topGoalShare!)}
+          onDismiss={() => handleDismissGoal(share)}
         />
       ),
-    },
+    })),
     surplusCapacity.hasSurplus && isCurrentMonth && isSurplusEligible && {
       id: "surplus-aporte-banner",
       priority: 4,

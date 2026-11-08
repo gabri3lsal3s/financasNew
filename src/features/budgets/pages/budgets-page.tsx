@@ -174,7 +174,7 @@ export function BudgetsPage() {
       const payload = share.payload ?? {};
       const config = payload.composition_config as GoalCompositionConfig | undefined;
       const targetCents = Number(payload.target_cents ?? 0);
-      const isCompleted = payload.status === "completed";
+      const isCompletedInDb = payload.status === "completed";
 
       if (config) {
         const resolved = resolveGoalComposition({
@@ -182,13 +182,27 @@ export function BudgetsPage() {
           targetCents,
           accounts,
           assets,
-          previouslyLockedAsCompleted: isCompleted,
+          previouslyLockedAsCompleted: isCompletedInDb && targetCents > 0 ? false : isCompletedInDb,
         });
+
+        const isActuallyCompleted =
+          targetCents > 0 ? resolved.currentCents >= targetCents : isCompletedInDb;
 
         map.set(share.id, {
           currentCents: resolved.currentCents,
           percentage: Math.round(resolved.progressPercent),
-          isCompleted: resolved.isReached || isCompleted,
+          isCompleted: isActuallyCompleted,
+        });
+      } else {
+        const currentCents = Number(payload.current_cents ?? 0);
+        const percentage = targetCents > 0 ? Math.round((currentCents / targetCents) * 100) : 0;
+        const isActuallyCompleted =
+          targetCents > 0 ? currentCents >= targetCents : isCompletedInDb;
+
+        map.set(share.id, {
+          currentCents,
+          percentage,
+          isCompleted: isActuallyCompleted,
         });
       }
     }
@@ -774,8 +788,8 @@ export function BudgetsPage() {
   const renderGoalsContent = () => {
     const allGoalShares = goalSharesQuery.data ?? [];
     const standaloneCampaigns = allGoalShares.filter((s) => !s.payload?.category_id);
-    const activeCampaigns = standaloneCampaigns.filter((s) => s.payload?.status !== "archived" && !s.is_revoked);
-    const archivedCampaigns = standaloneCampaigns.filter((s) => s.payload?.status === "archived" || s.is_revoked);
+    const activeCampaigns = standaloneCampaigns.filter((s) => s.payload?.status !== "archived");
+    const archivedCampaigns = standaloneCampaigns.filter((s) => s.payload?.status === "archived");
 
     return (
       <div className="flex flex-col gap-6">
@@ -791,9 +805,9 @@ export function BudgetsPage() {
               <Target className="size-4.5" aria-hidden="true" />
             </span>
             <div className="text-sm min-w-0">
-              <p className="font-semibold text-foreground">Metas & Termômetro Coletivo com Pix</p>
+              <p className="font-semibold text-foreground">Metas Financeiras & Termômetro Coletivo</p>
               <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                Crie vaquinhas e arrecadações temporárias para viagens, presentes e eventos com link público transparente e chave Pix oficial.
+                Crie metas de economia pessoais ou vaquinhas coletivas com link público transparente e chave Pix opcional.
               </p>
             </div>
           </div>
@@ -809,7 +823,7 @@ export function BudgetsPage() {
             className="shrink-0 self-start sm:self-auto gap-1.5 cursor-pointer"
           >
             <Plus className="size-4" aria-hidden="true" />
-            <span>Nova Meta Coletiva</span>
+            <span>Nova Meta</span>
           </Button>
         </div>
 
@@ -818,7 +832,7 @@ export function BudgetsPage() {
           <div data-tour="goals-thermometer-card" className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-foreground">Campanhas & Vaquinhas Coletivas</h2>
+                <h2 className="text-sm font-semibold text-foreground">Metas Financeiras</h2>
                 <Badge variant="portfolio" size="xs">
                   {activeCampaigns.length} ativa{activeCampaigns.length > 1 ? "s" : ""}
                 </Badge>
@@ -858,8 +872,8 @@ export function BudgetsPage() {
               className="self-center text-xs text-muted-foreground hover:text-foreground"
             >
               {showArchivedCampaigns
-                ? "Ocultar metas arquivadas ou pausadas"
-                : `Ver ${archivedCampaigns.length} meta${archivedCampaigns.length > 1 ? "s" : ""} arquivada${archivedCampaigns.length > 1 ? "s" : ""} ou pausada${archivedCampaigns.length > 1 ? "s" : ""}`}
+                ? "Ocultar metas arquivadas"
+                : `Ver ${archivedCampaigns.length} meta${archivedCampaigns.length > 1 ? "s" : ""} arquivada${archivedCampaigns.length > 1 ? "s" : ""}`}
             </Button>
             {showArchivedCampaigns && (
               <div className="flex flex-col gap-2.5 opacity-80">
@@ -1166,7 +1180,9 @@ export function BudgetsPage() {
         <ShareGoalDialog
           key={`share:edit:${editingShare.id}:${editingShareInitialEdit ? "edit" : "view"}`}
           category={null}
-          existingShare={editingShare}
+          existingShare={
+            (goalSharesQuery.data ?? []).find((s) => s.id === editingShare.id) ?? editingShare
+          }
           month={month}
           open={editingShare !== null}
           initialEditMode={editingShareInitialEdit}

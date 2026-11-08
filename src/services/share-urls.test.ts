@@ -39,7 +39,7 @@ describe("services/share-urls — Resolução Canônica de Links Compartilhávei
       const shareUrl = getPublicAppUrl(`r/${token}`);
 
       expect(shareUrl).not.toContain("localhost");
-      expect(shareUrl).toBe("https://axisfinance.app/r/split_abc123");
+      expect(shareUrl).toBe("https://financasnew.pages.dev/r/split_abc123");
     });
 
     it("link de Convite Familiar (/convite-familiar/:token) NÃO deve conter localhost", () => {
@@ -47,7 +47,7 @@ describe("services/share-urls — Resolução Canônica de Links Compartilhávei
       const inviteUrl = getPublicAppUrl(`convite-familiar/${token}`);
 
       expect(inviteUrl).not.toContain("localhost");
-      expect(inviteUrl).toBe("https://axisfinance.app/convite-familiar/invite_xyz789");
+      expect(inviteUrl).toBe("https://financasnew.pages.dev/convite-familiar/invite_xyz789");
     });
 
     it("link de Orçamento Familiar compartilhado (/orcamento-familiar/:token) NÃO deve conter localhost", () => {
@@ -55,7 +55,7 @@ describe("services/share-urls — Resolução Canônica de Links Compartilhávei
       const budgetUrl = getPublicAppUrl(`orcamento-familiar/${token}`);
 
       expect(budgetUrl).not.toContain("localhost");
-      expect(budgetUrl).toBe("https://axisfinance.app/orcamento-familiar/budget_fam456");
+      expect(budgetUrl).toBe("https://financasnew.pages.dev/orcamento-familiar/budget_fam456");
     });
 
     it("link de Meta Coletiva (/meta/:token) NÃO deve conter localhost", () => {
@@ -63,14 +63,14 @@ describe("services/share-urls — Resolução Canônica de Links Compartilhávei
       const metaUrl = getPublicAppUrl(`meta/${token}`);
 
       expect(metaUrl).not.toContain("localhost");
-      expect(metaUrl).toBe("https://axisfinance.app/meta/goal_999000");
+      expect(metaUrl).toBe("https://financasnew.pages.dev/meta/goal_999000");
     });
 
     it("URLs de retorno de checkout (/assinatura/sucesso) NÃO devem conter localhost", () => {
       const returnUrl = getPublicAppUrl("assinatura/sucesso?plano=pro");
 
       expect(returnUrl).not.toContain("localhost");
-      expect(returnUrl).toBe("https://axisfinance.app/assinatura/sucesso?plano=pro");
+      expect(returnUrl).toBe("https://financasnew.pages.dev/assinatura/sucesso?plano=pro");
     });
   });
 
@@ -101,6 +101,23 @@ describe("services/share-urls — Resolução Canônica de Links Compartilhávei
 
       expect(splitUrl).toBe("https://axis-finance.pages.dev/r/tok-pages");
       expect(famUrl).toBe("https://axis-finance.pages.dev/convite-familiar/tok-pages");
+    });
+  });
+
+  describe("Cenário 4: Navegador Web em Desenvolvimento Local (Localhost)", () => {
+    beforeEach(() => {
+      vi.stubEnv("VITE_PUBLIC_SITE_URL", "");
+      mockOrigin("http://localhost:5173");
+    });
+
+    it("deve gerar links apontando para o próprio dev server local", () => {
+      const splitUrl = getPublicAppUrl("r/tok-local");
+      const famUrl = getPublicAppUrl("convite-familiar/tok-local");
+      const metaUrl = getPublicAppUrl("meta/tok-local");
+
+      expect(splitUrl).toBe("http://localhost:5173/r/tok-local");
+      expect(famUrl).toBe("http://localhost:5173/convite-familiar/tok-local");
+      expect(metaUrl).toBe("http://localhost:5173/meta/tok-local");
     });
   });
 });

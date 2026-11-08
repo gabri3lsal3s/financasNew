@@ -12,7 +12,7 @@ import { MoneyText } from "@/components/ui/money-text";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
 import { HighlightRow, KpiCard, MonthPicker, ReadOnlyBanner, SplitPreviewMockupCard, TransactionRow, UpgradeDialog } from "@/components/modules";
-import { currentMonth, formatDateBR, isValidMonth } from "@/lib/date";
+import { currentMonth, formatDateBR, isValidMonth, shiftMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { downloadCsv } from "@/services/export-actions";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
@@ -78,7 +78,7 @@ function ExpenseRow({
       icon={category?.icon}
       iconColor={category?.color}
       badges={
-        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+        <div className="hidden sm:flex items-center gap-1.5 shrink-0 flex-wrap">
           {isFamilyModeEnabled && expense.is_family && (
             <Badge variant="muted" size="xs" className="shrink-0 font-medium">
               Familiar
@@ -128,7 +128,7 @@ function IncomeRow({
       iconColor={category?.color}
       badges={
         isFamilyModeEnabled && income.is_family ? (
-          <Badge variant="muted" size="xs" className="shrink-0 font-medium">
+          <Badge variant="muted" size="xs" className="hidden sm:inline-flex shrink-0 font-medium">
             Familiar
           </Badge>
         ) : undefined
@@ -169,6 +169,9 @@ export function TransactionListPage() {
 
   const { isFamilyModeEnabled } = useFamilyMode();
   const expensesQuery = useExpenses(month);
+  const prevMonth1Query = useExpenses(shiftMonth(month, -1));
+  const prevMonth2Query = useExpenses(shiftMonth(month, -2));
+  const prevMonth3Query = useExpenses(shiftMonth(month, -3));
   const incomesQuery = useIncomes(month);
   const categoriesQuery = useCategories();
   const recurrencesQuery = useRecurrences();
@@ -183,6 +186,12 @@ export function TransactionListPage() {
   );
 
   const expenses = useMemo(() => expensesQuery.data ?? [], [expensesQuery.data]);
+  const allHistoryExpenses = useMemo(() => [
+    ...(expensesQuery.data ?? []),
+    ...(prevMonth1Query.data ?? []),
+    ...(prevMonth2Query.data ?? []),
+    ...(prevMonth3Query.data ?? []),
+  ], [expensesQuery.data, prevMonth1Query.data, prevMonth2Query.data, prevMonth3Query.data]);
   const incomes = useMemo(() => incomesQuery.data ?? [], [incomesQuery.data]);
 
   const incomesTotalCents = useMemo(() => sumGrossCents(incomes), [incomes]);
@@ -200,13 +209,13 @@ export function TransactionListPage() {
   const priceEvolutionByExpenseId = useMemo(() => {
     const map = new Map<string, ExpensePriceEvolution>();
     for (const exp of expenses) {
-      const evo = evaluateExpensePriceEvolution(exp, expenses);
+      const evo = evaluateExpensePriceEvolution(exp, allHistoryExpenses);
       if (evo?.hasPriceIncrease) {
         map.set(exp.id, evo);
       }
     }
     return map;
-  }, [expenses]);
+  }, [expenses, allHistoryExpenses]);
 
   // Redefine a paginação durante a renderização se os filtros mudarem (React: adjusting state during render)
   const currentFilterKey = `${month}-${filter}-${searchQuery}`;

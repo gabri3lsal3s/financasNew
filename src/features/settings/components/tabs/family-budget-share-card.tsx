@@ -117,6 +117,11 @@ export function FamilyBudgetShareCard() {
       });
       setIsRegenerateModalOpen(false);
       triggerSensory("success");
+      pushToast({
+        title: "Link público regenerado!",
+        description: "O endereço anterior foi invalidado e o novo link está pronto para cópia.",
+        variant: "success",
+      });
     } catch {
       triggerSensory("destructive");
     }

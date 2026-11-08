@@ -306,14 +306,47 @@ export async function getSharedGoalTrackerByToken(
 
 
 /**
- * Revoga um link anterior e gera um novo compartilhamento com payload preservado/atualizado.
+ * Regenera o link de um compartilhamento público existente mantendo o mesmo registro,
+ * invalidando o token anterior e atualizando payload/expiração se fornecidos.
  */
 export async function regeneratePublicShare(
   oldId: string,
   input: CreatePublicShareInput,
 ): Promise<PublicShare> {
-  await revokePublicShare(oldId);
-  return createPublicShare(input);
+  const token = input.token || generateShareToken();
+  const days = input.expiresInDays ?? 30;
+  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+
+  const updateData: Record<string, unknown> = {
+    token,
+    is_revoked: false,
+    expires_at: expiresAt,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (input.payload) {
+    updateData.payload = input.payload;
+  }
+
+  const { data, error } = await resolveQuery<Record<string, unknown>[]>(
+    getSupabase()
+      .from("public_shares")
+      .update(updateData)
+      .eq("id", oldId)
+      .select("*"),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+
+  const row = data?.[0];
+  if (!row) {
+    throw new AppError("unknown", "Falha ao regenerar link público.", null);
+  }
+
+  return mapPublicShare(row);
 }
 
 /**

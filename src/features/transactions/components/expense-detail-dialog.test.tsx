@@ -48,6 +48,7 @@ vi.mock("@/state", () => ({
   useUpdateExpenseGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useFamilyMode: () => ({ isFamilyModeEnabled: stateMocks.isFamilyModeEnabled }),
   useMyFamily: () => ({ data: stateMocks.myFamily ?? null, isLoading: false }),
+  useExpenses: () => ({ data: [], isLoading: false }),
 }));
 
 vi.mock("@/components/modules/split-expense-dialog", () => ({
