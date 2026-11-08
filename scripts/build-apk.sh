@@ -161,11 +161,10 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Experiência canônica unificada: cadastro direto e acesso irrestrito ao módulo de Investimentos",
-    "Tour guiado modernizado com spotlight adaptativo suave e zero oscilação",
-    "Simulação pedagógica com isolamento estrito de dados e apresentação ilustrada de divisão de despesas",
-    "Motor de Handoff com avanço modular contínuo entre blocos temáticos",
-    "Saneamento completo de pendências técnicas e hardening de estabilidade"
+    "Radar de Vencimentos dos Próximos 7 Dias no Dashboard com cálculo de liquidez semanal",
+    "Quitação e baixa contábil direta in-loco na Central de Lembretes com confirmação obrigatória",
+    "Apuração canônica de faturas de cartão com salvaguarda estrita de hidratação",
+    "Melhorias contínuas de estabilidade e desempenho no aplicativo Android"
   ]
 }
 EOF
