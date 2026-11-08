@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Edit3, Share2 } from "lucide-react";
+import { Edit3, Lock, PieChart, Share2, Wallet } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { HighlightRow } from "@/components/modules/highlight-row";
 import { INCOME_GOAL_LABELS, type IncomeGoalStatus } from "@/domain/budgets";
 import { triggerSensory } from "@/services/sensory";
-import type { Category, PublicShare } from "@/types";
+import type { Category, GoalCompositionConfig, PublicShare } from "@/types";
 
 export interface GoalCardProps {
   category: Category;
@@ -45,6 +45,7 @@ export function GoalCard({
       !activeShare.is_revoked &&
       (!activeShare.expires_at || new Date(activeShare.expires_at).getTime() > nowMs),
   );
+  const composition = activeShare?.payload?.composition_config as GoalCompositionConfig | undefined;
 
   return (
     <HighlightRow
@@ -93,6 +94,33 @@ export function GoalCard({
               >
                 <Share2 className="size-3" aria-hidden="true" />
                 <span>Pública</span>
+              </Badge>
+            )}
+
+            {composition?.includeCheckingAccounts && (
+              <Badge variant="muted" size="xs" className="gap-1" title="Integrada com Saldo em Conta">
+                <Wallet className="size-3 text-primary" aria-hidden="true" />
+                <span>Conta</span>
+              </Badge>
+            )}
+
+            {composition?.includeInvestments && (
+              <Badge variant="portfolio" size="xs" className="gap-1" title="Integrada com Investimentos">
+                <PieChart className="size-3 text-portfolio" aria-hidden="true" />
+                <span>Ativos</span>
+              </Badge>
+            )}
+
+            {composition?.allocationCapCents && (
+              <Badge variant="warning" size="xs" title="Teto de Alocação Exclusivo">
+                Teto
+              </Badge>
+            )}
+
+            {composition?.isCompletedLocked && percent >= 100 && (
+              <Badge variant="positive" size="xs" className="gap-1" title="Meta Congelada no Marco Conquistado">
+                <Lock className="size-2.5" aria-hidden="true" />
+                <span>Garantida</span>
               </Badge>
             )}
 

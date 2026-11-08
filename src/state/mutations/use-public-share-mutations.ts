@@ -11,7 +11,7 @@ import {
   type CreatePublicShareInput,
   type SaveSplitExpenseInput,
 } from "@/data/repositories/public-shares";
-import { signalSplitPayment, dismissSplitPaymentSignal } from "@/data/rpc";
+import { signalSplitPayment, dismissSplitPaymentSignal, allocateGoalDeposit } from "@/data/rpc";
 import type { PendingSimulation } from "@/domain/share";
 import { pushToast } from "@/services/toast";
 import { getErrorMessage } from "@/services/errors";
@@ -208,6 +208,41 @@ export function useDismissSplitPaymentSignal() {
     onError: (error) => {
       pushToast({
         title: "Não foi possível dispensar o aviso",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+/**
+ * Hook para aporte direto em metas financeiras com feedback de conclusão.
+ */
+export function useAllocateGoalDeposit() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: {
+      shareId: string;
+      amountCents: number;
+      contributorName?: string;
+      sourceAccountId?: string;
+      notes?: string;
+    }) => allocateGoalDeposit(input),
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
+      void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
+      pushToast({
+        title: data.is_completed ? "Parabéns! Meta conquistada!" : "Aporte registrado com sucesso!",
+        description: data.is_completed
+          ? "Você atingiu 100% do objetivo financeiro."
+          : "O saldo da meta foi atualizado.",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      pushToast({
+        title: "Não foi possível registrar o aporte",
         description: getErrorMessage(error),
         variant: "destructive",
       });

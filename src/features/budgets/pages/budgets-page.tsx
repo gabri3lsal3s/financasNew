@@ -37,6 +37,7 @@ import {
   usePermission,
   useReallocateBudget,
   useSeedDefaultCategories,
+  useUpdatePublicShare,
 } from "@/state";
 import {
   BudgetAdjustDialog,
@@ -49,6 +50,7 @@ import {
   AddContributionDialog,
   CampaignCard,
   GoalCard,
+  GoalCompositionDialog,
   ManageContributionsDialog,
   ShareGoalDialog,
 } from "@/features/goals";
@@ -96,8 +98,10 @@ export function BudgetsPage() {
   const [sharingGoalFor, setSharingGoalFor] = useState<Category | null>(null);
   const [depositShare, setDepositShare] = useState<PublicShare | null>(null);
   const [manageContributionsShare, setManageContributionsShare] = useState<PublicShare | null>(null);
+  const [compositionShare, setCompositionShare] = useState<PublicShare | null>(null);
   const [editingShare, setEditingShare] = useState<PublicShare | null>(null);
   const [editingShareInitialEdit, setEditingShareInitialEdit] = useState(false);
+  const updatePublicShareMutation = useUpdatePublicShare();
   const [createStandaloneCampaignOpen, setCreateStandaloneCampaignOpen] = useState(false);
   const [showArchivedCampaigns, setShowArchivedCampaigns] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -743,7 +747,7 @@ export function BudgetsPage() {
 
         {/* Seção de Campanhas & Vaquinhas Ativas */}
         {activeCampaigns.length > 0 && (
-          <div data-tour="shared-goals-card" className="flex flex-col gap-3">
+          <div data-tour="goals-thermometer-card" className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-semibold text-foreground">Campanhas & Vaquinhas Coletivas</h2>
@@ -767,6 +771,7 @@ export function BudgetsPage() {
                     setEditingShareInitialEdit(true);
                   }}
                   onManageContributions={(s) => setManageContributionsShare(s)}
+                  onOpenComposition={(s) => setCompositionShare(s)}
                 />
               ))}
             </div>
@@ -803,6 +808,7 @@ export function BudgetsPage() {
                       setEditingShareInitialEdit(true);
                     }}
                     onManageContributions={(s) => setManageContributionsShare(s)}
+                    onOpenComposition={(s) => setCompositionShare(s)}
                   />
                 ))}
               </div>
@@ -1118,6 +1124,39 @@ export function BudgetsPage() {
           share={manageContributionsShare}
           open={manageContributionsShare !== null}
           onOpenChange={(next) => !next && setManageContributionsShare(null)}
+        />
+      ) : null}
+
+      {compositionShare ? (
+        <GoalCompositionDialog
+          open={compositionShare !== null}
+          onOpenChange={(next) => !next && setCompositionShare(null)}
+          config={
+            (compositionShare.payload as Record<string, unknown> | undefined)
+              ?.composition_config as never
+          }
+          targetCents={Number(
+            (compositionShare.payload as Record<string, unknown> | undefined)?.target_cents ?? 0,
+          )}
+          goalTitle={
+            (compositionShare.payload as Record<string, unknown> | undefined)?.title as string
+          }
+          isCompleted={
+            (compositionShare.payload as Record<string, unknown> | undefined)?.status ===
+            "completed"
+          }
+          onSave={(newConfig) => {
+            const currentPayload =
+              (compositionShare.payload as Record<string, unknown>) ?? {};
+            updatePublicShareMutation.mutate({
+              id: compositionShare.id,
+              payload: {
+                ...currentPayload,
+                composition_config: newConfig,
+              },
+            });
+            setCompositionShare(null);
+          }}
         />
       ) : null}
 

@@ -44,7 +44,7 @@ describe("DemoTrackSelectModal — Hub de Aprendizado & Micro-Tours (§3.4)", ()
     expect(screen.getByText("Investimentos & Rebalanceamento")).toBeInTheDocument();
 
     // Micro-tours específicos
-    expect(screen.getByText("Botão Wizard (+) e Lançamento")).toBeInTheDocument();
+    expect(screen.getByText("Lançamentos")).toBeInTheDocument();
     expect(screen.getByText("Cartões, Faturas e Limites")).toBeInTheDocument();
     expect(screen.getByText("Categorias e Tetos de Gastos")).toBeInTheDocument();
     expect(screen.getByText("Smart Advisor e Relatórios")).toBeInTheDocument();
@@ -103,7 +103,7 @@ describe("DemoTrackSelectModal — Hub de Aprendizado & Micro-Tours (§3.4)", ()
       />,
     );
 
-    const wizardBtn = screen.getByText("Botão Wizard (+) e Lançamento").closest("button");
+    const wizardBtn = screen.getByText("Lançamentos").closest("button");
     expect(wizardBtn).not.toBeNull();
     await user.click(wizardBtn!);
 

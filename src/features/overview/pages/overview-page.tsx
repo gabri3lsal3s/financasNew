@@ -97,10 +97,11 @@ import {
   OtherBudgetsDialog,
   OtherCategoriesDialog,
   SplitPendingBanner,
-  CampaignsSummaryBanner,
+  GoalProgressAlertBanner,
   HouseholdAlertBanner,
 } from "../components";
-import type { SplitSharePayload } from "@/types";
+import { AddContributionDialog } from "@/features/goals";
+import type { PublicShare, SplitSharePayload } from "@/types";
 
 export function OverviewPage() {
   usePendingSplitExpense();
@@ -113,6 +114,7 @@ export function OverviewPage() {
   const navigate = useNavigate();
   const subscription = useUserSubscription();
   const [checkpointOpen, setCheckpointOpen] = useState(false);
+  const [depositGoalShare, setDepositGoalShare] = useState<PublicShare | null>(null);
   const { guardAction, upgradeModal } = useMutationGuard();
 
   const prevMonth = shiftMonth(month, -1);
@@ -685,28 +687,31 @@ export function OverviewPage() {
     return { count, pendingCents, totalExpensesCents, items };
   }, [debtsQuery.data, splitSharesQuery.data]);
 
-  // Apuração de campanhas / metas coletivas ativas
-  const activeCampaignData = useMemo(() => {
+  // Apuração de metas prioritárias e ativas (§Plano 12)
+  const topGoalShare = useMemo(() => {
     const goalShares = goalSharesQuery.data ?? [];
     if (goalShares.length === 0) return null;
 
-    const activeList = goalShares.filter((s) => !s.is_revoked);
+    const activeList = goalShares.filter(
+      (s) => !s.is_revoked && (s.payload as Record<string, unknown> | null)?.status !== "archived",
+    );
     if (activeList.length === 0) return null;
 
-    // Pega a primeira campanha com maior progresso ou mais recente
-    const topCampaign = activeList[0]!;
-    const payload = topCampaign.payload as Record<string, unknown>;
-    const targetCents = Number(payload.target_cents ?? 0);
-    const currentCents = Number(payload.current_cents ?? 0);
-    const percentage = targetCents > 0 ? Math.round((currentCents / targetCents) * 100) : 0;
-
-    return {
-      title: (payload.title as string) || "Meta Coletiva",
-      targetCents,
-      currentCents,
-      percentage,
-      activeCount: activeList.length,
-    };
+    // Prioriza metas na reta final (>= 80% e < 100%), depois maior percentual
+    return [...activeList].sort((a, b) => {
+      const pldA = (a.payload as Record<string, unknown> | null) ?? {};
+      const pldB = (b.payload as Record<string, unknown> | null) ?? {};
+      const tA = Number(pldA.target_cents ?? 0);
+      const cA = Number(pldA.current_cents ?? 0);
+      const tB = Number(pldB.target_cents ?? 0);
+      const cB = Number(pldB.current_cents ?? 0);
+      const pctA = tA > 0 ? cA / tA : 0;
+      const pctB = tB > 0 ? cB / tB : 0;
+      const isFinalA = pctA >= 0.8 && pctA < 1 ? 1 : 0;
+      const isFinalB = pctB >= 0.8 && pctB < 1 ? 1 : 0;
+      if (isFinalA !== isFinalB) return isFinalB - isFinalA;
+      return pctB - pctA;
+    })[0] ?? null;
   }, [goalSharesQuery.data]);
 
   const [zeroGuiltModalOpen, setZeroGuiltModalOpen] = useState(false);
@@ -851,16 +856,15 @@ export function OverviewPage() {
         />
       ),
     },
-    Boolean(activeCampaignData) && {
-      id: "campaigns-summary-banner",
+    Boolean(topGoalShare) && {
+      id: "goal-progress-alert-banner",
       priority: 3,
       content: (
-        <CampaignsSummaryBanner
-          title={activeCampaignData!.title}
-          targetCents={activeCampaignData!.targetCents}
-          currentCents={activeCampaignData!.currentCents}
-          percentage={activeCampaignData!.percentage}
-          activeCount={activeCampaignData!.activeCount}
+        <GoalProgressAlertBanner
+          goalShare={topGoalShare!}
+          surplusCents={surplusCapacity.hasSurplus ? surplusCapacity.suggestedAporteCents : null}
+          onOpenDeposit={(share) => setDepositGoalShare(share)}
+          onNavigateGoals={() => navigate("/orcamentos?tab=goals")}
         />
       ),
     },
@@ -1281,6 +1285,16 @@ export function OverviewPage() {
             onOpenChange={setZeroGuiltModalOpen}
             currentBalanceCents={realCashData.cashBalance.currentBalanceCents}
           />
+
+          {depositGoalShare && (
+            <AddContributionDialog
+              open={Boolean(depositGoalShare)}
+              onOpenChange={(open) => {
+                if (!open) setDepositGoalShare(null);
+              }}
+              share={depositGoalShare}
+            />
+          )}
 
           {upgradeModal}
         </>

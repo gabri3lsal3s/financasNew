@@ -217,8 +217,44 @@ export function useGlobalSearchEntries(enabled: boolean) {
 
   const entries = filterSearchEntries(rawEntries, { isAdmin, hasFeature });
 
+  // Agregações em memória para resposta instantânea (< 2ms) de intenções de busca
+  const now = new Date();
+  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const categorySpendingCurrentMonth: Record<string, number> = {};
+  for (const exp of expensesQuery.data ?? []) {
+    if (exp.date.startsWith(currentMonthStr)) {
+      const cat = categoryById.get(exp.category_id);
+      const catKey = (cat?.name ?? "outros")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+      categorySpendingCurrentMonth[catKey] =
+        (categorySpendingCurrentMonth[catKey] ?? 0) + Math.round(exp.value * 100);
+    }
+  }
+
+  // Contas e faturas a vencer nos próximos dias
+  const upcomingBills = (debtsQuery.data ?? [])
+    .filter((d) => d.type === "payable" && !d.paid_at)
+    .sort((a, b) => a.due_date.localeCompare(b.due_date))
+    .slice(0, 5)
+    .map((d) => ({
+      title: d.name,
+      amountCents: Math.round(d.amount * 100),
+      dueDate: formatDateBR(d.due_date),
+      isOverdue: d.due_date < now.toISOString().slice(0, 10),
+    }));
+
+  const intentContext = {
+    todayISO: now.toISOString().slice(0, 10),
+    categorySpendingCurrentMonth,
+    upcomingBills,
+  };
+
   return {
     entries,
+    intentContext,
     isLoading:
       expensesQuery.isLoading ||
       incomesQuery.isLoading ||

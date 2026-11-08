@@ -1478,12 +1478,29 @@ export async function approveDividendsBatchRpc(
   );
 }
 
-
-
-
-
-
-
-
-
-
+/**
+ * Registra atomicamente um aporte/depósito em uma meta via RPC allocate_goal_deposit (§Plano 12).
+ */
+export async function allocateGoalDeposit(input: {
+  shareId: string;
+  amountCents: number;
+  contributorName?: string;
+  sourceAccountId?: string;
+  notes?: string;
+}): Promise<{
+  success: boolean;
+  share_id: string;
+  new_current_cents: number;
+  target_cents: number;
+  is_completed: boolean;
+}> {
+  return unwrapRpc(
+    callRpc("allocate_goal_deposit" as never, {
+      p_share_id: input.shareId,
+      p_amount_cents: input.amountCents,
+      p_contributor_name: input.contributorName ?? "Você",
+      p_source_account_id: input.sourceAccountId ?? null,
+      p_notes: input.notes ?? null,
+    } as never),
+  );
+}

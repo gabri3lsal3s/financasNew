@@ -176,7 +176,7 @@ export function DemoTrackSelectModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <TourCardItem
                   id="finances_wizard"
-                  title="Botão Wizard (+) e Lançamento"
+                  title="Lançamentos"
                   description="Registro rápido de despesas, receitas, Pix e parcelamentos inteligentes."
                   icon={PlusCircle}
                   iconColorClass="text-primary"

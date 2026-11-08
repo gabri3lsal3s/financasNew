@@ -1,5 +1,28 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.08 (Build 39)** registra a **Conclusão Integral do Plano 12: Termômetro Patrimonial de Metas, Auditoria de Assinaturas, Busca Universal Determinística, Ações Android & Expansão do Tour** (2026-11-08):
+> - **(1) Metas com Termômetro Patrimonial Integrado (Fase 1 & QG0/QG1/QG2)**:
+>   - Limite estrito de no máximo 5 metas ativas simultâneas (`canCreateActiveGoal`), com validação no cliente e trigger de banco (`check_max_active_goals_limit`);
+>   - Resolução de composição em três modalidades (`checking_only`, `investments_only`, `hybrid_portfolio`) com desconto de obrigações pendentes e teto de alocação;
+>   - Diálogo de Composição Patrimonial (`GoalCompositionDialog`) com barra bicolor de progresso e badges informativos nos cards de meta;
+>   - Banner proativo no carrossel da Home (`GoalProgressAlertBanner`) com botão in-loco `[+ Aportar]` que abre o diálogo de depósito sem trocar de tela;
+> - **(2) Auditoria de Assinaturas e Detecção Anti-Reajuste no Extrato (Fase 2 & QG3)**:
+>   - Algoritmo $O(N \log N)$ em `domain/subscriptions/audit.ts` agrupando recorrências por descrição canônica;
+>   - Exclusão estrita de compras parceladas (`installments_total > 1`) e filtro de oscilações cambiais/IOF ($< 3\%$ e $< \text{R\$ } 3,00$);
+>   - Alerta visual no extrato via `SubscriptionsAuditCard`, badge de reajuste nas linhas de transação e modal detalhado `SubscriptionAdjustmentModal` com histórico de pagamentos e impacto anualizado;
+> - **(3) Busca Global Universal & Comandos Determinísticos (Fase 3 & QG4)**:
+>   - Parser determinístico em `domain/search/intents.ts` com regexes em pt-BR e dicionário de sinônimos;
+>   - Resolução de respostas analíticas em memória em $< 2\text{ms}$ para saldo, reserva, contas a vencer, gastos por categoria e ações do sistema;
+>   - Card de resposta instantânea proeminente no topo da Command Palette (`Command` / `GlobalSearch`);
+> - **(4) Ações Diretas em Notificações Nativas do Android APK (Fase 4 & QG5)**:
+>   - Registro das ações `PAY` ("Pagar no App") e `SNOOZE` ("Adiar 3 Dias") em `services/native/local-notifications.ts`;
+>   - Proteção de caixa: ação `PAY` abre o modal de quitação assistida (`SettleDialog` / `PaymentDialog`) exigindo confirmação explícita do usuário (zero baixas silenciosas em background);
+> - **(5) Modernização e Expansão dos Tours Guiados (Fase 5 & QG6)**:
+>   - Atributos `data-tour` mapeados para o Radar Semanal (`weekly-radar-card`), Quitação Direta (`reminders-settle-card`), Termômetro Patrimonial de Metas (`goals-thermometer-card`), Busca Global (`global-search-trigger`) e Auditoria de Assinaturas (`subscriptions-audit-card`);
+>   - 100% dos testes de tours e spotlight aprovados sem regressões;
+> - **(6) Qualidade 100% Verde e DoD Completo (Fase 6 & QG7)**:
+>   - 100% dos testes unitários e de integração aprovados, typecheck rigoroso (`tsc -b`), lint sem violações de unicode decorativo e compilação de APK Android.
+>
 > **v3.07 (Build 38)** registra o **Dimensionamento Canônico da Busca Global: Elasticidade no Cabeçalho e Expansão da Command Palette no Desktop** (2026-11-08):
 > - **(1) Elasticidade Plena da Barra de Busca no Cabeçalho (`PageShell` / `GlobalSearch`)**:
 >   - Remoção de containers restritivos (`max-w-md`) e espaçadores fantasmas que travavam a barra de busca no canto esquerdo e geravam vácuo visual no desktop;

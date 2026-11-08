@@ -58,6 +58,7 @@ export function WeeklyDueRadarCard({ summary, className, onOpenItem }: WeeklyDue
   return (
     <section
       aria-label="Radar de Contas dos Próximos 7 Dias"
+      data-tour="weekly-radar-card"
       className={cn(
         "rounded-2xl border border-border/80 bg-surface shadow-xs p-3.5 sm:p-4 transition-all flex flex-col gap-3",
         summary.isDeficitRisk ? "border-critical/30" : "hover:border-border",

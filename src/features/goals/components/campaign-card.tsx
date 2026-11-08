@@ -7,17 +7,21 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
+  Lock,
+  PieChart,
   Plus,
+  SlidersHorizontal,
   Sparkles,
   Target,
   Users,
+  Wallet,
 } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { getPublicAppUrl } from "@/services/app-url";
-import type { GoalContribution, PublicShare } from "@/types";
+import type { GoalCompositionConfig, GoalContribution, PublicShare } from "@/types";
 
 export interface CampaignCardProps {
   share: PublicShare;
@@ -26,6 +30,7 @@ export interface CampaignCardProps {
   onEditShare?: (share: PublicShare) => void;
   onDeleteShare?: (share: PublicShare) => void;
   onManageContributions?: (share: PublicShare) => void;
+  onOpenComposition?: (share: PublicShare) => void;
 }
 
 export function CampaignCard({
@@ -33,10 +38,12 @@ export function CampaignCard({
   onOpenDeposit,
   onManageShare,
   onManageContributions,
+  onOpenComposition,
 }: CampaignCardProps) {
   const [copied, setCopied] = useState(false);
 
   const payload = share.payload ?? {};
+  const composition = payload.composition_config as GoalCompositionConfig | undefined;
   const title = (payload.title as string) || "Meta Coletiva";
   const targetCents = Number(payload.target_cents ?? 0);
   const currentCents = Number(payload.current_cents ?? 0);
@@ -135,6 +142,29 @@ export function CampaignCard({
                   Link Desativado
                 </Badge>
               )}
+              {composition?.includeCheckingAccounts && (
+                <Badge variant="muted" size="xs" className="gap-1">
+                  <Wallet className="size-3 text-primary" aria-hidden="true" />
+                  <span>Conta</span>
+                </Badge>
+              )}
+              {composition?.includeInvestments && (
+                <Badge variant="portfolio" size="xs" className="gap-1">
+                  <PieChart className="size-3 text-portfolio" aria-hidden="true" />
+                  <span>Investimentos</span>
+                </Badge>
+              )}
+              {composition?.allocationCapCents && (
+                <Badge variant="warning" size="xs">
+                  Teto Alocado
+                </Badge>
+              )}
+              {composition?.isCompletedLocked && isCompleted && (
+                <Badge variant="positive" size="xs" className="gap-1">
+                  <Lock className="size-2.5" aria-hidden="true" />
+                  <span>Congelada</span>
+                </Badge>
+              )}
             </div>
             <div className="flex items-center gap-2.5 text-[11px] text-muted-foreground mt-0.5 flex-wrap">
               {deadline && daysRemaining !== null && (
@@ -184,6 +214,24 @@ export function CampaignCard({
             <Plus className="size-3.5" aria-hidden="true" />
             <span>Depósito</span>
           </Button>
+
+          {onOpenComposition && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1 text-xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerSensory("action");
+                onOpenComposition(share);
+              }}
+              title="Configurar Termômetro Patrimonial"
+            >
+              <SlidersHorizontal className="size-3.5 text-portfolio" aria-hidden="true" />
+              <span className="hidden sm:inline">Termômetro</span>
+            </Button>
+          )}
 
           {onManageContributions && (
             <Button

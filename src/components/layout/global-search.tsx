@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   ArrowDownLeft,
+  ArrowRight,
   ArrowUpRight,
   Bell,
   Compass,
   HandCoins,
   PiggyBank,
   Search,
+  Sparkles,
   Tags,
   TrendingUp,
   WalletCards,
@@ -16,7 +18,12 @@ import {
 import { Button, Command } from "@/components/ui";
 import type { CommandGroup, CommandItem } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { searchGlobal, type SearchEntryType, type SearchResult } from "@/domain/search";
+import {
+  resolveSearchIntent,
+  searchGlobal,
+  type SearchEntryType,
+  type SearchResult,
+} from "@/domain/search";
 import { todayISO } from "@/domain/debts";
 import { useGlobalSearchEntries } from "@/state";
 
@@ -82,7 +89,7 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const { entries, isLoading, error } = useGlobalSearchEntries(open);
+  const { entries, intentContext, isLoading, error } = useGlobalSearchEntries(open);
 
   // Atalho global: ⌘K / Ctrl+K e tecla '/' quando fora de inputs
   useEffect(() => {
@@ -114,6 +121,12 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
     [open, query, entries],
   );
 
+  // Resolução instantânea determinística de intenções analíticas (< 2ms)
+  const matchedIntent = useMemo(() => {
+    if (!open || query.trim().length < 3) return null;
+    return resolveSearchIntent(query, intentContext);
+  }, [open, query, intentContext]);
+
   const toItem = (result: SearchResult): CommandItem => {
     const { entry } = result;
     const Icon = TYPE_ICON[entry.type];
@@ -136,12 +149,51 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
     items: results.filter((result) => result.entry.type === type).map(toItem),
   })).filter((group) => group.items.length > 0);
 
+  const instantAnswerSlot = matchedIntent ? (
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/10 p-3 sm:p-3.5 transition-all animate-fade-in shadow-2xs">
+      <div className="flex items-start gap-2.5 min-w-0">
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/15 text-primary">
+          <Sparkles className="size-3.5" aria-hidden="true" />
+        </div>
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">
+              {matchedIntent.title}
+            </span>
+          </div>
+          <p className="text-sm font-semibold text-foreground tracking-tight truncate">
+            {matchedIntent.headline}
+          </p>
+          {matchedIntent.detail ? (
+            <p className="text-xs text-muted-foreground truncate">{matchedIntent.detail}</p>
+          ) : null}
+        </div>
+      </div>
+      {matchedIntent.action ? (
+        <Button
+          type="button"
+          size="xs"
+          onClick={() => {
+            const params = new URLSearchParams(matchedIntent.action?.params ?? {});
+            const paramStr = params.toString();
+            navigate(paramStr ? `${matchedIntent.action!.path}?${paramStr}` : matchedIntent.action!.path);
+            close();
+          }}
+          className="shrink-0 self-stretch sm:self-center gap-1.5 font-medium"
+        >
+          <span>{matchedIntent.action.label}</span>
+          <ArrowRight className="size-3" aria-hidden="true" />
+        </Button>
+      ) : null}
+    </div>
+  ) : null;
+
   return (
     <>
       <Button
         type="button"
         variant="ghost"
-        data-tour="desktop-new-transaction"
+        data-tour="global-search-trigger"
         aria-label="Buscar ou executar comando (Ctrl+K)"
         title="Buscar ou executar comando (Ctrl+K)"
         onClick={() => setOpen(true)}
@@ -167,6 +219,7 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
         query={query}
         onQueryChange={setQuery}
         groups={groups}
+        headerSlot={instantAnswerSlot}
         placeholder="Buscar páginas, ações, investimentos, despesas…"
         emptyMessage={
           query.trim().length < 2

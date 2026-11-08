@@ -283,6 +283,7 @@ export {
   useSaveSimulationToAccount,
   useSignalSplitPayment,
   useDismissSplitPaymentSignal,
+  useAllocateGoalDeposit,
   publicSharesQueryKey,
 } from "./mutations/use-public-share-mutations";
 export {
@@ -317,6 +318,7 @@ export {
   familyQueryKeys,
 } from "./queries/use-family";
 export type { RemoveFamilyMemberInput } from "./queries/use-family";
+export { useSubscriptionsAudit } from "./queries/use-subscriptions-audit";
 
 
 

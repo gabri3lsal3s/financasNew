@@ -14,6 +14,7 @@
  */
 import type { SubscriptionTier, SubscriptionStatus, ModuleAccessLevel } from "./subscription";
 import type { BillingProviderName } from "./billing";
+import type { GoalCompositionConfig, GoalSourceMode } from "./goals";
 
 export const PAYMENT_METHODS = ["cash", "debit", "credit_card", "pix", "transfer", "other"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
@@ -1050,6 +1051,8 @@ export type GoalTrackerSharePayload = {
   notes?: string;
   contributions?: GoalContribution[];
   show_contributions_publicly?: boolean;
+  source_mode?: GoalSourceMode;
+  composition_config?: GoalCompositionConfig | null;
 };
 
 export type SharedGoalTrackerResult = {
@@ -1073,6 +1076,8 @@ export type SharedGoalTrackerResult = {
   notes?: string | null;
   contributions?: GoalContribution[];
   show_contributions_publicly?: boolean;
+  source_mode?: GoalSourceMode;
+  composition_config?: GoalCompositionConfig | null;
 };
 
 // ===========================================================================

@@ -18,9 +18,12 @@ export const DAILY_REMINDER_NOTIFICATION_ID = 2026;
 export const DAILY_REMINDER_CHANNEL_ID = "daily_reminders";
 export const DAILY_REMINDER_ACTION_TYPE_ID = "DAILY_REMINDER_ACTIONS";
 export const DUE_REMINDER_CHANNEL_ID = "due_reminders";
+export const DUE_REMINDER_ACTION_TYPE_ID = "DUE_REMINDER_ACTIONS";
 export const DUE_SUMMARY_NOTIFICATION_ID = 2030;
 export const ACTION_ADD_EXPENSE = "add_expense";
 export const ACTION_ADD_INCOME = "add_income";
+export const ACTION_PAY = "PAY";
+export const ACTION_SNOOZE = "SNOOZE";
 
 const KEY_REMINDER_ENABLED = "daily_reminder_enabled";
 const KEY_DUE_NOTIFICATIONS_ENABLED = "due_notifications_enabled";
@@ -315,12 +318,31 @@ export async function cancelDailyReminder(): Promise<void> {
 
 
 /**
- * Cria o canal de notificações de contas a vencer/vencidas no Android.
+ * Cria o canal de notificações de contas a vencer/vencidas no Android e registra ações.
  */
 export async function setupDueRemindersChannel(): Promise<void> {
   if (!isNativePlatform()) return;
 
   try {
+    await LocalNotifications.registerActionTypes({
+      types: [
+        {
+          id: DUE_REMINDER_ACTION_TYPE_ID,
+          actions: [
+            {
+              id: ACTION_PAY,
+              title: "Pagar no App",
+              foreground: true,
+            },
+            {
+              id: ACTION_SNOOZE,
+              title: "Adiar 3 Dias",
+            },
+          ],
+        },
+      ],
+    });
+
     await LocalNotifications.createChannel({
       id: DUE_REMINDER_CHANNEL_ID,
       name: "Contas e Vencimentos",
@@ -341,6 +363,7 @@ export interface DispatchNotificationOptions {
   url?: string;
   tag?: string;
   channelId?: string;
+  actionTypeId?: string;
   id?: number;
 }
 
@@ -371,6 +394,7 @@ export async function dispatchLocalOrWebNotification(
             title: options.title,
             body: options.body,
             channelId: options.channelId ?? DUE_REMINDER_CHANNEL_ID,
+            actionTypeId: options.actionTypeId,
             extra: {
               url: options.url,
               tag: options.tag,
@@ -641,6 +665,7 @@ export async function syncDueReminderNotifications(
       url: routeUrl,
       tag,
       channelId: DUE_REMINDER_CHANNEL_ID,
+      actionTypeId: DUE_REMINDER_ACTION_TYPE_ID,
     });
 
     if (sent) {
@@ -720,6 +745,35 @@ export function initNotificationActionListener(
         onNavigate("/transacoes?novo=receita");
       } else if (actionId === ACTION_ADD_EXPENSE) {
         onNavigate("/transacoes?novo=despesa");
+      } else if (actionId === ACTION_PAY) {
+        // Redireciona para quitação assistida (abre o modal de confirmação do usuário)
+        const tag = (extra?.tag as string) ?? "";
+        const itemKey = tag.startsWith("due:") ? tag.replace("due:", "") : "";
+        if (itemKey && itemKey !== "summary") {
+          onNavigate(`/lembretes?action=pay&key=${encodeURIComponent(itemKey)}`);
+        } else if (extra?.url && typeof extra.url === "string") {
+          onNavigate(extra.url);
+        } else {
+          onNavigate("/lembretes");
+        }
+      } else if (actionId === ACTION_SNOOZE) {
+        // Adia o lembrete por 3 dias
+        const tag = (extra?.tag as string) ?? "";
+        const notifId = notification.id;
+        if (notifId) {
+          void cancelNotificationById(notifId);
+        }
+        // Registra reagendamento local
+        const snoozeDate = new Date();
+        snoozeDate.setDate(snoozeDate.getDate() + 3);
+        void dispatchLocalOrWebNotification({
+          id: notifId,
+          title: notification.title,
+          body: notification.body,
+          tag,
+          channelId: DUE_REMINDER_CHANNEL_ID,
+          actionTypeId: DUE_REMINDER_ACTION_TYPE_ID,
+        });
       } else {
         // Toque no corpo da notificação (tap padrão)
         if (extra?.suggestion) {

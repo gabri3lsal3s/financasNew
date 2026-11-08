@@ -134,6 +134,7 @@ describe("user-preferences repository", () => {
         merchantLearning: {},
         cardDigitsMapping: {},
         bankCardMapping: {},
+        deviceNotifications: { dismissedPermissionAlerts: {} },
         emergencyFundConfig: undefined,
         splitPreferences: undefined,
       },

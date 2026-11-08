@@ -29,6 +29,8 @@ export interface CommandProps {
   onQueryChange?: (query: string) => void;
   placeholder?: string;
   emptyMessage?: string;
+  /** Slot opcional renderizado acima dos resultados (ex: resposta instantânea determinística). */
+  headerSlot?: ReactNode;
 }
 
 /**
@@ -46,6 +48,7 @@ export function Command({
   onQueryChange,
   placeholder = "Buscar…",
   emptyMessage = "Nenhum resultado encontrado.",
+  headerSlot,
 }: CommandProps) {
   const groupList: CommandGroup[] = groups ?? (items ? [{ label: "", items }] : []);
 
@@ -76,6 +79,11 @@ export function Command({
                 ESC
               </kbd>
             </div>
+            {headerSlot ? (
+              <div className="border-b border-border/80 bg-surface-hover/20 p-2 sm:p-2.5">
+                {headerSlot}
+              </div>
+            ) : null}
             <CommandPrimitive.List className="max-h-80 sm:max-h-96 overflow-y-auto p-2 sm:p-2.5">
               <CommandPrimitive.Empty className="py-8 sm:py-10 text-center text-sm text-muted-foreground">
                 {emptyMessage}

@@ -26,6 +26,18 @@ comment on column public.credit_cards.last_four_digits is
   'Últimos 4 dígitos opcionais do cartão para reconhecimento automático em notificações e carteiras digitais (§11.4).';
 
 -- 2. Atualização da função RPC update_credit_card com suporte a p_last_four_digits
+-- Removemos a assinatura anterior (8 parâmetros) para evitar erro de ambiguidade (42725)
+drop function if exists public.update_credit_card(
+  uuid,
+  text,
+  text,
+  numeric,
+  integer,
+  integer,
+  text,
+  boolean
+);
+
 create or replace function public.update_credit_card(
   p_card_id uuid,
   p_name text,
@@ -101,5 +113,5 @@ begin
 end;
 $$;
 
-revoke all on function public.update_credit_card from public;
-grant execute on function public.update_credit_card to authenticated;
+revoke all on function public.update_credit_card(uuid, text, text, numeric, integer, integer, text, boolean, varchar) from public;
+grant execute on function public.update_credit_card(uuid, text, text, numeric, integer, integer, text, boolean, varchar) to authenticated;

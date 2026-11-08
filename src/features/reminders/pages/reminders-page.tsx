@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import { AlertTriangle, ArrowDownLeft, Bell, CheckCheck, CreditCard, SlidersHorizontal, X } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, MoneyText, Skeleton, Tabs } from "@/components/ui";
 import { HighlightRow, ReadOnlyBanner, ReminderItem } from "@/components/modules";
@@ -35,6 +35,7 @@ type SubFilter = "all" | "overdue" | "bills" | "debts" | "advisor";
  */
 export function RemindersPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const permission = usePermission("reminders");
   const { guardAction, upgradeModal } = useMutationGuard();
   const today = todayISO();
@@ -88,38 +89,64 @@ export function RemindersPage() {
   };
 
   /** Abre o destino do lembrete com o deep-link (destaque do item na tela). */
-  const openReminder = (item: { link?: { path: string; params?: Record<string, string> } }) => {
-    if (!item.link) return;
-    const params = new URLSearchParams(item.link.params ?? {});
-    navigate(`${item.link.path}?${params.toString()}`);
-  };
+  const openReminder = useCallback(
+    (item: { link?: { path: string; params?: Record<string, string> } }) => {
+      if (!item.link) return;
+      const params = new URLSearchParams(item.link.params ?? {});
+      navigate(`${item.link.path}?${params.toString()}`);
+    },
+    [navigate],
+  );
 
   /** Ação de baixa/quitação in-loco com confirmação explícita. */
-  const handleSettle = (item: ReminderItemData) => {
-    triggerSensory("action");
-    if (item.kind === "debt") {
-      const debtId = item.key.replace(/^debt:/, "");
-      const target = debtsQuery.data?.find((d) => d.id === debtId);
+  const handleSettle = useCallback(
+    (item: ReminderItemData) => {
+      triggerSensory("action");
+      if (item.kind === "debt") {
+        const debtId = item.key.replace(/^debt:/, "");
+        const target = debtsQuery.data?.find((d) => d.id === debtId);
+        if (target) {
+          setSettleDebt(target);
+        } else {
+          openReminder(item);
+        }
+      } else if (item.kind === "bill") {
+        const parts = item.key.split(":");
+        const cardId = parts[1] || item.link?.params?.card;
+        const month = parts[2] || item.link?.params?.month;
+        if (cardId && month) {
+          setBillPayment({
+            cardId,
+            competenceMonth: month,
+            openBalanceCents: item.amountCents,
+          });
+        } else {
+          openReminder(item);
+        }
+      }
+    },
+    [debtsQuery.data, openReminder],
+  );
+
+  // Resposta a notificações nativas: ao tocar em "Pagar no App", abre o diálogo de quitação com confirmação
+  useEffect(() => {
+    const action = searchParams.get("action");
+    const key = searchParams.get("key");
+    if (action === "pay" && key && allItems.length > 0) {
+      const target = allItems.find((it) => it.key === key || it.link?.params?.q === key || it.link?.params?.debt === key);
       if (target) {
-        setSettleDebt(target);
-      } else {
-        openReminder(item);
-      }
-    } else if (item.kind === "bill") {
-      const parts = item.key.split(":");
-      const cardId = parts[1] || item.link?.params?.card;
-      const month = parts[2] || item.link?.params?.month;
-      if (cardId && month) {
-        setBillPayment({
-          cardId,
-          competenceMonth: month,
-          openBalanceCents: item.amountCents,
+        queueMicrotask(() => {
+          handleSettle(target);
         });
-      } else {
-        openReminder(item);
       }
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("action");
+        next.delete("key");
+        return next;
+      }, { replace: true });
     }
-  };
+  }, [searchParams, allItems, debtsQuery.data, handleSettle, setSearchParams]);
 
   const handleOpenAdvisorAlert = (item: SmartAdvisorInsight) => {
     triggerSensory("action");
@@ -447,29 +474,30 @@ export function RemindersPage() {
             {visibleAdvisorAlerts.map(renderAdvisorAlert)}
 
             {/* Lembretes de Faturas e Dívidas */}
-            {visibleReminders.map((item) => {
+            {visibleReminders.map((item, idx) => {
               const isMatch =
                 highlightId &&
                 (highlightId === item.key ||
                   highlightId === item.link?.params?.q ||
                   highlightId === item.link?.params?.debt);
               return (
-                <HighlightRow
-                  key={item.key}
-                  highlightId={highlightId}
-                  id={isMatch ? highlightId : item.key}
-                  className="rounded-2xl"
-                >
-                  <ReminderItem
-                    item={item}
-                    stateKind={stateMap.get(item.key) ?? null}
-                    onMarkRead={(key) => handle(key, { kind: "read" })}
-                    onSnooze={snooze}
-                    onRestore={(key) => handle(key, null)}
-                    onSettle={handleSettle}
-                    onOpen={() => openReminder(item)}
-                  />
-                </HighlightRow>
+                <div key={item.key} data-tour={idx === 0 ? "reminders-settle-card" : undefined}>
+                  <HighlightRow
+                    highlightId={highlightId}
+                    id={isMatch ? highlightId : item.key}
+                    className="rounded-2xl"
+                  >
+                    <ReminderItem
+                      item={item}
+                      stateKind={stateMap.get(item.key) ?? null}
+                      onMarkRead={(key) => handle(key, { kind: "read" })}
+                      onSnooze={snooze}
+                      onRestore={(key) => handle(key, null)}
+                      onSettle={handleSettle}
+                      onOpen={() => openReminder(item)}
+                    />
+                  </HighlightRow>
+                </div>
               );
             })}
           </div>

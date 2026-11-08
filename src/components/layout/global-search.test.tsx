@@ -133,7 +133,7 @@ describe("GlobalSearch (busca global ⌘K §3.9 & Fase 64)", () => {
     await user.type(screen.getByPlaceholderText(/Buscar páginas, ações/), "nova despesa");
 
     expect(screen.getByText("Ações Rápidas")).toBeInTheDocument();
-    await user.click(screen.getByText("Nova Despesa"));
+    await user.click(screen.getByRole("option", { name: /Nova Despesa/i }));
     expect(navigateMock).toHaveBeenCalledWith("/transacoes?action=new-expense");
   });
 

@@ -30,6 +30,8 @@
 
 import type { SystemFeatureKey } from "@/types";
 
+export * from "./intents";
+
 export type SearchEntryType =
   | "action"
   | "page"

@@ -17,17 +17,33 @@ import { getErrorMessage } from "@/services/errors";
 import { downloadCsv } from "@/services/export-actions";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import { setStepIndex, startDemo, useCategories, useCreditCards, useExpenses, useFamilyMode, useIncomes, usePermission, useRecurrences } from "@/state";
+import {
+  setStepIndex,
+  startDemo,
+  useCategories,
+  useCreditCards,
+  useExpenses,
+  useFamilyMode,
+  useIncomes,
+  usePermission,
+  useRecurrences,
+  useSubscriptionsAudit,
+} from "@/state";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS, RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import { sumGrossCents, sumWeightedCents } from "@/domain/money";
 import { buildUnifiedFeedItems, groupFeedByDay, type FeedFilter } from "@/domain/expenses";
 import { serializeUnifiedTransactionsCsv, type ExportUnifiedTransactionRow } from "@/domain/export";
-import { ActiveSplitsCard } from "@/features/transactions/components/active-splits-card";
-import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
-import { IncomeDetailDialog } from "@/features/transactions/components/income-detail-dialog";
-import { SplitExpenseDialog } from "@/components/modules/split-expense-dialog";
+import {
+  ActiveSplitsCard,
+  ExpenseDetailDialog,
+  IncomeDetailDialog,
+  PriceIncreaseBadge,
+  SubscriptionsAuditCard,
+} from "@/features/transactions/components";
+import { SplitExpenseDialog, SubscriptionAdjustmentModal } from "@/components/modules";
 import { todayISO } from "@/domain/debts";
 import type { Category, Expense, Income } from "@/types";
+import type { AuditedSubscription } from "@/domain/subscriptions";
 
 
 function ExpenseRow({
@@ -35,6 +51,8 @@ function ExpenseRow({
   category,
   recurrenceLabel,
   isFamilyModeEnabled,
+  increaseSubscription,
+  onOpenIncreaseModal,
   onClick,
 }: {
   expense: Expense;
@@ -42,6 +60,8 @@ function ExpenseRow({
   /** Rótulo de frequência quando recorrente (Fase 32). */
   recurrenceLabel?: string;
   isFamilyModeEnabled?: boolean;
+  increaseSubscription?: AuditedSubscription;
+  onOpenIncreaseModal?: (sub: AuditedSubscription) => void;
   onClick?: () => void;
 }) {
   const title = expense.description || category?.name || "Despesa";
@@ -62,11 +82,20 @@ function ExpenseRow({
       icon={category?.icon}
       iconColor={category?.color}
       badges={
-        isFamilyModeEnabled && expense.is_family ? (
-          <Badge variant="muted" size="xs" className="shrink-0 font-medium">
-            Familiar
-          </Badge>
-        ) : undefined
+        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+          {isFamilyModeEnabled && expense.is_family && (
+            <Badge variant="muted" size="xs" className="shrink-0 font-medium">
+              Familiar
+            </Badge>
+          )}
+          {increaseSubscription && (
+            <PriceIncreaseBadge
+              deltaPercent={increaseSubscription.deltaPercent}
+              annualizedImpactCents={increaseSubscription.annualizedImpactCents}
+              onClick={() => onOpenIncreaseModal?.(increaseSubscription)}
+            />
+          )}
+        </div>
       }
       onClick={onClick}
       variant="flat"
@@ -171,6 +200,23 @@ export function TransactionListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(TRANSACTIONS_PAGE_SIZE);
   const [prevFilterKey, setPrevFilterKey] = useState(() => `${month}-${filter}-${searchQuery}`);
+
+  const subscriptionsAudit = useSubscriptionsAudit();
+  const [selectedSubscriptionForModal, setSelectedSubscriptionForModal] =
+    useState<AuditedSubscription | null>(null);
+
+  const increaseByExpenseId = useMemo(() => {
+    const map = new Map<string, AuditedSubscription>();
+    for (const sub of subscriptionsAudit.subscriptions) {
+      if (sub.hasPriceIncrease) {
+        const latestHistory = sub.history[sub.history.length - 1];
+        if (latestHistory) {
+          map.set(latestHistory.id, sub);
+        }
+      }
+    }
+    return map;
+  }, [subscriptionsAudit.subscriptions]);
 
   // Redefine a paginação durante a renderização se os filtros mudarem (React: adjusting state during render)
   const currentFilterKey = `${month}-${filter}-${searchQuery}`;
@@ -475,6 +521,15 @@ export function TransactionListPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-3.5 sm:gap-4" data-tour="transactions-content">
+          {!isSearching && filter === "all" && subscriptionsAudit.subscriptions.length > 0 && (
+            <SubscriptionsAuditCard
+              subscriptions={subscriptionsAudit.subscriptions}
+              totalMonthlyCents={subscriptionsAudit.totalMonthlyCents}
+              totalAnnualizedIncreaseCents={subscriptionsAudit.totalAnnualizedIncreaseCents}
+              onSelectSubscription={(sub) => setSelectedSubscriptionForModal(sub)}
+            />
+          )}
+
           {feedGroups.map((group, index) => (
             <section
               key={group.date}
@@ -508,6 +563,8 @@ export function TransactionListPage() {
                         category={categoryById.get(item.categoryId)}
                         recurrenceLabel={recurrenceLabel(item.recurrenceId)}
                         isFamilyModeEnabled={isFamilyModeEnabled}
+                        increaseSubscription={increaseByExpenseId.get(item.rawExpense.id)}
+                        onOpenIncreaseModal={(sub) => setSelectedSubscriptionForModal(sub)}
                         onClick={() => setSelectedExpense(item.rawExpense!)}
                       />
                     ) : null}
@@ -649,6 +706,16 @@ export function TransactionListPage() {
           initialPeopleCount={4}
           categoryName="Lazer & Assinaturas"
           autoGenerate={false}
+        />
+      )}
+
+      {selectedSubscriptionForModal && (
+        <SubscriptionAdjustmentModal
+          open={selectedSubscriptionForModal !== null}
+          onOpenChange={(open) => {
+            if (!open) setSelectedSubscriptionForModal(null);
+          }}
+          subscription={selectedSubscriptionForModal}
         />
       )}
 
