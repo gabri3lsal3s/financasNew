@@ -741,9 +741,11 @@ export function ExpenseDetailDialog({
                       size="sm"
                       className="gap-1.5 px-2 sm:px-3 text-xs justify-center"
                       onClick={() => setSplitOpen(true)}
+                      title="Rachar despesa"
+                      aria-label="Rachar"
                     >
                       <Users className="size-3.5 shrink-0" aria-hidden="true" />
-                      <span className="truncate">Rachar</span>
+                      <span className="hidden sm:inline">Rachar</span>
                     </Button>
                     <Button
                       type="button"
@@ -751,9 +753,11 @@ export function ExpenseDetailDialog({
                       size="sm"
                       className="gap-1.5 px-2 sm:px-3 text-xs justify-center"
                       onClick={() => void handleShare()}
+                      title="Compartilhar comprovante"
+                      aria-label="Compartilhar"
                     >
                       <Share2 className="size-3.5 shrink-0" aria-hidden="true" />
-                      <span className="truncate">Compartilhar</span>
+                      <span className="hidden sm:inline">Compartilhar</span>
                     </Button>
                     <Button
                       type="button"
@@ -762,10 +766,11 @@ export function ExpenseDetailDialog({
                       className="gap-1.5 px-2 sm:px-3 text-xs justify-center"
                       onClick={() => guardAction(() => void handleRepeat(), "Duplicar Despesa")}
                       disabled={createExpense.isPending}
+                      title="Repetir no mês atual"
                       aria-label="Repetir no mês atual"
                     >
                       <Copy className="size-3.5 shrink-0" aria-hidden="true" />
-                      <span className="truncate">{createExpense.isPending ? "Repetindo…" : "Repetir"}</span>
+                      <span className="hidden sm:inline">{createExpense.isPending ? "Repetindo…" : "Repetir"}</span>
                     </Button>
                   </div>
                   <Button

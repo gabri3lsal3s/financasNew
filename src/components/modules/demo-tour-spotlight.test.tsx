@@ -1139,7 +1139,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
     });
 
     it("renderiza dots de progresso como pílulas discretas e espaçamento seguro", () => {
-      startDemo("finances"); // 8 passos
+      startDemo("finances"); // 5 passos
 
       render(<DemoTourSpotlight />);
 
@@ -1148,7 +1148,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(tablist.className).toContain("gap-1.5");
 
       const dots = tablist.querySelectorAll("button");
-      expect(dots).toHaveLength(8);
+      expect(dots).toHaveLength(5);
 
       // Dot ativo: pílula expandida w-3.5
       expect(dots[0]?.className).toContain("h-1.5");
@@ -1519,7 +1519,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(dot1).toBeInTheDocument();
       expect(dot1).toHaveAttribute("aria-current", "step");
 
-      // Clica no dot 3 ("Ir para o passo 3" = finances-wizard-dialog)
+      // Clica no dot 3 ("Ir para o passo 3" = finances-transactions)
       const dot3 = screen.getByRole("button", { name: "Ir para o passo 3" });
       expect(dot3).toBeInTheDocument();
       expect(dot3).not.toHaveAttribute("aria-current");
@@ -1527,7 +1527,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       await user.click(dot3);
 
       expect(getDemoSessionState().currentStepIndex).toBe(2);
-      expect(mockNavigate).toHaveBeenCalledWith("/transacoes?novo=despesa");
+      expect(mockNavigate).toHaveBeenCalledWith("/transacoes");
       expect(handleNext).toHaveBeenCalledWith(2);
 
       // Após o re-render do card com nova key, consulta os novos nós DOM
@@ -1567,40 +1567,25 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(getDemoSessionState().currentStepIndex).toBe(1);
       expect(mockNavigate).toHaveBeenCalledWith("/");
 
-      // Passo 2 -> Passo 3 (/transacoes?novo=despesa)
+      // Passo 2 -> Passo 3 (/transacoes)
       fireEvent.keyDown(window, { key: "ArrowRight" });
       expect(getDemoSessionState().currentStepIndex).toBe(2);
-      expect(mockNavigate).toHaveBeenCalledWith("/transacoes?novo=despesa");
-
-      // Passo 3 -> Passo 4 (/transacoes)
-      fireEvent.keyDown(window, { key: "ArrowRight" });
-      expect(getDemoSessionState().currentStepIndex).toBe(3);
       expect(mockNavigate).toHaveBeenCalledWith("/transacoes");
 
-      // Passo 4 -> Passo 5 (/cartoes)
+      // Passo 3 -> Passo 4 (/cartoes)
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+      expect(getDemoSessionState().currentStepIndex).toBe(3);
+      expect(mockNavigate).toHaveBeenCalledWith("/cartoes");
+
+      // Passo 4 -> Passo 5 (/orcamentos - último)
       fireEvent.keyDown(window, { key: "ArrowRight" });
       expect(getDemoSessionState().currentStepIndex).toBe(4);
-      expect(mockNavigate).toHaveBeenCalledWith("/cartoes");
-
-      // Passo 5 -> Passo 6 (/cartoes)
-      fireEvent.keyDown(window, { key: "ArrowRight" });
-      expect(getDemoSessionState().currentStepIndex).toBe(5);
-      expect(mockNavigate).toHaveBeenCalledWith("/cartoes");
-
-      // Passo 6 -> Passo 7 (/orcamentos)
-      fireEvent.keyDown(window, { key: "ArrowRight" });
-      expect(getDemoSessionState().currentStepIndex).toBe(6);
       expect(mockNavigate).toHaveBeenCalledWith("/orcamentos");
 
-      // Passo 7 -> Passo 8 (/relatorios - último)
-      fireEvent.keyDown(window, { key: "ArrowRight" });
-      expect(getDemoSessionState().currentStepIndex).toBe(7);
-      expect(mockNavigate).toHaveBeenCalledWith("/relatorios");
-
-      // Retrocesso: Passo 8 -> Passo 7 via ArrowLeft
+      // Retrocesso: Passo 5 -> Passo 4 via ArrowLeft
       fireEvent.keyDown(window, { key: "ArrowLeft" });
-      expect(getDemoSessionState().currentStepIndex).toBe(6);
-      expect(mockNavigate).toHaveBeenCalledWith("/orcamentos");
+      expect(getDemoSessionState().currentStepIndex).toBe(3);
+      expect(mockNavigate).toHaveBeenCalledWith("/cartoes");
     });
 
     it("navega por Tab, aciona botões com Enter e conclui o tour no último passo", async () => {
@@ -1793,12 +1778,12 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
           fireEvent.keyDown(window, { key: "ArrowLeft" });
           expect(getDemoSessionState().currentStepIndex).toBe(1);
 
-          // 3. Tab e Espaço nos dots: salta para o passo 8 (último)
-          const dot8 = screen.getByRole("button", { name: "Ir para o passo 8" });
-          dot8.focus();
-          expect(document.activeElement).toBe(dot8);
+          // 3. Tab e Espaço nos dots: salta para o passo 5 (último)
+          const dot5 = screen.getByRole("button", { name: "Ir para o passo 5" });
+          dot5.focus();
+          expect(document.activeElement).toBe(dot5);
           await user.keyboard(" ");
-          expect(getDemoSessionState().currentStepIndex).toBe(7);
+          expect(getDemoSessionState().currentStepIndex).toBe(4);
 
           // 4. Tab e Enter no botão CTA final ("Começar Conta Real"): conclui tour
           const finishBtn = screen.getByRole("button", { name: /Começar Conta Real/i });
@@ -2608,7 +2593,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
         await user.click(screen.getByRole("button", { name: "Próximo passo" }));
         const asideStep3 = container.querySelector("aside");
         expect(asideStep3).toBe(asideInitial);
-        expect(asideStep3?.getAttribute("data-tour-step")).toBe("finances-wizard-dialog");
+        expect(asideStep3?.getAttribute("data-tour-step")).toBe("finances-transactions");
 
         // Passo 3 -> Passo 2 (Retroceder)
         const prevBtn = screen.getByRole("button", { name: "Passo anterior" });
@@ -2622,7 +2607,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
         await user.click(dot5);
         const asideStep5 = container.querySelector("aside");
         expect(asideStep5).toBe(asideInitial);
-        expect(asideStep5?.getAttribute("data-tour-step")).toBe("finances-cards");
+        expect(asideStep5?.getAttribute("data-tour-step")).toBe("finances-budgets");
 
         // Confirma estilização acelerada por GPU e transição suave no container persistido
         expect(asideInitial?.style.transition).toContain("transform 300ms");

@@ -152,18 +152,9 @@ export function DemoTourSpotlight({
 
   // Reinicia o pulso e sincroniza estado de busca ao trocar de etapa durante o render (padrão oficial React para ajuste de estado por prop/store)
   if (prevStepIndex !== currentStepIndex) {
-    const prevStep = steps[prevStepIndex];
-    const isDifferentRoute = Boolean(
-      prevStep?.targetRoute &&
-        currentStep?.targetRoute &&
-        prevStep.targetRoute !== currentStep.targetRoute,
-    );
     setPrevStepIndex(currentStepIndex);
     setIsPulsing(true);
-    // Limpa o rect se a etapa pertencer a outra rota para evitar spotlight preso em elementos residuais (§Plano 11)
-    if (isDifferentRoute) {
-      setRect(null);
-    }
+    // Preserva o rect anterior durante a busca para transição contínua sem tela preta/flicker (§Plano 11)
     const sel = resolveTourStepTargetSelector(currentStep, !isMobile);
     setIsTargetLoading(Boolean(isDemoActive && sel));
   }
@@ -998,7 +989,7 @@ export function DemoTourSpotlight({
         </div>
 
         {/* Rodapé com Navegação Adaptativa e Hand-off (Fase 3 — Tarefa 3.1, Fase 8 — Tarefa 8.10) */}
-        {isLastStep ? (
+        {isMobile && isLastStep ? (
           <div className="mt-3.5 pt-3 border-t border-border/80 flex flex-col gap-2.5">
             <div className="flex items-center justify-between gap-2">
               <Button
@@ -1014,7 +1005,6 @@ export function DemoTourSpotlight({
                 <span>Anterior</span>
               </Button>
 
-              {/* Indicadores de progresso interativos com suporte a clique e A11y (Fase 4 — Tarefa 4.2) */}
               <div
                 role="tablist"
                 aria-label="Progresso do tour demonstrativo"
@@ -1053,18 +1043,20 @@ export function DemoTourSpotlight({
               </Button>
             </div>
 
-            <div className={cn("grid gap-2 pt-0.5 w-full", blockHandoff?.nextTrackId ? "grid-cols-2" : "grid-cols-1")}>
+            <div className="flex flex-col sm:flex-row gap-2 pt-0.5">
               <Button
                 type="button"
                 variant={blockHandoff?.nextTrackId ? "outline" : "default"}
                 size="sm"
                 onClick={handleStartRealAccount}
-                aria-label="Começar Conta Real"
                 title="Começar Conta Real"
                 className="h-8.5 px-3 text-xs font-semibold cursor-pointer gap-1.5 w-full min-w-0 justify-center"
               >
                 <Check className="size-3.5 text-positive-strong shrink-0" aria-hidden="true" />
-                <span className="truncate">Começar Conta Real</span>
+                <span className="sm:hidden truncate">Começar</span>
+                <span className="hidden sm:inline truncate">
+                  {blockHandoff?.actionLabel ?? (isNarrowCard ? "Começar" : "Começar Conta Real")}
+                </span>
               </Button>
               {blockHandoff?.nextTrackId && (
                 <Button
@@ -1073,8 +1065,7 @@ export function DemoTourSpotlight({
                   size="sm"
                   onClick={() => handleStartNextBlock(blockHandoff.nextTrackId!)}
                   aria-label={`Avançar para ${blockHandoff.nextTrackLabel ?? "Próxima Trilha"}`}
-                  title={blockHandoff.nextTrackLabel ?? "Próxima Trilha"}
-                  className="h-8.5 px-3 text-xs font-semibold cursor-pointer gap-1.5 w-full min-w-0 justify-center"
+                  className="h-8.5 px-3 text-xs font-semibold cursor-pointer gap-1.5 w-full justify-center"
                 >
                   <span className="truncate">{blockHandoff.nextTrackLabel ?? "Próxima Trilha"}</span>
                   <ArrowRight className="size-3.5 shrink-0" aria-hidden="true" />
@@ -1083,7 +1074,7 @@ export function DemoTourSpotlight({
             </div>
           </div>
         ) : (
-          <div className="mt-3.5 pt-3 border-t border-border/80 flex items-center justify-between gap-2 min-w-0">
+          <div className="mt-4 pt-3 border-t border-border/80 flex items-center justify-between gap-2 min-w-0">
             <Button
               type="button"
               variant="outline"
@@ -1124,17 +1115,66 @@ export function DemoTourSpotlight({
               })}
             </div>
 
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              onClick={handleNext}
-              aria-label="Próximo passo"
-              className="h-8 px-3 text-xs font-semibold cursor-pointer gap-1 shrink-0 max-w-fit"
-            >
-              <span className="truncate">Próximo</span>
-              <ArrowRight className="size-3.5 shrink-0" aria-hidden="true" />
-            </Button>
+            {isLastStep ? (
+              <div className="flex items-center gap-1.5 shrink-0">
+                {blockHandoff?.nextTrackId ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleStartRealAccount}
+                      aria-label="Começar Conta Real"
+                      className="h-8 px-2 text-xs font-semibold cursor-pointer gap-1 shrink-0 max-w-fit"
+                    >
+                      <Check className="size-3 text-positive-strong shrink-0" aria-hidden="true" />
+                      <span className="sm:hidden truncate">Começar</span>
+                      <span className="hidden sm:inline truncate">
+                        {isNarrowCard ? "Começar" : "Começar Conta Real"}
+                      </span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleStartNextBlock(blockHandoff.nextTrackId!)}
+                      aria-label={`Avançar para ${blockHandoff.nextTrackLabel ?? "Próximo Bloco"}`}
+                      className="h-8 px-2.5 text-xs font-semibold cursor-pointer gap-1 shrink-0 max-w-fit"
+                    >
+                      <span className="truncate">{blockHandoff.nextTrackLabel ?? "Próximo Bloco"}</span>
+                      <ArrowRight className="size-3 shrink-0" aria-hidden="true" />
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    onClick={handleStartRealAccount}
+                    aria-label="Começar Conta Real"
+                    className="h-8 px-3 text-xs font-semibold cursor-pointer gap-1.5 shrink-0 max-w-fit"
+                  >
+                    <Check className="size-3.5 shrink-0" aria-hidden="true" />
+                    <span className="sm:hidden truncate">Começar</span>
+                    <span className="hidden sm:inline truncate">
+                      {blockHandoff?.actionLabel ?? (isNarrowCard ? "Começar" : "Começar Conta Real")}
+                    </span>
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={handleNext}
+                aria-label="Próximo passo"
+                className="h-8 px-3 text-xs font-semibold cursor-pointer gap-1 shrink-0 max-w-fit"
+              >
+                <span className="truncate">Próximo</span>
+                <ArrowRight className="size-3.5 shrink-0" aria-hidden="true" />
+              </Button>
+            )}
           </div>
         )}
       </aside>

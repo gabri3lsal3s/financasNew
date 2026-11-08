@@ -598,9 +598,11 @@ export function IncomeDetailDialog({
                         size="sm"
                         className="gap-1.5 px-2 sm:px-3 text-xs justify-center"
                         onClick={() => void handleShare()}
+                        title="Compartilhar comprovante"
+                        aria-label="Compartilhar"
                       >
                         <Share2 className="size-3.5 shrink-0" aria-hidden="true" />
-                        <span className="truncate">Compartilhar</span>
+                        <span className="hidden sm:inline">Compartilhar</span>
                       </Button>
                       <Button
                         type="button"
@@ -609,10 +611,11 @@ export function IncomeDetailDialog({
                         className="gap-1.5 px-2 sm:px-3 text-xs justify-center"
                         onClick={() => guardAction(() => void handleRepeat(), "Duplicar Receita")}
                         disabled={createIncome.isPending}
+                        title="Repetir no mês atual"
                         aria-label="Repetir no mês atual"
                       >
                         <Copy className="size-3.5 shrink-0" aria-hidden="true" />
-                        <span className="truncate">{createIncome.isPending ? "Repetindo…" : "Repetir"}</span>
+                        <span className="hidden sm:inline">{createIncome.isPending ? "Repetindo…" : "Repetir"}</span>
                       </Button>
                     </div>
                     <Button
