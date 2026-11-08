@@ -639,7 +639,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div data-tour="investments-targets" className="flex flex-col gap-6">
       {loadError ? (
         <ErrorState
           message={getErrorMessage(loadError)}
@@ -682,7 +682,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
       />
 
       {loading ? (
-        <div className="flex flex-col gap-3" aria-hidden="true">
+        <div data-tour="targets-classes-card" className="flex flex-col gap-3" aria-hidden="true">
           <SkeletonList rows={4} />
           <SkeletonTable rows={3} />
         </div>
@@ -702,7 +702,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
           }
         />
       ) : (
-        <div data-tour="investments-targets" className="w-full">
+        <div className="w-full">
           <Tabs
           value={subTab}
           onValueChange={(val: string) => handleSubTabChange(val as "classes" | "sectors" | "assets")}

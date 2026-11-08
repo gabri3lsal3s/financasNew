@@ -421,8 +421,10 @@ export function TransactionListPage() {
           onRetry={() => void Promise.all([expensesQuery.refetch(), incomesQuery.refetch(), categoriesQuery.refetch(), recurrencesQuery.refetch()])}
         />
       ) : loading ? (
-        <div className="flex flex-col gap-2">
-          <SkeletonList rows={4} />
+        <div className="flex flex-col gap-2" data-tour="transactions-content">
+          <div data-tour="transactions-feed-card" className="w-full">
+            <SkeletonList rows={4} />
+          </div>
         </div>
       ) : feedGroups.length === 0 ? (
         <div data-tour="transactions-feed-card" className="w-full">

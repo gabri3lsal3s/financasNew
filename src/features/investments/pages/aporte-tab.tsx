@@ -257,7 +257,7 @@ export function AporteTab({
       {batchError ? <Alert variant="error">{batchError}</Alert> : null}
 
       {loading ? (
-        <div className="flex flex-col gap-4">
+        <div data-tour="investments-rebalance" className="flex flex-col gap-4">
           <SkeletonKpi />
           <SkeletonChart />
         </div>
