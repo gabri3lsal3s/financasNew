@@ -15,3 +15,7 @@ export {
   AddPublicTripExpenseDialog,
   type AddPublicTripExpenseDialogProps,
 } from "./add-public-trip-expense-dialog";
+export {
+  PublicTripMemberStatementDialog,
+  type PublicTripMemberStatementDialogProps,
+} from "./public-trip-member-statement-dialog";

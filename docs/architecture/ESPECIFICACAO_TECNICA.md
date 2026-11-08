@@ -1168,6 +1168,9 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
 10. **Identidade do Anfitrião e Edição Completa de Despesas**:
     - O anfitrião tem seu nome resolvido automaticamente pelo perfil autenticado (`profiles.name`), podendo personalizar seu nome de exibição no grupo durante a criação da viagem (`p_host_name` na RPC `create_trip`).
     - Despesas já registradas podem ser editadas a qualquer momento via `EditTripExpenseDialog` (`updateTripExpense`), recalculando as cotas atômicas e atualizando em tempo real o balanço líquido e as sugestões de liquidação.
+11. **Páginas Públicas Compartilhadas, Troca de Tema e Extrato para Convidados**:
+    - O cabeçalho inteligente `SharedLinkHeaderNav` unifica a experiência visual em todas as rotas públicas (`/viagem/:token`, `/r/:token`, `/meta/:token`, `/orcamento-familiar/:token`), provendo casca translúcida fixa (`sticky top-0 z-30 bg-surface/85 backdrop-blur-md`), deep links nativos ("Abrir no App"), atalhos ao painel autenticado e alternância instantânea de temas (`ThemeToggle`: Claro, Escuro, OLED e Sistema) com persistência no navegador para qualquer visitante sem login.
+    - Convidados na página pública da viagem podem abrir o modal `PublicTripMemberStatementDialog` com 1 toque no card de identificação, auditando o extrato detalhado de despesas com cotas assumidas e justificativas textuais de isenção em pt-BR.
 
 ---
 

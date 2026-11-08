@@ -1,5 +1,21 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.0.11 (Build 40)** registra a **Padronização Mobile Universal de Páginas Públicas Compartilhadas, Troca de Tema Integrada e Extrato Detalhado para Convidados do Modo Viagem** (2026-11-08):
+> - **(1) Header Universal Sticky com Alternância de Temas (`SharedLinkHeaderNav`)**:
+>   - Casca translúcida fixa com `bg-surface/85 backdrop-blur-md border-b border-border/80 h-14`;
+>   - Alternador de temas integrado (`ThemeToggle`: Claro, Escuro, OLED e Sistema) com persistência no navegador para qualquer visitante;
+>   - Layout flexível com logo adaptativo, deep links nativos ("Abrir no App") e atalhos de navegação;
+> - **(2) Extrato Individual para Convidados (`PublicTripMemberStatementDialog`)**:
+>   - Modal público de explicabilidade contábil no Modo Viagem (`/viagem/:token`), permitindo que convidados sem login auditem suas despesas, cotas calculadas e justificativas de isenção com 1 toque;
+> - **(3) Modernização dos Modais e Elementos Públicos (`AddPublicTripExpenseDialog`)**:
+>   - Grid de 2 colunas para inputs monetários e de texto, botões táteis para tipo de divisão e seleção de amigos com `Checkbox` acessível do design system;
+>   - Prevenção de auto-zoom no iOS Safari (fonte $\ge 16\text{px}$) e zero controles nativos crus;
+> - **(4) Padronização Mobile Universal das Páginas Compartilhadas**:
+>   - Unificação de largura máxima (`max-w-2xl mx-auto`), paddings e tipografia tabular adaptativa entre Modo Viagem, Racha Pix, Termômetro de Meta e Orçamento Familiar;
+> - **(5) Compilação e Publicação do APK Android v3.0.11**:
+>   - Typecheck (`tsc -b`), lint sem violações, testes 100% aprovados e publicação do APK Release no Cloudflare R2.
+>
+
 > **v3.0.10 (Build 39)** registra o **Aperfeiçoamento Integral do Modo Viagem: Explicabilidade e Rateio Temporal de Participantes, Auditoria Individual de Extrato, Equilíbrio Retroativo de Contas, Identidade do Anfitrião e Edição de Despesas** (2026-11-08):
 > - **(1) Rateio Temporal por Data de Entrada (`joined_date`)**:
 >   - Suporte a participantes que ingressam no meio da viagem com seletor "Desde o início" vs "A partir da data de chegada";

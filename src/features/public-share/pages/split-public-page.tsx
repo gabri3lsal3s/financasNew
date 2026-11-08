@@ -236,17 +236,16 @@ export function SplitPublicPage() {
 
 
   return (
-    <div className="min-h-dvh bg-background text-foreground flex flex-col justify-between p-4 sm:p-6 md:p-8">
+    <div className="min-h-dvh bg-background text-foreground flex flex-col justify-between pb-8">
       {/* Header Institucional Superior Unificado */}
-      <div className="w-full max-w-md mx-auto pb-4">
-        <SharedLinkHeaderNav
-          badgeLabel="Racha de Conta"
-          targetPath={`r/${token || ""}`}
-        />
-      </div>
+      <SharedLinkHeaderNav
+        badgeLabel="Racha de Conta"
+        targetPath={`r/${token || ""}`}
+        maxWidth="md"
+      />
 
       {/* Conteúdo Central */}
-      <main className="w-full max-w-md mx-auto my-auto space-y-4">
+      <main className="w-full max-w-md mx-auto my-auto p-4 sm:p-6 space-y-4">
         {isLoading ? (
           <Card className="border-border/80 bg-surface shadow-xs p-5 sm:p-6 space-y-4">
             <div className="space-y-2">

@@ -220,31 +220,30 @@ export function GoalTrackerPublicPage() {
   );
 
   return (
-    <main className="min-h-screen bg-background text-foreground flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto w-full space-y-6">
-        {/* Topo / Barra de Navegação Pública Unificada */}
-        <div className="space-y-3">
-          <SharedLinkHeaderNav
-            badgeLabel="Termômetro de Meta"
-            targetPath={`meta/${token || ""}`}
-          />
-          <div className="flex items-center justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              onClick={handleRefresh}
-              disabled={isRefetching}
-              className="gap-1.5 border-border/80 bg-surface hover:bg-surface-hover rounded-lg cursor-pointer text-xs h-7"
-              aria-label="Atualizar dados do termômetro"
-            >
-              <RefreshCw
-                className={cn("size-3 text-muted-foreground", isRefetching && "animate-spin")}
-                aria-hidden="true"
-              />
-              <span>Atualizar dados</span>
-            </Button>
-          </div>
+    <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
+      <SharedLinkHeaderNav
+        badgeLabel="Termômetro de Meta"
+        targetPath={`meta/${token || ""}`}
+        maxWidth="2xl"
+      />
+
+      <main className="flex-1 max-w-2xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6">
+        <div className="flex items-center justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            onClick={handleRefresh}
+            disabled={isRefetching}
+            className="gap-1.5 border-border/80 bg-surface hover:bg-surface-hover rounded-lg cursor-pointer text-xs h-7"
+            aria-label="Atualizar dados do termômetro"
+          >
+            <RefreshCw
+              className={cn("size-3 text-muted-foreground", isRefetching && "animate-spin")}
+              aria-hidden="true"
+            />
+            <span>Atualizar dados</span>
+          </Button>
         </div>
 
         {/* Hero Card: Termômetro Visual de Progresso Dinâmico */}
@@ -642,10 +641,10 @@ export function GoalTrackerPublicPage() {
 
         {/* Modal de Instruções iOS Safari */}
         <IosPwaInstallDialog open={showIosGuide} onOpenChange={setShowIosGuide} />
-      </div>
+      </main>
 
       {/* Rodapé Informativo e Branding */}
-      <footer className="max-w-3xl mx-auto w-full pt-8 pb-4 text-center space-y-2 border-t border-border/60 mt-8 text-xs text-muted-foreground">
+      <footer className="max-w-2xl mx-auto w-full pt-8 pb-4 text-center space-y-2 border-t border-border/60 mt-8 text-xs text-muted-foreground px-4">
         <p className="leading-relaxed">
           Termômetro público de transparência financeira via Áxis Finance.
         </p>
@@ -661,6 +660,6 @@ export function GoalTrackerPublicPage() {
           </Link>
         </div>
       </footer>
-    </main>
+    </div>
   );
 }

@@ -157,20 +157,19 @@ export function FamilyBudgetPage() {
   );
 
   return (
-    <main className="min-h-screen bg-background text-foreground flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto w-full space-y-6">
-        {/* Topo / Barra de Navegação Pública Unificada */}
-        <div className="space-y-3">
-          <SharedLinkHeaderNav
-            badgeLabel="Orçamento Familiar"
-            targetPath={`orcamento-familiar/${token || ""}`}
-          />
-          <MonthPicker
-            value={selectedMonth}
-            onValueChange={handleMonthChange}
-            className="w-full"
-          />
-        </div>
+    <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
+      <SharedLinkHeaderNav
+        badgeLabel="Orçamento Familiar"
+        targetPath={`orcamento-familiar/${token || ""}`}
+        maxWidth="2xl"
+      />
+
+      <main className="flex-1 max-w-2xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6">
+        <MonthPicker
+          value={selectedMonth}
+          onValueChange={handleMonthChange}
+          className="w-full"
+        />
 
         {/* Hero Card: Cabeçalho do Orçamento Familiar & Barra de Progresso */}
         <Card className="border-border/80 bg-surface shadow-xs">
@@ -405,10 +404,10 @@ export function FamilyBudgetPage() {
 
         {/* Modal de Instruções iOS Safari */}
         <IosPwaInstallDialog open={showIosGuide} onOpenChange={setShowIosGuide} />
-      </div>
+      </main>
 
       {/* Rodapé Informativo de Privacidade e Branding */}
-      <footer className="max-w-3xl mx-auto w-full pt-8 pb-4 text-center space-y-2 border-t border-border/60 mt-8 text-xs text-muted-foreground">
+      <footer className="max-w-2xl mx-auto w-full pt-8 pb-4 text-center space-y-2 border-t border-border/60 mt-8 text-xs text-muted-foreground px-4">
         <p className="leading-relaxed">
           Este painel é de leitura segura. Contas bancárias, faturas e lançamentos individuais permanecem 100% confidenciais.
         </p>
@@ -424,6 +423,6 @@ export function FamilyBudgetPage() {
           </Link>
         </div>
       </footer>
-    </main>
+    </div>
   );
 }

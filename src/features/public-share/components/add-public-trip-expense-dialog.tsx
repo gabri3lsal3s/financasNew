@@ -11,6 +11,8 @@ import {
   Input,
   MoneyInput,
   Select,
+  DatePicker,
+  Checkbox,
 } from "@/components/ui";
 import { useSubmitPublicTripExpenseMutation } from "@/state/queries/use-trips";
 import { calculateEqualSplits } from "@/domain/trips/trip-math";
@@ -45,6 +47,9 @@ export function AddPublicTripExpenseDialog({
   const [amountCents, setAmountCents] = useState<number>(0);
   const [description, setDescription] = useState("");
   const [categoryName, setCategoryName] = useState("Alimentação");
+  const [expenseDate, setExpenseDate] = useState<string>(
+    () => new Date().toISOString().split("T")[0] ?? ""
+  );
   const [selectedPayerId, setSelectedPayerId] = useState<string>("");
   const [splitMode, setSplitMode] = useState<"all" | "selected">("all");
   const [customMemberIds, setCustomMemberIds] = useState<string[]>([]);
@@ -97,6 +102,7 @@ export function AddPublicTripExpenseDialog({
       amountCents,
       description: description.trim(),
       categoryName,
+      expenseDate,
       splitType: splitMode === "all" ? "equal" : "custom",
       splits: calculatedSplits.map((s) => ({
         member_id: s.memberId,
@@ -120,7 +126,7 @@ export function AddPublicTripExpenseDialog({
       onOpenChange={onOpenChange}
       size="lg"
       title="Adicionar Despesa da Viagem"
-      description="Informe o valor e quem pagou para atualizar o balanço do grupo."
+      description="Informe o valor e quem pagou para atualizar o balanço do grupo em tempo real."
       footer={
         <ModalFooter>
           <Button
@@ -143,22 +149,25 @@ export function AddPublicTripExpenseDialog({
       }
     >
       <form id="add-public-expense-form" onSubmit={handleSubmit} className="space-y-4">
+        {/* Campo de Valor */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-foreground">
-            Valor Total
+            Valor Pago *
           </label>
           <MoneyInput
             cents={amountCents}
             onCentsChange={(c) => setAmountCents(c)}
             placeholder="R$ 0,00"
-            className="text-base sm:text-sm"
+            className="text-base sm:text-sm font-semibold"
             required
           />
         </div>
 
+        {/* Descrição e Categoria em Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground">
-              Descrição
+              Descrição do Gasto *
             </label>
             <Input
               value={description}
@@ -170,86 +179,103 @@ export function AddPublicTripExpenseDialog({
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">
-                Quem pagou?
-              </label>
-              <Select
-                value={effectivePayerId}
-                onValueChange={setSelectedPayerId}
-                options={memberOptions}
-                placeholder="Selecione o pagador"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">
-                Categoria
-              </label>
-              <Select
-                value={categoryName}
-                onValueChange={setCategoryName}
-                options={CATEGORY_OPTIONS}
-                placeholder="Selecione a categoria"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2 pt-1 border-t border-border/80">
+          <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground">
-              Como será a divisão?
+              Categoria
             </label>
-
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                type="button"
-                variant={splitMode === "all" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSplitMode("all")}
-                className="w-full text-xs"
-              >
-                Todos igualmente ({members.length})
-              </Button>
-              <Button
-                type="button"
-                variant={splitMode === "selected" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSplitMode("selected")}
-                className="w-full text-xs"
-              >
-                Apenas alguns ({activeSelectedMemberIds.length})
-              </Button>
-            </div>
-
-            {splitMode === "selected" && (
-              <div className="p-3 rounded-xl bg-surface-raised border border-border/80 space-y-2 mt-2">
-                <p className="text-[11px] text-muted-foreground">
-                  Selecione quem participou desta despesa:
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {members.map((m) => {
-                    const isSelected = activeSelectedMemberIds.includes(m.id);
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => handleToggleMember(m.id)}
-                        className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${
-                          isSelected
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-surface text-muted-foreground border-border hover:bg-surface-hover"
-                        }`}
-                      >
-                        {m.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            <Select
+              value={categoryName}
+              onValueChange={setCategoryName}
+              options={CATEGORY_OPTIONS}
+              placeholder="Selecione a categoria"
+            />
           </div>
-        </form>
+        </div>
+
+        {/* Quem pagou e Data do gasto */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-foreground">
+              Quem pagou? *
+            </label>
+            <Select
+              value={effectivePayerId}
+              onValueChange={setSelectedPayerId}
+              options={memberOptions}
+              placeholder="Selecione o pagador"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-foreground">
+              Data do Gasto
+            </label>
+            <DatePicker
+              value={expenseDate || ""}
+              onChange={(val) =>
+                setExpenseDate(val || new Date().toISOString().split("T")[0] || "")
+              }
+            />
+          </div>
+        </div>
+
+        {/* Modo de Divisão */}
+        <div className="space-y-2 pt-2 border-t border-border/80">
+          <label className="text-xs font-semibold text-foreground block">
+            Como dividir este gasto?
+          </label>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setSplitMode("all")}
+              className={`p-2.5 rounded-xl text-xs font-medium text-center border transition-all cursor-pointer ${
+                splitMode === "all"
+                  ? "bg-primary/10 border-primary text-primary"
+                  : "bg-surface-raised border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Todos igualmente ({members.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSplitMode("selected")}
+              className={`p-2.5 rounded-xl text-xs font-medium text-center border transition-all cursor-pointer ${
+                splitMode === "selected"
+                  ? "bg-primary/10 border-primary text-primary"
+                  : "bg-surface-raised border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Apenas alguns ({activeSelectedMemberIds.length})
+            </button>
+          </div>
+
+          {splitMode === "selected" && (
+            <div className="space-y-2 mt-2 p-3 bg-surface-raised rounded-xl border border-border/80">
+              <span className="text-[11px] text-muted-foreground block">
+                Selecione quem participou desta despesa:
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {members.map((m) => {
+                  const isChecked = activeSelectedMemberIds.includes(m.id);
+                  return (
+                    <label
+                      key={m.id}
+                      className="flex items-center gap-2 text-xs p-2 rounded-xl bg-surface border border-border/80 hover:bg-surface-hover transition-colors cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={isChecked}
+                        onCheckedChange={() => handleToggleMember(m.id)}
+                      />
+                      <span className="text-foreground truncate font-medium">{m.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </form>
     </Modal>
   );
 }

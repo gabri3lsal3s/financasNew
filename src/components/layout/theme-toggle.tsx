@@ -12,7 +12,9 @@ const LABELS: Record<ThemePreference, string> = {
   system: "Sistema",
 };
 
-export function ThemeToggle() {
+import { cn } from "@/lib/utils";
+
+export function ThemeToggle({ className }: { className?: string } = {}) {
   const { preference, setPreference } = useTheme();
   const index = ORDER.indexOf(preference);
   const next = ORDER[(index + 1) % ORDER.length] ?? "light";
@@ -23,11 +25,12 @@ export function ThemeToggle() {
       type="button"
       variant="ghost"
       size="icon"
+      className={cn("size-8 text-muted-foreground hover:text-foreground shrink-0 cursor-pointer", className)}
       aria-label={`Tema atual: ${LABELS[preference]}. Alternar tema.`}
       title={`Tema: ${LABELS[preference]}`}
       onClick={() => setPreference(next)}
     >
-      <Icon aria-hidden="true" />
+      <Icon className="size-4" aria-hidden="true" />
     </Button>
   );
 }
