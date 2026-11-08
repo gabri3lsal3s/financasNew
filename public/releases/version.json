@@ -1,16 +1,15 @@
 {
   "version": "3.0.7",
-  "versionCode": 32,
-  "releaseDate": "2026-11-07T22:25:34Z",
+  "versionCode": 33,
+  "releaseDate": "2026-11-08T04:09:30Z",
   "minSupportedVersion": "3.0.7",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "3ae4d36ae1dc1b7ddb1e7b4091f6e4746e95edf04f61f1003caef77cbdfeab00",
-  "fileSizeBytes": 12030247,
+  "sha256": "2a921b0b9034cbdf36966497ffbf11cfd29ec8debe4e7fdde19791d7727fd462",
+  "fileSizeBytes": 12025021,
   "changelog": [
-    "Experiência canônica unificada: cadastro direto e acesso irrestrito ao módulo de Investimentos",
-    "Tour guiado modernizado com spotlight adaptativo suave e zero oscilação",
-    "Simulação pedagógica com isolamento estrito de dados e apresentação ilustrada de divisão de despesas",
-    "Motor de Handoff com avanço modular contínuo entre blocos temáticos",
-    "Saneamento completo de pendências técnicas e hardening de estabilidade"
+    "Radar de Vencimentos dos Próximos 7 Dias no Dashboard com cálculo de liquidez semanal",
+    "Quitação e baixa contábil direta in-loco na Central de Lembretes com confirmação obrigatória",
+    "Apuração canônica de faturas de cartão com salvaguarda estrita de hidratação",
+    "Melhorias contínuas de estabilidade e desempenho no aplicativo Android"
   ]
 }
