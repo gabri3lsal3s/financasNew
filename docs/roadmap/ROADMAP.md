@@ -1,6 +1,25 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **v3.0.9 (Build 37)** registra a **Unificação Canônica de Links Públicos Compartilháveis via Cloudflare Workers (`*.workers.dev`), Modo Viagem Nativo e Build da Nova Versão do APK Android** (2026-11-08):
+> **v3.0.10 (Build 39)** registra o **Aperfeiçoamento Integral do Modo Viagem: Explicabilidade e Rateio Temporal de Participantes, Auditoria Individual de Extrato, Equilíbrio Retroativo de Contas, Identidade do Anfitrião e Edição de Despesas** (2026-11-08):
+> - **(1) Rateio Temporal por Data de Entrada (`joined_date`)**:
+>   - Suporte a participantes que ingressam no meio da viagem com seletor "Desde o início" vs "A partir da data de chegada";
+>   - Despesas anteriores à chegada são excluídas da cota do novo membro, prevenindo cobranças indevidas de dias não aproveitados;
+> - **(2) Extrato Individual e Explicabilidade Cognitiva (`TripMemberStatementDialog`)**:
+>   - Auditoria transparente item a item de todas as despesas da viagem para cada participante;
+>   - Justificativa textual clara para gastos isentos ("Não participou: entrou no grupo após esta despesa");
+> - **(3) Equilíbrio Retroativo Sob Demanda ("Equilibrar Tudo" / `RebalanceTripSplitsDialog`)**:
+>   - Ação para unificar e ratear igualmente todas as despesas passadas e futuras entre todos os membros quando o grupo concorda em dividir tudo em conjunto;
+> - **(4) Identidade Real do Anfitrião no Grupo**:
+>   - Nome do organizador preenchido automaticamente a partir do perfil (`profiles.name`), com campo editável no cadastro da viagem, eliminando o rótulo confuso "Você";
+> - **(5) Edição Completa de Despesas Cadastradas (`EditTripExpenseDialog`)**:
+>   - Botão de edição em cada despesa da viagem para corrigir valores, descrição, quem pagou, data, categoria e cotas de rateio (`updateTripExpense`);
+> - **(6) Migrações Postgres 96 e 97**:
+>   - Coluna `joined_date` em `trip_members` e suporte ao parâmetro `p_host_name` na RPC `create_trip`;
+> - **(7) Build do APK Android v3.0.10**:
+>   - Typecheck estrito (`tsc -b`), lint sem violações, compilação do APK Release e publicação em Cloudflare R2.
+>
+
+> **v3.0.9 (Build 38)** registra a **Unificação Canônica de Links Públicos Compartilháveis via Cloudflare Workers (`*.workers.dev`), Modo Viagem Nativo e Build da Nova Versão do APK Android** (2026-11-08):
 > - **(1) Correção Universal de URLs e Links Públicos Compartilhados**:
 >   - Atualização do domínio raiz oficial canônico para `https://financasnew.gabrielisaacsales.workers.dev` em `src/services/app-url.ts`, `.env`, `.env.example` e documentação de deploy;
 >   - Resolução determinística em ambiente Mobile Nativo (Capacitor Android APK) e Web para todas as funcionalidades de colaboração social:

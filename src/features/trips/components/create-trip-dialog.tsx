@@ -14,6 +14,8 @@ import {
 import { DatePicker } from "@/components/ui/date-picker";
 import { Plus, Trash2, Users } from "lucide-react";
 import { useCreateTripMutation } from "@/state/queries/use-trips";
+import { useAuth } from "@/hooks/use-auth";
+import { useUserAccess } from "@/state/queries/use-user-access";
 import type { TripPixKeyType } from "@/types/trips";
 
 export interface CreateTripDialogProps {
@@ -34,14 +36,28 @@ export function CreateTripDialog({
   onOpenChange,
   onSuccess,
 }: CreateTripDialogProps) {
+  const { user } = useAuth();
+  const { profile } = useUserAccess();
+
+  const defaultHostName = profile?.name?.trim() || user?.user_metadata?.name?.trim() || "";
+
   const [title, setTitle] = useState("");
   const [destination, setDestination] = useState("");
+  const [hostName, setHostName] = useState(defaultHostName);
+  const [prevDefaultHostName, setPrevDefaultHostName] = useState(defaultHostName);
   const [startDate, setStartDate] = useState(() =>
     new Date().toISOString().split("T")[0]
   );
   const [endDate, setEndDate] = useState(() =>
     new Date(Date.now() + 5 * 86400000).toISOString().split("T")[0]
   );
+
+  if (defaultHostName !== prevDefaultHostName) {
+    setPrevDefaultHostName(defaultHostName);
+    if (!hostName) {
+      setHostName(defaultHostName);
+    }
+  }
 
   const [members, setMembers] = useState<
     { name: string; pix_key?: string; pix_key_type?: TripPixKeyType }[]
@@ -73,7 +89,7 @@ export function CreateTripDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !startDate || !endDate) return;
+    if (!title.trim() || !hostName.trim() || !startDate || !endDate) return;
 
     try {
       const created = await createTripMutation.mutateAsync({
@@ -81,6 +97,7 @@ export function CreateTripDialog({
         destination: destination.trim() || null,
         start_date: startDate,
         end_date: endDate,
+        host_name: hostName.trim() || undefined,
         initial_members: members,
       });
 
@@ -115,7 +132,7 @@ export function CreateTripDialog({
           <Button
             type="submit"
             form="create-trip-form"
-            disabled={!title.trim() || !startDate || !endDate || createTripMutation.isPending}
+            disabled={!title.trim() || !hostName.trim() || !startDate || !endDate || createTripMutation.isPending}
             loading={createTripMutation.isPending}
           >
             Criar Viagem
@@ -137,6 +154,23 @@ export function CreateTripDialog({
               className="text-base sm:text-sm"
               required
             />
+          </div>
+
+          <div className="space-y-1.5 sm:col-span-2">
+            <label className="text-xs font-semibold text-foreground">
+              Seu Nome de Exibição no Grupo *
+            </label>
+            <Input
+              value={hostName}
+              onChange={(e) => setHostName(e.target.value)}
+              placeholder="Como seus amigos te conhecem (ex.: Gabriel)"
+              maxLength={50}
+              className="text-base sm:text-sm"
+              required
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Este nome será exibido para todos os participantes nas divisões e extratos da viagem.
+            </p>
           </div>
 
           <div className="space-y-1.5 sm:col-span-2">
@@ -181,7 +215,7 @@ export function CreateTripDialog({
                 Participantes do Grupo
               </label>
               <span className="text-[11px] text-muted-foreground">
-                Você já está incluído
+                {hostName.trim() ? `${hostName.trim()} (Organizador)` : "Organizador já incluído"}
               </span>
             </div>
 

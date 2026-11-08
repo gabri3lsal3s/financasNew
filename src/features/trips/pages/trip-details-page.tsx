@@ -13,9 +13,12 @@ import {
   Receipt,
   Plus,
   Trash2,
+  Pencil,
   Check,
   DollarSign,
   ShieldCheck,
+  Scale,
+  FileText,
 } from "lucide-react";
 import {
   Button,
@@ -36,15 +39,21 @@ import { pushToast } from "@/services/toast";
 import { getPublicAppUrl } from "@/services/app-url";
 import { useNavigate } from "react-router";
 import { useTripMode } from "@/state";
+import { useAuth } from "@/hooks/use-auth";
 import {
   AddTripMemberDialog,
   AddTripExpenseDialog,
+  EditTripExpenseDialog,
   TripSettlementDialog,
+  TripMemberStatementDialog,
+  RebalanceTripSplitsDialog,
 } from "../components";
+import type { TripMember, TripExpense } from "@/types/trips";
 
 export function TripDetailsPage() {
   const navigate = useNavigate();
   const { id: tripId } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const { isTripModeEnabled, toggleTripMode, isPending: isTogglingTripMode } = useTripMode();
   const { data, isLoading } = useTripDetails(tripId);
 
@@ -52,6 +61,9 @@ export function TripDetailsPage() {
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isSettlementOpen, setIsSettlementOpen] = useState(false);
+  const [isRebalanceOpen, setIsRebalanceOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<TripExpense | null>(null);
+  const [selectedMemberForStatement, setSelectedMemberForStatement] = useState<TripMember | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
   const deleteExpenseMutation = useDeleteTripExpenseMutation(tripId ?? "");
@@ -137,7 +149,8 @@ export function TripDetailsPage() {
 
   const { trip, members, expenses, settlements, balances, suggestedSettlements, totalExpensesCents } = data;
 
-  const myBalance = balances.find((b) => b.name === "Você") ?? balances[0];
+  const myMember = members.find((m) => m.is_host || (user && m.user_id === user.id)) ?? members[0];
+  const myBalance = (myMember && balances.find((b) => b.memberId === myMember.id)) ?? balances[0];
 
   const handleCopyPublicLink = () => {
     const url = getPublicAppUrl(`viagem/${trip.public_token}`);
@@ -157,19 +170,31 @@ export function TripDetailsPage() {
       label: `Despesas (${expenses.length})`,
       content: (
         <div className="space-y-2.5 mt-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <span className="text-xs font-semibold text-foreground">
               Gastos do Grupo
             </span>
-            <Button
-              size="sm"
-              variant="default"
-              onClick={() => setIsAddExpenseOpen(true)}
-              className="h-8 text-xs gap-1"
-            >
-              <Plus className="size-3" aria-hidden="true" />
-              Nova Despesa
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsRebalanceOpen(true)}
+                className="h-8 text-xs gap-1.5"
+                title="Rateia todas as despesas da viagem igualmente entre todos os membros"
+              >
+                <Scale className="size-3" aria-hidden="true" />
+                Equilibrar Tudo
+              </Button>
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => setIsAddExpenseOpen(true)}
+                className="h-8 text-xs gap-1"
+              >
+                <Plus className="size-3" aria-hidden="true" />
+                Nova Despesa
+              </Button>
+            </div>
           </div>
 
           {expenses.length === 0 ? (
@@ -194,6 +219,15 @@ export function TripDetailsPage() {
           ) : (
             expenses.map((expense) => {
               const payer = members.find((m) => m.id === expense.paid_by_member_id);
+              const eligibleMembers = members.filter(
+                (m) => !m.joined_date || !expense.expense_date || expense.expense_date >= m.joined_date
+              );
+              const isCustom = expense.split_type === "custom";
+              const participantCount = isCustom
+                ? (expense.splits?.length ?? 0)
+                : (eligibleMembers.length > 0 ? eligibleMembers.length : members.length);
+              const isPartial = isCustom || participantCount < members.length;
+
               return (
                 <Card
                   key={expense.id}
@@ -207,6 +241,15 @@ export function TripDetailsPage() {
                       <Badge size="xs" variant="muted">
                         {expense.category_name}
                       </Badge>
+                      {isPartial ? (
+                        <Badge size="xs" variant="warning">
+                          {participantCount} de {members.length} amigos
+                        </Badge>
+                      ) : (
+                        <Badge size="xs" variant="muted">
+                          Todos ({members.length})
+                        </Badge>
+                      )}
                       {expense.linked_personal_expense_id && (
                         <Badge size="xs" variant="positive">
                           Vinculada ao Cartão
@@ -218,14 +261,23 @@ export function TripDetailsPage() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                     <span className="text-xs font-bold tabular-nums text-foreground">
                       {formatCentsAsBRL(expense.amount_cents)}
                     </span>
                     <button
                       type="button"
+                      onClick={() => setEditingExpense(expense)}
+                      className="text-muted-foreground hover:text-foreground p-1 transition-colors cursor-pointer"
+                      title="Editar despesa"
+                      aria-label="Editar despesa"
+                    >
+                      <Pencil className="size-3.5" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => deleteExpenseMutation.mutate(expense.id)}
-                      className="text-muted-foreground hover:text-critical p-1 transition-colors"
+                      className="text-muted-foreground hover:text-critical p-1 transition-colors cursor-pointer"
                       title="Excluir despesa"
                       aria-label="Excluir despesa"
                     >
@@ -278,6 +330,11 @@ export function TripDetailsPage() {
                           Organizador
                         </Badge>
                       )}
+                      {member.joined_date && (
+                        <Badge size="xs" variant="muted">
+                          Entrou em {member.joined_date}
+                        </Badge>
+                      )}
                       {net > 0 && (
                         <Badge size="xs" variant="positive">
                           A receber: +{formatCentsAsBRL(net)}
@@ -304,17 +361,30 @@ export function TripDetailsPage() {
                     </div>
                   </div>
 
-                  {!member.is_host && (
-                    <button
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
                       type="button"
-                      onClick={() => removeMemberMutation.mutate(member.id)}
-                      className="text-muted-foreground hover:text-critical p-1 transition-colors shrink-0"
-                      title="Remover membro"
-                      aria-label={`Remover ${member.name}`}
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setSelectedMemberForStatement(member)}
+                      className="h-7 text-[11px] px-2.5 gap-1 cursor-pointer"
                     >
-                      <Trash2 className="size-3.5" aria-hidden="true" />
-                    </button>
-                  )}
+                      <FileText className="size-3" aria-hidden="true" />
+                      Extrato
+                    </Button>
+
+                    {!member.is_host && (
+                      <button
+                        type="button"
+                        onClick={() => removeMemberMutation.mutate(member.id)}
+                        className="text-muted-foreground hover:text-critical p-1 transition-colors"
+                        title="Remover membro"
+                        aria-label={`Remover ${member.name}`}
+                      >
+                        <Trash2 className="size-3.5" aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
                 </Card>
               );
             })}
@@ -511,6 +581,14 @@ export function TripDetailsPage() {
         members={members}
       />
 
+      <EditTripExpenseDialog
+        open={Boolean(editingExpense)}
+        onOpenChange={(open) => !open && setEditingExpense(null)}
+        tripId={trip.id}
+        expense={editingExpense}
+        members={members}
+      />
+
       <AddTripMemberDialog
         open={isAddMemberOpen}
         onOpenChange={setIsAddMemberOpen}
@@ -525,6 +603,21 @@ export function TripDetailsPage() {
         publicToken={trip.public_token}
         suggestedSettlements={suggestedSettlements}
         existingSettlements={settlements}
+      />
+
+      <TripMemberStatementDialog
+        open={Boolean(selectedMemberForStatement)}
+        onOpenChange={(open) => !open && setSelectedMemberForStatement(null)}
+        member={selectedMemberForStatement}
+        members={members}
+        expenses={expenses}
+      />
+
+      <RebalanceTripSplitsDialog
+        open={isRebalanceOpen}
+        onOpenChange={setIsRebalanceOpen}
+        tripId={trip.id}
+        membersCount={members.length}
       />
     </div>
   );

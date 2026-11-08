@@ -4,6 +4,7 @@ import {
   calculateMemberBalances,
   calculateSimplifiedSettlements,
   calculateLinkedExpenseWeight,
+  getMemberExpenseStatement,
 } from "./trip-math";
 
 describe("trip-math: calculateEqualSplits", () => {
@@ -343,5 +344,61 @@ describe("trip-math: calculateLinkedExpenseWeight", () => {
     expect(calculateLinkedExpenseWeight(40000, 10000)).toBe(0.25);
     expect(calculateLinkedExpenseWeight(10000, 10000)).toBe(1);
     expect(calculateLinkedExpenseWeight(0, 10000)).toBe(1);
+  });
+});
+
+describe("trip-math: joined_date e getMemberExpenseStatement (Explicabilidade)", () => {
+  it("exclui membro de despesa anterior ao joined_date mas o inclui em despesas posteriores", () => {
+    const members = [
+      { id: "m1", name: "Gabriel", joined_date: null }, // desde o início
+      { id: "m2", name: "Ítalo", joined_date: "2026-11-05" }, // chegou no dia 5
+    ];
+
+    const expenses = [
+      // Dia 3: Gabriel pagou almoço R$ 60 (Ítalo ainda não havia chegado)
+      {
+        id: "e1",
+        description: "Almoço Dia 3",
+        paid_by_member_id: "m1",
+        amount_cents: 6000,
+        expense_date: "2026-11-03",
+        split_type: "equal" as const,
+      },
+      // Dia 6: Gabriel pagou jantar R$ 100 (Ítalo já estava presente)
+      {
+        id: "e2",
+        description: "Jantar Dia 6",
+        paid_by_member_id: "m1",
+        amount_cents: 10000,
+        expense_date: "2026-11-06",
+        split_type: "equal" as const,
+      },
+    ];
+
+    const balances = calculateMemberBalances(members, expenses);
+    const bGabriel = balances.find((b) => b.memberId === "m1");
+    const bItalo = balances.find((b) => b.memberId === "m2");
+
+    // Gabriel: pagou 16000 (6000 + 10000)
+    // Devido Gabriel: 6000 (da despesa 1) + 5000 (da despesa 2) = 11000 -> Saldo: +5000
+    // Devido Ítalo: 0 (da despesa 1) + 5000 (da despesa 2) = 5000 -> Saldo: -5000
+    expect(bGabriel?.totalOwedCents).toBe(11000);
+    expect(bGabriel?.netBalanceCents).toBe(5000);
+
+    expect(bItalo?.totalOwedCents).toBe(5000);
+    expect(bItalo?.netBalanceCents).toBe(-5000);
+
+    // Agora gera o extrato detalhado para Ítalo
+    const statement = getMemberExpenseStatement("m2", members, expenses);
+    expect(statement.totalOwedCents).toBe(5000);
+    expect(statement.participations).toHaveLength(1);
+    expect(statement.participations[0]?.description).toBe("Jantar Dia 6");
+    expect(statement.participations[0]?.userShareCents).toBe(5000);
+
+    // Despesa do dia 3 deve estar na lista de exclusões com motivo claro
+    expect(statement.exclusions).toHaveLength(1);
+    expect(statement.exclusions[0]?.description).toBe("Almoço Dia 3");
+    expect(statement.exclusions[0]?.reason).toBe("joined_after");
+    expect(statement.exclusions[0]?.reasonText).toContain("antes da entrada de Ítalo no grupo");
   });
 });

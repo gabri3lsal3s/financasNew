@@ -70,8 +70,12 @@ export function calculateEqualSplits(
 }
 
 export interface ExpenseItemForBalance {
+  id?: string;
+  description?: string;
+  category_name?: string;
   paid_by_member_id: string;
   amount_cents: number;
+  expense_date?: string | null;
   split_type?: TripSplitType | string | null;
   splits?: readonly {
     member_id: string;
@@ -84,6 +88,7 @@ export interface MemberItemForBalance {
   name: string;
   pix_key?: string | null;
   pix_key_type?: TripPixKeyType | null;
+  joined_date?: string | null;
 }
 
 /**
@@ -92,8 +97,7 @@ export interface MemberItemForBalance {
  *
  * Para despesas com split_type === 'custom' e cotas informadas, respeita a distribuição gravada.
  * Para despesas de divisão igualitária (split_type !== 'custom' ou sem cotas),
- * recalcula as cotas igualmente entre todos os membros ativos da viagem,
- * garantindo justiça mesmo quando novos participantes são integrados ao grupo.
+ * divide igualmente entre os membros elegíveis (membros sem restrição de joined_date ou que entraram até a data da despesa).
  */
 export function calculateMemberBalances(
   members: readonly MemberItemForBalance[],
@@ -129,9 +133,16 @@ export function calculateMemberBalances(
         }
       }
     } else {
+      const eligibleMembers = members.filter((m) => {
+        if (!m.joined_date || !expense.expense_date) return true;
+        return expense.expense_date >= m.joined_date;
+      });
+
+      const targetMembers = eligibleMembers.length > 0 ? eligibleMembers : members;
+
       const equalSplits = calculateEqualSplits({
         totalAmountCents: expense.amount_cents,
-        memberIds: members.map((m) => m.id),
+        memberIds: targetMembers.map((m) => m.id),
         payerMemberId: expense.paid_by_member_id,
       });
 
@@ -153,6 +164,164 @@ export function calculateMemberBalances(
       netBalanceCents: totalPaid - totalOwed,
     };
   });
+}
+
+export interface MemberExpenseParticipation {
+  expenseId: string;
+  description: string;
+  categoryName: string;
+  expenseDate: string;
+  payerMemberId: string;
+  payerName: string;
+  totalAmountCents: number;
+  userShareCents: number;
+}
+
+export interface MemberExpenseExclusion {
+  expenseId: string;
+  description: string;
+  categoryName: string;
+  expenseDate: string;
+  payerMemberId: string;
+  payerName: string;
+  totalAmountCents: number;
+  reason: "joined_after" | "custom_exclusion";
+  reasonText: string;
+}
+
+export interface MemberExpenseStatement {
+  memberId: string;
+  memberName: string;
+  joinedDate: string | null;
+  totalPaidCents: number;
+  totalOwedCents: number;
+  netBalanceCents: number;
+  participations: MemberExpenseParticipation[];
+  exclusions: MemberExpenseExclusion[];
+}
+
+/**
+ * Função pura de explicabilidade contábil:
+ * Discrimina para um dado membro todas as despesas em que ele participou (com valor e cota)
+ * e todas as despesas em que ele NÃO participou (com o motivo claro e transparente).
+ */
+export function getMemberExpenseStatement(
+  memberId: string,
+  members: readonly MemberItemForBalance[],
+  expenses: readonly ExpenseItemForBalance[]
+): MemberExpenseStatement {
+  const member = members.find((m) => m.id === memberId);
+  const memberName = member?.name ?? "Participante";
+  const memberMap = new Map(members.map((m) => [m.id, m.name]));
+
+  let totalPaid = 0;
+  let totalOwed = 0;
+  const participations: MemberExpenseParticipation[] = [];
+  const exclusions: MemberExpenseExclusion[] = [];
+
+  for (const expense of expenses) {
+    const isPayer = expense.paid_by_member_id === memberId;
+    if (isPayer) {
+      totalPaid += expense.amount_cents;
+    }
+
+    const payerName = memberMap.get(expense.paid_by_member_id) ?? "Outro amigo";
+    const desc = expense.description || "Despesa da viagem";
+    const cat = expense.category_name || "Geral";
+    const date = expense.expense_date || "";
+    const id = expense.id || `${date}-${desc}-${expense.amount_cents}`;
+
+    const isCustomSplit =
+      expense.split_type === "custom" &&
+      Boolean(expense.splits && expense.splits.length > 0);
+
+    if (isCustomSplit && expense.splits) {
+      const split = expense.splits.find((s) => s.member_id === memberId);
+      if (split && split.share_cents > 0) {
+        totalOwed += split.share_cents;
+        participations.push({
+          expenseId: id,
+          description: desc,
+          categoryName: cat,
+          expenseDate: date,
+          payerMemberId: expense.paid_by_member_id,
+          payerName,
+          totalAmountCents: expense.amount_cents,
+          userShareCents: split.share_cents,
+        });
+      } else {
+        const participatingNames = expense.splits
+          .map((s) => memberMap.get(s.member_id))
+          .filter(Boolean)
+          .join(", ");
+        exclusions.push({
+          expenseId: id,
+          description: desc,
+          categoryName: cat,
+          expenseDate: date,
+          payerMemberId: expense.paid_by_member_id,
+          payerName,
+          totalAmountCents: expense.amount_cents,
+          reason: "custom_exclusion",
+          reasonText: participatingNames
+            ? `Dividida exclusivamente entre ${participatingNames}.`
+            : "Participante não incluído nesta despesa específica.",
+        });
+      }
+    } else {
+      const isJoinedAfter =
+        Boolean(member?.joined_date && expense.expense_date && expense.expense_date < member.joined_date);
+
+      if (isJoinedAfter) {
+        exclusions.push({
+          expenseId: id,
+          description: desc,
+          categoryName: cat,
+          expenseDate: date,
+          payerMemberId: expense.paid_by_member_id,
+          payerName,
+          totalAmountCents: expense.amount_cents,
+          reason: "joined_after",
+          reasonText: `Despesa realizada em ${date}, antes da entrada de ${memberName} no grupo (${member?.joined_date}).`,
+        });
+      } else {
+        const eligibleMembers = members.filter((m) => {
+          if (!m.joined_date || !expense.expense_date) return true;
+          return expense.expense_date >= m.joined_date;
+        });
+        const targetMembers = eligibleMembers.length > 0 ? eligibleMembers : members;
+        const equalSplits = calculateEqualSplits({
+          totalAmountCents: expense.amount_cents,
+          memberIds: targetMembers.map((m) => m.id),
+          payerMemberId: expense.paid_by_member_id,
+        });
+        const mySplit = equalSplits.find((s) => s.memberId === memberId);
+        const share = mySplit?.shareCents ?? 0;
+        totalOwed += share;
+        participations.push({
+          expenseId: id,
+          description: desc,
+          categoryName: cat,
+          expenseDate: date,
+          payerMemberId: expense.paid_by_member_id,
+          payerName,
+          totalAmountCents: expense.amount_cents,
+          userShareCents: share,
+        });
+      }
+    }
+  }
+
+  return {
+    memberId,
+    memberName,
+    joinedDate: member?.joined_date ?? null,
+    totalPaidCents: totalPaid,
+    totalOwedCents: totalOwed,
+    netBalanceCents: totalPaid - totalOwed,
+    participations,
+    exclusions,
+  };
 }
 
 /**

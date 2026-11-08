@@ -100,6 +100,7 @@ describe("data/repositories/trips", () => {
         currency: "BRL",
         coverPhotoUrl: null,
         initialMembers: undefined,
+        hostName: null,
       });
     });
 
@@ -120,6 +121,15 @@ describe("data/repositories/trips", () => {
         if (table === "trip_members") {
           return { insert: mockInsertMember };
         }
+        if (table === "profiles") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: { name: "Gabriel" }, error: null }),
+              }),
+            }),
+          };
+        }
         return {};
       });
 
@@ -129,6 +139,7 @@ describe("data/repositories/trips", () => {
         title: "Mochilão",
         start_date: "2027-01-10",
         end_date: "2027-01-15",
+        host_name: "Gabriel",
       });
 
       expect(result).toEqual(createdTrip);
@@ -136,7 +147,7 @@ describe("data/repositories/trips", () => {
       expect(mockInsertMember).toHaveBeenCalledWith(
         expect.objectContaining({
           trip_id: "trip-new",
-          name: "Você",
+          name: "Gabriel",
           is_host: true,
           user_id: "user-1",
         })

@@ -1,5 +1,6 @@
 /**
  * Modal para adicionar participantes a uma viagem existente.
+ * Permite definir se o amigo participa desde o início ou a partir de uma data específica.
  */
 
 import { useState } from "react";
@@ -9,6 +10,7 @@ import {
   Button,
   Input,
   Select,
+  DatePicker,
 } from "@/components/ui";
 import { useAddTripMemberMutation } from "@/state/queries/use-trips";
 import type { TripPixKeyType } from "@/types/trips";
@@ -34,6 +36,8 @@ export function AddTripMemberDialog({
   const [name, setName] = useState("");
   const [pixKey, setPixKey] = useState("");
   const [pixKeyType, setPixKeyType] = useState<TripPixKeyType>("cpf");
+  const [participationMode, setParticipationMode] = useState<"all" | "from_date">("all");
+  const [joinedDate, setJoinedDate] = useState(() => new Date().toISOString().split("T")[0] ?? "");
 
   const addMemberMutation = useAddTripMemberMutation();
 
@@ -47,10 +51,12 @@ export function AddTripMemberDialog({
         name: name.trim(),
         pix_key: pixKey.trim() || null,
         pix_key_type: pixKey.trim() ? pixKeyType : null,
+        joined_date: participationMode === "from_date" ? joinedDate : null,
       });
 
       setName("");
       setPixKey("");
+      setParticipationMode("all");
       onOpenChange(false);
     } catch {
       // O erro já é tratado e exibido via toast destrutivo no onError do useAddTripMemberMutation
@@ -63,7 +69,7 @@ export function AddTripMemberDialog({
       onOpenChange={onOpenChange}
       size="md"
       title="Adicionar Participante"
-      description="Insira o nome do amigo e a chave Pix para os acertos da viagem."
+      description="Insira o nome do amigo, chave Pix e quando ele ingressa nas despesas da viagem."
       footer={
         <ModalFooter>
           <Button
@@ -120,9 +126,55 @@ export function AddTripMemberDialog({
               value={pixKey}
               onChange={(e) => setPixKey(e.target.value)}
               placeholder="Para receber transferências"
-              className="text-base sm:text-sm"
+              className="text-base sm:text-sm font-mono"
             />
           </div>
+        </div>
+
+        {/* Participação nas despesas */}
+        <div className="space-y-2 pt-2 border-t border-border/80">
+          <label className="text-xs font-semibold text-foreground block">
+            Participação nos gastos da viagem
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setParticipationMode("all")}
+              className={`p-2.5 rounded-xl text-xs font-medium text-center border transition-all cursor-pointer ${
+                participationMode === "all"
+                  ? "bg-primary/10 border-primary text-primary"
+                  : "bg-surface-raised border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Desde o início (todos os gastos)
+            </button>
+            <button
+              type="button"
+              onClick={() => setParticipationMode("from_date")}
+              className={`p-2.5 rounded-xl text-xs font-medium text-center border transition-all cursor-pointer ${
+                participationMode === "from_date"
+                  ? "bg-primary/10 border-primary text-primary"
+                  : "bg-surface-raised border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              A partir da chegada
+            </button>
+          </div>
+
+          {participationMode === "from_date" && (
+            <div className="space-y-1.5 p-3 rounded-xl bg-surface-raised border border-border/80 mt-2">
+              <label className="text-xs font-semibold text-foreground">
+                Data de chegada do amigo
+              </label>
+              <DatePicker
+                value={joinedDate}
+                onChange={(val) => setJoinedDate(val ?? new Date().toISOString().split("T")[0] ?? "")}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Despesas gerais realizadas antes desta data não serão cobradas deste amigo.
+              </p>
+            </div>
+          )}
         </div>
       </form>
     </Modal>

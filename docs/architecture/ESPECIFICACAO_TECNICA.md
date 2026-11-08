@@ -1161,6 +1161,13 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
 8. **Criação Atômica via RPC e Políticas RLS Não-Recursivas**:
    - Criação de viagens e participantes iniciais realizada de forma atômica via RPC transacional `create_trip` (Regra 5 AGENTS.md), garantindo integridade ACID em uma única transação no banco.
    - Políticas de Row Level Security (RLS) estruturadas com funções auxiliares `SECURITY DEFINER` (`is_trip_member`, `is_trip_host`, `can_access_trip_expense`), eliminando qualquer risco de recursão cíclica entre `trips` e `trip_members` (código Postgres 42P17).
+9. **Entrada de Participantes e Explicabilidade de Saldos (`joined_date`, Extrato e Rebalanceamento)**:
+   - Ao adicionar amigos no decorrer da viagem, o organizador pode escolher entre participação retroativa ("Desde o início") ou proporcional ("A partir da data de chegada" via `trip_members.joined_date`). Despesas anteriores à chegada são excluídas automaticamente do saldo devido daquele membro.
+   - **Transparência e Explicabilidade**: o modal `TripMemberStatementDialog` audita todas as despesas da viagem, discriminando claramente quais foram assumidas (com cota calculada e quem pagou) e quais foram isentas (com a justificativa textual "Não participou: entrou no grupo após esta despesa").
+   - **Equilíbrio de Custos Sob Demanda**: botão "Equilibrar Tudo" (`RebalanceTripSplitsDialog`) permite unificar retroativamente todas as contas do grupo quando os amigos decidem ratear custos prévios em conjunto.
+10. **Identidade do Anfitrião e Edição Completa de Despesas**:
+    - O anfitrião tem seu nome resolvido automaticamente pelo perfil autenticado (`profiles.name`), podendo personalizar seu nome de exibição no grupo durante a criação da viagem (`p_host_name` na RPC `create_trip`).
+    - Despesas já registradas podem ser editadas a qualquer momento via `EditTripExpenseDialog` (`updateTripExpense`), recalculando as cotas atômicas e atualizando em tempo real o balanço líquido e as sugestões de liquidação.
 
 ---
 

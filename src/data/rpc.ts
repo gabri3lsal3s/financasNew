@@ -1583,6 +1583,7 @@ export async function createTripRpc(input: {
     pix_key?: string | null;
     pix_key_type?: string | null;
   }[];
+  hostName?: string | null;
 }): Promise<Trip> {
   return unwrapRpc(
     callRpc("create_trip" as never, {
@@ -1593,6 +1594,7 @@ export async function createTripRpc(input: {
       p_currency: input.currency ?? "BRL",
       p_cover_photo_url: input.coverPhotoUrl ?? null,
       p_initial_members: input.initialMembers ?? [],
+      p_host_name: input.hostName ?? null,
     } as never),
   );
 }

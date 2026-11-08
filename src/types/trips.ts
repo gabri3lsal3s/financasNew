@@ -51,6 +51,7 @@ export type TripMember = {
   pix_key: string | null;
   pix_key_type: TripPixKeyType | null;
   is_host: boolean;
+  joined_date?: string | null;
   created_at: string;
 };
 
@@ -97,6 +98,7 @@ export type PublicTripMember = {
   has_axis_account: boolean;
   pix_key: string | null;
   pix_key_type: TripPixKeyType | null;
+  joined_date?: string | null;
 };
 
 export type PublicTripExpense = {

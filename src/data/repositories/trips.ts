@@ -33,6 +33,7 @@ export interface CreateTripInput {
   end_date: string;
   currency?: string;
   cover_photo_url?: string | null;
+  host_name?: string | null;
   initial_members?: {
     name: string;
     pix_key?: string | null;
@@ -47,6 +48,7 @@ export interface AddTripMemberInput {
   pix_key_type?: TripPixKeyType | null;
   is_host?: boolean;
   user_id?: string | null;
+  joined_date?: string | null;
 }
 
 export interface AddTripExpenseInput {
@@ -60,6 +62,21 @@ export interface AddTripExpenseInput {
   receipt_url?: string | null;
   linked_personal_expense_id?: string | null;
   splits: {
+    member_id: string;
+    share_cents: number;
+  }[];
+}
+
+export interface UpdateTripExpenseInput {
+  expense_id: string;
+  paid_by_member_id?: string;
+  amount_cents?: number;
+  description?: string;
+  category_name?: string;
+  expense_date?: string;
+  split_type?: TripSplitType;
+  receipt_url?: string | null;
+  splits?: {
     member_id: string;
     share_cents: number;
   }[];
@@ -170,6 +187,7 @@ export async function createTrip(input: CreateTripInput): Promise<Trip> {
       currency: input.currency ?? "BRL",
       coverPhotoUrl: input.cover_photo_url ?? null,
       initialMembers: input.initial_members,
+      hostName: input.host_name ? input.host_name.trim() : null,
     });
   } catch (rpcErr) {
     // Se for erro de validação ou regra de negócio, propaga imediatamente
@@ -203,10 +221,23 @@ export async function createTrip(input: CreateTripInput): Promise<Trip> {
 
     if (tripError || !tripRow) handleDbError(tripError, "Erro ao criar viagem");
 
+    // Resolve o nome do anfitrião
+    let hostName = input.host_name ? input.host_name.trim() : "";
+    if (!hostName) {
+      const { data: profile } = await resolveQuery<{ name?: string | null }>(
+        supabase
+          .from("profiles" as never)
+          .select("name" as never)
+          .eq("id", uid)
+          .maybeSingle() as never
+      );
+      hostName = profile?.name?.trim() || "Organizador";
+    }
+
     // Cadastra o host como primeiro membro
     await supabase.from("trip_members" as never).insert({
       trip_id: tripRow.id,
-      name: "Você",
+      name: hostName,
       user_id: uid,
       is_host: true,
     } as never);
@@ -268,6 +299,7 @@ export async function addTripMember(
         pix_key_type: input.pix_key_type ?? null,
         is_host: input.is_host ?? false,
         user_id: input.user_id ?? null,
+        joined_date: input.joined_date ?? null,
       } as never)
       .select()
       .single() as never
@@ -275,6 +307,17 @@ export async function addTripMember(
 
   if (error || !data) handleDbError(error, "Erro ao adicionar participante");
   return data;
+}
+
+export async function rebalanceTripMembers(tripId: string): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await resolveQuery(
+    supabase
+      .from("trip_members" as never)
+      .update({ joined_date: null } as never)
+      .eq("trip_id", tripId) as never
+  );
+  if (error) handleDbError(error, "Erro ao equilibrar despesas da viagem");
 }
 
 export async function removeTripMember(memberId: string): Promise<void> {
@@ -330,6 +373,68 @@ export async function addTripExpense(
 
     if (splitError) {
       handleDbError(splitError, "Erro ao registrar divisão de cotas da despesa");
+    }
+  }
+
+  return expenseRow;
+}
+
+export async function updateTripExpense(
+  input: UpdateTripExpenseInput
+): Promise<TripExpense> {
+  const supabase = getSupabase();
+
+  const updatePayload: Record<string, unknown> = {};
+  if (input.paid_by_member_id !== undefined) updatePayload.paid_by_member_id = input.paid_by_member_id;
+  if (input.amount_cents !== undefined) updatePayload.amount_cents = input.amount_cents;
+  if (input.description !== undefined) updatePayload.description = input.description.trim();
+  if (input.category_name !== undefined) updatePayload.category_name = input.category_name;
+  if (input.expense_date !== undefined) updatePayload.expense_date = input.expense_date;
+  if (input.split_type !== undefined) updatePayload.split_type = input.split_type;
+  if (input.receipt_url !== undefined) updatePayload.receipt_url = input.receipt_url;
+
+  const { data: expenseRow, error: expenseError } = await resolveQuery<TripExpense>(
+    supabase
+      .from("trip_expenses" as never)
+      .update(updatePayload as never)
+      .eq("id", input.expense_id)
+      .select()
+      .single() as never
+  );
+
+  if (expenseError || !expenseRow) {
+    handleDbError(expenseError, "Erro ao atualizar despesa da viagem");
+  }
+
+  // Se splits foram fornecidos, recria as cotas de forma atômica
+  if (input.splits) {
+    const { error: deleteSplitsError } = await resolveQuery(
+      supabase
+        .from("trip_expense_splits" as never)
+        .delete()
+        .eq("expense_id", input.expense_id) as never
+    );
+
+    if (deleteSplitsError) {
+      handleDbError(deleteSplitsError, "Erro ao atualizar divisão de cotas da despesa");
+    }
+
+    if (input.splits.length > 0) {
+      const splitsToInsert = input.splits.map((s) => ({
+        expense_id: input.expense_id,
+        member_id: s.member_id,
+        share_cents: s.share_cents,
+      }));
+
+      const { error: insertSplitsError } = await resolveQuery(
+        supabase
+          .from("trip_expense_splits" as never)
+          .insert(splitsToInsert as never) as never
+      );
+
+      if (insertSplitsError) {
+        handleDbError(insertSplitsError, "Erro ao registrar novas cotas da despesa");
+      }
     }
   }
 

@@ -21,14 +21,17 @@ import {
   addTripMember,
   removeTripMember,
   addTripExpense,
+  updateTripExpense,
   deleteTripExpense,
   fetchPublicTripLedger,
   submitPublicExpense,
   recordTripSettlements,
   confirmTripSettlement,
+  rebalanceTripMembers,
   type CreateTripInput,
   type AddTripMemberInput,
   type AddTripExpenseInput,
+  type UpdateTripExpenseInput,
 } from "@/data/repositories/trips";
 import {
   calculateMemberBalances,
@@ -103,10 +106,15 @@ export function useTripDetails(tripId: string | null | undefined) {
           name: m.name,
           pix_key: m.pix_key,
           pix_key_type: m.pix_key_type,
+          joined_date: m.joined_date,
         })),
         expenses.map((e) => ({
+          id: e.id,
+          description: e.description,
+          category_name: e.category_name,
           paid_by_member_id: e.paid_by_member_id,
           amount_cents: e.amount_cents,
+          expense_date: e.expense_date,
           split_type: e.split_type,
           splits: (e.splits ?? []).map((s) => ({
             member_id: s.member_id,
@@ -165,10 +173,15 @@ export function usePublicTrip(token: string | null | undefined, passcode?: strin
           name: m.name,
           pix_key: m.pix_key,
           pix_key_type: m.pix_key_type,
+          joined_date: m.joined_date,
         })),
         data.expenses.map((e) => ({
+          id: e.id,
+          description: e.description,
+          category_name: e.category_name,
           paid_by_member_id: e.paid_by_member_id,
           amount_cents: e.amount_cents,
+          expense_date: e.expense_date,
           split_type: e.split_type,
           splits: e.splits.map((s) => ({
             member_id: s.member_id,
@@ -379,6 +392,31 @@ export function useDeleteTripExpenseMutation(tripId: string) {
   });
 }
 
+export function useUpdateTripExpenseMutation(tripId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: UpdateTripExpenseInput) => updateTripExpense(input),
+    onSuccess: (expense) => {
+      queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.detail(tripId) });
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      triggerSensory("success");
+      pushToast({
+        title: "Despesa atualizada",
+        description: `"${expense.description}" foi alterada com sucesso.`,
+      });
+    },
+    onError: (err) => {
+      triggerSensory("error");
+      pushToast({
+        title: "Erro ao atualizar despesa",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 export function useRecordTripSettlementsMutation(tripId: string) {
   const queryClient = useQueryClient();
 
@@ -453,3 +491,35 @@ export function useSubmitPublicTripExpenseMutation(token: string) {
     },
   });
 }
+
+export function useRebalanceTripMutation(tripId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => rebalanceTripMembers(tripId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.detail(tripId) });
+      queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.lists() });
+      triggerSensory("success");
+      pushToast({
+        title: "Despesas equilibradas com sucesso",
+        description: "Todos os participantes agora dividem igualmente todos os custos gerais da viagem.",
+      });
+    },
+    onError: (err) => {
+      triggerSensory("error");
+      pushToast({
+        title: "Erro ao equilibrar despesas",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export type {
+  CreateTripInput,
+  AddTripMemberInput,
+  AddTripExpenseInput,
+  UpdateTripExpenseInput,
+};
