@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Bell } from "lucide-react";
 import {
   Badge,
+  Button,
   Card,
   CardContent,
   CardHeader,
@@ -14,6 +15,7 @@ import { triggerSensory } from "@/services/sensory";
 import {
   useUserPreferences,
   useUpdateReminderPreferences,
+  useUpdateCustomSettings,
   useUserAccess,
 } from "@/state";
 import { pushToast } from "@/services/toast";
@@ -27,8 +29,7 @@ import {
   setDailyReminderTime,
   scheduleDailyReminder,
   cancelDailyReminder,
-  checkNotificationPermissions,
-  requestNotificationPermissions,
+  usePermissionsStatus,
 } from "@/services/native";
 
 const DAILY_REMINDER_TIME_OPTIONS: SelectOption[] = [
@@ -54,21 +55,32 @@ export function RemindersCard() {
   const { hasFeature } = useUserAccess();
   const preferencesQuery = useUserPreferences();
   const updateReminderPreferencesMutation = useUpdateReminderPreferences();
+  const updateCustomSettingsMutation = useUpdateCustomSettings();
+  const { postNotificationsGranted, requestPostNotifications } = usePermissionsStatus();
 
   const remindersEnabled = preferencesQuery.data?.reminders_enabled ?? true;
   const billDaysBefore = preferencesQuery.data?.reminder_days_before_bill ?? 3;
   const debtDaysBefore = preferencesQuery.data?.reminder_days_before_debt ?? 3;
+  const cloudDeviceNotifs = preferencesQuery.data?.custom_settings?.deviceNotifications;
 
-  const [dailyReminderActive, setDailyReminderActive] = useState(() => isDailyReminderEnabled());
-  const [dailyReminderTime, setDailyReminderTimeState] = useState(() => getDailyReminderTime());
-  const [dueNotificationsActive, setDueNotificationsActive] = useState(() => isDueNotificationsEnabled());
-  const [devicePermissionGranted, setDevicePermissionGranted] = useState(false);
+  const [localDailyReminderActive, setLocalDailyReminderActive] = useState<boolean | null>(null);
+  const [localDailyReminderTime, setLocalDailyReminderTime] = useState<string | null>(null);
+  const [localDueNotificationsActive, setLocalDueNotificationsActive] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    void checkNotificationPermissions().then((res) => {
-      setDevicePermissionGranted(res.granted);
-    });
-  }, []);
+  const dueNotificationsActive =
+    localDueNotificationsActive ??
+    cloudDeviceNotifs?.dueNotificationsEnabled ??
+    isDueNotificationsEnabled();
+
+  const dailyReminderActive =
+    localDailyReminderActive ??
+    cloudDeviceNotifs?.dailyReminderEnabled ??
+    isDailyReminderEnabled();
+
+  const dailyReminderTime =
+    localDailyReminderTime ??
+    cloudDeviceNotifs?.dailyReminderTime ??
+    getDailyReminderTime();
 
   const handleToggleReminders = (enabled: boolean) => {
     triggerSensory("toggle");
@@ -91,28 +103,29 @@ export function RemindersCard() {
 
   const handleToggleDueNotifications = async (enabled: boolean) => {
     triggerSensory("toggle");
+    setDueNotificationsEnabled(enabled);
+    setLocalDueNotificationsActive(enabled);
+    updateCustomSettingsMutation.mutate({
+      deviceNotifications: { dueNotificationsEnabled: enabled },
+    });
+
     if (enabled) {
-      const perm = await requestNotificationPermissions();
-      setDevicePermissionGranted(perm.granted);
-      if (!perm.granted) {
+      const granted = await requestPostNotifications();
+      if (!granted) {
         pushToast({
-          title: "Permissão de notificação necessária",
+          title: "Permissão pendente no sistema",
           description:
             "Habilite as notificações no navegador ou nas configurações do seu celular para receber alertas de contas.",
-          variant: "destructive",
+          variant: "warning",
         });
-        return;
+      } else {
+        pushToast({
+          title: "Notificações de contas ativadas",
+          description: "Você receberá alertas no dispositivo sobre faturas e dívidas próximas do vencimento.",
+          variant: "success",
+        });
       }
-      setDueNotificationsEnabled(true);
-      setDueNotificationsActive(true);
-      pushToast({
-        title: "Notificações de contas ativadas",
-        description: "Você receberá alertas no dispositivo sobre faturas e dívidas próximas do vencimento.",
-        variant: "success",
-      });
     } else {
-      setDueNotificationsEnabled(false);
-      setDueNotificationsActive(false);
       pushToast({
         title: "Notificações de contas desativadas",
         variant: "default",
@@ -121,21 +134,25 @@ export function RemindersCard() {
   };
 
   const handleToggleDailyReminder = async (enabled: boolean) => {
+    triggerSensory("toggle");
+    setDailyReminderEnabled(enabled);
+    setLocalDailyReminderActive(enabled);
+    updateCustomSettingsMutation.mutate({
+      deviceNotifications: { dailyReminderEnabled: enabled },
+    });
+
     if (enabled) {
-      const perm = await requestNotificationPermissions();
-      if (!perm.granted) {
+      const granted = await requestPostNotifications();
+      if (!granted) {
         pushToast({
-          title: "Permissão de notificação necessária",
-          description: "Habilite as notificações nas configurações do seu celular para receber o lembrete.",
-          variant: "destructive",
+          title: "Permissão pendente no sistema",
+          description: "Habilite as notificações nas configurações do seu celular para que o lembrete seja entregue.",
+          variant: "warning",
         });
-        return;
       }
       const [h, m] = dailyReminderTime.split(":").map(Number);
       const scheduled = await scheduleDailyReminder({ hour: h || 20, minute: m || 0 });
       if (scheduled) {
-        setDailyReminderEnabled(true);
-        setDailyReminderActive(true);
         pushToast({
           title: "Lembrete diário ativado",
           description: `Você receberá uma notificação com botões rápidos todos os dias às ${dailyReminderTime}.`,
@@ -150,8 +167,6 @@ export function RemindersCard() {
       }
     } else {
       await cancelDailyReminder();
-      setDailyReminderEnabled(false);
-      setDailyReminderActive(false);
       pushToast({
         title: "Lembrete diário desativado",
         variant: "default",
@@ -160,8 +175,11 @@ export function RemindersCard() {
   };
 
   const handleDailyReminderTimeChange = async (time: string) => {
-    setDailyReminderTimeState(time);
+    setLocalDailyReminderTime(time);
     setDailyReminderTime(time);
+    updateCustomSettingsMutation.mutate({
+      deviceNotifications: { dailyReminderTime: time },
+    });
     if (dailyReminderActive) {
       const [h, m] = time.split(":").map(Number);
       await scheduleDailyReminder({ hour: h || 20, minute: m || 0 });
@@ -302,44 +320,141 @@ export function RemindersCard() {
             </p>
           </div>
 
-          <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/80 bg-surface shadow-xs">
-            <div className="pr-4 space-y-0.5">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm text-foreground">
-                  Notificações de Contas no Dispositivo
-                </span>
-                <Badge variant={devicePermissionGranted ? "positive" : "muted"} size="xs">
-                  {devicePermissionGranted ? "Permitido" : "Não autorizado"}
-                </Badge>
+          <div className="p-3.5 rounded-xl border border-border/80 bg-surface shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="pr-4 space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm text-foreground">
+                    Notificações de Contas no Dispositivo
+                  </span>
+                  <Badge
+                    variant={
+                      !dueNotificationsActive
+                        ? "muted"
+                        : postNotificationsGranted
+                          ? "positive"
+                          : "warning"
+                    }
+                    size="xs"
+                  >
+                    {!dueNotificationsActive
+                      ? "Desativado"
+                      : postNotificationsGranted
+                        ? "Ativado"
+                        : "Permissão Pendente"}
+                  </Badge>
+                </div>
+                <div className="text-xs text-muted-foreground leading-relaxed">
+                  Emite alertas no celular ou navegador quando houver faturas ou dívidas vencendo hoje ou atrasadas.
+                </div>
               </div>
-              <div className="text-xs text-muted-foreground leading-relaxed">
-                Emite alertas no celular ou navegador quando houver faturas ou dívidas vencendo hoje ou atrasadas.
-              </div>
+              <Checkbox
+                checked={dueNotificationsActive}
+                onCheckedChange={handleToggleDueNotifications}
+                aria-label="Habilitar Notificações de Contas no Dispositivo"
+              />
             </div>
-            <Checkbox
-              checked={dueNotificationsActive}
-              onCheckedChange={handleToggleDueNotifications}
-              aria-label="Habilitar Notificações de Contas no Dispositivo"
-            />
+
+            {dueNotificationsActive && !postNotificationsGranted && (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl border border-warning/30 bg-warning/5 gap-2.5">
+                <div className="text-[11px] text-muted-foreground leading-relaxed">
+                  <span className="font-semibold text-foreground block">
+                    Envio de alertas bloqueado pelo sistema
+                  </span>
+                  As notificações estão ativas no app, mas desautorizadas no Android ou navegador.
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void requestPostNotifications()}
+                    className="text-xs h-7 px-2.5 border-warning/40 hover:bg-warning/10 text-foreground cursor-pointer"
+                  >
+                    Autorizar no Sistema
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void handleToggleDueNotifications(false)}
+                    className="text-xs h-7 px-2 text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    Desativar
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Lembrete de Fechamento Diário */}
         <div className="pt-3.5 border-t border-border/80 space-y-3">
-          <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/80 bg-surface shadow-xs">
-            <div className="pr-4 space-y-0.5">
-              <div className="font-semibold text-sm text-foreground">
-                Lembrete de Fechamento Diário
+          <div className="p-3.5 rounded-xl border border-border/80 bg-surface shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="pr-4 space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm text-foreground">
+                    Lembrete de Fechamento Diário
+                  </span>
+                  <Badge
+                    variant={
+                      !dailyReminderActive
+                        ? "muted"
+                        : postNotificationsGranted
+                          ? "positive"
+                          : "warning"
+                    }
+                    size="xs"
+                  >
+                    {!dailyReminderActive
+                      ? "Desativado"
+                      : postNotificationsGranted
+                        ? "Ativado"
+                        : "Permissão Pendente"}
+                  </Badge>
+                </div>
+                <div className="text-xs text-muted-foreground leading-relaxed">
+                  Receba uma notificação no dispositivo com ações rápidas para registrar despesas e receitas do dia.
+                </div>
               </div>
-              <div className="text-xs text-muted-foreground leading-relaxed">
-                Receba uma notificação no dispositivo com ações rápidas para registrar despesas e receitas do dia.
-              </div>
+              <Checkbox
+                checked={dailyReminderActive}
+                onCheckedChange={handleToggleDailyReminder}
+                aria-label="Habilitar Lembrete de Fechamento Diário"
+              />
             </div>
-            <Checkbox
-              checked={dailyReminderActive}
-              onCheckedChange={handleToggleDailyReminder}
-              aria-label="Habilitar Lembrete de Fechamento Diário"
-            />
+
+            {dailyReminderActive && !postNotificationsGranted && (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl border border-warning/30 bg-warning/5 gap-2.5">
+                <div className="text-[11px] text-muted-foreground leading-relaxed">
+                  <span className="font-semibold text-foreground block">
+                    Permissão de notificações pendente
+                  </span>
+                  O lembrete diário está agendado, mas o Android/navegador está bloqueando a exibição.
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void requestPostNotifications()}
+                    className="text-xs h-7 px-2.5 border-warning/40 hover:bg-warning/10 text-foreground cursor-pointer"
+                  >
+                    Autorizar no Sistema
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void handleToggleDailyReminder(false)}
+                    className="text-xs h-7 px-2 text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    Desativar
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           {dailyReminderActive && (

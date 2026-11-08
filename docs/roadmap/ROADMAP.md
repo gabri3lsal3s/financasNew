@@ -1,5 +1,21 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.07 (Build 33)** registra a **Governança Reativa de Permissões Android APK, Persistência Híbrida em Nuvem e Consistência Honestidade do Assistente Bancário** (2026-11-07):
+> - **(1) Eliminação do Reset de Bancos e Preferências Locais**:
+>   - Sincronização automática multidispositivo das preferências do Assistente Bancário (`monitoredBanks`, `autoRegisterExpenses`, `smartCategorizationEnabled`) e Lembretes do Dispositivo (`dueNotificationsEnabled`, `dailyReminderEnabled`, `dailyReminderTime`) no Supabase (`user_preferences.custom_settings`);
+>   - Hidratação imediata no login e abertura do app (`CloudPreferencesSyncInner`), disparando a sincronização nativa com SharedPreferences no Android (`syncMonitoredBanksWithNative`) e evitando listas vazias ao alternar contas.
+> - **(2) Erradicação de Checkboxes com Falsos Positivos**:
+>   - Fim da suposição de funcionalidade ativa com permissão de sistema revogada no Android;
+>   - Exibição de estados verídicos: Badges `"Permissão Pendente"` em `RemindersCard` e `BankingAssistantCard` e ações diretas para autorizar no sistema ou desativar voluntariamente.
+> - **(3) Ciclo de Vida Reativo (`usePermissionsStatus`)**:
+>   - Hook central com monitoramento de `POST_NOTIFICATIONS` e `BIND_NOTIFICATION_LISTENER_SERVICE`;
+>   - Escuta ativa de retorno de segundo plano via `appStateChange` (Capacitor App), `visibilitychange` e `focus` de janela, atualizando o status no exato instante em que o usuário volta das configurações do Android.
+> - **(4) Banner Proativo na Home com Respeito à Escolha do Usuário (`PermissionsAlertBanner`)**:
+>   - Card integrado ao carrossel da Home (`DashboardAlertsCarousel`) com prioridade máxima para alertar sobre permissões pendentes em funcionalidades ativas no APK;
+>   - Opção de descarte definitivo ("Não ativar agora") persistida na nuvem (`dismissedPermissionAlerts`).
+> - **(5) Suíte de Testes 100% Verde**:
+>   - 8 novos testes unitários dedicados em `use-permissions-status.test.ts` e `permissions-alert-banner.test.tsx`, além de 100% de aprovação em `local-notifications.test.ts`, `notifications-tab.test.tsx` e `overview-page.test.tsx`.
+>
 > **v3.07 (Build 32)** registra o **Saneamento de Escopo & Reconstrução do Fluxo de Atualização e Download do APK Android Pro** (2026-11-07):
 > - **(1) Erradicação Completa de Funcionalidades Não Solicitadas**:
 >   - Exclusão integral do Programa de Afiliados e Parcerias (tabelas `affiliate_partners`, `referral_attributions`, RPCs, interfaces visuais, rotas e hooks);

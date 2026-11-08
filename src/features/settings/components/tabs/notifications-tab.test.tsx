@@ -53,6 +53,20 @@ vi.mock("@/services/native", async () => {
       .fn()
       .mockResolvedValue({ installedBankNames: [], installedPackages: [], apps: [] }),
     isNativePlatform: vi.fn().mockReturnValue(true),
+    usePermissionsStatus: vi.fn(() => ({
+      postNotificationsGranted: true,
+      listenerGranted: false, // Permite que os testes de Prominent Disclosure vejam o botão 'Habilitar no Android'
+      isChecking: false,
+      refresh: vi.fn().mockResolvedValue(undefined),
+      requestPostNotifications: vi.fn(async () => {
+        const res = await nativeServices.requestNotificationPermissions();
+        return Boolean(res?.granted);
+      }),
+      requestNotificationListener: vi.fn(async () => {
+        await nativeServices.requestNotificationListenerPermission();
+        return Boolean(await nativeServices.isNotificationListenerGranted());
+      }),
+    })),
   };
 });
 

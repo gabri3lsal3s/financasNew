@@ -20,7 +20,15 @@ import { useDynamicAppIcon } from "@/hooks/use-dynamic-app-icon";
 import { SubscriptionProvider, useIsPro } from "@/state/subscription-context";
 import { AppLockOverlay } from "@/app/app-lock-overlay";
 import { AppErrorBoundary } from "@/components/layout";
-import { initAppLockListener, setPrivacyShieldEnabled, syncDueReminderNotifications } from "@/services/native";
+import {
+  initAppLockListener,
+  setPrivacyShieldEnabled,
+  syncDueReminderNotifications,
+  syncBankAssistantWithCloud,
+  syncDeviceNotificationsWithCloud,
+  syncMonitoredBanksWithNative,
+  isNativePlatform,
+} from "@/services/native";
 import { useReminders } from "@/state";
 import { useDemoSession } from "@/state/demo-mode";
 import { useAuth } from "@/hooks/use-auth";
@@ -99,6 +107,17 @@ function CloudPreferencesSyncInner({ children }: { children: ReactNode }) {
       }
       if (preferences.custom_settings.bankCardMapping) {
         syncBankCardMappingFromCloud(preferences.custom_settings.bankCardMapping);
+      }
+      if (preferences.custom_settings.bankAssistant) {
+        const syncedBankPrefs = syncBankAssistantWithCloud(preferences.custom_settings.bankAssistant);
+        if (isNativePlatform()) {
+          void syncMonitoredBanksWithNative(
+            syncedBankPrefs.passiveCaptureEnabled ? syncedBankPrefs.monitoredBanks : [],
+          );
+        }
+      }
+      if (preferences.custom_settings.deviceNotifications) {
+        syncDeviceNotificationsWithCloud(preferences.custom_settings.deviceNotifications);
       }
     }
   }, [preferences?.custom_settings]);

@@ -50,6 +50,28 @@ export function setBankAssistantPreferences(
 }
 
 /**
+ * Sincroniza preferências do assistente bancário vindas da nuvem (Supabase custom_settings).
+ * Mescla de forma idempotente, preservando listas e flags locais se a nuvem não tiver valores.
+ */
+export function syncBankAssistantWithCloud(
+  cloudPrefs?: Partial<BankAssistantPreferences> | null,
+): BankAssistantPreferences {
+  if (!cloudPrefs || Object.keys(cloudPrefs).length === 0) {
+    return getBankAssistantPreferences();
+  }
+  const current = getBankAssistantPreferences();
+  const next: Partial<BankAssistantPreferences> = {
+    ...cloudPrefs,
+  };
+  if (cloudPrefs.monitoredBanks && cloudPrefs.monitoredBanks.length > 0) {
+    next.monitoredBanks = cloudPrefs.monitoredBanks;
+  } else if (current.monitoredBanks && current.monitoredBanks.length > 0) {
+    next.monitoredBanks = current.monitoredBanks;
+  }
+  return setBankAssistantPreferences(next);
+}
+
+/**
  * Redefine as preferências do assistente bancário para os padrões de fábrica.
  */
 export function resetBankAssistantPreferences(): BankAssistantPreferences {

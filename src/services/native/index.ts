@@ -18,3 +18,4 @@ export * from "./update-checker";
 export * from "./merchant-storage";
 export * from "./auto-register-banner";
 export * from "./receipt-extractor";
+export * from "./use-permissions-status";

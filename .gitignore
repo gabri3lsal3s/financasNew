@@ -34,3 +34,6 @@ android/.kotlin/
 android/build/
 android/app/build/
 android/capacitor-cordova-android-plugins/build/
+
+# Diagnostics / Screenshots
+diagnostico-*/

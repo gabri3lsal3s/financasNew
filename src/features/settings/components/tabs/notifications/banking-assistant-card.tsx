@@ -25,11 +25,10 @@ import { pushToast } from "@/services/toast";
 import { cn } from "@/lib/utils";
 import {
   useBankAssistantPreferences,
-  isNotificationListenerGranted,
-  requestNotificationListenerPermission,
   getInstalledBankingApps,
   isNativePlatform,
   syncMonitoredBanksWithNative,
+  usePermissionsStatus,
   type InstalledBankApp,
 } from "@/services/native";
 import {
@@ -56,8 +55,8 @@ export function BankingAssistantCard() {
   const navigate = useNavigate();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
   const { preferences: bankPrefs, updatePreferences: updateBankPrefs } = useBankAssistantPreferences();
+  const { listenerGranted, requestNotificationListener } = usePermissionsStatus();
 
-  const [listenerPermissionGranted, setListenerPermissionGranted] = useState(true);
   const [isDisclosureModalOpen, setIsDisclosureModalOpen] = useState(false);
   const [installedBanks, setInstalledBanks] = useState<string[]>([]);
   const [installedApps, setInstalledApps] = useState<InstalledBankApp[]>([]);
@@ -67,9 +66,6 @@ export function BankingAssistantCard() {
 
   useEffect(() => {
     if (isNative) {
-      void isNotificationListenerGranted().then((granted) => {
-        setListenerPermissionGranted(granted);
-      });
       void getInstalledBankingApps().then((res) => {
         setInstalledBanks(res.installedBankNames || []);
         setInstalledApps(res.apps || []);
@@ -127,14 +123,13 @@ export function BankingAssistantCard() {
     void syncMonitoredBanksWithNative(enabled ? bankPrefs.monitoredBanks : []);
 
     if (enabled) {
-      const granted = await isNotificationListenerGranted();
-      setListenerPermissionGranted(granted);
-      if (!granted) {
+      if (!listenerGranted) {
         setIsDisclosureModalOpen(true);
       } else {
         pushToast({
           title: "Captura de compras ativada",
           description: "Notificações bancárias serão detectadas e convertidas em sugestões.",
+          variant: "success",
         });
       }
     } else {
@@ -148,9 +143,7 @@ export function BankingAssistantCard() {
   const handleConfirmDisclosure = async () => {
     setIsDisclosureModalOpen(false);
     triggerSensory("action");
-    await requestNotificationListenerPermission();
-    const granted = await isNotificationListenerGranted();
-    setListenerPermissionGranted(granted);
+    const granted = await requestNotificationListener();
     if (!granted) {
       pushToast({
         title: "Permissão pendente no Android",
@@ -158,6 +151,7 @@ export function BankingAssistantCard() {
         variant: "warning",
       });
     } else {
+      void syncMonitoredBanksWithNative(bankPrefs.monitoredBanks);
       pushToast({
         title: "Permissão concedida",
         description: "Captura passiva de notificações bancárias autorizada.",
@@ -326,8 +320,21 @@ export function BankingAssistantCard() {
               <CreditCard className="size-4 text-muted-foreground" aria-hidden="true" />
               <span>Assistente Passivo de Compras &amp; Bancos</span>
             </span>
-            <Badge variant={bankPrefs.passiveCaptureEnabled ? "positive" : "muted"} size="xs">
-              {bankPrefs.passiveCaptureEnabled ? "Ativado" : "Desativado"}
+            <Badge
+              variant={
+                !bankPrefs.passiveCaptureEnabled
+                  ? "muted"
+                  : listenerGranted
+                    ? "positive"
+                    : "warning"
+              }
+              size="xs"
+            >
+              {!bankPrefs.passiveCaptureEnabled
+                ? "Desativado"
+                : listenerGranted
+                  ? "Ativado"
+                  : "Permissão Pendente"}
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -366,7 +373,7 @@ export function BankingAssistantCard() {
           </div>
 
           {/* Alerta de permissão do Android se pendente */}
-          {bankPrefs.passiveCaptureEnabled && !listenerPermissionGranted && (
+          {bankPrefs.passiveCaptureEnabled && !listenerGranted && (
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 rounded-xl border border-warning/40 bg-warning/5 gap-3">
               <div>
                 <div className="font-semibold text-xs text-foreground">
@@ -376,14 +383,24 @@ export function BankingAssistantCard() {
                   Para detectar compras em segundo plano, conceda acesso ao leitor de notificações nas configurações do dispositivo.
                 </p>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsDisclosureModalOpen(true)}
-                className="shrink-0 text-xs gap-1.5"
-              >
-                <span>Habilitar no Android</span>
-              </Button>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsDisclosureModalOpen(true)}
+                  className="text-xs gap-1.5 border-warning/40 hover:bg-warning/10 text-foreground cursor-pointer"
+                >
+                  <span>Habilitar no Android</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void handleTogglePassiveCapture(false)}
+                  className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  Desativar
+                </Button>
+              </div>
             </div>
           )}
 

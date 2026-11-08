@@ -31,6 +31,18 @@ const DEFAULT_REMINDER_TIME = "20:00";
 
 let isActionListenerActive = false;
 
+const KEY_DISMISSED_PERMISSION_ALERTS = "device_notifications_dismissed_permission_alerts";
+
+export interface DeviceNotificationPreferences {
+  dueNotificationsEnabled: boolean;
+  dailyReminderEnabled: boolean;
+  dailyReminderTime: string;
+  dismissedPermissionAlerts?: {
+    pushDue?: boolean;
+    passiveBankListener?: boolean;
+  };
+}
+
 /**
  * Lê se o lembrete de fechamento diário está ativado.
  */
@@ -47,11 +59,10 @@ export function setDailyReminderEnabled(enabled: boolean, userId?: string | null
 
 /**
  * Lê se as notificações no dispositivo para contas a vencer/vencidas estão ativadas.
- * Por padrão: true se o usuário tiver lembretes habilitados.
+ * Por padrão: false (exige intenção explícita ou autorização real).
  */
 export function isDueNotificationsEnabled(userId?: string | null): boolean {
-  const val = getUserStorageItem(KEY_DUE_NOTIFICATIONS_ENABLED, userId);
-  return val === null ? true : val === "true";
+  return getUserStorageItem(KEY_DUE_NOTIFICATIONS_ENABLED, userId) === "true";
 }
 
 /**
@@ -74,6 +85,94 @@ export function getDailyReminderTime(userId?: string | null): string {
  */
 export function setDailyReminderTime(time: string, userId?: string | null): void {
   setUserStorageItem(KEY_REMINDER_TIME, time, userId);
+}
+
+/**
+ * Obtém as preferências consolidadas de notificações no dispositivo.
+ */
+export function getDeviceNotificationPreferences(userId?: string | null): DeviceNotificationPreferences {
+  const rawDue = getUserStorageItem(KEY_DUE_NOTIFICATIONS_ENABLED, userId);
+  const rawDaily = getUserStorageItem(KEY_REMINDER_ENABLED, userId);
+  const rawTime = getUserStorageItem(KEY_REMINDER_TIME, userId);
+  const rawDismissed = getUserStorageItem(KEY_DISMISSED_PERMISSION_ALERTS, userId);
+
+  let dismissed: { pushDue?: boolean; passiveBankListener?: boolean } | undefined;
+  if (rawDismissed) {
+    try {
+      dismissed = JSON.parse(rawDismissed);
+    } catch {
+      // no-op
+    }
+  }
+
+  return {
+    dueNotificationsEnabled: rawDue === "true",
+    dailyReminderEnabled: rawDaily === "true",
+    dailyReminderTime: rawTime || DEFAULT_REMINDER_TIME,
+    dismissedPermissionAlerts: dismissed,
+  };
+}
+
+/**
+ * Sincroniza preferências de notificações no dispositivo vindas da nuvem (Supabase custom_settings).
+ */
+export function syncDeviceNotificationsWithCloud(
+  cloudPrefs?: {
+    dueNotificationsEnabled?: boolean;
+    dailyReminderEnabled?: boolean;
+    dailyReminderTime?: string;
+    dismissedPermissionAlerts?: {
+      pushDue?: boolean;
+      passiveBankListener?: boolean;
+    };
+  } | null,
+  userId?: string | null,
+): void {
+  if (!cloudPrefs) return;
+
+  if (cloudPrefs.dueNotificationsEnabled !== undefined) {
+    setDueNotificationsEnabled(cloudPrefs.dueNotificationsEnabled, userId);
+  }
+  if (cloudPrefs.dailyReminderEnabled !== undefined) {
+    setDailyReminderEnabled(cloudPrefs.dailyReminderEnabled, userId);
+  }
+  if (cloudPrefs.dailyReminderTime !== undefined) {
+    setDailyReminderTime(cloudPrefs.dailyReminderTime, userId);
+  }
+  if (cloudPrefs.dismissedPermissionAlerts !== undefined) {
+    setUserStorageItem(
+      KEY_DISMISSED_PERMISSION_ALERTS,
+      JSON.stringify(cloudPrefs.dismissedPermissionAlerts),
+      userId,
+    );
+  }
+}
+
+/**
+ * Registra a dispensa de alerta de permissão pelo usuário.
+ */
+export function setDismissedPermissionAlert(
+  type: "pushDue" | "passiveBankListener",
+  dismissed: boolean,
+  userId?: string | null,
+): void {
+  const current = getDeviceNotificationPreferences(userId);
+  const nextDismissed = {
+    ...(current.dismissedPermissionAlerts ?? {}),
+    [type]: dismissed,
+  };
+  setUserStorageItem(KEY_DISMISSED_PERMISSION_ALERTS, JSON.stringify(nextDismissed), userId);
+}
+
+/**
+ * Checa se o usuário dispensou o aviso de permissão para determinado canal.
+ */
+export function isPermissionAlertDismissed(
+  type: "pushDue" | "passiveBankListener",
+  userId?: string | null,
+): boolean {
+  const prefs = getDeviceNotificationPreferences(userId);
+  return Boolean(prefs.dismissedPermissionAlerts?.[type]);
 }
 
 /**

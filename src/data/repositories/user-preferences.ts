@@ -82,6 +82,14 @@ export async function updateCustomSettings(patch: Partial<UserCustomSettings>): 
       ...(current?.custom_settings?.bankAssistant ?? {}),
       ...(patch.bankAssistant ?? {}),
     },
+    deviceNotifications: {
+      ...(current?.custom_settings?.deviceNotifications ?? {}),
+      ...(patch.deviceNotifications ?? {}),
+      dismissedPermissionAlerts: {
+        ...(current?.custom_settings?.deviceNotifications?.dismissedPermissionAlerts ?? {}),
+        ...(patch.deviceNotifications?.dismissedPermissionAlerts ?? {}),
+      },
+    },
     merchantLearning: {
       ...(current?.custom_settings?.merchantLearning ?? {}),
       ...(patch.merchantLearning ?? {}),

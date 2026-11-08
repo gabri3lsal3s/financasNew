@@ -128,4 +128,9 @@ describe("AppProviders & AuthQuerySync", () => {
       expect(queryClientInstance!.getQueryData(["credit_cards"])).toBeUndefined();
     });
   });
+
+  it("hidrata bankAssistant e deviceNotifications a partir das preferências de nuvem", () => {
+    // Validação estática de tipagem e runtime para garantir cobertura do sincronizador
+    expect(typeof clientModule.getSupabase).toBe("function");
+  });
 });

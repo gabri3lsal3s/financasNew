@@ -644,6 +644,21 @@ O Assistente Passivo opera em modelo híbrido entre o cliente Android nativo e o
 4. **Governança & Matriz E2E (`receipt-e2e-matrix.test.ts`)**:
    - Suíte de integração cobrindo fluxos reais com 100% de aprovação, assegurando zero regressões no ciclo de vida de captura de comprovantes.
 
+### 14.5 Governança Reativa de Permissões Nativo-Android & Persistência em Nuvem
+1. **Hook Reativo de Ciclo de Vida (`src/services/native/use-permissions-status.ts`)**:
+   - Centraliza a verificação de permissões do sistema (`POST_NOTIFICATIONS` e `BIND_NOTIFICATION_LISTENER_SERVICE`).
+   - Escuta ativamente mudanças de ciclo de vida da aplicação nativa (`App.addListener("appStateChange")`), visibilidade (`visibilitychange`) e foco do documento (`focus`), garantindo atualização instantânea do estado quando o usuário retorna das telas de configurações do Android.
+   - Proteção estrita contra *race conditions* assíncronas utilizando ponteiro de sequência (`seqRef`).
+2. **Eliminação de Falsos Positivos e Estados Verídicos de UI**:
+   - Fim da inferência por flags locais desconectadas do sistema. O estado na interface só é exibido como `"Ativado"` se a permissão do sistema estiver comprovadamente concedida.
+   - Diagnósticos honestos com Badges `"Permissão Pendente"` e ações contextuais para abrir as configurações nativas ou desativar voluntariamente a funcionalidade.
+3. **Persistência Híbrida e Hidratação em Nuvem (`custom_settings.bankAssistant` & `deviceNotifications`)**:
+   - As preferências de bancos monitorados e notificações locais são mantidas no Supabase (`user_preferences.custom_settings`) e sincronizadas no login e inicialização pelo `CloudPreferencesSyncInner`.
+   - Propagação automática da lista de pacotes ao serviço nativo via `syncMonitoredBanksWithNative`, eliminando o reset silencioso de bancos ao alternar contas.
+4. **Alerta Proativo com Respeito à Escolha do Usuário (`PermissionsAlertBanner`)**:
+   - Banner canônico inserido no carrossel da Home (`DashboardAlertsCarousel`) quando detectada permissão pendente para lembretes ou assistente ativos no APK Android.
+   - Ação de descarte definitivo ("Não ativar agora") que grava a escolha consciente do usuário na nuvem (`dismissedPermissionAlerts`).
+
 ---
 
 ## 15. ASSISTENTE PROATIVO NA HOME & APRENDIZADO ATIVO (F4–F5)

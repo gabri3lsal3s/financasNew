@@ -83,6 +83,8 @@ export { InteractiveTargetDonut } from "./interactive-target-donut";
 export type { InteractiveTargetDonutProps, TargetDonutItem } from "./interactive-target-donut";
 export { DashboardAlertsCarousel } from "./dashboard-alerts-carousel";
 export type { DashboardAlertsCarouselProps, DashboardAlertItem } from "./dashboard-alerts-carousel";
+export { PermissionsAlertBanner } from "./permissions-alert-banner";
+export type { PermissionsAlertBannerProps, PermissionAlertBannerType } from "./permissions-alert-banner";
 export * from "./portfolio";
 export * from "./reports";
 export * from "./subscription";

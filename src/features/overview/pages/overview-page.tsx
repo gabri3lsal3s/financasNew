@@ -26,6 +26,8 @@ import {
   WelcomeFeatureModal,
   WelcomeModal,
   DemoTrackSelectModal,
+  PermissionsAlertBanner,
+  type PermissionAlertBannerType,
 } from "@/components/modules";
 import { isFirstUse, shouldShowOnboardingBanner } from "@/domain/onboarding";
 import {
@@ -72,7 +74,17 @@ import {
   useFamilyConsolidation,
   useFamilyMode,
   useMyFamily,
+  useUserPreferences,
+  useUpdateCustomSettings,
 } from "@/state";
+import {
+  usePermissionsStatus,
+  isNativePlatform,
+  useBankAssistantPreferences,
+  setDismissedPermissionAlert,
+  isPermissionAlertDismissed,
+  isDueNotificationsEnabled,
+} from "@/services/native";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { useOnboardingDismissed, usePendingSplitExpense, usePendingSimulation } from "@/hooks";
 import { CashCheckpointDialog } from "@/components/modules/cash-checkpoint-dialog";
@@ -143,6 +155,63 @@ export function OverviewPage() {
     !isOnboardingDismissed && onboardingQuery?.data
       ? shouldShowOnboardingBanner(onboardingQuery.data)
       : false;
+
+  const isNative = isNativePlatform();
+  const { postNotificationsGranted, listenerGranted, requestPostNotifications, requestNotificationListener } = usePermissionsStatus();
+  const { preferences: bankPrefs } = useBankAssistantPreferences();
+  const userPreferencesQuery = useUserPreferences();
+  const updateCustomSettingsMutation = useUpdateCustomSettings();
+
+  const cloudDeviceNotifs = userPreferencesQuery.data?.custom_settings?.deviceNotifications;
+  const dueNotificationsActive = cloudDeviceNotifs?.dueNotificationsEnabled ?? isDueNotificationsEnabled();
+
+  const isBankListenerMissing = isNative && bankPrefs.passiveCaptureEnabled && !listenerGranted;
+  const isPushDueMissing = isNative && dueNotificationsActive && !postNotificationsGranted;
+
+  const [permissionAlertDismissed, setPermissionAlertDismissed] = useState(false);
+
+  const isAlertDismissedInStorage =
+    isPermissionAlertDismissed("passiveBankListener") ||
+    isPermissionAlertDismissed("pushDue") ||
+    Boolean(cloudDeviceNotifs?.dismissedPermissionAlerts?.passiveBankListener) ||
+    Boolean(cloudDeviceNotifs?.dismissedPermissionAlerts?.pushDue);
+
+  const shouldShowPermissionsBanner =
+    isNative &&
+    !permissionAlertDismissed &&
+    !isAlertDismissedInStorage &&
+    (isBankListenerMissing || isPushDueMissing);
+
+  const permissionBannerType: PermissionAlertBannerType =
+    isBankListenerMissing && isPushDueMissing
+      ? "both"
+      : isBankListenerMissing
+        ? "bank_listener"
+        : "push_due";
+
+  const handlePermissionsBannerAction = () => {
+    if (permissionBannerType === "bank_listener") {
+      void requestNotificationListener();
+    } else if (permissionBannerType === "push_due") {
+      void requestPostNotifications();
+    } else {
+      navigate("/configuracoes?tab=notifications");
+    }
+  };
+
+  const handlePermissionsBannerDismiss = () => {
+    setPermissionAlertDismissed(true);
+    setDismissedPermissionAlert("passiveBankListener", true);
+    setDismissedPermissionAlert("pushDue", true);
+    updateCustomSettingsMutation.mutate({
+      deviceNotifications: {
+        dismissedPermissionAlerts: {
+          pushDue: true,
+          passiveBankListener: true,
+        },
+      },
+    });
+  };
 
   // Isolamento de erros críticos (§Fase 4): a tela só bloqueia se o fluxo financeiro base falhar
   const loading =
@@ -596,6 +665,17 @@ export function OverviewPage() {
   }, [isCurrentMonth, expensesQuery.data, incomesQuery.data]);
 
   const alertItems: (DashboardAlertItem | null | undefined | false)[] = [
+    shouldShowPermissionsBanner && {
+      id: "permissions-health-banner",
+      priority: 1,
+      content: (
+        <PermissionsAlertBanner
+          type={permissionBannerType}
+          onAction={handlePermissionsBannerAction}
+          onDismiss={handlePermissionsBannerDismiss}
+        />
+      ),
+    },
     isInactive && {
       id: "zero-guilt-balance-alignment",
       priority: 2,

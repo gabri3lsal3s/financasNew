@@ -809,6 +809,24 @@ O módulo de compartilhamento e crescimento orgânico foi projetado para permiti
 
 ---
 
+### 3.14 Governança de Permissões Android APK, Persistência Híbrida & Assistente Bancário Resiliente
+
+- **Problema Estrutural Resolvido:** em dispositivos Android nativos (APK), permissões de sistema (`POST_NOTIFICATIONS` e `BIND_NOTIFICATION_LISTENER_SERVICE`) podiam ser revogadas pelo usuário ou pelo sistema operacional sem que a aplicação refletisse o estado real. Ao alternar entre contas ou reiniciar a sessão, as preferências locais (`monitoredBanks`, flags de notificações) eram resetadas para o padrão vazio, sobrescrevendo as configurações salvas no Android SharedPreferences nativo e gerando checkboxes falsos positivos (marcados visualmente como ativos, porém inoperantes no sistema).
+- **Consistência e Estados Verídicos na UI (Verdade Nua e Crua):**
+  - **Eliminação de Falsos Positivos:** o status de ativação não é mais inferido puramente de intenções booleanas locais. Se a permissão nativa estiver revogada no Android, a interface sinaliza categoricamente o estado com o badge neutro/alerta `"Permissão Pendente"` ou `"Não autorizada no sistema"`, bloqueando a ilusão de funcionalidade operante.
+  - **Ações de Reparo e Desativação Clara:** o card de diagnóstico (`RemindersCard` e `BankingAssistantCard`) oferece botão primário para autorizar a permissão diretamente nas Configurações do Android e botão secundário explícito `"Desativar"`, permitindo que o usuário desista voluntariamente da funcionalidade sem atritos.
+- **Ciclo de Vida Reativo (`usePermissionsStatus`):**
+  - Hook central reativo que monitora continuamente `postNotificationsGranted` e `listenerGranted`.
+  - Registra ouvintes para `appStateChange` (Capacitor App), `visibilitychange` (Web/PWA) e `focus` de janela, garantindo que o status seja checado e atualizado no milissegundo exato em que o usuário retorna das Configurações do sistema operacional, sem exigir recarregamento manual da tela.
+- **Persistência em Nuvem Multidispositivo (`custom_settings.bankAssistant` & `deviceNotifications`):**
+  - As preferências de bancos monitorados (`monitoredBanks`), auto-cadastro, categorização inteligente e lembretes do dispositivo (`dueNotificationsEnabled`, `dailyReminderEnabled`, `dailyReminderTime`) são salvas de forma síncrona na nuvem (`user_preferences.custom_settings`) via `useUpdateCustomSettings`.
+  - No login ou inicialização em qualquer dispositivo, o provider `CloudPreferencesSyncInner` hidrata as preferências da nuvem e dispara a sincronização nativa com o Android SharedPreferences (`syncMonitoredBanksWithNative`), eliminando o reset de bancos ao deslogar ou trocar de aparelho.
+- **Banner Proativo na Home com Respeito à Escolha do Usuário (`PermissionsAlertBanner`):**
+  - Integrado ao carrossel de alertas executivos da Home (`DashboardAlertsCarousel`) com prioridade máxima quando em APK nativo e com pendências de permissão para funcionalidades ativas.
+  - Oferece o CTA primário de ativação rápida e o botão neutro *"Não ativar agora"*, gravando a dispensa consciente do usuário na nuvem (`dismissedPermissionAlerts`) para respeitar sua decisão sem incômodos repetitivos.
+
+---
+
 ## 4. DATAS, MOEDA E VALIDAÇÕES
 
 ### 4.1 Datas e calendário

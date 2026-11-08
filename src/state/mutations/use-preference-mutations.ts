@@ -59,6 +59,14 @@ export function useUpdateCustomSettings() {
                 ...(old.custom_settings?.bankAssistant ?? {}),
                 ...(patch.bankAssistant ?? {}),
               },
+              deviceNotifications: {
+                ...(old.custom_settings?.deviceNotifications ?? {}),
+                ...(patch.deviceNotifications ?? {}),
+                dismissedPermissionAlerts: {
+                  ...(old.custom_settings?.deviceNotifications?.dismissedPermissionAlerts ?? {}),
+                  ...(patch.deviceNotifications?.dismissedPermissionAlerts ?? {}),
+                },
+              },
               emergencyFundConfig: patch.emergencyFundConfig !== undefined
                 ? {
                     ...(old.custom_settings?.emergencyFundConfig ?? {}),

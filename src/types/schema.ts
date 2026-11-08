@@ -251,6 +251,7 @@ export type UserCustomSettings = {
     autoCategoryInferenceEnabled?: boolean;
     monitoredBanks?: string[];
   };
+  deviceNotifications?: DeviceNotificationsCustomSettings;
   merchantLearning?: Record<string, unknown>;
   cardDigitsMapping?: Record<string, string>;
   bankCardMapping?: Record<string, string>;
@@ -262,6 +263,16 @@ export type UserCustomSettings = {
   emergencyFundConfig?: EmergencyFundConfig;
   splitPreferences?: SplitPreferences;
   familyModeEnabled?: boolean;
+};
+
+export type DeviceNotificationsCustomSettings = {
+  dueNotificationsEnabled?: boolean;
+  dailyReminderEnabled?: boolean;
+  dailyReminderTime?: string;
+  dismissedPermissionAlerts?: {
+    pushDue?: boolean;
+    passiveBankListener?: boolean;
+  };
 };
 
 export type SplitPreferences = {
