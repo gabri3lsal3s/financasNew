@@ -10,6 +10,9 @@ import type {
   FamilyConsolidationResult,
   FamilyMemberWithProfile,
   Income,
+  IncomeGoal,
+  Debt,
+  Loan,
   MyFamilyData,
   PublicShare,
 } from "@/types";
@@ -818,6 +821,9 @@ export function generateMockFinances(referenceMonth: string = currentMonth()): D
   const publicShares = generateMockPublicShares(referenceMonth);
   const family = generateMockFamily();
   const familyConsolidation = generateMockFamilyConsolidation(referenceMonth);
+  const debts = generateMockDebts(referenceMonth);
+  const loans = generateMockLoans(referenceMonth);
+  const incomeGoals = generateMockIncomeGoals(referenceMonth);
 
   return {
     referenceMonth,
@@ -831,5 +837,272 @@ export function generateMockFinances(referenceMonth: string = currentMonth()): D
     publicShares,
     family,
     familyConsolidation,
+    debts,
+    loans,
+    incomeGoals,
   };
 }
+
+/**
+ * Gera contratos de crédito e financiamentos simulados (Price e SAC) para o micro-tour de Contas & Dívidas.
+ */
+export function generateMockLoans(
+  referenceMonth: string = currentMonth(),
+): Loan[] {
+  const startDateImobiliario = `${shiftMonth(referenceMonth, -14)}-10`;
+  const startDateVeiculo = `${shiftMonth(referenceMonth, -10)}-15`;
+
+  return [
+    {
+      id: "loan-demo-imobiliario",
+      user_id: DEMO_USER_ID,
+      name: "Financiamento Imobiliário Residencial",
+      loan_type: "financing",
+      principal_amount: 280000,
+      interest_rate_monthly: 0.79,
+      amortization_system: "sac",
+      total_installments: 360,
+      start_date: startDateImobiliario,
+      installment_group_id: "inst-loan-imobiliario",
+      created_at: `${startDateImobiliario}T10:00:00.000Z`,
+    },
+    {
+      id: "loan-demo-veiculo",
+      user_id: DEMO_USER_ID,
+      name: "Financiamento Veicular - Honda Civic",
+      loan_type: "financing",
+      principal_amount: 48000,
+      interest_rate_monthly: 1.25,
+      amortization_system: "price",
+      total_installments: 48,
+      start_date: startDateVeiculo,
+      installment_group_id: "inst-loan-veiculo",
+      created_at: `${startDateVeiculo}T14:30:00.000Z`,
+    },
+  ];
+}
+
+/**
+ * Gera dívidas, contas a pagar, a receber e parcelas de contratos simuladas para o tour de Contas & Dívidas.
+ */
+export function generateMockDebts(
+  referenceMonth: string = currentMonth(),
+): Debt[] {
+  const prevMonth = shiftMonth(referenceMonth, -1);
+  const prevMonth2 = shiftMonth(referenceMonth, -2);
+  const nextMonth = shiftMonth(referenceMonth, 1);
+  const nowIso = `${formatIsoDate(referenceMonth, 1)}T08:00:00.000Z`;
+
+  return [
+    // ---------------------------------------------------------
+    // 1. Contas a Pagar (payable)
+    // ---------------------------------------------------------
+    // Urgente / Vencendo hoje ou atrasada (status crítico / semáforo de vencimento)
+    {
+      id: "debt-demo-enel",
+      user_id: DEMO_USER_ID,
+      name: "Energia Elétrica (Enel)",
+      type: "payable",
+      amount: 185.5,
+      due_date: formatIsoDate(referenceMonth, 3),
+      paid_at: null,
+      expense_id: null,
+      installment_group_id: null,
+      created_at: nowIso,
+    },
+    // Deste mês (ordinária)
+    {
+      id: "debt-demo-internet",
+      user_id: DEMO_USER_ID,
+      name: "Internet Fibra Residencial",
+      type: "payable",
+      amount: 129.9,
+      due_date: formatIsoDate(referenceMonth, 22),
+      paid_at: null,
+      expense_id: "exp-demo-ref-internet",
+      installment_group_id: null,
+      created_at: nowIso,
+    },
+    // Parcela de Financiamento Imobiliário deste mês (vinculada ao contrato)
+    {
+      id: "debt-demo-imob-mes",
+      user_id: DEMO_USER_ID,
+      name: "Financiamento Imobiliário (Parcela 15/360)",
+      type: "payable",
+      amount: 2130,
+      due_date: formatIsoDate(referenceMonth, 10),
+      paid_at: null,
+      expense_id: null,
+      installment_group_id: "inst-loan-imobiliario",
+      created_at: nowIso,
+    },
+    // Parcela de Financiamento Veicular deste mês (vinculada ao contrato)
+    {
+      id: "debt-demo-veic-mes",
+      user_id: DEMO_USER_ID,
+      name: "Financiamento Veicular (Parcela 11/48)",
+      type: "payable",
+      amount: 1342.5,
+      due_date: formatIsoDate(referenceMonth, 15),
+      paid_at: null,
+      expense_id: null,
+      installment_group_id: "inst-loan-veiculo",
+      created_at: nowIso,
+    },
+    // Próximo mês: Manutenção Preventiva
+    {
+      id: "debt-demo-manutencao-futura",
+      user_id: DEMO_USER_ID,
+      name: "Manutenção Preventiva Automotiva",
+      type: "payable",
+      amount: 420,
+      due_date: formatIsoDate(nextMonth, 12),
+      paid_at: null,
+      expense_id: null,
+      installment_group_id: null,
+      created_at: nowIso,
+    },
+    // Histórico de Quitadas: Condomínio quitado no início do mês
+    {
+      id: "debt-demo-condominio-quitado",
+      user_id: DEMO_USER_ID,
+      name: "Taxa de Condomínio Residencial",
+      type: "payable",
+      amount: 650,
+      due_date: formatIsoDate(referenceMonth, 5),
+      paid_at: formatIsoDate(referenceMonth, 5),
+      expense_id: null,
+      installment_group_id: null,
+      created_at: nowIso,
+    },
+    // Parcelas de Financiamentos quitadas nos meses anteriores (para calcular progresso de quitação nos LoanCards)
+    {
+      id: "debt-demo-imob-p13",
+      user_id: DEMO_USER_ID,
+      name: "Financiamento Imobiliário (Parcela 13/360)",
+      type: "payable",
+      amount: 2150,
+      due_date: formatIsoDate(prevMonth2, 10),
+      paid_at: formatIsoDate(prevMonth2, 10),
+      expense_id: null,
+      installment_group_id: "inst-loan-imobiliario",
+      created_at: nowIso,
+    },
+    {
+      id: "debt-demo-imob-p14",
+      user_id: DEMO_USER_ID,
+      name: "Financiamento Imobiliário (Parcela 14/360)",
+      type: "payable",
+      amount: 2140,
+      due_date: formatIsoDate(prevMonth, 10),
+      paid_at: formatIsoDate(prevMonth, 10),
+      expense_id: null,
+      installment_group_id: "inst-loan-imobiliario",
+      created_at: nowIso,
+    },
+    {
+      id: "debt-demo-veic-p9",
+      user_id: DEMO_USER_ID,
+      name: "Financiamento Veicular (Parcela 9/48)",
+      type: "payable",
+      amount: 1342.5,
+      due_date: formatIsoDate(prevMonth2, 15),
+      paid_at: formatIsoDate(prevMonth2, 15),
+      expense_id: null,
+      installment_group_id: "inst-loan-veiculo",
+      created_at: nowIso,
+    },
+    {
+      id: "debt-demo-veic-p10",
+      user_id: DEMO_USER_ID,
+      name: "Financiamento Veicular (Parcela 10/48)",
+      type: "payable",
+      amount: 1342.5,
+      due_date: formatIsoDate(prevMonth, 15),
+      paid_at: formatIsoDate(prevMonth, 15),
+      expense_id: null,
+      installment_group_id: "inst-loan-veiculo",
+      created_at: nowIso,
+    },
+
+    // ---------------------------------------------------------
+    // 2. Contas a Receber (receivable)
+    // ---------------------------------------------------------
+    // Deste mês: Consultoria e Racha
+    {
+      id: "debt-demo-rec-consultoria",
+      user_id: DEMO_USER_ID,
+      name: "Consultoria de TI & Suporte Técnico",
+      type: "receivable",
+      amount: 1450,
+      due_date: formatIsoDate(referenceMonth, 18),
+      paid_at: null,
+      expense_id: null,
+      installment_group_id: null,
+      created_at: nowIso,
+    },
+    {
+      id: "debt-demo-rec-racha-lucas",
+      user_id: DEMO_USER_ID,
+      name: "Racha Churrasco (Lucas Oliveira)",
+      type: "receivable",
+      amount: 120,
+      due_date: formatIsoDate(referenceMonth, 20),
+      paid_at: null,
+      expense_id: "exp-demo-ref-restaurante",
+      installment_group_id: null,
+      created_at: nowIso,
+    },
+    // Próximo mês: Venda de equipamento usado
+    {
+      id: "debt-demo-rec-venda-futura",
+      user_id: DEMO_USER_ID,
+      name: "Venda Monitor Ultrawide (Parcela 2/2)",
+      type: "receivable",
+      amount: 350,
+      due_date: formatIsoDate(nextMonth, 5),
+      paid_at: null,
+      expense_id: null,
+      installment_group_id: null,
+      created_at: nowIso,
+    },
+    // Histórico de Quitadas (recebida)
+    {
+      id: "debt-demo-rec-reembolso-quitado",
+      user_id: DEMO_USER_ID,
+      name: "Reembolso Despesas Corporativas",
+      type: "receivable",
+      amount: 280,
+      due_date: formatIsoDate(referenceMonth, 4),
+      paid_at: formatIsoDate(referenceMonth, 4),
+      expense_id: null,
+      installment_group_id: null,
+      created_at: nowIso,
+    },
+  ];
+}
+
+/**
+ * Gera metas de renda simuladas para as categorias de receita.
+ */
+export function generateMockIncomeGoals(
+  referenceMonth: string = currentMonth(),
+): IncomeGoal[] {
+  return [
+    {
+      id: "goal-demo-salario",
+      user_id: DEMO_USER_ID,
+      category_id: "cat-demo-salario",
+      month: referenceMonth,
+      expected: 8500,
+    },
+    {
+      id: "goal-demo-rendimentos",
+      user_id: DEMO_USER_ID,
+      category_id: "cat-demo-rendimentos",
+      month: referenceMonth,
+      expected: 500,
+    },
+  ];
+}
+

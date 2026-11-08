@@ -254,6 +254,7 @@ export {
   useSimulatedPublicShares,
   useSimulatedFamilyPortfolioSummary,
   useSimulatedDebts,
+  useSimulatedLoans,
   useSimulatedIncomeGoals,
 } from "./queries/use-simulated-queries";
 

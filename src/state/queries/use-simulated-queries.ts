@@ -7,7 +7,7 @@ import {
   generateMockPublicShares,
 } from "@/domain/demo-simulation";
 import type { OnboardingCounts } from "@/domain/onboarding";
-import type { CategoryType, Debt, FamilyPortfolioSummary, IncomeGoal, PublicShareKind } from "@/types";
+import type { CategoryType, Debt, FamilyPortfolioSummary, IncomeGoal, Loan, PublicShareKind } from "@/types";
 
 /**
  * Cria uma estrutura de retorno compatível com UseQueryResult do TanStack Query,
@@ -280,14 +280,29 @@ export function useSimulatedFamilyPortfolioSummary() {
   return makeSimulatedQueryResult(data);
 }
 
-/** Lista de dívidas simuladas (vazia no modo demo por padrão). */
+/** Lista de dívidas simuladas (contas a pagar, a receber e parcelas de contratos). */
 export function useSimulatedDebts() {
-  const data = useMemo<Debt[]>(() => [], []);
+  const data = useMemo<Debt[]>(() => {
+    const mock = generateMockFinances();
+    return mock.debts;
+  }, []);
   return makeSimulatedQueryResult(data);
 }
 
-/** Metas de renda simuladas (vazia no modo demo por padrão). */
+/** Contratos de crédito e financiamentos simulados (Price e SAC). */
+export function useSimulatedLoans() {
+  const data = useMemo<Loan[]>(() => {
+    const mock = generateMockFinances();
+    return mock.loans;
+  }, []);
+  return makeSimulatedQueryResult(data);
+}
+
+/** Metas de renda simuladas. */
 export function useSimulatedIncomeGoals() {
-  const data = useMemo<IncomeGoal[]>(() => [], []);
+  const data = useMemo<IncomeGoal[]>(() => {
+    const mock = generateMockFinances();
+    return mock.incomeGoals;
+  }, []);
   return makeSimulatedQueryResult(data);
 }

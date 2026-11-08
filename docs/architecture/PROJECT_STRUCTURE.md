@@ -177,6 +177,8 @@
     │   │   │                      #   quick-aporte-card (bloco de aporte rápido direcionado na Home com rebalanceamento em lote),
     │   │   │                      #   pending-suggestions-card (card discreto de transações capturadas do assistente passivo),
     │   │   │                      #   pending-split-signals-card (card de sugestões de abatimento de racha com 1 toque),
+    │   │   │                      #   split-charge-card (card canônico de cobrança de racha compartilhado com paridade visual integral),
+    │   │   │                      #   split-preview-mockup-card (preview didático demonstrativo de racha com chave Pix para tours),
     │   │   │                      #   manage-split-dialog (gestão granular de participantes, baixas parciais e calotes de racha),
     │   │   │                      #   paste-receipt-dialog (modal universal de colagem de comprovantes e notificações bancárias),
     │   │   │                      #   prediction-suggestions (F21 — autopreenchimento preditivo),
@@ -210,7 +212,7 @@
     │   ├── transactions/          #   Transações (swipe-to-action F8) + wizard de lançamento + reconciliação de extratos
     │   │                          #     pages/ (share-receipt-page.tsx), wizard/ (step-quick.tsx — lançamento rápido em 1 tela)
     │   ├── cards/                 #   Cartões (faturas, pagamentos, estornos, refinanciamento)
-    │   ├── debts/                 #   Dívidas (status, quitação com juros/multa/desconto, empréstimos Price/SAC, loan-schedule-dialog, loan-edit-dialog F72)
+    │   ├── debts/                 #   Dívidas (status, quitação com juros/multa/desconto, empréstimos Price/SAC, loan-schedule-dialog, loan-edit-dialog F72, debts-page-demo.test.tsx)
     │   ├── budgets/               #   Orçamentos (limites, realocação)
     │   ├── family/                #   Modo Família Colaborativo Multi-Contas (/familia, /convite-familiar/:token)
     │   │                          #     pages: family-page, family-invite-page

@@ -15,6 +15,9 @@ import type {
   PublicShare,
   FamilyConsolidationResult,
   MyFamilyData,
+  Debt,
+  Loan,
+  IncomeGoal,
 } from "@/types";
 
 /**
@@ -180,6 +183,9 @@ export interface DailyFinancesDataset {
   publicShares: PublicShare[];
   family: MyFamilyData | null;
   familyConsolidation: FamilyConsolidationResult | null;
+  debts: Debt[];
+  loans: Loan[];
+  incomeGoals: IncomeGoal[];
 }
 
 export interface InvestmentsDataset {

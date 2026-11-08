@@ -307,14 +307,14 @@ A plataforma implementa uma camada soberana de autenticação e governança de c
 A plataforma adota arquitetura de simulação estritamente em memória (*in-memory synthetic datasets*) para acolhimento e exploração demonstrativa, eliminando gravações físicas de dados falsos com tag `[Exemplo]` no banco de dados Supabase:
 
 1. **Datasets Dinâmicos Puros (`domain/demo-simulation/`):**
-   - Funções puras `generateMockFinances(referenceMonth)` e `generateMockInvestments(referenceMonth)` geram despesas, receitas, cartões com faturas abertas e compras parceladas, orçamentos, ativos balanceados por classe (Renda Fixa, Ações Brasil, FIIs, Cripto), metas e snapshots patrimoniais com datas ancoradas dinamicamente no mês de referência.
+   - Funções puras `generateMockFinances(referenceMonth)` e `generateMockInvestments(referenceMonth)` geram despesas, receitas, cartões com faturas abertas e compras parceladas, orçamentos, dívidas / contas a pagar e receber com controle em semáforo (`generateMockDebts`), contratos de financiamento Price e SAC (`generateMockLoans`), metas de receita (`generateMockIncomeGoals`), ativos balanceados por classe (Renda Fixa, Ações Brasil, FIIs, Cripto), metas e snapshots patrimoniais com datas ancoradas dinamicamente no mês de referência.
    - Zero acoplamento com banco de dados, APIs de rede ou browser storage.
 2. **Máquina de Estados Global Reativa (`state/demo-mode/`):**
    - Store singleton em memória (`demo-session-store.ts`) consumido de forma concorrente e segura pelo hook `useDemoSession()` via `useSyncExternalStore` (React 18+), dispensando wrappers contextuais redundantes.
    - Controle atômico de ciclo de vida (`isDemoActive`, `activeTrack`, `currentStepIndex`, `startDemo`, `endDemo`, `goToNextStep`, `goToPrevStep`).
    - Persistência leve em `localStorage` restrita a preferências de onboarding concluído (`demo-storage.ts`).
 3. **Interceptação Transparente no TanStack Query (`state/queries/use-simulated-queries.ts`):**
-   - Os hooks canônicos do sistema (`useExpenses`, `useIncomes`, `useCategories`, `useCreditCards`, `useBudgets`, `usePortfolioAssets`, etc.) avaliam `isDemoActive`.
+   - Os hooks canônicos do sistema (`useExpenses`, `useIncomes`, `useCategories`, `useCreditCards`, `useBudgets`, `useDebts`, `useLoans`, `usePortfolioAssets`, etc.) avaliam `isDemoActive`.
    - Quando `isDemoActive === true`: a consulta real ao Supabase é desativada (`enabled: ... && !isDemoActive`) e o resultado sintético em memória é retornado instantaneamente com `makeSimulatedQueryResult(mockData)`, garantindo `isLoading: false, isFetching: false, isError: false`.
    - Quando `isDemoActive === false`: as queries continuam operando de forma 100% transparente sobre os repositórios reais do banco de dados.
 4. **Camada de Apresentação Guiada & Motor Anti-Colisão (`components/modules/demo-tour-spotlight.tsx`):**

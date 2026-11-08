@@ -33,12 +33,14 @@ import {
   useFamilyPortfolioSummary,
   useMyPublicShares,
   useDebts,
+  useLoans,
   useFamilyMode,
   useSimulatedFamily,
   useSimulatedFamilyConsolidation,
   useSimulatedPublicShares,
   useSimulatedFamilyPortfolioSummary,
   useSimulatedDebts,
+  useSimulatedLoans,
 } from "@/state";
 
 // Mock das funções reais de repositório para verificar que NÃO são chamadas quando isDemoActive === true
@@ -57,6 +59,7 @@ const mockGetFamilyConsolidation = vi.fn().mockResolvedValue(null);
 const mockGetFamilyPortfolioSummary = vi.fn().mockResolvedValue(null);
 const mockListMyPublicShares = vi.fn().mockResolvedValue([]);
 const mockListDebts = vi.fn().mockResolvedValue([]);
+const mockListLoans = vi.fn().mockResolvedValue([]);
 
 vi.mock("@/data/repositories/expenses", () => ({
   listExpensesByMonth: (...args: unknown[]) => mockListExpensesByMonth(...args),
@@ -112,6 +115,10 @@ vi.mock("@/data/repositories/public-shares", () => ({
 
 vi.mock("@/data/repositories/debts", () => ({
   listDebts: (...args: unknown[]) => mockListDebts(...args),
+}));
+
+vi.mock("@/data/repositories/loans", () => ({
+  listLoans: (...args: unknown[]) => mockListLoans(...args),
 }));
 
 function createWrapper() {
@@ -257,6 +264,9 @@ describe("use-simulated-queries — Interceptação Segura de Queries no TanStac
       const { result: debtsResult } = renderHook(() => useSimulatedDebts(), {
         wrapper: createWrapper(),
       });
+      const { result: loansResult } = renderHook(() => useSimulatedLoans(), {
+        wrapper: createWrapper(),
+      });
 
       expect(familyResult.current.data?.family.name).toBe("Família Silva");
       expect(familyResult.current.data?.members.length).toBe(2);
@@ -267,7 +277,12 @@ describe("use-simulated-queries — Interceptação Segura de Queries no TanStac
       expect(goalSharesResult.current.data?.length).toBe(1);
       expect(goalSharesResult.current.data?.[0]?.kind).toBe("goal_tracker");
       expect(wealthResult.current.data?.total_invested_cents).toBeGreaterThan(0);
-      expect(debtsResult.current.data).toEqual([]);
+      expect(debtsResult.current.data?.length).toBeGreaterThan(0);
+      expect(debtsResult.current.data?.some((d) => d.type === "payable")).toBe(true);
+      expect(debtsResult.current.data?.some((d) => d.type === "receivable")).toBe(true);
+      expect(loansResult.current.data?.length).toBeGreaterThan(0);
+      expect(loansResult.current.data?.some((l) => l.amortization_system === "sac")).toBe(true);
+      expect(loansResult.current.data?.some((l) => l.amortization_system === "price")).toBe(true);
     });
   });
 
@@ -463,7 +478,7 @@ describe("use-simulated-queries — Interceptação Segura de Queries no TanStac
       expect(allPay.current.data?.length).toBeGreaterThan(0);
     });
 
-    it("useMyFamily, useFamilyConsolidation, useFamilyPortfolioSummary, useMyPublicShares, useDebts e useFamilyMode interceptam e retornam mocks sem chamar repositórios quando isDemoActive === true", () => {
+    it("useMyFamily, useFamilyConsolidation, useFamilyPortfolioSummary, useMyPublicShares, useDebts, useLoans e useFamilyMode interceptam e retornam mocks sem chamar repositórios quando isDemoActive === true", () => {
       act(() => {
         startDemo("shared_finances");
       });
@@ -483,6 +498,9 @@ describe("use-simulated-queries — Interceptação Segura de Queries no TanStac
       const { result: debts } = renderHook(() => useDebts(), {
         wrapper: createWrapper(),
       });
+      const { result: loans } = renderHook(() => useLoans(), {
+        wrapper: createWrapper(),
+      });
       const { result: familyMode } = renderHook(() => useFamilyMode(), {
         wrapper: createWrapper(),
       });
@@ -492,6 +510,7 @@ describe("use-simulated-queries — Interceptação Segura de Queries no TanStac
       expect(mockGetFamilyPortfolioSummary).not.toHaveBeenCalled();
       expect(mockListMyPublicShares).not.toHaveBeenCalled();
       expect(mockListDebts).not.toHaveBeenCalled();
+      expect(mockListLoans).not.toHaveBeenCalled();
 
       expect(family.current.isLoading).toBe(false);
       expect(family.current.isSuccess).toBe(true);
@@ -511,7 +530,11 @@ describe("use-simulated-queries — Interceptação Segura de Queries no TanStac
 
       expect(debts.current.isLoading).toBe(false);
       expect(debts.current.isSuccess).toBe(true);
-      expect(debts.current.data).toEqual([]);
+      expect(debts.current.data?.length).toBeGreaterThan(0);
+
+      expect(loans.current.isLoading).toBe(false);
+      expect(loans.current.isSuccess).toBe(true);
+      expect(loans.current.data?.length).toBeGreaterThan(0);
 
       expect(familyMode.current.isFamilyModeEnabled).toBe(true);
     });

@@ -51,6 +51,9 @@ export {
   generateMockPublicShares,
   generateMockFamily,
   generateMockFamilyConsolidation,
+  generateMockLoans,
+  generateMockDebts,
+  generateMockIncomeGoals,
 } from "./mock-finances";
 
 export {

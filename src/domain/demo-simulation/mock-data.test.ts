@@ -11,6 +11,9 @@ import {
   generateMockFinances,
   generateMockInvestments,
   generateMockPublicShares,
+  generateMockDebts,
+  generateMockLoans,
+  generateMockIncomeGoals,
   getTourSteps,
   TOUR_STEPS,
 } from "./index";
@@ -86,6 +89,26 @@ describe("demo-simulation — Datasets Puros e Dinâmicos em Memória (Fase 2)",
       for (const p of dataset.cardPayments) {
         expect(p.amount).toBeGreaterThan(0);
         expect(p.card_id).toBe("card-demo-black");
+      }
+
+      // Validação de dívidas, contas a pagar, a receber e parcelas de contratos
+      expect(dataset.debts.length).toBeGreaterThanOrEqual(10);
+      expect(dataset.debts.some((d) => d.type === "payable")).toBe(true);
+      expect(dataset.debts.some((d) => d.type === "receivable")).toBe(true);
+      expect(dataset.debts.some((d) => d.paid_at !== null)).toBe(true);
+      expect(dataset.debts.some((d) => d.paid_at === null)).toBe(true);
+      expect(dataset.debts.some((d) => d.installment_group_id !== null)).toBe(true);
+
+      // Validação de contratos de crédito / financiamento
+      expect(dataset.loans).toHaveLength(2);
+      expect(dataset.loans.some((l) => l.amortization_system === "sac")).toBe(true);
+      expect(dataset.loans.some((l) => l.amortization_system === "price")).toBe(true);
+
+      // Validação de metas de renda
+      expect(dataset.incomeGoals.length).toBeGreaterThan(0);
+      for (const g of dataset.incomeGoals) {
+        expect(g.month).toBe(nowMonth);
+        expect(g.expected).toBeGreaterThan(0);
       }
     });
 
@@ -372,4 +395,58 @@ describe("demo-simulation — Datasets Puros e Dinâmicos em Memória (Fase 2)",
       }
     });
   });
+
+  describe("generateMockDebts, generateMockLoans e generateMockIncomeGoals", () => {
+    it("generateMockDebts gera contas a pagar e receber com dados consistentes", () => {
+      const debts = generateMockDebts();
+      expect(debts.length).toBeGreaterThan(0);
+
+      const payables = debts.filter((d) => d.type === "payable");
+      const receivables = debts.filter((d) => d.type === "receivable");
+
+      expect(payables.length).toBeGreaterThan(0);
+      expect(receivables.length).toBeGreaterThan(0);
+
+      // Contas a pagar com status pendente e quitado
+      expect(payables.some((d) => d.paid_at === null)).toBe(true);
+      expect(payables.some((d) => d.paid_at !== null)).toBe(true);
+
+      // Contas a receber com status pendente e quitado
+      expect(receivables.some((d) => d.paid_at === null)).toBe(true);
+      expect(receivables.some((d) => d.paid_at !== null)).toBe(true);
+
+      // Todos os itens têm valores estritamente positivos
+      for (const d of debts) {
+        expect(d.amount).toBeGreaterThan(0);
+        expect(d.due_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      }
+    });
+
+    it("generateMockLoans gera contratos de crédito Price e SAC com valores válidos", () => {
+      const loans = generateMockLoans();
+      expect(loans.length).toBe(2);
+
+      const sacLoan = loans.find((l) => l.amortization_system === "sac");
+      const priceLoan = loans.find((l) => l.amortization_system === "price");
+
+      expect(sacLoan).toBeDefined();
+      expect(priceLoan).toBeDefined();
+      expect(sacLoan?.principal_amount).toBeGreaterThan(0);
+      expect(priceLoan?.principal_amount).toBeGreaterThan(0);
+      expect(sacLoan?.interest_rate_monthly).toBeGreaterThan(0);
+      expect(priceLoan?.interest_rate_monthly).toBeGreaterThan(0);
+      expect(sacLoan?.total_installments).toBeGreaterThan(0);
+      expect(priceLoan?.total_installments).toBeGreaterThan(0);
+    });
+
+    it("generateMockIncomeGoals gera metas de renda com valores consistentes", () => {
+      const goals = generateMockIncomeGoals();
+      expect(goals.length).toBeGreaterThan(0);
+      for (const g of goals) {
+        expect(g.expected).toBeGreaterThan(0);
+        expect(g.month).toMatch(/^\d{4}-\d{2}$/);
+      }
+    });
+  });
 });
+

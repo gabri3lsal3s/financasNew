@@ -135,6 +135,8 @@ export { PendingSplitSignalsCard } from "./pending-split-signals-card";
 export type { PendingSplitSignalsCardProps } from "./pending-split-signals-card";
 export { QuickBalanceAdjustmentModal } from "./quick-balance-adjustment-modal";
 export type { QuickBalanceAdjustmentModalProps } from "./quick-balance-adjustment-modal";
+export { SplitChargeCard } from "./split-charge-card";
+export type { SplitChargeCardProps, SplitParticipantView } from "./split-charge-card";
 export { SplitPreviewMockupCard } from "./split-preview-mockup-card";
 export type { SplitPreviewMockupCardProps } from "./split-preview-mockup-card";
 export { PlatformsTriptychCard } from "./platforms-triptych-card";
