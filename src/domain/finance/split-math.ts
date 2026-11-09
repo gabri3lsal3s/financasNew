@@ -16,6 +16,8 @@
  */
 
 import { MAX_MONEY_CENTS } from "@/domain/validation/sanitization";
+import { divideIntoInstallments } from "@/domain/cards";
+import type { SplitParticipantInstallment } from "@/types";
 
 /**
  * Limite maximo defensivo de participantes em uma mesma despesa compartilhada.
@@ -361,4 +363,110 @@ export function splitCustomWithRemainder(
       percentage,
     };
   });
+}
+
+/**
+ * Entrada para divisão das parcelas de um participante no racha.
+ */
+export interface BuildSplitParticipantInstallmentsInput {
+  participantId: string;
+  totalShareCents: number;
+  installmentsCount: number;
+  startDate: string;
+  closingDay?: number | null;
+  isSettledInitial?: boolean;
+}
+
+/**
+ * Constrói o plano de parcelas de um participante no racha com conservação estrita de centavos.
+ * Invariante: soma(amount_cents) === totalShareCents.
+ */
+export function buildSplitParticipantInstallments(
+  input: BuildSplitParticipantInstallmentsInput
+): SplitParticipantInstallment[] {
+  const { participantId, totalShareCents, installmentsCount, startDate, closingDay, isSettledInitial } = input;
+  const count = Math.max(1, Math.min(60, Math.floor(installmentsCount)));
+
+  if (count <= 1 || totalShareCents <= 0) {
+    return [
+      {
+        id: `${participantId}_inst_1`,
+        participant_id: participantId,
+        installment_number: 1,
+        total_installments: 1,
+        amount_cents: totalShareCents,
+        due_date: startDate,
+        is_settled: Boolean(isSettledInitial),
+        settled_at: isSettledInitial ? new Date().toISOString() : null,
+        signal_status: "none",
+        signaled_at: null,
+      },
+    ];
+  }
+
+  const items = divideIntoInstallments({
+    totalCents: totalShareCents,
+    count,
+    startDate,
+    closingDay: closingDay ?? null,
+  });
+
+  return items.map((item) => ({
+    id: `${participantId}_inst_${item.installmentNumber}`,
+    participant_id: participantId,
+    installment_number: item.installmentNumber,
+    total_installments: item.installmentsTotal,
+    amount_cents: item.valueCents,
+    due_date: item.date,
+    is_settled: Boolean(isSettledInitial),
+    settled_at: isSettledInitial ? new Date().toISOString() : null,
+    signal_status: "none",
+    signaled_at: null,
+  }));
+}
+
+/**
+ * Resumo do progresso de quitação das parcelas de um participante.
+ */
+export interface InstallmentsProgressSummary {
+  totalCount: number;
+  settledCount: number;
+  pendingCount: number;
+  totalCents: number;
+  settledCents: number;
+  remainingCents: number;
+  nextPendingInstallment: SplitParticipantInstallment | null;
+}
+
+/**
+ * Calcula o progresso de pagamento das parcelas de forma pura.
+ */
+export function calculateInstallmentsProgress(
+  installments: readonly SplitParticipantInstallment[]
+): InstallmentsProgressSummary {
+  const totalCount = installments.length;
+  let settledCount = 0;
+  let settledCents = 0;
+  let totalCents = 0;
+  let nextPendingInstallment: SplitParticipantInstallment | null = null;
+
+  for (const inst of installments) {
+    totalCents += inst.amount_cents;
+    if (inst.is_settled) {
+      settledCount++;
+      settledCents += inst.amount_cents;
+    } else if (!nextPendingInstallment) {
+      nextPendingInstallment = inst;
+    }
+  }
+
+  return {
+    totalCount,
+    settledCount,
+    pendingCount: totalCount - settledCount,
+    totalCents,
+    settledCents,
+    remainingCents: Math.max(0, totalCents - settledCents),
+    nextPendingInstallment,
+  };
 }

@@ -17,6 +17,7 @@ import { MoneyText } from "@/components/ui/money-text";
 import { Badge } from "@/components/ui/badge";
 import { Select, type SelectOption } from "@/components/ui/select";
 import {
+  buildSplitParticipantInstallments,
   calculateSplitSummary,
   type SplitRemainderPolicy,
 } from "@/domain/finance/split-math";
@@ -34,7 +35,7 @@ import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { getPublicAppUrl } from "@/services/app-url";
 import { todayISO } from "@/domain/debts";
-import type { Expense, SplitSharePayload } from "@/types";
+import type { Expense, SplitParticipantInstallment, SplitSharePayload } from "@/types";
 
 export interface SplitExpenseDialogProps {
   open: boolean;
@@ -49,6 +50,8 @@ export interface SplitExpenseDialogProps {
   initialDate?: string;
   /** Quantidade inicial de participantes (ex.: definido na criação da despesa) */
   initialPeopleCount?: number;
+  /** Quantidade de parcelas da despesa */
+  initialInstallmentsCount?: number;
   /** Nome da categoria da despesa (para correspondência ao salvar via link) */
   categoryName?: string;
   /** Ícone da categoria */
@@ -83,6 +86,7 @@ export function SplitExpenseDialog({
   initialDescription,
   initialDate,
   initialPeopleCount,
+  initialInstallmentsCount,
   categoryName,
   categoryIcon,
   autoGenerate = false,
@@ -233,11 +237,33 @@ export function SplitExpenseDialog({
       });
 
       const token = generateShareToken(10);
+      const splitDate = expense?.date || initialDate || todayISO();
+      const effectiveInstallmentsCount = Math.max(
+        1,
+        expense?.installments_total ?? initialInstallmentsCount ?? 1
+      );
+
+      const participantInstallments: SplitParticipantInstallment[] = [];
+      if (effectiveInstallmentsCount > 1) {
+        participants.forEach((_name, i) => {
+          const participantId = `p_${i + 1}`;
+          const shareCents = summary.shares[i] ?? summary.guestShareCents;
+          const isHost = i === 0;
+          const insts = buildSplitParticipantInstallments({
+            participantId,
+            totalShareCents: shareCents,
+            installmentsCount: effectiveInstallmentsCount,
+            startDate: splitDate,
+            isSettledInitial: isHost,
+          });
+          participantInstallments.push(...insts);
+        });
+      }
 
       const payload: SplitSharePayload = {
         title: description.trim() || "Racha de Despesa",
         total_cents: totalCents,
-        date: expense?.date || initialDate || todayISO(),
+        date: splitDate,
         people_count: peopleCount,
         guest_share_cents: summary.guestShareCents,
         host_share_cents: summary.hostShareCents,
@@ -262,6 +288,9 @@ export function SplitExpenseDialog({
         category_icon: categoryIcon,
         is_completed: false,
         total_settled_cents: summary.hostShareCents,
+        installments_count: effectiveInstallmentsCount > 1 ? effectiveInstallmentsCount : undefined,
+        installments_mode: effectiveInstallmentsCount > 1 ? "per_installment" : undefined,
+        participant_installments: participantInstallments.length > 0 ? participantInstallments : undefined,
       };
 
       if (isSimulationActive) {
@@ -342,6 +371,7 @@ export function SplitExpenseDialog({
     createPublicShareMutation,
     updatePreferences,
     isSimulationActive,
+    initialInstallmentsCount,
   ]);
 
   const handleShareWhatsApp = () => {

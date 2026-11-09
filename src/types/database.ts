@@ -291,6 +291,7 @@ export interface Database {
           p_debt_due_date: string | null;
           p_debt_type?: string | null;
           p_is_family?: boolean;
+          p_debt_installment_mode?: string | null;
         };
         Returns: string;
       };

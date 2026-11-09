@@ -14,7 +14,7 @@ export function RemindersCard() {
   const remindersEnabled = preferencesQuery.data?.reminders_enabled ?? true;
 
   return (
-    <Card className="border-border/80 bg-surface shadow-xs">
+    <Card data-tour="settings-notifications-card" className="border-border/80 bg-surface shadow-xs">
       <CardHeader className="pb-3.5">
         <CardTitle className="text-base font-semibold flex items-center justify-between gap-2">
           <span className="flex items-center gap-2 min-w-0">

@@ -767,10 +767,10 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
         />,
       );
 
-      const familySwitch = screen.getByRole("switch", { name: "Despesa da Casa / Familiar" });
-      expect(familySwitch).toHaveAttribute("aria-checked", "false");
-      await user.click(familySwitch);
-      expect(familySwitch).toHaveAttribute("aria-checked", "true");
+      const familyRadio = screen.getByRole("radio", { name: "Despesa da Casa / Familiar" });
+      expect(familyRadio).toHaveAttribute("aria-checked", "false");
+      await user.click(familyRadio);
+      expect(familyRadio).toHaveAttribute("aria-checked", "true");
 
       const saveBtn = screen.getByRole("button", { name: /salvar transação/i });
       await user.click(saveBtn);
@@ -784,7 +784,7 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
       });
     });
 
-    it("não renderiza o switch de despesa familiar no lançamento rápido quando modo familiar está desabilitado (padrão)", () => {
+    it("não renderiza o seletor de despesa familiar no lançamento rápido quando modo familiar está desabilitado (padrão)", () => {
       mockIsFamilyModeEnabled = false;
 
       render(
@@ -798,7 +798,7 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
         />,
       );
 
-      expect(screen.queryByRole("switch", { name: "Despesa da Casa / Familiar" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("radio", { name: "Despesa da Casa / Familiar" })).not.toBeInTheDocument();
     });
 
     it("ao habilitar o switch de Rachar Despesa, registra cobrança a receber e abre SplitExpenseDialog pós-salvamento", async () => {
@@ -816,10 +816,10 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
         />,
       );
 
-      const splitSwitch = screen.getByRole("switch", { name: "Rachar com amigos" });
-      expect(splitSwitch).toHaveAttribute("aria-checked", "false");
-      await user.click(splitSwitch);
-      expect(splitSwitch).toHaveAttribute("aria-checked", "true");
+      const splitRadio = screen.getByRole("radio", { name: "Rachar com amigos" });
+      expect(splitRadio).toHaveAttribute("aria-checked", "false");
+      await user.click(splitRadio);
+      expect(splitRadio).toHaveAttribute("aria-checked", "true");
 
       // Mostra o resumo do rateio
       expect(screen.getByText(/1x de/i)).toBeInTheDocument();
@@ -844,7 +844,8 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
       });
     });
 
-    it("mantém exclusividade mútua entre Modo Viagem e Rachar Despesa (desativa racha quando tripId é selecionado)", async () => {
+    it("mantém exclusividade mútua entre Modo Viagem e Rachar Despesa com navegabilidade livre", async () => {
+      const user = userEvent.setup();
       mockTrips = [
         {
           id: "trip-456",
@@ -869,12 +870,55 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
         />,
       );
 
-      const splitSwitch = screen.getByRole("switch", { name: "Rachar com amigos" });
-      expect(splitSwitch).toBeDisabled();
-      expect(splitSwitch).toHaveAttribute("aria-checked", "false");
-      expect(
-        screen.getByText("Esta despesa já é rateada entre os participantes da viagem vinculada."),
-      ).toBeInTheDocument();
+      const splitRadio = screen.getByRole("radio", { name: "Rachar com amigos" });
+      expect(splitRadio).not.toBeDisabled();
+      expect(splitRadio).toHaveAttribute("aria-checked", "false");
+
+      await user.click(splitRadio);
+      expect(splitRadio).toHaveAttribute("aria-checked", "true");
+    });
+
+    it("permite escolher modalidade de rateio (à vista vs mês a mês) para despesa parcelada", async () => {
+      const user = userEvent.setup();
+
+      render(
+        <LaunchWizard
+          initialMode="quick"
+          initialValues={{
+            valueCents: 30000,
+            categoryId: "c1",
+            paymentMethod: "pix",
+            installments: 3,
+            description: "Passagens aéreas",
+          }}
+        />,
+      );
+
+      const splitRadio = screen.getByRole("radio", { name: /rachar com amigos|rachar/i });
+      await user.click(splitRadio);
+
+      // Deve exibir os botões de modalidade de recebimento do rateio
+      expect(screen.getByText("Recebimento do rateio:")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "À vista (1x total)" })).toBeInTheDocument();
+      const perInstallmentBtn = screen.getByRole("button", { name: "Mês a mês (3x)" });
+      expect(perInstallmentBtn).toBeInTheDocument();
+
+      // Clica em mês a mês
+      await user.click(perInstallmentBtn);
+
+      const saveBtn = screen.getByRole("button", { name: /salvar transação/i });
+      await user.click(saveBtn);
+
+      await waitFor(() => {
+        expect(createExpenseMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            value: 300,
+            debtType: "receivable",
+            debtAmount: 50, // 150 total / 3 parcelas = 50 por parcela
+            debtInstallmentMode: "per_installment",
+          }),
+        );
+      });
     });
 
     it("renderiza o atributo data-tour='launch-wizard-dialog' no modal para suporte ao Spotlight do tour interativo (Fase 8 — Tarefa 8.3)", () => {
@@ -897,15 +941,15 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
         />,
       );
 
-      const familySwitch = screen.getByRole("switch", { name: "Despesa da Casa / Familiar" });
-      expect(familySwitch).toHaveAttribute("aria-checked", "false");
+      const familyRadio = screen.getByRole("radio", { name: /famíli|familiar/i });
+      expect(familyRadio).toHaveAttribute("aria-checked", "false");
 
       // Clica na categoria familiar "Supermercado" (c3, is_family: true)
       const supermarketBtn = screen.getByRole("button", { name: /supermercado/i });
       await user.click(supermarketBtn);
 
-      // O switch de despesa familiar deve ser ativado automaticamente
-      expect(familySwitch).toHaveAttribute("aria-checked", "true");
+      // O contexto de despesa familiar deve ser ativado automaticamente
+      expect(familyRadio).toHaveAttribute("aria-checked", "true");
 
       const saveBtn = screen.getByRole("button", { name: /salvar transação/i });
       await user.click(saveBtn);
@@ -939,7 +983,7 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
       );
 
       // Quando a preferência do modo familiar está desativada, os controles familiares devem ficar ocultos
-      expect(screen.queryByRole("switch", { name: "Despesa da Casa / Familiar" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("radio", { name: /famíli|familiar/i })).not.toBeInTheDocument();
     });
 
     it("auto-ativa isFamily ao selecionar categoria familiar no modo guiado e exibe indicador visual (Tarefa 3.2)", async () => {
@@ -964,9 +1008,9 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
       // Avança para o Passo 3 (Detalhes)
       await user.click(screen.getByRole("button", { name: /continuar/i }));
 
-      // No passo 3, o switch familiar deve estar marcado
-      const familySwitch = screen.getByRole("switch", { name: "Despesa da Casa / Familiar" });
-      expect(familySwitch).toHaveAttribute("aria-checked", "true");
+      // No passo 3, o contexto familiar deve estar selecionado diretamente
+      const familyRadio = screen.getByRole("radio", { name: /famíli|familiar/i });
+      expect(familyRadio).toHaveAttribute("aria-checked", "true");
     });
   });
 });

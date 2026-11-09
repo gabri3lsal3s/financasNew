@@ -17,6 +17,8 @@ import { SplitChargeCard } from "@/components/modules";
 import { usePublicShare } from "@/state/queries/use-public-shares";
 import { useCategories, useSaveSplitExpense, useSignalSplitPayment } from "@/state";
 import { useAuth } from "@/hooks/use-auth";
+import { detectPixKeyType, generatePixBrCode } from "@/domain/pix/pix-br-code";
+import { calculateInstallmentsProgress } from "@/domain/finance/split-math";
 
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
@@ -42,23 +44,90 @@ export function SplitPublicPage() {
   const [isSelectCategoryOpen, setIsSelectCategoryOpen] = useState(false);
   const [isSelectParticipantOpen, setIsSelectParticipantOpen] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<SplitParticipantItem | null>(null);
+  const [selectedInstallmentId, setSelectedInstallmentId] = useState<string | null>(null);
+  const [isPayAllRemaining, setIsPayAllRemaining] = useState(false);
   const [isSavingDirectly, setIsSavingDirectly] = useState(false);
   const categoriesQuery = useCategories(session?.user ? "expense" : undefined);
 
   // Payload tipado com fallback seguro
   const payload = (share?.payload ?? null) as SplitSharePayload | null;
 
+  const participantInstallments = (() => {
+    if (!payload?.participant_installments || payload.participant_installments.length === 0) {
+      return [];
+    }
+    if (selectedParticipant?.id) {
+      const match = payload.participant_installments.filter(
+        (i) => i.participant_id === selectedParticipant.id
+      );
+      if (match.length > 0) return match;
+    }
+    const firstGuest = payload.participants?.find((p) => !p.is_host);
+    if (firstGuest?.id) {
+      const match = payload.participant_installments.filter(
+        (i) => i.participant_id === firstGuest.id
+      );
+      if (match.length > 0) return match;
+    }
+    return payload.participant_installments;
+  })();
+
+  const installmentsProgress =
+    participantInstallments.length > 1
+      ? calculateInstallmentsProgress(participantInstallments)
+      : null;
+
+  const selectedInstallment =
+    participantInstallments.length > 1
+      ? participantInstallments.find((i) => i.id === selectedInstallmentId) ||
+        installmentsProgress?.nextPendingInstallment ||
+        participantInstallments[0] ||
+        null
+      : null;
+
+  const effectiveChargeCents = (() => {
+    if (!payload) return 0;
+    const guestShareCents =
+      selectedParticipant?.share_cents ??
+      payload.guest_share_cents ??
+      (payload.people_count > 0
+        ? Math.round(payload.total_cents / payload.people_count)
+        : payload.total_cents);
+
+    if (participantInstallments.length > 1 && installmentsProgress) {
+      if (isPayAllRemaining) return installmentsProgress.remainingCents;
+      if (selectedInstallment) return selectedInstallment.amount_cents;
+    }
+    return guestShareCents;
+  })();
+
+  const dynamicPixBrCode = (() => {
+    if (!payload || !payload.pix_key) return payload?.pix_br_code || "";
+    if (participantInstallments.length <= 1) return payload.pix_br_code;
+
+    try {
+      const detectedKeyType = detectPixKeyType(payload.pix_key);
+      const txSuffix = (token || "RACHA").replace(/[^a-zA-Z0-9]/g, "").slice(0, 4).toUpperCase();
+      return generatePixBrCode({
+        pixKey: payload.pix_key,
+        keyType: detectedKeyType === "unknown" ? undefined : detectedKeyType,
+        merchantName: payload.host_name || "Anfitriao",
+        merchantCity: payload.host_city || "SAO PAULO",
+        amountCents: effectiveChargeCents,
+        txId: `RACHA${(selectedInstallment?.installment_number ?? 1).toString().padStart(2, "0")}${txSuffix}`,
+        infoAdicional: `${(payload.title || "Racha").slice(0, 15)} ${selectedInstallment && !isPayAllRemaining ? `${selectedInstallment.installment_number}/${selectedInstallment.total_installments}` : ""}`.trim().slice(0, 25),
+      });
+    } catch {
+      return payload.pix_br_code;
+    }
+  })();
+
   const hasTriggeredActionRef = useRef(false);
 
   const executeSaveAndSignal = useCallback(
     async (participant?: SplitParticipantItem | null, categoryId?: string) => {
       if (!payload) return;
-      const guestShareCents =
-        participant?.share_cents ??
-        payload.guest_share_cents ??
-        (payload.people_count > 0
-          ? Math.round(payload.total_cents / payload.people_count)
-          : payload.total_cents);
+      const guestShareCents = effectiveChargeCents;
 
       setIsSavingDirectly(true);
       try {
@@ -100,7 +169,7 @@ export function SplitPublicPage() {
         setIsSavingDirectly(false);
       }
     },
-    [payload, saveSplitMutation, signalSplitPaymentMutation, token, session, navigate],
+    [payload, effectiveChargeCents, saveSplitMutation, signalSplitPaymentMutation, token, session, navigate],
   );
 
   const handleSaveExpenseClick = useCallback(async () => {
@@ -274,26 +343,27 @@ export function SplitPublicPage() {
             />
           </Card>
         ) : (
-          (() => {
-            const guestShareCents =
-              payload.guest_share_cents ??
-              (payload.people_count > 0
-                ? Math.round(payload.total_cents / payload.people_count)
-                : payload.total_cents);
-
-            return (
-              <div className="space-y-4">
+          <div className="space-y-4">
                 <SplitChargeCard
                   title={payload.title || "Racha de Despesa"}
                   date={payload.date}
                   hostName={payload.host_name || "Anfitrião"}
                   peopleCount={payload.people_count}
                   totalCents={payload.total_cents}
-                  guestShareCents={guestShareCents}
-                  pixBrCode={payload.pix_br_code}
+                  guestShareCents={effectiveChargeCents}
+                  pixBrCode={dynamicPixBrCode}
                   pixKey={payload.pix_key}
                   pixKeyType={payload.pix_key_type}
                   participants={payload.participants}
+                  installmentsCount={payload.installments_count}
+                  installments={participantInstallments}
+                  selectedInstallmentId={selectedInstallment?.id ?? null}
+                  onSelectInstallmentId={(id) => {
+                    setIsPayAllRemaining(false);
+                    setSelectedInstallmentId(id);
+                  }}
+                  isPayAllRemaining={isPayAllRemaining}
+                  onTogglePayAllRemaining={() => setIsPayAllRemaining((prev) => !prev)}
                 />
 
                 {/* Bloco de Auto-Onboarding & Conversão Viral (Plano 06) */}
@@ -345,7 +415,7 @@ export function SplitPublicPage() {
                 <SplitOnboardingModal
                   open={isOnboardingModalOpen}
                   onOpenChange={setIsOnboardingModalOpen}
-                  guestShareCents={guestShareCents}
+                  guestShareCents={effectiveChargeCents}
                   title={payload.title}
                   date={payload.date}
                   token={token || ""}
@@ -355,7 +425,7 @@ export function SplitPublicPage() {
                   open={isSelectCategoryOpen}
                   onOpenChange={setIsSelectCategoryOpen}
                   title={payload.title}
-                  amountCents={guestShareCents}
+                  amountCents={effectiveChargeCents}
                   sentCategoryName={payload.category_name}
                   categories={categoriesQuery.data ?? []}
                   isPending={isSavingDirectly}
@@ -370,8 +440,6 @@ export function SplitPublicPage() {
                   onConfirm={handleConfirmParticipant}
                 />
               </div>
-            );
-          })()
         )}
       </main>
 

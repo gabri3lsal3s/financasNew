@@ -177,7 +177,7 @@ describe("Tarefa 5.1: Testes E2E de Simulação (Vitest) — Trilha de Finanças
   });
 
   describe("2. Renderização de Telas Reais no Modo Demo sem Falhas e sem Telas Vazias (DoD 1)", () => {
-    it("Passo 1: Renderiza o assistente de lançamento com o switch de divisão de contas ativo", () => {
+    it("Passo 1: Renderiza o assistente de lançamento com o switch de divisão de contas ativo", async () => {
       startDemo("shared_finances");
       const state = defaultLaunchState("expense", {
         valueCents: 15000,
@@ -216,18 +216,14 @@ describe("Tarefa 5.1: Testes E2E de Simulação (Vitest) — Trilha de Finanças
         { wrapper: createWrapper() },
       );
 
-      // Valida o container com o seletor do tour
+      // Valida o botão com o seletor do tour
       const splitTarget = document.querySelector('[data-tour="wizard-split-toggle"]');
       expect(splitTarget).toBeInTheDocument();
+      expect(splitTarget).toHaveTextContent("Rachar c/ Amigos");
 
-      // Valida textos em pt-BR e switch acessível
-      expect(screen.getByText("Rachar despesa com amigos")).toBeInTheDocument();
-      expect(
-        screen.getByText("Gera código Pix Copia e Cola e registra cobrança a receber"),
-      ).toBeInTheDocument();
-
-      const toggleSwitch = screen.getByRole("switch", { name: "Rachar despesa com amigos" });
-      expect(toggleSwitch).toBeInTheDocument();
+      // Ao selecionar Rachar c/ Amigos, ativa imediatamente a divisão sem switches redundantes
+      await userEvent.click(splitTarget!);
+      expect(handleSplitToggle).toHaveBeenCalledWith(true);
 
       // Zero chamadas ao Supabase
       expect(mockSupabaseClient.from).not.toHaveBeenCalled();

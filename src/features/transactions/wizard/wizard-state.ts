@@ -50,6 +50,8 @@ export interface LaunchState {
   splitPeopleCount: number;
   /** Vínculo com viagem ativa (Modo Viagem) */
   tripId: string | null;
+  /** Modalidade de recebimento do rateio quando despesa parcelada ('single_total': à vista / 'per_installment': mês a mês) */
+  splitDebtMode: "single_total" | "per_installment";
 }
 
 export const WIZARD_STEPS = ["Valor", "Categoria", "Detalhes", "Revisão"] as const;
@@ -84,6 +86,7 @@ export function defaultLaunchState(
     splitEnabled: overrides?.splitEnabled ?? false,
     splitPeopleCount: overrides?.splitPeopleCount ?? 2,
     tripId: overrides?.tripId ?? null,
+    splitDebtMode: overrides?.splitDebtMode ?? "single_total",
   };
   return overrides ? { ...base, ...overrides } : base;
 }
@@ -179,6 +182,7 @@ export const step3DetailsSchema = z
     recurrenceCount: z.number().int(),
     isFamily: z.boolean().default(false).optional(),
     tripId: z.string().nullable().optional(),
+    splitDebtMode: z.enum(["single_total", "per_installment"]).default("single_total").optional(),
     valueCents: moneyCentsSchema({ allowZero: true }),
   })
   .superRefine((data, ctx) => {
@@ -248,6 +252,7 @@ export const launchStateSchema = z
     recurrenceCount: z.number().int(),
     isFamily: z.boolean().default(false).optional(),
     tripId: z.string().nullable().optional(),
+    splitDebtMode: z.enum(["single_total", "per_installment"]).default("single_total").optional(),
   })
   .superRefine((data, ctx) => {
     if (data.type === "expense" && data.paymentMethod === "credit_card" && (!data.cardId || data.cardId.trim() === "")) {

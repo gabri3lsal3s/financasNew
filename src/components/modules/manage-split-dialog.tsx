@@ -27,9 +27,11 @@ import {
   useUpdatePublicShare,
 } from "@/state";
 import { formatCentsAsCurrency } from "@/services/masks";
+import { formatDateBR } from "@/lib/date";
+import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import type { Debt, PublicShare, SplitParticipantItem, SplitSharePayload } from "@/types";
+import type { Debt, PublicShare, SplitParticipantInstallment, SplitParticipantItem, SplitSharePayload } from "@/types";
 
 export interface ManageSplitDialogProps {
   open: boolean;
@@ -98,6 +100,10 @@ export function ManageSplitDialog({
     return res;
   });
 
+  const [participantInstallments, setParticipantInstallments] = useState<SplitParticipantInstallment[]>(
+    () => payload.participant_installments ?? []
+  );
+
   // Estado de edição de valor personalizado por participante
   const [customInputParticipantId, setCustomInputParticipantId] = useState<string | null>(null);
   const [customInputCents, setCustomInputCents] = useState<number>(0);
@@ -142,24 +148,32 @@ export function ManageSplitDialog({
   // Sincroniza participantes no Supabase
   const persistParticipants = async (
     updatedParticipants: SplitParticipantItem[],
-    options?: { markCompleted?: boolean },
+    options?: {
+      markCompleted?: boolean;
+      updatedInstallments?: SplitParticipantInstallment[];
+    },
   ) => {
     const updatedSettledTotal = updatedParticipants
       .filter((p) => !p.is_host)
       .reduce((acc, f) => acc + (f.is_settled ? Number(f.settled_cents ?? f.share_cents) : 0), 0);
 
     const completed = options?.markCompleted ?? isCompleted;
+    const installmentsToPersist = options?.updatedInstallments ?? participantInstallments;
 
     const newPayload: SplitSharePayload = {
       ...payload,
       title: editedTitle.trim() || payload.title,
       pix_key: editedPixKey.trim() || payload.pix_key,
       participants: updatedParticipants,
+      participant_installments: installmentsToPersist.length > 0 ? installmentsToPersist : undefined,
       total_settled_cents: updatedSettledTotal,
       is_completed: completed,
     };
 
     setParticipants(updatedParticipants);
+    if (options?.updatedInstallments) {
+      setParticipantInstallments(options.updatedInstallments);
+    }
 
     await updateShareMutation.mutateAsync({
       id: share.id,
@@ -220,8 +234,20 @@ export function ManageSplitDialog({
       return p;
     });
 
+    const updatedInstallments = participantInstallments.map((inst) => {
+      if (inst.participant_id === participantId) {
+        return {
+          ...inst,
+          is_settled: true,
+          settled_at: new Date().toISOString(),
+          signal_status: "none" as const,
+        };
+      }
+      return inst;
+    });
+
     try {
-      await persistParticipants(updated);
+      await persistParticipants(updated, { updatedInstallments });
       triggerSensory("action");
       pushToast({
         title: "Baixa registrada!",
@@ -254,8 +280,20 @@ export function ManageSplitDialog({
       return p;
     });
 
+    const updatedInstallments = participantInstallments.map((inst) => {
+      if (inst.participant_id === customInputParticipantId) {
+        return {
+          ...inst,
+          is_settled: true,
+          settled_at: new Date().toISOString(),
+          signal_status: "none" as const,
+        };
+      }
+      return inst;
+    });
+
     try {
-      await persistParticipants(updated);
+      await persistParticipants(updated, { updatedInstallments });
       triggerSensory("action");
       setCustomInputParticipantId(null);
       pushToast({
@@ -285,13 +323,79 @@ export function ManageSplitDialog({
       return p;
     });
 
+    const updatedInstallments = participantInstallments.map((inst) => {
+      if (inst.participant_id === participantId) {
+        return {
+          ...inst,
+          is_settled: false,
+          settled_at: null,
+          signal_status: "none" as const,
+        };
+      }
+      return inst;
+    });
+
     try {
-      await persistParticipants(updated);
+      await persistParticipants(updated, { updatedInstallments });
       triggerSensory("selection");
       pushToast({
         title: "Baixa desfeita",
         description: "O participante voltou ao status de pendente.",
         variant: "default",
+      });
+    } catch {
+      triggerSensory("destructive");
+    }
+  };
+
+  // 3.1. Alternar baixa em parcela individual
+  const handleToggleSettleInstallment = async (
+    installmentId: string,
+    markSettled: boolean
+  ) => {
+    const target = participantInstallments.find((i) => i.id === installmentId);
+    if (!target) return;
+
+    const updatedInstallments = participantInstallments.map((i) => {
+      if (i.id === installmentId) {
+        return {
+          ...i,
+          is_settled: markSettled,
+          settled_at: markSettled ? new Date().toISOString() : null,
+          signal_status: "none" as const,
+        };
+      }
+      return i;
+    });
+
+    const participantId = target.participant_id;
+    const participantInsts = updatedInstallments.filter((i) => i.participant_id === participantId);
+    const allSettled = participantInsts.length > 0 && participantInsts.every((i) => i.is_settled);
+    const settledCents = participantInsts
+      .filter((i) => i.is_settled)
+      .reduce((acc, i) => acc + i.amount_cents, 0);
+
+    const updatedParticipants = participants.map((p) => {
+      if (p.id === participantId) {
+        return {
+          ...p,
+          is_settled: allSettled,
+          settled_cents: settledCents,
+          settled_at: allSettled ? new Date().toISOString() : p.settled_at,
+        };
+      }
+      return p;
+    });
+
+    try {
+      await persistParticipants(updatedParticipants, { updatedInstallments });
+      triggerSensory("action");
+      pushToast({
+        title: markSettled ? "Parcela marcada como paga!" : "Baixa da parcela desfeita",
+        description: markSettled
+          ? `Parcela ${target.installment_number}/${target.total_installments} quitada com sucesso.`
+          : `Parcela ${target.installment_number}/${target.total_installments} reaberta como pendente.`,
+        variant: "success",
       });
     } catch {
       triggerSensory("destructive");
@@ -639,6 +743,90 @@ export function ManageSplitDialog({
                         </div>
                       </div>
                     )}
+
+                    {/* Grade de Parcelas Individuais (quando o rateio for parcelado) */}
+                    {(() => {
+                      const friendInsts = participantInstallments.filter(
+                        (inst) => inst.participant_id === friend.id
+                      );
+                      if (friendInsts.length <= 1) return null;
+
+                      return (
+                        <div className="pt-2 border-t border-border/40 space-y-1.5">
+                          <span className="text-[11px] font-semibold text-muted-foreground block">
+                            Parcelas mensais:
+                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {friendInsts.map((inst) => (
+                              <div
+                                key={inst.id}
+                                className={cn(
+                                  "flex items-center justify-between p-2 rounded-lg border text-xs transition-colors",
+                                  inst.is_settled
+                                    ? "bg-surface-hover/30 border-border/40 text-muted-foreground"
+                                    : "bg-surface border-border/70"
+                                )}
+                              >
+                                <div className="flex flex-col gap-0.5 min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-semibold text-foreground">
+                                      {inst.installment_number}/{inst.total_installments}
+                                    </span>
+                                    <Badge
+                                      size="xs"
+                                      variant={
+                                        inst.is_settled
+                                          ? "positive"
+                                          : inst.signal_status === "pending_confirmation"
+                                            ? "warning"
+                                            : "muted"
+                                      }
+                                    >
+                                      {inst.is_settled
+                                        ? "Paga"
+                                        : inst.signal_status === "pending_confirmation"
+                                          ? "Avisou"
+                                          : "Pendente"}
+                                    </Badge>
+                                  </div>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    Venc: {formatDateBR(inst.due_date)}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span className="tabular-nums font-semibold text-foreground text-xs">
+                                    {formatCentsAsCurrency(inst.amount_cents)}
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    size="xs"
+                                    variant={inst.is_settled ? "ghost" : "outline"}
+                                    onClick={() => handleToggleSettleInstallment(inst.id, !inst.is_settled)}
+                                    className="h-6 px-1.5 text-[11px] gap-1 cursor-pointer"
+                                    title={inst.is_settled ? "Reabrir parcela" : "Confirmar recebimento da parcela"}
+                                    aria-label={
+                                      inst.is_settled
+                                        ? `Reabrir parcela ${inst.installment_number} de ${friend.name}`
+                                        : `Confirmar recebimento da parcela ${inst.installment_number} de ${friend.name}`
+                                    }
+                                  >
+                                    {inst.is_settled ? (
+                                      <RotateCcw className="size-3 text-muted-foreground" aria-hidden="true" />
+                                    ) : (
+                                      <CheckCircle2 className="size-3 text-positive-strong" aria-hidden="true" />
+                                    )}
+                                    <span className="text-[10px] hidden sm:inline">
+                                      {inst.is_settled ? "Reabrir" : "Baixar"}
+                                    </span>
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}

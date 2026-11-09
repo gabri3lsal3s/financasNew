@@ -334,4 +334,71 @@ describe("ManageSplitDialog", () => {
       expect(mockDeletePublicShare).toHaveBeenCalledWith("share-123");
     });
   });
+
+  it("exibe a grade de parcelas por amigo e permite baixar individualmente uma parcela", async () => {
+    mockUpdatePublicShare.mockResolvedValueOnce({});
+    const onOpenChange = vi.fn();
+
+    const shareWithInstallments: PublicShare = {
+      ...baseShare,
+      payload: {
+        ...baseShare.payload,
+        installments_count: 2,
+        installments_mode: "per_installment",
+        participant_installments: [
+          {
+            id: "p_2_inst_1",
+            participant_id: "p_2",
+            installment_number: 1,
+            total_installments: 2,
+            amount_cents: 2500,
+            due_date: "2026-08-10",
+            is_settled: false,
+          },
+          {
+            id: "p_2_inst_2",
+            participant_id: "p_2",
+            installment_number: 2,
+            total_installments: 2,
+            amount_cents: 2500,
+            due_date: "2026-09-10",
+            is_settled: false,
+          },
+        ],
+      },
+    };
+
+    render(
+      <ManageSplitDialog
+        open={true}
+        onOpenChange={onOpenChange}
+        share={shareWithInstallments}
+      />
+    );
+
+    // Deve exibir as parcelas do amigo
+    expect(screen.getByText("Parcelas mensais:")).toBeInTheDocument();
+    expect(screen.getByText("1/2")).toBeInTheDocument();
+    expect(screen.getByText("2/2")).toBeInTheDocument();
+
+    // Clica no botão de baixar a parcela 1
+    const baixarParcela1 = screen.getByLabelText("Confirmar recebimento da parcela 1 de Lucas");
+    fireEvent.click(baixarParcela1);
+
+    await waitFor(() => {
+      expect(mockUpdatePublicShare).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "share-123",
+          payload: expect.objectContaining({
+            participant_installments: expect.arrayContaining([
+              expect.objectContaining({
+                id: "p_2_inst_1",
+                is_settled: true,
+              }),
+            ]),
+          }),
+        })
+      );
+    });
+  });
 });

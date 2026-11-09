@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildSplitParticipantInstallments,
   calculateGuestAmountCents,
+  calculateInstallmentsProgress,
   calculateSplitSummary,
   DEFAULT_SPLIT_REMAINDER_POLICY,
   MAX_SPLIT_PARTICIPANTS,
@@ -295,6 +297,75 @@ describe("split-math (Algoritmo Puro de Rateio de Centavos)", () => {
       expect(() => splitCustomWithRemainder(10000, [])).toThrow(
         "Lista de participantes deve conter pelo menos 1",
       );
+    });
+  });
+
+  describe("buildSplitParticipantInstallments e calculateInstallmentsProgress", () => {
+    it("divide o valor do participante conservando rigorosamente a soma dos centavos", () => {
+      // Participante deve R$ 100,00 (10000 centavos) em 3 parcelas
+      const installments = buildSplitParticipantInstallments({
+        participantId: "p_2",
+        totalShareCents: 10000,
+        installmentsCount: 3,
+        startDate: "2026-03-15",
+      });
+
+      expect(installments).toHaveLength(3);
+      expect(installments[0]?.amount_cents).toBe(3334);
+      expect(installments[1]?.amount_cents).toBe(3333);
+      expect(installments[2]?.amount_cents).toBe(3333);
+      expect(installments.reduce((acc, i) => acc + i.amount_cents, 0)).toBe(10000);
+
+      expect(installments[0]?.due_date).toBe("2026-03-15");
+      expect(installments[1]?.due_date).toBe("2026-04-15");
+      expect(installments[2]?.due_date).toBe("2026-05-15");
+    });
+
+    it("retorna 1 parcela única se count <= 1", () => {
+      const installments = buildSplitParticipantInstallments({
+        participantId: "p_2",
+        totalShareCents: 5000,
+        installmentsCount: 1,
+        startDate: "2026-03-15",
+      });
+
+      expect(installments).toHaveLength(1);
+      expect(installments[0]?.amount_cents).toBe(5000);
+      expect(installments[0]?.installment_number).toBe(1);
+      expect(installments[0]?.total_installments).toBe(1);
+    });
+
+    it("calcula o progresso de pagamento das parcelas de forma precisa", () => {
+      const installments = buildSplitParticipantInstallments({
+        participantId: "p_2",
+        totalShareCents: 15000,
+        installmentsCount: 3,
+        startDate: "2026-03-15",
+      });
+
+      // Inicial: 3 pendentes
+      const progress1 = calculateInstallmentsProgress(installments);
+      expect(progress1.totalCount).toBe(3);
+      expect(progress1.settledCount).toBe(0);
+      expect(progress1.pendingCount).toBe(3);
+      expect(progress1.totalCents).toBe(15000);
+      expect(progress1.settledCents).toBe(0);
+      expect(progress1.remainingCents).toBe(15000);
+      expect(progress1.nextPendingInstallment?.installment_number).toBe(1);
+
+      // Marca a primeira como quitada
+      const updated = [
+        { ...installments[0]!, is_settled: true, settled_at: "2026-03-16T10:00:00Z" },
+        installments[1]!,
+        installments[2]!,
+      ];
+
+      const progress2 = calculateInstallmentsProgress(updated);
+      expect(progress2.settledCount).toBe(1);
+      expect(progress2.pendingCount).toBe(2);
+      expect(progress2.settledCents).toBe(5000);
+      expect(progress2.remainingCents).toBe(10000);
+      expect(progress2.nextPendingInstallment?.installment_number).toBe(2);
     });
   });
 });

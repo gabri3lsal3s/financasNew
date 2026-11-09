@@ -212,6 +212,7 @@ export function LaunchWizard({
     description?: string | null;
     date: string;
     peopleCount: number;
+    installmentsCount?: number;
     categoryId?: string;
     categoryName?: string;
     categoryIcon?: string;
@@ -428,10 +429,19 @@ export function LaunchWizard({
               ? `Racha: ${state.description || "Despesa"}`
               : null
             : null,
-          debtAmount: state.debtEnabled ? state.debtAmountCents / 100 : null,
+          debtAmount: state.debtEnabled
+            ? state.splitEnabled && state.installments > 1 && state.splitDebtMode === "per_installment"
+              ? Math.round(state.debtAmountCents / state.installments) / 100
+              : state.debtAmountCents / 100
+            : null,
           debtDueDate: state.debtEnabled && state.debtDueDate ? state.debtDueDate : null,
           debtType: state.debtEnabled ? state.debtType : null,
           isFamily: state.isFamily,
+          debtInstallmentMode: state.debtEnabled
+            ? state.installments > 1
+              ? state.splitDebtMode
+              : "single_total"
+            : null,
         });
 
         // Se uma viagem estiver vinculada, associa a despesa pessoal à viagem e adiciona ao ledger do grupo
@@ -531,6 +541,10 @@ export function LaunchWizard({
             description: state.description || null,
             date: state.date,
             peopleCount: state.splitPeopleCount,
+            installmentsCount:
+              state.splitDebtMode === "per_installment" && state.installmentsCount > 1
+                ? state.installmentsCount
+                : 1,
             categoryId: state.categoryId,
             categoryName: selectedCategory?.name,
             categoryIcon: selectedCategory?.icon ?? undefined,
@@ -903,6 +917,7 @@ export function LaunchWizard({
             cardsLoading={cardsQuery.isLoading}
             activeTrips={activeTrips}
             onTripChange={handleTripChange}
+            onSplitDebtModeChange={(mode) => set("splitDebtMode", mode)}
             onSubmit={() => {
               if (canSubmitQuick && !pending) {
                 void handleSubmit();
@@ -975,6 +990,7 @@ export function LaunchWizard({
                   if (method !== "credit_card") set("cardId", null);
                 }}
                 onCardChange={(cardId) => set("cardId", cardId)}
+                onInstallmentsChange={(count) => set("installments", count)}
                 onReceiveTypeChange={(receiveType: ReceiveType) => set("receiveType", receiveType)}
                 onDescriptionChange={(description) => set("description", description)}
                 onFamilyChange={(isFamily) => set("isFamily", isFamily)}
@@ -1007,6 +1023,7 @@ export function LaunchWizard({
                 cardsError={cardsQuery.error}
                 activeTrips={activeTrips}
                 onTripChange={handleTripChange}
+                onSplitDebtModeChange={(mode) => set("splitDebtMode", mode)}
                 onNext={() => {
                   if (canProceed(state)) {
                     goTo(4);
@@ -1071,7 +1088,9 @@ export function LaunchWizard({
           category_id: createdSplitExpense.categoryId || "",
           payment_method: "pix",
           created_at: "",
+          installments_total: createdSplitExpense.installmentsCount ?? null,
         }}
+        initialInstallmentsCount={createdSplitExpense.installmentsCount}
         categoryName={createdSplitExpense.categoryName}
         categoryIcon={createdSplitExpense.categoryIcon}
         initialAmountCents={Math.round(createdSplitExpense.value * 100)}

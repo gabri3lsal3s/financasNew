@@ -988,6 +988,19 @@ export type SplitParticipantItem = {
   payment_signaled_at?: string | null;
 };
 
+export type SplitParticipantInstallment = {
+  id: string;
+  participant_id: string;
+  installment_number: number;
+  total_installments: number;
+  amount_cents: number;
+  due_date: string;
+  is_settled: boolean;
+  settled_at?: string | null;
+  signal_status?: "none" | "pending_confirmation";
+  signaled_at?: string | null;
+};
+
 export type SplitPaymentSignal = {
   id: string;
   participant_id?: string | null;
@@ -997,6 +1010,7 @@ export type SplitPaymentSignal = {
   created_at: string;
   confirmed_at?: string | null;
   dismissed_at?: string | null;
+  installment_number?: number | null;
 };
 
 export type SplitSharePayload = {
@@ -1021,6 +1035,9 @@ export type SplitSharePayload = {
   is_completed?: boolean;
   total_settled_cents?: number;
   payment_signals?: SplitPaymentSignal[];
+  installments_count?: number;
+  installments_mode?: "single_total" | "per_installment";
+  participant_installments?: SplitParticipantInstallment[];
 };
 
 export type PublicShare = {

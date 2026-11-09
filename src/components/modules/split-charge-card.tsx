@@ -2,7 +2,9 @@ import { useState } from "react";
 import {
   Calendar,
   Check,
+  Clock,
   Copy,
+  CreditCard,
   QrCode,
   Receipt,
   Share2,
@@ -25,6 +27,8 @@ import { formatCentsAsCurrency } from "@/services/masks";
 import { formatDateBR, todayLocalIso } from "@/lib/date";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
+import { calculateInstallmentsProgress } from "@/domain/finance/split-math";
+import type { SplitParticipantInstallment } from "@/types";
 import { cn } from "@/lib/utils";
 
 export interface SplitParticipantView {
@@ -52,6 +56,12 @@ export interface SplitChargeCardProps {
   onCopyPix?: () => void;
   onCopyPixKey?: () => void;
   onShareClick?: () => void;
+  installmentsCount?: number;
+  installments?: SplitParticipantInstallment[];
+  selectedInstallmentId?: string | null;
+  onSelectInstallmentId?: (id: string | null) => void;
+  isPayAllRemaining?: boolean;
+  onTogglePayAllRemaining?: () => void;
 }
 
 /**
@@ -77,6 +87,11 @@ export function SplitChargeCard({
   participants,
   isDemo = false,
   defaultShowQrCode = false,
+  installments,
+  selectedInstallmentId,
+  onSelectInstallmentId,
+  isPayAllRemaining = false,
+  onTogglePayAllRemaining,
   onCopyPix,
   onCopyPixKey,
   onShareClick,
@@ -88,6 +103,19 @@ export function SplitChargeCard({
   const effectiveGuestShareCents =
     guestShareCents ??
     (peopleCount > 0 ? Math.round(totalCents / peopleCount) : totalCents);
+
+  const hasInstallments = Boolean(installments && installments.length > 1);
+  const installmentsProgress = hasInstallments && installments ? calculateInstallmentsProgress(installments) : null;
+  const selectedInstallment =
+    hasInstallments && installments
+      ? installments.find((i) => i.id === selectedInstallmentId) || installmentsProgress?.nextPendingInstallment || installments[0]
+      : null;
+
+  const effectiveChargeCents = hasInstallments && installmentsProgress
+    ? isPayAllRemaining
+      ? installmentsProgress.remainingCents
+      : selectedInstallment?.amount_cents ?? effectiveGuestShareCents
+    : effectiveGuestShareCents;
 
   const handleCopyPix = async () => {
     if (onCopyPix) {
@@ -198,15 +226,112 @@ export function SplitChargeCard({
         {/* Bloco Hero: Sua Parte a Pagar */}
         <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 sm:p-5 text-center space-y-1.5">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block">
-            Sua parte a pagar
+            {hasInstallments && selectedInstallment
+              ? isPayAllRemaining
+                ? `Total Restante (${installmentsProgress?.pendingCount} parcelas)`
+                : `Sua parte a pagar — Parcela ${selectedInstallment.installment_number} de ${selectedInstallment.total_installments}`
+              : "Sua parte a pagar"}
           </span>
           <div className="tabular-nums font-bold text-foreground text-3xl sm:text-4xl tracking-tight whitespace-nowrap">
-            <MoneyText cents={effectiveGuestShareCents} variant="hero" />
+            <MoneyText cents={effectiveChargeCents} variant="hero" />
           </div>
           <span className="text-xs text-muted-foreground block">
-            Valor total da conta: {formatCentsAsCurrency(totalCents)}
+            {hasInstallments && selectedInstallment && !isPayAllRemaining
+              ? `Vencimento da fatura: ${formatDateBR(selectedInstallment.due_date)} • Total do racha: ${formatCentsAsCurrency(totalCents)}`
+              : `Valor total da conta: ${formatCentsAsCurrency(totalCents)}`}
           </span>
         </div>
+
+        {/* Grade de Seleção de Parcelas (Quando Despesa for Parcelada) */}
+        {hasInstallments && installments && installmentsProgress && (
+          <div className="space-y-2 pt-1 border-t border-border/60">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <CreditCard className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                <span className="text-xs font-semibold text-foreground">
+                  Parcelas ({installmentsProgress.settledCount}/{installmentsProgress.totalCount} pagas)
+                </span>
+              </div>
+              {installmentsProgress.pendingCount > 1 && onTogglePayAllRemaining && (
+                <button
+                  type="button"
+                  onClick={onTogglePayAllRemaining}
+                  className={cn(
+                    "text-[11px] font-medium transition-colors hover:underline cursor-pointer",
+                    isPayAllRemaining ? "text-primary font-semibold" : "text-muted-foreground"
+                  )}
+                >
+                  {isPayAllRemaining ? "Pagar uma a uma" : "Quitar todas pendentes"}
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {installments.map((inst) => {
+                const isSelected = !isPayAllRemaining && selectedInstallment?.id === inst.id;
+                const isSettled = inst.is_settled;
+                const isSignaled = inst.signal_status === "pending_confirmation";
+
+                return (
+                  <button
+                    key={inst.id}
+                    type="button"
+                    disabled={isSettled}
+                    onClick={() => {
+                      if (!isSettled && onSelectInstallmentId) {
+                        onSelectInstallmentId(inst.id);
+                      }
+                    }}
+                    className={cn(
+                      "flex items-center justify-between p-2.5 rounded-xl border text-left transition-all",
+                      isSettled
+                        ? "bg-surface-hover/30 border-border/40 opacity-70 cursor-default"
+                        : isSelected
+                          ? "bg-primary/10 border-primary/40 ring-1 ring-primary/30 cursor-pointer shadow-xs"
+                          : "bg-surface border-border/70 hover:border-border hover:bg-surface-hover/50 cursor-pointer"
+                    )}
+                  >
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold text-foreground">
+                          Parcela {inst.installment_number}/{inst.total_installments}
+                        </span>
+                        {isSettled ? (
+                          <Badge variant="positive" size="xs" className="gap-1">
+                            <Check className="size-2.5" aria-hidden="true" />
+                            <span>Paga</span>
+                          </Badge>
+                        ) : isSignaled ? (
+                          <Badge variant="warning" size="xs" className="gap-1">
+                            <Clock className="size-2.5" aria-hidden="true" />
+                            <span>Em conferência</span>
+                          </Badge>
+                        ) : isSelected ? (
+                          <Badge variant="default" size="xs">
+                            Selecionada
+                          </Badge>
+                        ) : (
+                          <Badge variant="muted" size="xs">
+                            Pendente
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-muted-foreground">
+                        Vencimento: {formatDateBR(inst.due_date)}
+                      </span>
+                    </div>
+
+                    <div className="text-right tabular-nums">
+                      <span className="text-xs font-bold text-foreground">
+                        {formatCentsAsCurrency(inst.amount_cents)}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Botão de Um Toque: Copiar Pix com Valor Embutido */}
         <Button
@@ -216,7 +341,7 @@ export function SplitChargeCard({
           className="w-full gap-2 text-base font-semibold shadow-sm cursor-pointer"
           onClick={handleCopyPix}
           sensoryIntent="success"
-          aria-label={`Copiar código Pix no valor de ${formatCentsAsCurrency(effectiveGuestShareCents)}`}
+          aria-label={`Copiar código Pix no valor de ${formatCentsAsCurrency(effectiveChargeCents)}`}
         >
           {copiedPix ? (
             <>
@@ -226,7 +351,7 @@ export function SplitChargeCard({
           ) : (
             <>
               <Copy className="size-5 shrink-0" aria-hidden="true" />
-              <span>Copiar Pix — {formatCentsAsCurrency(effectiveGuestShareCents)}</span>
+              <span>Copiar Pix — {formatCentsAsCurrency(effectiveChargeCents)}</span>
             </>
           )}
         </Button>

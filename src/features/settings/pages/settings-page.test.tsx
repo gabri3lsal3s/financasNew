@@ -133,6 +133,11 @@ vi.mock("@/state", () => ({
     setAppMode: vi.fn().mockResolvedValue(true),
     isUpdating: false,
   }),
+  useTripMode: () => ({
+    isTripModeEnabled: false,
+    toggleTripMode: vi.fn().mockResolvedValue(true),
+    isPending: false,
+  }),
 }));
 
 function renderSettings(initialEntries: string[] = ["/configuracoes"]) {
@@ -273,7 +278,7 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
     const securityTab = screen.getByRole("tab", { name: "Dados & Privacidade" });
     await user.click(securityTab);
 
-    expect(screen.getByText("Gestão de Dados & Backup")).toBeInTheDocument();
+    expect(screen.getByText("Extratos CSV")).toBeInTheDocument();
     expect(screen.getByText("Sobre o Aplicativo")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Verificar atualizações/i })).toBeInTheDocument();
     expect(screen.queryByText("Conta & Sessão")).not.toBeInTheDocument();
@@ -312,12 +317,12 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
 
   it("ativa a aba Dados & Privacidade quando acessado via ?subtab=dados ou ?tab=seguranca", () => {
     renderSettings(["/configuracoes?subtab=dados"]);
-    expect(screen.getByText("Gestão de Dados & Backup")).toBeInTheDocument();
+    expect(screen.getByText("Extratos CSV")).toBeInTheDocument();
 
     cleanup();
 
     renderSettings(["/configuracoes?tab=seguranca"]);
-    expect(screen.getByText("Gestão de Dados & Backup")).toBeInTheDocument();
+    expect(screen.getByText("Extratos CSV")).toBeInTheDocument();
   });
 
   it("ativa a aba Dados & Privacidade quando acessado via ?tab=devices ou ?tab=app", () => {

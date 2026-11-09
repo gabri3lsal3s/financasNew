@@ -89,6 +89,7 @@ export interface CreateExpenseWithDebtParams {
   debtDueDate?: string | null;
   debtType?: DebtType | null;
   isFamily?: boolean;
+  debtInstallmentMode?: "single_total" | "per_installment" | null;
 }
 
 /** Despesa + cobrança vinculada em uma única transação (D1/§3.2.4). */
@@ -112,6 +113,7 @@ export async function createExpenseWithDebt(params: CreateExpenseWithDebtParams)
       p_debt_due_date: params.debtDueDate ?? null,
       p_debt_type: params.debtType ?? null,
       p_is_family: params.isFamily ?? false,
+      p_debt_installment_mode: params.debtInstallmentMode ?? "per_installment",
     }),
   );
 }

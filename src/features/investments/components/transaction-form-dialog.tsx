@@ -260,44 +260,48 @@ function TransactionFormContent({
         }}
         className="mt-4 flex flex-col gap-3.5"
       >
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-          Tipo de operação
-          <Select
-            value={type}
-            onValueChange={(value) => setType(value as PortfolioTransactionType)}
-            options={TX_OPTIONS}
-            ariaLabel="Tipo de operação"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-          Data
-          <DatePicker value={date} onValueChange={setDate} ariaLabel="Data da transação" />
-        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
+            Tipo de operação
+            <Select
+              value={type}
+              onValueChange={(value) => setType(value as PortfolioTransactionType)}
+              options={TX_OPTIONS}
+              ariaLabel="Tipo de operação"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
+            Data
+            <DatePicker value={date} onValueChange={setDate} ariaLabel="Data da transação" />
+          </label>
+        </div>
 
         {withQtyPrice ? (
           <>
-            <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-              Quantidade
-              <NumberStepperInput
-                value={quantity}
-                step={1}
-                min={0}
-                onValueChange={setQuantity}
-                placeholder="Ex.: 10"
-                ariaLabel="Quantidade"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-              Preço unitário ({asset.currency})
-              <NumberStepperInput
-                value={price}
-                step={0.01}
-                min={0}
-                onValueChange={setPrice}
-                placeholder="Ex.: 42,50"
-                ariaLabel="Preço unitário"
-              />
-            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
+                Quantidade
+                <NumberStepperInput
+                  value={quantity}
+                  step={1}
+                  min={0}
+                  onValueChange={setQuantity}
+                  placeholder="Ex.: 10"
+                  ariaLabel="Quantidade"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
+                Preço unitário ({asset.currency})
+                <NumberStepperInput
+                  value={price}
+                  step={0.01}
+                  min={0}
+                  onValueChange={setPrice}
+                  placeholder="Ex.: 42,50"
+                  ariaLabel="Preço unitário"
+                />
+              </label>
+            </div>
             <p className="num text-xs text-muted-foreground">
               Total: <span className="font-semibold text-foreground"><MoneyText cents={numberToCents(totalPreview)} currency={asset.currency} /></span>
             </p>

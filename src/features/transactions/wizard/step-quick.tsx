@@ -13,8 +13,8 @@
  */
 
 import { useMemo, useState } from "react";
-import { Check, CreditCard, Sparkles, SlidersHorizontal, Users, ChevronLeft, ChevronRight } from "lucide-react";
-import { Badge, Button, Input, MoneyInput, Select, Switch, Tabs } from "@/components/ui";
+import { Check, CreditCard, Sparkles, SlidersHorizontal, Users, ChevronLeft, ChevronRight, User, Plane, HandCoins } from "lucide-react";
+import { Badge, Button, Input, MoneyInput, Select, Tabs } from "@/components/ui";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import {
   CANONICAL_MERCHANT_CATALOG,
@@ -45,6 +45,7 @@ export interface StepQuickProps {
   isFamilyModeEnabled?: boolean;
   onSplitToggle?: (enabled: boolean) => void;
   onSplitPeopleCountChange?: (count: number) => void;
+  onSplitDebtModeChange?: (mode: "single_total" | "per_installment") => void;
   activeTrips?: { id: string; title: string; destination?: string | null }[];
   onTripChange?: (tripId: string | null) => void;
   onSwitchToGuided: () => void;
@@ -91,6 +92,7 @@ export function StepQuick({
   isFamilyModeEnabled = false,
   onSplitToggle,
   onSplitPeopleCountChange,
+  onSplitDebtModeChange,
   activeTrips,
   onTripChange,
   onSwitchToGuided,
@@ -505,121 +507,246 @@ export function StepQuick({
         )}
       </div>
 
-      {/* 6. Switch Discreto: Despesa Familiar (Fase 3 — Tarefa 3.2) */}
-      {isFamilyModeEnabled && (
-        <div className="rounded-xl border border-border/80 bg-surface p-3">
-          <Switch
-            id="quick-family-switch"
-            checked={state.isFamily}
-            onCheckedChange={(checked) => onFamilyChange?.(checked)}
-            label={isExpense ? "Despesa da Casa / Familiar" : "Receita da Casa / Familiar"}
-            description="Visível no Painel Familiar compartilhado"
-          />
-        </div>
-      )}
+      {/* 6. Contexto Rápido: Pessoal, Família, Viagem e Racha */}
+      {(isFamilyModeEnabled || (isExpense && ((activeTrips && activeTrips.length > 0) || onSplitToggle))) ? (
+        (() => {
+          type ContextMode = "personal" | "family" | "trip" | "split";
+          const activeContext: ContextMode = state.splitEnabled
+            ? "split"
+            : state.tripId
+              ? "trip"
+              : state.isFamily
+                ? "family"
+                : "personal";
 
-      {/* 6.0. Vínculo com Modo Viagem */}
-      {isExpense && activeTrips && activeTrips.length > 0 && (
-        <div className="flex flex-col gap-1.5 rounded-xl border border-border/80 bg-surface p-3">
-          <span className="text-xs font-semibold text-foreground">
-            Vincular à Viagem (opcional)
-          </span>
-          <Select
-            disabled={state.splitEnabled}
-            ariaLabel="Vincular à viagem"
-            value={state.tripId ?? "none"}
-            onValueChange={(val) => onTripChange?.(val === "none" ? null : val)}
-            options={[
-              { value: "none", label: "Nenhuma viagem vinculada" },
-              ...activeTrips.map((t) => ({
-                value: t.id,
-                label: t.destination ? `${t.title} (${t.destination})` : t.title,
-              })),
-            ]}
-          />
-          {state.splitEnabled ? (
-            <p className="text-[11px] text-muted-foreground">
-              Desative o racha avulso abaixo para vincular esta despesa a uma viagem em grupo.
-            </p>
-          ) : null}
-        </div>
-      )}
+          const handleSelectContext = (context: ContextMode) => {
+            triggerSensory("selection");
 
-      {/* 6.1. Rachar Despesa com Amigos (Modo Rápido) */}
-      {isExpense ? (
-        <div className="rounded-xl border border-border/80 bg-surface p-3 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users className="size-4 text-muted-foreground" aria-hidden="true" />
-              <div>
-                <span className="text-xs font-semibold text-foreground block">
-                  Rachar com amigos
-                </span>
-                <span className="text-[11px] text-muted-foreground block">
-                  {state.tripId
-                    ? "Esta despesa já é rateada entre os participantes da viagem vinculada."
-                    : "Gera Pix Copia e Cola e cobrança a receber"}
-                </span>
-              </div>
-            </div>
-            <Switch
-              id="quick-split-switch"
-              checked={state.splitEnabled}
-              disabled={Boolean(state.tripId)}
-              onCheckedChange={(checked) => onSplitToggle?.(checked)}
-              aria-label="Rachar com amigos"
-            />
-          </div>
+            if (context === "personal") {
+              onFamilyChange?.(false);
+              onTripChange?.(null);
+              onSplitToggle?.(false);
+            } else if (context === "family") {
+              onFamilyChange?.(true);
+              onTripChange?.(null);
+              onSplitToggle?.(false);
+            } else if (context === "trip") {
+              onFamilyChange?.(false);
+              onSplitToggle?.(false);
+              if (!state.tripId && activeTrips && activeTrips.length > 0) {
+                onTripChange?.(activeTrips[0]?.id ?? null);
+              }
+            } else if (context === "split") {
+              onFamilyChange?.(false);
+              onTripChange?.(null);
+              onSplitToggle?.(true);
+            }
+          };
 
-          {state.splitEnabled ? (
-            <div className="pt-2 border-t border-border/60 space-y-2">
+          return (
+            <div className="rounded-xl border border-border/80 bg-surface p-3 space-y-2.5 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-foreground">Participantes:</span>
-                <div className="flex items-center gap-1">
-                  {[2, 3, 4, 5].map((count) => {
-                    const isSelected = state.splitPeopleCount === count;
-                    return (
-                      <button
-                        key={count}
-                        type="button"
-                        onClick={() => {
-                          triggerSensory("selection");
-                          onSplitPeopleCountChange?.(count);
-                        }}
-                        className={cn(
-                          "rounded-md border px-2 py-1 text-xs font-medium transition-colors cursor-pointer",
-                          isSelected
-                            ? "border-primary bg-primary/10 text-primary font-semibold"
-                            : "border-border/80 bg-surface-raised hover:bg-surface-hover text-foreground",
-                        )}
-                      >
-                        {count}p
-                      </button>
-                    );
-                  })}
-                </div>
+                <span className="text-xs font-semibold text-foreground">Contexto</span>
+                {activeContext === "personal" && (
+                  <span className="text-[11px] text-muted-foreground">Individual</span>
+                )}
               </div>
 
-              {state.valueCents > 0 ? (
-                (() => {
-                  const splitMath = calculateSplitSummary(state.valueCents, state.splitPeopleCount, {
-                    remainderPolicy: "host",
-                  });
-                  return (
-                    <div className="flex items-center justify-between rounded-lg border border-border/80 bg-surface-raised px-2.5 py-1.5 text-xs">
-                      <span className="text-muted-foreground">
-                        Sua parte: <strong className="text-foreground">{(splitMath.hostShareCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
-                      </span>
-                      <span className="text-portfolio font-medium">
-                        {splitMath.guestCount}x de {(splitMath.guestShareCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                      </span>
+              {/* Pílulas de Contexto Rápido */}
+              <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Contexto do lançamento">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={activeContext === "personal"}
+                  onClick={() => handleSelectContext("personal")}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg border py-1.5 px-2.5 text-xs font-medium transition-colors cursor-pointer",
+                    activeContext === "personal"
+                      ? "border-primary bg-primary/10 text-primary font-semibold"
+                      : "border-border/80 bg-surface-raised hover:bg-surface-hover text-foreground",
+                  )}
+                >
+                  <User className="size-3.5 shrink-0" aria-hidden="true" />
+                  <span>Pessoal</span>
+                </button>
+
+                {isFamilyModeEnabled && (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-label={isExpense ? "Despesa da Casa / Familiar" : "Receita da Casa / Familiar"}
+                    aria-checked={activeContext === "family"}
+                    onClick={() => handleSelectContext("family")}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-lg border py-1.5 px-2.5 text-xs font-medium transition-colors cursor-pointer",
+                      activeContext === "family"
+                        ? "border-primary bg-primary/10 text-primary font-semibold"
+                        : "border-border/80 bg-surface-raised hover:bg-surface-hover text-foreground",
+                    )}
+                  >
+                    <Users className="size-3.5 shrink-0" aria-hidden="true" />
+                    <span>Casa</span>
+                  </button>
+                )}
+
+                {isExpense && activeTrips && activeTrips.length > 0 && (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={activeContext === "trip"}
+                    onClick={() => handleSelectContext("trip")}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-lg border py-1.5 px-2.5 text-xs font-medium transition-colors cursor-pointer",
+                      activeContext === "trip"
+                        ? "border-portfolio bg-portfolio/10 text-portfolio font-semibold"
+                        : "border-border/80 bg-surface-raised hover:bg-surface-hover text-foreground",
+                    )}
+                  >
+                    <Plane className="size-3.5 shrink-0" aria-hidden="true" />
+                    <span>Viagem</span>
+                  </button>
+                )}
+
+                {isExpense && onSplitToggle && (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={activeContext === "split"}
+                    aria-label="Rachar com amigos"
+                    onClick={() => handleSelectContext("split")}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-lg border py-1.5 px-2.5 text-xs font-medium transition-colors cursor-pointer",
+                      activeContext === "split"
+                        ? "border-primary bg-primary/10 text-primary font-semibold"
+                        : "border-border/80 bg-surface-raised hover:bg-surface-hover text-foreground",
+                    )}
+                  >
+                    <HandCoins className="size-3.5 shrink-0" aria-hidden="true" />
+                    <span>Rachar</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Conteúdo Contextual Conforme Seleção */}
+              {activeContext === "family" ? (
+                <div className="pt-2 border-t border-border/60">
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                    <Users className="size-3.5 text-primary shrink-0" aria-hidden="true" />
+                    <span>Visível no <strong>Painel Familiar compartilhado</strong>.</span>
+                  </p>
+                </div>
+              ) : null}
+
+              {isExpense && activeContext === "trip" && activeTrips && activeTrips.length > 0 ? (
+                <div className="pt-2 border-t border-border/60 flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-foreground">Viagem Vinculada</span>
+                  <Select
+                    ariaLabel="Vincular à viagem"
+                    value={state.tripId ?? activeTrips[0]?.id ?? ""}
+                    onValueChange={(val) => onTripChange?.(val || null)}
+                    options={activeTrips.map((t) => ({
+                      value: t.id,
+                      label: t.destination ? `${t.title} (${t.destination})` : t.title,
+                    }))}
+                  />
+                </div>
+              ) : null}
+
+              {isExpense && activeContext === "split" ? (
+                <div className="pt-2 border-t border-border/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-medium text-foreground">Participantes:</span>
+                    <div className="flex items-center gap-1">
+                      {[2, 3, 4, 5].map((count) => {
+                        const isSelected = state.splitPeopleCount === count;
+                        return (
+                          <button
+                            key={count}
+                            type="button"
+                            onClick={() => {
+                              triggerSensory("selection");
+                              onSplitPeopleCountChange?.(count);
+                            }}
+                            className={cn(
+                              "rounded-md border px-2 py-1 text-xs font-medium transition-colors cursor-pointer",
+                              isSelected
+                                ? "border-primary bg-primary/10 text-primary font-semibold"
+                                : "border-border/80 bg-surface-raised hover:bg-surface-hover text-foreground",
+                            )}
+                          >
+                            {count}p
+                          </button>
+                        );
+                      })}
                     </div>
-                  );
-                })()
+                  </div>
+
+                  {state.valueCents > 0 ? (
+                    (() => {
+                      const splitMath = calculateSplitSummary(state.valueCents, state.splitPeopleCount, {
+                        remainderPolicy: "host",
+                      });
+                      const hostShareFormatted = (splitMath.hostShareCents / 100).toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      });
+                      const guestShareFormatted = (splitMath.guestShareCents / 100).toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      });
+                      return (
+                        <>
+                          <div className="flex items-center justify-between rounded-lg border border-border/80 bg-surface-raised px-2.5 py-1.5 text-xs">
+                            <span className="text-muted-foreground">
+                              Sua parte: <strong className="text-foreground">{hostShareFormatted}</strong>
+                            </span>
+                            <span className="text-portfolio font-medium">
+                              {splitMath.guestCount}x de {guestShareFormatted}
+                            </span>
+                          </div>
+
+                          {state.installments > 1 ? (
+                            <div className="pt-2 border-t border-border/60 space-y-1.5">
+                              <span className="text-[11px] font-semibold text-foreground block">
+                                Recebimento do rateio:
+                              </span>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => onSplitDebtModeChange?.("single_total")}
+                                  className={cn(
+                                    "rounded-md border p-1.5 text-left text-[11px] transition-colors cursor-pointer",
+                                    state.splitDebtMode === "single_total"
+                                      ? "border-primary bg-primary/10 text-primary font-semibold"
+                                      : "border-border/80 bg-surface hover:bg-surface-hover text-foreground",
+                                  )}
+                                >
+                                  À vista (1x total)
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => onSplitDebtModeChange?.("per_installment")}
+                                  className={cn(
+                                    "rounded-md border p-1.5 text-left text-[11px] transition-colors cursor-pointer",
+                                    state.splitDebtMode === "per_installment"
+                                      ? "border-primary bg-primary/10 text-primary font-semibold"
+                                      : "border-border/80 bg-surface hover:bg-surface-hover text-foreground",
+                                  )}
+                                >
+                                  Mês a mês ({state.installments}x)
+                                </button>
+                              </div>
+                            </div>
+                          ) : null}
+                        </>
+                      );
+                    })()
+                  ) : null}
+                </div>
               ) : null}
             </div>
-          ) : null}
-        </div>
+          );
+        })()
       ) : null}
 
       {/* 7. Botão de Alternância para o Modo Guiado */}

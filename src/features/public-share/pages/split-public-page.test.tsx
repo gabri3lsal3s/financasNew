@@ -203,4 +203,75 @@ describe("SplitPublicPage (/r/:token)", () => {
     expect(screen.getByText("Salvar esta despesa")).toBeInTheDocument();
     expect(screen.getByText("Testar 30 dias grátis")).toBeInTheDocument();
   });
+
+  it("renderiza timeline de parcelas e atualiza valor ao selecionar uma parcela específica", async () => {
+    const user = userEvent.setup();
+    const shareWithInstallments: PublicShare = {
+      ...mockPublicShare,
+      payload: {
+        ...mockPublicShare.payload,
+        installments_count: 3,
+        installments_mode: "per_installment",
+        participants: [
+          { id: "p_gabriel", name: "Gabriel (Anfitriao)", share_cents: 4000, is_host: true },
+          { id: "p_mariana", name: "Mariana", share_cents: 4000, is_host: false },
+          { id: "p_lucas", name: "Lucas", share_cents: 4000, is_host: false },
+        ],
+        participant_installments: [
+          {
+            id: "p_mariana_inst_1",
+            participant_id: "p_mariana",
+            installment_number: 1,
+            total_installments: 3,
+            amount_cents: 1334,
+            due_date: "2026-11-05",
+            is_settled: true,
+          },
+          {
+            id: "p_mariana_inst_2",
+            participant_id: "p_mariana",
+            installment_number: 2,
+            total_installments: 3,
+            amount_cents: 1333,
+            due_date: "2026-12-05",
+            is_settled: false,
+          },
+          {
+            id: "p_mariana_inst_3",
+            participant_id: "p_mariana",
+            installment_number: 3,
+            total_installments: 3,
+            amount_cents: 1333,
+            due_date: "2027-01-05",
+            is_settled: false,
+          },
+        ],
+      },
+    };
+
+    vi.spyOn(publicShareQuery, "usePublicShare").mockReturnValue({
+      data: shareWithInstallments,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof publicShareQuery.usePublicShare>);
+
+    renderPage();
+
+    // Deve exibir o cabeçalho de parcelas
+    expect(screen.getByText(/Parcelas \(1\/3 pagas\)/i)).toBeInTheDocument();
+
+    // Exibe status das parcelas
+    expect(screen.getByText("Parcela 1/3")).toBeInTheDocument();
+    expect(screen.getByText("Paga")).toBeInTheDocument();
+
+    expect(screen.getByText("Parcela 2/3")).toBeInTheDocument();
+    expect(screen.getByText("Selecionada")).toBeInTheDocument();
+
+    // Clica na Parcela 3
+    const parcela3Btn = screen.getByText("Parcela 3/3").closest("button")!;
+    await user.click(parcela3Btn);
+
+    // O botão de copiar Pix agora reflete o valor de R$ 13,33
+    expect(screen.getByText(/Copiar Pix — R\$ 13,33/i)).toBeInTheDocument();
+  });
 });

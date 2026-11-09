@@ -179,7 +179,7 @@ describe("StepQuick (Lançamento Rápido em Tela Única)", () => {
     expect(screen.getByText("Confirmar categoria")).toBeDefined();
   });
 
-  it("renderiza o switch de despesa familiar e dispara onFamilyChange ao clicar", async () => {
+  it("renderiza o seletor de despesa familiar e dispara onFamilyChange ao clicar", async () => {
     const onFamilyChange = vi.fn();
     const user = userEvent.setup();
 
@@ -191,12 +191,11 @@ describe("StepQuick (Lançamento Rápido em Tela Única)", () => {
       />,
     );
 
-    const familySwitch = screen.getByRole("switch", { name: "Despesa da Casa / Familiar" });
-    expect(familySwitch).toBeDefined();
-    expect(screen.getByText("Visível no Painel Familiar compartilhado")).toBeDefined();
-    expect(familySwitch).toHaveAttribute("aria-checked", "false");
+    const familyRadio = screen.getByRole("radio", { name: "Despesa da Casa / Familiar" });
+    expect(familyRadio).toBeDefined();
+    expect(familyRadio).toHaveAttribute("aria-checked", "false");
 
-    await user.click(familySwitch);
+    await user.click(familyRadio);
     expect(onFamilyChange).toHaveBeenCalledWith(true);
   });
 

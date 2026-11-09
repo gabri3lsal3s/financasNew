@@ -110,4 +110,78 @@ describe("SplitChargeCard — Card Canônico de Cobrança Compartilhada", () => 
       }),
     );
   });
+
+  it("renderiza seletor de parcelas e permite alternar para quitar todas juntas quando despesa parcelada", async () => {
+    const user = userEvent.setup();
+    const onSelectInstallmentId = vi.fn();
+    const onTogglePayAllRemaining = vi.fn();
+
+    const mockInstallments = [
+      {
+        id: "p_guest_inst_1",
+        participant_id: "p_guest",
+        installment_number: 1,
+        total_installments: 3,
+        amount_cents: 4000,
+        due_date: "2026-11-10",
+        is_settled: true,
+        settled_at: "2026-11-10T10:00:00Z",
+      },
+      {
+        id: "p_guest_inst_2",
+        participant_id: "p_guest",
+        installment_number: 2,
+        total_installments: 3,
+        amount_cents: 4000,
+        due_date: "2026-12-10",
+        is_settled: false,
+        settled_at: null,
+      },
+      {
+        id: "p_guest_inst_3",
+        participant_id: "p_guest",
+        installment_number: 3,
+        total_installments: 3,
+        amount_cents: 4000,
+        due_date: "2027-01-10",
+        is_settled: false,
+        settled_at: null,
+      },
+    ];
+
+    render(
+      <SplitChargeCard
+        {...baseProps}
+        installmentsCount={3}
+        installments={mockInstallments}
+        selectedInstallmentId="p_guest_inst_2"
+        onSelectInstallmentId={onSelectInstallmentId}
+        onTogglePayAllRemaining={onTogglePayAllRemaining}
+      />
+    );
+
+    // Deve exibir o cabeçalho de parcelas
+    expect(screen.getByText(/Parcelas \(1\/3 pagas\)/i)).toBeInTheDocument();
+    expect(screen.getByText("Quitar todas pendentes")).toBeInTheDocument();
+
+    // Deve exibir cada uma das 3 parcelas
+    expect(screen.getByText("Parcela 1/3")).toBeInTheDocument();
+    expect(screen.getByText("Paga")).toBeInTheDocument();
+
+    expect(screen.getByText("Parcela 2/3")).toBeInTheDocument();
+    expect(screen.getByText("Selecionada")).toBeInTheDocument();
+
+    expect(screen.getByText("Parcela 3/3")).toBeInTheDocument();
+    expect(screen.getByText("Pendente")).toBeInTheDocument();
+
+    // Clica na parcela 3 pendente
+    const parcela3Btn = screen.getByText("Parcela 3/3").closest("button")!;
+    await user.click(parcela3Btn);
+    expect(onSelectInstallmentId).toHaveBeenCalledWith("p_guest_inst_3");
+
+    // Clica no toggle de quitar todas
+    const payAllBtn = screen.getByText("Quitar todas pendentes");
+    await user.click(payAllBtn);
+    expect(onTogglePayAllRemaining).toHaveBeenCalled();
+  });
 });
