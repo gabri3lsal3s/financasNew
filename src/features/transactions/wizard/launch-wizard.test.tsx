@@ -50,6 +50,7 @@ vi.mock("@/state", () => ({
   usePredictionHistory: () => ({ entries: predictionHistoryMock(), isLoading: false, error: null, refetch: vi.fn() }),
   useFamilyMode: () => ({ isFamilyModeEnabled: mockIsFamilyModeEnabled }),
   useMyFamily: () => ({ data: mockMyFamily, isLoading: false }),
+  useTripMode: () => ({ isTripModeEnabled: true }),
 }));
 
 vi.mock("@/state/queries/use-user-access", () => ({
@@ -77,9 +78,11 @@ vi.mock("@/state/mutations/use-public-share-mutations", () => ({
   }),
 }));
 
+let mockTrips: unknown[] = [];
+
 vi.mock("@/state/queries/use-trips", () => ({
   useUserTrips: () => ({
-    data: [],
+    data: mockTrips,
     isLoading: false,
     isError: false,
   }),
@@ -97,6 +100,7 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
   beforeEach(() => {
     mockIsFamilyModeEnabled = true;
     mockMyFamily = null;
+    mockTrips = [];
     createExpenseMock.mockReset().mockResolvedValue("expense-1");
     navigateMock.mockReset();
     activeCreditCardsMock.mockReset().mockReturnValue([]);
@@ -838,6 +842,39 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
       await waitFor(() => {
         expect(screen.getByText("Rachar Despesa")).toBeInTheDocument();
       });
+    });
+
+    it("mantém exclusividade mútua entre Modo Viagem e Rachar Despesa (desativa racha quando tripId é selecionado)", async () => {
+      mockTrips = [
+        {
+          id: "trip-456",
+          title: "Férias na Praia",
+          status: "active",
+          destination: "Florianópolis",
+          start_date: "2026-02-01",
+          end_date: "2026-02-10",
+        },
+      ];
+
+      render(
+        <LaunchWizard
+          initialMode="quick"
+          initialValues={{
+            valueCents: 10000,
+            categoryId: "c1",
+            paymentMethod: "pix",
+            description: "Almoço na praia",
+            tripId: "trip-456",
+          }}
+        />,
+      );
+
+      const splitSwitch = screen.getByRole("switch", { name: "Rachar com amigos" });
+      expect(splitSwitch).toBeDisabled();
+      expect(splitSwitch).toHaveAttribute("aria-checked", "false");
+      expect(
+        screen.getByText("Esta despesa já é rateada entre os participantes da viagem vinculada."),
+      ).toBeInTheDocument();
     });
 
     it("renderiza o atributo data-tour='launch-wizard-dialog' no modal para suporte ao Spotlight do tour interativo (Fase 8 — Tarefa 8.3)", () => {

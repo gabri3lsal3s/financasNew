@@ -4,6 +4,7 @@
  */
 
 import { useState } from "react";
+import { Wallet } from "lucide-react";
 import {
   Modal,
   ModalFooter,
@@ -110,6 +111,20 @@ function EditTripExpenseForm({
     });
 
     try {
+      // Sincroniza com o extrato pessoal caso a despesa esteja vinculada
+      if (expense.linked_personal_expense_id) {
+        try {
+          const { updateExpense: updateExpenseRepo } = await import("@/data/repositories/expenses");
+          await updateExpenseRepo(expense.linked_personal_expense_id, {
+            value: amountCents / 100,
+            description: description.trim(),
+            date: expenseDate,
+          });
+        } catch {
+          // Mantém resiliência da viagem
+        }
+      }
+
       await updateExpenseMutation.mutateAsync({
         expense_id: expense.id,
         paid_by_member_id: effectivePayerId,
@@ -164,6 +179,15 @@ function EditTripExpenseForm({
       }
     >
       <form id="edit-trip-expense-form" onSubmit={handleSubmit} className="space-y-4">
+        {expense.linked_personal_expense_id ? (
+          <div className="flex items-center gap-2 p-2.5 rounded-xl border border-primary/20 bg-primary/5 text-xs text-primary-strong">
+            <Wallet className="size-4 shrink-0" aria-hidden="true" />
+            <span>
+              Vinculada ao seu extrato pessoal. As alterações de valor, descrição e data serão sincronizadas automaticamente.
+            </span>
+          </div>
+        ) : null}
+
         {/* Campo de Valor */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-foreground">

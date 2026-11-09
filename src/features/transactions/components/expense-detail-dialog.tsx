@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Copy, Minus, Pencil, Share2, Trash2, TrendingDown, TrendingUp, Users } from "lucide-react";
+import { useNavigate } from "react-router";
+import { Copy, Minus, Pencil, Plane, Share2, Trash2, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, DatePicker, Input, Modal, ModalFooter, MoneyInput, Select, Switch } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
@@ -424,6 +425,7 @@ export function ExpenseDetailDialog({
 
   const categoriesQuery = useCategories("expense");
   const cardsQuery = useCreditCards();
+  const navigate = useNavigate();
   const { isFamilyModeEnabled } = useFamilyMode();
   const { data: myFamilyData } = useMyFamily();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
@@ -719,6 +721,17 @@ export function ExpenseDetailDialog({
                       </dd>
                     </div>
                   )}
+                  {expense.trip_id && (
+                    <div className="flex items-center justify-between">
+                      <dt className="text-xs text-muted-foreground">Viagem</dt>
+                      <dd className="font-medium text-foreground text-xs">
+                        <Badge variant="portfolio" size="xs" className="gap-1 font-medium">
+                          <Plane className="size-3 text-portfolio" aria-hidden="true" />
+                          <span>Modo Viagem</span>
+                        </Badge>
+                      </dd>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <dt className="text-xs text-muted-foreground">Data</dt>
                     <dd className="font-medium text-foreground text-xs">{expense.date}</dd>
@@ -825,18 +838,37 @@ export function ExpenseDetailDialog({
 
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-3.5 border-t border-border/80 mt-2">
                   <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:w-auto sm:items-center">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 px-2 sm:px-3 text-xs justify-center"
-                      onClick={() => setSplitOpen(true)}
-                      title="Rachar despesa"
-                      aria-label="Rachar"
-                    >
-                      <Users className="size-3.5 shrink-0" aria-hidden="true" />
-                      <span className="hidden sm:inline">Rachar</span>
-                    </Button>
+                    {expense.trip_id ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 px-2 sm:px-3 text-xs justify-center border-portfolio/40 text-portfolio hover:bg-portfolio/10"
+                        onClick={() => {
+                          onOpenChange(false);
+                          navigate(`/viagens/${expense.trip_id}`);
+                        }}
+                        title="Ver esta despesa no Modo Viagem"
+                        aria-label="Ver na Viagem"
+                      >
+                        <Plane className="size-3.5 shrink-0" aria-hidden="true" />
+                        <span className="hidden sm:inline">Na Viagem</span>
+                        <span className="sm:hidden">Viagem</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 px-2 sm:px-3 text-xs justify-center"
+                        onClick={() => setSplitOpen(true)}
+                        title="Rachar despesa"
+                        aria-label="Rachar"
+                      >
+                        <Users className="size-3.5 shrink-0" aria-hidden="true" />
+                        <span className="hidden sm:inline">Rachar</span>
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       variant="outline"

@@ -11,11 +11,14 @@ import {
   Card,
   EmptyState,
 } from "@/components/ui";
-import { Check, Copy, Share2, ShieldCheck } from "lucide-react";
+import { Check, Copy, Share2, ShieldCheck, Wallet } from "lucide-react";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { getPublicAppUrl } from "@/services/app-url";
+import { getErrorMessage } from "@/services/errors";
+import { useAuth } from "@/hooks/use-auth";
+import { useCategories, useCreateIncome } from "@/state";
 import {
   useRecordTripSettlementsMutation,
   useConfirmTripSettlementMutation,
@@ -42,7 +45,11 @@ export function TripSettlementDialog({
   existingSettlements,
 }: TripSettlementDialogProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [syncedSettlementKeys, setSyncedSettlementKeys] = useState<Set<string>>(new Set());
 
+  const { session } = useAuth();
+  const categoriesQuery = useCategories();
+  const createIncomeMutation = useCreateIncome();
   const recordMutation = useRecordTripSettlementsMutation(tripId);
   const confirmMutation = useConfirmTripSettlementMutation(tripId);
 
@@ -55,6 +62,43 @@ export function TripSettlementDialog({
       description: "Cole no seu app bancário para efetuar a transferência.",
     });
     setTimeout(() => setCopiedKey(null), 3000);
+  };
+
+  const handleSyncToIncome = async (key: string, amountCents: number, fromName: string) => {
+    if (!session?.user) return;
+    const cat =
+      (categoriesQuery.data ?? []).find(
+        (c) =>
+          c.name.toLowerCase().includes("reemb") ||
+          c.name.toLowerCase().includes("outr") ||
+          c.name.toLowerCase().includes("viag")
+      ) || (categoriesQuery.data ?? [])[0];
+
+    try {
+      await createIncomeMutation.mutateAsync({
+        value: amountCents / 100,
+        date: new Date().toISOString().split("T")[0] ?? "",
+        description: `Acerto da viagem ${tripTitle} (${fromName})`,
+        category_id: cat?.id ?? "",
+        receive_type: "pix",
+        report_weight: 1,
+        source_ref: null,
+      });
+
+      setSyncedSettlementKeys((prev) => new Set([...prev, key]));
+      triggerSensory("success");
+      pushToast({
+        title: "Receita registrada no extrato",
+        description: `${formatCentsAsBRL(amountCents)} recebido de ${fromName} lançado como entrada Pix.`,
+      });
+    } catch (err) {
+      triggerSensory("error");
+      pushToast({
+        title: "Erro ao registrar no extrato",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    }
   };
 
   const handleRecord = async () => {
@@ -164,11 +208,39 @@ export function TripSettlementDialog({
                       <span className="font-bold tabular-nums text-foreground">
                         {formatCentsAsBRL(s.amountCents)}
                       </span>
-                      {isConfirmed && (
-                        <Badge size="xs" variant="positive">
-                          Pago
-                        </Badge>
-                      )}
+                      {isConfirmed ? (
+                        <div className="flex items-center gap-1.5">
+                          <Badge size="xs" variant="positive">
+                            Pago
+                          </Badge>
+                          {session?.user && (
+                            syncedSettlementKeys.has(`${s.fromMemberId}-${s.toMemberId}`) ? (
+                              <Badge size="xs" variant="positive" className="gap-1 border-positive/30">
+                                <Check className="size-3" aria-hidden="true" />
+                                Extrato
+                              </Badge>
+                            ) : (
+                              <Button
+                                size="xs"
+                                variant="outline"
+                                onClick={() =>
+                                  handleSyncToIncome(
+                                    `${s.fromMemberId}-${s.toMemberId}`,
+                                    s.amountCents,
+                                    s.fromMemberName
+                                  )
+                                }
+                                loading={createIncomeMutation.isPending}
+                                className="h-6 px-1.5 text-[10px] gap-1 border-primary/30 text-primary-strong hover:bg-primary/5 cursor-pointer"
+                                title="Registrar entrada no extrato bancário"
+                              >
+                                <Wallet className="size-3" aria-hidden="true" />
+                                <span>+ Extrato</span>
+                              </Button>
+                            )
+                          )}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
 

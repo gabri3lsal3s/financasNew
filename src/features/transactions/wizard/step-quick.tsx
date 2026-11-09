@@ -525,6 +525,7 @@ export function StepQuick({
             Vincular à Viagem (opcional)
           </span>
           <Select
+            disabled={state.splitEnabled}
             ariaLabel="Vincular à viagem"
             value={state.tripId ?? "none"}
             onValueChange={(val) => onTripChange?.(val === "none" ? null : val)}
@@ -536,6 +537,11 @@ export function StepQuick({
               })),
             ]}
           />
+          {state.splitEnabled ? (
+            <p className="text-[11px] text-muted-foreground">
+              Desative o racha avulso abaixo para vincular esta despesa a uma viagem em grupo.
+            </p>
+          ) : null}
         </div>
       )}
 
@@ -550,13 +556,16 @@ export function StepQuick({
                   Rachar com amigos
                 </span>
                 <span className="text-[11px] text-muted-foreground block">
-                  Gera Pix Copia e Cola e cobrança a receber
+                  {state.tripId
+                    ? "Esta despesa já é rateada entre os participantes da viagem vinculada."
+                    : "Gera Pix Copia e Cola e cobrança a receber"}
                 </span>
               </div>
             </div>
             <Switch
               id="quick-split-switch"
               checked={state.splitEnabled}
+              disabled={Boolean(state.tripId)}
               onCheckedChange={(checked) => onSplitToggle?.(checked)}
               aria-label="Rachar com amigos"
             />

@@ -7,6 +7,15 @@ import type { Expense } from "@/types";
 const updateExpenseMock = vi.fn();
 const deleteExpenseMock = vi.fn();
 const createExpenseMock = vi.fn();
+const navigateMock = vi.fn();
+
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual("react-router");
+  return {
+    ...actual,
+    useNavigate: () => navigateMock,
+  };
+});
 
 // Cartões variáveis por teste (para validar o caso sem cartão cadastrado).
 const stateMocks = vi.hoisted(() => ({
@@ -390,5 +399,38 @@ describe("ExpenseDetailDialog", () => {
     expect(updateExpenseMock).toHaveBeenCalledTimes(1);
     const payload = updateExpenseMock.mock.calls[0]?.[0] as { input: { is_family: boolean } };
     expect(payload.input.is_family).toBe(true);
+  });
+
+  it("exibe botão 'Na Viagem' e oculta 'Rachar' quando a despesa pertence a uma viagem", async () => {
+    navigateMock.mockClear();
+    const user = userEvent.setup();
+    const tripExpense: Expense = {
+      ...baseExpense,
+      trip_id: "trip-123",
+    };
+
+    render(<ExpenseDetailDialog expense={tripExpense} open={true} onOpenChange={vi.fn()} />);
+
+    // Deve exibir o badge de Modo Viagem
+    expect(screen.getByText("Modo Viagem")).toBeInTheDocument();
+
+    // Deve exibir o botão 'Na Viagem'
+    const tripButton = screen.getByRole("button", { name: /na viagem/i });
+    expect(tripButton).toBeInTheDocument();
+
+    // NÃO deve exibir o botão 'Rachar'
+    expect(screen.queryByRole("button", { name: /rachar/i })).not.toBeInTheDocument();
+
+    // Ao clicar em 'Na Viagem', navega para a página da viagem
+    await user.click(tripButton);
+    expect(navigateMock).toHaveBeenCalledWith("/viagens/trip-123");
+  });
+
+  it("exibe botão 'Rachar' e oculta 'Na Viagem' quando a despesa não pertence a uma viagem", () => {
+    render(<ExpenseDetailDialog expense={baseExpense} open={true} onOpenChange={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: /rachar/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /na viagem/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("Modo Viagem")).not.toBeInTheDocument();
   });
 });

@@ -1,5 +1,20 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.0.13 (Build 42)** registra a **Integração Bidirecional das Despesas do Modo Viagem com o Extrato de Transações Pessoais e Exclusividade Mútua Estrita contra Conflitos de Racha** (2026-11-08):
+> - **(1) Integração Bidirecional de Despesas entre Viagem e Extrato Bancário/Cartão**:
+>   - Cadastro no Modo Viagem (`AddTripExpenseDialog`): toggle opcional *"Lançar no meu extrato bancário/cartão"* visível quando o pagador for o usuário logado, com seleção de forma de pagamento e cartão, criando a transação pessoal espelhada e vinculando os IDs bidirecionalmente (`trip_expenses.linked_personal_expense_id` e `expenses.trip_id`);
+>   - Edição de Despesas da Viagem (`EditTripExpenseDialog`): alterações de valor ou descrição sincronizam automaticamente o lançamento vinculado no extrato pessoal;
+>   - Lançamento no Assistente Pessoal (`LaunchWizard`): seleção de viagem ativa no modo rápido ou guiado associa automaticamente a despesa à viagem e vincula o usuário logado como pagador;
+> - **(2) Invariante de Exclusividade Mútua Estrita (Modo Viagem x Racha Avulso)**:
+>   - Eliminação completa de conflitos contábeis entre divisão em grupo de viagem e racha avulso (`split_expenses`);
+>   - No `LaunchWizard` (passos de detalhes e rápido), selecionar uma viagem desativa e oculta o switch de racha; ativar o switch de racha desativa e oculta a seleção de viagens;
+>   - No diálogo de detalhes de transação (`ExpenseDetailDialog`), para despesas vinculadas a uma viagem, o botão "Rachar" é substituído pelo botão contextual "Na Viagem" (com navegação direta para `/viagens/:trip_id`) e badge indicativo "Modo Viagem";
+> - **(3) Acerto de Contas com Lançamento de Receita no Extrato Pessoal**:
+>   - No diálogo de liquidação (`TripSettlementDialog`), após confirmar o recebimento de pagamento de um amigo, é oferecido o botão de 1 toque *"Lançar no Extrato"*, registrando uma entrada Pix no extrato pessoal já categorizada como acerto de viagem;
+> - **(4) Compilação e Publicação do APK Android v3.0.13 (Build 42)**:
+>   - Verificação estrita de tipagem (`tsc -b`), lint sem violações, 100% dos testes aprovados e geração do APK Release.
+>
+
 > **v3.0.12 (Build 41)** registra o **Aperfeiçoamento Ergonômico de Headers no Mobile, Eliminação de Sobreposição pela Barra de Notificações Nativa e Responsividade Sem Colisões em Telas Estreitas** (2026-11-08):
 > - **(1) Compensação de Safe Area Top Universal no `SharedLinkHeaderNav` e `ToolsHeader`**:
 >   - Injeção da fórmula de área segura `pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]` sob casca translúcida `bg-surface/90 backdrop-blur-md sticky top-0 z-30`;

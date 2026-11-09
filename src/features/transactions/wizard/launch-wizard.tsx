@@ -49,6 +49,7 @@ import {
   useTripMode,
 } from "@/state";
 import { useUserTrips, useTripDetails } from "@/state/queries/use-trips";
+import { useAuth } from "@/hooks/use-auth";
 import { addTripExpense } from "@/data/repositories/trips";
 import { calculateEqualSplits } from "@/domain/trips";
 import { useDemoSession } from "@/state/demo-mode";
@@ -171,6 +172,7 @@ export function LaunchWizard({
     ? (userTripsQuery.data ?? []).filter((t) => t.status === "active" || t.status === "planning")
     : [];
   const selectedTripDetails = useTripDetails(state.tripId ?? "");
+  const { session } = useAuth();
   const { isFamilyModeEnabled } = useFamilyMode();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
   const createExpense = useCreateExpense();
@@ -228,6 +230,7 @@ export function LaunchWizard({
         return {
           ...prev,
           splitEnabled: true,
+          tripId: null, // Invariante: racha avulso desativa vínculo com viagem
           reportWeight: 1,
           reportCustomAmountCents: prev.valueCents,
           debtEnabled: true,
@@ -241,6 +244,25 @@ export function LaunchWizard({
         splitEnabled: false,
         reportWeight: 1,
         reportCustomAmountCents: prev.valueCents,
+      };
+    });
+  };
+
+  const handleTripChange = (tripId: string | null) => {
+    triggerSensory("selection");
+    setState((prev) => {
+      if (tripId) {
+        return {
+          ...prev,
+          tripId,
+          splitEnabled: false, // Invariante: viagem em grupo desativa racha avulso
+          debtEnabled: prev.splitEnabled ? false : prev.debtEnabled,
+          debtAmountCents: prev.splitEnabled ? 0 : prev.debtAmountCents,
+        };
+      }
+      return {
+        ...prev,
+        tripId: null,
       };
     });
   };
@@ -419,17 +441,21 @@ export function LaunchWizard({
             await updateExpenseRepo(createdExpenseId, { trip_id: state.tripId });
 
             const tripMembers = selectedTripDetails.data?.members ?? [];
-            const hostMember = tripMembers.find((m) => m.is_host) || tripMembers[0];
+            const currentUserId = session?.user?.id;
+            const payerMember =
+              (currentUserId && tripMembers.find((m) => m.user_id === currentUserId)) ||
+              tripMembers.find((m) => m.is_host) ||
+              tripMembers[0];
             const currentCat = (categoriesQuery.data ?? []).find((c) => c.id === state.categoryId);
-            if (hostMember && tripMembers.length > 0) {
+            if (payerMember && tripMembers.length > 0) {
               const equalSplits = calculateEqualSplits({
                 totalAmountCents: state.valueCents,
                 memberIds: tripMembers.map((m) => m.id),
-                payerMemberId: hostMember.id,
+                payerMemberId: payerMember.id,
               });
               await addTripExpense({
                 trip_id: state.tripId,
-                paid_by_member_id: hostMember.id,
+                paid_by_member_id: payerMember.id,
                 amount_cents: state.valueCents,
                 description: state.description || "Despesa da viagem",
                 category_name: currentCat?.name ?? "Geral",
@@ -496,7 +522,7 @@ export function LaunchWizard({
       }
 
       triggerSensory("success");
-      const isSplitActive = state.type === "expense" && state.splitEnabled;
+      const isSplitActive = state.type === "expense" && state.splitEnabled && !state.tripId;
       const selectedCategory = (categoriesQuery.data ?? []).find((c) => c.id === state.categoryId);
       const savedExpenseData = isSplitActive
         ? {
@@ -876,7 +902,7 @@ export function LaunchWizard({
             cards={cardsQuery.data}
             cardsLoading={cardsQuery.isLoading}
             activeTrips={activeTrips}
-            onTripChange={(tripId) => set("tripId", tripId)}
+            onTripChange={handleTripChange}
             onSubmit={() => {
               if (canSubmitQuick && !pending) {
                 void handleSubmit();
@@ -980,7 +1006,7 @@ export function LaunchWizard({
                 cardsLoading={cardsQuery.isLoading}
                 cardsError={cardsQuery.error}
                 activeTrips={activeTrips}
-                onTripChange={(tripId) => set("tripId", tripId)}
+                onTripChange={handleTripChange}
                 onNext={() => {
                   if (canProceed(state)) {
                     goTo(4);

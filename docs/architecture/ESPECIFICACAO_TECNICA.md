@@ -1151,9 +1151,10 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
 4. **Algoritmo de Liquidação Líquida Ótima (`resolveNetSettlements`)**:
    - Calcula o saldo líquido de cada membro: $S_i = \text{Pago}_i - \text{Devido}_i$.
    - Separa devedores ($S_i < 0$) e credores ($S_j > 0$) e resolve as compensações em ordem decrescente, minimizando o número total de transações entre os membros.
-5. **Vínculo com Despesas Pessoais (`linked_personal_expense_id` e `expenses.trip_id`)**:
-   - Usuários do aplicativo podem lançar despesas no seu cartão/conta e vinculá-las à viagem no LaunchWizard.
-   - A despesa pessoal é sinalizada no extrato e integrada ao histórico da viagem.
+5. **Integração Bidirecional & Exclusividade Mútua (`linked_personal_expense_id` e `expenses.trip_id`)**:
+   - **Lançamento Pessoal -> Viagem**: Usuários podem vincular qualquer despesa pessoal a uma viagem ativa/planejada no `LaunchWizard` (modo rápido e guiado). O sistema associa automaticamente o pagador ao membro correspondente ao usuário logado (`user_id`).
+   - **Viagem -> Extrato Pessoal**: No diálogo de cadastro de despesa da viagem (`AddTripExpenseDialog`), quando o pagador for o usuário logado, é exibido o toggle opcional *"Lançar no meu extrato bancário/cartão"*, permitindo escolher método de pagamento e cartão, criando a transação pessoal espelhada e vinculando os IDs bidirecionalmente. Na edição (`EditTripExpenseDialog`), atualizações de valor ou descrição sincronizam automaticamente o lançamento pessoal vinculado.
+   - **Invariante de Exclusividade Mútua (Viagem x Racha Avulso)**: Uma despesa associada a uma viagem não pode ser dividida via racha avulso (`split_expenses`) e vice-versa. No `LaunchWizard`, selecionar uma viagem desativa e oculta o switch de racha; ativar o switch de racha desativa e oculta a seleção de viagens. No diálogo de detalhes (`ExpenseDetailDialog`), para despesas vinculadas a viagens, o botão "Rachar" é substituído pelo botão de contexto "Na Viagem" (com navegação direta para `/viagens/:trip_id`), prevenindo conflitos lógicos ou duplicação de dívidas.
 6. **Acesso Público Desacoplado (`/viagem/:token`)**:
    - Convidados sem conta podem visualizar o saldo do grupo, suas dívidas e registrar despesas pagas sem necessidade de login.
    - Segurança estrita via RPCs `SECURITY DEFINER` com token aleatório de 64 caracteres.
@@ -1173,6 +1174,8 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
 11. **Páginas Públicas Compartilhadas, Troca de Tema e Extrato para Convidados**:
     - O cabeçalho inteligente `SharedLinkHeaderNav` unifica a experiência visual em todas as rotas públicas (`/viagem/:token`, `/r/:token`, `/meta/:token`, `/orcamento-familiar/:token`, `/convite-familiar/:token`), provendo casca translúcida fixa com compensação de safe area (`sticky top-0 z-30 bg-surface/90 backdrop-blur-md pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]`), deep links nativos ("Abrir no App"), atalhos ao painel autenticado e alternância instantânea de temas (`ThemeToggle`: Claro, Escuro, OLED e Sistema) com persistência no navegador para qualquer visitante sem login.
     - Convidados na página pública da viagem podem abrir o modal `PublicTripMemberStatementDialog` com 1 toque no card de identificação, auditando o extrato detalhado de despesas com cotas assumidas e justificativas textuais de isenção em pt-BR.
+12. **Liquidação Financeira com Lançamento de Receita no Extrato Pessoal**:
+    - No diálogo de acertos (`TripSettlementDialog`), após confirmar o recebimento de uma dívida de viagem paga por um participante, o usuário logado tem a opção de registrar o valor diretamente em seu extrato bancário com 1 toque (*"Lançar no Extrato"*), gerando uma receita de entrada Pix categorizada como acerto de viagem e prevenindo lançamentos manuais redundantes.
 
 ---
 

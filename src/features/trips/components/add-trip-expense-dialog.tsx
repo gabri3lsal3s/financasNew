@@ -14,7 +14,11 @@ import {
   Select,
   DatePicker,
   Checkbox,
+  Switch,
 } from "@/components/ui";
+import { Wallet } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { useCategories, useCreditCards, useCreateExpense } from "@/state";
 import { useAddTripExpenseMutation } from "@/state/queries/use-trips";
 import { calculateEqualSplits } from "@/domain/trips/trip-math";
 import type { TripMember } from "@/types/trips";
@@ -50,7 +54,14 @@ export function AddTripExpenseDialog({
   const [selectedPayerId, setSelectedPayerId] = useState("");
   const [splitMode, setSplitMode] = useState<"all" | "selected">("all");
   const [customMemberIds, setCustomMemberIds] = useState<string[]>([]);
+  const [syncWithPersonal, setSyncWithPersonal] = useState(false);
+  const [personalPaymentMethod, setPersonalPaymentMethod] = useState<"pix" | "money" | "credit_card" | "debit">("pix");
+  const [personalCardId, setPersonalCardId] = useState<string>("");
 
+  const { session } = useAuth();
+  const categoriesQuery = useCategories();
+  const cardsQuery = useCreditCards();
+  const createExpense = useCreateExpense();
   const addExpenseMutation = useAddTripExpenseMutation();
 
   const host = members.find((m) => m.is_host);
@@ -60,6 +71,12 @@ export function AddTripExpenseDialog({
       : defaultPayerId && members.some((m) => m.id === defaultPayerId)
       ? defaultPayerId
       : host?.id || members[0]?.id || "";
+
+  const selectedPayer = members.find((m) => m.id === effectivePayerId);
+  const isCurrentUserPayer = Boolean(
+    session?.user &&
+      (selectedPayer?.user_id === session.user.id || (selectedPayer?.is_host && host?.user_id === session.user.id))
+  );
 
   const activeSelectedMemberIds =
     customMemberIds.length > 0 && customMemberIds.some((id) => members.some((m) => m.id === id))
@@ -95,6 +112,49 @@ export function AddTripExpenseDialog({
     });
 
     try {
+      let linkedPersonalId: string | null = null;
+
+      // Integração opcional: lança no extrato bancário pessoal do usuário
+      if (syncWithPersonal && isCurrentUserPayer) {
+        try {
+          const personalCategory =
+            (categoriesQuery.data ?? []).find(
+              (c) => c.name.toLowerCase() === categoryName.toLowerCase()
+            ) || (categoriesQuery.data ?? [])[0];
+
+          const cardToUse =
+            personalPaymentMethod === "credit_card"
+              ? personalCardId || (cardsQuery.data?.[0]?.id ?? null)
+              : null;
+
+          const createdPersonalExpenseId = await createExpense.mutateAsync({
+            value: amountCents / 100,
+            date: expenseDate,
+            categoryId: personalCategory?.id ?? "",
+            paymentMethod: personalPaymentMethod === "credit_card" ? "credit" : personalPaymentMethod,
+            cardId: cardToUse,
+            description: description.trim(),
+            reportWeight: 1,
+            installments: [
+              {
+                date: expenseDate,
+                value: amountCents / 100,
+                billCompetence: null,
+              },
+            ],
+            isFamily: false,
+          });
+
+          if (createdPersonalExpenseId && typeof createdPersonalExpenseId === "string") {
+            linkedPersonalId = createdPersonalExpenseId;
+            const { updateExpense: updateExpenseRepo } = await import("@/data/repositories/expenses");
+            await updateExpenseRepo(createdPersonalExpenseId, { trip_id: tripId });
+          }
+        } catch {
+          // Prossegue com o cadastro na viagem mesmo se a chamada pessoal falhar
+        }
+      }
+
       await addExpenseMutation.mutateAsync({
         trip_id: tripId,
         paid_by_member_id: effectivePayerId,
@@ -103,6 +163,7 @@ export function AddTripExpenseDialog({
         category_name: categoryName,
         expense_date: expenseDate,
         split_type: splitMode === "all" ? "equal" : "custom",
+        linked_personal_expense_id: linkedPersonalId,
         splits: calculatedSplits.map((s) => ({
           member_id: s.memberId,
           share_cents: s.shareCents,
@@ -115,6 +176,7 @@ export function AddTripExpenseDialog({
       setSelectedPayerId("");
       setCustomMemberIds([]);
       setSplitMode("all");
+      setSyncWithPersonal(false);
       onOpenChange(false);
     } catch {
       // Erro gerenciado no hook useAddTripExpenseMutation
@@ -215,6 +277,67 @@ export function AddTripExpenseDialog({
             />
           </div>
         </div>
+
+        {/* Integração Inteligente com o Extrato Pessoal do Usuário */}
+        {isCurrentUserPayer && (
+          <div className="p-3.5 rounded-xl border border-border/80 bg-surface-raised space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Wallet className="size-4 text-primary" aria-hidden="true" />
+                <div>
+                  <span className="text-xs font-semibold text-foreground block">
+                    Lançar no meu extrato bancário
+                  </span>
+                  <span className="text-[11px] text-muted-foreground block">
+                    Registra o desembolso real na sua conta ou fatura do cartão
+                  </span>
+                </div>
+              </div>
+              <Switch
+                id="sync-personal-expense"
+                checked={syncWithPersonal}
+                onCheckedChange={setSyncWithPersonal}
+                aria-label="Lançar no meu extrato bancário"
+              />
+            </div>
+
+            {syncWithPersonal && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2.5 border-t border-border/60">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-foreground">
+                    Forma de Pagamento
+                  </label>
+                  <Select
+                    value={personalPaymentMethod}
+                    onValueChange={(val) => setPersonalPaymentMethod(val as typeof personalPaymentMethod)}
+                    options={[
+                      { value: "pix", label: "Pix" },
+                      { value: "credit_card", label: "Cartão de Crédito" },
+                      { value: "debit", label: "Cartão de Débito" },
+                      { value: "money", label: "Dinheiro / Espécie" },
+                    ]}
+                  />
+                </div>
+
+                {personalPaymentMethod === "credit_card" && (
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-foreground">
+                      Cartão de Crédito
+                    </label>
+                    <Select
+                      value={personalCardId || (cardsQuery.data?.[0]?.id ?? "")}
+                      onValueChange={setPersonalCardId}
+                      options={(cardsQuery.data ?? []).map((c) => ({
+                        value: c.id,
+                        label: `${c.name} (${c.brand})`,
+                      }))}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Modo de Divisão */}
         <div className="space-y-2 pt-2 border-t border-border/80">

@@ -145,6 +145,7 @@ export function StepDetails({
         <div className="flex flex-col gap-1.5">
           <span className="text-sm font-medium">Vincular a uma Viagem (opcional)</span>
           <Select
+            disabled={state.splitEnabled}
             value={state.tripId ?? "none"}
             onValueChange={(val) => onTripChange?.(val === "none" ? null : val)}
             options={[
@@ -156,6 +157,11 @@ export function StepDetails({
             ]}
             ariaLabel="Vincular a uma viagem"
           />
+          {state.splitEnabled ? (
+            <p className="text-[11px] text-muted-foreground">
+              Desative o racha avulso abaixo para vincular esta despesa a uma viagem em grupo.
+            </p>
+          ) : null}
         </div>
       )}
 
@@ -347,13 +353,16 @@ export function StepDetails({
                   Rachar despesa com amigos
                 </span>
                 <span className="text-xs text-muted-foreground block">
-                  Gera código Pix Copia e Cola e registra cobrança a receber
+                  {state.tripId
+                    ? "Esta despesa já é rateada entre os participantes da viagem vinculada."
+                    : "Gera código Pix Copia e Cola e registra cobrança a receber"}
                 </span>
               </div>
             </div>
             <Switch
               id="split-switch"
               checked={state.splitEnabled}
+              disabled={Boolean(state.tripId)}
               onCheckedChange={(checked) => onSplitToggle?.(checked)}
               aria-label="Rachar despesa com amigos"
             />
