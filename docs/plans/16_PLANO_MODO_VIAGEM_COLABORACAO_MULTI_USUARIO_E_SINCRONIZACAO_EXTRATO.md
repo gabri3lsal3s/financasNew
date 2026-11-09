@@ -518,7 +518,7 @@ Integrar o ciclo de vida de despesas entre a conta pessoal e o livro da viagem, 
 
 Permitir que devedores e credores liquidem suas contas com 1 clique e registrem os lançamentos bancários correspondentes no extrato.
 
-- [ ] **Tarefa 4.1: Reformulação Simétrica do `TripSettlementDialog.tsx`**
+- [x] **Tarefa 4.1: Reformulação Simétrica do `TripSettlementDialog.tsx`**
   - Atualizar `src/features/trips/components/trip-settlement-dialog.tsx`:
     - Identificar o papel do usuário autenticado no acerto:
       - **Se for o Devedor (`netBalance < 0`):**
@@ -532,15 +532,15 @@ Permitir que devedores e credores liquidem suas contas com 1 clique e registrem 
         - Ao confirmar, botão: *"Registrar Receita de Reembolso no Extrato"*.
     - O motor matemático reflete o abatimento imediatamente na tela.
 
-- [ ] **Tarefa 4.2: Exportação Executiva e Compartilhamento WhatsApp**
+- [x] **Tarefa 4.2: Exportação Executiva e Compartilhamento WhatsApp**
   - Atualizar o gerador de texto de prestação de contas:
     - Resumo claro com despesas totais, quem já quitou e quem ainda possui transferências pendentes com chave Pix.
 
-- [ ] **Portão de Qualidade 4:**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/features/trips/components/trip-settlement-dialog.test.tsx`
-  - [ ] **Commit da Fase 4:** `git commit -m "feat(trips): fechamento simetrico com lancamento de despesa e receita no extrato"`
+- [x] **Portão de Qualidade 4:**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/features/trips/components/trip-settlement-dialog.test.tsx`
+  - [x] **Commit da Fase 4:** `git commit -m "feat(trips): fechamento simetrico com lancamento de despesa e receita no extrato"`
 
 ---
 

@@ -603,6 +603,8 @@ export function TripDetailsPage() {
         publicToken={trip.public_token}
         suggestedSettlements={suggestedSettlements}
         existingSettlements={settlements}
+        members={members}
+        expenses={expenses}
       />
 
       <TripMemberStatementDialog
