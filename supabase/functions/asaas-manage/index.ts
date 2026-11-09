@@ -1,9 +1,12 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import {
   cancelAsaasSubscription,
+  refundAsaasPayment,
   updateAsaasSubscriptionCreditCard,
 } from "../_shared/asaas.ts";
 import { buildCorsHeaders, jsonResponse, safeErrorResponse } from "../_shared/http.ts";
+
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -47,7 +50,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: userSub } = await supabase
       .from("user_subscriptions")
-      .select("id, user_id, asaas_subscription_id, status")
+      .select("id, user_id, asaas_subscription_id, asaas_payment_id, starts_at, created_at, status, tier")
       .eq("user_id", user.id)
       .single();
 
@@ -56,13 +59,67 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "cancel") {
+      const referenceDateStr = userSub.starts_at || userSub.created_at;
+      const startTime = referenceDateStr ? new Date(referenceDateStr).getTime() : 0;
+      const isWithin7Days = startTime > 0 && Date.now() - startTime <= SEVEN_DAYS_MS;
+
+      if (isWithin7Days) {
+        // Regra dos 7 dias (CDC Art. 49): Reembolso integral + perda imediata do Pro
+        let refundRequested = false;
+
+        if (userSub.asaas_payment_id) {
+          try {
+            await refundAsaasPayment(
+              userSub.asaas_payment_id,
+              "Cancelamento e estorno nos primeiros 7 dias (CDC)",
+            );
+            refundRequested = true;
+          } catch (err: unknown) {
+            console.warn(
+              "[asaas-manage] Aviso ao estornar cobrança no Asaas:",
+              err instanceof Error ? err.message : err,
+            );
+          }
+        }
+
+        if (userSub.asaas_subscription_id) {
+          try {
+            await cancelAsaasSubscription(userSub.asaas_subscription_id);
+          } catch (err: unknown) {
+            console.warn(
+              "[asaas-manage] Aviso ao cancelar assinatura no Asaas:",
+              err instanceof Error ? err.message : err,
+            );
+          }
+        }
+
+        await supabase
+          .from("user_subscriptions")
+          .update({
+            tier: "read_only",
+            status: "canceled",
+            cancel_at_period_end: false,
+            current_period_end: new Date().toISOString(),
+          })
+          .eq("user_id", user.id);
+
+        return jsonResponse(req, {
+          ok: true,
+          refunded: true,
+          message: refundRequested
+            ? "Assinatura cancelada com sucesso. O estorno integral de 7 dias foi solicitado ao Asaas e seu acesso Pro foi encerrado."
+            : "Assinatura cancelada com sucesso e acesso Pro encerrado dentro dos 7 dias.",
+        });
+      }
+
+      // Mais de 7 dias: sem reembolso, cancela renovação futura e mantém Pro até o fim do período vigente
       if (userSub.asaas_subscription_id) {
         try {
           await cancelAsaasSubscription(userSub.asaas_subscription_id);
         } catch (err: unknown) {
           console.warn(
-            "Aviso ao cancelar no Asaas:",
-            err instanceof Error ? err.message : "erro desconhecido",
+            "[asaas-manage] Aviso ao cancelar renovação no Asaas:",
+            err instanceof Error ? err.message : err,
           );
         }
       }
@@ -72,7 +129,12 @@ Deno.serve(async (req: Request) => {
         .update({ cancel_at_period_end: true })
         .eq("user_id", user.id);
 
-      return jsonResponse(req, { ok: true, message: "Assinatura cancelada com sucesso" });
+      return jsonResponse(req, {
+        ok: true,
+        refunded: false,
+        message:
+          "Assinatura cancelada com sucesso. Seu acesso Pro continuará ativo até o final do período vigente.",
+      });
     }
 
     if (action === "update-card") {

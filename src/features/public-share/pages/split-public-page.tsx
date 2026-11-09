@@ -43,10 +43,13 @@ export function SplitPublicPage() {
   const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
   const [isSelectCategoryOpen, setIsSelectCategoryOpen] = useState(false);
   const [isSelectParticipantOpen, setIsSelectParticipantOpen] = useState(false);
+  const [participantSelectionIntent, setParticipantSelectionIntent] = useState<"save" | "signal">("save");
   const [selectedParticipant, setSelectedParticipant] = useState<SplitParticipantItem | null>(null);
   const [selectedInstallmentId, setSelectedInstallmentId] = useState<string | null>(null);
   const [isPayAllRemaining, setIsPayAllRemaining] = useState(false);
   const [isSavingDirectly, setIsSavingDirectly] = useState(false);
+  const [isSignalingDirectly, setIsSignalingDirectly] = useState(false);
+  const [justSignaledInstallmentIds, setJustSignaledInstallmentIds] = useState<Set<string>>(new Set());
   const categoriesQuery = useCategories(session?.user ? "expense" : undefined);
 
   // Payload tipado com fallback seguro
@@ -150,6 +153,7 @@ export function SplitPublicPage() {
                 "Participante",
               amountCents: guestShareCents,
               participantId: participant?.id,
+              installmentId: selectedInstallment?.id ?? null,
             });
           } catch (signalErr) {
             console.warn("Nao foi possivel sinalizar o pagamento:", signalErr);
@@ -169,7 +173,7 @@ export function SplitPublicPage() {
         setIsSavingDirectly(false);
       }
     },
-    [payload, effectiveChargeCents, saveSplitMutation, signalSplitPaymentMutation, token, session, navigate],
+    [payload, effectiveChargeCents, selectedInstallment, saveSplitMutation, signalSplitPaymentMutation, token, session, navigate],
   );
 
   const handleSaveExpenseClick = useCallback(async () => {
@@ -208,6 +212,7 @@ export function SplitPublicPage() {
           activeParticipant = matched;
           setSelectedParticipant(matched);
         } else {
+          setParticipantSelectionIntent("save");
           setIsSelectParticipantOpen(true);
           return;
         }
@@ -245,10 +250,81 @@ export function SplitPublicPage() {
     executeSaveAndSignal,
   ]);
 
+  const executeSignalOnly = useCallback(
+    async (participant?: SplitParticipantItem | null) => {
+      if (!payload || !token) return;
+      const chargeCents = effectiveChargeCents;
+      const targetInstId = selectedInstallment?.id ?? null;
+
+      setIsSignalingDirectly(true);
+      try {
+        await signalSplitPaymentMutation.mutateAsync({
+          token,
+          participantName:
+            participant?.name ||
+            session?.user?.user_metadata?.name ||
+            session?.user?.user_metadata?.full_name ||
+            session?.user?.email?.split("@")[0] ||
+            "Convidado",
+          amountCents: chargeCents,
+          participantId: participant?.id,
+          installmentId: targetInstId,
+        });
+
+        if (targetInstId) {
+          setJustSignaledInstallmentIds((prev) => new Set(prev).add(targetInstId));
+        }
+
+        triggerSensory("success");
+        pushToast({
+          title: "Aviso enviado ao anfitrião!",
+          description: "Notificamos o anfitrião sobre seu pagamento Pix para conferência.",
+          variant: "success",
+        });
+      } catch {
+        triggerSensory("destructive");
+        pushToast({
+          title: "Não foi possível avisar o anfitrião",
+          description: "Verifique sua conexão ou tente novamente em instantes.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSignalingDirectly(false);
+      }
+    },
+    [payload, token, effectiveChargeCents, selectedInstallment, session, signalSplitPaymentMutation],
+  );
+
+  const handleSignalPixPayment = useCallback(async () => {
+    if (!payload || !token) return;
+
+    const guestParticipants = (payload.participants ?? []).filter((p) => !p.is_host);
+    const unsettledGuests = guestParticipants.filter((p) => !p.is_settled);
+
+    let activeParticipant: SplitParticipantItem | null = selectedParticipant;
+    if (!activeParticipant) {
+      if (unsettledGuests.length === 1) {
+        activeParticipant = unsettledGuests[0] ?? null;
+        setSelectedParticipant(activeParticipant);
+      } else if (unsettledGuests.length > 1) {
+        setParticipantSelectionIntent("signal");
+        setIsSelectParticipantOpen(true);
+        return;
+      }
+    }
+
+    await executeSignalOnly(activeParticipant);
+  }, [payload, token, selectedParticipant, executeSignalOnly]);
+
   const handleConfirmParticipant = useCallback(
     async (participant: SplitParticipantItem) => {
       setSelectedParticipant(participant);
       setIsSelectParticipantOpen(false);
+
+      if (participantSelectionIntent === "signal") {
+        await executeSignalOnly(participant);
+        return;
+      }
 
       const userCategories = categoriesQuery.data ?? [];
       const sentCategoryName = payload?.category_name?.trim().toLowerCase();
@@ -273,7 +349,7 @@ export function SplitPublicPage() {
         await executeSaveAndSignal(participant);
       }
     },
-    [payload?.category_name, categoriesQuery.data, executeSaveAndSignal],
+    [participantSelectionIntent, executeSignalOnly, payload?.category_name, categoriesQuery.data, executeSaveAndSignal],
   );
 
   const handleConfirmCategorySave = useCallback(
@@ -364,6 +440,13 @@ export function SplitPublicPage() {
                   }}
                   isPayAllRemaining={isPayAllRemaining}
                   onTogglePayAllRemaining={() => setIsPayAllRemaining((prev) => !prev)}
+                  onSignalPayment={handleSignalPixPayment}
+                  isSignalingPayment={isSignalingDirectly}
+                  hasSignaledCurrent={Boolean(
+                    (selectedInstallment?.id && justSignaledInstallmentIds.has(selectedInstallment.id)) ||
+                    selectedInstallment?.signal_status === "pending_confirmation" ||
+                    (!participantInstallments.length && selectedParticipant?.has_payment_signal)
+                  )}
                 />
 
                 {/* Bloco de Auto-Onboarding & Conversão Viral (Plano 06) */}

@@ -64,6 +64,7 @@ function buildFallbackStatus(tier: SubscriptionTier, createdAt: string | null): 
 
   return {
     tier,
+    startsAt: null,
     trialDaysRemaining: isTrial ? trialDaysRemaining : null,
     trialEndsAt: trialEndsAt ?? null,
     currentPeriodEnd: null,

@@ -146,11 +146,13 @@ export interface Database {
           p_participant_name: string;
           p_amount_cents: number;
           p_participant_id?: string | null;
+          p_installment_id?: string | null;
         };
         Returns: {
           success: boolean;
           signal_id: string;
           participant_matched: boolean;
+          installment_matched?: boolean;
           deduplicated?: boolean;
         };
       };

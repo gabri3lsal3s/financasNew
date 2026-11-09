@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { PendingSplitSignalsCard } from "./pending-split-signals-card";
+import { syncSplitExpenseReportWeights } from "@/services/split-sync";
 import type { PublicShare, SplitSharePayload } from "@/types";
 
 const mockUpdateShare = vi.fn().mockResolvedValue({});
@@ -26,6 +27,10 @@ vi.mock("@/services/sensory", () => ({
 
 vi.mock("@/services/toast", () => ({
   pushToast: vi.fn(),
+}));
+
+vi.mock("@/services/split-sync", () => ({
+  syncSplitExpenseReportWeights: vi.fn().mockResolvedValue({ updatedCount: 1, groupId: null }),
 }));
 
 describe("PendingSplitSignalsCard", () => {
@@ -109,10 +114,12 @@ describe("PendingSplitSignalsCard", () => {
     });
 
     await waitFor(() => {
-      expect(mockUpdateExpense).toHaveBeenCalledWith({
-        id: "exp-123",
-        input: { report_weight: 0.5 },
-      });
+      expect(syncSplitExpenseReportWeights).toHaveBeenCalledWith(
+        expect.objectContaining({
+          expenseId: "exp-123",
+          totalCents: 10000,
+        }),
+      );
     });
   });
 

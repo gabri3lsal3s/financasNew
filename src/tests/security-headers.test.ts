@@ -22,7 +22,11 @@ describe("Tarefa 1.3 — Content-Security-Policy (CSP) & Segurança de Borda em 
 
     // Valida diretivas obrigatórias de contenção
     expect(csp).toContain("default-src 'self'");
-    expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com");
+    expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval'");
+    expect(csp).toContain("https://challenges.cloudflare.com");
+    // Verifica hashes dos scripts inline de tema/splash do index.html
+    expect(csp).toContain("'sha256-JKOMn8MoPLcRGkLyFyVqR4TBgboPYTctNyzH/JtKaXQ='");
+    expect(csp).toContain("'sha256-I7ylwc+uMxBp7vNGAaMZGrK+dMK2PimKgi2kbE4MB8A='");
     expect(csp).toContain("style-src 'self' 'unsafe-inline'");
     expect(csp).toContain("img-src 'self' data: blob: https://*.supabase.co");
     expect(csp).toContain(
@@ -65,6 +69,8 @@ describe("Tarefa 1.3 — Content-Security-Policy (CSP) & Segurança de Borda em 
     expect(content).toContain("X-Content-Type-Options: nosniff");
     expect(content).toContain("X-Frame-Options: DENY");
     expect(content).toContain("Referrer-Policy: strict-origin-when-cross-origin");
-    expect(content).toContain("Permissions-Policy: camera=(), microphone=(), geolocation=()");
+    expect(content).toContain(
+      "Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), interest-cohort=()",
+    );
   });
 });

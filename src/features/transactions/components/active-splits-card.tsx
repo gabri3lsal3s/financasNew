@@ -19,6 +19,7 @@ import { useDebts, useMyPublicShares, useSettleIntegratedReceivable } from "@/st
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { getPublicAppUrl } from "@/services/app-url";
+import { isParticipantFullySettled, isSplitFullyCompleted } from "@/domain/finance/split-math";
 import type { Debt, PublicShare, SplitSharePayload } from "@/types";
 
 function formatShortDate(isoDate: string): string {
@@ -85,7 +86,16 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
           (expenseId ? receivableDebtsByExpense.get(expenseId) : null) ||
           null;
 
-        const isSettled = Boolean(payload.is_completed) || (linkedDebt ? Boolean(linkedDebt.paid_at) : false);
+        const participants = payload.participants ?? [];
+        const participantInstallments = payload.participant_installments ?? [];
+        const friends = participants.filter((p) => !p.is_host);
+
+        // Se houver parcelas ou participantes estruturados, validação rigorosa de quitação integral
+        const hasStructuredData = participants.length > 0 || participantInstallments.length > 0;
+        const isSettled = hasStructuredData
+          ? isSplitFullyCompleted(participants, participantInstallments)
+          : Boolean(payload.is_completed) || (linkedDebt ? Boolean(linkedDebt.paid_at) : false);
+
         const totalCents = Number(payload.total_cents ?? 0);
         const guestShareCents = Number(payload.guest_share_cents ?? 0);
         const hostShareCents = Number(payload.host_share_cents ?? 0);
@@ -93,9 +103,15 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
         const guestCount = Math.max(1, peopleCount - 1);
         const receivableExpectedCents = guestShareCents * guestCount;
 
-        const participants = payload.participants ?? [];
-        const friends = participants.filter((p) => !p.is_host);
-        const settledFriendsCount = friends.filter((p) => p.is_settled).length;
+        const settledFriendsCount = friends.filter((f) => {
+          const friendInsts = participantInstallments.filter(
+            (inst) =>
+              inst.participant_id === f.id ||
+              (friends.length === 1 && !participants.find((p) => p.id === inst.participant_id)?.is_host)
+          );
+          return isParticipantFullySettled(f, friendInsts);
+        }).length;
+
         const signaledFriends = friends.filter((p) => p.has_payment_signal && !p.is_settled);
         const totalSettledFromFriendsCents = friends.reduce(
           (acc, f) => acc + (f.is_settled ? Number(f.settled_cents ?? f.share_cents) : 0),
@@ -167,6 +183,15 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
   }
 
   const handleQuickSettle = async (item: (typeof activeSplits)[0]) => {
+    const hasInstallments =
+      (item.payload.participant_installments && item.payload.participant_installments.length > 1) ||
+      ((item.payload.installments_count ?? 1) > 1);
+
+    if (hasInstallments) {
+      setManagingItem({ share: item.share, linkedDebt: item.linkedDebt });
+      return;
+    }
+
     if (!item.linkedDebt) {
       pushToast({
         title: "Cobrança vinculada não encontrada",

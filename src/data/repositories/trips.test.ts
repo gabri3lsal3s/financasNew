@@ -13,6 +13,8 @@ import {
   rebalanceTripMembers,
   deleteTripExpense,
   confirmTripSettlement,
+  recordSingleTripSettlement,
+  reopenTripSettlement,
   fetchPublicTripLedger,
   submitPublicExpense,
   recordTripSettlements,
@@ -584,6 +586,110 @@ describe("data/repositories/trips", () => {
       vi.mocked(getSupabase).mockReturnValue({ from: mockFrom } as never);
 
       await expect(confirmTripSettlement("set-1")).rejects.toBeInstanceOf(AppError);
+    });
+  });
+
+  describe("recordSingleTripSettlement", () => {
+    it("atualiza registro existente se já houver acerto entre os membros", async () => {
+      const existing = { id: "s-1", trip_id: "t1", from_member_id: "m1", to_member_id: "m2", amount_cents: 1000, status: "pending" };
+      const updated = { ...existing, amount_cents: 1500, status: "confirmed" };
+
+      const mockSingle = vi.fn().mockResolvedValue({ data: updated, error: null });
+      const mockSelectAfterUpdate = vi.fn().mockReturnValue({ single: mockSingle });
+      const mockEqUpdate = vi.fn().mockReturnValue({ select: mockSelectAfterUpdate });
+      const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqUpdate });
+
+      const mockMaybeSingle = vi.fn().mockResolvedValue({ data: existing, error: null });
+      const mockEq3 = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+      const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 });
+      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 });
+      const mockSelectExisting = vi.fn().mockReturnValue({ eq: mockEq1 });
+
+      const mockFrom = vi.fn((table: string) => {
+        if (table === "trip_settlements") {
+          return {
+            select: mockSelectExisting,
+            update: mockUpdate,
+          };
+        }
+        return {};
+      });
+
+      vi.mocked(getSupabase).mockReturnValue({ from: mockFrom } as never);
+
+      const result = await recordSingleTripSettlement({
+        tripId: "t1",
+        fromMemberId: "m1",
+        toMemberId: "m2",
+        amountCents: 1500,
+        status: "confirmed",
+      });
+
+      expect(result).toEqual(updated);
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ amount_cents: 1500, status: "confirmed" })
+      );
+    });
+
+    it("insere novo registro se não houver acerto prévio", async () => {
+      const created = { id: "s-new", trip_id: "t1", from_member_id: "m1", to_member_id: "m2", amount_cents: 2000, status: "confirmed" };
+
+      const mockSingle = vi.fn().mockResolvedValue({ data: created, error: null });
+      const mockSelectAfterInsert = vi.fn().mockReturnValue({ single: mockSingle });
+      const mockInsert = vi.fn().mockReturnValue({ select: mockSelectAfterInsert });
+
+      const mockMaybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+      const mockEq3 = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+      const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 });
+      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 });
+      const mockSelectExisting = vi.fn().mockReturnValue({ eq: mockEq1 });
+
+      const mockFrom = vi.fn((table: string) => {
+        if (table === "trip_settlements") {
+          return {
+            select: mockSelectExisting,
+            insert: mockInsert,
+          };
+        }
+        return {};
+      });
+
+      vi.mocked(getSupabase).mockReturnValue({ from: mockFrom } as never);
+
+      const result = await recordSingleTripSettlement({
+        tripId: "t1",
+        fromMemberId: "m1",
+        toMemberId: "m2",
+        amountCents: 2000,
+        status: "confirmed",
+      });
+
+      expect(result).toEqual(created);
+      expect(mockInsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          trip_id: "t1",
+          from_member_id: "m1",
+          to_member_id: "m2",
+          amount_cents: 2000,
+          status: "confirmed",
+        })
+      );
+    });
+  });
+
+  describe("reopenTripSettlement", () => {
+    it("reabre o acerto alterando o status para pending", async () => {
+      const mockEq = vi.fn().mockResolvedValue({ error: null });
+      const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq });
+      const mockFrom = vi.fn().mockReturnValue({ update: mockUpdate });
+
+      vi.mocked(getSupabase).mockReturnValue({ from: mockFrom } as never);
+
+      await expect(reopenTripSettlement("set-1")).resolves.toBeUndefined();
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ status: "pending", confirmed_at: null })
+      );
+      expect(mockEq).toHaveBeenCalledWith("id", "set-1");
     });
   });
 

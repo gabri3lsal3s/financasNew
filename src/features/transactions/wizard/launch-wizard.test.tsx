@@ -82,6 +82,7 @@ vi.mock("@/state", () => ({
       cpf: "12345678901",
     },
   }),
+  useExpense: () => ({ data: null, isLoading: false }),
 }));
 
 vi.mock("@/hooks/use-auth", () => ({

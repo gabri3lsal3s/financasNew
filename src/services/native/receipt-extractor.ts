@@ -96,6 +96,8 @@ async function extractPdfTextWeb(file: File): Promise<string> {
   }
 }
 
+export const MAX_RECEIPT_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB
+
 /**
  * Extrai o texto contido em um arquivo de comprovante (PDF ou imagem):
  * - No Android nativo: delega ao ML Kit Text Recognition via Capacitor Plugin (100% offline).
@@ -104,6 +106,15 @@ async function extractPdfTextWeb(file: File): Promise<string> {
  * - Em qualquer plataforma: higieniza e repara ruídos com cleanOcrText.
  */
 export async function extractReceiptTextFromFile(file: File): Promise<string> {
+  if (file.size > MAX_RECEIPT_FILE_SIZE_BYTES) {
+    throw new Error("O arquivo excede o limite máximo permitido de 15 MB.");
+  }
+
+  const lowerName = file.name.toLowerCase();
+  if (file.type === "image/svg+xml" || lowerName.endsWith(".svg")) {
+    throw new Error("Formato SVG não suportado para leitura de comprovantes.");
+  }
+
   let extractedRaw = "";
 
   if (isNativePlatform()) {

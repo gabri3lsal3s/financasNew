@@ -13,6 +13,7 @@ import {
   Crown,
   FileText,
   Filter,
+  LogOut,
 } from "lucide-react";
 import type { Trip, TripMember, TripMemberBalance } from "@/types/trips";
 
@@ -25,6 +26,7 @@ export interface TripPersonalContextCardProps {
   onOpenStatement?: () => void;
   isFilterActive?: boolean;
   onToggleFilterMyExpenses?: () => void;
+  onLeaveTrip?: () => void;
 }
 
 export function TripPersonalContextCard({
@@ -35,6 +37,7 @@ export function TripPersonalContextCard({
   onOpenStatement,
   isFilterActive,
   onToggleFilterMyExpenses,
+  onLeaveTrip,
 }: TripPersonalContextCardProps) {
   if (!myMember) {
     return null;
@@ -100,6 +103,20 @@ export function TripPersonalContextCard({
             >
               <FileText className="size-3" aria-hidden="true" />
               <span>Meu Extrato</span>
+            </Button>
+          )}
+
+          {!isHost && onLeaveTrip && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={onLeaveTrip}
+              className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-critical hover:border-critical/30 cursor-pointer"
+              title="Desvincular sua conta e sair desta viagem"
+            >
+              <LogOut className="size-3" aria-hidden="true" />
+              <span>Sair da Viagem</span>
             </Button>
           )}
         </div>

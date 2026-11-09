@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { HandCoins, Check, X, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,14 +11,15 @@ import {
   useMyPublicShares,
   useSettleIntegratedReceivable,
   useUpdateDebt,
-  useUpdateExpense,
   useUpdatePublicShare,
 } from "@/state";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { formatCentsAsCurrency } from "@/services/masks";
 import { formatDateBR } from "@/lib/date";
-import type { PublicShare, SplitParticipantItem, SplitPaymentSignal, SplitSharePayload } from "@/types";
+import { isParticipantFullySettled, isSplitFullyCompleted } from "@/domain/finance/split-math";
+import { syncSplitExpenseReportWeights } from "@/services/split-sync";
+import type { PublicShare, SplitParticipantInstallment, SplitParticipantItem, SplitPaymentSignal, SplitSharePayload } from "@/types";
 
 export interface PendingSplitSignalsCardProps {
   className?: string;
@@ -31,10 +33,16 @@ interface SignalItemWithContext {
 }
 
 export function PendingSplitSignalsCard({ className }: PendingSplitSignalsCardProps) {
+  let queryClient: ReturnType<typeof useQueryClient> | null = null;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    queryClient = useQueryClient();
+  } catch {
+    // Ambiente de teste unitário sem QueryClientProvider
+  }
   const { data: shares } = useMyPublicShares("split");
   const { data: debts } = useDebts();
   const updateShareMutation = useUpdatePublicShare();
-  const updateExpenseMutation = useUpdateExpense();
   const updateDebtMutation = useUpdateDebt();
   const settleDebtMutation = useSettleIntegratedReceivable();
   const dismissSignalMutation = useDismissSplitPaymentSignal();
@@ -81,30 +89,94 @@ export function PendingSplitSignalsCard({ className }: PendingSplitSignalsCardPr
     const { share, payload, signal, participant } = item;
 
     try {
-      // 1. Atualiza lista de participantes marcando o participante como quitado
-      const updatedParticipants = (payload.participants ?? []).map((p) => {
+      // 1. Normaliza participantes com fallback de id para evitar falhas em dados legados
+      const rawParticipants = payload.participants ?? [];
+      const participantsList: SplitParticipantItem[] = rawParticipants.map((p, idx) => ({
+        ...p,
+        id: p.id || `p_${idx + 1}`,
+      }));
+
+      const currentInsts: SplitParticipantInstallment[] = payload.participant_installments ?? [];
+      let targetParticipantId = participant?.id;
+
+      if (!targetParticipantId) {
+        const found = participantsList.find(
+          (p) => p.name.trim().toLowerCase() === signal.participant_name.trim().toLowerCase(),
+        );
+        targetParticipantId = found?.id;
+      }
+
+      // Se só houver 1 amigo e o ID ainda for indeterminado, direciona para esse único amigo
+      if (!targetParticipantId) {
+        const guestOnly = participantsList.filter((p) => !p.is_host);
+        if (guestOnly.length === 1) {
+          targetParticipantId = guestOnly[0]?.id;
+        }
+      }
+
+      let installmentUpdated = false;
+      const updatedInstallments = currentInsts.map((inst) => {
         const isTarget =
-          (participant && p.id === participant.id) ||
+          (signal.installment_id && inst.id === signal.installment_id) ||
+          (!signal.installment_id &&
+            targetParticipantId &&
+            inst.participant_id === targetParticipantId &&
+            !inst.is_settled &&
+            !installmentUpdated);
+
+        if (isTarget) {
+          installmentUpdated = true;
+          return {
+            ...inst,
+            is_settled: true,
+            settled_at: new Date().toISOString(),
+            signal_status: "none" as const,
+          };
+        }
+        return inst;
+      });
+
+      // 2. Atualiza lista de participantes calculando quitação precisa
+      const updatedParticipants = participantsList.map((p) => {
+        const isTarget =
+          (targetParticipantId && p.id === targetParticipantId) ||
           p.name.trim().toLowerCase() === signal.participant_name.trim().toLowerCase();
 
         if (isTarget) {
+          let friendInsts = updatedInstallments.filter((i) => i.participant_id === p.id);
+          if (friendInsts.length === 0 && participantsList.filter((x) => !x.is_host).length === 1) {
+            const hostId = participantsList.find((x) => x.is_host)?.id;
+            friendInsts = updatedInstallments.filter((i) => i.participant_id !== hostId);
+          }
+
+          const settledCents =
+            friendInsts.length > 0
+              ? friendInsts.filter((i) => i.is_settled).reduce((acc, i) => acc + i.amount_cents, 0)
+              : Math.min(p.share_cents, Number(p.settled_cents ?? 0) + signal.amount_cents);
+
+          const fullySettled = isParticipantFullySettled(
+            { ...p, settled_cents: settledCents },
+            friendInsts,
+          );
+
           return {
             ...p,
-            is_settled: true,
-            settled_cents: signal.amount_cents,
-            settled_at: new Date().toISOString(),
+            is_settled: fullySettled,
+            settled_cents: settledCents,
+            settled_at: fullySettled ? (p.settled_at || new Date().toISOString()) : null,
             has_payment_signal: false,
           };
         }
         return p;
       });
 
-      // 2. Atualiza status do sinal para 'confirmed'
+      // 3. Atualiza status do sinal para 'confirmed'
       const updatedSignals = (payload.payment_signals ?? []).map((s) => {
         if (s.id === signal.id) {
           return {
             ...s,
             status: "confirmed" as const,
+            confirmed_at: new Date().toISOString(),
           };
         }
         return s;
@@ -112,17 +184,18 @@ export function PendingSplitSignalsCard({ className }: PendingSplitSignalsCardPr
 
       const totalSettledFromFriends = updatedParticipants
         .filter((p) => !p.is_host)
-        .reduce((acc, f) => acc + (f.is_settled ? Number(f.settled_cents ?? f.share_cents) : 0), 0);
+        .reduce((acc, f) => acc + (f.is_settled ? Number(f.settled_cents ?? f.share_cents) : Number(f.settled_cents ?? 0)), 0);
 
       const friends = updatedParticipants.filter((p) => !p.is_host);
-      const allSettled = friends.length > 0 && friends.every((p) => p.is_settled);
+      const allCompleted = isSplitFullyCompleted(updatedParticipants, updatedInstallments);
 
       const newPayload: SplitSharePayload = {
         ...payload,
         participants: updatedParticipants,
+        participant_installments: updatedInstallments.length > 0 ? updatedInstallments : undefined,
         payment_signals: updatedSignals,
         total_settled_cents: totalSettledFromFriends,
-        is_completed: allSettled || Boolean(payload.is_completed),
+        is_completed: allCompleted,
       };
 
       await updateShareMutation.mutateAsync({
@@ -130,25 +203,28 @@ export function PendingSplitSignalsCard({ className }: PendingSplitSignalsCardPr
         payload: newPayload as unknown as Record<string, unknown>,
       });
 
-      // 3. Recalcula o peso contábil da despesa no extrato se houver despesa vinculada
+      // 4. Sincroniza o peso contábil de TODAS as parcelas da despesa nas faturas do cartão
       if (payload.expense_id) {
         try {
-          const totalCents = Number(payload.total_cents ?? 0);
-          const netCost = Math.max(0, totalCents - totalSettledFromFriends);
-          const weight = totalCents > 0 ? netCost / totalCents : 1;
-
-          await updateExpenseMutation.mutateAsync({
-            id: payload.expense_id,
-            input: {
-              report_weight: weight,
-            },
+          const hostId = updatedParticipants.find((p) => p.is_host)?.id;
+          await syncSplitExpenseReportWeights({
+            expenseId: payload.expense_id,
+            installments: updatedInstallments,
+            hostId,
+            totalCents: payload.total_cents,
+            installmentsCount: payload.installments_count,
+            groupId: payload.installment_group_id,
           });
+          if (queryClient) {
+            void queryClient.invalidateQueries({ queryKey: ["expenses"] });
+            void queryClient.invalidateQueries({ queryKey: ["card-expenses"] });
+          }
         } catch (err) {
-          console.warn("Não foi possível atualizar peso contábil da despesa vinculada:", err);
+          console.warn("Não foi possível sincronizar pesos contábeis das parcelas:", err);
         }
       }
 
-      // 4. Sincroniza a dívida a receber vinculada
+      // 5. Sincroniza a dívida a receber vinculada (apenas liquida se o racha for 100% completado)
       const linkedDebt = debts?.find(
         (d) => d.expense_id === payload.expense_id || d.id === payload.debt_id,
       );
@@ -157,7 +233,7 @@ export function PendingSplitSignalsCard({ className }: PendingSplitSignalsCardPr
           const totalFriendsExpectedCents = friends.reduce((acc, f) => acc + f.share_cents, 0);
           const remainingReceivableCents = Math.max(0, totalFriendsExpectedCents - totalSettledFromFriends);
 
-          if (allSettled || remainingReceivableCents === 0) {
+          if (allCompleted || remainingReceivableCents === 0) {
             await settleDebtMutation.mutateAsync({
               debtId: linkedDebt.id,
               result: linkedDebt.amount,

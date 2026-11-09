@@ -13,6 +13,8 @@ import {
   ExternalLink,
   Loader2,
   LogOut,
+  Laptop,
+  Smartphone,
 } from "lucide-react";
 import {
   Card,
@@ -30,11 +32,13 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useUserAccess, useUserSubscription, useUpdateProfile } from "@/state";
+import { getSupabase } from "@/data/client";
 import { requestUserEmailChange } from "@/data/auth";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
 import { ChangePasswordModal } from "./change-password-modal";
+import { MfaModal } from "../mfa-modal";
 
 function formatAccountDate(dateString?: string | null): string {
   if (!dateString) return "Data indisponível";
@@ -155,6 +159,34 @@ export function AccountTab() {
         variant: "destructive",
       });
       setIsSigningOut(false);
+    }
+  };
+
+  const [isSigningOutOthers, setIsSigningOutOthers] = useState(false);
+  const [isMfaModalOpen, setIsMfaModalOpen] = useState(false);
+
+  const handleSignOutOthers = async () => {
+    setIsSigningOutOthers(true);
+    triggerSensory("action");
+    try {
+      const supabase = getSupabase();
+      const { error } = await supabase.auth.signOut({ scope: "others" });
+      if (error) throw error;
+      triggerSensory("success");
+      pushToast({
+        title: "Outros acessos encerrados",
+        description: "Todas as sessões ativas em outros navegadores ou aparelhos foram desconectadas com sucesso.",
+        variant: "success",
+      });
+    } catch (err) {
+      triggerSensory("destructive");
+      pushToast({
+        title: "Não foi possível encerrar outras sessões",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    } finally {
+      setIsSigningOutOthers(false);
     }
   };
 
@@ -415,35 +447,111 @@ export function AccountTab() {
         </CardContent>
       </Card>
 
-      {/* Card 3: Sessão & Desconexão */}
+      {/* Card 3: Segurança de Acesso, Sessões & Conexões Ativas */}
       <Card className="border-border/80 bg-surface shadow-xs">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <LogOut className="size-4 text-muted-foreground" aria-hidden="true" />
-            <span>Sessão &amp; Desconexão</span>
+            <ShieldCheck className="size-4 text-muted-foreground" aria-hidden="true" />
+            <span>Segurança de Acesso &amp; Sessões</span>
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            Encerre a sessão do aplicativo neste dispositivo com segurança. Seus dados permanecerão salvos na nuvem.
+            Monitore dispositivos conectados, encerre outros acessos ativos e configure proteção em duas etapas (2FA).
           </p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          {/* Sessão Atual */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-xl border border-border/80 bg-muted/20">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-surface text-muted-foreground">
+                {typeof navigator !== "undefined" && /mobile|android|iphone/i.test(navigator.userAgent) ? (
+                  <Smartphone className="size-4" aria-hidden="true" />
+                ) : (
+                  <Laptop className="size-4" aria-hidden="true" />
+                )}
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-foreground">
+                    Este Dispositivo
+                  </span>
+                  <Badge variant="positive" size="xs">
+                    Sessão Ativa
+                  </Badge>
+                </div>
+                <span className="text-[11px] text-muted-foreground block font-mono">
+                  {typeof navigator !== "undefined"
+                    ? navigator.userAgent.includes("Android")
+                      ? "Aplicativo Android / Mobile"
+                      : navigator.userAgent.includes("iPhone")
+                        ? "Navegador iOS Safari"
+                        : "Navegador Web / Desktop"
+                    : "Terminal de Acesso"}
+                </span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsSignOutModalOpen(true)}
+              className="h-8 px-3 text-xs font-semibold rounded-xl shrink-0 cursor-pointer gap-1.5 self-start sm:self-auto"
+            >
+              <LogOut className="size-3 text-muted-foreground" aria-hidden="true" />
+              <span>Sair deste aparelho</span>
+            </Button>
+          </div>
+
+          {/* Desconexão Remota de Outras Sessões */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-xl border border-border/80 bg-muted/20">
             <div className="space-y-0.5">
               <span className="text-xs font-semibold text-foreground block">
-                Sair da conta neste dispositivo
+                Encerrar outras sessões ativas
               </span>
               <span className="text-[11px] text-muted-foreground block">
-                Você precisará inserir suas credenciais de acesso para entrar novamente.
+                Desconecta imediatamente seu usuário em outros computadores, celulares ou navegadores conectados.
               </span>
             </div>
             <Button
               type="button"
               variant="outline"
-              onClick={() => setIsSignOutModalOpen(true)}
-              className="h-9 px-4 text-xs font-semibold rounded-xl shrink-0 cursor-pointer gap-1.5"
+              disabled={isSigningOutOthers}
+              onClick={() => {
+                void handleSignOutOthers();
+              }}
+              className="h-8 px-3 text-xs font-semibold rounded-xl shrink-0 cursor-pointer gap-1.5 self-start sm:self-auto"
             >
-              <LogOut className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              <span>Sair da Conta</span>
+              {isSigningOutOthers ? (
+                <>
+                  <Loader2 className="size-3 animate-spin mr-1" aria-hidden="true" />
+                  <span>Encerrando…</span>
+                </>
+              ) : (
+                <>
+                  <KeyRound className="size-3 text-muted-foreground" aria-hidden="true" />
+                  <span>Desconectar outros aparelhos</span>
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Autenticação em Duas Etapas (2FA / MFA) */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-xl border border-border/80 bg-muted/20">
+            <div className="space-y-0.5">
+              <span className="text-xs font-semibold text-foreground block">
+                Verificação em Duas Etapas (2FA / TOTP)
+              </span>
+              <span className="text-[11px] text-muted-foreground block">
+                Exige um código numérico temporário de 6 dígitos do Google Authenticator ou 1Password no login.
+              </span>
+            </div>
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => setIsMfaModalOpen(true)}
+              className="h-8 px-3 text-xs font-semibold rounded-xl shrink-0 cursor-pointer gap-1.5 self-start sm:self-auto"
+            >
+              <ShieldCheck className="size-3" aria-hidden="true" />
+              <span>Gerenciar 2FA</span>
             </Button>
           </div>
         </CardContent>
@@ -606,6 +714,12 @@ export function AccountTab() {
           </ModalFooter>
         </div>
       </Modal>
+
+      {/* Modal de Gestão de Autenticação em Duas Etapas (2FA / TOTP) */}
+      <MfaModal
+        open={isMfaModalOpen}
+        onOpenChange={setIsMfaModalOpen}
+      />
     </div>
   );
 }

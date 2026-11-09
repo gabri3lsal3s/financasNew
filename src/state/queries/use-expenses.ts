@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getExpense, listExpensesByMonth, listExpensesByRange } from "@/data/repositories/expenses";
+import { getExpense, listExpensesByInstallmentGroup, listExpensesByMonth, listExpensesByRange } from "@/data/repositories/expenses";
 import { STALE_TIMES } from "@/state/cache-policy";
 import { useDemoSession } from "@/state/demo-mode";
 import { useSimulatedExpenses, useSimulatedExpensesByRange } from "./use-simulated-queries";
@@ -40,6 +40,17 @@ export function useExpense(id: string | null) {
     queryKey: [...expensesKey, id],
     queryFn: () => getExpense(id as string),
     enabled: id !== null,
+    staleTime: STALE_TIMES.transactional,
+  });
+}
+
+/** Despesas pertencentes a um grupo de parcelas (ordenadas por installment_number asc). */
+export function useExpensesByInstallmentGroup(groupId: string | null | undefined) {
+  const { isDemoActive } = useDemoSession();
+  return useQuery({
+    queryKey: [...expensesKey, "installment-group", groupId],
+    queryFn: () => listExpensesByInstallmentGroup(groupId as string),
+    enabled: Boolean(groupId) && !isDemoActive,
     staleTime: STALE_TIMES.transactional,
   });
 }

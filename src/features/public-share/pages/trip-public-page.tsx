@@ -19,6 +19,8 @@ import {
   Sparkles,
   UserCheck,
   CheckCircle2,
+  QrCode,
+  Lock,
 } from "lucide-react";
 import {
   Button,
@@ -27,7 +29,9 @@ import {
   Tabs,
   EmptyState,
   Skeleton,
+  QrCodeCanvas,
 } from "@/components/ui";
+import { generatePixBrCode, detectPixKeyType, type PixKeyType } from "@/domain/pix";
 import { usePublicTrip, useUserTrips } from "@/state/queries/use-trips";
 import { useAuth } from "@/hooks/use-auth";
 import { formatCentsAsBRL } from "@/services/masks/money";
@@ -59,6 +63,8 @@ export function TripPublicPage() {
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [isClaimDialogOpen, setIsClaimDialogOpen] = useState(false);
   const [copiedPixKey, setCopiedPixKey] = useState<string | null>(null);
+  const [copiedCodeKey, setCopiedCodeKey] = useState<string | null>(null);
+  const [qrCodeOpenKey, setQrCodeOpenKey] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -118,6 +124,27 @@ export function TripPublicPage() {
       description: "Cole no seu aplicativo bancário para realizar a transferência.",
     });
     setTimeout(() => setCopiedPixKey(null), 3000);
+  };
+
+  const handleCopyPixBrCode = async (code: string, keyIdentifier: string) => {
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(code);
+        setCopiedCodeKey(keyIdentifier);
+        triggerSensory("action");
+        pushToast({
+          title: "Pix Copia e Cola copiado!",
+          description: "Abra o aplicativo do seu banco para colar e pagar o valor exato.",
+        });
+        setTimeout(() => setCopiedCodeKey(null), 3000);
+      }
+    } catch {
+      pushToast({
+        title: "Erro ao copiar código",
+        description: "Selecione e copie manualmente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleShareWhatsApp = () => {
@@ -217,54 +244,145 @@ export function TripPublicPage() {
               />
             </Card>
           ) : (
-            suggestedSettlements.map((settlement, idx) => (
-              <Card
-                key={`${settlement.fromMemberId}-${settlement.toMemberId}-${idx}`}
-                className="border-border/80 bg-surface shadow-xs rounded-xl p-3.5 space-y-2.5"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-semibold text-foreground">
-                    <span>{settlement.fromMemberName}</span>
-                    <span className="text-muted-foreground font-normal mx-1.5">paga para</span>
-                    <span className="text-primary-strong">{settlement.toMemberName}</span>
-                  </div>
-                  <span className="text-xs font-bold tabular-nums text-foreground">
-                    {formatCentsAsBRL(settlement.amountCents)}
-                  </span>
-                </div>
+            suggestedSettlements.map((settlement, idx) => {
+              const key = `${settlement.fromMemberId}-${settlement.toMemberId}`;
+              const isQrOpen = qrCodeOpenKey === key;
+              const rawKey = settlement.toPixKey?.trim() ?? "";
+              const detectedType = settlement.toPixKeyType || (rawKey ? detectPixKeyType(rawKey) : undefined);
+              const cleanCity = (trip.destination || "BRASIL")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-zA-Z0-9 ]/g, "")
+                .toUpperCase()
+                .trim()
+                .slice(0, 15) || "BRASIL";
+              const cleanMerchant = (settlement.toMemberName || "Recebedor")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-zA-Z0-9 ]/g, "")
+                .trim()
+                .slice(0, 25);
+              const cleanTitle = (trip.title || "Viagem")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-zA-Z0-9 ]/g, "")
+                .trim()
+                .slice(0, 16);
+              const txSuffix = `${settlement.fromMemberId.slice(0, 4)}${settlement.toMemberId.slice(0, 4)}`.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 
-                {settlement.toPixKey && (
-                  <div className="flex items-center justify-between bg-surface-raised border border-border/80 p-2.5 rounded-xl text-xs gap-2">
-                    <div className="min-w-0 truncate">
-                      <span className="text-[10px] text-muted-foreground block font-medium">
-                        Chave Pix ({settlement.toPixKeyType ?? "Pix"}):
-                      </span>
-                      <span className="font-mono text-xs text-foreground truncate block font-medium">
-                        {settlement.toPixKey}
-                      </span>
+              let pixBrCode: string | null = null;
+              if (rawKey) {
+                try {
+                  pixBrCode = generatePixBrCode({
+                    pixKey: rawKey,
+                    keyType: detectedType && detectedType !== "unknown" ? (detectedType as PixKeyType) : undefined,
+                    merchantName: cleanMerchant || "Recebedor",
+                    merchantCity: cleanCity,
+                    amountCents: settlement.amountCents,
+                    txId: `TRIP${txSuffix}`.slice(0, 25),
+                    infoAdicional: `Acerto: ${cleanTitle}`.slice(0, 25),
+                  });
+                } catch {
+                  pixBrCode = null;
+                }
+              }
+
+              const codeToCopy = pixBrCode || rawKey;
+
+              return (
+                <Card
+                  key={`${key}-${idx}`}
+                  className="border-border/80 bg-surface shadow-xs rounded-xl p-3.5 space-y-2.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-semibold text-foreground">
+                      <span>{settlement.fromMemberName}</span>
+                      <span className="text-muted-foreground font-normal mx-1.5">paga para</span>
+                      <span className="text-primary-strong">{settlement.toMemberName}</span>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleCopyPix(settlement.toPixKey!)}
-                      className="h-8 px-2.5 text-xs gap-1.5 shrink-0 cursor-pointer"
-                    >
-                      {copiedPixKey === settlement.toPixKey ? (
-                        <>
-                          <Check className="size-3.5 text-positive" aria-hidden="true" />
-                          <span>Copiado</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="size-3.5" aria-hidden="true" />
-                          <span>Copiar Pix</span>
-                        </>
-                      )}
-                    </Button>
+                    <span className="text-xs font-bold tabular-nums text-foreground">
+                      {formatCentsAsBRL(settlement.amountCents)}
+                    </span>
                   </div>
-                )}
-              </Card>
-            ))
+
+                  {settlement.toPixKey && (
+                    <div className="bg-surface-raised border border-border/80 p-2.5 rounded-xl text-xs space-y-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="min-w-0 truncate">
+                          <span className="text-[10px] text-muted-foreground block font-medium">
+                            Chave Pix ({settlement.toPixKeyType ?? "Pix"}):
+                          </span>
+                          <span className="font-mono text-xs text-foreground truncate block font-medium">
+                            {settlement.toPixKey}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => handleCopyPixBrCode(codeToCopy, key)}
+                            className="h-8 px-2.5 text-xs gap-1.5 cursor-pointer font-medium"
+                            title="Copiar código Pix com valor cravado"
+                          >
+                            {copiedCodeKey === key ? (
+                              <>
+                                <Check className="size-3.5 text-positive-strong" aria-hidden="true" />
+                                <span>Copiado!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="size-3.5" aria-hidden="true" />
+                                <span>Copiar Pix ({formatCentsAsBRL(settlement.amountCents)})</span>
+                              </>
+                            )}
+                          </Button>
+
+                          {pixBrCode && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setQrCodeOpenKey(isQrOpen ? null : key)}
+                              className="h-8 px-2 text-xs gap-1 cursor-pointer"
+                              title="Exibir QR Code Pix"
+                            >
+                              <QrCode className="size-3.5" aria-hidden="true" />
+                              <span>{isQrOpen ? "Fechar QR" : "QR"}</span>
+                            </Button>
+                          )}
+
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleCopyPix(settlement.toPixKey!)}
+                            className="h-8 px-2 text-[11px] text-muted-foreground cursor-pointer"
+                            title="Copiar apenas a chave Pix"
+                          >
+                            {copiedPixKey === settlement.toPixKey ? "Copiada" : "Só a chave"}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {isQrOpen && pixBrCode && (
+                        <div className="pt-2 border-t border-border/60 flex flex-col items-center gap-2 text-center">
+                          <p className="text-[11px] text-muted-foreground">
+                            Aponte a câmera do aplicativo bancário para pagar o valor exato de{" "}
+                            <strong className="text-foreground">{formatCentsAsBRL(settlement.amountCents)}</strong>:
+                          </p>
+                          <div className="p-2 rounded-xl border border-border/80 bg-background/80 shadow-2xs">
+                            <QrCodeCanvas
+                              text={pixBrCode}
+                              size={160}
+                              label={`QR Code Pix para ${settlement.toMemberName}`}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              );
+            })
           )}
         </div>
       ),
@@ -280,6 +398,19 @@ export function TripPublicPage() {
       />
 
       <main className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 pt-4 space-y-4">
+        {/* Banner de Viagem Finalizada */}
+        {trip.status === "completed" && (
+          <div className="p-3.5 sm:p-4 rounded-xl border border-warning/30 bg-warning/10 text-xs space-y-1.5">
+            <div className="flex items-center gap-2 font-bold text-warning-strong">
+              <Lock className="size-4 shrink-0" aria-hidden="true" />
+              <span>Link de compartilhamento encerrado</span>
+            </div>
+            <p className="text-muted-foreground text-[11px]">
+              Esta viagem foi finalizada pelo organizador e suas contas foram encerradas. O link permanece disponível para consulta histórica, com novos lançamentos desativados.
+            </p>
+          </div>
+        )}
+
         {/* Card Hero da Viagem */}
         <Card className="border-border/80 bg-surface shadow-xs rounded-2xl overflow-hidden">
           <div className="p-4 sm:p-5 space-y-3.5">
@@ -326,14 +457,16 @@ export function TripPublicPage() {
                 </p>
               </div>
 
-              <Button
-                size="sm"
-                onClick={() => setIsAddExpenseOpen(true)}
-                className="h-9 gap-1.5 text-xs font-semibold self-stretch sm:self-auto cursor-pointer"
-              >
-                <Plus className="size-3.5" aria-hidden="true" />
-                <span>Adicionar Despesa</span>
-              </Button>
+              {trip.status !== "completed" && (
+                <Button
+                  size="sm"
+                  onClick={() => setIsAddExpenseOpen(true)}
+                  className="h-9 gap-1.5 text-xs font-semibold self-stretch sm:self-auto cursor-pointer"
+                >
+                  <Plus className="size-3.5" aria-hidden="true" />
+                  <span>Adicionar Despesa</span>
+                </Button>
+              )}
             </div>
           </div>
         </Card>

@@ -226,6 +226,19 @@ export function AttachReceiptDialog({
   const handleProcessFile = async (file: File) => {
     if (!file) return;
 
+    if (file.size > 15 * 1024 * 1024) {
+      triggerSensory("warning");
+      setError("O arquivo selecionado excede o limite de 15 MB. Envie um comprovante mais leve.");
+      return;
+    }
+
+    const lowerName = file.name.toLowerCase();
+    if (file.type === "image/svg+xml" || lowerName.endsWith(".svg")) {
+      triggerSensory("warning");
+      setError("Arquivos SVG não são suportados. Envie uma imagem (JPG, PNG) ou PDF.");
+      return;
+    }
+
     setError(null);
     setLoading(true);
     triggerSensory("action");

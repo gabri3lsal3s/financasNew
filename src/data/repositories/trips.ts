@@ -504,6 +504,7 @@ export async function submitPublicExpense(input: {
   splits: { member_id: string; share_cents: number }[];
   receiptUrl?: string | null;
   createdByMemberId?: string | null;
+  passcode?: string | null;
 }): Promise<{ success: boolean; expense_id: string }> {
   return addPublicTripExpenseRpc(input);
 }
@@ -527,6 +528,77 @@ export async function confirmTripSettlement(settlementId: string): Promise<void>
       .eq("id", settlementId) as never
   );
   if (error) handleDbError(error, "Erro ao confirmar liquidação");
+}
+
+export async function recordSingleTripSettlement(input: {
+  tripId: string;
+  fromMemberId: string;
+  toMemberId: string;
+  amountCents: number;
+  status?: "pending" | "confirmed";
+}): Promise<TripSettlement> {
+  const supabase = getSupabase();
+  const targetStatus = input.status ?? "confirmed";
+  const nowIso = targetStatus === "confirmed" ? new Date().toISOString() : null;
+
+  const { data: existing } = await resolveQuery<TripSettlement | null>(
+    supabase
+      .from("trip_settlements" as never)
+      .select("*")
+      .eq("trip_id", input.tripId)
+      .eq("from_member_id", input.fromMemberId)
+      .eq("to_member_id", input.toMemberId)
+      .maybeSingle() as never
+  );
+
+  if (existing) {
+    const { data: updated, error } = await resolveQuery<TripSettlement>(
+      supabase
+        .from("trip_settlements" as never)
+        .update({
+          amount_cents: input.amountCents,
+          status: targetStatus,
+          confirmed_at: nowIso,
+        } as never)
+        .eq("id", existing.id)
+        .select()
+        .single() as never
+    );
+    if (error || !updated) handleDbError(error, "Erro ao atualizar acerto");
+    return updated;
+  }
+
+  const { data: created, error } = await resolveQuery<TripSettlement>(
+    supabase
+      .from("trip_settlements" as never)
+      .insert({
+        trip_id: input.tripId,
+        from_member_id: input.fromMemberId,
+        to_member_id: input.toMemberId,
+        amount_cents: input.amountCents,
+        status: targetStatus,
+        confirmed_at: nowIso,
+      } as never)
+      .select()
+      .single() as never
+  );
+
+  if (error || !created) handleDbError(error, "Erro ao gravar acerto");
+  return created;
+}
+
+export async function reopenTripSettlement(settlementId: string): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await resolveQuery(
+    supabase
+      .from("trip_settlements" as never)
+      .update({
+        status: "pending",
+        confirmed_at: null,
+      } as never)
+      .eq("id", settlementId) as never
+  );
+  if (error) handleDbError(error, "Erro ao reabrir acerto");
 }
 
 /**

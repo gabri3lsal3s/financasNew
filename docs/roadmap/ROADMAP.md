@@ -1,5 +1,23 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.0.16 (Build 45)** registra o **Aperfeiçoamento dos Acertos com Pix EMV de Valor Cravado, Gravação Isolada, Gate de Finalização, Reabertura, Exclusão e Saída de Participantes no Modo Viagem** (2026-11-09):
+> - **(1) Pix EMV com Valor Cravado & QR Code sob Demanda (`TripSettlementDialog` & `TripPublicPage`)**:
+>   - Geração de Pix Copia e Cola EMV padrão BACEN já com o valor exato cravado da transferência (`amountCents`) utilizando `generatePixCopyPaste`, permitindo que o devedor apenas copie e envie pelo aplicativo bancário com zero erro manual;
+>   - Visualização sob demanda de QR Code interativo renderizado no canvas (`QrCodeCanvas`);
+> - **(2) Acertos Isolados & Gate de Finalização da Viagem**:
+>   - Gravação e reabertura pontual de cada acerto individualmente (`recordSingleTripSettlement` e `reopenTripSettlement`), permitindo quitações graduais entre amigos;
+>   - Gate de Finalização pelo organizador quando 100% dos acertos são concluídos (`status: "completed"`), com bloqueio estrito contra novos lançamentos públicos e arquivamento automático na aba Histórico;
+> - **(3) Reabertura & Exclusão de Viagem pelo Organizador**:
+>   - Reabertura de viagens concluídas (`ReopenTripDialog`), restaurando o status para `"active"`, reativando o link público e movendo a viagem de volta para a aba "Viagens Ativas";
+>   - Exclusão definitiva via modal seguro (`TripDeleteDialog`) com remoção de despesas, membros e acertos em cascata;
+> - **(4) Saída de Participantes Conectados (`LeaveTripDialog` & `unlink_trip_member`)**:
+>   - Participantes autenticados não-host podem sair da viagem com 1 clique no cockpit pessoal (`TripPersonalContextCard`) ou na aba de membros;
+>   - A RPC `unlink_trip_member` desvincula a conta do participante, removendo a viagem do seu painel enquanto preserva integralmente suas cotas e lançamentos históricos para o grupo;
+>   - Alerta contextual preventivo informando eventuais saldos devedores ou credores pendentes de quitação;
+> - **(5) Convite Unificado de Amigos (`InviteTripMemberDialog`)**:
+>   - Modal de convite para a viagem com link público, compartilhamento direto no WhatsApp ou cadastro manual de participantes.
+>
+
 > **v3.0.15 (Build 44)** registra a **Conclusão Integral do Plano 16: Modo Viagem Colaborativo Multi-Usuário, Sincronização Bidirecional e Fechamento Simétrico** (2026-11-09):
 > - **(1) Hub Colaborativo Multi-Contas & Vínculo com 1 Clique (`ClaimTripMemberDialog`)**:
 >   - Convidados com conta Áxis (ou novos cadastros) conectam-se à viagem via token público de compartilhamento com a RPC transacional `claim_trip_member`, passando a visualizar a viagem diretamente em sua própria aba `/viagens`;

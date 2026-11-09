@@ -9,6 +9,9 @@ const mutateExpenseMock = vi.fn();
 const mutateIncomeMock = vi.fn();
 const mutateRecordMock = vi.fn();
 const mutateConfirmMock = vi.fn();
+const mutateRecordSingleMock = vi.fn();
+const mutateReopenMock = vi.fn();
+const mutateUpdateTripMock = vi.fn();
 
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({
@@ -41,6 +44,21 @@ vi.mock("@/state/queries/use-trips", () => ({
   useConfirmTripSettlementMutation: () => ({
     mutateAsync: mutateConfirmMock,
     mutate: mutateConfirmMock,
+    isPending: false,
+  }),
+  useRecordSingleTripSettlementMutation: () => ({
+    mutateAsync: mutateRecordSingleMock,
+    mutate: mutateRecordSingleMock,
+    isPending: false,
+  }),
+  useReopenTripSettlementMutation: () => ({
+    mutateAsync: mutateReopenMock,
+    mutate: mutateReopenMock,
+    isPending: false,
+  }),
+  useUpdateTripMutation: () => ({
+    mutateAsync: mutateUpdateTripMock,
+    mutate: mutateUpdateTripMock,
     isPending: false,
   }),
 }));
@@ -168,7 +186,7 @@ describe("TripSettlementDialog Component", () => {
     expect(screen.getByText("Contas 100% equilibradas")).toBeInTheDocument();
   });
 
-  it("permite copiar chave Pix do credor", async () => {
+  it("permite copiar código Pix Copia e Cola com valor e fallback só a chave", async () => {
     const suggested: SuggestedSettlement[] = [
       {
         fromMemberId: "m-bob",
@@ -196,10 +214,17 @@ describe("TripSettlementDialog Component", () => {
     const copyBtn = screen.getByRole("button", { name: /Copiar Pix/i });
     fireEvent.click(copyBtn);
 
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("alice@pix");
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect.stringContaining("000201")
+    );
     await waitFor(() => {
-      expect(screen.getByText("Copiado")).toBeInTheDocument();
+      expect(screen.getByText("Copiado!")).toBeInTheDocument();
     });
+
+    // Testar cópia da chave crua
+    const rawKeyBtn = screen.getByRole("button", { name: /Só a chave/i });
+    fireEvent.click(rawKeyBtn);
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("alice@pix");
   });
 
   it("fluxo do devedor: exibe badge Você e botão 'Pagar Pix e Registrar no Meu Extrato'", async () => {
@@ -229,7 +254,7 @@ describe("TripSettlementDialog Component", () => {
     );
 
     // Alice é o usuário logado (user-alice -> m-alice), portanto devedor
-    expect(screen.getByText("Voce")).toBeInTheDocument();
+    expect(screen.getByText(/Voc[eê]/i)).toBeInTheDocument();
     const payBtn = screen.getByRole("button", { name: /Pagar Pix e Registrar no Meu Extrato/i });
     expect(payBtn).toBeInTheDocument();
 
@@ -250,7 +275,7 @@ describe("TripSettlementDialog Component", () => {
           reportWeight: 1,
         })
       );
-      expect(mutateRecordMock).toHaveBeenCalled();
+      expect(mutateRecordSingleMock).toHaveBeenCalled();
     });
   });
 
@@ -334,5 +359,180 @@ describe("TripSettlementDialog Component", () => {
       expect.stringContaining("api.whatsapp.com/send"),
       "_blank"
     );
+  });
+
+  it("exibe QR Code ao clicar no botão de QR Code", () => {
+    const suggested: SuggestedSettlement[] = [
+      {
+        fromMemberId: "m-bob",
+        fromMemberName: "Bob",
+        toMemberId: "m-alice",
+        toMemberName: "Alice",
+        amountCents: 5000,
+        toPixKey: "alice@pix",
+        toPixKeyType: "email",
+      },
+    ];
+
+    render(
+      <TripSettlementDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        tripId="trip-1"
+        tripTitle="Viagem Serra"
+        suggestedSettlements={suggested}
+        existingSettlements={[]}
+        members={members}
+      />
+    );
+
+    const qrBtn = screen.getByRole("button", { name: /QR Code/i });
+    fireEvent.click(qrBtn);
+
+    expect(screen.getByText(/Aponte a câmera do aplicativo bancário/i)).toBeInTheDocument();
+  });
+
+  it("permite marcar acerto isolado como Acertado", async () => {
+    const suggested: SuggestedSettlement[] = [
+      {
+        fromMemberId: "m-bob",
+        fromMemberName: "Bob",
+        toMemberId: "m-alice",
+        toMemberName: "Alice",
+        amountCents: 5000,
+        toPixKey: "alice@pix",
+        toPixKeyType: "email",
+      },
+    ];
+
+    render(
+      <TripSettlementDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        tripId="trip-1"
+        tripTitle="Viagem Serra"
+        suggestedSettlements={suggested}
+        existingSettlements={[]}
+        members={members}
+      />
+    );
+
+    const settleBtn = screen.getByRole("button", { name: /Marcar como Acertado/i });
+    fireEvent.click(settleBtn);
+
+    await waitFor(() => {
+      expect(mutateRecordSingleMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fromMemberId: "m-bob",
+          toMemberId: "m-alice",
+          amountCents: 5000,
+          status: "confirmed",
+        })
+      );
+    });
+  });
+
+  it("permite ao organizador ou credor reabrir/desfazer acerto quitado", async () => {
+    const suggested: SuggestedSettlement[] = [
+      {
+        fromMemberId: "m-bob",
+        fromMemberName: "Bob",
+        toMemberId: "m-alice",
+        toMemberName: "Alice",
+        amountCents: 5000,
+        toPixKey: "alice@pix",
+        toPixKeyType: "email",
+      },
+    ];
+
+    const existing: TripSettlement[] = [
+      {
+        id: "s-1",
+        trip_id: "trip-1",
+        from_member_id: "m-bob",
+        to_member_id: "m-alice",
+        amount_cents: 5000,
+        status: "confirmed",
+        confirmed_at: "2026-11-02",
+        pix_transaction_id: null,
+        created_at: "",
+      },
+    ];
+
+    render(
+      <TripSettlementDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        tripId="trip-1"
+        tripTitle="Viagem Serra"
+        isHost={true}
+        suggestedSettlements={suggested}
+        existingSettlements={existing}
+        members={members}
+      />
+    );
+
+    expect(screen.getByText("Acertado")).toBeInTheDocument();
+    const undoBtn = screen.getByRole("button", { name: /Desfazer/i });
+    fireEvent.click(undoBtn);
+
+    await waitFor(() => {
+      expect(mutateReopenMock).toHaveBeenCalledWith("s-1");
+    });
+  });
+
+  it("exibe botão Finalizar Viagem para o organizador quando todas as contas foram quitadas e chama updateTripMutation", async () => {
+    const suggested: SuggestedSettlement[] = [
+      {
+        fromMemberId: "m-bob",
+        fromMemberName: "Bob",
+        toMemberId: "m-alice",
+        toMemberName: "Alice",
+        amountCents: 5000,
+        toPixKey: "alice@pix",
+        toPixKeyType: "email",
+      },
+    ];
+
+    const existing: TripSettlement[] = [
+      {
+        id: "s-1",
+        trip_id: "trip-1",
+        from_member_id: "m-bob",
+        to_member_id: "m-alice",
+        amount_cents: 5000,
+        status: "confirmed",
+        confirmed_at: "2026-11-02",
+        pix_transaction_id: null,
+        created_at: "",
+      },
+    ];
+
+    render(
+      <TripSettlementDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        tripId="trip-1"
+        tripTitle="Viagem Serra"
+        tripStatus="active"
+        isHost={true}
+        suggestedSettlements={suggested}
+        existingSettlements={existing}
+        members={members}
+      />
+    );
+
+    expect(screen.getByText("Todas as contas foram quitadas e equilibradas!")).toBeInTheDocument();
+    const finalizeBtn = screen.getByRole("button", { name: /Finalizar Viagem/i });
+    expect(finalizeBtn).toBeInTheDocument();
+
+    fireEvent.click(finalizeBtn);
+
+    await waitFor(() => {
+      expect(mutateUpdateTripMock).toHaveBeenCalledWith({
+        tripId: "trip-1",
+        input: { status: "completed" },
+      });
+    });
   });
 });

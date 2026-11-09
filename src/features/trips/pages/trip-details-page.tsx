@@ -19,6 +19,9 @@ import {
   ShieldCheck,
   Scale,
   FileText,
+  UserPlus,
+  RotateCcw,
+  LogOut,
 } from "lucide-react";
 import {
   Button,
@@ -49,6 +52,10 @@ import {
   RebalanceTripSplitsDialog,
   TripExpenseDeleteDialog,
   TripPersonalContextCard,
+  InviteTripMemberDialog,
+  TripDeleteDialog,
+  ReopenTripDialog,
+  LeaveTripDialog,
 } from "../components";
 import type { TripMember, TripExpense } from "@/types/trips";
 
@@ -62,6 +69,7 @@ export function TripDetailsPage() {
   const [activeTab, setActiveTab] = useState<string>("expenses");
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isSettlementOpen, setIsSettlementOpen] = useState(false);
   const [isRebalanceOpen, setIsRebalanceOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<TripExpense | null>(null);
@@ -69,6 +77,9 @@ export function TripDetailsPage() {
   const [selectedMemberForStatement, setSelectedMemberForStatement] = useState<TripMember | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [filterMyExpenses, setFilterMyExpenses] = useState(false);
+  const [isDeleteTripOpen, setIsDeleteTripOpen] = useState(false);
+  const [isReopenTripOpen, setIsReopenTripOpen] = useState(false);
+  const [isLeaveTripOpen, setIsLeaveTripOpen] = useState(false);
 
   const removeMemberMutation = useRemoveTripMemberMutation(tripId ?? "");
 
@@ -320,19 +331,32 @@ export function TripDetailsPage() {
       label: `Participantes (${members.length})`,
       content: (
         <div className="space-y-3 mt-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <span className="text-xs font-semibold text-foreground">
               Membros do Grupo
             </span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setIsAddMemberOpen(true)}
-              className="h-8 text-xs gap-1"
-            >
-              <Plus className="size-3" aria-hidden="true" />
-              Adicionar Membro
-            </Button>
+            <div className="flex items-center gap-1.5">
+              {isHost && (
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => setIsInviteOpen(true)}
+                  className="h-8 text-xs gap-1 cursor-pointer"
+                >
+                  <UserPlus className="size-3" aria-hidden="true" />
+                  Convidar Amigo
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsAddMemberOpen(true)}
+                className="h-8 text-xs gap-1 cursor-pointer"
+              >
+                <Plus className="size-3" aria-hidden="true" />
+                Adicionar Manual
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -406,6 +430,20 @@ export function TripDetailsPage() {
                       <FileText className="size-3" aria-hidden="true" />
                       Extrato
                     </Button>
+
+                    {!isHost && member.id === myMember?.id && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setIsLeaveTripOpen(true)}
+                        className="h-7 text-[11px] px-2.5 gap-1 text-muted-foreground hover:text-critical hover:border-critical/30 cursor-pointer"
+                        title="Sair desta viagem"
+                      >
+                        <LogOut className="size-3" aria-hidden="true" />
+                        Sair
+                      </Button>
+                    )}
 
                     {isHost && !member.is_host && (
                       <button
@@ -498,6 +536,7 @@ export function TripDetailsPage() {
         onOpenStatement={myMember ? () => setSelectedMemberForStatement(myMember) : undefined}
         isFilterActive={filterMyExpenses}
         onToggleFilterMyExpenses={() => setFilterMyExpenses((prev) => !prev)}
+        onLeaveTrip={!isHost && myMember ? () => setIsLeaveTripOpen(true) : undefined}
       />
 
       {/* Cabeçalho da Viagem */}
@@ -550,11 +589,25 @@ export function TripDetailsPage() {
               <Plus className="size-3.5" aria-hidden="true" />
               Adicionar Despesa
             </Button>
+            {isHost && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsInviteOpen(true)}
+                className="h-8 text-xs gap-1.5 cursor-pointer"
+                title="Convidar amigos para a viagem via link ou WhatsApp"
+              >
+                <UserPlus className="size-3.5" aria-hidden="true" />
+                Convidar Amigos
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
               onClick={handleCopyPublicLink}
               className="h-8 text-xs gap-1.5"
+              disabled={trip.status === "completed"}
+              title={trip.status === "completed" ? "Link de compartilhamento encerrado" : "Copiar link de acesso público"}
             >
               {copiedLink ? (
                 <>
@@ -564,7 +617,7 @@ export function TripDetailsPage() {
               ) : (
                 <>
                   <Share2 className="size-3.5" aria-hidden="true" />
-                  Link Público
+                  {trip.status === "completed" ? "Link Encerrado" : "Link Público"}
                 </>
               )}
             </Button>
@@ -578,6 +631,42 @@ export function TripDetailsPage() {
               <DollarSign className="size-3.5" aria-hidden="true" />
               Fechar Contas
             </Button>
+            {isHost && trip.status === "completed" && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsReopenTripOpen(true)}
+                className="h-8 text-xs gap-1.5 cursor-pointer"
+                title="Reabrir a viagem para novos lançamentos e acertos"
+              >
+                <RotateCcw className="size-3.5" aria-hidden="true" />
+                Reabrir Viagem
+              </Button>
+            )}
+            {isHost && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsDeleteTripOpen(true)}
+                className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-critical hover:border-critical/30 cursor-pointer"
+                title="Excluir viagem definitivamente"
+              >
+                <Trash2 className="size-3.5" aria-hidden="true" />
+                Excluir Viagem
+              </Button>
+            )}
+            {!isHost && myMember && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsLeaveTripOpen(true)}
+                className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-critical hover:border-critical/30 cursor-pointer"
+                title="Desvincular sua conta e sair desta viagem"
+              >
+                <LogOut className="size-3.5" aria-hidden="true" />
+                Sair da Viagem
+              </Button>
+            )}
           </div>
         </div>
 
@@ -646,11 +735,25 @@ export function TripDetailsPage() {
         onOpenChange={setIsSettlementOpen}
         tripId={trip.id}
         tripTitle={trip.title}
+        tripStatus={trip.status}
+        isHost={isHost}
+        destination={trip.destination}
         publicToken={trip.public_token}
         suggestedSettlements={suggestedSettlements}
         existingSettlements={settlements}
         members={members}
         expenses={expenses}
+      />
+
+      <InviteTripMemberDialog
+        open={isInviteOpen}
+        onOpenChange={setIsInviteOpen}
+        tripId={trip.id}
+        tripTitle={trip.title}
+        destination={trip.destination}
+        publicToken={trip.public_token}
+        isCompleted={trip.status === "completed"}
+        onOpenAddDirectMember={() => setIsAddMemberOpen(true)}
       />
 
       <TripMemberStatementDialog
@@ -673,6 +776,28 @@ export function TripDetailsPage() {
         onOpenChange={(open) => !open && setDeletingExpense(null)}
         tripId={trip.id}
         expense={deletingExpense}
+      />
+
+      <TripDeleteDialog
+        open={isDeleteTripOpen}
+        onOpenChange={setIsDeleteTripOpen}
+        trip={trip}
+        onSuccess={() => navigate("/viagens")}
+      />
+
+      <ReopenTripDialog
+        open={isReopenTripOpen}
+        onOpenChange={setIsReopenTripOpen}
+        trip={trip}
+      />
+
+      <LeaveTripDialog
+        open={isLeaveTripOpen}
+        onOpenChange={setIsLeaveTripOpen}
+        trip={trip}
+        myMember={myMember}
+        myBalance={myBalance}
+        onSuccess={() => navigate("/viagens")}
       />
     </div>
   );

@@ -20,6 +20,7 @@ import {
   deleteTrip,
   addTripMember,
   removeTripMember,
+  unlinkTripMember,
   addTripExpense,
   updateTripExpense,
   deleteTripExpenseSync,
@@ -27,6 +28,8 @@ import {
   submitPublicExpense,
   recordTripSettlements,
   confirmTripSettlement,
+  recordSingleTripSettlement,
+  reopenTripSettlement,
   rebalanceTripMembers,
   claimTripMember,
   type CreateTripInput,
@@ -362,6 +365,31 @@ export function useRemoveTripMemberMutation(tripId: string) {
   }, queryClient);
 }
 
+export function useUnlinkTripMemberMutation(tripId: string) {
+  const queryClient = useSafeQueryClient();
+
+  return useMutation({
+    mutationFn: (memberId: string) => unlinkTripMember(tripId, memberId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.lists() });
+      queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.detail(tripId) });
+      triggerSensory("selection");
+      pushToast({
+        title: "Você saiu da viagem",
+        description: "Sua conta foi desvinculada com sucesso.",
+      });
+    },
+    onError: (err) => {
+      triggerSensory("error");
+      pushToast({
+        title: "Erro ao sair da viagem",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  }, queryClient);
+}
+
 export function useAddTripExpenseMutation() {
   const queryClient = useSafeQueryClient();
 
@@ -617,6 +645,68 @@ export function useConfirmTripSettlementMutation(tripId: string) {
       triggerSensory("error");
       pushToast({
         title: "Erro ao confirmar pagamento",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  }, queryClient);
+}
+
+export function useRecordSingleTripSettlementMutation(tripId: string) {
+  const queryClient = useSafeQueryClient();
+
+  return useMutation({
+    mutationFn: (input: {
+      fromMemberId: string;
+      toMemberId: string;
+      amountCents: number;
+      status?: "pending" | "confirmed";
+    }) =>
+      recordSingleTripSettlement({
+        tripId,
+        fromMemberId: input.fromMemberId,
+        toMemberId: input.toMemberId,
+        amountCents: input.amountCents,
+        status: input.status ?? "confirmed",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.detail(tripId) });
+      queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.lists() });
+      triggerSensory("success");
+      pushToast({
+        title: "Acerto registrado",
+        description: "A transferência foi registrada como liquidada com sucesso.",
+      });
+    },
+    onError: (err) => {
+      triggerSensory("error");
+      pushToast({
+        title: "Erro ao registrar acerto",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  }, queryClient);
+}
+
+export function useReopenTripSettlementMutation(tripId: string) {
+  const queryClient = useSafeQueryClient();
+
+  return useMutation({
+    mutationFn: (settlementId: string) => reopenTripSettlement(settlementId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.detail(tripId) });
+      queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.lists() });
+      triggerSensory("selection");
+      pushToast({
+        title: "Acerto reaberto",
+        description: "A pendência foi reaberta para conferência.",
+      });
+    },
+    onError: (err) => {
+      triggerSensory("error");
+      pushToast({
+        title: "Erro ao reabrir acerto",
         description: getErrorMessage(err),
         variant: "destructive",
       });

@@ -132,6 +132,20 @@ Deno?.serve?.(async (req: Request) => {
       return json({ received: true, event: eventType, cancel_at_period_end: true });
     }
 
+    if (decision.action === "mark_refunded") {
+      await supabase
+        .from("user_subscriptions")
+        .update({
+          tier: "read_only",
+          status: "canceled",
+          cancel_at_period_end: false,
+          current_period_end: new Date().toISOString(),
+        })
+        .eq("id", userSub.id);
+
+      return json({ received: true, event: eventType, tier: "read_only", status: "canceled" });
+    }
+
     return json({ received: true, event: eventType, ignored: true, reason: "unsupported_event" });
   } catch (err: unknown) {
     console.error("[asaas-webhook] falha interna", err instanceof Error ? err.message : err);

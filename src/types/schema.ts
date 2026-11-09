@@ -1005,6 +1005,7 @@ export type SplitParticipantInstallment = {
 export type SplitPaymentSignal = {
   id: string;
   participant_id?: string | null;
+  installment_id?: string | null;
   participant_name: string;
   amount_cents: number;
   status: "pending" | "confirmed" | "dismissed";
@@ -1029,6 +1030,7 @@ export type SplitSharePayload = {
   pix_key_type: string;
   pix_br_code: string;
   expense_id?: string;
+  installment_group_id?: string | null;
   debt_id?: string;
   category_id?: string;
   category_name?: string;

@@ -13,9 +13,20 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const cronSecret = Deno.env.get("CRON_SECRET");
 
     if (!supabaseUrl || !supabaseServiceKey) {
       return safeErrorResponse(req, 500, "Configuração do servidor incompleta.");
+    }
+
+    const auth = req.headers.get("authorization") ?? "";
+    const token = auth.replace(/^Bearer\s+/i, "").trim();
+    const isAuthorized =
+      (token.length > 0 && token === supabaseServiceKey) ||
+      (Boolean(cronSecret) && token === cronSecret);
+
+    if (!isAuthorized) {
+      return jsonResponse(req, { error: "unauthorized" }, 401);
     }
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);

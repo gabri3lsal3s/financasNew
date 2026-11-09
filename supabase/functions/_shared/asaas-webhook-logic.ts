@@ -33,7 +33,7 @@ export type WebhookDecision =
     }
   | {
       action: "ignore_duplicate";
-      reason: "already_active" | "already_past_due" | "already_cancelled";
+      reason: "already_active" | "already_past_due" | "already_cancelled" | "already_refunded";
     }
   | {
       action: "activate";
@@ -45,6 +45,9 @@ export type WebhookDecision =
     }
   | {
       action: "mark_cancelled";
+    }
+  | {
+      action: "mark_refunded";
     }
   | {
       action: "unsupported_event";
@@ -113,6 +116,18 @@ export function decideWebhookAction(params: {
     }
     return {
       action: "mark_past_due",
+    };
+  }
+
+  if (["PAYMENT_REFUNDED"].includes(eventType)) {
+    if (currentSub.status === "canceled" && currentSub.tier === "read_only") {
+      return {
+        action: "ignore_duplicate",
+        reason: "already_refunded",
+      };
+    }
+    return {
+      action: "mark_refunded",
     };
   }
 

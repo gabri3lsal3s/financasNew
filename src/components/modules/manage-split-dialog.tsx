@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
   DollarSign,
@@ -18,9 +19,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   useDeleteDebt,
-  useDeleteExpense,
   useDeletePublicShare,
   useExpense,
+  useExpensesByInstallmentGroup,
   useSettleIntegratedReceivable,
   useUpdateDebt,
   useUpdateExpense,
@@ -31,6 +32,11 @@ import { formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import {
+  isParticipantFullySettled,
+  isSplitFullyCompleted,
+} from "@/domain/finance/split-math";
+import { deleteAllSplitExpenses, syncSplitExpenseReportWeights } from "@/services/split-sync";
 import type { Debt, PublicShare, SplitParticipantInstallment, SplitParticipantItem, SplitSharePayload } from "@/types";
 
 export interface ManageSplitDialogProps {
@@ -48,10 +54,16 @@ export function ManageSplitDialog({
   linkedDebt,
   onSuccess,
 }: ManageSplitDialogProps) {
+  let queryClient: ReturnType<typeof useQueryClient> | null = null;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    queryClient = useQueryClient();
+  } catch {
+    // Ambiente de teste unitário sem QueryClientProvider
+  }
   const updateShareMutation = useUpdatePublicShare();
   const deleteShareMutation = useDeletePublicShare();
   const updateExpenseMutation = useUpdateExpense();
-  const deleteExpenseMutation = useDeleteExpense();
   const updateDebtMutation = useUpdateDebt();
   const deleteDebtMutation = useDeleteDebt();
   const settleDebtMutation = useSettleIntegratedReceivable();
@@ -59,6 +71,8 @@ export function ManageSplitDialog({
   const payload = (share.payload ?? {}) as unknown as SplitSharePayload;
   const { data: linkedExpense, isFetched: isExpenseFetched } = useExpense(payload.expense_id ?? null);
   const hasLinkedExpense = Boolean(payload.expense_id && (!isExpenseFetched || linkedExpense));
+  const groupId = payload.installment_group_id ?? linkedExpense?.installment_group_id ?? null;
+  const { data: groupExpenses } = useExpensesByInstallmentGroup(groupId);
 
   // Estado dos participantes
   const [participants, setParticipants] = useState<SplitParticipantItem[]>(() => {
@@ -132,7 +146,7 @@ export function ManageSplitDialog({
 
   const totalSettledFromFriendsCents = useMemo(() => {
     return friends.reduce((acc, f) => {
-      return acc + (f.is_settled ? Number(f.settled_cents ?? f.share_cents) : 0);
+      return acc + Number(f.settled_cents ?? (f.is_settled ? f.share_cents : 0));
     }, 0);
   }, [friends]);
 
@@ -140,10 +154,20 @@ export function ManageSplitDialog({
     return friends.filter((f) => f.is_settled).length;
   }, [friends]);
 
+  const settledSubtitle = useMemo(() => {
+    const hostId = participants.find((p) => p.is_host)?.id;
+    const friendInsts = participantInstallments.filter((i) => i.participant_id !== hostId);
+    if (friendInsts.length > 0) {
+      const settledCount = friendInsts.filter((i) => i.is_settled).length;
+      return `${settledCount} de ${friendInsts.length} parcelas pagas`;
+    }
+    return `${settledFriendsCount} de ${friends.length} amigos baixados`;
+  }, [participants, participantInstallments, settledFriendsCount, friends.length]);
+
   // Custo líquido real suportado pelo anfitrião (Total Despesa - Reembolsos recebidos)
   const hostNetCostCents = Math.max(0, totalCents - totalSettledFromFriendsCents);
   const netReportWeight = totalCents > 0 ? hostNetCostCents / totalCents : 1;
-  const isCompleted = Boolean(payload.is_completed);
+  const isCompleted = isSplitFullyCompleted(participants, participantInstallments);
 
   // Sincroniza participantes no Supabase
   const persistParticipants = async (
@@ -155,10 +179,10 @@ export function ManageSplitDialog({
   ) => {
     const updatedSettledTotal = updatedParticipants
       .filter((p) => !p.is_host)
-      .reduce((acc, f) => acc + (f.is_settled ? Number(f.settled_cents ?? f.share_cents) : 0), 0);
+      .reduce((acc, f) => acc + Number(f.settled_cents ?? (f.is_settled ? f.share_cents : 0)), 0);
 
-    const completed = options?.markCompleted ?? isCompleted;
     const installmentsToPersist = options?.updatedInstallments ?? participantInstallments;
+    const completed = options?.markCompleted ?? isSplitFullyCompleted(updatedParticipants, installmentsToPersist);
 
     const newPayload: SplitSharePayload = {
       ...payload,
@@ -168,6 +192,7 @@ export function ManageSplitDialog({
       participant_installments: installmentsToPersist.length > 0 ? installmentsToPersist : undefined,
       total_settled_cents: updatedSettledTotal,
       is_completed: completed,
+      installment_group_id: groupId,
     };
 
     setParticipants(updatedParticipants);
@@ -180,19 +205,27 @@ export function ManageSplitDialog({
       payload: newPayload as unknown as Record<string, unknown>,
     });
 
-    // Se o racha for completado ou se houver despesa vinculada, sincroniza o peso contábil
+    // Se houver despesa vinculada, sincroniza o peso contábil de TODAS as parcelas do cartão
     if (payload.expense_id && hasLinkedExpense) {
       try {
-        const netCost = Math.max(0, totalCents - updatedSettledTotal);
-        const weight = totalCents > 0 ? netCost / totalCents : 1;
-        await updateExpenseMutation.mutateAsync({
-          id: payload.expense_id,
-          input: {
-            report_weight: weight,
-          },
+        const hostParticipant = updatedParticipants.find((p) => p.is_host);
+        const hostId = hostParticipant?.id;
+
+        await syncSplitExpenseReportWeights({
+          expenseId: payload.expense_id,
+          installments: installmentsToPersist,
+          hostId,
+          totalCents,
+          installmentsCount: payload.installments_count,
+          groupId,
         });
+
+        if (queryClient) {
+          void queryClient.invalidateQueries({ queryKey: ["expenses"] });
+          void queryClient.invalidateQueries({ queryKey: ["card-expenses"] });
+        }
       } catch (err) {
-        console.warn("Não foi possível atualizar o peso contábil da despesa vinculada:", err);
+        console.warn("Não foi possível sincronizar pesos contábeis das parcelas:", err);
       }
     }
 
@@ -247,7 +280,8 @@ export function ManageSplitDialog({
     });
 
     try {
-      await persistParticipants(updated, { updatedInstallments });
+      const allCompleted = isSplitFullyCompleted(updated, updatedInstallments);
+      await persistParticipants(updated, { updatedInstallments, markCompleted: allCompleted });
       triggerSensory("action");
       pushToast({
         title: "Baixa registrada!",
@@ -268,11 +302,14 @@ export function ManageSplitDialog({
   const handleConfirmCustomSettle = async () => {
     if (!customInputParticipantId) return;
 
+    const targetParticipant = participants.find((p) => p.id === customInputParticipantId);
+    const fullySettled = customInputCents >= (targetParticipant?.share_cents ?? 0);
+
     const updated = participants.map((p) => {
       if (p.id === customInputParticipantId) {
         return {
           ...p,
-          is_settled: true,
+          is_settled: fullySettled,
           settled_cents: customInputCents,
           settled_at: new Date().toISOString(),
         };
@@ -284,8 +321,8 @@ export function ManageSplitDialog({
       if (inst.participant_id === customInputParticipantId) {
         return {
           ...inst,
-          is_settled: true,
-          settled_at: new Date().toISOString(),
+          is_settled: fullySettled,
+          settled_at: fullySettled ? new Date().toISOString() : null,
           signal_status: "none" as const,
         };
       }
@@ -293,7 +330,8 @@ export function ManageSplitDialog({
     });
 
     try {
-      await persistParticipants(updated, { updatedInstallments });
+      const allCompleted = isSplitFullyCompleted(updated, updatedInstallments);
+      await persistParticipants(updated, { updatedInstallments, markCompleted: allCompleted });
       triggerSensory("action");
       setCustomInputParticipantId(null);
       pushToast({
@@ -336,7 +374,7 @@ export function ManageSplitDialog({
     });
 
     try {
-      await persistParticipants(updated, { updatedInstallments });
+      await persistParticipants(updated, { updatedInstallments, markCompleted: false });
       triggerSensory("selection");
       pushToast({
         title: "Baixa desfeita",
@@ -370,10 +408,14 @@ export function ManageSplitDialog({
 
     const participantId = target.participant_id;
     const participantInsts = updatedInstallments.filter((i) => i.participant_id === participantId);
-    const allSettled = participantInsts.length > 0 && participantInsts.every((i) => i.is_settled);
+    const targetParticipant = participants.find((p) => p.id === participantId);
     const settledCents = participantInsts
       .filter((i) => i.is_settled)
       .reduce((acc, i) => acc + i.amount_cents, 0);
+
+    const allSettled = targetParticipant
+      ? isParticipantFullySettled({ ...targetParticipant, settled_cents: settledCents }, participantInsts)
+      : participantInsts.length > 0 && participantInsts.every((i) => i.is_settled);
 
     const updatedParticipants = participants.map((p) => {
       if (p.id === participantId) {
@@ -381,14 +423,19 @@ export function ManageSplitDialog({
           ...p,
           is_settled: allSettled,
           settled_cents: settledCents,
-          settled_at: allSettled ? new Date().toISOString() : p.settled_at,
+          settled_at: allSettled ? (p.settled_at || new Date().toISOString()) : null,
         };
       }
       return p;
     });
 
+    const allCompleted = isSplitFullyCompleted(updatedParticipants, updatedInstallments);
+
     try {
-      await persistParticipants(updatedParticipants, { updatedInstallments });
+      await persistParticipants(updatedParticipants, {
+        updatedInstallments,
+        markCompleted: allCompleted,
+      });
       triggerSensory("action");
       pushToast({
         title: markSettled ? "Parcela marcada como paga!" : "Baixa da parcela desfeita",
@@ -441,19 +488,37 @@ export function ManageSplitDialog({
     try {
       if (deleteOriginalExpense && payload.expense_id && hasLinkedExpense) {
         try {
-          await deleteExpenseMutation.mutateAsync({ expenseId: payload.expense_id, mode: "single" });
+          await deleteAllSplitExpenses({
+            expenseId: payload.expense_id,
+            groupId,
+          });
+          if (queryClient) {
+            void queryClient.invalidateQueries({ queryKey: ["expenses"] });
+            void queryClient.invalidateQueries({ queryKey: ["card-expenses"] });
+          }
         } catch (err) {
           console.warn("Não foi possível excluir despesa vinculada (pode já ter sido excluída):", err);
         }
       } else if (!deleteOriginalExpense && payload.expense_id && hasLinkedExpense) {
         // Restaura a despesa original para 100% caso seja mantida
         try {
-          await updateExpenseMutation.mutateAsync({
-            id: payload.expense_id,
-            input: {
-              report_weight: 1,
-            },
-          });
+          if (groupExpenses && groupExpenses.length > 0) {
+            for (const exp of groupExpenses) {
+              await updateExpenseMutation.mutateAsync({
+                id: exp.id,
+                input: {
+                  report_weight: 1,
+                },
+              });
+            }
+          } else {
+            await updateExpenseMutation.mutateAsync({
+              id: payload.expense_id,
+              input: {
+                report_weight: 1,
+              },
+            });
+          }
         } catch (err) {
           console.warn("Não foi possível restaurar peso da despesa vinculada (pode já ter sido excluída):", err);
         }
@@ -526,7 +591,7 @@ export function ManageSplitDialog({
                 />
               </div>
               <p className="text-[10px] text-muted-foreground">
-                {settledFriendsCount} de {friends.length} amigos baixados
+                {settledSubtitle}
               </p>
             </div>
 
@@ -616,6 +681,12 @@ export function ManageSplitDialog({
             <div className="divide-y divide-border/60 rounded-xl border border-border/70 bg-surface/50 overflow-hidden">
               {friends.map((friend) => {
                 const isCustomInputOpen = customInputParticipantId === friend.id;
+                const friendInsts = participantInstallments.filter(
+                  (inst) =>
+                    inst.participant_id === friend.id ||
+                    (friends.length === 1 && !participants.find((p) => p.id === inst.participant_id)?.is_host)
+                );
+                const isFriendSettled = isParticipantFullySettled(friend, friendInsts);
 
                 return (
                   <div
@@ -632,15 +703,15 @@ export function ManageSplitDialog({
                             </span>
                             <Badge
                               size="xs"
-                              variant={friend.is_settled ? "positive" : "warning"}
+                              variant={isFriendSettled ? "positive" : "warning"}
                             >
-                              {friend.is_settled ? "Quitado" : "Pendente"}
+                              {isFriendSettled ? "Quitado" : "Pendente"}
                             </Badge>
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
                             <span>Cota esperada:</span>
                             <MoneyText cents={friend.share_cents} variant="value" />
-                            {friend.is_settled && (
+                            {isFriendSettled ? (
                               <>
                                 <span>· Recebido:</span>
                                 <MoneyText
@@ -653,6 +724,17 @@ export function ManageSplitDialog({
                                   className="font-semibold"
                                 />
                               </>
+                            ) : (
+                              (friend.settled_cents ?? 0) > 0 && (
+                                <>
+                                  <span>· Parcial recebido:</span>
+                                  <MoneyText
+                                    cents={friend.settled_cents ?? 0}
+                                    tone="positive"
+                                    className="font-semibold"
+                                  />
+                                </>
+                              )
                             )}
                           </div>
                         </div>
@@ -660,7 +742,7 @@ export function ManageSplitDialog({
 
                       {/* Controles de Baixa */}
                       <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-center">
-                        {!friend.is_settled ? (
+                        {!isFriendSettled ? (
                           <>
                             <Button
                               type="button"
@@ -745,14 +827,8 @@ export function ManageSplitDialog({
                     )}
 
                     {/* Grade de Parcelas Individuais (quando o rateio for parcelado) */}
-                    {(() => {
-                      const friendInsts = participantInstallments.filter(
-                        (inst) => inst.participant_id === friend.id
-                      );
-                      if (friendInsts.length <= 1) return null;
-
-                      return (
-                        <div className="pt-2 border-t border-border/40 space-y-1.5">
+                    {friendInsts.length > 1 && (
+                      <div className="pt-2 border-t border-border/40 space-y-1.5">
                           <span className="text-[11px] font-semibold text-muted-foreground block">
                             Parcelas mensais:
                           </span>
@@ -825,10 +901,9 @@ export function ManageSplitDialog({
                             ))}
                           </div>
                         </div>
-                      );
-                    })()}
-                  </div>
-                );
+                      )}
+                    </div>
+                  );
               })}
             </div>
           </div>

@@ -105,16 +105,22 @@ Nunca deixe o cliente esperando na fila enquanto investiga a rede:
 2. Notifique o cliente: *"Seu plano Pro foi ativado manualmente com sucesso e já está disponível em todas as suas telas."*;
 3. Em seguida, verifique se a URL do webhook ou a chave secreta `ASAAS_WEBHOOK_TOKEN` estão sincronizadas.
 
-### 3.2 Cancelamento e Reembolso em até 7 Dias (CDC Artigo 49)
-O Áxis Finance respeita integralmente o Código de Defesa do Consumidor. Caso o cliente solicite arrependimento no prazo de 7 dias da contratação:
+### 3.2 Cancelamento e Reembolso em até 7 Dias (CDC Artigo 49) vs Pós-7 Dias
+O Áxis Finance respeita integralmente o Código de Defesa do Consumidor e possui fluxo automatizado no app e contingência manual no Asaas:
 
+#### A. Autoatendimento no Aplicativo (`Configurações > Assinatura`):
+- **Cancelamento em até 7 dias corridos:** O próprio usuário clica em "Cancelar Assinatura e Reembolsar". A Edge Function `asaas-manage` calcula o intervalo de 7 dias, aciona a API do Asaas (`POST /payments/{id}/refund`), estorna o valor integral (Pix ou Cartão), cancela a assinatura recorrente e rebaixa imediatamente o usuário para `tier = 'read_only'`.
+- **Cancelamento após 7 dias corridos:** O usuário clica em "Cancelar Renovação". A Edge Function cancela a assinatura no Asaas (`DELETE /subscriptions/{id}`) para evitar cobranças futuras, marca `cancel_at_period_end = true` e o usuário mantém o acesso Pro completo até o fim da data paga (`current_period_end`). Ao expirar, o banco transiciona automaticamente para `read_only`.
+
+#### B. Procedimento Manual de Suporte (Painel Asaas):
+Caso o cliente entre em contato com o fundador solicitando o estorno manualmente:
 1. Acesse o **Painel do Asaas** → **Cobranças**;
-2. Localize a transação do cliente;
+2. Localize a transação do cliente pelo e-mail ou CPF;
 3. Clique em **Mais Ações** → **Estornar Cobrança**;
 4. Confirme o estorno integral para a conta de origem (Pix ou Cartão);
-5. O Asaas enviará automaticamente o evento `PAYMENT_DELETED` para o webhook;
-6. O sistema marcará atomicamente `cancel_at_period_end = true` no banco de dados;
-7. Envie o comprovante de estorno gerado pelo Asaas para o e-mail do cliente.
+5. O Asaas enviará automaticamente o evento `PAYMENT_REFUNDED` para o webhook;
+6. O sistema rebaixará atomicamente a assinatura para `tier = 'read_only'` e `status = 'canceled'` no banco de dados;
+7. Envie o comprovante de estorno gerado pelo Asaas para o e-mail ou WhatsApp do cliente.
 
 ---
 
@@ -189,6 +195,28 @@ O script executará automaticamente:
 
 ### Incidente 3: "Novo Deploy em Andamento e Clientes com Abas Abertas"
 - O listener global `window.addEventListener('vite:preloadError')` entra em ação automaticamente: caso o navegador tente baixar um chunk JavaScript antigo que já foi substituído no Cloudflare Pages, o app efetua um reload suave automático, mantendo o usuário na versão mais recente sem quebra de experiência.
+
+### Incidente 4: "Cliente Perdeu o Smartphone / Aplicativo Autenticador (2FA / TOTP)"
+- **Cenário:** O usuário ativou 2FA/TOTP no painel de segurança, mas trocou de aparelho celular, desinstalou o autenticador ou perdeu o dispositivo e não consegue realizar o segundo fator de autenticação.
+- **Protocolo de Verificação de Identidade (Obrigatório antes de qualquer ação):**
+  1. Solicite confirmação enviada a partir do **mesmo e-mail cadastrado na conta**;
+  2. Confirme os últimos 4 dígitos do CPF cadastrado e o nome completo do titular;
+  3. Para planos Pro/Lifetime pagos, confirme a data e valor aproximado da última transação no Asaas.
+- **Procedimento Técnico de Resolução (Desativação de Fator MFA no Supabase):**
+  No **Supabase Dashboard > SQL Editor**, execute a desativação do fator TOTP para o ID do usuário:
+  ```sql
+  -- Localiza os fatores MFA ativos do usuário:
+  select id, user_id, friendly_name, factor_type, status, created_at
+  from auth.mfa_factors
+  where user_id = '<ID_DO_USUARIO_UUID>';
+
+  -- Exclui o fator TOTP para liberar o login apenas com senha:
+  delete from auth.mfa_factors
+  where user_id = '<ID_DO_USUARIO_UUID>' and factor_type = 'totp';
+  ```
+- **Pós-Atendimento:**
+  1. O cliente conseguirá acessar imediatamente utilizando apenas e-mail e senha;
+  2. Oriente o usuário a acessar **Configurações > Conta > Gerenciar 2FA** para cadastrar seu novo dispositivo autenticador.
 
 ---
 

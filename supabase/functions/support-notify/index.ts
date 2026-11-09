@@ -55,6 +55,19 @@ Deno.serve(async (req: Request) => {
 
     // Cenário 1: Disparo via Supabase Database Webhook (payload.record)
     if (payload.record && payload.record.message) {
+      const webhookSecret = Deno.env.get("WEBHOOK_SECRET");
+      const headerSecret = req.headers.get("x-webhook-secret") ?? "";
+      const authHeader = req.headers.get("Authorization") ?? "";
+      const bearerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+
+      const isWebhookAuthorized =
+        (Boolean(webhookSecret) && (headerSecret === webhookSecret || bearerToken === webhookSecret)) ||
+        (bearerToken.length > 0 && bearerToken === supabaseServiceKey);
+
+      if (!isWebhookAuthorized) {
+        return jsonResponse(req, { error: "Acesso não autorizado ao webhook de suporte" }, 401);
+      }
+
       const rec = payload.record;
       resolvedTicketId = rec.id ?? null;
 

@@ -259,4 +259,41 @@ describe("AttachReceiptDialog", () => {
 
     expect(onParsed).not.toHaveBeenCalled();
   });
+
+  it("rejeita arquivo com tamanho superior a 15 MB exibindo mensagem defensiva (SEC-06)", async () => {
+    render(
+      <AttachReceiptDialog open={true} onOpenChange={onOpenChange} onParsed={onParsed} />,
+    );
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const largeFile = new File(["dummy"], "arquivo-pesado.pdf", { type: "application/pdf" });
+    Object.defineProperty(largeFile, "size", { value: 16 * 1024 * 1024 });
+
+    fireEvent.change(fileInput, { target: { files: [largeFile] } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/O arquivo selecionado excede o limite de 15 MB/i)).toBeInTheDocument();
+    });
+
+    expect(mockExtractReceiptTextFromFile).not.toHaveBeenCalled();
+    expect(onParsed).not.toHaveBeenCalled();
+  });
+
+  it("rejeita arquivo com extensão SVG exibindo aviso de formato não suportado (SEC-06)", async () => {
+    render(
+      <AttachReceiptDialog open={true} onOpenChange={onOpenChange} onParsed={onParsed} />,
+    );
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const svgFile = new File(["<svg></svg>"], "vetor.svg", { type: "image/svg+xml" });
+
+    fireEvent.change(fileInput, { target: { files: [svgFile] } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Arquivos SVG não são suportados/i)).toBeInTheDocument();
+    });
+
+    expect(mockExtractReceiptTextFromFile).not.toHaveBeenCalled();
+    expect(onParsed).not.toHaveBeenCalled();
+  });
 });

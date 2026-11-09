@@ -179,3 +179,20 @@ export async function updateExpense(id: string, input: DbUpdate<Expense>): Promi
   }
   return mapExpense(data);
 }
+
+/** Despesas pertencentes a um grupo de parcelas ordenadas por número da parcela. */
+export async function listExpensesByInstallmentGroup(groupId: string): Promise<Expense[]> {
+  const { data, error } = await resolveQuery<Expense[]>(
+    getSupabase()
+      .from("expenses")
+      .select("*")
+      .eq("installment_group_id", groupId)
+      .order("installment_number", { ascending: true }),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  return (data ?? []).map(mapExpense);
+}
+

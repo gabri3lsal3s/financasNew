@@ -32,10 +32,14 @@ export function isOriginAllowed(origin: string | null): boolean {
   if (allowlist.includes(origin)) return true;
 
   try {
-    const url = new URL(origin);
-    if (url.protocol !== "https:") return false;
-    // Cloudflare Pages e Workers preview/produção
-    if (url.hostname.endsWith(".pages.dev") || url.hostname.endsWith(".workers.dev")) return true;
+    const parsed = new URL(origin);
+    // Cloudflare Pages e previews oficiais do projeto financasnew
+    if (
+      parsed.hostname === "financasnew.pages.dev" ||
+      parsed.hostname.endsWith(".financasnew.pages.dev")
+    ) {
+      return true;
+    }
     return false;
   } catch {
     return false;

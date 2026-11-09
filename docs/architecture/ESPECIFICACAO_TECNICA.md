@@ -1194,6 +1194,17 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
     - Governança estrita: ações destrutivas e administrativas (*"Equilibrar Tudo"*, *"Excluir Viagem"*, remover membros) são restritas ao anfitrião (`isHost: true`), enquanto participantes comuns visualizam ações de colaboração e gerenciamento de chave Pix.
 16. **Prestação de Contas Executiva Formatada para WhatsApp**:
     - A função pura `buildTripSettlementWhatsAppMessage` (`trip-reporting.ts`) gera texto claro e objetivo para compartilhamento com totais da viagem, resumo de participantes, lista de acertos quitados, pendências com chave Pix dos credores e link de auditoria online — em conformidade estrita com a regra zero-emojis do AGENTS.md.
+17. **Pix EMV com Valor Cravado, QR Code sob Demanda e Acertos Isolados**:
+    - No modal de fechamento de contas (`TripSettlementDialog`) e na página pública (`TripPublicPage`), cada transferência sugerida gera o código **Pix Copia e Cola EMV padrão BACEN** já com o valor exato cravado (`amountCents`) utilizando `generatePixCopyPaste`, permitindo que o devedor apenas copie e cole no banco com zero erro de digitação.
+    - Suporte a exibição sob demanda de QR Code renderizado no canvas (`QrCodeCanvas`).
+    - Cada acerto pode ser gravado e reaberto individualmente (`recordSingleTripSettlement` e `reopenTripSettlement`), garantindo controle pontual das quitações.
+    - Quando 100% dos acertos são concluídos, é habilitado o gate de **Finalizar Viagem** para o organizador (`status: "completed"`), encerrando o link público de compartilhamento e movendo a viagem automaticamente para a aba Histórico.
+18. **Reabertura, Exclusão de Viagem e Saída de Participantes Conectados**:
+    - **Reabertura de Viagem**: O organizador pode reabrir uma viagem finalizada via `ReopenTripDialog`, retornando o status para `"active"`, restaurando a aceitação de despesas pelo link público e movendo o grupo de volta para as viagens em andamento.
+    - **Exclusão Definitiva**: O organizador pode excluir permanentemente uma viagem via `TripDeleteDialog`, removendo despesas, participantes e acertos em cascata.
+    - **Saída de Participantes (`unlink_trip_member`)**: Participantes autenticados não-host podem sair da viagem pelo cockpit individual ou pela aba de membros via `LeaveTripDialog`. A RPC `unlink_trip_member` desvincula o `user_id` da conta sem apagar o histórico de lançamentos do grupo. O modal emite avisos contextuais caso o participante possua pendências financeiras a pagar ou valores a receber.
+19. **Convite para Amigos na Viagem**:
+    - Modal `InviteTripMemberDialog` integrado na página de detalhes e na aba de membros, permitindo convidar amigos via link público de compartilhamento, disparo de mensagem no WhatsApp ou cadastro direto de participantes no grupo.
 
 ---
 

@@ -212,6 +212,43 @@ describe("Webhook Asaas — Lógica de Decisão e Idempotência", () => {
     }
   });
 
+  it("retorna 'mark_refunded' ao receber PAYMENT_REFUNDED para revogar Pro imediatamente", () => {
+    const activeSub: UserSubscriptionSnapshot = {
+      ...baseTrialSub,
+      status: "active",
+      tier: "pro_annual",
+      cancel_at_period_end: false,
+    };
+
+    const decision = decideWebhookAction({
+      eventType: "PAYMENT_REFUNDED",
+      payment: { id: "pay_123" },
+      currentSub: activeSub,
+    });
+
+    expect(decision.action).toBe("mark_refunded");
+  });
+
+  it("descarta repetido PAYMENT_REFUNDED se o usuário já estiver com status canceled e tier read_only", () => {
+    const refundedSub: UserSubscriptionSnapshot = {
+      ...baseTrialSub,
+      status: "canceled",
+      tier: "read_only",
+      cancel_at_period_end: false,
+    };
+
+    const decision = decideWebhookAction({
+      eventType: "PAYMENT_REFUNDED",
+      payment: { id: "pay_123" },
+      currentSub: refundedSub,
+    });
+
+    expect(decision.action).toBe("ignore_duplicate");
+    if (decision.action === "ignore_duplicate") {
+      expect(decision.reason).toBe("already_refunded");
+    }
+  });
+
   it("retorna 'unsupported_event' para eventos não mapeados", () => {
     const decision = decideWebhookAction({
       eventType: "UNKNOWN_CUSTOM_EVENT",

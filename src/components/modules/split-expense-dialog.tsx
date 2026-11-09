@@ -29,6 +29,7 @@ import {
 import { generateShareToken } from "@/domain/share/token";
 import { useUserAccess } from "@/state/queries/use-user-access";
 import { useCreatePublicShare } from "@/state/mutations/use-public-share-mutations";
+import { useExpense } from "@/state";
 import { useDemoSession } from "@/state/demo-mode";
 import { useSplitPreferences } from "@/services/split-preferences";
 import { triggerSensory } from "@/services/sensory";
@@ -98,6 +99,7 @@ export function SplitExpenseDialog({
   const { profile } = useUserAccess();
   const { preferences, updatePreferences } = useSplitPreferences();
   const createPublicShareMutation = useCreatePublicShare();
+  const { data: fullExpense } = useExpense(expense?.id ?? null);
 
   // Sugestão de Pix a partir das preferências salvas ou perfil do usuário (Blindado contra PII leak no tour)
   const effectiveDefaultPix = isSimulationActive
@@ -240,8 +242,10 @@ export function SplitExpenseDialog({
       const splitDate = expense?.date || initialDate || todayISO();
       const effectiveInstallmentsCount = Math.max(
         1,
-        expense?.installments_total ?? initialInstallmentsCount ?? 1
+        expense?.installments_total ?? fullExpense?.installments_total ?? initialInstallmentsCount ?? 1,
       );
+      const effectiveInstallmentGroupId =
+        expense?.installment_group_id ?? fullExpense?.installment_group_id ?? null;
 
       const participantInstallments: SplitParticipantInstallment[] = [];
       if (effectiveInstallmentsCount > 1) {
@@ -283,6 +287,7 @@ export function SplitExpenseDialog({
         pix_key_type: detectedType,
         pix_br_code: pixBrCode,
         expense_id: expense?.id,
+        installment_group_id: effectiveInstallmentGroupId,
         category_id: expense?.category_id,
         category_name: categoryName,
         category_icon: categoryIcon,
@@ -372,6 +377,7 @@ export function SplitExpenseDialog({
     updatePreferences,
     isSimulationActive,
     initialInstallmentsCount,
+    fullExpense,
   ]);
 
   const handleShareWhatsApp = () => {

@@ -254,7 +254,8 @@
     │   │                          #     pages: trip-list-page, trip-details-page
     │   │                          #     components: create-trip-dialog, add-trip-member-dialog, edit-trip-expense-dialog,
     │   │                          #                 trip-settlement-dialog, active-trip-banner, trip-member-statement-dialog,
-    │   │                          #                 rebalance-trip-splits-dialog, trip-expense-delete-dialog, trip-personal-context-card
+    │   │                          #                 rebalance-trip-splits-dialog, trip-expense-delete-dialog, trip-personal-context-card,
+    │   │                          #                 invite-trip-member-dialog, trip-delete-dialog, reopen-trip-dialog, leave-trip-dialog
     │   │
     │   ├── public-share/          #   Compartilhamento Público (/r/:token, /orcamento-familiar/:token, /meta/:token, /viagem/:token)
     │   │                          #     pages: split-public-page, family-budget-page, goal-tracker-public-page, trip-public-page

@@ -298,3 +298,71 @@ export async function updateAsaasSubscriptionCreditCard(
     body: JSON.stringify(payload),
   });
 }
+
+/**
+ * Realiza o estorno/reembolso integral ou parcial de uma cobrança no Asaas (Pix ou Cartão).
+ */
+export async function refundAsaasPayment(
+  paymentId: string,
+  description?: string,
+): Promise<{ id: string; status: string; value?: number }> {
+  return asaasFetch<{ id: string; status: string; value?: number }>(`/payments/${paymentId}/refund`, {
+    method: "POST",
+    body: JSON.stringify({
+      description: description || "Cancelamento dentro do prazo legal de 7 dias (CDC)",
+    }),
+  });
+}
+
+export interface AsaasPaymentListItem {
+  id: string;
+  dateCreated: string;
+  value: number;
+  netValue?: number;
+  billingType: string;
+  status: string;
+  dueDate: string;
+  paymentDate?: string | null;
+  clientPaymentDate?: string | null;
+  invoiceUrl?: string | null;
+  bankSlipUrl?: string | null;
+  transactionReceiptUrl?: string | null;
+  invoiceNumber?: string | null;
+  description?: string | null;
+}
+
+/**
+ * Consulta a lista de cobranças e faturas de um cliente no Asaas.
+ */
+export async function listAsaasCustomerPayments(
+  customerId: string,
+  limit = 20,
+): Promise<AsaasPaymentListItem[]> {
+  const result = await asaasFetch<{
+    data?: AsaasPaymentListItem[];
+  }>(`/payments?customer=${encodeURIComponent(customerId)}&limit=${limit}&order=desc`);
+
+  return result.data || [];
+}
+
+/**
+ * Atualiza o ciclo e valor de uma assinatura recorrente no Asaas (ex: migração Mensal -> Anual).
+ */
+export async function updateAsaasSubscriptionCycle(
+  subscriptionId: string,
+  params: {
+    value: number;
+    cycle: "MONTHLY" | "YEARLY";
+  },
+): Promise<{ id: string; status: string }> {
+  return asaasFetch<{ id: string; status: string }>(`/subscriptions/${subscriptionId}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      value: params.value,
+      cycle: params.cycle,
+      updatePendingPayments: true,
+    }),
+  });
+}
+
+

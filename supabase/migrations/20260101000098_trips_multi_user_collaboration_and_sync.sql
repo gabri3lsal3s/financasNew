@@ -12,7 +12,7 @@ create or replace function public.claim_trip_member(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, extensions, pg_temp
+set search_path = public, pg_temp, extensions
 as $$
 declare
   v_user_id uuid := auth.uid();

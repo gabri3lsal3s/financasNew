@@ -470,3 +470,81 @@ export function calculateInstallmentsProgress(
     nextPendingInstallment,
   };
 }
+
+/**
+ * Avalia se um participante está 100% quitado no racha.
+ * Para despesas parceladas, exige que todas as suas parcelas individuais estejam quitadas
+ * e que o total recebido cubra integralmente a cota esperada.
+ */
+export function isParticipantFullySettled(
+  participant: { id?: string; share_cents: number; settled_cents?: number | null; is_host?: boolean },
+  participantInstallments?: readonly SplitParticipantInstallment[] | null
+): boolean {
+  if (participant.is_host) return true;
+  const settledCents = Number(participant.settled_cents ?? 0);
+  if (settledCents < participant.share_cents) return false;
+
+  if (participantInstallments && participantInstallments.length > 0) {
+    return participantInstallments.every((i) => i.is_settled);
+  }
+
+  return true;
+}
+
+/**
+ * Avalia se o racha inteiro está 100% liquidado e pode ser marcado como concluído.
+ * Retorna true exclusivamente se todos os amigos estiverem integralmente quitados.
+ */
+export function isSplitFullyCompleted(
+  participants: readonly { id?: string; share_cents: number; settled_cents?: number | null; is_host?: boolean }[],
+  installments?: readonly SplitParticipantInstallment[] | null
+): boolean {
+  const friends = participants.filter((p) => !p.is_host);
+  if (friends.length === 0) return true;
+
+  const hostId = participants.find((p) => p.is_host)?.id;
+
+  // Invariante estrita: se existirem parcelas no racha, nenhuma parcela de amigo pode estar pendente
+  if (installments && installments.length > 0) {
+    const friendInstallments = installments.filter(
+      (i) => i.participant_id !== hostId && !participants.find((p) => p.id === i.participant_id)?.is_host
+    );
+    if (friendInstallments.length > 0 && friendInstallments.some((i) => !i.is_settled)) {
+      return false;
+    }
+  }
+
+  for (let idx = 0; idx < friends.length; idx++) {
+    const friend = friends[idx]!;
+    const friendId = friend.id || `p_${idx + 2}`;
+    let friendInsts = installments?.filter(
+      (i) => i.participant_id === friend.id || i.participant_id === friendId
+    );
+
+    // Fallback defensivo para racha de 1 amigo se os IDs não baterem
+    if ((!friendInsts || friendInsts.length === 0) && friends.length === 1 && installments) {
+      friendInsts = installments.filter((i) => i.participant_id !== hostId);
+    }
+
+    if (!isParticipantFullySettled(friend, friendInsts)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Calcula o peso contábil (report_weight) proporcional de uma parcela individual da despesa.
+ * Exemplo: parcela de R$ 50,00 da fatura com reembolso recebido de R$ 25,00 -> peso 0.5 (50%).
+ */
+export function calculateInstallmentReportWeight(
+  installmentBaseCents: number,
+  settledReimbursementCents: number
+): number {
+  if (installmentBaseCents <= 0) return 1;
+  const netCents = Math.max(0, installmentBaseCents - Math.max(0, settledReimbursementCents));
+  const ratio = netCents / installmentBaseCents;
+  return Math.min(1, Math.max(0, Number(ratio.toFixed(4))));
+}
+

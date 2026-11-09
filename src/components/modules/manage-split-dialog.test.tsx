@@ -19,6 +19,10 @@ vi.mock("@/state", () => ({
     isFetched: mockLinkedExpenseIsFetched,
     isLoading: false,
   }),
+  useExpensesByInstallmentGroup: () => ({
+    data: undefined,
+    isLoading: false,
+  }),
   useUpdatePublicShare: () => ({
     mutateAsync: mockUpdatePublicShare,
     isPending: false,
@@ -47,6 +51,14 @@ vi.mock("@/state", () => ({
     mutateAsync: mockSettleDebt,
     isPending: false,
   }),
+}));
+
+const mockSyncSplitExpenseReportWeights = vi.fn().mockResolvedValue({ updatedCount: 1, groupId: null });
+const mockDeleteAllSplitExpenses = vi.fn().mockResolvedValue({ deletedCount: 1 });
+
+vi.mock("@/services/split-sync", () => ({
+  syncSplitExpenseReportWeights: (...args: unknown[]) => mockSyncSplitExpenseReportWeights(...args),
+  deleteAllSplitExpenses: (...args: unknown[]) => mockDeleteAllSplitExpenses(...args),
 }));
 
 vi.mock("@/services/toast", () => ({
@@ -155,13 +167,13 @@ describe("ManageSplitDialog", () => {
           amount: 50,
         },
       });
-      // Custo da despesa cai de 100% para 75%
-      expect(mockUpdateExpense).toHaveBeenCalledWith({
-        id: "exp-1",
-        input: {
-          report_weight: 0.75,
-        },
-      });
+      // Sincroniza pesos contábeis das despesas
+      expect(mockSyncSplitExpenseReportWeights).toHaveBeenCalledWith(
+        expect.objectContaining({
+          expenseId: "exp-1",
+          totalCents: 10000,
+        }),
+      );
     });
   });
 
@@ -187,12 +199,12 @@ describe("ManageSplitDialog", () => {
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {
-      expect(mockUpdateExpense).toHaveBeenCalledWith({
-        id: "exp-1",
-        input: {
-          report_weight: 1, // sem nenhum amigo baixado, custo líquido = 100%
-        },
-      });
+      expect(mockSyncSplitExpenseReportWeights).toHaveBeenCalledWith(
+        expect.objectContaining({
+          expenseId: "exp-1",
+          totalCents: 10000,
+        }),
+      );
       expect(mockSettleDebt).toHaveBeenCalledWith({
         debtId: "debt-1",
         result: 100,
@@ -267,7 +279,7 @@ describe("ManageSplitDialog", () => {
     fireEvent.click(confirmDeleteBtn);
 
     await waitFor(() => {
-      expect(mockDeleteExpense).toHaveBeenCalledWith({ expenseId: "exp-1", mode: "single" });
+      expect(mockDeleteAllSplitExpenses).toHaveBeenCalledWith({ expenseId: "exp-1", groupId: null });
       expect(mockDeleteDebt).toHaveBeenCalledWith("debt-1");
       expect(mockDeletePublicShare).toHaveBeenCalledWith("share-123");
     });
@@ -397,7 +409,19 @@ describe("ManageSplitDialog", () => {
               }),
             ]),
           }),
-        })
+        }),
+      );
+      expect(mockSyncSplitExpenseReportWeights).toHaveBeenCalledWith(
+        expect.objectContaining({
+          expenseId: "exp-1",
+          totalCents: 10000,
+          installments: expect.arrayContaining([
+            expect.objectContaining({
+              id: "p_2_inst_1",
+              is_settled: true,
+            }),
+          ]),
+        }),
       );
     });
   });

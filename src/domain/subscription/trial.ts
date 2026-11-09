@@ -111,3 +111,54 @@ export function resolveCheckoutBillingSchedule(params: {
     daysUntilFirstCharge: 0,
   };
 }
+
+export interface GuaranteeResidualResult {
+  /** Se o usuário está dentro da janela legal incondicional de 7 dias (CDC). */
+  isWithinGuarantee: boolean;
+  /** Quantidade de dias restantes da garantia de 7 dias (0 se expirado). */
+  daysRemaining: number;
+}
+
+export const GUARANTEE_DAYS = 7;
+
+/**
+ * Calcula a janela de garantia incondicional de 7 dias (CDC Art. 49).
+ */
+export function calculateGuaranteeResidual(params: {
+  startsAt?: string | Date | null;
+  isPro?: boolean;
+  now?: Date;
+}): GuaranteeResidualResult {
+  if (!params.isPro || !params.startsAt) {
+    return { isWithinGuarantee: false, daysRemaining: 0 };
+  }
+
+  const startDate = new Date(params.startsAt);
+  if (isNaN(startDate.getTime())) {
+    return { isWithinGuarantee: false, daysRemaining: 0 };
+  }
+
+  const now = params.now ?? new Date();
+  const startTime = startDate.getTime();
+  const nowTime = now.getTime();
+
+  if (nowTime < startTime) {
+    return { isWithinGuarantee: true, daysRemaining: GUARANTEE_DAYS };
+  }
+
+  const elapsedMs = nowTime - startTime;
+  const totalGuaranteeMs = GUARANTEE_DAYS * 24 * 60 * 60 * 1000;
+
+  if (elapsedMs > totalGuaranteeMs) {
+    return { isWithinGuarantee: false, daysRemaining: 0 };
+  }
+
+  const remainingMs = totalGuaranteeMs - elapsedMs;
+  const daysRemaining = Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
+
+  return {
+    isWithinGuarantee: true,
+    daysRemaining,
+  };
+}
+

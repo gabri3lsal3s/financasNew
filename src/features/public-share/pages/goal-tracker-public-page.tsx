@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router";
 import {
   ShieldAlert,
@@ -63,6 +63,16 @@ export function GoalTrackerPublicPage() {
   const [showQrCode, setShowQrCode] = useState(false);
   const [showIosGuide, setShowIosGuide] = useState(false);
 
+  const pixTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const keyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pixTimeoutRef.current) clearTimeout(pixTimeoutRef.current);
+      if (keyTimeoutRef.current) clearTimeout(keyTimeoutRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     if (goalData?.title) {
       document.title = `Termômetro: ${goalData.title} — Áxis Finance`;
@@ -105,7 +115,8 @@ export function GoalTrackerPublicPage() {
         description: "Abra o aplicativo do seu banco para colar e transferir.",
         variant: "success",
       });
-      setTimeout(() => setCopiedPix(false), 3000);
+      if (pixTimeoutRef.current) clearTimeout(pixTimeoutRef.current);
+      pixTimeoutRef.current = setTimeout(() => setCopiedPix(false), 3000);
     } catch {
       triggerSensory("destructive");
       pushToast({
@@ -129,7 +140,8 @@ export function GoalTrackerPublicPage() {
         description: "Chave do organizador transferida para a área de transferência.",
         variant: "default",
       });
-      setTimeout(() => setCopiedKey(false), 3000);
+      if (keyTimeoutRef.current) clearTimeout(keyTimeoutRef.current);
+      keyTimeoutRef.current = setTimeout(() => setCopiedKey(false), 3000);
     } catch {
       triggerSensory("destructive");
       pushToast({

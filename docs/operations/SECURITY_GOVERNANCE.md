@@ -45,8 +45,10 @@ O **Áxis** processa dados financeiros e transacionais sensíveis. A governança
   * A função `public.mask_cpf(text)` e o utilitário `maskCPF()` garantem mascaramento no padrão `***.***.789-**` em telas e relatórios, prevenindo *shoulder surfing*.
   * **Controle de coluna (migração 0058):** `REVOKE SELECT (cpf)` de `anon`/`authenticated` — o PostgREST **não** devolve CPF ao bundle do cliente; leitura operacional fica restrita a `service_role` (Edge Asaas).
 
-### 2.3 Edge Functions (billing & cotações)
-* **CORS allowlist** (`ALLOWED_ORIGINS` + `*.pages.dev` + localhost/Capacitor) — sem `Access-Control-Allow-Origin: *` em rotas autenticadas.
+### 2.3 Edge Functions (billing, cotações, notificações e digests)
+* **CORS allowlist:** Restrito exclusivamente a `financasnew.pages.dev`, `*.financasnew.pages.dev`, `ALLOWED_ORIGINS` e esquemas locais/Capacitor — sem `Access-Control-Allow-Origin: *` em rotas sensíveis e sem permitir projetos arbitrários sob subdomínios de terceiros (`*.pages.dev` / `*.workers.dev`).
+* **Proteção de Cron Jobs (`sunday-digest`):** A execução do digest semanal exige autenticação obrigatória via Bearer token validado contra `SUPABASE_SERVICE_ROLE_KEY` ou `CRON_SECRET`, impedindo exfiltração de dados transacionais e e-mails por chamadas públicas.
+* **Notificações de Suporte (`support-notify`):** Requisições com `payload.record` exigem validação de `x-webhook-secret` contra `WEBHOOK_SECRET` ou `SUPABASE_SERVICE_ROLE_KEY`, eliminando spoofing e spam na integração com Telegram.
 * **Webhook Asaas:** `verify_jwt = false` + token `asaas-access-token` com comparação *timing-safe*; **sem** CORS de browser; tier resolvido só pelo **catálogo de valores** (`asaas-plans.ts`), nunca por heurística `value > 50`.
 * **Checkout/manage:** exigem `SUPABASE_ANON_KEY` (fail-closed; **proibido** fallback para `service_role`); erros públicos genéricos.
 * **`quotes`:** escrita no cache global (`user_id IS NULL`) **somente** com service role (cron); JWT de usuário só calcula/devolve cotações (cliente persiste override próprio).
@@ -110,13 +112,74 @@ Em cumprimento ao princípio de Minimização de Dados da LGPD (Art. 6º, III):
   * **No APK Nativo Android:** Exige autenticação biométrica do dispositivo via `authenticateWithBiometrics("Confirme sua identidade para exportar seus dados financeiros")`.
   * **Na Web:** Exibe diálogo modal com confirmação explícita de download de dados sensíveis.
 
-### 4.3 Direito ao Esquecimento e Expurgo em Cascata (Art. 18, VI LGPD)
+### 4.3 Direito ao Esquecimento e Expurgo em Cascata Completo (Art. 18, VI LGPD)
 * A exclusão de conta solicitada pelo titular é processada pela RPC transacional `delete_current_user_account()`.
-* A exclusão ocorre de forma atômica em cascata, eliminando registros de `public.profiles`, preferências, despesas, rendas, cartões, dívidas, metas de carteira, chamados de suporte (`support_tickets`, `support_ticket_replies`) e eventos analíticos, concluindo com o encerramento do registro em `auth.users`.
+* A exclusão ocorre de forma atômica em cascata topológica reversa (migrações 0061 e 0099), eliminando:
+  * Histórico de viagens colaborativas (`trips`, `trip_members`, `trip_expenses`, `trip_expense_splits`, `trip_settlements`);
+  * Orçamento e grupos familiares (`families`, `family_members`, `family_invites`, `family_settlements`);
+  * Links e compartilhamentos públicos (`public_shares`);
+  * Registros patrimoniais e operacionais (`expenses`, `incomes`, `credit_cards`, `debts`, `portfolio_transactions`, `portfolio_assets`, metas);
+  * Preferências, perfis (`public.profiles`), chamados de suporte (`support_tickets`, `support_ticket_replies`) e eventos analíticos;
+  * Conclusão atômica com encerramento e deleção do usuário em `auth.users`.
+
+### 4.4 Mascaramento Canônico de PII (E-mail e CPF)
+* A função SQL imutável `public.mask_email(text)` (migração 0099) mascara e-mails no padrão `g***s@dominio.com` em convites de família (`get_family_invite_preview`) e relatórios compartilhados, impedindo *data harvesting* por raspadores web.
+* A função `public.mask_cpf(text)` garante mascaramento consistente do CPF (`***.***.789-**`).
 
 ---
 
-## 5. AUDITORIA E HIGIENIZAÇÃO DE LOGS (`audit_events`)
+## 5. DEFESA EM PROFUNDIDADE NO BANCO DE DADOS (POSTGRESQL & RLS)
+
+### 5.1 `FORCE ROW LEVEL SECURITY` Seletivo
+* Por padrão no PostgreSQL, comandos `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` não se aplicam ao proprietário da tabela (*table owner*).
+* Para mitigar riscos decorrentes de migrações operacionais ou rotinas automatizadas que executem com privilégios de owner sem chave de isolamento de tenant, a migração `20260101000100_force_rls_critical_tables.sql` ativou `FORCE ROW LEVEL SECURITY` nas tabelas com dados financeiros críticos:
+  * `public.expenses`
+  * `public.incomes`
+  * `public.credit_cards`
+  * `public.debts`
+  * `public.portfolio_transactions`
+  * `public.portfolio_assets`
+* Qualquer consulta SQL nessas tabelas obrigatoriamente satisfaz o filtro `auth.uid() = user_id`, sem exceções para o table owner.
+
+### 5.2 Blindagem de Links Compartilhados (`public_shares`)
+* A política `public_shares_select` foi revogada para a role `anon` e restrita exclusivamente ao proprietário autenticado (`auth.uid() = user_id`).
+* O acesso de terceiros e convidados sem login é mediado **exclusivamente por RPCs com `SECURITY DEFINER` de retorno restrito** (`get_shared_family_budget`, `get_shared_goal_tracker`), impedindo dump em lote ou enumeração sequencial de links via API REST aberta.
+
+### 5.3 Hardening de Viagens Colaborativas Desautenticadas
+* A RPC `add_public_trip_expense` (migração 0099) exige parâmetro de senha (`p_passcode`) validado via algoritmo timing-safe com suporte a bcrypt `$2%` e texto claro.
+* Impõe teto anti-DoS de no máximo 500 despesas por viagem, valor máximo defensivo de R$ 1.000.000,00 e descrição sanitizada com teto de 140 caracteres.
+
+### 5.4 Particionamento Estrito de RLS em Viagens (`trip_expenses`)
+* Anteriormente, a política `trip_expenses_write_policy` operava em modo `FOR ALL`, permitindo que qualquer convidado membro da viagem excluísse despesas de terceiros via requisição REST direta.
+* A migração `20260101000102_harden_trip_expenses_delete_policy.sql` particionou a escrita em três políticas granulares:
+  * `trip_expenses_insert_policy`: Inserção permitida a qualquer participante ativo da viagem (`is_trip_member` ou `is_trip_host`).
+  * `trip_expenses_update_policy`: Edição restrita ao anfitrião ou ao titular que cadastrou/pagou a despesa.
+  * `trip_expenses_delete_policy`: Exclusão via REST restrita estritamente ao anfitrião da viagem (`is_trip_host`) ou ao usuário pagador/criador (`auth.uid() = tm.user_id`). Convidados comuns têm o comando `DELETE` bloqueado no kernel do banco.
+
+---
+
+## 6. AUTENTICAÇÃO EM DUAS ETAPAS (2FA / TOTP) E CONTROLE DE SESSÕES
+
+### 6.1 Suporte Nativo a TOTP via Supabase MFA
+* Usuários podem elevar a segurança da conta ativando verificação em duas etapas via aplicativo autenticador RFC 6238 (Google Authenticator, Microsoft Authenticator, 1Password, Bitwarden, Authy).
+* O enrollment (`supabase.auth.mfa.enroll`) e verificação do primeiro fator (`supabase.auth.mfa.challengeAndVerify`) são gerenciados pelo modal canônico `<MfaModal />` (`src/features/settings/components/mfa-modal.tsx`).
+* A renderização do QR Code utiliza gerador vetorial SVG local (`renderQrCodeSvg`), dispensando requisições a APIs de terceiros.
+
+### 6.2 Interceptação Obrigatória de AAL2 na Tela de Login
+* O cliente Supabase Auth emite tokens no nível de garantia de autenticação 1 (`aal1`) imediatamente após a conferência de e-mail e senha.
+* O fluxo de login (`login-page.tsx`) inspeciona ativamente o nível de garantia via `supabase.auth.mfa.getAuthenticatorAssuranceLevel()` tanto na montagem quanto após a autenticação por senha.
+* Se a conta possuir um fator TOTP verificado e o nível requerido for `aal2` (`currentLevel === "aal1"` e `nextLevel === "aal2"`):
+  * A navegação para o dashboard é interrompida.
+  * A interface exibe a tela de desafio 2FA com campo de 6 dígitos numéricos e botões "Confirmar Acesso" e "Cancelar e voltar ao login" (que executa `signOut`).
+  * A elevação para `aal2` só é concluída após resposta positiva de `supabase.auth.mfa.challengeAndVerify({ factorId, code })`.
+
+### 6.3 Gestão de Dispositivos e Desconexão Remota
+* O painel de conta (`AccountTab`) identifica o tipo de dispositivo atual (Web/Mobile/Desktop) e provê a ação *"Desconectar outros aparelhos"*.
+* A desconexão remota utiliza `supabase.auth.signOut({ scope: "others" })`, invalidando imediatamente os refresh tokens emitidos para navegadores ou aparelhos secundários sem deslogar a sessão corrente do usuário.
+
+---
+
+## 7. AUDITORIA E HIGIENIZAÇÃO DE LOGS (`audit_events`)
 
 A tabela `public.audit_events` é imutável por construção (políticas RLS de apenas `INSERT` e `SELECT` pelo dono, sem `UPDATE` ou `DELETE`).
 
@@ -127,7 +190,7 @@ Para evitar que erros de programação gravem segredos operacionais na auditoria
 
 ---
 
-## 6. HIGIENIZAÇÃO DE BUILDS FRONTEND
+## 8. HIGIENIZAÇÃO DE BUILDS FRONTEND
 
 O arquivo [`vite.config.ts`](../../vite.config.ts) aplica remoção automática de saídas de depuração no **minifier Oxc (Vite 8 / Rolldown)**:
 
@@ -149,14 +212,39 @@ Isso garante que nenhum `console.log` de debug ou retorno bruto de APIs permane�
 
 ---
 
-## 7. CHECKLIST DE CONFORMIDADE PARA NOVAS FEATURES
+## 9. INGESTÃO SEGURA DE DOCUMENTOS E CABEÇALHOS DE BORDA
+
+### 9.1 Validação e Limite de Upload em OCR (`receipt-extractor.ts`)
+Para proteger o cliente e os motores de OCR contra ataques de negação de serviço (DoS por consumo de memória/OOM) e vetores de XSS via arquivos vetoriais:
+* **Teto Estrito de Tamanho (`MAX_RECEIPT_FILE_SIZE_BYTES`):** Arquivos submetidos no diálogo de comprovantes têm teto máximo fixado em 15 MB. Arquivos maiores são rejeitados preventivamente na borda com toast informativo.
+* **Bloqueio de SVGs e Executáveis:** O tipo MIME `image/svg+xml` é expressamente rejeitado, eliminando o vetor de scripts embutidos (`<script>` / SVG XSS).
+* O processamento aceita exclusivamente formatos de imagem rasterizados (`image/jpeg`, `image/png`, `image/webp`) e documentos PDF (`application/pdf`).
+
+### 9.2 Cabeçalhos HTTP de Segurança e Permissions-Policy (`_headers`)
+No arquivo de cabeçalhos de borda do Cloudflare Pages (`public/_headers`), a diretiva `Permissions-Policy` desativa explicitamente APIs de hardware invasivas e tecnologias de rastreamento de terceiros:
+```http
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), interest-cohort=()
+```
+
+---
+
+## 10. CHECKLIST DE CONFORMIDADE PARA NOVAS FEATURES
 
 Ao implementar novas telas, repositórios ou tabelas:
 - [x] A nova tabela possui coluna `user_id uuid not null references public.profiles(id)`?
 - [x] O RLS foi ativado (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY`)?
+- [x] Tabelas patrimoniais críticas aplicam `FORCE ROW LEVEL SECURITY`?
 - [x] Foram criadas políticas isoladas para `SELECT`, `INSERT`, `UPDATE` e `DELETE` baseadas em `auth.uid() = user_id`?
 - [x] Nenhum dado de cartão de crédito além dos últimos 4 dígitos e da bandeira é persistido?
+- [x] A tabela `public_shares` não permite leitura arbitrária por role anônima (`anon`) sem token pontual via RPC?
+- [x] E-mails e CPFs de terceiros expostos em convites utilizam funções de mascaramento (`mask_email` / `mask_cpf`)?
+- [x] A exclusão de dados respeita o expurgo topológico completo de `delete_current_user_account()`?
 - [x] Nenhum log de dados sensíveis foi introduzido sem mascaramento?
 - [x] Novas ações de alteração de credenciais exigem reautenticação atômica prévia (`verifyCurrentPassword`)?
 - [x] Nenhuma informação de PII (e-mail, nome) é enviada em eventos de telemetria ou analytics?
 - [x] Toda RPC pública desautenticada (`grant execute ... to anon`) possui blindagem contra DoS (teto de registros, deduplicação temporal, validação de token e sanitização estrita de payload)?
+- [x] Toda Edge Function requer autenticação por Bearer token ou secret de webhook apropriado antes de expor dados operacionais?
+- [x] A lista de CORS em Edge Functions restringe o acesso estritamente a origens autorizadas do projeto (`financasnew.pages.dev`)?
+- [x] O fluxo de login intercepta `nextLevel === "aal2"` e exige código TOTP para contas com autenticação em duas etapas ativada?
+- [x] Uploads de comprovantes validam o teto de tamanho (15 MB) e rejeitam SVGs?
+

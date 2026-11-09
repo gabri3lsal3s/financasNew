@@ -8,12 +8,15 @@ import {
   CreditCard,
   Lock,
   Mail,
+  ShieldCheck,
+  KeyRound,
 } from "lucide-react";
 import { Alert, Button, Input, PasswordInput, Turnstile } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { BrandLogo } from "@/components/layout";
 import { useAuth, signInWithEmail } from "@/hooks/use-auth";
 import { resendConfirmationEmail } from "@/data/auth";
+import { getSupabase } from "@/data/client";
 import { classifyError, getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
@@ -154,6 +157,13 @@ export function LoginPage() {
   const [consecutiveFailures, setConsecutiveFailures] = useState(0);
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
 
+  // Estados de Verificação em Duas Etapas (2FA / TOTP)
+  const [isMfaRequired, setIsMfaRequired] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [totpCode, setTotpCode] = useState("");
+  const [isVerifyingMfa, setIsVerifyingMfa] = useState(false);
+  const [mfaError, setMfaError] = useState<string | null>(null);
+
   useEffect(() => {
     if (cooldown <= 0) return;
     const timer = setInterval(() => {
@@ -170,7 +180,34 @@ export function LoginPage() {
     return () => clearInterval(timer);
   }, [lockoutSeconds]);
 
-  if (!loading && session) {
+  // Se a sessão existente exige elevação AAL2, retém a navegação para o desafio
+  useEffect(() => {
+    if (!session) return;
+    let isCancelled = false;
+    async function checkAal() {
+      try {
+        const supabase = getSupabase();
+        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (isCancelled) return;
+        if (aalData?.currentLevel === "aal1" && aalData?.nextLevel === "aal2") {
+          const { data: factors } = await supabase.auth.mfa.listFactors();
+          const verified = factors?.totp?.find((f) => f.status === "verified");
+          if (verified && !isCancelled) {
+            setMfaFactorId(verified.id);
+            setIsMfaRequired(true);
+          }
+        }
+      } catch {
+        // Silencia erro em ambiente sem Supabase configurado
+      }
+    }
+    void checkAal();
+    return () => {
+      isCancelled = true;
+    };
+  }, [session]);
+
+  if (!loading && session && !isMfaRequired) {
     return <Navigate to={from} replace />;
   }
 
@@ -206,6 +243,26 @@ export function LoginPage() {
     setPending(true);
     try {
       await signInWithEmail(email, password, captchaToken ?? undefined);
+
+      // Intercepta contas protegidas por 2FA (AAL2)
+      try {
+        const supabase = getSupabase();
+        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aalData?.currentLevel === "aal1" && aalData?.nextLevel === "aal2") {
+          const { data: factors } = await supabase.auth.mfa.listFactors();
+          const verified = factors?.totp?.find((f) => f.status === "verified");
+          if (verified) {
+            setMfaFactorId(verified.id);
+            setIsMfaRequired(true);
+            triggerSensory("action");
+            setPending(false);
+            return;
+          }
+        }
+      } catch {
+        // Continua login se MFA não estiver habilitado
+      }
+
       triggerSensory("success");
       setConsecutiveFailures(0);
       setLockoutSeconds(0);
@@ -229,6 +286,117 @@ export function LoginPage() {
       setPending(false);
     }
   };
+
+  const handleVerifyMfa = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const cleanCode = totpCode.trim();
+    if (!mfaFactorId || cleanCode.length !== 6 || isVerifyingMfa) return;
+    setIsVerifyingMfa(true);
+    setMfaError(null);
+    try {
+      const supabase = getSupabase();
+      const { error: verifyErr } = await supabase.auth.mfa.challengeAndVerify({
+        factorId: mfaFactorId,
+        code: cleanCode,
+      });
+      if (verifyErr) throw verifyErr;
+
+      triggerSensory("success");
+      setIsMfaRequired(false);
+      pushToast({
+        title: "Acesso confirmado",
+        description: "Identidade validada com sucesso.",
+        variant: "success",
+      });
+    } catch {
+      triggerSensory("destructive");
+      setMfaError("Código de autenticação incorreto ou expirado. Verifique seu aplicativo e tente novamente.");
+    } finally {
+      setIsVerifyingMfa(false);
+    }
+  };
+
+  const handleCancelMfa = async () => {
+    try {
+      const supabase = getSupabase();
+      await supabase.auth.signOut();
+    } catch {
+      // Ignora falha de logout
+    }
+    setIsMfaRequired(false);
+    setTotpCode("");
+    setMfaError(null);
+    triggerSensory("selection");
+  };
+
+  if (isMfaRequired) {
+    return (
+      <AuthShell
+        title="Verificação em Duas Etapas"
+        subtitle="Sua conta está protegida por 2FA. Digite o código de 6 dígitos gerado pelo seu aplicativo autenticador."
+        sideHero={<LoginSideHero />}
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3 p-3.5 rounded-xl border border-primary/20 bg-primary/10 text-primary-strong">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/20">
+              <ShieldCheck className="size-5" aria-hidden="true" />
+            </div>
+            <div className="space-y-0.5">
+              <span className="text-xs font-semibold block text-foreground">
+                Código de Autenticação (TOTP)
+              </span>
+              <span className="text-[11px] text-muted-foreground block">
+                Google Authenticator, Microsoft Authenticator, 1Password ou Authy
+              </span>
+            </div>
+          </div>
+
+          {mfaError ? <Alert variant="error">{mfaError}</Alert> : null}
+
+          <form onSubmit={handleVerifyMfa} className="flex flex-col gap-4" noValidate>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="mfa-code" className="text-xs font-semibold text-foreground">
+                Código de 6 dígitos
+              </label>
+              <Input
+                id="mfa-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                required
+                maxLength={6}
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="000000"
+                className="h-12 text-center text-lg font-mono tracking-widest rounded-xl text-base sm:text-base"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isVerifyingMfa || totpCode.trim().length !== 6}
+              className="h-10 text-sm font-semibold rounded-xl bg-primary-strong hover:bg-primary text-primary-foreground shadow-xs transition-colors"
+            >
+              <KeyRound className="size-4 mr-1.5" aria-hidden="true" />
+              {isVerifyingMfa ? "Validando…" : "Confirmar Acesso"}
+            </Button>
+          </form>
+
+          <div className="pt-2 border-t border-border/70 flex flex-col items-center">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCancelMfa}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Cancelar e voltar ao login
+            </Button>
+          </div>
+        </div>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell

@@ -26,6 +26,7 @@ export interface AddPublicTripExpenseDialogProps {
   members: PublicTripMember[];
   defaultPayerId?: string;
   activeMemberId?: string;
+  passcode?: string | null;
   onSuccess?: () => void;
 }
 
@@ -45,6 +46,7 @@ export function AddPublicTripExpenseDialog({
   members,
   defaultPayerId,
   activeMemberId,
+  passcode,
   onSuccess,
 }: AddPublicTripExpenseDialogProps) {
   const { activeMemberId: storedActiveMemberId } = usePublicTripGuestIdentity(token);
@@ -130,6 +132,7 @@ export function AddPublicTripExpenseDialog({
         member_id: s.memberId,
         share_cents: s.shareCents,
       })),
+      passcode: passcode ?? null,
     });
 
     resetForm();

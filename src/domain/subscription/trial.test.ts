@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateTrialResidual,
+  calculateGuaranteeResidual,
   resolveCheckoutBillingSchedule,
   STANDARD_TRIAL_DAYS,
   PLAN_PRICES_CENTS,
@@ -92,5 +93,67 @@ describe("Domain: resolveCheckoutBillingSchedule", () => {
     expect(schedule.chargeTodayCents).toBe(PLAN_PRICES_CENTS.monthly);
     expect(schedule.isDelayedByTrial).toBe(false);
     expect(schedule.daysUntilFirstCharge).toBe(0);
+  });
+});
+
+describe("Domain: calculateGuaranteeResidual", () => {
+  const baseTime = new Date("2026-05-01T12:00:00Z");
+
+  it("retorna isWithinGuarantee=false se o usuário não for Pro", () => {
+    const result = calculateGuaranteeResidual({
+      startsAt: baseTime,
+      isPro: false,
+      now: baseTime,
+    });
+
+    expect(result.isWithinGuarantee).toBe(false);
+    expect(result.daysRemaining).toBe(0);
+  });
+
+  it("retorna isWithinGuarantee=true com 7 dias no momento exato da ativação", () => {
+    const result = calculateGuaranteeResidual({
+      startsAt: baseTime,
+      isPro: true,
+      now: baseTime,
+    });
+
+    expect(result.isWithinGuarantee).toBe(true);
+    expect(result.daysRemaining).toBe(7);
+  });
+
+  it("retorna 4 dias restantes quando se passaram 3 dias desde a contratação", () => {
+    const threeDaysLater = new Date("2026-05-04T12:00:00Z");
+    const result = calculateGuaranteeResidual({
+      startsAt: baseTime,
+      isPro: true,
+      now: threeDaysLater,
+    });
+
+    expect(result.isWithinGuarantee).toBe(true);
+    expect(result.daysRemaining).toBe(4);
+  });
+
+  it("retorna 1 dia restante no 7º dia (últimas horas do prazo de arrependimento)", () => {
+    const sixDaysLater = new Date("2026-05-07T12:00:00Z");
+    const result = calculateGuaranteeResidual({
+      startsAt: baseTime,
+      isPro: true,
+      now: sixDaysLater,
+    });
+
+    expect(result.isWithinGuarantee).toBe(true);
+    expect(result.daysRemaining).toBe(1);
+  });
+
+  it("expira a garantia (isWithinGuarantee=false, 0 dias) após 7 dias corridos", () => {
+    const eightDaysLater = new Date("2026-05-09T12:00:00Z");
+    const result = calculateGuaranteeResidual({
+      startsAt: baseTime,
+      isPro: true,
+      now: eightDaysLater,
+    });
+
+    expect(result.isWithinGuarantee).toBe(false);
+    expect(result.daysRemaining).toBe(0);
   });
 });

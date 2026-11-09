@@ -62,6 +62,9 @@ export interface SplitChargeCardProps {
   onSelectInstallmentId?: (id: string | null) => void;
   isPayAllRemaining?: boolean;
   onTogglePayAllRemaining?: () => void;
+  onSignalPayment?: () => void;
+  isSignalingPayment?: boolean;
+  hasSignaledCurrent?: boolean;
 }
 
 /**
@@ -95,6 +98,9 @@ export function SplitChargeCard({
   onCopyPix,
   onCopyPixKey,
   onShareClick,
+  onSignalPayment,
+  isSignalingPayment = false,
+  hasSignaledCurrent = false,
 }: SplitChargeCardProps) {
   const [copiedPix, setCopiedPix] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
@@ -355,6 +361,43 @@ export function SplitChargeCard({
             </>
           )}
         </Button>
+
+        {/* Botão de Notificação: Já fiz o Pix (para convidados com ou sem conta) */}
+        {onSignalPayment && (
+          <Button
+            type="button"
+            variant="outline"
+            size="default"
+            disabled={isSignalingPayment || hasSignaledCurrent}
+            onClick={onSignalPayment}
+            className={cn(
+              "w-full gap-2 font-semibold text-xs sm:text-sm cursor-pointer transition-colors",
+              hasSignaledCurrent
+                ? "bg-warning/10 border-warning/30 text-warning-strong hover:bg-warning/15"
+                : "border-border/80 bg-surface hover:bg-surface-hover/70 text-foreground"
+            )}
+            sensoryIntent="action"
+            aria-label="Avisar ao anfitrião que você já realizou o pagamento via Pix"
+          >
+            {hasSignaledCurrent ? (
+              <>
+                <Clock className="size-4 text-warning-strong shrink-0" aria-hidden="true" />
+                <span>Aviso enviado ao anfitrião (em conferência)</span>
+              </>
+            ) : (
+              <>
+                <Check className="size-4 text-positive-strong shrink-0" aria-hidden="true" />
+                <span>
+                  {isSignalingPayment
+                    ? "Enviando aviso..."
+                    : hasInstallments && selectedInstallment && !isPayAllRemaining
+                      ? `Já fiz o Pix da Parcela ${selectedInstallment.installment_number}`
+                      : "Já fiz o Pix"}
+                </span>
+              </>
+            )}
+          </Button>
+        )}
 
         {/* Toggle Opcional: QR Code Pix Canvas Client-Side */}
         <Button

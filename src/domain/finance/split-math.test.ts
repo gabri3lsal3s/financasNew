@@ -3,8 +3,11 @@ import {
   buildSplitParticipantInstallments,
   calculateGuestAmountCents,
   calculateInstallmentsProgress,
+  calculateInstallmentReportWeight,
   calculateSplitSummary,
   DEFAULT_SPLIT_REMAINDER_POLICY,
+  isParticipantFullySettled,
+  isSplitFullyCompleted,
   MAX_SPLIT_PARTICIPANTS,
   splitAmountEqually,
   splitCustomWithRemainder,
@@ -368,4 +371,158 @@ describe("split-math (Algoritmo Puro de Rateio de Centavos)", () => {
       expect(progress2.nextPendingInstallment?.installment_number).toBe(2);
     });
   });
+
+  describe("isParticipantFullySettled e isSplitFullyCompleted", () => {
+    it("anfitriao e sempre considerado quitado", () => {
+      expect(isParticipantFullySettled({ share_cents: 5000, is_host: true })).toBe(true);
+    });
+
+    it("participante sem parcelas so e quitado se settled_cents >= share_cents", () => {
+      expect(isParticipantFullySettled({ share_cents: 5000, settled_cents: 2500 })).toBe(false);
+      expect(isParticipantFullySettled({ share_cents: 5000, settled_cents: 5000 })).toBe(true);
+      expect(isParticipantFullySettled({ share_cents: 5000, settled_cents: 6000 })).toBe(true);
+    });
+
+    it("participante com parcelas so e quitado se todas as parcelas estiverem quitadas e cota atingida", () => {
+      const p = { id: "p_2", share_cents: 5000, settled_cents: 2500, is_host: false };
+      const insts = [
+        {
+          id: "p_2_inst_1",
+          participant_id: "p_2",
+          installment_number: 1,
+          total_installments: 2,
+          amount_cents: 2500,
+          due_date: "2026-11-09",
+          is_settled: true,
+          settled_at: "2026-11-09T10:00:00Z",
+          signal_status: "none" as const,
+          signaled_at: null,
+        },
+        {
+          id: "p_2_inst_2",
+          participant_id: "p_2",
+          installment_number: 2,
+          total_installments: 2,
+          amount_cents: 2500,
+          due_date: "2026-12-09",
+          is_settled: false,
+          settled_at: null,
+          signal_status: "none" as const,
+          signaled_at: null,
+        },
+      ];
+
+      // Apenas 1 de 2 pagas -> participante NAO quitado
+      expect(isParticipantFullySettled(p, insts)).toBe(false);
+
+      // Ambas pagas -> participante quitado
+      const fullyPaidInsts = [
+        insts[0]!,
+        { ...insts[1]!, is_settled: true, settled_at: "2026-12-09T10:00:00Z" },
+      ];
+      expect(isParticipantFullySettled({ ...p, settled_cents: 5000 }, fullyPaidInsts)).toBe(true);
+    });
+
+    it("racha so e finalizado se todos os amigos estiverem quitados", () => {
+      const participants = [
+        { id: "p_1", name: "Host", share_cents: 5000, is_host: true, settled_cents: 5000 },
+        { id: "p_2", name: "Amigo 1", share_cents: 5000, is_host: false, settled_cents: 2500 },
+      ];
+      const insts = [
+        {
+          id: "p_2_inst_1",
+          participant_id: "p_2",
+          installment_number: 1,
+          total_installments: 2,
+          amount_cents: 2500,
+          due_date: "2026-11-09",
+          is_settled: true,
+          settled_at: "2026-11-09T10:00:00Z",
+          signal_status: "none" as const,
+          signaled_at: null,
+        },
+        {
+          id: "p_2_inst_2",
+          participant_id: "p_2",
+          installment_number: 2,
+          total_installments: 2,
+          amount_cents: 2500,
+          due_date: "2026-12-09",
+          is_settled: false,
+          settled_at: null,
+          signal_status: "none" as const,
+          signaled_at: null,
+        },
+      ];
+
+      // Quando 1 de 2 parcelas pagas -> racha NAO finalizado
+      expect(isSplitFullyCompleted(participants, insts)).toBe(false);
+
+      // Quando todas as parcelas pagas -> racha finalizado
+      const fullyPaidInsts = [
+        insts[0]!,
+        { ...insts[1]!, is_settled: true, settled_at: "2026-12-09T10:00:00Z" },
+      ];
+      const completedParticipants = [
+        participants[0]!,
+        { ...participants[1]!, settled_cents: 5000 },
+      ];
+      expect(isSplitFullyCompleted(completedParticipants, fullyPaidInsts)).toBe(true);
+    });
+
+    it("impede que racha seja marcado como completo se houver participantes legados sem id com parcelas pendentes", () => {
+      const legacyParticipants = [
+        { name: "Voce (Anfitriao)", share_cents: 25000, is_host: true, settled_cents: 25000 },
+        { name: "Rodrigo", share_cents: 25000, is_host: false, settled_cents: 12500 },
+      ];
+      const insts = [
+        {
+          id: "p_2_inst_1",
+          participant_id: "p_2",
+          installment_number: 1,
+          total_installments: 2,
+          amount_cents: 12500,
+          due_date: "2026-11-09",
+          is_settled: true,
+          settled_at: "2026-11-09T10:00:00Z",
+          signal_status: "none" as const,
+          signaled_at: null,
+        },
+        {
+          id: "p_2_inst_2",
+          participant_id: "p_2",
+          installment_number: 2,
+          total_installments: 2,
+          amount_cents: 12500,
+          due_date: "2026-12-09",
+          is_settled: false,
+          settled_at: null,
+          signal_status: "none" as const,
+          signaled_at: null,
+        },
+      ];
+
+      expect(isSplitFullyCompleted(legacyParticipants, insts)).toBe(false);
+      expect(
+        isParticipantFullySettled(legacyParticipants[1]!, [insts[0]!, insts[1]!])
+      ).toBe(false);
+    });
+  });
+
+  describe("calculateInstallmentReportWeight", () => {
+    it("calcula peso proporcional preciso para fatura parcelada", () => {
+      // Parcela de R$ 50,00 da fatura, amigo reembolsou R$ 25,00 -> peso 0.5 (50% de custo)
+      expect(calculateInstallmentReportWeight(5000, 2500)).toBe(0.5);
+
+      // Fatura de R$ 50,00 sem nenhum reembolso -> peso 1 (100% de custo)
+      expect(calculateInstallmentReportWeight(5000, 0)).toBe(1);
+
+      // Fatura de R$ 50,00 com reembolso integral de R$ 50,00 -> peso 0 (0% de custo)
+      expect(calculateInstallmentReportWeight(5000, 5000)).toBe(0);
+
+      // Se reembolso exceder fatura por anomalia, crava em 0
+      expect(calculateInstallmentReportWeight(5000, 6000)).toBe(0);
+    });
+  });
 });
+

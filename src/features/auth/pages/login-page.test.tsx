@@ -20,6 +20,33 @@ vi.mock("@/hooks/use-auth", () => ({
   signInWithEmail: vi.fn(),
 }));
 
+const getAuthenticatorAssuranceLevelMock = vi.fn().mockResolvedValue({
+  data: { currentLevel: "aal1", nextLevel: "aal1" },
+  error: null,
+});
+const listFactorsMock = vi.fn().mockResolvedValue({
+  data: { totp: [], all: [] },
+  error: null,
+});
+const challengeAndVerifyMock = vi.fn().mockResolvedValue({
+  data: {},
+  error: null,
+});
+const signOutMock = vi.fn().mockResolvedValue({ error: null });
+
+vi.mock("@/data/client", () => ({
+  getSupabase: () => ({
+    auth: {
+      mfa: {
+        getAuthenticatorAssuranceLevel: () => getAuthenticatorAssuranceLevelMock(),
+        listFactors: () => listFactorsMock(),
+        challengeAndVerify: (args: unknown) => challengeAndVerifyMock(args),
+      },
+      signOut: () => signOutMock(),
+    },
+  }),
+}));
+
 vi.mock("@/components/ui/turnstile", () => ({
   Turnstile: ({ onVerify }: { onVerify?: (token: string) => void }) => (
     <div data-testid="turnstile-stub">
@@ -450,5 +477,132 @@ describe("LoginPage - Autenticação e Visibilidade de Senha", () => {
 
     // O botão continua "Entrar" e não está bloqueado
     expect(screen.getByRole("button", { name: "Entrar" })).not.toBeDisabled();
+  });
+});
+
+describe("LoginPage - Desafio de Verificação em Duas Etapas (2FA / TOTP) (SEC-03)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(authHook.useAuth).mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+    getAuthenticatorAssuranceLevelMock.mockResolvedValue({
+      data: { currentLevel: "aal1", nextLevel: "aal1" },
+      error: null,
+    });
+  });
+
+  it("quando o usuário possui 2FA ativo (aal2 pendente), intercepta o login e exibe a tela de desafio TOTP", async () => {
+    vi.mocked(authHook.signInWithEmail).mockResolvedValue(undefined);
+
+    getAuthenticatorAssuranceLevelMock.mockResolvedValue({
+      data: { currentLevel: "aal1", nextLevel: "aal2" },
+      error: null,
+    });
+    listFactorsMock.mockResolvedValue({
+      data: {
+        totp: [{ id: "factor-totp-1", status: "verified" }],
+        all: [],
+      },
+      error: null,
+    });
+
+    renderLoginPage();
+
+    const emailInput = screen.getByLabelText("E-mail");
+    const passwordInput = screen.getByLabelText("Senha");
+    const submitBtn = screen.getByRole("button", { name: "Entrar" });
+
+    fireEvent.change(emailInput, { target: { value: "mfa.user@exemplo.com" } });
+    fireEvent.change(passwordInput, { target: { value: "senhaSegura123" } });
+
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    expect(screen.getByText("Verificação em Duas Etapas")).toBeInTheDocument();
+    expect(screen.getByLabelText("Código de 6 dígitos")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Confirmar Acesso/i })).toBeInTheDocument();
+  });
+
+  it("ao digitar o código correto de 6 dígitos no desafio, invoca challengeAndVerify", async () => {
+    vi.mocked(authHook.signInWithEmail).mockResolvedValue(undefined);
+
+    getAuthenticatorAssuranceLevelMock.mockResolvedValue({
+      data: { currentLevel: "aal1", nextLevel: "aal2" },
+      error: null,
+    });
+    listFactorsMock.mockResolvedValue({
+      data: {
+        totp: [{ id: "factor-totp-1", status: "verified" }],
+        all: [],
+      },
+      error: null,
+    });
+    challengeAndVerifyMock.mockResolvedValue({ data: {}, error: null });
+
+    renderLoginPage();
+
+    fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "mfa.user@exemplo.com" } });
+    fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "senhaSegura123" } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
+    });
+
+    const mfaInput = screen.getByLabelText("Código de 6 dígitos");
+    fireEvent.change(mfaInput, { target: { value: "123456" } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Confirmar Acesso/i }));
+    });
+
+    expect(challengeAndVerifyMock).toHaveBeenCalledWith({
+      factorId: "factor-totp-1",
+      code: "123456",
+    });
+  });
+
+  it("ao clicar em cancelar no desafio de 2FA, executa signOut e retorna à tela de login", async () => {
+    vi.mocked(authHook.signInWithEmail).mockResolvedValue(undefined);
+
+    getAuthenticatorAssuranceLevelMock.mockResolvedValue({
+      data: { currentLevel: "aal1", nextLevel: "aal2" },
+      error: null,
+    });
+    listFactorsMock.mockResolvedValue({
+      data: {
+        totp: [{ id: "factor-totp-1", status: "verified" }],
+        all: [],
+      },
+      error: null,
+    });
+
+    renderLoginPage();
+
+    fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "mfa.user@exemplo.com" } });
+    fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "senhaSegura123" } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
+    });
+
+    expect(screen.getByText("Verificação em Duas Etapas")).toBeInTheDocument();
+
+    const cancelBtn = screen.getByRole("button", { name: /Cancelar e voltar ao login/i });
+    await act(async () => {
+      fireEvent.click(cancelBtn);
+    });
+
+    expect(signOutMock).toHaveBeenCalled();
+    expect(screen.getByLabelText("E-mail")).toBeInTheDocument();
+    expect(screen.getByLabelText("Senha")).toBeInTheDocument();
   });
 });

@@ -21,6 +21,9 @@ export type SubscriptionStatus = {
   /** Tier atual do usuário. */
   tier: SubscriptionTier;
 
+  /** Data de início/ativação da assinatura ou período atual (ISO string, null se não aplicável). */
+  startsAt?: string | null;
+
   /** Dias restantes do trial (0 quando encerrado; null fora do trial). */
   trialDaysRemaining: number | null;
 

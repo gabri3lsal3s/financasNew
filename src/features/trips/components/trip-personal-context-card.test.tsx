@@ -143,4 +143,25 @@ describe("TripPersonalContextCard Component", () => {
     fireEvent.click(statementBtn);
     expect(onOpenStatementMock).toHaveBeenCalled();
   });
+
+  it("renderiza botão de Sair da Viagem para participante convidado e aciona callback", () => {
+    const onLeaveTripMock = vi.fn();
+
+    render(
+      <TripPersonalContextCard
+        trip={trip}
+        myMember={memberBob}
+        myBalance={null}
+        isHost={false}
+        onOpenSettlement={vi.fn()}
+        onLeaveTrip={onLeaveTripMock}
+      />
+    );
+
+    const leaveBtn = screen.getByRole("button", { name: /Sair da Viagem/i });
+    expect(leaveBtn).toBeInTheDocument();
+
+    fireEvent.click(leaveBtn);
+    expect(onLeaveTripMock).toHaveBeenCalled();
+  });
 });

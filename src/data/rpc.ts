@@ -1168,10 +1168,12 @@ export async function signalSplitPayment(params: {
   participantName: string;
   amountCents: number;
   participantId?: string | null;
+  installmentId?: string | null;
 }): Promise<{
   success: boolean;
   signal_id: string;
   participant_matched: boolean;
+  installment_matched?: boolean;
   deduplicated?: boolean;
 }> {
   return unwrapRpc(
@@ -1180,6 +1182,7 @@ export async function signalSplitPayment(params: {
       p_participant_name: params.participantName,
       p_amount_cents: params.amountCents,
       p_participant_id: params.participantId ?? null,
+      p_installment_id: params.installmentId ?? null,
     }),
   );
 }
@@ -1543,6 +1546,7 @@ export async function addPublicTripExpense(input: {
   splits: readonly { member_id: string; share_cents: number }[];
   receiptUrl?: string | null;
   createdByMemberId?: string | null;
+  passcode?: string | null;
 }): Promise<{ success: boolean; expense_id: string }> {
   return unwrapRpc(
     callRpc("add_public_trip_expense" as never, {
@@ -1556,6 +1560,7 @@ export async function addPublicTripExpense(input: {
       p_splits: input.splits,
       p_receipt_url: input.receiptUrl ?? null,
       p_created_by_member_id: input.createdByMemberId ?? null,
+      p_passcode: input.passcode ?? null,
     } as never),
   );
 }

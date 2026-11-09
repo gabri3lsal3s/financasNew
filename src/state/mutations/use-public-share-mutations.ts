@@ -308,6 +308,7 @@ export function useSignalSplitPayment() {
       participantName: string;
       amountCents: number;
       participantId?: string | null;
+      installmentId?: string | null;
     }) => signalSplitPayment(params),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });

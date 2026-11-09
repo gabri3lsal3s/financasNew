@@ -19,15 +19,15 @@ describe("SharedFinancesShowcase — Cards Visuais do Eixo 4", () => {
     expect(screen.getByTestId("card-racha")).toBeVisible();
     expect(screen.getByText("Churrasco de Confraternização")).toBeInTheDocument();
     expect(screen.getByText("2 de 3 pagaram")).toBeInTheDocument();
-    expect(screen.getByText("Mariana Costa")).toBeInTheDocument();
+    expect(screen.getAllByText("Mariana Costa")[0]).toBeInTheDocument();
     expect(screen.getByText("Lucas Oliveira")).toBeInTheDocument();
     expect(screen.getByText("Beatriz Souza")).toBeInTheDocument();
 
-    const copyBtn = screen.getByRole("button", { name: /Copiar Pix/i });
+    const copyBtn = screen.getAllByRole("button", { name: /Copiar Pix/i })[0]!;
     await user.click(copyBtn);
     expect(screen.getByText("Pix Copiado")).toBeInTheDocument();
 
-    const whatsAppBtn = screen.getByRole("button", { name: /Cobrar no WhatsApp/i });
+    const whatsAppBtn = screen.getAllByRole("button", { name: /Cobrar no WhatsApp/i })[0]!;
     await user.click(whatsAppBtn);
     expect(screen.getByText("Lembrete Enviado")).toBeInTheDocument();
   });
@@ -45,7 +45,7 @@ describe("SharedFinancesShowcase — Cards Visuais do Eixo 4", () => {
     expect(screen.getByText("75% Atual")).toBeInTheDocument();
     expect(screen.getByText(/Restam 14 dias para encerrar/i)).toBeInTheDocument();
 
-    const copyKeyBtn = screen.getByRole("button", { name: /Copiar Chave Pix/i });
+    const copyKeyBtn = screen.getAllByRole("button", { name: /Copiar Chave Pix/i })[0]!;
     await user.click(copyKeyBtn);
     expect(screen.getByText("Chave Pix Copiada")).toBeInTheDocument();
   });

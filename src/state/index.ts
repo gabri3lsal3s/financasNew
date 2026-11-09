@@ -5,7 +5,7 @@ export { useAllCardExpenses, useAllCardPayments, type UseAllCardQueryOptions } f
 export { useDebts } from "./queries/use-debts";
 export { useBudgets } from "./queries/use-budgets";
 export { useIncomeGoals } from "./queries/use-income-goals";
-export { useExpenses, useExpense, useExpensesByRange } from "./queries/use-expenses";
+export { useExpenses, useExpense, useExpensesByRange, useExpensesByInstallmentGroup } from "./queries/use-expenses";
 export { useIncomes, useIncomesByRange } from "./queries/use-incomes";
 export { useRecurrences } from "./queries/use-recurrences";
 export { useCreateExpense, useDeleteExpense, useUpdateExpense, useUpdateExpenseGrouped } from "./mutations/use-expense-mutations";

@@ -51,6 +51,7 @@ export async function getMySubscription(): Promise<SubscriptionStatus | null> {
 
     return {
       tier,
+      startsAt: raw.starts_at ?? null,
       trialDaysRemaining: raw.trial_days_remaining,
       trialEndsAt: raw.trial_ends_at,
       currentPeriodEnd: raw.current_period_end,

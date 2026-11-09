@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -17,6 +17,7 @@ import {
   Receipt,
   FileText,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -30,7 +31,7 @@ import {
   ConfirmDialog,
 } from "@/components/ui";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
-import { useUserSubscription } from "@/state";
+import { useUserSubscription, USER_SUBSCRIPTION_KEY } from "@/state";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
@@ -40,6 +41,7 @@ import {
   updateSubscriptionCreditCard,
 } from "@/data/repositories/billing";
 import { cn } from "@/lib/utils";
+import { calculateGuaranteeResidual } from "@/domain/subscription";
 import type { SubscriptionPlan, SubscriptionStatus } from "@/types";
 
 /**
@@ -54,12 +56,28 @@ import type { SubscriptionPlan, SubscriptionStatus } from "@/types";
  */
 export function SubscriptionTab() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const subscription = useUserSubscription();
 
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [updateCardOpen, setUpdateCardOpen] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
+
+  const { isWithinGuarantee, daysRemaining: guaranteeDaysRemaining } = useMemo(() => {
+    return calculateGuaranteeResidual({
+      startsAt: subscription.startsAt,
+      isPro: subscription.isPro,
+    });
+  }, [subscription.startsAt, subscription.isPro]);
+
+  const currentPeriodFormatted = subscription.currentPeriodEnd
+    ? new Date(subscription.currentPeriodEnd).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })
+    : null;
 
   const handleProceedToCheckout = (plan: SubscriptionPlan) => {
     setUpgradeOpen(false);
@@ -70,12 +88,22 @@ export function SubscriptionTab() {
     setIsCanceling(true);
     try {
       await cancelSubscription();
+      await queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
       triggerSensory("destructive");
-      pushToast({
-        title: "Cancelamento registrado",
-        description: "Seu plano permanece ativo até o fim do período já pago.",
-        variant: "default",
-      });
+      if (isWithinGuarantee) {
+        pushToast({
+          title: "Assinatura cancelada e estornada",
+          description:
+            "O reembolso integral de 7 dias foi solicitado ao Asaas e seu acesso Pro foi revogado.",
+          variant: "default",
+        });
+      } else {
+        pushToast({
+          title: "Cancelamento registrado",
+          description: "Seu plano permanece ativo normalmente até o fim do período já pago.",
+          variant: "default",
+        });
+      }
       setCancelOpen(false);
     } catch (err: unknown) {
       triggerSensory("destructive");
@@ -185,14 +213,43 @@ export function SubscriptionTab() {
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Sua assinatura não será renovada ao final do ciclo atual. Seu acesso Pro permanece
-                  ativo normalmente até o término do período pago e todos os seus dados ficam
+                  ativo normalmente até o término do período pago ({currentPeriodFormatted || "fim do ciclo"}) e todos os seus dados ficam
                   preservados.
                 </p>
+              </div>
+            ) : isWithinGuarantee ? (
+              <div className="space-y-3">
+                <div className="rounded-xl border border-positive/30 bg-positive/5 p-3.5 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="positive" size="xs">
+                      Garantia incondicional ativa
+                    </Badge>
+                    <span className="text-[11px] text-muted-foreground">
+                      {guaranteeDaysRemaining} {guaranteeDaysRemaining === 1 ? "dia restante" : "dias restantes"} para arrependimento
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Você está no prazo legal de 7 dias (CDC). Ao cancelar agora, o valor pago será
+                    estornado integralmente pelo Asaas no seu cartão ou conta Pix e o acesso Pro será
+                    encerrado imediatamente.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  disabled={isCanceling}
+                  onClick={() => setCancelOpen(true)}
+                  className="gap-2 cursor-pointer"
+                >
+                  <XCircle className="size-4" aria-hidden="true" />
+                  Cancelar Assinatura e Reembolsar
+                </Button>
               </div>
             ) : (
               <>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Ao cancelar, seu acesso Pro permanece ativo até o fim do período já pago. Todos
+                  Ao cancelar, seu acesso Pro permanece ativo até {currentPeriodFormatted || "o fim do período já pago"}. Todos
                   os seus dados e relatórios são preservados para sempre — você poderá reativar o Pro a qualquer
                   momento em 1 clique.
                 </p>
@@ -205,7 +262,7 @@ export function SubscriptionTab() {
                   className="gap-2 cursor-pointer"
                 >
                   <XCircle className="size-4" aria-hidden="true" />
-                  Cancelar Assinatura
+                  Cancelar Renovação da Assinatura
                 </Button>
               </>
             )}
@@ -223,9 +280,23 @@ export function SubscriptionTab() {
       <ConfirmDialog
         open={cancelOpen}
         onOpenChange={setCancelOpen}
-        title="Cancelar renovação da assinatura Pro?"
-        description="Seu plano continuará ativo normalmente até o término do período já pago. Nenhum dado será excluído e você poderá reativar a qualquer momento."
-        confirmLabel={isCanceling ? "Cancelando..." : "Confirmar Cancelamento"}
+        title={
+          isWithinGuarantee
+            ? "Cancelar assinatura e solicitar estorno integral?"
+            : "Cancelar renovação da assinatura Pro?"
+        }
+        description={
+          isWithinGuarantee
+            ? "Você está dentro do prazo legal de 7 dias de garantia. Ao confirmar, o valor pago será estornado integralmente pelo Asaas no seu cartão ou conta Pix e o seu acesso Pro será encerrado imediatamente."
+            : `Sua assinatura não será renovada ao final do ciclo. Você continuará com acesso Pro completo normalmente até ${currentPeriodFormatted || "o fim do período já pago"} e seus dados serão preservados.`
+        }
+        confirmLabel={
+          isCanceling
+            ? "Processando..."
+            : isWithinGuarantee
+            ? "Confirmar Cancelamento e Estorno"
+            : "Confirmar Cancelamento da Renovação"
+        }
         variant="destructive"
         onConfirm={() => { void handleCancelConfirm(); }}
       />
