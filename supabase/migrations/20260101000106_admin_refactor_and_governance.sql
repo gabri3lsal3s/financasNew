@@ -125,11 +125,11 @@ create policy broadcast_notifications_select on public.admin_broadcast_notificat
     or (target_audience = 'specific_users' and (auth.uid() = any(target_user_ids)))
     or (target_audience = 'pro' and exists (
       select 1 from public.user_subscriptions s
-      where s.user_id = auth.uid() and s.status in ('active', 'trialing') and s.tier in ('pro', 'lifetime')
+      where s.user_id = auth.uid() and s.status in ('active', 'trialing') and s.tier in ('pro_monthly', 'pro_annual', 'lifetime')
     ))
     or (target_audience = 'free' and not exists (
       select 1 from public.user_subscriptions s
-      where s.user_id = auth.uid() and s.status in ('active', 'trialing') and s.tier in ('pro', 'lifetime')
+      where s.user_id = auth.uid() and s.status in ('active', 'trialing') and s.tier in ('pro_monthly', 'pro_annual', 'lifetime')
     ))
   );
 
@@ -237,11 +237,11 @@ as $$
     or (b.target_audience = 'specific_users' and (auth.uid() = any(b.target_user_ids)))
     or (b.target_audience = 'pro' and exists (
       select 1 from public.user_subscriptions s
-      where s.user_id = auth.uid() and s.status in ('active', 'trialing') and s.tier in ('pro', 'lifetime')
+      where s.user_id = auth.uid() and s.status in ('active', 'trialing') and s.tier in ('pro_monthly', 'pro_annual', 'lifetime')
     ))
     or (b.target_audience = 'free' and not exists (
       select 1 from public.user_subscriptions s
-      where s.user_id = auth.uid() and s.status in ('active', 'trialing') and s.tier in ('pro', 'lifetime')
+      where s.user_id = auth.uid() and s.status in ('active', 'trialing') and s.tier in ('pro_monthly', 'pro_annual', 'lifetime')
     ))
   )
   and (r.dismissed_at is null)
