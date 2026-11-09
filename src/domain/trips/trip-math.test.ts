@@ -5,6 +5,7 @@ import {
   calculateSimplifiedSettlements,
   calculateLinkedExpenseWeight,
   getMemberExpenseStatement,
+  type SettlementItemForBalance,
 } from "./trip-math";
 
 describe("trip-math: calculateEqualSplits", () => {
@@ -204,6 +205,214 @@ describe("trip-math: calculateMemberBalances", () => {
     expect(bTiago?.totalOwedCents).toBe(0);
     expect(bPedro?.totalOwedCents).toBe(2000);
     expect(bGabriel?.totalOwedCents).toBe(4000);
+  });
+
+  it("abate integralmente dívida com settlement confirmado e zera transferências sugeridas", () => {
+    const members = [
+      { id: "m1", name: "Gabriel" },
+      { id: "m2", name: "Pedro" },
+    ];
+
+    // Gabriel pagou R$ 100,00 (50 para cada)
+    const expenses = [
+      {
+        paid_by_member_id: "m1",
+        amount_cents: 10000,
+        splits: [
+          { member_id: "m1", share_cents: 5000 },
+          { member_id: "m2", share_cents: 5000 },
+        ],
+      },
+    ];
+
+    // Sem settlements: Gabriel tem +5000, Pedro tem -5000
+    const initialBalances = calculateMemberBalances(members, expenses);
+    expect(initialBalances.find((b) => b.memberId === "m1")?.netBalanceCents).toBe(5000);
+    expect(initialBalances.find((b) => b.memberId === "m2")?.netBalanceCents).toBe(-5000);
+
+    // Pedro paga R$ 50,00 via Pix a Gabriel
+    const settlements: SettlementItemForBalance[] = [
+      {
+        from_member_id: "m2",
+        to_member_id: "m1",
+        amount_cents: 5000,
+        status: "confirmed",
+      },
+    ];
+
+    const finalBalances = calculateMemberBalances(members, expenses, settlements);
+    const bGabriel = finalBalances.find((b) => b.memberId === "m1");
+    const bPedro = finalBalances.find((b) => b.memberId === "m2");
+
+    expect(bGabriel?.netBalanceCents).toBe(0);
+    expect(bPedro?.netBalanceCents).toBe(0);
+
+    const netSum = finalBalances.reduce((acc, b) => acc + b.netBalanceCents, 0);
+    expect(netSum).toBe(0);
+
+    // As transferências sugeridas devem ficar vazias após a quitação integral
+    const suggested = calculateSimplifiedSettlements(finalBalances);
+    expect(suggested).toEqual([]);
+  });
+
+  it("abate saldos gradualmente com pagamentos parciais e resíduos de centavos", () => {
+    // 3 membros dividem R$ 100,00 (10000 centavos) pagos por Gabriel
+    // Cotas: Gabriel = 3334, Pedro = 3333, Tiago = 3333
+    const members = [
+      { id: "m1", name: "Gabriel" },
+      { id: "m2", name: "Pedro" },
+      { id: "m3", name: "Tiago" },
+    ];
+
+    const expenses = [
+      {
+        paid_by_member_id: "m1",
+        amount_cents: 10000,
+        splits: [
+          { member_id: "m1", share_cents: 3334 },
+          { member_id: "m2", share_cents: 3333 },
+          { member_id: "m3", share_cents: 3333 },
+        ],
+      },
+    ];
+
+    // Etapa 1: Pedro faz pagamento parcial de R$ 20,00 (2000 centavos) registrado (pending)
+    const settlements1: SettlementItemForBalance[] = [
+      {
+        from_member_id: "m2",
+        to_member_id: "m1",
+        amount_cents: 2000,
+        status: "pending",
+      },
+    ];
+
+    const balances1 = calculateMemberBalances(members, expenses, settlements1);
+    const bGabriel1 = balances1.find((b) => b.memberId === "m1");
+    const bPedro1 = balances1.find((b) => b.memberId === "m2");
+    const bTiago1 = balances1.find((b) => b.memberId === "m3");
+
+    // Gabriel: pagou 10000 - 2000 = 8000, cota 3334 -> saldo +4666
+    expect(bGabriel1?.totalPaidCents).toBe(8000);
+    expect(bGabriel1?.netBalanceCents).toBe(4666);
+
+    // Pedro: pagou 2000, cota 3333 -> saldo -1333 (ainda deve R$ 13,33)
+    expect(bPedro1?.totalPaidCents).toBe(2000);
+    expect(bPedro1?.netBalanceCents).toBe(-1333);
+
+    // Tiago: intocado, deve 3333 -> saldo -3333
+    expect(bTiago1?.netBalanceCents).toBe(-3333);
+
+    // Invariante de conservação estrita de resíduos de centavos
+    const netSum1 = balances1.reduce((acc, b) => acc + b.netBalanceCents, 0);
+    expect(netSum1).toBe(0);
+
+    // Transferências sugeridas recalculadas: Pedro deve 13,33 e Tiago deve 33,33
+    const suggested1 = calculateSimplifiedSettlements(balances1);
+    expect(suggested1).toHaveLength(2);
+    expect(suggested1.find((s) => s.fromMemberId === "m2")?.amountCents).toBe(1333);
+    expect(suggested1.find((s) => s.fromMemberId === "m3")?.amountCents).toBe(3333);
+
+    // Etapa 2: Pedro quita o restante (R$ 13,33)
+    const settlements2: SettlementItemForBalance[] = [
+      ...settlements1,
+      {
+        from_member_id: "m2",
+        to_member_id: "m1",
+        amount_cents: 1333,
+        status: "confirmed",
+      },
+    ];
+
+    const balances2 = calculateMemberBalances(members, expenses, settlements2);
+    const bPedro2 = balances2.find((b) => b.memberId === "m2");
+    const bGabriel2 = balances2.find((b) => b.memberId === "m1");
+    expect(bPedro2?.netBalanceCents).toBe(0);
+    expect(bGabriel2?.netBalanceCents).toBe(3333);
+
+    const suggested2 = calculateSimplifiedSettlements(balances2);
+    expect(suggested2).toHaveLength(1);
+    expect(suggested2[0]).toEqual(
+      expect.objectContaining({
+        fromMemberId: "m3",
+        toMemberId: "m1",
+        amountCents: 3333,
+      })
+    );
+
+    // Etapa 3: Tiago quita integralmente os R$ 33,33
+    const settlements3: SettlementItemForBalance[] = [
+      ...settlements2,
+      {
+        from_member_id: "m3",
+        to_member_id: "m1",
+        amount_cents: 3333,
+        status: "confirmed",
+      },
+    ];
+
+    const balances3 = calculateMemberBalances(members, expenses, settlements3);
+    expect(balances3.every((b) => b.netBalanceCents === 0)).toBe(true);
+    expect(calculateSimplifiedSettlements(balances3)).toEqual([]);
+  });
+
+  it("ignora settlements cancelados, rejeitados ou com valor não positivo", () => {
+    const members = [
+      { id: "m1", name: "Gabriel" },
+      { id: "m2", name: "Pedro" },
+    ];
+
+    const expenses = [
+      {
+        paid_by_member_id: "m1",
+        amount_cents: 6000,
+        splits: [
+          { member_id: "m1", share_cents: 3000 },
+          { member_id: "m2", share_cents: 3000 },
+        ],
+      },
+    ];
+
+    const settlements: SettlementItemForBalance[] = [
+      {
+        from_member_id: "m2",
+        to_member_id: "m1",
+        amount_cents: 3000,
+        status: "cancelled",
+      },
+      {
+        from_member_id: "m2",
+        to_member_id: "m1",
+        amount_cents: 3000,
+        status: "rejected",
+      },
+      {
+        from_member_id: "m2",
+        to_member_id: "m1",
+        amount_cents: 0,
+        status: "confirmed",
+      },
+      {
+        from_member_id: "m2",
+        to_member_id: "m2", // auto-transferência
+        amount_cents: 2000,
+        status: "confirmed",
+      },
+      {
+        from_member_id: "m2",
+        to_member_id: "m_inexistente",
+        amount_cents: 2000,
+        status: "confirmed",
+      },
+    ];
+
+    const balances = calculateMemberBalances(members, expenses, settlements);
+    const bGabriel = balances.find((b) => b.memberId === "m1");
+    const bPedro = balances.find((b) => b.memberId === "m2");
+
+    // Saldos continuam inalterados pois os acertos eram inválidos ou cancelados
+    expect(bGabriel?.netBalanceCents).toBe(3000);
+    expect(bPedro?.netBalanceCents).toBe(-3000);
+    expect(balances.reduce((acc, b) => acc + b.netBalanceCents, 0)).toBe(0);
   });
 });
 

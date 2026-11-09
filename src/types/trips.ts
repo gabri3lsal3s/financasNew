@@ -161,3 +161,131 @@ export type SuggestedSettlement = {
   toPixKeyType?: TripPixKeyType | null;
   amountCents: number;
 };
+
+// ---------------------------------------------------------------------------
+// Tipos para Cálculo de Balanços e Liquidação (trip-math)
+// ---------------------------------------------------------------------------
+
+/**
+ * Item de liquidação/acerto (settlement) considerado no cálculo de balanços do grupo.
+ * Compatível com TripSettlement e PublicTripSettlement.
+ */
+export interface SettlementItemForBalance {
+  id?: string;
+  from_member_id: string;
+  to_member_id: string;
+  amount_cents: number;
+  status?: TripSettlementStatus | string | null;
+}
+
+export type TripSettlementForBalance = SettlementItemForBalance;
+
+/**
+ * Item de membro para cálculo de balanços.
+ */
+export interface MemberItemForBalance {
+  id: string;
+  name: string;
+  pix_key?: string | null;
+  pix_key_type?: TripPixKeyType | null;
+  joined_date?: string | null;
+}
+
+/**
+ * Item de despesa para cálculo de balanços.
+ */
+export interface ExpenseItemForBalance {
+  id?: string;
+  description?: string;
+  category_name?: string;
+  paid_by_member_id: string;
+  amount_cents: number;
+  expense_date?: string | null;
+  split_type?: TripSplitType | string | null;
+  splits?: readonly {
+    member_id: string;
+    share_cents: number;
+  }[];
+}
+
+// ---------------------------------------------------------------------------
+// Contratos RPCs: Vínculo Multi-Contas e Exclusão Sincronizada (Plano 16)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parâmetros brutos da RPC claim_trip_member.
+ */
+export interface ClaimTripMemberRpcArgs {
+  p_trip_token: string;
+  p_member_id: string;
+  p_passcode?: string | null;
+}
+
+/**
+ * Parâmetros de entrada para reivindicar/vincular conta a um participante de viagem.
+ */
+export interface ClaimTripMemberInput {
+  tripToken: string;
+  memberId: string;
+  passcode?: string | null;
+}
+
+/**
+ * Retorno da RPC claim_trip_member.
+ */
+export interface ClaimTripMemberResult {
+  success: boolean;
+  trip_id: string;
+  member_id: string;
+  user_id: string;
+}
+
+/**
+ * Parâmetros brutos da RPC unlink_trip_member.
+ */
+export interface UnlinkTripMemberRpcArgs {
+  p_trip_id: string;
+  p_member_id: string;
+}
+
+/**
+ * Parâmetros de entrada para desvincular conta de participante de viagem.
+ */
+export interface UnlinkTripMemberInput {
+  tripId: string;
+  memberId: string;
+}
+
+/**
+ * Retorno da RPC unlink_trip_member.
+ */
+export interface UnlinkTripMemberResult {
+  success: boolean;
+  member_id: string;
+}
+
+/**
+ * Parâmetros brutos da RPC delete_trip_expense_sync.
+ */
+export interface DeleteTripExpenseSyncRpcArgs {
+  p_expense_id: string;
+  p_delete_personal?: boolean;
+}
+
+/**
+ * Parâmetros de entrada para exclusão sincronizada de despesa de viagem.
+ */
+export interface DeleteTripExpenseSyncInput {
+  expenseId: string;
+  deletePersonal?: boolean;
+}
+
+/**
+ * Retorno da RPC delete_trip_expense_sync.
+ */
+export interface DeleteTripExpenseSyncResult {
+  success: boolean;
+  deleted_trip_expense_id: string;
+  deleted_personal_expense: boolean;
+}
+

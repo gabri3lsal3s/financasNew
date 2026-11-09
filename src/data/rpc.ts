@@ -25,7 +25,12 @@ import type {
   MonthlyClosingPayload,
   MonthlyClosingResult,
 } from "@/types";
-import type { Trip } from "@/types/trips";
+import type {
+  Trip,
+  ClaimTripMemberResult,
+  UnlinkTripMemberResult,
+  DeleteTripExpenseSyncResult,
+} from "@/types/trips";
 
 /**
  * Wrappers tipados dos RPCs transacionais (D1).
@@ -1600,4 +1605,52 @@ export async function createTripRpc(input: {
     } as never),
   );
 }
+
+/**
+ * Reivindica e vincula a conta do usuário logado a um participante de viagem via RPC claim_trip_member.
+ */
+export async function claimTripMemberRpc(params: {
+  tripToken: string;
+  memberId: string;
+  passcode?: string | null;
+}): Promise<ClaimTripMemberResult> {
+  return unwrapRpc(
+    callRpc("claim_trip_member" as never, {
+      p_trip_token: params.tripToken,
+      p_member_id: params.memberId,
+      p_passcode: params.passcode ?? null,
+    } as never),
+  );
+}
+
+/**
+ * Desvincula a conta de um participante da viagem via RPC unlink_trip_member.
+ */
+export async function unlinkTripMemberRpc(params: {
+  tripId: string;
+  memberId: string;
+}): Promise<UnlinkTripMemberResult> {
+  return unwrapRpc(
+    callRpc("unlink_trip_member" as never, {
+      p_trip_id: params.tripId,
+      p_member_id: params.memberId,
+    } as never),
+  );
+}
+
+/**
+ * Exclui de forma sincronizada uma despesa de viagem e, opcionalmente, sua despesa pessoal vinculada via RPC delete_trip_expense_sync.
+ */
+export async function deleteTripExpenseSyncRpc(params: {
+  expenseId: string;
+  deletePersonal?: boolean;
+}): Promise<DeleteTripExpenseSyncResult> {
+  return unwrapRpc(
+    callRpc("delete_trip_expense_sync" as never, {
+      p_expense_id: params.expenseId,
+      p_delete_personal: params.deletePersonal ?? false,
+    } as never),
+  );
+}
+
 

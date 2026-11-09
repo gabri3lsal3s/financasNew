@@ -12,6 +12,9 @@ import {
   recordFamilySettlement,
   commitMonthlyClosingRpc,
   approveDividendsBatchRpc,
+  claimTripMemberRpc,
+  unlinkTripMemberRpc,
+  deleteTripExpenseSyncRpc,
 } from "./rpc";
 import { AppError } from "@/services/errors";
 import type { FamilyConsolidationResult } from "@/types";
@@ -617,6 +620,137 @@ describe("RPC: Exclusão de Contas e Usuários", () => {
           sync_cash: false,
         }),
       ).rejects.toThrow(AppError);
+    });
+  });
+
+  describe("RPCs: Modo Viagem Colaborativo (Plano 16)", () => {
+    describe("claimTripMemberRpc", () => {
+      it("deve chamar claim_trip_member com parâmetros corretos e retornar resultado", async () => {
+        const mockResult = {
+          success: true,
+          trip_id: "trip-uuid-1",
+          member_id: "member-uuid-1",
+          user_id: "user-uuid-1",
+        };
+        rpcMock.mockResolvedValueOnce({ data: mockResult, error: null });
+
+        const result = await claimTripMemberRpc({
+          tripToken: "tok-abc",
+          memberId: "member-uuid-1",
+          passcode: "1234",
+        });
+
+        expect(result).toEqual(mockResult);
+        expect(rpcMock).toHaveBeenCalledWith("claim_trip_member", {
+          p_trip_token: "tok-abc",
+          p_member_id: "member-uuid-1",
+          p_passcode: "1234",
+        });
+      });
+
+      it("deve propagar AppError quando a RPC claim_trip_member falhar", async () => {
+        rpcMock.mockResolvedValueOnce({
+          data: null,
+          error: { message: "Código de acesso incorreto.", code: "P0001" },
+        });
+
+        await expect(
+          claimTripMemberRpc({
+            tripToken: "tok-abc",
+            memberId: "member-uuid-1",
+            passcode: "wrong",
+          }),
+        ).rejects.toThrow(AppError);
+      });
+    });
+
+    describe("unlinkTripMemberRpc", () => {
+      it("deve chamar unlink_trip_member com parâmetros corretos", async () => {
+        const mockResult = {
+          success: true,
+          member_id: "member-uuid-1",
+        };
+        rpcMock.mockResolvedValueOnce({ data: mockResult, error: null });
+
+        const result = await unlinkTripMemberRpc({
+          tripId: "trip-uuid-1",
+          memberId: "member-uuid-1",
+        });
+
+        expect(result).toEqual(mockResult);
+        expect(rpcMock).toHaveBeenCalledWith("unlink_trip_member", {
+          p_trip_id: "trip-uuid-1",
+          p_member_id: "member-uuid-1",
+        });
+      });
+
+      it("deve propagar AppError se a RPC unlink_trip_member falhar", async () => {
+        rpcMock.mockResolvedValueOnce({
+          data: null,
+          error: { message: "Sem permissão para desvincular.", code: "42501" },
+        });
+
+        await expect(
+          unlinkTripMemberRpc({
+            tripId: "trip-uuid-1",
+            memberId: "member-uuid-1",
+          }),
+        ).rejects.toThrow(AppError);
+      });
+    });
+
+    describe("deleteTripExpenseSyncRpc", () => {
+      it("deve chamar delete_trip_expense_sync com parâmetros corretos", async () => {
+        const mockResult = {
+          success: true,
+          deleted_trip_expense_id: "exp-uuid-1",
+          deleted_personal_expense: true,
+        };
+        rpcMock.mockResolvedValueOnce({ data: mockResult, error: null });
+
+        const result = await deleteTripExpenseSyncRpc({
+          expenseId: "exp-uuid-1",
+          deletePersonal: true,
+        });
+
+        expect(result).toEqual(mockResult);
+        expect(rpcMock).toHaveBeenCalledWith("delete_trip_expense_sync", {
+          p_expense_id: "exp-uuid-1",
+          p_delete_personal: true,
+        });
+      });
+
+      it("deve usar deletePersonal=false como padrão", async () => {
+        const mockResult = {
+          success: true,
+          deleted_trip_expense_id: "exp-uuid-1",
+          deleted_personal_expense: false,
+        };
+        rpcMock.mockResolvedValueOnce({ data: mockResult, error: null });
+
+        const result = await deleteTripExpenseSyncRpc({
+          expenseId: "exp-uuid-1",
+        });
+
+        expect(result).toEqual(mockResult);
+        expect(rpcMock).toHaveBeenCalledWith("delete_trip_expense_sync", {
+          p_expense_id: "exp-uuid-1",
+          p_delete_personal: false,
+        });
+      });
+
+      it("deve propagar AppError caso delete_trip_expense_sync falhe", async () => {
+        rpcMock.mockResolvedValueOnce({
+          data: null,
+          error: { message: "Despesa não encontrada.", code: "P0002" },
+        });
+
+        await expect(
+          deleteTripExpenseSyncRpc({
+            expenseId: "exp-uuid-not-found",
+          }),
+        ).rejects.toThrow(AppError);
+      });
     });
   });
 });

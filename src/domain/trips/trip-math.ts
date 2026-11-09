@@ -13,9 +13,16 @@
 import type {
   TripMemberBalance,
   SuggestedSettlement,
-  TripPixKeyType,
-  TripSplitType,
+  ExpenseItemForBalance,
+  MemberItemForBalance,
+  SettlementItemForBalance,
 } from "@/types/trips";
+
+export type {
+  ExpenseItemForBalance,
+  MemberItemForBalance,
+  SettlementItemForBalance,
+};
 
 export interface CalculateSplitsInput {
   totalAmountCents: number;
@@ -69,27 +76,7 @@ export function calculateEqualSplits(
   });
 }
 
-export interface ExpenseItemForBalance {
-  id?: string;
-  description?: string;
-  category_name?: string;
-  paid_by_member_id: string;
-  amount_cents: number;
-  expense_date?: string | null;
-  split_type?: TripSplitType | string | null;
-  splits?: readonly {
-    member_id: string;
-    share_cents: number;
-  }[];
-}
 
-export interface MemberItemForBalance {
-  id: string;
-  name: string;
-  pix_key?: string | null;
-  pix_key_type?: TripPixKeyType | null;
-  joined_date?: string | null;
-}
 
 /**
  * Computa o saldo líquido de cada membro em centavos inteiros:
@@ -98,10 +85,16 @@ export interface MemberItemForBalance {
  * Para despesas com split_type === 'custom' e cotas informadas, respeita a distribuição gravada.
  * Para despesas de divisão igualitária (split_type !== 'custom' ou sem cotas),
  * divide igualmente entre os membros elegíveis (membros sem restrição de joined_date ou que entraram até a data da despesa).
+ *
+ * Incorpora os acertos registrados/confirmados em `settlements` (Motor de Liquidação Real):
+ * - Somar `amount_cents` aos pagamentos efetuados pelo devedor (`from_member_id`).
+ * - Deduzir do crédito do credor (`to_member_id`).
+ * - Invariante estrita de conservação: soma(netBalanceCents) === 0.
  */
 export function calculateMemberBalances(
   members: readonly MemberItemForBalance[],
-  expenses: readonly ExpenseItemForBalance[]
+  expenses: readonly ExpenseItemForBalance[],
+  settlements?: readonly SettlementItemForBalance[]
 ): readonly TripMemberBalance[] {
   const paidMap = new Map<string, number>();
   const owedMap = new Map<string, number>();
@@ -149,6 +142,30 @@ export function calculateMemberBalances(
       for (const split of equalSplits) {
         const currentOwed = owedMap.get(split.memberId) ?? 0;
         owedMap.set(split.memberId, currentOwed + split.shareCents);
+      }
+    }
+  }
+
+  if (settlements && settlements.length > 0) {
+    for (const settlement of settlements) {
+      if (settlement.amount_cents <= 0) continue;
+      if (settlement.from_member_id === settlement.to_member_id) continue;
+      if (
+        settlement.status === "cancelled" ||
+        settlement.status === "rejected"
+      ) {
+        continue;
+      }
+
+      if (
+        memberIdSet.has(settlement.from_member_id) &&
+        memberIdSet.has(settlement.to_member_id)
+      ) {
+        const currentFromPaid = paidMap.get(settlement.from_member_id) ?? 0;
+        paidMap.set(settlement.from_member_id, currentFromPaid + settlement.amount_cents);
+
+        const currentToPaid = paidMap.get(settlement.to_member_id) ?? 0;
+        paidMap.set(settlement.to_member_id, currentToPaid - settlement.amount_cents);
       }
     }
   }

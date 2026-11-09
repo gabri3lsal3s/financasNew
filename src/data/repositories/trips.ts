@@ -14,6 +14,9 @@ import {
   addPublicTripExpense as addPublicTripExpenseRpc,
   recordTripSettlementsRpc,
   createTripRpc,
+  claimTripMemberRpc,
+  unlinkTripMemberRpc,
+  deleteTripExpenseSyncRpc,
 } from "@/data/rpc";
 import type {
   Trip,
@@ -24,6 +27,9 @@ import type {
   TripSplitType,
   TripPixKeyType,
   PublicTripLedgerData,
+  ClaimTripMemberResult,
+  UnlinkTripMemberResult,
+  DeleteTripExpenseSyncResult,
 } from "@/types/trips";
 
 export interface CreateTripInput {
@@ -87,6 +93,12 @@ function handleDbError(error: unknown, fallbackMessage: string): never {
   throw new AppError(classified.kind, classified.message || fallbackMessage, error);
 }
 
+/**
+ * Retorna as viagens do usuário autenticado (onde é host ou participante vinculado).
+ * O RLS em trips garante que viagens onde o usuário é anfitrião (host_user_id = auth.uid())
+ * ou participante vinculado (public.is_trip_member(id, auth.uid())) sejam carregadas
+ * de forma transparente, ordenadas da mais recente para a mais antiga.
+ */
 export async function getUserTrips(): Promise<Trip[]> {
   try {
     const uid = await currentUserId();
@@ -516,3 +528,57 @@ export async function confirmTripSettlement(settlementId: string): Promise<void>
   );
   if (error) handleDbError(error, "Erro ao confirmar liquidação");
 }
+
+/**
+ * Reivindica e vincula a conta do usuário autenticado a um participante de viagem via RPC claim_trip_member.
+ */
+export async function claimTripMember(
+  token: string,
+  memberId: string,
+  passcode?: string | null
+): Promise<ClaimTripMemberResult> {
+  try {
+    return await claimTripMemberRpc({
+      tripToken: token,
+      memberId,
+      passcode,
+    });
+  } catch (error) {
+    handleDbError(error, "Erro ao vincular conta ao participante da viagem");
+  }
+}
+
+/**
+ * Desvincula a conta de um participante de viagem via RPC unlink_trip_member.
+ */
+export async function unlinkTripMember(
+  tripId: string,
+  memberId: string
+): Promise<UnlinkTripMemberResult> {
+  try {
+    return await unlinkTripMemberRpc({
+      tripId,
+      memberId,
+    });
+  } catch (error) {
+    handleDbError(error, "Erro ao desvincular conta do participante da viagem");
+  }
+}
+
+/**
+ * Exclui de forma sincronizada uma despesa de viagem e, opcionalmente, sua despesa pessoal vinculada via RPC delete_trip_expense_sync.
+ */
+export async function deleteTripExpenseSync(
+  expenseId: string,
+  deletePersonal: boolean = false
+): Promise<DeleteTripExpenseSyncResult> {
+  try {
+    return await deleteTripExpenseSyncRpc({
+      expenseId,
+      deletePersonal,
+    });
+  } catch (error) {
+    handleDbError(error, "Erro ao excluir despesa da viagem");
+  }
+}
+

@@ -377,7 +377,7 @@ flowchart TD
 
 Estruturar a camada pura de cálculo financeiro, as políticas RLS no Postgres e as RPCs transacionais de vinculação e exclusão atômica.
 
-- [ ] **Tarefa 1.1: Migration PostgreSQL para Vínculo Multi-Contas e Exclusão Sincronizada**
+- [x] **Tarefa 1.1: Migration PostgreSQL para Vínculo Multi-Contas e Exclusão Sincronizada**
   - Criar migração `supabase/migrations/20260101000098_trips_multi_user_collaboration_and_sync.sql`:
     - RPC `claim_trip_member(p_trip_token text, p_member_id uuid, p_passcode text default null)`:
       - Valida token público e `passcode` criptografado (se ativo).
@@ -395,7 +395,7 @@ Estruturar a camada pura de cálculo financeiro, as políticas RLS no Postgres e
     - Ajuste de RLS em `public.trip_members`:
       - Política de update liberando ao membro autenticado editar sua própria linha (ex.: alterar chave Pix).
 
-- [ ] **Tarefa 1.2: Motor Matemático Puro de Liquidação Real (`trip-math.ts`)**
+- [x] **Tarefa 1.2: Motor Matemático Puro de Liquidação Real (`trip-math.ts`)**
   - Atualizar `src/domain/trips/trip-math.ts`:
     - Interface `SettlementItemForBalance` com `{ from_member_id, to_member_id, amount_cents, status }`.
     - Atualizar a função pura `calculateMemberBalances(members, expenses, settlements)`:
@@ -403,12 +403,12 @@ Estruturar a camada pura de cálculo financeiro, as políticas RLS no Postgres e
       - Invariante estrita de conservação: $\sum \text{netBalanceCents} = 0$.
     - Expandir `src/domain/trips/trip-math.test.ts` com testes cobrindo abatimento gradual de saldos e resíduos de centavos.
 
-- [ ] **Tarefa 1.3: Tipagens e Contratos TypeScript Estritos (`types/trips.ts`)**
+- [x] **Tarefa 1.3: Tipagens e Contratos TypeScript Estritos (`types/trips.ts`)**
   - Atualizar `src/types/trips.ts`:
     - Tipos para inputs e outputs de `claim_trip_member`, `unlink_trip_member` e `delete_trip_expense_sync`.
     - Tipagem do parâmetro opcional de settlements no cálculo de balanços.
 
-- [ ] **Tarefa 1.4: Repositório e Camada RPC (`data/rpc.ts` e `data/repositories/trips.ts`)**
+- [x] **Tarefa 1.4: Repositório e Camada RPC (`data/rpc.ts` e `data/repositories/trips.ts`)**
   - Implementar em `src/data/rpc.ts`:
     - `claimTripMemberRpc(params)`
     - `unlinkTripMemberRpc(params)`
@@ -419,14 +419,14 @@ Estruturar a camada pura de cálculo financeiro, as políticas RLS no Postgres e
     - `deleteTripExpenseSync(expenseId, deletePersonal)`
     - Atualizar `getUserTrips()` para garantir ordenação e carregamento transparente de viagens onde o usuário é participante vinculado.
 
-- [ ] **Tarefa 1.5: Testes de Repositório e Integração no Vitest**
+- [x] **Tarefa 1.5: Testes de Repositório e Integração no Vitest**
   - Atualizar `src/data/repositories/trips.test.ts` com cobertura das novas operações e validação de tratamento de erros via `classifyError`.
 
-- [ ] **Portão de Qualidade 1:**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/domain/trips/trip-math.test.ts src/data/repositories/trips.test.ts`
-  - [ ] **Commit da Fase 1:** `git commit -m "feat(trips): migration multi-contas rpc claim e motor de abatimento real"`
+- [x] **Portão de Qualidade 1:**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/domain/trips/trip-math.test.ts src/data/repositories/trips.test.ts`
+  - [x] **Commit da Fase 1:** `git commit -m "feat(trips): migration multi-contas rpc claim e motor de abatimento real"`
 
 ---
 
