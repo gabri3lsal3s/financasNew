@@ -48,4 +48,37 @@ describe("TrialEndingBanner component", () => {
     fireEvent.click(screen.getByRole("button", { name: /Ativar Plano Pro/i }));
     expect(handleActivate).toHaveBeenCalledTimes(1);
   });
+
+  it("renderiza estágio de boas-vindas para 30 dias restantes", () => {
+    render(
+      <BrowserRouter>
+        <TrialEndingBanner daysRemaining={30} />
+      </BrowserRouter>,
+    );
+
+    expect(
+      screen.getByText("Você está no Áxis Pro com acesso total liberado"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Teste Pro Ativo")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Conhecer Benefícios Pro/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renderiza estágio de awareness para 15 dias restantes", () => {
+    render(
+      <BrowserRouter>
+        <TrialEndingBanner daysRemaining={15} />
+      </BrowserRouter>,
+    );
+
+    expect(
+      screen.getByText("Seu teste Pro está ativo: restam 15 dias de acesso"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("15d restantes")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Ver Oferta com 40% OFF/i }),
+    ).toBeInTheDocument();
+  });
 });
+

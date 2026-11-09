@@ -106,8 +106,13 @@ export interface ExcelWorkbookData {
 function sanitizeSpreadsheetText(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return "";
   const str = String(value);
-  if (/^[-=+@\t\r]/.test(str)) {
-    if (/^[-+]?\d+(?:[.,]\d+)?$/.test(str.trim())) {
+  if (/^[\t\r]/.test(str)) {
+    return `'${str}`;
+  }
+  const trimmed = str.trim();
+  if (/^[-=+@|]/.test(trimmed)) {
+    // Permite números legítimos com sinal (ex.: "-15.50" ou "+100")
+    if (/^[-+]?\d+(?:[.,]\d+)?$/.test(trimmed)) {
       return str;
     }
     return `'${str}`;

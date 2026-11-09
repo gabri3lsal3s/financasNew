@@ -1,8 +1,13 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import {
   cancelAsaasSubscription,
+  listAsaasCustomerPayments,
   refundAsaasPayment,
   updateAsaasSubscriptionCreditCard,
+  updateAsaasSubscriptionCycle,
+  isValidLuhn,
+  isValidCardExpiry,
+  sanitizePaymentLog,
 } from "../_shared/asaas.ts";
 import { buildCorsHeaders, jsonResponse, safeErrorResponse } from "../_shared/http.ts";
 
@@ -50,7 +55,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: userSub } = await supabase
       .from("user_subscriptions")
-      .select("id, user_id, asaas_subscription_id, asaas_payment_id, starts_at, created_at, status, tier")
+      .select("id, user_id, asaas_subscription_id, asaas_payment_id, asaas_customer_id, starts_at, created_at, status, tier")
       .eq("user_id", user.id)
       .single();
 
@@ -103,6 +108,14 @@ Deno.serve(async (req: Request) => {
           })
           .eq("user_id", user.id);
 
+        await supabase.from("audit_events").insert({
+          user_id: user.id,
+          entity_type: "user_subscription",
+          entity_id: userSub.id,
+          action: "cancelled_cdc_refund",
+          payload: { gateway: "asaas", refunded: refundRequested },
+        });
+
         return jsonResponse(req, {
           ok: true,
           refunded: true,
@@ -129,6 +142,14 @@ Deno.serve(async (req: Request) => {
         .update({ cancel_at_period_end: true })
         .eq("user_id", user.id);
 
+      await supabase.from("audit_events").insert({
+        user_id: user.id,
+        entity_type: "user_subscription",
+        entity_id: userSub.id,
+        action: "cancelled_at_period_end",
+        payload: { gateway: "asaas", subscription_id: userSub.asaas_subscription_id },
+      });
+
       return jsonResponse(req, {
         ok: true,
         refunded: false,
@@ -148,6 +169,23 @@ Deno.serve(async (req: Request) => {
 
       if (!card || !card.number || !card.holderName || !card.expiryMonth || !card.expiryYear || !card.ccv) {
         return jsonResponse(req, { error: "Dados do cartão incompletos" }, 400);
+      }
+
+      if (!isValidLuhn(card.number)) {
+        return jsonResponse(req, { error: "Número do cartão de crédito inválido" }, 400);
+      }
+
+      if (!isValidCardExpiry(card.expiryMonth, card.expiryYear)) {
+        return jsonResponse(
+          req,
+          { error: "Cartão de crédito com data de validade vencida ou incorreta" },
+          400,
+        );
+      }
+
+      const cleanCcv = (card.ccv || "").replace(/\D/g, "");
+      if (cleanCcv.length < 3 || cleanCcv.length > 4) {
+        return jsonResponse(req, { error: "Código de segurança (CVV) inválido" }, 400);
       }
 
       const { data: profile } = await supabase
@@ -181,11 +219,81 @@ Deno.serve(async (req: Request) => {
         remoteIp: clientIp,
       });
 
+      await supabase.from("audit_events").insert({
+        user_id: user.id,
+        entity_type: "user_subscription",
+        entity_id: userSub.id,
+        action: "card_updated",
+        payload: {
+          gateway: "asaas",
+          subscription_id: userSub.asaas_subscription_id,
+          card_last4: (card.number || "").replace(/\D/g, "").slice(-4),
+        },
+      });
+
       return jsonResponse(req, { ok: true, message: "Cartão atualizado com sucesso" });
+    }
+
+    if (action === "list-invoices") {
+      if (!userSub.asaas_customer_id) {
+        return jsonResponse(req, { invoices: [] });
+      }
+
+      try {
+        const invoices = await listAsaasCustomerPayments(userSub.asaas_customer_id, 20);
+        return jsonResponse(req, { invoices });
+      } catch (err: unknown) {
+        console.warn("[asaas-manage] Falha ao listar faturas no Asaas:", err);
+        return jsonResponse(req, { invoices: [] });
+      }
+    }
+
+    if (action === "upgrade-to-annual") {
+      if (!userSub.asaas_subscription_id) {
+        return jsonResponse(
+          req,
+          { error: "Usuário não possui assinatura recorrente ativa para migração automática." },
+          400,
+        );
+      }
+
+      try {
+        await updateAsaasSubscriptionCycle(userSub.asaas_subscription_id, {
+          value: 143.88,
+          cycle: "YEARLY",
+        });
+
+        await supabase
+          .from("user_subscriptions")
+          .update({
+            tier: "pro_annual",
+            plan_id: "pro_annual",
+            cancel_at_period_end: false,
+          })
+          .eq("user_id", user.id);
+
+        await supabase.from("audit_events").insert({
+          user_id: user.id,
+          entity_type: "user_subscription",
+          entity_id: userSub.id,
+          action: "upgraded_to_annual",
+          payload: { gateway: "asaas", subscription_id: userSub.asaas_subscription_id },
+        });
+
+        return jsonResponse(req, {
+          ok: true,
+          message: "Assinatura migrada para o Plano Pro Anual com sucesso! O novo valor de R$ 143,88 será aplicado no próximo ciclo anual.",
+        });
+      } catch (err: unknown) {
+        console.error("[asaas-manage] Falha ao migrar para anual no Asaas:", err);
+        return safeErrorResponse(req, 500, "Não foi possível migrar para o plano anual.", err);
+      }
     }
 
     return jsonResponse(req, { error: "Ação não suportada" }, 400);
   } catch (err: unknown) {
+    const rawMsg = err instanceof Error ? err.message : String(err);
+    console.error("[asaas-manage] Falha ao gerenciar assinatura:", sanitizePaymentLog(rawMsg));
     return safeErrorResponse(req, 500, "Falha ao gerenciar assinatura. Tente novamente.", err);
   }
 });

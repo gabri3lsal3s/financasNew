@@ -21,6 +21,7 @@ drop policy if exists "incomes_insert_own" on public.incomes;
 drop policy if exists "incomes_update_own" on public.incomes;
 drop policy if exists "incomes_delete_own" on public.incomes;
 
+drop policy if exists "incomes_select_own" on public.incomes;
 create policy "incomes_select_own" on public.incomes
   for select using (
     (select auth.uid()) = user_id
@@ -28,12 +29,14 @@ create policy "incomes_select_own" on public.incomes
     and public.get_user_module_access(auth.uid(), 'transactions') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
 
+drop policy if exists "incomes_insert_own" on public.incomes;
 create policy "incomes_insert_own" on public.incomes
   for insert with check (
     (select auth.uid()) = user_id
     and public.can_current_user_write_module('transactions')
   );
 
+drop policy if exists "incomes_update_own" on public.incomes;
 create policy "incomes_update_own" on public.incomes
   for update using (
     (select auth.uid()) = user_id
@@ -43,6 +46,7 @@ create policy "incomes_update_own" on public.incomes
     and public.can_current_user_write_module('transactions')
   );
 
+drop policy if exists "incomes_delete_own" on public.incomes;
 create policy "incomes_delete_own" on public.incomes
   for delete using (
     (select auth.uid()) = user_id
@@ -56,6 +60,7 @@ drop policy if exists "expenses_insert_own" on public.expenses;
 drop policy if exists "expenses_update_own" on public.expenses;
 drop policy if exists "expenses_delete_own" on public.expenses;
 
+drop policy if exists "expenses_select_own" on public.expenses;
 create policy "expenses_select_own" on public.expenses
   for select using (
     (select auth.uid()) = user_id
@@ -63,12 +68,14 @@ create policy "expenses_select_own" on public.expenses
     and public.get_user_module_access(auth.uid(), 'transactions') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
 
+drop policy if exists "expenses_insert_own" on public.expenses;
 create policy "expenses_insert_own" on public.expenses
   for insert with check (
     (select auth.uid()) = user_id
     and public.can_current_user_write_module('transactions')
   );
 
+drop policy if exists "expenses_update_own" on public.expenses;
 create policy "expenses_update_own" on public.expenses
   for update using (
     (select auth.uid()) = user_id
@@ -78,6 +85,7 @@ create policy "expenses_update_own" on public.expenses
     and public.can_current_user_write_module('transactions')
   );
 
+drop policy if exists "expenses_delete_own" on public.expenses;
 create policy "expenses_delete_own" on public.expenses
   for delete using (
     (select auth.uid()) = user_id
@@ -91,6 +99,7 @@ drop policy if exists "cash_checkpoints_insert_own" on public.cash_checkpoints;
 drop policy if exists "cash_checkpoints_update_own" on public.cash_checkpoints;
 drop policy if exists "cash_checkpoints_delete_own" on public.cash_checkpoints;
 
+drop policy if exists "cash_checkpoints_select_own" on public.cash_checkpoints;
 create policy "cash_checkpoints_select_own" on public.cash_checkpoints
   for select using (
     (select auth.uid()) = user_id
@@ -98,12 +107,14 @@ create policy "cash_checkpoints_select_own" on public.cash_checkpoints
     and public.get_user_module_access(auth.uid(), 'transactions') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
 
+drop policy if exists "cash_checkpoints_insert_own" on public.cash_checkpoints;
 create policy "cash_checkpoints_insert_own" on public.cash_checkpoints
   for insert with check (
     (select auth.uid()) = user_id
     and public.can_current_user_write_module('transactions')
   );
 
+drop policy if exists "cash_checkpoints_update_own" on public.cash_checkpoints;
 create policy "cash_checkpoints_update_own" on public.cash_checkpoints
   for update using (
     (select auth.uid()) = user_id
@@ -113,6 +124,7 @@ create policy "cash_checkpoints_update_own" on public.cash_checkpoints
     and public.can_current_user_write_module('transactions')
   );
 
+drop policy if exists "cash_checkpoints_delete_own" on public.cash_checkpoints;
 create policy "cash_checkpoints_delete_own" on public.cash_checkpoints
   for delete using (
     (select auth.uid()) = user_id
@@ -130,6 +142,7 @@ drop policy if exists "credit_cards_insert_own" on public.credit_cards;
 drop policy if exists "credit_cards_update_own" on public.credit_cards;
 drop policy if exists "credit_cards_delete_own" on public.credit_cards;
 
+drop policy if exists "credit_cards_select_own" on public.credit_cards;
 create policy "credit_cards_select_own" on public.credit_cards
   for select using (
     (select auth.uid()) = user_id
@@ -137,12 +150,14 @@ create policy "credit_cards_select_own" on public.credit_cards
     and public.get_user_module_access(auth.uid(), 'cards') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
 
+drop policy if exists "credit_cards_insert_own" on public.credit_cards;
 create policy "credit_cards_insert_own" on public.credit_cards
   for insert with check (
     (select auth.uid()) = user_id
     and public.can_current_user_write_module('cards')
   );
 
+drop policy if exists "credit_cards_update_own" on public.credit_cards;
 create policy "credit_cards_update_own" on public.credit_cards
   for update using (
     (select auth.uid()) = user_id
@@ -152,6 +167,7 @@ create policy "credit_cards_update_own" on public.credit_cards
     and public.can_current_user_write_module('cards')
   );
 
+drop policy if exists "credit_cards_delete_own" on public.credit_cards;
 create policy "credit_cards_delete_own" on public.credit_cards
   for delete using (
     (select auth.uid()) = user_id
@@ -165,6 +181,7 @@ drop policy if exists "card_payments_insert_own" on public.card_payments;
 drop policy if exists "card_payments_update_own" on public.card_payments;
 drop policy if exists "card_payments_delete_own" on public.card_payments;
 
+drop policy if exists "card_payments_select_own" on public.card_payments;
 create policy "card_payments_select_own" on public.card_payments
   for select using (
     (select auth.uid()) = user_id
@@ -172,12 +189,14 @@ create policy "card_payments_select_own" on public.card_payments
     and public.get_user_module_access(auth.uid(), 'cards') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
 
+drop policy if exists "card_payments_insert_own" on public.card_payments;
 create policy "card_payments_insert_own" on public.card_payments
   for insert with check (
     (select auth.uid()) = user_id
     and public.can_current_user_write_module('cards')
   );
 
+drop policy if exists "card_payments_update_own" on public.card_payments;
 create policy "card_payments_update_own" on public.card_payments
   for update using (
     (select auth.uid()) = user_id
@@ -187,6 +206,7 @@ create policy "card_payments_update_own" on public.card_payments
     and public.can_current_user_write_module('cards')
   );
 
+drop policy if exists "card_payments_delete_own" on public.card_payments;
 create policy "card_payments_delete_own" on public.card_payments
   for delete using (
     (select auth.uid()) = user_id
@@ -200,6 +220,7 @@ drop policy if exists "competence_overrides_insert_via_card" on public.card_comp
 drop policy if exists "competence_overrides_update_via_card" on public.card_competence_overrides;
 drop policy if exists "competence_overrides_delete_via_card" on public.card_competence_overrides;
 
+drop policy if exists "competence_overrides_select_via_card" on public.card_competence_overrides;
 create policy "competence_overrides_select_via_card" on public.card_competence_overrides
   for select using (
     exists (
@@ -211,6 +232,7 @@ create policy "competence_overrides_select_via_card" on public.card_competence_o
     )
   );
 
+drop policy if exists "competence_overrides_insert_via_card" on public.card_competence_overrides;
 create policy "competence_overrides_insert_via_card" on public.card_competence_overrides
   for insert with check (
     exists (
@@ -221,6 +243,7 @@ create policy "competence_overrides_insert_via_card" on public.card_competence_o
     )
   );
 
+drop policy if exists "competence_overrides_update_via_card" on public.card_competence_overrides;
 create policy "competence_overrides_update_via_card" on public.card_competence_overrides
   for update using (
     exists (
@@ -238,6 +261,7 @@ create policy "competence_overrides_update_via_card" on public.card_competence_o
     )
   );
 
+drop policy if exists "competence_overrides_delete_via_card" on public.card_competence_overrides;
 create policy "competence_overrides_delete_via_card" on public.card_competence_overrides
   for delete using (
     exists (
@@ -259,6 +283,7 @@ drop policy if exists "debts_insert_own" on public.debts;
 drop policy if exists "debts_update_own" on public.debts;
 drop policy if exists "debts_delete_own" on public.debts;
 
+drop policy if exists "debts_select_own" on public.debts;
 create policy "debts_select_own" on public.debts
   for select using (
     (select auth.uid()) = user_id
@@ -266,12 +291,14 @@ create policy "debts_select_own" on public.debts
     and public.get_user_module_access(auth.uid(), 'debts') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
 
+drop policy if exists "debts_insert_own" on public.debts;
 create policy "debts_insert_own" on public.debts
   for insert with check (
     (select auth.uid()) = user_id
     and public.can_current_user_write_module('debts')
   );
 
+drop policy if exists "debts_update_own" on public.debts;
 create policy "debts_update_own" on public.debts
   for update using (
     (select auth.uid()) = user_id
@@ -281,6 +308,7 @@ create policy "debts_update_own" on public.debts
     and public.can_current_user_write_module('debts')
   );
 
+drop policy if exists "debts_delete_own" on public.debts;
 create policy "debts_delete_own" on public.debts
   for delete using (
     (select auth.uid()) = user_id
@@ -294,6 +322,7 @@ drop policy if exists "loans_insert_own" on public.loans;
 drop policy if exists "loans_update_own" on public.loans;
 drop policy if exists "loans_delete_own" on public.loans;
 
+drop policy if exists "loans_select_own" on public.loans;
 create policy "loans_select_own" on public.loans
   for select using (
     (select auth.uid()) = user_id
@@ -301,12 +330,14 @@ create policy "loans_select_own" on public.loans
     and public.get_user_module_access(auth.uid(), 'debts') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
 
+drop policy if exists "loans_insert_own" on public.loans;
 create policy "loans_insert_own" on public.loans
   for insert with check (
     (select auth.uid()) = user_id
     and public.can_current_user_write_module('debts')
   );
 
+drop policy if exists "loans_update_own" on public.loans;
 create policy "loans_update_own" on public.loans
   for update using (
     (select auth.uid()) = user_id
@@ -316,6 +347,7 @@ create policy "loans_update_own" on public.loans
     and public.can_current_user_write_module('debts')
   );
 
+drop policy if exists "loans_delete_own" on public.loans;
 create policy "loans_delete_own" on public.loans
   for delete using (
     (select auth.uid()) = user_id
@@ -333,6 +365,7 @@ drop policy if exists "budgets_insert_own" on public.budgets;
 drop policy if exists "budgets_update_own" on public.budgets;
 drop policy if exists "budgets_delete_own" on public.budgets;
 
+drop policy if exists "budgets_select_own" on public.budgets;
 create policy "budgets_select_own" on public.budgets
   for select using (
     (select auth.uid()) = user_id
@@ -340,12 +373,14 @@ create policy "budgets_select_own" on public.budgets
     and public.get_user_module_access(auth.uid(), 'budgets') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
 
+drop policy if exists "budgets_insert_own" on public.budgets;
 create policy "budgets_insert_own" on public.budgets
   for insert with check (
     (select auth.uid()) = user_id
     and public.can_current_user_write_module('budgets')
   );
 
+drop policy if exists "budgets_update_own" on public.budgets;
 create policy "budgets_update_own" on public.budgets
   for update using (
     (select auth.uid()) = user_id
@@ -355,6 +390,7 @@ create policy "budgets_update_own" on public.budgets
     and public.can_current_user_write_module('budgets')
   );
 
+drop policy if exists "budgets_delete_own" on public.budgets;
 create policy "budgets_delete_own" on public.budgets
   for delete using (
     (select auth.uid()) = user_id
@@ -368,6 +404,7 @@ drop policy if exists "income_goals_insert_own" on public.income_goals;
 drop policy if exists "income_goals_update_own" on public.income_goals;
 drop policy if exists "income_goals_delete_own" on public.income_goals;
 
+drop policy if exists "income_goals_select_own" on public.income_goals;
 create policy "income_goals_select_own" on public.income_goals
   for select using (
     (select auth.uid()) = user_id
@@ -375,12 +412,14 @@ create policy "income_goals_select_own" on public.income_goals
     and public.get_user_module_access(auth.uid(), 'budgets') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
 
+drop policy if exists "income_goals_insert_own" on public.income_goals;
 create policy "income_goals_insert_own" on public.income_goals
   for insert with check (
     (select auth.uid()) = user_id
     and public.can_current_user_write_module('budgets')
   );
 
+drop policy if exists "income_goals_update_own" on public.income_goals;
 create policy "income_goals_update_own" on public.income_goals
   for update using (
     (select auth.uid()) = user_id
@@ -390,6 +429,7 @@ create policy "income_goals_update_own" on public.income_goals
     and public.can_current_user_write_module('budgets')
   );
 
+drop policy if exists "income_goals_delete_own" on public.income_goals;
 create policy "income_goals_delete_own" on public.income_goals
   for delete using (
     (select auth.uid()) = user_id
@@ -407,6 +447,7 @@ drop policy if exists "portfolio_assets_insert_own" on public.portfolio_assets;
 drop policy if exists "portfolio_assets_update_own" on public.portfolio_assets;
 drop policy if exists "portfolio_assets_delete_own" on public.portfolio_assets;
 
+drop policy if exists "portfolio_assets_select_own" on public.portfolio_assets;
 create policy "portfolio_assets_select_own" on public.portfolio_assets
   for select using (
     (select auth.uid()) = user_id
@@ -414,12 +455,14 @@ create policy "portfolio_assets_select_own" on public.portfolio_assets
     and public.get_user_module_access(auth.uid(), 'investments') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
 
+drop policy if exists "portfolio_assets_insert_own" on public.portfolio_assets;
 create policy "portfolio_assets_insert_own" on public.portfolio_assets
   for insert with check (
     (select auth.uid()) = user_id
     and public.can_current_user_write_module('investments')
   );
 
+drop policy if exists "portfolio_assets_update_own" on public.portfolio_assets;
 create policy "portfolio_assets_update_own" on public.portfolio_assets
   for update using (
     (select auth.uid()) = user_id
@@ -429,6 +472,7 @@ create policy "portfolio_assets_update_own" on public.portfolio_assets
     and public.can_current_user_write_module('investments')
   );
 
+drop policy if exists "portfolio_assets_delete_own" on public.portfolio_assets;
 create policy "portfolio_assets_delete_own" on public.portfolio_assets
   for delete using (
     (select auth.uid()) = user_id
@@ -442,6 +486,7 @@ drop policy if exists "portfolio_transactions_insert_own" on public.portfolio_tr
 drop policy if exists "portfolio_transactions_update_own" on public.portfolio_transactions;
 drop policy if exists "portfolio_transactions_delete_own" on public.portfolio_transactions;
 
+drop policy if exists "portfolio_transactions_select_own" on public.portfolio_transactions;
 create policy "portfolio_transactions_select_own" on public.portfolio_transactions
   for select using (
     (select auth.uid()) = user_id
@@ -449,12 +494,14 @@ create policy "portfolio_transactions_select_own" on public.portfolio_transactio
     and public.get_user_module_access(auth.uid(), 'investments') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
 
+drop policy if exists "portfolio_transactions_insert_own" on public.portfolio_transactions;
 create policy "portfolio_transactions_insert_own" on public.portfolio_transactions
   for insert with check (
     (select auth.uid()) = user_id
     and public.can_current_user_write_module('investments')
   );
 
+drop policy if exists "portfolio_transactions_update_own" on public.portfolio_transactions;
 create policy "portfolio_transactions_update_own" on public.portfolio_transactions
   for update using (
     (select auth.uid()) = user_id
@@ -464,6 +511,7 @@ create policy "portfolio_transactions_update_own" on public.portfolio_transactio
     and public.can_current_user_write_module('investments')
   );
 
+drop policy if exists "portfolio_transactions_delete_own" on public.portfolio_transactions;
 create policy "portfolio_transactions_delete_own" on public.portfolio_transactions
   for delete using (
     (select auth.uid()) = user_id
@@ -472,12 +520,16 @@ create policy "portfolio_transactions_delete_own" on public.portfolio_transactio
 
 -- Portfolio Snapshots, Contributions, Dividends & Targets
 drop policy if exists "portfolio_snapshots_all_own" on public.portfolio_snapshots;
+drop policy if exists "portfolio_snapshots_select_own" on public.portfolio_snapshots;
+drop policy if exists "portfolio_snapshots_write_own" on public.portfolio_snapshots;
+drop policy if exists "portfolio_snapshots_select_own" on public.portfolio_snapshots;
 create policy "portfolio_snapshots_select_own" on public.portfolio_snapshots
   for select using (
     (select auth.uid()) = user_id
     and public.is_current_user_active()
     and public.get_user_module_access(auth.uid(), 'investments') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
+drop policy if exists "portfolio_snapshots_write_own" on public.portfolio_snapshots;
 create policy "portfolio_snapshots_write_own" on public.portfolio_snapshots
   for all using (
     (select auth.uid()) = user_id
@@ -488,12 +540,14 @@ create policy "portfolio_snapshots_write_own" on public.portfolio_snapshots
   );
 
 drop policy if exists "portfolio_contributions_all_own" on public.portfolio_contributions;
+drop policy if exists "portfolio_contributions_select_own" on public.portfolio_contributions;
 create policy "portfolio_contributions_select_own" on public.portfolio_contributions
   for select using (
     (select auth.uid()) = user_id
     and public.is_current_user_active()
     and public.get_user_module_access(auth.uid(), 'investments') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
+drop policy if exists "portfolio_contributions_write_own" on public.portfolio_contributions;
 create policy "portfolio_contributions_write_own" on public.portfolio_contributions
   for all using (
     (select auth.uid()) = user_id
@@ -504,12 +558,14 @@ create policy "portfolio_contributions_write_own" on public.portfolio_contributi
   );
 
 drop policy if exists "portfolio_dividends_all_own" on public.portfolio_dividends;
+drop policy if exists "portfolio_dividends_select_own" on public.portfolio_dividends;
 create policy "portfolio_dividends_select_own" on public.portfolio_dividends
   for select using (
     (select auth.uid()) = user_id
     and public.is_current_user_active()
     and public.get_user_module_access(auth.uid(), 'investments') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
+drop policy if exists "portfolio_dividends_write_own" on public.portfolio_dividends;
 create policy "portfolio_dividends_write_own" on public.portfolio_dividends
   for all using (
     (select auth.uid()) = user_id
@@ -520,12 +576,14 @@ create policy "portfolio_dividends_write_own" on public.portfolio_dividends
   );
 
 drop policy if exists "allocation_targets_all_own" on public.allocation_targets;
+drop policy if exists "allocation_targets_select_own" on public.allocation_targets;
 create policy "allocation_targets_select_own" on public.allocation_targets
   for select using (
     (select auth.uid()) = user_id
     and public.is_current_user_active()
     and public.get_user_module_access(auth.uid(), 'investments') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
+drop policy if exists "allocation_targets_write_own" on public.allocation_targets;
 create policy "allocation_targets_write_own" on public.allocation_targets
   for all using (
     (select auth.uid()) = user_id
@@ -538,12 +596,14 @@ create policy "allocation_targets_write_own" on public.allocation_targets
 drop policy if exists "class_targets_all_own" on public.class_targets;
 drop policy if exists "class_targets_select_own" on public.class_targets;
 drop policy if exists "class_targets_write_own" on public.class_targets;
+drop policy if exists "class_targets_select_own" on public.class_targets;
 create policy "class_targets_select_own" on public.class_targets
   for select using (
     (select auth.uid()) = user_id
     and public.is_current_user_active()
     and public.get_user_module_access(auth.uid(), 'investments') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
+drop policy if exists "class_targets_write_own" on public.class_targets;
 create policy "class_targets_write_own" on public.class_targets
   for all using (
     (select auth.uid()) = user_id
@@ -556,12 +616,14 @@ create policy "class_targets_write_own" on public.class_targets
 drop policy if exists "sector_targets_all_own" on public.sector_targets;
 drop policy if exists "sector_targets_select_own" on public.sector_targets;
 drop policy if exists "sector_targets_write_own" on public.sector_targets;
+drop policy if exists "sector_targets_select_own" on public.sector_targets;
 create policy "sector_targets_select_own" on public.sector_targets
   for select using (
     (select auth.uid()) = user_id
     and public.is_current_user_active()
     and public.get_user_module_access(auth.uid(), 'investments') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
+drop policy if exists "sector_targets_write_own" on public.sector_targets;
 create policy "sector_targets_write_own" on public.sector_targets
   for all using (
     (select auth.uid()) = user_id
@@ -572,12 +634,14 @@ create policy "sector_targets_write_own" on public.sector_targets
   );
 
 drop policy if exists "allocation_presets_all_own" on public.allocation_presets;
+drop policy if exists "allocation_presets_select_own" on public.allocation_presets;
 create policy "allocation_presets_select_own" on public.allocation_presets
   for select using (
     (select auth.uid()) = user_id
     and public.is_current_user_active()
     and public.get_user_module_access(auth.uid(), 'investments') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
+drop policy if exists "allocation_presets_write_own" on public.allocation_presets;
 create policy "allocation_presets_write_own" on public.allocation_presets
   for all using (
     (select auth.uid()) = user_id
@@ -593,12 +657,14 @@ create policy "allocation_presets_write_own" on public.allocation_presets
 
 -- Recurrences
 drop policy if exists "recurrences_all_own" on public.recurrences;
+drop policy if exists "recurrences_select_own" on public.recurrences;
 create policy "recurrences_select_own" on public.recurrences
   for select using (
     (select auth.uid()) = user_id
     and public.is_current_user_active()
     and public.get_user_module_access(auth.uid(), 'reminders') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
+drop policy if exists "recurrences_write_own" on public.recurrences;
 create policy "recurrences_write_own" on public.recurrences
   for all using (
     (select auth.uid()) = user_id
@@ -610,6 +676,7 @@ create policy "recurrences_write_own" on public.recurrences
 
 -- Recurrence Skips
 drop policy if exists "recurrence_skips_all_own" on public.recurrence_skips;
+drop policy if exists "recurrence_skips_select_own" on public.recurrence_skips;
 create policy "recurrence_skips_select_own" on public.recurrence_skips
   for select using (
     exists (
@@ -620,6 +687,7 @@ create policy "recurrence_skips_select_own" on public.recurrence_skips
         and public.get_user_module_access(auth.uid(), 'reminders') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
     )
   );
+drop policy if exists "recurrence_skips_write_own" on public.recurrence_skips;
 create policy "recurrence_skips_write_own" on public.recurrence_skips
   for all using (
     exists (
@@ -639,12 +707,14 @@ create policy "recurrence_skips_write_own" on public.recurrence_skips
 
 -- Reminder States
 drop policy if exists "reminder_states_all_own" on public.reminder_states;
+drop policy if exists "reminder_states_select_own" on public.reminder_states;
 create policy "reminder_states_select_own" on public.reminder_states
   for select using (
     (select auth.uid()) = user_id
     and public.is_current_user_active()
     and public.get_user_module_access(auth.uid(), 'reminders') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
+drop policy if exists "reminder_states_write_own" on public.reminder_states;
 create policy "reminder_states_write_own" on public.reminder_states
   for all using (
     (select auth.uid()) = user_id
@@ -658,12 +728,14 @@ create policy "reminder_states_write_own" on public.reminder_states
 -- 7. Hardening de RLS: Módulo de Insights (insight_feedback)
 -- ----------------------------------------------------------------
 drop policy if exists "insight_feedback_all_own" on public.insight_feedback;
+drop policy if exists "insight_feedback_select_own" on public.insight_feedback;
 create policy "insight_feedback_select_own" on public.insight_feedback
   for select using (
     (select auth.uid()) = user_id
     and public.is_current_user_active()
     and public.get_user_module_access(auth.uid(), 'insights') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
+drop policy if exists "insight_feedback_write_own" on public.insight_feedback;
 create policy "insight_feedback_write_own" on public.insight_feedback
   for all using (
     (select auth.uid()) = user_id

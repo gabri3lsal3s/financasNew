@@ -87,8 +87,11 @@ vi.mock("@/state", () => ({
   useSetReminderState: () => ({ mutate: vi.fn(), isPending: false }),
   useMarkAllRemindersAsRead: () => ({ mutate: vi.fn(), isPending: false }),
   useMySupportTickets: () => ({ data: [], isLoading: false }),
+  useMyBroadcastNotifications: () => ({ data: [], isLoading: false }),
+  useMarkBroadcastAsRead: () => ({ mutate: vi.fn(), isPending: false }),
   useMyFamily: () => ({ data: null, isLoading: false }),
   useFamilyMode: () => ({ isFamilyModeEnabled: false, isLoading: false, toggleFamilyMode: vi.fn() }),
+  useTripMode: () => ({ isTripModeEnabled: false, isLoading: false, toggleTripMode: vi.fn() }),
 }));
 
 

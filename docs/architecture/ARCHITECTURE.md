@@ -348,6 +348,27 @@ O ecossistema Áxis implementa uma camada de rotas públicas otimizada para cola
    - Hooks transientes (`usePendingSplitExpense` e `usePendingSimulation`) capturam a intenção do visitante no navegador.
    - Ao criar uma conta ou fazer login, o fluxo conecta os dados pendentes (`hydrateSimulationToUser()`), abrindo o assistente com categorias e despesas pré-preenchidas para ativação imediata do usuário.
 
+### 5.8 Arquitetura do Módulo Administrativo Isolado & Governança SaaS (v3.0)
+
+O console operacional administrativo do Áxis Finance foi completamente segregado da experiência financeira de usuário comum, implementando um canal soberano de governança, auditoria e controle:
+
+1. **Segregação de Roteador & Portal de Acesso Próprio (`/admin/login` e `/admin/*`):**
+   - O módulo admin não utiliza o `PageShell` comum de clientes (calculadora flutuante, atalhos de transação, navegação financeira);
+   - Possui seu próprio layout executivo (`AdminShell`) com barra de controle superior, telemetria de saúde e navegação lateral especializada;
+   - Todas as sub-páginas administrativas (`/admin/dashboard`, `/admin/users`, `/admin/billing`, `/admin/settings`, `/admin/notifications`, `/admin/backups`, `/admin/invites`, `/admin/tickets`, `/admin/security`) rodam sob o guard estrito `RequireAdminSession`, que desconecta e redireciona qualquer usuário sem credencial de operador ativa para `/admin/login`.
+2. **Controle de Acesso ao APK Android Nativo (Beta Fechado):**
+   - Chaves globais `apk_access_free` e `apk_access_pro` na tabela `system_features` controladas via interface em `/admin/settings`;
+   - O componente `<ApkBetaRestrictedModal />` intercepta o app Android caso o acesso esteja suspenso para a categoria do usuário, orientando-o ao Web/PWA com passe livre automático para administradores.
+3. **Cofre Auditado de Dados de Contato (LGPD):**
+   - Colunas sensíveis (`phone`, `cpf`) em `public.profiles` com `REVOKE SELECT` para `anon` e `authenticated`;
+   - Visualização por operadores restrita à RPC com `SECURITY DEFINER` `public.admin_get_user_contact_details`, que gera compulsoriamente evento imutável em `public.audit_events` com timestamp, ID do operador e ID do cliente.
+4. **Central de Notificações Broadcast / Push & Sincronização:**
+   - Despacho de comunicados operacionais segmentados por audiência (`all`, `pro`, `free`, `specific_user`);
+   - Rastreamento individual de leitura em `user_notification_reads` e exibição destacada no cabeçalho do cliente (`NotificationsPopover`).
+5. **Central de Backups do Sistema, Hashing SHA-256 e DRP:**
+   - Geração de snapshots JSON on-demand no navegador com cálculo de hash criptográfico SHA-256;
+   - Registro em `public.system_backups`, verificador de integridade contra adulteração e plano de contingência DRP.
+
 ---
 
 ## 6. MOTORES DE CÁLCULO (DOMAIN)

@@ -162,3 +162,96 @@ export function calculateGuaranteeResidual(params: {
   };
 }
 
+export type TrialLifecycleStage = "welcome" | "awareness" | "warning" | "imminent" | "expired";
+
+export interface TrialLifecycleMetadata {
+  stage: TrialLifecycleStage;
+  badgeLabel: string;
+  badgeVariant: "default" | "positive" | "warning" | "critical";
+  title: string;
+  description: string;
+  ctaText: string;
+}
+
+/**
+ * Determina o estágio de ciclo de vida do período de teste Pro com base nos dias restantes.
+ *
+ * - welcome (21 a 30 dias): primeiros dias, foco em acolhimento e experimentação.
+ * - awareness (8 a 20 dias): consolidação do uso e apresentação do benefício anual.
+ * - warning (3 a 7 dias): aviso prévio para planejamento.
+ * - imminent (1 a 2 dias): reta final antes da conversão para somente-leitura.
+ * - expired (<= 0 dias): encerrado, modo somente-leitura ativo.
+ */
+export function getTrialLifecycleStage(daysRemaining: number): TrialLifecycleStage {
+  if (daysRemaining <= 0) return "expired";
+  if (daysRemaining <= 2) return "imminent";
+  if (daysRemaining <= 7) return "warning";
+  if (daysRemaining <= 20) return "awareness";
+  return "welcome";
+}
+
+/**
+ * Retorna os textos e metadados visuais padronizados para cada estágio do trial.
+ * Regras: zero emojis, mensagens informativas e respeitosas (AGENTS.md).
+ */
+export function getTrialLifecycleMetadata(daysRemaining: number): TrialLifecycleMetadata {
+  const stage = getTrialLifecycleStage(daysRemaining);
+
+  switch (stage) {
+    case "welcome":
+      return {
+        stage,
+        badgeLabel: "Teste Pro Ativo",
+        badgeVariant: "default",
+        title: "Você está no Áxis Pro com acesso total liberado",
+        description:
+          "Aproveite 30 dias de lançamentos ilimitados, OCR de cupons fiscais e projeções sem compromisso.",
+        ctaText: "Conhecer Benefícios Pro",
+      };
+    case "awareness":
+      return {
+        stage,
+        badgeLabel: `${daysRemaining}d restantes`,
+        badgeVariant: "default",
+        title: `Seu teste Pro está ativo: restam ${daysRemaining} dias de acesso`,
+        description:
+          "Mantenha suas automações e garanta 40% de economia no plano anual sem perder dias de teste.",
+        ctaText: "Ver Oferta com 40% OFF",
+      };
+    case "warning":
+      return {
+        stage,
+        badgeLabel: `${daysRemaining}d restantes`,
+        badgeVariant: "warning",
+        title: `Seu período de teste Pro encerra em ${daysRemaining} ${daysRemaining === 1 ? "dia" : "dias"}`,
+        description:
+          "Seus dados nunca são apagados. Ative o Pro para continuar lançando e usando automações.",
+        ctaText: "Assinar e Manter Ativo",
+      };
+    case "imminent":
+      return {
+        stage,
+        badgeLabel: daysRemaining === 1 ? "Último dia" : "Últimas 48 horas",
+        badgeVariant: "critical",
+        title:
+          daysRemaining === 1
+            ? "Seu período de teste Pro encerra hoje"
+            : "Últimos dias de teste Pro",
+        description:
+          "Evite a pausa no leitor de notas e lançamentos ilimitados. Ativação imediata em 1 clique.",
+        ctaText: "Garantir Acesso Pro",
+      };
+    case "expired":
+      return {
+        stage,
+        badgeLabel: "Modo Consulta",
+        badgeVariant: "warning",
+        title: "Seu teste Pro encerrou — Modo Somente-Leitura ativo",
+        description:
+          "Seu histórico está 100% seguro. Ative o Pro para voltar a fazer novos lançamentos sem travas.",
+        ctaText: "Reativar Plano Pro",
+      };
+  }
+}
+
+

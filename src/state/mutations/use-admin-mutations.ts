@@ -8,6 +8,9 @@ import {
   adminSetUserRole,
   adminToggleGlobalFeature,
   adminUpdateUserStatus,
+  adminSendBroadcastNotification,
+  adminLogSystemBackup,
+  markBroadcastAsRead,
 } from "@/data/repositories/admin";
 import {
   adminCreateModularInvite,
@@ -24,12 +27,22 @@ import {
   ADMIN_USER_MODULE_PERMISSIONS_KEY,
   ADMIN_USER_OVERRIDES_KEY,
   ADMIN_USER_SUBSCRIPTION_KEY,
+  ADMIN_BACKUPS_KEY,
+  ADMIN_BROADCASTS_KEY,
+  MY_BROADCASTS_KEY,
 } from "../queries/use-admin";
 import { userAccessQueryKey, userFeaturesQueryKey } from "../queries/use-user-access";
 
 import { pushToast } from "@/services/toast";
 import { getErrorMessage } from "@/services/errors";
-import type { ModuleAccessLevel, SubscriptionTier, UserRole, UserStatus } from "@/types";
+import type {
+  BroadcastAudience,
+  BroadcastType,
+  ModuleAccessLevel,
+  SubscriptionTier,
+  UserRole,
+  UserStatus,
+} from "@/types";
 
 export function useAdminUpdateUserStatus() {
   const queryClient = useQueryClient();
@@ -366,3 +379,78 @@ export function useAdminDeleteUser() {
     },
   });
 }
+
+export function useAdminSendBroadcast() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: {
+      title: string;
+      message: string;
+      type?: BroadcastType;
+      actionUrl?: string | null;
+      targetAudience?: BroadcastAudience;
+      targetUserIds?: string[] | null;
+    }) => adminSendBroadcastNotification(params),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ADMIN_BROADCASTS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
+      pushToast({
+        title: "Notificação enviada",
+        description: "O comunicado foi disparado com sucesso aos destinatários selecionados.",
+        variant: "success",
+      });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao enviar notificação",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useAdminLogBackup() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: {
+      backupType?: "manual" | "scheduled" | "pre_migration";
+      tableCount?: number;
+      recordCount?: number;
+      fileSizeBytes?: number;
+      checksumSha256?: string;
+      status?: "in_progress" | "completed" | "failed";
+      notes?: string | null;
+    }) => adminLogSystemBackup(params),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ADMIN_BACKUPS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
+      pushToast({
+        title: "Backup registrado",
+        description: "O snapshot do sistema foi registrado no histórico com sucesso.",
+        variant: "success",
+      });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao registrar backup",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useMarkBroadcastAsRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (notificationId: string) => markBroadcastAsRead(notificationId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: MY_BROADCASTS_KEY });
+    },
+  });
+}
+

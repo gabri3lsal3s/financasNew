@@ -793,6 +793,7 @@ O módulo de compartilhamento e crescimento orgânico foi projetado para permiti
 #### 3.13.2 Orçamento Familiar Compartilhado & Modo Família Colaborativo Multi-Contas
 - **Segregação de Despesas e Receitas Familiares:** campo booleano `is_family` nas tabelas `expenses`, `incomes` e `portfolio_assets`. Permite que os membros marquem lançamentos e ativos que compõem o custo de vida e o patrimônio conjunto da casa.
 - **Governança do Switch do Modo Familiar em Configurações (`isFamilyModeEnabled`):**
+  - **Padrão Ativado para Novos Usuários:** O Modo Familiar inicia ativado por padrão (`isFamilyModeEnabled = true`) para novas contas (configurado em `user_preferences.custom_settings`), proporcionando acesso imediato às ferramentas colaborativas familiares sem fricção inicial.
   - **Visibilidade Estrita de Toggles e Badges:** Quando o usuário desativa o Modo Familiar nas preferências da conta (`isFamilyModeEnabled = false`), todos os controles e switches de compartilhamento familiar desaparecem completamente da interface (criação/edição de despesas, receitas, categorias e investimentos).
   - **Ocultação de Badges em Extratos e Fichas:** Lançamentos ou ativos com a flag `is_family = true` pré-existente só exibem os badges visuais "Familiar" ou "Patrimônio Familiar" quando o Modo Familiar estiver expressamente **ativado**.
   - **Princípio de Zero Data Loss:** Desativar o switch de preferências não altera nem apaga dados do banco de dados; a persistência de vínculos permanece íntegra, aguardando reativação sem perda histórica.
@@ -1206,6 +1207,43 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
 19. **Convite para Amigos na Viagem**:
     - Modal `InviteTripMemberDialog` integrado na página de detalhes e na aba de membros, permitindo convidar amigos via link público de compartilhamento, disparo de mensagem no WhatsApp ou cadastro direto de participantes no grupo.
 
+20. **Módulo Administrativo & Governança da Plataforma (v3.0)**:
+    - **Portal de Acesso Dedicado (`/admin/login`)**: Autenticação com e-mail/senha específicos, desafio Turnstile, backoff exponencial contra brute-force e validação atômica de perfil administrativo (*fail-closed*).
+    - **Guarda de Sessão Administrativa (`RequireAdminSession`)**: Redireciona usuários anônimos e clientes comuns para `/admin/login`, impedindo que contas regulares alcancem o painel de operadores.
+    - **Console com Shell Próprio (`AdminShell`)**: Barra de status superior com telemetria operacional em tempo real, alternador rápido para o app de finanças e sidebar estruturada com 9 áreas:
+      * Visão Geral & KPIs (`/admin/dashboard`)
+      * Gestão de Usuários & Concessão de Planos (`/admin/users`)
+      * Faturamento SaaS & Integração Asaas (`/admin/billing`)
+      * Sistema, APK Android Beta & Kill-Switches (`/admin/settings`)
+      * Notificações Broadcast aos Clientes (`/admin/notifications`)
+      * Central de Backups & Integridade SHA-256 (`/admin/backups`)
+      * Convites de Acesso & Allowlist (`/admin/invites`)
+      * Chamados de Suporte & Helpdesk (`/admin/tickets`)
+      * Segurança, Auditoria & Conformidade LGPD (`/admin/security`)
+    - **Controle de APK Android Nativo (Beta Fechado)**: Chaves de sistema `apk_access_free` e `apk_access_pro` com interceptação em `<ApkBetaRestrictedModal />`.
+    - **Cofre Auditado de Contato dos Clientes**: Restrição estrita de `phone` e `cpf` com revelação sob demanda na RPC `admin_get_user_contact_details` e auditoria compulsória em `public.audit_events`.
+    - **Sistema de Notificações Broadcast / Push**: Disparo direto aos clientes (`admin_send_broadcast_notification`) com segmentação de audiência e controle de leitura (`mark_broadcast_as_read`).
+    - **Central de Backups do Sistema**: Exportação de snapshots com checksum SHA-256 no cliente, auditoria em `system_backups` e verificador de integridade.
+
+21. **Governança do Onboarding, Ciclo de Vida do Trial & Atratividade de Assinatura (v3.0.17)**:
+    - **Acolhimento Unificado por Metas no Primeiro Acesso (FTUX — `WelcomeModal`)**:
+      * Diálogo em 3 passos apresentado em contas virgens sem histórico:
+        - *Passo 1 (Acesso Pro Sem Cartão)*: Confirmação de 30 dias de trial liberado sem exigência de cartão de crédito e apresentação dos 3 pilares da plataforma.
+        - *Passo 2 (Prioridade do Usuário)*: Seleção declarativa do objetivo prioritário: Cartões e Faturas (`/cartoes`), Leitor OCR sem Digitação (`/transacoes?novo=transacao`), Quitação de Dívidas (`/dividas`) ou Finanças da Família (`/orcamentos?tab=family`).
+        - *Passo 3 (Partida Guiada)*: Ação imediata com navegação direta para o objetivo selecionado ou opção de tour rápido guiado em 1 minuto com dados simulados em memória.
+      * Desobstrução do primeiro acesso na Home (`OverviewPage`), eliminando a sobreposição de múltiplos diálogos em contas virgens.
+    - **Motor do Ciclo de Vida do Período de Teste (`TrialLifecycleStage`)**:
+      * Mapeamento canônico em 5 estágios: `welcome` (21–30d), `awareness` (8–20d), `warning` (4–7d), `imminent` (0–3d) e `expired`.
+      * Banners dinâmicos e adaptativos exibidos durante todo o período no carrossel da Home (`DashboardAlertsCarousel`), com prioridade máxima nos últimos 7 dias.
+    - **Lembretes Discretos e Acesso Rápido no Shell Global**:
+      * Barra de progresso visual do trial no rodapé da barra lateral desktop (`Sidebar`) com contagem de dias restantes e CTA de garantia de plano.
+      * Status pill clicável no cabeçalho global (`PageShell`), permitindo abrir o diálogo de assinatura a qualquer momento em qualquer página.
+    - **Modernização de Telas de Vendas (`UpgradeDialog`, `SubscriptionTab`, Checkout & Landing Page)**:
+      * `UpgradeDialog` reestruturado com os 4 pilares modernos do produto (OCR de Notas/Pix, Multi-Cartões em até 60x, Safe-to-Spend Diário e Espaço Família).
+      * Ancoragem diária de valor: *"Apenas R$ 0,39 por dia"* no plano anual (-40%).
+      * Redução de fricção: garantia explícita de *"R$ 0,00 cobrados hoje"*, preservando os dias restantes de teste para o cliente que assinar antecipadamente.
+      * Tabela de comparação da aba Assinatura (`SubscriptionTab`) atualizada com 12 recursos sincronizados com a Landing Page pública.
+
 ---
 
 ## ANEXO A — GLOSSÁRIO
@@ -1232,5 +1270,5 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
 
 1. ~~Cor primária e identidade da marca~~ — **RESOLVIDA**: identidade **"Vital · Verde + Terminal"** (esmeralda/teal/sky, Inter + Sora + IBM Plex Mono, 3 temas, densidade equilibrada) — ver `docs/DESIGN_SYSTEM.md` e `src/styles/`.
 2. ~~Hosting do frontend~~ — **RESOLVIDA**: **Cloudflare Pages** (Vite SPA + PWA, Git integration nativa, sem GitHub Actions).
-3. ~~Serviço de observabilidade/erros~~ — **RESOLVIDA**: **Sentry** (`@sentry/react`, env-gated por `VITE_SENTRY_DSN` com dynamic import; Web Vitals LCP/INP/CLS + correlação de usuário — ver `docs/ARCHITECTURE.md` §11 e F6.3 do ROADMAP).
-4. **Notificações** — in-app apenas ou push (edge function) — decisão da Fase 3 (a spec atual assume in-app; push é opcional).
+4. ~~Notificações~~ — **RESOLVIDA**: **Arquitetura Híbrida** — notificações in-app ricas no popover do cliente (`notifications-popover.tsx`) combinadas com sistema de comunicados broadcast administrativos segmentados (`admin_broadcast_notifications`) e despachos operacionais em tempo real para o bot do Telegram via edge function `support-notify` e script de CLI `notify-telegram.ts`.
+

@@ -13,15 +13,15 @@ export interface SharedLinkHeaderNavProps {
   badgeLabel?: string;
   /** Caminho relativo da rota para deep link nativo (ex: "viagem/abc123xyz") */
   targetPath?: string;
-  /** Largura máxima do conteúdo do header (default: "2xl") */
-  maxWidth?: "md" | "2xl" | "3xl";
+  /** Largura máxima do conteúdo do header (default: "5xl") */
+  maxWidth?: "md" | "2xl" | "3xl" | "5xl" | "full";
 }
 
 /**
  * SharedLinkHeaderNav — Cabeçalho inteligente, padronizado e responsivo para páginas públicas.
  *
  * Características:
- * 1. Barra de navegação sticky com backdrop-blur suave;
+ * 1. Barra de navegação sticky com backdrop-blur suave e distribuição desktop limpa;
  * 2. Alternador de temas integrado (Claro / Escuro / OLED / Sistema) para todos os visitantes;
  * 3. Deep link nativo ergonômico no mobile ("Abrir no App") e atalho ao painel quando logado;
  * 4. Botão "Voltar ao Início" quando instalado como PWA ou App Nativo.
@@ -29,7 +29,7 @@ export interface SharedLinkHeaderNavProps {
 export function SharedLinkHeaderNav({
   badgeLabel = "Compartilhamento",
   targetPath = "",
-  maxWidth = "2xl",
+  maxWidth = "5xl",
 }: SharedLinkHeaderNavProps) {
   const navigate = useNavigate();
   const { session } = useAuth();
@@ -54,13 +54,17 @@ export function SharedLinkHeaderNav({
   const maxWidthClass =
     maxWidth === "md"
       ? "max-w-md"
+      : maxWidth === "2xl"
+      ? "max-w-2xl"
       : maxWidth === "3xl"
       ? "max-w-3xl"
-      : "max-w-2xl";
+      : maxWidth === "full"
+      ? "w-full"
+      : "max-w-5xl";
 
   return (
     <header className="sticky top-0 z-30 w-full bg-surface/90 backdrop-blur-md border-b border-border/80 transition-colors pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]">
-      <div className={cn("mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-2", maxWidthClass)}>
+      <div className={cn("mx-auto px-4 sm:px-6 md:px-8 h-14 flex items-center justify-between gap-3", maxWidthClass)}>
         {/* Lado Esquerdo: Logo / Voltar + Badge */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
           {isAppShell ? (

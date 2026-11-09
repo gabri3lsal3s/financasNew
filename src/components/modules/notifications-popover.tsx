@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { AlertTriangle, ArrowDownLeft, Bell, Check, CheckCheck, CreditCard, ExternalLink, HandCoins, LifeBuoy, Sparkles, X } from "lucide-react";
+import { AlertTriangle, ArrowDownLeft, Bell, Check, CheckCheck, CreditCard, ExternalLink, HandCoins, LifeBuoy, Megaphone, Sparkles, X } from "lucide-react";
 import {
   Badge,
   Button,
@@ -10,7 +10,15 @@ import {
   PopoverTrigger,
   Skeleton,
 } from "@/components/ui";
-import { useOnboardingCounts, useReminders, useSetReminderState, useMarkAllRemindersAsRead, useMySupportTickets } from "@/state";
+import {
+  useOnboardingCounts,
+  useReminders,
+  useSetReminderState,
+  useMarkAllRemindersAsRead,
+  useMySupportTickets,
+  useMyBroadcastNotifications,
+  useMarkBroadcastAsRead,
+} from "@/state";
 import { useOnboardingDismissed } from "@/hooks";
 import { shouldShowOnboardingBanner, coreOnboardingProgress } from "@/domain/onboarding";
 import type { ReminderItem, ReminderStatus } from "@/domain/reminders";
@@ -55,6 +63,11 @@ export function NotificationsPopover({
   const setReminderStateMutation = useSetReminderState();
   const markAllMutation = useMarkAllRemindersAsRead();
   const myTicketsQuery = useMySupportTickets();
+  const broadcastsQuery = useMyBroadcastNotifications();
+  const markBroadcastMutation = useMarkBroadcastAsRead();
+
+  // Comunicados administrativos pendentes de leitura
+  const unreadBroadcasts = (broadcastsQuery.data ?? []).filter((b) => !b.is_read);
 
   // Chamados respondidos pelo suporte que ainda não foram lidos pelo usuário
   const unreadSupportTickets = (myTicketsQuery.data ?? []).filter(
@@ -72,7 +85,7 @@ export function NotificationsPopover({
   const onboardingProg = onboardingQuery?.data ? coreOnboardingProgress(onboardingQuery.data) : { done: 0, total: 4 };
 
   const effectiveTotalCount =
-    totalCount + (showOnboarding ? 1 : 0) + advisorAlerts.length + unreadSupportTickets.length;
+    totalCount + (showOnboarding ? 1 : 0) + advisorAlerts.length + unreadSupportTickets.length + unreadBroadcasts.length;
   const hasUrgent = urgentCount > 0 || advisorAlerts.some((i) => i.priority === 1);
 
   const handleOpenItem = (item: ReminderItem) => {
@@ -243,7 +256,7 @@ export function NotificationsPopover({
               <Skeleton className="h-14 w-full rounded-xl" />
               <Skeleton className="h-14 w-full rounded-xl" />
             </div>
-          ) : items.length === 0 && !showOnboarding && advisorAlerts.length === 0 && unreadSupportTickets.length === 0 ? (
+          ) : items.length === 0 && !showOnboarding && advisorAlerts.length === 0 && unreadSupportTickets.length === 0 && unreadBroadcasts.length === 0 ? (
             <div className="py-2 px-4">
               <EmptyState
                 icon={<Bell className="size-5" aria-hidden="true" />}
@@ -255,6 +268,52 @@ export function NotificationsPopover({
             </div>
           ) : (
             <>
+              {/* Comunicados do Administrador */}
+              {unreadBroadcasts.map((b) => (
+                <div
+                  key={b.id}
+                  onClick={() => {
+                    triggerSensory("action");
+                    markBroadcastMutation.mutate(b.id);
+                    onOpenChange?.(false);
+                    if (b.action_url) {
+                      navigate(b.action_url);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      triggerSensory("action");
+                      markBroadcastMutation.mutate(b.id);
+                      onOpenChange?.(false);
+                      if (b.action_url) {
+                        navigate(b.action_url);
+                      }
+                    }
+                  }}
+                  className="group flex items-start gap-3 p-3 text-left transition-colors hover:bg-surface-hover rounded-xl cursor-pointer bg-primary/5 border border-primary/20 mb-1"
+                >
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary-strong mt-0.5">
+                    <Megaphone className="size-4" aria-hidden="true" />
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-semibold text-foreground truncate">
+                        {b.title}
+                      </span>
+                      <Badge variant="default" size="xs">
+                        Comunicado
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                      {b.message}
+                    </p>
+                  </div>
+                </div>
+              ))}
+
               {/* Respostas do Suporte Pendentes de Leitura */}
               {unreadSupportTickets.map((st) => (
                 <div

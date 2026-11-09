@@ -405,7 +405,7 @@ export function TripSettlementDialog({
       publicToken,
     });
     const encoded = encodeURIComponent(msg);
-    window.open(`https://api.whatsapp.com/send?text=${encoded}`, "_blank");
+    window.open(`https://api.whatsapp.com/send?text=${encoded}`, "_blank", "noopener,noreferrer");
   };
 
   return (

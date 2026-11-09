@@ -112,10 +112,10 @@ describe("LandingPage", () => {
 
     expect(screen.getByTestId("card-vaquinha")).toBeVisible();
     expect(screen.getByText("Viagem de Fim de Ano em Família")).toBeInTheDocument();
-    expect(screen.getByText("75% Concluído")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Copiar Chave Pix/i })).toBeInTheDocument();
+    const copyPixBtn = screen.getAllByRole("button", { name: /Copiar Chave Pix/i })[0]!;
+    expect(copyPixBtn).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /Copiar Chave Pix/i }));
+    await user.click(copyPixBtn);
     expect(screen.getByText("Chave Pix Copiada")).toBeInTheDocument();
 
     // 3. Alterna para Card de Orçamento Familiar Seguro

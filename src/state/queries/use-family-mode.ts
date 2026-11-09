@@ -7,7 +7,7 @@ import { pushToast } from "@/services/toast";
 /**
  * Hook centralizado para controle e leitura do Modo Familiar.
  *
- * Por padrão, o Modo Familiar inicia desabilitado (`false`).
+ * Por padrão, o Modo Familiar inicia ativado (`true`) para novos usuários.
  * Quando desabilitado, as divisões familiares (abas, filtros e switches) são
  * ocultadas na interface, simplificando o fluxo para uso estritamente individual.
  * No modo demo / simulação, é automaticamente mantido ativo (`true`) para apresentação completa.
@@ -24,7 +24,7 @@ export function useFamilyMode() {
 
   const isFamilyModeEnabled = isDemoActive
     ? true
-    : Boolean(preferencesQuery.data?.custom_settings?.familyModeEnabled);
+    : (preferencesQuery.data?.custom_settings?.familyModeEnabled ?? true);
 
   const toggleFamilyMode = async (enabled: boolean): Promise<void> => {
     if (isDemoActive) return;

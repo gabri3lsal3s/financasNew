@@ -24,7 +24,7 @@ export const AppUpdatePlugin = registerPlugin<AppUpdatePluginInterface>("AppUpda
     },
     async downloadAndInstall(options: { url: string }) {
       if (typeof window !== "undefined") {
-        window.open(options.url, "_blank");
+        window.open(options.url, "_blank", "noopener,noreferrer");
       }
       return { downloadId: 0, status: "web_opened" };
     },

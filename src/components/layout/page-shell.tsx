@@ -1,8 +1,9 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { Outlet, useLocation, useSearchParams } from "react-router";
-import { Sparkles } from "lucide-react";
+import { Outlet, useLocation, useSearchParams, useNavigate } from "react-router";
+import { Sparkles, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackFeatureUse } from "@/services/analytics";
+import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { BackToTop } from "@/components/layout/back-to-top";
 import { CalculatorButton } from "@/components/layout/calculator-button";
@@ -25,7 +26,7 @@ import { useContainerScroll, useOnboardingDismissed } from "@/hooks";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { dismissPendingSuggestion } from "@/services/native";
-import { useOnboardingCounts, useReminders, useMySupportTickets } from "@/state";
+import { useOnboardingCounts, useReminders, useMySupportTickets, useUserSubscription } from "@/state";
 import { shouldShowOnboardingBanner } from "@/domain/onboarding";
 import { useSmartAdvisorInsights } from "@/features/overview/hooks";
 import type { PaymentMethod } from "@/types";
@@ -42,6 +43,9 @@ function RouteFallback() {
 }
 
 export function PageShell() {
+  const navigate = useNavigate();
+  const subscription = useUserSubscription();
+  const [headerUpgradeOpen, setHeaderUpgradeOpen] = useState(false);
   const visual = useVisualCustomization();
   const { isCollapsed, toggle } = useSidebarState();
   const location = useLocation();
@@ -265,6 +269,31 @@ export function PageShell() {
               <div className="h-5 w-px bg-border shrink-0 lg:hidden" aria-hidden="true" />
             )}
             <GlobalSearch className="flex-1 min-w-0" />
+            {/* Pílula de Status do Trial / Leitura no Header */}
+            {subscription?.isTrial && subscription.trialDaysRemaining !== null && (
+              <button
+                type="button"
+                onClick={() => setHeaderUpgradeOpen(true)}
+                title="Período de teste Pro ativo. Clique para conferir os benefícios."
+                aria-label={`Teste Pro ativo: restam ${subscription.trialDaysRemaining} dias`}
+                className="hidden sm:inline-flex items-center gap-1.5 shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary-strong hover:bg-primary/15 transition-colors cursor-pointer select-none"
+              >
+                <Sparkles className="size-3.5" aria-hidden="true" />
+                <span>Teste Pro: {subscription.trialDaysRemaining}d</span>
+              </button>
+            )}
+            {subscription?.isReadOnly && (
+              <button
+                type="button"
+                onClick={() => setHeaderUpgradeOpen(true)}
+                title="Modo somente-leitura ativo. Clique para ativar o Pro."
+                aria-label="Modo somente-leitura ativo"
+                className="hidden sm:inline-flex items-center gap-1.5 shrink-0 rounded-full border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning-strong hover:bg-warning/15 transition-colors cursor-pointer select-none"
+              >
+                <BookOpen className="size-3.5" aria-hidden="true" />
+                <span>Modo Leitura</span>
+              </button>
+            )}
             {isDemoActive && (
               <div
                 className="flex items-center gap-1.5 shrink-0 animate-fade-in"
@@ -313,6 +342,15 @@ export function PageShell() {
       <BackToTop visible={showBackToTop} containerId="main-content" bottomNavOffset />
 
       <BottomNav />
+
+      <UpgradeDialog
+        open={headerUpgradeOpen}
+        onOpenChange={setHeaderUpgradeOpen}
+        onProceedToCheckout={(plan) => {
+          setHeaderUpgradeOpen(false);
+          navigate(`/assinatura?plano=${plan}`);
+        }}
+      />
     </div>
   );
 }

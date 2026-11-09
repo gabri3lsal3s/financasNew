@@ -236,18 +236,23 @@ export function GoalTrackerPublicPage() {
       <SharedLinkHeaderNav
         badgeLabel="Termômetro de Meta"
         targetPath={`meta/${token || ""}`}
-        maxWidth="2xl"
+        maxWidth="5xl"
       />
 
-      <main className="flex-1 max-w-2xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6">
-        <div className="flex items-center justify-end">
+      <main className="flex-1 max-w-2xl md:max-w-5xl mx-auto w-full px-4 sm:px-6 md:px-8 py-6 space-y-6">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground font-medium hidden sm:inline">
+              Termômetro coletivo em tempo real
+            </span>
+          </div>
           <Button
             type="button"
             variant="outline"
             size="xs"
             onClick={handleRefresh}
             disabled={isRefetching}
-            className="gap-1.5 border-border/80 bg-surface hover:bg-surface-hover rounded-lg cursor-pointer text-xs h-7"
+            className="gap-1.5 border-border/80 bg-surface hover:bg-surface-hover rounded-lg cursor-pointer text-xs h-7 ml-auto"
             aria-label="Atualizar dados do termômetro"
           >
             <RefreshCw
@@ -258,405 +263,414 @@ export function GoalTrackerPublicPage() {
           </Button>
         </div>
 
-        {/* Hero Card: Termômetro Visual de Progresso Dinâmico */}
-        <Card className="border-border/80 bg-surface shadow-xs">
-          <CardHeader className="pb-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-              <div>
-                <CardTitle className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
-                  {goalData.title}
-                </CardTitle>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Organizado por {goalData.organizer_name} &middot; {goalData.organizer_city}
-                </p>
-              </div>
-              <div>{statusBadge}</div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-0">
-            {/* Termômetro de Progresso */}
-            <div className="space-y-1.5 pt-1">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">Progresso da Arrecadação</span>
-                <span className="font-semibold tabular-nums text-foreground">
-                  {goalData.percentage}% concluído
-                </span>
-              </div>
-              <Progress
-                value={goalData.percentage}
-                tone={progressTone}
-                size="lg"
-                aria-label={`Progresso da meta: ${goalData.percentage}%`}
-              />
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
-                <span className="flex items-center gap-1">
-                  <span>Arrecadado:</span>
-                  <MoneyText cents={goalData.current_cents} variant="caption" tone="positive" />
-                </span>
-                <span className="flex items-center gap-1 font-medium">
-                  <span>Alvo:</span>
-                  <MoneyText cents={goalData.target_cents} variant="caption" tone="default" />
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Grid Responsivo de KPIs (Meta Total, Total Arrecadado, Falta Arrecadar) */}
-        <section aria-label="Indicadores da Meta Coletiva">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-            {/* KPI 1: Alvo Total */}
+        {/* Layout Desktop em 2 Colunas (7 cols à esquerda, 5 cols à direita) */}
+        <div className="md:grid md:grid-cols-12 md:gap-6 items-start space-y-6 md:space-y-0">
+          {/* Coluna 1: Termômetro Visual, KPIs, Prazo, Histórico e Banners (7 cols) */}
+          <div className="md:col-span-7 space-y-6">
+            {/* Hero Card: Termômetro Visual de Progresso Dinâmico */}
             <Card className="border-border/80 bg-surface shadow-xs">
-              <CardHeader className="pb-1.5">
-                <CardTitle className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
-                  <span>Meta Total</span>
-                  <Target className="size-4 text-muted-foreground" aria-hidden="true" />
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                <div className="tabular-nums font-bold text-foreground text-xl sm:text-2xl tracking-tight whitespace-nowrap">
-                  <MoneyText cents={goalData.target_cents} variant="hero" tone="default" />
+              <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+                  <div>
+                    <CardTitle className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
+                      {goalData.title}
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Organizado por {goalData.organizer_name} &middot; {goalData.organizer_city}
+                    </p>
+                  </div>
+                  <div>{statusBadge}</div>
                 </div>
-                <p className="text-[11px] text-muted-foreground">Objetivo financeiro total</p>
-              </CardContent>
-            </Card>
-
-            {/* KPI 2: Total Arrecadado */}
-            <Card className="border-border/80 bg-surface shadow-xs">
-              <CardHeader className="pb-1.5">
-                <CardTitle className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
-                  <span>Total Arrecadado</span>
-                  <TrendingUp className="size-4 text-positive-strong" aria-hidden="true" />
-                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-1">
-                <div className="tabular-nums font-bold text-foreground text-xl sm:text-2xl tracking-tight whitespace-nowrap">
-                  <MoneyText cents={goalData.current_cents} variant="hero" tone="positive" />
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  {goalData.percentage}% do valor acumulado
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* KPI 3: Falta Arrecadar */}
-            <Card className="border-border/80 bg-surface shadow-xs">
-              <CardHeader className="pb-1.5">
-                <CardTitle className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
-                  <span>{isCompleted ? "Saldo Restante" : "Falta Arrecadar"}</span>
-                  {isCompleted ? (
-                    <CheckCircle2 className="size-4 text-positive-strong" aria-hidden="true" />
-                  ) : (
-                    <Wallet className="size-4 text-portfolio" aria-hidden="true" />
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                <div className="tabular-nums font-bold text-foreground text-xl sm:text-2xl tracking-tight whitespace-nowrap">
-                  <MoneyText
-                    cents={goalData.remaining_cents}
-                    variant="hero"
-                    tone={isCompleted ? "positive" : "portfolio"}
+              <CardContent className="space-y-4 pt-0">
+                {/* Termômetro de Progresso */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">Progresso da Arrecadação</span>
+                    <span className="font-semibold tabular-nums text-foreground">
+                      {goalData.percentage}% concluído
+                    </span>
+                  </div>
+                  <Progress
+                    value={goalData.percentage}
+                    tone={progressTone}
+                    size="lg"
+                    aria-label={`Progresso da meta: ${goalData.percentage}%`}
                   />
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
+                    <span className="flex items-center gap-1">
+                      <span>Arrecadado:</span>
+                      <MoneyText cents={goalData.current_cents} variant="caption" tone="positive" />
+                    </span>
+                    <span className="flex items-center gap-1 font-medium">
+                      <span>Alvo:</span>
+                      <MoneyText cents={goalData.target_cents} variant="caption" tone="default" />
+                    </span>
+                  </div>
                 </div>
-                <p className="text-[11px] text-muted-foreground">
-                  {isCompleted ? "Meta 100% financiada" : "Restante para completar o alvo"}
-                </p>
               </CardContent>
             </Card>
-          </div>
-        </section>
 
-        {/* Card de Prazo Alvo e Contagem Regressiva de Dias (se houver prazo) */}
-        {hasDeadline && goalData.deadline && (
-          <section aria-label="Prazo e contagem regressiva">
-            <Card className="border-border/80 bg-surface shadow-xs">
-              <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/40 text-foreground">
-                    <Calendar className="size-5 text-muted-foreground" aria-hidden="true" />
+            {/* Grid Responsivo de KPIs (Meta Total, Total Arrecadado, Falta Arrecadar) */}
+            <section aria-label="Indicadores da Meta Coletiva">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                {/* KPI 1: Alvo Total */}
+                <Card className="border-border/80 bg-surface shadow-xs">
+                  <CardHeader className="pb-1.5">
+                    <CardTitle className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
+                      <span>Meta Total</span>
+                      <Target className="size-4 text-muted-foreground" aria-hidden="true" />
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1">
+                    <div className="tabular-nums font-bold text-foreground text-xl sm:text-2xl tracking-tight whitespace-nowrap">
+                      <MoneyText cents={goalData.target_cents} variant="hero" tone="default" />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">Objetivo financeiro total</p>
+                  </CardContent>
+                </Card>
+
+                {/* KPI 2: Total Arrecadado */}
+                <Card className="border-border/80 bg-surface shadow-xs">
+                  <CardHeader className="pb-1.5">
+                    <CardTitle className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
+                      <span>Total Arrecadado</span>
+                      <TrendingUp className="size-4 text-positive-strong" aria-hidden="true" />
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1">
+                    <div className="tabular-nums font-bold text-foreground text-xl sm:text-2xl tracking-tight whitespace-nowrap">
+                      <MoneyText cents={goalData.current_cents} variant="hero" tone="positive" />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {goalData.percentage}% do valor acumulado
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* KPI 3: Falta Arrecadar */}
+                <Card className="border-border/80 bg-surface shadow-xs">
+                  <CardHeader className="pb-1.5">
+                    <CardTitle className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
+                      <span>{isCompleted ? "Saldo Restante" : "Falta Arrecadar"}</span>
+                      {isCompleted ? (
+                        <CheckCircle2 className="size-4 text-positive-strong" aria-hidden="true" />
+                      ) : (
+                        <Wallet className="size-4 text-portfolio" aria-hidden="true" />
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1">
+                    <div className="tabular-nums font-bold text-foreground text-xl sm:text-2xl tracking-tight whitespace-nowrap">
+                      <MoneyText
+                        cents={goalData.remaining_cents}
+                        variant="hero"
+                        tone={isCompleted ? "positive" : "portfolio"}
+                      />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {isCompleted ? "Meta 100% financiada" : "Restante para completar o alvo"}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </section>
+
+            {/* Card de Prazo Alvo e Contagem Regressiva de Dias (se houver prazo) */}
+            {hasDeadline && goalData.deadline && (
+              <section aria-label="Prazo e contagem regressiva">
+                <Card className="border-border/80 bg-surface shadow-xs">
+                  <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/40 text-foreground">
+                        <Calendar className="size-5 text-muted-foreground" aria-hidden="true" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="text-sm font-semibold text-foreground block">
+                          Data Alvo: {formatDateBR(goalData.deadline)}
+                        </span>
+                        <p className="text-xs text-muted-foreground">
+                          Prazo limite estipulado pelo organizador para o encerramento da arrecadação
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      {goalData.days_remaining !== null && (
+                        <>
+                          {goalData.days_remaining > 1 && (
+                            <Badge variant="muted" size="sm" className="font-semibold text-xs gap-1.5">
+                              <Clock className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                              <span>{goalData.days_remaining} dias restantes</span>
+                            </Badge>
+                          )}
+                          {goalData.days_remaining === 1 && (
+                            <Badge variant="warning" size="sm" className="font-semibold text-xs gap-1.5">
+                              <Clock className="size-3.5 text-warning-strong" aria-hidden="true" />
+                              <span>1 dia restante (último dia)</span>
+                            </Badge>
+                          )}
+                          {goalData.days_remaining === 0 && (
+                            <Badge variant="warning" size="sm" className="font-semibold text-xs gap-1.5">
+                              <Clock className="size-3.5 text-warning-strong" aria-hidden="true" />
+                              <span>Hoje é o dia alvo da meta</span>
+                            </Badge>
+                          )}
+                          {goalData.days_remaining < 0 && (
+                            <Badge variant="critical" size="sm" className="font-semibold text-xs gap-1.5">
+                              <Clock className="size-3.5 text-critical-strong" aria-hidden="true" />
+                              <span>Prazo encerrado</span>
+                            </Badge>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </section>
+            )}
+
+            {/* Lista de Depósitos Registrados (Transparência Coletiva) */}
+            {goalData.show_contributions_publicly !== false &&
+              goalData.contributions &&
+              goalData.contributions.length > 0 && (
+              <Card className="border-border/80 bg-surface shadow-xs">
+                <CardHeader className="pb-3 border-b border-border/80">
+                  <CardTitle className="text-sm font-semibold text-foreground flex items-center justify-between">
+                    <span>Depósitos Registrados na Vaquinha</span>
+                    <Badge variant="muted" size="xs">
+                      {goalData.contributions.length} recebimento{goalData.contributions.length > 1 ? "s" : ""}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-2 divide-y divide-border/40 text-xs">
+                  {goalData.contributions.map((c) => (
+                    <div key={c.id} className="py-2.5 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-medium text-foreground truncate">
+                          {c.contributor_name || "Participante Anônimo"}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground shrink-0">{c.date}</span>
+                      </div>
+                      <MoneyText cents={c.amount_cents} tone="positive" className="font-semibold tabular-nums shrink-0" />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Nota de Atualização Dinâmica */}
+            <div className="rounded-xl border border-border/80 bg-surface p-4 text-xs text-muted-foreground leading-relaxed flex items-start gap-3">
+              <RefreshCw className="size-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+              <p>
+                Conforme o organizador cadastra os depósitos na meta pelo app, o termômetro atualiza sozinho na web para todos os participantes acompanharem em tempo real.
+              </p>
+            </div>
+
+            {/* Atalho PWA / Fixar na Tela Inicial */}
+            {(canInstall || isIOS || !isInstalled) && (
+              <section aria-label="Fixar atalho na tela inicial">
+                <div className="rounded-2xl border border-border/80 bg-surface shadow-xs p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/40 text-foreground">
+                      <Smartphone className="size-5 text-muted-foreground" aria-hidden="true" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-sm font-semibold text-foreground block">
+                        Acompanhar Meta no Celular
+                      </span>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Adicione este termômetro à tela inicial para checar o avanço da arrecadação a qualquer momento com 1 toque.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePwaAction}
+                    className="gap-2 shrink-0 border-border/80 bg-surface hover:bg-surface-hover cursor-pointer rounded-xl font-semibold text-xs"
+                  >
+                    {isIOS ? (
+                      <>
+                        <Share className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                        <span>Como fixar no iPhone</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                        <span>Adicionar à Tela Inicial</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </section>
+            )}
+
+            {/* Banner de Conversão Viral (Plano 06) */}
+            <section aria-label="Experimentar Áxis Finance">
+              <div className="rounded-2xl border border-border/80 bg-gradient-to-r from-primary/10 via-surface to-surface shadow-xs p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary-strong">
+                    <Sparkles className="size-5" aria-hidden="true" />
                   </div>
                   <div className="space-y-0.5">
-                    <span className="text-sm font-semibold text-foreground block">
-                      Data Alvo: {formatDateBR(goalData.deadline)}
-                    </span>
-                    <p className="text-xs text-muted-foreground">
-                      Prazo limite estipulado pelo organizador para o encerramento da arrecadação
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-foreground">
+                        Crie Vaquinhas & Metas Financeiras Coletivas
+                      </span>
+                      <Badge variant="muted" size="xs">
+                        30 Dias Grátis
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Organize arrecadações com amigos, casamento, viagens ou projetos pessoais com link público e Pix integrado.
                     </p>
                   </div>
                 </div>
-                <div>
-                  {goalData.days_remaining !== null && (
-                    <>
-                      {goalData.days_remaining > 1 && (
-                        <Badge variant="muted" size="sm" className="font-semibold text-xs gap-1.5">
-                          <Clock className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                          <span>{goalData.days_remaining} dias restantes</span>
-                        </Badge>
-                      )}
-                      {goalData.days_remaining === 1 && (
-                        <Badge variant="warning" size="sm" className="font-semibold text-xs gap-1.5">
-                          <Clock className="size-3.5 text-warning-strong" aria-hidden="true" />
-                          <span>1 dia restante (último dia)</span>
-                        </Badge>
-                      )}
-                      {goalData.days_remaining === 0 && (
-                        <Badge variant="warning" size="sm" className="font-semibold text-xs gap-1.5">
-                          <Clock className="size-3.5 text-warning-strong" aria-hidden="true" />
-                          <span>Hoje é o dia alvo da meta</span>
-                        </Badge>
-                      )}
-                      {goalData.days_remaining < 0 && (
-                        <Badge variant="critical" size="sm" className="font-semibold text-xs gap-1.5">
-                          <Clock className="size-3.5 text-critical-strong" aria-hidden="true" />
-                          <span>Prazo encerrado</span>
-                        </Badge>
-                      )}
-                    </>
+                <Link
+                  to="/cadastrar?ref=meta"
+                  className={cn(
+                    buttonVariants({ size: "sm" }),
+                    "gap-1.5 shrink-0 font-semibold text-xs cursor-pointer rounded-xl",
                   )}
+                >
+                  <span>Criar Minha Meta Grátis</span>
+                  <ArrowRight className="size-3.5" aria-hidden="true" />
+                </Link>
+              </div>
+            </section>
+          </div>
+
+          {/* Coluna 2: Card de Contribuição Pix Sticky (5 cols) */}
+          <div className="md:col-span-5 md:sticky md:top-20 space-y-4">
+            {/* Card de Contribuição Pix ou Aviso de Encerramento */}
+            {isArchived ? (
+              <Card className="border-border/80 bg-surface shadow-xs text-center p-6 sm:p-8 space-y-3">
+                <div className="flex justify-center">
+                  <span className="flex size-12 items-center justify-center rounded-2xl bg-positive/10 text-positive-strong">
+                    <CheckCircle2 className="size-6" aria-hidden="true" />
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
-          </section>
-        )}
+                <h2 className="text-base sm:text-lg font-bold text-foreground">Campanha Concluída com Sucesso!</h2>
+                <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+                  A arrecadação para esta meta foi encerrada pelo organizador. Agradecemos a todos os participantes que contribuíram!
+                </p>
+              </Card>
+            ) : (
+              <Card className="border-border/80 bg-surface shadow-xs">
+                <CardHeader className="pb-3 border-b border-border/80">
+                  <CardTitle className="text-base flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+                    <span>Contribua com a Meta via Pix</span>
+                    <Badge variant="muted" size="xs">
+                      {PIX_KEY_TYPE_LABELS[goalData.pix_key_type] ?? "Chave Pix"}
+                    </Badge>
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Envie qualquer quantia diretamente para o organizador para somar ao progresso da meta
+                  </p>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-4">
+                  {/* Botão de Um Toque: [Copiar Pix do Organizador] */}
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="lg"
+                    onClick={handleCopyPix}
+                    className="w-full rounded-xl font-semibold cursor-pointer gap-2"
+                    aria-label="Copiar Pix do Organizador"
+                  >
+                    {copiedPix ? (
+                      <>
+                        <Check className="size-4 text-positive-strong" aria-hidden="true" />
+                        <span>Pix Copiado com Sucesso!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="size-4" aria-hidden="true" />
+                        <span>Copiar Pix do Organizador</span>
+                      </>
+                    )}
+                  </Button>
 
-        {/* Card de Contribuição Pix ou Aviso de Encerramento */}
-        {isArchived ? (
-          <Card className="border-border/80 bg-surface shadow-xs text-center p-6 sm:p-8 space-y-3">
-            <div className="flex justify-center">
-              <span className="flex size-12 items-center justify-center rounded-2xl bg-positive/10 text-positive-strong">
-                <CheckCircle2 className="size-6" aria-hidden="true" />
-              </span>
-            </div>
-            <h2 className="text-base sm:text-lg font-bold text-foreground">Campanha Concluída com Sucesso!</h2>
-            <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-              A arrecadação para esta meta foi encerrada pelo organizador. Agradecemos a todos os participantes que contribuíram!
-            </p>
-          </Card>
-        ) : (
-          <Card className="border-border/80 bg-surface shadow-xs">
-            <CardHeader className="pb-3 border-b border-border/80">
-              <CardTitle className="text-base flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-                <span>Contribua com a Meta via Pix</span>
-                <Badge variant="muted" size="xs">
-                  {PIX_KEY_TYPE_LABELS[goalData.pix_key_type] ?? "Chave Pix"}
-                </Badge>
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">
-                Envie qualquer quantia diretamente para o organizador para somar ao progresso da meta
-              </p>
-            </CardHeader>
-            <CardContent className="pt-4 space-y-4">
-              {/* Botão de Um Toque: [Copiar Pix do Organizador] */}
-              <Button
-                type="button"
-                variant="default"
-                size="lg"
-                onClick={handleCopyPix}
-                className="w-full rounded-xl font-semibold cursor-pointer gap-2"
-                aria-label="Copiar Pix do Organizador"
-              >
-                {copiedPix ? (
-                  <>
-                    <Check className="size-4 text-positive-strong" aria-hidden="true" />
-                    <span>Pix Copiado com Sucesso!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="size-4" aria-hidden="true" />
-                    <span>Copiar Pix do Organizador</span>
-                  </>
-                )}
-              </Button>
+                  {/* Caixa com detalhes da Chave Pix */}
+                  <div className="rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-2 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted-foreground font-medium">Chave Pix:</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-semibold text-foreground select-all break-all text-right">
+                          {goalData.pix_key}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleCopyKey}
+                          className="size-7 p-0 cursor-pointer shrink-0 text-muted-foreground hover:text-foreground"
+                          title="Copiar apenas a chave"
+                          aria-label="Copiar apenas a chave Pix"
+                        >
+                          {copiedKey ? (
+                            <Check className="size-3 text-positive-strong" aria-hidden="true" />
+                          ) : (
+                            <Copy className="size-3" aria-hidden="true" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
 
-              {/* Caixa com detalhes da Chave Pix */}
-              <div className="rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-2 text-xs">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground font-medium">Chave Pix:</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono font-semibold text-foreground select-all break-all text-right">
-                      {goalData.pix_key}
-                    </span>
+                    <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
+                      <span className="text-muted-foreground">Favorecido:</span>
+                      <span className="font-semibold text-foreground text-right">
+                        {goalData.organizer_name}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
+                      <span className="text-muted-foreground">Cidade:</span>
+                      <span className="text-foreground text-right">{goalData.organizer_city}</span>
+                    </div>
+                  </div>
+
+                  {/* Alternar QR Code Pix para visualização no computador */}
+                  <div className="space-y-3 pt-1">
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      onClick={handleCopyKey}
-                      className="size-7 p-0 cursor-pointer shrink-0 text-muted-foreground hover:text-foreground"
-                      title="Copiar apenas a chave"
-                      aria-label="Copiar apenas a chave Pix"
+                      onClick={() => {
+                        triggerSensory("action");
+                        setShowQrCode((prev) => !prev);
+                      }}
+                      className="w-full gap-2 border-border/80 bg-surface hover:bg-surface-hover rounded-xl cursor-pointer text-xs"
                     >
-                      {copiedKey ? (
-                        <Check className="size-3 text-positive-strong" aria-hidden="true" />
-                      ) : (
-                        <Copy className="size-3" aria-hidden="true" />
-                      )}
+                      <QrCode className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                      <span>{showQrCode ? "Ocultar QR Code Pix" : "Exibir QR Code Pix"}</span>
                     </Button>
+
+                    {showQrCode && (
+                      <div className="flex flex-col items-center justify-center p-4 bg-muted/20 rounded-xl border border-border/80 space-y-2.5">
+                        <QrCodeCanvas
+                          text={goalData.pix_br_code?.trim() || goalData.pix_key?.trim()}
+                          size={180}
+                        />
+                        <p className="text-[11px] text-muted-foreground text-center max-w-xs">
+                          Abra o aplicativo do seu banco no celular e escaneie o código QR acima para transferir.
+                        </p>
+                      </div>
+                    )}
                   </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
-                  <span className="text-muted-foreground">Favorecido:</span>
-                  <span className="font-semibold text-foreground text-right">
-                    {goalData.organizer_name}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
-                  <span className="text-muted-foreground">Cidade:</span>
-                  <span className="text-foreground text-right">{goalData.organizer_city}</span>
-                </div>
-              </div>
-
-              {/* Alternar QR Code Pix para visualização no computador */}
-              <div className="space-y-3 pt-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    triggerSensory("action");
-                    setShowQrCode((prev) => !prev);
-                  }}
-                  className="w-full gap-2 border-border/80 bg-surface hover:bg-surface-hover rounded-xl cursor-pointer text-xs"
-                >
-                  <QrCode className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                  <span>{showQrCode ? "Ocultar QR Code Pix" : "Exibir QR Code Pix"}</span>
-                </Button>
-
-                {showQrCode && (
-                  <div className="flex flex-col items-center justify-center p-4 bg-muted/20 rounded-xl border border-border/80 space-y-2.5">
-                    <QrCodeCanvas
-                      text={goalData.pix_br_code?.trim() || goalData.pix_key?.trim()}
-                      size={180}
-                    />
-                    <p className="text-[11px] text-muted-foreground text-center max-w-xs">
-                      Abra o aplicativo do seu banco no celular e escaneie o código QR acima para transferir.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Lista de Depósitos Registrados (Transparência Coletiva) */}
-        {goalData.show_contributions_publicly !== false &&
-          goalData.contributions &&
-          goalData.contributions.length > 0 && (
-          <Card className="border-border/80 bg-surface shadow-xs">
-            <CardHeader className="pb-3 border-b border-border/80">
-              <CardTitle className="text-sm font-semibold text-foreground flex items-center justify-between">
-                <span>Depósitos Registrados na Vaquinha</span>
-                <Badge variant="muted" size="xs">
-                  {goalData.contributions.length} recebimento{goalData.contributions.length > 1 ? "s" : ""}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-2 divide-y divide-border/40 text-xs">
-              {goalData.contributions.map((c) => (
-                <div key={c.id} className="py-2.5 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-medium text-foreground truncate">
-                      {c.contributor_name || "Participante Anônimo"}
-                    </span>
-                    <span className="text-[11px] text-muted-foreground shrink-0">{c.date}</span>
-                  </div>
-                  <MoneyText cents={c.amount_cents} tone="positive" className="font-semibold tabular-nums shrink-0" />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Nota de Atualização Dinâmica */}
-        <div className="rounded-xl border border-border/80 bg-surface p-4 text-xs text-muted-foreground leading-relaxed flex items-start gap-3">
-          <RefreshCw className="size-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
-          <p>
-            Conforme o organizador cadastra os depósitos na meta pelo app, o termômetro atualiza sozinho na web para todos os participantes acompanharem em tempo real.
-          </p>
-        </div>
-
-        {/* Atalho PWA / Fixar na Tela Inicial */}
-        {(canInstall || isIOS || !isInstalled) && (
-          <section aria-label="Fixar atalho na tela inicial">
-            <div className="rounded-2xl border border-border/80 bg-surface shadow-xs p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-start gap-3.5">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/40 text-foreground">
-                  <Smartphone className="size-5 text-muted-foreground" aria-hidden="true" />
-                </div>
-                <div className="space-y-0.5">
-                  <span className="text-sm font-semibold text-foreground block">
-                    Acompanhar Meta no Celular
-                  </span>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Adicione este termômetro à tela inicial para checar o avanço da arrecadação a qualquer momento com 1 toque.
-                  </p>
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handlePwaAction}
-                className="gap-2 shrink-0 border-border/80 bg-surface hover:bg-surface-hover cursor-pointer rounded-xl font-semibold text-xs"
-              >
-                {isIOS ? (
-                  <>
-                    <Share className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                    <span>Como fixar no iPhone</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                    <span>Adicionar à Tela Inicial</span>
-                  </>
-                )}
-              </Button>
-            </div>
-          </section>
-        )}
-
-        {/* Banner de Conversão Viral (Plano 06) */}
-        <section aria-label="Experimentar Áxis Finance">
-          <div className="rounded-2xl border border-border/80 bg-gradient-to-r from-primary/10 via-surface to-surface shadow-xs p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-start gap-3.5">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary-strong">
-                <Sparkles className="size-5" aria-hidden="true" />
-              </div>
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-foreground">
-                    Crie Vaquinhas & Metas Financeiras Coletivas
-                  </span>
-                  <Badge variant="muted" size="xs">
-                    30 Dias Grátis
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Organize arrecadações com amigos, casamento, viagens ou projetos pessoais com link público e Pix integrado.
-                </p>
-              </div>
-            </div>
-            <Link
-              to="/cadastrar?ref=meta"
-              className={cn(
-                buttonVariants({ size: "sm" }),
-                "gap-1.5 shrink-0 font-semibold text-xs cursor-pointer rounded-xl",
-              )}
-            >
-              <span>Criar Minha Meta Grátis</span>
-              <ArrowRight className="size-3.5" aria-hidden="true" />
-            </Link>
+                </CardContent>
+              </Card>
+            )}
           </div>
-        </section>
+        </div>
 
         {/* Modal de Instruções iOS Safari */}
         <IosPwaInstallDialog open={showIosGuide} onOpenChange={setShowIosGuide} />
       </main>
 
       {/* Rodapé Informativo e Branding */}
-      <footer className="max-w-2xl mx-auto w-full pt-8 pb-4 text-center space-y-2 border-t border-border/60 mt-8 text-xs text-muted-foreground px-4">
+      <footer className="max-w-2xl md:max-w-5xl mx-auto w-full pt-8 pb-4 text-center space-y-2 border-t border-border/60 mt-8 text-xs text-muted-foreground px-4">
         <p className="leading-relaxed">
           Termômetro público de transparência financeira via Áxis Finance.
         </p>

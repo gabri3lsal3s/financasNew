@@ -24,6 +24,10 @@ import type {
   ApproveDividendsBatchResult,
   MonthlyClosingPayload,
   MonthlyClosingResult,
+  AdminContactDetails,
+  UserBroadcastNotification,
+  BroadcastAudience,
+  BroadcastType,
 } from "@/types";
 import type {
   Trip,
@@ -1654,6 +1658,88 @@ export async function deleteTripExpenseSyncRpc(params: {
     callRpc("delete_trip_expense_sync" as never, {
       p_expense_id: params.expenseId,
       p_delete_personal: params.deletePersonal ?? false,
+    } as never),
+  );
+}
+
+/**
+ * Consulta auditada dos dados de contato de um usuário pelo Administrador (LGPD Art. 18).
+ */
+export async function adminGetUserContactDetails(userId: string): Promise<AdminContactDetails> {
+  return unwrapRpc(
+    callRpc("admin_get_user_contact_details" as never, {
+      p_user_id: userId,
+    } as never),
+  );
+}
+
+/**
+ * Envia uma notificação administrativa de broadcast / push direto aos clientes.
+ */
+export async function adminSendBroadcastNotification(params: {
+  title: string;
+  message: string;
+  type?: BroadcastType;
+  actionUrl?: string | null;
+  targetAudience?: BroadcastAudience;
+  targetUserIds?: string[] | null;
+}): Promise<string> {
+  return unwrapRpc(
+    callRpc("admin_send_broadcast_notification" as never, {
+      p_title: params.title,
+      p_message: params.message,
+      p_type: params.type ?? "info",
+      p_action_url: params.actionUrl ?? null,
+      p_target_audience: params.targetAudience ?? "all",
+      p_target_user_ids: params.targetUserIds ?? null,
+    } as never),
+  );
+}
+
+/**
+ * Consulta as notificações de broadcast ativas e relevantes para o usuário autenticado.
+ */
+export async function getMyBroadcastNotifications(limit = 20): Promise<UserBroadcastNotification[]> {
+  const result = await unwrapRpc(
+    callRpc("get_my_broadcast_notifications" as never, {
+      p_limit: limit,
+    } as never),
+  );
+  return (result ?? []) as UserBroadcastNotification[];
+}
+
+/**
+ * Marca uma notificação broadcast como lida pelo usuário.
+ */
+export async function markBroadcastAsRead(notificationId: string): Promise<void> {
+  await unwrapRpc(
+    callRpc("mark_broadcast_as_read" as never, {
+      p_notification_id: notificationId,
+    } as never),
+  );
+}
+
+/**
+ * Registra um snapshot/backup do sistema pelo Administrador.
+ */
+export async function adminLogSystemBackup(params: {
+  backupType?: "manual" | "scheduled" | "pre_migration";
+  tableCount?: number;
+  recordCount?: number;
+  fileSizeBytes?: number;
+  checksumSha256?: string;
+  status?: "in_progress" | "completed" | "failed";
+  notes?: string | null;
+}): Promise<string> {
+  return unwrapRpc(
+    callRpc("admin_log_system_backup" as never, {
+      p_backup_type: params.backupType ?? "manual",
+      p_table_count: params.tableCount ?? 0,
+      p_record_count: params.recordCount ?? 0,
+      p_file_size_bytes: params.fileSizeBytes ?? 0,
+      p_checksum_sha256: params.checksumSha256 ?? "",
+      p_status: params.status ?? "completed",
+      p_notes: params.notes ?? null,
     } as never),
   );
 }

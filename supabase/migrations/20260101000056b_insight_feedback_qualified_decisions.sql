@@ -10,4 +10,4 @@ alter table public.insight_feedback
 
 alter table public.insight_feedback
   add constraint insight_feedback_decision_check
-  check (decision in ('ignore', 'confirm', 'already_cancelled', 'one_off', 'not_subscription'));
+  check (decision in ('ignore', 'confirm', 'already_cancelled', 'one_off', 'not_subscription', 'essential'));

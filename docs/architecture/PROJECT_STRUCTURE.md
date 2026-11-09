@@ -224,8 +224,11 @@
     │   │                          #     components/ (diagnostic-card, diagnostics-tab, recurrences-tab, projection-tab F61)
     │   ├── reminders/             #   Lembretes (central de notificações)
     │   ├── settings/              #   Configurações consolidadas em 6 abas especializadas: Minha Conta & Identidade (AccountTab), Aparência & Identidade Visual, Notificações & Automações, Segurança & Gestão de Dados, Plano & Assinatura, Dispositivos & App (App Pro)
-    │   │                          #     components/tabs/ (account-tab, appearance-tab, app-mode-card, notifications-tab, security-tab, subscription-tab, app-installation-tab, delete-account-card, notifications/ [reminders-card, banking-assistant-card, banking-catalog-accordion, prominent-disclosure-modal])
-    │   ├── admin/                 #   Painel Administrativo SaaS /admin (F43: 4 pilares consolidados — Visão Geral & KPIs SaaS, Gestão de Usuários, Convites & Allowlist, Sistema & Auditoria, whitelist-quick-actions.tsx)
+    │   ├── admin/                 #   Módulo Administrativo SaaS Isolado (/admin/login, /admin/*)
+    │   │                          #     layouts/ (admin-shell), components/ (user-edit-dialog, feature-toggle-card, telegram-settings-card, ticket-manage-dialog)
+    │   │                          #     pages: admin-login-page, admin-dashboard-page, admin-users-page, admin-billing-page,
+    │   │                          #            admin-settings-page, admin-notifications-page, admin-backups-page, admin-invites-page,
+    │   │                          #            admin-tickets-page, admin-security-page
     │   ├── subscription/          #   Fluxos de Assinatura & Checkout (/assinatura, /assinar, /assinatura/sucesso)
     │   │                          #     pages: subscription-checkout-page, subscription-success-page
     │   ├── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+F28+F35+F40+F72):

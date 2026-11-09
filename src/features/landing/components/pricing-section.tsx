@@ -163,11 +163,11 @@ export function PricingSection() {
                   <span className="text-xs sm:text-sm text-muted-foreground">/ mês</span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {isAnnual ? "Cobrado anualmente (R$ 143,88/ano · 12x de R$ 11,99)" : "Cobrado mensalmente (sem carência)"}
+                  {isAnnual ? "Cobrado anualmente (R$ 143,88/ano · apenas R$ 0,39/dia)" : "Cobrado mensalmente (sem fidelidade)"}
                 </p>
 
                 <p className="mt-2.5 sm:mt-3 text-xs sm:text-sm text-muted-foreground">
-                  Gestão ativa contínua, lançamentos ilimitados e motor avançado de inteligência fiscal.
+                  Gestão ativa contínua, lançamentos ilimitados e motor avançado de inteligência financeira.
                 </p>
 
                 <div className="mt-6 sm:mt-8 flex flex-col gap-2.5 sm:gap-3.5 text-xs sm:text-sm">
@@ -177,7 +177,7 @@ export function PricingSection() {
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span><strong>Histórico vitalício</strong> e relatórios executivos</span>
+                    <span><strong>Leitor OCR</strong> de cupons fiscais NFC-e e boletos</span>
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
@@ -185,23 +185,23 @@ export function PricingSection() {
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span><strong>Controle de Dívidas & Cobranças:</strong> a pagar e a receber</span>
+                    <span><strong>Safe-to-Spend diário</strong> e Radar de Vencimentos</span>
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span><strong>Motor de Rebalanceamento</strong> determinístico de aportes</span>
+                    <span><strong>Espaço Família colaborativo</strong> e Racha Pix</span>
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span><strong>Radar Fiscal de IR</strong> & Apuração de DARF</span>
+                    <span><strong>Controle de Dívidas</strong> (Snowball / Avalanche)</span>
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span><strong>Pagamento no Pix</strong> ou parcelado no cartão</span>
+                    <span><strong>Motor de Rebalanceamento</strong> de carteira sem DARF</span>
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span>Dossiê completo em <strong>Excel (.xlsx nativo)</strong></span>
+                    <span><strong>Radar Fiscal de IR</strong> & Dossiê em Excel (.xlsx)</span>
                   </div>
                 </div>
               </div>

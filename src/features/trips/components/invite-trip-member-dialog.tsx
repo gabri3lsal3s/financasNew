@@ -82,7 +82,7 @@ export function InviteTripMemberDialog({
     message += ` no Axis Finance.\n\nAcesse pelo link para acompanhar os gastos coletivos, registrar comprovantes e acertar contas:\n${inviteUrl}`;
 
     const encoded = encodeURIComponent(message);
-    window.open(`https://api.whatsapp.com/send?text=${encoded}`, "_blank");
+    window.open(`https://api.whatsapp.com/send?text=${encoded}`, "_blank", "noopener,noreferrer");
   };
 
   return (

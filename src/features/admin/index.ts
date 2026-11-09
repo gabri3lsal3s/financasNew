@@ -1,1 +1,4 @@
-export { AdminPage } from "./pages/admin-page";
+export * from "./pages";
+export * from "./components";
+export * from "./layouts";
+

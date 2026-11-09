@@ -231,3 +231,40 @@ Antes de entregar o aplicativo ao primeiro cliente pagante, valide os 8 itens fu
 - [ ] Cobrança de teste de R$ 1,00 via Pix processada no Asaas com nome "Áxis Finance";
 - [ ] Selo Pro ativado na conta de teste sem intervenção manual;
 - [x] Termos de Uso e Política de Privacidade acessíveis no rodapé (`landing-footer.tsx` e `LegalDialog`).
+
+---
+
+## 8. NOVO PAINEL ADMINISTRATIVO & GOVERNANÇA AVANÇADA (v3.0)
+
+O ecossistema administrativo do Áxis Finance foi completamente isolado da aplicação de finanças pessoais do cliente comum, contando com seu próprio shell de navegação, portal de autenticação dedicado e políticas rígidas de conformidade.
+
+### 8.1 Autenticação e Acesso ao Console (`/admin/login`)
+- **Rota de Entrada:** `https://app.axisfinance.app/admin/login`
+- **Isolamento de Sessão:** O guarda de rotas `RequireAdminSession` bloqueia qualquer acesso sem login administrativo prévio. Se um usuário comum tentar abrir rotas sob `/admin/*`, é imediatamente desconectado e enviado a `/admin/login`.
+- **Anti-Bot & Brute-Force:** O portal conta com Cloudflare Turnstile e bloqueio automático progressivo (3 tentativas: 15s; 5 tentativas: 60s).
+
+### 8.2 Controle de Acesso ao Aplicativo Nativo (APK Android Beta)
+Para gerenciar o beta fechado com precisão cirúrgica sem necessidade de compilar novas versões:
+1. Acesse o **Console Admin** → **Sistema & Configurações** (`/admin/settings`);
+2. Localize a seção **Controle de Acesso ao Aplicativo Nativo (APK Android)**;
+3. Alterne as chaves:
+   - `apk_access_free`: Libera o login pelo APK nativo para usuários do plano Free;
+   - `apk_access_pro`: Libera o login pelo APK nativo para assinantes do plano Pro;
+4. **Comportamento no Dispositivo:** Caso o acesso ao APK esteja desligado para o plano do usuário, o aplicativo Android exibe um modal bloqueador amigável convidando o cliente a usar o Áxis via navegador móvel (PWA/Web). Operadores com perfil `admin`/`superadmin` possuem passe livre irrestrito para homologação.
+
+### 8.3 Central de Notificações & Broadcast Push (`/admin/notifications`)
+Permite despachar comunicados instantâneos na barra de alertas do aplicativo dos clientes:
+- **Públicos Selecionáveis:** Todos os usuários (`all`), apenas assinantes Pro (`pro`), contas gratuitas (`free`) ou um usuário específico por ID UUID (`specific_user`);
+- **Tipos Semânticos:** Informativo (`info`), Sucesso (`success`), Alerta Operacional (`warning`) ou Manutenção Crítica (`critical`);
+- **Ações Clicáveis:** Suporte a links internos (ex: `/ferramentas`, `/configuracoes`) com rastreamento de leitura individual em `user_notification_reads`.
+
+### 8.4 Central de Backups & Disaster Recovery (DRP) (`/admin/backups`)
+1. **Geração de Snapshot:** Clique em **Gerar Snapshot Agora**. O console compila todos os registros públicos e metadados, calcula o checksum SHA-256 no cliente e registra o evento na tabela `system_backups`;
+2. **Download Seguro:** O arquivo `.json` versionado pode ser baixado e arquivado em cofre seguro;
+3. **Verificação de Integridade:** Na ferramenta de validação, cole o hash SHA-256 de qualquer backup histórico para atestar se o arquivo não sofreu corrupção ou adulteração de dados.
+
+### 8.5 Cofre de Contato Auditado (LGPD) (`/admin/users`)
+- O telefone/WhatsApp e o CPF dos clientes não são expostos em listagens públicas nem no REST do Supabase (`REVOKE SELECT`).
+- Na tela de edição de usuário, o operador clica em **Revelar Telefone & CPF (Auditado)**.
+- A visualização invoca a RPC `admin_get_user_contact_details`, que registra compulsoriamente a auditoria em `audit_events` com timestamp, ID do operador e ID do cliente, assegurando total conformidade com a LGPD e link direto para WhatsApp de suporte.
+

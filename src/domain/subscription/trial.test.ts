@@ -3,6 +3,8 @@ import {
   calculateTrialResidual,
   calculateGuaranteeResidual,
   resolveCheckoutBillingSchedule,
+  getTrialLifecycleStage,
+  getTrialLifecycleMetadata,
   STANDARD_TRIAL_DAYS,
   PLAN_PRICES_CENTS,
 } from "./trial";
@@ -157,3 +159,62 @@ describe("Domain: calculateGuaranteeResidual", () => {
     expect(result.daysRemaining).toBe(0);
   });
 });
+
+describe("Domain: getTrialLifecycleStage e getTrialLifecycleMetadata", () => {
+  it("classifica como welcome entre 21 e 30 dias de teste", () => {
+    expect(getTrialLifecycleStage(30)).toBe("welcome");
+    expect(getTrialLifecycleStage(21)).toBe("welcome");
+
+    const meta = getTrialLifecycleMetadata(30);
+    expect(meta.stage).toBe("welcome");
+    expect(meta.badgeLabel).toBe("Teste Pro Ativo");
+    expect(meta.ctaText).toBe("Conhecer Benefícios Pro");
+  });
+
+  it("classifica como awareness entre 8 e 20 dias de teste", () => {
+    expect(getTrialLifecycleStage(20)).toBe("awareness");
+    expect(getTrialLifecycleStage(8)).toBe("awareness");
+
+    const meta = getTrialLifecycleMetadata(15);
+    expect(meta.stage).toBe("awareness");
+    expect(meta.badgeLabel).toBe("15d restantes");
+    expect(meta.title).toContain("15 dias de acesso");
+    expect(meta.ctaText).toContain("40% OFF");
+  });
+
+  it("classifica como warning entre 3 e 7 dias de teste", () => {
+    expect(getTrialLifecycleStage(7)).toBe("warning");
+    expect(getTrialLifecycleStage(3)).toBe("warning");
+
+    const meta = getTrialLifecycleMetadata(5);
+    expect(meta.stage).toBe("warning");
+    expect(meta.badgeVariant).toBe("warning");
+    expect(meta.title).toContain("5 dias");
+    expect(meta.description).toContain("nunca são apagados");
+  });
+
+  it("classifica como imminent para 1 ou 2 dias de teste", () => {
+    expect(getTrialLifecycleStage(2)).toBe("imminent");
+    expect(getTrialLifecycleStage(1)).toBe("imminent");
+
+    const meta2 = getTrialLifecycleMetadata(2);
+    expect(meta2.stage).toBe("imminent");
+    expect(meta2.badgeLabel).toBe("Últimas 48 horas");
+
+    const meta1 = getTrialLifecycleMetadata(1);
+    expect(meta1.stage).toBe("imminent");
+    expect(meta1.badgeLabel).toBe("Último dia");
+    expect(meta1.title).toBe("Seu período de teste Pro encerra hoje");
+  });
+
+  it("classifica como expired para 0 ou menos dias", () => {
+    expect(getTrialLifecycleStage(0)).toBe("expired");
+    expect(getTrialLifecycleStage(-1)).toBe("expired");
+
+    const meta = getTrialLifecycleMetadata(0);
+    expect(meta.stage).toBe("expired");
+    expect(meta.badgeLabel).toBe("Modo Consulta");
+    expect(meta.ctaText).toBe("Reativar Plano Pro");
+  });
+});
+

@@ -150,3 +150,33 @@ export async function sendTelegramNotification(params: {
     return { success: false, error: `Falha na requisição ao Telegram: ${msg}` };
   }
 }
+
+
+export interface SaleNotificationData {
+  plan: "monthly" | "annual" | string;
+  amount: number;
+  paymentMethod: "pix" | "credit_card" | string;
+  userName?: string | null;
+  userEmail?: string | null;
+  paymentId?: string | null;
+}
+
+export function buildTelegramSaleMessage(data: SaleNotificationData): string {
+  const planLabel = data.plan === "annual" ? "Plano Pro Anual (12 meses)" : "Plano Pro Mensal";
+  const amountFormatted = new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(data.amount);
+
+  const lines: (string | null)[] = [
+    "<b>[NOVA ASSINATURA CONFIRMADA — FINANÇAS PRO]</b>\n",
+    `<b>Plano:</b> ${escapeTelegramHtml(planLabel)}`,
+    `<b>Valor:</b> ${escapeTelegramHtml(amountFormatted)}`,
+    `<b>Forma de Pagamento:</b> ${data.paymentMethod === "pix" ? "Pix Instantâneo" : "Cartão de Crédito"}`,
+    data.userName ? `<b>Cliente:</b> ${escapeTelegramHtml(data.userName)}` : null,
+    data.userEmail ? `<b>E-mail:</b> ${escapeTelegramHtml(data.userEmail)}` : null,
+    data.paymentId ? `<b>ID Asaas:</b> <code>${escapeTelegramHtml(data.paymentId)}</code>` : null,
+  ];
+
+  return lines.filter((line): line is string => Boolean(line)).join("\n");
+}

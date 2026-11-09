@@ -1143,10 +1143,9 @@ export function OverviewPage() {
       ),
     },
     subscription.isTrial &&
-      subscription.trialDaysRemaining !== null &&
-      subscription.trialDaysRemaining <= 7 && {
+      subscription.trialDaysRemaining !== null && {
         id: "trial-ending-banner",
-        priority: 2,
+        priority: subscription.trialDaysRemaining <= 7 ? 2 : 4,
         content: <TrialEndingBanner daysRemaining={subscription.trialDaysRemaining} />,
       },
   ];

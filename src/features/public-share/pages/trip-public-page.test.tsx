@@ -220,7 +220,8 @@ describe("TripPublicPage", () => {
 
     expect(openSpy).toHaveBeenCalledWith(
       expect.stringContaining("financasnew.gabrielisaacsales.workers.dev%2Fviagem%2Ftoken123"),
-      "_blank"
+      "_blank",
+      "noopener,noreferrer",
     );
 
     openSpy.mockRestore();

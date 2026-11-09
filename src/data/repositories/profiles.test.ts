@@ -18,6 +18,9 @@ const PREFERENCES_DEFAULTS = {
   report_weights_enabled: true,
   max_sector_acoes: null,
   max_sector_fiis: null,
+  custom_settings: {
+    familyModeEnabled: true,
+  },
 };
 
 let calls: UpsertCall[] = [];

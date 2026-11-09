@@ -28,9 +28,9 @@ export function resolveTierFromPayment(payment: {
   const billingType = (payment.billingType ?? "").toUpperCase();
   const value = Number(payment.value);
 
-  // PIX no produto é exclusivo do plano anual
+  // PIX no produto é exclusivo do plano anual e requer valor exato do catálogo
   if (billingType === "PIX") {
-    if (!Number.isFinite(value) || approxEqual(value, ASAAS_PLAN_CATALOG.annual.value)) {
+    if (Number.isFinite(value) && approxEqual(value, ASAAS_PLAN_CATALOG.annual.value)) {
       return ASAAS_PLAN_CATALOG.annual.planId;
     }
     return null;

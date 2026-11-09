@@ -35,6 +35,113 @@ export interface AsaasHolderInfoInput {
   phone?: string;
 }
 
+/**
+ * Validação pura de CPF por Módulo 11 da Receita Federal.
+ */
+export function isValidCPF(value: string): boolean {
+  const digits = (value || "").replace(/\D/g, "");
+  if (digits.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+
+  let sum1 = 0;
+  for (let i = 0; i < 9; i++) {
+    sum1 += parseInt(digits.charAt(i), 10) * (10 - i);
+  }
+  const remainder1 = sum1 % 11;
+  const digit1 = remainder1 < 2 ? 0 : 11 - remainder1;
+  if (digit1 !== parseInt(digits.charAt(9), 10)) return false;
+
+  let sum2 = 0;
+  for (let i = 0; i < 10; i++) {
+    sum2 += parseInt(digits.charAt(i), 10) * (11 - i);
+  }
+  const remainder2 = sum2 % 11;
+  const digit2 = remainder2 < 2 ? 0 : 11 - remainder2;
+  if (digit2 !== parseInt(digits.charAt(10), 10)) return false;
+
+  return true;
+}
+
+/**
+ * Validação pura de checksum de cartão de crédito via Algoritmo de Luhn (Mod 10).
+ */
+export function isValidLuhn(cardNumber: string): boolean {
+  const digits = (cardNumber || "").replace(/\D/g, "");
+  if (digits.length < 13 || digits.length > 19) return false;
+
+  let sum = 0;
+  let shouldDouble = false;
+
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let digit = parseInt(digits.charAt(i), 10);
+    if (shouldDouble) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    sum += digit;
+    shouldDouble = !shouldDouble;
+  }
+
+  return sum % 10 === 0;
+}
+
+/**
+ * Validação pura de data de expiração de cartão (mês 1-12 e não expirado).
+ */
+export function isValidCardExpiry(monthStr: string, yearStr: string, referenceDate: Date = new Date()): boolean {
+  const month = parseInt(monthStr, 10);
+  if (!Number.isInteger(month) || month < 1 || month > 12) return false;
+
+  let year = parseInt(yearStr, 10);
+  if (!Number.isInteger(year)) return false;
+  if (yearStr.length === 2) {
+    year += 2000;
+  }
+
+  const currentYear = referenceDate.getFullYear();
+  const currentMonth = referenceDate.getMonth() + 1;
+
+  if (year < currentYear) return false;
+  if (year === currentYear && month < currentMonth) return false;
+  if (year > currentYear + 25) return false;
+
+  return true;
+}
+
+/**
+ * Sanitizador de payload para prevenção de vazamento de PAN e CCV em logs (PCI-DSS).
+ */
+export function sanitizePaymentLog<T>(data: T): T {
+  if (!data || typeof data !== "object") return data;
+  if (Array.isArray(data)) {
+    return data.map((item) => sanitizePaymentLog(item)) as unknown as T;
+  }
+
+  const copy: Record<string, unknown> = { ...(data as Record<string, unknown>) };
+
+  for (const key of Object.keys(copy)) {
+    const lower = key.toLowerCase();
+    const val = copy[key];
+
+    if (lower === "ccv" || lower === "cvv") {
+      copy[key] = "***";
+    } else if (lower === "number" && typeof val === "string") {
+      const clean = val.replace(/\D/g, "");
+      if (clean.length >= 8) {
+        copy[key] = `**** **** **** ${clean.slice(-4)}`;
+      } else {
+        copy[key] = "***";
+      }
+    } else if (lower === "creditcard" && val && typeof val === "object") {
+      copy[key] = sanitizePaymentLog(val);
+    } else if (typeof val === "object" && val !== null) {
+      copy[key] = sanitizePaymentLog(val);
+    }
+  }
+
+  return copy as T;
+}
+
 function getEnv(key: string): string | undefined {
   if (typeof Deno !== "undefined" && Deno.env?.get) {
     return Deno.env.get(key);

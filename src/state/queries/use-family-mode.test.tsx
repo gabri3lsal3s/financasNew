@@ -44,10 +44,29 @@ describe("useFamilyMode Hook — Governança do Modo Familiar", () => {
     });
   });
 
-  it("retorna isFamilyModeEnabled como false por padrão quando indefinido", async () => {
+  it("retorna isFamilyModeEnabled como true por padrão para novos usuários quando indefinido", async () => {
     vi.mocked(userPrefsRepo.getUserPreferences).mockResolvedValueOnce({
       ...mockPreferencesBase,
       custom_settings: {},
+    });
+
+    const { result } = renderHook(() => useFamilyMode(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.isFamilyModeEnabled).toBe(true);
+  });
+
+  it("retorna isFamilyModeEnabled como false quando desativado explicitamente pelo usuário", async () => {
+    vi.mocked(userPrefsRepo.getUserPreferences).mockResolvedValueOnce({
+      ...mockPreferencesBase,
+      custom_settings: {
+        familyModeEnabled: false,
+      },
     });
 
     const { result } = renderHook(() => useFamilyMode(), {

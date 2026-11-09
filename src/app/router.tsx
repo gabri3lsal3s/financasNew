@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { Navigate, Outlet, BrowserRouter, Route, Routes, useLocation, useNavigate } from "react-router";
 import { appRoutes } from "@/app/routes";
 import { LoadingScreen, PageShell } from "@/components/layout";
-import { RequireActiveAccount, RequireAdmin, RequireFeature } from "@/components/routing";
+import { RequireActiveAccount, RequireAdminSession, RequireFeature } from "@/components/routing";
 
 const FloatingCalculator = lazy(() =>
   import("@/components/modules/floating-calculator").then((m) => ({ default: m.FloatingCalculator })),
@@ -115,6 +115,42 @@ const RebalanceSimulatorPage = lazy(() =>
 const CompoundInterestPage = lazy(() =>
   import("@/features/tools/pages/compound-interest-page").then((m) => ({ default: m.CompoundInterestPage })),
 );
+const AdminLoginPage = lazy(() =>
+  import("@/features/admin/pages/admin-login-page").then((m) => ({ default: m.AdminLoginPage })),
+);
+const AdminShell = lazy(() =>
+  import("@/features/admin/layouts/admin-shell").then((m) => ({ default: m.AdminShell })),
+);
+const AdminDashboardPage = lazy(() =>
+  import("@/features/admin/pages/admin-dashboard-page").then((m) => ({ default: m.AdminDashboardPage })),
+);
+const AdminUsersPage = lazy(() =>
+  import("@/features/admin/pages/admin-users-page").then((m) => ({ default: m.AdminUsersPage })),
+);
+const AdminNotificationsPage = lazy(() =>
+  import("@/features/admin/pages/admin-notifications-page").then((m) => ({ default: m.AdminNotificationsPage })),
+);
+const AdminBillingPage = lazy(() =>
+  import("@/features/admin/pages/admin-billing-page").then((m) => ({ default: m.AdminBillingPage })),
+);
+const AdminTicketsPage = lazy(() =>
+  import("@/features/admin/pages/admin-tickets-page").then((m) => ({ default: m.AdminTicketsPage })),
+);
+const AdminInvitesPage = lazy(() =>
+  import("@/features/admin/pages/admin-invites-page").then((m) => ({ default: m.AdminInvitesPage })),
+);
+const AdminBackupsPage = lazy(() =>
+  import("@/features/admin/pages/admin-backups-page").then((m) => ({ default: m.AdminBackupsPage })),
+);
+const AdminSecurityPage = lazy(() =>
+  import("@/features/admin/pages/admin-security-page").then((m) => ({ default: m.AdminSecurityPage })),
+);
+const AdminSettingsPage = lazy(() =>
+  import("@/features/admin/pages/admin-settings-page").then((m) => ({ default: m.AdminSettingsPage })),
+);
+const ApkBetaRestrictedModal = lazy(() =>
+  import("@/components/modules/apk-beta-restricted-modal").then((m) => ({ default: m.ApkBetaRestrictedModal })),
+);
 
 
 
@@ -215,6 +251,7 @@ function RequireAuth() {
       {/* Utilitários globais (F9): disponíveis em todas as telas autenticadas */}
       <Suspense fallback={null}>
         <FloatingCalculator />
+        <ApkBetaRestrictedModal />
       </Suspense>
       <Outlet />
     </div>
@@ -312,11 +349,30 @@ export function AppRouter() {
           <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
           <Route path="/atualizar-senha" element={<ResetPasswordPage />} />
 
+          {/* Portal de Login Administrativo Exclusivo */}
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+
           {/* Checkout de assinatura Pro — layout próprio (sem shell do app) */}
           <Route path="/assinatura" element={<SubscriptionCheckoutPage />} />
           <Route path="/assinar" element={<SubscriptionCheckoutPage />} />
           <Route path="/assinatura/sucesso" element={<SubscriptionSuccessPage />} />
           <Route path="/assinar/sucesso" element={<SubscriptionSuccessPage />} />
+
+          {/* Console Administrativo de Operações (Isolado fora do PageShell) */}
+          <Route element={<RequireAdminSession />}>
+            <Route element={<AdminShell />}>
+              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+              <Route path="/admin/usuarios" element={<AdminUsersPage />} />
+              <Route path="/admin/notificacoes" element={<AdminNotificationsPage />} />
+              <Route path="/admin/faturamento" element={<AdminBillingPage />} />
+              <Route path="/admin/chamados" element={<AdminTicketsPage />} />
+              <Route path="/admin/convites" element={<AdminInvitesPage />} />
+              <Route path="/admin/backups" element={<AdminBackupsPage />} />
+              <Route path="/admin/seguranca" element={<AdminSecurityPage />} />
+              <Route path="/admin/configuracoes" element={<AdminSettingsPage />} />
+            </Route>
+          </Route>
 
           {/* Telas de status da conta para usuários autenticados */}
           <Route element={<RequireAuth />}>
@@ -334,28 +390,17 @@ export function AppRouter() {
 
               <Route element={<PageShell />}>
                 <Route path="/share-target" element={<ShareTargetPage />} />
-                {appRoutes
-                  .filter((r) => r.path !== "/admin")
-                  .map((route) => {
-                    const featureKey = ROUTE_FEATURE_MAP[route.path];
-                    if (featureKey) {
-                      return (
-                        <Route key={route.path} element={<RequireFeature featureKey={featureKey} />}>
-                          <Route path={route.path} element={<route.Component />} />
-                        </Route>
-                      );
-                    }
-                    return <Route key={route.path} path={route.path} element={<route.Component />} />;
-                  })}
-
-                {/* Rota restrita de administração */}
-                <Route element={<RequireAdmin />}>
-                  {appRoutes
-                    .filter((r) => r.path === "/admin")
-                    .map((route) => (
-                      <Route key={route.path} path={route.path} element={<route.Component />} />
-                    ))}
-                </Route>
+                {appRoutes.map((route) => {
+                  const featureKey = ROUTE_FEATURE_MAP[route.path];
+                  if (featureKey) {
+                    return (
+                      <Route key={route.path} element={<RequireFeature featureKey={featureKey} />}>
+                        <Route path={route.path} element={<route.Component />} />
+                      </Route>
+                    );
+                  }
+                  return <Route key={route.path} path={route.path} element={<route.Component />} />;
+                })}
 
                 {/* Redirecionamento seguro para rotas legadas e fallback catch-all */}
                 <Route path="/mais" element={<Navigate to="/" replace />} />

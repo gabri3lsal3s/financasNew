@@ -6,6 +6,7 @@ import {
   getAsaasPixQrCode,
   getAsaasPayment,
   shouldReusePendingPixCharge,
+  isValidCPF,
 } from "../_shared/asaas.ts";
 import { ASAAS_PLAN_CATALOG } from "../_shared/asaas-plans.ts";
 import { buildCorsHeaders, jsonResponse, safeErrorResponse } from "../_shared/http.ts";
@@ -69,11 +70,19 @@ Deno?.serve?.(async (req: Request) => {
     }
 
     const cleanCpf = (cpf || "").replace(/\D/g, "");
-    if (cleanCpf.length !== 11) {
-      return jsonResponse(req, { error: "CPF deve conter exatamente 11 dígitos" }, 400);
+    if (!isValidCPF(cleanCpf)) {
+      return jsonResponse(req, { error: "CPF inválido. Verifique os dígitos informados." }, 400);
     }
 
-    await supabase.from("profiles").update({ cpf: cleanCpf }).eq("id", user.id);
+    const { error: profileUpdateError } = await supabase
+      .from("profiles")
+      .update({ cpf: cleanCpf })
+      .eq("id", user.id);
+
+    if (profileUpdateError) {
+      console.error("[asaas-checkout] Falha ao atualizar CPF do perfil:", profileUpdateError.message);
+      return jsonResponse(req, { error: "Falha ao salvar dados cadastrais. Tente novamente." }, 400);
+    }
 
     const { data: profile } = await supabase
       .from("profiles")
@@ -175,6 +184,23 @@ Deno?.serve?.(async (req: Request) => {
       return jsonResponse(req, { error: "Dados do cartão de crédito incompletos" }, 400);
     }
 
+    if (!isValidLuhn(card.number)) {
+      return jsonResponse(req, { error: "Número do cartão de crédito inválido" }, 400);
+    }
+
+    if (!isValidCardExpiry(card.expiryMonth, card.expiryYear)) {
+      return jsonResponse(
+        req,
+        { error: "Cartão de crédito com data de validade vencida ou incorreta" },
+        400,
+      );
+    }
+
+    const cleanCcv = (card.ccv || "").replace(/\D/g, "");
+    if (cleanCcv.length < 3 || cleanCcv.length > 4) {
+      return jsonResponse(req, { error: "Código de segurança (CVV) inválido" }, 400);
+    }
+
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
 
     const subscription = await createAsaasCreditCardSubscription({
@@ -231,6 +257,8 @@ Deno?.serve?.(async (req: Request) => {
       status: confirmed ? "active" : "incomplete",
     });
   } catch (err: unknown) {
+    const rawMsg = err instanceof Error ? err.message : String(err);
+    console.error("[asaas-checkout] Falha ao processar pagamento:", sanitizePaymentLog(rawMsg));
     return safeErrorResponse(req, 500, "Falha ao processar pagamento. Tente novamente.", err);
   }
 });

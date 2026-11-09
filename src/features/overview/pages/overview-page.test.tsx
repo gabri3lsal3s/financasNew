@@ -591,6 +591,24 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(screen.getByText("6d restantes")).toBeInTheDocument();
   });
 
+  it("renderiza banner de acolhimento do trial no carrossel quando restarem > 7 dias (ex: 28 dias)", () => {
+    subscriptionMock = {
+      ...defaultSubscriptionMock,
+      tier: "trial",
+      isPro: false,
+      isTrial: true,
+      trialDaysRemaining: 28,
+      trialEndsAt: "2026-09-12T12:00:00Z",
+    };
+
+    render(<OverviewPage />);
+
+    expect(
+      screen.getAllByText("Você está no Áxis Pro com acesso total liberado")[0],
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Teste Pro Ativo")[0]).toBeInTheDocument();
+  });
+
   it("renderiza ReadOnlyBanner no topo quando a conta estiver em modo somente-leitura", () => {
     subscriptionMock = {
       ...defaultSubscriptionMock,
@@ -731,14 +749,14 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
         screen.getByText("Boas-vindas ao seu novo centro financeiro"),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: /Fazer Tour Rápido \(2 min\)/i }),
+        screen.getByRole("button", { name: "Explorar Sozinho" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: /Configurar Minha Conta Agora/i }),
+        screen.getByRole("button", { name: /Personalizar Meu Início/i }),
       ).toBeInTheDocument();
     });
 
-    it("ao clicar em 'Fazer Tour Rápido' no WelcomeModal, fecha o acolhimento e abre o DemoTrackSelectModal", () => {
+    it("ao avançar pelo WelcomeModal e clicar em 'Fazer Tour Rápido', fecha o acolhimento e abre o DemoTrackSelectModal", () => {
       onboardingCountsMock = {
         expenseCategories: 0,
         incomeCategories: 0,
@@ -750,7 +768,11 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
 
       render(<OverviewPage />);
 
-      const tourBtn = screen.getByRole("button", { name: /Fazer Tour Rápido \(2 min\)/i });
+      // Passo 1 -> Passo 2 -> Passo 3
+      fireEvent.click(screen.getByRole("button", { name: /Personalizar Meu Início/i }));
+      fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
+
+      const tourBtn = screen.getByRole("button", { name: /Fazer Tour Rápido \(1 min\)/i });
       fireEvent.click(tourBtn);
 
       expect(

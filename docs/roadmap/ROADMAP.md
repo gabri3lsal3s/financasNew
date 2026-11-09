@@ -1,5 +1,45 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.0.18 (Build 47)** registra a **Conclusão Integral do Plano 21: Refatoração do Módulo Admin, Login Isolado, Controle de APK Android Beta, Notificações Push aos Clientes, Cofre LGPD e Central de Backups com SHA-256 e DRP** (2026-11-09):
+> - **(1) Módulo Administrativo Isolado & Novo Fluxo de Login (`/admin/login` e `/admin/*`)**:
+>   - Tela dedicada de autenticação administrativa em `/admin/login` com layout limpo e minimalista, desafio Cloudflare Turnstile, bloqueio progressivo exponencial contra ataques de força bruta e validação atômica de perfil administrativo (*fail-closed*);
+>   - Guarda de rota estrita `RequireAdminSession` que intercepta todas as rotas sob `/admin/*` e redireciona usuários desautenticados ou clientes comuns diretamente para `/admin/login`;
+>   - Layout executivo exclusivo `AdminShell` com Topbar de status e telemetria operacional (Modo Seguro, Criptografia Ativa), atalho para retorno ao app de clientes e Sidebar com 9 áreas organizadas: Visão Geral (`/admin/dashboard`), Gestão de Usuários (`/admin/users`), Faturamento SaaS (`/admin/billing`), Sistema & Configurações (`/admin/settings`), Notificações Broadcast (`/admin/notifications`), Backups & DRP (`/admin/backups`), Convites (`/admin/invites`), Chamados de Suporte (`/admin/tickets`) e Segurança/LGPD (`/admin/security`);
+> - **(2) Controle do Aplicativo Nativo Android (APK Beta Free / Pro)**:
+>   - Feature flags no banco de dados `apk_access_free` e `apk_access_pro` gerenciáveis diretamente pela interface em `/admin/settings`;
+>   - Componente interceptador `<ApkBetaRestrictedModal />` no APK nativo que exibe orientação amigável e atalho para o navegador Web/PWA caso o acesso via APK esteja suspenso para o plano do usuário, com passe livre automático para administradores;
+> - **(3) Cofre Auditado de Dados de Contato dos Clientes (LGPD)**:
+>   - Blindagem a nível de banco de dados na coluna `phone` de `public.profiles` com `REVOKE SELECT (phone) FROM anon, authenticated`, eliminando qualquer vazamento via REST;
+>   - Revelação de telefone/WhatsApp e CPF sob demanda na tela de edição do usuário (`UserEditDialog`) através da RPC com `SECURITY DEFINER` `public.admin_get_user_contact_details`, registrando compulsoriamente evento imutável em `public.audit_events` com timestamp, ID do operador e ID do cliente, além de link direto para suporte via WhatsApp;
+> - **(4) Central de Notificações Broadcast / Push aos Clientes (`/admin/notifications`)**:
+>   - Envio de comunicados aos clientes segmentados por público (todos, Pro, Free ou usuário específico por UUID), categorizados em `info`, `success`, `warning` ou `critical`, com suporte a links de ação;
+>   - Integração no cabeçalho do cliente (`NotificationsPopover`) com badge de não lidos e controle individual de leitura em `public.user_notification_reads`;
+> - **(5) Central de Backups do Sistema com SHA-256 e DRP (`/admin/backups`)**:
+>   - Exportação de snapshots em JSON on-demand no navegador com cálculo de hash criptográfico SHA-256 e gravação auditada em `public.system_backups`;
+>   - Ferramenta de verificação de integridade contra corrupção e manual de Disaster Recovery Plan (DRP) integrado;
+> - **(6) Portões de Qualidade & Conformidade 100% Verdes**:
+>   - Typecheck (`tsc -b`): 0 erros; Lint: 0 erros e 0 warnings; Novos testes unitários (`require-admin-session.test.tsx`, `apk-beta-restricted-modal.test.tsx`, `admin-login-page.test.tsx`) 100% aprovados; Build de produção Vite e PWA gerados com sucesso.
+>
+> **v3.0.17 (Build 46)** registra a **Otimização do Onboarding, Atratividade da Assinatura e Gestão do Ciclo de Vida do Período de Testes (Trial 30 dias)** (2026-11-09):
+> - **(1) Acolhimento Unificado por Metas no Primeiro Acesso (FTUX — `WelcomeModal`)**:
+>   - Redesenho completo do diálogo de primeiro acesso em 3 etapas intuitivas:
+>     - **Passo 1:** Boas-vindas acolhedoras confirmando 30 dias de acesso Áxis Pro irrestrito sem necessidade de cartão de crédito cadastrado + apresentação dos 3 pilares estruturais (Fluxo & Cartões, Captura Inteligente e Patrimônio & Metas);
+>     - **Passo 2:** Personalização por prioridade imediata do usuário ("Controlar cartões e faturas", "Lançar sem digitação via OCR", "Equilibrar contas e quitar dívidas" ou "Finanças do casal ou família");
+>     - **Passo 3:** Confirmação do foco escolhido com botões de ação imediata ("Começar Agora" com redirecionamento para a tela correspondente ou "Fazer Tour Rápido de 1 min" com dados simulados em memória);
+>   - Desobstrução do primeiro acesso na Home (`OverviewPage`), eliminando conflitos de múltiplos popups para contas virgens;
+> - **(2) Motor do Ciclo de Vida do Trial & Banners Dinâmicos no Carrossel da Home (`trial.ts` & `TrialEndingBanner`)**:
+>   - Adição do modelo `TrialLifecycleStage` com 5 fases canônicas: `welcome` (21–30d), `awareness` (8–20d), `warning` (4–7d), `imminent` (0–3d) e `expired` (expirado);
+>   - Banner adaptativo integrado ao carrossel da Home (`DashboardAlertsCarousel`) durante todo o período de testes, com prioridade elevada nos últimos 7 dias e adaptação de copy, tons e ícones Nível 2;
+> - **(3) Lembretes Discretos e Acesso Rápido no Shell Global (`Sidebar` & `PageShell`)**:
+>   - Barra de progresso visual do trial no rodapé da barra lateral desktop (`Sidebar`), com badge de dias restantes e botão "Garantir Plano Pro" (modo recolhido com ícone compacto);
+>   - Status pill clicável no topo de todas as telas (`PageShell`), permitindo abrir o diálogo de upgrade com 1 clique;
+> - **(4) Modernização Integral dos Modais & Telas de Vendas (`UpgradeDialog`, `SubscriptionTab`, Checkout & Landing Page)**:
+>   - `UpgradeDialog` reestruturado com os 4 pilares avançados (OCR, Multi-Cartões em até 60x, Previsibilidade Safe-to-Spend e Espaço Família);
+>   - Ancoragem diária irresistível: *"Apenas R$ 0,39 por dia"* no plano anual (-40%);
+>   - Remoção de fricção com garantia explícita de *"R$ 0,00 cobrados hoje"*, assegurando ao usuário a preservação dos dias restantes de teste mesmo ao assinar antecipadamente;
+>   - Tabela comparativa da aba Assinatura (`SubscriptionTab`) atualizada com 12 funcionalidades modernas e sincronizada com a Landing Page pública.
+>
+
 > **v3.0.16 (Build 45)** registra o **Aperfeiçoamento dos Acertos com Pix EMV de Valor Cravado, Gravação Isolada, Gate de Finalização, Reabertura, Exclusão e Saída de Participantes no Modo Viagem** (2026-11-09):
 > - **(1) Pix EMV com Valor Cravado & QR Code sob Demanda (`TripSettlementDialog` & `TripPublicPage`)**:
 >   - Geração de Pix Copia e Cola EMV padrão BACEN já com o valor exato cravado da transferência (`amountCents`) utilizando `generatePixCopyPaste`, permitindo que o devedor apenas copie e envie pelo aplicativo bancário com zero erro manual;

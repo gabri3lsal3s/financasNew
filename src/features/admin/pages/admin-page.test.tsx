@@ -108,6 +108,7 @@ vi.mock("@/state", () => ({
     isLoading: false,
   }),
   useUpdateTelegramSettingsMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAdminUserContact: () => ({ data: null, isLoading: false, error: null }),
 }));
 
 describe("AdminPage Component", () => {

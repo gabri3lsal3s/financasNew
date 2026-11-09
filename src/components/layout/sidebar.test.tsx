@@ -40,6 +40,11 @@ vi.mock("@/state", () => ({
     isLoading: false,
     toggleFamilyMode: vi.fn(),
   }),
+  useTripMode: () => ({
+    isTripModeEnabled: false,
+    isLoading: false,
+    toggleTripMode: vi.fn(),
+  }),
   useUserSubscription: () => ({
     isPro: true,
     isTrial: false,

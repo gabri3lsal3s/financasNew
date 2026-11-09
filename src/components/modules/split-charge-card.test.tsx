@@ -184,4 +184,38 @@ describe("SplitChargeCard — Card Canônico de Cobrança Compartilhada", () => 
     await user.click(payAllBtn);
     expect(onTogglePayAllRemaining).toHaveBeenCalled();
   });
+
+  it("renderiza layout split-desktop com coluna Pix dedicada e suporte a 6 parcelas com scroll", () => {
+    const mockSixInstallments = Array.from({ length: 6 }, (_, idx) => ({
+      id: `inst_${idx + 1}`,
+      participant_id: "p_guest",
+      installment_number: idx + 1,
+      total_installments: 6,
+      amount_cents: 2000,
+      due_date: `2026-${String(idx + 1).padStart(2, "0")}-10`,
+      is_settled: idx < 2,
+      settled_at: idx < 2 ? "2026-01-10T10:00:00Z" : null,
+    }));
+
+    render(
+      <SplitChargeCard
+        {...baseProps}
+        layout="split-desktop"
+        installmentsCount={6}
+        installments={mockSixInstallments}
+        selectedInstallmentId="inst_3"
+        desktopExtraContent={<div data-testid="extra-content">Banner Onboarding</div>}
+      />
+    );
+
+    // Deve exibir o badge de EMV do Pix
+    expect(screen.getByText("BACEN EMV")).toBeInTheDocument();
+    expect(screen.getByTestId("extra-content")).toBeInTheDocument();
+
+    // Deve exibir as parcelas
+    expect(screen.getByText("Parcela 1/6")).toBeInTheDocument();
+    expect(screen.getByText("Parcela 6/6")).toBeInTheDocument();
+    expect(screen.getByText(/Parcelas \(2\/6 pagas\)/i)).toBeInTheDocument();
+  });
 });
+

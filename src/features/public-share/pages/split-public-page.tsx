@@ -386,11 +386,11 @@ export function SplitPublicPage() {
       <SharedLinkHeaderNav
         badgeLabel="Racha de Conta"
         targetPath={`r/${token || ""}`}
-        maxWidth="md"
+        maxWidth="5xl"
       />
 
       {/* Conteúdo Central */}
-      <main className="w-full max-w-md mx-auto my-auto p-4 sm:p-6 space-y-4">
+      <main className="w-full max-w-md md:max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-4 sm:py-6 flex-1 space-y-6">
         {isLoading ? (
           <Card className="border-border/80 bg-surface shadow-xs p-5 sm:p-6 space-y-4">
             <div className="space-y-2">
@@ -420,36 +420,36 @@ export function SplitPublicPage() {
           </Card>
         ) : (
           <div className="space-y-4">
-                <SplitChargeCard
-                  title={payload.title || "Racha de Despesa"}
-                  date={payload.date}
-                  hostName={payload.host_name || "Anfitrião"}
-                  peopleCount={payload.people_count}
-                  totalCents={payload.total_cents}
-                  guestShareCents={effectiveChargeCents}
-                  pixBrCode={dynamicPixBrCode}
-                  pixKey={payload.pix_key}
-                  pixKeyType={payload.pix_key_type}
-                  participants={payload.participants}
-                  installmentsCount={payload.installments_count}
-                  installments={participantInstallments}
-                  selectedInstallmentId={selectedInstallment?.id ?? null}
-                  onSelectInstallmentId={(id) => {
-                    setIsPayAllRemaining(false);
-                    setSelectedInstallmentId(id);
-                  }}
-                  isPayAllRemaining={isPayAllRemaining}
-                  onTogglePayAllRemaining={() => setIsPayAllRemaining((prev) => !prev)}
-                  onSignalPayment={handleSignalPixPayment}
-                  isSignalingPayment={isSignalingDirectly}
-                  hasSignaledCurrent={Boolean(
-                    (selectedInstallment?.id && justSignaledInstallmentIds.has(selectedInstallment.id)) ||
-                    selectedInstallment?.signal_status === "pending_confirmation" ||
-                    (!participantInstallments.length && selectedParticipant?.has_payment_signal)
-                  )}
-                />
-
-                {/* Bloco de Auto-Onboarding & Conversão Viral (Plano 06) */}
+            <SplitChargeCard
+              layout="split-desktop"
+              title={payload.title || "Racha de Despesa"}
+              date={payload.date}
+              hostName={payload.host_name || "Anfitrião"}
+              peopleCount={payload.people_count}
+              totalCents={payload.total_cents}
+              guestShareCents={effectiveChargeCents}
+              pixBrCode={dynamicPixBrCode}
+              pixKey={payload.pix_key}
+              pixKeyType={payload.pix_key_type}
+              participants={payload.participants}
+              installmentsCount={payload.installments_count}
+              installments={participantInstallments}
+              selectedInstallmentId={selectedInstallment?.id ?? null}
+              onSelectInstallmentId={(id) => {
+                setIsPayAllRemaining(false);
+                setSelectedInstallmentId(id);
+              }}
+              isPayAllRemaining={isPayAllRemaining}
+              onTogglePayAllRemaining={() => setIsPayAllRemaining((prev) => !prev)}
+              onSignalPayment={handleSignalPixPayment}
+              isSignalingPayment={isSignalingDirectly}
+              hasSignaledCurrent={Boolean(
+                (selectedInstallment?.id && justSignaledInstallmentIds.has(selectedInstallment.id)) ||
+                selectedInstallment?.signal_status === "pending_confirmation" ||
+                (!participantInstallments.length && selectedParticipant?.has_payment_signal)
+              )}
+              desktopExtraContent={
+                /* Bloco de Auto-Onboarding & Conversão Viral (Plano 06) */
                 <Card className="border-border/80 bg-gradient-to-r from-primary/10 via-surface to-surface shadow-xs p-4 sm:p-5 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -494,40 +494,42 @@ export function SplitPublicPage() {
                     </Button>
                   </div>
                 </Card>
+              }
+            />
 
-                <SplitOnboardingModal
-                  open={isOnboardingModalOpen}
-                  onOpenChange={setIsOnboardingModalOpen}
-                  guestShareCents={effectiveChargeCents}
-                  title={payload.title}
-                  date={payload.date}
-                  token={token || ""}
-                />
+            <SplitOnboardingModal
+              open={isOnboardingModalOpen}
+              onOpenChange={setIsOnboardingModalOpen}
+              guestShareCents={effectiveChargeCents}
+              title={payload.title}
+              date={payload.date}
+              token={token || ""}
+            />
 
-                <SelectSplitCategoryDialog
-                  open={isSelectCategoryOpen}
-                  onOpenChange={setIsSelectCategoryOpen}
-                  title={payload.title}
-                  amountCents={effectiveChargeCents}
-                  sentCategoryName={payload.category_name}
-                  categories={categoriesQuery.data ?? []}
-                  isPending={isSavingDirectly}
-                  onConfirm={handleConfirmCategorySave}
-                />
+            <SelectSplitCategoryDialog
+              open={isSelectCategoryOpen}
+              onOpenChange={setIsSelectCategoryOpen}
+              title={payload.title}
+              amountCents={effectiveChargeCents}
+              sentCategoryName={payload.category_name}
+              categories={categoriesQuery.data ?? []}
+              isPending={isSavingDirectly}
+              onConfirm={handleConfirmCategorySave}
+            />
 
-                <SelectParticipantDialog
-                  open={isSelectParticipantOpen}
-                  onOpenChange={setIsSelectParticipantOpen}
-                  participants={(payload.participants ?? []).filter((p) => !p.is_host && !p.is_settled)}
-                  isPending={isSavingDirectly}
-                  onConfirm={handleConfirmParticipant}
-                />
-              </div>
+            <SelectParticipantDialog
+              open={isSelectParticipantOpen}
+              onOpenChange={setIsSelectParticipantOpen}
+              participants={(payload.participants ?? []).filter((p) => !p.is_host && !p.is_settled)}
+              isPending={isSavingDirectly}
+              onConfirm={handleConfirmParticipant}
+            />
+          </div>
         )}
       </main>
 
       {/* Rodapé Institucional */}
-      <footer className="w-full max-w-md mx-auto pt-6 text-center space-y-2">
+      <footer className="w-full max-w-md md:max-w-5xl mx-auto pt-6 text-center space-y-2">
         <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
           <ShieldCheck className="size-3.5 text-positive-strong" aria-hidden="true" />
           <span>Ambiente Seguro · Padrão BACEN EMV QRCPS</span>

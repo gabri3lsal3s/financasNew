@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import type { FormEvent } from "react";
-import { Check, Crown, RotateCcw, Shield, ShieldAlert, Sparkles, Trash2, TrendingUp, UserCheck, X } from "lucide-react";
+import { Check, Crown, Eye, EyeOff, MessageCircle, Phone, RotateCcw, Shield, ShieldAlert, Sparkles, Trash2, TrendingUp, UserCheck, X } from "lucide-react";
 import { Badge, Button, ConfirmDialog, Input, Modal, ModalFooter, Select } from "@/components/ui";
 import {
   ROLE_LABELS,
@@ -18,6 +18,7 @@ import {
   useAdminSetUserRole,
   useAdminSetUserSubscription,
   useAdminUpdateUserStatus,
+  useAdminUserContact,
   useAdminUserModulePermissions,
   useAdminUserSubscription,
   useUserAccess,
@@ -67,6 +68,9 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
   const [role, setRole] = useState<UserRole>((user?.role as UserRole) || "user");
   const [reason, setReason] = useState(user?.suspended_reason || "");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [revealContact, setRevealContact] = useState(false);
+
+  const contactQuery = useAdminUserContact(user?.id, revealContact);
 
   // Local state for subscription editing overrides
   const [overrideTier, setOverrideTier] = useState<SubscriptionTier | null>(null);
@@ -237,8 +241,8 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
       size="lg"
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-5 max-h-[80vh] overflow-y-auto pr-1">
-        {/* Identificação Básica */}
-        <div className="rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 flex flex-col gap-1 text-xs">
+        {/* Identificação Básica & Contato Protegido (LGPD) */}
+        <div className="rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 flex flex-col gap-2 text-xs">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Nome:</span>
             <span className="font-semibold text-foreground">{user.name || "Não informado"}</span>
@@ -250,6 +254,76 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
           <div className="flex justify-between">
             <span className="text-muted-foreground">Cadastrado em:</span>
             <span className="text-foreground">{new Date(user.created_at).toLocaleDateString("pt-BR")}</span>
+          </div>
+
+          {/* Seção de Contato e CPF Auditado (LGPD) */}
+          <div className="pt-2 border-t border-border/80 flex flex-col gap-2">
+            {!revealContact ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  triggerSensory("action");
+                  setRevealContact(true);
+                }}
+                className="w-full justify-center gap-1.5 text-xs h-7.5 border-dashed"
+              >
+                <Eye className="size-3.5 text-primary-strong" aria-hidden="true" />
+                <span>Revelar Telefone / WhatsApp e CPF (Auditoria LGPD)</span>
+              </Button>
+            ) : contactQuery.isLoading ? (
+              <div className="text-[11px] text-muted-foreground animate-pulse py-1">
+                Consultando dados seguros no cofre e registrando auditoria…
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1.5 bg-surface p-2.5 rounded-lg border border-border/60">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Phone className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    <span className="text-muted-foreground">Telefone/WhatsApp:</span>
+                  </div>
+                  {contactQuery.data?.phone ? (
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-semibold text-foreground">{contactQuery.data.phone}</span>
+                      <a
+                        href={`https://wa.me/55${contactQuery.data.phone.replace(/\D/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-positive-strong hover:underline"
+                      >
+                        <MessageCircle className="size-3" aria-hidden="true" />
+                        <span>Conversar</span>
+                      </a>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground italic">Não cadastrado</span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Shield className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    <span className="text-muted-foreground">CPF do Titular:</span>
+                  </div>
+                  <span className="font-mono text-foreground">
+                    {contactQuery.data?.cpf || contactQuery.data?.masked_cpf || "Não informado"}
+                  </span>
+                </div>
+
+                <div className="pt-1 flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/40">
+                  <span className="text-positive-strong">Trilha de auditoria registrada</span>
+                  <button
+                    type="button"
+                    onClick={() => setRevealContact(false)}
+                    className="hover:text-foreground inline-flex items-center gap-1"
+                  >
+                    <EyeOff className="size-2.5" aria-hidden="true" />
+                    <span>Ocultar</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

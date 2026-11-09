@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, useMemo } from "react";
-import { NavLink } from "react-router";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { NavLink, useNavigate } from "react-router";
+import { ChevronLeft, ChevronRight, Sparkles, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoProfileButton } from "@/components/layout/logo-profile-button";
 import { navGroups, filterNavItems } from "@/components/layout/nav-items";
-import { useFamilyMode, useTripMode, useReminders, useUserAccess } from "@/state";
+import { useFamilyMode, useTripMode, useReminders, useUserAccess, useUserSubscription } from "@/state";
+import { Progress } from "@/components/ui/progress";
+import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
 
 
 /** Atraso do hover-expand: evita disparos acidentais com mouse rápido (F25). */
@@ -28,6 +30,9 @@ export interface SidebarProps {
  * persistência (`useSidebarState`).
  */
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
+  const navigate = useNavigate();
+  const subscription = useUserSubscription();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [hoverExpanded, setHoverExpanded] = useState(false);
   const enterTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -175,6 +180,93 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           </div>
         ))}
       </nav>
+
+      {/* Bloco de Status do Plano e Conversão Pro */}
+      {subscription.isTrial && subscription.trialDaysRemaining !== null && expanded && (
+        <div className="shrink-0 mx-2.5 mb-2 rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2 animate-fade-slide-in select-none">
+          <div className="flex items-center justify-between text-xs font-semibold">
+            <span className="flex items-center gap-1.5 text-primary-strong">
+              <Sparkles className="size-3.5" aria-hidden="true" />
+              Teste Pro Ativo
+            </span>
+            <span className="text-[11px] text-muted-foreground tabular-nums">
+              {subscription.trialDaysRemaining}d restantes
+            </span>
+          </div>
+          <Progress
+            value={Math.min(100, Math.max(0, ((30 - subscription.trialDaysRemaining) / 30) * 100))}
+            tone="auto"
+            className="h-1.5"
+            aria-label={`Progresso do teste: ${30 - subscription.trialDaysRemaining} de 30 dias`}
+          />
+          <button
+            type="button"
+            onClick={() => setUpgradeOpen(true)}
+            className="w-full h-7 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary-hover active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+          >
+            <span>Garantir Plano Pro</span>
+          </button>
+        </div>
+      )}
+
+      {subscription.isTrial && subscription.trialDaysRemaining !== null && !expanded && (
+        <div className="shrink-0 flex justify-center mb-2">
+          <button
+            type="button"
+            onClick={() => setUpgradeOpen(true)}
+            title={`Teste Pro ativo: restam ${subscription.trialDaysRemaining} dias. Clique para garantir o Pro.`}
+            aria-label={`Teste Pro ativo: restam ${subscription.trialDaysRemaining} dias`}
+            className="flex size-9 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary-strong hover:bg-primary/20 transition-colors cursor-pointer"
+          >
+            <Sparkles className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
+      {subscription.isReadOnly && expanded && (
+        <div className="shrink-0 mx-2.5 mb-2 rounded-xl border border-warning/30 bg-warning/5 p-3 space-y-2 animate-fade-slide-in select-none">
+          <div className="flex items-center justify-between text-xs font-semibold">
+            <span className="flex items-center gap-1.5 text-warning-strong">
+              <BookOpen className="size-3.5" aria-hidden="true" />
+              Modo Leitura
+            </span>
+          </div>
+          <p className="text-[11px] text-muted-foreground leading-tight">
+            Seus dados estão salvos. Ative o Pro para voltar a lançar.
+          </p>
+          <button
+            type="button"
+            onClick={() => setUpgradeOpen(true)}
+            className="w-full h-7 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary-hover active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+          >
+            <Sparkles className="size-3" aria-hidden="true" />
+            <span>Reativar Pro</span>
+          </button>
+        </div>
+      )}
+
+      {subscription.isReadOnly && !expanded && (
+        <div className="shrink-0 flex justify-center mb-2">
+          <button
+            type="button"
+            onClick={() => setUpgradeOpen(true)}
+            title="Modo somente-leitura ativo. Clique para reativar o Pro."
+            aria-label="Modo somente-leitura ativo"
+            className="flex size-9 items-center justify-center rounded-xl border border-warning/30 bg-warning/10 text-warning-strong hover:bg-warning/20 transition-colors cursor-pointer"
+          >
+            <BookOpen className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        onProceedToCheckout={(plan) => {
+          setUpgradeOpen(false);
+          navigate(`/assinatura?plano=${plan}`);
+        }}
+      />
 
       <div className="shrink-0 border-t border-border p-2.5">
         <button

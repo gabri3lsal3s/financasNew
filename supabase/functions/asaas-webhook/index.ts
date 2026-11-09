@@ -1,6 +1,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { decideWebhookAction } from "../_shared/asaas-webhook-logic.ts";
 import { timingSafeEqualString } from "../_shared/http.ts";
+import { buildTelegramSaleMessage, sendTelegramNotification } from "../_shared/telegram.ts";
 
 declare const Deno: {
   env?: {
@@ -72,6 +73,21 @@ Deno?.serve?.(async (req: Request) => {
       return json({ received: true, unlinked: true });
     }
 
+
+    // Gravar log de auditoria do evento no banco
+    try {
+      await supabase.from("billing_webhook_logs").insert({
+        provider: "asaas",
+        event_type: eventType,
+        payment_id: paymentId,
+        subscription_id: subscriptionId,
+        customer_id: customerId,
+        payload: event,
+      });
+    } catch (logErr) {
+      console.error("[asaas-webhook] Erro ao gravar log de auditoria", logErr);
+    }
+
     const decision = decideWebhookAction({
       eventType,
       payment,
@@ -108,8 +124,48 @@ Deno?.serve?.(async (req: Request) => {
           cancel_at_period_end: false,
           asaas_payment_id: paymentId,
           asaas_customer_id: customerId,
+          ...(subscriptionId ? { asaas_subscription_id: subscriptionId } : {}),
         })
         .eq("id", userSub.id);
+
+      await supabase.from("audit_events").insert({
+        user_id: userSub.user_id,
+        entity_type: "user_subscription",
+        entity_id: userSub.id,
+        action: "activated",
+        payload: {
+          gateway: "asaas",
+          event: eventType,
+          tier: decision.targetTier,
+          payment_id: paymentId,
+          subscription_id: subscriptionId,
+        },
+      });
+
+      // Disparar notificação de venda via Telegram se configurado
+      try {
+        const botToken = Deno?.env?.get ? Deno.env.get("TELEGRAM_BOT_TOKEN") : undefined;
+        const chatId = Deno?.env?.get ? Deno.env.get("TELEGRAM_CHAT_ID") : undefined;
+        if (botToken && chatId) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name, email")
+            .eq("id", userSub.user_id)
+            .maybeSingle();
+
+          const msg = buildTelegramSaleMessage({
+            plan: decision.targetTier,
+            amount: payment.value || 0,
+            paymentMethod: payment.billingType === "PIX" ? "pix" : "credit_card",
+            userName: profile?.full_name,
+            userEmail: profile?.email,
+            paymentId: paymentId,
+          });
+          await sendTelegramNotification({ botToken, chatId, text: msg });
+        }
+      } catch (tgErr) {
+        console.error("[asaas-webhook] Erro ao notificar Telegram", tgErr);
+      }
 
       return json({ received: true, event: eventType, tier: decision.targetTier, status: "active" });
     }
@@ -120,6 +176,14 @@ Deno?.serve?.(async (req: Request) => {
         .update({ status: "past_due" })
         .eq("id", userSub.id);
 
+      await supabase.from("audit_events").insert({
+        user_id: userSub.user_id,
+        entity_type: "user_subscription",
+        entity_id: userSub.id,
+        action: "marked_past_due",
+        payload: { gateway: "asaas", event: eventType, payment_id: paymentId },
+      });
+
       return json({ received: true, event: eventType, status: "past_due" });
     }
 
@@ -128,6 +192,19 @@ Deno?.serve?.(async (req: Request) => {
         .from("user_subscriptions")
         .update({ cancel_at_period_end: true })
         .eq("id", userSub.id);
+
+      await supabase.from("audit_events").insert({
+        user_id: userSub.user_id,
+        entity_type: "user_subscription",
+        entity_id: userSub.id,
+        action: "cancelled",
+        payload: {
+          gateway: "asaas",
+          event: eventType,
+          payment_id: paymentId,
+          subscription_id: subscriptionId,
+        },
+      });
 
       return json({ received: true, event: eventType, cancel_at_period_end: true });
     }
@@ -142,6 +219,14 @@ Deno?.serve?.(async (req: Request) => {
           current_period_end: new Date().toISOString(),
         })
         .eq("id", userSub.id);
+
+      await supabase.from("audit_events").insert({
+        user_id: userSub.user_id,
+        entity_type: "user_subscription",
+        entity_id: userSub.id,
+        action: "refunded",
+        payload: { gateway: "asaas", event: eventType, payment_id: paymentId },
+      });
 
       return json({ received: true, event: eventType, tier: "read_only", status: "canceled" });
     }

@@ -1,11 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   adminGetMetrics,
+  adminGetUserContactDetails,
   adminListUsers,
   listAccessInvites,
   listAuditEvents,
+  listBroadcastNotifications,
+  listSystemBackups,
   listSystemFeatures,
   listUserFeatureOverrides,
+  getMyBroadcastNotifications,
   type AdminListUsersParams,
 } from "@/data/repositories/admin";
 import {
@@ -23,6 +27,10 @@ export const ADMIN_USER_OVERRIDES_KEY = ["admin_user_overrides"] as const;
 export const ADMIN_PLANS_KEY = ["admin_plans"] as const;
 export const ADMIN_USER_SUBSCRIPTION_KEY = ["admin_user_subscription"] as const;
 export const ADMIN_USER_MODULE_PERMISSIONS_KEY = ["admin_user_module_permissions"] as const;
+export const ADMIN_BACKUPS_KEY = ["admin_backups"] as const;
+export const ADMIN_BROADCASTS_KEY = ["admin_broadcasts"] as const;
+export const ADMIN_USER_CONTACT_KEY = ["admin_user_contact"] as const;
+export const MY_BROADCASTS_KEY = ["my_broadcasts"] as const;
 
 export function useAdminMetrics() {
   return useQuery({
@@ -98,3 +106,37 @@ export function useAdminUserModulePermissions(userId: string | null | undefined)
     staleTime: 1000 * 10,
   });
 }
+
+export function useAdminSystemBackups(limit = 50) {
+  return useQuery({
+    queryKey: [...ADMIN_BACKUPS_KEY, limit],
+    queryFn: () => listSystemBackups(limit),
+    staleTime: 1000 * 30,
+  });
+}
+
+export function useAdminBroadcastNotifications(limit = 50) {
+  return useQuery({
+    queryKey: [...ADMIN_BROADCASTS_KEY, limit],
+    queryFn: () => listBroadcastNotifications(limit),
+    staleTime: 1000 * 30,
+  });
+}
+
+export function useAdminUserContact(userId: string | null | undefined, enabled = false) {
+  return useQuery({
+    queryKey: [...ADMIN_USER_CONTACT_KEY, userId],
+    queryFn: () => (userId ? adminGetUserContactDetails(userId) : Promise.resolve(null)),
+    enabled: Boolean(userId) && enabled,
+    staleTime: 1000 * 60, // 1 min
+  });
+}
+
+export function useMyBroadcastNotifications(limit = 20) {
+  return useQuery({
+    queryKey: [...MY_BROADCASTS_KEY, limit],
+    queryFn: () => getMyBroadcastNotifications(limit),
+    staleTime: 1000 * 60 * 2, // 2 min
+  });
+}
+

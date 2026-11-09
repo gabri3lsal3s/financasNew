@@ -44,13 +44,23 @@ O **Áxis** processa dados financeiros e transacionais sensíveis. A governança
   * Validação estrita por módulo 11 da Receita Federal impede injeção de dados corrompidos ou strings maliciosas.
   * A função `public.mask_cpf(text)` e o utilitário `maskCPF()` garantem mascaramento no padrão `***.***.789-**` em telas e relatórios, prevenindo *shoulder surfing*.
   * **Controle de coluna (migração 0058):** `REVOKE SELECT (cpf)` de `anon`/`authenticated` — o PostgREST **não** devolve CPF ao bundle do cliente; leitura operacional fica restrita a `service_role` (Edge Asaas).
+* **Proteção de PII de Contato (Telefone / WhatsApp — migração 000106):**
+  * O número de telefone cadastrado no perfil (`public.profiles.phone`) possui `REVOKE SELECT (phone)` para `anon` e `authenticated`.
+  * Nenhum endpoint REST público ou autenticado de cliente tem visibilidade sobre números de telefone de terceiros.
+  * O acesso aos dados de contato por operadores da plataforma ocorre exclusivamente através da RPC com `SECURITY DEFINER` `public.admin_get_user_contact_details(p_user_id)`.
+  * **Auditoria Compulsória:** A cada invocação da RPC por um administrador, um evento de auditoria imutável é gravado na tabela `public.audit_events` com ação `REVEAL_CONTACT_DETAILS`, registrando o ID do operador solicitante, o ID do usuário auditado e timestamp UTC em conformidade com a LGPD.
 
 ### 2.3 Edge Functions (billing, cotações, notificações e digests)
 * **CORS allowlist:** Restrito exclusivamente a `financasnew.pages.dev`, `*.financasnew.pages.dev`, `ALLOWED_ORIGINS` e esquemas locais/Capacitor — sem `Access-Control-Allow-Origin: *` em rotas sensíveis e sem permitir projetos arbitrários sob subdomínios de terceiros (`*.pages.dev` / `*.workers.dev`).
 * **Proteção de Cron Jobs (`sunday-digest`):** A execução do digest semanal exige autenticação obrigatória via Bearer token validado contra `SUPABASE_SERVICE_ROLE_KEY` ou `CRON_SECRET`, impedindo exfiltração de dados transacionais e e-mails por chamadas públicas.
 * **Notificações de Suporte (`support-notify`):** Requisições com `payload.record` exigem validação de `x-webhook-secret` contra `WEBHOOK_SECRET` ou `SUPABASE_SERVICE_ROLE_KEY`, eliminando spoofing e spam na integração com Telegram.
-* **Webhook Asaas:** `verify_jwt = false` + token `asaas-access-token` com comparação *timing-safe*; **sem** CORS de browser; tier resolvido só pelo **catálogo de valores** (`asaas-plans.ts`), nunca por heurística `value > 50`.
-* **Checkout/manage:** exigem `SUPABASE_ANON_KEY` (fail-closed; **proibido** fallback para `service_role`); erros públicos genéricos.
+* **Webhook Asaas:** `verify_jwt = false` + token `asaas-access-token` com comparação *timing-safe*; **sem** CORS de browser; tier resolvido estritamente pelo **catálogo determinístico de valores** (`asaas-plans.ts` com validação de `Number.isFinite` e `approxEqual`), impedindo bypass por valores nulos; sincronização automática de `asaas_subscription_id` para renovações recorrentes e registro de auditoria imutável em `audit_events`.
+* **Checkout/manage Asaas:**
+  * Validação prévia de CPF por **Módulo 11 oficial da Receita Federal** (`isValidCPF`) e checagem estrita de erro no update de perfil do Postgres;
+  * Validação prévia de cartão de crédito via **Algoritmo de Luhn** (Mod 10) e checagem de data de expiração antes do despacho à API externa;
+  * **Proteção Anti-Log PCI-DSS:** sanitização compulsória de payloads e mensagens de erro (`sanitizePaymentLog`), impedindo que números completos de cartão (PAN) ou códigos de segurança (CCV/CVV) apareçam em logs do runtime;
+  * Exigem `SUPABASE_ANON_KEY` (fail-closed; **proibido** fallback para `service_role`); erros públicos genéricos;
+  * Botões de teste e simulação de PIX restritos estritamente ao modo de desenvolvimento local (`import.meta.env.DEV`), eliminando exposição em produção.
 * **`quotes`:** escrita no cache global (`user_id IS NULL`) **somente** com service role (cron); JWT de usuário só calcula/devolve cotações (cliente persiste override próprio).
 * **Runtime Node:** engines/`NODE_VERSION` ≥ `22.23.4` | `24.22.1` | `26.12.1` (CVEs Brotli/TLS/`dns.resolve`, out/2026).
 
@@ -247,4 +257,13 @@ Ao implementar novas telas, repositórios ou tabelas:
 - [x] A lista de CORS em Edge Functions restringe o acesso estritamente a origens autorizadas do projeto (`financasnew.pages.dev`)?
 - [x] O fluxo de login intercepta `nextLevel === "aal2"` e exige código TOTP para contas com autenticação em duas etapas ativada?
 - [x] Uploads de comprovantes validam o teto de tamanho (15 MB) e rejeitam SVGs?
+- [x] O catálogo de planos valida estritamente o montante de PIX (`Number.isFinite` e `approxEqual`), impedindo ativações por valores nulos?
+- [x] O checkout valida CPF por módulo 11 e cartões por algoritmo de Luhn e expiração antes do despacho à API?
+- [x] Logs de pagamento sanitizam compulsóriamente números de cartão e CCV (`sanitizePaymentLog`) em conformidade com PCI-DSS?
+- [x] Ações e webhooks do gateway financeiro sincronizam `subscriptionId` e registram trilha em `audit_events`?
+- [x] Botões de teste e simulação de pagamento estão restritos ao ambiente de desenvolvimento (`import.meta.env.DEV`)?
+- [x] Exportações Excel/XML e CSV sanitizam injeção de fórmulas DDE (`=`, `+`, `-`, `@`, `|`, `\t`, `\r`) e tratam espaços iniciais?
+- [x] Políticas de RLS utilizam subquery escalar `(select auth.uid())` para caching de plano de execução (InitPlan)?
+- [x] Aberturas de links externos via `window.open` incluem `noopener,noreferrer` contra tabnabbing?
+- [x] Edge Functions com parâmetros de ticker validam regex estrito e impõem tetos defensivos de lote?
 

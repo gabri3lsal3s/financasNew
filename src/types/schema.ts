@@ -90,6 +90,8 @@ export const SYSTEM_FEATURE_KEYS = [
   "reports",
   "insights",
   "reminders",
+  "apk_access_free",
+  "apk_access_pro",
 ] as const;
 export type SystemFeatureKey = (typeof SYSTEM_FEATURE_KEYS)[number];
 
@@ -112,12 +114,61 @@ export type Profile = {
   name: string | null;
   email: string | null;
   cpf?: string | null;
+  phone?: string | null;
   role?: UserRole;
   status?: UserStatus;
   approved_at?: string | null;
   approved_by?: string | null;
   suspended_reason?: string | null;
   created_at: string;
+};
+
+export type AdminContactDetails = {
+  user_id: string;
+  name: string | null;
+  email: string | null;
+  cpf: string | null;
+  masked_cpf: string | null;
+  phone: string | null;
+};
+
+export type BroadcastAudience = "all" | "pro" | "free" | "specific_users";
+export type BroadcastType = "info" | "warning" | "critical" | "promotion" | "system";
+
+export type AdminBroadcastNotification = {
+  id: string;
+  title: string;
+  message: string;
+  type: BroadcastType;
+  action_url?: string | null;
+  target_audience: BroadcastAudience;
+  target_user_ids?: string[] | null;
+  created_by?: string | null;
+  created_at: string;
+};
+
+export type UserBroadcastNotification = {
+  id: string;
+  title: string;
+  message: string;
+  type: BroadcastType;
+  action_url?: string | null;
+  created_at: string;
+  is_read: boolean;
+  is_dismissed: boolean;
+};
+
+export type SystemBackup = {
+  id: string;
+  created_at: string;
+  created_by?: string | null;
+  backup_type: "manual" | "scheduled" | "pre_migration";
+  table_count: number;
+  record_count: number;
+  file_size_bytes: number;
+  checksum_sha256: string;
+  status: "in_progress" | "completed" | "failed";
+  notes?: string | null;
 };
 
 export type AccessInvite = {

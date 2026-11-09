@@ -164,6 +164,10 @@ export {
   useAdminPlans,
   useAdminUserSubscription,
   useAdminUserModulePermissions,
+  useAdminSystemBackups,
+  useAdminBroadcastNotifications,
+  useAdminUserContact,
+  useMyBroadcastNotifications,
   ADMIN_METRICS_KEY,
   ADMIN_USERS_KEY,
   ADMIN_FEATURES_KEY,
@@ -173,6 +177,10 @@ export {
   ADMIN_PLANS_KEY,
   ADMIN_USER_SUBSCRIPTION_KEY,
   ADMIN_USER_MODULE_PERMISSIONS_KEY,
+  ADMIN_BACKUPS_KEY,
+  ADMIN_BROADCASTS_KEY,
+  ADMIN_USER_CONTACT_KEY,
+  MY_BROADCASTS_KEY,
 } from "./queries/use-admin";
 
 
@@ -189,6 +197,9 @@ export {
   useAdminRemoveUserModulePermission,
   useAdminCreateModularInvite,
   useAdminDeleteUser,
+  useAdminSendBroadcast,
+  useAdminLogBackup,
+  useMarkBroadcastAsRead,
 } from "./mutations/use-admin-mutations";
 
 export {
@@ -260,6 +271,7 @@ export {
 } from "./queries/use-simulated-queries";
 
 export { useUserSubscription } from "./queries/use-user-subscription";
+export { useInvoices, INVOICES_KEY } from "./queries/use-invoices";
 export { SubscriptionProvider, useIsPro } from "./subscription-context";
 export { usePermission, type PermissionResult } from "./queries/use-permission";
 export type { SubscriptionStatus } from "@/types";

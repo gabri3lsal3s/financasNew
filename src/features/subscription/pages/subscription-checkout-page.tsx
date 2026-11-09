@@ -63,13 +63,15 @@ const PLAN_LABELS: Record<
 };
 
 const BENEFITS = [
-  "Lançamentos e escritas ilimitados",
-  "Histórico vitalício preservado",
+  "Lançamentos e escritas 100% ilimitados",
+  "Leitor OCR de cupons NFC-e, notas fiscais e boletos",
   "Multi-Cartões + Parcelamentos em até 60x",
-  "Dívidas e cobranças a pagar e a receber",
-  "Motor de Rebalanceamento de Aportes",
-  "Radar Fiscal IR e DARF",
-  "Dossiê Executivo Excel (.xlsx)",
+  "Gestão de Dívidas (Snowball / Avalanche) e Juros",
+  "Safe-to-Spend diário e Radar de Vencimentos",
+  "Espaço Família colaborativo e Racha Pix",
+  "Motor determinístico de Rebalanceamento",
+  "Radar Fiscal de IR e DARF automático",
+  "Dossiê Executivo Contábil em Excel (.xlsx)",
 ] as const;
 
 export function SubscriptionCheckoutPage() {
@@ -838,18 +840,20 @@ export function SubscriptionCheckoutPage() {
                   <span>Aguardando pagamento... A ativação é automática.</span>
                 </div>
 
-                {/* Botão de Demonstração / Teste Visual */}
-                <Button
-                  type="button"
-                  variant="default"
-                  size="sm"
-                  sensoryIntent="success"
-                  onClick={handleSimulatePixConfirmation}
-                  className="w-full gap-1.5 text-xs font-semibold cursor-pointer shadow-xs bg-positive-strong hover:bg-positive-strong/90 text-white"
-                >
-                  <Zap className="size-3.5" aria-hidden="true" />
-                  Simular Confirmação PIX (Ambiente de Teste)
-                </Button>
+                {/* Botão de Demonstração / Teste Visual (Restrito a ambiente de desenvolvimento local) */}
+                {import.meta.env.DEV && (
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    sensoryIntent="success"
+                    onClick={handleSimulatePixConfirmation}
+                    className="w-full gap-1.5 text-xs font-semibold cursor-pointer shadow-xs bg-positive-strong hover:bg-positive-strong/90 text-white"
+                  >
+                    <Zap className="size-3.5" aria-hidden="true" />
+                    Simular Confirmação PIX (Ambiente de Teste)
+                  </Button>
+                )}
 
                 {/* Ações de Desbloqueio e Saída sem Prender o Usuário */}
                 <div className="flex flex-col w-full gap-2 pt-2 border-t border-border/80">

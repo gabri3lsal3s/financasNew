@@ -209,10 +209,11 @@ Deno.serve(async (req) => {
         requestedMonth = body.month;
       }
       if (body && Array.isArray(body.tickers)) {
+        const TICKER_REGEX = /^[A-Z0-9^=.-]{1,15}$/;
         requestedTickers = body.tickers
           .map((t: string) => String(t).trim().toUpperCase())
-          .filter(Boolean)
-          .slice(0, 100);
+          .filter((t: string) => Boolean(t) && TICKER_REGEX.test(t))
+          .slice(0, 50);
       }
     } catch {
       // payload sem json body

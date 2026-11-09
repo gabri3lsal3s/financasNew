@@ -2,6 +2,7 @@ import { getSupabase } from "@/data/client";
 import { AppError } from "@/services/errors";
 import { getPublicAppUrl } from "@/services/app-url";
 import type {
+  BillingInvoiceItem,
   BillingProviderAdapter,
   BillingProviderName,
   CancelSubscriptionParams,
@@ -16,6 +17,7 @@ import type {
 } from "@/types/billing";
 
 export type {
+  BillingInvoiceItem,
   BillingProviderAdapter,
   BillingProviderName,
   CancelSubscriptionParams,
@@ -118,6 +120,29 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
 
     if (error || !data || data.error) {
       const errorMsg = data?.error || error?.message || "Falha ao atualizar cartão de crédito.";
+      throw new AppError("network", errorMsg, error);
+    }
+  },
+
+  async listInvoices(): Promise<BillingInvoiceItem[]> {
+    const { data, error } = await getSupabase().functions.invoke("asaas-manage", {
+      body: { action: "list-invoices" },
+    });
+
+    if (error || !data) {
+      return [];
+    }
+
+    return (data.invoices || []) as BillingInvoiceItem[];
+  },
+
+  async upgradeToAnnual(): Promise<void> {
+    const { data, error } = await getSupabase().functions.invoke("asaas-manage", {
+      body: { action: "upgrade-to-annual" },
+    });
+
+    if (error || !data || data.error) {
+      const errorMsg = data?.error || error?.message || "Falha ao migrar para o plano anual.";
       throw new AppError("network", errorMsg, error);
     }
   },
@@ -326,3 +351,26 @@ export async function getBillingPortalUrl(
   }
   return adapter.getBillingPortalUrl(customerId, returnUrl);
 }
+
+/**
+ * Consulta a lista cronológica de faturas e comprovantes fiscais do cliente.
+ */
+export async function listInvoices(provider?: BillingProviderName): Promise<BillingInvoiceItem[]> {
+  const adapter = getBillingAdapter(provider);
+  if (adapter.listInvoices) {
+    return adapter.listInvoices();
+  }
+  return [];
+}
+
+/**
+ * Realiza a migração direta do plano Mensal para o plano Anual (Upsell 40%).
+ */
+export async function upgradeToAnnual(provider?: BillingProviderName): Promise<void> {
+  const adapter = getBillingAdapter(provider);
+  if (adapter.upgradeToAnnual) {
+    return adapter.upgradeToAnnual();
+  }
+  throw new AppError("validation", "Provedor atual não suporta migração direta de plano.");
+}
+

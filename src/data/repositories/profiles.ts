@@ -45,6 +45,9 @@ export async function ensureOwnProfile(
         report_weights_enabled: true,
         max_sector_acoes: null,
         max_sector_fiis: null,
+        custom_settings: {
+          familyModeEnabled: true,
+        },
       },
       { onConflict: "user_id", ignoreDuplicates: true },
     );

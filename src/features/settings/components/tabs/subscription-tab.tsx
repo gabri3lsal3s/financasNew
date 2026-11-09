@@ -16,6 +16,8 @@ import {
   AlertCircle,
   Receipt,
   FileText,
+  ExternalLink,
+  Zap,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -28,7 +30,7 @@ import {
   Input,
   Modal,
   ModalFooter,
-  ConfirmDialog,
+  RadioGroup,
 } from "@/components/ui";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
 import { useUserSubscription, USER_SUBSCRIPTION_KEY } from "@/state";
@@ -39,7 +41,9 @@ import { formatCardNumber, formatCardExpiry } from "@/services/masks";
 import {
   cancelSubscription,
   updateSubscriptionCreditCard,
+  upgradeToAnnual,
 } from "@/data/repositories/billing";
+import { useInvoices } from "@/state/queries/use-invoices";
 import { cn } from "@/lib/utils";
 import { calculateGuaranteeResidual } from "@/domain/subscription";
 import type { SubscriptionPlan, SubscriptionStatus } from "@/types";
@@ -54,6 +58,15 @@ import type { SubscriptionPlan, SubscriptionStatus } from "@/types";
  *
  * Regras: zero emojis, zero controles nativos, cards com trinca canônica (AGENTS.md).
  */
+
+const CANCELLATION_REASONS = [
+  { value: "too_expensive", label: "Preço alto / fora do orçamento atual" },
+  { value: "not_using_enough", label: "Não estou usando com frequência suficiente" },
+  { value: "missing_features", label: "Faltam recursos que eu precisava" },
+  { value: "found_alternative", label: "Encontrei outro aplicativo/método" },
+  { value: "other", label: "Outro motivo particular" },
+];
+
 export function SubscriptionTab() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -61,8 +74,11 @@ export function SubscriptionTab() {
 
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("too_expensive");
+  const [cancelStep, setCancelStep] = useState<"reason" | "confirm">("reason");
   const [updateCardOpen, setUpdateCardOpen] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
+  const [isUpgradingToAnnual, setIsUpgradingToAnnual] = useState(false);
 
   const { isWithinGuarantee, daysRemaining: guaranteeDaysRemaining } = useMemo(() => {
     return calculateGuaranteeResidual({
@@ -79,6 +95,30 @@ export function SubscriptionTab() {
       })
     : null;
 
+  const handleUpgradeToAnnual = async () => {
+    setIsUpgradingToAnnual(true);
+    try {
+      await upgradeToAnnual();
+      await queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
+      triggerSensory("success");
+      pushToast({
+        title: "Migração para Plano Anual realizada!",
+        description: "Você agora economiza 40% e seu ciclo foi estendido por 1 ano.",
+        variant: "default",
+      });
+    } catch (err: unknown) {
+      triggerSensory("destructive");
+      const msg = getErrorMessage(err);
+      pushToast({
+        title: "Erro ao migrar plano",
+        description: msg,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpgradingToAnnual(false);
+    }
+  };
+
   const handleProceedToCheckout = (plan: SubscriptionPlan) => {
     setUpgradeOpen(false);
     navigate(`/assinatura?plano=${plan}`);
@@ -87,7 +127,7 @@ export function SubscriptionTab() {
   const handleCancelConfirm = async () => {
     setIsCanceling(true);
     try {
-      await cancelSubscription();
+      await cancelSubscription({ reason: cancelReason });
       await queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
       triggerSensory("destructive");
       if (isWithinGuarantee) {
@@ -105,6 +145,7 @@ export function SubscriptionTab() {
         });
       }
       setCancelOpen(false);
+      setCancelStep("reason");
     } catch (err: unknown) {
       triggerSensory("destructive");
       const msg = getErrorMessage(err);
@@ -165,6 +206,69 @@ export function SubscriptionTab() {
         </Card>
       )}
  
+
+      {/* Banner de Renovação Antecipada Anual via Pix (se faltarem 30 dias ou menos) */}
+      {subscription.isPro && subscription.plan === "annual" && (
+        <Card className="border-portfolio/30 bg-portfolio/5">
+          <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <Badge variant="default" size="xs">
+                  Renovação Acumulativa Pix
+                </Badge>
+                <span className="text-xs font-semibold text-foreground">Plano Anual Pro</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Você pode antecipar sua renovação anual via Pix a qualquer momento. Os +365 dias são somados ao fim do seu período vigente sem perda de dias.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleProceedToCheckout("annual")}
+              className="gap-2 shrink-0 cursor-pointer"
+            >
+              <RefreshCw className="size-3.5" aria-hidden="true" />
+              Renovar Anual (+365 dias)
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Upsell 1-clique Mensal -> Anual (Economia de 40%) */}
+      {subscription.isPro && subscription.plan === "monthly" && !subscription.cancelAtPeriodEnd && (
+        <Card className="border-primary/40 bg-primary/5">
+          <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <Badge variant="default" size="xs">
+                  Economize 40%
+                </Badge>
+                <span className="text-xs font-semibold text-foreground">Migrar para o Plano Anual</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Pague o equivalente a apenas R$ 11,99/mês (R$ 143,88/ano) em vez de R$ 19,99/mês. Migração imediata em 1 clique mantendo seu cartão atual.
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              disabled={isUpgradingToAnnual}
+              onClick={() => { void handleUpgradeToAnnual(); }}
+              className="gap-2 shrink-0 cursor-pointer"
+            >
+              {isUpgradingToAnnual ? (
+                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+              ) : (
+                <Zap className="size-3.5" aria-hidden="true" />
+              )}
+              {isUpgradingToAnnual ? "Migrando..." : "Migrar para Anual (-40%)"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Histórico de Faturas & Recibos */}
       <InvoiceHistoryCard subscription={subscription} />
 
@@ -277,29 +381,112 @@ export function SubscriptionTab() {
         onProceedToCheckout={handleProceedToCheckout}
       />
 
-      <ConfirmDialog
+      
+      {/* Modal de Cancelamento Ético em 2 Etapas */}
+      <Modal
         open={cancelOpen}
-        onOpenChange={setCancelOpen}
+        onOpenChange={(open) => {
+          setCancelOpen(open);
+          if (!open) setCancelStep("reason");
+        }}
+        size="md"
         title={
-          isWithinGuarantee
-            ? "Cancelar assinatura e solicitar estorno integral?"
-            : "Cancelar renovação da assinatura Pro?"
-        }
-        description={
-          isWithinGuarantee
-            ? "Você está dentro do prazo legal de 7 dias de garantia. Ao confirmar, o valor pago será estornado integralmente pelo Asaas no seu cartão ou conta Pix e o seu acesso Pro será encerrado imediatamente."
-            : `Sua assinatura não será renovada ao final do ciclo. Você continuará com acesso Pro completo normalmente até ${currentPeriodFormatted || "o fim do período já pago"} e seus dados serão preservados.`
-        }
-        confirmLabel={
-          isCanceling
-            ? "Processando..."
+          cancelStep === "reason"
+            ? "Pesquisa de Cancelamento"
             : isWithinGuarantee
-            ? "Confirmar Cancelamento e Estorno"
+            ? "Confirmar Cancelamento e Estorno Integral"
             : "Confirmar Cancelamento da Renovação"
         }
-        variant="destructive"
-        onConfirm={() => { void handleCancelConfirm(); }}
-      />
+        description={
+          cancelStep === "reason"
+            ? "Lamentamos ver você partir. Nos ajude a melhorar contando o principal motivo do cancelamento:"
+            : isWithinGuarantee
+            ? "Você está dentro do prazo legal de 7 dias de garantia (CDC). Ao confirmar, o valor pago será estornado integralmente pelo Asaas no seu cartão ou conta Pix e seu acesso Pro será encerrado imediatamente."
+            : `Sua assinatura não será renovada ao final do ciclo. Você continuará com acesso Pro completo normalmente até ${currentPeriodFormatted || "o fim do período já pago"} e seus dados serão preservados.`
+        }
+      >
+        <div className="space-y-4">
+          {cancelStep === "reason" ? (
+            <div className="space-y-3">
+              <RadioGroup
+                value={cancelReason}
+                onValueChange={setCancelReason}
+                options={CANCELLATION_REASONS}
+                variant="cards"
+              />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3.5 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Badge variant="critical" size="xs">
+                    {isWithinGuarantee ? "Estorno Integral Asaas" : "Acesso Mantido"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {isWithinGuarantee
+                    ? "O estorno é disparado diretamente na API do Asaas e seu acesso Pro volta a ser Somente Leitura."
+                    : `Nenhuma nova cobrança será realizada no cartão. Seu acesso Pro segue ativo até ${currentPeriodFormatted || "o término do ciclo"}.`}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <ModalFooter>
+            {cancelStep === "reason" ? (
+              <div className="flex w-full items-center justify-between gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCancelOpen(false)}
+                  className="cursor-pointer"
+                >
+                  Continuar com Pro
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setCancelStep("confirm")}
+                  className="cursor-pointer"
+                >
+                  Avançar
+                </Button>
+              </div>
+            ) : (
+              <div className="flex w-full items-center justify-between gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isCanceling}
+                  onClick={() => setCancelStep("reason")}
+                  className="cursor-pointer"
+                >
+                  Voltar
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  disabled={isCanceling}
+                  onClick={() => { void handleCancelConfirm(); }}
+                  className="gap-2 cursor-pointer"
+                >
+                  {isCanceling && <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />}
+                  {isCanceling
+                    ? "Processando..."
+                    : isWithinGuarantee
+                    ? "Confirmar e Estornar"
+                    : "Confirmar Cancelamento"}
+                </Button>
+              </div>
+            )}
+          </ModalFooter>
+        </div>
+      </Modal>
+
 
       <UpdateCardModal
         open={updateCardOpen}
@@ -456,14 +643,17 @@ function InfoRow({ icon: Icon, label, value }: InfoRowProps) {
 
 const COMPARISON_ROWS = [
   { feature: "Consulta de histórico, saldos e relatórios", readOnly: true, pro: true },
-  { feature: "Exportação completa em planilhas (.csv)", readOnly: true, pro: true },
-  { feature: "Novos lançamentos de despesas e receitas", readOnly: false, pro: true },
-  { feature: "Múltiplos cartões e parcelamentos em até 60x", readOnly: false, pro: true },
-  { feature: "Tetos de gastos e orçamentos com Safe-to-Spend", readOnly: false, pro: true },
-  { feature: "Inteligência de comprovantes e notas fiscais (OCR)", readOnly: false, pro: true },
-  { feature: "Controle de dívidas a pagar e a receber", readOnly: false, pro: true },
-  { feature: "Rebalanceamento determinístico de investimentos", readOnly: false, pro: true },
-  { feature: "Finanças compartilhadas e Espaço Família", readOnly: false, pro: true },
+  { feature: "Exportação básica em planilhas (.csv)", readOnly: true, pro: true },
+  { feature: "Dossiê Executivo Contábil de 5 abas (.xlsx nativo)", readOnly: false, pro: true },
+  { feature: "Novos lançamentos de despesas e receitas ilimitados", readOnly: false, pro: true },
+  { feature: "Leitor OCR de cupons fiscais NFC-e/SAT e boletos", readOnly: false, pro: true },
+  { feature: "Múltiplos cartões de crédito e parcelamentos em até 60x", readOnly: false, pro: true },
+  { feature: "Tetos de gastos e orçamentos com Safe-to-Spend diário", readOnly: false, pro: true },
+  { feature: "Gestão completa de dívidas (Snowball / Avalanche)", readOnly: false, pro: true },
+  { feature: "Espaço Família compartilhado e racha de contas Pix", readOnly: false, pro: true },
+  { feature: "Planejador de viagens e controle de moedas", readOnly: false, pro: true },
+  { feature: "Rebalanceamento determinístico de carteira sem DARF", readOnly: false, pro: true },
+  { feature: "Radar Fiscal de IR e apuração contínua de tributos", readOnly: false, pro: true },
 ] as const;
 
 function PlanComparisonTable({ isFullAccess }: { isFullAccess: boolean }) {
@@ -697,10 +887,12 @@ interface InvoiceHistoryCardProps {
 }
 
 function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
+  const { data: invoices, isLoading } = useInvoices(subscription.isPro);
+
   const planName =
     subscription.plan === "annual" ? "Plano Pro Anual (12 meses)" : "Plano Pro Mensal";
   const planAmount =
-    subscription.plan === "annual" ? "R$\u00a0143,88/ano" : "R$\u00a019,99/mês";
+    subscription.plan === "annual" ? "R$ 143,88/ano" : "R$ 19,99/mês";
   const renewDate = subscription.currentPeriodEnd
     ? new Date(subscription.currentPeriodEnd).toLocaleDateString("pt-BR", {
         day: "2-digit",
@@ -714,12 +906,12 @@ function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
           <Receipt className="size-4 text-muted-foreground" aria-hidden="true" />
-          <span>Faturamento &amp; Comprovantes Fiscais</span>
+          <span>Faturamento &amp; Histórico de Faturas</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
         {subscription.isPro ? (
-          <div className="space-y-3.5">
+          <div className="space-y-4">
             <div className="rounded-xl border border-border/80 bg-muted/20 p-4 space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border/60 pb-3">
                 <div className="space-y-0.5">
@@ -749,9 +941,86 @@ function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
               <div className="flex items-start gap-2.5 text-xs text-muted-foreground leading-relaxed">
                 <FileText className="size-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
                 <p className="text-[11px]">
-                  Os recibos de pagamento e notas fiscais eletrônicas (NFS-e) são emitidos automaticamente pelo gateway financeiro e encaminhados ao endereço de e-mail da sua conta a cada renovação.
+                  Os recibos de pagamento e notas fiscais eletrônicas (NFS-e) são emitidos automaticamente pelo gateway Asaas a cada renovação.
                 </p>
               </div>
+            </div>
+
+            {/* Lista Real de Faturas / Recibos do Asaas */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-foreground">Faturas Recentes</h4>
+              {isLoading ? (
+                <div className="flex items-center justify-center p-6 text-muted-foreground text-xs gap-2">
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  Carregando faturas...
+                </div>
+              ) : invoices && invoices.length > 0 ? (
+                <div className="divide-y divide-border/60 rounded-xl border border-border/80 overflow-hidden">
+                  {invoices.map((inv) => {
+                    const receiptUrl = inv.transactionReceiptUrl || inv.invoiceUrl;
+                    const dateFormatted = inv.paymentDate || inv.dateCreated
+                      ? new Date(inv.paymentDate || inv.dateCreated).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : inv.dueDate;
+                    const amountFormatted = new Intl.NumberFormat("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    }).format(inv.value);
+
+                    const isReceived = ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"].includes(
+                      inv.status
+                    );
+                    const isRefunded = ["REFUNDED"].includes(inv.status);
+
+                    return (
+                      <div
+                        key={inv.id}
+                        className="flex items-center justify-between p-3 bg-surface hover:bg-muted/10 transition-colors text-xs"
+                      >
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-foreground">{dateFormatted}</span>
+                            <Badge
+                              variant={isReceived ? "positive" : isRefunded ? "critical" : "muted"}
+                              size="xs"
+                            >
+                              {isReceived ? "Pago" : isRefunded ? "Estornado" : inv.status}
+                            </Badge>
+                          </div>
+                          <span className="text-[11px] text-muted-foreground">
+                            {inv.billingType === "PIX" ? "Pix" : "Cartão de Crédito"}
+                            {inv.description ? ` • ${inv.description}` : ""}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-semibold text-foreground tabular-nums">
+                            {amountFormatted}
+                          </span>
+                          {receiptUrl && (
+                            <a
+                              href={receiptUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Abrir recibo em nova aba"
+                              className="inline-flex items-center gap-1 h-7 px-2 text-xs font-medium rounded-md border border-border/80 hover:bg-muted/30 text-foreground transition-colors cursor-pointer"
+                            >
+                              <ExternalLink className="size-3 text-muted-foreground" aria-hidden="true" />
+                              Recibo
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground p-3 rounded-xl border border-border/80 bg-muted/10">
+                  Nenhuma fatura anterior registrada no Asaas.
+                </p>
+              )}
             </div>
           </div>
         ) : (

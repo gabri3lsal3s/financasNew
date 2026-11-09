@@ -97,6 +97,23 @@ export interface NormalizedWebhookEvent {
   rawPayload?: unknown;
 }
 
+export interface BillingInvoiceItem {
+  id: string;
+  dateCreated: string;
+  value: number;
+  netValue?: number;
+  billingType: string;
+  status: string;
+  dueDate: string;
+  paymentDate?: string | null;
+  clientPaymentDate?: string | null;
+  invoiceUrl?: string | null;
+  bankSlipUrl?: string | null;
+  transactionReceiptUrl?: string | null;
+  invoiceNumber?: string | null;
+  description?: string | null;
+}
+
 /**
  * Interface canônica que qualquer adaptador de faturamento deve implementar.
  */
@@ -117,6 +134,16 @@ export interface BillingProviderAdapter {
    * Atualiza a forma de pagamento cadastrada para cobranças recorrentes.
    */
   updatePaymentMethod(params: UpdatePaymentParams): Promise<void>;
+
+  /**
+   * Consulta a lista cronológica de faturas e comprovantes fiscais do cliente.
+   */
+  listInvoices?(): Promise<BillingInvoiceItem[]>;
+
+  /**
+   * Realiza a migração direta do plano Mensal para o plano Anual (Upsell 40%).
+   */
+  upgradeToAnnual?(): Promise<void>;
 
   /**
    * Opcional: Obtém a URL do portal de autoatendimento do cliente (ex.: Stripe Billing Portal).

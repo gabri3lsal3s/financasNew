@@ -11,12 +11,24 @@ import {
   adminSetUserRole as adminSetUserRoleRpc,
   adminToggleGlobalFeature as adminToggleGlobalFeatureRpc,
   adminUpdateUserStatus as adminUpdateUserStatusRpc,
+  adminGetUserContactDetails,
+  adminSendBroadcastNotification,
+  getMyBroadcastNotifications,
+  markBroadcastAsRead,
+  adminLogSystemBackup,
   type AdminListUsersParams,
   type AdminMetricsResult,
   type AdminUserRow,
 } from "@/data/rpc";
 import { AppError, classifyError } from "@/services/errors";
-import type { AccessInvite, AuditEvent, SystemFeature, UserFeatureOverride } from "@/types";
+import type {
+  AccessInvite,
+  AuditEvent,
+  SystemFeature,
+  UserFeatureOverride,
+  SystemBackup,
+  AdminBroadcastNotification,
+} from "@/types";
 
 /**
  * Consulta todas as funcionalidades do sistema cadastradas.
@@ -95,6 +107,46 @@ export async function listAuditEvents(limit = 100): Promise<AuditEvent[]> {
   return data ?? [];
 }
 
+/**
+ * Consulta o histórico de backups registrados na plataforma.
+ */
+export async function listSystemBackups(limit = 50): Promise<SystemBackup[]> {
+  const { data, error } = await resolveQuery<SystemBackup[]>(
+    getSupabase()
+      .from("system_backups")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+
+  return data ?? [];
+}
+
+/**
+ * Consulta as notificações de broadcast cadastradas pelo administrador.
+ */
+export async function listBroadcastNotifications(limit = 50): Promise<AdminBroadcastNotification[]> {
+  const { data, error } = await resolveQuery<AdminBroadcastNotification[]>(
+    getSupabase()
+      .from("admin_broadcast_notifications")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+
+  return data ?? [];
+}
+
 // Re-export das operações administrativas transacionais
 export {
   adminCreateInviteRpc as adminCreateInvite,
@@ -107,7 +159,13 @@ export {
   adminSetUserRoleRpc as adminSetUserRole,
   adminToggleGlobalFeatureRpc as adminToggleGlobalFeature,
   adminUpdateUserStatusRpc as adminUpdateUserStatus,
+  adminGetUserContactDetails,
+  adminSendBroadcastNotification,
+  getMyBroadcastNotifications,
+  markBroadcastAsRead,
+  adminLogSystemBackup,
   type AdminListUsersParams,
   type AdminMetricsResult,
   type AdminUserRow,
 };
+
