@@ -1,5 +1,21 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.0.14 (Build 43)** registra o **Parcelamento Otimizado de Despesas da Viagem no Extrato Pessoal e Cronograma Interativo Multi-Parcelas em Links de Racha Pix** (2026-11-09):
+> - **(1) Parcelamento no Extrato Bancário a partir de Despesas de Viagem (`AddTripExpenseDialog`)**:
+>   - Possibilidade de escolher a quantidade de parcelas (1x a 12x) ao lançar despesa de cartão de crédito no Modo Viagem vinculada ao extrato pessoal;
+>   - Preview em tempo real do valor da parcela e resolução determinística da competência de fatura via `resolveBillCompetence` considerando o dia de fechamento do cartão (`closing_day`);
+>   - Aplicação de peso proporcional (`calculateLinkedExpenseWeight(amountCents, userShareCents)`), garantindo que as parcelas nominais cheias constem no extrato para conciliação bancária, enquanto os relatórios, limites e orçamento mensal contabilizam apenas a cota efetiva do usuário;
+>   - Eliminação da criação de dívidas estáticas em `debts` para despesas de viagem, mantendo o acerto multilateral centralizado no livro-razão da viagem (`TripSettlement`);
+> - **(2) Cronograma de Parcelas Interativo no Link Público de Racha (`/r/:token` & `SplitChargeCard`)**:
+>   - Suporte a rachas parcelados com cronograma estruturado por participante (`participant_installments`), numeração ordinal ($1/N, 2/N\dots$), vencimentos mensais e status individual de liquidação (`is_settled`);
+>   - Linha do tempo interativa no link público do convidado, permitindo alternar entre pagar a parcela pendente atual ou quitar todas as parcelas em aberto;
+>   - Recálculo dinâmico e instantâneo do Pix Copia e Cola e QR Code EMV no lado cliente (`generatePixBrCode`), sem overhead de rede;
+>   - Sinalização de pagamento em tempo real (`has_payment_signal`) no link público para conferência;
+> - **(3) Gestão Granular de Baixa Parcela a Parcela pelo Anfitrião (`ManageSplitDialog`)**:
+>   - Controle de baixa e reabertura de parcelas individuais para cada amigo na partilha;
+>   - Sincronização automática do saldo da cobrança vinculada em `debts` e reajuste dinâmico do peso líquido (`report_weight`) da despesa no extrato do anfitrião.
+>
+
 > **v3.0.13 (Build 42)** registra a **Integração Bidirecional das Despesas do Modo Viagem com o Extrato de Transações Pessoais e Exclusividade Mútua Estrita contra Conflitos de Racha** (2026-11-08):
 > - **(1) Integração Bidirecional de Despesas entre Viagem e Extrato Bancário/Cartão**:
 >   - Cadastro no Modo Viagem (`AddTripExpenseDialog`): toggle opcional *"Lançar no meu extrato bancário/cartão"* visível quando o pagador for o usuário logado, com seleção de forma de pagamento e cartão, criando a transação pessoal espelhada e vinculando os IDs bidirecionalmente (`trip_expenses.linked_personal_expense_id` e `expenses.trip_id`);

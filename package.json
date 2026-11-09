@@ -1,7 +1,7 @@
 {
   "name": "financas-app",
   "private": true,
-  "version": "3.0.13",
+  "version": "3.0.14",
   "type": "module",
   "engines": {
     "node": ">=22.23.4 <23 || >=24.22.1 <25 || >=26.12.1"

@@ -259,6 +259,47 @@ describe("SplitExpenseDialog", () => {
     expect(screen.getByText("Link de Racha Gerado")).toBeInTheDocument();
   });
 
+  it("gera racha parcelado com participant_installments quando a despesa for parcelada", async () => {
+    storeSplitPreferences({
+      merchantCity: "ARACAJU",
+    });
+
+    const installmentExpense: Expense = {
+      ...mockExpense,
+      value: 300,
+      installments_total: 3,
+    };
+
+    renderWithClient(
+      <SplitExpenseDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        expense={installmentExpense}
+      />,
+    );
+
+    const generateBtn = screen.getByRole("button", { name: /Gerar Racha & Copiar Link/i });
+    fireEvent.click(generateBtn);
+
+    await waitFor(() => {
+      expect(mockMutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            installments_count: 3,
+            installments_mode: "per_installment",
+            participant_installments: expect.arrayContaining([
+              expect.objectContaining({
+                participant_id: "p_2",
+                installment_number: 1,
+                is_settled: false,
+              }),
+            ]),
+          }),
+        }),
+      );
+    });
+  });
+
   it("fecha o diálogo ao clicar em Cancelar", () => {
     const onOpenChange = vi.fn();
     renderWithClient(

@@ -542,8 +542,8 @@ export function LaunchWizard({
             date: state.date,
             peopleCount: state.splitPeopleCount,
             installmentsCount:
-              state.splitDebtMode === "per_installment" && state.installmentsCount > 1
-                ? state.installmentsCount
+              state.splitDebtMode === "per_installment" && state.installments > 1
+                ? state.installments
                 : 1,
             categoryId: state.categoryId,
             categoryName: selectedCategory?.name,
@@ -1088,7 +1088,7 @@ export function LaunchWizard({
           category_id: createdSplitExpense.categoryId || "",
           payment_method: "pix",
           created_at: "",
-          installments_total: createdSplitExpense.installmentsCount ?? null,
+          installments_total: createdSplitExpense.installmentsCount ?? undefined,
         }}
         initialInstallmentsCount={createdSplitExpense.installmentsCount}
         categoryName={createdSplitExpense.categoryName}
