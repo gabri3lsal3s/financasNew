@@ -6,6 +6,7 @@ import {
   useUserTrips,
   useTripDetails,
   useCreateTripMutation,
+  useClaimTripMemberMutation,
 } from "./use-trips";
 import * as tripsRepo from "@/data/repositories/trips";
 import * as sensoryService from "@/services/sensory";
@@ -28,6 +29,7 @@ vi.mock("@/data/repositories/trips", () => ({
   submitPublicExpense: vi.fn(),
   recordTripSettlements: vi.fn(),
   confirmTripSettlement: vi.fn(),
+  claimTripMember: vi.fn(),
 }));
 
 vi.mock("@/services/sensory", () => ({
@@ -149,6 +151,72 @@ describe("state/queries/use-trips", () => {
       expect(sensoryService.triggerSensory).toHaveBeenCalledWith("success");
       expect(toastService.pushToast).toHaveBeenCalledWith(
         expect.objectContaining({ title: "Viagem criada com sucesso" })
+      );
+    });
+  });
+
+  describe("useClaimTripMemberMutation", () => {
+    it("vincula conta ao participante com sucesso, aciona feedback sensorial e invalida queries", async () => {
+      const claimResult = {
+        success: true,
+        trip_id: "trip-1",
+        member_id: "m-2",
+        user_id: "u-123",
+      };
+      vi.mocked(tripsRepo.claimTripMember).mockResolvedValueOnce(claimResult);
+
+      const queryClient = new QueryClient();
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+      const wrapper = ({ children }: { children: ReactNode }) =>
+        createElement(QueryClientProvider, { client: queryClient }, children);
+
+      const { result } = renderHook(() => useClaimTripMemberMutation(), { wrapper });
+
+      result.current.mutate({
+        token: "tok-abc",
+        memberId: "m-2",
+        passcode: "1234",
+      });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(tripsRepo.claimTripMember).toHaveBeenCalledWith("tok-abc", "m-2", "1234");
+      expect(sensoryService.triggerSensory).toHaveBeenCalledWith("success");
+      expect(toastService.pushToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Viagem vinculada com sucesso",
+          description: "Esta viagem agora está sincronizada com a sua conta Áxis.",
+        })
+      );
+      expect(invalidateSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["trips", "list"] }));
+      expect(invalidateSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["trips", "public", "tok-abc"] }));
+      expect(invalidateSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["trips", "detail", "trip-1"] }));
+      expect(invalidateSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["user-preferences"] }));
+    });
+
+    it("emite feedback sensorial e toast de erro quando a mutação falha", async () => {
+      vi.mocked(tripsRepo.claimTripMember).mockRejectedValueOnce(
+        new Error("ALREADY_CLAIMED: Este participante já está vinculado a outra conta.")
+      );
+
+      const { result } = renderHook(() => useClaimTripMemberMutation(), {
+        wrapper: createWrapper(),
+      });
+
+      result.current.mutate({
+        token: "tok-abc",
+        memberId: "m-2",
+      });
+
+      await waitFor(() => expect(result.current.isError).toBe(true));
+
+      expect(sensoryService.triggerSensory).toHaveBeenCalledWith("error");
+      expect(toastService.pushToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Erro ao vincular viagem",
+          variant: "destructive",
+        })
       );
     });
   });

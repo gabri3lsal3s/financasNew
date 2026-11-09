@@ -1,17 +1,27 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TripPublicPage } from "./trip-public-page";
 import * as tripsQuery from "@/state/queries/use-trips";
+import * as authHook from "@/hooks/use-auth";
+
+vi.mock("@/hooks/use-auth", () => ({
+  useAuth: vi.fn(),
+}));
 
 vi.mock("@/state/queries/use-trips", async (importOriginal) => {
   const actual = await importOriginal<typeof tripsQuery>();
   return {
     ...actual,
     usePublicTrip: vi.fn(),
+    useUserTrips: vi.fn(() => ({ data: [], isLoading: false })),
     useSubmitPublicTripExpenseMutation: vi.fn(() => ({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    })),
+    useClaimTripMemberMutation: vi.fn(() => ({
       mutateAsync: vi.fn(),
       isPending: false,
     })),
@@ -107,6 +117,7 @@ function renderPage(token = "token123") {
       <MemoryRouter initialEntries={[`/viagem/${token}`]}>
         <Routes>
           <Route path="/viagem/:token" element={<TripPublicPage />} />
+          <Route path="/viagens/:id" element={<div>Viagem Logada no App</div>} />
           <Route path="/" element={<div>Home</div>} />
         </Routes>
       </MemoryRouter>
@@ -117,6 +128,15 @@ function renderPage(token = "token123") {
 describe("TripPublicPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
+    vi.mocked(authHook.useAuth).mockReturnValue({
+      session: null,
+    } as unknown as ReturnType<typeof authHook.useAuth>);
+    vi.mocked(tripsQuery.useUserTrips).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof tripsQuery.useUserTrips>);
+    vi.stubEnv("VITE_PUBLIC_SITE_URL", "https://financasnew.gabrielisaacsales.workers.dev");
   });
 
   it("renderiza loading quando os dados estiverem carregando", () => {
@@ -155,7 +175,7 @@ describe("TripPublicPage", () => {
     expect(screen.getAllByText("Hospedagem").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("permite selecionar um participante para ver o resumo pessoal", async () => {
+  it("permite selecionar um participante para ver o resumo pessoal e alterar a seleção", async () => {
     const user = userEvent.setup();
     vi.mocked(tripsQuery.usePublicTrip).mockReturnValue({
       data: mockTripData,
@@ -165,11 +185,22 @@ describe("TripPublicPage", () => {
 
     renderPage();
 
+    // Inicialmente exibe o título de identificação
+    expect(screen.getByText("Quem é você nesta viagem?")).toBeInTheDocument();
+
     // Clica no botão do participante "Pedro"
     const pedroButton = screen.getByRole("button", { name: "Pedro" });
     await user.click(pedroButton);
 
+    // Exibe a badge ativa, saldo devedor e botão Alterar
+    expect(screen.getByText("Você é Pedro")).toBeInTheDocument();
     expect(screen.getByText("Você deve R$ 100,00")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /alterar/i })).toBeInTheDocument();
+    expect(window.localStorage.getItem("axis_guest_member_token123")).toBe("m2");
+
+    // Clica em Alterar para limpar a seleção
+    await user.click(screen.getByRole("button", { name: /alterar/i }));
+    expect(screen.getByText("Quem é você nesta viagem?")).toBeInTheDocument();
   });
 
   it("dispara compartilhamento via WhatsApp com URL canônica da aplicação", async () => {
@@ -193,5 +224,155 @@ describe("TripPublicPage", () => {
     );
 
     openSpy.mockRestore();
+  });
+
+  describe("Tarefa 2.4: Fluxo de Reivindicação de Conta com 1 Clique", () => {
+    it("exibe botão de destaque 'Vincular esta viagem ao meu aplicativo Áxis' quando usuário estiver autenticado e não vinculado", () => {
+      vi.mocked(tripsQuery.usePublicTrip).mockReturnValue({
+        data: mockTripData,
+        isLoading: false,
+        error: null,
+      } as never);
+
+      vi.mocked(authHook.useAuth).mockReturnValue({
+        session: { user: { id: "user_pedro" } },
+      } as unknown as ReturnType<typeof authHook.useAuth>);
+
+      vi.mocked(tripsQuery.useUserTrips).mockReturnValue({
+        data: [],
+        isLoading: false,
+      } as unknown as ReturnType<typeof tripsQuery.useUserTrips>);
+
+      renderPage();
+
+      const claimButtons = screen.getAllByRole("button", {
+        name: /Vincular esta viagem ao meu aplicativo Áxis/i,
+      });
+      expect(claimButtons.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("não exibe botão de destaque quando o visitante for anônimo (não autenticado)", () => {
+      vi.mocked(tripsQuery.usePublicTrip).mockReturnValue({
+        data: mockTripData,
+        isLoading: false,
+        error: null,
+      } as never);
+
+      vi.mocked(authHook.useAuth).mockReturnValue({
+        session: null,
+      } as unknown as ReturnType<typeof authHook.useAuth>);
+
+      renderPage();
+
+      expect(
+        screen.queryByRole("button", {
+          name: /Vincular esta viagem ao meu aplicativo Áxis/i,
+        })
+      ).not.toBeInTheDocument();
+    });
+
+    it("exibe aviso de viagem já vinculada quando usuário já possuir esta viagem vinculada", () => {
+      vi.mocked(tripsQuery.usePublicTrip).mockReturnValue({
+        data: mockTripData,
+        isLoading: false,
+        error: null,
+      } as never);
+
+      vi.mocked(authHook.useAuth).mockReturnValue({
+        session: { user: { id: "user_host" } },
+      } as unknown as ReturnType<typeof authHook.useAuth>);
+
+      vi.mocked(tripsQuery.useUserTrips).mockReturnValue({
+        data: [
+          {
+            id: "trip-1",
+            title: "Mochilão Chapada",
+            destination: "Chapada Diamantina",
+            start_date: "2027-01-10",
+            end_date: "2027-01-15",
+            status: "active",
+            currency: "BRL",
+            public_token: "token123",
+            cover_photo_url: null,
+            created_at: "",
+            updated_at: "",
+          },
+        ],
+        isLoading: false,
+      } as unknown as ReturnType<typeof tripsQuery.useUserTrips>);
+
+      renderPage();
+
+      expect(
+        screen.getByText("Esta viagem está sincronizada com a sua conta Áxis")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /Abrir no Aplicativo/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", {
+          name: /Vincular esta viagem ao meu aplicativo Áxis/i,
+        })
+      ).not.toBeInTheDocument();
+    });
+
+    it("abre modal rápido de confirmação, confirma e redireciona para a rota logada da viagem (/viagens/:id)", async () => {
+      const user = userEvent.setup();
+      const mockMutateAsync = vi.fn().mockResolvedValue({
+        success: true,
+        trip_id: "trip-1",
+        member_id: "m2",
+        user_id: "user_pedro",
+      });
+
+      vi.mocked(tripsQuery.usePublicTrip).mockReturnValue({
+        data: mockTripData,
+        isLoading: false,
+        error: null,
+      } as never);
+
+      vi.mocked(authHook.useAuth).mockReturnValue({
+        session: { user: { id: "user_pedro" } },
+      } as unknown as ReturnType<typeof authHook.useAuth>);
+
+      vi.mocked(tripsQuery.useUserTrips).mockReturnValue({
+        data: [],
+        isLoading: false,
+      } as unknown as ReturnType<typeof tripsQuery.useUserTrips>);
+
+      vi.mocked(tripsQuery.useClaimTripMemberMutation).mockReturnValue({
+        mutateAsync: mockMutateAsync,
+        isPending: false,
+      } as unknown as ReturnType<typeof tripsQuery.useClaimTripMemberMutation>);
+
+      renderPage();
+
+      // Clica no botão de destaque
+      const claimButtons = screen.getAllByRole("button", {
+        name: /Vincular esta viagem ao meu aplicativo Áxis/i,
+      });
+      const claimButton = claimButtons[0];
+      expect(claimButton).toBeDefined();
+      await user.click(claimButton!);
+
+      // Modal abre
+      const dialog = screen.getByRole("dialog");
+      expect(within(dialog).getByText("Vincular Viagem à sua Conta")).toBeInTheDocument();
+      expect(within(dialog).getByText("Participantes disponíveis (1)")).toBeInTheDocument();
+      expect(within(dialog).getByText("Pedro")).toBeInTheDocument();
+
+      // Confirma o vínculo
+      const confirmButton = within(dialog).getByRole("button", { name: "Confirmar e Vincular" });
+      await user.click(confirmButton);
+
+      expect(mockMutateAsync).toHaveBeenCalledWith({
+        token: "token123",
+        memberId: "m2",
+        passcode: undefined,
+      });
+
+      // Redireciona para rota interna /viagens/trip-1
+      expect(screen.getByText("Viagem Logada no App")).toBeInTheDocument();
+    });
   });
 });

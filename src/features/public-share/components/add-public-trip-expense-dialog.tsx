@@ -15,6 +15,7 @@ import {
   Checkbox,
 } from "@/components/ui";
 import { useSubmitPublicTripExpenseMutation } from "@/state/queries/use-trips";
+import { usePublicTripGuestIdentity } from "../hooks/use-public-trip-guest-identity";
 import { calculateEqualSplits } from "@/domain/trips/trip-math";
 import type { PublicTripMember } from "@/types/trips";
 
@@ -24,6 +25,7 @@ export interface AddPublicTripExpenseDialogProps {
   token: string;
   members: PublicTripMember[];
   defaultPayerId?: string;
+  activeMemberId?: string;
   onSuccess?: () => void;
 }
 
@@ -42,8 +44,12 @@ export function AddPublicTripExpenseDialog({
   token,
   members,
   defaultPayerId,
+  activeMemberId,
   onSuccess,
 }: AddPublicTripExpenseDialogProps) {
+  const { activeMemberId: storedActiveMemberId } = usePublicTripGuestIdentity(token);
+  const resolvedActiveMemberId = activeMemberId || defaultPayerId || storedActiveMemberId || "";
+
   const [amountCents, setAmountCents] = useState<number>(0);
   const [description, setDescription] = useState("");
   const [categoryName, setCategoryName] = useState("Alimentação");
@@ -54,12 +60,28 @@ export function AddPublicTripExpenseDialog({
   const [splitMode, setSplitMode] = useState<"all" | "selected">("all");
   const [customMemberIds, setCustomMemberIds] = useState<string[]>([]);
 
+  const resetForm = () => {
+    setAmountCents(0);
+    setDescription("");
+    setSelectedPayerId("");
+    setCustomMemberIds([]);
+    setSplitMode("all");
+    setCategoryName("Alimentação");
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      resetForm();
+    }
+    onOpenChange(nextOpen);
+  };
+
   const effectivePayerId =
     selectedPayerId && members.some((m) => m.id === selectedPayerId)
       ? selectedPayerId
-      : defaultPayerId && members.some((m) => m.id === defaultPayerId)
-      ? defaultPayerId
-      : members.find((m) => m.is_host)?.id || members[0]?.id || "";
+      : resolvedActiveMemberId && members.some((m) => m.id === resolvedActiveMemberId)
+      ? resolvedActiveMemberId
+      : "";
 
   const activeSelectedMemberIds =
     customMemberIds.length > 0 && customMemberIds.some((id) => members.some((m) => m.id === id))
@@ -110,12 +132,7 @@ export function AddPublicTripExpenseDialog({
       })),
     });
 
-    // Reset
-    setAmountCents(0);
-    setDescription("");
-    setSelectedPayerId("");
-    setCustomMemberIds([]);
-    setSplitMode("all");
+    resetForm();
     onOpenChange(false);
     onSuccess?.();
   };
@@ -123,16 +140,16 @@ export function AddPublicTripExpenseDialog({
   return (
     <Modal
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleOpenChange}
       size="lg"
       title="Adicionar Despesa da Viagem"
       description="Informe o valor e quem pagou para atualizar o balanço do grupo em tempo real."
       footer={
-        <ModalFooter>
+        <ModalFooter borderless>
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
             disabled={submitMutation.isPending}
           >
             Cancelar
@@ -140,7 +157,12 @@ export function AddPublicTripExpenseDialog({
           <Button
             type="submit"
             form="add-public-expense-form"
-            disabled={amountCents <= 0 || !description.trim() || submitMutation.isPending}
+            disabled={
+              amountCents <= 0 ||
+              !description.trim() ||
+              !effectivePayerId ||
+              submitMutation.isPending
+            }
             loading={submitMutation.isPending}
           >
             Adicionar Despesa
@@ -159,6 +181,7 @@ export function AddPublicTripExpenseDialog({
             onCentsChange={(c) => setAmountCents(c)}
             placeholder="R$ 0,00"
             className="text-base sm:text-sm font-semibold"
+            aria-label="Valor Pago"
             required
           />
         </div>
@@ -175,6 +198,7 @@ export function AddPublicTripExpenseDialog({
               placeholder="Ex.: Gasolina, Aluguel do barco, Jantar"
               maxLength={120}
               className="text-base sm:text-sm"
+              aria-label="Descrição do Gasto"
               required
             />
           </div>
@@ -188,6 +212,7 @@ export function AddPublicTripExpenseDialog({
               onValueChange={setCategoryName}
               options={CATEGORY_OPTIONS}
               placeholder="Selecione a categoria"
+              ariaLabel="Categoria da despesa"
             />
           </div>
         </div>
@@ -202,7 +227,8 @@ export function AddPublicTripExpenseDialog({
               value={effectivePayerId}
               onValueChange={setSelectedPayerId}
               options={memberOptions}
-              placeholder="Selecione o pagador"
+              placeholder="Selecione o pagador (Obrigatório)..."
+              ariaLabel="Quem pagou"
             />
           </div>
 

@@ -28,6 +28,7 @@ import {
   recordTripSettlements,
   confirmTripSettlement,
   rebalanceTripMembers,
+  claimTripMember,
   type CreateTripInput,
   type AddTripMemberInput,
   type AddTripExpenseInput,
@@ -510,6 +511,43 @@ export function useRebalanceTripMutation(tripId: string) {
       triggerSensory("error");
       pushToast({
         title: "Erro ao equilibrar despesas",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useClaimTripMemberMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      token,
+      memberId,
+      passcode,
+    }: {
+      token: string;
+      memberId: string;
+      passcode?: string | null;
+    }) => claimTripMember(token, memberId, passcode),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.lists() });
+      queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.public(variables.token) });
+      if (data?.trip_id) {
+        queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.detail(data.trip_id) });
+      }
+      queryClient.invalidateQueries({ queryKey: ["user-preferences"] });
+      triggerSensory("success");
+      pushToast({
+        title: "Viagem vinculada com sucesso",
+        description: "Esta viagem agora está sincronizada com a sua conta Áxis.",
+      });
+    },
+    onError: (err) => {
+      triggerSensory("error");
+      pushToast({
+        title: "Erro ao vincular viagem",
         description: getErrorMessage(err),
         variant: "destructive",
       });

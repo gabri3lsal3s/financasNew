@@ -5,9 +5,8 @@
  */
 
 import { useState } from "react";
-import { useParams, Link } from "react-router";
+import { useParams, useNavigate, Link } from "react-router";
 import {
-  Users,
   Plus,
   Receipt,
   Copy,
@@ -17,7 +16,9 @@ import {
   Share2,
   ArrowRight,
   ShieldCheck,
-  FileText,
+  Sparkles,
+  UserCheck,
+  CheckCircle2,
 } from "lucide-react";
 import {
   Button,
@@ -27,7 +28,8 @@ import {
   EmptyState,
   Skeleton,
 } from "@/components/ui";
-import { usePublicTrip } from "@/state/queries/use-trips";
+import { usePublicTrip, useUserTrips } from "@/state/queries/use-trips";
+import { useAuth } from "@/hooks/use-auth";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
@@ -36,17 +38,26 @@ import {
   SharedLinkHeaderNav,
   AddPublicTripExpenseDialog,
   PublicTripMemberStatementDialog,
+  PublicTripIdentityBanner,
+  ClaimTripMemberDialog,
 } from "../components";
+import { usePublicTripGuestIdentity } from "../hooks";
 import type { PublicTripMember } from "@/types/trips";
 
 export function TripPublicPage() {
   const { token } = useParams<{ token: string }>();
+  const navigate = useNavigate();
+  const { session } = useAuth();
+  const currentUser = session?.user;
+  const { data: userTrips } = useUserTrips();
+
   const { data, isLoading, error } = usePublicTrip(token);
+  const { activeMemberId, setActiveMemberId } = usePublicTripGuestIdentity(token);
 
   const [activeTab, setActiveTab] = useState<string>("expenses");
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [selectedMemberForStatement, setSelectedMemberForStatement] = useState<PublicTripMember | null>(null);
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
+  const [isClaimDialogOpen, setIsClaimDialogOpen] = useState(false);
   const [copiedPixKey, setCopiedPixKey] = useState<string | null>(null);
 
   if (isLoading) {
@@ -83,12 +94,19 @@ export function TripPublicPage() {
 
   const { trip, members, expenses, balances, suggestedSettlements, totalExpensesCents } = data;
 
-  const currentMember = selectedMemberId
-    ? members.find((m) => m.id === selectedMemberId) ?? null
-    : null;
+  const isAlreadyLinked = Boolean(
+    currentUser &&
+    userTrips?.some((t) => t.id === trip.id || t.public_token === token)
+  );
+  const claimableMembers = members.filter((m) => !m.has_axis_account);
+  const canClaimAccount = Boolean(
+    currentUser &&
+    !isAlreadyLinked &&
+    claimableMembers.length > 0
+  );
 
-  const currentBalance = selectedMemberId
-    ? balances.find((b) => b.memberId === selectedMemberId) ?? null
+  const currentBalance = activeMemberId
+    ? balances.find((b) => b.memberId === activeMemberId) ?? null
     : null;
 
   const handleCopyPix = (pixKey: string) => {
@@ -320,90 +338,71 @@ export function TripPublicPage() {
           </div>
         </Card>
 
-        {/* Seletor "Quem é você?" */}
-        <Card className="border-border/80 bg-surface shadow-xs rounded-2xl p-4 sm:p-5 space-y-3.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-              <Users className="size-4 text-muted-foreground" aria-hidden="true" />
-              <span>Quem é você nesta viagem?</span>
-            </span>
-            {selectedMemberId && (
-              <button
-                type="button"
-                onClick={() => setSelectedMemberId(null)}
-                className="text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                Limpar seleção
-              </button>
-            )}
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {members.map((m) => {
-              const isSelected = selectedMemberId === m.id;
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setSelectedMemberId(isSelected ? null : m.id)}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all cursor-pointer ${
-                    isSelected
-                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                      : "bg-surface-raised text-muted-foreground border-border/80 hover:text-foreground hover:border-border"
-                  }`}
-                >
-                  {m.name} {m.is_host && "(Organizador)"}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Resumo do Participante Selecionado */}
-          {currentMember && currentBalance && (
-            <div className="p-3.5 sm:p-4 rounded-xl bg-surface-raised border border-border/80 mt-2 space-y-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Você pagou no total:</span>
-                <span className="font-semibold tabular-nums text-foreground">
-                  {formatCentsAsBRL(currentBalance.totalPaidCents)}
-                </span>
+        {/* Banner de Destaque: Vincular Viagem à Conta Áxis */}
+        {currentUser && !isAlreadyLinked && (
+          <Card className="border-primary/30 bg-primary/5 shadow-xs rounded-2xl p-4 sm:p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary-strong">
+                <Sparkles className="size-4.5" aria-hidden="true" />
               </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Sua cota nas despesas:</span>
-                <span className="font-semibold tabular-nums text-foreground">
-                  {formatCentsAsBRL(currentBalance.totalOwedCents)}
-                </span>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-foreground">
+                  Você está conectado ao Áxis
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Vincule sua participação para sincronizar rateios e despesas diretamente no seu extrato pessoal.
+                </p>
               </div>
-              <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
-                <span className="font-semibold text-foreground">Balanço Final:</span>
-                {currentBalance.netBalanceCents > 0 ? (
-                  <Badge variant="positive" size="sm">
-                    Você tem {formatCentsAsBRL(currentBalance.netBalanceCents)} a receber
-                  </Badge>
-                ) : currentBalance.netBalanceCents < 0 ? (
-                  <Badge variant="critical" size="sm">
-                    Você deve {formatCentsAsBRL(Math.abs(currentBalance.netBalanceCents))}
-                  </Badge>
-                ) : (
-                  <Badge variant="muted" size="sm">
-                    Contas equilibradas
-                  </Badge>
-                )}
-              </div>
-
-              {/* Botão de Explicabilidade / Extrato Individual Público */}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedMemberForStatement(currentMember)}
-                className="w-full h-8.5 gap-2 text-xs font-semibold border-border/80 bg-surface hover:bg-surface-hover cursor-pointer"
-              >
-                <FileText className="size-3.5 text-primary-strong" aria-hidden="true" />
-                <span>Ver Extrato Detalhado do Meu Rateio</span>
-              </Button>
             </div>
-          )}
-        </Card>
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => setIsClaimDialogOpen(true)}
+              className="h-8.5 px-3.5 text-xs font-semibold self-stretch sm:self-auto shrink-0 gap-1.5 cursor-pointer"
+            >
+              <UserCheck className="size-3.5" aria-hidden="true" />
+              <span>Vincular esta viagem ao meu aplicativo Áxis</span>
+            </Button>
+          </Card>
+        )}
+
+        {/* Banner Sóbrio: Viagem já Vinculada */}
+        {currentUser && isAlreadyLinked && (
+          <Card className="border-border/80 bg-surface shadow-xs rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <CheckCircle2 className="size-4 text-positive-strong shrink-0" aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-foreground">
+                  Esta viagem está sincronizada com a sua conta Áxis
+                </p>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  Acesse para gerenciar gastos, categorias e conferir o rateio no painel principal.
+                </p>
+              </div>
+            </div>
+            <Link to={`/viagens/${trip.id}`} className="shrink-0 self-stretch sm:self-auto">
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full sm:w-auto h-8 gap-1.5 text-xs font-semibold cursor-pointer"
+              >
+                <span>Abrir no Aplicativo</span>
+                <ArrowRight className="size-3" aria-hidden="true" />
+              </Button>
+            </Link>
+          </Card>
+        )}
+
+        {/* Banner de Identificação no Topo da Viagem */}
+        <PublicTripIdentityBanner
+          token={token!}
+          members={members}
+          activeMemberId={activeMemberId}
+          onSelectMember={setActiveMemberId}
+          balance={currentBalance}
+          onOpenStatement={setSelectedMemberForStatement}
+          onClaimAccount={canClaimAccount ? () => setIsClaimDialogOpen(true) : undefined}
+        />
 
         {/* Abas com Tabs nativo do app */}
         <Tabs
@@ -437,7 +436,7 @@ export function TripPublicPage() {
         onOpenChange={setIsAddExpenseOpen}
         token={token!}
         members={members}
-        defaultPayerId={selectedMemberId ?? undefined}
+        defaultPayerId={activeMemberId ?? undefined}
       />
 
       {/* Modal de Extrato do Participante */}
@@ -447,6 +446,24 @@ export function TripPublicPage() {
         member={selectedMemberForStatement}
         members={members}
         expenses={expenses}
+      />
+
+      {/* Modal de Reivindicação de Conta com 1 Clique */}
+      <ClaimTripMemberDialog
+        open={isClaimDialogOpen}
+        onOpenChange={setIsClaimDialogOpen}
+        tripTitle={trip.title}
+        token={token!}
+        tripId={trip.id}
+        members={members}
+        initialSelectedMemberId={activeMemberId}
+        hasPasscode={trip.has_passcode}
+        onSuccess={(claimedTripId) => {
+          if (activeMemberId) {
+            setActiveMemberId(activeMemberId);
+          }
+          navigate(`/viagens/${claimedTripId}`);
+        }}
       />
     </div>
   );

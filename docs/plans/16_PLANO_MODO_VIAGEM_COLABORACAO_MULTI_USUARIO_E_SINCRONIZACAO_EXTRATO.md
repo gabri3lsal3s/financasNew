@@ -434,19 +434,19 @@ Estruturar a camada pura de cálculo financeiro, as políticas RLS no Postgres e
 
 Eliminar a seleção silenciosa do anfitrião como pagador padrão no link público e criar a ponte fluida de onboarding para contas Áxis.
 
-- [ ] **Tarefa 2.1: Hook de Persistência de Identidade do Convidado (`usePublicTripGuestIdentity.ts`)**
+- [x] **Tarefa 2.1: Hook de Persistência de Identidade do Convidado (`usePublicTripGuestIdentity.ts`)**
   - Criar `src/features/public-share/hooks/use-public-trip-guest-identity.ts`:
     - Chave estável no `localStorage`: `axis_guest_member_${token}`.
     - Funções: `activeMemberId`, `setActiveMemberId(id)`, `clearActiveMember()`.
     - Testes colocalizados em `use-public-trip-guest-identity.test.ts`.
 
-- [ ] **Tarefa 2.2: Banner de Identificação no Topo da Viagem (`PublicTripIdentityBanner.tsx`)**
+- [x] **Tarefa 2.2: Banner de Identificação no Topo da Viagem (`PublicTripIdentityBanner.tsx`)**
   - Criar `src/features/public-share/components/public-trip-identity-banner.tsx`:
     - Se não houver identidade ativa: card sóbrio com título *"Quem é você nesta viagem?"* e botões dos participantes disponíveis.
     - Se houver identidade ativa: badge *"Você é [Nome]"* com botão compacto *"Alterar"*.
     - Banner discreto para usuários que já possuem conta: *"Entrar com minha conta Áxis para sincronizar com meu extrato"*.
 
-- [ ] **Tarefa 2.3: Blindagem Anti-Erro no `AddPublicTripExpenseDialog.tsx`**
+- [x] **Tarefa 2.3: Blindagem Anti-Erro no `AddPublicTripExpenseDialog.tsx`**
   - Atualizar `src/features/public-share/components/add-public-trip-expense-dialog.tsx`:
     - Remover expressamente o fallback para o anfitrião (`host?.id`).
     - Se `activeMemberId` estiver ativo: pré-selecionar o pagador como o próprio convidado.
@@ -454,18 +454,18 @@ Eliminar a seleção silenciosa do anfitrião como pagador padrão no link públ
     - Desabilitar botão de submissão enquanto `!effectivePayerId`.
     - Atualizar testes em `add-public-trip-expense-dialog.test.tsx`.
 
-- [ ] **Tarefa 2.4: Fluxo de Reivindicação de Conta com 1 Clique (`TripPublicPage.tsx`)**
+- [x] **Tarefa 2.4: Fluxo de Reivindicação de Conta com 1 Clique (`TripPublicPage.tsx`)**
   - Em `src/features/public-share/pages/trip-public-page.tsx`:
     - Se o usuário visitante estiver autenticado no navegador e seu `user_id` não estiver vinculado a nenhum membro:
       - Exibir botão de destaque: *"Vincular esta viagem ao meu aplicativo Áxis"*.
       - Abre modal rápido de confirmação: *"Selecione qual participante é você"*.
       - Dispara `claimTripMemberRpc`, exibe toast de sucesso e redireciona para `/viagens/${tripId}` no app.
 
-- [ ] **Portão de Qualidade 2:**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/features/public-share/`
-  - [ ] **Commit da Fase 2:** `git commit -m "feat(trips): identidade ativa de convidados e vinculo publico de conta"`
+- [x] **Portão de Qualidade 2:**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/features/public-share/`
+  - [x] **Commit da Fase 2:** `git commit -m "feat(trips): identidade ativa de convidados e vinculo publico de conta"`
 
 ---
 

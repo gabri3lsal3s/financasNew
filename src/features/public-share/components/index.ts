@@ -19,3 +19,11 @@ export {
   PublicTripMemberStatementDialog,
   type PublicTripMemberStatementDialogProps,
 } from "./public-trip-member-statement-dialog";
+export {
+  PublicTripIdentityBanner,
+  type PublicTripIdentityBannerProps,
+} from "./public-trip-identity-banner";
+export {
+  ClaimTripMemberDialog,
+  type ClaimTripMemberDialogProps,
+} from "./claim-trip-member-dialog";
