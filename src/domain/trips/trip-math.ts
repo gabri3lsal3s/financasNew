@@ -525,3 +525,37 @@ export function calculateLinkedExpenseWeight(
   const ratio = userShareCents / totalExpenseCents;
   return Number(Math.min(1, Math.max(0, ratio)).toFixed(6));
 }
+
+export interface TripMemberLike {
+  id: string;
+  name: string;
+  user_id?: string | null;
+  is_host: boolean;
+}
+
+/**
+ * Identifica o participante da viagem associado à conta autenticada do usuário.
+ * Prioriza estritamente m.user_id === userId, evitando imputar a despesa no host
+ * quando o usuário autenticado for um participante convidado da viagem.
+ */
+export function resolveActiveTripMember<T extends TripMemberLike>(
+  members: T[],
+  userId: string | null | undefined,
+  hostUserId?: string | null
+): T | null {
+  if (!members || members.length === 0) return null;
+  if (userId) {
+    // 1. Prioridade absoluta: membro vinculado diretamente à conta autenticada
+    const linked = members.find((m) => m.user_id === userId);
+    if (linked) return linked;
+
+    // 2. Se a conta autenticada for o host da viagem
+    if (hostUserId && hostUserId === userId) {
+      const host = members.find((m) => m.is_host);
+      if (host) return host;
+    }
+  }
+  // 3. Fallback seguro (se nenhum membro vinculado ou não autenticado)
+  return members.find((m) => m.is_host) ?? members[0] ?? null;
+}
+

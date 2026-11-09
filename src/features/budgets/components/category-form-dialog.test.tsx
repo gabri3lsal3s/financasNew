@@ -80,6 +80,41 @@ describe("CategoryFormDialog & DeleteCategoryDialog", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  it("dispara callback onSuccess com a categoria criada", async () => {
+    const createdCat: Category = {
+      id: "c99",
+      user_id: "u1",
+      name: "Restaurantes e Bares",
+      icon: "restaurante",
+      color: "#F59E0B",
+      type: "expense",
+      is_reserved: false,
+      is_active: true,
+    };
+    createCategoryMock.mockResolvedValue(createdCat);
+    const user = userEvent.setup();
+    const onSuccess = vi.fn();
+    const onOpenChange = vi.fn();
+
+    render(
+      <CategoryFormDialog
+        category={null}
+        defaultType="expense"
+        open={true}
+        onOpenChange={onOpenChange}
+        onSuccess={onSuccess}
+      />
+    );
+
+    const nameInput = screen.getByLabelText("Nome");
+    await user.type(nameInput, "Restaurantes e Bares");
+    await user.click(screen.getByRole("button", { name: "Criar categoria" }));
+
+    expect(createCategoryMock).toHaveBeenCalledTimes(1);
+    expect(onSuccess).toHaveBeenCalledWith(createdCat);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
   it("permite marcar a opção de sugerir como familiar por padrão na criação", async () => {
     createCategoryMock.mockResolvedValue({ id: "c10" });
     const user = userEvent.setup();

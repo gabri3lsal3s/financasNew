@@ -4,7 +4,7 @@
  * Cumpre as regras do AGENTS.md (Regras 4, 7, 8, 15, 18 e 20).
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Modal,
   ModalFooter,
@@ -16,14 +16,22 @@ import {
   Checkbox,
   Switch,
 } from "@/components/ui";
-import { Wallet } from "lucide-react";
+import { Plus, Wallet } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useCategories, useCreditCards, useCreateExpense } from "@/state";
+import {
+  useCategories,
+  useCreditCards,
+  useCreateExpense,
+  useUserPreferences,
+  useUpdateCustomSettings,
+} from "@/state";
 import { useAddTripExpenseMutation } from "@/state/queries/use-trips";
+import { CategoryFormDialog } from "@/features/budgets/components";
 import { calculateEqualSplits, calculateLinkedExpenseWeight } from "@/domain/trips/trip-math";
 import { buildExpenseInstallments } from "@/features/transactions/wizard/wizard-state";
 import { resolveBillCompetence } from "@/domain/competence";
 import { pushToast } from "@/services/toast";
+import type { Category } from "@/types";
 import type { TripMember } from "@/types/trips";
 
 export interface AddTripExpenseDialogProps {
@@ -52,7 +60,8 @@ export function AddTripExpenseDialog({
 }: AddTripExpenseDialogProps) {
   const [amountCents, setAmountCents] = useState<number>(0);
   const [description, setDescription] = useState("");
-  const [categoryName, setCategoryName] = useState("Alimentação");
+  const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null);
+  const [selectedPersonalCategoryId, setSelectedPersonalCategoryId] = useState<string | null>(null);
   const [expenseDate, setExpenseDate] = useState(() => new Date().toISOString().split("T")[0] ?? "");
   const [selectedPayerId, setSelectedPayerId] = useState("");
   const [splitMode, setSplitMode] = useState<"all" | "selected">("all");
@@ -60,29 +69,78 @@ export function AddTripExpenseDialog({
   const [syncWithPersonal, setSyncWithPersonal] = useState(false);
   const [personalPaymentMethod, setPersonalPaymentMethod] = useState<"pix" | "cash" | "credit_card" | "debit">("pix");
   const [personalCardId, setPersonalCardId] = useState<string>("");
-  const [personalCategoryId, setPersonalCategoryId] = useState<string>("");
   const [personalInstallmentsCount, setPersonalInstallmentsCount] = useState<number>(1);
+  const [isCreateCategoryOpen, setIsCreateCategoryOpen] = useState(false);
+  const [newlyCreatedCategories, setNewlyCreatedCategories] = useState<Category[]>([]);
 
   const { session } = useAuth();
   const categoriesQuery = useCategories();
   const cardsQuery = useCreditCards();
   const createExpense = useCreateExpense();
   const addExpenseMutation = useAddTripExpenseMutation();
+  const userPreferencesQuery = useUserPreferences();
+  const updateCustomSettingsMutation = useUpdateCustomSettings();
 
   const userExpenseCategories = (categoriesQuery.data ?? []).filter(
     (c) => !c.type || c.type === "expense"
   );
 
+  const allExpenseCategories = useMemo(() => {
+    const map = new Map<string, Category>();
+    for (const cat of userExpenseCategories) {
+      map.set(cat.id, cat);
+    }
+    for (const cat of newlyCreatedCategories) {
+      if (!map.has(cat.id)) {
+        map.set(cat.id, cat);
+      }
+    }
+    return Array.from(map.values());
+  }, [userExpenseCategories, newlyCreatedCategories]);
+
+  const preferredTripCategoryId = userPreferencesQuery.data?.custom_settings?.preferredTripCategoryId;
+  const preferredCat = preferredTripCategoryId
+    ? allExpenseCategories.find((c) => c.id === preferredTripCategoryId)
+    : null;
+
+  const categoryName = selectedCategoryName ?? preferredCat?.name ?? "Alimentação";
+
   const resolvedPersonalCategoryId =
-    personalCategoryId ||
-    userExpenseCategories.find((c) => c.name.toLowerCase() === categoryName.toLowerCase())?.id ||
-    userExpenseCategories[0]?.id ||
+    selectedPersonalCategoryId ??
+    preferredCat?.id ??
+    allExpenseCategories.find((c) => c.name.toLowerCase() === categoryName.toLowerCase())?.id ??
+    allExpenseCategories[0]?.id ??
     "";
 
-  const personalCategoryOptions = userExpenseCategories.map((c) => ({
+  const personalCategoryOptions = allExpenseCategories.map((c) => ({
     value: c.id,
     label: c.name,
   }));
+
+  const tripCategoryOptions = useMemo(() => {
+    const names = new Set<string>();
+    const options: { value: string; label: string }[] = [];
+
+    // Prioriza todas as categorias de despesa do extrato do usuário
+    for (const cat of allExpenseCategories) {
+      const lower = cat.name.toLowerCase();
+      if (!names.has(lower)) {
+        names.add(lower);
+        options.push({ value: cat.name, label: cat.name });
+      }
+    }
+
+    // Acrescenta opções padrão de viagem que ainda não existam
+    for (const opt of CATEGORY_OPTIONS) {
+      const lower = opt.value.toLowerCase();
+      if (!names.has(lower)) {
+        names.add(lower);
+        options.push(opt);
+      }
+    }
+
+    return options;
+  }, [allExpenseCategories]);
 
   const availableCards = cardsQuery.data ?? [];
   const effectivePersonalCardId = personalCardId || availableCards[0]?.id || "";
@@ -144,8 +202,10 @@ export function AddTripExpenseDialog({
     setSyncWithPersonal(false);
     setPersonalPaymentMethod("pix");
     setPersonalCardId("");
-    setPersonalCategoryId("");
+    setSelectedPersonalCategoryId(null);
+    setSelectedCategoryName(null);
     setPersonalInstallmentsCount(1);
+    setNewlyCreatedCategories([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -170,6 +230,15 @@ export function AddTripExpenseDialog({
 
       // Integração opcional: lança no extrato bancário pessoal do usuário
       if (syncWithPersonal && isCurrentUserPayer) {
+        // Grava a categoria nas preferências do usuário para aprendizado automático
+        if (resolvedPersonalCategoryId) {
+          void updateCustomSettingsMutation.mutateAsync({
+            preferredTripCategoryId: resolvedPersonalCategoryId,
+          }).catch(() => {
+            // Silencia erro para não interromper fluxo de criação de despesa
+          });
+        }
+
         try {
           const installments =
             personalPaymentMethod === "credit_card" && selectedPersonalCard
@@ -240,9 +309,10 @@ export function AddTripExpenseDialog({
   };
 
   return (
-    <Modal
-      open={open}
-      onOpenChange={onOpenChange}
+    <>
+      <Modal
+        open={open}
+        onOpenChange={onOpenChange}
       size="lg"
       title="Adicionar Despesa da Viagem"
       description="Lance gastos compartilhados com o grupo para compensação automática e acerto de contas."
@@ -299,13 +369,36 @@ export function AddTripExpenseDialog({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground">
-              Categoria
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-foreground">
+                Categoria
+              </label>
+              {isCurrentUserPayer && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 px-1.5 text-[11px] text-primary hover:text-primary-strong gap-1 font-medium"
+                  onClick={() => setIsCreateCategoryOpen(true)}
+                >
+                  <Plus className="size-3" aria-hidden="true" />
+                  Nova Categoria
+                </Button>
+              )}
+            </div>
             <Select
               value={categoryName}
-              onValueChange={setCategoryName}
-              options={CATEGORY_OPTIONS}
+              onValueChange={(val) => {
+                if (!val) return;
+                setSelectedCategoryName(val);
+                const matched = allExpenseCategories.find(
+                  (c) => c.name.toLowerCase() === val.toLowerCase()
+                );
+                if (matched) {
+                  setSelectedPersonalCategoryId(matched.id);
+                }
+              }}
+              options={tripCategoryOptions}
             />
           </div>
         </div>
@@ -361,12 +454,31 @@ export function AddTripExpenseDialog({
               <div className="space-y-3 pt-2.5 border-t border-border/60">
                 {/* Seletor de Categoria do Próprio Aplicativo */}
                 <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-foreground">
-                    Categoria no seu extrato pessoal
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-medium text-foreground">
+                      Categoria no seu extrato pessoal
+                    </label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 px-1.5 text-[11px] text-primary hover:text-primary-strong gap-1 font-medium"
+                      onClick={() => setIsCreateCategoryOpen(true)}
+                    >
+                      <Plus className="size-3" aria-hidden="true" />
+                      Nova Categoria
+                    </Button>
+                  </div>
                   <Select
                     value={resolvedPersonalCategoryId}
-                    onValueChange={setPersonalCategoryId}
+                    onValueChange={(val) => {
+                      if (!val) return;
+                      setSelectedPersonalCategoryId(val);
+                      const matched = allExpenseCategories.find((c) => c.id === val);
+                      if (matched) {
+                        setSelectedCategoryName(matched.name);
+                      }
+                    }}
                     options={personalCategoryOptions}
                   />
                 </div>
@@ -493,5 +605,19 @@ export function AddTripExpenseDialog({
         </div>
       </form>
     </Modal>
+
+    <CategoryFormDialog
+      category={null}
+      defaultType="expense"
+      open={isCreateCategoryOpen}
+      onOpenChange={setIsCreateCategoryOpen}
+      elevated
+      onSuccess={(created) => {
+        setNewlyCreatedCategories((prev) => [...prev, created]);
+        setSelectedPersonalCategoryId(created.id);
+        setSelectedCategoryName(created.name);
+      }}
+    />
+  </>
   );
 }

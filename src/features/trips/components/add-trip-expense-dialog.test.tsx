@@ -2,10 +2,13 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { AddTripExpenseDialog } from "./add-trip-expense-dialog";
+import type { Category } from "@/types";
 import type { TripMember } from "@/types/trips";
 
 const createExpenseMock = vi.fn();
 const addTripExpenseMock = vi.fn();
+const updateCustomSettingsMock = vi.fn().mockResolvedValue({});
+let mockPreferredTripCategoryId: string | undefined = undefined;
 
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({
@@ -19,6 +22,7 @@ vi.mock("@/state", () => ({
       { id: "cat-1", name: "Alimentação", type: "expense" },
       { id: "cat-2", name: "Restaurantes", type: "expense" },
       { id: "cat-3", name: "Salário", type: "income" },
+      { id: "cat-4", name: "Churrascos e Eventos", type: "expense" },
     ],
   }),
   useCreditCards: () => ({
@@ -31,6 +35,54 @@ vi.mock("@/state", () => ({
     mutateAsync: createExpenseMock,
     isPending: false,
   }),
+  useUserPreferences: () => ({
+    data: {
+      custom_settings: {
+        preferredTripCategoryId: mockPreferredTripCategoryId,
+      },
+    },
+    isLoading: false,
+  }),
+  useUpdateCustomSettings: () => ({
+    mutateAsync: updateCustomSettingsMock,
+    isPending: false,
+  }),
+}));
+
+vi.mock("@/features/budgets/components", () => ({
+  CategoryFormDialog: ({
+    open,
+    onOpenChange,
+    onSuccess,
+  }: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSuccess?: (category: Category) => void;
+  }) => {
+    if (!open) return null;
+    return (
+      <div data-testid="mock-category-form-dialog">
+        <button
+          type="button"
+          onClick={() => {
+            onSuccess?.({
+              id: "cat-custom",
+              user_id: "user-123",
+              name: "Praia e Passeios",
+              icon: "sol",
+              color: "#3B82F6",
+              type: "expense",
+              is_reserved: false,
+              is_active: true,
+            });
+            onOpenChange(false);
+          }}
+        >
+          Confirmar Criar Categoria Mock
+        </button>
+      </div>
+    );
+  },
 }));
 
 vi.mock("@/state/queries/use-trips", () => ({
@@ -76,6 +128,7 @@ const mockMembers: TripMember[] = [
 describe("AddTripExpenseDialog — integração com extrato pessoal e parcelamento", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPreferredTripCategoryId = undefined;
     createExpenseMock.mockResolvedValue("expense-123");
     addTripExpenseMock.mockResolvedValue({});
   });
@@ -123,7 +176,6 @@ describe("AddTripExpenseDialog — integração com extrato pessoal e parcelamen
     expect(screen.getByText("Categoria no seu extrato pessoal")).toBeInTheDocument();
 
     // Seleciona forma de pagamento: Cartão de Crédito
-    // Clica no combobox de forma de pagamento
     const allCombos = screen.getAllByRole("combobox");
     const formaPagamentoCombo = allCombos[3] || allCombos[2];
     await user.click(formaPagamentoCombo!);
@@ -162,6 +214,13 @@ describe("AddTripExpenseDialog — integração com extrato pessoal e parcelamen
       );
     });
 
+    // Verifica que gravou a categoria nas preferências do usuário para aprendizado automático
+    expect(updateCustomSettingsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preferredTripCategoryId: expect.any(String),
+      })
+    );
+
     // Verifica que a despesa na viagem foi registrada com o valor integral (R$ 300)
     await waitFor(() => {
       expect(addTripExpenseMock).toHaveBeenCalledWith(
@@ -172,5 +231,58 @@ describe("AddTripExpenseDialog — integração com extrato pessoal e parcelamen
         })
       );
     });
+  });
+
+  it("pré-seleciona a categoria preferida a partir de user_preferences.custom_settings.preferredTripCategoryId", () => {
+    mockPreferredTripCategoryId = "cat-2"; // Restaurantes
+
+    render(
+      <AddTripExpenseDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        tripId="trip-1"
+        members={mockMembers}
+      />
+    );
+
+    // O combobox de Categoria da viagem deve estar preenchido com Restaurantes
+    const comboboxes = screen.getAllByRole("combobox");
+    const categoryCombo = comboboxes[0];
+    expect(categoryCombo).toHaveTextContent("Restaurantes");
+  });
+
+  it("permite abrir o diálogo inline de criação de categoria e atualiza a seleção para a nova categoria", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <AddTripExpenseDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        tripId="trip-1"
+        members={mockMembers}
+      />
+    );
+
+    // Clica no botão inline 'Nova Categoria'
+    const newCategoryButtons = screen.getAllByRole("button", { name: /nova categoria/i });
+    expect(newCategoryButtons.length).toBeGreaterThan(0);
+    await user.click(newCategoryButtons[0]!);
+
+    // O modal mock de criação de categoria deve estar visível
+    expect(screen.getByTestId("mock-category-form-dialog")).toBeInTheDocument();
+
+    // Clica no botão para confirmar a criação da categoria
+    const confirmBtn = screen.getByRole("button", {
+      name: "Confirmar Criar Categoria Mock",
+      hidden: true,
+    });
+    fireEvent.click(confirmBtn);
+
+    // O modal deve ser fechado
+    expect(screen.queryByTestId("mock-category-form-dialog")).not.toBeInTheDocument();
+
+    // A categoria selecionada no combobox da viagem agora é a criada
+    const comboboxes = screen.getAllByRole("combobox");
+    expect(comboboxes[0]).toHaveTextContent("Praia e Passeios");
   });
 });

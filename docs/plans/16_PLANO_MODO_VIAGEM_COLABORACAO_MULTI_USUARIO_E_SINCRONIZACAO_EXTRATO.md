@@ -473,44 +473,44 @@ Eliminar a seleção silenciosa do anfitrião como pagador padrão no link públ
 
 Integrar o ciclo de vida de despesas entre a conta pessoal e o livro da viagem, com liberdade total e aprendizado de categorias.
 
-- [ ] **Tarefa 3.1: Liberdade, Aprendizado e Criação Inline de Categorias Pessoais**
+- [x] **Tarefa 3.1: Liberdade, Aprendizado e Criação Inline de Categorias Pessoais**
   - Atualizar `src/features/trips/components/add-trip-expense-dialog.tsx`:
     - Permitir seleção de qualquer categoria de despesa do extrato do usuário.
     - Ler categoria preferida salva em `user_preferences.custom_settings.preferredTripCategoryId`.
     - Ao salvar despesa pessoal vinculada, gravar o ID da categoria nas preferências para aprendizado automático.
     - Adicionar botão *"Nova Categoria"* inline abrindo o diálogo compacto de criação de categoria sem sair do formulário.
 
-- [ ] **Tarefa 3.2: Diálogo de Exclusão Coordenada na Viagem (`TripExpenseDeleteDialog.tsx`)**
-  - Criar `src/features/trips/components/trip-expense-delete-dialog.tsx`:
-    - Disparado pelo botão de exclusão de despesa em `TripDetailsPage`.
-    - Se a despesa possuir `linked_personal_expense_id`: modal de decisão clara:
-      - Opção A: *"Excluir da viagem e do meu extrato pessoal"* (apaga de ambos).
-      - Opção B: *"Excluir apenas da viagem"* (desvincula e mantém o lançamento no extrato).
-    - Se não for vinculada: confirmação padrão de exclusão da viagem.
-    - Executa a mutation que chama `deleteTripExpenseSyncRpc`.
+- [x] **Tarefa 3.2: Diálogo de Exclusão Coordenada na Viagem (`TripExpenseDeleteDialog.tsx`)**
+  - [x] Criar `src/features/trips/components/trip-expense-delete-dialog.tsx`:
+    - [x] Disparado pelo botão de exclusão de despesa em `TripDetailsPage`.
+    - [x] Se a despesa possuir `linked_personal_expense_id`: modal de decisão clara:
+      - [x] Opção A: *"Excluir da viagem e do meu extrato pessoal"* (apaga de ambos).
+      - [x] Opção B: *"Excluir apenas da viagem"* (desvincula e mantém o lançamento no extrato).
+    - [x] Se não for vinculada: confirmação padrão de exclusão da viagem.
+    - [x] Executa a mutation que chama `deleteTripExpenseSyncRpc`.
 
-- [ ] **Tarefa 3.3: Exclusão Coordenada a partir do Extrato (`ExpenseDetailDialog.tsx`)**
-  - Atualizar `src/features/transactions/components/expense-detail-dialog.tsx`:
-    - Se `expense.trip_id` existir:
-      - No `ConfirmDialog` de exclusão, alertar sobre o vínculo com o Modo Viagem.
-      - Opções: *"Excluir do extrato e da viagem"* vs. *"Excluir apenas do extrato pessoal"*.
-    - Invalidação coordenada das queries de extrato e de viagem (`TRIP_QUERY_KEYS.detail`).
+- [x] **Tarefa 3.3: Exclusão Coordenada a partir do Extrato (`ExpenseDetailDialog.tsx`)**
+  - [x] Atualizar `src/features/transactions/components/expense-detail-dialog.tsx`:
+    - [x] Se `expense.trip_id` existir:
+      - [x] No `ConfirmDialog` de exclusão, alertar sobre o vínculo com o Modo Viagem.
+      - [x] Opções: *"Excluir do extrato e da viagem"* vs. *"Excluir apenas do extrato pessoal"*.
+    - [x] Invalidação coordenada das queries de extrato e de viagem (`TRIP_QUERY_KEYS.detail`).
 
-- [ ] **Tarefa 3.4: Sincronização de Edição Bidirecional**
-  - Em `EditTripExpenseDialog`: ao alterar valor ou data de despesa vinculada, atualizar a transação em `expenses` e recalcular faturas de cartão se aplicável.
-  - Em `ExpenseDetailDialog`: ao salvar edição de despesa vinculada à viagem, atualizar `trip_expenses` e recalcular os splits da viagem.
+- [x] **Tarefa 3.4: Sincronização de Edição Bidirecional**
+  - [x] Em `EditTripExpenseDialog`: ao alterar valor ou data de despesa vinculada, atualizar a transação em `expenses` e recalcular faturas de cartão se aplicável.
+  - [x] Em `ExpenseDetailDialog`: ao salvar edição de despesa vinculada à viagem, atualizar `trip_expenses` e recalcular os splits da viagem.
 
-- [ ] **Tarefa 3.5: Lançamento Cruzado no Assistente de Transações (`LaunchWizard.tsx`)**
-  - Em `src/features/transactions/wizard/launch-wizard.tsx`:
-    - Ao escolher o contexto "Viagem" e selecionar uma viagem ativa:
-    - Identificar automaticamente o membro associado à conta logada (`m.user_id === user.id`), evitando imputar no host.
-    - Salvar a categoria escolhida no aprendizado de hábitos.
+- [x] **Tarefa 3.5: Lançamento Cruzado no Assistente de Transações (`LaunchWizard.tsx`)**
+  - [x] Em `src/features/transactions/wizard/launch-wizard.tsx`:
+    - [x] Ao escolher o contexto "Viagem" e selecionar uma viagem ativa:
+    - [x] Identificar automaticamente o membro associado à conta logada (`m.user_id === user.id`), evitando imputar no host.
+    - [x] Salvar a categoria escolhida no aprendizado de hábitos.
 
-- [ ] **Portão de Qualidade 3:**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npx vitest run src/features/trips/components/add-trip-expense-dialog.test.tsx src/features/transactions/`
-  - [ ] **Commit da Fase 3:** `git commit -m "feat(trips): sincronizacao bidirecional de despesas e aprendizado de categorias"`
+- [x] **Portão de Qualidade 3:**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npx vitest run src/features/trips/components/add-trip-expense-dialog.test.tsx src/features/transactions/`
+  - [x] **Commit da Fase 3:** `git commit -m "feat(trips): sincronizacao bidirecional de despesas e aprendizado de categorias"`
 
 ---
 

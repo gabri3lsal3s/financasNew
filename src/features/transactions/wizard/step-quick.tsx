@@ -48,6 +48,8 @@ export interface StepQuickProps {
   onSplitDebtModeChange?: (mode: "single_total" | "per_installment") => void;
   activeTrips?: { id: string; title: string; destination?: string | null }[];
   onTripChange?: (tripId: string | null) => void;
+  /** Nome do membro pagador identificado na viagem para a conta autenticada */
+  activeTripMemberName?: string;
   onSwitchToGuided: () => void;
   categories: Category[] | undefined;
   categoriesLoading?: boolean;
@@ -95,6 +97,7 @@ export function StepQuick({
   onSplitDebtModeChange,
   activeTrips,
   onTripChange,
+  activeTripMemberName,
   onSwitchToGuided,
   categories,
   categoriesLoading = false,
@@ -649,6 +652,11 @@ export function StepQuick({
                       label: t.destination ? `${t.title} (${t.destination})` : t.title,
                     }))}
                   />
+                  {activeTripMemberName ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      Pagador: <strong className="text-foreground font-semibold">{activeTripMemberName}</strong> (Você)
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
 

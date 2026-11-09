@@ -1,10 +1,13 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { EditTripExpenseDialog } from "./edit-trip-expense-dialog";
 import type { TripMember, TripExpense } from "@/types/trips";
 
 const updateTripExpenseMock = vi.fn();
 const updateExpenseRepoMock = vi.fn();
+const getExpenseMock = vi.fn();
+const listCreditCardsMock = vi.fn();
 
 vi.mock("@/state/queries/use-trips", () => ({
   useUpdateTripExpenseMutation: () => ({
@@ -19,6 +22,11 @@ vi.mock("@/services/toast", () => ({
 
 vi.mock("@/data/repositories/expenses", () => ({
   updateExpense: (...args: unknown[]) => updateExpenseRepoMock(...args),
+  getExpense: (...args: unknown[]) => getExpenseMock(...args),
+}));
+
+vi.mock("@/data/repositories/credit-cards", () => ({
+  listCreditCards: (...args: unknown[]) => listCreditCardsMock(...args),
 }));
 
 const mockMembers: TripMember[] = [
@@ -71,6 +79,8 @@ describe("EditTripExpenseDialog — sincronização de peso no extrato pessoal",
     vi.clearAllMocks();
     updateExpenseRepoMock.mockResolvedValue({});
     updateTripExpenseMock.mockResolvedValue({});
+    getExpenseMock.mockResolvedValue(null);
+    listCreditCardsMock.mockResolvedValue([]);
   });
 
   it("renderiza os campos com os dados existentes da despesa", () => {
@@ -126,6 +136,64 @@ describe("EditTripExpenseDialog — sincronização de peso no extrato pessoal",
         expense_id: "exp-1",
         description: "Jantar Especial na Praia",
         amount_cents: 20000,
+      }),
+    );
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("ao alterar a data de despesa vinculada paga no cartão de crédito, recalcula bill_competence pelo fechamento do cartão", async () => {
+    const user = userEvent.setup();
+    getExpenseMock.mockResolvedValueOnce({
+      id: "pers-exp-99",
+      payment_method: "credit_card",
+      card_id: "card-visa",
+      bill_competence: "2026-02",
+    });
+    listCreditCardsMock.mockResolvedValueOnce([
+      { id: "card-visa", closing_day: 10 },
+    ]);
+
+    const onOpenChange = vi.fn();
+    render(
+      <EditTripExpenseDialog
+        open={true}
+        onOpenChange={onOpenChange}
+        tripId="trip-1"
+        expense={mockExpense}
+        members={mockMembers}
+      />,
+    );
+
+    // Abre o calendário clicando no botão da data atual ("05/02/2026")
+    const dateButton = screen.getByRole("button", { name: "05/02/2026" });
+    await user.click(dateButton);
+
+    // Seleciona o dia 15 no calendário (após dia 10 de fechamento -> fatura 2026-03)
+    const calendar = await screen.findByRole("grid");
+    const day15 = within(calendar)
+      .getAllByRole("gridcell")
+      .find((cell) => cell.textContent?.trim() === "15");
+    if (!day15) throw new Error("Dia 15 não encontrado no calendário");
+    await user.click(within(day15).getByRole("button"));
+
+    const form = document.getElementById("edit-trip-expense-form");
+    fireEvent.submit(form!);
+
+    await waitFor(() => {
+      expect(updateExpenseRepoMock).toHaveBeenCalledWith(
+        "pers-exp-99",
+        expect.objectContaining({
+          value: 200,
+          date: "2026-02-15",
+          bill_competence: "2026-03",
+        }),
+      );
+    });
+
+    expect(updateTripExpenseMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expense_id: "exp-1",
+        expense_date: "2026-02-15",
       }),
     );
     expect(onOpenChange).toHaveBeenCalledWith(false);

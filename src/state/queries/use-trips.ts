@@ -8,7 +8,7 @@
  * - Mutações com invalidação cirúrgica de cache e feedback sensorial.
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getUserTrips,
   getTripById,
@@ -22,7 +22,7 @@ import {
   removeTripMember,
   addTripExpense,
   updateTripExpense,
-  deleteTripExpense,
+  deleteTripExpenseSync,
   fetchPublicTripLedger,
   submitPublicExpense,
   recordTripSettlements,
@@ -37,7 +37,9 @@ import {
 import {
   calculateMemberBalances,
   calculateSimplifiedSettlements,
+  calculateEqualSplits,
 } from "@/domain/trips/trip-math";
+import { cardExpensesKey } from "@/state/queries/use-card-payments";
 import { STALE_TIMES } from "@/state/cache-policy";
 import { useDemoSession } from "@/state/demo-mode";
 import { useSimulatedTrips, useSimulatedTripDetails } from "./use-simulated-queries";
@@ -62,15 +64,31 @@ export const TRIP_QUERY_KEYS = {
   public: (token: string) => [...TRIP_QUERY_KEYS.all, "public", token] as const,
 };
 
+const fallbackQueryClient = new QueryClient({
+  defaultOptions: {
+    queries: { enabled: false, retry: false },
+    mutations: { retry: false },
+  },
+});
+
+function useSafeQueryClient(): QueryClient {
+  try {
+    return useQueryClient();
+  } catch {
+    return fallbackQueryClient;
+  }
+}
+
 export function useUserTrips() {
   const { isDemoActive } = useDemoSession();
   const simulated = useSimulatedTrips();
+  const queryClient = useSafeQueryClient();
   const real = useQuery<Trip[]>({
     queryKey: TRIP_QUERY_KEYS.lists(),
     queryFn: () => getUserTrips(),
     enabled: !isDemoActive,
     staleTime: STALE_TIMES.transactional,
-  });
+  }, queryClient);
   return isDemoActive ? simulated : real;
 }
 
@@ -87,6 +105,7 @@ export interface TripAggregatedDetails {
 export function useTripDetails(tripId: string | null | undefined) {
   const { isDemoActive } = useDemoSession();
   const simulated = useSimulatedTripDetails(tripId);
+  const queryClient = useSafeQueryClient();
   const real = useQuery<TripAggregatedDetails | null>({
     queryKey: TRIP_QUERY_KEYS.detail(tripId ?? ""),
     queryFn: async () => {
@@ -148,12 +167,13 @@ export function useTripDetails(tripId: string | null | undefined) {
     },
     enabled: Boolean(tripId) && !isDemoActive,
     staleTime: STALE_TIMES.transactional,
-  });
+  }, queryClient);
 
   return isDemoActive ? simulated : real;
 }
 
 export function usePublicTrip(token: string | null | undefined, passcode?: string) {
+  const queryClient = useSafeQueryClient();
   return useQuery<
     | (PublicTripLedgerData & {
         balances: readonly TripMemberBalance[];
@@ -212,11 +232,11 @@ export function usePublicTrip(token: string | null | undefined, passcode?: strin
     },
     enabled: Boolean(token),
     staleTime: STALE_TIMES.transactional,
-  });
+  }, queryClient);
 }
 
 export function useCreateTripMutation() {
-  const queryClient = useQueryClient();
+  const queryClient = useSafeQueryClient();
 
   return useMutation({
     mutationFn: (input: CreateTripInput) => createTrip(input),
@@ -236,11 +256,11 @@ export function useCreateTripMutation() {
         variant: "destructive",
       });
     },
-  });
+  }, queryClient);
 }
 
 export function useUpdateTripMutation() {
-  const queryClient = useQueryClient();
+  const queryClient = useSafeQueryClient();
 
   return useMutation({
     mutationFn: ({
@@ -267,11 +287,11 @@ export function useUpdateTripMutation() {
         variant: "destructive",
       });
     },
-  });
+  }, queryClient);
 }
 
 export function useDeleteTripMutation() {
-  const queryClient = useQueryClient();
+  const queryClient = useSafeQueryClient();
 
   return useMutation({
     mutationFn: (tripId: string) => deleteTrip(tripId),
@@ -291,11 +311,11 @@ export function useDeleteTripMutation() {
         variant: "destructive",
       });
     },
-  });
+  }, queryClient);
 }
 
 export function useAddTripMemberMutation() {
-  const queryClient = useQueryClient();
+  const queryClient = useSafeQueryClient();
 
   return useMutation({
     mutationFn: (input: AddTripMemberInput) => addTripMember(input),
@@ -315,11 +335,11 @@ export function useAddTripMemberMutation() {
         variant: "destructive",
       });
     },
-  });
+  }, queryClient);
 }
 
 export function useRemoveTripMemberMutation(tripId: string) {
-  const queryClient = useQueryClient();
+  const queryClient = useSafeQueryClient();
 
   return useMutation({
     mutationFn: (memberId: string) => removeTripMember(memberId),
@@ -339,11 +359,11 @@ export function useRemoveTripMemberMutation(tripId: string) {
         variant: "destructive",
       });
     },
-  });
+  }, queryClient);
 }
 
 export function useAddTripExpenseMutation() {
-  const queryClient = useQueryClient();
+  const queryClient = useSafeQueryClient();
 
   return useMutation({
     mutationFn: (input: AddTripExpenseInput) => addTripExpense(input),
@@ -365,21 +385,34 @@ export function useAddTripExpenseMutation() {
         variant: "destructive",
       });
     },
-  });
+  }, queryClient);
 }
 
+export type DeleteTripExpenseMutationParams =
+  | string
+  | {
+      expenseId: string;
+      deletePersonal?: boolean;
+    };
+
 export function useDeleteTripExpenseMutation(tripId: string) {
-  const queryClient = useQueryClient();
+  const queryClient = useSafeQueryClient();
 
   return useMutation({
-    mutationFn: (expenseId: string) => deleteTripExpense(expenseId),
-    onSuccess: () => {
+    mutationFn: async (params: DeleteTripExpenseMutationParams) => {
+      const expenseId = typeof params === "string" ? params : params.expenseId;
+      const deletePersonal = typeof params === "string" ? false : Boolean(params.deletePersonal);
+      return deleteTripExpenseSync(expenseId, deletePersonal);
+    },
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.detail(tripId) });
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       triggerSensory("selection");
       pushToast({
         title: "Despesa removida",
-        description: "A despesa foi excluída da viagem.",
+        description: result?.deleted_personal_expense
+          ? "A despesa foi excluída da viagem e do seu extrato pessoal."
+          : "A despesa foi excluída da viagem.",
       });
     },
     onError: (err) => {
@@ -390,17 +423,140 @@ export function useDeleteTripExpenseMutation(tripId: string) {
         variant: "destructive",
       });
     },
-  });
+  }, queryClient);
+}
+
+export const useDeleteTripExpenseSyncMutation = useDeleteTripExpenseMutation;
+
+export interface DeleteTripExpenseLinkedParams {
+  personalExpenseId: string;
+  deletePersonal?: boolean;
+}
+
+export function useDeleteTripExpenseLinkedMutation(tripId: string) {
+  const queryClient = useSafeQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      personalExpenseId,
+      deletePersonal = true,
+    }: DeleteTripExpenseLinkedParams) => {
+      if (!tripId) return null;
+      const tripExpenses = await getTripExpenses(tripId);
+      const linked = tripExpenses.find((te) => te.linked_personal_expense_id === personalExpenseId);
+      if (linked) {
+        return deleteTripExpenseSync(linked.id, deletePersonal);
+      }
+      return null;
+    },
+    onSuccess: () => {
+      if (tripId) {
+        queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.detail(tripId) });
+      }
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      triggerSensory("selection");
+    },
+    onError: (err) => {
+      triggerSensory("error");
+      pushToast({
+        title: "Erro ao remover despesa da viagem",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  }, queryClient);
+}
+
+export interface UpdateTripExpenseLinkedParams {
+  personalExpenseId: string;
+  value: number;
+  description: string;
+  date: string;
+  categoryName?: string;
+}
+
+export function useUpdateTripExpenseLinkedMutation(tripId: string) {
+  const queryClient = useSafeQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      personalExpenseId,
+      value,
+      description,
+      date,
+      categoryName,
+    }: UpdateTripExpenseLinkedParams) => {
+      if (!tripId) return null;
+      const tripExpenses = await getTripExpenses(tripId);
+      const linked = tripExpenses.find((te) => te.linked_personal_expense_id === personalExpenseId);
+      if (!linked) return null;
+
+      const newAmountCents = Math.round(value * 100);
+
+      // Recalcula cotas da viagem mantendo os membros participantes
+      let memberIds: string[];
+      if (linked.splits && linked.splits.length > 0) {
+        memberIds = linked.splits.map((s) => s.member_id);
+      } else {
+        const members = await getTripMembers(tripId);
+        memberIds = members.map((m) => m.id);
+      }
+
+      if (memberIds.length === 0 && linked.paid_by_member_id) {
+        memberIds = [linked.paid_by_member_id];
+      }
+
+      const calculatedSplits = calculateEqualSplits({
+        totalAmountCents: newAmountCents,
+        memberIds,
+        payerMemberId: linked.paid_by_member_id,
+      });
+
+      const updated = await updateTripExpense({
+        expense_id: linked.id,
+        amount_cents: newAmountCents,
+        description: description.trim(),
+        expense_date: date,
+        ...(categoryName ? { category_name: categoryName } : {}),
+        split_type: linked.split_type,
+        splits: calculatedSplits.map((s) => ({
+          member_id: s.memberId,
+          share_cents: s.shareCents,
+        })),
+      });
+
+      return updated;
+    },
+    onSuccess: (updated) => {
+      if (updated && tripId) {
+        queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.detail(tripId) });
+        queryClient.invalidateQueries({ queryKey: ["trips"] });
+        triggerSensory("success");
+      }
+    },
+    onError: (err) => {
+      triggerSensory("error");
+      pushToast({
+        title: "Erro ao sincronizar despesa na viagem",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  }, queryClient);
 }
 
 export function useUpdateTripExpenseMutation(tripId: string) {
-  const queryClient = useQueryClient();
+  const queryClient = useSafeQueryClient();
 
   return useMutation({
     mutationFn: (input: UpdateTripExpenseInput) => updateTripExpense(input),
     onSuccess: (expense) => {
       queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.detail(tripId) });
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      queryClient.invalidateQueries({ queryKey: cardExpensesKey });
+      queryClient.invalidateQueries({ queryKey: ["overview"] });
+      queryClient.invalidateQueries({ queryKey: ["insights"] });
+      queryClient.invalidateQueries({ queryKey: ["debts"] });
       triggerSensory("success");
       pushToast({
         title: "Despesa atualizada",
@@ -415,11 +571,11 @@ export function useUpdateTripExpenseMutation(tripId: string) {
         variant: "destructive",
       });
     },
-  });
+  }, queryClient);
 }
 
 export function useRecordTripSettlementsMutation(tripId: string) {
-  const queryClient = useQueryClient();
+  const queryClient = useSafeQueryClient();
 
   return useMutation({
     mutationFn: (settlements: { from_member_id: string; to_member_id: string; amount_cents: number }[]) =>
@@ -441,11 +597,11 @@ export function useRecordTripSettlementsMutation(tripId: string) {
         variant: "destructive",
       });
     },
-  });
+  }, queryClient);
 }
 
 export function useConfirmTripSettlementMutation(tripId: string) {
-  const queryClient = useQueryClient();
+  const queryClient = useSafeQueryClient();
 
   return useMutation({
     mutationFn: (settlementId: string) => confirmTripSettlement(settlementId),
@@ -465,11 +621,11 @@ export function useConfirmTripSettlementMutation(tripId: string) {
         variant: "destructive",
       });
     },
-  });
+  }, queryClient);
 }
 
 export function useSubmitPublicTripExpenseMutation(token: string) {
-  const queryClient = useQueryClient();
+  const queryClient = useSafeQueryClient();
 
   return useMutation({
     mutationFn: (input: Parameters<typeof submitPublicExpense>[0]) =>
@@ -490,11 +646,11 @@ export function useSubmitPublicTripExpenseMutation(token: string) {
         variant: "destructive",
       });
     },
-  });
+  }, queryClient);
 }
 
 export function useRebalanceTripMutation(tripId: string) {
-  const queryClient = useQueryClient();
+  const queryClient = useSafeQueryClient();
 
   return useMutation({
     mutationFn: () => rebalanceTripMembers(tripId),
@@ -515,11 +671,11 @@ export function useRebalanceTripMutation(tripId: string) {
         variant: "destructive",
       });
     },
-  });
+  }, queryClient);
 }
 
 export function useClaimTripMemberMutation() {
-  const queryClient = useQueryClient();
+  const queryClient = useSafeQueryClient();
 
   return useMutation({
     mutationFn: ({
@@ -552,7 +708,7 @@ export function useClaimTripMemberMutation() {
         variant: "destructive",
       });
     },
-  });
+  }, queryClient);
 }
 
 export type {

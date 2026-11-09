@@ -18,10 +18,11 @@ export interface StepReviewProps {
   closingDay?: number | null;
   isFamilyModeEnabled?: boolean;
   tripName?: string;
+  tripMemberName?: string;
 }
 
 /** Passo 4 — revisão antes de confirmar (parcelas calculadas no cliente, D12). */
-export function StepReview({ state, categoryName, closingDay, isFamilyModeEnabled, tripName }: StepReviewProps) {
+export function StepReview({ state, categoryName, closingDay, isFamilyModeEnabled, tripName, tripMemberName }: StepReviewProps) {
   const isExpense = state.type === "expense";
   const installments =
     !state.recurring && state.installments > 1
@@ -54,9 +55,16 @@ export function StepReview({ state, categoryName, closingDay, isFamilyModeEnable
           <Row
             label="Viagem Vinculada"
             value={
-              <Badge variant="muted" size="xs">
-                {tripName}
-              </Badge>
+              <div className="flex flex-col items-end gap-0.5">
+                <Badge variant="muted" size="xs">
+                  {tripName}
+                </Badge>
+                {tripMemberName ? (
+                  <span className="text-xs text-muted-foreground">
+                    Pagador: <strong className="text-foreground font-medium">{tripMemberName} (Você)</strong>
+                  </span>
+                ) : null}
+              </div>
             }
           />
         )}

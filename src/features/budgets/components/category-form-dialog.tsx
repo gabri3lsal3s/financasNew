@@ -28,6 +28,10 @@ export interface CategoryFormDialogProps {
   siblings?: Category[];
   /** Uso atual da categoria (lançamentos vinculados). Obrigatório em edição. */
   usage?: { expenses: number; incomes: number } | null;
+  /** Z-index elevado para sobreposição segura em outro modal */
+  elevated?: boolean;
+  /** Callback opcional chamado quando uma categoria for criada ou atualizada */
+  onSuccess?: (category: Category) => void;
 }
 
 interface CategoryFormContentProps {
@@ -36,6 +40,7 @@ interface CategoryFormContentProps {
   onClose: () => void;
   siblings?: Category[];
   onOpenDelete?: () => void;
+  onSuccess?: (category: Category) => void;
 }
 
 function CategoryFormContent({
@@ -44,6 +49,7 @@ function CategoryFormContent({
   onClose,
   siblings,
   onOpenDelete,
+  onSuccess,
 }: CategoryFormContentProps) {
   const [name, setName] = useState(category?.name ?? "");
   const [type, setType] = useState<CategoryType>(category?.type ?? defaultType);
@@ -84,7 +90,7 @@ function CategoryFormContent({
 
     try {
       if (category) {
-        await updateCategory.mutateAsync({
+        const updated = await updateCategory.mutateAsync({
           id: category.id,
           input: {
             name: parsed.data.name,
@@ -94,8 +100,11 @@ function CategoryFormContent({
             family_id: parsed.data.is_family ? (category.family_id ?? myFamilyData?.family.id ?? null) : null,
           },
         });
+        triggerSensory("success");
+        if (updated) onSuccess?.(updated);
+        onClose();
       } else {
-        await createCategory.mutateAsync({
+        const created = await createCategory.mutateAsync({
           type: parsed.data.type,
           name: parsed.data.name,
           icon: parsed.data.icon ?? null,
@@ -103,9 +112,10 @@ function CategoryFormContent({
           is_family: parsed.data.is_family,
           family_id: parsed.data.is_family ? (myFamilyData?.family.id ?? null) : null,
         });
+        triggerSensory("success");
+        if (created) onSuccess?.(created);
+        onClose();
       }
-      triggerSensory("success");
-      onClose();
     } catch (err) {
       triggerSensory("destructive");
       setError(getErrorMessage(err));
@@ -229,7 +239,16 @@ function CategoryFormContent({
 }
 
 /** Formulário de categoria (CRUD §3.5.1) com sugestão inteligente por nome. */
-export function CategoryFormDialog({ category, defaultType, open, onOpenChange, siblings, usage }: CategoryFormDialogProps) {
+export function CategoryFormDialog({
+  category,
+  defaultType,
+  open,
+  onOpenChange,
+  siblings,
+  usage,
+  elevated = false,
+  onSuccess,
+}: CategoryFormDialogProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   return (
@@ -240,6 +259,7 @@ export function CategoryFormDialog({ category, defaultType, open, onOpenChange, 
         title={category ? "Editar categoria" : "Nova categoria"}
         description={category ? undefined : "A sugestão inteligente infere ícone, cor e limite por nome."}
         size="md"
+        elevated={elevated}
       >
         {open ? (
           <CategoryFormContent
@@ -249,6 +269,7 @@ export function CategoryFormDialog({ category, defaultType, open, onOpenChange, 
             onClose={() => onOpenChange(false)}
             siblings={siblings}
             onOpenDelete={() => setDeleteOpen(true)}
+            onSuccess={onSuccess}
           />
         ) : null}
       </Modal>

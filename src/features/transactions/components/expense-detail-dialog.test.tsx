@@ -1,13 +1,61 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render as originalRender, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ExpenseDetailDialog } from "./expense-detail-dialog";
 import type { Expense } from "@/types";
+import * as toastService from "@/services/toast";
 
 const updateExpenseMock = vi.fn();
 const deleteExpenseMock = vi.fn();
 const createExpenseMock = vi.fn();
 const navigateMock = vi.fn();
+const deleteTripExpenseLinkedMock = vi.fn();
+const updateTripExpenseLinkedMock = vi.fn();
+
+let currentTestQueryClient: QueryClient;
+
+const render = (ui: React.ReactElement, options?: Parameters<typeof originalRender>[1]) => {
+  currentTestQueryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={currentTestQueryClient}>{children}</QueryClientProvider>
+  );
+  return originalRender(ui, { wrapper: Wrapper, ...options });
+};
+
+const tripDetailsMock = {
+  trip: { id: "trip-123", title: "Viagem de Férias" },
+  expenses: [
+    {
+      id: "trip-exp-1",
+      trip_id: "trip-123",
+      linked_personal_expense_id: "e1",
+      amount_cents: 12050,
+      description: "Despesa teste",
+    },
+  ],
+};
+
+vi.mock("@/state/queries/use-trips", () => ({
+  useTripDetails: (tripId: string | null) => ({
+    data: tripId === "trip-123" ? tripDetailsMock : null,
+    isLoading: false,
+  }),
+  useDeleteTripExpenseLinkedMutation: () => ({
+    mutateAsync: deleteTripExpenseLinkedMock,
+    isPending: false,
+  }),
+  useUpdateTripExpenseLinkedMutation: () => ({
+    mutateAsync: updateTripExpenseLinkedMock,
+    isPending: false,
+  }),
+  TRIP_QUERY_KEYS: {
+    all: ["trips"] as const,
+    detail: (id: string) => ["trips", "detail", id],
+  },
+}));
 
 vi.mock("react-router", async () => {
   const actual = await vi.importActual("react-router");
@@ -432,5 +480,193 @@ describe("ExpenseDetailDialog", () => {
     expect(screen.getByRole("button", { name: /rachar/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /na viagem/i })).not.toBeInTheDocument();
     expect(screen.queryByText("Modo Viagem")).not.toBeInTheDocument();
+  });
+
+  describe("Exclusão Coordenada a partir do Extrato (Modo Viagem)", () => {
+    const tripExpense: Expense = {
+      ...baseExpense,
+      trip_id: "trip-123",
+    };
+
+    it("alerta sobre vínculo com Modo Viagem e exibe opções de exclusão no ConfirmDialog", async () => {
+      const user = userEvent.setup();
+      render(<ExpenseDetailDialog expense={tripExpense} open={true} onOpenChange={vi.fn()} />);
+
+      await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+      // Título e alerta do ConfirmDialog
+      expect(screen.getByText("Excluir despesa vinculada?")).toBeInTheDocument();
+      expect(screen.getByText(/Esta despesa está vinculada ao Modo Viagem \(Viagem de Férias\)/)).toBeInTheDocument();
+
+      // Opções no RadioGroup
+      expect(screen.getByText("Excluir do extrato e da viagem")).toBeInTheDocument();
+      expect(screen.getByText("Excluir apenas do extrato pessoal")).toBeInTheDocument();
+    });
+
+    it("exclui coordenadamente do extrato e da viagem com a opção padrão 'both'", async () => {
+      deleteTripExpenseLinkedMock.mockClear();
+      deleteTripExpenseLinkedMock.mockResolvedValueOnce({
+        success: true,
+        deleted_trip_expense_id: "trip-exp-1",
+        deleted_personal_expense: true,
+      });
+      const toastSpy = vi.spyOn(toastService, "pushToast");
+      const onOpenChange = vi.fn();
+      const user = userEvent.setup();
+
+      render(<ExpenseDetailDialog expense={tripExpense} open={true} onOpenChange={onOpenChange} />);
+
+      await user.click(screen.getByRole("button", { name: "Excluir" }));
+      await user.click(screen.getAllByRole("button", { name: "Excluir" }).at(-1)!);
+
+      expect(deleteTripExpenseLinkedMock).toHaveBeenCalledTimes(1);
+      expect(deleteTripExpenseLinkedMock).toHaveBeenCalledWith({
+        personalExpenseId: "e1",
+        deletePersonal: true,
+      });
+      expect(toastSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Despesa excluída do extrato e da viagem",
+          variant: "success",
+        })
+      );
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it("exclui apenas do extrato pessoal e invalida a query da viagem ao selecionar 'personal_only'", async () => {
+      deleteTripExpenseLinkedMock.mockClear();
+      deleteExpenseMock.mockClear();
+      deleteExpenseMock.mockResolvedValueOnce(1);
+      const toastSpy = vi.spyOn(toastService, "pushToast");
+      const onOpenChange = vi.fn();
+      const user = userEvent.setup();
+
+      render(<ExpenseDetailDialog expense={tripExpense} open={true} onOpenChange={onOpenChange} />);
+
+      await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+      // Seleciona a opção de excluir apenas do extrato pessoal
+      await user.click(screen.getByText("Excluir apenas do extrato pessoal"));
+
+      // Confirma exclusão
+      await user.click(screen.getAllByRole("button", { name: "Excluir" }).at(-1)!);
+
+      // Não deve chamar a exclusão da viagem
+      expect(deleteTripExpenseLinkedMock).not.toHaveBeenCalled();
+
+      // Deve chamar a exclusão comum de despesa do extrato
+      expect(deleteExpenseMock).toHaveBeenCalledTimes(1);
+      expect(deleteExpenseMock).toHaveBeenCalledWith({
+        expenseId: "e1",
+        mode: "single",
+      });
+
+      // Feedback específico de manutenção na viagem
+      expect(toastSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Despesa excluída do extrato pessoal",
+          description: "O lançamento foi mantido na viagem.",
+          variant: "success",
+        })
+      );
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it("aciona fallback para exclusão pessoal se a despesa de viagem já tiver sido removida", async () => {
+      deleteTripExpenseLinkedMock.mockClear();
+      deleteExpenseMock.mockClear();
+      deleteTripExpenseLinkedMock.mockResolvedValueOnce(null);
+      deleteExpenseMock.mockResolvedValueOnce(1);
+      const toastSpy = vi.spyOn(toastService, "pushToast");
+      const onOpenChange = vi.fn();
+      const user = userEvent.setup();
+
+      render(<ExpenseDetailDialog expense={tripExpense} open={true} onOpenChange={onOpenChange} />);
+
+      await user.click(screen.getByRole("button", { name: "Excluir" }));
+      await user.click(screen.getAllByRole("button", { name: "Excluir" }).at(-1)!);
+
+      expect(deleteTripExpenseLinkedMock).toHaveBeenCalledTimes(1);
+      expect(deleteExpenseMock).toHaveBeenCalledWith({
+        expenseId: "e1",
+        mode: "single",
+      });
+      expect(toastSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Despesa excluída do extrato e da viagem",
+          variant: "success",
+        })
+      );
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it("ao editar despesa vinculada à viagem, exibe aviso e sincroniza com a viagem via useUpdateTripExpenseLinkedMutation", async () => {
+      updateExpenseMock.mockClear();
+      updateTripExpenseLinkedMock.mockClear();
+      updateExpenseMock.mockResolvedValueOnce({});
+      updateTripExpenseLinkedMock.mockResolvedValueOnce({ id: "trip-exp-1" });
+      const toastSpy = vi.spyOn(toastService, "pushToast");
+      const onOpenChange = vi.fn();
+      const user = userEvent.setup();
+
+      const tripExpenseWithDesc: Expense = {
+        ...tripExpense,
+        description: "Despesa teste",
+      };
+
+      render(
+        <ExpenseDetailDialog
+          expense={tripExpenseWithDesc}
+          open={true}
+          onOpenChange={onOpenChange}
+          initialEditing={true}
+        />
+      );
+
+      // Deve exibir o aviso de despesa vinculada à viagem
+      expect(
+        screen.getByText(
+          "Vinculada ao Modo Viagem. As alterações de valor, descrição e data serão sincronizadas automaticamente com os participantes da viagem."
+        )
+      ).toBeInTheDocument();
+
+      // Altera a descrição da despesa
+      const descInput = screen.getByDisplayValue("Despesa teste");
+      await user.clear(descInput);
+      await user.type(descInput, "Almoço da Galera");
+
+      // Clica em Salvar alterações
+      await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+
+      await waitFor(() => {
+        expect(updateExpenseMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: "e1",
+            input: expect.objectContaining({
+              description: "Almoço da Galera",
+              value: 120.5,
+              date: "2026-08-04",
+            }),
+          })
+        );
+      });
+
+      expect(updateTripExpenseLinkedMock).toHaveBeenCalledWith({
+        personalExpenseId: "e1",
+        value: 120.5,
+        description: "Almoço da Galera",
+        date: "2026-08-04",
+        categoryName: "Alimentação",
+      });
+
+      expect(toastSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Despesa atualizada no extrato e na viagem",
+          description: "Os valores e a divisão na viagem foram sincronizados.",
+          variant: "success",
+        })
+      );
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
   });
 });

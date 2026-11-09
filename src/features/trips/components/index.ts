@@ -6,3 +6,4 @@ export { TripSettlementDialog, type TripSettlementDialogProps } from "./trip-set
 export { ActiveTripBanner, type ActiveTripBannerProps } from "./active-trip-banner";
 export { TripMemberStatementDialog, type TripMemberStatementDialogProps } from "./trip-member-statement-dialog";
 export { RebalanceTripSplitsDialog, type RebalanceTripSplitsDialogProps } from "./rebalance-trip-splits-dialog";
+export { TripExpenseDeleteDialog, type TripExpenseDeleteDialogProps } from "./trip-expense-delete-dialog";

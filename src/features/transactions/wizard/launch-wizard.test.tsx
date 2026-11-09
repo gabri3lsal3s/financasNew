@@ -7,6 +7,17 @@ const createExpenseMock = vi.fn();
 const navigateMock = vi.fn();
 const extractReceiptTextFromFileMock = vi.fn();
 const recordTransactionLearningMock = vi.fn();
+const invalidateQueriesMock = vi.fn();
+
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useQueryClient: () => ({
+      invalidateQueries: (...args: unknown[]) => invalidateQueriesMock(...args),
+    }),
+  };
+});
 
 vi.mock("react-router", () => ({
   useNavigate: () => navigateMock,
@@ -30,6 +41,16 @@ vi.mock("@/services/merchant-learning", async (importOriginal) => {
 
 let mockIsFamilyModeEnabled = true;
 let mockMyFamily: unknown = null;
+let mockUserPreferences: unknown = null;
+let mockTrips: unknown[] = [];
+let mockTripDetails: unknown = null;
+const updateCustomSettingsMock = vi.fn().mockResolvedValue({});
+const addTripExpenseMock = vi.fn().mockResolvedValue({ id: "te-1" });
+const updateExpenseRepoMock = vi.fn().mockResolvedValue({ id: "e-1" });
+let mockAuthUser: { id: string; email?: string } | null = {
+  id: "user-123",
+  email: "gabriel@example.com",
+};
 
 vi.mock("@/state", () => ({
   useCategories: () => ({
@@ -51,6 +72,34 @@ vi.mock("@/state", () => ({
   useFamilyMode: () => ({ isFamilyModeEnabled: mockIsFamilyModeEnabled }),
   useMyFamily: () => ({ data: mockMyFamily, isLoading: false }),
   useTripMode: () => ({ isTripModeEnabled: true }),
+  useUserPreferences: () => ({ data: mockUserPreferences, isLoading: false }),
+  useUpdateCustomSettings: () => ({ mutateAsync: updateCustomSettingsMock, isPending: false }),
+  useUserAccess: () => ({
+    profile: {
+      id: "user-123",
+      name: "Gabriel Silva",
+      email: "gabriel@example.com",
+      cpf: "12345678901",
+    },
+  }),
+}));
+
+vi.mock("@/hooks/use-auth", () => ({
+  useAuth: () => ({
+    user: mockAuthUser,
+    session: mockAuthUser ? { user: mockAuthUser } : null,
+    loading: false,
+    configError: null,
+  }),
+}));
+
+vi.mock("@/data/repositories/trips", () => ({
+  addTripExpense: (...args: unknown[]) => addTripExpenseMock(...args),
+  getTripMembers: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock("@/data/repositories/expenses", () => ({
+  updateExpense: (...args: unknown[]) => updateExpenseRepoMock(...args),
 }));
 
 vi.mock("@/state/queries/use-user-access", () => ({
@@ -66,7 +115,7 @@ vi.mock("@/state/queries/use-user-access", () => ({
 
 vi.mock("@/state/queries/use-user-preferences", () => ({
   useUserPreferences: () => ({
-    data: null,
+    data: mockUserPreferences,
     isLoading: false,
   }),
 }));
@@ -78,8 +127,6 @@ vi.mock("@/state/mutations/use-public-share-mutations", () => ({
   }),
 }));
 
-let mockTrips: unknown[] = [];
-
 vi.mock("@/state/queries/use-trips", () => ({
   useUserTrips: () => ({
     data: mockTrips,
@@ -87,10 +134,14 @@ vi.mock("@/state/queries/use-trips", () => ({
     isError: false,
   }),
   useTripDetails: () => ({
-    data: null,
+    data: mockTripDetails,
     isLoading: false,
     isError: false,
   }),
+  TRIP_QUERY_KEYS: {
+    all: ["trips"],
+    detail: (id: string) => ["trips", id],
+  },
 }));
 
 const activeCreditCardsMock = vi.fn(() => [] as unknown[]);
@@ -101,11 +152,18 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     mockIsFamilyModeEnabled = true;
     mockMyFamily = null;
     mockTrips = [];
+    mockTripDetails = null;
+    mockUserPreferences = null;
+    mockAuthUser = { id: "user-123", email: "gabriel@example.com" };
     createExpenseMock.mockReset().mockResolvedValue("expense-1");
     navigateMock.mockReset();
     activeCreditCardsMock.mockReset().mockReturnValue([]);
     extractReceiptTextFromFileMock.mockReset();
     recordTransactionLearningMock.mockReset();
+    addTripExpenseMock.mockReset().mockResolvedValue({ id: "te-1" });
+    updateExpenseRepoMock.mockReset().mockResolvedValue({ id: "e-1" });
+    updateCustomSettingsMock.mockReset().mockResolvedValue({});
+    invalidateQueriesMock.mockReset();
   });
 
   it("exibe os 4 passos do Stepper", () => {
@@ -1011,6 +1069,147 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
       // No passo 3, o contexto familiar deve estar selecionado diretamente
       const familyRadio = screen.getByRole("radio", { name: /famíli|familiar/i });
       expect(familyRadio).toHaveAttribute("aria-checked", "true");
+    });
+
+    describe("Lançamento Cruzado e Aprendizado de Hábitos no Modo Viagem (Fase 3 / Tarefa 3.5)", () => {
+      it("identifica automaticamente o participante logado quando for convidado da viagem, sem imputar no host", async () => {
+        const user = userEvent.setup();
+        mockAuthUser = { id: "user-guest-777", email: "guest@example.com" };
+        mockTrips = [
+          {
+            id: "trip-carnaval",
+            title: "Carnaval Salvador",
+            status: "active",
+            destination: "Salvador",
+            start_date: "2026-02-15",
+            end_date: "2026-02-22",
+          },
+        ];
+        mockTripDetails = {
+          trip: {
+            id: "trip-carnaval",
+            host_user_id: "user-host-999",
+            title: "Carnaval Salvador",
+          },
+          members: [
+            { id: "m-host", name: "Ana Host", is_host: true, user_id: "user-host-999" },
+            { id: "m-guest", name: "Lucas Convidado", is_host: false, user_id: "user-guest-777" },
+          ],
+        };
+
+        render(
+          <LaunchWizard
+            initialMode="quick"
+            initialValues={{
+              valueCents: 15000,
+              categoryId: "c1",
+              paymentMethod: "pix",
+              description: "Abadá Salvador",
+              tripId: "trip-carnaval",
+            }}
+          />,
+        );
+
+        // Deve exibir o pagador identificado como o usuário convidado
+        expect(screen.getByText(/Lucas Convidado/)).toBeInTheDocument();
+        expect(screen.queryByText(/Ana Host/)).not.toBeInTheDocument();
+
+        const saveBtn = screen.getByRole("button", { name: /salvar transação/i });
+        await user.click(saveBtn);
+
+        await waitFor(() => {
+          expect(createExpenseMock).toHaveBeenCalled();
+          expect(addTripExpenseMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+              trip_id: "trip-carnaval",
+              paid_by_member_id: "m-guest",
+              amount_cents: 15000,
+              description: "Abadá Salvador",
+            }),
+          );
+        });
+      });
+
+      it("salva a categoria escolhida no aprendizado de hábitos (preferredTripCategoryId) ao registrar despesa na viagem", async () => {
+        const user = userEvent.setup();
+        mockTrips = [
+          {
+            id: "trip-rio",
+            title: "Viagem Rio",
+            status: "active",
+            destination: "Rio de Janeiro",
+          },
+        ];
+        mockTripDetails = {
+          trip: {
+            id: "trip-rio",
+            host_user_id: "user-123",
+            title: "Viagem Rio",
+          },
+          members: [
+            { id: "m-me", name: "Gabriel Silva", is_host: true, user_id: "user-123" },
+          ],
+        };
+
+        render(
+          <LaunchWizard
+            initialMode="quick"
+            initialValues={{
+              valueCents: 8500,
+              categoryId: "c1",
+              paymentMethod: "pix",
+              description: "Jantar na Lapa",
+              tripId: "trip-rio",
+            }}
+          />,
+        );
+
+        const saveBtn = screen.getByRole("button", { name: /salvar transação/i });
+        await user.click(saveBtn);
+
+        await waitFor(() => {
+          expect(updateCustomSettingsMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+              preferredTripCategoryId: "c1",
+            }),
+          );
+        });
+      });
+
+      it("pré-seleciona a categoria preferida aprendida de viagem a partir de custom_settings.preferredTripCategoryId", async () => {
+        mockUserPreferences = {
+          custom_settings: {
+            preferredTripCategoryId: "c1",
+          },
+        };
+        mockTrips = [
+          {
+            id: "trip-praia",
+            title: "Praia com Galera",
+            status: "active",
+          },
+        ];
+        mockTripDetails = {
+          trip: { id: "trip-praia", host_user_id: "user-123", title: "Praia com Galera" },
+          members: [{ id: "m1", name: "Gabriel", is_host: true, user_id: "user-123" }],
+        };
+
+        render(
+          <LaunchWizard
+            initialMode="quick"
+            initialValues={{
+              valueCents: 5000,
+              paymentMethod: "pix",
+              tripId: "trip-praia",
+            }}
+          />,
+        );
+
+        // Como tripId veio definido e c1 é a preferida aprendida, c1 deve estar selecionada
+        await waitFor(() => {
+          expect(screen.getByRole("button", { name: /alimentação/i })).toHaveAttribute("aria-pressed", "true");
+        });
+      });
     });
   });
 });

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { ClipboardPaste, Paperclip, Zap } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -47,11 +48,14 @@ import {
   useFamilyMode,
   usePredictionHistory,
   useTripMode,
+  useUpdateCustomSettings,
+  useUserAccess,
+  useUserPreferences,
 } from "@/state";
-import { useUserTrips, useTripDetails } from "@/state/queries/use-trips";
+import { useUserTrips, useTripDetails, TRIP_QUERY_KEYS } from "@/state/queries/use-trips";
 import { useAuth } from "@/hooks/use-auth";
 import { addTripExpense } from "@/data/repositories/trips";
-import { calculateEqualSplits } from "@/domain/trips";
+import { calculateEqualSplits, resolveActiveTripMember } from "@/domain/trips";
 import { useDemoSession } from "@/state/demo-mode";
 import type { RecurrenceFrequency } from "@/domain/recurrences";
 import type { DbInsert, Income, PaymentMethod, ReceiveType } from "@/types";
@@ -172,13 +176,30 @@ export function LaunchWizard({
     ? (userTripsQuery.data ?? []).filter((t) => t.status === "active" || t.status === "planning")
     : [];
   const selectedTripDetails = useTripDetails(state.tripId ?? "");
-  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  const { session, user } = useAuth();
+  const { profile } = useUserAccess();
+  const currentUserId = user?.id ?? session?.user?.id ?? profile?.id;
+  const userPreferencesQuery = useUserPreferences();
+  const updateCustomSettingsMutation = useUpdateCustomSettings();
   const { isFamilyModeEnabled } = useFamilyMode();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
   const createExpense = useCreateExpense();
   const createIncome = useCreateIncome();
   const createIncomeInstallments = useCreateIncomeInstallments();
   const createRecurrence = useCreateRecurrence();
+
+  const tripMembers = useMemo(
+    () => selectedTripDetails.data?.members ?? [],
+    [selectedTripDetails.data?.members],
+  );
+  const currentTrip = selectedTripDetails.data?.trip;
+
+  // Identificação automática do participante associado à conta logada (m.user_id === user.id), evitando imputar no host
+  const activeTripMember = useMemo(() => {
+    if (!state.tripId || tripMembers.length === 0) return null;
+    return resolveActiveTripMember(tripMembers, currentUserId, currentTrip?.host_user_id);
+  }, [state.tripId, tripMembers, currentUserId, currentTrip?.host_user_id]);
 
   // F21 — histórico preditivo: ativo nos passos de entrada (1 e 3) e no modo rápido (Plano 09).
   const predictionActive = mode === "quick" || state.step === 1 || state.step === 3;
@@ -253,9 +274,15 @@ export function LaunchWizard({
     triggerSensory("selection");
     setState((prev) => {
       if (tripId) {
+        const preferredId = userPreferencesQuery.data?.custom_settings?.preferredTripCategoryId;
+        const validPreferred =
+          preferredId && categoriesQuery.data?.some((c) => c.id === preferredId);
+        const nextCategoryId = prev.categoryId || (validPreferred ? preferredId : prev.categoryId);
+
         return {
           ...prev,
           tripId,
+          categoryId: nextCategoryId,
           splitEnabled: false, // Invariante: viagem em grupo desativa racha avulso
           debtEnabled: prev.splitEnabled ? false : prev.debtEnabled,
           debtAmountCents: prev.splitEnabled ? 0 : prev.debtAmountCents,
@@ -267,6 +294,18 @@ export function LaunchWizard({
       };
     });
   };
+
+  // Ao ativar ou selecionar contexto Viagem, pré-seleciona categoria preferida aprendida de viagem
+  useEffect(() => {
+    if (!state.tripId || state.categoryId) return;
+    const preferredId = userPreferencesQuery.data?.custom_settings?.preferredTripCategoryId;
+    if (preferredId && categoriesQuery.data?.some((c) => c.id === preferredId)) {
+      const timer = setTimeout(() => {
+        setState((prev) => (prev.categoryId ? prev : { ...prev, categoryId: preferredId }));
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [state.tripId, state.categoryId, userPreferencesQuery.data?.custom_settings?.preferredTripCategoryId, categoriesQuery.data]);
 
   const handleSplitPeopleCountChange = (count: number) => {
     setState((prev) => {
@@ -450,17 +489,26 @@ export function LaunchWizard({
             const { updateExpense: updateExpenseRepo } = await import("@/data/repositories/expenses");
             await updateExpenseRepo(createdExpenseId, { trip_id: state.tripId });
 
-            const tripMembers = selectedTripDetails.data?.members ?? [];
-            const currentUserId = session?.user?.id;
-            const payerMember =
-              (currentUserId && tripMembers.find((m) => m.user_id === currentUserId)) ||
-              tripMembers.find((m) => m.is_host) ||
-              tripMembers[0];
+            let currentMembers = selectedTripDetails.data?.members ?? [];
+            if (currentMembers.length === 0) {
+              const { getTripMembers } = await import("@/data/repositories/trips");
+              currentMembers = await getTripMembers(state.tripId);
+            }
+
+            const currentTrip = selectedTripDetails.data?.trip;
+
+            // Identificação estrita do membro pagador associado à conta logada (m.user_id === user.id), evitando imputar no host
+            const payerMember = resolveActiveTripMember(
+              currentMembers,
+              currentUserId,
+              currentTrip?.host_user_id,
+            );
+
             const currentCat = (categoriesQuery.data ?? []).find((c) => c.id === state.categoryId);
-            if (payerMember && tripMembers.length > 0) {
+            if (payerMember && currentMembers.length > 0) {
               const equalSplits = calculateEqualSplits({
                 totalAmountCents: state.valueCents,
-                memberIds: tripMembers.map((m) => m.id),
+                memberIds: currentMembers.map((m) => m.id),
                 payerMemberId: payerMember.id,
               });
               await addTripExpense({
@@ -476,6 +524,19 @@ export function LaunchWizard({
                   member_id: s.memberId,
                   share_cents: s.shareCents,
                 })),
+              });
+
+              // Invalidação coordenada das queries de viagem
+              queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.detail(state.tripId) });
+              queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.all });
+            }
+
+            // Grava a categoria nas preferências do usuário para aprendizado automático de hábitos
+            if (state.categoryId) {
+              void updateCustomSettingsMutation.mutateAsync({
+                preferredTripCategoryId: state.categoryId,
+              }).catch(() => {
+                // Silencia erro para não interromper fluxo de criação de despesa
               });
             }
           } catch {
@@ -917,6 +978,7 @@ export function LaunchWizard({
             cardsLoading={cardsQuery.isLoading}
             activeTrips={activeTrips}
             onTripChange={handleTripChange}
+            activeTripMemberName={activeTripMember?.name}
             onSplitDebtModeChange={(mode) => set("splitDebtMode", mode)}
             onSubmit={() => {
               if (canSubmitQuick && !pending) {
@@ -1023,6 +1085,7 @@ export function LaunchWizard({
                 cardsError={cardsQuery.error}
                 activeTrips={activeTrips}
                 onTripChange={handleTripChange}
+                activeTripMemberName={activeTripMember?.name}
                 onSplitDebtModeChange={(mode) => set("splitDebtMode", mode)}
                 onNext={() => {
                   if (canProceed(state)) {
@@ -1039,6 +1102,7 @@ export function LaunchWizard({
                 closingDay={selectedCard?.closing_day}
                 isFamilyModeEnabled={isFamilyActive}
                 tripName={activeTrips.find((t) => t.id === state.tripId)?.title}
+                tripMemberName={activeTripMember?.name}
               />
             ) : null}
           </>

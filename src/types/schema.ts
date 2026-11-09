@@ -266,6 +266,7 @@ export type UserCustomSettings = {
   splitPreferences?: SplitPreferences;
   familyModeEnabled?: boolean;
   tripModeEnabled?: boolean;
+  preferredTripCategoryId?: string;
 };
 
 export type GoalAlertStage = "completed" | "final_stretch" | "has_surplus" | "regular";

@@ -7,6 +7,9 @@ import {
   useTripDetails,
   useCreateTripMutation,
   useClaimTripMemberMutation,
+  useDeleteTripExpenseMutation,
+  useDeleteTripExpenseLinkedMutation,
+  useUpdateTripExpenseLinkedMutation,
 } from "./use-trips";
 import * as tripsRepo from "@/data/repositories/trips";
 import * as sensoryService from "@/services/sensory";
@@ -24,7 +27,9 @@ vi.mock("@/data/repositories/trips", () => ({
   addTripMember: vi.fn(),
   removeTripMember: vi.fn(),
   addTripExpense: vi.fn(),
+  updateTripExpense: vi.fn(),
   deleteTripExpense: vi.fn(),
+  deleteTripExpenseSync: vi.fn(),
   fetchPublicTripLedger: vi.fn(),
   submitPublicExpense: vi.fn(),
   recordTripSettlements: vi.fn(),
@@ -218,6 +223,272 @@ describe("state/queries/use-trips", () => {
           variant: "destructive",
         })
       );
+    });
+  });
+
+  describe("useDeleteTripExpenseMutation", () => {
+    it("exclui apenas da viagem quando chamado com string simples de expenseId", async () => {
+      const mockResult = {
+        success: true,
+        deleted_trip_expense_id: "exp-1",
+        deleted_personal_expense: false,
+      };
+      vi.mocked(tripsRepo.deleteTripExpenseSync).mockResolvedValueOnce(mockResult);
+
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, gcTime: 0 } },
+      });
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+      const wrapper = ({ children }: { children: ReactNode }) =>
+        createElement(QueryClientProvider, { client: queryClient }, children);
+
+      const { result } = renderHook(() => useDeleteTripExpenseMutation("t1"), { wrapper });
+
+      result.current.mutate("exp-1");
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(tripsRepo.deleteTripExpenseSync).toHaveBeenCalledWith("exp-1", false);
+      expect(sensoryService.triggerSensory).toHaveBeenCalledWith("selection");
+      expect(toastService.pushToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Despesa removida",
+          description: "A despesa foi excluída da viagem.",
+        })
+      );
+      expect(invalidateSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["trips", "detail", "t1"] }));
+      expect(invalidateSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["expenses"] }));
+    });
+
+    it("exclui coordenadamente da viagem e do extrato pessoal com feedback correspondente", async () => {
+      const mockResult = {
+        success: true,
+        deleted_trip_expense_id: "exp-1",
+        deleted_personal_expense: true,
+      };
+      vi.mocked(tripsRepo.deleteTripExpenseSync).mockResolvedValueOnce(mockResult);
+
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, gcTime: 0 } },
+      });
+
+      const wrapper = ({ children }: { children: ReactNode }) =>
+        createElement(QueryClientProvider, { client: queryClient }, children);
+
+      const { result } = renderHook(() => useDeleteTripExpenseMutation("t1"), { wrapper });
+
+      result.current.mutate({
+        expenseId: "exp-1",
+        deletePersonal: true,
+      });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(tripsRepo.deleteTripExpenseSync).toHaveBeenCalledWith("exp-1", true);
+      expect(sensoryService.triggerSensory).toHaveBeenCalledWith("selection");
+      expect(toastService.pushToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Despesa removida",
+          description: "A despesa foi excluída da viagem e do seu extrato pessoal.",
+        })
+      );
+    });
+
+    it("emite feedback sensorial e toast de erro quando a exclusão falha", async () => {
+      vi.mocked(tripsRepo.deleteTripExpenseSync).mockRejectedValueOnce(
+        new Error("PERMISSION_DENIED: Sem permissão.")
+      );
+
+      const { result } = renderHook(() => useDeleteTripExpenseMutation("t1"), {
+        wrapper: createWrapper(),
+      });
+
+      result.current.mutate("exp-1");
+
+      await waitFor(() => expect(result.current.isError).toBe(true));
+
+      expect(sensoryService.triggerSensory).toHaveBeenCalledWith("error");
+      expect(toastService.pushToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Erro ao remover despesa",
+          variant: "destructive",
+        })
+      );
+    });
+  });
+
+  describe("useDeleteTripExpenseLinkedMutation (Exclusão Coordenada do Extrato)", () => {
+    it("localiza o trip_expense pelo linked_personal_expense_id e exclui coordenadamente", async () => {
+      vi.mocked(tripsRepo.getTripExpenses).mockResolvedValueOnce([
+        {
+          id: "trip-exp-99",
+          trip_id: "t1",
+          linked_personal_expense_id: "pers-1",
+          amount_cents: 10000,
+          description: "Jantar",
+          category_name: "Alimentação",
+          expense_date: "2026-08-01",
+          split_type: "equal",
+          paid_by_member_id: "m1",
+          receipt_url: null,
+          created_by_member_id: "m1",
+          created_at: "2026-08-01T00:00:00Z",
+          updated_at: "2026-08-01T00:00:00Z",
+        },
+      ]);
+      vi.mocked(tripsRepo.deleteTripExpenseSync).mockResolvedValueOnce({
+        success: true,
+        deleted_trip_expense_id: "trip-exp-99",
+        deleted_personal_expense: true,
+      });
+
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, gcTime: 0 } },
+      });
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+      const wrapper = ({ children }: { children: ReactNode }) =>
+        createElement(QueryClientProvider, { client: queryClient }, children);
+
+      const { result } = renderHook(() => useDeleteTripExpenseLinkedMutation("t1"), { wrapper });
+
+      result.current.mutate({
+        personalExpenseId: "pers-1",
+        deletePersonal: true,
+      });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(tripsRepo.getTripExpenses).toHaveBeenCalledWith("t1");
+      expect(tripsRepo.deleteTripExpenseSync).toHaveBeenCalledWith("trip-exp-99", true);
+      expect(sensoryService.triggerSensory).toHaveBeenCalledWith("selection");
+      expect(invalidateSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["trips", "detail", "t1"] }));
+      expect(invalidateSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["expenses"] }));
+    });
+
+    it("retorna null e não falha se a despesa vinculada não for encontrada na viagem", async () => {
+      vi.mocked(tripsRepo.getTripExpenses).mockResolvedValueOnce([]);
+
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, gcTime: 0 } },
+      });
+
+      const wrapper = ({ children }: { children: ReactNode }) =>
+        createElement(QueryClientProvider, { client: queryClient }, children);
+
+      const { result } = renderHook(() => useDeleteTripExpenseLinkedMutation("t1"), { wrapper });
+
+      result.current.mutate({
+        personalExpenseId: "pers-not-found",
+        deletePersonal: true,
+      });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      expect(result.current.data).toBeNull();
+      expect(tripsRepo.deleteTripExpenseSync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("useUpdateTripExpenseLinkedMutation", () => {
+    it("localiza a despesa de viagem pelo linked_personal_expense_id, recalcula os splits proporcionalmente e atualiza a despesa na viagem", async () => {
+      vi.mocked(tripsRepo.getTripExpenses).mockResolvedValueOnce([
+        {
+          id: "trip-exp-1",
+          trip_id: "t1",
+          linked_personal_expense_id: "pers-100",
+          amount_cents: 10000,
+          description: "Jantar",
+          category_name: "Alimentação",
+          expense_date: "2026-08-01",
+          split_type: "equal",
+          paid_by_member_id: "m1",
+          receipt_url: null,
+          created_by_member_id: "m1",
+          created_at: "2026-08-01T00:00:00Z",
+          updated_at: "2026-08-01T00:00:00Z",
+          splits: [
+            { id: "s1", expense_id: "trip-exp-1", member_id: "m1", share_cents: 5000 },
+            { id: "s2", expense_id: "trip-exp-1", member_id: "m2", share_cents: 5000 },
+          ],
+        },
+      ]);
+      vi.mocked(tripsRepo.updateTripExpense).mockResolvedValueOnce({
+        id: "trip-exp-1",
+        trip_id: "t1",
+        linked_personal_expense_id: "pers-100",
+        amount_cents: 15000,
+        description: "Jantar na Praia",
+        category_name: "Restaurante",
+        expense_date: "2026-08-02",
+        split_type: "equal",
+        paid_by_member_id: "m1",
+        receipt_url: null,
+        created_by_member_id: "m1",
+        created_at: "2026-08-01T00:00:00Z",
+        updated_at: "2026-08-02T00:00:00Z",
+      });
+
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, gcTime: 0 } },
+      });
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+      const wrapper = ({ children }: { children: ReactNode }) =>
+        createElement(QueryClientProvider, { client: queryClient }, children);
+
+      const { result } = renderHook(() => useUpdateTripExpenseLinkedMutation("t1"), { wrapper });
+
+      result.current.mutate({
+        personalExpenseId: "pers-100",
+        value: 150,
+        description: "Jantar na Praia",
+        date: "2026-08-02",
+        categoryName: "Restaurante",
+      });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(tripsRepo.getTripExpenses).toHaveBeenCalledWith("t1");
+      expect(tripsRepo.updateTripExpense).toHaveBeenCalledWith({
+        expense_id: "trip-exp-1",
+        amount_cents: 15000,
+        description: "Jantar na Praia",
+        expense_date: "2026-08-02",
+        category_name: "Restaurante",
+        split_type: "equal",
+        splits: [
+          { member_id: "m1", share_cents: 7500 },
+          { member_id: "m2", share_cents: 7500 },
+        ],
+      });
+      expect(sensoryService.triggerSensory).toHaveBeenCalledWith("success");
+      expect(invalidateSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["trips", "detail", "t1"] }));
+      expect(invalidateSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["trips"] }));
+    });
+
+    it("retorna null e não falha se a despesa vinculada não for encontrada na viagem", async () => {
+      vi.mocked(tripsRepo.getTripExpenses).mockResolvedValueOnce([]);
+
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, gcTime: 0 } },
+      });
+
+      const wrapper = ({ children }: { children: ReactNode }) =>
+        createElement(QueryClientProvider, { client: queryClient }, children);
+
+      const { result } = renderHook(() => useUpdateTripExpenseLinkedMutation("t1"), { wrapper });
+
+      result.current.mutate({
+        personalExpenseId: "pers-not-found",
+        value: 150,
+        description: "Não encontrada",
+        date: "2026-08-02",
+      });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      expect(result.current.data).toBeNull();
+      expect(tripsRepo.updateTripExpense).not.toHaveBeenCalled();
     });
   });
 });

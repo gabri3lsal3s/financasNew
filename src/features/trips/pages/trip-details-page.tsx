@@ -30,7 +30,6 @@ import {
 } from "@/components/ui";
 import {
   useTripDetails,
-  useDeleteTripExpenseMutation,
   useRemoveTripMemberMutation,
 } from "@/state/queries/use-trips";
 import { formatCentsAsBRL } from "@/services/masks/money";
@@ -47,6 +46,7 @@ import {
   TripSettlementDialog,
   TripMemberStatementDialog,
   RebalanceTripSplitsDialog,
+  TripExpenseDeleteDialog,
 } from "../components";
 import type { TripMember, TripExpense } from "@/types/trips";
 
@@ -63,10 +63,10 @@ export function TripDetailsPage() {
   const [isSettlementOpen, setIsSettlementOpen] = useState(false);
   const [isRebalanceOpen, setIsRebalanceOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<TripExpense | null>(null);
+  const [deletingExpense, setDeletingExpense] = useState<TripExpense | null>(null);
   const [selectedMemberForStatement, setSelectedMemberForStatement] = useState<TripMember | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  const deleteExpenseMutation = useDeleteTripExpenseMutation(tripId ?? "");
   const removeMemberMutation = useRemoveTripMemberMutation(tripId ?? "");
 
   if (isLoading) {
@@ -276,7 +276,7 @@ export function TripDetailsPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => deleteExpenseMutation.mutate(expense.id)}
+                      onClick={() => setDeletingExpense(expense)}
                       className="text-muted-foreground hover:text-critical p-1 transition-colors cursor-pointer"
                       title="Excluir despesa"
                       aria-label="Excluir despesa"
@@ -618,6 +618,13 @@ export function TripDetailsPage() {
         onOpenChange={setIsRebalanceOpen}
         tripId={trip.id}
         membersCount={members.length}
+      />
+
+      <TripExpenseDeleteDialog
+        open={Boolean(deletingExpense)}
+        onOpenChange={(open) => !open && setDeletingExpense(null)}
+        tripId={trip.id}
+        expense={deletingExpense}
       />
     </div>
   );

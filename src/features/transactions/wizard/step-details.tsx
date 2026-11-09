@@ -52,6 +52,8 @@ export interface StepDetailsProps {
   /** Viagens ativas para vinculação */
   activeTrips?: { id: string; title: string; destination?: string | null }[];
   onTripChange?: (tripId: string | null) => void;
+  /** Nome do membro pagador identificado na viagem para a conta autenticada */
+  activeTripMemberName?: string;
   onSplitDebtModeChange?: (mode: "single_total" | "per_installment") => void;
   /** Callback para avançar no Enter */
   onNext?: () => void;
@@ -110,6 +112,7 @@ export function StepDetails({
   cardsError,
   activeTrips,
   onTripChange,
+  activeTripMemberName,
   onSplitDebtModeChange,
   onNext,
 }: StepDetailsProps) {
@@ -512,6 +515,11 @@ export function StepDetails({
               }))}
               ariaLabel="Vincular a uma viagem"
             />
+            {activeTripMemberName ? (
+              <p className="text-[11px] text-muted-foreground">
+                Pagador identificado: <strong className="text-foreground font-semibold">{activeTripMemberName}</strong> (Você)
+              </p>
+            ) : null}
             <p className="text-[11px] text-muted-foreground">
               A despesa será sincronizada com a viagem em grupo e rateada entre os membros cadastrados.
             </p>

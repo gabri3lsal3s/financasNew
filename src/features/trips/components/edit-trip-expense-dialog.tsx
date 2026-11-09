@@ -17,6 +17,7 @@ import {
 } from "@/components/ui";
 import { useUpdateTripExpenseMutation } from "@/state/queries/use-trips";
 import { calculateEqualSplits, calculateLinkedExpenseWeight } from "@/domain/trips/trip-math";
+import { resolveBillCompetence } from "@/domain/competence";
 import type { TripMember, TripExpense } from "@/types/trips";
 
 export interface EditTripExpenseDialogProps {
@@ -118,13 +119,37 @@ function EditTripExpenseForm({
           const userShareCents = userSplit?.shareCents ?? amountCents;
           const linkedWeight = calculateLinkedExpenseWeight(amountCents, userShareCents);
 
-          const { updateExpense: updateExpenseRepo } = await import("@/data/repositories/expenses");
-          await updateExpenseRepo(expense.linked_personal_expense_id, {
+          const { getExpense, updateExpense: updateExpenseRepo } = await import("@/data/repositories/expenses");
+          const personalExp = typeof getExpense === "function"
+            ? await Promise.resolve(getExpense(expense.linked_personal_expense_id)).catch(() => null)
+            : null;
+
+          let billCompetence = personalExp?.bill_competence;
+          if (personalExp && personalExp.payment_method === "credit_card" && personalExp.card_id) {
+            const { listCreditCards } = await import("@/data/repositories/credit-cards");
+            if (typeof listCreditCards === "function") {
+              const cards = await Promise.resolve(listCreditCards()).catch(() => []);
+              const card = cards.find((c) => c.id === personalExp.card_id);
+              if (card) {
+                billCompetence = resolveBillCompetence(
+                  new Date(`${expenseDate}T12:00:00`),
+                  card.closing_day
+                );
+              }
+            }
+          }
+
+          const updatePayload: Record<string, unknown> = {
             value: amountCents / 100,
             description: description.trim(),
             date: expenseDate,
             report_weight: linkedWeight,
-          });
+          };
+          if (billCompetence !== undefined) {
+            updatePayload.bill_competence = billCompetence;
+          }
+
+          await updateExpenseRepo(expense.linked_personal_expense_id, updatePayload);
         } catch {
           // Mantém resiliência da viagem
         }

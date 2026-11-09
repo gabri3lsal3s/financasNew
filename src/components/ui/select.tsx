@@ -29,9 +29,12 @@ export function Select({
   className,
 }: SelectProps) {
   const handleValueChange = (next: string) => {
+    if (!next && !options.some((opt) => opt.value === "")) return;
     onValueChange(next);
     triggerSensory("selection");
   };
+
+  const selectedOption = options.find((opt) => opt.value === value);
 
   return (
     <SelectPrimitive.Root value={value} onValueChange={handleValueChange} disabled={disabled}>
@@ -44,7 +47,9 @@ export function Select({
         )}
       >
         <span className="truncate min-w-0 flex-1 text-left">
-          <SelectPrimitive.Value placeholder={placeholder} />
+          <SelectPrimitive.Value placeholder={placeholder}>
+            {selectedOption?.label}
+          </SelectPrimitive.Value>
         </span>
         <SelectPrimitive.Icon asChild>
           <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />

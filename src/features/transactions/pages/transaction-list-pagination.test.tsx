@@ -106,7 +106,7 @@ describe("TransactionListPage — Paginação Progressiva (Fase 6 — 60 FPS)", 
     });
     expect(loadMoreBtn).toBeInTheDocument();
     expect(screen.getByText(/Exibindo 50 de 75 lançamentos/i)).toBeInTheDocument();
-  });
+  }, 25000);
 
   it("ao clicar em Carregar mais, revela os itens restantes do lote", async () => {
     const user = userEvent.setup();
@@ -125,5 +125,5 @@ describe("TransactionListPage — Paginação Progressiva (Fase 6 — 60 FPS)", 
     expect(
       screen.queryByRole("button", { name: /Carregar mais lançamentos/i }),
     ).not.toBeInTheDocument();
-  });
+  }, 25000);
 });

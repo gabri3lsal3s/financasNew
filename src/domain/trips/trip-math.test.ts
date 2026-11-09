@@ -4,6 +4,7 @@ import {
   calculateMemberBalances,
   calculateSimplifiedSettlements,
   calculateLinkedExpenseWeight,
+  resolveActiveTripMember,
   getMemberExpenseStatement,
   type SettlementItemForBalance,
 } from "./trip-math";
@@ -611,3 +612,55 @@ describe("trip-math: joined_date e getMemberExpenseStatement (Explicabilidade)",
     expect(statement.exclusions[0]?.reasonText).toContain("antes da entrada de Ítalo no grupo");
   });
 });
+
+describe("trip-math: resolveActiveTripMember", () => {
+  const members = [
+    { id: "m-host", name: "Ana Host", is_host: true, user_id: "user-host-1" },
+    { id: "m-guest", name: "Lucas Convidado", is_host: false, user_id: "user-guest-2" },
+    { id: "m-anon", name: "Amigo Sem Conta", is_host: false, user_id: null },
+  ];
+
+  it("identifica prioritariamente o membro vinculado à conta autenticada (m.user_id === userId), evitando imputar no host", () => {
+    // Quando Lucas está logado, deve retornar Lucas, mesmo Ana sendo host
+    const result = resolveActiveTripMember(members, "user-guest-2", "user-host-1");
+    expect(result).toBeDefined();
+    expect(result?.id).toBe("m-guest");
+    expect(result?.name).toBe("Lucas Convidado");
+  });
+
+  it("identifica o anfitrião quando a conta autenticada for o host da viagem", () => {
+    const result = resolveActiveTripMember(members, "user-host-1", "user-host-1");
+    expect(result).toBeDefined();
+    expect(result?.id).toBe("m-host");
+    expect(result?.name).toBe("Ana Host");
+  });
+
+  it("retorna o anfitrião se a conta autenticada for o host mas seu membro não tiver user_id preenchido ainda", () => {
+    const membersUnlinkedHost = [
+      { id: "m-host", name: "Ana Host", is_host: true, user_id: null },
+      { id: "m-guest", name: "Lucas Convidado", is_host: false, user_id: "user-guest-2" },
+    ];
+    const result = resolveActiveTripMember(membersUnlinkedHost, "user-host-1", "user-host-1");
+    expect(result).toBeDefined();
+    expect(result?.id).toBe("m-host");
+  });
+
+  it("adota fallback para o host caso o usuário não esteja vinculado e não seja o host", () => {
+    const result = resolveActiveTripMember(members, "user-desconhecido", "user-host-1");
+    expect(result?.id).toBe("m-host");
+  });
+
+  it("retorna o primeiro membro se não houver host e nenhum membro vinculado", () => {
+    const noHostMembers = [
+      { id: "m-first", name: "Primeiro", is_host: false, user_id: null },
+      { id: "m-second", name: "Segundo", is_host: false, user_id: null },
+    ];
+    const result = resolveActiveTripMember(noHostMembers, null, null);
+    expect(result?.id).toBe("m-first");
+  });
+
+  it("retorna null se a lista de membros for vazia", () => {
+    expect(resolveActiveTripMember([], "user-guest-2")).toBeNull();
+  });
+});
+
