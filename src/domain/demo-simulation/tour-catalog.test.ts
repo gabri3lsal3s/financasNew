@@ -31,8 +31,8 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
   ];
 
   describe("TOUR_TRACK_METAS", () => {
-    it("contém metadados válidos para todos os 18 identificadores de trilha", () => {
-      expect(Object.keys(TOUR_TRACK_METAS)).toHaveLength(18);
+    it("contém metadados válidos para todos os 19 identificadores de trilha", () => {
+      expect(Object.keys(TOUR_TRACK_METAS)).toHaveLength(19);
 
       for (const trackId of allTrackIds) {
         const meta = TOUR_TRACK_METAS[trackId];
@@ -135,6 +135,7 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
         "finances_split",
         "finances_family",
         "finances_goals",
+        "finances_trips",
       ]);
       expect(investmentsGroup?.tracks.map((t) => t.id)).toEqual([
         "investments_overview",
@@ -211,7 +212,7 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
   describe("getTourTracksByCategory", () => {
     it("retorna a lista de trilhas correspondente a cada categoria", () => {
       expect(getTourTracksByCategory("finances")).toHaveLength(6);
-      expect(getTourTracksByCategory("shared")).toHaveLength(3);
+      expect(getTourTracksByCategory("shared")).toHaveLength(4);
       expect(getTourTracksByCategory("investments")).toHaveLength(4);
       expect(getTourTracksByCategory("settings")).toHaveLength(1);
       expect(getTourTracksByCategory("native")).toHaveLength(1);
