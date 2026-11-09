@@ -155,8 +155,21 @@ Para assegurar que o usuário final receba sempre uma versão 100% estável e li
 - Proibido poluir a suíte de E2E com testes analíticos detalhados de formulário ou cálculos financeiros (que devem residir no Vitest em `src/domain/`).
 - Antes de fechar releases ou mesclar na `main`, execute obrigatoriamente `npm run verify:full`.
 4. **VERSIONAMENTO SEMÂNTICO OBRIGATÓRIO (SemVer):**
-- Nenhuma entrega para a branch `main` pode ocorrer sem a atualização deliberada da versão no `package.json`:
-* `PATCH` (ex: `3.0.14` → `3.0.15`): correções de bugs, ajustes de compatibilidade e pequenos polimentos.
-* `MINOR` (ex: `3.0.14` → `3.1.0`): novas funcionalidades, novas telas ou expansão de módulos.
-- Isso garante rastreabilidade para o Service Worker do PWA (`registerPWA`), permitindo atualização limpa do App Shell sem corrupção de cache nem reloads fantasmas para o usuário.
+   - Nenhuma entrega para a branch `main` pode ocorrer sem a atualização deliberada da versão no `package.json`:
+     * `PATCH` (ex: `3.0.15` → `3.0.16`): correções de bugs, ajustes de compatibilidade e pequenos polimentos.
+     * `MINOR` (ex: `3.0.15` → `3.1.0`): novas funcionalidades, novas telas ou expansão de módulos.
+   - Isso garante rastreabilidade para o Service Worker do PWA (`registerPWA`), permitindo atualização limpa do App Shell sem corrupção de cache nem reloads fantasmas para o usuário.
+5. **CLASSIFICAÇÃO AUTOMÁTICA DE ESCOPO (DECISÃO AUTÔNOMA DO AGENTE):**
+   - O agente **DEVE classificar autonomamente** o tipo de tarefa no início e no fechamento da entrega, sem exigir que o usuário especifique comandos diferentes:
+     * **🟢 FLUXO RÁPIDO (PATCH):**
+       - *Gatilhos:* correção de bug pontual, ajuste de layout/CSS, micro-polimento de UI, tipagem local, ajuste de texto/label, correção de teste falhando.
+       - *Planejamento:* **Dispensado**. Execução direta e cirúrgica nos arquivos afetados.
+       - *Quality Gate:* `npm run verify` (typecheck + lint + vitest domínio em ~9s).
+       - *Versão e Docs:* Bump de **PATCH** (`3.0.15` → `3.0.16`); documentação focada na mensagem de commit e no histórico Git.
+     * **🔵 FLUXO COMPLETO (FEATURE / PLANO / MÓDULO):**
+       - *Gatilhos:* nova funcionalidade de ponta a ponta, novo módulo, nova tela ou rota pública, nova tabela ou RPC no Supabase, refatoração de regras centrais ou conclusão de um Plano (`docs/plans/`).
+       - *Planejamento:* **Obrigatório**. Criação/atualização do plano executável detalhado antes de codificar.
+       - *Quality Gate:* `npm run verify:full` (verify + testes E2E Playwright de sanidade).
+       - *Versão e Docs:* Bump de **MINOR** (`3.0.15` → `3.1.0`); atualização obrigatória do `docs/roadmap/ROADMAP.md` e arquivamento do plano em `docs/plans/completed/`.
+   - O agente deve sempre informar na resposta a classificação adotada (ex: *"Classificado como Fluxo Rápido (Patch)"* ou *"Classificado como Fluxo Completo (Feature/Plano)"*), garantindo transparência imediata.
 
