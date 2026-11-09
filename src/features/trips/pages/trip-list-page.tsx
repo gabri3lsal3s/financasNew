@@ -16,10 +16,12 @@ import {
 } from "@/components/ui";
 import { useUserTrips } from "@/state/queries/use-trips";
 import { useTripMode } from "@/state";
+import { useAuth } from "@/hooks/use-auth";
 import { CreateTripDialog } from "../components";
 
 export function TripListPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { isTripModeEnabled, toggleTripMode, isPending: isTogglingTripMode } = useTripMode();
   const { data: trips, isLoading } = useUserTrips();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -92,33 +94,45 @@ export function TripListPage() {
     (t) => t.status === "completed" || t.status === "archived"
   );
 
-  const renderTripCard = (trip: (typeof activeTrips)[0]) => (
-    <Card
-      key={trip.id}
-      className="p-4 sm:p-5 rounded-2xl border border-border/80 bg-surface shadow-xs hover:border-border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-    >
-      <div className="space-y-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h2 className="text-sm sm:text-base font-bold text-foreground truncate">
-            {trip.title}
-          </h2>
-          <Badge
-            size="xs"
-            variant={
-              trip.status === "completed"
-                ? "positive"
+  const renderTripCard = (trip: (typeof activeTrips)[0]) => {
+    const isHost = trip.host_user_id === user?.id;
+
+    return (
+      <Card
+        key={trip.id}
+        className="p-4 sm:p-5 rounded-2xl border border-border/80 bg-surface shadow-xs hover:border-border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+      >
+        <div className="space-y-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-sm sm:text-base font-bold text-foreground truncate">
+              {trip.title}
+            </h2>
+            {isHost ? (
+              <Badge size="xs" variant="default">
+                Organizador
+              </Badge>
+            ) : (
+              <Badge size="xs" variant="positive">
+                Participante
+              </Badge>
+            )}
+            <Badge
+              size="xs"
+              variant={
+                trip.status === "completed"
+                  ? "positive"
+                  : trip.status === "settling"
+                  ? "warning"
+                  : "muted"
+              }
+            >
+              {trip.status === "completed"
+                ? "Finalizada"
                 : trip.status === "settling"
-                ? "warning"
-                : "muted"
-            }
-          >
-            {trip.status === "completed"
-              ? "Finalizada"
-              : trip.status === "settling"
-              ? "Em Acerto"
-              : "Ativa"}
-          </Badge>
-        </div>
+                ? "Em Acerto"
+                : "Ativa"}
+            </Badge>
+          </div>
 
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           {trip.destination && (
@@ -142,6 +156,7 @@ export function TripListPage() {
       </Link>
     </Card>
   );
+};
 
   const tabItems = [
     {
