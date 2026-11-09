@@ -1,8 +1,8 @@
 # PLANO DE IMPLEMENTAÇÃO 14 — MODO VIAGEM COMPARTILHADO, LIQUIDAÇÃO MÚTUA & INTEGRAÇÃO CONTÁBIL PESSOAL
 
 > **Documento Canônico de Arquitetura, Engenharia de Dados e Governança de Software**  
-> **Status:** Proposto / Consolidado e Pronto para Execução · Quality Gates QG1–QG5 Definidos  
-> **Arquivo:** `docs/plans/14_PLANO_MODO_VIAGEM_COMPARTILHADO_E_LIQUIDACAO_MUTUA.md`  
+> **Status:** Concluído / Implementado — v1.0 (Evoluções e Refinamentos Multi-Usuário Consolidados no Plano 16)  
+> **Arquivo:** `planos/completed/14_PLANO_MODO_VIAGEM_COMPARTILHADO_E_LIQUIDACAO_MUTUA.md`  
 > **Ordem de Implementação:** **14º (Módulo de Finanças Compartilhadas Temporárias & Liquidação Mútua)**  
 > **Módulos Afetados:** `supabase/migrations/`, `src/types/`, `src/domain/trips/`, `src/data/repositories/`, `src/data/rpc.ts`, `src/state/`, `src/hooks/`, `src/features/trips/`, `src/features/transactions/`, `src/features/public-share/`, `docs/`  
 > **Governança:** TypeScript Estrito (Zero `any`/`@ts-ignore`) · RLS Hermético (D4 — Zero Data Bleed) · Moeda em Centavos Inteiros · Zero Controles Nativos Crus · Zero Emojis (`local/no-decorative-unicode`) · Portões de Qualidade (QG) por Fase  
