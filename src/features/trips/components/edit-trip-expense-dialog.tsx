@@ -16,7 +16,7 @@ import {
   Checkbox,
 } from "@/components/ui";
 import { useUpdateTripExpenseMutation } from "@/state/queries/use-trips";
-import { calculateEqualSplits } from "@/domain/trips/trip-math";
+import { calculateEqualSplits, calculateLinkedExpenseWeight } from "@/domain/trips/trip-math";
 import type { TripMember, TripExpense } from "@/types/trips";
 
 export interface EditTripExpenseDialogProps {
@@ -114,11 +114,16 @@ function EditTripExpenseForm({
       // Sincroniza com o extrato pessoal caso a despesa esteja vinculada
       if (expense.linked_personal_expense_id) {
         try {
+          const userSplit = calculatedSplits.find((s) => s.memberId === effectivePayerId);
+          const userShareCents = userSplit?.shareCents ?? amountCents;
+          const linkedWeight = calculateLinkedExpenseWeight(amountCents, userShareCents);
+
           const { updateExpense: updateExpenseRepo } = await import("@/data/repositories/expenses");
           await updateExpenseRepo(expense.linked_personal_expense_id, {
             value: amountCents / 100,
             description: description.trim(),
             date: expenseDate,
+            report_weight: linkedWeight,
           });
         } catch {
           // Mantém resiliência da viagem

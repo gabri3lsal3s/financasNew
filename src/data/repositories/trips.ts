@@ -443,6 +443,15 @@ export async function updateTripExpense(
 
 export async function deleteTripExpense(expenseId: string): Promise<void> {
   const supabase = getSupabase();
+  const { data: tripExp } = await resolveQuery<{ linked_personal_expense_id?: string | null }>(
+    supabase
+      .from("trip_expenses" as never)
+      .select("linked_personal_expense_id" as never)
+      .eq("id", expenseId)
+      .maybeSingle() as never
+  );
+  const linkedPersonalId = tripExp?.linked_personal_expense_id;
+
   const { error } = await resolveQuery(
     supabase
       .from("trip_expenses" as never)
@@ -450,6 +459,17 @@ export async function deleteTripExpense(expenseId: string): Promise<void> {
       .eq("id", expenseId) as never
   );
   if (error) handleDbError(error, "Erro ao excluir despesa da viagem");
+
+  if (linkedPersonalId) {
+    try {
+      await supabase
+        .from("expenses")
+        .update({ trip_id: null, report_weight: 1.0 })
+        .eq("id", linkedPersonalId);
+    } catch {
+      // Ignora falha não-crítica de restauração no extrato pessoal
+    }
+  }
 }
 
 export async function fetchPublicTripLedger(

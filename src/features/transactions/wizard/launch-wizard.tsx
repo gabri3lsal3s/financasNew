@@ -438,7 +438,7 @@ export function LaunchWizard({
           debtType: state.debtEnabled ? state.debtType : null,
           isFamily: state.isFamily,
           debtInstallmentMode: state.debtEnabled
-            ? state.installments > 1
+            ? state.installments > 1 && state.splitEnabled
               ? state.splitDebtMode
               : "single_total"
             : null,
