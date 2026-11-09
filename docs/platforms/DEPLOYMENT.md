@@ -100,6 +100,19 @@ Para assegurar a prontidão para campanhas de aquisição e tráfego massivo (1k
 
 > **Atenção:** Evite colocar `npm test` no Build command da Cloudflare Pages, pois executar a suíte completa de ~2.000 testes consome muita memória em runners de 1 vCPU e pode causar timeout/estrangulamento. Use `npm run build`.
 
+### 3.3.1 Estratégia Anti-Quebra: Quality Gates Locais e Prevenção de Micromudanças
+
+Para evitar que deploys automáticos em cada commit introduzam regressões ou gerem atualizações contínuas e instáveis para o usuário final:
+1. **Quality Gate Local Obrigatório (`.githooks/pre-push`):**
+   - Ativado via `npm run prepare:hooks`.
+   - Executa automaticamente `typecheck` + `lint` + testes unitários de domínio antes de qualquer `git push`.
+   - Se houver qualquer erro, o push é abortado localmente (custo zero e 100% de proteção).
+2. **Ambiente de Trabalho vs Produção:**
+   - O desenvolvimento diário deve ocorrer em branches de trabalho (`develop` ou `bot/<tarefa>`), gerando **Preview Deployments** isolados no Cloudflare Pages para homologação visual no smartphone/desktop.
+   - A branch `main` é reservada exclusivamente para releases consolidadas.
+3. **Versionamento SemVer Mandatório:**
+   - Antes de mesclar ou enviar para `main`, atualize a versão no `package.json` (`v3.0.15`, `v3.1.0`) e execute `npm run verify:full` (inclui os Smoke Tests E2E do Playwright).
+
 ### 3.4 Vinculação de Domínio Customizado no Cloudflare Pages
 
 1. Acesse o projeto no Cloudflare Pages → **Custom Domains** → **Set up a custom domain**;

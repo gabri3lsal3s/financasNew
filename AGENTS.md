@@ -139,3 +139,24 @@ A IA **está proibida de recriar marcações JSX/HTML ou estilos duplicados** en
 4. Mensagens, textos e labels em **pt-BR**, via constantes/gateway — sem strings soltas duplicadas.
 5. Seguir a árvore e as regras de `docs/PROJECT_STRUCTURE.md`; não criar arquivos fora dela sem justificativa e sem atualizar a documentação (§8).
 6. Commits pequenos e descritivos; não commitar secrets ou `.env`.
+## 10. GOVERNANÇA DE RELEASES, VERSIONAMENTO E QUALITY GATES
+Para assegurar que o usuário final receba sempre uma versão 100% estável e livre de regressões no Cloudflare Pages (e eliminar quebras causadas por deploys automáticos em cada push):
+1. **PROIBIÇÃO DE MICROMUDANÇAS E COMMITS FRAGMENTADOS EM PRODUÇÃO:**
+- É estritamente **proibido** dar `git push` direto na branch `main` com commits isolados de 1 linha, micro-ajustes cosméticos rápidos ou código incompleto ("WIP").
+- Qualquer trabalho de nova funcionalidade, refatoração ou correção complexa deve ser desenvolvido em branch de trabalho (`develop` ou `bot/<tarefa>`), agrupando todas as alterações em lote.
+- Pushes para branches secundárias disparam apenas **Preview Deployments** isolados no Cloudflare Pages, permitindo validação visual no celular e desktop sem afetar nenhum usuário de produção.
+2. **QUALITY GATE OBRIGATÓRIO (LOCAL & CUSTO ZERO):**
+- O repositório utiliza Git Hook local em `.githooks/pre-push` (ativado via `npm run prepare:hooks` / `git config core.hooksPath .githooks`).
+- Nenhum agente ou desenvolvedor pode concluir uma tarefa ou enviar código sem que o comando de verificação esteja 100% verde:
+* `npm run verify` (executa `typecheck` + `lint` + testes unitários de `src/domain/` em segundos).
+* É expressamente **proibido** suprimir erros usando `@ts-ignore`, burlar o ESLint sem justificativa ou comentar testes para forçar passagem no hook.
+3. **SMOKE TESTS E2E COM PLAYWRIGHT (`npm run test:e2e`):**
+- Testes ponta a ponta com Playwright (`e2e/smoke.spec.ts`) cobrem exclusivamente os **fluxos vitais** de sanidade do sistema: ausência de tela branca (*White Screen of Death*), ausência de exceções JS não tratadas no console, navegabilidade sob demanda e integridade em viewport mobile.
+- Proibido poluir a suíte de E2E com testes analíticos detalhados de formulário ou cálculos financeiros (que devem residir no Vitest em `src/domain/`).
+- Antes de fechar releases ou mesclar na `main`, execute obrigatoriamente `npm run verify:full`.
+4. **VERSIONAMENTO SEMÂNTICO OBRIGATÓRIO (SemVer):**
+- Nenhuma entrega para a branch `main` pode ocorrer sem a atualização deliberada da versão no `package.json`:
+* `PATCH` (ex: `3.0.14` → `3.0.15`): correções de bugs, ajustes de compatibilidade e pequenos polimentos.
+* `MINOR` (ex: `3.0.14` → `3.1.0`): novas funcionalidades, novas telas ou expansão de módulos.
+- Isso garante rastreabilidade para o Service Worker do PWA (`registerPWA`), permitindo atualização limpa do App Shell sem corrupção de cache nem reloads fantasmas para o usuário.
+
