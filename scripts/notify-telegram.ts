@@ -10,6 +10,7 @@
  *   npx tsx scripts/notify-telegram.ts --type analytics --msg "Resumo semanal: 45 novas transações"
  */
 import fs from "node:fs";
+import https from "node:https";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 
@@ -168,24 +169,47 @@ async function main(): Promise<void> {
   const prefix = getPrefix(args.type);
   const formattedHtml = `${prefix}\n\n${args.message}\n\n<i>Áxis Finance DevBot • ${new Date().toLocaleDateString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</i>`;
 
-  const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: formattedHtml,
-      parse_mode: "HTML",
-      disable_web_page_preview: true,
-    }),
+  const postData = JSON.stringify({
+    chat_id: chatId,
+    text: formattedHtml,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
   });
 
-  if (response.ok) {
-    console.log(`[telegram] Mensagem enviada com sucesso para o canal [${args.type}]!`);
-  } else {
-    const errText = await response.text();
-    console.error(`[telegram] Falha ao enviar para o Telegram (HTTP ${response.status}):`, errText);
-  }
+  await new Promise<void>((resolve, reject) => {
+    const req = https.request(
+      `https://api.telegram.org/bot${botToken}/sendMessage`,
+      {
+        method: "POST",
+        family: 4,
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(postData),
+        },
+      },
+      (res) => {
+        let body = "";
+        res.on("data", (chunk) => (body += chunk));
+        res.on("end", () => {
+          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+            console.log(`[telegram] Mensagem enviada com sucesso para o canal [${args.type}]!`);
+            resolve();
+          } else {
+            console.error(`[telegram] Falha ao enviar para o Telegram (HTTP ${res.statusCode}):`, body);
+            resolve();
+          }
+        });
+      }
+    );
+
+    req.on("error", (err) => {
+      console.error("[telegram] Erro de rede ao enviar:", err);
+      reject(err);
+    });
+
+    req.write(postData);
+    req.end();
+  });
 }
 
 main().catch((err) => {
