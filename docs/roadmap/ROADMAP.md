@@ -1,5 +1,26 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.0.15 (Build 44)** registra a **Conclusão Integral do Plano 16: Modo Viagem Colaborativo Multi-Usuário, Sincronização Bidirecional e Fechamento Simétrico** (2026-11-09):
+> - **(1) Hub Colaborativo Multi-Contas & Vínculo com 1 Clique (`ClaimTripMemberDialog`)**:
+>   - Convidados com conta Áxis (ou novos cadastros) conectam-se à viagem via token público de compartilhamento com a RPC transacional `claim_trip_member`, passando a visualizar a viagem diretamente em sua própria aba `/viagens`;
+>   - Identidade ativa de convidados (`PublicTripIdentityBanner` e `usePublicTripGuestIdentity`): identificação clara de "Quem é você nesta viagem?" persistida no navegador e bloqueio estrito contra envios com pagador padrão silencioso no organizador;
+> - **(2) Motor Matemático de Abatimento Real & Eliminação de Liquidação Fantasma (`trip-math.ts`)**:
+>   - O motor `calculateMemberBalances` incorpora os pagamentos confirmados de `settlements`, reduzindo progressivamente os saldos devedores até o equilíbrio total;
+> - **(3) Sincronização Bidirecional de Exclusão & Edição**:
+>   - Diálogo decisório `TripExpenseDeleteDialog` ("Excluir de ambos" vs. "Apenas da viagem") coordenado via RPC `delete_trip_expense_sync`;
+>   - Exclusão e edição coordenadas a partir do extrato pessoal (`ExpenseDetailDialog`), mantendo os livros contábeis sincronizados;
+>   - Aprendizado contínuo da categoria habitual do usuário por viagem (`trip_category_preferences`) com criação rápida inline;
+> - **(4) Fechamento Simétrico no Extrato Pessoal (`TripSettlementDialog`)**:
+>   - Devedor: botão *"Pagar Pix e Registrar no Meu Extrato"*, debitando da conta pessoal com categoria personalizada e gravando a confirmação da quitação;
+>   - Credor: confirmação de recebimento e botão *"Registrar Receita de Reembolso"* com `report_weight = 0` (sem inflar tributação nem teto orçamentário);
+> - **(5) Cockpit Contextual Pessoal & Governança de Permissões (`TripPersonalContextCard`)**:
+>   - Card no topo da viagem apresentando saldo líquido pessoal em tempo real, valor desembolsado vs. cota consumida e filtro rápido de despesas próprias;
+>   - Governança: ações administrativas (*"Equilibrar Tudo"*, remoção de membros) restritas ao anfitrião, enquanto participantes gerenciam despesas e chaves Pix;
+>   - Identificação do papel ("Organizador" vs. "Participante") nos cards da lista `/viagens`;
+> - **(6) Prestação de Contas Executiva Formatada para WhatsApp (`trip-reporting.ts`)**:
+>   - Relatório claro e objetivo com totais da viagem, resumo de membros, acertos quitados, pendências com chave Pix e link de auditoria online (sem emojis decorativos).
+>
+
 > **v3.0.14 (Build 43)** registra o **Parcelamento Otimizado de Despesas da Viagem no Extrato Pessoal e Cronograma Interativo Multi-Parcelas em Links de Racha Pix** (2026-11-09):
 > - **(1) Parcelamento no Extrato Bancário a partir de Despesas de Viagem (`AddTripExpenseDialog`)**:
 >   - Possibilidade de escolher a quantidade de parcelas (1x a 12x) ao lançar despesa de cartão de crédito no Modo Viagem vinculada ao extrato pessoal;

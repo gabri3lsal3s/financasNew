@@ -7,3 +7,4 @@ export { ActiveTripBanner, type ActiveTripBannerProps } from "./active-trip-bann
 export { TripMemberStatementDialog, type TripMemberStatementDialogProps } from "./trip-member-statement-dialog";
 export { RebalanceTripSplitsDialog, type RebalanceTripSplitsDialogProps } from "./rebalance-trip-splits-dialog";
 export { TripExpenseDeleteDialog, type TripExpenseDeleteDialogProps } from "./trip-expense-delete-dialog";
+export { TripPersonalContextCard, type TripPersonalContextCardProps } from "./trip-personal-context-card";

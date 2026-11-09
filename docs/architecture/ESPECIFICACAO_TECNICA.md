@@ -1143,7 +1143,7 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
 2. **Proteção de Renderização Visual na Máscara SVG**: O recorte da máscara SVG (`mask`) e a borda pulsante de destaque (`spotlight-border`) só podem ser desenhados se `rect && !isTargetLoading`. Enquanto o alvo assíncrono estiver sendo localizado, a tela exibe o backdrop escuro uniforme calmo, sem halos ou recortes fantasmas em elementos desconexos.
 3. **Resiliência de Seletores em Skeletons**: Telas e abas com elementos-alvo referenciados em tours guiados (`data-tour="..."`) devem incorporar os atributos correspondentes nos contêineres de loading/esqueleto estrutural (`SkeletonList`, `SkeletonTable`, `SkeletonKpi`), assegurando ancoragem e medição imediatas sem depender do término de requisições de rede.
 
-### 3.15 Modo Viagem Compartilhado e Liquidação Mútua (§Plano 14 e §Plano 15)
+### 3.15 Modo Viagem Compartilhado, Colaboração Multi-Usuário e Liquidação Mútua (§Plano 14, §Plano 15 e §Plano 16)
 
 1. **Objetivo & Ciclo de Vida**: Grupos temporários de despesas compartilhadas para viagens de amigos, férias ou viagens em família. Estados: `planning` → `active` → `settling` → `completed` → `archived`.
 2. **Governança Modular (Toggle Ativado por Padrão)**:
@@ -1180,8 +1180,20 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
 11. **Páginas Públicas Compartilhadas, Troca de Tema e Extrato para Convidados**:
     - O cabeçalho inteligente `SharedLinkHeaderNav` unifica a experiência visual em todas as rotas públicas (`/viagem/:token`, `/r/:token`, `/meta/:token`, `/orcamento-familiar/:token`, `/convite-familiar/:token`), provendo casca translúcida fixa com compensação de safe area (`sticky top-0 z-30 bg-surface/90 backdrop-blur-md pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]`), deep links nativos ("Abrir no App"), atalhos ao painel autenticado e alternância instantânea de temas (`ThemeToggle`: Claro, Escuro, OLED e Sistema) com persistência no navegador para qualquer visitante sem login.
     - Convidados na página pública da viagem podem abrir o modal `PublicTripMemberStatementDialog` com 1 toque no card de identificação, auditando o extrato detalhado de despesas com cotas assumidas e justificativas textuais de isenção em pt-BR.
-12. **Liquidação Financeira com Lançamento de Receita no Extrato Pessoal**:
-    - No diálogo de acertos (`TripSettlementDialog`), após confirmar o recebimento de uma dívida de viagem paga por um participante, o usuário logado tem a opção de registrar o valor diretamente em seu extrato bancário com 1 toque (*"Lançar no Extrato"*), gerando uma receita de entrada Pix categorizada como acerto de viagem e prevenindo lançamentos manuais redundantes.
+12. **Hub Colaborativo Multi-Contas & Reivindicação de Conta (`claim_trip_member`)**:
+    - Participantes convidados que possuem conta no Áxis Finance (ou se cadastram via link da viagem) conectam seu `user_id` com 1 toque através do modal `ClaimTripMemberDialog`. A viagem passa a ser listada automaticamente no hub autenticado (`/viagens`) de todos os participantes vinculados.
+    - O card de identificação da viagem pública (`PublicTripIdentityBanner`) pergunta *"Quem é você nesta viagem?"*, memoriza a seleção no dispositivo (`usePublicTripGuestIdentity`) e bloqueia envios anônimos vazios que imputavam gastos silenciosamente no organizador.
+13. **Motor de Abatimento Real & Eliminação de Liquidação Fantasma**:
+    - O motor matemático puro `calculateMemberBalances` incorpora atômica e deterministicamente os pagamentos registrados/confirmados em `settlements`. À medida que as transferências Pix são realizadas, os saldos devedores reduzem progressivamente até zero.
+14. **Fechamento Simétrico & Quitação no Extrato Pessoal**:
+    - No diálogo `TripSettlementDialog`, tanto devedores quanto credores possuem suporte direto:
+      - **Devedor**: Paga o Pix pelo aplicativo bancário e clica em *"Pagar Pix e Registrar no Meu Extrato"*, lançando a saída em `expenses` com categoria personalizada e gravando a confirmação do acerto na viagem.
+      - **Credor**: Confirma o recebimento e clica em *"Registrar Receita de Reembolso no Extrato"*, gerando entrada com `report_weight = 0` (não inflando o teto orçamentário nem a renda tributável).
+15. **Cockpit Contextual do Membro & Governança Visual**:
+    - O componente `TripPersonalContextCard` no topo de `/viagens/:id` apresenta o balanço pessoal líquido da conta logada, discriminando o valor desembolsado do bolso vs. a cota consumida e fornecendo atalho de filtro para *"Ver Meus Gastos"*.
+    - Governança estrita: ações destrutivas e administrativas (*"Equilibrar Tudo"*, *"Excluir Viagem"*, remover membros) são restritas ao anfitrião (`isHost: true`), enquanto participantes comuns visualizam ações de colaboração e gerenciamento de chave Pix.
+16. **Prestação de Contas Executiva Formatada para WhatsApp**:
+    - A função pura `buildTripSettlementWhatsAppMessage` (`trip-reporting.ts`) gera texto claro e objetivo para compartilhamento com totais da viagem, resumo de participantes, lista de acertos quitados, pendências com chave Pix dos credores e link de auditoria online — em conformidade estrita com a regra zero-emojis do AGENTS.md.
 
 ---
 

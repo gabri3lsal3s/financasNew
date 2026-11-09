@@ -548,7 +548,7 @@ Permitir que devedores e credores liquidem suas contas com 1 clique e registrem 
 
 Personalizar a interface de detalhes para usuários autenticados e executar a homologação em todas as plataformas.
 
-- [ ] **Tarefa 5.1: Componente Cockpit do Membro (`TripPersonalContextCard.tsx`)**
+- [x] **Tarefa 5.1: Componente Cockpit do Membro (`TripPersonalContextCard.tsx`)**
   - Criar `src/features/trips/components/trip-personal-context-card.tsx`:
     - Posicionado no topo da página `/viagens/:id`.
     - Badge de Função: *"Organizador da Viagem"* ou *"Participante Conectado"*.
@@ -559,28 +559,28 @@ Personalizar a interface de detalhes para usuários autenticados e executar a ho
     - Métricas: Total gasto do seu bolso vs. sua cota real consumida.
     - Botão de filtro: *"Ver apenas meus gastos no cartão"*.
 
-- [ ] **Tarefa 5.2: Governança Visual de Permissões (Host vs. Membro)**
+- [x] **Tarefa 5.2: Governança Visual de Permissões (Host vs. Membro)**
   - Em `src/features/trips/pages/trip-details-page.tsx`:
     - Botões administrativos (*"Equilibrar Tudo"*, *"Excluir Viagem"*, *"Remover Membro"*) restritos ao anfitrião (`isHost: true`).
     - Membros comuns visualizam: *"Nova Despesa"*, *"Meu Extrato na Viagem"*, *"Minha Chave Pix"* e *"Desvincular Minha Conta"*.
     - Lista de membros com badge de conta Áxis conectada.
 
-- [ ] **Tarefa 5.3: Atualização das Páginas de Lista (`TripListPage.tsx`)**
+- [x] **Tarefa 5.3: Atualização das Páginas de Lista (`TripListPage.tsx`)**
   - Em `src/features/trips/pages/trip-list-page.tsx`:
     - Cards de viagem exibem badge do seu papel (*"Organizador"* vs. *"Participante"*).
     - Exibição do seu saldo pessoal naquele grupo diretamente no card da lista.
 
-- [ ] **Tarefa 5.4: Atualização da Documentação Canônica do Projeto**
+- [x] **Tarefa 5.4: Atualização da Documentação Canônica do Projeto**
   - Atualizar `docs/architecture/ESPECIFICACAO_TECNICA.md` com a nova especificação de multi-contas e abatimento real.
   - Atualizar `docs/architecture/PROJECT_STRUCTURE.md` registrando os novos componentes e hooks.
 
-- [ ] **Portão de Qualidade 5 (Homologação Final):**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npm run test` (todos os testes verdes)
-  - [ ] Executar: `npm run build` (build de produção sem erros)
-  - [ ] Teste manual: Desktop e Mobile, tema Claro e Escuro.
-  - [ ] **Commit & Push Final:** `git commit -m "feat(trips): cockpit contextual personalizado e homologacao completa do plano 16"`
+- [x] **Portão de Qualidade 5 (Homologação Final):**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npm run test` (todos os testes verdes)
+  - [x] Executar: `npm run build` (build de produção sem erros)
+  - [x] Teste manual: Desktop e Mobile, tema Claro e Escuro.
+  - [x] **Commit & Push Final:** `git commit -m "feat(trips): cockpit contextual personalizado e homologacao completa do plano 16"`
 
 ---
 

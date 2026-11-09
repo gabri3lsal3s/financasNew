@@ -39,6 +39,7 @@ import { getPublicAppUrl } from "@/services/app-url";
 import { useNavigate } from "react-router";
 import { useTripMode } from "@/state";
 import { useAuth } from "@/hooks/use-auth";
+import { resolveActiveTripMember } from "@/domain/trips";
 import {
   AddTripMemberDialog,
   AddTripExpenseDialog,
@@ -47,6 +48,7 @@ import {
   TripMemberStatementDialog,
   RebalanceTripSplitsDialog,
   TripExpenseDeleteDialog,
+  TripPersonalContextCard,
 } from "../components";
 import type { TripMember, TripExpense } from "@/types/trips";
 
@@ -66,6 +68,7 @@ export function TripDetailsPage() {
   const [deletingExpense, setDeletingExpense] = useState<TripExpense | null>(null);
   const [selectedMemberForStatement, setSelectedMemberForStatement] = useState<TripMember | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [filterMyExpenses, setFilterMyExpenses] = useState(false);
 
   const removeMemberMutation = useRemoveTripMemberMutation(tripId ?? "");
 
@@ -149,8 +152,12 @@ export function TripDetailsPage() {
 
   const { trip, members, expenses, settlements, balances, suggestedSettlements, totalExpensesCents } = data;
 
-  const myMember = members.find((m) => m.is_host || (user && m.user_id === user.id)) ?? members[0];
-  const myBalance = (myMember && balances.find((b) => b.memberId === myMember.id)) ?? balances[0];
+  const myMember = resolveActiveTripMember(members, user?.id, trip.host_user_id);
+  const isHost = Boolean(user && trip.host_user_id === user.id) || Boolean(myMember?.is_host);
+  const myBalance = myMember ? (balances.find((b) => b.memberId === myMember.id) ?? null) : null;
+  const displayedExpenses = filterMyExpenses && myMember
+    ? expenses.filter((e) => e.paid_by_member_id === myMember.id)
+    : expenses;
 
   const handleCopyPublicLink = () => {
     const url = getPublicAppUrl(`viagem/${trip.public_token}`);
@@ -172,19 +179,21 @@ export function TripDetailsPage() {
         <div className="space-y-2.5 mt-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <span className="text-xs font-semibold text-foreground">
-              Gastos do Grupo
+              {filterMyExpenses ? "Meus Gastos na Viagem" : "Gastos do Grupo"}
             </span>
             <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setIsRebalanceOpen(true)}
-                className="h-8 text-xs gap-1.5"
-                title="Rateia todas as despesas da viagem igualmente entre todos os membros"
-              >
-                <Scale className="size-3" aria-hidden="true" />
-                Equilibrar Tudo
-              </Button>
+              {isHost && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsRebalanceOpen(true)}
+                  className="h-8 text-xs gap-1.5"
+                  title="Rateia todas as despesas da viagem igualmente entre todos os membros"
+                >
+                  <Scale className="size-3" aria-hidden="true" />
+                  Equilibrar Tudo
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="default"
@@ -197,27 +206,42 @@ export function TripDetailsPage() {
             </div>
           </div>
 
-          {expenses.length === 0 ? (
+          {displayedExpenses.length === 0 ? (
             <Card className="p-8 border-border/80 bg-surface text-center">
               <EmptyState
                 icon={<Receipt className="size-8" />}
-                title="Nenhuma despesa lançada"
-                description="Adicione o primeiro gasto da viagem para dividir com os amigos ou compartilhe o link público."
+                title={filterMyExpenses ? "Nenhum gasto seu encontrado" : "Nenhuma despesa lançada"}
+                description={
+                  filterMyExpenses
+                    ? "Você ainda não possui despesas registradas como pagador nesta viagem."
+                    : "Adicione o primeiro gasto da viagem para dividir com os amigos ou compartilhe o link público."
+                }
                 action={
-                  <Button
-                    size="sm"
-                    variant="default"
-                    onClick={() => setIsAddExpenseOpen(true)}
-                    className="gap-1.5 mt-2"
-                  >
-                    <Plus className="size-3.5" aria-hidden="true" />
-                    Adicionar Despesa
-                  </Button>
+                  filterMyExpenses ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setFilterMyExpenses(false)}
+                      className="gap-1.5 mt-2"
+                    >
+                      Ver Todos os Gastos
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => setIsAddExpenseOpen(true)}
+                      className="gap-1.5 mt-2"
+                    >
+                      <Plus className="size-3.5" aria-hidden="true" />
+                      Adicionar Despesa
+                    </Button>
+                  )
                 }
               />
             </Card>
           ) : (
-            expenses.map((expense) => {
+            displayedExpenses.map((expense) => {
               const payer = members.find((m) => m.id === expense.paid_by_member_id);
               const eligibleMembers = members.filter(
                 (m) => !m.joined_date || !expense.expense_date || expense.expense_date >= m.joined_date
@@ -330,6 +354,16 @@ export function TripDetailsPage() {
                           Organizador
                         </Badge>
                       )}
+                      {member.user_id && (
+                        <Badge size="xs" variant="positive">
+                          Conta Áxis
+                        </Badge>
+                      )}
+                      {myMember && member.id === myMember.id && (
+                        <Badge size="xs" variant="warning">
+                          Você
+                        </Badge>
+                      )}
                       {member.joined_date && (
                         <Badge size="xs" variant="muted">
                           Entrou em {member.joined_date}
@@ -373,7 +407,7 @@ export function TripDetailsPage() {
                       Extrato
                     </Button>
 
-                    {!member.is_host && (
+                    {isHost && !member.is_host && (
                       <button
                         type="button"
                         onClick={() => removeMemberMutation.mutate(member.id)}
@@ -453,6 +487,18 @@ export function TripDetailsPage() {
         <ArrowLeft className="size-3.5" aria-hidden="true" />
         Voltar para todas as viagens
       </Link>
+
+      {/* Cockpit Contextual Pessoal */}
+      <TripPersonalContextCard
+        trip={trip}
+        myMember={myMember}
+        myBalance={myBalance}
+        isHost={isHost}
+        onOpenSettlement={() => setIsSettlementOpen(true)}
+        onOpenStatement={myMember ? () => setSelectedMemberForStatement(myMember) : undefined}
+        isFilterActive={filterMyExpenses}
+        onToggleFilterMyExpenses={() => setFilterMyExpenses((prev) => !prev)}
+      />
 
       {/* Cabeçalho da Viagem */}
       <Card className="p-4 sm:p-5 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-4">

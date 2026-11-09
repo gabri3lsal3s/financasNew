@@ -252,14 +252,18 @@
     │   │
     │   ├── trips/                 #   Modo Viagem Compartilhado e Liquidação Mútua (/viagens, /viagens/:id)
     │   │                          #     pages: trip-list-page, trip-details-page
-    │   │                          #     components: create-trip-dialog, add-trip-member-dialog, trip-settlement-dialog, active-trip-banner
+    │   │                          #     components: create-trip-dialog, add-trip-member-dialog, edit-trip-expense-dialog,
+    │   │                          #                 trip-settlement-dialog, active-trip-banner, trip-member-statement-dialog,
+    │   │                          #                 rebalance-trip-splits-dialog, trip-expense-delete-dialog, trip-personal-context-card
     │   │
     │   ├── public-share/          #   Compartilhamento Público (/r/:token, /orcamento-familiar/:token, /meta/:token, /viagem/:token)
     │   │                          #     pages: split-public-page, family-budget-page, goal-tracker-public-page, trip-public-page
     │   │                          #     components: pix-copy-block, share-public-shell, shared-link-header-nav,
     │   │                          #                 family-budget-category-list, split-onboarding-modal,
     │   │                          #                 select-participant-dialog, select-split-category-dialog,
-    │   │                          #                 add-public-trip-expense-dialog
+    │   │                          #                 add-public-trip-expense-dialog, public-trip-identity-banner,
+    │   │                          #                 claim-trip-member-dialog
+    │   │                          #     hooks: use-public-trip-guest-identity
     │   │
     │   ├── tools/                 #   Simuladores Financeiros Abertos & Hub (/ferramentas, /ferramentas/simulador-dividas, /ferramentas/rebalanceamento, /ferramentas/juros-compostos)
     │   │                          #     pages: tools-hub-page, debt-simulator-page, rebalance-simulator-page, compound-interest-page
@@ -267,7 +271,7 @@
     │   │
     │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
-    │   ├── trips/                 #   Modo Viagem: motor puro de rateios proporcionais e simplificação de dívidas via grafo líquido (trip-math.ts)
+    │   ├── trips/                 #   Modo Viagem: motor puro de rateios proporcionais e simplificação de dívidas via grafo líquido (trip-math.ts) e prestação de contas executiva (trip-reporting.ts)
     │   ├── family/                #   Modo Família Colaborativo: category-clustering.ts (agrupamento e semântica de categorias da casa), reconciliation.ts e settlement.ts
     │   ├── share/                 #   tokens públicos URL-safe (token.ts), motor de serialização stateful URL comprimida (stateful-url.ts) e transporte de simulação (simulation-transport.ts)
     │   ├── finance/               #   motor puro de rateio de despesas e divisão equitativa em centavos (split-math.ts, balanceamento de sobra)
