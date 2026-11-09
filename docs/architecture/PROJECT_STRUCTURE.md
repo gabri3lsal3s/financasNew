@@ -363,7 +363,16 @@
     │   │                          #   onboarding.ts (contagens do primeiro uso),
     │   │                          #   profiles.ts (auto-cura de perfis órfãos),
     │   │                          #   recurrences.ts (F32: templates + materialização lazy)
-    │   └── rpc.ts                 #   Wrappers tipados dos RPCs transacionais (D1)
+    │   └── rpc/                   #   Wrappers tipados dos RPCs transacionais (D1) modularizados:
+    │       ├── client.ts          #     Helper base callRpc e unwrapRpc
+    │       ├── transactions.ts    #     Lançamentos, estornos, parcelas e extratos
+    │       ├── cards.ts           #     Faturas, pagamentos de cartão e regras
+    │       ├── debts.ts           #     Amortizações, quitações, empréstimos e recebíveis
+    │       ├── portfolio.ts       #     Rebalanceamento, aporte em lote e fechamento
+    │       ├── family.ts          #     Consolidação, convites e acertos familiares
+    │       ├── admin.ts           #     Usuários, papéis, auditoria e backups
+    │       ├── trips.ts           #     Rateio de viagens e sincronizações
+    │       └── index.ts           #     Barrel unificado com exports nomeados
     │
     ├── state/                     # CONTRATOS DE ESTADO para a UI
     │   ├── cache-policy.ts        #   F23: STALE_TIMES/gcTime por tipo de dado
@@ -374,10 +383,15 @@
     │   │                          #     use-range-queries.test.tsx (cancelamento cooperativo via AbortSignal),
     │   │                          #     concurrent-queries.test.tsx (estabilidade sob alta concorrência)…
     │   ├── mutations/             #   useCreateExpense(), useDeleteInstallment()…
-    │   │                          #     (use-expense-mutations, use-card-mutations,
-    │   │                          #      use-budget-mutations, use-debt-mutations,
-    │   │                          #      use-category-mutations, use-income-mutations,
-    │   │                          #      use-recurrence-mutations — F32: grupo/recorrência,
+    │   │   ├── portfolio/         #     Decomposição modular de mutações de investimentos:
+    │   │   │   ├── portfolio-keys.ts
+    │   │   │   ├── use-portfolio-asset-mutations.ts
+    │   │   │   ├── use-portfolio-transaction-mutations.ts
+    │   │   │   ├── use-portfolio-contribution-mutations.ts
+    │   │   │   ├── use-portfolio-dividend-mutations.ts
+    │   │   │   ├── use-portfolio-order-mutations.ts
+    │   │   │   └── index.ts
+    │   │   ├── use-expense-mutations.ts, use-card-mutations.ts…
     │   │                          #      use-profile-mutations — atualização de perfil/nome)
     │   │                          #   optimistic-cache.ts (F30 — helpers de snapshot/
     │   │                          #     rollback e updaters das listas em cache)

@@ -170,11 +170,12 @@ O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma
     │   │                          #   budgets.ts, portfolio.ts, categories.ts,
     │   │                          #   public-shares.ts (compartilhamentos públicos, tokens e RPCs seguras),
     │   │                          #   recurrences.ts (F32: templates + materialização lazy)
-    │   └── rpc.ts                 #   Wrappers tipados dos RPCs transacionais (D1)
+    │   └── rpc/                   #   Wrappers tipados dos RPCs transacionais (D1) modularizados
+    │       ├── client.ts, transactions.ts, cards.ts, debts.ts, portfolio.ts, family.ts, admin.ts, trips.ts, index.ts
     │
     ├── state/                     # CONTRATOS DE ESTADO
     │   ├── queries/               #   useExpenses({month}), useInvoices(cardId), …
-    │   ├── mutations/             #   useCreateExpense(), useDeleteInstallment(), …
+    │   ├── mutations/             #   useCreateExpense(), useDeleteInstallment(), portfolio/…
     │   └── demo-mode/             #   Máquina de estados reativa da simulação (useDemoSession, localStorage)
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (useDebounce, useMedia, …)
