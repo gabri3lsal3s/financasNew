@@ -33,6 +33,7 @@ import { formatCentsAsBRL } from "@/services/masks/money";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { getErrorMessage } from "@/services/errors";
+import { todayISO } from "@/lib/date";
 import { useAuth } from "@/hooks/use-auth";
 import { useCategories, useCreateExpense, useCreateIncome } from "@/state";
 import {
@@ -284,7 +285,7 @@ export function TripSettlementDialog({
   const handlePayAndSyncExpense = async (settlement: SuggestedSettlement) => {
     if (!session?.user) return;
     const key = `${settlement.fromMemberId}-${settlement.toMemberId}`;
-    const todayIso = new Date().toISOString().split("T")[0] ?? "";
+    const todayIso = todayISO();
 
     try {
       await createExpenseMutation.mutateAsync({
@@ -357,7 +358,7 @@ export function TripSettlementDialog({
     try {
       await createIncomeMutation.mutateAsync({
         value: amountCents / 100,
-        date: new Date().toISOString().split("T")[0] ?? "",
+        date: todayISO(),
         description: `Acerto da viagem ${tripTitle}: reembolso de ${fromName}`,
         category_id: cat?.id ?? "",
         receive_type: "pix",

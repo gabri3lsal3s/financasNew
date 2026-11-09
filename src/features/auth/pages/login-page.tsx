@@ -14,8 +14,7 @@ import {
 import { Alert, Button, Input, PasswordInput, Turnstile } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { BrandLogo } from "@/components/layout";
-import { useAuth, signInWithEmail } from "@/hooks/use-auth";
-import { resendConfirmationEmail } from "@/data/auth";
+import { useAuth, signInWithEmail, resendConfirmationEmail } from "@/hooks/use-auth";
 import { getSupabase } from "@/data/client";
 import { classifyError, getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";

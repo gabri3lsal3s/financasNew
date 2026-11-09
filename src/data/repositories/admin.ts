@@ -147,6 +147,108 @@ export async function listBroadcastNotifications(limit = 50): Promise<AdminBroad
   return data ?? [];
 }
 
+export interface AdminProvisionUserParams {
+  name: string;
+  email: string;
+  phone?: string | null;
+  role?: "user" | "admin" | "superadmin";
+  plan_id?: string;
+  status?: "active" | "pending_approval";
+}
+
+export interface AdminProvisionUserResult {
+  success: boolean;
+  userId: string;
+  email: string;
+  actionLink: string | null;
+}
+
+/**
+ * Provisiona um novo usuário diretamente pelo Superadmin com geração de link de ativação/senha.
+ */
+export async function adminProvisionUser(
+  params: AdminProvisionUserParams,
+): Promise<AdminProvisionUserResult> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.functions.invoke("admin-super-action", {
+    body: {
+      action: "provision_user",
+      ...params,
+    },
+  });
+
+  if (error || !data?.success) {
+    const errorMsg = data?.error || error?.message || "Falha ao provisionar usuário.";
+    throw new AppError("network", errorMsg);
+  }
+
+  return data as AdminProvisionUserResult;
+}
+
+/**
+ * Remove e desativa compulsoriamente os fatores 2FA/MFA de uma conta (Incidente 4 do Runbook).
+ */
+export async function adminResetUserMFA(userId: string): Promise<boolean> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.functions.invoke("admin-super-action", {
+    body: {
+      action: "reset_mfa",
+      target_user_id: userId,
+    },
+  });
+
+  if (error || !data?.success) {
+    const errorMsg = data?.error || error?.message || "Falha ao resetar autenticador 2FA.";
+    throw new AppError("network", errorMsg);
+  }
+
+  return true;
+}
+
+/**
+ * Encerra todas as sessões ativas (tokens de acesso) de um usuário específico em todos os dispositivos.
+ */
+export async function adminRevokeUserSessions(userId: string): Promise<boolean> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.functions.invoke("admin-super-action", {
+    body: {
+      action: "revoke_sessions",
+      target_user_id: userId,
+    },
+  });
+
+  if (error || !data?.success) {
+    const errorMsg = data?.error || error?.message || "Falha ao revogar sessões ativas.";
+    throw new AppError("network", errorMsg);
+  }
+
+  return true;
+}
+
+/**
+ * Gera um link temporário assinado de recuperação/acesso para suporte técnico via WhatsApp.
+ */
+export async function adminGenerateRecoveryLink(
+  userId: string,
+  email: string,
+): Promise<string> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.functions.invoke("admin-super-action", {
+    body: {
+      action: "generate_recovery_link",
+      target_user_id: userId,
+      email,
+    },
+  });
+
+  if (error || !data?.actionLink) {
+    const errorMsg = data?.error || error?.message || "Falha ao gerar link de recuperação.";
+    throw new AppError("network", errorMsg);
+  }
+
+  return data.actionLink as string;
+}
+
 // Re-export das operações administrativas transacionais
 export {
   adminCreateInviteRpc as adminCreateInvite,
@@ -168,4 +270,5 @@ export {
   type AdminMetricsResult,
   type AdminUserRow,
 };
+
 

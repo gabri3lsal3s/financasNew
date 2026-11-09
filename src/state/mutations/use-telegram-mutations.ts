@@ -3,6 +3,8 @@ import {
   updateAdminTelegramSettings,
   type UpdateTelegramSettingsInput,
 } from "@/data/repositories/telegram-settings";
+
+export type { UpdateTelegramSettingsInput };
 import { telegramSettingsKey } from "@/state/queries/use-telegram-settings";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";

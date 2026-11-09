@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
-  Archive,
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
@@ -16,9 +15,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import { calculateYieldOnCost } from "@/domain/portfolio";
-import type { AssetPricingMode, PriceSource } from "@/domain/portfolio";
-import { getAssetClassMeta } from "@/components/modules/portfolio/position-types";
+import { calculateYieldOnCost, calculatePositionClassGroups } from "@/domain/portfolio";
+import type { AssetPricingMode, PriceSource, CalculatedClassGroup } from "@/domain/portfolio";
+import { getAssetClassMeta, PositionClosedSection, PositionMobileCard } from "@/components/modules/portfolio";
 import { isFixedIncomeClass } from "@/domain/portfolio/valuation";
 import { formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -120,19 +119,7 @@ const PRICE_SOURCE_LABEL: Record<PriceSource, { label: string; title: string }> 
 const formatQuantity = (quantity: number): string =>
   Number.isInteger(quantity) ? String(quantity) : quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
 
-interface ClassGroup {
-  className: string;
-  rows: PositionRow[];
-  totalValueBRL: number;
-  totalPct: number;
-  totalPnl: number;
-  totalCostBRL: number;
-  totalDividends: number;
-  totalReturnPnl: number;
-  totalReturnPct: number | null;
-  unrealizedPct: number | null;
-  count: number;
-}
+type ClassGroup = CalculatedClassGroup<PositionRow>;
 
 function SortableHeader({
   label,
@@ -325,42 +312,7 @@ export function PositionTable({
   // Agrupamento por classe
   const classGroups: ClassGroup[] = (() => {
     if (!isGroupedMode) return [];
-    const groupsMap = new Map<string, PositionRow[]>();
-    for (const row of filteredRows) {
-      const cls = row.assetClass || "Outros";
-      const list = groupsMap.get(cls) ?? [];
-      list.push(row);
-      groupsMap.set(cls, list);
-    }
-
-    const groups: ClassGroup[] = [];
-    for (const [className, groupRows] of groupsMap.entries()) {
-      const totalValueBRL = groupRows.reduce((sum, r) => sum + r.valueBRL, 0);
-      const totalPct = groupRows.reduce((sum, r) => sum + r.pct, 0);
-      const totalPnl = groupRows.reduce((sum, r) => sum + r.unrealizedPnl, 0);
-      const totalDividends = groupRows.reduce((sum, r) => sum + (r.dividends ?? 0), 0);
-      const totalCostBRL = groupRows.reduce((sum, r) => {
-        const cost = r.totalCostBRL ?? r.totalCost ?? (r.valueBRL - r.unrealizedPnl);
-        return sum + Math.max(0, cost);
-      }, 0);
-      const unrealizedPct = totalCostBRL > 0 ? (totalPnl / totalCostBRL) * 100 : null;
-      const totalReturnPnl = Math.round((totalPnl + totalDividends) * 100) / 100;
-      const totalReturnPct = totalCostBRL > 0 ? (totalReturnPnl / totalCostBRL) * 100 : null;
-
-      groups.push({
-        className,
-        rows: sortRows(groupRows),
-        totalValueBRL,
-        totalPct,
-        totalPnl,
-        totalCostBRL,
-        totalDividends,
-        totalReturnPnl,
-        totalReturnPct,
-        unrealizedPct,
-        count: groupRows.length,
-      });
-    }
+    const groups = calculatePositionClassGroups(filteredRows, sortRows);
 
     // Se houver ordenação ativa, ordena os grupos de acordo com a primeira linha de cada grupo
     if (sort) {
@@ -859,215 +811,17 @@ export function PositionTable({
     return variableIncomeColumns;
   };
 
-  const renderMobileCard = (row: PositionRow) => {
-    const effectivePct = row.totalReturnPct !== undefined ? row.totalReturnPct : row.unrealizedPct;
-    const pctLabel =
-      row.isCash || effectivePct === null
-        ? "—"
-        : formatSignedPct(effectivePct);
-    const pctTone =
-      row.isCash || effectivePct === null
-        ? "text-muted-foreground"
-        : effectivePct >= 0
-          ? "text-positive-strong"
-          : "text-negative-strong";
-    const effectiveDividends = row.currency === "USD" ? (row.dividendsNative ?? row.dividends) : row.dividends;
-    const effectiveCost = row.currency === "USD" ? (row.totalCost ?? row.totalCostBRL) : (row.totalCostBRL ?? row.totalCost);
-    const yoc = (effectiveDividends && effectiveDividends > 0 && effectiveCost && effectiveCost > 0)
-      ? calculateYieldOnCost(effectiveDividends, effectiveCost)
-      : 0;
-    const isClickable = Boolean(handleOpen);
+  const renderMobileCard = (row: PositionRow) => (
+    <PositionMobileCard
+      key={row.assetId}
+      row={row}
+      highlightId={highlightId}
+      onOpen={handleOpen}
+      onCalibrateAsset={onCalibrateAsset}
+      onSetManualPrice={onSetManualPrice}
+    />
+  );
 
-    return (
-      <li
-        key={row.assetId}
-        id={`asset-card-${row.assetId}`}
-        role={isClickable ? "button" : undefined}
-        tabIndex={isClickable ? 0 : undefined}
-        aria-label={isClickable ? `Ver detalhes de ${row.ticker}` : undefined}
-        onClick={isClickable ? () => handleOpen?.(row.assetId, row.ticker) : undefined}
-        onKeyDown={
-          isClickable
-            ? (event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  handleOpen?.(row.assetId, row.ticker);
-                }
-              }
-            : undefined
-        }
-        className={cn(
-          "flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs transition-colors scroll-mt-24",
-          highlightId === row.assetId && "bg-primary/10 ring-2 ring-primary shadow-xs",
-          isClickable && "cursor-pointer hover:bg-surface-hover active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-        )}
-      >
-        {/* Linha 1: Ticker | Valor Total, Rentabilidade e YoC */}
-        <div className="flex items-center justify-between gap-2 min-w-0">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="truncate font-mono text-base font-bold text-foreground">{row.ticker}</span>
-            {row.isMatured ? (
-              <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-critical-strong shrink-0">
-                Vencido
-              </span>
-            ) : row.fixedIncomeMetadata ? (
-              <span className="rounded bg-surface-hover/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground shrink-0">
-                {row.fixedIncomeMetadata.rate_type === "cdi"
-                  ? `${row.fixedIncomeMetadata.rate_value}% CDI`
-                  : row.fixedIncomeMetadata.rate_type === "selic"
-                    ? `${row.fixedIncomeMetadata.rate_value}% Selic`
-                    : row.fixedIncomeMetadata.rate_type === "pre"
-                      ? `${row.fixedIncomeMetadata.rate_value}% a.a.`
-                      : `IPCA + ${row.fixedIncomeMetadata.rate_value}%`}
-              </span>
-            ) : null}
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="flex flex-col items-end gap-0.5">
-              <div className="flex items-center gap-1.5">
-                {row.pricingMode !== "total_value" && (
-                  <MoneyText cents={numberToCents(row.valueBRL)} tone="default" className="text-sm font-bold text-foreground" />
-                )}
-                <span className={cn("num text-xs font-bold px-1.5 py-0.5 rounded", pctTone, effectivePct !== null && effectivePct >= 0 ? "bg-positive/10" : "bg-negative/10")}>
-                  {pctLabel}
-                </span>
-              </div>
-              {yoc > 0 ? (
-                <div className="flex items-center gap-1.5 text-[10px]">
-                  {row.unrealizedPct !== null ? (
-                    <span
-                      className={cn(
-                        "font-medium",
-                        row.unrealizedPct >= 0 ? "text-positive-strong" : "text-negative-strong",
-                      )}
-                      title={`Variação da cotação: ${formatSignedPct(row.unrealizedPct)}`}
-                    >
-                      Cota {formatSignedPct(row.unrealizedPct)}
-                    </span>
-                  ) : null}
-                  <span
-                    className="text-portfolio font-medium"
-                    title={`Yield on Cost acumulado: ${formatCentsAsBRL(numberToCents(row.dividends ?? 0))}`}
-                  >
-                    YoC {yoc.toFixed(1)}%
-                  </span>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-
-        {/* Linha 2: Métricas de Custódia em layout adaptativo mobile-first */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5 pt-2.5 border-t border-border/50 text-xs">
-          {/* Coluna 1: Preço Inicial ou Quantidade */}
-          <div className="flex flex-col min-w-0">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80 font-medium whitespace-nowrap">
-              {row.pricingMode === "total_value" ? "Preço Inicial" : "Quantidade"}
-            </span>
-            <span className="font-semibold text-foreground whitespace-nowrap tabular-nums">
-              {row.isCash ? (
-                "—"
-              ) : row.pricingMode === "total_value" ? (
-                <MoneyText
-                  cents={numberToCents(row.totalCostBRL ?? row.totalCost ?? row.averageCost)}
-                  currency={row.currency}
-                  tone="default"
-                />
-              ) : (
-                formatQuantity(row.quantity)
-              )}
-            </span>
-          </div>
-
-          {/* Coluna 2: Saldo Atual ou Preço */}
-          <div className="flex flex-col min-w-0">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80 font-medium whitespace-nowrap">
-              {row.pricingMode === "total_value" ? "Saldo Atual" : "Preço"}
-            </span>
-            {row.isCash ? (
-              <span className="font-semibold text-foreground whitespace-nowrap">1:1</span>
-            ) : row.pricingMode === "total_value" && onCalibrateAsset ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCalibrateAsset(row.assetId, row.ticker, numberToCents(row.valueBRL));
-                }}
-                aria-label={`Calibrar saldo de ${row.ticker}`}
-                className="inline-flex items-center gap-1 font-semibold text-foreground cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded whitespace-nowrap tabular-nums"
-                title="Calibrar saldo com extrato oficial"
-              >
-                <MoneyText cents={numberToCents(row.valueBRL)} tone="default" />
-                {row.source === "manual" || !row.fixedIncomeMetadata?.rate_value || row.fixedIncomeMetadata.rate_value <= 0 ? (
-                  <span
-                    aria-hidden="true"
-                    className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
-                    title="Saldo cadastrado manual"
-                  />
-                ) : null}
-              </button>
-            ) : onSetManualPrice ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSetManualPrice(
-                    row.assetId,
-                    row.ticker,
-                    row.currency,
-                    row.priceBRL,
-                    row.source,
-                    row.priceQuote,
-                    row.pricingMode,
-                    row.usdRate,
-                  );
-                }}
-                aria-label={`Cotação de ${row.ticker}`}
-                className="inline-flex items-center gap-1 font-semibold text-foreground cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded whitespace-nowrap tabular-nums"
-              >
-                <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />
-                {row.source === "manual" ? (
-                  <span
-                    aria-hidden="true"
-                    className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
-                    title="Preço manual"
-                  />
-                ) : null}
-              </button>
-            ) : (
-              <span className="inline-flex items-center gap-1 font-semibold text-foreground whitespace-nowrap tabular-nums">
-                <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />
-                {row.source === "manual" ? (
-                  <span
-                    aria-hidden="true"
-                    className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
-                    title="Preço manual"
-                  />
-                ) : null}
-              </span>
-            )}
-          </div>
-
-          {/* Coluna 3: Lucro/Prejuízo com span no mobile para nunca esmagar centavos */}
-          <div className="col-span-2 sm:col-span-1 flex items-baseline justify-between sm:flex-col sm:justify-start min-w-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-border/30">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80 font-medium whitespace-nowrap">
-              Lucro/Prejuízo
-            </span>
-            {row.isCash ? (
-              <span className="font-semibold text-muted-foreground">—</span>
-            ) : (
-              <MoneyText
-                cents={numberToCents(row.unrealizedPnl)}
-                tone="auto"
-                sign="explicit"
-                className="font-semibold whitespace-nowrap tabular-nums"
-              />
-            )}
-          </div>
-        </div>
-      </li>
-    );
-  };
 
   const renderDesktopHeader = (isSubHeader = false, classCols = variableIncomeColumns) => (
     <div
@@ -1490,99 +1244,13 @@ export function PositionTable({
       ) : null}
 
       {/* Seção colapsável de Posições Encerradas / Histórico */}
-      {closedRows.length > 0 && hideClosed ? (
-        <div className="mt-2 rounded-xl border border-dashed border-border/80 bg-surface-hover/20 p-3.5 transition-all">
-          <button
-            type="button"
-            onClick={() => setClosedSectionOpen(!closedSectionOpen)}
-            className="flex w-full items-center justify-between gap-2 text-left cursor-pointer group"
-            aria-expanded={closedSectionOpen}
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <Archive className="size-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" aria-hidden="true" />
-              <span className="text-xs font-semibold text-muted-foreground group-hover:text-foreground transition-colors truncate">
-                Posições Encerradas ({closedRows.length} {closedRows.length === 1 ? "ativo liquidado" : "ativos liquidados"})
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover:text-foreground shrink-0">
-              <span>{closedSectionOpen ? "Recolher" : "Expandir histórico"}</span>
-              <ChevronDown className={cn("size-3.5 transition-transform duration-200", closedSectionOpen && "rotate-180")} aria-hidden="true" />
-            </div>
-          </button>
-
-          {closedSectionOpen ? (
-            <div className="mt-3 divide-y divide-border/60 pt-2 border-t border-border/60">
-              {closedRows.map((row) => {
-                const finalPnl = row.totalReturnPnl ?? row.unrealizedPnl ?? 0;
-                const hasPnl = finalPnl !== 0;
-                const pnlTone = finalPnl >= 0 ? "positive" : "negative";
-                const returnPct =
-                  row.finalReturnPct !== undefined && row.finalReturnPct !== null
-                    ? row.finalReturnPct
-                    : row.historicalCostBRL && row.historicalCostBRL > 0
-                      ? Math.round((finalPnl / row.historicalCostBRL) * 10000) / 100
-                      : null;
-
-                return (
-                  <div
-                    key={row.assetId}
-                    onClick={() => handleOpen?.(row.assetId, row.ticker)}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-3 px-2 hover:bg-surface-hover/50 rounded-xl cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
-                      <Badge variant="muted" size="xs">Encerrada</Badge>
-                      {row.assetClass ? <span className="text-xs text-muted-foreground truncate">({row.assetClass})</span> : null}
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 text-right">
-                      {row.historicalCostBRL && row.historicalCostBRL > 0 ? (
-                        <div className="flex flex-col items-start sm:items-end">
-                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Aplicado</span>
-                          <span className="text-xs font-medium text-foreground">
-                            <MoneyText cents={numberToCents(row.historicalCostBRL)} tone="default" />
-                          </span>
-                        </div>
-                      ) : null}
-
-                      {row.historicalRedeemedBRL && row.historicalRedeemedBRL > 0 ? (
-                        <div className="flex flex-col items-start sm:items-end">
-                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Resgatado</span>
-                          <span className="text-xs font-semibold text-foreground">
-                            <MoneyText cents={numberToCents(row.historicalRedeemedBRL)} tone="default" />
-                          </span>
-                        </div>
-                      ) : null}
-
-                      {row.dividends && row.dividends > 0 ? (
-                        <div className="flex flex-col items-start sm:items-end">
-                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Proventos</span>
-                          <span className="text-xs font-semibold text-positive-strong">
-                            <MoneyText cents={numberToCents(row.dividends)} tone="positive" />
-                          </span>
-                        </div>
-                      ) : null}
-
-                      <div className="flex flex-col items-start sm:items-end">
-                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Resultado Final</span>
-                        <div className="flex items-center gap-1.5">
-                          <span className={cn("text-xs font-semibold", finalPnl >= 0 ? "text-positive-strong" : "text-critical-strong")}>
-                            <MoneyText cents={numberToCents(finalPnl)} sign="explicit" tone={hasPnl ? pnlTone : "default"} />
-                          </span>
-                          {returnPct !== null ? (
-                            <Badge variant={returnPct >= 0 ? "positive" : "critical"} size="xs">
-                              {formatSignedPct(returnPct)}
-                            </Badge>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
+      {hideClosed ? (
+        <PositionClosedSection
+          closedRows={closedRows}
+          isOpen={closedSectionOpen}
+          onToggle={() => setClosedSectionOpen(!closedSectionOpen)}
+          onOpen={handleOpen}
+        />
       ) : null}
     </div>
   );

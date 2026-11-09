@@ -51,7 +51,7 @@ export function setBiometricLockEnabled(enabled: boolean, userId?: string | null
 /**
  * Retorna o tempo de tolerância em minutos antes de exigir biometria ao retornar (padrão: 1 min).
  */
-export function getBiometricLockTimeoutMinutes(userId?: string | null): number {
+export function getAppLockGraceMinutes(userId?: string | null): number {
   const val = getUserStorageItem(KEY_TIMEOUT, userId);
   if (val === null) return 1;
   const parsed = Number(val);
@@ -61,13 +61,10 @@ export function getBiometricLockTimeoutMinutes(userId?: string | null): number {
 /**
  * Define o tempo de tolerância em minutos antes do bloqueio (0 = imediato).
  */
-export function setBiometricLockTimeoutMinutes(minutes: number, userId?: string | null): void {
+export function setAppLockGraceMinutes(minutes: number, userId?: string | null): void {
   setUserStorageItem(KEY_TIMEOUT, String(minutes), userId);
   notifyLockListeners();
 }
-
-export const getAppLockGraceMinutes = getBiometricLockTimeoutMinutes;
-export const setAppLockGraceMinutes = setBiometricLockTimeoutMinutes;
 
 /**
  * Lê se o Privacy Shield (FLAG_SECURE) está ativado.
@@ -218,7 +215,7 @@ export function initAppLockListener(): () => void {
       lastBackgroundTime = Date.now();
     } else {
       if (lastBackgroundTime > 0 && isBiometricLockEnabled()) {
-        const timeoutMinutes = getBiometricLockTimeoutMinutes();
+        const timeoutMinutes = getAppLockGraceMinutes();
         const timeoutMs = timeoutMinutes * 60 * 1000;
         if (Date.now() - lastBackgroundTime >= timeoutMs) {
           setAppLocked(true);

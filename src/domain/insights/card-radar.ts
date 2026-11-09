@@ -9,6 +9,7 @@
  */
 
 import { clampDay } from "@/domain/competence";
+import { todayISO as getTodayISO } from "@/domain/debts";
 import { formatBRL, type RecurrenceOccurrence } from "./recurrences";
 import { findMatchingServiceKey } from "./subscriptions";
 import { normalizeText, stripTemporalSuffixes } from "./shared";
@@ -158,7 +159,7 @@ export function calculateCardSubscriptionImpact(
   occurrences: readonly RecurrenceOccurrence[],
   options: CardSubscriptionImpactOptions = {},
 ): CardSubscriptionImpact {
-  const todayISO = options.todayISO ?? new Date().toISOString().slice(0, 10);
+  const todayISO = options.todayISO ?? getTodayISO();
   const nextClosingDate = getNextInvoiceClosingDate(card.closing_day, todayISO);
 
   const todayTime = new Date(`${todayISO}T00:00:00Z`).getTime();

@@ -79,7 +79,7 @@ export {
   useUpdateCustomSettings,
   useUpdateAppMode,
 } from "./mutations/use-preference-mutations";
-export { useUpdateProfile } from "./mutations/use-profile-mutations";
+export { useUpdateProfile, useDeleteAccountMutation } from "./mutations/use-profile-mutations";
 export { useReminders } from "./queries/use-reminders";
 export type { RemindersData } from "./queries/use-reminders";
 export {
@@ -200,6 +200,10 @@ export {
   useAdminSendBroadcast,
   useAdminLogBackup,
   useMarkBroadcastAsRead,
+  useAdminProvisionUser,
+  useAdminResetMFA,
+  useAdminRevokeSessions,
+  useAdminGenerateRecoveryLink,
 } from "./mutations/use-admin-mutations";
 
 export {
@@ -220,7 +224,7 @@ export {
   useCreateCashCheckpoint,
   useDeleteCashCheckpoint,
 } from "./mutations/use-cash-checkpoint-mutations";
-export { useExportData, EXPORT_DATA_QUERY_KEY } from "./queries/use-export-data";
+export { useExportData, EXPORT_DATA_QUERY_KEY, fetchUserDataExport } from "./queries/use-export-data";
 export { useRestoreBackup } from "./mutations/use-restore-backup";
 
 export {
@@ -283,7 +287,7 @@ export {
 } from "./mutations/use-support-mutations";
 export { useAdminSupportTickets, useMySupportTickets } from "./queries/use-support-tickets";
 export { useAdminTelegramSettings, telegramSettingsKey } from "./queries/use-telegram-settings";
-export { useUpdateTelegramSettingsMutation } from "./mutations/use-telegram-mutations";
+export { useUpdateTelegramSettingsMutation, type UpdateTelegramSettingsInput } from "./mutations/use-telegram-mutations";
 export { useFeatureUsageMetrics, analyticsRankingKey } from "./queries/use-analytics-metrics";
 export {
   useCreatePublicShare,
@@ -331,7 +335,10 @@ export {
   familyQueryKeys,
 } from "./queries/use-family";
 export type { RemoveFamilyMemberInput } from "./queries/use-family";
-
-
-
-
+export {
+  useCancelSubscriptionMutation,
+  useUpdateSubscriptionCardMutation,
+  useUpgradeToAnnualMutation,
+  useCheckoutMutation,
+  type PixCheckoutResult,
+} from "./mutations/use-billing-mutations";

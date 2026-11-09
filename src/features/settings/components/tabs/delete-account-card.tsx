@@ -18,8 +18,7 @@ import { resetAppState } from "@/services/auth-cleanup";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { getErrorMessage } from "@/services/errors";
-import { deleteCurrentUserAccount } from "@/data/rpc";
-import { cancelSubscription } from "@/data/repositories/billing";
+import { useDeleteAccountMutation } from "@/state";
 
 export const CONFIRM_DELETE_WORD = "EXCLUIR";
 
@@ -39,6 +38,7 @@ export function DeleteAccountCard({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { signOut } = useSignOut();
+  const deleteAccountMutation = useDeleteAccountMutation();
 
   const [isOpen, setIsOpen] = useState(false);
   const [confirmationInput, setConfirmationInput] = useState("");
@@ -54,15 +54,8 @@ export function DeleteAccountCard({
     setError(null);
 
     try {
-      // 1. Cancelamento preventivo no gateway Asaas/Stripe
-      try {
-        await cancelSubscription();
-      } catch {
-        // Ignora caso não possua assinatura ativa ou gateway offline
-      }
-
-      // 2. Expurgo em cascata das tabelas e auth.users (LGPD Art. 18, VI)
-      await deleteCurrentUserAccount();
+      // 1. Cancelamento e expurgo em cascata (LGPD Art. 18, VI) via state mutation
+      await deleteAccountMutation.mutateAsync();
 
       triggerSensory("destructive");
       pushToast({

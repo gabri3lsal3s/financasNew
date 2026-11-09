@@ -200,23 +200,36 @@ O script executará automaticamente:
 - **Cenário:** O usuário ativou 2FA/TOTP no painel de segurança, mas trocou de aparelho celular, desinstalou o autenticador ou perdeu o dispositivo e não consegue realizar o segundo fator de autenticação.
 - **Protocolo de Verificação de Identidade (Obrigatório antes de qualquer ação):**
   1. Solicite confirmação enviada a partir do **mesmo e-mail cadastrado na conta**;
-  2. Confirme os últimos 4 dígitos do CPF cadastrado e o nome completo do titular;
-  3. Para planos Pro/Lifetime pagos, confirme a data e valor aproximado da última transação no Asaas.
-- **Procedimento Técnico de Resolução (Desativação de Fator MFA no Supabase):**
+  2. Confirme os últimos 4 dígitos do telefone cadastrado e o nome completo do titular;
+  3. Para planos Pro pagos, confirme a data e valor aproximado da última transação no Asaas.
+- **Procedimento Direto no Painel Superadmin (1 Clique — Recomendado):**
+  1. Acesse o **Painel Administrativo** (`/admin/users`);
+  2. Localize o usuário e clique no botão **Gerenciar**;
+  3. Na seção **Ações de Suporte do Superadmin**, clique no botão **Resetar 2FA**;
+  4. Confirme no diálogo. O sistema remove atomicamente todos os fatores TOTP em `auth.mfa_factors` via RPC/Edge Function auditada e registra a ação em `audit_events`.
+  5. *(Opcional)* Se o cliente também esqueceu a senha, clique em **Link Recuperação** para gerar na hora uma URL segura de acesso direto e despachar via WhatsApp ou E-mail.
+- **Procedimento Emergencial via SQL (Caso o painel admin esteja inacessível):**
   No **Supabase Dashboard > SQL Editor**, execute a desativação do fator TOTP para o ID do usuário:
   ```sql
-  -- Localiza os fatores MFA ativos do usuário:
-  select id, user_id, friendly_name, factor_type, status, created_at
-  from auth.mfa_factors
-  where user_id = '<ID_DO_USUARIO_UUID>';
-
-  -- Exclui o fator TOTP para liberar o login apenas com senha:
-  delete from auth.mfa_factors
-  where user_id = '<ID_DO_USUARIO_UUID>' and factor_type = 'totp';
+  -- Invoca a RPC atômica criada para o Superadmin:
+  select public.admin_reset_user_mfa('<ID_DO_USUARIO_UUID>');
   ```
 - **Pós-Atendimento:**
-  1. O cliente conseguirá acessar imediatamente utilizando apenas e-mail e senha;
+  1. O cliente conseguirá acessar imediatamente utilizando apenas e-mail e senha (ou pelo link de recuperação gerado);
   2. Oriente o usuário a acessar **Configurações > Conta > Gerenciar 2FA** para cadastrar seu novo dispositivo autenticador.
+
+---
+
+### Incidente 5: "Provisionamento Direto de Conta pelo Superadmin (Convite VIP / Corporativo)"
+- **Cenário:** O fundador deseja criar uma conta completa para um cliente ou parceiro VIP sem que o cliente precise passar pelo fluxo público de cadastro.
+- **Regra de Ouro da LGPD:** O administrador **NUNCA** cria nem digita a senha do cliente.
+- **Procedimento:**
+  1. No painel de usuários (`/admin/users`), clique no botão **Adicionar Usuário** no cabeçalho;
+  2. Preencha o Nome Completo, E-mail, Telefone (opcional), Cargo administrativo inicial e Plano SaaS (Free, Pro ou Lifetime);
+  3. Clique em **Cadastrar e Gerar Link**;
+  4. O sistema cria o usuário de forma atômica no banco, configura a assinatura e perfil, grava o evento de auditoria e gera um **Link Soberano de Ativação**;
+  5. Copie o link ou clique em **Despachar Link via WhatsApp do Cliente** para enviar diretamente na conversa privada do cliente;
+  6. Ao abrir o link, o cliente é recebido em tela segura onde define sua própria senha pessoal e já ingressa na plataforma com o plano configurado.
 
 ---
 

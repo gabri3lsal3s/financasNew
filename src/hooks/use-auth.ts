@@ -18,10 +18,23 @@ import {
   signUpWithEmail,
   resetPasswordForEmail,
   resendConfirmationEmail,
+  changeUserPassword,
+  requestUserEmailChange,
+  updateUserPassword,
+  verifyCurrentPassword,
   type SignUpResult,
 } from "@/data/auth";
 
-export { signInWithEmail, signUpWithEmail, resetPasswordForEmail, resendConfirmationEmail };
+export {
+  signInWithEmail,
+  signUpWithEmail,
+  resetPasswordForEmail,
+  resendConfirmationEmail,
+  changeUserPassword,
+  requestUserEmailChange,
+  updateUserPassword,
+  verifyCurrentPassword,
+};
 export type { SignUpResult };
 
 import type { AppMode } from "@/types";

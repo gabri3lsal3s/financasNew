@@ -6,6 +6,8 @@
  * Zero dependência de LLM ou chamadas externas de rede.
  */
 
+import { todayISO as getTodayISO } from "@/domain/debts";
+
 export type SearchIntentKind =
   | "category_spending"
   | "upcoming_due"
@@ -124,7 +126,7 @@ const REGEX_SYSTEM_ACTION =
  */
 export function resolveSearchIntent(
   rawQuery: string,
-  context: SearchIntentContext = { todayISO: new Date().toISOString().slice(0, 10) },
+  context: SearchIntentContext = { todayISO: getTodayISO() },
 ): SearchIntentResult | null {
   const query = rawQuery.trim();
   if (query.length < 3) return null;

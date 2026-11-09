@@ -78,6 +78,27 @@ export default tseslint.config(
     },
   },
   {
+    // Blindagem Arquitetural (AGENTS.md §3 e §5):
+    // Componentes e Features nunca acessam repositórios ou RPCs de @/data diretamente.
+    // O acesso a dados de negócio deve passar obrigatoriamente pela camada @/state.
+    files: ["src/features/**/*.{ts,tsx}", "src/components/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}", "**/__tests__/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/data/repositories/*", "@/data/rpc", "@/data/rpc/*"],
+              message:
+                "Violação arquitetural (AGENTS.md): Features e Components não podem acessar @/data diretamente. Encapsule a chamada na camada @/state.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["*.config.{js,ts}", "scripts/**/*.{js,mjs}"],
     languageOptions: { globals: globals.node },
   },

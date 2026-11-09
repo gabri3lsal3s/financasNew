@@ -8,3 +8,9 @@ export type {
   UseSmartAdvisorInsightsOptions,
   UseSmartAdvisorInsightsResult,
 } from "./use-smart-advisor-insights";
+export {
+  useDashboardAlertDismissals,
+  useOverviewPermissionsBanner,
+  loadLocalAlertDismissals,
+  saveLocalAlertDismissals,
+} from "./use-overview-alerts";

@@ -8,6 +8,9 @@ const mockSetSubscriptionMutateAsync = vi.fn();
 const mockSetModulePermissionMutateAsync = vi.fn();
 const mockRemoveModulePermissionMutateAsync = vi.fn();
 const mockDeleteUserMutateAsync = vi.fn();
+const mockResetMfaMutateAsync = vi.fn();
+const mockRevokeSessionsMutateAsync = vi.fn();
+const mockGenerateRecoveryMutateAsync = vi.fn();
 
 let mockCurrentUserRole = "superadmin";
 let mockAuthUserId = "superadmin-999";
@@ -54,6 +57,22 @@ vi.mock("@/state", () => ({
   useAdminDeleteUser: () => ({
     mutateAsync: mockDeleteUserMutateAsync,
     isPending: false,
+  }),
+  useAdminResetMFA: () => ({
+    mutateAsync: mockResetMfaMutateAsync,
+    isPending: false,
+  }),
+  useAdminRevokeSessions: () => ({
+    mutateAsync: mockRevokeSessionsMutateAsync,
+    isPending: false,
+  }),
+  useAdminGenerateRecoveryLink: () => ({
+    mutateAsync: mockGenerateRecoveryMutateAsync,
+    isPending: false,
+  }),
+  useAdminUserContact: () => ({
+    data: { email: "maria@teste.com", phone: "11999998888" },
+    isLoading: false,
   }),
   useAdminPlans: () => ({ data: [], isLoading: false }),
   useAdminUserSubscription: () => ({
@@ -317,6 +336,77 @@ describe("UserEditDialog", () => {
         targetUserId: "u-123",
       });
       expect(onOpenChangeMock).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe("Ações de Suporte do Superadmin", () => {
+    it("exibe ações de Reset 2FA, Derrubar Sessões e Link Recuperação para superadmin", () => {
+      mockCurrentUserRole = "superadmin";
+      render(<UserEditDialog user={mockUser} open={true} onOpenChange={vi.fn()} />);
+
+      expect(screen.getByText("Ações de Suporte do Superadmin")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Resetar 2FA/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Derrubar Sessões/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Link Recuperação/i })).toBeInTheDocument();
+    });
+
+    it("executa o reset de 2FA após confirmação no ConfirmDialog", async () => {
+      const user = userEvent.setup();
+      mockCurrentUserRole = "superadmin";
+      mockResetMfaMutateAsync.mockResolvedValueOnce(undefined);
+
+      render(<UserEditDialog user={mockUser} open={true} onOpenChange={vi.fn()} />);
+
+      const resetBtn = screen.getByRole("button", { name: /Resetar 2FA/i });
+      await user.click(resetBtn);
+
+      expect(
+        screen.getByRole("heading", { name: "Resetar Autenticação em Duas Etapas (2FA)" }),
+      ).toBeInTheDocument();
+
+      const confirmBtn = screen.getByRole("button", { name: "Resetar 2FA" });
+      await user.click(confirmBtn);
+
+      expect(mockResetMfaMutateAsync).toHaveBeenCalledWith("u-123");
+    });
+
+    it("executa a revogação de sessões ativas após confirmação no ConfirmDialog", async () => {
+      const user = userEvent.setup();
+      mockCurrentUserRole = "superadmin";
+      mockRevokeSessionsMutateAsync.mockResolvedValueOnce(undefined);
+
+      render(<UserEditDialog user={mockUser} open={true} onOpenChange={vi.fn()} />);
+
+      const revokeBtn = screen.getByRole("button", { name: /Derrubar Sessões/i });
+      await user.click(revokeBtn);
+
+      expect(
+        screen.getByRole("heading", { name: "Encerrar Sessões Ativas (Derrubar Login)" }),
+      ).toBeInTheDocument();
+
+      const confirmBtn = screen.getByRole("button", { name: "Encerrar Sessões" });
+      await user.click(confirmBtn);
+
+      expect(mockRevokeSessionsMutateAsync).toHaveBeenCalledWith("u-123");
+    });
+
+    it("gera o link de recuperação sob demanda e permite copiar", async () => {
+      const user = userEvent.setup();
+      mockCurrentUserRole = "superadmin";
+      mockGenerateRecoveryMutateAsync.mockResolvedValueOnce("https://financas.app/#access_token=xyz");
+
+      render(<UserEditDialog user={mockUser} open={true} onOpenChange={vi.fn()} />);
+
+      const genBtn = screen.getByRole("button", { name: /Link Recuperação/i });
+      await user.click(genBtn);
+
+      expect(mockGenerateRecoveryMutateAsync).toHaveBeenCalledWith({
+        userId: "u-123",
+        email: "maria@teste.com",
+      });
+
+      expect(screen.getByText("Link de Acesso Direto Gerado:")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("https://financas.app/#access_token=xyz")).toBeInTheDocument();
     });
   });
 });

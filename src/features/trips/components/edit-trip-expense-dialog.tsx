@@ -18,6 +18,7 @@ import {
 import { useUpdateTripExpenseMutation } from "@/state/queries/use-trips";
 import { calculateEqualSplits, calculateLinkedExpenseWeight } from "@/domain/trips/trip-math";
 import { resolveBillCompetence } from "@/domain/competence";
+import { todayISO } from "@/lib/date";
 import type { TripMember, TripExpense } from "@/types/trips";
 
 export interface EditTripExpenseDialogProps {
@@ -280,7 +281,7 @@ function EditTripExpenseForm({
             <DatePicker
               value={expenseDate}
               onChange={(val) =>
-                setExpenseDate(val ?? new Date().toISOString().split("T")[0] ?? "")
+                setExpenseDate(val ?? todayISO())
               }
             />
           </div>

@@ -372,6 +372,3 @@ export function calculateEmergencyFund(params: EmergencyProjectionParams): Emerg
     milestone12m: calculateMilestone(12),
   };
 }
-
-// Alias de retrocompatibilidade
-export const projectEmergencyFund = calculateEmergencyFund;

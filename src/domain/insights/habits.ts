@@ -11,6 +11,7 @@
 import type { ExpenseLike } from "./recurrences";
 import { extractHabitClusterKey, type IntentKind } from "./intent-semantics";
 import { DAY_OF_WEEK_LABELS_PTBR } from "./extended-periodicity";
+import { todayISO as getTodayISO } from "@/domain/debts";
 
 export interface SpendingHabit {
   /** Chave estável de clusterização do hábito (ex.: habit:cat_transporte:mobility:commute). */
@@ -69,7 +70,7 @@ export function detectSpendingHabits(
   expenses: readonly ExpenseLike[],
   options: DetectSpendingHabitsOptions = {},
 ): SpendingHabit[] {
-  const todayISO = options.todayISO ?? new Date().toISOString().slice(0, 10);
+  const todayISO = options.todayISO ?? getTodayISO();
   const currentMonth = options.targetMonth ?? todayISO.slice(0, 7);
   const minOccurrences = Math.max(2, options.minOccurrences ?? 3);
   const monthlyIncomeCents = options.monthlyIncomeCents ?? 0;

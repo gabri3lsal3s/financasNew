@@ -8,6 +8,15 @@ import {
 import { parsePixEMVPayload } from "./pix-emv-parser";
 import { resolvePaymentMethod } from "./payment-method-resolver";
 import { resolveIncomeCategory } from "./income-category-resolver";
+import {
+  BANK_PACKAGE_MAP,
+  BLACKLIST_EXPRESSIONS,
+  ISSUER_BANK_PATTERNS,
+  CARD_BRAND_NAMES,
+  DIGITAL_WALLET_NAMES,
+  GENERIC_COMMERCIAL_WORDS,
+  IGNORED_MERCHANT_TOKENS,
+} from "./bank-patterns";
 
 export type TransactionNature = "expense" | "income" | "investment";
 export type InvestmentSubtype = "contribution" | "dividend" | "trade" | "redemption";
@@ -66,167 +75,6 @@ export interface InstallmentInfo {
   installmentAmountCents?: number;
   totalAmountCents?: number;
 }
-
-const BANK_PACKAGE_MAP: Record<string, string> = {
-  // Principais fintechs e bancos digitais
-  "com.nu.production": "Nubank",
-  "br.com.intermedium": "Inter",
-  "com.c6bank.app": "C6 Bank",
-  "com.mercadopago.wallet": "Mercado Pago",
-  "com.picpay": "PicPay",
-  "br.com.uol.ps.myaccount": "PagBank",
-  "br.com.uol.ps": "PagBank",
-  "br.com.neon": "Neon",
-  "br.com.bradesco.next": "Next",
-  "com.btg.pactual.banking": "BTG Pactual",
-  "com.btgpactual.investimentos": "BTG Investimentos",
-  "br.com.btg.pactual.digital": "BTG Investimentos",
-  "br.com.xp.carteira": "XP Investimentos",
-  "com.xpinc.investments": "XP Investimentos",
-  "br.com.xp.investimentos": "XP Investimentos",
-  "br.com.rico": "Rico",
-  "br.com.rico.investimentos": "Rico",
-  "br.com.rico.rico": "Rico",
-  "com.binance.dev": "Binance",
-  "com.nomadfinancial.app": "Nomad",
-  "com.nomadglobal.app": "Nomad",
-  "com.transferwise.android": "Wise",
-  "us.avenue.app": "Avenue",
-  "br.com.sofisa.direto": "Sofisa Direto",
-  "br.com.bancopan.app": "Banco Pan",
-  "br.com.bv.banco": "Banco BV",
-  "com.cora.app": "Cora",
-  "br.com.intermedium.pj": "Inter Empresas",
-  "com.c6bank.empresa": "C6 Empresas",
-  "com.btgpactual.empresas": "BTG Empresas",
-  "br.com.uol.ps.seller": "PagBank Vendedor",
-
-  // Grandes bancos tradicionais
-  "com.itau": "Itaú",
-  "com.itau.personnalite": "Itaú Personnalité",
-  "com.bradesco": "Bradesco",
-  "com.bradesco.cartoes": "Bradesco",
-  "com.santander.app": "Santander",
-  "br.com.santander.way": "Santander",
-  "br.gov.caixa.tem": "Caixa Tem",
-  "br.com.gabba.Caixa": "Caixa",
-  "br.com.bb.android": "Banco do Brasil",
-
-  // Carteiras digitais
-  "com.google.android.apps.walletnfcrel": "Carteira Google",
-  "com.samsung.android.spay": "Samsung Pay",
-  "com.samsung.android.raja.spay": "Samsung Pay",
-  "com.samsung.android.app.spay": "Samsung Pay",
-};
-
-/**
- * Expressões da Blacklist Semântica para descarte imediato de notificações
- * que não representam transações financeiras reais ou que gerariam duplicações/falsos positivos.
- */
-const BLACKLIST_EXPRESSIONS: RegExp[] = [
-  // Faturas fechadas / resumos / abertas
-  /\bfatura\b.*?\b(?:fechou|fechada|est[áa]\s+fechada|abriu|aberta|dispon[íi]vel|pronta|fechamento)\b/i,
-  /\bsua\s+fatura\s+fechou\b/i,
-  /\bfechamento\b.*?\bfatura\b/i,
-  /\bresumo\s+d[aeo]\s+fatura\b/i,
-  /\blembrete\s+de\s+fatura\b/i,
-  /\bfatura\s+com\s+vencimento\s+em\b/i,
-  /\bpague\s+o\s+valor\s+m[íi]nimo\b/i,
-
-  // Pagamento de fatura confirmado (já computado pelas compras individuais no cartão)
-  /\bpagamento\s+d[aeo]\s+(?:sua\s+)?fatura\b/i,
-  /\bpagamento\s+efetuado\s+da\s+(?:sua\s+)?fatura\b/i,
-  /\brecebemos\s+o\s+pagamento\s+da\s+(?:sua\s+)?fatura\b/i,
-  /\bfatura\s+paga\b/i,
-  /\bconfirmamos\s+o\s+pagamento\s+da\s+(?:sua\s+)?fatura\b/i,
-
-  // Transações não autorizadas, recusas, bloqueios e falhas
-  /\b(?:n[ãa]o\s+foi\s+autorizad[ao]|n[ãa]o\s+autorizad[ao])\b/i,
-  /\b(?:compra|transa[çc][ãa]o)\s+(?:n[ãa]o\s+aprovada|recusada|cancelada|negada)\b/i,
-  /\btransa[çc][ãa]o\s+negada\b/i,
-  /\bcompra\s+negada\b/i,
-  /\brecusad[ao]\s+por\b/i,
-  /\brecusad[ao]\b/i,
-  /\bsaldo\s+insuficiente\b/i,
-  /\blimite\s+insuficiente\b/i,
-  /\bcart[ãa]o\s+bloqueado\b/i,
-  /\bbloqueado\s+temporariamente\b/i,
-  /\bestorno\s+negado\b/i,
-
-  // Ofertas de crédito, aumento de limite, empréstimos e promoções
-  /\blimite\s+(?:aumentou|aprovado|pr[ée]-aprovado|pr[ée]\s+aprovado|dispon[íi]vel|foi\s+ajustado|emergencial|especial|liberado)\b/i,
-  /\blimite\s+especial\b/i,
-  /\baumento\s+de\s+limite\b/i,
-  /\bnovo\s+limite\b/i,
-  /\baumente\s+seu\s+limite\b/i,
-  /\b(?:empr[ée]stimo|cr[ée]dito)\s+(?:pr[ée]-aprovado|pr[ée]\s+aprovado|dispon[íi]vel|f[áa]cil|especial|pessoal|liberado)\b/i,
-  /\b(?:cr[ée]dito|empr[ée]stimo)\s+(?:para\s+voc[êe]|na\s+sua\s+conta|liberado|r[áa]pido)\b/i,
-  /\bcr[ée]dito\s+de\s+.*?\s+liberado\b/i,
-  /\bcr[ée]dito\s+dispon[íi]vel\s+para\s+voc[êe]\b/i,
-  /\bempr[ée]stimo\s+liberado\b/i,
-  /\boferta\s+(?:especial\s+)?de\s+empr[ée]stimo\b/i,
-  /\bliberamos\s+.*de\s+cr[ée]dito\b/i,
-  /\bdinheiro\s+(?:extra|r[áa]pido)\s*(?:dispon[íi]vel|na\s+conta)?\b/i,
-  /\bsimule\s+(?:seu|um|agora)?\b/i,
-  /\bcontrat(?:e|ar)\s+(?:agora|seu|j[áa]|empr[ée]stimo)\b/i,
-  /\bdispon[íi]vel\s+para\s+voc[êe]\b/i,
-  /\btaxas\s+a\s+partir\b/i,
-  /\bsolicite\s+seu\b/i,
-  /\bcart[ãa]o\s+aprovado\b/i,
-  /\baproveite\s+(?:o\s+limite|a\s+oferta|.*cashback)\b/i,
-  /\bganhe\b/i,
-  /\bconcorra\b/i,
-  /\ba\s+cada\s+compra\b/i,
-  /\bpr[óo]xima\s+compra\b/i,
-  /\bfa[çc]a\s+compras(?:\s+acima\s+de)?\b/i,
-  /\bfaca\s+compras(?:\s+acima\s+de)?\b/i,
-  /\bb[ôo]nus(?:\s+no\s+seu\s+cart[ãa]o)?\b/i,
-  /\bcupom(?:\s+de)?\b/i,
-  /\bcashback\s+de\s+at[ée]\b/i,
-  /\bdesconto\s+de\s+(?:at[ée]\s+)?(?:r\$|us\$|\$|eur|€)?\b/i,
-  /\bcompras\s+acima\s+de\s+(?:r\$|us\$|\$|eur|€)?\b/i,
-  /\buse\s+seu\s+cart[ãa]o\s+e\s+ganhe\b/i,
-  /\bparcele\s+em\s+at[ée]\b/i,
-  /\bconhe[çc]a\s+o\s+novo\b/i,
-  /\bganhe\s+cashback\b/i,
-  /\bpontos\s+(?:acumulados|do\s+cart[ãa]o)\b/i,
-  /\bclube\s+de\s+vantagens\b/i,
-
-  // Rendimentos diários passivos (ruído)
-  /\brendeu\s+hoje\b/i,
-  /\brendimento\s+da\s+sua\s+conta\b/i,
-  /\bseu\s+saldo\s+rendeu\b/i,
-
-  // Chamadas comerciais, dicas e incentivos (Fase 10 / Tarefa 10.4)
-  /\bsaiba\s+mais\b/i,
-  /\bganhe\s+f[ôo]lego\b/i,
-  /\bfazendo\s+pix\b/i,
-  /\bpagando\s+boletos?\b/i,
-  /\bfa[çc]a\s+pix\s+no\s+cr[ée]dito\b/i,
-  /\bpague\s+com\s+cart[ãa]o\b/i,
-  /\bconhe[çc]a\b/i,
-  /\bportabilidade\b/i,
-  /\btraga\s+seu\s+sal[áa]rio\b/i,
-  /\bopen\s+finance\b/i,
-  /\bseguro\s+celular\b/i,
-  /\bdica\s+do\b/i,
-
-  // Segurança, 2FA e tokens
-  /\bc[óo]digo\s+de\s+(?:seguran[çc]a|verifica[çc][ãa]o|acesso|autoriza[çc][ãa]o)\b/i,
-  /\bc[óo]digo\b.*?\b(?:para\s+autorizar|autorizar\s+o\s+acesso|de\s+acesso)\b/i,
-  /\b(?:seu\s+)?token\s+(?:de\s+(?:acesso|seguran[çc]a))?\b/i,
-  /\bc[óo]digo\s+2fa\b/i,
-  /\bautoriza[çc][ãa]o\s+de\s+acesso\b/i,
-  /\bnovo\s+(?:dispositivo|acesso)\s+identificado\b/i,
-
-  // Agendamentos futuros e lembretes
-  /\b(?:pix|transfer[êe]ncia|pagamento|boleto|ted|doc)\b.*?\b(?:foi\s+)?agendad[ao]\b/i,
-  /\bagendad[ao]\b/i,
-  /\bagendamento\b/i,
-  /\blembrete\s+de\s+(?:pagamento|vencimento)\b/i,
-  /\bvencimento\s+da\s+fatura\b/i,
-  /\bsua\s+fatura\s+vence\b/i,
-];
 
 /**
  * Verifica se a notificação pertence à blacklist semântica de falsos positivos.
@@ -424,41 +272,6 @@ export function extractInstallmentInfo(
   return null;
 }
 
-const ISSUER_BANK_PATTERNS: Array<{ regex: RegExp; bankName: string }> = [
-  { regex: /\b(?:cart[ãa]o\s+)?nubank(?!\w)|\broxinho(?!\w)/i, bankName: "Nubank" },
-  { regex: /\b(?:cart[ãa]o\s+)?itaucard(?!\w)|\bita[úu](?!\w)|\bpersonnalit[ée](?!\w)/i, bankName: "Itaú" },
-  { regex: /\b(?:cart[ãa]o\s+)?(?:banco\s+)?inter(?!\w)/i, bankName: "Inter" },
-  { regex: /\b(?:cart[ãa]o\s+)?c6(?:\s+bank)?(?!\w)/i, bankName: "C6 Bank" },
-  { regex: /\b(?:cart[ãa]o\s+)?bradesco(?!\w)/i, bankName: "Bradesco" },
-  { regex: /\b(?:cart[ãa]o\s+)?santander(?!\w)|\bway(?!\w)/i, bankName: "Santander" },
-  {
-    regex: /\b(?:cart[ãa]o\s+)?(?:banco\s+do\s+brasil|ourocard)(?!\w)|\bbb(?!\w)/i,
-    bankName: "Banco do Brasil",
-  },
-  { regex: /\b(?:cart[ãa]o\s+)?caixa(?:\s+econ[ôo]mica|\s+tem)?(?!\w)/i, bankName: "Caixa" },
-  { regex: /\b(?:cart[ãa]o\s+)?btg(?:\s+pactual)?(?!\w)/i, bankName: "BTG Pactual" },
-  { regex: /\b(?:cart[ãa]o\s+)?xp(?:\s+investimentos)?(?!\w)/i, bankName: "XP Investimentos" },
-  { regex: /\b(?:cart[ãa]o\s+)?rico(?!\w)/i, bankName: "Rico" },
-  { regex: /\b(?:cart[ãa]o\s+)?mercado\s+pago(?!\w)/i, bankName: "Mercado Pago" },
-  { regex: /\b(?:cart[ãa]o\s+)?pagbank(?!\w)|\bpagseguro(?!\w)/i, bankName: "PagBank" },
-  { regex: /\b(?:cart[ãa]o\s+)?picpay(?!\w)/i, bankName: "PicPay" },
-  { regex: /\b(?:cart[ãa]o\s+)?neon(?!\w)/i, bankName: "Neon" },
-  { regex: /\b(?:cart[ãa]o\s+)?next(?!\w)/i, bankName: "Next" },
-  { regex: /\b(?:cart[ãa]o\s+)?nomad(?!\w)/i, bankName: "Nomad" },
-  { regex: /\b(?:cart[ãa]o\s+)?wise(?!\w)/i, bankName: "Wise" },
-  { regex: /\b(?:cart[ãa]o\s+)?sicredi(?!\w)/i, bankName: "Sicredi" },
-  { regex: /\b(?:cart[ãa]o\s+)?sicoob(?!\w)/i, bankName: "Sicoob" },
-  { regex: /\b(?:cart[ãa]o\s+)?safra(?!\w)/i, bankName: "Safra" },
-  { regex: /\b(?:cart[ãa]o\s+)?binance(?!\w)/i, bankName: "Binance" },
-
-  // Bandeiras de cartão (quando o banco emissor não é citado diretamente na notificação)
-  { regex: /\b(?:cart[ãa]o\s+)?mastercard(?!\w)|\b(?:com|no|cart[ãa]o)\s+master\b/i, bankName: "Mastercard" },
-  { regex: /\b(?:cart[ãa]o\s+|com\s+|no\s+)?visa\s+final\b|\b(?:cart[ãa]o|com|no)\s+visa\b|\bvisa\s+card\b/i, bankName: "Visa" },
-  { regex: /\b(?:cart[ãa]o\s+|com\s+|no\s+)?elo\s+final\b|\b(?:cart[ãa]o|com|no)\s+elo\b/i, bankName: "Elo" },
-  { regex: /\b(?:cart[ãa]o\s+)?(?:american\s+express|amex)(?!\w)/i, bankName: "American Express" },
-  { regex: /\b(?:cart[ãa]o\s+)?hipercard(?!\w)/i, bankName: "Hipercard" },
-];
-
 /**
  * Extrai os últimos 4 dígitos do cartão de crédito/débito mencionados no texto
  * (comum em notificações de carteiras digitais como Google Wallet e Samsung Pay).
@@ -540,15 +353,6 @@ export function extractCardBrand(text: string): string | undefined {
   return undefined;
 }
 
-const CARD_BRAND_NAMES = new Set([
-  "mastercard",
-  "visa",
-  "elo",
-  "american express",
-  "amex",
-  "hipercard",
-]);
-
 /**
  * Determina se um determinado identificador de emissor corresponde a uma bandeira de cartão.
  */
@@ -556,15 +360,6 @@ export function isCardBrand(name?: string): boolean {
   if (!name) return false;
   return CARD_BRAND_NAMES.has(name.toLowerCase().trim());
 }
-
-const DIGITAL_WALLET_NAMES = new Set([
-  "carteira google",
-  "google pay",
-  "google wallet",
-  "samsung pay",
-  "samsung wallet",
-  "apple pay",
-]);
 
 /**
  * Determina se uma instituição corresponde a uma carteira digital (proxy NFC).
@@ -601,32 +396,6 @@ export function normalizeMerchantText(text?: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
-
-const GENERIC_COMMERCIAL_WORDS = new Set([
-  "padaria",
-  "restaurante",
-  "farmacia",
-  "drogaria",
-  "mercado",
-  "supermercado",
-  "posto",
-  "loja",
-  "comercio",
-  "bar",
-  "lanchonete",
-  "panificadora",
-  "distribuidora",
-  "servicos",
-  "ltda",
-  "eireli",
-  "sa",
-  "me",
-  "epp",
-  "brasil",
-  "compra",
-  "pagamento",
-  "cartao",
-]);
 
 /**
  * Verifica se dois registros de transação apontam para o mesmo estabelecimento comercial
@@ -1547,89 +1316,6 @@ export function detectTransactionNature(
   if (!txType) return null;
   return { nature: txType };
 }
-
-const IGNORED_MERCHANT_TOKENS = new Set([
-  "nubank",
-  "itau",
-  "itaú",
-  "itaucard",
-  "inter",
-  "c6",
-  "c6 bank",
-  "bradesco",
-  "santander",
-  "mercado pago",
-  "picpay",
-  "pagbank",
-  "neon",
-  "next",
-  "btg",
-  "btg pactual",
-  "xp",
-  "xp investimentos",
-  "nomad",
-  "wise",
-  "caixa",
-  "caixa tem",
-  "banco do brasil",
-  "bb",
-  "ourocard",
-  "carteira google",
-  "carteira do google",
-  "google pay",
-  "google wallet",
-  "gpay",
-  "samsung pay",
-  "samsung wallet",
-  "spay",
-  "mastercard",
-  "visa",
-  "elo",
-  "amex",
-  "american express",
-  "hipercard",
-  "carteira",
-  "cartao",
-  "cartão",
-  "crédito",
-  "credito",
-  "débito",
-  "debito",
-  "pix",
-  "transferência",
-  "transferencia",
-  "conta",
-  "fatura",
-  "parcela",
-  "parcelas",
-  "compra",
-  "aprovada",
-  "aprovado",
-  "no valor de",
-  "valor de",
-  "no valor",
-  "de r$",
-  "em r$",
-  "no total de",
-  "total de",
-  "com sucesso",
-  "transferencia pix",
-  "transferência pix",
-  "da conta",
-  "sua conta",
-  "de sua conta",
-  "em sua conta",
-  "na sua conta",
-  "seu cartão de crédito",
-  "seu cartao de credito",
-  "seu cartão",
-  "seu cartao",
-  "seu crédito",
-  "seu credito",
-  "terminal banco24horas",
-  "terminal",
-  "banco24horas",
-]);
 
 function isValidCandidate(candidate: string): boolean {
   if (!candidate || candidate.length < 2) return false;

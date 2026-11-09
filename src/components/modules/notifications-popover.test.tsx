@@ -20,6 +20,8 @@ vi.mock("@/state", () => ({
   useSetReminderState: () => ({ mutate: mockSetReminderStateMutate, isPending: false }),
   useMarkAllRemindersAsRead: () => ({ mutate: mockMarkAllMutate, isPending: false }),
   useMySupportTickets: () => ({ data: [], isLoading: false }),
+  useMyBroadcastNotifications: () => ({ data: [], isLoading: false }),
+  useMarkBroadcastAsRead: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 describe("NotificationsPopover", () => {

@@ -5,7 +5,7 @@ import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Alert, Button, PasswordInput } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { getSupabase } from "@/data/client";
-import { updateUserPassword } from "@/data/auth";
+import { updateUserPassword } from "@/hooks/use-auth";
 import { checkPasswordRequirements } from "@/domain/validation";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";

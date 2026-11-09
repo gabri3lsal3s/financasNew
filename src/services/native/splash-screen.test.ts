@@ -1,7 +1,7 @@
 import { SplashScreen } from "@capacitor/splash-screen";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as platformModule from "./platform";
-import { hideNativeSplashScreen, hideSplashScreen } from "./splash-screen";
+import { hideNativeSplashScreen } from "./splash-screen";
 
 vi.mock("@capacitor/splash-screen", () => ({
   SplashScreen: {
@@ -27,7 +27,7 @@ describe("Gateway Nativo — Splash Screen", () => {
     splash.id = "app-splash";
     document.body.appendChild(splash);
 
-    await hideSplashScreen(300);
+    await hideNativeSplashScreen(300);
 
     expect(splash.classList.contains("splash-fade-out")).toBe(true);
     expect(document.body.classList.contains("app-mounted")).toBe(true);

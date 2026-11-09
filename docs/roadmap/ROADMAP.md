@@ -1,5 +1,17 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.0.19 (Build 48)** registra a **Conclusão Integral do Plano 22: Provisionamento Direto de Usuários e Ações Avançadas de Suporte do Superadmin** (2026-11-09):
+> - **(1) Provisionamento Direto de Contas pelo Superadmin (`UserCreateDialog` & `admin-super-action`)**:
+>   - Criação de contas diretamente pelo Superadmin em `/admin/users` com nome, e-mail corporativo/pessoal, telefone/WhatsApp, cargo administrativo e plano SaaS inicial (Free, Pro ou Lifetime);
+>   - **Privacidade Soberana por Padrão (LGPD):** o administrador **nunca** digita nem manipula senhas. O backend gera um link único e temporário de definição de senha via `auth.admin.generateLink({ type: 'invite' })` ou `createUser`;
+>   - Tela de sucesso com input read-only, botão de cópia com feedback sensorial e botão integrado para despacho imediato via WhatsApp oficial do cliente;
+> - **(2) Suporte Avançado e Resolução em 1 Clique (Incidentes 4 e 5 do Runbook)**:
+>   - **Reset de 2FA / TOTP em 1 Clique (`useAdminResetMFA` e RPC `admin_reset_user_mfa`):** elimina a dependência de scripts manuais no SQL Editor para usuários bloqueados por perda de celular, removendo fatores em `auth.mfa_factors` com registro auditado em `public.audit_events`;
+>   - **Revogação Global de Sessões (`useAdminRevokeSessions`):** derruba instantaneamente todos os refresh tokens ativos do usuário em todos os navegadores e dispositivos móveis (APK Android) via Service Role `auth.admin.signOut(id, 'global')`;
+>   - **Gerador de Link de Recuperação / Acesso Imediato (`useAdminGenerateRecoveryLink`):** gera URL temporária de acesso direto para despacho imediato em chamados de urgência;
+> - **(3) Conformidade & Quality Gates 100% Verdes**:
+>   - Typecheck (`tsc -b`): 0 erros; ESLint (`eslint .`): 0 erros e 0 warnings; Testes unitários do módulo Admin (`user-create-dialog.test.tsx`, `user-edit-dialog.test.tsx`, `admin-page.test.tsx`, `tickets-tab.test.tsx`, `admin-login-page.test.tsx`) 100% aprovados (36/36 testes); Build Vite & PWA gerado com sucesso.
+>
 > **v3.0.18 (Build 47)** registra a **Conclusão Integral do Plano 21: Refatoração do Módulo Admin, Login Isolado, Controle de APK Android Beta, Notificações Push aos Clientes, Cofre LGPD e Central de Backups com SHA-256 e DRP** (2026-11-09):
 > - **(1) Módulo Administrativo Isolado & Novo Fluxo de Login (`/admin/login` e `/admin/*`)**:
 >   - Tela dedicada de autenticação administrativa em `/admin/login` com layout limpo e minimalista, desafio Cloudflare Turnstile, bloqueio progressivo exponencial contra ataques de força bruta e validação atômica de perfil administrativo (*fail-closed*);

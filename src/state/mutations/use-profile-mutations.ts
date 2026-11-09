@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateOwnProfile } from "@/data/repositories/profiles";
+import { deleteCurrentUserAccount } from "@/data/rpc";
+import { cancelSubscription } from "@/data/repositories/billing";
 import { USER_ACCESS_KEY } from "@/state/queries/use-user-access";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
@@ -27,6 +29,19 @@ export function useUpdateProfile() {
         description: getErrorMessage(error),
         variant: "destructive",
       });
+    },
+  });
+}
+
+export function useDeleteAccountMutation() {
+  return useMutation({
+    mutationFn: async () => {
+      try {
+        await cancelSubscription();
+      } catch {
+        // Ignora falha de assinatura se o usuário não possuir plano ativo
+      }
+      return deleteCurrentUserAccount();
     },
   });
 }

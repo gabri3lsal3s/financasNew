@@ -31,6 +31,7 @@ import { calculateEqualSplits, calculateLinkedExpenseWeight } from "@/domain/tri
 import { buildExpenseInstallments } from "@/features/transactions/wizard/wizard-state";
 import { resolveBillCompetence } from "@/domain/competence";
 import { pushToast } from "@/services/toast";
+import { todayISO } from "@/lib/date";
 import type { Category } from "@/types";
 import type { TripMember } from "@/types/trips";
 
@@ -62,7 +63,7 @@ export function AddTripExpenseDialog({
   const [description, setDescription] = useState("");
   const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null);
   const [selectedPersonalCategoryId, setSelectedPersonalCategoryId] = useState<string | null>(null);
-  const [expenseDate, setExpenseDate] = useState(() => new Date().toISOString().split("T")[0] ?? "");
+  const [expenseDate, setExpenseDate] = useState(() => todayISO());
   const [selectedPayerId, setSelectedPayerId] = useState("");
   const [splitMode, setSplitMode] = useState<"all" | "selected">("all");
   const [customMemberIds, setCustomMemberIds] = useState<string[]>([]);
@@ -422,7 +423,7 @@ export function AddTripExpenseDialog({
             </label>
             <DatePicker
               value={expenseDate}
-              onChange={(val) => setExpenseDate(val ?? new Date().toISOString().split("T")[0] ?? "")}
+              onChange={(val) => setExpenseDate(val ?? todayISO())}
             />
           </div>
         </div>

@@ -1,17 +1,21 @@
 import { useState } from "react";
-import { Search, Settings2, Shield } from "lucide-react";
+import { Search, Settings2, Shield, UserPlus } from "lucide-react";
 import { Button, EmptyState, Input, Select, Skeleton, Badge } from "@/components/ui";
 import { ROLE_LABELS, STATUS_LABELS } from "@/domain/admin";
-import { useAdminUsers } from "@/state";
-import { UserEditDialog } from "../components";
+import { useAdminUsers, useUserAccess } from "@/state";
+import { UserCreateDialog, UserEditDialog } from "../components";
 import type { AdminUserRow } from "@/types";
 import { triggerSensory } from "@/services/sensory";
 
 export function AdminUsersPage() {
+  const { role: currentUserRole } = useUserAccess();
+  const isSuperadmin = currentUserRole === "superadmin";
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [selectedUser, setSelectedUser] = useState<AdminUserRow | null>(null);
+  const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
 
   const usersQuery = useAdminUsers({
     search: search.trim() ? search.trim() : null,
@@ -25,7 +29,7 @@ export function AdminUsersPage() {
   return (
     <div className="flex flex-col gap-6 w-full min-w-0">
       {/* Cabeçalho */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
             Gestão de Usuários
@@ -34,9 +38,25 @@ export function AdminUsersPage() {
             Consulta cadastral, contato criptografado, concessão de planos e permissões modulares
           </p>
         </div>
-        <Badge variant="muted" size="sm">
-          {users.length} usuários listados
-        </Badge>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {isSuperadmin && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => {
+                triggerSensory("selection");
+                setIsCreateUserOpen(true);
+              }}
+              className="gap-1.5 h-8 text-xs"
+            >
+              <UserPlus className="size-3.5" aria-hidden="true" />
+              <span>Adicionar Usuário</span>
+            </Button>
+          )}
+          <Badge variant="muted" size="sm">
+            {users.length} usuários listados
+          </Badge>
+        </div>
       </div>
 
       {/* Barra de Filtros */}
@@ -216,6 +236,12 @@ export function AdminUsersPage() {
           }}
         />
       )}
+
+      {/* Diálogo de Criação/Provisionamento de Usuário pelo Superadmin */}
+      <UserCreateDialog
+        open={isCreateUserOpen}
+        onOpenChange={setIsCreateUserOpen}
+      />
     </div>
   );
 }

@@ -32,6 +32,9 @@ export function todayLocalIso(): string {
   return toLocalIsoDate(new Date());
 }
 
+/** Alias canônico de data atual local (YYYY-MM-DD). */
+export const todayISO = todayLocalIso;
+
 /** Mês corrente (YYYY-MM) no fuso local. */
 export function currentMonth(): string {
   const now = new Date();

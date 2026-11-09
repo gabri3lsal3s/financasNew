@@ -12,8 +12,7 @@ import {
   type BackupPayload,
   type RestoreModuleKey,
 } from "@/domain/export";
-import { fetchAllUserData } from "@/data/repositories/export";
-import { useRestoreBackup } from "@/state";
+import { useRestoreBackup, fetchUserDataExport } from "@/state";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { StepValidation } from "./step-validation";
@@ -142,7 +141,7 @@ export function RestoreWizardDialog({
     try {
       let currentExisting = existingData;
       if (!currentExisting) {
-        const livePayload = await fetchAllUserData();
+        const livePayload = await fetchUserDataExport();
         currentExisting = livePayload.data;
         setExistingData(livePayload.data);
       }

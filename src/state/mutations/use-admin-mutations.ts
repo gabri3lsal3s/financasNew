@@ -11,6 +11,11 @@ import {
   adminSendBroadcastNotification,
   adminLogSystemBackup,
   markBroadcastAsRead,
+  adminProvisionUser,
+  adminResetUserMFA,
+  adminRevokeUserSessions,
+  adminGenerateRecoveryLink,
+  type AdminProvisionUserParams,
 } from "@/data/repositories/admin";
 import {
   adminCreateModularInvite,
@@ -453,4 +458,102 @@ export function useMarkBroadcastAsRead() {
     },
   });
 }
+
+export function useAdminProvisionUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: AdminProvisionUserParams) => adminProvisionUser(params),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_METRICS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
+      pushToast({
+        title: "Usuário provisionado com sucesso",
+        description: "A conta foi criada e o link de ativação soberana foi gerado.",
+        variant: "success",
+      });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao provisionar usuário",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useAdminResetMFA() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (userId: string) => adminResetUserMFA(userId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
+      pushToast({
+        title: "Autenticador 2FA removido",
+        description: "Os fatores de segundo fator foram desativados com sucesso.",
+        variant: "success",
+      });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao desativar 2FA",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useAdminRevokeSessions() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (userId: string) => adminRevokeUserSessions(userId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
+      pushToast({
+        title: "Sessões encerradas",
+        description: "Todos os tokens e sessões ativas do usuário foram invalidados.",
+        variant: "success",
+      });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao revogar sessões",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useAdminGenerateRecoveryLink() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { userId: string; email: string }) =>
+      adminGenerateRecoveryLink(params.userId, params.email),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
+      pushToast({
+        title: "Link gerado com sucesso",
+        description: "O link de recuperação temporário foi gerado para envio ao cliente.",
+        variant: "success",
+      });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao gerar link de recuperação",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 

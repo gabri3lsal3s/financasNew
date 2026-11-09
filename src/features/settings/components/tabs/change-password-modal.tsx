@@ -8,7 +8,7 @@ import {
   PasswordInput,
   Alert,
 } from "@/components/ui";
-import { changeUserPassword } from "@/data/auth";
+import { changeUserPassword } from "@/hooks/use-auth";
 import { checkPasswordRequirements } from "@/domain/validation";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";

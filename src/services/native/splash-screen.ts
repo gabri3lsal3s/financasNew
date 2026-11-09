@@ -6,7 +6,7 @@ import { isNativePlatform } from "./platform";
  * Na Web/PWA, aciona a animação de fade-out do elemento #app-splash e o remove do DOM.
  * No ambiente nativo (Capacitor/Android), invoca o plugin oficial com fadeOutDuration.
  */
-export async function hideSplashScreen(fadeOutDuration = 350): Promise<void> {
+export async function hideNativeSplashScreen(fadeOutDuration = 350): Promise<void> {
   // 1. Web/PWA: fade suave do elemento #app-splash
   if (typeof document !== "undefined") {
     const splash = document.getElementById("app-splash");
@@ -33,8 +33,3 @@ export async function hideSplashScreen(fadeOutDuration = 350): Promise<void> {
     }
   }
 }
-
-/**
- * Alias retrocompatível com a API nativa anterior.
- */
-export const hideNativeSplashScreen = hideSplashScreen;

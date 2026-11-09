@@ -29,11 +29,10 @@ import {
   Modal,
   ModalFooter,
 } from "@/components/ui";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, requestUserEmailChange } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useUserAccess, useUserSubscription, useUpdateProfile } from "@/state";
 import { getSupabase } from "@/data/client";
-import { requestUserEmailChange } from "@/data/auth";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";

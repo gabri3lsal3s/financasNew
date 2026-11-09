@@ -1,7 +1,10 @@
 import { Bot, Bell, GitBranch, Rocket, Activity, UserPlus, VolumeX } from "lucide-react";
 import { Badge, Button, Skeleton } from "@/components/ui";
-import { useAdminTelegramSettings, useUpdateTelegramSettingsMutation } from "@/state";
-import type { UpdateTelegramSettingsInput } from "@/data/repositories/telegram-settings";
+import {
+  useAdminTelegramSettings,
+  useUpdateTelegramSettingsMutation,
+  type UpdateTelegramSettingsInput,
+} from "@/state";
 
 interface TelegramChannelToggle {
   key: keyof UpdateTelegramSettingsInput;

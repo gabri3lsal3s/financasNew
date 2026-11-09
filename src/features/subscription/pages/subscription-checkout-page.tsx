@@ -32,10 +32,7 @@ import { pushToast } from "@/services/toast";
 import { getErrorMessage } from "@/services/errors";
 import { cleanCPF, formatCPF, isValidCPF } from "@/domain/validation";
 import { formatCardNumber, formatCardExpiry, detectCardBrand } from "@/services/masks";
-import {
-  createCheckoutSession,
-  type PixCheckoutResult,
-} from "@/data/repositories/billing";
+import { useCheckoutMutation, type PixCheckoutResult } from "@/state";
 import { cn } from "@/lib/utils";
 import { resolveCheckoutBillingSchedule, PLAN_CONFIGS } from "@/domain/subscription";
 import type { SubscriptionPlan } from "@/types";
@@ -125,6 +122,7 @@ export function SubscriptionCheckoutPage() {
   const [copiedPix, setCopiedPix] = useState(false);
 
   const queryClient = useQueryClient();
+  const checkoutMutation = useCheckoutMutation();
 
   // Tratamento de callbacks e redirecionamentos de gateways
   useEffect(() => {
@@ -323,7 +321,7 @@ export function SubscriptionCheckoutPage() {
       if (activeMethod === "credit_card") {
         const [expMonth, expYear] = cardExpiry.split("/");
         try {
-          const res = await createCheckoutSession({
+          const res = await checkoutMutation.mutateAsync({
             plan,
             method: "credit_card",
             customer: {
@@ -366,7 +364,7 @@ export function SubscriptionCheckoutPage() {
       } else {
         // PIX (apenas Anual)
         try {
-          const res = await createCheckoutSession({
+          const res = await checkoutMutation.mutateAsync({
             plan: "annual",
             method: "pix",
             customer: {

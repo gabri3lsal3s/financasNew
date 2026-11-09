@@ -16,10 +16,9 @@ import {
   Input,
   Skeleton,
 } from "@/components/ui";
-import { useAdminLogBackup, useAdminSystemBackups } from "@/state";
+import { useAdminLogBackup, useAdminSystemBackups, fetchUserDataExport } from "@/state";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { fetchAllUserData } from "@/data/repositories/export";
 
 async function computeSha256(content: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -46,7 +45,7 @@ export function AdminBackupsPage() {
 
     try {
       // 1. Coleta dados estruturados do sistema
-      const systemData = await fetchAllUserData();
+      const systemData = await fetchUserDataExport();
       const payloadString = JSON.stringify(systemData, null, 2);
       const fileSizeBytes = new Blob([payloadString]).size;
 

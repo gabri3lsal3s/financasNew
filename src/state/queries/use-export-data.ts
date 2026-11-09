@@ -4,6 +4,8 @@ import type { BackupPayload } from "@/domain/export";
 
 export const EXPORT_DATA_QUERY_KEY = ["user-export-data"] as const;
 
+export const fetchUserDataExport = fetchAllUserData;
+
 export function useExportData(options?: { enabled?: boolean }) {
   return useQuery<BackupPayload>({
     queryKey: EXPORT_DATA_QUERY_KEY,

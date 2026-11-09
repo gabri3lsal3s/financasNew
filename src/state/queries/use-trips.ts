@@ -67,19 +67,8 @@ export const TRIP_QUERY_KEYS = {
   public: (token: string) => [...TRIP_QUERY_KEYS.all, "public", token] as const,
 };
 
-const fallbackQueryClient = new QueryClient({
-  defaultOptions: {
-    queries: { enabled: false, retry: false },
-    mutations: { retry: false },
-  },
-});
-
 function useSafeQueryClient(): QueryClient {
-  try {
-    return useQueryClient();
-  } catch {
-    return fallbackQueryClient;
-  }
+  return useQueryClient();
 }
 
 export function useUserTrips() {
@@ -453,8 +442,6 @@ export function useDeleteTripExpenseMutation(tripId: string) {
     },
   }, queryClient);
 }
-
-export const useDeleteTripExpenseSyncMutation = useDeleteTripExpenseMutation;
 
 export interface DeleteTripExpenseLinkedParams {
   personalExpenseId: string;

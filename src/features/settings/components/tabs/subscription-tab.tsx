@@ -19,7 +19,6 @@ import {
   ExternalLink,
   Zap,
 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -33,16 +32,13 @@ import {
   RadioGroup,
 } from "@/components/ui";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
-import { useUserSubscription, USER_SUBSCRIPTION_KEY } from "@/state";
-import { pushToast } from "@/services/toast";
-import { triggerSensory } from "@/services/sensory";
-import { getErrorMessage } from "@/services/errors";
-import { formatCardNumber, formatCardExpiry } from "@/services/masks";
 import {
-  cancelSubscription,
-  updateSubscriptionCreditCard,
-  upgradeToAnnual,
-} from "@/data/repositories/billing";
+  useUserSubscription,
+  useCancelSubscriptionMutation,
+  useUpdateSubscriptionCardMutation,
+  useUpgradeToAnnualMutation,
+} from "@/state";
+import { formatCardNumber, formatCardExpiry } from "@/services/masks";
 import { useInvoices } from "@/state/queries/use-invoices";
 import { cn } from "@/lib/utils";
 import { calculateGuaranteeResidual } from "@/domain/subscription";
@@ -69,7 +65,6 @@ const CANCELLATION_REASONS = [
 
 export function SubscriptionTab() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const subscription = useUserSubscription();
 
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -77,8 +72,6 @@ export function SubscriptionTab() {
   const [cancelReason, setCancelReason] = useState("too_expensive");
   const [cancelStep, setCancelStep] = useState<"reason" | "confirm">("reason");
   const [updateCardOpen, setUpdateCardOpen] = useState(false);
-  const [isCanceling, setIsCanceling] = useState(false);
-  const [isUpgradingToAnnual, setIsUpgradingToAnnual] = useState(false);
 
   const { isWithinGuarantee, daysRemaining: guaranteeDaysRemaining } = useMemo(() => {
     return calculateGuaranteeResidual({
@@ -95,27 +88,14 @@ export function SubscriptionTab() {
       })
     : null;
 
+  const cancelMutation = useCancelSubscriptionMutation();
+  const upgradeMutation = useUpgradeToAnnualMutation();
+
   const handleUpgradeToAnnual = async () => {
-    setIsUpgradingToAnnual(true);
     try {
-      await upgradeToAnnual();
-      await queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
-      triggerSensory("success");
-      pushToast({
-        title: "Migração para Plano Anual realizada!",
-        description: "Você agora economiza 40% e seu ciclo foi estendido por 1 ano.",
-        variant: "default",
-      });
-    } catch (err: unknown) {
-      triggerSensory("destructive");
-      const msg = getErrorMessage(err);
-      pushToast({
-        title: "Erro ao migrar plano",
-        description: msg,
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpgradingToAnnual(false);
+      await upgradeMutation.mutateAsync();
+    } catch {
+      // erro tratado no onSuccess/onError da mutation
     }
   };
 
@@ -125,37 +105,12 @@ export function SubscriptionTab() {
   };
 
   const handleCancelConfirm = async () => {
-    setIsCanceling(true);
     try {
-      await cancelSubscription({ reason: cancelReason });
-      await queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
-      triggerSensory("destructive");
-      if (isWithinGuarantee) {
-        pushToast({
-          title: "Assinatura cancelada e estornada",
-          description:
-            "O reembolso integral de 7 dias foi solicitado ao Asaas e seu acesso Pro foi revogado.",
-          variant: "default",
-        });
-      } else {
-        pushToast({
-          title: "Cancelamento registrado",
-          description: "Seu plano permanece ativo normalmente até o fim do período já pago.",
-          variant: "default",
-        });
-      }
+      await cancelMutation.mutateAsync();
       setCancelOpen(false);
       setCancelStep("reason");
-    } catch (err: unknown) {
-      triggerSensory("destructive");
-      const msg = getErrorMessage(err);
-      pushToast({
-        title: "Erro no cancelamento",
-        description: msg,
-        variant: "destructive",
-      });
-    } finally {
-      setIsCanceling(false);
+    } catch {
+      // erro já notificado pela mutation
     }
   };
 
@@ -254,16 +209,16 @@ export function SubscriptionTab() {
             <Button
               type="button"
               size="sm"
-              disabled={isUpgradingToAnnual}
+              disabled={upgradeMutation.isPending}
               onClick={() => { void handleUpgradeToAnnual(); }}
               className="gap-2 shrink-0 cursor-pointer"
             >
-              {isUpgradingToAnnual ? (
+              {upgradeMutation.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
               ) : (
                 <Zap className="size-3.5" aria-hidden="true" />
               )}
-              {isUpgradingToAnnual ? "Migrando..." : "Migrar para Anual (-40%)"}
+              {upgradeMutation.isPending ? "Migrando..." : "Migrar para Anual (-40%)"}
             </Button>
           </CardContent>
         </Card>
@@ -342,7 +297,7 @@ export function SubscriptionTab() {
                   type="button"
                   variant="destructive"
                   size="sm"
-                  disabled={isCanceling}
+                  disabled={cancelMutation.isPending}
                   onClick={() => setCancelOpen(true)}
                   className="gap-2 cursor-pointer"
                 >
@@ -361,7 +316,7 @@ export function SubscriptionTab() {
                   type="button"
                   variant="destructive"
                   size="sm"
-                  disabled={isCanceling}
+                  disabled={cancelMutation.isPending}
                   onClick={() => setCancelOpen(true)}
                   className="gap-2 cursor-pointer"
                 >
@@ -460,7 +415,7 @@ export function SubscriptionTab() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={isCanceling}
+                  disabled={cancelMutation.isPending}
                   onClick={() => setCancelStep("reason")}
                   className="cursor-pointer"
                 >
@@ -470,12 +425,12 @@ export function SubscriptionTab() {
                   type="button"
                   variant="destructive"
                   size="sm"
-                  disabled={isCanceling}
+                  disabled={cancelMutation.isPending}
                   onClick={() => { void handleCancelConfirm(); }}
                   className="gap-2 cursor-pointer"
                 >
-                  {isCanceling && <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />}
-                  {isCanceling
+                  {cancelMutation.isPending && <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />}
+                  {cancelMutation.isPending
                     ? "Processando..."
                     : isWithinGuarantee
                     ? "Confirmar e Estornar"
@@ -719,11 +674,11 @@ interface UpdateCardModalProps {
 }
 
 function UpdateCardModal({ open, onOpenChange }: UpdateCardModalProps) {
+  const updateCardMutation = useUpdateSubscriptionCardMutation();
   const [holderName, setHolderName] = useState("");
   const [cardNumber, setCardNumber] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCcv, setCardCcv] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
@@ -756,9 +711,8 @@ function UpdateCardModal({ open, onOpenChange }: UpdateCardModalProps) {
       return;
     }
 
-    setIsSaving(true);
     try {
-      await updateSubscriptionCreditCard({
+      await updateCardMutation.mutateAsync({
         holderName: holderName.trim().toUpperCase(),
         number: rawNumber,
         expiryMonth: expMonth.padStart(2, "0"),
@@ -766,23 +720,14 @@ function UpdateCardModal({ open, onOpenChange }: UpdateCardModalProps) {
         ccv: cardCcv,
       });
 
-      triggerSensory("success");
-      pushToast({
-        title: "Cartão atualizado com sucesso!",
-        description: "As próximas cobranças utilizarão o novo cartão informado.",
-        variant: "default",
-      });
       onOpenChange(false);
       setHolderName("");
       setCardNumber("");
       setCardExpiry("");
       setCardCcv("");
     } catch (err: unknown) {
-      triggerSensory("destructive");
       const msg = err instanceof Error ? err.message : "Falha ao atualizar cartão no Asaas.";
       setError(msg);
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -853,17 +798,17 @@ function UpdateCardModal({ open, onOpenChange }: UpdateCardModalProps) {
             type="button"
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            disabled={isSaving}
+            disabled={updateCardMutation.isPending}
           >
             Cancelar
           </Button>
           <Button
             type="button"
             onClick={() => { void handleSubmit(); }}
-            disabled={isSaving}
+            disabled={updateCardMutation.isPending}
             className="gap-2"
           >
-            {isSaving ? (
+            {updateCardMutation.isPending ? (
               <>
                 <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                 Atualizando no Asaas...

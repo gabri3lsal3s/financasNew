@@ -17,6 +17,7 @@ import {
 import { useSubmitPublicTripExpenseMutation } from "@/state/queries/use-trips";
 import { usePublicTripGuestIdentity } from "../hooks/use-public-trip-guest-identity";
 import { calculateEqualSplits } from "@/domain/trips/trip-math";
+import { todayISO } from "@/lib/date";
 import type { PublicTripMember } from "@/types/trips";
 
 export interface AddPublicTripExpenseDialogProps {
@@ -55,9 +56,7 @@ export function AddPublicTripExpenseDialog({
   const [amountCents, setAmountCents] = useState<number>(0);
   const [description, setDescription] = useState("");
   const [categoryName, setCategoryName] = useState("Alimentação");
-  const [expenseDate, setExpenseDate] = useState<string>(
-    () => new Date().toISOString().split("T")[0] ?? ""
-  );
+  const [expenseDate, setExpenseDate] = useState<string>(() => todayISO());
   const [selectedPayerId, setSelectedPayerId] = useState<string>("");
   const [splitMode, setSplitMode] = useState<"all" | "selected">("all");
   const [customMemberIds, setCustomMemberIds] = useState<string[]>([]);
@@ -242,7 +241,7 @@ export function AddPublicTripExpenseDialog({
             <DatePicker
               value={expenseDate || ""}
               onChange={(val) =>
-                setExpenseDate(val || new Date().toISOString().split("T")[0] || "")
+                setExpenseDate(val || todayISO())
               }
             />
           </div>

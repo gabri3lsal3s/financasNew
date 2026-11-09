@@ -1,14 +1,14 @@
 import { App } from "@capacitor/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  getBiometricLockTimeoutMinutes,
+  getAppLockGraceMinutes,
   initAppLockListener,
   isAppLocked,
   isBiometricLockEnabled,
   isPrivacyShieldEnabled,
   setAppLocked,
   setBiometricLockEnabled,
-  setBiometricLockTimeoutMinutes,
+  setAppLockGraceMinutes,
   setPrivacyShieldEnabled,
   syncPrivacyShield,
   subscribeAppLock,
@@ -33,13 +33,13 @@ describe("Gateway Nativo — App Lock & Biometria", () => {
 
   it("gerencia preferências de bloqueio biométrico e timeout", () => {
     expect(isBiometricLockEnabled()).toBe(false);
-    expect(getBiometricLockTimeoutMinutes()).toBe(1);
+    expect(getAppLockGraceMinutes()).toBe(1);
 
     setBiometricLockEnabled(true);
     expect(isBiometricLockEnabled()).toBe(true);
 
-    setBiometricLockTimeoutMinutes(5);
-    expect(getBiometricLockTimeoutMinutes()).toBe(5);
+    setAppLockGraceMinutes(5);
+    expect(getAppLockGraceMinutes()).toBe(5);
   });
 
   it("gerencia preferência do Privacy Shield e espelho ativo", () => {
@@ -165,7 +165,7 @@ describe("Gateway Nativo — App Lock & Biometria", () => {
     });
 
     setBiometricLockEnabled(true);
-    setBiometricLockTimeoutMinutes(1);
+    setAppLockGraceMinutes(1);
     vi.spyOn(biometricsModule, "isBiometricAuthInProgress").mockReturnValue(false);
 
     const cleanup = initAppLockListener();

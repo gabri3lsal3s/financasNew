@@ -1,2 +1,4 @@
 export * from "./position-types";
-export { SortableHeader } from "./position-table-header";
+export * from "./position-table-header";
+export * from "./position-closed-section";
+export * from "./position-mobile-card";

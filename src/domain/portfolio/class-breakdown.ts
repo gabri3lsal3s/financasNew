@@ -18,6 +18,7 @@ import type {
   FixedIncomeRateType,
   PortfolioAsset,
 } from "@/types";
+import { todayISO } from "@/domain/debts";
 import {
   FII_MACRO_CATEGORY_LABELS,
   FIXED_INCOME_INDEXER_LABELS,
@@ -755,7 +756,7 @@ export function calculateMonthsElapsed(startDateStr: string, endDateStr?: string
   const startYear = parseInt(startDateStr.slice(0, 4), 10);
   const startMonth = parseInt(startDateStr.slice(5, 7), 10);
 
-  const cleanEnd = endDateStr ?? new Date().toISOString().slice(0, 10);
+  const cleanEnd = endDateStr ?? todayISO();
   const endYear = parseInt(cleanEnd.slice(0, 4), 10);
   const endMonth = parseInt(cleanEnd.slice(5, 7), 10);
 
@@ -911,5 +912,78 @@ export function detectClassInceptions(
   };
 
   return result;
+}
+
+export interface PositionCalculationRow {
+  assetClass: string | null;
+  valueBRL: number;
+  pct: number;
+  unrealizedPnl: number;
+  dividends?: number;
+  totalCostBRL?: number;
+  totalCost?: number;
+}
+
+export interface CalculatedClassGroup<T extends PositionCalculationRow> {
+  className: string;
+  rows: T[];
+  totalValueBRL: number;
+  totalPct: number;
+  totalPnl: number;
+  totalCostBRL: number;
+  totalDividends: number;
+  totalReturnPnl: number;
+  totalReturnPct: number | null;
+  unrealizedPct: number | null;
+  count: number;
+}
+
+/**
+ * Agrupa linhas de posições patrimoniais por classe de ativo e calcula métricas financeiras agregadas
+ * (Valor BRL, PnL Não Realizado, Custo Total, Proventos, Retorno Total e Percentuais).
+ * Regra AGENTS.md §3: Todo cálculo de negócio vive em src/domain/ como função pura.
+ */
+export function calculatePositionClassGroups<T extends PositionCalculationRow>(
+  rows: readonly T[],
+  sortFn?: (rows: T[]) => T[],
+): CalculatedClassGroup<T>[] {
+  const groupsMap = new Map<string, T[]>();
+  for (const row of rows) {
+    const cls = row.assetClass || "Outros";
+    const list = groupsMap.get(cls) ?? [];
+    list.push(row);
+    groupsMap.set(cls, list);
+  }
+
+  const groups: CalculatedClassGroup<T>[] = [];
+  for (const [className, groupRows] of groupsMap.entries()) {
+    const totalValueBRL = groupRows.reduce((sum, r) => sum + r.valueBRL, 0);
+    const totalPct = groupRows.reduce((sum, r) => sum + r.pct, 0);
+    const totalPnl = groupRows.reduce((sum, r) => sum + r.unrealizedPnl, 0);
+    const totalDividends = groupRows.reduce((sum, r) => sum + (r.dividends ?? 0), 0);
+    const totalCostBRL = groupRows.reduce((sum, r) => {
+      const cost = r.totalCostBRL ?? r.totalCost ?? (r.valueBRL - r.unrealizedPnl);
+      return sum + Math.max(0, cost);
+    }, 0);
+    const unrealizedPct = totalCostBRL > 0 ? (totalPnl / totalCostBRL) * 100 : null;
+    const totalReturnPnl = Math.round((totalPnl + totalDividends) * 100) / 100;
+    const totalReturnPct = totalCostBRL > 0 ? (totalReturnPnl / totalCostBRL) * 100 : null;
+
+    groups.push({
+      className,
+      rows: sortFn ? sortFn(groupRows) : groupRows,
+      totalValueBRL,
+      totalPct,
+      totalPnl,
+      totalCostBRL,
+      totalDividends,
+      totalReturnPnl,
+      totalReturnPct,
+      unrealizedPct,
+      count: groupRows.length,
+    });
+  }
+
+  return groups;
 }
 

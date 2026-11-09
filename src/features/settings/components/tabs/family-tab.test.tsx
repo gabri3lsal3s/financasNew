@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FamilyTab } from "./family-tab";
 import * as familyHooks from "@/state/queries/use-family";
 import * as toastService from "@/services/toast";
-import type { MyFamilyData } from "@/data/repositories/families";
+import type { MyFamilyData } from "@/types";
 
 vi.mock("@/services/toast", () => ({
   pushToast: vi.fn(),

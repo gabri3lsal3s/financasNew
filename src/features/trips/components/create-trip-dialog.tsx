@@ -16,6 +16,7 @@ import { Plus, Trash2, Users } from "lucide-react";
 import { useCreateTripMutation } from "@/state/queries/use-trips";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserAccess } from "@/state/queries/use-user-access";
+import { todayISO, toLocalIsoDate } from "@/lib/date";
 import type { TripPixKeyType } from "@/types/trips";
 
 export interface CreateTripDialogProps {
@@ -45,11 +46,9 @@ export function CreateTripDialog({
   const [destination, setDestination] = useState("");
   const [hostName, setHostName] = useState(defaultHostName);
   const [prevDefaultHostName, setPrevDefaultHostName] = useState(defaultHostName);
-  const [startDate, setStartDate] = useState(() =>
-    new Date().toISOString().split("T")[0]
-  );
+  const [startDate, setStartDate] = useState(() => todayISO());
   const [endDate, setEndDate] = useState(() =>
-    new Date(Date.now() + 5 * 86400000).toISOString().split("T")[0]
+    toLocalIsoDate(new Date(Date.now() + 5 * 86400000))
   );
 
   if (defaultHostName !== prevDefaultHostName) {

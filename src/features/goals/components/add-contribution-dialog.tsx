@@ -9,6 +9,7 @@ import {
   MoneyInput,
 } from "@/components/ui";
 import { useUpdatePublicShare } from "@/state";
+import { todayISO } from "@/lib/date";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { GoalContribution, PublicShare } from "@/types";
@@ -27,13 +28,13 @@ export function AddContributionDialog({
   const updateShareMutation = useUpdatePublicShare();
   const [amountCents, setAmountCents] = useState(0);
   const [contributorName, setContributorName] = useState("");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => todayISO());
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleClose = () => {
     setAmountCents(0);
     setContributorName("");
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(todayISO());
     onOpenChange(false);
   };
 
@@ -50,7 +51,7 @@ export function AddContributionDialog({
         id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `contrib-${Date.now()}`,
         amount_cents: amountCents,
         contributor_name: contributorName.trim() || undefined,
-        date: date || new Date().toISOString().slice(0, 10),
+        date: date || todayISO(),
       };
 
       const existingContributions = (share.payload?.contributions as GoalContribution[] | undefined) ?? [];
@@ -140,7 +141,7 @@ export function AddContributionDialog({
           </label>
           <DatePicker
             value={date}
-            onChange={(next) => setDate(next ?? new Date().toISOString().slice(0, 10))}
+            onChange={(next) => setDate(next ?? todayISO())}
           />
         </div>
 

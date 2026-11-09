@@ -52,9 +52,13 @@ import {
   useUserAccess,
   useUserPreferences,
 } from "@/state";
-import { useUserTrips, useTripDetails, TRIP_QUERY_KEYS } from "@/state/queries/use-trips";
+import {
+  useUserTrips,
+  useTripDetails,
+  useAddTripExpenseMutation,
+  TRIP_QUERY_KEYS,
+} from "@/state/queries/use-trips";
 import { useAuth } from "@/hooks/use-auth";
-import { addTripExpense } from "@/data/repositories/trips";
 import { calculateEqualSplits, resolveActiveTripMember } from "@/domain/trips";
 import { useDemoSession } from "@/state/demo-mode";
 import type { RecurrenceFrequency } from "@/domain/recurrences";
@@ -188,6 +192,7 @@ export function LaunchWizard({
   const createIncome = useCreateIncome();
   const createIncomeInstallments = useCreateIncomeInstallments();
   const createRecurrence = useCreateRecurrence();
+  const addTripExpenseMutation = useAddTripExpenseMutation();
 
   const tripMembers = useMemo(
     () => selectedTripDetails.data?.members ?? [],
@@ -511,7 +516,7 @@ export function LaunchWizard({
                 memberIds: currentMembers.map((m) => m.id),
                 payerMemberId: payerMember.id,
               });
-              await addTripExpense({
+              await addTripExpenseMutation.mutateAsync({
                 trip_id: state.tripId,
                 paid_by_member_id: payerMember.id,
                 amount_cents: state.valueCents,

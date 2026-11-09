@@ -13,6 +13,7 @@ import {
   DatePicker,
 } from "@/components/ui";
 import { useAddTripMemberMutation } from "@/state/queries/use-trips";
+import { todayISO } from "@/lib/date";
 import type { TripPixKeyType } from "@/types/trips";
 
 export interface AddTripMemberDialogProps {
@@ -37,7 +38,7 @@ export function AddTripMemberDialog({
   const [pixKey, setPixKey] = useState("");
   const [pixKeyType, setPixKeyType] = useState<TripPixKeyType>("cpf");
   const [participationMode, setParticipationMode] = useState<"all" | "from_date">("all");
-  const [joinedDate, setJoinedDate] = useState(() => new Date().toISOString().split("T")[0] ?? "");
+  const [joinedDate, setJoinedDate] = useState(() => todayISO());
 
   const addMemberMutation = useAddTripMemberMutation();
 
@@ -168,7 +169,7 @@ export function AddTripMemberDialog({
               </label>
               <DatePicker
                 value={joinedDate}
-                onChange={(val) => setJoinedDate(val ?? new Date().toISOString().split("T")[0] ?? "")}
+                onChange={(val) => setJoinedDate(val ?? todayISO())}
               />
               <p className="text-[11px] text-muted-foreground">
                 Despesas gerais realizadas antes desta data não serão cobradas deste amigo.

@@ -16,7 +16,13 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
         // logo-full.png (lockup da marca, ~5 MB) é asset estático fora do runtime:
         // fica fora do precache para não estourar o limite do Workbox (2 MiB).
-        globIgnores: ["**/brand/logo-full.png"],
+        globIgnores: [
+          "**/brand/logo-full.png",
+          "**/pdfjs-*",
+          "**/vendor-sentry-*",
+          "**/admin-*",
+        ],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         // SPA: rotas client-side sempre carregam o App Shell do cache (instante);
         // o estado offline é tratado na própria UI (erros explícitos + retry).
         navigateFallback: "/index.html",
@@ -46,6 +52,15 @@ export default defineConfig({
             options: {
               cacheName: "static-images",
               expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+          // Chunks pesados sob demanda (PDF/OCR/Sentry/Admin): cacheados apenas em tempo de execução
+          {
+            urlPattern: /\/assets\/(?:pdfjs|vendor-sentry|admin-).*\.js$/i,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "on-demand-chunks",
+              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 30 },
             },
           },
         ],

@@ -12,6 +12,7 @@
 import { formatBRL, medianOf, type ExpenseLike } from "./recurrences";
 import { isOccurrenceIgnored, type FeedbackMap } from "./feedback";
 import { normalizeText, stripTemporalSuffixes } from "./shared";
+import { todayISO as getTodayISO } from "@/domain/debts";
 
 export const MONTH_NAMES_FULL_PTBR = [
   "Janeiro",
@@ -118,7 +119,7 @@ export function detectAnnualCommitments(
   expenses: readonly ExpenseLike[],
   options: DetectAnnualCommitmentsOptions = {},
 ): AnnualCommitment[] {
-  const todayISO = options.todayISO ?? new Date().toISOString().slice(0, 10);
+  const todayISO = options.todayISO ?? getTodayISO();
   const currentYear = parseInt(todayISO.slice(0, 4), 10);
   const feedbackMap = options.feedbackMap ?? {};
 
@@ -286,7 +287,7 @@ export function detectWeeklyCommitments(
   expenses: readonly ExpenseLike[],
   options: DetectWeeklyCommitmentsOptions = {},
 ): WeeklyCommitment[] {
-  const todayISO = options.todayISO ?? new Date().toISOString().slice(0, 10);
+  const todayISO = options.todayISO ?? getTodayISO();
   const feedbackMap = options.feedbackMap ?? {};
 
   // Filtra despesas com data válida e sem parcelamentos

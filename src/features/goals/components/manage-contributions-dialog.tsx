@@ -20,6 +20,7 @@ import {
 } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { useUpdatePublicShare } from "@/state";
+import { todayISO } from "@/lib/date";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { GoalContribution, PublicShare } from "@/types";
@@ -41,7 +42,7 @@ export function ManageContributionsDialog({
   const [isAddingOpen, setIsAddingOpen] = useState(false);
   const [newAmountCents, setNewAmountCents] = useState(0);
   const [newContributorName, setNewContributorName] = useState("");
-  const [newDate, setNewDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [newDate, setNewDate] = useState(() => todayISO());
 
   // Modo de Edição de uma contribuição específica
   const [editingContribId, setEditingContribId] = useState<string | null>(null);
@@ -137,7 +138,7 @@ export function ManageContributionsDialog({
       id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `contrib-${Date.now()}`,
       amount_cents: newAmountCents,
       contributor_name: newContributorName.trim() || undefined,
-      date: newDate || new Date().toISOString().slice(0, 10),
+      date: newDate || todayISO(),
     };
 
     const updatedList = [...contributions, newContrib];
@@ -145,7 +146,7 @@ export function ManageContributionsDialog({
 
     setNewAmountCents(0);
     setNewContributorName("");
-    setNewDate(new Date().toISOString().slice(0, 10));
+    setNewDate(todayISO());
     setIsAddingOpen(false);
   };
 
@@ -241,7 +242,7 @@ export function ManageContributionsDialog({
                 </label>
                 <DatePicker
                   value={newDate}
-                  onChange={(next) => setNewDate(next ?? new Date().toISOString().slice(0, 10))}
+                  onChange={(next) => setNewDate(next ?? todayISO())}
                 />
               </div>
             </div>

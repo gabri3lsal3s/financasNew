@@ -12,7 +12,7 @@ import {
   useTogglePortfolioAssetFamily,
 } from "@/state";
 import { isAssetCashLike } from "@/domain/family";
-import type { FamilyMemberWithProfile } from "@/data/repositories/families";
+import type { FamilyMemberWithProfile } from "@/types";
 import { cn } from "@/lib/utils";
 
 export interface FamilyShareAssetsDialogProps {
