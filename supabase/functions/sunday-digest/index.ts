@@ -34,7 +34,7 @@ Deno.serve(async (req: Request) => {
     // Identifica usuários ativos para consolidação semanal
     const { data: profiles, error: profErr } = await supabaseAdmin
       .from("profiles")
-      .select("id, email, full_name")
+      .select("id, email, name")
       .limit(100);
 
     if (profErr) {

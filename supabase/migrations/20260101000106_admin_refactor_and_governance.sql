@@ -135,8 +135,8 @@ create policy broadcast_notifications_select on public.admin_broadcast_notificat
 
 create policy broadcast_notifications_write on public.admin_broadcast_notifications
   for all to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (public.is_admin() and auth.uid() is not null)
+  with check (public.is_admin() and auth.uid() is not null);
 
 -- Políticas de RLS para Leituras
 create policy user_notification_reads_policy on public.user_notification_reads
@@ -284,8 +284,8 @@ alter table public.system_backups enable row level security;
 
 create policy system_backups_admin_policy on public.system_backups
   for all to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (public.is_admin() and auth.uid() is not null)
+  with check (public.is_admin() and auth.uid() is not null);
 
 create or replace function public.admin_log_system_backup(
   p_backup_type text default 'manual',

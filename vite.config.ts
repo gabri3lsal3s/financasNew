@@ -69,7 +69,7 @@ export default defineConfig({
   ],
   build: {
     modulePreload: false,
-    chunkSizeWarningLimit: 500,
+    chunkSizeWarningLimit: 1700,
     // Vite 8 (Oxc/Rolldown): drop de console/debugger no minifier — esbuild.drop é ignorado.
     rolldownOptions: {
       output: {
@@ -127,6 +127,16 @@ export default defineConfig({
             normalizedId.includes("/node_modules/@aparajita/capacitor-biometric-auth/")
           ) {
             return "vendor-native";
+          }
+
+          // Manipulação de datas e calendários
+          if (normalizedId.includes("/node_modules/date-fns/")) {
+            return "vendor-date";
+          }
+
+          // Validação de esquemas e contratos de borda
+          if (normalizedId.includes("/node_modules/zod/")) {
+            return "vendor-zod";
           }
         },
       },

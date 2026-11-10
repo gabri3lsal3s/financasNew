@@ -14,6 +14,16 @@ vi.mock("@/state", () => ({
   }),
   useMyFamily: () => ({ data: null }),
   useFamilyMode: () => ({ isFamilyModeEnabled: false }),
+  useTripMode: () => ({
+    isTripModeEnabled: false,
+    isLoading: false,
+    toggleTripMode: vi.fn(),
+  }),
+  usePermission: () => ({
+    canWrite: true,
+    canRead: true,
+    level: "write",
+  }),
   useAppMode: () => ({
     appMode: mockAppMode,
     isInvestorMode: true,

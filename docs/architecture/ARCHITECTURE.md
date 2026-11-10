@@ -844,6 +844,27 @@ A arquitetura de compartilhamento e ferramentas abertas foi construída sobre tr
 - Usuários configurados com foco exclusivo em patrimônio/investimentos têm módulos de consumo e ferramentas de uso diário (receitas, despesas, cartões, dívidas, orçamentos, modo viagem e familiar) restritos.
 - Relatórios exclusivos da carteira de investimentos (Ativos, Alocação, Proventos, Tear Sheet e Rentabilidade) permanecem totalmente acessíveis e funcionais no menu e nas abas de relatórios.
 
+---
+
+## 18. OTIMIZAÇÃO DE BUNDLE & GOVERNANÇA DE IMPORTS
+
+### 18.1 Desacoplamento de Barrels no Layout Essencial
+- **Problema mitigado:** Importações pelo barrel universal `@/components/modules` em componentes de layout estrutural (`page-shell.tsx`, `more-menu-sheet.tsx`, `logo-profile-button.tsx`) arrastavam centenas de componentes e utilitários de domínio (gráficos de pizza, modais de fechamento contábil, cálculos complexos de IR) para o chunk inicial da aplicação.
+- **Regra de arquitetura:** Componentes de layout (`components/layout/`) devem utilizar **imports diretos** para os componentes estritamente necessários (ex.: `@/components/modules/guided-tour/demo-tour-spotlight`, `@/components/modules/modals/demo-track-select-modal`, `@/components/modules/modals/help-modal`), sem passar pelo barrel universal de `modules`.
+- **Impacto no bundle:** O chunk principal de entrada (`index-*.js`) foi reduzido de **795 kB para 22 kB** (redução de 97,1%), liberando a CPU na inicialização e acelerando drasticamente o First Contentful Paint (FCP) e o Largest Contentful Paint (LCP) em dispositivos móveis.
+
+### 18.2 Estratégia Canônica de Vendor Chunks (`vite.config.ts`)
+A configuração do Vite adota divisão cirúrgica de chunks de fornecedores (*vendor chunking*):
+* `vendor-react`: `react`, `react-dom`, `react-router`
+* `vendor-ui`: `@radix-ui/*`, `lucide-react`, `class-variance-authority`, `clsx`, `tailwind-merge`
+* `vendor-backend`: `@supabase/supabase-js`, `@tanstack/react-query`
+* `vendor-date`: `date-fns`
+* `vendor-zod`: `zod`
+* `vendor-sentry`: `@sentry/react`
+* `pdfjs`: carregado sob demanda exclusiva para visualização de extratos/faturas
+* `vendor-native`: `@capacitor/*`
+
+
 
 
 

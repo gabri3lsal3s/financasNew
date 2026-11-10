@@ -14,7 +14,9 @@ import {
 } from "lucide-react";
 import { Modal, Button, LivePulseBeacon, Badge } from "@/components/ui";
 import { BrandLogo } from "@/components/layout/brand-logo";
-import { SubscriptionBadge, DemoTrackSelectModal, HelpModal } from "@/components/modules";
+import { SubscriptionBadge } from "@/components/modules/subscription/subscription-badge";
+import { DemoTrackSelectModal } from "@/components/modules/demo-track-select-modal";
+import { HelpModal } from "@/components/modules/help-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useUserSubscription } from "@/state";

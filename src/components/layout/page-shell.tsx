@@ -16,7 +16,8 @@ import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Badge, Button, Skeleton } from "@/components/ui";
-import { DemoTourSpotlight, NativeOnboardingDialog } from "@/components/modules";
+import { DemoTourSpotlight } from "@/components/modules/demo-tour-spotlight";
+import { NativeOnboardingDialog } from "@/components/modules/native-onboarding-dialog";
 import { endDemo, useDemoSession } from "@/state/demo-mode";
 import type { LaunchState } from "@/features/transactions/wizard/wizard-state";
 

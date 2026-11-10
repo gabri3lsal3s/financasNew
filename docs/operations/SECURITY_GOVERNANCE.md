@@ -51,8 +51,9 @@ O **Áxis** processa dados financeiros e transacionais sensíveis. A governança
   * **Auditoria Compulsória:** A cada invocação da RPC por um administrador, um evento de auditoria imutável é gravado na tabela `public.audit_events` com ação `REVEAL_CONTACT_DETAILS`, registrando o ID do operador solicitante, o ID do usuário auditado e timestamp UTC em conformidade com a LGPD.
 
 ### 2.3 Edge Functions (billing, cotações, notificações e digests)
-* **CORS allowlist:** Restrito exclusivamente a `financasnew.pages.dev`, `*.financasnew.pages.dev`, `ALLOWED_ORIGINS` e esquemas locais/Capacitor — sem `Access-Control-Allow-Origin: *` em rotas sensíveis e sem permitir projetos arbitrários sob subdomínios de terceiros (`*.pages.dev` / `*.workers.dev`).
-* **Proteção de Cron Jobs (`sunday-digest`):** A execução do digest semanal exige autenticação obrigatória via Bearer token validado contra `SUPABASE_SERVICE_ROLE_KEY` ou `CRON_SECRET`, impedindo exfiltração de dados transacionais e e-mails por chamadas públicas.
+* **CORS allowlist:** Restrito exclusivamente a `axir.com.br`, `*.axir.com.br`, `financasnew.pages.dev`, `*.financasnew.pages.dev`, `ALLOWED_ORIGINS` configurados e esquemas locais/Capacitor — sem `Access-Control-Allow-Origin: *` em rotas sensíveis e sem permitir projetos arbitrários sob subdomínios de terceiros (`*.pages.dev` / `*.workers.dev`).
+* **Proteção contra Side-Channel e Ataques de Temporização (Timing Attacks):** A função de utilidade criptográfica `timingSafeEqualString` (`supabase/functions/_shared/http.ts`) realiza pre-hashing das duas strings via SHA-256 gerando digests fixos de 32 bytes (256 bits) antes da comparação em tempo constante via XOR acumulativo. Isso elimina qualquer vazamento de informação por comprimento de string (*length leakage*) e anula a vulnerabilidade de *early-return*.
+* **Proteção de Cron Jobs (`sunday-digest`):** A execução do digest semanal exige autenticação obrigatória via Bearer token validado contra `SUPABASE_SERVICE_ROLE_KEY` ou `CRON_SECRET`, impedindo exfiltração de dados transacionais e e-mails por chamadas públicas. A consulta a perfis referencia estritamente as colunas canônicas (`id, email, name`) em alinhamento ao schema do PostgreSQL.
 * **Notificações de Suporte (`support-notify`):** Requisições com `payload.record` exigem validação de `x-webhook-secret` contra `WEBHOOK_SECRET` ou `SUPABASE_SERVICE_ROLE_KEY`, eliminando spoofing e spam na integração com Telegram.
 * **Webhook Asaas:** `verify_jwt = false` + token `asaas-access-token` com comparação *timing-safe*; **sem** CORS de browser; tier resolvido estritamente pelo **catálogo determinístico de valores** (`asaas-plans.ts` com validação de `Number.isFinite` e `approxEqual`), impedindo bypass por valores nulos; sincronização automática de `asaas_subscription_id` para renovações recorrentes e registro de auditoria imutável em `audit_events`.
 * **Checkout/manage Asaas:**
@@ -165,6 +166,11 @@ Em cumprimento ao princípio de Minimização de Dados da LGPD (Art. 6º, III):
   * `trip_expenses_insert_policy`: Inserção permitida a qualquer participante ativo da viagem (`is_trip_member` ou `is_trip_host`).
   * `trip_expenses_update_policy`: Edição restrita ao anfitrião ou ao titular que cadastrou/pagou a despesa.
   * `trip_expenses_delete_policy`: Exclusão via REST restrita estritamente ao anfitrião da viagem (`is_trip_host`) ou ao usuário pagador/criador (`auth.uid() = tm.user_id`). Convidados comuns têm o comando `DELETE` bloqueado no kernel do banco.
+
+### 5.5 Auditoria Compulsória de RLS e Governança de Search Path (Migração 000111)
+* **Auditoria de 100% das Tabelas (58 tabelas):** Suíte de testes automatizada (`src/tests/security-audit.test.ts`) valida continuamente a presença de `ENABLE ROW LEVEL SECURITY` em todas as 58 tabelas do banco de dados, falhando preventivamente caso qualquer tabela seja criada sem RLS.
+* **Canonização de `search_path` em Funções Administrativas:** A função RPC de superadmin `admin_reset_user_mfa` foi canonizada com `set search_path = public, pg_temp`, eliminando schemas não controlados do caminho de resolução e prevenindo injeções de namespace (*schema shadowing*).
+* **Defesa Adicional contra Contexto Nulo em Políticas de Escrita:** As políticas `broadcast_notifications_write` e `system_backups_admin_policy` (migração `20260101000111_security_hardening_audit.sql`) foram reforçadas com a cláusula explícita `and auth.uid() is not null`, garantindo que funções que dependem da identidade do operador nunca avaliem positivamente em estados anônimos transientes.
 
 ---
 

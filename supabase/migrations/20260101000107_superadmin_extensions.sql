@@ -8,7 +8,7 @@ create or replace function public.admin_reset_user_mfa(target_user_id uuid)
 returns boolean
 language plpgsql
 security definer
-set search_path = public, auth, pg_temp
+set search_path = public, pg_temp
 as $$
 declare
   v_caller_id uuid := auth.uid();

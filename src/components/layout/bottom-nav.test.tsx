@@ -39,6 +39,16 @@ vi.mock("@/state", () => ({
     isLoading: false,
     toggleFamilyMode: vi.fn(),
   }),
+  useTripMode: () => ({
+    isTripModeEnabled: false,
+    isLoading: false,
+    toggleTripMode: vi.fn(),
+  }),
+  usePermission: () => ({
+    canWrite: true,
+    canRead: true,
+    level: "write",
+  }),
   useAppMode: () => ({
     appMode: mockAppMode,
     isInvestorMode: true,

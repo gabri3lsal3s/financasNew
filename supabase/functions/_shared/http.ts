@@ -15,6 +15,8 @@ const DEFAULT_ALLOWED_ORIGINS = [
   "http://127.0.0.1:4173",
   "capacitor://localhost",
   "https://localhost",
+  "https://axir.com.br",
+  "https://www.axir.com.br",
 ];
 
 /** Origens extras via secret ALLOWED_ORIGINS (CSV), ex.: https://app.exemplo.com */
@@ -33,10 +35,12 @@ export function isOriginAllowed(origin: string | null): boolean {
 
   try {
     const parsed = new URL(origin);
-    // Cloudflare Pages e previews oficiais do projeto financasnew
+    // Cloudflare Pages, previews oficiais e domínio canônico axir.com.br
     if (
       parsed.hostname === "financasnew.pages.dev" ||
-      parsed.hostname.endsWith(".financasnew.pages.dev")
+      parsed.hostname.endsWith(".financasnew.pages.dev") ||
+      parsed.hostname === "axir.com.br" ||
+      parsed.hostname.endsWith(".axir.com.br")
     ) {
       return true;
     }
@@ -92,30 +96,28 @@ export function safeErrorResponse(
   return jsonResponse(req, { error: publicMessage }, status);
 }
 
-/** Comparação em tempo constante para tokens compartilhados (webhook). */
+/**
+ * Comparação estritamente em tempo constante para tokens compartilhados (webhook / auth).
+ * Hasheia ambos os inputs com SHA-256 para uniformizar o comprimento em 32 bytes e eliminar
+ * qualquer vazamento de comprimento por canais laterais de temporização (RFC 2104 / timing-safe).
+ */
 export async function timingSafeEqualString(a: string, b: string): Promise<boolean> {
   const encoder = new TextEncoder();
-  const aBytes = encoder.encode(a);
-  const bBytes = encoder.encode(b);
-  if (aBytes.length !== bBytes.length) {
-    // Compara consigo mesmo para manter custo similar e evitar vazamento por tamanho óbvio curto.
-    const dig = await crypto.subtle.digest("SHA-256", aBytes);
-    await crypto.subtle.digest("SHA-256", bBytes);
-    void dig;
-    return false;
-  }
+  const aHash = new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(a)));
+  const bHash = new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(b)));
+
   // Deno implementa crypto.subtle.timingSafeEqual como extensão WebCrypto
   const subtleWithTiming = crypto.subtle as unknown as {
     timingSafeEqual?: (a: ArrayBufferView, b: ArrayBufferView) => boolean;
   };
   if (typeof subtleWithTiming.timingSafeEqual === "function") {
-    return subtleWithTiming.timingSafeEqual(aBytes, bBytes);
+    return subtleWithTiming.timingSafeEqual(aHash, bHash);
   }
 
-  // Fallback de tempo constante bit a bit (resiste a timing attacks)
+  // Fallback de tempo constante bit a bit em 32 bytes (resiste a timing attacks)
   let mismatch = 0;
-  for (let i = 0; i < aBytes.length; i++) {
-    mismatch |= aBytes[i]! ^ bBytes[i]!;
+  for (let i = 0; i < aHash.length; i++) {
+    mismatch |= aHash[i]! ^ bHash[i]!;
   }
   return mismatch === 0;
 }
