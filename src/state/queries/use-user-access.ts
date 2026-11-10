@@ -309,37 +309,23 @@ export function useUserAccess(targetUserId?: string): UserAccessResult {
 
     const moduleAccess = subscription?.moduleAccess;
 
-    // 4. Regra de proteção da Visão Geral (Overview):
-    // Se overview estiver explicitada no moduleAccess, respeita-a. Caso contrário, deriva do core financeiro.
+    // 4. Funcionalidades Beta / Early Access (restritas a usuários com concessão explícita)
+    if (featureKey === "bank_notification_listener") {
+      const explicitLevel = moduleAccess?.[featureKey];
+      return explicitLevel !== undefined && explicitLevel !== "none";
+    }
+
+    // 5. Override modular explícito para o módulo solicitado
+    if (moduleAccess && moduleAccess[featureKey] !== undefined) {
+      return moduleAccess[featureKey] !== "none";
+    }
+
+    // 6. Visão Geral (Overview)
     if (featureKey === "overview") {
-      if (moduleAccess) {
-        if (moduleAccess.overview !== undefined) {
-          return moduleAccess.overview !== "none";
-        }
-        const hasAnyCoreFinance =
-          (moduleAccess.transactions ?? "none") !== "none" ||
-          (moduleAccess.cards ?? "none") !== "none" ||
-          (moduleAccess.debts ?? "none") !== "none" ||
-          (moduleAccess.budgets ?? "none") !== "none";
-        return hasAnyCoreFinance;
-      }
       return features.overview !== false;
     }
 
-    // 5. Verifica modelo Whitelist Modular na assinatura (user_module_permissions)
-    if (moduleAccess) {
-      const hasAnyOverride = Object.keys(moduleAccess).length > 0;
-      if (hasAnyOverride) {
-        if (moduleAccess[featureKey] !== undefined) {
-          return moduleAccess[featureKey] !== "none";
-        }
-        // Whitelist: se o usuário possui política de restrição modular (overrides),
-        // qualquer módulo não explicitamente concedido torna-se bloqueado ('none').
-        return false;
-      }
-    }
-
-    // 6. Fallback seguro para planos sem overrides (features flags gerais)
+    // 7. Fallback seguro para planos e features gerais (core habilitado por padrão)
     if (features[featureKey] === undefined) {
       return true; // Fallback ativo se não listado em kill-switch
     }

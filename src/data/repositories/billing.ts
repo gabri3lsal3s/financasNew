@@ -82,6 +82,7 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
       firstBillingDate: params.firstBillingDate,
       name: params.customer.name,
       email: params.customer.email,
+      registration: params.registration,
     };
 
     const { data, error } = await getSupabase().functions.invoke("asaas-checkout", {

@@ -1,6 +1,19 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **v3.0.19 (Build 48)** registra a **Conclusão Integral do Plano 22: Provisionamento Direto de Usuários e Ações Avançadas de Suporte do Superadmin** (2026-11-09):
+> **v3.0.20 (Build 49)** registra o **Desacoplamento de Módulos do Plano Base e Isolamento de Funcionalidades Beta com Permissões Granulares Responsivas** (2026-11-10):
+> - **(1) Permissões Modulares Responsivas ao Plano Base**:
+>   - Módulos Core (`overview`, `transactions`, `cards`, `debts`, `budgets`, `investments`, `reports`, `insights`, `reminders`) agora derivam seu acesso dinamicamente e em tempo real do tier e status da assinatura (`subscription.canWrite ? 'write' : 'read'`);
+>   - Ao transitar entre planos (Trial, Pro Anual, Vitalício) ou status de pagamento (Ativa, Em Teste, Inadimplente, Cancelada, Modo Leitura), as permissões dos 9 módulos core são atualizadas instantaneamente sem necessidade de intervenção manual;
+> - **(2) Isolamento de Funcionalidades Beta / Early Access**:
+>   - A tabela `user_module_permissions` fica restrita exclusivamente para conceder funcionalidades experimentais (ex: `bank_notification_listener`) a usuários selecionados pelo Superadmin;
+>   - Eliminação da política de Whitelist cega que bloqueava módulos core caso o usuário recebesse um override beta;
+> - **(3) Higienização Automática e Ergonomia no Superadmin (`UserEditDialog` & Migration 00110)**:
+>   - Redesenho da seção de permissões no modal de usuário, separando visualmente "Funcionalidades Beta (Acesso Selecionado)" de "Módulos do Plano Base";
+>   - Ao salvar ou alterar um plano no Superadmin, overrides manuais legados de módulos core são higienizados automaticamente no banco e na interface;
+>   - Migration SQL `20260101000110_responsive_modular_permissions_and_beta_isolation.sql` aplicada com sucesso no PostgreSQL remoto;
+> - **(4) Quality Gates 100% Verdes**:
+>   - Typecheck (`tsc -b`): 0 erros; ESLint (`eslint .`): 0 erros e 0 warnings; Vitest: 167 arquivos e 2.580 testes aprovados (100%); Build Vite & PWA gerado com sucesso.
+>
 > - **(1) Provisionamento Direto de Contas pelo Superadmin (`UserCreateDialog` & `admin-super-action`)**:
 >   - Criação de contas diretamente pelo Superadmin em `/admin/users` com nome, e-mail corporativo/pessoal, telefone/WhatsApp, cargo administrativo e plano SaaS inicial (Free, Pro ou Lifetime);
 >   - **Privacidade Soberana por Padrão (LGPD):** o administrador **nunca** digita nem manipula senhas. O backend gera um link único e temporário de definição de senha via `auth.admin.generateLink({ type: 'invite' })` ou `createUser`;

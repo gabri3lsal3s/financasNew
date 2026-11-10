@@ -30,11 +30,6 @@ Deno?.serve?.(async (req: Request) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return jsonResponse(req, { error: "Sessão não informada" }, 401);
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
@@ -44,22 +39,70 @@ Deno?.serve?.(async (req: Request) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Fail-closed: nunca usar service_role como chave do cliente de usuário.
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const {
-      data: { user },
-      error: authError,
-    } = await userClient.auth.getUser();
-
-    if (authError || !user) {
-      return jsonResponse(req, { error: "Sessão inválida ou expirada" }, 401);
-    }
-
     const payload = await req.json();
-    const { plan, method, cpf, card, phone } = payload;
+    const { plan, method, cpf, card, phone, registration } = payload;
+
+    let user: { id: string; email?: string; user_metadata?: Record<string, unknown> } | null = null;
+    let isRegistration = false;
+
+    if (registration && registration.email && registration.password) {
+      isRegistration = true;
+      const cleanEmail = String(registration.email).trim().toLowerCase();
+      const cleanName = String(registration.name || "").trim();
+
+      const userClient = createClient(supabaseUrl, anonKey);
+      const { data: signUpData, error: signUpError } = await userClient.auth.signUp({
+        email: cleanEmail,
+        password: String(registration.password),
+        options: {
+          data: {
+            name: cleanName,
+            app_mode: "investor",
+          },
+        },
+      });
+
+      if (signUpError) {
+        return jsonResponse(req, { error: signUpError.message }, 400);
+      }
+
+      if (
+        signUpData.user &&
+        Array.isArray(signUpData.user.identities) &&
+        signUpData.user.identities.length === 0
+      ) {
+        return jsonResponse(
+          req,
+          { error: "Este endereço de e-mail já está cadastrado. Faça login para continuar." },
+          400,
+        );
+      }
+
+      if (!signUpData.user) {
+        return jsonResponse(req, { error: "Não foi possível criar a conta. Tente novamente." }, 400);
+      }
+
+      user = signUpData.user;
+    } else {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) {
+        return jsonResponse(req, { error: "Sessão não informada" }, 401);
+      }
+
+      const userClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const {
+        data: { user: authUser },
+        error: authError,
+      } = await userClient.auth.getUser();
+
+      if (authError || !authUser) {
+        return jsonResponse(req, { error: "Sessão inválida ou expirada" }, 401);
+      }
+
+      user = authUser;
+    }
 
     if (!plan || !["monthly", "annual"].includes(plan)) {
       return jsonResponse(req, { error: "Plano inválido (mensal ou anual)" }, 400);
@@ -177,6 +220,8 @@ Deno?.serve?.(async (req: Request) => {
         qrCodeBase64: qrCode.encodedImage,
         copyPasteKey: qrCode.payload,
         expirationDate: qrCode.expirationDate,
+        needsEmailConfirmation: isRegistration,
+        email: customerEmail,
       });
     }
 
@@ -249,12 +294,18 @@ Deno?.serve?.(async (req: Request) => {
       })
       .eq("user_id", user.id);
 
+    const rawCardNum = String(card.number).replace(/\D/g, "");
+    const cardLast4 = rawCardNum.length >= 4 ? rawCardNum.slice(-4) : "••••";
+
     return jsonResponse(req, {
       ok: true,
       method: "credit_card",
       subscriptionId: subscription.id,
       tier: planMeta.planId,
       status: confirmed ? "active" : "incomplete",
+      needsEmailConfirmation: isRegistration,
+      email: customerEmail,
+      cardLast4,
     });
   } catch (err: unknown) {
     const rawMsg = err instanceof Error ? err.message : String(err);

@@ -18,6 +18,8 @@ import {
   User,
   Mail,
   Zap,
+  MailCheck,
+  ArrowRight,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Badge } from "@/components/ui/badge";
 import { BrandLogo, LoadingScreen, ThemeToggle } from "@/components/layout";
-import { useAuth, signInWithEmail, signUpWithEmail } from "@/hooks/use-auth";
+import { useAuth, signInWithEmail } from "@/hooks/use-auth";
 import { useUserSubscription, USER_SUBSCRIPTION_KEY } from "@/state";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
@@ -120,6 +122,11 @@ export function SubscriptionCheckoutPage() {
   // Estado do PIX gerado
   const [pixResult, setPixResult] = useState<PixCheckoutResult | null>(null);
   const [copiedPix, setCopiedPix] = useState(false);
+
+  // Estado de confirmação de cadastro por e-mail
+  const [confirmationSent, setConfirmationSent] = useState(false);
+  const [confirmedEmail, setConfirmedEmail] = useState("");
+  const [confirmedCardLast4, setConfirmedCardLast4] = useState("");
 
   const queryClient = useQueryClient();
   const checkoutMutation = useCheckoutMutation();
@@ -295,21 +302,10 @@ export function SubscriptionCheckoutPage() {
     setIsPending(true);
 
     try {
-      // 4. Autenticação integrada prévia se não houver sessão ativa
-      if (!session) {
+      // 4. Se não houver sessão ativa e o usuário optou por "Já tenho conta" (login prévio)
+      if (!session && authMode === "login") {
         try {
-          if (authMode === "register") {
-            const signupRes = await signUpWithEmail(authEmail.trim(), authPassword, authName.trim());
-            if (signupRes.needsEmailConfirmation) {
-              pushToast({
-                title: "Cadastro iniciado",
-                description: "Verifique seu e-mail caso receba a confirmação.",
-                variant: "default",
-              });
-            }
-          } else {
-            await signInWithEmail(authEmail.trim(), authPassword);
-          }
+          await signInWithEmail(authEmail.trim(), authPassword);
         } catch (authErr: unknown) {
           setIsPending(false);
           setErrorMessage(getErrorMessage(authErr));
@@ -317,25 +313,47 @@ export function SubscriptionCheckoutPage() {
         }
       }
 
+      const registrationPayload =
+        !session && authMode === "register"
+          ? {
+              name: authName.trim(),
+              email: authEmail.trim(),
+              password: authPassword,
+            }
+          : undefined;
+
+      const customerName = (
+        holderName.trim() ||
+        authName.trim() ||
+        session?.user?.user_metadata?.name ||
+        "Cliente"
+      ).toUpperCase();
+
+      const customerEmail = authEmail.trim() || session?.user?.email || "";
+
       // 5. Processamento do Checkout (Cartão, PIX ou Sessão Hospedada)
       if (activeMethod === "credit_card") {
         const [expMonth, expYear] = cardExpiry.split("/");
+        const rawCardNumber = cardNumber.replace(/\D/g, "");
+
+        let res;
         try {
-          const res = await checkoutMutation.mutateAsync({
+          res = await checkoutMutation.mutateAsync({
             plan,
             method: "credit_card",
             customer: {
-              name: (holderName.trim() || authName.trim() || session?.user?.user_metadata?.name || "Cliente").toUpperCase(),
-              email: authEmail.trim() || session?.user?.email || "",
+              name: customerName,
+              email: customerEmail,
               cpf: cleanCPF(cpf),
             },
             card: {
               holderName: holderName.trim().toUpperCase(),
-              number: cardNumber.replace(/\D/g, ""),
+              number: rawCardNumber,
               expiryMonth: (expMonth || "12").padStart(2, "0"),
               expiryYear: expYear || "28",
               ccv: cardCcv,
             },
+            registration: registrationPayload,
             trialDaysRemaining: billingSchedule.daysUntilFirstCharge,
             firstBillingDate: billingSchedule.firstBillingDate.toISOString(),
           });
@@ -354,6 +372,20 @@ export function SubscriptionCheckoutPage() {
           }
         }
 
+        // Se o cadastro exigiu confirmação de e-mail (novo usuário)
+        if (res && "needsEmailConfirmation" in res && res.needsEmailConfirmation) {
+          setConfirmationSent(true);
+          const cardLast4 = "cardLast4" in res && typeof res.cardLast4 === "string" ? res.cardLast4 : rawCardNumber.slice(-4);
+          setConfirmedCardLast4(cardLast4);
+          triggerSensory("success");
+          pushToast({
+            title: "Conta criada e cartão cadastrado!",
+            description: "Enviamos um link de confirmação para o seu e-mail.",
+            variant: "default",
+          });
+          return;
+        }
+
         triggerSensory("success");
         pushToast({
           title: "Plano Pro ativado com sucesso!",
@@ -369,9 +401,10 @@ export function SubscriptionCheckoutPage() {
             method: "pix",
             customer: {
               name: (authName.trim() || session?.user?.user_metadata?.name || "Cliente").toUpperCase(),
-              email: authEmail.trim() || session?.user?.email || "",
+              email: customerEmail,
               cpf: cleanCPF(cpf),
             },
+            registration: registrationPayload,
           });
 
           if (res.method === "pix") {
@@ -382,6 +415,11 @@ export function SubscriptionCheckoutPage() {
               description: "Pague pelo app do seu banco para ativar sua conta instantaneamente.",
               variant: "default",
             });
+
+            if ("needsEmailConfirmation" in res && res.needsEmailConfirmation) {
+              setConfirmationSent(true);
+              setConfirmedEmail(customerEmail);
+            }
           }
         } catch {
           // Fallback interativo para testes visuais quando Edge Function não conectada
@@ -445,7 +483,72 @@ export function SubscriptionCheckoutPage() {
 
       {/* Corpo com largura canônica max-w-7xl */}
       <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 pt-6 sm:pt-8 pb-[calc(2.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] sm:py-12">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-12 items-start">
+        {confirmationSent ? (
+          <div className="rounded-2xl border border-positive/30 bg-surface p-6 sm:p-8 shadow-xs flex flex-col items-center text-center space-y-5 max-w-xl mx-auto animate-fade-slide-in">
+            <div className="size-14 rounded-2xl bg-positive/10 border border-positive/20 flex items-center justify-center text-positive-strong shadow-xs">
+              <MailCheck className="size-7" aria-hidden="true" />
+            </div>
+
+            <div className="space-y-1.5">
+              <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                Confirme seu endereço de e-mail
+              </h2>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-md">
+                Enviamos um link de ativação seguro para validar sua conta. Sua assinatura do{" "}
+                <strong className="text-foreground">{planInfo.label}</strong> com cobrança automática
+                no cartão já foi configurada com sucesso.
+              </p>
+              <div className="inline-flex items-center px-3.5 py-1 rounded-full bg-muted/40 border border-border/80 text-xs font-semibold text-foreground">
+                {confirmedEmail || authEmail}
+              </div>
+            </div>
+
+            <div className="w-full rounded-xl border border-border/80 bg-muted/20 p-4 text-left space-y-2.5">
+              <div className="flex items-center justify-between text-xs pb-2 border-b border-border/60">
+                <span className="text-muted-foreground">Plano Selecionado</span>
+                <span className="font-semibold text-foreground">
+                  {planInfo.label} ({planInfo.price})
+                </span>
+              </div>
+              {activeMethod === "credit_card" && (
+                <div className="flex items-center justify-between text-xs pb-2 border-b border-border/60">
+                  <span className="text-muted-foreground">Forma de Pagamento</span>
+                  <span className="font-semibold text-foreground flex items-center gap-1.5">
+                    <CreditCard className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    <span>Cartão com final •••• {confirmedCardLast4 || cardNumber.slice(-4)}</span>
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Status da Conta</span>
+                <span className="font-semibold text-warning-strong flex items-center gap-1">
+                  <Clock className="size-3.5" aria-hidden="true" />
+                  <span>Aguardando confirmação por e-mail</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="w-full rounded-xl bg-muted/15 border border-border/60 p-3 text-left space-y-1.5">
+              <p className="text-[11px] font-semibold text-foreground">Dicas importantes:</p>
+              <ul className="text-[11px] text-muted-foreground space-y-1 list-disc list-inside">
+                <li>Verifique sua caixa de entrada e a pasta de spam ou lixo eletrônico.</li>
+                <li>O link de ativação enviado é seguro e válido por 24 horas.</li>
+                <li>Após confirmar no e-mail, faça login para acessar seu painel Pro completo.</li>
+              </ul>
+            </div>
+
+            <Link
+              to={`/entrar${confirmedEmail || authEmail ? `?email=${encodeURIComponent(confirmedEmail || authEmail)}` : ""}`}
+              className="w-full"
+            >
+              <Button className="w-full h-10 text-xs font-semibold gap-1.5 rounded-xl cursor-pointer">
+                <span>Ir para o login</span>
+                <ArrowRight className="size-3.5" aria-hidden="true" />
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-12 items-start">
 
           {/* Coluna esquerda — Resumo do plano + seletor + benefícios (5 colunas desktop, sticky) */}
           <aside className="lg:col-span-5 space-y-6 lg:sticky lg:top-24">
@@ -996,6 +1099,7 @@ export function SubscriptionCheckoutPage() {
             </p>
           </section>
         </div>
+        )}
       </main>
     </div>
   );

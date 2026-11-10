@@ -199,6 +199,9 @@ export async function getMySubscription(): Promise<{
   is_lifetime: boolean;
   is_read_only: boolean;
   can_write: boolean;
+  has_card_registered?: boolean;
+  has_auto_renew?: boolean;
+  asaas_subscription_id?: string | null;
   module_permissions: Record<string, string>;
 } | null> {
   return unwrapRpc(callRpc("get_my_subscription", {}), true);

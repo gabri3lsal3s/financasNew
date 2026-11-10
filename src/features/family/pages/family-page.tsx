@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/layout";
 import { MonthPicker } from "@/components/modules/month-picker";
 import { currentMonth } from "@/lib/date";
 import {
@@ -88,17 +89,15 @@ export function FamilyPage() {
   if (!isFamilyModeEnabled) {
     return (
       <div className="space-y-6" data-testid="family-mode-inactive">
-        <header className="flex flex-col gap-2">
-          <div className="flex items-center gap-2.5">
-            <Users className="size-5 text-muted-foreground" aria-hidden="true" />
-            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-              Orçamento Familiar
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa.
-          </p>
-        </header>
+        <PageHeader
+          title={
+            <div className="flex items-center gap-2.5">
+              <Users className="size-5 text-muted-foreground" aria-hidden="true" />
+              <span>Orçamento Familiar</span>
+            </div>
+          }
+          description="Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa."
+        />
 
         <Card className="border-border/80 bg-surface shadow-xs p-6 sm:p-10 rounded-2xl text-center">
           <EmptyState
@@ -139,17 +138,15 @@ export function FamilyPage() {
   if (!myFamilyData?.family) {
     return (
       <div className="space-y-6">
-        <header className="flex flex-col gap-2">
-          <div className="flex items-center gap-2.5">
-            <Users className="size-5 text-muted-foreground" aria-hidden="true" />
-            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-              Orçamento Familiar
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa.
-          </p>
-        </header>
+        <PageHeader
+          title={
+            <div className="flex items-center gap-2.5">
+              <Users className="size-5 text-muted-foreground" aria-hidden="true" />
+              <span>Orçamento Familiar</span>
+            </div>
+          }
+          description="Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa."
+        />
 
         <Card className="border-border/80 bg-surface shadow-xs p-6 sm:p-10 rounded-2xl text-center">
           <EmptyState
@@ -185,14 +182,16 @@ export function FamilyPage() {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho da Página */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5 flex-wrap">
+      <PageHeader
+        title={
+          <div className="flex items-center gap-2.5">
             <Users className="size-5 text-muted-foreground" aria-hidden="true" />
-            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-              Orçamento Familiar
-            </h1>
+            <span>Orçamento Familiar</span>
+          </div>
+        }
+        description="Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa."
+        badge={
+          <div className="flex items-center gap-1.5 flex-wrap">
             <Badge variant="default" size="sm">
               {myFamilyData.family.name}
             </Badge>
@@ -200,44 +199,42 @@ export function FamilyPage() {
               {activeMembersCount} de 6 membros
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa.
-          </p>
-        </div>
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            {isOwner && !isFamilyFull && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  setSettingsTab("members");
+                  setIsSettingsOpen(true);
+                }}
+                aria-label="Convidar novo membro da família"
+              >
+                <UserPlus className="size-3.5" aria-hidden="true" />
+                <span>Convidar</span>
+              </Button>
+            )}
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          {isOwner && !isFamilyFull && (
             <Button
               type="button"
               variant="outline"
-              size="sm"
-              className="gap-1.5 rounded-xl"
+              size="icon"
+              className="shrink-0"
               onClick={() => {
-                setSettingsTab("members");
+                setSettingsTab("general");
                 setIsSettingsOpen(true);
               }}
-              aria-label="Convidar novo membro da família"
+              aria-label="Abrir configurações da família"
             >
-              <UserPlus className="size-3.5" aria-hidden="true" />
-              <span>Convidar</span>
+              <Settings className="size-4" aria-hidden="true" />
             </Button>
-          )}
-
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="shrink-0 rounded-xl"
-            onClick={() => {
-              setSettingsTab("general");
-              setIsSettingsOpen(true);
-            }}
-            aria-label="Abrir configurações da família"
-          >
-            <Settings className="size-4" aria-hidden="true" />
-          </Button>
-        </div>
-      </header>
+          </div>
+        }
+      />
 
       {/* Linha do Seletor de Mês — full-width, padrão idêntico a Visão Geral e Transações */}
       <MonthPicker

@@ -106,4 +106,24 @@ describe("usePermission hook", () => {
     expect(result.current.isHidden).toBe(true);
     expect(result.current.accessLevel).toBe("none");
   });
+
+  it("deve permitir que módulos do plano base herdem responsivamente da assinatura mesmo com override em outro módulo", () => {
+    vi.mocked(useUserAccess).mockReturnValue({
+      hasFeature: vi.fn().mockReturnValue(true),
+      isAdmin: false,
+    } as never);
+
+    vi.mocked(useUserSubscription).mockReturnValue({
+      canWrite: true,
+      moduleAccess: {
+        bank_notification_listener: "write",
+      },
+    } as never);
+
+    const { result } = renderHook(() => usePermission("debts"));
+    expect(result.current.canRead).toBe(true);
+    expect(result.current.canWrite).toBe(true);
+    expect(result.current.isHidden).toBe(false);
+    expect(result.current.accessLevel).toBe("write");
+  });
 });

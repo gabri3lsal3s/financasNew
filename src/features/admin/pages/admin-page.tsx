@@ -1,6 +1,7 @@
 import { useSearchParams } from "react-router";
 import { KeyRound, LifeBuoy, ShieldCheck, SlidersHorizontal, Users } from "lucide-react";
 import { Tabs, type TabItem } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 import { triggerSensory } from "@/services/sensory";
 import { OverviewTab } from "./overview-tab";
 import { UsersTab } from "./users-tab";
@@ -100,16 +101,10 @@ export function AdminPage() {
   return (
     <div className="flex flex-col gap-6 w-full min-w-0">
       {/* Cabeçalho da Página Padronizado */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Painel Administrativo
-          </h1>
-          <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
-            Gestão de usuários, aprovação de contas, convites de acesso e governança da plataforma
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title="Painel Administrativo"
+        description="Gestão de usuários, aprovação de contas, convites de acesso e governança da plataforma"
+      />
 
       {/* Navegação de Abas Nativa com Suporte a Swipe */}
       <Tabs

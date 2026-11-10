@@ -30,6 +30,11 @@ export interface CreateCheckoutParams {
   firstBillingDate?: string; // ISO string
   successUrl?: string;
   cancelUrl?: string;
+  registration?: {
+    name: string;
+    email: string;
+    password?: string;
+  };
 }
 
 export interface PixCheckoutResult {
@@ -40,6 +45,8 @@ export interface PixCheckoutResult {
   qrCodeBase64: string;
   copyPasteKey: string;
   expirationDate: string;
+  needsEmailConfirmation?: boolean;
+  email?: string;
 }
 
 export interface DirectCreditCardResult {
@@ -49,6 +56,9 @@ export interface DirectCreditCardResult {
   subscriptionId: string;
   tier: SubscriptionTier;
   status: "active" | "trialing" | "pending";
+  needsEmailConfirmation?: boolean;
+  email?: string;
+  cardLast4?: string;
 }
 
 export interface HostedSessionResult {

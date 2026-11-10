@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { Activity, Calendar, LineChart, Repeat } from "lucide-react";
 import { Button, ErrorState, Skeleton } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 import { criticalAlerts } from "@/domain/insights/alerts";
@@ -577,22 +578,18 @@ export function InsightsPage({
   return (
     <div className="flex flex-col gap-6 min-w-0">
       {showHeader ? (
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-              Insights & Inteligência
-            </h1>
-            <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
-              Diagnósticos preditivos, radar de recorrências, oportunidades de economia e saúde financeira
-            </p>
-          </div>
-          <div className="inline-flex items-center gap-1.5 self-start rounded-lg border border-border/80 bg-surface px-3 py-1.5 text-xs text-muted-foreground sm:self-auto shrink-0 shadow-xs">
-            <Calendar className="size-3.5" aria-hidden="true" />
-            <span>
-              Referência: <strong className="font-medium text-foreground">{monthLabel(month)}</strong>
-            </span>
-          </div>
-        </header>
+        <PageHeader
+          title="Insights & Inteligência"
+          description="Diagnósticos preditivos, radar de recorrências, oportunidades de economia e saúde financeira"
+          badge={
+            <div className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-surface px-2.5 py-1 text-xs text-muted-foreground shadow-xs">
+              <Calendar className="size-3.5" aria-hidden="true" />
+              <span>
+                Referência: <strong className="font-medium text-foreground">{monthLabel(month)}</strong>
+              </span>
+            </div>
+          }
+        />
       ) : null}
 
       {error ? <ErrorState message={getErrorMessage(error)} /> : null}

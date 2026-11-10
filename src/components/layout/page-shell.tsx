@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { Outlet, useLocation, useSearchParams, useNavigate } from "react-router";
-import { Sparkles, BookOpen } from "lucide-react";
+import { Link, Outlet, useLocation, useSearchParams, useNavigate } from "react-router";
+import { Sparkles, BookOpen, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackFeatureUse } from "@/services/analytics";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
@@ -271,16 +271,28 @@ export function PageShell() {
             <GlobalSearch className="flex-1 min-w-0" />
             {/* Pílula de Status do Trial / Leitura no Header */}
             {subscription?.isTrial && subscription.trialDaysRemaining !== null && (
-              <button
-                type="button"
-                onClick={() => setHeaderUpgradeOpen(true)}
-                title="Período de teste Pro ativo. Clique para conferir os benefícios."
-                aria-label={`Teste Pro ativo: restam ${subscription.trialDaysRemaining} dias`}
-                className="hidden sm:inline-flex items-center gap-1.5 shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary-strong hover:bg-primary/15 transition-colors cursor-pointer select-none"
-              >
-                <Sparkles className="size-3.5" aria-hidden="true" />
-                <span>Teste Pro: {subscription.trialDaysRemaining}d</span>
-              </button>
+              subscription.hasAutoRenew ? (
+                <Link
+                  to="/configuracoes?tab=assinatura"
+                  title="Plano Pro ativo com cobrança automática configurada no cartão."
+                  aria-label="Plano Pro ativo com cobrança automática"
+                  className="hidden sm:inline-flex items-center gap-1.5 shrink-0 rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-xs font-semibold text-positive-strong hover:bg-positive/15 transition-colors cursor-pointer select-none"
+                >
+                  <ShieldCheck className="size-3.5" aria-hidden="true" />
+                  <span>Pro Ativo</span>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setHeaderUpgradeOpen(true)}
+                  title="Período de teste Pro ativo. Clique para conferir os benefícios."
+                  aria-label={`Teste Pro ativo: restam ${subscription.trialDaysRemaining} dias`}
+                  className="hidden sm:inline-flex items-center gap-1.5 shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary-strong hover:bg-primary/15 transition-colors cursor-pointer select-none"
+                >
+                  <Sparkles className="size-3.5" aria-hidden="true" />
+                  <span>Teste Pro: {subscription.trialDaysRemaining}d</span>
+                </button>
+              )
             )}
             {subscription?.isReadOnly && (
               <button

@@ -114,6 +114,9 @@ begin
       'is_lifetime', false,
       'is_read_only', false,
       'can_write', v_can_write,
+      'has_card_registered', false,
+      'has_auto_renew', false,
+      'asaas_subscription_id', null,
       'module_permissions', coalesce(v_module_permissions, '{}'::jsonb)
     );
   end if;
@@ -162,6 +165,9 @@ begin
     'is_lifetime', (v_effective_tier = 'lifetime'::public.subscription_tier),
     'is_read_only', (not v_can_write or v_effective_tier = 'read_only'::public.subscription_tier),
     'can_write', v_can_write,
+    'has_card_registered', (v_sub.asaas_subscription_id is not null),
+    'has_auto_renew', (v_sub.asaas_subscription_id is not null and not coalesce(v_sub.cancel_at_period_end, false)),
+    'asaas_subscription_id', v_sub.asaas_subscription_id,
     'module_permissions', coalesce(v_module_permissions, '{}'::jsonb)
   );
 end;

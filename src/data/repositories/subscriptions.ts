@@ -63,6 +63,8 @@ export async function getMySubscription(): Promise<SubscriptionStatus | null> {
       isLifetime: raw.is_lifetime,
       isReadOnly: raw.is_read_only,
       canWrite: raw.can_write,
+      hasCardRegistered: Boolean(raw.has_card_registered || raw.asaas_subscription_id),
+      hasAutoRenew: Boolean(raw.has_auto_renew ?? (raw.asaas_subscription_id && !raw.cancel_at_period_end)),
       moduleAccess: raw.module_permissions as Record<string, ModuleAccessLevel>,
     };
   } catch (error) {

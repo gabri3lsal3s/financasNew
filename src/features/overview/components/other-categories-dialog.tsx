@@ -86,8 +86,7 @@ export function OtherCategoriesDialog({
           </Badge>
         </div>
 
-        {/* Lista de Categorias Agrupadas */}
-        <div className="flex flex-col divide-y divide-border/40 rounded-xl border border-border/80 bg-surface overflow-hidden max-h-[50vh] overflow-y-auto">
+        <div className="flex flex-col divide-y divide-border/40 rounded-xl border border-border/80 bg-surface overflow-hidden">
           {rows.map((row) => (
             <button
               type="button"

@@ -31,6 +31,7 @@ import {
   EmptyState,
   Skeleton,
 } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 import {
   useTripDetails,
   useRemoveTripMemberMutation,
@@ -97,17 +98,15 @@ export function TripDetailsPage() {
   if (!isTripModeEnabled) {
     return (
       <div className="space-y-6" data-testid="trip-mode-inactive">
-        <header className="flex flex-col gap-2">
-          <div className="flex items-center gap-2.5">
-            <Receipt className="size-5 text-muted-foreground" aria-hidden="true" />
-            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-              Modo Viagem
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Grupos temporários de despesas compartilhadas com compensação líquida e acerto Pix.
-          </p>
-        </header>
+        <PageHeader
+          title={
+            <div className="flex items-center gap-2.5">
+              <Receipt className="size-5 text-muted-foreground" aria-hidden="true" />
+              <span>Modo Viagem</span>
+            </div>
+          }
+          description="Grupos temporários de despesas compartilhadas com compensação líquida e acerto Pix."
+        />
 
         <Card className="border-border/80 bg-surface shadow-xs p-6 sm:p-10 rounded-2xl text-center">
           <EmptyState

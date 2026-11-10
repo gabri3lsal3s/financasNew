@@ -87,7 +87,7 @@ function FamilyShareAssetsContent({ currentMember, familyId, onClose }: DialogCo
 
   return (
     <>
-      <div className="space-y-5 pt-2 max-h-[70vh] overflow-y-auto pr-1">
+      <div className="space-y-5 pt-2">
         {/* Nível 1: Toda a Carteira */}
         <div className="p-3.5 rounded-2xl border border-border/80 bg-surface-subtle/40 space-y-2">
           <div className="flex items-center justify-between gap-3">

@@ -172,39 +172,40 @@ describe("UserEditDialog", () => {
     );
   });
 
-  it("renderiza o card de aviso contextual e os badges 'Bloqueado (Whitelist)' quando há overrides ativos", () => {
+  it("renderiza seções de Funcionalidades Beta e Módulos do Plano Base com overrides e derivação responsiva", () => {
     render(<UserEditDialog user={mockUser} open={true} onOpenChange={vi.fn()} />);
 
-    // Card de aviso do modo Whitelist
-    expect(screen.getByText(/Modo Whitelist Ativo \(Licença Restrita\)/i)).toBeInTheDocument();
+    // Seções dedicadas
+    expect(screen.getByText(/Funcionalidades Beta \(Acesso Selecionado\)/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Módulos do Plano Base/i).length).toBeGreaterThan(0);
 
-    // Módulos sem override devem exibir o badge Bloqueado (Whitelist)
-    const whitelistBadges = screen.getAllByText("Bloqueado (Whitelist)");
-    expect(whitelistBadges.length).toBe(9); // 10 módulos no total, 1 com override ('investments'), 9 bloqueados
-
-    // O módulo com override deve exibir o badge correspondente
+    // Módulos do core com override devem exibir o badge correspondente
     expect(screen.getByText(/Override: Somente Leitura/i)).toBeInTheDocument();
+
+    // Módulos do core sem override exibem derivação responsiva do plano ativo (8 módulos core)
+    const activePlanBadges = screen.getAllByText("Acesso Total (Plano Ativo)");
+    expect(activePlanBadges.length).toBe(8);
+
+    // Funcionalidade beta sem concessão opera bloqueada por padrão
+    expect(screen.getByText("Bloqueado (Padrão Beta)")).toBeInTheDocument();
 
     // Botões de ação rápida presentes
     expect(screen.getByRole("button", { name: /Apenas Investimentos/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Restaurar Padrão do Plano/i })).toBeInTheDocument();
   });
 
-  it("renderiza badges 'Padrão do Plano' e omite card de aviso e botão restaurar quando não há overrides", () => {
+  it("renderiza badges responsivos do plano e omite botão restaurar quando não há overrides", () => {
     mockModulePermissions = [];
     render(<UserEditDialog user={mockUser} open={true} onOpenChange={vi.fn()} />);
 
-    // Card de aviso NÃO deve ser renderizado
-    expect(screen.queryByText(/Modo Whitelist Ativo/i)).not.toBeInTheDocument();
+    // Todos os 9 módulos core exibem Acesso Total (Plano Ativo)
+    const activePlanBadges = screen.getAllByText("Acesso Total (Plano Ativo)");
+    expect(activePlanBadges.length).toBe(9);
 
-    // Todos os 10 módulos devem exibir Padrão do Plano
-    const defaultBadges = screen.getAllByText("Padrão do Plano");
-    expect(defaultBadges.length).toBe(10);
+    // Funcionalidade beta permanece com Bloqueado (Padrão Beta)
+    expect(screen.getByText("Bloqueado (Padrão Beta)")).toBeInTheDocument();
 
-    // Não deve haver badges Bloqueado (Whitelist)
-    expect(screen.queryByText("Bloqueado (Whitelist)")).not.toBeInTheDocument();
-
-    // Botão de restaurar não deve aparecer quando já está no padrão do plano
+    // Botão de restaurar não deve aparecer quando não há overrides
     expect(screen.queryByRole("button", { name: /Restaurar Padrão do Plano/i })).not.toBeInTheDocument();
 
     // Botão de atalho para Apenas Investimentos continua disponível

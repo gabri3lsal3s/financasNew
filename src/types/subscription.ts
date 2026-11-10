@@ -63,6 +63,18 @@ export type SubscriptionStatus = {
   /** Verdadeiro quando o usuário possui permissão ativa para criar/editar registros. */
   canWrite: boolean;
 
+  /** Verdadeiro se o usuário possui cartão de crédito cadastrado para cobrança automática. */
+  hasCardRegistered?: boolean;
+
+  /** Verdadeiro se a cobrança/renovação automática está ativa no cartão. */
+  hasAutoRenew?: boolean;
+
+  /** Últimos 4 dígitos do cartão cadastrado (quando disponível). */
+  cardLast4?: string | null;
+
+  /** Bandeira do cartão cadastrado (quando disponível). */
+  cardBrand?: string | null;
+
   /** Mapeamento de permissões individuais por módulo. */
   moduleAccess?: Record<string, ModuleAccessLevel>;
 };

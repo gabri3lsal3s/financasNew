@@ -9,6 +9,7 @@ import {
   LifeBuoy,
 } from "lucide-react";
 import { Tabs } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 import {
   AccountTab,
   AppearanceTab,
@@ -225,14 +226,10 @@ export function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-          Configurações
-        </h1>
-        <p className="text-xs text-muted-foreground sm:text-sm">
-          Gestão de conta, personalização visual, notificações, privacidade e plano
-        </p>
-      </header>
+      <PageHeader
+        title="Configurações"
+        description="Gestão de conta, personalização visual, notificações, privacidade e plano"
+      />
 
       <div className="pb-8">
         <Tabs

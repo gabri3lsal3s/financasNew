@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { ArrowLeftRight, Briefcase, Coins, Plus, Target, TrendingUp, Wallet } from "lucide-react";
 import { Button, Tabs } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 import { ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useAutoPortfolioSnapshot } from "@/hooks/use-auto-portfolio-snapshot";
@@ -99,40 +100,36 @@ export function InvestmentsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header com ações acessíveis no mobile e desktop — padrão consistente com a página de dívidas */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Investimentos
-          </h1>
-          <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
-            Posição da carteira, rendimentos, rebalanceamento de aportes e inteligência fiscal
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label="Adicionar caixa"
-            className="flex-1 sm:flex-initial"
-            onClick={handleOpenCash}
-          >
-            <Wallet aria-hidden="true" className="size-4" />
-            <span className="hidden sm:inline">Adicionar Caixa</span>
-            <span className="sm:hidden">Caixa</span>
-          </Button>
-          <Button
-            size="sm"
-            aria-label="Nova operação"
-            data-tour="investments-new-op"
-            className="flex-1 sm:flex-initial"
-            onClick={() => handleOpenWizard(null, "select")}
-          >
-            <Plus aria-hidden="true" className="size-4" />
-            Nova Operação
-          </Button>
-        </div>
-      </header>
+      {/* Header canônico com ações acessíveis no mobile e desktop */}
+      <PageHeader
+        title="Investimentos"
+        description="Posição da carteira, rendimentos, rebalanceamento de aportes e inteligência fiscal"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="Adicionar caixa"
+              className="flex-1 sm:flex-initial"
+              onClick={handleOpenCash}
+            >
+              <Wallet aria-hidden="true" className="size-4" />
+              <span className="hidden sm:inline">Adicionar Caixa</span>
+              <span className="sm:hidden">Caixa</span>
+            </Button>
+            <Button
+              size="sm"
+              aria-label="Nova operação"
+              data-tour="investments-new-op"
+              className="flex-1 sm:flex-initial"
+              onClick={() => handleOpenWizard(null, "select")}
+            >
+              <Plus aria-hidden="true" className="size-4" />
+              Nova Operação
+            </Button>
+          </>
+        }
+      />
 
       {permission.isReadOnlyMode && (
         <ReadOnlyBanner

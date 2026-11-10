@@ -41,7 +41,7 @@ export interface UserEditDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const AVAILABLE_MODULES = [
+const CORE_MODULES = [
   { key: "overview", label: "Painel Início (Visão Geral)", desc: "Dashboard consolidado, KPIs e fluxo financeiro" },
   { key: "transactions", label: "Transações & Extrato", desc: "Receitas, despesas e lançamentos" },
   { key: "cards", label: "Cartões de Crédito", desc: "Faturas, limites e carteira" },
@@ -51,7 +51,10 @@ const AVAILABLE_MODULES = [
   { key: "reports", label: "Relatórios Executivos", desc: "DRE, balanço e informes fiscais" },
   { key: "insights", label: "Inteligência & Insights", desc: "Diagnósticos e recomendações" },
   { key: "reminders", label: "Central de Lembretes", desc: "Vencimentos e avisos de contas" },
-  { key: "bank_notification_listener", label: "Notificações Bancárias (Beta)", desc: "Escuta passiva de compras e Pix no Android nativo" },
+] as const;
+
+const BETA_MODULES = [
+  { key: "bank_notification_listener", label: "Notificações Bancárias (Beta)", desc: "Captura passiva de compras e Pix no Android nativo" },
 ] as const;
 
 export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps) {
@@ -91,6 +94,31 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
   );
   const hasAnyModuleOverride = userModulePermissions.length > 0;
   const [isQuickActionPending, setIsQuickActionPending] = useState(false);
+
+  const coreOverrides = useMemo(
+    () =>
+      userModulePermissions.filter((p) =>
+        CORE_MODULES.some((c) => c.key === p.module_key),
+      ),
+    [userModulePermissions],
+  );
+  const hasCoreOverrides = coreOverrides.length > 0;
+
+  // Derivação responsiva em tempo real conforme os selects do formulário
+  const isPlanActive = effectiveSubStatus === "active" || effectiveSubStatus === "trialing";
+  const planDefaultLevel: ModuleAccessLevel = isPlanActive ? "write" : "read";
+  const planStatusLabel =
+    effectiveSubStatus === "active"
+      ? "Plano Ativo"
+      : effectiveSubStatus === "trialing"
+        ? "Trial Vigente"
+        : effectiveSubStatus === "past_due"
+          ? "Inadimplente"
+          : effectiveSubStatus === "canceled"
+            ? "Cancelada"
+            : effectiveSubStatus === "read_only_expired"
+              ? "Expirado"
+              : effectiveSubStatus;
 
   const modulePermissionsMap = useMemo(() => {
     const map = new Map<string, UserModulePermission>();
@@ -159,10 +187,23 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
         tier: effectiveTier,
         status: effectiveSubStatus,
       });
+
+      // Se houver overrides em módulos do core, limpa no cliente para sincronização imediata
+      if (coreOverrides.length > 0) {
+        await Promise.all(
+          coreOverrides.map((p) =>
+            removeModulePermissionMutation.mutateAsync({
+              userId: user.id,
+              moduleKey: p.module_key,
+            }),
+          ),
+        );
+      }
+
       triggerSensory("success");
       pushToast({
         title: "Plano SaaS atualizado",
-        description: `Assinatura de ${user.name || user.email} atualizada para ${effectiveTier}.`,
+        description: `Assinatura de ${user.name || user.email} atualizada para ${effectiveTier}. Permissões atualizadas automaticamente.`,
       });
     } catch {
       triggerSensory("destructive");
@@ -254,7 +295,7 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
       description={`Configurações de plano SaaS, permissões modulares e status da conta para ${user.name || user.email}.`}
       size="lg"
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5 max-h-[80vh] overflow-y-auto pr-1">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         {/* Identificação Básica & Contato Protegido (LGPD) */}
         <div className="rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 flex flex-col gap-2 text-xs">
           <div className="flex justify-between">
@@ -421,14 +462,14 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
         </div>
 
         {/* Permissões Modulares Granulares */}
-        <div className="flex flex-col gap-2.5 pt-2 border-t border-border">
+        <div className="flex flex-col gap-3 pt-2 border-t border-border">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div className="flex flex-col gap-0.5">
               <span className="text-xs font-semibold text-foreground">
                 Permissões Modulares Granulares
               </span>
               <span className="text-[11px] text-muted-foreground">
-                Permite conceder ou restringir acesso por módulo (ex: Vitalício com apenas Investimentos ou Bloqueio de Cartões).
+                Módulos do plano base derivam permissões automaticamente do plano selecionado. Funcionalidades beta são concedidas seletivamente.
               </span>
             </div>
 
@@ -444,7 +485,7 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
                   removeModulePermissionMutation.isPending
                 }
                 className="gap-1.5 text-xs h-7 px-2.5 text-portfolio-strong border-portfolio/30 hover:bg-portfolio/10"
-                title="Configurar acesso exclusivo a Investimentos e bloquear demais módulos via Whitelist"
+                title="Configurar acesso exclusivo a Investimentos"
               >
                 <TrendingUp className="size-3.5" aria-hidden="true" />
                 <span>Apenas Investimentos</span>
@@ -471,130 +512,227 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
             </div>
           </div>
 
-          {/* Card de Aviso Contextual sobre a Política Whitelist */}
-          {hasAnyModuleOverride && (
-            <div className="flex items-start gap-2.5 p-3 rounded-xl border border-warning/30 bg-warning/5 text-xs text-foreground">
-              <ShieldAlert className="size-4 text-warning-strong shrink-0 mt-0.5" aria-hidden="true" />
-              <div className="flex flex-col gap-0.5">
-                <span className="font-semibold text-warning-strong">
-                  Modo Whitelist Ativo (Licença Restrita)
-                </span>
-                <span className="text-[11px] text-muted-foreground leading-relaxed">
-                  Este usuário possui permissões modulares personalizadas. Pela política de segurança Whitelist do backend,
-                  todos os módulos sem concessão explícita abaixo operam bloqueados pelo sistema, independentemente do plano base.
-                </span>
-              </div>
+          {/* Funcionalidades Beta (Acesso Selecionado) */}
+          <div className="flex flex-col gap-2 p-3 rounded-xl border border-primary/20 bg-primary/5">
+            <div className="flex items-center gap-1.5 font-semibold text-xs text-primary">
+              <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
+              <span>Funcionalidades Beta (Acesso Selecionado)</span>
             </div>
-          )}
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Recursos em estágio experimental. O acesso permanece restrito exclusivamente a usuários selecionados com concessão individual do Superadmin.
+            </p>
 
-          <div className="flex flex-col gap-2 pt-1">
-            {AVAILABLE_MODULES.map((mod) => {
-              const override = modulePermissionsMap.get(mod.key);
-              const hasOverride = Boolean(override);
-              const currentLevel = override?.access_level;
+            <div className="flex flex-col gap-1.5 pt-1">
+              {BETA_MODULES.map((mod) => {
+                const override = modulePermissionsMap.get(mod.key);
+                const hasOverride = Boolean(override);
+                const currentLevel = override?.access_level;
+                const isGranted = currentLevel === "write" || currentLevel === "admin";
 
-              return (
-                <div
-                  key={mod.key}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl border border-border/80 bg-surface/80 text-xs shadow-2xs"
-                >
-                  <div className="flex flex-col gap-1 max-w-sm">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-foreground">{mod.label}</span>
-                      {hasOverride ? (
-                        <Badge
-                          variant={
-                            currentLevel === "write" || currentLevel === "admin"
-                              ? "positive"
-                              : currentLevel === "read"
-                                ? "warning"
-                                : "critical"
-                          }
-                          size="xs"
-                        >
-                          Override: {currentLevel === "write" || currentLevel === "admin" ? "Acesso Total" : currentLevel === "read" ? "Somente Leitura" : "Bloqueado"}
-                        </Badge>
-                      ) : hasAnyModuleOverride ? (
-                        <Badge variant="critical" size="xs">
-                          Bloqueado (Whitelist)
-                        </Badge>
-                      ) : (
-                        <Badge variant="muted" size="xs">
-                          Padrão do Plano
-                        </Badge>
-                      )}
+                return (
+                  <div
+                    key={mod.key}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 rounded-lg border border-border/80 bg-surface/90 text-xs shadow-2xs"
+                  >
+                    <div className="flex flex-col gap-1 max-w-sm">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-foreground">{mod.label}</span>
+                        {isGranted ? (
+                          <Badge variant="positive" size="xs">
+                            Liberado para este usuário
+                          </Badge>
+                        ) : (
+                          <Badge variant="muted" size="xs">
+                            Bloqueado (Padrão Beta)
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-muted-foreground">{mod.desc}</span>
                     </div>
-                    <span className="text-[11px] text-muted-foreground">{mod.desc}</span>
-                  </div>
 
-                  <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end sm:justify-start shrink-0 pt-1 sm:pt-0">
-                    <Button
-                      type="button"
-                      variant={currentLevel === "write" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleSetModulePermission(mod.key, "write")}
-                      disabled={setModulePermissionMutation.isPending}
-                      className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${
-                        currentLevel === "write"
-                          ? "bg-positive text-white hover:bg-positive/90"
-                          : "text-positive-strong hover:bg-positive/10 border-positive/30"
-                      }`}
-                      title="Liberar escrita e leitura neste módulo"
-                    >
-                      <Check className="size-3.5" aria-hidden="true" />
-                      <span>Total</span>
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant={currentLevel === "read" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleSetModulePermission(mod.key, "read")}
-                      disabled={setModulePermissionMutation.isPending}
-                      className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${
-                        currentLevel === "read"
-                          ? "bg-warning text-white hover:bg-warning/90"
-                          : "text-warning hover:bg-warning/10 border-warning/30"
-                      }`}
-                      title="Restringir a somente leitura neste módulo"
-                    >
-                      <span>Leitura</span>
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant={currentLevel === "none" ? "destructive" : "outline"}
-                      size="sm"
-                      onClick={() => handleSetModulePermission(mod.key, "none")}
-                      disabled={setModulePermissionMutation.isPending}
-                      className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${
-                        currentLevel === "none"
-                          ? "bg-critical text-white hover:bg-critical/90"
-                          : "text-critical hover:bg-critical/10 border-critical/30"
-                      }`}
-                      title="Bloquear completamente o módulo para este usuário"
-                    >
-                      <X className="size-3.5" aria-hidden="true" />
-                      <span>Bloquear</span>
-                    </Button>
-
-                    {hasOverride && (
+                    <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end shrink-0">
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant={isGranted ? "default" : "outline"}
                         size="sm"
-                        onClick={() => handleRemoveModulePermission(mod.key)}
-                        disabled={removeModulePermissionMutation.isPending}
-                        className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground"
-                        title="Restaurar regra padrão do plano"
+                        onClick={() => handleSetModulePermission(mod.key, "write")}
+                        disabled={setModulePermissionMutation.isPending}
+                        className={`gap-1 text-xs h-7 px-2.5 ${
+                          isGranted
+                            ? "bg-positive text-white hover:bg-positive/90"
+                            : "text-positive-strong hover:bg-positive/10 border-positive/30"
+                        }`}
+                        title="Liberar acesso beta para este usuário"
                       >
-                        <RotateCcw className="size-3.5" aria-hidden="true" />
+                        <Check className="size-3.5" aria-hidden="true" />
+                        <span>Liberado</span>
                       </Button>
-                    )}
+
+                      <Button
+                        type="button"
+                        variant={!isGranted && hasOverride ? "destructive" : "outline"}
+                        size="sm"
+                        onClick={() => handleSetModulePermission(mod.key, "none")}
+                        disabled={setModulePermissionMutation.isPending}
+                        className={`gap-1 text-xs h-7 px-2.5 ${
+                          !isGranted && hasOverride
+                            ? "bg-muted text-muted-foreground hover:bg-muted/90"
+                            : "text-critical hover:bg-critical/10 border-critical/30"
+                        }`}
+                        title="Bloquear funcionalidade beta para este usuário"
+                      >
+                        <X className="size-3.5" aria-hidden="true" />
+                        <span>Bloqueado</span>
+                      </Button>
+
+                      {hasOverride && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveModulePermission(mod.key)}
+                          disabled={removeModulePermissionMutation.isPending}
+                          className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground"
+                          title="Restaurar padrão da funcionalidade"
+                        >
+                          <RotateCcw className="size-3.5" aria-hidden="true" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Módulos do Plano Base */}
+          <div className="flex flex-col gap-2 pt-1">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-foreground">
+                  Módulos do Plano Base
+                </span>
+                {hasCoreOverrides && (
+                  <Badge variant="warning" size="xs">
+                    Com Overrides Manuais
+                  </Badge>
+                )}
+              </div>
+              <span className="text-[11px] text-muted-foreground">
+                Respondendo dinamicamente ao status: <strong className="text-foreground">{planStatusLabel}</strong>
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {CORE_MODULES.map((mod) => {
+                const override = modulePermissionsMap.get(mod.key);
+                const hasOverride = Boolean(override);
+                const currentLevel = override?.access_level ?? planDefaultLevel;
+
+                return (
+                  <div
+                    key={mod.key}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl border border-border/80 bg-surface/80 text-xs shadow-2xs"
+                  >
+                    <div className="flex flex-col gap-1 max-w-sm">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-foreground">{mod.label}</span>
+                        {hasOverride ? (
+                          <Badge
+                            variant={
+                              currentLevel === "write" || currentLevel === "admin"
+                                ? "positive"
+                                : currentLevel === "read"
+                                  ? "warning"
+                                  : "critical"
+                            }
+                            size="xs"
+                          >
+                            Override: {currentLevel === "write" || currentLevel === "admin" ? "Acesso Total" : currentLevel === "read" ? "Somente Leitura" : "Bloqueado"}
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant={isPlanActive ? "positive" : "warning"}
+                            size="xs"
+                          >
+                            {isPlanActive
+                              ? "Acesso Total (Plano Ativo)"
+                              : `Somente Leitura (${planStatusLabel})`}
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-muted-foreground">{mod.desc}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end sm:justify-start shrink-0 pt-1 sm:pt-0">
+                      <Button
+                        type="button"
+                        variant={currentLevel === "write" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleSetModulePermission(mod.key, "write")}
+                        disabled={setModulePermissionMutation.isPending}
+                        className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${
+                          currentLevel === "write"
+                            ? "bg-positive text-white hover:bg-positive/90"
+                            : "text-positive-strong hover:bg-positive/10 border-positive/30"
+                        }`}
+                        title="Liberar escrita e leitura neste módulo"
+                      >
+                        <Check className="size-3.5" aria-hidden="true" />
+                        <span>Total</span>
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant={currentLevel === "read" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleSetModulePermission(mod.key, "read")}
+                        disabled={setModulePermissionMutation.isPending}
+                        className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${
+                          currentLevel === "read"
+                            ? "bg-warning text-white hover:bg-warning/90"
+                            : "text-warning hover:bg-warning/10 border-warning/30"
+                        }`}
+                        title="Restringir a somente leitura neste módulo"
+                      >
+                        <span>Leitura</span>
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant={currentLevel === "none" ? "destructive" : "outline"}
+                        size="sm"
+                        onClick={() => handleSetModulePermission(mod.key, "none")}
+                        disabled={setModulePermissionMutation.isPending}
+                        className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${
+                          currentLevel === "none"
+                            ? "bg-critical text-white hover:bg-critical/90"
+                            : "text-critical hover:bg-critical/10 border-critical/30"
+                        }`}
+                        title="Bloquear completamente o módulo para este usuário"
+                      >
+                        <X className="size-3.5" aria-hidden="true" />
+                        <span>Bloquear</span>
+                      </Button>
+
+                      {hasOverride && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveModulePermission(mod.key)}
+                          disabled={removeModulePermissionMutation.isPending}
+                          className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground"
+                          title="Restaurar regra padrão do plano"
+                        >
+                          <RotateCcw className="size-3.5" aria-hidden="true" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 

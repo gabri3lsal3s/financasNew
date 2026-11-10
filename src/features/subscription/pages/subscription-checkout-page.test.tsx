@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SubscriptionCheckoutPage } from "./subscription-checkout-page";
@@ -19,11 +19,23 @@ vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => useAuthMock(),
 }));
 
+const mutateAsyncMock = vi.fn().mockResolvedValue({
+  ok: true,
+  method: "credit_card",
+  subscriptionId: "sub-123",
+  tier: "pro_annual",
+  status: "active",
+});
+
 vi.mock("@/state", () => ({
   useUserSubscription: () => ({
     isPro: false,
     plan: "free",
     status: "active",
+  }),
+  useCheckoutMutation: () => ({
+    mutateAsync: mutateAsyncMock,
+    isPending: false,
   }),
   USER_SUBSCRIPTION_KEY: ["user-subscription"],
 }));
@@ -49,6 +61,13 @@ vi.mock("@/data/repositories/billing", () => ({
 }));
 
 describe("SubscriptionCheckoutPage Component", () => {
+  beforeEach(() => {
+    useAuthMock.mockReturnValue({
+      session: { user: { id: "user-123", email: "teste@exemplo.com" } },
+      loading: false,
+      configError: null,
+    });
+  });
   it("renderiza o resumo do plano anual e botões de pagamento", () => {
     renderCheckout();
 
@@ -84,7 +103,7 @@ describe("SubscriptionCheckoutPage Component", () => {
   });
 
   it("permite ao usuário alternar de volta para cartão ou planos quando o PIX estiver ativo (sem prender o usuário)", async () => {
-    createCheckoutSessionMock.mockResolvedValueOnce({
+    mutateAsyncMock.mockResolvedValueOnce({
       method: "pix",
       qrCodeBase64: "dGVzdC1xcmNvZGU=",
       copyPasteKey: "00020126580014br.gov.bcb.pix...",
@@ -149,7 +168,7 @@ describe("SubscriptionCheckoutPage Component", () => {
       configurable: true,
     });
 
-    createCheckoutSessionMock.mockResolvedValueOnce({
+    mutateAsyncMock.mockResolvedValueOnce({
       ok: true,
       method: "hosted_session",
       provider: "stripe",
@@ -230,6 +249,63 @@ describe("SubscriptionCheckoutPage Component", () => {
 
     expect(termsLinks.length).toBeGreaterThanOrEqual(2);
     expect(privacyLinks.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("atualiza a tela para o card de confirmação de e-mail após cadastro integrado com cartão", async () => {
+    useAuthMock.mockReturnValue({
+      session: null,
+      loading: false,
+      configError: null,
+    });
+
+    mutateAsyncMock.mockResolvedValueOnce({
+      ok: true,
+      method: "credit_card",
+      subscriptionId: "sub-novo-123",
+      tier: "pro_annual",
+      status: "active",
+      needsEmailConfirmation: true,
+      cardLast4: "4242",
+      email: "novo@exemplo.com",
+    });
+
+    renderCheckout();
+
+    const user = userEvent.setup();
+
+    // Preenche campos de conta
+    const nameInput = screen.getByPlaceholderText("Seu nome");
+    const emailInput = screen.getByPlaceholderText("seu.email@exemplo.com");
+    const passwordInput = screen.getByPlaceholderText("Mínimo 6 caracteres");
+
+    await user.type(nameInput, "Novo Usuário");
+    await user.type(emailInput, "novo@exemplo.com");
+    await user.type(passwordInput, "senha123");
+
+    // Preenche CPF
+    const cpfInput = screen.getByPlaceholderText("000.000.000-00");
+    await user.type(cpfInput, "12345678909");
+
+    // Preenche dados do cartão
+    const holderInput = screen.getByPlaceholderText("Nome como impresso no cartão");
+    const cardNumberInput = screen.getByPlaceholderText("0000 0000 0000 0000");
+    const expiryInput = screen.getByPlaceholderText("MM/AA");
+    const ccvInput = screen.getByPlaceholderText("123");
+
+    await user.type(holderInput, "NOVO USUARIO");
+    await user.type(cardNumberInput, "4242424242424242");
+    await user.type(expiryInput, "12/28");
+    await user.type(ccvInput, "123");
+
+    // Clica no botão de submissão
+    const submitButton = screen.getByRole("button", { name: /Confirmar Assinatura Pro/i });
+    await user.click(submitButton);
+
+    // Verifica que a tela atualizou para a confirmação de e-mail
+    expect(await screen.findByRole("heading", { name: "Confirme seu endereço de e-mail" })).toBeInTheDocument();
+    expect(screen.getByText("novo@exemplo.com")).toBeInTheDocument();
+    expect(screen.getByText(/Cartão com final •••• 4242/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Ir para o login/i })).toBeInTheDocument();
   });
 });
 

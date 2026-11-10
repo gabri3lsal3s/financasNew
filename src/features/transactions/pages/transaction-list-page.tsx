@@ -407,7 +407,7 @@ export function TransactionListPage() {
         />
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
         <Button className="w-full sm:flex-1 gap-1.5" onClick={handleNewTransaction}>
           <Plus className="size-4" aria-hidden="true" />
           Nova transação

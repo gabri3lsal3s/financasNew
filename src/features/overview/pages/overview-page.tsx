@@ -1033,6 +1033,7 @@ export function OverviewPage() {
       ),
     },
     subscription.isTrial &&
+      !subscription.hasAutoRenew &&
       subscription.trialDaysRemaining !== null && {
         id: "trial-ending-banner",
         priority: subscription.trialDaysRemaining <= 7 ? 2 : 4,

@@ -22,6 +22,18 @@ let mockSubscription: SubscriptionStatus = {
 
 vi.mock("@/state", () => ({
   useUserSubscription: () => mockSubscription,
+  useCancelSubscriptionMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useUpdateSubscriptionCardMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useUpgradeToAnnualMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }));
 
 vi.mock("@/data/repositories/billing", () => ({
@@ -98,5 +110,24 @@ describe("SubscriptionTab", () => {
     renderSubscriptionTab();
 
     expect(screen.queryByText(/Licença Modular Personalizada/i)).not.toBeInTheDocument();
+  });
+
+  it("exibe informações de cobrança automática e cartão quando hasAutoRenew for true", () => {
+    mockSubscription = {
+      ...mockSubscription,
+      tier: "pro_annual",
+      plan: "annual",
+      isPro: true,
+      hasAutoRenew: true,
+      hasCardRegistered: true,
+      cardLast4: "4242",
+      cardBrand: "Mastercard",
+    };
+
+    renderSubscriptionTab();
+
+    expect(screen.getByText(/Cobrança Automática Ativa/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Cartão de Crédito [rR]ecorrente/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("button", { name: /Alterar Cartão/i })).toBeInTheDocument();
   });
 });

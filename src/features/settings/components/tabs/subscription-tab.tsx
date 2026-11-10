@@ -129,8 +129,8 @@ export function SubscriptionTab() {
         </CardContent>
       </Card>
 
-      {/* Forma de Pagamento e Troca de Cartão — apenas para assinantes Pro */}
-      {subscription.isPro && (
+      {/* Forma de Pagamento e Troca de Cartão — assinantes Pro ou com cartão cadastrado */}
+      {(subscription.isPro || subscription.hasAutoRenew) && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -238,7 +238,7 @@ export function SubscriptionTab() {
         <CardContent>
           <PlanComparisonTable isFullAccess={subscription.isFullAccess} />
 
-          {!subscription.isPro && (
+          {!subscription.isPro && !subscription.hasAutoRenew && (
             <div className="mt-5">
               <Button
                 type="button"
@@ -253,8 +253,8 @@ export function SubscriptionTab() {
         </CardContent>
       </Card>
 
-      {/* Cancelamento — apenas para assinantes ativos */}
-      {subscription.isPro && (
+      {/* Cancelamento — assinantes Pro ou com cobrança automática ativa */}
+      {(subscription.isPro || subscription.hasAutoRenew) && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -461,8 +461,55 @@ interface StatusBlockProps {
 }
 
 function StatusBlock({ subscription, onUpgrade }: StatusBlockProps) {
-  const { isTrial, isPro, trialDaysRemaining, trialEndsAt, currentPeriodEnd, plan } =
+  const { isTrial, isPro, trialDaysRemaining, trialEndsAt, currentPeriodEnd, plan, hasAutoRenew } =
     subscription;
+
+  if (hasAutoRenew) {
+    const planLabel = plan === "annual" ? "Pro Anual" : "Pro Mensal";
+    const nextChargeDate = trialEndsAt || currentPeriodEnd;
+    const renewLabel = nextChargeDate
+      ? new Date(nextChargeDate).toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        })
+      : "–";
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="size-5 text-positive-strong" aria-hidden="true" />
+          <span className="text-sm font-semibold text-foreground">Plano {planLabel}</span>
+          <Badge variant="positive" size="sm">
+            Cobrança Automática Ativa
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <InfoRow
+            icon={Calendar}
+            label={isTrial ? "Primeira cobrança" : "Próxima renovação"}
+            value={renewLabel}
+          />
+          <InfoRow
+            icon={ShieldCheck}
+            label="Status"
+            value={isTrial && trialDaysRemaining !== null ? `Degustação ativa (${trialDaysRemaining}d restantes)` : "Assinatura ativa"}
+          />
+          <InfoRow
+            icon={CreditCard}
+            label="Método"
+            value="Cartão de Crédito recorrente"
+          />
+          <InfoRow
+            icon={RefreshCw}
+            label="Cancelamento"
+            value="A qualquer momento em 1 clique"
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (isTrial && trialDaysRemaining !== null) {
     const progress = Math.round(((30 - trialDaysRemaining) / 30) * 100);

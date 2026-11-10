@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { AlertTriangle, ArrowDownLeft, Bell, CheckCheck, CreditCard, SlidersHorizontal, X } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, MoneyText, Skeleton, Tabs } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 import { HighlightRow, ReadOnlyBanner, ReminderItem } from "@/components/modules";
 import { RemindersSettingsModal } from "../components/reminders-settings-modal";
 import { SettleDialog } from "@/features/debts/components/settle-dialog";
@@ -577,50 +578,45 @@ export function RemindersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-              Lembretes e Avisos
-            </h1>
-            {totalPendingEffective > 0 && (
-              <Badge variant={hasUrgentPending ? "critical" : "default"} size="sm">
-                {totalPendingEffective} {totalPendingEffective === 1 ? "pendência" : "pendências"}
-              </Badge>
+      <PageHeader
+        title="Lembretes e Avisos"
+        description="Faturas, compromissos e avisos inteligentes que precisam da sua atenção"
+        badge={
+          totalPendingEffective > 0 ? (
+            <Badge variant={hasUrgentPending ? "critical" : "default"} size="sm">
+              {totalPendingEffective} {totalPendingEffective === 1 ? "pendência" : "pendências"}
+            </Badge>
+          ) : undefined
+        }
+        actions={
+          <>
+            {unreadFilteredItems.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleMarkAllRead}
+                disabled={markAllMutation.isPending}
+              >
+                <CheckCheck className="size-4 mr-1.5 text-muted-foreground" aria-hidden="true" />
+                Marcar todas como lidas
+              </Button>
             )}
-          </div>
-          <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
-            Faturas, compromissos e avisos inteligentes que precisam da sua atenção
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
-          {unreadFilteredItems.length > 0 && (
             <Button
               variant="outline"
               size="sm"
-              onClick={handleMarkAllRead}
-              disabled={markAllMutation.isPending}
+              onClick={() => {
+                triggerSensory("action");
+                setIsSettingsOpen(true);
+              }}
+              title="Configurar Lembretes e Antecedência"
             >
-              <CheckCheck className="size-4 mr-1.5 text-muted-foreground" aria-hidden="true" />
-              Marcar todas como lidas
+              <SlidersHorizontal className="size-4 mr-1.5 text-muted-foreground" aria-hidden="true" />
+              Ajustes
             </Button>
-          )}
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              triggerSensory("action");
-              setIsSettingsOpen(true);
-            }}
-            title="Configurar Lembretes e Antecedência"
-          >
-            <SlidersHorizontal className="size-4 mr-1.5 text-muted-foreground" aria-hidden="true" />
-            Ajustes
-          </Button>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {permission.isReadOnlyMode && <ReadOnlyBanner />}
 

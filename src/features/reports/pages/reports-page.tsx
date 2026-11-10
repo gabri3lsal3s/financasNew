@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router";
 import { FileSpreadsheet, Landmark, Scale, TrendingUp } from "lucide-react";
 import { useDebounce } from "@/hooks";
 import { ErrorState, Skeleton, Tabs, type TabItem } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 import {
   aggregateByCategory,
   aggregateByPaymentMethod,
@@ -1036,16 +1037,10 @@ export function ReportsPage() {
   return (
     <div className="flex flex-col gap-6 w-full min-w-0" data-tour="reports-content">
       {/* Header */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Relatórios
-          </h1>
-          <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
-            Dossiês executivos, DRE pessoal, consolidação patrimonial e inteligência fiscal
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title="Relatórios"
+        description="Dossiês executivos, DRE pessoal, consolidação patrimonial e inteligência fiscal"
+      />
 
       {/* Navegação Principal em Tabs com suporte a gestos swipe e acessibilidade */}
       <Tabs
