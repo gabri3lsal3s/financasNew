@@ -513,6 +513,8 @@ export function InsightsPage({
     }
   };
 
+  const hasTransactions = (month0.data?.length ?? 0) > 0 || (incomesQuery.data?.length ?? 0) > 0;
+
   const diagnosticsContent = (
     <DiagnosticsTab
       warnings={warnings}
@@ -528,6 +530,7 @@ export function InsightsPage({
       trendPercent={trendPercent}
       overspentBudgets={overspentBudgets}
       essentialSpending={essentialSpending}
+      hasTransactions={hasTransactions}
     />
   );
 

@@ -41,6 +41,7 @@ export interface DiagnosticsTabProps {
   trendPercent: number;
   overspentBudgets?: number;
   essentialSpending?: EssentialSpendingResult;
+  hasTransactions?: boolean;
 }
 
 export function DiagnosticsTab({
@@ -56,6 +57,7 @@ export function DiagnosticsTab({
   trendPercent,
   overspentBudgets = 0,
   essentialSpending,
+  hasTransactions,
 }: DiagnosticsTabProps) {
   return (
     <div className="flex flex-col gap-6 min-w-0">
@@ -75,8 +77,14 @@ export function DiagnosticsTab({
           <div className="flex items-center gap-3 rounded-xl border border-positive/30 bg-positive/5 p-4 text-xs">
             <CheckCircle2 className="size-4 text-positive-strong shrink-0" aria-hidden="true" />
             <div className="flex flex-col gap-0.5">
-              <p className="font-medium text-foreground">Nenhum aviso no momento.</p>
-              <p className="text-muted-foreground">Seu ritmo de gastos e orçamentos estão equilibrados neste mês.</p>
+              <p className="font-medium text-foreground">
+                {hasTransactions === false ? "Tudo pronto para começar seus diagnósticos" : "Nenhum aviso no momento."}
+              </p>
+              <p className="text-muted-foreground">
+                {hasTransactions === false
+                  ? "Registre suas primeiras receitas e despesas para acompanhar seu ritmo de gastos e diagnósticos de economia."
+                  : "Seu ritmo de gastos e orçamentos estão equilibrados neste mês."}
+              </p>
             </div>
           </div>
         ) : (

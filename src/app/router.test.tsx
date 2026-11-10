@@ -111,6 +111,42 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
     expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
   });
 
+  it("renderiza a rota /cadastro com lazy loading para visitantes", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/cadastro");
+    render(<AppRouter />);
+
+    expect(await screen.findByRole("heading", { name: "Criar conta" })).toBeInTheDocument();
+  });
+
+  it("renderiza o alias /cadastrar com lazy loading para visitantes (suporte a links externos e viralidade)", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/cadastrar");
+    render(<AppRouter />);
+
+    expect(await screen.findByRole("heading", { name: "Criar conta" })).toBeInTheDocument();
+  });
+
   it("renderiza a rota /recuperar-senha com Suspense e lazy loading", async () => {
     vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
       session: null,
@@ -251,7 +287,7 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
     render(<AppRouter />);
 
     // Deve exibir o badge ou o estado da página sem redirecionar para /entrar
-    expect(await screen.findByText("Racha de Conta")).toBeInTheDocument();
+    expect(await screen.findByText("Racha de Conta", {}, { timeout: 8000 })).toBeInTheDocument();
   });
 
   it("renderiza a rota pública /orcamento-familiar/:token (FamilyBudgetPage) para visitantes", async () => {

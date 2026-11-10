@@ -4,7 +4,7 @@ import { useLandingCta } from "@/features/landing/hooks";
 import { ScrollReveal } from "./scroll-reveal";
 
 export function CtaBanner() {
-  const { proUrl, freeRegisterUrl, isLoggedIn } = useLandingCta();
+  const { freeRegisterUrl, isLoggedIn } = useLandingCta();
 
   return (
     <section className="py-14 md:py-32 relative overflow-hidden bg-surface/40 border-y border-border/70">
@@ -36,7 +36,7 @@ export function CtaBanner() {
 
             <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
-                to={isLoggedIn ? "/" : proUrl("pro-anual")}
+                to={isLoggedIn ? "/" : freeRegisterUrl}
                 className="group relative overflow-hidden w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl text-sm sm:text-base font-bold bg-primary text-primary-foreground hover:bg-primary-strong shadow-lg hover:shadow-xl inline-flex items-center justify-center gap-2 transition-all duration-150 active:scale-95"
               >
                 {/* Shimmer Sweep Effect */}
@@ -45,7 +45,7 @@ export function CtaBanner() {
                   aria-hidden="true"
                 />
                 <span className="relative z-10 flex items-center gap-2">
-                  {isLoggedIn ? "Acessar Meu Painel Agora" : "Assinar Plano Pro Agora"}
+                  {isLoggedIn ? "Acessar Meu Painel Agora" : "Começar 30 Dias Grátis"}
                   <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                 </span>
               </Link>
@@ -53,13 +53,17 @@ export function CtaBanner() {
 
             {!isLoggedIn && (
               <div className="mt-4 flex items-center justify-center gap-1 text-xs text-muted-foreground">
-                <span>Quer experimentar primeiro?</span>
-                <Link
-                  to={freeRegisterUrl}
-                  className="font-medium text-foreground underline underline-offset-4 hover:text-primary transition-colors"
+                <span>Deseja assinar o Pro imediatamente?</span>
+                <a
+                  href="#precos"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById("precos")?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="font-medium text-foreground underline underline-offset-4 hover:text-primary transition-colors cursor-pointer"
                 >
-                  Crie sua conta gratuita por 30 dias sem cartão
-                </Link>
+                  Conheça os planos Pro com até 40% de desconto
+                </a>
               </div>
             )}
 

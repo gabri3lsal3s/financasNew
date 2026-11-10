@@ -18,7 +18,7 @@ import { useLandingCta } from "@/features/landing/hooks";
 import { ScrollReveal } from "@/features/landing/components/scroll-reveal";
 
 export function HeroEditorial() {
-  const { proUrl, freeRegisterUrl } = useLandingCta();
+  const { trialUrl, isLoggedIn } = useLandingCta();
   return (
     <section className="relative overflow-hidden pt-8 pb-14 sm:pt-16 sm:pb-24 md:pt-24 md:pb-32">
       {/* Luz ambiente suave de fundo */}
@@ -93,7 +93,7 @@ export function HeroEditorial() {
           {/* CTAs de Conversão com Shimmer Reflexivo e Altura Confortável */}
           <div className="mt-7 sm:mt-10 flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full sm:w-auto">
             <Link
-              to={proUrl("pro-anual")}
+              to={trialUrl}
               className={cn(
                 buttonVariants({ size: "lg" }),
                 "group relative overflow-hidden w-full sm:w-auto px-6 sm:px-9 py-3.5 sm:py-7 text-base sm:text-lg font-semibold shadow-lg inline-flex items-center justify-center gap-2.5 rounded-xl sm:rounded-2xl",
@@ -104,7 +104,7 @@ export function HeroEditorial() {
                 aria-hidden="true"
               />
               <span className="relative z-10 flex items-center gap-2">
-                Assinar Plano Pro
+                {isLoggedIn ? "Acessar Meu Painel" : "Começar 30 Dias Grátis"}
                 <ArrowRight className="size-4.5 sm:size-5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
               </span>
             </Link>
@@ -124,15 +124,28 @@ export function HeroEditorial() {
             </button>
           </div>
 
-          {/* Link Auxiliar: Testar 30 dias grátis */}
+          {/* Link Auxiliar: Planos Pro ou Login */}
           <div className="mt-4 flex items-center justify-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
-            <span>Deseja testar primeiro?</span>
-            <Link
-              to={freeRegisterUrl}
-              className="font-medium text-foreground underline underline-offset-4 hover:text-primary transition-colors"
-            >
-              Crie uma conta gratuita com 30 dias de degustação
-            </Link>
+            <span>{isLoggedIn ? "Precisa de ajuda ou configurações?" : "Prefere assinar direto?"}</span>
+            {isLoggedIn ? (
+              <Link
+                to="/configuracoes"
+                className="font-medium text-foreground underline underline-offset-4 hover:text-primary transition-colors"
+              >
+                Gerenciar assinatura nas configurações
+              </Link>
+            ) : (
+              <a
+                href="#precos"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById("precos")?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="font-medium text-foreground underline underline-offset-4 hover:text-primary transition-colors cursor-pointer"
+              >
+                Conheça os planos Pro com até 40% de desconto
+              </a>
+            )}
           </div>
 
           {/* Indicadores de Confiança */}

@@ -21,6 +21,6 @@ describe("MobileCtaDock", () => {
     );
 
     expect(screen.getByText("Axir")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Assinar Pro/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Testar Grátis/i })).toBeInTheDocument();
   });
 });

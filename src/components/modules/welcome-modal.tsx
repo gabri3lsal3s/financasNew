@@ -62,7 +62,7 @@ const GOAL_OPTIONS: readonly OnboardingGoalOption[] = [
     id: "family",
     title: "Finanças do casal ou família",
     description: "Espaço compartilhado, divisão justa de contas e cofrinhos colaborativos.",
-    route: "/orcamentos?tab=family",
+    route: "/familia",
     icon: HeartHandshake,
     badge: "Espaço Família",
   },

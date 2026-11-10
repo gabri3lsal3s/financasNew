@@ -1,7 +1,16 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { InsightsPage } from "./insights-page";
+
+const renderInsights = (props = {}) => {
+  return render(
+    <MemoryRouter>
+      <InsightsPage {...props} />
+    </MemoryRouter>,
+  );
+};
 
 const setFeedbackMock = vi.fn();
 
@@ -123,7 +132,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
     ];
   });
   it("renderiza as abas de cards analíticos isolados com 'Diagnósticos' como inicial", () => {
-    render(<InsightsPage />);
+    renderInsights();
     const tabs = screen.getAllByRole("tab");
     expect(tabs).toHaveLength(3);
     expect(tabs[0]).toHaveAccessibleName("Diagnósticos");
@@ -136,7 +145,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
 
   it("lista assinaturas/recorrências e permite ignorar", async () => {
     const user = userEvent.setup();
-    render(<InsightsPage />);
+    renderInsights();
     await user.click(screen.getByRole("tab", { name: "Recorrências" }));
     // Streaming com valor estável em 3 meses → assinatura.
     expect(screen.getByText("Streaming")).toBeInTheDocument();
@@ -153,7 +162,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
 
   it("permite confirmar assinatura via botão animado", async () => {
     const user = userEvent.setup();
-    render(<InsightsPage />);
+    renderInsights();
     await user.click(screen.getByRole("tab", { name: "Recorrências" }));
 
     const confirmButtons = screen.getAllByRole("button", { name: /Confirmar/ });
@@ -167,7 +176,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
 
   it("renderiza projeção e corte com pendências e runway", async () => {
     const user = userEvent.setup();
-    render(<InsightsPage />);
+    renderInsights();
     await user.click(screen.getByRole("tab", { name: "Projeção" }));
     expect(screen.getByText("Projeção de gastos")).toBeInTheDocument();
     expect(screen.getByText("Reserva de Emergência & Autonomia")).toBeInTheDocument();
@@ -176,20 +185,20 @@ describe("InsightsPage (motor de insights §3.7)", () => {
 
   it("renderiza diagnósticos com tendência de gastos (F19 — motor §3.7.6)", async () => {
     const user = userEvent.setup();
-    render(<InsightsPage />);
+    renderInsights();
     await user.click(screen.getByRole("tab", { name: "Diagnósticos" }));
     expect(screen.getByText("Saúde da poupança")).toBeInTheDocument();
     expect(screen.getByText("Tendência de gastos")).toBeInTheDocument();
-    // Mês atual igual ao anterior (fixture) → variação 0.0% (não significativa).
-    expect(screen.getByText("+0.0%")).toBeInTheDocument();
+    // Mês atual igual ao anterior (fixture) → variação 0,0% (não significativa).
+    expect(screen.getByText("0,0%")).toBeInTheDocument();
   });
 
   it("diagnósticos: gastos de fim de semana comparáveis exibem a razão e sem alerta absurdo (F27)", async () => {
     const user = userEvent.setup();
-    render(<InsightsPage />);
+    renderInsights();
     await user.click(screen.getByRole("tab", { name: "Diagnósticos" }));
-    // Fixture: despesas só em dias úteis → razão 0.0× (comparável, sem alerta).
-    expect(screen.getByText("0.0×")).toBeInTheDocument();
+    // Fixture: despesas só em dias úteis → razão 0,0× (comparável, sem alerta).
+    expect(screen.getByText("0,0×")).toBeInTheDocument();
     expect(screen.queryByText(/gastos de fim de semana.*maiores/i)).not.toBeInTheDocument();
   });
 
@@ -199,7 +208,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
     fixture.monthlyExpenses = (month) => [
       { id: `${month}-1`, description: "Viagem", category_id: "c2", value: 60_000, report_weight: 1, date: `${month}-05`, installment_group_id: null },
     ];
-    render(<InsightsPage />);
+    renderInsights();
     await user.click(screen.getByRole("tab", { name: "Projeção" }));
     // O desafio individual aparece (corta 30% da Lazer).
     expect(screen.getByText(/Lazer — cortar 30%/)).toBeInTheDocument();
@@ -213,7 +222,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
       { id: `${month}-1`, description: "Viagem", category_id: "c2", value: 60_000, report_weight: 1, date: `${month}-05`, installment_group_id: null },
       { id: `${month}-2`, description: "Delivery", category_id: "c1", value: 55_000, report_weight: 1, date: `${month}-10`, installment_group_id: null },
     ];
-    render(<InsightsPage />);
+    renderInsights();
     await user.click(screen.getByRole("tab", { name: "Projeção" }));
     expect(screen.getByText("30% em não essenciais")).toBeInTheDocument();
   });
@@ -224,7 +233,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
       { id: `${month}-1`, description: "Streaming", category_id: "c2", value: 19.9, report_weight: 1, date: `${month}-05`, installment_group_id: null },
       { id: `${month}-2`, description: "Academia", category_id: "c2", value: 99, report_weight: 1, date: `${month}-10`, installment_group_id: null },
     ];
-    render(<InsightsPage />);
+    renderInsights();
     expect(screen.getByRole("region", { name: "Avisos e recomendações" })).toBeInTheDocument();
     expect(screen.getByText(/Poupança saudável:/)).toBeInTheDocument();
   });
@@ -232,13 +241,13 @@ describe("InsightsPage (motor de insights §3.7)", () => {
   it("exibe aviso de saldo negativo quando as despesas superam receitas", () => {
     // Renda R$ 50, despesas R$ 11.890
     fixture.incomeCents = 5_000;
-    render(<InsightsPage />);
+    renderInsights();
     expect(screen.getByText(/Saldo negativo:/)).toBeInTheDocument();
   });
 
   it("renderiza a aba Projeção com fechamento, runway e termometro de reserva", async () => {
     const user = userEvent.setup();
-    render(<InsightsPage />);
+    renderInsights();
     await user.click(screen.getByRole("tab", { name: /Projeção/i }));
     expect(screen.getByText("Reserva de Emergência & Autonomia")).toBeInTheDocument();
     expect(screen.getByText("Autonomia estimada")).toBeInTheDocument();

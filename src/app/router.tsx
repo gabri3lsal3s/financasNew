@@ -353,6 +353,7 @@ export function AppRouter() {
           {/* Telas de auth — fora do shell (sem sidebar/bottom nav) */}
           <Route path="/entrar" element={<LoginPage />} />
           <Route path="/cadastro" element={<RegisterPage />} />
+          <Route path="/cadastrar" element={<RegisterPage />} />
           <Route path="/criar-conta" element={<RegisterPage />} />
           <Route path="/recuperar-senha" element={<ForgotPasswordPage />} />
           <Route path="/redefinir-senha" element={<ResetPasswordPage />} />

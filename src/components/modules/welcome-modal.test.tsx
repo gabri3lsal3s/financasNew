@@ -110,6 +110,38 @@ describe("WelcomeModal — Acolhimento e Escolha de Partida (§3.1)", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/transacoes?novo=transacao");
   });
 
+  it("seleciona a prioridade de finanças da família e navega para /familia", async () => {
+    const user = userEvent.setup();
+    const handleStartReal = vi.fn();
+    const handleOpenChange = vi.fn();
+
+    render(
+      <WelcomeModal
+        open={true}
+        onOpenChange={handleOpenChange}
+        onStartRealAccount={handleStartReal}
+      />,
+    );
+
+    // Passo 1 -> Passo 2
+    await user.click(screen.getByRole("button", { name: /Personalizar Meu Início/i }));
+
+    // Seleciona a prioridade Família
+    const familyGoal = screen.getByRole("radio", { name: /Finanças do casal ou família/i });
+    await user.click(familyGoal);
+
+    // Passo 2 -> Passo 3
+    await user.click(screen.getByRole("button", { name: /Continuar/i }));
+
+    // Clica em Começar Agora
+    await user.click(screen.getByRole("button", { name: /Começar Agora/i }));
+
+    expect(handleStartReal).toHaveBeenCalledTimes(1);
+    expect(handleOpenChange).toHaveBeenCalledWith(false);
+    expect(hasSeenWelcomeModal()).toBe(true);
+    expect(mockNavigate).toHaveBeenCalledWith("/familia");
+  });
+
   it("aciona onStartTour, marca visto no storage e fecha ao clicar em Tour Rápido no passo 3", async () => {
     const user = userEvent.setup();
     const handleStartTour = vi.fn();

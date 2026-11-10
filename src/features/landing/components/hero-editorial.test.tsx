@@ -66,4 +66,12 @@ describe("HeroEditorial", () => {
     expect(screen.getByText("Aporte Calibrado do Mês")).toBeInTheDocument();
     expect(screen.getByText("R$ 1.500,00")).toBeInTheDocument();
   });
+
+  it("renderiza o botão principal de CTA direcionando para degustação gratuita (30 dias)", () => {
+    renderHero();
+
+    const ctaButton = screen.getByRole("link", { name: /Começar 30 Dias Grátis/i });
+    expect(ctaButton).toBeInTheDocument();
+    expect(ctaButton).toHaveAttribute("href", "/cadastro");
+  });
 });
