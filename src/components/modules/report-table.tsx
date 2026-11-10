@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 import { DataList, type DataListColumn } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 

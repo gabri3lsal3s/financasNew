@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Search, Settings2, Shield, UserPlus } from "lucide-react";
 import { Button, EmptyState, Input, Select, Skeleton, Badge } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 import { ROLE_LABELS, STATUS_LABELS } from "@/domain/admin";
 import { useAdminUsers, useUserAccess } from "@/state";
 import { UserCreateDialog, UserEditDialog } from "../components";
@@ -12,15 +13,15 @@ export function AdminUsersPage() {
   const isSuperadmin = currentUserRole === "superadmin";
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
   const [selectedUser, setSelectedUser] = useState<AdminUserRow | null>(null);
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
 
   const usersQuery = useAdminUsers({
     search: search.trim() ? search.trim() : null,
-    status: statusFilter || null,
-    role: roleFilter || null,
+    status: statusFilter && statusFilter !== "all" ? statusFilter : null,
+    role: roleFilter && roleFilter !== "all" ? roleFilter : null,
     limit: 100,
   });
 
@@ -28,18 +29,13 @@ export function AdminUsersPage() {
 
   return (
     <div className="flex flex-col gap-6 w-full min-w-0">
-      {/* Cabeçalho */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Gestão de Usuários
-          </h1>
-          <p className="text-xs text-muted-foreground sm:text-sm">
-            Consulta cadastral, contato criptografado, concessão de planos e permissões modulares
-          </p>
-        </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          {isSuperadmin && (
+      {/* Cabeçalho Canônico */}
+      <PageHeader
+        title="Gestão de Usuários"
+        description="Consulta cadastral, contato criptografado, concessão de planos e permissões modulares"
+        badge={<Badge variant="muted" size="sm">{users.length} usuários listados</Badge>}
+        actions={
+          isSuperadmin ? (
             <Button
               variant="default"
               size="sm"
@@ -52,12 +48,9 @@ export function AdminUsersPage() {
               <UserPlus className="size-3.5" aria-hidden="true" />
               <span>Adicionar Usuário</span>
             </Button>
-          )}
-          <Badge variant="muted" size="sm">
-            {users.length} usuários listados
-          </Badge>
-        </div>
-      </div>
+          ) : undefined
+        }
+      />
 
       {/* Barra de Filtros */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -67,6 +60,7 @@ export function AdminUsersPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por nome ou e-mail…"
+            aria-label="Buscar por nome ou e-mail"
             className="pl-9"
           />
           <Search className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
@@ -75,8 +69,10 @@ export function AdminUsersPage() {
         <Select
           value={statusFilter}
           onValueChange={setStatusFilter}
+          ariaLabel="Filtrar por status"
+          placeholder="Status: Todos"
           options={[
-            { value: "", label: "Todos os status" },
+            { value: "all", label: "Status: Todos" },
             { value: "active", label: STATUS_LABELS.active },
             { value: "pending_approval", label: STATUS_LABELS.pending_approval },
             { value: "suspended", label: STATUS_LABELS.suspended },
@@ -87,8 +83,10 @@ export function AdminUsersPage() {
         <Select
           value={roleFilter}
           onValueChange={setRoleFilter}
+          ariaLabel="Filtrar por cargo"
+          placeholder="Cargo: Todos"
           options={[
-            { value: "", label: "Todos os cargos" },
+            { value: "all", label: "Cargo: Todos" },
             { value: "user", label: ROLE_LABELS.user },
             { value: "admin", label: ROLE_LABELS.admin },
             { value: "superadmin", label: ROLE_LABELS.superadmin },
