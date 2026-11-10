@@ -1,0 +1,21 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Allow: /ferramentas
+Allow: /ferramentas/*
+Allow: /termos
+Allow: /privacidade
+Allow: /entrar
+Allow: /cadastrar
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /configuracoes
+Disallow: /conta
+Disallow: /painel
+Disallow: /transacoes
+Disallow: /cartoes
+Disallow: /carteira
+Disallow: /orcamentos
+Disallow: /dividas
+
+Sitemap: https://axir.com.br/sitemap.xml
