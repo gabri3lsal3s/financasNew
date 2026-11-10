@@ -224,9 +224,9 @@ export function PortfolioSnapshotsDialog({
             headingLevel="h3"
           />
         ) : (
-          <div className="max-h-[55vh] overflow-y-auto overflow-x-auto rounded-xl border border-border/80 shadow-xs">
+          <div className="overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 shadow-xs">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="sticky top-0 bg-surface border-b border-border/80 text-muted-foreground font-medium z-10">
+              <thead className="bg-surface border-b border-border/80 text-muted-foreground font-medium">
                 <tr>
                   <th scope="col" className="py-2.5 px-3 whitespace-nowrap">
                     Competência

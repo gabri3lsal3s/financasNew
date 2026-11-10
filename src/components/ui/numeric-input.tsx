@@ -39,7 +39,7 @@ const sizeClasses: Record<
 > = {
   sm: {
     wrapper: "h-8",
-    input: "h-8 text-sm",
+    input: "h-8 text-base sm:text-sm",
     button: "size-7",
   },
   md: {

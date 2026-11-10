@@ -348,7 +348,7 @@ export function GoalCompositionDialog({
                 )}
 
                 {investmentMode === "selected_assets" && (
-                  <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto pr-1">
+                  <div className="flex flex-col gap-1.5">
                     {isPositionLoading ? (
                       <p className="text-[11px] text-muted-foreground italic py-2">
                         Carregando investimentos da carteira...

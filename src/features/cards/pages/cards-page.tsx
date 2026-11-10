@@ -333,7 +333,9 @@ export function CardsPage() {
   };
 
   const openForm = (card: CreditCard | null) => {
-    handleOpenForm(card);
+    setActionError(null);
+    setEditingCard(card);
+    setFormOpen(true);
   };
 
   const handleDeactivateCard = async (card: CreditCard) => {

@@ -16,6 +16,7 @@ import {
   Input,
   Skeleton,
 } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 import { useAdminLogBackup, useAdminSystemBackups, fetchUserDataExport } from "@/state";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
@@ -123,27 +124,22 @@ export function AdminBackupsPage() {
   return (
     <div className="flex flex-col gap-8 w-full min-w-0">
       {/* Cabeçalho */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Central de Backups &amp; Continuidade (DRP)
-          </h1>
-          <p className="text-xs text-muted-foreground sm:text-sm">
-            Gestão de snapshots, cálculo criptográfico SHA-256 e plano de recuperação de desastres
-          </p>
-        </div>
-
-        <Button
-          variant="default"
-          size="sm"
-          onClick={handleGenerateSnapshot}
-          disabled={generating}
-          className="gap-2"
-        >
-          <HardDriveDownload className="size-4" aria-hidden="true" />
-          <span>{generating ? "Exportando snapshot…" : "Gerar Snapshot Imediato"}</span>
-        </Button>
-      </div>
+      <PageHeader
+        title="Central de Backups & Continuidade (DRP)"
+        description="Gestão de snapshots, cálculo criptográfico SHA-256 e plano de recuperação de desastres"
+        actions={
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleGenerateSnapshot}
+            disabled={generating}
+            className="gap-2"
+          >
+            <HardDriveDownload className="size-4" aria-hidden="true" />
+            <span>{generating ? "Exportando snapshot…" : "Gerar Snapshot Imediato"}</span>
+          </Button>
+        }
+      />
 
       {/* Cartão de Status do Último Backup */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

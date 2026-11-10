@@ -106,7 +106,7 @@ export function BatchInvoicePaymentDialog({
           </span>
         </div>
 
-        <div className="flex max-h-60 flex-col gap-2 overflow-y-auto pr-1">
+        <div className="flex flex-col gap-2">
           {unpaidSummaries.map((s) => {
             const isChecked = selectedMonths.has(s.month);
             const dueDate = invoiceDueDate(s.month, card.due_day);

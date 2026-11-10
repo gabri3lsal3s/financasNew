@@ -661,8 +661,8 @@ const COMPARISON_ROWS = [
 
 function PlanComparisonTable({ isFullAccess }: { isFullAccess: boolean }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-border/80">
-      <table className="w-full text-xs">
+    <div className="overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80">
+      <table className="w-full min-w-[380px] sm:min-w-0 text-xs">
         <thead>
           <tr className="border-b border-border/80 bg-muted/30">
             <th className="py-2.5 pl-4 pr-2 text-left font-semibold text-muted-foreground">

@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { axe } from "vitest-axe";
 import { describe, expect, it, vi } from "vitest";
 import { ForgotPasswordPage } from "@/features/auth/pages/forgot-password-page";
@@ -65,6 +66,22 @@ vi.mock("@/state", () => ({
     canWrite: true,
   }),
   usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
+  useUserAccess: () => ({
+    hasFeature: () => true,
+    features: [],
+    isLoaded: true,
+  }),
+  useTripMode: () => ({
+    isTripModeEnabled: false,
+    setTripModeEnabled: vi.fn(),
+  }),
+  useUserTrips: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
   useIncomes: () => ({
     data: [{ id: "i1", value: 5000, report_weight: 1, date: "2026-08-05", description: "Salário", category_id: "i1" }],
     isLoading: false,
@@ -494,7 +511,12 @@ describe("Auditoria de acessibilidade (axe) — telas P0", () => {
   });
 
   it("LaunchWizard sem violações", async () => {
-    const { container } = render(<LaunchWizard />);
+    const testQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { container } = render(
+      <QueryClientProvider client={testQueryClient}>
+        <LaunchWizard />
+      </QueryClientProvider>,
+    );
     expect(await axe(container)).toHaveNoViolations();
   });
 

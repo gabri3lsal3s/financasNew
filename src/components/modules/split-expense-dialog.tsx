@@ -678,7 +678,7 @@ export function SplitExpenseDialog({
                 </div>
               ) : (
                 /* Modo com Nomes Customizados */
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                <div className="space-y-2">
                   {participants.map((name, index) => (
                     <div key={index} className="flex items-center gap-2">
                       <div className="flex-1">

@@ -168,7 +168,7 @@ function FamilyShareAssetsContent({ currentMember, familyId, onClose }: DialogCo
               Nenhum ativo cadastrado na sua carteira pessoal de investimentos.
             </div>
           ) : (
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+            <div className="space-y-2">
               {userAssets.map((asset) => {
                 const isAutoByClass = Boolean(
                   asset.asset_class && selectedClasses.includes(asset.asset_class),

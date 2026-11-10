@@ -22,7 +22,7 @@ export function MobileCtaDock({ visible }: MobileCtaDockProps) {
     <aside
       aria-label="Ação rápida de teste gratuito"
       className={cn(
-        "fixed bottom-0 left-0 right-0 z-30 sm:hidden border-t border-border/80 bg-background/90 backdrop-blur-md px-4 py-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] shadow-lg transition-all duration-300 animate-fade-slide-in",
+        "fixed bottom-0 left-0 right-0 z-30 sm:hidden border-t border-border/80 bg-background/90 backdrop-blur-md px-4 py-2.5 pb-[calc(0.75rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] shadow-lg transition-all duration-300 animate-fade-slide-in",
       )}
     >
       <div className="flex items-center justify-between gap-3">

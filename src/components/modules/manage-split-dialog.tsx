@@ -948,7 +948,7 @@ export function ManageSplitDialog({
               <span>Finalizar Racha</span>
             </Button>
           ) : (
-            <Badge variant="positive" className="px-2.5 py-1 text-xs justify-center w-full sm:w-auto">
+            <Badge variant="positive" size="sm" className="justify-center w-full sm:w-auto">
               Racha Finalizado
             </Badge>
           )}

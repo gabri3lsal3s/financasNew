@@ -179,7 +179,7 @@ function TicketManageForm({ ticket, onClose, onSuccess }: TicketManageFormProps)
 
         {/* Mensagem do Usuário */}
         <FormField label="Mensagem do Usuário" className="pt-1">
-          <div className="rounded-lg bg-surface border border-border/80 p-3 text-xs text-foreground whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+          <div className="rounded-lg bg-surface border border-border/80 p-3 text-xs text-foreground whitespace-pre-wrap leading-relaxed">
             {ticket.message}
           </div>
         </FormField>

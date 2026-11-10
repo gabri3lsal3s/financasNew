@@ -21,7 +21,7 @@ export interface PercentInputProps
 }
 
 const sizeClasses: Record<NonNullable<PercentInputProps["size"]>, { input: string; suffix: string }> = {
-  sm: { input: "h-8 px-2.5 text-sm", suffix: "text-xs pr-2.5" },
+  sm: { input: "h-8 px-2.5 text-base sm:text-sm", suffix: "text-xs pr-2.5" },
   md: { input: "h-10 px-3 text-base", suffix: "text-xs sm:text-sm pr-3" },
   lg: { input: "h-14 px-4 text-2xl font-semibold text-center", suffix: "text-base pr-4" },
 };

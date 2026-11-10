@@ -637,7 +637,7 @@ export function InitialPocketCostDialog({
                 ) : null}
 
                 {/* Lista de Marcos Acionáveis */}
-                <div className="flex flex-col gap-1 max-h-48 overflow-y-auto pr-1">
+                <div className="flex flex-col gap-1">
                   {parseResult.actionableRows.map((row, idx) => (
                     <div
                       key={`${row.date}-${idx}`}
@@ -913,7 +913,7 @@ export function InitialPocketCostDialog({
                   />
                 </div>
               ) : (
-                <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto pr-1">
+                <div className="flex flex-col gap-1.5">
                   {historicalContributions.map((marco) => {
                     const isWithdrawal = isHistoricalWithdrawal(marco);
                     const monthKey = marco.date.slice(0, 7);

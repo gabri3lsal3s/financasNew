@@ -35,7 +35,7 @@ export interface MoneyInputProps
 }
 
 const sizeClasses: Record<NonNullable<MoneyInputProps["size"]>, string> = {
-  sm: "h-8 px-3 text-sm",
+  sm: "h-8 px-3 text-base sm:text-sm",
   md: "h-10 px-4 text-base",
   lg: "h-16 px-4 text-3xl font-semibold text-center",
 };

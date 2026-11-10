@@ -44,7 +44,7 @@ export function SelectParticipantDialog({
           <label className="text-xs font-semibold text-foreground">
             Participantes ({participants.length})
           </label>
-          <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+          <div className="space-y-2">
             {participants.map((participant) => {
               const isSelected = selectedId === participant.id;
               return (

@@ -11,6 +11,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { PageHeader } from "@/components/layout";
 import { Button, EmptyState, NumberTicker, Skeleton } from "@/components/ui";
 import {
   useAdminMetrics,
@@ -64,38 +65,32 @@ export function AdminDashboardPage() {
   return (
     <div className="flex flex-col gap-8 w-full min-w-0">
       {/* Cabeçalho da Visão Geral */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Dashboard Executivo
-          </h1>
-          <p className="text-xs text-muted-foreground sm:text-sm">
-            Métricas em tempo real, telemetria da infraestrutura e ações de governança
-          </p>
-        </div>
-
-        {/* Ações Rápidas de Comando */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Link to="/admin/notificacoes">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <BellRing className="size-3.5 text-primary-strong" aria-hidden="true" />
-              <span>Novo Comunicado</span>
-            </Button>
-          </Link>
-          <Link to="/admin/backups">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <Database className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              <span>Gerar Snapshot</span>
-            </Button>
-          </Link>
-          <Link to="/admin/configuracoes">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <SlidersHorizontal className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              <span>Kill-Switches</span>
-            </Button>
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="Dashboard Executivo"
+        description="Métricas em tempo real, telemetria da infraestrutura e ações de governança"
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link to="/admin/notificacoes">
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                <BellRing className="size-3.5 text-primary-strong" aria-hidden="true" />
+                <span>Novo Comunicado</span>
+              </Button>
+            </Link>
+            <Link to="/admin/backups">
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                <Database className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                <span>Gerar Snapshot</span>
+              </Button>
+            </Link>
+            <Link to="/admin/configuracoes">
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                <SlidersHorizontal className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                <span>Kill-Switches</span>
+              </Button>
+            </Link>
+          </div>
+        }
+      />
 
       {/* Grade de KPIs Principais */}
       <section aria-label="Métricas Principais" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">

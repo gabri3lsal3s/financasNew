@@ -117,7 +117,7 @@ export function AdminShell() {
               <span className="text-xs font-semibold text-foreground truncate max-w-[130px]">
                 {profile?.name || session?.user?.email}
               </span>
-              <Badge variant={isSuperAdmin ? "default" : "muted"} size="xs" className="text-[9px] uppercase font-mono">
+              <Badge variant={isSuperAdmin ? "default" : "muted"} size="xs" className="uppercase font-mono">
                 {role || "admin"}
               </Badge>
             </div>
@@ -233,7 +233,7 @@ export function AdminShell() {
         )}
 
         {/* Conteúdo da Sub-página Administrativa */}
-        <main className="flex-1 w-full min-w-0 p-4 sm:p-6 lg:p-8 pb-24 sm:pb-28 lg:pb-8 overflow-y-auto">
+        <main className="flex-1 w-full min-w-0 p-4 sm:p-6 lg:p-8 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] sm:pb-28 lg:pb-8 overflow-y-auto">
           <Outlet />
         </main>
       </div>

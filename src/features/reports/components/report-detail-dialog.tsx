@@ -112,7 +112,7 @@ export function ReportDetailDialog({
             description="Não há despesas registradas para este filtro no período."
           />
         ) : (
-          <div className="flex flex-col gap-2 max-h-[50vh] overflow-y-auto no-scrollbar scroll-smooth pr-1">
+          <div className="flex flex-col gap-2">
             {expenses.map((expense) => {
               const cat = categoryById.get(expense.category_id);
               const itemTitle = expense.description || cat?.name || "Despesa";

@@ -158,7 +158,7 @@ export function TripMemberStatementDialog({
               </p>
             </Card>
           ) : (
-            <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+            <div className="space-y-1.5">
               {statement.participations.map((item, idx) => (
                 <div
                   key={`${item.expenseId}-${idx}`}
@@ -205,7 +205,7 @@ export function TripMemberStatementDialog({
               Despesas que não entraram no cálculo da dívida deste participante e a respectiva justificativa:
             </p>
 
-            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+            <div className="space-y-1.5">
               {statement.exclusions.map((item, idx) => (
                 <div
                   key={`ex-${item.expenseId}-${idx}`}

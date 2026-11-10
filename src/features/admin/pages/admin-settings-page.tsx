@@ -1,5 +1,6 @@
 import { Layers, Smartphone } from "lucide-react";
 import { Alert, Badge, EmptyState, Skeleton } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 import { useAdminFeatures } from "@/state";
 import { FeatureToggleCard, TelegramSettingsCard } from "../components";
 
@@ -20,14 +21,10 @@ export function AdminSettingsPage() {
   return (
     <div className="flex flex-col gap-8 w-full min-w-0">
       {/* Cabeçalho */}
-      <div>
-        <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-          Sistema &amp; Configurações da Plataforma
-        </h1>
-        <p className="text-xs text-muted-foreground sm:text-sm">
-          Controle de liberação do APK Android Beta, Kill-Switches globais e bot do Telegram
-        </p>
-      </div>
+      <PageHeader
+        title="Sistema & Configurações da Plataforma"
+        description="Controle de liberação do APK Android Beta, Kill-Switches globais e bot do Telegram"
+      />
 
       {/* --- SEÇÃO 1: CONTROLE DO APK NATIVO ANDROID (BETA FECHADO) --- */}
       <section aria-label="Controle de Acesso ao APK" className="flex flex-col gap-4">

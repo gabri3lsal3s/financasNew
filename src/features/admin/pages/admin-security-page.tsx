@@ -12,6 +12,7 @@ import {
   SearchInput,
   SkeletonList,
 } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 import { useAdminAuditLogs } from "@/state";
 
 export function AdminSecurityPage() {
@@ -32,14 +33,10 @@ export function AdminSecurityPage() {
   return (
     <div className="flex flex-col gap-8 w-full min-w-0">
       {/* Cabeçalho */}
-      <div>
-        <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-          Auditoria, Segurança &amp; Governança LGPD
-        </h1>
-        <p className="text-xs text-muted-foreground sm:text-sm">
-          Trilha imutável de eventos administrativos e console do encarregado de dados (DPO)
-        </p>
-      </div>
+      <PageHeader
+        title="Auditoria, Segurança & Governança LGPD"
+        description="Trilha imutável de eventos administrativos e console do encarregado de dados (DPO)"
+      />
 
       {/* --- SEÇÃO 1: CONSOLE DPO & CONFORMIDADE LGPD --- */}
       <section aria-label="Console DPO" className="rounded-xl border border-border/80 bg-surface p-5 shadow-xs flex flex-col gap-4">

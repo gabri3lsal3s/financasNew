@@ -112,7 +112,7 @@ export function ClaimTripMemberDialog({
               </p>
             </div>
 
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-0.5">
+            <div className="space-y-2">
               {claimableMembers.map((member) => {
                 const isSelected = selectedMemberId === member.id;
                 const isBrowserSuggested = member.id === initialSelectedMemberId;

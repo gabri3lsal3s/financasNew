@@ -157,7 +157,7 @@ export function PublicTripMemberStatementDialog({
               </p>
             </Card>
           ) : (
-            <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+            <div className="space-y-1.5">
               {statement.participations.map((item, idx) => (
                 <div
                   key={`${item.expenseId}-${idx}`}
@@ -204,7 +204,7 @@ export function PublicTripMemberStatementDialog({
               Gastos isentos que não foram cobrados de você nesta viagem:
             </p>
 
-            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+            <div className="space-y-1.5">
               {statement.exclusions.map((item, idx) => (
                 <div
                   key={`ex-${item.expenseId}-${idx}`}

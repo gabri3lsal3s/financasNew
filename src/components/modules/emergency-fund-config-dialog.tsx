@@ -345,7 +345,7 @@ export function EmergencyFundConfigDialog({
                   Nenhum ativo com saldo em custódia encontrado na carteira.
                 </p>
               ) : (
-                <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto pr-1">
+                <div className="flex flex-col gap-1.5">
                   {portfolioRows
                     .filter((r) => r.quantity > 0 && (r.valueBRL ?? 0) > 0)
                     .map((row) => {

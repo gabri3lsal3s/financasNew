@@ -520,7 +520,7 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
             </div>
           </div>
 
-          <div className="max-h-80 overflow-y-auto rounded-xl border border-border/80 bg-surface/40 divide-y divide-border/60 p-1">
+          <div className="rounded-xl border border-border/80 bg-surface/40 divide-y divide-border/60 p-1">
             {parsedRows.map((row, idx) => {
               const isSelected = selectedIndices.has(idx);
               const isPositionMode = columnMapping?.mode === "positions";

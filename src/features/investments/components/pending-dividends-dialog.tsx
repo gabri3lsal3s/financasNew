@@ -167,7 +167,7 @@ export function PendingDividendsDialog({
               Nenhum provento pendente para crédito no momento.
             </div>
           ) : (
-            <div className="flex flex-col divide-y divide-border/40 max-h-[320px] overflow-y-auto pr-1">
+            <div className="flex flex-col divide-y divide-border/40">
               {availableDividends.map((div) => {
                 const isSelected = selectedIds.has(div.corporateDividendId);
                 return (

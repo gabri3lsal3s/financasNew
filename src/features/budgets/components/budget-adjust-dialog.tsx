@@ -244,7 +244,7 @@ function BudgetAdjustDialogContent({
             Nenhuma categoria de despesa disponível para ajuste.
           </div>
         ) : (
-          <div className="max-h-56 overflow-y-auto no-scrollbar rounded-xl border border-border/80 bg-surface divide-y divide-border/60">
+          <div className="rounded-xl border border-border/80 bg-surface divide-y divide-border/60">
             {result.items.map((item) => {
               const cat = categoryMap.get(item.categoryId);
               return (

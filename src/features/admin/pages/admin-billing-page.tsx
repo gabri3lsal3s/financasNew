@@ -10,6 +10,7 @@ import {
   NumberTicker,
   Skeleton,
 } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 import { useAdminMetrics, useAdminPlans } from "@/state";
 
 export function AdminBillingPage() {
@@ -21,26 +22,21 @@ export function AdminBillingPage() {
   return (
     <div className="flex flex-col gap-8 w-full min-w-0">
       {/* Cabeçalho */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Faturamento SaaS &amp; Gateway Asaas
-          </h1>
-          <p className="text-xs text-muted-foreground sm:text-sm">
-            Gestão de receitas recorrentes, conciliação de pagamentos e contingências operacionais
-          </p>
-        </div>
-
-        <a
-          href="https://www.asaas.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-surface px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-surface-hover transition-colors self-start sm:self-center"
-        >
-          <ExternalLink className="size-3.5" aria-hidden="true" />
-          <span>Painel Asaas</span>
-        </a>
-      </div>
+      <PageHeader
+        title="Faturamento SaaS & Gateway Asaas"
+        description="Gestão de receitas recorrentes, conciliação de pagamentos e contingências operacionais"
+        actions={
+          <a
+            href="https://www.asaas.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-surface px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-surface-hover transition-colors"
+          >
+            <ExternalLink className="size-3.5" aria-hidden="true" />
+            <span>Painel Asaas</span>
+          </a>
+        }
+      />
 
       {/* Grade de KPIs Financeiros */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

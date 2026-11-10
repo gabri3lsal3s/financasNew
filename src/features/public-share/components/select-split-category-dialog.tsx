@@ -63,7 +63,7 @@ export function SelectSplitCategoryDialog({
           <label className="text-xs font-semibold text-foreground">
             Categorias disponíveis ({categories.length})
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {categories.map((category) => {
               const isSelected = selectedId === category.id;
               return (

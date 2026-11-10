@@ -16,6 +16,7 @@ import {
   Skeleton,
   Textarea,
 } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 import { useAdminBroadcastNotifications, useAdminSendBroadcast } from "@/state";
 import { triggerSensory } from "@/services/sensory";
 import type { BroadcastAudience, BroadcastType } from "@/types";
@@ -72,14 +73,10 @@ export function AdminNotificationsPage() {
   return (
     <div className="flex flex-col gap-8 w-full min-w-0">
       {/* Cabeçalho */}
-      <div>
-        <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-          Central de Notificações &amp; Push
-        </h1>
-        <p className="text-xs text-muted-foreground sm:text-sm">
-          Dispare comunicados em tempo real diretamente para o aplicativo dos usuários
-        </p>
-      </div>
+      <PageHeader
+        title="Central de Notificações & Push"
+        description="Dispare comunicados em tempo real diretamente para o aplicativo dos usuários"
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Formulário de Envio (coluna da esquerda) */}
@@ -240,7 +237,7 @@ export function AdminNotificationsPage() {
                   <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-foreground truncate">{b.title}</span>
-                      <Badge variant="muted" size="xs" className="font-mono text-[10px]">
+                      <Badge variant="muted" size="xs" className="font-mono">
                         {b.target_audience === "all" ? "Todos" : b.target_audience === "pro" ? "Pro" : "Free"}
                       </Badge>
                     </div>

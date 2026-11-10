@@ -81,9 +81,9 @@ export function LoanScheduleDialog({
         </div>
 
         {/* Tabela com Rolagem */}
-        <div className="max-h-[380px] overflow-x-auto overflow-y-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 bg-surface shadow-xs">
+        <div className="overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 bg-surface shadow-xs">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="sticky top-0 z-10 bg-surface border-b border-border/80 text-[11px] font-semibold uppercase text-muted-foreground tracking-wider">
+            <thead className="bg-surface border-b border-border/80 text-[11px] font-semibold uppercase text-muted-foreground tracking-wider">
               <tr>
                 <th className="px-3 py-2.5">#</th>
                 <th className="px-3 py-2.5">Vencimento</th>

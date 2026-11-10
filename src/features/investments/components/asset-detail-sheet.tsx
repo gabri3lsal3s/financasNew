@@ -556,7 +556,7 @@ export function AssetDetailSheet({
                 Nenhuma operação registrada individualmente no histórico.
               </div>
             ) : (
-              <div className="flex max-h-64 flex-col divide-y divide-border/60 overflow-y-auto rounded-xl border border-border/80 bg-surface/60">
+              <div className="flex flex-col divide-y divide-border/60 rounded-xl border border-border/80 bg-surface/60">
                 {(txs ?? []).map((tx) => {
                   const txInfo = formatTxType(tx.type);
                   return (
