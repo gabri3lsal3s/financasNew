@@ -107,7 +107,7 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
       description="Crie um código de convite definindo o plano atribuído (Trial, Pro ou Vitalício) e controle modular de acesso."
       size="lg"
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-h-[80vh] overflow-y-auto pr-1">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {/* Código do Convite */}
         <div className="flex flex-col gap-1.5">
           <label htmlFor="invite-code" className="text-xs font-semibold text-foreground">

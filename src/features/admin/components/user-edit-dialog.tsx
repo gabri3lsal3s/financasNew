@@ -281,10 +281,10 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
                   triggerSensory("action");
                   setRevealContact(true);
                 }}
-                className="w-full justify-center gap-1.5 text-xs h-7.5 border-dashed"
+                className="w-full justify-center gap-1.5 text-xs min-h-[34px] h-auto py-1.5 px-3 border-dashed whitespace-normal text-center"
               >
-                <Eye className="size-3.5 text-primary-strong" aria-hidden="true" />
-                <span>Revelar Telefone / WhatsApp e CPF (Auditoria LGPD)</span>
+                <Eye className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
+                <span>Revelar Contatos e CPF (Auditoria LGPD)</span>
               </Button>
             ) : contactQuery.isLoading ? (
               <div className="text-[11px] text-muted-foreground animate-pulse py-1">
