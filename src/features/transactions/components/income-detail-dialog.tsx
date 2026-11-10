@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Copy, Pencil, Share2, Sparkles, Trash2 } from "lucide-react";
-import { Alert, Badge, Button, ConfirmDialog, DatePicker, Input, Modal, ModalFooter, MoneyInput, Select, Switch } from "@/components/ui";
+import { Alert, Badge, Button, ConfirmDialog, DatePicker, FormField, Input, Modal, ModalFooter, MoneyInput, Select, Switch } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { formatCentsAsBRL } from "@/services/masks";
@@ -168,54 +168,51 @@ function IncomeEditForm({
       {formError ? <Alert variant="error">{formError}</Alert> : null}
 
       {grouped ? (
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-          Aplicar a
+        <FormField
+          label="Aplicar a"
+          helperText={
+            !isRecurring && scope !== "single"
+              ? "O valor é editado por lançamento para preservar o total do parcelamento. Para mudar o total, exclua e refaça."
+              : undefined
+          }
+        >
           <Select
             value={scope}
             onValueChange={(value) => onScopeChange(value as InstallmentDeleteMode)}
             options={EDIT_SCOPE_OPTIONS}
             ariaLabel="Escopo da edição"
           />
-          {grouped && !isRecurring && scope !== "single" ? (
-            <span className="text-[11px] text-muted-foreground font-normal">
-              O valor é editado por lançamento para preservar o total do parcelamento. Para mudar o total, exclua e refaça.
-            </span>
-          ) : null}
-        </label>
+        </FormField>
       ) : null}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground sm:col-span-2">
-          Descrição
+        <FormField label="Descrição" className="sm:col-span-2">
           <Input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Descrição da receita"
             aria-label="Descrição"
           />
-        </label>
+        </FormField>
 
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-          Valor
+        <FormField label="Valor">
           <MoneyInput
             cents={valueCents}
             onCentsChange={setValueCents}
             aria-label="Valor da receita"
             disabled={valueDisabled}
           />
-        </label>
+        </FormField>
 
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-          Data
+        <FormField label="Data">
           <DatePicker
             value={date}
             onValueChange={setDate}
             ariaLabel="Data da receita"
           />
-        </label>
+        </FormField>
 
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-          Categoria
+        <FormField label="Categoria">
           <Select
             value={categoryId}
             onValueChange={setCategoryId}
@@ -223,17 +220,16 @@ function IncomeEditForm({
             placeholder="Selecione a categoria"
             ariaLabel="Categoria da receita"
           />
-        </label>
+        </FormField>
 
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-          Forma de recebimento
+        <FormField label="Forma de recebimento">
           <Select
             value={receiveType}
             onValueChange={(val) => setReceiveType(val as ReceiveType)}
             options={RECEIVE_OPTIONS}
             ariaLabel="Forma de recebimento"
           />
-        </label>
+        </FormField>
       </div>
 
       <ReportWeightField

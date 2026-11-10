@@ -220,7 +220,7 @@ describe("TransactionListPage — listagem por mês", () => {
     const user = userEvent.setup();
     render(<TransactionListPage />);
 
-    const searchInput = screen.getByRole("textbox", { name: "Buscar lançamentos" });
+    const searchInput = screen.getByLabelText("Buscar lançamentos");
     expect(searchInput).toBeInTheDocument();
 
     // Digita "Aluguel" -> apenas Aluguel visível
@@ -239,7 +239,7 @@ describe("TransactionListPage — listagem por mês", () => {
     const user = userEvent.setup();
     render(<TransactionListPage />);
 
-    const searchInput = screen.getByRole("textbox", { name: "Buscar lançamentos" });
+    const searchInput = screen.getByLabelText("Buscar lançamentos");
     await user.type(searchInput, "TermoInexistenteXYZ");
 
     expect(screen.getByText("Nenhum resultado encontrado")).toBeInTheDocument();

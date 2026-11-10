@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { Mail, Clock, MapPin, Monitor, Loader2, Save } from "lucide-react";
-import { Modal } from "@/components/ui/modal";
-import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import { Badge, Button, FormField, KeyValueGrid, Modal, Select, Textarea } from "@/components/ui";
 import { useUpdateSupportTicketMutation } from "@/state";
 import type { SupportTicket, SupportTicketStatus } from "@/types";
 
@@ -130,42 +126,49 @@ function TicketManageForm({ ticket, onClose, onSuccess }: TicketManageFormProps)
         </div>
 
         {/* Informações do Cliente */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-          <div>
-            <span className="text-muted-foreground">Cliente: </span>
-            <span className="font-semibold text-foreground">
-              {ticket.user_name || "Não informado"}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-muted-foreground">E-mail: </span>
-            {ticket.user_email ? (
-              <a
-                href={`mailto:${ticket.user_email}?subject=Atendimento Axir: ${encodeURIComponent(ticket.subject || "Chamado de Suporte")}`}
-                className="font-medium text-primary hover:underline flex items-center gap-1 truncate"
-              >
-                <Mail className="size-3 shrink-0" aria-hidden="true" />
-                <span className="truncate">{ticket.user_email}</span>
-              </a>
-            ) : (
-              <span className="text-muted-foreground">Não informado</span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
-            <span>Rota: </span>
-            <code className="text-[11px] text-foreground font-mono bg-surface px-1 py-0.5 rounded border border-border/60">
-              {ticket.current_route || "/"}
-            </code>
-          </div>
-
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Monitor className="size-3.5 shrink-0" aria-hidden="true" />
-            <span>Plataforma: </span>
-            <span className="text-foreground">{platformStr}</span>
-          </div>
-        </div>
+        <KeyValueGrid
+          columns={2}
+          items={[
+            {
+              label: "Cliente",
+              value: ticket.user_name || "Não informado",
+            },
+            {
+              label: "E-mail",
+              value: ticket.user_email ? (
+                <a
+                  href={`mailto:${ticket.user_email}?subject=Atendimento Axir: ${encodeURIComponent(ticket.subject || "Chamado de Suporte")}`}
+                  className="font-medium text-primary hover:underline flex items-center gap-1 truncate"
+                >
+                  <Mail className="size-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{ticket.user_email}</span>
+                </a>
+              ) : (
+                "Não informado"
+              ),
+            },
+            {
+              label: "Rota",
+              value: (
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <code className="text-[11px] text-foreground font-mono bg-surface px-1 py-0.5 rounded border border-border/60">
+                    {ticket.current_route || "/"}
+                  </code>
+                </div>
+              ),
+            },
+            {
+              label: "Plataforma",
+              value: (
+                <div className="flex items-center gap-1.5">
+                  <Monitor className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span>{platformStr}</span>
+                </div>
+              ),
+            },
+          ]}
+        />
 
         {ticket.subject && (
           <div className="pt-1">
@@ -175,14 +178,11 @@ function TicketManageForm({ ticket, onClose, onSuccess }: TicketManageFormProps)
         )}
 
         {/* Mensagem do Usuário */}
-        <div className="space-y-1 pt-1">
-          <label className="text-xs font-semibold text-foreground">
-            Mensagem do Usuário:
-          </label>
+        <FormField label="Mensagem do Usuário" className="pt-1">
           <div className="rounded-lg bg-surface border border-border/80 p-3 text-xs text-foreground whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
             {ticket.message}
           </div>
-        </div>
+        </FormField>
       </div>
 
       {/* Formulário de Gestão do Atendimento */}
@@ -217,10 +217,7 @@ function TicketManageForm({ ticket, onClose, onSuccess }: TicketManageFormProps)
           )}
         </div>
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-foreground">
-            Status do Chamado
-          </label>
+        <FormField label="Status do Chamado">
           <Select
             value={status}
             onValueChange={(val) => setStatus(val as SupportTicketStatus)}
@@ -231,7 +228,7 @@ function TicketManageForm({ ticket, onClose, onSuccess }: TicketManageFormProps)
               { value: "closed", label: STATUS_LABELS.closed },
             ]}
           />
-        </div>
+        </FormField>
 
         <div className="space-y-1.5">
           <Textarea

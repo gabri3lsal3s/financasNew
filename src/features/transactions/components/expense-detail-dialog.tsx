@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Copy, Minus, Pencil, Plane, Share2, Trash2, TrendingDown, TrendingUp, Users } from "lucide-react";
-import { Alert, Badge, Button, ConfirmDialog, DatePicker, Input, Modal, ModalFooter, MoneyInput, RadioGroup, Select, Switch } from "@/components/ui";
+import { Alert, Badge, Button, ConfirmDialog, DatePicker, FormField, Input, Modal, ModalFooter, MoneyInput, RadioGroup, Select, Switch } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { SplitExpenseDialog } from "@/components/modules/split-expense-dialog";
@@ -258,54 +258,51 @@ function ExpenseEditForm({
       ) : null}
 
       {grouped ? (
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-          Aplicar a
+        <FormField
+          label="Aplicar a"
+          helperText={
+            !isRecurring && scope !== "single"
+              ? "O valor é editado por lançamento para preservar o total do parcelamento. Para mudar o total, exclua e refaça."
+              : undefined
+          }
+        >
           <Select
             value={scope}
             onValueChange={(value) => onScopeChange(value as InstallmentDeleteMode)}
             options={EDIT_SCOPE_OPTIONS}
             ariaLabel="Escopo da edição"
           />
-          {grouped && !isRecurring && scope !== "single" ? (
-            <span className="text-[11px] text-muted-foreground font-normal">
-              O valor é editado por lançamento para preservar o total do parcelamento. Para mudar o total, exclua e refaça.
-            </span>
-          ) : null}
-        </label>
+        </FormField>
       ) : null}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground sm:col-span-2">
-          Descrição
+        <FormField label="Descrição" className="sm:col-span-2">
           <Input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Descrição da despesa"
             aria-label="Descrição"
           />
-        </label>
+        </FormField>
 
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-          Valor
+        <FormField label="Valor">
           <MoneyInput
             cents={valueCents}
             onCentsChange={setValueCents}
             aria-label="Valor da despesa"
             disabled={valueDisabled}
           />
-        </label>
+        </FormField>
 
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-          Data
+        <FormField label="Data">
           <DatePicker
             value={date}
             onValueChange={handleDateChange}
             ariaLabel="Data da despesa"
           />
-        </label>
+        </FormField>
 
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-          Categoria
+        <FormField label="Categoria">
           <Select
             value={categoryId}
             onValueChange={setCategoryId}
@@ -313,22 +310,20 @@ function ExpenseEditForm({
             placeholder="Selecione a categoria"
             ariaLabel="Categoria da despesa"
           />
-        </label>
+        </FormField>
 
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-          Forma de pagamento
+        <FormField label="Forma de pagamento">
           <Select
             value={paymentMethod}
             onValueChange={(val) => setPaymentMethod(val as PaymentMethod)}
             options={PAYMENT_OPTIONS}
             ariaLabel="Forma de pagamento"
           />
-        </label>
+        </FormField>
 
         {paymentMethod === "credit_card" && cards.length > 0 ? (
           <>
-            <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-              Cartão de crédito
+            <FormField label="Cartão de crédito">
               <Select
                 value={cardId}
                 onValueChange={(val) => {
@@ -345,11 +340,13 @@ function ExpenseEditForm({
                 placeholder="Selecione o cartão"
                 ariaLabel="Cartão de crédito"
               />
-            </label>
+            </FormField>
 
             {scope === "single" ? (
-              <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-                Fatura (Competência)
+              <FormField
+                label="Fatura (Competência)"
+                helperText="Calculada pelo fechamento do cartão; edite para ajustar manualmente."
+              >
                 <Input
                   value={billCompetence}
                   onChange={(e) => {
@@ -362,10 +359,7 @@ function ExpenseEditForm({
                   maxLength={7}
                   autoComplete="off"
                 />
-                <span className="text-[11px] text-muted-foreground">
-                  Calculada pelo fechamento do cartão; edite para ajustar manualmente.
-                </span>
-              </label>
+              </FormField>
             ) : null}
           </>
         ) : null}

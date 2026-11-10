@@ -53,6 +53,8 @@ let mockAuthUser: { id: string; email?: string } | null = {
 };
 
 vi.mock("@/state", () => ({
+  usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
+  useUserSubscription: () => ({ isPro: true, isTrial: false, plan: "pro", isReadOnly: false, canWrite: true }),
   useCategories: () => ({
     data: [
       { id: "c1", name: "Alimentação", type: "expense", icon: "alimentacao", color: null, is_reserved: false, is_active: true },
@@ -143,6 +145,7 @@ vi.mock("@/state/queries/use-trips", () => ({
     all: ["trips"],
     detail: (id: string) => ["trips", id],
   },
+  useAddTripExpenseMutation: () => ({ mutateAsync: addTripExpenseMock, isPending: false }),
 }));
 
 const activeCreditCardsMock = vi.fn(() => [] as unknown[]);

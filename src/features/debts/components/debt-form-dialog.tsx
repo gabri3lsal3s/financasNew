@@ -153,7 +153,11 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
         <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={!valid || pending}>
+        <Button
+          type="submit"
+          disabled={!valid || pending}
+          aria-label={debt ? "Salvar alterações" : "Criar dívida"}
+        >
           {pending ? "Salvando…" : (
             <>
               <span className="hidden sm:inline">{debt ? "Salvar alterações" : "Criar dívida"}</span>

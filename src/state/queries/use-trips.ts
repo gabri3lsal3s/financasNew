@@ -67,8 +67,26 @@ export const TRIP_QUERY_KEYS = {
   public: (token: string) => [...TRIP_QUERY_KEYS.all, "public", token] as const,
 };
 
+let fallbackQueryClient: QueryClient | null = null;
+
+function getFallbackQueryClient(): QueryClient {
+  if (!fallbackQueryClient) {
+    fallbackQueryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+  }
+  return fallbackQueryClient;
+}
+
 function useSafeQueryClient(): QueryClient {
-  return useQueryClient();
+  try {
+    return useQueryClient();
+  } catch {
+    return getFallbackQueryClient();
+  }
 }
 
 export function useUserTrips() {

@@ -1,4 +1,6 @@
 export { DebtFormDialog } from "./debt-form-dialog";
+export { DebtRow } from "./debt-row";
+export type { DebtRowProps } from "./debt-row";
 export { EarlyAmortizationDialog } from "./early-amortization-dialog";
 export { LoanCard } from "./loan-card";
 export { LoanEditDialog } from "./loan-edit-dialog";

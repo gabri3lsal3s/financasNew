@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, DatePicker, Input, Modal, ModalFooter, MoneyInput, NumberStepperInput, Select } from "@/components/ui";
+import { Alert, Button, DatePicker, FormField, Input, Modal, ModalFooter, MoneyInput, NumberStepperInput, Select } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { sensory } from "@/services/sensory";
 import { formatCentsAsBRL } from "@/services/masks";
@@ -87,61 +87,46 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
       <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3.5">
         {error ? <Alert variant="error">{error}</Alert> : null}
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="loan-name" className="text-xs font-semibold text-foreground">
-            Nome do contrato ou credor
-          </label>
+        <FormField label="Nome do contrato ou credor">
           <Input
             id="loan-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Ex.: Financiamento Carro, Empréstimo Caixa"
           />
-        </div>
+        </FormField>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="loan-type" className="text-xs font-semibold text-foreground">
-              Tipo de crédito
-            </label>
+          <FormField label="Tipo de crédito">
             <Select
               value={loanType}
               onValueChange={(val) => setLoanType(val as LoanType)}
               options={Object.entries(LOAN_TYPE_LABELS).map(([k, v]) => ({ value: k, label: v }))}
               ariaLabel="Tipo de empréstimo"
             />
-          </div>
+          </FormField>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="loan-system" className="text-xs font-semibold text-foreground">
-              Sistema de amortização
-            </label>
+          <FormField label="Sistema de amortização">
             <Select
               value={system}
               onValueChange={(val) => setSystem(val as AmortizationSystem)}
               options={Object.entries(AMORTIZATION_SYSTEM_LABELS).map(([k, v]) => ({ value: k, label: v }))}
               ariaLabel="Sistema de amortização"
             />
-          </div>
+          </FormField>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="loan-principal" className="text-xs font-semibold text-foreground">
-              Valor financiado (principal)
-            </label>
+          <FormField label="Valor financiado (principal)">
             <MoneyInput
               id="loan-principal"
               cents={principalCents}
               onCentsChange={setPrincipalCents}
               aria-label="Valor financiado"
             />
-          </div>
+          </FormField>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="loan-installments" className="text-xs font-semibold text-foreground">
-              Número de parcelas
-            </label>
+          <FormField label="Número de parcelas">
             <NumberStepperInput
               min={1}
               max={420}
@@ -150,26 +135,22 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
               onValueChange={(val) => setInstallmentsCount(Math.max(1, parseInt(val) || 1))}
               ariaLabel="Número de parcelas"
             />
-          </div>
+          </FormField>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="loan-rate" className="text-xs font-semibold text-foreground">
-              Taxa de juros (% a.m.)
-            </label>
+          <FormField label="Taxa de juros (% a.m.)">
             <Input
               id="loan-rate"
               value={monthlyRateStr}
               onChange={(e) => setMonthlyRateStr(e.target.value)}
               placeholder="Ex.: 1.8"
             />
-          </div>
+          </FormField>
 
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-foreground">Data da 1ª parcela</span>
+          <FormField label="Data da 1ª parcela">
             <DatePicker value={startDate} onValueChange={setStartDate} ariaLabel="Data inicial" />
-          </div>
+          </FormField>
         </div>
 
         {preview.schedule.length > 0 ? (
