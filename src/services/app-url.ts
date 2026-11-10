@@ -38,7 +38,7 @@ export function getPublicAppUrl(path = ""): string {
 
   // 2. Ambiente Mobile Nativo (Capacitor) ou runtime sem window (testes/SSR)
   if (!base) {
-    base = "https://financasnew.gabrielisaacsales.workers.dev";
+    base = "https://axir.com.br";
   }
 
   const cleanBase = base.replace(/\/+$/, "");

@@ -1,4 +1,4 @@
-# Runbook Operacional do Fundador — Áxis Finance
+# Runbook Operacional do Fundador — Axir
 
 > **Manual de Bordo para Operação de Produção & Primeiros Clientes**  
 > Guia prático de procedimentos operacionais para atendimento a clientes, concessão manual de planos, resolução de faturamento, privacidade (LGPD), monitoramento e resposta a incidentes.
@@ -7,7 +7,7 @@
 
 ## 1. PRIMEIRO ATENDIMENTO A CLIENTES (SUPORTE EM TEMPO REAL)
 
-O Áxis Finance possui um canal de atendimento integrado diretamente ao aplicativo (`SupportChatDialog`), conectado à Edge Function `support-notify`, que despacha notificações instantâneas para o canal privado do Telegram do fundador.
+O Axir possui um canal de atendimento integrado diretamente ao aplicativo (`SupportChatDialog`), conectado à Edge Function `support-notify`, que despacha notificações instantâneas para o canal privado do Telegram do fundador.
 
 ### 1.1 Anatomia da Notificação no Telegram
 Ao abrir um chamado pelo botão de ajuda no cabeçalho ou menu móvel, o fundador recebe uma mensagem formatada contendo:
@@ -126,7 +126,7 @@ Caso o cliente entre em contato com o fundador solicitando o estorno manualmente
 
 ## 4. PRIVACIDADE, LGPD & EXCLUSÃO MANUAL DE DADOS
 
-O Áxis Finance adota o princípio de **Privacidade por Padrão (Privacy by Design)** com banco relacional multi-tenant estritamente isolado por RLS (`Row-Level Security`).
+O Axir adota o princípio de **Privacidade por Padrão (Privacy by Design)** com banco relacional multi-tenant estritamente isolado por RLS (`Row-Level Security`).
 
 ### 4.1 Autoatendimento do Cliente no Aplicativo
 Oriente sempre o cliente a utilizar os recursos de autoatendimento nativos:

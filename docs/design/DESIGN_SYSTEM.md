@@ -1,6 +1,6 @@
-# 🎨 DESIGN_SYSTEM.md — Identidade Visual & Design Tokens
+# DESIGN_SYSTEM.md — Identidade Visual & Design Tokens
 
-> **Status:** v1.1 — Identidade oficial: **"Guia Financeiro — Azul Petróleo, Teal Vital, Ouro Âmbar e Coral Suave"** (F10).
+> **Status:** v2.0 — Identidade oficial: **"Axir — Azul Petróleo, Teal Vital, Ouro Âmbar e Coral Suave"** (axir.com.br).
 > Base acolhedora de bem-estar financeiro (teal petróleo) + precisão técnica de leitura de números (mono/tabular).
 > Tema padrão: **segue o sistema** · Densidade: **equilibrada** · Cores de categoria: **paleta restrita e sóbria**.
 > **Tokens implementados em:** `src/styles/tokens.css` (fonte única) + `src/styles/globals.css` (mapeamento Tailwind v4).

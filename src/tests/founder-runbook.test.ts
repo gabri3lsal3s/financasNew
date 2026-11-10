@@ -9,7 +9,7 @@ describe("Auditoria do Manual de Bordo do Fundador (docs/operations/FOUNDER_RUNB
     expect(existsSync(runbookPath)).toBe(true);
     const content = readFileSync(runbookPath, "utf8");
     expect(content.length).toBeGreaterThan(2000);
-    expect(content).toContain("# Runbook Operacional do Fundador — Áxis Finance");
+    expect(content).toContain("# Runbook Operacional do Fundador — Axir");
   });
 
   it("garante a presença das 7 seções operacionais fundamentais", () => {

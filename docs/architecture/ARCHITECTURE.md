@@ -20,8 +20,8 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 
 ---
 
-### 1.1 O Tripé de Plataformas Áxis
-O Áxis opera em um ecossistema unificado composto por três pilares sob a mesma conta:
+### 1.1 O Tripé de Plataformas Axir
+O Axir opera em um ecossistema unificado composto por três pilares sob a mesma conta:
 1. **Web Desktop:** Experiência panorâmica com relatórios executivos, projeção patrimonial e conciliação bancária;
 2. **Mobile PWA:** Acesso leve e instantâneo no iPhone (iOS Safari) e Android sem ocupar armazenamento;
 3. **Android App Pro:** Aplicativo nativo com escuta passiva de notificações bancárias (Pix e compras em tempo real) e atualizações automáticas in-place sem desinstalação.
