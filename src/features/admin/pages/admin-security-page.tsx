@@ -3,15 +3,14 @@ import {
   FileText,
   History,
   Lock,
-  Search,
   ShieldCheck,
   UserX,
 } from "lucide-react";
 import {
   Badge,
   EmptyState,
-  Input,
-  Skeleton,
+  SearchInput,
+  SkeletonList,
 } from "@/components/ui";
 import { useAdminAuditLogs } from "@/state";
 
@@ -90,25 +89,19 @@ export function AdminSecurityPage() {
             <h2 className="text-base font-bold text-foreground">Trilha de Auditoria do Sistema</h2>
           </div>
 
-          <div className="relative w-full sm:w-64">
-            <Input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Filtrar por ação ou entidade…"
-              className="pl-8 text-xs h-8"
-            />
-            <Search className="size-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
-          </div>
+          <SearchInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onClear={() => setSearch("")}
+            placeholder="Filtrar por ação ou entidade…"
+            aria-label="Filtrar por ação ou entidade"
+            className="w-full sm:w-64"
+          />
         </div>
 
         <div className="rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden">
           {auditQuery.isLoading ? (
-            <div className="p-6 flex flex-col gap-3">
-              <Skeleton className="h-12 w-full rounded-xl" />
-              <Skeleton className="h-12 w-full rounded-xl" />
-              <Skeleton className="h-12 w-full rounded-xl" />
-            </div>
+            <SkeletonList rows={3} className="p-6" />
           ) : filteredLogs.length === 0 ? (
             <div className="p-8">
               <EmptyState

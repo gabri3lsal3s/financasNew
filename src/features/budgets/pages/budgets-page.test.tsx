@@ -35,6 +35,7 @@ let mockBudgets = [
 
 vi.mock("@/state", () => ({
   usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
+  useUserSubscription: () => ({ isPro: true, isTrial: false, plan: "pro", isReadOnly: false, canWrite: true }),
   useBudgets: () => ({
     data: mockBudgets,
     isLoading: false,

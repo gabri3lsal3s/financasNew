@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { useUserSubscription } from "@/state/queries/use-user-subscription";
+import { useUserSubscription } from "@/state";
 
 export interface UseCreateDeepLinkOptions {
   /** Se ativo (modo somente-leitura), bloqueia a abertura do diálogo e limpa o deep-link. */

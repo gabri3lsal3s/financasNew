@@ -87,4 +87,9 @@ export { SearchInput } from "./search-input";
 export type { SearchInputProps } from "./search-input";
 export { ChoiceCard } from "./choice-card";
 export type { ChoiceCardProps } from "./choice-card";
-
+export { FilterChips } from "./filter-chips";
+export type { FilterChipsProps, FilterChipItem, FilterChipTone } from "./filter-chips";
+export { FilterToolbar } from "./filter-toolbar";
+export type { FilterToolbarProps } from "./filter-toolbar";
+export { KeyValueGrid } from "./key-value-grid";
+export type { KeyValueGridProps, KeyValueItem } from "./key-value-grid";

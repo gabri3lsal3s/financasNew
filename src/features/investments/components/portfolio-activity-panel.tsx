@@ -16,6 +16,7 @@ import {
   Checkbox,
   ConfirmDialog,
   EmptyState,
+  FilterChips,
   SearchInput,
   SkeletonTable,
 } from "@/components/ui";
@@ -517,66 +518,18 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
           />
 
           <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => setFilterType("all")}
-              className={cn(
-                "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0",
-                filterType === "all"
-                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                  : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Todas ({monthActivities.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterType("buy")}
-              className={cn(
-                "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0",
-                filterType === "buy"
-                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                  : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Compras ({typeCounts.buys})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterType("contribution")}
-              className={cn(
-                "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0",
-                filterType === "contribution"
-                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                  : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Aportes ({typeCounts.contributions})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterType("sell")}
-              className={cn(
-                "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0",
-                filterType === "sell"
-                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                  : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Vendas ({typeCounts.sells})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterType("dividend")}
-              className={cn(
-                "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0",
-                filterType === "dividend"
-                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                  : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Proventos ({typeCounts.dividends})
-            </button>
+            <FilterChips
+              items={[
+                { key: "all", label: "Todas", count: monthActivities.length },
+                { key: "buy", label: "Compras", count: typeCounts.buys },
+                { key: "contribution", label: "Aportes", count: typeCounts.contributions },
+                { key: "sell", label: "Vendas", count: typeCounts.sells },
+                { key: "dividend", label: "Proventos", count: typeCounts.dividends },
+              ]}
+              activeKey={filterType}
+              onChange={(key) => setFilterType(key as ActivityFilterType)}
+              ariaLabel="Filtrar por tipo de movimentação"
+            />
             <Button
               type="button"
               variant="outline"

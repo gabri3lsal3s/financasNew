@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { AlertTriangle, ArrowDownLeft, Bell, CheckCheck, CreditCard, SlidersHorizontal, X } from "lucide-react";
-import { Badge, Button, EmptyState, ErrorState, MoneyText, Skeleton, Tabs } from "@/components/ui";
+import { Badge, Button, EmptyState, ErrorState, FilterChips, MoneyText, Skeleton, Tabs } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { HighlightRow, ReadOnlyBanner, ReminderItem } from "@/components/modules";
 import { RemindersSettingsModal } from "../components/reminders-settings-modal";
@@ -392,74 +392,23 @@ export function RemindersPage() {
       <div className="flex flex-col gap-4">
         {/* Sub-filtros secundários quando há pendências de qualquer tipo */}
         {totalPendingEffective > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-            <Button
-              type="button"
-              variant={subFilter === "all" ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                setSubFilter("all");
-              }}
-              className="text-xs h-7 px-2.5"
-            >
-              Todas ({totalPendingEffective})
-            </Button>
-            {overdueCount > 0 && (
-              <Button
-                type="button"
-                variant={subFilter === "overdue" ? "destructive" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setSubFilter("overdue");
-                }}
-                className={cn(
-                  "text-xs h-7 px-2.5",
-                  subFilter !== "overdue" && "border-critical/30 text-critical hover:bg-critical/10",
-                )}
-              >
-                Atrasadas ({overdueCount})
-              </Button>
-            )}
-            {billsCount > 0 && (
-              <Button
-                type="button"
-                variant={subFilter === "bills" ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setSubFilter("bills");
-                }}
-                className="text-xs h-7 px-2.5"
-              >
-                Faturas ({billsCount})
-              </Button>
-            )}
-            {debtsCount > 0 && (
-              <Button
-                type="button"
-                variant={subFilter === "debts" ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setSubFilter("debts");
-                }}
-                className="text-xs h-7 px-2.5"
-              >
-                Dívidas ({debtsCount})
-              </Button>
-            )}
-            {advisorCount > 0 && (
-              <Button
-                type="button"
-                variant={subFilter === "advisor" ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setSubFilter("advisor");
-                }}
-                className="text-xs h-7 px-2.5"
-              >
-                Avisos & Renda ({advisorCount})
-              </Button>
-            )}
-          </div>
+          <FilterChips
+            items={[
+              { key: "all", label: "Todas", count: totalPendingEffective },
+              ...(overdueCount > 0
+                ? [{ key: "overdue", label: "Atrasadas", count: overdueCount, tone: "critical" as const }]
+                : []),
+              ...(billsCount > 0 ? [{ key: "bills", label: "Faturas", count: billsCount }] : []),
+              ...(debtsCount > 0 ? [{ key: "debts", label: "Dívidas", count: debtsCount }] : []),
+              ...(advisorCount > 0
+                ? [{ key: "advisor", label: "Avisos & Renda", count: advisorCount }]
+                : []),
+            ]}
+            activeKey={subFilter}
+            onChange={(key) => setSubFilter(key as typeof subFilter)}
+            className="pt-0.5"
+            ariaLabel="Filtrar pendências por categoria"
+          />
         )}
 
         {!hasAnyVisibleItem ? (

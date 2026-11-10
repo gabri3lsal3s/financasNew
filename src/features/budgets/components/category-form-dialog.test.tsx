@@ -17,6 +17,8 @@ vi.mock("@/state", () => ({
   useCreateCategory: () => ({ mutateAsync: createCategoryMock, isPending: false }),
   useUpdateCategory: () => ({ mutateAsync: updateCategoryMock, isPending: false }),
   useDeleteCategory: () => ({ mutateAsync: deleteCategoryMock, isPending: false }),
+  usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
+  useUserSubscription: () => ({ isPro: true, isTrial: false, plan: "pro", isReadOnly: false, canWrite: true }),
 }));
 
 const sampleCategory: Category = {

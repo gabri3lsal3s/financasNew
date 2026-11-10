@@ -3,11 +3,10 @@ import {
   Building2,
   ChevronDown,
   ChevronUp,
-  Search,
   TrendingUp,
   Wallet,
 } from "lucide-react";
-import { Badge, Button, Checkbox, Input } from "@/components/ui";
+import { Badge, Button, Checkbox, SearchInput } from "@/components/ui";
 import { triggerSensory } from "@/services/sensory";
 import {
   HOMOLOGATED_BANKS,
@@ -142,19 +141,14 @@ export function BankingCatalogAccordion({
         >
           {/* Busca Instantânea e Ações Globais */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-            <div className="relative flex-1">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none"
-                aria-hidden="true"
-              />
-              <Input
-                value={catalogSearch}
-                onChange={(e) => setCatalogSearch(e.target.value)}
-                placeholder="Buscar banco, carteira ou corretora..."
-                className="pl-8 text-xs h-9"
-                aria-label="Buscar no catálogo de instituições financeiras"
-              />
-            </div>
+            <SearchInput
+              value={catalogSearch}
+              onChange={(e) => setCatalogSearch(e.target.value)}
+              onClear={() => setCatalogSearch("")}
+              placeholder="Buscar banco, carteira ou corretora…"
+              aria-label="Buscar no catálogo de instituições financeiras"
+              className="flex-1"
+            />
             <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
               <Button
                 variant="ghost"

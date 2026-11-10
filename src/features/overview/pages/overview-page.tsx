@@ -8,6 +8,7 @@ import {
   type DashboardAlertItem,
   DeltaHint,
   KpiCard,
+  KpiGrid,
   MonthPicker,
   PaceAlertBanner,
   RealCashHeroCard,
@@ -1082,12 +1083,12 @@ export function OverviewPage() {
       ) : loading ? (
         <div className="flex flex-col gap-3" aria-hidden="true" data-testid="overview-loading-skeleton">
           {isCurrentMonth ? <SkeletonHeroCard /> : null}
-          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <KpiGrid columns={4}>
             <SkeletonKpi />
             <SkeletonKpi />
             <SkeletonKpi />
             <SkeletonKpi />
-          </div>
+          </KpiGrid>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <SkeletonChart />
             <SkeletonChart />
@@ -1122,66 +1123,66 @@ export function OverviewPage() {
           {isCurrentMonth ? <WeeklyDueRadarCard summary={weeklyRadarSummary} /> : null}
 
           {/* KPIs fundamentais (§3.6) com sparkline */}
-          <div className="grid gap-3 min-w-0 grid-cols-2 lg:grid-cols-4" data-tour="overview-kpis">
-              <KpiCard
-                label="Receitas"
-                cents={totals.incomeCents}
-                tone="positive"
-                icon={<TrendingUp className="size-4" aria-hidden="true" />}
-                hint={
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <DeltaHint currentCents={totals.incomeCents} previousCents={prevTotals.incomeCents} />
-                    {grossIncomeCents !== incomeCents ? (
-                      <span className="text-[10px] text-muted-foreground whitespace-nowrap min-w-0 block">
-                        <span className="hidden sm:inline">Ponderada: </span>
-                        <span className="sm:hidden">Pond: </span>
-                        <MoneyText cents={incomeCents} tone="default" className="text-[10px] tabular-nums" />
-                      </span>
-                    ) : null}
-                  </div>
-                }
-                spark={dailySeries.incomeSeries}
-              />
-              <KpiCard
-                label="Despesas"
-                cents={totals.expenseCents}
-                tone="negative"
-                icon={<TrendingDown className="size-4" aria-hidden="true" />}
-                hint={
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <DeltaHint currentCents={totals.expenseCents} previousCents={prevTotals.expenseCents} invert />
-                    {grossExpenseCents !== expenseCents ? (
-                      <span className="text-[10px] text-muted-foreground whitespace-nowrap min-w-0 block">
-                        <span className="hidden sm:inline">Ponderada: </span>
-                        <span className="sm:hidden">Pond: </span>
-                        <MoneyText cents={expenseCents} tone="default" className="text-[10px] tabular-nums" />
-                      </span>
-                    ) : null}
-                  </div>
-                }
-                spark={dailySeries.expenseSeries}
-              />
-              <KpiCard
-                label="Investimentos"
-                cents={totals.investmentCents}
-                tone="portfolio"
-                icon={<TrendingUp className="size-4" aria-hidden="true" />}
-                spark={dailySeries.investmentSeries}
-                onClick={() => navigate("/investments")}
-              />
-              <KpiCard
-                label={
-                  <>
-                    <span className="hidden sm:inline">Resultado do mês</span>
-                    <span className="sm:hidden">Resultado</span>
-                  </>
-                }
-                cents={totals.operatingBalanceCents}
-                tone={totals.operatingBalanceCents >= 0 ? "positive" : "negative"}
-                icon={<DollarSign className="size-4" aria-hidden="true" />}
-                spark={dailySeries.balanceSeries}
-              />
-            </div>
+          <KpiGrid columns={4} data-tour="overview-kpis">
+            <KpiCard
+              label="Receitas"
+              cents={totals.incomeCents}
+              tone="positive"
+              icon={<TrendingUp className="size-4" aria-hidden="true" />}
+              hint={
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <DeltaHint currentCents={totals.incomeCents} previousCents={prevTotals.incomeCents} />
+                  {grossIncomeCents !== incomeCents ? (
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap min-w-0 block">
+                      <span className="hidden sm:inline">Ponderada: </span>
+                      <span className="sm:hidden">Pond: </span>
+                      <MoneyText cents={incomeCents} tone="default" className="text-[10px] tabular-nums" />
+                    </span>
+                  ) : null}
+                </div>
+              }
+              spark={dailySeries.incomeSeries}
+            />
+            <KpiCard
+              label="Despesas"
+              cents={totals.expenseCents}
+              tone="negative"
+              icon={<TrendingDown className="size-4" aria-hidden="true" />}
+              hint={
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <DeltaHint currentCents={totals.expenseCents} previousCents={prevTotals.expenseCents} invert />
+                  {grossExpenseCents !== expenseCents ? (
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap min-w-0 block">
+                      <span className="hidden sm:inline">Ponderada: </span>
+                      <span className="sm:hidden">Pond: </span>
+                      <MoneyText cents={expenseCents} tone="default" className="text-[10px] tabular-nums" />
+                    </span>
+                  ) : null}
+                </div>
+              }
+              spark={dailySeries.expenseSeries}
+            />
+            <KpiCard
+              label="Investimentos"
+              cents={totals.investmentCents}
+              tone="portfolio"
+              icon={<TrendingUp className="size-4" aria-hidden="true" />}
+              spark={dailySeries.investmentSeries}
+              onClick={() => navigate("/investments")}
+            />
+            <KpiCard
+              label={
+                <>
+                  <span className="hidden sm:inline">Resultado do mês</span>
+                  <span className="sm:hidden">Resultado</span>
+                </>
+              }
+              cents={totals.operatingBalanceCents}
+              tone={totals.operatingBalanceCents >= 0 ? "positive" : "negative"}
+              icon={<DollarSign className="size-4" aria-hidden="true" />}
+              spark={dailySeries.balanceSeries}
+            />
+          </KpiGrid>
 
           {/* Análises do período: fluxo diário + distribuição por categoria */}
           <section
