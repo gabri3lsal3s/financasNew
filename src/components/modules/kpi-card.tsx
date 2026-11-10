@@ -53,15 +53,17 @@ const sparkFill: Record<NonNullable<KpiCardProps["tone"]>, string> = {
 };
 
 /**
- * Escala tipográfica adaptativa para KPIs monetários (Regra 11 de AGENTS.md):
- * Reduz proporcionalmente o tamanho da fonte em valores de 7+ dígitos (≥ R$ 100.000,00)
- * e 8+ dígitos (≥ R$ 1.000.000,00) eliminando reticências e preservando centavos.
+ * Escala tipográfica adaptativa para KPIs monetários (Regra 24 de AGENTS.md):
+ * Reduz proporcionalmente o tamanho da fonte a partir de 4 dígitos monetários (≥ R$ 1.000,00)
+ * eliminando reticências e preservando centavos visíveis mesmo em telas compactas (≤ 360px).
  */
 function getDynamicKpiSize(cents?: number): string {
   if (cents === undefined) return "text-lg sm:text-xl lg:text-2xl";
   const abs = Math.abs(cents);
   if (abs >= 100_000_000) return "text-sm sm:text-base lg:text-lg"; // ≥ R$ 1.000.000,00
-  if (abs >= 10_000_000) return "text-base sm:text-lg lg:text-xl"; // ≥ R$ 100.000,00
+  if (abs >= 10_000_000) return "text-[15px] sm:text-base lg:text-xl"; // ≥ R$ 100.000,00
+  if (abs >= 1_000_000) return "text-base sm:text-lg lg:text-2xl"; // ≥ R$ 10.000,00
+  if (abs >= 100_000) return "text-[17px] sm:text-xl lg:text-2xl"; // ≥ R$ 1.000,00
   return "text-lg sm:text-xl lg:text-2xl";
 }
 
@@ -85,7 +87,7 @@ export function KpiCard({ label, value, cents, tone = "default", hint, icon, spa
           : undefined
       }
       onClick={onClick}
-      className="flex flex-col justify-between overflow-hidden p-3.5 sm:p-4 lg:p-5 h-full rounded-2xl border-border/80 bg-surface shadow-xs transition-all hover:border-border"
+      className="flex flex-col justify-between overflow-hidden p-3 sm:p-4 lg:p-5 h-full rounded-2xl border-border/80 bg-surface shadow-xs transition-all hover:border-border"
     >
       <div>
         <div className="flex items-start justify-between gap-1.5 min-w-0">

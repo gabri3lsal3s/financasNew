@@ -171,10 +171,10 @@ export function HeroEditorial() {
             </div>
 
             {/* Grid de 3 Métricas Centrais Adaptativas */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
-              <div className="p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-border/70 bg-background/60 flex flex-col justify-between overflow-hidden">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+              <div className="p-3.5 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border border-border/70 bg-background/60 flex flex-col justify-between overflow-hidden">
                 <span className="text-xs sm:text-sm text-muted-foreground block truncate">Caixa Real Disponível</span>
-                <div className="my-1.5 sm:my-2 font-mono text-2xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight whitespace-nowrap tabular-nums">
+                <div className="my-1.5 sm:my-2 font-mono text-xl sm:text-2xl lg:text-3xl font-extrabold text-foreground tracking-tight whitespace-nowrap tabular-nums">
                   R$ 6.240,00
                 </div>
                 <span className="text-xs text-positive-strong dark:text-positive font-medium flex items-center gap-1.5 whitespace-nowrap">
@@ -183,9 +183,9 @@ export function HeroEditorial() {
                 </span>
               </div>
 
-              <div className="p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-border/70 bg-background/60 flex flex-col justify-between overflow-hidden">
+              <div className="p-3.5 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border border-border/70 bg-background/60 flex flex-col justify-between overflow-hidden">
                 <span className="text-xs sm:text-sm text-muted-foreground block truncate">Ritmo Diário (Daily Budget)</span>
-                <div className="my-1.5 sm:my-2 font-mono text-2xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-primary-strong tracking-tight whitespace-nowrap tabular-nums flex items-baseline gap-1.5">
+                <div className="my-1.5 sm:my-2 font-mono text-xl sm:text-2xl lg:text-3xl font-extrabold text-primary-strong tracking-tight whitespace-nowrap tabular-nums flex items-baseline gap-1.5">
                   <span>R$ 148,00</span>
                   <span className="text-xs sm:text-sm font-normal text-muted-foreground">/ dia</span>
                 </div>
@@ -194,9 +194,9 @@ export function HeroEditorial() {
                 </span>
               </div>
 
-              <div className="p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-border/70 bg-background/60 flex flex-col justify-between overflow-hidden">
+              <div className="p-3.5 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border border-border/70 bg-background/60 flex flex-col justify-between overflow-hidden">
                 <span className="text-xs sm:text-sm text-muted-foreground block truncate">Aporte Calibrado do Mês</span>
-                <div className="my-1.5 sm:my-2 font-mono text-2xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-portfolio tracking-tight whitespace-nowrap tabular-nums">
+                <div className="my-1.5 sm:my-2 font-mono text-xl sm:text-2xl lg:text-3xl font-extrabold text-portfolio tracking-tight whitespace-nowrap tabular-nums">
                   R$ 1.500,00
                 </div>
                 <span className="text-xs text-portfolio font-medium flex items-center gap-1.5 whitespace-nowrap">
@@ -207,10 +207,10 @@ export function HeroEditorial() {
             </div>
 
             {/* Barra Consolidada de Orçamentos Ampliada */}
-            <div className="mt-3.5 sm:mt-6 rounded-xl sm:rounded-2xl border border-border/70 bg-background/40 p-4 sm:p-6">
+            <div className="mt-3.5 sm:mt-6 rounded-xl sm:rounded-2xl border border-border/70 bg-background/40 p-3.5 sm:p-5 lg:p-6">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1 text-xs sm:text-sm mb-2.5 sm:mb-3">
                 <span className="font-semibold text-foreground">Orçamento Mensal Consolidado</span>
-                <span className="font-mono text-muted-foreground">R$ 3.820 de R$ 5.500 (69% utilizado · R$ 1.680 livres para aportes)</span>
+                <span className="font-mono text-muted-foreground text-xs sm:text-sm">R$ 3.820 de R$ 5.500 (69% utilizado · R$ 1.680 livres)</span>
               </div>
               <div className="w-full h-3 sm:h-4 rounded-full overflow-hidden bg-muted/60 p-0.5 flex gap-1 border border-border/50">
                 <div className="h-full rounded-full bg-cat-2 transition-all" style={{ width: "35%" }} />

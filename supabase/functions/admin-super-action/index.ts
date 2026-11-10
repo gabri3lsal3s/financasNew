@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
       const cleanPhone = (payload.phone || "").trim() || null;
       const targetRole = payload.role === "admin" ? "admin" : "user";
       const targetStatus = payload.status === "pending_approval" ? "pending_approval" : "active";
-      const planId = payload.plan_id || "free";
+      const planId = payload.plan_id || "trial";
 
       if (!cleanEmail || !cleanEmail.includes("@")) {
         return jsonResponse(req, { error: "E-mail inválido." }, 400);
@@ -153,12 +153,13 @@ Deno.serve(async (req: Request) => {
       // 3. Garantir assinatura inicial em public.user_subscriptions
       const isProPlan = planId.includes("pro") || planId.includes("annual") || planId.includes("monthly");
       const isLifetime = planId.includes("lifetime");
-      const assignedTier = isLifetime ? "lifetime" : isProPlan ? "pro_annual" : "free";
+      const assignedTier = isLifetime ? "lifetime" : isProPlan ? (planId === "pro_monthly" ? "pro_monthly" : "pro_annual") : "trial";
+      const resolvedPlanId = isLifetime ? "lifetime" : isProPlan ? (planId === "pro_monthly" ? "pro_monthly" : "pro_annual") : "trial";
 
       await adminClient.from("user_subscriptions").upsert(
         {
           user_id: targetUserId,
-          plan_id: planId,
+          plan_id: resolvedPlanId,
           tier: assignedTier,
           status: "active",
           updated_at: new Date().toISOString(),

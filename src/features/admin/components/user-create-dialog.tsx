@@ -23,7 +23,7 @@ export function UserCreateDialog({ open, onOpenChange }: UserCreateDialogProps) 
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState<"user" | "admin">("user");
-  const [planId, setPlanId] = useState("free");
+  const [planId, setPlanId] = useState("trial");
   const [status, setStatus] = useState<"active" | "pending_approval">("active");
 
   // Estado de resultado pós-criação
@@ -43,7 +43,7 @@ export function UserCreateDialog({ open, onOpenChange }: UserCreateDialogProps) 
     setEmail("");
     setPhone("");
     setRole("user");
-    setPlanId("free");
+    setPlanId("trial");
     setStatus("active");
     setCreatedResult(null);
     setHasCopied(false);
@@ -265,14 +265,19 @@ export function UserCreateDialog({ open, onOpenChange }: UserCreateDialogProps) 
                 id="create-user-plan"
                 value={planId}
                 onValueChange={setPlanId}
-                options={[
-                  { value: "free", label: "Degustação / Free" },
-                  ...plans.map((p) => ({
-                    value: p.id,
-                    label: `${p.name} (R$ ${(p.price_cents / 100).toFixed(2).replace(".", ",")})`,
-                  })),
-                  { value: "lifetime", label: "Plano Vitalício (Lifetime VIP)" },
-                ]}
+                options={
+                  plans.length > 0
+                    ? plans.map((p) => ({
+                        value: p.id,
+                        label: `${p.name} (R$ ${(p.price_cents / 100).toFixed(2).replace(".", ",")})`,
+                      }))
+                    : [
+                        { value: "trial", label: "Trial Pro (30 dias de Degustação)" },
+                        { value: "pro_monthly", label: "Plano Pro Mensal" },
+                        { value: "pro_annual", label: "Plano Pro Anual" },
+                        { value: "lifetime", label: "Plano Vitalício (Lifetime VIP)" },
+                      ]
+                }
               />
             </div>
 

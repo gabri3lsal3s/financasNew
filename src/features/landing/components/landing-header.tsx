@@ -93,7 +93,7 @@ export function LandingHeader() {
         </div>
 
         {/* Desktop Navigation com Pílulas de Foco Ativo */}
-        <nav className="hidden items-center gap-1.5 text-sm font-medium md:flex" aria-label="Navegação Principal">
+        <nav className="hidden items-center gap-1.5 text-sm font-medium lg:flex" aria-label="Navegação Principal">
           <button
             type="button"
             onClick={() => scrollToSection("recursos")}
@@ -223,9 +223,11 @@ export function LandingHeader() {
           )}
         </div>
 
-        {/* Mobile menu trigger */}
-        <div className="flex items-center gap-2 sm:hidden">
-          <ThemeToggle />
+        {/* Mobile & Tablet menu trigger */}
+        <div className="flex items-center gap-1.5 lg:hidden">
+          <div className="sm:hidden">
+            <ThemeToggle />
+          </div>
           <Button
             variant="ghost"
             size="icon"
@@ -252,7 +254,7 @@ export function LandingHeader() {
       {/* Backdrop do Menu Mobile */}
       {mobileMenuOpen ? (
         <div
-          className="fixed inset-0 top-[calc(4rem+max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] bg-background/75 backdrop-blur-xs z-30 sm:hidden animate-fade-in cursor-pointer"
+          className="fixed inset-0 top-[calc(4rem+max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] bg-background/75 backdrop-blur-xs z-30 lg:hidden animate-fade-in cursor-pointer"
           onClick={() => setMobileMenuOpen(false)}
           onTouchStart={() => setMobileMenuOpen(false)}
           aria-hidden="true"
@@ -265,7 +267,7 @@ export function LandingHeader() {
           role="dialog"
           aria-label="Menu principal"
           data-mobile-menu="open"
-          className="relative z-40 border-b border-border bg-background p-4 shadow-xl sm:hidden animate-fade-slide-in"
+          className="relative z-40 border-b border-border bg-background p-4 shadow-xl lg:hidden animate-fade-slide-in"
         >
           <nav className="flex flex-col gap-2 text-sm font-medium">
             {isSubpage ? (

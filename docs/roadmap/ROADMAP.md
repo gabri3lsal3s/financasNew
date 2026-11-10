@@ -6699,14 +6699,21 @@ flowchart TD
 
 ---
 
-### Fase 102 — Blindagem de Cotações Client-Side, Resolução de CORS 410 no Tesouro Direto & Higienização de Snapshots (v2.90)
+### Fase 103 — Alinhamento de Schemas REST, Correção de Consultas e Chaves Estrangeiras de Planos SaaS no Console Superadmin (v2.91)
 
-> **Status:** ✅ Concluída e Auditada — **Blindagem de Cotações & Resolução de Snapshots Órfãos**:
-> - **Resolução de Erros de Rede no Console:** Erradicação de chamadas direct browser para o endpoint descontinuado B3/Tesouro Direto (`treasurybondsinfo.json`), eliminando falha de CORS e HTTP 410 Gone.
-> - **Isolamento de Títulos Públicos da Brapi:** Atualização dos normalizadores de ticker (`normalizeTickerForBrapi` e `normalizeTickerForApi` em `src/domain/portfolio/quotes.ts`) para ignorar Tesouro Direto (`isTesouroAsset` e `normalizeTesouroTicker`) e strings com espaços, eliminando requisições espúrias que resultavam em HTTP 401 Unauthorized na Brapi.
-> - **Eliminação de Fallback Espúrio:** Em `src/services/quotes.ts`, garantia de que títulos públicos e renda fixa privada sejam precificados exclusivamente pelo motor interno de matemática financeira (`calculateFixedIncomeBalance`) ou Edge Function, sem jamais repassar ativos não cotados em bolsa para a Brapi no client.
-> - **Reforço de CSP em Borda:** Remoção do domínio obsoleto `https://www.tesourodireto.com.br` da diretiva `connect-src` em `public/_headers`.
-> - **Higienização de Banco de Dados:** Exclusão de registro histórico órfão residual em `portfolio_snapshots` (`Out/2026: R$ 414.712,21`), restaurando a visualização fidedigna de contas recém-inicializadas e preservando a continuidade matemática do TWR.
-> - **Qualidade e Testes:** Suíte de 42 testes de cotações 100% verde (`quotes.test.ts`), typecheck estrito com 0 erros (`tsc -b`) e conformidade integral no ESLint.
+> **Status:** ✅ Concluída e Auditada — **Resolução de Erros HTTP 400 e Integridade Referencial de Assinaturas**:
+> - **Alinhamento das Consultas REST de Planos e Permissões:**
+>   - Correção de `getPlans` em `src/data/repositories/subscriptions.ts` para selecionar as colunas reais da tabela `plans` (`id, name, description, price_cents, billing_interval, is_publicly_available, created_at`), eliminando colunas inexistentes (`slug`, `interval`, `is_active`, `features`) que disparavam erro Postgres `42703` (HTTP 400 PGRST100).
+>   - Correção de `getUserSubscription` removendo a coluna inexistente `payment_provider` da consulta REST (HTTP 400).
+>   - Correção de `getUserModulePermissions` ajustando o campo `module` para `module_key` (HTTP 400).
+> - **Resolução de Violação de Chave Estrangeira (23503) na Alteração de Assinaturas:**
+>   - Mapeamento correto de planos canônicos no `UserEditDialog`: `'trial'`, `'pro_monthly'`, `'pro_annual'`, `'lifetime'`, erradicando envios de identificadores inexistentes (`'free'` e `'lifetime_vip'`) que quebravam a foreign key `user_subscriptions(plan_id) references plans(id)`.
+>   - Adição de migration de compatibilidade `20260101000109_plans_compatibility_and_aliases.sql` garantindo aliases fallback (`free`, `lifetime_vip`) em `public.plans` com integridade referencial garantida.
+>   - Ajuste no Edge Function `admin-super-action` e no `UserCreateDialog` para usar o identificador canônico `'trial'` e eliminar duplicações de opções no dropdown.
+> - **Qualidade e Testes:**
+>   - Testes unitários de `subscriptions.test.ts`, `user-edit-dialog.test.tsx` e `user-create-dialog.test.tsx` 100% verdes;
+>   - Typecheck (`npm run typecheck`) com 0 erros;
+>   - ESLint (`npm run lint`) com 0 advertências;
+>   - Validação em produção via cliente PostgREST com retorno HTTP 200 nas três entidades.
 
 

@@ -58,7 +58,7 @@ describe("UserCreateDialog", () => {
       email: "carlos@empresa.com",
       phone: "11988887777",
       role: "user",
-      plan_id: "free",
+      plan_id: "trial",
       status: "active",
     });
 

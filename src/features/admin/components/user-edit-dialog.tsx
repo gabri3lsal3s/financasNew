@@ -82,7 +82,7 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
   const [overrideSubStatus, setOverrideSubStatus] = useState<string | null>(null);
 
   const effectiveTier = overrideTier ?? subscriptionQuery.data?.tier ?? "trial";
-  const effectivePlanId = overridePlanId ?? subscriptionQuery.data?.plan_id ?? "free";
+  const effectivePlanId = overridePlanId ?? subscriptionQuery.data?.plan_id ?? "trial";
   const effectiveSubStatus = overrideSubStatus ?? subscriptionQuery.data?.status ?? "active";
 
   const userModulePermissions = useMemo(
@@ -372,10 +372,10 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
                 onValueChange={(val) => {
                   const newTier = val as SubscriptionTier;
                   setOverrideTier(newTier);
-                  if (newTier === "lifetime") setOverridePlanId("lifetime_vip");
+                  if (newTier === "lifetime") setOverridePlanId("lifetime");
                   else if (newTier === "pro_monthly") setOverridePlanId("pro_monthly");
                   else if (newTier === "pro_annual") setOverridePlanId("pro_annual");
-                  else if (newTier === "trial" || newTier === "read_only") setOverridePlanId("free");
+                  else if (newTier === "trial" || newTier === "read_only") setOverridePlanId("trial");
                 }}
                 options={[
                   { value: "trial", label: "Trial Pro (Período de Teste)" },
