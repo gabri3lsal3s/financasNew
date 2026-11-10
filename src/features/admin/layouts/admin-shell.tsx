@@ -60,7 +60,7 @@ export function AdminShell() {
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       {/* --- TOPBAR INSTITUCIONAL ADMINISTRATIVA --- */}
-      <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-border/80 bg-surface/95 px-4 backdrop-blur-xs sm:px-6">
+      <header className="sticky top-0 z-40 flex h-[calc(4rem+max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))] w-full items-center justify-between border-b border-border/80 bg-surface/95 px-4 backdrop-blur-xs sm:px-6">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -185,7 +185,7 @@ export function AdminShell() {
 
         {/* Menu Móvel Deslizante (< md) */}
         {mobileMenuOpen && (
-          <div className="fixed inset-0 top-16 z-30 flex flex-col bg-background/95 backdrop-blur-xs p-4 md:hidden border-b border-border/80">
+          <div className="fixed inset-0 top-[calc(4rem+max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] z-30 flex flex-col bg-background/95 backdrop-blur-xs p-4 md:hidden border-b border-border/80">
             <nav className="flex flex-col gap-1">
               {ADMIN_NAV_ITEMS.map(({ to, label, icon: Icon }) => (
                 <NavLink
