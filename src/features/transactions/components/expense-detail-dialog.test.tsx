@@ -90,6 +90,11 @@ vi.mock("@/state", () => ({
     isReadOnly: stateMocks.isReadOnly,
     tier: stateMocks.isReadOnly ? "read_only" : "pro_annual",
   }),
+  usePermission: () => ({
+    canWrite: !stateMocks.isReadOnly,
+    canRead: true,
+    level: stateMocks.isReadOnly ? "read" : "write",
+  }),
   useCategories: () => ({
     data: [
       { id: "cat1", name: "Alimentação", icon: "Utensils", color: "#EF4444" },

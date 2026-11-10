@@ -18,6 +18,11 @@ vi.mock("@/state", () => ({
     isReadOnly: false,
     tier: "pro_annual",
   }),
+  usePermission: () => ({
+    canWrite: true,
+    canRead: true,
+    level: "write",
+  }),
   useCategories: () => ({
     data: [
       { id: "cat1", name: "Salário", icon: "Briefcase", color: "#10B981" },
