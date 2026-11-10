@@ -566,28 +566,25 @@ export function TransactionListPage() {
                 ))}
               </div>
               {/* Barra de rodapé com soma total e soma ponderada */}
-              <div className="flex items-center justify-between px-3 sm:px-4 py-1.5 sm:py-2 bg-surface-hover/20 border-t border-border/50 text-xs">
-                <span className="text-[11px] font-medium text-muted-foreground">
+              <div className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-surface-hover/20 border-t border-border/50 text-xs">
+                <span className="text-[11px] font-medium text-muted-foreground shrink-0 whitespace-nowrap">
                   Total do dia
                 </span>
-                <div className="flex items-center gap-2 sm:gap-3 tabular-nums">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="text-[11px] text-muted-foreground">Total:</span>
-                    <MoneyText
-                      cents={group.netCents}
-                      tone={group.netCents > 0 ? "positive" : group.netCents < 0 ? "negative" : "default"}
-                      sign="auto"
-                      className="text-xs font-semibold"
-                    />
-                  </span>
+                <div className="flex items-center gap-2 sm:gap-3 tabular-nums shrink-0">
+                  <MoneyText
+                    cents={group.netCents}
+                    tone={group.netCents > 0 ? "positive" : group.netCents < 0 ? "negative" : "default"}
+                    sign="auto"
+                    className="text-xs font-semibold whitespace-nowrap"
+                  />
                   {group.netCents !== group.weightedNetCents ? (
                     <span className="inline-flex items-center gap-1 border-l border-border/60 pl-2 sm:pl-3">
-                      <span className="text-[11px] text-muted-foreground">Ponderado:</span>
+                      <span className="text-[10px] text-muted-foreground sm:text-[11px]">Pond:</span>
                       <MoneyText
                         cents={group.weightedNetCents}
                         tone={group.weightedNetCents > 0 ? "positive" : group.weightedNetCents < 0 ? "negative" : "default"}
                         sign="auto"
-                        className="text-xs font-medium text-muted-foreground"
+                        className="text-xs font-medium text-muted-foreground whitespace-nowrap"
                       />
                     </span>
                   ) : null}

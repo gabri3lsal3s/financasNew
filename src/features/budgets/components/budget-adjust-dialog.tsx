@@ -248,14 +248,28 @@ function BudgetAdjustDialogContent({
             {result.items.map((item) => {
               const cat = categoryMap.get(item.categoryId);
               return (
-                <div key={item.categoryId} className="flex items-center justify-between gap-3 p-2.5 text-xs">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <CategoryIcon icon={cat?.icon} color={cat?.color} />
-                    <span className="font-medium text-foreground truncate">
-                      {item.name || cat?.name || "Categoria"}
-                    </span>
+                <div key={item.categoryId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-3 p-2.5 text-xs">
+                  <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <CategoryIcon icon={cat?.icon} color={cat?.color} />
+                      <span className="font-medium text-foreground truncate">
+                        {item.name || cat?.name || "Categoria"}
+                      </span>
+                    </div>
+                    {item.diffCents !== 0 && (
+                      <span
+                        className={`sm:hidden text-[11px] font-medium shrink-0 ${
+                          item.diffCents > 0
+                            ? "text-positive-strong"
+                            : "text-negative-strong"
+                        }`}
+                      >
+                        {item.diffCents > 0 ? "+" : "−"}
+                        <MoneyText cents={Math.abs(item.diffCents)} tone="default" />
+                      </span>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1.5 tabular-nums shrink-0">
+                  <div className="flex items-center gap-1.5 tabular-nums shrink-0 self-end sm:self-auto text-[11px] sm:text-xs">
                     {item.currentLimitCents === 0 && item.newLimitCents === 0 ? (
                       <span className="text-[11px] text-muted-foreground italic">
                         Livre (sem limite)
@@ -270,7 +284,7 @@ function BudgetAdjustDialogContent({
                           <MoneyText cents={item.newLimitCents} tone="default" />
                         </span>
                         <span
-                          className={`text-[11px] font-medium ${
+                          className={`hidden sm:inline text-[11px] font-medium ${
                             item.diffCents > 0
                               ? "text-positive-strong"
                               : item.diffCents < 0

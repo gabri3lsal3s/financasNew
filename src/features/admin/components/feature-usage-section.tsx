@@ -35,7 +35,7 @@ export function FeatureUsageSection() {
           </div>
         </div>
         {totalInteractions > 0 && (
-          <Badge variant="muted" size="xs">
+          <Badge variant="muted" size="xs" className="self-start sm:self-auto shrink-0">
             {totalInteractions} interações registradas
           </Badge>
         )}

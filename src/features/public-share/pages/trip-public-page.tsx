@@ -313,23 +313,23 @@ export function TripPublicPage() {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                    <div className="flex items-center gap-1.5 w-full sm:w-auto flex-wrap sm:flex-nowrap">
                       <Button
                         size="sm"
                         variant="default"
                         onClick={() => handleCopyPixBrCode(codeToCopy, key)}
-                        className="h-8 px-2.5 text-xs gap-1.5 cursor-pointer font-medium"
+                        className="h-8 px-2.5 text-xs gap-1.5 cursor-pointer font-medium flex-1 sm:flex-initial justify-center min-w-0"
                         title="Copiar código Pix com valor cravado"
                       >
                         {copiedCodeKey === key ? (
                           <>
-                            <Check className="size-3.5 text-positive-strong" aria-hidden="true" />
-                            <span>Copiado!</span>
+                            <Check className="size-3.5 text-positive-strong shrink-0" aria-hidden="true" />
+                            <span className="truncate">Copiado!</span>
                           </>
                         ) : (
                           <>
-                            <Copy className="size-3.5" aria-hidden="true" />
-                            <span>Copiar Pix ({formatCentsAsBRL(settlement.amountCents)})</span>
+                            <Copy className="size-3.5 shrink-0" aria-hidden="true" />
+                            <span className="truncate">Copiar Pix ({formatCentsAsBRL(settlement.amountCents)})</span>
                           </>
                         )}
                       </Button>
@@ -339,11 +339,11 @@ export function TripPublicPage() {
                           size="sm"
                           variant="outline"
                           onClick={() => setQrCodeOpenKey(isQrOpen ? null : key)}
-                          className="h-8 px-2 text-xs gap-1 cursor-pointer"
+                          className="h-8 px-2 text-xs gap-1 cursor-pointer shrink-0"
                           title="Exibir QR Code Pix"
                         >
                           <QrCode className="size-3.5" aria-hidden="true" />
-                          <span>{isQrOpen ? "Fechar QR" : "QR"}</span>
+                          <span>{isQrOpen ? "Fechar" : "QR"}</span>
                         </Button>
                       )}
 
@@ -351,10 +351,12 @@ export function TripPublicPage() {
                         size="sm"
                         variant="ghost"
                         onClick={() => handleCopyPix(settlement.toPixKey!)}
-                        className="h-8 px-2 text-[11px] text-muted-foreground cursor-pointer"
+                        className="h-8 px-2 text-[11px] text-muted-foreground cursor-pointer shrink-0"
                         title="Copiar apenas a chave Pix"
                       >
-                        {copiedPixKey === settlement.toPixKey ? "Copiada" : "Só a chave"}
+                        <span className="whitespace-nowrap">
+                          {copiedPixKey === settlement.toPixKey ? "Copiada" : "Só chave"}
+                        </span>
                       </Button>
                     </div>
                   </div>

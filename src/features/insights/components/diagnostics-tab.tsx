@@ -11,6 +11,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { Alert, Badge, Button } from "@/components/ui";
+import { formatPercent, formatSignedPct } from "@/services/masks";
 import {
   ESSENTIAL_STATUS_LABELS,
   SAVINGS_HEALTH_LABELS,
@@ -123,7 +124,7 @@ export function DiagnosticsTab({
           <DiagnosticCard
             icon={<PiggyBank className="size-4" aria-hidden="true" />}
             label="Saúde da poupança"
-            value={`${savingsRate.toFixed(1)}%`}
+            value={`${formatPercent(savingsRate)}%`}
             subtitle="Capacidade de poupar"
             tone={health === "forte" || health === "saudavel" ? "positive" : health === "moderado" ? "neutral" : "negative"}
             badge={
@@ -158,7 +159,7 @@ export function DiagnosticsTab({
           <DiagnosticCard
             icon={<Calendar className="size-4" aria-hidden="true" />}
             label="Gastos fim de semana"
-            value={weekendComparable ? `${weekendRatio.toFixed(1)}×` : "—"}
+            value={weekendComparable ? `${formatPercent(weekendRatio)}×` : "—"}
             subtitle="vs. dias úteis"
             tone={weekendComparable ? (weekendRatio > WEEKEND_RATIO_LIMIT ? "negative" : "positive") : "neutral"}
           />
@@ -200,7 +201,7 @@ export function DiagnosticsTab({
           <DiagnosticCard
             icon={trendPercent >= 0 ? <TrendingUp className="size-4" aria-hidden="true" /> : <TrendingDown className="size-4" aria-hidden="true" />}
             label="Tendência de gastos"
-            value={`${trendPercent >= 0 ? "+" : ""}${trendPercent.toFixed(1)}%`}
+            value={formatSignedPct(trendPercent)}
             subtitle="vs. mês anterior"
             tone={trendSignificant ? (trendPercent > 0 ? "negative" : "positive") : "neutral"}
           />

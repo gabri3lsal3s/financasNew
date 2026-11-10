@@ -199,27 +199,27 @@ export function InvestmentsTab({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <PieChart className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-            <h3 className="text-sm font-semibold text-foreground">Defasagem de Metas Hierárquica (Classe ➔ Setor ➔ Ativos)</h3>
+            <h3 className="text-sm font-semibold text-foreground">Defasagem de Metas (Classe / Setor / Ativos)</h3>
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
             {allocationAnalysis.topDeficitClass ? (
-              <Badge variant="default" size="sm">
+              <Badge variant="default" size="sm" className="max-w-full truncate inline-block">
                 Prioridade Classe: {allocationAnalysis.topDeficitClass.assetClass.toUpperCase()}
               </Badge>
             ) : null}
             {allocationAnalysis.topDeficitSector ? (
-              <Badge variant="portfolio" size="sm">
+              <Badge variant="portfolio" size="sm" className="max-w-full truncate inline-block">
                 Prioridade Setor: {allocationAnalysis.topDeficitSector.sectorName}
               </Badge>
             ) : null}
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 pt-1 text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 text-xs">
           <span className="text-muted-foreground text-[11px]">
             Clique nas linhas para expandir/recolher os setores e ativos vinculados.
           </span>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0 self-end sm:self-auto">
             <Button
               type="button"
               size="sm"

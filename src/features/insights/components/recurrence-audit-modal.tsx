@@ -282,7 +282,8 @@ export function RecurrenceAuditModal({
                 ) : (
                   <Ban className="size-3.5 shrink-0" aria-hidden="true" />
                 )}
-                <span className="truncate">Não é Assinatura</span>
+                <span className="truncate sm:hidden">Não Assinar</span>
+                <span className="truncate hidden sm:inline">Não é Assinatura</span>
               </Button>
             </div>
           </div>
@@ -290,7 +291,7 @@ export function RecurrenceAuditModal({
           {/* Grid de Métricas Resumo */}
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
             <div className="flex flex-col gap-0.5 rounded-xl border border-border/80 bg-surface p-3 shadow-xs">
-              <span className="text-[11px] font-medium text-muted-foreground">
+              <span className="text-[11px] font-medium text-muted-foreground truncate">
                 {isMultiMonth ? "Valor por ciclo" : "Valor médio"}
               </span>
               <div className="flex items-baseline gap-1">
@@ -299,14 +300,14 @@ export function RecurrenceAuditModal({
                   tone="default"
                   className="text-base font-semibold"
                 />
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
                   {isMultiMonth ? `/${occurrence.intervalMonths}m` : "/mês"}
                 </span>
               </div>
             </div>
 
             <div className="flex flex-col gap-0.5 rounded-xl border border-border/80 bg-surface p-3 shadow-xs">
-              <span className="text-[11px] font-medium text-muted-foreground">
+              <span className="text-[11px] font-medium text-muted-foreground truncate">
                 {isMultiMonth ? "Amortizado/mês" : "Custo anual"}
               </span>
               <div className="flex items-baseline gap-1">
@@ -319,14 +320,14 @@ export function RecurrenceAuditModal({
                   tone="default"
                   className="text-base font-semibold"
                 />
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
                   {isMultiMonth ? "/mês" : "/ano"}
                 </span>
               </div>
             </div>
 
             <div className="flex flex-col gap-0.5 rounded-xl border border-border/80 bg-surface p-3 shadow-xs">
-              <span className="text-[11px] font-medium text-muted-foreground">
+              <span className="text-[11px] font-medium text-muted-foreground truncate">
                 {isMultiMonth ? "Custo anual" : "Dia típico"}
               </span>
               {isMultiMonth ? (
@@ -338,7 +339,7 @@ export function RecurrenceAuditModal({
                     tone="default"
                     className="text-base font-semibold"
                   />
-                  <span className="text-[10px] text-muted-foreground">/ano</span>
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">/ano</span>
                 </div>
               ) : (
                 <span className="text-base font-semibold text-foreground tabular-nums">

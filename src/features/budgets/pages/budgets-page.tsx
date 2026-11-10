@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { useNavigate, useSearchParams } from "react-router";
 import { ArrowRight, Edit3, HelpCircle, Info, PiggyBank, Plus, SlidersHorizontal, Sparkles, Target, TrendingDown, User, Users } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Popover, PopoverContent, PopoverTrigger, Skeleton, Tabs } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon, MonthPicker, ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
@@ -1058,37 +1059,33 @@ export function BudgetsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Orçamentos
-          </h1>
-          <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
-            Tetos de gastos mensais, metas de renda e controle de categorias
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-auto">
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label="Ajustar orçamento"
-            onClick={handleOpenAdjustBudget}
-            className="gap-1.5"
-          >
-            <SlidersHorizontal aria-hidden="true" className="size-4" />
-            <span>Ajustar orçamento</span>
-          </Button>
-          <Button
-            size="sm"
-            aria-label="Nova categoria"
-            onClick={handleOpenCreateCategory}
-            className="gap-1.5"
-          >
-            <Plus aria-hidden="true" className="size-4" />
-            <span>Nova categoria</span>
-          </Button>
-        </div>
-      </header>
+      <PageHeader
+        title="Orçamentos"
+        description="Tetos de gastos mensais, metas de renda e controle de categorias"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="Ajustar orçamento"
+              onClick={handleOpenAdjustBudget}
+              className="gap-1.5"
+            >
+              <SlidersHorizontal aria-hidden="true" className="size-4" />
+              <span>Ajustar orçamento</span>
+            </Button>
+            <Button
+              size="sm"
+              aria-label="Nova categoria"
+              onClick={handleOpenCreateCategory}
+              className="gap-1.5"
+            >
+              <Plus aria-hidden="true" className="size-4" />
+              <span>Nova categoria</span>
+            </Button>
+          </>
+        }
+      />
 
       {permission.isReadOnlyMode && (
         <ReadOnlyBanner

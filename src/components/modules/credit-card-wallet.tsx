@@ -154,10 +154,10 @@ export function CreditCardWallet({
             size="sm"
             onClick={onNewCard}
             aria-label="Adicionar novo cartão"
-            className="h-7 px-2 text-xs gap-1"
+            className="h-7 px-2.5 text-xs gap-1"
           >
-            <Plus className="size-3" aria-hidden="true" />
-            <span className="hidden sm:inline">Novo</span>
+            <Plus className="size-3.5" aria-hidden="true" />
+            <span>Novo</span>
           </Button>
         )}
       </div>

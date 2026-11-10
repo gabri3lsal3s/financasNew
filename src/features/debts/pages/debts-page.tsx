@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { ArrowDownLeft, ArrowUpRight, Calendar, Check, ChevronDown, ChevronUp, Coins, Download, HandCoins, Landmark, Plus } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 import { MoneyText } from "@/components/ui/money-text";
 import { DebtStatusBadge, HighlightRow, ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { calculateDebtsSummary, debtStatus, todayISO } from "@/domain/debts";
@@ -524,51 +525,47 @@ export function DebtsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header com ações acessíveis tanto no mobile quanto no desktop */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Contas & Dívidas
-          </h1>
-          <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
-            Gestão de contas a pagar, a receber e contratos
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleExportDebtsCsv}
-            disabled={tab === "loans" ? loans.length === 0 : (tab === "payable" ? payableDebts : receivableDebts).length === 0}
-            className="flex-1 sm:flex-initial gap-1.5"
-            aria-label="Exportar CSV"
-            title="Exportar contas em CSV"
-          >
-            <Download className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Exportar </span>CSV
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label="Novo contrato"
-            className="flex-1 sm:flex-initial"
-            onClick={handleOpenLoanForm}
-          >
-            <Coins aria-hidden="true" className="size-4" />
-            Contrato
-          </Button>
-          <Button
-            size="sm"
-            aria-label="Nova dívida"
-            className="flex-1 sm:flex-initial"
-            onClick={() => handleOpenDebtForm(null)}
-          >
-            <Plus aria-hidden="true" className="size-4" />
-            Nova dívida
-          </Button>
-        </div>
-      </header>
+      {/* Header canônico com ações responsivas */}
+      <PageHeader
+        title="Contas & Dívidas"
+        description="Gestão de contas a pagar, a receber e contratos"
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExportDebtsCsv}
+              disabled={tab === "loans" ? loans.length === 0 : (tab === "payable" ? payableDebts : receivableDebts).length === 0}
+              className="flex-1 sm:flex-initial gap-1.5"
+              aria-label="Exportar CSV"
+              title="Exportar contas em CSV"
+            >
+              <Download className="size-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Exportar </span>CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="Novo contrato"
+              className="flex-1 sm:flex-initial"
+              onClick={handleOpenLoanForm}
+            >
+              <Coins aria-hidden="true" className="size-4" />
+              Contrato
+            </Button>
+            <Button
+              size="sm"
+              aria-label="Nova dívida"
+              className="flex-1 sm:flex-initial"
+              onClick={() => handleOpenDebtForm(null)}
+            >
+              <Plus aria-hidden="true" className="size-4" />
+              Nova dívida
+            </Button>
+          </>
+        }
+      />
 
       {permission.isReadOnlyMode && (
         <ReadOnlyBanner

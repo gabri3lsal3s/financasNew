@@ -7,6 +7,7 @@ import { MoneyText } from "@/components/ui/money-text";
 import { MonthPicker, YearPicker, ReportTable } from "@/components/modules";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { cn } from "@/lib/utils";
+import { formatPercent } from "@/services/masks";
 import {
   WEEKDAY_LABELS,
   mondayFirstWeekday,
@@ -206,8 +207,8 @@ export function FinancialTab({
               animated
               className="text-lg sm:text-xl font-bold font-display"
             />
-            <span className="text-xs font-semibold text-muted-foreground shrink-0">
-              {grossSavingsRatePercent !== null ? `${grossSavingsRatePercent.toFixed(1)}%` : "—"}
+            <span className="text-xs font-semibold text-muted-foreground shrink-0 tabular-nums">
+              {grossSavingsRatePercent !== null ? `${formatPercent(grossSavingsRatePercent)}%` : "—"}
             </span>
           </div>
           {hasDualMetrics && (
@@ -227,7 +228,7 @@ export function FinancialTab({
       <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-foreground">Detalhamento de Despesas</h3>
-          <div className="grid grid-cols-3 sm:flex gap-1.5 w-full sm:w-auto">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth w-full sm:w-auto -mx-1 px-1 sm:mx-0 sm:px-0">
             <Button
               type="button"
               variant={aggregationTab === "category" ? "default" : "outline"}
@@ -236,7 +237,7 @@ export function FinancialTab({
               onClick={() => {
                 setAggregationTab("category");
               }}
-              className="px-2 sm:px-3 text-xs justify-center"
+              className="px-3 text-xs justify-center shrink-0 min-w-fit"
             >
               Categorias
             </Button>
@@ -248,7 +249,7 @@ export function FinancialTab({
               onClick={() => {
                 setAggregationTab("method");
               }}
-              className="px-2 sm:px-3 text-xs justify-center"
+              className="px-3 text-xs justify-center shrink-0 min-w-fit"
             >
               Formas de Pgto
             </Button>
@@ -260,7 +261,7 @@ export function FinancialTab({
               onClick={() => {
                 setAggregationTab("weekday");
               }}
-              className="px-2 sm:px-3 text-xs justify-center"
+              className="px-3 text-xs justify-center shrink-0 min-w-fit"
             >
               Dias da Semana
             </Button>

@@ -88,15 +88,19 @@ export function ReportTable({
   ];
 
   return (
-    <section aria-label={title} className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
-      <DataList
-        columns={columns}
-        rows={[...rows]}
-        rowKey={(row) => row.key}
-        emptyMessage={emptyLabel}
-        onRowClick={onRowClick}
-      />
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5">
+    <section aria-label={title} className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs">
+      <div className="overflow-x-auto no-scrollbar scroll-smooth w-full">
+        <div className={cn("w-full", hasDualMetrics ? "min-w-[380px]" : "min-w-[300px]")}>
+          <DataList
+            columns={columns}
+            rows={[...rows]}
+            rowKey={(row) => row.key}
+            emptyMessage={emptyLabel}
+            onRowClick={onRowClick}
+          />
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/80 pt-2.5">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total</span>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-sm font-semibold">
