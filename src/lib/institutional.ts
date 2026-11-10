@@ -32,12 +32,12 @@ export interface InstitutionalConfig {
 export const DEFAULT_INSTITUTIONAL_CONFIG: InstitutionalConfig = Object.freeze({
   legalNature: "pf",
   developerName: "Gabriel Sales",
-  companyName: "Áxis Finance — Gabriel Sales (Desenvolvedor Independente)",
+  companyName: "Axir — Gabriel Sales (Desenvolvedor Independente)",
   cnpj: "",
   address: "Alto Sertão Nordestino — Brasil",
-  dpoEmail: "axisfinance.app@gmail.com",
-  supportEmail: "axisfinance.app@gmail.com",
-  appName: "Áxis Finance",
+  dpoEmail: "privacidade@axir.com.br",
+  supportEmail: "suporte@axir.com.br",
+  appName: "Axir",
   legalJurisdiction: "Comarca da Capital do Estado de São Paulo",
 });
 
@@ -117,36 +117,36 @@ export const INSTITUTIONAL_CONFIG: InstitutionalConfig = {
 
 /**
  * Disclaimer regulatório oficial de isenção CVM (Resoluções CVM nº 19/2021 e nº 20/2021)
- * em conformidade estrita com o Contrato 1 (§7) e Contrato 5 da plataforma Áxis Finance.
+ * em conformidade estrita com o Contrato 1 (§7) e Contrato 5 da plataforma Axir.
  */
 export const OFFICIAL_CVM_DISCLAIMER =
-  "Documento estritamente informativo gerado automaticamente com base nos dados e metas parametrizados pelo titular. O Áxis Finance opera como mero instrumento tecnológico de consolidação matemática e orçamentária, não constituindo consultoria de valores mobiliários (Resolução CVM nº 19/2021), análise de investimentos ou recomendação de compra, venda ou alocação de ativos (Resolução CVM nº 20/2021). Rentabilidade passada não representa garantia de retorno futuro.";
+  "Documento estritamente informativo gerado automaticamente com base nos dados e metas parametrizados pelo titular. O Axir opera como mero instrumento tecnológico de consolidação matemática e orçamentária, não constituindo consultoria de valores mobiliários (Resolução CVM nº 19/2021), análise de investimentos ou recomendação de compra, venda ou alocação de ativos (Resolução CVM nº 20/2021). Rentabilidade passada não representa garantia de retorno futuro.";
 
 /**
  * Disclaimer especializado para a Síntese Executiva de Patrimônio (Wealth Tear Sheet),
  * incorporando as especificidades contábeis e fiscais de proventos líquidos e custódia aberta.
  */
 export const OFFICIAL_WEALTH_TEAR_SHEET_DISCLAIMER =
-  "Documento estritamente informativo gerado automaticamente com base nos dados e metas parametrizados pelo titular. Proventos reportados com base no valor líquido creditado em conta (isentos para dividendos e FIIs locais; líquidos de 15% retidos na fonte para JCP e 30% retidos pelo IRS para ativos nos EUA). Valores de retorno contábil sob custódia aberta não deduzem IR latente sobre ganhos não realizados. O Áxis Finance opera como mero instrumento tecnológico de consolidação matemática e orçamentária, não constituindo consultoria de valores mobiliários (Resolução CVM nº 19/2021), análise de investimentos ou recomendação de compra, venda ou alocação de ativos (Resolução CVM nº 20/2021). Rentabilidade passada não representa garantia de retorno futuro.";
+  "Documento estritamente informativo gerado automaticamente com base nos dados e metas parametrizados pelo titular. Proventos reportados com base no valor líquido creditado em conta (isentos para dividendos e FIIs locais; líquidos de 15% retidos na fonte para JCP e 30% retidos pelo IRS para ativos nos EUA). Valores de retorno contábil sob custódia aberta não deduzem IR latente sobre ganhos não realizados. O Axir opera como mero instrumento tecnológico de consolidação matemática e orçamentária, não constituindo consultoria de valores mobiliários (Resolução CVM nº 19/2021), análise de investimentos ou recomendação de compra, venda ou alocação de ativos (Resolução CVM nº 20/2021). Rentabilidade passada não representa garantia de retorno futuro.";
 
 /**
  * Disclaimer contábil e fiscal oficial de responsabilidade tributária perante a Receita Federal do Brasil (RFB)
- * e Conselho Federal de Contabilidade (CFC), em conformidade estrita com o Contrato 5 (§2) da plataforma Áxis Finance.
+ * e Conselho Federal de Contabilidade (CFC), em conformidade estrita com o Contrato 5 (§2) da plataforma Axir.
  */
 export const OFFICIAL_TAX_DISCLAIMER =
-  "As apurações fiscais, estimativas de DARF e facilitadores de IRPF têm caráter estritamente informativo e auxiliar, elaborados a partir dos lançamentos e parâmetros inseridos pelo próprio usuário. O Áxis Finance não presta serviços de contabilidade regulamentados pelo CFC e este demonstrativo não substitui o trabalho de um contador habilitado nem a tempestiva entrega da Declaração de Ajuste Anual perante a Receita Federal do Brasil. É dever indelegável do contribuinte conferir os valores com os informes de rendimentos oficiais e notas de corretagem das instituições custodiantes.";
+  "As apurações fiscais, estimativas de DARF e facilitadores de IRPF têm caráter estritamente informativo e auxiliar, elaborados a partir dos lançamentos e parâmetros inseridos pelo próprio usuário. O Axir não presta serviços de contabilidade regulamentados pelo CFC e este demonstrativo não substitui o trabalho de um contador habilitado nem a tempestiva entrega da Declaração de Ajuste Anual perante a Receita Federal do Brasil. É dever indelegável do contribuinte conferir os valores com os informes de rendimentos oficiais e notas de corretagem das instituições custodiantes.";
 
 /**
  * Disclaimer especializado para o facilitador de preenchimento de IRPF e dossiê fiscal anual impresso.
  */
 export const OFFICIAL_TAX_FACILITATOR_DISCLAIMER =
-  "Documento auxiliar e orientativo gerado pelo Áxis Finance para facilitar o preenchimento do programa da Receita Federal. O cálculo tem caráter estimativo e não substitui o trabalho de um contador habilitado nem a Declaração de Ajuste Anual. A conferência final com os informes oficiais de custódia e o recolhimento tempestivo de tributos cabem exclusivamente ao contribuinte.";
+  "Documento auxiliar e orientativo gerado pelo Axir para facilitar o preenchimento do programa da Receita Federal. O cálculo tem caráter estimativo e não substitui o trabalho de um contador habilitado nem a Declaração de Ajuste Anual. A conferência final com os informes oficiais de custódia e o recolhimento tempestivo de tributos cabem exclusivamente ao contribuinte.";
 
 /**
  * Chancela contábil e institucional padronizada para rodapés de relatórios, dossiês e extratos PDF (§F6 — Tarefa 6.1).
  */
 export const OFFICIAL_REPORT_FOOTER_CREDIT =
-  "Relatório estruturado via Áxis Finance · Gestão Financeira Pessoal & Automação | axis.app";
+  "Relatório estruturado via Axir · Gestão Financeira Inteligente & Automação | axir.com.br";
 
 /**
  * Divulgação destacada oficial (Prominent Disclosure — Contrato 4) para permissão de leitura

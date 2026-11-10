@@ -130,7 +130,7 @@ export function Command({
                   Fechar
                 </span>
               </div>
-              <span className="text-[11px] text-muted-foreground/75 font-medium">Busca Global Áxis</span>
+              <span className="text-[11px] text-muted-foreground/75 font-medium">Busca Global Axir</span>
             </div>
           </CommandPrimitive>
         </DialogPrimitive.Content>

@@ -112,7 +112,7 @@ describe("local-notifications service", () => {
         notifications: [
           expect.objectContaining({
             id: DAILY_REMINDER_NOTIFICATION_ID,
-            title: "Fechamento Diário — Áxis Finance",
+            title: "Fechamento Diário — Axir",
             schedule: {
               on: { hour: 20, minute: 30 },
               allowWhileIdle: true,
@@ -242,7 +242,7 @@ describe("local-notifications service", () => {
       expect(count).toBe(1);
       expect(LocalNotifications.schedule).toHaveBeenCalledTimes(1);
       const scheduleCall = (LocalNotifications.schedule as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0];
-      expect(scheduleCall.notifications[0].title).toContain("Áxis · Contas e faturas pendentes (2)");
+      expect(scheduleCall.notifications[0].title).toContain("Axir · Contas e faturas pendentes (2)");
     });
 
     it("emite notificação específica detalhada quando há apenas 1 conta pendente", async () => {

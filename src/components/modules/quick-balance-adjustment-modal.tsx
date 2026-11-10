@@ -94,7 +94,7 @@ export function QuickBalanceAdjustmentModal({
           <div className="flex flex-col gap-0.5">
             <span className="font-semibold text-foreground">Sem tempo para lançar tudo? Sem problemas!</span>
             <p className="text-muted-foreground leading-relaxed">
-              Não gaste tempo garimpando comprovantes antigos. Basta informar quanto você tem no banco hoje e o Áxis calibra seu saldo e o Safe-to-Spend instantaneamente.
+              Não gaste tempo garimpando comprovantes antigos. Basta informar quanto você tem no banco hoje e o Axir calibra seu saldo e o Safe-to-Spend instantaneamente.
             </p>
           </div>
         </div>

@@ -17,6 +17,8 @@ vi.mock("@/services/toast", () => ({
   pushToast: vi.fn(),
 }));
 
+let mockHasFeature = vi.fn(() => true);
+
 vi.mock("@/state", () => ({
   useUserPreferences: () => ({
     data: {
@@ -32,7 +34,7 @@ vi.mock("@/state", () => ({
   useUpdateReminderPreferences: () => ({ mutate: vi.fn(), isPending: false }),
   useUserAccess: () => ({
     role: "admin",
-    hasFeature: () => true,
+    hasFeature: () => mockHasFeature(),
   }),
 }));
 
@@ -472,6 +474,17 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
       ).not.toBeInTheDocument();
       expect(screen.queryByRole("checkbox", { name: "Monitorar Nubank" })).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: /Baixar App Pro/i })).toBeInTheDocument();
+    });
+
+    it("não renderiza qualquer menção ao Assistente quando bank_notification_listener estiver desativado", () => {
+      mockHasFeature = vi.fn().mockReturnValue(false);
+      renderNotificationsTab();
+
+      expect(screen.queryByText("Assistente Passivo de Compras & Bancos")).not.toBeInTheDocument();
+      expect(screen.queryByText("Assistente de Notificações Bancárias")).not.toBeInTheDocument();
+      expect(screen.queryByText("Exclusivo no App Android")).not.toBeInTheDocument();
+      expect(screen.queryByRole("checkbox", { name: /Habilitar Captura Passiva/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Baixar App Pro/i })).not.toBeInTheDocument();
     });
   });
 });

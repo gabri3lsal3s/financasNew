@@ -61,10 +61,10 @@ export function ApkBetaRestrictedModal() {
             Aplicativo Nativo em Testes Fechados
           </h3>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            A versão nativa do Áxis para Android está em fase de validação e estabilização de telemetria. Durante este período, o acesso via APK está liberado apenas para contas selecionadas.
+            A versão nativa do Axir para Android está em fase de validação e estabilização de telemetria. Durante este período, o acesso via APK está liberado apenas para contas selecionadas.
           </p>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Você pode continuar controlando suas finanças com 100% de precisão e segurança acessando o Áxis diretamente pelo navegador no seu celular ou computador.
+            Você pode continuar controlando suas finanças com 100% de precisão e segurança acessando o Axir diretamente pelo navegador no seu celular ou computador.
           </p>
         </div>
 

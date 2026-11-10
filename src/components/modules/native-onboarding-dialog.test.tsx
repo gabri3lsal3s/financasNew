@@ -30,8 +30,8 @@ describe("NativeOnboardingDialog — Onboarding do App Nativo Android (§3.5)", 
       screen.getByText(/Seu aplicativo foi instalado com sucesso/i),
     ).toBeInTheDocument();
     expect(screen.getByText("Desempenho Acelerado")).toBeInTheDocument();
-    expect(screen.getByText("Leitor de Notificações Bancárias")).toBeInTheDocument();
-    expect(screen.getByText("Biometria & Escudo de Privacidade")).toBeInTheDocument();
+    expect(screen.getByText("Biometria Física & Escudo de Privacidade")).toBeInTheDocument();
+    expect(screen.getByText("Atalhos Rápidos de Sistema")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Fazer Tour Rápido \(1 min\)/i }),
     ).toBeInTheDocument();

@@ -56,7 +56,7 @@ export function CompoundInterestPage() {
 
   useEffect(() => {
     document.title =
-      "Simulador de Juros Compostos & FIRE — Áxis Finance";
+      "Simulador de Juros Compostos & FIRE — Axir";
   }, []);
 
   const result = useMemo(() => {
@@ -418,7 +418,7 @@ export function CompoundInterestPage() {
 
       <ToolsFooterCta
         title="Deseja monitorar suas finanças e metas com automação diária?"
-        description="Acompanhe sua carteira de investimentos dia a dia, receba notificações de proventos recebidos e trace metas financeiras guiadas no Áxis Finance."
+        description="Acompanhe sua carteira de investimentos dia a dia, receba notificações de proventos recebidos e trace metas financeiras guiadas no Axir."
         simulationPayload={simulationPayload}
       />
     </div>

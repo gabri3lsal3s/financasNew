@@ -75,7 +75,7 @@ export function AdminBackupsPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `axis_system_backup_${new Date().toISOString().slice(0, 10)}_${checksumSha256.slice(0, 8)}.json`;
+      a.download = `axir_system_backup_${new Date().toISOString().slice(0, 10)}_${checksumSha256.slice(0, 8)}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

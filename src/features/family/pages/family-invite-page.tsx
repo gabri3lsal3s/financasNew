@@ -84,9 +84,9 @@ export function FamilyInvitePage() {
   // Atualização dinâmica do título da janela
   useEffect(() => {
     if (invite?.family_name) {
-      document.title = `Convite Familiar · ${invite.family_name} — Áxis Finance`;
+      document.title = `Convite Familiar · ${invite.family_name} — Axir`;
     } else {
-      document.title = "Convite Familiar — Áxis Finance";
+      document.title = "Convite Familiar — Axir";
     }
   }, [invite?.family_name]);
 
@@ -181,7 +181,7 @@ export function FamilyInvitePage() {
                   onClick={() => navigate(session?.user ? "/" : "/apresentacao")}
                   className="rounded-xl cursor-pointer"
                 >
-                  {session?.user ? "Ir para o Painel" : "Conhecer o Áxis Finance"}
+                  {session?.user ? "Ir para o Painel" : "Conhecer o Axir"}
                 </Button>
               }
             />
@@ -516,7 +516,7 @@ export function FamilyInvitePage() {
               </h1>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
                 Faça parte da família{" "}
-                <strong className="text-foreground">{invite.family_name || "Áxis Finance"}</strong>{" "}
+                <strong className="text-foreground">{invite.family_name || "Axir"}</strong>{" "}
                 para planejar as despesas da casa com equilíbrio e transparência.
               </p>
             </div>
@@ -598,7 +598,7 @@ export function FamilyInvitePage() {
         </main>
 
         <footer className="text-center text-xs text-muted-foreground pb-6">
-          <span>Áxis Finance · Gestão Financeira Inteligente e Colaborativa</span>
+          <span>Axir · Gestão Financeira Inteligente e Colaborativa</span>
         </footer>
       </div>
     );
@@ -629,7 +629,7 @@ export function FamilyInvitePage() {
             </CardTitle>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
               Você foi convidado para integrar o orçamento familiar da família{" "}
-              <strong className="text-foreground">{invite.family_name || "Áxis Finance"}</strong>.
+              <strong className="text-foreground">{invite.family_name || "Axir"}</strong>.
             </p>
           </CardHeader>
 
@@ -716,7 +716,7 @@ export function FamilyInvitePage() {
       </main>
 
       <footer className="text-center text-xs text-muted-foreground pb-6">
-        <span>Áxis Finance · Gestão Financeira Inteligente e Colaborativa</span>
+        <span>Axir · Gestão Financeira Inteligente e Colaborativa</span>
       </footer>
     </div>
   );

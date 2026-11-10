@@ -157,7 +157,7 @@ export function WelcomeModal({
       }
       description={
         currentStep === 1
-          ? "Acesso Áxis Pro desbloqueado por 30 dias completos. Sem cartão de crédito cadastrado."
+          ? "Acesso Axir Pro desbloqueado por 30 dias completos. Sem cartão de crédito cadastrado."
           : currentStep === 2
             ? "Personalizamos sua experiência inicial conforme o objetivo mais urgente."
             : "Comece agora diretamente pela sua prioridade ou faça um tour de 1 minuto."

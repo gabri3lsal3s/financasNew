@@ -26,7 +26,7 @@ const DEFAULT_PLATFORM_TRIPTYCH_ITEMS: readonly PlatformTriptychItem[] = [
     id: "android_pro",
     title: "Android Pro Nativo",
     description:
-      "Leitor passivo inteligente de notificações bancárias (Pix e cartões em tempo real), biometria física e escudo anti-print.",
+      "Acesso com biometria física por impressão digital, escudo de privacidade anti-captura e atalhos de launcher.",
   },
 ] as const;
 
@@ -38,7 +38,7 @@ export interface PlatformsTriptychCardProps {
 }
 
 /**
- * Card comparativo do Tripé de Plataformas Áxis (Web Desktop, Mobile PWA e Android Pro).
+ * Card comparativo do Tripé de Plataformas Axir (Web Desktop, Mobile PWA e Android Pro).
  * Destaca visualmente a plataforma que está sendo utilizada no momento pelo usuário.
  */
 export function PlatformsTriptychCard({

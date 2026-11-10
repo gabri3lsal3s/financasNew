@@ -202,7 +202,7 @@ function SupportChatForm({
             type === "bug"
               ? "Conte o que aconteceu e os passos para reproduzir o problema..."
               : type === "suggestion"
-                ? "Compartilhe sua ideia para tornar o Áxis Finance ainda melhor..."
+                ? "Compartilhe sua ideia para tornar o Axir ainda melhor..."
                 : "Escreva sua dúvida sobre o uso do aplicativo..."
           }
           value={message}

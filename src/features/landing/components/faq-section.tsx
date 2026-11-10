@@ -42,27 +42,27 @@ const faqs: FaqItem[] = [
   {
     question: "Preciso baixar algum APK no meu celular para usar?",
     answer:
-      "Não. O produto comercial oficial do Áxis é 100% web e opera como PWA (Progressive Web App). Você pode acessar imediatamente de qualquer navegador no iPhone, Android, Mac ou Windows e fixá-lo na tela inicial em 1 toque, sem precisar baixar nenhum arquivo .apk e sem ocupar o armazenamento do aparelho. O APK Android é apenas um complemento beta opcional para quem usa Android e deseja a captura passiva em segundo plano de notificações bancárias.",
+      "Não. O produto comercial oficial do Axir é 100% web e opera como PWA (Progressive Web App). Você pode acessar imediatamente de qualquer navegador no iPhone, Android, Mac ou Windows e fixá-lo na tela inicial em 1 toque, sem precisar baixar nenhum arquivo .apk e sem ocupar o armazenamento do aparelho. O APK Android é apenas um complemento beta opcional para quem deseja biometria física nativa e escudo de privacidade.",
   },
   {
     question: "O aplicativo funciona no celular como um app nativo?",
     answer:
-      "Sim. O Áxis opera com carregamento instantâneo e interface em tela cheia via PWA universal no iPhone e Android. Além disso, para usuários de Android que desejam automação em segundo plano sem senhas, disponibilizamos o Aplicativo Android Pro Beta opcional (.apk) com o Assistente Bancário de notificações em tempo real.",
+      "Sim. O Axir opera com carregamento instantâneo e interface em tela cheia via PWA universal no iPhone e Android. Além disso, para usuários de Android que preferem um instalador dedicado, disponibilizamos o Aplicativo Android Pro Beta opcional (.apk) com biometria física e atalhos de launcher.",
   },
   {
     question: "Por que o Aplicativo Android Pro é baixado pelo site e não pela Google Play Store?",
     answer:
-      "Distribuir diretamente pelo nosso servidor seguro nos permite duas vantagens fundamentais: repassar a economia das taxas abusivas de 30% das lojas para o valor da sua assinatura e oferecer o Assistente Bancário de notificações em tempo real com privacidade absoluta. O APK é assinado criptograficamente e recebe atualizações automáticas diretamente dentro do aplicativo, sem precisar reinstalar.",
+      "Distribuir diretamente pelo nosso servidor seguro nos permite duas vantagens fundamentais: repassar a economia das taxas abusivas de 30% das lojas para o valor da sua assinatura e manter um ciclo de melhorias contínuas. O APK é assinado criptograficamente e recebe atualizações automáticas diretamente dentro do aplicativo, sem precisar reinstalar.",
   },
   {
     question: "Tenho iPhone, consigo utilizar normalmente?",
     answer:
-      "Sim, perfeitamente. No iPhone, você utiliza a versão PWA moderna (adicionada à tela inicial pelo Safari). Você terá acesso a 100% dos motores de cálculo, orçamentos, carteira de investimentos e relatórios executivos. Para registrar transações em segundos sem digitação manual, o Áxis conta com o Leitor Inteligente de Pix e Comprovantes: basta copiar o código Pix Copia e Cola ou o texto do comprovante do seu banco e colar no app para aprovar em 1 toque. Apenas a leitura passiva em segundo plano de notificações de outros apps fica restrita ao Android Pro, devido a limitações de arquitetura do iOS da Apple.",
+      "Sim, perfeitamente. No iPhone, você utiliza a versão PWA moderna (adicionada à tela inicial pelo Safari). Você terá acesso a 100% dos motores de cálculo, orçamentos, carteira de investimentos e relatórios executivos. Para registrar transações em segundos sem digitação manual, o Axir conta com o Leitor Inteligente de Pix e Comprovantes: basta copiar o código Pix Copia e Cola ou o texto do comprovante do seu banco e colar no app para aprovar em 1 toque.",
   },
   {
     question: "Como funciona o Modo Viagem com amigos que não têm o aplicativo?",
     answer:
-      "Funciona sem nenhum atrito. Ao criar uma viagem em grupo, o Áxis gera um link público seguro (com senha opcional). Seus amigos abrem a página pelo navegador do celular, conferem o livro-razão em tempo real e podem lançar os gastos que pagaram. No final da viagem, o algoritmo calcula o menor número possível de transferências Pix para zerar todos os saldos, sem que seus amigos precisem criar conta ou baixar qualquer aplicativo.",
+      "Funciona sem nenhum atrito. Ao criar uma viagem em grupo, o Axir gera um link público seguro (com senha opcional). Seus amigos abrem a página pelo navegador do celular, conferem o livro-razão em tempo real e podem lançar os gastos que pagaram. No final da viagem, o algoritmo calcula o menor número possível de transferências Pix para zerar todos os saldos, sem que seus amigos precisem criar conta ou baixar qualquer aplicativo.",
   },
 ];
 

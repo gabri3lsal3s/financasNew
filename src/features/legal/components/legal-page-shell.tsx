@@ -68,7 +68,7 @@ export function LegalPageShell({
           <Link
             to="/landing"
             className="flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            aria-label="Áxis Finance - Ir para a página inicial"
+            aria-label="Axir - Ir para a página inicial"
           >
             <BrandLogo
               markClassName="size-8"

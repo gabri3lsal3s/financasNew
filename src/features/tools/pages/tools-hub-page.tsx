@@ -74,7 +74,7 @@ const TOOLS_LIST: ToolCardInfo[] = [
 export function ToolsHubPage() {
   useEffect(() => {
     document.title =
-      "Simuladores e Ferramentas Financeiras Gratuitas — Áxis Finance";
+      "Simuladores e Ferramentas Financeiras Gratuitas — Axir";
   }, []);
   return (
     <div className="min-h-dvh bg-background text-foreground flex flex-col justify-between">

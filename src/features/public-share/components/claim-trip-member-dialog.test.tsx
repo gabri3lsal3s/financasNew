@@ -84,7 +84,7 @@ describe("ClaimTripMemberDialog", () => {
     } as unknown as ReturnType<typeof tripsModule.useClaimTripMemberMutation>);
   });
 
-  it("renderiza apenas membros não vinculados (sem conta Áxis) e exclui quem já possui conta", () => {
+  it("renderiza apenas membros não vinculados (sem conta Axir) e exclui quem já possui conta", () => {
     renderDialog();
 
     expect(screen.getByText("Vincular Viagem à sua Conta")).toBeInTheDocument();
@@ -166,7 +166,7 @@ describe("ClaimTripMemberDialog", () => {
 
     expect(screen.getByText("Nenhum participante disponível")).toBeInTheDocument();
     expect(
-      screen.getByText("Todos os participantes desta viagem já possuem conta Áxis vinculada.")
+      screen.getByText("Todos os participantes desta viagem já possuem conta Axir vinculada.")
     ).toBeInTheDocument();
 
     const submitBtn = screen.getByRole("button", { name: "Confirmar e Vincular" });

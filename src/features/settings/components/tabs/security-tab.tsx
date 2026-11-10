@@ -214,7 +214,7 @@ export function SecurityTab() {
     try {
       const link = document.createElement("a");
       link.href = activeApkUrl;
-      link.download = "axis-pro.apk";
+      link.download = "axir-pro.apk";
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       document.body.appendChild(link);

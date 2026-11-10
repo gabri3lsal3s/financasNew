@@ -111,7 +111,7 @@ export function UpgradeDialog({
       title={context ?? "Ativar Plano Pro"}
       description={
         contextDescription ??
-        "Acesso completo e ilimitado a todas as ferramentas do Áxis Pro."
+        "Acesso completo e ilimitado a todas as ferramentas do Axir Pro."
       }
       size="xl"
     >

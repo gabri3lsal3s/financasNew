@@ -83,7 +83,7 @@ describe("SplitOnboardingModal", () => {
 
     renderModal();
 
-    const openInAppBtn = screen.getByRole("button", { name: /Abrir despesa no aplicativo Áxis instalado/i });
+    const openInAppBtn = screen.getByRole("button", { name: /Abrir despesa no aplicativo Axir instalado/i });
     await user.click(openInAppBtn);
 
     expect(mockLocation.href).toBe("com.guiafinanceiro.app://r/tok12345?action=save");

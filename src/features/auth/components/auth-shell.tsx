@@ -13,7 +13,7 @@ export interface AuthShellProps {
 }
 
 /**
-  * Casca das telas de autenticação — Card centralizado com identidade oficial Áxis Finance.
+  * Casca das telas de autenticação — Card centralizado com identidade oficial Axir.
   * No desktop (≥ lg) com `sideHero`, ativa um layout split harmônico e reativo ao tema ativo
   * com a logo e benefícios à esquerda e formulário espaçoso à direita.
   */

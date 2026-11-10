@@ -21,13 +21,13 @@ describe("AndroidProBanner", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Experimente a Leitura Automática de Gastos")).toBeInTheDocument();
+    expect(screen.getByText("Instale o Aplicativo Android Pro")).toBeInTheDocument();
     expect(screen.getByText("App Android Pro")).toBeInTheDocument();
     expect(
       screen.getByText((_content, element) => {
         return (
           element?.tagName.toLowerCase() === "p" &&
-          Boolean(element?.textContent?.includes("Importação automática de compras no cartão"))
+          Boolean(element?.textContent?.includes("Biometria física de hardware, escudo de privacidade"))
         );
       }),
     ).toBeInTheDocument();

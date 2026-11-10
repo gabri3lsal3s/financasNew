@@ -87,7 +87,7 @@ export function HeroEditorial() {
 
           {/* Subtítulo Rico e Persuasivo com Tipografia Editorial */}
           <p className="mt-4 sm:mt-6 max-w-3xl text-sm sm:text-lg lg:text-xl text-muted-foreground leading-relaxed font-normal">
-            Elimine o susto das faturas futuras e a bagunça do caderninho. O Áxis calcula seu caixa real diário, acompanha o que você deve e tem a receber, e distribui seus aportes com rigor matemático sem vender posições.
+            Elimine o susto das faturas futuras e a bagunça do caderninho. O Axir calcula seu caixa real diário, acompanha o que você deve e tem a receber, e distribui seus aportes com rigor matemático sem vender posições.
           </p>
 
           {/* CTAs de Conversão com Shimmer Reflexivo e Altura Confortável */}

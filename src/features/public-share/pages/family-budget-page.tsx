@@ -63,9 +63,9 @@ export function FamilyBudgetPage() {
 
   useEffect(() => {
     if (budgetData?.owner_name) {
-      document.title = `Orçamento Familiar · ${budgetData.owner_name} — Áxis Finance`;
+      document.title = `Orçamento Familiar · ${budgetData.owner_name} — Axir`;
     } else {
-      document.title = "Orçamento Familiar — Áxis Finance";
+      document.title = "Orçamento Familiar — Axir";
     }
   }, [budgetData?.owner_name]);
 
@@ -121,7 +121,7 @@ export function FamilyBudgetPage() {
                     "rounded-xl cursor-pointer",
                   )}
                 >
-                  Conhecer o Áxis Finance
+                  Conhecer o Axir
                 </Link>
               }
             />
@@ -431,7 +431,7 @@ export function FamilyBudgetPage() {
           Este painel é de leitura segura. Contas bancárias, faturas e lançamentos individuais permanecem 100% confidenciais.
         </p>
         <div className="flex items-center justify-center gap-2 pt-1">
-          <span>Áxis Finance</span>
+          <span>Axir</span>
           <span>&middot;</span>
           <Link
             to="/apresentacao"

@@ -21,7 +21,7 @@ export interface PublicTripIdentityBannerProps {
   balance?: TripMemberBalance | null;
   /** Callback acionado para abrir o extrato detalhado do participante selecionado */
   onOpenStatement?: (member: PublicTripMember) => void;
-  /** Callback acionado para abrir o diálogo de vinculação da viagem à conta Áxis */
+  /** Callback acionado para abrir o diálogo de vinculação da viagem à conta Axir */
   onClaimAccount?: () => void;
   /** Classes CSS adicionais */
   className?: string;
@@ -34,7 +34,7 @@ export interface PublicTripIdentityBannerProps {
  * 1. Quando sem identidade: exibe card sóbrio com título "Quem é você nesta viagem?" e lista de participantes;
  * 2. Quando com identidade ativa: exibe badge "Você é [Nome]" acompanhado de botão compacto "Alterar";
  * 3. Se participante possuir balanço: exibe resumo financeiro e atalho para o extrato individual;
- * 4. Para visitantes desautenticados: exibe banner discreto convidando ao login/sincronização no Áxis.
+ * 4. Para visitantes desautenticados: exibe banner discreto convidando ao login/sincronização no Axir.
  */
 export function PublicTripIdentityBanner({
   token,
@@ -118,9 +118,9 @@ export function PublicTripIdentityBanner({
                   aria-hidden="true"
                 />
                 <span className="text-[11px] text-muted-foreground group-hover:text-foreground transition-colors truncate">
-                  Já tem conta no Áxis?{" "}
+                  Já tem conta no Axir?{" "}
                   <span className="font-semibold text-foreground underline decoration-border group-hover:decoration-primary">
-                    Entrar com minha conta Áxis para sincronizar com meu extrato
+                    Entrar com minha conta Axir para sincronizar com meu extrato
                   </span>
                 </span>
               </div>
@@ -143,9 +143,9 @@ export function PublicTripIdentityBanner({
                   aria-hidden="true"
                 />
                 <span className="text-[11px] text-muted-foreground group-hover:text-foreground transition-colors truncate">
-                  Conectado ao Áxis.{" "}
+                  Conectado ao Axir.{" "}
                   <span className="font-semibold text-foreground underline decoration-primary/40 group-hover:decoration-primary">
-                    Vincular esta viagem ao meu aplicativo Áxis
+                    Vincular esta viagem ao meu aplicativo Axir
                   </span>
                 </span>
               </div>
@@ -246,9 +246,9 @@ export function PublicTripIdentityBanner({
                 aria-hidden="true"
               />
               <span className="text-[11px] text-muted-foreground group-hover:text-foreground transition-colors truncate">
-                Já tem conta no Áxis?{" "}
+                Já tem conta no Axir?{" "}
                 <span className="font-semibold text-foreground underline decoration-border group-hover:decoration-primary">
-                  Entrar com minha conta Áxis para sincronizar com meu extrato
+                  Entrar com minha conta Axir para sincronizar com meu extrato
                 </span>
               </span>
             </div>
@@ -271,9 +271,9 @@ export function PublicTripIdentityBanner({
                 aria-hidden="true"
               />
               <span className="text-[11px] text-muted-foreground group-hover:text-foreground transition-colors truncate">
-                Conectado ao Áxis.{" "}
+                Conectado ao Axir.{" "}
                 <span className="font-semibold text-foreground underline decoration-primary/40 group-hover:decoration-primary">
-                  Vincular esta viagem ao meu aplicativo Áxis
+                  Vincular esta viagem ao meu aplicativo Axir
                 </span>
               </span>
             </div>

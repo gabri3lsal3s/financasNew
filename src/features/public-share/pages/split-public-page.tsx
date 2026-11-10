@@ -362,9 +362,9 @@ export function SplitPublicPage() {
 
   useEffect(() => {
     if (payload?.title) {
-      document.title = `${payload.title} — Racha de Despesas | Áxis Finance`;
+      document.title = `${payload.title} — Racha de Despesas | Axir`;
     } else {
-      document.title = "Racha de Despesa — Áxis Finance";
+      document.title = "Racha de Despesa — Axir";
     }
   }, [payload?.title]);
 
@@ -411,7 +411,7 @@ export function SplitPublicPage() {
               action={
                 <Link to="/apresentacao">
                   <Button variant="default" size="sm" className="gap-2">
-                    <span>Conhecer o Áxis Finance</span>
+                    <span>Conhecer o Axir</span>
                     <ArrowRight className="size-4" aria-hidden="true" />
                   </Button>
                 </Link>
@@ -537,7 +537,7 @@ export function SplitPublicPage() {
         <p className="text-[11px] text-muted-foreground">
           Estruturado via{" "}
           <Link to="/apresentacao" className="text-primary hover:underline font-medium">
-            Áxis Finance
+            Axir
           </Link>{" "}
           · Gestão Financeira Pessoal & Automação
         </p>

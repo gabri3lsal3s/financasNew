@@ -7,13 +7,13 @@ export interface LogoFullProps {
   className?: string;
   /** Classes adicionais para o símbolo / ícone */
   markClassName?: string;
-  /** Classes adicionais para a tipografia "Áxis" */
+  /** Classes adicionais para a tipografia "Axir" */
   wordmarkClassName?: string;
   /** Classes adicionais para o subtítulo */
   subtitleClassName?: string;
   /** Se deve exibir o subtítulo abaixo do wordmark (padrão: false) */
   showSubtitle?: boolean;
-  /** Texto do subtítulo customizado (padrão: "Finance") */
+  /** Texto do subtítulo customizado (padrão: "") */
   subtitleText?: string;
   /** Orientação do lockup: "horizontal" (padrão) ou "vertical" (empilhado) */
   orientation?: "horizontal" | "vertical";
@@ -61,8 +61,8 @@ const SIZE_PRESETS = {
 } as const;
 
 /**
- * LogoFull — Componente oficial de lockup completo da marca Áxis Finance.
- * Combina o símbolo orbital oficial com o wordmark corporativo e subtítulo,
+ * LogoFull — Componente oficial de lockup completo da marca Axir.
+ * Combina o símbolo orbital oficial com o wordmark corporativo e badge Pro opcional,
  * permitindo orientação horizontal e vertical e alternância Pro/Free e Dark/Light.
  */
 export function LogoFull({
@@ -71,7 +71,7 @@ export function LogoFull({
   wordmarkClassName,
   subtitleClassName,
   showSubtitle = false,
-  subtitleText = "Finance",
+  subtitleText = "",
   orientation = "horizontal",
   isPro,
   themeMode = "auto",
@@ -85,12 +85,16 @@ export function LogoFull({
   const preset = SIZE_PRESETS[size];
   const isVertical = orientation === "vertical";
 
+  const defaultAriaLabel = isProActive
+    ? (showSubtitle && subtitleText ? `Axir PRO • ${subtitleText}` : "Axir PRO")
+    : (showSubtitle && subtitleText ? `Axir • ${subtitleText}` : "Axir");
+
   return (
     <span
       onClick={onClick}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
-      aria-label={ariaLabel ?? (isProActive ? "Áxis PRO • Finance" : "Áxis • Finance")}
+      aria-label={ariaLabel ?? defaultAriaLabel}
       className={cn(
         "inline-flex select-none min-w-0 transition-opacity",
         isVertical
@@ -122,7 +126,7 @@ export function LogoFull({
               wordmarkClassName,
             )}
           >
-            Áxis
+            Axir
           </span>
           {isProActive ? (
             <span
@@ -133,7 +137,7 @@ export function LogoFull({
             </span>
           ) : null}
         </div>
-        {showSubtitle ? (
+        {showSubtitle && subtitleText ? (
           <span
             className={cn(
               "font-medium uppercase text-muted-foreground whitespace-nowrap",

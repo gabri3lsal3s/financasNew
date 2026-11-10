@@ -17,7 +17,7 @@ import { LegalPageShell } from "@/features/legal/components";
 import { INSTITUTIONAL_CONFIG } from "@/lib/institutional";
 
 /**
- * Página pública de Política de Privacidade e Proteção de Dados (LGPD) do Áxis Finance.
+ * Página pública de Política de Privacidade e Proteção de Dados (LGPD) do Axir.
  *
  * Materializa o Contrato 2 integralmente, em conformidade com:
  * - Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018 — LGPD)
@@ -30,7 +30,7 @@ export function PrivacyPage() {
     <LegalPageShell
       activeTab="privacy"
       title="Política de Privacidade e Proteção de Dados (LGPD)"
-      description="Diretrizes de transparência, bases legais, medidas de segurança, direitos dos titulares e procedimentos de descarte de dados do Áxis Finance em estrita conformidade com a Lei nº 13.709/2018."
+      description="Diretrizes de transparência, bases legais, medidas de segurança, direitos dos titulares e procedimentos de descarte de dados do Axir em estrita conformidade com a Lei nº 13.709/2018."
       lastUpdated="23 de Outubro de 2026"
       version="2.0"
     >

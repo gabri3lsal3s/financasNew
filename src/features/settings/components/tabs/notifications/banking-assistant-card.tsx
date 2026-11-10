@@ -20,7 +20,7 @@ import {
 } from "@/components/ui";
 import { PROMINENT_DISCLOSURE_INFO } from "@/lib/institutional";
 import { triggerSensory } from "@/services/sensory";
-import { useUpdateCustomSettings } from "@/state";
+import { useUpdateCustomSettings, useUserAccess } from "@/state";
 import { pushToast } from "@/services/toast";
 import { cn } from "@/lib/utils";
 import {
@@ -54,6 +54,8 @@ function getCategoryLabel(category: InstitutionCategory): string {
 export function BankingAssistantCard() {
   const navigate = useNavigate();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
+  const { hasFeature } = useUserAccess();
+  const isBankListenerAllowed = hasFeature("bank_notification_listener");
   const { preferences: bankPrefs, updatePreferences: updateBankPrefs } = useBankAssistantPreferences();
   const { listenerGranted, requestNotificationListener } = usePermissionsStatus();
 
@@ -65,7 +67,7 @@ export function BankingAssistantCard() {
   const isNative = isNativePlatform();
 
   useEffect(() => {
-    if (isNative) {
+    if (isNative && isBankListenerAllowed) {
       void getInstalledBankingApps().then((res) => {
         setInstalledBanks(res.installedBankNames || []);
         setInstalledApps(res.apps || []);
@@ -74,7 +76,7 @@ export function BankingAssistantCard() {
         bankPrefs.passiveCaptureEnabled ? bankPrefs.monitoredBanks : [],
       );
     }
-  }, [isNative, bankPrefs.passiveCaptureEnabled, bankPrefs.monitoredBanks]);
+  }, [isNative, isBankListenerAllowed, bankPrefs.passiveCaptureEnabled, bankPrefs.monitoredBanks]);
 
   const handleRescanBankingApps = async () => {
     triggerSensory("action");
@@ -147,7 +149,7 @@ export function BankingAssistantCard() {
     if (!granted) {
       pushToast({
         title: "Permissão pendente no Android",
-        description: "Habilite o Áxis Finance nas configurações de Acesso a Notificações do seu aparelho.",
+        description: "Habilite o Axir nas configurações de Acesso a Notificações do seu aparelho.",
         variant: "warning",
       });
     } else {
@@ -262,9 +264,15 @@ export function BankingAssistantCard() {
     });
   };
 
+  // Se a funcionalidade estiver desativada pelo SuperAdmin ou o usuário não tiver permissão,
+  // omite completamente o card das configurações sem deixar qualquer resíduo ou citação.
+  if (!isBankListenerAllowed) {
+    return null;
+  }
+
   if (!isNative) {
     return (
-      <Card data-tour="settings-banking-assistant" className="border-border/80 bg-surface shadow-xs">
+      <Card className="border-border/80 bg-surface shadow-xs">
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between gap-2 flex-wrap">
             <span className="flex items-center gap-2 min-w-0">
@@ -313,7 +321,7 @@ export function BankingAssistantCard() {
 
   return (
     <>
-      <Card data-tour="settings-banking-assistant">
+      <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between gap-2 flex-wrap">
             <span className="flex items-center gap-2 min-w-0">

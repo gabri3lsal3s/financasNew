@@ -83,13 +83,13 @@ begin
   where user_id = v_caller_id;
 
   if v_partner is null then
-    -- Gera código amigável determinístico único: AXIS-XXXXXX
+    -- Gera código amigável determinístico único: AXIR-XXXXXX
     v_suffix := upper(substr(replace(v_caller_id::text, '-', ''), 1, 6));
-    v_code := 'AXIS-' || v_suffix;
+    v_code := 'AXIR-' || v_suffix;
 
     -- Em caso de colisão rara, anexa caracteres aleatórios
     while exists(select 1 from public.affiliate_partners where referral_code = v_code) loop
-      v_code := 'AXIS-' || upper(substr(md5(random()::text), 1, 6));
+      v_code := 'AXIR-' || upper(substr(md5(random()::text), 1, 6));
     end loop;
 
     insert into public.affiliate_partners (

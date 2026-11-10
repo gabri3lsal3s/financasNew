@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Bell, Shield, Smartphone, Sparkles } from "lucide-react";
+import { Layers, Shield, Smartphone, Sparkles } from "lucide-react";
 import { Button, Modal } from "@/components/ui";
 import { isNativePlatform } from "@/services/native/platform";
 import { triggerSensory } from "@/services/sensory";
@@ -110,34 +110,34 @@ export function NativeOnboardingDialog({
           </div>
         </div>
 
-        {/* Recurso 2: Leitor de Notificações Bancárias */}
+        {/* Recurso 2: Biometria Física e Escudo de Privacidade */}
         <div className="flex items-start gap-3 rounded-lg border border-border/80 bg-surface/40 p-3 transition-colors">
-          <Bell
-            className="size-4 shrink-0 text-positive-strong mt-0.5"
+          <Shield
+            className="size-4 shrink-0 text-positive mt-0.5"
             aria-hidden="true"
           />
           <div className="min-w-0 flex-1">
             <h4 className="text-xs sm:text-sm font-semibold text-foreground">
-              Leitor de Notificações Bancárias
+              Biometria Física &amp; Escudo de Privacidade
             </h4>
             <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
-              Detecção automática de compras de cartões e comprovantes Pix sem digitação manual.
+              Proteção por impressão digital e ocultação automática de saldos ao alternar de tela.
             </p>
           </div>
         </div>
 
-        {/* Recurso 3: Biometria e Escudo de Privacidade */}
+        {/* Recurso 3: Atalhos de Launcher e Compartilhamento */}
         <div className="flex items-start gap-3 rounded-lg border border-border/80 bg-surface/40 p-3 transition-colors">
-          <Shield
+          <Layers
             className="size-4 shrink-0 text-portfolio mt-0.5"
             aria-hidden="true"
           />
           <div className="min-w-0 flex-1">
             <h4 className="text-xs sm:text-sm font-semibold text-foreground">
-              Biometria & Escudo de Privacidade
+              Atalhos Rápidos de Sistema
             </h4>
             <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
-              Proteção por impressão digital e ocultação automática de saldos ao alternar de tela.
+              Lançamentos rápidos direto da grade de aplicativos e compartilhamento de comprovantes.
             </p>
           </div>
         </div>

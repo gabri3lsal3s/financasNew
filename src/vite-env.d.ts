@@ -2,7 +2,7 @@
 /// <reference types="vite-plugin-pwa/client" />
 
 interface ImportMetaEnv {
-  /** URL pública oficial da aplicação (ex.: https://axisfinance.app). */
+  /** URL pública oficial da aplicação (ex.: https://axir.com.br). */
   readonly VITE_PUBLIC_SITE_URL?: string;
   /** URL do projeto Supabase (Settings > API). */
   readonly VITE_SUPABASE_URL?: string;

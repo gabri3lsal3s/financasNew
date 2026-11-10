@@ -112,7 +112,7 @@ describe("features/tools — Simuladores Financeiros Abertos & Stateful URLs", (
         }),
       ).toBeInTheDocument();
 
-      const ctaBtn = screen.getByRole("button", { name: "Criar Conta no Áxis Finance" });
+      const ctaBtn = screen.getByRole("button", { name: "Criar Conta no Axir" });
       fireEvent.click(ctaBtn);
 
       const stored = getPendingSimulation();
@@ -200,7 +200,7 @@ describe("features/tools — Simuladores Financeiros Abertos & Stateful URLs", (
     it("armazena simulação de rebalanceamento no storage ao clicar no CTA de conversão", () => {
       renderWithProviders(<RebalanceSimulatorPage />);
 
-      const ctaBtn = screen.getByRole("button", { name: "Criar Conta no Áxis Finance" });
+      const ctaBtn = screen.getByRole("button", { name: "Criar Conta no Axir" });
       fireEvent.click(ctaBtn);
 
       const stored = getPendingSimulation();
@@ -264,7 +264,7 @@ describe("features/tools — Simuladores Financeiros Abertos & Stateful URLs", (
     it("armazena simulação de juros compostos no storage ao clicar no CTA de conversão", () => {
       renderWithProviders(<CompoundInterestPage />);
 
-      const ctaBtn = screen.getByRole("button", { name: "Criar Conta no Áxis Finance" });
+      const ctaBtn = screen.getByRole("button", { name: "Criar Conta no Axir" });
       fireEvent.click(ctaBtn);
 
       const stored = getPendingSimulation();

@@ -7,7 +7,7 @@ import { useLandingCta } from "@/features/landing/hooks";
 import { INSTITUTIONAL_CONFIG } from "@/lib/institutional";
 
 /**
- * Rodapé oficial da Landing Page do Áxis Finance.
+ * Rodapé oficial da Landing Page do Axir.
  *
  * Provê transparência institucional em estrita conformidade com:
  * - Decreto do Comércio Eletrônico (Decreto nº 7.962/2013): Razão Social, CNPJ e endereço físico.

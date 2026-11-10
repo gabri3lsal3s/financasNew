@@ -95,7 +95,7 @@ describe("MfaModal — Governança de 2FA / TOTP (Fase 3)", () => {
         id: "factor-new",
         totp: {
           secret: "JBSWY3DPEHPK3PXP",
-          uri: "otpauth://totp/Áxis%20Finance:teste?secret=JBSWY3DPEHPK3PXP",
+          uri: "otpauth://totp/Axir:teste?secret=JBSWY3DPEHPK3PXP",
         },
       },
       error: null,
@@ -123,7 +123,7 @@ describe("MfaModal — Governança de 2FA / TOTP (Fase 3)", () => {
     await waitFor(() => {
       expect(enrollMock).toHaveBeenCalledWith({
         factorType: "totp",
-        issuer: "Áxis Finance",
+        issuer: "Axir",
       });
       expect(screen.getByText(/Escaneie o QR Code no seu aplicativo/i)).toBeInTheDocument();
       expect(screen.getByPlaceholderText("000000")).toBeInTheDocument();

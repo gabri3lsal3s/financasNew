@@ -84,7 +84,7 @@ export function SharedLinkHeaderNav({
             <Link
               to={session?.user ? "/" : "/apresentacao"}
               className="inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-lg shrink-0"
-              aria-label="Ir para a página inicial do Áxis Finance"
+              aria-label="Ir para a página inicial do Axir"
             >
               <BrandLogo
                 showWordmark

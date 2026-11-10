@@ -44,7 +44,7 @@ export function ToolsHeader() {
           <Link
             to="/apresentacao"
             className="inline-flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0"
-            aria-label="Ir para a página de apresentação do Áxis Finance"
+            aria-label="Ir para a página de apresentação do Axir"
           >
             <BrandLogo showWordmark showSubtitle />
           </Link>

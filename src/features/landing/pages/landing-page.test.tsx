@@ -18,12 +18,12 @@ describe("LandingPage", () => {
 
   it("renderiza o cabeçalho com o logo e CTAs de navegação", () => {
     renderLanding();
-    expect(screen.getAllByText(/Áxis|Axis/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Axir/i).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: /Criar conta grátis/i }).length).toBeGreaterThan(0);
     expect(screen.queryByRole("link", { name: /^Assinar Pro$/i })).not.toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Entrar/i }).length).toBeGreaterThan(0);
     // Usuário deslogado na landing: o logo aponta para /landing para não chutar o visitante para /entrar
-    const logoLink = screen.getByRole("link", { name: /Áxis|Axis/i });
+    const logoLink = screen.getByRole("link", { name: /Axir/i });
     expect(logoLink).toHaveAttribute("href", "/landing");
   });
 
@@ -135,7 +135,7 @@ describe("LandingPage", () => {
     renderLanding();
 
     expect(screen.getByText("Captura Invisível com Inteligência Local")).toBeInTheDocument();
-    expect(screen.getByText(/Caminho 1 \(Estrela\): Leitura Automática de Notificações/i)).toBeInTheDocument();
+    expect(screen.getByText(/Caminho 1 \(Rápido\): Leitura Instantânea de Pix & Compartilhamento/i)).toBeInTheDocument();
     expect(screen.getByText(/Caminho 2 \(Garantia\): Leitura Universal de Comprovantes & Cupons/i)).toBeInTheDocument();
     expect(screen.getByText(/Mágica Semântica: Memória Ativa de CNPJs e Comerciantes/i)).toBeInTheDocument();
     expect(screen.getByText("Zero Senhas Bancárias")).toBeInTheDocument();

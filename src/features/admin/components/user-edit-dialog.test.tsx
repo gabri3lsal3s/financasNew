@@ -180,7 +180,7 @@ describe("UserEditDialog", () => {
 
     // Módulos sem override devem exibir o badge Bloqueado (Whitelist)
     const whitelistBadges = screen.getAllByText("Bloqueado (Whitelist)");
-    expect(whitelistBadges.length).toBe(8); // 9 módulos no total, 1 com override ('investments'), 8 bloqueados
+    expect(whitelistBadges.length).toBe(9); // 10 módulos no total, 1 com override ('investments'), 9 bloqueados
 
     // O módulo com override deve exibir o badge correspondente
     expect(screen.getByText(/Override: Somente Leitura/i)).toBeInTheDocument();
@@ -197,9 +197,9 @@ describe("UserEditDialog", () => {
     // Card de aviso NÃO deve ser renderizado
     expect(screen.queryByText(/Modo Whitelist Ativo/i)).not.toBeInTheDocument();
 
-    // Todos os 9 módulos devem exibir Padrão do Plano
+    // Todos os 10 módulos devem exibir Padrão do Plano
     const defaultBadges = screen.getAllByText("Padrão do Plano");
-    expect(defaultBadges.length).toBe(9);
+    expect(defaultBadges.length).toBe(10);
 
     // Não deve haver badges Bloqueado (Whitelist)
     expect(screen.queryByText("Bloqueado (Whitelist)")).not.toBeInTheDocument();

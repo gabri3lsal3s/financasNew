@@ -9,8 +9,12 @@ export function AdminSettingsPage() {
 
   const apkFreeFeature = features.find((f) => f.key === "apk_access_free");
   const apkProFeature = features.find((f) => f.key === "apk_access_pro");
+  const bankNotificationFeature = features.find((f) => f.key === "bank_notification_listener");
   const coreFeatures = features.filter(
-    (f) => f.key !== "apk_access_free" && f.key !== "apk_access_pro",
+    (f) =>
+      f.key !== "apk_access_free" &&
+      f.key !== "apk_access_pro" &&
+      f.key !== "bank_notification_listener",
   );
 
   return (
@@ -45,13 +49,27 @@ export function AdminSettingsPage() {
         </div>
 
         <Alert variant="info">
-          Se o acesso ao APK estiver desativado para o plano do usuário, o aplicativo exibirá automaticamente uma tela amigável convidando o cliente a utilizar o Áxis pelo navegador móvel (PWA/Web).
+          Se o acesso ao APK estiver desativado para o plano do usuário, o aplicativo exibirá automaticamente uma tela amigável convidando o cliente a utilizar o Axir pelo navegador móvel (PWA/Web).
         </Alert>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {apkProFeature && <FeatureToggleCard feature={apkProFeature} />}
           {apkFreeFeature && <FeatureToggleCard feature={apkFreeFeature} />}
         </div>
+
+        {bankNotificationFeature && (
+          <div className="flex flex-col gap-2 pt-2 border-t border-border/60">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-foreground">
+                Assistente de Notificações Bancárias (Captura em Segundo Plano)
+              </span>
+              <Badge variant="muted" size="xs">
+                Restrição Granular
+              </Badge>
+            </div>
+            <FeatureToggleCard feature={bankNotificationFeature} />
+          </div>
+        )}
       </section>
 
       {/* --- SEÇÃO 2: CENTRAL DE ALERTAS & BOT TELEGRAM --- */}

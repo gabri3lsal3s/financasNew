@@ -341,8 +341,8 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
   describe("Tour Exclusivo do APK Nativo Android (app_native_apk)", () => {
     const steps = getTourSteps("app_native_apk");
 
-    it("possui 4 passos mapeando Tripé de Plataformas, Atualizador, Notificações Bancárias e Escudo Biométrico", () => {
-      expect(steps).toHaveLength(4);
+    it("possui 3 passos mapeando Tripé de Plataformas, Atualizador e Escudo Biométrico", () => {
+      expect(steps).toHaveLength(3);
 
       // Passo 1: O Tripé de Plataformas
       expect(steps[0]?.targetSelector).toBe('[data-tour="settings-platforms-triptych"]');
@@ -352,13 +352,9 @@ describe("tour-steps — Definição das Trilhas e Seletores Semânticos de Foco
       expect(steps[1]?.targetSelector).toBe('[data-tour="settings-platform-status"]');
       expect(steps[1]?.targetRoute).toBe("/configuracoes?tab=devices");
 
-      // Passo 3: Leitor de Notificações Bancárias em tempo real
-      expect(steps[2]?.targetSelector).toBe('[data-tour="settings-banking-assistant"]');
-      expect(steps[2]?.targetRoute).toBe("/configuracoes?tab=notifications");
-
-      // Passo 4: Bloqueio por Biometria e Escudo de Privacidade
-      expect(steps[3]?.targetSelector).toBe('[data-tour="settings-app-lock"]');
-      expect(steps[3]?.targetRoute).toBe("/configuracoes?tab=security");
+      // Passo 3: Bloqueio por Biometria e Escudo de Privacidade
+      expect(steps[2]?.targetSelector).toBe('[data-tour="settings-app-lock"]');
+      expect(steps[2]?.targetRoute).toBe("/configuracoes?tab=security");
     });
   });
 

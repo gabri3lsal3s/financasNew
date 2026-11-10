@@ -87,7 +87,7 @@ describe("GoalTrackerPublicPage (/meta/:token)", () => {
 
     renderPage();
     expect(screen.getByText("Meta não encontrada ou expirada")).toBeInTheDocument();
-    expect(screen.getByText("Conhecer o Áxis Finance")).toBeInTheDocument();
+    expect(screen.getByText("Conhecer o Axir")).toBeInTheDocument();
   });
 
   it("exibe estado de link revogado quando is_revoked for true", () => {

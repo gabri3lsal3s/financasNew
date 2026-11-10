@@ -86,7 +86,7 @@ export function formatDeviceInfo(info?: Record<string, unknown> | null): string 
  */
 export function buildTelegramSupportMessage(data: SupportTicketNotificationData): string {
   const lines: (string | null)[] = [
-    `<b>[CHAMADO DE SUPORTE — ÁXIS FINANCE]</b>\n`,
+    `<b>[CHAMADO DE SUPORTE — AXIR]</b>\n`,
     `<b>Cliente:</b> ${escapeTelegramHtml(data.userName || "Cliente não identificado")}`,
     data.userEmail
       ? `<b>E-mail:</b> <a href="mailto:${escapeTelegramHtml(data.userEmail)}">${escapeTelegramHtml(data.userEmail)}</a>`

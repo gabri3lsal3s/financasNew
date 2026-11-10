@@ -11,7 +11,7 @@ interface PlatformFeature {
 
 const features: PlatformFeature[] = [
   {
-    name: "Identificação de Notificações Locais (Zero senhas bancárias entregues a terceiros)",
+    name: "Compartilhamento Nativo de Comprovantes via Intent do Android",
     web: false,
     pwa: false,
     androidPro: true,
@@ -198,13 +198,13 @@ export function PlatformComparison() {
                 <div>
                   <h3 className="font-display text-lg font-bold text-foreground">Android App Pro</h3>
                   <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                    Automação adicional de detecção passiva de notificações bancárias em segundo plano.
+                    Experiência nativa em tela cheia com aceleração gráfica e biometria de hardware.
                   </p>
                 </div>
                 <div className="pt-2 space-y-2 text-xs text-muted-foreground">
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>Identificação de Notificações Locais em segundo plano (Zero senhas)</span>
+                    <span>Biometria física por impressão digital e Escudo de Privacidade anti-captura</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />

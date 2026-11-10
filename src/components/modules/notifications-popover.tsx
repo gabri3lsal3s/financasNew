@@ -341,7 +341,7 @@ export function NotificationsPopover({
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-xs font-semibold text-foreground truncate">
-                        Resposta do Suporte Áxis
+                        Resposta do Suporte Axir
                       </span>
                       <Badge variant="warning" size="xs">
                         Novo

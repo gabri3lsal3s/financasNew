@@ -123,7 +123,7 @@ export function MfaModal({ open, onOpenChange }: MfaModalProps) {
       const supabase = getSupabase();
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: "totp",
-        issuer: "Áxis Finance",
+        issuer: "Axir",
       });
       if (error) throw error;
 

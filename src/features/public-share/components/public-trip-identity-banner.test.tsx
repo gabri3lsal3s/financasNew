@@ -83,7 +83,7 @@ describe("PublicTripIdentityBanner", () => {
       renderBanner({ activeMemberId: null, token: "tok_viagem_abc" });
 
       const loginLink = screen.getByRole("link", {
-        name: /Entrar com minha conta Áxis para sincronizar com meu extrato/i,
+        name: /Entrar com minha conta Axir para sincronizar com meu extrato/i,
       });
       expect(loginLink).toBeInTheDocument();
       expect(loginLink).toHaveAttribute(
@@ -100,7 +100,7 @@ describe("PublicTripIdentityBanner", () => {
       renderBanner({ activeMemberId: null });
 
       expect(
-        screen.queryByText(/Entrar com minha conta Áxis para sincronizar com meu extrato/i)
+        screen.queryByText(/Entrar com minha conta Axir para sincronizar com meu extrato/i)
       ).not.toBeInTheDocument();
     });
 
@@ -113,7 +113,7 @@ describe("PublicTripIdentityBanner", () => {
 
       renderBanner({ activeMemberId: null, onClaimAccount: onClaim });
 
-      const claimBtn = screen.getByText(/Vincular esta viagem ao meu aplicativo Áxis/i);
+      const claimBtn = screen.getByText(/Vincular esta viagem ao meu aplicativo Axir/i);
       expect(claimBtn).toBeInTheDocument();
 
       await user.click(claimBtn);

@@ -70,7 +70,7 @@ export function AppLockOverlay() {
         </div>
 
         <h2 className="text-lg font-bold tracking-tight text-foreground">
-          Áxis Finance
+          Axir
         </h2>
         <p className="mt-1 text-sm font-semibold text-muted-foreground">
           Aplicativo Bloqueado

@@ -373,7 +373,6 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
     // Aba Notificações
     renderSettings(["/configuracoes?tab=notifications"]);
     expect(document.querySelector('[data-tour="settings-notifications-card"]')).toBeInTheDocument();
-    expect(document.querySelector('[data-tour="settings-banking-assistant"]')).toBeInTheDocument();
 
     cleanup();
 

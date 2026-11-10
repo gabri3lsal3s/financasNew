@@ -92,6 +92,7 @@ export const SYSTEM_FEATURE_KEYS = [
   "reminders",
   "apk_access_free",
   "apk_access_pro",
+  "bank_notification_listener",
 ] as const;
 export type SystemFeatureKey = (typeof SYSTEM_FEATURE_KEYS)[number];
 

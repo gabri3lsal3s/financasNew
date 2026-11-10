@@ -119,7 +119,7 @@ describe("getErrorMessage — gateway de erros (ESPECIFICAÇÃO §1.7)", () => {
     const err1 = classifyError({ message: "User already registered" });
     expect(err1.kind).toBe("user-already-exists");
     expect(err1.message).toBe(
-      "Este e-mail já está cadastrado no Áxis Finance. Faça login ou recupere sua senha se tiver esquecido.",
+      "Este e-mail já está cadastrado no Axir. Faça login ou recupere sua senha se tiver esquecido.",
     );
 
     const err2 = classifyError({ code: "user_already_exists" });

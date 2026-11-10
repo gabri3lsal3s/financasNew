@@ -46,12 +46,12 @@ describe("PlatformsTriptychCard", () => {
   it("permite customização de título e subtítulo", () => {
     render(
       <PlatformsTriptychCard
-        title="O Tripé de Plataformas do Áxis"
+        title="O Tripé de Plataformas do Axir"
         subtitle="Acesso simultâneo aos 3 formatos sem custo extra."
       />,
     );
 
-    expect(screen.getByText("O Tripé de Plataformas do Áxis")).toBeInTheDocument();
+    expect(screen.getByText("O Tripé de Plataformas do Axir")).toBeInTheDocument();
     expect(screen.getByText("Acesso simultâneo aos 3 formatos sem custo extra.")).toBeInTheDocument();
   });
 });

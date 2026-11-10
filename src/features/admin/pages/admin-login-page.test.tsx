@@ -73,7 +73,7 @@ describe("AdminLoginPage Component", () => {
     );
 
     expect(screen.getByText("Console Administrativo")).toBeInTheDocument();
-    expect(screen.getByText("Áxis Command Center")).toBeInTheDocument();
+    expect(screen.getByText("Axir Command Center")).toBeInTheDocument();
     expect(screen.getByLabelText(/E-mail Administrativo/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Senha de Acesso/i)).toBeInTheDocument();
     expect(

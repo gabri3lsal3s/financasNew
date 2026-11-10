@@ -15,7 +15,7 @@ import { LegalPageShell } from "@/features/legal/components";
 import { INSTITUTIONAL_CONFIG } from "@/lib/institutional";
 
 /**
- * Página pública de Termos de Serviço e Contrato de Adesão SaaS do Áxis Finance.
+ * Página pública de Termos de Serviço e Contrato de Adesão SaaS do Axir.
  *
  * Materializa o Contrato 1 integralmente, em conformidade com:
  * - Código de Defesa do Consumidor (Lei nº 8.078/1990 — CDC Art. 49)
@@ -29,7 +29,7 @@ export function TermsPage() {
     <LegalPageShell
       activeTab="terms"
       title="Termos de Serviço e Contrato de Adesão SaaS"
-      description="Instrumento contratual vinculante que disciplina o uso do software Áxis Finance, direitos do consumidor, planos de assinatura, período de avaliação e isenções regulatórias."
+      description="Instrumento contratual vinculante que disciplina o uso do software Axir, direitos do consumidor, planos de assinatura, período de avaliação e isenções regulatórias."
       lastUpdated="23 de Outubro de 2026"
       version="2.0"
     >

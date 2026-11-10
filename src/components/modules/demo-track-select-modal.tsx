@@ -405,7 +405,7 @@ export function DemoTrackSelectModal({
                   </div>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                  O Tripé de Plataformas, leitor passivo de notificações bancárias, biometria física e escudo anti-print.
+                  O Tripé de Plataformas, biometria física de hardware, escudo anti-print e atualizações diretas.
                 </p>
               </div>
 

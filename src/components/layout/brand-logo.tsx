@@ -10,15 +10,15 @@ export { LogoFull } from "./logo-full";
 
 export interface BrandLogoProps {
   className?: string;
-  /** Exibe o wordmark "Áxis" ao lado do símbolo (padrão: false). */
+  /** Exibe o wordmark "Axir" ao lado do símbolo (padrão: false). */
   showWordmark?: boolean;
-  /** Exibe subtítulo "Finance" abaixo do wordmark (padrão: false). */
+  /** Exibe subtítulo opcional abaixo do wordmark (padrão: false). */
   showSubtitle?: boolean;
-  /** Texto do subtítulo (padrão: "Finance"). */
+  /** Texto do subtítulo opcional (padrão: ""). */
   subtitleText?: string;
   /** Tamanho e classes do símbolo (padrão: size-8). */
   markClassName?: string;
-  /** Classes adicionais para o texto "Áxis". */
+  /** Classes adicionais para o texto "Axir". */
   wordmarkClassName?: string;
   /** Classes adicionais para o subtítulo. */
   subtitleClassName?: string;
@@ -35,7 +35,7 @@ export interface BrandLogoProps {
 }
 
 /**
- * BrandLogo — Ponto único de entrada para a identidade oficial da marca Áxis Finance.
+ * BrandLogo — Ponto único de entrada para a identidade oficial da marca Axir.
  * Utiliza o motor gráfico de alta resolução (LogoIcon e LogoFull), garantindo
  * zero serrilhados em qualquer densidade de pixels, máxima nitidez e reatividade
  * automática ao modo Pro (Âmbar/Dourado) e tema Claro/Escuro.
@@ -44,7 +44,7 @@ export function BrandLogo({
   className,
   showWordmark = false,
   showSubtitle = false,
-  subtitleText = "Finance",
+  subtitleText = "",
   markClassName,
   wordmarkClassName,
   subtitleClassName,
@@ -92,7 +92,7 @@ export function BrandLogo({
         themeMode={themeMode}
         accentReactive={accentReactive}
         variant={variant}
-        title="Áxis"
+        title="Axir"
         aria-hidden={false}
       />
     </span>

@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Áxis Finance",
-  "short_name": "Áxis",
-  "description": "Gestão de gastos, orçamentos, relatórios, insights e rebalanceamento de carteira.",
+  "name": "Axir",
+  "short_name": "Axir",
+  "description": "Gestão financeira pessoal de alta precisão, inteligência de cartões e motor determinístico de aportes.",
   "lang": "pt-BR",
   "start_url": "/",
   "scope": "/",

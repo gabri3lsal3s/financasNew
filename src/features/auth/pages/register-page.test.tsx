@@ -270,7 +270,7 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
 
     expect(
       screen.getByText(
-        "Este e-mail já está cadastrado no Áxis Finance. Faça login ou recupere sua senha se tiver esquecido.",
+        "Este e-mail já está cadastrado no Axir. Faça login ou recupere sua senha se tiver esquecido.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Fazer login agora/i })).toBeInTheDocument();

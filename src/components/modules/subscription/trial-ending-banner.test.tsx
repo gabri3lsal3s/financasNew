@@ -57,7 +57,7 @@ describe("TrialEndingBanner component", () => {
     );
 
     expect(
-      screen.getByText("Você está no Áxis Pro com acesso total liberado"),
+      screen.getByText("Você está no Axir Pro com acesso total liberado"),
     ).toBeInTheDocument();
     expect(screen.getByText("Teste Pro Ativo")).toBeInTheDocument();
     expect(

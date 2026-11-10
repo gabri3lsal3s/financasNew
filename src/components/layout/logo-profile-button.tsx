@@ -260,7 +260,7 @@ export function LogoProfileButton({
               <span>Sair da Conta</span>
             </Button>
             <p className="text-[10px] text-muted-foreground/60 text-center select-none">
-              Áxis Finance • v1.0.0
+              Axir • v1.0.0
             </p>
           </div>
         </div>

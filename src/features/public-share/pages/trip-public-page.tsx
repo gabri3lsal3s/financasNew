@@ -476,7 +476,7 @@ export function TripPublicPage() {
           </div>
         </Card>
 
-        {/* Banner de Destaque: Vincular Viagem à Conta Áxis */}
+        {/* Banner de Destaque: Vincular Viagem à Conta Axir */}
         {currentUser && !isAlreadyLinked && (
           <Card className="border-primary/30 bg-primary/5 shadow-xs rounded-2xl p-4 sm:p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -485,7 +485,7 @@ export function TripPublicPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-foreground">
-                  Você está conectado ao Áxis
+                  Você está conectado ao Axir
                 </p>
                 <p className="text-[11px] text-muted-foreground">
                   Vincule sua participação para sincronizar rateios e despesas diretamente no seu extrato pessoal.
@@ -499,7 +499,7 @@ export function TripPublicPage() {
               className="h-8.5 px-3.5 text-xs font-semibold self-stretch sm:self-auto shrink-0 gap-1.5 cursor-pointer"
             >
               <UserCheck className="size-3.5" aria-hidden="true" />
-              <span>Vincular esta viagem ao meu aplicativo Áxis</span>
+              <span>Vincular esta viagem ao meu aplicativo Axir</span>
             </Button>
           </Card>
         )}
@@ -511,7 +511,7 @@ export function TripPublicPage() {
               <CheckCircle2 className="size-4 text-positive-strong shrink-0" aria-hidden="true" />
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-foreground">
-                  Esta viagem está sincronizada com a sua conta Áxis
+                  Esta viagem está sincronizada com a sua conta Axir
                 </p>
                 <p className="text-[11px] text-muted-foreground truncate">
                   Acesse para gerenciar gastos, categorias e conferir o rateio no painel principal.
@@ -606,7 +606,7 @@ export function TripPublicPage() {
             Gostou da organização desta viagem?
           </p>
           <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
-            O Áxis Finance é um aplicativo completo de finanças pessoais, cartões, despesas compartilhadas e projeção.
+            O Axir é um aplicativo completo de finanças pessoais, cartões, despesas compartilhadas e projeção.
           </p>
           <Link to="/cadastro" className="inline-block pt-1">
             <Button size="sm" variant="default" className="gap-1.5 text-xs cursor-pointer font-medium">

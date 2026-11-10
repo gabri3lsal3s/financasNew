@@ -32,14 +32,14 @@ export function AndroidProBanner({ onDismiss, className }: AndroidProBannerProps
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-sm font-semibold text-foreground truncate">
-              Experimente a Leitura Automática de Gastos
+              Instale o Aplicativo Android Pro
             </h2>
             <Badge variant="default" size="xs">
               App Android Pro
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed truncate">
-            Importação automática de compras no cartão e Pix em tempo real no seu celular.
+            Biometria física de hardware, escudo de privacidade e navegação fluida em tela cheia.
           </p>
         </div>
       </div>

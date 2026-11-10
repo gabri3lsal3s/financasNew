@@ -104,7 +104,7 @@ export function AdminLoginPage() {
       setConsecutiveFailures(0);
       pushToast({
         title: "Sessão Administrativa Iniciada",
-        description: "Bem-vindo ao Console de Governança do Áxis.",
+        description: "Bem-vindo ao Console de Governança do Axir.",
         variant: "success",
       });
 
@@ -145,7 +145,7 @@ export function AdminLoginPage() {
           </div>
           <div>
             <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              Áxis Command Center
+              Axir Command Center
             </h1>
             <p className="text-xs text-muted-foreground mt-1">
               Acesso exclusivo para administradores e operadores da plataforma
@@ -180,7 +180,7 @@ export function AdminLoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="operador@axisfinance.app"
+                placeholder="operador@axir.com.br"
                 required
                 disabled={loading || isButtonLocked}
               />
@@ -234,7 +234,7 @@ export function AdminLoginPage() {
               <ArrowLeft className="size-3.5" aria-hidden="true" />
               <span>Voltar ao aplicativo de clientes</span>
             </Link>
-            <span className="font-mono text-[11px] text-muted-foreground/80">Áxis v3.0 Pro</span>
+            <span className="font-mono text-[11px] text-muted-foreground/80">Axir v3.0 Pro</span>
           </div>
         </div>
       </div>

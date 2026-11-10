@@ -77,7 +77,7 @@ export function ApkInstallGuideDialog({
     } else if (apkUrl) {
       const link = document.createElement("a");
       link.href = apkUrl;
-      link.download = "axis-pro.apk";
+      link.download = "axir-pro.apk";
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       document.body.appendChild(link);
@@ -171,7 +171,7 @@ export function ApkInstallGuideDialog({
                 </h4>
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                O PWA do Áxis roda direto no seu navegador com carregamento instantâneo, funciona em qualquer smartphone (iOS ou Android) e computador, sem ocupar armazenamento do seu celular.
+                O PWA do Axir roda direto no seu navegador com carregamento instantâneo, funciona em qualquer smartphone (iOS ou Android) e computador, sem ocupar armazenamento do seu celular.
               </p>
             </div>
 
@@ -214,7 +214,7 @@ export function ApkInstallGuideDialog({
             <div className="flex items-start gap-2.5 rounded-xl border border-border/80 bg-surface-hover/30 p-3 text-xs text-muted-foreground">
               <Sparkles className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <span>
-                O APK Android é uma versão beta opcional voltada a usuários que desejam a leitura passiva em segundo plano de notificações bancárias.
+                O APK Android é uma versão beta opcional com biometria física, escudo de privacidade e navegação fluida em tela cheia.
               </span>
             </div>
 

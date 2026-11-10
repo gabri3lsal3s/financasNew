@@ -278,7 +278,7 @@ export async function scheduleDailyReminder(options?: {
       notifications: [
         {
           id: DAILY_REMINDER_NOTIFICATION_ID,
-          title: "Fechamento Diário — Áxis Finance",
+          title: "Fechamento Diário — Axir",
           body: "Registre suas movimentações de hoje para manter seus saldos e orçamentos em dia.",
           channelId: DAILY_REMINDER_CHANNEL_ID,
           actionTypeId: DAILY_REMINDER_ACTION_TYPE_ID,
@@ -606,7 +606,7 @@ export async function syncDueReminderNotifications(
       maximumFractionDigits: 2,
     });
 
-    const title = `Áxis · Contas e faturas pendentes (${eligible.length})`;
+    const title = `Axir · Contas e faturas pendentes (${eligible.length})`;
     const body = `Você possui ${eligible.length} contas aguardando quitação (total de R$ ${totalReais}). Toque para conferir.`;
     const tag = "due:summary";
 

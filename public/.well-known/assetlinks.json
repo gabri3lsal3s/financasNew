@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.guiafinanceiro.app",
+      "sha256_cert_fingerprints": [
+        "14:6D:E9:7D:0F:52:EA:CB:BB:C1:23:44:A8:1F:B1:84:88:B4:72:08:BE:2F:B0:FD:09:A6:61:99:93:37:D5:11"
+      ]
+    }
+  }
+]

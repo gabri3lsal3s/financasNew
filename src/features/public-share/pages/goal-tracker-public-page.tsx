@@ -75,9 +75,9 @@ export function GoalTrackerPublicPage() {
 
   useEffect(() => {
     if (goalData?.title) {
-      document.title = `Termômetro: ${goalData.title} — Áxis Finance`;
+      document.title = `Termômetro: ${goalData.title} — Axir`;
     } else {
-      document.title = "Termômetro de Meta Coletiva — Áxis Finance";
+      document.title = "Termômetro de Meta Coletiva — Axir";
     }
   }, [goalData?.title]);
 
@@ -195,7 +195,7 @@ export function GoalTrackerPublicPage() {
                     "rounded-xl cursor-pointer",
                   )}
                 >
-                  Conhecer o Áxis Finance
+                  Conhecer o Axir
                 </Link>
               }
             />
@@ -507,7 +507,7 @@ export function GoalTrackerPublicPage() {
             )}
 
             {/* Banner de Conversão Viral (Plano 06) */}
-            <section aria-label="Experimentar Áxis Finance">
+            <section aria-label="Experimentar Axir">
               <div className="rounded-2xl border border-border/80 bg-gradient-to-r from-primary/10 via-surface to-surface shadow-xs p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-start gap-3.5">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary-strong">
@@ -672,10 +672,10 @@ export function GoalTrackerPublicPage() {
       {/* Rodapé Informativo e Branding */}
       <footer className="max-w-2xl md:max-w-5xl mx-auto w-full pt-8 pb-4 text-center space-y-2 border-t border-border/60 mt-8 text-xs text-muted-foreground px-4">
         <p className="leading-relaxed">
-          Termômetro público de transparência financeira via Áxis Finance.
+          Termômetro público de transparência financeira via Axir.
         </p>
         <div className="flex items-center justify-center gap-2 pt-1">
-          <span>Áxis Finance</span>
+          <span>Axir</span>
           <span>&middot;</span>
           <Link
             to="/apresentacao"

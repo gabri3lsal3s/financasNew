@@ -81,7 +81,7 @@ export function DebtSimulatorPage() {
 
   useEffect(() => {
     document.title =
-      "Simulador de Quitação de Dívidas: Avalanche vs Bola de Neve — Áxis Finance";
+      "Simulador de Quitação de Dívidas: Avalanche vs Bola de Neve — Axir";
   }, []);
 
   const comparison = useMemo(() => {
@@ -507,7 +507,7 @@ export function DebtSimulatorPage() {
 
       <ToolsFooterCta
         title="Deseja monitorar suas finanças e metas com automação diária?"
-        description="O Áxis Finance automatiza o controle de dívidas, faturas de cartão de crédito e amortizações com avisos inteligentes antes do vencimento."
+        description="O Axir automatiza o controle de dívidas, faturas de cartão de crédito e amortizações com avisos inteligentes antes do vencimento."
         simulationPayload={simulationPayload}
       />
     </div>

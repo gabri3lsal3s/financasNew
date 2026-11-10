@@ -9,7 +9,7 @@ import {
   useBankAssistantPreferences,
   usePermissionsStatus,
 } from "@/services/native";
-import { useUpdateCustomSettings, useUserPreferences } from "@/state";
+import { useUpdateCustomSettings, useUserAccess, useUserPreferences } from "@/state";
 import type { DashboardAlertDismissals } from "@/types";
 
 const DASHBOARD_ALERT_DISMISSALS_KEY = "financasnew:dashboard_alert_dismissals";
@@ -79,10 +79,14 @@ export function useOverviewPermissionsBanner(navigate: NavigateFunction) {
   const userPreferencesQuery = useUserPreferences();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
 
+  const { hasFeature } = useUserAccess();
+  const isBankListenerAllowed = hasFeature("bank_notification_listener");
+
   const cloudDeviceNotifs = userPreferencesQuery.data?.custom_settings?.deviceNotifications;
   const dueNotificationsActive = cloudDeviceNotifs?.dueNotificationsEnabled ?? isDueNotificationsEnabled();
 
-  const isBankListenerMissing = isNative && bankPrefs.passiveCaptureEnabled && !listenerGranted;
+  const isBankListenerMissing =
+    isNative && isBankListenerAllowed && bankPrefs.passiveCaptureEnabled && !listenerGranted;
   const isPushDueMissing = isNative && dueNotificationsActive && !postNotificationsGranted;
 
   const [permissionAlertDismissed, setPermissionAlertDismissed] = useState(false);

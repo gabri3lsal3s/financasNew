@@ -4,7 +4,6 @@ import {
   Zap,
   CheckCircle2,
   Calendar,
-  Bell,
   Share2,
   Sparkles,
   ShieldCheck,
@@ -50,7 +49,7 @@ export function ProductNarratives() {
             </p>
 
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              O Áxis calcula o seu <strong>Caixa Real Seguro (Safe-to-Spend)</strong>: desconta dívidas pendentes, faturas abertas e provisões, traduzindo seu dinheiro restante em um <strong>Ritmo Diário (Daily Budget)</strong> em R$/dia. Você sabe exatamente quanto pode gastar hoje sem estourar o orçamento do mês.
+              O Axir calcula o seu <strong>Caixa Real Seguro (Safe-to-Spend)</strong>: desconta dívidas pendentes, faturas abertas e provisões, traduzindo seu dinheiro restante em um <strong>Ritmo Diário (Daily Budget)</strong> em R$/dia. Você sabe exatamente quanto pode gastar hoje sem estourar o orçamento do mês.
             </p>
 
             <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
@@ -302,7 +301,7 @@ export function ProductNarratives() {
             </p>
 
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              O Áxis transforma finanças compartilhadas em um fluxo natural: <strong>Racha de Despesas com Pix Copia e Cola</strong> e lembretes automáticos no WhatsApp, <strong>Termômetro de Vaquinhas Coletivas</strong> com arrecadação pública transparente, <strong>Modo Viagem</strong> com livro-razão em grupo e liquidação mínima inteligente, e o <strong>Modo Família</strong> com divisão 50/50 e acerto de contas sem atrito — preservando a privacidade estrita dos seus gastos individuais.
+              O Axir transforma finanças compartilhadas em um fluxo natural: <strong>Racha de Despesas com Pix Copia e Cola</strong> e lembretes automáticos no WhatsApp, <strong>Termômetro de Vaquinhas Coletivas</strong> com arrecadação pública transparente, <strong>Modo Viagem</strong> com livro-razão em grupo e liquidação mínima inteligente, e o <strong>Modo Família</strong> com divisão 50/50 e acerto de contas sem atrito — preservando a privacidade estrita dos seus gastos individuais.
             </p>
 
             <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
@@ -344,28 +343,28 @@ export function ProductNarratives() {
             </p>
 
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              Em vez de conexões bancárias frágeis que exigem suas senhas ou quebram a cada atualização, o Áxis opera com duas vias integradas de captura local e um motor semântico adaptativo:
+              Em vez de conexões bancárias frágeis que exigem suas senhas ou quebram a cada atualização, o Axir opera com duas vias integradas de captura local e um motor semântico adaptativo:
             </p>
 
             {/* Três Pilares da Hierarquia de Captura */}
             <div className="space-y-3.5 pt-1 text-xs sm:text-sm text-muted-foreground">
               <div className="p-3 sm:p-3.5 rounded-xl border border-border/70 bg-surface/60 space-y-1">
                 <div className="flex items-center gap-2 text-foreground font-semibold">
-                  <Bell className="size-4 text-primary shrink-0" aria-hidden="true" />
-                  <span>Caminho 1 (Estrela): Leitura Automática de Notificações</span>
+                  <Share2 className="size-4 text-primary shrink-0" aria-hidden="true" />
+                  <span>Caminho 1 (Rápido): Leitura Instantânea de Pix &amp; Compartilhamento</span>
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
-                  No Android Pro, o app lê notificações de compras de cartões e transferências Pix em segundo plano. 100% privado, local e sem exigir senhas. Você apenas toca para aprovar.
+                  Copie o código Pix ou compartilhe comprovantes diretamente do aplicativo do seu banco pelo menu de compartilhamento. O Axir extrai favorecido, valor e data em menos de 2 segundos.
                 </p>
               </div>
 
               <div className="p-3 sm:p-3.5 rounded-xl border border-border/70 bg-surface/60 space-y-1">
                 <div className="flex items-center gap-2 text-foreground font-semibold">
-                  <Share2 className="size-4 text-portfolio shrink-0" aria-hidden="true" />
-                  <span>Caminho 2 (Garantia): Leitura Universal de Comprovantes & Cupons</span>
+                  <FileText className="size-4 text-portfolio shrink-0" aria-hidden="true" />
+                  <span>Caminho 2 (Garantia): Leitura Universal de Comprovantes &amp; Cupons</span>
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
-                  Compartilhe ou anexe comprovantes Pix, cupons fiscais (NFC-e/SAT com múltiplos itens), boletos, carnês e slips de cartão parcelado. Nosso OCR local processa na hora sem enviar arquivos para a nuvem.
+                  Anexe cupons fiscais (NFC-e/SAT com múltiplos itens), boletos, carnês e slips de cartão parcelado. Nosso OCR local processa na hora no seu dispositivo, sem enviar fotos para a nuvem.
                 </p>
               </div>
 
@@ -387,19 +386,19 @@ export function ProductNarratives() {
               <div className="flex justify-between items-center border-b border-border/50 pb-3 sm:pb-4">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="size-4 text-positive-strong dark:text-positive" aria-hidden="true" />
-                  <span className="text-xs sm:text-sm font-bold text-foreground">Captura Local & Privada</span>
+                  <span className="text-xs sm:text-sm font-bold text-foreground">Captura Local &amp; Privada</span>
                 </div>
                 <Badge variant="positive" size="xs" className="font-mono">
                   Zero Senhas Bancárias
                 </Badge>
               </div>
 
-              {/* Simulação de Notificação ou Comprovante Compartilhado */}
+              {/* Simulação de Comprovante Compartilhado */}
               <div className="p-3.5 sm:p-4 rounded-xl bg-background/60 border border-border/70 space-y-1.5">
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span className="font-semibold text-foreground flex items-center gap-1.5">
                     <FileText className="size-3.5 text-primary" aria-hidden="true" />
-                    Comprovante Pix ou Notificação Bancária
+                    Comprovante Pix ou Cupom Compartilhado
                   </span>
                   <span>Agora mesmo</span>
                 </div>

@@ -49,9 +49,9 @@ export const MESSAGES: Record<ErrorKind, string> = {
   "service-unavailable": "Serviço temporariamente indisponível para manutenção. Aguarde alguns instantes e tente novamente.",
   "email-not-confirmed": "E-mail ainda não confirmado. Verifique sua caixa de entrada.",
   "user-already-exists":
-    "Este e-mail já está cadastrado no Áxis Finance. Faça login ou recupere sua senha se tiver esquecido.",
+    "Este e-mail já está cadastrado no Axir. Faça login ou recupere sua senha se tiver esquecido.",
   user_already_exists:
-    "Este e-mail já está cadastrado no Áxis Finance. Faça login ou recupere sua senha se tiver esquecido.",
+    "Este e-mail já está cadastrado no Axir. Faça login ou recupere sua senha se tiver esquecido.",
   "invalid-credentials": "E-mail ou senha incorretos.",
   "session-expired": "Sua sessão expirou. Entre novamente para continuar.",
   duplicate: "Já existe um registro com esses dados.",
@@ -192,7 +192,11 @@ export function classifyError(error: unknown): ClassifiedError {
     return { kind: "duplicate", message: MESSAGES.duplicate, raw: error };
   }
   if (code === "23503" || code.includes("foreign_key") || /foreign key|foreign_key|violates foreign key/i.test(message)) {
-    return { kind: "foreign-key", message: MESSAGES["foreign-key"], raw: error };
+    const isInsertOrUpdate = /is not present in table|insert or update/i.test(message) || /is not present in table/i.test(details);
+    const customMsg = isInsertOrUpdate
+      ? "O registro de referência selecionado não foi encontrado ou não está mais disponível."
+      : MESSAGES["foreign-key"];
+    return { kind: "foreign-key", message: customMsg, raw: error };
   }
   if (code === "23514" || code.includes("check_violation") || /check constraint|check_violation/i.test(message)) {
     return { kind: "validation", message: MESSAGES.validation, raw: error };

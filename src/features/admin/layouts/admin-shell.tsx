@@ -82,7 +82,7 @@ export function AdminShell() {
             <BrandLogo markClassName="size-8 drop-shadow-xs" showWordmark={false} />
             <div className="flex flex-col">
               <span className="font-display text-sm font-bold tracking-tight text-foreground sm:text-base leading-none">
-                Áxis Command Center
+                Axir Command Center
               </span>
               <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
                 Governança &amp; Operações

@@ -212,7 +212,7 @@ describe("DemoTrackSelectModal — Hub de Aprendizado & Micro-Tours (§3.4)", ()
     expect(screen.getByText("Bem-vindo ao App Nativo Android")).toBeInTheDocument();
     expect(screen.getByText("Exclusivo APK")).toBeInTheDocument();
     expect(
-      screen.getByText(/leitor passivo de notificações bancárias/i),
+      screen.getByText(/biometria física de hardware, escudo anti-print e atualizações diretas/i),
     ).toBeInTheDocument();
 
     const nativeBtn = screen.getByText("Bem-vindo ao App Nativo Android").closest("button");

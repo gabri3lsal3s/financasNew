@@ -52,7 +52,7 @@ export function PortfolioExecutiveReport({
   rows,
   totalBRL,
   cashBRL,
-  appName = "Áxis Finance",
+  appName = "Axir",
   accountHolder,
   initialMonth,
 }: PortfolioExecutiveReportProps) {

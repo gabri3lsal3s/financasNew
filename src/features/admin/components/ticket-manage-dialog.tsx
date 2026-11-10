@@ -141,7 +141,7 @@ function TicketManageForm({ ticket, onClose, onSuccess }: TicketManageFormProps)
             <span className="text-muted-foreground">E-mail: </span>
             {ticket.user_email ? (
               <a
-                href={`mailto:${ticket.user_email}?subject=Atendimento Áxis Finance: ${encodeURIComponent(ticket.subject || "Chamado de Suporte")}`}
+                href={`mailto:${ticket.user_email}?subject=Atendimento Axir: ${encodeURIComponent(ticket.subject || "Chamado de Suporte")}`}
                 className="font-medium text-primary hover:underline flex items-center gap-1 truncate"
               >
                 <Mail className="size-3 shrink-0" aria-hidden="true" />

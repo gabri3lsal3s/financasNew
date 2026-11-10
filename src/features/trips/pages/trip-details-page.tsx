@@ -1,6 +1,6 @@
 /**
  * Página de Detalhes da Viagem (/viagens/:id).
- * Visão do organizador e membros autenticados no Áxis Finance.
+ * Visão do organizador e membros autenticados no Axir.
  */
 
 import { useState } from "react";
@@ -380,7 +380,7 @@ export function TripDetailsPage() {
                       )}
                       {member.user_id && (
                         <Badge size="xs" variant="positive">
-                          Conta Áxis
+                          Conta Axir
                         </Badge>
                       )}
                       {myMember && member.id === myMember.id && (

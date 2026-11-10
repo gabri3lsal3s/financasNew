@@ -19,11 +19,14 @@ import { useAppUpdate } from "@/hooks/use-app-update";
 import { isNativePlatform } from "@/services/native/platform";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { ApkInstallGuideDialog, PlatformsTriptychCard } from "@/components/modules";
+import { useUserAccess } from "@/state";
 import { pushToast } from "@/services/toast";
 import { cn } from "@/lib/utils";
 
 export function AppInstallationTab() {
   const isNative = isNativePlatform();
+  const { hasFeature } = useUserAccess();
+  const isBankListenerAllowed = hasFeature("bank_notification_listener");
   const { isInstalled, isIOS } = usePWAInstall();
   const {
     status,
@@ -69,7 +72,7 @@ export function AppInstallationTab() {
     try {
       const link = document.createElement("a");
       link.href = activeApkUrl;
-      link.download = "axis-pro.apk";
+      link.download = "axir-pro.apk";
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       document.body.appendChild(link);
@@ -104,7 +107,9 @@ export function AppInstallationTab() {
               </CardTitle>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {isNative
-                  ? "Aplicativo Nativo Android Pro com automação em tempo real"
+                  ? isBankListenerAllowed
+                    ? "Aplicativo Nativo Android Pro com automação em tempo real"
+                    : "Aplicativo Nativo Android Pro com biometria física e privacidade"
                   : isInstalled
                   ? "Progressive Web App (PWA) instalado na tela de início"
                   : isIOS
@@ -253,15 +258,17 @@ export function AppInstallationTab() {
                   <div className="space-y-1">
                     <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
                       <Zap className="size-3.5" aria-hidden="true" />
-                      <span>Automação Exclusiva em Segundo Plano</span>
+                      <span>{isBankListenerAllowed ? "Automação Exclusiva em Segundo Plano" : "Experiência Nativa Instalável"}</span>
                     </div>
                     <h3 className="text-base font-bold text-foreground">
-                      Aplicativo Android Pro com Assistente Bancário
+                      {isBankListenerAllowed
+                        ? "Aplicativo Android Pro com Assistente Bancário"
+                        : "Aplicativo Android Pro para Smartphones"}
                     </h3>
                     <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">
-                      Reconhece compras no cartão e transações Pix no exato momento em que ocorrem,
-                      eliminando a necessidade de anotação manual. Tudo local no seu celular, sem
-                      Open Banking invasivo.
+                      {isBankListenerAllowed
+                        ? "Reconhece compras no cartão e transações Pix no exato momento em que ocorrem, eliminando a necessidade de anotação manual. Tudo local no seu celular, sem Open Banking invasivo."
+                        : "Acesse suas finanças com biometria física de hardware, escudo de privacidade contra capturas de tela e navegação fluida em tela cheia sem barras de navegador."}
                     </p>
                     <div className="flex items-center gap-2 pt-1 flex-wrap">
                       <Badge variant="default" size="xs">
@@ -317,7 +324,7 @@ export function AppInstallationTab() {
                     <div className="p-3 bg-white rounded-xl inline-flex flex-col items-center shadow-xs border border-border/60">
                       <img
                         src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(activeApkUrl)}`}
-                        alt="QR Code para download do APK do Áxis Pro"
+                        alt="QR Code para download do APK do Axir Pro"
                         className="size-44 object-contain rounded"
                         loading="lazy"
                         width={176}
@@ -364,7 +371,7 @@ export function AppInstallationTab() {
                     <div className="flex gap-2.5">
                       <span className="font-mono font-bold text-primary shrink-0">1.</span>
                       <span>
-                        Clique em <strong>Baixar App Android Pro</strong>. O navegador iniciará o download do arquivo <code>axis-pro.apk</code>.
+                        Clique em <strong>Baixar App Android Pro</strong>. O navegador iniciará o download do arquivo <code>axir-pro.apk</code>.
                       </span>
                     </div>
                     <div className="flex gap-2.5">
@@ -389,7 +396,7 @@ export function AppInstallationTab() {
 
       {/* Card 2: Comparativo do Tripé de Plataformas */}
       <PlatformsTriptychCard
-        title="O Tripé de Plataformas do Áxis"
+        title="O Tripé de Plataformas do Axir"
         subtitle="Sua assinatura concede acesso simultâneo a todos os formatos sem custo extra."
       />
 

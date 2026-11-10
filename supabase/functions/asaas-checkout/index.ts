@@ -157,7 +157,7 @@ Deno?.serve?.(async (req: Request) => {
       const payment = await createAsaasPixCharge({
         customerId: customer.id,
         value: planMeta.value,
-        description: "Áxis Finance — Plano Pro Anual",
+        description: "Axir — Plano Pro Anual",
       });
 
       const qrCode = await getAsaasPixQrCode(payment.id);

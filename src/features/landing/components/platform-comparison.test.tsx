@@ -29,7 +29,7 @@ describe("PlatformComparison — Comparação Realista de Plataformas (Fase 6 �
 
     // Fatos reais solicitados na Tarefa 6.2:
     expect(
-      screen.getByText("Identificação de Notificações Locais (Zero senhas bancárias entregues a terceiros)"),
+      screen.getByText("Compartilhamento Nativo de Comprovantes via Intent do Android"),
     ).toBeInTheDocument();
     expect(
       screen.getByText("Captura Inteligente de Comprovantes (PDF/Imagem/Texto com OCR local gratuito)"),

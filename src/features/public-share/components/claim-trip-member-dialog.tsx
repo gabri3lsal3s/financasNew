@@ -32,7 +32,7 @@ export interface ClaimTripMemberDialogProps {
 }
 
 /**
- * Diálogo rápido para reivindicar/vincular um participante de viagem à conta Áxis logada.
+ * Diálogo rápido para reivindicar/vincular um participante de viagem à conta Axir logada.
  * Cumpre as regras DRY, acessibilidade (Radix Modal), zero controles nativos e zero emojis.
  */
 export function ClaimTripMemberDialog({
@@ -46,7 +46,7 @@ export function ClaimTripMemberDialog({
   hasPasscode = false,
   onSuccess,
 }: ClaimTripMemberDialogProps) {
-  // Apenas participantes sem conta Áxis vinculada podem ser reivindicados
+  // Apenas participantes sem conta Axir vinculada podem ser reivindicados
   const claimableMembers = members.filter((m) => !m.has_axis_account);
 
   const defaultSelectedId =
@@ -99,7 +99,7 @@ export function ClaimTripMemberDialog({
           <EmptyState
             icon={<Users className="size-8 text-muted-foreground" aria-hidden="true" />}
             title="Nenhum participante disponível"
-            description="Todos os participantes desta viagem já possuem conta Áxis vinculada."
+            description="Todos os participantes desta viagem já possuem conta Axir vinculada."
           />
         ) : (
           <div className="space-y-2">

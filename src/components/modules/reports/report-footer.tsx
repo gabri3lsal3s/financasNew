@@ -14,14 +14,14 @@ export interface ReportFooterProps {
   documentId?: string;
   /** Texto da chancela institucional tipográfica minimalista. Padrão: OFFICIAL_REPORT_FOOTER_CREDIT */
   creditText?: string;
-  /** Texto da chancela oficial à direita. Padrão: "Chancela Oficial · axis.app" */
+  /** Texto da chancela oficial à direita. Padrão: "Chancela Oficial · axir.com.br" */
   chancelaText?: string;
   /**
    * Inclusão opcional de micro QR Code no canto com link de validação de autenticidade.
    * Padrão: false (desativado em favor da chancela digital limpa com link direto).
    */
   showQrCode?: boolean;
-  /** URL de validação codificada no QR Code (fallback: https://axis.app/validar?doc={authCode}). */
+  /** URL de validação codificada no QR Code (fallback: https://axir.com.br/validar?doc={authCode}). */
   validationUrl?: string;
   /** URL pública da página de apresentação do aplicativo (fallback: getPublicAppUrl('/apresentacao')). */
   presentationUrl?: string;
@@ -49,11 +49,11 @@ function generateReportAuthId(accountHolder?: string): string {
  * de apresentação da plataforma (e micro QR Code opcional).
  */
 export function ReportFooter({
-  disclaimer = "Documento estritamente confidencial emitido pelo titular da conta via Áxis Finance. As informações refletem a posição consolidada na data de emissão.",
+  disclaimer = "Documento estritamente confidencial emitido pelo titular da conta via Axir. As informações refletem a posição consolidada na data de emissão.",
   accountHolder,
   documentId,
   creditText = OFFICIAL_REPORT_FOOTER_CREDIT,
-  chancelaText = "Chancela Oficial · axis.app",
+  chancelaText = "Chancela Oficial · axir.com.br",
   showQrCode = false,
   validationUrl,
   presentationUrl,
@@ -61,7 +61,7 @@ export function ReportFooter({
 }: ReportFooterProps) {
   const authCode = documentId ?? generateReportAuthId(accountHolder);
   const targetValidationUrl =
-    validationUrl ?? `https://axis.app/validar?doc=${encodeURIComponent(authCode)}`;
+    validationUrl ?? `https://axir.com.br/validar?doc=${encodeURIComponent(authCode)}`;
   const targetPresentationUrl = presentationUrl ?? getPublicAppUrl("/apresentacao");
 
   return (
@@ -89,9 +89,9 @@ export function ReportFooter({
               target="_blank"
               rel="noopener noreferrer"
               className="font-semibold text-foreground/85 hover:text-foreground hover:underline transition-colors decoration-muted-foreground/40 print:text-foreground/85 print:no-underline"
-              title="Conheça a plataforma Áxis Finance"
+              title="Conheça a plataforma Axir"
             >
-              Áxis Finance
+              Axir
             </a>
             <span className="num font-mono text-[9px] text-muted-foreground/75">
               ID: {authCode}
@@ -128,7 +128,7 @@ export function ReportFooter({
           target="_blank"
           rel="noopener noreferrer"
           className="font-mono text-[8.5px] text-muted-foreground/75 hover:text-foreground hover:underline transition-colors decoration-muted-foreground/40 print:text-muted-foreground/80 print:no-underline"
-          title="Acesse a apresentação do Áxis Finance"
+          title="Acesse a apresentação do Axir"
         >
           {chancelaText}
         </a>

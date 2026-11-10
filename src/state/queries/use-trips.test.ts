@@ -191,7 +191,7 @@ describe("state/queries/use-trips", () => {
       expect(toastService.pushToast).toHaveBeenCalledWith(
         expect.objectContaining({
           title: "Viagem vinculada com sucesso",
-          description: "Esta viagem agora está sincronizada com a sua conta Áxis.",
+          description: "Esta viagem agora está sincronizada com a sua conta Axir.",
         })
       );
       expect(invalidateSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["trips", "list"] }));

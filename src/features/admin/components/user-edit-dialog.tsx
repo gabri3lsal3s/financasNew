@@ -51,6 +51,7 @@ const AVAILABLE_MODULES = [
   { key: "reports", label: "Relatórios Executivos", desc: "DRE, balanço e informes fiscais" },
   { key: "insights", label: "Inteligência & Insights", desc: "Diagnósticos e recomendações" },
   { key: "reminders", label: "Central de Lembretes", desc: "Vencimentos e avisos de contas" },
+  { key: "bank_notification_listener", label: "Notificações Bancárias (Beta)", desc: "Escuta passiva de compras e Pix no Android nativo" },
 ] as const;
 
 export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps) {

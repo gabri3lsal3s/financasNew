@@ -164,7 +164,7 @@ export function SupportTab() {
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                             <CheckCircle2 className="size-4 text-positive-strong shrink-0" aria-hidden="true" />
-                            <span>Resposta da Equipe Áxis:</span>
+                            <span>Resposta da Equipe Axir:</span>
                           </div>
                           {ticket.admin_replied_at && (
                             <div className="flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums shrink-0">

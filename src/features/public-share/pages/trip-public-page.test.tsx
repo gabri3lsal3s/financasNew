@@ -228,7 +228,7 @@ describe("TripPublicPage", () => {
   });
 
   describe("Tarefa 2.4: Fluxo de Reivindicação de Conta com 1 Clique", () => {
-    it("exibe botão de destaque 'Vincular esta viagem ao meu aplicativo Áxis' quando usuário estiver autenticado e não vinculado", () => {
+    it("exibe botão de destaque 'Vincular esta viagem ao meu aplicativo Axir' quando usuário estiver autenticado e não vinculado", () => {
       vi.mocked(tripsQuery.usePublicTrip).mockReturnValue({
         data: mockTripData,
         isLoading: false,
@@ -247,7 +247,7 @@ describe("TripPublicPage", () => {
       renderPage();
 
       const claimButtons = screen.getAllByRole("button", {
-        name: /Vincular esta viagem ao meu aplicativo Áxis/i,
+        name: /Vincular esta viagem ao meu aplicativo Axir/i,
       });
       expect(claimButtons.length).toBeGreaterThanOrEqual(1);
     });
@@ -267,7 +267,7 @@ describe("TripPublicPage", () => {
 
       expect(
         screen.queryByRole("button", {
-          name: /Vincular esta viagem ao meu aplicativo Áxis/i,
+          name: /Vincular esta viagem ao meu aplicativo Axir/i,
         })
       ).not.toBeInTheDocument();
     });
@@ -305,14 +305,14 @@ describe("TripPublicPage", () => {
       renderPage();
 
       expect(
-        screen.getByText("Esta viagem está sincronizada com a sua conta Áxis")
+        screen.getByText("Esta viagem está sincronizada com a sua conta Axir")
       ).toBeInTheDocument();
       expect(
         screen.getByRole("link", { name: /Abrir no Aplicativo/i })
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("button", {
-          name: /Vincular esta viagem ao meu aplicativo Áxis/i,
+          name: /Vincular esta viagem ao meu aplicativo Axir/i,
         })
       ).not.toBeInTheDocument();
     });
@@ -350,7 +350,7 @@ describe("TripPublicPage", () => {
 
       // Clica no botão de destaque
       const claimButtons = screen.getAllByRole("button", {
-        name: /Vincular esta viagem ao meu aplicativo Áxis/i,
+        name: /Vincular esta viagem ao meu aplicativo Axir/i,
       });
       const claimButton = claimButtons[0];
       expect(claimButton).toBeDefined();

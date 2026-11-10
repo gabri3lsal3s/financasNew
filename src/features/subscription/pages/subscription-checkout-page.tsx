@@ -357,7 +357,7 @@ export function SubscriptionCheckoutPage() {
         triggerSensory("success");
         pushToast({
           title: "Plano Pro ativado com sucesso!",
-          description: "Bem-vindo ao Áxis Pro.",
+          description: "Bem-vindo ao Axir Pro.",
           variant: "default",
         });
         void navigate(`/assinatura/sucesso?plano=${plan}&metodo=credit_card`);

@@ -88,7 +88,7 @@ describe("FamilyBudgetPage (/orcamento-familiar/:token)", () => {
     expect(
       screen.getByText("Orçamento familiar não encontrado ou expirado"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Conhecer o Áxis Finance")).toBeInTheDocument();
+    expect(screen.getByText("Conhecer o Axir")).toBeInTheDocument();
   });
 
   it("exibe estado de link revogado quando is_revoked for true", () => {

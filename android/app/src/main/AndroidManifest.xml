@@ -23,6 +23,8 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="axir.com.br" />
+                <data android:scheme="https" android:host="www.axir.com.br" />
                 <data android:scheme="https" android:host="financasnew.gabrielisaacsales.workers.dev" />
                 <data android:scheme="https" android:host="axisfinance.app" />
                 <data android:scheme="https" android:host="www.axisfinance.app" />

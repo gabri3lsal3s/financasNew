@@ -157,7 +157,7 @@ export function SplitOnboardingModal({
       open={open}
       onOpenChange={onOpenChange}
       title="Salvar no meu controle financeiro"
-      description="Inaugure seu painel no Áxis Finance com esta despesa já registrada."
+      description="Inaugure seu painel no Axir com esta despesa já registrada."
       size="md"
     >
       {confirmationSent ? (
@@ -229,7 +229,7 @@ export function SplitOnboardingModal({
               size="xs"
               onClick={handleOpenInApp}
               className="gap-1 shrink-0 border-border/80 bg-surface cursor-pointer"
-              aria-label="Abrir despesa no aplicativo Áxis instalado"
+              aria-label="Abrir despesa no aplicativo Axir instalado"
             >
               <ExternalLink className="size-3 text-muted-foreground" aria-hidden="true" />
               <span>Abrir no App</span>

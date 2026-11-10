@@ -253,8 +253,8 @@ export async function createAsaasCreditCardSubscription(params: {
   const cycle = planMeta.cycle;
   const description =
     params.plan === "annual"
-      ? "Áxis Finance — Plano Pro Anual"
-      : "Áxis Finance — Plano Pro Mensal";
+      ? "Axir — Plano Pro Anual"
+      : "Axir — Plano Pro Mensal";
 
   // Data de vencimento inicial: hoje (formato YYYY-MM-DD)
   const nextDueDate = new Date().toISOString().slice(0, 10);

@@ -928,7 +928,7 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
     },
   ],
 
-  // Trilha 0: Recursos Nativos do APK Android (4 passos didáticos)
+  // Trilha 0: Recursos Nativos do APK Android (3 passos didáticos)
   app_native_apk: [
     {
       id: "native-apk-triptych",
@@ -943,7 +943,7 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       requiredTab: "security",
       preferredPlacement: "bottom",
       spotlightPadding: 10,
-      badgeLabel: "Passo 1 de 4",
+      badgeLabel: "Passo 1 de 3",
       actionLabel: "Entender Recursos",
     },
     {
@@ -958,27 +958,13 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       requiredTab: "security",
       preferredPlacement: "bottom",
       spotlightPadding: 10,
-      badgeLabel: "Passo 2 de 4",
-      actionLabel: "Ver Automações",
-    },
-    {
-      id: "native-apk-notifications",
-      track: "app_native_apk",
-      order: 3,
-      title: "Captura Automática de Pix e Notificações",
-      description:
-        "O maior diferencial do APK: ao receber uma notificação de compra de mais de 20 bancos suportados, o app detecta os valores em segundo plano e gera o lançamento com um toque, com 100% de processamento local no seu celular.",
-      targetRoute: "/configuracoes?tab=notifications",
-      targetSelector: '[data-tour="settings-banking-assistant"]',
-      preferredPlacement: "bottom",
-      spotlightPadding: 10,
-      badgeLabel: "Passo 3 de 4",
+      badgeLabel: "Passo 2 de 3",
       actionLabel: "Ver Segurança",
     },
     {
       id: "native-apk-security",
       track: "app_native_apk",
-      order: 4,
+      order: 3,
       title: "Biometria Física e Escudo de Privacidade",
       description:
         "Proteja seus dados patrimoniais com a impressão digital do aparelho e tempo de tolerância. O Escudo de Privacidade bloqueia capturas de tela e esconde suas finanças na lista de aplicativos recentes do Android.",
@@ -986,7 +972,7 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       targetSelector: '[data-tour="settings-app-lock"]',
       preferredPlacement: "bottom",
       spotlightPadding: 10,
-      badgeLabel: "Passo 4 de 4",
+      badgeLabel: "Passo 3 de 3",
       actionLabel: "Concluir",
     },
   ],

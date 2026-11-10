@@ -146,7 +146,7 @@ describe("data/auth — operações de autenticação", () => {
         signUpWithEmail("jaexiste@exemplo.com", "senha123", "Gabriel"),
       ).rejects.toMatchObject({
         kind: "user-already-exists",
-        message: expect.stringContaining("já está cadastrado no Áxis Finance"),
+        message: expect.stringContaining("já está cadastrado no Axir"),
       });
     });
 

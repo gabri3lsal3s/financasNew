@@ -108,7 +108,7 @@ export function RebalanceSimulatorPage() {
 
   useEffect(() => {
     document.title =
-      "Simulador de Rebalanceamento Inteligente de Carteira — Áxis Finance";
+      "Simulador de Rebalanceamento Inteligente de Carteira — Axir";
   }, []);
 
   const handleApplyPreset = (presetId: string) => {
@@ -490,7 +490,7 @@ export function RebalanceSimulatorPage() {
 
       <ToolsFooterCta
         title="Deseja monitorar suas finanças e metas com automação diária?"
-        description="O motor de investimentos do Áxis Finance integra suas notas de corretagem, calcula o preço médio automaticamente e aponta os ativos mais descontados da sua carteira."
+        description="O motor de investimentos do Axir integra suas notas de corretagem, calcula o preço médio automaticamente e aponta os ativos mais descontados da sua carteira."
         simulationPayload={simulationPayload}
       />
     </div>

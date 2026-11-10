@@ -70,7 +70,7 @@ export function ToolsFooterCta({
     ? simulationPayload
       ? "Salvar Simulação na Minha Conta"
       : "Ir para o Painel"
-    : "Criar Conta no Áxis Finance";
+    : "Criar Conta no Axir";
 
   return (
     <footer className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-12">
@@ -130,7 +130,7 @@ export function ToolsFooterCta({
         </CardContent>
       </Card>
       <div className="pt-8 text-center text-xs text-muted-foreground">
-        <p>Áxis Finance · Gestão Financeira Pessoal & Motor de Rebalanceamento de Carteira.</p>
+        <p>Axir · Gestão Financeira Pessoal & Motor de Rebalanceamento de Carteira.</p>
         <p className="mt-1 text-[11px] text-muted-foreground/80">
           Ferramentas e simuladores financeiros de livre acesso público com processamento 100% local no navegador.
         </p>

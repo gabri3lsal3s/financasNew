@@ -774,7 +774,7 @@ export function useClaimTripMemberMutation() {
       triggerSensory("success");
       pushToast({
         title: "Viagem vinculada com sucesso",
-        description: "Esta viagem agora está sincronizada com a sua conta Áxis.",
+        description: "Esta viagem agora está sincronizada com a sua conta Axir.",
       });
     },
     onError: (err) => {

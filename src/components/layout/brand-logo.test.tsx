@@ -4,31 +4,31 @@ import { BrandLogo } from "./brand-logo";
 import { LogoIcon } from "./logo-icon";
 import { LogoFull } from "./logo-full";
 
-describe("BrandLogo — Sistema de Identidade Oficial Áxis Finance", () => {
+describe("BrandLogo — Sistema de Identidade Oficial Axir", () => {
   it("renderiza o símbolo com acessibilidade por padrão", () => {
     render(<BrandLogo />);
-    const symbol = screen.getByRole("img", { name: "Áxis" });
+    const symbol = screen.getByRole("img", { name: "Axir" });
     expect(symbol).toBeInTheDocument();
     expect(symbol.tagName.toLowerCase()).toBe("img");
   });
 
-  it("com showWordmark=true exibe o símbolo e o wordmark 'Áxis'", () => {
+  it("com showWordmark=true exibe o símbolo e o wordmark 'Axir'", () => {
     render(<BrandLogo showWordmark />);
-    expect(screen.getByText("Áxis")).toBeInTheDocument();
+    expect(screen.getByText("Axir")).toBeInTheDocument();
     const img = document.querySelector("img");
     expect(img).not.toBeNull();
     expect(img).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("renderiza subtítulo 'Finance' por padrão quando showWordmark e showSubtitle são true", () => {
-    render(<BrandLogo showWordmark showSubtitle />);
-    expect(screen.getByText("Áxis")).toBeInTheDocument();
-    expect(screen.getByText("Finance")).toBeInTheDocument();
+  it("renderiza subtítulo opcional quando showWordmark e showSubtitle são true com subtitleText", () => {
+    render(<BrandLogo showWordmark showSubtitle subtitleText="Gestão Financeira" />);
+    expect(screen.getByText("Axir")).toBeInTheDocument();
+    expect(screen.getByText("Gestão Financeira")).toBeInTheDocument();
   });
 
   it("renderiza subtítulo customizado se fornecido", () => {
     render(<BrandLogo showWordmark showSubtitle subtitleText="Gestão Inteligente" />);
-    expect(screen.getByText("Áxis")).toBeInTheDocument();
+    expect(screen.getByText("Axir")).toBeInTheDocument();
     expect(screen.getByText("Gestão Inteligente")).toBeInTheDocument();
   });
 
@@ -70,7 +70,7 @@ describe("BrandLogo — Sistema de Identidade Oficial Áxis Finance", () => {
   });
 });
 
-describe("LogoIcon — Componente Gráfico Áxis Finance", () => {
+describe("LogoIcon — Componente Gráfico Axir", () => {
   it("renderiza imagem de alta resolução com picture e webp", () => {
     const { container } = render(<LogoIcon className="size-12" />);
     const source = container.querySelector("source");
@@ -105,9 +105,9 @@ describe("LogoIcon — Componente Gráfico Áxis Finance", () => {
 });
 
 describe("LogoFull — Lockup Corporativo Completo", () => {
-  it("renderiza lockup horizontal com wordmark 'Áxis' e símbolo", () => {
+  it("renderiza lockup horizontal com wordmark 'Axir' e símbolo", () => {
     render(<LogoFull />);
-    expect(screen.getByText("Áxis")).toBeInTheDocument();
+    expect(screen.getByText("Axir")).toBeInTheDocument();
     const img = document.querySelector("img");
     expect(img).toBeInTheDocument();
     expect(img).toHaveAttribute("aria-hidden", "true");

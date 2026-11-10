@@ -125,7 +125,7 @@ describe("LegalPageShell", () => {
       <LegalPageShell
         activeTab="terms"
         title="Termos de Serviço e Contrato de Adesão"
-        description="Condições contratuais para uso da plataforma Áxis Finance."
+        description="Condições contratuais para uso da plataforma Axir."
         lastUpdated="23 de Outubro de 2026"
         version="2.0"
       >

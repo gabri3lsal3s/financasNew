@@ -44,19 +44,19 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
 
     expect(screen.getByText(/Documento estritamente confidencial/)).toBeInTheDocument();
     expect(screen.getByText(/DOC-202608-XYZ/)).toBeInTheDocument();
-    expect(screen.getByText("Relatório estruturado via Áxis Finance · Gestão Financeira Pessoal & Automação | axis.app")).toBeInTheDocument();
+    expect(screen.getByText("Relatório estruturado via Axir · Gestão Financeira Inteligente & Automação | axir.com.br")).toBeInTheDocument();
     
     // QR Code não é renderizado por padrão
     expect(screen.queryByLabelText(/QR Code de validação/i)).not.toBeInTheDocument();
 
     // Chancela Oficial é link discreto para a página de apresentação
-    const chancelaLink = screen.getByRole("link", { name: "Chancela Oficial · axis.app" });
+    const chancelaLink = screen.getByRole("link", { name: "Chancela Oficial · axir.com.br" });
     expect(chancelaLink).toBeInTheDocument();
     expect(chancelaLink).toHaveAttribute("href", getPublicAppUrl("/apresentacao"));
     expect(chancelaLink).toHaveAttribute("target", "_blank");
 
     // Marca no bloco superior também possui link para a página de apresentação
-    const brandLink = screen.getByRole("link", { name: "Áxis Finance" });
+    const brandLink = screen.getByRole("link", { name: "Axir" });
     expect(brandLink).toBeInTheDocument();
     expect(brandLink).toHaveAttribute("href", getPublicAppUrl("/apresentacao"));
   });

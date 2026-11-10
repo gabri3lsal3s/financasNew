@@ -215,7 +215,7 @@ export const TOUR_TRACK_DESCRIPTIONS: Record<AnyTourTrackId, string> = {
 
   // App Nativo Android
   app_native_apk:
-    "O Tripé de Plataformas, leitor passivo de notificações bancárias, biometria física e escudo anti-print.",
+    "O Tripé de Plataformas, biometria física de hardware, escudo anti-print e atualizações diretas.",
 
   // Finanças Compartilhadas, Família e Metas Coletivas
   shared_finances:

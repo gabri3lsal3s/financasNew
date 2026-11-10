@@ -32,7 +32,7 @@ describe("WelcomeModal — Acolhimento e Escolha de Partida (§3.1)", () => {
     // Título e subtítulo do passo 1
     expect(screen.getByText("Boas-vindas ao seu novo centro financeiro")).toBeInTheDocument();
     expect(
-      screen.getByText(/Acesso Áxis Pro desbloqueado por 30 dias completos/i),
+      screen.getByText(/Acesso Axir Pro desbloqueado por 30 dias completos/i),
     ).toBeInTheDocument();
 
     // Destaque do período de testes

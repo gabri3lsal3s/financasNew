@@ -203,7 +203,7 @@ export function getTrialLifecycleMetadata(daysRemaining: number): TrialLifecycle
         stage,
         badgeLabel: "Teste Pro Ativo",
         badgeVariant: "default",
-        title: "Você está no Áxis Pro com acesso total liberado",
+        title: "Você está no Axir Pro com acesso total liberado",
         description:
           "Aproveite 30 dias de lançamentos ilimitados, OCR de cupons fiscais e projeções sem compromisso.",
         ctaText: "Conhecer Benefícios Pro",

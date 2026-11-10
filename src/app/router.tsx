@@ -264,6 +264,8 @@ function RequireAuth() {
  */
 function NativeIntegrationsHandler() {
   const navigate = useNavigate();
+  const { hasFeature } = useUserAccess();
+  const isBankListenerAllowed = hasFeature("bank_notification_listener");
 
   useEffect(() => {
     const handleNativeNavigation = (route: string) => {
@@ -276,7 +278,9 @@ function NativeIntegrationsHandler() {
 
     const cleanupDeepLinks = initDeepLinkListener(handleNativeNavigation);
     const cleanupNotifications = initNotificationActionListener(handleNativeNavigation);
-    const cleanupBankNotifications = initBankNotificationListener(handleNativeNavigation);
+    const cleanupBankNotifications = isBankListenerAllowed
+      ? initBankNotificationListener(handleNativeNavigation)
+      : null;
 
     const cleanupAppLock = subscribeAppLock(() => {
       if (!isAppLocked()) {
@@ -291,10 +295,12 @@ function NativeIntegrationsHandler() {
     return () => {
       void cleanupDeepLinks();
       void cleanupNotifications();
-      void cleanupBankNotifications();
+      if (cleanupBankNotifications) {
+        void cleanupBankNotifications();
+      }
       cleanupAppLock();
     };
-  }, [navigate]);
+  }, [navigate, isBankListenerAllowed]);
 
   return null;
 }

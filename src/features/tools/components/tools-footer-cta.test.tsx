@@ -37,7 +37,7 @@ describe("features/tools/components/tools-footer-cta", () => {
     mockMutateAsync.mockResolvedValue(undefined);
   });
 
-  it("renderiza título padrão, descrição e botão Criar Conta no Áxis Finance", () => {
+  it("renderiza título padrão, descrição e botão Criar Conta no Axir", () => {
     render(
       <MemoryRouter>
         <ToolsFooterCta />
@@ -50,7 +50,7 @@ describe("features/tools/components/tools-footer-cta", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Criar Conta no Áxis Finance" }),
+      screen.getByRole("button", { name: "Criar Conta no Axir" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Conhecer Recursos")).toBeInTheDocument();
   });
@@ -83,7 +83,7 @@ describe("features/tools/components/tools-footer-cta", () => {
 
     expect(screen.getByText("Transporta dados da simulação")).toBeInTheDocument();
 
-    const ctaBtn = screen.getByRole("button", { name: "Criar Conta no Áxis Finance" });
+    const ctaBtn = screen.getByRole("button", { name: "Criar Conta no Axir" });
     fireEvent.click(ctaBtn);
 
     expect(getPendingSimulation()).toEqual(payload);

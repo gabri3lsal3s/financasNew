@@ -171,7 +171,7 @@ export async function canInstallPackages(): Promise<boolean> {
 
 /**
  * Abre a tela nativa do Android para que o usuário autorize a instalação
- * de atualizações por dentro do aplicativo Áxis.
+ * de atualizações por dentro do aplicativo Axir.
  */
 export async function openInstallPermissionSettings(): Promise<void> {
   if (isNativePlatform()) {
@@ -192,7 +192,7 @@ export async function triggerAppUpdate(manifest: AppVersionManifest): Promise<vo
     if (!canInstall) {
       await openInstallPermissionSettings();
       throw new Error(
-        "Permissão necessária: ative 'Permitir desta fonte' para o Áxis nas configurações e toque em Atualizar novamente.",
+        "Permissão necessária: ative 'Permitir desta fonte' para o Axir nas configurações e toque em Atualizar novamente.",
       );
     }
 
@@ -210,7 +210,7 @@ export async function triggerAppUpdate(manifest: AppVersionManifest): Promise<vo
     // Na web, abre o link direto para download
     const link = document.createElement("a");
     link.href = manifest.apkUrl;
-    link.download = "axis-pro.apk";
+    link.download = "axir-pro.apk";
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     document.body.appendChild(link);

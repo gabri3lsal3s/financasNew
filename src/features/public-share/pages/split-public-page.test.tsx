@@ -87,7 +87,7 @@ describe("SplitPublicPage (/r/:token)", () => {
 
     renderPage();
     expect(screen.getByText("Racha não encontrado ou expirado")).toBeInTheDocument();
-    expect(screen.getByText("Conhecer o Áxis Finance")).toBeInTheDocument();
+    expect(screen.getByText("Conhecer o Axir")).toBeInTheDocument();
   });
 
   it("renderiza detalhes do racha ativo com valor e dados do anfitriao", () => {

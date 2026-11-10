@@ -100,7 +100,7 @@ export function UserCreateDialog({ open, onOpenChange }: UserCreateDialogProps) 
   const cleanPhoneDigits = phone.replace(/\D/g, "");
   const whatsappUrl = cleanPhoneDigits && createdResult?.actionLink
     ? `https://wa.me/55${cleanPhoneDigits}?text=${encodeURIComponent(
-        `Olá ${name.split(" ")[0]}, sua conta no Áxis Finance foi criada pelo administrador. Acesse o link oficial para definir sua senha com segurança:\n\n${createdResult.actionLink}`,
+        `Olá ${name.split(" ")[0]}, sua conta no Axir foi criada pelo administrador. Acesse o link oficial para definir sua senha com segurança:\n\n${createdResult.actionLink}`,
       )}`
     : null;
 

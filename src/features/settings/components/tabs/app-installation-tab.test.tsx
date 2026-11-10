@@ -12,6 +12,12 @@ vi.mock("@/hooks/use-pwa-install", () => ({
   })),
 }));
 
+vi.mock("@/state", () => ({
+  useUserAccess: () => ({
+    hasFeature: vi.fn().mockReturnValue(false),
+  }),
+}));
+
 describe("AppInstallationTab", () => {
   const pushToastSpy = vi.spyOn(toastModule, "pushToast").mockImplementation(() => 1);
 
