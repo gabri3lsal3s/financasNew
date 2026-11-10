@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountTab } from "./account-tab";
 import * as authHook from "@/hooks/use-auth";
 import * as stateModule from "@/state";
-import * as authData from "@/data/auth";
 import * as toastModule from "@/services/toast";
 import * as sensoryModule from "@/services/sensory";
 
@@ -51,6 +50,8 @@ vi.mock("@/services/sensory", () => ({
 
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: vi.fn(),
+  changeUserPassword: vi.fn(),
+  requestUserEmailChange: vi.fn(),
 }));
 
 vi.mock("@/state", () => ({
@@ -188,7 +189,7 @@ describe("AccountTab", () => {
 
   it("permite atualizar a senha exigindo a senha atual e validação de critérios", async () => {
     const user = userEvent.setup();
-    vi.mocked(authData.changeUserPassword).mockResolvedValueOnce(undefined);
+    vi.mocked(authHook.changeUserPassword).mockResolvedValueOnce(undefined);
 
     renderAccountTab();
 
@@ -214,7 +215,7 @@ describe("AccountTab", () => {
     await user.click(updatePasswordButton);
 
     await waitFor(() => {
-      expect(authData.changeUserPassword).toHaveBeenCalledWith(
+      expect(authHook.changeUserPassword).toHaveBeenCalledWith(
         "SenhaAtualValida123",
         "NovaSenhaForte123",
       );
@@ -247,7 +248,7 @@ describe("AccountTab", () => {
 
   it("exibe mensagem de erro quando a alteração de senha falha na API", async () => {
     const user = userEvent.setup();
-    vi.mocked(authData.changeUserPassword).mockRejectedValueOnce(
+    vi.mocked(authHook.changeUserPassword).mockRejectedValueOnce(
       new Error("A senha atual informada está incorreta."),
     );
 
@@ -275,7 +276,7 @@ describe("AccountTab", () => {
 
   it("limpa mensagem de erro ao digitar na senha atual", async () => {
     const user = userEvent.setup();
-    vi.mocked(authData.changeUserPassword).mockRejectedValueOnce(
+    vi.mocked(authHook.changeUserPassword).mockRejectedValueOnce(
       new Error("A senha atual informada está incorreta."),
     );
 
@@ -374,7 +375,7 @@ describe("AccountTab", () => {
           screen.queryByRole("heading", { name: "Alterar E-mail de Acesso" }),
         ).not.toBeInTheDocument();
       });
-      expect(authData.requestUserEmailChange).not.toHaveBeenCalled();
+      expect(authHook.requestUserEmailChange).not.toHaveBeenCalled();
     });
 
     it("impede solicitação caso o novo e-mail seja igual ao e-mail atual do usuário", async () => {
@@ -397,12 +398,12 @@ describe("AccountTab", () => {
       expect(
         screen.getByText("O novo e-mail deve ser diferente do e-mail atual."),
       ).toBeInTheDocument();
-      expect(authData.requestUserEmailChange).not.toHaveBeenCalled();
+      expect(authHook.requestUserEmailChange).not.toHaveBeenCalled();
     });
 
     it("solicita alteração de e-mail com sucesso, exibindo toast e fechando o modal", async () => {
       const user = userEvent.setup();
-      vi.mocked(authData.requestUserEmailChange).mockResolvedValueOnce(undefined);
+      vi.mocked(authHook.requestUserEmailChange).mockResolvedValueOnce(undefined);
 
       renderAccountTab();
 
@@ -420,7 +421,7 @@ describe("AccountTab", () => {
       await user.click(confirmButton);
 
       await waitFor(() => {
-        expect(authData.requestUserEmailChange).toHaveBeenCalledWith(
+        expect(authHook.requestUserEmailChange).toHaveBeenCalledWith(
           "SenhaAtualCorreta123",
           "novomail@empresa.com",
         );
@@ -439,7 +440,7 @@ describe("AccountTab", () => {
 
     it("exibe mensagem de erro dentro do modal caso a requisição falhe na API", async () => {
       const user = userEvent.setup();
-      vi.mocked(authData.requestUserEmailChange).mockRejectedValueOnce(
+      vi.mocked(authHook.requestUserEmailChange).mockRejectedValueOnce(
         new Error("A senha atual informada está incorreta."),
       );
 
@@ -469,7 +470,7 @@ describe("AccountTab", () => {
 
     it("limpa mensagem de erro ao alterar o novo e-mail", async () => {
       const user = userEvent.setup();
-      vi.mocked(authData.requestUserEmailChange).mockRejectedValueOnce(
+      vi.mocked(authHook.requestUserEmailChange).mockRejectedValueOnce(
         new Error("A senha atual informada está incorreta."),
       );
 
@@ -498,19 +499,19 @@ describe("AccountTab", () => {
   });
 
   describe("Sessão & Desconexão", () => {
-    it("renderiza o card Sessão & Desconexão com botão Sair da Conta", () => {
+    it("renderiza o card Sessão & Desconexão com botão Sair deste aparelho", () => {
       renderAccountTab();
 
-      expect(screen.getByText("Sessão & Desconexão")).toBeInTheDocument();
-      expect(screen.getByText("Sair da conta neste dispositivo")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Sair da Conta" })).toBeInTheDocument();
+      expect(screen.getByText("Segurança de Acesso & Sessões")).toBeInTheDocument();
+      expect(screen.getByText("Este Dispositivo")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Sair deste aparelho" })).toBeInTheDocument();
     });
 
-    it("abre o modal de confirmação ao clicar em Sair da Conta", async () => {
+    it("abre o modal de confirmação ao clicar em Sair deste aparelho", async () => {
       const user = userEvent.setup();
       renderAccountTab();
 
-      const signOutButton = screen.getByRole("button", { name: "Sair da Conta" });
+      const signOutButton = screen.getByRole("button", { name: "Sair deste aparelho" });
       await user.click(signOutButton);
 
       expect(screen.getByRole("heading", { name: "Encerrar Sessão" })).toBeInTheDocument();
@@ -525,7 +526,7 @@ describe("AccountTab", () => {
       const user = userEvent.setup();
       renderAccountTab();
 
-      const signOutButton = screen.getByRole("button", { name: "Sair da Conta" });
+      const signOutButton = screen.getByRole("button", { name: "Sair deste aparelho" });
       await user.click(signOutButton);
 
       const cancelButton = screen.getByRole("button", { name: "Cancelar" });
@@ -543,7 +544,7 @@ describe("AccountTab", () => {
 
       renderAccountTab();
 
-      const signOutButton = screen.getByRole("button", { name: "Sair da Conta" });
+      const signOutButton = screen.getByRole("button", { name: "Sair deste aparelho" });
       await user.click(signOutButton);
 
       const confirmButton = screen.getByRole("button", { name: "Confirmar Saída" });

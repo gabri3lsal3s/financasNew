@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { getTrialLifecycleMetadata } from "@/domain/subscription";
+import { buildCheckoutUrl } from "@/domain/subscription/plans";
 
 export interface TrialEndingBannerProps {
   daysRemaining: number;
@@ -39,7 +40,7 @@ export function TrialEndingBanner({
     } else if (hasAutoRenew) {
       navigate("/configuracoes?tab=assinatura");
     } else {
-      navigate("/assinatura?plano=pro-anual");
+      navigate(buildCheckoutUrl({ plan: "annual" }));
     }
   };
 

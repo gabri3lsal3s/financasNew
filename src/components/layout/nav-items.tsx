@@ -92,10 +92,18 @@ export function filterNavItems(
   isFamilyActive = false,
   isTripActive = false,
 ): NavItem[] {
+  // Se o usuário não possui módulos de finanças pessoais (ex.: Apenas Investimentos),
+  // Modo Viagem e Modo Familiar são restritos e não devem ser exibidos na navegação.
+  const hasFinance =
+    hasFeature("transactions") ||
+    hasFeature("cards") ||
+    hasFeature("debts") ||
+    hasFeature("budgets");
+
   return items.filter((item) => {
     if (item.adminOnly && !isAdmin) return false;
-    if (item.familyOnly && !isFamilyActive) return false;
-    if (item.tripOnly && !isTripActive) return false;
+    if (item.familyOnly && (!isFamilyActive || !hasFinance)) return false;
+    if (item.tripOnly && (!isTripActive || !hasFinance)) return false;
     if (item.featureKey && !hasFeature(item.featureKey)) return false;
     return true;
   });

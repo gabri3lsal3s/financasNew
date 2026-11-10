@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import {
   Bell,
+  Briefcase,
   Check,
   ChevronRight,
   CreditCard,
@@ -12,9 +13,9 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
-import { Button, Progress, ResponsiveDialog } from "@/components/ui";
+import { Badge, Button, Progress, ResponsiveDialog } from "@/components/ui";
 import { coreOnboardingProgress, coreOnboardingSteps, onboardingSteps } from "@/domain/onboarding";
-import type { OnboardingCounts, OnboardingStepId } from "@/domain/onboarding";
+import type { FeaturePredicate, OnboardingCounts, OnboardingStepId } from "@/domain/onboarding";
 import { requestNotificationListenerPermission } from "@/services/native";
 import { triggerSensory } from "@/services/sensory";
 import { DemoTrackSelectModal } from "./demo-track-select-modal";
@@ -48,6 +49,18 @@ const STEP_META: Record<
     href: "/transacoes?novo=transacao",
     icon: Receipt,
   },
+  "portfolio-asset": {
+    label: "Cadastre seu primeiro ativo",
+    description: "Ações, FIIs, renda fixa ou fundos na sua carteira.",
+    href: "/investments?novo=ativo",
+    icon: Briefcase,
+  },
+  "portfolio-transaction": {
+    label: "Registre o primeiro aporte ou compra",
+    description: "Alimente o motor de rebalanceamento patrimonial.",
+    href: "/investments?novo=investimento",
+    icon: TrendingUp,
+  },
   "bank-notifications": {
     label: "Ativar Leitor Automático de Notificações",
     description: "Captura de compras de cartão e Pix em segundo plano.",
@@ -58,6 +71,7 @@ const STEP_META: Record<
 // --- ChecklistContent --- usado dentro do modal responsivo
 interface ChecklistContentProps {
   counts: OnboardingCounts;
+  hasFeature?: FeaturePredicate;
   onEnableNotifications?: () => void | Promise<void>;
   onClose: () => void;
   onOpenDemoTrackSelect?: () => void;
@@ -65,11 +79,12 @@ interface ChecklistContentProps {
 
 function ChecklistContent({
   counts,
+  hasFeature,
   onEnableNotifications,
   onClose,
   onOpenDemoTrackSelect,
 }: ChecklistContentProps) {
-  const steps = onboardingSteps(counts);
+  const steps = onboardingSteps(counts, hasFeature);
 
   const handleEnableNotifications = async () => {
     triggerSensory("action");
@@ -80,7 +95,7 @@ function ChecklistContent({
     await requestNotificationListenerPermission();
   };
 
-  const progress = coreOnboardingProgress(counts);
+  const progress = coreOnboardingProgress(counts, hasFeature);
 
   return (
     <div className="flex flex-col gap-4">
@@ -113,8 +128,8 @@ function ChecklistContent({
         />
       </div>
 
-      {/* Lista de passos */}
-      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+      {/* Lista de passos em 1 coluna ampla (elimina truncamento cego e buraco na última linha) */}
+      <ul className="flex flex-col gap-2.5">
         {steps.map((step) => {
           const meta = STEP_META[step.id];
           if (!meta) return null;
@@ -123,53 +138,69 @@ function ChecklistContent({
             <li
               key={step.id}
               className={cn(
-                "flex items-center gap-3 rounded-xl border p-3 transition-colors",
+                "flex items-center justify-between gap-3 rounded-xl border p-3 sm:p-3.5 transition-colors",
                 step.done
                   ? "border-border/60 bg-surface-hover/20 text-muted-foreground"
                   : "border-border/80 bg-surface shadow-2xs hover:border-border",
               )}
             >
-              <span
-                className={cn(
-                  "flex size-8 shrink-0 items-center justify-center rounded-lg border",
-                  step.done
-                    ? "border-positive/20 bg-positive/10 text-positive-strong"
-                    : "border-border/80 bg-surface-hover text-muted-foreground",
-                )}
-                aria-hidden="true"
-              >
-                {step.done ? <Check className="size-4" /> : <Icon className="size-4" />}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <span
                   className={cn(
-                    "text-xs sm:text-sm font-semibold truncate",
-                    step.done ? "text-muted-foreground line-through" : "text-foreground",
+                    "flex size-8 shrink-0 items-center justify-center rounded-lg border",
+                    step.done
+                      ? "border-positive/20 bg-positive/10 text-positive-strong"
+                      : "border-border/80 bg-surface-hover text-muted-foreground",
                   )}
+                  aria-hidden="true"
                 >
-                  {meta.label}
-                </p>
-                {!step.done ? (
-                  <p className="text-[11px] text-muted-foreground truncate">{meta.description}</p>
-                ) : null}
+                  {step.done ? <Check className="size-4" /> : <Icon className="size-4" />}
+                </span>
+
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p
+                      className={cn(
+                        "text-xs sm:text-sm font-semibold break-words",
+                        step.done ? "text-muted-foreground line-through" : "text-foreground",
+                      )}
+                    >
+                      {meta.label}
+                    </p>
+                    {step.id === "bank-notifications" && (
+                      <Badge variant="muted" size="xs" className="shrink-0">
+                        Opcional
+                      </Badge>
+                    )}
+                  </div>
+
+                  {!step.done ? (
+                    <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed break-words">
+                      {meta.description}
+                    </p>
+                  ) : null}
+                </div>
               </div>
+
               {!step.done ? (
-                meta.href ? (
-                  <Link to={meta.href} onClick={onClose}>
-                    <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs font-medium cursor-pointer">
+                <div className="shrink-0 pl-2">
+                  {meta.href ? (
+                    <Link to={meta.href} onClick={onClose}>
+                      <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs font-medium cursor-pointer">
+                        Configurar
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleEnableNotifications}
+                      className="h-7 px-2.5 text-xs font-medium cursor-pointer"
+                    >
                       Configurar
                     </Button>
-                  </Link>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleEnableNotifications}
-                    className="h-7 px-2.5 text-xs font-medium cursor-pointer"
-                  >
-                    Configurar
-                  </Button>
-                )
+                  )}
+                </div>
               ) : null}
             </li>
           );
@@ -195,6 +226,7 @@ function ChecklistContent({
 // --- OnboardingBanner --- banner slim exibido na home
 export interface OnboardingBannerProps {
   counts: OnboardingCounts;
+  hasFeature?: FeaturePredicate;
   onDismiss: () => void;
   onEnableNotifications?: () => void | Promise<void>;
   className?: string;
@@ -207,11 +239,17 @@ export interface OnboardingBannerProps {
  * Desaparece automaticamente quando o usuário se torna ativo
  * (via shouldShowOnboardingBanner no overview-page).
  */
-export function OnboardingBanner({ counts, onDismiss, onEnableNotifications, className }: OnboardingBannerProps) {
+export function OnboardingBanner({
+  counts,
+  hasFeature,
+  onDismiss,
+  onEnableNotifications,
+  className,
+}: OnboardingBannerProps) {
   const [open, setOpen] = useState(false);
   const [demoTrackModalOpen, setDemoTrackModalOpen] = useState(false);
-  const progress = coreOnboardingProgress(counts);
-  const pendingSteps = coreOnboardingSteps(counts).filter((s) => !s.done);
+  const progress = coreOnboardingProgress(counts, hasFeature);
+  const pendingSteps = coreOnboardingSteps(counts, hasFeature).filter((s) => !s.done);
 
   const handleDismiss = () => {
     triggerSensory("action");
@@ -255,7 +293,7 @@ export function OnboardingBanner({ counts, onDismiss, onEnableNotifications, cla
         {/* Barra de progresso slim */}
         <div className="hidden sm:flex w-20 shrink-0">
           <Progress
-            value={(progress.done / progress.total) * 100}
+            value={(progress.done / Math.max(progress.total, 1)) * 100}
             tone="auto"
             aria-hidden="true"
             className="h-1.5"
@@ -298,6 +336,7 @@ export function OnboardingBanner({ counts, onDismiss, onEnableNotifications, cla
       >
         <ChecklistContent
           counts={counts}
+          hasFeature={hasFeature}
           onEnableNotifications={onEnableNotifications}
           onClose={() => setOpen(false)}
           onOpenDemoTrackSelect={() => setDemoTrackModalOpen(true)}

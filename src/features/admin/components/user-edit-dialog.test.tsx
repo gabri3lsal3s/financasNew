@@ -212,18 +212,9 @@ describe("UserEditDialog", () => {
     expect(screen.getByRole("button", { name: /Apenas Investimentos/i })).toBeInTheDocument();
   });
 
-  it("executa a ação rápida 'Apenas Investimentos', configurando investimentos e limpando outros overrides", async () => {
+  it("executa a ação rápida 'Apenas Investimentos', liberando investimentos e relatórios e bloqueando módulos de despesas", async () => {
     const user = userEvent.setup();
-    mockModulePermissions = [
-      {
-        id: "perm-cards",
-        user_id: "u-123",
-        module_key: "cards",
-        access_level: "none",
-        created_at: "2026-08-01T00:00:00Z",
-        updated_at: "2026-08-01T00:00:00Z",
-      },
-    ];
+    mockModulePermissions = [];
 
     render(<UserEditDialog user={mockUser} open={true} onOpenChange={vi.fn()} />);
 
@@ -237,10 +228,23 @@ describe("UserEditDialog", () => {
       accessLevel: "write",
     });
 
-    // Deve remover o override anterior do módulo cards
-    expect(mockRemoveModulePermissionMutateAsync).toHaveBeenCalledWith({
+    // Deve salvar acesso de relatórios exclusivos de investimentos
+    expect(mockSetModulePermissionMutateAsync).toHaveBeenCalledWith({
+      userId: "u-123",
+      moduleKey: "reports",
+      accessLevel: "write",
+    });
+
+    // Deve bloquear módulos de despesas diárias
+    expect(mockSetModulePermissionMutateAsync).toHaveBeenCalledWith({
+      userId: "u-123",
+      moduleKey: "transactions",
+      accessLevel: "none",
+    });
+    expect(mockSetModulePermissionMutateAsync).toHaveBeenCalledWith({
       userId: "u-123",
       moduleKey: "cards",
+      accessLevel: "none",
     });
   });
 

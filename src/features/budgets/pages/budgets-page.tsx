@@ -8,6 +8,7 @@ import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon, MonthPicker, ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
 import { HighlightRow } from "@/components/modules/highlight-row";
+import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import { useCreateDeepLink } from "@/hooks";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import {
@@ -1297,7 +1298,7 @@ export function BudgetsPage() {
         context={upgradeContext}
         onProceedToCheckout={(p) => {
           setUpgradeOpen(false);
-          navigate(`/assinatura?plano=${p}`);
+          navigate(buildCheckoutUrl({ plan: p }));
         }}
       />
 

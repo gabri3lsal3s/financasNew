@@ -217,10 +217,10 @@ export function UpgradeDialog({
         <ShieldCheck className="size-4 shrink-0 text-positive-strong mt-0.5" aria-hidden="true" />
         <div className="min-w-0 text-xs text-muted-foreground space-y-0.5">
           <p className="font-semibold text-foreground">
-            Garantia Incondicional de 30 dias • Seus dados nunca são excluídos
+            Garantia legal de 7 dias com estorno integral • Seus dados nunca são excluídos
           </p>
           <p className="text-[11px] leading-relaxed">
-            Se optar por não continuar, seu histórico permanece acessível para consulta vitalícia. Cancelamento em 1 clique.
+            Garantia incondicional (CDC Art. 49). Se optar por não continuar, seu histórico permanece acessível para consulta vitalícia. Cancelamento em 1 clique.
           </p>
         </div>
       </div>

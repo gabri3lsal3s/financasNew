@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Radio, Sparkles, Trash2 } from "lucide-react";
-import { Alert, Button, Checkbox, ColorPicker, ConfirmDialog, Input, Modal, ModalFooter, MoneyInput, MoneyText, NumberStepper } from "@/components/ui";
+import { Alert, Button, Checkbox, ColorPicker, ConfirmDialog, FormField, Input, Modal, ModalFooter, MoneyInput, MoneyText, NumberStepper } from "@/components/ui";
 import { CardBrandBadge, getCardGradient } from "@/components/modules";
 import { bestPurchaseDay, creditCardFormSchema } from "@/domain/cards";
 import { cn } from "@/lib/utils";
@@ -287,17 +287,14 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
 
           {/* Formulário Coluna Direita */}
           <div className="md:col-span-7 flex flex-col gap-3.5">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="card-name" className="text-xs font-semibold text-foreground">
-                Nome
-              </label>
+            <FormField label="Nome" htmlFor="card-name">
               <Input
                 id="card-name"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="Ex.: Nomad, Nubank Ultravioleta..."
               />
-            </div>
+            </FormField>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div className="flex flex-col gap-1.5">
@@ -365,28 +362,21 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="card-limit" className="text-xs font-semibold text-foreground">
-                    Limite total
-                  </label>
-                  <span className="text-[11px] text-muted-foreground">(opcional)</span>
-                </div>
+              <FormField label="Limite total" htmlFor="card-limit" optional>
                 <MoneyInput
                   id="card-limit"
                   cents={limitCents}
                   onCentsChange={setLimitCents}
                   aria-label="Limite total do cartão"
                 />
-              </div>
+              </FormField>
 
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="card-last-four-digits" className="text-xs font-semibold text-foreground">
-                    Últimos 4 dígitos
-                  </label>
-                  <span className="text-[11px] text-muted-foreground">(opcional)</span>
-                </div>
+              <FormField
+                label="Últimos 4 dígitos"
+                htmlFor="card-last-four-digits"
+                optional
+                helperText="Facilita o reconhecimento automático em notificações e carteiras digitais."
+              >
                 <Input
                   id="card-last-four-digits"
                   value={lastFourDigits}
@@ -397,15 +387,11 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
                   }}
                   placeholder="Ex.: 7756"
                 />
-                <span className="text-[11px] text-muted-foreground">
-                  Facilita o reconhecimento automático em notificações e carteiras digitais.
-                </span>
-              </div>
+              </FormField>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-foreground">Dia de fechamento</span>
+              <FormField label="Dia de fechamento">
                 <NumberStepper
                   value={closingDay}
                   onValueChange={setClosingDay}
@@ -414,9 +400,8 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
                   decreaseLabel="Diminuir dia de fechamento"
                   increaseLabel="Aumentar dia de fechamento"
                 />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-foreground">Dia de vencimento</span>
+              </FormField>
+              <FormField label="Dia de vencimento">
                 <NumberStepper
                   value={dueDay}
                   onValueChange={setDueDay}
@@ -425,7 +410,7 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
                   decreaseLabel="Diminuir dia de vencimento"
                   increaseLabel="Aumentar dia de vencimento"
                 />
-              </div>
+              </FormField>
             </div>
 
             <div className="rounded-lg border border-border/80 bg-surface p-3 flex flex-col gap-1.5 shadow-2xs">

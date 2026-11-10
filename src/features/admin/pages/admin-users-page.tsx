@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Search, Settings2, Shield, UserPlus } from "lucide-react";
-import { Button, EmptyState, Input, Select, Skeleton, Badge } from "@/components/ui";
+import { Settings2, Shield, UserPlus } from "lucide-react";
+import { Badge, Button, EmptyState, SearchInput, Select, Skeleton } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { ROLE_LABELS, STATUS_LABELS } from "@/domain/admin";
 import { useAdminUsers, useUserAccess } from "@/state";
@@ -54,17 +54,13 @@ export function AdminUsersPage() {
 
       {/* Barra de Filtros */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="relative">
-          <Input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nome ou e-mail…"
-            aria-label="Buscar por nome ou e-mail"
-            className="pl-9"
-          />
-          <Search className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
-        </div>
+        <SearchInput
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onClear={() => setSearch("")}
+          placeholder="Buscar por nome ou e-mail…"
+          aria-label="Buscar por nome ou e-mail"
+        />
 
         <Select
           value={statusFilter}

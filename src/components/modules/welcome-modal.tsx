@@ -13,7 +13,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
-import { Badge, Button, Modal, ModalFooter } from "@/components/ui";
+import { Badge, Button, ChoiceCard, Modal, ModalFooter } from "@/components/ui";
 import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 import {
@@ -250,38 +250,17 @@ export function WelcomeModal({
               const Icon = goal.icon;
               const isSelected = selectedGoal === goal.id;
               return (
-                <button
+                <ChoiceCard
                   key={goal.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={isSelected}
-                  onClick={() => {
-                    triggerSensory("selection");
-                    setSelectedGoal(goal.id);
-                  }}
-                  className={cn(
-                    "flex flex-col text-left rounded-xl border p-3.5 transition-all cursor-pointer relative",
-                    isSelected
-                      ? "border-primary bg-primary/5 shadow-xs ring-1 ring-primary/40"
-                      : "border-border/80 bg-surface hover:bg-surface-hover hover:border-border",
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2 w-full mb-1.5">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Icon
-                        className={cn("size-4 shrink-0", isSelected ? "text-primary" : "text-muted-foreground")}
-                        aria-hidden="true"
-                      />
-                      <span className="text-xs font-semibold text-foreground truncate">{goal.title}</span>
-                    </div>
-                    <Badge variant={isSelected ? "default" : "muted"} size="xs">
-                      {goal.badge}
-                    </Badge>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground leading-snug">
-                    {goal.description}
-                  </p>
-                </button>
+                  title={goal.title}
+                  description={goal.description}
+                  badge={goal.badge}
+                  badgeVariant={isSelected ? "default" : "muted"}
+                  selected={isSelected}
+                  icon={<Icon className="size-4" aria-hidden="true" />}
+                  onClick={() => setSelectedGoal(goal.id)}
+                  aria-label={goal.title}
+                />
               );
             })}
           </div>

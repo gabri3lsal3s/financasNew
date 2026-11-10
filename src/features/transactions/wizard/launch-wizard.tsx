@@ -59,6 +59,7 @@ import {
   TRIP_QUERY_KEYS,
 } from "@/state/queries/use-trips";
 import { useAuth } from "@/hooks/use-auth";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { calculateEqualSplits, resolveActiveTripMember } from "@/domain/trips";
 import { useDemoSession } from "@/state/demo-mode";
 import type { RecurrenceFrequency } from "@/domain/recurrences";
@@ -109,6 +110,7 @@ export function LaunchWizard({
 }: LaunchWizardProps = {}) {
   const { isDemoActive } = useDemoSession();
   const navigate = useNavigate();
+  const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard({ moduleKey: "transactions" });
   const [mode, setMode] = useState<"quick" | "guided">(initialMode);
   const [state, setState] = useState<LaunchState>(() => defaultLaunchState(initialType, initialValues));
   const [error, setError] = useState<string | null>(null);
@@ -428,6 +430,10 @@ export function LaunchWizard({
   }, [state.type, state.paymentMethod, state.cardId, initialValues?.cardId, cardsQuery.data]);
 
   const handleSubmit = async () => {
+    if (isReadOnlyMode) {
+      guardAction(() => {}, "Criar Lançamento");
+      return;
+    }
     setError(null);
     setPending(true);
     let createdExpenseId: string | null = null;
@@ -1169,6 +1175,8 @@ export function LaunchWizard({
         autoGenerate={false}
       />
     )}
+
+    {upgradeModal}
   </>
   );
 }

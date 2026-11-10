@@ -41,16 +41,30 @@ describe("OnboardingBanner — banner compacto de configuração inicial (§5.7)
     vi.clearAllMocks();
   });
 
-  it("exibe o banner slim com progresso e botão Continuar", () => {
-    render(<OnboardingBanner counts={empty} onDismiss={vi.fn()} />);
+  it("exibe o banner slim com progresso e botão Continuar para usuário de finanças", () => {
+    const hasFinances = (k: string) => k === "budgets" || k === "cards" || k === "transactions";
+    render(<OnboardingBanner counts={empty} hasFeature={hasFinances} onDismiss={vi.fn()} />);
     expect(screen.getByText("Configure sua conta")).toBeInTheDocument();
     expect(screen.getByText("0/4")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Continuar/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Dispensar aviso/i })).toBeInTheDocument();
   });
 
+  it("exibe progresso e passos exclusivos de investimentos para usuário que só tem carteira", () => {
+    const hasOnlyInvestments = (k: string) => k === "investments";
+    render(<OnboardingBanner counts={empty} hasFeature={hasOnlyInvestments} onDismiss={vi.fn()} />);
+    expect(screen.getByText("0/2")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
+    expect(screen.getByText("Cadastre seu primeiro ativo")).toBeInTheDocument();
+    expect(screen.getByText("Registre o primeiro aporte ou compra")).toBeInTheDocument();
+    expect(screen.queryByText("Crie categorias de despesa")).not.toBeInTheDocument();
+    expect(screen.queryByText("Adicione um cartão de crédito")).not.toBeInTheDocument();
+  });
+
   it("progresso parcial reflete contagem correta de passos core", () => {
-    render(<OnboardingBanner counts={partial} onDismiss={vi.fn()} />);
+    const hasFinances = (k: string) => k === "budgets" || k === "cards" || k === "transactions";
+    render(<OnboardingBanner counts={partial} hasFeature={hasFinances} onDismiss={vi.fn()} />);
     expect(screen.getByText("1/4")).toBeInTheDocument();
   });
 
@@ -94,10 +108,11 @@ describe("OnboardingBanner — banner compacto de configuração inicial (§5.7)
   });
 
   it("modal não exibe botão Configurar para passos já concluídos", () => {
-    render(<OnboardingBanner counts={partial} onDismiss={vi.fn()} />);
+    const hasFinances = (k: string) => k === "budgets" || k === "cards" || k === "transactions";
+    render(<OnboardingBanner counts={partial} hasFeature={hasFinances} onDismiss={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
     const configurarButtons = screen.getAllByRole("button", { name: "Configurar" });
-    expect(configurarButtons.length).toBeLessThan(5);
+    expect(configurarButtons.length).toBeLessThan(4);
   });
 
   it("ativa permissões de notificação ao clicar em Configurar no passo de notificações", () => {

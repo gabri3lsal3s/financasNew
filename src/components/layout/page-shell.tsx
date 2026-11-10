@@ -4,6 +4,7 @@ import { Sparkles, BookOpen, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackFeatureUse } from "@/services/analytics";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
+import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { BackToTop } from "@/components/layout/back-to-top";
 import { CalculatorButton } from "@/components/layout/calculator-button";
@@ -360,7 +361,7 @@ export function PageShell() {
         onOpenChange={setHeaderUpgradeOpen}
         onProceedToCheckout={(plan) => {
           setHeaderUpgradeOpen(false);
-          navigate(`/assinatura?plano=${plan}`);
+          navigate(buildCheckoutUrl({ plan }));
         }}
       />
     </div>

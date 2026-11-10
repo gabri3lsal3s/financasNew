@@ -40,7 +40,7 @@ Deno?.serve?.(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const payload = await req.json();
-    const { plan, method, cpf, card, phone, registration } = payload;
+    const { plan, method, cpf, card, phone, registration, firstBillingDate } = payload;
 
     let user: { id: string; email?: string; user_metadata?: Record<string, unknown> } | null = null;
     let isRegistration = false;
@@ -248,6 +248,11 @@ Deno?.serve?.(async (req: Request) => {
 
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
 
+    const now = new Date();
+    const firstChargeDate = firstBillingDate ? new Date(firstBillingDate) : now;
+    const isFutureBilling = !isNaN(firstChargeDate.getTime()) && firstChargeDate > now;
+    const baseDate = isFutureBilling ? firstChargeDate : now;
+
     const subscription = await createAsaasCreditCardSubscription({
       customerId: customer.id,
       plan: planKey,
@@ -266,14 +271,14 @@ Deno?.serve?.(async (req: Request) => {
         addressNumber: card.addressNumber,
         phone,
       },
+      nextDueDate: isFutureBilling ? baseDate.toISOString().slice(0, 10) : undefined,
       remoteIp: clientIp,
     });
 
     const statusUpper = (subscription.status || "").toUpperCase();
     const confirmed = CONFIRMED_SUBSCRIPTION_STATUSES.has(statusUpper);
 
-    const now = new Date();
-    const periodEnd = new Date(now);
+    const periodEnd = new Date(baseDate);
     if (planKey === "annual") {
       periodEnd.setFullYear(periodEnd.getFullYear() + 1);
     } else {
@@ -287,6 +292,7 @@ Deno?.serve?.(async (req: Request) => {
         plan_id: planMeta.planId,
         status: confirmed ? "active" : "incomplete",
         starts_at: now.toISOString(),
+        trial_ends_at: isFutureBilling ? baseDate.toISOString() : null,
         current_period_end: periodEnd.toISOString(),
         cancel_at_period_end: false,
         asaas_customer_id: customer.id,

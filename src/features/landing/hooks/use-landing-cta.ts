@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
+import { buildCheckoutUrl } from "@/domain/subscription/plans";
 
 /**
  * Hook de URLs inteligentes para os CTAs da Landing Page.
@@ -27,7 +28,7 @@ export function useLandingCta() {
    * onde visitantes sem sessão criam a conta de forma integrada no próprio pagamento.
    */
   function proUrl(plan: "pro-anual" | "pro-mensal" = "pro-anual"): string {
-    return `/assinatura?plano=${plan}`;
+    return buildCheckoutUrl({ plan });
   }
 
   /**

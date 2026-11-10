@@ -1038,8 +1038,12 @@ export function ReportsPage() {
     <div className="flex flex-col gap-6 w-full min-w-0" data-tour="reports-content">
       {/* Header */}
       <PageHeader
-        title="Relatórios"
-        description="Dossiês executivos, DRE pessoal, consolidação patrimonial e inteligência fiscal"
+        title={!hasFinanceFeatures ? "Relatórios de Investimentos" : "Relatórios"}
+        description={
+          !hasFinanceFeatures
+            ? "Dossiês executivos da carteira, proventos, evolução patrimonial e inteligência fiscal"
+            : "Dossiês executivos, DRE pessoal, consolidação patrimonial e inteligência fiscal"
+        }
       />
 
       {/* Navegação Principal em Tabs com suporte a gestos swipe e acessibilidade */}

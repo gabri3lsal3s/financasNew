@@ -825,6 +825,26 @@ A arquitetura de compartilhamento e ferramentas abertas foi construída sobre tr
   - Assinatura discreta: `Relatório estruturado via Áxis Finance · Gestão Financeira Pessoal & Automação | axis.app`.
   - Chancela oficial com hyperlink sutil direcionando para a página de apresentação (`/apresentacao`), garantindo acabamento executivo, divulgação orgânica e zero ruído de códigos de barra (com micro QR Code opcional desativado por padrão).
 
+---
+
+## 17. GOVERNANÇA DE MODO SOMENTE LEITURA & PERFIS DE ACESSO
+
+### 17.1 Blindagem Centralizada de Mutações (`useMutationGuard`)
+1. **Padrão Canônico DRY:**
+   - Interceptador hook `useMutationGuard({ moduleKey })` presente em todas as telas, diálogos e wizards onde ocorrem inserções, edições ou exclusões.
+   - Consolida tanto a assinatura global (`subscription.canWrite`, `subscription.isReadOnly`) quanto permissões modulares granulares (`usePermission(moduleKey)`).
+   - Bloqueia mutações em cascata: criação/edição/exclusão de receitas, despesas, cartões, dívidas, categorias, aportes de investimentos, metas patrimoniais, importações de extratos/planilhas e submissões via URL deep link.
+   - Ao ser acionado em modo somente leitura (`isReadOnlyMode = true`), a ação é imediatamente abortada e o diálogo de assinatura (`UpgradeDialog`) é exibido com contexto descritivo.
+
+2. **Garantia de Visualização e Relatórios Irrestritos:**
+   - O modo somente leitura **nunca** bloqueia leitura de dados, navegação em telas ou geração de relatórios.
+   - Extratos, gráficos analíticos, balanços patrimoniais e relatórios executivos em PDF (`ReportDocumentLayout`, `WealthTearSheetModal`) continuam 100% disponíveis para exportação e auditoria contábil.
+
+### 17.2 Perfil 'Apenas Investimentos'
+- Usuários configurados com foco exclusivo em patrimônio/investimentos têm módulos de consumo e ferramentas de uso diário (receitas, despesas, cartões, dívidas, orçamentos, modo viagem e familiar) restritos.
+- Relatórios exclusivos da carteira de investimentos (Ativos, Alocação, Proventos, Tear Sheet e Rentabilidade) permanecem totalmente acessíveis e funcionais no menu e nas abas de relatórios.
+
+
 
 
 

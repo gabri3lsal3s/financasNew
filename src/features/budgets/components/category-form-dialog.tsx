@@ -7,6 +7,7 @@ import { categoryFormSchema, suggestCategory } from "@/domain/budgets";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { useCreateCategory, useFamilyMode, useMyFamily, useUpdateCategory } from "@/state";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { DeleteCategoryDialog } from "@/features/budgets/components/delete-category-dialog";
 import type { Category, CategoryType } from "@/types";
 
@@ -51,6 +52,7 @@ function CategoryFormContent({
   onOpenDelete,
   onSuccess,
 }: CategoryFormContentProps) {
+  const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard({ moduleKey: "budgets" });
   const [name, setName] = useState(category?.name ?? "");
   const [type, setType] = useState<CategoryType>(category?.type ?? defaultType);
   const [icon, setIcon] = useState(category?.icon ?? "");
@@ -74,6 +76,10 @@ function CategoryFormContent({
   };
 
   const handleSubmit = async () => {
+    if (isReadOnlyMode) {
+      guardAction(() => {}, category ? "Editar Categoria" : "Cadastrar Nova Categoria");
+      return;
+    }
     setError(null);
     const rawForm = {
       name,
@@ -210,7 +216,7 @@ function CategoryFormContent({
               type="button"
               variant="ghost"
               className="text-critical hover:bg-critical/10"
-              onClick={onOpenDelete}
+              onClick={() => guardAction(() => onOpenDelete?.(), "Excluir Categoria")}
             >
               <Trash2 className="size-4" aria-hidden="true" />
               Excluir
@@ -234,6 +240,7 @@ function CategoryFormContent({
           )}
         </Button>
       </ModalFooter>
+      {upgradeModal}
     </form>
   );
 }

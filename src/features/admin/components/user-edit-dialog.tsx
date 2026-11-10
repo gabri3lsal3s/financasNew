@@ -229,31 +229,36 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
     if (!user) return;
     setIsQuickActionPending(true);
     try {
-      await setModulePermissionMutation.mutateAsync({
-        userId: user.id,
-        moduleKey: "investments",
-        accessLevel: "write",
-      });
+      // Configura Apenas Investimentos:
+      // 1. investments = write (acesso total à carteira de investimentos)
+      // 2. reports = write (acesso aos relatórios exclusivos de investimentos)
+      // 3. Módulos financeiros de despesas = none (restringindo despesas, modo viagem e familiar)
+      const investmentPreset: Array<{ moduleKey: string; accessLevel: ModuleAccessLevel }> = [
+        { moduleKey: "investments", accessLevel: "write" },
+        { moduleKey: "reports", accessLevel: "write" },
+        { moduleKey: "overview", accessLevel: "none" },
+        { moduleKey: "transactions", accessLevel: "none" },
+        { moduleKey: "cards", accessLevel: "none" },
+        { moduleKey: "debts", accessLevel: "none" },
+        { moduleKey: "budgets", accessLevel: "none" },
+        { moduleKey: "reminders", accessLevel: "none" },
+        { moduleKey: "bank_notification_listener", accessLevel: "none" },
+      ];
 
-      const otherOverrides = userModulePermissions.filter(
-        (p) => p.module_key !== "investments",
+      await Promise.all(
+        investmentPreset.map((item) =>
+          setModulePermissionMutation.mutateAsync({
+            userId: user.id,
+            moduleKey: item.moduleKey,
+            accessLevel: item.accessLevel,
+          }),
+        ),
       );
-
-      if (otherOverrides.length > 0) {
-        await Promise.all(
-          otherOverrides.map((p) =>
-            removeModulePermissionMutation.mutateAsync({
-              userId: user.id,
-              moduleKey: p.module_key,
-            }),
-          ),
-        );
-      }
 
       triggerSensory("success");
       pushToast({
-        title: "Acesso rápido configurado",
-        description: `Usuário ${user.name || user.email} configurado com acesso exclusivo a Investimentos.`,
+        title: "Apenas Investimentos configurado",
+        description: `Usuário ${user.name || user.email} configurado em Apenas Investimentos. Modo Viagem e Familiar restritos; relatórios de carteira liberados.`,
       });
     } catch {
       triggerSensory("destructive");

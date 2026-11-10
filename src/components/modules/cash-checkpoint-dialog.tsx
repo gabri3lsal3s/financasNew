@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
+import { FormField } from "@/components/ui/form-field";
 import { todayISO } from "@/domain/debts";
 import { useCreateCashCheckpoint } from "@/state";
 import { triggerSensory } from "@/services/sensory";
@@ -66,36 +67,33 @@ function CashCheckpointForm({
         </p>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="cash-balance-input" className="text-xs font-semibold text-foreground">
-          Saldo Real no Banco (Total em Contas)
-        </label>
+      <FormField label="Saldo Real no Banco (Total em Contas)" htmlFor="cash-balance-input">
         <MoneyInput
           id="cash-balance-input"
           cents={balanceCents}
           onCentsChange={(cents) => setBalanceCents(cents)}
         />
-      </div>
+      </FormField>
 
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-          <Calendar className="size-3.5 text-muted-foreground" aria-hidden="true" />
-          Data da Aferição
-        </label>
+      <FormField
+        label={
+          <span className="flex items-center gap-1.5">
+            <Calendar className="size-3.5 text-muted-foreground" aria-hidden="true" />
+            Data da Aferição
+          </span>
+        }
+      >
         <DatePicker value={date} onValueChange={setDate} />
-      </div>
+      </FormField>
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="cash-notes-input" className="text-xs font-semibold text-foreground">
-          Anotação (opcional)
-        </label>
+      <FormField label="Anotação" optional htmlFor="cash-notes-input">
         <Input
           id="cash-notes-input"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Ex.: Extrato Nubank + Itaú"
         />
-      </div>
+      </FormField>
 
       <ModalFooter>
         <Button

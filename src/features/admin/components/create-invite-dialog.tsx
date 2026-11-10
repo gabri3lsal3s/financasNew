@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Copy, KeyRound, Plus, ShieldAlert, Sparkles } from "lucide-react";
-import { Button, Checkbox, DatePicker, Input, Modal, ModalFooter, Select } from "@/components/ui";
+import { Button, Checkbox, DatePicker, FormField, Input, Modal, ModalFooter, Select } from "@/components/ui";
 import { generateInviteCode } from "@/domain/admin";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
@@ -109,10 +109,7 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {/* Código do Convite */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="invite-code" className="text-xs font-semibold text-foreground">
-            Código do Convite
-          </label>
+        <FormField label="Código do Convite" htmlFor="invite-code">
           <div className="flex items-center gap-2">
             <Input
               id="invite-code"
@@ -141,40 +138,39 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
               <Copy className="size-4" aria-hidden="true" />
             </Button>
           </div>
-        </div>
+        </FormField>
 
         {/* Plano / Tier Concedido pelo Convite */}
-        <div className="flex flex-col gap-1.5 p-3.5 rounded-xl border border-border/80 bg-surface/60">
-          <div className="flex items-center gap-2">
-            <KeyRound className="size-4 text-muted-foreground" aria-hidden="true" />
-            <label htmlFor="invite-tier" className="text-xs font-semibold text-foreground">
-              Plano / Tier Atribuído ao Usuário
-            </label>
-          </div>
-          <Select
-            value={targetTier}
-            onValueChange={(val) => setTargetTier(val as SubscriptionTier)}
-            options={[
-              { value: "trial", label: "Trial Pro (Período de Teste)" },
-              { value: "lifetime", label: "Plano Vitalício VIP (Acesso Permanente)" },
-              { value: "pro_annual", label: "Plano Pro Anual" },
-              { value: "pro_monthly", label: "Plano Pro Mensal" },
-            ]}
-          />
-          <span className="text-[11px] text-muted-foreground">
-            Define o tier padrão que será ativado na conta do usuário ao resgatar o código.
-          </span>
+        <div className="p-3.5 rounded-xl border border-border/80 bg-surface/60">
+          <FormField
+            label={
+              <span className="flex items-center gap-2">
+                <KeyRound className="size-4 text-muted-foreground" aria-hidden="true" />
+                Plano / Tier Atribuído ao Usuário
+              </span>
+            }
+            helperText="Define o tier padrão que será ativado na conta do usuário ao resgatar o código."
+          >
+            <Select
+              value={targetTier}
+              onValueChange={(val) => setTargetTier(val as SubscriptionTier)}
+              options={[
+                { value: "trial", label: "Trial Pro (Período de Teste)" },
+                { value: "lifetime", label: "Plano Vitalício VIP (Acesso Permanente)" },
+                { value: "pro_annual", label: "Plano Pro Anual" },
+                { value: "pro_monthly", label: "Plano Pro Mensal" },
+              ]}
+            />
+          </FormField>
         </div>
 
         {/* Dias de Trial Customizados */}
         {targetTier === "trial" && (
-          <div className="flex flex-col gap-1.5">
-            <div className="flex justify-between items-center">
-              <label htmlFor="invite-trial-days" className="text-xs font-semibold text-foreground">
-                Dias de Teste (Trial Estendido)
-              </label>
-              <span className="text-[10px] text-muted-foreground">Padrão: 30 dias</span>
-            </div>
+          <FormField
+            label="Dias de Teste (Trial Estendido)"
+            htmlFor="invite-trial-days"
+            helperText="Padrão: 30 dias"
+          >
             <Input
               id="invite-trial-days"
               type="number"
@@ -184,7 +180,7 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
               onChange={(e) => setCustomTrialDays(e.target.value ? parseInt(e.target.value, 10) : "")}
               placeholder="30"
             />
-          </div>
+          </FormField>
         )}
 
         {/* Configuração Modular de Acesso (Vitalício Restrito / Convite Customizado) */}
@@ -250,10 +246,11 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
         {/* Parâmetros Adicionais em Grid Responsivo (Mobile: 1 coluna, Desktop: 2 colunas) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
           {/* Limite de Usos */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="invite-max-uses" className="text-xs font-semibold text-foreground">
-              Limite Máximo de Usos
-            </label>
+          <FormField
+            label="Limite Máximo de Usos"
+            htmlFor="invite-max-uses"
+            helperText="Contas que podem resgatar este código (padrão: 1)."
+          >
             <Input
               id="invite-max-uses"
               type="number"
@@ -263,19 +260,15 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
               onChange={(e) => setMaxUses(Math.max(1, parseInt(e.target.value, 10) || 1))}
               required
             />
-            <span className="text-[11px] text-muted-foreground">
-              Contas que podem resgatar este código (padrão: 1).
-            </span>
-          </div>
+          </FormField>
 
           {/* E-mail Alvo Restrito */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex justify-between items-center">
-              <label htmlFor="invite-target-email" className="text-xs font-semibold text-foreground">
-                Restringir a E-mail
-              </label>
-              <span className="text-[10px] text-muted-foreground">Opcional</span>
-            </div>
+          <FormField
+            label="Restringir a E-mail"
+            optional
+            htmlFor="invite-target-email"
+            helperText="Deixe vazio para permitir qualquer e-mail."
+          >
             <Input
               id="invite-target-email"
               type="email"
@@ -283,34 +276,19 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
               onChange={(e) => setTargetEmail(e.target.value)}
               placeholder="usuario@exemplo.com"
             />
-            <span className="text-[11px] text-muted-foreground">
-              Deixe vazio para permitir qualquer e-mail.
-            </span>
-          </div>
+          </FormField>
 
           {/* Data de Expiração */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex justify-between items-center">
-              <label htmlFor="invite-expires" className="text-xs font-semibold text-foreground">
-                Validade do Convite
-              </label>
-              <span className="text-[11px] text-muted-foreground">(opcional)</span>
-            </div>
+          <FormField label="Validade do Convite" optional htmlFor="invite-expires">
             <DatePicker
               value={expiresAt}
               onValueChange={setExpiresAt}
               placeholder="Sem expiração (Permanente)"
             />
-          </div>
+          </FormField>
 
           {/* Observações / Notas */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex justify-between items-center">
-              <label htmlFor="invite-notes" className="text-xs font-semibold text-foreground">
-                Observações Administrativas
-              </label>
-              <span className="text-[11px] text-muted-foreground">(opcional)</span>
-            </div>
+          <FormField label="Observações Administrativas" optional htmlFor="invite-notes">
             <Input
               id="invite-notes"
               type="text"
@@ -318,7 +296,7 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Ex: Beta Tester / Parceria VIP"
             />
-          </div>
+          </FormField>
         </div>
 
         {/* Ações */}

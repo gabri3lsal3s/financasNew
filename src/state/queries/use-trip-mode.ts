@@ -1,4 +1,5 @@
 import { useUserPreferences } from "@/state/queries/use-user-preferences";
+import { useUserAccess } from "@/state/queries/use-user-access";
 import { useUpdateCustomSettings } from "@/state/mutations/use-preference-mutations";
 import { useDemoSession } from "@/state/demo-mode";
 import { triggerSensory } from "@/services/sensory";
@@ -8,23 +9,26 @@ import { pushToast } from "@/services/toast";
  * Hook centralizado para controle e leitura do Modo Viagem.
  *
  * Por padrão, o Modo Viagem inicia desabilitado (`false`).
- * Quando desabilitado, os atalhos de navegação e seletores no wizard são
- * ocultados na interface, deixando a experiência focada para o dia a dia.
- * No modo demo / simulação, é automaticamente mantido ativo (`true`) para o tour.
- *
- * Invariante de Dados:
- * Desativar o Modo Viagem NÃO remove, NÃO altera e NÃO inutiliza nenhuma viagem,
- * membro, despesa compartilhada ou liquidação; todos os dados permanecem íntegros
- * na nuvem e voltam a ser exibidos normalmente ao reativar o modo.
+ * Quando desabilitado ou quando o usuário possui licença restrita a Investimentos,
+ * os atalhos de navegação e seletores são ocultados na interface.
  */
 export function useTripMode() {
   const { isDemoActive } = useDemoSession();
+  const { hasFeature } = useUserAccess();
   const preferencesQuery = useUserPreferences();
   const updateSettingsMutation = useUpdateCustomSettings();
 
-  const isTripModeEnabled = isDemoActive
-    ? true
-    : (preferencesQuery.data?.custom_settings?.tripModeEnabled ?? true);
+  const hasFinanceFeatures =
+    hasFeature("transactions") ||
+    hasFeature("cards") ||
+    hasFeature("debts") ||
+    hasFeature("budgets");
+
+  const isTripModeEnabled = !hasFinanceFeatures
+    ? false
+    : isDemoActive
+      ? true
+      : (preferencesQuery.data?.custom_settings?.tripModeEnabled ?? true);
 
   const toggleTripMode = async (enabled: boolean): Promise<void> => {
     if (isDemoActive) return;

@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { BrandLogo, ThemeToggle } from "@/components/layout";
 import { triggerSensory } from "@/services/sensory";
+import { resolvePlanFromQuery } from "@/domain/subscription";
 import type { SubscriptionPlan } from "@/types";
 
 const PRO_BENEFITS = [
@@ -48,7 +49,7 @@ export function SubscriptionSuccessPage() {
   const planoParam = searchParams.get("plano");
   const metodoParam = searchParams.get("metodo");
 
-  const plan: SubscriptionPlan = planoParam === "pro-mensal" ? "monthly" : "annual";
+  const plan: SubscriptionPlan = resolvePlanFromQuery(planoParam);
   const isAnnual = plan === "annual";
   const isPix = metodoParam === "pix";
 
@@ -139,7 +140,7 @@ export function SubscriptionSuccessPage() {
                       {planTitle}
                     </span>
                     <Badge variant="positive" size="xs">
-                      {isAnnual ? "Economia de 25%" : "Mensal"}
+                      {isAnnual ? "Economia de 40%" : "Mensal"}
                     </Badge>
                   </div>
                 </div>

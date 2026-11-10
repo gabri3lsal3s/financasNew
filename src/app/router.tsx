@@ -176,6 +176,9 @@ const ROUTE_FEATURE_MAP: Record<string, string> = {
   "/insights": "insights",
   "/investments": "investments",
   "/lembretes": "reminders",
+  "/familia": "transactions",
+  "/viagens": "transactions",
+  "/viagens/:id": "transactions",
 };
 
 /**

@@ -9,6 +9,7 @@ import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 
 export interface DatePickerProps {
+  id?: string;
   /** Data selecionada (ISO yyyy-MM-dd) ou vazia. */
   value: string;
   onValueChange?: (value: string) => void;
@@ -112,6 +113,7 @@ function ThemedDayButton({ modifiers, className, ...props }: DayButtonProps) {
 
 /** DatePicker próprio do app (Radix Popover + DayPicker com Grade de Mês e Ano §F75) — substitui `<input type="date">` nativo. */
 export function DatePicker({
+  id,
   value,
   onValueChange,
   onChange,
@@ -367,6 +369,7 @@ export function DatePicker({
     <PopoverPrimitive.Root open={open} onOpenChange={handleOpenChange}>
       <PopoverPrimitive.Trigger asChild disabled={disabled}>
         <button
+          id={id}
           type="button"
           aria-label={ariaLabel}
           className={cn(

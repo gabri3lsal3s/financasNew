@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { PortfolioActivityPanel, PortfolioImportDialog } from "../components";
 
 /**
@@ -9,6 +10,10 @@ import { PortfolioActivityPanel, PortfolioImportDialog } from "../components";
  */
 export function MovimentacoesTab() {
   const [importOpen, setImportOpen] = useState(false);
+  const { guardAction, upgradeModal } = useMutationGuard({
+    moduleKey: "investments",
+    defaultContext: "Importar Carteira / Movimentações",
+  });
 
   return (
     <div className="flex flex-col gap-5">
@@ -28,7 +33,7 @@ export function MovimentacoesTab() {
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => setImportOpen(true)}
+          onClick={() => guardAction(() => setImportOpen(true))}
           className="h-8 text-xs gap-1.5 shrink-0 sm:flex-initial"
         >
           <Upload className="size-3.5 text-portfolio" aria-hidden="true" />
@@ -37,6 +42,7 @@ export function MovimentacoesTab() {
       </section>
 
       <PortfolioImportDialog open={importOpen} onOpenChange={setImportOpen} />
+      {upgradeModal}
     </div>
   );
 }

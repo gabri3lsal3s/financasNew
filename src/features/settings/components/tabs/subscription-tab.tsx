@@ -42,6 +42,7 @@ import { formatCardNumber, formatCardExpiry } from "@/services/masks";
 import { useInvoices } from "@/state/queries/use-invoices";
 import { cn } from "@/lib/utils";
 import { calculateGuaranteeResidual } from "@/domain/subscription";
+import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import type { SubscriptionPlan, SubscriptionStatus } from "@/types";
 
 /**
@@ -101,7 +102,7 @@ export function SubscriptionTab() {
 
   const handleProceedToCheckout = (plan: SubscriptionPlan) => {
     setUpgradeOpen(false);
-    navigate(`/assinatura?plano=${plan}`);
+    navigate(buildCheckoutUrl({ plan }));
   };
 
   const handleCancelConfirm = async () => {

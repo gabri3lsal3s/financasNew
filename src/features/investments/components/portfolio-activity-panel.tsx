@@ -7,10 +7,8 @@ import {
   History,
   Layers,
   Pencil,
-  Search,
   Trash2,
   Wallet,
-  X,
 } from "lucide-react";
 import {
   Badge,
@@ -18,7 +16,7 @@ import {
   Checkbox,
   ConfirmDialog,
   EmptyState,
-  Input,
+  SearchInput,
   SkeletonTable,
 } from "@/components/ui";
 import { MonthPicker } from "@/components/modules";
@@ -35,6 +33,7 @@ import { pushToast } from "@/services/toast";
 import { ContributionFormDialog } from "./contribution-form-dialog";
 import { DividendFormDialog } from "./dividend-form-dialog";
 import { TransactionFormDialog } from "./transaction-form-dialog";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import {
   useAllPortfolioTransactions,
   useDeletePortfolioContribution,
@@ -78,6 +77,7 @@ export interface PortfolioActivityPanelProps {
  * resumo de fluxo mensal e visualização de impacto financeiro.
  */
 export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelProps) {
+  const { guardAction, upgradeModal } = useMutationGuard({ moduleKey: "investments" });
   const [month, setMonth] = useState(() => defaultMonth ?? currentMonth());
   const [filterType, setFilterType] = useState<ActivityFilterType>("all");
   const [search, setSearch] = useState("");
@@ -507,26 +507,14 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
 
         {/* Barra de Filtros e Busca */}
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between min-w-0">
-          <div className="relative flex-1 w-full min-w-0">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por ativo ou observação…"
-              aria-label="Buscar movimentações"
-              className={cn("pl-8 w-full", search ? "pr-8" : "")}
-            />
-            {search ? (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                aria-label="Limpar busca"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5 transition-colors"
-              >
-                <X className="size-3.5" aria-hidden="true" />
-              </button>
-            ) : null}
-          </div>
+          <SearchInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onClear={() => setSearch("")}
+            placeholder="Buscar por ativo ou observação…"
+            aria-label="Buscar movimentações"
+            className="w-full"
+          />
 
           <div className="flex flex-wrap items-center gap-1.5 shrink-0">
             <button
@@ -772,16 +760,18 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            const divToEdit: PortfolioDividend = item.rawDividend ?? {
-                              id: item.id.replace(/^div-/, "").replace(/^tx-/, ""),
-                              user_id: item.rawTransaction?.user_id ?? "",
-                              asset_id: item.rawTransaction?.asset_id ?? null,
-                              ticker: item.ticker,
-                              date: item.date,
-                              amount: item.total,
-                              sync_cash: false,
-                            };
-                            setEditingDividend(divToEdit);
+                            guardAction(() => {
+                              const divToEdit: PortfolioDividend = item.rawDividend ?? {
+                                id: item.id.replace(/^div-/, "").replace(/^tx-/, ""),
+                                user_id: item.rawTransaction?.user_id ?? "",
+                                asset_id: item.rawTransaction?.asset_id ?? null,
+                                ticker: item.ticker,
+                                date: item.date,
+                                amount: item.total,
+                                sync_cash: false,
+                              };
+                              setEditingDividend(divToEdit);
+                            }, "Editar Provento");
                           }}
                           className="size-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
                           title="Editar provento"
@@ -795,15 +785,17 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            const contribToEdit: PortfolioContribution = item.rawContribution ?? {
-                              id: item.id.replace(/^contrib-/, ""),
-                              user_id: "",
-                              asset_id: item.rawTransaction?.asset_id ?? null,
-                              date: item.date,
-                              amount: item.total,
-                              notes: item.notes ?? null,
-                            };
-                            setEditingContribution(contribToEdit);
+                            guardAction(() => {
+                              const contribToEdit: PortfolioContribution = item.rawContribution ?? {
+                                id: item.id.replace(/^contrib-/, ""),
+                                user_id: "",
+                                asset_id: item.rawTransaction?.asset_id ?? null,
+                                date: item.date,
+                                amount: item.total,
+                                notes: item.notes ?? null,
+                              };
+                              setEditingContribution(contribToEdit);
+                            }, "Editar Aporte");
                           }}
                           className="size-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
                           title="Editar aporte"
@@ -817,14 +809,16 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            const asset = assetMap.get(item.rawTransaction!.asset_id);
-                            if (asset) {
-                              setEditingTx({
-                                transaction: item.rawTransaction!,
-                                asset,
-                                linkedContribution: item.linkedContribution,
-                              });
-                            }
+                            guardAction(() => {
+                              const asset = assetMap.get(item.rawTransaction!.asset_id);
+                              if (asset) {
+                                setEditingTx({
+                                  transaction: item.rawTransaction!,
+                                  asset,
+                                  linkedContribution: item.linkedContribution,
+                                });
+                              }
+                            }, "Editar Operação");
                           }}
                           className="size-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
                           title="Editar movimentação"
@@ -838,7 +832,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => setItemToDelete(item)}
+                        onClick={() => guardAction(() => setItemToDelete(item), "Excluir Movimentação")}
                         className="size-7 p-0 text-muted-foreground hover:text-negative-strong cursor-pointer"
                         title="Excluir movimentação"
                         aria-label={`Excluir movimentação de ${item.ticker}`}
@@ -947,6 +941,8 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
           contribution={editingContribution}
         />
       )}
+
+      {upgradeModal}
     </>
   );
 }

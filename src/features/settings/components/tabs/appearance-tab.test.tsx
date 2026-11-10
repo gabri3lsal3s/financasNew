@@ -20,6 +20,12 @@ vi.mock("@/state", () => ({
     isLoading: false,
     isPending: false,
   }),
+  useTripMode: () => ({
+    isTripModeEnabled: false,
+    toggleTripMode: vi.fn(),
+    isLoading: false,
+    isPending: false,
+  }),
   useMyPublicShares: () => ({
     data: [],
     isLoading: false,

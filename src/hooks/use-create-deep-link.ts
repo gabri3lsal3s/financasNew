@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
+import { useUserSubscription } from "@/state/queries/use-user-subscription";
 
 export interface UseCreateDeepLinkOptions {
   /** Se ativo (modo somente-leitura), bloqueia a abertura do diálogo e limpa o deep-link. */
@@ -28,9 +29,13 @@ export function useCreateDeepLink(
   fromUrl: boolean;
   isReadOnly: boolean;
 } {
+  const subscription = useUserSubscription();
   const param = typeof paramOrOptions === "string" ? paramOrOptions : "novo";
   const options = typeof paramOrOptions === "object" ? paramOrOptions : maybeOptions;
-  const isReadOnly = Boolean(options?.isReadOnly);
+  const isReadOnly =
+    options?.isReadOnly !== undefined
+      ? Boolean(options.isReadOnly)
+      : Boolean(subscription?.isReadOnly || !subscription?.canWrite);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [localOpen, setLocalOpen] = useState(false);

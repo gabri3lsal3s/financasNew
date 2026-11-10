@@ -33,6 +33,7 @@ import {
   useSaveGroupTarget,
   useUpdateAllocationPreset,
 } from "@/state";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { AllocationBreakdownDialog, AssetDetailSheet } from "../components";
 import { TargetAssetsCard, TargetClassesCard, TargetSectorsCard } from "../components/targets";
 
@@ -44,6 +45,10 @@ import { TargetAssetsCard, TargetClassesCard, TargetSectorsCard } from "../compo
  * Suporte a cenários estratégicos (presets), normalização em 1-clique e validações estritas (<= 100%).
  */
 export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
+  const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard({
+    moduleKey: "investments",
+    defaultContext: "Definir Metas de Alocação",
+  });
   const position = usePortfolioPosition();
   const targetsQuery = useAllocationTargets();
   const classTargetsQuery = useGroupTargets("class");
@@ -273,6 +278,10 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   };
 
   const saveAssets = async () => {
+    if (isReadOnlyMode) {
+      guardAction(() => {}, "Definir Metas de Alocação");
+      return;
+    }
     setError(null);
     setSaved(false);
     try {
@@ -292,6 +301,10 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   };
 
   const saveClass = async (className: string) => {
+    if (isReadOnlyMode) {
+      guardAction(() => {}, "Definir Metas de Classes");
+      return;
+    }
     setError(null);
     setSavingClass(className);
     try {
@@ -306,6 +319,10 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   };
 
   const removeClass = async (className: string) => {
+    if (isReadOnlyMode) {
+      guardAction(() => {}, "Remover Meta de Classe");
+      return;
+    }
     setError(null);
     setSavingClass(className);
     try {
@@ -324,6 +341,10 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   };
 
   const saveAllClasses = async () => {
+    if (isReadOnlyMode) {
+      guardAction(() => {}, "Definir Metas de Classes");
+      return;
+    }
     setError(null);
     setSavingClass("all");
     try {
@@ -341,6 +362,10 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   };
 
   const saveSector = async (sectorName: string) => {
+    if (isReadOnlyMode) {
+      guardAction(() => {}, "Definir Metas Setoriais");
+      return;
+    }
     setError(null);
     setSavingSector(sectorName);
     try {
@@ -355,6 +380,10 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   };
 
   const removeSector = async (sectorName: string) => {
+    if (isReadOnlyMode) {
+      guardAction(() => {}, "Remover Meta Setorial");
+      return;
+    }
     setError(null);
     setSavingSector(sectorName);
     try {
@@ -373,6 +402,10 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   };
 
   const saveAllSectorsForClass = async () => {
+    if (isReadOnlyMode) {
+      guardAction(() => {}, "Definir Metas Setoriais");
+      return;
+    }
     setError(null);
     setSavingSector("all");
     try {
@@ -533,6 +566,10 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   };
 
   const handleSaveNewPreset = async (name: string, description?: string | null) => {
+    if (isReadOnlyMode) {
+      guardAction(() => {}, "Salvar Cenário de Alocação");
+      return;
+    }
     const snapshot = createPresetSnapshot({
       name,
       description,
@@ -559,6 +596,10 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   };
 
   const handleOverwritePreset = async () => {
+    if (isReadOnlyMode) {
+      guardAction(() => {}, "Atualizar Cenário de Alocação");
+      return;
+    }
     if (!currentActiveUserPreset) return;
 
     const snapshot = createPresetSnapshot({
@@ -589,6 +630,10 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   };
 
   const handleDeletePreset = async (id: string) => {
+    if (isReadOnlyMode) {
+      guardAction(() => {}, "Excluir Cenário de Alocação");
+      return;
+    }
     await deletePreset.mutateAsync(id);
     if (selectedPresetId === id) {
       handleSelectPreset("official");
@@ -826,6 +871,8 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
           asset={detailAsset}
         />
       ) : null}
+
+      {upgradeModal}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, RotateCcw, Trash2 } from "lucide-react";
-import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, ModalFooter, MoneyInput, RadioGroup, Select } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, DatePicker, FormField, Input, Modal, ModalFooter, MoneyInput, RadioGroup, Select } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateDebt, useUpdateDebt } from "@/state";
 import type { Debt, DebtType, InstallmentDeleteMode } from "@/types";
@@ -77,12 +77,9 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
     >
       {error ? <Alert variant="error">{error}</Alert> : null}
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="debt-name" className="text-xs font-semibold text-foreground">
-          Nome
-        </label>
+      <FormField label="Nome" htmlFor="debt-name">
         <Input id="debt-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Conta de luz" />
-      </div>
+      </FormField>
 
       <RadioGroup
         value={type}
@@ -95,17 +92,13 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="debt-amount" className="text-xs font-semibold text-foreground">
-            Valor
-          </label>
+        <FormField label="Valor" htmlFor="debt-amount">
           <MoneyInput id="debt-amount" cents={cents} onCentsChange={setCents} aria-label="Valor da dívida" />
-        </div>
+        </FormField>
 
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-foreground">Vencimento</span>
-          <DatePicker value={dueDate} onValueChange={setDueDate} ariaLabel="Vencimento da dívida" />
-        </div>
+        <FormField label="Vencimento" htmlFor="debt-due-date">
+          <DatePicker id="debt-due-date" value={dueDate} onValueChange={setDueDate} ariaLabel="Vencimento da dívida" />
+        </FormField>
       </div>
 
       {debt?.paid_at ? (

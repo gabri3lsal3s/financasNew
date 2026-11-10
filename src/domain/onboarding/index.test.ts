@@ -11,48 +11,93 @@ import {
 } from "./index";
 import type { OnboardingCounts } from "./index";
 
-const empty: OnboardingCounts = { expenseCategories: 0, incomeCategories: 0, cards: 0, transactions: 0, notificationsEnabled: false };
+const empty: OnboardingCounts = {
+  expenseCategories: 0,
+  incomeCategories: 0,
+  cards: 0,
+  transactions: 0,
+  portfolioAssets: 0,
+  portfolioTransactions: 0,
+  notificationsEnabled: false,
+};
 
-const full: OnboardingCounts = { expenseCategories: 1, incomeCategories: 1, cards: 1, transactions: 1, notificationsEnabled: true };
+const full: OnboardingCounts = {
+  expenseCategories: 1,
+  incomeCategories: 1,
+  cards: 1,
+  transactions: 1,
+  portfolioAssets: 1,
+  portfolioTransactions: 1,
+  notificationsEnabled: true,
+};
 
 describe("onboardingSteps — checklist derivado das contagens", () => {
-  it("conta vazia → todos os passos pendentes", () => {
+  it("conta vazia sem filtro de feature → todos os 7 passos pendentes", () => {
     const steps = onboardingSteps(empty);
-    expect(steps).toHaveLength(5);
+    expect(steps).toHaveLength(7);
     expect(steps.every((step) => !step.done)).toBe(true);
   });
 
+  it("filtra exclusivamente passos do módulo de investimentos quando hasFeature permite apenas investments", () => {
+    const hasOnlyInvestments = (key: string) => key === "investments";
+    const steps = onboardingSteps(empty, hasOnlyInvestments);
+    expect(steps).toHaveLength(2);
+    expect(steps.map((s) => s.id)).toEqual(["portfolio-asset", "portfolio-transaction"]);
+    expect(steps.every((s) => !s.done)).toBe(true);
+  });
+
+  it("filtra exclusivamente passos de finanças quando hasFeature permite apenas finanças", () => {
+    const hasFinances = (key: string) => key === "budgets" || key === "cards" || key === "transactions";
+    const steps = onboardingSteps(empty, hasFinances);
+    expect(steps).toHaveLength(4);
+    expect(steps.map((s) => s.id)).toEqual([
+      "expense-category",
+      "income-category",
+      "card",
+      "first-transaction",
+    ]);
+  });
+
   it("cada passo fica done quando há dados do tipo correspondente", () => {
-    const steps = onboardingSteps({ expenseCategories: 1, incomeCategories: 0, cards: 0, transactions: 0, notificationsEnabled: false });
+    const counts = {
+      expenseCategories: 1,
+      incomeCategories: 0,
+      cards: 0,
+      transactions: 0,
+      portfolioAssets: 1,
+      portfolioTransactions: 0,
+      notificationsEnabled: false,
+    };
+    const steps = onboardingSteps(counts);
     expect(steps.find((s) => s.id === "expense-category")?.done).toBe(true);
     expect(steps.find((s) => s.id === "income-category")?.done).toBe(false);
     expect(steps.find((s) => s.id === "card")?.done).toBe(false);
     expect(steps.find((s) => s.id === "first-transaction")?.done).toBe(false);
+    expect(steps.find((s) => s.id === "portfolio-asset")?.done).toBe(true);
+    expect(steps.find((s) => s.id === "portfolio-transaction")?.done).toBe(false);
     expect(steps.find((s) => s.id === "bank-notifications")?.done).toBe(false);
-
-    const stepsWithNotif = onboardingSteps({ expenseCategories: 0, incomeCategories: 0, cards: 0, transactions: 0, notificationsEnabled: true });
-    expect(stepsWithNotif.find((s) => s.id === "bank-notifications")?.done).toBe(true);
   });
 
   it("conta completa → todos os passos done", () => {
     const steps = onboardingSteps(full);
-    expect(steps).toHaveLength(5);
+    expect(steps).toHaveLength(7);
     expect(steps.every((step) => step.done)).toBe(true);
   });
 });
 
 describe("onboardingProgress", () => {
-  it("progresso 0/5 para conta vazia", () => {
-    expect(onboardingProgress(empty)).toEqual({ done: 0, total: 5 });
+  it("progresso 0/7 para conta vazia sem filtro", () => {
+    expect(onboardingProgress(empty)).toEqual({ done: 0, total: 7 });
   });
 
-  it("progresso parcial (2/5)", () => {
-    const progress = onboardingProgress({ expenseCategories: 1, incomeCategories: 1, cards: 0, transactions: 0, notificationsEnabled: false });
-    expect(progress).toEqual({ done: 2, total: 5 });
+  it("progresso de usuário que só tem investimentos (1/2)", () => {
+    const hasOnlyInvestments = (key: string) => key === "investments";
+    const counts = { ...empty, portfolioAssets: 1 };
+    expect(onboardingProgress(counts, hasOnlyInvestments)).toEqual({ done: 1, total: 2 });
   });
 
-  it("progresso 5/5 para conta completa", () => {
-    expect(onboardingProgress(full)).toEqual({ done: 5, total: 5 });
+  it("progresso 7/7 para conta completa", () => {
+    expect(onboardingProgress(full)).toEqual({ done: 7, total: 7 });
   });
 });
 
@@ -65,13 +110,21 @@ describe("isOnboardingComplete / isFirstUse", () => {
   it("setup completo apenas com todos os passos", () => {
     expect(isOnboardingComplete(full)).toBe(true);
     expect(isOnboardingComplete({ ...full, cards: 0 })).toBe(false);
-    expect(isOnboardingComplete({ ...full, transactions: 0 })).toBe(false);
-    expect(isOnboardingComplete({ ...full, notificationsEnabled: false })).toBe(false);
+    expect(isOnboardingComplete({ ...full, portfolioAssets: 0 })).toBe(false);
   });
 
-  it("primeiro uso é falso se houver movimentações cadastradas", () => {
+  it("setup completo para perfil exclusivo de investimentos", () => {
+    const hasOnlyInvestments = (key: string) => key === "investments";
+    const counts = { ...empty, portfolioAssets: 1, portfolioTransactions: 1 };
+    expect(isOnboardingComplete(counts, hasOnlyInvestments)).toBe(true);
+    expect(isOnboardingComplete({ ...counts, portfolioTransactions: 0 }, hasOnlyInvestments)).toBe(false);
+  });
+
+  it("primeiro uso é falso se houver movimentações ou ativos cadastrados", () => {
     expect(isFirstUse({ ...empty, cards: 1 })).toBe(false);
     expect(isFirstUse({ ...empty, transactions: 1 })).toBe(false);
+    expect(isFirstUse({ ...empty, portfolioAssets: 1 })).toBe(false);
+    expect(isFirstUse({ ...empty, portfolioTransactions: 1 })).toBe(false);
     expect(isFirstUse({ ...empty, notificationsEnabled: true })).toBe(false);
   });
 
@@ -85,66 +138,78 @@ describe("isUserActive — limiar de atividade para smart dismiss", () => {
     expect(isUserActive(empty)).toBe(false);
   });
 
-  it("verdadeiro com 3 ou mais transações", () => {
+  it("verdadeiro com 3 ou mais transações para usuário de finanças", () => {
     expect(isUserActive({ ...empty, transactions: 3 })).toBe(true);
-    expect(isUserActive({ ...empty, transactions: 10 })).toBe(true);
   });
 
-  it("verdadeiro com ao menos 1 cartão", () => {
+  it("verdadeiro com ao menos 1 cartão para usuário de finanças", () => {
     expect(isUserActive({ ...empty, cards: 1 })).toBe(true);
   });
 
-  it("falso com menos de 3 transações e nenhum cartão", () => {
-    expect(isUserActive({ ...empty, transactions: 2 })).toBe(false);
-    expect(isUserActive({ ...empty, transactions: 1 })).toBe(false);
+  it("verdadeiro com 1 ativo ou 1 transação de carteira para usuário de investimentos", () => {
+    const hasOnlyInvestments = (key: string) => key === "investments";
+    expect(isUserActive({ ...empty, portfolioAssets: 1 }, hasOnlyInvestments)).toBe(true);
+    expect(isUserActive({ ...empty, portfolioTransactions: 1 }, hasOnlyInvestments)).toBe(true);
+    expect(isUserActive(empty, hasOnlyInvestments)).toBe(false);
   });
 
-  it("verdadeiro para conta totalmente completa", () => {
-    expect(isUserActive(full)).toBe(true);
+  it("usuário com apenas investimentos ignora contagem de transações tradicionais", () => {
+    const hasOnlyInvestments = (key: string) => key === "investments";
+    expect(isUserActive({ ...empty, transactions: 5 }, hasOnlyInvestments)).toBe(false);
   });
 });
 
 describe("coreOnboardingSteps — passos sem bank-notifications", () => {
-  it("retorna exatamente 4 passos (sem bank-notifications)", () => {
+  it("retorna exatamente 6 passos core sem filtro de features", () => {
     const steps = coreOnboardingSteps(empty);
-    expect(steps).toHaveLength(4);
+    expect(steps).toHaveLength(6);
     expect(steps.find((s) => s.id === "bank-notifications")).toBeUndefined();
   });
 
-  it("progresso core 0/4 para conta vazia", () => {
-    expect(coreOnboardingProgress(empty)).toEqual({ done: 0, total: 4 });
+  it("progresso core para usuário exclusivo de investimentos (0/2 e 2/2)", () => {
+    const hasOnlyInvestments = (key: string) => key === "investments";
+    expect(coreOnboardingProgress(empty, hasOnlyInvestments)).toEqual({ done: 0, total: 2 });
+    const doneInvestments = { ...empty, portfolioAssets: 1, portfolioTransactions: 1 };
+    expect(coreOnboardingProgress(doneInvestments, hasOnlyInvestments)).toEqual({ done: 2, total: 2 });
   });
 
-  it("progresso core 4/4 mesmo sem notificações ativadas", () => {
-    const countsWithoutNotif = { ...full, notificationsEnabled: false };
-    expect(coreOnboardingProgress(countsWithoutNotif)).toEqual({ done: 4, total: 4 });
+  it("progresso core para usuário de finanças tradicionais (0/4 e 4/4)", () => {
+    const hasFinances = (key: string) => key === "budgets" || key === "cards" || key === "transactions";
+    expect(coreOnboardingProgress(empty, hasFinances)).toEqual({ done: 0, total: 4 });
+    const doneFinances = {
+      ...empty,
+      expenseCategories: 1,
+      incomeCategories: 1,
+      cards: 1,
+      transactions: 1,
+    };
+    expect(coreOnboardingProgress(doneFinances, hasFinances)).toEqual({ done: 4, total: 4 });
   });
 });
 
 describe("shouldShowOnboardingBanner — lógica de exibição do banner", () => {
-  it("exibe para conta nova sem dados", () => {
-    expect(shouldShowOnboardingBanner(empty)).toBe(true);
+  it("exibe para conta nova de finanças sem dados", () => {
+    const hasFinances = (key: string) => key === "budgets" || key === "cards" || key === "transactions";
+    expect(shouldShowOnboardingBanner(empty, hasFinances)).toBe(true);
   });
 
-  it("exibe quando usuário tem 1-2 transações e nenhum cartão (ainda não ativo)", () => {
-    expect(shouldShowOnboardingBanner({ ...empty, transactions: 1 })).toBe(true);
-    expect(shouldShowOnboardingBanner({ ...empty, transactions: 2 })).toBe(true);
+  it("exibe para conta nova de investimentos sem dados", () => {
+    const hasOnlyInvestments = (key: string) => key === "investments";
+    expect(shouldShowOnboardingBanner(empty, hasOnlyInvestments)).toBe(true);
   });
 
-  it("oculta quando usuário tem 3 ou mais transações (smart dismiss)", () => {
-    expect(shouldShowOnboardingBanner({ ...empty, transactions: 3 })).toBe(false);
+  it("oculta para conta de investimentos quando o usuário já tem 1 ativo (smart dismiss)", () => {
+    const hasOnlyInvestments = (key: string) => key === "investments";
+    expect(shouldShowOnboardingBanner({ ...empty, portfolioAssets: 1 }, hasOnlyInvestments)).toBe(false);
   });
 
-  it("oculta quando usuário tem ao menos 1 cartão (smart dismiss)", () => {
-    expect(shouldShowOnboardingBanner({ ...empty, cards: 1 })).toBe(false);
+  it("oculta para conta de finanças quando usuário tem 3 ou mais transações (smart dismiss)", () => {
+    const hasFinances = (key: string) => key === "budgets" || key === "cards" || key === "transactions";
+    expect(shouldShowOnboardingBanner({ ...empty, transactions: 3 }, hasFinances)).toBe(false);
   });
 
-  it("oculta para conta totalmente completa", () => {
-    expect(shouldShowOnboardingBanner(full)).toBe(false);
-  });
-
-  it("bank-notifications pendente não impede o ocultar por atividade", () => {
-    const activeWithoutNotif = { ...full, notificationsEnabled: false };
-    expect(shouldShowOnboardingBanner(activeWithoutNotif)).toBe(false);
+  it("oculta se usuário não possui nenhuma feature habilitada", () => {
+    const hasNoFeatures = () => false;
+    expect(shouldShowOnboardingBanner(empty, hasNoFeatures)).toBe(false);
   });
 });

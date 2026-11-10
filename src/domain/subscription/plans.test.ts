@@ -4,6 +4,8 @@ import {
   calculateAnnualSavingsCents,
   isWithinCoolingOffPeriod,
   calculateCancellationRefund,
+  resolvePlanFromQuery,
+  buildCheckoutUrl,
 } from "./plans";
 
 describe("Domain: Plans & Pricing", () => {
@@ -128,5 +130,32 @@ describe("Domain: CDC & Cancellation Refund Rules", () => {
     expect(refund.eligibleForRefund).toBe(false);
     expect(refund.refundAmountCents).toBe(0);
     expect(refund.monthsRemaining).toBe(0);
+  });
+});
+
+describe("Domain: Plan Query Resolution & Checkout URL Builder", () => {
+  it("resolve plano mensal a partir de sinônimos variados", () => {
+    expect(resolvePlanFromQuery("monthly")).toBe("monthly");
+    expect(resolvePlanFromQuery("pro-mensal")).toBe("monthly");
+    expect(resolvePlanFromQuery("mensal")).toBe("monthly");
+    expect(resolvePlanFromQuery("PRO-MENSAL")).toBe("monthly");
+  });
+
+  it("resolve plano anual a partir de sinônimos e como fallback seguro", () => {
+    expect(resolvePlanFromQuery("annual")).toBe("annual");
+    expect(resolvePlanFromQuery("pro-anual")).toBe("annual");
+    expect(resolvePlanFromQuery("anual")).toBe("annual");
+    expect(resolvePlanFromQuery("")).toBe("annual");
+    expect(resolvePlanFromQuery(null)).toBe("annual");
+    expect(resolvePlanFromQuery(undefined)).toBe("annual");
+    expect(resolvePlanFromQuery("invalido")).toBe("annual");
+  });
+
+  it("constrói URL canônica de checkout de forma determinística", () => {
+    expect(buildCheckoutUrl({ plan: "monthly" })).toBe("/assinatura?plano=pro-mensal");
+    expect(buildCheckoutUrl({ plan: "annual" })).toBe("/assinatura?plano=pro-anual");
+    expect(buildCheckoutUrl({ plan: "pro-mensal" })).toBe("/assinatura?plano=pro-mensal");
+    expect(buildCheckoutUrl({ plan: "annual", method: "pix" })).toBe("/assinatura?plano=pro-anual&metodo=pix");
+    expect(buildCheckoutUrl()).toBe("/assinatura?plano=pro-anual");
   });
 });

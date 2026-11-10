@@ -4,6 +4,7 @@ import { ArrowLeftRight, Briefcase, Coins, Plus, Target, TrendingUp, Wallet } fr
 import { Button, Tabs } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
+import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useAutoPortfolioSnapshot } from "@/hooks/use-auto-portfolio-snapshot";
 import { usePermission } from "@/state";
@@ -211,7 +212,7 @@ export function InvestmentsPage() {
         context={upgradeContext}
         onProceedToCheckout={(p) => {
           setUpgradeOpen(false);
-          navigate(`/assinatura?plano=${p}`);
+          navigate(buildCheckoutUrl({ plan: p }));
         }}
       />
     </div>

@@ -4,7 +4,8 @@ import { ArrowDownLeft, ArrowUpRight, Calendar, Check, ChevronDown, ChevronUp, C
 import { Badge, Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { MoneyText } from "@/components/ui/money-text";
-import { DebtStatusBadge, HighlightRow, ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
+import { DebtStatusBadge, HighlightRow, KpiCard, KpiGrid, ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
+import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import { calculateDebtsSummary, debtStatus, todayISO } from "@/domain/debts";
 import { numberToCents } from "@/domain/money";
 
@@ -155,6 +156,11 @@ export function DebtsPage() {
   };
 
   const handleUnsettle = async (debt: Debt) => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Desmarcar Quitação de Conta");
+      setUpgradeOpen(true);
+      return;
+    }
     try {
       await updateDebt.mutateAsync({
         id: debt.id,
@@ -296,33 +302,15 @@ export function DebtsPage() {
       >
         {/* Resumo financeiro consolidado */}
         {!debtsQuery.isLoading && debts.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-
-            <div className="flex flex-col gap-0.5 sm:gap-1 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-4 shadow-xs">
-              <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
-                A pagar
-              </span>
-              <MoneyText cents={payablePendingCents} tone="negative" animated className="text-sm sm:text-lg font-bold" />
-            </div>
-            <div className="flex flex-col gap-0.5 sm:gap-1 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-4 shadow-xs">
-              <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
-                A receber
-              </span>
-              <MoneyText cents={receivablePendingCents} tone="positive" animated className="text-sm sm:text-lg font-bold" />
-            </div>
-            <div className="flex flex-col gap-0.5 sm:gap-1 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-4 shadow-xs">
-              <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
-                Saldo pendente
-              </span>
-              <MoneyText
-                cents={netPendingCents}
-                tone={netPendingCents >= 0 ? "positive" : "negative"}
-                sign="auto"
-                animated
-                className="text-sm sm:text-lg font-bold"
-              />
-            </div>
-          </div>
+          <KpiGrid columns={3}>
+            <KpiCard label="A pagar" cents={payablePendingCents} tone="negative" />
+            <KpiCard label="A receber" cents={receivablePendingCents} tone="positive" />
+            <KpiCard
+              label="Saldo pendente"
+              cents={netPendingCents}
+              tone={netPendingCents >= 0 ? "positive" : "negative"}
+            />
+          </KpiGrid>
         )}
 
         {debtsQuery.isLoading ? (
@@ -632,7 +620,7 @@ export function DebtsPage() {
         context={upgradeContext}
         onProceedToCheckout={(p) => {
           setUpgradeOpen(false);
-          navigate(`/assinatura?plano=${p}`);
+          navigate(buildCheckoutUrl({ plan: p }));
         }}
       />
     </div>

@@ -1,5 +1,17 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.0.21 (Build 50)** registra a **Blindagem Estrita do Modo Somente Leitura e Restrições de Perfil (Apenas Investimentos)** (2026-11-10):
+> - **(1) Blindagem Completa contra Mutações em Modo Somente Leitura**:
+>   - Centralização e padronização através de `useMutationGuard({ moduleKey })`: qualquer tentativa de inserção, edição ou exclusão (lançamentos de receitas/despesas, criação/edição de categorias, exclusão/rachamento de despesas, importação de extratos/planilhas, aportes, proventos, metas de carteira, desmarcar quitações de dívidas e inativação de cartões) é imediatamente interceptada e direcionada ao `UpgradeDialog`;
+>   - Deep links de criação rápida via URL (`?novo=...`) são sanitizados e bloqueados preventivamente em modo somente leitura via `useCreateDeepLink`;
+>   - Acesso de visualização, navegação completa, auditoria e geração/exportação de relatórios permanecem 100% funcionais e desobstruídos;
+> - **(2) Restrições do Perfil 'Apenas Investimentos'**:
+>   - Módulos de despesas e ferramentas de uso diário restritas conforme especificação;
+>   - Modo Viagem (`useTripMode`) e Modo Familiar (`useFamilyMode`) com restrição ativa quando ausentes no plano;
+>   - Relatórios executivos e contábeis de Investimentos (Alocação, Ativos, Proventos e Tear Sheet) 100% liberados e acessíveis;
+> - **(3) Quality Gates 100% Verdes**:
+>   - Typecheck (`tsc -b`): 0 erros; ESLint (`eslint .`): 0 erros; Vitest: 100% aprovados; Build de produção Vite e PWA gerados com sucesso.
+>
 > **v3.0.20 (Build 49)** registra o **Desacoplamento de Módulos do Plano Base e Isolamento de Funcionalidades Beta com Permissões Granulares Responsivas** (2026-11-10):
 > - **(1) Permissões Modulares Responsivas ao Plano Base**:
 >   - Módulos Core (`overview`, `transactions`, `cards`, `debts`, `budgets`, `investments`, `reports`, `insights`, `reminders`) agora derivam seu acesso dinamicamente e em tempo real do tier e status da assinatura (`subscription.canWrite ? 'write' : 'read'`);

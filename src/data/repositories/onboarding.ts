@@ -24,7 +24,10 @@ interface CountQuery {
  * O `count` vem no topo do resultado do builder (mesmo padrão de
  * `getCategoryUsage` em categories.ts) — sem passar por resolveQuery.
  */
-async function count(table: "categories" | "credit_cards" | "expenses" | "incomes", filters: CountFilter[] = []): Promise<number> {
+async function count(
+  table: "categories" | "credit_cards" | "expenses" | "incomes" | "portfolio_assets" | "portfolio_transactions",
+  filters: CountFilter[] = [],
+): Promise<number> {
   let query = getSupabase()
     .from(table)
     .select("id", { count: "exact", head: true }) as unknown as CountQuery;
@@ -40,11 +43,19 @@ async function count(table: "categories" | "credit_cards" | "expenses" | "income
 /**
  * Snapshot de dados para o onboarding de primeiro uso (§5.7): contagens
  * paralelas de categorias do usuário (is_reserved = false — as reservadas
- * são do sistema), cartões e lançamentos. Falha de rede propaga como
- * AppError (a UI trata via gateway + retry).
+ * são do sistema), cartões, lançamentos e posições/transações de investimento.
+ * Falha de rede propaga como AppError (a UI trata via gateway + retry).
  */
 export async function getOnboardingCounts(): Promise<OnboardingCounts> {
-  const [expenseCategories, incomeCategories, cards, expenses, incomes] = await Promise.all([
+  const [
+    expenseCategories,
+    incomeCategories,
+    cards,
+    expenses,
+    incomes,
+    portfolioAssets,
+    portfolioTransactions,
+  ] = await Promise.all([
     count("categories", [
       { column: "type", value: "expense" },
       { column: "is_reserved", value: false },
@@ -56,7 +67,16 @@ export async function getOnboardingCounts(): Promise<OnboardingCounts> {
     count("credit_cards"),
     count("expenses"),
     count("incomes"),
+    count("portfolio_assets"),
+    count("portfolio_transactions"),
   ]);
 
-  return { expenseCategories, incomeCategories, cards, transactions: expenses + incomes };
+  return {
+    expenseCategories,
+    incomeCategories,
+    cards,
+    transactions: expenses + incomes,
+    portfolioAssets,
+    portfolioTransactions,
+  };
 }

@@ -93,6 +93,23 @@ export function RegisterPage() {
   const metodoParam = searchParams.get("metodo");
   const isFromSimulator = searchParams.get("from") === "simulador" || !!getPendingSimulation();
 
+  const loginUrl = useMemo(() => {
+    const params = new URLSearchParams();
+    if (email) params.set("email", email);
+    if (planoParam) params.set("plano", planoParam);
+    if (metodoParam) params.set("metodo", metodoParam);
+    const qs = params.toString();
+    return qs ? `/entrar?${qs}` : "/entrar";
+  }, [email, planoParam, metodoParam]);
+
+  const bottomLoginUrl = useMemo(() => {
+    const params = new URLSearchParams();
+    if (planoParam) params.set("plano", planoParam);
+    if (metodoParam) params.set("metodo", metodoParam);
+    const qs = params.toString();
+    return qs ? `/entrar?${qs}` : "/entrar";
+  }, [planoParam, metodoParam]);
+
   const requirements = useMemo(() => checkPasswordRequirements(password), [password]);
   const metCount = useMemo(
     () => Object.values(requirements).filter(Boolean).length,
@@ -250,7 +267,7 @@ export function RegisterPage() {
             </div>
 
             <Link
-              to="/entrar"
+              to={loginUrl}
               className={cn(buttonVariants({ variant: "default" }), "w-full text-xs h-9 font-semibold gap-1.5 rounded-xl")}
             >
               <span>Ir para o login</span>
@@ -499,7 +516,7 @@ export function RegisterPage() {
           <p className="text-muted-foreground">
             Já tem conta?{" "}
             <Link
-              to="/entrar"
+              to={bottomLoginUrl}
               className="text-primary-strong font-semibold hover:text-primary hover:underline transition-colors"
             >
               Entrar

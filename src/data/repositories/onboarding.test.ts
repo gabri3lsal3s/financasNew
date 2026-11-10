@@ -40,10 +40,21 @@ describe("getOnboardingCounts — onboarding de primeiro uso (§5.7)", () => {
     builder = makeBuilder({ count: 0, error: null });
   });
 
-  it("conta categorias (não reservadas), cartões e lançamentos em paralelo", async () => {
+  it("conta categorias (não reservadas), cartões, lançamentos e investimentos em paralelo", async () => {
     builder = makeBuilder({ count: 2, error: null });
     const counts = await getOnboardingCounts();
-    expect(counts).toEqual({ expenseCategories: 2, incomeCategories: 2, cards: 2, transactions: 4 });
+    expect(counts).toEqual({
+      expenseCategories: 2,
+      incomeCategories: 2,
+      cards: 2,
+      transactions: 4,
+      portfolioAssets: 2,
+      portfolioTransactions: 2,
+    });
+
+    const tablesCalled = calls.map((c) => c.table);
+    expect(tablesCalled).toContain("portfolio_assets");
+    expect(tablesCalled).toContain("portfolio_transactions");
   });
 
   it("aplica o filtro de categorias do usuário (is_reserved = false)", async () => {

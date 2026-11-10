@@ -1,8 +1,7 @@
 import { useNavigate, useSearchParams } from "react-router";
 import { useCallback, useMemo, useState } from "react";
-import { ArrowLeftRight, Calendar, ChevronDown, Download, Plus, Search, Sparkles, X } from "lucide-react";
+import { ArrowLeftRight, Calendar, ChevronDown, Download, Plus, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 
@@ -10,8 +9,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { MoneyText } from "@/components/ui/money-text";
 import { SkeletonList } from "@/components/ui/skeleton";
-import { Tabs } from "@/components/ui/tabs";
-import { HighlightRow, KpiCard, MonthPicker, ReadOnlyBanner, SplitPreviewMockupCard, TransactionRow, UpgradeDialog } from "@/components/modules";
+import { SearchInput, Tabs } from "@/components/ui";
+import { HighlightRow, KpiCard, KpiGrid, MonthPicker, ReadOnlyBanner, SplitPreviewMockupCard, TransactionRow, UpgradeDialog } from "@/components/modules";
+import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import { currentMonth, formatDateBR, isValidMonth, shiftMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { downloadCsv } from "@/services/export-actions";
@@ -362,7 +362,7 @@ export function TransactionListPage() {
 
       <MonthPicker value={month} onValueChange={handleMonthChange} />
 
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
+      <KpiGrid columns={3}>
         <KpiCard
           label="Receitas"
           cents={incomesTotalCents}
@@ -405,7 +405,7 @@ export function TransactionListPage() {
             ) : undefined
           }
         />
-      </div>
+      </KpiGrid>
 
       <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
         <Button className="w-full sm:flex-1 gap-1.5" onClick={handleNewTransaction}>
@@ -442,27 +442,14 @@ export function TransactionListPage() {
           ]}
         />
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
-          <Input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar por descrição ou categoria…"
-            className="pl-9 pr-9 text-xs sm:text-sm h-9.5 bg-surface"
-            aria-label="Buscar lançamentos"
-          />
-          {searchQuery ? (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              aria-label="Limpar campo de busca"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground rounded-full hover:bg-surface-hover transition-colors cursor-pointer"
-            >
-              <X className="size-3.5" aria-hidden="true" />
-            </button>
-          ) : null}
-        </div>
+        <SearchInput
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onClear={() => setSearchQuery("")}
+          placeholder="Buscar por descrição ou categoria…"
+          aria-label="Buscar lançamentos"
+          className="h-9.5 text-xs sm:text-sm bg-surface"
+        />
       </div>
 
       {error ? (
@@ -706,7 +693,7 @@ export function TransactionListPage() {
         context={upgradeContext}
         onProceedToCheckout={(p) => {
           setUpgradeOpen(false);
-          navigate(`/assinatura?plano=${p}`);
+          navigate(buildCheckoutUrl({ plan: p }));
         }}
       />
     </div>

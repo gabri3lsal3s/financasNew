@@ -437,19 +437,21 @@ export function ExpenseDetailDialog({
   const [isEditing, setIsEditing] = useState(initialEditing);
   const [prevOpen, setPrevOpen] = useState(open);
 
-  if (open !== prevOpen) {
-    setPrevOpen(open);
-    if (open) {
-      setIsEditing(initialEditing);
-    }
-  }
+  const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard({ moduleKey: "transactions" });
+
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [splitOpen, setSplitOpen] = useState(false);
   const [mode, setMode] = useState<InstallmentDeleteMode>("single");
   const [editScope, setEditScope] = useState<InstallmentDeleteMode>("single");
   const [tripDeleteMode, setTripDeleteMode] = useState<TripDeleteMode>("both");
   const [error, setError] = useState<string | null>(null);
-  const { guardAction, upgradeModal } = useMutationGuard();
+
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setIsEditing(isReadOnlyMode ? false : initialEditing);
+    }
+  }
 
   const categoriesQuery = useCategories("expense");
   const cardsQuery = useCreditCards();
@@ -951,7 +953,7 @@ export function ExpenseDetailDialog({
                         variant="outline"
                         size="sm"
                         className="gap-1.5 px-2 sm:px-3 text-xs justify-center"
-                        onClick={() => setSplitOpen(true)}
+                        onClick={() => guardAction(() => setSplitOpen(true), "Rachar Despesa")}
                         title="Rachar despesa"
                         aria-label="Rachar"
                       >

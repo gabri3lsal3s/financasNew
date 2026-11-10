@@ -21,6 +21,7 @@ import {
   useFamilyMode,
   useMyFamily,
 } from "@/state";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import type { AllocationTargetInput, FixedIncomeMetadata, PortfolioAsset } from "@/types";
 
 
@@ -130,6 +131,10 @@ function InvestmentWizardContent({
     return defaultWizardState;
   });
 
+  const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard({
+    moduleKey: "investments",
+    defaultContext: "Cadastrar Operação de Investimento",
+  });
   const [error, setError] = useState<string | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
   const isSubmittingRef = useRef(false);
@@ -196,6 +201,10 @@ function InvestmentWizardContent({
   };
 
   const handleSubmit = async () => {
+    if (isReadOnlyMode) {
+      guardAction(() => {}, "Confirmar Operação de Investimento");
+      return;
+    }
     if (isPending || isSubmittingRef.current || isSubmitting) return;
     isSubmittingRef.current = true;
     setIsSubmitting(true);
@@ -722,6 +731,8 @@ function InvestmentWizardContent({
         variant="destructive"
         onConfirm={handleClose}
       />
+
+      {upgradeModal}
     </>
   );
 }

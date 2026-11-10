@@ -36,7 +36,7 @@ import { cleanCPF, formatCPF, isValidCPF } from "@/domain/validation";
 import { formatCardNumber, formatCardExpiry, detectCardBrand } from "@/services/masks";
 import { useCheckoutMutation, type PixCheckoutResult } from "@/state";
 import { cn } from "@/lib/utils";
-import { resolveCheckoutBillingSchedule, PLAN_CONFIGS } from "@/domain/subscription";
+import { resolveCheckoutBillingSchedule, PLAN_CONFIGS, resolvePlanFromQuery } from "@/domain/subscription";
 import type { SubscriptionPlan } from "@/types";
 
 type CheckoutPaymentMethod = "credit_card" | "pix";
@@ -79,10 +79,10 @@ export function SubscriptionCheckoutPage() {
   const { session, loading: authLoading } = useAuth();
   const subscription = useUserSubscription();
 
-  // Resolve o plano e método da URL: pro-anual (default) ou pro-mensal; metodo=pix ou cartao
+  // Resolve o plano e método da URL de forma canônica e resiliente (suporta pro-mensal, monthly, pro-anual, annual)
   const planoParam = searchParams.get("plano");
   const metodoParam = searchParams.get("metodo");
-  const plan: SubscriptionPlan = planoParam === "pro-mensal" ? "monthly" : "annual";
+  const plan: SubscriptionPlan = resolvePlanFromQuery(planoParam);
   const planInfo = PLAN_LABELS[plan];
 
   // Cálculo transparente do cronograma de cobrança (trial residual vs cobrança imediata)
@@ -577,8 +577,8 @@ export function SubscriptionCheckoutPage() {
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  <span>Anual (25% OFF)</span>
-                  <span className="text-[10px] text-positive-strong font-normal">R$&nbsp;14,90/mês</span>
+                  <span>Anual ({PLAN_CONFIGS.annual.badge})</span>
+                  <span className="text-[10px] text-positive-strong font-normal">R$&nbsp;11,99/mês</span>
                 </button>
 
                 <button
@@ -592,7 +592,7 @@ export function SubscriptionCheckoutPage() {
                   )}
                 >
                   <span>Mensal</span>
-                  <span className="text-[10px] text-muted-foreground font-normal">R$&nbsp;19,90/mês</span>
+                  <span className="text-[10px] text-muted-foreground font-normal">R$&nbsp;19,99/mês</span>
                 </button>
               </div>
 

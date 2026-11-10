@@ -246,6 +246,7 @@ export async function createAsaasCreditCardSubscription(params: {
   plan: "monthly" | "annual";
   creditCard: AsaasCreditCardInput;
   holderInfo: AsaasHolderInfoInput;
+  nextDueDate?: string;
   remoteIp?: string;
 }): Promise<{ id: string; status: string }> {
   const planMeta = ASAAS_PLAN_CATALOG[params.plan];
@@ -256,8 +257,12 @@ export async function createAsaasCreditCardSubscription(params: {
       ? "Axir — Plano Pro Anual"
       : "Axir — Plano Pro Mensal";
 
-  // Data de vencimento inicial: hoje (formato YYYY-MM-DD)
-  const nextDueDate = new Date().toISOString().slice(0, 10);
+  // Data de vencimento inicial: se fornecida data futura válida (formato YYYY-MM-DD), respeita o período de teste; senão, hoje
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const nextDueDate =
+    params.nextDueDate && params.nextDueDate >= todayIso
+      ? params.nextDueDate.slice(0, 10)
+      : todayIso;
 
   const payload = {
     customer: params.customerId,

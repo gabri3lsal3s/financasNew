@@ -10,12 +10,14 @@ import {
   CreditCardWallet,
   InvoiceStatusBadge,
   KpiCard,
+  KpiGrid,
   MonthPicker,
   ReadOnlyBanner,
   ReportDocumentLayout,
   TransactionRow,
   UpgradeDialog,
 } from "@/components/modules";
+import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import {
   autoSelectBillMonth,
   buildCompetenceSummaries,
@@ -331,12 +333,15 @@ export function CardsPage() {
   };
 
   const openForm = (card: CreditCard | null) => {
-    setActionError(null);
-    setEditingCard(card);
-    setFormOpen(true);
+    handleOpenForm(card);
   };
 
   const handleDeactivateCard = async (card: CreditCard) => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Desativar Cartão de Crédito");
+      setUpgradeOpen(true);
+      return;
+    }
     setActionError(null);
     try {
       await updateCardMutation.mutateAsync({
@@ -362,6 +367,11 @@ export function CardsPage() {
    */
   const handleConfirmDeletePayment = () => {
     if (!deletingPayment) return;
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Excluir Pagamento de Fatura");
+      setUpgradeOpen(true);
+      return;
+    }
     setActionError(null);
     setDeletingPayment(null);
     void Promise.resolve(deleteCardPaymentMutation.mutateAsync(deletingPayment.id)).catch(() => undefined);
@@ -529,11 +539,11 @@ export function CardsPage() {
         <div className="flex flex-col gap-4" data-tour="cards-content">
           <Skeleton className="h-64 w-full rounded-2xl max-w-[440px] mx-auto" />
           <Skeleton className="h-12 w-full rounded-xl" />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4" data-tour="cards-invoice-summary">
+          <KpiGrid columns={3} data-tour="cards-invoice-summary">
             <Skeleton className="h-24 w-full rounded-xl" />
             <Skeleton className="h-24 w-full rounded-xl" />
             <Skeleton className="h-24 w-full rounded-xl" />
-          </div>
+          </KpiGrid>
         </div>
       ) : cards.length === 0 ? (
         <EmptyState
@@ -775,10 +785,7 @@ export function CardsPage() {
             )}
 
             {/* KPIs da fatura com visão dupla (Bruto vs. Ponderado) */}
-            <div
-              data-tour="cards-invoice-summary"
-              className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1"
-            >
+            <KpiGrid columns={3} data-tour="cards-invoice-summary">
               <KpiCard
                 label="Fatura Total (Bruto)"
                 cents={summary?.previstoBrutoCents ?? 0}
@@ -836,7 +843,7 @@ export function CardsPage() {
                   ) : undefined
                 }
               />
-            </div>
+            </KpiGrid>
 
             {/* Bloco Informativo de Impacto de Assinaturas na Fatura em Aberto (F22 / Tarefa 7.6) */}
             {cardSubscriptionImpact && cardSubscriptionImpact.totalProjectedCents > 0 ? (
@@ -1153,7 +1160,7 @@ export function CardsPage() {
         context={upgradeContext}
         onProceedToCheckout={(p) => {
           setUpgradeOpen(false);
-          navigate(`/assinatura?plano=${p}`);
+          navigate(buildCheckoutUrl({ plan: p }));
         }}
       />
     </div>

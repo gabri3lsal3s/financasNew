@@ -14,6 +14,7 @@ import {
 import { todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import {
   useAllocationTargets,
   useExecutePortfolioBatchAporte,
@@ -33,6 +34,7 @@ export function AporteTab({
   onGoToPosition?: () => void;
   onGoToTargets?: () => void;
 }) {
+  const { guardAction, upgradeModal } = useMutationGuard({ moduleKey: "investments" });
   const [searchParams, setSearchParams] = useSearchParams();
   const position = usePortfolioPosition();
   const targetsQuery = useAllocationTargets();
@@ -204,8 +206,10 @@ export function AporteTab({
   const eligibleRoutes = routes.filter((r) => r.quantity > 0);
 
   const handleTriggerAporte = (items?: CustomAporteExecutionItem[]) => {
-    setPendingCustomItems(items ?? null);
-    setConfirmBatchOpen(true);
+    guardAction(() => {
+      setPendingCustomItems(items ?? null);
+      setConfirmBatchOpen(true);
+    }, "Registrar Aporte");
   };
 
   const handleExecuteBatch = async () => {
@@ -381,6 +385,8 @@ export function AporteTab({
         confirmPending={isApplying}
         onConfirm={() => void handleExecuteBatch()}
       />
+
+      {upgradeModal}
     </div>
   );
 }

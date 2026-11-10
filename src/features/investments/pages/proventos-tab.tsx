@@ -33,6 +33,7 @@ import { isCashAssetClass } from "@/domain/portfolio/valuation";
 import { currentMonth, formatDateBR, monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { cn } from "@/lib/utils";
 import {
   useDeletePortfolioDividend,
@@ -103,6 +104,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
 
   const [selectedSubTab, setSelectedSubTab] = useState<ProventosSubTab>(() => validSubTab ?? "mensal");
   const subTab: ProventosSubTab = validSubTab ?? selectedSubTab;
+  const { guardAction, upgradeModal } = useMutationGuard({ moduleKey: "investments" });
   const [month, setMonth] = useState(() => defaultMonth ?? currentMonth());
   const [dividendToDelete, setDividendToDelete] = useState<PortfolioDividend | null>(null);
   const [editingDividend, setEditingDividend] = useState<PortfolioDividend | null>(null);
@@ -375,10 +377,12 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
   };
 
   const handleReinvest = (opp: ReinvestmentOpportunity) => {
-    if (onOpenWizard) {
-      const asset = assetById.get(opp.assetId) ?? null;
-      onOpenWizard(asset, "buy");
-    }
+    guardAction(() => {
+      if (onOpenWizard) {
+        const asset = assetById.get(opp.assetId) ?? null;
+        onOpenWizard(asset, "buy");
+      }
+    }, "Reinvestir Proventos");
   };
 
   // Conteúdo da Aba 1: Extrato Mensal
@@ -401,7 +405,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
               type="button"
               variant="default"
               size="sm"
-              onClick={() => setDividendFormOpen(true)}
+              onClick={() => guardAction(() => setDividendFormOpen(true), "Registrar Provento")}
               className="gap-1.5 h-8 text-xs font-semibold"
             >
               <Plus className="size-3.5" aria-hidden="true" />
@@ -530,7 +534,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
                       className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
                       title="Editar lançamento de provento"
                       aria-label={`Editar provento de ${asset?.ticker ?? entry.ticker ?? "Ativo"}`}
-                      onClick={() => setEditingDividend(entry)}
+                      onClick={() => guardAction(() => setEditingDividend(entry), "Editar Provento")}
                     >
                       <Pencil className="size-3.5" aria-hidden="true" />
                     </Button>
@@ -540,7 +544,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
                       size="sm"
                       className="h-8 w-8 p-0 text-muted-foreground hover:text-negative-strong"
                       title="Excluir lançamento de provento"
-                      onClick={() => setDividendToDelete(entry)}
+                      onClick={() => guardAction(() => setDividendToDelete(entry), "Excluir Provento")}
                     >
                       <Trash2 className="size-3.5" aria-hidden="true" />
                     </Button>
@@ -1047,6 +1051,8 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
           </div>
         )}
       </ConfirmDialog>
+
+      {upgradeModal}
     </div>
   );
 }

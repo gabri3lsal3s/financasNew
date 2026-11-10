@@ -7,6 +7,7 @@ import { navGroups, filterNavItems } from "@/components/layout/nav-items";
 import { useFamilyMode, useTripMode, useReminders, useUserAccess, useUserSubscription } from "@/state";
 import { Progress } from "@/components/ui/progress";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
+import { buildCheckoutUrl } from "@/domain/subscription/plans";
 
 
 /** Atraso do hover-expand: evita disparos acidentais com mouse rápido (F25). */
@@ -182,6 +183,46 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       </nav>
 
       {/* Bloco de Status do Plano e Conversão Pro */}
+      {subscription.isPro && !subscription.isTrial && !subscription.isReadOnly && expanded && (
+        <div className="shrink-0 mx-2.5 mb-2 rounded-xl border border-border/80 bg-surface/80 p-2.5 flex items-center justify-between text-xs animate-fade-slide-in select-none">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-positive/10 border border-positive/20 text-positive-strong">
+              <ShieldCheck className="size-3.5" aria-hidden="true" />
+            </span>
+            <div className="flex flex-col min-w-0">
+              <span className="font-semibold text-foreground text-[11px] truncate">
+                Plano Pro Ativo
+              </span>
+              <span className="text-[10px] text-muted-foreground truncate">
+                Assinatura confirmada
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/configuracoes?tab=assinatura")}
+            title="Gerenciar assinatura nas configurações"
+            className="text-[11px] font-medium text-primary-strong hover:text-primary transition-colors shrink-0 ml-2 cursor-pointer"
+          >
+            Gerenciar
+          </button>
+        </div>
+      )}
+
+      {subscription.isPro && !subscription.isTrial && !subscription.isReadOnly && !expanded && (
+        <div className="shrink-0 flex justify-center mb-2">
+          <button
+            type="button"
+            onClick={() => navigate("/configuracoes?tab=assinatura")}
+            title="Plano Pro Ativo · Clique para gerenciar"
+            aria-label="Plano Pro Ativo"
+            className="flex size-9 items-center justify-center rounded-xl border border-positive/30 bg-positive/10 text-positive-strong hover:bg-positive/20 transition-colors cursor-pointer"
+          >
+            <ShieldCheck className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
       {subscription.isTrial && subscription.trialDaysRemaining !== null && expanded && (
         subscription.hasAutoRenew ? (
           <div className="shrink-0 mx-2.5 mb-2 rounded-xl border border-positive/30 bg-positive/5 p-3 space-y-2 animate-fade-slide-in select-none">
@@ -294,7 +335,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         onOpenChange={setUpgradeOpen}
         onProceedToCheckout={(plan) => {
           setUpgradeOpen(false);
-          navigate(`/assinatura?plano=${plan}`);
+          navigate(buildCheckoutUrl({ plan }));
         }}
       />
 

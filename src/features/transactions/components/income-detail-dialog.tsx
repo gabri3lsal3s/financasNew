@@ -296,17 +296,19 @@ export function IncomeDetailDialog({
   const [isEditing, setIsEditing] = useState(initialEditing);
   const [prevOpen, setPrevOpen] = useState(open);
 
-  if (open !== prevOpen) {
-    setPrevOpen(open);
-    if (open) {
-      setIsEditing(initialEditing);
-    }
-  }
+  const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard({ moduleKey: "transactions" });
+
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [mode, setMode] = useState<InstallmentDeleteMode>("single");
   const [editScope, setEditScope] = useState<InstallmentDeleteMode>("single");
   const [error, setError] = useState<string | null>(null);
-  const { guardAction, upgradeModal } = useMutationGuard();
+
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setIsEditing(isReadOnlyMode ? false : initialEditing);
+    }
+  }
 
   const categoriesQuery = useCategories("income");
   const { isFamilyModeEnabled } = useFamilyMode();

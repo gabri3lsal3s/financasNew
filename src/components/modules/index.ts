@@ -145,3 +145,5 @@ export { PlatformsTriptychCard } from "./platforms-triptych-card";
 export type { PlatformsTriptychCardProps, PlatformTriptychItem } from "./platforms-triptych-card";
 export { WeeklyDueRadarCard } from "./weekly-due-radar-card";
 export type { WeeklyDueRadarCardProps } from "./weekly-due-radar-card";
+export { KpiGrid } from "./kpi-grid";
+export type { KpiGridProps } from "./kpi-grid";

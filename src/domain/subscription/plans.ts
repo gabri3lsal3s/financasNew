@@ -51,6 +51,36 @@ export function getPlanDetails(plan: SubscriptionPlan): PlanDetails {
 }
 
 /**
+ * Converte um parâmetro de consulta de URL (ex: 'pro-mensal', 'monthly', 'mensal')
+ * em um tipo estrito de plano SubscriptionPlan ('monthly' | 'annual').
+ * Suporta sinônimos de forma resiliente para evitar desvios no checkout.
+ */
+export function resolvePlanFromQuery(queryParam: string | null | undefined): SubscriptionPlan {
+  if (!queryParam) return "annual";
+  const normalized = queryParam.trim().toLowerCase();
+  if (normalized === "pro-mensal" || normalized === "monthly" || normalized === "mensal") {
+    return "monthly";
+  }
+  return "annual";
+}
+
+/**
+ * Constrói a URL canônica de checkout de assinatura Pro com os parâmetros corretos.
+ */
+export function buildCheckoutUrl(params?: {
+  plan?: SubscriptionPlan | string;
+  method?: "credit_card" | "pix";
+}): string {
+  const plan = resolvePlanFromQuery(params?.plan);
+  const planSlug = plan === "monthly" ? "pro-mensal" : "pro-anual";
+  const query = new URLSearchParams({ plano: planSlug });
+  if (params?.method) {
+    query.set("metodo", params.method);
+  }
+  return `/assinatura?${query.toString()}`;
+}
+
+/**
  * Calcula a economia anual em centavos ao optar pelo Plano Pro Anual em vez do Mensal.
  */
 export function calculateAnnualSavingsCents(): number {

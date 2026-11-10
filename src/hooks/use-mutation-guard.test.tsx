@@ -14,6 +14,15 @@ let mockSubscription = {
 
 vi.mock("@/state", () => ({
   useUserSubscription: () => mockSubscription,
+  usePermission: (moduleKey?: string) => ({
+    module: moduleKey ?? "transactions",
+    accessLevel: mockSubscription.isReadOnly ? "read" : "write",
+    canRead: true,
+    canWrite: mockSubscription.canWrite,
+    isReadOnlyMode: mockSubscription.isReadOnly,
+    isOverridden: false,
+    origin: "plan_default",
+  }),
 }));
 
 describe("useMutationGuard hook", () => {

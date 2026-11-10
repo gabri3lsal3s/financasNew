@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { Check, Plus, Search, Sparkles } from "lucide-react";
-import { Badge, Button, Input } from "@/components/ui";
+import { Check, Plus, Sparkles } from "lucide-react";
+import { Badge, Button, FormField, SearchInput } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import {
@@ -81,21 +81,16 @@ export function StepSelect({
   return (
     <div className="flex flex-col gap-5">
       {/* Campo de Busca */}
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="wizard-ticker-search" className="text-xs font-semibold text-foreground">
-          Buscar ou digitar ativo
-        </label>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input
-            id="wizard-ticker-search"
-            value={state.searchQuery}
-            onChange={(e) => onChange({ searchQuery: e.target.value.toUpperCase() })}
-            placeholder="Ex: PETR4, MXRF11, O, Tesouro Selic, Apple..."
-            className="pl-9 font-mono uppercase"
-          />
-        </div>
-      </div>
+      <FormField label="Buscar ou digitar ativo" htmlFor="wizard-ticker-search">
+        <SearchInput
+          id="wizard-ticker-search"
+          value={state.searchQuery}
+          onChange={(e) => onChange({ searchQuery: e.target.value.toUpperCase() })}
+          onClear={() => onChange({ searchQuery: "" })}
+          placeholder="Ex: PETR4, MXRF11, O, Tesouro Selic, Apple..."
+          className="font-mono uppercase"
+        />
+      </FormField>
 
       {/* Lista unificada */}
       <div className="flex flex-col gap-2">

@@ -14,7 +14,7 @@ describe("SubscriptionSuccessPage Component", () => {
     expect(screen.getByRole("heading", { name: /Pagamento Confirmado/i })).toBeInTheDocument();
     expect(screen.getAllByText("Plano Pro Anual").length).toBeGreaterThan(0);
     expect(screen.getByText("PIX Instantâneo")).toBeInTheDocument();
-    expect(screen.getByText("Economia de 25%")).toBeInTheDocument();
+    expect(screen.getByText("Economia de 40%")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Acessar Painel Financeiro/i })).toBeInTheDocument();
   });
 
