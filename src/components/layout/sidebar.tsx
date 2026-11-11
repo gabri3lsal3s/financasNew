@@ -6,6 +6,7 @@ import { LogoProfileButton } from "@/components/layout/logo-profile-button";
 import { navGroups, filterNavItems } from "@/components/layout/nav-items";
 import { useFamilyMode, useTripMode, useReminders, useUserAccess, useUserSubscription } from "@/state";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
 
@@ -153,7 +154,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                       <span
                         className={cn(
                           "absolute -top-1 -right-1 size-2 rounded-full ring-2 ring-surface",
-                          urgentCount > 0 ? "bg-danger" : "bg-primary",
+                          urgentCount > 0 ? "bg-critical" : "bg-primary",
                         )}
                       />
                     )}
@@ -162,16 +163,13 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                     <div className="flex flex-1 items-center justify-between overflow-hidden animate-fade-slide-in">
                       <span className="overflow-hidden truncate">{item.label}</span>
                       {showBadge && (
-                        <span
-                          className={cn(
-                            "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
-                            urgentCount > 0
-                              ? "bg-danger text-white"
-                              : "bg-primary/15 text-primary-strong",
-                          )}
+                        <Badge
+                          size="xs"
+                          variant={urgentCount > 0 ? "critical" : "default"}
+                          className="ml-auto h-5 min-w-5 px-1.5 font-bold"
                         >
                           {totalCount > 9 ? "9+" : totalCount}
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   )}

@@ -22,7 +22,7 @@ export function PositionClosedSection({
   if (closedRows.length === 0) return null;
 
   return (
-    <div className="mt-4 rounded-xl border border-border/60 bg-surface/40 p-3 sm:p-4">
+    <div className="mt-4 rounded-xl border border-border/80 bg-surface p-3 sm:p-4 shadow-xs">
       <button
         type="button"
         onClick={onToggle}

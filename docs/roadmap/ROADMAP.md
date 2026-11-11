@@ -1,5 +1,23 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.1.2 (Build 55)** registra a **Auditoria Completa de Conformidade Estrita com as 27 Regras de Governança, Higienização Sensorial e Blindagem de Superfícies** (2026-11-11):
+> - **(1) Blindagem contra Truncamento Monetário no Fluxo Pix (Regra 11 - V16)**:
+>   - Eliminação de `truncate` sobre o valor Pix no acerto de contas (`trip-public-page.tsx`), prevenindo cortes como `"Copiar Pix (R$ 1.25..."` e garantindo rótulo adaptativo com `whitespace-nowrap tabular-nums`;
+> - **(2) Padronização Estrita de Badges & Erradicação de Micro-Spans Ad-hoc (Regra 14 - V17 e V18)**:
+>   - Migração do contador de alertas urgentes da Sidebar desktop (`sidebar.tsx`) de `<span>` manual com `text-[10px]` para `<Badge size="xs" variant={urgentCount > 0 ? "critical" : "default"}>`;
+>   - Substituição de tags e spans decorativos manuais (`text-[10px] uppercase font-bold`) pelo primitivo canônico `<Badge size="xs" variant="default">` em `dividend-freedom-modal.tsx`, `login-page.tsx` e `register-page.tsx`;
+> - **(3) Governança Sensorial e Erradicação de Duplos Disparos (Regra 17 - V19)**:
+>   - Eliminação de chamadas redundantes a `triggerSensory("action")` dentro de handlers de submissão acionados por botões (`<Button />`) em `tools-footer-cta.tsx` e `quick-aporte-card.tsx`, prevenindo conflito de duplos disparos táteis (double-haptic);
+> - **(4) Harmonização de Ícones de Lista e Prevenção de Falsas Affordances (Regra 13 - V20)**:
+>   - Ajuste da casca do ícone de dispositivo atual na aba de Conta e Segurança (`account-tab.tsx`), migrando de `border border-border/80 bg-surface` para `bg-surface-subtle`, impedindo confusão visual com botões de ação desabilitados;
+> - **(5) Unificação Canônica de Superfícies e Elevação (Regra 16 - V21)**:
+>   - Alinhamento de contêineres de abas (`tabs.tsx`), segmented controls (`step-details.tsx`), divisores internos (`quick-aporte-card.tsx`), cards de posições encerradas (`position-closed-section.tsx`) e termômetros de reserva (`emergency-thermometer.tsx`) à trinca canônica `border-border/80 bg-surface shadow-xs`;
+> - **(6) Quality Gates 100% Verdes & Homologação Final**:
+>   - ESLint (`eslint .`): 0 erros, 0 warnings (100% aprovado);
+>   - TypeScript (`tsc -b`): 0 erros;
+>   - Vitest: 50 testes nos componentes modificados 100% aprovados;
+>   - Build de produção Vite gerado com sucesso em 2.05s com PWA precache atualizado.
+>
 > **v3.1.1 (Build 54)** registra a **Auditoria Visual Forense, Blindagem de Precisão Monetária e Congruência Global de UI/Mobile** (2026-11-11):
 > - **(1) Blindagem de Precisão Monetária & Sanitização de Negativos (Fases 1 e 2 do Plano 24)**:
 >   - Suporte canônico a valores negativos em `formatCentsAsCurrency` (`allowNegative: true`) em `src/services/masks/money.ts`, preservando compatibilidade do `MoneyInput` e garantindo renderização de débitos reais;

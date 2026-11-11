@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { Button, Card, CardContent } from "@/components/ui";
-import { triggerSensory } from "@/services/sensory";
 import { useAuth } from "@/hooks/use-auth";
 import { useSaveSimulationToAccount } from "@/state";
 import {
@@ -32,8 +31,6 @@ export function ToolsFooterCta({
   const isLoggedIn = !!session?.user;
 
   const handleQuickStart = async () => {
-    triggerSensory("action");
-
     if (simulationPayload) {
       if (isLoggedIn) {
         setIsSubmitting(true);

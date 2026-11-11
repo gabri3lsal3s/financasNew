@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
 import { ArrowLeft, ArrowRight, CheckCircle2, Layers, MailCheck, PieChart, Shield, Sparkles } from "lucide-react";
-import { Alert, Button, Checkbox, Input, PasswordInput, Turnstile, buttonVariants } from "@/components/ui";
+import { Alert, Badge, Button, Checkbox, Input, PasswordInput, Turnstile, buttonVariants } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { useAuth, signUpWithEmail } from "@/hooks/use-auth";
 import { classifyError } from "@/services/errors";
@@ -57,9 +57,9 @@ function RegisterSideHero({ planoParam }: { planoParam: string | null }) {
       </div>
 
       <div className="rounded-2xl bg-surface border border-border/80 p-4.5 shadow-2xs flex flex-col gap-1.5">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-primary-strong bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full w-fit">
+        <Badge size="xs" variant="default" className="w-fit">
           Período de Avaliação
-        </span>
+        </Badge>
         <p className="text-sm font-bold text-foreground mt-0.5">30 dias Pro sem custo</p>
         <p className="text-xs text-muted-foreground leading-relaxed">
           Cancele quando quiser. Sem cobranças surpresa e sem cartão.

@@ -47,7 +47,6 @@ export function QuickAporteCard({
 
   const handleSubmit = (e?: FormEvent) => {
     e?.preventDefault();
-    triggerSensory("action");
 
     if (onSimulate) {
       onSimulate(aporteCents);
@@ -139,7 +138,7 @@ export function QuickAporteCard({
         </div>
 
         {/* Formulário de Ação Rápida: Input de Aporte + Botão de Rebalanceamento */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-2 pt-2.5 border-t border-border/60">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-2 pt-2.5 border-t border-border/80">
           <div className="flex flex-col gap-0.5">
             <label
               htmlFor="quick-aporte-input"

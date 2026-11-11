@@ -103,7 +103,7 @@ export function Tabs({
           isFullWidth ? "w-full" : "w-full sm:w-auto",
           variant === "underline"
             ? "border-b border-border"
-            : "p-1 rounded-xl bg-muted/60 border border-border/50 backdrop-blur-sm",
+            : "p-1 rounded-xl bg-muted/60 border border-border/80 backdrop-blur-sm",
         )}
         aria-label={ariaLabel ?? "Abas de navegação"}
       >

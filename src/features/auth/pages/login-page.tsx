@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   KeyRound,
 } from "lucide-react";
-import { Alert, Button, Input, PasswordInput, Turnstile } from "@/components/ui";
+import { Alert, Badge, Button, Input, PasswordInput, Turnstile } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { BrandLogo } from "@/components/layout";
 import {
@@ -93,9 +93,9 @@ function LoginSideHero() {
       </div>
 
       <div className="rounded-2xl bg-surface border border-border/80 p-4.5 shadow-2xs flex flex-col gap-2">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-primary-strong bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full w-fit">
+        <Badge size="xs" variant="default" className="w-fit">
           Novo por aqui?
-        </span>
+        </Badge>
         <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
           Crie sua conta gratuitamente e tenha 30 dias de acesso Pro completo.
         </p>

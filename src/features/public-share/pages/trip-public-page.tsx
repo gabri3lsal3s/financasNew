@@ -324,12 +324,13 @@ export function TripPublicPage() {
                         {copiedCodeKey === key ? (
                           <>
                             <Check className="size-3.5 text-positive-strong shrink-0" aria-hidden="true" />
-                            <span className="truncate">Copiado!</span>
+                            <span>Copiado!</span>
                           </>
                         ) : (
                           <>
                             <Copy className="size-3.5 shrink-0" aria-hidden="true" />
-                            <span className="truncate">Copiar Pix ({formatCentsAsBRL(settlement.amountCents)})</span>
+                            <span className="sm:hidden whitespace-nowrap tabular-nums">Pix {formatCentsAsBRL(settlement.amountCents)}</span>
+                            <span className="hidden sm:inline whitespace-nowrap tabular-nums">Copiar Pix ({formatCentsAsBRL(settlement.amountCents)})</span>
                           </>
                         )}
                       </Button>

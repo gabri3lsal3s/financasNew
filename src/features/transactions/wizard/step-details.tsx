@@ -284,7 +284,7 @@ export function StepDetails({
         </div>
 
         {/* Segmented Control Unificado */}
-        <div className="grid grid-cols-3 gap-1.5 rounded-lg bg-surface-raised p-1 border border-border/60">
+        <div className="grid grid-cols-3 gap-1.5 rounded-lg bg-surface-raised p-1 border border-border/80">
           <button
             type="button"
             onClick={() => handlePaymentConditionChange("single")}

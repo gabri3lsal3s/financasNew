@@ -458,7 +458,7 @@ export function AccountTab() {
           {/* Sessão Atual */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-xl border border-border/80 bg-muted/20">
             <div className="flex items-center gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-surface text-muted-foreground">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-muted-foreground">
                 {typeof navigator !== "undefined" && /mobile|android|iphone/i.test(navigator.userAgent) ? (
                   <Smartphone className="size-4" aria-hidden="true" />
                 ) : (

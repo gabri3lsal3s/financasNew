@@ -127,9 +127,9 @@ export function DividendFreedomModal({
               Estágio de Independência Financeira (FIRE)
             </h3>
           </div>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary-strong">
+          <Badge size="xs" variant="default">
             {freedomAnalysis.stageLabel}
-          </span>
+          </Badge>
         </div>
 
         <div className="w-full bg-muted/40 rounded-full h-2 overflow-hidden border border-border/80">

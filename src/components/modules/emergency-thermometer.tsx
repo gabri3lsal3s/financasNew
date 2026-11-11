@@ -166,7 +166,7 @@ export function EmergencyThermometer({
 
       {/* Indicadores-Base de Autonomia & Cobertura */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs min-w-0">
-        <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
+        <div className="rounded-lg border border-border/80 bg-muted/20 p-3 min-w-0">
           <p className="text-muted-foreground">Autonomia estimada</p>
           <div className="flex items-baseline gap-1 mt-0.5">
             <span className="text-sm font-semibold text-foreground tabular-nums">
@@ -179,7 +179,7 @@ export function EmergencyThermometer({
             )}
           </div>
         </div>
-        <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
+        <div className="rounded-lg border border-border/80 bg-muted/20 p-3 min-w-0">
           <div className="flex items-center justify-between">
             <p className="text-muted-foreground">Reserva disponível</p>
             {Boolean(composition?.breakdown?.length) && (
@@ -203,7 +203,7 @@ export function EmergencyThermometer({
             className="text-sm font-semibold whitespace-nowrap tabular-nums"
           />
         </div>
-        <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
+        <div className="rounded-lg border border-border/80 bg-muted/20 p-3 min-w-0">
           <p className="text-muted-foreground">Custo de vida mensal base</p>
           <MoneyText
             cents={effectiveExpenses}
@@ -215,7 +215,7 @@ export function EmergencyThermometer({
 
       {/* Detalhamento Expansível da Composição (Origem dos Recursos) */}
       {showCompositionDetails && composition && composition.breakdown.length > 0 && (
-        <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-muted/15 p-3 min-w-0 text-xs">
+        <div className="flex flex-col gap-2 rounded-lg border border-border/80 bg-muted/15 p-3 min-w-0 text-xs">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-foreground">Composição da Reserva ({composition.breakdown.length} fontes):</span>
             <span className="text-[11px] text-muted-foreground">
