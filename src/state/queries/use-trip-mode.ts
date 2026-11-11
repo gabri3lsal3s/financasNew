@@ -24,10 +24,10 @@ export function useTripMode() {
     hasFeature("debts") ||
     hasFeature("budgets");
 
-  const isTripModeEnabled = !hasFinanceFeatures
-    ? false
-    : isDemoActive
-      ? true
+  const isTripModeEnabled = isDemoActive
+    ? true
+    : !hasFinanceFeatures
+      ? false
       : (preferencesQuery.data?.custom_settings?.tripModeEnabled ?? true);
 
   const toggleTripMode = async (enabled: boolean): Promise<void> => {

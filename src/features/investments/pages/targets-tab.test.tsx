@@ -7,6 +7,18 @@ import { TargetsTab } from "./targets-tab";
 const saveTargetsMock = vi.fn();
 
 vi.mock("@/state", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+  usePermission: () => ({
+    canWrite: true,
+    canRead: true,
+    isHidden: false,
+    isReadOnlyMode: false,
+    accessLevel: "write",
+  }),
   usePortfolioPosition: () => ({
     rows: [
       { assetId: "a1", ticker: "PETR4", assetClass: "Ações", valueBRL: 4000, pct: 40, isCash: false },

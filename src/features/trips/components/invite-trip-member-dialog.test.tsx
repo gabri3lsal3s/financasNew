@@ -80,7 +80,8 @@ describe("InviteTripMemberDialog Component", () => {
 
     expect(windowOpenSpy).toHaveBeenCalledWith(
       expect.stringContaining("api.whatsapp.com/send?text="),
-      "_blank"
+      "_blank",
+      expect.anything()
     );
   });
 

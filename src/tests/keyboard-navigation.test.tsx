@@ -46,6 +46,11 @@ vi.mock("@/state", () => ({
     tier: "pro_annual",
   }),
   usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
+  useRealCashBalance: () => ({
+    cashBalance: { currentBalanceCents: 100000 },
+    safeToSpend: { safeToSpendCents: 50000 },
+    isLoading: false,
+  }),
   useIncomes: () => ({
     data: [{ id: "i1", value: 5000, report_weight: 1, date: "2026-08-05", description: "Salário", category_id: "i1" }],
     isLoading: false,

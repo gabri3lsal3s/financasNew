@@ -81,7 +81,7 @@ describe("Tarefa 1.2 — Notificação no Telegram para Suporte (telegram.ts)", 
         },
       });
 
-      expect(message).toContain("<b>[CHAMADO DE SUPORTE — ÁXIS FINANCE]</b>");
+      expect(message).toContain("<b>[CHAMADO DE SUPORTE — AXIR]</b>");
       expect(message).toContain("<b>Cliente:</b> João da Silva");
       expect(message).toContain(
         `<b>E-mail:</b> <a href="mailto:joao.silva@exemplo.com">joao.silva@exemplo.com</a>`,

@@ -708,7 +708,7 @@ describe("ExpenseDetailDialog", () => {
         expect.objectContaining({
           value: baseExpense.value,
           date: baseExpense.date,
-          category_id: baseExpense.category_id,
+          categoryId: baseExpense.category_id,
         })
       );
     });

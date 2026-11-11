@@ -11,6 +11,18 @@ vi.mock("react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
+vi.mock("@/state", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/state")>();
+  return {
+    ...actual,
+    useUpdateCustomSettings: () => ({
+      mutate: vi.fn(),
+      mutateAsync: vi.fn().mockResolvedValue({}),
+      isPending: false,
+    }),
+  };
+});
+
 describe("WelcomeModal — Acolhimento e Escolha de Partida (§3.1)", () => {
   beforeEach(() => {
     localStorage.clear();

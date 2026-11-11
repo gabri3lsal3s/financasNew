@@ -3,6 +3,21 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { MovimentacoesTab } from "./movimentacoes-tab";
 
+vi.mock("@/state", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+  usePermission: () => ({
+    canWrite: true,
+    canRead: true,
+    isHidden: false,
+    isReadOnlyMode: false,
+    accessLevel: "write",
+  }),
+}));
+
 vi.mock("../components", () => ({
   PortfolioActivityPanel: () => <div data-testid="portfolio-activity-panel">Extrato de Movimentações</div>,
   PortfolioImportDialog: ({ open }: { open: boolean }) =>

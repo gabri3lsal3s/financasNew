@@ -9,6 +9,7 @@ import type { UseRealCashBalanceResult } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { CashCheckpointDialog } from "./cash-checkpoint-dialog";
 import { CycleObligationsDialog } from "./cycle-obligations-dialog";
+import { EquationBreakdownPopover } from "./equation-breakdown-popover";
 
 export interface RealCashHeroCardProps {
   realCashData: UseRealCashBalanceResult;
@@ -142,6 +143,37 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
             <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
               <ShieldCheck className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
               <span className="truncate text-muted-foreground">Saldo Livre Real:</span>
+              <EquationBreakdownPopover
+                title="Saldo Livre Real (Safe-to-Spend)"
+                description="Quantia verdadeiramente disponível para gastar ou investir sem comprometer as contas e faturas do mês."
+                formula="Saldo em Conta + Recebíveis Previstos − Obrigações do Ciclo"
+                items={[
+                  {
+                    label: "Saldo Atual em Contas",
+                    cents: cashBalance.currentBalanceCents,
+                    sign: "+",
+                    tone: cashBalance.currentBalanceCents >= 0 ? "positive" : "negative",
+                  },
+                  ...(hasReceivables
+                    ? [
+                        {
+                          label: "A Receber Previsto",
+                          cents: safeToSpend.receivablePendingCents,
+                          sign: "+" as const,
+                          tone: "positive" as const,
+                        },
+                      ]
+                    : []),
+                  {
+                    label: "Faturas e Contas a Pagar (Ciclo)",
+                    cents: safeToSpend.committedObligationsCents,
+                    sign: "-",
+                    tone: "negative",
+                  },
+                ]}
+                totalLabel="Saldo Livre Real"
+                totalCents={safeToSpend.safeToSpendCents}
+              />
             </div>
             <MoneyText
               cents={safeToSpend.safeToSpendCents}

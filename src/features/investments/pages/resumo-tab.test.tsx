@@ -108,6 +108,13 @@ vi.mock("@/state", () => ({
     isReadOnly: false,
     tier: "pro_annual",
   }),
+  usePermission: () => ({
+    canWrite: true,
+    canRead: true,
+    isHidden: false,
+    isReadOnlyMode: false,
+    accessLevel: "write",
+  }),
   usePortfolioPosition: () => getMockPortfolioPosition(),
   usePortfolioAssets: () => ({
     data: getMockPortfolioAssets(),

@@ -24,10 +24,10 @@ export function useFamilyMode() {
     hasFeature("debts") ||
     hasFeature("budgets");
 
-  const isFamilyModeEnabled = !hasFinanceFeatures
-    ? false
-    : isDemoActive
-      ? true
+  const isFamilyModeEnabled = isDemoActive
+    ? true
+    : !hasFinanceFeatures
+      ? false
       : (preferencesQuery.data?.custom_settings?.familyModeEnabled ?? true);
 
   const toggleFamilyMode = async (enabled: boolean): Promise<void> => {

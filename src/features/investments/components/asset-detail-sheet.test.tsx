@@ -26,6 +26,18 @@ const mockTransaction: PortfolioTransaction = {
 };
 
 vi.mock("@/state", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+  usePermission: () => ({
+    canWrite: true,
+    canRead: true,
+    isHidden: false,
+    isReadOnlyMode: false,
+    accessLevel: "write",
+  }),
   useAssetPosition: () => ({
     data: [mockTransaction],
     isLoading: false,
@@ -84,11 +96,6 @@ vi.mock("@/state", () => ({
   useSetManualPrice: () => ({
     mutateAsync: vi.fn().mockResolvedValue(true),
     isPending: false,
-  }),
-  useUserSubscription: () => ({
-    canWrite: true,
-    isReadOnly: false,
-    tier: "pro_annual",
   }),
   useFamilyMode: () => ({
     isFamilyModeEnabled: false,

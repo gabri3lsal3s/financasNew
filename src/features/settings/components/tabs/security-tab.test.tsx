@@ -56,6 +56,17 @@ vi.mock("@/state", () => ({
   useCreditCards: () => ({ data: [] }),
   useUserPreferences: () => ({ data: { custom_settings: { privacyShieldEnabled: false } } }),
   useUpdateCustomSettings: () => ({ mutate: mockUpdateCustomSettings }),
+  useDeleteAccountMutation: () => ({
+    mutateAsync: async () => {
+      try {
+        await mockCancelSubscription();
+      } catch {
+        // Ignora erro de assinatura
+      }
+      return mockDeleteCurrentUserAccount();
+    },
+    isPending: false,
+  }),
 }));
 
 vi.mock("@/services/native", async () => {

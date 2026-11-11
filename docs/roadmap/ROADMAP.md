@@ -1,5 +1,17 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.0.23 (Build 52)** registra as **Regras de Governança R29–R33, Explicabilidade Ativa de KPIs Compostos e Higienização Global de Testes** (2026-11-10):
+> - **(1) Regras de Governança R29–R33 e Explicabilidade Matemática Ativa (Regra 33)**:
+>   - Criação do componente canônico `EquationBreakdownPopover` (`src/components/modules/equation-breakdown-popover.tsx`) com explicabilidade matemática transparente, decomposição item a item com operadores aritméticos (`+`, `-`, `=`) e semântica monetária;
+>   - Integração da explicabilidade ativa no Saldo Livre Real (*Safe-to-Spend*) em `RealCashHeroCard`, detalhando Saldo Bancário Atual, Faturas Abertas do Ciclo, Recebíveis e Obrigações Fixas;
+>   - Formalização e validação das regras R29 (Onboarding contextual à meta do usuário via `user_preferences.custom_settings`), R30 (Zero Cold-Start Anxiety na Home), R31 (Memória de velocidade do LaunchWizard) e R32 (Optimistic UI com Undo Toasts);
+> - **(2) Higienização e Blindagem dos Quality Gates da Suíte de Testes**:
+>   - Padronização dos mocks de `usePermission` para retornar o contrato canônico `{ canRead, canWrite, isHidden, accessLevel, isReadOnlyMode }` em toda a suíte de Investimentos, Configurações e Acesso;
+>   - Alinhamento de seletores semânticos acessíveis (`role="radio"` para `FilterChips`);
+>   - Correção e validação do rollback transacional em triggers de novos usuários (`supabase/migrations/20260101000104` e `20260101000105`) com eliminação de exceções vazias;
+> - **(3) Quality Gates 100% Verdes**:
+>   - Typecheck (`tsc -b`): 0 erros; ESLint (`eslint .`): 0 erros e 0 warnings; Vitest: 610/610 arquivos de teste aprovados (5.888/5.888 testes, 100% verdes); Build de produção Vite e PWA gerados com sucesso.
+>
 > **v3.0.22 (Build 51)** registra o **Onboarding Dinâmico e Modular por Permissões com Suporte a Investimentos** (2026-11-10):
 > - **(1) Checklist Dinâmico e Modular por Permissões (`hasFeature`)**:
 >   - O checklist de configuração inicial na Home (`OnboardingBanner`), o progresso geral (`coreOnboardingProgress`) e as notificações (`NotificationsPopover`) adaptam-se estritamente aos módulos liberados para o usuário;

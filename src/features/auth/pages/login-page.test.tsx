@@ -4,7 +4,6 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { calculateLoginBackoff, LoginPage } from "./login-page";
 import * as authHook from "@/hooks/use-auth";
-import * as authData from "@/data/auth";
 import * as toastModule from "@/services/toast";
 
 vi.mock("@/data/auth", () => ({
@@ -18,6 +17,7 @@ vi.mock("@/services/toast", () => ({
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: vi.fn(),
   signInWithEmail: vi.fn(),
+  resendConfirmationEmail: vi.fn(),
 }));
 
 const getAuthenticatorAssuranceLevelMock = vi.fn().mockResolvedValue({
@@ -242,7 +242,7 @@ describe("LoginPage - Autenticação e Visibilidade de Senha", () => {
       message: "Email not confirmed",
       code: "email_not_confirmed",
     });
-    vi.mocked(authData.resendConfirmationEmail).mockResolvedValueOnce(undefined);
+    vi.mocked(authHook.resendConfirmationEmail).mockResolvedValueOnce(undefined);
 
     renderLoginPage();
 
@@ -253,7 +253,7 @@ describe("LoginPage - Autenticação e Visibilidade de Senha", () => {
     const resendBtn = screen.getByRole("button", { name: "Reenviar link de confirmação" });
     await user.click(resendBtn);
 
-    expect(authData.resendConfirmationEmail).toHaveBeenCalledWith("pendente@exemplo.com");
+    expect(authHook.resendConfirmationEmail).toHaveBeenCalledWith("pendente@exemplo.com");
     expect(toastModule.pushToast).toHaveBeenCalledWith(
       expect.objectContaining({
         title: "Link reenviado!",

@@ -39,7 +39,7 @@ describe("services/share-urls — Resolução Canônica de Links Compartilhávei
       const tripUrl = getPublicAppUrl(`viagem/${token}`);
 
       expect(tripUrl).not.toContain("localhost");
-      expect(tripUrl).toBe("https://financasnew.gabrielisaacsales.workers.dev/viagem/trip_fln2026");
+      expect(tripUrl).toBe("https://axir.com.br/viagem/trip_fln2026");
     });
 
     it("link de Racha (/r/:token) NÃO deve conter localhost", () => {
@@ -47,7 +47,7 @@ describe("services/share-urls — Resolução Canônica de Links Compartilhávei
       const shareUrl = getPublicAppUrl(`r/${token}`);
 
       expect(shareUrl).not.toContain("localhost");
-      expect(shareUrl).toBe("https://financasnew.gabrielisaacsales.workers.dev/r/split_abc123");
+      expect(shareUrl).toBe("https://axir.com.br/r/split_abc123");
     });
 
     it("link de Convite Familiar (/convite-familiar/:token) NÃO deve conter localhost", () => {
@@ -55,7 +55,7 @@ describe("services/share-urls — Resolução Canônica de Links Compartilhávei
       const inviteUrl = getPublicAppUrl(`convite-familiar/${token}`);
 
       expect(inviteUrl).not.toContain("localhost");
-      expect(inviteUrl).toBe("https://financasnew.gabrielisaacsales.workers.dev/convite-familiar/invite_xyz789");
+      expect(inviteUrl).toBe("https://axir.com.br/convite-familiar/invite_xyz789");
     });
 
     it("link de Orçamento Familiar compartilhado (/orcamento-familiar/:token) NÃO deve conter localhost", () => {
@@ -63,7 +63,7 @@ describe("services/share-urls — Resolução Canônica de Links Compartilhávei
       const budgetUrl = getPublicAppUrl(`orcamento-familiar/${token}`);
 
       expect(budgetUrl).not.toContain("localhost");
-      expect(budgetUrl).toBe("https://financasnew.gabrielisaacsales.workers.dev/orcamento-familiar/budget_fam456");
+      expect(budgetUrl).toBe("https://axir.com.br/orcamento-familiar/budget_fam456");
     });
 
     it("link de Meta Coletiva (/meta/:token) NÃO deve conter localhost", () => {
@@ -71,14 +71,14 @@ describe("services/share-urls — Resolução Canônica de Links Compartilhávei
       const metaUrl = getPublicAppUrl(`meta/${token}`);
 
       expect(metaUrl).not.toContain("localhost");
-      expect(metaUrl).toBe("https://financasnew.gabrielisaacsales.workers.dev/meta/goal_999000");
+      expect(metaUrl).toBe("https://axir.com.br/meta/goal_999000");
     });
 
     it("URLs de retorno de checkout (/assinatura/sucesso) NÃO devem conter localhost", () => {
       const returnUrl = getPublicAppUrl("assinatura/sucesso?plano=pro");
 
       expect(returnUrl).not.toContain("localhost");
-      expect(returnUrl).toBe("https://financasnew.gabrielisaacsales.workers.dev/assinatura/sucesso?plano=pro");
+      expect(returnUrl).toBe("https://axir.com.br/assinatura/sucesso?plano=pro");
     });
   });
 

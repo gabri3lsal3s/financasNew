@@ -357,7 +357,8 @@ describe("TripSettlementDialog Component", () => {
 
     expect(windowOpenSpy).toHaveBeenCalledWith(
       expect.stringContaining("api.whatsapp.com/send"),
-      "_blank"
+      "_blank",
+      expect.anything()
     );
   });
 

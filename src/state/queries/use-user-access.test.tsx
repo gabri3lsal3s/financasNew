@@ -87,6 +87,7 @@ describe("useUserAccess hook", () => {
         cards: "none",
         debts: "none",
         budgets: "none",
+        overview: "none",
       },
     } as unknown as SubscriptionStatus);
 
@@ -194,7 +195,7 @@ describe("useUserAccess hook", () => {
     expect(result.current.hasFeature("investments")).toBe(false);
   });
 
-  it("aplica regra de Whitelist quando o usuário só tem investimentos (módulos não listados são bloqueados)", async () => {
+  it("preserva acesso aos módulos do plano base e bloqueia funcionalidades beta sem concessão explícita", async () => {
     vi.mocked(accessRepo.getMyProfile).mockResolvedValue(mockProfile);
     vi.mocked(accessRepo.getMyFeatures).mockResolvedValue({
       transactions: true,
@@ -204,7 +205,7 @@ describe("useUserAccess hook", () => {
       investments: true,
       overview: true,
     });
-    // Usuário possui apenas 'investments' no moduleAccess (restrição modular ativa)
+    // Usuário possui apenas 'investments' no moduleAccess
     vi.mocked(subscriptionsRepo.getMySubscription).mockResolvedValue({
       tier: "lifetime",
       canWrite: true,
@@ -222,17 +223,16 @@ describe("useUserAccess hook", () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    // Módulo explicitamente concedido
+    // Módulos do plano base permanecem responsivos e liberados
     expect(result.current.hasFeature("investments")).toBe(true);
+    expect(result.current.hasFeature("transactions")).toBe(true);
+    expect(result.current.hasFeature("cards")).toBe(true);
+    expect(result.current.hasFeature("debts")).toBe(true);
+    expect(result.current.hasFeature("budgets")).toBe(true);
+    expect(result.current.hasFeature("overview")).toBe(true);
 
-    // Módulos não concedidos devem ser BLOQUEADOS por Whitelist
-    expect(result.current.hasFeature("transactions")).toBe(false);
-    expect(result.current.hasFeature("cards")).toBe(false);
-    expect(result.current.hasFeature("debts")).toBe(false);
-    expect(result.current.hasFeature("budgets")).toBe(false);
-
-    // Overview derivada também deve ser suprimida
-    expect(result.current.hasFeature("overview")).toBe(false);
+    // Funcionalidade beta sem concessão explícita em moduleAccess permanece bloqueada
+    expect(result.current.hasFeature("bank_notification_listener")).toBe(false);
   });
 
   it("aplica Fail-Closed imediato no cold start quando o activeUserId for nulo", async () => {
@@ -320,10 +320,11 @@ describe("useUserAccess hook", () => {
       expect(result.current.profile?.id).toBe("user-1");
     });
 
-    // 3. Após resolver, módulo concedido funciona e core financeiro continua bloqueado por Whitelist
+    // 3. Após resolver, módulo concedido funciona, módulos do plano base funcionam e beta sem concessão fica bloqueada
     expect(result.current.hasFeature("investments")).toBe(true);
-    expect(result.current.hasFeature("transactions")).toBe(false);
-    expect(result.current.hasFeature("overview")).toBe(false);
+    expect(result.current.hasFeature("transactions")).toBe(true);
+    expect(result.current.hasFeature("overview")).toBe(true);
+    expect(result.current.hasFeature("bank_notification_listener")).toBe(false);
   });
 
   describe("Governança e Resiliência de Realtime", () => {

@@ -12,6 +12,17 @@ vi.mock("@/data/repositories/user-preferences", () => ({
   updateCustomSettings: vi.fn(),
 }));
 
+const mockHasFeature = vi.fn().mockReturnValue(true);
+
+vi.mock("@/state/queries/use-user-access", () => ({
+  useUserAccess: () => ({
+    hasFeature: mockHasFeature,
+    role: "user",
+    status: "active",
+    isLoading: false,
+  }),
+}));
+
 const mockPreferencesBase: UserPreferences = {
   user_id: "user-1",
   theme: "dark",
@@ -35,6 +46,7 @@ describe("useTripMode Hook — Governança do Modo Viagem", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockHasFeature.mockReturnValue(true);
     setActiveUserId("user-1");
     queryClient = new QueryClient({
       defaultOptions: {
@@ -118,5 +130,23 @@ describe("useTripMode Hook — Governança do Modo Viagem", () => {
     await waitFor(() => {
       expect(result.current.isTripModeEnabled).toBe(true);
     });
+  });
+
+  it("retorna isTripModeEnabled como false quando o usuário não possui módulos de finanças (perfil apenas investimentos)", async () => {
+    mockHasFeature.mockReturnValue(false);
+    vi.mocked(userPrefsRepo.getUserPreferences).mockResolvedValueOnce({
+      ...mockPreferencesBase,
+      custom_settings: { tripModeEnabled: true },
+    });
+
+    const { result } = renderHook(() => useTripMode(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.isTripModeEnabled).toBe(false);
   });
 });

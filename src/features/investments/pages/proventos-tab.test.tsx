@@ -18,6 +18,18 @@ const dividendsMock = vi.fn();
 const assetsMock = vi.fn();
 
 vi.mock("@/state", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+  usePermission: () => ({
+    canWrite: true,
+    canRead: true,
+    isHidden: false,
+    isReadOnlyMode: false,
+    accessLevel: "write",
+  }),
   usePortfolioDividends: () => ({
     data: dividendsMock(),
     isLoading: false,

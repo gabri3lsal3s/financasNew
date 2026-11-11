@@ -14,6 +14,18 @@ vi.mock("@/services/export-actions", () => ({
 
 
 vi.mock("@/state", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+  usePermission: () => ({
+    canWrite: true,
+    canRead: true,
+    isHidden: false,
+    isReadOnlyMode: false,
+    accessLevel: "write",
+  }),
   useAllPortfolioTransactions: () => ({
     data: [
       { id: "tx-1", user_id: "u-1", asset_id: "a-1", type: "buy", date: "2026-08-05", quantity: 10, price: 38.5, total: 385, notes: "Compra PETR4" },
@@ -92,27 +104,27 @@ describe("PortfolioActivityPanel", () => {
   it("filtra movimentações pelos botões de tipo", () => {
     render(<PortfolioActivityPanel defaultMonth="2026-08" />);
 
-    const sellFilterBtn = screen.getByRole("button", { name: /Vendas/i });
+    const sellFilterBtn = screen.getByRole("radio", { name: /Vendas/i });
     fireEvent.click(sellFilterBtn);
 
     expect(screen.getByText("CDB-FACTA")).toBeInTheDocument();
     expect(screen.queryByText("PETR4")).not.toBeInTheDocument();
 
-    const buyFilterBtn = screen.getByRole("button", { name: /^Compras/i });
+    const buyFilterBtn = screen.getByRole("radio", { name: /^Compras/i });
     fireEvent.click(buyFilterBtn);
 
     expect(screen.getAllByText("PETR4").length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText("CDB-FACTA")).not.toBeInTheDocument();
     expect(screen.queryByText("Aporte Financeiro")).not.toBeInTheDocument();
 
-    const contribFilterBtn = screen.getByRole("button", { name: /^Aportes/i });
+    const contribFilterBtn = screen.getByRole("radio", { name: /^Aportes/i });
     fireEvent.click(contribFilterBtn);
 
     expect(screen.getByText("Aporte Financeiro")).toBeInTheDocument();
     expect(screen.getByText("Aporte em Caixa")).toBeInTheDocument();
     expect(screen.queryByText("CDB-FACTA")).not.toBeInTheDocument();
 
-    const dividendFilterBtn = screen.getByRole("button", { name: /Proventos/i });
+    const dividendFilterBtn = screen.getByRole("radio", { name: /Proventos/i });
     fireEvent.click(dividendFilterBtn);
 
     expect(screen.getAllByText("Provento").length).toBeGreaterThan(0);
@@ -185,7 +197,7 @@ describe("PortfolioActivityPanel", () => {
     render(<PortfolioActivityPanel defaultMonth="2026-08" />);
 
     // Filtra por proventos para isolar o botão de exclusão
-    const provFilterBtn = screen.getByRole("button", { name: /^Proventos/i });
+    const provFilterBtn = screen.getByRole("radio", { name: /^Proventos/i });
     fireEvent.click(provFilterBtn);
 
     // Clica no botão de lixeira do provento PETR4 d-1 (que possui sync_cash: true)
@@ -212,7 +224,7 @@ describe("PortfolioActivityPanel", () => {
     render(<PortfolioActivityPanel defaultMonth="2026-08" />);
 
     // Filtra por aportes
-    const contribFilterBtn = screen.getByRole("button", { name: /^Aportes/i });
+    const contribFilterBtn = screen.getByRole("radio", { name: /^Aportes/i });
     fireEvent.click(contribFilterBtn);
 
     const editContribButtons = screen.getAllByRole("button", { name: /Editar aporte/i });

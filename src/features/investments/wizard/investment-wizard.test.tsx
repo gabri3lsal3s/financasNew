@@ -19,6 +19,18 @@ let mockAssetsList: PortfolioAsset[] = [mockAsset];
 const mockRecordOrder = vi.fn().mockResolvedValue({ success: true });
 
 vi.mock("@/state", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+  usePermission: () => ({
+    canWrite: true,
+    canRead: true,
+    isHidden: false,
+    isReadOnlyMode: false,
+    accessLevel: "write",
+  }),
   usePortfolioAssets: () => ({
     data: mockAssetsList,
     isLoading: false,

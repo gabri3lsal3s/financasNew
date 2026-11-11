@@ -1,8 +1,13 @@
-import { render, screen } from "@testing-library/react";
+import { render as rtlRender, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { RecurrenceAuditModal } from "./recurrence-audit-modal";
 import type { RecurrenceOccurrence } from "@/domain/insights/recurrences";
+
+function render(ui: React.ReactElement) {
+  return rtlRender(<MemoryRouter>{ui}</MemoryRouter>);
+}
 
 vi.mock("@/state", () => ({
   useUserSubscription: () => ({
@@ -10,6 +15,7 @@ vi.mock("@/state", () => ({
     isReadOnly: false,
     tier: "pro_annual",
   }),
+  usePermission: () => "write",
   useCategories: () => ({ data: [], isLoading: false, error: null }),
   useCreditCards: () => ({ data: [], isLoading: false, error: null }),
   useDeleteExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),

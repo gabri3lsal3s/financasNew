@@ -7,6 +7,18 @@ import { AporteTab } from "./aporte-tab";
 const mockExecuteBatch = vi.fn().mockResolvedValue({ success: true, count: 1 });
 
 vi.mock("@/state", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+  usePermission: () => ({
+    canWrite: true,
+    canRead: true,
+    isHidden: false,
+    isReadOnlyMode: false,
+    accessLevel: "write",
+  }),
   usePortfolioPosition: () => ({
     rows: [
       {

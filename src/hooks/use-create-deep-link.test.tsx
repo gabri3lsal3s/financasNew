@@ -9,6 +9,15 @@ vi.mock("react-router", () => ({
   useSearchParams: () => [params, setSearchParamsMock],
 }));
 
+vi.mock("@/state", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
+  usePermission: () => "write",
+}));
+
 beforeEach(() => {
   params = new URLSearchParams();
   setSearchParamsMock.mockReset();

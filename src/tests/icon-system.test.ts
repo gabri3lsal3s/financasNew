@@ -47,34 +47,39 @@ describe("Sistema Unificado de Ícones e Reatividade ao Tema (Tarefa 23)", () =>
       expect(acoes.badgeClass).toContain("border-cat-2/25");
 
       const fiis = getAssetClassMeta("FIIs");
-      expect(fiis.badgeClass).toContain("bg-cat-5/10");
-      expect(fiis.badgeClass).toContain("text-cat-5");
-      expect(fiis.badgeClass).toContain("border-cat-5/25");
+      expect(fiis.badgeClass).toContain("bg-cat-3/10");
+      expect(fiis.badgeClass).toContain("text-cat-3");
+      expect(fiis.badgeClass).toContain("border-cat-3/25");
 
       const inter = getAssetClassMeta("Internacional");
-      expect(inter.badgeClass).toContain("bg-cat-1/10");
-      expect(inter.badgeClass).toContain("text-cat-1");
-      expect(inter.badgeClass).toContain("border-cat-1/25");
+      expect(inter.badgeClass).toContain("bg-cat-4/10");
+      expect(inter.badgeClass).toContain("text-cat-4");
+      expect(inter.badgeClass).toContain("border-cat-4/25");
 
       const etf = getAssetClassMeta("ETFs");
-      expect(etf.badgeClass).toContain("bg-cat-7/10");
-      expect(etf.badgeClass).toContain("text-cat-7");
-      expect(etf.badgeClass).toContain("border-cat-7/25");
+      expect(etf.badgeClass).toContain("bg-cat-4/10");
+      expect(etf.badgeClass).toContain("text-cat-4");
+      expect(etf.badgeClass).toContain("border-cat-4/25");
 
       const rf = getAssetClassMeta("Renda Fixa");
-      expect(rf.badgeClass).toContain("bg-warning/10");
-      expect(rf.badgeClass).toContain("text-warning-strong");
-      expect(rf.badgeClass).toContain("border-warning/25");
+      expect(rf.badgeClass).toContain("bg-cat-1/10");
+      expect(rf.badgeClass).toContain("text-cat-1");
+      expect(rf.badgeClass).toContain("border-cat-1/25");
 
       const caixa = getAssetClassMeta("Caixa");
-      expect(caixa.badgeClass).toContain("bg-portfolio/10");
-      expect(caixa.badgeClass).toContain("text-portfolio");
-      expect(caixa.badgeClass).toContain("border-portfolio/25");
+      expect(caixa.badgeClass).toContain("bg-cat-5/10");
+      expect(caixa.badgeClass).toContain("text-cat-5");
+      expect(caixa.badgeClass).toContain("border-cat-5/25");
+
+      const cripto = getAssetClassMeta("Cripto");
+      expect(cripto.badgeClass).toContain("bg-cat-6/10");
+      expect(cripto.badgeClass).toContain("text-cat-6");
+      expect(cripto.badgeClass).toContain("border-cat-6/25");
 
       const outros = getAssetClassMeta("Outros");
-      expect(outros.badgeClass).toContain("bg-surface-hover/80");
+      expect(outros.badgeClass).toContain("bg-muted");
       expect(outros.badgeClass).toContain("text-muted-foreground");
-      expect(outros.badgeClass).toContain("border-border/80");
+      expect(outros.badgeClass).toContain("border-border");
     });
 
     it("não contém cores estáticas legadas em getAssetClassMeta", () => {

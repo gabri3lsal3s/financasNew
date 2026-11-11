@@ -56,7 +56,7 @@ describe("KpiCard (F12 — valores monetários via NumberTicker)", () => {
     // 7 dígitos (>= R$ 100.000,00 -> 10.000.000 centavos)
     const { container: container7 } = render(<KpiCard label="Receitas" cents={15000000} />);
     const p7 = container7.querySelector("p");
-    expect(p7?.className).toContain("text-base sm:text-lg lg:text-xl");
+    expect(p7?.className).toContain("text-[15px] sm:text-base lg:text-xl");
     expect(p7?.className).not.toContain("truncate");
 
     // 8 dígitos (>= R$ 1.000.000,00 -> 100.000.000 centavos)

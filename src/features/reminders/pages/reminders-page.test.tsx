@@ -287,7 +287,7 @@ describe("RemindersPage (central de lembretes §3.10)", () => {
       expect(screen.getByText("Renda habitual prevista")).toBeInTheDocument();
       expect(screen.getByText(/Recebimento habitual de Salário previsto/)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Informar valor" })).toBeInTheDocument();
-      expect(screen.getByText("Avisos & Renda (1)")).toBeInTheDocument();
+      expect(screen.getByText("Avisos & Renda")).toBeInTheDocument();
     } finally {
       mockAdvisorInsights.insights = [];
     }

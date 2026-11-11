@@ -19,6 +19,7 @@ vi.mock("@/state", () => ({
     isReadOnly: false,
     tier: "pro_annual",
   }),
+  usePermission: () => "write",
   useCreateCashCheckpoint: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
@@ -149,5 +150,14 @@ describe("RealCashHeroCard", () => {
     render(<RealCashHeroCard realCashData={withReceivablesData} />);
     expect(screen.getByText("A receber previsto:")).toBeInTheDocument();
     expect(screen.getByText(/850,00/)).toBeInTheDocument();
+  });
+
+  it("renderiza o gatilho de explicabilidade matemática do Saldo Livre Real (Regra 33)", () => {
+    render(<RealCashHeroCard realCashData={mockRealCashData} />);
+    expect(
+      screen.getByRole("button", {
+        name: "Ver fórmula e explicabilidade de Saldo Livre Real (Safe-to-Spend)",
+      }),
+    ).toBeInTheDocument();
   });
 });

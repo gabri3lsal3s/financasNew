@@ -12,6 +12,17 @@ vi.mock("@/data/repositories/user-preferences", () => ({
   updateCustomSettings: vi.fn(),
 }));
 
+const mockHasFeature = vi.fn().mockReturnValue(true);
+
+vi.mock("@/state/queries/use-user-access", () => ({
+  useUserAccess: () => ({
+    hasFeature: mockHasFeature,
+    role: "user",
+    status: "active",
+    isLoading: false,
+  }),
+}));
+
 const mockPreferencesBase: UserPreferences = {
   user_id: "user-1",
   theme: "dark",
@@ -35,6 +46,7 @@ describe("useFamilyMode Hook — Governança do Modo Familiar", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockHasFeature.mockReturnValue(true);
     setActiveUserId("user-1");
     queryClient = new QueryClient({
       defaultOptions: {
@@ -137,5 +149,23 @@ describe("useFamilyMode Hook — Governança do Modo Familiar", () => {
     await waitFor(() => {
       expect(result.current.isFamilyModeEnabled).toBe(true);
     });
+  });
+
+  it("retorna isFamilyModeEnabled como false quando o usuário não possui módulos de finanças (perfil apenas investimentos)", async () => {
+    mockHasFeature.mockReturnValue(false);
+    vi.mocked(userPrefsRepo.getUserPreferences).mockResolvedValueOnce({
+      ...mockPreferencesBase,
+      custom_settings: { familyModeEnabled: true },
+    });
+
+    const { result } = renderHook(() => useFamilyMode(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.isFamilyModeEnabled).toBe(false);
   });
 });

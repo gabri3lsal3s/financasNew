@@ -88,7 +88,7 @@ begin
           end if;
         end if;
       exception when others then
-        null;
+        raise warning 'Invite increment skipped: %', sqlerrm;
       end;
     end if;
   end if;

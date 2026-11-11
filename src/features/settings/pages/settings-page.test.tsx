@@ -85,6 +85,10 @@ vi.mock("@/state", () => ({
     currentPeriodEnd: null,
     plan: "trial",
   }),
+  useCancelSubscriptionMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateSubscriptionCardMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpgradeToAnnualMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteAccountMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUserAccess: () => ({
     profile: null,
     role: "user",
