@@ -136,7 +136,6 @@ describe("TripPublicPage", () => {
       data: [],
       isLoading: false,
     } as unknown as ReturnType<typeof tripsQuery.useUserTrips>);
-    vi.stubEnv("VITE_PUBLIC_SITE_URL", "https://financasnew.gabrielisaacsales.workers.dev");
   });
 
   it("renderiza loading quando os dados estiverem carregando", () => {
@@ -219,7 +218,7 @@ describe("TripPublicPage", () => {
     await user.click(shareButton);
 
     expect(openSpy).toHaveBeenCalledWith(
-      expect.stringContaining("financasnew.gabrielisaacsales.workers.dev%2Fviagem%2Ftoken123"),
+      expect.stringContaining(encodeURIComponent("/viagem/token123")),
       "_blank",
       "noopener,noreferrer",
     );
