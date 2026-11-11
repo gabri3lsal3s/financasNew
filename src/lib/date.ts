@@ -80,13 +80,14 @@ export function formatMonthYear(monthStr: string): string {
   return `${name}/${year}`;
 }
 
-/** Rótulo curto pt-BR ("ago/2026" → "Ago 2026"). */
+/** Rótulo curto pt-BR com inicial maiúscula gramatical ("ago. de 2026" → "Ago. de 2026"). */
 export function monthLabel(month: string): string {
   const [year, monthNum] = month.split("-").map(Number);
-  return new Date(year ?? 0, (monthNum ?? 1) - 1, 1).toLocaleDateString("pt-BR", {
+  const raw = new Date(year ?? 0, (monthNum ?? 1) - 1, 1).toLocaleDateString("pt-BR", {
     month: "short",
     year: "numeric",
   });
+  return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : "";
 }
 
 /** Ano corrente (número inteiro de 4 dígitos) no fuso local. */

@@ -31,6 +31,21 @@ vi.mock("@/data/client", () => ({
 }));
 
 vi.mock("@/state", () => ({
+  useDevices: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useRevokeDevice: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useDeleteDevice: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useGlobalSearchEntries: () => ({
     entries: [],
     isLoading: false,

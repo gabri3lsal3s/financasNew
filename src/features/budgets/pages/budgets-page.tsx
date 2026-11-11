@@ -816,7 +816,6 @@ export function BudgetsPage() {
           <Button
             size="sm"
             onClick={() => {
-              triggerSensory("action");
               setSharingGoalFor(null);
               setEditingShare(null);
               setEditingShareInitialEdit(false);

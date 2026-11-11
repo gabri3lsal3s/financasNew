@@ -37,6 +37,7 @@ android/capacitor-cordova-android-plugins/build/
 
 # Diagnostics / Screenshots
 diagnostico-*/
+*.zip
 
 # Playwright Test Artifacts
 test-results/

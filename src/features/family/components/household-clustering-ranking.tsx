@@ -115,7 +115,7 @@ export function HouseholdClusteringRanking({
                       {cluster.member_contributions.map((mc) => (
                         <span key={mc.user_id} className="tabular-nums">
                           <span className="font-medium text-foreground">{mc.payer_name}:</span>{" "}
-                          <MoneyText cents={mc.spent_cents} className="inline text-muted-foreground" />{" "}
+                          <MoneyText cents={mc.spent_cents} tone="default" className="inline text-muted-foreground" />{" "}
                           ({Math.round(mc.percentage)}%)
                         </span>
                       ))}

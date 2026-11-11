@@ -1,5 +1,31 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.1.1 (Build 54)** registra a **Auditoria Visual Forense, Blindagem de Precisão Monetária e Congruência Global de UI/Mobile** (2026-11-11):
+> - **(1) Blindagem de Precisão Monetária & Sanitização de Negativos (Fases 1 e 2 do Plano 24)**:
+>   - Suporte canônico a valores negativos em `formatCentsAsCurrency` (`allowNegative: true`) em `src/services/masks/money.ts`, preservando compatibilidade do `MoneyInput` e garantindo renderização de débitos reais;
+>   - Migração dos extratos de despesas compartilhadas (`trip-member-statement-dialog.tsx`, `public-trip-member-statement-dialog.tsx` e `trip-details-page.tsx`) para o primitivo canônico `<MoneyText cents={...} tone="auto" sign="explicit" />`, com semântica de cores correta (`positive`/`negative`), eliminando o bug de saldo devedor exibido como "R$ 0,00" amarelo;
+>   - Eliminação de anomalias cromáticas em `household-combined-flow-card.tsx`, `household-balance-card.tsx` e `household-clustering-ranking.tsx`, onde gastos e despesas de familiares eram pintados de verde vivo (`positive`);
+>   - Otimização do resumo de viagem no mobile: substituição de 3 cards empilhados por grid compacto simétrico;
+> - **(2) Contenção de Viewport & Rodapés Mobile-First (Fase 3 do Plano 24)**:
+>   - Correção do overflow horizontal no diálogo de assinatura (`upgrade-dialog.tsx`), com rótulo adaptativo ("Continuar" no mobile e "Continuar para Pagamento Seguro" no desktop) e rodapé sticky via prop `footer={<ModalFooter>...}` do `<Modal>`;
+>   - Remoção de ícones duplos redundantes (`CheckCircle2` adjacente ao ícone temático) nos benefícios do Plano Pro;
+>   - Reestruturação do rodapé do `welcome-feature-modal.tsx` para linha única simétrica (`flex items-center justify-between`), eliminando o esmagamento dos dots de paginação contra a barra de gestos do sistema;
+> - **(3) Inteligência Espacial e Anti-Oclusão no Tour Demonstrativo Guiado (Fase 4 do Plano 24)**:
+>   - Refatoração do motor de posicionamento `isAnchorTopMobile` em `demo-tour-spotlight.tsx`: quando o elemento destacado inicia no topo da tela (`top < 35% vh`, ex.: card de Configurações), o popover ancora-se obrigatoriamente na base da viewport, erradicando a oclusão do elemento em foco;
+>   - Simetria perfeita nos botões de navegação no mobile e desativação de interação com a BottomNav durante o spotlight;
+> - **(4) Harmonização de Ícones, Seções de Navegação e Tipografia PT-BR (Fases 5 e 6 do Plano 24)**:
+>   - Unificação de superfícies e ícones no menu "Mais opções" (`more-menu-sheet.tsx`), criação da seção semântica "Aplicativo & Ajuda" e substituição de badges legados pelo primitivo canônico `<Badge />`;
+>   - Correção de capitalização gramatical pt-BR em datas (`month-picker.tsx`, `proventos-tab.tsx` e `date.ts`), eliminando "De" maiúsculo e gerando "Novembro de 2026" com preposição minúscula;
+>   - Harmonização do herói de boas-vindas (`virgin-account-hero.tsx`): remoção de caixas decorativas em ícones secundários e balanceamento do contraste dos botões;
+>   - Governança sensorial (Regra 17 do AGENTS.md): erradicação de duplos disparos hápticos em handlers `onClick` de `<Button />` em `virgin-account-hero.tsx` e `budgets-page.tsx`;
+>   - Alinhamento de divisores e bordas ao token `border-border/80`;
+> - **(5) Quality Gates 100% Verdes & Homologação Final (Fase 7 do Plano 24)**:
+>   - ESLint (`eslint .`): 0 erros, 0 warnings (regra `local/no-decorative-unicode` e acessibilidade 100% aprovadas);
+>   - TypeScript (`tsc -b`): 0 erros;
+>   - Build de Produção Vite e Service Worker PWA gerados com sucesso em 2.14s;
+>   - Vitest: 45 arquivos de teste e 363 testes das áreas auditadas 100% aprovados;
+>   - Plano canônico detalhado e rastreado em `docs/plans/24_PLANO_EXECUCAO_AUDITORIA_VISUAL_E_CONGRUENCIA_GLOBAL.md`.
+>
 > **v3.1.0 (Build 53)** registra a **Expansão Global de Plataforma, Blindagem Arquitetural de Dados e Padronização Linguística PT-BR** (2026-11-11):
 > - **(1) Blindagem Arquitetural de Dados e Isolamento Estrito de Camadas (Fase 5)**:
 >   - Isolamento total de `@/data`: regra ESLint restritiva bloqueando importações diretas de `["@/data", "@/data/*"]` em `src/features/` e `src/components/`. Telas acessam dados exclusivamente via TanStack Query e hooks de estado em `src/state/`;

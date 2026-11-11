@@ -85,7 +85,7 @@ export function HouseholdBalanceCard({
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>{getSplitRuleLabel(splitRule)}</span>
           <span className="tabular-nums">
-            Total da casa: <MoneyText cents={totalSpentCents} className="font-medium text-foreground" />
+            Total da casa: <MoneyText cents={totalSpentCents} tone="default" className="font-medium text-foreground" />
           </span>
         </div>
 
@@ -119,14 +119,14 @@ export function HouseholdBalanceCard({
                 return (
                   <div
                     key={member.user_id}
-                    className="flex items-center justify-between gap-2 p-2 rounded-xl bg-surface-muted/40 border border-border/60 text-xs"
+                    className="flex items-center justify-between gap-2 p-2 rounded-xl bg-surface-muted/40 border border-border/80 text-xs"
                   >
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className={cn("size-2 rounded-full shrink-0", dotColor)} aria-hidden="true" />
                       <span className="font-medium text-foreground truncate">{member.display_name}</span>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0 text-right">
-                      <MoneyText cents={member.spent_cents} className="font-semibold text-foreground" />
+                      <MoneyText cents={member.spent_cents} tone="default" className="font-semibold text-foreground" />
                       <span className="text-[11px] text-muted-foreground">({member.percentage_of_total}%)</span>
                     </div>
                   </div>

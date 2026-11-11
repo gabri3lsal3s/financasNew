@@ -7,7 +7,6 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
-import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 import { DemoTrackSelectModal } from "./demo-track-select-modal";
 
@@ -38,7 +37,6 @@ export function VirginAccountHero({
   const [demoModalOpen, setDemoModalOpen] = useState(false);
 
   const handleOpenDemo = () => {
-    triggerSensory("action");
     if (onOpenDemo) {
       onOpenDemo();
     } else {
@@ -77,10 +75,10 @@ export function VirginAccountHero({
         {/* 3 Portas de Entrada Imediatas */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
           {/* Opção 1: Importar Extrato (Recomendada) */}
-          <div className="flex flex-col justify-between gap-4 rounded-xl border border-primary/30 bg-primary/5 p-4 transition-colors hover:border-primary/50">
+          <div className="flex flex-col justify-between gap-4 rounded-xl border border-primary/25 bg-primary/5 p-4 transition-colors hover:border-primary/40 shadow-xs">
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface border border-primary/20 text-primary-strong">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-strong">
                   <FileUp className="size-4.5" aria-hidden="true" />
                 </div>
                 <Badge variant="default" size="xs">
@@ -99,10 +97,7 @@ export function VirginAccountHero({
               <Button
                 size="sm"
                 variant="default"
-                onClick={() => {
-                  triggerSensory("action");
-                  onOpenStatementImport();
-                }}
+                onClick={onOpenStatementImport}
                 className="w-full text-xs font-semibold cursor-pointer"
               >
                 Importar Arquivo
@@ -117,9 +112,9 @@ export function VirginAccountHero({
           </div>
 
           {/* Opção 2: Cadastrar Cartão de Crédito */}
-          <div className="flex flex-col justify-between gap-4 rounded-xl border border-border/80 bg-surface-hover/30 p-4 transition-colors hover:border-border">
+          <div className="flex flex-col justify-between gap-4 rounded-xl border border-border/80 bg-surface p-4 transition-colors hover:bg-surface-hover hover:border-border shadow-xs">
             <div className="space-y-2">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface border border-border/80 text-muted-foreground">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface-subtle text-muted-foreground">
                 <CreditCard className="size-4.5" aria-hidden="true" />
               </div>
               <h3 className="text-sm font-semibold text-foreground">
@@ -133,10 +128,7 @@ export function VirginAccountHero({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                triggerSensory("action");
-                navigate("/cartoes");
-              }}
+              onClick={() => navigate("/cartoes")}
               className="w-full text-xs font-medium cursor-pointer"
             >
               Cadastrar Cartão
@@ -144,9 +136,9 @@ export function VirginAccountHero({
           </div>
 
           {/* Opção 3: Primeiro Lançamento Rápido */}
-          <div className="flex flex-col justify-between gap-4 rounded-xl border border-border/80 bg-surface-hover/30 p-4 transition-colors hover:border-border">
+          <div className="flex flex-col justify-between gap-4 rounded-xl border border-border/80 bg-surface p-4 transition-colors hover:bg-surface-hover hover:border-border shadow-xs">
             <div className="space-y-2">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface border border-border/80 text-muted-foreground">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface-subtle text-muted-foreground">
                 <PlusCircle className="size-4.5" aria-hidden="true" />
               </div>
               <h3 className="text-sm font-semibold text-foreground">
@@ -161,10 +153,7 @@ export function VirginAccountHero({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => {
-                  triggerSensory("action");
-                  onOpenNewTransaction();
-                }}
+                onClick={onOpenNewTransaction}
                 className="w-full text-xs font-medium cursor-pointer"
               >
                 Fazer Lançamento
@@ -180,7 +169,7 @@ export function VirginAccountHero({
         </div>
 
         {/* Rodapé: Ponte para o Modo Demonstração */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-border/60">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-border/80">
           <span className="text-xs text-muted-foreground text-center sm:text-left">
             Deseja ver como o app funciona com relatórios completos e investimentos antes de começar?
           </span>

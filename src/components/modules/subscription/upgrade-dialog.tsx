@@ -12,7 +12,7 @@ import {
   Calculator,
   Landmark,
 } from "lucide-react";
-import { Modal, ModalFooter } from "@/components/ui/modal";
+import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -114,6 +114,29 @@ export function UpgradeDialog({
         "Acesso completo e ilimitado a todas as ferramentas do Axir Pro."
       }
       size="xl"
+      footer={
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 w-full">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            className="w-full sm:w-auto text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+          >
+            Agora não
+          </Button>
+          <Button
+            type="button"
+            onClick={() => {
+              onProceedToCheckout(selectedPlan);
+            }}
+            className="w-full sm:w-auto gap-2 font-semibold cursor-pointer"
+          >
+            <Sparkles className="size-4 shrink-0" aria-hidden="true" />
+            <span className="sm:hidden">Continuar</span>
+            <span className="hidden sm:inline">Continuar para Pagamento Seguro</span>
+          </Button>
+        </div>
+      }
     >
       {/* Alternador de periodicidade */}
       <div className="mt-4 flex items-center justify-center">
@@ -158,7 +181,7 @@ export function UpgradeDialog({
             <span className="text-xs sm:text-sm text-muted-foreground">/mês</span>
           </div>
           {isAnnual && (
-            <Badge variant="positive" size="xs">
+            <Badge variant="positive" size="xs" className="self-start sm:self-auto shrink-0">
               Apenas R$ 0,39 por dia
             </Badge>
           )}
@@ -187,29 +210,25 @@ export function UpgradeDialog({
 
       {/* Lista de benefícios atualizada com as novas funcionalidades */}
       <ul className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        {BENEFITS.map((benefit) => {
-          const Icon = benefit.icon;
-          return (
-            <li
-              key={benefit.title}
-              className="flex items-start gap-3 rounded-lg border border-border/80 bg-surface p-3"
-            >
-              <CheckCircle2
-                className="mt-0.5 size-4 shrink-0 text-positive-strong"
-                aria-hidden="true"
-              />
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <Icon className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                  <span>{benefit.title}</span>
-                </p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground leading-snug">
-                  {benefit.description}
-                </p>
-              </div>
-            </li>
-          );
-        })}
+        {BENEFITS.map((benefit) => (
+          <li
+            key={benefit.title}
+            className="flex items-start gap-2.5 rounded-xl border border-border/80 bg-surface p-3 shadow-2xs"
+          >
+            <CheckCircle2
+              className="mt-0.5 size-4 shrink-0 text-positive-strong"
+              aria-hidden="true"
+            />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-foreground">
+                {benefit.title}
+              </p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground leading-snug">
+                {benefit.description}
+              </p>
+            </div>
+          </li>
+        ))}
       </ul>
 
       {/* Garantia e Confiança */}
@@ -224,27 +243,6 @@ export function UpgradeDialog({
           </p>
         </div>
       </div>
-
-      {/* Rodapé de ações */}
-      <ModalFooter>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => onOpenChange(false)}
-        >
-          Agora não
-        </Button>
-        <Button
-          type="button"
-          onClick={() => {
-            onProceedToCheckout(selectedPlan);
-          }}
-          className="gap-2"
-        >
-          <Sparkles className="size-4" aria-hidden="true" />
-          Continuar para Pagamento Seguro
-        </Button>
-      </ModalFooter>
     </Modal>
   );
 }

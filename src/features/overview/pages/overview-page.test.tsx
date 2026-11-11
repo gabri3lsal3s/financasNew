@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render as rtlRender, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SubscriptionStatus } from "@/types";
@@ -17,6 +17,9 @@ const testQueryClient = new QueryClient({
 const testWrapper = ({ children }: { children: React.ReactNode }) => (
   <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
 );
+
+const render = (ui: React.ReactElement, options?: Parameters<typeof rtlRender>[1]) =>
+  rtlRender(ui, { wrapper: testWrapper, ...options });
 
 vi.mock("react-router", () => ({
   useNavigate: () => navigateMock,
@@ -115,6 +118,15 @@ let expensesMock = {
 };
 
 vi.mock("@/state", () => ({
+  useCorporateDividends: () => ({
+    available: [],
+    projected: [],
+    totalAvailableAmount: 0,
+    totalProjectedAmount: 0,
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
   useIncomes: (month: string) => ({
     data: incomesMock.data(month),
     isLoading: incomesMock.isLoading,

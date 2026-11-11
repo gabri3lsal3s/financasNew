@@ -37,6 +37,8 @@ const usdNoCentsFormatter = new Intl.NumberFormat("pt-BR", {
 export interface FormatCurrencyOptions {
   /** Se true, oculta os centavos da formatação (ex: "R$ 1.250"). */
   hideCents?: boolean;
+  /** Se true, permite a formatação com sinal de valores negativos (ex: "-R$ 975,00" ou "-US$ 10,00"). */
+  allowNegative?: boolean;
 }
 
 /** Formata centavos na moeda especificada (BRL por padrão). */
@@ -45,7 +47,14 @@ export function formatCentsAsCurrency(
   currency: AssetCurrency = "BRL",
   options?: FormatCurrencyOptions,
 ): string {
-  const safe = Number.isFinite(cents) && cents >= 0 ? Math.round(cents) : 0;
+  const allowNegative = options?.allowNegative ?? false;
+  const safe = Number.isFinite(cents)
+    ? allowNegative
+      ? Math.round(cents)
+      : cents >= 0
+      ? Math.round(cents)
+      : 0
+    : 0;
   const hideCents = options?.hideCents ?? false;
 
   if (currency === "USD") {

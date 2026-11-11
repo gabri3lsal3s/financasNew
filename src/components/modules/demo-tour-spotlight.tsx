@@ -783,25 +783,48 @@ export function DemoTourSpotlight({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleClose, handleNext, handlePrev, isDemoActive]);
 
-  // Motor anti-colisão no mobile (Fase 2 — Tarefa 2.4):
-  // Se o centro vertical do elemento alvo estiver na metade inferior (> 45% da viewport),
-  // ancoramos o popover no TOPO para não encobrir o elemento em foco.
+  // Motor anti-colisão no mobile (Fase 2 & Auditoria Visual):
+  // Se o elemento começa próximo ao topo (< 35% vh), ancora na BASE para nunca encobrir o cabeçalho.
+  // Se estiver na metade inferior (> 45% vh), ancoramos o popover no TOPO para não encobrir o elemento em foco.
   // Caso contrário, ancoramos na BASE.
   const isAnchorTopMobile = useMemo(() => {
     if (typeof window === "undefined") return false;
+
+    let targetY: number | null = null;
+    let targetH: number | null = null;
+
     if (rect) {
-      const elementCenterY = rect.y + rect.height / 2;
-      return elementCenterY > window.innerHeight * 0.45;
-    }
-    const targetSel = resolveTourStepTargetSelector(currentStep, false);
-    if (targetSel) {
-      const element = document.querySelector(targetSel);
-      if (element) {
-        const elRect = element.getBoundingClientRect();
-        const elementCenterY = elRect.top + elRect.height / 2;
-        return elementCenterY > window.innerHeight * 0.45;
+      targetY = rect.y;
+      targetH = rect.height;
+    } else {
+      const targetSel = resolveTourStepTargetSelector(currentStep, false);
+      if (targetSel) {
+        const element = document.querySelector(targetSel);
+        if (element) {
+          const elRect = element.getBoundingClientRect();
+          targetY = elRect.top;
+          targetH = elRect.height;
+        }
       }
     }
+
+    if (targetY !== null && targetH !== null) {
+      const vh = window.innerHeight;
+      const spaceAbove = targetY;
+      const spaceBelow = vh - (targetY + targetH);
+
+      // Se o elemento começa próximo ao topo da tela (< 35% vh),
+      // ancorar no topo fatalmente cobrirá o cabeçalho e controles superiores.
+      // Portanto, só ancora no topo se o espaço inferior for crítico (< 120px) e o superior for amplo (>= 180px).
+      if (targetY < vh * 0.35) {
+        return spaceBelow < 120 && spaceAbove >= 180;
+      }
+
+      // Se o elemento estiver concentrado na metade inferior, ancora no topo para não encobrir a base.
+      const elementCenterY = targetY + targetH / 2;
+      return elementCenterY > vh * 0.45;
+    }
+
     return currentStep?.preferredPlacement === "top";
   }, [currentStep, rect]);
 

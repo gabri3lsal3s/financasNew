@@ -8,7 +8,6 @@ import { DemoTrackSelectModal } from "@/components/modules/demo-track-select-mod
 import { HelpModal } from "@/components/modules/help-modal";
 import { isAndroidDevice, isNativePlatform } from "@/services/native/platform";
 import { useFamilyMode, useTripMode, useReminders, useUserAccess } from "@/state";
-import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 
@@ -78,16 +77,13 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
                       <span>{item.label}</span>
                     </div>
                     {showBadge && (
-                      <span
-                        className={cn(
-                          "flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
-                          urgentCount > 0
-                            ? "bg-danger text-white"
-                            : "bg-primary/15 text-primary-strong",
-                        )}
+                      <Badge
+                        size="xs"
+                        variant={urgentCount > 0 ? "critical" : "default"}
+                        className="h-5 min-w-5 px-1.5 font-bold"
                       >
                         {totalCount > 9 ? "9+" : totalCount}
-                      </span>
+                      </Badge>
                     )}
                   </Link>
                 );
@@ -96,82 +92,87 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
           </section>
         ))}
 
-        <div className="pt-2 space-y-2">
-          {/* Acesso ao Tour Guiado (Modo Simulação) */}
-          <button
-            type="button"
-            onClick={() => {
-              onOpenChange(false);
-              setDemoSelectOpen(true);
-            }}
-            className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-gradient-to-br from-primary/10 via-surface to-accent/5 p-3.5 text-left transition-colors hover:bg-primary/15 cursor-pointer shadow-xs"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary-strong">
-                <Compass className="size-4" aria-hidden="true" />
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <span>Rever Tour Guiado</span>
-                  <Badge variant="muted" size="xs">
-                    Simulação
-                  </Badge>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Explore recursos com dados ilustrativos em memória
-                </p>
-              </div>
-            </div>
-          </button>
-
-          {/* Acesso à Central de Ajuda & Suporte */}
-          <button
-            type="button"
-            onClick={() => {
-              onOpenChange(false);
-              setHelpModalOpen(true);
-            }}
-            className="flex w-full items-center justify-between rounded-xl border border-border/80 bg-surface p-3.5 text-left transition-colors hover:bg-surface-hover cursor-pointer shadow-xs"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-muted-foreground">
-                <HelpCircle className="size-4" aria-hidden="true" />
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-foreground">
-                  Central de Ajuda & Suporte
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Dúvidas frequentes, orientações e contato
-                </p>
-              </div>
-            </div>
-          </button>
-
-          <InstallAppButton />
-
-          {!isNativePlatform() && isAndroidDevice() && (
-            <Link
-              to="/configuracoes?tab=devices"
-              onClick={() => onOpenChange(false)}
-              className="flex w-full items-center justify-between rounded-xl border border-primary/20 bg-primary/5 p-3.5 text-left transition-colors hover:bg-primary/10"
+        <section aria-label="Aplicativo & Ajuda" className="space-y-2 pt-2">
+          <h2 className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Aplicativo & Ajuda
+          </h2>
+          <div className="grid gap-2">
+            {/* Acesso ao Tour Guiado (Modo Simulação) */}
+            <button
+              type="button"
+              onClick={() => {
+                onOpenChange(false);
+                setDemoSelectOpen(true);
+              }}
+              className="flex w-full items-center justify-between rounded-xl border border-border/80 bg-surface p-3.5 text-left transition-colors hover:bg-surface-hover cursor-pointer shadow-xs"
             >
               <div className="flex items-center gap-3">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary-strong">
-                  <Smartphone className="size-4" aria-hidden="true" />
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-muted-foreground">
+                  <Compass className="size-4" aria-hidden="true" />
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-foreground">
-                    Baixar App Android Pro (APK)
+                  <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <span>Rever Tour Guiado</span>
+                    <Badge variant="muted" size="xs">
+                      Simulação
+                    </Badge>
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Leitura automática de comprovantes Pix e cartões
+                    Explore recursos com dados ilustrativos em memória
                   </p>
                 </div>
               </div>
-            </Link>
-          )}
-        </div>
+            </button>
+
+            {/* Acesso à Central de Ajuda & Suporte */}
+            <button
+              type="button"
+              onClick={() => {
+                onOpenChange(false);
+                setHelpModalOpen(true);
+              }}
+              className="flex w-full items-center justify-between rounded-xl border border-border/80 bg-surface p-3.5 text-left transition-colors hover:bg-surface-hover cursor-pointer shadow-xs"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-muted-foreground">
+                  <HelpCircle className="size-4" aria-hidden="true" />
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-foreground">
+                    Central de Ajuda & Suporte
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Dúvidas frequentes, orientações e contato
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            <InstallAppButton />
+
+            {!isNativePlatform() && isAndroidDevice() && (
+              <Link
+                to="/configuracoes?tab=devices"
+                onClick={() => onOpenChange(false)}
+                className="flex w-full items-center justify-between rounded-xl border border-border/80 bg-surface p-3.5 text-left transition-colors hover:bg-surface-hover shadow-xs"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-muted-foreground">
+                    <Smartphone className="size-4" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-foreground">
+                      Baixar App Android Pro (APK)
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Leitura automática de comprovantes Pix e cartões
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            )}
+          </div>
+        </section>
       </div>
     </ResponsiveDialog>
 

@@ -686,7 +686,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
                       }`}
                     >
                       <div className="flex w-full items-center justify-between gap-2">
-                        <span className="text-xs font-semibold capitalize text-foreground">{monthLabel(entry.month)}</span>
+                        <span className="text-xs font-semibold text-foreground">{monthLabel(entry.month)}</span>
                         <div className="flex flex-col items-end">
                           {hasValue ? (
                             <span className="num text-xs font-bold text-positive-strong">

@@ -67,23 +67,23 @@ export function HouseholdCombinedFlowCard({
       <CardContent className="space-y-4 pt-1">
         {/* Grid de métricas financeiras mobile-first */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          <div className="p-3 rounded-xl bg-surface-subtle/50 border border-border/50 space-y-1">
+          <div className="p-3 rounded-xl bg-surface-subtle/50 border border-border/80 shadow-2xs space-y-1">
             <span className="text-[11px] font-medium text-muted-foreground block flex items-center gap-1.5">
               <ArrowUpRight className="size-3.5 text-positive-strong shrink-0" aria-hidden="true" />
               <span>Receitas da Casa</span>
             </span>
             <div className="text-base sm:text-lg font-bold tracking-tight text-foreground">
-              <MoneyText cents={totalIncomeCents} />
+              <MoneyText cents={totalIncomeCents} tone="positive" />
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-surface-subtle/50 border border-border/50 space-y-1">
+          <div className="p-3 rounded-xl bg-surface-subtle/50 border border-border/80 shadow-2xs space-y-1">
             <span className="text-[11px] font-medium text-muted-foreground block flex items-center gap-1.5">
               <ArrowDownRight className="size-3.5 text-negative-strong shrink-0" aria-hidden="true" />
               <span>Gastos Realizados</span>
             </span>
             <div className="text-base sm:text-lg font-bold tracking-tight text-foreground">
-              <MoneyText cents={totalSpentCents} />
+              <MoneyText cents={totalSpentCents} tone="default" />
             </div>
           </div>
         </div>

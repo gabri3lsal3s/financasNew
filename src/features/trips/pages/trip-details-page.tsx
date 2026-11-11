@@ -29,6 +29,7 @@ import {
   Tabs,
   EmptyState,
   Skeleton,
+  MoneyText,
 } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import {
@@ -686,20 +687,24 @@ export function TripDetailsPage() {
       <div data-tour="trip-balances" className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="p-3.5 rounded-2xl bg-surface border border-border/80 shadow-xs">
           <p className="text-[11px] text-muted-foreground font-medium">Total do Grupo</p>
-          <p className="text-base sm:text-lg font-bold tabular-nums text-foreground">
-            {formatCentsAsBRL(totalExpensesCents)}
-          </p>
+          <div className="text-base sm:text-lg font-bold tabular-nums text-foreground">
+            <MoneyText cents={totalExpensesCents} tone="default" />
+          </div>
         </div>
 
         <div className="p-3.5 rounded-2xl bg-surface border border-border/80 shadow-xs">
           <p className="text-[11px] text-muted-foreground font-medium">Seu Balanço Líquido</p>
-          <p className="text-base sm:text-lg font-bold tabular-nums text-foreground">
-            {myBalance
-              ? myBalance.netBalanceCents > 0
-                ? `+ ${formatCentsAsBRL(myBalance.netBalanceCents)}`
-                : formatCentsAsBRL(myBalance.netBalanceCents)
-              : "R$ 0,00"}
-          </p>
+          <div className="text-base sm:text-lg font-bold tabular-nums text-foreground">
+            {myBalance ? (
+              <MoneyText
+                cents={myBalance.netBalanceCents}
+                tone="auto"
+                sign="explicit"
+              />
+            ) : (
+              "R$ 0,00"
+            )}
+          </div>
         </div>
 
         <div className="p-3.5 rounded-2xl bg-surface border border-border/80 shadow-xs">

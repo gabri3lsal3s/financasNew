@@ -119,10 +119,36 @@ export function WelcomeFeatureModal({
       description="Descubra como o Axir automatiza seu controle financeiro com privacidade local."
       size="md"
       footer={
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
-          {/* Indicador de passos (Dots) acessível */}
+        <div className="flex items-center justify-between gap-2 w-full">
+          {/* Botão Voltar ou Pular à esquerda */}
+          <div className="shrink-0">
+            {currentSlide > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handlePrev}
+                className="gap-1 cursor-pointer h-8 px-2.5 text-xs"
+              >
+                <ArrowLeft className="size-3.5" aria-hidden="true" />
+                <span>Voltar</span>
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleComplete}
+                className="text-xs text-muted-foreground hover:text-foreground cursor-pointer h-8 px-2.5"
+              >
+                Pular
+              </Button>
+            )}
+          </div>
+
+          {/* Indicador de passos (Dots) acessível centralizado */}
           <div
-            className="flex items-center justify-center sm:justify-start gap-1.5"
+            className="flex items-center justify-center gap-1.5"
             role="tablist"
             aria-label="Progresso da apresentação de recursos"
           >
@@ -147,37 +173,14 @@ export function WelcomeFeatureModal({
             ))}
           </div>
 
-          {/* Botões de Ação */}
-          <div className="flex items-center gap-2 justify-end">
-            {currentSlide > 0 ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handlePrev}
-                className="gap-1 cursor-pointer"
-              >
-                <ArrowLeft className="size-3.5" aria-hidden="true" />
-                <span>Voltar</span>
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleComplete}
-                className="text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                Pular
-              </Button>
-            )}
-
+          {/* Botão de Avanço à direita */}
+          <div className="shrink-0">
             <Button
               type="button"
               variant="default"
               size="sm"
               onClick={handleNext}
-              className="gap-1.5 cursor-pointer font-semibold"
+              className="gap-1.5 cursor-pointer font-semibold h-8 px-3 text-xs"
             >
               <span>{currentSlide === WELCOME_SLIDES.length - 1 ? "Começar a usar" : "Próximo"}</span>
               {currentSlide === WELCOME_SLIDES.length - 1 ? (

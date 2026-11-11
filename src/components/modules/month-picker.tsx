@@ -20,13 +20,14 @@ function addMonths(month: string, delta: number): string {
   return `${y}-${String(m).padStart(2, "0")}`;
 }
 
-/** Rótulo pt-BR ("agosto de 2026"). */
+/** Rótulo pt-BR com inicial maiúscula gramatical ("Agosto de 2026"). */
 function monthLabel(month: string): string {
   const [year, monthNum] = month.split("-").map(Number);
-  return new Date(year ?? 0, (monthNum ?? 1) - 1, 1).toLocaleDateString("pt-BR", {
+  const raw = new Date(year ?? 0, (monthNum ?? 1) - 1, 1).toLocaleDateString("pt-BR", {
     month: "long",
     year: "numeric",
   });
+  return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : "";
 }
 
 /** Seletor de mês por botões (sem `<select>` nativo — DESIGN_SYSTEM §13). */
@@ -51,7 +52,7 @@ export function MonthPicker({ value, onValueChange, disabled, className }: Month
       >
         <ChevronLeft aria-hidden="true" />
       </Button>
-      <span key={value} className="flex-1 min-w-32 text-center text-sm font-medium capitalize text-foreground animate-fade-slide-in">
+      <span key={value} className="flex-1 min-w-32 text-center text-sm font-medium text-foreground animate-fade-slide-in">
         {monthLabel(value)}
       </span>
       <Button

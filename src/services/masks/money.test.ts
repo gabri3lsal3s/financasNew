@@ -10,10 +10,17 @@ describe("formatCentsAsBRL (máscara de moeda pt-BR)", () => {
     expect(formatCentsAsBRL(0)).toBe("R$\u00a00,00");
   });
 
-  it("trata valores inválidos/negativos como R$ 0,00 (input só aceita positivos)", () => {
+  it("trata valores inválidos/negativos como R$ 0,00 por padrão (input só aceita positivos)", () => {
     expect(formatCentsAsBRL(-5)).toBe("R$\u00a00,00");
     expect(formatCentsAsBRL(Number.NaN)).toBe("R$\u00a00,00");
     expect(formatCentsAsBRL(Number.POSITIVE_INFINITY)).toBe("R$\u00a00,00");
+  });
+
+  it("formata valores negativos com sinal quando allowNegative for true", () => {
+    expect(formatCentsAsBRL(-97500, { allowNegative: true })).toBe("-R$\u00a0975,00");
+    expect(formatCentsAsBRL(-500, { allowNegative: true })).toBe("-R$\u00a05,00");
+    expect(formatCentsAsCurrency(-15000, "USD", { allowNegative: true })).toBe("-US$\u00a0150,00");
+    expect(formatCentsAsBRL(-97500, { allowNegative: true, hideCents: true })).toBe("-R$\u00a0975");
   });
 
   it("formata USD em formato pt-BR com prefixo US$", () => {

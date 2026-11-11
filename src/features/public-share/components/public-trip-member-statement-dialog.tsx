@@ -10,6 +10,7 @@ import {
   Button,
   Badge,
   Card,
+  MoneyText,
 } from "@/components/ui";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { getMemberExpenseStatement } from "@/domain/trips/trip-math";
@@ -99,44 +100,39 @@ export function PublicTripMemberStatementDialog({
             </Badge>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-border/60">
-            <div className="p-2.5 rounded-xl bg-surface border border-border/60">
-              <span className="text-[11px] text-muted-foreground block font-medium">
+          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/80">
+            <div className="p-2 sm:p-2.5 rounded-xl bg-surface border border-border/80 shadow-xs">
+              <span className="text-[10px] sm:text-[11px] text-muted-foreground block font-medium truncate">
                 Total Pago
               </span>
-              <span className="text-sm font-bold tabular-nums text-foreground">
-                {formatCentsAsBRL(statement.totalPaidCents)}
-              </span>
+              <MoneyText
+                cents={statement.totalPaidCents}
+                tone="default"
+                className="text-xs sm:text-sm font-bold tabular-nums"
+              />
             </div>
 
-            <div className="p-2.5 rounded-xl bg-surface border border-border/60">
-              <span className="text-[11px] text-muted-foreground block font-medium">
-                Sua Cota nas Contas
+            <div className="p-2 sm:p-2.5 rounded-xl bg-surface border border-border/80 shadow-xs">
+              <span className="text-[10px] sm:text-[11px] text-muted-foreground block font-medium truncate">
+                Sua Cota
               </span>
-              <span className="text-sm font-bold tabular-nums text-foreground">
-                {formatCentsAsBRL(statement.totalOwedCents)}
-              </span>
+              <MoneyText
+                cents={statement.totalOwedCents}
+                tone="default"
+                className="text-xs sm:text-sm font-bold tabular-nums"
+              />
             </div>
 
-            <div className="p-2.5 rounded-xl bg-surface border border-border/60">
-              <span className="text-[11px] text-muted-foreground block font-medium">
+            <div className="p-2 sm:p-2.5 rounded-xl bg-surface border border-border/80 shadow-xs">
+              <span className="text-[10px] sm:text-[11px] text-muted-foreground block font-medium truncate">
                 Balanço Líquido
               </span>
-              <span
-                className={`text-sm font-bold tabular-nums ${
-                  statement.netBalanceCents > 0
-                    ? "text-positive"
-                    : statement.netBalanceCents < 0
-                    ? "text-warning"
-                    : "text-muted-foreground"
-                }`}
-              >
-                {statement.netBalanceCents > 0
-                  ? `+ ${formatCentsAsBRL(statement.netBalanceCents)}`
-                  : statement.netBalanceCents < 0
-                  ? formatCentsAsBRL(statement.netBalanceCents)
-                  : "R$ 0,00"}
-              </span>
+              <MoneyText
+                cents={statement.netBalanceCents}
+                tone="auto"
+                sign="explicit"
+                className="text-xs sm:text-sm font-bold tabular-nums"
+              />
             </div>
           </div>
         </div>

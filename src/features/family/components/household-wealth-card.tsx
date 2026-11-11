@@ -108,7 +108,7 @@ export function HouseholdWealthCard({
               <span className="text-[10px] text-muted-foreground block truncate">
                 {isCeiling ? (
                   <>
-                    {reserveHealth.months_covered}m do teto (<MoneyText cents={monthlyCeilingCents} />/mês)
+                    {reserveHealth.months_covered}m do teto (<MoneyText cents={monthlyCeilingCents} tone="default" />/mês)
                   </>
                 ) : (
                   reserveHealth.label
@@ -175,7 +175,7 @@ export function HouseholdWealthCard({
               </span>
               <span className="text-muted-foreground text-[11px] tabular-nums">
                 {reserveHealth.progress_percent}% concluído · Alvo:{" "}
-                <MoneyText cents={reserveHealth.target_cents} />
+                <MoneyText cents={reserveHealth.target_cents} tone="default" />
               </span>
             </div>
 
@@ -205,7 +205,7 @@ export function HouseholdWealthCard({
               <span>
                 {reserveHealth.remaining_cents && reserveHealth.remaining_cents > 0 ? (
                   <>
-                    Faltam <MoneyText cents={reserveHealth.remaining_cents} /> para cobrir 6 meses de contas da casa.
+                    Faltam <MoneyText cents={reserveHealth.remaining_cents} tone="default" /> para cobrir 6 meses de contas da casa.
                   </>
                 ) : (
                   "Meta de segurança de 6 meses alcançada pela família!"

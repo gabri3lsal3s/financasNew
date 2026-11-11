@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProventosTab } from "./proventos-tab";
 
@@ -10,8 +11,16 @@ vi.mock("@/services/sensory", () => ({
   triggerSensory: (...args: unknown[]) => triggerSensoryMock(...args),
 }));
 
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
 function renderTab(ui = <ProventosTab defaultMonth="2026-08" />, initialEntries = ["/"]) {
-  return render(<MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>);
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>
+    </QueryClientProvider>,
+  );
 }
 
 const dividendsMock = vi.fn();
@@ -47,6 +56,15 @@ vi.mock("@/state", () => ({
   useDeletePortfolioDividend: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
+  }),
+  useCorporateDividends: () => ({
+    available: [],
+    projected: [],
+    totalAvailableAmount: 0,
+    totalProjectedAmount: 0,
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
   }),
   useCreatePortfolioDividend: () => ({
     mutateAsync: vi.fn(),
