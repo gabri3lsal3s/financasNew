@@ -66,7 +66,7 @@ export function LegalPageShell({
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* Marca / Identidade Oficial */}
           <Link
-            to="/landing"
+            to="/"
             className="flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Axir - Ir para a página inicial"
           >
@@ -309,7 +309,7 @@ export function LegalPageShell({
                   Política de Privacidade (LGPD)
                 </Link>
                 <Link
-                  to="/landing"
+                  to="/"
                   className="text-muted-foreground hover:text-foreground transition-colors py-0.5"
                 >
                   Página Inicial

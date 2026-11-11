@@ -19,6 +19,7 @@ import {
   initDeepLinkListener,
   initNotificationActionListener,
   isAppLocked,
+  isNativePlatform,
   setPendingRouteAfterUnlock,
   subscribeAppLock,
 } from "@/services/native";
@@ -182,6 +183,26 @@ const ROUTE_FEATURE_MAP: Record<string, string> = {
 };
 
 /**
+ * Verifica de forma síncrona se existe um token de autenticação salvo no localStorage do navegador.
+ * Evita flash da tela de carregamento para novos visitantes que acessam a raiz no navegador Web.
+ */
+function hasStoredAuthSession(): boolean {
+  if (typeof window === "undefined" || !window.localStorage) return false;
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+        const item = window.localStorage.getItem(key);
+        if (item && item.includes("access_token")) return true;
+      }
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+/**
  * Guard de autenticação:
  * - Sem sessão → redireciona para a tela de login preservando a rota de origem.
  * - Em transição/carregamento → exibe tela de carregamento oficial (`LoadingScreen`) sincronizada com Auth + Perfil/Acesso.
@@ -206,6 +227,17 @@ function RequireAuth() {
 
   // Previne micro-flashes mantendo a tela de transição visível de forma estável e fluida (650ms)
   const { isShowing: isTransitioning, isClosing } = useMinimumLoading(isDataLoading, 650);
+
+  // Visitante desautenticado acessando a raiz "/" no navegador Web:
+  // - Sem token armazenado ou após resolução da autenticação sem usuário ativo -> exibe imediatamente a LandingPage de apresentação
+  const isNative = isNativePlatform();
+  const isRootPath = location.pathname === "/";
+
+  if (isRootPath && !isNative) {
+    if (!hasUser && (!authLoading || !hasStoredAuthSession())) {
+      return <LandingPage />;
+    }
+  }
 
   // Blindagem 2FA (Etapa 1.2): sessão sem elevação AAL2 é imediatamente redirecionada para o desafio TOTP
   if (!authLoading && session?.user && mfaRequired && !mfaVerified) {

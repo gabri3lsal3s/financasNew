@@ -1,11 +1,11 @@
 {
   "version": "3.1.0",
-  "versionCode": 46,
-  "releaseDate": "2026-11-11T17:38:27Z",
+  "versionCode": 47,
+  "releaseDate": "2026-11-11T18:13:24Z",
   "minSupportedVersion": "3.1.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "d2db51c5af028bd4855b7accb9c6240ce7c62e5ca5be852c4ff4bfb995ca8207",
-  "fileSizeBytes": 12164075,
+  "sha256": "ec664c36cdf4fbe3c2ffca2ab0f534a81f77dc8fe8e806a9d18f95cd786e0a50",
+  "fileSizeBytes": 12164219,
   "changelog": [
     "Axir v3.1.0: Expansão Global de Plataforma, Motores Financeiros e Segurança",
     "App Lock Híbrido com Biometria Nativa, WebAuthn e PIN Numérico com SHA-256",

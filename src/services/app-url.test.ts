@@ -53,16 +53,24 @@ describe("services/app-url — getPublicAppUrl", () => {
   });
 
   describe("em ambiente Web de cloud ou producao (sem VITE_PUBLIC_SITE_URL)", () => {
-    it("deve usar window.location.origin quando for um endereco HTTP(S) publico", () => {
+    it("deve normalizar dominios internos legados (*.workers.dev / *.pages.dev) para o dominio canonico axir.com.br", () => {
       vi.stubEnv("VITE_PUBLIC_SITE_URL", "");
       mockOrigin("https://financasnew.gabrielisaacsales.workers.dev");
 
-      expect(getPublicAppUrl("/entrar")).toBe("https://financasnew.gabrielisaacsales.workers.dev/entrar");
-      expect(getPublicAppUrl("redefinir-senha")).toBe("https://financasnew.gabrielisaacsales.workers.dev/redefinir-senha");
-      expect(getPublicAppUrl()).toBe("https://financasnew.gabrielisaacsales.workers.dev");
+      expect(getPublicAppUrl("/entrar")).toBe("https://axir.com.br/entrar");
+      expect(getPublicAppUrl("redefinir-senha")).toBe("https://axir.com.br/redefinir-senha");
+      expect(getPublicAppUrl()).toBe("https://axir.com.br");
     });
 
-    it("deve usar dominio proprio customizado automaticamente quando configurado", () => {
+    it("deve normalizar VITE_PUBLIC_SITE_URL se ela contiver workers.dev", () => {
+      vi.stubEnv("VITE_PUBLIC_SITE_URL", "https://financasnew.gabrielisaacsales.workers.dev");
+      mockOrigin("https://app.meudominio.com.br");
+
+      expect(getPublicAppUrl("/entrar")).toBe("https://axir.com.br/entrar");
+      expect(getPublicAppUrl("viagem/tok123")).toBe("https://axir.com.br/viagem/tok123");
+    });
+
+    it("deve usar dominio proprio customizado de producao quando configurado", () => {
       vi.stubEnv("VITE_PUBLIC_SITE_URL", "");
       mockOrigin("https://app.meudominio.com.br");
 

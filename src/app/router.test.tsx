@@ -452,4 +452,64 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
       expect(window.location.search).toBe("?tab=metas");
     });
   });
+
+  it("renderiza a página de apresentação (LandingPage) diretamente ao acessar a raiz / no navegador Web sem sessão", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/");
+    render(<AppRouter />);
+
+    expect(await screen.findByRole("button", { name: "Recursos" }, { timeout: 8000 })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/");
+  });
+
+  it("renderiza o painel financeiro (PageShell) ao acessar a raiz / com sessão autenticada", async () => {
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: { user: { id: "user-123" } } as unknown as useAuthModule.AuthState["session"],
+      user: { id: "user-123" } as unknown as useAuthModule.AuthState["user"],
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/");
+    render(<AppRouter />);
+
+    expect(await screen.findByTestId("page-shell")).toBeInTheDocument();
+  });
+
+  it("redireciona para /entrar ao acessar a raiz / sem autenticação em plataforma nativa (Capacitor Android)", async () => {
+    const nativeModule = await import("@/services/native");
+    vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(true);
+
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: null,
+      user: null,
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    window.history.pushState({}, "", "/");
+    render(<AppRouter />);
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/entrar");
+    });
+  });
 });

@@ -22,7 +22,7 @@ export function LandingHeader() {
     location.pathname === "/planos" ||
     location.pathname === "/vendas";
 
-  const homeUrl = isLoggedIn ? "/" : "/landing";
+  const homeUrl = "/";
 
   // Reseta o menu mobile durante a renderização ao trocar de rota (padrão oficial React)
   const currentRouteKey = location.pathname + location.hash;

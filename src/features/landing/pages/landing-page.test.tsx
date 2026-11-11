@@ -22,9 +22,9 @@ describe("LandingPage", () => {
     expect(screen.getAllByRole("link", { name: /Criar conta grátis/i }).length).toBeGreaterThan(0);
     expect(screen.queryByRole("link", { name: /^Assinar Pro$/i })).not.toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Entrar/i }).length).toBeGreaterThan(0);
-    // Usuário deslogado na landing: o logo aponta para /landing para não chutar o visitante para /entrar
+    // Usuário deslogado na landing: o logo aponta para o domínio raiz /
     const logoLink = screen.getByRole("link", { name: /Axir/i });
-    expect(logoLink).toHaveAttribute("href", "/landing");
+    expect(logoLink).toHaveAttribute("href", "/");
   });
 
   it("exibe botão explícito de voltar quando renderizado em subpáginas de vendas ou planos (/vendas, /planos, /precos)", () => {

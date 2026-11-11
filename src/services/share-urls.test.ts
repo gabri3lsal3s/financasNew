@@ -97,18 +97,18 @@ describe("services/share-urls — Resolução Canônica de Links Compartilhávei
     });
   });
 
-  describe("Cenário 3: Navegador Web Público (ex: Cloudflare Pages)", () => {
+  describe("Cenário 3: Navegador Web em domínio interno Cloudflare (ex: Cloudflare Pages / Workers)", () => {
     beforeEach(() => {
       vi.stubEnv("VITE_PUBLIC_SITE_URL", "");
       mockOrigin("https://axis-finance.pages.dev");
     });
 
-    it("deve adotar automaticamente a origem pública do navegador", () => {
+    it("deve normalizar links para o domínio canônico oficial axir.com.br", () => {
       const splitUrl = getPublicAppUrl("r/tok-pages");
       const famUrl = getPublicAppUrl("convite-familiar/tok-pages");
 
-      expect(splitUrl).toBe("https://axis-finance.pages.dev/r/tok-pages");
-      expect(famUrl).toBe("https://axis-finance.pages.dev/convite-familiar/tok-pages");
+      expect(splitUrl).toBe("https://axir.com.br/r/tok-pages");
+      expect(famUrl).toBe("https://axir.com.br/convite-familiar/tok-pages");
     });
   });
 
